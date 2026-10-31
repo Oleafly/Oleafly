@@ -6,9 +6,6 @@ import {
   type Page,
 } from "../helpers";
 
-// Phase C editor UX density: list continuation, environment closing,
-// masked word count, and compile-derived reference numbers.
-
 async function editorKey(page: Page, key: string) {
   await page.evaluate(
     `(document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(
@@ -90,7 +87,6 @@ test("word count popover reports mask-accurate counts", async ({
     })`,
   );
   expect(stats.method).toBe("masked");
-  // Math body excluded; only the five prose words count.
   expect(stats.words).toBe(5);
 });
 

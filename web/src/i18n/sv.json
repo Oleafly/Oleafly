@@ -48,6 +48,11 @@
     "stoppedTitle": "Frånkopplad",
     "stoppedDescription": "Läs in sidan igen för att ansluta på nytt."
   },
+  "leave": {
+    "title": "Lämna det här projektet?",
+    "description": "Vissa av dina ändringar har inte nått servern än. Stanna tills de har skickats, eller lämna och förlora dem.",
+    "confirm": "Lämna"
+  },
   "access": {
     "changed": "Din nya roll i projektet: {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Dra tillbaka",
     "acceptAll": "Acceptera alla",
     "rejectAll": "Avvisa alla",
+    "rejectAllConfirm": {
+      "title": "Avvisa alla förslag i {{file}}?",
+      "description": "Originaltexten återställs i filen för alla i projektet. Väntande förslag: {{number}}.",
+      "confirm": "Avvisa alla"
+    },
     "pending_one": "{{count}} förslag",
     "pending_other": "{{count}} förslag",
     "card": "Förslag från {{name}}",

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  installBodyBytes,
   installGetOrInsert,
   installIteratorConstructor,
   installIteratorFind,
@@ -235,7 +236,32 @@ describe("PDF runtime polyfills on engines without the constructors", () => {
       installUint8ArrayToHex(undefined);
       installPromiseTry(undefined);
       installURLParse(undefined);
+      installBodyBytes(undefined);
     }).not.toThrow();
+  });
+});
+
+describe("Response and Blob bytes polyfill", () => {
+  it("reads a body into a Uint8Array where the engine has no bytes()", async () => {
+    class OldResponse {
+      constructor(private readonly body: ArrayBuffer) {}
+      arrayBuffer() {
+        return Promise.resolve(this.body);
+      }
+    }
+    installBodyBytes(OldResponse);
+    const bytes = await (new OldResponse(new Uint8Array([1, 2, 3]).buffer) as unknown as Response).bytes();
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect([...bytes]).toEqual([1, 2, 3]);
+  });
+
+  it("keeps a native bytes()", () => {
+    const native = () => Promise.resolve(new Uint8Array());
+    class NewBlob {}
+    const prototype = NewBlob.prototype as unknown as { bytes?: unknown };
+    prototype.bytes = native;
+    installBodyBytes(NewBlob);
+    expect(prototype.bytes).toBe(native);
   });
 });
 

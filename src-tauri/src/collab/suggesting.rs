@@ -30,6 +30,16 @@ pub struct SuggestionsChangedPayload {
     pub local: bool,
 }
 
+pub const SUGGESTION_REFUSED_EVENT: &str = "collab://suggestion-refused";
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SuggestionRefusedPayload {
+    pub project_id: String,
+    pub path: String,
+    pub code: &'static str,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SuggestionList {
@@ -311,7 +321,7 @@ pub(crate) fn decide_file_in(
     Ok(file)
 }
 
-fn tell_local(app: &tauri::AppHandle, project_id: &str, files: &BTreeSet<String>) {
+pub(crate) fn tell_local(app: &tauri::AppHandle, project_id: &str, files: &BTreeSet<String>) {
     let paths = super::live::read_live(project_id, |live| {
         let layout = layout_of(live.doc());
         files

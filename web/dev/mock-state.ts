@@ -172,6 +172,11 @@ export interface ChangeResult {
   threadsChanged: boolean;
 }
 
+export type ChangeFate = "applied" | "abandoned";
+
+const CHAT_PAGE = 200;
+const KEPT_FATES = 1_024;
+
 export class MockProject {
   readonly projectId: string;
   readonly title: string;
@@ -183,6 +188,7 @@ export class MockProject {
   readonly chat: ChatMessage[] = [];
   readonly compile: Record<string, string> = {};
   readonly outputs = new Map<OutputKind, Output>();
+  private readonly changeFates = new Map<string, ChangeFate>();
 
   constructor(projectId: string, title: string, owner: string) {
     this.projectId = projectId;
@@ -430,6 +436,36 @@ export class MockProject {
     const message = { id: nextId("chat"), author, at: Date.now(), body: trimmed, deleted: false, verified: true };
     this.chat.push(message);
     return message;
+  }
+
+  chatPage(): ChatMessage[] {
+    return this.chat.slice(-CHAT_PAGE);
+  }
+
+  fateOf(author: string, id: string): ChangeFate | null {
+    return this.changeFates.get(`${author}\u0000${id}`) ?? null;
+  }
+
+  applied(author: string, id: string): void {
+    this.noteFate(author, id, "applied");
+  }
+
+  resumed(author: string, id: string): boolean {
+    const fate = this.fateOf(author, id);
+    if (fate) return fate === "applied";
+    this.noteFate(author, id, "abandoned");
+    return false;
+  }
+
+  private noteFate(author: string, id: string, fate: ChangeFate): void {
+    const key = `${author}\u0000${id}`;
+    this.changeFates.delete(key);
+    this.changeFates.set(key, fate);
+    while (this.changeFates.size > KEPT_FATES) {
+      const oldest = this.changeFates.keys().next().value;
+      if (oldest === undefined) break;
+      this.changeFates.delete(oldest);
+    }
   }
 }
 

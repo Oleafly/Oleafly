@@ -10,13 +10,11 @@ interface ToolbarLayout {
   roomy: boolean;
 }
 
-/** Reserve equal space on both sides of the view switch, including window chrome. */
 export function useToolbarLayout(ref: RefObject<HTMLElement | null>): ToolbarLayout {
   const [layout, setLayout] = useState<ToolbarLayout>({
     overflow: 4, compactBrand: false, iconOnly: false, stacked: false, roomy: false,
   });
 
-  // Reconnect after a render because feature flags can add or remove actions.
   useLayoutEffect(() => {
     const header = ref.current;
     if (!header) return;
@@ -54,8 +52,6 @@ export function useToolbarLayout(ref: RefObject<HTMLElement | null>): ToolbarLay
       let overflow = 0;
       while (overflow < TOOLBAR_OVERFLOW.export && requiredWidth(overflow, false) > side) overflow++;
       const iconOnly = requiredWidth(overflow, false) > side;
-      // At extreme zoom, a second row is the only way to keep every essential
-      // action and the native caption buttons visible without moving the center.
       const stacked = requiredWidth(overflow, iconOnly) > side;
       const roomy = !stacked && requiredWidth(overflow, iconOnly, true) <= side;
 

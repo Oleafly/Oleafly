@@ -215,12 +215,32 @@ describe("a compile that writes a web page", () => {
     expect(useCompileStore.getState().lastCompileCheckpoint?.outputRevision).toBe(7);
   });
 
-  it("keeps the page through a failed compile and drops it on reset", async () => {
+  it("forgets the page when the project goes back to the PDF already on screen", async () => {
+    const bytes = new Uint8Array([4, 5, 6]);
+    mocks.compileProject.mockResolvedValue(pdfResult(bytes, 9));
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+    await useCompileStore.getState().recompile();
+    mocks.compileProject.mockResolvedValue(htmlResult());
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().htmlOutput).not.toBeNull();
+    mocks.compileProject.mockResolvedValue(pdfResult(bytes, 9));
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("success");
+    expect(useCompileStore.getState().htmlOutput).toBeNull();
+  });
+
+  it("forgets the page when a compile fails without writing one, so the failure shows", async () => {
     mocks.compileProject.mockResolvedValue(htmlResult());
     await useCompileStore.getState().recompile();
     mocks.compileProject.mockResolvedValue({ ...htmlResult(), ok: false, html_output: null });
     await useCompileStore.getState().recompile();
     expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().htmlOutput).toBeNull();
+  });
+
+  it("drops the page on reset", async () => {
+    mocks.compileProject.mockResolvedValue(htmlResult());
+    await useCompileStore.getState().recompile();
     expect(useCompileStore.getState().htmlOutput?.projectId).toBe("project");
     useCompileStore.getState().reset();
     expect(useCompileStore.getState().htmlOutput).toBeNull();
@@ -275,6 +295,26 @@ describe("a missing Quarto or Calepin", () => {
     expect(state.status).toBe("unavailable");
     expect(state.failureReason).toBe(enErrors.notebook.calepin_missing);
     expect(state.offer).toEqual({ kind: "notebook-tool-missing", projectId: "project", tool: "calepin" });
+  });
+
+  it("drops a missing-tool answer that arrives after another project opened", async () => {
+    useNotebookToolchainStore.setState({ status: null });
+    let answer: ((status: NotebookToolchainStatus) => void) | undefined;
+    mocks.notebookToolchainStatus.mockReturnValue(
+      new Promise<NotebookToolchainStatus>((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.notebookToolchainStatus).toHaveBeenCalledOnce());
+    mocks.files.projectId = "latex-project";
+    answer?.(toolchain(false));
+    await compiling;
+    const state = useCompileStore.getState();
+    expect(state.status).not.toBe("unavailable");
+    expect(state.failureReason).toBeNull();
+    expect(state.offer).toBeNull();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
   });
 
   it("checks again before refusing, so a tool installed elsewhere compiles", async () => {

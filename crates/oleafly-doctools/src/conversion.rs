@@ -1,56 +1,31 @@
-//! The executable half of the conversion registry.
-//!
-//! `packages/conversion-registry` (TypeScript) is the declarative source of
-//! truth the Import/Export menus and `docs/conversion-matrix.md` are generated
-//! from. This module mirrors the routes that execute through pandoc so the
-//! backend owns its own arg construction (and can test it) instead of trusting
-//! flags sent from the webview. The two tables are kept in sync by
-//! `conversion_routes_cover_the_registry_matrix` below.
-
 use std::path::{Path, PathBuf};
 
-/// Everything needed to turn one imported file into a new project.
 pub struct ImportPlan {
-    /// Name the source bytes are staged under inside the import directory.
     pub source_name: &'static str,
-    /// Full pandoc argv (from/to flags, `-o main.<ext>`, source).
     pub args: Vec<String>,
-    /// Main document written into project.json.
     pub main_doc: &'static str,
-    /// Engine id written into project.json ("xetex", "typst", "markdown").
     pub engine: &'static str,
 }
 
-/// A whitelisted, project-independent pandoc conversion. The caller supplies
-/// bytes for `source_name`; pandoc writes `output_name` inside an isolated
-/// temporary directory. Keeping argv construction here means the webview can
-/// choose a registered route, but cannot smuggle arbitrary pandoc flags.
 pub struct AdHocPlan {
     pub source_name: &'static str,
     pub output_name: &'static str,
     pub args: Vec<String>,
     pub binary_output: bool,
     pub media_type: &'static str,
-    /// Stage `export-references.lua` beside the source (rendered targets).
     pub references_filter: bool,
-    /// Markdown or Typst into LaTeX or Typst: the output names the source's
-    /// bibliography, so `add_bibliographies` points it at local file names.
     pub local_bibliography: bool,
-    /// Stage `oleafly-ocr.lua` beside the source (OCR model Markdown).
     pub ocr_filter: bool,
 }
 
 impl AdHocPlan {
-    /// Point `\bibliography` at `names` instead of the paths the source gave.
     pub fn add_bibliographies(&mut self, names: &[String]) {
         add_bibliography_args(&mut self.args, names);
     }
 }
 
-/// The argument that drops the source's own bibliography entry.
 pub const NO_BIBLIOGRAPHY: &str = "--metadata=bibliography=false";
 
-// 0.4.8 H: OCR model Markdown (glm-ocr, deepseek-ocr, dots.ocr, Mathpix).
 /// The filter that turns HTML tables and LaTeX blocks in OCR Markdown into
 /// pandoc elements. Staged in the conversion folder and passed by bare file
 /// name, so a temporary folder outside the ANSI code page (a Windows profile
@@ -60,7 +35,6 @@ const OCR_FILTER: &str = include_str!("../../../src-tauri/resources/pandoc/oleaf
 /// Markdown as OCR models write it: HTML blocks stay whole (the filter reads
 /// them as HTML) and `\(x\)` / `\[x\]` count as math.
 const OCR_READER: &str = "--from=markdown-markdown_in_html_blocks+tex_math_single_backslash";
-/// Tells the filter the result goes into another document.
 const OCR_FRAGMENT_METADATA: &str = "--metadata=oleafly-fragment=true";
 
 pub fn stage_ocr_filter(dir: &Path) -> Result<(), String> {
@@ -68,8 +42,6 @@ pub fn stage_ocr_filter(dir: &Path) -> Result<(), String> {
         .map_err(|error| format!("Could not prepare the OCR filter: {error}"))
 }
 
-/// Pandoc arguments for OCR Markdown. `ocr-markdown` is a whole document
-/// (scanned PDFs), `ocr-fragment` goes into someone else's document.
 fn ocr_args(source: &str, writer: &str, output_name: &str, source_name: &str) -> Vec<String> {
     let mut args = vec![OCR_READER.to_string(), format!("--to={writer}")];
     if source == "ocr-markdown" && matches!(writer, "latex" | "typst") {
@@ -90,9 +62,6 @@ fn ocr_args(source: &str, writer: &str, output_name: &str, source_name: &str) ->
     args
 }
 
-/// Adds `--bibliography=<name>` for each of `names` before the `--`
-/// separator. With no names, the source's own bibliography entry is
-/// dropped, so a path from the source machine is never written out.
 fn add_bibliography_args(args: &mut Vec<String>, names: &[String]) {
     let separator = args
         .iter()
@@ -116,15 +85,10 @@ fn writes_natbib(reader: &str, writer: &str) -> bool {
     writer == "latex" && matches!(reader, "markdown" | "typst")
 }
 
-/// Whether the output names the bibliography a Markdown or Typst source
-/// gave (`\bibliography`, `#bibliography`), which then has to be pinned.
 fn writes_source_bibliography(reader: &str, writer: &str) -> bool {
     matches!(reader, "markdown" | "typst") && matches!(writer, "latex" | "typst")
 }
 
-/// Removes the `bibliography: false` line that dropping a bibliography leaves
-/// in Markdown front matter, and the front matter itself when nothing else
-/// is in it.
 pub fn drop_false_bibliography(markdown: &str) -> String {
     let mut lines = markdown.split_inclusive('\n');
     let Some(opening) = lines.next().filter(|line| line.trim_end() == "---") else {
@@ -151,9 +115,6 @@ pub fn drop_false_bibliography(markdown: &str) -> String {
     format!("{opening}{}{closing}{body}", kept.concat())
 }
 
-/// Build a deterministic converter plan for the text/document routes exposed
-/// by the Tools page. PDF, image, spreadsheet, equation, and Mermaid inputs
-/// have dedicated adapters and deliberately do not enter this table.
 pub fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
     let (reader, source_name) = match source {
         "latex" | "equation" => ("latex", "source.tex"),
@@ -177,8 +138,6 @@ pub fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
         ),
         _ => return None,
     };
-    // OCR Markdown may also go to Markdown: the filter normalizes its math
-    // and HTML tables on the way.
     if matches!(source, "ocr-markdown" | "ocr-fragment") {
         if !matches!(target, "latex" | "typst" | "markdown") {
             return None;
@@ -385,7 +344,6 @@ pub fn typst_check_diagnostics(log: &str, file: &str) -> Vec<TypstCheckDiagnosti
         .collect()
 }
 
-/// The pandoc reader name for an importable file extension.
 fn pandoc_reader(extension: &str) -> Option<&'static str> {
     match extension {
         "docx" => Some("docx"),
@@ -396,8 +354,6 @@ fn pandoc_reader(extension: &str) -> Option<&'static str> {
     }
 }
 
-/// The pandoc writer + project engine for an import target. `latex` and
-/// `markdown` name project kinds here, matching the Import dialog wording.
 fn import_writer(target: &str) -> Option<(&'static str, &'static str, &'static str)> {
     match target {
         "latex" => Some(("latex", "main.tex", "xetex")),
@@ -407,12 +363,9 @@ fn import_writer(target: &str) -> Option<(&'static str, &'static str, &'static s
     }
 }
 
-/// Build the pandoc invocation that turns `extension` into a project of
-/// `target`. `None` means the pair is not a supported import route.
 pub fn import_plan(extension: &str, target: &str) -> Option<ImportPlan> {
     let reader = pandoc_reader(extension)?;
     let (writer, main_doc, engine) = import_writer(target)?;
-    // Reading a format into its own project kind is a copy, not a conversion.
     if reader == writer {
         return None;
     }
@@ -438,8 +391,6 @@ pub fn import_plan(extension: &str, target: &str) -> Option<ImportPlan> {
 }
 
 impl ImportPlan {
-    /// Point the new project's bibliography at the copied files `names`.
-    /// With none, the source's own entry is dropped.
     pub fn add_bibliographies(&mut self, names: &[String]) {
         add_bibliography_args(&mut self.args, names);
     }
@@ -455,8 +406,6 @@ fn source_name_for(extension: &str) -> &'static str {
     }
 }
 
-/// The pandoc writer and destination extension for an export format id.
-/// Mirrors the TS registry's export routes; `None` is not an export format.
 pub fn export_writer(format: &str) -> Option<(&'static str, &'static str)> {
     match format {
         "docx" => Some(("docx", "docx")),
@@ -484,26 +433,16 @@ pub fn export_renders_citations(format: &str) -> bool {
     matches!(format, "docx" | "html" | "epub" | "pptx" | "txt")
 }
 
-/// Where pandoc reads an export from.
 pub struct ExportSource {
-    /// The main document's path from the project root, as pandoc receives it.
     pub file_name: String,
-    /// Pandoc's `--resource-path`: the main document's folder, then the
-    /// project root, as the compile searches them.
     pub resource_path: String,
 }
 
-/// Citation inputs for an export.
 pub struct ExportCitations<'a> {
-    /// `export-references.lua`, which settles the bibliography and the
-    /// cross-references before citeproc runs (rendered formats only).
     pub filter: Option<&'a Path>,
-    /// Bibliographies the source's own compile passes explicitly (the
-    /// Markdown engine's discovered .bib files).
     pub bibliographies: &'a [PathBuf],
 }
 
-/// The pandoc reader an export's main document goes through.
 fn export_reader(file_name: &str) -> &'static str {
     let extension = Path::new(file_name)
         .extension()
@@ -513,8 +452,6 @@ fn export_reader(file_name: &str) -> &'static str {
     pandoc_reader(&extension).unwrap_or("latex")
 }
 
-/// The pandoc argv for one export. `None` means `format` is not an export
-/// format.
 pub fn export_args(
     format: &str,
     source: &ExportSource,
@@ -571,7 +508,6 @@ pub fn fixup_typst_source(source: &str) -> String {
     title_bibliography_from_heading(&fixed).unwrap_or(fixed)
 }
 
-/// The index just past the `)` that closes a call opened before `open`.
 fn typst_call_end(text: &str, open: usize) -> Option<usize> {
     let mut depth = 1_usize;
     let mut in_string = false;
@@ -694,7 +630,6 @@ mod tests {
         let fixed = fixup_typst_source(source);
         assert!(fixed.contains("font: (\"New Computer Modern\",),"));
         assert!(!fixed.contains("font: (),"));
-        // Idempotent.
         assert_eq!(fixed, fixup_typst_source(&fixed));
     }
 
@@ -738,7 +673,6 @@ mod tests {
                 "{format} keeps citations as markup"
             );
         }
-        // Markdown and Typst into LaTeX write natbib commands, not `[@key]`.
         for main in ["main.md", "notes/main.markdown", "main.typ"] {
             let source = ExportSource {
                 file_name: main.into(),
@@ -891,8 +825,6 @@ mod tests {
         );
         assert!(!fixed.contains("= References"), "{fixed}");
         assert_eq!(fixed, fixup_typst_source(&fixed));
-        // A heading with body text after it is a real section, not the
-        // bibliography's title.
         let kept = "= References\n\nSome text.\n\n#bibliography(\"refs.bib\")\n";
         assert_eq!(fixup_typst_source(kept), kept);
     }
@@ -999,7 +931,6 @@ mod tests {
         }
     }
 
-    // 0.4.8 H: OCR model Markdown
     #[test]
     fn ocr_routes_read_math_and_html_blocks_and_stage_the_filter_by_bare_name() {
         for (source, target, writer, standalone) in [
@@ -1036,7 +967,6 @@ mod tests {
                 .iter()
                 .any(|arg| arg.starts_with("--bibliography")));
             assert!(plan.ocr_filter && !plan.references_filter && !plan.local_bibliography);
-            // Windows: no absolute or separator-bearing paths in argv.
             assert!(plan
                 .args
                 .iter()
@@ -1167,9 +1097,6 @@ mod tests {
 
     #[test]
     fn conversion_routes_cover_the_registry_matrix() {
-        // Every (extension, target) pair the TS registry advertises as a
-        // pandoc import must resolve to a plan, and vice versa. The registry
-        // cells: docx/md/html/typ in, latex/markdown/typst projects out.
         let expected: &[(&str, &str)] = &[
             ("docx", "latex"),
             ("docx", "markdown"),
@@ -1188,7 +1115,6 @@ mod tests {
                 "registry route {ext} -> {target} has no backend plan"
             );
         }
-        // Writers for every export format the registry knows.
         for format in ["docx", "html", "md", "txt", "pptx", "epub", "typst", "tex"] {
             assert!(export_writer(format).is_some(), "no writer for {format}");
         }

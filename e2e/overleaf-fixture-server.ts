@@ -45,7 +45,6 @@ export const OVERLEAF_FIXTURE_PROJECTS: FixtureProject[] = [
   },
 ];
 
-/** A page in the fixture's public template gallery. */
 export const OVERLEAF_FIXTURE_TEMPLATE = {
   page: "/latex/templates/e2e-lab-thesis/e2etpl",
   title: "Fixture Lab Thesis",
@@ -143,7 +142,6 @@ export async function startOverleafFixtureServer(): Promise<{
   templateCopies: () => number;
 }> {
   const polls = new Map<string, number>();
-  // Projects made by Open as Template, as the real server adds them to the account.
   const copies = new Map<string, Record<string, string>>();
   const handler = (request: IncomingMessage, response: ServerResponse) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");

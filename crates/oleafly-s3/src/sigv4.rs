@@ -106,6 +106,63 @@ pub fn amz_date(epoch_ms: i64) -> String {
     )
 }
 
+pub fn parse_http_date(text: &str) -> Option<i64> {
+    let parts: Vec<&str> = text.split_whitespace().collect();
+    let [_, day, month, year, time, "GMT"] = parts.as_slice() else {
+        return None;
+    };
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let month = MONTHS.iter().position(|name| name == month)? as i64 + 1;
+    moment_ms(year.parse().ok()?, month, day, time)
+}
+
+pub fn parse_iso8601(text: &str) -> Option<i64> {
+    let (date, time) = text.split_once('T')?;
+    let time = time.strip_suffix('Z')?;
+    let (time, fraction) = time.split_once('.').unwrap_or((time, ""));
+    if !fraction.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    let mut parts = date.split('-');
+    let (Some(year), Some(month), Some(day), None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return None;
+    };
+    let month: i64 = month
+        .parse()
+        .ok()
+        .filter(|month| (1..=12).contains(month))?;
+    moment_ms(year.parse().ok()?, month, day, time)
+}
+
+fn moment_ms(year: i64, month: i64, day: &str, time: &str) -> Option<i64> {
+    let day: i64 = day.parse().ok().filter(|day| (1..=31).contains(day))?;
+    let mut clock = time.split(':').map(|part| part.parse::<i64>().ok());
+    let (Some(Some(hour)), Some(Some(minute)), Some(Some(second)), None) =
+        (clock.next(), clock.next(), clock.next(), clock.next())
+    else {
+        return None;
+    };
+    if hour > 23 || minute > 59 || second > 60 {
+        return None;
+    }
+    let seconds = days_from_civil(year, month, day) * 86_400 + hour * 3600 + minute * 60 + second;
+    Some(seconds * 1000)
+}
+
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = year.div_euclid(400);
+    let year_of_era = year - era * 400;
+    let month_index = if month > 2 { month - 3 } else { month + 9 };
+    let day_of_year = (153 * month_index + 2) / 5 + day - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era - 719_468
+}
+
 fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let shifted = days + 719_468;
     let era = shifted.div_euclid(146_097);
@@ -299,5 +356,65 @@ mod tests {
         assert_eq!(amz_date(1_709_251_199_000), "20240229T235959Z");
         assert_eq!(amz_date(951_782_400_000), "20000229T000000Z");
         assert_eq!(amz_date(0), "19700101T000000Z");
+    }
+
+    #[test]
+    fn http_dates_read_back_as_the_moment_they_name() {
+        assert_eq!(
+            parse_http_date("Fri, 24 May 2013 00:00:00 GMT"),
+            Some(1_369_353_600_000)
+        );
+        assert_eq!(
+            parse_http_date("Thu, 09 Oct 2025 08:53:20 GMT"),
+            Some(1_760_000_000_000)
+        );
+        assert_eq!(
+            parse_http_date("Thu, 29 Feb 2024 23:59:59 GMT"),
+            Some(1_709_251_199_000)
+        );
+        assert_eq!(parse_http_date("Thu, 01 Jan 1970 00:00:00 GMT"), Some(0));
+        for moment in [0, 951_782_400_000, 1_760_000_000_000, 4_102_444_800_000] {
+            let stamp = amz_date(moment);
+            let (date, time) = stamp.split_at(8);
+            let months = [
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+            ];
+            let month: usize = date[4..6].parse().unwrap();
+            let text = format!(
+                "Mon, {} {} {} {}:{}:{} GMT",
+                &date[6..8],
+                months[month - 1],
+                &date[..4],
+                &time[1..3],
+                &time[3..5],
+                &time[5..7]
+            );
+            assert_eq!(parse_http_date(&text), Some(moment), "{text}");
+        }
+        assert_eq!(parse_http_date("24 May 2013 00:00:00"), None);
+        assert_eq!(parse_http_date("Fri, 24 Mai 2013 00:00:00 GMT"), None);
+        assert_eq!(parse_http_date("Fri, 24 May 2013 25:00:00 GMT"), None);
+        assert_eq!(parse_http_date("Fri, 24 May 2013 00:00 GMT"), None);
+        assert_eq!(parse_http_date("Fri, 24 May 2013 00:00:00 PST"), None);
+    }
+
+    #[test]
+    fn listing_timestamps_read_back_as_the_moment_they_name() {
+        assert_eq!(
+            parse_iso8601("2013-05-24T00:00:00.000Z"),
+            Some(1_369_353_600_000)
+        );
+        assert_eq!(
+            parse_iso8601("2025-10-09T08:53:20Z"),
+            Some(1_760_000_000_000)
+        );
+        assert_eq!(
+            parse_iso8601("2024-02-29T23:59:59.999Z"),
+            Some(1_709_251_199_000)
+        );
+        assert_eq!(parse_iso8601("2013-05-24 00:00:00Z"), None);
+        assert_eq!(parse_iso8601("2013-13-24T00:00:00Z"), None);
+        assert_eq!(parse_iso8601("2013-05-24T00:00:00"), None);
+        assert_eq!(parse_iso8601("2013-05-24T00:00:00.x1Z"), None);
     }
 }

@@ -1,6 +1,3 @@
-//! Keeps credentials out of everything Oleafly stores or shows: the
-//! environment's secrets, MCP server credentials and anything typed into
-//! Oleafly for one request (an API-key sign-in, a provider key).
 use std::sync::RwLock;
 
 use serde_json::Value;
@@ -26,8 +23,6 @@ impl Redactor {
         Self::with_secrets(environment_secrets(std::env::vars_os()), extra)
     }
 
-    /// Only the secrets in `extra`, so a test's answer doesn't depend on the
-    /// token-like variables of the shell that runs it.
     #[cfg(test)]
     fn without_environment(extra: &[Value]) -> Self {
         Self::with_secrets(Vec::new(), extra)
@@ -44,8 +39,6 @@ impl Redactor {
         }
     }
 
-    /// Adds a secret typed into Oleafly for one request, so it is removed
-    /// from everything the session stores from now on.
     pub fn add_secret(&self, secret: &str) {
         let Ok(mut secrets) = self.secrets.write() else {
             return;
@@ -55,7 +48,6 @@ impl Redactor {
         secrets.dedup();
     }
 
-    /// The length of the longest secret it removes (0 without any).
     pub fn longest_secret(&self) -> usize {
         self.secrets
             .read()
@@ -63,11 +55,6 @@ impl Redactor {
             .unwrap_or(0)
     }
 
-    /// How many bytes at the end of `text` may be the start of a secret
-    /// still streaming in: the longest ending that begins a known secret,
-    /// or a last word that begins like a key the pattern rules remove once
-    /// it is long enough. What comes before them can be stored on its own.
-    /// Prose that no secret starts with gets 0, however long the secrets.
     pub fn holdback(&self, text: &str) -> usize {
         let mut keep = 0;
         if let Ok(secrets) = self.secrets.read() {
@@ -206,7 +193,6 @@ impl Redactor {
     }
 }
 
-/// Words whose assigned value is a credential (`password = …`).
 const ASSIGNMENT_KEYS: [&str; 8] = [
     "password",
     "api_key",
@@ -217,12 +203,9 @@ const ASSIGNMENT_KEYS: [&str; 8] = [
     "authorization",
     "client_secret",
 ];
-/// A shorter assigned value is a word of prose, not a credential.
 const MIN_ASSIGNED: usize = 6;
-/// Words that start like these are keys once they reach [`KEY_PATTERN_MIN`].
 const KEY_PREFIXES: [&str; 4] = ["sk-", "sk_", "ghp_", "AIza"];
 const KEY_PATTERN_MIN: usize = 19;
-/// A bearer token is at least this long.
 const MIN_BEARER: usize = 12;
 const OMITTED: &str = "[credential omitted]";
 
@@ -237,17 +220,12 @@ fn skip_blanks(bytes: &[u8], mut index: usize) -> usize {
     index
 }
 
-/// Where the value that starts at `start` ends: at whitespace, a quote or a
-/// separator.
 fn value_end(line: &str, start: usize) -> usize {
     line[start..]
         .find(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | ',' | ';' | '`'))
         .map_or(line.len(), |offset| start + offset)
 }
 
-/// The value assigned after a key that ends at `key_end`: past an optional
-/// closing quote, `=` or `:` (not `://`), an optional opening quote and a
-/// `Bearer`, `Basic` or `Token` scheme.
 fn assigned_value(line: &str, key_end: usize) -> Option<(usize, usize)> {
     let bytes = line.as_bytes();
     let mut at = key_end;
@@ -275,9 +253,6 @@ fn assigned_value(line: &str, key_end: usize) -> Option<(usize, usize)> {
     (end - at >= MIN_ASSIGNED).then_some((at, end))
 }
 
-/// Replaces the values of credential assignments in one line (`password =
-/// hunter22`, `"api_key": "sk-…"`, `Authorization: Bearer …`, `bearer …`)
-/// and nothing else: prose that only mentions a password stays as written.
 fn redact_assignments(line: &str) -> std::borrow::Cow<'_, str> {
     let bytes = line.as_bytes();
     let mut output = String::new();
@@ -414,23 +389,19 @@ mod tests {
     fn holdback_keeps_only_an_ending_that_could_start_a_secret() {
         let secret = "tok-0123456789abcdef0123456789abcdef";
         let redactor = Redactor::without_environment(&[json!({"api_key": secret})]);
-        // Prose no secret starts with is stored whole, however long the secrets are.
         assert_eq!(
             redactor.holdback("ACP fixture waiting for cancellation."),
             0
         );
         assert_eq!(redactor.holdback("works"), 0);
         assert_eq!(redactor.holdback(""), 0);
-        // The start of a known secret waits for the rest of it.
         assert_eq!(redactor.holdback("Your key is tok-0123"), 8);
         assert_eq!(redactor.holdback("key=tok-0123"), 8);
         assert_eq!(
             redactor.holdback(&format!("Your key is {}", &secret[..35])),
             35
         );
-        // A whole secret is removed, not held.
         assert_eq!(redactor.holdback(secret), 0);
-        // A last word that starts like a key waits until it is long enough to be removed.
         assert_eq!(redactor.holdback("Use sk-abc"), 6);
         assert_eq!(redactor.holdback("Use (ghp_ab"), 7);
         assert_eq!(redactor.holdback("Option A"), 1);

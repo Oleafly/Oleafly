@@ -1,10 +1,9 @@
 import "@oleafly/preview/polyfills";
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
+import { pdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
+import "@oleafly/preview/pdfWorkerRuntime";
 import { bitmapToPngDataUrl, rawToRgba, rgbaToPngDataUrl } from "./figure-decode";
 import type { ExtractedFigure, PageInput, TextItem } from "./types";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const MIN_FIGURE_PX = 32;
 
@@ -62,7 +61,6 @@ function makeObjectResolver(page: PdfPage): (objName: string) => Promise<any> {
   return (objName: string): Promise<any> =>
     new Promise((resolve) => {
       try {
-        // Shared XObjects land in commonObjs, page-local ones in objs.
         if (page.commonObjs.has(objName)) {
           page.commonObjs.get(objName, resolve);
         } else {
@@ -98,7 +96,6 @@ async function readFigureAt(
     if (img.width < MIN_FIGURE_PX || img.height < MIN_FIGURE_PX) return null;
     return figurePngDataUrl(img);
   } catch {
-    // one broken image must not sink the rest of the page
     return null;
   }
 }
@@ -129,27 +126,19 @@ async function extractPageFigures(
 }
 
 export interface ExtractOptions {
-  /** Read only these 1-based pages, inclusive, cut to the pages that exist.
-   * `pages` then holds just them, in order. */
   pageRange?: readonly [number, number];
-  /** `"if-text"` decodes images into PNG figures only when a page read has
-   * selectable text. A scan has none, and every page of it is one large
-   * image, so it is not PNG-encoded page by page. Default `true`. */
   figures?: boolean | "if-text";
-  /** Checked before each page; an abort rejects with an AbortError. */
   signal?: AbortSignal;
 }
 
 export interface ExtractedPdf {
   pages: PageInput[];
   figures: ExtractedFigure[];
-  /** How many pages the PDF has, whatever `pageRange` read. */
   pageCount: number;
 }
 
-/** How many pages a PDF has, without reading any of them. */
 export async function countPdfPages(bytes: Uint8Array): Promise<number> {
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
+  const loadingTask = pdfjsLib.getDocument(pdfDocumentOptions({ data: bytes.slice() }));
   try {
     return (await loadingTask.promise).numPages;
   } finally {
@@ -170,7 +159,7 @@ export async function extractPagesForConvert(
   options: ExtractOptions = {},
 ): Promise<ExtractedPdf> {
   throwIfAborted(options.signal);
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
+  const loadingTask = pdfjsLib.getDocument(pdfDocumentOptions({ data: bytes.slice() }));
   const pages: PageInput[] = [];
   const figures: ExtractedFigure[] = [];
   let pageCount = 0;
@@ -179,7 +168,6 @@ export async function extractPagesForConvert(
     pageCount = doc.numPages;
     const first = Math.max(1, Math.floor(options.pageRange?.[0] ?? 1));
     const last = Math.min(pageCount, Math.floor(options.pageRange?.[1] ?? pageCount));
-    // Text first, for every page read: it decides whether figures are needed.
     const read: { number: number; page: PdfPage; content: PdfTextContent }[] = [];
     for (let p = first; p <= last; p++) {
       throwIfAborted(options.signal);
@@ -196,8 +184,6 @@ export async function extractPagesForConvert(
         pages.push({ ...size, items: [], figureNames: [] });
         continue;
       }
-      // getOperatorList also populates commonObjs, which holds the real face
-      // names ("ABCDEF+Times-Bold") behind the internal ids getTextContent uses.
       let ops: PdfOperatorList | null = null;
       try {
         ops = await page.getOperatorList();

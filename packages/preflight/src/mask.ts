@@ -1,8 +1,3 @@
-// Comment characters are replaced with spaces (not deleted) so every character
-// offset stays put and position-based Finding reporting remains correct.
-//
-// This duplicates the maskComments helper in src/lib/index/parse-file.ts on
-// purpose: preflight must not import from src/lib/index/.
 export function maskComments(text: string): string {
   return text
     .split("\n")

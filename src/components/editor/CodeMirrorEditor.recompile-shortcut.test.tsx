@@ -18,10 +18,9 @@ import { useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useVisualModeStore } from "@/store/visual-mode";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const SOURCE = "\\section{Intro}\nHello.\n";
 
@@ -63,8 +62,6 @@ function pressEnter(modifiers: { ctrlKey?: boolean } = {}): KeyboardEvent {
   return event;
 }
 
-// Stands in for App.tsx's bubble-phase window listener, which owns the
-// recompile chord.
 let recompiles = 0;
 function countRecompile(event: KeyboardEvent): void {
   if (matchesShortcut(event, useShortcutStore.getState().bindings.recompile)) recompiles += 1;
@@ -121,7 +118,6 @@ describe("recompile shortcut in the source editor", () => {
   it("does not insert a blank line in LaTeX visual mode", async () => {
     useVisualModeStore.setState({ enabled: true });
     await mount("main.tex");
-    // The visual module is a lazy import; give it time on a loaded machine.
     await waitFor(() => expect(view().dom.classList.contains("ofl-visual-parsed")).toBe(true), {
       timeout: 10_000,
     });

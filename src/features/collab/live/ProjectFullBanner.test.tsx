@@ -37,8 +37,6 @@ describe("ProjectFullBanner", () => {
 
   it("says the changes stay on this computer once the project reaches the server's limit", () => {
     render(<ProjectFullBanner />);
-    // The status region is mounted, empty, before the banner, so screen
-    // readers announce the banner when it appears.
     const status = screen.getByRole("status");
     expect(status).toBeEmptyDOMElement();
     act(() => useCollabLiveStore.setState({ projectFull: true }));

@@ -1,6 +1,3 @@
-//! Public GitHub repository statistics (stars and forks) for the About page.
-//! No account is needed; the repository name is checked before it reaches
-//! the fixed GitHub API origin.
 use serde::{Deserialize, Serialize};
 
 fn http_client() -> Result<reqwest::Client, String> {
@@ -42,9 +39,6 @@ fn validated_repository_name(full_name: &str) -> Result<(&str, &str), String> {
     Ok((owner, repository))
 }
 
-/// Load public repository metadata without requiring a connected GitHub
-/// account. The repository name is validated before it is interpolated into
-/// the fixed GitHub API origin.
 #[tauri::command]
 pub async fn gh_public_repo_stats(full_name: String) -> Result<GitHubRepoStats, String> {
     let (owner, repository) = validated_repository_name(&full_name)?;

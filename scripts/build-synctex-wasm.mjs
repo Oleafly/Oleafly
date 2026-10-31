@@ -59,8 +59,6 @@ if (metadata.status !== 0) {
 }
 const targetDir = JSON.parse(metadata.stdout).target_directory;
 
-// Panic locations keep source paths, so name them from fixed roots rather
-// than shipping this machine's home folder.
 const cargoHome = process.env.CARGO_HOME ?? path.join(homedir(), ".cargo");
 const rustflagsKey = `CARGO_TARGET_${TARGET.toUpperCase().replaceAll("-", "_")}_RUSTFLAGS`;
 const rustflags = [process.env[rustflagsKey], `--remap-path-prefix=${cargoHome}=/cargo`, `--remap-path-prefix=${repo}=/oleafly`]

@@ -1,9 +1,3 @@
-//! Project-independent document conversion for the Tools workspace.
-//!
-//! Inputs are staged under fixed names in a fresh temporary directory. The
-//! route table owns every pandoc flag, and the response contains either text
-//! or one binary artifact plus any locally extracted media.
-
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -705,7 +699,6 @@ mod tests {
             .is_some_and(|text| text.contains("compact example")));
     }
 
-    // 0.4.8 H: OCR model Markdown through the bundled Pandoc and the filter.
     #[tokio::test]
     async fn native_pandoc_keeps_ocr_tables_math_and_sections() {
         if crate::project::find_pandoc().is_none() {
@@ -771,7 +764,6 @@ mod tests {
         assert!(markdown.contains("$x^2$"), "{markdown}");
         assert!(!markdown.contains("<table"), "{markdown}");
 
-        // CRLF from a Windows-made reply converts the same way.
         let crlf = convert_ad_hoc(AdHocConversionRequest {
             source: "ocr-fragment".into(),
             target: "latex".into(),
@@ -809,8 +801,6 @@ mod tests {
         assert!(tex.contains("\\bibliography{My-Library.bib}"), "{tex}");
         assert!(!tex.contains("/Users/someone"), "{tex}");
 
-        // Front matter after a blank line, or with nothing Rust can read,
-        // still never puts a path from this machine into the result.
         for (target, text) in [
             (
                 "latex",

@@ -4,8 +4,6 @@ import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore } from "./live-store";
 
-// The server refuses this project's changes because it reached its size
-// limit. Nothing is lost, but nothing reaches the others until it's raised.
 export function ProjectFullBanner() {
   const { t } = useTranslation(["collab"]);
   const projectId = useFilesStore((state) => state.projectId);

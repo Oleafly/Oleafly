@@ -2,9 +2,6 @@ use loro::TextDelta;
 
 use crate::ot::{utf16_len, Component, OtError, TextOperation};
 
-// An open file's text, kept in pieces of a few kilobytes. An edit near the
-// end of a large file skips whole pieces by their stored lengths and walks
-// one piece, and no edit copies more than the pieces it touches.
 const PIECE_BYTES: usize = 4096;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -41,8 +38,6 @@ fn cut(text: &str, limit: usize) -> Vec<Piece> {
     pieces
 }
 
-// A place in the text: a byte offset inside a piece, or the end. A place at
-// the end of a piece is always written as the start of the next one.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct Spot {
     piece: usize,
@@ -106,8 +101,6 @@ impl Pieces {
         rest.is_empty()
     }
 
-    // Moves `at` forward by `count` UTF-16 units or characters and returns
-    // how many UTF-16 units it passed.
     fn advance(&self, at: &mut Spot, count: usize, by: By) -> Result<usize, OtError> {
         let mut left = count;
         let mut passed = 0;
@@ -144,8 +137,6 @@ impl Pieces {
         Ok(passed)
     }
 
-    // Applies all of the operation or none of it: every place it names is
-    // found in the current text before anything changes.
     pub(super) fn apply(&mut self, operation: &TextOperation) -> Result<(), OtError> {
         if operation.base_len() != self.units {
             return Err(OtError::LengthMismatch);
@@ -175,7 +166,6 @@ impl Pieces {
                 }
             }
         }
-        // From the last edit back, so the places of earlier ones stay put.
         for edit in edits.into_iter().rev() {
             self.replace(edit);
         }

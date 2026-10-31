@@ -1,5 +1,3 @@
-//! Output for people: labelled, colour-aware lines on stderr. Colour follows
-//! `--color`, `NO_COLOR`, `CLICOLOR` and whether stderr is a terminal.
 use std::borrow::Cow;
 use std::io::Write;
 
@@ -49,26 +47,19 @@ pub fn plain(text: &str) -> Cow<'_, str> {
 fn labelled(label: &str, color: AnsiColor, message: &str) {
     let style = Style::new().bold().fg_color(Some(color.into()));
     let mut stderr = anstream::stderr().lock();
-    // A closed pipe on stderr is not worth a panic.
     let _ = writeln!(stderr, "{style}{label}:{style:#} {}", plain(message));
 }
 
-/// Text on stderr as it comes (the compiler's log, streamed), made safe for
-/// a terminal. Never fails the command.
 pub fn stream(text: &str) {
     let mut stderr = std::io::stderr().lock();
     let _ = write!(stderr, "{}", plain(text));
 }
 
-/// A line on stderr (made safe for a terminal), like `eprintln!` without the
-/// panic when stderr is a closed pipe.
 pub fn stderr_line(text: &str) {
     let mut stderr = anstream::stderr().lock();
     let _ = writeln!(stderr, "{}", plain(text));
 }
 
-/// A line on stdout, like `println!` without the panic when it is a closed
-/// pipe. Not made safe: the caller's own colour codes pass.
 pub fn out_line(text: &str) {
     let mut stdout = anstream::stdout().lock();
     let _ = writeln!(stdout, "{text}");
@@ -86,7 +77,6 @@ pub fn stdout_failed(error: std::io::Error) -> CliError {
     CliError::from(error)
 }
 
-/// Writes `bytes` to stdout (a generated script or a manual page).
 pub fn write_stdout(bytes: &[u8]) -> Result<(), CliError> {
     let mut stdout = std::io::stdout().lock();
     stdout
@@ -118,7 +108,6 @@ pub enum CheckStatus {
     Fail,
 }
 
-/// `PASS`, `WARN` or `FAIL`, coloured for a terminal.
 pub fn status_label(status: CheckStatus) -> String {
     let (text, color) = match status {
         CheckStatus::Pass => ("PASS", AnsiColor::Green),
@@ -142,13 +131,11 @@ mod tests {
             "key\u{241b}]52;c;ZXZpbA==\u{2407}\u{241b}[2Kdone\u{2408}\u{fffd}31m\u{2421}"
         );
         assert!(!shown.chars().any(|character| character.is_control()));
-        // Ordinary text, tabs, line feeds and any script come through as they are.
         for text in ["plain", "tab\tseparated\nlines\n", "Книга 机器学 é"] {
             assert_eq!(plain(text), text);
         }
         assert_eq!(plain("crlf\r\nline"), "crlf\nline");
         assert!(matches!(plain("nothing to do"), Cow::Borrowed(_)));
-        // A carriage return that doesn't end a line could rewrite the one before.
         assert_eq!(plain("fake ok\rreal"), "fake ok\u{240d}real");
         assert_eq!(plain("trailing\r"), "trailing");
     }

@@ -1,6 +1,3 @@
-// The usage snapshot for the built-in assistant: the chat's totals, the
-// last run, the context in use, and (when the popover opens) the project
-// budget, the provider's credit and the chat's cost from the usage ledger.
 import { i18n } from "@/i18n";
 import { HISTORY_MAX_TURNS } from "@/lib/ai-context-pack";
 import { providerCredit } from "@/lib/agent-backend";
@@ -62,11 +59,6 @@ async function projectBudget(projectId: string): Promise<UsageSnapshot["budget"]
   return { spentUsd: totals.cost_usd, limitUsd: limit };
 }
 
-/**
- * The chat's cost from the usage ledger, its subagents included (their rows
- * carry their own session id and name the chat as their parent), when its
- * records carry prices.
- */
 export async function ledgerChatCost(threadId: string, chatCreatedAt: number): Promise<number | undefined> {
   const { createUsageReportFilter, queryUsageReport } = await import("@/lib/usage-report");
   const now = Date.now();
@@ -85,7 +77,6 @@ export async function ledgerChatCost(threadId: string, chatCreatedAt: number): P
   return report.totals.costKnownRecords > 0 ? report.totals.estimatedCostUsd : undefined;
 }
 
-/** Loads the popover's extras; each part that fails is left out. */
 export function builtinUsageExtras(input: {
   projectId: string | null;
   providerId: string;

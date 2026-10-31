@@ -1,7 +1,3 @@
-//! Errors with the app's error codes (`src/i18n/locales/en/errors.json`):
-//! the app maps them back to `AppError` with the same code and params; the
-//! CLI prints `message`.
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocError {
     pub code: &'static str,
@@ -23,7 +19,6 @@ impl DocError {
         self
     }
 
-    /// A plain failure without its own code.
     pub fn other(message: impl Into<String>) -> Self {
         Self::new("doc.failed", message)
     }

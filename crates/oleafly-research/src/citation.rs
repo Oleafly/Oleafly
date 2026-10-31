@@ -1,11 +1,6 @@
-//! On-demand citation metadata lookup. Thin async HTTP to three fixed hosts
-//! (doi.org, arXiv, Crossref); all parsing/normalization happens in TypeScript
-//! so it stays unit-testable. Only the identifier or query is ever sent.
-
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; citation lookup)";
 const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 
-/// Redirects a lookup follows, at most.
 const MAX_REDIRECTS: usize = 3;
 
 /// Whether a lookup follows a redirect to `next` after `previous` hops. A DOI
@@ -62,7 +57,6 @@ async fn response_json(response: reqwest::Response) -> Result<serde_json::Value,
         .map_err(|error| format!("The citation service returned invalid JSON: {error}"))
 }
 
-/// Canonical BibTeX for a DOI, via doi.org content negotiation.
 pub async fn fetch_doi_bibtex(doi: &str) -> Result<String, String> {
     let doi = doi
         .trim()
@@ -188,7 +182,6 @@ fn ascii_page_ranges(entry: &str) -> String {
     out
 }
 
-/// The arXiv Atom entry for an id (parsed to BibTeX in the frontend).
 pub async fn fetch_arxiv(id: &str) -> Result<String, String> {
     let id = id.trim().trim_start_matches("arXiv:").trim();
     if id.is_empty() {
@@ -206,7 +199,6 @@ pub async fn fetch_arxiv(id: &str) -> Result<String, String> {
     response_text(resp).await
 }
 
-/// Crossref bibliographic search (JSON parsed in the frontend).
 pub async fn crossref_search(query: &str) -> Result<String, String> {
     let q = query.trim();
     if q.is_empty() {
@@ -227,15 +219,10 @@ pub async fn crossref_search(query: &str) -> Result<String, String> {
     response_text(resp).await
 }
 
-// --- Citation verification ---------------------------------------------------
-
-/// Whether a reference is real: its DOI resolves to the given title, or a
-/// Crossref record carries the title.
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CitationCheck {
     pub verified: bool,
-    /// `"doi"` or `"crossref-search"`.
     pub source: String,
     pub doi: Option<String>,
     pub matched_title: Option<String>,
@@ -280,8 +267,6 @@ pub async fn crossref_work(doi: &str) -> Result<serde_json::Value, String> {
     Ok(body["message"].take())
 }
 
-/// The best-matching item of a Crossref search response for `title` (not
-/// simply the first one).
 pub fn best_crossref_match(title: &str, body: &serde_json::Value) -> CitationCheck {
     let best = body["message"]["items"]
         .as_array()
@@ -322,14 +307,12 @@ pub fn best_crossref_match(title: &str, body: &serde_json::Value) -> CitationChe
 
 const DOI_TITLE_UNKNOWN: &str = "The DOI resolves, but its title could not be read.";
 
-/// The `title` field of a BibTeX entry, braces removed.
 fn bibtex_title(bibtex: &str) -> Option<String> {
     let lower = bibtex.to_ascii_lowercase();
     let mut from = 0;
     while let Some(found) = lower[from..].find("title") {
         let start = from + found;
         from = start + 5;
-        // A field name, not the end of "booktitle" or "subtitle".
         if lower[..start]
             .chars()
             .next_back()
@@ -409,7 +392,6 @@ fn doi_check(
     }
 }
 
-/// Checks a reference by DOI (and title, when given) or by title alone.
 pub async fn verify_citation(
     doi: Option<&str>,
     title: Option<&str>,
@@ -452,9 +434,6 @@ pub async fn verify_citation(
     Ok(best_crossref_match(title, &body))
 }
 
-// --- ISBN and PMID lookups ---------------------------------------------------
-
-/// Strip separator characters and validate an ISBN-10/13 with its check digit.
 fn normalize_isbn(raw: &str) -> Result<String, String> {
     let isbn: String = raw
         .trim()
@@ -503,8 +482,6 @@ fn normalize_isbn(raw: &str) -> Result<String, String> {
     Ok(isbn)
 }
 
-/// Render a person list the way the app's cite keys expect it: family name
-/// first, then initials, joined with " and ".
 fn bibtex_authors(names: &[String]) -> String {
     names
         .iter()
@@ -541,7 +518,6 @@ fn bibtex_authors(names: &[String]) -> String {
         .join(" and ")
 }
 
-/// The app's citation key scheme (shared with the CLI).
 pub use oleafly_core::bibkey::{cite_key, year_of};
 
 fn brace_field(value: &str) -> String {
@@ -748,7 +724,6 @@ pub async fn fetch_isbn_bibtex(isbn: &str) -> Result<String, String> {
     isbn_bibtex(&record, &isbn)
 }
 
-/// BibTeX for an article, from NCBI's PubMed esummary record.
 pub fn pmid_bibtex(result: &serde_json::Value, pmid: &str) -> Result<String, String> {
     let entry = result
         .get(pmid)
@@ -942,7 +917,6 @@ mod tests {
             .send()
             .await;
         server.abort();
-        // The redirect is refused, so the answer never arrives.
         assert!(result.is_err(), "{result:?}");
     }
 

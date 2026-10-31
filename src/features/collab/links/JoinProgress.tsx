@@ -23,7 +23,6 @@ function keyOf(target: { serverId: string; sharedProjectId: string }): string {
   return `${target.serverId}:${target.sharedProjectId}`;
 }
 
-// How far the download of `target` has got, or null before the first report.
 export function useJoinProgress(target: JoinTarget | null): { done: number; total: number } | null {
   const key = target ? keyOf(target) : null;
   const [counted, setCounted] = useState<Counted | null>(null);
@@ -38,8 +37,6 @@ export function useJoinProgress(target: JoinTarget | null): { done: number; tota
   return counted !== null && counted.key === key ? { done: counted.done, total: counted.total } : null;
 }
 
-// Shows how a join is going, with a Cancel that stops it. Until the first
-// report, or while there is nothing to count, the bar just shows activity.
 export function JoinProgress({
   target,
   name,

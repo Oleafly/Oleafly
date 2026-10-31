@@ -1,6 +1,3 @@
-//! Compute targets (`<data root>/research/compute.json`): SSH hosts, Slurm
-//! clusters and Cua Spaces, the Windows sandbox switch, and the last test of
-//! each target. Also reads host aliases from `~/.ssh/config` for import.
 use std::collections::BTreeMap;
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
@@ -10,8 +7,6 @@ use serde::{Deserialize, Serialize};
 use crate::model::Resources;
 use crate::runs::RunError;
 
-/// Flip to `true` (and drop the Beta badge) after the live check passes on
-/// Windows 10 22H2 and Windows 11.
 pub const WINDOWS_SANDBOX_DEFAULT_ON: bool = false;
 const MAX_PRELUDE: usize = 4 * 1024;
 const MAX_CONFIG_BYTES: u64 = 256 * 1024;
@@ -28,7 +23,6 @@ pub struct ComputeSettings {
     pub version: u8,
     #[serde(default)]
     pub targets: Vec<ComputeTarget>,
-    /// The Windows sandbox switch; `None` = the default.
     #[serde(default)]
     pub windows_sandbox: Option<bool>,
     #[serde(default)]
@@ -122,13 +116,10 @@ pub struct TestSummary {
     pub at: i64,
     pub ok: bool,
     pub resolved: Option<String>,
-    /// The last Cua test found a Relay Space (the user's own computer).
     #[serde(default)]
     pub relay: bool,
 }
 
-/// The saved settings; missing → defaults, unreadable → defaults with the
-/// file kept as `compute.json.bad`.
 pub fn load(data_root: &Path) -> ComputeSettings {
     let file = compute_file(data_root);
     let Ok(text) = std::fs::read_to_string(&file) else {
@@ -143,7 +134,6 @@ pub fn load(data_root: &Path) -> ComputeSettings {
     }
 }
 
-/// Changes the settings under a file lock and saves them (owner-only).
 pub fn update(
     data_root: &Path,
     change: impl FnOnce(&mut ComputeSettings) -> Result<(), RunError>,
@@ -266,7 +256,6 @@ fn check_endpoint(
     Ok(())
 }
 
-/// The same rules the settings form applies.
 pub fn validate_resources(resources: &Resources) -> Result<(), RunError> {
     if resources
         .time_minutes
@@ -354,7 +343,6 @@ pub fn validate_target(target: &ComputeTarget) -> Result<(), RunError> {
     }
 }
 
-/// `t-` and 12 random lowercase hex digits.
 pub fn new_target_id() -> String {
     format!("t-{:012x}", rand::random::<u64>() & 0xffff_ffff_ffff)
 }
@@ -363,7 +351,6 @@ pub fn find<'a>(settings: &'a ComputeSettings, id: &str) -> Option<&'a ComputeTa
     settings.targets.iter().find(|target| target.id() == id)
 }
 
-/// The executor that runs a target's runs.
 pub fn executor_for(target: Option<&ComputeTarget>) -> &'static str {
     match target {
         None => "local",
@@ -373,8 +360,6 @@ pub fn executor_for(target: Option<&ComputeTarget>) -> &'static str {
     }
 }
 
-/// Whether task commands may run on this computer under the Windows
-/// sandbox (always true elsewhere).
 pub fn windows_sandbox_enabled(data_root: &Path) -> bool {
     if !cfg!(windows) {
         return true;
@@ -387,7 +372,6 @@ pub fn windows_sandbox_enabled(data_root: &Path) -> bool {
 pub const WINDOWS_SWITCH_MESSAGE: &str =
     "Turn on the Windows sandbox (beta) in Settings › Research › Compute to run commands on this computer.";
 
-/// Why commands cannot run on this computer right now, if they cannot.
 pub fn local_commands_unavailable_reason(data_root: &Path) -> Option<String> {
     if cfg!(windows) && !windows_sandbox_enabled(data_root) {
         return Some(WINDOWS_SWITCH_MESSAGE.to_string());
@@ -431,7 +415,6 @@ fn glob_match(pattern: &str, name: &str) -> bool {
     }
 }
 
-/// The files an `Include` pattern names, in order.
 fn included_files(pattern: &str, ssh_dir: &Path) -> Vec<PathBuf> {
     let path = if Path::new(pattern).is_absolute() {
         PathBuf::from(pattern)
@@ -463,8 +446,6 @@ fn included_files(pattern: &str, ssh_dir: &Path) -> Vec<PathBuf> {
     files
 }
 
-/// Adds the plain aliases of a `Host` line, which become the hosts the
-/// following keywords apply to.
 fn add_hosts(aliases: &str, hosts: &mut Vec<SshConfigHost>, current: &mut Vec<usize>) {
     current.clear();
     for alias in aliases.split_whitespace() {
@@ -528,8 +509,6 @@ fn read_config(file: &Path, ssh_dir: &Path, depth: usize, hosts: &mut Vec<SshCon
     }
 }
 
-/// Host aliases from `<ssh_dir>/config` (and its includes): only `Host`,
-/// `HostName`, `User` and `Port` are read; patterns are skipped.
 pub fn ssh_config_hosts(ssh_dir: &Path) -> Vec<SshConfigHost> {
     let mut hosts = Vec::new();
     read_config(&ssh_dir.join("config"), ssh_dir, 0, &mut hosts);

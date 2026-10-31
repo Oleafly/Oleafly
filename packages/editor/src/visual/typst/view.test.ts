@@ -11,15 +11,14 @@ import { typstVisualMode } from "./index";
 import { leaveTypstHeading } from "./keymap";
 import { typstFromClipboard } from "./paste-html";
 import { NO_PORTS } from "./test-support";
+import { stubRangeGeometry } from "../../test-geometry";
 
 let view: EditorView | null = null;
 
 beforeAll(async () => {
   installEnglishEditorMessages();
   await loadTypstParser();
-  if (!globalThis.Range.prototype.getClientRects) {
-    Object.defineProperty(globalThis.Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-  }
+  stubRangeGeometry();
 });
 
 afterEach(() => {

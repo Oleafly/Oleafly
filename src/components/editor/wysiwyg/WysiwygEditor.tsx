@@ -91,7 +91,6 @@ function isMarkdownPath(path: string): boolean {
 }
 
 const FLUSH_DEBOUNCE_MS = 300;
-// How long a shared file must stay still before the read-only view re-renders it.
 const FOLLOW_REMOTE_MS = 150;
 const EXTERNAL_DOCUMENT_SYNC = "oleaflyExternalDocumentSync";
 const BOOKTABS_PACKAGE = /\\usepackage\s*(?:\[[^\]]*\]\s*)?\{[^}]*\bbooktabs\b[^}]*\}/u;
@@ -137,9 +136,6 @@ function markdownMathRanges(source: string) {
 function replaceContentAndResetHistory(editor: Editor, content: Parameters<Editor["commands"]["setContent"]>[0]) {
   editor.chain().setContent(content, { emitUpdate: false }).setMeta("addToHistory", false).setMeta(EXTERNAL_DOCUMENT_SYNC, true).run();
 
-  // Loading a file is a synchronization boundary, not a user edit. Reinitialize
-  // plugin state so Undo cannot erase the loaded document or replay edits from
-  // a previously active file.
   const plugins = editor.state.plugins;
   const resetState = editor.state.reconfigure({ plugins: [] }).reconfigure({ plugins });
   editor.view.updateState(resetState);
@@ -773,11 +769,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     };
   }, [editor]);
 
-  // Settings and dictionary changes invalidate worker output without changing
-  // the document. A plugin refresh clears old decorations immediately and
-  // schedules a current-revision pass after the typing debounce.
-  // Settings are intentional refresh triggers for the imperative proofreading
-  // plugin even though they are read by that plugin rather than this effect.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above.
   useEffect(() => {
     if (editor) refreshVisualProofreading(editor);
@@ -867,9 +858,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     synchronizeRef.current();
   }, [editor, activePath, wysiwyg, docVersion]);
 
-  // In a live project this view is read-only, and collaborators' edits reach
-  // the store through the session mirror without a document version bump.
-  // Follow them so the view never shows stale text.
   useEffect(() => {
     if (!editor || !collabReadOnly || !wysiwyg) return;
     let timer: ReturnType<typeof setTimeout> | null = null;

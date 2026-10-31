@@ -1,4 +1,3 @@
-// Regenerates the committed import fixtures. Run: node e2e/gen-fixtures.mjs
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,7 +7,6 @@ import { strToU8, zipSync } from "fflate";
 const here = dirname(fileURLToPath(import.meta.url));
 const out = (name) => join(here, "fixture-files", name);
 
-// A 64x64 red PNG (generated once with a canvas, embedded as base64).
 const RED_PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAOElEQVR42u3OMQEAAAgDoK1/aM3g4QcFaCbvKpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBLJpiXW5QG/aCsc/gAAAABJRU5ErkJggg==";
 

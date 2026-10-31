@@ -15,9 +15,6 @@ async function pickOption(page: Page, rowText: string, optionText: string) {
     .replace(/^-|-$/g, "");
   const row = page.locator(`[data-testid="settings-row-${rowId}"]`);
   await expect(row).toBeVisible({ timeout: 10_000 });
-  // The list a previous pick closed stays in the page while it fades out, and
-  // its options would match the wait below. Wait until it's gone, then only
-  // take an option from the list that is open.
   await page.waitForFunction(`!document.querySelector('[role="listbox"][data-state="closed"]')`, 5_000);
   await page.click(`[data-testid="settings-row-${rowId}"] [role="combobox"]`);
   const optionSelector = `[role="listbox"][data-state="open"] [role="option"][data-label=${JSON.stringify(optionText)}]`;
@@ -60,7 +57,6 @@ test("every editor font size option restyles the editor", async ({ tauriPage }) 
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openAppearanceTab(tauriPage, "editor");
   for (const px of [11, 12, 14, 16, 18, 20, 15, 13]) {
-    // ends on 13 = default
     await pickOption(tauriPage, "Editor font size", `${px}px`);
     await tauriPage.waitForFunction(
       `getComputedStyle(document.querySelector('.cm-content')).fontSize === '${px}px'`,
@@ -75,7 +71,6 @@ test("every app font size option rescales the interface", async ({ tauriPage }) 
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openAppearanceTab(tauriPage, "app");
   for (const px of [13, 14, 15, 17, 18, 20, 16]) {
-    // ends on 16 = default
     await pickOption(tauriPage, "App font size", `${px}px`);
     await tauriPage.waitForFunction(
       `document.documentElement.style.fontSize === '${px}px'`,
@@ -176,7 +171,7 @@ test("every accent color repaints the primary color", async ({ tauriPage }) => {
     ["Rose", "#db2777"],
     ["Orange", "#ea580c"],
     ["Teal", "#0d9488"],
-    ["Blue", "#2563eb"], // default last = restore
+    ["Blue", "#2563eb"],
   ] as const;
   for (const [name, hex] of accents) {
     await tauriPage.click(`button[title="${name}"]`);
@@ -235,14 +230,12 @@ test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage 
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.click('[title="Back to library"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
-  // Reopened projects restore their saved layout instead of these defaults.
   await createBlankProject(tauriPage, `E2E Sidebar Hidden ${run}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.waitForFunction(
     `!!document.querySelector('[aria-label^="Show sidebar"]')`,
     10_000,
   );
-  // With the setting off the sidebar panel is not rendered at all.
   await expect(tauriPage.locator('[aria-label="Explorer"]')).toHaveCount(0);
 
   await openAppearanceTab(tauriPage, "files");
@@ -261,24 +254,16 @@ test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage 
     `!!document.querySelector('[aria-label^="Hide sidebar"]')`,
     10_000,
   );
-  // The panel must actually be on screen, not merely reported open: a zero
-  // width sidebar (a collapsed panel) fails this even though the toggle label
-  // says "Hide sidebar".
   await expect(tauriPage.locator('[aria-label="Explorer"]')).toBeVisible();
 });
 
 test("offline mode compiles from the local cache", async ({ tauriPage }) => {
   test.setTimeout(300_000);
-  // This is a compiler-policy test, so give it a fresh immutable fixture
-  // instead of inheriting the shared E2E Doc after earlier editing specs.
   await createBlankProject(
     tauriPage,
     `E2E Offline Cache ${Date.now().toString(36)}`,
   );
   await setOfflineMode(tauriPage, false);
-  // First compile online to populate exactly the resources used by this
-  // document, then require a new verified output while Tectonic is
-  // constrained to --only-cached.
   await compileAndWait(tauriPage, 120_000);
   await setOfflineMode(tauriPage, true);
   try {
@@ -311,8 +296,6 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
 
   await openSettings(tauriPage, "appearance");
   await tauriPage.getByText("Reset to defaults").click();
-  // The confirm button shares its label with the section button behind the
-  // dialog, so resolve it strictly inside the alertdialog.
   await tauriPage.waitForFunction(
     `!!document.querySelector('[role="alertdialog"]')`,
     5_000,

@@ -1,7 +1,3 @@
-//! The BibTeX linter (`packages/editor/src/bibtex-linter.ts`): a line-led
-//! entry scan that recovers at the next `@type{` line, then per-entry checks
-//! for unknown types, missing required fields, repeated fields and years.
-
 use std::collections::{BTreeSet, HashSet};
 
 use oleafly_preflight::bib::{
@@ -90,7 +86,6 @@ fn line_end_from(text: &[u16], cursor: usize) -> usize {
     index_of_units(text, &[NEWLINE], cursor).unwrap_or(text.len())
 }
 
-/// `ENTRY_START`: `/^[ \t]*@[A-Za-z][A-Za-z0-9_-]*[ \t]*[{(]/u` on the line.
 fn entry_start_matches(line: &[u16]) -> bool {
     let mut index = 0;
     while matches!(line.get(index), Some(&SPACE) | Some(&TAB)) {
@@ -113,7 +108,6 @@ fn entry_start_matches(line: &[u16]) -> bool {
     matches!(line.get(index), Some(&OPEN_BRACE) | Some(&OPEN_PAREN))
 }
 
-/// The `@` of an entry that starts the line, if any.
 fn starts_entry(text: &[u16], line_start: usize, line_end: usize) -> Option<usize> {
     let line = slice(text, line_start, line_end);
     if !entry_start_matches(line) {
@@ -180,16 +174,12 @@ fn unwrap_value(raw: &str) -> String {
     if !wrapped {
         return trimmed.to_string();
     }
-    // `slice(1, -1)`: a lone `"` both starts and ends the value and leaves
-    // nothing behind.
     if trimmed.len() < 2 {
         return String::new();
     }
     js_trim(&trimmed[1..trimmed.len() - 1]).to_string()
 }
 
-/// `FIELD_HEAD`: `/^([A-Za-z][A-Za-z0-9_+:-]*)[ \t\r\n]*=/u` within the
-/// lookahead window, as `(name length, head length)`.
 fn field_head(text: &[u16], cursor: usize, limit: usize) -> Option<(usize, usize)> {
     let window = slice(text, cursor, limit.min(cursor + HEAD_LOOKAHEAD));
     if !window.first().copied().is_some_and(is_ascii_letter) {
@@ -254,8 +244,6 @@ fn next_entry_follows(text: &[u16], newline: usize) -> bool {
     starts_entry(text, line_start, line_end_from(text, line_start)).is_some()
 }
 
-/// The closing delimiter of an entry body, or the newline before the next
-/// entry when the body never closes.
 fn entry_body_end(text: &[u16], body_from: usize, close: u16) -> (usize, bool) {
     let open = if close == CLOSE_PAREN {
         OPEN_PAREN
@@ -285,8 +273,6 @@ fn entry_body_end(text: &[u16], body_from: usize, close: u16) -> (usize, bool) {
     (text.len(), false)
 }
 
-/// `ENTRY_HEAD`: `/^@([A-Za-z][A-Za-z0-9_-]*)[ \t]*([{(])/u` within the
-/// lookahead window, as `(type length, head length, opening delimiter)`.
 fn entry_head(text: &[u16], at: usize) -> Option<(usize, usize, u16)> {
     let window = slice(text, at, at + HEAD_LOOKAHEAD);
     if window.first() != Some(&AT) || !window.get(1).copied().is_some_and(is_ascii_letter) {
@@ -346,7 +332,6 @@ fn parse_entry(text: &[u16], at: usize) -> (Option<BibtexEntrySpan>, usize) {
     (Some(entry), if complete { end + 1 } else { end })
 }
 
-/// Every entry outside `% novalidate` regions; nothing when the file opts out.
 pub fn scan_bibtex_entries(text: &[u16]) -> Vec<BibtexEntrySpan> {
     let mut entries = Vec::new();
     let mut suppressed = false;
@@ -425,7 +410,6 @@ fn check_repeated_fields(entry: &BibtexEntrySpan) -> Vec<LintDiagnostic> {
     diagnostics
 }
 
-/// `YEAR_VALUE`: `/^\d{4}[a-z]?$/u`.
 fn valid_year(value: &str) -> bool {
     let bytes = value.as_bytes();
     match bytes.len() {

@@ -22,7 +22,6 @@ const PROFILE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 type RemoteField = "host" | "port" | "folder" | "command" | "profile";
 type RemoteIssue = "required" | "invalid";
 
-/** The same checks Oleafly runs before saving, per field (so mistakes show at once). */
 export function remoteIssues(remote: AcpRemoteHermes): Partial<Record<RemoteField, RemoteIssue>> {
   const issues: Partial<Record<RemoteField, RemoteIssue>> = {};
   if (remote.host === "") issues.host = "required";
@@ -54,7 +53,6 @@ function sameRemote(saved: AcpRemoteHermes | null | undefined, draft: AcpRemoteH
   );
 }
 
-/** A labelled field with its problem (or hint) underneath, outside the label so the label's name stays short. */
 function RemoteInput({
   id,
   label,
@@ -94,11 +92,9 @@ function statusText(status: AcpHermesStatus): string {
   }
 }
 
-/** How this project runs Hermes: the shared profile, its own profile, or Hermes on another machine. */
 export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["common", "settings"]);
   const [settings, setSettings] = useState<AcpHermesSettings | null>(null);
-  // What is stored, as opposed to `settings`, which also holds a mode picked but not saved yet.
   const [saved, setSaved] = useState<AcpHermesSettings | null>(null);
   const [status, setStatus] = useState<AcpHermesStatus | null>(null);
   const [remote, setRemote] = useState<AcpRemoteHermes>(EMPTY_REMOTE);
@@ -151,7 +147,6 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
     }
     const before = saved ?? settings;
     setSettings(next);
-    // A mode that was not saved goes back to the one this project still uses.
     run(() => acpSetHermesSettings(projectId, next), () => setSaved(next), () => setSettings(before));
   };
   const saveRemote = () => {
@@ -183,7 +178,6 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
     profile: !remote.profile,
   };
   const touch = (field: RemoteField) => setTouched((current) => new Set(current).add(field));
-  // A field the person has not reached yet stays quiet while it is empty; the note under the buttons covers it.
   const errorText = (field: RemoteField): string | undefined => {
     const issue = issues[field];
     if (!issue || (empty[field] && !touched.has(field))) return undefined;
@@ -211,7 +205,6 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
     command: t(($) => $.settings.ai.agents.hermes.command),
     profile: t(($) => $.settings.ai.agents.hermes.remoteProfile),
   };
-  // A field's problem, marked for assistive tech and with a red border.
   const fieldProps = (field: RemoteField, options: { mono?: boolean; hinted?: boolean } = {}) => {
     const error = errorText(field);
     return {

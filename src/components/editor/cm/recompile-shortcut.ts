@@ -2,10 +2,6 @@ import { Prec } from "@codemirror/state";
 import { type KeyBinding, keymap } from "@codemirror/view";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 
-/**
- * Whether a keydown is the user's recompile chord (Cmd/Ctrl+Enter unless they
- * rebound it). The binding is read on every call, so a rebind applies at once.
- */
 export function isRecompileShortcut(event: KeyboardEvent): boolean {
   return matchesShortcut(event, useShortcutStore.getState().bindings.recompile);
 }
@@ -23,9 +19,4 @@ export const recompileShortcutBinding: KeyBinding = {
   any: (_view, event) => isRecompileShortcut(event),
 };
 
-/**
- * The same guard as a standalone extension, for editors whose keymap is built
- * elsewhere (such as the diagram package's code editor). High precedence puts
- * it ahead of that editor's defaultKeymap wherever the extension is listed.
- */
 export const recompileShortcutGuard = Prec.high(keymap.of([recompileShortcutBinding]));

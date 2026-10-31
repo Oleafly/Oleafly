@@ -1,8 +1,3 @@
-//! Context-window accounting: the serialized-history, message, tool-call,
-//! image, and character budgets every sampling request must fit. Exceeding a
-//! budget aborts the run unless the turn can compact first (see
-//! `session::compact`).
-
 use std::io::Write;
 
 use serde::Serialize;
@@ -13,23 +8,16 @@ use crate::error::{AgentError, Result};
 use crate::message::{unresolved_attachment, ContentPart, Message};
 
 pub(crate) const MAX_AGENT_HISTORY_BYTES: usize = 128 * 1024 * 1024;
-// Keep the character guard within the serialized-history ceiling while leaving
-// room for every individually permitted text tool result. A fixed 100k guard
-// could reject an ordinary multi-step run after only a handful of searches.
 pub(crate) const MAX_AGENT_CONTEXT_CHARS: usize = MAX_AGENT_HISTORY_BYTES / 4;
 pub(crate) const MAX_AGENT_MESSAGES: usize = 128;
 pub(crate) const MAX_TOOL_DEFINITIONS: usize = 128;
 pub(crate) const MAX_AGENT_TOOL_CALLS: usize = 256;
-/// Images across the request, tool results included. A run starts with at
-/// most 12 user images so tools keep room for theirs.
 pub(crate) const MAX_AGENT_IMAGES: usize = 20;
 
 pub fn validate_completion_request(request: &CompletionRequest) -> Result<()> {
     HistoryBudget::new(request).map(|_| ())
 }
 
-// The incremental ledger the rollout store keeps per thread; the turn loop
-// currently revalidates the whole request each batch instead of appending.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct HistoryBudget {
@@ -133,11 +121,8 @@ pub(crate) fn history_limit_error(description: &str) -> AgentError {
     AgentError::Decode(format!("{description} exceeded its safety limit"))
 }
 
-/// The limit on the tools a request declares. Compaction never changes the
-/// tool list, so it is not a history limit.
 const TOOL_DEFINITION_COUNT: &str = "tool definition count";
 
-/// A limit that summarizing the history can bring the request back under.
 pub(crate) fn is_history_limit(error: &AgentError) -> bool {
     matches!(
         error,
@@ -192,8 +177,6 @@ pub(crate) fn serialized_size_limited<T: Serialize>(value: &T, max_bytes: usize)
 }
 
 fn count_tool_calls(messages: &[Message]) -> Result<usize> {
-    // A call past the turn's limit was answered without running and comes
-    // back in a later reply, so it does not count against the history.
     let skipped_output = crate::session::turn::skipped_call_output();
     let skipped: std::collections::HashSet<&str> = messages
         .iter()
@@ -418,7 +401,6 @@ mod tests {
             &HistoryBudget::new(&too_many).unwrap_err()
         ));
         let one = user_req(vec![document("A".repeat(1024 * 1024))]);
-        // Against an empty request: the tool list (`[]`) counts as before.
         let empty = HistoryBudget::new(&user_req(Vec::new()))
             .unwrap()
             .context_chars;
@@ -448,8 +430,6 @@ mod tests {
 
     #[test]
     fn calls_a_turn_skipped_do_not_count_against_the_history() {
-        // Two replies of 150 calls: 32 ran in each, the rest were answered
-        // without running and are sent again later.
         let skipped = crate::session::turn::skipped_call_output();
         let mut messages = Vec::new();
         for reply in 0..2 {

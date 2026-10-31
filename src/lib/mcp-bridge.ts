@@ -1,11 +1,4 @@
 import { i18n } from "@/i18n";
-// MCP bridge: exposes the in-app agent tools to the Rust MCP server.
-//
-// The Rust side is a transport. On `tools/call` it emits `mcp:tool-call`;
-// this module executes the SAME tool implementations the chat panel uses
-// (same host adapter, same approval cards) and replies via `mcp_tool_result`.
-// The advertised tool list is registered from here, so the MCP surface can
-// never drift from the in-app surface.
 import { listen, type EventCallback, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   createOleaflyTools,
@@ -58,7 +51,6 @@ export interface McpToolEntry {
   execute: (input: Record<string, unknown>) => Promise<unknown>;
 }
 
-// Tools removed in read-only mode: anything that mutates the project or app.
 const MUTATING_TOOLS = new Set([
   "write_file",
   "replace_in_file",
@@ -76,8 +68,6 @@ const MUTATING_TOOLS = new Set([
   "research_task_create",
 ]);
 
-// Asked about under every policy, "trust" included: a command runs on this
-// computer, and a research task runs for hours on the user's provider.
 const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "research_task_create"]);
 
 const DENIED_BY_RULES = "This tool is denied for this project in approvals.toml.";
@@ -351,7 +341,6 @@ function createSkillTools(): Record<string, McpToolEntry> {
   };
 }
 
-// MCP-only orientation tools: thin wrappers over existing app services.
 function createMcpOnlyTools(
   confirm: ConfirmFn,
   mutationAllowed: () => boolean,
@@ -476,17 +465,12 @@ export function buildMcpToolRegistry(opts: {
   return all;
 }
 
-// ---- runtime wiring ----
-
 const bridgeCalls = {
   registry: {} as Record<string, McpToolEntry>,
   registryReady: false,
   registryBuildChain: Promise.resolve() as Promise<void>,
-  // Images captured by figure tools during the current call (onImage callback).
   pendingImages: [] as string[],
   pendingImageChars: 0,
-  // Serialize tool execution just like the in-app chat; parallel writes to the
-  // same file would race.
   executionChain: Promise.resolve() as Promise<void>,
   queuedCalls: 0,
   generation: 0,
@@ -635,7 +619,6 @@ function bridgeSessionIsCurrent(generation: number, session: number | null): ses
 async function buildRegistry(generation: number, session: number | null): Promise<void> {
   if (!bridgeSessionIsCurrent(generation, session)) return;
   const cfg = await getConfig();
-  // 0.4.8: the task tools follow the research tasks switch as stored.
   primeResearchTasksFlag(cfg);
   if (!bridgeSessionIsCurrent(generation, session)) return;
   const nextRegistry = buildMcpToolRegistry({
@@ -672,22 +655,13 @@ export async function refreshMcpRegistry(): Promise<void> {
   await rebuildRegistry();
 }
 
-// 0.4.8: the task tools come and go with the research tasks switch. A
-// session that is already serving tools registers the new list; one that
-// has not started yet builds the right list when it does.
 useResearchTasksFlagStore.subscribe((state, previous) => {
   if (state.enabled === previous.enabled || rendererSession === null) return;
   void rebuildRegistry().catch(() => {});
 });
 
-
-// The MCP client gets the English sentence, like every other tool error it
-// receives. The activity list in the app shows the translated summary.
 type RuleRefusal = { readonly client: string; readonly summary: string };
 
-// A deny rule in approvals.toml refuses its tool for outside agents too,
-// whatever the MCP approval policy. Rules that can't be read refuse every
-// tool, the same as in the in-app chat.
 async function ruleRefusal(toolName: string): Promise<RuleRefusal | null> {
   const projectId = useFilesStore.getState().projectId;
   if (!projectId) return null;

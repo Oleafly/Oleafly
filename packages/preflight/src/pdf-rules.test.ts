@@ -13,7 +13,6 @@ const t = (str: string, x: number, y: number, width = 20): PositionedText => ({ 
 
 describe("analyzeReadingOrder", () => {
   it("flags a page where two x-columns share the same visual rows", () => {
-    // Left and right column text on the same y bands => merged/scrambled.
     const page: PositionedText[] = [
       t("Acme Corp", 0, 100),
       t("+1 555 0100", 300, 100),

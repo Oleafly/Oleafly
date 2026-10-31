@@ -1,6 +1,5 @@
 import { cleanField, toBibName } from "./text";
 
-// Uses the first <entry> in the feed only.
 export function arxivXmlToBibtex(xml: string): string {
   const entry = /<entry[\s\S]*?<\/entry>/.exec(xml);
   if (!entry) return "";

@@ -1,5 +1,3 @@
-//! Accessibility standard references (`packages/preflight/src/standards.ts`).
-
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -160,7 +158,6 @@ fn concat(parts: Vec<Vec<StandardRef>>) -> Vec<StandardRef> {
     parts.into_iter().flatten().collect()
 }
 
-/// The ids in `standards.ts`'s table, in its order.
 pub const STANDARD_IDS: &[&str] = &[
     "pdf-untagged-output",
     "pdf-structure-missing",
@@ -385,8 +382,6 @@ pub fn standards_for(id: &str) -> Vec<StandardRef> {
         .unwrap_or_default()
 }
 
-/// Adds the finding method, and for accessibility lenses the standards and
-/// whether a machine can check them (`annotate` in `standards.ts`).
 pub fn annotate(mut finding: Finding, method: FindingMethod) -> Finding {
     finding.method = Some(method);
     let carries_a11y = matches!(finding.lens, Lens::A11y | Lens::Both);

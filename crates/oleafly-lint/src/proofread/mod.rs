@@ -1,11 +1,3 @@
-//! Spelling and grammar with harper-core, set up like the app's
-//! proofreading worker (`src/lib/proofreading/proofreading.worker.ts`): the
-//! same Harper version, rule profile, built-in words and prose masks.
-//!
-//! The Harper-backed [`Proofreader`] needs the `proofread` feature. Without
-//! it the public types stay and [`Proofreader::new`] reports
-//! [`ProofreadError::Unavailable`].
-
 pub mod config;
 pub mod filter;
 pub mod fix;
@@ -28,11 +20,8 @@ pub use fix::{is_safe_fix_kind, safe_fix, SAFE_FIX_KINDS};
 use crate::diagnostic::{FixSuggestion, LintDiagnostic, LintMessage, LintSource};
 use crate::prose::{intersects_masked_region, prose_for, ProseFormat, ProseInput};
 
-/// Whether this build can check spelling and grammar.
 pub const AVAILABLE: bool = cfg!(feature = "proofread");
 
-/// One Harper lint in prose UTF-16 offsets, before it is mapped back to the
-/// source and filtered.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RawLint {
     pub rule: String,
@@ -45,9 +34,7 @@ pub struct RawLint {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProofreadError {
-    /// This build has no spelling and grammar checks.
     Unavailable,
-    /// Harper panicked; the proofreader was rebuilt and can be used again.
     Panicked(String),
 }
 
@@ -66,14 +53,12 @@ impl std::error::Error for ProofreadError {}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SkipReason {
-    /// The source is longer than [`GRAMMAR_CHARACTER_LIMIT`] UTF-16 units.
     TooLarge { characters: usize },
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProofreadOutcome {
     pub diagnostics: Vec<LintDiagnostic>,
-    /// Lints whose range could not be mapped back to the source.
     pub malformed: usize,
     pub skipped: Option<SkipReason>,
 }
@@ -88,7 +73,6 @@ impl ProofreadOutcome {
     }
 }
 
-/// The harper-core version this build links, when it links one.
 pub fn harper_version() -> Option<&'static str> {
     #[cfg(feature = "proofread")]
     {
@@ -100,8 +84,6 @@ pub fn harper_version() -> Option<&'static str> {
     }
 }
 
-/// `lintRange` (worker.ts:629-649): a prose span mapped back to the source,
-/// at least one unit long, or `None` when it falls outside.
 pub(crate) fn lint_range(
     start: usize,
     end: usize,
@@ -128,20 +110,14 @@ pub(crate) fn lint_range(
     (to > from && to <= text_length).then_some((from, to))
 }
 
-/// `PROOFREADING_RENDER_LIMITS` (`packages/editor/src/proofreading.ts`):
-/// the longest spelling finding, the longest grammar span, and the most
-/// findings one word gets.
 const SPELLING_SPAN_LIMIT: usize = 40;
 const GRAMMAR_SPAN_LIMIT: usize = 300;
 const SAME_WORD_LIMIT: usize = 20;
 
-/// `isSpellingDiagnosticKind`.
 fn is_spelling_kind(kind: &str) -> bool {
     kind.is_empty() || kind == "Spelling"
 }
 
-/// `boundedSentenceEnd`: just past the first `.`, `?` or `!` after `from`
-/// that ends a sentence, or `cap`.
 fn bounded_sentence_end(text: &SourceText, from: usize, cap: usize) -> usize {
     for index in from + 1..cap {
         if !matches!(text.unit(index), Some(0x2E | 0x3F | 0x21)) {
@@ -155,8 +131,6 @@ fn bounded_sentence_end(text: &SourceText, from: usize, cap: usize) -> usize {
     cap
 }
 
-/// `renderableSpanEnd`: where the app would end a finding, or `None` when
-/// it drops it (a spelling finding over 40 units or across lines).
 fn renderable_span_end(kind: &str, from: usize, to: usize, text: &SourceText) -> Option<usize> {
     if to <= from || to > text.len_utf16() {
         return None;
@@ -169,10 +143,6 @@ fn renderable_span_end(kind: &str, from: usize, to: usize, text: &SourceText) ->
     (bounded > from).then_some(bounded)
 }
 
-/// `guardProofreadingDiagnostics`, which every mode of the app's worker
-/// runs: spans the app can't show are dropped or cut at their sentence's
-/// end (a cut one loses its suggestions, so it is never fixed), and no word
-/// gets more than 20 findings. `found` is sorted by range.
 fn guarded(found: Vec<(LintDiagnostic, String)>, text: &SourceText) -> Vec<LintDiagnostic> {
     let mut per_word: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     let mut output = Vec::new();
@@ -196,9 +166,6 @@ fn guarded(found: Vec<(LintDiagnostic, String)>, text: &SourceText) -> Vec<LintD
     output
 }
 
-/// The worker's `grammarLintOutcome` for every lint: map back, drop lints
-/// over masked regions and over accepted words, and mark safe fixes.
-/// Returns the findings sorted by range and the count of unmappable lints.
 pub(crate) fn diagnostics_from(
     raw: Vec<RawLint>,
     text: &SourceText,
@@ -256,8 +223,6 @@ fn too_large(text: &SourceText) -> Option<ProofreadOutcome> {
 
 #[cfg(all(test, feature = "proofread"))]
 thread_local! {
-    /// Makes the next `raw_lints` call on this thread panic inside Harper's
-    /// guard. Thread-local so parallel tests never see each other's flag.
     static PANIC_NEXT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
@@ -277,7 +242,6 @@ mod engine {
     use super::RawLint;
     use crate::diagnostic::{FixSuggestion, SuggestionKind};
 
-    /// The most suggestions a finding keeps, like the worker.
     const MAX_SUGGESTIONS: usize = 8;
 
     pub(super) fn harper_dialect(dialect: Dialect) -> harper_core::Dialect {
@@ -290,8 +254,6 @@ mod engine {
         }
     }
 
-    /// What the curated rule set says about itself, read once: building it
-    /// builds every rule, Weir sources included.
     struct CuratedRules {
         names: BTreeSet<String>,
         descriptions: BTreeMap<String, String>,
@@ -399,8 +361,6 @@ mod engine {
         }
     }
 
-    /// `mappedSuggestionList`: the first eight, without empty replacements
-    /// unless the suggestion is a removal.
     fn mapped_suggestions(suggestions: &[Suggestion]) -> Vec<FixSuggestion> {
         let mut out = Vec::new();
         for suggestion in suggestions.iter().take(MAX_SUGGESTIONS) {
@@ -435,8 +395,6 @@ mod engine {
     }
 }
 
-/// Harper set up like the app's grammar checker. Not `Send`: build it on
-/// the thread that uses it.
 pub struct Proofreader {
     dialect: Dialect,
     ignored: IgnoredWords,
@@ -445,8 +403,6 @@ pub struct Proofreader {
 }
 
 impl Proofreader {
-    /// Builds the dictionary and rule set; the curated dictionary makes this
-    /// the expensive step, so reuse one proofreader for many files.
     pub fn new(dialect: Dialect, ignored: &IgnoredWords) -> Result<Self, ProofreadError> {
         #[cfg(feature = "proofread")]
         {
@@ -473,8 +429,6 @@ impl Proofreader {
         &self.ignored
     }
 
-    /// Harper's lints for `prose`, in prose UTF-16 offsets. A panic inside
-    /// Harper rebuilds the proofreader and is reported, never propagated.
     pub fn raw_lints(&mut self, prose: &str) -> Result<Vec<RawLint>, ProofreadError> {
         #[cfg(feature = "proofread")]
         {
@@ -504,8 +458,6 @@ impl Proofreader {
         }
     }
 
-    /// Spelling and grammar findings for a source file, in source UTF-16
-    /// offsets. Sources over [`GRAMMAR_CHARACTER_LIMIT`] are skipped.
     pub fn check(
         &mut self,
         text: &SourceText,
@@ -531,8 +483,6 @@ impl Proofreader {
     }
 }
 
-/// Every Harper rule with its description; empty without `proofread`.
-/// Built once per process.
 pub fn rule_descriptions() -> BTreeMap<String, String> {
     #[cfg(feature = "proofread")]
     {
@@ -616,8 +566,6 @@ mod tests {
                 raw("SpellCheck", "Spelling", from, from + 7, Some("receive"))
             })
             .collect();
-        // A grammar span that runs past the end of its sentence, and a
-        // spelling span too long to show.
         let words = 25 * sentence.len();
         lints.push(raw("Long", "Grammar", 0, 20, Some("x")));
         lints.push(raw("SpellCheck", "Spelling", words, words + 45, Some("y")));

@@ -37,14 +37,21 @@ pub fn changed_files(
 ) -> Result<Vec<ReviewedFile>, CollabError> {
     let old = doc.at_version(&decode_version(before)?)?;
     let new = doc.at_version(&decode_version(after)?)?;
+    changed_between(&old, &new)
+}
+
+pub fn changed_between(
+    old: &ProjectDoc,
+    new: &ProjectDoc,
+) -> Result<Vec<ReviewedFile>, CollabError> {
     let old_layout = materialize::layout(&old.nodes()?);
     let new_layout = materialize::layout(&new.nodes()?);
     let ids: BTreeSet<&String> = old_layout.keys().chain(new_layout.keys()).collect();
     let mut changed: Vec<ReviewedFile> = ids
         .into_iter()
         .filter_map(|id| {
-            let before = texts(&old, &old_layout, id);
-            let after = texts(&new, &new_layout, id);
+            let before = texts(old, &old_layout, id);
+            let after = texts(new, &new_layout, id);
             if before == after {
                 return None;
             }

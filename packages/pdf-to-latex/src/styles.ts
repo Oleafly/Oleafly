@@ -39,7 +39,6 @@ function runsForLine(line: Line): StyleRun[] {
   for (const item of line.items) {
     const style = styleOf(item.fontName);
     const script = scriptOf(item, line);
-    // scripts attach to the preceding word; words need a real horizontal gap
     const gapBefore =
       script === null && prevEnd != null && item.x - prevEnd > line.fontSize * 0.2;
     const last = runs.at(-1);

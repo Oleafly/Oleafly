@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import type { AgentPreferences } from "./agent-preferences";
 
-/** The effort and mode an agent's new conversations start with, with "Forget". */
 export function AcpAgentChoices({
   agentId,
   preferences,

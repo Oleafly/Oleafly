@@ -7,9 +7,7 @@ export type OcrProfileId = "glm-ocr" | "deepseek-ocr" | "dots-ocr";
 
 export interface OcrProfile {
   id: OcrProfileId;
-  /** Prompt for a page, a photo of notes or a table. */
   pagePrompt: string;
-  /** Prompt for an image that holds one equation. */
   formulaPrompt: string;
 }
 
@@ -35,8 +33,6 @@ const MATCHERS: readonly (readonly [RegExp, OcrProfileId])[] = [
   [/^dots[._-]?m?ocr\b/, "dots-ocr"],
 ];
 
-/** The profile for a model id such as `glm-ocr:latest` or
- * `hf.co/zai-org/GLM-OCR-GGUF:Q8_0`, or null for a general vision model. */
 export function ocrProfileFor(modelId: string): OcrProfile | null {
   const lastSegment = modelId.trim().toLowerCase().split("/").pop() ?? "";
   const name = lastSegment.split(":")[0] ?? "";
@@ -72,8 +68,6 @@ const SINGLE_MATH: readonly RegExp[] = [
 const SINGLE_ENVIRONMENT =
   /^\\begin\{(equation\*?|displaymath)\}((?:(?!\\end\{(?:equation\*?|displaymath)\})[\s\S])+)\\end\{\1\}$/;
 
-/** The bare LaTeX of a reply that is exactly one equation, delimiters
- * removed. Anything else comes back as it is. */
 export function extractSingleMath(reply: string): string {
   const text = cleanOcrReply(reply, null);
   for (const pattern of SINGLE_MATH) {

@@ -1,10 +1,5 @@
 import type { ResearchBrief, ResearchTask } from "@/lib/research-tasks";
 
-/**
- * The fields a 0.4.8 task carries beyond the 0.4.7 ones, with the values a
- * new task starts with. Typed only: the research tests mock
- * `@/lib/research-tasks`, so this file never imports its runtime values.
- */
 export type TaskFieldsSince047 = Pick<
   ResearchTask,
   | "brief"
@@ -24,7 +19,6 @@ export type TaskFieldsSince047 = Pick<
   | "resumedFrom"
 >;
 
-/** The brief `defaultBrief()` returns. */
 export function briefFixture(patch: Partial<ResearchBrief> = {}): ResearchBrief {
   return {
     goal: "",
@@ -62,7 +56,6 @@ export function taskFieldsSince047(patch: Partial<TaskFieldsSince047> = {}): Tas
   };
 }
 
-/** A queued built-in task with no run yet; `patch` overrides any field. */
 export function researchTaskFixture(patch: Partial<ResearchTask> = {}): ResearchTask {
   const id = patch.id ?? "task-1";
   return {

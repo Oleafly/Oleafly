@@ -254,9 +254,6 @@ test("toolbar edits flush on immediate close, survive reopen, and compile", asyn
   );
   await waitEditorContains(tauriPage, "\\href{url}{link text}", 5_000);
 
-  // Put a final edit and the Home click in the same webview task. This proves
-  // project close drains the dirty buffer rather than winning a race against
-  // the 1.5-second autosave debounce.
   const closed = await tauriPage.evaluate<boolean>(
     `(() => {
       const content = document.querySelector('.cm-content');
@@ -281,9 +278,6 @@ test("toolbar edits flush on immediate close, survive reopen, and compile", asyn
 
   await openProject(tauriPage, projectName);
   await waitEditorContains(tauriPage, transitionMarker.trim(), 20_000);
-  // On failure, capture what actually reached DISK: this distinguishes a
-  // close-flush that lost the edit (disk lacks it too - app bug) from an
-  // editor that merely loaded stale content (disk has it - load race).
   try {
     await waitEditorContains(tauriPage, "\\textbf{Write}", 20_000);
     await waitEditorContains(tauriPage, "\\href{url}{link text}", 20_000);
@@ -317,8 +311,6 @@ test("a direct project switch flushes an edit made in the same event turn", asyn
   await fillCommandPalette(tauriPage, `/projects ${targetName}`);
   await expect(tauriPage.getByText(targetName, { exact: true })).toBeVisible();
 
-  // Dispatch the edit and select the already-rendered project result without
-  // yielding to the debounce timer between those two user-visible actions.
   const switched = await tauriPage.evaluate<boolean>(
     `(() => {
       import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {

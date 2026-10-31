@@ -1,7 +1,3 @@
-//! Typst identifiers, references and autolinks
-//! (`packages/editor/src/typst-syntax.ts:14-95`), over UTF-16 units and
-//! testing whole code points like the TypeScript `codePointAt` loops.
-
 use oleafly_preflight::text::{
     is_connector, is_letter, is_letter_number, is_mark, is_number, starts_with_units,
 };
@@ -50,17 +46,14 @@ fn run_end(text: &[u16], from: usize, start: fn(char) -> bool, rest: fn(char) ->
     end
 }
 
-/// `isTypstIdentifierContinueAt`.
 pub fn is_typst_identifier_continue_at(text: &[u16], index: usize) -> bool {
     char_at(text, index).is_some_and(|(ch, _)| identifier_continue(ch))
 }
 
-/// `typstIdentifierEnd`.
 pub fn typst_identifier_end(text: &[u16], from: usize) -> usize {
     run_end(text, from, identifier_start, identifier_continue)
 }
 
-/// `typstReferenceEnd`: a label run without trailing `.` and `:`.
 pub fn typst_reference_end(text: &[u16], from: usize) -> usize {
     let mut end = run_end(text, from, label_start, label_continue);
     while end > from && matches!(text[end - 1], 0x2E | 0x3A) {
@@ -76,8 +69,6 @@ fn autolink_character(unit: u16) -> bool {
     }
 }
 
-/// `typstAutolinkEnd`: an `http://` or `https://` URL whose brackets
-/// balance, without trailing punctuation.
 pub fn typst_autolink_end(text: &[u16], from: usize) -> Option<usize> {
     if text.get(from) != Some(&u16::from(b'h'))
         || (!starts_with_units(text, from, "http://") && !starts_with_units(text, from, "https://"))

@@ -1,12 +1,7 @@
-//! Reads the current user and machine environment from the registry, so a
-//! program installed after Oleafly started (whose installer edited `Path`) is
-//! still found without restarting the app.
-
 use super::EnvironmentBlocks;
 
 const MACHINE_ENVIRONMENT: &str = r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment";
 const USER_ENVIRONMENT: &str = "Environment";
-/// A normal environment block has a few dozen values.
 const VALUE_LIMIT: usize = 512;
 
 pub(super) fn read_environment() -> EnvironmentBlocks {
@@ -16,7 +11,6 @@ pub(super) fn read_environment() -> EnvironmentBlocks {
     }
 }
 
-/// String and expandable-string values, unexpanded.
 fn read_values(root: &windows_registry::Key, path: &str) -> Vec<(String, String)> {
     let Ok(key) = root.open(path) else {
         return Vec::new();

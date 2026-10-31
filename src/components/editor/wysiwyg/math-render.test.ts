@@ -4,8 +4,6 @@ import { renderMathExpression } from "@oleafly/editor/math-render";
 import { createWysiwygExtensions } from "@oleafly/wysiwyg";
 import { afterEach, describe, expect, it } from "vitest";
 
-// The WYSIWYG editor paints math through renderMathExpression (see
-// WysiwygEditor.tsx). These cases go through that real renderer.
 let editors: Editor[] = [];
 
 function mathNode(source: string): HTMLElement {

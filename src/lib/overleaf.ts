@@ -53,7 +53,6 @@ export function overleafSignIn(server: string | null | undefined, title: string)
   return invoke<OverleafStatus>("overleaf_sign_in", { server: serverArg(server), title });
 }
 
-/** Signs in with the sign-in cookies a browser copy put in Oleafly, without a window. */
 export function overleafSignInWithAppCookies(server: string | null | undefined): Promise<OverleafStatus> {
   return invoke<OverleafStatus>("overleaf_sign_in_with_app_cookies", { server: serverArg(server) });
 }
@@ -91,9 +90,7 @@ export function isOverleafError(error: unknown, code: string): boolean {
   return text.includes(`"overleaf.${code}"`);
 }
 
-/** What a gallery template page shows, read before anything is imported. */
 export interface OverleafTemplateDetails {
-  /** The server whose sign-in the import needs. */
   server: string;
   link: string;
   title: string;
@@ -115,7 +112,6 @@ export function overleafTemplateDetails(
   });
 }
 
-/** The PDF the gallery shows for a template. */
 export function overleafTemplatePdf(
   server: string | null | undefined,
   link: string,
@@ -123,10 +119,6 @@ export function overleafTemplatePdf(
   return invoke<ArrayBuffer>("overleaf_template_pdf", { server: serverArg(server), link });
 }
 
-/**
- * Copy a gallery template into the signed-in account, as Open as Template
- * does there, and save the copy as a custom template. Resolves to its id.
- */
 export function overleafImportTemplate(
   server: string | null | undefined,
   link: string,
@@ -141,7 +133,6 @@ export function overleafImportTemplate(
   });
 }
 
-/** Save one of the account's projects as a custom template. Resolves to its id. */
 export function overleafSaveProjectAsTemplate(
   server: string | null | undefined,
   projectId: string,

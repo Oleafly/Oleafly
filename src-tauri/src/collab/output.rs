@@ -11,12 +11,19 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::commands::{authed, AppHost, CollabCommandError, CollabHost};
+use super::disk::ShareRules;
 use super::state::CollabState;
 
 const UPLOAD_GAP: Duration = Duration::from_secs(60);
 const QUIET_AFTER_REFUSAL: Duration = Duration::from_secs(15 * 60);
 const MEBIBYTE: u64 = 1024 * 1024;
 const SYNCTEX_SUFFIX: &str = ".synctex.gz";
+const SOURCE_EXTENSIONS: [&str; 27] = [
+    "tex", "ltx", "sty", "cls", "def", "cfg", "clo", "tikz", "pgf", "csv", "dat", "png", "jpg",
+    "jpeg", "eps", "pdf", "svg", "typ", "md", "qmd", "rmd", "bib", "json", "yaml", "yml", "toml",
+    "txt",
+];
+const WALK_LIMIT: usize = 20_000;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -160,9 +167,142 @@ fn gzipped_synctex(path: &Path) -> bool {
         .is_some_and(|name| name.ends_with(SYNCTEX_SUFFIX))
 }
 
+fn of_the_main_document(main_doc: &str, compiled: &CompiledOutput) -> bool {
+    compiled.main_file == main_doc
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum SharedSynctex {
+    Ready(Vec<u8>),
+    ReadsLocalFiles,
+    Unreadable,
+}
+
+fn slashed(path: &str) -> String {
+    path.replace('\\', "/").replace("/./", "/")
+}
+
+fn inside_root<'a>(path: &'a str, root: &str) -> Option<&'a str> {
+    let folds = cfg!(any(windows, target_os = "macos"));
+    let head = path.get(..root.len())?;
+    let same = head == root || (folds && head.eq_ignore_ascii_case(root));
+    same.then(|| path[root.len()..].strip_prefix('/'))
+        .flatten()
+        .filter(|rest| !rest.is_empty())
+}
+
+fn absolute(path: &str) -> bool {
+    path.starts_with('/') || path.as_bytes().get(1) == Some(&b':')
+}
+
+fn private_source(rules: &ShareRules, root: &Path, relative: &str) -> bool {
+    let top = relative.split('/').next().unwrap_or(relative);
+    let extension = relative
+        .rsplit_once('.')
+        .map(|(_, extension)| extension.to_ascii_lowercase())
+        .unwrap_or_default();
+    !oleafly_core::exclude::is_oleafly_owned_name(top)
+        && SOURCE_EXTENSIONS.contains(&extension.as_str())
+        && !oleafly_core::exclude::is_build_artifact(relative, |sibling| {
+            root.join(sibling).is_file()
+        })
+        && rules.leaves_out(relative, false)
+}
+
+fn walked_folder(name: &str) -> bool {
+    !oleafly_core::exclude::is_oleafly_owned_name(name)
+        && name != ".git"
+        && (name.starts_with('.') || !oleafly_core::exclude::is_scan_skipped_directory(name))
+}
+
+fn holds_private_sources(root: &Path) -> bool {
+    let rules = ShareRules::load(root);
+    let mut folders = vec![String::new()];
+    let mut seen = 0;
+    while let Some(folder) = folders.pop() {
+        let Ok(entries) = std::fs::read_dir(root.join(&folder)) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            seen += 1;
+            if seen > WALK_LIMIT {
+                return true;
+            }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let relative = if folder.is_empty() {
+                name.clone()
+            } else {
+                format!("{folder}/{name}")
+            };
+            match entry.file_type() {
+                Ok(kind) if kind.is_dir() && walked_folder(&name) => folders.push(relative),
+                Ok(kind) if kind.is_file() && private_source(&rules, root, &relative) => {
+                    return true;
+                }
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
+fn shared_lines(text: &str, root: &str, rules: &ShareRules) -> Option<String> {
+    let mut shared = String::with_capacity(text.len());
+    for line in text.split_inclusive('\n') {
+        let input = line
+            .strip_prefix("Input:")
+            .and_then(|rest| rest.split_once(':'));
+        let Some((tag, path)) = input else {
+            shared.push_str(line);
+            continue;
+        };
+        let ending = &path[path.trim_end_matches(['\r', '\n']).len()..];
+        let path = slashed(path.trim_end_matches(['\r', '\n']));
+        let named = match inside_root(&path, root) {
+            Some(relative) if private_source(rules, Path::new(root), relative) => return None,
+            Some(relative) => relative.to_owned(),
+            None if absolute(&path) => path.rsplit('/').next().unwrap_or_default().to_owned(),
+            None => path,
+        };
+        shared.push_str(&format!("Input:{tag}:{named}{ending}"));
+    }
+    Some(shared)
+}
+
+fn shared_synctex(gz: &[u8], root: &Path) -> SharedSynctex {
+    use std::io::{Read, Write};
+    let mut text = String::new();
+    if flate2::read::GzDecoder::new(gz)
+        .read_to_string(&mut text)
+        .is_err()
+    {
+        return SharedSynctex::Unreadable;
+    }
+    let root = slashed(&root.to_string_lossy());
+    let rules = ShareRules::load(Path::new(&root));
+    let Some(shared) = shared_lines(&text, root.trim_end_matches('/'), &rules) else {
+        return SharedSynctex::ReadsLocalFiles;
+    };
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    match encoder
+        .write_all(shared.as_bytes())
+        .and_then(|()| encoder.finish())
+    {
+        Ok(bytes) => SharedSynctex::Ready(bytes),
+        Err(_) => SharedSynctex::Unreadable,
+    }
+}
+
 fn read_files_blocking(compiled: &CompiledOutput) -> Result<Option<OutputFiles>, CollabError> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&compiled.project_id)
         .map_err(CollabError::Io)?;
+    let meta = crate::project::read_meta(&compiled.project_id).map_err(CollabError::Io)?;
+    if !of_the_main_document(&meta.main_doc, compiled) {
+        return Ok(None);
+    }
+    let root = crate::project_location::locate(&compiled.project_id)
+        .map_err(|error| CollabError::Io(String::from(error)))?
+        .root;
     let Some(pdf_path) = crate::document_engine::existing_compiled_pdf_path(
         &compiled.project_id,
         &compiled.engine,
@@ -180,11 +320,17 @@ fn read_files_blocking(compiled: &CompiledOutput) -> Result<Option<OutputFiles>,
     if crate::document_engine::fingerprint_compile_output(&pdf) != compiled.output_id {
         return Ok(None);
     }
-    let synctex = compiled
+    let read = compiled
         .synctex
         .as_deref()
         .filter(|path| gzipped_synctex(path))
         .and_then(|path| std::fs::read(path).ok());
+    let synctex = match read.map(|gz| shared_synctex(&gz, &root)) {
+        Some(SharedSynctex::ReadsLocalFiles) => return Ok(None),
+        Some(SharedSynctex::Ready(bytes)) => Some(bytes),
+        Some(SharedSynctex::Unreadable) | None if holds_private_sources(&root) => return Ok(None),
+        Some(SharedSynctex::Unreadable) | None => None,
+    };
     Ok(Some(OutputFiles { pdf, synctex }))
 }
 
@@ -206,6 +352,7 @@ fn too_large(limit_mb: u64) -> CollabError {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn send(
     state: &CollabState,
     host: &dyn CollabHost,
@@ -214,16 +361,31 @@ async fn send(
     kind: OutputKind,
     main_file: &str,
     bytes: &[u8],
+    for_pdf: Option<&str>,
 ) -> Result<ProjectOutput, CollabError> {
     authed(state, host, server, |client, access| {
         let (main_file, bytes) = (main_file.to_owned(), bytes.to_vec());
+        let for_pdf = for_pdf.map(str::to_owned);
         Box::pin(async move {
-            client
-                .put_output(access, project, kind, &main_file, bytes)
-                .await
+            match for_pdf {
+                Some(pdf) => {
+                    client
+                        .put_synctex_for(access, project, &main_file, bytes, &pdf)
+                        .await
+                }
+                None => {
+                    client
+                        .put_output(access, project, kind, &main_file, bytes)
+                        .await
+                }
+            }
         })
     })
     .await
+}
+
+fn superseded(error: &CollabError) -> bool {
+    matches!(error, CollabError::Api { status: 409, .. })
 }
 
 async fn upload(app: &tauri::AppHandle, compiled: &CompiledOutput) -> Result<(), CollabError> {
@@ -258,25 +420,32 @@ async fn upload(app: &tauri::AppHandle, compiled: &CompiledOutput) -> Result<(),
         OutputKind::Pdf,
         main_file,
         &files.pdf,
+        None,
     )
     .await?;
-    if let Some(synctex) = files
+    let Some(synctex) = files
         .synctex
         .as_deref()
         .filter(|&bytes| fits(bytes, limit_mb))
+    else {
+        return Ok(());
+    };
+    let pdf = super::disk::sha256_hex(&files.pdf);
+    match send(
+        state,
+        &host,
+        server,
+        project,
+        OutputKind::Synctex,
+        main_file,
+        synctex,
+        Some(&pdf),
+    )
+    .await
     {
-        send(
-            state,
-            &host,
-            server,
-            project,
-            OutputKind::Synctex,
-            main_file,
-            synctex,
-        )
-        .await?;
+        Err(error) if superseded(&error) => Ok(()),
+        sent => sent.map(drop),
     }
-    Ok(())
 }
 
 fn not_shared() -> CollabError {
@@ -397,6 +566,101 @@ mod tests {
             "/p/.oleafly/build/main.synctex"
         )));
         assert!(!gzipped_synctex(Path::new("/p/.oleafly/build/main.pdf")));
+    }
+
+    fn gzip(text: &str) -> Vec<u8> {
+        use std::io::Write;
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        encoder.write_all(text.as_bytes()).unwrap();
+        encoder.finish().unwrap()
+    }
+
+    fn gunzip(bytes: &[u8]) -> String {
+        use std::io::Read;
+        let mut text = String::new();
+        flate2::read::GzDecoder::new(bytes)
+            .read_to_string(&mut text)
+            .unwrap();
+        text
+    }
+
+    #[test]
+    fn a_synctex_refused_because_a_newer_pdf_arrived_is_not_a_failure() {
+        let api = |status: u16| CollabError::Api {
+            status,
+            code: "conflict".to_owned(),
+            message: String::new(),
+        };
+        assert!(superseded(&api(409)));
+        assert!(!superseded(&api(413)));
+        assert!(!superseded(&CollabError::Network("down".to_owned())));
+    }
+
+    #[test]
+    fn only_a_compile_of_the_main_document_is_shared() {
+        assert!(of_the_main_document("main.tex", &compiled("one")));
+        let mut chapter = compiled("two");
+        chapter.main_file = "chapters/intro.tex".to_owned();
+        assert!(!of_the_main_document("main.tex", &chapter));
+    }
+
+    #[test]
+    fn shared_synctex_names_inputs_without_local_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "private/\n*.aux\n").unwrap();
+        let base = slashed(&dir.path().to_string_lossy());
+        let text = format!(
+            "SyncTeX Version:1\nInput:1:{base}/./main.tex\nInput:2:{base}/chapters/intro.tex\nInput:3:/Users/someone/Library/TinyTeX/texmf-dist/tex/latex/base/article.cls\nInput:4:{base}/main.aux\nInput:5:{base}/.oleafly/build/main.bbl\nContent:\n!1\n"
+        );
+        let SharedSynctex::Ready(shared) = shared_synctex(&gzip(&text), dir.path()) else {
+            panic!("the SyncTeX should be shared");
+        };
+        let shared = gunzip(&shared);
+        for line in [
+            "Input:1:main.tex\n",
+            "Input:2:chapters/intro.tex\n",
+            "Input:3:article.cls\n",
+            "Input:4:main.aux\n",
+            "Input:5:.oleafly/build/main.bbl\n",
+            "Content:\n!1\n",
+        ] {
+            assert!(shared.contains(line), "{line} in {shared}");
+        }
+        assert!(!shared.contains("someone"));
+        assert!(!shared.contains(&base));
+    }
+
+    #[test]
+    fn without_synctex_a_project_holding_sources_kept_out_of_the_share_shares_no_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::write(root.join(".gitignore"), "*.pdf\nprivate/\nnode_modules/\n").unwrap();
+        std::fs::write(root.join("main.typ"), "= Paper").unwrap();
+        std::fs::write(root.join("main.pdf"), "%PDF-1.7").unwrap();
+        std::fs::create_dir_all(root.join(".oleafly/build")).unwrap();
+        std::fs::write(root.join(".oleafly/build/notes.typ"), "x").unwrap();
+        std::fs::create_dir_all(root.join("node_modules/pkg")).unwrap();
+        std::fs::write(root.join("node_modules/pkg/readme.md"), "x").unwrap();
+        assert!(!holds_private_sources(root));
+        std::fs::create_dir_all(root.join("private")).unwrap();
+        std::fs::write(root.join("private/answers.typ"), "secret").unwrap();
+        assert!(holds_private_sources(root));
+    }
+
+    #[test]
+    fn a_compile_that_read_a_file_kept_out_of_the_share_is_not_uploaded() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "private/\n").unwrap();
+        let base = slashed(&dir.path().to_string_lossy());
+        let text = format!("Input:1:{base}/main.tex\nInput:2:{base}/private/answers.tex\n");
+        assert_eq!(
+            shared_synctex(&gzip(&text), dir.path()),
+            SharedSynctex::ReadsLocalFiles
+        );
+        assert_eq!(
+            shared_synctex(b"not gzip", dir.path()),
+            SharedSynctex::Unreadable
+        );
     }
 
     #[test]

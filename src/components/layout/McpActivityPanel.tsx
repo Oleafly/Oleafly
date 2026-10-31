@@ -84,7 +84,6 @@ function LogRow({ entry }: Readonly<{ entry: McpLogEntry }>) {
   );
 }
 
-// Only mounted while the MCP rail tab is open.
 export function McpActivityPanel() {
   const { t } = useTranslation(["shell"]);
   const logs = useMcpActivityStore((s) => s.logs);

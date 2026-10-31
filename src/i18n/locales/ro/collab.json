@@ -224,6 +224,8 @@
     "suggestion_not_found": "Această sugestie nu mai există. Poate că cineva a acceptat-o sau a respins-o.",
     "suggestion_not_yours": "Doar persoana care a făcut această sugestie o poate retrage.",
     "suggestion_role": "Rolul tău în acest proiect nu permite sugestii.",
+    "suggestion_changed": "Textul din jurul acestei sugestii s-a schimbat, așa că un proprietar sau un editor trebuie să o accepte sau să o respingă.",
+    "suggestion_too_long": "O ștergere sugerată poate avea maximum 20.000 de caractere. Șterge o porțiune mai mică de fiecare dată.",
     "chat_role": "Rolul tău în acest proiect nu permite acest lucru în chat.",
     "history_unavailable": "Istoricul acestui proiect nu este încă pe acest computer. Încearcă din nou după ce se sincronizează.",
     "account_storage_full": "Contul proprietarului proiectului a rămas fără spațiu de stocare pe acest server. Elimină câteva fișiere ca să faci loc sau cere-i administratorului serverului mai mult spațiu.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Restaurezi tot proiectul?",
-      "description": "Fiecare fișier revine la cum era la {{time}} pentru toată lumea din acest proiect. Textul actual rămâne în istoric, așa că poți reveni la el.",
+      "textAndDeleted": "Textul fiecărui fișier revine la cum era la {{time}} pentru toată lumea din acest proiect, iar fișierele șterse revin. Fișierele redenumite își păstrează noile nume, iar figurile și fișierele adăugate ulterior rămân așa cum sunt. Textul actual rămâne în istoric, așa că poți reveni la el.",
       "confirm": "Restaurează proiectul"
     },
     "compareTitle": "Modificări între două versiuni",

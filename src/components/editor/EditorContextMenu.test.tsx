@@ -166,7 +166,6 @@ function openMenu(
   return trigger;
 }
 
-// Opens each submenu in turn, the way a click on its trigger does.
 function openSubmenus(...labels: string[]) {
   for (const label of labels) fireEvent.click(screen.getByText(label));
 }

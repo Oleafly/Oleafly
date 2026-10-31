@@ -635,9 +635,6 @@ impl Stack {
     }
 }
 
-// The server's public URL is the address the app signs in through, as with a
-// real proxy in front of a server, so the `iss` on its redirect back to the
-// app names the server the app started with.
 async fn start_server(
     data_dir: &Path,
     listener: tokio::net::TcpListener,

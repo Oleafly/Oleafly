@@ -57,7 +57,6 @@ test.describe("Typst function forms in Visual mode", () => {
     await page.locator(".ofl-visual-form-chip-button").click();
     const popover = page.locator(".ofl-visual-form-popover");
     await expect(popover).toBeVisible();
-    // Focus lands on the field, which a panel still hidden for measuring could not take.
     await expect(popover.getByLabel("Status", { exact: true })).toBeFocused();
     await popover.getByLabel("Status", { exact: true }).selectOption("approved");
     await expect.poll(() => source(page)).toContain('#badge("approved")');
@@ -72,7 +71,6 @@ test.describe("Typst function forms in Visual mode", () => {
     const signOff = card(page, "Sign-off");
     await signOff.locator(".ofl-visual-form-title").click();
     await page.keyboard.type("Z");
-    // The click turns the switch on and Space, which reaches the switch and not the text, turns it off.
     await signOff.getByLabel("Final version", { exact: true }).click();
     await expect.poll(() => source(page)).toContain("final: true)");
     await page.keyboard.press("Space");

@@ -1,4 +1,4 @@
-import "@/lib/polyfills"; // must run before pdf.js and other libs load
+import "@/lib/polyfills";
 import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
@@ -58,8 +58,6 @@ if (!vibrancyCapable) {
   document.documentElement.style.setProperty("--app-surface", "var(--background)");
 }
 
-// Packaged e2e boots (init script in src-tauri/src/lib.rs) need app modules
-// resolvable by dev-server path; a normal launch never sets the flag.
 if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
   registerE2EImports();
 }
@@ -113,8 +111,6 @@ function prepareWindow(view: WindowView): void {
   dismissBootSplash();
 }
 
-// One client per window: server-state queries share a cache for the lifetime
-// of the webview.
 const queryClient = appQueryClient();
 
 const UpdateWindow = lazy(() =>
@@ -137,7 +133,6 @@ const FileRenameDialog = mountOnFirstOpen(
   () => useFileRenameStore((state) => state.target !== null),
   () => useFileRenameStore.getState().close(),
 );
-// Mounted from the start: it runs the reference updates for renamed files.
 const FileReferencesDialog = lazy(() =>
   import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })),
 );
@@ -211,7 +206,6 @@ const TypstDocumentPanels = mountOnFirstOpen(
   () => useTypstDocumentPanelStore.getState().closePanel(),
 );
 
-// Dev builds only; the conditional import keeps devtools out of the bundle.
 const ReactQueryDevtools = import.meta.env.DEV
   ? lazy(() =>
       import("@tanstack/react-query-devtools").then((m) => ({
@@ -308,7 +302,6 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
 
 async function bootstrap(): Promise<void> {
   const view = currentWindowView();
-  // Fetched early so the first paint already shows home paths as ~/…
   void loadDisplayHomes();
   if (view === "main") {
     void installQuitFallback().catch((error) => logError("prepare quit fallback", error));

@@ -1,8 +1,3 @@
-//! The Markdown prose mask (`packages/editor/src/markdown-mask.ts`):
-//! front matter, code, HTML, link targets, Pandoc attributes, citations,
-//! URLs, e-mail addresses and math become spaces; `markdown_to_prose` then
-//! collapses the gaps and keeps a map back to the source.
-
 use std::sync::LazyLock;
 
 use oleafly_preflight::jsre::JsRegex;
@@ -45,8 +40,6 @@ static FOOTNOTE_DEFINITION: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"\A[ \t]{0,3}\[\^[^\]\n]+\]:[ \t]*"));
 static INDENTED_CODE: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(&format!(r"\A(?: {{4}}|\t)[^{JS_SPACE_CLASS}]")));
-/// JavaScript writes `\[(?!\^)[^\]\n]+`; the first bracketed unit simply may
-/// not be `^`.
 static REFERENCE_DEFINITION: LazyLock<JsRegex> = LazyLock::new(|| {
     JsRegex::std(&format!(
         r"\A[ \t]{{0,3}}\[[^\]\n^][^\]\n]*\]:[ \t]*[^{JS_SPACE_CLASS}]"
@@ -85,7 +78,6 @@ fn snapshot(chars: &[u16]) -> SourceText {
     SourceText::from_units(chars.to_vec())
 }
 
-/// `text.split(/(?<=\n)/)`: lines that keep their `"\n"`.
 fn lines(text: &[u16]) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     let mut start = 0;
@@ -169,7 +161,6 @@ fn mask_block_lines(chars: &mut [u16], text: &[u16]) {
             blank(chars, from, to);
             footnote_continuation = false;
         } else if let Some(length) = footnote {
-            // The footnote label is metadata; its body is rendered prose.
             blank(chars, from, from + length);
             footnote_continuation = true;
         } else if footnote_continuation && continues_footnote(line_units) {
@@ -199,7 +190,6 @@ fn matches_folded(text: &[u16], at: usize, name: &str) -> bool {
     })
 }
 
-/// `\w` under `iu`: ASCII word characters plus `ſ` and the Kelvin sign.
 fn is_word_unit_iu(unit: Option<u16>) -> bool {
     unit.is_some_and(|unit| {
         unit == 0x017F
@@ -209,8 +199,6 @@ fn is_word_unit_iu(unit: Option<u16>) -> bool {
     })
 }
 
-/// `/<(script|style|pre)\b[^>]*>[\s\S]*?<\/\1\s*>/giu` anchored at `open`
-/// (a back-reference, ported by hand): the end of the element.
 fn raw_html_block_at(text: &[u16], open: usize) -> Option<usize> {
     let name_start = open + 1;
     let name = ["script", "style", "pre"]
@@ -357,7 +345,6 @@ fn mask_pandoc_attributes(chars: &mut [u16]) {
     }
 }
 
-/// `referenceBracketEnd`: the next `]` on the same line.
 fn reference_bracket_end(source: &[u16], from: usize) -> Option<usize> {
     let mut cursor = from;
     while cursor < source.len() {
@@ -437,7 +424,6 @@ fn mask_link_destinations(chars: &mut [u16]) {
     }
 }
 
-/// `[-\p{L}\p{N}_:.#/+]` at `index`.
 fn is_citation_key_at(text: &[u16], index: usize) -> bool {
     char_at(text, index).is_some_and(|(ch, _)| {
         matches!(ch, '-' | '_' | ':' | '.' | '#' | '/' | '+')
@@ -446,9 +432,6 @@ fn is_citation_key_at(text: &[u16], index: usize) -> bool {
     })
 }
 
-/// Bracketed Pandoc citations, `/\[(?:[^\]\n@]|@(?!K))*@K+(?!K)[^\]\n]*\]/gu`
-/// with `K` the key class: from a `[` to the first `]` on its line, when
-/// some `@` in between is followed by a key character.
 fn mask_bracketed_citations(chars: &mut [u16]) {
     let source = chars.to_vec();
     let mut index = 0;
@@ -479,7 +462,6 @@ fn mask_bare_citations(chars: &mut [u16]) {
     }
 }
 
-/// `maskMarkdown`: a same-length copy with only rendered prose left.
 pub fn mask_markdown(text: &[u16]) -> Vec<u16> {
     let mut chars = text.to_vec();
     let source = SourceText::from_units(text.to_vec());
@@ -514,8 +496,6 @@ pub fn mask_markdown(text: &[u16]) -> Vec<u16> {
     chars
 }
 
-/// `markdownToProse`: runs of blanks collapse to one space (none before
-/// closing punctuation); `map[k]` is the source unit of `prose[k]`.
 pub fn markdown_to_prose(text: &[u16]) -> (Vec<u16>, Vec<u32>) {
     let masked = mask_markdown(text);
     let mut prose = Vec::with_capacity(masked.len());
@@ -566,13 +546,11 @@ mod tests {
             prose("See [the docs](https://example.com/a(b)) now."),
             "See [the docs] now."
         );
-        // Only the reference label goes; the link text stays prose.
         assert_eq!(prose("A [ref][id] here."), "A [ref] here.");
     }
 
     #[test]
     fn citations_math_and_attributes_are_blank() {
-        // No space before the apostrophe: it is closing punctuation.
         assert_eq!(
             prose("As [see @knuth, p. 3] said, $x+y$ is @doe's."),
             "As said, is's."

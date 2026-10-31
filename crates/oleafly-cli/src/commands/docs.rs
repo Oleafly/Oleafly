@@ -1,6 +1,3 @@
-//! `oleafly stats`, `oleafly synctex`, `oleafly export` and `oleafly convert`:
-//! the app's document tools on the command line. The counting, SyncTeX
-//! search, export and conversion code is the app's own (`oleafly-doctools`).
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -37,7 +34,6 @@ use crate::native::{
 };
 use crate::typst_settings::TypstSettings;
 
-/// Exports land here inside the build folder when `-o` is left out.
 pub const EXPORT_DIR: &str = "exports";
 const EXPORT_TIMEOUT: Duration = Duration::from_secs(300);
 const DEFAULT_PPI: u32 = 144;
@@ -135,7 +131,6 @@ pub enum ExportFormat {
 }
 
 impl ExportFormat {
-    /// The app's export format id.
     fn id(self) -> &'static str {
         match self {
             Self::Docx => "docx",
@@ -310,7 +305,6 @@ impl CommandModule for Commands {
     }
 }
 
-/// A shared document tool's error, with the app's code.
 pub(crate) fn doc_error(error: DocError) -> CliError {
     let kind = match error.code {
         "export.inside_project" | "export.unsupported_format" | "synctex.not_compiled" => {
@@ -351,7 +345,6 @@ fn main_stem(main: &str) -> String {
         .unwrap_or_else(|| "document".into())
 }
 
-/// `12345` as `12,345`.
 fn grouped(value: u64) -> String {
     let digits = value.to_string();
     let mut out = String::new();
@@ -363,8 +356,6 @@ fn grouped(value: u64) -> String {
     }
     out
 }
-
-// ---------------------------------------------------------------- stats
 
 fn stats_json(stats: &DocumentStats) -> Value {
     json!({
@@ -475,10 +466,6 @@ fn print_stats(ctx: &Context, main: &str, stats: &DocumentStats, file_count: usi
     }
 }
 
-// --------------------------------------------------------------- synctex
-
-/// The parsed SyncTeX of the project's last LaTeX build, and the spellings
-/// of its folder.
 async fn synctex_doc(ctx: &Context) -> Result<(synctex::Doc, Vec<String>, Workspace), CliError> {
     let opened = open(ctx, None)?;
     let engine = opened.workspace.manifest().engine()?;
@@ -559,8 +546,6 @@ async fn run_inverse(ctx: &Context, args: InverseArgs) -> Result<Outcome, CliErr
     })))
 }
 
-// ---------------------------------------------------------------- export
-
 fn missing_pandoc(tools: &BuildTools) -> CliError {
     let message = tools
         .pandoc_too_old_message()
@@ -586,9 +571,6 @@ fn canonical_parent(path: &Path) -> Option<PathBuf> {
     parent.canonicalize().ok()
 }
 
-/// Where an export goes: `-o` (a file with the format's extension, or a
-/// folder), else `<build folder>/exports/<main stem>.<extension>`. An
-/// explicit path inside the project is refused, as in the app.
 fn export_destination(
     workspace: &Workspace,
     requested: Option<&Path>,
@@ -726,7 +708,6 @@ async fn run_export(ctx: &Context, args: ExportArgs) -> Result<Outcome, CliError
     })))
 }
 
-/// A LaTeX or Markdown project's PDF export is its last good build.
 fn copy_last_pdf(
     ctx: &Context,
     opened: &OpenedProject,
@@ -774,9 +755,6 @@ fn copy_last_pdf(
     Ok(vec![destination])
 }
 
-/// The folder the export's citation filter is staged in, where pandoc can
-/// reach it by a relative path: `.oleafly/` for a project folder, the
-/// app's state folder for a linked one.
 fn filter_staging_dir(opened: &OpenedProject) -> Option<PathBuf> {
     match opened.origin {
         ProjectOrigin::Linked { .. } => opened
@@ -839,8 +817,6 @@ async fn export_with_pandoc(
     let staged_text = staged.to_string_lossy().into_owned();
     let main = workspace.manifest().main_doc.clone();
 
-    // A Typst project goes through Typst's own HTML first, as in the app;
-    // Pandoc's Typst reader is the fallback.
     let mut html_error = None;
     if engine == Engine::Typst && id != "typst" {
         match typst_through_html(opened, args, &pandoc, id, &staged_text, staging.path()).await {
@@ -904,7 +880,6 @@ async fn typst_run(opened: &OpenedProject, variant: Option<&str>) -> Result<Typs
     })
 }
 
-/// The first error Typst reports, with its place and hints.
 fn typst_failure_detail(log: &str) -> String {
     let diagnostics = parse_typst_diagnostics(log);
     let Some(error) = diagnostics
@@ -981,8 +956,6 @@ fn supports_html(capabilities: &TypstCapabilities) -> bool {
     capabilities.supports_output_format("html") && capabilities.supports_flag("--features")
 }
 
-/// Typst's HTML, then Pandoc from HTML; `false` when this Typst can't write
-/// HTML.
 async fn typst_through_html(
     opened: &OpenedProject,
     args: &ExportArgs,
@@ -1024,7 +997,6 @@ async fn typst_through_html(
     Ok(true)
 }
 
-/// Pages Typst wrote as `page-<n>.<extension>`, in page order.
 fn staged_pages(staging: &Path, extension: &str) -> Vec<PathBuf> {
     let mut pages: Vec<(u32, PathBuf)> = std::fs::read_dir(staging)
         .into_iter()
@@ -1044,8 +1016,6 @@ fn staged_pages(staging: &Path, extension: &str) -> Vec<PathBuf> {
     pages.into_iter().map(|(_, path)| path).collect()
 }
 
-/// One destination per page: `paper.png` for a single page, else
-/// `paper-01.png`, `paper-02.png`, ...
 fn page_destinations(destination: &Path, produced: &[PathBuf]) -> Vec<PathBuf> {
     if produced.len() <= 1 {
         return vec![destination.to_path_buf()];
@@ -1078,7 +1048,6 @@ fn page_destinations(destination: &Path, produced: &[PathBuf]) -> Vec<PathBuf> {
         .collect()
 }
 
-/// PDF, PNG, SVG or HTML straight from Typst.
 async fn export_typst(
     opened: &OpenedProject,
     args: &ExportArgs,
@@ -1166,8 +1135,6 @@ async fn export_typst(
     Ok(destinations)
 }
 
-// --------------------------------------------------------------- convert
-
 fn conversion_targets(from: DocumentKind) -> Vec<&'static str> {
     DocumentKind::all()
         .into_iter()
@@ -1176,8 +1143,6 @@ fn conversion_targets(from: DocumentKind) -> Vec<&'static str> {
         .collect()
 }
 
-/// Every file under `assets/` the conversion extracted (images from Word
-/// and HTML), relative to `root`.
 fn extracted_media(root: &Path) -> Result<Vec<PathBuf>, CliError> {
     let assets = root.join("assets");
     if !assets.is_dir() {
@@ -1238,8 +1203,6 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
     let mut plan = ad_hoc_plan(from.id(), to.id()).ok_or_else(|| unsupported_route(from, to))?;
     let input = read_convert_input(&args.input, from).await?;
     let destination = convert_destination(&args)?;
-    // The output names the source's bibliographies by file name only, so no
-    // path from this computer ends up in it.
     if plan.local_bibliography {
         if let Some(kind) = BibliographySource::for_reader(from.id()) {
             let declared =
@@ -1290,8 +1253,6 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
     })))
 }
 
-/// The error for a pair of formats Oleafly has no route between, with the
-/// formats the input does convert to.
 fn unsupported_route(from: DocumentKind, to: DocumentKind) -> CliError {
     let targets = conversion_targets(from);
     let error = CliError::new(
@@ -1310,8 +1271,6 @@ fn unsupported_route(from: DocumentKind, to: DocumentKind) -> CliError {
     }
 }
 
-/// The input's bytes, once it is a file within the size limit and, for a
-/// Word file, looks like one.
 async fn read_convert_input(path: &Path, from: DocumentKind) -> Result<Vec<u8>, CliError> {
     let metadata = match tokio::fs::metadata(path).await {
         Ok(metadata) if metadata.is_file() => metadata,
@@ -1352,8 +1311,6 @@ async fn read_convert_input(path: &Path, from: DocumentKind) -> Result<Vec<u8>, 
     Ok(input)
 }
 
-/// Where the converted file goes: `-o`, or beside the input. It must not
-/// replace the input, and an existing file needs `--force`.
 fn convert_destination(args: &ConvertArgs) -> Result<PathBuf, CliError> {
     let default_name = format!(
         "{}.{}",
@@ -1391,8 +1348,6 @@ fn convert_destination(args: &ConvertArgs) -> Result<PathBuf, CliError> {
     Ok(destination)
 }
 
-/// Stages the source in `root`, runs Pandoc there and returns the converted
-/// file.
 async fn convert_in_workspace(
     ctx: &Context,
     plan: &AdHocPlan,
@@ -1446,7 +1401,6 @@ async fn convert_in_workspace(
     Ok(produced)
 }
 
-/// Stops when an extracted image would replace a file in `media_folder`.
 fn ensure_media_free(media: &[PathBuf], media_folder: &Path) -> Result<(), CliError> {
     let existing = media
         .iter()
@@ -1465,7 +1419,6 @@ fn ensure_media_free(media: &[PathBuf], media_folder: &Path) -> Result<(), CliEr
     }
 }
 
-/// Tells a person what was converted and how many images came with it.
 fn say_converted(ctx: &Context, input: &Path, destination: &Path, images: usize, cwd: &Path) {
     if ctx.quiet() {
         ctx.say(destination.display().to_string());
@@ -1548,7 +1501,6 @@ mod tests {
         let missing =
             convert_destination(&convert_args(input.clone(), Some(nowhere), false)).unwrap_err();
         assert!(missing.message.contains("doesn't exist"));
-        // A folder given to -o takes the default name inside it.
         let inside = convert_args(input, Some(folder.path().to_path_buf()), true);
         assert_eq!(convert_destination(&inside).unwrap(), beside);
     }

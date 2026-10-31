@@ -1,8 +1,3 @@
-//! `oleafly config`, `oleafly projects` and `oleafly skills`.
-//!
-//! `config` reads and changes a project's `project.json` (by default) or a
-//! short allow-list of the app's settings (`--global`). Secrets and the MCP
-//! settings are never shown or changed here.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -118,23 +113,16 @@ impl CommandModule for Commands {
     }
 }
 
-// ------------------------------------------------------- global settings
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyKind {
     Bool,
     TypstVersion,
     LatexEngine,
     Locale,
-    /// Shown, but changed only in the app.
     ReadOnly,
 }
 
-/// The app settings the CLI shows: CLI name, `config.json` key, kind.
-/// The app's counter of CLI changes to [`APP_SAVED_KEYS`].
 const CLI_REVISION_KEY: &str = "cli_settings_revision";
-/// Settings the app saves from its settings views as part of the whole
-/// config (the others it keeps as stored, or changes on their own).
 const APP_SAVED_KEYS: [&str; 5] = [
     "checkpoints_enabled",
     "checkpoint_notifications",
@@ -221,7 +209,6 @@ fn data_root(ctx: &Context) -> Result<PathBuf, CliError> {
     })
 }
 
-/// A setting's value as the app would use it (its default when unset).
 fn global_value(config: &Map<String, Value>, file_key: &str, kind: KeyKind) -> Value {
     match (config.get(file_key), kind) {
         (Some(value), _) if !value.is_null() => value.clone(),
@@ -248,7 +235,6 @@ fn valid_locale(value: &str) -> bool {
         })
 }
 
-/// The JSON a global setting stores, or `None` to remove it.
 fn global_setting(
     ctx: &Context,
     name: &str,
@@ -317,8 +303,6 @@ fn global_list(ctx: &Context) -> Result<Vec<(String, Value)>, CliError> {
         .collect())
 }
 
-// ------------------------------------------------------ project settings
-
 const PROJECT_KEYS: &[&str] = &[
     "name",
     "main",
@@ -328,7 +312,6 @@ const PROJECT_KEYS: &[&str] = &[
     "compile_dir",
 ];
 
-/// The project folder `-C` names (its `project.json` must exist).
 fn project_root(ctx: &Context) -> Result<PathBuf, CliError> {
     let opened = crate::engine::open_project(ctx.project(), None, None)?;
     let root = opened.workspace.root().to_path_buf();
@@ -383,7 +366,6 @@ fn project_value(manifest: &ProjectManifest, key: &str) -> Value {
     }
 }
 
-/// Applies one project setting to `project.json`'s fields.
 fn apply_project_setting(
     root: &Path,
     fields: &mut Map<String, Value>,
@@ -495,7 +477,6 @@ fn apply_project_setting(
     Ok(())
 }
 
-/// The app's lock on a project it knows (writes wait for the app).
 fn project_lock(ctx: &Context, root: &Path) -> Result<Option<std::fs::File>, CliError> {
     let Some(data_root) = ctx.data_root() else {
         return Ok(None);
@@ -535,8 +516,6 @@ fn write_project_json(
         .map_err(CliError::from)?;
     Ok(manifest)
 }
-
-// --------------------------------------------------------------- commands
 
 fn config_list(ctx: &Context, global: bool) -> Result<Outcome, CliError> {
     let entries: Vec<(String, Value)> = if global {
@@ -621,9 +600,6 @@ fn config_set(
                     config.remove(file_key);
                 }
             }
-            // A settings view of the open app that read its copy before
-            // this keeps what the CLI set when it saves (the app compares
-            // revisions).
             if config.get(file_key) != before.as_ref() && APP_SAVED_KEYS.contains(&file_key) {
                 let revision = config
                     .get(CLI_REVISION_KEY)
@@ -690,9 +666,6 @@ fn config_set(
     ))
 }
 
-/// Refuses a Typst version the app wouldn't accept as a pin: one the
-/// catalog doesn't list that is neither bundled nor the system's (a typo
-/// would make every build fail).
 fn accepted_typst_pin(ctx: &Context, version: &str) -> Result<(), CliError> {
     let bundled = crate::native::Discovery::from_env(ctx.project())
         .bundled_candidates("typst")
@@ -848,9 +821,6 @@ fn projects_list(ctx: &Context) -> Result<Outcome, CliError> {
     Ok(Outcome::success(json!({"projects": projects})))
 }
 
-// ------------------------------------------------------------------ skills
-
-/// The skills folder: `<data>/skills`, else the installed app's bundled set.
 fn skills_root(ctx: &Context) -> Option<PathBuf> {
     let data = ctx
         .data_root()
@@ -1003,12 +973,10 @@ mod tests {
         };
         config_set(&ctx, "git.auto_init", Some("false"), true).unwrap();
         assert_eq!(revision(), json!(1));
-        // The same value again changes nothing.
         config_set(&ctx, "git.auto_init", Some("false"), true).unwrap();
         assert_eq!(revision(), json!(1));
         config_set(&ctx, "ui.locale", Some("de"), true).unwrap();
         assert_eq!(revision(), json!(2));
-        // The app keeps this one as stored anyway.
         config_set(&ctx, "latex.default_engine", Some("latexmk"), true).unwrap();
         assert_eq!(revision(), json!(2));
     }
@@ -1047,7 +1015,6 @@ mod tests {
         let data = tempfile::tempdir().unwrap();
         std::fs::create_dir(project.path().join("chapters")).unwrap();
         std::fs::write(project.path().join("main.tex"), "\\documentclass{article}").unwrap();
-        // Its input resolves only beside it, so it compiles from there.
         std::fs::write(
             project.path().join("chapters/a.tex"),
             "\\documentclass{article}\n\\input{part}\n",

@@ -52,6 +52,15 @@ export type Placement =
   | { kind: "wait" }
   | { kind: "place"; map: Mapper; exact: boolean; unsent: ChangeSet | null; confirmed: string | null };
 
+export function changesBetween(before: string, after: string): ChangeSet {
+  return ChangeSet.of(editsFromOperation(diffOperation(before, after)), before.length, "\n");
+}
+
+export function mapRange(changes: ChangeSet, range: PlacedRange): PlacedRange {
+  const from = changes.mapPos(range.from, 1);
+  return { from, to: Math.max(from, changes.mapPos(range.to, -1)) };
+}
+
 function clampTo(length: number): (position: number) => number {
   return (position) => Math.max(0, Math.min(length, Math.trunc(position)));
 }
@@ -67,7 +76,7 @@ export function placement(session: OverlaySession, rev: number | null): Placemen
     return { kind: "place", map: (position) => clamp(position), exact: true, unsent: null, confirmed: null };
   }
   const confirmed = session.confirmed();
-  const unsent = ChangeSet.of(editsFromOperation(diffOperation(confirmed, session.text())), confirmed.length, "\n");
+  const unsent = changesBetween(confirmed, session.text());
   const inside = clampTo(confirmed.length);
   return {
     kind: "place",
@@ -183,14 +192,8 @@ export class FileOverlays {
     const own = suggesting ? this.ownInsertions() : [];
     this.suggestions = this.mapSuggestions(this.suggestions, changes);
     this.optimistic = this.mapSuggestions(this.optimistic, changes);
-    this.threads = this.threads.map((thread) => {
-      const from = changes.mapPos(thread.from, 1);
-      return { ...thread, from, to: Math.max(from, changes.mapPos(thread.to, -1)) };
-    });
-    if (this.draft) {
-      const from = changes.mapPos(this.draft.from, 1);
-      this.draft = { from, to: Math.max(from, changes.mapPos(this.draft.to, -1)) };
-    }
+    this.threads = this.threads.map((thread) => ({ ...thread, ...mapRange(changes, thread) }));
+    if (this.draft) this.draft = mapRange(changes, this.draft);
     if (suggesting) this.optimistic.push(...this.suggestionsFrom(changes, edit.before, own));
     this.changed();
     this.settle();

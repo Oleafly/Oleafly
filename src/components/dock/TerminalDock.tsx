@@ -303,7 +303,6 @@ function TerminalTabItem({
   );
 }
 
-/** The ids `which` would close around the tab at `id`, in tab order. */
 function idsAround(id: string, which: "others" | "left" | "right"): string[] {
   const tabs = useTerminalsStore.getState().tabs;
   const anchor = tabs.findIndex((tab) => tab.id === id);
@@ -317,7 +316,6 @@ function idsAround(id: string, which: "others" | "left" | "right"): string[] {
     .map((tab) => tab.id);
 }
 
-/** Closes tabs after asking about any program still running in them. */
 function closeAround(id: string, which: "others" | "left" | "right"): void {
   const ids = idsAround(id, which);
   if (ids.length === 0) return;
@@ -375,7 +373,6 @@ export function TerminalDock({
     if (state.projectId === projectId && state.tabs.length === 0) state.addTerminal();
   }, [empty, projectId, ready, visible]);
 
-  // A bell rings the tab only while it is out of sight; showing it clears the dot.
   useEffect(() => {
     if (visible && activeId) useTerminalsStore.getState().clearTerminalBell(activeId);
   }, [activeId, visible]);
@@ -389,7 +386,6 @@ export function TerminalDock({
     };
   }, []);
 
-  // Keys must not keep reaching a shell nobody can see.
   useEffect(() => {
     if (visible) return;
     const tracker = focusTrackerRef.current;
@@ -407,7 +403,6 @@ export function TerminalDock({
     );
     return () => {
       unregister();
-      // The project changed, so the leave the user confirmed is over.
       forgetConfirmedLeave(projectId);
     };
   }, [projectId]);
@@ -478,7 +473,6 @@ export function TerminalDock({
           </button>
         </Tooltip>
       </div>
-      {/* Parked panes sit just outside this box; the clip keeps them unpainted. */}
       <div
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
         style={{ backgroundColor: terminalBackground }}

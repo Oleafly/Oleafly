@@ -198,7 +198,6 @@ async function waitAppUpToDate(page: Page, timeoutMs = 30_000) {
   await waitLong(page, `document.querySelector(${scriptValue(PANE_STATUS)})?.getAttribute("aria-label") === "Up to date"`, timeoutMs);
 }
 
-// Leaves only this run's server, adds it, and signs the owner in.
 async function signInToServer(page: Page, ready: Ready) {
   await page.evaluate(
     `import("/src/lib/tauri-collab.ts").then(async ({ collabServersList, collabServerRemove }) => {
@@ -229,7 +228,6 @@ async function signInToServer(page: Page, ready: Ready) {
   await page.waitForFunction(`!document.querySelector('[data-testid="settings-section-appearance"]')`, 20_000);
 }
 
-// Shares the open project, turns on link sharing for editors, and returns the link.
 async function shareWithEditors(page: Page): Promise<string> {
   await page.click('[data-toolbar-item="share"] button');
   await page.waitForFunction(`!!document.querySelector(${scriptValue(SHARE_DIALOG)})`, 20_000);

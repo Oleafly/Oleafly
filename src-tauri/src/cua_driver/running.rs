@@ -5,8 +5,6 @@
 
 use super::config::AllowedApp;
 
-/// The ids of the running processes of `app`, oldest first where the system
-/// says, at most a few.
 pub(crate) fn running_pids(app: &AllowedApp) -> Vec<u32> {
     let mut pids = platform_pids(app);
     pids.sort_unstable();
@@ -15,7 +13,6 @@ pub(crate) fn running_pids(app: &AllowedApp) -> Vec<u32> {
     pids
 }
 
-/// More processes than this for one app are left out.
 const MAX_PIDS: usize = 8;
 
 #[cfg(target_os = "macos")]
@@ -39,7 +36,6 @@ fn platform_pids(app: &AllowedApp) -> Vec<u32> {
     })
 }
 
-/// Windows: every process whose image is the allowed program.
 #[cfg(windows)]
 fn platform_pids(app: &AllowedApp) -> Vec<u32> {
     use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
@@ -77,7 +73,6 @@ fn platform_pids(app: &AllowedApp) -> Vec<u32> {
     found
 }
 
-/// A Windows path as compared here: no `\\?\` prefix, any case.
 #[cfg_attr(not(windows), allow(dead_code))]
 fn windows_key(path: &str) -> String {
     path.strip_prefix(r"\\?\")
@@ -86,8 +81,6 @@ fn windows_key(path: &str) -> String {
         .to_lowercase()
 }
 
-/// Linux: every process whose program, or whose first argument, is the
-/// allowed program.
 #[cfg(target_os = "linux")]
 fn platform_pids(app: &AllowedApp) -> Vec<u32> {
     let Some(program) = app.executable.as_deref() else {

@@ -1,5 +1,3 @@
-//! A tiny HTTP server and page builders for tests of code that talks to the
-//! online service, here and in the app and CLI.
 use std::collections::HashMap;
 use std::io::Write as _;
 use std::sync::{Arc, Mutex};
@@ -95,7 +93,6 @@ async fn read_request(stream: &mut tokio::net::TcpStream) -> Option<Request> {
 }
 
 impl FixtureServer {
-    /// Serves `handler` on a loopback port until the runtime stops.
     pub async fn start(handler: Handler) -> FixtureServer {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base = format!("http://{}", listener.local_addr().unwrap());
@@ -131,7 +128,6 @@ impl FixtureServer {
         FixtureServer { base, requests }
     }
 
-    /// The requests whose path starts with `prefix`, in arrival order.
     pub fn requests(&self, prefix: &str) -> Vec<Request> {
         self.requests
             .lock()
@@ -150,7 +146,6 @@ fn escape(text: &str) -> String {
         .replace('>', "&gt;")
 }
 
-/// The project list page of a signed-in account.
 pub fn dashboard_page(projects: &Value) -> String {
     format!(
         "<!DOCTYPE html><html><head>\
@@ -163,7 +158,6 @@ pub fn dashboard_page(projects: &Value) -> String {
     )
 }
 
-/// One project as the dashboard lists it.
 pub fn remote_project_json(id: &str, name: &str) -> Value {
     json!({
         "id": id,
@@ -177,13 +171,11 @@ pub fn remote_project_json(id: &str, name: &str) -> Value {
     })
 }
 
-/// The socket packet that carries a project's settings.
 pub fn project_reply(project: &Value) -> String {
     let event = json!({ "name": "joinProjectResponse", "args": [{ "publicId": "p", "project": project, "permissionsLevel": "owner", "protocolVersion": 2 }] });
     frame(&[&format!("5:::{event}")])
 }
 
-/// Socket packets in the polling transport's framing.
 pub fn frame(packets: &[&str]) -> String {
     let marker = char::REPLACEMENT_CHARACTER;
     packets
@@ -213,8 +205,6 @@ pub const FIREFOX_COOKIE_SCHEMA: &str = "PRAGMA user_version = 17;\
        updateTime INTEGER DEFAULT 0\
      );";
 
-/// Writes a Firefox cookie store holding `(name, value, host)` rows that
-/// expire in 2100.
 pub fn write_firefox_cookie_store(path: &std::path::Path, rows: &[(&str, &str, &str)]) {
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     let connection = rusqlite::Connection::open(path).unwrap();
@@ -230,7 +220,6 @@ pub fn write_firefox_cookie_store(path: &std::path::Path, rows: &[(&str, &str, &
     }
 }
 
-/// A ZIP archive holding `files`.
 pub fn zip_bytes(files: &[(&str, &str)]) -> Vec<u8> {
     let mut cursor = std::io::Cursor::new(Vec::new());
     {
@@ -245,8 +234,6 @@ pub fn zip_bytes(files: &[(&str, &str)]) -> Vec<u8> {
     cursor.into_inner()
 }
 
-/// Answers the socket handshake and its polls; the second poll carries
-/// `project`. `None` for any other path.
 pub fn socket_handler(
     project: Value,
     polls: Arc<Mutex<usize>>,

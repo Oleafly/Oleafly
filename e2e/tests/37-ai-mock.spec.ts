@@ -2,14 +2,6 @@ import { test, expect } from "../fixtures";
 import { fillTextarea, openProject, openRailTab, waitLong, type Page } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
-// A REAL AI conversation with NO key and NO network: the keyless "Ollama
-// (local)" provider streams via `<host>/v1/chat/completions`, so we point it
-// at a local fake OpenAI-compatible server (mock-ai-server.ts) and the actual
-// streaming/usage/handoff pipeline runs in CI. __aiConnect stands in only for
-// the Settings connect step; the conversation itself is real. This closes the
-// coverage gap where CI never exercised a real conversation (28/35/31 are
-// token-gated and skipped there).
-
 let server: MockAiServer;
 
 test.beforeAll(async () => {
@@ -24,8 +16,6 @@ const TA = 'textarea[placeholder*="Ask AI"]';
 async function connectAndOpenChat(page: Page) {
   await openProject(page, "E2E Doc");
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // Set the provider BEFORE the panel mounts, so ChatPanel reads the connected
-  // config on mount rather than relying on a live config-changed event.
   const ok = await page.evaluate<boolean>(
     `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
   );
@@ -60,8 +50,6 @@ test("the assistant runs a real tool call end to end", async ({ tauriPage }) => 
   test.setTimeout(90_000);
   await connectAndOpenChat(tauriPage);
 
-  // The mock's `then` triggers a second turn carrying the tool result, which
-  // streams the confirmation text.
   server.setToolCall({ name: "read_file", args: { path: "main.tex" }, then: "READFILEDONE99" });
   await fillTextarea(tauriPage, TA, "Read main.tex, then confirm.");
   await tauriPage.press(TA, "Enter");
@@ -80,8 +68,6 @@ test("agent handoff delivers the prompt into the live composer", async ({ tauriP
 
   const marker = `E2E handoff ${Date.now().toString(36)}`;
   await tauriPage.evaluate(`window.__agentHandoff?.(${JSON.stringify(marker)}, false)`);
-  // Provider is connected here, so unlike 36-ai-agentic.spec.ts this can assert
-  // hard instead of soft-gating on `if (hasInput)`.
   await expect
     .poll(
       async () =>
@@ -154,7 +140,6 @@ test("Regenerate sends the last prompt again", async ({ tauriPage }) => {
   await sendAndWait(tauriPage, "Say the regenerate marker.", "REGEN1");
   const before = server.requestCount();
   server.setReply("REGEN2");
-  // The button shows on hover, which a dispatched event can't trigger, so click it directly.
   const clicked = await tauriPage.evaluate<boolean>(`(() => {
     const buttons = [...document.querySelectorAll('[data-testid="message-action-regenerate"][aria-label="Regenerate reply"]')];
     if (!buttons.length) return false;

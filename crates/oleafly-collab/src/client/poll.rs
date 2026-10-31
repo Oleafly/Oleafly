@@ -117,9 +117,6 @@ pub(crate) async fn post_outbox(
                     let _ = replies.send(Ok(answered)).await;
                 }
             }
-            // A post refused because the project is full reads like the
-            // server's own frame for that. Anything else too large, from the
-            // server or a proxy in front of it, reads like a batch too large.
             Err(CollabError::Api {
                 status: 413,
                 code,

@@ -49,19 +49,15 @@ fn text(value: Option<serde_json::Value>) -> Option<String> {
     }
 }
 
-/// A folder the desktop app opened in place (its record under
-/// `<data>/linked/<id>`).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct LinkInfo {
     pub id: String,
-    /// `<data>/linked/<id>`; the app's build folder for it is `build/` inside.
     pub state_dir: PathBuf,
     pub compile_dir: Option<String>,
     pub display_name: Option<String>,
     pub last_opened_at: Option<u64>,
 }
 
-/// What the desktop app saved for a folder it opened in place.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SavedProject {
     pub link: Option<LinkInfo>,
@@ -99,7 +95,6 @@ pub(crate) fn saved_project(folder: &Path) -> SavedProject {
         .unwrap_or_default()
 }
 
-/// The app's current link for this folder, if it opened it in place.
 pub(crate) fn link_for(folder: &Path) -> Option<LinkInfo> {
     let folder = folder.canonicalize().ok()?;
     let root = data_root()?;
@@ -109,7 +104,6 @@ pub(crate) fn link_for(folder: &Path) -> Option<LinkInfo> {
         .map(|(info, _)| info)
 }
 
-/// Every current link with the folder it points at.
 pub(crate) fn links(data_root: &Path) -> Vec<(LinkInfo, PathBuf)> {
     current_links(&data_root.join("linked"))
 }

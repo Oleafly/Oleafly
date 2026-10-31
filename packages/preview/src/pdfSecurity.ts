@@ -5,12 +5,6 @@ const ALLOWED_EXTERNAL_PROTOCOLS = new Set([
   "tel:",
 ]);
 
-/**
- * PDF annotations are untrusted document input. Return only explicitly
- * supported external schemes and reject credentials, control characters, and
- * browser-executable/data URLs before either the WebView or native shell sees
- * them.
- */
 export function safePdfExternalUrl(value: string): string | null {
   const candidate = value.trim();
   if (

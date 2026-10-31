@@ -62,7 +62,6 @@ export function sendPreviewCommand(projectId: string, command: PreviewWorkspaceC
   return emitTo("main", "preview:command", { projectId, ...command });
 }
 
-/** Compile in the main window, where buffer flushes and compile serialization live. */
 export async function startPreviewWorkspaceBridge(): Promise<() => void> {
   if (!isTauri()) return () => {};
   const publish = () => {
@@ -192,7 +191,6 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     timer = setTimeout(() => { timer = undefined; publish(); }, 100);
   };
   const offCompile = useCompileStore.subscribe(schedule);
-  // A fast preview can request its snapshot before the window-created event.
   const offDetached = usePreviewDetachedStore.subscribe(schedule);
   const offFiles = useFilesStore.subscribe((next, previous) => {
     if (next.engine !== previous.engine || next.engineLoaded !== previous.engineLoaded || next.mainDoc !== previous.mainDoc ||

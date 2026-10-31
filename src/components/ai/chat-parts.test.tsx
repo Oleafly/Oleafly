@@ -38,7 +38,6 @@ import {
 } from "./chat-parts";
 
 beforeAll(async () => {
-  // Keep cold loading of the lazy renderer outside interaction deadlines.
   await import("@/components/ui/markdown-renderer");
 });
 
@@ -977,8 +976,6 @@ describe("AI chat overflow surfaces", () => {
 
     const body = container.querySelector("div.max-h-56");
     expect(body).toHaveClass("overflow-x-hidden", "overflow-y-auto", "break-words");
-    // Reasoning is a raw thinking trace: rendered as plain text so a long,
-    // math-dense dump opens instantly and never shows shattered/raw KaTeX.
     expect(body?.querySelector("strong")).toBeNull();
     expect(body).toHaveTextContent("**Exploring Project Contents**");
   });

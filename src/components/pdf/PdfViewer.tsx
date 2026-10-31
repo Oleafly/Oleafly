@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import type { PdfViewerHandle, PdfViewerProps } from "@oleafly/preview";
 import { safePdfExternalUrl } from "@oleafly/preview/controller";
-// Ensure the package's SyncTeX diagnostics logger is installed.
 import "@/components/pdf/pdfController";
 
 export type { PdfViewerHandle };

@@ -153,9 +153,6 @@ export function calibratePdfTextLayerWidths(
   const containerTransform = snapshotInlineProperty(container, "transform");
   const domAdvances: number[] = [];
 
-  // Neutralize both transforms in one write batch. `data-main-rotation`
-  // rotates the entire text layer, while each span may rotate independently.
-  // Reading after both are neutralized always measures the local inline axis.
   try {
     container.style.setProperty("transform", "none", "important");
     for (const { div } of candidates) {

@@ -1,7 +1,3 @@
-//! Settings › Integrations › Desktop apps. Every command answers the main
-//! window only. A change that widens what agents may control asks through a
-//! native confirmation first, so the renderer can never widen control alone.
-
 use std::path::Path;
 use std::sync::Arc;
 
@@ -50,16 +46,11 @@ pub(crate) struct DesktopAppsStatus {
     pub supported: bool,
     pub driver_path: Option<String>,
     pub driver_version: Option<String>,
-    /// `not_installed`, `too_old`, `no_app_bundle` or `unreadable_version`.
     pub driver_problem: Option<&'static str>,
     pub minimum_version: String,
-    /// The official line, shown for copying.
     pub install_line: &'static str,
-    /// The same line as a program and its arguments, for the terminal.
     pub install_command: TerminalCommand,
-    /// macOS only.
     pub permissions: Option<PermissionsStatus>,
-    /// Linux on GNOME Wayland only.
     pub gnome_helper: Option<bool>,
     pub gnome_helper_line: Option<String>,
     pub running: Vec<RuntimeKind>,
@@ -67,8 +58,6 @@ pub(crate) struct DesktopAppsStatus {
     pub spaces_install_line: &'static str,
     pub spaces_install_command: TerminalCommand,
     pub settings: CuaDriverConfig,
-    /// Allowed apps whose program is no longer on this computer (Windows
-    /// and Linux), by `executable`.
     pub missing_apps: Vec<String>,
 }
 
@@ -77,7 +66,6 @@ pub(crate) struct DesktopAppsStatus {
 pub(crate) struct RuntimeTest {
     pub kind: RuntimeKind,
     pub ok: bool,
-    /// An `AppError` string or the driver's text, for `describeError`.
     pub detail: Option<String>,
 }
 
@@ -87,7 +75,6 @@ pub(crate) struct DesktopAppsTestReport {
     pub ok: bool,
     pub version: Option<String>,
     pub runtimes: Vec<RuntimeTest>,
-    /// Failed checks from `cua-driver doctor`.
     pub problems: Vec<String>,
 }
 
@@ -151,7 +138,6 @@ fn status_blocking(
     }
 }
 
-/// What the connector looks like on this computer. Never starts a runtime.
 #[tauri::command]
 pub async fn cua_driver_status<R: Runtime>(
     webview: Webview<R>,
@@ -173,9 +159,6 @@ pub async fn cua_driver_status<R: Runtime>(
     .map_err(blocking_error)
 }
 
-/// A bundle id or program path as the confirmation shows it: format
-/// characters (bidi controls, zero-width characters) written out as
-/// `\u{…}`, so they can't reorder or hide what is being allowed.
 fn visible_identity(identity: &str) -> String {
     identity
         .chars()
@@ -189,8 +172,6 @@ fn visible_identity(identity: &str) -> String {
         .collect()
 }
 
-/// One line per widening, for the confirmation. The identity that was
-/// checked comes first, before the name the app gave itself.
 pub(crate) fn widening_lines(widening: &[Widening]) -> Vec<String> {
     widening
         .iter()
@@ -212,16 +193,6 @@ pub(crate) fn widening_lines(widening: &[Widening]) -> Vec<String> {
         .collect()
 }
 
-/// Validates, confirms widening, stores and applies new settings.
-///
-/// One change runs at a time, from the first read of the settings to the
-/// write, because the native question can wait for a long time. What it
-/// confirms is checked again against the settings as they are when the answer
-/// comes: if more would be widened by then, it asks again.
-///
-/// Narrowing and turning off return as soon as the settings are saved:
-/// calls still waiting on a daemon are cancelled and the daemons stop in the
-/// background.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn apply_settings(
     state: &Arc<CuaDriverState>,
@@ -262,8 +233,6 @@ pub(crate) async fn apply_settings(
     .await
     .map_err(blocking_error)??;
     state.set_settings(next.clone());
-    // A grant names a tool, not an app or a site: "Allow for this chat" on
-    // clicks must not carry over to an app or site added since.
     if widened || !next.enabled {
         lock(&state.grants).clear_all();
     }
@@ -302,8 +271,6 @@ fn native_confirm<R: Runtime>(
     )
 }
 
-/// A native "Allow" / "Cancel" question with `title_key` and `message_key`,
-/// listing what would be allowed.
 fn native_confirm_with<R: Runtime>(
     app: AppHandle<R>,
     title_key: &'static str,
@@ -342,7 +309,6 @@ fn native_confirm_with<R: Runtime>(
     }
 }
 
-/// Saves the settings. Widening asks natively; turning on needs the driver.
 #[tauri::command]
 pub async fn cua_driver_settings_set<R: Runtime>(
     webview: Webview<R>,
@@ -376,7 +342,6 @@ pub async fn cua_driver_settings_set<R: Runtime>(
     .await
 }
 
-/// Apps on this computer for the picker (blocked ones included).
 #[tauri::command]
 pub async fn cua_driver_installed_apps<R: Runtime>(
     webview: Webview<R>,
@@ -390,8 +355,6 @@ pub async fn cua_driver_installed_apps<R: Runtime>(
     Ok(apps)
 }
 
-/// Icons for the picker's rows, by row key, as data URLs. Only apps from the
-/// last listing have one; the rest are left out.
 #[tauri::command]
 pub async fn cua_driver_app_icons<R: Runtime>(
     webview: Webview<R>,
@@ -403,7 +366,6 @@ pub async fn cua_driver_app_icons<R: Runtime>(
         .map_err(blocking_error)
 }
 
-/// "Choose another app…": a native file dialog, then the app it stands for.
 #[tauri::command]
 pub async fn cua_driver_pick_app<R: Runtime>(
     webview: Webview<R>,
@@ -455,8 +417,6 @@ pub async fn cua_driver_pick_app<R: Runtime>(
     }
 }
 
-/// The picked file as an error names it: its file name, without control or
-/// format characters.
 fn picked_name(path: &Path) -> String {
     let name = path
         .file_name()
@@ -476,13 +436,32 @@ fn picked_name(path: &Path) -> String {
 
 const SPACES_CREDENTIALS_ENV: &str = "CUA_SPACES_AGENT_CREDENTIALS_HOME";
 
-/// Whether `server` runs Cua Spaces (`cua daemon mcp`).
-pub(crate) fn is_spaces_server(server: &crate::config::McpServerConfig) -> bool {
-    spaces_guards(server).is_some()
+pub(crate) fn spaces_launch_without_switches(
+    server: &crate::config::McpServerConfig,
+) -> Option<(Vec<String>, std::collections::BTreeMap<String, String>)> {
+    spaces_guards(server)?;
+    let crate::config::McpServerTransport::Stdio { args, env, .. } = &server.transport else {
+        return None;
+    };
+    let mut kept = Vec::with_capacity(args.len());
+    let mut index = 0;
+    while index < args.len() {
+        let pair = args[index] == "--permissions"
+            && args.get(index + 1).map(String::as_str) == Some("spaces:readonly");
+        if pair {
+            index += 2;
+            continue;
+        }
+        if args[index] != "--permissions=spaces:readonly" {
+            kept.push(args[index].clone());
+        }
+        index += 1;
+    }
+    let mut env = env.clone();
+    env.remove(SPACES_CREDENTIALS_ENV);
+    Some((kept, env))
 }
 
-/// A Cua Spaces server (`cua daemon mcp`), and whether each of its guards is
-/// on: read-only, and the user's agent sign-ins kept out.
 fn spaces_guards(server: &crate::config::McpServerConfig) -> Option<(bool, bool)> {
     let crate::config::McpServerTransport::Stdio { command, args, env } = &server.transport else {
         return None;
@@ -506,9 +485,6 @@ fn spaces_guards(server: &crate::config::McpServerConfig) -> Option<(bool, bool)
     Some((read_only, no_sign_ins))
 }
 
-/// What saving `next` over `stored` lets agents in Cua Spaces do that they
-/// could not before, as confirmation lines. A server that is off, or not a
-/// Spaces server, has every guard on.
 pub(crate) fn spaces_widening(
     stored: Option<&crate::config::McpServerConfig>,
     next: &crate::config::McpServerConfig,
@@ -520,8 +496,6 @@ pub(crate) fn spaces_widening(
             .and_then(spaces_guards)
             .unwrap_or((true, true))
     };
-    // A stored value comes back from Settings as a marker; it means the
-    // value is kept.
     let mut next = next.clone();
     if let (
         Some(McpServerTransport::Stdio {
@@ -550,15 +524,11 @@ pub(crate) fn spaces_widening(
     lines
 }
 
-/// Before an MCP server is saved: when the save gives agents in Cua Spaces
-/// more power (changes, or the user's agent sign-ins), ask natively first,
-/// as Desktop apps settings do. `stored_name` is the server being edited.
 pub(crate) async fn confirm_spaces_change<R: Runtime>(
     app: &AppHandle<R>,
     stored_name: Option<&str>,
     next: &crate::config::McpServerConfig,
 ) -> Result<(), String> {
-    // Only a Spaces server that runs can give more power.
     if !next.enabled || spaces_guards(next).is_none() {
         return Ok(());
     }
@@ -594,7 +564,6 @@ pub(crate) async fn confirm_spaces_change<R: Runtime>(
     }
 }
 
-/// `confirm_spaces_change` for turning a stored server on or off.
 pub(crate) async fn confirm_spaces_enabled<R: Runtime>(
     app: &AppHandle<R>,
     name: &str,
@@ -633,8 +602,6 @@ fn result_ok(result: &Value) -> (bool, Option<String>) {
     }
 }
 
-/// Starts the runtimes (each passes the bounded self-check), asks the
-/// desktop one for its health report, and runs the driver's doctor.
 pub(crate) async fn run_test(
     state: &Arc<CuaDriverState>,
     platform: Platform,
@@ -714,8 +681,6 @@ pub async fn cua_driver_test<R: Runtime>(
     run_test(&state, platform).await
 }
 
-/// The `desktop_apps` tool for the assistant, or `null` until the
-/// connector is ready.
 pub(crate) fn tool_spec(state: Option<&CuaDriverState>) -> Option<ToolMeta> {
     state.and_then(|state| super::policy::tool_meta(&state.settings()))
 }
@@ -761,7 +726,6 @@ mod tests {
         ))
     }
 
-    /// A data folder for one test; it goes away with the guard.
     struct DataDir {
         _dir: tempfile::TempDir,
     }
@@ -884,7 +848,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    #[allow(clippy::await_holding_lock)]
     async fn widening_asks_natively_and_narrowing_does_not() {
         let _env = crate::paths::data_dir_env_lock();
         let _data = DataDir::new();
@@ -944,7 +908,6 @@ mod tests {
         );
         assert_eq!(crate::config::read_config().unwrap().cua_driver, widened);
 
-        // Removing an app only narrows: no question.
         apply_settings(
             &state,
             start.clone(),
@@ -960,7 +923,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    #[allow(clippy::await_holding_lock)]
     async fn disabling_stops_every_runtime_and_forgets_grants() {
         let _env = crate::paths::data_dir_env_lock();
         let _data = DataDir::new();
@@ -1015,7 +978,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    #[allow(clippy::await_holding_lock)]
     async fn a_program_that_went_away_never_stops_a_save_or_the_off_switch() {
         let _env = crate::paths::data_dir_env_lock();
         let _data = DataDir::new();
@@ -1028,7 +991,6 @@ mod tests {
         let state = state(start.clone(), dir.path());
         let gone = Gone(SLACK);
 
-        // A new website next to the stale app saves, and asks only about the site.
         let asked = Arc::new(Mutex::new(Vec::new()));
         let with_site = CuaDriverConfig {
             sites: vec![crate::cua_driver::config::AllowedSite {
@@ -1050,7 +1012,6 @@ mod tests {
         .unwrap();
         assert_eq!(*asked.lock().unwrap(), vec!["Website: https://a.org"]);
 
-        // So does turning desktop apps off.
         let off = CuaDriverConfig {
             enabled: false,
             ..with_site
@@ -1069,7 +1030,6 @@ mod tests {
         assert_eq!(state.settings(), off);
         assert!(!crate::config::read_config().unwrap().cua_driver.enabled);
 
-        // A program that isn't there is still refused when it is new.
         let added = CuaDriverConfig {
             apps: vec![program("Slack", SLACK), program("Other", r"C:\o\other.exe")],
             ..off
@@ -1089,7 +1049,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    #[allow(clippy::await_holding_lock)]
     async fn one_settings_change_runs_at_a_time_and_asks_about_what_it_changes() {
         let _env = crate::paths::data_dir_env_lock();
         let _data = DataDir::new();
@@ -1113,7 +1073,6 @@ mod tests {
             ("Word", "com.microsoft.Word"),
         ]);
 
-        // The first change waits on its dialog; the second starts meanwhile.
         let events = Arc::new(Mutex::new(Vec::<String>::new()));
         let slow = {
             let events = events.clone();
@@ -1157,8 +1116,6 @@ mod tests {
         let (first, second) = tokio::join!(first, second);
         first.unwrap();
         second.unwrap();
-        // The second did not ask until the first had been answered and saved,
-        // and then asked only about its own addition.
         assert_eq!(
             *events.lock().unwrap(),
             vec![
@@ -1172,7 +1129,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    #[allow(clippy::await_holding_lock)]
     async fn it_asks_again_when_more_would_be_widened_by_the_time_of_the_answer() {
         let _env = crate::paths::data_dir_env_lock();
         let _data = DataDir::new();
@@ -1190,9 +1147,6 @@ mod tests {
             ],
             ..start
         };
-        // While the first question is open, Zotero is removed from the
-        // settings: saving `next` would now allow it again, which the
-        // question never listed.
         let asked = Arc::new(Mutex::new(Vec::<Vec<String>>::new()));
         let confirm = {
             let asked = asked.clone();
@@ -1286,7 +1240,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    #[allow(clippy::await_holding_lock)]
     async fn adding_an_app_or_site_forgets_allow_for_this_chat() {
         let _env = crate::paths::data_dir_env_lock();
         let _data = DataDir::new();
@@ -1298,7 +1252,6 @@ mod tests {
         };
         let state = state(start.clone(), dir.path());
         lock(&state.grants).grant("chat:1", "desktop:click");
-        // Saving without widening keeps the grant.
         apply_settings(
             &state,
             start.clone(),
@@ -1389,9 +1342,7 @@ mod tests {
             true,
         );
         let open = spaces(&["daemon", "mcp"], &[], true);
-        // Connecting with both guards on asks nothing.
         assert!(spaces_widening(None, &guarded).is_empty());
-        // Dropping either guard asks, whether added or edited.
         assert_eq!(
             spaces_widening(Some(&guarded), &open),
             vec![
@@ -1409,8 +1360,6 @@ mod tests {
             spaces_widening(Some(&guarded), &sign_ins_only),
             vec!["Use your Claude Code or Codex sign-in inside a Space".to_string()]
         );
-        // Narrowing, an unchanged open server and a stored value kept as a
-        // marker ask nothing.
         assert!(spaces_widening(Some(&open), &guarded).is_empty());
         assert!(spaces_widening(Some(&open), &open).is_empty());
         let marker = spaces(
@@ -1419,11 +1368,9 @@ mod tests {
             true,
         );
         assert!(spaces_widening(Some(&guarded), &marker).is_empty());
-        // A server that is off does nothing yet; turning it on is the change.
         let off = spaces(&["daemon", "mcp"], &[], false);
         assert!(spaces_widening(Some(&guarded), &off).is_empty());
         assert_eq!(spaces_widening(Some(&off), &open).len(), 2);
-        // Other servers are not Spaces.
         let other = crate::config::McpServerConfig {
             transport: crate::config::McpServerTransport::Stdio {
                 command: "npx".into(),

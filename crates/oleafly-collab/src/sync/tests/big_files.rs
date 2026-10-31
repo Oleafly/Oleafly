@@ -230,9 +230,6 @@ async fn typing_sent_on_reconnect_waits_out_a_long_backlog_without_reconnecting(
     until_text(&alice, &main, "abc mine").await;
 }
 
-// A slow computer can take longer than the quiet window to take in a large
-// change, and reads nothing from the server while it does. That time isn't
-// the server going quiet.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_change_that_takes_long_to_take_in_does_not_count_as_the_server_going_quiet() {
     let pair = two_people().await;

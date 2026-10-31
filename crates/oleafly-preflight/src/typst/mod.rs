@@ -1,5 +1,3 @@
-//! Typst preflight rules (`packages/preflight/src/typst*.ts`).
-
 pub mod references;
 pub mod refs_rules;
 pub mod scan;
@@ -16,7 +14,6 @@ pub use scan::{resolve_typst_path, scan_typst, typst_version_at_least, Kind, Typ
 pub use source_rules::{run_typst_source_rules, typst_metadata_findings};
 pub use submission_rules::{run_typst_submission_rules, typst_referenced_images};
 
-/// The Typst version the app assumes when the project does not pin one.
 pub const DEFAULT_TYPST_VERSION: &str = "0.15.1";
 pub const LARGE_IMAGE_BYTES: u64 = 5 * 1024 * 1024;
 
@@ -28,8 +25,6 @@ pub struct TypstSourceFile {
 
 static TYP_PATH: LazyLock<JsRegex> = LazyLock::new(|| JsRegex::std(r"(?i)\.typ$"));
 
-/// The project's Typst sources with content, the main file first; without a
-/// project, the given source alone.
 pub fn typst_project_sources(
     project: Option<&ProjectContext>,
     fallback: &str,
@@ -45,7 +40,6 @@ pub fn typst_project_sources(
         .iter()
         .filter(|file| file.content.is_some() && TYP_PATH.is_match(&file.path))
         .collect();
-    // A stable sort that moves the main file to the front.
     files.sort_by_key(|file| file.path != project.main_file);
     let sources: Vec<TypstSourceFile> = files
         .into_iter()

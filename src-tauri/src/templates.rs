@@ -1,11 +1,3 @@
-//! On-disk template gallery.
-//!
-//! Templates ship as bundled resource folders under `resources/templates/<id>/`,
-//! each with a `template.json` manifest, the source files, an optional
-//! `preview.png`, and an optional `LICENSE`. Manifests, validation, listing
-//! and copying live in `oleafly_core::templates`, shared with `oleafly new`;
-//! this module finds the app's template folders and serves the commands.
-
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
@@ -16,7 +8,6 @@ pub(crate) use oleafly_core::templates::{
 use oleafly_core::templates::{list_templates_in_roots, preview_file, sort_templates};
 pub use oleafly_core::templates::{TemplateLicense, TemplateManifest, TemplateRequires};
 
-/// The gallery-facing view, sent to the UI by `list_templates`.
 #[derive(Serialize)]
 pub struct TemplateInfo {
     pub id: String,
@@ -34,13 +25,10 @@ pub struct TemplateInfo {
     pub has_preview: bool,
     pub assets_ready: bool,
     pub order: i64,
-    /// "bundled" | "pack" | "custom"
     pub source: String,
     pub tex_flavor: Option<String>,
 }
 
-/// The templates root. Prefers the bundled resource dir, falling back to the
-/// in-repo path for `tauri dev` and tests.
 pub fn templates_root(app: &AppHandle) -> Result<PathBuf, String> {
     if let Ok(p) = app
         .path()
@@ -57,15 +45,12 @@ pub fn templates_root(app: &AppHandle) -> Result<PathBuf, String> {
     Err("templates directory not found".to_string())
 }
 
-/// The in-repo templates dir (compile-time path). Used as a dev/test fallback.
 fn repo_templates_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("resources")
         .join("templates")
 }
 
-/// All template roots in precedence order: bundled, then downloaded pack dirs,
-/// then user-made custom templates. First id wins on collision.
 pub fn template_roots(app: &AppHandle) -> Vec<(PathBuf, &'static str)> {
     let mut roots: Vec<(PathBuf, &'static str)> = Vec::new();
     if let Ok(bundled) = templates_root(app) {
@@ -89,8 +74,6 @@ pub fn template_roots(app: &AppHandle) -> Vec<(PathBuf, &'static str)> {
     roots
 }
 
-/// A single template's directory, guarding the id so it can't escape a root.
-/// Resolves through the same precedence chain as the listing.
 pub fn template_dir(app: &AppHandle, id: &str) -> Result<PathBuf, String> {
     if !is_valid_id(id) {
         return Err(format!("illegal template id: {id}"));
@@ -181,7 +164,6 @@ fn is_safe_custom_file(name: &str) -> bool {
             .any(|seg| seg.is_empty() || seg == "." || seg == "..")
 }
 
-/// The testable core: writes into `<custom_root>/<slug>` via a staging dir.
 fn save_custom_template_at(
     custom_root: &Path,
     slug: &str,
@@ -267,16 +249,12 @@ pub(crate) fn custom_templates_root() -> Result<PathBuf, String> {
     Ok(crate::paths::templates_data_root()?.join("custom"))
 }
 
-/// `shipped_template_ids` off the async runtime: listing reads every template
-/// folder on disk.
 pub(crate) async fn shipped_template_ids_off_thread(app: AppHandle) -> Result<Vec<String>, String> {
     tauri::async_runtime::spawn_blocking(move || shipped_template_ids(&app))
         .await
         .map_err(|error| format!("failed to list templates: {error}"))
 }
 
-/// Ids of bundled and downloaded templates. They stay reserved so a custom
-/// template can never shadow, or be shadowed by, a shipped one.
 pub(crate) fn shipped_template_ids(app: &AppHandle) -> Vec<String> {
     list_templates_in_roots(&template_roots(app))
         .into_iter()
@@ -285,8 +263,6 @@ pub(crate) fn shipped_template_ids(app: &AppHandle) -> Vec<String> {
         .collect()
 }
 
-/// The pre-rendered page-1 preview as a `data:` URI, or `None` if absent. Called
-/// lazily per card so the gallery list stays light.
 #[tauri::command]
 pub async fn template_preview(
     app: AppHandle,
@@ -313,9 +289,6 @@ fn preview_data_uri(dir: &Path) -> Result<Option<String>, String> {
     )))
 }
 
-/// Copy a template's source files into `dest` (a fresh, existing project dir),
-/// skipping gallery metadata. Returns the manifest so the caller can seed
-/// project.json.
 pub fn instantiate(app: &AppHandle, id: &str, dest: &Path) -> Result<TemplateManifest, String> {
     instantiate_from(&template_dir(app, id)?, dest)
 }
@@ -377,9 +350,7 @@ mod tests {
             content: "\\documentclass{article}".into(),
             content_base64: None,
         }];
-        // slug guard
         assert!(super::save_custom_template_at(&root, "../x", manifest, &files, &[]).is_err());
-        // reserved id
         assert!(super::save_custom_template_at(
             &root,
             "my-note",
@@ -388,17 +359,12 @@ mod tests {
             &["my-note".into()]
         )
         .is_err());
-        // manifest id mismatch
         assert!(super::save_custom_template_at(&root, "other", manifest, &files, &[]).is_err());
-        // missing main doc
         assert!(super::save_custom_template_at(&root, "my-note", manifest, &[], &[]).is_err());
-        // happy path
         super::save_custom_template_at(&root, "my-note", manifest, &files, &[]).unwrap();
         assert!(root.join("my-note/template.json").is_file());
         assert!(root.join("my-note/main.tex").is_file());
-        // duplicate
         assert!(super::save_custom_template_at(&root, "my-note", manifest, &files, &[]).is_err());
-        // no staging leftovers
         assert!(!root.join(".staging-my-note").exists());
         let _ = std::fs::remove_dir_all(&root);
     }

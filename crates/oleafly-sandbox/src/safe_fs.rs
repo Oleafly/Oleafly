@@ -11,8 +11,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(any(windows, test))]
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-/// Whether `metadata` (from `symlink_metadata`) describes a link of any kind:
-/// a symbolic link, a junction or another reparse point.
 pub(crate) fn is_link(metadata: &Metadata) -> bool {
     if metadata.file_type().is_symlink() {
         return true;
@@ -29,7 +27,6 @@ pub(crate) fn is_link(metadata: &Metadata) -> bool {
     }
 }
 
-/// Whether `error` came from finding a link where a folder was needed.
 pub(crate) fn is_link_error(error: &io::Error) -> bool {
     error.kind() == io::ErrorKind::InvalidInput
 }
@@ -41,9 +38,6 @@ fn link_error(path: &Path) -> io::Error {
     )
 }
 
-/// Creates `relative` below `base` one folder at a time, without ever
-/// following a link: a link at any level is an error (see [`is_link_error`]),
-/// whether it was there already or appeared while the folder was made.
 pub(crate) fn create_folders_below(base: &Path, relative: &Path) -> io::Result<PathBuf> {
     let mut current = base.to_path_buf();
     for component in relative.components() {
@@ -80,9 +74,6 @@ pub(crate) fn create_folders_below(base: &Path, relative: &Path) -> io::Result<P
     Ok(current)
 }
 
-/// Writes `contents` as the file `path` without writing through a link that
-/// is there: the bytes go into a new file beside it (a new file is never an
-/// existing link), which then replaces whatever `path` was.
 #[cfg(any(windows, test))]
 pub(crate) fn replace_file(path: &Path, contents: &[u8]) -> io::Result<()> {
     use std::io::Write;
@@ -121,7 +112,6 @@ mod tests {
         let made = create_folders_below(base.path(), Path::new("AppData/Roaming")).unwrap();
         assert!(made.is_dir());
         assert_eq!(made, base.path().join("AppData").join("Roaming"));
-        // An existing folder is fine, and so is doing it twice.
         create_folders_below(base.path(), Path::new("AppData/Roaming")).unwrap();
     }
 
@@ -151,7 +141,6 @@ mod tests {
         let error = create_folders_below(base.path(), Path::new(".local/state")).unwrap_err();
         assert!(is_link_error(&error));
         assert!(!outside.path().join("state").exists());
-        // A link at the last level is refused too.
         std::os::unix::fs::symlink(outside.path(), base.path().join("tmp")).unwrap();
         assert!(is_link_error(
             &create_folders_below(base.path(), Path::new("tmp")).unwrap_err()
@@ -173,7 +162,6 @@ mod tests {
             .unwrap()
             .file_type()
             .is_symlink());
-        // No temporary file is left behind.
         let names: Vec<_> = std::fs::read_dir(folder.path())
             .unwrap()
             .flatten()

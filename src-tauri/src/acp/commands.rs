@@ -11,8 +11,6 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, State, Webview};
 use zeroize::Zeroizing;
 
-/// Runs store or file work off the main thread. These commands take the
-/// store's one connection lock, which every streamed event append takes too.
 async fn off_thread<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
@@ -145,7 +143,6 @@ async fn start_agent_bridges(
         crate::research_mcp::start(app, project_id.to_owned(), None),
     )
     .await?;
-    // 0.4.8 I: desktop apps through their own bridge, when they are on.
     let cua = crate::cua_driver::acp_bridge(project_id, &agent_label(runtime, agent_id)).await;
     Ok(Some((bridge, cua)))
 }
@@ -167,7 +164,6 @@ async fn keep_bridges(
     }
 }
 
-// 0.4.8 I: the agent's name labels its desktop apps session.
 fn agent_label(runtime: &AcpRuntime, agent_id: &str) -> String {
     runtime
         .agent_definition(agent_id)
@@ -175,7 +171,6 @@ fn agent_label(runtime: &AcpRuntime, agent_id: &str) -> String {
         .unwrap_or_else(|_| agent_id.to_string())
 }
 
-// 0.4.8 I: the research bridge, then desktop apps when present.
 fn agent_servers(
     bridge: &crate::research_mcp::ScopedResearchMcp,
     cua: Option<&crate::cua_driver::CuaBridge>,
@@ -185,8 +180,6 @@ fn agent_servers(
     servers
 }
 
-// 0.4.8 I: one resource per session id, so both bridges go in one tuple; a
-// second insert would drop the research bridge.
 async fn keep_agent_bridges(
     runtime: &AcpRuntime,
     session_id: &str,
@@ -235,9 +228,6 @@ pub async fn acp_reconnect(
     Ok(result)
 }
 
-/// Sends a message. A failure is a plain string when the message was not
-/// sent, or `{"delivered": true, "message": "…"}` when it reached the
-/// conversation and the turn then ended in an error (see `PromptFailure`).
 #[tauri::command]
 pub async fn acp_prompt(
     webview: Webview,
@@ -359,9 +349,6 @@ pub async fn acp_delegated_permission(
         .await
 }
 
-/// A page of a project's conversations. `before` and `before_id` are the
-/// update time and id of the last one shown; `before` alone still works, and
-/// then skips conversations that share its timestamp.
 #[tauri::command]
 pub async fn acp_sessions(
     runtime: State<'_, Arc<AcpRuntime>>,
@@ -414,8 +401,6 @@ pub async fn acp_events(
     .await
 }
 
-/// Tests an agent program without saving it: the chosen `path`, or the
-/// program Oleafly resolves today when `path` is `None`.
 #[tauri::command]
 pub async fn acp_check_agent(
     webview: Webview,
@@ -434,8 +419,6 @@ pub async fn acp_check_agent(
     runtime.check_agent(&agent_id, candidate).await
 }
 
-/// Opens a native file dialog for choosing an agent program and returns the
-/// chosen path, or `None` when the dialog was cancelled.
 #[tauri::command]
 pub async fn acp_pick_agent_program(
     webview: Webview,
@@ -465,7 +448,6 @@ pub async fn acp_pick_agent_program(
     Ok(picked.map(|path| path.to_string_lossy().into_owned()))
 }
 
-/// Saves (or clears with `None`) the program the user chose for an agent.
 #[tauri::command]
 pub async fn acp_set_agent_program(
     webview: Webview,
@@ -498,8 +480,6 @@ pub async fn acp_set_agent_program(
     runtime.agent_status(&agent_id, false).await
 }
 
-/// Writes a conversation as pretty JSON (`{ session, events }`) to `path`,
-/// an absolute path from a save dialog.
 #[tauri::command]
 pub async fn acp_session_export(
     runtime: State<'_, Arc<AcpRuntime>>,
@@ -521,7 +501,6 @@ pub async fn acp_session_export(
     Ok(())
 }
 
-/// Every stored event of a conversation, oldest first.
 #[tauri::command]
 pub async fn acp_session_events_all(
     runtime: State<'_, Arc<AcpRuntime>>,
@@ -535,9 +514,6 @@ pub async fn acp_session_events_all(
         .map_err(|e| e.to_string())?
 }
 
-// 0.4.8 D: preferences, options, usage, sign-in, steering, sessions, Hermes.
-
-/// The live session a window owns, after the usual project checks.
 async fn owned(
     webview: &Webview,
     runtime: &AcpRuntime,
@@ -592,8 +568,6 @@ pub async fn acp_set_agent_preferences(
         .await
 }
 
-/// Changes one remembered choice of an agent (`effort`, `mode` or
-/// `provider`) and keeps the rest as stored.
 #[tauri::command]
 pub async fn acp_set_agent_preference(
     webview: Webview,
@@ -774,7 +748,6 @@ pub async fn acp_session_delete(
     if record.task_id.is_some() {
         return Err("Delete research task conversations from the task.".into());
     }
-    // A live conversation may only be deleted from its own window.
     if let Err(error) = runtime.assert_owner(&session_id, owner.as_str()).await {
         if error != "This ACP session is disconnected." {
             return Err(error);
@@ -833,7 +806,6 @@ pub async fn acp_fork(
     let record = check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, owner.as_str()).await?;
     let _startup = runtime.begin_startup()?;
-    // 0.4.8 I: a fork is a new session with its own desktop apps bridge.
     let bridges = start_agent_bridges(app, &runtime, &project_id, &record.agent_id).await?;
     let result = runtime
         .inner()

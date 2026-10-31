@@ -1,15 +1,10 @@
-//! The app's Harper profile (`src/lib/proofreading/lint-profile.ts`), its
-//! built-in words (`ignored.ts`) and limits (`proofreading.ts`).
-
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
 
 use oleafly_preflight::jsre::JsRegex;
 
-/// The longest prose the proofreader checks (`PROOFREADING_LIMITS.grammarCharacters`).
 pub const GRAMMAR_CHARACTER_LIMIT: usize = 500_000;
 
-/// Rules the academic profile turns off (`ACADEMIC_PROFILE_RULES`).
 pub const ACADEMIC_PROFILE_RULES: &[&str] = &[
     "Spaces",
     "NoFrenchSpaces",
@@ -42,7 +37,6 @@ pub const ACADEMIC_PROFILE_RULES: &[&str] = &[
 /// Rules that panic in harper-core 2.10.0 and therefore stay off.
 pub const HARPER_PANICKING_RULES: &[&str] = &["BoringWords"];
 
-/// Words every check accepts (`BUILTIN_PROOFREADING_WORDS`).
 pub const BUILTIN_PROOFREADING_WORDS: &[&str] = &[
     "api",
     "argv",
@@ -83,7 +77,6 @@ pub const BUILTIN_PROOFREADING_WORDS: &[&str] = &[
     "xetex",
 ];
 
-/// English dialects Harper checks against.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Dialect {
     #[default]
@@ -123,15 +116,10 @@ impl Dialect {
 static LINT_RULE_NAME: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"\A[A-Za-z][0-9A-Za-z_]{0,63}\z"));
 
-/// `isLintRuleName`: `/^[A-Za-z]\w{0,63}$/u`.
 pub fn is_lint_rule_name(value: &str) -> bool {
     LINT_RULE_NAME.is_match(value)
 }
 
-/// `buildLintConfig`: explicit rule values layered over the curated
-/// defaults. The academic rules go off, then the user's choices apply, and
-/// the panicking rules always end off. Names Harper does not know are
-/// dropped when `known` is given.
 pub fn build_lint_config(
     user_disabled: &[&str],
     user_enabled: &[&str],

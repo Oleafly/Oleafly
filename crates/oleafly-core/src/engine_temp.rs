@@ -228,7 +228,6 @@ pub fn short_path_name(path: &Path) -> Option<PathBuf> {
 
     let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
     let mut output = vec![0u16; 260];
-    // A second try is enough unless the folder is renamed in between.
     for _ in 0..3 {
         let capacity = u32::try_from(output.len()).ok()?;
         let written = unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), capacity) };

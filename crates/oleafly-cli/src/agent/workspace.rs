@@ -1,11 +1,3 @@
-//! The files a headless run works on. Every path is checked (relative, no
-//! `..`, no drive letters, streams or reserved Windows names, nothing under
-//! `.git`, `.oleafly` or `.private`) and every step is opened without
-//! following links, so a run never reads or writes outside its folder.
-//!
-//! Review mode works on a copy of the project and saves what changed in a
-//! review folder (`changes/`, `changes.json`, `changes.patch`); apply mode
-//! writes into the project and records what it touched.
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -22,7 +14,6 @@ use sha2::{Digest, Sha256};
 use super::policy::{RunPolicy, WriteMode};
 use crate::contract::{CliError, ErrorKind};
 
-/// Errors a tool returns to the model (the text is what it reads).
 #[derive(Debug)]
 pub enum ToolError {
     Path(String),
@@ -57,9 +48,7 @@ pub const STAGE_LIMITS: StageLimits = StageLimits {
     max_bytes: 2 << 30,
     max_file_bytes: 256 << 20,
 };
-/// The largest text file a run reads or writes.
 pub const MAX_TEXT_BYTES: u64 = 4 << 20;
-/// The most one read returns.
 pub const READ_WINDOW_BYTES: usize = 48 * 1024;
 const MAX_PATH_BYTES: usize = 1024;
 const MAX_MATCHES: usize = 200;
@@ -84,14 +73,12 @@ pub struct FileChange {
     pub kind: ChangeKind,
     pub before_sha256: Option<String>,
     pub after_sha256: Option<String>,
-    /// The new size (none for a deleted file).
     pub bytes: Option<u64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSet {
-    /// `read`, `review` or `apply`.
     pub mode: &'static str,
     pub review_dir: Option<PathBuf>,
     pub changes: Vec<FileChange>,
@@ -104,7 +91,6 @@ struct Baseline {
     size: u64,
 }
 
-/// `changes.json` in a review folder.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ReviewManifest {
@@ -122,14 +108,9 @@ pub struct AgentWorkspace {
     mode: WriteMode,
     run_id: String,
     baseline: BTreeMap<String, Baseline>,
-    /// Apply mode with commands: `baseline` holds the whole project as it
-    /// was at the start, so what commands changed is found by comparing.
     tracked: bool,
-    /// Apply mode: each touched path's content before the run (`None`: it
-    /// did not exist).
     journal: Mutex<BTreeMap<String, Option<String>>>,
     warnings: Vec<String>,
-    /// Review mode: files and folders the copy leaves out for their names.
     left_out: usize,
 }
 
@@ -163,8 +144,6 @@ fn kept_permissions(_existing: &cap_std::fs::Metadata) -> Option<cap_std::fs::Pe
     None
 }
 
-/// The permissions of a review's saved copy, for a file the project doesn't
-/// have yet (the copy keeps what the run's working file had).
 #[cfg(unix)]
 fn saved_permissions(saved: &Path) -> Option<cap_std::fs::Permissions> {
     std::fs::metadata(saved)
@@ -226,7 +205,6 @@ fn is_short_name_alias(component: &str) -> bool {
         && number.bytes().all(|byte| byte.is_ascii_digit())
 }
 
-/// Whether a path a tool names is acceptable, as the model wrote it.
 fn path_problem(value: &str) -> Option<&'static str> {
     if value.len() > MAX_PATH_BYTES {
         return Some("That path is too long.");
@@ -235,8 +213,6 @@ fn path_problem(value: &str) -> Option<&'static str> {
         return Some("Use a path relative to the project folder, with forward slashes, without .., drive letters or the .git and .oleafly folders.");
     }
     let components: Vec<&str> = value.split('/').collect();
-    // The shared rule for the folders Oleafly keeps for itself (`.git` in any
-    // folder and in any letter case or Unicode form, `.oleafly*`, `GIT~1`).
     match oleafly_core::portable::synced_path_problem(value) {
         Some(oleafly_core::portable::PortableProblem::ProtectedRoot) => {
             return Some("That folder is off limits.");
@@ -252,9 +228,6 @@ fn path_problem(value: &str) -> Option<&'static str> {
     }) {
         return Some("That folder is off limits.");
     }
-    // Folders a review copy leaves out (dependencies, build output, hidden
-    // folders) are out of reach in every mode, so a review never misses a
-    // change made there.
     if components[..components.len().saturating_sub(1)]
         .iter()
         .any(|folder| skipped_folder(folder))
@@ -266,17 +239,12 @@ fn path_problem(value: &str) -> Option<&'static str> {
     None
 }
 
-/// Names of folders (or, in a linked worktree, files) Oleafly keeps for
-/// itself: what [`path_problem`] refuses, without the Windows short names.
 fn is_protected_name(name: &str) -> bool {
     name.eq_ignore_ascii_case(".git")
         || name.eq_ignore_ascii_case(".private")
         || name.to_ascii_lowercase().starts_with(".oleafly")
 }
 
-/// The `.git`, `.private` and `.oleafly*` entries in `root` and a few levels
-/// below it (submodules and nested repositories), which a run's commands may
-/// read but not change. The file tools refuse the same names at any depth.
 pub(crate) fn protected_folders(root: &Path) -> Vec<PathBuf> {
     const MAX_DEPTH: usize = 3;
     const MAX_FOLDERS: usize = 2_000;
@@ -320,7 +288,6 @@ fn path_error(value: &str) -> ToolError {
     ))
 }
 
-/// A walked file: its project-relative path (with `/`), absolute path and size.
 struct WalkedFile {
     relative: String,
     absolute: PathBuf,
@@ -332,7 +299,6 @@ struct WalkCounts {
     links: usize,
     cloud: usize,
     large: usize,
-    /// Files and folders left out for a name a run can't use.
     unnamed: usize,
     unnamed_examples: Vec<String>,
 }
@@ -358,8 +324,6 @@ fn skipped_folder(name: &str) -> bool {
         || name.eq_ignore_ascii_case(".private")
 }
 
-/// The names in `directory` with whether each is a folder, sorted. Links and
-/// the folders a run leaves out are skipped.
 fn listed_children(directory: &Dir) -> Result<Vec<(String, bool)>, ToolError> {
     let mut children: Vec<(String, bool)> = Vec::new();
     for entry in directory
@@ -385,9 +349,6 @@ fn listed_children(directory: &Dir) -> Result<Vec<(String, bool)>, ToolError> {
     Ok(children)
 }
 
-/// Breadth-first walk of `root`'s files, skipping links, cloud-only files,
-/// generated and hidden folders and files over `max_file_bytes`. `visit`
-/// returns `false` to stop.
 fn walk(
     root: &Path,
     max_file_bytes: u64,
@@ -430,7 +391,6 @@ fn walk(
     Ok(())
 }
 
-/// Handles one entry of a walked folder. `false` stops the walk.
 fn walk_entry(
     entry: &std::fs::DirEntry,
     relative: &str,
@@ -462,7 +422,6 @@ fn walk_entry(
         if path_problem(&child).is_none() {
             queue.push_back(child);
         } else {
-            // The whole folder is out, so count it once.
             counts.note_unnamed(&child);
         }
     } else if metadata.is_file() {
@@ -471,8 +430,6 @@ fn walk_entry(
     Ok(true)
 }
 
-/// Hands one walked file to `visit`, unless it is cloud-only, too large or
-/// has a name a run can't use. `false` stops the walk.
 fn walk_file(
     entry: &std::fs::DirEntry,
     metadata: &std::fs::Metadata,
@@ -529,15 +486,12 @@ fn io_error(error: impl std::fmt::Display) -> CliError {
     CliError::new(ErrorKind::Io, "io.failed", error.to_string())
 }
 
-/// What copying the project into the review folder produced.
 struct Staged {
     baseline: BTreeMap<String, Baseline>,
     warnings: Vec<String>,
-    /// Files and folders left out of the copy for their names.
     left_out: usize,
 }
 
-/// Every walkable file of `root` with its sha256. `None` past `limits`.
 fn snapshot(
     root: &Path,
     limits: &StageLimits,
@@ -566,7 +520,6 @@ fn snapshot(
     Ok(within.then_some(current))
 }
 
-/// What changed between two snapshots, sorted by path.
 fn compare(
     before: &BTreeMap<String, Baseline>,
     now: &BTreeMap<String, Baseline>,
@@ -603,7 +556,6 @@ fn compare(
     changes
 }
 
-/// Copies the project into `work` and returns the copy's baseline.
 fn stage(
     project: &Path,
     work: &Path,
@@ -702,8 +654,6 @@ fn real_folder(path: &Path) -> Result<PathBuf, CliError> {
 }
 
 impl AgentWorkspace {
-    /// Opens the run's folder: the project itself, or (review mode) a copy
-    /// of it inside the review folder.
     pub fn open(
         project: &Path,
         policy: &RunPolicy,
@@ -720,8 +670,6 @@ impl AgentWorkspace {
         };
         let mut tracked = false;
         let (work_root, baseline, warnings, left_out) = match &policy.mode {
-            // Commands change files no tool records, so the project is
-            // hashed now and compared at the end.
             WriteMode::Apply if policy.allow.commands => match snapshot(&project, limits, cancel)? {
                 Some(baseline) => {
                     tracked = true;
@@ -780,19 +728,14 @@ impl AgentWorkspace {
         &self.project
     }
 
-    /// Warnings from staging (links, cloud-only files and unusable names
-    /// left out).
     pub fn warnings(&self) -> &[String] {
         &self.warnings
     }
 
-    /// How many files and folders the review copy leaves out for their
-    /// names (a colon, a reserved Windows name, a trailing dot).
     pub fn left_out(&self) -> usize {
         self.left_out
     }
 
-    /// The path, if a tool may use it.
     pub fn checked(&self, value: &str) -> Result<PathBuf, ToolError> {
         if path_problem(value).is_some() {
             return Err(path_error(value));
@@ -807,8 +750,6 @@ impl AgentWorkspace {
         }
     }
 
-    /// The folder holding `path` (opened step by step without following
-    /// links) and the file name.
     fn parent(&self, path: &Path, create: bool) -> Result<(Dir, PathBuf), ToolError> {
         let mut directory = self
             .directory
@@ -887,8 +828,6 @@ impl AgentWorkspace {
             .map_err(|_| ToolError::NotText(format!("{value} isn't UTF-8 text.")))
     }
 
-    /// Up to `limit` bytes of a text file from `offset`, with `nextOffset`
-    /// when there is more.
     pub fn read_text(&self, path: &str, offset: usize, limit: usize) -> Result<Value, ToolError> {
         let content = self.read_string(path)?;
         if offset > content.len() || !content.is_char_boundary(offset) {
@@ -912,8 +851,6 @@ impl AgentWorkspace {
         }))
     }
 
-    /// The folder `start` names in this project, opened without following
-    /// links; the project folder itself for `None`.
     fn open_listed_folder(&self, path: &str, start: Option<&Path>) -> Result<Dir, ToolError> {
         let mut directory = self
             .directory
@@ -931,7 +868,6 @@ impl AgentWorkspace {
         Ok(directory)
     }
 
-    /// Files and folders under `path`, up to `max_depth` (1–5) levels.
     pub fn list(&self, path: &str, max_depth: usize) -> Result<Value, ToolError> {
         let start = if path.is_empty() || path == "." {
             None
@@ -970,8 +906,6 @@ impl AgentWorkspace {
         Ok(json!({"path": path, "entries": entries, "truncated": truncated}))
     }
 
-    /// Lines that contain `query` (or match it as a regular expression),
-    /// in the text files under `path`; at most 200.
     pub fn search(&self, query: &str, regex: bool, path: &str) -> Result<Value, ToolError> {
         if query.is_empty() || query.len() > 1024 {
             return Err(ToolError::Path(
@@ -1045,7 +979,6 @@ impl AgentWorkspace {
         }))
     }
 
-    /// Records a path's content before its first change (apply mode).
     fn journal(&self, value: &str, path: &Path) {
         if self.mode != WriteMode::Apply {
             return;
@@ -1058,7 +991,6 @@ impl AgentWorkspace {
         journal.insert(value.to_owned(), before);
     }
 
-    /// Writes a text file in one step (a staging file renamed over it).
     pub fn write_text(&self, path: &str, content: &str) -> Result<Value, ToolError> {
         self.writable()?;
         if content.len() as u64 > MAX_TEXT_BYTES {
@@ -1107,8 +1039,6 @@ impl AgentWorkspace {
         Ok(json!({"path": path, "bytes": content.len(), "created": !existed}))
     }
 
-    /// Replaces `old` with `new` in a text file: exactly once, or every time
-    /// with `replace_all`.
     pub fn edit_text(
         &self,
         path: &str,
@@ -1157,8 +1087,6 @@ impl AgentWorkspace {
         Ok(json!({"path": path, "deleted": true}))
     }
 
-    /// Ends the run: what changed, and (review mode) the saved review. The
-    /// working copy is deleted unless `keep_workspace`.
     pub fn finish(self, keep_workspace: bool) -> Result<ChangeSet, CliError> {
         let mut set = self.collect()?;
         let review = matches!(self.mode, WriteMode::Review { .. });
@@ -1166,8 +1094,6 @@ impl AgentWorkspace {
             let work_root = self.work_root.clone();
             // The folder handle closes first (Windows can't delete an open folder).
             drop(self);
-            // The review is saved by now, so a copy that can't be deleted
-            // (a scanner holds a build output) must not lose the report.
             if let Err(error) = remove_working_copy(&work_root) {
                 set.warnings.push(format!(
                     "The working copy could not be deleted ({error}). Delete {} when nothing uses it.",
@@ -1178,9 +1104,6 @@ impl AgentWorkspace {
         Ok(set)
     }
 
-    /// [`Self::finish`] for a workspace the run's tools share: waits up to
-    /// `wait` for the last tool to let go. A tool still running then (a long
-    /// search, say) keeps the working copy in the review folder.
     pub fn finish_shared(
         workspace: Arc<Self>,
         keep_workspace: bool,
@@ -1207,7 +1130,6 @@ impl AgentWorkspace {
         }
     }
 
-    /// What changed, with the review saved (review mode).
     fn collect(&self) -> Result<ChangeSet, CliError> {
         match &self.mode {
             WriteMode::ReadOnly => Ok(ChangeSet {
@@ -1305,8 +1227,6 @@ impl AgentWorkspace {
         })
     }
 
-    /// One file's part of `changes.patch`: a unified diff, or a note for
-    /// binary and large files.
     fn patch_for(&self, change: &FileChange) -> String {
         let text = |path: &Path| -> Option<String> {
             let metadata = std::fs::metadata(path).ok()?;
@@ -1377,8 +1297,6 @@ fn conflict(paths: &[String]) -> CliError {
         .details(json!({"paths": paths}))
 }
 
-/// The project-side sha256 of `path`, `None` when it doesn't exist. A link
-/// or a folder in the way is an error.
 fn project_sha(project: &Path, path: &str) -> Result<Option<String>, CliError> {
     let target = project.join(path);
     match std::fs::symlink_metadata(&target) {
@@ -1395,9 +1313,6 @@ fn project_sha(project: &Path, path: &str) -> Result<Option<String>, CliError> {
     }
 }
 
-/// Applies a saved review to the project, with the app's conflict rule: a
-/// file that changed since the review stops the whole apply before
-/// anything is written. `dry_run` checks only.
 pub fn apply_review(
     review_dir: &Path,
     project: &Path,
@@ -1418,7 +1333,6 @@ pub fn apply_review(
     Ok(manifest.changes)
 }
 
-/// The review's `changes.json`, if the folder holds one.
 fn read_review_manifest(review_dir: &Path) -> Result<ReviewManifest, CliError> {
     let manifest_path = review_dir.join("changes.json");
     let metadata = std::fs::symlink_metadata(&manifest_path).map_err(|_| not_a_review())?;
@@ -1429,7 +1343,6 @@ fn read_review_manifest(review_dir: &Path) -> Result<ReviewManifest, CliError> {
         .map_err(|_| not_a_review())
 }
 
-/// The review must be of this project and name each usable path once.
 fn check_review_manifest(manifest: &ReviewManifest, project: &Path) -> Result<(), CliError> {
     if manifest.version != REVIEW_VERSION
         || dunce::canonicalize(&manifest.project).ok().as_deref() != Some(project)
@@ -1445,8 +1358,6 @@ fn check_review_manifest(manifest: &ReviewManifest, project: &Path) -> Result<()
     Ok(())
 }
 
-/// The changes still to apply. A file that changed since the review is a
-/// conflict.
 fn pending_changes(manifest: &ReviewManifest, project: &Path) -> Result<Vec<FileChange>, CliError> {
     let mut conflicts = Vec::new();
     let mut pending = Vec::new();
@@ -1470,7 +1381,6 @@ fn pending_changes(manifest: &ReviewManifest, project: &Path) -> Result<Vec<File
     Ok(pending)
 }
 
-/// Every new file must be the one the review saved.
 fn verify_saved_copies(review_dir: &Path, pending: &[FileChange]) -> Result<(), CliError> {
     for change in pending {
         if change.kind == ChangeKind::Deleted {
@@ -1491,7 +1401,6 @@ fn verify_saved_copies(review_dir: &Path, pending: &[FileChange]) -> Result<(), 
     Ok(())
 }
 
-/// Writes or deletes one file of a review in the project.
 fn apply_change(directory: &Dir, review_dir: &Path, change: &FileChange) -> Result<(), CliError> {
     let path = Path::new(&change.path);
     let components: Vec<_> = path.components().collect();
@@ -1665,7 +1574,6 @@ mod tests {
                 "vendor/lib/.git"
             ]
         );
-        // A folder with nothing to protect gives nothing.
         let plain = project_with(&[("main.tex", "a")]);
         assert!(protected_folders(plain.path()).is_empty());
     }
@@ -1760,7 +1668,6 @@ mod tests {
             "private"
         );
         assert!(!outside.path().join("new.txt").exists());
-        // Review mode leaves links out of the copy.
         let reviews = tempfile::tempdir().unwrap();
         let review = AgentWorkspace::open(
             project.path(),
@@ -1993,7 +1900,6 @@ mod tests {
             "new\n"
         );
         assert!(!project.path().join("old.tex").exists());
-        // Applying twice is harmless.
         assert!(apply_review(&dir, project.path(), false).is_ok());
     }
 
@@ -2109,7 +2015,6 @@ mod tests {
             ("PROGRA~1/more/deep.csv", "2\n"),
             ("backup~2.tex", "b\n"),
         ]);
-        // The folder counts once, with everything under it.
         assert_eq!(ws.left_out(), 2);
         let warning = ws
             .warnings()
@@ -2168,7 +2073,7 @@ mod tests {
         )
         .unwrap();
         if can_delete_anyway {
-            return; // running as root: permissions don't stop a delete
+            return;
         }
 
         let (_project, _reviews, ws) = review_workspace_with(&[("main.tex", "a\n")]);

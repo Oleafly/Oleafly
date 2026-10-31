@@ -31,7 +31,6 @@ function modelLabel(control: ModelControl): string | null {
   return control.models.find((model) => model.modelId === control.current)?.name ?? control.current;
 }
 
-/** The arrow keys, Home, End and typing a name move focus between the options of a listbox. */
 function moveOptionFocus(event: KeyboardEvent<HTMLDivElement>): void {
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   const options = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]')];
@@ -47,7 +46,6 @@ function moveOptionFocus(event: KeyboardEvent<HTMLDivElement>): void {
 
 type SetOption = (option: AcpConfigOption, value: AcpConfigValue) => void;
 
-/** An option that belongs with the model: a switch, or a select of its own. */
 function ModelConfigRow({
   option,
   idPrefix,
@@ -86,7 +84,6 @@ function ModelConfigRow({
   return null;
 }
 
-/** The model picker, or the model's name when the agent gives no list to pick from. */
 function ModelPicker({
   model,
   modelConfig,
@@ -97,7 +94,6 @@ function ModelPicker({
 }: Readonly<{
   model: ModelControl | null;
   modelConfig: AcpConfigOption[];
-  /** The model the agent reports without a list. */
   modelId: string | null;
   locked: boolean;
   onChoose(model: ModelControl, id: string): void;
@@ -107,7 +103,6 @@ function ModelPicker({
   const idPrefix = useId();
   const choices = modelChoices(model);
   if (!model || choices.length === 0) {
-    // Without a list to pick from, name the model the agent runs.
     return (
       <span data-testid="acp-model-label" className="hidden max-w-40 truncate px-1 text-[0.6875rem] text-muted-foreground sm:inline">
         {(model ? modelLabel(model) : null) ?? modelId ?? t(($) => $.ai.acp.modelManaged)}
@@ -116,7 +111,6 @@ function ModelPicker({
   }
   const current = currentModelId(model);
   const headings = groupHeadings(choices);
-  // Only one option is in the tab order; the arrow keys move between them.
   const entryChoice = entryChoiceId(choices, current);
   return (
     <Popover
@@ -136,7 +130,6 @@ function ModelPicker({
       <div
         role="listbox"
         aria-label={t(($) => $.ai.acp.agentModel)}
-        // Focusable so a click on a heading keeps the arrow keys working.
         tabIndex={-1}
         className="flex flex-col"
         onKeyDown={moveOptionFocus}
@@ -178,7 +171,6 @@ function ModelPicker({
   );
 }
 
-/** The mode picker: the config option's choices, or the legacy modes. */
 function ModeSelect({
   mode,
   locked,
@@ -205,7 +197,6 @@ function ModeSelect({
   );
 }
 
-/** One of the agent's other options in the More menu: a checkbox, or a radio group. */
 function MoreOptionItem({ option, setOption }: Readonly<{ option: AcpConfigOption; setOption: SetOption }>) {
   if (option.kind.type === "boolean") {
     return (
@@ -234,7 +225,6 @@ function MoreOptionItem({ option, setOption }: Readonly<{ option: AcpConfigOptio
   return null;
 }
 
-/** The More menu: every option that is not the model, effort or mode. */
 function MoreOptions({
   options,
   locked,
@@ -270,7 +260,6 @@ function MoreOptions({
   );
 }
 
-/** Model, effort, mode, Fast and the rest of the agent's options, plus usage. */
 export function AcpControls({
   projectId,
   session,
@@ -279,7 +268,6 @@ export function AcpControls({
 }: Readonly<{ projectId: string; session: AcpSession; disabled: boolean; onError(message: string | null): void }>) {
   const { t } = useTranslation(["common", "ai"]);
   const [refreshing, setRefreshing] = useState(false);
-  // One change at a time: the controls wait until the agent has answered.
   const [pending, setPending] = useState(false);
   const groups = groupControls(session.controls);
   const locked = disabled || pending || session.status !== "ready";

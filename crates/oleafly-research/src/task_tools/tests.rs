@@ -163,8 +163,6 @@ async fn cancelling_a_command_waits_for_its_process_group_and_output_readers() {
         .await
     });
     let pid_path = isolated.path().join("analysis/child.pid");
-    // The shell's `>` creates child.pid before printf writes to it, so wait
-    // for the pid itself, not for the file.
     let pid = crate::test_support::read_until(
         &pid_path,
         crate::test_support::CHILD_PATIENCE,
@@ -280,8 +278,6 @@ _exit(0);
         .unwrap()
         .parse::<i32>()
         .unwrap();
-    // The grandchild writes its marker only once released, and release is
-    // created only after the command was reported finished.
     std::fs::write(analysis.join("release"), "").unwrap();
     let gone = tokio::time::timeout(crate::test_support::CHILD_PATIENCE, async {
         while unsafe { libc::kill(pid, 0) } == 0 {
@@ -599,10 +595,6 @@ async fn cancelled_and_invalid_commands_do_not_create_task_files() {
     assert!(std::fs::read_dir(root.path()).unwrap().next().is_none());
 }
 
-// 0.4.8: the task tools both runtimes share (runs, the ledger, results
-// tables, todos and notes).
-
-/// A task host for tools that need none of its services.
 struct NoModelHost;
 
 impl crate::builtin::TaskHost for NoModelHost {
@@ -630,7 +622,6 @@ impl crate::builtin::TaskHost for NoModelHost {
     }
 }
 
-/// A task the store is running, and the binding its tools use.
 struct ToolTask {
     temp: tempfile::TempDir,
     store: TaskStore,
@@ -700,8 +691,6 @@ impl ToolTask {
             .unwrap_or_else(|| panic!("{name} is not a task tool"))
     }
 
-    /// Records a run of the task; a finished one gets exit code 0 and
-    /// `metrics`.
     fn add_run(&self, run_id: &str, command: &str, state: RunState, metrics: &[(&str, f64)]) {
         self.store
             .insert_run(&RunRecord {
@@ -801,7 +790,6 @@ async fn ledger_append_fills_the_command_and_metrics_from_the_run() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, "r001");
     assert_eq!(rows[0].command, "python train.py --dropout 0.3");
-    // What the agent passed wins; the run's recorded metrics fill in the rest.
     assert_eq!(
         rows[0].metrics,
         BTreeMap::from([("acc".to_owned(), 0.92), ("loss".to_owned(), 0.25)])
@@ -817,7 +805,6 @@ async fn ledger_append_fills_the_command_and_metrics_from_the_run() {
     );
     assert!(rows[0].time.ends_with('Z'), "{}", rows[0].time);
 
-    // A finding without a run gets its own id and no command.
     let note = fixture
         .call(
             "ledger_append",
@@ -985,7 +972,6 @@ async fn todos_are_checked_item_by_item_and_saved_for_the_running_task() {
             message
         );
     }
-    // A refused list leaves the saved one as it was.
     assert_eq!(
         fixture.call("get_todos", json!({})).await.unwrap()["todos"],
         todos
@@ -1176,7 +1162,6 @@ async fn wait_runs_returns_finished_runs_at_once_and_says_when_none_are_in_fligh
     assert_eq!(first["finished"][0]["runId"], "r001");
     assert_eq!(first["finished"][0]["metrics"]["acc"], 0.9);
     assert_eq!(first["timedOut"], false);
-    // Each finished run is reported once.
     let none = fixture
         .call("wait_runs", json!({"timeout": 5}))
         .await
@@ -1244,7 +1229,6 @@ async fn run_tools_name_the_runs_a_task_does_not_have() {
         fixture.call("cancel_run", json!({})).await.unwrap_err(),
         "Missing required argument: id."
     );
-    // A run that already ended has nothing left to stop.
     assert_eq!(
         fixture
             .call("cancel_run", json!({"id": "r001"}))
@@ -1283,7 +1267,6 @@ async fn tools_that_need_the_host_say_what_is_missing() {
             .unwrap_err(),
         "Missing required argument: query."
     );
-    // Helpers and the workspace tools are not task tools.
     for name in [super::extra::SPAWN_AGENT, "read_file", "run_command"] {
         assert!(
             call_task_tool(name, json!({}), &fixture.binding)
@@ -1344,8 +1327,6 @@ async fn runs_wait_for_the_plan_for_every_agent() {
         ..ResearchBrief::default()
     };
     let fixture = tool_task(brief);
-    // A CLI agent reaches `start_run` through the bridge, not through the
-    // built-in agent's own plan check.
     let refused = fixture
         .call(
             "start_run",
@@ -1392,8 +1373,6 @@ fn write_grants_cover_folders_not_every_file() {
     for file in ["main.tex", "src/a.py", "src/sub/b.py", "analysis/c.py"] {
         std::fs::write(root.join(file), "x").unwrap();
     }
-    // The allowed paths of a copied project: every file and every folder
-    // that holds one, with the output folders.
     let allowed: Vec<String> = [
         "main.tex",
         "src",
@@ -1407,7 +1386,6 @@ fn write_grants_cover_folders_not_every_file() {
     .map(String::from)
     .to_vec();
     let writable = task_writable_paths(&root, &allowed).unwrap();
-    // `src` covers `src/a.py` and `src/sub`; `analysis` covers its file.
     assert_eq!(
         writable,
         vec![
@@ -1429,12 +1407,10 @@ fn a_deleted_file_is_not_brought_back_as_a_folder() {
     let allowed: Vec<String> = ["table.csv", "data/raw", "data/raw/a.csv", "results"]
         .map(String::from)
         .to_vec();
-    // The task deleted a file and a whole folder of its copy.
     std::fs::remove_file(root.join("table.csv")).unwrap();
     std::fs::remove_dir_all(root.join("data")).unwrap();
 
     let writable = task_writable_paths(&root, &allowed).unwrap();
-    // The deleted file stays gone; the folders the task writes in return.
     assert!(!root.join("table.csv").exists());
     assert!(root.join("data/raw").is_dir());
     assert!(root.join("results").is_dir());
@@ -1447,7 +1423,6 @@ async fn an_unreadable_ledger_is_never_replaced_by_a_fresh_one() {
     let fixture = tool_task(ResearchBrief::default());
     let path = fixture.record_file("ledger.tsv");
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    // Not text, as a command could leave it.
     let damaged: Vec<u8> = [LEDGER_HEADER.as_bytes(), b"\nr001\t\xff\xfe\n"].concat();
     std::fs::write(&path, &damaged).unwrap();
 
@@ -1477,8 +1452,6 @@ async fn a_ledger_row_keeps_a_short_command_and_a_new_note_follows_the_last_one(
     assert!(kept.chars().count() <= 401, "{}", kept.chars().count());
     assert!(kept.starts_with("python train.py --flag") && kept.ends_with('…'));
 
-    // The row read may be only the newest of a long ledger: ids come from the
-    // highest note, not from how many rows were read.
     let path = fixture.record_file("ledger.tsv");
     let mut text = std::fs::read_to_string(&path).unwrap();
     text.push_str("n007\t\t\t\t\t\tdiscard\t\n");
@@ -1498,7 +1471,6 @@ async fn a_full_ledger_says_so_instead_of_a_size_error() {
     let fixture = tool_task(ResearchBrief::default());
     let path = fixture.record_file("ledger.tsv");
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    // Within a few bytes of the 1 MiB a file operation may write.
     let filler = "x".repeat(1024 * 1024 - LEDGER_HEADER.len() - 32);
     std::fs::write(
         &path,

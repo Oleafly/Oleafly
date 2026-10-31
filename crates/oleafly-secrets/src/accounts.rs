@@ -1,22 +1,17 @@
-//! Account names in the app secrets file, and the Git-host token map shared
-//! by the app's Git hosting accounts and `oleafly auth`.
 use crate::SecretStore;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const GITHUB_TOKEN_ACCOUNT: &str = "github_token";
 pub const MCP_TOKEN_ACCOUNT: &str = "mcp_token";
-/// JSON map: normalized Git-host base URL → [`ForgeToken`].
 pub const FORGE_TOKENS_ACCOUNT: &str = "forge_tokens";
 
-/// A Git-host token (GitHub, GitLab, Gitea, Forgejo, Codeberg).
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForgeToken {
     pub token: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refresh: Option<String>,
-    /// Epoch seconds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<i64>,
 }
@@ -31,8 +26,6 @@ impl std::fmt::Debug for ForgeToken {
     }
 }
 
-/// A one-way fingerprint of a token (SHA-256, hex): enough to notice that a
-/// token changed without keeping a second copy of it.
 pub fn token_fingerprint(token: &str) -> String {
     ring::digest::digest(&ring::digest::SHA256, token.as_bytes())
         .as_ref()
@@ -41,9 +34,6 @@ pub fn token_fingerprint(token: &str) -> String {
         .collect()
 }
 
-/// `https://host[:port][/path]` with a lowercase host, no default port and no
-/// trailing slash. A bare host gets `https://`. Refuses other schemes,
-/// credentials, queries and fragments.
 pub fn normalize_forge_base(input: &str) -> Result<String, String> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
@@ -94,7 +84,6 @@ fn parse_map(raw: Option<&str>) -> BTreeMap<String, ForgeToken> {
         .unwrap_or_default()
 }
 
-/// Every saved Git-host token. A corrupt map reads as empty.
 pub fn forge_tokens(store: &SecretStore) -> Result<BTreeMap<String, ForgeToken>, String> {
     Ok(parse_map(store.get(FORGE_TOKENS_ACCOUNT)?.as_deref()))
 }
@@ -126,7 +115,6 @@ pub fn save_forge_token(store: &SecretStore, base: &str, token: ForgeToken) -> R
     })
 }
 
-/// Remove the token for `base`. Returns whether there was one.
 pub fn forget_forge_token(store: &SecretStore, base: &str) -> Result<bool, String> {
     let base = normalize_forge_base(base)?;
     store.update(FORGE_TOKENS_ACCOUNT, |slot| {

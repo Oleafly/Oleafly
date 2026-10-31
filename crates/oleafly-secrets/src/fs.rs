@@ -1,5 +1,3 @@
-//! Atomic and private file writes shared by the secret store, the online
-//! service crate and the CLI.
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -53,9 +51,6 @@ pub fn is_retryable_replace_error_code(code: Option<i32>) -> bool {
     )
 }
 
-/// The name of a staging file next to `file_name`. It starts with a dot and
-/// carries `.oleafly-`, so Oleafly's own folder scans skip it
-/// (`oleafly_core::exclude::is_oleafly_owned_name`).
 pub fn staging_name(file_name: &str, sequence: u64, random: u64) -> String {
     format!(
         ".{file_name}.oleafly-{}-{sequence}-{random:016x}.tmp",
@@ -65,10 +60,6 @@ pub fn staging_name(file_name: &str, sequence: u64, random: u64) -> String {
 
 static STAGING_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-/// Write `bytes` to `destination` through a staging file in the same folder,
-/// keeping the destination's permissions when it already exists. Refuses a
-/// symbolic-link destination, and a folder that was swapped for another one
-/// while the file was written. Never leaves the staging file behind.
 pub fn write_atomic(destination: &Path, bytes: &[u8]) -> Result<(), String> {
     use std::io::Write;
     let parent = destination
@@ -116,8 +107,6 @@ pub fn write_atomic(destination: &Path, bytes: &[u8]) -> Result<(), String> {
         }
         file.write_all(bytes)
             .map_err(|e| format!("failed to write {}: {e}", destination.display()))?;
-        // Best effort: some volumes refuse fsync but accept the rename, and
-        // failing then would report a good write as lost.
         let _ = file.sync_all();
         drop(file);
         let current = same_file::Handle::from_path(parent)
@@ -142,8 +131,6 @@ pub fn write_atomic(destination: &Path, bytes: &[u8]) -> Result<(), String> {
     result
 }
 
-/// Write an owner-only file (0600 on unix, current-user ACL on Windows)
-/// through a fresh staging file. Refuses symbolic links at both paths.
 pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let parent = path
         .parent()

@@ -27,7 +27,6 @@ import { ProjectImportDialog } from "./ProjectImportDialog";
 import { OpenLinkDialogSlot, useCollabLibraryKit } from "@/components/collab/CollabSlots";
 import { Spinner } from "@/components/ui/spinner";
 
-// The repository rows load with the submenu, so they stay out of the entry chunk.
 const GitRepoMenuItems = lazy(() =>
   import("./GitRepoMenuItems").then((module) => ({ default: module.GitRepoMenuItems })),
 );

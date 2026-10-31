@@ -19,7 +19,6 @@ function scopeOf(state: EditorState): FormScope {
   return FormScope.create(buildFormIndex(typstFormsGolden()), documentBindings(state, syntaxTree(state)));
 }
 
-// One row per `#`-call in document order: the callee and the form id it resolves to.
 function resolved(doc: string, path = "report.typ"): string[][] {
   const state = typstState(doc, { path });
   const scope = scopeOf(state);

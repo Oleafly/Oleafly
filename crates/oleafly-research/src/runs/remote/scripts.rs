@@ -1,7 +1,3 @@
-//! POSIX `sh` scripts a remote run is driven with, and parsers for what they
-//! print. Every path in a script is quoted, every id validated; environment
-//! values go only into the run's owner-only supervisor script and are never
-//! printed or put in an error.
 use std::collections::BTreeMap;
 
 use base64::Engine;
@@ -9,12 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::runs::RunError;
 
-/// The folder runs go to on a remote computer, below its home.
 pub const DEFAULT_REMOTE_ROOT: &str = ".oleafly-runs";
 const KILL_GRACE_SECS: u64 = 10;
 
 pub struct RemoteRun<'a> {
-    /// The run folder, relative to the remote home or absolute.
     pub dir: &'a str,
     pub command: &'a str,
     pub cwd_rel: &'a str,
@@ -23,15 +17,12 @@ pub struct RemoteRun<'a> {
     pub prelude: &'a str,
 }
 
-/// How a run detaches from the connection that started it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Detach {
-    /// `setsid`: its own session and process group.
     Setsid,
     /// macOS has no `setsid` command; Perl's POSIX module does the same.
     Perl,
-    /// Neither: signals go to the recorded processes, not a group.
     Nohup,
 }
 
@@ -60,7 +51,6 @@ pub struct PollReport {
     pub chunk: Vec<u8>,
 }
 
-/// `value` in single quotes, safe in any `sh` word position.
 pub fn sh_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
@@ -91,8 +81,6 @@ fn valid_root(root: &str) -> bool {
         && !root.split('/').any(|part| part == "..")
 }
 
-/// `<root>/<task>/<run>`: the root as configured (relative = below the
-/// remote home), the ids checked.
 pub fn run_dir(root: Option<&str>, task_id: &str, run_id: &str) -> Result<String, RunError> {
     if !valid_id(task_id) || !valid_id(run_id) {
         return Err(RunError::Config(
@@ -118,7 +106,6 @@ pub fn run_dir(root: Option<&str>, task_id: &str, run_id: &str) -> Result<String
     Ok(format!("{trimmed}/{task_id}/{run_id}"))
 }
 
-/// The task's folder that holds `dir` (`<root>/<task>`).
 fn task_dir(dir: &str) -> Option<&str> {
     let (parent, run) = dir.rsplit_once('/')?;
     let task = parent.rsplit('/').next()?;
@@ -134,7 +121,6 @@ if command -v rsync >/dev/null 2>&1; then echo 'OLEAFLY_PROBE rsync 1'; else ech
 echo 'OLEAFLY_PROBE end'
 "#;
 
-/// What the remote computer offers: home, OS, rsync, how to detach.
 pub fn probe_script() -> &'static str {
     PROBE
 }
@@ -184,7 +170,6 @@ pub fn parse_probe(stdout: &str) -> Result<Probe, RunError> {
     })
 }
 
-/// A heredoc delimiter that no line of `content` equals.
 fn delimiter(content: &str, mut candidate: impl FnMut() -> String) -> String {
     loop {
         let value = candidate();
@@ -238,7 +223,6 @@ fn work_dir(cwd_rel: &str) -> String {
     }
 }
 
-/// The signal part of a kill for this detach mode.
 fn kill_targets(signal: &str) -> String {
     format!(
         "if [ -s \"$RUN/pgid\" ]; then kill -{signal} -\"$(cat \"$RUN/pgid\")\" 2>/dev/null; \
@@ -248,7 +232,6 @@ fn kill_targets(signal: &str) -> String {
 
 fn supervisor(run: &RemoteRun<'_>, detach: Detach) -> Result<String, RunError> {
     let group = match detach {
-        // A new session makes the supervisor its group's leader.
         Detach::Setsid | Detach::Perl => "echo $$ > \"$RUN/pgid\"\n",
         Detach::Nohup => "",
     };
@@ -271,14 +254,10 @@ fn supervisor(run: &RemoteRun<'_>, detach: Detach) -> Result<String, RunError> {
         "cd {} 2>/dev/null || {{ oleafly_finish 97; exit 97; }}\n",
         work_dir(run.cwd_rel)
     ));
-    // A trap with a command (not an ignored signal) is reset in children, so
-    // the run itself still stops on TERM while the supervisor records why.
     script.push_str("trap ':' TERM HUP\n");
     script.push_str("sh \"$RUN/command.sh\" > \"$RUN/stdout.log\" 2>&1 < /dev/null &\n");
     script.push_str("CHILD=$!\n");
     script.push_str("echo $CHILD > \"$RUN/child.pid\"\n");
-    // The watchdog checks every second, so it ends soon after the run does
-    // and a signal sent to the whole group cannot cut its wait short.
     script.push_str(&format!(
         "( trap ':' TERM; i=0; while [ $i -lt {timeout} ] && [ ! -e \"$RUN/exit_code\" ]; do sleep 1; i=$((i + 1)); done; \
          if [ ! -e \"$RUN/exit_code\" ]; then : > \"$RUN/timed_out\"; {term}; \
@@ -312,7 +291,6 @@ fn start_body(run: &RemoteRun<'_>, detach: Detach) -> Result<String, RunError> {
     script.push_str(&format!("cd {dir}\n"));
     script.push_str("if ! mkdir start.lock 2>/dev/null; then echo OLEAFLY_ALREADY; exit 0; fi\n");
     script.push_str("date +%s > started\n");
-    // Files whose clock is ahead of this computer's must not count as outputs.
     script.push_str("find work -newer started -exec touch -r started {} + 2>/dev/null || :\n");
     script.push_str(&heredoc("command.sh", run.command));
     script.push_str(&heredoc("supervise.sh", &supervise));
@@ -323,13 +301,10 @@ fn start_body(run: &RemoteRun<'_>, detach: Detach) -> Result<String, RunError> {
 
 const HEADER: &str = "set -eu\numask 077\ncd\n";
 
-/// Starts the run in its folder, whose `work/` already holds the workspace.
-/// Starting twice prints `OLEAFLY_ALREADY` and changes nothing.
 pub fn start_script(run: &RemoteRun<'_>, detach: Detach) -> Result<String, RunError> {
     Ok(format!("{HEADER}{}", start_body(run, detach)?))
 }
 
-/// Unpacks the uploaded workspace (a path below the remote home), then starts.
 pub fn unpack_and_start_script(
     run: &RemoteRun<'_>,
     archive: &str,
@@ -343,8 +318,6 @@ pub fn unpack_and_start_script(
     ))
 }
 
-/// Prints the run's state, the log size and up to `max_bytes` of the log
-/// from `log_offset` as base64.
 pub fn poll_script(dir: &str, log_offset: u64, max_bytes: u64) -> String {
     format!(
         r#"cd || exit 1
@@ -374,8 +347,6 @@ echo "OLEAFLY_STATE $state"
     )
 }
 
-/// Prints the size of `stdout.log` in the current folder and up to
-/// `max_bytes` of it from `log_offset`, as base64.
 pub fn log_section(log_offset: u64, max_bytes: u64) -> String {
     format!(
         r#"size=0
@@ -412,7 +383,6 @@ fn parse_state(value: &str) -> RemoteState {
     }
 }
 
-/// The log size and chunk a [`log_section`] printed.
 pub fn parse_log(stdout: &str) -> Result<(u64, Vec<u8>), RunError> {
     let mut log_size = 0u64;
     let mut encoded = String::new();
@@ -456,8 +426,6 @@ pub fn parse_poll(stdout: &str) -> Result<PollReport, RunError> {
     })
 }
 
-/// Marks the run cancelled, stops it, then kills what is left after
-/// `grace_secs`. Nothing happens to a run that already finished.
 pub fn cancel_script(dir: &str, grace_secs: u64) -> String {
     format!(
         "cd || exit 1\ncd {dir} 2>/dev/null || exit 0\nRUN=$(pwd)\n[ -e exit_code ] && exit 0\n: > cancelled\n{term}\ni=0\nwhile [ $i -lt {grace_secs} ] && [ ! -e exit_code ]; do sleep 1; i=$((i + 1)); done\n[ -e exit_code ] || {{ {kill}; }}\necho OLEAFLY_CANCELLED\n",
@@ -467,12 +435,8 @@ pub fn cancel_script(dir: &str, grace_secs: u64) -> String {
     )
 }
 
-/// Files the run created or changed (newer than its start, at most 64 MiB
-/// each and 10,000 in all, outside `runs/`), as `tar.gz` on standard output
-/// or in `<dir>/outputs.tgz`.
 pub fn outputs_script(dir: &str, to_file: bool) -> String {
     let target = if to_file { "../outputs.tgz" } else { "-" };
-    // An archive in a file says how big it is, so a download can be refused.
     let size = if to_file {
         "echo \"OLEAFLY_OUTPUTS_BYTES $(wc -c < ../outputs.tgz)\"\n"
     } else {
@@ -484,7 +448,6 @@ pub fn outputs_script(dir: &str, to_file: bool) -> String {
     )
 }
 
-/// The size of an outputs archive, from what [`outputs_script`] printed.
 pub fn outputs_bytes(printed: &str) -> Option<u64> {
     printed
         .lines()
@@ -492,8 +455,6 @@ pub fn outputs_bytes(printed: &str) -> Option<u64> {
         .and_then(|bytes| bytes.trim().parse().ok())
 }
 
-/// Removes the run's folder (and its task folder once empty). Only a folder
-/// shaped like `<root>/<task>/<run>` is accepted.
 pub fn cleanup_script(dir: &str) -> Result<String, RunError> {
     let parent = task_dir(dir)
         .ok_or_else(|| RunError::Config("The remote run folder is not one Oleafly made.".into()))?;

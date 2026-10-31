@@ -33,9 +33,10 @@ export function PdfSearchBar({
   const { t } = useTranslation(["common", "preview"]);
   const stepDisabled = state.status !== "success" || state.total === 0;
   return (
-    <search
+    <form
       id={id}
       aria-label={t(($) => $.preview.search.panel)}
+      onSubmit={(event) => event.preventDefault()}
       className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
     >
       <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
@@ -63,6 +64,7 @@ export function PdfSearchBar({
         {pdfSearchCounterLabel(state, query)}
       </span>
       <Button
+        type="button"
         variant="ghost"
         size="icon"
         className="size-7"
@@ -73,6 +75,7 @@ export function PdfSearchBar({
         <ChevronLeft className="size-3.5" />
       </Button>
       <Button
+        type="button"
         variant="ghost"
         size="icon"
         className="size-7"
@@ -83,6 +86,7 @@ export function PdfSearchBar({
         <ChevronRight className="size-3.5" />
       </Button>
       <Button
+        type="button"
         variant="ghost"
         size="icon"
         className="size-7"
@@ -91,6 +95,6 @@ export function PdfSearchBar({
       >
         <X className="size-3.5" />
       </Button>
-    </search>
+    </form>
   );
 }

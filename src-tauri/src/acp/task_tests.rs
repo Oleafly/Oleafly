@@ -48,9 +48,6 @@ async fn confined_acp_fixture_cannot_read_unlinked_files() {
 
 const TASK_PROJECT: &str = "task-rules-project";
 
-/// A research task's session. Its folder stands in for the temporary copy of
-/// the project, and the approval rules sit in the data folder, keyed by the
-/// original project's id.
 async fn research_task() -> (
     tempfile::TempDir,
     std::sync::Arc<AcpRuntime>,
@@ -93,8 +90,6 @@ async fn research_task_with(
     (temp, runtime, session.session.id, copy)
 }
 
-/// The option the runtime chose for a request of this kind. A task's request
-/// is answered at once, so it is never left pending.
 async fn task_answer(
     runtime: &std::sync::Arc<AcpRuntime>,
     id: &str,
@@ -118,9 +113,6 @@ async fn task_answer(
         .unwrap()
 }
 
-/// What happens to a task's request for a tool call announced earlier with
-/// these paths: the outcome the agent was told ("selected" or "cancelled")
-/// and the option chosen, if any.
 async fn announced_answer(
     runtime: &std::sync::Arc<AcpRuntime>,
     id: &str,
@@ -154,7 +146,6 @@ async fn a_task_request_is_judged_by_the_paths_of_the_call_it_refers_to() {
     let outside = copy.parent().unwrap().join("elsewhere.tex");
     let cancelled = ("cancelled".to_string(), serde_json::Value::Null);
 
-    // Announced inside the project: allowed.
     let (outcome, option) = announced_answer(
         &runtime,
         &id,
@@ -162,8 +153,6 @@ async fn a_task_request_is_judged_by_the_paths_of_the_call_it_refers_to() {
     )
     .await;
     assert_eq!((outcome.as_str(), option), ("selected", "yes".into()));
-    // Announced outside it: cancelled at once, as if the request had named
-    // the path itself.
     assert_eq!(
         announced_answer(
             &runtime,
@@ -206,7 +195,6 @@ async fn a_task_never_allows_a_file_request_that_names_no_path() {
             "{kind}"
         );
     }
-    // Other kinds have no path to judge.
     let (_, option) = announced_answer(&runtime, &id, serde_json::json!({"kind": "fetch"})).await;
     assert_eq!(option, "yes");
     runtime.close(&id).await.unwrap();
@@ -216,7 +204,6 @@ async fn a_task_never_allows_a_file_request_that_names_no_path() {
 async fn a_deny_rule_refuses_a_research_tasks_request_without_a_card() {
     use crate::approvals::{set_decision, ToolDecision};
     let (temp, runtime, id, copy) = research_task().await;
-    // The rule is written after the task started, for the original project.
     set_decision(
         temp.path(),
         TASK_PROJECT,
@@ -262,7 +249,6 @@ async fn an_unreadable_rules_file_refuses_a_research_tasks_request() {
     runtime.close(&id).await.unwrap();
 }
 
-/// A task's approval queue that answers when the test says so.
 struct GatedApproval {
     gate: std::sync::Arc<tokio::sync::Notify>,
     answer: Result<(), String>,
@@ -283,9 +269,6 @@ impl super::TaskCommandApproval for GatedApproval {
     }
 }
 
-/// Runs a prompt whose command request waits in the task's approval queue,
-/// ages the request past the card's 120 s expiry, then lets the queue answer.
-/// Returns the agent's last message of the turn and the stored resolution.
 async fn answer_aged_command_request(
     answer: Result<(), String>,
     before_answer: impl FnOnce(&super::runtime::LiveSession),
@@ -317,7 +300,6 @@ async fn answer_aged_command_request(
     })
     .await
     .expect("the command request reaches the approval queue");
-    // The queue keeps requests for a day, so the request does too.
     assert!(request.expires_at > super::types::now_ms() + 60 * 60 * 1000);
     let live = runtime.get_live(&id).await.unwrap();
     live.state
@@ -368,7 +350,6 @@ async fn a_late_task_denial_still_answers_the_agent() {
 
 #[tokio::test]
 async fn a_task_approval_that_cannot_be_applied_cancels_the_request() {
-    // The option the queue picks is gone by the time it answers.
     let (message, resolved) = answer_aged_command_request(Ok(()), |live| {
         live.state
             .lock()
@@ -381,8 +362,6 @@ async fn a_task_approval_that_cannot_be_applied_cancels_the_request() {
     assert_eq!(message, "Permission outcome: cancelled");
     assert_eq!(resolved["outcome"], "cancelled");
 }
-
-// 0.4.8 L: CLI-agent tasks handed to and from the background helper.
 
 #[tokio::test]
 async fn a_handoff_close_moves_the_home_after_the_agent_exits() {
@@ -413,10 +392,8 @@ async fn adopting_a_handoff_resumes_the_agent_session() {
     let temp = super::tests::fixture_temp();
     let copy = temp.path().join("task-copy");
     std::fs::create_dir(&copy).unwrap();
-    // The helper's home for the task sits next to its workspace.
     let home = temp.path().join("acp-home-1");
     std::fs::create_dir(&home).unwrap();
-    // The sandboxed agent writes its request log in its home.
     let definition = super::tests::fixture_definition(
         vec![
             String::new(),
@@ -529,8 +506,6 @@ async fn the_task_launch_matches_the_command_the_app_runs() {
     assert_eq!(rebuilt_env, app_env);
 }
 
-/// A task agent started with its home (`acp-home-1`, next to the task's
-/// workspace) as its request log folder: the requests it got.
 fn requests_in(home: &std::path::Path) -> Vec<serde_json::Value> {
     std::fs::read_to_string(home.join("requests.jsonl"))
         .unwrap_or_default()
@@ -596,8 +571,6 @@ async fn a_sandboxed_task_agent_is_never_offered_or_served_file_reads() {
         initialize["params"]["clientCapabilities"]["fs"]["readTextFile"],
         false
     );
-    // An agent that asks anyway is refused: Oleafly reads outside the
-    // task's sandbox.
     runtime
         .prompt(&id, "read-file:paper.tex".into(), Vec::new())
         .await
@@ -621,7 +594,6 @@ async fn the_v1_restart_keeps_a_handed_back_agent_home() {
     let home = temp.path().join("acp-home-1");
     std::fs::create_dir(&home).unwrap();
     std::fs::write(home.join("session-history.json"), "{}").unwrap();
-    // The agent answers v1 to the v2 request, so it is started again.
     let definition = logging_definition(&temp, &home, &["--caps-v126"]);
     let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
     runtime
@@ -691,7 +663,6 @@ async fn a_retried_task_resumes_its_agent_session_in_the_home_it_kept() {
     let first = runtime.start(start()).await.unwrap();
     let id = first.session.id.clone();
     let native = first.session.native_session_id.clone().unwrap();
-    // The agent keeps its own history in its home.
     let task_temp = temp.path().join("acp/task-temp");
     let home = std::fs::read_dir(&task_temp)
         .unwrap()
@@ -704,7 +675,6 @@ async fn a_retried_task_resumes_its_agent_session_in_the_home_it_kept() {
     let kept = temp.path().join("acp/task-homes").join(&id);
     assert!(kept.join("history.jsonl").is_file());
     assert_eq!(std::fs::read_dir(&task_temp).unwrap().count(), 0);
-    // The next generation finds the session by the agent's own id.
     let resumed = runtime
         .resume_task_session(&native, start(), Vec::new(), None)
         .await
@@ -722,7 +692,6 @@ async fn a_queued_handoff_launch_leaves_no_sign_in_copy_in_the_home() {
     let copy = temp.path().join("task-copy");
     std::fs::create_dir(&copy).unwrap();
     let home = temp.path().join("acp-home-1");
-    // A copy an earlier generation left.
     std::fs::create_dir_all(home.join(".gemini")).unwrap();
     std::fs::write(home.join(".gemini/settings.json"), "{}").unwrap();
     std::fs::write(home.join("history.jsonl"), "kept").unwrap();

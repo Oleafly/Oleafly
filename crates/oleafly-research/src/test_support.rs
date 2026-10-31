@@ -1,4 +1,3 @@
-//! Helpers for tests in this crate and in the crates that host it.
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -10,12 +9,10 @@ use crate::host::{
 };
 use crate::model::{ResearchTask, ResearchTaskDraft, TaskTranscriptDelta, TaskTranscriptEvent};
 
-/// How long a test waits on a child process before it gives up.
 pub const CHILD_PATIENCE: Duration = Duration::from_secs(30);
 
 const POLL: Duration = Duration::from_millis(10);
 
-/// Reads `path` until `accept` returns a value or `timeout` passes.
 pub async fn read_until<T>(
     path: &Path,
     timeout: Duration,
@@ -74,17 +71,14 @@ pub fn draft(project_id: &str, title: &str) -> ResearchTaskDraft {
     }
 }
 
-/// The error the app returns for a project that may not run tasks.
 pub const UNTRUSTED_ERROR: &str = r#"{"code":"trust.research_tasks","message":"This project is not trusted to run research tasks."}"#;
 
-/// An [`IsolationEnv`] over plain folders.
 #[derive(Clone, Default)]
 pub struct FakeEnv {
     pub projects: HashMap<String, (PathBuf, bool)>,
     pub untrusted: HashSet<String>,
     pub writer_locked: HashSet<String>,
     pub no_git: bool,
-    /// How long preparation waits for the project lock (60 s when unset).
     pub lock_timeout: Option<Duration>,
 }
 
@@ -168,7 +162,6 @@ impl IsolationEnv for FakeEnv {
     }
 }
 
-/// A [`ResearchHost`] over plain folders that records what it was told.
 #[derive(Clone, Default)]
 pub struct FakeHost {
     pub env: Arc<Mutex<FakeEnv>>,
@@ -176,15 +169,10 @@ pub struct FakeHost {
     pub appended: Arc<Mutex<Vec<TaskTranscriptEvent>>>,
     pub missing_skills: Arc<Mutex<HashMap<String, String>>>,
     pub owner: OwnerKind,
-    /// Text appended to transcript rows, in the order the host got it.
     pub deltas: Arc<Mutex<Vec<TaskTranscriptDelta>>>,
-    /// Notifications the host was asked to show.
     pub notified: Arc<Mutex<Vec<Notification>>>,
-    /// Every attention summary the host received, oldest first.
     pub attention: Arc<Mutex<Vec<AttentionSummary>>>,
-    /// What every task's model calls cost so far (`None`: unknown).
     pub spend: Arc<Mutex<Option<f64>>>,
-    /// The workspace tools the host offers; read when a queue attaches.
     pub workspace: Option<Arc<dyn WorkspaceTools>>,
 }
 
@@ -239,7 +227,6 @@ impl FakeHost {
             .collect()
     }
 
-    /// The notifications so far, oldest first.
     pub fn notifications(&self) -> Vec<Notification> {
         self.notified
             .lock()
@@ -247,7 +234,6 @@ impl FakeHost {
             .clone()
     }
 
-    /// The last attention summary the host received.
     pub fn latest_attention(&self) -> Option<AttentionSummary> {
         self.attention
             .lock()
@@ -256,7 +242,6 @@ impl FakeHost {
             .cloned()
     }
 
-    /// Sets what `task_spend_usd` reports from now on.
     pub fn set_spend(&self, spend: Option<f64>) {
         *self
             .spend
@@ -365,7 +350,6 @@ impl ResearchHost for FakeHost {
     }
 }
 
-/// Accepts a file that holds a positive process id.
 pub fn pid(text: &str) -> Option<i32> {
     text.trim().parse().ok().filter(|pid| *pid > 0)
 }

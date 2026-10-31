@@ -16,7 +16,6 @@ function loadRect(): Rect {
   } catch {
     /* ignore */
   }
-  // Initial width sits a touch above the 30% floor so there is room to shrink.
   const w = Math.max(440, Math.round(window.innerWidth * 0.32));
   const h = Math.min(720, window.innerHeight - 80);
   return { x: window.innerWidth - w - 24, y: 64, w, h };
@@ -67,7 +66,6 @@ export function CopilotOverlay() {
 
   const startDrag = (mode: "move" | "resize", e: ReactPointerEvent) => {
     e.preventDefault();
-    // Snapshot starting rect so move uses fixed offsets, not live rect stale state.
     let current = rect;
     const dx = e.clientX - rect.x;
     const dy = e.clientY - rect.y;

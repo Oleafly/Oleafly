@@ -1,6 +1,7 @@
 import {
   type FC,
   type ReactNode,
+  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -35,8 +36,6 @@ const GAP = 6;
 const MIN_HEIGHT = 120;
 const MAX_HEIGHT = 520;
 
-// Below the chip when the panel fits there, above it when there is more room above, and never
-// past the window's right edge.
 export function placementFor(
   chip: Box,
   panel: { readonly width: number; readonly height: number },
@@ -54,8 +53,6 @@ export function placementFor(
   };
 }
 
-// A first guess below the chip, corrected before paint once the panel can be measured. The panel
-// is never hidden meanwhile: a hidden field can't take focus.
 function guessPlacement(anchor: HTMLElement): Placement {
   const chip = anchor.getBoundingClientRect();
   return { top: chip.bottom + GAP, left: Math.max(GAP, chip.left), maxHeight: MAX_HEIGHT };
@@ -70,7 +67,14 @@ function focusable(panel: HTMLElement): HTMLElement[] {
   );
 }
 
-const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClose(): void }> = ({ host, anchor, onClose }) => {
+type CloseRequest = (refocusChip: boolean) => void;
+
+const Popover: FC<{
+  readonly host: FormHost;
+  readonly anchor: HTMLElement;
+  readonly closeRequest: RefObject<CloseRequest | null>;
+  onClose(): void;
+}> = ({ host, anchor, closeRequest, onClose }) => {
   const container = useMemo(() => {
     const element = document.createElement("div");
     element.className = host.view.themeClasses;
@@ -87,8 +91,6 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
     saves.current.push(save);
   }, []);
 
-  // Closes once the draft the focused field holds is written. A draft with a problem keeps the
-  // popover open on that field, with its message, instead of being thrown away.
   const requestClose = useCallback(
     (refocusChip: boolean) => {
       if (closing.current) return;
@@ -115,6 +117,13 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
   );
 
   useLayoutEffect(() => {
+    closeRequest.current = requestClose;
+    return () => {
+      closeRequest.current = null;
+    };
+  }, [closeRequest, requestClose]);
+
+  useLayoutEffect(() => {
     document.body.appendChild(container);
     return () => container.remove();
   }, [container]);
@@ -127,7 +136,6 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
       if (!node) return;
       const chip = anchor.getBoundingClientRect();
       const editor = host.view.scrollDOM.getBoundingClientRect();
-      // A chip scrolled out of the editor takes its popover with it rather than leave it over the app.
       const gone = !anchor.isConnected || chip.bottom < editor.top || chip.top > editor.bottom;
       setAway(gone);
       if (gone) {
@@ -148,7 +156,6 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
     place();
     window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
-    // Layout can move the chip without a scroll: the sidebar opening, the line rewrapping.
     const observer = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
     if (panel.current) observer?.observe(panel.current);
     observer?.observe(host.view.scrollDOM);
@@ -166,7 +173,6 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
       if (container.contains(target) || anchor.contains(target)) return;
       requestClose(false);
     };
-    // On the document, so Escape still closes the popover once focus has left it.
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented || imeKeyEvent(event)) return;
       const inside = container.contains(document.activeElement);
@@ -181,7 +187,6 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
     };
   }, [anchor, container, requestClose]);
 
-  // The first field the user can change, not the header's "Edit in source".
   useEffect(() => {
     const node = panel.current;
     (node?.querySelector<HTMLElement>(FIRST_FIELD) ?? node?.querySelector<HTMLElement>("button"))?.focus();
@@ -255,6 +260,7 @@ export interface FormChipProps {
 export const FormChip: FC<FormChipProps> = ({ host, anchor }) => {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
+  const closeRequest = useRef<CloseRequest | null>(null);
   const text = chipText(host);
   return (
     <>
@@ -264,11 +270,14 @@ export const FormChip: FC<FormChipProps> = ({ host, anchor }) => {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={editorMessage("visual.typst.forms.open", { label: text })}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (open) closeRequest.current?.(true);
+          else setOpen(true);
+        }}
       >
         {text}
       </button>
-      {open && <Popover host={host} anchor={anchor} onClose={close} />}
+      {open && <Popover host={host} anchor={anchor} closeRequest={closeRequest} onClose={close} />}
     </>
   );
 };

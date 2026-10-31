@@ -1180,6 +1180,8 @@
     "exportTxt": "Export as Plain text (.txt)",
     "exportZipFailed": "Couldn't export the project zip",
     "exporting": "Exporting .{{format}}…",
+    "exportingStep": "Exporting .{{format}}: {{step}}",
+    "stopExport": "Stop",
     "fork": "Fork",
     "forkDescription": "Copies <name>{{name}}</name> and its Git history into a new project. Checkpoints start empty.",
     "forkFailed": "Couldn't fork the project.",

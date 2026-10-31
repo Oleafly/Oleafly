@@ -6,11 +6,9 @@ import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { openTemplateInNewProject } from "@/store/template-request";
 
-// A preview is a nice extra: a slow PDF must not hold up saving the template.
 const PREVIEW_TIMEOUT_MS = 15_000;
 const PREVIEW_SCALE = 1.5;
 
-/** Page 1 of a PDF as a PNG data URI, or null when it can't be drawn. */
 export async function firstPagePng(bytes: ArrayBuffer): Promise<string | null> {
   try {
     const { pdfPageToPng } = await import("@/lib/pdf-image");
@@ -23,7 +21,6 @@ export async function firstPagePng(bytes: ArrayBuffer): Promise<string | null> {
   }
 }
 
-/** The project's last compiled first page, or null when it has none. */
 export async function projectPreviewPng(projectId: string): Promise<string | null> {
   let bytes: ArrayBuffer;
   try {
@@ -34,7 +31,6 @@ export async function projectPreviewPng(projectId: string): Promise<string | nul
   return firstPagePng(bytes);
 }
 
-/** A starting name for a template made from a ZIP or a folder. */
 export function templateNameFromPath(path: string): string {
   let end = path.length;
   while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end -= 1;
@@ -43,10 +39,6 @@ export function templateNameFromPath(path: string): string {
     .trim();
 }
 
-/**
- * Save a project as a custom template. An open project's unsaved edits are
- * written first, so the template holds what the editor shows.
- */
 export async function saveProjectTemplate(projectId: string, name: string): Promise<string> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId) await files.saveAllDirty();
@@ -54,7 +46,6 @@ export async function saveProjectTemplate(projectId: string, name: string): Prom
   return saveProjectAsTemplate(projectId, name, preview);
 }
 
-/** Tell the person the template is saved, with a shortcut to use it. */
 export function announceSavedTemplate(templateId: string, name: string): void {
   toast.success(i18n.t(($) => $.library.customTemplates.saved, { name }), {
     label: i18n.t(($) => $.library.customTemplates.useTemplate),

@@ -1,10 +1,3 @@
-//! One project's turn store under `oleafly_root()/agent-turns/<project_id>/`:
-//! zstd-compressed, content-addressed, write-once `blobs/<hh>/<sha256>`,
-//! `snapshots/<id>.json`, the `index.json` stat cache and a `lock` file.
-//!
-//! Every access holds the per-project in-process guard; the file lock on top
-//! of it is best effort, for a second Oleafly process on the same data root.
-
 use super::{TurnChangeKind, TurnSkipReason, TurnSkipped, TurnUnavailable};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -41,7 +34,6 @@ fn is_sha256(name: &str) -> bool {
             .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
 }
 
-/// The store folder for a project; nothing is created.
 pub(super) fn store_dir(project_id: &str) -> Result<PathBuf, String> {
     crate::paths::validate_project_id(project_id)?;
     Ok(crate::paths::oleafly_root()?
@@ -49,10 +41,6 @@ pub(super) fn store_dir(project_id: &str) -> Result<PathBuf, String> {
         .join(project_id))
 }
 
-// ---------------------------------------------------------------------------
-// Snapshot and index records
-
-/// One file as it was when the turn began.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct BeforeEntry {
@@ -60,19 +48,14 @@ pub(super) struct BeforeEntry {
     pub(super) size: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) mtime: Option<i64>,
-    /// Set when the content is kept in the store.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) sha256: Option<String>,
-    /// Why the content was not kept.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) skip: Option<TurnSkipReason>,
-    /// Build output: only its size and time are recorded.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(super) build: bool,
 }
 
-/// One side of a change. `sha256` is absent for build output, whose content is
-/// never kept.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Side {
@@ -112,10 +95,8 @@ pub(super) struct FinishRecord {
     pub(super) skipped: Vec<TurnSkipped>,
     #[serde(default)]
     pub(super) overlapped: bool,
-    /// How many of `changes` the finish payload carried.
     #[serde(default)]
     pub(super) shown: u32,
-    /// Folders that only exist because the turn added files to them.
     #[serde(default)]
     pub(super) created_dirs: BTreeSet<String>,
     #[serde(default)]
@@ -130,19 +111,11 @@ pub(super) struct Snapshot {
     #[serde(default)]
     pub(super) label: String,
     pub(super) created_ms: u64,
-    /// Wall clock when the walk started; stat matches newer than this are
-    /// not trusted.
     pub(super) started_ns: i64,
-    /// Emptied once the turn is finished; `finish` keeps what Undo needs.
     #[serde(default)]
     pub(super) before: BTreeMap<String, BeforeEntry>,
-    /// Every folder the walk found when the turn began, so Undo never
-    /// removes one that was already there. Emptied with `before`.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub(super) folders: BTreeSet<String>,
-    /// Whether the root `project.json` was Oleafly's own manifest when the
-    /// turn began, and so left out of the turn. Decided once: a turn that
-    /// breaks the manifest must not turn it into a file the turn added.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) manifest_managed: Option<bool>,
     #[serde(default)]
@@ -175,8 +148,6 @@ pub(super) struct IndexEntry {
     pub(super) sha256: String,
 }
 
-/// Stat cache: path → size, modification time and content hash. Only entries
-/// whose modification time was safely in the past when hashed are kept.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct Index {
     #[serde(default)]
@@ -190,10 +161,6 @@ impl Index {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Store budget
-
-/// Bytes the project's blobs may use. `used` is measured lazily.
 pub(super) struct Budget {
     used: Option<u64>,
     limit: u64,
@@ -211,9 +178,6 @@ impl Budget {
         Self { used: None, limit }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Locking
 
 struct Busy {
     projects: Mutex<HashSet<String>>,
@@ -235,7 +199,6 @@ fn lock_busy() -> MutexGuard<'static, HashSet<String>> {
         .unwrap_or_else(PoisonError::into_inner)
 }
 
-/// The per-project in-process guard, plus the best-effort file lock.
 pub(super) struct StoreGuard {
     project_id: String,
     file: Option<std::fs::File>,
@@ -278,17 +241,12 @@ pub(super) enum LockError {
     Failed(String),
 }
 
-// ---------------------------------------------------------------------------
-// The store
-
 pub(super) struct Store {
     dir: PathBuf,
     _guard: StoreGuard,
 }
 
 impl Store {
-    /// Locks the project's store. With `create`, the folders are made; without
-    /// it a missing store is `Ok(None)`.
     pub(super) fn lock(
         project_id: &str,
         deadline: Instant,
@@ -338,7 +296,6 @@ impl Store {
         is_sha256(sha) && self.blob_path(sha).is_file()
     }
 
-    /// Keeps `bytes` under `sha`. `Ok(false)` when the budget is spent.
     pub(super) fn put_blob(
         &self,
         sha: &str,
@@ -383,8 +340,6 @@ impl Store {
         Ok(true)
     }
 
-    /// The kept content for `sha`, verified. A damaged blob is removed so it
-    /// is written again next time.
     pub(super) fn read_blob(&self, sha: &str, size: u64) -> Option<Vec<u8>> {
         if !is_sha256(sha) {
             return None;
@@ -423,7 +378,6 @@ impl Store {
         self.dir.join(SNAPSHOTS).join(format!("{id}.json"))
     }
 
-    /// `None` when the snapshot is gone or unreadable (treated as expired).
     pub(super) fn load_snapshot(&self, id: &str) -> Option<Snapshot> {
         let bytes = std::fs::read(self.snapshot_path(id)).ok()?;
         serde_json::from_slice::<Snapshot>(&bytes)
@@ -454,12 +408,6 @@ impl Store {
         crate::sandbox::atomic_write(&self.dir.join(INDEX), &bytes)
     }
 
-    /// Keeps the newest `keep_newest` snapshots, every snapshot younger than
-    /// `keep_age_ms` and every id in `protect`; deletes the rest and every
-    /// blob no remaining snapshot or index entry uses. A kept snapshot that
-    /// cannot be read now is never deleted, and while one exists no blob is
-    /// swept, since its content could be any of them. Returns the bytes the
-    /// remaining blobs take.
     pub(super) fn retain(
         &self,
         keep_newest: usize,
@@ -536,7 +484,6 @@ impl Store {
     }
 }
 
-/// Snapshot ids start with their creation time in milliseconds.
 fn created_ms(id: &str) -> u64 {
     id.split('-')
         .next()
@@ -548,7 +495,6 @@ pub(super) fn new_snapshot_id(now_ms: u64) -> String {
     format!("{now_ms:013}-{:08x}", rand::random::<u32>())
 }
 
-/// A before entry whose content was not kept.
 pub(super) fn skipped_entry(reason: TurnSkipReason, size: u64, mtime: Option<i64>) -> BeforeEntry {
     BeforeEntry {
         size,

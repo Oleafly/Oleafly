@@ -1,8 +1,3 @@
-//! Run profiles for experiment runs (owner decision Q3 = A).
-//!
-//! *Analysis* (the default) is for scripts, statistics and plots: no GPU and
-//! a 30-minute default timeout. *Training* adds GPU devices and allows long
-//! runs. Network access follows the task's permission in both.
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -18,7 +13,6 @@ pub enum RunProfile {
 }
 
 impl RunProfile {
-    /// The timeout a run gets when it asks for none.
     pub fn default_timeout(self) -> Duration {
         match self {
             Self::Analysis => Duration::from_secs(30 * 60),
@@ -26,7 +20,6 @@ impl RunProfile {
         }
     }
 
-    /// The longest a single run may last.
     pub fn max_timeout(self) -> Duration {
         match self {
             Self::Analysis => Duration::from_secs(2 * 3600),
@@ -34,8 +27,6 @@ impl RunProfile {
         }
     }
 
-    /// `requested`, or the default, capped at [`Self::max_timeout`]. A zero
-    /// request means the default.
     pub fn clamp_timeout(self, requested: Option<Duration>) -> Duration {
         match requested {
             Some(requested) if !requested.is_zero() => requested.min(self.max_timeout()),
@@ -43,7 +34,6 @@ impl RunProfile {
         }
     }
 
-    /// Whether runs see the GPU devices.
     pub fn gpu(self) -> bool {
         matches!(self, Self::Training)
     }
@@ -58,7 +48,6 @@ pub use runtimes::{
     RuntimeSource,
 };
 
-/// A linked data folder runs may read.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LinkedFolder {
@@ -67,21 +56,16 @@ pub struct LinkedFolder {
     pub path: PathBuf,
 }
 
-/// Everything a run's sandbox is built from.
 pub struct RunInputs<'a> {
     pub profile: RunProfile,
-    /// `task:<task id>`.
     pub owner: &'a str,
     pub project: Option<&'a str>,
     pub workspace: &'a Path,
-    /// Write grants (the task's allowed paths and `runs/`); never widened.
     pub writable: &'a [PathBuf],
-    /// Read-only paths inside the write grants (`.git`, `.oleafly`).
     pub protected: &'a [PathBuf],
     pub home: &'a Path,
     pub network: bool,
     pub linked: &'a [LinkedFolder],
-    /// Skill folders and other read grants.
     pub extra_read: &'a [PathBuf],
     pub runtimes: &'a [RuntimeInstall],
     pub host_env: &'a dyn Fn(&str) -> Option<String>,
@@ -142,14 +126,10 @@ pub fn spec_for_run(inputs: &RunInputs<'_>) -> Result<SandboxSpec, SandboxError>
     Ok(spec)
 }
 
-/// A task's home folder: caches and installs kept across its commands and runs.
 pub fn task_home(tasks_root: &Path, task_id: &str) -> PathBuf {
     tasks_root.join("homes").join(task_id)
 }
 
-/// Creates a task home and the folders its environment points at
-/// (owner-only on macOS and Linux). A folder the task replaced with a link
-/// is left alone.
 pub fn prepare_home(home: &Path) -> std::io::Result<()> {
     let mut folders = vec![
         "tmp",
@@ -165,7 +145,6 @@ pub fn prepare_home(home: &Path) -> std::io::Result<()> {
     }
     std::fs::create_dir_all(home)?;
     for folder in folders {
-        // The task can make any of these a link; nothing is created through one.
         match crate::safe_fs::create_folders_below(home, Path::new(folder)) {
             Ok(_) => {}
             Err(error) if crate::safe_fs::is_link_error(&error) => {}
@@ -264,8 +243,6 @@ mod tests {
         let analysis = spec(RunProfile::Analysis);
         assert!(!analysis.gpu);
         assert!(!analysis.network);
-        // Caches live in the task's private, writable home; the write grants
-        // stay exactly as given.
         assert_eq!(analysis.home, home);
         assert_eq!(analysis.read_write, writable);
         let cache = home.join(".cache");
@@ -283,7 +260,6 @@ mod tests {
             .map(|(_, value)| PathBuf::from(value))
             .unwrap();
         assert_eq!(xdg_cache, cache);
-        // Linked data folders are readable, never writable.
         assert_eq!(analysis.project_read_only, vec![data.clone()]);
         assert_eq!(analysis.env["OLEAFLY_DATA_SURVEY"], data.to_string_lossy());
 

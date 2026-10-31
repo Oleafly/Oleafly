@@ -67,7 +67,6 @@ describe("Settings Help & About support callout", () => {
       "p-4",
     );
     expect(aboutSection).toContainElement(aboutHeading);
-    // The version arrives from an async call after the heading renders.
     expect(await within(aboutSection).findByText("v0.3.6")).toBeInTheDocument();
     expect(
       screen.getByText(/Write, compile, proofread, manage citations/),
@@ -84,12 +83,10 @@ describe("Settings Help & About support callout", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
-    // Community is Discord and X only: every conversation is pointed at one place.
     expect(screen.getByRole("button", { name: /^Discord/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Discussions/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Issues/ })).toBeNull();
     expect(screen.queryByText("@OleaflyHQ")).toBeNull();
-    // The citation card closes the page, after Community, Project and Resources.
     const citeCard = screen.getByTestId("cite-oleafly-card");
     expect(
       screen.getByText("Resources").compareDocumentPosition(citeCard) &
@@ -115,9 +112,7 @@ describe("Settings Help & About support callout", () => {
     const footer = await screen.findByTestId("settings-footer-links");
     const navigation = screen.getByRole("navigation", { name: "Settings sections" });
     expect(navigation).toContainElement(footer);
-    // Pinned under the scrolling list, so it stays visible however long the list grows.
     expect(screen.getByTestId("settings-section-scroll")).not.toContainElement(footer);
-    // Icons only: the names live in aria-label and the tooltip, never as visible text.
     expect(footer).toHaveTextContent(/^$/);
 
     const links: [string, string][] = [
@@ -168,7 +163,6 @@ describe("Settings Help & About support callout", () => {
 
     const sectionList = screen.getByTestId("settings-section-scroll");
     expect(sectionList).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
-    // The Show Advanced toggle was removed; every section is always listed.
     expect(screen.queryByTestId("settings-toggle-advanced")).toBeNull();
     expect(screen.getByTestId("settings-section-dictionary")).toBeInTheDocument();
     expect(screen.getByTestId("settings-section-engine")).toBeInTheDocument();

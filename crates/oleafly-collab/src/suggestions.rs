@@ -25,8 +25,14 @@ const END: &str = "end";
 const ANCHOR: &str = "anchor";
 const TEXT: &str = "text";
 const THREAD_ID: &str = "thread_id";
+const IDS: &str = "ids";
 const INSERT: &str = "insert";
 const DELETE: &str = "delete";
+const AUTHOR_KEYS: [&str; 10] = [
+    FILE_ID, KIND, AUTHOR, DEVICE, CREATED_AT, START, END, ANCHOR, TEXT, IDS,
+];
+
+type CharId = (u64, i32);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -70,12 +76,56 @@ struct Record {
     anchor: Option<Vec<u8>>,
     text: String,
     thread: Option<CommentId>,
+    ids: Option<Vec<CharId>>,
 }
 
-struct DeleteGroup {
-    map: Option<LoroMap>,
+impl Record {
+    fn chars(&self) -> Option<Vec<(CharId, char)>> {
+        let ids = self.ids.as_ref()?;
+        (ids.len() == self.text.chars().count())
+            .then(|| ids.iter().copied().zip(self.text.chars()).collect())
+    }
+}
+
+struct Struck {
     text: String,
-    at: usize,
+    ids: Option<Vec<CharId>>,
+}
+
+impl Struck {
+    fn new() -> Struck {
+        Struck {
+            text: String::new(),
+            ids: Some(Vec::new()),
+        }
+    }
+
+    fn push(&mut self, piece: &str, ids: Option<&[CharId]>) {
+        if piece.is_empty() {
+            return;
+        }
+        self.text.push_str(piece);
+        match (self.ids.as_mut(), ids) {
+            (Some(known), Some(ids)) if ids.len() == piece.chars().count() => {
+                known.extend_from_slice(ids);
+            }
+            _ => self.ids = None,
+        }
+    }
+
+    fn push_chars(&mut self, text: &LoroText, start: usize, end: usize) -> Result<(), CollabError> {
+        if start >= end {
+            return Ok(());
+        }
+        let piece = text.slice(start, end).map_err(loro_error)?;
+        let ids: Option<Vec<CharId>> = (start..end).map(|at| char_id(text, at)).collect();
+        self.push(&piece, ids.as_deref());
+        Ok(())
+    }
+
+    fn push_record(&mut self, record: &Record) {
+        self.push(&record.text, record.ids.as_deref());
+    }
 }
 
 struct Shrunk {
@@ -119,7 +169,7 @@ fn changed_under() -> CollabError {
 fn too_long() -> CollabError {
     refused(
         413,
-        "too_large",
+        "suggestion_too_long",
         "a suggested deletion can hold at most 20,000 characters",
     )
 }
@@ -159,8 +209,119 @@ fn read_record(key: &str, map: LoroMap) -> Option<Record> {
         anchor: binary(fields.get(ANCHOR)),
         text: string_of(fields.get(TEXT)).unwrap_or_default(),
         thread: parsed(fields.get(THREAD_ID)),
+        ids: string_of(fields.get(IDS)).and_then(|ids| decode_ids(&ids)),
         map,
     })
+}
+
+fn char_id(text: &LoroText, at: usize) -> Option<CharId> {
+    let id = text.get_cursor(at, Side::Middle)?.id?;
+    Some((id.peer, id.counter))
+}
+
+fn encode_ids(ids: &[CharId]) -> String {
+    let mut runs: Vec<(u64, i32, usize)> = Vec::new();
+    for &(peer, counter) in ids {
+        match runs.last_mut() {
+            Some((last_peer, start, length))
+                if *last_peer == peer
+                    && i32::try_from(*length).is_ok_and(|length| *start + length == counter) =>
+            {
+                *length += 1;
+            }
+            _ => runs.push((peer, counter, 1)),
+        }
+    }
+    runs.iter()
+        .map(|(peer, start, length)| format!("{peer}:{start}:{length}"))
+        .collect::<Vec<_>>()
+        .join(";")
+}
+
+fn decode_ids(text: &str) -> Option<Vec<CharId>> {
+    let mut ids = Vec::new();
+    for run in text.split(';').filter(|run| !run.is_empty()) {
+        let mut parts = run.split(':');
+        let peer: u64 = parts.next()?.parse().ok()?;
+        let start: i32 = parts.next()?.parse().ok()?;
+        let length: i32 = parts.next()?.parse().ok()?;
+        if parts.next().is_some() || length <= 0 {
+            return None;
+        }
+        ids.extend((start..start.checked_add(length)?).map(|counter| (peer, counter)));
+    }
+    Some(ids)
+}
+
+fn write_ids(map: &LoroMap, ids: Option<&[CharId]>) -> Result<(), CollabError> {
+    match ids {
+        Some(ids) => {
+            map.insert(IDS, encode_ids(ids)).map_err(loro_error)?;
+        }
+        None if map.get(IDS).is_some() => map.delete(IDS).map_err(loro_error)?,
+        None => {}
+    }
+    Ok(())
+}
+
+fn woven(into: &[(CharId, char)], more: &[(CharId, char)]) -> Vec<(CharId, char)> {
+    let at: HashMap<CharId, usize> = into
+        .iter()
+        .enumerate()
+        .map(|(index, (id, _))| (*id, index))
+        .collect();
+    let mut out = Vec::with_capacity(into.len() + more.len());
+    let mut taken = 0;
+    let mut waiting = Vec::new();
+    for item in more {
+        match at.get(&item.0) {
+            Some(&index) if index >= taken => {
+                out.extend_from_slice(&into[taken..index]);
+                out.append(&mut waiting);
+                out.push(into[index]);
+                taken = index + 1;
+            }
+            Some(_) => {}
+            None => waiting.push(*item),
+        }
+    }
+    out.append(&mut waiting);
+    out.extend_from_slice(&into[taken..]);
+    out
+}
+
+fn outside_of(segments: &[(usize, usize, Option<usize>)]) -> usize {
+    segments
+        .iter()
+        .filter(|(_, _, inside)| inside.is_none())
+        .map(|(start, end, _)| end - start)
+        .sum()
+}
+
+fn struck_text(
+    text: &LoroText,
+    segments: &[(usize, usize, Option<usize>)],
+    joined: &[(usize, Record)],
+) -> Result<Struck, CollabError> {
+    let mut struck = Struck::new();
+    let mut records = joined.iter().peekable();
+    for &(start, end, inside) in segments {
+        let mut at = start;
+        while let Some((spot, record)) = records.next_if(|(spot, _)| *spot < end) {
+            if inside.is_none() {
+                struck.push_chars(text, at, (*spot).max(at))?;
+                at = (*spot).max(at);
+            }
+            struck.push_record(record);
+        }
+        if inside.is_none() {
+            struck.push_chars(text, at, end)?;
+        }
+    }
+    for (_, record) in records {
+        struck.push_record(record);
+    }
+    Ok(struck)
 }
 
 fn start_cursor(text: &LoroText, from: usize) -> Result<Vec<u8>, CollabError> {
@@ -223,14 +384,6 @@ fn delete_segments(own: &[Shrunk], from: usize, to: usize) -> Vec<(usize, usize,
         .collect()
 }
 
-fn shift_groups(groups: &mut [DeleteGroup], end: usize, length: usize) {
-    for group in groups {
-        if group.at >= end {
-            group.at -= length;
-        }
-    }
-}
-
 fn unicode_of(text: &LoroText, utf16: usize) -> Result<usize, CollabError> {
     text.convert_pos(utf16, PosType::Utf16, PosType::Unicode)
         .ok_or_else(|| CollabError::Corrupt("a change splits a character".to_owned()))
@@ -242,6 +395,16 @@ fn utf16_of(text: &LoroText, unicode: usize) -> Option<usize> {
 
 fn is_suggestions_root(id: &ContainerID) -> bool {
     matches!(id, ContainerID::Root { name, .. } if name.as_str() == SUGGESTIONS)
+}
+
+pub(crate) fn outside_suggestions(doc: &loro::LoroDoc, container: &ContainerID) -> bool {
+    match container {
+        ContainerID::Root { .. } => !is_suggestions_root(container),
+        ContainerID::Normal { .. } => doc
+            .get_path_to_container(container)
+            .and_then(|path| path.into_iter().next())
+            .is_some_and(|(root, _)| !is_suggestions_root(&root)),
+    }
 }
 
 pub(crate) fn record(ids: &mut BTreeSet<String>, change: &ContainerDiff<'_>) -> bool {
@@ -401,7 +564,7 @@ impl ProjectDoc {
         now: i64,
     ) -> Result<(), CollabError> {
         let count = inserted.chars().count();
-        if count == 0 {
+        if count == 0 || self.restore_own_delete(text, file_id, at, inserted, author)? {
             return Ok(());
         }
         let own = self.own_inserts(text, file_id, author);
@@ -420,49 +583,87 @@ impl ProjectDoc {
         }
     }
 
-    fn joined_delete_group(
+    fn restore_own_delete(
         &self,
         text: &LoroText,
-        deletes: &[Record],
-        used: &mut BTreeSet<String>,
-        removed: String,
-        start: usize,
-        end: usize,
-    ) -> DeleteGroup {
-        let spot = |record: &Record| {
-            self.live_spot(text, record.anchor.as_deref())
-                .unwrap_or(usize::MAX)
+        file_id: &str,
+        at: usize,
+        inserted: &str,
+        author: AccountId,
+    ) -> Result<bool, CollabError> {
+        let several = inserted.chars().nth(1).is_some();
+        let fits = |record: &Record| {
+            record.text == inserted
+                || (several
+                    && (record.text.starts_with(inserted) || record.text.ends_with(inserted)))
         };
-        let fresh = |record: &&Record| !used.contains(&record.id.to_string());
-        let before = deletes
-            .iter()
-            .filter(fresh)
-            .find(|record| spot(record) == end);
-        let after = deletes
-            .iter()
-            .filter(fresh)
-            .find(|record| spot(record) == start);
-        let group = match (before, after) {
-            (Some(record), _) => DeleteGroup {
-                map: Some(record.map.clone()),
-                text: format!("{removed}{}", record.text),
-                at: start,
-            },
-            (None, Some(record)) => DeleteGroup {
-                map: Some(record.map.clone()),
-                text: format!("{}{removed}", record.text),
-                at: start,
-            },
-            (None, None) => DeleteGroup {
-                map: None,
-                text: removed,
-                at: start,
-            },
+        let Some(record) = self
+            .own_deletes(text, file_id, author)
+            .into_iter()
+            .filter(|record| self.live_spot(text, record.anchor.as_deref()) == Some(at))
+            .find(fits)
+        else {
+            return Ok(false);
         };
-        if let Some(record) = before.or(after) {
-            used.insert(record.id.to_string());
+        text.insert(at, inserted).map_err(loro_error)?;
+        if record.text == inserted {
+            self.drop_record_map(&record.map)?;
+            return Ok(true);
         }
-        group
+        let count = inserted.chars().count();
+        let ids = record.ids.as_deref();
+        let (rest, anchored, kept) = match record.text.strip_prefix(inserted) {
+            Some(rest) => (rest, at + count, ids.and_then(|ids| ids.get(count..))),
+            None => (
+                record.text.strip_suffix(inserted).unwrap_or_default(),
+                at,
+                ids.and_then(|ids| ids.get(..ids.len().checked_sub(count)?)),
+            ),
+        };
+        record.map.insert(TEXT, rest).map_err(loro_error)?;
+        record
+            .map
+            .insert(ANCHOR, LoroValue::from(anchor_cursor(text, anchored)?))
+            .map_err(loro_error)?;
+        write_ids(&record.map, kept)?;
+        Ok(true)
+    }
+
+    fn joined_deletes(
+        &self,
+        text: &LoroText,
+        file_id: &str,
+        author: AccountId,
+        from: usize,
+        to: usize,
+    ) -> Vec<(usize, Record)> {
+        let mut joined: Vec<(usize, Record)> = self
+            .own_deletes(text, file_id, author)
+            .into_iter()
+            .filter_map(|record| {
+                let at = self.live_spot(text, record.anchor.as_deref())?;
+                (from <= at && at <= to).then_some((at, record))
+            })
+            .collect();
+        joined.sort_by_key(|(at, record)| (*at, record.created_at, record.id));
+        joined
+    }
+
+    fn deleted_size(
+        &self,
+        text: &LoroText,
+        file_id: &str,
+        author: AccountId,
+        from: usize,
+        to: usize,
+    ) -> usize {
+        let own = self.own_inserts(text, file_id, author);
+        let nearby: usize = self
+            .joined_deletes(text, file_id, author, from, to)
+            .iter()
+            .map(|(_, record)| record.text.chars().count())
+            .sum();
+        outside_of(&delete_segments(&own, from, to)) + nearby
     }
 
     fn fit_own_inserts(
@@ -512,64 +713,41 @@ impl ProjectDoc {
         }
         let own = self.own_inserts(text, file_id, author);
         let segments = delete_segments(&own, from, to);
-        let outside: usize = segments
+        let mut joined = self.joined_deletes(text, file_id, author, from, to);
+        let nearby: usize = joined
             .iter()
-            .filter(|(_, _, inside)| inside.is_none())
-            .map(|(start, end, _)| end - start)
+            .map(|(_, record)| record.text.chars().count())
             .sum();
-        let nearby: usize = self
-            .own_deletes(text, file_id, author)
-            .iter()
-            .filter(|record| {
-                self.live_spot(text, record.anchor.as_deref())
-                    .is_some_and(|at| from <= at && at <= to)
-            })
-            .map(|record| record.text.chars().count())
-            .sum();
-        if outside + nearby > MAX_DELETED_CHARS {
+        if outside_of(&segments) + nearby > MAX_DELETED_CHARS {
             return Err(too_long());
         }
-        let mut groups: Vec<DeleteGroup> = Vec::new();
-        let mut used: BTreeSet<String> = BTreeSet::new();
-        let mut deleted_before: Vec<(usize, usize)> = Vec::new();
-        for (start, end, inside) in segments.into_iter().rev() {
-            let length = end - start;
-            if inside.is_none() {
-                let removed = text.slice(start, end).map_err(loro_error)?;
-                let current = groups.iter().position(|group| group.at == end);
-                match current {
-                    Some(index) => {
-                        let group = &mut groups[index];
-                        group.text.insert_str(0, &removed);
-                        group.at = start;
-                    }
-                    None => {
-                        let deletes = self.own_deletes(text, file_id, author);
-                        let group = self
-                            .joined_delete_group(text, &deletes, &mut used, removed, start, end);
-                        shift_groups(&mut groups, end, length);
-                        groups.push(group);
-                        text.delete(start, length).map_err(loro_error)?;
-                        deleted_before.push((start, end));
-                        continue;
-                    }
-                }
+        let struck = struck_text(text, &segments, &joined)?;
+        text.delete(from, to - from).map_err(loro_error)?;
+        let deleted: Vec<(usize, usize)> = segments
+            .iter()
+            .map(|(start, end, _)| (*start, *end))
+            .collect();
+        self.fit_own_inserts(text, &own, &deleted)?;
+        joined.sort_by_key(|(_, record)| (record.created_at, record.id));
+        let mut joined = joined.into_iter().map(|(_, record)| record.map);
+        let kept = joined.next();
+        for other in joined {
+            self.drop_record_map(&other)?;
+        }
+        if struck.text.is_empty() {
+            if let Some(map) = kept {
+                self.drop_record_map(&map)?;
             }
-            shift_groups(&mut groups, end, length);
-            text.delete(start, length).map_err(loro_error)?;
-            deleted_before.push((start, end));
+            return Ok(());
         }
-        self.fit_own_inserts(text, &own, &deleted_before)?;
-        for group in groups {
-            let map = match group.map {
-                Some(map) => map,
-                None => self.new_record(file_id, DELETE, author, device, now)?,
-            };
-            map.insert(TEXT, group.text).map_err(loro_error)?;
-            map.insert(ANCHOR, LoroValue::from(anchor_cursor(text, group.at)?))
-                .map_err(loro_error)?;
-        }
-        Ok(())
+        let map = match kept {
+            Some(map) => map,
+            None => self.new_record(file_id, DELETE, author, device, now)?,
+        };
+        map.insert(TEXT, struck.text).map_err(loro_error)?;
+        map.insert(ANCHOR, LoroValue::from(anchor_cursor(text, from)?))
+            .map_err(loro_error)?;
+        write_ids(&map, struck.ids.as_deref())
     }
 
     fn drop_record_map(&self, map: &LoroMap) -> Result<(), CollabError> {
@@ -584,6 +762,33 @@ impl ProjectDoc {
         });
         if let Some(key) = key {
             self.suggestion_map().delete(&key).map_err(loro_error)?;
+        }
+        Ok(())
+    }
+
+    fn check_suggestion(
+        &self,
+        text: &LoroText,
+        file_id: &str,
+        operation: &TextOperation,
+        author: AccountId,
+    ) -> Result<(), CollabError> {
+        let mut position = 0;
+        for component in operation.components() {
+            match component {
+                Component::Retain(count) => position += count,
+                Component::Insert(_) => {
+                    unicode_of(text, position)?;
+                }
+                Component::Delete(count) => {
+                    let from = unicode_of(text, position)?;
+                    let to = unicode_of(text, position + count)?;
+                    if self.deleted_size(text, file_id, author, from, to) > MAX_DELETED_CHARS {
+                        return Err(too_long());
+                    }
+                    position += count;
+                }
+            }
         }
         Ok(())
     }
@@ -603,6 +808,7 @@ impl ProjectDoc {
                 "a change for {file_id} does not fit its text"
             )));
         }
+        self.check_suggestion(&text, file_id, operation, author)?;
         let mut position = 0;
         let outcome = (|| {
             for component in operation.components() {
@@ -636,7 +842,7 @@ impl ProjectDoc {
         now: i64,
     ) -> Result<TextOperation, CollabError> {
         let current = self.text(file_id)?;
-        let operation = TextOperation::between(&current, content);
+        let operation = crate::merge::diff(&current, content);
         if !operation.is_noop() {
             self.suggest_operation(file_id, &operation, author, device, now)?;
         }
@@ -702,7 +908,7 @@ impl ProjectDoc {
                     body,
                     mentions,
                 )?;
-                if link {
+                if link && record.author == author {
                     record
                         .map
                         .insert(THREAD_ID, thread.to_string())
@@ -747,7 +953,7 @@ impl ProjectDoc {
                     thread_id: record
                         .thread
                         .or_else(|| threads.get(&record.id.to_string()).copied()),
-                    verified: judge.wrote_all(&record.map, record.author),
+                    verified: judge.wrote(&record.map, &AUTHOR_KEYS, record.author),
                 })
             })
             .collect();
@@ -785,6 +991,15 @@ impl ProjectDoc {
     }
 
     fn settle(&self, record: &Record, keep_text: bool, live: bool) -> Result<(), CollabError> {
+        if self.suggestion_map().get(&record.id.to_string()).is_none() {
+            return Ok(());
+        }
+        if !live && record.kind == SuggestionKind::Delete {
+            let overlapping = self.overlapping(record);
+            if overlapping.len() > 1 {
+                return self.settle_together(&overlapping, keep_text);
+            }
+        }
         let text = self.text_of(&record.file)?;
         if !keep_text {
             match record.kind {
@@ -821,6 +1036,64 @@ impl ProjectDoc {
         self.suggestion_map()
             .delete(&record.id.to_string())
             .map_err(loro_error)?;
+        Ok(())
+    }
+
+    fn overlapping(&self, record: &Record) -> Vec<Record> {
+        let Some(chars) = record.chars() else {
+            return Vec::new();
+        };
+        let mut claimed: BTreeSet<CharId> = chars.iter().map(|(id, _)| *id).collect();
+        let mut others: Vec<(Record, Vec<(CharId, char)>)> = self
+            .records_in(&record.file)
+            .into_iter()
+            .filter(|other| other.kind == SuggestionKind::Delete && other.id != record.id)
+            .filter_map(|other| {
+                let chars = other.chars()?;
+                Some((other, chars))
+            })
+            .collect();
+        let mut found = vec![(record.id, chars)];
+        while let Some(index) = others
+            .iter()
+            .position(|(_, chars)| chars.iter().any(|(id, _)| claimed.contains(id)))
+        {
+            let (other, chars) = others.swap_remove(index);
+            claimed.extend(chars.iter().map(|(id, _)| *id));
+            found.push((other.id, chars));
+        }
+        found
+            .into_iter()
+            .filter_map(|(id, _)| self.record_of(id).ok())
+            .collect()
+    }
+
+    fn settle_together(&self, records: &[Record], keep_text: bool) -> Result<(), CollabError> {
+        if !keep_text {
+            let mut merged: Vec<(CharId, char)> = Vec::new();
+            for record in records {
+                merged = woven(&merged, &record.chars().unwrap_or_default());
+            }
+            let last = merged.last().map(|(id, _)| *id);
+            let closing = records
+                .iter()
+                .find(|record| record.ids.as_ref().and_then(|ids| ids.last()).copied() == last)
+                .unwrap_or(&records[0]);
+            let text = self.text_of(&closing.file)?;
+            let at = self
+                .spot(closing.anchor.as_deref())
+                .ok_or_else(suggestion_gone)?;
+            let restored: String = merged.iter().map(|(_, character)| *character).collect();
+            if !restored.is_empty() {
+                text.insert(at.min(text.len_unicode()), &restored)
+                    .map_err(loro_error)?;
+            }
+        }
+        for record in records {
+            self.suggestion_map()
+                .delete(&record.id.to_string())
+                .map_err(loro_error)?;
+        }
         Ok(())
     }
 
@@ -892,6 +1165,45 @@ impl ProjectDoc {
         let ids: Vec<SuggestionId> = records.into_iter().map(|record| record.id).collect();
         self.settle_all(&ids, false, None)?;
         Ok(ids.len())
+    }
+
+    pub fn holds_suggestions(&self, file_id: &str) -> bool {
+        let mut found = false;
+        self.suggestion_map().for_each(|_, value| {
+            if let ValueOrContainer::Container(Container::Map(map)) = value {
+                found |= matches!(
+                    map.get(FILE_ID),
+                    Some(ValueOrContainer::Value(LoroValue::String(file))) if file.as_str() == file_id
+                );
+            }
+        });
+        found
+    }
+
+    pub fn drop_suggestions_changed_since(
+        &mut self,
+        file_id: &str,
+        older: &ProjectDoc,
+    ) -> Result<bool, CollabError> {
+        let kept = older.suggestion_map();
+        let newer: Vec<String> = self
+            .records_in(file_id)
+            .into_iter()
+            .filter(|record| match kept.get(&record.id.to_string()) {
+                Some(ValueOrContainer::Container(Container::Map(then))) => {
+                    then.get_deep_value() != record.map.get_deep_value()
+                }
+                _ => true,
+            })
+            .map(|record| record.id.to_string())
+            .collect();
+        for id in &newer {
+            self.suggestion_map().delete(id).map_err(loro_error)?;
+        }
+        if !newer.is_empty() {
+            self.loro().commit();
+        }
+        Ok(self.drop_empty_suggestions(file_id)? || !newer.is_empty())
     }
 
     pub fn drop_empty_suggestions(&mut self, file_id: &str) -> Result<bool, CollabError> {
@@ -1373,7 +1685,7 @@ mod tests {
         let operation = delete_op(&rae_doc, &room.file, 0, MAX_DELETED_CHARS + 1);
         assert!(matches!(
             rae_doc.suggest_operation(&room.file, &operation, rae(), None, 10),
-            Err(CollabError::Api { code, .. }) if code == "too_large"
+            Err(CollabError::Api { code, .. }) if code == "suggestion_too_long"
         ));
         assert_eq!(rae_doc.text(&room.file).unwrap(), long);
         let operation = delete_op(&rae_doc, &room.file, 5, 6);
@@ -1483,5 +1795,263 @@ mod tests {
             BTreeMap::from([(room.file.clone(), 2)])
         );
         assert_eq!(rae_doc.pending_suggestions(), 2);
+    }
+
+    #[test]
+    fn a_replace_whose_deletion_is_refused_writes_nothing_however_often_it_is_sent() {
+        let long = "x".repeat(MAX_DELETED_CHARS + 10);
+        let room = room(&long);
+        let mut rae_doc = joined(&room, rae());
+        let since = rae_doc.version();
+        let mut operation = TextOperation::new();
+        operation
+            .insert("pasted")
+            .delete(MAX_DELETED_CHARS + 1)
+            .retain(9);
+        for _ in 0..2 {
+            assert!(matches!(
+                rae_doc.suggest_operation(&room.file, &operation, rae(), None, 10),
+                Err(CollabError::Api { code, .. }) if code == "suggestion_too_long"
+            ));
+        }
+        assert_eq!(rae_doc.text(&room.file).unwrap(), long);
+        assert!(shown(&rae_doc, &room.file).is_empty());
+        assert!(!rae_doc.has_changes_since(&since));
+    }
+
+    #[test]
+    fn a_tool_write_with_edits_far_apart_suggests_each_edit_on_its_own() {
+        let body = "a line of text\n".repeat(3_000);
+        let room = room(&format!("Teh start\n{body}teh end\n"));
+        let mut rae_doc = joined(&room, rae());
+        let mut checked = Checked::of(&rae_doc);
+        let since = rae_doc.version();
+        rae_doc
+            .suggest_text(
+                &room.file,
+                &format!("The start\n{body}the end\n"),
+                rae(),
+                None,
+                10,
+            )
+            .unwrap();
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        let found = shown(&rae_doc, &room.file);
+        assert!(!found.is_empty());
+        assert!(
+            found
+                .iter()
+                .all(|(_, _, _, text)| text.chars().count() < 10),
+            "{found:?}"
+        );
+        rae_doc.reject_file_suggestions(&room.file).unwrap();
+        assert_eq!(
+            rae_doc.text(&room.file).unwrap(),
+            format!("Teh start\n{body}teh end\n")
+        );
+    }
+
+    #[test]
+    fn a_deletion_over_an_earlier_deletion_keeps_the_text_in_order() {
+        let room = room("The quick brown fox.\n");
+        let mut rae_doc = joined(&room, rae());
+        let mut checked = Checked::of(&rae_doc);
+        let since = rae_doc.version();
+        let operation = delete_op(&rae_doc, &room.file, 4, 10);
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        assert_eq!(rae_doc.text(&room.file).unwrap(), "The brown fox.\n");
+        let since = rae_doc.version();
+        let operation = delete_op(&rae_doc, &room.file, 0, 14);
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        assert_eq!(
+            shown(&rae_doc, &room.file),
+            vec![(
+                SuggestionKind::Delete,
+                0,
+                0,
+                "The quick brown fox.".to_owned()
+            )]
+        );
+        let mut owner = room.owner;
+        sync(&rae_doc, &mut owner);
+        owner.reject_file_suggestions(&room.file).unwrap();
+        assert_eq!(owner.text(&room.file).unwrap(), "The quick brown fox.\n");
+    }
+
+    #[test]
+    fn a_deletion_across_an_own_insertion_and_an_earlier_deletion_keeps_the_order() {
+        let room = room("ABCDEF\n");
+        let mut rae_doc = joined(&room, rae());
+        let mut checked = Checked::of(&rae_doc);
+        let since = rae_doc.version();
+        let operation = delete_op(&rae_doc, &room.file, 3, 4);
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        type_suggestion(&mut rae_doc, &mut checked, &room.file, 1, "xy", rae());
+        assert_eq!(rae_doc.text(&room.file).unwrap(), "AxyBCEF\n");
+        let since = rae_doc.version();
+        let operation = delete_op(&rae_doc, &room.file, 0, 6);
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        assert_eq!(
+            shown(&rae_doc, &room.file),
+            vec![(SuggestionKind::Delete, 0, 0, "ABCDE".to_owned())]
+        );
+        rae_doc.reject_file_suggestions(&room.file).unwrap();
+        assert_eq!(rae_doc.text(&room.file).unwrap(), "ABCDEF\n");
+    }
+
+    #[test]
+    fn undoing_a_suggested_deletion_takes_it_back() {
+        let room = room("A very big dog\n");
+        let mut rae_doc = joined(&room, rae());
+        let mut checked = Checked::of(&rae_doc);
+        let since = rae_doc.version();
+        let operation = delete_op(&rae_doc, &room.file, 2, 7);
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        let operation = insert_op(&rae_doc, &room.file, 2, "very ");
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        assert_eq!(rae_doc.text(&room.file).unwrap(), "A very big dog\n");
+        assert!(shown(&rae_doc, &room.file).is_empty());
+        let since = rae_doc.version();
+        for at in [6, 5, 4, 3, 2] {
+            let operation = delete_op(&rae_doc, &room.file, at, at + 1);
+            suggest(&mut rae_doc, &room.file, operation, rae());
+        }
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        let since = rae_doc.version();
+        let operation = insert_op(&rae_doc, &room.file, 2, "ve");
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert!(checked.allows(&rae_doc, &since, rae()));
+        assert_eq!(
+            shown(&rae_doc, &room.file),
+            vec![(SuggestionKind::Delete, 4, 4, "ry ".to_owned())]
+        );
+        let operation = insert_op(&rae_doc, &room.file, 4, "x");
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert_eq!(shown(&rae_doc, &room.file).len(), 2);
+        rae_doc.reject_file_suggestions(&room.file).unwrap();
+        assert_eq!(rae_doc.text(&room.file).unwrap(), "A very big dog\n");
+    }
+
+    #[test]
+    fn an_owner_replying_to_a_reviewers_suggestion_keeps_it_verified() {
+        let room = room(TEXT_START);
+        let mut rae_doc = joined(&room, rae());
+        let operation = insert_op(&rae_doc, &room.file, 5, ", dear");
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        let mut owner = room.owner;
+        sync(&rae_doc, &mut owner);
+        let owen = account(0x01);
+        let (owner_peer, rae_peer) = (owner.peer_id(), rae_doc.peer_id());
+        owner.authors_mut().witness([owner_peer], owen);
+        owner.authors_mut().witness([rae_peer], rae());
+        rae_doc.authors_mut().witness([rae_peer], rae());
+        rae_doc.authors_mut().witness([owner_peer], owen);
+        let id = owner.suggestions(&room.file).unwrap()[0].id;
+        let thread = owner
+            .reply_to_suggestion(id, owen, 20, "Why?", &[], true)
+            .unwrap();
+        sync(&owner, &mut rae_doc);
+        for doc in [&owner, &rae_doc] {
+            let found = &doc.suggestions(&room.file).unwrap()[0];
+            assert!(found.verified);
+            assert_eq!(found.author, rae());
+            assert_eq!(found.thread_id, Some(thread.id));
+        }
+    }
+
+    #[test]
+    fn two_reviewers_deleting_the_same_text_at_once_are_settled_together() {
+        let room = room("Keep this. Drop this. Keep that.\n");
+        let mut rae_doc = joined(&room, rae());
+        let mut sam_doc = joined(&room, sam());
+        let operation = delete_op(&rae_doc, &room.file, 11, 22);
+        suggest(&mut rae_doc, &room.file, operation.clone(), rae());
+        suggest(&mut sam_doc, &room.file, operation, sam());
+        let mut owner = room.owner;
+        sync(&rae_doc, &mut owner);
+        sync(&sam_doc, &mut owner);
+        assert_eq!(owner.suggestions(&room.file).unwrap().len(), 2);
+        let mut rejected = ProjectDoc::load(&owner.snapshot().unwrap()).unwrap();
+        rejected.reject_file_suggestions(&room.file).unwrap();
+        assert_eq!(
+            rejected.text(&room.file).unwrap(),
+            "Keep this. Drop this. Keep that.\n"
+        );
+        let first = owner.suggestions(&room.file).unwrap()[0].id;
+        owner.accept_suggestions(&[first]).unwrap();
+        assert_eq!(owner.text(&room.file).unwrap(), "Keep this. Keep that.\n");
+        assert!(owner.suggestions(&room.file).unwrap().is_empty());
+    }
+
+    #[test]
+    fn overlapping_deletions_made_at_once_come_back_once_and_in_order() {
+        let original = "The quick brown fox jumps.\n";
+        let room = room(original);
+        let mut rae_doc = joined(&room, rae());
+        let mut sam_doc = joined(&room, sam());
+        let mut rae_checked = Checked::of(&rae_doc);
+        let mut sam_checked = Checked::of(&sam_doc);
+        let since = rae_doc.version();
+        let operation = delete_op(&rae_doc, &room.file, 4, 16);
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        assert!(rae_checked.allows(&rae_doc, &since, rae()));
+        let since = sam_doc.version();
+        let operation = delete_op(&sam_doc, &room.file, 10, 20);
+        suggest(&mut sam_doc, &room.file, operation, sam());
+        assert!(sam_checked.allows(&sam_doc, &since, sam()));
+        let mut owner = room.owner;
+        sync(&rae_doc, &mut owner);
+        sync(&sam_doc, &mut owner);
+        assert_eq!(owner.text(&room.file).unwrap(), "The jumps.\n");
+        assert_eq!(owner.suggestions(&room.file).unwrap().len(), 2);
+        let snapshot = owner.snapshot().unwrap();
+        let mut all = ProjectDoc::load(&snapshot).unwrap();
+        all.reject_file_suggestions(&room.file).unwrap();
+        assert_eq!(all.text(&room.file).unwrap(), original);
+        assert!(all.suggestions(&room.file).unwrap().is_empty());
+        for pick in 0..2 {
+            let mut one = ProjectDoc::load(&snapshot).unwrap();
+            let id = one.suggestions(&room.file).unwrap()[pick].id;
+            one.reject_suggestions(&[id]).unwrap();
+            assert_eq!(one.text(&room.file).unwrap(), original, "rejecting {pick}");
+            assert!(one.suggestions(&room.file).unwrap().is_empty());
+        }
+        let id = owner.suggestions(&room.file).unwrap()[1].id;
+        owner.accept_suggestions(&[id]).unwrap();
+        assert_eq!(owner.text(&room.file).unwrap(), "The jumps.\n");
+        assert!(owner.suggestions(&room.file).unwrap().is_empty());
+    }
+
+    #[test]
+    fn deletion_ids_round_trip_in_runs() {
+        let ids = vec![(7, 0), (7, 1), (7, 2), (9, 5), (7, 3)];
+        let encoded = encode_ids(&ids);
+        assert_eq!(encoded, "7:0:3;9:5:1;7:3:1");
+        assert_eq!(decode_ids(&encoded), Some(ids));
+        assert_eq!(decode_ids(""), Some(Vec::new()));
+        assert_eq!(decode_ids("7:0"), None);
+        assert_eq!(decode_ids("7:0:0"), None);
+    }
+
+    #[test]
+    fn the_same_word_deleted_twice_in_a_row_stays_two_deletions() {
+        let room = room("aa.\n");
+        let mut rae_doc = joined(&room, rae());
+        let mut sam_doc = joined(&room, sam());
+        let operation = delete_op(&rae_doc, &room.file, 1, 2);
+        suggest(&mut rae_doc, &room.file, operation, rae());
+        sync(&rae_doc, &mut sam_doc);
+        let operation = delete_op(&sam_doc, &room.file, 0, 1);
+        suggest(&mut sam_doc, &room.file, operation, sam());
+        let mut owner = room.owner;
+        sync(&sam_doc, &mut owner);
+        assert_eq!(owner.text(&room.file).unwrap(), ".\n");
+        owner.reject_file_suggestions(&room.file).unwrap();
+        assert_eq!(owner.text(&room.file).unwrap(), "aa.\n");
     }
 }

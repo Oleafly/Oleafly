@@ -23,8 +23,6 @@ function stillPending(entry: CollabGuestInvitation): boolean {
   return entry.status === "awaiting_approval" || entry.status === "invited";
 }
 
-// `onChanged` hears about each approval, decline or withdrawal, so a count of
-// invitations shown elsewhere can be read again.
 export function PendingGuests({ serverId, onChanged }: Readonly<{ serverId: string; onChanged?: () => void }>) {
   const { t } = useTranslation(["collab"]);
   const [pending, setPending] = useState<CollabGuestInvitation[] | null>(null);

@@ -52,9 +52,6 @@ async fn follow_between_compiles(active: Arc<Active>) {
 }
 
 pub(super) fn schedule(active: &Arc<Active>) {
-    // A test drives a session with no app around it, for a project that
-    // isn't in any data folder. Following its settings would write lock and
-    // settings files into whatever data folder is current, so it doesn't.
     #[cfg(test)]
     if active.host.app().is_none() {
         return;

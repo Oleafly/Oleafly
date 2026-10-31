@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openSettings, waitLong } from "../helpers";
 
-// 0.4.8 I: Settings › Integrations › Computer Use on a machine without Cua
-// Driver (every CI runner): the official install line for this OS, the
-// switch held off, and "Run in terminal" off until a project is open.
 async function openDesktopAppsTab(page: import("../helpers").Page) {
   const tab = page.locator('[data-testid="integrations-tab-desktop-apps"]');
   await tab.focus();
@@ -33,7 +30,6 @@ test("without Cua Driver the tab shows the install line and keeps the switch off
     ),
   ).toBe("true");
 
-  // The home screen has no project, so there is no terminal to run it in.
   expect(
     await tauriPage.evaluate<boolean>(
       `Array.from(document.querySelectorAll(${JSON.stringify(`${install} button`)})).some((button) => button.disabled)`,

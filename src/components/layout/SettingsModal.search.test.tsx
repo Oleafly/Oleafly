@@ -17,7 +17,6 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 vi.mock("@/i18n/desktop", () => ({ changeLocalePreference: vi.fn(async () => {}) }));
 vi.mock("@/components/layout/UpdateChecker", () => ({ UpdateChecker: () => null }));
-// The AI section loads providers through Tauri; these tests only need to see it open.
 vi.mock("@/components/settings/AISection", () => ({ AISection: () => <div data-testid="ai-section" /> }));
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ preference: "dark", theme: "dark", setPreference: vi.fn(), toggleTheme: vi.fn() }),
@@ -145,7 +144,6 @@ describe("Settings search", () => {
     expect(shown).toHaveLength(1);
     expect(shown[0]).not.toHaveAttribute("role");
     expect(shown[0]).toHaveAttribute("aria-hidden", "true");
-    // Centred under a ghost, and a label rather than a sentence, so no full stop.
     expect(shown[0]).toHaveClass("flex-col", "items-center", "text-center");
     expect(shown[0].querySelector("svg")).toHaveClass("lucide-ghost");
     expect(search.empty).not.toMatch(/[.。]$/);
@@ -202,14 +200,12 @@ describe("Settings search", () => {
 
   it("does not pull the user back to a row's tab after they pick another one", async () => {
     renderSettings();
-    // Corner radius sits inside a collapsed panel, so the reveal keeps looking.
     await clickRow("corner radius", "Corner radius");
     await waitFor(() =>
       expect(screen.getByTestId("appearance-tab-app")).toHaveAttribute("aria-selected", "true"),
     );
     pressTab("appearance-tab-editor");
     expect(screen.getByTestId("appearance-tab-editor")).toHaveAttribute("aria-selected", "true");
-    // Several frames, well inside the window the reveal keeps looking for.
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(screen.getByTestId("appearance-tab-editor")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("appearance-tab-app")).toHaveAttribute("aria-selected", "false");
@@ -236,7 +232,6 @@ describe("Settings search", () => {
   it("keeps listing a row it cannot find on the page", async () => {
     renderSettings();
     await clickRow("corner radius", "Corner radius");
-    // Longer than the reveal gives up after, so a dropped row would be gone by now.
     await new Promise((resolve) => setTimeout(resolve, 2300));
     expect(within(navigation()).getByRole("button", { name: "Corner radius" })).toBeInTheDocument();
     expect(screen.getByTestId("settings-section-appearance")).toHaveAttribute("aria-current", "page");
@@ -244,8 +239,6 @@ describe("Settings search", () => {
   }, 10_000);
 
   it("waits for a row the backend fills in late, however fast frames come", async () => {
-    // Frames every millisecond or so, faster than any display, so a retry
-    // window counted in frames would run out long before the list arrives.
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
       window.setTimeout(() => callback(performance.now()), 1),
     );
@@ -302,7 +295,6 @@ describe("Settings search", () => {
     expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(searchField()).toHaveValue("");
-    // Collaboration and Research are listed only while their Experimentation switch is on.
     const everySection = SETTINGS_SEARCH_SECTIONS.filter(
       (id) => id !== "developer" && id !== "collaboration" && id !== "research",
     ).map((id) => `settings-section-${id}`);

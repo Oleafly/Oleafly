@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { i18n, loadNamespace } from "@/i18n";
 
-// True once the collaboration strings are loaded.
 export function useCollabReady(): boolean {
   const [loaded, setLoaded] = useState(() => i18n.hasResourceBundle("en", "collab"));
   useEffect(() => {

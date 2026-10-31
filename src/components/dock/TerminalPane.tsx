@@ -108,32 +108,23 @@ function killTerminalSession(id: string, projectId: string): void {
 
 export interface TerminalPaneProps {
   projectId: string;
-  /** Registers the session for busy checks and drops. */
   tabId?: string;
   visible?: boolean;
   active?: boolean;
   autoStart?: boolean;
-  /** Project-relative start folder. */
   cwd?: string;
-  /** Extra environment for the shell. */
   env?: Record<string, string>;
-  /** Typed once the shell is ready, quoted for the shell that started. */
   launch?: TerminalCommand;
-  /** Typed into the shell once, as is (kept for existing callers). */
   initialInput?: string;
   onExit?: () => void;
   onStarted?: () => void;
-  /** A program rang the bell while the pane was hidden. */
   onBell?: () => void;
-  /** The running program set the terminal title (throttled, clamped). */
   onTitle?: (title: string) => void;
 }
 
-/** Typed launch input waits for the first parsed output, or this long. */
 export const LAUNCH_INPUT_FALLBACK_MS = 1_500;
 export const TITLE_THROTTLE_MS = 250;
 const TITLE_MAX_LENGTH = 200;
-// Matches the app's Tooltip, so sweeping the pointer over a log stays quiet.
 const LINK_TOOLTIP_DELAY_MS = 300;
 
 const SEARCH_DECORATIONS = {
@@ -285,7 +276,6 @@ export function TerminalPane({
     terminalOptionIsMeta,
   };
 
-  /** Remembers the pane's size while it shows, so a hidden pane keeps it. */
   const rememberSize = useCallback(() => {
     const rect = paneRef.current?.getBoundingClientRect();
     if (rect && rect.width > 0 && rect.height > 0) {
@@ -406,8 +396,6 @@ export function TerminalPane({
       },
     );
 
-    // OSC 52: a program may put text on the clipboard, only from a pane the
-    // user can see, and may never read it back.
     const osc52 = terminal.parser.registerOscHandler(52, (data) => {
       const request = parseOsc52(data);
       if (request.kind === "write" && visibleRef.current) void copyTerminalText(request.text);
@@ -500,8 +488,6 @@ export function TerminalPane({
       firstOutputParsed = true;
       sendLaunchInput();
     };
-    // Hidden panes parse too, so modes, titles and terminal replies stay
-    // right and nothing is lost while the tab is in the background.
     const writeOutput = (data: string, bytes: number) => {
       terminal.write(data, () => {
         acks.written(bytes);
@@ -542,8 +528,6 @@ export function TerminalPane({
     const openedCols = terminal.cols;
     const openedRows = terminal.rows;
     const settings = useSettingsStore.getState();
-    // Launched commands are Windows programs (installers, sign-in), so they
-    // never start in WSL.
     const shell: TerminalOpenOptions["shell"] =
       launchRef.current && settings.terminalShell === "wsl"
         ? { id: "auto" }
@@ -559,7 +543,6 @@ export function TerminalPane({
           cwd: cwdRef.current,
           env: envRef.current,
           shell,
-          // Rust keeps the start folder out of a launch session's program lookup on Windows.
           ...(launchRef.current ? { launch: true } : {}),
         },
         channel,
@@ -621,7 +604,6 @@ export function TerminalPane({
         writeTerminalError(
           terminal,
           i18n.t(($) => $.workspace.terminal.errors.start),
-          // A typed error (no WSL distribution, a missing shell) reads in the app's language.
           decodeAppError(error) ? describeError(error) : error,
           outputWritten,
         );
@@ -690,7 +672,6 @@ export function TerminalPane({
     };
   }, [activated, ended, markOpened, projectId, rememberSize]);
 
-  // Find loads the search addon (and the bar) on first use.
   const openFind = useCallback(() => {
     const terminal = terminalRef.current;
     if (!terminal) return;
@@ -756,7 +737,6 @@ export function TerminalPane({
     terminal.options.macOptionIsMeta = platformRef.current === "mac" && terminalOptionIsMeta;
   }, [terminalOptionIsMeta, terminalScrollback]);
 
-  // A hidden pane cannot be hovered, so its tooltip must not wait for a leave.
   useEffect(() => {
     if (!visible) return;
     return () => setLinkTip(null);

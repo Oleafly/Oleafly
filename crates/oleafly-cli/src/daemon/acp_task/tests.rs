@@ -212,7 +212,6 @@ fn updates_map_like_the_app() {
     assert!(!detail.contains("rawInput"));
 }
 
-/// A data root with a project, a handed-off CLI-agent task and its grant.
 struct Setup {
     data: tempfile::TempDir,
     workspace: PathBuf,
@@ -295,7 +294,6 @@ fn setup(commands: CommandPolicy) -> Setup {
             &record
         )
         .unwrap());
-    // The helper claims it: the next generation runs.
     let helper =
         TaskStore::with_owner_kind(data.path().join("research-tasks"), OwnerKind::Daemon).unwrap();
     let claimed = helper.claim_next().unwrap().unwrap();
@@ -312,7 +310,6 @@ fn setup(commands: CommandPolicy) -> Setup {
     }
 }
 
-/// The fixture without a sandbox, with `env` and `HOME` set to the home.
 fn fixture_launcher(setup: &Setup, env: Vec<(&'static str, String)>) -> AcpLauncher {
     let program = setup.fixture.clone();
     let log = setup.log_file.clone();
@@ -356,7 +353,6 @@ fn adapter(setup: &Setup, launcher: AcpLauncher) -> (ResearchTaskState, DaemonAc
         launcher,
     )
     .unwrap()
-    // Never the developer's own sign-in files.
     .with_user_home(setup.data.path().join("user-home"));
     (state, adapter)
 }
@@ -381,8 +377,6 @@ fn context(
         agent_id: "claude".into(),
         model_id: "default".into(),
         record_dir: "research/survey".into(),
-        // A real task always has paths it may write (at least its output
-        // folders); the sandbox spec refuses a task without any.
         allowed_paths: vec!["research".into()],
         handoff,
         resume,
@@ -625,7 +619,6 @@ fn the_default_launcher_rebuilds_the_sandboxed_command() {
     );
     assert!(value("OPENAI_API_KEY").is_none());
     assert!(std::path::Path::new(&launch.sandbox.workspace).is_dir());
-    // The agent starts in the task's folder, in its plain path form.
     assert_eq!(
         command.as_std().get_current_dir(),
         Some(dunce::simplified(&launch.sandbox.workspace))
@@ -644,7 +637,6 @@ fn a_request_is_judged_with_the_paths_its_tool_call_announced() {
     let (kind, paths) = judged_request(&calls, &json!({"toolCallId": "x"}));
     assert_eq!(kind.as_deref(), Some("edit"));
     assert_eq!(paths, ["/home/me/.bashrc", "/home/me/.profile"]);
-    // The request's own paths are judged too.
     let (_, paths) = judged_request(
         &calls,
         &json!({"toolCallId": "x", "rawInput": {"file_path": "notes.md"}}),
@@ -706,7 +698,6 @@ fn reads_and_changes_that_name_no_path_are_refused() {
 #[test]
 fn the_projects_rules_are_read_as_the_app_reads_them() {
     let data = tempfile::tempdir().unwrap();
-    // No rules file: nothing is refused.
     assert!(!rules_refuse(data.path(), "paper", Some("execute")));
     std::fs::write(
         data.path().join(APPROVALS_FILE),
@@ -716,12 +707,10 @@ fn the_projects_rules_are_read_as_the_app_reads_them() {
     assert!(rules_refuse(data.path(), "paper", Some("execute")));
     assert!(!rules_refuse(data.path(), "paper", Some("edit")));
     assert!(!rules_refuse(data.path(), "paper", Some("read")));
-    // A kind no tool's rules cover is refused while a deny rule exists.
     assert!(rules_refuse(data.path(), "paper", Some("fetch")));
     assert!(rules_refuse(data.path(), "paper", None));
     assert!(!rules_refuse(data.path(), "third", Some("fetch")));
     assert!(!rules_refuse(data.path(), "paper", Some("delete")));
-    // A file the app couldn't read refuses everything.
     std::fs::write(
         data.path().join(APPROVALS_FILE),
         "[paper\nrun_command = deny",
@@ -757,7 +746,6 @@ fn the_mode_guard_leaves_a_mode_with_permission_checks_off() {
     guard.switched(&switch, &json!({}));
     assert!(guard.controls.blocked_mode(None).is_none());
     assert!(guard.next_switch().is_none() && guard.notice(&redactor).is_none());
-    // An agent that keeps going back is told about once the attempts run out.
     for _ in 0..MAX_MODE_SWITCHES {
         guard.controls.mode_id = Some("bypassPermissions".into());
         if let Some(switch) = guard.next_switch() {
@@ -776,7 +764,6 @@ fn json_text(value: &str) -> String {
     serde_json::to_string(value).unwrap()
 }
 
-/// The answer the fixture logged for its permission request.
 fn permission_answer(setup: &Setup) -> String {
     logged(setup)
         .into_iter()
@@ -926,13 +913,11 @@ async fn a_stop_during_a_reclaim_interrupts_the_turn() {
     })
     .await
     .expect("the turn must start");
-    // A reclaim waits for the turn to end ...
     step.cancel();
     tokio::time::sleep(Duration::from_millis(300)).await;
     assert!(!logged(&setup)
         .iter()
         .any(|line| line == "method session/cancel"));
-    // ... and a stop that comes meanwhile ends it now.
     withdraw.cancel();
     let outcome = tokio::time::timeout(Duration::from_secs(10), run)
         .await
@@ -999,14 +984,12 @@ fn the_agents_sign_in_files_are_copied_into_a_home_that_lacks_them() {
         assert_eq!(mode(&home.join(".claude")), 0o700);
         assert_eq!(mode(&home), 0o700);
     }
-    // A home that has them (an older handoff, a refreshed token) keeps them.
     std::fs::write(&copied, r#"{"token":"refreshed"}"#).unwrap();
     copy_credentials(user.path(), &home, "claude").unwrap();
     assert_eq!(
         std::fs::read_to_string(&copied).unwrap(),
         r#"{"token":"refreshed"}"#
     );
-    // Nothing to copy is fine.
     copy_credentials(user.path(), &task.path().join("other"), "codex").unwrap();
 }
 

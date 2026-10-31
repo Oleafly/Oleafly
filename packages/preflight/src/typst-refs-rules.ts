@@ -62,9 +62,6 @@ function bibliographyState(sources: readonly ScannedSource[], files: readonly st
   return { declared, loaded: declared && missing.size === 0, missing };
 }
 
-// The .bib files the document loads. Conflict copies, backups and samples
-// next to them must not count as repeated keys. Nothing declared keeps every
-// file, the same as before a bibliography is added.
 function definitionsInDeclaredFiles(sources: readonly ScannedSource[], ctx: RefsContext): RefsContext {
   const declared = new Set<string>();
   for (const source of sources) {

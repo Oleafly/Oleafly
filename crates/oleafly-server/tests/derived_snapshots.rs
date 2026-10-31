@@ -698,8 +698,6 @@ async fn hinted(stage: &Stage, project: SharedProjectId, seq: u64) -> Option<u64
     seq_of(&response)
 }
 
-// A project whose log holds, after three ordinary changes, one the server
-// can't take in: it builds on a change that was never stored.
 async fn with_an_unreadable_change(stage: &Stage) -> SharedProjectId {
     let project = shared_with_alice(stage).await;
     let doc = LoroDoc::new();

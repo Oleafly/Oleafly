@@ -1,7 +1,3 @@
-//! Run facade: the public agent-run API. The turn loop lives in
-//! `session::turn`, context-window accounting in `session::context_window`,
-//! compaction in `session::compact`, and tool execution policy in `tools`.
-
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,14 +27,10 @@ pub struct RunConfig {
     pub max_steps: u32,
     pub max_retries: u32,
     pub retry_base_ms: u64,
-    /// Summarize older history instead of failing when the context window is
-    /// exhausted mid-turn.
     #[serde(default = "default_auto_compact")]
     pub auto_compact: bool,
-    /// Stop the run after this long instead of the usual 30 minutes.
     #[serde(default)]
     pub max_duration_ms: Option<u64>,
-    /// Let `max_steps` go past the usual 50-step cap (research tasks).
     #[serde(default)]
     pub allow_long_runs: bool,
 }
@@ -83,26 +75,14 @@ pub struct RunOutcome {
     pub steps: u32,
     pub stopped_at_cap: bool,
     pub error: Option<String>,
-    /// Why the last step ended, as the provider said it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<String>,
-    /// What the run cost, subagents included, when prices are known. The
-    /// host fills it in.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost_usd: Option<f64>,
-    /// The conversation when the run returned, ending with the model's last
-    /// reply, so a caller can continue it with another turn. Kept in the
-    /// process: never serialized.
     #[serde(skip)]
     pub history: Vec<Message>,
-    // 0.4.8 L: suspend at a step boundary, and why a stream error ended the run.
-    /// The run stopped between steps because its pipeline's `suspend` token
-    /// was cancelled. `history` holds the whole conversation so far, so
-    /// another process can continue it.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub suspended: bool,
-    /// The kind of the provider error that ended the run (`auth`,
-    /// `transport`, `timeout`, …), as [`AgentError::kind`] names it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_kind: Option<String>,
 }
@@ -110,20 +90,11 @@ pub struct RunOutcome {
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 pub type ToolRunner = Arc<dyn Fn(ToolCall) -> BoxFuture<ToolOutput> + Send + Sync>;
 
-/// Execution context one agent run shares across every tool batch: the
-/// registry carrying per-tool parallel policy, the single gate serializing
-/// exclusive tools, and the run's cancellation token. Defaults preserve the
-/// historical behavior (unknown tools serialize; no cancellation source).
 #[derive(Clone, Default)]
 pub struct ToolPipeline {
     pub registry: ToolRegistry,
     pub gate: ToolGate,
     pub token: CancellationToken,
-    // 0.4.8 L: a research task that moves to another process ends its run
-    // at the next step boundary instead of being cancelled.
-    /// When cancelled, the run returns before its next step with
-    /// [`RunOutcome::suspended`] set and the whole history. `None` keeps the
-    /// usual behavior.
     pub suspend: Option<CancellationToken>,
 }
 
@@ -138,8 +109,6 @@ impl ToolPipeline {
     }
 }
 
-/// The sender half of a run's steer channel: the shell injects mid-run user
-/// input and the turn loop delivers it at the next message boundary.
 #[derive(Clone)]
 pub struct SteerHandle {
     tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<SteeredInput>>,
@@ -325,10 +294,7 @@ where
     .await
 }
 
-/// Like `run_agent`, but the caller supplies the tool pipeline (per-tool
-/// parallel policy, shared gate, cancellation token) the run executes under
-/// and may pass the receiver half of a steer channel for mid-run input.
-#[allow(clippy::too_many_arguments)] // Turn plumbing; each arg is load-bearing.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_agent_with_pipeline<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -362,8 +328,6 @@ where
     )
     .await
     .unwrap_or(Err(AgentError::Timeout));
-    // A run that ends in an error says so in its events too, as a stream
-    // error does, so a recorded turn ends failed rather than completed.
     if let Err(error) = &result {
         on_event(AgentEvent::Error {
             message: error.to_string(),
@@ -438,8 +402,6 @@ mod tests {
         stream.flush().unwrap();
     }
 
-    // Wide deadlines: these waits are satisfied in milliseconds, and a tight one
-    // fails under the pre-commit hook's load instead of proving anything.
     async fn receive_signal<T>(receiver: &mpsc::Receiver<T>) -> T {
         tokio::time::timeout(Duration::from_secs(20), async {
             loop {
@@ -502,8 +464,6 @@ mod tests {
             });
             let mut request = CompletionRequest::prompt("system", "prompt");
             request.messages = if provider_overflow {
-                // A history compaction can shorten: a lone first request is
-                // not summarized at all.
                 (0..12)
                     .map(|index| Message::user(format!("prompt {index}")))
                     .collect()
@@ -574,8 +534,6 @@ mod tests {
         }
     }
 
-    /// Serves one canned reply per request, in order, and returns the
-    /// request texts when the run is over.
     fn serve_canned(
         replies: Vec<(&'static str, String)>,
     ) -> (std::net::SocketAddr, std::thread::JoinHandle<Vec<String>>) {
@@ -656,8 +614,6 @@ mod tests {
             &crate::build_client().unwrap(),
             &local_resolved(address),
             CompletionRequest::prompt("system", "hi"),
-            // A backoff of a millisecond: only the provider's ask can make
-            // the second request wait this long.
             &RunConfig {
                 max_steps: 1,
                 max_retries: 1,
@@ -684,7 +640,6 @@ mod tests {
     async fn an_unusable_summary_fails_the_compaction_and_keeps_the_history() {
         for (reply, expected) in [
             (
-                // A reasoning model that spent its output on thinking.
                 r#"{"choices":[{"message":{"content":""},"finish_reason":"stop"}]}"#,
                 "empty summary",
             ),
@@ -709,8 +664,6 @@ mod tests {
             assert!(!events
                 .iter()
                 .any(|event| matches!(event, AgentEvent::Compacted { .. })));
-            // The summary call was the only request: nothing was sampled on a
-            // history the empty summary would have replaced.
             assert_eq!(server.join().unwrap().len(), 1);
         }
     }
@@ -791,7 +744,6 @@ mod tests {
         let summary: serde_json::Value =
             serde_json::from_str(requests[0].split_once("\r\n\r\n").unwrap().1).unwrap();
         let messages = summary["messages"].as_array().unwrap();
-        // The system prompt, then the whole history as one user message.
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[1]["role"], "user");
         assert!(messages[1]["content"]
@@ -1058,10 +1010,6 @@ mod tests {
         ));
     }
 
-    // --- 0.4.8: turn loop -------------------------------------------------
-
-    /// Serves `replies` to consecutive connections and hands back each
-    /// request as it arrives (headers and body).
     fn serve_replies(replies: Vec<String>) -> (std::net::SocketAddr, mpsc::Receiver<String>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
@@ -1200,7 +1148,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_custom_duration_times_the_run_out() {
-        // A server that accepts and never answers.
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         let held = std::thread::spawn(move || {
@@ -1251,7 +1198,6 @@ mod tests {
                 text: "answer".into()
             }]
         );
-        // The history stays in the process.
         assert!(serde_json::to_value(&outcome)
             .unwrap()
             .get("history")

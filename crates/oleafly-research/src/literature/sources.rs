@@ -1,11 +1,8 @@
-//! Each scholarly index's answer as [`LiteratureRecord`]s (the same fields
-//! the app's literature panel reads in TypeScript).
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// A scholarly index Oleafly searches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LiteratureSourceId {
@@ -58,7 +55,6 @@ impl LiteratureSourceId {
     }
 }
 
-/// One work, merged across the indexes that returned it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct LiteratureRecord {
@@ -76,7 +72,6 @@ pub struct LiteratureRecord {
     pub citation_count: Option<u64>,
     pub open_access: Option<bool>,
     pub sources: Vec<LiteratureSourceId>,
-    /// Each source's own id for the work, by source name.
     pub source_ids: BTreeMap<String, String>,
 }
 
@@ -140,7 +135,6 @@ fn strip_tags(text: &str) -> String {
     out
 }
 
-/// Plain text: tags removed (JATS too), entities decoded, spaces collapsed.
 pub fn clean_text(value: &str) -> Option<String> {
     let cleaned = decode_entities(&strip_tags(value))
         .split_whitespace()
@@ -201,7 +195,6 @@ fn year_from(value: &Value) -> Option<u16> {
     })
 }
 
-/// An arXiv id without its version suffix.
 pub fn arxiv_id(value: &str) -> Option<String> {
     let id = value
         .trim()

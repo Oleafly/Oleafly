@@ -370,8 +370,6 @@ export function assertWindowsReparseQuerySafe(path, query) {
   }
 }
 
-// Absolute path: resolving fsutil through PATH would let a writable directory
-// earlier in PATH decide which binary vets the reparse point.
 const DEFAULT_SYSTEM_ROOT = String.raw`C:\Windows`;
 const FSUTIL = String.raw`${process.env.SystemRoot ?? DEFAULT_SYSTEM_ROOT}\System32\fsutil.exe`;
 
@@ -439,8 +437,6 @@ function directoryComponents(directory) {
   const paths = [root];
   let current = root;
   for (const component of components) {
-    // Directory names are user/OS controlled and can contain spaces or dots.
-    // The resolved relative path must still consist only of real child names.
     if (
       component === "" ||
       component === "." ||
@@ -1278,8 +1274,6 @@ async function installResourceArchive(
   ) {
     throw new Error(`archive changed before resource staging: ${archive}`);
   }
-  // Parse and verify the exact binary before publishing the archive. Runtime
-  // repeats these checks before installing into app-local-data.
   extractPinnedBinary(archiveFile.bytes, targetEntry);
   // Keep the source resource writable by its owner so Tauri's incremental
   // resource copier can refresh build outputs. Runtime immutability is

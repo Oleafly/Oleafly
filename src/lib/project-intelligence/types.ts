@@ -124,7 +124,6 @@ export interface LatexDefinitionArguments {
   readonly optionalCount: number;
   readonly optionalDefault?: string;
   readonly xparseSpecification?: string;
-  /** CodeMirror snippet appended after the command/environment name. */
   readonly completionSnippet: string;
 }
 
@@ -195,7 +194,6 @@ export interface ProjectEdge {
 }
 
 export interface ProjectHierarchy {
-  /** Project-relative file paths, ordered with the configured main file first. */
   readonly roots: readonly string[];
   readonly nodes: readonly ProjectHierarchyNode[];
   readonly edges: readonly ProjectEdge[];
@@ -363,21 +361,11 @@ export interface ProjectIntelligenceFailure {
   readonly retryable: boolean;
 }
 
-/**
- * A running state may retain the last accepted snapshot for continuity. When
- * it does, `stale` is true and the retained snapshot must not be presented as
- * current-revision analysis.
- */
 export interface ProjectIntelligenceState {
   readonly status: ProjectIntelligenceStatus;
   readonly identity: ProjectIntelligenceIdentity | null;
   readonly data: ProjectIntelligenceSnapshot | null;
   readonly stale: boolean;
-  /**
-   * True only while an active-file text edit is awaiting its authoritative
-   * worker result. Filesystem/main-document invalidations keep this false so
-   * editor fallbacks cannot resolve against an obsolete project graph.
-   */
   readonly currentFileFallbackAllowed?: boolean;
   readonly reason?: ProjectIntelligenceReason;
   readonly failure?: ProjectIntelligenceFailure;

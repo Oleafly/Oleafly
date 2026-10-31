@@ -142,7 +142,7 @@ describe("a version of the project", () => {
     expect(await within(dialog).findByText(fill(copy.fileLabel, { path: "intro.tex", time: copy.earlier }))).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: copy.restoreProject }));
     const confirm = await screen.findByRole("alertdialog", { name: copy.restoreProjectConfirm.title });
-    expect(confirm).toHaveTextContent(fill(copy.restoreProjectConfirm.description, { time: copy.earlier }));
+    expect(confirm).toHaveTextContent(fill(copy.restoreProjectConfirm.textAndDeleted, { time: copy.earlier }));
   });
 
   it("shows a named version's time under its name", () => {

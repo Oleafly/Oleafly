@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::time::Duration;
@@ -59,15 +59,84 @@ impl Sink {
 
 type Sinks = HashMap<u64, Sink>;
 
+const LINGERING_PER_ACCOUNT: usize = 2;
+const KEPT_CHANGES: usize = 16;
+const KEPT_WRITERS: usize = 4_096;
+const MAX_CHANGE_ID_CHARS: usize = 64;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fate {
+    Applied,
+    Abandoned,
+}
+
+struct Lingering {
+    room: Arc<WebRoom>,
+    account: AccountId,
+    ticket: u64,
+}
+
+type Writer = (SharedProjectId, DeviceId);
+
+#[derive(Default)]
+struct Changes {
+    clock: u64,
+    writers: HashMap<Writer, (u64, VecDeque<(String, Fate)>)>,
+}
+
+impl Changes {
+    fn fate(&self, writer: Writer, id: &str) -> Option<Fate> {
+        self.writers
+            .get(&writer)?
+            .1
+            .iter()
+            .find(|(known, _)| known == id)
+            .map(|(_, fate)| *fate)
+    }
+
+    fn note(&mut self, writer: Writer, id: &str, fate: Fate) {
+        self.clock += 1;
+        if !self.writers.contains_key(&writer) && self.writers.len() >= KEPT_WRITERS {
+            let oldest = self
+                .writers
+                .iter()
+                .min_by_key(|(_, (used, _))| *used)
+                .map(|(key, _)| *key);
+            if let Some(oldest) = oldest {
+                self.writers.remove(&oldest);
+            }
+        }
+        let clock = self.clock;
+        let (used, kept) = self.writers.entry(writer).or_default();
+        *used = clock;
+        kept.retain(|(known, _)| known != id);
+        kept.push_back((id.to_string(), fate));
+        while kept.len() > KEPT_CHANGES {
+            kept.pop_front();
+        }
+    }
+}
+
+pub fn change_id(id: Option<String>) -> Option<String> {
+    id.filter(|id| !id.is_empty() && id.chars().count() <= MAX_CHANGE_ID_CHARS)
+}
+
+fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
 #[derive(Default)]
 pub struct Hub {
     rooms: Mutex<HashMap<SharedProjectId, Weak<WebRoom>>>,
     sessions: AtomicU64,
+    lingering: Mutex<Vec<Lingering>>,
+    tickets: AtomicU64,
+    changes: Mutex<Changes>,
 }
 
 impl Hub {
     fn lock(&self) -> MutexGuard<'_, HashMap<SharedProjectId, Weak<WebRoom>>> {
-        self.rooms.lock().unwrap_or_else(PoisonError::into_inner)
+        locked(&self.rooms)
     }
 
     pub fn room(&self, project: SharedProjectId) -> Arc<WebRoom> {
@@ -89,12 +158,90 @@ impl Hub {
         self.sessions.fetch_add(1, Ordering::Relaxed) + 1
     }
 
-    pub fn linger(room: Arc<WebRoom>) {
-        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
-            runtime.spawn(async move {
-                tokio::time::sleep(LINGER).await;
-                drop(room);
+    pub fn linger(self: &Arc<Self>, account: AccountId, room: Arc<WebRoom>) {
+        let ticket = self.tickets.fetch_add(1, Ordering::Relaxed);
+        let released = {
+            let mut lingering = locked(&self.lingering);
+            let mut released = Vec::new();
+            if let Some(at) = lingering
+                .iter()
+                .position(|kept| kept.account == account && Arc::ptr_eq(&kept.room, &room))
+            {
+                released.push(lingering.remove(at));
+            }
+            while lingering
+                .iter()
+                .filter(|kept| kept.account == account)
+                .count()
+                >= LINGERING_PER_ACCOUNT
+            {
+                let Some(at) = lingering.iter().position(|kept| kept.account == account) else {
+                    break;
+                };
+                released.push(lingering.remove(at));
+            }
+            lingering.push(Lingering {
+                room,
+                account,
+                ticket,
             });
+            released
+        };
+        drop(released);
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            self.release(ticket);
+            return;
+        };
+        let hub = Arc::downgrade(self);
+        runtime.spawn(async move {
+            tokio::time::sleep(LINGER).await;
+            if let Some(hub) = hub.upgrade() {
+                hub.release(ticket);
+            }
+        });
+    }
+
+    fn release(&self, ticket: u64) {
+        let released = {
+            let mut lingering = locked(&self.lingering);
+            lingering
+                .iter()
+                .position(|kept| kept.ticket == ticket)
+                .map(|at| lingering.remove(at))
+        };
+        drop(released);
+    }
+
+    pub fn shed(&self) -> bool {
+        let released = std::mem::take(&mut *locked(&self.lingering));
+        let freed = released
+            .iter()
+            .any(|kept| Arc::strong_count(&kept.room) == 1);
+        drop(released);
+        freed
+    }
+
+    pub fn lingering(&self) -> usize {
+        locked(&self.lingering).len()
+    }
+
+    fn fate(&self, project: SharedProjectId, device: DeviceId, id: &str) -> Option<Fate> {
+        locked(&self.changes).fate((project, device), id)
+    }
+
+    fn note(&self, project: SharedProjectId, device: DeviceId, id: &str, fate: Fate) {
+        locked(&self.changes).note((project, device), id, fate);
+    }
+
+    fn resumed(&self, project: SharedProjectId, device: DeviceId, id: &str) -> bool {
+        let mut changes = locked(&self.changes);
+        match changes.fate((project, device), id) {
+            Some(Fate::Applied) => true,
+            Some(Fate::Abandoned) => false,
+            None => {
+                changes.note((project, device), id, Fate::Abandoned);
+                false
+            }
         }
     }
 }
@@ -114,11 +261,15 @@ impl Drop for WebRoom {
 }
 
 fn free(room: RoomDoc) {
+    drop(room.release());
+}
+
+fn free_doc(doc: ProjectDoc) {
     match tokio::runtime::Handle::try_current() {
         Ok(runtime) => {
-            drop(runtime.spawn_blocking(move || drop(room)));
+            drop(runtime.spawn_blocking(move || drop(doc)));
         }
-        Err(_) => drop(room),
+        Err(_) => drop(doc),
     }
 }
 
@@ -194,6 +345,19 @@ struct Failed {
     dirty: bool,
 }
 
+enum Taken {
+    Skipped,
+    Applied(Option<Written>),
+}
+
+struct Carried {
+    channels: HashMap<String, HashMap<u64, EditorChannel>>,
+    retired: HashMap<(u64, String), u64>,
+    writers: HashMap<DeviceId, u64>,
+    files: Vec<WebFile>,
+    compile: Settings,
+}
+
 pub struct RoomDoc {
     doc: ProjectDoc,
     held: Held,
@@ -202,6 +366,7 @@ pub struct RoomDoc {
     channels: HashMap<String, HashMap<u64, EditorChannel>>,
     retired: HashMap<(u64, String), u64>,
     writers: HashMap<DeviceId, u64>,
+    stored: HashMap<DeviceId, Vec<(u64, i64)>>,
     files: Vec<WebFile>,
     compile: Settings,
 }
@@ -218,11 +383,20 @@ async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Ref
         Current::Busy => return Err(busy()),
         Current::Missing => return Err(cannot_open()),
     };
-    let bound = state
+    let (bound, ends) = state
         .db
-        .read(move |conn| peers::table(conn, project))
+        .read(move |conn| Ok((peers::table(conn, project)?, peers::ends(conn, project)?)))
         .await
         .map_err(|_| cannot_open())?;
+    let mut stored: HashMap<DeviceId, Vec<(u64, i64)>> = HashMap::new();
+    for row in &bound {
+        if let Some(end) = ends.get(&row.peer) {
+            stored
+                .entry(row.device_id)
+                .or_default()
+                .push((row.peer, *end));
+        }
+    }
     let built = tokio::task::spawn_blocking(move || {
         let (replay, held) = budgeted.into_parts();
         let bytes = replay.finish()?;
@@ -248,12 +422,49 @@ async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Ref
         channels: HashMap::new(),
         retired: HashMap::new(),
         writers: HashMap::new(),
+        stored,
         files,
         compile,
     })
 }
 
 impl RoomDoc {
+    fn release(self) -> Carried {
+        let RoomDoc {
+            doc,
+            held,
+            channels,
+            retired,
+            writers,
+            files,
+            compile,
+            ..
+        } = self;
+        drop(held);
+        free_doc(doc);
+        Carried {
+            channels,
+            retired,
+            writers,
+            files,
+            compile,
+        }
+    }
+
+    fn reusable(&self, device: DeviceId) -> Option<u64> {
+        let known = self.doc.version();
+        self.stored
+            .get(&device)?
+            .iter()
+            .filter(|(peer, end)| {
+                known
+                    .get(peer)
+                    .is_some_and(|counter| i64::from(*counter) == *end)
+            })
+            .max_by_key(|(_, end)| *end)
+            .map(|(peer, _)| *peer)
+    }
+
     fn knows(&self, seq: u64) -> bool {
         seq <= self.seq || self.ahead.contains(&seq)
     }
@@ -280,11 +491,16 @@ impl RoomDoc {
     }
 
     fn writer(&mut self, device: DeviceId) -> Result<u64, Refusal> {
-        let known = self.doc.version();
-        let peer = *self
-            .writers
-            .entry(device)
-            .or_insert_with(|| fresh_peer(&known));
+        let peer = match self.writers.get(&device) {
+            Some(peer) => *peer,
+            None => {
+                let peer = self
+                    .reusable(device)
+                    .unwrap_or_else(|| fresh_peer(&self.doc.version()));
+                self.writers.insert(device, peer);
+                peer
+            }
+        };
         self.doc.set_peer_id(peer).map_err(|_| Refusal::server())?;
         Ok(peer)
     }
@@ -368,6 +584,16 @@ impl RoomDoc {
                 }
             }
         }
+        for file in self.doc.suggestion_counts().into_keys() {
+            let suggestions = pending_core::suggestions(&self.doc, &file);
+            if !suggestions.is_empty() {
+                sink.send(&Outgoing::Suggestions {
+                    file_id: file,
+                    rev: None,
+                    suggestions,
+                });
+            }
+        }
         sink.send(&Outgoing::Chat {
             messages: pending_core::chat_messages(&self.doc),
         });
@@ -394,7 +620,13 @@ impl RoomDoc {
         }
     }
 
-    fn open(&mut self, sinks: &Sinks, session: u64, file: &str) -> Result<(), Refusal> {
+    fn open(
+        &mut self,
+        sinks: &Sinks,
+        session: u64,
+        file: &str,
+        resumed: Option<bool>,
+    ) -> Result<(), Refusal> {
         if !self.is_text(file) {
             return Err(not_found());
         }
@@ -417,6 +649,7 @@ impl RoomDoc {
             file_id: file.to_string(),
             rev,
             text,
+            resumed,
         });
         sink.send(&Outgoing::Threads {
             file_id: file.to_string(),
@@ -603,29 +836,35 @@ impl RoomDoc {
         operation: TextOperation,
         suggesting: bool,
         now: i64,
-    ) -> Result<Option<Written>, Refusal> {
+    ) -> Result<Taken, Failed> {
         let received = {
             let channel = self
                 .channels
                 .get_mut(file)
                 .and_then(|channels| channels.get_mut(&session))
-                .ok_or_else(not_open)?;
+                .ok_or_else(|| Failed {
+                    refusal: not_open(),
+                    dirty: false,
+                })?;
             match channel.receive(rev, operation) {
                 Ok(applied) => Some((applied, channel.rev(), channel.length())),
-                Err(ChannelError::BeforeReset) => return Ok(None),
+                Err(ChannelError::BeforeReset) => return Ok(Taken::Skipped),
                 Err(ChannelError::Stale | ChannelError::Invalid(_)) => None,
             }
         };
         let Some((applied, acked, length)) = received else {
             self.reset_one(sinks, session, file);
-            return Ok(None);
+            return Ok(Taken::Skipped);
         };
         let before = self.doc.version();
         let peer = match self.writer(device) {
             Ok(peer) => peer,
             Err(refusal) => {
                 self.reset_one(sinks, session, file);
-                return Err(refusal);
+                return Err(Failed {
+                    refusal,
+                    dirty: false,
+                });
             }
         };
         let tracked = suggesting || !pending_core::suggestions(&self.doc, file).is_empty();
@@ -635,8 +874,11 @@ impl RoomDoc {
             pending_core::edit_operation(&mut self.doc, file, &applied)
         };
         if let Err(refusal) = outcome {
-            self.reset_one(sinks, session, file);
-            return Err(refusal);
+            let dirty = self.doc.has_changes_since(&before);
+            if !dirty {
+                self.reset_one(sinks, session, file);
+            }
+            return Err(Failed { refusal, dirty });
         }
         if let Some(sink) = sinks.get(&session) {
             sink.send(&Outgoing::Ack {
@@ -651,18 +893,18 @@ impl RoomDoc {
             self.send_suggestions(sinks, file);
         }
         if !self.doc.has_changes_since(&before) {
-            return Ok(None);
+            return Ok(Taken::Applied(None));
         }
-        let payload = self
-            .doc
-            .export_since(&before)
-            .map_err(|_| Refusal::server())?;
-        Ok(Some(Written {
+        let payload = self.doc.export_since(&before).map_err(|_| Failed {
+            refusal: Refusal::server(),
+            dirty: true,
+        })?;
+        Ok(Taken::Applied(Some(Written {
             payload,
             peer,
             texts: Vec::new(),
             threads: Vec::new(),
-        }))
+        })))
     }
 
     fn file_of_thread(&self, thread: CommentId) -> Result<String, Refusal> {
@@ -833,9 +1075,10 @@ impl RoomDoc {
         }
     }
 
-    fn adopt(&mut self, mut old: RoomDoc, sinks: &Sinks) {
+    fn adopt(&mut self, mut old: Carried, sinks: &Sinks) {
         let changed = old.files != self.files;
         let compiled = old.compile != self.compile;
+        self.writers = std::mem::take(&mut old.writers);
         for (file, channels) in old.channels.drain() {
             let Ok(text) = self.doc.text(&file) else {
                 continue;
@@ -870,7 +1113,6 @@ impl RoomDoc {
             self.send_threads(sinks, &file);
             self.send_suggestions(sinks, &file);
         }
-        free(old);
     }
 }
 
@@ -954,11 +1196,19 @@ impl WebRoom {
         }
     }
 
-    pub async fn open_file(&self, session: u64, file: &str) -> Result<(), Refusal> {
+    pub async fn open_file(
+        &self,
+        hub: &Hub,
+        device: DeviceId,
+        session: u64,
+        file: &str,
+        resume: Option<String>,
+    ) -> Result<(), Refusal> {
         let sinks = self.sinks();
         let mut guard = self.doc.lock().await;
         let room = guard.as_mut().ok_or_else(cannot_open)?;
-        room.open(&sinks, session, file)
+        let resumed = change_id(resume).map(|id| hub.resumed(self.project, device, &id));
+        room.open(&sinks, session, file, resumed)
     }
 
     pub async fn close_file(&self, session: u64, file: &str) {
@@ -1129,7 +1379,7 @@ impl WebRoom {
         state: &AppState,
         guard: &mut tokio::sync::MutexGuard<'_, Option<RoomDoc>>,
     ) {
-        let old = guard.take();
+        let old = guard.take().map(RoomDoc::release);
         let sinks = self.sinks();
         match load(state, self.project).await {
             Ok(mut fresh) => {
@@ -1138,12 +1388,7 @@ impl WebRoom {
                 }
                 **guard = Some(fresh);
             }
-            Err(refusal) => {
-                if let Some(old) = old {
-                    free(old);
-                }
-                self.unload(guard, &sinks, refusal);
-            }
+            Err(refusal) => self.unload(guard, &sinks, refusal),
         }
     }
 
@@ -1207,12 +1452,19 @@ impl WebRoom {
         rev: u64,
         operation: TextOperation,
         suggesting: bool,
+        id: Option<String>,
     ) -> Result<(), Refusal> {
         let sinks = self.sinks();
         let mut guard = self.doc.lock().await;
         let room = guard.as_mut().ok_or_else(cannot_open)?;
+        let id = change_id(id);
+        if let Some(id) = id.as_deref() {
+            if state.web.fate(self.project, peer.device, id).is_some() {
+                return Ok(());
+            }
+        }
         let now = state.clock.now_ms();
-        let written = room.local_change(
+        let taken = room.local_change(
             &sinks,
             session,
             peer.device,
@@ -1222,11 +1474,24 @@ impl WebRoom {
             operation,
             suggesting,
             now,
-        )?;
-        match written {
-            Some(written) => self.store(state, &mut guard, peer, key, written).await,
-            None => Ok(()),
+        );
+        let stored = match taken {
+            Ok(Taken::Skipped) => return Ok(()),
+            Ok(Taken::Applied(None)) => Ok(()),
+            Ok(Taken::Applied(Some(written))) => {
+                self.store(state, &mut guard, peer, key, written).await
+            }
+            Err(failed) => {
+                if failed.dirty {
+                    self.reload(state, &mut guard).await;
+                }
+                return Err(failed.refusal);
+            }
+        };
+        if let (Ok(()), Some(id)) = (&stored, id.as_deref()) {
+            state.web.note(self.project, peer.device, id, Fate::Applied);
         }
+        stored
     }
 
     pub async fn reset_file(&self, session: u64, file: &str) {

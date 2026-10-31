@@ -256,10 +256,6 @@ pub struct MailStats {
     pub abandoned: u64,
     pub dropped: u64,
     pub last_failure: Option<EmailFailure>,
-    // Whether email works, as far as the server knows. A connection check
-    // decides it either way and mail that gets through sets it. One refused
-    // recipient doesn't make email broken for everyone, so a failed delivery
-    // leaves it to the next check.
     pub working: Option<bool>,
 }
 
@@ -459,7 +455,6 @@ impl Delivery {
         outcome
     }
 
-    // Connects, signs in and says NOOP, then hangs up. Nothing is sent.
     async fn check(&self) -> Result<(), String> {
         let outcome =
             match tokio::time::timeout(self.timeout, self.transport.test_connection()).await {
@@ -643,9 +638,6 @@ impl Mailer {
         self.inner.is_some()
     }
 
-    /// True once a check reached the mail server and signed in, or mail got
-    /// through, and nothing has failed a check since. Email sign-in is only
-    /// offered while this holds.
     pub fn is_working(&self) -> bool {
         self.inner
             .as_ref()
@@ -659,7 +651,6 @@ impl Mailer {
         }
     }
 
-    /// For tests whose mail server address only has to look real.
     #[cfg(any(test, feature = "test-support"))]
     pub fn assume_working(&self) {
         if let Some(inner) = &self.inner {

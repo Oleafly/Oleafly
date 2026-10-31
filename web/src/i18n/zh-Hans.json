@@ -48,6 +48,11 @@
     "stoppedTitle": "已断开连接",
     "stoppedDescription": "重新加载页面即可再次连接。"
   },
+  "leave": {
+    "title": "要离开此项目吗？",
+    "description": "你的部分编辑还没有发送到服务器。请等待发送完成。现在离开会丢失这些编辑。",
+    "confirm": "离开"
+  },
   "access": {
     "changed": "你在此项目中的角色已变为 {{role}}。"
   },
@@ -155,6 +160,11 @@
     "withdraw": "撤回",
     "acceptAll": "全部接受",
     "rejectAll": "全部拒绝",
+    "rejectAllConfirm": {
+      "title": "要拒绝 {{file}} 中的所有建议吗？",
+      "description": "文件会为本项目中的所有人恢复原来的文本。等待审阅的建议：{{number}}。",
+      "confirm": "全部拒绝"
+    },
     "pending_other": "{{count}} 条建议",
     "card": "{{name}} 的建议",
     "lineBreak": "换行"

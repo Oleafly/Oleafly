@@ -112,7 +112,6 @@ afterEach(async () => {
 });
 afterAll(restore);
 
-/** Picks a model in the composer's model picker (a list in a popover since 0.4.8). */
 async function chooseModel(ui: ReturnType<typeof render>, name: string) {
   fireEvent.click(ui.getByTestId("acp-model-picker"));
   const listbox = await waitFor(() => {
@@ -120,7 +119,10 @@ async function chooseModel(ui: ReturnType<typeof render>, name: string) {
     if (!found) throw new Error("The model picker did not open.");
     return found;
   });
-  fireEvent.click(within(listbox).getByRole("option", { name }));
+  const option = within(listbox).getByRole("option", { name });
+  await act(async () => {
+    fireEvent.click(option);
+  });
 }
 
 function typeMessage(input: HTMLElement, value: string) {
@@ -151,7 +153,7 @@ describe("ACP assistant acceptance", () => {
     const notice = await ui.findByTestId("trust-required-notice");
     expect(notice).toHaveTextContent("Trust this folder to use CLI agents.");
     expect(within(notice).getByRole("button", { name: "Trust this folder" })).toBeInTheDocument();
-    useFolderAccessStore.getState().reset(null);
+    act(() => useFolderAccessStore.getState().reset(null));
   });
 
   it("reopens persisted messages, loads older activity, and retains unknown usage without inventing token totals", async () => {
@@ -199,8 +201,6 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(ui.getByTestId("agent-picker-fixture")).toHaveTextContent("Research CLI"));
     fireEvent.click(ui.getByRole("button", { name: "New conversation" }));
     expect(await ui.findByRole("alert")).toHaveTextContent("The agent executable is missing.");
-    // 0.4.8: with no conversation, the shared composer stays open and Enter
-    // starts one; nothing can reach an agent that is not running.
     expect(ui.getByLabelText("Message CLI agent")).toBeEnabled();
     expect(ui.getByLabelText("Message CLI agent")).toHaveAttribute(
       "placeholder",
@@ -288,8 +288,6 @@ describe("ACP assistant acceptance", () => {
     vi.mocked(acpReconnect).mockRejectedValueOnce(new Error("The executable is temporarily unavailable.")).mockResolvedValueOnce({ session: session("saved", { lastSequence: 3 }), permissions: [] });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     await ui.findByText("The first result needs a larger sample.");
-    // 0.4.8: during a turn the composer takes the next message and queues it
-    // instead of sending a second prompt.
     expect(ui.getByLabelText("Message CLI agent")).toBeEnabled();
     expect(ui.getByLabelText("Message CLI agent")).toHaveAttribute("placeholder", enAi.acp.composerPlaceholderRunning);
     fireEvent.click(ui.getByRole("button", { name: "Stop" }));
@@ -356,7 +354,6 @@ describe("ACP assistant acceptance", () => {
     expect(ui.queryByRole("tablist")).not.toBeInTheDocument();
     const roster = ui.getByTestId("agent-picker-row");
     const rosterNames = [...roster.querySelectorAll("button")].map((node) => node.getAttribute("aria-label"));
-    // 0.4.8 lists the agents in the catalog only, not every agent Oleafly knows of.
     expect(rosterNames).toEqual(["Research CLI", "Pi"]);
     expect(ui.getByTestId("agent-picker-fixture")).toHaveAttribute("aria-pressed", "true");
     expect(ui.getByTestId("agent-picker-pi")).toHaveAttribute("data-available", "false");
@@ -375,7 +372,6 @@ describe("ACP assistant acceptance", () => {
     expect(ui.queryByTestId("acp-start-conversation")).not.toBeInTheDocument();
     const controls = ui.getByTestId("acp-composer-controls");
     expect(ui.getByTestId("agent-picker-fixture")).toHaveTextContent("Research CLI");
-    // 0.4.8: the model picker is a button that opens a list.
     expect(within(controls).getByRole("button", { name: "Agent model" })).toHaveTextContent("First model");
     expect(within(controls).getByRole("button", { name: "Send" })).toBeDisabled();
   });
@@ -547,7 +543,6 @@ describe("ACP assistant acceptance", () => {
     const ui = render(<AcpWorkspace />);
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
     const names = await menuItemNames(ui.getByRole("button", { name: "Saved conversations" }));
-    // 0.4.8 ends the menu with the History dialog, which hides them too.
     expect(names).toEqual(["Export conversation…", "Conversation saved · Research CLI", enAi.acp.history.all]);
   });
 

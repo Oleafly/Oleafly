@@ -1,5 +1,3 @@
-//! Typst source rules (`packages/preflight/src/typst-source-rules.ts`).
-
 use std::sync::LazyLock;
 
 use crate::jsre::JsRegex;
@@ -313,7 +311,6 @@ fn metadata_presence(scan: &TypstScan) -> (bool, bool) {
     (title, author)
 }
 
-/// `no-title` and `no-author` across every Typst file of the project.
 pub fn typst_metadata_findings(
     sources: &[(String, String)],
     anonymous_review: bool,

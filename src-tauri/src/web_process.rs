@@ -22,9 +22,6 @@ const RELOAD_WINDOW: Duration = Duration::from_secs(60);
 #[cfg(any(target_os = "linux", target_os = "macos", test))]
 const MAX_RELOADS: usize = 3;
 
-// A watchdog kill needs a loaded page, 10 s before the first probe and 30 s
-// without an answer, so kills are at least about 40 s apart. Their own budget
-// spans ten minutes, so a page that hangs after every reload runs out of it.
 #[cfg(any(target_os = "macos", test))]
 const WATCHDOG_KILL_WINDOW: Duration = Duration::from_secs(600);
 
@@ -48,16 +45,11 @@ impl ReloadBudget {
     }
 }
 
-/// What a watchdog kill reloads into.
 #[cfg(any(target_os = "macos", test))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum KillPlan {
-    /// Reload and reopen the project and files that were open.
     Restore,
-    /// The window hung again soon after, maybe because of what it reopened:
-    /// reload into the library.
     Library,
-    /// Out of kills: leave the window as it is.
     GiveUp,
 }
 
@@ -100,19 +92,14 @@ pub struct WindowLocation {
     pub open_tabs: Vec<String>,
 }
 
-// Only the macOS watchdog arms a restore. Elsewhere the command always
-// answers that there is nothing to restore.
 #[cfg_attr(not(any(target_os = "macos", test)), allow(dead_code))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReloadReason {
-    /// The watchdog reloaded the window because it stopped answering.
     Unresponsive,
-    /// It did again soon after, so the window comes back to the library.
     UnresponsiveAgain,
 }
 
-/// Why the watchdog reloaded a window, and the work to reopen if any.
 #[cfg_attr(not(any(target_os = "macos", test)), allow(dead_code))]
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

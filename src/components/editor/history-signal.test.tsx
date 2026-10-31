@@ -6,10 +6,9 @@ import { EditorView } from "@codemirror/view";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { historySignalExtension, publishVisualEditorHistory, useEditorHistory } from "./history-signal";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 

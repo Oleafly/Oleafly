@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sharedPdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
 
 const mocks = vi.hoisted(() => ({
   cleanup: vi.fn(),
@@ -46,6 +47,9 @@ describe("pdfPageToPng cleanup", () => {
     await expect(pdfPageToPng(new Uint8Array([1]))).rejects.toThrow("no 2d context");
     expect(mocks.cleanup).toHaveBeenCalledOnce();
     expect(mocks.getDocument).toHaveBeenCalledOnce();
+    expect(mocks.getDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ ...sharedPdfDocumentOptions(), data: new Uint8Array([1]) }),
+    );
     expect(mocks.destroyWorker).toHaveBeenCalledOnce();
   });
 

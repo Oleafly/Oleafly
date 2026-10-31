@@ -10,8 +10,6 @@ import {
 } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
-// Agentic AI surface that does NOT require a live model call.
-
 test("AI settings shows the agent tool catalog and PDF capture toggle", async ({ tauriPage }) => {
   // Assert plain-text anchors, NOT the per-tool <code> chips: the
   // tauri-playwright bridge resolves those flakily.
@@ -91,10 +89,6 @@ test("agent sticky memory persists to storage and reloads on reopen", async ({ t
   await tauriPage.evaluate(`window.__agentMemoryClear?.()`);
 
   const marker = `E2E always use British English ${Date.now().toString(36)}`;
-  // The hook stands in for the model calling `remember_note`. This test verifies
-  // add() PERSISTS to the per-project storage key, not just the in-memory store,
-  // so we read storage directly rather than via __agentMemoryList. Poll because
-  // ChatPanel's projectId binding can land a beat after mount (add no-ops until it does).
   await expect
     .poll(
       async () =>
@@ -110,9 +104,6 @@ test("agent sticky memory persists to storage and reloads on reopen", async ({ t
     )
     .toBe(true);
 
-  // Prove the store hydrates FROM storage on reopen, not from its module-level
-  // cache: overwrite storage out-of-band, run the exact load() ChatPanel runs
-  // on reopen, and confirm the stale in-memory note was dropped.
   const reloaded = await tauriPage.evaluate<string[]>(`(() => {
     const k = Object.keys(localStorage).find((x) => x.startsWith("oleafly.agent-memory."));
     if (!k) return [];
@@ -165,11 +156,6 @@ test("agent handoff hook is available and stores a prompt", async ({ tauriPage }
   }
 });
 
-// Chat-usage accumulation math is unit-tested in src/store/chats.test.ts; a
-// former e2e test here re-asserted the same arithmetic via devtools hooks with
-// no real conversation, so it was redundant. Real footer coverage is in
-// 28-ai-chat.spec.ts.
-
 test("MCP activity rail tab appears only when the server is running", async ({
   tauriPage,
 }) => {
@@ -195,8 +181,6 @@ test("MCP activity rail tab appears only when the server is running", async ({
   });
   await tauriPage.click('[aria-label="Close settings"]');
 
-  // The view switchers render in the sidebar bar; open it so the MCP switcher
-  // that appears once MCP is running is actually mounted.
   await openRailTab(tauriPage, "Explorer");
   await expect(tauriPage.locator('[aria-label="MCP activity"]')).toBeVisible({
     timeout: 10_000,
@@ -205,7 +189,6 @@ test("MCP activity rail tab appears only when the server is running", async ({
   await expect(tauriPage.getByTestId("mcp-activity-panel")).toBeVisible();
   await expect(tauriPage.getByText("Waiting for external agents")).toBeVisible();
 
-  // Disable again so later specs see a clean rail.
   await openOleaflyMcpSettings(tauriPage);
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
   await tauriPage.click('[aria-label="Close settings"]');

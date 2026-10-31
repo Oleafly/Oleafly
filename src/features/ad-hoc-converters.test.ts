@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
   extractPagesForConvert: vi.fn(),
   emitTable: vi.fn(),
   renderPages: vi.fn(),
-  /** The PDF pages renderPages drew, in order. */
   rendered: [] as number[],
   readTableRowsFromBytes: vi.fn(),
   renderDiagram: vi.fn(),
@@ -592,7 +591,6 @@ describe("ad-hoc converter registry", () => {
   });
 
   it("reads only the chosen pages of a long scan", async () => {
-    // The adapter reads just the range: ten of the 120 pages.
     const pages = Array.from({ length: 10 }, () => ({ width: 612, height: 792, items: [], figureNames: [] }));
     mocks.convertPages.mockReturnValue({
       tex: "",

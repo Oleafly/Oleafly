@@ -45,7 +45,6 @@ async fn read_head(stream: &mut TcpStream) -> String {
     String::from_utf8_lossy(&seen).into_owned()
 }
 
-// Reads until the server closes the connection, and says how long that took.
 async fn closed_after(stream: &mut TcpStream, since: Instant) -> Duration {
     let mut buffer = [0u8; 1024];
     loop {

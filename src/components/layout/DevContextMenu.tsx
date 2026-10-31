@@ -5,8 +5,6 @@ import { MenuRow } from "@/components/ui/menu-row";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { openDevtools } from "@/lib/tauri";
 
-// Yields to component-level context menus (e.g. the editor's) by bailing
-// when the event was already handled (`defaultPrevented`).
 export function DevContextMenu() {
   const { t } = useTranslation(["shell"]);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);

@@ -630,8 +630,6 @@ expect "it says to untick the box" grep -qF 'Publish the draft with "Set as the 
 expect "it gives the command that publishes without the label" grep -qxF '   gh release edit server-v0.1.0 --repo Oleafly/Oleafly --draft=false --latest=false' "$ws/summary"
 finish
 
-# GitHub as far as the desktop-latest step sees it: GH_STATE/latest holds the
-# tag of the latest release, GH_STATE/releases.json the release list.
 latest_stubs() {
 	gh_stub
 	cat >>"$ws/stubs/gh" <<'EOF'

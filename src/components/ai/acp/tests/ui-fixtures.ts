@@ -95,11 +95,6 @@ export function event(sequence: number, kind: string, data: Record<string, unkno
   return { sequence, kind, data, sessionId, projectId: "paper", agentId: "fixture", modelId: "first", taskId: null, turnId: "turn", timestamp: sequence };
 }
 
-/**
- * The list a trigger opened: the one it names in aria-controls (a select
- * inside another list, such as the model picker, opens a second one), else
- * the first list on the page.
- */
 function openedListbox(trigger: HTMLElement): HTMLElement | null {
   const controlled = trigger.getAttribute("aria-controls");
   if (!controlled) return trigger.ownerDocument.querySelector<HTMLElement>('[role="listbox"]');
@@ -149,9 +144,12 @@ async function openMenu(trigger: HTMLElement): Promise<HTMLElement> {
 }
 
 export async function chooseMenuItem(trigger: HTMLElement, item: string | RegExp) {
-  const { fireEvent, within } = await testingLibrary();
+  const { act, fireEvent, within } = await testingLibrary();
   const menu = await openMenu(trigger);
-  fireEvent.click(within(menu).getByRole("menuitem", { name: item }), { button: 0 });
+  const choice = within(menu).getByRole("menuitem", { name: item });
+  await act(async () => {
+    fireEvent.click(choice, { button: 0 });
+  });
 }
 
 export async function menuItemNames(trigger: HTMLElement): Promise<string[]> {

@@ -372,7 +372,6 @@ describe("preflight store", () => {
           symbol("label", "eq:mae", "paper.typ"),
           symbol("label", "typst-only", "paper.typ"),
           symbol("label", "fig:plot", "main.tex"),
-          // Markdown heading ids are scoped to their own file.
           symbol("label", "introduction", "a.md"),
           symbol("label", "introduction", "b.md"),
         ],
@@ -415,7 +414,6 @@ describe("preflight store", () => {
         uses: [
           link("fig:plot", "main.tex#fig:plot"),
           link("eq:mae", "paper.typ#eq:mae"),
-          // Names a file that does not define the label.
           link("tab:data", "chapter.tex#tab:data"),
         ],
       },
@@ -452,8 +450,6 @@ describe("preflight store", () => {
       await usePreflightStore.getState().run();
 
       const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
-      // The refs rules lint the project's .tex files whatever tab is open, so
-      // a \ref there reaches the LaTeX labels and nothing else.
       expect(refs.definedLabels).toEqual(["fig:plot", "eq:mae"]);
       expect(
         runRefsRules("See \\ref{fig:plot}.", refs, { file: "chapter.tex" }).map((f) => f.id),

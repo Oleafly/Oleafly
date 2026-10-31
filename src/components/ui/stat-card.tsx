@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-// One figure in a row of report cards: a small label, the number, and an
-// optional muted line under it. Place the cards inside a <dl>.
 export function StatCard({
   id,
   label,

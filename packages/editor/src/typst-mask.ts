@@ -731,11 +731,6 @@ function decodeScan(text: string, scan: TypstScan): DecodedTypstProse {
   };
 }
 
-/**
- * Produces a same-UTF-16-length Typst string containing only visible markup
- * prose. Code expressions, comments, math, raw blocks, labels, citations,
- * URLs, and email addresses become spaces while line breaks are retained.
- */
 export function maskTypstToProse(text: string): string {
   return scanTypst(text).masked;
 }

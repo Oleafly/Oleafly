@@ -11,10 +11,9 @@ import { getEditorView } from "./controller";
 import { LocalDocumentSession } from "./document-session";
 import { closeEnvironmentOnEnter } from "./latex-environments";
 import { englishEditorMessage } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const SETTINGS: ReturnType<EditorHost["useSettings"]> = {
   keymap: "default",

@@ -113,7 +113,8 @@ export function useRowWindow({
         sample === last.element
           ? sampled !== last.height && last.count === countRef.current
           : listRect.width !== last.width;
-      if (rowHeightRef.current <= 0 || last.element === null || resized) {
+      const grewPastOneRow = last.count <= 1 && countRef.current > 1;
+      if (rowHeightRef.current <= 0 || last.element === null || resized || grewPastOneRow) {
         rowHeightRef.current = sampled;
       }
       lastSample.current = {

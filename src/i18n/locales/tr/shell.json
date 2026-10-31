@@ -1180,6 +1180,8 @@
     "exportTxt": "Düz metin olarak dışa aktar (.txt)",
     "exportZipFailed": "Proje zip dosyası dışa aktarılamadı",
     "exporting": ".{{format}} dışa aktarılıyor…",
+    "exportingStep": ".{{format}} dışa aktarılıyor: {{step}}",
+    "stopExport": "Durdur",
     "fork": "Çatalla",
     "forkDescription": "<name>{{name}}</name> projesini ve Git geçmişini yeni bir projeye kopyalar. Kontrol noktaları boş başlar.",
     "forkFailed": "Proje çatallanamadı.",

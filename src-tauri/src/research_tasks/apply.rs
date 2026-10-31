@@ -451,9 +451,6 @@ fn selected_changes(
         .collect()
 }
 
-/// A file that is a link in the project was copied into the task as the file
-/// it points to, and apply never writes through a link: the selection may
-/// not hold one. The error names them, so the user knows what to deselect.
 fn refuse_links(isolation: &TaskIsolation, selected: &[TaskFileChange]) -> Result<(), String> {
     let links: BTreeSet<&str> = isolation
         .baseline
@@ -1094,7 +1091,6 @@ mod tests {
         fs::write(project.join("main.tex"), "base").unwrap();
         fs::write(execution.join("main.tex"), "task result").unwrap();
         let mut task = task(&project, &execution, "base", "task result");
-        // The project's refs.bib links to bib/main.bib; the task copied the file.
         fs::write(project.join("bib/main.bib"), "@misc{a}").unwrap();
         std::os::unix::fs::symlink("bib/main.bib", project.join("refs.bib")).unwrap();
         fs::write(execution.join("refs.bib"), "@misc{a}\n@misc{b}").unwrap();
@@ -1142,7 +1138,6 @@ mod tests {
             fs::read_to_string(project.join("bib/main.bib")).unwrap(),
             "@misc{a}"
         );
-        // The other files still apply.
         assert!(apply_review(&store, &task, &project, &["main.tex".into()]).unwrap());
         assert_eq!(
             fs::read_to_string(project.join("main.tex")).unwrap(),

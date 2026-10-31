@@ -1,5 +1,3 @@
-//! Reference rules (`packages/preflight/src/refs-rules.ts`).
-
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::LazyLock;
 
@@ -143,8 +141,6 @@ fn resolves(reference: &str, files: &[String], extensions: &[&str]) -> bool {
     })
 }
 
-/// Braces and backslashes, then every run of characters that is not a
-/// letter or a number, become spaces; trimmed and lower case.
 pub fn plain(value: &str) -> String {
     let replaced: String = value
         .chars()
@@ -693,8 +689,6 @@ pub fn duplicate_bib_key_findings(ctx: &RefsContext, dialect: BibKeyDialect) -> 
 }
 
 pub fn run_refs_rules(raw_source: &str, ctx: &RefsContext, options: &RefsOptions) -> Vec<Finding> {
-    // Blank out commented-out LaTeX so a commented `\cite`/`\ref`/`\label`
-    // does not raise a false finding. Offsets are preserved.
     let source = SourceText::new(mask_comments(raw_source));
     let labels = collect_labels(&source, &ctx.defined_labels);
     let bib_keys: HashSet<String> = ctx

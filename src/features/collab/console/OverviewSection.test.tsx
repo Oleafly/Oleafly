@@ -188,7 +188,6 @@ describe("OverviewSection", () => {
     renderReady({ state: { status: "ready", overview: overview({ activity: signInActivity() }) } });
     const hourly = card(copy.activity.hourly);
     expect(within(hourly).getByRole("img", { name: copy.activity.hourlyLabel })).toBeInTheDocument();
-    // The fixture's today is a Sunday.
     expect(within(hourly).getByTitle(fill(copy.activity.cell, { weekday: "Sun", hour: "9", number: "3" }))).toBeInTheDocument();
     expect(within(hourly).getByTitle(fill(copy.activity.cell, { weekday: "Sat", hour: "23", number: "1" }))).toBeInTheDocument();
     expect(within(hourly).getByTitle(fill(copy.activity.cell, { weekday: "Mon", hour: "0", number: "0" }))).toBeInTheDocument();

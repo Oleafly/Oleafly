@@ -74,7 +74,6 @@ interface MutableEntry {
   file: string | null;
   line: number | null;
   text: string;
-  /** Raw log lines from the `!` line through the `l.<n>` line (errors only). */
   contextLines?: string[];
 }
 
@@ -141,13 +140,6 @@ function currentFile(state: ParserState): string | null {
   return state.fileStack.at(-1) ?? state.rootFile ?? null;
 }
 
-/**
- * Parse a (pdf|xe|lua)latex compile log into structured diagnostics.
- *
- * Only the first {@link MAX_COMPILE_LOG_BYTES} characters are examined; the
- * head of the log is kept since diagnostics appear in compile order.
- * Never throws.
- */
 export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
   const state: ParserState = {
     searchEmptyLine: false,
@@ -168,7 +160,6 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
     for (const line of lines) {
       parseLine(line, state);
     }
-    // Push the final result
     if (state.current !== null && !state.current.text.startsWith(bibEmptyPrefix)) {
       state.out.push(finalize(state.current));
     }
@@ -180,7 +171,6 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
 
 function parseLine(line: string, state: ParserState) {
   const filename = currentFile(state);
-  // Skip the first line after a box warning, this is just garbage
   if (state.insideBoxWarn) {
     state.insideBoxWarn = false;
     return;
@@ -191,7 +181,6 @@ function parseLine(line: string, state: ParserState) {
   if (parseOleaflyAnnotation(line, state)) {
     return;
   }
-  // Append the read line, since we have a corresponding result in the matching
   if (state.searchEmptyLine) {
     continueCurrentEntry(line, state);
     return;
@@ -272,7 +261,6 @@ function startsNewEntry(line: string, insideError: boolean): boolean {
   );
 }
 
-// Oleafly annotations must not be absorbed into a multi-line package warning.
 function parseOleaflyAnnotation(line: string, state: ParserState): boolean {
   if (
     !line.startsWith(oleaflyBiberModeA) &&
@@ -367,7 +355,6 @@ function continueErrorContext(line: string, state: ParserState) {
   }
   const match = messageLine.exec(line);
   if (match && match.length >= 2) {
-    // The `l.<n>` excerpt ends the error message; skip the rest.
     if (state.current !== null && state.current.line === null) {
       state.current.line = Number.parseInt(match[1], 10);
     }
@@ -437,7 +424,6 @@ function parseLatexWarning(line: string, filename: string | null, state: ParserS
     return false;
   }
   pushCurrent(state);
-  // Prefer the dedicated Biber diagnostic over a generic package warning.
   if (line.startsWith(biblatexRerunBiber)) {
     state.current = {
       severity: "warning",

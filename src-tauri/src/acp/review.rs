@@ -1,15 +1,7 @@
-//! Before-turn copies and the Git revision a conversation started from.
-//!
-//! The runtime reaches `agent_turns` and `git` through [`ReviewHooks`] so the
-//! protocol tests can observe the calls without writing into the user's data
-//! folder or needing Git.
-
 use crate::agent_turns::{BeginTicket, TurnBegin, TurnChanges, TurnUnavailable};
 use serde_json::{json, Value};
 use std::{path::Path, sync::Arc, time::Duration};
 
-/// Outer guard around the store's own budgets (5 s per `begin`/`finish`), so a
-/// stuck copy can never hold a turn open.
 const HOOK_DEADLINE: Duration = Duration::from_secs(10);
 
 type BeginHook = dyn Fn(&str, &str, &BeginTicket) -> TurnBegin + Send + Sync;
@@ -18,11 +10,8 @@ type HeadStateHook = dyn Fn(&Path) -> Option<(String, bool)> + Send + Sync;
 
 #[derive(Clone)]
 pub(crate) struct ReviewHooks {
-    /// `(project_id, label, ticket)`; see `agent_turns::begin_for`.
     pub turn_begin: Arc<BeginHook>,
-    /// `(project_id, snapshot_id)`; see `agent_turns::finish`.
     pub turn_finish: Arc<FinishHook>,
-    /// See `git::head_state`.
     pub head_state: Arc<HeadStateHook>,
 }
 
@@ -38,7 +27,6 @@ impl ReviewHooks {
         }
     }
 
-    /// Takes no copies and reports no revision.
     #[cfg(test)]
     pub(crate) fn inert() -> Self {
         Self {
@@ -51,8 +39,6 @@ impl ReviewHooks {
 
 impl Default for ReviewHooks {
     fn default() -> Self {
-        // Unit tests never write before-turn copies into the real data folder;
-        // the tests that exercise these hooks inject their own.
         #[cfg(test)]
         return Self::inert();
         #[cfg(not(test))]
@@ -60,10 +46,6 @@ impl Default for ReviewHooks {
     }
 }
 
-/// Only interactive conversations get a before-turn copy: research tasks
-/// already work on an isolated copy, a child agent's changes belong to the
-/// parent assistant run that took its own copy, and a remote agent changes
-/// files on another machine.
 pub(super) fn takes_turn_copy(
     is_task: bool,
     parent_session_id: Option<&str>,
@@ -76,10 +58,6 @@ pub(super) async fn begin_turn(hooks: &ReviewHooks, project_id: &str, label: &st
     begin_turn_within(hooks, project_id, label, HOOK_DEADLINE).await
 }
 
-/// Takes the before-turn copy, waiting at most `deadline`. The copy keeps
-/// running on its blocking thread when the wait ends early (a timeout, a
-/// failed task, or this future being dropped), so the wait gives up its
-/// ticket: that copy never leaves a turn open that nothing will finish.
 pub(super) async fn begin_turn_within(
     hooks: &ReviewHooks,
     project_id: &str,
@@ -102,7 +80,6 @@ pub(super) async fn begin_turn_within(
     }
 }
 
-/// Abandons the ticket when dropped, unless the copy's result was received.
 struct AbandonUnlessKept(Option<Arc<BeginTicket>>);
 
 impl AbandonUnlessKept {
@@ -126,8 +103,6 @@ fn unavailable_begin(reason: TurnUnavailable) -> TurnBegin {
     }
 }
 
-/// Compares the project with the before-turn copy. A copy that could not be
-/// taken reports why, so the card can say Undo is unavailable.
 pub(super) async fn finish_turn(
     hooks: &ReviewHooks,
     project_id: &str,
@@ -155,12 +130,10 @@ pub(super) async fn finish_turn(
     })
 }
 
-/// A card is shown only when files changed or Undo is unavailable.
 pub(super) fn worth_reporting(changes: &TurnChanges) -> bool {
     !changes.files.is_empty() || changes.more_files > 0 || changes.unavailable.is_some()
 }
 
-/// The `turn_changes` event payload: `{ turnId, ...TurnChanges }`.
 pub(super) fn turn_changes_event(turn_id: Option<&str>, changes: &TurnChanges) -> Value {
     let mut value = serde_json::to_value(changes).unwrap_or_else(|_| json!({}));
     if let Some(object) = value.as_object_mut() {
@@ -169,8 +142,6 @@ pub(super) fn turn_changes_event(turn_id: Option<&str>, changes: &TurnChanges) -
     value
 }
 
-/// HEAD and whether the tree had uncommitted changes, for a project that is
-/// its own Git repository. Git is never started for other folders.
 pub(super) async fn start_revision(
     hooks: &ReviewHooks,
     root: &Path,

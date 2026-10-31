@@ -10,7 +10,6 @@ import {
 import { BUILTIN_DISPATCH_NAMES } from "../builtins";
 import { expressionAfterHash } from "../syntax";
 
-// The open file's project-relative path, which relative imports resolve against.
 export const typstDocumentPath = Facet.define<string | null, string | null>({
   combine: (values) => values[0] ?? null,
 });
@@ -22,7 +21,6 @@ export interface ImportItem {
 
 export interface TypstImport {
   readonly to: number;
-  // null when the source is an expression, or a path that leaves the project.
   readonly source: TypstFormBinding | null;
   readonly module: string | null;
   readonly items: readonly ImportItem[] | "all" | null;
@@ -118,7 +116,6 @@ function letNames(state: EditorState, statement: SyntaxNode): string[] {
 
 const bindingsCache = new WeakMap<Tree, { path: string | null; bindings: DocumentBindings }>();
 
-// The document's own top-level `#import` and `#let` statements, in document order.
 export function documentBindings(state: EditorState, tree: Tree): DocumentBindings {
   const documentPath = state.facet(typstDocumentPath);
   const cached = bindingsCache.get(tree);
@@ -177,14 +174,12 @@ type Binding =
 
 const scopeCache = new WeakMap<FormIndex, WeakMap<DocumentBindings, FormScope>>();
 
-// The names an import brings in, each with the path to the item it names.
 function importedItems(index: FormIndex, entry: TypstImport): readonly ImportItem[] {
   if (entry.items !== "all") return entry.items ?? [];
   const declared = entry.source ? index.functions(entry.source) : [];
   return declared.map((fn) => ({ local: fn, path: [fn] }));
 }
 
-// Every binding of each name, in document order.
 function boundNames(index: FormIndex, bindings: DocumentBindings): Map<string, Binding[]> {
   const names = new Map<string, Binding[]>();
   const bind = (name: string, binding: Binding) => names.set(name, [...(names.get(name) ?? []), binding]);
@@ -197,7 +192,6 @@ function boundNames(index: FormIndex, bindings: DocumentBindings): Map<string, B
   return names;
 }
 
-// Resolves a `#`-call's callee to the form it reaches through the document's own bindings.
 export class FormScope {
   private constructor(
     private readonly index: FormIndex,

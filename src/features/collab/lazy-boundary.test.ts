@@ -60,15 +60,12 @@ describe("collaboration stays out of the startup bundle", () => {
 
   it("keeps the collaboration IPC wrappers out of the startup bundle", () => {
     const STATIC_WRAPPERS = /^\s*import\s[^;]*?from\s+["']@\/lib\/tauri-collab["']/m;
-    // The port check is compile-time only: nothing imports it.
     expect(sourcesOutsideCollab.filter((path) => STATIC_WRAPPERS.test(read(path)))).toEqual([
       "src/lib/backend-port-conformance.ts",
     ]);
     expect(read("src/lib/shared-document-writes.ts")).toMatch(/await import\("@\/lib\/tauri-collab"\)/);
     const startup = read("src/lib/tauri.ts");
-    // App links are heard from the start, even with collaboration off.
     expect([...startup.matchAll(/"(collab_[a-z_]+)"/g)].map((match) => match[1])).toEqual(["collab_pending_links"]);
-    // A stopped session's written files can arrive with collaboration off.
     expect([...startup.matchAll(/"(collab-[a-z-]+)"/g)].map((match) => match[1])).toEqual([
       "collab-open-link",
       "collab-live-written",

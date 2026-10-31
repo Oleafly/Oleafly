@@ -16,10 +16,8 @@ import {
   useSettingsStore,
 } from "@/store/settings";
 
-/** The default first and a custom path last; installed shells keep Rust's order between them. */
 const SHELL_RANK: Partial<Record<TerminalShellId, number>> = { auto: 0, custom: 2 };
 
-/** Why a saved shell can't start here: a Windows shell on another system, or one that isn't installed. */
 type ShellProblem = "windowsOnly" | "notFound";
 
 function shellProblem(
@@ -28,7 +26,6 @@ function shellProblem(
   listKnown: boolean,
 ): ShellProblem | null {
   if (option.id === "auto" || option.id === "custom") return null;
-  // The other systems list only the default and a custom path.
   if (platform !== "windows") return "windowsOnly";
   return listKnown && !option.available ? "notFound" : null;
 }
@@ -38,14 +35,8 @@ const FALLBACK_SHELLS: readonly TerminalShellOption[] = [
   { id: "custom", resolved: "custom", name: null, path: null, available: true },
 ];
 
-/**
- * The shells this computer can start, plus the default and a custom path
- * even when the list can't load. A saved choice that is no longer installed
- * stays listed so the picker shows what is set.
- */
 function useShellOptions(selected: TerminalShellId): {
   options: readonly TerminalShellOption[];
-  /** The computer answered, so a shell missing from its list really isn't there. */
   known: boolean;
 } {
   const [loaded, setLoaded] = useState<readonly TerminalShellOption[] | null>(null);
@@ -77,7 +68,6 @@ function useShellOptions(selected: TerminalShellId): {
   };
 }
 
-/** Shell, Shift+Enter, copy, Option-as-Meta, scrollback and close rows of the Terminal tab. */
 export function TerminalBehaviorRows() {
   const { t } = useTranslation(["settings"]);
   const terminalShell = useSettingsStore((state) => state.terminalShell);

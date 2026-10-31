@@ -273,7 +273,6 @@ export function startCollabActivity(): () => void {
     void logError("collab settings listen", error);
     return () => undefined;
   });
-  // Quiet: the feed records it without marking the pane unread.
   const stopSkipped = onCollabChangeSkipped((payload) => {
     const entry = skippedEntry(payload);
     if (entry) useCollabActivity.getState().add(entry, { quiet: true });

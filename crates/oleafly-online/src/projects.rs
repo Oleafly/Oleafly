@@ -1,4 +1,3 @@
-//! The account's project list and the import records projects carry.
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -23,11 +22,9 @@ pub struct RemoteProject {
     pub last_updated: Option<String>,
     pub last_updated_by: Option<String>,
     pub archived: bool,
-    /// The app project this was imported as (filled in by the app).
     pub imported_as: Option<String>,
 }
 
-/// Where a project was imported from (`project.json` `importedFrom`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImportedFrom {
     pub server: String,
@@ -51,8 +48,6 @@ fn person_name(value: &Value) -> Option<String> {
     Some(text("email").to_string()).filter(|email| !email.is_empty())
 }
 
-/// One project from the dashboard or the project API. Trashed projects and
-/// invalid ids are skipped.
 pub fn remote_project(value: &Value, user_id: &str) -> Option<RemoteProject> {
     let id = value
         .get("id")
@@ -98,8 +93,6 @@ pub fn remote_project(value: &Value, user_id: &str) -> Option<RemoteProject> {
     })
 }
 
-/// The account's projects, newest first, with the refreshed session. An
-/// expired session is forgotten.
 pub async fn list_projects(
     http: &Http,
     store: &SecretStore,
@@ -153,8 +146,6 @@ pub async fn list_projects(
     Ok((session, projects))
 }
 
-/// Remote project id → app project id, for projects in `projects_root`
-/// imported from `base`.
 pub fn imported_projects(projects_root: &Path, base: &str) -> HashMap<String, String> {
     let Ok(entries) = std::fs::read_dir(projects_root) else {
         return HashMap::new();
@@ -179,7 +170,6 @@ pub fn imported_projects(projects_root: &Path, base: &str) -> HashMap<String, St
     found
 }
 
-/// Reads an `importedFrom` record written for this service.
 pub fn imported_from(record: &Value) -> Option<ImportedFrom> {
     let text = |key: &str| record.get(key).and_then(Value::as_str);
     if text("service") != Some(SERVICE_ID) {
@@ -191,7 +181,6 @@ pub fn imported_from(record: &Value) -> Option<ImportedFrom> {
     })
 }
 
-/// The `importedFrom` record for a project imported now.
 pub fn origin_record(
     base: &str,
     remote: &RemoteProject,

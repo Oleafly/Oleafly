@@ -31,10 +31,6 @@ interface Part {
   bytes: number;
 }
 
-// The parts that get their own colour, in a fixed order so a part keeps its
-// colour whatever else the folder holds. Every other part shares the gray
-// "Other" segment and is still listed by name below the bar. The hues are a
-// categorical palette checked for colour-blind separation in both themes.
 const COLORED: readonly PartId[] = [
   "documents",
   "images",
@@ -110,8 +106,6 @@ function groupsOf(summary: LibraryStorageSummary): { id: GroupId; parts: Part[] 
   ];
 }
 
-/** The data folder as one bar split by what takes the space, with every part
- * named, sized and given its share in the list below it. */
 export function StorageBreakdown({ summary }: Readonly<{ summary: LibraryStorageSummary }>) {
   const { t } = useTranslation(["shell"]);
   const total = summary.total_bytes;

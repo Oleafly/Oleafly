@@ -1,5 +1,3 @@
-//! Submission and privacy rules (`packages/preflight/src/submission-rules.ts`).
-
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
@@ -45,7 +43,6 @@ static SECRET_PATTERNS: LazyLock<Vec<JsRegex>> = LazyLock::new(|| {
     ]
 });
 
-/// `TODO`, `FIXME`, `CONFIDENTIAL`, `INTERNAL ONLY`, `DO NOT DISTRIBUTE`.
 pub static INTERNAL_COMMENT_TERMS: LazyLock<JsRegex> = LazyLock::new(|| {
     JsRegex::std(r"(?i)(?-u:\b)(?:TODO|FIXME|CONFIDENTIAL|INTERNAL ONLY|DO NOT DISTRIBUTE)(?-u:\b)")
 });
@@ -99,7 +96,6 @@ fn directory(path: &str) -> &str {
     }
 }
 
-/// `..` above the root is dropped rather than refused, as in the TypeScript.
 pub(crate) fn normalize(path: &str) -> String {
     let replaced = path.replace('\\', "/");
     let mut parts: Vec<&str> = Vec::new();
@@ -200,7 +196,6 @@ fn check_project_references(
         .map(|file| normalize(&file.path))
         .collect();
     let exact: HashSet<&str> = paths.iter().map(String::as_str).collect();
-    // `new Map(...)`: a later path with the same lower-case spelling wins.
     let folded: HashMap<String, &str> = paths
         .iter()
         .map(|path| (path.to_lowercase(), path.as_str()))
@@ -335,7 +330,6 @@ fn check_figures_and_tables(project: &ProjectContext) -> Vec<Finding> {
     out
 }
 
-/// Whether a whole-line `%` comment names an internal note.
 pub fn has_internal_comment(content: &str) -> bool {
     let (breaks, _) = SOURCE_LINE_BREAK.captures_str(content);
     let mut start = 0;
@@ -351,8 +345,6 @@ pub fn has_internal_comment(content: &str) -> bool {
     })
 }
 
-/// Sensitive file names, credentials and internal notes in one file. The
-/// credential finding names the file only, never the secret.
 pub fn file_privacy_findings(
     file: &ProjectFile,
     internal_note: &dyn Fn(&str) -> bool,
@@ -433,7 +425,6 @@ fn blind_review_findings(source: &str, pdf: Option<&PdfFacts>) -> Vec<Finding> {
     out
 }
 
-/// A PDF author that is not marked anonymous breaks blind review.
 pub fn pdf_author_findings(pdf: Option<&PdfFacts>) -> Vec<Finding> {
     let Some(author) = pdf.and_then(|pdf| pdf.author.as_deref()) else {
         return Vec::new();

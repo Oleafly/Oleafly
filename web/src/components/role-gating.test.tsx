@@ -159,14 +159,25 @@ describe("source toolbar by role", () => {
 });
 
 describe("comments pane by role", () => {
-  it("lets owners and editors accept and reject, one by one and per file", () => {
+  it("lets owners and editors accept and reject, one by one and per file", async () => {
     for (const role of ["owner", "editor"] as const) {
       withRole(role, { suggestions: { [MAIN.fileId]: [suggestion()] } });
       const given = renderWith(<CommentsPane />);
-      fireEvent.click(screen.getByRole("button", { name: "Accept" }));
-      fireEvent.click(screen.getByRole("button", { name: "Reject" }));
-      fireEvent.click(screen.getByRole("button", { name: "Accept all" }));
-      fireEvent.click(screen.getByRole("button", { name: "Reject all" }));
+      for (const name of ["Accept", "Reject", "Accept all"]) {
+        await act(async () => {
+          fireEvent.click(screen.getByRole("button", { name }));
+        });
+      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Reject all" }));
+      });
+      expect(given.rejectFile).not.toHaveBeenCalled();
+      const dialog = screen.getByRole("alertdialog");
+      expect(dialog).toHaveTextContent("Reject every suggestion in main.tex?");
+      expect(dialog).toHaveTextContent("Suggestions waiting: 1.");
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: "Reject all" }));
+      });
       expect(given.acceptSuggestions).toHaveBeenCalledWith(["s1"]);
       expect(given.rejectSuggestions).toHaveBeenCalledWith(["s1"]);
       expect(given.acceptFile).toHaveBeenCalledWith(MAIN.fileId);
@@ -174,6 +185,23 @@ describe("comments pane by role", () => {
       expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
       document.body.innerHTML = "";
     }
+  });
+
+  it("asks before rejecting a whole file, and holds the buttons while an answer is on its way", async () => {
+    withRole("owner", { suggestions: { [MAIN.fileId]: [suggestion()] } });
+    const given = actions();
+    given.acceptSuggestions = vi.fn(() => new Promise<void>(() => undefined));
+    renderWith(<CommentsPane />, given);
+    fireEvent.click(screen.getByRole("button", { name: "Reject all" }));
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+    expect(given.rejectFile).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    });
+    expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(given.acceptSuggestions).toHaveBeenCalledTimes(1);
   });
 
   it("lets a reviewer withdraw only their own suggestions", () => {

@@ -224,6 +224,8 @@
     "suggestion_not_found": "Det forslag findes ikke længere. Måske har nogen accepteret eller afvist det.",
     "suggestion_not_yours": "Kun den person, der kom med forslaget, kan trække det tilbage.",
     "suggestion_role": "Din rolle i dette projekt giver ikke lov til forslag.",
+    "suggestion_changed": "Teksten omkring dette forslag er blevet ændret, så en ejer eller redaktør skal acceptere eller afvise det.",
+    "suggestion_too_long": "En foreslået sletning må højst være 20.000 tegn lang. Slet en mindre del ad gangen.",
     "chat_role": "Din rolle i dette projekt giver ikke lov til det i chatten.",
     "history_unavailable": "Projektets historik er ikke på denne computer endnu. Prøv igen, når projektet er synkroniseret.",
     "account_storage_full": "Projektejerens konto er løbet tør for lagerplads på denne server. Fjern nogle filer for at gøre plads, eller bed serverens administrator om mere plads.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Vil du gendanne hele projektet?",
-      "description": "Alle filer bliver sat tilbage til, som de var {{time}}, for alle i projektet. Den nuværende tekst bliver i historikken, så du kan gå tilbage til den.",
+      "textAndDeleted": "Teksten i hver fil bliver sat tilbage til, som den var {{time}}, for alle i projektet, og slettede filer kommer tilbage. Omdøbte filer beholder deres nye navne, og figurer og filer, der er tilføjet senere, forbliver, som de er. Den nuværende tekst bliver i historikken, så du kan gå tilbage til den.",
       "confirm": "Gendan projektet"
     },
     "compareTitle": "Ændringer mellem to versioner",

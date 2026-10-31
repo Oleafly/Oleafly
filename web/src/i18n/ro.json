@@ -48,6 +48,11 @@
     "stoppedTitle": "Deconectat",
     "stoppedDescription": "Reîncarcă pagina ca să te conectezi din nou."
   },
+  "leave": {
+    "title": "Părăsești acest proiect?",
+    "description": "Unele dintre modificările tale nu au ajuns încă la server. Rămâi până când sunt trimise sau pleacă și pierde-le.",
+    "confirm": "Părăsește"
+  },
   "access": {
     "changed": "Noul tău rol în acest proiect: {{role}}."
   },
@@ -157,6 +162,11 @@
     "withdraw": "Retrage",
     "acceptAll": "Acceptă toate",
     "rejectAll": "Respinge toate",
+    "rejectAllConfirm": {
+      "title": "Respingi toate sugestiile din {{file}}?",
+      "description": "Textul original revine în fișier pentru toată lumea din acest proiect. Sugestii în așteptare: {{number}}.",
+      "confirm": "Respinge toate"
+    },
     "pending_one": "{{count}} sugestie",
     "pending_few": "{{count}} sugestii",
     "pending_other": "{{count}} de sugestii",

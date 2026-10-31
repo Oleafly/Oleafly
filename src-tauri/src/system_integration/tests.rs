@@ -926,8 +926,6 @@ fn the_msi_removes_only_this_installs_verbs_and_keeps_them_across_upgrades() {
         assert_eq!(command.attribute("Before"), Some(action));
         assert_eq!(command.attribute("Sequence"), Some("execute"));
     }
-    // One search, one removal action and one scheduled step per verb; the
-    // helper and command-line-tool steps below are counted separately.
     let verb_searches = elements
         .iter()
         .filter(|element| {
@@ -963,9 +961,6 @@ fn the_msi_removes_only_this_installs_verbs_and_keeps_them_across_upgrades() {
     assert_eq!(verb_actions, explorer_menu::VERB_KEYS.len(), "CustomAction");
     assert_eq!(verb_steps, explorer_menu::VERB_KEYS.len(), "Custom");
 
-    // The background helper is stopped before an upgrade or removal touches
-    // any file, the terminal command goes only on a full uninstall, and the
-    // helper's sign-in entry goes only when it points at this installation.
     let stop = elements
         .iter()
         .find(|element| {

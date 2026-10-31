@@ -7,10 +7,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
 import { insertCitationKey } from "./cite-insert";
+import { stubRangeGeometry } from "../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 function editor(path: string, marked: string): EditorView {
   const from = marked.indexOf("|");

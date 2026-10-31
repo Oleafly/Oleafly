@@ -216,7 +216,6 @@ describe("SearchOmnibar modes", () => {
     await vi.advanceTimersByTimeAsync(250);
     await user.click(await screen.findByText("intro.tex"));
 
-    // openProject resolves with "alpha" still open, as after Cancel on the stop prompt.
     await waitFor(() => expect(mocks.openProject).toHaveBeenCalledWith("beta"));
     await vi.advanceTimersByTimeAsync(200);
     expect(mocks.openFile).not.toHaveBeenCalled();

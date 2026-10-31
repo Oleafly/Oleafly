@@ -1,6 +1,3 @@
-//! Session controls: the agent's config options (mode, model, effort, fast
-//! and the rest), plus the legacy `models`/`modes` objects older agents
-//! still send.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -20,15 +17,12 @@ pub struct SessionControls {
     pub models: Vec<ModelOption>,
     pub model_id: Option<String>,
     pub model_config_id: Option<String>,
-    /// Every config option, in the agent's order (at most 32).
     #[serde(default)]
     pub options: Vec<ConfigOptionView>,
-    /// Legacy `SessionModeState` modes.
     #[serde(default)]
     pub modes: Vec<ModeOption>,
     #[serde(default)]
     pub mode_id: Option<String>,
-    /// The models came from the legacy `models` object.
     #[serde(default)]
     pub legacy_models: bool,
 }
@@ -69,7 +63,6 @@ pub struct SelectChoice {
     pub name: String,
     pub description: Option<String>,
     pub group: Option<String>,
-    /// A permission-bypass choice: listed, never selectable.
     pub blocked: bool,
 }
 
@@ -82,24 +75,18 @@ pub struct ModeOption {
     pub blocked: bool,
 }
 
-/// The mode an agent is in when Oleafly blocks it, and the way out.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockedMode {
-    /// The blocked mode's name.
     pub name: String,
-    /// Where to switch to; `None` when the agent offers no other mode.
     pub switch: Option<ModeSwitch>,
 }
 
-/// A switch to another mode: through the agent's mode option, or (`None`)
-/// the legacy `modes` object.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModeSwitch {
     pub config_id: Option<String>,
     pub to: String,
 }
 
-/// A config option value: a choice id, or a typed boolean.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ConfigValue {
@@ -122,7 +109,6 @@ pub enum BooleanTag {
     Boolean,
 }
 
-/// The `session/set_config_option` params for `value`.
 pub fn set_config_option_params(session: &str, config_id: &str, value: &ConfigValue) -> Value {
     match value {
         ConfigValue::Id(id) => json!({"sessionId": session, "configId": config_id, "value": id}),
@@ -163,7 +149,6 @@ fn text(value: &Value) -> Option<String> {
 fn select_choices(options: &Value) -> Vec<SelectChoice> {
     let mut choices = Vec::new();
     for entry in options.as_array().into_iter().flatten() {
-        // A group: {"group"?: id, "name": label, "options": [...]}.
         if let Some(members) = entry["options"].as_array() {
             let group = text(&entry["name"]).or_else(|| text(&entry["group"]));
             for member in members {
@@ -218,9 +203,6 @@ fn option_view(value: &Value) -> Option<ConfigOptionView> {
 }
 
 impl SessionControls {
-    /// Reads config options (and the legacy `models`/`modes` objects) from
-    /// a `session/new`, `load`, `resume` or `set_*` answer, or from an
-    /// options update.
     pub fn merge(&mut self, value: &Value) {
         let mut has_model_option = false;
         if let Some(options) = value["configOptions"].as_array() {
@@ -297,7 +279,6 @@ impl SessionControls {
         }
     }
 
-    /// Applies a `session/update` about controls.
     pub fn apply_update(&mut self, update: &Value) {
         match update["sessionUpdate"].as_str() {
             Some("config_option_update" | "config_options_update") => self.merge(update),
@@ -306,9 +287,6 @@ impl SessionControls {
             }
             Some("current_mode_update") => {
                 self.mode_id = text(&update["currentModeId"]);
-                // The mode option shows the same mode: an agent that reports
-                // a switch only this way must not leave it stale, or a
-                // switch into a permissions-off mode goes unseen.
                 let mode_id = self.mode_id.clone();
                 if let Some(ConfigOptionView {
                     kind:
@@ -333,9 +311,6 @@ impl SessionControls {
         }
     }
 
-    /// The mode the agent is in, when it is one Oleafly blocks (permission
-    /// checks off). `preferred` is the mode to switch to first, then the
-    /// agent's `default` and `auto` modes, then any mode that is not blocked.
     pub fn blocked_mode(&self, preferred: Option<&str>) -> Option<BlockedMode> {
         fn pick<'a>(
             choices: impl Iterator<Item = (&'a str, bool)> + Clone,
@@ -404,7 +379,6 @@ impl SessionControls {
         self.options.iter().find(|option| option.id == config_id)
     }
 
-    /// Whether `value` may be set on `config_id`.
     pub fn allows(&self, config_id: &str, value: &ConfigValue) -> Result<(), String> {
         let option = self
             .by_id(config_id)
@@ -427,7 +401,6 @@ impl SessionControls {
         }
     }
 
-    /// Whether a legacy mode may be selected.
     pub fn allows_mode(&self, mode_id: &str) -> Result<(), String> {
         let mode = self
             .modes
@@ -534,12 +507,10 @@ mod tests {
                 to: "default".into()
             })
         );
-        // The mode the user last chose comes first, when it is allowed.
         let blocked = controls.blocked_mode(Some("plan")).unwrap();
         assert_eq!(blocked.switch.unwrap().to, "plan");
         let blocked = controls.blocked_mode(Some("bypassPermissions")).unwrap();
         assert_eq!(blocked.switch.unwrap().to, "default");
-        // In a mode that is fine, there is nothing to do.
         controls.merge(&claude());
         assert_eq!(controls.blocked_mode(None), None);
     }
@@ -586,7 +557,6 @@ mod tests {
         let blocked = controls.blocked_mode(None).unwrap();
         assert_eq!(blocked.name, "Bypass permissions");
         assert_eq!(blocked.switch.unwrap().to, "default");
-        // A mode the option does not list leaves its value alone.
         controls.apply_update(
             &json!({"sessionUpdate": "current_mode_update", "currentModeId": "unknown"}),
         );

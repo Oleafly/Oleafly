@@ -33,7 +33,6 @@ import { AcpAgentPreferenceSections } from "./AcpAgentPreferenceSections";
 import { AcpExperimentalSection } from "./AcpExperimentalSection";
 import { HermesSection, remoteIssues, remoteProblem } from "./HermesSection";
 
-/** An agent's remembered choices kept the way Rust keeps them: each save changes one slot. */
 function storeAgentPreferences(initial: AcpAgentPreferences) {
   let stored = initial;
   vi.mocked(acpAgentPreferences).mockImplementation(async () => stored);
@@ -400,7 +399,6 @@ describe("Hermes for this project", () => {
     expect(screen.getByText("Test connection and Save need valid values for: Host and Project folder on that machine."))
       .toHaveAttribute("id", save.getAttribute("aria-describedby"));
     expect(screen.getByText("Not saved yet. Until you save, this project keeps using: Default profile (shared).")).toBeInTheDocument();
-    // An untouched empty field stays quiet; the folder shows what to type.
     expect(screen.queryByText("Enter the host name or user@host.")).toBeNull();
     expect(screen.getByText("The full path on that machine, such as /home/ada/paper.")).toBeInTheDocument();
 

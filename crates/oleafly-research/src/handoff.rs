@@ -1,13 +1,3 @@
-//! 0.4.8 L: moving a running research task between the app and the
-//! background helper. A handoff re-queues the task for the other side
-//! (E's `PendingStart::Resume { reason: Handoff }`) and records how the next
-//! generation continues: the saved conversation, an interrupted turn, a CLI
-//! agent's session and home, and (for the helper) a grant of the facts only
-//! the app can compute.
-//!
-//! A record never holds credentials. The grant has no key fields, a CLI
-//! agent's launch carries only its hand-off variables, and MCP values are
-//! rebuilt by whoever runs the task from its own settings.
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -16,32 +6,21 @@ use serde_json::Value;
 use crate::host::OwnerKind;
 use crate::mcp::LinkedRootInfo;
 
-/// The `handoff_json` schema this version writes and reads.
 pub const HANDOFF_VERSION: u32 = 1;
 
-/// Why a task changed owner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HandoffReason {
-    /// The app quit; the helper continues.
     Quit,
-    /// The app restarts; the next launch continues.
     Restart,
-    /// An update installs; the updated app continues.
     Update,
-    /// Background tasks were turned off; the next launch continues.
     BackgroundOff,
-    /// The helper was asked to stop; the app continues.
     Stop,
-    /// The app opened and took its task back.
     Reclaim,
-    /// The helper got a terminate signal; the next helper continues.
     Signal,
-    /// The previous owner stopped without handing over (a crash).
     Recovered,
 }
 
-/// How the next owner of a task continues it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HandoffRecord {
@@ -49,19 +28,13 @@ pub struct HandoffRecord {
     pub from: OwnerKind,
     pub to: OwnerKind,
     pub reason: HandoffReason,
-    /// The generation that handed the task over.
     pub from_generation: u64,
-    /// The saved conversation: a file name under
-    /// `<tasks root>/workspaces/<task>/`.
     #[serde(default)]
     pub conversation: Option<String>,
-    /// The previous owner stopped in the middle of a turn.
     #[serde(default)]
     pub turn_interrupted: bool,
-    /// A CLI agent's own session and its home folder.
     #[serde(default)]
     pub acp: Option<AcpHandoff>,
-    /// What the app checked for the helper (set when `to` is the helper).
     #[serde(default)]
     pub grant: Option<TaskGrant>,
     pub created_at: i64,
@@ -89,7 +62,6 @@ impl HandoffRecord {
     }
 }
 
-/// A linked research folder as a grant records it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GrantedRoot {
@@ -121,36 +93,22 @@ impl From<&GrantedRoot> for LinkedRootInfo {
     }
 }
 
-/// Facts only the app can compute, checked when it hands a task to the
-/// helper. The helper's hosts answer from them; a grant that no longer
-/// matches the disk fails the task with a clear message.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TaskGrant {
-    /// The project folder as the app located it.
     pub project_root: String,
     pub linked: bool,
-    /// Trust codes the app checked: `trust.research_tasks`, `trust.agents`,
-    /// `trust.mcp`.
     pub capabilities: Vec<String>,
     pub linked_roots: Vec<GrantedRoot>,
-    /// The model's metadata entry (context window, prices).
     pub model_metadata: Option<Value>,
-    /// What the task's model calls cost before the handoff.
     pub spent_usd: Option<f64>,
-    /// The bundled skills folder of the app that handed over.
     pub skills_pack_root: Option<String>,
-    /// Skill ids the user turned off.
     pub disabled_skills: Vec<String>,
-    /// A CLI-agent task's sandboxed launch and permission rules.
     pub acp: Option<AcpGrant>,
 }
 
-/// The trust code a grant lists for research tasks.
 pub const TRUST_RESEARCH_TASKS: &str = "trust.research_tasks";
-/// The trust code a grant lists for CLI agents.
 pub const TRUST_AGENTS: &str = "trust.agents";
-/// The trust code a grant lists for MCP servers.
 pub const TRUST_MCP: &str = "trust.mcp";
 
 impl TaskGrant {
@@ -165,57 +123,42 @@ impl TaskGrant {
     }
 }
 
-/// How the helper starts a task's CLI agent and answers its requests.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AcpGrant {
     pub agent_id: String,
     pub launch: AcpLaunch,
-    /// Request kinds the project's rules refuse (`execute`, `edit`, …).
     #[serde(default)]
     pub refused_kinds: Vec<String>,
-    /// Refuse kinds no rule covers (a deny rule exists, or the rules file
-    /// could not be read).
     #[serde(default)]
     pub refuse_unlisted: bool,
 }
 
-/// The agent's sandboxed command as data. The sandbox clears the
-/// environment, so the helper rebuilds the command from the spec itself.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AcpLaunch {
-    /// `home` is the agent's retained home folder.
     pub sandbox: oleafly_sandbox::SandboxSpec,
     pub program: PathBuf,
     #[serde(default)]
     pub args: Vec<String>,
 }
 
-/// A CLI agent's session as the next owner resumes it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AcpHandoff {
-    /// The agent's own session id (not Oleafly's record id).
     pub agent_session_id: String,
-    /// The home folder the agent keeps its session history in.
     pub home: PathBuf,
 }
 
-/// `<tasks root>/workspaces/<task>/acp-home-<generation>`.
 pub fn acp_home_path(tasks_root: &Path, task_id: &str, generation: u64) -> PathBuf {
     crate::isolation::task_workspace_root(tasks_root, task_id)
         .join(format!("acp-home-{generation}"))
 }
 
-/// Whether a name in a task's workspace folder is a conversation snapshot
-/// or an agent home (never a generation's workspace).
 pub fn is_handoff_file_name(name: &str) -> bool {
     name.ends_with("-conversation.json") || name.starts_with("acp-home-")
 }
 
-/// Removes every saved conversation and agent home of a task. Errors are
-/// ignored: a later purge or the task's deletion tries again.
 pub fn purge_files(tasks_root: &Path, task_id: &str) {
     let Ok(entries) = std::fs::read_dir(crate::isolation::task_workspace_root(tasks_root, task_id))
     else {
@@ -242,7 +185,6 @@ pub fn purge_files(tasks_root: &Path, task_id: &str) {
     }
 }
 
-/// How much work a process owns.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OwnedWork {
@@ -256,12 +198,9 @@ impl OwnedWork {
     }
 }
 
-/// What the other process asked of the tasks this one runs.
 #[derive(Debug, Default, PartialEq)]
 pub struct ForeignRequests {
-    /// Tasks the user cancelled in the app.
     pub cancel: Vec<String>,
-    /// Tasks the app wants back, with the generation running now.
     pub reclaim: Vec<(String, u64)>,
 }
 
@@ -374,7 +313,6 @@ mod tests {
         assert!(task_root.join("2-baseline").is_dir());
         assert!(!task_root.join("acp-home-2").exists());
         assert!(!task_root.join("2-conversation.json").exists());
-        // A task without a folder is not an error.
         purge_files(temp.path(), "missing");
     }
 

@@ -1,6 +1,3 @@
-//! `initialize`: what Oleafly offers and what the agent can do. Agents are
-//! parsed leniently: an unknown or malformed field turns a feature off; it
-//! never fails the connection.
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -8,8 +5,6 @@ use serde_json::{json, Map, Value};
 
 use crate::client::{ClientOptions, InitializeError, Negotiated, ProtocolVersion};
 
-/// What an agent supports. The first seven fields keep the JSON names
-/// Oleafly 0.4.7 stored, so saved session records still load.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentCapabilities {
@@ -29,7 +24,6 @@ pub struct AgentCapabilities {
     pub providers: bool,
     pub steering: bool,
     pub auth_status: bool,
-    /// The negotiated protocol version (0 for records saved before 0.4.8).
     pub protocol: u16,
 }
 
@@ -42,16 +36,12 @@ pub struct AuthMethod {
     /// The ACP auth method `type` (for example "terminal"), when reported.
     #[serde(default)]
     pub kind: Option<String>,
-    /// Extra arguments for a terminal sign-in.
     #[serde(default)]
     pub args: Vec<String>,
-    /// Extra environment for a terminal sign-in.
     #[serde(default)]
     pub env: BTreeMap<String, String>,
-    /// The provider whose API key this method takes (`_meta["api-key"]`).
     #[serde(default)]
     pub api_key_provider: Option<String>,
-    /// The agent's own sign-in command (`_meta["terminal-auth"]`).
     #[serde(default)]
     pub terminal_command: Option<TerminalAuthCommand>,
 }
@@ -68,7 +58,6 @@ const MAX_AUTH_METHODS: usize = 12;
 const MAX_AUTH_ARGS: usize = 32;
 const MAX_AUTH_VALUE: usize = 4096;
 
-/// The `initialize` params Oleafly sends for `version`.
 pub fn initialize_params(options: &ClientOptions, version: ProtocolVersion) -> Value {
     match version {
         ProtocolVersion::V1 => json!({
@@ -95,8 +84,6 @@ pub fn initialize_params(options: &ClientOptions, version: ProtocolVersion) -> V
     }
 }
 
-/// Reads the agent's `initialize` answer. A v1 answer to a v2 request asks
-/// for a fresh v1 connection.
 pub fn parse_initialize(
     response: &Value,
     requested: ProtocolVersion,
@@ -157,12 +144,9 @@ pub(crate) fn text(value: &Value) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// How an auth method lists its environment.
 #[derive(Clone, Copy)]
 pub(crate) enum EnvShape {
-    /// v1: `{"NAME": "value"}`.
     Map,
-    /// v2: `[{"name": "NAME", "value": "value"}]`.
     Pairs,
 }
 
@@ -178,8 +162,6 @@ fn env_name(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// Auth methods, at most 12. An entry with an invalid argument, variable or
-/// command is dropped.
 pub(crate) fn auth_methods(value: &Value, id_key: &str, env: EnvShape) -> Vec<AuthMethod> {
     value
         .as_array()
@@ -225,7 +207,6 @@ fn auth_method(value: &Value, id_key: &str, env_shape: EnvShape) -> Option<AuthM
     })
 }
 
-/// Plain-text arguments. `None` when there are too many or one isn't plain text.
 fn plain_args(values: &[Value]) -> Option<Vec<String>> {
     if values.len() > MAX_AUTH_ARGS {
         return None;
@@ -240,7 +221,6 @@ fn plain_args(values: &[Value]) -> Option<Vec<String>> {
         .collect()
 }
 
-/// The v1 environment, `{"NAME": "value"}`. `None` when an entry is invalid.
 fn env_from_map(value: &Value) -> Option<BTreeMap<String, String>> {
     let mut env = BTreeMap::new();
     if let Some(entries) = value["env"].as_object() {
@@ -258,8 +238,6 @@ fn env_from_map(value: &Value) -> Option<BTreeMap<String, String>> {
     Some(env)
 }
 
-/// The v2 environment, `[{"name": "NAME", "value": "value"}]`. `None` when an
-/// entry is invalid.
 fn env_from_pairs(value: &Value) -> Option<BTreeMap<String, String>> {
     let mut env = BTreeMap::new();
     if let Some(entries) = value["env"].as_array() {
@@ -278,8 +256,6 @@ fn env_from_pairs(value: &Value) -> Option<BTreeMap<String, String>> {
     Some(env)
 }
 
-/// The `_meta.terminal-auth` command. `None` when it isn't an absolute,
-/// plain-text program with plain-text arguments.
 fn terminal_auth_command(command: &Map<String, Value>) -> Option<TerminalAuthCommand> {
     let program = command.get("command").and_then(Value::as_str)?;
     if !std::path::Path::new(program).is_absolute() || !plain_text(program) {

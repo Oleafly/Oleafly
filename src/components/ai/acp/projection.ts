@@ -27,7 +27,6 @@ function noticed(
   };
 }
 
-// Compared after display formatting: shown error rows hold `~` paths.
 function bareFailure(value: string): string {
   return displayText(value).replace(/^\s*(?:internal error|error)\s*:\s*/i, "").trim().toLowerCase();
 }
@@ -48,7 +47,6 @@ function toolOutput(data: Data): string {
   if (!Array.isArray(data.content)) return "";
   return data.content.map((entry: unknown) => {
     const value = object(entry);
-    // Command and read results name files too (`pwd`, `ls`, a Read of a path).
     if (value.type === "content") return displayText(text(object(value.content).text));
     if (value.type === "terminal") return i18n.t(($) => $.ai.acp.terminalCommand);
     return "";
@@ -59,14 +57,12 @@ function optionalText(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
-/** ACP `diff` blocks, kept whole so the tool card can show a real diff. */
 function toolDiffs(data: Data): ToolDiff[] | undefined {
   if (!Array.isArray(data.content)) return undefined;
   const diffs = data.content.flatMap((entry: unknown): ToolDiff[] => {
     const value = object(entry);
     if (value.type !== "diff" || !text(value.path)) return [];
     const truncated = value.truncated === true;
-    // The card shows the path, so a file outside the project reads `~/…`.
     return [{
       path: displayPath(text(value.path)),
       oldText: truncated ? null : optionalText(value.oldText),
@@ -94,9 +90,7 @@ interface ProjectionState {
   rows: Row[];
   tools: Map<string, number>;
   lastKind: string;
-  /** The plan row of each turn, replaced in place. */
   plans: Map<string, number>;
-  /** Files committed per turn (`path → commit`), applied whenever the changes card arrives. */
   commits: Map<string, Record<string, string>>;
 }
 
@@ -123,7 +117,6 @@ function appendRow(
   });
 }
 
-/** Images and files sent with a user message (a 0.4.7 message has images only). */
 function sentAttachments(images: unknown, files: unknown) {
   const shown = [
     ...(Array.isArray(images) ? images : []).map((image: unknown, index) => ({
@@ -178,7 +171,6 @@ function applyChunk(state: ProjectionState, event: AcpEvent): boolean {
   return true;
 }
 
-/** A v2 agent streams tool output in pieces: an append goes on the end of what the call has. */
 function mergedToolOutput(previous: string | undefined, output: string | undefined, append: boolean): string | undefined {
   if (output === undefined) return previous;
   return append && previous ? `${previous}${output}` : output;
@@ -224,7 +216,6 @@ function planContent(entries: readonly unknown[]): string {
     .join("\n");
 }
 
-/** Adds the row a diagnostics event explains itself with; false when it shows nothing. */
 function applyDiagnostics(state: ProjectionState, event: AcpEvent): boolean {
   const detail = displayText(text(event.data.stderr));
   if (detail) {
@@ -238,7 +229,6 @@ function applyDiagnostics(state: ProjectionState, event: AcpEvent): boolean {
     );
     return true;
   }
-  // The runtime skipped an update over 1 MiB (a whole-file diff, say).
   const dropped = object(event.data.droppedUpdate).bytes;
   if (typeof dropped === "number" && Number.isFinite(dropped) && dropped > 0) {
     appendRow(state, event, "notice", {
@@ -330,7 +320,6 @@ function compactionStatus(status: string): ToolEntry["status"] {
   return status === "failed" || status === "cancelled" ? "error" : "running";
 }
 
-/** A compaction shows as a step whose output is the summary. */
 function applyCompaction(state: ProjectionState, event: AcpEvent) {
   const id = text(event.data.compactionId);
   if (!id) return false;
@@ -352,7 +341,6 @@ function applyCompaction(state: ProjectionState, event: AcpEvent) {
   return true;
 }
 
-/** Marks committed files on the turn's changes card, whichever arrives first. */
 function applyCommit(state: ProjectionState, event: AcpEvent) {
   const turn = text(event.data.turnId) || event.turnId;
   const commit = text(event.data.commit);
@@ -372,10 +360,6 @@ function userSkill(value: unknown): ChatMessage["skill"] {
   return id ? { id, name: text(skill.name) || id } : undefined;
 }
 
-/**
- * Hangs a turn's file changes on the last assistant row of that turn (or the
- * turn's last row when the agent said nothing). Never adds a row.
- */
 function applyTurnChanges(state: ProjectionState, event: AcpEvent) {
   const turnChanges = turnChangesFrom(event.data);
   const turn = text(event.data.turnId) || event.turnId;

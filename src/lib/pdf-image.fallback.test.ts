@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { sharedPdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
 
 const mocks = vi.hoisted(() => ({
   getDocument: vi.fn(),
@@ -124,6 +125,9 @@ describe("renderPages", () => {
       "data:image/png;base64,ok",
     ]);
     expect(mocks.getDocument).toHaveBeenCalledOnce();
+    expect(mocks.getDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ ...sharedPdfDocumentOptions(), data: new Uint8Array([1]) }),
+    );
     expect(getPage.mock.calls.map(([page]) => page)).toEqual([2, 4, 5]);
     expect(task.destroy).toHaveBeenCalledOnce();
   });

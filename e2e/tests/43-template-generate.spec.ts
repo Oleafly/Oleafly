@@ -2,9 +2,6 @@ import { test, expect } from "../fixtures";
 import { fillTextarea, openGallery, waitLong } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
-// Generator gating reads the configured provider, so connect the keyless
-// Ollama provider (mock server) before opening the gallery.
-
 let server: MockAiServer;
 
 test.beforeAll(async () => {

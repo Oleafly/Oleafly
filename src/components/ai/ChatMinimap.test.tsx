@@ -16,8 +16,6 @@ function Harness({ visible, count }: { visible: boolean; count: number }) {
   return (
     <div>
       <div ref={ref} data-testid="scroll">
-        {/* Empty nodes: the minimap only needs their data-mm-index and
-            geometry, so the preview text appears solely in the hover card. */}
         {messages.map((message, index) => (
           <div key={`${message.role}:${message.content}`} data-mm-index={index} />
         ))}
@@ -38,13 +36,11 @@ describe("ChatMinimap", () => {
   });
 
   it("renders nothing with fewer than two prompts", () => {
-    // count 2 is one user prompt plus one reply.
     const { container } = render(<Harness visible count={2} />);
     expect(ticks(container)).toHaveLength(0);
   });
 
   it("renders one tick per user prompt, not per message", () => {
-    // count 6 is three user prompts interleaved with three replies.
     const { container } = render(<Harness visible count={6} />);
     expect(ticks(container)).toHaveLength(3);
   });

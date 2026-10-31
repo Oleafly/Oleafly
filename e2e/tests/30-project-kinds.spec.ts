@@ -1,13 +1,8 @@
 import { test, expect } from "../fixtures";
 import { clickCompile, createProjectFromTemplate } from "../helpers";
 
-// Templates differ in class, packages, and layout, so this is the suite's
-// regression net for "we changed something and a template broke".
-
 const RUN = Date.now().toString(36);
 
-// modern-resume downloads its font pack on creation, so it is network-gated
-// like the font tests. diagram is the image-kind project, tested separately below.
 const TEX_TEMPLATES = [
   "acm",
   "article-academic",
@@ -44,9 +39,6 @@ async function createFromTemplate(page: import("../helpers").Page, id: string, n
   await createProjectFromTemplate(page, id, name);
 }
 
-// TeX templates must still land on "ok". Only the Typst and Markdown ones
-// legitimately report warnings, so widen the accepted severity per template
-// rather than for the whole matrix.
 async function compileClean(
   page: import("../helpers").Page,
   severities: readonly string[] = ["ok"],
@@ -82,7 +74,6 @@ for (const id of [...TEX_TEMPLATES, ...OTHER_TEMPLATES]) {
 
 for (const id of NETWORK_TEMPLATES) {
   test(`template ${id}: create (with asset download) and compile with zero errors`, async ({ tauriPage }) => {
-    // Ignored on purpose on offline runners, because the font pack is downloaded.
     test.skip(process.env.E2E_SKIP_NETWORK === "1", "needs network for the font pack");
     test.setTimeout(300_000);
     await createFromTemplate(tauriPage, id, `E2E T ${id} ${RUN}`);

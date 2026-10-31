@@ -23,13 +23,9 @@ const RUN_TIMEOUT_OPTIONS: Record<RunProfile, number[]> = {
   analysis: [10, 30, 60, 120],
   training: [60, 120, 240, 480, 720],
 };
-// The same rule as the task store: a letter or underscore first, then up to
-// 63 letters, digits, dots, slashes, dashes or underscores.
 const METRIC_NAME = /^[A-Za-z_][A-Za-z0-9_./-]{0,63}$/;
-/** The highest cost limit the task store takes, in US dollars. */
 const MAX_COST = 10_000;
 
-/** "90 minutes" or "2 hours" for a minute count. */
 export function durationLabel(minutes: number): string {
   if (minutes >= 60 && minutes % 60 === 0) {
     return i18n.t(($) => $.researchTools.brief.hours, { count: minutes / 60 });
@@ -43,7 +39,6 @@ export interface BriefErrors {
   runs?: string;
 }
 
-/** What is wrong with a brief before it goes to the backend. */
 export function briefErrors(brief: ResearchBrief): BriefErrors {
   const errors: BriefErrors = {};
   if (brief.primaryMetric && !METRIC_NAME.test(brief.primaryMetric.name)) {
@@ -64,14 +59,12 @@ export function briefErrors(brief: ResearchBrief): BriefErrors {
   return errors;
 }
 
-/** `YYYY-MM-DDTHH:mm` in local time, for a datetime-local field. */
 export function localDateTime(epochMs: number): string {
   const date = new Date(epochMs);
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-// The backend takes a start time up to a minute old and 30 days ahead.
 const START_GRACE_MS = 60_000;
 const START_AHEAD_MS = 30 * 24 * 60 * 60 * 1000;
 const LOCAL_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
@@ -86,7 +79,6 @@ export function parseLocalDateTime(text: string): number {
   if (!match) return Number.NaN;
   const [year, month, day, hour, minute, second] = match.slice(1).map((part) => Number(part ?? 0));
   const date = new Date(year, month - 1, day, hour, minute, second);
-  // 2026-02-31 would roll over into March; it is not a date.
   const real =
     date.getFullYear() === year &&
     date.getMonth() === month - 1 &&
@@ -96,7 +88,6 @@ export function parseLocalDateTime(text: string): number {
   return real ? date.getTime() : Number.NaN;
 }
 
-/** Why a start time can't be used (`NaN` is text that isn't a time), or `undefined` when it can. */
 export function startError(runAfter: number | null, now = Date.now()): string | undefined {
   if (runAfter === null) return undefined;
   if (!Number.isFinite(runAfter)) {
@@ -108,7 +99,6 @@ export function startError(runAfter: number | null, now = Date.now()): string | 
   return undefined;
 }
 
-/** A start time that has already passed means "start now". */
 export function upcomingStart(runAfter: number | null | undefined, now = Date.now()): number | null {
   return typeof runAfter === "number" && Number.isFinite(runAfter) && runAfter > now ? runAfter : null;
 }
@@ -121,7 +111,6 @@ function supportsDateTimeInput(): boolean {
   return input.type === "datetime-local";
 }
 
-/** Opens Settings on the Research section, where background work is turned on. */
 function openResearchSettings() {
   useSettingsStore.getState().openSettingsAt("research");
 }
@@ -133,7 +122,6 @@ function parseNumber(text: string): number | null {
   return Number.isFinite(value) ? value : Number.NaN;
 }
 
-/** The decimal separator of the UI language, such as "," for German. */
 function decimalSeparator(): string {
   try {
     return new Intl.NumberFormat(i18n.language).formatToParts(1.5).find((part) => part.type === "decimal")?.value ?? ".";
@@ -142,7 +130,6 @@ function decimalSeparator(): string {
   }
 }
 
-/** An amount typed with a point or with the UI language's decimal separator, such as `1,5` in German. */
 export function parseAmount(text: string): number | null {
   const trimmed = text.trim();
   const separator = decimalSeparator();
@@ -150,12 +137,10 @@ export function parseAmount(text: string): number | null {
   return parseNumber(trimmed.replace(separator, "."));
 }
 
-/** The choices, plus the saved value when it is not one of them. */
 function optionsWith(options: number[], current: number): number[] {
   return options.includes(current) ? options : [...options, current].sort((a, b) => a - b);
 }
 
-/** What every field of the brief shares. */
 interface FieldProps {
   brief: ResearchBrief;
   disabled: boolean;
@@ -407,7 +392,6 @@ function StartField({
         onChange={(event) => {
           const value = event.target.value;
           onStartTextChange(value);
-          // Text that is not a time stays in the box; the composer sees `NaN` and won't save it.
           const next = value.trim() === "" ? null : parseLocalDateTime(value);
           if (next !== null && Number.isFinite(next)) onDropDesktopApps();
           onRunAfterChange(next);
@@ -490,16 +474,11 @@ interface BriefFieldsProps {
   onRunAfterChange: (runAfter: number | null) => void;
   keepRunning: boolean;
   onKeepRunningChange: (keepRunning: boolean) => void;
-  /** Background work is turned on in Settings, Research. */
   backgroundEnabled: boolean;
   disabled?: boolean;
-  /** Extra compute targets (remote machines and clusters) and the executor each uses. */
   computeTargets?: { id: string; label: string; executor: string }[];
-  /** Renders the whole "Run on" control (target, resources, notes) in place of the plain list. */
   renderCompute?: (fieldId: string) => ReactNode;
-  /** The "Run on" choice has a problem the composer found (a removed target, a field that doesn't read). */
   computeProblem?: boolean;
-  /** Opens Settings for a link in the brief; the composer closes first, since Settings can't open inside it. */
   onOpenSettings?: (open: () => void) => void;
 }
 
@@ -522,9 +501,7 @@ export function BriefFields({
   const errors = briefErrors(brief);
   const startProblem = startError(runAfter);
   const hasProblem = Object.keys(errors).length > 0 || startProblem !== undefined || computeProblem;
-  // A saved draft can hold a bad value, so the options open on the problem.
   const [open, setOpen] = useState(hasProblem);
-  // The composer finds a removed compute target after the brief first draws.
   useEffect(() => {
     if (computeProblem) setOpen(true);
   }, [computeProblem]);
@@ -536,8 +513,6 @@ export function BriefFields({
   const [costText, setCostText] = useState(() => brief.budget.usdCap?.toString() ?? "");
   const [runsText, setRunsText] = useState(() => brief.budget.maxRuns?.toString() ?? "");
   const update = (patch: Partial<ResearchBrief>) => onChange({ ...brief, ...patch });
-  // Desktop apps need someone at the computer to approve each action, so a
-  // task that starts on a schedule or outlives the app gives them up.
   const unattended = runAfter !== null || (keepRunning && backgroundEnabled);
   const dropDesktopApps = () => {
     if (brief.permissions.desktopApps) {

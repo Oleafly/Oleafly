@@ -12,12 +12,10 @@ use crate::usage_report::{record_usage_observation, UsageEventInput};
 struct ReplayState {
     sequence: u64,
     turn: Option<TurnUsage>,
-    /// The agent's cumulative cost as last reported in this session.
     #[serde(default)]
     last_cost: Option<f64>,
 }
 
-/// The price label of costs the agent reported itself.
 const AGENT_REPORTED: &str = "acp-agent-reported";
 
 #[derive(Serialize, Deserialize)]
@@ -32,7 +30,6 @@ struct TurnUsage {
     status: String,
     measured: bool,
     duration_ms: i64,
-    /// The cumulative cost before this turn, and the latest during it.
     #[serde(default)]
     cost_at_start: Option<f64>,
     #[serde(default)]
@@ -41,8 +38,6 @@ struct TurnUsage {
     cost_currency: Option<String>,
 }
 
-/// How the session pays: through an API key (Oleafly's or the agent's) or
-/// a subscription account.
 fn billing(session: &SessionRecord) -> &'static str {
     if session.routed_provider.is_some() {
         return "api";
@@ -78,8 +73,6 @@ impl TurnUsage {
         }
     }
 
-    /// The turn's cost from the agent's cumulative figures, for API billing
-    /// in US dollars only.
     fn estimated_cost(&self, billing: &str) -> Option<f64> {
         let latest = self.cost_latest?;
         if billing != "api" || self.cost_currency.as_deref().unwrap_or("USD") != "USD" {
@@ -165,8 +158,6 @@ fn consume(
         .then(|| event.data["costAmount"].as_f64())
         .flatten()
         .filter(|cost| cost.is_finite() && *cost >= 0.0);
-    // Outside any turn (a plan-usage refresh): the agent's total moves on,
-    // and no turn is charged for it.
     let Some(turn_id) = event.turn_id.as_ref() else {
         if let Some(cost) = reported_cost {
             state.last_cost = Some(cost);
@@ -181,8 +172,6 @@ fn consume(
         state.turn = Some(TurnUsage::new(event, turn_id.clone(), state.last_cost));
     }
     if let Some(cost) = reported_cost {
-        // A total below the last one: the agent counts from zero again (a
-        // restart, a load or a fork), so this turn's cost is all of it.
         if state.last_cost.is_some_and(|last| cost < last) {
             if let Some(turn) = state.turn.as_mut() {
                 turn.cost_at_start = Some(0.0);
@@ -288,8 +277,6 @@ fn replay_session_in(
         .transpose()
         .map_err(|error| error.to_string())?
         .unwrap_or_default();
-    // A fork starts with its parent's events. They were counted there: here
-    // they only bring the turn and cost state up to the fork point.
     let inherited = session.fork_sequence.unwrap_or(0);
     loop {
         let page = runtime.events(&session.id, state.sequence, 500)?;
@@ -342,7 +329,6 @@ fn replay_session_in(
         }
     }
     let state = serde_json::to_string(&state).map_err(|error| error.to_string())?;
-    // Most sessions have not changed since the last pass: no write then.
     if stored.as_deref() != Some(state.as_str()) {
         db.execute("INSERT INTO native_usage_replay VALUES (?1,?2) ON CONFLICT(session_id) DO UPDATE SET state=excluded.state",
             params![session.id, state])
@@ -351,10 +337,6 @@ fn replay_session_in(
     Ok(())
 }
 
-/// Replays every session. One that fails is skipped, so the sessions after
-/// it still get their usage recorded; the first failure is returned at the
-/// end. Replay rows of deleted sessions are dropped once every session was
-/// listed.
 fn replay_all(root: &Path, runtime: &AcpRuntime) -> Result<(), String> {
     let db = open_replay_db(root)?;
     let mut seen = std::collections::HashSet::new();
@@ -377,7 +359,6 @@ fn replay_all(root: &Path, runtime: &AcpRuntime) -> Result<(), String> {
     failure.map_or(Ok(()), Err)
 }
 
-/// Drops the replay rows of sessions that no longer exist.
 fn forget_deleted_sessions(
     db: &rusqlite::Connection,
     existing: &std::collections::HashSet<String>,
@@ -602,7 +583,6 @@ mod tests {
         assert_eq!(row, (1, 100, None, "completed".into(), "acp:codex".into()));
     }
 
-    /// A runtime whose store holds `session` and the stored events of it.
     fn store_session(
         root: &Path,
         session: &SessionRecord,
@@ -680,7 +660,6 @@ mod tests {
         replay_session(root.path(), &runtime, &fork).unwrap();
         assert_eq!(recorded_turns(root.path()), ["t2"]);
 
-        // A conversation that is not a fork records every turn.
         let other = tempfile::tempdir().unwrap();
         let plain = session();
         let runtime = store_session(other.path(), &plain, &turn_events());
@@ -750,7 +729,6 @@ mod tests {
         let session = api_session();
         let mut state = ReplayState::default();
         consume(&mut state, &turn_cost_event(1, Some("t1"), 2.40), &session).unwrap();
-        // The app restarted: the agent counts from zero again.
         let next = consume(&mut state, &turn_cost_event(2, Some("t2"), 0.30), &session).unwrap();
         assert!(
             (next.estimated_cost_usd.unwrap() - 0.30).abs() < 1e-9,
@@ -764,7 +742,6 @@ mod tests {
         let session = api_session();
         let mut state = ReplayState::default();
         consume(&mut state, &turn_cost_event(1, Some("t1"), 1.00), &session).unwrap();
-        // The hidden refresh turn belongs to no turn.
         assert!(consume(&mut state, &turn_cost_event(2, None, 1.04), &session).is_none());
         let next = consume(&mut state, &turn_cost_event(3, Some("t2"), 1.10), &session).unwrap();
         assert!(
@@ -785,7 +762,6 @@ mod tests {
         let acp_root = root.path().join("acp");
         {
             let db = rusqlite::Connection::open(acp_root.join("sessions.sqlite")).unwrap();
-            // An event this version cannot read, as another version wrote it.
             db.execute(
                 "UPDATE events SET event='{not json' WHERE session_id='a-broken' AND sequence=2",
                 [],
@@ -844,7 +820,6 @@ mod tests {
                 [],
             )
             .unwrap();
-        // A second pass changes nothing for the live session.
         library
             .execute(
                 "CREATE TRIGGER no_rewrite BEFORE UPDATE ON native_usage_replay

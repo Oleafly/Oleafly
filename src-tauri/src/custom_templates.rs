@@ -1,12 +1,3 @@
-//! Templates people make themselves: imported from a ZIP or a folder, saved
-//! from a project, or brought over from an online LaTeX account.
-//!
-//! Each one lands in the custom template root as `<id>/template.json`, an
-//! optional `<id>/preview.png`, and the untouched source tree under
-//! `<id>/files/`. Keeping the source in its own folder means a template's own
-//! LICENSE or preview.png is copied into new projects like any other file
-//! instead of being taken for gallery metadata.
-
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
@@ -29,8 +20,6 @@ const PNG_SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
 
 static STAGING: AtomicU64 = AtomicU64::new(0);
 
-/// What a new custom template is called and how it should compile. Anything
-/// left empty is worked out from the files.
 #[derive(Default)]
 pub(crate) struct TemplateDraft {
     pub name: String,
@@ -42,22 +31,12 @@ pub(crate) struct TemplateDraft {
 }
 
 pub(crate) enum TemplateSource<'a> {
-    /// A ZIP archive. A single wrapping folder is unwrapped.
     Archive(&'a Path),
-    /// A project archive downloaded from an online account. Its layout is
-    /// kept exactly, so the main file path the server gave stays valid and
-    /// paths written from the project root still resolve.
     OnlineProject(&'a Path),
-    /// A folder someone picked. A single wrapping folder is unwrapped.
     Folder(&'a Path),
-    /// A project's own folder. Its project.json stays behind.
     Project(&'a Path),
 }
 
-/// Copy `source` into the custom template root as a new template and return
-/// its id. The template is staged under a temporary name and only renamed
-/// into place once it is complete, so a failure never leaves half a template
-/// in the gallery.
 pub(crate) fn publish_template(
     custom_root: &Path,
     reserved: &[String],
@@ -181,7 +160,6 @@ fn clean_description(description: &str) -> String {
     short
 }
 
-/// A safe path inside the template, with `/` separators, or `None`.
 fn clean_relative(path: &str) -> Option<String> {
     let text = path.trim().replace('\\', "/");
     let parts: Vec<&str> = text
@@ -226,8 +204,6 @@ fn slug(name: &str) -> String {
     }
 }
 
-/// A fresh id with a random suffix, so a template deleted and imported again
-/// under the same name never inherits the old one's cached preview.
 fn unique_id(custom_root: &Path, reserved: &[String], name: &str) -> String {
     let base = slug(name);
     loop {
@@ -251,8 +227,6 @@ fn remove_project_settings(files: &Path) -> Result<(), String> {
     }
 }
 
-/// Copying a folder that holds the template store into the store would copy
-/// the copy into itself.
 fn refuse_enclosing_folder(folder: &Path, custom_root: &Path) -> Result<(), String> {
     let (Ok(folder), Ok(root)) = (folder.canonicalize(), custom_root.canonicalize()) else {
         return Ok(());
@@ -292,8 +266,6 @@ fn make_writable(_dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Remove staging folders and downloads a crash left behind. Fresh ones may
-/// belong to an import still running, so only day-old leftovers go.
 fn sweep_stale_staging(custom_root: &Path) {
     let Ok(entries) = std::fs::read_dir(custom_root) else {
         return;
@@ -323,8 +295,6 @@ fn sweep_stale_staging(custom_root: &Path) {
     }
 }
 
-/// A unique path in the template store for a download that is about to be
-/// turned into a template.
 pub(crate) fn download_path(custom_root: &Path) -> Result<PathBuf, String> {
     std::fs::create_dir_all(custom_root).map_err(|error| error.to_string())?;
     Ok(custom_root.join(format!(
@@ -334,8 +304,6 @@ pub(crate) fn download_path(custom_root: &Path) -> Result<PathBuf, String> {
     )))
 }
 
-/// Decode a preview the page rendered, keeping it only if it is a PNG of a
-/// sensible size. A bad preview is dropped rather than failing the save.
 pub(crate) fn decode_preview(base64: Option<&str>) -> Option<Vec<u8>> {
     use base64::{engine::general_purpose::STANDARD, Engine};
     let text = base64?.trim();
@@ -347,7 +315,6 @@ pub(crate) fn decode_preview(base64: Option<&str>) -> Option<Vec<u8>> {
     (bytes.len() <= PREVIEW_LIMIT && bytes.starts_with(PNG_SIGNATURE)).then_some(bytes)
 }
 
-/// Import a ZIP or a folder as a custom template.
 #[tauri::command]
 pub async fn import_template_from_path(
     app: AppHandle,
@@ -380,9 +347,6 @@ pub async fn import_template_from_path(
     .map_err(|error| error.to_string())?
 }
 
-/// Save a project's files as a custom template. The template keeps the
-/// project's main document and, for a project pinned to one LaTeX compiler,
-/// that compiler.
 #[tauri::command]
 pub async fn save_project_as_template(
     app: AppHandle,

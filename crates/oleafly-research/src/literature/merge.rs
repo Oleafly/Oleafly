@@ -1,15 +1,10 @@
-//! Merging the answers of several indexes: the same work found twice
-//! becomes one record with the richer fields of both.
 use std::collections::HashMap;
 
 use super::sources::LiteratureRecord;
 use crate::similarity::normalize_title;
 
-/// Records at most, across every source.
 pub const MAX_MERGED: usize = 50;
 
-/// The keys a record is known by, in the order duplicates are matched:
-/// a source's own id, the DOI, the arXiv id, then the normalized title.
 fn identities(record: &LiteratureRecord) -> Vec<String> {
     let mut keys: Vec<String> = record
         .source_ids
@@ -77,8 +72,6 @@ fn merge_record(first: LiteratureRecord, second: LiteratureRecord) -> Literature
     }
 }
 
-/// Interleaves the sources' answers by rank (so no source dominates the
-/// top), merging duplicates, and keeps at most [`MAX_MERGED`] records.
 pub fn merge(groups: Vec<Vec<LiteratureRecord>>) -> Vec<LiteratureRecord> {
     let longest = groups.iter().map(Vec::len).max().unwrap_or(0);
     let mut iterators: Vec<_> = groups.into_iter().map(Vec::into_iter).collect();

@@ -49,12 +49,9 @@ export type ConverterProgressStep =
 
 export interface ConverterProgress {
   step: ConverterProgressStep;
-  /** The ordinal of the page being read, of `total`. */
   page?: number;
   total?: number;
-  /** The PDF page number of that page, such as 41 for the first page of 41-50. */
   pdfPage?: number;
-  /** The Tools model doing the work, by name. */
   model?: string;
 }
 
@@ -69,7 +66,6 @@ export interface AdHocConverterDefinition {
   outputFileName: string;
   outputMediaType: string;
   projectTarget?: ProjectTarget;
-  /** Runs on the Tools model: always, or only for scanned PDFs. */
   usesModel?: "always" | "scans";
 }
 
@@ -561,15 +557,10 @@ export interface ConverterInput {
   text: string;
   file: File | null;
   typstVersion?: string | null;
-  /** The user confirmed a long scanned-PDF run. */
   scanConfirmed?: boolean;
-  /** The pages of a PDF to read, 1-based and inclusive; every page when absent. */
   pageRange?: readonly [number, number];
 }
 
-/** A page range as a user types it: nothing (every page), one page such as
- * `7`, or a range such as `3-12`. `valid` is false for anything else, and
- * for a range that ends before it starts. */
 export function parsePageRange(text: string): { valid: boolean; range?: [number, number] } {
   const trimmed = text.trim();
   if (!trimmed) return { valid: true };
@@ -669,15 +660,12 @@ async function pdfToText(
   onProgress?.({ step: "readingPages" });
   const { extractPagesForConvert } = await import("@oleafly/pdf-to-latex/pdf-adapter");
   const range = input.pageRange;
-  // Only the chosen pages are read, and their images are decoded only when
-  // the pages have text: a scan's page images are never PNG-encoded here.
   const extracted = await extractPagesForConvert(bytes, {
     ...(range ? { pageRange: [range[0], range[1]] as const } : {}),
     figures: "if-text",
     signal,
   });
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  // A range past the last page would read nothing and report "Converted".
   if (range && range[0] > extracted.pageCount) {
     throw new Error(
       extracted.pageCount < 1
@@ -688,8 +676,6 @@ async function pdfToText(
   const latex = convertPages(extracted.pages);
   if (latex.report.likelyScanned) {
     const pages = selectedPages(extracted.pageCount, range);
-    // One run transcribes at most SCAN_PAGE_LIMIT pages. Say so before the
-    // cost confirmation, not after the user has confirmed it.
     if (pages.length > SCAN_PAGE_LIMIT) {
       throw new Error(
         i18n.t(($) => $.researchTools.converterErrors.pdfTooManyPages, {
@@ -721,7 +707,6 @@ async function pdfToText(
 
   onProgress?.({ step: "documentStructure" });
   const converted = await runPandoc({ source: "latex", target, text: latex.tex });
-  // With a page range, only the figures the chosen pages use.
   const figures = extracted.figures
     .filter((figure) => !range || latex.tex.includes(figure.name))
     .map((figure) => ({

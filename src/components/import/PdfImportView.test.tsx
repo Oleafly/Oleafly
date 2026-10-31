@@ -254,14 +254,19 @@ describe("PdfImportView converted document", () => {
     ).toBeInTheDocument();
   });
 
-  it("switches between the preview, source and split views", () => {
+  it("switches between the preview, source and split views", async () => {
+    const firstPage = enLibrary.pdfImport.pageAlt.replace("{{page}}", "1");
     seedConverted({ view: "preview" });
     render(<PdfImportView />);
     expect(screen.queryByTestId("import-source")).not.toBeInTheDocument();
+    await screen.findByAltText(firstPage);
     fireEvent.click(screen.getByTestId("import-view-source"));
     expect(useImportStore.getState().view).toBe("source");
+    expect(screen.queryByAltText(firstPage)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("import-view-split"));
     expect(useImportStore.getState().view).toBe("split");
+    await screen.findByAltText(firstPage);
+    expect(pdfPageToPng).toHaveBeenCalledTimes(2);
   });
 
   it("copies the converted source and confirms only after the clipboard write", async () => {
@@ -368,7 +373,6 @@ describe("PdfImportView converted document", () => {
       result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
     });
     render(<PdfImportView />);
-    // The text the lazy Tools banner replaces once it loads.
     expect(
       screen.getByText(
         "This PDF looks scanned. Transcribe it with a vision model to recover editable text.",

@@ -105,4 +105,61 @@ describe("mountOnFirstOpen", () => {
     expect(await screen.findByText("working")).toBeInTheDocument();
     errors.mockRestore();
   });
+
+  it("tries a surface that stays open again when its reset key changes", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const useRequests = create<{ requests: number }>(() => ({ requests: 1 }));
+    let broken = true;
+    function Surface() {
+      if (broken) throw new Error("guide broke");
+      return <p>{"guide"}</p>;
+    }
+    const close = vi.fn();
+    const Gated = mountOnFirstOpen(Surface, () => true, close, {
+      useResetKey: () => useRequests((state) => state.requests),
+    });
+    render(<Gated />);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("guide")).toBeNull();
+
+    broken = false;
+    act(() => useRequests.setState({ requests: 2 }));
+
+    expect(await screen.findByText("guide")).toBeInTheDocument();
+    expect(close).toHaveBeenCalledTimes(1);
+    errors.mockRestore();
+  });
+
+  it("does not mount on a reset key change before the surface first opens", () => {
+    const useKey = create<{ key: string }>(() => ({ key: "a" }));
+    const load = vi.fn(async () => ({ default: () => <p>{"surface"}</p> }));
+    const Keyed = mountOnFirstOpen(
+      lazy(load),
+      () => useSurfaceStore((state) => state.open),
+      undefined,
+      { useResetKey: () => useKey((state) => state.key) },
+    );
+    const { container } = render(<Keyed />);
+
+    act(() => useKey.setState({ key: "b" }));
+
+    expect(load).not.toHaveBeenCalled();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows the caller's fallback for a crashed surface that has no close", () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    function Surface(): never {
+      throw new Error("runtime broke");
+    }
+    const Gated = mountOnFirstOpen(Surface, () => true, undefined, {
+      fallback: <p>{"unavailable"}</p>,
+    });
+
+    render(<Gated />);
+
+    expect(screen.getByText("unavailable")).toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
 });

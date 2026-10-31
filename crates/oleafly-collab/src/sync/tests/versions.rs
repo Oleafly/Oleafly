@@ -51,11 +51,8 @@ fn turned_away(code: &str) -> String {
 enum Upgrade {
     Accepted,
     Forbidden,
-    // A 401 with no Oleafly answer, as a proxy in front of the server sends.
     ProxyRefuses,
-    // The server's own 401.
     Refuses,
-    // The server's own 503, as when it is restarting or full.
     Busy,
 }
 
@@ -76,8 +73,6 @@ struct PollTrace {
 enum Manifest {
     Served,
     Missing,
-    // Served until the app opens long poll, missing after: the app falls
-    // back to long poll as usual, then can't read the manifest there.
     GoneAfterPoll(&'static PollTrace),
 }
 
@@ -104,7 +99,6 @@ struct Answers {
     poll_busy: bool,
     refresh: Refresh,
     manifest: Manifest,
-    // Sent as Retry-After with a busy answer.
     retry_after: Option<&'static str>,
 }
 
@@ -134,8 +128,6 @@ const NO_SOCKETS: Answers = Answers {
     ..SOCKETS
 };
 
-// A server that knows nothing of this session: it turns away the upgrade
-// or the long-poll open, and a refresh, with its own 401.
 fn stranger(sockets: bool) -> Answers {
     Answers {
         upgrade: if sockets {
@@ -261,9 +253,6 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
     respond(stream, &reply).await;
 }
 
-// A server at the project's address that can never carry it on: its
-// manifest has `protocol` and `server_id`, and it refuses this app's protocol
-// version on the socket and on long-poll, or refuses WebSockets outright.
 async fn answering_at_the_address(
     server_id: ServerId,
     protocol: ProtocolRange,

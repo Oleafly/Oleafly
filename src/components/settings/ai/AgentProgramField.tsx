@@ -31,14 +31,8 @@ import { CheckBadge } from "@/components/ui/check-badge";
 
 export const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
 
-/** Where an agent's Program row lives: on the card, or inside the collapsed bridge details. */
 export type ProgramPlacement = "main" | "bridge";
 
-/**
- * Native agents, Pi and custom agents choose the program on the card. Bridged
- * vendor CLIs (the bridge ships its own copy) keep the choice in the bridge
- * details. A built-in without a vendor CLI has nothing to choose.
- */
 export function programPlacement(agent: AcpAgentStatus): ProgramPlacement | null {
   if (!agent.definition.builtin) return "main";
   if (!agent.cli) return null;
@@ -46,14 +40,12 @@ export function programPlacement(agent: AcpAgentStatus): ProgramPlacement | null
   return "bridge";
 }
 
-/** Codes the file check itself rejects: saving such a file fails too. */
 const INSPECT_CODES = new Set<AcpCheckCode>([
   "not_found", "is_directory", "unsupported_script", "not_executable", "gui_program", "interpreter", "network_path",
 ]);
 const NODE_CODES = new Set<AcpCheckCode>(["node_missing", "node_too_old"]);
 const RUN_CODES = new Set<AcpCheckCode>(["start_failed", "timeout", "exited", "not_acp", "session_failed"]);
 
-/** `acp.program.<reason>` error codes from saving a program, mapped to check codes. */
 const PROGRAM_ERROR_CODES: Record<string, AcpCheckCode> = {
   not_found: "not_found",
   is_directory: "is_directory",
@@ -75,7 +67,6 @@ function commandName(agent: AcpAgentStatus, path: string | null): string {
   return agent.cli?.command ?? (path ? stem(path) : agent.definition.id);
 }
 
-/** The sentence shown for a check result, keyed by its code. */
 export function checkMessage(agent: AcpAgentStatus, check: AcpAgentCheck, candidate: string | null): string {
   const name = agent.definition.name;
   const cli = agent.cli?.displayName ?? name;
@@ -154,14 +145,12 @@ function cleanTypedPath(value: string): string {
 
 type Translate = ReturnType<typeof useTranslation<["common", "settings", "ai"]>>["t"];
 
-/** The file the row shows: the override, else what was detected. The bridge row has no detected file. */
 function programPath(agent: AcpAgentStatus, placement: ProgramPlacement, override: string | null): string | null {
   if (override) return override;
   if (placement === "bridge") return null;
   return agent.cli ? agent.cli.path : agent.executable;
 }
 
-/** Where the shown file came from, or null when there is none. */
 function programSource(t: Translate, agent: AcpAgentStatus, override: string | null, path: string | null): string | null {
   if (override || agent.cli?.source === "override") return t(($) => $.settings.ai.agents.program.source.override);
   if (path && !agent.cli && agent.managed) return t(($) => $.settings.ai.agents.program.source.managed);
@@ -169,7 +158,6 @@ function programSource(t: Translate, agent: AcpAgentStatus, override: string | n
   return null;
 }
 
-/** An icon button that copies one value, with the label as its tooltip. */
 export function CopyValue({ value, label }: Readonly<{ value: string; label: string }>) {
   const { t } = useTranslation(["common"]);
   const { copied, copy } = useCopyStatus();
@@ -233,22 +221,14 @@ type Phase =
 export interface AgentProgramFieldProps {
   agent: AcpAgentStatus;
   placement: ProgramPlacement;
-  /** The open project; sign-in opens a terminal there. Without one the command is shown to copy. */
   projectId?: string | null;
-  /** Another action on the card is running. */
   disabled?: boolean;
-  /** Changes after the bridge install that a failed check asked for, to test again. */
   retestToken?: number;
-  /** Receives the agent status after a program was saved or cleared. */
   onStatus: (status: AcpAgentStatus) => void;
   onInstallBridge?: (opener: HTMLButtonElement) => void;
   onOpenTerminal?: () => void;
 }
 
-/**
- * The Program row: the file Oleafly starts for an agent, where it came from,
- * Choose… and Test. A chosen or typed file is tested before it is saved.
- */
 export function AgentProgramField({
   agent,
   placement,
@@ -273,7 +253,6 @@ export function AgentProgramField({
   const override = agent.programOverride ?? null;
   const path = programPath(agent, placement, override);
   const source = programSource(t, agent, override, path);
-  // The typed path stays available after a program is found, to point at another one.
   const showInput = placement === "main";
   const command = commandName(agent, path);
   const example = isWindows ? `C:\\Tools\\${command}.exe` : `/usr/local/bin/${command}`;
@@ -311,7 +290,6 @@ export function AgentProgramField({
     setPhase({ kind: "checking", candidate });
     try {
       const check = await acpCheckAgent(id, candidate);
-      // A program that only needs a sign-in works, so it is kept.
       if ((check.ok || check.code === "needs_sign_in") && candidate) {
         await save(candidate, check);
         return;
@@ -489,7 +467,6 @@ function isTerminalMethod(method: AcpAuthMethod): boolean {
   return method.kind === "terminal" || !!method.terminalCommand;
 }
 
-/** The sign-in command for one method, to copy when no project is open for a terminal. */
 function SignInCommandLine({ agentId, method }: Readonly<{ agentId: string; method: AcpAuthMethod }>) {
   const { t } = useTranslation(["settings"]);
   const [line, setLine] = useState<string | null>(null);
@@ -520,7 +497,6 @@ function SignInCommandLine({ agentId, method }: Readonly<{ agentId: string; meth
   );
 }
 
-/** "Works, but sign in first": a Sign in button per terminal method, or the commands to copy. */
 function SignInResult({
   agent,
   projectId,
@@ -543,13 +519,11 @@ function SignInResult({
 
   const signIn = (method: AcpAuthMethod) => {
     setError(null);
-    // The terminal shows the whole command line first and runs it only if the person agrees.
     const confirmText = t(($) => $.ai.acp.signIn.confirmTerminal, { agent: agent.definition.name });
     signInInTerminal(projectId, id, null, method.id, confirmText)
       .then(() => setOpened(true))
       .catch(async (error_: unknown) => {
         const { TerminalLaunchError } = await import("@/lib/terminal-launch");
-        // The launcher already explained a full tab bar; a cancelled launch needs nothing.
         if (error_ instanceof TerminalLaunchError && error_.reason !== "invalid" && error_.reason !== "no-project") return;
         setError(acpError(error_));
       });
@@ -625,7 +599,6 @@ function ProgramResult({
   onOpenTerminal?: () => void;
 }>) {
   const { t } = useTranslation(["common", "settings"]);
-  // Shown with the home folder as ~; Copy details keeps the real paths.
   const displayText = useDisplayText();
   const testId = `acp-agent-program-result-${agent.definition.id}`;
   if (phase.kind === "saved") {

@@ -59,8 +59,6 @@ describe("serverRoleAllows", () => {
   it("names the same actions and roles, in the same order, as the protocol crate", () => {
     const source = readFileSync(ROLES_RS, "utf8");
     expect(rustVariants(source, "ServerAction").map(camel)).toEqual([...SERVER_ACTIONS]);
-    // `Unknown` stands for a role from a later server. It is never granted, so
-    // the app lists only the roles it can pick and reads the rest as no role.
     expect(
       rustVariants(source, "ServerRole")
         .map(camel)

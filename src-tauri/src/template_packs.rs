@@ -1,7 +1,3 @@
-//! Template packs for the app: the catalog, indexes and downloads live in
-//! `oleafly_downloads::template_packs`, shared with `oleafly new`; this
-//! module supplies the app's folders and bundled catalog, reports download
-//! progress to the window and serves the commands.
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 

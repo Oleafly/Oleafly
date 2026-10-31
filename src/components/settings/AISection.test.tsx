@@ -337,7 +337,6 @@ describe("AISection", () => {
     expect(tabList).not.toHaveClass("w-full");
 
     const mcpTab = screen.getByRole("tab", { name: enSettings.ai.section.tabs.mcp });
-    // 0.4.8 added the Tools tab.
     expect(within(tabList).getAllByRole("tab")).toHaveLength(7);
     expect(
       within(tabList).getByRole("tab", { name: enSettings.ai.section.tabs.agents }),
@@ -443,7 +442,6 @@ describe("AISection", () => {
       ...configuredAiConfig(),
       ai_system_prompt: "",
       ai_pdf_capture: true,
-      // A refreshed list that dropped the built-in models is not a user change.
       ai_provider_models: {
         anthropic: [
           { id: "claude-live-preview", name: "Claude Live Preview", enabled: true, source: "fetched" },
@@ -942,8 +940,6 @@ describe("AISection custom provider editing", () => {
     });
 
     expect(result).toEqual({ ok: true });
-    // Rust drops a saved key when its address moves, so the new address is
-    // checked without it and the provider saves as needing none.
     expect(mockInvoke).toHaveBeenCalledWith("agent_list_models", {
       providerId: "local-lab__address-check",
       key: null,
@@ -1167,7 +1163,6 @@ describe("AISection provider messages", () => {
       await captured.providersTab?.validateAndSave("local-lab");
     });
 
-    // A gateway can guard /models and still take the key for chat.
     expect(lastConfigWrite().ai_keys["local-lab"]).toBe("sk-gated");
     const reason = customProvider.discovery.auth.replace("{{url}}", "http://127.0.0.1:9000/v1");
     expect(
@@ -1202,7 +1197,6 @@ describe("AISection provider messages", () => {
     });
 
     expect(result).toEqual({ ok: true });
-    // The new address is checked under an id no saved key belongs to.
     expect(mockInvoke).toHaveBeenCalledWith("agent_list_models", {
       providerId: "local-lab__address-check",
       key: null,

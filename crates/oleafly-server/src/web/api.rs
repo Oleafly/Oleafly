@@ -23,7 +23,6 @@ use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::AppState;
 use crate::web::frames::{WebOutput, WebText};
-use crate::web::room::Hub;
 use crate::web::{changing, pending_core, Refusal, WebOn, WebUser};
 use crate::web_sessions;
 
@@ -162,7 +161,7 @@ pub async fn project(
         .await?;
     let room = state.web.room(project);
     let files = room.ready(&state).await.unwrap_or_default();
-    Hub::linger(room);
+    state.web.linger(account, room);
     Ok(answer(json!({
         "project": summary,
         "role": role_name(role),
@@ -210,7 +209,7 @@ pub async fn texts(
         Ok(_) => room.texts().await,
         Err(refusal) => Err(refusal),
     };
-    Hub::linger(room);
+    state.web.linger(account, room);
     let files = texts.map_err(not_opened)?;
     Ok(answer(Texts { files }))
 }

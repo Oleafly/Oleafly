@@ -1,6 +1,3 @@
-//! `oleafly check`: the app's preflight checks (build log, submission,
-//! accessibility, references, privacy, résumé) from the command line, with
-//! human, JSON and SARIF reports.
 pub mod artifacts;
 pub mod human;
 pub mod mcp;
@@ -113,7 +110,6 @@ impl CommandModule for Commands {
     }
 }
 
-/// Everything one check needs, owned, so it runs on a blocking thread.
 pub struct CheckInput {
     pub root: PathBuf,
     pub main_document: String,
@@ -144,7 +140,6 @@ pub fn source_profile(engine: Engine) -> SourceProfile {
     }
 }
 
-/// The engine the app reports to preflight.
 pub fn preflight_engine(engine: Engine, tex_flavor: Option<&str>) -> PreflightEngine {
     match (engine, tex_flavor) {
         (Engine::Tectonic, _) => PreflightEngine::Bundled,
@@ -218,8 +213,6 @@ fn warning_of(warning: &CheckWarning) -> Warning {
     }
 }
 
-/// A finding as a report row; `text_of` gives a file's LF-normalised text,
-/// and `lines` what rows keep of each file's lines so far.
 fn row_of(
     finding: &Finding,
     main_document: &str,
@@ -312,8 +305,6 @@ fn read_pdf(path: &Path, warnings: &mut Vec<Warning>) -> Option<oleafly_prefligh
         unreadable(warnings, "it is larger than 256 MB".into());
         return None;
     }
-    // Read up to the limit and no further: a file that reports no length
-    // (a device, a pipe) must not be read to its end.
     let mut bytes = Vec::new();
     let read = std::fs::File::open(path).and_then(|file| {
         use std::io::Read;
@@ -337,8 +328,6 @@ fn read_pdf(path: &Path, warnings: &mut Vec<Warning>) -> Option<oleafly_prefligh
     }
 }
 
-/// What was left out because it is older than the sources: after a failed
-/// build the log is new and the PDF is the last good one, so say which.
 fn stale_output_warning(found: &artifacts::BuildArtifacts) -> Warning {
     let message = match (found.log_stale, found.pdf_stale) {
         (false, true) => "The PDF is older than the sources, so it wasn't checked. Run `oleafly build` first.",
@@ -348,13 +337,10 @@ fn stale_output_warning(found: &artifacts::BuildArtifacts) -> Warning {
     Warning::new("check.stale_build_output", message)
 }
 
-/// Runs a check (blocking: reads the project, the log and the PDF).
 pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
     execute_until(input, &std::sync::atomic::AtomicBool::new(false))
 }
 
-/// [`execute`], stopping between its stages once `cancel` is set (an MCP
-/// client cancelled the call, whose blocking work can't be aborted).
 pub fn execute_until(
     input: CheckInput,
     cancel: &std::sync::atomic::AtomicBool,
@@ -411,8 +397,6 @@ pub fn execute_until(
                 ));
             }
         }
-        // A log that comes with the build's own record has its verdict; one
-        // named with `--build-log` is judged by what it says.
         let log = match &input.build_log {
             Some(path) => Some((path.clone(), None)),
             None => found.log.map(|(path, status)| (path, Some(status))),
@@ -460,8 +444,6 @@ pub fn execute_until(
         .map(String::as_str)
         .unwrap_or("");
     let checks = checks_selected(&input.checks, main_source);
-    // A file's text is indexed once; each finding shares it (it takes about
-    // eleven bytes per character, and a thesis can have thousands of findings).
     let mut cache: std::collections::HashMap<String, Option<Rc<SourceText>>> =
         std::collections::HashMap::new();
     let mut text_of = |path: &str| -> Option<Rc<SourceText>> {
@@ -751,7 +733,6 @@ mod tests {
             pdf_stale,
             ..Default::default()
         };
-        // After a failed build the log is new and the kept PDF is old.
         let pdf_only = stale_output_warning(&found(false, true)).message;
         assert!(pdf_only.contains("The PDF is older") && !pdf_only.contains("log"));
         let log_only = stale_output_warning(&found(true, false)).message;
@@ -828,7 +809,6 @@ mod tests {
                 .filter_map(|row| row.line_text.as_deref())
                 .collect::<Vec<_>>()
         };
-        // A short line is kept as it is, so its SARIF fingerprint is unchanged.
         assert!(!on_line(3).is_empty(), "{:?}", run.payload["findings"]);
         assert!(on_line(3).iter().all(|text| *text == short));
         assert!(!on_line(4).is_empty(), "{:?}", run.payload["findings"]);

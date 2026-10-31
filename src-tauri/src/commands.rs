@@ -49,19 +49,16 @@ fn take_latest_compile_ticket(
     true
 }
 
-/// Returns the Oleafly projects root (`~/.oleafly/projects`).
 #[tauri::command]
 pub fn library_root() -> Result<std::path::PathBuf, String> {
     paths::projects_root()
 }
 
-/// The home folder spellings the UI shows as `~` when it prints a path.
 #[tauri::command]
 pub fn display_homes() -> Vec<String> {
     crate::project_availability::display_homes()
 }
 
-/// Returns the compiled-in app version (from Cargo.toml).
 #[tauri::command]
 pub fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -106,9 +103,6 @@ pub fn updater_self_installable() -> bool {
     }
 }
 
-/// Whether `path` may be revealed in the OS file manager.
-/// Allowed: anything under the Oleafly data root, or a path the user just
-/// exported via a native save dialog (short-lived allowlist).
 fn assert_revealable(
     canonical: &std::path::Path,
     allowlist: &std::collections::VecDeque<std::path::PathBuf>,
@@ -132,17 +126,12 @@ fn assert_revealable(
     )
 }
 
-/// Reveal a file or folder in the platform's native file manager
-/// (Finder on macOS, Explorer on Windows, xdg-open on Linux).
 #[tauri::command]
 pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), String> {
     let raw = std::path::Path::new(&path);
     if !raw.exists() {
         return Err(format!("path does not exist: {path}"));
     }
-    // Normalize (resolve `.`/`..`/symlinks) before handing the path to the OS
-    // opener, so a crafted relative or dotted path can't point somewhere
-    // unexpected.
     let canonical = raw
         .canonicalize()
         .map_err(|e| format!("cannot resolve path: {e}"))?;
@@ -188,10 +177,6 @@ pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), S
     }
     #[cfg(target_os = "windows")]
     {
-        // `canonicalize` returns an extended-length `\\?\C:\...` (or
-        // `\\?\UNC\server\share`) path. explorer.exe cannot parse the `\\?\`
-        // verbatim prefix for `/select`, so strip it back to a normal path or
-        // the reveal silently fails / opens the wrong place.
         let display = path
             .strip_prefix(r"\\?\UNC\")
             .map(|rest| format!(r"\\{rest}"))
@@ -216,8 +201,6 @@ pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), S
     Ok(())
 }
 
-/// Ends the running main-document compile, if any. Returns whether a compiler
-/// process was actually terminated.
 #[tauri::command]
 pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> {
     match state.compile_cancel.request() {
@@ -229,8 +212,6 @@ pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> 
     }
 }
 
-/// Empties a project's build directory so the next compile cannot reuse any
-/// cached auxiliary file. The directory itself is recreated.
 #[tauri::command]
 pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
@@ -343,9 +324,6 @@ pub async fn compile_project(
         prepared_spec: Some(prepared_spec),
     })
     .await?;
-    // `document_engine::compile` has now fingerprinted the output, but do not
-    // publish that identity or allocate a revision until the persisted
-    // project/main selection is revalidated under the same compile lock.
     if let Err(error) = crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)
     {
         result.ok = false;
@@ -378,9 +356,6 @@ pub async fn compile_project(
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
                 + 1,
         );
-        // Provenance record (engine + distribution + lockfile hash) for
-        // "my coauthor's PDF looks different" debugging. Best-effort, off
-        // the command path.
         let record_project = project_id.clone();
         let record_engine = meta.engine.clone();
         let record_output = result.output_id.clone();
@@ -395,12 +370,6 @@ pub async fn compile_project(
                 record_time,
             );
         });
-        // Persist the compile fingerprint so reopening the project can skip
-        // an unchanged recompile. Best-effort and off the command path: a
-        // missing or stale record only costs one recompile on open. Sources
-        // are hashed at compile end; an edit made *during* this compile can
-        // make the record claim currency for a slightly newer source set,
-        // which at worst shows that same one-compile-stale preview on reopen.
         if let (true, Some(output_id), Some(output_revision)) = (
             crate::compile_fingerprint::PERSIST_ENABLED,
             result.output_id.clone(),
@@ -469,8 +438,6 @@ pub struct ValidatedCompileFingerprint {
     pub output_id: String,
     pub output_revision: u64,
     pub compiled_at_ms: u64,
-    /// The log of the fingerprinted compile, so a restored preview can also
-    /// restore the logs pane. Empty when the record predates log persistence.
     pub log: String,
 }
 
@@ -490,10 +457,6 @@ impl ValidatedCompileFingerprint {
     }
 }
 
-/// Check whether the persisted compile fingerprint still matches the current
-/// sources, main document, and engine. `None` means "compile normally".
-/// A valid record also seeds the session's output-revision counter, so new
-/// compiles this session always outrank the restored one.
 #[tauri::command]
 pub async fn validate_compile_fingerprint(
     state: State<'_, AppState>,
@@ -668,10 +631,6 @@ impl MainCompile {
     }
 }
 
-/// Write base64-decoded bytes to an absolute path the user chose in the native
-/// "Save as" dialog. Used to export a rendered figure PNG. A path that dialog
-/// didn't return is refused, and `guard_export_dest` rejects a relative path or
-/// a missing parent (same checks as PDF export).
 #[tauri::command]
 pub async fn write_bytes_file(
     dest: String,
@@ -690,9 +649,6 @@ pub async fn write_bytes_file(
     Ok(())
 }
 
-/// Export a rendered project image to a user-selected path. Unlike the
-/// generic artifact writer, this knows the source project and rejects a path
-/// inside it before publishing the image.
 #[tauri::command]
 pub async fn export_project_image(
     project_id: String,
@@ -723,7 +679,6 @@ fn write_export_bytes(dest: &str, bytes: &[u8]) -> Result<(), String> {
 }
 
 pub(crate) async fn allow_reveal_export(dest: &str, state: &AppState) {
-    // Permit a subsequent "Reveal in Finder/Explorer" for this export path.
     if let Ok(canon) = std::path::Path::new(dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
         if allow.len() >= 1024 {
@@ -739,7 +694,6 @@ pub(crate) async fn allow_reveal_export(dest: &str, state: &AppState) {
     }
 }
 
-/// Decode a base64 payload for `write_project_bytes`. Pure, so it is unit-testable.
 fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
     use base64::{engine::general_purpose::STANDARD, Engine};
     STANDARD
@@ -837,8 +791,6 @@ pub async fn compile_isolated(
     eprintln!("figure: {project_id} requested");
     #[cfg(debug_assertions)]
     let req_at = std::time::Instant::now();
-    // Figure builds use a separate dir and lock so they never block main-document
-    // compiles (or get blocked by them).
     let _guard = state.figure_compile_lock.lock().await;
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     #[cfg(debug_assertions)]
@@ -894,7 +846,6 @@ pub async fn compile_isolated(
     result
 }
 
-/// Return the last isolated figure PDF for a project as raw bytes.
 #[tauri::command]
 pub async fn read_isolated_pdf(project_id: String) -> Result<Response, String> {
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
@@ -908,8 +859,6 @@ pub async fn read_isolated_pdf(project_id: String) -> Result<Response, String> {
     Ok(Response::new(bytes))
 }
 
-/// Read raw bytes from a project-relative path (path-guarded). Used to hand an
-/// existing project image (e.g. a hand-drawn sketch) to a vision model.
 fn open_regular_nofollow(target: &std::path::Path) -> std::io::Result<std::fs::File> {
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
@@ -997,8 +946,6 @@ pub async fn read_project_bytes(project_id: String, rel_path: String) -> Result<
     Ok(Response::new(bytes))
 }
 
-/// Write raw bytes (base64-encoded over IPC) to a project-relative path. Used to
-/// persist an accepted figure's PNG into the visible `figures/` folder.
 #[tauri::command]
 pub async fn write_project_bytes(
     project_id: String,

@@ -108,7 +108,6 @@ describe("editorKeyFromEvent", () => {
 
   it("ignores characters typed through AltGr on Windows", () => {
     setPlatform("Win32");
-    // Engines that report AltGr as Ctrl+Alt.
     expect(
       editorKeyFromEvent(
         keyEvent({ key: "@", ctrlKey: true, altKey: true, modifierAltGraph: true }),
@@ -137,7 +136,6 @@ describe("editorKeyFromEvent", () => {
 
   it("records Ctrl with AltGr on Linux, where it types nothing", () => {
     setPlatform("Linux x86_64");
-    // Ctrl+AltGr+9 on a German layout, with and without AltGraph reported.
     expect(
       editorKeyFromEvent(keyEvent({ key: "]", ctrlKey: true, modifierAltGraph: true })),
     ).toBe("Mod-]");
@@ -154,7 +152,6 @@ describe("editorKeyFromEvent", () => {
 
   it("ignores Option typing plain ASCII on macOS but keeps US Option keys", () => {
     setPlatform("MacIntel");
-    // Option+L types @ on a German layout.
     expect(editorKeyFromEvent(keyEvent({ key: "@", altKey: true }))).toBeNull();
     expect(editorKeyFromEvent(keyEvent({ key: "∂", altKey: true }))).toBe("Alt-∂");
     expect(editorKeyFromEvent(keyEvent({ key: "@", altKey: true, metaKey: true }))).toBe(

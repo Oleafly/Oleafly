@@ -18,8 +18,6 @@ export function detectInput(raw: string): DetectedInput {
   const old = /^(?:arxiv:)?\s*([a-z-]+(?:\.[a-z]{2})?\/\d{7})(?:v\d+)?$/i.exec(s);
   if (old) return { kind: "arxiv", value: old[1] };
 
-  // ISBN-10/13, with spaces or hyphens ("isbn:" prefix optional). A 13-digit
-  // form must start 978/979; a 10-digit form may end in X.
   const isbnCandidate = s.replace(/^isbn(?:-1[03])?\s*:\s*/i, "").replace(/[- ]/g, "").toUpperCase();
   if (
     /^\d{13}$/.test(isbnCandidate) && /^(978|979)/.test(isbnCandidate)

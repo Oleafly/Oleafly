@@ -72,8 +72,6 @@ struct Inner {
     bucket: String,
     bucket_path: String,
     key_prefix: String,
-    // One probe key for the life of the process, so a key that may not
-    // delete leaves one probe object behind rather than one per probe.
     probe_key: String,
     region: String,
     access_key_id: String,
@@ -279,9 +277,6 @@ impl S3Blobs {
             .await
     }
 
-    // Writes, reads back and removes a small object, so a wrong key, a key
-    // without the rights it needs or an unreachable bucket shows up before
-    // anyone's work depends on it.
     pub async fn probe(&self) -> Result<(), ServerError> {
         let body = Bytes::from_static(b"ready");
         let hash = crate::blobs::sha256_hex(&body);
@@ -352,9 +347,6 @@ impl S3Blobs {
         .await
     }
 
-    // Starts reading an object, which is then read in pieces as it is sent.
-    // Only starting is retried, since a piece already sent can't be taken
-    // back.
     async fn open_object(&self, key: &str, hash: &str) -> Result<Option<BlobReader>, ServerError> {
         let first_byte = self.inner.timeouts.first_byte;
         self.with_retries(|| async {

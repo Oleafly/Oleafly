@@ -939,8 +939,6 @@ async fn local_install_commands_handle_spawn_failure_and_timeout() {
         .contains("timed out and was stopped"));
 }
 
-/// A CLI stand-in for `--version` probes: a shell script on unix, a batch
-/// file (started through cmd.exe, as a bridge would) on Windows.
 fn version_probe_cli(folder: &Path, stem: &str, unix: &str, windows: &str) -> Located {
     #[cfg(windows)]
     {
@@ -1049,7 +1047,6 @@ async fn a_failed_version_probe_describes_the_probe_rather_than_an_installation(
     no_install_wording(&error);
     assert!(error.contains("missing-cli"), "{error}");
 
-    // What the CLI printed is still the detail when it printed anything.
     let loud = version_probe_cli(
         temp.path(),
         "loud-cli",
@@ -1176,8 +1173,6 @@ if (settings.fail) process.exit(2);
             child.env_remove(&variable);
             child.env_remove(variable.to_ascii_uppercase());
         }
-        // The child test runs a whole fixture install, several Node processes
-        // in turn.
         let output = tokio::time::timeout(
             test_wait::CHILD_PATIENCE * 4,
             child
@@ -1297,7 +1292,6 @@ if (settings.fail) process.exit(2);
             assert!(receipt
                 .executable
                 .ends_with("node_modules/@oleafly-fixture/agent/bin/agent.js"));
-            // npm's cache does not outlive the install.
             assert!(!data.join("npm-cache").exists());
             assert!(!receipt_dir(&data, &definition).join("npm-cache").exists());
             let (resolved, output) = launch(&data, &definition).await;
@@ -2395,7 +2389,6 @@ fn sign_in_commands_quote_a_cli_a_terminal_cannot_find_by_name() {
         "& 'D:\\O\u{2019}\u{2019}Brien\\pi.cmd'"
     );
 
-    // The command shown to the user is the form for this computer's shell.
     let path = Path::new("/my tools/claude");
     assert_eq!(
         sign_in_command_text("claude auth login", Some(path), false),

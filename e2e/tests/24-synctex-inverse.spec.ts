@@ -306,8 +306,6 @@ async function openOrCreateE2eDoc(page: Parameters<typeof openProject>[0]): Prom
   } else {
     await createBlankProject(page, "E2E Doc");
   }
-  // Reopened projects retain the last layout, including editor-only views
-  // selected by earlier specs. These interactions need both source and PDF.
   await page.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
 }
 
@@ -328,7 +326,7 @@ async function waitForCurrentProjectAnalysis(
 }
 
 test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) => {
-  test.setTimeout(180_000); // cold text-layer render can be slow
+  test.setTimeout(180_000);
   await openOrCreateE2eDoc(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
@@ -427,14 +425,10 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   tauriPage,
 }) => {
   test.setTimeout(180_000);
-  // Exercise the narrow preview with its file tree open, including the zoom
-  // and page controls moving into overflow as they do on Windows CI.
   await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   await openOrCreateE2eDoc(tauriPage);
   await tauriPage.evaluate(`import("/src/store/settings.ts").then(s => s.useSettingsStore.getState().setShowTree(true))`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // Let the open-project compile settle before installing synthetic preview
-  // bytes; otherwise its late result can legitimately replace this fixture.
   await tauriPage.waitForFunction(
     `import("/src/store/compile.ts").then(({ useCompileStore }) => {
       const state = useCompileStore.getState();
@@ -708,8 +702,6 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     baseline[1].markerTop,
     rotatedExpected.baselineY * rotatedBaselineScaleY,
   );
-  // Glyph dimensions use --total-scale-factor directly; only percentage
-  // positions inherit the rounded page-axis ratio.
   expectCssSubpixel(
     baseline[1].markerHeight,
     rotatedExpected.advance,
@@ -777,9 +769,6 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     expect(hit).toContain(marker);
   }
 
-  // The rotated marker can scroll a narrow pane horizontally beyond page 1,
-  // allowing virtualization to release it. Bring both pages back into the
-  // render window before comparing their transient zoom geometry together.
   await tauriPage.evaluate(`(() => {
     const first = document.querySelector('[data-page="1"]');
     const scroller = document.querySelector('[data-testid="pdf-renderer"]')?.parentElement;
@@ -886,8 +875,6 @@ test("superseded PDF work cannot restore stale text after a document switch", as
 }) => {
   test.setTimeout(180_000);
   await openOrCreateE2eDoc(tauriPage);
-  // A slow open-project compile must not replace the deterministic fixtures
-  // while this test is measuring PDF lifecycle cancellation.
   await tauriPage.waitForFunction(
     `import("/src/store/compile.ts").then(({ useCompileStore }) => {
       const state = useCompileStore.getState();

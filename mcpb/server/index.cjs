@@ -1,11 +1,6 @@
 #!/usr/bin/env node
 "use strict";
 
-// Starts the MCP server of the Oleafly app installed on this computer:
-// `oleafly mcp --bridge always`, which works on the project the app has
-// open. The bundle carries no server of its own, so the app must be
-// installed and its MCP server turned on.
-
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -25,10 +20,6 @@ function isFile(file) {
   }
 }
 
-/**
- * Places the command can be, best first. The environment, platform and home
- * folder are parameters so the tests can check every platform.
- */
 function candidates({
   env = process.env,
   platform = process.platform,
@@ -39,23 +30,17 @@ function candidates({
   const exe = windows ? ".exe" : "";
   const list = [];
 
-  // Chosen in the extension's settings. A value left empty can arrive as
-  // the unfilled `${user_config...}` placeholder.
   const chosen = env.OLEAFLY_CLI;
   if (chosen && !chosen.includes("${")) list.push(chosen);
 
-  // The app links or copies its command here when it first starts.
   const data = env.OLEAFLY_DATA_DIR || join(home, ".oleafly");
   list.push(join(data, "cli", "bin", `oleafly${exe}`));
 
-  // Settings > General > Terminal command puts `oleafly` on the PATH.
   const searchPath = env.PATH || env.Path || "";
   for (const folder of searchPath.split(windows ? ";" : ":")) {
     if (folder) list.push(join(folder, `oleafly${exe}`));
   }
 
-  // The command that ships beside the app. On macOS, `MacOS/oleafly` is the
-  // app itself, so only `oleafly-cli` counts there.
   if (platform === "darwin") {
     for (const apps of ["/Applications", join(home, "Applications")]) {
       list.push(join(apps, "Oleafly.app", "Contents", "MacOS", "oleafly-cli"));

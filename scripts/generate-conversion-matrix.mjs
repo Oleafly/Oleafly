@@ -1,5 +1,3 @@
-// Regenerate docs/conversion-matrix.md from the conversion registry.
-// Run: pnpm gen:conversion-matrix
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

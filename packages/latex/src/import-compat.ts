@@ -1,11 +1,3 @@
-/**
- * Lightweight static scan of LaTeX sources for Overleaf-style requirements
- * that need extra tools beyond a single Tectonic typesetting pass.
- *
- * Matching is linear-time (indexOf / fixed-window scans) so adversarial
- * project text cannot trigger ReDoS. Input is capped before scanning.
- */
-
 export type ImportCompatLevel = "info" | "warning" | "blocker";
 
 export type ImportCompatAction =
@@ -21,14 +13,6 @@ export type ImportCompatFinding = {
   detail: string;
 };
 
-/**
- * Single source of truth for the Tectonic-gap taxonomy. The import scan, the
- * compile-failure classifier, the engine-picker modal, and the Settings info
- * popovers all derive their copy from here so they can never disagree.
- *
- * `latexmkFixes`: whether switching the project to the latexmk engine (system
- * TeX) resolves this class of finding.
- */
 export const IMPORT_COMPAT_CATALOG = {
   "biblatex-biber": {
     action: "switch-to-latexmk",
@@ -144,12 +128,10 @@ function findingFor(id: ImportCompatFindingId): ImportCompatFinding {
   return { id, level: entry.level, title: entry.title, detail: entry.detail };
 }
 
-/** Public lookup for one taxonomy entry (used by catch-all failure checks). */
 export function importCompatFinding(id: ImportCompatFindingId): ImportCompatFinding {
   return findingFor(id);
 }
 
-/** True when switching to the latexmk engine resolves this finding. */
 export function latexmkFixesFinding(id: string): boolean {
   return id in IMPORT_COMPAT_CATALOG
     ? IMPORT_COMPAT_CATALOG[id as ImportCompatFindingId].latexmkFixes
@@ -172,7 +154,6 @@ export function needsShellEscapeFinding(id: string): boolean {
   return SHELL_ESCAPE_FINDINGS.has(id);
 }
 
-/** Cap combined TeX size so import scan stays cheap and predictable. */
 const MAX_SCAN_CHARS = 512 * 1024;
 
 /** True if `tex[i]` starts a TeX line comment (`%` not escaped by `\`). */
@@ -183,10 +164,6 @@ function isCommentPercent(tex: string, i: number): boolean {
   return backslashes % 2 === 0;
 }
 
-/**
- * Drop line comments (`%` … EOL) so commented-out `\usepackage{…}` does not
- * produce false-positive import toasts. Linear scan; leaves `\%` alone.
- */
 export function stripLineComments(tex: string): string {
   let out = "";
   let i = 0;
@@ -207,11 +184,6 @@ export function stripLineComments(tex: string): string {
   return out;
 }
 
-/**
- * True if `\usepackage[...]{...}` (or without options) loads a package whose
- * name equals `pkg` or appears in a comma-separated package list.
- * Scans with indexOf only — no nested quantifiers.
- */
 const USEPACKAGE = String.raw`\usepackage`;
 
 function skipBlanks(tex: string, from: number): number {
@@ -265,10 +237,6 @@ function includesLiteral(tex: string, snippet: string): boolean {
   return tex.includes(snippet);
 }
 
-/**
- * Scan concatenated project TeX (and optional latexmkrc) for known import gaps.
- * Pure and synchronous — safe to call from the editor or compile UI.
- */
 export function scanImportCompatibility(sources: {
   texFiles?: ReadonlyArray<{ path: string; content: string }>;
   latexmkrc?: string | null;
@@ -332,15 +300,8 @@ export function scanImportCompatibility(sources: {
   return findings;
 }
 
-/** Cap classified log size the same way the scan caps source size. */
 const MAX_CLASSIFY_CHARS = 1024 * 1024;
 
-/**
- * Match a failed Tectonic compile log against known Tectonic-gap signatures.
- * Returns the same taxonomy entries as `scanImportCompatibility`, so the
- * compile-failure modal and the import toast tell one consistent story.
- * Plain `includes` scans only — logs are attacker-influenced text.
- */
 function matchesMinted(log: string): boolean {
   return (
     log.includes("Package minted Error") ||
@@ -400,8 +361,6 @@ function collectPackageFindings(log: string): ImportCompatFinding[] {
   if (log.includes("pythontex") || log.includes("PythonTeX")) {
     findings.push(findingFor("pythontex"));
   }
-  // Appended by the Rust compile layer only when the pinned Biber pass could
-  // not produce a usable .bbl — the case a full latexmk toolchain resolves.
   if (log.includes("[Oleafly] Bibliography needs Biber")) {
     findings.push(findingFor("biblatex-biber"));
   }

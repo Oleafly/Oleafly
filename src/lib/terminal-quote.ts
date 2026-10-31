@@ -1,5 +1,3 @@
-// Quoting for the shell a terminal runs: commands Oleafly types for a
-// launch and paths dropped from the file tree. Pure string work.
 import type { TerminalPlatform } from "./terminal-keys";
 
 export type TerminalShellKind = "posix" | "fish" | "powershell" | "cmd";
@@ -17,15 +15,12 @@ const CMD_SPECIAL = /[\s&|<>^%"()!,;=]/;
 const POWERSHELL_QUOTES = /['‘’‚‛]/g;
 const POSIX_ESCAPED_QUOTE = String.raw`'\''`;
 
-/** A shell word for `value`, quoted only when it needs to be. */
 export function quoteShellArg(kind: TerminalShellKind, value: string): string {
   switch (kind) {
     case "powershell":
       if (POWERSHELL_SAFE.test(value)) return value;
       return `'${value.replace(POWERSHELL_QUOTES, (quote) => quote + quote)}'`;
     case "cmd":
-      // An interactive cmd line still expands %VAR% inside double quotes and
-      // has no escape for it, so a value with a % pair can change there.
       if (value !== "" && !CMD_SPECIAL.test(value)) return value;
       return `"${value.replaceAll('"', '""')}"`;
     case "fish": {
@@ -58,11 +53,6 @@ export function terminalPathArg(kind: TerminalShellKind, platform: TerminalPlatf
   return quoteShellArg(kind, windowsShell ? path.replaceAll("/", "\\") : path);
 }
 
-/**
- * `path` without the run of `/` and `\` at its end. A loop rather than a
- * regex like `/[\\/]+$/`, which backtracks quadratically on a long run of
- * separators that is followed by something else.
- */
 function trimTrailingSeparators(path: string): string {
   let end = path.length;
   while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end -= 1;
@@ -93,7 +83,6 @@ function segments(path: string): string[] {
   return path.split("/").filter((part) => part !== "" && part !== ".");
 }
 
-/** `toPath` relative to `fromFolder`, both project-relative with `/` separators. */
 export function relativeTerminalPath(fromFolder: string, toPath: string): string {
   const from = segments(fromFolder);
   const to = segments(toPath);
@@ -103,7 +92,6 @@ export function relativeTerminalPath(fromFolder: string, toPath: string): string
   return parts.length > 0 ? parts.join("/") : ".";
 }
 
-/** Whether `value` holds a C0 control character or DEL. */
 export function hasControlCharacters(value: string): boolean {
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0;
@@ -112,10 +100,6 @@ export function hasControlCharacters(value: string): boolean {
   return false;
 }
 
-/**
- * Pasted text without ESC. An ESC [201~ inside the text would end
- * bracketed paste early, and the shell would run the rest as typed keys.
- */
 export function withoutEscapes(value: string): string {
   return value.replaceAll("\x1b", "");
 }

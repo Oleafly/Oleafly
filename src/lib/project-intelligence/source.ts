@@ -108,8 +108,6 @@ export function resolveProjectPathFrom(
 }
 
 export function sourceHash(text: string): string {
-  // A deterministic 32-bit FNV-1a hash is sufficient for cache invalidation;
-  // sourceRevision remains the authoritative correctness identity.
   let hash = 0x811c9dc5;
   for (let index = 0; index < text.length; index++) {
     hash ^= text.charCodeAt(index);

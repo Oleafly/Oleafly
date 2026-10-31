@@ -1407,7 +1407,6 @@ describe("LanguageServiceController", () => {
           workspaceRoot: `/projects/${String(request.projectId)}`,
         };
         if (startCount === 1) {
-          // The native process exists, but the runtime DTO is missing its root.
           return {
             session: activeSession.session,
             kind: activeSession.kind,

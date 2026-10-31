@@ -7,7 +7,6 @@ function cancelOldestRequest() {
   useConfirmDialogStore.getState().queue[0]?.settle(false);
 }
 
-/** Shows the oldest question `confirmAction` is waiting on. */
 export function ConfirmHost() {
   const requestId = useConfirmDialogStore((state) => state.queue[0]?.id);
   return (

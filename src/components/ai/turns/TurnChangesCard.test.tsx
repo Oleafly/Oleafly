@@ -305,7 +305,6 @@ describe("TurnChangesCard", () => {
   });
 
   it("reaches the files beyond the list with Undo all and then Redo all", async () => {
-    // Index 2 and 3 are the unlisted files (moreFiles = 2).
     vi.mocked(agentTurnRevert).mockResolvedValue(result([0, 1, 2, 3]));
     vi.mocked(agentTurnRedo).mockResolvedValue(result([0, 1, 2, 3]));
     vi.mocked(agentTurnStatus)

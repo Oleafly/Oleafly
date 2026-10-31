@@ -1,5 +1,3 @@
-//! Exporting a project's main document with Pandoc (DOCX, HTML, EPUB, ...),
-//! the same way for the app and the CLI.
 use std::path::{Path, PathBuf};
 
 use oleafly_core::Engine;
@@ -10,8 +8,6 @@ use crate::conversion::{
 use crate::pandoc_citations::{export_failure, prepare_export_filter, ExportFilter};
 use crate::{DocError, ToolRunner};
 
-/// The Pandoc formats each engine exports (the app's
-/// `EngineCapabilities::conversion_exports`).
 pub fn export_formats(engine: Engine) -> &'static [&'static str] {
     match engine {
         Engine::Tectonic | Engine::Latexmk => {
@@ -23,24 +19,16 @@ pub fn export_formats(engine: Engine) -> &'static [&'static str] {
     }
 }
 
-/// One Pandoc export of a project's main document into `output`.
 pub struct ExportJob<'a> {
     pub root: &'a Path,
-    /// The project's build folder (the last compile's `.aux` numbering).
     pub build_dir: Option<PathBuf>,
     pub main_doc: &'a str,
     pub format: &'a str,
     pub output: &'a str,
-    /// Where the citation filter is staged (the project's data area).
     pub staging_dir: Option<PathBuf>,
-    /// The fallback folder for the filter; `None` is the system's.
     pub temp_dir: Option<&'a Path>,
 }
 
-/// The folders an export reads from, as the compile searches them: the main
-/// document's folder first, then the project root. Returns Pandoc's
-/// `--resource-path` (absolute folders, the platform's separator) and the
-/// matching `TEXINPUTS` (relative to the project root, `:`-separated).
 pub fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
     let root = oleafly_core::plain_path(root);
     let main_dir = root
@@ -111,7 +99,6 @@ pub fn require_export_destination_outside_project(
     Ok(())
 }
 
-/// Pandoc's Typst output, repaired for the Typst compiler.
 pub fn apply_typst_fixup(path: &Path) -> Result<(), DocError> {
     let source = std::fs::read_to_string(path)?;
     let fixed = fixup_typst_source(&source);
@@ -121,7 +108,6 @@ pub fn apply_typst_fixup(path: &Path) -> Result<(), DocError> {
     Ok(())
 }
 
-/// Runs Pandoc for one export.
 pub async fn run_export_pandoc(
     runner: &dyn ToolRunner,
     pandoc: &Path,
@@ -133,7 +119,6 @@ pub async fn run_export_pandoc(
         resource_path,
     };
     let renders = export_renders_citations(job.format);
-    // The staged filter must outlive the Pandoc process.
     let (filter, bibliographies): (Option<ExportFilter>, Vec<PathBuf>) = {
         let root = job.root.to_path_buf();
         let main_doc = job.main_doc.to_string();
@@ -155,8 +140,6 @@ pub async fn run_export_pandoc(
                     )
                 })
                 .transpose()?;
-            // The Markdown compile passes every project .bib; so does its
-            // export. A .tex export names them from the project root.
             let bibliographies: Vec<PathBuf> = if is_markdown_document(&main_doc) {
                 oleafly_core::engine_spec::discover_bibliographies(&root)
                     .map_err(|error| DocError::other(error.to_string()))?
@@ -187,8 +170,6 @@ pub async fn run_export_pandoc(
             format!("unsupported export format: {}", job.format),
         )
     })?;
-    // Set even for a root main document, so an inherited TEXINPUTS does not
-    // change what the export reads.
     let variables = vec![("TEXINPUTS".to_string(), texinputs)];
     let outcome = runner.run(pandoc, &args, job.root, &variables).await;
     drop(filter);

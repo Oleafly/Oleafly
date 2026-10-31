@@ -1,32 +1,23 @@
-//! Reads the app's skills folder (`<data>/skills/<id>/SKILL.md`) without
-//! changing it: `oleafly skills`, the headless agent and the helper list
-//! skills the way the app does.
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
 use serde::Deserialize;
 
-/// The provenance file the app writes into a skill it installed.
 const MANAGED_MANIFEST_FILE: &str = ".oleafly-skill.json";
 const MANAGED_MANIFEST_SCHEMA_VERSION: u8 = 1;
-/// A bundled skill also carries this marker with exactly this content.
 const FIRST_PARTY_MARKER_FILE: &str = ".oleafly-first-party";
 const FIRST_PARTY_MARKER: &[u8] = b"oleafly-first-party-v1\n";
 const MAX_SKILLS: usize = 1_000;
 const MAX_SKILL_BYTES: u64 = 1024 * 1024;
 const MAX_MANIFEST_BYTES: u64 = 64 * 1024;
 
-/// One installed skill.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SkillEntry {
-    /// The folder name.
     pub id: String,
     pub name: String,
     pub description: String,
-    /// The skill's folder.
     pub path: PathBuf,
-    /// `bundled`, `catalog` or `user`.
     pub source: &'static str,
 }
 
@@ -36,7 +27,6 @@ struct ManagedManifest {
     source: String,
 }
 
-/// A skill id is one plain folder name.
 pub fn valid_skill_id(id: &str) -> bool {
     let components: Vec<_> = Path::new(id).components().collect();
     !id.is_empty()
@@ -46,7 +36,6 @@ pub fn valid_skill_id(id: &str) -> bool {
         && !id.starts_with('.')
 }
 
-/// A real file (not a link), at most `limit` bytes.
 fn read_small_file(path: &Path, limit: u64) -> Option<Vec<u8>> {
     let metadata = std::fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() || metadata.file_type().is_symlink() || metadata.len() > limit {
@@ -90,9 +79,6 @@ fn unquote(value: &str) -> String {
     }
 }
 
-/// The top-level `key: value` pairs between the first two `---` lines.
-/// Quoted values are unquoted; `>` and `|` blocks are joined (folded with
-/// spaces, literal with newlines).
 pub fn parse_frontmatter(text: &str) -> BTreeMap<String, String> {
     let normalized = text.replace("\r\n", "\n");
     let mut lines = normalized.lines();
@@ -148,8 +134,6 @@ pub fn parse_frontmatter(text: &str) -> BTreeMap<String, String> {
     fields
 }
 
-/// Every skill in `root` (the skills folder), sorted by id. Folders that are
-/// links, hidden or without a readable `SKILL.md` are skipped.
 pub fn read_skills(root: &Path) -> Vec<SkillEntry> {
     let Ok(entries) = std::fs::read_dir(root) else {
         return Vec::new();

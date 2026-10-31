@@ -41,11 +41,7 @@ const OPEN_TIMEOUT: Duration = Duration::from_secs(10);
 /// `sun_path` is 104 bytes on macOS and 108 on Linux.
 const MAX_UNIX_SOCKET_BYTES: usize = 100;
 const LOG_TAIL_BYTES: u64 = 2048;
-/// How long a stop waits for a slot a call or a start is holding before it
-/// ends the daemon by its owner record instead.
 pub(crate) const STOP_WAIT: Duration = Duration::from_secs(3);
-/// Looking for a daemon by its command line is a process listing: not on
-/// every readiness poll.
 const SCAN_EVERY: Duration = Duration::from_secs(1);
 #[cfg(unix)]
 const PROCESS_LIST_TIMEOUT: Duration = Duration::from_secs(3);
@@ -54,17 +50,13 @@ pub(crate) const STOPPED_TEXT: &str = "Computer Use was changed or turned off in
 pub(crate) const TIMEOUT_TEXT: &str = "Computer Use didn't answer in time, so Oleafly restarted the connection. Check the app's state before you try again.";
 const NOT_CONFIGURED_TEXT: &str = "Computer Use has nothing allowed for this yet. The user can add apps and websites in Settings > Integrations > Computer Use.";
 pub(crate) const TOO_LARGE_TEXT: &str = "Cua Driver's answer was larger than Oleafly can read, so it was left out. For get_window_state, pass include_screenshot: false or a smaller max_elements. If this was an action, it may have run: check the app's state before you try again.";
-/// How the MCP client reports a line longer than `MAX_MESSAGE_BYTES`.
 const TOO_LARGE_MARKER: &str = "server response exceeded the";
 
-/// Where one runtime keeps its files and listens.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct RuntimePaths {
     pub dir: PathBuf,
-    /// A unix socket path, or a Windows named pipe.
     pub endpoint: String,
     pub pid_file: PathBuf,
-    /// `{pid, started, endpoint}` of the daemon this app started.
     pub owner_file: PathBuf,
     pub log_file: PathBuf,
 }
@@ -108,7 +100,6 @@ pub(crate) fn runtime_paths(root: &Path, kind: RuntimeKind, platform: Platform) 
     }
 }
 
-/// How to start one daemon.
 #[derive(Debug, PartialEq)]
 pub(crate) struct DaemonLaunch {
     pub program: String,
@@ -181,7 +172,6 @@ pub(crate) fn daemon_launch(
     }
 }
 
-/// The client: `cua-driver mcp --socket <endpoint>`.
 pub(crate) fn mcp_args(paths: &RuntimePaths) -> Vec<String> {
     vec!["mcp".into(), "--socket".into(), paths.endpoint.clone()]
 }
@@ -248,8 +238,6 @@ const MACOS_ENV: &[&str] = &[
     "__CF_USER_TEXT_ENCODING",
 ];
 
-/// The search path minus an AppImage's own mount, so the daemon never
-/// loads Oleafly's bundled libraries.
 fn daemon_path(
     platform: Platform,
     lookup: &dyn Fn(&str) -> Option<String>,
@@ -271,8 +259,6 @@ fn daemon_path(
         .unwrap_or_default()
 }
 
-/// The environment a daemon (Windows, Linux) or the `mcp` client gets: an
-/// allowlist, the search path, and telemetry and update checks off.
 pub(crate) fn daemon_env(
     platform: Platform,
     lookup: &dyn Fn(&str) -> Option<String>,
@@ -307,16 +293,15 @@ fn process_env(name: &str) -> Option<String> {
     std::env::var(name).ok()
 }
 
-/// A daemon Oleafly started.
 pub(crate) enum DaemonHandle {
-    /// Windows and Linux: our child, in its own process tree.
     Child {
         child: Box<tokio::process::Child>,
         guard: Option<crate::proc::ProcessTreeGuard>,
     },
-    /// macOS: started through `open`; known by pid and start time.
-    Detached { pid: u32, started: Option<u64> },
-    /// Test launchers.
+    Detached {
+        pid: u32,
+        started: Option<u64>,
+    },
     #[cfg_attr(not(test), allow(dead_code))]
     None,
 }
@@ -359,9 +344,7 @@ fn same_process(pid: u32, started: Option<u64>) -> bool {
         )
 }
 
-/// Starting, readying, connecting to and stopping daemons. Tests replace it.
 pub(crate) trait Launcher: Send + Sync {
-    /// Finds the installed driver. Runs blocking work off the async threads.
     fn locate(&self) -> BoxFuture<'_, Result<DriverInstall, String>>;
     fn start_daemon<'a>(
         &'a self,
@@ -394,7 +377,6 @@ pub(crate) fn start_failed(detail: &str) -> String {
         .into()
 }
 
-/// The last 2 KiB of a log, on one line.
 fn log_tail(path: &Path) -> Option<String> {
     use std::io::{Read, Seek, SeekFrom};
     let mut file = std::fs::File::open(path).ok()?;
@@ -418,7 +400,6 @@ fn waiting_for_permissions(log: &Path) -> bool {
         .is_some_and(|tail| tail.contains("needs your permission before desktop tools can run"))
 }
 
-/// A failed start, named as the missing permissions when the log shows them.
 fn start_error(paths: &RuntimePaths, error: String) -> String {
     if waiting_for_permissions(&paths.log_file) {
         AppError::new("desktop_apps.needs_permissions").into()
@@ -431,10 +412,6 @@ fn read_pid(path: &Path) -> Option<u32> {
     std::fs::read_to_string(path).ok()?.trim().parse().ok()
 }
 
-/// The process ids whose command line is `… serve --socket <endpoint> …`:
-/// the daemon Oleafly started for that endpoint, whatever its record says.
-/// The endpoint belongs to this data folder and runtime, so nothing else
-/// matches. `ps` output is `<pid> <command line>` per line.
 #[cfg(any(unix, test))]
 pub(crate) fn parse_serving_pids(listing: &str, endpoint: &str, own_pid: u32) -> Vec<u32> {
     let needle = format!("serve --socket {endpoint}");
@@ -479,7 +456,6 @@ fn serving_pids(_endpoint: &str) -> Vec<u32> {
     Vec::new()
 }
 
-/// Ends a process when it is still the one we mean (same start time).
 fn kill_identified(pid: u32, started: Option<u64>) {
     if !same_process(pid, started) {
         return;
@@ -534,8 +510,6 @@ struct OwnerRecord {
     endpoint: String,
 }
 
-/// Records the daemon so a later run (or a quit that can't wait for it)
-/// can end it. Written as soon as the process id is known.
 fn write_owner_file(paths: &RuntimePaths, handle: &DaemonHandle) {
     let Some(pid) = handle.pid() else {
         return;
@@ -552,10 +526,6 @@ fn write_owner_file(paths: &RuntimePaths, handle: &DaemonHandle) {
     }
 }
 
-/// Stops a daemon Oleafly left behind or can't stop the usual way: the one
-/// its owner file names (when that process is still the same one), and any
-/// process serving this endpoint, which also finds a macOS daemon that was
-/// launched before anything learned its process id.
 pub(crate) fn stop_stale_daemon(paths: &RuntimePaths) {
     let Some(platform) = Platform::current() else {
         return;
@@ -574,7 +544,6 @@ pub(crate) fn stop_stale_daemon(paths: &RuntimePaths) {
     remove_runtime_files(paths, platform);
 }
 
-/// The real launcher.
 pub(crate) struct ProcessLauncher {
     platform: Platform,
 }
@@ -746,7 +715,6 @@ impl Launcher for ProcessLauncher {
     ) -> BoxFuture<'a, ()> {
         let platform = self.platform;
         Box::pin(async move {
-            // Ask first, then make sure.
             let binary = install.binary.clone();
             let endpoint = paths.endpoint.clone();
             let _ = tokio::task::spawn_blocking(move || {
@@ -773,8 +741,6 @@ impl Launcher for ProcessLauncher {
                         } else if let Some(pid) = read_pid(&pid_file) {
                             targets.push((pid, None));
                         }
-                        // A daemon that was still starting has no pid file
-                        // yet: find it by its command line.
                         for found in serving_pids(&endpoint) {
                             if !targets.iter().any(|(known, _)| *known == found) {
                                 targets.push((found, None));
@@ -793,7 +759,6 @@ impl Launcher for ProcessLauncher {
     }
 }
 
-/// Whether the Windows daemon answers a status request.
 async fn windows_ready(install: &DriverInstall, paths: &RuntimePaths) -> bool {
     let binary = install.binary.clone();
     let endpoint = paths.endpoint.clone();
@@ -810,9 +775,6 @@ async fn windows_ready(install: &DriverInstall, paths: &RuntimePaths) -> bool {
     .is_some_and(|(ok, _, _)| ok)
 }
 
-/// `open` returns before the daemon runs: learn its process id as early as
-/// it shows (its pid file, or its command line) and record it right away, so
-/// a start that is given up on can still end it.
 async fn record_daemon_pid(
     paths: &RuntimePaths,
     handle: &mut DaemonHandle,
@@ -840,8 +802,6 @@ async fn record_daemon_pid(
     }
 }
 
-/// Whether the macOS daemon the handle names runs and has its endpoint. A
-/// daemon that stopped is an error.
 fn macos_ready(paths: &RuntimePaths, handle: &DaemonHandle) -> Result<bool, String> {
     match handle {
         DaemonHandle::Detached { pid, started } if *pid != 0 => {
@@ -856,20 +816,14 @@ fn macos_ready(paths: &RuntimePaths, handle: &DaemonHandle) -> Result<bool, Stri
     }
 }
 
-/// A started runtime.
 struct Live {
     install: DriverInstall,
     paths: RuntimePaths,
     daemon: Option<DaemonHandle>,
-    /// Taken out for each call; `None` after a call was dropped mid-flight.
     session: Option<McpStdioSession>,
     manifest_hash: String,
-    /// Labels this daemon has a `start_session` for.
     started_labels: HashSet<String>,
     tools: Vec<McpServerTool>,
-    /// The session was dropped after an answer too large to read. The
-    /// daemon is fine, so the next call opens a new session on it instead
-    /// of restarting it.
     reconnect: bool,
 }
 
@@ -879,7 +833,6 @@ struct Slot {
     last_used: Option<Instant>,
 }
 
-/// What `start_session` for a label came to.
 enum LabelState {
     Ready,
     Restart,
@@ -894,32 +847,22 @@ fn text_result(text: &str, error: bool) -> Value {
     json!({"content": [{"type": "text", "text": text}], "isError": error})
 }
 
-/// A daemon this process started, with the manifest it runs with.
 struct Active {
     hash: String,
-    /// `false` while it is still starting.
     started: bool,
 }
 
-/// Up to three daemons and their sessions.
 pub(crate) struct Runtimes {
     config: Arc<RwLock<CuaDriverConfig>>,
     launcher: Arc<dyn Launcher>,
     root: PathBuf,
     platform: Platform,
     slots: HashMap<RuntimeKind, Arc<tokio::sync::Mutex<Slot>>>,
-    /// Kinds with a daemon, started or starting. Read without the slot
-    /// lock, which a call or a start may hold for a long time.
     active: Mutex<HashMap<RuntimeKind, Active>>,
-    /// Bumped to cancel what is in flight on a kind: a call stops waiting
-    /// for the driver, a start gives up.
     cancel: HashMap<RuntimeKind, tokio::sync::watch::Sender<u64>>,
-    /// Each kind's tool list from its last start, readable without the slot
-    /// lock (a dialog uses the schemas before asking).
     known_tools: Mutex<HashMap<RuntimeKind, Vec<McpServerTool>>>,
 }
 
-/// Marks a kind as starting for as long as the start runs, however it ends.
 struct Starting<'a> {
     runtimes: &'a Runtimes,
     kind: RuntimeKind,
@@ -983,8 +926,6 @@ impl Runtimes {
         }
     }
 
-    /// The driver's tools for `kind` as its last start listed them; empty
-    /// before the first start. Never starts anything.
     pub(crate) fn known_tools(&self, kind: RuntimeKind) -> Vec<McpServerTool> {
         lock(&self.known_tools)
             .get(&kind)
@@ -1003,7 +944,6 @@ impl Runtimes {
             .clone()
     }
 
-    /// The manifest this kind would run with now, rendered, and its hash.
     pub(crate) fn rendered_manifest(&self, kind: RuntimeKind) -> Option<(String, String)> {
         let manifest = manifest::build_manifest(&self.settings(), kind)?;
         let rendered = manifest::render_manifest(&manifest);
@@ -1014,7 +954,6 @@ impl Runtimes {
         Some((rendered, hash))
     }
 
-    /// Kinds that are running.
     pub(crate) fn running(&self) -> Vec<RuntimeKind> {
         let active = lock(&self.active);
         RuntimeKind::ALL
@@ -1023,13 +962,10 @@ impl Runtimes {
             .collect()
     }
 
-    /// Whether any daemon is running or starting.
     pub(crate) fn has_daemons(&self) -> bool {
         !lock(&self.active).is_empty()
     }
 
-    /// Kinds whose daemon runs (or starts) with a manifest that no longer
-    /// matches the settings.
     pub(crate) fn stale_kinds(&self) -> Vec<RuntimeKind> {
         let hashes: Vec<(RuntimeKind, String)> = {
             let active = lock(&self.active);
@@ -1050,9 +986,6 @@ impl Runtimes {
             .collect()
     }
 
-    /// Cancels what is in flight on `kinds`: a call stops waiting for the
-    /// driver (its session and daemon are dropped), a start gives up. Takes
-    /// no slot lock, so it works while a call or a start holds one.
     pub(crate) fn cancel(&self, kinds: &[RuntimeKind]) {
         for kind in kinds {
             self.cancel[kind].send_modify(|count| *count = count.wrapping_add(1));
@@ -1063,16 +996,12 @@ impl Runtimes {
         runtime_paths(&self.root, kind, self.platform)
     }
 
-    /// Whether any kind has an owner file: a daemon this app (or an earlier
-    /// run) started and has not stopped for good.
     pub(crate) fn has_owner_records(&self) -> bool {
         RuntimeKind::ALL
             .into_iter()
             .any(|kind| self.paths(kind).owner_file.exists())
     }
 
-    /// Ends every daemon by its owner record and command line, without any
-    /// slot lock. For a quit that can't wait for a call, or for a start.
     pub(crate) async fn kill_by_records(&self) {
         let kills: Vec<_> = RuntimeKind::ALL
             .into_iter()
@@ -1086,9 +1015,6 @@ impl Runtimes {
         }
     }
 
-    /// Runs one `tools/call`, starting the runtime and the label's session
-    /// first when needed. An expired manifest restarts the runtime and an
-    /// ended session starts again; either retries the refused call once.
     pub(crate) async fn call(
         &self,
         kind: RuntimeKind,
@@ -1131,7 +1057,6 @@ impl Runtimes {
         }
     }
 
-    /// Starts the runtime and `label`'s session on it (`start_session`).
     pub(crate) async fn ensure_session(
         &self,
         kind: RuntimeKind,
@@ -1154,7 +1079,6 @@ impl Runtimes {
         }
     }
 
-    /// The driver's own tool list for this kind (starts the runtime).
     pub(crate) async fn tools(&self, kind: RuntimeKind) -> Result<Vec<McpServerTool>, String> {
         let slot = self.slot(kind);
         let mut slot = slot.lock().await;
@@ -1166,8 +1090,6 @@ impl Runtimes {
             .unwrap_or_default())
     }
 
-    /// Ends `label` on every running kind that started it (5 s each);
-    /// errors are ignored.
     pub(crate) async fn end_session(&self, label: &str) {
         for kind in RuntimeKind::ALL {
             let slot = self.slot(kind);
@@ -1200,9 +1122,6 @@ impl Runtimes {
         self.stop_slot(kind, &mut slot).await;
     }
 
-    /// Stops `kinds` all at once. A kind whose slot a call or a start still
-    /// holds after `wait` is ended by its owner record instead: the call or
-    /// the start then fails and cleans up behind it.
     pub(crate) async fn stop_within(&self, kinds: &[RuntimeKind], wait: Duration) {
         futures_util::future::join_all(kinds.iter().map(|kind| self.stop_or_kill(*kind, wait)))
             .await;
@@ -1216,18 +1135,14 @@ impl Runtimes {
         let _ = tokio::task::spawn_blocking(move || stop_stale_daemon(&paths)).await;
     }
 
-    /// Stops every kind, all at once.
     pub(crate) async fn stop_all(&self) {
         self.stop_within(&RuntimeKind::ALL, STOP_WAIT).await;
     }
 
-    /// Stops the kinds whose manifest no longer matches the settings (or
-    /// that the settings no longer need).
     pub(crate) async fn stop_changed(&self) {
         self.stop_within(&self.stale_kinds(), STOP_WAIT).await;
     }
 
-    /// Stops runtimes nothing used for `IDLE_STOP`. Busy ones are skipped.
     pub(crate) async fn stop_idle(&self, now: Instant) {
         for kind in RuntimeKind::ALL {
             let slot = self.slot(kind);
@@ -1267,8 +1182,6 @@ impl Runtimes {
         self.start_slot(kind, slot, rendered, hash).await
     }
 
-    /// Opens a new session on the running daemon when the last one was
-    /// dropped only because an answer was too large to read.
     async fn reopen_session(&self, slot: &mut Slot) -> bool {
         let Some(live) = slot
             .live
@@ -1326,8 +1239,6 @@ impl Runtimes {
         let env = daemon_env(self.platform, &process_env);
         let launch = daemon_launch(self.platform, &install, &paths, &manifest_path, &env)?;
         let mut handle = self.launcher.start_daemon(&launch, &paths).await?;
-        // From here on the daemon is on record, so a quit (or the next
-        // start) can end it even if this start never finishes.
         write_owner_file(&paths, &handle);
         if let Err(error) = self
             .launcher
@@ -1338,8 +1249,6 @@ impl Runtimes {
             return Err(start_error(&paths, error));
         }
         write_owner_file(&paths, &handle);
-        // Settings changed or turned off while it started: the manifest it
-        // runs with is already out of date.
         if cancel.has_changed().unwrap_or(true) {
             self.launcher.stop_daemon(&install, &paths, handle).await;
             return Err(STOPPED_TEXT.into());
@@ -1351,8 +1260,6 @@ impl Runtimes {
                 return Err(error);
             }
         };
-        // A bounded daemon refuses a tool no manifest allows. If this one
-        // runs it, it isn't running with Oleafly's limits.
         let check = tokio::time::timeout(
             SELF_CHECK_TIMEOUT,
             session.call_checked(policy::SELF_CHECK_TOOL, json!({})),
@@ -1360,9 +1267,6 @@ impl Runtimes {
         .await;
         let verdict = match check {
             Ok(Ok(Ok(result))) if refused_as_outside_manifest(&result) => Ok(()),
-            // Anything else (it ran, it failed for another reason, it
-            // answered with a protocol error) doesn't show that the limits
-            // hold.
             Ok(Ok(_)) => Err(AppError::new("desktop_apps.not_bounded").into()),
             Ok(Err(error)) => Err(start_failed(&error)),
             Err(_) => Err(start_failed("its first answer took too long.")),
@@ -1412,7 +1316,6 @@ impl Runtimes {
             return;
         };
         lock(&self.active).remove(&kind);
-        // Dropping the session kills the client process tree at once.
         drop(live.session.take());
         if let Some(handle) = live.daemon.take() {
             self.launcher
@@ -1457,11 +1360,6 @@ impl Runtimes {
         })
     }
 
-    /// One call on the open session. A timeout or a broken connection stops
-    /// the runtime (so nothing half-done is reused); a JSON-RPC error from
-    /// the driver comes back as an error result. An answer too large to read
-    /// is no hang: it comes back as an error result that says how to ask
-    /// for less, and only the session is replaced.
     async fn call_once(
         &self,
         kind: RuntimeKind,
@@ -1479,7 +1377,6 @@ impl Runtimes {
         let outcome = tokio::select! {
             biased;
             _ = cancelled.changed() => {
-                // Settings changed or turned off: nothing more is waited for.
                 drop(session);
                 self.stop_slot(kind, slot).await;
                 return Err(STOPPED_TEXT.into());
@@ -1503,8 +1400,6 @@ impl Runtimes {
                 }))
             }
             Ok(Err(error)) if error.contains(TOO_LARGE_MARKER) => {
-                // The rest of that answer is still in the pipe: this session
-                // can't be read again, but the daemon is fine.
                 drop(session);
                 if let Some(live) = slot.live.as_mut() {
                     live.reconnect = true;
@@ -1521,8 +1416,6 @@ impl Runtimes {
     }
 }
 
-/// Whether the self-check's answer is the daemon refusing a tool that is not
-/// in its manifest, which is what a bounded daemon does.
 fn refused_as_outside_manifest(result: &Value) -> bool {
     if !is_error(result) {
         return false;
@@ -1551,7 +1444,6 @@ fn refused_as_outside_manifest(result: &Value) -> bool {
 pub(crate) mod testing {
     use super::*;
 
-    /// A launcher that never finds a driver.
     pub(crate) struct NoDriver;
 
     impl Launcher for NoDriver {
@@ -1630,7 +1522,6 @@ mod tests {
             "structuredContent": {"status": "refused", "refusal": {"code": "bounded_resource_outside_manifest", "message": "outside"}}
         });
         assert!(refused_as_outside_manifest(&structured));
-        // Running the tool, or failing it for another reason, proves nothing.
         let ran = json!({"content": [{"type": "text", "text": "1800x1125"}]});
         assert!(!refused_as_outside_manifest(&ran));
         let failed = json!({
@@ -1666,7 +1557,6 @@ mod tests {
         assert_ne!(paths.endpoint, other.endpoint);
     }
 
-    // Unix socket paths, built with this host's separator and temp folder.
     #[cfg(unix)]
     #[test]
     fn long_unix_socket_paths_fall_back_to_the_temp_dir() {
@@ -1881,10 +1771,6 @@ mod tests {
         assert!(!paths.pid_file.exists());
     }
 
-    // A shell standing in for the daemon: its command line says what it
-    // serves, as `open` leaves it, and `; true` keeps the shell from
-    // replacing itself with `sleep` (which would drop those words). The
-    // `sleep` it leaves behind when the shell is killed ends by itself.
     #[cfg(unix)]
     fn stand_in_daemon(endpoint: &str) -> std::process::Child {
         std::process::Command::new("sh")
@@ -1909,7 +1795,6 @@ mod tests {
             pid: 0,
             started: None,
         };
-        // It takes a moment to listen; no pid file exists in the meantime.
         let endpoint = paths.endpoint.clone();
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(1500)).await;
@@ -1927,7 +1812,6 @@ mod tests {
             serde_json::from_str(&std::fs::read_to_string(&paths.owner_file).unwrap()).unwrap();
         assert_eq!(record.pid, daemon.id());
         assert!(record.started.is_some());
-        // The record is enough to end it.
         stop_stale_daemon(&paths);
         daemon.wait().unwrap();
         assert!(!paths.owner_file.exists());
@@ -1942,7 +1826,6 @@ mod tests {
         let mut daemon = stand_in_daemon(&paths.endpoint);
         let other = runtime_paths(dir.path(), RuntimeKind::Desktop, Platform::Macos);
         let mut bystander = stand_in_daemon(&other.endpoint);
-        // `ps` may need a moment to list a process that just started.
         let deadline = Instant::now() + Duration::from_secs(5);
         while serving_pids(&paths.endpoint).is_empty() && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(50));
@@ -1950,7 +1833,6 @@ mod tests {
         assert_eq!(serving_pids(&paths.endpoint), vec![daemon.id()]);
         stop_stale_daemon(&paths);
         daemon.wait().unwrap();
-        // The other runtime's daemon is not touched.
         assert!(bystander.try_wait().unwrap().is_none());
         bystander.kill().unwrap();
         bystander.wait().unwrap();

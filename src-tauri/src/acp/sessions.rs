@@ -1,5 +1,3 @@
-//! Saved conversations: paging and search, rename, delete, importing an
-//! agent's own sessions, forking and committing one turn's files.
 use oleafly_acp::{AcpClient, Negotiated, NullHost};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -17,13 +15,10 @@ use super::types::{
 };
 
 const TRANSIENT_TIMEOUT: Duration = Duration::from_secs(30);
-/// How long a short-lived connection waits for the next page or import.
 const TRANSIENT_IDLE: Duration = Duration::from_secs(30);
 const MAX_IMPORT: usize = 50;
 const MAX_COMMIT_PATHS: usize = 200;
 
-/// A short-lived connection kept after its work for the next one of the same
-/// agent and folder (the list's next page, the import after it).
 pub(super) struct IdleTransient {
     key: (String, String, PathBuf),
     client: Arc<AcpClient>,
@@ -47,7 +42,6 @@ impl AcpRuntime {
         Ok(SessionPage { sessions, has_more })
     }
 
-    /// Renames a conversation; the agent's own titles no longer replace it.
     pub async fn rename_session(&self, id: &str, title: &str) -> Result<SessionRecord, String> {
         let title = title.trim();
         if title.is_empty() || title.chars().count() > 120 || title.chars().any(char::is_control) {
@@ -72,8 +66,6 @@ impl AcpRuntime {
         self.store.set_title(id, title, true)
     }
 
-    /// Deletes a conversation, its events and the files attached to it; with
-    /// `from_agent` the agent deletes its own copy too.
     pub async fn delete_session(
         self: &Arc<Self>,
         id: &str,
@@ -92,8 +84,6 @@ impl AcpRuntime {
         };
         if from_agent && record.capabilities.delete && record.remote.is_none() {
             if let Some(native) = record.native_session_id.clone() {
-                // The folder the conversation ran in, which a project opened
-                // in place or since removed from the library still has.
                 let root = canonical_root(Path::new(&record.project_path));
                 let result = match root {
                     Ok(root) => {
@@ -129,8 +119,6 @@ impl AcpRuntime {
         Ok(outcome)
     }
 
-    /// Runs `work` on a short-lived connection to the agent started in the
-    /// project folder `root` (no window, no project tools), within 30 s.
     pub(super) async fn with_transient<T: Send + 'static>(
         self: &Arc<Self>,
         project_id: &str,
@@ -188,7 +176,6 @@ impl AcpRuntime {
         let command =
             build_agent_command(&self.root, &record, &definition, &launch, &cwd, None, None)?;
         let client = AcpClient::spawn(command, Arc::new(NullHost)).await?;
-        // Listed for orphan cleanup, and stopped with the app, like a session.
         self.track_transient(&client, &launch.executable).await;
         let cwd_text = cwd.to_string_lossy().into_owned();
         let result = tokio::time::timeout(TRANSIENT_TIMEOUT, async {
@@ -220,8 +207,6 @@ impl AcpRuntime {
         }
     }
 
-    /// Keeps a short-lived connection whose work went well for a while, in
-    /// place of the one kept before; stops it otherwise.
     async fn keep_or_stop_transient(self: &Arc<Self>, kept: IdleTransient, worked: bool) {
         if !worked || kept.client.is_closed() {
             kept.client.shutdown().await;
@@ -256,8 +241,6 @@ impl AcpRuntime {
         });
     }
 
-    /// The agent's own sessions for this project (`session/list`), marking
-    /// the ones already imported.
     pub async fn agent_sessions(
         self: &Arc<Self>,
         project_id: &str,
@@ -270,8 +253,6 @@ impl AcpRuntime {
             .0)
     }
 
-    /// [`Self::agent_sessions`] with what the same connection learned about
-    /// the agent, so an import starts one agent, not two.
     async fn list_agent_sessions(
         self: &Arc<Self>,
         project_id: &str,
@@ -346,9 +327,6 @@ impl AcpRuntime {
         Ok((page, capabilities, methods))
     }
 
-    /// Which agent sessions are saved as conversations already: one store
-    /// query, off the async workers (the store's lock is the one every live
-    /// session's events take).
     async fn imported_natives(
         self: &Arc<Self>,
         project_id: &str,
@@ -367,8 +345,6 @@ impl AcpRuntime {
         .map_err(|_| "The saved conversations could not be read.")?
     }
 
-    /// Saves agent sessions as Oleafly conversations (disconnected; they
-    /// resume when opened).
     pub async fn import_sessions(
         self: &Arc<Self>,
         project_id: &str,
@@ -426,8 +402,6 @@ impl AcpRuntime {
         Ok(imported)
     }
 
-    /// Forks a live conversation: the agent copies its session, and the copy
-    /// opens in a new agent process as a new conversation.
     pub async fn fork(
         self: &Arc<Self>,
         id: &str,
@@ -464,9 +438,6 @@ impl AcpRuntime {
                 .operation
                 .try_lock()
                 .map_err(|_| "Wait for this turn to finish before forking.")?;
-            // The agent's first updates for the new session can reach this
-            // connection right behind the reply, before its id is known
-            // here: they are ignored until it is.
             session.forking.store(true, Ordering::Release);
             let _forking = ForeignUpdatesIgnored(&session.forking);
             let answer = session
@@ -508,27 +479,22 @@ impl AcpRuntime {
             forked_from: Some(record.id.clone()),
             fork_sequence: None,
             usage: None,
-            // Set again only if the fork's own connection routes the agent.
             routed_provider: None,
             ..record
         };
         self.store.save(&copy)?;
-        // The fork shows the conversation it was made from.
         let copied = self
             .store
             .copy_events(&copy.forked_from.clone().unwrap_or_default(), &copy.id)?;
         if copied > 0 {
             let mut saved = copy.clone();
             saved.last_sequence = copied;
-            // The copied events were counted in the conversation they came
-            // from: the usage ledger starts after them.
             saved.fork_sequence = Some(copied);
             self.store.save(&saved)?;
         }
         self.reconnect_with_mcp(&copy.id, owner, mcp_servers).await
     }
 
-    /// Commits the files one turn changed (from its `turn_changes` card).
     pub async fn commit_turn(
         &self,
         id: &str,
@@ -589,7 +555,6 @@ impl AcpRuntime {
         Ok(entry)
     }
 
-    /// The files a turn's `turn_changes` event lists.
     fn turn_files(&self, id: &str, turn_id: &str) -> Result<Vec<String>, String> {
         let mut files = Vec::new();
         let mut after = 0;
@@ -621,8 +586,6 @@ impl AcpRuntime {
     }
 }
 
-/// Clears the flag that makes a connection ignore updates for sessions it did
-/// not open, when the fork or resume that set it ends, however it ends.
 pub(super) struct ForeignUpdatesIgnored<'a>(pub(super) &'a AtomicBool);
 
 impl Drop for ForeignUpdatesIgnored<'_> {
@@ -631,7 +594,6 @@ impl Drop for ForeignUpdatesIgnored<'_> {
     }
 }
 
-/// Whether two folders are the same (case-insensitively on Windows).
 fn same_folder(left: &Path, right: &Path) -> bool {
     if left.as_os_str().is_empty() {
         return false;

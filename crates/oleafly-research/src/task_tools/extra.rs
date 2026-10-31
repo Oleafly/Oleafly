@@ -1,7 +1,3 @@
-//! The task tools both runtimes share: supervised runs, the ledger and
-//! results tables, notes and todos, compile, the project map, citation
-//! checks, literature, papers and the web. The built-in runtime calls them
-//! directly; CLI agents reach them through the task's research bridge.
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -25,7 +21,6 @@ use crate::scheduler::{TaskEventSink, TaskServices};
 use crate::store::TaskStore;
 
 pub const SPAWN_AGENT: &str = "spawn_agent";
-/// What `start_run` answers while the user has not approved the plan.
 pub const PLAN_NO_RUNS: &str = "Write plan.md first. Runs start after the user approves the plan.";
 const MAX_TODOS: usize = 100;
 const MAX_TODO_CHARS: usize = 300;
@@ -37,7 +32,6 @@ const LEDGER_VERDICTS: [&str; 3] = ["keep", "discard", "crash"];
 const MAX_LOG_TAIL: usize = 2_000;
 const MAX_LEDGER_COMMAND_CHARS: usize = 400;
 
-/// What a task tool needs from the task it serves.
 #[derive(Clone)]
 pub struct TaskBinding {
     pub task_id: String,
@@ -48,13 +42,9 @@ pub struct TaskBinding {
     pub record_dir: String,
     pub execution_root: PathBuf,
     pub allowed_paths: Vec<String>,
-    /// Extra read grants for commands and runs (skill folders).
     pub read_paths: Vec<PathBuf>,
-    /// The project's linked data folders (read-only for runs).
     pub linked_roots: Vec<oleafly_sandbox::profile::LinkedFolder>,
-    /// Where interpreters are looked for.
     pub search_dirs: Vec<PathBuf>,
-    /// The real project folder.
     pub project_root: Option<PathBuf>,
     pub services: TaskServices,
     pub host: Arc<dyn TaskHost>,
@@ -110,8 +100,6 @@ fn tool(name: &str, description: &str, properties: Value, required: &[&str]) -> 
     }
 }
 
-/// The task tools a task offers. CLI agents get all but `spawn_agent`; web
-/// tools appear only with network permission and a web host.
 pub fn task_tool_schemas(brief: &ResearchBrief, has_web: bool) -> Vec<ToolSchema> {
     let run_id = json!({"type": "string", "minLength": 1, "maxLength": 16});
     let shell = if cfg!(windows) { "cmd.exe" } else { "sh" };
@@ -262,8 +250,6 @@ pub fn task_tool_schemas(brief: &ResearchBrief, has_web: bool) -> Vec<ToolSchema
     tools
 }
 
-/// Read-class task tools run in parallel; writers one at a time; waits
-/// and helpers hold no gate.
 pub fn task_tool_policy(name: &str) -> oleafly_agent::tools::registry::ParallelPolicy {
     use oleafly_agent::tools::registry::ParallelPolicy;
     match name {
@@ -286,12 +272,10 @@ fn required<'a>(args: &'a Value, name: &str) -> Result<&'a str, String> {
     text(args, name).ok_or_else(|| format!("Missing required argument: {name}."))
 }
 
-/// `YYYY-MM-DDTHH:MM:SSZ` for epoch milliseconds.
 pub fn iso_utc(ms: i64) -> String {
     let seconds = ms.div_euclid(1000);
     let days = seconds.div_euclid(86_400);
     let time = seconds.rem_euclid(86_400);
-    // Civil from days (Howard Hinnant's algorithm).
     let z = days + 719_468;
     let era = z.div_euclid(146_097);
     let day_of_era = z.rem_euclid(146_097);
@@ -315,7 +299,6 @@ pub fn iso_utc(ms: i64) -> String {
 }
 
 fn format_number(value: f64) -> String {
-    // Shortest round-trip form: the precision it was recorded at.
     let text = format!("{value}");
     if text.contains('e') {
         format!("{value:.6}")
@@ -324,7 +307,6 @@ fn format_number(value: f64) -> String {
     }
 }
 
-/// A results table with one marked row per run.
 pub fn render_results_table(
     rows: &[(String, String, BTreeMap<String, f64>)],
     metrics: &[String],
@@ -448,8 +430,6 @@ fn todos_from(args: &Value) -> Result<Vec<TodoItem>, String> {
         .collect()
 }
 
-/// The ledger so far. A ledger that is not there yet starts from its header;
-/// one that cannot be read is an error, never replaced by a fresh one.
 fn ledger_text(files: &TaskFiles, path: &str) -> Result<String, String> {
     if files.exists(path)? {
         files.read(path)
@@ -458,8 +438,6 @@ fn ledger_text(files: &TaskFiles, path: &str) -> Result<String, String> {
     }
 }
 
-/// The run's command as the ledger keeps it: the run record has the whole of
-/// it, so a ledger of many results does not outgrow its file.
 fn ledger_command(command: &str) -> String {
     let mut short: String = command.chars().take(MAX_LEDGER_COMMAND_CHARS).collect();
     if short.len() < command.len() {
@@ -474,8 +452,6 @@ async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String>
     if binding.brief.permissions.commands == CommandPolicy::Off {
         return Err(crate::approvals::COMMANDS_OFF.into());
     }
-    // "Review the plan first" holds for every agent, including a CLI agent
-    // that reaches this tool through the bridge.
     let task = binding.task()?;
     if task.brief.review_plan_first && !task.plan_approved {
         return Err(PLAN_NO_RUNS.into());
@@ -513,7 +489,6 @@ async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String>
         &binding.cancel,
     )
     .await?;
-    // An approval can arrive at the moment the task is cancelled.
     if binding.cancel.is_cancelled() {
         return Err("The task was cancelled.".into());
     }
@@ -538,9 +513,6 @@ async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String>
     Ok(json!({"id": record.run_id, "status": record.state.as_str()}))
 }
 
-/// What the user approves for a run: everything that decides what it does.
-/// Environment values are shown in full, since `PYTHONSTARTUP`,
-/// `NODE_OPTIONS` and the like change what an approved command runs.
 fn run_approval_detail(
     name: &str,
     command: &str,
@@ -577,9 +549,6 @@ async fn wait_runs(binding: &TaskBinding, args: &Value) -> Result<Value, String>
     binding.emit(TaskRuntimeEvent::Phase {
         phase: TaskPhase::WaitingRuns,
     });
-    // 0.4.8 L: a task moving to another process stops waiting (its runs keep
-    // going) so the step can end. The wait itself sees the stop only while
-    // it waits, so a result it already took is never lost.
     let suspend = binding.services.suspends.token(&binding.task_id);
     let stop = binding.cancel.child();
     let relay = {
@@ -654,8 +623,6 @@ async fn ledger_append(binding: &TaskBinding, args: &Value) -> Result<Value, Str
             (run.run_id, ledger_command(&run.command))
         }
         None => {
-            // After the highest note so far: the rows read may be only the
-            // newest of a long ledger, so counting them would repeat an id.
             let last_note = rows
                 .iter()
                 .filter_map(|row| row.id.strip_prefix('n')?.parse::<usize>().ok())
@@ -799,8 +766,6 @@ async fn paper(binding: &TaskBinding, args: &Value) -> Result<Value, String> {
     serde_json::to_value(text).map_err(|error| error.to_string())
 }
 
-/// Runs a task tool. `None` when `name` is not one (or `spawn_agent`,
-/// which only the built-in runtime offers).
 pub async fn call_task_tool(
     name: &str,
     args: Value,
@@ -939,7 +904,6 @@ mod tests {
             markdown.contains("| dropout | 0.913 | – | <!-- run: r002 -->"),
             "{markdown}"
         );
-        // What the evidence check reads back.
         let found = crate::evidence::numbers_with_run_markers(&latex);
         assert!(found
             .iter()

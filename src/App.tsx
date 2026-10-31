@@ -174,22 +174,24 @@ import {
   type ExternalFileChangePayload,
 } from "@/lib/external-file-changes";
 
-// The tour guide has work while a tour runs, while one can start on its own,
-// and once anything asks for a tour: startTour keeps a request nobody heard,
-// and the guide replays it when it mounts.
 function useTourGuideWanted(): boolean {
   const wanted = useTourStore(
     (state) =>
       state.activeTourId !== null ||
       (state.enabled && AVAILABLE_TOUR_IDS.some((id) => state.tours[id].status === "pending")),
   );
-  const [requested, setRequested] = useState(false);
+  const requested = useTourStartRequests() > 0;
+  return wanted || requested;
+}
+
+function useTourStartRequests(): number {
+  const [requests, setRequests] = useState(0);
   useEffect(() => {
-    const request = () => setRequested(true);
+    const request = () => setRequests((count) => count + 1);
     window.addEventListener(START_TOUR_EVENT, request);
     return () => window.removeEventListener(START_TOUR_EVENT, request);
   }, []);
-  return wanted || requested;
+  return requests;
 }
 
 const SettingsModal = mountOnFirstOpen(
@@ -245,10 +247,16 @@ const TourGuide = mountOnFirstOpen(
   lazy(() => import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide }))),
   useTourGuideWanted,
   () => useTourStore.getState().stop(),
+  { useResetKey: useTourStartRequests },
 );
-// The language service has nothing to do before a project opens.
-const LanguageServiceRuntime = mountOnFirstOpen(LanguageServiceRuntimeBoundary, () =>
-  useFilesStore((s) => s.projectId !== null),
+const LanguageServiceRuntime = mountOnFirstOpen(
+  LanguageServiceRuntimeBoundary,
+  () => useFilesStore((s) => s.projectId !== null),
+  undefined,
+  {
+    useResetKey: () => useFilesStore((s) => s.projectId),
+    fallback: <LanguageServiceRuntimeUnavailable />,
+  },
 );
 const StatsToolView = lazy(() =>
   import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })),
@@ -326,9 +334,6 @@ function LazyModals({ children }: Readonly<{ children: ReactNode }>) {
   return <Suspense fallback={null}>{children}</Suspense>;
 }
 
-// One-chunk-fetch placeholder for the lazy editor/preview surfaces: quiet,
-// centered, and shaped like the boot progress card so loading reads as one
-// continuous system.
 function SurfaceLoading({ label }: Readonly<{ label: string }>) {
   return (
     <div className="flex h-full min-h-0 items-center justify-center">
@@ -399,7 +404,6 @@ function workspaceGroupId(projectId: string | null, group: string): string | und
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 const WINDOW_WAKE_COALESCE_MS = 1_000;
-// Deactivated for 0.3.7 — see the comment at its use in the on-open effect.
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
 // The document editors are contenteditable surfaces (.cm-content,
@@ -440,7 +444,6 @@ function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void
 function runMenuHistory(redo: boolean): void {
   if (!useFilesStore.getState().projectId) return;
   const active = document.activeElement as HTMLElement | null;
-  // A menu click reaches no form key handler, so the form's own rule is applied here.
   const form = visualFormHistory(active);
   if (form === "document") {
     runDocumentMenuHistory(active, redo);
@@ -450,8 +453,6 @@ function runMenuHistory(redo: boolean): void {
     runFieldHistory(document, redo ? "redo" : "undo");
     return;
   }
-  // A secondary CodeMirror surface owns its own history; never redirect
-  // its menu click into the paper's source buffer.
   if (secondaryCodeEditorOwns(active)) {
     runSecondaryEditorHistory(active, redo);
     return;
@@ -467,7 +468,6 @@ function loadStuckWindowRestore(): Promise<() => void> {
   return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
 }
 
-// Research tasks ask this window for PDF text, so it answers whichever panel is open.
 function loadResearchPdfBridge(): Promise<() => void> {
   return import("@/lib/research-pdf-bridge").then((m) => m.mountResearchPdfBridge());
 }
@@ -650,16 +650,12 @@ function AppContent() {
   const onHorizontalSeparatorKeyDown = useSeparatorKeyboard(horizontalGroupRef, horizontalLimits);
 
   useEffect(() => {
-    // React owns the screen from here: retire the inline HTML splash and
-    // stamp the boot milestones the BootProgress card reports against.
     markBootStage("react-mounted");
     if (!bootSplashHeld()) dismissBootSplash();
     void refreshProjects();
     markBootStage("stores-ready");
   }, [refreshProjects]);
 
-  // Closing a project (or a fresh launch) always lands back on the library,
-  // unless a global tool command explicitly queued another home page.
   useEffect(() => {
     if (!projectId) {
       const home = useHomeViewStore.getState();
@@ -675,7 +671,6 @@ function AppContent() {
     applyDefault: !hasStoredHorizontalLayout,
   });
 
-  // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
     const id = window.setTimeout(() => checkForUpdatesOnStartup(), 3000);
     return () => window.clearTimeout(id);
@@ -683,16 +678,13 @@ function AppContent() {
 
   const native = isTauri();
 
-  // Manual mode so it reports "up to date" rather than closing silently.
   useTauriEvent("menu://check-updates", () => void openUpdateWindow({ manual: true }), native);
   useTauriEvent("menu://about", () => setAboutOpen(true), native);
   useTauriSubscription(startNativeDockShortcutBridge, "start the dock shortcut bridge");
 
   useEffect(() => {
     if (!native) return;
-    // Done here, not at module load, so it never fires IPC at import time.
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
-    // 0.4.8 I: the desktop_apps tool spec, after first paint.
     void import("@/lib/desktop-apps").then((m) => m.syncDesktopAppsTool());
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
@@ -760,8 +752,6 @@ function AppContent() {
     return subscribeTheme(apply);
   }, [accentColor]);
 
-  // SourceControl / DiffView refresh after git mutations; we only re-poll on
-  // project switch, window focus, and a slow interval (no 5s hot loop).
   const refreshGitStatus = useGitStatusStore((s) => s.refresh);
   useEffect(() => {
     refreshGitStatus(projectId);
@@ -793,9 +783,7 @@ function AppContent() {
 
   useEffect(() => {
     const s = useSettingsStore.getState();
-    // Clear the previous project's compile output so a stale PDF never shows.
     useCompileStore.getState().reset();
-    // Preflight results belong to the previous project; reset them too.
     usePreflightStore.getState().reset();
     if (projectId) {
       s.setRailTab("files");
@@ -808,8 +796,6 @@ function AppContent() {
 
   useTauriSubscription(startPreviewWorkspaceBridge, "start the preview workspace bridge");
 
-  // Detached AI chat / preview windows can mutate disk; reload open buffers
-  // and the compiled PDF when they report changes.
   useTauriEvent<ExternalFileChangePayload>(
     "project:files-changed",
     (payload) => {
@@ -830,8 +816,6 @@ function AppContent() {
       if (!payload || payload.projectId !== files.projectId) return;
       void files.applyProjectStateChanged(payload).then((applied) => {
         if (applied) usePreflightStore.getState().reset();
-        // Vendoring packages, the vendoring switch and engine changes move the folders forms
-        // are read from without changing a watched file the editor knows about.
         if (useFilesStore.getState().projectId === payload.projectId) {
           void useTypstFormsStore.getState().refresh();
         }
@@ -850,7 +834,6 @@ function AppContent() {
     native,
   );
 
-  // Manual recompile: Cmd/Ctrl + Enter. Forward SyncTeX: Cmd/Ctrl + Shift + J.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
@@ -880,11 +863,8 @@ function AppContent() {
     const onKey = (e: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
-      // Ctrl+B, Ctrl+Alt+P and the like belong to a focused terminal.
       if (terminalOwnsKey(e)) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
-        // Cmd/Ctrl+B means bold inside the source and visual editors; the
-        // sidebar toggle must not shadow it there, or in a Visual-mode form.
         const el = document.activeElement as HTMLElement | null;
         if (el?.closest(".cm-editor") || el?.closest(".ProseMirror") || inVisualForm(el)) return;
         e.preventDefault();
@@ -911,13 +891,11 @@ function AppContent() {
     const onKey = (e: KeyboardEvent) => {
       const command = historyCommand(e);
       if (!command) return;
-      // In the terminal, Ctrl+Z and Ctrl+Y are the shell's (suspend, yank).
       if (isTerminalTarget(e.target)) return;
       const isRedo = command === "redo";
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
-      // A form undoes a field's unsaved typing itself, and the document otherwise.
       if (inVisualForm(active)) return;
       if (secondaryCodeEditorOwns(active)) return;
       // Once Vim owns the source editor, let its modal handler see the key
@@ -951,7 +929,6 @@ function AppContent() {
     if (!projectId) return;
     const onKey = (event: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
-      // Terminal tab shortcuts are not menu items, so they work on macOS too.
       if (handleTerminalTabShortcut(event)) return;
       if (!usesNativeDockMenu()) handleDockShortcut(event);
     };
@@ -1052,9 +1029,6 @@ function AppContent() {
         className="flex h-full flex-col"
       >
         <div className="contents" inert={projectToolOpen || projectComposerOpen || undefined}>
-          {/* Drives the gutter's horizontal metrics: the line-number column gives
-              back a few pixels only while the sidebar is competing for the width
-              (see globals.css). */}
           <div hidden={zen} className={zen ? undefined : "contents"}>
             <Contained resetKey={projectId}>
               <TopToolbar />
@@ -1247,11 +1221,7 @@ function AppContent() {
                 onKeyDownCapture={onVerticalSeparatorKeyDown}
                 style={{ cursor: "row-resize" }}
                 className={cn(
-                  // A border-coloured rule on an opaque base. A translucent hover
-                  // fill here let the window's vibrancy show through as a dark strip.
                   "resize-handle-row group relative z-10 h-px select-none border-t bg-background",
-                  // Hover target a little wider than the rule; the drag target is
-                  // the group's resizeTargetMinimumSize.
                   "before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
                   !terminalOpen && "invisible h-0 overflow-hidden border-t-0",
                 )}
@@ -1392,11 +1362,6 @@ function AppContent() {
   );
 }
 
-/**
- * Watches document text without making the complete AppContent layout a
- * subscriber. A book-sized edit should reschedule auto-compile, not re-render
- * the toolbar, panel tree, editor shell and PDF preview on every keystroke.
- */
 function AutoCompileKeeper() {
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
@@ -1411,8 +1376,6 @@ function AutoCompileKeeper() {
       pathRef.current = activePath;
       return;
     }
-    // Active content changes on a file switch as well as an edit. Establish
-    // the new file identity without compiling merely because it was opened.
     if (pathRef.current !== activePath) {
       pathRef.current = activePath;
       return;
@@ -1460,10 +1423,6 @@ function OpenCompileKeeper() {
     (state) => state.snapshot.identity.projectRevision,
   );
 
-  // Compile once when a project opens into a layout that shows the PDF pane,
-  // so the user lands on a rendered preview instead of the placeholder. Keyed
-  // on the tree, not projectId: projectId is set before the files (and the
-  // main doc) are loaded, and compiling then would race the open.
   const tree = useFilesStore((s) => s.tree);
   const openCompiledRef = useRef<string | null>(null);
   const openCompileInFlightRef = useRef<string | null>(null);
@@ -1520,13 +1479,6 @@ function OpenCompileKeeper() {
     const requestedProjectRevision = analysisProjectRevision;
     openCompileInFlightRef.current = requestedProjectId;
     const compileOrRestore = async () => {
-      // Reopen fast path: seed the preview from the persisted compile
-      // fingerprint and skip the on-open compile. DEACTIVATED for 0.3.7:
-      // e2e caught that skipping the on-open compile breaks subsystems that
-      // depended on it (logs pane, library thumbnails, the engine-gap
-      // picker) and its activation depends on a write-vs-teardown race.
-      // The fingerprint keeps being written and validated server-side; the
-      // restore flips on once those flows are covered end to end.
       if (RESTORE_PREVIEW_FROM_FINGERPRINT) {
         const restored = await useCompileStore
           .getState()
@@ -1601,11 +1553,7 @@ export default function App() {
   const projectId = useFilesStore((state) => state.projectId);
   return (
     <>
-      <ErrorBoundary
-        fallback={<LanguageServiceRuntimeUnavailable />}
-      >
-        <LanguageServiceRuntime />
-      </ErrorBoundary>
+      <LanguageServiceRuntime />
       <Contained resetKey={projectId}>
         <AutoCompileKeeper />
       </Contained>

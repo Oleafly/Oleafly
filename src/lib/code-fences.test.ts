@@ -15,7 +15,6 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-// One mark per line: "c" for a line of a fenced code block, "." otherwise.
 const marks = (markdown: string) => {
   const fences = scanFences(markdown);
   let lineFrom = 0;
@@ -62,10 +61,8 @@ describe("scanFences", () => {
     expect(marks("- a\n\n      ```\n      b")).toBe("....");
     expect(marks("1. a\n   - b\n\n     ```\n     c\n     ```")).toBe("...ccc");
     expect(marks("1. Run\n   ```sh\n\n   make\n   ```\n2. Compile")).toBe(".cccc.");
-    // A fence under an outer item, after a nested one.
     expect(marks("*   a\n    *   b\n    ```sh\n    cd x\n    ```\n*   c")).toBe("..ccc.");
     expect(marks("10. a\n    - b\n    ```\n    x\n    ```")).toBe("..ccc");
-    // Text back at the margin ends the list, so four spaces are indented code.
     expect(marks("1. a\n\ntext\n\n    ```\n    b\n    ```")).toBe(".......");
   });
 
@@ -74,7 +71,6 @@ describe("scanFences", () => {
     expect(marks("> ```\n> b\n> ```\nc")).toBe("ccc.");
     expect(marks(">```\n>b\n>```")).toBe("ccc");
     expect(marks("> > ~~~\n> > b\n> > ~~~")).toBe("ccc");
-    // Inside a top-level fence a ">" line is code, not a new blockquote.
     expect(marks("```\n> b\n```")).toBe("ccc");
     expect(marks("para\n```\nb\n```")).toBe(".ccc");
   });
@@ -86,14 +82,11 @@ describe("scanFences", () => {
   });
 
   it("opens a fence exactly where the single pattern it replaced did, on generated lines", () => {
-    // The opening pattern before the rest of the line moved out of it, kept
-    // as the oracle. Its `(.*)$` tail backtracks into the run on a long line.
     const previousOpening = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u;
     const random = seededRandom(20260930);
     const pick = (choices: readonly string[]) => choices[Math.floor(random() * choices.length)];
     const many = (choices: readonly string[], most: number) =>
       Array.from({ length: Math.floor(random() * (most + 1)) }, () => pick(choices)).join("");
-    // No "\n", which would end the line, and nothing that opens a blockquote or a list item.
     const rest = [" ", "\t", "`", "~", "a", "\r", LINE_SEPARATOR, PARAGRAPH_SEPARATOR, "\u{1F600}", "\uD800", "\uDC00"];
     const mismatches: string[] = [];
     let opened = 0;
@@ -101,7 +94,6 @@ describe("scanFences", () => {
     for (let round = 0; round < 100_000; round += 1) {
       const run = pick(["`", "~"]).repeat(Math.floor(random() * 7));
       const line = many([" ", "\t"], 5) + run + many(rest, 8);
-      // scanFences drops the "\r" of a "\r\n" line end before it looks at the line.
       const content = line.replace(/\r$/u, "");
       const start = previousOpening.exec(content);
       const opens = start !== null && !(start[1].startsWith("`") && start[2].includes("`"));
@@ -111,13 +103,11 @@ describe("scanFences", () => {
       else if (/^[ \t]{0,3}(?:`{3}|~{3})/u.test(content) && /[\r\u2028\u2029]/u.test(content)) lineEnds += 1;
     }
     expect(mismatches).toEqual([]);
-    // The lines cover both outcomes, including a run that a line end follows.
     expect(opened).toBeGreaterThan(5_000);
     expect(lineEnds).toBeGreaterThan(5_000);
   });
 
   it("stays linear on a long run that a line end follows", () => {
-    // The previous pattern took seconds on each of these.
     const started = performance.now();
     expect(scanFences(`${"`".repeat(50_000)}${LINE_SEPARATOR}`)).toEqual([]);
     expect(scanFences(`${"~".repeat(50_000)}\rx`)).toEqual([]);

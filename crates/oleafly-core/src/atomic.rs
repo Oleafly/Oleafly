@@ -10,20 +10,15 @@ use std::time::{Duration, Instant};
 
 use tempfile::NamedTempFile;
 
-/// How long Windows renames are retried (the app's policy since 0.4.7).
 const WINDOWS_RETRY_FOR: Duration = Duration::from_secs(8);
 const FIRST_RETRY_DELAY: Duration = Duration::from_millis(10);
 const MAX_RETRY_DELAY: Duration = Duration::from_millis(250);
 
-/// Access denied, sharing and lock violations, and a file still mapped by
-/// another process: a short wait can clear each.
 fn retryable(error: &io::Error) -> bool {
     error.kind() == io::ErrorKind::PermissionDenied
         || matches!(error.raw_os_error(), Some(5 | 32 | 33 | 1224))
 }
 
-/// Runs `attempt` until it succeeds, retrying the errors above for up to
-/// `retry_for` with a growing delay (once when it is zero).
 fn retry_policy(
     mut attempt: impl FnMut() -> io::Result<()>,
     retry_for: Duration,
@@ -42,7 +37,6 @@ fn retry_policy(
     }
 }
 
-/// [`retry_policy`] for this system: 8 s on Windows, one attempt elsewhere.
 pub fn persist_with_retry(attempt: impl FnMut() -> io::Result<()>) -> io::Result<()> {
     let retry_for = if cfg!(windows) {
         WINDOWS_RETRY_FOR
@@ -137,8 +131,6 @@ fn persist(temporary: NamedTempFile, destination: &Path) -> io::Result<()> {
     })
 }
 
-/// Writes `bytes` to a temporary file beside `path`, ready for
-/// [`commit_staged`] (so several files can be staged before any is replaced).
 pub fn stage_beside(path: &Path, bytes: &[u8]) -> io::Result<NamedTempFile> {
     stage(path, bytes, false)
 }
@@ -153,7 +145,6 @@ fn stage(path: &Path, bytes: &[u8], private: bool) -> io::Result<NamedTempFile> 
     Ok(temporary)
 }
 
-/// Moves a staged file over `path`.
 pub fn commit_staged(staged: NamedTempFile, path: &Path) -> io::Result<()> {
     refuse_symlink(path)?;
     let parent = parent_of(path)?.to_path_buf();
@@ -162,21 +153,16 @@ pub fn commit_staged(staged: NamedTempFile, path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Replaces `path` with `bytes` in one rename.
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let staged = stage_beside(path, bytes)?;
     commit_staged(staged, path)
 }
 
-/// [`write_atomic`] for content only its owner should read (a copy of a file
-/// that may hold credentials): a new file is created with mode 0600 on Unix.
 pub fn write_atomic_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let staged = stage(path, bytes, true)?;
     commit_staged(staged, path)
 }
 
-/// Copies `source` over `destination` in one rename, streaming the bytes.
-/// Returns how many bytes were copied.
 pub fn copy_atomic(source: &Path, destination: &Path) -> io::Result<u64> {
     refuse_symlink(destination)?;
     let parent = parent_of(destination)?.to_path_buf();
@@ -239,7 +225,6 @@ mod tests {
     fn a_new_file_gets_the_mode_any_new_file_gets() {
         use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
-        // What the umask makes of a plain create here.
         let plain = dir.path().join("plain.txt");
         std::fs::File::create(&plain).unwrap();
         let expected = std::fs::metadata(&plain).unwrap().permissions().mode() & 0o777;
@@ -315,8 +300,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(calls, 3);
-        // A violation that never clears ends with its error once the window
-        // closes.
         let mut calls = 0;
         let started = Instant::now();
         assert!(retry_policy(
@@ -329,7 +312,6 @@ mod tests {
         .is_err());
         assert!(calls > 1, "{calls}");
         assert!(started.elapsed() < Duration::from_secs(2));
-        // Other errors, and every error without a window, are not retried.
         let mut calls = 0;
         assert!(retry_policy(
             || {

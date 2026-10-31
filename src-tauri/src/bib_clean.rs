@@ -1,9 +1,5 @@
-//! BibTeX library cleaning for the app: the cleaning lives in
-//! `oleafly_doctools::bib_clean`; this module serves the command, picks
-//! where backups go and publishes the project change.
 use oleafly_doctools::bib_clean::{apply_plan_to, plan_project, BackupLocation, CleanOutcome};
 
-/// The outcome the webview gets: the crate's, plus the project state.
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppCleanOutcome {
@@ -23,8 +19,6 @@ fn backup_location(project_id: &str) -> Result<BackupLocation, String> {
     })
 }
 
-/// Preview is read-only. Apply must carry the reviewed snapshot token and uses
-/// the same project mutation barrier as saves, restores and task application.
 #[tauri::command]
 pub async fn clean_bibtex_library(
     app: tauri::AppHandle,

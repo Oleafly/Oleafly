@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} tiene que ejecutar código para generar este documento, y el código está desactivado en este proyecto. Permite el código en este proyecto para compilarlo.",
+    "export_stopped": "Se detuvo la exportación.",
     "quarto_missing": "Quarto no está instalado. Instálalo desde Ajustes > Motores > Quarto y vuelve a compilar.",
     "calepin_missing": "Calepin no está instalado. Instálalo desde Ajustes > Motores > Calepin y vuelve a compilar.",
     "not_offered": "Oleafly no puede descargar {{tool}} para este equipo. Instálalo por tu cuenta y vuelve a compilar.",

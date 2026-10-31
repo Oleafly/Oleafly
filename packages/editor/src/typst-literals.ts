@@ -71,11 +71,11 @@ export function encodeTypstString(value: string): string {
 
 type Mode = "markup" | "code" | "math";
 
-// A delimiter the content scan is inside: a `[` in markup, a `(` or `{` in code, or a `$` equation.
 interface Frame {
   readonly mode: Mode;
   readonly close: string;
   readonly at: number;
+  readonly inMarkup: boolean;
 }
 
 function lineCommentEnd(text: string, from: number): number {
@@ -85,7 +85,7 @@ function lineCommentEnd(text: string, from: number): number {
 }
 
 // Block comments nest, as in Typst's lexer. One that never closes runs to the end.
-function blockCommentEnd(text: string, from: number): number {
+function blockCommentEnd(text: string, from: number): number | null {
   let depth = 1;
   let index = from + 2;
   while (index < text.length && depth > 0) {
@@ -99,20 +99,24 @@ function blockCommentEnd(text: string, from: number): number {
       index += 1;
     }
   }
-  return depth > 0 ? text.length : index;
+  return depth > 0 ? null : index;
 }
 
-// Raw text ends at the next run of as many backticks as opened it; two backticks are empty raw.
-function rawEnd(text: string, from: number): number {
+function backticks(text: string, from: number): number {
   let ticks = 0;
   while (text[from + ticks] === "`") ticks += 1;
+  return ticks;
+}
+
+function rawEnd(text: string, from: number): number | null {
+  const ticks = backticks(text, from);
   if (ticks === 2) return from + 2;
   let found = 0;
   for (let index = from + ticks; index < text.length; index += 1) {
     found = text[index] === "`" ? found + 1 : 0;
     if (found === ticks) return index + 1;
   }
-  return text.length;
+  return null;
 }
 
 function stringEnd(text: string, from: number): number {
@@ -144,9 +148,9 @@ function linkEnd(text: string, from: number): number {
 function tokenEnd(text: string, index: number, mode: Mode): number | null {
   const character = text[index];
   if (text.startsWith("//", index)) return lineCommentEnd(text, index);
-  if (text.startsWith("/*", index)) return blockCommentEnd(text, index);
+  if (text.startsWith("/*", index)) return blockCommentEnd(text, index) ?? text.length;
   if (character === BACKSLASH && mode !== "code") return index + 2;
-  if (character === "`" && mode !== "math") return rawEnd(text, index);
+  if (character === "`" && mode !== "math") return rawEnd(text, index) ?? text.length;
   if (character === '"' && mode !== "markup") return stringEnd(text, index);
   const link = mode === "markup" && character === "h" && /^https?:\/\//u.test(text.slice(index, index + 8));
   return link ? linkEnd(text, index) : null;
@@ -163,12 +167,10 @@ function identifierEnd(text: string, from: number): number {
 }
 
 function opened(frames: Frame[], mode: Mode, close: string, at: number): number {
-  frames.push({ mode, close, at });
+  frames.push({ mode, close, at, inMarkup: false });
   return at + 1;
 }
 
-// The code after a `#`: a `(..)` or `{..}` expression, a string, or a name with its fields,
-// whose directly following `(` arguments are code and `[` body is markup.
 function embeddedCode(text: string, from: number, frames: Frame[]): number {
   if (text[from] === '"') return stringEnd(text, from);
   if (text[from] === "{") return opened(frames, "code", "}", from);
@@ -186,16 +188,34 @@ function openerOf(mode: Mode, character: string): { readonly mode: Mode; readonl
   return character === "{" ? { mode: "code", close: "}" } : null;
 }
 
-// The brackets Typst would leave unmatched in this markup: one scan that follows markup, code
-// and math, steps over escapes, comments, raw text, strings and links, and pairs each `]` with
-// the nearest open `[`. A trailing backslash is counted as an unpaired escape.
-function unmatchedBrackets(markup: string): { readonly brackets: number[]; readonly trailingEscape: boolean } {
+function unclosedToken(text: string, index: number, mode: Mode): { readonly escapes: number[]; readonly next: number } | null {
+  if (mode === "code") return null;
+  if (text.startsWith("//", index) && lineCommentEnd(text, index) === text.length) return { escapes: [index], next: index + 1 };
+  if (text.startsWith("/*", index) && blockCommentEnd(text, index) === null) {
+    return { escapes: [index, index + 1], next: index + 2 };
+  }
+  if (text.startsWith("*/", index)) return { escapes: [index], next: index + 1 };
+  if (mode !== "markup" || text[index] !== "`" || rawEnd(text, index) !== null) return null;
+  const ticks = backticks(text, index);
+  return { escapes: Array.from({ length: ticks }, (_, tick) => index + tick), next: index + ticks };
+}
+
+// What Typst would leave unmatched in this markup: one scan that follows markup, code and math,
+// steps over escapes, comments, raw text, strings and links, and pairs each `]` with the nearest
+// open `[`. A trailing backslash is counted as an unpaired escape.
+function unmatched(markup: string): { readonly escapes: number[]; readonly equation: number | null } {
   const frames: Frame[] = [];
-  const brackets: number[] = [];
+  const escapes: number[] = [];
   let index = 0;
   while (index < markup.length) {
     const frame = frames.at(-1);
     const mode = frame?.mode ?? "markup";
+    const unclosed = unclosedToken(markup, index, mode);
+    if (unclosed) {
+      escapes.push(...unclosed.escapes);
+      index = unclosed.next;
+      continue;
+    }
     const end = tokenEnd(markup, index, mode);
     if (end !== null) {
       index = end;
@@ -206,26 +226,35 @@ function unmatchedBrackets(markup: string): { readonly brackets: number[]; reado
     index += 1;
     if (frame?.close === character) frames.pop();
     else if (character === "#" && mode !== "code") index = embeddedCode(markup, index, frames);
-    else if (opener) frames.push({ ...opener, at: index - 1 });
-    else if (character === "]" && !frame) brackets.push(index - 1);
+    else if (opener) frames.push({ ...opener, at: index - 1, inMarkup: mode === "markup" });
+    else if (character === "]" && !frame) escapes.push(index - 1);
   }
-  for (const frame of frames) if (frame.close === "]") brackets.push(frame.at);
-  brackets.sort((a, b) => a - b);
-  return { brackets, trailingEscape: index > markup.length };
+  const equation = frames.find((frame) => frame.close === "$" && frame.inMarkup)?.at ?? null;
+  for (const frame of frames) if (frame.close === "]") escapes.push(frame.at);
+  if (index > markup.length) escapes.push(markup.length);
+  return { escapes: escapes.sort((a, b) => a - b), equation };
 }
 
-// Content is kept verbatim except for the brackets Typst would leave unmatched, which are
-// escaped, and a trailing backslash, which is doubled so it can't escape the closing `]`.
-export function sanitizeTypstContent(markup: string): string {
-  const { brackets, trailingEscape } = unmatchedBrackets(markup);
+function withEscapes(text: string, positions: readonly number[]): string {
   let out = "";
   let from = 0;
-  for (const at of brackets) {
-    out += `${markup.slice(from, at)}${BACKSLASH}`;
+  for (const at of positions) {
+    out += `${text.slice(from, at)}${BACKSLASH}`;
     from = at;
   }
-  out += markup.slice(from);
-  return trailingEscape ? `${out}${BACKSLASH}` : out;
+  return out + text.slice(from);
+}
+
+// Content is kept verbatim except for what Typst would leave unmatched, which is escaped, and a
+// trailing backslash, which is doubled so it can't escape the closing `]`.
+export function sanitizeTypstContent(markup: string): string {
+  let text = markup;
+  let scan = unmatched(text);
+  while (scan.equation !== null) {
+    text = withEscapes(text, [scan.equation]);
+    scan = unmatched(text);
+  }
+  return withEscapes(text, scan.escapes);
 }
 
 export function decodeTypstNumber(source: string, integer: boolean): number | null {
@@ -235,7 +264,6 @@ export function decodeTypstNumber(source: string, integer: boolean): number | nu
     const magnitude = Number(whole[2].toLowerCase());
     const value = whole[1] ? -magnitude : magnitude;
     if (Number.isSafeInteger(value)) return value;
-    // A float field reads an integer literal past 2^53 as the nearest float.
     return integer || !Number.isFinite(value) ? null : value;
   }
   if (integer || !FLOAT.test(text)) return null;

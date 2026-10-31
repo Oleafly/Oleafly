@@ -9,7 +9,6 @@ use crate::host::IsolationEnv;
 use crate::model::{TaskArtifact, ToolPhase};
 use crate::test_support::{FakeEnv, FakeHost, CHILD_PATIENCE};
 
-/// A task root plus a host whose projects are plain folders.
 struct DataRoot {
     directory: tempfile::TempDir,
     host: FakeHost,
@@ -771,7 +770,6 @@ async fn streamed_deltas_collapse_into_one_row_per_segment_and_only_text_rows_ar
         (run.events)(TaskRuntimeEvent::Text { text: delta.into() });
     }
 
-    // Rows are written in batches; the queue's reader flushes them first.
     let stored = state
         .events(&task.id, generation, None, 100)
         .unwrap()
@@ -835,7 +833,6 @@ async fn streamed_deltas_collapse_into_one_row_per_segment_and_only_text_rows_ar
     stop(&state).await;
 }
 
-// Streamed text costs a handful of transactions, not one per delta.
 #[tokio::test]
 async fn a_hundred_thousand_deltas_commit_in_batches() {
     let data = DataRoot::new();
@@ -848,7 +845,6 @@ async fn a_hundred_thousand_deltas_commit_in_batches() {
     state.launch_ready().await.unwrap();
     let run = next_run(&mut starts).await;
     let generation = run.context.execution_generation;
-    // Rows written before the text don't count.
     state.writer().flush();
     let before = state.writer().commits.load(Ordering::Relaxed);
     let started = std::time::Instant::now();
@@ -1006,8 +1002,6 @@ async fn queue_runs_registered_adapters_and_persists_review_state() {
     store.request_start(&second.id).unwrap();
 
     state.launch_ready().await.unwrap();
-    // Wait until both tasks stop running, not until they succeed, so a task
-    // that fails is reported with its real status by the asserts below.
     let active = |id: &str| {
         matches!(
             store.require(id).unwrap().status,
@@ -1027,8 +1021,6 @@ async fn queue_runs_registered_adapters_and_persists_review_state() {
     assert_eq!(runtime.runs.load(Ordering::SeqCst), 2);
     assert_eq!(finished.status, ResearchTaskStatus::AwaitingReview);
     assert_eq!(second_finished.status, ResearchTaskStatus::AwaitingReview);
-    // 0.4.8: the research record (research/<slug>/) comes back through
-    // review beside the fixture's edit.
     let changed: Vec<String> = finished
         .result
         .unwrap()
@@ -1130,7 +1122,6 @@ async fn a_state_without_a_host_refuses_work_with_a_clear_message() {
     let task = state.store().unwrap().create(draft("paper", "T")).unwrap();
     assert_eq!(state.request_start(&task.id).unwrap_err(), NOT_ATTACHED);
     assert_eq!(state.delete(&task.id).unwrap_err(), NOT_ATTACHED);
-    // Queued work waits for the host instead of failing.
     state.store().unwrap().request_start(&task.id).unwrap();
     state.launch_ready().await.unwrap();
     assert_eq!(
@@ -1211,7 +1202,6 @@ async fn a_skill_that_is_off_blocks_creation_with_the_host_message() {
     assert!(state.create(draft("paper", "Plain")).is_ok());
 }
 
-// 0.4.8 L: suspending running work and handing it to the other process.
 mod handoff {
     use super::*;
     use crate::approvals::GateContext;
@@ -1225,7 +1215,6 @@ mod handoff {
         }
     }
 
-    /// A queue whose host runs as `owner`, over the same task store.
     fn state_as(data: &DataRoot, owner: OwnerKind, concurrency: usize) -> ResearchTaskState {
         let mut host = data.host.clone();
         host.owner = owner;
@@ -1265,7 +1254,6 @@ mod handoff {
         }
     }
 
-    /// Plays a runtime that suspends at its next step boundary.
     async fn suspend_when_asked(state: &ResearchTaskState, run: StartedRun) {
         let services = state.services().unwrap();
         let task_id = run.context.task_id.clone();
@@ -1313,7 +1301,6 @@ mod handoff {
         );
         assert!(lock(&runtime.cancellations).is_empty());
 
-        // The handoff then moves it; the app cannot claim it back.
         let (generation, record) = handoff_record_for(
             &results[0].1,
             OwnerKind::App,
@@ -1341,9 +1328,6 @@ mod handoff {
         stop(&state).await;
     }
 
-    // The helper stopping while it hands a task back to the app suspends
-    // the task twice: both handoffs carry the saved conversation, so the one
-    // that wins never resumes from the record alone.
     #[tokio::test]
     async fn two_suspends_of_one_task_both_get_its_saved_conversation() {
         let data = DataRoot::new();
@@ -1395,7 +1379,6 @@ mod handoff {
                     .await
             })
         };
-        // The runtime ignores the suspend; past the deadline it is stopped.
         runtime.wait_for_cancel().await;
         assert!(run.cancel.is_cancelled());
         run.complete.send(Err("stopped".into())).unwrap();
@@ -1404,7 +1387,6 @@ mod handoff {
             matches!(results[0].1, SuspendResult::Stopped { .. }),
             "{results:?}"
         );
-        // Neither failed nor cancelled: the handoff resumes it from the record.
         let current = store.require(&task.id).unwrap();
         assert_eq!(current.status, ResearchTaskStatus::Running);
         assert!(current.error.is_none());
@@ -1476,7 +1458,6 @@ mod handoff {
         };
         let services = state.services().unwrap();
         wait_until(|| services.suspends.requested(&task.id)).await;
-        // The runtime finished its last step anyway.
         run.complete.send(Ok(outcome("finished"))).unwrap();
         let results = suspending.await.unwrap();
         assert_eq!(results[0].1, SuspendResult::NotRunning);
@@ -1530,9 +1511,7 @@ mod handoff {
         let (runtime, mut starts) = ControlledRuntime::new();
         state.register_runtime("fixture", runtime.clone()).unwrap();
         let store = state.store().unwrap();
-        // Created first, started later.
         let earlier = store.create(draft("paper", "Created first")).unwrap();
-        // Hand a task to the app the way the helper does when it stops.
         let resumed = requested(&store, keep_running("paper", "Resumed"));
         let run = started(&state, &runtime, &mut starts, &resumed).await;
         let suspending = {
@@ -1559,7 +1538,6 @@ mod handoff {
             .hand_off_suspended(&resumed.id, generation, OwnerKind::App, record)
             .await
             .unwrap());
-        // `earlier` is older, but the resume goes first.
         let claimed = store.claim_next().unwrap().unwrap();
         assert_eq!(claimed.id, resumed.id);
         assert_eq!(
@@ -1587,7 +1565,6 @@ mod handoff {
             )
             .unwrap());
         let run = started(&helper, &runtime, &mut starts, &task).await;
-        // The app (another process in real life) writes the cancel.
         app_store.request_cancel(&task.id).unwrap();
         let handled = helper.apply_foreign_requests(&|_| None).await.unwrap();
         assert_eq!(handled, vec![task.id.clone()]);
@@ -1650,7 +1627,6 @@ mod handoff {
         let store = app.store().unwrap();
         let task = requested(&store, keep_running("paper", "Elsewhere"));
         let running = store.claim_next().unwrap().unwrap();
-        // A live process stands in for the helper.
         let mut helper = std::process::Command::new("sleep")
             .arg("30")
             .spawn()
@@ -1730,7 +1706,6 @@ mod handoff {
         let answer = asking.await.unwrap();
         assert_eq!(answer, Err(APPROVAL_WITHDRAWN.to_string()));
         assert_eq!(store.require(&task.id).unwrap().pending_approvals, 0);
-        // The step ends: the runtime saves its conversation and suspends.
         services
             .suspends
             .record(&task.id, snapshot_state(generation));
@@ -1779,7 +1754,6 @@ mod handoff {
         tokio::time::sleep(Duration::from_millis(300)).await;
         assert!(!suspending.is_finished());
         assert!(!asking.is_finished());
-        // The user answers in the app; the step ends, then the task suspends.
         let pending = services.approvals.pending("paper").unwrap();
         services.approvals.decide(&pending[0].id, true).unwrap();
         assert_eq!(asking.await.unwrap(), Ok(()));
@@ -1896,7 +1870,6 @@ mod handoff {
         stop(&state).await;
     }
 
-    /// A task host for tool calls that need none of its services.
     struct NullTaskHost;
 
     impl crate::builtin::TaskHost for NullTaskHost {
@@ -1925,9 +1898,6 @@ mod handoff {
     }
 }
 
-// 0.4.8 E: plan approval, the research record, retries and chaining.
-
-/// A task that writes its plan and waits for approval before working.
 fn plan_first(project_id: &str, title: &str) -> ResearchTaskDraft {
     ResearchTaskDraft {
         brief: Some(crate::model::ResearchBrief {
@@ -1938,7 +1908,6 @@ fn plan_first(project_id: &str, title: &str) -> ResearchTaskDraft {
     }
 }
 
-/// Writes a file of the run's research record, as the agent would.
 fn write_record(run: &StartedRun, name: &str, content: &str) -> PathBuf {
     let path = PathBuf::from(&run.context.execution_root)
         .join(&run.context.record_dir)
@@ -1947,7 +1916,6 @@ fn write_record(run: &StartedRun, name: &str, content: &str) -> PathBuf {
     path
 }
 
-/// Waits until `ready` holds.
 async fn poll_until(mut ready: impl FnMut() -> bool) {
     tokio::time::timeout(CHILD_PATIENCE, async {
         while !ready() {
@@ -1958,7 +1926,6 @@ async fn poll_until(mut ready: impl FnMut() -> bool) {
     .expect("the expected state was not reached in time");
 }
 
-/// Waits (with the patience of child processes) until the task has `status`.
 async fn reach_status(
     store: &TaskStore,
     task_id: &str,
@@ -1973,7 +1940,6 @@ async fn reach_status(
     store.require(task_id).unwrap()
 }
 
-/// The notifications the host showed, as (kind, task id).
 fn notifications_of(host: &FakeHost) -> Vec<(NotificationKind, String)> {
     host.notifications()
         .into_iter()
@@ -1981,8 +1947,6 @@ fn notifications_of(host: &FakeHost) -> Vec<(NotificationKind, String)> {
         .collect()
 }
 
-/// The attention count of a project in the last summary the host got
-/// (`None` before the first summary).
 fn attention_count(host: &FakeHost, project_id: &str) -> Option<u32> {
     host.latest_attention()
         .map(|summary| summary.by_project.get(project_id).copied().unwrap_or(0))
@@ -2027,7 +1991,6 @@ async fn a_plan_first_task_stops_at_plan_ready_with_its_workspace() {
         "- [ ] baseline\n- [ ] dropout sweep\n"
     );
 
-    // Waiting for approval holds no slot: the next task starts.
     let next = requested(&store, draft("paper", "Next in line"));
     state.launch_ready().await.unwrap();
     let following = next_run(&mut starts).await;
@@ -2052,7 +2015,6 @@ async fn a_plan_first_task_without_a_plan_fails_with_a_reason() {
     state.launch_ready().await.unwrap();
     let run = next_run(&mut starts).await;
     assert!(run.context.plan_phase);
-    // A blank plan is no plan.
     write_record(&run, "plan.md", " \n\n");
 
     let failed = finish_run(&state, run, Ok(outcome("All done"))).await;
@@ -2157,7 +2119,6 @@ async fn approving_a_plan_as_written_keeps_it_and_needs_a_task_that_waits_for_ap
     );
     assert_eq!(state.plan(&task.id).unwrap().text, "- [ ] as written\n");
 
-    // A blank edit is no edit: the plan as written is carried out.
     state
         .approve_plan(task.id.clone(), Some("  \n".into()))
         .await
@@ -2197,7 +2158,6 @@ async fn a_plan_longer_than_the_review_shows_is_flagged_and_needs_an_edit() {
     assert!(plan.truncated);
     assert_eq!(plan.text.len(), 64 * 1024);
     assert!(!plan.text.contains("past the cut"));
-    // Approving what the review could not show is refused.
     assert_eq!(
         state.approve_plan(task.id.clone(), None).await.unwrap_err(),
         PLAN_TOO_LONG
@@ -2206,7 +2166,6 @@ async fn a_plan_longer_than_the_review_shows_is_flagged_and_needs_an_edit() {
         store.require(&task.id).unwrap().status,
         ResearchTaskStatus::PlanReady
     );
-    // An edit that fits replaces it.
     state
         .approve_plan(task.id.clone(), Some("- [ ] shorter\n".into()))
         .await
@@ -2228,7 +2187,6 @@ async fn commands_ask_first_while_a_plan_first_task_plans() {
     let (runtime, mut starts) = ControlledRuntime::new();
     state.register_runtime("fixture", runtime).unwrap();
     let store = state.store().unwrap();
-    // Commands run without asking in the brief; while the agent plans, they ask.
     let task = requested(&store, plan_first("paper", "Plan before running"));
     assert_eq!(task.brief.permissions.commands, CommandPolicy::Allow);
     state.launch_ready().await.unwrap();
@@ -2241,7 +2199,6 @@ async fn commands_ask_first_while_a_plan_first_task_plans() {
     write_record(&planning, "plan.md", "- [ ] baseline\n");
     finish_run(&state, planning, Ok(outcome("planned"))).await;
 
-    // Once the plan is approved, the brief's own policy holds again.
     state.approve_plan(task.id.clone(), None).await.unwrap();
     let working = next_run(&mut starts).await;
     assert!(!working.context.plan_phase);
@@ -2388,7 +2345,6 @@ async fn dependents_receive_the_dependency_summary_and_record() {
     let reviewed = finish_run(&state, collecting, Ok(outcome("Found 12 papers"))).await;
     assert_eq!(reviewed.status, ResearchTaskStatus::AwaitingReview);
 
-    // The dependent starts once the dependency's result is applied.
     state.launch_ready().await.unwrap();
     assert!(starts.try_recv().is_err());
     store
@@ -2458,8 +2414,6 @@ async fn a_resume_without_its_workspace_fails_clearly() {
     stop(&state).await;
 }
 
-// 0.4.8 E: budgets, scheduled starts, notifications and attention.
-
 #[tokio::test]
 async fn a_cost_stop_cancels_without_a_wrap_up() {
     let data = DataRoot::new();
@@ -2481,7 +2435,6 @@ async fn a_cost_stop_cancels_without_a_wrap_up() {
     state.launch_ready().await.unwrap();
     let run = next_run(&mut starts).await;
 
-    // The cap stops the agent at once: no grace period and no extra turn.
     tokio::time::timeout(Duration::from_secs(5), run.cancel.cancelled())
         .await
         .expect("the cost cap did not stop the run");
@@ -2506,11 +2459,6 @@ async fn a_cost_stop_cancels_without_a_wrap_up() {
     stop(&state).await;
 }
 
-// The plan's `an_adapter_that_ignores_the_budget_is_stopped_after_the_grace_period`
-// needs HARD_STOP_AFTER (7 minutes) scaled for tests, and it is not; this
-// checks the part that runs in well under a second: a spent time budget is
-// noticed, the agent is left its grace period, and the result goes to review
-// with the time stop recorded.
 #[tokio::test]
 async fn a_spent_time_budget_leaves_the_agent_its_grace_period_to_wrap_up() {
     let data = DataRoot::new();
@@ -2520,7 +2468,6 @@ async fn a_spent_time_budget_leaves_the_agent_its_grace_period_to_wrap_up() {
     state.register_runtime("fixture", runtime).unwrap();
     let store = state.store().unwrap();
     let task = requested(&store, draft("paper", "Out of time"));
-    // An earlier attempt used the whole time budget, then stopped.
     let earlier = store.claim_next().unwrap().unwrap();
     let (preparation_store, preparation_host, preparation_task) =
         (store.clone(), data.host.clone(), earlier.clone());
@@ -2605,7 +2552,6 @@ async fn scheduled_tasks_start_on_time() {
         ResearchTaskStatus::Queued
     );
 
-    // Nothing else wakes the queue: its own timer starts the task.
     let run = next_run(&mut starts).await;
     assert_eq!(run.context.task_id, task.id);
     let started = store.require(&task.id).unwrap().started_at.unwrap();
@@ -2687,7 +2633,6 @@ async fn a_brief_whose_compute_target_was_removed_is_refused() {
     )
     .unwrap();
     let task = state.create(on(Some("cluster"))).unwrap();
-    // Removed after the task was queued: editing it refuses the stale brief.
     std::fs::write(&settings, r#"{"version":1,"targets":[]}"#).unwrap();
     let edit = ResearchTaskEdit {
         title: task.title.clone(),
@@ -2712,7 +2657,6 @@ async fn cancelling_or_retrying_a_queued_task_removes_copied_sign_in_files() {
     let state = data.state(1);
     let store = state.store().unwrap();
     let task = store.create(draft("paper", "Handed over at quit")).unwrap();
-    // The quit handoff copied the agent's sign-in files for the next owner.
     let copied = |generation| {
         let home = crate::handoff::acp_home_path(store.root(), &task.id, generation);
         std::fs::create_dir_all(home.join(".claude")).unwrap();
@@ -2738,7 +2682,6 @@ async fn held_launches_start_nothing_until_released() {
     let (runtime, mut starts) = ControlledRuntime::new();
     state.register_runtime("fixture", runtime).unwrap();
     let store = state.store().unwrap();
-    // The app holds launches while it recovers interrupted applies.
     state.hold_launches();
     let task = requested(&store, draft("paper", "Waits for recovery"));
     state.launch_ready().await.unwrap();
@@ -2758,8 +2701,6 @@ async fn held_launches_start_nothing_until_released() {
 #[test]
 fn the_wake_timer_reads_the_wall_clock_again_at_least_every_minute() {
     let now = 1_000_000_000;
-    // A start 15 hours away is checked again in a minute, in case the
-    // computer slept meanwhile (the timer's clock stops while it sleeps).
     assert_eq!(
         wake_step(now + 15 * 60 * 60 * 1000, now),
         (WAKE_CHECK_EVERY, false)
@@ -2842,16 +2783,11 @@ async fn review_plan_and_failure_raise_notifications_and_attention() {
     let notifications = data.host.notifications();
     assert_eq!(notifications[0].project_id, "paper");
     assert_eq!(notifications[0].task_title, "Ready for review");
-    // A failure needs no attention; the review and the plan still do.
     assert_eq!(store.attention().unwrap().by_project.get("paper"), Some(&2));
     poll_until(|| attention_count(&data.host, "paper") == Some(2)).await;
     stop(&state).await;
 }
 
-// 0.4.8 E: evidence checks never hold back a review.
-
-/// Workspace tools whose build fails and whose copy cites a label the
-/// baseline did not.
 struct WarningWorkspace;
 
 impl WorkspaceTools for WarningWorkspace {
@@ -2961,15 +2897,12 @@ async fn evidence_never_blocks_review() {
     let figure = &evidence_check(&report, EvidenceCheckId::Figures).items[0];
     assert_eq!(figure.code, "figures.unused");
     assert_eq!(figure.params["path"], "figures/new.png");
-    // The review was not held back for the warnings.
     poll_until(|| {
         notifications_of(&data.host).contains(&(NotificationKind::ReviewReady, task.id.clone()))
     })
     .await;
     stop(&state).await;
 }
-
-// 0.4.8 E: workspace upkeep, transcript reads and run cleanup.
 
 #[tokio::test]
 async fn a_new_fresh_generation_purges_old_workspaces_without_live_runs() {
@@ -2993,7 +2926,6 @@ async fn a_new_fresh_generation_purges_old_workspaces_without_live_runs() {
     );
     let first_generation = first.context.execution_generation;
     finish_run(&state, first, Err("stopped".into())).await;
-    // A run of the first attempt is still going.
     store
         .insert_run(&crate::model::RunRecord {
             task_id: task.id.clone(),
@@ -3031,7 +2963,6 @@ async fn a_new_fresh_generation_purges_old_workspaces_without_live_runs() {
     );
     assert!(first_baseline.is_dir());
 
-    // Once no run is live, the next fresh start removes the earlier copies.
     assert!(store
         .finish_run(
             &task.id,
@@ -3092,8 +3023,6 @@ async fn reading_events_flushes_pending_text_first() {
     stop(&state).await;
 }
 
-// The plan's `deltas_go_only_to_watching_webviews` is about the app's host,
-// which keeps the watcher map; this checks what the queue hands that host.
 #[tokio::test]
 async fn streamed_text_reaches_the_host_as_a_row_and_then_appends() {
     let data = DataRoot::new();
@@ -3135,7 +3064,6 @@ async fn streamed_text_reaches_the_host_as_a_row_and_then_appends() {
             ),
         ]
     );
-    // The later text went out as one append to the open row, before the next row.
     let deltas = lock(&data.host.deltas).clone();
     assert_eq!(deltas.len(), 1, "{deltas:?}");
     assert_eq!(
@@ -3163,14 +3091,12 @@ async fn streamed_text_reaches_the_host_as_a_row_and_then_appends() {
             },
         ]
     );
-    // The coalescing timer finds nothing left to send.
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(lock(&data.host.deltas).len(), 1);
     finish_run(&state, run, Ok(outcome("streamed"))).await;
     stop(&state).await;
 }
 
-/// Runs on a pretend target: each keeps running until it is cancelled.
 #[derive(Default)]
 struct HeldExecutor {
     cancelled: Mutex<Vec<(String, String)>>,
@@ -3232,7 +3158,6 @@ impl crate::runs::RunExecutor for HeldExecutor {
     }
 }
 
-/// Records a live run `r001` of the generation on the pretend target.
 fn held_run(store: &TaskStore, task_id: &str, generation: u64, run_dir: &Path) {
     store
         .insert_run(&crate::model::RunRecord {
@@ -3330,9 +3255,6 @@ async fn a_finished_generation_stops_its_runs_and_a_quit_leaves_them_going() {
     assert_eq!(executor.cancelled().len(), 1, "a quit leaves runs going");
 }
 
-// A generation that ends after its task moved on (see
-// `late_events_and_completion_cannot_replace_a_new_active_generation`) must
-// not take the new generation's budget clock or stop its runs.
 #[tokio::test]
 async fn a_late_generation_end_leaves_the_new_generation_its_clock_and_runs() {
     let data = DataRoot::new();
@@ -3364,7 +3286,6 @@ async fn a_late_generation_end_leaves_the_new_generation_its_clock_and_runs() {
 
     old.complete.send(Ok(outcome("stale result"))).unwrap();
     wait_settled(&old_active).await;
-    // The old generation is done once it gives its slot back.
     poll_until(|| state.inner.concurrency.available_permits() == 1).await;
 
     assert!(
@@ -3383,8 +3304,6 @@ async fn a_late_generation_end_leaves_the_new_generation_its_clock_and_runs() {
     stop(&state).await;
 }
 
-// 0.4.8 E: approvals for unattended work, through the queue and the
-// built-in runtime.
 mod approvals {
     use serde_json::{json, Value};
 
@@ -3395,8 +3314,6 @@ mod approvals {
     use crate::store::approvals::NO_LONGER_WAITING;
     use crate::task_tools::extra::TaskBinding;
 
-    /// An OpenAI-compatible provider: the first request gets a `run_command`
-    /// call, every later one the text "done".
     struct ScriptedProvider {
         url: String,
         requests: Arc<Mutex<Vec<Value>>>,
@@ -3471,7 +3388,6 @@ mod approvals {
         fn finish(&self, _status: &str) {}
     }
 
-    /// A research bridge without tools of its own.
     struct NoBridge;
 
     impl TaskBridge for NoBridge {
@@ -3538,7 +3454,6 @@ mod approvals {
         }
     }
 
-    /// A queue whose built-in runtime talks to `provider`.
     fn builtin_queue(data: &DataRoot, provider: &ScriptedProvider) -> ResearchTaskState {
         let state = data.state(1);
         let adapter = BuiltinTaskAdapter::new(
@@ -3553,7 +3468,6 @@ mod approvals {
         state
     }
 
-    /// A built-in task whose commands wait for the user's approval.
     fn asking(title: &str) -> ResearchTaskDraft {
         let mut brief = crate::model::ResearchBrief::default();
         brief.permissions.commands = CommandPolicy::Ask;
@@ -3565,7 +3479,6 @@ mod approvals {
         }
     }
 
-    /// Asks the way a task tool does, with the run's transcript and token.
     fn ask(
         state: &ResearchTaskState,
         task: &ResearchTask,
@@ -3594,7 +3507,6 @@ mod approvals {
         })
     }
 
-    /// The id of the request waiting in the project.
     async fn waiting_request(state: &ResearchTaskState) -> String {
         let services = state.services().unwrap();
         poll_until(|| !services.approvals.pending("paper").unwrap().is_empty()).await;
@@ -3609,7 +3521,6 @@ mod approvals {
         state.events(task_id, generation, None, 200).unwrap().events
     }
 
-    /// The approval states the transcript recorded, in order.
     fn approval_statuses(events: &[TaskTranscriptEvent]) -> Vec<ApprovalStatus> {
         events
             .iter()
@@ -3620,7 +3531,6 @@ mod approvals {
             .collect()
     }
 
-    /// The result of the run's tool call, as the agent got it.
     fn tool_result(events: &[TaskTranscriptEvent]) -> Value {
         let detail = events
             .iter()
@@ -3648,7 +3558,6 @@ mod approvals {
         state.launch_ready().await.unwrap();
         poll_until(|| store.require(&task.id).unwrap().pending_approvals == 1).await;
 
-        // The command waits for the user, and so does the agent.
         assert_eq!(provider.count(), 1);
         let waiting = store.require(&task.id).unwrap();
         assert_eq!(waiting.status, ResearchTaskStatus::Running);
@@ -3673,8 +3582,6 @@ mod approvals {
         match crate::runs::remote::settings::local_commands_unavailable_reason(
             data.directory.path(),
         ) {
-            // This system cannot confine commands: the platform refused the
-            // approved command, not the user.
             Some(reason) => assert_eq!(result["error"], reason.as_str(), "{result}"),
             None => {
                 assert!(
@@ -3717,7 +3624,6 @@ mod approvals {
             tool_result(&events),
             json!({"error": "The user didn't approve this command."})
         );
-        // The agent saw the refusal and finished its turn.
         assert_eq!(provider.count(), 2);
         assert!(provider
             .request(1)
@@ -3770,7 +3676,6 @@ mod approvals {
             NO_LONGER_WAITING
         );
 
-        // The task runs again; the old request stays closed.
         state.retry(&task.id, RetryMode::Fresh).unwrap();
         state.request_start(&task.id).unwrap();
         state.launch_ready().await.unwrap();
@@ -3875,9 +3780,6 @@ mod approvals {
         stop(&state).await;
     }
 
-    // A quit ends the generation without closing its open requests. Once
-    // the task runs again those requests can no longer be answered, so they
-    // must not be listed or counted as waiting.
     #[tokio::test]
     async fn a_request_left_open_by_a_quit_is_not_pending_after_a_retry() {
         let data = DataRoot::new();
@@ -3906,7 +3808,6 @@ mod approvals {
             .unwrap();
         assert!(asking.await.unwrap().is_err());
 
-        // The next start recovers the task as failed; the user retries it.
         let restarted = data.state(1);
         restarted.register_runtime("fixture", runtime).unwrap();
         restarted.recover_runs(false).await.unwrap();
@@ -3932,7 +3833,6 @@ mod approvals {
     }
 }
 
-/// An executor that only remembers what it was asked to clear.
 struct CleanupProbe {
     cleaned: Arc<Mutex<Vec<String>>>,
 }
@@ -4062,20 +3962,16 @@ async fn a_task_that_waits_lets_another_start_in_its_place() {
     let second_task = requested(&store, draft("paper", "Next in line"));
     let third_task = requested(&store, draft("paper", "Behind both"));
     state.launch_ready().await.unwrap();
-    // One slot, held by the first task: the others queue.
     assert!(
         tokio::time::timeout(Duration::from_millis(200), starts.recv())
             .await
             .is_err()
     );
 
-    // The first task waits for its runs, so the next task starts.
     phase(&first, TaskPhase::WaitingRuns);
     let second = next_run(&mut starts).await;
     assert_eq!(second.context.task_id, second_task.id);
 
-    // The second waits too, but only one task may wait without a slot: the
-    // third stays queued instead of the queue starting without end.
     phase(&second, TaskPhase::WaitingApproval);
     assert!(
         tokio::time::timeout(Duration::from_millis(300), starts.recv())
@@ -4087,8 +3983,6 @@ async fn a_task_that_waits_lets_another_start_in_its_place() {
         ResearchTaskStatus::Queued
     );
 
-    // The first works again and finishes; the slot it gave up is the second
-    // task's, which then runs on, and the third task gets the slot after it.
     phase(&first, TaskPhase::Working);
     assert_eq!(
         finish_run(&state, first, Ok(outcome("done"))).await.id,

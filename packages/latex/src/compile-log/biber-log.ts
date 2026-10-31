@@ -13,10 +13,6 @@ const lineError = /^ERROR - BibTeX subsystem.*, line (\d+), (.*)$/;
 const missingEntryWarning = /^WARN - (I didn't find a database entry for '[^']*'.*)$/;
 const lineWarning = /^WARN - (.* entry '(.*)' .*)$/;
 
-/**
- * Parse a Biber .blg log into structured diagnostics.
- * Only the first {@link MAX_COMPILE_LOG_BYTES} characters are examined. Never throws.
- */
 export function parseBiberLog(log: string): LogDiagnostic[] {
   const out: LogDiagnostic[] = [];
   const bibFileStack: string[] = [];

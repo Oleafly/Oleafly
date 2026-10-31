@@ -435,9 +435,6 @@ impl<'de> Deserialize<'de> for CheckpointPolicy {
 }
 
 impl CheckpointPolicy {
-    /// Validate a policy only where an unreadable one must be reported.
-    /// Project open, compile, and checkpoint capture deliberately do not call
-    /// this method.
     pub fn validate(&self) -> Result<()> {
         if let Some(invalid) = &self.invalid {
             return Err(Error::new(

@@ -84,10 +84,10 @@ describe("parseAuxLabels", () => {
     const aux = [
       "\\relax",
       "\\@writefile{toc}{\\contentsline {section}{Intro}{1}}",
-      "\\newlabel{broken", // unbalanced name group
-      "\\newlabel{no-payload}", // missing payload group
-      "\\newlabel{half}{{1}", // unbalanced payload
-      "\\newlabel{}{{1}{1}}", // empty name
+      "\\newlabel{broken",
+      "\\newlabel{no-payload}",
+      "\\newlabel{half}{{1}",
+      "\\newlabel{}{{1}{1}}",
       "\\newlabel{good}{{5}{6}}",
     ].join("\n");
     const map = parseAuxLabels(aux);
@@ -121,7 +121,6 @@ describe("refreshAuxNumbers", () => {
     expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
     await refreshAuxNumbers("p1", "main.tex", "out-1");
     expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
-    // A new output id re-reads.
     await refreshAuxNumbers("p1", "main.tex", "out-2");
     expect(readBuildArtifactMock).toHaveBeenCalledTimes(2);
   });
@@ -135,7 +134,6 @@ describe("refreshAuxNumbers", () => {
     });
     seedFilesStore("p1", "main.tex");
     await refreshAuxNumbers("p1", "main.tex", "out-1");
-    // Entry + child exactly once each despite both cycles.
     expect(readBuildArtifactMock).toHaveBeenCalledTimes(2);
     expect(auxNumberFor("root")).toEqual({ number: "1", page: "1" });
     expect(auxNumberFor("ch1:label")).toEqual({ number: "2.1", page: "14" });
@@ -156,7 +154,7 @@ describe("refreshAuxNumbers", () => {
     await refreshAuxNumbers("p1", "main.tex", "out-1");
     expect(auxNumberFor("keep")).toEqual({ number: "1", page: "1" });
 
-    serveAuxFiles({}); // every read now fails
+    serveAuxFiles({});
     await refreshAuxNumbers("p1", "main.tex", "out-2");
     expect(auxNumberFor("keep")).toEqual({ number: "1", page: "1" });
   });
@@ -222,7 +220,7 @@ describe("installAuxNumbers", () => {
     serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{fig:one}{{1}{5}}\n" });
     seedFilesStore("p1", "main.tex");
     installAuxNumbers();
-    installAuxNumbers(); // second install must not double-subscribe
+    installAuxNumbers();
 
     const checkpoint = createCompileSuccessCheckpoint({
       projectId: "p1",
@@ -243,7 +241,6 @@ describe("installAuxNumbers", () => {
     );
     expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
 
-    // Unrelated store updates with the same checkpoint do not re-read.
     useCompileStore.setState({ log: "noise" });
     await Promise.resolve();
     expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);

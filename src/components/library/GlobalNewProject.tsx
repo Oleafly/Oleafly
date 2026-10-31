@@ -21,8 +21,6 @@ function closeNewProject() {
 
 const onNewProjectCrash = () => closeAfterCrash(closeNewProject);
 
-// Mounted at the app root so it can be opened from anywhere (Library, the
-// omnibar's `/create`, the command palette), not just the Library screen.
 export function GlobalNewProject() {
   const open = useSettingsStore((s) => s.newProjectOpen);
   return (
@@ -42,8 +40,6 @@ function NewProjectFlow() {
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [creating, setCreating] = useState(false);
 
-  // The new-project and import dialogs open from anywhere, so their pictures
-  // are read once while the app is idle rather than when a dialog opens.
   useEffect(() => {
     warmChoiceArt();
   }, []);
@@ -70,7 +66,6 @@ function NewProjectFlow() {
   const create = async (rawName: string, templateId: string, color: string) => {
     setCreating(true);
     try {
-      // Creation stages the template (and any fonts) and opens the project.
       await createFromTemplate(
         rawName.trim() || t(($) => $.library.newProject.untitled),
         templateId,

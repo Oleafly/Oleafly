@@ -1,7 +1,3 @@
-//! Whole-project goldens: snapshot, index, contexts and preflight against the
-//! app's own pipeline (the TypeScript generator runs the real project
-//! analyzer and the preflight store's context builders on the same files).
-
 mod support;
 
 use std::io::Read;
@@ -19,8 +15,6 @@ use support::{
 
 const MAX_LOG_BYTES: usize = 4 * 1024 * 1024;
 
-/// The head of a build log, as the CLI reads it: at most 4 MiB, cut at a
-/// character boundary, decoded lossily, LF line endings.
 fn read_log_head(path: &Path) -> String {
     let mut bytes = Vec::new();
     std::fs::File::open(path)
@@ -102,8 +96,6 @@ fn golden_projects() {
             });
             let expected_path = fixture.join("expected").join(format!("{case_name}.json"));
             let expected = read_json(&expected_path);
-            // Compare the facts first, so an index difference fails with a
-            // precise diff before the findings that depend on it.
             assert_golden(
                 &format!("{name}/{case_name} refs"),
                 &actual["refs"],

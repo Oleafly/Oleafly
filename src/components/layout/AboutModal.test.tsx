@@ -42,7 +42,6 @@ describe("AboutModal", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: enShell.about.star }));
-    // Conversation lives on Discord now, so the GitHub Discussions and Issues links are gone.
     expect(screen.queryByRole("button", { name: /Discussions/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Issues/ })).toBeNull();
     expect(await screen.findByLabelText("7 members online on Discord")).toBeInTheDocument();

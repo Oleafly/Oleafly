@@ -29,7 +29,6 @@ function PreviewImage({ projectId, path, src, alt, title }: Readonly<{
   title?: string;
 }>) {
   const key = `${projectId}\0${path}\0${src}`;
-  // A project image, also when its path was saved with the app's own address.
   const target = projectFileForHref(path, src)?.path ?? null;
   const external = !target && src && /^https?:\/\//iu.test(src) ? src : null;
   const [loaded, setLoaded] = useState<{ key: string; url: string | null } | null>(null);
@@ -46,9 +45,6 @@ function PreviewImage({ projectId, path, src, alt, title }: Readonly<{
     : <span className="text-muted-foreground">{alt}</span>;
 }
 
-// A project link keeps its exact project path, so a copied link maps back to
-// the right file. Links saved with the app's own address, as 0.4.7 did, open
-// their file too instead of a dead page in the browser.
 function PreviewLink({ path, href, children }: Readonly<{ path: string; href?: string; children?: ReactNode }>) {
   const target = projectFileForHref(path, href);
   const Anchor = markdownComponents.a as (props: { href?: string; children?: ReactNode }) => ReactNode;
@@ -61,7 +57,6 @@ function PreviewLink({ path, href, children }: Readonly<{ path: string; href?: s
     className="text-primary underline underline-offset-2 dark:text-primary">{children}</a>;
 }
 
-/** The renderers for the open document: its images and links resolve against `path`. */
 function previewComponents(projectId: string | null, path: string): Components {
   return {
     ...markdownComponents,

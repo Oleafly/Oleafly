@@ -21,9 +21,7 @@ export interface HarnessToolCall {
   args: unknown;
 }
 
-/** What a usage event adds beside the run totals. */
 export interface UsageExtras {
-  /** The latest step alone: the context the model just saw. */
   lastStep?: AgentUsage;
   contextWindow?: number;
 }
@@ -42,7 +40,6 @@ export interface HarnessHandlers {
   onRetry(attempt: number, max: number): void;
   onSubagentUpdate(update: Extract<AgentEvent, { kind: "subagentUpdate" }>): void;
   onSteered?(text: string): void;
-  /** Something the user should know that is not an error (a file sent as text). */
   onNotice?(code: string, detail: string | null): void;
 }
 
@@ -197,32 +194,18 @@ export async function runAgentHarness(args: {
   providerOverride?: { provider_id: string; model_id: string };
   takePendingImages?: () => string[];
   imageInstruction?: string;
-  /** The project this run is pinned to; enables native backend tool dispatch. */
   projectId?: string | null;
-  /** Thread the turn records into (rollouts + SQLite mirror). */
   threadId?: string;
-  /** Client-generated turn id for the optimistic-turn rebind. */
   clientTurnId?: string;
-  /** Backend request id, needed to steer or interrupt by id. */
   onRequestId?: (id: string) => void;
-  /** Raw event tap (fold into the authoritative turn record). */
   onRawEvent?: (event: AgentEvent) => void;
-  /**
-   * Run-context guard, called before every tool execution. Returning a
-   * message refuses the call with a structured error instead of executing —
-   * the mechanism that keeps a run pinned to the project it started in.
-   */
   guardToolCall?: (call: HarnessToolCall) => string | null;
-  /** Sent only when set; Auto leaves it out. */
   effort?: EffortLevel;
-  /** Sent only when web is on for the chat. */
   web?: WebToggle;
   handlers: HarnessHandlers;
 }): Promise<AgentRunOutcome> {
   const { handlers } = args;
   const names = new Map<string, string>();
-  // Tools the webview executed itself (via onToolRequest); their toolOutcome
-  // events must not render a second call/result pair.
   const locallyExecuted = new Set<string>();
   const callArguments = new Map<string, unknown>();
   let reasoningOpen = false;
@@ -290,8 +273,6 @@ export async function runAgentHarness(args: {
             callArguments.set(event.id, parseJson(event.arguments));
             break;
           case "toolOutcome": {
-            // Natively executed tools never reach onToolRequest; render them
-            // from the loop's own outcome event instead.
             if (locallyExecuted.has(event.id)) break;
             const name = names.get(event.id) ?? "tool";
             void Promise.resolve(
@@ -339,9 +320,6 @@ export async function runAgentHarness(args: {
       onToolRequest: async (call) => {
         if (args.signal.aborted) return { output: "" };
         endReasoning();
-        // The request id is namespaced (tool-{gen}-{seq}-{providerId}) while
-        // the loop's toolOutcome event carries the bare provider id; record
-        // both so the outcome of a locally executed tool is not re-rendered.
         locallyExecuted.add(call.id);
         locallyExecuted.add(providerCallIdFromToolReplyId(call.id));
         names.set(call.id, call.name);

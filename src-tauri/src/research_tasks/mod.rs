@@ -18,8 +18,6 @@ pub use oleafly_research::model::{
 pub use oleafly_research::scheduler::{
     ResearchTaskState, TaskEventSink, TaskRuntimeAdapter, TaskRuntimeFuture,
 };
-// The task model, store and isolation live in the research crate; the app
-// keeps apply and preview, which need the live collaboration document.
 pub(crate) use oleafly_research::{isolation, model, store};
 
 use model::{
@@ -35,7 +33,6 @@ pub struct TaskApplyResult {
     pub project_state: crate::project::ProjectStateChanged,
 }
 
-/// The app's task queue over `~/.oleafly/research-tasks`, two tasks at once.
 pub fn new_state() -> ResearchTaskState {
     ResearchTaskState::new(
         crate::paths::oleafly_root().map(|root| root.join("research-tasks")),
@@ -43,13 +40,8 @@ pub fn new_state() -> ResearchTaskState {
     )
 }
 
-/// Connect the queue to the app: trust, projects, skills and webview events.
-/// Queued work waits for [`recover`]: the launch handoff runs beside it and
-/// must not start a task over a project an interrupted apply left half done.
 pub fn attach(state: &ResearchTaskState, app: &tauri::AppHandle) {
     state.hold_launches();
-    // 0.4.8: experimental and off until the user turns tasks on; a config
-    // that cannot be read keeps them off.
     state.set_enabled(
         crate::config::read_config()
             .map(|config| config.research_tasks_enabled)
@@ -61,8 +53,6 @@ pub fn attach(state: &ResearchTaskState, app: &tauri::AppHandle) {
     );
 }
 
-/// What a caller gets while research tasks are off (the CLI, an agent over
-/// MCP, or a window that loaded before the switch was flipped).
 pub(crate) const TASKS_OFF: &str = "Research tasks are turned off. They are experimental in this version: turn them on under Settings, Research, at your own risk.";
 
 fn ensure_enabled(state: &ResearchTaskState) -> Result<(), String> {
@@ -73,9 +63,6 @@ fn ensure_enabled(state: &ResearchTaskState) -> Result<(), String> {
     }
 }
 
-/// Turns research tasks on or off: the setting, the queue, and the work
-/// under way. Turning them on starts queued work; turning them off cancels
-/// every running task, so nothing keeps working behind a hidden panel.
 pub(crate) async fn set_enabled(state: &ResearchTaskState, enabled: bool) -> Result<(), String> {
     let stored = tauri::async_runtime::spawn_blocking(move || {
         crate::config::update_config(|config| {
@@ -115,14 +102,10 @@ pub async fn research_tasks_set_enabled(
     set_enabled(&state, enabled).await
 }
 
-/// Finish applies a previous run left half done, recover interrupted runs,
-/// then start queued work unless an apply is still unresolved.
 pub async fn recover(
     state: &ResearchTaskState,
     app_state: &crate::state::AppState,
 ) -> Result<(), String> {
-    // However recovery ends, work the user starts from now on runs; the
-    // launch handoff starts queued work only after a clean recovery.
     struct Release<'a> {
         state: &'a ResearchTaskState,
         clean: bool,
@@ -153,11 +136,9 @@ pub async fn recover(
             failures.push(format!("{}: {error}", pending.task_id));
         }
     }
-    // Queued work starts now only when no apply is left unresolved.
     release.clean = unresolved == 0;
     drop(release);
     state.recover_runs(unresolved == 0).await?;
-    // Sandbox profiles of tasks that no longer exist (Windows) go now.
     if let Ok(tasks) = store.all_tasks() {
         let owners: Vec<String> = tasks
             .iter()
@@ -177,16 +158,12 @@ pub async fn recover(
     }
 }
 
-/// How the launch's [`recover`] went: `None` until it ends, then whether it
-/// left no apply unresolved.
 fn recovery() -> &'static tokio::sync::watch::Sender<Option<bool>> {
     static RECOVERY: std::sync::OnceLock<tokio::sync::watch::Sender<Option<bool>>> =
         std::sync::OnceLock::new();
     RECOVERY.get_or_init(|| tokio::sync::watch::channel(None).0)
 }
 
-/// Waits for the launch's [`recover`]; `true` when queued work may start
-/// (no interrupted apply is left unresolved).
 pub(crate) async fn recovered_cleanly() -> bool {
     let mut outcome = recovery().subscribe();
     outcome
@@ -327,7 +304,6 @@ pub async fn research_task_cancel(
 }
 
 #[tauri::command]
-/// Without a mode a retry starts over, as in 0.4.7.
 pub async fn research_task_retry(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
@@ -342,9 +318,6 @@ pub async fn research_task_retry(
     .await
 }
 
-/// A page of a generation's transcript. Forward from `after_sequence`, or,
-/// with `before_sequence`, backwards from the newest rows below it (a value
-/// above every row, such as `Number.MAX_SAFE_INTEGER`, reads the newest page).
 #[tauri::command]
 pub async fn research_task_events(
     state: tauri::State<'_, ResearchTaskState>,
@@ -493,9 +466,6 @@ pub async fn research_task_accept_result(
     Ok((&task).into())
 }
 
-// 0.4.8 E: plan approval, runs, approvals, attention, evidence, progress
-// and watching a task.
-
 const MAX_TASK_ID: usize = 128;
 
 fn check_task_id(task_id: &str) -> Result<(), String> {
@@ -621,7 +591,6 @@ pub async fn research_task_progress(
     blocking_task_command(&state, move |state| state.progress(&task_id)).await
 }
 
-/// Transcript rows and text deltas go only to the windows showing the task.
 #[tauri::command]
 pub fn research_task_watch(webview: tauri::Webview, task_id: Option<String>) -> Result<(), String> {
     if let Some(task_id) = &task_id {

@@ -20,6 +20,7 @@ export interface NotebookToolStatus {
   downloadBytes: number | null;
   license: string;
   installing: boolean;
+  supersededVersions?: readonly string[];
 }
 
 export type LanguageRuntimeName = "r" | "python" | "julia";

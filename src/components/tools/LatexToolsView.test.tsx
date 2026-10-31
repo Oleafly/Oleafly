@@ -169,7 +169,6 @@ describe("LatexToolsView", () => {
       expect(card).toHaveTextContent(toolDescription(tool.id));
       for (const tag of toolTags(tool.id)) expect(card).toHaveTextContent(tag);
     }
-    // The picture is decorative, so the card's name is its text alone.
     expect(
       screen.getByRole("button", { name: new RegExp(`^${toolName("bibtex")}`) }),
     ).toBe(screen.getByTestId("latex-tool-card-bibtex"));

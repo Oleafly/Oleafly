@@ -1,4 +1,3 @@
-//! Word counts like the app's (moved from the app's `document_stats.rs`).
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
@@ -3990,7 +3989,6 @@ impl KnownFiles {
     }
 }
 
-/// The vendored Typst package folder, never counted as document text.
 pub const VENDOR_DIR: &str = "typst-packages";
 const MAX_WALK_DEPTH: usize = 64;
 
@@ -4033,8 +4031,6 @@ fn collect_files_into(root: &Path, directory: &Path, out: &mut Vec<String>, dept
     }
 }
 
-/// Every file in the project (slash paths; `.oleafly`, `.git` and links
-/// skipped), for [`KnownFiles::from_paths`].
 pub fn collect_project_files(root: &Path) -> Vec<String> {
     let mut out = Vec::new();
     collect_files_into(root, root, &mut out, 0);
@@ -4098,13 +4094,10 @@ fn walk_document(
     }
 }
 
-/// Reads project sources for a count.
 pub trait SourceReader {
-    /// Texts for `paths`; `None` for a file that can't be read.
     fn read_batch(&self, paths: &[String]) -> Result<BTreeMap<String, Option<String>>, DocError>;
 }
 
-/// Reads sources straight from a project folder.
 pub struct FsReader<'a> {
     pub root: &'a Path,
 }
@@ -4128,8 +4121,6 @@ impl SourceReader for FsReader<'_> {
     }
 }
 
-/// Loads the text of each path in `frontier` that isn't loaded yet: from
-/// `overrides` when a buffer has it, otherwise from the reader.
 fn load_frontier_texts(
     frontier: &[String],
     overrides: &BTreeMap<String, String>,
@@ -4165,8 +4156,6 @@ fn load_frontier_texts(
     Ok(())
 }
 
-/// Counts the document rooted at `request.main_document`, following its
-/// includes like the app (buffers in `request.overrides` win over disk).
 pub fn document_stats_with(
     known: &KnownFiles,
     request: DocumentStatsRequest,

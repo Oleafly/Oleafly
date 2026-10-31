@@ -1180,6 +1180,8 @@
     "exportTxt": "Eksporter som ren tekst (.txt)",
     "exportZipFailed": "Kunne ikke eksportere projektets zip-fil",
     "exporting": "Eksporterer .{{format}}…",
+    "exportingStep": "Eksporterer .{{format}}: {{step}}",
+    "stopExport": "Stop",
     "fork": "Forgren",
     "forkDescription": "Kopierer <name>{{name}}</name> og projektets Git-historik over i et nyt projekt. Kontrolpunkterne starter tomme.",
     "forkFailed": "Kunne ikke forgrene projektet.",

@@ -193,6 +193,17 @@ pub fn bind_first_snapshot(
     Ok(())
 }
 
+pub fn ends(conn: &Connection, project: SharedProjectId) -> Result<HashMap<u64, i64>, ServerError> {
+    let mut statement =
+        conn.prepare("SELECT peer, counter_end FROM project_peers WHERE project_id = ?1")?;
+    let rows = statement
+        .query_map([project.to_string()], |row| {
+            Ok((peer_from_sql(row.get::<_, i64>(0)?), row.get::<_, i64>(1)?))
+        })?
+        .collect::<Result<HashMap<_, _>, _>>()?;
+    Ok(rows)
+}
+
 pub fn table(conn: &Connection, project: SharedProjectId) -> Result<Vec<ProjectPeer>, ServerError> {
     let mut statement = conn.prepare(
         "SELECT peer, device_id, account_id FROM project_peers WHERE project_id = ?1 ORDER BY bound_at, peer",

@@ -20,6 +20,7 @@ vi.mock("./figure-decode", async (importOriginal) => ({
   rgbaToPngDataUrl: mocks.rgbaToPngDataUrl,
 }));
 
+import { sharedPdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
 import { rawToRgba } from "./figure-decode";
 import { countPdfPages, extractPagesForConvert } from "./pdf-adapter";
 
@@ -104,9 +105,10 @@ describe("extractPagesForConvert", () => {
 
     expect(await extractPagesForConvert(bytes)).toEqual({ pages: [], figures: [], pageCount: 0 });
 
-    const { data } = mocks.getDocument.mock.calls[0][0] as { data: Uint8Array };
-    expect(data).toEqual(bytes);
-    expect(data).not.toBe(bytes);
+    const params = mocks.getDocument.mock.calls[0][0] as { data: Uint8Array };
+    expect(params.data).toEqual(bytes);
+    expect(params.data).not.toBe(bytes);
+    expect(params).toMatchObject(sharedPdfDocumentOptions());
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
 
@@ -282,7 +284,6 @@ describe("extractPagesForConvert", () => {
 
     expect(extracted.pageCount).toBe(4);
     expect(extracted.pages.map((page) => page.items[0].str)).toEqual(["page 2", "page 3", "page 4"]);
-    // Figures keep their PDF page number.
     expect(extracted.figures.map((figure) => figure.name)).toEqual([
       "figure_p2_1.png",
       "figure_p3_1.png",
@@ -345,6 +346,9 @@ describe("extractPagesForConvert", () => {
     const pages = [fakePage({}), fakePage({})];
     openDocument(pages);
     await expect(countPdfPages(new Uint8Array([1]))).resolves.toBe(2);
+    expect(mocks.getDocument).toHaveBeenCalledWith(
+      expect.objectContaining(sharedPdfDocumentOptions()),
+    );
     expect(pages[0].getTextContent).not.toHaveBeenCalled();
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });

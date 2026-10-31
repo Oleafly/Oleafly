@@ -1,5 +1,3 @@
-//! Task budgets: active time (waiting for approvals does not count), model
-//! spend and the number of runs.
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -14,28 +12,21 @@ pub enum BudgetKind {
     Runs,
 }
 
-/// After the time budget ends the agent gets one short turn to wrap up.
 pub const WRAP_UP_LIMIT: Duration = Duration::from_secs(5 * 60);
 pub const WRAP_UP_STEPS: u32 = 20;
-/// A run that ignores the wrap-up is stopped this long after the budget ended.
 pub const HARD_STOP_AFTER: Duration = Duration::from_secs(7 * 60);
 pub const SPEND_CHECK_EVERY: Duration = Duration::from_secs(30);
 
-/// What the task's model calls cost so far, in US dollars (`None` when
-/// the cost of the model is unknown).
 pub type SpendProbe = Arc<dyn Fn() -> Option<f64> + Send + Sync>;
 
 struct ClockState {
-    /// Active time before the current stretch.
     banked: Duration,
-    /// When the current active stretch began (`None` while paused).
     running_since: Option<Instant>,
     pauses: u32,
     spend: Option<f64>,
     spend_checked: Option<Instant>,
 }
 
-/// One running task's budget.
 pub struct BudgetClock {
     budget: TaskBudget,
     state: Mutex<ClockState>,
@@ -48,7 +39,6 @@ impl BudgetClock {
         Self::with_clock(budget, active_ms_at_start, spend, Box::new(Instant::now))
     }
 
-    /// A clock with an injected time source (tests).
     pub fn with_clock(
         budget: TaskBudget,
         active_ms_at_start: u64,
@@ -92,7 +82,6 @@ impl BudgetClock {
         self.limit().saturating_sub(self.active(&state))
     }
 
-    /// Stops counting (an approval wait). Pauses nest.
     pub fn pause(&self) {
         let mut state = lock(&self.state);
         state.pauses += 1;
@@ -109,7 +98,6 @@ impl BudgetClock {
         }
     }
 
-    /// The spend, read at most every [`SPEND_CHECK_EVERY`].
     fn spend(&self) -> Option<f64> {
         let checked = {
             let state = lock(&self.state);
@@ -127,7 +115,6 @@ impl BudgetClock {
         spend
     }
 
-    /// Which budget ran out, if one did. Unknown cost never trips the cap.
     pub fn exhausted(&self) -> Option<BudgetKind> {
         if let Some(cap) = self.budget.usd_cap {
             if self.spend().is_some_and(|spend| spend >= cap) {
@@ -146,9 +133,6 @@ impl BudgetClock {
     }
 }
 
-/// Keeps a clock paused for as long as it lives (an approval wait). Dropping
-/// it resumes the clock, so a wait that is dropped (a tool call that timed
-/// out) never leaves the budget paused for good.
 pub struct ClockPause(Option<Arc<BudgetClock>>);
 
 impl ClockPause {
@@ -168,7 +152,6 @@ impl Drop for ClockPause {
     }
 }
 
-/// The clocks of running tasks, by task id.
 #[derive(Default)]
 pub struct BudgetClocks {
     clocks: Mutex<HashMap<String, Arc<BudgetClock>>>,

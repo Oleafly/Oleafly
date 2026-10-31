@@ -319,8 +319,6 @@ describe("sparkle scatter", () => {
     const sorted = Array.from({ length: 10 }, (_, i) => scatter(i, 0)).sort(
       (a, b) => a - b,
     );
-    // A golden-ratio sequence keeps every neighbouring pair apart; random
-    // sampling regularly produces near-duplicates.
     for (let i = 1; i < sorted.length; i++) {
       expect(sorted[i] - sorted[i - 1]).toBeGreaterThan(0.02);
     }

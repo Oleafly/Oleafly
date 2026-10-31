@@ -1,7 +1,3 @@
-//! Numbers in the manuscript that cite a run (`% run: r002`,
-//! `// run: r002`, `<!-- run: r002 -->`) must match what the run recorded.
-
-/// The run id after a marker on this line, and the text before the marker.
 fn marker(line: &str) -> Option<(&str, String)> {
     for (open, close) in [
         ("<!-- run:", Some("-->")),
@@ -30,8 +26,6 @@ fn marker(line: &str) -> Option<(&str, String)> {
     None
 }
 
-/// Decimal numbers (and percentages) in `text`; whole numbers are left out
-/// because table rows also hold counts and labels.
 fn decimals(text: &str) -> Vec<String> {
     let chars: Vec<char> = text.chars().collect();
     let mut found = Vec::new();
@@ -61,7 +55,6 @@ fn decimals(text: &str) -> Vec<String> {
     found
 }
 
-/// `(line, numbers, run id)` for every line that cites a run. CRLF is fine.
 pub fn numbers_with_run_markers(text: &str) -> Vec<(u32, Vec<String>, String)> {
     text.lines()
         .enumerate()
@@ -91,8 +84,6 @@ fn rounds_to(printed: &str, value: f64) -> bool {
         .is_ok_and(|rounded| (rounded - printed_value).abs() < 1e-12)
 }
 
-/// Whether `value` rounds to `printed` at the precision it was printed with,
-/// or does so as a percentage.
 pub fn number_matches(printed: &str, value: f64) -> bool {
     rounds_to(printed, value) || rounds_to(printed, value * 100.0)
 }

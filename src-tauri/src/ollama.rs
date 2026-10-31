@@ -31,14 +31,10 @@ const EXTRA_BIN_DIRS: [&str; 4] = ["/usr/local/bin", "/usr/bin", "/bin", "/snap/
 #[cfg(target_os = "windows")]
 const EXTRA_BIN_DIRS: [&str; 0] = [];
 
-/// One `/api/tags` request.
 const TAGS_TIMEOUT: Duration = Duration::from_secs(5);
-/// One `/api/show` request.
 const SHOW_TIMEOUT: Duration = Duration::from_secs(3);
-/// All `/api/show` lookups of one listing together.
 const SHOW_DEADLINE: Duration = Duration::from_secs(6);
 const SHOW_CONCURRENCY: usize = 4;
-/// Models past this many in one listing stay unknown rather than queried.
 const MAX_SHOW_LOOKUPS: usize = 64;
 const MAX_SHOW_CACHE: usize = 256;
 
@@ -57,8 +53,6 @@ fn installed_ollama() -> Option<std::path::PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
-/// Whether an `ollama` executable exists on this machine, so the UI can offer
-/// to start it instead of only telling the user it is not running.
 #[tauri::command]
 pub async fn ollama_installed() -> bool {
     installed_ollama().is_some()
@@ -217,16 +211,13 @@ async fn fetch_tags(client: &reqwest::Client, base: &str) -> Result<Vec<TagModel
     Ok(body.models)
 }
 
-/// How a `/api/show` lookup ended.
 enum Show {
     /// Ollama answered: what it said the model can do, or `None` when it
     /// said nothing (an older Ollama, or a model it does not know).
     Answer(Option<Vec<String>>),
-    /// No answer to rely on: worth asking again next time.
     Unanswered,
 }
 
-/// What `/api/show` says the model can do.
 async fn show_capabilities(client: &reqwest::Client, base: &str, name: &str) -> Show {
     let Ok(response) = client
         .post(format!("{base}/api/show"))
@@ -297,8 +288,6 @@ async fn list_model_details_at(
                 (index, key, shown)
             }))
             .buffer_unordered(SHOW_CONCURRENCY);
-        // Dropping the stream at the deadline cancels the lookups still out;
-        // their models stay unknown and uncached.
         while let Ok(Some((index, key, shown))) =
             tokio::time::timeout_at(deadline, answers.next()).await
         {
@@ -313,9 +302,6 @@ async fn list_model_details_at(
     Ok(models)
 }
 
-/// List the models installed in a local Ollama instance. Returns a sorted list
-/// of model tags (e.g. `llama3.2:latest`), or an error string if Ollama isn't
-/// reachable (not running / not installed).
 #[tauri::command]
 pub async fn ollama_list_models(host: String) -> Result<Vec<String>, String> {
     let base = base_url(&host);
@@ -366,13 +352,10 @@ mod tests {
         );
     }
 
-    /// What the fixture answers: `Some((status, body))`, or `None` to hold the
-    /// connection open without answering.
     type Respond = Arc<dyn Fn(&str, &str, &str) -> Option<(u16, String)> + Send + Sync>;
 
     struct Fixture {
         base: String,
-        /// `"{method} {path}"` and the body of every request, in order.
         requests: Arc<Mutex<Vec<(String, String)>>>,
     }
 
@@ -621,8 +604,6 @@ mod tests {
         };
         assert_eq!(capabilities(&first, "my-ocr-finetune"), None);
 
-        // Once Ollama has loaded, the next listing asks again and learns
-        // the model reads images; the model it does not know is not asked.
         loading.store(false, Ordering::SeqCst);
         let second = list_model_details_at(&fixture.base, Duration::from_secs(2))
             .await
@@ -696,7 +677,6 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(1));
         assert_eq!(models[0].capabilities, None);
 
-        // The miss was not cached: a later listing asks again.
         slow.store(false, Ordering::SeqCst);
         let models = list_model_details_at(&fixture.base, Duration::from_secs(2))
             .await

@@ -46,9 +46,7 @@ export interface AgentCompletionRequest {
   timeout_ms?: number;
   idle_timeout_ms?: number;
   tools?: AgentToolSchema[];
-  /** How hard the model thinks; omitted for the model's default. */
   effort?: EffortLevel;
-  /** Web search and page reading for this run; omitted when off. */
   web?: WebToggle;
   reasoning_summary?: boolean;
 }
@@ -58,7 +56,6 @@ export interface AgentCompletionResponse {
   usage: AgentUsage;
   provider_id: string;
   model_id: string;
-  /** Why the model stopped, as the provider named it (`max_tokens`, `length`, ...). */
   stop_reason?: string | null;
 }
 
@@ -234,9 +231,7 @@ export interface AgentRunOutcome {
   steps: number;
   stopped_at_cap: boolean;
   error: string | null;
-  /** Why the last step ended, as the provider said it. */
   stop_reason?: string | null;
-  /** The run's cost with its subagents', when prices are known. */
   cost_usd?: number | null;
   error_kind?: string | null;
 }
@@ -269,11 +264,8 @@ export async function runViaBackend(
   providerOverride?: ProviderOverride,
   projectId?: string | null,
   run?: {
-    /** Thread this turn is recorded into (rollouts + mirror). */
     threadId?: string;
-    /** Client-generated turn id, echoed into the persisted record. */
     clientTurnId?: string;
-    /** Fires with the backend request id once the run is registered. */
     onRequestId?: (id: string) => void;
   },
 ): Promise<AgentRunOutcome> {
@@ -316,7 +308,6 @@ export async function runViaBackend(
         request,
         config: config ?? null,
         providerOverride: providerOverride ?? null,
-        // Pins native tool dispatch to the project the run started in.
         projectId: projectId ?? null,
         threadId: run?.threadId ?? null,
         clientTurnId: run?.clientTurnId ?? null,
@@ -340,15 +331,12 @@ export interface SteerResult {
   status: SteerStatus;
 }
 
-/** Inject mid-run input into an active run; lands at the next message boundary. */
 export const agentSteer = (requestId: string, message: AgentMessage) =>
   invoke<SteerResult>("agent_steer", { requestId, message });
 
-/** Stop every running subagent of a run without stopping the run. */
 export const agentSubagentsStop = (requestId: string) =>
   invoke<number>("agent_subagents_stop", { requestId });
 
-/** Replay a thread's recorded turns (subagent transcripts included). */
 export const agentThreadRead = (threadId: string) =>
   invoke<
     Array<{
@@ -368,7 +356,6 @@ export const agentThreadArchive = (threadId: string) =>
 export const agentThreadDelete = (threadId: string) =>
   invoke<void>("agent_thread_delete", { threadId });
 
-/** A copy of a thread, without its last `excludeTurns` turns when given. */
 export const agentThreadFork = (threadId: string, projectId: string, excludeTurns?: number) =>
   invoke<string>("agent_thread_fork", {
     threadId,
@@ -376,11 +363,9 @@ export const agentThreadFork = (threadId: string, projectId: string, excludeTurn
     projectId,
   });
 
-/** Drops the last `numTurns` turns of a thread. */
 export const agentThreadRollback = (threadId: string, numTurns: number) =>
   invoke<unknown[]>("agent_thread_rollback", { threadId, numTurns });
 
-/** The provider account's remaining credit, or null when it cannot be read. */
 export async function providerCredit(providerId: string): Promise<ProviderCredit | null> {
   try {
     return (await invoke<ProviderCredit | null>("agent_provider_credit", { providerId })) ?? null;
@@ -389,14 +374,12 @@ export async function providerCredit(providerId: string): Promise<ProviderCredit
   }
 }
 
-/** How web search and fetch work for a model (the active one when no ids). */
 export const agentWebSupport = (providerId?: string, modelId?: string) =>
   invoke<WebSupport>("agent_web_support", {
     providerId: providerId ?? null,
     modelId: modelId ?? null,
   });
 
-/** Claim a prewarmed thread for a project (null means: create a fresh one). */
 export const agentThreadClaimPrewarmed = (projectId: string) =>
   invoke<string | null>("agent_thread_claim_prewarmed", { projectId });
 

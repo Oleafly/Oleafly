@@ -1,16 +1,4 @@
 #!/usr/bin/env bash
-#
-# Print the CHANGELOG.md entry for a release, for use as the GitHub Release body
-# and the updater's `notes` (what changed, not how to install).
-#
-# Usage:
-#   ./scripts/changelog-extract.sh 0.2.0
-#   ./scripts/changelog-extract.sh v0.2.0   # a leading "v" is stripped
-#
-# Emits the lines under `## [X.Y.Z]` up to (not including) the next `## `
-# heading, with surrounding blank lines trimmed. When the version has no
-# section, emits a short pointer to the changelog so the release still says
-# something useful instead of failing.
 set -euo pipefail
 
 VERSION="${1:?usage: changelog-extract.sh <version>}"

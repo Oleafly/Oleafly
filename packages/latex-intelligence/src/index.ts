@@ -25,17 +25,10 @@ export {
   validatePackageCatalog,
 } from "./validate";
 
-/** Matches every generated basename under `packages/` (classes are `class-<name>`). */
 const PACKAGE_NAME_RE = /^[A-Za-z0-9@_+-]+$/;
 const PACKAGE_CACHE_CAP = 32;
 const DEFAULT_CLOSURE_CAP = 64;
 
-/**
- * Fetches one corpus JSON document by its path relative to the corpus root
- * (e.g. `core.json`, `packages/siunitx.json`). Resolves the parsed JSON, or
- * null when the document is unavailable. May also reject; loaders treat a
- * rejection like a null.
- */
 export type CorpusTransport = (relativePath: string) => Promise<unknown>;
 
 /**
@@ -69,24 +62,16 @@ const defaultCorpusTransport: CorpusTransport = async (relativePath) => {
 
 let activeTransport: CorpusTransport = defaultCorpusTransport;
 
-/**
- * Override how corpus JSON documents are fetched (tests, non-browser hosts).
- * Pass null to restore the default fetch-based transport. Already-cached
- * loads are not invalidated.
- */
 export function setCorpusTransport(transport: CorpusTransport | null): void {
   activeTransport = transport ?? defaultCorpusTransport;
 }
 
-// Async so a transport that throws synchronously still surfaces as a
-// rejection, which every loader below catches and caches as null.
 async function requestCorpus(relativePath: string): Promise<unknown> {
   return activeTransport(relativePath);
 }
 
 let corePromise: Promise<CoreCatalog | null> | null = null;
 
-/** Load the default command/environment catalog. Cached; null on failure. */
 export function loadCore(): Promise<CoreCatalog | null> {
   corePromise ??= requestCorpus("core.json")
     .then((payload) => validateCoreCatalog(payload))
@@ -99,7 +84,6 @@ export function loadCore(): Promise<CoreCatalog | null> {
 
 let atSuggestionsPromise: Promise<AtSuggestion[] | null> | null = null;
 
-/** Load the math-mode `@` shortcut snippets. Cached; null on failure. */
 export function loadAtSuggestions(): Promise<AtSuggestion[] | null> {
   atSuggestionsPromise ??= requestCorpus("at-suggestions.json")
     .then((payload) => validateAtSuggestions(payload))
@@ -112,7 +96,6 @@ export function loadAtSuggestions(): Promise<AtSuggestion[] | null> {
 
 let packageNamesPromise: Promise<NameList | null> | null = null;
 
-/** Load the CTAN-derived package name list. Cached; null on failure. */
 export function loadPackageNames(): Promise<NameList | null> {
   packageNamesPromise ??= requestCorpus("package-names.json")
     .then((payload) => validateNameList(payload))
@@ -125,7 +108,6 @@ export function loadPackageNames(): Promise<NameList | null> {
 
 let classNamesPromise: Promise<NameList | null> | null = null;
 
-/** Load the CTAN-derived document class name list. Cached; null on failure. */
 export function loadClassNames(): Promise<NameList | null> {
   classNamesPromise ??= requestCorpus("class-names.json")
     .then((payload) => validateNameList(payload))
@@ -138,16 +120,10 @@ export function loadClassNames(): Promise<NameList | null> {
 
 const packageCache = new Map<string, Promise<PackageCatalog | null>>();
 
-/**
- * Load one package (or `class-<name>` class) catalog. Results — including
- * failures, which resolve to null — are cached in an LRU capped at
- * 32 catalogs.
- */
 export function loadPackageCatalog(name: string): Promise<PackageCatalog | null> {
   if (!PACKAGE_NAME_RE.test(name)) return Promise.resolve(null);
   const cached = packageCache.get(name);
   if (cached) {
-    // Refresh recency.
     packageCache.delete(name);
     packageCache.set(name, cached);
     return cached;
@@ -167,10 +143,6 @@ export function loadPackageCatalog(name: string): Promise<PackageCatalog | null>
   return loaded;
 }
 
-/**
- * Resolve the given package names plus one level of their dependencies into
- * loaded catalogs, stopping once `cap` catalogs are loaded.
- */
 export async function resolvePackageClosure(
   names: readonly string[],
   lookup: (name: string) => Promise<PackageCatalog | null>,

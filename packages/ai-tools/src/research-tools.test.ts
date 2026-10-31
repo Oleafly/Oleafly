@@ -236,7 +236,6 @@ describe("research task tools", () => {
       review_plan_first: true,
       time_budget_minutes: 90,
     });
-    // The user sees the prompt and what the task may do, not only its name.
     const details = {
       title: "Sweep",
       prompt: "Find papers.",
@@ -276,7 +275,6 @@ describe("research task tools", () => {
     const [request] = confirm.mock.calls[0] as [{ summary: string; researchTask: { prompt: string; network: boolean } }];
     expect(request.summary).toContain("network access is on");
     expect(request.summary).not.toContain("and start it");
-    // The summary cuts the prompt; the details keep all of it for the dialog.
     expect(request.summary).not.toContain("END");
     expect(request.summary).toContain(`${"a".repeat(1_500)}…`);
     expect(request.researchTask).toMatchObject({ prompt: long, network: true, commands: "ask", start: false });

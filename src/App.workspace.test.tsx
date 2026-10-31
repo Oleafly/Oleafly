@@ -154,8 +154,6 @@ vi.mock("@/lib/native-dock-shortcuts", () => ({
 }));
 vi.mock("@/lib/mcp-bridge", () => ({ startMcpBridge: mocks.startMcpBridge }));
 vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: mocks.mountResearchPdfBridge }));
-// Live collaboration has tests of its own. Started here, it would store the {} every invoke
-// returns as its lists, and its lazily loaded banners would then fail on them.
 vi.mock("@/components/layout/CollabLiveKeeper", () => ({ CollabLiveKeeper: () => null }));
 vi.mock("@/lib/ai-tools", () => ({ initAiPdfCaptureFlag: mocks.initAiPdfCaptureFlag }));
 vi.mock("@/lib/open-compile", () => ({
@@ -637,7 +635,8 @@ describe("project workspace", () => {
 
   it("refreshes git status and open files once each time the window comes back", async () => {
     await renderApp();
-    const now = vi.spyOn(Date, "now").mockReturnValue(10_000);
+    const start = Date.now();
+    const now = vi.spyOn(Date, "now").mockReturnValue(start);
     mocks.gitRefresh.mockClear();
     mocks.refreshOpenFilesFromDisk.mockClear();
     act(() => {
@@ -648,7 +647,7 @@ describe("project workspace", () => {
     expect(mocks.gitRefresh).toHaveBeenCalledWith("p1");
     expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledTimes(1);
     expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledWith("p1");
-    now.mockReturnValue(12_000);
+    now.mockReturnValue(start + 2_000);
     act(() => {
       document.dispatchEvent(new Event("visibilitychange"));
     });

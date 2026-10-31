@@ -1,8 +1,3 @@
-//! The helper's log: JSON lines in `<data>/daemon/helper.log`, rotated at
-//! 5 MiB (one older file kept). Every value passes a matcher built from the
-//! keys and server values the helper knows, then is cut to 2 KiB, so a
-//! provider error that echoes a key never lands in the log (not even the
-//! start of one that straddles the cut).
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -23,22 +18,16 @@ struct Inner {
     file: Option<File>,
     secrets: Vec<String>,
     matcher: Option<AhoCorasick>,
-    /// No rotation is tried before this moment (the last one failed).
     rotate_blocked_until: Option<Instant>,
 }
 
 pub struct HelperLog {
     path: PathBuf,
     to_stderr: bool,
-    /// Set once this process holds the helper lock: only the helper that
-    /// runs rotates the log (a second one that lost the lock would move the
-    /// running one's file away from under it).
     rotates: std::sync::atomic::AtomicBool,
     inner: Mutex<Inner>,
 }
 
-/// Whether `file` is still the file at `path` (another process may have
-/// rotated it away). Where that can't be told, it is.
 fn still_at(file: &File, path: &Path) -> bool {
     #[cfg(unix)]
     {
@@ -111,7 +100,6 @@ impl HelperLog {
         }
     }
 
-    /// This process holds the helper lock now, so it may rotate the log.
     pub fn take_rotation(&self) {
         self.rotates
             .store(true, std::sync::atomic::Ordering::Release);
@@ -123,7 +111,6 @@ impl HelperLog {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// Adds secrets the helper learned (a task's keys and server values).
     pub fn add_secrets(&self, secrets: impl IntoIterator<Item = String>) {
         let mut inner = self.lock();
         let before = inner.secrets.len();
@@ -141,7 +128,6 @@ impl HelperLog {
         }
     }
 
-    /// `text` as the log may hold it.
     pub fn redact(&self, text: &str) -> String {
         let inner = self.lock();
         clean(text, inner.matcher.as_ref())
@@ -183,7 +169,6 @@ impl HelperLog {
         inner.file = open(&self.path);
     }
 
-    /// One line: `{"ts", "level", "event", field: value, …}`.
     pub fn event(&self, level: &str, event: &str, fields: &[(&str, &str)]) {
         let mut inner = self.lock();
         let mut line = Map::new();
@@ -201,7 +186,6 @@ impl HelperLog {
         if self.to_stderr {
             let _ = std::io::stderr().write_all(text.as_bytes());
         }
-        // Another process moved the file away: write where the path is now.
         if inner
             .file
             .as_ref()
@@ -221,8 +205,6 @@ impl HelperLog {
     }
 }
 
-/// `text` with the known secrets masked, then cut to the field limit.
-/// Cutting first would leave the start of a secret that straddles the cut.
 fn clean(text: &str, matcher: Option<&AhoCorasick>) -> String {
     cut(&redact_with(text, matcher)).to_string()
 }
@@ -305,7 +287,6 @@ mod tests {
         let path = dir.path().join("helper.log");
         let key = "sk-live-abcdefghijklmnopqrstuvwxyz0123456789";
         let log = HelperLog::open(&path, vec![key.to_string()], false);
-        // The key starts 20 bytes before the 2 KiB mark.
         let body = format!("{}{key} and the rest", "x".repeat(MAX_FIELD_BYTES - 20));
         log.event("error", "provider", &[("message", &body)]);
         let text = std::fs::read_to_string(&path).unwrap();
@@ -319,8 +300,6 @@ mod tests {
     #[test]
     fn a_cut_never_splits_a_character_after_redaction() {
         let matcher = build_matcher(&["secret-value".to_string()]);
-        // The mask ends at byte 1011, so the cut at 2048 falls inside a
-        // two-byte character and backs up to the one before.
         let text = format!("x{}secret-value{}", "é".repeat(500), "ü".repeat(1_500));
         let cleaned = clean(&text, matcher.as_ref());
         assert_eq!(cleaned.len(), MAX_FIELD_BYTES - 1);
@@ -334,7 +313,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         // SAFETY: reads the process's user id.
         if unsafe { libc::geteuid() } == 0 {
-            return; // root renames inside a read-only folder
+            return;
         }
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("helper.log");
@@ -342,7 +321,6 @@ mod tests {
         let log = HelperLog::open(&path, Vec::new(), false);
         log.take_rotation();
         std::fs::write(&older, "history\n").unwrap();
-        // The rename needs the folder to be writable; appending does not.
         std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
         let filler = "x".repeat(MAX_FIELD_BYTES);
         for _ in 0..((LOG_ROTATE_BYTES as usize * 3) / MAX_FIELD_BYTES) {

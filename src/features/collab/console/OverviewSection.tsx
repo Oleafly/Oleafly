@@ -31,7 +31,6 @@ const ISSUE_KEYS = {
 
 const MEGABYTE = 1024 * 1024;
 const COMMENT_CHANGES_SHOWN = 20;
-// Card columns by how many cards there are, so a full row never leaves a gap.
 const CARD_COLUMNS: Record<number, string> = {
   4: "grid-cols-2 @3xl:grid-cols-4",
   5: "grid-cols-2 @lg:grid-cols-3 @3xl:grid-cols-5",
@@ -85,7 +84,6 @@ function Health({
   );
 }
 
-// Which sign-in option fails, since when, and the provider's own words.
 function SignInProblems({
   overview,
   name,
@@ -110,8 +108,6 @@ function SignInProblems({
   );
 }
 
-// Where comments changed while they were off, by whom and when. The server
-// stored those changes before it could check them.
 function CommentChanges({
   overview,
   members,
@@ -139,8 +135,6 @@ function CommentChanges({
   );
 }
 
-// Nobody is told by email when an invitation waits for approval, so the
-// overview names the count and leads to the list.
 function PendingGuests({
   count,
   onNavigate,
@@ -215,7 +209,6 @@ function Glance({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
   );
 }
 
-// When the server started and which version it runs, as one quiet line.
 function ServerFacts({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
   const { t } = useTranslation(["collab"]);
   return (
@@ -236,7 +229,6 @@ function ServerFacts({ overview }: Readonly<{ overview: CollabAdminOverview }>) 
   );
 }
 
-// Shades of one colour, darkest first, in the order of the bar.
 const STORAGE_TONES = ["bg-primary", "bg-primary/65", "bg-primary/35"] as const;
 
 function Storage({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
@@ -400,7 +392,6 @@ export function OverviewSection({
   onRetry,
 }: Readonly<{
   state: OverviewState;
-  // The server's people, to name who made a change, once they are loaded.
   members?: readonly CollabMember[] | null;
   onNavigate: (section: ConsoleSection) => void;
   onRetry: () => void;

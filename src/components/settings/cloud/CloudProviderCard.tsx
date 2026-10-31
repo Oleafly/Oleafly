@@ -425,11 +425,9 @@ function AccountView({ kind }: Readonly<{ kind: CloudProviderKind }>) {
   );
 }
 
-/** Cloud sync for the connected provider, or a choice of providers to connect. */
 export function CloudProviderCard() {
   const status = useCloudStore((s) => s.status);
   const provider = useCloudStore((s) => s.state?.provider);
-  // A connection saved before there was a choice of providers is Dropbox.
   if (status === "connected" || status === "revoked") return <AccountView kind={provider ?? "dropbox"} />;
   return <ConnectView />;
 }

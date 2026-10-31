@@ -13,11 +13,7 @@ interface ConfirmationDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   destructive?: boolean;
-  // Whether Enter confirms. On by default, off for destructive dialogs. Turn
-  // it off when confirming runs something (a command, an installer): Enter
-  // then activates the focused button, which is Cancel.
   confirmOnEnter?: boolean;
-  // Shown under the description, for details such as the items affected.
   children?: ReactNode;
 }
 
@@ -37,14 +33,6 @@ export function ConfirmationDialog({
   const titleId = useId();
   const descriptionId = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  // Enter-to-confirm is a document-level capture handler, so it fires whatever
-  // is focused inside the dialog - including Cancel, which takes the initial
-  // focus. On a destructive dialog that turns "press Enter to back out" into
-  // the irreversible action, so the shortcut is limited to non-destructive
-  // confirmations. Destructive ones let focus decide: Enter activates the
-  // focused button, which is Cancel until the user deliberately moves to
-  // the confirm button. An Enter pressed with focus outside the dialog (the
-  // terminal behind it) keeps going to that element.
   useEffect(() => {
     if (!open || !confirmOnEnter) return;
     const onKey = (event: KeyboardEvent) => {
@@ -102,7 +90,6 @@ export function ConfirmationDialog({
           onClick={onConfirm}
         >
           {confirmLabel}
-          {/* Only advertise the shortcut where it actually exists. */}
           {confirmOnEnter ? (
             <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[0.625rem] text-current">↵</Kbd>
           ) : null}

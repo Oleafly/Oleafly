@@ -255,8 +255,6 @@ fn windows_candidates(
     )
 }
 
-/// The app's install folders: the registry (per user, then per machine),
-/// then `%LOCALAPPDATA%\Oleafly`, then Program Files.
 #[cfg(any(windows, test))]
 fn windows_dirs(
     registry: impl Fn(Hive, Option<&str>) -> Option<OsString>,
@@ -278,7 +276,6 @@ fn windows_dirs(
     unique(directories)
 }
 
-/// Where the Windows app may be installed (empty elsewhere).
 pub(crate) fn windows_install_dirs() -> Vec<PathBuf> {
     #[cfg(windows)]
     {

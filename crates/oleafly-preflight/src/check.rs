@@ -1,7 +1,3 @@
-//! A whole-project check: snapshot → index → contexts → preflight, the way
-//! the app's preflight store runs it, plus the check selection of the
-//! Preflight panel.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::context::{build_project_context, build_refs_context, ContextInput};
@@ -19,14 +15,12 @@ use crate::types::{
 };
 use crate::typst::typst_referenced_images;
 
-/// The app measures at most this many referenced Typst images.
 pub const MAX_MEASURED_IMAGES: usize = 256;
 
 pub struct CheckRequest<'a> {
     pub snapshot: &'a ProjectSnapshot,
     pub source_profile: SourceProfile,
     pub engine: PreflightEngine,
-    /// `None` picks a profile from the main document, like the app.
     pub submission_profile: Option<SubmissionProfileId>,
     pub anonymous_review: bool,
     pub typst_version: Option<String>,
@@ -47,8 +41,6 @@ pub struct CheckOutcome {
     pub report: PreflightReport,
     pub submission_profile: SubmissionProfileId,
     pub profile_detected: bool,
-    /// The references context, absent when the document type has no source
-    /// rules (Markdown).
     pub refs: Option<RefsContext>,
     pub project: ProjectContext,
     pub warnings: Vec<CheckWarning>,
@@ -157,8 +149,6 @@ pub fn check_project(request: &CheckRequest) -> CheckOutcome {
     }
 }
 
-/// The checks the Preflight panel turns on by default: ATS and the build for
-/// a résumé, everything but ATS for other documents.
 pub fn suggested_checks(main_source: &str) -> BTreeSet<CheckId> {
     if looks_like_resume_source(main_source) {
         [CheckId::Ats, CheckId::Compile].into_iter().collect()
@@ -175,15 +165,12 @@ pub fn suggested_checks(main_source: &str) -> BTreeSet<CheckId> {
     }
 }
 
-/// Whether a finding shows when `checks` are on.
 pub fn visible(finding: &Finding, checks: &BTreeSet<CheckId>) -> bool {
     CHECK_IDS
         .iter()
         .any(|id| checks.contains(id) && finding_applies_to(finding, *id))
 }
 
-/// Rules the CLI runs, the same as the app's source, build-log and PDF-facts
-/// checks.
 pub const PORTED_RULE_IDS: &[&str] = &[
     "multi-column",
     "multi-column-reading-order-risk",
@@ -268,7 +255,6 @@ const NEEDS_PAGE_PASS: &str = "Runs inside the app's PDF page-text pass.";
 const NEEDS_TAG_TREE: &str = "Walks the PDF tag tree and marked content, which only the app reads.";
 const NEEDS_READER_TEXT: &str = "Needs the reader-order text the app extracts for résumé parsing.";
 
-/// Rules only the app runs, with the reason.
 pub const APP_ONLY_RULES: &[(&str, &str)] = &[
     ("output-clipped-content", NEEDS_PAGE_TEXT),
     ("output-small-text", NEEDS_PAGE_TEXT),

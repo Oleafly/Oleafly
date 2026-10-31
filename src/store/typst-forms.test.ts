@@ -176,7 +176,6 @@ describe("the Typst forms store", () => {
     await vi.waitFor(() => expect(useTypstFormsStore.getState().catalog.version).toBe("v1"));
     expect(load).toHaveBeenCalledExactlyOnceWith("p1", []);
 
-    // Set as main hides the engine while it switches; only the settled engine counts.
     useFilesStore.setState({ engine: UNKNOWN_ENGINE, engineLoaded: false });
     useFilesStore.setState({ mainDoc: "report.typ" });
     expect(load).toHaveBeenCalledOnce();

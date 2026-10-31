@@ -1,11 +1,3 @@
-//! The research task queue: admission, isolation, the runtime run, review
-//! and cancellation. The host (the app or the daemon) supplies trust,
-//! project locations, skills and event delivery through [`ResearchHost`].
-//!
-//! A generation runs in phases: preparing the workspace (a fresh copy, or
-//! the saved one when it resumes), the research record, then the agent;
-//! a plan-first task stops at "plan ready" after writing its plan. Budgets,
-//! runs and approvals are services shared by every running task.
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -19,7 +11,6 @@ use tokio::sync::{Notify, OwnedSemaphorePermit, Semaphore};
 
 use crate::approvals::ApprovalQueue;
 use crate::budget::{BudgetClock, BudgetClocks, BudgetKind, HARD_STOP_AFTER};
-// 0.4.8 L: handoffs to and from the background helper.
 use crate::handoff::{HandoffReason, HandoffRecord, TaskGrant};
 use crate::host::{
     IsolationEnv, Notification, NotificationKind, OwnerKind, ResearchHost, WorkspaceTools,
@@ -41,13 +32,11 @@ use crate::store::TaskStore;
 pub type TaskRuntimeFuture<T> = Pin<Box<dyn Future<Output = Result<T, String>> + Send>>;
 pub type TaskEventSink = Arc<dyn Fn(TaskRuntimeEvent) + Send + Sync>;
 
-/// The message every host-dependent call returns before [`ResearchTaskState::attach`].
 pub const NOT_ATTACHED: &str = "Research tasks are still starting. Try again in a moment.";
 const PLAN_MISSING: &str = "The agent finished without writing plan.md. Retry the task.";
 const PLAN_TOO_LONG: &str =
     "The plan is longer than 64 KiB, so the end of it isn't shown. Edit it down before you approve it.";
 const WORKSPACE_GONE: &str = "The saved workspace is gone. Start over instead.";
-/// The handoff and plan a resumed conversation starts from, at most.
 const RESUME_FILE_BYTES: usize = 16 * 1024;
 const RESUME_LEDGER_ROWS: usize = 20;
 const MAX_PLAN_BYTES: usize = 64 * 1024;
@@ -68,8 +57,6 @@ pub trait TaskRuntimeAdapter: Send + Sync {
     fn cancel(&self, session_id: String) -> TaskRuntimeFuture<()>;
 }
 
-/// What running tasks share: supervised runs, budget clocks, the approval
-/// queue and the host's workspace tools.
 #[derive(Clone)]
 pub struct TaskServices {
     pub runs: Arc<RunManager>,
@@ -77,22 +64,12 @@ pub struct TaskServices {
     pub clocks: Arc<BudgetClocks>,
     pub approvals: Arc<ApprovalQueue>,
     pub workspace: Option<Arc<dyn WorkspaceTools>>,
-    /// 0.4.8 L: signals that end a generation for a handoff.
     pub suspends: Arc<SuspendSignals>,
 }
 
-// 0.4.8 L: suspending a generation so its task can move to another process.
-
-/// How a generation is ended for a handoff.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SuspendMode {
-    /// At the next step boundary (between turns for a CLI agent; at once
-    /// while it waits for runs). A pending approval is waited out: the user
-    /// answers it in the app, and either process accepts the answer.
     Graceful,
-    /// Like `Graceful`, and an approval wait is withdrawn with an "ask
-    /// again" result, so the step ends and the conversation is saved (quit,
-    /// restart, update, the helper stopping).
     Prompt,
 }
 
@@ -105,17 +82,12 @@ struct SuspendEntry {
     state: Option<SuspendState>,
 }
 
-/// Per running task: the token that ends its generation at the next step
-/// boundary, the one that withdraws its approval waits, and what a
-/// suspended run left for the next owner.
 #[derive(Default)]
 pub struct SuspendSignals {
     entries: Mutex<HashMap<String, SuspendEntry>>,
 }
 
 impl SuspendSignals {
-    /// Cancelled by every suspend: the run ends at its next step boundary
-    /// and run waits end early (the runs keep going).
     pub fn token(&self, task_id: &str) -> CancellationToken {
         lock(&self.entries)
             .get(task_id)
@@ -123,8 +95,6 @@ impl SuspendSignals {
             .unwrap_or_default()
     }
 
-    /// Cancelled only by [`SuspendMode::Prompt`]: approval waits end with
-    /// [`APPROVAL_WITHDRAWN`].
     pub fn approvals(&self, task_id: &str) -> CancellationToken {
         lock(&self.entries)
             .get(task_id)
@@ -132,15 +102,12 @@ impl SuspendSignals {
             .unwrap_or_default()
     }
 
-    /// Whether a suspend was asked for the task's running generation.
     pub fn requested(&self, task_id: &str) -> bool {
         lock(&self.entries)
             .get(task_id)
             .is_some_and(|entry| entry.step.is_cancelled())
     }
 
-    /// A runtime suspended its run: what the next owner continues from. The
-    /// runtime then returns `Ok` with any outcome.
     pub fn record(&self, task_id: &str, state: SuspendState) {
         if let Some(entry) = lock(&self.entries).get_mut(task_id) {
             entry.state = Some(state);
@@ -186,26 +153,21 @@ impl SuspendSignals {
     }
 }
 
-/// How [`ResearchTaskState::suspend`] left a task.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SuspendResult {
-    /// Ended at a step boundary; `state` says how the next owner continues.
     Suspended {
         generation: u64,
         state: SuspendState,
     },
-    /// Stopped without saving its conversation (the deadline passed, or the
-    /// runtime could not suspend): the next owner resumes from the record.
-    Stopped { generation: u64 },
-    /// Stopped while still preparing its workspace: it starts fresh.
-    Unstarted { generation: u64 },
-    /// Not running here (it finished, or never ran in this process).
+    Stopped {
+        generation: u64,
+    },
+    Unstarted {
+        generation: u64,
+    },
     NotRunning,
 }
 
-/// The record a handoff writes for a suspend result: the saved conversation
-/// and agent session when the task suspended, an interrupted turn when it
-/// was stopped. `None` when the task is not running here.
 pub fn handoff_record_for(
     result: &SuspendResult,
     from: OwnerKind,
@@ -241,14 +203,10 @@ pub struct ResearchTaskState {
 pub(crate) struct ResearchTaskStateInner {
     root: Result<PathBuf, String>,
     pub(crate) concurrency: Arc<Semaphore>,
-    /// How many tasks may wait without holding a concurrency slot.
     parked: Arc<Semaphore>,
     scheduling: tokio::sync::Mutex<()>,
     stopping: AtomicBool,
-    /// Set while the host recovers before queued work may start.
     launch_hold: AtomicBool,
-    /// Cleared when the host has research tasks turned off: queued work
-    /// stays queued until it is turned on again.
     enabled: AtomicBool,
     pub(crate) active: Mutex<HashMap<String, ActiveTask>>,
     pub(crate) runtimes: Mutex<HashMap<String, Arc<dyn TaskRuntimeAdapter>>>,
@@ -258,13 +216,9 @@ pub(crate) struct ResearchTaskStateInner {
     writer: TranscriptWriter,
     keep_awake: KeepAwake,
     attention_pending: AtomicBool,
-    /// Dedupes the timer that wakes the queue at a scheduled start.
     wake_generation: AtomicU64,
-    /// That timer, stopped when a newer one replaces it.
     wake_timer: Mutex<Option<tokio::task::JoinHandle<()>>>,
-    /// 0.4.8 L: suspend signals of running generations.
     suspends: Arc<SuspendSignals>,
-    /// 0.4.8 L: cancels and reclaims from the other process being handled.
     foreign_inflight: Mutex<HashSet<String>>,
 }
 
@@ -277,22 +231,13 @@ pub(crate) struct ActiveTask {
     pub(crate) runtime_started: Arc<AtomicBool>,
     pub(crate) settled: Arc<AtomicBool>,
     settled_notify: Arc<Notify>,
-    /// 0.4.8 L: a handoff is under way: an error or a stop ends the
-    /// generation without finishing the task or cancelling its runs.
     pub(crate) handing_off: Arc<AtomicBool>,
-    /// 0.4.8 L: what the generation left when it suspended.
     pub(crate) suspended: Arc<Mutex<Option<SuspendState>>>,
-    /// The concurrency slot the task holds while it works.
     slot: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
-    /// Set while the task waits without its slot (see [`Self::lend_slot`]).
     lent: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
 }
 
 impl ActiveTask {
-    /// Gives the concurrency slot back while the task waits for an approval
-    /// or for its runs, which can take a day: a task that does nothing must
-    /// not keep others from starting. At most as many tasks wait this way as
-    /// the queue runs at once; past that the waiting task keeps its slot.
     fn lend_slot(&self, parked: &Arc<Semaphore>) -> bool {
         let Ok(lent) = parked.clone().try_acquire_owned() else {
             return false;
@@ -304,9 +249,6 @@ impl ActiveTask {
         true
     }
 
-    /// The task works again. It takes a slot back if one is free; if not, it
-    /// goes on without one, so it is never stopped in the middle of its work
-    /// (the queue then starts fewer new tasks until it ends).
     fn retake_slot(&self, concurrency: &Arc<Semaphore>) {
         if lock(&self.lent).take().is_none() {
             return;
@@ -316,7 +258,6 @@ impl ActiveTask {
         }
     }
 
-    /// Gives back everything the task holds (it ended).
     fn release_slots(&self) {
         drop(lock(&self.slot).take());
         drop(lock(&self.lent).take());
@@ -338,16 +279,12 @@ impl ActiveTask {
     }
 }
 
-/// How a generation's agent run ended, for the review step.
 enum RunEnd {
-    /// The user cancelled.
     Cancelled,
     Finished(Result<TaskRuntimeOutcome, String>),
 }
 
 impl ResearchTaskState {
-    /// A queue over the store at `root` running at most `max_concurrent`
-    /// tasks at once (clamped to 1–8).
     pub fn new(root: Result<PathBuf, String>, max_concurrent: usize) -> Self {
         Self {
             inner: Arc::new(ResearchTaskStateInner {
@@ -389,7 +326,6 @@ impl ResearchTaskState {
         lock(&self.inner.runtimes).len()
     }
 
-    /// Resolves once the active run of `task_id` (if any) has settled.
     #[cfg(any(test, feature = "test-support"))]
     pub fn settle_waiter(
         &self,
@@ -399,8 +335,6 @@ impl ResearchTaskState {
         Some(async move { active.wait_until_settled().await })
     }
 
-    /// Connect the queue to its host and the runtime its work runs on, and
-    /// create the services running tasks share.
     pub fn attach(&self, host: Arc<dyn ResearchHost>, runtime: tokio::runtime::Handle) {
         if let Ok(root) = self.inner.root.clone() {
             let runs = RunManager::new(root.clone(), runtime.clone());
@@ -439,7 +373,6 @@ impl ResearchTaskState {
             .ok_or_else(|| NOT_ATTACHED.to_string())
     }
 
-    /// The services running tasks share (after [`Self::attach`]).
     pub fn services(&self) -> Result<TaskServices, String> {
         lock(&self.inner.services)
             .clone()
@@ -484,7 +417,6 @@ impl ResearchTaskState {
         self.inner.root.clone()
     }
 
-    /// A store that claims the tasks of this queue's host kind.
     pub fn store(&self) -> Result<TaskStore, String> {
         let root = self.inner.root.clone()?;
         let owner = lock(&self.inner.host)
@@ -510,8 +442,6 @@ impl ResearchTaskState {
         }
         Ok(adapter)
     }
-
-    // Blocking operations. Callers run them off the async executor.
 
     pub fn list(&self, project_id: &str) -> Result<Vec<ResearchTask>, String> {
         self.store()?.list(project_id)
@@ -542,9 +472,6 @@ impl ResearchTaskState {
         Ok(task)
     }
 
-    /// The brief's runs can go where it says: the executor is here and, for
-    /// a remote one, its target is still set up (a removed target would fail
-    /// every run once the task started).
     fn check_compute(&self, compute: &crate::model::ComputeTarget) -> Result<(), String> {
         let Ok(services) = self.services() else {
             return Ok(());
@@ -577,22 +504,16 @@ impl ResearchTaskState {
         Ok(())
     }
 
-    /// Queues a failed or cancelled task again: Resume in its workspace, or
-    /// Fresh from a new copy that carries the research record over.
     pub fn retry(&self, task_id: &str, mode: RetryMode) -> Result<ResearchTask, String> {
         let host = self.host()?;
         let store = self.store()?;
         host.require_trusted(&store.require(task_id)?.project_id)?;
         let task = store.retry_with(task_id, mode)?;
-        // A retry starts a new conversation: no saved one or agent home
-        // (with its sign-in files) carries over.
         crate::handoff::purge_files(store.root(), task_id);
         self.emit_task(&task);
         Ok(task)
     }
 
-    /// The plan a plan-first task wrote (at most 64 KiB), and whether the
-    /// file is longer than that.
     pub fn plan(&self, task_id: &str) -> Result<TaskPlanText, String> {
         let task = self.store()?.require(task_id)?;
         let isolation = task
@@ -610,7 +531,6 @@ impl ResearchTaskState {
         .ok_or_else(|| "The plan file is missing. Retry the task.".to_string())
     }
 
-    /// What the task's Progress tab shows.
     pub fn progress(&self, task_id: &str) -> Result<crate::progress::TaskProgress, String> {
         let store = self.store()?;
         let task = store.require(task_id)?;
@@ -622,7 +542,6 @@ impl ResearchTaskState {
         };
         let best = crate::progress::best_metric(&task.brief, &runs, &full_ledger);
         let ledger = crate::progress::recent_ledger(&full_ledger);
-        // The run limit counts the runs since the last fresh start.
         let runs_started =
             runs.len()
                 .saturating_sub(store.runs_baseline(task_id).unwrap_or(0)) as u32;
@@ -657,8 +576,6 @@ impl ResearchTaskState {
         })
     }
 
-    /// Approves a plan (the user's edit replaces it first) and queues the
-    /// task to carry it out in the same workspace.
     pub async fn approve_plan(
         &self,
         task_id: String,
@@ -687,8 +604,6 @@ impl ResearchTaskState {
                     )?
                     .write(&format!("{dir}/plan.md"), &plan)?;
                 } else if state.plan(&task.id).is_ok_and(|plan| plan.truncated) {
-                    // The review showed only the start of the plan: the user
-                    // approves what they saw, so they shorten it first.
                     return Err(PLAN_TOO_LONG.into());
                 }
                 let approved = store.approve_plan(&task.id)?;
@@ -711,8 +626,6 @@ impl ResearchTaskState {
         self.events_page(task_id, generation, after, None, limit)
     }
 
-    /// [`Self::events`], or with `before` a page backwards from the newest
-    /// rows below it (see [`TaskStore::events_page`]).
     pub fn events_page(
         &self,
         task_id: &str,
@@ -721,7 +634,6 @@ impl ResearchTaskState {
         before: Option<u64>,
         limit: usize,
     ) -> Result<TaskTranscriptPage, String> {
-        // Rows still in the writer's batch belong in the page.
         self.inner.writer.flush();
         self.store()?
             .events_page(task_id, generation, after, before, limit)
@@ -734,7 +646,6 @@ impl ResearchTaskState {
         if task.status == ResearchTaskStatus::Running {
             return Err("Stop this task before deleting it.".into());
         }
-        // The run rows go with the task: read what the runs left elsewhere first.
         let leftovers = self
             .services()
             .map(|services| services.runs.cleanup_handles(task_id));
@@ -763,8 +674,6 @@ impl ResearchTaskState {
         Ok(task)
     }
 
-    // Async operations.
-
     async fn blocking<T: Send + 'static>(
         &self,
         operation: impl FnOnce(&ResearchTaskState) -> Result<T, String> + Send + 'static,
@@ -776,8 +685,6 @@ impl ResearchTaskState {
             .map_err(|error| format!("task storage worker failed: {error}"))?
     }
 
-    /// Recover runs a previous process left behind and, when `launch`, start
-    /// the queued work.
     pub async fn recover_runs(&self, launch: bool) -> Result<(), String> {
         let store = self.store()?;
         for task in store.recover_interrupted()? {
@@ -796,8 +703,6 @@ impl ResearchTaskState {
         Ok(())
     }
 
-    /// Removes the workspaces of earlier generations that nothing needs, in
-    /// the background.
     fn sweep_old_generations(&self, store: &TaskStore) -> Option<tokio::task::JoinHandle<()>> {
         let (Ok(host), Ok(services)) = (self.host(), self.services()) else {
             return None;
@@ -809,9 +714,6 @@ impl ResearchTaskState {
                 return;
             };
             for task in store.all_tasks().unwrap_or_default() {
-                // A queued task can be claimed, and a running one may be
-                // preparing a new workspace, at any moment: only settled
-                // tasks are swept, each read again just before.
                 let Ok(task) = store.require(&task.id) else {
                     continue;
                 };
@@ -826,9 +728,6 @@ impl ResearchTaskState {
         }))
     }
 
-    /// Deletes a task's workspaces it no longer uses: not its current one,
-    /// not the one a fresh retry carries the record from, and nothing while
-    /// a run may still read an older one.
     fn purge_unneeded(
         &self,
         host: &Arc<dyn ResearchHost>,
@@ -855,8 +754,6 @@ impl ResearchTaskState {
         {
             keep.push(PathBuf::from(from));
         }
-        // 0.4.8 L: saved conversations and agent homes go with the task's
-        // last generation (`handoff::purge_files`), not with old workspaces.
         let task_root = isolation::task_workspace_root(store.root(), &task.id);
         if let Ok(entries) = std::fs::read_dir(&task_root) {
             keep.extend(
@@ -891,7 +788,6 @@ impl ResearchTaskState {
         {
             return Ok(());
         }
-        // Work waits in the queue until a host is attached.
         if lock(&self.inner.host).is_none() {
             return Ok(());
         }
@@ -933,7 +829,6 @@ impl ResearchTaskState {
                 slot: Arc::new(Mutex::new(None)),
                 lent: Arc::new(Mutex::new(None)),
             };
-            // 0.4.8 L: fresh suspend signals for this generation.
             self.inner
                 .suspends
                 .begin(&task.id, task.execution_generation);
@@ -946,8 +841,6 @@ impl ResearchTaskState {
         }
     }
 
-    /// Wakes the queue when the earliest scheduled task may start. One timer
-    /// is armed at a time: a new one replaces (and stops) the last.
     fn wake_at_next_start(&self, store: &TaskStore) {
         let Ok(Some(at)) = store.next_run_after() else {
             return;
@@ -963,8 +856,6 @@ impl ResearchTaskState {
                 }
             }
             if state.inner.wake_generation.load(Ordering::Acquire) == generation {
-                // In a task of its own, so stopping this timer never stops
-                // a queue run under way.
                 state.kick();
             }
         });
@@ -989,8 +880,6 @@ impl ResearchTaskState {
         Ok(())
     }
 
-    /// Stops running tasks for a quit. Their runs keep going and are picked
-    /// up again on the next start.
     pub async fn shutdown(&self) {
         self.inner.stopping.store(true, Ordering::Release);
         let scheduling = self.inner.scheduling.lock().await;
@@ -1013,22 +902,14 @@ impl ResearchTaskState {
         self.inner.writer.flush();
     }
 
-    // 0.4.8 L: handing running work to the other process.
-
-    /// Stops starting queued work (before a handoff); work already running
-    /// goes on.
     pub fn stop_admitting(&self) {
         self.inner.stopping.store(true, Ordering::Release);
     }
 
-    /// Whether queued work still starts here (no quit or handoff under way).
     pub fn admitting(&self) -> bool {
         !self.inner.stopping.load(Ordering::Acquire)
     }
 
-    /// Starts no queued work until [`Self::release_launches`]: the app
-    /// holds launches until it has recovered interrupted applies, so a task
-    /// never copies a half-applied project as its baseline.
     pub fn hold_launches(&self) {
         self.inner.launch_hold.store(true, Ordering::Release);
     }
@@ -1037,28 +918,18 @@ impl ResearchTaskState {
         self.inner.launch_hold.store(false, Ordering::Release);
     }
 
-    /// Whether the host has research tasks turned on. Off, queued work
-    /// stays queued (a scheduled start included) until it is turned on.
     pub fn enabled(&self) -> bool {
         self.inner.enabled.load(Ordering::Acquire)
     }
 
-    /// Turns research tasks on or off for the queue. Turning them on starts
-    /// nothing by itself; call [`Self::launch_ready`] after it.
     pub fn set_enabled(&self, enabled: bool) {
         self.inner.enabled.store(enabled, Ordering::Release);
     }
 
-    /// The ids of the tasks with a running generation here.
     pub fn active_task_ids(&self) -> Vec<String> {
         lock(&self.inner.active).keys().cloned().collect()
     }
 
-    /// Ends the running generations of `ids` so their tasks can move to
-    /// another process: each stops at its next step boundary (see
-    /// [`SuspendMode`]). Past `deadline` (`None` waits as long as it takes)
-    /// a generation is stopped outright; its runs keep going either way.
-    /// The tasks stay `running` until the caller hands them off.
     pub async fn suspend(
         &self,
         ids: &[String],
@@ -1106,9 +977,6 @@ impl ResearchTaskState {
         let store = self.store().ok();
         for (id, active) in waiting {
             let generation = active.execution_generation;
-            // Copied, not taken: a second suspend of the same task (the helper
-            // stopping during a reclaim) gets the same saved conversation, so
-            // whichever handoff lands first carries it.
             let state = lock(&active.suspended).clone();
             let current = store.as_ref().and_then(|store| store.require(&id).ok());
             let running_here = current.as_ref().is_some_and(|task| {
@@ -1132,10 +1000,6 @@ impl ResearchTaskState {
         results
     }
 
-    /// The background helper's tick: finishes the cancels the app wrote for
-    /// tasks it runs, and gives back the tasks the app asked for at their
-    /// next step. Each request is handled once, in the background. Returns
-    /// the ids it started handling.
     pub async fn apply_foreign_requests(
         &self,
         grant_for: &(dyn Fn(&ResearchTask) -> Option<TaskGrant> + Sync),
@@ -1160,8 +1024,6 @@ impl ResearchTaskState {
             if !lock(&self.inner.foreign_inflight).insert(id.clone()) {
                 continue;
             }
-            // Read now: the grant goes with the task if the app quits before
-            // the task is released (the helper then keeps it).
             let grant = self
                 .store()
                 .ok()
@@ -1178,8 +1040,6 @@ impl ResearchTaskState {
         Ok(started)
     }
 
-    /// Suspends a task the app asked for and hands it to the app. If the app
-    /// quit meanwhile (the request was withdrawn), the task stays here.
     async fn release_for_reclaim(&self, task_id: &str, grant: Option<TaskGrant>) {
         let results = self
             .suspend(&[task_id.to_owned()], SuspendMode::Graceful, None)
@@ -1212,9 +1072,6 @@ impl ResearchTaskState {
         self.kick();
     }
 
-    /// Hands a task [`Self::suspend`] ended to `to`. A cancel that arrived
-    /// meanwhile wins: the task is cancelled here instead. Returns whether
-    /// the task moved.
     pub async fn hand_off_suspended(
         &self,
         task_id: &str,
@@ -1258,8 +1115,6 @@ impl ResearchTaskState {
             .blocking(move |state| {
                 let store = state.store()?;
                 let current = store.require(&requested_id)?;
-                // 0.4.8 L: the process that runs the task (the background
-                // helper, or the app) finishes the cancel it finds there.
                 if current.status == ResearchTaskStatus::Running
                     && !lock(&state.inner.active).contains_key(&requested_id)
                     && store.owned_by_other_live_process(&requested_id)?
@@ -1282,8 +1137,6 @@ impl ResearchTaskState {
             let cancelled_id = cancellation.id.clone();
             self.blocking(move |state| {
                 let store = state.store()?;
-                // A queued task handed over at quit may hold a copy of its
-                // agent's sign-in files; a cancelled task keeps none.
                 crate::handoff::purge_files(store.root(), &cancelled_id);
                 state.emit_with_dependents(&store, &cancelled_id);
                 Ok(())
@@ -1321,7 +1174,6 @@ impl ResearchTaskState {
                 return Err("The task changed before cancellation finished.".into());
             }
             state.finish_active(&settle_id, generation);
-            // 0.4.8 L: a cancelled task keeps no saved conversation or agent home.
             crate::handoff::purge_files(store.root(), &settle_id);
             state.emit_with_dependents(&store, &settle_id);
             Ok(())
@@ -1334,10 +1186,6 @@ impl ResearchTaskState {
             .await
     }
 
-    /// Releases what a generation held: its runs (unless it moved to another
-    /// owner), its open approval requests and its clock. A generation that
-    /// ends after its task started a newer one leaves that one's clock and
-    /// runs alone.
     async fn end_generation_services(&self, task_id: &str, generation: u64, cancel_runs: bool) {
         let Ok(services) = self.services() else {
             return;
@@ -1379,9 +1227,6 @@ impl ResearchTaskState {
             .filter(|host| host.keep_awake_enabled())
             .map(|_| self.inner.keep_awake.acquire("Research task running"));
         let end = self.run_generation(&store, &task, &active).await;
-        // 0.4.8 L: a generation that suspended for a handoff, or that ended
-        // while one was under way, leaves its task running for the handoff:
-        // no review, no failure, and its runs keep going.
         let suspended = self.inner.suspends.take_state(&task.id, generation);
         let handing_off = active.handing_off.load(Ordering::Acquire);
         let parked = match &end {
@@ -1415,7 +1260,6 @@ impl ResearchTaskState {
             self.notify_outcome(&store, &task.id);
         }
         self.inner.suspends.end(&task.id, generation);
-        // 0.4.8 L: a finished task keeps no saved conversation or agent home.
         if store.require(&task.id).is_ok_and(|current| {
             !matches!(
                 current.status,
@@ -1429,7 +1273,6 @@ impl ResearchTaskState {
         self.kick();
     }
 
-    /// Prepares the workspace and the record, then runs the agent.
     async fn run_generation(
         &self,
         store: &TaskStore,
@@ -1473,8 +1316,6 @@ impl ResearchTaskState {
             Some(PendingStart::Fresh { carry_from }) => carry_from.clone(),
             _ => None,
         };
-        // 0.4.8 L: a handoff continues the saved conversation, an interrupted
-        // turn or a CLI agent's own session.
         let handoff = match &task.pending_start {
             Some(PendingStart::Resume {
                 reason: ResumeReason::Handoff,
@@ -1492,9 +1333,6 @@ impl ResearchTaskState {
             _ => None,
         };
         let plan_phase = task.brief.review_plan_first && !task.plan_approved;
-        // "Review the plan first": nothing runs unasked before the user has
-        // seen the plan. Commands, MCP tools and a CLI agent's own tool calls
-        // ask first while the agent plans.
         let mut brief = task.brief.clone();
         if plan_phase && brief.permissions.commands == CommandPolicy::Allow {
             brief.permissions.commands = CommandPolicy::Ask;
@@ -1519,7 +1357,6 @@ impl ResearchTaskState {
             resume,
             plan_phase,
             carry_from,
-            // 0.4.8 I: only attended tasks get desktop apps.
             desktop_apps: task.brief.permissions.desktop_apps
                 && crate::model::task_desktop_apps_conflict(
                     true,
@@ -1552,8 +1389,6 @@ impl ResearchTaskState {
         services
             .runs
             .attach_sink(&task.id, generation, events.clone());
-        // The agent's token: cancelled by the user (through `cancel`) or by
-        // a budget, which ends the run without counting as a cancel.
         let run_token = cancel.child();
         let budget_stop: Arc<Mutex<Option<BudgetKind>>> = Arc::new(Mutex::new(None));
         let spend_host = self.host().ok();
@@ -1593,7 +1428,6 @@ impl ResearchTaskState {
                     BudgetKind::Runs => StopReason::BudgetRuns,
                 };
                 let _ = store.set_stop_reason(&task.id, generation, reason);
-                // A run the budget stopped still goes to review with what it made.
                 if outcome.is_err() {
                     return RunEnd::Finished(Ok(TaskRuntimeOutcome {
                         summary: String::new(),
@@ -1606,7 +1440,6 @@ impl ResearchTaskState {
             }
             None if outcome.is_ok() => {
                 if let Some(max) = task.brief.budget.max_runs {
-                    // Runs from before a fresh start don't count.
                     let baseline = store.runs_baseline(&task.id).unwrap_or(0);
                     if services
                         .runs
@@ -1624,8 +1457,6 @@ impl ResearchTaskState {
         RunEnd::Finished(outcome)
     }
 
-    /// The saved workspace of a resumed generation, or a new copy (with the
-    /// research record carried over from an earlier attempt), and the record.
     async fn prepare_workspace(
         &self,
         store: &TaskStore,
@@ -1642,7 +1473,6 @@ impl ResearchTaskState {
                 if !real {
                     return Err(WORKSPACE_GONE.into());
                 }
-                // A review pruned the baseline; the next one needs it back.
                 if let Ok(project) = self
                     .host()
                     .and_then(|host| host.locate_project(&task.project_id))
@@ -1698,7 +1528,6 @@ impl ResearchTaskState {
                     let state = self.clone();
                     let purge_store = store.clone();
                     let mut purge_task = store.require(&task.id).unwrap_or_else(|_| task.clone());
-                    // The record was carried over above; the old copy can go.
                     purge_task.pending_start = None;
                     self.runtime().spawn_blocking(move || {
                         state.purge_unneeded(&host, &services, &purge_store, &purge_task);
@@ -1720,8 +1549,6 @@ impl ResearchTaskState {
         Ok((isolation, slug))
     }
 
-    /// Checks the budget every few seconds: a cost cap stops the run at
-    /// once; a time limit lets the agent wrap up, then stops it.
     fn watch_budget(
         &self,
         store: TaskStore,
@@ -1739,8 +1566,6 @@ impl ResearchTaskState {
                 if run_token.is_cancelled() {
                     return;
                 }
-                // SQLite writes and the usage ledger's spend: off the async
-                // workers that also answer the app's commands.
                 let (checked_store, checked_task, checked_clock) =
                     (store.clone(), task_id.clone(), clock.clone());
                 let exhausted = tokio::task::spawn_blocking(move || {
@@ -1773,8 +1598,6 @@ impl ResearchTaskState {
         })
     }
 
-    /// Reviews what a generation made: the plan of a plan-first task, or
-    /// the changed files of any other.
     async fn review_generation(
         &self,
         store: &TaskStore,
@@ -1862,8 +1685,6 @@ impl ResearchTaskState {
         }
     }
 
-    /// Runs the evidence checks in the background. They never change the
-    /// task's status.
     fn check_evidence_later(
         &self,
         store: TaskStore,
@@ -1871,8 +1692,6 @@ impl ResearchTaskState {
         isolation: TaskIsolation,
         changes: Vec<TaskFileChange>,
     ) {
-        // Set before the check starts, so the background helper counts it as
-        // work from the moment the task finishes and does not exit under it.
         self.set_phase(
             &store,
             &task.id,
@@ -1888,9 +1707,6 @@ impl ResearchTaskState {
             if let Some(current) = &current {
                 state.emit_task(current);
             }
-            // The review only needs the baseline of files that changed. A
-            // newer generation (the task was discarded and resumed meanwhile)
-            // shares the workspace and needs the baseline of its own changes.
             let reviewed = current.is_some_and(|current| {
                 current.execution_generation == task.execution_generation
                     && matches!(
@@ -1907,7 +1723,6 @@ impl ResearchTaskState {
         });
     }
 
-    /// Recomputes a task's evidence report (the "Check again" button).
     pub async fn refresh_evidence(&self, task_id: String) -> Result<ResearchTask, String> {
         let store = self.store()?;
         let task = store.require(&task_id)?;
@@ -1922,8 +1737,6 @@ impl ResearchTaskState {
             .unwrap_or_default();
         let report = self.evidence_report(&task, &isolation, &changes).await;
         store.set_evidence(&task.id, task.execution_generation, &report)?;
-        // A check cut off by an exit left "Checking evidence" behind; this
-        // one finished, so it ends that.
         store.clear_phase(&task.id, task.execution_generation)?;
         let current = store.require(&task.id)?;
         self.emit_task(&current);
@@ -1992,7 +1805,6 @@ impl ResearchTaskState {
         }
     }
 
-    /// Side effects of transcript events: phases and approval requests.
     fn observe_event(&self, task: &ResearchTask, event: &TaskRuntimeEvent) {
         match event {
             TaskRuntimeEvent::Phase { phase } => {
@@ -2014,8 +1826,6 @@ impl ResearchTaskState {
         }
     }
 
-    /// A task that waits for an approval or for its runs lets another task
-    /// start in its place; one that works again takes a slot back.
     fn lend_or_retake_slot(&self, task_id: &str, generation: u64, phase: TaskPhase) {
         let Some(active) = lock(&self.inner.active)
             .get(task_id)
@@ -2041,7 +1851,6 @@ impl ResearchTaskState {
         }
     }
 
-    /// Recomputes what needs the user per project, at most every 250 ms.
     pub fn refresh_attention(&self) {
         let Some(runtime) = tokio::runtime::Handle::try_current()
             .ok()
@@ -2101,8 +1910,6 @@ impl ResearchTaskState {
         active.mark_settled();
     }
 
-    /// Tell the host a task and the tasks that wait for it changed: a
-    /// failure or cancellation fails the started tasks that depend on it.
     fn emit_with_dependents(&self, store: &TaskStore, task_id: &str) {
         if let Ok(task) = store.require(task_id) {
             self.emit_task(&task);
@@ -2115,7 +1922,6 @@ impl ResearchTaskState {
         self.refresh_attention();
     }
 
-    /// Tell the host a task changed. Without a host this does nothing.
     pub fn emit_task(&self, task: &ResearchTask) {
         if let Some(host) = lock(&self.inner.host).clone() {
             host.task_changed(task);
@@ -2141,13 +1947,10 @@ impl ResearchTaskState {
 /// long the computer slept.
 const WAKE_CHECK_EVERY: Duration = Duration::from_secs(60);
 
-/// Active time in minutes, from the milliseconds the task clock counts.
 fn active_minutes(active_ms: u64) -> f64 {
     active_ms as f64 / 60_000.0
 }
 
-/// How long the wake timer sleeps now, and whether the start at `at` is due
-/// once it wakes (both in epoch ms).
 fn wake_step(at: i64, now: i64) -> (Duration, bool) {
     let until = Duration::from_millis(u64::try_from(at.saturating_sub(now)).unwrap_or(0) + 50);
     if until > WAKE_CHECK_EVERY {

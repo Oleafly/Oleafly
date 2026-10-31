@@ -36,8 +36,6 @@ export function useAutoSizeTextarea(
   latestPlaceholder.current = placeholder;
 
   useEffect(() => {
-    // Reading the controlled value keeps resizing coupled to typing, even
-    // though its pixels are measured from the DOM.
     void value;
     const textarea = textareaRef.current;
     if (!textarea) return;

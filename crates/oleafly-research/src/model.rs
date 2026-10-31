@@ -1,4 +1,3 @@
-//! Research task records shared by the app, the CLI and the daemon.
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,7 +15,6 @@ pub enum ResearchTaskStatus {
     Completed,
     Failed,
     Cancelled,
-    /// The agent wrote its plan and waits for the user to approve it.
     PlanReady,
 }
 
@@ -48,13 +46,10 @@ pub struct ManifestEntry {
     pub path: String,
     pub sha256: String,
     pub size: u64,
-    /// The project had a link to a file inside it here; the copy holds the
-    /// file itself. Review shows changes to it, but they cannot be applied.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub resolved_link: bool,
 }
 
-/// A project file the task's copy left out, and why.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SkippedEntry {
@@ -83,7 +78,6 @@ pub struct TaskIsolation {
     pub baseline: Vec<ManifestEntry>,
     pub allowed_paths: Vec<String>,
     pub created_at: i64,
-    /// Project files left out of the copy.
     #[serde(default)]
     pub skipped: Vec<SkippedEntry>,
 }
@@ -134,8 +128,6 @@ pub struct TaskReviewResult {
     pub project_mutation_generation: u64,
 }
 
-/// What a task is for and how far it may go. Every field has a default, so
-/// tasks saved before briefs existed read as the default brief.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ResearchBrief {
@@ -168,13 +160,11 @@ pub enum MetricGoal {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TaskPermissions {
-    /// Commands and runs may reach the network.
     pub network: bool,
     pub commands: CommandPolicy,
     pub desktop_apps: bool,
 }
 
-/// Whether the task's commands run, wait for the user's approval, or never run.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CommandPolicy {
@@ -190,12 +180,9 @@ pub const DEFAULT_RUN_TIMEOUT_MINUTES: u32 = 60;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TaskBudget {
-    /// Active time; waiting for approvals does not count. 5–1,440.
     pub wall_clock_minutes: u32,
-    /// Stop when the task's model spend reaches this many US dollars.
     pub usd_cap: Option<f64>,
     pub max_runs: Option<u32>,
-    /// Each run stops after this long. 1–720.
     pub run_timeout_minutes: u32,
 }
 
@@ -210,7 +197,6 @@ impl Default for TaskBudget {
     }
 }
 
-/// Where the task's runs execute: this computer, or a configured target.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ComputeTarget {
@@ -237,12 +223,10 @@ pub struct Resources {
     pub gpus: Option<u32>,
     pub cpus: Option<u32>,
     pub memory_gb: Option<u32>,
-    /// Slurm account and quality of service, when the cluster needs them.
     pub account: Option<String>,
     pub qos: Option<String>,
 }
 
-/// What a running task is doing now.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskPhase {
@@ -283,7 +267,6 @@ impl TaskPhase {
     }
 }
 
-/// Why a task stopped before the agent finished: a budget ran out.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum StopReason {
@@ -308,7 +291,6 @@ impl StopReason {
     }
 }
 
-/// Retry in the same workspace, or from a fresh copy of the project.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RetryMode {
@@ -325,7 +307,6 @@ pub enum ResumeReason {
     Handoff,
 }
 
-/// How the next generation of a task starts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(
     tag = "mode",
@@ -333,15 +314,15 @@ pub enum ResumeReason {
     rename_all_fields = "camelCase"
 )]
 pub enum PendingStart {
-    /// In the saved workspace, with a new conversation seeded from the record.
     Resume {
         isolation: TaskIsolation,
         reason: ResumeReason,
         #[serde(default)]
         previous_native_session_id: Option<String>,
     },
-    /// From a fresh copy, carrying the research record over from `carry_from`.
-    Fresh { carry_from: Option<String> },
+    Fresh {
+        carry_from: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -352,7 +333,6 @@ pub struct TodoItem {
     pub status: String,
 }
 
-/// The checks run on a task's result before review (never blocking it).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EvidenceReport {
@@ -386,7 +366,6 @@ pub enum EvidenceStatus {
     Skipped,
 }
 
-/// One finding. `code` names the message the UI shows; `params` fill it.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EvidenceItem {
@@ -396,7 +375,6 @@ pub struct EvidenceItem {
     pub params: BTreeMap<String, String>,
 }
 
-/// A supervised run's state.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RunState {
@@ -442,8 +420,6 @@ impl RunState {
     }
 }
 
-/// A run the task started (`research_task_runs`). The command is stored as
-/// text; environment values never are.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RunRecord {
@@ -525,7 +501,6 @@ impl ApprovalStatus {
     }
 }
 
-/// A request for the user's approval (`research_task_approvals`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ApprovalRecord {
@@ -570,10 +545,8 @@ pub struct ResearchTask {
     pub finished_at: Option<i64>,
     #[serde(default)]
     pub brief: ResearchBrief,
-    /// The research record lives in `research/<record_slug>/`.
     #[serde(default)]
     pub record_slug: String,
-    /// Start no earlier than this time (epoch ms).
     #[serde(default)]
     pub run_after: Option<i64>,
     #[serde(default)]
@@ -590,24 +563,19 @@ pub struct ResearchTask {
     pub evidence: Option<EvidenceReport>,
     #[serde(default)]
     pub pending_approvals: u32,
-    /// Active time used so far, across generations since the last fresh start.
     #[serde(default)]
     pub active_ms: u64,
     #[serde(default)]
     pub todos: Vec<TodoItem>,
     #[serde(default)]
     pub pending_start: Option<PendingStart>,
-    // 0.4.8 L: work the background helper runs and the app takes back.
-    /// The app asked the helper to give this task back at its next step.
     #[serde(default)]
     pub reclaim_requested: bool,
-    /// The generation this one continues (a resume or a handoff).
     #[serde(default)]
     pub resumed_from: Option<u64>,
 }
 
 impl ResearchTask {
-    /// `research/<slug>`: where the task keeps its brief, plan and ledger.
     pub fn record_dir(&self) -> String {
         crate::record::record_dir(&self.record_slug)
     }
@@ -654,8 +622,6 @@ pub struct ResearchTaskEdit {
     pub keep_running_after_quit: bool,
 }
 
-/// The workspace a task runs in, without the baseline manifest or the
-/// allowed-path list (which can be large).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskIsolationSummary {
@@ -665,7 +631,6 @@ pub struct TaskIsolationSummary {
     pub baseline_hash: String,
     pub file_count: usize,
     pub created_at: i64,
-    /// Project files the copy left out (at most 200 listed).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skipped: Vec<SkippedEntry>,
 }
@@ -684,8 +649,6 @@ impl From<&TaskIsolation> for TaskIsolationSummary {
     }
 }
 
-/// What commands and events send to the webview: the task without the
-/// isolation manifest and without the pending start.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ResearchTaskView {
@@ -726,7 +689,6 @@ pub struct ResearchTaskView {
     pub pending_approvals: u32,
     pub active_ms: u64,
     pub todos: Vec<TodoItem>,
-    // 0.4.8 L
     #[serde(default)]
     pub reclaim_requested: bool,
     #[serde(default)]
@@ -789,15 +751,12 @@ pub struct TaskTranscriptEvent {
     pub created_at: i64,
 }
 
-/// Text added to a transcript row since the last update, sent only to the
-/// windows that watch the task.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskTranscriptDelta {
     pub task_id: String,
     pub execution_generation: u64,
     pub sequence: u64,
-    /// `text` or `reasoning`.
     pub kind: String,
     pub append: String,
     pub created_at: i64,
@@ -810,20 +769,13 @@ pub struct TaskTranscriptDelta {
 #[serde(rename_all = "camelCase")]
 pub struct TaskTranscriptPage {
     pub events: Vec<TaskTranscriptEvent>,
-    /// Newer rows follow: pass this as the next `after_sequence`.
     pub next_sequence: Option<u64>,
-    /// Older rows precede a backwards page: pass this as the next
-    /// `before_sequence`.
     #[serde(default)]
     pub previous_sequence: Option<u64>,
-    /// The generation this one resumed; `None` for a fresh start (or a
-    /// generation from before this was recorded).
     #[serde(default)]
     pub resumed_from: Option<u64>,
 }
 
-/// A plan-first task's plan as the review shows it, and whether the file was
-/// longer than the review shows (64 KiB).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskPlanText {
@@ -876,7 +828,6 @@ pub enum TaskRuntimeEvent {
         input_tokens: Option<u64>,
         output_tokens: Option<u64>,
     },
-    /// A supervised run changed state.
     Run {
         run_id: String,
         name: String,
@@ -884,10 +835,8 @@ pub enum TaskRuntimeEvent {
         #[serde(default)]
         exit_code: Option<i32>,
     },
-    /// A request for the user's approval changed state.
     Approval {
         approval_id: String,
-        /// Not `kind`: that name tags the event.
         approval_kind: ApprovalKind,
         status: ApprovalStatus,
         summary: String,
@@ -926,65 +875,45 @@ pub struct TaskRunContext {
     pub allowed_paths: Vec<String>,
     #[serde(default)]
     pub brief: ResearchBrief,
-    /// `research/<slug>`, relative to the execution root.
     #[serde(default)]
     pub record_dir: String,
     #[serde(default)]
     pub dependencies: Vec<DependencyResult>,
     #[serde(default)]
     pub resume: Option<ResumeContext>,
-    /// Write the plan and stop; no runs or other changes yet.
     #[serde(default)]
     pub plan_phase: bool,
-    /// The workspace a fresh retry carried the record over from.
     #[serde(default)]
     pub carry_from: Option<String>,
-    /// 0.4.8 I: the brief allows desktop apps and someone is there to
-    /// approve them (see [`task_desktop_apps_conflict`]).
     #[serde(default)]
     pub desktop_apps: bool,
-    /// 0.4.8 L: set when this generation continues a handoff: the saved
-    /// conversation, an interrupted turn and a CLI agent's session.
     #[serde(default)]
     pub handoff: Option<HandoffResume>,
 }
 
-// 0.4.8 L: what a generation continues from, and what a suspended one leaves.
-/// How a generation that continues a handoff picks up.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct HandoffResume {
-    /// The generation that handed the task over.
     pub from_generation: u64,
-    /// The saved conversation, a file name beside the workspace.
     #[serde(default)]
     pub conversation: Option<String>,
-    /// The previous owner stopped in the middle of a turn.
     #[serde(default)]
     pub turn_interrupted: bool,
-    /// A CLI agent's own session and home to resume.
     #[serde(default)]
     pub acp: Option<crate::handoff::AcpHandoff>,
 }
 
-/// What a generation that suspended for a handoff leaves for the next owner.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SuspendState {
-    /// The saved conversation (a file name beside the workspace).
     #[serde(default)]
     pub conversation: Option<String>,
-    /// The turn was cut short.
     #[serde(default)]
     pub turn_interrupted: bool,
     #[serde(default)]
     pub acp: Option<crate::handoff::AcpHandoff>,
 }
 
-// 0.4.8 I: desktop apps ask the user before every action, so a task that
-// may run with nobody at the computer can't use them.
-/// The error code when a task can't use desktop apps: scheduled tasks and
-/// tasks that keep running after Oleafly closes have nobody to approve.
 pub fn task_desktop_apps_conflict(
     desktop_apps: bool,
     keep_running_after_quit: bool,
@@ -994,18 +923,15 @@ pub fn task_desktop_apps_conflict(
         .then_some("desktop_apps.task_unattended")
 }
 
-/// A finished task this one builds on.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DependencyResult {
     pub task_id: String,
     pub title: String,
-    /// At most 2,000 characters.
     pub summary: String,
     pub record_dir: String,
 }
 
-/// What a resumed generation is told about the work so far.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ResumeContext {

@@ -1,6 +1,5 @@
 import type { SVGProps } from "react";
 
-/** The arXiv mark, rendered with the surrounding tool tone. */
 export function ArxivIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg

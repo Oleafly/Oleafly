@@ -6,13 +6,14 @@ const mocks = vi.hoisted(() => ({
     projectId: "paper-a",
     projectName: "My paper",
     flushForQuit: vi.fn(),
-    engine: { source_format: "latex", typst_options: null },
+    engine: { id: "latex", source_format: "latex", typst_options: null },
   },
   pdfBytes: new Uint8Array([1, 2]) as Uint8Array | null, exportPdf: vi.fn(), exportProjectImage: vi.fn(),
   pdfPageToPng: vi.fn(),
   pickSavePath: vi.fn(), ensurePandoc: vi.fn(), exportDocument: vi.fn(), downloadProjectZip: vi.fn(),
-  revealInDir: vi.fn(),
-  notifyError: vi.fn(), infoUnique: vi.fn(() => 42), successUnique: vi.fn<typeof toast.successUnique>(() => 42), info: vi.fn(), dismiss: vi.fn(),
+  revealInDir: vi.fn(), cancelCompile: vi.fn(async () => true),
+  exportLog: [] as ((chunk: string) => void)[],
+  notifyError: vi.fn(), infoUnique: vi.fn<typeof toast.infoUnique>(() => 42), successUnique: vi.fn<typeof toast.successUnique>(() => 42), info: vi.fn(), dismiss: vi.fn(), update: vi.fn(),
 }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.state } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({ pdfBytes: mocks.pdfBytes }) } }));
@@ -20,9 +21,27 @@ vi.mock("@/lib/tex-root", () => ({ resolveEffectiveMainDoc: () => ({ mainDoc: "c
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: mocks.pdfPageToPng }));
-vi.mock("@/lib/tauri", () => ({ exportPdf: mocks.exportPdf, exportProjectImage: mocks.exportProjectImage, exportDocument: mocks.exportDocument, downloadProjectZip: mocks.downloadProjectZip, revealInDir: mocks.revealInDir }));
-vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: { infoUnique: mocks.infoUnique, successUnique: mocks.successUnique, info: mocks.info, dismiss: mocks.dismiss } }));
+vi.mock("@/lib/tauri", () => ({
+  EXPORT_LOG_EVENT: "export:log",
+  cancelCompile: mocks.cancelCompile,
+  exportPdf: mocks.exportPdf,
+  exportProjectImage: mocks.exportProjectImage,
+  exportDocument: mocks.exportDocument,
+  downloadProjectZip: mocks.downloadProjectZip,
+  revealInDir: mocks.revealInDir,
+  withEventListener: async (event: string, handler: (chunk: string) => void, run: () => Promise<unknown>) => {
+    if (event === "export:log") mocks.exportLog.push(handler);
+    try {
+      return await run();
+    } finally {
+      mocks.exportLog.splice(mocks.exportLog.indexOf(handler), 1);
+    }
+  },
+}));
+vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: { infoUnique: mocks.infoUnique, successUnique: mocks.successUnique, info: mocks.info, dismiss: mocks.dismiss, update: mocks.update } }));
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import { i18n } from "@/i18n";
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng } from "./export";
 
 const EXPORT_KEY = "export-result";
@@ -122,6 +141,58 @@ describe("document exports", () => {
     await exportCurrentDocument("typst");
     expect(mocks.exportDocument).toHaveBeenCalledOnce();
   });
+  it("shows the latest step a notebook export prints in the same progress toast", async () => {
+    mocks.state.engine.id = "quarto";
+    mocks.exportDocument.mockImplementationOnce(async () => {
+      const [log] = mocks.exportLog;
+      log("Starting\n");
+      log("processing file: report.qmd\n   \n");
+      log("half a li");
+    });
+    try {
+      await exportCurrentDocument("docx");
+    } finally {
+      mocks.state.engine.id = "latex";
+    }
+    const step = (text: string) => i18n.t(($) => $.shell.toolbar.exportingStep, { format: "docx", step: text });
+    expect(mocks.update.mock.calls).toEqual([
+      [42, step("Starting")],
+      [42, step("processing file: report.qmd")],
+    ]);
+    expect(mocks.infoUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.successUnique).toHaveBeenCalledOnce();
+    expect(mocks.exportLog).toEqual([]);
+  });
+
+  it("offers Stop on a notebook export, stops it through cancel_compile and says so once", async () => {
+    mocks.state.engine.id = "calepin";
+    mocks.exportDocument.mockImplementationOnce(async () => {
+      const action = mocks.infoUnique.mock.calls[0]?.[2];
+      expect(action?.label).toBe(i18n.t(($) => $.shell.toolbar.stopExport));
+      action?.onClick();
+      throw `${APP_ERROR_PREFIX}${JSON.stringify({ code: "notebook.export_stopped", params: {}, detail: null })}`;
+    });
+    try {
+      await exportCurrentDocument("html");
+    } finally {
+      mocks.state.engine.id = "latex";
+    }
+    expect(mocks.cancelCompile).toHaveBeenCalledOnce();
+    expect(mocks.info).toHaveBeenCalledExactlyOnceWith(enErrors.notebook.export_stopped);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+  });
+
+  it("offers no Stop on a source archive", async () => {
+    mocks.state.engine.id = "quarto";
+    try {
+      await exportCurrentDocument("zip");
+    } finally {
+      mocks.state.engine.id = "latex";
+    }
+    expect(mocks.infoUnique.mock.calls[0]?.[2]).toBeUndefined();
+  });
+
   it("does not start a second export while a picker is pending", async () => {
     let finish!: (path: string | null) => void;
     mocks.pickSavePath.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));

@@ -19,8 +19,6 @@ fn needs_quotes(arg: &[u16]) -> bool {
         })
 }
 
-/// Appends `arg` to `out`, quoted when needed. Backslashes are literal unless
-/// they come before a quote, where they are doubled; quotes are escaped.
 pub fn quote_arg(arg: &[u16], out: &mut Vec<u16>) {
     if !needs_quotes(arg) {
         out.extend_from_slice(arg);
@@ -45,7 +43,6 @@ pub fn quote_arg(arg: &[u16], out: &mut Vec<u16>) {
     out.push(QUOTE);
 }
 
-/// `program arg1 arg2 …` with each part quoted as needed.
 pub fn command_line(program: &[u16], args: &[Vec<u16>]) -> Vec<u16> {
     let mut line = Vec::new();
     quote_arg(program, &mut line);

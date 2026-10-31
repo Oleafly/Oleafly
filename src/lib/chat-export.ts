@@ -1,5 +1,3 @@
-// Exporting a built-in chat as Markdown, for chats too long to save and
-// for keeping a copy. Loaded lazily.
 import { i18n } from "@/i18n";
 import { textToBase64 } from "@/lib/base64";
 import { localizeMarkers } from "@/lib/chat-markers";
@@ -45,7 +43,6 @@ function messageLines(message: StoredMessage, labels: ReturnType<typeof markerLa
 export function chatMarkdown(chat: StoredChat, opts: { projectName: string | null }): string {
   const labels = markerLabels();
   const lines: string[] = [`# ${chat.title || i18n.t(($) => $.ai.history.untitled)}`, ""];
-  // The same field names as a CLI conversation's export, in the reader's language.
   if (opts.projectName) lines.push(`- ${i18n.t(($) => $.ai.acp.export.project)}: ${opts.projectName}`);
   lines.push(`- ${i18n.t(($) => $.ai.acp.export.started)}: ${formatDateTime(chat.createdAt)}`, "");
   for (const message of chat.messages) lines.push(...messageLines(message, labels));
@@ -64,7 +61,6 @@ function slug(title: string): string {
   return cleaned || "chat";
 }
 
-/** Asks where to save the chat as Markdown; "cancelled" when the dialog closes. */
 export async function exportChatMarkdown(
   chat: StoredChat,
   projectName: string | null,

@@ -48,7 +48,6 @@ describe("ACP conversation projection", () => {
   });
 
   it("keeps the agent's reply as written, so copy gets the real path", () => {
-    // The message bubble shows it with ~ (chat-parts); the row keeps the source.
     setDisplayHomes(["/Users/ada"]);
     const rows = projectAcpEvents([chunk(1, "I updated /Users/ada/y.")], false);
     expect(rows[0].msg.content).toBe("I updated /Users/ada/y.");
@@ -435,7 +434,6 @@ describe("ACP projection details", () => {
   });
 
   it("shows a failed or cancelled compaction as an error and an unfinished one as running", () => {
-    // While the turn is live, an unfinished step still reads as running.
     const statusOf = (status: string) =>
       projectAcpEvents([event(1, "compaction", { compactionId: "c", status })], true)[0].msg.toolCalls?.[0].status;
     expect(statusOf("failed")).toBe("error");

@@ -41,16 +41,12 @@ function detailLabel(kind: ApprovalKind): string {
 interface PendingApprovalsProps {
   projectId: string;
   tasks: ResearchTask[];
-  /** Only this task's requests (the task detail banner). */
   taskId?: string;
 }
 
-/** Requests from unattended tasks that wait for the user. Renders nothing when none wait. */
 export function PendingApprovals({ projectId, tasks, taskId }: Readonly<PendingApprovalsProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
-  // The panel and the task dialog can both show this, so ids are per instance.
   const headingId = useId();
-  // The list belongs to the project it was loaded for; another project's list is not this one's.
   const [loaded, setLoaded] = useState<{ projectId: string; approvals: ApprovalRecord[] } | null>(null);
   const [failedProject, setFailedProject] = useState<string | null>(null);
   const [deciding, setDeciding] = useState<string | null>(null);
@@ -63,12 +59,10 @@ export function PendingApprovals({ projectId, tasks, taskId }: Readonly<PendingA
     const request = ++loadRequest.current;
     try {
       const next = await listResearchTaskApprovals(projectId);
-      // An older answer must not replace a newer one.
       if (request !== loadRequest.current) return;
       setLoaded({ projectId, approvals: next });
       setFailedProject(null);
     } catch {
-      // The last good list stays; the banner says it could not be refreshed.
       if (request === loadRequest.current) setFailedProject(projectId);
     }
   }, [projectId]);
@@ -83,7 +77,6 @@ export function PendingApprovals({ projectId, tasks, taskId }: Readonly<PendingA
     setError(null);
     try {
       await decideResearchTaskApproval(approval.id, approve);
-      // The request is answered; it leaves the list before the next load returns.
       setLoaded((current) =>
         current ? { ...current, approvals: current.approvals.filter((candidate) => candidate.id !== approval.id) } : current,
       );
@@ -137,7 +130,6 @@ export function PendingApprovals({ projectId, tasks, taskId }: Readonly<PendingA
                   <p className="text-[0.6875rem] font-medium text-muted-foreground">
                     {detailLabel(approval.kind)}
                   </p>
-                  {/* The whole text, scrolled when long: a tail such as "&& curl ... | sh" must be seen before approving. */}
                   <CodeBlock
                     code={approval.detail}
                     tabIndex={0}

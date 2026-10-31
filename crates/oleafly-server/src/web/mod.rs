@@ -142,7 +142,7 @@ impl FromRequestParts<AppState> for WebUser {
 }
 
 pub async fn signed_in(state: &AppState, headers: &HeaderMap) -> Result<WebUser, ServerError> {
-    let token = web_sessions::presented(headers).ok_or(ServerError::Unauthorized)?;
+    let token = web_sessions::presented(headers, &state.config).ok_or(ServerError::Unauthorized)?;
     let now = state.clock.now_ms();
     let checked = token.clone();
     let caller = state
@@ -152,8 +152,6 @@ pub async fn signed_in(state: &AppState, headers: &HeaderMap) -> Result<WebUser,
     Ok(WebUser { caller, token })
 }
 
-/// The signed-in session behind a browser request that changes something. It
-/// has to carry the app's marker and come from this server's origin.
 pub async fn changing(state: &AppState, headers: &HeaderMap) -> Result<WebUser, ServerError> {
     if !state.config.web {
         return Err(ServerError::NotFound);

@@ -51,10 +51,6 @@ export function simulateAtsParse(text: string): AtsParse {
     required: section.required,
   }));
 
-  // A resume is identifiable by its section structure. Two or more standard
-  // sections, or contact details plus at least one section, is a strong signal.
-  // Deliberately does not require an email, so a missing email can still be
-  // flagged on a document that is clearly a resume.
   const presentCount = sections.filter((s) => s.present).length;
   const hasContact = Boolean(email) || Boolean(phone);
   const isResume = presentCount >= 2 || (hasContact && presentCount >= 1);

@@ -18,7 +18,6 @@ function place(diagnostic: LogDiagnostic): string | null {
   return diagnostic.line === null ? file : `${file}:${diagnostic.line}`;
 }
 
-/** The compile's problems, each opening its source line, and the full log under them. */
 export function CompileLog({ output }: Readonly<{ output: CompileOutput }>) {
   const { t } = useTranslation(["web"]);
   const actions = useActions();

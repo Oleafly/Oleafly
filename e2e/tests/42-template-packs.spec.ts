@@ -16,12 +16,6 @@ import {
   type WindowedList,
 } from "../windowed-list";
 
-// The Rust side fetches the catalog from OLEAFLY_PACKS_BASE_URL, which
-// scripts/e2e.sh points at the fixed fixture port before the app starts.
-// Pack management now lives in Settings -> Downloads (moved out of
-// the template gallery in the home-shell redesign), which is an "Advanced"
-// settings section: its nav entry only renders once Advanced is toggled on.
-
 let server: Awaited<ReturnType<typeof startPackFixtureServer>>;
 let manyPackInstalled = false;
 

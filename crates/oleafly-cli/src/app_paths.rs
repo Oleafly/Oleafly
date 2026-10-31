@@ -1,6 +1,3 @@
-//! Where the desktop app keeps things, from the CLI's side: the data folder,
-//! the installed app (and the engines bundled beside it), a project's
-//! identity in the app, its checkpoint store and its worktree lock.
 use std::ffi::OsStr;
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
@@ -8,7 +5,6 @@ use std::time::{Duration, Instant};
 
 use crate::contract::{CliError, ErrorKind};
 
-/// `OLEAFLY_DATA_DIR` when set and not empty, else `~/.oleafly`.
 pub fn data_root() -> Option<PathBuf> {
     if let Some(directory) = std::env::var_os("OLEAFLY_DATA_DIR").filter(|value| !value.is_empty())
     {
@@ -40,7 +36,6 @@ fn home_from(
         .map(PathBuf::from)
 }
 
-/// This command's own file, links resolved.
 pub fn own_executable() -> Option<PathBuf> {
     std::env::current_exe()
         .ok()
@@ -66,26 +61,18 @@ impl Platform {
     }
 }
 
-/// The desktop app found on this computer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InstalledApp {
-    /// The app itself (GUI executable).
     pub executable: PathBuf,
-    /// The folder its bundled engines (tectonic, typst, pandoc) sit in.
     pub bin_dir: PathBuf,
-    /// Its resources folder (templates, skills), when found.
     pub resources_dir: Option<PathBuf>,
 }
 
 pub(crate) struct AppSearch {
     pub platform: Platform,
-    /// The CLI's own folder (canonical).
     pub own_dir: Option<PathBuf>,
-    /// `OLEAFLY_APP`.
     pub override_app: Option<PathBuf>,
     pub home: Option<PathBuf>,
-    /// Windows install folders (registry, then `%LOCALAPPDATA%`, then
-    /// Program Files).
     pub install_dirs: Vec<PathBuf>,
 }
 
@@ -108,8 +95,6 @@ fn in_macos_bundle(folder: &Path) -> bool {
             .is_some_and(|extension| extension == "app")
 }
 
-/// GUI executables to look for, with the folder of their bundled engines,
-/// best first.
 pub(crate) fn app_bin_candidates(search: &AppSearch) -> Vec<(PathBuf, PathBuf)> {
     let mut candidates: Vec<(PathBuf, PathBuf)> = Vec::new();
     if let Some(own) = &search.own_dir {
@@ -159,7 +144,6 @@ pub(crate) fn app_bin_candidates(search: &AppSearch) -> Vec<(PathBuf, PathBuf)> 
     unique
 }
 
-/// Where the app's resources may be, for an engine folder.
 pub(crate) fn resources_candidates(bin_dir: &Path, platform: Platform) -> Vec<PathBuf> {
     match platform {
         Platform::MacOs => bin_dir
@@ -178,8 +162,6 @@ pub(crate) fn resources_candidates(bin_dir: &Path, platform: Platform) -> Vec<Pa
     }
 }
 
-/// The installed app this CLI belongs to (or the first one found), never
-/// this command itself.
 pub fn installed_app() -> Option<InstalledApp> {
     let platform = Platform::current();
     let own = own_executable();
@@ -213,8 +195,6 @@ pub fn installed_app() -> Option<InstalledApp> {
         })
 }
 
-/// The AppImage the app recorded for the terminal command (Linux). Its
-/// engines live inside the image, so the CLI can't use them.
 pub fn recorded_appimage() -> Option<PathBuf> {
     #[cfg(not(any(target_os = "macos", windows)))]
     {
@@ -226,12 +206,9 @@ pub fn recorded_appimage() -> Option<PathBuf> {
     }
 }
 
-/// A project as the app knows it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProjectIdentity {
-    /// `<data>/projects/<id>`.
     Library { id: String },
-    /// A folder the app opened in place.
     Linked { id: String, state_dir: PathBuf },
 }
 
@@ -250,7 +227,6 @@ fn valid_project_id(id: &str) -> bool {
         })
 }
 
-/// The app's id for the project at `root`, if the app knows it.
 pub fn project_identity(root: &Path, data_root: &Path) -> Option<ProjectIdentity> {
     let real = root.canonicalize().ok()?;
     if let (Some(parent), Some(name)) = (real.parent(), real.file_name().and_then(OsStr::to_str)) {
@@ -280,9 +256,6 @@ fn is_real_directory(path: &Path) -> Result<bool, CliError> {
     }
 }
 
-/// The project's checkpoint store when it exists (creates nothing), with
-/// the same checks the app makes: real folders, no links, no escape from
-/// `<data>/checkpoints`.
 pub fn existing_checkpoint_store(
     data_root: &Path,
     project_id: &str,
@@ -318,8 +291,6 @@ pub fn existing_checkpoint_store(
     Ok(Some(store))
 }
 
-/// The app's exclusive lock on a project's files
-/// (`<data>/project-worktree-locks/<id>.lock`), waited for up to `budget`.
 pub fn worktree_lock(
     data_root: &Path,
     project_id: &str,
@@ -377,11 +348,6 @@ pub fn worktree_lock(
     }
 }
 
-/// Removes the project's shell-escape trust, as the app does whenever
-/// something outside its editor changes a project's files: that trust is a
-/// record kept apart from the files (`<data>/device-trust/latex-shell-escape/
-/// <id>.json`), so it would otherwise carry over to whatever now sits in the
-/// project. Creates nothing; a project with no trust is left as it is.
 pub fn revoke_shell_escape_trust(data_root: &Path, project_id: &str) -> Result<(), CliError> {
     if !valid_project_id(project_id) {
         return Err(CliError::new(
@@ -405,7 +371,6 @@ pub fn revoke_shell_escape_trust(data_root: &Path, project_id: &str) -> Result<(
         folder.push(name);
         match is_real_directory(&folder) {
             Ok(true) => {}
-            // Nothing was ever trusted on this computer.
             Ok(false) => return Ok(()),
             Err(_) => return Err(unsafe_trust(what)),
         }
@@ -427,7 +392,6 @@ pub fn revoke_shell_escape_trust(data_root: &Path, project_id: &str) -> Result<(
 
 const RESTORE_PENDING_FILE: &str = "checkpoint-restore-pending";
 
-/// A checkpoint restore the app hasn't finished recovering.
 pub fn restore_pending(root: &Path, identity: &ProjectIdentity) -> bool {
     match identity {
         ProjectIdentity::Library { .. } => {
@@ -575,7 +539,6 @@ mod tests {
     #[test]
     fn shell_trust_is_revoked_for_that_project_only() {
         let data = tempfile::tempdir().unwrap();
-        // No trust folder: nothing to do, and nothing is created.
         revoke_shell_escape_trust(data.path(), "p1").unwrap();
         assert!(!data.path().join("device-trust").exists());
         let trust = data.path().join("device-trust").join("latex-shell-escape");
@@ -613,7 +576,6 @@ mod tests {
             .join("latex-shell-escape")
             .join("p1.json")
             .exists());
-        // A link in the record's place is removed, not its target.
         let data = tempfile::tempdir().unwrap();
         let trust = data.path().join("device-trust").join("latex-shell-escape");
         std::fs::create_dir_all(&trust).unwrap();

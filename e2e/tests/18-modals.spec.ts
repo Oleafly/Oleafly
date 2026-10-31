@@ -24,10 +24,7 @@ test("settings and template modals close through user interactions and restore f
   await tauriPage.focus('[data-testid="new-project"]');
   await expect(tauriPage.locator('[data-testid="new-project"]')).toBeFocused();
   await tauriPage.click('[data-testid="new-project"]');
-  // Creating a project opens the chooser first.
   await expect(tauriPage.getByTestId("project-kind-chooser")).toBeVisible();
-  // The bridge's synthetic Escape never reaches this dialog's own keydown
-  // listener, so close it the way a reader would: with its Close button.
   await tauriPage.evaluate(
     `[...document.querySelectorAll('[data-testid="project-kind-chooser"] button')]
       .find((button) => button.textContent?.trim() === "Close")?.click()`,
@@ -60,7 +57,7 @@ test("project info modal opens from the word-count palette command and closes", 
   tauriPage,
 }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
-  await fillCommandPalette(tauriPage, "word"); // cmdk matches single terms
+  await fillCommandPalette(tauriPage, "word");
   await tauriPage.press("[cmdk-input]", "Enter");
   const projectInfo = tauriPage.locator(
     '[role="dialog"][aria-labelledby="project-info-title"]',

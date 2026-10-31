@@ -9,6 +9,7 @@ import {
   type CollabProjectRole,
   type CompileSettings,
   parseServerFrame,
+  type RequestFrame,
   type ServerFrame,
   type SuggestionsFrame,
   type ThreadsFrame,
@@ -32,10 +33,11 @@ export interface GatewaySocket {
 export type SocketFactory = (url: string, handlers: SocketHandlers) => GatewaySocket;
 
 export type GatewayState = "connecting" | "online" | "offline" | "ended";
-export type GatewayEnd = "signed_out" | "no_access" | "stopped";
+export type GatewayEnd = "signed_out" | "no_access" | "too_large" | "stopped";
 export type ProbeResult = "ok" | "signed_out" | "no_access";
 
 export interface HelloInfo {
+  fresh: boolean;
   role: CollabProjectRole;
   features: WebFeatures;
   files: WebFile[];
@@ -65,11 +67,13 @@ export interface GatewayOptions {
   setTimer?: (run: () => void, ms: number) => () => void;
   random?: () => number;
   probe?: () => Promise<ProbeResult>;
+  instance?: string;
 }
 
 export const RECONNECT_BASE_MS = 500;
 export const RECONNECT_MAX_MS = 15_000;
 export const PROBE_AFTER_FAILURES = 2;
+export const MAX_CHANGE_BYTES = 10 * 1024 * 1024;
 
 const SIGNED_OUT_CODES = new Set(["unauthorized", "signed_out", "session_expired"]);
 const NO_ACCESS_CODES = new Set(["forbidden", "not_found", "removed", "project_not_shared", "archived"]);
@@ -100,19 +104,49 @@ const defaultTimer = (run: () => void, ms: number) => {
 
 interface DocChannel {
   path: string;
+  target: string | null;
   token: number;
   fileId: string | null;
   opened: boolean;
   onMessage: (message: CollabDocMessage) => void;
   resolve: ((opened: CollabDocOpened | null) => void) | null;
   inflight: TextOperation | null;
+  changeId: string | null;
+  resuming: boolean;
+  quiet: boolean;
 }
 
-class OfflineError extends Error {
+interface PendingRequest {
+  resolve: () => void;
+  reject: (error: Error) => void;
+}
+
+export class OfflineError extends Error {
   constructor() {
-    super("The connection to the server is down.");
+    super("offline");
     this.name = "OfflineError";
   }
+}
+
+export class RefusedError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message || code);
+    this.name = "RefusedError";
+    this.code = code;
+  }
+}
+
+function tooLarge(data: string): boolean {
+  if (data.length * 3 <= MAX_CHANGE_BYTES) return false;
+  return new TextEncoder().encode(data).byteLength > MAX_CHANGE_BYTES;
+}
+
+function newInstance(): string {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(36).slice(2, 10);
 }
 
 export class WebGateway {
@@ -130,16 +164,24 @@ export class WebGateway {
   private cancelRetry: (() => void) | null = null;
   private files: WebFile[] = [];
   private readonly channels = new Map<string, DocChannel>();
+  private readonly held = new Map<string, DocChannel>();
   private waiting: DocChannel[] = [];
   private tokens = 0;
   private mode: CollabEditMode | null = null;
   private presence: Extract<ClientFrame, { t: "presence" }> | null = null;
+  private readonly instance: string;
+  private changes = 0;
+  private requestIds = 0;
+  private readonly requests = new Map<string, PendingRequest>();
+  private readonly resumes = new Map<string, string>();
+  private readonly resumeAnswers = new Map<string, boolean>();
 
   constructor(options: GatewayOptions) {
     this.options = options;
     this.createSocket = options.createSocket ?? browserSocket;
     this.setTimer = options.setTimer ?? defaultTimer;
     this.random = options.random ?? Math.random;
+    this.instance = options.instance ?? newInstance();
     this.transport = {
       open: (path, onMessage) => this.openDoc(path, onMessage),
       change: (fileId, rev, op) => this.changeDoc(fileId, rev, op),
@@ -169,13 +211,50 @@ export class WebGateway {
   }
 
   send(frame: ClientFrame): boolean {
+    return this.sendText(JSON.stringify(frame));
+  }
+
+  request(frame: RequestFrame): Promise<void> {
+    const reqId = `${this.instance}:r${++this.requestIds}`;
+    if (!this.send({ ...frame, reqId })) return Promise.reject(new OfflineError());
+    return new Promise((resolve, reject) => {
+      this.requests.set(reqId, { resolve, reject });
+    });
+  }
+
+  inflight(fileId: string): { id: string; op: CollabTextOperation } | null {
+    const channel = this.channels.get(fileId) ?? this.held.get(fileId);
+    return channel?.inflight && channel.changeId ? { id: channel.changeId, op: channel.inflight.toWire() } : null;
+  }
+
+  resumeOnOpen(fileId: string, id: string): void {
+    this.resumes.set(fileId, id);
+  }
+
+  resumedOf(fileId: string): boolean | null {
+    const answer = this.resumeAnswers.get(fileId);
+    this.resumeAnswers.delete(fileId);
+    return answer ?? null;
+  }
+
+  holds(fileId: string): boolean {
+    return this.held.has(fileId) || this.channels.get(fileId)?.resuming === true;
+  }
+
+  private sendText(data: string): boolean {
     if (!this.online || !this.socket) return false;
     try {
-      this.socket.send(JSON.stringify(frame));
+      this.socket.send(data);
       return true;
     } catch {
       return false;
     }
+  }
+
+  private failRequests(): void {
+    const pending = [...this.requests.values()];
+    this.requests.clear();
+    for (const request of pending) request.reject(new OfflineError());
   }
 
   setMode(mode: CollabEditMode): boolean {
@@ -212,7 +291,12 @@ export class WebGateway {
           if (!live()) return;
           const frame = parseServerFrame(data);
           if (!frame) return;
-          if (frame.t === "hello") greeted = true;
+          if (frame.t === "hello") {
+            const fresh = !greeted;
+            greeted = true;
+            this.greet(frame, fresh);
+            return;
+          }
           this.receive(frame);
         },
         close: () => {
@@ -232,6 +316,7 @@ export class WebGateway {
   private lost(greeted: boolean): void {
     if (this.current === "ended") return;
     this.dropChannels();
+    this.failRequests();
     if (greeted) {
       this.attempt = 0;
       this.failures = 0;
@@ -280,25 +365,30 @@ export class WebGateway {
     }
     for (const channel of [...this.channels.values(), ...this.waiting]) channel.resolve?.(null);
     this.channels.clear();
+    this.held.clear();
     this.waiting = [];
+    this.failRequests();
     this.setState("ended");
   }
 
   private dropChannels(): void {
     for (const channel of this.channels.values()) {
-      if (channel.opened) continue;
+      if (channel.opened) {
+        if (channel.fileId && channel.inflight && channel.changeId) {
+          channel.resuming = false;
+          this.held.set(channel.fileId, channel);
+        }
+        continue;
+      }
       channel.fileId = null;
       this.waiting.push(channel);
     }
     this.channels.clear();
   }
 
-  private receive(frame: ServerFrame): void {
+  private receive(frame: Exclude<ServerFrame, { t: "hello" }>): void {
     const listener = this.options.listener;
     switch (frame.t) {
-      case "hello":
-        this.greet(frame);
-        return;
       case "tree":
         this.files = frame.files;
         listener.tree?.(frame.files);
@@ -331,13 +421,26 @@ export class WebGateway {
       case "access":
         listener.access?.(frame.role);
         return;
+      case "done":
+        this.answered(frame.reqId, null);
+        return;
       case "error":
+        if (frame.reqId && this.answered(frame.reqId, new RefusedError(frame.code, frame.message))) return;
         this.refused(frame.code, frame.message);
         return;
     }
   }
 
-  private greet(frame: Extract<ServerFrame, { t: "hello" }>): void {
+  private answered(reqId: string, error: Error | null): boolean {
+    const request = this.requests.get(reqId);
+    if (!request) return false;
+    this.requests.delete(reqId);
+    if (error) request.reject(error);
+    else request.resolve();
+    return true;
+  }
+
+  private greet(frame: Extract<ServerFrame, { t: "hello" }>, fresh: boolean): void {
     this.files = frame.files;
     this.attempt = 0;
     this.failures = 0;
@@ -345,15 +448,33 @@ export class WebGateway {
     if (this.mode && (frame.role === "owner" || frame.role === "editor")) this.send({ t: "mode", mode: this.mode });
     if (this.presence) this.send(this.presence);
     this.options.listener.hello?.({
+      fresh,
       role: frame.role,
       features: frame.features,
       files: frame.files,
       people: frame.people,
       compile: frame.compile,
     });
+    this.resume();
     const waiting = this.waiting;
     this.waiting = [];
     for (const channel of waiting) this.attach(channel);
+  }
+
+  private resume(): void {
+    const held = [...this.held];
+    this.held.clear();
+    for (const [fileId, channel] of held) {
+      if (!this.files.some((file) => file.fileId === fileId && file.kind === "text")) continue;
+      channel.resuming = true;
+      this.channels.set(fileId, channel);
+      const resume = channel.changeId ?? undefined;
+      if (!this.send({ t: "open", fileId, resume })) {
+        this.channels.delete(fileId);
+        channel.resuming = false;
+        this.held.set(fileId, channel);
+      }
+    }
   }
 
   private refused(code: string, message: string): void {
@@ -363,6 +484,10 @@ export class WebGateway {
     }
     if (NO_ACCESS_CODES.has(code) && !this.online) {
       this.finish("no_access");
+      return;
+    }
+    if (code === "project_too_large" && !this.online) {
+      this.finish("too_large");
       return;
     }
     if (code === "project_removed" || code === "access_removed") {
@@ -375,17 +500,23 @@ export class WebGateway {
   private openDoc(path: string, onMessage: (message: CollabDocMessage) => void): Promise<CollabDocOpened | null> {
     if (this.current === "ended") return Promise.resolve(null);
     return new Promise((resolve) => {
+      const target = this.fileIdFor(path);
       const channel: DocChannel = {
         path,
+        target,
         token: ++this.tokens,
         fileId: null,
         opened: false,
         onMessage,
         resolve,
         inflight: null,
+        changeId: null,
+        resuming: false,
+        quiet: false,
       };
+      if (target) this.held.delete(target);
       this.waiting = this.waiting.filter((waiting) => {
-        if (waiting.path !== path) return true;
+        if (waiting.path !== path && (target === null || waiting.target !== target)) return true;
         waiting.resolve?.(null);
         return false;
       });
@@ -395,7 +526,11 @@ export class WebGateway {
   }
 
   private attach(channel: DocChannel): void {
-    const fileId = this.fileIdFor(channel.path);
+    const fileId = channel.target
+      ? this.files.some((file) => file.fileId === channel.target)
+        ? channel.target
+        : null
+      : this.fileIdFor(channel.path);
     if (!fileId) {
       channel.resolve?.(null);
       channel.resolve = null;
@@ -408,7 +543,7 @@ export class WebGateway {
     }
     channel.fileId = fileId;
     this.channels.set(fileId, channel);
-    if (!this.send({ t: "open", fileId })) {
+    if (!this.send({ t: "open", fileId, resume: this.resumes.get(fileId) })) {
       this.channels.delete(fileId);
       channel.fileId = null;
       this.waiting.push(channel);
@@ -417,20 +552,34 @@ export class WebGateway {
 
   private changeDoc(fileId: string, rev: number, op: CollabTextOperation): Promise<void> {
     const channel = this.channels.get(fileId);
-    if (!channel?.opened || !this.online) return Promise.reject(new OfflineError());
+    if (channel?.quiet) return Promise.resolve();
+    if (!channel?.opened || channel.resuming || !this.online) return Promise.reject(new OfflineError());
+    const id = `${this.instance}:${++this.changes}`;
+    const data = JSON.stringify({ t: "change", fileId, rev, op, id });
+    if (tooLarge(data)) {
+      channel.inflight = null;
+      channel.changeId = null;
+      this.options.listener.error?.("too_large", "");
+      this.send({ t: "open", fileId });
+      return Promise.resolve();
+    }
     try {
       channel.inflight = TextOperation.fromWire(op);
     } catch {
       channel.inflight = null;
     }
-    if (!this.send({ t: "change", fileId, rev, op })) {
+    channel.changeId = id;
+    if (!this.sendText(data)) {
       channel.inflight = null;
+      channel.changeId = null;
       return Promise.reject(new OfflineError());
     }
     return Promise.resolve();
   }
 
   private closeDoc(fileId: string, token: number): void {
+    const kept = this.held.get(fileId);
+    if (kept?.token === token) this.held.delete(fileId);
     const channel = this.channels.get(fileId);
     if (!channel) {
       this.waiting = this.waiting.filter((waiting) => {
@@ -451,19 +600,34 @@ export class WebGateway {
     const channel = this.channels.get(frame.fileId);
     if (!channel) return;
     if (frame.t === "opened") {
+      const inflight = channel.resuming && frame.resumed === true ? channel.inflight : null;
       channel.inflight = null;
+      channel.changeId = null;
+      channel.resuming = false;
       if (!channel.opened) {
         channel.opened = true;
+        if (this.resumes.delete(frame.fileId) && frame.resumed !== null) {
+          this.resumeAnswers.set(frame.fileId, frame.resumed);
+        }
         const resolve = channel.resolve;
         channel.resolve = null;
         resolve?.({ file_id: frame.fileId, rev: frame.rev, text: frame.text, session: channel.token });
         return;
+      }
+      if (inflight) {
+        channel.quiet = true;
+        try {
+          channel.onMessage({ kind: "ack", rev: frame.rev, length: inflight.targetLength });
+        } finally {
+          channel.quiet = false;
+        }
       }
       channel.onMessage({ kind: "reset", rev: frame.rev, text: frame.text });
       return;
     }
     if (frame.t === "reset") {
       channel.inflight = null;
+      channel.changeId = null;
       channel.onMessage({ kind: "reset", rev: frame.rev, text: frame.text });
       return;
     }
@@ -480,6 +644,7 @@ export class WebGateway {
     }
     const length = frame.length ?? channel.inflight?.targetLength ?? -1;
     channel.inflight = null;
+    channel.changeId = null;
     channel.onMessage({ kind: "ack", rev: frame.rev, length });
   }
 }

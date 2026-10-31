@@ -1,7 +1,3 @@
-//! The capability manifests (v3) Oleafly writes for its bounded Cua Driver
-//! daemons, one per runtime. A manifest is the whole of what a daemon may
-//! touch; it expires after 8 hours and after 30 idle minutes.
-
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -65,8 +61,6 @@ pub(crate) struct DesktopResources {
     pub display: bool,
 }
 
-/// The tools of a browser runtime: the browser ones, and the window list
-/// Oleafly uses to find the window it binds.
 fn browser_tools() -> Vec<&'static str> {
     let mut tools = policy::browser_allow_tools();
     tools.extend_from_slice(policy::BROWSER_INTERNAL_TOOLS);
@@ -100,9 +94,6 @@ fn manifest(tools: Vec<&'static str>, resources: Resources) -> Manifest {
     }
 }
 
-/// The manifest for one runtime, or `None` when that runtime has nothing
-/// to do. The desktop one exists whenever desktop apps are on, even with no
-/// apps, so the connection test can run.
 pub(crate) fn build_manifest(config: &CuaDriverConfig, kind: RuntimeKind) -> Option<Manifest> {
     if !config.enabled {
         return None;
@@ -188,7 +179,6 @@ pub(crate) fn render_manifest(manifest: &Manifest) -> String {
     serde_norway::to_string(manifest).unwrap_or_default()
 }
 
-/// Creates `dir` readable by this user only.
 pub(crate) fn ensure_private_dir(dir: &Path) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
     #[cfg(unix)]
@@ -200,8 +190,6 @@ pub(crate) fn ensure_private_dir(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Writes `<dir>/<kind>.manifest.yaml`, owner-only, replacing any earlier
-/// one in one step.
 pub(crate) fn write_manifest(
     dir: &Path,
     kind: RuntimeKind,
@@ -317,8 +305,6 @@ mod tests {
                     "{kind:?} {tool}"
                 );
             }
-            // Only the browsers, whose windows a bind names; never launched
-            // or quit from here.
             assert_eq!(
                 manifest.resources.apps.len(),
                 super::super::browser::known_browsers().len()

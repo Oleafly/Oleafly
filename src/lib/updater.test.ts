@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Mock the Tauri surface the updater primitives touch. isTauri is toggled per
-// test via the exported ref so we can exercise the browser (no-updater) path.
 const state = vi.hoisted(() => ({ tauri: true }));
 const { check } = vi.hoisted(() => ({ check: vi.fn() }));
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));

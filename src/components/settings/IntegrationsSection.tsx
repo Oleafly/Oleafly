@@ -16,7 +16,6 @@ import {
 } from "@/components/settings/IntegrationBrandIcons";
 import { useSettingsStore } from "@/store/settings";
 
-// 0.4.8 I: loaded only when its tab opens.
 const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"));
 
 export function IntegrationsSection() {
@@ -32,8 +31,6 @@ export function IntegrationsSection() {
   const settingsOpen = useSettingsStore((state) => state.settingsOpen);
 
   useEffect(() => {
-    // A target set as Settings closes is for the next time it opens; this
-    // copy is on its way out with the closing dialog.
     if (!settingsOpen) return;
     if (scrollTarget === "git-hosting" || scrollTarget === "github") {
       setTab("git-hosting");

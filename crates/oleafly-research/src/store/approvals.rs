@@ -1,6 +1,3 @@
-//! Rows of `research_task_approvals`: requests a task waits on until the
-//! user approves or denies them. A decision only counts while the task is
-//! still running the generation that asked.
 use rusqlite::{params, OptionalExtension};
 
 use super::{fresh_id, store_error, TaskStore};
@@ -41,7 +38,6 @@ fn typed(
 pub const NO_LONGER_WAITING: &str = "This approval is no longer waiting.";
 
 impl TaskStore {
-    /// Opens a pending request for the running generation of a task.
     pub fn insert_approval(
         &self,
         task_id: &str,
@@ -94,7 +90,6 @@ impl TaskStore {
         typed(row)
     }
 
-    /// Approves or denies a pending request of a task's current run.
     pub fn decide_approval(&self, id: &str, approve: bool) -> Result<ApprovalRecord, String> {
         let status = if approve {
             ApprovalStatus::Approved
@@ -120,7 +115,6 @@ impl TaskStore {
         self.approval(id)
     }
 
-    /// Marks a request expired when its time ran out; returns the record.
     pub fn expire_approval(&self, id: &str) -> Result<ApprovalRecord, String> {
         self.open()?
             .execute(
@@ -132,7 +126,6 @@ impl TaskStore {
         self.approval(id)
     }
 
-    /// Withdraws one pending request (its wait ended without an answer).
     pub fn withdraw_approval(&self, id: &str) -> Result<usize, String> {
         self.open()?
             .execute(
@@ -143,7 +136,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Withdraws every pending request of a generation (it ended).
     pub fn withdraw_approvals(&self, task_id: &str, generation: u64) -> Result<usize, String> {
         self.open()?
             .execute(
@@ -154,9 +146,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Withdraws every pending request of a task. Run when the task stops
-    /// for good or goes back to the queue, since no generation that asked
-    /// can take the answer any more.
     pub fn withdraw_all_approvals(&self, task_id: &str) -> Result<usize, String> {
         self.open()?
             .execute(
@@ -167,8 +156,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Pending requests of running tasks in a project, oldest first. Only the
-    /// generation a task is running can answer, so older rows are left out.
     pub fn pending_approvals(&self, project_id: &str) -> Result<Vec<ApprovalRecord>, String> {
         let connection = self.open()?;
         let mut statement = connection

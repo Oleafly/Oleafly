@@ -1,7 +1,3 @@
-//! Local-first literature search transport. The source clients live in the
-//! research crate (shared with research tasks and the CLI); these are the
-//! app's commands, which read connector keys from the app's secret store.
-
 use std::sync::{Arc, OnceLock};
 
 use oleafly_research::host::ConnectorSecrets;
@@ -11,7 +7,6 @@ use oleafly_research::literature::{
 };
 use serde_json::{json, Value};
 
-/// Connector keys from the app's secret store.
 pub(crate) struct AppSecrets;
 
 impl ConnectorSecrets for AppSecrets {
@@ -47,9 +42,6 @@ pub async fn literature_arxiv_lookup(arxiv_id: String) -> Result<String, String>
     oleafly_research::literature::literature_arxiv_lookup(&AppSecrets, &arxiv_id).await
 }
 
-/// Search one reviewed scholarly source. The frontend invokes this once per
-/// selected source with `Promise.allSettled`, so one slow or unavailable index
-/// never suppresses results from the others.
 #[tauri::command]
 pub async fn literature_search(
     source: String,
@@ -72,12 +64,8 @@ pub async fn literature_search(
     .map_err(app_error)
 }
 
-// 0.4.8 E: one search across the scholarly indexes, shared by chat and
-// research tasks (one cache and one pacing per index).
-
 const ALPHAXIV_MCP_URL: &str = "https://api.alphaxiv.org/mcp";
 
-/// The app's literature client, cached in `<oleafly root>/literature-cache.sqlite3`.
 pub(crate) fn app_literature() -> Arc<LiteratureClient> {
     static CLIENT: OnceLock<Arc<LiteratureClient>> = OnceLock::new();
     CLIENT
@@ -90,7 +78,6 @@ pub(crate) fn app_literature() -> Arc<LiteratureClient> {
         .clone()
 }
 
-/// alphaXiv, when its MCP server is connected and turned on.
 struct AppAlphaXiv {
     server: String,
 }
@@ -152,8 +139,6 @@ fn parse_alphaxiv(text: &str, limit: usize) -> Vec<LiteratureRecord> {
         {
             continue;
         }
-        // The title sits before the id; a line that starts with the id has
-        // it after.
         let before = clean_title(&line[..start]);
         let title = if before.is_empty() {
             clean_title(&line[start + 5 + length..])
@@ -194,15 +179,12 @@ fn clean_title(text: &str) -> String {
         .to_string()
 }
 
-/// Indexes beyond the built-in ones: alphaXiv when it is connected.
 pub(crate) fn extra_sources() -> Vec<Arc<dyn LiteratureSource>> {
     crate::mcp::client::enabled_remote_server(ALPHAXIV_MCP_URL)
         .map(|server| vec![Arc::new(AppAlphaXiv { server }) as Arc<dyn LiteratureSource>])
         .unwrap_or_default()
 }
 
-/// Searches the selected indexes at once (all default ones when none are
-/// selected) and merges the results.
 #[tauri::command]
 pub async fn literature_search_all(query: LiteratureQuery) -> Result<LiteratureResults, String> {
     let extra = tauri::async_runtime::spawn_blocking(extra_sources)

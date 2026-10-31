@@ -5,14 +5,16 @@ import type {
   PDFLinkService,
   StructTreeLayerBuilder,
 } from "pdfjs-dist/web/pdf_viewer.mjs";
-// A wrapper worker that polyfills newer JS (Map.getOrInsert*) before loading the
-// real pdf.js worker, so PDFs render on older WebViews too. `?worker&url` lets
-// pdf.js manage the worker lifecycle as it does with the stock worker URL.
-import workerSrc from "./pdf.worker?worker&url";
-// Styles for the selectable text layer + clickable annotation (link) layer.
 import "pdfjs-dist/web/pdf_viewer.css";
 import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
-import { installMainThreadPdfWorker } from "./mainThreadWorker";
+import { pdfDocumentOptions } from "./pdfDocumentOptions";
+import {
+  createReadyPdfWorker,
+  destroyPdfWorker,
+  forceMainThreadPdfWorker,
+  pendingMainThreadPdfWorker,
+  withTimeout,
+} from "./pdfWorkerRuntime";
 import { PdfTextAccessibilityManager } from "./pdfAccessibility";
 import {
   applyPdfLayerViewport,
@@ -68,12 +70,6 @@ import {
 } from "./textHit";
 import { keyEchoTranslator, type PreviewTranslator } from "./messages";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-
-// Last-resort recovery for a worker subsystem wedged by a long-occluded
-// WKWebView. This is intentionally session-wide: once real worker creation is
-// no longer viable, the main-thread loopback worker keeps preview usable.
-let mainThreadWorkerInstall: Promise<void> | null = null;
 type PdfViewerRuntime = typeof import("pdfjs-dist/web/pdf_viewer.mjs");
 type PdfDownloadManager = InstanceType<PdfViewerRuntime["DownloadManager"]>;
 let pdfViewerRuntimePromise: Promise<PdfViewerRuntime> | null = null;
@@ -157,59 +153,21 @@ function pdfLoadFailure(
   };
 }
 
-async function forceMainThreadWorker(): Promise<void> {
-  mainThreadWorkerInstall ??= installMainThreadPdfWorker().catch((error) => {
-    mainThreadWorkerInstall = null;
-    throw error;
-  });
-  await mainThreadWorkerInstall;
-}
-
 function loadPdfViewerRuntime(): Promise<PdfViewerRuntime> {
   pdfViewerRuntimePromise ??= import("pdfjs-dist/web/pdf_viewer.mjs");
   return pdfViewerRuntimePromise;
 }
 
-function destroyPdfWorker(worker: pdfjsLib.PDFWorker): void {
-  try {
-    worker.destroy();
-  } catch {
-    /* already destroyed */
-  }
-}
-
 async function createPdfWorker(signal: AbortSignal): Promise<pdfjsLib.PDFWorker> {
-  const usingMainThread = mainThreadWorkerInstall !== null;
-  if (mainThreadWorkerInstall) {
-    await mainThreadWorkerInstall;
+  const mainThreadInstall = pendingMainThreadPdfWorker();
+  if (mainThreadInstall) {
+    await mainThreadInstall;
   }
-  const worker = new pdfjsLib.PDFWorker();
-  let rejectAborted: ((reason: DOMException) => void) | null = null;
-  const aborted = new Promise<never>((_, reject) => {
-    rejectAborted = reject;
-  });
-  const onAbort = () => {
-    destroyPdfWorker(worker);
-    rejectAborted?.(new DOMException("PDF load cancelled", "AbortError"));
-  };
-  signal.addEventListener("abort", onAbort, { once: true });
-  try {
-    if (signal.aborted) onAbort();
-    await withTimeout(
-      Promise.race([worker.promise, aborted]),
-      PDF_WORKER_LOAD_TIMEOUT_MS,
-      usingMainThread ? "main-thread PDF worker setup" : "PDF worker setup",
-    );
-    if (signal.aborted) {
-      throw new DOMException("PDF load cancelled", "AbortError");
-    }
-    return worker;
-  } catch (error) {
-    destroyPdfWorker(worker);
-    throw error;
-  } finally {
-    signal.removeEventListener("abort", onAbort);
-  }
+  return createReadyPdfWorker(
+    PDF_WORKER_LOAD_TIMEOUT_MS,
+    mainThreadInstall ? "main-thread PDF worker setup" : "PDF worker setup",
+    signal,
+  );
 }
 
 type PageTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy["getTextContent"]>>;
@@ -221,22 +179,6 @@ function textContentStream(content: PageTextContent): ReadableStream<PageTextCon
       controller.enqueue(content);
       controller.close();
     },
-  });
-}
-
-function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${what} timed out after ${ms}ms`)), ms);
-    p.then(
-      (v) => {
-        clearTimeout(t);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(t);
-        reject(e);
-      },
-    );
   });
 }
 
@@ -299,7 +241,6 @@ function textSpanAt(
   );
 }
 
-/** The word under `clientX` in a text-layer span, measured when its text is one node. */
 function wordInSpan(span: HTMLElement, clientX: number): ClickedWord | null {
   const text = span.textContent ?? "";
   const node = span.firstChild;
@@ -348,11 +289,7 @@ function wordAtPoint(
   return word ? clickedWord(node, text, word) : null;
 }
 
-// Render pages within this many CSS pixels of the viewport (above and below), so
-// scrolling reveals already-rasterized pages. Larger = smoother scroll, more memory.
 const RENDER_MARGIN_PX = 1200;
-// Hard cap on simultaneously-rasterized pages, a safety net against unbounded
-// memory on very tall/zoomed documents regardless of scroll behavior.
 const MAX_RENDERED_PAGES = 14;
 const PLACEHOLDER_ZOOM_BATCH_SIZE = 32;
 const PDF_SPREAD_GAP_PX = 16;
@@ -866,16 +803,6 @@ export interface PdfPagePosition {
   bottom: number;
 }
 
-/**
- * Pick the page that best represents the viewport.
- *
- * A page with only a few pixels left above the viewport must not win over the
- * next page that fills almost all of it. Equal vertical geometry is resolved
- * to the lower page number so a two-page spread consistently reports its left
- * page. IntersectionObserver uses a generous render margin, so the final
- * nearest-distance fallback also handles a callback arriving between two
- * actually visible pages.
- */
 function viewportDistanceOf(
   rect: { top: number; bottom: number },
   overlap: number,
@@ -1046,10 +973,6 @@ export function createPdfLinkViewerAdapter(
         options.getRenderedTextLayer?.(request.pageNumber) ?? null;
       if (!eventBus || !renderedTextLayer) return;
 
-      // PDFLinkService registers its one-shot focus listener immediately after
-      // scrollPageIntoView returns. Re-emit an already-completed text layer in
-      // a microtask so that listener observes it and aborts itself. Pages still
-      // rendering use the normal completion dispatch below.
       queueMicrotask(() => {
         dispatchPdfTextLayerRendered(
           eventBus,
@@ -1181,7 +1104,6 @@ export interface PdfOutlineState {
 
 export interface PdfViewerProps {
   data: Uint8Array | null;
-  /** Exact compile/PDF-load identity; never use a filename as this value. */
   documentIdentity?: string;
   scale: number;
   onInverse?: (
@@ -1200,9 +1122,6 @@ export interface PdfViewerProps {
   onOutlineStateChange?: (state: PdfOutlineState) => void;
   password?: string;
   rotation?: PdfRotation;
-  // true (default): the loader probes the text pipe and recovers a wedged
-  // worker. false: skip the probe so a legitimately text-less page (image/figure
-  // projects) doesn't force the session onto the main-thread worker.
   expectText?: boolean;
   screenReaderMode?: boolean;
   t?: PreviewTranslator;
@@ -1216,7 +1135,6 @@ export interface PdfViewerHandle {
   activateOutlineItem: (id: string) => void;
 }
 
-/** Honours the OS "reduce motion" setting for preview scrolling. */
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -1271,33 +1189,19 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   rotationRef.current = normalizeRotation(rotation);
   const screenReaderModeRef = useRef(screenReaderMode);
   screenReaderModeRef.current = screenReaderMode;
-  // Last page we reported, so scroll churn doesn't spam setState.
   const currentPageRef = useRef(1);
 
-  // Bumped on every (re)load and on unmount, so async work from a superseded
-  // document aborts instead of painting into the current one.
   const loadSeqRef = useRef(0);
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
 
   const docRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
-  // Page number -> its persistent wrapper element (a lightweight placeholder that
-  // always exists so scroll geometry and SyncTeX work even when unrasterized).
   const wrapsRef = useRef<Map<number, HTMLElement>>(new Map());
-  // Page number -> its live rasterization (canvas/text/annotation + render tasks).
   const renderedRef = useRef<Map<number, RenderState>>(new Map());
-  // Pages currently within the observer's margin (candidates to keep rendered).
   const visibleRef = useRef<Set<number>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
-  // Exact scale-1 viewports retain mixed media boxes, rotation and UserUnit.
   const pageViewportsRef = useRef<Map<number, PdfPageViewport>>(new Map());
   const geometryPromisesRef = useRef<Map<number, Promise<PdfPageViewport>>>(new Map());
-  // Render states whose bookkeeping has been dropped but whose canvases are
-  // still on screen. Releasing a state removes its nodes, so doing it when a
-  // reload *starts* empties the pane for the whole parse; these are held until
-  // the replacement layout is ready to swap in, or until the load is abandoned
-  // with no successor. Nothing else may read them: they are already detached
-  // from `renderedRef`.
   const pendingReleaseRef = useRef<RenderState[]>([]);
   const staleRastersRef = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const wrapListRef = useRef<HTMLElement[]>([]);
@@ -1439,8 +1343,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   }, []);
   const geometryScanRef = useRef<PdfPageGeometryScan | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
-  // Debounce for crisp re-rasterization: zoom resizes instantly (cheap) and only
-  // re-renders at full resolution once the scale settles, so pinch stays smooth.
   const rasterTimerRef = useRef<number | null>(null);
   const zoomSettlingRef = useRef(false);
   const placeholderResizeFrameRef = useRef<number | null>(null);
@@ -1505,8 +1407,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         }
       }
 
-      // Replacing an approximate page above the viewport must not move the
-      // reader's current line. Preserve the first on-screen page as an anchor.
       if (scrollParent && anchor && anchorTopBefore !== undefined) {
         const anchorTopAfter = anchor.getBoundingClientRect().top;
         const delta = anchorTopAfter - anchorTopBefore;
@@ -1594,8 +1494,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     [applyExactPageViewport],
   );
 
-  // Drop a page's rasterization (canvas/text/annotation layers) and cancel its
-  // in-flight render, keeping the placeholder wrapper (sized) so layout holds.
   const unrenderPage = useCallback((pageNo: number) => {
     releaseStaleRaster(pageNo);
     hidePreview(pageNo);
@@ -1624,9 +1522,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     }
   }, [hidePreview, releaseStaleRaster]);
 
-  // Reserve a live raster slot before any async page work starts. This is the
-  // common admission path for intersection, toolbar, SyncTeX and zoom renders,
-  // so even concurrent/off-screen requests cannot exceed the memory budget.
   const reserveRenderSlot = useCallback((requestedPage: number) => {
     if (renderedRef.current.has(requestedPage)) return;
     while (renderedRef.current.size >= MAX_RENDERED_PAGES) {
@@ -1843,8 +1738,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     [],
   );
 
-  // Rasterize one page at the given scale (skips if already current). Idempotent
-  // and cancellation-safe.
   const renderPage = useCallback(async (pageNo: number, renderScale: number) => {
     const requestedDoc = docRef.current;
     const requestedSeq = loadSeqRef.current;
@@ -1852,8 +1745,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     const dpr = window.devicePixelRatio || 1;
     const prepareGeometry = async (): Promise<boolean> => {
       try {
-        // A page is never rasterized against a borrowed/approximate wrapper.
-        // Exact rotation, UserUnit and MediaBox geometry must win first.
         await ensurePageGeometry(pageNo);
         return true;
       } catch (error) {
@@ -2125,8 +2016,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             viewport,
           });
           state.textLayer = textLayer;
-          // Time-box: a worker that wedges after load can hang streamTextContent
-          // forever, which would stall this async render loop.
           try {
             await withTimeout(textLayer.render(), 15_000, "text layer");
           } catch (error) {
@@ -2184,7 +2073,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           accessibilityManager.disable();
           if (!isCurrent()) return false;
           textDiv.replaceChildren();
-          /* text selection is a non-fatal enhancement */
           return true;
         } finally {
           release?.();
@@ -2216,7 +2104,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       };
       if (!(await buildStructTree())) return;
 
-      // Links/annotations (best-effort).
       const buildAnnotations = async (): Promise<boolean> => {
         let release: (() => void) | null = null;
         try {
@@ -2272,7 +2159,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           });
           return true;
         } catch {
-          /* annotation rendering is a non-fatal enhancement */
           return true;
         } finally {
           release?.();
@@ -2314,7 +2200,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     scheduleDetailUpdate();
   }, [scheduleDetailUpdate, screenReaderMode, syncScreenReaderLayer]);
 
-  // Forward SyncTeX may target an off-screen page; render it on demand.
   const ensurePageRendered = useCallback(
     (pageNo: number) => {
       void renderPage(pageNo, scaleRef.current);
@@ -2326,8 +2211,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   // as shown, rotation included.
   const syncPageGeometry = useCallback((pageNo: number) => pageViewportsRef.current.get(pageNo), []);
 
-  // Forward SyncTeX looks for the cursor's word in the text of the pages the
-  // source line landed on, which may not be rendered yet.
   const syncPageText = useCallback(async (pageNo: number) => {
     const doc = docRef.current;
     if (!doc || pageNo < 1 || pageNo > doc.numPages) return null;
@@ -2348,9 +2231,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       ),
     );
     const scrollingFast = performance.now() < fastScrollUntilRef.current;
-    // When more than 14 pages fit inside the observer margin, keep the pages
-    // nearest the current viewport and leave the rest as exact placeholders.
-    // Scroll reconciliation rotates that bounded window as the reader moves.
     for (const pageNumber of renderedRef.current.keys()) {
       if (visibleRef.current.has(pageNumber) && !desired.has(pageNumber)) {
         unrenderPage(pageNumber);
@@ -2720,8 +2600,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     }
   }, []);
 
-  // Scroll the viewer to a page (prev/next/jump from the toolbar), rendering it
-  // on demand since virtualization may not have rasterized it yet.
   useImperativeHandle(
     ref,
     () => ({
@@ -2729,9 +2607,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         const doc = docRef.current;
         if (!doc) return;
         const clamped = Math.max(1, Math.min(doc.numPages, Math.floor(n)));
-        // Toolbar page navigation can be repeated faster than a smooth-scroll
-        // animation completes. Jump atomically so a previous animation cannot
-        // report an intermediate page and make rapid next/previous skip.
         scrollPageIntoView({ pageNumber: clamped, behavior: "auto" });
       },
       getFitScale: (mode) => {
@@ -2749,9 +2624,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         });
         if (fit !== null) return fit;
 
-        // Geometry for a newly reached spread may still be resolving. Request
-        // it now; the toolbar can retry on its next action without ever using
-        // page-one dimensions for another page.
         const current = currentPageRef.current;
         const left =
           layout === "double" && current % 2 === 0 ? current - 1 : current;
@@ -2776,7 +2648,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     ]
   );
 
-  // Build the placeholder layout for every page and start observing them.
   const buildLayout = useCallback(
     async (doc: pdfjsLib.PDFDocumentProxy) => {
       const container = containerRef.current;
@@ -2792,10 +2663,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       geometryScanRef.current?.abort("layout rebuilt");
       geometryScanRef.current = null;
       dropQueuedViewports();
-      // The bookkeeping for the outgoing layout is dropped now, but its DOM
-      // stays until the replacement is ready to go in. Releasing or clearing
-      // here instead would blank the pane for the whole of
-      // `ensurePageGeometry` - the flicker a recompile or a rotate used to show.
       retirePendingRenders();
       const retainedLayout = retainedLayoutRef.current;
       retainedLayoutRef.current = null;
@@ -2808,22 +2675,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       pageViewportsRef.current.clear();
       geometryPromisesRef.current.clear();
 
-      // Page 1 is the only geometry on the startup critical path. Every later
-      // page gets a clearly marked neutral skeleton, then its own exact
-      // MediaBox/rotation/UserUnit replaces it progressively.
       const firstViewport = await ensurePageGeometry(1);
       if (
         seq !== loadSeqRef.current ||
         docRef.current !== doc
       ) {
-        // Superseded: this layout will never be built, so the retained pages
-        // have no swap to wait for. Whoever superseded us owns the pane.
         releasePendingRenders();
         return;
       }
 
-      // Geometry is in hand, so the replacement can be built: release and drop
-      // the previous pages only now, immediately before the new ones go in.
       const carried = takeCarriedRasters();
       releasePendingRenders();
       dropPreviews();
@@ -2857,16 +2717,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       };
       const createPageWrap = (p: number) => {
         const wrap = document.createElement("div");
-        // Horizontal spacing between pages comes from the container's `gap`, not
-        // a per-page margin, so single-column and two-up grids stay evenly
-        // spaced. `mx-auto` is the centering mechanism itself (see the
-        // container className below): in the auto-sized grid columns of the
-        // two-up layout it is a no-op (no free space in an `auto` track to
-        // distribute), but in the single-column flex layout it centers this
-        // fixed-width page within the full-width column, and - being a plain
-        // margin rather than `align-items`/`justify-content` - it degrades to
-        // flush-start (not an unreachable centered overflow) if the page is
-        // ever wider than the viewport, so every edge stays scrollable.
         wrap.className =
           "relative mx-auto shadow-md bg-white data-[pdf-rendered=true]:after:pointer-events-none data-[pdf-rendered=true]:after:absolute data-[pdf-rendered=true]:after:inset-0 data-[pdf-rendered=true]:after:z-[1] data-[pdf-rendered=true]:after:border data-[pdf-rendered=true]:after:border-black/5 data-[pdf-rendered=true]:after:content-['']";
         wrap.dataset.page = String(p);
@@ -3043,7 +2893,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     ]
   );
 
-  // Load (parse) the document when the PDF bytes change - NOT on zoom.
   useEffect(() => {
     const container = containerRef.current;
     const bytes = dataRef.current;
@@ -3104,11 +2953,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           destroyPdfWorker(nextWorker);
           throw new DOMException("PDF load cancelled", "AbortError");
         }
-        const nextTask = pdfjsLib.getDocument({
-          data: bytes.slice(),
-          worker: nextWorker,
-          ...(password ? { password } : {}),
-        });
+        const nextTask = pdfjsLib.getDocument(
+          pdfDocumentOptions({
+            data: bytes.slice(),
+            worker: nextWorker,
+            ...(password ? { password } : {}),
+          }),
+        );
         let passwordFailure: PdfPasswordRequiredError | null = null;
         nextTask.onPassword = (
           _updatePassword: (nextPassword: string) => void,
@@ -3151,9 +3002,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           destroyPdfWorker(nextWorker);
           throw new DOMException("PDF load cancelled", "AbortError");
         }
-        // Publish the pair only after both objects exist and cancellation has
-        // been checked. Cleanup therefore sees either the complete session or
-        // neither half of it.
         worker = nextWorker;
         loadingTask = nextTask;
         let doc: pdfjsLib.PDFDocumentProxy;
@@ -3192,7 +3040,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         expectText,
         open,
         openAndProbe,
-        forceMainThreadWorker,
+        forceMainThreadPdfWorker,
       );
       const attemptShouldContinue = (e: unknown): boolean => {
         container.dataset.pdfError = String(e);
@@ -3325,10 +3173,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       dropQueuedViewports();
       observerRef.current?.disconnect();
       observerRef.current = null;
-      // Retain, don't release: on a recompile or rotate this cleanup runs
-      // immediately before the successor's effect body, and releasing here
-      // would strip the canvases for the whole of the new parse. The deferred
-      // check below releases them when nothing takes over.
       retirePendingRenders();
       if (wrapsRef.current.size > 0) {
         const scroller = container?.parentElement;
@@ -3367,13 +3211,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       }
       if (container) {
         delete container.dataset.pdfPageCount;
-        // Only blank the pane when nothing takes over. A recompile or a rotate
-        // re-runs this effect, and clearing here would show an empty pane for
-        // the whole parse; `buildLayout` swaps the pages instead. A close
-        // (project switch, unmount) has no successor, so the stale pages of a
-        // document the user has navigated away from must not survive: the
-        // successor bumps `loadSeqRef` synchronously in the next effect body,
-        // so a task later tells the two cases apart.
         const closedAt = loadSeqRef.current;
         window.setTimeout(() => {
           if (loadSeqRef.current !== closedAt) return;
@@ -3424,12 +3261,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     void runSearch(searchQuery);
   }, [runSearch, searchQuery]);
 
-  // Re-render on zoom without reloading. Rasterizing pages is expensive, so a
-  // pinch that fires dozens of scale changes a second must NOT rasterize on each
-  // one, or the main thread stalls and the gesture stutters (one jump per pinch).
-  // Instead: resize every placeholder and CSS-stretch the already-rendered
-  // canvases instantly (cheap, smooth), then re-rasterize crisply once the scale
-  // settles (debounced).
   useEffect(() => {
     const doc = docRef.current;
     if (!doc) {
@@ -3449,8 +3280,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       if (!restorePdfZoomAnchor(zoomScroller, zoomAnchor)) zoomAnchor = null;
     };
 
-    // Instant + bounded: only the capped set of live rasterizations needs exact
-    // pdf.js rounding and bitmap stretching in the gesture frame.
     for (const [pageNo, state] of renderedRef.current) {
       const wrap = wrapsRef.current.get(pageNo);
       if (!wrap) continue;
@@ -3504,9 +3333,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     };
     placeholderResizeFrameRef.current = requestAnimationFrame(resizePlaceholderBatch);
 
-    // Trailing: re-rasterize the visible pages at full resolution once zooming
-    // stops, drop off-screen pages left at the old scale, and refresh SyncTeX's
-    // scale (none of which needs to run on every event of a pinch).
     if (rasterTimerRef.current) window.clearTimeout(rasterTimerRef.current);
     rasterTimerRef.current = window.setTimeout(() => {
       zoomSettlingRef.current = false;
@@ -3580,7 +3406,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     return () => listen(media, false);
   }, [handleDevicePixelRatioChange]);
 
-  // Track the page at the top of the viewport as the user scrolls (rAF-throttled).
   useEffect(() => {
     const scrollParent = containerRef.current?.parentElement;
     if (!scrollParent) return;

@@ -60,8 +60,6 @@ describe("progressive PDF page geometry", () => {
         if (pageNumber === 3) {
           return Promise.reject(new Error("corrupt page tree"));
         }
-        // Other sibling workers hang until the scan aborts. Their late results
-        // are supplied below to verify cleanup.
         return new Promise<MockPage>(() => {});
       }),
     };

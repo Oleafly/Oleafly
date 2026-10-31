@@ -1,8 +1,3 @@
-//! Output flow control. The pump batches what the shell writes (a few
-//! milliseconds or 64 KiB per message) and stops reading once the frontend
-//! has 2 MiB it has not acknowledged, so `yes` or a huge log cannot flood
-//! the webview. Reading resumes when the backlog drops below 512 KiB.
-
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -19,11 +14,9 @@ struct FlowState {
     unacked: usize,
     paused: bool,
     closed: bool,
-    /// When output was last sent.
     last_output: Option<Instant>,
 }
 
-/// Bytes sent to the frontend and not yet acknowledged, for one session.
 pub(crate) struct OutputFlow {
     state: Mutex<FlowState>,
     resumed: Condvar,
@@ -41,7 +34,6 @@ impl OutputFlow {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Count bytes just sent. Above the high watermark the pump pauses.
     pub(crate) fn charge(&self, bytes: usize) {
         let mut state = self.lock();
         state.last_output = Some(Instant::now());
@@ -51,8 +43,6 @@ impl OutputFlow {
         }
     }
 
-    /// Count bytes the frontend has parsed. Wakes the pump once the backlog
-    /// is below the low watermark.
     pub(crate) fn ack(&self, bytes: usize) {
         let mut state = self.lock();
         state.unacked = state.unacked.saturating_sub(bytes);
@@ -62,8 +52,6 @@ impl OutputFlow {
         }
     }
 
-    /// True at once unless paused. While paused, blocks until the backlog
-    /// drains (true) or the session closes (false, the output is dropped).
     pub(crate) fn wait_for_room(&self) -> bool {
         let mut state = self.lock();
         while state.paused && !state.closed {
@@ -75,7 +63,6 @@ impl OutputFlow {
         !state.paused
     }
 
-    /// Whether output was sent within the last `window`.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub(crate) fn output_within(&self, window: Duration) -> bool {
         self.lock()
@@ -83,7 +70,6 @@ impl OutputFlow {
             .is_some_and(|at| at.elapsed() < window)
     }
 
-    /// The session is stopping: release a paused pump.
     pub(crate) fn close(&self) {
         let mut state = self.lock();
         state.closed = true;
@@ -96,11 +82,6 @@ impl OutputFlow {
     }
 }
 
-/// The next message's worth of output. Waits for a first chunk (None once
-/// the reader has ended). After a quiet spell (`last_flush` older than the
-/// window, or never), it sends that chunk with whatever is already queued,
-/// so typing echoes at once; during a stream it keeps collecting until the
-/// window passes or `max` bytes are in.
 pub(crate) fn next_batch(
     rx: &Receiver<Vec<u8>>,
     last_flush: Option<Instant>,

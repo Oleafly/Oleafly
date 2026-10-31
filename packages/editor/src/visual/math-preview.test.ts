@@ -15,10 +15,12 @@ import {
   setMathPreview,
   setMathPreviewEnabled,
 } from "./math-preview";
+import { stubRangeGeometry } from "../test-geometry";
+
+stubRangeGeometry();
 
 let mounted: EditorView | null = null;
 
-// KaTeX loads on first use; these tests check the tooltip once it has.
 beforeAll(async () => {
   await loadMathRender();
 });
@@ -265,7 +267,6 @@ describe("math preview tooltip view", () => {
         Math.round((size * (Number.parseFloat(output.style.fontSize) || 100)) / 100);
       Object.defineProperty(output, "clientWidth", { get: () => room });
       Object.defineProperty(output, "scrollWidth", { get: () => scaled(natural) + 2 });
-      // 120px tall at full size.
       Object.defineProperty(output, "scrollHeight", { get: () => scaled(120) });
       created?.mount?.(view);
       return { dom, output, tooltip: created };

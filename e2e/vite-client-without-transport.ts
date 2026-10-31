@@ -1,4 +1,3 @@
-// Static Vite client for browser tests: retain CSS imports without hot-reload sockets.
 export const VITE_CLIENT_WITHOUT_TRANSPORT = String.raw`
 const styles = new Map();
 const ElementBase = globalThis.HTMLElement ?? class {};

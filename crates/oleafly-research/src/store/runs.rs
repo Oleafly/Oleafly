@@ -1,6 +1,3 @@
-//! Rows of `research_task_runs`: the runs each task started. Updates of a
-//! live run only apply while it is still starting or running, so the app and
-//! the daemon can both watch the same run.
 use std::collections::BTreeMap;
 
 use rusqlite::{params, OptionalExtension};
@@ -41,7 +38,6 @@ fn with_metrics((mut record, metrics): (RunRecord, Option<String>)) -> Result<Ru
 }
 
 impl TaskStore {
-    /// Records a new run as starting, started by this process.
     pub fn insert_run(&self, record: &RunRecord) -> Result<(), String> {
         self.open()?
             .execute(
@@ -69,8 +65,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Whether another process that is still alive started the run, so its
-    /// start (an upload can take half an hour) may still finish there.
     pub fn run_starting_elsewhere(&self, task_id: &str, run_id: &str) -> Result<bool, String> {
         let starter: Option<(Option<i64>, Option<i64>)> = self
             .open()?
@@ -87,9 +81,6 @@ impl TaskStore {
         }))
     }
 
-    /// Records that the user cancelled a live run, so the cancel is sent
-    /// again while the run still reports running (its host may have been
-    /// out of reach).
     pub fn request_run_cancel(&self, task_id: &str, run_id: &str) -> Result<(), String> {
         self.open()?
             .execute(
@@ -113,8 +104,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// How many of the task's runs came before its last fresh start: run
-    /// limits count only the runs after them.
     pub fn runs_baseline(&self, task_id: &str) -> Result<usize, String> {
         self.open()?
             .query_row(
@@ -127,7 +116,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Stores the executor's handle once the run started.
     pub fn set_run_handle(
         &self,
         task_id: &str,
@@ -157,7 +145,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Every run a task has started, oldest first.
     pub fn runs(&self, task_id: &str) -> Result<Vec<RunRecord>, String> {
         let connection = self.open()?;
         let mut statement = connection
@@ -198,7 +185,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Runs that are starting or running, in every task, with their handles.
     pub fn live_runs(&self) -> Result<Vec<(RunRecord, Option<String>)>, String> {
         let connection = self.open()?;
         let mut statement = connection
@@ -218,8 +204,6 @@ impl TaskStore {
             .collect()
     }
 
-    /// Records how a live run ended. Returns false when another process
-    /// already did.
     pub fn finish_run(
         &self,
         task_id: &str,
@@ -247,7 +231,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Runs of a task that finished and were not yet reported to its agent.
     pub fn unreported_runs(&self, task_id: &str) -> Result<Vec<RunRecord>, String> {
         Ok(self
             .runs(task_id)?
@@ -269,7 +252,6 @@ impl TaskStore {
         Ok(())
     }
 
-    /// Marks a run lost when no executor can report on it any more.
     pub fn lose_run(&self, task_id: &str, run_id: &str) -> Result<bool, String> {
         self.finish_run(
             task_id,

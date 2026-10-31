@@ -42,7 +42,6 @@ function writeAll(entries: DocumentScanCacheEntry[]) {
   }
 }
 
-/** Stable key for a scan (source + bib + settings that affect ranking). */
 export function documentScanCacheKey(args: {
   sourceText: string;
   bibText: string;

@@ -91,7 +91,6 @@ describe("ForgeRepoList", () => {
     expect(await screen.findByText("octo/notes")).toBeInTheDocument();
     expect(screen.getByText("octo/paper")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
-    // The retry asked for the page that failed, not the first one again.
     expect(mocks.forgeListRepos.mock.calls.map(([, requested]) => requested)).toEqual([1, 2, 2]);
   });
 

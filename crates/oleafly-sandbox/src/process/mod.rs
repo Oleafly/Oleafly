@@ -1,5 +1,3 @@
-//! Process-tree containment and process identity, shared by the app, the
-//! CLI and the daemon.
 #[cfg(unix)]
 mod hangup;
 pub mod identity;

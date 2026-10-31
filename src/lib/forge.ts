@@ -13,11 +13,6 @@ import {
 
 export type { GitHubRepoStats };
 
-// Pure helpers for Git hosting accounts and remote addresses. This module sits
-// in the entry chunk, so it stays small: no React, no store. The rules mirror
-// crates/oleafly-forge (address.rs) and src-tauri/src/git.rs
-// (is_allowed_remote_url), so the UI never offers what the backend refuses.
-
 export type ForgePresetId = "github" | "gitlab" | "codeberg";
 
 export const FORGE_PRESETS: readonly {
@@ -39,11 +34,8 @@ const HOSTED_LABELS: Record<string, string> = {
 
 export interface ParsedRemote {
   protocol: "https" | "http" | "ssh" | "git";
-  /** Lowercase. */
   host: string;
-  /** Only a port the address names explicitly. */
   port: number | null;
-  /** The repository path without leading or trailing slashes or `.git`. */
   path: string;
 }
 
@@ -62,9 +54,6 @@ function parseUrl(text: string): URL | null {
   }
 }
 
-/** Parse `https://`, `http://`, `ssh://`, `git://` and scp-like
- * `user@host:path` remotes. Local paths, including Windows paths such as
- * `C:/Users/a@b/repo`, are not remotes. */
 export function parseRemoteUrl(remote: string): ParsedRemote | null {
   const text = remote.trim();
   if (!text) return null;
@@ -95,9 +84,6 @@ export function parseRemoteUrl(remote: string): ParsedRemote | null {
   };
 }
 
-/** Whether Oleafly may set this address as a remote. Mirrors the Rust
- * `is_allowed_remote_url`: no `ext::`/`fd::` transport helpers, no `file://`,
- * scp-like addresses need a user and a host longer than a drive letter. */
 export function isAllowedRemoteUrl(url: string): boolean {
   const text = url.trim();
   if (!text) return false;
@@ -121,22 +107,15 @@ export function isAllowedRemoteUrl(url: string): boolean {
 // user-to-server, server-to-server, refresh, fine-grained) and GitLab
 // (personal, OAuth application secret). Mirrors `TOKEN_PREFIXES` in git.rs.
 const TOKEN_PREFIXES = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "glpat-", "gloas-"];
-/** The shortest run of token characters that reads as a token, not a name. */
 const TOKEN_LIKE_LENGTH = 20;
 const TOKEN_CHARACTERS = /^[A-Za-z0-9_-]+$/;
 
-/** Whether a user name in a remote address looks like an access token: a
- * known token prefix, or at least 20 letters, digits, `-` or `_`. */
 function looksLikeToken(user: string): boolean {
   const lower = user.toLowerCase();
   if (TOKEN_PREFIXES.some((prefix) => lower.startsWith(prefix))) return true;
   return [...user].length >= TOKEN_LIKE_LENGTH && TOKEN_CHARACTERS.test(user);
 }
 
-/** Whether an `http(s)` address carries a password, or an access token in
- * the user name position (`https://ghp_...@github.com/o/r.git`). Oleafly
- * never saves either in `.git/config`. A plain user name is fine. Mirrors the
- * Rust `has_remote_password`. */
 export function hasRemotePassword(url: string): boolean {
   const text = url.trim();
   const schemeEnd = text.indexOf("://");
@@ -152,7 +131,6 @@ export function hasRemotePassword(url: string): boolean {
   return userinfo.includes(":") || looksLikeToken(userinfo);
 }
 
-/** The host and any non-default port of a URL, base or scp-like remote. */
 function hostOf(urlOrBase: string): string | null {
   const text = urlOrBase.trim();
   if (text.includes("://")) {
@@ -164,8 +142,6 @@ function hostOf(urlOrBase: string): string | null {
   return parseRemoteUrl(text)?.host ?? null;
 }
 
-/** GitHub, GitLab or Codeberg for the hosted services, else the host and any
- * non-default port. Matches the Rust `host_label`, so messages agree. */
 export function hostLabel(urlOrBase: string): string {
   const host = hostOf(urlOrBase);
   if (!host) return urlOrBase.trim();
@@ -178,7 +154,6 @@ export function kindLabel(account: Pick<ForgeAccount, "kind" | "flavor">): strin
   return account.flavor === "forgejo" ? "Forgejo" : "Gitea";
 }
 
-/** The base without its scheme, for test ids and React keys. */
 export function accountKey(base: string): string {
   return base.replace(/^[a-z]+:\/\//i, "");
 }
@@ -194,8 +169,6 @@ function defaultPort(url: URL): string {
   return url.protocol === "http:" ? "80" : "";
 }
 
-/** Whether an `http(s)` remote lies under a base: same scheme, host and
- * port, and the base path is a prefix segment by segment. */
 function baseMatchesHttpRemote(base: string, remote: URL): boolean {
   const parsedBase = parseUrl(base);
   if (!parsedBase) return false;
@@ -235,9 +208,6 @@ export function matchAccount(
   return underPath ?? sameHost[0] ?? null;
 }
 
-/** The repository's web page: HTTPS remotes lose any user name, password and
- * `.git`; SSH and git:// remotes use the matching account's base (keeping a
- * GitLab path prefix) or `https://host`. `null` when there is no path. */
 export function remoteWebUrl(
   remote: string | null | undefined,
   accounts: readonly ForgeAccount[] = [],
@@ -280,20 +250,14 @@ export const TOKEN_PLACEHOLDER: Record<ForgeKind, string> = {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** Failed polls in a row that a browser sign-in puts up with before it gives
- * up: a network blip or a server hiccup must not waste an approval. */
 const POLL_FAILURES_TOLERATED = 5;
 const TRANSIENT_POLL_ERRORS = new Set(["git.host_unreachable", "git.forge_server_error", "git.forge_rate_limited"]);
 
-/** A poll failure worth trying again: the server could not be reached, or it
- * answered with a server error or a rate limit. */
 function isTransientPollError(error: unknown): boolean {
   const code = decodeAppError(error)?.code;
   return code !== undefined && TRANSIENT_POLL_ERRORS.has(code);
 }
 
-/** The count of polls that failed in a row once this one has. Throws when the
- * failure is not worth another try. */
 function countPollFailure(error: unknown, failures: number): number {
   if (!isTransientPollError(error) || failures >= POLL_FAILURES_TOLERATED) throw error;
   return failures + 1;
@@ -306,10 +270,6 @@ function nextPollWait(result: ForgeDevicePoll, wait: number): number {
   return Math.max(result.interval * 1000, wait + 5000);
 }
 
-/** Poll a browser sign-in until it is granted, cancelled or past its
- * deadline. Returns the signed-in account, or null. A poll that fails because
- * of the network or the server is tried again a few times; any other failure
- * is thrown. */
 export async function waitForDeviceSignIn(
   start: ForgeDeviceStart,
   poll: (flowId: string) => Promise<ForgeDevicePoll>,
@@ -343,18 +303,10 @@ export async function waitForDeviceSignIn(
   return null;
 }
 
-/** Event the backend listens for to stop a repository import or clone that
- * is running (`src-tauri/src/forge/cancel.rs`). */
 export const IMPORT_CANCEL_EVENT = "import-cancel";
 
-/** When a Cancel is sent again: one right after the start can reach the
- * backend before the import listens for it. */
 const CANCEL_RESENDS_MS = [250, 1000] as const;
 
-/** Stop the repository import or clone this window started: the transfer
- * ends, its staging folder goes and no project is created. The cancel names
- * that import, so other windows' imports go on, and sending it again can
- * only ever stop that one. */
 export function cancelRepositoryImport(): Promise<void> {
   const cancelId = currentRepositoryImportId();
   if (!cancelId) return emit(IMPORT_CANCEL_EVENT);
@@ -367,8 +319,6 @@ export function cancelRepositoryImport(): Promise<void> {
 
 const publicRepoStatsCache = new Map<string, Promise<GitHubRepoStats>>();
 
-/** Public star and fork counts for the About page, one request per
- * repository (retried after a failure). */
 export function githubGetPublicRepoStats(fullName: string): Promise<GitHubRepoStats> {
   const cached = publicRepoStatsCache.get(fullName);
   if (cached) return cached;

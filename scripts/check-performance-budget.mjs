@@ -4,6 +4,7 @@ import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
 } from "./production-hook-audit.mjs";
+import { measurePdfjsAssets, pdfjsAssetFailures, pdfjsAssetSummary } from "./pdfjs-asset-budget.mjs";
 
 const root = new URL("../dist/assets/", import.meta.url);
 const names = await readdir(root);
@@ -75,9 +76,6 @@ const limits = {
   // it). The Dropbox and Google Drive logos moved to the Cloud tab and left the
   // entry. The entry measures 4,657,262 bytes with them.
   largestJavaScript: 5_010_000,
-  // The chunk index.html loads before first paint. Tracked separately from
-  // largestJavaScript so a future split is visible here even if some other
-  // asset becomes the largest.
   entryJavaScript: 5_010_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
@@ -188,12 +186,6 @@ const limits = {
   // storage bar in Settings and the entry growth above: 20,738,409 bytes on
   // macOS.
   totalJavaScript: 21_020_000,
-  // One translated catalog set, emitted as a single lazy chunk per locale.
-  // The largest (Russian and Ukrainian, Cyrillic escapes) measured about
-  // 851 KB with 0.4.8's strings. Suggesting mode, the reviewer roles, project
-  // chat and history, and Typst function forms bring Russian to 902,304 bytes;
-  // keep narrow headroom so a namespace accidentally bundled twice fails
-  // loudly.
   largestLocaleChunk: 950_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
@@ -324,6 +316,8 @@ try {
 } catch (error) {
   failures.push(error instanceof Error ? error.message : String(error));
 }
+const pdfjs = await measurePdfjsAssets(new URL("../dist/pdfjs/", import.meta.url));
+failures.push(...pdfjsAssetFailures(pdfjs));
 
 if (failures.length > 0) {
   throw new Error(failures.join("\n"));
@@ -341,6 +335,7 @@ console.log(
     pdfWorkers: workers.length,
     pdfFallbacks: fallbacks.length,
     katexFonts: katexFontReferences.size,
+    pdfjs: pdfjsAssetSummary(pdfjs),
     devHookTokens: 0,
   }),
 );

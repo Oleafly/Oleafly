@@ -51,9 +51,6 @@ pub fn tool_definitions() -> Vec<ToolMeta> {
     ]
 }
 
-/// The tools this session lists: the research tools, plus a task's own tools
-/// when the session belongs to a research task (they replace the
-/// single-index literature search).
 pub(super) fn session_tools(context: &Context) -> Vec<ToolMeta> {
     let Some(binding) = &context.task else {
         return tool_definitions();
@@ -70,13 +67,11 @@ pub(super) fn session_tools(context: &Context) -> Vec<ToolMeta> {
 fn task_tools(binding: &crate::task_tools::extra::TaskBinding) -> Vec<ToolMeta> {
     crate::task_tools::extra::task_tool_schemas(&binding.brief, binding.host.web().is_some())
         .into_iter()
-        // A CLI agent starts its own helpers.
         .filter(|tool| tool.name != crate::task_tools::extra::SPAWN_AGENT)
         .map(|tool| ToolMeta::new(tool.name, tool.description, tool.input_schema))
         .collect()
 }
 
-/// A task tool this session serves.
 pub(super) fn is_task_tool(context: &Context, name: &str) -> bool {
     context
         .task

@@ -48,6 +48,11 @@
     "stoppedTitle": "Rozłączono",
     "stoppedDescription": "Odśwież stronę, aby połączyć się ponownie."
   },
+  "leave": {
+    "title": "Opuścić ten projekt?",
+    "description": "Część Twoich zmian nie dotarła jeszcze na serwer. Poczekaj, aż zostaną wysłane. Jeśli opuścisz projekt teraz, zmiany zostaną utracone.",
+    "confirm": "Opuść"
+  },
   "access": {
     "changed": "Twoja rola w tym projekcie to teraz: {{role}}."
   },
@@ -158,6 +163,11 @@
     "withdraw": "Wycofaj",
     "acceptAll": "Przyjmij wszystkie",
     "rejectAll": "Odrzuć wszystkie",
+    "rejectAllConfirm": {
+      "title": "Odrzucić wszystkie sugestie w pliku {{file}}?",
+      "description": "Oryginalny tekst wróci do pliku dla wszystkich w tym projekcie. Oczekujące sugestie: {{number}}.",
+      "confirm": "Odrzuć wszystkie"
+    },
     "pending_one": "{{count}} sugestia",
     "pending_few": "{{count}} sugestie",
     "pending_many": "{{count}} sugestii",

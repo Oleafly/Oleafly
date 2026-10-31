@@ -39,11 +39,8 @@ export function overview(overrides: Partial<CollabAdminOverview> = {}): CollabAd
   };
 }
 
-// Midnight UTC at the start of the day NOW falls on.
 export const TODAY = NOW - (NOW % DAY);
 
-// Sign-ins over the 30 days up to NOW: three today by two people at 9:00 UTC,
-// one the day before at 23:00 UTC, and none on the other days.
 export function signInActivity(overrides: Partial<CollabServerActivity> = {}): CollabServerActivity {
   const yesterday = new Date(TODAY - DAY).getUTCDay();
   return {

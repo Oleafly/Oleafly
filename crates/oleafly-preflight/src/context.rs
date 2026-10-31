@@ -1,7 +1,3 @@
-//! The references and project contexts preflight runs on, built exactly like
-//! `src/lib/preflight-context.ts` (the pure builders the app's preflight
-//! store calls).
-
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::LazyLock;
 
@@ -21,17 +17,12 @@ use crate::types::{ProjectContext, ProjectFile};
 
 pub struct ContextInput<'a> {
     pub main_doc: &'a str,
-    /// Non-folder tree paths in the app's order.
     pub tree_paths: &'a [String],
-    /// Texts the project index read.
     pub index_texts: &'a BTreeMap<String, String>,
-    /// Editor buffers, which win over `index_texts` (empty in the CLI).
     pub open_texts: &'a BTreeMap<String, String>,
     pub index: Option<&'a ProjectIndex>,
 }
 
-/// `{ ...indexTexts, ...openTexts }`: insertion order of the first, new keys
-/// of the second appended, values of the second winning.
 fn project_texts(input: &ContextInput) -> Vec<(String, String)> {
     let mut texts: Vec<(String, String)> = input
         .index_texts
@@ -109,9 +100,6 @@ fn unresolved_bibliographies_for(
     unresolved
 }
 
-/// The .bib files the document loads, so conflict copies, backups and
-/// template samples next to them don't count. Nothing declared keeps every
-/// .bib file.
 fn declared_bib_texts(
     texts: &[(String, String)],
     declared: &[DeclaredBibliography],
@@ -232,8 +220,6 @@ fn collect_label_facts(
 ) -> (Vec<DuplicateLabel>, Vec<UnreferencedLabel>) {
     let defs: &[Sym] = index.map(|index| index.defs.as_slice()).unwrap_or(&[]);
     let uses: &[Sym] = index.map(|index| index.uses.as_slice()).unwrap_or(&[]);
-    // A reference counts for the label it points at, the way rename resolves
-    // it: same engine, and for a `file#anchor` link only a label in that file.
     let referenced: HashSet<String> = uses
         .iter()
         .filter(|use_| use_.kind == SymKind::Ref)
@@ -299,9 +285,6 @@ fn unique(values: impl IntoIterator<Item = String>) -> Vec<String> {
         .collect()
 }
 
-/// `buildRefsContext`: labels and bibliography keys from the index, the
-/// bibliography state of the declared files, and the project-wide quality
-/// facts the refs rules report.
 pub fn build_refs_context(input: &ContextInput) -> RefsContext {
     let main_scope = engine_for_path(input.main_doc).map(|_| label_scope(input.main_doc));
     let defs: &[Sym] = input
@@ -373,8 +356,6 @@ pub fn build_refs_context(input: &ContextInput) -> RefsContext {
     }
 }
 
-/// `buildProjectContext`: every tree path, plus every text path, with
-/// content where a text exists.
 pub fn build_project_context(input: &ContextInput) -> ProjectContext {
     let texts = project_texts(input);
     let by_path: HashMap<&str, &str> = texts

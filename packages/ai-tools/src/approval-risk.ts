@@ -51,7 +51,6 @@ const WRITE_TOOLS = new Set([
   "set_main_doc",
   "insert_figure",
   "import_overleaf_projects",
-  // desktop_apps runs natively in Rust, which asks per action (observation runs, actions ask).
   "desktop_apps",
   "research_task_create",
 ]);

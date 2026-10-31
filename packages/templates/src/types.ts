@@ -1,8 +1,6 @@
 import type { ComponentPropsWithRef, ComponentType, ReactNode, RefObject } from "react";
 import type { TemplatesTranslator } from "./messages";
 
-// A structural subset of the host's richer manifest type; extra fields pass
-// through untouched.
 export interface TemplateInfo {
   id: string;
   name: string;
@@ -16,7 +14,6 @@ export interface TemplateInfo {
   has_preview: boolean;
   assets_ready: boolean;
   source: string;
-  /** The LaTeX compiler a template was made for, when it names one. */
   tex_flavor?: string | null;
 }
 

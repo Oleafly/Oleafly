@@ -17,13 +17,9 @@ import {
   selectNodeContent,
 } from "./selection";
 import { parsedView, positionOf } from "./test-document";
+import { stubRangeGeometry } from "../test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 

@@ -1,5 +1,3 @@
-//! `state.json`: which helper runs, in which phase, and its heartbeat. It
-//! holds no paths to projects and no secrets.
 use std::io;
 use std::path::Path;
 use std::sync::Mutex;
@@ -18,15 +16,11 @@ pub enum Phase {
     Exiting,
 }
 
-/// How the helper was started.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ServeMode {
-    /// By the app when it quit.
     App,
-    /// At sign-in.
     AtLogin,
-    /// `oleafly daemon run` in a terminal.
     Foreground,
 }
 
@@ -35,7 +29,6 @@ pub enum ServeMode {
 pub struct HelperState {
     pub version: u32,
     pub pid: u32,
-    /// The process start time, so a reused pid is never taken for it.
     pub started: Option<u64>,
     pub app_version: String,
     pub mode: ServeMode,
@@ -51,7 +44,6 @@ pub fn write_state(path: &Path, state: &HelperState) -> io::Result<()> {
     Ok(())
 }
 
-/// The state file, when it is there and readable.
 pub fn read_state(path: &Path) -> Option<HelperState> {
     let metadata = std::fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() || metadata.len() > MAX_STATE_BYTES {
@@ -62,8 +54,6 @@ pub fn read_state(path: &Path) -> Option<HelperState> {
         .filter(|state| state.version <= STATE_VERSION)
 }
 
-/// The helper's own state, written by the serve loop and the heartbeat
-/// thread through one lock.
 pub struct StateWriter {
     path: std::path::PathBuf,
     state: Mutex<HelperState>,
@@ -105,7 +95,6 @@ impl StateWriter {
         self.lock().phase
     }
 
-    /// Removes the file when it is still this helper's.
     pub fn remove(&self) {
         let state = self.lock();
         if read_state(&self.path)

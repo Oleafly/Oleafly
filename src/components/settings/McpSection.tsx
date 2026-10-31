@@ -79,9 +79,7 @@ function Snippet({
   lang,
 }: Readonly<{
   title: ReactNode;
-  // Displayed (may be masked).
   body: string;
-  // Pasted on Copy (always the real snippet when the token is known).
   copyText: string;
   lang: SnippetLang;
 }>) {
@@ -289,7 +287,6 @@ export function McpSection() {
       if (status?.running) {
         const info = await mcpConnectionInfo();
         setToken(info.token);
-        // Keep current reveal state: if they were looking at it, show the new one.
       } else {
         setToken(null);
         setRevealed(false);
@@ -303,11 +300,9 @@ export function McpSection() {
 
   const enabled = !!(cfg?.mcp_enabled || status?.running);
   const url = status?.url ?? `http://127.0.0.1:${cfg?.mcp_port || 5323}/mcp`;
-  // Display: real token when revealed, short mask when hidden, <token> only when unknown.
   const tokenMask = "XXXXXX";
   const shownToken = revealed && token ? token : tokenMask;
   const tokenForDisplay = token ? shownToken : "<token>";
-  // Copy always pastes the real secret when the server is running.
   const tokenForCopy = token ?? "<token>";
 
   const displaySnippets = buildSnippets(url, tokenForDisplay);

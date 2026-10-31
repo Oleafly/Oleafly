@@ -530,17 +530,10 @@ export function ProjectInfoContent({
   );
 }
 
-/**
- * Toolbar entry point. Replaces the old Word count popover and the floating
- * proofreading badge that used to sit over the document: one place answers
- * "how big is this and what is wrong with it".
- */
 export function ProjectInfoButton({ surface }: Readonly<{ surface: ProofreadingSurface }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [snapshot, setSnapshot] = useState<ProjectInfoSnapshot | null>(null);
   const setupOffered = useLanguageServiceSetupOffer() !== null;
-  // Reopening while a previous read is still in flight must not paint that
-  // older answer over the newer one.
   const generationRef = useRef(0);
 
   const load = useCallback((open: boolean) => {
@@ -568,8 +561,6 @@ export function ProjectInfoButton({ surface }: Readonly<{ surface: ProofreadingS
     <Popover
       ariaLabel={t(($) => $.editor.projectInfo.trigger)}
       align="right"
-      // A panel you read, not a menu you pick from: clicking a number to select
-      // it must not dismiss the thing you are reading.
       closeOnClick={false}
       className="w-64 p-3"
       trigger={

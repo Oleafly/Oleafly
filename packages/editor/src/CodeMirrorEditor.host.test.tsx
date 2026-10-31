@@ -9,10 +9,9 @@ import { getEditorDocumentPath, getEditorView } from "./controller";
 import { setSpellHost } from "./spellcheck";
 import { englishEditorMessage } from "./test-messages";
 import { isMathPreviewEnabled, setMathPreviewEnabled } from "./visual/math-preview";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 type Settings = ReturnType<EditorHost["useSettings"]>;
 

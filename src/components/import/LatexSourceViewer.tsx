@@ -1,6 +1,5 @@
 import { ReadOnlyLatex } from "@/components/editor/cm/ReadOnlyLatex";
 
-/** Read-only, syntax-highlighted LaTeX viewer for the converter's source pane. */
 export function LatexSourceViewer({ source }: Readonly<{ source: string }>) {
   return (
     <ReadOnlyLatex

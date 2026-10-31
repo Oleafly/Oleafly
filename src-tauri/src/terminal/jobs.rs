@@ -1,11 +1,7 @@
-//! Whether a terminal is busy: a program other than the shell runs in it,
-//! so closing the terminal, the project or the app would stop that program.
-
 use std::time::Duration;
 
 use serde::Serialize;
 
-/// A terminal with a running program, and that program's name when known.
 #[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalJob {
@@ -13,8 +9,6 @@ pub struct TerminalJob {
     pub process: Option<String>,
 }
 
-/// Console helpers that live in a terminal's job object but are not
-/// programs the user started.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) const WINDOWS_TERMINAL_HELPERS: &[&str] = &[
     "conhost.exe",
@@ -23,8 +17,6 @@ pub(crate) const WINDOWS_TERMINAL_HELPERS: &[&str] = &[
     "wslrelay.exe",
 ];
 
-/// The foreground process group of a Unix terminal when it is not the
-/// shell's own (a shell without job control never looks busy).
 #[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) fn unix_foreground_group(shell_pid: i32, foreground: Option<i32>) -> Option<i32> {
     foreground.filter(|group| *group > 0 && *group != shell_pid)
@@ -57,16 +49,9 @@ pub(crate) fn windows_foreground_process(
         .next()
 }
 
-/// How long after its last output a WSL terminal still counts as busy.
-/// Programs inside WSL never show up in the terminal's job, so output is
-/// the only sign that one is running.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) const WSL_BUSY_WINDOW: Duration = Duration::from_secs(10);
 
-/// Whether a Windows terminal is busy, and with what: `Some(Some(image))`
-/// for a program found in its job, `Some(None)` for a WSL terminal that
-/// printed something within [`WSL_BUSY_WINDOW`] (`recent_output`), `None`
-/// when only the shell runs.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn windows_terminal_job(
     shell_pid: u32,
@@ -82,8 +67,6 @@ pub(crate) fn windows_terminal_job(
     (wsl && recent_output).then_some(None)
 }
 
-/// A program's name for the confirmation dialog: the file name without
-/// its folder or `.exe` ending.
 pub(crate) fn display_process_name(image: &str) -> String {
     super::shell::program_name(image)
 }
@@ -148,10 +131,8 @@ mod tests {
             (31, "wslhost.exe"),
             (32, "conhost.exe"),
         ]);
-        // Programs inside WSL are invisible in the job: output is the sign.
         assert_eq!(windows_terminal_job(30, &wsl, true), Some(None));
         assert_eq!(windows_terminal_job(30, &wsl, false), None);
-        // Other shells are judged by their job alone.
         let pwsh = processes(&[(40, "pwsh.exe"), (41, "conhost.exe")]);
         assert_eq!(windows_terminal_job(40, &pwsh, true), None);
         let node = processes(&[(40, "pwsh.exe"), (42, "node.exe")]);

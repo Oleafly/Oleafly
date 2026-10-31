@@ -29,9 +29,7 @@ fn hex(digest: &[u8]) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-// Stored files are read in pieces of at most this many bytes.
 const READ_PIECE: usize = 64 * 1024;
-// What `read_all` reserves up front, whatever size a store claims.
 const READ_ALL_RESERVE: usize = 1024 * 1024;
 
 pub type Pieces = Pin<Box<dyn Stream<Item = io::Result<Bytes>> + Send>>;
@@ -42,15 +40,11 @@ enum Source {
     Read(Option<Bytes>),
 }
 
-// A stored file or snapshot, read in pieces and checked against its hash as
-// it goes. The last piece comes out only once everything has matched, so a
-// damaged file ends in an error and never in a clean end.
 pub struct BlobReader {
     source: Source,
     size: u64,
     read: u64,
     check: Option<(Context, String)>,
-    // How long reading it whole may take, for a store that can stall.
     within: Option<Duration>,
 }
 
@@ -65,7 +59,6 @@ impl BlobReader {
         }
     }
 
-    // A file already read whole and checked.
     pub fn whole(bytes: Bytes) -> BlobReader {
         let size = bytes.len() as u64;
         BlobReader::new(Source::Read(Some(bytes)), size, None)
@@ -151,8 +144,6 @@ impl BlobReader {
     }
 }
 
-// Opens a file on disk to be read in pieces, checked against `hash` when
-// there is one.
 pub async fn open_file(
     path: PathBuf,
     hash: Option<&str>,
@@ -306,7 +297,6 @@ impl BlobStore {
         verified(hash, "file", found).await
     }
 
-    // Opens a stored file to be sent in pieces.
     pub async fn open(&self, hash: &str) -> Result<Option<BlobReader>, ServerError> {
         if !valid_hash(hash) {
             return Ok(None);

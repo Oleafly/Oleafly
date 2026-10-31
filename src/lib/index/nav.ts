@@ -66,8 +66,6 @@ export type RenameOutcome =
 
 const RENAMABLE = new Set<DefKind>(["label", "macro", "bibentry", "theorem", "glossary", "environment"]);
 
-// Flushes the active file into the index first (pure, fast) so offsets are current
-// before looking up the cursor token.
 function legacySymbolAtCursor(view: EditorView): Sym | null {
   const path = useFilesStore.getState().activePath;
   if (!path) return null;
@@ -433,7 +431,6 @@ function localGoToDefinition(view: EditorView, source: LookupSource): boolean {
   if (!current) return explainMissingAnalysisAt(view, source);
   const { snapshot, symbol } = current;
   if (!symbol) return false;
-  // On a definition, F12 acts as find-references (IDE convention).
   if (!isUse(symbol)) return findReferences(view);
 
   const definitions = definitionsForUse(snapshot, symbol.id);
@@ -672,11 +669,8 @@ async function writeRenamedFile(
     if (open.content === base) {
       if (!files.setContent(file, text)) return "failed";
     } else if (!open.dirty && sharedDocumentLive(projectId)) {
-      // A collaborator's edit reached the buffer after the rename was planned.
-      // Merge from the text the rename was computed on, so it isn't undone.
       if (!files.setContent(file, text, { base })) return "failed";
     } else {
-      // Writing text built from an older copy would drop the newer one.
       return "failed";
     }
     editBackgroundDocument(file, base, ascendingChanges(edits));
@@ -717,7 +711,6 @@ function writeRenameFile(
   const { view, files, baseFor } = context;
   if (isReadOnlyProjectPath(file, files.manifestHome, files.tree)) return Promise.resolve("failed");
   if (file === files.activePath) {
-    // Edit the live editor so the view updates; CM wants ascending, non-overlapping changes.
     view.dispatch({ changes: ascendingChanges(edits) });
     return Promise.resolve("edited");
   }
@@ -900,9 +893,6 @@ async function applyLanguageServiceRename(
   return reportRename(newName, result, totalFiles);
 }
 
-// Edits are applied against the exact text the index was built from (the cache), so
-// offsets are always valid. The active file is edited through the editor (so it
-// updates live); other files via the store / disk.
 export async function applyRename(
   view: EditorView,
   sym: Sym,

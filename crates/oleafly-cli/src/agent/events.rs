@@ -1,6 +1,3 @@
-//! What a headless run reports as it goes. With `--events` each event is one
-//! JSON line (`{schema_version, type: "event", command, event, ...}`) before
-//! the result; people see the text as it streams and a line per tool.
 use serde_json::{json, Value};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,7 +6,6 @@ pub enum RunEvent {
         run_id: String,
         provider: String,
         model: String,
-        /// `read`, `review` or `apply`.
         mode: &'static str,
         review_dir: Option<String>,
     },
@@ -26,7 +22,6 @@ pub enum RunEvent {
     },
     ToolResult {
         id: String,
-        /// `ok` or `error`.
         status: &'static str,
         bytes: usize,
     },
@@ -39,10 +34,8 @@ pub enum RunEvent {
     },
 }
 
-/// Tool arguments longer than this are cut in events.
 const MAX_EVENT_ARGUMENTS: usize = 4 * 1024;
 
-/// At most `max` bytes from the start of `text`, cut at a character.
 pub(crate) fn head(text: &str, max: usize) -> (&str, bool) {
     if text.len() <= max {
         return (text, false);
@@ -55,7 +48,6 @@ pub(crate) fn head(text: &str, max: usize) -> (&str, bool) {
 }
 
 impl RunEvent {
-    /// The `event` field.
     pub fn name(&self) -> &'static str {
         match self {
             Self::Started { .. } => "started",
@@ -68,7 +60,6 @@ impl RunEvent {
         }
     }
 
-    /// The event's own fields (camelCase).
     pub fn fields(&self) -> Value {
         match self {
             Self::Started {
@@ -100,7 +91,6 @@ impl RunEvent {
         }
     }
 
-    /// The same event with every secret replaced.
     pub fn redacted(self, redact: &dyn Fn(&str) -> String) -> Self {
         match self {
             Self::Text { text } => Self::Text {

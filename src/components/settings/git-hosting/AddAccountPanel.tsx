@@ -34,8 +34,6 @@ type FoundServer = { base: string; kind: ForgeKind; flavor: ForgeFlavor | null; 
 
 export const CA_EXTENSIONS = ["pem", "crt", "cer", "der"];
 
-/** Add an account (or sign in to one again): pick a hosted service or type a
- * server address, then sign in in the browser or paste an access token. */
 export function AddAccountPanel({
   initialBase,
   initialCaFile = null,
@@ -52,8 +50,6 @@ export function AddAccountPanel({
   const [address, setAddress] = useState(initialBase ?? "");
   const [pendingBase, setPendingBase] = useState<string | null>(null);
   const [caFile, setCaFile] = useState<string | null>(initialCaFile);
-  // "Remove" was pressed: the sign-in clears the account's CA file. Without
-  // it, an account keeps the file it has.
   const [caRemoved, setCaRemoved] = useState(false);
   const [needsCa, setNeedsCa] = useState(false);
   const [unknownBase, setUnknownBase] = useState<string | null>(null);
@@ -65,7 +61,6 @@ export function AddAccountPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [device, setDevice] = useState<ForgeDeviceStart | null>(null);
-  // Bumping this drops every reply of an older attempt (Cancel, unmount).
   const generation = useRef(0);
   const deviceRef = useRef<ForgeDeviceStart | null>(null);
 
@@ -160,7 +155,6 @@ export function AddAccountPanel({
       onDone(account);
     } catch (error_) {
       if (run !== generation.current) return;
-      // Let the backend drop the flow and any grant it kept.
       const failed = deviceRef.current;
       deviceRef.current = null;
       if (failed) void forgeDeviceCancel(failed.flowId);
@@ -193,7 +187,6 @@ export function AddAccountPanel({
           base: server.base,
           kind: server.kind,
           token: value,
-          // An empty path tells the backend to clear the account's CA file.
           caFile: caRemoved ? "" : caFile,
         });
       if (run !== generation.current) return;
@@ -207,7 +200,6 @@ export function AddAccountPanel({
   };
 
   const host = server ? hostLabel(server.base) : "";
-  // One account per server: signing in again replaces the one it has.
   const replaced = server ? accounts.find((account) => account.base === server.base) : undefined;
   const scopes = server
     ? {

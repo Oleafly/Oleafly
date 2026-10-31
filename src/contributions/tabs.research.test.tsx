@@ -15,7 +15,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   loadResearchAttention: attention.load,
 }));
 
-// 0.4.8: research tasks are experimental; the tab and its badge exist only while they are on.
 const flag = vi.hoisted(() => ({ enabled: true }));
 vi.mock("@/store/research-tasks-flag", () => ({
   useResearchTasksEnabled: () => flag.enabled,

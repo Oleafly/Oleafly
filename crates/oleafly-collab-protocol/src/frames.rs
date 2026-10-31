@@ -204,8 +204,6 @@ pub enum FrameErrorCode {
     NotFound,
     TooLarge,
     CommentsOff,
-    // The project's change log reached the server's size limit. Sent only
-    // to clients that say they understand it, others get TooLarge.
     ProjectTooLarge,
     #[serde(other)]
     Unknown,

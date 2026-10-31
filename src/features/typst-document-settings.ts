@@ -228,7 +228,6 @@ function namedText(addition: Addition): string {
   return `${addition.name}: ${addition.text}`;
 }
 
-// What changes in one existing rule, which is found again by its place among the top-level set rules.
 interface RulePlan {
   readonly index: number;
   readonly target: RuleTarget;
@@ -239,7 +238,6 @@ interface RulePlan {
 
 interface SettingsPlan {
   readonly rules: Map<number, RulePlan>;
-  // Arguments for elements with no editable rule, written as new rules.
   readonly fresh: Map<RuleTarget, Addition[]>;
 }
 
@@ -292,8 +290,6 @@ function planChange(
   else addFresh(plan.fresh, spec.rule, [addition]);
 }
 
-// Parses the text a step is given, which is what the steps before it left. The parser is
-// loaded, because the tree the edits start from came from it.
 function treeReader(text: string, tree: Tree): (current: string) => Tree {
   let last = { text, tree };
   return (current) => {
@@ -310,8 +306,6 @@ function changesOf(plan: ArgumentPlan | null): TypstEdit[] {
   return plan?.ok ? [...plan.changes] : [];
 }
 
-// One rule's edits, as steps that each read the rule again from the text the step before left:
-// each cleared argument, then the new values, then the added arguments, placed against what is left.
 function ruleSteps(plan: RulePlan, treeOf: (current: string) => Tree, fresh: Map<RuleTarget, Addition[]>): SettingsStep[] {
   const read = (current: string): CallArguments | null => {
     const rule = setRules(current, treeOf(current))[plan.index];
@@ -354,8 +348,6 @@ function freshRulesStep(fresh: ReadonlyMap<RuleTarget, Addition[]>, treeOf: (cur
   };
 }
 
-// The edits are composed from steps, so none is planned against text another one changes, and
-// splicing them into the string or dispatching them to CodeMirror gives the same document.
 export function typstSettingsEdits(text: string, tree: Tree, changes: TypstSettingChanges): TypstEdit[] {
   const { fields } = readTypstDocumentSettings(text, tree);
   const rules = setRules(text, tree);

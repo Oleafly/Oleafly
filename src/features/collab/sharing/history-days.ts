@@ -41,5 +41,8 @@ export function olderFirst(
   right: CollabHistoryEntry,
   order: readonly CollabHistoryEntry[],
 ): [CollabHistoryEntry, CollabHistoryEntry] {
-  return order.indexOf(left) > order.indexOf(right) ? [left, right] : [right, left];
+  const place = (entry: CollabHistoryEntry) => order.findIndex((listed) => listed.id === entry.id);
+  const [leftAt, rightAt] = [place(left), place(right)];
+  const leftOlder = leftAt >= 0 && rightAt >= 0 ? leftAt > rightAt : left.at < right.at;
+  return leftOlder ? [left, right] : [right, left];
 }

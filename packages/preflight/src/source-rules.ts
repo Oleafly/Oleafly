@@ -308,8 +308,6 @@ const nonstandardHeadings: Rule = (text) => {
   while ((m = re.exec(text))) {
     titles.push({ label: m[1].trim(), from: m.index, to: m.index + m[0].length });
   }
-  // Only treat this as a resume (and thus flag odd headings) when at least one
-  // standard resume heading is present. Avoids false positives on papers.
   const looksLikeResume = titles.some((title) => matchResumeSectionHeading(title.label) !== null);
   if (!looksLikeResume) return [];
   return titles
@@ -479,8 +477,6 @@ const RULES: Rule[] = [
 ];
 
 export function runSourceRules(text: string, context?: Partial<SourceRuleContext>): Finding[] {
-  // Blank out commented-out LaTeX first so `% \usepackage{multicol}` does not
-  // raise a false error. Offsets are preserved (comments become spaces).
   const masked = maskComments(text);
   const resolved: SourceRuleContext = { engine: context?.engine ?? "unknown" };
   return RULES.flatMap((rule) => rule(masked, resolved))

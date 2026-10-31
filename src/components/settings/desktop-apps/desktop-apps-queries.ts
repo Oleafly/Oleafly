@@ -1,5 +1,3 @@
-// 0.4.8 I: the Desktop apps settings read Rust's status and the installed
-// apps through react-query, so reopening Settings doesn't rescan.
 import { useMemo } from "react";
 import { useQueries, useQuery, type QueryClient } from "@tanstack/react-query";
 import {
@@ -17,7 +15,6 @@ export const DESKTOP_APPS_INSTALLED_KEY = ["desktop-apps", "installed"] as const
 export const DESKTOP_APPS_READY_KEY = ["desktop-apps", "ready"] as const;
 export const DESKTOP_APPS_ICONS_KEY = ["desktop-apps", "icons"] as const;
 
-/** The picker never shows more rows than this. */
 export const MAX_PICKER_ROWS = 200;
 
 export function useDesktopAppsStatus() {
@@ -30,10 +27,6 @@ export function useDesktopAppsStatus() {
   });
 }
 
-/**
- * Whether agents can use desktop apps now (on, with something allowed), from
- * the tool spec: unlike the full status it runs no program.
- */
 export function useDesktopAppsToolReady(enabled: boolean) {
   return useQuery({
     queryKey: DESKTOP_APPS_READY_KEY,
@@ -56,13 +49,8 @@ export function useInstalledApps(enabled: boolean) {
   });
 }
 
-/** Rows per icon request: small batches load side by side, top rows first. */
 const ICON_BATCH = 20;
 
-/**
- * Icons for the picker rows in view, by row key. Rust reads each one once, so
- * a search that brings a row back costs next to nothing.
- */
 export function useAppIcons(keys: readonly string[], enabled: boolean): Record<string, string> {
   const batches = useMemo(() => {
     const parts: string[][] = [];
@@ -82,7 +70,6 @@ export function useAppIcons(keys: readonly string[], enabled: boolean): Record<s
   });
 }
 
-/** Puts settings Rust saved into the cached status. */
 export function storeSavedSettings(client: QueryClient, settings: DesktopAppsSettings): void {
   client.setQueryData<DesktopAppsStatus>(DESKTOP_APPS_STATUS_KEY, (status) =>
     status ? { ...status, settings } : status,
@@ -90,7 +77,6 @@ export function storeSavedSettings(client: QueryClient, settings: DesktopAppsSet
   void client.invalidateQueries({ queryKey: DESKTOP_APPS_READY_KEY });
 }
 
-/** Every app whose name, bundle id or path contains `query`. */
 export function matchApps(apps: readonly InstalledApp[], query: string): InstalledApp[] {
   const needle = query.trim().toLocaleLowerCase();
   return needle
@@ -102,7 +88,6 @@ export function matchApps(apps: readonly InstalledApp[], query: string): Install
     : [...apps];
 }
 
-/** Apps whose name, bundle id or path contains `query`, at most 200. */
 export function filterApps(apps: readonly InstalledApp[], query: string): InstalledApp[] {
   return matchApps(apps, query).slice(0, MAX_PICKER_ROWS);
 }
@@ -112,12 +97,10 @@ export function appRowKey(app: InstalledApp): string {
   return `${app.name}\u0000${app.bundleId ?? app.executable ?? ""}`;
 }
 
-/** Whether two texts match ignoring case; an empty or missing text matches nothing. */
 function sameText(left: string | undefined, right: string | undefined): boolean {
   return Boolean(left) && left?.toLowerCase() === right?.toLowerCase();
 }
 
-/** Whether `app` is already allowed (same bundle id or program path). */
 export function sameApp(left: { bundleId?: string; executable?: string }, right: { bundleId?: string; executable?: string }): boolean {
   if (left.bundleId || right.bundleId) return sameText(left.bundleId, right.bundleId);
   return sameText(left.executable, right.executable);

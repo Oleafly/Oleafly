@@ -42,7 +42,6 @@ function parseRisRecords(text: string): RisRecord[] {
     if (existing) existing.push(trimmed);
     else current.set(tag, [trimmed]);
   }
-  // Tolerate a final record with no trailing ER line.
   if (current.size) records.push({ fields: current });
   return records;
 }

@@ -8,9 +8,6 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { InlineAlert } from "../feedback";
 import { pastedProjectLink } from "../links/app-link";
 
-// Hands the pasted link to the same flow as links opened from outside the
-// app, which signs in, adds an unknown server with its address filled in,
-// asks before joining and shows the download.
 export function OpenLinkDialog({ onClose }: Readonly<{ onClose: () => void }>) {
   const { t } = useTranslation(["collab", "common"]);
   const titleId = useId();

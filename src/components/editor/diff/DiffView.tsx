@@ -36,7 +36,6 @@ function isBinaryPath(p: string): boolean {
   return BINARY_EXTS.has(p.split(".").pop()?.toLowerCase() ?? "");
 }
 
-// A NUL byte reliably signals binary content that slipped past the extension list.
 function hasNullByte(s: string): boolean {
   return s.includes("\u0000");
 }
@@ -111,11 +110,6 @@ export function DiffView() {
   const [reloadKey, setReloadKey] = useState(0);
   const baselineRef = useRef<string | null>(null);
 
-  // Both views depend on INDEX. Working edits update live, but staging,
-  // unstaging, and committing also change the comparison baseline. A working
-  // diff is editable, so rebuild it only when that baseline really moved: an
-  // unrelated git change must not discard the caret, scroll, and undo history
-  // of someone typing in it.
   useEffect(() => {
     const onChanged = () => {
       const current = activeDiff(useDiffStore.getState());
@@ -223,7 +217,7 @@ export function DiffView() {
           setLoading(false);
           return;
         }
-        const MAX = 2_000_000; // ~2 MB per side
+        const MAX = 2_000_000;
         if (oldText.length > MAX || newText.length > MAX) {
           setNotice(i18n.t(($) => $.editor.diff.tooLarge));
           setLoading(false);

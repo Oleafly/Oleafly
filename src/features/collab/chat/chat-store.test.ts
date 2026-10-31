@@ -238,6 +238,34 @@ describe("older messages", () => {
     expect(ids()[0]).toBe("old");
     expect(ids()).toHaveLength(CHAT_PAGE + 1);
   });
+
+  it("keeps the older pages and the way back to them when a new message arrives", async () => {
+    mocks.collabChatList.mockResolvedValueOnce(fullPage);
+    await begin();
+    const olderPage = Array.from({ length: CHAT_PAGE }, (_, index) =>
+      message(`o${index}`, `Older ${index}`, AT - (CHAT_PAGE - index) * 1_000),
+    );
+    mocks.collabChatList.mockResolvedValueOnce(olderPage);
+    await loadOlderChat();
+    expect(ids()).toHaveLength(2 * CHAT_PAGE);
+    const latest = message("new", "Just sent", AT + CHAT_PAGE * 1_000);
+    mocks.collabChatList.mockResolvedValueOnce([...fullPage.slice(1), latest]);
+    await loadChat();
+    expect(mocks.collabChatList).toHaveBeenLastCalledWith("paper", null, CHAT_PAGE);
+    expect(ids()).toHaveLength(2 * CHAT_PAGE + 1);
+    expect(ids()[0]).toBe("o0");
+    expect(ids().at(-1)).toBe("new");
+    expect(useChat.getState().hasOlder).toBe(true);
+  });
+
+  it("starts over from the newest page when it no longer meets the loaded messages", async () => {
+    await begin();
+    const later = Array.from({ length: CHAT_PAGE }, (_, index) => message(`n${index}`, `Later ${index}`, AT + (index + 1) * 120_000));
+    mocks.collabChatList.mockResolvedValueOnce(later);
+    await loadChat();
+    expect(ids()).toEqual(later.map((entry) => entry.id));
+    expect(useChat.getState().hasOlder).toBe(true);
+  });
 });
 
 describe("following the live project", () => {

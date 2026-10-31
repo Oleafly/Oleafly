@@ -6,16 +6,13 @@ import { formatDate, formatNumber } from "@/lib/intl";
 import type { CollabDailyActivity, CollabServerActivity } from "@/lib/tauri";
 
 const DAY_MS = 86_400_000;
-// The most days a chart draws, whatever a server sends.
 const MAX_DAYS = 366;
-// 1 January 2023 was a Sunday.
 const A_SUNDAY = Date.UTC(2023, 0, 1);
 
 function isoDay(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
-// Every day in the range, with the days nobody signed in counted as zero.
 export function activityDays(activity: CollabServerActivity): CollabDailyActivity[] {
   const known = new Map(activity.daily.map((day) => [day.day, day]));
   const count = Math.min(Math.max(0, Math.floor(activity.days)), MAX_DAYS);
@@ -108,7 +105,6 @@ function SignInHeatmap({ activity }: Readonly<{ activity: CollabServerActivity }
   );
 }
 
-// When people signed in over the last 30 days, by day and by hour of the week.
 export function OverviewActivity({ activity }: Readonly<{ activity: CollabServerActivity }>) {
   const { t } = useTranslation(["collab"]);
   const days = useMemo(() => activityDays(activity), [activity]);

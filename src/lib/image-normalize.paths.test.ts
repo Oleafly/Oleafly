@@ -10,7 +10,6 @@ function bitmap(width: number, height: number) {
   return { width, height, close: vi.fn() };
 }
 
-/** A 2D canvas whose pixels are opaque unless `transparent`, and which encodes only `encodes`. */
 function stubCanvas(options: { transparent?: boolean; encodes?: string[] } = {}) {
   const encodes = options.encodes ?? ["image/webp", "image/png", "image/jpeg"];
   const context = {
@@ -39,7 +38,6 @@ function photo(name: string, type: string, size = 4_000_000): File {
   return new File([new Uint8Array(size)], name, { type });
 }
 
-/** A module worker that answers each job with `answer(job)`. */
 function stubWorker(answer: (job: { id: number }) => Record<string, unknown> | "crash" | "silent") {
   const created: FakeWorker[] = [];
   class FakeWorker {
@@ -219,7 +217,6 @@ describe("normalizing an image in the worker", () => {
 
       const stuck = normalizeImage(small(), OPTIONS);
       await vi.advanceTimersByTimeAsync(30_000);
-      // The wedged job falls back to the main thread, and its worker is gone.
       expect((await stuck).thumbnailUrl).toBe("data:image/jpeg;base64,THUMB");
       expect(created[0].terminate).toHaveBeenCalledOnce();
       expect((await normalizeImage(small(), OPTIONS)).thumbnailUrl).toBe("data:t");

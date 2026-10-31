@@ -1,14 +1,6 @@
 import { create } from "zustand";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 
-// Drafts (text and attachments) per composer, kept in memory so they
-// survive switching panels, and recalled prompts per project, kept in
-// localStorage. A composer id starts with the project id and names the
-// conversation it belongs to: `p1:builtin` is the next chat of the built-in
-// assistant, `p1:builtin:<chatId>` a chat's own draft, `p1:acp:claude` the CLI
-// agent that will start a conversation and `p1:acp:claude:<sessionId>` a
-// conversation's own draft.
-
 export interface ComposerDraft {
   text: string;
   attachments: readonly DraftAttachment[];
@@ -18,11 +10,9 @@ interface ComposerDraftsState {
   drafts: Readonly<Record<string, ComposerDraft>>;
   setText(composerId: string, text: string): void;
   addAttachments(composerId: string, items: readonly DraftAttachment[]): void;
-  /** False when the attachment is gone (removed while it was prepared). */
   updateAttachment(composerId: string, id: string, patch: Partial<DraftAttachment>): boolean;
   removeAttachments(composerId: string, ids: readonly string[]): void;
   setAttachments(composerId: string, items: readonly DraftAttachment[]): void;
-  /** Moves a draft to another composer; a draft already there is kept and the moved one goes before it. */
   moveDraft(fromId: string, toId: string): void;
 }
 
@@ -124,13 +114,11 @@ export const useComposerDrafts = create<ComposerDraftsState>()((set, get) => ({
   },
 }));
 
-/** The composer of the built-in assistant: one draft per chat, and one for the next new chat. */
 export function builtinComposerId(projectId: string | null, chatId: string | null = null): string {
   const base = `${projectId ?? "none"}:builtin`;
   return chatId ? `${base}:${chatId}` : base;
 }
 
-/** The project part of a composer id; prompt history is shared per project. */
 export function composerHistoryKey(composerId: string): string {
   const colon = composerId.indexOf(":");
   return colon === -1 ? composerId : composerId.slice(0, colon);
@@ -144,12 +132,6 @@ export function draftAttachments(composerId: string): readonly DraftAttachment[]
   return useComposerDrafts.getState().drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS;
 }
 
-/**
- * The composer whose draft holds an attachment now: the one it was added to,
- * or another of the same project the draft moved to while the file was
- * prepared (a new chat's first send, a CLI conversation starting). Null when
- * it was removed.
- */
 export function composerHolding(composerId: string, attachmentId: string): string | null {
   const drafts = useComposerDrafts.getState().drafts;
   const holds = (id: string) => drafts[id]?.attachments.some((item) => item.id === attachmentId) ?? false;
@@ -168,12 +150,9 @@ function addRefs(refs: Set<string>, items: readonly DraftAttachment[]): void {
   }
 }
 
-// Files that live outside the drafts but must survive a collection: the draft
-// stashed while a message is edited, and the CLI agent's queued messages.
 const heldAttachments = new Set<readonly DraftAttachment[]>();
 const attachmentHolders = new Set<() => Iterable<string>>();
 
-/** Keeps these attachments out of a collection until the returned function is called. */
 export function holdDraftAttachments(items: readonly DraftAttachment[]): () => void {
   heldAttachments.add(items);
   return () => {
@@ -181,7 +160,6 @@ export function holdDraftAttachments(items: readonly DraftAttachment[]): () => v
   };
 }
 
-/** Registers a store whose files a collection must keep; it lists their hashes. */
 export function registerAttachmentHolder(holder: () => Iterable<string>): () => void {
   attachmentHolders.add(holder);
   return () => {
@@ -189,7 +167,6 @@ export function registerAttachmentHolder(holder: () => Iterable<string>): () => 
   };
 }
 
-/** Stored hashes (page images included) that drafts of one project, and what is held outside them, still use. */
 export function draftAttachmentRefs(projectId: string): string[] {
   const refs = new Set<string>();
   const prefix = `${projectId}:`;
@@ -205,7 +182,6 @@ export const PROMPT_HISTORY_LIMIT = 50;
 const HISTORY_KEY = "oleafly.composer.history";
 const HISTORY_PROJECTS = 20;
 const HISTORY_MAX_CHARS = 4_000;
-/** What one project's prompts may take in all (about 64 KB as UTF-16), so the key stays small. */
 export const HISTORY_PROJECT_CHARS = 32_000;
 
 interface StoredHistory {
@@ -213,15 +189,12 @@ interface StoredHistory {
   byProject: Record<string, { at: number; items: string[] }>;
 }
 
-// The history as last read or written, with the text it came from: each
-// arrow press reads it, and parsing it every time would be slow.
 let historyCache: { raw: string; history: StoredHistory } | null = null;
 
 function readHistory(): StoredHistory {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (!raw) return { v: 1, byProject: {} };
-    // Another window may have written it since; the text says.
     if (historyCache?.raw === raw) return historyCache.history;
     const history = parseHistory(raw);
     historyCache = { raw, history };
@@ -261,7 +234,6 @@ function writeHistory(history: StoredHistory): void {
   }
 }
 
-/** The newest prompts that fit the count and the project's size limit. */
 function trimHistory(items: readonly string[]): string[] {
   const kept: string[] = [];
   let chars = 0;
@@ -273,7 +245,6 @@ function trimHistory(items: readonly string[]): string[] {
   return kept.reverse();
 }
 
-/** Earlier prompts of the composer's project, newest last. */
 export function promptHistory(composerId: string): readonly string[] {
   return readHistory().byProject[composerHistoryKey(composerId)]?.items ?? [];
 }
@@ -281,12 +252,10 @@ export function promptHistory(composerId: string): readonly string[] {
 export function rememberPrompt(composerId: string, text: string): void {
   const prompt = text.trim();
   if (!prompt || prompt.length > HISTORY_MAX_CHARS) return;
-  // A copy: the cached history must not change unless the write succeeds.
   const history: StoredHistory = { v: 1, byProject: { ...readHistory().byProject } };
   const key = composerHistoryKey(composerId);
   const items = (history.byProject[key]?.items ?? []).filter((item) => item !== prompt);
   items.push(prompt);
-  // Strictly increasing, so the project just used is never the oldest.
   const latest = Math.max(0, ...Object.values(history.byProject).map((entry) => entry.at));
   history.byProject[key] = {
     at: Math.max(Date.now(), latest + 1),

@@ -1,6 +1,3 @@
-//! Which programs run inside a contained process tree: process names on
-//! Unix, the job object's process list and image names on Windows.
-
 /// The short name of a running process (`/proc/<pid>/comm` on Linux,
 /// `proc_name` on macOS), or None when it has exited or cannot be read.
 #[cfg(target_os = "linux")]
@@ -35,8 +32,6 @@ pub fn process_name(_pid: i32) -> Option<String> {
     None
 }
 
-/// The full image path of a running process (`QueryFullProcessImageNameW`),
-/// or None when it has exited or the system refuses to say.
 #[cfg(windows)]
 pub fn process_image_name(pid: u32) -> Option<String> {
     use windows_sys::Win32::Foundation::CloseHandle;
@@ -69,8 +64,6 @@ pub fn process_image_name(pid: u32) -> Option<String> {
 
 #[cfg(windows)]
 impl super::tree::ProcessTreeGuard {
-    /// The ids of every process that is in the job right now: the contained
-    /// child and everything it started that has not exited.
     pub fn process_ids(&self) -> std::io::Result<Vec<u32>> {
         use windows_sys::Win32::System::JobObjects::{
             JobObjectBasicProcessIdList, QueryInformationJobObject,
@@ -79,9 +72,6 @@ impl super::tree::ProcessTreeGuard {
         if self.job.is_null() {
             return Ok(Vec::new());
         }
-        // JOBOBJECT_BASIC_PROCESS_ID_LIST is two u32 counts followed by a
-        // ULONG_PTR array. A usize buffer keeps that array aligned, and the
-        // ids are read straight out of the buffer past the header.
         let header_words = (2 * std::mem::size_of::<u32>()).div_ceil(std::mem::size_of::<usize>());
         let mut capacity = 64usize;
         loop {

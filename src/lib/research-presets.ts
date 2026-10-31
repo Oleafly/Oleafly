@@ -14,27 +14,18 @@ import {
 } from "lucide-react";
 import { i18n } from "@/i18n";
 
-/**
- * A research quick start. `prompt` is plain text: CLI agents treat a leading
- * `/` as their own command syntax, so a skill travels separately as
- * `skillId`. The built-in assistant adds `/${skillId}` itself
- * (see {@link presetPrompt}).
- */
 export interface ResearchPreset {
   id: string;
   label: string;
   icon: LucideIcon;
   prompt: string;
   skillId?: string;
-  /** Opens an Oleafly tool instead of filling the composer. */
   action?: "clean-library";
-  /** Only offered when the project is a Git repository. */
   gitOnly?: boolean;
 }
 
 const readOnly = (file: string) => ` Do not change manuscript files; write findings to research/${file}.md.`;
 
-/** Agent-facing prompt text (not UI copy), shared by both runtimes. */
 export const RESEARCH_PRESET_PROMPTS = {
   literatureSweep: "Build an annotated reading list for this project's research question",
   relatedWork: "Draft the related work section from the reading list and the bibliography",
@@ -135,12 +126,10 @@ export function researchPresets(): ResearchPreset[] {
   ];
 }
 
-/** The presets the CLI agent home offers for this project. */
 export function cliResearchPresets({ gitRepository }: Readonly<{ gitRepository: boolean }>): ResearchPreset[] {
   return researchPresets().filter((preset) => gitRepository || !preset.gitOnly);
 }
 
-/** Built-in assistant form: the skill rides in the text as a slash command. */
 export function presetPrompt(prompt: string, skillId?: string): string {
   return skillId ? `/${skillId} ${prompt}` : prompt;
 }

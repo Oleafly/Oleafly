@@ -210,7 +210,6 @@ function appendEntry(
       state.items.push({ ...base, kind: "milestone", text: approvalMilestoneText(event) });
       break;
     case "phase":
-      // The header shows the current phase; the timeline marks the waits.
       if (event.phase !== "working" && event.phase !== "preparing") {
         state.items.push({ ...base, kind: "milestone", text: phaseLabel(event.phase) });
       }
@@ -227,7 +226,6 @@ function markInterrupted(state: TimelineState) {
 
 interface TimelineSegment {
   timeline: TaskTimeline;
-  /** Every tool call has its result, so rows after this part can't change it. */
   settled: boolean;
   calls: ReadonlySet<string>;
 }
@@ -263,7 +261,6 @@ export function buildTaskTimeline(
   return buildSegment(events, running).timeline;
 }
 
-/** The token usage the rows last reported, as the timeline of all of them has it. */
 export function latestTimelineUsage(events: readonly TaskTranscriptEvent[]): TaskTimelineUsage {
   const usage: TaskTimelineUsage = { inputTokens: null, outputTokens: null };
   for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -276,15 +273,10 @@ export function latestTimelineUsage(events: readonly TaskTranscriptEvent[]): Tas
   return usage;
 }
 
-/** What an incremental build keeps for the next one. */
 export interface TaskTimelineCache {
-  /** The rows the settled part was built from, the same objects the next rows must start with. */
   rows: readonly TaskTranscriptEvent[];
-  /** The timeline of `rows`: no tool in it waits for a result and no text row runs on past it. */
   timeline: TaskTimeline;
-  /** The tool calls in it; a later row that names one means a full build. */
   calls: ReadonlySet<string>;
-  /** The row count when the settled part last couldn't grow; it tries again after more rows. */
   triedAt: number;
 }
 
@@ -295,7 +287,6 @@ const NOTHING_SETTLED: TaskTimelineCache = {
   triedAt: 0,
 };
 
-/** Rows the changing part keeps when the settled part grows, so live text rebuilds only these. */
 export const TIMELINE_LIVE_ROWS = 64;
 
 function continuesText(before: TaskTranscriptEvent, after: TaskTranscriptEvent): boolean {
@@ -326,18 +317,11 @@ function joined(head: TaskTimeline, tail: TaskTimeline): TaskTimeline {
   };
 }
 
-/**
- * `buildTaskTimeline`, reusing the items a previous build made for the rows
- * that haven't changed. A running task adds text to its newest row many times
- * a second; only the rows after the settled part are built again, and the
- * settled items stay the same objects, so their rows skip rendering.
- */
 export function buildTaskTimelineIncremental(
   events: readonly TaskTranscriptEvent[],
   running: boolean,
   cache: TaskTimelineCache | null,
 ): { timeline: TaskTimeline; cache: TaskTimelineCache } {
-  // Rows added or loaded before the settled part change it: start again.
   let settled = cache && startsWith(events, cache.rows) ? cache : NOTHING_SETTLED;
   let start = settled.rows.length;
   if (events.length - start > 2 * TIMELINE_LIVE_ROWS && events.length - settled.triedAt >= TIMELINE_LIVE_ROWS) {
@@ -353,12 +337,10 @@ export function buildTaskTimelineIncremental(
       };
       start = end;
     } else {
-      // A tool still waits for its result: try again once more rows came in.
       settled = { ...settled, triedAt: events.length };
     }
   }
   const rest = start === 0 ? events : events.slice(start);
-  // A row that updates a tool from the settled part changes that part.
   if (namesCall(rest, settled.calls)) {
     return { timeline: buildTaskTimeline(events, running), cache: { ...NOTHING_SETTLED, triedAt: events.length } };
   }

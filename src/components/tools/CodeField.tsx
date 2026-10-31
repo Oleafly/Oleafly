@@ -16,7 +16,6 @@ interface CodeFieldProps {
   readOnly?: boolean;
 }
 
-/** Syntax-highlighted CodeMirror field for the standalone tool panels. */
 export function CodeField({
   value,
   onChange,

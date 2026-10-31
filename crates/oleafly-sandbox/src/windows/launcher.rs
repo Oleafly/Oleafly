@@ -10,18 +10,14 @@ use crate::SandboxError;
 
 pub const LAUNCH_FLAG: &str = crate::selftest::LAUNCH_FLAG;
 
-/// What the launcher starts.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchArgs {
-    /// The AppContainer profile name (ensured by the parent).
     pub container: String,
-    /// Capability SIDs (SDDL) the child's token carries.
     pub capabilities: Vec<String>,
     pub application: PathBuf,
     pub command_line: OsString,
 }
 
-/// The launcher's arguments after the flag.
 pub fn encode(args: &LaunchArgs) -> Vec<OsString> {
     let mut argv = vec![
         OsString::from("--container"),
@@ -38,7 +34,6 @@ pub fn encode(args: &LaunchArgs) -> Vec<OsString> {
     argv
 }
 
-/// The inverse of [`encode`].
 pub fn decode(argv: &[OsString]) -> Result<LaunchArgs, SandboxError> {
     let mut container = None;
     let mut capabilities = Vec::new();
@@ -134,7 +129,6 @@ mod platform {
         125
     }
 
-    /// Frees what the launch allocated, in reverse order.
     struct Cleanup {
         container: PSID,
         capabilities: Vec<PSID>,
@@ -185,7 +179,6 @@ mod platform {
         block
     }
 
-    /// Starts the child in the AppContainer and waits for it.
     pub fn run(args: &LaunchArgs) -> i32 {
         let mut cleanup = Cleanup {
             container: std::ptr::null_mut(),

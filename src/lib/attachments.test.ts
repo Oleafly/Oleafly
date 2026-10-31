@@ -112,7 +112,6 @@ describe("attachment IPC", () => {
     expect(revoke).not.toHaveBeenCalledWith(shown);
     again();
     expect(revoke).toHaveBeenCalledWith(shown);
-    // Asked for again, the file is read into a new URL.
     const reread = await attachmentObjectUrl("p1", "held", "image/png");
     expect(reread).not.toBe(shown);
     revoke.mockRestore();

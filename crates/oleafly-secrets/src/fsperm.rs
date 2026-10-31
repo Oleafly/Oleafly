@@ -1,9 +1,5 @@
 use std::path::Path;
 
-/// Restrict `path` so only the current user can read/write it (the unix `0600`
-/// equivalent). Best-effort: never fails the caller. On unix sets `0600`; on
-/// Windows installs a protected, current-user-only ACL using the native API;
-/// on other targets it is a no-op.
 pub fn harden_file(path: &Path) {
     #[cfg(unix)]
     {
@@ -20,8 +16,6 @@ pub fn harden_file(path: &Path) {
     }
 }
 
-/// Discovery files must fail before writing credentials if ACL installation
-/// fails; other existing callers deliberately use best-effort hardening.
 #[cfg(windows)]
 pub fn harden_file_checked(path: &Path) -> std::io::Result<()> {
     windows::harden(path)
@@ -47,8 +41,6 @@ mod windows {
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
     fn user_token() -> io::Result<Vec<usize>> {
-        // Use the actual process identity, independent of mutable USERNAME and
-        // USERDOMAIN environment variables and domain-name resolution.
         let mut raw = null_mut();
         if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut raw) } == 0 {
             return Err(io::Error::last_os_error());
@@ -59,8 +51,6 @@ mod windows {
         if size == 0 {
             return Err(io::Error::last_os_error());
         }
-        // TOKEN_USER contains a pointer: keep its backing buffer aligned and
-        // alive until the ACL builder has copied the SID.
         let mut buffer = vec![0usize; (size as usize).div_ceil(std::mem::size_of::<usize>())];
         if unsafe {
             GetTokenInformation(
@@ -104,8 +94,6 @@ mod windows {
         if status != 0 {
             return Err(io::Error::from_raw_os_error(status as i32));
         }
-        // Secret reads also harden their lock file. Avoid spawning icacls on
-        // this hot path: process startup can stall the UI for every read.
         let status = unsafe {
             SetNamedSecurityInfoW(
                 path.as_ptr(),
@@ -167,7 +155,7 @@ mod windows {
                     assert_eq!((*acl).AceCount, 1);
                     assert_ne!(GetAce(acl, 0, &mut ace), 0);
                     let ace = &*ace.cast::<ACCESS_ALLOWED_ACE>();
-                    assert_eq!(ace.Header.AceType, 0); // ACCESS_ALLOWED_ACE_TYPE
+                    assert_eq!(ace.Header.AceType, 0);
                     assert_eq!(ace.Mask, FILE_ALL_ACCESS);
                     assert_ne!(
                         EqualSid(
@@ -193,7 +181,7 @@ mod windows {
             let directory = tempfile::tempdir().unwrap();
             let path = directory.path().join("missing");
             assert!(harden(&path).is_err());
-            super::super::harden_file(&path); // best-effort public contract
+            super::super::harden_file(&path);
             assert!(!path.exists());
         }
     }

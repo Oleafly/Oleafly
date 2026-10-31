@@ -21,7 +21,6 @@ export interface ImageJob {
   thumbWidth: number;
   thumbHeight: number;
   detectAlpha: boolean;
-  /** False keeps the original bytes; only the thumbnail is made. */
   encode: boolean;
 }
 
@@ -31,12 +30,10 @@ const KEEP_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"
 const ALPHA_TYPES = new Set(["image/png", "image/gif", "image/webp", "image/avif"]);
 const KEEP_BYTES = 5 * 1024 * 1024;
 const WORKER_TIMEOUT_MS = 30_000;
-/** The worker holds its module and canvases while it lives; it goes after this long without a job. */
 const WORKER_IDLE_MS = 60_000;
 export const ENCODE_QUALITY = 0.85;
 export const THUMB_QUALITY = 0.7;
 
-/** The size that fits inside `maxEdge` on its long edge; never upscaled. */
 export function fitWithin(
   width: number,
   height: number,
@@ -51,7 +48,6 @@ export function fitWithin(
   };
 }
 
-/** Small PNG, JPEG, WebP and GIF files go to the model byte for byte. */
 export function keepsOriginal(
   input: { mime: string; size: number; width: number; height: number },
   maxEdge: number,
@@ -64,7 +60,6 @@ export function keepsOriginal(
   );
 }
 
-/** True when any pixel is not fully opaque. */
 export function hasTransparency(data: Uint8ClampedArray): boolean {
   for (let index = 3; index < data.length; index += 4) {
     if (data[index] < 255) return true;
@@ -95,7 +90,6 @@ function stopWorker(): void {
   worker = null;
 }
 
-/** With no job left, the worker leaves after a while. */
 function stopWorkerWhenIdle(): void {
   clearTimeout(idleTimer);
   if (jobs.size > 0) return;
@@ -137,8 +131,6 @@ function runInWorker(target: Worker, job: ImageJob): Promise<ImageJobResult> {
   clearTimeout(idleTimer);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      // A worker that did not answer is stuck, and the jobs queued behind it
-      // would wait just as long: drop it, and the next image gets a new one.
       jobs.delete(id);
       reject(new Error("image worker timed out"));
       failAll(new Error("image worker timed out"));
@@ -280,7 +272,6 @@ export async function normalizeImage(
       result = await runInWorker(offThread, job(bitmap));
     } catch (error) {
       void logError("image worker", error);
-      // The bitmap went to the worker; decode again for the fallback.
       bitmap = await decode(file);
     }
   }

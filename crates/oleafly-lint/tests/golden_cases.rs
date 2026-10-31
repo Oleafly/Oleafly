@@ -1,7 +1,3 @@
-//! Golden tests: the Rust linters, prose masks and Harper setup against the
-//! output of the TypeScript code (`src/lib/cli-goldens/tests/
-//! {lint-cases,harper,tables}.test.ts`).
-
 mod support;
 
 use std::collections::BTreeMap;
@@ -20,7 +16,6 @@ use serde_json::{json, Value};
 
 use support::{assert_golden, cases, fixture_root, read_json, run_suite, string};
 
-/// The case text as the CLI reads it: LF-normalised.
 fn source(case: &Value) -> SourceText {
     SourceText::new(normalize_line_endings(string(case, "text")).into_owned())
 }
@@ -68,7 +63,6 @@ fn prose_format(case: &Value) -> ProseFormat {
     }
 }
 
-/// `compressMap`: `[proseStart, sourceStart, length]` runs.
 fn compress_map(map: &[u32]) -> Vec<[u32; 3]> {
     let mut runs: Vec<[u32; 3]> = Vec::new();
     for (index, &value) in map.iter().enumerate() {

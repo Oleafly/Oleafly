@@ -1,9 +1,5 @@
-//! Citation keys and BibTeX entry helpers shared by the app's research
-//! tools, bibliography cleanup and `oleafly cite` (ports of
-//! `src/lib/citation/bibtex.ts` and `dedup.ts`).
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Key in the app's `firstauthorYEARfirstword` scheme.
 pub fn cite_key(author: &str, year: &str, title: &str) -> String {
     const STOP: &[&str] = &[
         "the", "a", "an", "of", "on", "in", "for", "and", "to", "with", "using", "via", "from",
@@ -53,7 +49,6 @@ pub fn cite_key(author: &str, year: &str, title: &str) -> String {
     key
 }
 
-/// The first 4-digit year in a free-form or ISO date string.
 pub fn year_of(date: &str) -> String {
     date.split(|character: char| !character.is_ascii_digit())
         .find(|token| token.len() == 4)
@@ -61,7 +56,6 @@ pub fn year_of(date: &str) -> String {
         .to_string()
 }
 
-/// One parsed entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BibEntry {
     pub entry_type: String,
@@ -69,8 +63,6 @@ pub struct BibEntry {
     pub fields: BTreeMap<String, String>,
 }
 
-/// `@type{key,` at the start of `text` (after spaces): type, key and where
-/// the fields begin.
 fn entry_head(text: &str) -> Option<(String, String, usize)> {
     let bytes = text.as_bytes();
     if bytes.first() != Some(&b'@') {
@@ -114,7 +106,6 @@ fn entry_head(text: &str) -> Option<(String, String, usize)> {
     Some((entry_type, key, index + 1))
 }
 
-/// A field value at `index` (braced, quoted or bare) and where it ends.
 fn entry_value(body: &str, index: usize) -> (String, usize) {
     let bytes = body.as_bytes();
     match bytes.get(index) {
@@ -158,7 +149,6 @@ fn entry_value(body: &str, index: usize) -> (String, usize) {
     }
 }
 
-/// `name =` at or after `from` (a name not preceded by a letter).
 fn next_field_name(body: &str, from: usize) -> Option<(String, usize)> {
     let bytes = body.as_bytes();
     let mut index = from;
@@ -188,7 +178,6 @@ fn next_field_name(body: &str, from: usize) -> Option<(String, usize)> {
     None
 }
 
-/// Parses one entry, tolerating nested braces and quoted or bare values.
 pub fn parse_entry(text: &str) -> Option<BibEntry> {
     let text = text.trim();
     let (entry_type, key, start) = entry_head(text)?;
@@ -213,7 +202,6 @@ pub fn parse_entry(text: &str) -> Option<BibEntry> {
     })
 }
 
-/// The entries of a `.bib` file, split at each `@type{`.
 fn chunks(content: &str) -> Vec<&str> {
     let mut starts: Vec<usize> = Vec::new();
     let bytes = content.as_bytes();
@@ -245,7 +233,6 @@ fn chunks(content: &str) -> Vec<&str> {
     out
 }
 
-/// Every entry in a `.bib` file (not `@string`, `@preamble` or `@comment`).
 pub fn parse_entries(content: &str) -> Vec<BibEntry> {
     chunks(content)
         .into_iter()
@@ -254,7 +241,6 @@ pub fn parse_entries(content: &str) -> Vec<BibEntry> {
         .collect()
 }
 
-/// Every entry key in a `.bib` file.
 pub fn entry_keys(content: &str) -> BTreeSet<String> {
     chunks(content)
         .into_iter()
@@ -262,7 +248,6 @@ pub fn entry_keys(content: &str) -> BTreeSet<String> {
         .collect()
 }
 
-/// The key of the entry with this DOI (compared trimmed, case-insensitive).
 pub fn find_key_by_doi(content: &str, doi: &str) -> Option<String> {
     let wanted = doi.trim().to_lowercase();
     if wanted.is_empty() {
@@ -280,7 +265,6 @@ pub fn find_key_by_doi(content: &str, doi: &str) -> Option<String> {
         .map(|entry| entry.key)
 }
 
-/// The entry with its key replaced.
 pub fn set_key(bibtex: &str, key: &str) -> String {
     let leading = bibtex.len() - bibtex.trim_start().len();
     let text = &bibtex[leading..];
@@ -318,7 +302,6 @@ pub fn set_key(bibtex: &str, key: &str) -> String {
     )
 }
 
-/// a, b, ..., z, aa, ab, ... (bijective base 26).
 fn collision_suffix(n: usize) -> String {
     let mut suffix = String::new();
     let mut index = n as i64;
@@ -332,7 +315,6 @@ fn collision_suffix(n: usize) -> String {
     suffix
 }
 
-/// `base`, or `base` plus the first free suffix.
 pub fn unique_key(base: &str, existing: &BTreeSet<String>) -> String {
     let mut key = base.to_string();
     let mut n = 0;
@@ -343,7 +325,6 @@ pub fn unique_key(base: &str, existing: &BTreeSet<String>) -> String {
     key
 }
 
-/// The file with the entries appended after one blank line.
 pub fn append_entries(content: &str, blocks: &[String]) -> String {
     let body = blocks.join("\n\n");
     if content.trim().is_empty() {
@@ -359,8 +340,6 @@ pub enum AddOutcome {
     AlreadyPresent { key: String },
 }
 
-/// Adds an entry the way the app does: an entry whose DOI is already there
-/// is not added again; a new one gets the app's key (made unique).
 pub fn add_entry(content: &str, bibtex: &str) -> Option<(String, AddOutcome)> {
     let entry = parse_entry(bibtex)?;
     if let Some(doi) = entry.fields.get("doi") {

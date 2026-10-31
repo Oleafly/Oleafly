@@ -1,7 +1,3 @@
-//! The CLI's build engine as a library: open a project the way the app
-//! sees it (its own `project.json`, a folder the app opened in place, or a
-//! detected main document) and build it with the app's compilers. The
-//! headless agent (`oleafly agent`) builds through this too.
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
@@ -26,22 +22,15 @@ pub use crate::native::{BuildError, BuildResult, CompilerLog};
 
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
 
-/// One build's options.
 #[derive(Clone, Default)]
 pub struct BuildRequest {
     pub flags: EngineFlags,
-    /// Zero means the default (300 seconds).
     pub timeout: Duration,
-    /// A Typst variant from `project.json`.
     pub variant: Option<String>,
-    /// Build this document instead of the project's main document.
     pub main: Option<String>,
-    /// The LaTeX compiler latexmk runs.
     pub compiler: Option<TexFlavor>,
-    /// Copy the PDF here after a good build.
     pub output: Option<PathBuf>,
     pub log: CompilerLog,
-    /// Runs once when another build of the project holds it.
     pub on_lock_wait: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
@@ -57,11 +46,8 @@ impl BuildRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProjectOrigin {
-    /// The folder's own `project.json`.
     Manifest,
-    /// No `project.json`; the main document was detected.
     Detected,
-    /// A folder the app opened in place (its build folder is the app's).
     Linked { id: String },
 }
 
@@ -90,9 +76,6 @@ fn unsafe_folder(message: impl Into<String>) -> CliError {
     CliError::new(ErrorKind::UnsafePath, "project.unsafe_path", message)
 }
 
-/// `<data>/linked/<id>/build`: the app's build folder for a linked folder.
-/// The state folder must be a real folder directly inside `<data>/linked`,
-/// named by its id; `build` is created when missing.
 pub(crate) fn linked_build_dir(link: &LinkInfo) -> Result<PathBuf, CliError> {
     let metadata = std::fs::symlink_metadata(&link.state_dir).map_err(CliError::from)?;
     if !metadata.is_dir() || metadata.file_type().is_symlink() {
@@ -136,8 +119,6 @@ fn folder_name(root: &Path) -> String {
         .unwrap_or_default()
 }
 
-/// The manifest the app would use for a linked folder without a
-/// `project.json`: its saved choices where they still make sense.
 fn manifest_from_sidecar(
     root: &Path,
     saved: &desktop_link::SavedProject,
@@ -183,8 +164,6 @@ fn manifest_from_sidecar(
     })
 }
 
-/// `workspace` with the build folder builds use: the app's, when the app
-/// opened the folder in place.
 pub(crate) fn with_linked_build(workspace: Workspace) -> Result<Workspace, CliError> {
     let Some(link) = desktop_link::link_for(workspace.root()) else {
         return Ok(workspace);
@@ -196,8 +175,6 @@ pub(crate) fn with_linked_build(workspace: Workspace) -> Result<Workspace, CliEr
     )?)
 }
 
-/// The project at `path` as saved; without a project.json, `main` (from
-/// `--main`) is the main document instead of the one detection picks.
 fn opened_without_overrides(path: &Path, main: Option<&str>) -> Result<OpenedProject, CliError> {
     match Workspace::open(path) {
         Ok(workspace) => match desktop_link::link_for(workspace.root()) {
@@ -238,7 +215,6 @@ fn opened_without_overrides(path: &Path, main: Option<&str>) -> Result<OpenedPro
                 });
             }
             let workspace = Workspace::detected(path, main)?;
-            // Only a guess is worth a warning.
             let warnings = if main.is_some() {
                 Vec::new()
             } else {
@@ -270,7 +246,6 @@ fn extensions_for(engine: Engine) -> &'static str {
     }
 }
 
-/// Opens the project at `path`, applying `--main` and `--compiler`.
 pub fn open_project(
     path: &Path,
     main: Option<&str>,
@@ -298,7 +273,6 @@ fn open_project_unchecked(
     // `.\chapters\a.tex`, as a Windows shell completes it.
     let main = main.map(crate::contract::project_path_arg);
     let main = main.as_deref();
-    // A path that leaves the project is refused before the folder is read.
     if let Some(main) = main {
         let relative = Path::new(main);
         if main.chars().any(char::is_control)
@@ -375,8 +349,6 @@ pub(crate) fn typst_project_pin(workspace: &Workspace) -> Option<&str> {
     }
 }
 
-/// The Typst version to use and whether the project pinned it (else it is
-/// the app's default).
 fn wanted_typst(workspace: &Workspace, discovery: &Discovery) -> Option<(String, bool)> {
     if let Some(pin) = typst_project_pin(workspace) {
         return Some((pin.to_string(), true));
@@ -388,8 +360,6 @@ fn wanted_typst(workspace: &Workspace, discovery: &Discovery) -> Option<(String,
     (default != bundled_typst_version().to_string()).then_some((default, false))
 }
 
-/// The tools a build of `workspace` needs, with the Typst its pin (or the
-/// app's default) asks for and, for Markdown, a Pandoc new enough.
 pub(crate) fn build_tools(
     workspace: &Workspace,
     discovery: &Discovery,
@@ -436,10 +406,8 @@ pub(crate) fn build_tools(
     tools
 }
 
-/// The warning code for a Typst setting the chosen Typst can't apply.
 pub(crate) const TYPST_SETTING_UNSUPPORTED: &str = "typst.setting_unsupported";
 
-/// Typst settings a version can't apply (each a sentence).
 pub(crate) fn unapplied_settings(workspace: &Workspace, tools: &BuildTools) -> Vec<String> {
     if !is_typst_workspace(workspace) || tools.typst.is_none() {
         return Vec::new();
@@ -451,7 +419,6 @@ pub(crate) fn unapplied_settings(workspace: &Workspace, tools: &BuildTools) -> V
     )
 }
 
-/// Checks `--variant` against the project.
 pub(crate) fn typst_variant(
     workspace: &Workspace,
     variant: Option<&str>,
@@ -491,8 +458,6 @@ pub(crate) async fn typst_settings(
     }))
 }
 
-/// Where `-o` puts the PDF: `<folder>/<main stem>.pdf` for a folder, else
-/// a `.pdf` path whose folder exists.
 pub(crate) fn output_destination(
     requested: &Path,
     main_document: &str,
@@ -527,14 +492,11 @@ pub(crate) fn output_destination(
     Ok(requested.to_path_buf())
 }
 
-/// Builds the project at `path`.
 pub async fn build_project(path: &Path, request: &BuildRequest) -> Result<BuildResult, CliError> {
     let opened = open_project(path, request.main.as_deref(), request.compiler)?;
     build_opened(&opened, request).await
 }
 
-/// Builds a project [`open_project`] opened; leaves the build record and
-/// copies the PDF for `-o`.
 pub async fn build_opened(
     opened: &OpenedProject,
     request: &BuildRequest,
@@ -656,7 +618,6 @@ mod tests {
             opened.workspace.build_dir_path(),
             state.canonicalize().unwrap().join("build")
         );
-        // `project info` and `init` report the folder builds use.
         let info = with_linked_build(Workspace::open(folder.path()).unwrap())
             .unwrap()
             .info()
@@ -723,7 +684,6 @@ mod tests {
             ("latexmk".into(), Some("lualatex".into()), copy_root)
         );
         assert!(!copy.path().join("project.json").exists());
-        // Without the folder it came from, the copy is opened as itself.
         let opened = opened_for_task_copy(copy.path(), None).unwrap();
         assert_eq!(opened.origin, ProjectOrigin::Detected);
     }
@@ -794,7 +754,6 @@ mod tests {
             detected.workspace.manifest().engine().unwrap(),
             Engine::Markdown
         );
-        // The main document was chosen, not guessed.
         assert!(detected.warnings.is_empty());
         Workspace::init(
             folder.path(),
@@ -822,7 +781,6 @@ mod tests {
         let _env = data_dir(data.path());
         let parent = tempfile::tempdir().unwrap();
         let folder = parent.path().join(std::ffi::OsStr::from_bytes(b"th\xe9se"));
-        // Some file systems (APFS) don't take such a name at all.
         if std::fs::create_dir(&folder).is_err() {
             return;
         }

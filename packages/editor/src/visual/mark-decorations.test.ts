@@ -6,14 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { latexTreeSupport } from "../latex-tree";
 import { visualMode } from "./index";
 import { parsedView, positionOf, SAMPLE_DOCUMENT } from "./test-document";
+import { stubRangeGeometry } from "../test-geometry";
 
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 const ports = { resolveImage: async () => null };
 let view: EditorView | null = null;

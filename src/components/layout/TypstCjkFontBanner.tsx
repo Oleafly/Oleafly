@@ -16,21 +16,21 @@ import { useFontPacksStore } from "@/store/font-packs";
 
 const hiddenKey = (projectId: string) => `oleafly.typstCjkFonts.${projectId}`;
 
-const checks = new Map<string, Promise<boolean>>();
+const checks = new Map<string, { readonly characters: string; readonly missing: Promise<boolean> }>();
 
 function cjkFontsMissing(projectId: string, characters: string): Promise<boolean> {
   const known = checks.get(projectId);
-  if (known) return known;
-  const check = typstGlyphCoverage(projectId, characters).then(
+  if (known?.characters === characters) return known.missing;
+  const missing = typstGlyphCoverage(projectId, characters).then(
     (coverage) => coverage.packsApply && coverage.uncovered.length > 0,
     (error: unknown) => {
-      checks.delete(projectId);
+      if (checks.get(projectId)?.missing === missing) checks.delete(projectId);
       void logError("check Typst CJK fonts", error);
       return false;
     },
   );
-  checks.set(projectId, check);
-  return check;
+  checks.set(projectId, { characters, missing });
+  return missing;
 }
 
 export function TypstCjkFontBanner() {
@@ -59,7 +59,7 @@ export function TypstCjkFontBanner() {
     if (!checkable || !projectId) return;
     let current = true;
     void cjkFontsMissing(projectId, characters).then((missing) => {
-      if (current && missing) setMissingFor(projectId);
+      if (current) setMissingFor(missing ? projectId : null);
     });
     return () => {
       current = false;

@@ -12,9 +12,6 @@ pub struct HelperLock {
 
 impl Drop for HelperLock {
     fn drop(&mut self) {
-        // Unlock before the file closes: a process spawned a moment ago still
-        // shares the file until it starts its program, and a flock would last
-        // until that copy closes too.
         let _ = fs4::FileExt::unlock(&self._file);
     }
 }
@@ -38,8 +35,6 @@ fn open(path: &Path) -> io::Result<File> {
 }
 
 impl HelperLock {
-    /// Takes the lock, waiting up to `budget` for a helper that is exiting.
-    /// `None` when another helper keeps it.
     pub fn acquire(path: &Path, budget: Duration) -> io::Result<Option<HelperLock>> {
         let file = open(path)?;
         let deadline = Instant::now() + budget;
@@ -55,8 +50,6 @@ impl HelperLock {
         }
     }
 
-    /// Whether a helper holds the lock (this process counts when it holds it
-    /// through another handle).
     pub fn is_held_elsewhere(path: &Path) -> io::Result<bool> {
         let file = match OpenOptions::new().read(true).write(true).open(path) {
             Ok(file) => file,
@@ -95,8 +88,6 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn dropping_the_lock_frees_it_while_a_copy_of_the_file_is_open() {
-        // A child process between fork and exec holds a copy of every open
-        // file, and a flock lasts until the last copy closes.
         let dir = tempfile::tempdir().unwrap();
         let lock = dir.path().join("daemon.lock");
         let first = HelperLock::acquire(&lock, Duration::ZERO).unwrap().unwrap();

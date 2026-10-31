@@ -13,7 +13,6 @@ function consume(event: KeyboardEvent): void {
 }
 
 export function handleDockShortcut(event: KeyboardEvent): boolean {
-  // A focused terminal keeps the keys it can send (Shift+F11).
   if (terminalOwnsKey(event)) return false;
   const bindings = useShortcutStore.getState().bindings;
   const settings = useSettingsStore.getState();
@@ -32,10 +31,6 @@ export function handleDockShortcut(event: KeyboardEvent): boolean {
   return false;
 }
 
-/**
- * Terminal tab shortcuts. New terminal works anywhere; next, previous and
- * close act only while focus is inside the terminal dock.
- */
 export function handleTerminalTabShortcut(event: KeyboardEvent): boolean {
   const bindings = useShortcutStore.getState().bindings;
   if (matchesShortcut(event, bindings.newTerminal)) {

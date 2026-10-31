@@ -6,7 +6,6 @@ import { cn, modKey } from "@/lib/utils";
 import type { TerminalLinkHover } from "./terminal-link-provider";
 
 export interface TerminalLinkTip extends TerminalLinkHover {
-  /** Pointer position in client coordinates. */
   x: number;
   y: number;
 }
@@ -14,10 +13,6 @@ export interface TerminalLinkTip extends TerminalLinkHover {
 const POINTER_GAP = 14;
 const MARGIN = 8;
 
-/**
- * Names what a terminal link points at and how to open it. It sits beside the
- * pointer because the link is drawn on a canvas, with no element to anchor to.
- */
 export function TerminalLinkTooltip({ tip }: Readonly<{ tip: TerminalLinkTip }>) {
   const { t } = useTranslation(["workspace"]);
   const ref = useRef<HTMLSpanElement>(null);
@@ -26,7 +21,6 @@ export function TerminalLinkTooltip({ tip }: Readonly<{ tip: TerminalLinkTip }>)
   useLayoutEffect(() => {
     const box = ref.current?.getBoundingClientRect();
     if (!box) return;
-    // Below and to the right of the pointer, flipped above near the bottom edge.
     let top = tip.y + POINTER_GAP;
     if (top + box.height > window.innerHeight - MARGIN) top = tip.y - POINTER_GAP - box.height;
     const left = Math.min(tip.x + POINTER_GAP, window.innerWidth - box.width - MARGIN);

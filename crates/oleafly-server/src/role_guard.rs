@@ -24,6 +24,11 @@ const ANCHOR: &str = "anchor";
 const TEXT: &str = "text";
 const INSERT: &str = "insert";
 const DELETE: &str = "delete";
+const CREATED_BY: &str = "created_by";
+const MESSAGES: &str = "messages";
+const RESOLVED: &str = "resolved";
+const DELETED: &str = "deleted";
+const ID_KEY: &str = "id";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RoleVerdict {
@@ -372,6 +377,134 @@ fn reviewed(
         .all(|(file, base)| base_text(doc, file, &touched, &before) == Some(base))
 }
 
+fn value_at<'a>(value: &'a LoroValue, key: &str) -> Option<&'a LoroValue> {
+    match value {
+        LoroValue::Map(fields) => fields.get(key),
+        _ => None,
+    }
+}
+
+fn keys_of(value: &LoroValue) -> BTreeSet<&str> {
+    match value {
+        LoroValue::Map(fields) => fields.keys().map(String::as_str).collect(),
+        _ => BTreeSet::new(),
+    }
+}
+
+fn truthy(value: Option<&LoroValue>) -> bool {
+    matches!(value, Some(LoroValue::Bool(true)))
+}
+
+fn names(value: Option<&LoroValue>, account: &str) -> bool {
+    matches!(value, Some(LoroValue::String(text)) if text.as_str() == account)
+}
+
+fn listed(value: Option<&LoroValue>) -> Option<&[LoroValue]> {
+    match value {
+        Some(LoroValue::List(items)) => Some(items.as_slice()),
+        _ => None,
+    }
+}
+
+fn own(item: &LoroValue, account: &str) -> bool {
+    matches!(item, LoroValue::Map(_)) && names(value_at(item, AUTHOR), account)
+}
+
+fn items_kept(before: &[LoroValue], after: &[LoroValue], account: &str) -> bool {
+    after.len() >= before.len()
+        && before.iter().zip(after).all(|(old, new)| {
+            old == new
+                || (own(old, account)
+                    && own(new, account)
+                    && value_at(old, ID_KEY) == value_at(new, ID_KEY))
+        })
+        && after[before.len()..].iter().all(|new| own(new, account))
+}
+
+fn thread_messages(thread: &LoroValue) -> &[LoroValue] {
+    listed(value_at(thread, MESSAGES)).unwrap_or_default()
+}
+
+fn thread_added(thread: &LoroValue, account: &str) -> bool {
+    names(value_at(thread, CREATED_BY), account)
+        && thread_messages(thread)
+            .iter()
+            .all(|message| own(message, account))
+}
+
+fn thread_removable(thread: &LoroValue, account: &str) -> bool {
+    names(value_at(thread, CREATED_BY), account)
+        && thread_messages(thread)
+            .iter()
+            .all(|message| own(message, account) || truthy(value_at(message, DELETED)))
+}
+
+fn thread_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
+    let fields: BTreeSet<&str> = keys_of(before).union(&keys_of(after)).copied().collect();
+    fields.into_iter().all(|name| {
+        let (old, new) = (value_at(before, name), value_at(after, name));
+        if old == new {
+            return true;
+        }
+        match name {
+            RESOLVED => true,
+            MESSAGES => match (old, listed(new)) {
+                (None, Some(added)) => items_kept(&[], added, account),
+                (Some(_), Some(added)) => {
+                    listed(old).is_some_and(|kept| items_kept(kept, added, account))
+                }
+                _ => false,
+            },
+            DELETED => !truthy(old) && truthy(new) && thread_removable(after, account),
+            _ => false,
+        }
+    })
+}
+
+fn threads_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
+    if before == after {
+        return true;
+    }
+    let threads: BTreeSet<&str> = keys_of(before).union(&keys_of(after)).copied().collect();
+    threads
+        .into_iter()
+        .all(|key| match (value_at(before, key), value_at(after, key)) {
+            (Some(old), Some(new)) => old == new || thread_kept(old, new, account),
+            (None, Some(new)) => thread_added(new, account),
+            (Some(_), None) => false,
+            (None, None) => true,
+        })
+}
+
+fn chat_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
+    match (before, after) {
+        _ if before == after => true,
+        (LoroValue::List(old), LoroValue::List(new)) => items_kept(old, new, account),
+        _ => false,
+    }
+}
+
+fn discussion(doc: &LoroDoc) -> (LoroValue, LoroValue) {
+    (
+        doc.get_map(COMMENTS).get_deep_value(),
+        doc.get_list(CHAT).get_deep_value(),
+    )
+}
+
+fn discussed(doc: &LoroDoc, piece: &Piece, account: &str) -> bool {
+    let mut checked = Checked { doc, moved: false };
+    if !checked.to(&piece.before) {
+        return false;
+    }
+    let (comments_before, chat_before) = discussion(doc);
+    if !checked.to(&piece.after) {
+        return false;
+    }
+    let (comments_after, chat_after) = discussion(doc);
+    threads_kept(&comments_before, &comments_after, account)
+        && chat_kept(&chat_before, &chat_after, account)
+}
+
 fn placed_in_piece(doc: &LoroDoc, piece: &Piece, changed: &[ContainerID]) -> Option<Vec<Placed>> {
     let mut found: Vec<Placed> = changed
         .iter()
@@ -409,11 +542,12 @@ fn judge_piece(doc: &LoroDoc, piece: &Piece, rule: &RoleRule) -> RoleVerdict {
     let mut files = BTreeSet::new();
     let mut records = BTreeSet::new();
     let mut comments = false;
+    let mut chat = false;
     let mut review = false;
     for (container, found) in changed.iter().zip(found) {
         match (found.root, rule.role) {
             (Root::Comments, _) => comments = true,
-            (Root::Chat, _) => {}
+            (Root::Chat, _) => chat = true,
             (Root::Detached, _) if piece.made(container) => {}
             (Root::Suggestions, ProjectRole::Reviewer) => {
                 review = true;
@@ -429,7 +563,11 @@ fn judge_piece(doc: &LoroDoc, piece: &Piece, rule: &RoleRule) -> RoleVerdict {
     if comments && rule.comments_off {
         return RoleVerdict::ChangesComments;
     }
-    if review && !reviewed(doc, piece, files, records, &rule.account.to_string()) {
+    let account = rule.account.to_string();
+    if (comments || chat) && !discussed(doc, piece, &account) {
+        return RoleVerdict::Refused;
+    }
+    if review && !reviewed(doc, piece, files, records, &account) {
         return RoleVerdict::Refused;
     }
     RoleVerdict::Allowed
@@ -838,19 +976,20 @@ mod tests {
         let base = shared();
         let commenter = rule(ProjectRole::Commenter);
         let comment = change(&[&base], 2, |doc| {
-            doc.get_map(COMMENTS)
+            let thread = doc
+                .get_map(COMMENTS)
                 .insert_container("f1/t2", LoroMap::new())
-                .unwrap()
-                .insert("quote", "world")
                 .unwrap();
+            thread.insert("quote", "world").unwrap();
+            thread.insert("created_by", me()).unwrap();
+            let messages = thread
+                .insert_container("messages", LoroList::new())
+                .unwrap();
+            said(&messages, &me(), "m2");
         });
         assert_eq!(judged(&[&base], &comment, commenter), RoleVerdict::Allowed);
         let chat = change(&[&base], 2, |doc| {
-            doc.get_list(CHAT)
-                .push_container(LoroMap::new())
-                .unwrap()
-                .insert("body", "hi")
-                .unwrap();
+            said(&doc.get_list(CHAT), &me(), "c2");
         });
         assert_eq!(judged(&[&base], &chat, commenter), RoleVerdict::Allowed);
         let typed = change(&[&base], 2, |doc| {
@@ -871,6 +1010,209 @@ mod tests {
             judged(&[&base], &wrong_kind, commenter),
             RoleVerdict::Refused
         );
+    }
+
+    type Edit = Box<dyn Fn(&LoroDoc)>;
+
+    fn said(list: &LoroList, author: &str, id: &str) -> LoroMap {
+        let message = list.push_container(LoroMap::new()).unwrap();
+        message.insert("id", id).unwrap();
+        message.insert("author", author).unwrap();
+        message.insert("body", format!("{id} body")).unwrap();
+        message
+    }
+
+    fn map_in(value: Option<ValueOrContainer>) -> LoroMap {
+        match value {
+            Some(ValueOrContainer::Container(loro::Container::Map(map))) => map,
+            other => panic!("not a map: {other:?}"),
+        }
+    }
+
+    fn list_in(value: Option<ValueOrContainer>) -> LoroList {
+        match value {
+            Some(ValueOrContainer::Container(loro::Container::List(list))) => list,
+            other => panic!("not a list: {other:?}"),
+        }
+    }
+
+    fn their_thread(doc: &LoroDoc) -> LoroMap {
+        map_in(doc.get_map(COMMENTS).get("f1/t1"))
+    }
+
+    fn their_message(doc: &LoroDoc) -> LoroMap {
+        map_in(list_in(their_thread(doc).get("messages")).get(0))
+    }
+
+    fn their_chat(doc: &LoroDoc) -> LoroMap {
+        map_in(doc.get_list(CHAT).get(0))
+    }
+
+    fn discussed_base() -> Vec<u8> {
+        let doc = LoroDoc::new();
+        doc.set_peer_id(1).unwrap();
+        file_text(&doc, FILE).insert(0, TEXT_START).unwrap();
+        let thread = doc
+            .get_map(COMMENTS)
+            .insert_container("f1/t1", LoroMap::new())
+            .unwrap();
+        thread.insert("quote", "Hello").unwrap();
+        thread.insert("created_by", editor().to_string()).unwrap();
+        let messages = thread
+            .insert_container("messages", LoroList::new())
+            .unwrap();
+        said(&messages, &editor().to_string(), "m1");
+        said(&doc.get_list(CHAT), &editor().to_string(), "c1");
+        doc.commit();
+        doc.export(ExportMode::Snapshot).unwrap()
+    }
+
+    #[test]
+    fn reviewers_and_commenters_cannot_remove_or_rewrite_what_others_wrote() {
+        let base = discussed_base();
+        let refused: Vec<(&str, Edit)> = vec![
+            (
+                "removing a thread",
+                Box::new(|doc| doc.get_map(COMMENTS).delete("f1/t1").unwrap()),
+            ),
+            (
+                "rewriting another person's comment",
+                Box::new(|doc| their_message(doc).insert("body", "changed").unwrap()),
+            ),
+            (
+                "deleting another person's comment",
+                Box::new(|doc| {
+                    let message = their_message(doc);
+                    message.insert("deleted", true).unwrap();
+                    message.insert("body", "").unwrap();
+                }),
+            ),
+            (
+                "removing another person's comment from the list",
+                Box::new(|doc| {
+                    list_in(their_thread(doc).get("messages"))
+                        .delete(0, 1)
+                        .unwrap()
+                }),
+            ),
+            (
+                "deleting another person's thread",
+                Box::new(|doc| their_thread(doc).insert("deleted", true).unwrap()),
+            ),
+            (
+                "moving another person's thread",
+                Box::new(|doc| their_thread(doc).insert("quote", "world").unwrap()),
+            ),
+            (
+                "replying in someone else's name",
+                Box::new(|doc| {
+                    said(
+                        &list_in(their_thread(doc).get("messages")),
+                        &editor().to_string(),
+                        "m2",
+                    );
+                }),
+            ),
+            (
+                "starting a thread in someone else's name",
+                Box::new(|doc| {
+                    let thread = doc
+                        .get_map(COMMENTS)
+                        .insert_container("f1/t2", LoroMap::new())
+                        .unwrap();
+                    thread.insert("created_by", editor().to_string()).unwrap();
+                }),
+            ),
+            (
+                "clearing the chat",
+                Box::new(|doc| {
+                    let message = their_chat(doc);
+                    message.insert("deleted", true).unwrap();
+                    message.insert("body", "").unwrap();
+                }),
+            ),
+            (
+                "removing a chat message",
+                Box::new(|doc| doc.get_list(CHAT).delete(0, 1).unwrap()),
+            ),
+            (
+                "posting in someone else's name",
+                Box::new(|doc| {
+                    said(&doc.get_list(CHAT), &editor().to_string(), "c2");
+                }),
+            ),
+        ];
+        for role in [ProjectRole::Reviewer, ProjectRole::Commenter] {
+            for (what, edit) in &refused {
+                let update = change(&[&base], 2, |doc| edit(doc));
+                assert_eq!(
+                    judged(&[&base], &update, rule(role)),
+                    RoleVerdict::Refused,
+                    "{what} as {role:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn reviewers_and_commenters_reply_resolve_and_manage_their_own_words() {
+        let base = discussed_base();
+        let mine = change(&[&base], 2, |doc| {
+            said(&list_in(their_thread(doc).get("messages")), &me(), "m2");
+            said(&doc.get_list(CHAT), &me(), "c2");
+        });
+        let allowed: Vec<(&str, Edit)> = vec![
+            (
+                "resolving a thread",
+                Box::new(|doc| their_thread(doc).insert("resolved", "done").unwrap()),
+            ),
+            (
+                "editing an own reply",
+                Box::new(|doc| {
+                    map_in(list_in(their_thread(doc).get("messages")).get(1))
+                        .insert("body", "edited")
+                        .unwrap();
+                }),
+            ),
+            (
+                "deleting an own chat message",
+                Box::new(|doc| {
+                    let message = map_in(doc.get_list(CHAT).get(1));
+                    message.insert("deleted", true).unwrap();
+                    message.insert("body", "").unwrap();
+                }),
+            ),
+            (
+                "starting and deleting an own thread",
+                Box::new(|doc| {
+                    let thread = doc
+                        .get_map(COMMENTS)
+                        .insert_container("f1/t3", LoroMap::new())
+                        .unwrap();
+                    thread.insert("created_by", me()).unwrap();
+                    let messages = thread
+                        .insert_container("messages", LoroList::new())
+                        .unwrap();
+                    said(&messages, &me(), "m3");
+                    doc.commit();
+                    thread.insert("deleted", true).unwrap();
+                }),
+            ),
+        ];
+        assert_eq!(
+            judged(&[&base], &mine, rule(ProjectRole::Commenter)),
+            RoleVerdict::Allowed
+        );
+        for role in [ProjectRole::Reviewer, ProjectRole::Commenter] {
+            for (what, edit) in &allowed {
+                let update = change(&[&base, &mine], 2, |doc| edit(doc));
+                assert_eq!(
+                    judged(&[&base, &mine], &update, rule(role)),
+                    RoleVerdict::Allowed,
+                    "{what} as {role:?}"
+                );
+            }
+        }
     }
 
     #[test]

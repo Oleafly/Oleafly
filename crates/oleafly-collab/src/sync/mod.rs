@@ -55,13 +55,7 @@ pub enum EndReason {
     ClientTooOld,
     ServerTooOld,
     ServerChanged,
-    // The session failed: the document engine panicked on a change, or the
-    // session itself panicked. The project in memory is not saved; the next
-    // start loads it from disk and skips the change at fault.
     Failed,
-    // As failed, but the app has already left as many broken documents in
-    // memory as it allows, so going live again can't help until the app
-    // restarts.
     EngineSpent,
 }
 
@@ -129,9 +123,6 @@ pub enum LiveEvent {
         device_id: Option<DeviceId>,
     },
     Unsendable,
-    // The project reached the server's size limit, so changes stay on this
-    // computer for now. Said once per connection, at the first refusal after
-    // each connect or reconnect.
     ProjectFull,
     CommentsNotSent(Vec<crate::comments::UnsentComment>),
     Comments(CommentSwitches),
@@ -164,8 +155,6 @@ impl LiveHandle {
         let _ = self.commands.send(LiveCommand::LeavePresence);
     }
 
-    // For when the network changes or the machine wakes: a session waiting
-    // to reconnect tries again now and starts its waits over.
     pub fn reconnect_now(&self) {
         let _ = self.commands.send(LiveCommand::Reconnect);
     }
@@ -237,9 +226,6 @@ pub fn spawn_live_with(
     LiveHandle { commands, task }
 }
 
-// A panic anywhere in the session still ends it with a status the desktop
-// can show. A panic while the project was locked leaves its state in
-// doubt, so it is treated like a panic in the document engine.
 async fn guarded(
     link: LiveLink,
     project: SharedLive,
@@ -254,7 +240,6 @@ async fn guarded(
         .catch_unwind()
         .await;
     if finished.is_err() {
-        // A poisoned project is marked damaged as it is locked.
         drop(lock(&watched));
         let _ = reporting.send(LiveEvent::Status(LiveStatus::Ended {
             reason: failed_ending(),
@@ -262,7 +247,6 @@ async fn guarded(
     }
 }
 
-// How a session that ends on a damaged project says so.
 pub(crate) fn failed_ending() -> EndReason {
     if crate::doc::engine_budget_spent() {
         EndReason::EngineSpent

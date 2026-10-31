@@ -86,7 +86,6 @@ fn repository_filter_drivers(
             deadline,
             1024 * 1024,
         )?;
-        // 1 is "no such key"; anything else is a failure.
         match status.code() {
             Some(0) => drivers.extend(filter_driver_names(&String::from_utf8_lossy(&output))),
             Some(1) => {}
@@ -97,8 +96,6 @@ fn repository_filter_drivers(
     Some(drivers)
 }
 
-/// `filter.<driver>.<key>` names, one per line, to their driver names. A
-/// driver name may itself hold dots.
 fn filter_driver_names(listing: &str) -> impl Iterator<Item = String> + '_ {
     listing.lines().filter_map(|line| {
         let rest = line.trim_end_matches('\r').strip_prefix("filter.")?;
@@ -107,9 +104,6 @@ fn filter_driver_names(listing: &str) -> impl Iterator<Item = String> + '_ {
     })
 }
 
-/// `GIT_CONFIG_*` settings that blank each driver's commands. The caller's
-/// own `GIT_CONFIG_COUNT` is dropped by [`clear_inherited_git_env`], so the
-/// numbering starts at 0.
 fn blanked_filter_env(
     drivers: &std::collections::BTreeSet<String>,
 ) -> Vec<(String, std::ffi::OsString)> {
@@ -210,8 +204,6 @@ pub(crate) fn isolate(command: &mut tokio::process::Command) {
     isolate_std(command.as_std_mut());
 }
 
-/// [`isolate`] for a `std` command: its own process group (Unix), or a
-/// suspended start that [`contain`] puts in a job and resumes (Windows).
 pub(crate) fn isolate_std(command: &mut std::process::Command) {
     #[cfg(unix)]
     unsafe {

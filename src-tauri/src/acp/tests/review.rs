@@ -1,6 +1,3 @@
-//! Turn review, transcript safety, permission diffs, start revision, export
-//! and inline skills (#84).
-
 use super::{fixture_definition, fixture_temp};
 use crate::acp::{
     protocol::{self, Frame},
@@ -150,8 +147,6 @@ fn kinds(events: &[AcpEvent]) -> Vec<&str> {
     events.iter().map(|event| event.kind.as_str()).collect()
 }
 
-// ---- turn_changes ----------------------------------------------------------
-
 #[tokio::test]
 async fn changed_files_are_reported_before_the_turn_completes() {
     let calls = Arc::new(Calls::default());
@@ -192,7 +187,6 @@ async fn changed_files_are_reported_before_the_turn_completes() {
     assert_eq!(event.data["snapshotId"], "snap-1");
     assert_eq!(event.data["moreFiles"], 0);
     assert_eq!(event.data["unavailable"], Value::Null);
-    // Oleafly's own file names are not run through the credential redactor.
     assert_eq!(
         event.data["files"][0]["path"],
         "data/sk-learn-baseline-results.csv"
@@ -373,8 +367,6 @@ async fn cancelling_while_the_copy_is_taken_never_sends_the_prompt() {
     harness.runtime.close(&harness.id()).await.unwrap();
 }
 
-/// A begin hook that waits for the test before taking a real copy, and
-/// reports what the copy returned once it is done.
 struct LateCopy {
     review: ReviewHooks,
     release: std::sync::mpsc::Sender<()>,
@@ -402,7 +394,6 @@ fn late_copy() -> LateCopy {
 }
 
 impl LateCopy {
-    /// Lets the copy run to the end and returns what it produced.
     fn finish_late(&self) -> TurnBegin {
         self.release.send(()).unwrap();
         self.done.recv_timeout(Duration::from_secs(60)).unwrap()
@@ -417,7 +408,6 @@ fn next_turn_overlapped(project: &str, root: &std::path::Path, content: &str) ->
     changes.overlapped
 }
 
-/// A private data folder for tests that take real before-turn copies.
 struct DataDir {
     _data: tempfile::TempDir,
     _env: std::sync::MutexGuard<'static, ()>,
@@ -448,7 +438,6 @@ async fn a_copy_that_outlives_the_deadline_never_marks_later_turns_overlapped() 
     let root = crate::paths::create_project_dir(project).unwrap();
     std::fs::write(root.join("main.tex"), "one").unwrap();
 
-    // The runtime stops waiting at the deadline.
     let copy = late_copy();
     let began = review::begin_turn_within(
         &copy.review,
@@ -463,7 +452,6 @@ async fn a_copy_that_outlives_the_deadline_never_marks_later_turns_overlapped() 
     assert_eq!(late.unavailable, Some(TurnUnavailable::Timeout));
     let overlapped = next_turn_overlapped(project, &root, "two");
 
-    // The turn future is dropped while it waits.
     let copy = late_copy();
     let dropped = tokio::time::timeout(
         Duration::from_millis(50),
@@ -479,7 +467,6 @@ async fn a_copy_that_outlives_the_deadline_never_marks_later_turns_overlapped() 
     assert_eq!(copy.finish_late().snapshot_id, None);
     let overlapped_after_drop = next_turn_overlapped(project, &root, "three");
 
-    // A copy that finishes in time is still registered as an open turn.
     let copy = late_copy();
     copy.release.send(()).unwrap();
     let began =
@@ -495,8 +482,6 @@ async fn a_copy_that_outlives_the_deadline_never_marks_later_turns_overlapped() 
     );
     assert!(first.overlapped, "a live turn still sees another turn");
 }
-
-// ---- transcript and frame safety ------------------------------------------
 
 #[tokio::test]
 async fn oversized_tool_output_is_cut_and_the_session_stays_alive() {
@@ -610,8 +595,6 @@ async fn frames_between_1_and_16_mib_are_dropped_only_for_update_notifications()
     assert!(matches!(frames.as_slice(), [Err(message)] if message.contains("16 MiB")));
 }
 
-// ---- permission diffs ------------------------------------------------------
-
 #[tokio::test]
 async fn a_permission_request_shows_the_redacted_change_from_its_tool_call() {
     let marker = new_id();
@@ -666,8 +649,6 @@ async fn a_permission_request_shows_the_redacted_change_from_its_tool_call() {
     turn.await.unwrap().unwrap();
     harness.runtime.close(&harness.id()).await.unwrap();
 }
-
-// ---- start revision ---------------------------------------------------------
 
 #[tokio::test]
 async fn a_conversation_records_the_revision_its_repository_started_from() {
@@ -762,8 +743,6 @@ fn records_saved_before_start_revisions_still_load() {
     assert_eq!(record.start_dirty, None);
 }
 
-// ---- export ------------------------------------------------------------------
-
 #[tokio::test]
 async fn export_writes_the_whole_conversation_as_pretty_json() {
     let harness = start(Vec::new(), ReviewHooks::inert(), interactive()).await;
@@ -807,8 +786,6 @@ async fn export_writes_the_whole_conversation_as_pretty_json() {
     assert!(!harness.temp.path().join("missing.json").exists());
     harness.runtime.close(&harness.id()).await.unwrap();
 }
-
-// ---- inline skills -----------------------------------------------------------
 
 #[tokio::test]
 async fn a_picked_skill_follows_the_message_as_its_own_text_block() {

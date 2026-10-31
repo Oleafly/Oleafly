@@ -93,7 +93,6 @@ export interface TaskDetailDialogProps {
   tasks: ResearchTask[];
   events: TaskTranscriptEvent[];
   eventsLoading: boolean;
-  /** Older saved rows of this run come before the loaded ones; Load more reads them. */
   canLoadMoreEvents: boolean;
   busy: boolean;
   agentName?: string;
@@ -101,7 +100,6 @@ export interface TaskDetailDialogProps {
   onStart: () => Promise<void>;
   onCancel: () => Promise<void>;
   onRetry: (mode?: RetryMode) => Promise<void>;
-  /** Approves a plan-first task's plan, replacing it when edited. */
   onApprovePlan?: (editedPlan?: string) => Promise<void>;
   onRefreshEvidence?: () => Promise<void>;
   onEdit: () => void;
@@ -116,37 +114,30 @@ export interface TaskDetailDialogProps {
 
 const EMPTY_CHANGES: NonNullable<ResearchTask["result"]>["changedFiles"] = [];
 
-/** "Show earlier activity" loads at most this many pages of 200 rows. */
 const EARLIER_PAGES = 10;
 const EARLIER_PAGE_SIZE = 200;
 
 interface EarlierGeneration {
   generation: number;
   events: TaskTranscriptEvent[];
-  /** The run has more rows than the pages that were loaded. */
   truncated: boolean;
-  /** The run this one resumed; `null` when it started fresh, where the chain ends. */
   resumedFrom: number | null;
 }
 
 const NO_TIMELINE: TaskTimeline = { items: [], usage: { inputTokens: null, outputTokens: null } };
 
-/** Items the Activity tab keeps mounted from the end; "Load more" shows older ones. */
 const SHOWN_ITEMS = 200;
 
-/** How much of an item there is, so the list follows a message that grows. */
 function itemSize(item: TaskTimelineItem | undefined): number {
   if (!item) return 0;
   if (item.kind === "tool") return (item.tool.input?.length ?? 0) + (item.tool.output?.length ?? 0);
   return "text" in item ? item.text.length : 0;
 }
 
-/** A side of a preview a text diff can't show: too large to read, or not text. */
 function undiffable(side: TaskPreviewContent): boolean {
   return side.exists && (side.truncated || side.binary || side.text === null);
 }
 
-/** Tasks that wait for this one and fail when it is cancelled, as the backend fails them. */
 function waitingDependents(taskId: string, tasks: readonly ResearchTask[]): ResearchTask[] {
   const failing: ResearchTask[] = [];
   const seen = new Set([taskId]);
@@ -185,7 +176,6 @@ function blocksApply(preview: TaskFilePreview | undefined): boolean {
   return changedSinceStart(preview) && preview?.mergesWithShared !== true;
 }
 
-/** The sizes of the two sides of a preview a text diff can't show, and why there is no diff. */
 function PreviewSizes({ preview }: Readonly<{ preview: TaskFilePreview }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
@@ -215,11 +205,9 @@ function PreviewSizes({ preview }: Readonly<{ preview: TaskFilePreview }>) {
   );
 }
 
-/** A changed file's preview: the text diff, or the sizes of both sides when a side has no text to diff. */
 function FilePreviewBody({ preview }: Readonly<{ preview: TaskFilePreview }>) {
   return (
     <div className="mt-3 overflow-hidden rounded-md border">
-      {/* A side too large to read, or not text, has no text: diffing it against "" would read as every line removed. */}
       {(preview.before.text !== null || preview.after.text !== null) &&
       !undiffable(preview.before) &&
       !undiffable(preview.after) ? (
@@ -317,7 +305,6 @@ function shallowEqual(left: object, right: object): boolean {
   return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
 }
 
-/** The same row content, so a row that did not change can skip rendering. */
 function sameTimelineItem(left: TaskTimelineItem, right: TaskTimelineItem): boolean {
   if (left.key !== right.key || left.createdAt !== right.createdAt) return false;
   if (left.kind === "tool") return right.kind === "tool" && shallowEqual(left.tool, right.tool);
@@ -327,7 +314,6 @@ function sameTimelineItem(left: TaskTimelineItem, right: TaskTimelineItem): bool
 
 interface TimelineRowProps {
   item: TaskTimelineItem;
-  /** The newest row of a running task: its dot pulses and its text is still growing. */
   live: boolean;
   failing: boolean;
   runKey: string;
@@ -335,8 +321,6 @@ interface TimelineRowProps {
   onOpenArtifact: (artifact: TaskArtifact) => void;
 }
 
-// A running task adds text every few tens of milliseconds; only the row that
-// changed renders again.
 const TimelineRow = memo(
   function TimelineRow({ item, live, failing, runKey, loadingArtifact, onOpenArtifact }: Readonly<TimelineRowProps>) {
     const { t } = useTranslation(["common", "researchTools"]);
@@ -391,7 +375,6 @@ const TimelineRow = memo(
 
 interface TimelineListProps {
   items: TaskTimelineItem[];
-  /** The newest row is still being written. */
   live: boolean;
   runKey: string;
   taskError: string | null;
@@ -399,7 +382,6 @@ interface TimelineListProps {
   onOpenArtifact: (artifact: TaskArtifact) => void;
 }
 
-/** What every timeline of the dialog shares, whichever rows it lists. */
 type TimelineListShared = Omit<TimelineListProps, "items" | "live">;
 
 function TimelineList({ items, live, runKey, taskError, previewingPath, onOpenArtifact }: Readonly<TimelineListProps>) {
@@ -426,7 +408,6 @@ function TimelineList({ items, live, runKey, taskError, previewingPath, onOpenAr
   );
 }
 
-/** The phase, start time and stop reason that sit under the task's badges. */
 function TaskStatusNotes({ task, running }: Readonly<{ task: ResearchTask; running: boolean }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
@@ -472,7 +453,6 @@ function KeepRunningToggle({
   onToggle,
 }: Readonly<KeepRunningToggleProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
-  // With background tasks off every task stops at quit, as the composer shows it.
   const keeps = task.keepRunningAfterQuit === true && backgroundEnabled;
   return (
     <label
@@ -510,7 +490,6 @@ interface HeaderAlertsProps {
   onDismissError?: () => void;
 }
 
-/** What needs the reader's attention above the tabs: approvals, the task's failure and the dialog's own error. */
 function HeaderAlerts({ task, tasks, error, onDismissError }: Readonly<HeaderAlertsProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
@@ -585,7 +564,6 @@ interface EarlierActivityProps {
   listProps: TimelineListShared;
 }
 
-/** The button that loads the runs before this one, and the runs it loaded. */
 function EarlierActivity({ canShow, loading, timelines, onShow, listProps }: Readonly<EarlierActivityProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
@@ -626,7 +604,6 @@ function EarlierActivity({ canShow, loading, timelines, onShow, listProps }: Rea
 
 interface ActivityTimelineProps {
   timeline: TaskTimeline;
-  /** How many items, from the newest, are mounted. */
   shown: number;
   executionGeneration: number;
   running: boolean;
@@ -636,11 +613,6 @@ interface ActivityTimelineProps {
   listProps: TimelineListShared;
 }
 
-/**
- * The run's newest items, with "Load more" above them for older ones (first
- * the items this window holds, then the rows the backend still has), and what
- * to show before there are any.
- */
 function ActivityTimeline({
   timeline,
   shown,
@@ -716,7 +688,6 @@ interface StopConfirmationProps {
   onCancel: () => void;
 }
 
-/** Asks before Stop task, Cancel or Discard changes, naming the tasks that fail with it and the runs that stop. */
 function StopConfirmation({ action, title, dependents, runs, onConfirm, onCancel }: Readonly<StopConfirmationProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   let heading = "";
@@ -778,11 +749,6 @@ function StopConfirmation({ action, title, dependents, runs, onConfirm, onCancel
   );
 }
 
-/**
- * Keeps the Activity tab scrolled to its end while a task runs, unless the
- * reader scrolled up. The dialog gives it a new key each time the timeline
- * gains an item or its newest item grows, which mounts it again and scrolls again.
- */
 function FollowNewestItem({
   open,
   tab,
@@ -844,8 +810,6 @@ export function TaskDetailDialog({
   const timelineUsage = useMemo(() => latestTimelineUsage(events), [events]);
   const changedFiles = task.result?.changedFiles ?? EMPTY_CHANGES;
   const changedPathsKey = changedFiles.map((change) => change.path).join("\n");
-  // The task's own record (research/<slug>/) comes back with its review. It is
-  // listed on its own and needs no preview before Apply.
   const recordPrefix = task.recordDir ? `${task.recordDir}/` : null;
   const inRecord = (path: string) => recordPrefix !== null && path.startsWith(recordPrefix);
   const projectChanges = changedFiles.filter((change) => !inRecord(change.path));
@@ -872,15 +836,12 @@ export function TaskDetailDialog({
   const tab = chosenTab ?? autoTabFor(task);
   const activityShown = open && tab === "activity";
 
-  // A running task adds text many times a second. The timeline is built only
-  // while Activity shows, and then only past the part that has settled.
   const timelineCache = useRef<{ language: string; cache: TaskTimelineCache | null }>({ language, cache: null });
   const shownTimeline = useRef<TaskTimeline>(NO_TIMELINE);
   const timeline = useMemo(() => {
     if (!activityShown) return shownTimeline.current;
     const reusable = timelineCache.current.language === language ? timelineCache.current.cache : null;
     const built = buildTaskTimelineIncremental(events, running, reusable);
-    // Milestones carry translated text, so a language switch builds everything again.
     timelineCache.current = { language, cache: built.cache };
     shownTimeline.current = built.timeline;
     return built.timeline;
@@ -894,13 +855,10 @@ export function TaskDetailDialog({
       setShownItems((current) => current + SHOWN_ITEMS);
       return;
     }
-    // The rest comes from the backend; what it sends shows with the items already here.
     setShownItems(timeline.items.length + SHOWN_ITEMS);
     void onLoadMoreEvents().catch(() => {});
   };
 
-  // 0.4.8 L: keep running after Oleafly closes, and the generations a
-  // resumed task continues.
   const [backgroundEnabled, setBackgroundEnabled] = useState(true);
   const [savingKeepRunning, setSavingKeepRunning] = useState(false);
   const [earlier, setEarlier] = useState<EarlierGeneration[]>([]);
@@ -920,7 +878,6 @@ export function TaskDetailDialog({
     };
   }, [open]);
 
-  // A new run starts with no earlier activity.
   const [earlierRunKey, setEarlierRunKey] = useState(taskRunKey);
   if (earlierRunKey !== taskRunKey) {
     setEarlierRunKey(taskRunKey);
@@ -928,7 +885,6 @@ export function TaskDetailDialog({
     setEarlierLoading(false);
   }
 
-  // One timeline per run, so the end of one run's last message is not joined to the start of the next.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the timeline carries translated milestone text, so it is rebuilt on a language switch
   const earlierTimelines = useMemo(
     () =>
@@ -937,14 +893,10 @@ export function TaskDetailDialog({
         .filter((entry) => entry.timeline.items.length > 0 || entry.truncated),
     [earlier, language],
   );
-  // Each run says which run it resumed; the chain ends at one that started
-  // fresh, since the runs before that belong to another attempt. A task from an
-  // older backend has no `resumedFrom` at all.
   const oldestShown = earlier.length > 0 ? earlier[0] : null;
   const nextEarlier = oldestShown ? oldestShown.resumedFrom : (task.resumedFrom ?? null);
   const canShowEarlier = nextEarlier !== null && nextEarlier >= 1;
   const unfinished = task.status === "queued" || task.status === "running" || task.status === "plan_ready";
-  // Desktop apps need someone at the computer, so the backend refuses to keep such a task running.
   const desktopAppsKeepConflict = task.brief.permissions.desktopApps && task.keepRunningAfterQuit !== true;
 
   const toggleKeepRunning = async (keep: boolean) => {
@@ -962,10 +914,10 @@ export function TaskDetailDialog({
     }
   };
 
-  // Stop, Cancel and Discard end the task and fail what waits for it, so they ask first.
   const [confirming, setConfirming] = useState<StopAction | null>(null);
   const [confirmRuns, setConfirmRuns] = useState<RunRecord[]>([]);
   const [applying, setApplying] = useState(false);
+  const applyRunning = useRef(false);
   const dependentsToFail = useMemo(
     () => (confirming ? waitingDependents(task.id, tasks) : []),
     [confirming, task.id, tasks],
@@ -978,7 +930,6 @@ export function TaskDetailDialog({
     setConfirming(action);
     setConfirmRuns([]);
     if (task.executionGeneration === 0) return;
-    // The runs it started stop with it, a job on a cluster too.
     void Promise.resolve()
       .then(() => progressResearchTask(task.id))
       .then((progress) => {
@@ -999,12 +950,15 @@ export function TaskDetailDialog({
   };
 
   const apply = async () => {
+    if (applyRunning.current) return;
+    applyRunning.current = true;
     setApplying(true);
     try {
       await onApply(selectedPaths);
     } catch {
       // The dialog's error banner says what went wrong.
     } finally {
+      applyRunning.current = false;
       setApplying(false);
     }
   };
@@ -1015,7 +969,6 @@ export function TaskDetailDialog({
     const requestRunKey = taskRunKey;
     setEarlierLoading(true);
     try {
-      // The end of the earlier run first: that is what this run continues from.
       const pages: TaskTranscriptEvent[][] = [];
       let before = NEWEST_EVENTS;
       let more = false;
@@ -1102,7 +1055,6 @@ export function TaskDetailDialog({
     setChosenTab("output");
     void previewArtifact(artifact);
   };
-  // The rows keep one handler, so a new render of this dialog does not redraw them.
   const openArtifactRef = useRef(openArtifact);
   openArtifactRef.current = openArtifact;
   const openArtifactFromRow = useCallback((artifact: TaskArtifact) => openArtifactRef.current(artifact), []);
@@ -1302,7 +1254,6 @@ export function TaskDetailDialog({
     );
   };
 
-  // "Select all" picks the files that can be applied; one that changed since the task started can't be.
   const selectablePaths = changedFiles.map((change) => change.path).filter((path) => !driftedPaths.includes(path));
   const allSelected = selectablePaths.length > 0 && selectablePaths.every((path) => selectedPaths.includes(path));
 
@@ -1377,6 +1328,7 @@ export function TaskDetailDialog({
           <Button
             disabled={
               busy ||
+              applying ||
               selectedPaths.length === 0 ||
               selectedPaths.some(
                 (path) => !inRecord(path) && !filePreviews[`${taskRunKey}:${path}`],
@@ -1384,7 +1336,6 @@ export function TaskDetailDialog({
             }
             onClick={() => void apply()}
           >
-            {/* Only this button's own action reads as applying; Discard keeps it as it is. */}
             {applying
               ? t(($) => $.researchTools.tasks.detail.applying)
               : t(($) => $.researchTools.tasks.detail.applySelected, {
@@ -1508,7 +1459,6 @@ export function TaskDetailDialog({
         data-testid="research-task-detail"
         className="flex h-[min(92vh,980px)] w-[min(96vw,1180px)] max-w-none flex-col gap-0 overflow-hidden p-0"
         onEscapeKeyDown={(event) => {
-          // Escape closes a confirmation open in the dialog, not the dialog with it.
           if (contentRef.current?.querySelector('[role="alertdialog"]')) event.preventDefault();
         }}
       >
@@ -1516,7 +1466,6 @@ export function TaskDetailDialog({
           aria-labelledby="research-task-detail-title"
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
-          {/* Approvals can stack up here, so the header scrolls before the tabs lose their room. */}
           <header className="max-h-[45vh] shrink-0 space-y-3 overflow-y-auto border-b px-5 py-4 pr-14">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1 basis-64">

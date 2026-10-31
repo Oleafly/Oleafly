@@ -1,6 +1,3 @@
-//! Findings as rows, the `--exit-code` rule, and where a report goes
-//! (people, JSON or SARIF; stdout or `--output`). Shared by `check` and
-//! `lint`.
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -63,7 +60,6 @@ impl Level {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RowRange {
-    /// UTF-16 offsets in the LF-normalised file.
     pub from: usize,
     pub to: usize,
     pub start: Position,
@@ -76,23 +72,14 @@ pub struct ReportRow {
     pub level: Level,
     pub title: String,
     pub detail: Option<String>,
-    /// Project-relative, forward slashes; `None` for project-wide findings.
     pub file: Option<String>,
     pub range: Option<RowRange>,
-    /// The start line, for SARIF fingerprints only (never printed); a digest
-    /// of it when it is longer than [`MAX_LINE_TEXT_BYTES`].
     pub line_text: Option<String>,
-    /// The row in the command's JSON report.
     pub json: Value,
 }
 
-/// The longest start line a row keeps for its SARIF fingerprint. A longer
-/// one is kept as a digest, so the findings on a 2 MB single-line file don't
-/// each hold a copy of it.
 pub const MAX_LINE_TEXT_BYTES: usize = 512;
 
-/// What a row keeps of the line at `unit` (its `line_text`), made once per
-/// line of a file: `made` holds the file's lines so far, by line index.
 pub fn fingerprint_line(
     source: &SourceText,
     unit: usize,
@@ -111,7 +98,6 @@ pub fn fingerprint_line(
         .clone()
 }
 
-/// A rule as SARIF describes it.
 #[derive(Clone, Debug)]
 pub struct RuleMeta {
     pub id: String,
@@ -119,7 +105,6 @@ pub struct RuleMeta {
     pub full: String,
     pub default_level: Level,
     pub tags: Vec<String>,
-    /// `high`, `medium` or `low`.
     pub precision: &'static str,
     pub help_uri: Option<String>,
 }
@@ -132,7 +117,6 @@ fn meets(level: Level, fail_on: FailOn) -> bool {
     }
 }
 
-/// 9 with `--exit-code` when a row reaches `--fail-on`, else 0.
 pub fn exit_for(rows: &[ReportRow], args: &ReportArgs) -> Exit {
     if args.exit_code && rows.iter().any(|row| meets(row.level, args.fail_on)) {
         Exit::Findings
@@ -141,7 +125,6 @@ pub fn exit_for(rows: &[ReportRow], args: &ReportArgs) -> Exit {
     }
 }
 
-/// `{errors, warnings, notes}`.
 pub fn summary(rows: &[ReportRow]) -> Value {
     let count = |level: Level| rows.iter().filter(|row| row.level == level).count();
     json!({"errors": count(Level::Error), "warnings": count(Level::Warning), "notes": count(Level::Note)})
@@ -161,10 +144,8 @@ fn write_out(output: Option<&Path>, bytes: &[u8]) -> Result<(), CliError> {
     }
 }
 
-/// What one report needs to be delivered.
 pub struct Delivery<'a> {
     pub command: &'static str,
-    /// The JSON key the payload sits under (`check`, `lint`).
     pub key: &'static str,
     pub automation_id: &'static str,
     pub rows: &'a [ReportRow],
@@ -173,12 +154,9 @@ pub struct Delivery<'a> {
     pub warnings: Vec<Warning>,
     pub base: &'a SarifBase,
     pub main_document: &'a str,
-    /// The human report (already rendered).
     pub human: String,
 }
 
-/// Prints or writes the report in the chosen format and returns the
-/// outcome, whose exit follows `--exit-code`.
 pub fn deliver(
     ctx: &Context,
     args: &ReportArgs,
@@ -212,7 +190,6 @@ pub fn deliver(
     match format {
         FormatArg::Human => {
             write_out(args.output.as_deref(), delivery.human.as_bytes())?;
-            // With --json (and --output), stdout still gets the envelope.
             outcome.print_envelope = ctx.json();
         }
         FormatArg::Json if ctx.json() => {
@@ -248,7 +225,6 @@ pub fn deliver(
                 .map_err(|error| CliError::internal(error.to_string()))?;
             bytes.push(b'\n');
             write_out(args.output.as_deref(), &bytes)?;
-            // With --json (and --output), stdout still gets the envelope.
             outcome.print_envelope = ctx.json();
         }
     }

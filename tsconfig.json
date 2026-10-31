@@ -57,6 +57,8 @@
       "@oleafly/preview/controller": ["./packages/preview/src/controller.ts"],
       "@oleafly/preview/polyfills": ["./packages/preview/src/polyfills.ts"],
       "@oleafly/preview/mainThreadWorker": ["./packages/preview/src/mainThreadWorker.ts"],
+      "@oleafly/preview/pdfDocumentOptions": ["./packages/preview/src/pdfDocumentOptions.ts"],
+      "@oleafly/preview/pdfWorkerRuntime": ["./packages/preview/src/pdfWorkerRuntime.ts"],
       "@oleafly/pdf-to-latex": ["./packages/pdf-to-latex/src/index.ts"],
       "@oleafly/pdf-to-latex/pdf-adapter": ["./packages/pdf-to-latex/src/pdf-adapter.ts"],
       "@oleafly/latex-intelligence": ["./packages/latex-intelligence/src/index.ts"],

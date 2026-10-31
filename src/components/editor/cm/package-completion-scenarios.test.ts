@@ -89,11 +89,6 @@ function installProject(
   setEditorDocumentPath("main.tex");
 }
 
-/**
- * The snapshot-backed completion path requires the editor text to match the
- * indexed text exactly, so every scenario indexes the very document it
- * completes against.
- */
 function complete(
   doc: string,
   extraSources: Readonly<Record<string, string>> = {},
@@ -163,7 +158,6 @@ beforeAll(async () => {
     loadPackageCatalog("hyperref"),
     loadPackageCatalog("class-beamer"),
   ]);
-  // Let the corpus module's .then() callbacks populate its sync caches.
   await new Promise((resolve) => setTimeout(resolve, 0));
 });
 

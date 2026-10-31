@@ -20,13 +20,9 @@ import {
   environmentSnippet,
   openEnvironmentCompletion,
 } from "./latex-environments";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 const views: EditorView[] = [];
 

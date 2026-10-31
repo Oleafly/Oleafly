@@ -1,8 +1,3 @@
-// Live sub-agent activity: chips with seeded avatars derived from the turn
-// record's subAgentActivity items (in arrival order), an expandable per-agent
-// detail line, the agent's full transcript from its rollout thread, and a
-// Stop-all affordance that interrupts the children without stopping the run.
-
 import { useEffect, useRef, useState } from "react";
 import {
   Bot,
@@ -73,7 +68,6 @@ function subagentItems(record: TurnRecord): SubagentItem[] {
   return items;
 }
 
-/** Latest state per agent across the chat's turn records. */
 function collectAgents(records: TurnRecord[]): AgentState[] {
   const byId = new Map<string, AgentState>();
   for (const record of records) {
@@ -224,10 +218,6 @@ export function SubagentActivity({
       }
       return;
     }
-    // The child rollout is only written when the subagent finishes, so a
-    // read while it is still active would fail. Show its live progress (the
-    // expanded panel already renders "Latest: …") and the accurate status
-    // instead of a spurious load error.
     if (isRunning(agentStatus(agent.kind))) {
       setTranscript({
         agent: agent.id,

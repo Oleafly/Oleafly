@@ -20,7 +20,6 @@ export type ArxivLookupFn = (
 
 const lookupCache = new Map<string, ArxivLookupDetails | null>();
 
-/** Test seam. */
 export function clearArxivLookupCache(): void {
   lookupCache.clear();
 }
@@ -67,11 +66,6 @@ function arxivIdOf(record: LiteratureRecord): string | null {
   return record.sourceIds.arxiv ?? null;
 }
 
-/**
- * Fill authors (and missing year/venue/doi) for author-less records that
- * carry an arXiv id. Failed or unknown lookups leave records unchanged;
- * results are cached for the session.
- */
 export async function enrichAuthorlessRecords(
   records: LiteratureRecord[],
   lookup: ArxivLookupFn = defaultLookup,

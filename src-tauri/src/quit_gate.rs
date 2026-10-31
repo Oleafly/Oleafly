@@ -1,15 +1,3 @@
-//! Transactional app-quit gate.
-//!
-//! Closing the window, Cmd+Q, and Restart must not tear down the webview
-//! while dirty editor buffers exist: their saves travel over async IPC and a
-//! mid-flight teardown loses the last edits. The Rust side blocks the first
-//! close attempt and emits `quit-flush-requested`; the frontend runs the same
-//! transactional flush used by project close/switch and then calls
-//! `confirm_quit_flush`, which lets the quit (or restart) through — unless a
-//! TinyTeX install still needs its own confirmation, which keeps its existing
-//! dialog and runs strictly *after* the flush so confirming it can no longer
-//! discard unsaved work.
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -27,9 +15,6 @@ fn unanswered_since() -> MutexGuard<'static, Option<Instant>> {
         .unwrap_or_else(PoisonError::into_inner)
 }
 
-/// True when the pending quit is a restart, not an exit. Retained while
-/// another gate (the TinyTeX install confirm) defers the teardown, so the
-/// eventual pass-through does what the user asked for.
 pub fn restart_pending() -> bool {
     RESTART_PENDING.load(Ordering::SeqCst)
 }
@@ -38,30 +23,21 @@ pub fn mark_restart_pending() {
     RESTART_PENDING.store(true, Ordering::SeqCst);
 }
 
-/// True once the frontend reported that every dirty buffer is durably saved
-/// (or the user explicitly chose to quit anyway).
 pub fn flush_confirmed() -> bool {
     FLUSH_CONFIRMED.load(Ordering::SeqCst)
 }
 
-/// Record that the quit flush finished (or was explicitly overridden).
 pub fn mark_flush_confirmed() {
     *unanswered_since() = None;
     FLUSH_CONFIRMED.store(true, Ordering::SeqCst);
 }
 
-/// The user chose to stay after a blocked quit: forget the confirmation so
-/// the next quit attempt flushes again (new edits may exist by then), and
-/// drop any pending restart intent with it.
 pub fn clear_flush_confirmed() {
     *unanswered_since() = None;
     FLUSH_CONFIRMED.store(false, Ordering::SeqCst);
     RESTART_PENDING.store(false, Ordering::SeqCst);
 }
 
-/// What a confirmed quit does next. Deferral outranks intent: a pending
-/// install gate takes over the teardown (keeping the recorded intent), and
-/// only then does restart-vs-exit apply.
 #[derive(Debug, PartialEq, Eq)]
 pub enum QuitAction {
     Exit,
@@ -111,9 +87,6 @@ pub fn resolve_quit_action(install_gate_pending: bool) -> QuitAction {
     }
 }
 
-/// The frontend finished (or overrode) the quit flush. Passes the quit
-/// through, deferring to the TinyTeX install dialog when one is still
-/// required; `restart` relaunches instead of exiting.
 #[tauri::command]
 pub fn confirm_quit_flush(app: tauri::AppHandle, restart: Option<bool>) {
     use tauri::Manager;
@@ -139,7 +112,6 @@ pub fn confirm_quit_flush(app: tauri::AppHandle, restart: Option<bool>) {
     }
 }
 
-/// The user canceled a blocked quit ("Stay"): future quits must flush again.
 #[tauri::command]
 pub fn cancel_quit_flush() {
     clear_flush_confirmed();

@@ -6,10 +6,7 @@ use serde_json::Value;
 use crate::effort::Effort;
 use crate::provider::{Resolved, Wire};
 
-/// Documents one agent request may carry.
 pub const MAX_AGENT_DOCUMENTS: usize = 10;
-/// Images a run starts with; the rest of the request's image room is kept
-/// for images tools return.
 pub const MAX_RUN_START_IMAGES: usize = 12;
 
 const MIB: usize = 1024 * 1024;
@@ -18,7 +15,6 @@ const MIB: usize = 1024 * 1024;
 pub struct ModelCaps {
     pub context_window: Option<u32>,
     pub output_limit: Option<u32>,
-    /// `None` when the metadata does not say.
     pub images: Option<bool>,
     pub pdf: Option<bool>,
     pub reasoning: ReasoningCaps,
@@ -26,13 +22,9 @@ pub struct ModelCaps {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReasoningCaps {
-    /// The metadata's `reasoning` flag.
     pub flag: Option<bool>,
-    /// Effort names the model accepts, ascending; `None` when unknown.
     pub efforts: Option<Vec<Effort>>,
-    /// Thinking can be switched off.
     pub toggle: bool,
-    /// A thinking budget in tokens, for models that take one.
     pub budget: Option<BudgetRange>,
 }
 
@@ -49,10 +41,6 @@ fn saturating_u32(value: Option<&Value>) -> Option<u32> {
 }
 
 impl ReasoningCaps {
-    /// Parses models.dev `reasoning_options`: an array of
-    /// `{"type":"effort","values":[…]}`, `{"type":"toggle"}` and
-    /// `{"type":"budget_tokens","min"?,"max"?}` entries. Unknown entries and
-    /// unknown effort names are ignored.
     pub fn from_metadata(reasoning: Option<bool>, options: Option<&Value>) -> Self {
         let mut caps = ReasoningCaps {
             flag: reasoning,
@@ -92,7 +80,6 @@ impl ReasoningCaps {
 }
 
 impl ModelCaps {
-    /// Reads one entry of the metadata snapshot (camelCase keys).
     pub fn from_metadata_json(entry: &Value) -> Self {
         let modalities: Option<Vec<&str>> = entry
             .get("inputModalities")
@@ -112,12 +99,10 @@ impl ModelCaps {
     }
 }
 
-/// Whether the model reads images; `None` when its metadata does not say.
 pub fn accepts_images(resolved: &Resolved) -> Option<bool> {
     resolved.caps.images
 }
 
-/// Whether the model takes PDF documents as files.
 pub fn accepts_documents(resolved: &Resolved) -> bool {
     let model = resolved.model_id.to_ascii_lowercase();
     let pdf = resolved.caps.pdf;
@@ -129,7 +114,6 @@ pub fn accepts_documents(resolved: &Resolved) -> bool {
     }
 }
 
-/// The most pages a PDF sent as a document may have.
 pub fn document_page_limit(resolved: &Resolved) -> u32 {
     match &resolved.wire {
         Wire::Anthropic { .. } => {
@@ -147,8 +131,6 @@ pub fn document_page_limit(resolved: &Resolved) -> u32 {
     }
 }
 
-/// Base64 bytes of images and documents one request may carry, under the
-/// provider's request size limit.
 pub fn request_media_budget(resolved: &Resolved) -> usize {
     if resolved.is_local_endpoint() {
         return 64 * MIB;
@@ -160,7 +142,6 @@ pub fn request_media_budget(resolved: &Resolved) -> usize {
     }
 }
 
-/// Characters of attachment text one run may add, from the context window.
 pub fn text_attachment_budget(resolved: &Resolved) -> usize {
     resolved.caps.context_window.map_or(200_000, |window| {
         (window as usize).saturating_mul(2).clamp(40_000, 600_000)

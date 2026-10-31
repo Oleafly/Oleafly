@@ -1,8 +1,3 @@
-//! Typst function forms: the `[tool.oleafly]` schema a template author writes
-//! in a package's `typst.toml` or in a project's `oleafly-forms.toml`, checked
-//! and turned into the catalog Visual mode reads. Nothing else interprets the
-//! schema: the desktop reads the files, and the editor gets the catalog as JSON.
-
 use std::collections::HashSet;
 use std::ops::Range;
 
@@ -12,13 +7,10 @@ use toml_edit::{Document, Item, Key, TableLike, Value};
 #[cfg(test)]
 mod tests;
 
-/// The project's own forms file, at the project root.
 pub const PROJECT_FORMS_FILE: &str = "oleafly-forms.toml";
-/// The largest forms file that is read. The size is checked before reading.
 pub const MAX_FORMS_FILE_BYTES: u64 = 256 * 1024;
 
 const SCHEMA: i64 = 1;
-/// Names Visual mode's built-in widgets dispatch on. A bare call keeps the widget.
 const BUILTIN_NAMES: &[&str] = &[
     "figure",
     "table",
@@ -56,15 +48,10 @@ const KIND_KEYS: &[&str] = &[
     "default",
 ];
 
-/// Where a source's text came from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SourceOrigin {
     ProjectFile,
-    /// A package such as `@local/acme-report:0.1.0`. The caller validates the
-    /// spec, or marks the read [`SourceText::InvalidSpec`].
-    Package {
-        spec: String,
-    },
+    Package { spec: String },
 }
 
 impl SourceOrigin {
@@ -76,13 +63,12 @@ impl SourceOrigin {
     }
 }
 
-/// What reading a source produced.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SourceText {
     Missing,
     TooLarge(u64),
     Unreadable(String),
-    /// The requested package spec isn't one, so nothing was looked up.
+    NotUtf8,
     InvalidSpec,
     Text(String),
 }
@@ -90,8 +76,6 @@ pub enum SourceText {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceRead {
     pub origin: SourceOrigin,
-    /// The project-relative path, with `/` separators, whose change should
-    /// reload the catalog.
     pub watch: Option<String>,
     pub text: SourceText,
 }
@@ -99,7 +83,6 @@ pub struct SourceRead {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FormCatalog {
-    /// blake3 over every source's origin, watch path and text, in hex.
     pub version: String,
     pub watch: Vec<String>,
     pub forms: Vec<FormDefinition>,
@@ -109,11 +92,9 @@ pub struct FormCatalog {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FormDefinition {
-    /// `pkg:<spec>#<function>` or `mod:<path>#<function>`.
     pub id: String,
     pub function: String,
     pub binding: FormBinding,
-    /// The author's label, or `function` when there is none.
     pub label: String,
     pub summary: Option<ArgRef>,
     pub fields: Vec<FormField>,
@@ -146,7 +127,6 @@ pub struct FormField {
     pub kind: FieldKind,
 }
 
-/// A field's control. Every `default` is display-only and never written.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FieldKind {
@@ -184,44 +164,26 @@ pub enum Severity {
     Warning,
 }
 
-/// Why a diagnostic was raised. The two warnings keep what they point at.
-/// Every error drops the form it is in, or the whole source for the codes
-/// about the file itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DiagnosticCode {
-    /// The text isn't valid TOML, or a package manifest isn't valid TOML 1.0.
     ParseError,
-    /// `[tool.oleafly]` has no `schema`, or the project file has no `[tool.oleafly]`.
     SchemaMissing,
-    /// `schema` is something other than `1`.
     SchemaVersion,
     FileTooLarge,
-    /// The file exists but couldn't be read as UTF-8 text.
     Unreadable,
     /// A requested package isn't written `@namespace/name:x.y.z`.
     InvalidPackageSpec,
-    /// A key the schema requires is absent.
     MissingKey,
-    /// A key the schema doesn't know, or one for another field kind. Ignored.
     UnknownKey,
-    /// A value of the wrong type, a blank label, an empty list, a repeated
-    /// option, or a number that breaks its field's rules.
     InvalidValue,
-    /// `function` isn't one Typst identifier.
     InvalidFunction,
-    /// `function` is a name the built-in widgets dispatch on. Kept.
     BuiltinName,
-    /// A second valid form for the same function (and module). The first is
-    /// kept. A form dropped for its own errors claims no name.
     DuplicateFunction,
     ModuleRequired,
     ModuleNotAllowed,
     InvalidModulePath,
-    /// `arg` or `summary` is neither an argument name nor a position, or
-    /// `summary` names no field of the form.
     InvalidArg,
-    /// Two fields of one form bind the same argument.
     DuplicateArg,
     UnknownKind,
 }
@@ -238,30 +200,112 @@ impl DiagnosticCode {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FormDiagnostic {
-    /// `oleafly-forms.toml`, or the package spec.
     pub source: String,
     pub severity: Severity,
     pub code: DiagnosticCode,
-    /// The TOML key path, such as `tool.oleafly.forms[2].fields[0].kind`.
     pub path: String,
-    /// 1-based: the value at fault, or the table a missing key belongs in.
     pub line: Option<u32>,
-    pub detail: String,
+    pub message: DiagnosticMessage,
 }
 
-/// The forms in a package's `typst.toml`, under `[tool.oleafly]`. A manifest
-/// Typst can read that has no such section has none and no diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ValueType {
+    String,
+    Integer,
+    Float,
+    Boolean,
+    Datetime,
+    Array,
+    InlineTable,
+    Table,
+    ArrayOfTables,
+    None,
+}
+
+impl ValueType {
+    fn of_item(item: &Item) -> Self {
+        match item {
+            Item::None => Self::None,
+            Item::Value(value) => Self::of_value(value),
+            Item::Table(_) => Self::Table,
+            Item::ArrayOfTables(_) => Self::ArrayOfTables,
+        }
+    }
+
+    fn of_value(value: &Value) -> Self {
+        match value {
+            Value::String(_) => Self::String,
+            Value::Integer(_) => Self::Integer,
+            Value::Float(_) => Self::Float,
+            Value::Boolean(_) => Self::Boolean,
+            Value::Datetime(_) => Self::Datetime,
+            Value::Array(_) => Self::Array,
+            Value::InlineTable(_) => Self::InlineTable,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "id", rename_all = "camelCase")]
+pub enum DiagnosticMessage {
+    FileTooLarge { size: u64, limit: u64 },
+    Unreadable { reason: String },
+    NotUtf8,
+    InvalidPackageSpec { spec: String },
+    NotToml { error: String },
+    NotToml10 { error: String },
+    NoOleaflyTable,
+    OleaflyNotTable { found: ValueType },
+    FormsNotList,
+    FormNotTable { found: ValueType },
+    NoSchema,
+    SchemaUnsupported { schema: i64 },
+    SchemaNotNumber { found: ValueType },
+    SummaryNotAField { arg: ArgRef },
+    DuplicateFunction { function: String },
+    DuplicateModuleFunction { function: String, module: String },
+    ModuleNotAllowed,
+    ModuleRequired,
+    ModulePathEmpty { module: String },
+    ModulePathPackage { module: String },
+    ModulePathBackslash { module: String },
+    ModulePathAbsolute { module: String },
+    ModulePathParent { module: String },
+    ModulePathEmptyFolder { module: String },
+    InvalidFunction { function: String },
+    BuiltinName { function: String },
+    FieldsNotList { found: ValueType },
+    NoFields,
+    FieldNotTable { found: ValueType },
+    DuplicateArg { arg: ArgRef },
+    UnknownKind { kind: String },
+    DefaultNotOption { value: String },
+    MaxBelowMin { min: String, max: String },
+    StepNotPositive,
+    OptionsNotList { found: ValueType },
+    NoOptions,
+    OptionNotStringOrTable { found: ValueType },
+    DuplicateOption { value: String },
+    NotArg { key: String },
+    MissingKey { key: String },
+    KeyNotForKind { key: String, kind: String },
+    UnknownKey { key: String },
+    Blank { key: String },
+    NotFinite { key: String },
+    NotString { key: String, found: ValueType },
+    NotNumber { key: String, found: ValueType },
+    NotBoolean { key: String, found: ValueType },
+}
+
 pub fn parse_package_forms(text: &str, spec: &str) -> (Vec<FormDefinition>, Vec<FormDiagnostic>) {
     parse(text, Scope::Package(spec))
 }
 
-/// The forms in the project's `oleafly-forms.toml`.
 pub fn parse_project_forms(text: &str) -> (Vec<FormDefinition>, Vec<FormDiagnostic>) {
     parse(text, Scope::Project)
 }
 
-/// Every source's forms and diagnostics, in the order given. A source that
-/// couldn't be read gets one diagnostic, and a missing one none.
 pub fn assemble_catalog(sources: Vec<SourceRead>) -> FormCatalog {
     let mut hasher = blake3::Hasher::new();
     let mut catalog = FormCatalog {
@@ -283,7 +327,7 @@ pub fn assemble_catalog(sources: Vec<SourceRead>) -> FormCatalog {
             }
         }
         let source = origin.label();
-        let (code, detail) = match text {
+        let (code, message) = match text {
             SourceText::Missing => continue,
             SourceText::Text(text) => {
                 let (forms, diagnostics) = match &origin {
@@ -296,20 +340,21 @@ pub fn assemble_catalog(sources: Vec<SourceRead>) -> FormCatalog {
             }
             SourceText::TooLarge(size) => (
                 DiagnosticCode::FileTooLarge,
-                format!(
-                    "The file is {size} bytes. Forms are read from files of at most \
-                     {MAX_FORMS_FILE_BYTES} bytes (256 KiB)."
-                ),
+                DiagnosticMessage::FileTooLarge {
+                    size,
+                    limit: MAX_FORMS_FILE_BYTES,
+                },
             ),
             SourceText::Unreadable(reason) => (
                 DiagnosticCode::Unreadable,
-                format!("The file could not be read: {reason}"),
+                DiagnosticMessage::Unreadable { reason },
             ),
+            SourceText::NotUtf8 => (DiagnosticCode::Unreadable, DiagnosticMessage::NotUtf8),
             SourceText::InvalidSpec => (
                 DiagnosticCode::InvalidPackageSpec,
-                format!(
-                    "\"{source}\" is not a package such as @preview/name:1.0.0, so it was skipped."
-                ),
+                DiagnosticMessage::InvalidPackageSpec {
+                    spec: source.to_owned(),
+                },
             ),
         };
         catalog.diagnostics.push(FormDiagnostic {
@@ -318,7 +363,7 @@ pub fn assemble_catalog(sources: Vec<SourceRead>) -> FormCatalog {
             code,
             path: String::new(),
             line: None,
-            detail,
+            message,
         });
     }
     catalog.version = hasher.finalize().to_hex().to_string();
@@ -359,6 +404,7 @@ fn hash_source(
             part(b"unreadable");
             part(reason.as_bytes());
         }
+        SourceText::NotUtf8 => part(b"not-utf8"),
         SourceText::InvalidSpec => part(b"invalid-spec"),
         SourceText::Text(text) => {
             part(b"text");
@@ -373,8 +419,6 @@ enum Scope<'a> {
     Project,
 }
 
-/// A table as written, `[header]` or inline, with the offset its own line is
-/// reported from (the nearest enclosing table's when it has no span).
 #[derive(Clone, Copy)]
 struct Node<'a> {
     table: &'a dyn TableLike,
@@ -387,18 +431,17 @@ impl<'a> Node<'a> {
         Some(Slot {
             key,
             value: item.as_value(),
-            type_name: item.type_name(),
+            found: ValueType::of_item(item),
             path: join(path, key),
             at: start(item.span()).or(self.at),
         })
     }
 }
 
-/// One value under check, named the way its diagnostics name it.
 struct Slot<'a> {
     key: &'static str,
     value: Option<&'a Value>,
-    type_name: &'static str,
+    found: ValueType,
     path: String,
     at: Option<usize>,
 }
@@ -450,18 +493,6 @@ fn join(path: &str, key: &str) -> String {
     }
 }
 
-fn article(type_name: &str) -> String {
-    let vowel = type_name.starts_with(['a', 'e', 'i', 'o', 'u']);
-    format!("{} {type_name}", if vowel { "an" } else { "a" })
-}
-
-fn describe(arg: &ArgRef) -> String {
-    match arg {
-        ArgRef::Named(name) => format!("the argument {name}"),
-        ArgRef::Positional(index) => format!("positional argument {index}"),
-    }
-}
-
 /// One Typst identifier, by the lexer's rule: XID_Start or `_`, then
 /// XID_Continue, `_` or `-`. No dots, and not a keyword.
 fn is_identifier(name: &str) -> bool {
@@ -475,7 +506,6 @@ fn is_identifier(name: &str) -> bool {
         && !KEYWORDS.contains(&name)
 }
 
-/// A parser's message on one line, without its final full stop.
 fn one_line(message: &str) -> String {
     message
         .split_whitespace()
@@ -485,20 +515,20 @@ fn one_line(message: &str) -> String {
         .to_owned()
 }
 
-fn module_path_problem(path: &str) -> Option<&'static str> {
+fn module_path_problem(path: &str) -> Option<fn(String) -> DiagnosticMessage> {
     if path.is_empty() {
-        Some("is empty.")
+        Some(|module| DiagnosticMessage::ModulePathEmpty { module })
     } else if path.starts_with('@') {
         // Typst and the editor read any `@` import as a package spec.
-        Some("names a package. A package's forms go in that package's typst.toml.")
+        Some(|module| DiagnosticMessage::ModulePathPackage { module })
     } else if path.contains('\\') {
-        Some("uses a backslash. Separate folders with /.")
+        Some(|module| DiagnosticMessage::ModulePathBackslash { module })
     } else if path.starts_with('/') {
-        Some("starts with /. Write it relative to the project folder.")
+        Some(|module| DiagnosticMessage::ModulePathAbsolute { module })
     } else if path.split('/').any(|part| part == "..") {
-        Some("leaves the project folder through \"..\".")
+        Some(|module| DiagnosticMessage::ModulePathParent { module })
     } else if path.split('/').any(|part| part.is_empty() || part == ".") {
-        Some("has an empty or \".\" folder name.")
+        Some(|module| DiagnosticMessage::ModulePathEmptyFolder { module })
     } else {
         None
     }
@@ -529,7 +559,13 @@ struct Checker<'s> {
 }
 
 impl Checker<'_> {
-    fn report(&mut self, code: DiagnosticCode, path: &str, at: Option<usize>, detail: String) {
+    fn report(
+        &mut self,
+        code: DiagnosticCode,
+        path: &str,
+        at: Option<usize>,
+        message: DiagnosticMessage,
+    ) {
         if code.severity() == Severity::Error {
             self.errors += 1;
         }
@@ -543,12 +579,12 @@ impl Checker<'_> {
             code,
             path: path.to_owned(),
             line,
-            detail,
+            message,
         });
     }
 
-    fn fault(&mut self, code: DiagnosticCode, slot: &Slot<'_>, detail: String) {
-        self.report(code, &slot.path, slot.at, detail);
+    fn fault(&mut self, code: DiagnosticCode, slot: &Slot<'_>, message: DiagnosticMessage) {
+        self.report(code, &slot.path, slot.at, message);
     }
 
     fn document(&mut self, text: &str, scope: Scope<'_>) -> Vec<FormDefinition> {
@@ -559,7 +595,9 @@ impl Checker<'_> {
                     DiagnosticCode::ParseError,
                     "",
                     start(error.span()),
-                    format!("This is not valid TOML: {}.", one_line(error.message())),
+                    DiagnosticMessage::NotToml {
+                        error: one_line(error.message()),
+                    },
                 );
                 return Vec::new();
             }
@@ -575,10 +613,9 @@ impl Checker<'_> {
                 DiagnosticCode::ParseError,
                 "",
                 start(error.span()),
-                format!(
-                    "Typst reads typst.toml as TOML 1.0, and this file is not valid TOML 1.0: {}.",
-                    one_line(error.message())
-                ),
+                DiagnosticMessage::NotToml10 {
+                    error: one_line(error.message()),
+                },
             );
             return Vec::new();
         }
@@ -589,7 +626,7 @@ impl Checker<'_> {
                     DiagnosticCode::SchemaMissing,
                     "tool.oleafly.schema",
                     None,
-                    "The file needs a [tool.oleafly] table with schema = 1.".into(),
+                    DiagnosticMessage::NoOleaflyTable,
                 );
             }
             return Vec::new();
@@ -600,10 +637,9 @@ impl Checker<'_> {
                 DiagnosticCode::InvalidValue,
                 path,
                 at,
-                format!(
-                    "tool.oleafly must be a table, not {}.",
-                    article(item.type_name())
-                ),
+                DiagnosticMessage::OleaflyNotTable {
+                    found: ValueType::of_item(item),
+                },
             );
             return Vec::new();
         };
@@ -622,7 +658,7 @@ impl Checker<'_> {
                 DiagnosticCode::InvalidValue,
                 &forms_path,
                 forms_at,
-                "forms must be a list of tables, written [[tool.oleafly.forms]].".into(),
+                DiagnosticMessage::FormsNotList,
             );
             return Vec::new();
         };
@@ -638,10 +674,9 @@ impl Checker<'_> {
                     DiagnosticCode::InvalidValue,
                     &path,
                     start(value.span()).or(forms_at),
-                    format!(
-                        "Each form must be a table, not {}.",
-                        article(value.type_name())
-                    ),
+                    DiagnosticMessage::FormNotTable {
+                        found: ValueType::of_value(value),
+                    },
                 ),
             }
         }
@@ -654,21 +689,16 @@ impl Checker<'_> {
                 DiagnosticCode::SchemaMissing,
                 &join(path, "schema"),
                 node.at,
-                "Add schema = 1 to [tool.oleafly].".into(),
+                DiagnosticMessage::NoSchema,
             );
             return false;
         };
-        let detail = match slot.value.and_then(Value::as_integer) {
+        let message = match slot.value.and_then(Value::as_integer) {
             Some(SCHEMA) => return true,
-            Some(other) => {
-                format!("Schema {other} is not supported. This version of Oleafly reads schema 1.")
-            }
-            None => format!(
-                "schema must be the number 1, not {}.",
-                article(slot.type_name)
-            ),
+            Some(schema) => DiagnosticMessage::SchemaUnsupported { schema },
+            None => DiagnosticMessage::SchemaNotNumber { found: slot.found },
         };
-        self.fault(DiagnosticCode::SchemaVersion, &slot, detail);
+        self.fault(DiagnosticCode::SchemaVersion, &slot, message);
         false
     }
 
@@ -693,10 +723,9 @@ impl Checker<'_> {
                 self.fault(
                     DiagnosticCode::InvalidArg,
                     slot,
-                    format!(
-                        "summary names {}, which is not one of this form's fields.",
-                        describe(summary)
-                    ),
+                    DiagnosticMessage::SummaryNotAField {
+                        arg: summary.clone(),
+                    },
                 );
             }
         }
@@ -704,21 +733,17 @@ impl Checker<'_> {
             return None;
         }
         let (function, slot) = function?;
-        // Only a form that is kept claims its name, so a broken first copy
-        // doesn't block a fixed one further down. Past the check above, a
-        // project form always has its module and a package form never does.
         if !seen.insert((module.clone(), function.clone())) {
-            let what = match &module {
-                Some(module) => format!("{function} from {module}"),
-                None => function.clone(),
+            let message = match &module {
+                Some(module) => DiagnosticMessage::DuplicateModuleFunction {
+                    function: function.clone(),
+                    module: module.clone(),
+                },
+                None => DiagnosticMessage::DuplicateFunction {
+                    function: function.clone(),
+                },
             };
-            self.fault(
-                DiagnosticCode::DuplicateFunction,
-                &slot,
-                format!(
-                    "{what} already has a form earlier in this file, and the first one is used."
-                ),
-            );
+            self.fault(DiagnosticCode::DuplicateFunction, &slot, message);
             return None;
         }
         let binding = match scope {
@@ -749,7 +774,7 @@ impl Checker<'_> {
                 self.fault(
                     DiagnosticCode::ModuleNotAllowed,
                     &slot,
-                    "module belongs in oleafly-forms.toml. A package's forms are for the package's own functions.".into(),
+                    DiagnosticMessage::ModuleNotAllowed,
                 );
                 None
             }
@@ -758,7 +783,7 @@ impl Checker<'_> {
                     DiagnosticCode::ModuleRequired,
                     &join(path, "module"),
                     node.at,
-                    "Each form here needs module, the project path of the .typ file that defines the function.".into(),
+                    DiagnosticMessage::ModuleRequired,
                 );
                 None
             }
@@ -767,11 +792,7 @@ impl Checker<'_> {
                 let Some(problem) = module_path_problem(&module) else {
                     return Some(module);
                 };
-                self.fault(
-                    DiagnosticCode::InvalidModulePath,
-                    &slot,
-                    format!("module \"{module}\" {problem}"),
-                );
+                self.fault(DiagnosticCode::InvalidModulePath, &slot, problem(module));
                 None
             }
         }
@@ -784,7 +805,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::InvalidFunction,
                 &slot,
-                format!("\"{function}\" is not a Typst function name. Use one name, such as info-box, with no dots or spaces."),
+                DiagnosticMessage::InvalidFunction { function },
             );
             return None;
         }
@@ -792,7 +813,9 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::BuiltinName,
                 &slot,
-                format!("\"{function}\" is a built-in Typst name. Bare calls keep the built-in widget, so only qualified or renamed calls use this form."),
+                DiagnosticMessage::BuiltinName {
+                    function: function.clone(),
+                },
             );
         }
         Some((function, slot))
@@ -805,10 +828,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::InvalidValue,
                 &slot,
-                format!(
-                    "fields must be a list of tables, not {}.",
-                    article(slot.type_name)
-                ),
+                DiagnosticMessage::FieldsNotList { found: slot.found },
             );
             return None;
         };
@@ -816,7 +836,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::InvalidValue,
                 &slot,
-                "A form needs at least one field.".into(),
+                DiagnosticMessage::NoFields,
             );
             return None;
         }
@@ -831,10 +851,9 @@ impl Checker<'_> {
                     DiagnosticCode::InvalidValue,
                     &path,
                     start(value.span()).or(slot.at),
-                    format!(
-                        "Each field must be a table, not {}.",
-                        article(value.type_name())
-                    ),
+                    DiagnosticMessage::FieldNotTable {
+                        found: ValueType::of_value(value),
+                    },
                 ),
             }
         }
@@ -856,10 +875,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::DuplicateArg,
                 &slot,
-                format!(
-                    "Another field of this form already binds {}.",
-                    describe(&arg)
-                ),
+                DiagnosticMessage::DuplicateArg { arg },
             );
             None
         });
@@ -897,9 +913,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::UnknownKind,
                 slot,
-                format!(
-                    "\"{name}\" is not a field kind. Use text, content, choice, number or toggle."
-                ),
+                DiagnosticMessage::UnknownKind { kind: name },
             );
         }
         kind
@@ -935,7 +949,7 @@ impl Checker<'_> {
                     self.fault(
                         DiagnosticCode::InvalidValue,
                         &slot,
-                        format!("default \"{value}\" is not one of the options."),
+                        DiagnosticMessage::DefaultNotOption { value },
                     );
                     None
                 });
@@ -963,7 +977,10 @@ impl Checker<'_> {
                 self.fault(
                     DiagnosticCode::InvalidValue,
                     slot,
-                    format!("max {max} is smaller than min {min}."),
+                    DiagnosticMessage::MaxBelowMin {
+                        min: min.to_string(),
+                        max: max.to_string(),
+                    },
                 );
             }
         }
@@ -972,7 +989,7 @@ impl Checker<'_> {
                 self.fault(
                     DiagnosticCode::InvalidValue,
                     slot,
-                    "step must be greater than 0.".into(),
+                    DiagnosticMessage::StepNotPositive,
                 );
             }
         }
@@ -992,7 +1009,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::InvalidValue,
                 &slot,
-                format!("options must be a list, not {}.", article(slot.type_name)),
+                DiagnosticMessage::OptionsNotList { found: slot.found },
             );
             return None;
         };
@@ -1000,7 +1017,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::InvalidValue,
                 &slot,
-                "A choice field needs at least one option.".into(),
+                DiagnosticMessage::NoOptions,
             );
             return None;
         }
@@ -1015,7 +1032,7 @@ impl Checker<'_> {
                     let entry = Slot {
                         key: "option",
                         value: Some(value),
-                        type_name: value.type_name(),
+                        found: ValueType::of_value(value),
                         path: path.clone(),
                         at: start(value.span()).or(slot.at),
                     };
@@ -1028,10 +1045,7 @@ impl Checker<'_> {
                         self.fault(
                             DiagnosticCode::InvalidValue,
                             &entry,
-                            format!(
-                                "Each option must be a string or a {{ value, label }} table, not {}.",
-                                article(entry.type_name)
-                            ),
+                            DiagnosticMessage::OptionNotStringOrTable { found: entry.found },
                         );
                         None
                     };
@@ -1048,7 +1062,9 @@ impl Checker<'_> {
                     DiagnosticCode::InvalidValue,
                     &path,
                     at,
-                    format!("The option \"{}\" is listed twice.", option.value),
+                    DiagnosticMessage::DuplicateOption {
+                        value: option.value,
+                    },
                 );
             }
         }
@@ -1083,10 +1099,9 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::InvalidArg,
                 slot,
-                format!(
-                    "{} must be an argument name, such as \"title\", or a position counted from 0.",
-                    slot.key
-                ),
+                DiagnosticMessage::NotArg {
+                    key: slot.key.to_owned(),
+                },
             );
         }
         arg
@@ -1099,7 +1114,9 @@ impl Checker<'_> {
                 DiagnosticCode::MissingKey,
                 &join(path, key),
                 node.at,
-                format!("{key} is required."),
+                DiagnosticMessage::MissingKey {
+                    key: key.to_owned(),
+                },
             );
         }
         slot
@@ -1119,13 +1136,16 @@ impl Checker<'_> {
             let at = start(node.table.key(key).and_then(Key::span))
                 .or(start(item.span()))
                 .or(node.at);
-            let detail = match kind {
-                Some(kind) if KIND_KEYS.contains(&key) => {
-                    format!("{key} does not apply to {kind} fields, so it is ignored.")
-                }
-                _ => format!("{key} is not a forms key, so it is ignored."),
+            let message = match kind {
+                Some(kind) if KIND_KEYS.contains(&key) => DiagnosticMessage::KeyNotForKind {
+                    key: key.to_owned(),
+                    kind: kind.to_owned(),
+                },
+                _ => DiagnosticMessage::UnknownKey {
+                    key: key.to_owned(),
+                },
             };
-            self.report(DiagnosticCode::UnknownKey, &join(path, key), at, detail);
+            self.report(DiagnosticCode::UnknownKey, &join(path, key), at, message);
         }
     }
 
@@ -1143,40 +1163,56 @@ impl Checker<'_> {
         self.fault(
             DiagnosticCode::InvalidValue,
             slot,
-            format!("{} must not be blank.", slot.key),
+            DiagnosticMessage::Blank {
+                key: slot.key.to_owned(),
+            },
         );
         None
     }
 
     fn number(&mut self, slot: &Slot<'_>) -> Option<f64> {
-        let number = self.cast(slot, "a number", |value| match value {
-            Value::Integer(integer) => Some(*integer.value() as f64),
-            Value::Float(float) => Some(*float.value()),
-            _ => None,
-        })?;
+        let number = self.cast(
+            slot,
+            |key, found| DiagnosticMessage::NotNumber { key, found },
+            |value| match value {
+                Value::Integer(integer) => Some(*integer.value() as f64),
+                Value::Float(float) => Some(*float.value()),
+                _ => None,
+            },
+        )?;
         if number.is_finite() {
             return Some(number);
         }
         self.fault(
             DiagnosticCode::InvalidValue,
             slot,
-            format!("{} must be a finite number.", slot.key),
+            DiagnosticMessage::NotFinite {
+                key: slot.key.to_owned(),
+            },
         );
         None
     }
 
     fn string(&mut self, slot: &Slot<'_>) -> Option<String> {
-        self.cast(slot, "a string", |value| value.as_str().map(str::to_owned))
+        self.cast(
+            slot,
+            |key, found| DiagnosticMessage::NotString { key, found },
+            |value| value.as_str().map(str::to_owned),
+        )
     }
 
     fn boolean(&mut self, slot: &Slot<'_>) -> Option<bool> {
-        self.cast(slot, "true or false", Value::as_bool)
+        self.cast(
+            slot,
+            |key, found| DiagnosticMessage::NotBoolean { key, found },
+            Value::as_bool,
+        )
     }
 
     fn cast<T>(
         &mut self,
         slot: &Slot<'_>,
-        expected: &str,
+        expected: fn(String, ValueType) -> DiagnosticMessage,
         cast: impl FnOnce(&Value) -> Option<T>,
     ) -> Option<T> {
         let value = slot.value.and_then(cast);
@@ -1184,11 +1220,7 @@ impl Checker<'_> {
             self.fault(
                 DiagnosticCode::InvalidValue,
                 slot,
-                format!(
-                    "{} must be {expected}, not {}.",
-                    slot.key,
-                    article(slot.type_name)
-                ),
+                expected(slot.key.to_owned(), slot.found),
             );
         }
         value

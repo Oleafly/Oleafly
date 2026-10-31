@@ -44,13 +44,6 @@ export function getEditorView(): EditorView | null {
   return view;
 }
 
-/**
- * Marks the source document currently installed in the shared EditorView.
- *
- * File navigation must wait for this signal instead of guessing how long the
- * React/CodeMirror file-swap effect will take. Callers can therefore select a
- * project range immediately after the matching document is actually ready.
- */
 export function setEditorDocumentPath(path: string | null) {
   documentPath = path;
   publishDocumentReady();
@@ -60,14 +53,6 @@ export function getEditorDocumentPath(): string | null {
   return documentPath;
 }
 
-/**
- * Observes which document the shared EditorView holds, for callers that have to
- * re-attach to the view itself rather than wait for one document.
- *
- * The listener fires immediately with the current state, so a subscriber that
- * mounts after the editor is already up does not sit idle until the next file
- * swap.
- */
 export function subscribeEditorDocument(
   listener: DocumentReadyListener,
 ): () => void {
@@ -98,8 +83,6 @@ export function waitForEditorDocument(
     documentReadyListeners.add(onReady);
     signal?.addEventListener("abort", onAbort, { once: true });
 
-    // Close the subscribe/check race if the editor became ready between the
-    // first check and listener registration.
     if (documentPath === path && view) finish(view);
   });
 }
@@ -139,10 +122,6 @@ export function getCurrentLine(): number | null {
   return v.state.doc.lineAt(v.state.selection.main.head).number;
 }
 
-/**
- * Centers a document position by moving only CodeMirror's own scroll surface.
- * This also serves embedded and diff editors that aren't the global editor.
- */
 export function scrollEditorPositionLocally(
   v: EditorView,
   position: number,
@@ -222,7 +201,6 @@ export function revealEditorRange(
   v.focus();
 }
 
-/** `column` is 1-based, as compilers print it, and stops at the line end. */
 export function gotoLine(line: number, column?: number) {
   const v = getEditorView();
   if (!v) return;
@@ -249,12 +227,6 @@ function characterAt(text: string, index: number): string | undefined {
  * a row or two off and `\maketitle` text a few lines below `\title`.
  */
 const NEAR_LINES = 3;
-/**
- * Score taken off a candidate per line it is away from the reported line. A
- * context word right next to the click scores 1, so a neighbouring line has to
- * match clearly better; with less, a heading that repeats the end of the
- * paragraph above it lost to that paragraph.
- */
 const LINE_PENALTY = 1.5;
 /**
  * A near match whose context scores this much is taken without looking
@@ -274,8 +246,6 @@ function rejoinHyphenated(word: string, context: WordContext | undefined) {
   if (!context) return null;
   const next = /^-\s+([\p{L}\p{M}]+)/u.exec(context.after);
   if (next) return { word: word + next[1], context: { ...context, after: context.after.slice(next[0].length) } };
-  // Scanned by hand: a regex anchored at the end backtracks through every
-  // starting point of a long run of letters.
   const trimmed = context.before.trimEnd();
   if (trimmed.length === context.before.length || !trimmed.endsWith("-")) return null;
   const hyphen = trimmed.length - 1;
@@ -291,9 +261,7 @@ function rejoinHyphenated(word: string, context: WordContext | undefined) {
 const HYPHENATED_LETTER = /^[\p{L}\p{M}]$/u;
 
 interface WordCandidate extends WordRange {
-  /** Lines from the reported line. */
   distance: number;
-  /** Whole word, not part of a longer word or a command name. */
   standalone: boolean;
 }
 
@@ -329,7 +297,6 @@ export function selectWordNearLine(line: number, word: string, context?: WordCon
     for (let i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
       const before = characterBefore(text, i);
       const standalone = !isWordChar(before) && before !== "\\" && !isWordChar(characterAt(text, i + needle.length));
-      // Part of a longer word: select that whole word, as the click meant it.
       let start = i;
       let end = i + needle.length;
       while (isWordChar(characterBefore(text, start))) start -= (characterBefore(text, start) as string).length;
@@ -340,8 +307,6 @@ export function selectWordNearLine(line: number, word: string, context?: WordCon
   };
 
   const find = (needle: string, around: WordContext | undefined): WordCandidate | undefined => {
-    // Nearest lines first, the line above before the one below, so that
-    // without any context the old search order still decides.
     const near: WordCandidate[] = [];
     for (let d = 0; d <= NEAR_LINES; d++) {
       for (const ln of d === 0 ? [target] : [target - d, target + d]) {
@@ -360,7 +325,6 @@ export function selectWordNearLine(line: number, word: string, context?: WordCon
     return findFar(needle, around) ?? nearest?.candidate;
   };
 
-  // Lines further away only count with strong evidence from the words around.
   const findFar = (needle: string, around: WordContext): WordCandidate | undefined => {
     const far: WordCandidate[] = [];
     for (let ln = 1; ln <= total; ln++) {
@@ -409,7 +373,6 @@ export function selectWordAt(line: number, column: number, word: string): boolea
   return true;
 }
 
-/** Source text taken on each side of the cursor's word for `wordAtCursor`. */
 const SOURCE_AROUND = 300;
 
 /**
@@ -475,7 +438,6 @@ export function insertAtCursor(text: string) {
   v.focus();
 }
 
-// Clamped to doc bounds so a stale range from before an edit can't throw.
 export function replaceRange(from: number, to: number, text: string) {
   const v = getEditorView();
   if (!v) return;

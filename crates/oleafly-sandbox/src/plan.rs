@@ -1,29 +1,18 @@
-//! What the Windows sandbox grants for one command, as data: the access
-//! entries `prepare` writes, in the order it writes them. Platform-neutral so
-//! the rules (which paths a grant already covers, what is protected or
-//! hidden, which folders get traverse entries) are tested everywhere.
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::ledger::{GrantAccess, GrantRecord, GrantScope};
 use crate::ResolvedSpec;
 
-/// The SIDs a command runs with, as SDDL text.
 pub(crate) struct Sids<'a> {
-    /// The task's own AppContainer profile.
     pub package: &'a str,
-    /// The capability every task carries (interpreters, agents, skills).
     pub runtime: &'a str,
-    /// The project's capability (its linked data folders).
     pub project: Option<&'a str>,
 }
 
-/// One access entry to write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Step {
     pub record: GrantRecord,
-    /// The traverse entries on the ancestors of one read root share a number:
-    /// a folder that refuses one ends that root's climb.
     pub chain: Option<usize>,
 }
 
@@ -65,9 +54,6 @@ impl Plan<'_> {
         }
     }
 
-    /// Traverse entries for `sid` on the ancestors of `root`, nearest first,
-    /// up to (not including) the top. The caller stops at the first folder
-    /// whose access list the user cannot change.
     fn traverse_ancestors(&mut self, root: &Path, sid: &str) {
         let chain = self.chains;
         self.chains += 1;
@@ -88,9 +74,6 @@ impl Plan<'_> {
     }
 }
 
-/// A write grant on a file whose folder is granted already adds nothing.
-/// `writes` holds every write grant; checking the folder's ancestors against
-/// a set keeps this linear however many grants there are.
 fn covered_by_folder(path: &Path, writes: &HashSet<&Path>) -> bool {
     path.is_file()
         && path
@@ -98,7 +81,6 @@ fn covered_by_folder(path: &Path, writes: &HashSet<&Path>) -> bool {
             .is_some_and(|parent| parent.ancestors().any(|folder| writes.contains(folder)))
 }
 
-/// The entries `spec` needs for a task whose SIDs are `sids`.
 pub(crate) fn plan(spec: &ResolvedSpec, sids: &Sids<'_>) -> Vec<Step> {
     let mut plan = Plan {
         owner: &spec.owner,
@@ -126,10 +108,6 @@ pub(crate) fn plan(spec: &ResolvedSpec, sids: &Sids<'_>) -> Vec<Step> {
         plan.task(),
         GrantAccess::ReadWrite,
     );
-    // Protected paths stay readable and can't be changed; hidden ones can't
-    // be read either. A task with FILE_DELETE_CHILD on the folder that holds
-    // one could remove it and put its own in its place, so that folder
-    // refuses the right (when a write grant gives the task the folder at all).
     let in_a_write_grant = |folder: &Path| writes.iter().any(|write| folder.starts_with(write));
     let protected = spec.protected.iter().map(|path| {
         let access = if path.is_dir() {
@@ -256,7 +234,6 @@ mod tests {
             entries(&steps),
             vec![
                 (folders.path("work"), GrantAccess::Read),
-                // The folder first; the file inside it adds nothing.
                 (folders.path("work/src"), GrantAccess::ReadWrite),
                 (folders.path("home"), GrantAccess::ReadWrite),
             ]
@@ -294,11 +271,9 @@ mod tests {
                 .unwrap_or_else(|| panic!("{path} {access:?} missing in {steps:?}"))
         };
         let write = at("work", GrantAccess::ReadWrite);
-        // A folder: readable, not changeable. A file: no access.
         assert!(at("work/.git", GrantAccess::DenyWrite) > write);
         assert!(at("work/.private", GrantAccess::DenyAll) > write);
         assert!(at("work/.env", GrantAccess::Excluded) > write);
-        // The workspace holds them all and is a write grant: one entry.
         let deletes = steps
             .iter()
             .filter(|step| **step == (work.clone(), GrantAccess::DenyDeleteChild))
@@ -312,7 +287,6 @@ mod tests {
         let folders = Folders::new();
         let work = folders.path("work");
         let mut spec = spec(&work, &folders.path("home"));
-        // The task writes in `src` only; `.git` sits beside it.
         spec.read_write = vec![folders.path("work/src")];
         spec.protected = vec![folders.path("work/.git")];
         let steps = entries(&plan(&spec, &sids()));
@@ -350,8 +324,6 @@ mod tests {
                 project: "p1".into()
             }
         );
-        // The parent of each root is walked, with the runtime capability, in
-        // its own chain; the top of the tree is left alone.
         let parent = step_for(python.parent().unwrap(), GrantAccess::Traverse);
         assert_eq!(parent.record.sid, RUNTIME);
         let data_parent = step_for(data.parent().unwrap(), GrantAccess::Traverse);
@@ -359,7 +331,6 @@ mod tests {
         assert_ne!(parent.chain, data_parent.chain);
         assert!(parent.chain.is_some());
         assert!(steps.iter().all(|step| step.record.path.parent().is_some()));
-        // Nearest ancestor first, so a refusal ends the climb above it.
         let first = steps
             .iter()
             .position(|step| step.chain == parent.chain)
@@ -396,7 +367,6 @@ mod tests {
             spec.read_write.push(file);
         }
         let steps = plan(&spec, &sids());
-        // Workspace, the folder, home: the files add nothing.
         assert_eq!(steps.len(), 3);
     }
 }

@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Self-contained e2e run: builds + launches the app with the e2e bridge and a
-# throwaway data dir, waits for the bridge socket, runs the Playwright suite,
-# and always tears the app down.
-# Usage: ./scripts/e2e.sh [--suite-max-failures=N] [playwright args...]
 set -euo pipefail
-# Give each background app launch its own process group so teardown can target
-# only processes owned by this runner.
 set -m
 cd "$(dirname "$0")/.."
 
@@ -72,9 +66,6 @@ APP_BINARY="${OLEAFLY_E2E_APP_BINARY:-}"
 SOCK_ID=""
 CLEANED=0
 
-# A packaged custom-protocol smoke can point this runner at a binary built
-# with `tauri build --features e2e-testing --config src-tauri/tauri.e2e.conf.json`.
-# Default runs remain Vite-backed.
 if [[ -n "$APP_BINARY" ]] && [[ ! -x "$APP_BINARY" ]]; then
   echo "e2e: OLEAFLY_E2E_APP_BINARY is not executable: $APP_BINARY" >&2
   exit 2
@@ -166,8 +157,6 @@ cleanup() {
   if [[ -n "$DATA_DIR" ]] && [[ -f "$DATA_DIR/app.log" ]]; then
     mkdir -p test-results && cp "$DATA_DIR/app.log" test-results/user-app.log 2>/dev/null || true
   fi
-  # The per-run data dir is ~200MB of disposable app data; leaking one per
-  # run once filled a developer machine's /tmp with tens of gigabytes.
   if [[ -n "$DATA_DIR" && -z "${OLEAFLY_E2E_REUSE_DATA_DIR:-}" ]]; then
     rm -rf "$DATA_DIR" 2>/dev/null || true
   fi
@@ -185,11 +174,7 @@ bash scripts/ensure-e2e-sidecars.sh
 DATA_DIR="${OLEAFLY_E2E_REUSE_DATA_DIR:-$(mktemp -d /tmp/oleafly-e2e.XXXXXX)}"
 LOG="$(mktemp /tmp/oleafly-e2e-log.XXXXXX)"
 reset_e2e_web_storage
-# Export so Playwright specs can read discovery files (e.g. mcp.json) written
-# into the same throwaway data dir the app uses.
 export OLEAFLY_DATA_DIR="$DATA_DIR"
-# Hermetic remote endpoints: specs 42/44/75 run a local fixture server on this fixed
-# port; other specs never call the pack/deadline commands, so this is harmless.
 export OLEAFLY_PACKS_BASE_URL="${OLEAFLY_PACKS_BASE_URL:-http://127.0.0.1:38999}"
 export OLEAFLY_DEADLINES_URL="${OLEAFLY_DEADLINES_URL:-http://127.0.0.1:38999/allconf.yml}"
 export OLEAFLY_SKILLS_BASE_URL="${OLEAFLY_SKILLS_BASE_URL:-http://127.0.0.1:38999}"
@@ -249,8 +234,6 @@ run_playwright() {
     "$@" 2>&1 | tee "$captured" || status=$?
   stop_heartbeat
   preserve_run_artifacts "$label"
-  # A skipped test is not coverage. Collect them so the final summary can say
-  # so out loud instead of letting "0 failed" imply everything was exercised.
   local skipped
   skipped="$(grep -oE '[0-9]+ skipped' "$captured" | tail -1 | grep -oE '[0-9]+' || true)"
   if [[ -n "$skipped" ]] && [[ "$skipped" -gt 0 ]]; then
@@ -312,11 +295,6 @@ if [[ -z "$APP_BINARY" ]] && lsof -ti :1420 >/dev/null 2>&1; then
   exit 1
 fi
 
-# Packaged builds cannot seed localStorage through a dev-server reload the way
-# the fixtures do in dev mode, so the app seeds it before boot instead
-# (OLEAFLY_E2E_BOOT_LOCALSTORAGE, see src-tauri/src/lib.rs). The tours spec is
-# the one suite that needs tours ENABLED, so it gets the seed without the
-# tours key. Argument: the spec path about to run ("" for non-spec runs).
 boot_seed_for() {
   local spec="${1:-}"
   local locale="en"
@@ -331,9 +309,6 @@ boot_seed_for() {
   esac
 }
 
-# Checkpoint publication runs two extra compiler passes behind every successful
-# compile. Only the specs that assert it need that cost; leaving it on for the
-# rest saturates the slower runners and starves the app of CPU.
 configure_checkpoints_for_spec() {
   local specs="${CHECKPOINT_HINTS:-${1:-}}"
   local enabled=false
@@ -439,13 +414,6 @@ else
   suite_failures=0
   SUITE_SPECS=()
   if [[ -n "$SHARD" ]]; then
-    # Duration-weighted split for parallel CI runners: the four heaviest specs
-    # (multi-minute book compiles, chaos suites, long WYSIWYG flows) are dealt
-    # to distinct shards first, then everything else round-robins. Plain
-    # count-based round-robin once put four of them on one shard, making that
-    # shard both the wall-clock ceiling and the flake hotspot for every run.
-    # Every shard still gets 02-create-compile first: it creates the shared
-    # "E2E Doc" project and warms the compile path later specs assume.
     shard_index="${SHARD%%/*}"
     shard_total="${SHARD##*/}"
     HEAVY_SPECS=(
@@ -520,8 +488,6 @@ else
   SPECS_NOT_RUN=()
   stopped_early=0
   for spec in "${SUITE_SPECS[@]}"; do
-    # A spec that never runs is indistinguishable from a passing one in the
-    # exit code alone, so every spec is accounted for explicitly below.
     CHECKPOINT_HINTS="$spec"
     if ! wait_for_port_free || ! start_app "$spec"; then
       stop_app

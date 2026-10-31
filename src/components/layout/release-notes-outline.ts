@@ -66,7 +66,6 @@ export function outlineReleaseNotes(body: string): ReleaseNotesOutline {
   let lineFrom = 0;
   for (const line of text.split("\n")) {
     const current = sections.at(-1);
-    // From where the line starts, so an item that opens with a fence counts.
     const inFence = fences.some((fence) => fence.from <= lineFrom && fence.to >= lineFrom);
     lineFrom += line.length + 1;
     if (!inFence) {

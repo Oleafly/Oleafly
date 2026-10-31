@@ -337,9 +337,6 @@ function checkForUpdates() {
   void openUpdateWindow({ manual: true });
 }
 
-// The way on from an ending, offered only while syncing is still stopped for
-// that reason: going live again after an error, or restarting the app once
-// too many shared documents broke in this run.
 function EndedAction({ kind, className }: Readonly<{ kind: "failed" | "engineSpent"; className: string }>) {
   const { t } = useTranslation(["collab"]);
   const ended = useCollabLiveStore((state) => state.ended);
@@ -509,8 +506,6 @@ function useSectionOpen(projectId: string | null) {
   return [sectionOpen, setSectionOpen] as const;
 }
 
-// The project's server is no longer in the list, so signing in can't help.
-// Leaving makes the project an ordinary one on this computer.
 function ServerRemovedActions({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["collab"]);
   const [busy, setBusy] = useState(false);
@@ -545,7 +540,6 @@ function ServerRemovedActions({ projectId }: Readonly<{ projectId: string }>) {
   );
 }
 
-// Why syncing stopped for good, and what the person can do about it.
 function EndedDetails({ state, server }: Readonly<{ state: SyncState; server: string }>) {
   const { t } = useTranslation(["collab", "shell"]);
   const button = "h-7 text-xs";
@@ -666,8 +660,6 @@ function SyncStatus() {
 
 const UNWRITTEN_REASONS = ["locked", "read_only", "no_space", "not_downloaded", "other"] as const;
 
-// Files the live project couldn't write to this computer, next to what is
-// still waiting to upload, each with the reason in words.
 function UnwrittenFiles() {
   const { t } = useTranslation(["collab"]);
   const unwritten = useCollabLiveStore((state) => state.unwritten);

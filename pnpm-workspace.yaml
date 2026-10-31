@@ -23,11 +23,20 @@ overrides:
   # Mermaid's math labels call katex.renderToString only, which 0.18 keeps;
   # one KaTeX instead of two takes 260 KB off the bundle.
   "mermaid>katex": "catalog:"
+  # GHSA-238p-pmpm-9mq7: the chat Markdown renderer's KaTeX also moves to the
+  # patched catalog release; remark-math only calls renderToString.
+  "micromark-extension-math>katex": "catalog:"
+  "@lobehub/ui>katex": "catalog:"
   nanoid@<3.3.18: "3.3.18"
   # GHSA-6g55-p6wh-862q: source map disclosure in postcss < 8.5.23.
   postcss@<8.5.23: "8.5.23"
-  # GHSA-g9mf-h72j-4rw9 and related advisories fixed in undici 7.29.0.
-  undici@<7.29.0: "7.29.0"
+  # GHSA-g9mf-h72j-4rw9 and the later TLS, cache and WebSocket advisories,
+  # all fixed in undici 7.30.1 (jsdom, tests only).
+  undici@<7.30.1: "7.30.1"
+  # Event-loop DoS through indexed source maps, fixed in 1.2.2 (build only).
+  source-map-js@<1.2.2: "1.2.2"
+  # Code and script injection advisories fixed in seroval 1.6.12 (devtools only).
+  seroval@<1.6.12: "1.6.12"
   # GHSA-c4c3-pg64-4m4v, GHSA-6x64-9x62-f2gx,
   # GHSA-3rrr-jr9j-h3q3, GHSA-2v8p-3f2j-5mp7, GHSA-rhh3-jpg6-66xh.
   mermaid@<11.16.1: "11.16.1"

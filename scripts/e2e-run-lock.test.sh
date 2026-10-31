@@ -77,7 +77,7 @@ case "$launcher" in
   *) exit 1 ;;
 esac
 case "$powershell_launcher" in
-  *'Preserve-RunArtifacts $label'*'$resultDir = Join-Path "e2e-artifacts" $safeLabel'*'Get-ChildItem -Path "test-results" -Recurse -File'*) ;;
+  *'Preserve-RunArtifacts $label'*'$resultDir = [System.IO.Path]::GetFullPath((Join-Path $artifactRoot $safeLabel))'*'Get-ChildItem -Path "test-results" -Recurse -File'*) ;;
   *) exit 1 ;;
 esac
 case "$launcher$powershell_launcher" in

@@ -1,4 +1,3 @@
-// store, Tauri, or app imports.
 export {
   createOleaflyTools,
   createFigureTools,

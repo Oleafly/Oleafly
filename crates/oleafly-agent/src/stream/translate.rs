@@ -31,7 +31,6 @@ impl From<&Wire> for WireKind {
     }
 }
 
-/// The tag the next stream's made-up call ids carry.
 static NEXT_STREAM_TAG: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 pub struct Translator {
@@ -43,8 +42,6 @@ pub struct Translator {
     usage: Usage,
     done: bool,
     synthetic: i64,
-    /// Tells this stream's made-up call ids from every other stream's, so a
-    /// run's history never holds one id twice.
     stream_tag: u64,
     error: Option<AgentError>,
     response_items: BTreeMap<i64, Value>,
@@ -52,7 +49,6 @@ pub struct Translator {
     container: Option<String>,
     input_transformations: Vec<Value>,
     refusal_category: Option<String>,
-    /// Watches a chat reply for tool calls written as text.
     text_calls: Option<TextCallWatch>,
 }
 
@@ -142,7 +138,6 @@ impl Translator {
         self.response_items.values().cloned().collect()
     }
 
-    /// The Anthropic reply's blocks in stream order (empty on other wires).
     pub(crate) fn take_blocks(&mut self) -> Vec<AssistantBlock> {
         self.anthropic.finish()
     }
@@ -167,14 +162,12 @@ impl Translator {
         !self.open.is_empty() || !self.finished.is_empty()
     }
 
-    /// Reply text held back in case it is a tool call.
     pub(crate) fn holds_text(&self) -> bool {
         self.text_calls
             .as_ref()
             .is_some_and(TextCallWatch::holds_text)
     }
 
-    /// Turns the held reply into the calls it wrote, or shows it as text.
     fn settle_text_calls(&mut self) -> Vec<AgentEvent> {
         let Some(mut watch) = self.text_calls.take() else {
             return Vec::new();
@@ -325,7 +318,6 @@ impl Translator {
             }
         }
         if let Some(calls) = delta.get("tool_calls").and_then(|c| c.as_array()) {
-            // The reply makes real calls, so its text is only text.
             if let Some(text) = self.text_calls.take().and_then(|mut watch| watch.release()) {
                 out.push(AgentEvent::TextDelta { text });
             }
@@ -460,7 +452,6 @@ impl Translator {
                 if value.pointer("/item/type").and_then(|kind| kind.as_str())
                     == Some("web_search_call")
                 {
-                    // The provider runs this search itself.
                     out.push(AgentEvent::ToolCallStart {
                         id: value
                             .pointer("/item/id")
@@ -802,8 +793,6 @@ impl Translator {
     }
 }
 
-/// The tool events a finished hosted web search becomes. It is never added
-/// to the client's tool calls.
 fn web_search_call_events(item: &Value) -> Vec<AgentEvent> {
     let id = item
         .get("id")
@@ -841,9 +830,6 @@ fn web_search_call_events(item: &Value) -> Vec<AgentEvent> {
     ]
 }
 
-/// A Responses stream failure as the error its code means: a rate limit or
-/// a server fault is retried, the rest are not. The code stays in the
-/// message, where overflow detection reads `context_length_exceeded`.
 fn responses_stream_error(code: Option<&str>, message: String) -> AgentError {
     let Some(code) = code else {
         return AgentError::provider(400, message);
@@ -862,10 +848,6 @@ fn responses_stream_error(code: Option<&str>, message: String) -> AgentError {
     AgentError::provider(status, message)
 }
 
-/// A chat stream chunk that carries a failure in place of a delta, as local
-/// servers send mid-stream: `{"error":{"message":"…","code":500}}` or
-/// `{"error":"…"}`. A numeric `code` in the 4xx or 5xx range is the status;
-/// anything else is a server fault.
 fn chat_stream_error(value: &Value) -> Option<AgentError> {
     let error = value.get("error")?;
     let text = |key: &str| {

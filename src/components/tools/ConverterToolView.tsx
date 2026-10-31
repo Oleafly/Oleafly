@@ -74,10 +74,7 @@ type ConverterStatus =
 
 interface ConverterFailure {
   message: string;
-  /** Where the fix lives: Settings, AI (Ollama), Settings, AI, Tools, or
-   * Settings, AI, Providers and keys. */
   settings: ToolsSettingsTarget | null;
-  /** A long scan waiting for the user's go-ahead, with its page sizes. */
   scan: { sizes: PageSize[] } | null;
 }
 
@@ -222,7 +219,6 @@ function converterInput(
   return scanConfirmed ? { ...input, scanConfirmed: true } : input;
 }
 
-/** Which pages of a chosen scanned PDF to convert. Empty means every page. */
 function PageRangeField({
   value,
   invalid,
@@ -257,7 +253,6 @@ function PageRangeField({
   );
 }
 
-/** How many pages the chosen PDF has, or null until it is known. */
 function usePdfPageCount(file: File | null, enabled: boolean): number | null {
   const [count, setCount] = useState<{ file: File; pages: number } | null>(null);
   useEffect(() => {
@@ -298,7 +293,6 @@ function failureMessage(error: unknown, fallback: string): string {
   return decodeAppError(error) ? describeError(error) : fallback;
 }
 
-/** Which settings fix a failed model conversion, if any. */
 function failureSettings(caught: unknown, message: string): ConverterFailure["settings"] {
   if (caught instanceof ToolsModelError) return caught.settings;
   if (decodeAppError(caught)?.code.startsWith("mathpix.")) return "ai-tools";
@@ -308,8 +302,6 @@ function failureSettings(caught: unknown, message: string): ConverterFailure["se
   return null;
 }
 
-/** A long scan waiting for confirmation: the page count, the estimate, the
- * model picker and where the pages go, then Transcribe or Cancel. */
 function ScanConfirmation({
   sizes,
   onRun,
@@ -349,7 +341,6 @@ function toolStatusState(busy: boolean, error: ConverterFailure | null): "ready"
   return error && !error.scan ? "error" : "ready";
 }
 
-/** Where the input goes: the model, arXiv, or nowhere because it stays on the device. */
 function InputDestination({
   usesModel,
   downloadsFromArxiv,
@@ -383,7 +374,6 @@ function settingsLabel(t: ReturnType<typeof useTranslation<["researchTools"]>>["
   }
 }
 
-/** A failed conversion: what went wrong and, when there is one, where to fix it. */
 function FailureNotice({ error }: Readonly<{ error: ConverterFailure }>) {
   const { t } = useTranslation(["researchTools"]);
   return (
@@ -412,7 +402,6 @@ function FailureNotice({ error }: Readonly<{ error: ConverterFailure }>) {
   );
 }
 
-/** A binary result has nothing to show as text, so the pane says it is ready to save. */
 function BinaryResultNotice({ fileName }: Readonly<{ fileName: string }>) {
   const { t } = useTranslation(["researchTools"]);
   return (
@@ -442,7 +431,6 @@ function ResultPlaceholder() {
   );
 }
 
-/** The output pane's content: a scan waiting for the go-ahead, the failure, the result, or the placeholder. */
 function OutputBody({
   error,
   output,
@@ -513,8 +501,6 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     () => () => languageForPath(outputSourceName) ?? [],
     [outputSourceName],
   );
-  // A scanned PDF is transcribed one page at a time, so its converters let
-  // the user pick the pages: a long scan goes through in parts.
   const choosesPages = definition.usesModel === "scans" && useFile;
   const pdfPageCount = usePdfPageCount(file, choosesPages);
   const parsedRange = parsePageRange(pageRange);

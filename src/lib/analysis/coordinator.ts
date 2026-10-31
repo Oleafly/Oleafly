@@ -46,12 +46,6 @@ export interface ProjectIndexSyncOptions {
   partialReason?: AnalysisReason;
 }
 
-/**
- * Publishes the existing in-memory ProjectIndex through the same identity
- * checks as transport-backed analysis. This seam is intentionally independent
- * of a language-server client so local indexing remains available when the
- * native transport or a server for the current engine is unavailable.
- */
 export class ProjectIndexShadowCoordinator {
   private requestGeneration = 0;
 
@@ -196,11 +190,6 @@ function workspaceDiagnosticsFromResult(
   return diagnostics;
 }
 
-/**
- * Coordinates transport-backed results with the serializable analysis store.
- * It deliberately has no dependency on Tauri, React components, or the
- * existing index store. Callers push ProjectIndex snapshots through syncIndex.
- */
 export class ProjectAnalysisCoordinator {
   private disposed = false;
   private requestGeneration = 0;
@@ -230,11 +219,6 @@ export class ProjectAnalysisCoordinator {
     if (this.disposed) return;
     this.disposed = true;
     this.pendingDiagnostics.clear();
-    // Requests in flight now reject without reaching resolveFeature or
-    // failFeature, so release their slots here. Detaching a runtime without a
-    // project or revision change (an engine unloading, a forced restart) would
-    // otherwise leave those features reporting "running" with nothing left to
-    // answer them.
     const actions = this.store.getState();
     for (const feature of PROJECT_ANALYSIS_FEATURES) {
       if (actions.snapshot.features[feature].status === "running") {

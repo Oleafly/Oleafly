@@ -455,7 +455,6 @@ describe("Document watching while a project is open", () => {
 });
 
 describe("Tour starts asked for before the guide mounts", () => {
-  // Every tour is done, so only a start that was asked for can begin one.
   beforeEach(() => {
     useTourStore.setState((state) => ({
       activeTourId: null,

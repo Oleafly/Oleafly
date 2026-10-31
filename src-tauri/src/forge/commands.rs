@@ -1,5 +1,3 @@
-//! Tauri commands for Git hosting accounts. Tokens and device codes stay in
-//! Rust: the webview sends a pasted token once and gets back only accounts.
 use super::{
     account_and_token, app_error, host_label, http_for_async, mirror_legacy_github_or_log,
     normalized_base, now_ms, sign_out_here, store, ACCOUNTS_CHANGED_EVENT,
@@ -27,11 +25,9 @@ pub struct ForgeServerInfo {
     base: String,
     kind: Option<ForgeKind>,
     flavor: Option<ServerFlavor>,
-    /// Whether "Sign in with the browser" is offered for this server.
     device_flow: bool,
 }
 
-/// A started browser sign-in. The device code stays in Rust under `flow_id`.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForgeDeviceStart {
@@ -58,9 +54,6 @@ struct PendingFlow {
     device_code: String,
     expires_at: Instant,
     polling: bool,
-    /// The server's grant, kept from the moment it comes until the account
-    /// is saved. The device code is spent by then, so a failure while
-    /// reading the user (a network blip) is retried from the grant.
     granted: Option<TokenGrant>,
 }
 
@@ -91,16 +84,12 @@ async fn blocking<T: Send + 'static>(
         .map_err(|error| error.to_string())?
 }
 
-/// A CA file is read only when the user picked it in Oleafly's dialog or the
-/// account for `base` already trusts it.
 async fn require_picked_ca_file(base: &str, ca_file: &Option<String>) -> Result<(), String> {
     let base = base.to_owned();
     let ca_file = ca_file.clone();
     blocking(move || ca_file_allowed(store, &base, ca_file.as_deref())).await
 }
 
-/// `require_picked_ca_file` against the account store `store` opens, which
-/// is opened only when the path wasn't picked.
 fn ca_file_allowed(
     store: impl FnOnce() -> Result<ForgeStore, String>,
     base: &str,
@@ -123,8 +112,6 @@ fn ca_file_allowed(
     crate::path_grants::require_open(path)
 }
 
-/// A CA file the user picked: an absolute path to a readable certificate
-/// file of at most 1 MB. `None` clears it.
 pub(crate) fn checked_ca_file(ca_file: Option<String>) -> Result<Option<String>, ForgeError> {
     let Some(path) = ca_file
         .map(|path| path.trim().to_string())
@@ -152,8 +139,6 @@ pub(crate) fn checked_ca_file(ca_file: Option<String>) -> Result<Option<String>,
     Ok(Some(path))
 }
 
-/// Every account, in the order they were added. A token saved without an
-/// account (by the command-line tool) gets its account in the background.
 #[tauri::command]
 pub async fn forge_accounts_list(app: AppHandle) -> Result<Vec<ForgeAccount>, String> {
     let (store, accounts, orphans) = blocking(|| {
@@ -167,7 +152,6 @@ pub async fn forge_accounts_list(app: AppHandle) -> Result<Vec<ForgeAccount>, St
     Ok(accounts)
 }
 
-/// Complete each orphaned token once per session, without delaying the list.
 fn adopt_in_background(app: AppHandle, store: ForgeStore, orphans: Vec<String>) {
     static TRIED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
     let mut tried = TRIED
@@ -198,8 +182,6 @@ fn adopt_in_background(app: AppHandle, store: ForgeStore, orphans: Vec<String>) 
     });
 }
 
-/// What kind of server an address is, and whether it offers a browser
-/// sign-in in this build.
 #[tauri::command]
 pub async fn forge_detect(
     base: String,
@@ -220,10 +202,6 @@ pub async fn forge_detect(
     })
 }
 
-/// Sign in with a pasted access token. The token is checked with the server
-/// and stored in Rust; the webview gets the account back. `ca_file` is the
-/// certificate authority file of the account after signing in: a path sets
-/// it, an empty string clears it, and none keeps the one the account has.
 #[tauri::command]
 pub async fn forge_sign_in_token(
     app: AppHandle,
@@ -241,7 +219,6 @@ pub async fn forge_sign_in_token(
     require_picked_ca_file(&base, &ca_file).await?;
     let ca_file = checked_ca_file(ca_file).map_err(fail)?;
     let store = blocking(store).await?;
-    // The sign-in itself trusts what the account will trust afterwards.
     let used_ca = match &ca_file {
         Some(_) => ca_file.clone(),
         None if clear_ca => None,
@@ -286,8 +263,6 @@ pub async fn forge_sign_in_token(
     Ok(account)
 }
 
-/// Ask a server with a device flow for a sign-in code. Keeps the device code
-/// and hands back an opaque flow id.
 pub(crate) async fn begin_device_flow(
     http: &ForgeHttp,
     kind: ForgeKind,
@@ -306,8 +281,6 @@ pub(crate) async fn begin_device_flow(
             kind,
             client_id,
             device_code: started.device_code,
-            // A little longer than the server's own expiry, so the server
-            // decides when the code expired.
             expires_at: now + Duration::from_secs(started.expires_in.saturating_add(30)),
             polling: false,
             granted: None,
@@ -336,7 +309,6 @@ pub async fn forge_device_start(base: String) -> Result<ForgeDeviceStart, String
         .map_err(fail)
 }
 
-/// What one poll of a device flow found. `Done` carries the saved account.
 pub(crate) async fn poll_device_flow(
     store: &ForgeStore,
     http: &ForgeHttp,
@@ -350,7 +322,6 @@ pub(crate) async fn poll_device_flow(
         let Some(flow) = flows.get_mut(flow_id) else {
             return Err(ForgeError::SignInExpired);
         };
-        // A double click or an overlapping timer: one poll at a time.
         if flow.polling {
             return Ok((ForgeDevicePoll::Pending, None));
         }
@@ -372,7 +343,6 @@ pub(crate) async fn poll_device_flow(
         }
     };
     let polled = match granted {
-        // The server already granted this sign-in; only saving is left.
         Some(grant) => Ok(DevicePoll::Granted(grant)),
         None => oauth::device_poll(http, kind, &base, client_id, &device_code).await,
     };
@@ -396,7 +366,6 @@ pub(crate) async fn poll_device_flow(
                     Ok((ForgeDevicePoll::Done { account }, Some(token)))
                 }
                 Err(error) => {
-                    // The grant stays: the next poll saves from it.
                     finish(false);
                     Err(error)
                 }
@@ -450,8 +419,6 @@ pub async fn forge_device_cancel(flow_id: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Forget an account and its token on this device. Tokens stay valid on the
-/// server until the user revokes them there.
 #[tauri::command]
 pub async fn forge_sign_out(app: AppHandle, base: String) -> Result<(), String> {
     let base = normalized_base(&base)?;
@@ -460,7 +427,6 @@ pub async fn forge_sign_out(app: AppHandle, base: String) -> Result<(), String> 
     Ok(())
 }
 
-/// Set or clear an account's certificate authority file.
 #[tauri::command]
 pub async fn forge_set_ca_file(
     app: AppHandle,
@@ -473,7 +439,6 @@ pub async fn forge_set_ca_file(
     let ca_file = checked_ca_file(ca_file).map_err(|error| app_error(&error, &host))?;
     let account = blocking(move || {
         let store = store()?;
-        // Only the CA file changes, in the account as it is now.
         store
             .set_ca_file(&base, ca_file)
             .map_err(|error| app_error(&error, &host))?
@@ -488,8 +453,6 @@ pub async fn forge_set_ca_file(
     Ok(account)
 }
 
-/// Check that an account still works: `ok`, `signed_out` (revoked or
-/// expired) or `unreachable`. A changed name or picture is saved.
 #[tauri::command]
 pub async fn forge_validate(app: AppHandle, base: String) -> Result<AccountCheck, String> {
     let base = normalized_base(&base)?;
@@ -507,7 +470,6 @@ pub async fn forge_validate(app: AppHandle, base: String) -> Result<AccountCheck
     .await?;
     let http = match http_for_async(ca_file).await {
         Ok(http) => http,
-        // A CA file that went missing reads as an unreachable server.
         Err(ForgeError::CaFile { .. }) => http_for_async(None).await.map_err(fail)?,
         Err(error) => return Err(fail(error)),
     };
@@ -550,7 +512,6 @@ pub async fn forge_list_repos(
         .map_err(|error| app_error(&error, &host))
 }
 
-/// Create an empty repository on the account.
 #[tauri::command]
 pub async fn forge_create_repo(
     base: String,

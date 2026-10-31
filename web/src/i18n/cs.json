@@ -48,6 +48,11 @@
     "stoppedTitle": "Odpojeno",
     "stoppedDescription": "Obnovte stránku a připojte se znovu."
   },
+  "leave": {
+    "title": "Opustit tento projekt?",
+    "description": "Některé vaše úpravy se na server ještě nedostaly. Počkejte, až se odešlou. Pokud projekt opustíte hned, přijdete o ně.",
+    "confirm": "Opustit"
+  },
   "access": {
     "changed": "Vaše nová role v tomto projektu: {{role}}."
   },
@@ -158,6 +163,11 @@
     "withdraw": "Vzít zpět",
     "acceptAll": "Přijmout vše",
     "rejectAll": "Odmítnout vše",
+    "rejectAllConfirm": {
+      "title": "Odmítnout všechny návrhy v souboru {{file}}?",
+      "description": "Do souboru se pro všechny v tomto projektu vrátí původní text. Čekající návrhy: {{number}}.",
+      "confirm": "Odmítnout vše"
+    },
     "pending_one": "{{count}} návrh",
     "pending_few": "{{count}} návrhy",
     "pending_many": "{{count}} návrhu",

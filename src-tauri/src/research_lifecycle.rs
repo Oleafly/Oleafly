@@ -29,7 +29,6 @@ pub fn lifecycle_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 if let Some(tasks) = app.try_state::<crate::research_tasks::ResearchTaskState>() {
                     tasks.disown_on_exit();
                 }
-                // 0.4.8 L: the background helper notifies for its tasks again.
                 if let Ok(root) = crate::paths::oleafly_root() {
                     oleafly_cli::daemon::control::mark_app_closed(
                         &oleafly_cli::daemon::helper_paths(&root).app_open,
@@ -46,8 +45,6 @@ pub(crate) async fn shutdown<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 }
 
 pub(crate) async fn prepare_update<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-    // 0.4.8 L: the background helper hands its tasks back and exits first,
-    // so it never runs an older binary beside the updated app.
     crate::daemon_handoff::stop_for_update(app).await;
     if let Some(agent) = app.try_state::<crate::agent::AgentState>() {
         crate::agent::pause_for_update(agent.inner());
@@ -57,10 +54,6 @@ pub(crate) async fn prepare_update<R: tauri::Runtime>(app: &tauri::AppHandle<R>)
 
 async fn shutdown_work<R: tauri::Runtime>(app: &tauri::AppHandle<R>, updating: bool) {
     if let Some(tasks) = app.try_state::<crate::research_tasks::ResearchTaskState>() {
-        // 0.4.8 L: tasks marked to keep running move to the background
-        // helper on a quit, or wait for the next launch. The restart after
-        // an install runs this again while the install is pending: that
-        // counts as an update and starts no helper.
         let mode = crate::daemon_handoff::exit_mode(
             updating,
             app.try_state::<crate::updater::UpdateState>()

@@ -1,4 +1,3 @@
-//! Real processes: this test binary starts itself as a fake agent.
 use std::io::{BufRead, Write};
 use std::sync::Arc;
 use std::time::Duration;
@@ -17,9 +16,6 @@ fn main() {
     }
 }
 
-/// Starts a sleeping child, records its pid, then answers `initialize`.
-/// The child is left running on purpose: the test checks that closing the
-/// agent ends it.
 #[allow(clippy::zombie_processes)]
 fn fake_tree_agent() {
     let mut sleeper = if cfg!(windows) {

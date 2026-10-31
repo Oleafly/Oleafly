@@ -23,7 +23,6 @@ vi.mock("@/store/forge-accounts", () => ({
   ),
 }));
 
-// Repository imports and clones run the real helpers down to these commands.
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   forgeListRepos: tauriMocks.forgeListRepos,
@@ -201,7 +200,6 @@ describe("ProjectImportDialog", () => {
     expect(await screen.findByText("oleafly/paper")).toBeInTheDocument();
     expect(screen.getByLabelText("Private repository")).toBeInTheDocument();
     expect(tauriMocks.forgeListRepos).toHaveBeenCalledWith("https://github.com", 1, null);
-    // One account: nothing to choose between.
     expect(screen.queryByTestId("project-import-account")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("project-import-repository-oleafly/paper"));
@@ -339,7 +337,6 @@ describe("ProjectImportDialog source cards", () => {
       expect(image).toHaveAttribute("aria-hidden", "true");
     }
     expect(new Set(ALL_CARDS.map(([, picture]) => picture)).size).toBe(ALL_CARDS.length);
-    // Decorative pictures add nothing to the accessibility tree.
     expect(screen.queryAllByRole("img")).toHaveLength(0);
   });
 
@@ -495,7 +492,6 @@ describe("ProjectImportDialog Git step", () => {
     expect(await screen.findByText(copy.loadingRepositories)).toBeInTheDocument();
     expect(forgeState.ensureLoaded).toHaveBeenCalled();
     expect(tauriMocks.forgeListRepos).not.toHaveBeenCalled();
-    // Cloning by address never waits for the accounts.
     expect(screen.getByTestId("project-import-clone-url")).toBeEnabled();
   });
 
@@ -553,7 +549,6 @@ describe("ProjectImportDialog Git step", () => {
     expect(emit).toHaveBeenCalledWith("import-cancel");
     expect(onClose).not.toHaveBeenCalled();
 
-    // The backend answers with the cancelled error once Git is stopped.
     fail('@oleafly/error:{"code":"git.import_cancelled","params":{}}');
     await waitFor(() => expect(screen.queryByTestId("project-import-cancel")).not.toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

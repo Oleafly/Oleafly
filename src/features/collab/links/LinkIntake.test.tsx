@@ -80,7 +80,6 @@ const openProject = vi.fn(async (_id: string) => undefined);
 const openFile = vi.fn(async (_path: string) => undefined);
 const onTaken = vi.fn();
 
-// The shared project is already on this computer as library project `id`.
 function inLibrary(id: string) {
   useFilesStore.setState({
     projects: [libraryProject({ id, name: "Reef survey", shared: { server_name: "Smith Lab", role: "editor" } })],

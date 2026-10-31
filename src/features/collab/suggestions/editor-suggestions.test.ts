@@ -150,6 +150,22 @@ describe("suggestions in the editor", () => {
     expect(suggestionSpansIn(view.state)).toEqual([{ ...quick, from: 11, to: 18 }]);
   });
 
+  it("leaves text typed right after an insertion or at a deletion outside them, as the shared document does", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick, lazy] };
+    const view = editor(source);
+    await tick();
+    view.dispatch({ changes: [{ from: 10, insert: "very " }] });
+    view.dispatch({ changes: [{ from: 21, insert: "old " }] });
+    expect(suggestionSpansIn(view.state).map(({ id, from, to }) => ({ id, from, to }))).toEqual([
+      { id: "s-quick", from: 4, to: 10 },
+      { id: "s-lazy", from: 25, to: 25 },
+    ]);
+    source.set({ spans: [quick, { ...lazy, from: 25, to: 25 }] });
+    await tick();
+    expect(view.contentDOM.querySelector(".cm-suggestion-insert")?.textContent).toBe("quick ");
+  });
+
   it("gives the active suggestion a stronger tint", async () => {
     const source = new Source();
     source.state = { ...source.state, spans: [quick, lazy], active: "s-lazy" };

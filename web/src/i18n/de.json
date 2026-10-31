@@ -48,6 +48,11 @@
     "stoppedTitle": "Getrennt",
     "stoppedDescription": "Laden Sie die Seite neu, um sich wieder zu verbinden."
   },
+  "leave": {
+    "title": "Dieses Projekt verlassen?",
+    "description": "Einige Ihrer Bearbeitungen haben den Server noch nicht erreicht. Bleiben Sie, bis sie gesendet wurden, oder verlassen Sie das Projekt und verlieren Sie sie.",
+    "confirm": "Verlassen"
+  },
   "access": {
     "changed": "Ihre Rolle in diesem Projekt ist jetzt {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Zurückziehen",
     "acceptAll": "Alle übernehmen",
     "rejectAll": "Alle verwerfen",
+    "rejectAllConfirm": {
+      "title": "Alle Vorschläge in {{file}} verwerfen?",
+      "description": "Der ursprüngliche Text kommt für alle in diesem Projekt zurück in die Datei. Wartende Vorschläge: {{number}}.",
+      "confirm": "Alle verwerfen"
+    },
     "pending_one": "{{count}} Vorschlag",
     "pending_other": "{{count}} Vorschläge",
     "card": "Vorschlag von {{name}}",

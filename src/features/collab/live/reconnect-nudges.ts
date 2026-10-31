@@ -1,9 +1,6 @@
 import { logError } from "@/lib/log";
 import { collabLiveReconnectNow } from "@/lib/tauri-collab";
 
-// After a long outage the live session waits up to a minute between tries.
-// When the network comes back, or the laptop wakes and the window shows
-// again after a while, it is told to try at once instead.
 export const HIDDEN_LONG_MS = 30_000;
 export const NUDGE_GAP_MS = 5_000;
 

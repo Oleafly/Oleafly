@@ -8,10 +8,6 @@ const ABSTRACT_MAX = 300;
 const FULL_DOC_CONTEXT_MAX = 4000;
 const LLM_TEMPERATURE = 0.2;
 
-/**
- * System prompt for citation-candidate debate scoring.
- * Structure matches OpenLeaf (NEEDS + numbered FOR/AGAINST/SCORE); voice is Oleafly.
- */
 const SYSTEM_PROMPT = `You are Oleafly's research assistant. Score academic papers as citation candidates for one paragraph in a manuscript.
 
 Score guide:
@@ -43,7 +39,6 @@ SCORE: ...
 
 Evaluate every paper in order using its number. Do not skip any paper.`;
 
-// Matches numbered entries (1., 2., …) with FOR/AGAINST on single lines and a bare SCORE
 const SCORE_REGEX =
   /^(\d+)\.[^\n]*\nFOR:\s*([^\n]+)\nAGAINST:\s*([^\n]+)\nSCORE:\s*(\d+)/gm;
 
@@ -52,11 +47,6 @@ function clampScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-/**
- * Blend search rank position (70%) with log-normalized citation count (30%).
- * Formula: round(0.7 * (1 - i/(n||1)) * 100 + 0.3 * citNorm * 100)
- * where citNorm = log10(c+1)/log10(maxC+1).
- */
 export function heuristicScore(
   record: LiteratureRecord,
   rankIndex: number,
@@ -72,9 +62,6 @@ export function heuristicScore(
   return clampScore(0.7 * pos * 100 + 0.3 * citNorm * 100);
 }
 
-/**
- * Parse an LLM debate response into 0-based paper indices with score + reasoning.
- */
 export function parseDebateResponse(
   text: string,
 ): Map<number, { score: number; for: string; against: string }> {
@@ -85,7 +72,7 @@ export function parseDebateResponse(
   const regex = new RegExp(SCORE_REGEX.source, SCORE_REGEX.flags);
   let match = regex.exec(text);
   while (match !== null) {
-    const localIdx = Number.parseInt(match[1], 10) - 1; // 1-based → 0-based
+    const localIdx = Number.parseInt(match[1], 10) - 1;
     const forArg = match[2].trim();
     const againstArg = match[3].trim();
     const score = Number.parseInt(match[4], 10);
@@ -152,11 +139,6 @@ async function rankBatch(args: {
   return globalMap;
 }
 
-/**
- * Rank literature candidates for a paragraph via LLM debate scoring,
- * falling back to heuristic scores (no throw) when the model fails or
- * omits a paper.
- */
 export async function rankLiteraturePapers(args: {
   paragraphText: string;
   papers: LiteratureRecord[];
@@ -203,14 +185,12 @@ export async function rankLiteraturePapers(args: {
         scoreMap.set(k, v);
       }
     } catch (err) {
-      // Abort must propagate so callers can cancel ranking mid-scan.
       if (
         (err instanceof DOMException && err.name === "AbortError") ||
         (err instanceof Error && err.name === "AbortError")
       ) {
         throw err;
       }
-      // Non-abort batch failure: leave entries missing → heuristic below.
     }
   }
 

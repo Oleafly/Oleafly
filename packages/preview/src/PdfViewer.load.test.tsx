@@ -28,6 +28,7 @@ const harness = vi.hoisted(() => ({
   textLayerError: null as unknown,
   beforeLoad: null as ((call: number) => void | Promise<void>) | null,
   getDocumentCalls: [] as Array<{ password?: string }>,
+  documentParams: [] as Array<Record<string, unknown>>,
   textContentCalls: [] as number[],
   progressDelivered: 0,
   loadingTaskDestroyed: 0,
@@ -44,6 +45,7 @@ const harness = vi.hoisted(() => ({
     this.textLayerError = null;
     this.beforeLoad = null;
     this.getDocumentCalls = [];
+    this.documentParams = [];
     this.textContentCalls = [];
     this.progressDelivered = 0;
     this.loadingTaskDestroyed = 0;
@@ -149,6 +151,7 @@ vi.mock("pdfjs-dist", () => {
     },
     getDocument: (params: { password?: string }) => {
       harness.getDocumentCalls.push({ password: params.password });
+      harness.documentParams.push(params);
       const call = harness.getDocumentCalls.length;
       const task = {
         onPassword: null as null | ((update: (value: string) => void, reason: number) => void),
@@ -208,6 +211,7 @@ vi.mock("pdfjs-dist", () => {
 });
 
 import { PdfViewer } from "./PdfViewer";
+import { sharedPdfDocumentOptions } from "./pdfDocumentOptions";
 
 const t = testCatalogTranslator<PreviewMessageKey>("preview");
 
@@ -380,6 +384,8 @@ describe("PdfViewer loading", () => {
     );
     await waitFor(() => expect(renderer().dataset.pdfState).toBe("ready"));
     expect(harness.getDocumentCalls.at(-1)).toEqual({ password: "s3cret" });
+    expect(harness.documentParams).toHaveLength(harness.getDocumentCalls.length);
+    for (const params of harness.documentParams) expect(params).toMatchObject(sharedPdfDocumentOptions());
     expect(harness.installMainThread).not.toHaveBeenCalled();
   });
 

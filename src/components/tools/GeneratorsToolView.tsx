@@ -163,7 +163,6 @@ export function GeneratorsToolView() {
         return;
       }
       handoffToAssistant(reviewedPrompt, { autoSend: true });
-      // Reveal the project assistant after the explicit header action.
       goTo("library");
     } catch (e) {
       void logError("generators launch", e);

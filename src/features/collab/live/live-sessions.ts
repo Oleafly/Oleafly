@@ -6,19 +6,14 @@ export interface LiveSessionsOptions {
   readOnly: () => boolean;
   initialText(path: string): string | null;
   mirror(path: string, text: string): void;
-  // `shared` is the text Rust last confirmed, the base to merge `text` from.
   detached(path: string, text: string, edited: boolean, shared: string): void;
   discarded?(path: string, reason: DiscardReason): void;
-  // Whether a tab still shows the file. A file whose tab closed and opened
-  // again before its typing was confirmed keeps its session.
   shown?(path: string): boolean;
   settleTimeoutMs?: number;
 }
 
 const SETTLE_TIMEOUT_MS = 3_000;
 
-// The confirmed text, or the session's own text when a broken state can't
-// rebuild it, which only loses the typing a merge would have kept.
 function sharedText(session: RemoteDocumentSession): string {
   try {
     return session.confirmed();
@@ -114,10 +109,6 @@ export class LiveSessions {
     }
   }
 
-  // The tab for `path` closed. Once the shared document has every change,
-  // the session closes, so a file nobody shows no longer costs a copy of
-  // its text and a round of work for every remote edit. Opening the file
-  // again starts a fresh session from the shared text.
   release(path: string): void {
     const session = this.sessions.get(path);
     if (!session) return;
@@ -128,10 +119,6 @@ export class LiveSessions {
     });
   }
 
-  // The project is about to close. The shared document gets a moment to
-  // take the typing in flight, and what it still lacks then goes back as
-  // unsaved text while the files store has this project, so the save before
-  // the switch keeps it. Afterwards the store has moved on and can't take it.
   async handBack(waitMs: number): Promise<void> {
     const open = [...this.sessions];
     if (open.length === 0) return;
@@ -148,8 +135,6 @@ export class LiveSessions {
     }
   }
 
-  // Live editing stopped. Typing Rust never confirmed goes back as unsaved,
-  // so it still reaches the disk; the store only holds it as saved text.
   close(): void {
     this.closed = true;
     for (const [path, session] of this.sessions) {
@@ -164,8 +149,6 @@ export class LiveSessions {
 
   private detach(path: string, session: RemoteDocumentSession): void {
     if (this.sessions.get(path) !== session) return;
-    // Typing Rust never confirmed has to be saved locally now. A reopen keeps
-    // it as pending, so "synchronized" alone can't tell.
     const edited = session.unconfirmed;
     const shared = sharedText(session);
     this.sessions.delete(path);

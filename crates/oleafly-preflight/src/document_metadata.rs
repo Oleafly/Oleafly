@@ -1,5 +1,3 @@
-//! `\DocumentMetadata` parsing (`packages/preflight/src/document-metadata.ts`).
-
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -7,8 +5,6 @@ use crate::jsre::JsRegex;
 use crate::mask::mask_comments;
 use crate::text::{js_trim, utf16_len};
 
-/// `start` and `end` are UTF-16 offsets of the whole command; `body` is the
-/// text between its braces.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DocumentMetadataMatch {
     pub body: String,
@@ -42,7 +38,6 @@ pub fn find_document_metadata(source: &str) -> Option<DocumentMetadataMatch> {
     None
 }
 
-/// Splits on commas outside braces.
 pub fn split_top_level(body: &str) -> Vec<String> {
     let mut parts = Vec::new();
     let mut depth = 0usize;
@@ -100,7 +95,6 @@ pub fn unwrap_braces(value: &str) -> &str {
 
 static UA_STANDARD: LazyLock<JsRegex> = LazyLock::new(|| JsRegex::std(r"(?i)(?-u:\b)ua-[0-9]"));
 
-/// Whether the document asks LaTeX for a tagged PDF.
 pub fn requests_tagged_pdf(source: &str) -> bool {
     if !source.contains("\\DocumentMetadata") {
         return false;

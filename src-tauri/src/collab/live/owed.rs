@@ -9,18 +9,12 @@ use super::session::{guard, lock, Active, Alarm};
 use super::unwritten::backoff;
 use crate::collab::disk::{exists_exact, inside, move_path, rekey_moved, DiskState};
 
-// When each owed move may be tried again, with the same growing wait as a
-// file that can't be written.
 #[derive(Default)]
 pub(super) struct OwedTries {
     tries: BTreeMap<String, (u32, Instant)>,
     alarm: Alarm,
 }
 
-// Tries the owed moves that are due. A move that works carries the files'
-// hashes and bases along and is returned. A source that is gone hands its
-// paths to its node, so the next scan reads it as deleted. Returns the
-// moves made and when the next one is due.
 pub(super) fn retry_owed(
     root: &Path,
     disk: &mut DiskState,
@@ -72,10 +66,6 @@ pub(super) fn owe(active: &Active, from: &str, id: &str, due_in: std::time::Dura
 }
 
 impl Active {
-    // Tries the owed moves that are due and returns the nodes that moved.
-    // Scans skip a path while its move is owed, so the caller reads those
-    // nodes again once the disk matches the document: an edit made to them
-    // in the meantime then reaches it.
     pub(super) fn settle_owed_moves(&self) -> Vec<String> {
         let now = Instant::now();
         let (moved, ids, next, alarm) = {
@@ -104,7 +94,6 @@ impl Active {
         ids
     }
 
-    // Where the given nodes are on disk now.
     pub(super) fn written_at(&self, ids: &[String]) -> Vec<String> {
         let disk = guard(&self.disk);
         ids.iter()
@@ -112,9 +101,6 @@ impl Active {
             .collect()
     }
 
-    // Texts whose node sits where an owed move goes wait until the move is
-    // done, so the writer never starts the folder under its new name while
-    // its files are still under the old one.
     pub(super) fn hold_back_owed(
         &self,
         next: &Layout,

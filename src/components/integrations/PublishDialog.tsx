@@ -44,19 +44,14 @@ type PublishActionToken = {
 type PublishTarget = "new" | "existing" | "url";
 type LinkTarget = Exclude<PublishTarget, "new">;
 
-/** Files in the project's Git history that look like secrets, waiting for the
- * user to cancel or publish them anyway. */
 type SecretsPrompt = {
   target: PublishTarget;
   replace: boolean;
-  /** The address to link, for an existing repository or a typed address. */
   remoteUrl: string | null;
-  /** The server that would receive the history. */
   host: string;
   files: string[];
 };
 
-/** Whether the history holds a secret-looking file the user has not approved. */
 function needsApproval(preflight: GitPublishPreflight, approved: string[]): boolean {
   return preflight.trackedSecretFiles.some((file) => !approved.includes(file));
 }
@@ -77,8 +72,6 @@ function AccountIcon({ account }: Readonly<{ account: ForgeAccount | null }>) {
   );
 }
 
-/** Publish a project: create a repository on a Git hosting account, link one
- * of the account's repositories, or link any address. Then push. */
 export function PublishDialog({
   open,
   onClose,
@@ -114,8 +107,6 @@ export function PublishDialog({
   const [replaceTarget, setReplaceTarget] = useState<PublishTarget | null>(null);
   const [secretsPrompt, setSecretsPrompt] = useState<SecretsPrompt | null>(null);
   const [leftOut, setLeftOut] = useState<string[]>([]);
-  // The repository this session created, so a publish that failed after
-  // creating it (the push, say) is retried against it, not created again.
   const createdRepo = useRef<{ base: string; name: string; repo: ForgeRepo } | null>(null);
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
@@ -197,19 +188,13 @@ export function PublishDialog({
   const noAccounts = (accountsStatus === "ready" || accountsStatus === "error") && accounts.length === 0;
   const shownTab: PublishTarget = noAccounts && !tabChosen ? "url" : tab;
 
-  /** Whether the dialog still belongs to the project an action started in,
-   * open or not. */
   const isSameProject = (token: PublishActionToken) => renderedIdentity.current.projectId === token.projectId;
 
-  // An action that ends after the dialog was closed (or reopened) still says
-  // how it went, in a toast; one that ends in another project says nothing.
   const note = (token: PublishActionToken, ok: boolean, text: string) => {
     if (isCurrentAction(token)) setMsg({ ok, text });
     else if (isSameProject(token)) (ok ? toast.success : toast.error)(text);
   };
 
-  /** Tell Source Control the project now has a remote, whatever became of the
-   * push, as long as the project is still the dialog's. */
   const reportLinked = (token: PublishActionToken, remoteUrl: string | null) => {
     if (remoteUrl && isSameProject(token)) onPublished(remoteUrl);
   };
@@ -232,7 +217,6 @@ export function PublishDialog({
       }),
     );
 
-  /** Run the history check; true when publishing has to stop here and ask. */
   const stopsForSecrets = async (
     token: PublishActionToken,
     prompt: Omit<SecretsPrompt, "files">,
@@ -246,8 +230,6 @@ export function PublishDialog({
     return true;
   };
 
-  /** Commit, link the remote, and report a project with nothing to push.
-   * Returns the files left out, or null when there is nothing to push. */
   const commitAndLink = async (
     token: PublishActionToken,
     remoteUrl: string,
@@ -266,7 +248,6 @@ export function PublishDialog({
     return null;
   };
 
-  /** Report a finished publish. The dialog stays open while it names files it left out. */
   const finishPublish = (token: PublishActionToken, text: string, skipped: string[]) => {
     note(token, true, text);
     if (isCurrentAction(token) && skipped.length === 0) scheduleClose(token);
@@ -277,8 +258,6 @@ export function PublishDialog({
     const name = slug(repoName.trim() || projectName || "oleafly-project");
     const created = createdRepo.current;
     const resumed = created?.base === account.base && created.name === name ? created.repo : null;
-    // A repository made by an earlier try of this dialog is already the
-    // project's remote, so linking it again needs no confirmation.
     if (currentRemote && !replace && currentRemote !== resumed?.cloneUrl) {
       setMsg(null);
       setReplaceTarget("new");
@@ -298,8 +277,6 @@ export function PublishDialog({
       if (await stopsForSecrets(action, prompt, approved)) return;
       const repo = resumed ?? (await forgeCreateRepo(target.base, name, isPrivate));
       createdRepo.current = { base: target.base, name, repo };
-      // The remote stays clean: Git signs in through the account's
-      // credential helper, never a token in .git/config.
       const skipped = await commitAndLink(action, repo.cloneUrl, replace, approved, (url) => {
         linked = url;
       });
@@ -344,8 +321,6 @@ export function PublishDialog({
         linked = url;
       });
       if (!skipped) return;
-      // An existing remote may already contain commits. Let the push report
-      // when its history must be pulled and reconciled first.
       try {
         await gitPush(action.projectId);
       } catch (error) {
@@ -398,7 +373,6 @@ export function PublishDialog({
     </div>
   );
 
-  // Bottom left, beside the tab's action button.
   const renderAccountPicker = (target: ForgeAccount) =>
     accounts.length > 1 ? (
       <ForgeAccountSelect

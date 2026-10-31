@@ -42,8 +42,6 @@ export function createCompileErrorLinter() {
     }
     return diags;
   }, {
-      // Diagnostics render through the shared hover card, so the stock lint
-      // tooltip must not also appear.
       tooltipFilter: () => [],
   });
 }

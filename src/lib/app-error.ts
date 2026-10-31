@@ -50,9 +50,6 @@ export function decodeAppError(value: unknown): AppError | null {
 
 const areaParams = new Map<string, () => Record<string, string>>();
 
-/** Supplies params for every code of an area (`cloud.*` names the provider in
- * its messages). The backend's own params win over these. Returns a function
- * that stops supplying them. */
 export function provideErrorParams(area: string, params: () => Record<string, string>): () => void {
   areaParams.set(area, params);
   return () => {
@@ -66,7 +63,6 @@ function paramsOf(app: AppError): Record<string, string> {
   return supplied ? { ...supplied(), ...app.params } : app.params;
 }
 
-/** A backend or runtime error as a sentence to show, with home paths as `~`. */
 export function describeError(value: unknown): string {
   return displayText(errorSentence(value));
 }

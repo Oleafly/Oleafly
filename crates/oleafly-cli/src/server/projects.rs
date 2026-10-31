@@ -1,4 +1,3 @@
-//! `server status`, `projects`, `share` and `members`.
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -15,7 +14,6 @@ use super::{role_name, MembersAction, ProjectArgs, ShareArgs, StatusArgs};
 use crate::auth::shared::{one_line, Env, Report};
 use crate::contract::{CliError, ErrorKind};
 
-/// The address people open to join a shared project.
 pub(crate) fn share_link(server_url: &str, shared: SharedProjectId) -> String {
     format!("{}/p/{shared}", server_url.trim_end_matches('/'))
 }
@@ -28,8 +26,6 @@ fn not_owner() -> CliError {
     )
 }
 
-/// `server status`: servers and sign-ins, `--check` results, and this
-/// folder's sharing.
 pub(crate) async fn status(
     collab: &CliCollab,
     env: &Env,
@@ -108,7 +104,6 @@ pub(crate) async fn status(
     Ok(Report::new(data).lines(lines))
 }
 
-/// Shared ID → the app project that keeps it.
 fn local_projects(collab: &CliCollab) -> BTreeMap<SharedProjectId, String> {
     let Ok(entries) = std::fs::read_dir(collab.app_paths.root()) else {
         return BTreeMap::new();
@@ -141,8 +136,6 @@ fn project_row(server: &str, project: &ProjectSummary, local: Option<&String>) -
     row
 }
 
-/// `server projects`: shared projects on every server this command line
-/// is signed in to (or one, with `--server`).
 pub(crate) async fn projects(collab: &CliCollab, server: Option<&str>) -> Result<Report, CliError> {
     let entries = match server {
         Some(which) => vec![collab.find_server(which)?],
@@ -176,15 +169,12 @@ pub(crate) async fn projects(collab: &CliCollab, server: Option<&str>) -> Result
     listing_report(listings, &local)
 }
 
-/// One server's answer to the list of shared projects.
 struct ServerListing {
     name: String,
     url: String,
     result: Result<Vec<ProjectSummary>, CliError>,
 }
 
-/// The projects of every server that answered. A server that didn't is a
-/// warning, so the others still show; when none answered, it is an error.
 fn listing_report(
     listings: Vec<ServerListing>,
     local: &BTreeMap<SharedProjectId, String>,
@@ -203,8 +193,6 @@ fn listing_report(
         };
         for project in &listed {
             let here = local.get(&project.project_id);
-            // Titles and names come from other people's accounts: each stays
-            // on its line.
             let mut line = format!(
                 "{}  {} — {} on {}",
                 project.project_id,
@@ -256,8 +244,6 @@ async fn summary_of(
         .await
 }
 
-/// `server share`: shows the link and switches; with flags, changes them
-/// (owner only).
 pub(crate) async fn share(
     collab: &CliCollab,
     target: &SharedTarget,
@@ -364,7 +350,6 @@ fn matches_person(person: &PersonSummary, who: &str) -> bool {
         || person.account_id.to_string() == who
 }
 
-/// The one person on the server `who` names.
 pub(crate) fn one_person(
     people: &[PersonSummary],
     who: &str,
@@ -397,7 +382,6 @@ pub(crate) fn one_person(
     }
 }
 
-/// A member of the project by email, login, ID or (unique) name.
 fn one_member<'a>(
     members: &'a [ProjectMember],
     who: &str,
@@ -432,7 +416,6 @@ fn one_member<'a>(
     }
 }
 
-/// `server members` and its `add`, `remove` and `role`.
 pub(crate) async fn members(
     collab: &CliCollab,
     target: &SharedTarget,
@@ -648,7 +631,6 @@ mod tests {
         assert_eq!(report.warnings.len(), 1);
         assert_eq!(report.warnings[0].code, "server.projects_unavailable");
         assert!(report.warnings[0].message.contains("lab"));
-        // When every server answers, nothing is marked as failed.
         let clean = listing_report(vec![up("dept", &["Thesis"])], &BTreeMap::new()).unwrap();
         assert!(clean.data.get("failed").is_none());
         assert!(clean.warnings.is_empty());

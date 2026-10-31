@@ -1,11 +1,8 @@
-//! Model-facing prompt text for research tasks. English and not localized:
-//! the model reads it, not the user.
 use crate::model::{
     CommandPolicy, MetricGoal, ResearchBrief, ResumeContext, ResumeReason, RunState, TaskRunContext,
 };
 use crate::runs::RunSummary;
 
-/// The system prompt for a task run, with the selected skills appended.
 pub fn task_prompt(context: &TaskRunContext, skills: &str) -> String {
     let mut prompt = format!(
         "Complete this research task in the isolated workspace. Work only on the requested deliverable. Use relative file paths. Allowed paths: {}. Linked research roots are read-only. Summarize the result and remaining limitations when finished. Changes will be reviewed before applying them to the project.{}",
@@ -51,7 +48,6 @@ fn none_or<'a>(value: &'a str, fallback: &'a str) -> &'a str {
     }
 }
 
-/// What the task is for and how far it may go.
 pub fn brief_block(brief: &ResearchBrief, record_dir: &str) -> String {
     let mut lines = vec![
         "<research-brief>".to_owned(),
@@ -118,7 +114,6 @@ pub fn brief_block(brief: &ResearchBrief, record_dir: &str) -> String {
     lines.join("\n")
 }
 
-/// The first message of a resumed generation.
 pub fn resume_message(resume: &ResumeContext, record_dir: &str) -> String {
     let reason = match resume.reason {
         ResumeReason::Retry => "the previous attempt stopped",
@@ -145,7 +140,6 @@ fn state_text(state: RunState) -> &'static str {
     }
 }
 
-/// The message that wakes the agent when runs finished after its turn.
 pub fn wake_up_message(finished: &[RunSummary]) -> String {
     finished
         .iter()
@@ -175,7 +169,6 @@ pub fn wake_up_message(finished: &[RunSummary]) -> String {
         .join("\n\n")
 }
 
-/// The last turn after the time budget ran out.
 pub fn wrap_up_message(record_dir: &str) -> String {
     format!(
         "The time budget ended. Update {record_dir}/handoff.md and write {record_dir}/report.md now. Do not start runs."

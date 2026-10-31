@@ -116,8 +116,6 @@ function deduplicateUses(
   definitions: readonly ProjectDefinition[],
 ): ProjectUse[] {
   const signatures = new Set(local.map(useSignature));
-  // The assembler's own keys, so a merge keeps the engine and file scoping
-  // each use was first resolved with.
   const byKey = definitionsByKey(definitions);
   return [
     ...local,
@@ -158,8 +156,6 @@ function mergeOutlines(
       continue;
     }
     const nodes = outlines[definition.location.file] ?? [];
-    // Anchor only: the local node's range spans the whole section body while
-    // the language server reports just the command, so the ends never match.
     const duplicate = nodes.some(
       (node) =>
         node.kind === definition.kind &&
@@ -195,12 +191,6 @@ function mergeOutlines(
   return outlines;
 }
 
-/**
- * Merges already-normalized, current-revision language-service contributions
- * with the local Markdown/BibTeX/project graph. Exact source signatures win
- * over provider identity, so a TexLab/Tinymist symbol already recovered by
- * the local parser is represented exactly once.
- */
 export function mergeLanguageServiceIntelligence(
   snapshot: ProjectIntelligenceSnapshot,
   external: ExternalProjectIntelligence,

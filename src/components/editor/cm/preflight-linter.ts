@@ -7,8 +7,6 @@ import { useIndexStore } from "@/store/project-index";
 
 export type PreflightSourceLanguage = "latex" | "typst";
 
-// Only findings that map to a source range are shown here; whole-document and
-// PDF findings live in the Preflight panel instead.
 function toDiagnostics(findings: readonly Finding[]): Diagnostic[] {
   const diags: Diagnostic[] = [];
   for (const f of findings) {
@@ -58,8 +56,6 @@ export function createPreflightLinter(language: PreflightSourceLanguage = "latex
     (view) => preflightDiagnostics(view.state.doc.toString(), language),
     {
       delay: 900,
-      // Diagnostics render through the shared hover card, so the stock lint
-      // tooltip must not also appear.
       tooltipFilter: () => [],
     },
   );

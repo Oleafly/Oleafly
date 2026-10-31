@@ -153,8 +153,6 @@ pub struct Resolved {
     pub credential: String,
     pub auth: Option<String>,
     pub wire: Wire,
-    /// What the model can do, from model metadata. Resolution leaves it
-    /// unknown; the host fills it before a run.
     pub caps: ModelCaps,
 }
 
@@ -195,9 +193,6 @@ impl Resolved {
     }
 }
 
-/// Whether the old single `ai_api_key` may stand in for this provider's key.
-/// It was an API key for one of the hosted catalog providers: never a host
-/// address, and never something to send to a server the user added.
 pub fn legacy_key_applies(provider_id: &str) -> bool {
     catalog_entry(provider_id).is_some_and(|entry| !entry.is_host)
 }
@@ -233,9 +228,6 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
                 .unwrap_or(false)
     };
 
-    // A saved custom provider is never swapped for another one: its server is
-    // often local, and the fallback could be a cloud provider. Resolution
-    // fails instead and says what the provider is missing.
     let provider_id = if is_custom_provider(cfg, &saved)
         || (has_credential(&saved) && saved_model(cfg, &saved).is_some())
     {
@@ -1098,7 +1090,6 @@ mod tests {
         cfg.provider = "openai".into();
         cfg.model = "gpt-4o".into();
         cfg.legacy_key = "sk-legacy".into();
-        // A custom provider the user added later does not change that.
         cfg.custom = vec![lemonade()];
 
         let resolved = resolve(&cfg).unwrap();
@@ -1147,7 +1138,6 @@ mod tests {
             other => panic!("unexpected error {other:?}"),
         }
 
-        // No model list and no remembered model is the same case.
         cfg.enabled_models.remove("lemonade");
         cfg.model.clear();
         assert!(matches!(
@@ -1232,7 +1222,6 @@ mod tests {
                 "{base_url}"
             );
         }
-        // Local-endpoint detection is a narrower question and stays as it was.
         assert!(!resolved_at("my-server", "http://box.lan:8080/v1").is_local_endpoint());
         assert!(!resolved_at("my-server", "http://100.64.12.5:8080/v1").is_local_endpoint());
         assert!(resolved_at("my-server", "http://localhost:13305/v1").is_local_endpoint());
@@ -1254,7 +1243,6 @@ mod tests {
             let resolved = resolve(&cfg).unwrap();
             assert!(!resolved.is_self_hosted(), "{id}");
         }
-        // A catalog provider is judged by its address like any other.
         assert!(resolved_at("groq", "http://127.0.0.1:9000/v1").is_self_hosted());
     }
 }

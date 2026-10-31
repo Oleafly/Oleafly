@@ -45,7 +45,6 @@ export function ReaderViewDialog({
           <nav aria-label={t(($) => $.preflight.reader.pagesNav)} className="overflow-auto border-r bg-muted/20 p-2">
             {pages.map((text, page) => (
               <button
-                // PDF page order is intrinsic and pages have no independent IDs.
                 // biome-ignore lint/suspicious/noArrayIndexKey: the page number is the stable identity
                 key={page}
                 type="button"

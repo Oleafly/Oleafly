@@ -1,12 +1,5 @@
 import { createServer, type Server } from "node:http";
 
-// The app's "Ollama (local)" provider builds its model with
-// `createOpenAI({ baseURL: <host>/v1, apiKey: "ollama" }).chat(model)`, so we
-// connect Ollama pointed at this server and every real streaming/usage/tool
-// code path runs against canned responses.
-//
-// The bundled app's CSP allows `connect-src http://127.0.0.1:*`, so the webview
-// can reach this loopback server.
 export interface MockAiServer {
   url: string;
   close: () => Promise<void>;

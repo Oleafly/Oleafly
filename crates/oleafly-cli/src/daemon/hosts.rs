@@ -1,9 +1,3 @@
-//! The helper's side of the research runtime's ports. What only the app can
-//! know (trust, where the project is, its linked folders, the model's
-//! metadata, the spend so far, which skills are off, a CLI agent's sandboxed
-//! launch) comes from the grant the app wrote when it handed the task over.
-//! Keys and MCP values come from the app's settings, read again for each
-//! task, so a key the user changes while the helper runs is used.
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -57,8 +51,6 @@ fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// The app's error envelope for a trust code, so the app shows its own
-/// message for it.
 fn trust_error(code: &str) -> String {
     format!(
         "@oleafly/error:{}",
@@ -66,7 +58,6 @@ fn trust_error(code: &str) -> String {
     )
 }
 
-/// The grant the app wrote for `task_id` when it handed the task over.
 pub fn grant_for(store: &TaskStore, task_id: &str) -> Option<TaskGrant> {
     store
         .handoff_record(task_id)
@@ -79,7 +70,6 @@ fn daemon_store(tasks_root: &Path) -> Result<TaskStore, String> {
     TaskStore::with_owner_kind(tasks_root.to_path_buf(), OwnerKind::Daemon)
 }
 
-/// The grant of a project: from the newest of its tasks the helper holds.
 fn project_grant(tasks_root: &Path, project_id: &str) -> Result<TaskGrant, String> {
     let store = daemon_store(tasks_root)?;
     let mut tasks: Vec<ResearchTask> = store
@@ -114,7 +104,6 @@ fn valid_project_id(id: &str) -> bool {
         })
 }
 
-/// The skills a task's grant allows.
 fn grant_skills(data_root: &Path, resources_dir: Option<&Path>, grant: &TaskGrant) -> CliSkills {
     CliSkills {
         root: data_root.join("skills"),
@@ -145,8 +134,6 @@ pub(crate) fn supervisor_command_for(
     })
 }
 
-/// What the helper's tasks spent while it ran them, per task, not yet in
-/// the spool (a turn still running).
 #[derive(Default)]
 pub struct LiveSpend {
     by_task: Mutex<HashMap<String, f64>>,
@@ -166,12 +153,10 @@ impl LiveSpend {
     }
 }
 
-/// The helper's research host.
 pub struct DaemonResearchHost {
     tasks_root: PathBuf,
     data_root: PathBuf,
     resources_dir: Option<PathBuf>,
-    /// The user's choices, read again while the helper runs.
     prefs: std::sync::Mutex<Prefs>,
     notifier: Arc<Notifier>,
     log: Arc<HelperLog>,
@@ -179,7 +164,6 @@ pub struct DaemonResearchHost {
 }
 
 impl DaemonResearchHost {
-    /// Notifications or keep-awake changed in the app's settings.
     pub fn set_prefs(&self, prefs: Prefs) {
         *lock(&self.prefs) = prefs;
         self.notifier.set_enabled(prefs.notifications);
@@ -248,8 +232,6 @@ impl IsolationEnv for DaemonResearchHost {
     }
 }
 
-/// A shared hold on the app's project lock
-/// (`<data>/project-worktree-locks/<id>.lock`); `None` while a writer has it.
 pub(crate) fn shared_worktree_lock(
     data_root: &Path,
     project_id: &str,
@@ -358,8 +340,6 @@ impl ResearchHost for DaemonResearchHost {
         if !self.prefs().notifications {
             return;
         }
-        // An open app tells the user itself (finishing a task clears its
-        // reclaim request, so that flag can't say the app is open).
         if !super::control::app_is_open(&super::paths::helper_paths(&self.data_root).app_open) {
             self.notifier.notify(&notification);
         }
@@ -389,8 +369,6 @@ impl ResearchHost for DaemonResearchHost {
         Some(Arc::new(CliWorkspaceTools))
     }
 
-    /// Remote runs find `ssh` and `sbatch` where the app does. Runs in Cua
-    /// Spaces still need the app open (no MCP client here).
     fn compute_host(&self) -> Option<Arc<dyn ComputeHost>> {
         Some(Arc::new(DaemonComputeHost {
             data_root: self.data_root.clone(),
@@ -398,8 +376,6 @@ impl ResearchHost for DaemonResearchHost {
     }
 }
 
-/// What remote runs need from the helper: program lookup in the app's
-/// search folders.
 struct DaemonComputeHost {
     data_root: PathBuf,
 }
@@ -415,13 +391,10 @@ impl ComputeHost for DaemonComputeHost {
     }
 }
 
-/// The folders the helper looks for programs in: the ones the app wrote,
-/// then its own `PATH`.
 fn search_dirs_of(data_root: &Path) -> Vec<PathBuf> {
     search_dirs::for_helper(&super::paths::helper_paths(data_root).search_dirs)
 }
 
-/// Linked folders as the grant recorded them; a folder that moved is refused.
 pub struct GrantLinkedRoots {
     roots: Vec<GrantedRoot>,
 }
@@ -443,8 +416,6 @@ impl LinkedRoots for GrantLinkedRoots {
             .ok_or_else(|| "This linked folder was not granted to the task.".to_string())?;
         let path = PathBuf::from(&root.canonical_path);
         match dunce::canonicalize(&path) {
-            // The grant's own path is returned: the research bridge compares
-            // it with the path the session was granted, character for character.
             Ok(current) if same_folder(&current, &path) && current.is_dir() => Ok(path),
             _ => Err(LINKED_MOVED.into()),
         }
@@ -459,8 +430,6 @@ fn same_folder(current: &Path, granted: &Path) -> bool {
     comparable(current) == comparable(granted)
 }
 
-/// `path` without the verbatim prefix: `\\?\C:\x` becomes `C:\x` (dunce), and
-/// `\\?\UNC\server\share` becomes `\\server\share`, which dunce leaves alone.
 fn comparable(path: &Path) -> PathBuf {
     let simple = dunce::simplified(path);
     match simple
@@ -472,8 +441,6 @@ fn comparable(path: &Path) -> PathBuf {
     }
 }
 
-/// Records a task's model use in the usage spool: one event per turn,
-/// cost from the model's price.
 pub struct SpoolUsage {
     data_root: PathBuf,
     task_id: String,
@@ -488,7 +455,6 @@ pub struct SpoolUsage {
 
 #[derive(Default)]
 struct SpoolState {
-    /// Usage of the turns that ended (a run restarts its totals per turn).
     finished: Usage,
     latest: Option<Usage>,
     recorded: bool,
@@ -558,8 +524,6 @@ impl UsageSink for SpoolUsage {
             return;
         }
         let usage = match event {
-            // A turn's first step: the turn before it is over (its totals
-            // restart, and may start above where the last one ended).
             AgentEvent::StepStart { step: 0 } => {
                 if let Some(latest) = state.latest.take() {
                     state.finished = add(state.finished, latest);
@@ -570,7 +534,6 @@ impl UsageSink for SpoolUsage {
             _ => return,
         };
         if let Some(latest) = state.latest {
-            // Totals that went down also mean a new turn.
             if usage.input < latest.input || usage.output < latest.output {
                 state.finished = add(state.finished, latest);
             }
@@ -616,7 +579,6 @@ impl UsageSink for SpoolUsage {
     }
 }
 
-/// Web reads for tasks with network permission.
 pub struct CliWebTools {
     client: oleafly_agent::tools::web::WebClient,
     data_root: PathBuf,
@@ -672,9 +634,6 @@ impl WebTools for CliWebTools {
     }
 }
 
-/// The helper's task host.
-/// The file and database reads of [`DaemonTaskHost`], owned, for blocking
-/// threads.
 struct HostReader {
     data_root: PathBuf,
     tasks_root: PathBuf,
@@ -742,8 +701,6 @@ impl DaemonTaskHost {
         task_grant(&self.tasks_root, task_id)
     }
 
-    /// What reading a task's grant, settings and skills needs, owned, for a
-    /// blocking thread.
     fn reader(&self) -> HostReader {
         HostReader {
             data_root: self.data_root.clone(),
@@ -753,7 +710,6 @@ impl DaemonTaskHost {
         }
     }
 
-    /// The app's settings now; their secrets join the log's list.
     pub(crate) fn config(&self) -> Result<DesktopConfig, String> {
         let config = desktop_config::load(&self.data_root).map_err(|error| error.to_string())?;
         self.log.add_secrets(secret_values(&config));
@@ -764,7 +720,6 @@ impl DaemonTaskHost {
         grant_skills(&self.data_root, self.resources_dir.as_deref(), grant)
     }
 
-    /// The servers research tasks may use, as the user set them.
     fn task_servers(&self, config: &DesktopConfig) -> Vec<McpServer> {
         config
             .mcp_servers
@@ -801,7 +756,6 @@ impl TaskHost for DaemonTaskHost {
         let log = self.log.clone();
         let live = self.live.clone();
         Box::pin(async move {
-            // A database read: off the helper's two async threads.
             let grant = {
                 let tasks_root = tasks_root.clone();
                 let task_id = context.task_id.clone();
@@ -820,7 +774,6 @@ impl TaskHost for DaemonTaskHost {
                 model: Some(context.model_id.clone()),
                 effort: None,
             };
-            // The helper never takes keys from its environment.
             let mut resolved =
                 resolve(&data_root, &config, &choice, &|_| None).map_err(|error| {
                     let error: crate::contract::CliError = error.into();
@@ -859,8 +812,6 @@ impl TaskHost for DaemonTaskHost {
         let reader = self.reader();
         let task_id = context.task_id.clone();
         Box::pin(async move {
-            // The grant is a database read and the settings decrypt the
-            // secret store: off the helper's two async threads.
             let (grant, config, skills) = tokio::task::spawn_blocking(move || {
                 let grant = reader.grant(&task_id);
                 let skills = grant
@@ -918,8 +869,6 @@ impl TaskHost for DaemonTaskHost {
             .collect()
     }
 
-    /// The app's search folders: a window app's `PATH` is minimal, and the
-    /// helper starts with the same one.
     fn program_search_dirs(&self) -> Vec<PathBuf> {
         search_dirs_of(&self.data_root)
     }

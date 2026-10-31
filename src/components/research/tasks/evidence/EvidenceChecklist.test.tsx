@@ -89,7 +89,6 @@ describe("EvidenceChecklist", () => {
     await act(async () => pending.reject(new Error("The task workspace is gone.")));
 
     await waitFor(() => expect(screen.getByRole("button", { name: evidence.refresh })).toBeEnabled());
-    // The checks did not run, so the checklist says why instead of looking unchanged.
     expect(screen.getByRole("alert")).toHaveTextContent("The task workspace is gone.");
 
     onRefresh.mockResolvedValueOnce(undefined);
@@ -98,7 +97,6 @@ describe("EvidenceChecklist", () => {
   });
 
   it("says it is checking while the backend checks, and still lets the user check again", async () => {
-    // A check cut off when the process running it exits says "Checking" for good.
     const onRefresh = vi.fn(async () => {});
     const view = render(<EvidenceChecklist report={null} checking onRefresh={onRefresh} />);
     const section = screen.getByTestId("research-evidence");
@@ -134,7 +132,6 @@ describe("EvidenceChecklist", () => {
     expect(screen.getByText("key0 couldn't be verified.")).toBeInTheDocument();
     expect(screen.getByText("key49 couldn't be verified.")).toBeInTheDocument();
     expect(screen.queryByText("key50 couldn't be verified.")).toBeNull();
-    // and says how many it left out
     expect(screen.getByTestId("research-evidence-more")).toHaveTextContent("10 more aren't listed.");
   });
 });

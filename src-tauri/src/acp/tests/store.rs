@@ -1,5 +1,3 @@
-//! The session store: 0.4.7 databases, cheap appends, paging, search and
-//! preferences.
 use super::super::preferences::{AcpPreferences, RememberedChoice, PREFERENCES_KEY};
 use super::super::store::Store;
 use super::super::types::*;
@@ -46,7 +44,6 @@ fn a_0_4_7_database_opens_lists_and_appends() {
             CREATE TABLE events (session_id TEXT NOT NULL REFERENCES sessions(id), sequence INTEGER NOT NULL, event TEXT NOT NULL, PRIMARY KEY(session_id,sequence));
             CREATE TABLE agents (id TEXT PRIMARY KEY, definition TEXT NOT NULL);
             CREATE TABLE agent_programs (id TEXT PRIMARY KEY, path TEXT NOT NULL);").unwrap();
-        // A record as 0.4.7 wrote it: no 0.4.8 fields, status still running.
         let old = json!({"id":"s1","projectId":"p","projectPath":"/p","agentId":"claude","agentVersion":null,
             "nativeSessionId":"n1","parentSessionId":null,"taskId":null,"title":"Old","status":"running",
             "createdAt":1,"updatedAt":2,"turnId":null,
@@ -73,7 +70,6 @@ fn a_0_4_7_build_can_still_save_sessions_after_this_one_opened_the_database() {
     store.save(&record("s1", "p", "Saved", 5)).unwrap();
     store.append(&event("s1", 1), None).unwrap();
     drop(store);
-    // 0.4.7's own statement, four unnamed values.
     rusqlite::Connection::open(temp.path().join("sessions.sqlite"))
         .unwrap()
         .execute(
@@ -185,7 +181,6 @@ fn the_page_searches_titles_and_pages_by_update_time() {
 fn conversations_that_share_a_timestamp_are_not_skipped_between_pages() {
     let temp = tempfile::tempdir().unwrap();
     let store = Store::open(temp.path()).unwrap();
-    // A batch import stores several conversations in the same millisecond.
     for index in 0..7 {
         store
             .save(&record(&format!("s{index}"), "p", "Imported", 5_000))
@@ -213,7 +208,6 @@ fn conversations_that_share_a_timestamp_are_not_skipped_between_pages() {
         }
     }
     assert_eq!(seen, ["s6", "s5", "s4", "s3", "s2", "s1", "s0", "older"]);
-    // A cursor with the time alone still pages by time, as before.
     let (rest, _) = store.page("p", None, Some(5_000), None, 10).unwrap();
     assert_eq!(rest.len(), 1);
 }
@@ -234,7 +228,6 @@ fn search_follows_renames_and_deletes_and_never_reads_the_records() {
             .collect()
     };
     assert_eq!(ids("chapter"), ["a"]);
-    // The agent's own title arrives with an event.
     let mut renamed = store.get("b").unwrap();
     renamed.title = "Chapter two".into();
     store.append(&event("b", 1), Some(&renamed)).unwrap();
@@ -244,7 +237,6 @@ fn search_follows_renames_and_deletes_and_never_reads_the_records() {
     assert_eq!(ids("chapter"), ["b"]);
     store.delete_session("b").unwrap();
     assert!(ids("chapter").is_empty());
-    // Titles sit in a table of their own, one row per conversation.
     drop(store);
     let db = rusqlite::Connection::open(temp.path().join("sessions.sqlite")).unwrap();
     let searched: i64 = db
@@ -262,7 +254,6 @@ fn sessions_a_0_4_7_build_saved_or_deleted_are_picked_up_when_the_store_opens() 
     drop(store);
     {
         let db = rusqlite::Connection::open(temp.path().join("sessions.sqlite")).unwrap();
-        // 0.4.7 neither writes nor removes its search rows.
         db.execute("DELETE FROM sessions WHERE id='deleted'", [])
             .unwrap();
         db.execute(
@@ -365,7 +356,6 @@ fn a_fork_copies_every_event_in_chunks_up_to_where_the_parent_was() {
     assert_eq!(all.len(), 1250);
     assert!(all.iter().all(|event| event.session_id == "fork"));
     assert_eq!(all[1249].sequence, 1250);
-    // A conversation without events copies nothing.
     store.save(&record("empty", "p", "Empty", 3)).unwrap();
     assert_eq!(store.copy_events("empty", "fork2").unwrap(), 0);
 }

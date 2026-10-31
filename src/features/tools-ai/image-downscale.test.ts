@@ -31,7 +31,6 @@ interface FakeCanvas extends DownscaleCanvas {
   calls: string[];
 }
 
-/** A canvas whose encoder answers with blobs of `sizeFor(mime, quality, width)` bytes. */
 function fakeEnv(
   bitmap: { width: number; height: number },
   sizeFor: (mime: string, quality: number | undefined, width: number) => number,
@@ -240,12 +239,9 @@ describe("downscale client", () => {
   let workerReply: Reply;
   let posted: unknown[];
 
-  // The client keeps one worker for the session; this stand-in answers with
-  // whatever the current test set.
   class FakeWorker {
     onmessage: ((event: { data: unknown }) => void) | null = null;
     onerror: (() => void) | null = null;
-    constructor(_url: URL, _options: unknown) {}
     postMessage(message: { id: number }) {
       posted.push(message);
       queueMicrotask(() => this.onmessage?.({ data: { id: message.id, reply: workerReply } }));
@@ -287,7 +283,6 @@ describe("downscale client", () => {
     expect(canvas.getContext).toHaveBeenCalledWith("2d");
     expect(result.mime).toBe("image/jpeg");
     expect(Array.from(result.bytes.subarray(0, 3))).toEqual([0xff, 0xd8, 0xff]);
-    // The worker got its own copy: the caller's bytes are intact.
     expect(input.bytes.byteLength).toBe(4);
   });
 

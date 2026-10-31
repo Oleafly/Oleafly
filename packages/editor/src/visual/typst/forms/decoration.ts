@@ -8,9 +8,6 @@ import { type FormCallModel, readFormCall } from "./model";
 import type { FormScope } from "./scope";
 import { type FormCallRef, TypstFormCardWidget } from "./widget";
 
-// A call that resolves to a form becomes a card when it owns its lines and a chip inside a
-// paragraph. Returns false when it decorated the call, so nothing inside it is decorated
-// separately, and undefined to leave the call as source.
 export function formDecorations(
   builder: TypstDecorationBuilder,
   scope: FormScope,

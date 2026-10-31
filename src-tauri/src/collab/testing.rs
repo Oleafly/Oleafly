@@ -6,9 +6,6 @@ use oleafly_collab_protocol::roles::ProjectRole;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-/// What is in the current data folder besides `app.log`. Live sessions in
-/// other tests append to the log in whichever data folder is current, so it
-/// says nothing about the test that looks.
 pub(crate) fn data_folder_entries() -> Vec<std::ffi::OsString> {
     let data = std::path::PathBuf::from(std::env::var_os("OLEAFLY_DATA_DIR").unwrap());
     std::fs::read_dir(data)
@@ -140,8 +137,6 @@ impl Lab {
         Lab::at(None).await
     }
 
-    /// A lab whose server is reached through `relay`, the address its
-    /// sign-in redirects name, as behind a reverse proxy.
     pub(crate) async fn behind(relay: &Relay) -> Lab {
         let lab = Lab::at(Some(&relay.url)).await;
         relay.point_at(lab.address());
@@ -207,7 +202,6 @@ pub(crate) struct Relay {
     upstream: std::sync::Arc<Mutex<String>>,
     down: std::sync::Arc<std::sync::atomic::AtomicBool>,
     seen: std::sync::Arc<Mutex<Vec<u8>>>,
-    // What the client sent on each connection, in the order they opened.
     streams: std::sync::Arc<Mutex<Vec<Vec<u8>>>>,
     refused: std::sync::Arc<Mutex<Option<String>>>,
     refusals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
@@ -222,8 +216,6 @@ impl Relay {
         relay
     }
 
-    /// A relay that listens before it knows where to forward, so a server
-    /// can be started with the relay's address as its public URL first.
     pub(crate) async fn bind() -> Relay {
         use std::sync::atomic::{AtomicBool, Ordering};
         use std::sync::Arc;
@@ -380,9 +372,6 @@ impl Relay {
         }
     }
 
-    /// The most requests any one connection carried since the last
-    /// `forget_seen`. Above one means the client kept a connection open and
-    /// sent another request on it.
     pub(crate) fn most_requests_on_one_connection(&self) -> usize {
         self.streams
             .lock()

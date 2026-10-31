@@ -228,9 +228,6 @@ pub async fn stop(project_id: &str) {
     }
 }
 
-// Runs `work`, which stops the project's live session, and starts the
-// session again when `work` fails, unless another session went live in the
-// meantime: starting would stop that one. Says whether it started again.
 pub async fn resumed_if_failed<T, E>(
     state: &CollabState,
     host: Arc<dyn LiveHost>,
@@ -269,9 +266,6 @@ pub fn reconnect_now() -> bool {
 
 const FIGURE_WAIT: Duration = Duration::from_secs(5);
 
-// Writes what the document has to disk. The compile barrier also waits a
-// little for figures still on their way, so the compile finds them; other
-// flushes, such as reopening a restored file, don't.
 pub async fn flush(project_id: &str, figures: bool) {
     let Some(active) = active_for(project_id) else {
         return;

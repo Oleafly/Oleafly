@@ -1,6 +1,3 @@
-// Preparing one attached file for the store: images sized for a model,
-// PDFs with their text (first 100 pages) and a thumbnail, scanned PDFs
-// with their first pages as images, text files as they are.
 import type { AttachmentKind } from "@/components/ai/composer/types";
 import type { ATTACHMENT_LIMITS } from "@/lib/attachments-intake";
 import { AttachmentError } from "@/lib/attachments-intake";
@@ -19,14 +16,12 @@ export interface NormalizedAttachment {
 
 const SCANNED_CHARS_PER_PAGE = 20;
 
-/** Page text labelled by page, with a note when pages were left out. */
 export function pdfTextForModel(pages: readonly string[], totalPages: number, limit: number): string {
   const body = pages.map((text, index) => `[Page ${index + 1}]\n${text}`).join("\n\n");
   if (totalPages <= limit) return body;
   return `${body}\n\n[Only the first ${limit} of ${totalPages} pages are included.]`;
 }
 
-/** A PDF with almost no text: fewer than 20 characters per page on average. */
 export function isScannedPdf(pages: readonly string[]): boolean {
   if (pages.length === 0) return true;
   const characters = pages.reduce((total, text) => total + text.replace(/\s+/g, "").length, 0);

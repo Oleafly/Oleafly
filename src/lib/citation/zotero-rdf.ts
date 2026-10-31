@@ -24,7 +24,6 @@ function rawBlock(source: string, localName: string): string {
   return re.exec(source)?.[1] ?? "";
 }
 
-// Extracts a tag's inner text with any nested markup stripped.
 function textOf(source: string, localName: string): string {
   return cleanField(stripTags(rawBlock(source, localName)).replace(/\s+/g, " ").trim());
 }
@@ -46,8 +45,6 @@ function extractAuthors(body: string): string[] {
     .filter(Boolean);
 }
 
-// Each top-level bibliographic record is a <bib:Article>, <bib:BookSection>,
-// <z:Book>, etc. — any such element carrying a dc:title is treated as one record.
 const RECORD_RE = /<((?:\w[\w.-]*:)?[A-Z]\w*)\s+rdf:about="[^"]*">([\s\S]*?)<\/\1>/g;
 
 export function parseZoteroRdf(rdf: string): ParsedBib[] {
@@ -56,7 +53,7 @@ export function parseZoteroRdf(rdf: string): ParsedBib[] {
   for (const m of rdf.matchAll(RECORD_RE)) {
     const [, tagName, body] = m;
     const title = textOf(body, "title");
-    if (!title) continue; // container elements (bib:Journal, foaf:Person, ...) have no title of their own
+    if (!title) continue;
 
     const itemType = textOf(body, "itemType").toLowerCase().replace(/\s+/g, "");
     const localName = (tagName.split(":").pop() ?? tagName).toLowerCase();

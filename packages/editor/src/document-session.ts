@@ -16,13 +16,8 @@ export interface DocumentSession {
   text(): string;
   applyLocal(edits: Utf16Edit[], baseVersion: number): void;
   subscribe(listener: (change: RemoteChange) => void): () => void;
-  // While an input method is composing, local edits are kept but not sent,
-  // so others don't see each intermediate candidate. Releasing sends them as
-  // one change. Sessions that send nothing anywhere can leave these out.
   holdLocal?(): void;
   releaseLocal?(): void;
-  // Tells the listener when the session's file is renamed, `path` being the
-  // new one. Sessions whose file never moves can leave this out.
   subscribeMove?(listener: (path: string) => void): () => void;
 }
 

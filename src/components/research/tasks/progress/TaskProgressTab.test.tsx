@@ -94,7 +94,6 @@ async function shown() {
   return screen.findByTestId("research-task-progress");
 }
 
-/** Captures the progress poll instead of waiting three seconds for it. */
 function capturePolls() {
   const polls: Array<() => void> = [];
   const realSet = window.setInterval.bind(window);
@@ -298,7 +297,6 @@ describe("TaskProgressTab", () => {
     const live = within(tab).getByText("wider model").closest("li") as HTMLElement;
 
     await userEvent.click(within(live).getByRole("button", { name: copy.stopRun }));
-    // Stopping can end a long job on a cluster, so it asks first, naming the run.
     expect(api.cancelResearchTaskRun).not.toHaveBeenCalled();
     const confirm = screen.getByRole("alertdialog");
     expect(confirm).toHaveTextContent('"wider model" (r003) stops now.');

@@ -151,7 +151,6 @@ describe("CLI home research presets", () => {
     useAcpSessionsStore.setState({ activeByProject: {} });
     vi.mocked(acpStart).mockResolvedValue({ session: session("fresh"), permissions: [] });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
-    // 0.4.8 added Compilation repair, Submission prep and Reviewer response.
     await waitFor(() => expect(quickStartLabels(ui)).toEqual([
       "Literature sweep", "Related work", "Citation audit", "Manuscript review",
       "Reproducibility audit", "Figure audit", "Compilation repair", "Submission prep",
@@ -163,7 +162,6 @@ describe("CLI home research presets", () => {
 
     await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "fixture"));
     const composer = useAcpSessionsStore.getState().composers.paper;
-    // The conversation it started has the draft.
     const draft = useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "fresh")]?.text ?? "";
     expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture")]).toBeUndefined();
     expect(draft).toMatch(/^Audit the claims in this manuscript against their cited sources\./);
@@ -184,7 +182,6 @@ describe("CLI home research presets", () => {
 
     const draft = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
     expect(draft).toMatch(/^Focus on chapter 2\.\n\nAudit the claims in this manuscript/);
-    // Picked again, it is not added twice.
     fireEvent.click(ui.getByTitle("Citation audit"));
     expect(useComposerDrafts.getState().drafts[draftId]?.text).toBe(draft);
   });
@@ -327,7 +324,6 @@ describe("CLI conversation names and export", () => {
     );
     await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
     const names = await menuItemNames(ui.getByRole("button", { name: "Saved conversations" }));
-    // Since 0.4.8 the menu ends with All conversations, which opens the history.
     expect(names).toEqual(["Export conversation…", "Conversation saved · Research CLI", "All conversations"]);
   });
 

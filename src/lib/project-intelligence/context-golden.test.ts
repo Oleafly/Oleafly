@@ -9,11 +9,6 @@ import { legacyIndexFromProjectIntelligence } from "./legacy-index";
 import { isProjectIntelligencePath } from "./source";
 import type { FileAnalysis } from "./types";
 
-// The CLI's `oleafly context` ports the project map to Rust
-// (crates/oleafly-core/src/context). This test makes the app the reference:
-// with OLEAFLY_UPDATE_GOLDEN=1 it writes each fixture's expected.map.json,
-// otherwise it checks the app still produces it. The Rust side then checks
-// itself against the same files (crates/oleafly-core/tests/context_golden.rs).
 const FIXTURES = fileURLToPath(
   new URL("../../../crates/oleafly-core/tests/fixtures/context/", import.meta.url),
 );

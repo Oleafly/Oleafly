@@ -27,8 +27,6 @@ import {
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { isQuartoEngine } from "@/lib/notebook-engines";
 import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
-// The chrome is shared with the LaTeX toolbar so both bars measure, overflow,
-// and sit in the editor frame identically.
 import {
   Divider,
   IconBtn,
@@ -116,10 +114,6 @@ function MarkdownHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu"
   );
 }
 
-/**
- * Visual mode has no text template to edit, so link and image take their
- * target from a small popover. Enter applies, an empty link removes the link.
- */
 function TargetPopover({
   icon,
   label,
@@ -257,7 +251,6 @@ export function MarkdownToolbar({
   mode?: EditorMode;
   splitLayout?: MarkdownSplitLayout;
   onModeChange?: (mode: EditorMode, layout?: MarkdownSplitLayout) => void;
-  /** Project statistics describe the compiled document, so hide them for stray .md files in other projects. */
   showProjectInfo?: boolean;
 }>) {
   const { t } = useTranslation(["common", "editor"]);

@@ -11,7 +11,6 @@ interface SaveAsTemplateState {
   close(): void;
 }
 
-/** Which project the Save as template dialog is open for, from any menu. */
 export const useSaveAsTemplateStore = create<SaveAsTemplateState>((set) => ({
   target: null,
   openFor: (projectId, name) => set({ target: { projectId, name } }),

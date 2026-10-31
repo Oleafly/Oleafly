@@ -11,7 +11,6 @@ export const RESEARCH_TOOL_ALIASES = {
 
 export type ResearchToolAlias = keyof typeof RESEARCH_TOOL_ALIASES;
 
-/** Without the alphaXiv server: search goes to literature_search; nothing here reads paper text. */
 const FALLBACK: Record<ResearchToolAlias, string | null> = {
   alphaxiv_search: "literature_search",
   alphaxiv_paper_content: null,
@@ -21,7 +20,6 @@ function isAlphaXiv(server: McpAgentServer): boolean {
   return server.name.toLowerCase().replace(/[^a-z]/g, "").includes("alphaxiv");
 }
 
-/** Each alias → the exposed tool name of the connected alphaXiv server, else the fallback. */
 export function resolveResearchToolAliases(
   servers: readonly McpAgentServer[],
 ): Record<ResearchToolAlias, string | null> {
@@ -45,7 +43,6 @@ function meaning(alias: ResearchToolAlias, tool: string | null): string {
     : "`literature_search`";
 }
 
-/** A note for a skill that names an alias, or "" when it names none. */
 export function toolAliasNote(
   instructions: string,
   resolved: Record<ResearchToolAlias, string | null>,

@@ -883,8 +883,6 @@ fn endpoints_are_built_without_double_slashes() {
     );
 }
 
-// --- 0.4.8: effort, thinking, ceilings, caching ----------------------------
-
 fn anthropic_model(id: &str, caps: ModelCaps) -> Resolved {
     Resolved {
         provider_id: "anthropic".into(),
@@ -1202,7 +1200,6 @@ fn older_claude_models_get_a_default_that_leaves_room_for_the_input() {
         .unwrap()["max_tokens"]
             .clone()
     };
-    // These refuse input plus max_tokens over the window.
     for model in [
         "claude-sonnet-4-20250514",
         "claude-opus-4-1",
@@ -1210,7 +1207,6 @@ fn older_claude_models_get_a_default_that_leaves_room_for_the_input() {
     ] {
         assert_eq!(default_for(model), 16_000, "{model}");
     }
-    // These stop at the window instead.
     for model in ["claude-sonnet-4-5", "claude-opus-5-5", "claude-haiku-4-5"] {
         assert_eq!(default_for(model), 64_000, "{model}");
     }
@@ -1510,8 +1506,6 @@ fn tool_lists_are_sorted_by_name_on_every_wire() {
         "alpha"
     );
 }
-
-// --- 0.4.8: documents, tool images, replay, hosted web tools ---------------
 
 fn user_with(parts: Vec<ContentPart>) -> CompletionRequest {
     CompletionRequest {

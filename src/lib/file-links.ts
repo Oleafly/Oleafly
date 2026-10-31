@@ -80,7 +80,6 @@ export function escapeLatexUrl(text: string): string {
 export interface FileLinkOptions {
   readonly text?: string;
   readonly typstHash?: boolean;
-  /** `#heading` and the like, kept after the path. */
   readonly fragment?: string;
 }
 
@@ -138,12 +137,6 @@ export function localizeAppLink(
   return target ? { path: relativeFilePath(fromFile, target.path), fragment: target.fragment } : null;
 }
 
-/**
- * The project file a link's href points at, read from the file the link is
- * written in: a relative path, or a link that carries the app's own address,
- * as 0.4.7 saved some. Null for other schemes, in-page anchors and paths that
- * leave the project.
- */
 export function projectFileForHref(
   fromFile: string,
   href: string | undefined,

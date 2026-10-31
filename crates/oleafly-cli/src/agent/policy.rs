@@ -1,6 +1,3 @@
-//! What a headless run may do (`--allow`) and where its changes go: a
-//! review folder (the default), the project itself (`--apply`), or nowhere
-//! (`oleafly ask`).
 use std::path::{Component, Path, PathBuf};
 
 use crate::contract::CliError;
@@ -13,7 +10,6 @@ pub enum Allow {
     Network,
 }
 
-/// Reading is always allowed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AllowSet {
     pub write: bool,
@@ -61,11 +57,8 @@ impl AllowSet {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WriteMode {
-    /// Nothing changes (`oleafly ask`, or a run without `--allow write`).
     ReadOnly,
-    /// Changes go to a copy of the project; the result is saved here.
     Review { dir: PathBuf },
-    /// Changes go straight into the project (`--apply`).
     Apply,
 }
 
@@ -83,13 +76,11 @@ impl WriteMode {
 pub struct RunPolicy {
     pub allow: AllowSet,
     pub mode: WriteMode,
-    /// `oleafly ask`: questions only, read-only MCP tools.
     pub question: bool,
 }
 
 pub struct PolicyRequest<'a> {
     pub project: &'a Path,
-    /// The app's id when the project is a folder it opened in place.
     pub linked_id: Option<&'a str>,
     pub data_root: &'a Path,
     pub allow: AllowSet,
@@ -103,8 +94,6 @@ fn usage(message: impl Into<String>) -> CliError {
     CliError::usage(message)
 }
 
-/// `path` made absolute against the working folder, with `.` and `..`
-/// resolved by name.
 fn absolute(path: &Path) -> PathBuf {
     let base = if path.is_absolute() {
         PathBuf::new()
@@ -124,8 +113,6 @@ fn absolute(path: &Path) -> PathBuf {
     out
 }
 
-/// The real path of `path`: its deepest existing ancestor resolved, the
-/// rest appended.
 fn resolved(path: &Path) -> PathBuf {
     let path = absolute(path);
     let mut existing = path.clone();
@@ -156,7 +143,6 @@ fn empty_or_missing(path: &Path) -> bool {
     }
 }
 
-/// The policy for a run, or a usage error.
 pub fn policy(request: &PolicyRequest) -> Result<RunPolicy, CliError> {
     let mut allow = request.allow;
     if request.question {

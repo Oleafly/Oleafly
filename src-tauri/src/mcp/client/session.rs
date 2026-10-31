@@ -1,11 +1,3 @@
-//! 0.4.8 I: a persistent MCP stdio session. The generic client starts a
-//! server for every call; Cua Driver's `mcp` proxy is kept open instead, so
-//! a run of tool calls reuses one process and one handshake.
-//!
-//! Reads skip notifications and late answers to other requests, and answer
-//! the server's own requests (`ping`, everything else "method not found").
-//! Dropping a session, even in the middle of a call, kills its process tree.
-
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -16,17 +8,12 @@ use super::{
     McpConnectionError, McpServerTool, StdioTransport,
 };
 
-/// Ids below this are the handshake's (discover 1, initialize 2, lists 2/3+).
 const FIRST_CALL_ID: u64 = 100;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct McpSessionLimits {
-    /// The longest line the server may write (a screenshot can be several MiB).
     pub max_message_bytes: usize,
-    /// How long a modern `server/discover` may take before the server is
-    /// treated as a legacy one.
     pub probe_timeout: Duration,
-    /// The whole open: spawn, handshake and tool list.
     pub open_timeout: Duration,
 }
 
@@ -38,8 +25,6 @@ pub(crate) struct McpStdioSession {
 }
 
 impl McpStdioSession {
-    /// Spawns, discovers (modern) or initializes (legacy, on a fresh process
-    /// as `connect_stdio_server_with_probe_timeout` does), then lists tools.
     pub(crate) async fn open(
         command: &str,
         args: &[String],
@@ -86,8 +71,6 @@ impl McpStdioSession {
                 Err(error)
             }
             Ok(Ok(false)) | Ok(Err(_)) | Err(_) => {
-                // A legacy server may have half-read the discover request, so
-                // it gets a process of its own.
                 probe.shutdown().await;
                 let mut transport = StdioTransport::spawn(command, args, env).await?;
                 transport.max_message_bytes = limits.max_message_bytes;
@@ -107,16 +90,11 @@ impl McpStdioSession {
         &self.tools
     }
 
-    /// One `tools/call` with a fresh id. Returns the result object, including
-    /// `isError` results.
     #[cfg(test)]
     pub(crate) async fn call(&mut self, name: &str, arguments: Value) -> Result<Value, String> {
         self.call_checked(name, arguments).await?
     }
 
-    /// Like `call`, but tells a broken connection (the outer `Err`: the
-    /// session can't be used again) from an error the server answered with
-    /// (the inner `Err`).
     pub(crate) async fn call_checked(
         &mut self,
         name: &str,
@@ -136,8 +114,6 @@ impl McpStdioSession {
         Ok(tool_call_result(&response, id, self.modern).map_err(|error| error.to_string()))
     }
 
-    /// Reads until the response with `id`, answering the server's requests
-    /// and skipping notifications and answers to anything else.
     async fn read_until(&mut self, id: u64) -> Result<Value, McpConnectionError> {
         let expected = json!(id);
         loop {
@@ -163,8 +139,6 @@ impl McpStdioSession {
         }
     }
 
-    /// Closes stdin, waits briefly for the server to exit, then kills it.
-    /// (Runtimes drop sessions instead, which kills them at once.)
     #[cfg(test)]
     pub(crate) async fn close(self) {
         self.transport.shutdown().await;
@@ -188,8 +162,6 @@ mod tests {
         }
     }
 
-    /// A legacy server: discover is "method not found", so the session
-    /// starts a fresh process and initializes it.
     const LEGACY_PRELUDE: &str = concat!(
         "const readline=require('node:readline');",
         "const lines=readline.createInterface({input:process.stdin});",
@@ -317,9 +289,6 @@ mod tests {
 
     #[tokio::test]
     async fn legacy_servers_get_a_fresh_process_after_the_probe() {
-        // The server ignores the discover request, so the probe times out. Its
-        // tool says whether its process saw that request: only the probed one
-        // did, however late a loaded machine started either process.
         let script = concat!(
             "const readline=require('node:readline');",
             "let probed=false;",

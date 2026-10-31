@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} joutuu suorittamaan koodia tämän dokumentin kääntämiseksi, ja koodin suoritus on tässä projektissa pois päältä. Salli koodi tässä projektissa, jotta voit kääntää dokumentin.",
+    "export_stopped": "Vienti pysäytettiin.",
     "quarto_missing": "Quartoa ei ole asennettu. Asenna se kohdasta Asetukset > Moottorit > Quarto ja käännä sitten uudelleen.",
     "calepin_missing": "Calepinia ei ole asennettu. Asenna se kohdasta Asetukset > Moottorit > Calepin ja käännä sitten uudelleen.",
     "not_offered": "Oleafly ei voi ladata työkalua {{tool}} tälle koneelle. Asenna se itse ja käännä sitten uudelleen.",

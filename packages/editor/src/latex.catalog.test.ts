@@ -6,15 +6,11 @@ import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
 import { latexCommandCompletions, latexCompletions, slashCompletions } from "./latex";
 import { installEnglishEditorMessages } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
 installEnglishEditorMessages();
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 

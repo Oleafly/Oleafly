@@ -31,7 +31,6 @@ export interface CollabLibraryKit {
   share: string;
   copyAndShare: string;
   location: string;
-  // With sharing on, the library option leaves shared projects out.
   libraryLocation: string;
   openLink: string;
   extension: ProjectSearchExtension;
@@ -141,8 +140,6 @@ export function CollabTreeClashSlot() {
 
 const NO_CLASHES: ReadonlyMap<string, string> = new Map();
 
-// The renamed-on-disk labels for the whole tree, read once by the tree so
-// each row needs no subscription of its own.
 export function useTreeClashLabels(): ReadonlyMap<string, string> {
   const ready = useCollabReady();
   const labels = useTreeClashes((state) => state.labels);

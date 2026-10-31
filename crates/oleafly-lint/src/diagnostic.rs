@@ -1,5 +1,3 @@
-//! Lint diagnostics shared by the LaTeX, BibTeX and Harper checks.
-
 use std::cmp::Ordering;
 
 use oleafly_preflight::messages::MessageRef;
@@ -26,7 +24,6 @@ impl LintSource {
     }
 }
 
-/// A catalog message (LaTeX and BibTeX) or Harper's own English text.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LintMessage {
     Catalog(MessageRef),
@@ -47,7 +44,6 @@ pub struct FixSuggestion {
     pub text: String,
 }
 
-/// A finding in UTF-16 offsets of the LF-normalised file.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LintDiagnostic {
     pub from: usize,
@@ -61,8 +57,6 @@ pub struct LintDiagnostic {
 }
 
 impl LintDiagnostic {
-    /// A catalog diagnostic covering at least one unit, like the editor's
-    /// `diagnostic()` helpers.
     pub fn catalog(
         from: usize,
         to: usize,
@@ -105,10 +99,6 @@ fn kebab(name: &str) -> String {
     out
 }
 
-/// A stable rule id for a catalog key: `latex.lint.unmatchedClosingBrace` →
-/// `latex/unmatched-closing-brace`, `latex.xparse.unknownType` →
-/// `latex/xparse-unknown-type`, `bibtex.lint.invalidYear` →
-/// `bibtex/invalid-year`.
 pub fn rule_id_for_key(key: &str) -> String {
     let parts: Vec<&str> = key.split('.').collect();
     match parts.as_slice() {
@@ -118,7 +108,6 @@ pub fn rule_id_for_key(key: &str) -> String {
     }
 }
 
-/// The English text of a message.
 pub fn render(message: &LintMessage) -> String {
     match message {
         LintMessage::Catalog(message) => editor_catalog().render(message),
@@ -126,13 +115,10 @@ pub fn render(message: &LintMessage) -> String {
     }
 }
 
-/// The params as compact JSON with sorted keys, the tie-break the golden
-/// writer uses.
 pub fn canonical_params(message: &MessageRef) -> String {
     serde_json::to_string(&message.params).unwrap_or_default()
 }
 
-/// `(from, to, key, params)`: the order both linters report in.
 pub fn compare(left: &LintDiagnostic, right: &LintDiagnostic) -> Ordering {
     left.from
         .cmp(&right.from)

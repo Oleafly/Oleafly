@@ -52,15 +52,6 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
     }
 }
 
-// The server's own 401 on the upgrade or on opening long-poll. A server
-// reinstalled with a fresh database, or another server now at the address,
-// knows nothing of this session either, and asking it to renew the session
-// would throw away one that is still good. So the manifest is checked
-// first, as for a refused protocol version. Without it there is no telling
-// which server answered, so nothing is renewed and the session tries again
-// later as after any network error. Both transports then renew once and
-// try once more, and a 401 after that means the session is gone. A 401
-// without the server's own answer, from a proxy, renews nothing.
 async fn renewed_after_refusal(link: &LiveLink, refused: &str) -> Result<String, CollabError> {
     let Ok(Ok(manifest)) = tokio::time::timeout(MANIFEST_WITHIN, link.client.capabilities()).await
     else {
@@ -95,8 +86,6 @@ fn connection_closed() -> CollabError {
     CollabError::Network("the server closed the connection".to_owned())
 }
 
-// Frames go out from their own task, so a long upload on a slow link never
-// stops the session from reading what the server sends or from stopping.
 async fn write_out(mut sink: SplitSink<Socket, Message>, mut writing: mpsc::Receiver<Message>) {
     while let Some(message) = writing.recv().await {
         let closing = matches!(message, Message::Close(_));
@@ -120,7 +109,6 @@ impl Wire {
         }
     }
 
-    // How long since any byte came in on the socket, even part of a frame.
     pub(super) fn silent_for(&self) -> Option<Duration> {
         match self {
             Wire::Socket {

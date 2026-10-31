@@ -1,9 +1,3 @@
-//! bubblewrap arguments for confined commands on Linux. The argument list is
-//! the one Oleafly 0.4.7 used for task commands; the workspace is mounted
-//! read-only under its write grants, protected paths are mounted read-only
-//! again on top, hidden paths are covered last, and the Training run profile
-//! binds the GPU device nodes. Availability means bubblewrap can create the
-//! namespaces here, not only that the program exists.
 use crate::{PlatformRequest, SandboxError};
 use std::path::{Path, PathBuf};
 
@@ -11,7 +5,6 @@ use std::path::{Path, PathBuf};
 pub(crate) const MISSING_MESSAGE: &str =
     "Task commands need bubblewrap to keep writes inside their workspace.";
 
-/// Where bubblewrap is looked for before the search path.
 const SYSTEM_BWRAP: [&str; 4] = [
     "/usr/bin/bwrap",
     "/bin/bwrap",
@@ -19,8 +12,6 @@ const SYSTEM_BWRAP: [&str; 4] = [
     "/run/current-system/sw/bin/bwrap",
 ];
 
-/// bubblewrap in a system folder, then in an absolute `PATH` folder
-/// (Homebrew, Nix and other installs).
 pub(crate) fn find_bubblewrap(path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
     SYSTEM_BWRAP
         .iter()
@@ -39,11 +30,8 @@ pub(crate) fn bubblewrap() -> Option<PathBuf> {
     find_bubblewrap(std::env::var_os("PATH").as_deref())
 }
 
-/// The longest the probe may take.
 const PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
-/// What the probe runs: the same isolation flags as a task command, over a
-/// read-only copy of the whole system, and a program that does nothing.
 fn probe_arguments() -> Vec<&'static str> {
     let nothing = ["/usr/bin/true", "/bin/true"]
         .into_iter()
@@ -66,7 +54,6 @@ fn probe_arguments() -> Vec<&'static str> {
     ]
 }
 
-/// The first line bubblewrap printed, or the exit status.
 fn probe_detail(stderr: &str, status: &std::process::ExitStatus) -> String {
     stderr
         .lines()
@@ -76,7 +63,6 @@ fn probe_detail(stderr: &str, status: &std::process::ExitStatus) -> String {
         .unwrap_or_else(|| status.to_string())
 }
 
-/// Starts bubblewrap with the isolation flags; `Err` says why it can't.
 fn run_probe(bubblewrap: &Path) -> Result<(), String> {
     use std::io::Read;
     use std::process::Stdio;
@@ -114,10 +100,6 @@ fn run_probe(bubblewrap: &Path) -> Result<(), String> {
     }
 }
 
-/// Whether bubblewrap is installed and can create the namespaces a task
-/// command needs here (unprivileged user namespaces are off on some
-/// systems, in some containers and under WSL1). Checked once per process
-/// when it works, again after a short while when it doesn't.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn availability() -> crate::Availability {
     static CACHE: crate::probe::ProbeCache = crate::probe::ProbeCache::new();
@@ -132,7 +114,6 @@ pub(crate) fn availability() -> crate::Availability {
     })
 }
 
-/// GPU device nodes that exist on this machine (NVIDIA and DRI).
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn gpu_devices() -> Vec<PathBuf> {
     let mut devices: Vec<PathBuf> = [
@@ -247,14 +228,11 @@ pub(crate) fn arguments_with(
         args.push(path.as_os_str().to_os_string());
         args.push(path.as_os_str().to_os_string());
     }
-    // Mounted last, so they stay read-only inside the write grants.
     for path in request.protected {
         args.push("--ro-bind".into());
         args.push(path.as_os_str().to_os_string());
         args.push(path.as_os_str().to_os_string());
     }
-    // Hidden paths are covered after every grant: an empty file, or an empty
-    // folder whose changes die with the command.
     for path in request.hidden {
         if path.is_dir() {
             args.push("--tmpfs".into());
@@ -377,7 +355,6 @@ mod tests {
             })
             .expect("the file is not covered with /dev/null");
         assert!(guard < tmpfs && guard < null);
-        // Every mask comes before the program.
         let separator = args.iter().position(|arg| arg == "--").unwrap();
         assert!(tmpfs < separator && null < separator);
     }
@@ -389,7 +366,6 @@ mod tests {
         std::fs::write(&bwrap, "").unwrap();
         let path = std::env::join_paths([Path::new("relative/folder"), folder.path()]).unwrap();
         let found = find_bubblewrap(Some(&path)).unwrap();
-        // A system install wins over the search path when there is one.
         assert!(found == bwrap || SYSTEM_BWRAP.contains(&found.to_str().unwrap()));
         assert_eq!(
             find_bubblewrap(Some(std::ffi::OsStr::new("relative/only"))),

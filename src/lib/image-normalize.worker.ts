@@ -1,5 +1,3 @@
-// Downscales and encodes one attached image off the main thread, and makes
-// its thumbnail. See image-normalize.ts for the rules.
 import "@/lib/polyfills";
 
 interface WorkerScope {

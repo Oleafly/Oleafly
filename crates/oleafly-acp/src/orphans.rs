@@ -1,8 +1,3 @@
-//! Agent processes left behind by an Oleafly that crashed or was killed.
-//! Every agent the app (or the background helper) starts is listed in
-//! `agents.pids` with its owner; at the next start, agents whose owner is
-//! gone are stopped. A reused process id is never stopped: the start time
-//! must still match.
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -18,7 +13,6 @@ const MAX_LINE: usize = 8 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OwnerTag {
-    /// "app" or "daemon".
     pub kind: String,
     pub identity: ProcessIdentity,
 }
@@ -90,7 +84,6 @@ fn stop(pid: u32) -> bool {
     if pid <= 1 {
         return false;
     }
-    // Agents run in their own process group, so the whole tree goes.
     unsafe {
         libc::kill(-pid, libc::SIGKILL);
         libc::kill(pid, libc::SIGKILL);

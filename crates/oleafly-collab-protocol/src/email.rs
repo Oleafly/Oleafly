@@ -15,8 +15,6 @@ pub struct EmailStatus {
     pub notifications: bool,
     #[serde(default)]
     pub last_failure: Option<EmailFailure>,
-    // Whether email is known to get through: a connection check passed or
-    // an email was delivered. An older server doesn't say.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub working: Option<bool>,
 }

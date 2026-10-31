@@ -33,7 +33,6 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  // 0.4.8: the Research tab exists only while research tasks (experimental) are on.
   useResearchTasksFlagStore.setState({ enabled: true });
   useSettingsStore.setState({ showTree: false, railTab: "files" });
   useFilesStore.setState({ projectId: "grant" });

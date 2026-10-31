@@ -1,6 +1,3 @@
-//! The research MCP bridge: a loopback HTTP server, scoped to one project
-//! folder (or a task's isolated copy), that CLI agents and research tasks use
-//! for files, linked folders, literature lookups and skills.
 mod files;
 pub mod protocol;
 mod stdio;
@@ -22,7 +19,6 @@ use crate::task_tools::extra::TaskBinding;
 pub use stdio::{serve_stdio_bridge, stdio_bridge_requested, stdio_server, STDIO_FLAG};
 pub use tools::tool_definitions;
 
-/// A linked research folder granted to the session.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkedRootInfo {
     pub id: String,
@@ -31,22 +27,16 @@ pub struct LinkedRootInfo {
     pub canonical_path: String,
 }
 
-/// Installed skills, as the bridge's skill tools report them.
 pub trait SkillSource: Send + Sync {
-    /// `list_skills` rows for the valid skills.
     fn list(&self, project_id: &str) -> Result<Vec<Value>, String>;
-    /// The payload of an enabled skill, or the "turned off" error.
     fn load(&self, project_id: &str, id: &str) -> Result<Value, String>;
-    /// `{path, content, truncated}` for a support file of an enabled skill.
     fn read_file(&self, project_id: &str, id: &str, path: &str) -> Result<Value, String>;
 }
 
-/// Resolves a linked folder's current path for a read.
 pub trait LinkedRoots: Send + Sync {
     fn resolve(&self, project_id: &str, root_id: &str) -> Result<PathBuf, String>;
 }
 
-/// The host services a bridge uses.
 #[derive(Clone)]
 pub struct BridgeServices {
     pub skills: Arc<dyn SkillSource>,
@@ -54,17 +44,12 @@ pub struct BridgeServices {
     pub secrets: Arc<dyn ConnectorSecrets>,
 }
 
-/// Everything needed to start a bridge.
 pub struct McpStart {
     pub project_id: String,
-    /// The folder the session's file tools read (the project or a task copy).
     pub root: PathBuf,
-    /// Restrict the file tools to these project-relative paths.
     pub allowed: Option<Vec<String>>,
     pub linked_roots: Vec<LinkedRootInfo>,
     pub services: BridgeServices,
-    /// A research task's runs, record and literature tools, for a CLI agent
-    /// working on that task.
     pub task: Option<TaskBinding>,
 }
 

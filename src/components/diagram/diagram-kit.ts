@@ -16,9 +16,6 @@ import { useSettingsStore } from "@/store/settings";
 import { useTheme } from "@/lib/theme";
 import { toast } from "@/lib/toast";
 
-// Split out of DiagramComposer.tsx so lightweight consumers (the inline
-// diagram-canvas view in Editor.tsx) don't have to eagerly pull in the full
-// composer module (compile/save/AI-fix logic, @oleafly/diagram's index).
 function useThemeMode(): "light" | "dark" {
   const { theme } = useTheme();
   return theme === "dark" ? "dark" : "light";

@@ -34,7 +34,6 @@ function trackPreview(preview: WebviewWindow, projectId: string, created: boolea
   });
 }
 
-// A project switch closes the old preview without discarding its saved layout.
 export async function restorePreviewWindow(projectId: string | null, title: string): Promise<void> {
   if (!isTauri()) return;
   const generation = ++projectGeneration;
@@ -105,12 +104,6 @@ function isCompileRequestIdentity(
   );
 }
 
-/**
- * Detached-window event/query payloads cross a serialization boundary. Treat
- * them as untrusted until every identity field and optional checkpoint has
- * been validated. A success may only advertise the exact request that
- * produced its checkpoint.
- */
 export function isPreviewWindowState(
   value: unknown,
 ): value is PreviewWindowState {
@@ -147,8 +140,6 @@ export function isPreviewWindowState(
       candidate.identity.projectRevision &&
     checkpoint.requestGeneration ===
       candidate.identity.requestGeneration;
-  // A non-success attempt may retain an older PDF in the viewer, but that
-  // checkpoint must not be advertised as output from the current identity.
   return candidate.status === "success"
     ? exactCheckpoint
     : checkpoint === null || exactCheckpoint;
@@ -164,9 +155,6 @@ function stampProjectStateRevision(
   };
 }
 
-// Renders `?view=preview` in its own JS context (see main.tsx) and stays in
-// sync via the `preview:refresh` / `preview:project` events the main window
-// emits (on compile and on project switch).
 export async function openPreviewWindow(
   projectId: string,
   title: string,
@@ -194,7 +182,6 @@ export async function openPreviewWindow(
     query.set("state", JSON.stringify(stampedState));
   }
   const geometry = readPreviewGeometry(projectId);
-  // Restore only positions that still intersect a connected monitor.
   const monitors = geometry ? await availableMonitors().catch(() => []) : [];
   if (generation !== projectGeneration) return;
   const onScreen = geometry && geometryOnScreen(geometry, monitors);

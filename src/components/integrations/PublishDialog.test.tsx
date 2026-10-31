@@ -122,10 +122,6 @@ function renderDialog(
   );
 }
 
-/**
- * The dialog moves the focus to its first control on the next frame. Typing
- * sooner sends the rest of the text to that control.
- */
 async function afterInitialFocus() {
   await act(async () => {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -220,11 +216,8 @@ describe("PublishDialog", () => {
     await user.click(screen.getByRole("button", { name: "Create and push" }));
 
     expect(await screen.findByText(/network down/)).toBeInTheDocument();
-    // The repository exists and is linked, so Source Control is told even
-    // though the push failed.
     expect(onPublished).toHaveBeenCalledWith(createdRepo.cloneUrl);
 
-    // Source Control refreshed: the remote is the repository just created.
     view.rerender(<PublishDialog {...props} currentRemote={createdRepo.cloneUrl} />);
     await user.click(screen.getByRole("button", { name: "Create and push" }));
 
@@ -781,8 +774,6 @@ describe("PublishDialog accounts and addresses", () => {
     renderDialog();
 
     expect(screen.getByRole("heading", { name: "Publish to GitHub" })).toBeInTheDocument();
-    // The picker sits beside the action at the bottom, labelled for screen
-    // readers only.
     const picker = screen.getByRole("combobox", { name: enLibrary.github.accountLabel });
     expect(picker.parentElement).toBe(screen.getByRole("button", { name: "Create and push" }).parentElement);
     expect(screen.queryByText(enLibrary.github.accountLabel)).not.toBeInTheDocument();
@@ -827,8 +818,6 @@ describe("PublishDialog accounts and addresses", () => {
 
     await user.click(screen.getByRole("tab", { name: "Link existing" }));
     await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "thesis");
-    // Typing six letters and the 300 ms search debounce take close to the
-    // default second on a busy machine.
     await waitFor(() => expect(mocks.forgeListRepos).toHaveBeenLastCalledWith("https://gitlab.com", 1, "thesis"), {
       timeout: 3_000,
     });

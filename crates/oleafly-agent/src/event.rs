@@ -45,21 +45,16 @@ pub enum AgentEvent {
     },
     Usage {
         usage: Usage,
-        /// The latest step alone (the context the model just saw).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         last_step: Option<Usage>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         context_window: Option<u32>,
     },
-    /// Something the user should know about the run that is not an error:
-    /// an attachment sent as text or skipped, web search unavailable.
     Notice {
         code: String,
         #[serde(default)]
         detail: Option<String>,
     },
-    /// Lifecycle of a delegated child run: started, thinking, the tool it is
-    /// on, done (detail carries a preview of its answer), or error.
     SubagentUpdate {
         id: String,
         label: String,
@@ -76,14 +71,10 @@ pub enum AgentEvent {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         agent_id: Option<String>,
     },
-    /// Older history was summarized away mid-run so the turn could continue
-    /// in a fresh context window.
     Compacted {
         dropped_messages: u32,
         reason: String,
     },
-    /// Mid-run input was delivered at a message boundary and the turn
-    /// continues with it in history.
     Steered {
         text: String,
     },
@@ -98,7 +89,6 @@ pub enum AgentEvent {
 }
 
 impl AgentEvent {
-    /// A usage event without step or window details.
     pub fn usage(usage: Usage) -> Self {
         AgentEvent::Usage {
             usage,

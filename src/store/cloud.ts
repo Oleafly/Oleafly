@@ -88,7 +88,6 @@ interface CloudStoreState {
   status: CloudConnection;
   state: CloudState | null;
   loadError: string | null;
-  /** The providers this build offers, in the order to show them. */
   providers: CloudProviderInfo[] | null;
   providersError: string | null;
   space: CloudSpace | null;
@@ -96,7 +95,6 @@ interface CloudStoreState {
   detailsLoaded: boolean;
   detailsError: string | null;
   connectFlow: ConnectBegin | null;
-  /** The provider of the last connect attempt, until it connects or is cancelled. */
   connectProvider: CloudProviderKind | null;
   connectBusy: boolean;
   pasteBusy: boolean;
@@ -219,7 +217,6 @@ export function remoteBusyKey(cloudId: string): string {
   return `remote:${cloudId}`;
 }
 
-/** The provider the cloud strings name: the one being connected, else the connected one. */
 export function activeCloudProvider(
   source: Pick<CloudStoreState, "connectProvider" | "state">,
 ): CloudProviderKind | null {
@@ -943,7 +940,6 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       set({ connectFlow: null, connectProvider: provider, connectBusy: true, connectError: null });
       try {
         await cloudConnectCredentials(provider, config, accessKeyId, secretAccessKey);
-        // The keys are saved by now, so a cancelled attempt still shows the account.
         if (generation !== flowGeneration) {
           await get().refresh();
           return false;
@@ -1060,7 +1056,6 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
 
 provideErrorParams("cloud", () => ({ provider: cloudProviderName(activeCloudProvider(useCloudStore.getState())) }));
 
-/** The name of the provider the cloud strings talk about, for `{{provider}}`. */
 export function useCloudProviderName(): string {
   return cloudProviderName(useCloudStore(activeCloudProvider));
 }

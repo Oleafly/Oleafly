@@ -1,5 +1,3 @@
-//! Résumé detection (`packages/preflight/src/doc-type.ts`).
-
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -29,7 +27,6 @@ pub fn looks_like_resume_source(text: &str) -> bool {
         .map(match_resume_section_heading)
         .filter(|id| is_ats_resume_section(*id))
         .collect();
-    // Two or more distinct standard resume headings is a strong signal.
     sections.len() >= 2
 }
 

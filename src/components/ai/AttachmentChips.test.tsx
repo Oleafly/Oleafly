@@ -34,7 +34,6 @@ describe("AttachmentChips", () => {
     );
     expect(container.querySelector("img")).toHaveAttribute("src", "data:image/jpeg;base64,AA");
     expect(screen.getByText("notes.txt")).toBeInTheDocument();
-    // The size line; the note below it names the page count too.
     expect(screen.getByText("4 KB · 240 pages")).toBeInTheDocument();
     expect(
       screen.getByText(

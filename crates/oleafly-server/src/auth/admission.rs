@@ -67,8 +67,6 @@ pub struct Admitted {
     pub new_account: bool,
     pub reactivated: bool,
     pub via: Via,
-    // Projects a returning account was not put back into, because active
-    // people filled them while it was away.
     pub left_out_of: Vec<SharedProjectId>,
 }
 

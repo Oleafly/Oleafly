@@ -5,8 +5,6 @@ import { approvalsList, approvalsSet } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { Badge } from "@/components/ui/badge";
 
-// Editor for the per-project decisions saved from the tool-approval prompt
-// ("Always in this project"). Removing a rule makes that tool prompt again.
 export function ProjectApprovals() {
   const { t } = useTranslation(["settings"]);
   const projectId = useFilesStore((s) => s.projectId);

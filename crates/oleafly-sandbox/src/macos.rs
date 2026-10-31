@@ -11,7 +11,6 @@ pub(crate) const MISSING_MESSAGE: &str =
     "This Mac cannot confine task commands because sandbox-exec is unavailable.";
 
 const BASE_PROFILE: &str = "(version 1) (deny default) (allow process*) (allow syscall-unix) (allow file-read-metadata) (allow sysctl-read) (allow signal (target same-sandbox)) (deny syscall-unix (syscall-number SYS_setsid SYS_setpgid) (with errno 1))";
-/// Programs that do not start helpers may not use `posix_spawn`.
 const NO_SPAWN: &str = " (deny syscall-unix (syscall-number SYS_posix_spawn) (with errno 78))";
 
 /// The IOKit user clients the Training profile may open: the GPU drivers and
@@ -31,7 +30,6 @@ const GPU_USER_CLIENTS: [&str; 9] = [
     "IOAccelSubmitter2",
 ];
 
-/// The profile for `request`, without the program arguments.
 pub(crate) fn profile(request: &PlatformRequest<'_>) -> Result<String, SandboxError> {
     let mut profile = String::from(BASE_PROFILE);
     if !request.child_processes {
@@ -43,7 +41,6 @@ pub(crate) fn profile(request: &PlatformRequest<'_>) -> Result<String, SandboxEr
         profile.push_str(" (allow mach-lookup (global-name \"com.apple.SecurityServer\") (global-name \"com.apple.trustd\") (global-name \"com.apple.trustd.agent\") (global-name \"com.apple.mDNSResponder\") (global-name \"com.apple.networkd\") (global-name \"com.apple.SystemConfiguration.configd\"))");
     }
     if request.gpu {
-        // Metal and the GPU drivers live behind IOKit user clients.
         profile.push_str(" (allow iokit-open");
         for class in GPU_USER_CLIENTS {
             profile.push_str(&format!(" (iokit-user-client-class \"{class}\")"));
@@ -75,15 +72,11 @@ pub(crate) fn profile(request: &PlatformRequest<'_>) -> Result<String, SandboxEr
         let filter = if path.is_dir() { "subpath" } else { "literal" };
         profile.push_str(&format!(" (allow file-write* ({filter} {quoted}))"));
     }
-    // Later rules win: protected paths stay read-only inside write grants.
-    // One that isn't there yet is denied as a whole folder, so the command
-    // can't create it either.
     for path in request.protected {
         let quoted = quote(path)?;
         let filter = if path.is_file() { "literal" } else { "subpath" };
         profile.push_str(&format!(" (deny file-write* ({filter} {quoted}))"));
     }
-    // Hidden paths can't be read or changed, whatever grant covers them.
     for path in request.hidden {
         let quoted = quote(path)?;
         let filter = if path.is_dir() { "subpath" } else { "literal" };
@@ -158,8 +151,6 @@ mod tests {
         let writable = [PathBuf::from("/w")];
         let protected = [PathBuf::from("/w/.git")];
         let text = profile(&request(&writable, &protected, &[], false, false)).unwrap();
-        // `/w/.git` doesn't exist: the whole folder is denied, so the
-        // command can't create it with hooks inside.
         let deny = text
             .find("(deny file-write* (subpath \"/w/.git\"))")
             .unwrap();
@@ -204,7 +195,6 @@ mod tests {
     #[test]
     fn gpu_runs_open_only_the_gpu_iokit_clients() {
         let text = profile(&request(&[], &[], &[], false, true)).unwrap();
-        // No rule opens every IOKit client.
         assert!(!text.contains("(allow iokit-open)"));
         let open = text.find("(allow iokit-open").unwrap();
         let rule = &text[open..];

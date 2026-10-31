@@ -518,8 +518,6 @@ fn pdf_pages_are_counted_across_messages_newest_first() {
 #[test]
 fn a_pdf_without_a_page_count_still_uses_up_the_page_budget() {
     let root = tempfile::tempdir().unwrap();
-    // 3 MB each is about 60 pages by the size guess: two of them are over
-    // the limit of 100.
     let first = store_numbered_pdf(root.path(), 1, 3_000_000, None, None);
     let second = store_numbered_pdf(root.path(), 2, 3_000_000, None, None);
     let mut req = request(vec![user(vec![

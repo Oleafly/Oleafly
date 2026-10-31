@@ -1,14 +1,3 @@
-//! Before-turn copies of a project so the changes an agent or the assistant
-//! made in one turn can be reviewed and undone file by file.
-//!
-//! `begin` records every project file (size, time and, for files Oleafly can
-//! keep, the content in a compressed content-addressed store outside the
-//! project). `finish` walks the project again and lists what the turn added,
-//! changed or deleted. Undo and Redo write one side back only when the disk
-//! still holds the other side, so later edits are never overwritten.
-//!
-//! TeX build output is compared by size and time only and is never undone.
-
 mod lines;
 mod store;
 mod walk;
@@ -69,13 +58,9 @@ pub struct TurnChange {
     pub change: TurnChangeKind,
     pub before_size: Option<u64>,
     pub after_size: Option<u64>,
-    /// Lines added, when both sides are UTF-8 text of at most 2 MiB.
     pub added: Option<u32>,
-    /// Lines removed, when both sides are UTF-8 text of at most 2 MiB.
     pub removed: Option<u32>,
-    /// Oleafly's own write path also saved this file during the turn.
     pub also_edited_here: bool,
-    /// A build output file (see `build_hygiene::is_build_artifact`).
     pub build: bool,
 }
 
@@ -86,7 +71,6 @@ pub struct TurnChanges {
     pub files: Vec<TurnChange>,
     pub more_files: u32,
     pub skipped: Vec<TurnSkipped>,
-    /// Another turn in the same project was open during this one.
     pub overlapped: bool,
     pub unavailable: Option<TurnUnavailable>,
 }
@@ -156,20 +140,11 @@ pub struct TurnRevertResult {
     pub project_state: crate::project::ProjectStateChanged,
 }
 
-// ---------------------------------------------------------------------------
-// Limits
-
 const MIB: u64 = 1024 * 1024;
-/// Stat matches this close to the moment a file was hashed are not trusted:
-/// some file systems keep modification times in whole seconds.
 const RACY_NS: i64 = 3_000_000_000;
-/// How long preview, status and undo wait for a busy store.
 const STORE_WAIT: Duration = Duration::from_secs(30);
-/// Longest text shown in a preview, per side.
 const PREVIEW_CHARS: usize = 400_000;
-/// Skipped files carried in one finish payload.
 const MAX_PAYLOAD_SKIPPED: usize = 100;
-/// Open turns older than this were abandoned (the app never finished them).
 const ABANDONED_TURN: Duration = Duration::from_secs(24 * 60 * 60);
 const EXPIRED: &str = "Undo is no longer available for this turn.";
 const NOT_IN_TURN: &str = "This file is not part of the turn.";
@@ -238,7 +213,6 @@ pub(crate) fn valid_snapshot_id(id: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || byte.is_ascii_lowercase() || byte == b'-')
 }
 
-/// Project-relative path in the walk's form (`/`-separated, no `.` parts).
 fn normalize_relative(path: &str) -> String {
     let path = if cfg!(windows) {
         path.replace('\\', "/")
@@ -256,9 +230,6 @@ fn ancestors(path: &str) -> impl Iterator<Item = &str> {
         parent.rsplit_once('/').map(|(parent, _)| parent)
     })
 }
-
-// ---------------------------------------------------------------------------
-// Open turns
 
 struct OpenTurn {
     snapshot_id: String,
@@ -289,8 +260,6 @@ fn open_turn(project_id: &str, snapshot_id: &str) {
     });
 }
 
-/// Closes an open turn: the paths Oleafly wrote during it and whether another
-/// turn overlapped it.
 fn close_turn(project_id: &str, snapshot_id: &str) -> Option<(BTreeSet<String>, bool)> {
     let mut open = open_turns();
     let turns = open.get_mut(project_id)?;
@@ -304,11 +273,6 @@ fn close_turn(project_id: &str, snapshot_id: &str) -> Option<(BTreeSet<String>, 
     Some((turn.app_writes, turn.overlapped))
 }
 
-/// Lets the caller of [`begin_for`] give up on a copy still being taken on
-/// another thread. The turn is registered as open only while its caller still
-/// waits: once the caller gives up, a copy that has not registered never does
-/// and one that has is closed again, so an abandoned copy can never mark
-/// later turns as overlapped.
 #[derive(Default)]
 pub(crate) struct BeginTicket {
     state: Mutex<TicketState>,
@@ -330,7 +294,6 @@ impl BeginTicket {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Registers the turn unless the caller has given up.
     fn open(&self, project_id: &str, snapshot_id: &str) -> bool {
         let mut state = self.state();
         if matches!(*state, TicketState::Abandoned) {
@@ -344,7 +307,6 @@ impl BeginTicket {
         true
     }
 
-    /// The caller stopped waiting for the copy. Never blocks on the disk.
     pub(crate) fn abandon(&self) {
         let mut state = self.state();
         if let TicketState::Opened {
@@ -364,8 +326,6 @@ fn open_snapshot_ids(project_id: &str) -> BTreeSet<String> {
         .unwrap_or_default()
 }
 
-/// Records that Oleafly's own write path saved `relative_path` so open turns
-/// can flag it as also edited by the user.
 pub(crate) fn note_app_write(project_id: &str, relative_path: &str) {
     let mut open = open_turns();
     let Some(turns) = open.get_mut(project_id) else {
@@ -379,9 +339,6 @@ pub(crate) fn note_app_write(project_id: &str, relative_path: &str) {
         turn.app_writes.insert(path.clone());
     }
 }
-
-// ---------------------------------------------------------------------------
-// Shared helpers
 
 fn worktree_shared(
     project_id: &str,
@@ -421,7 +378,6 @@ fn lock_store(project_id: &str) -> Result<Option<Store>, String> {
     })
 }
 
-/// Reads a whole file, refusing anything over `limit` bytes.
 fn read_limited(path: &Path, limit: u64) -> Result<Vec<u8>, TurnSkipReason> {
     use std::io::Read as _;
     let file = std::fs::File::open(path).map_err(|_| TurnSkipReason::Unreadable)?;
@@ -443,7 +399,6 @@ fn is_manifest_name(name: &str) -> bool {
     name.eq_ignore_ascii_case(crate::project_location::MANIFEST_FILE)
 }
 
-/// Whether the root `project.json` is Oleafly's own manifest right now.
 fn manifest_is_managed(location: &crate::project_location::ProjectLocation) -> bool {
     crate::project_manifest::location_root_file_is_managed(
         location,
@@ -451,16 +406,10 @@ fn manifest_is_managed(location: &crate::project_location::ProjectLocation) -> b
     )
 }
 
-// ---------------------------------------------------------------------------
-// begin
-
-/// Takes the before-turn copy. Never fails the caller's turn: problems come
-/// back as `unavailable`.
 pub(crate) fn begin(project_id: &str, label: &str) -> TurnBegin {
     begin_for(project_id, label, &BeginTicket::default())
 }
 
-/// [`begin`] for a caller that may stop waiting; see [`BeginTicket`].
 pub(crate) fn begin_for(project_id: &str, label: &str, ticket: &BeginTicket) -> TurnBegin {
     turn_begin(take_before(
         project_id,
@@ -576,8 +525,6 @@ fn take_before(
         return Err(TurnUnavailable::TooLarge);
     }
 
-    // The cache is rebuilt from this walk, so entries for old content do not
-    // keep its blobs alive.
     let cache = store.load_index();
     let mut index = Index::default();
     let mut budget = Budget::known(used, limits.store_bytes);
@@ -650,18 +597,13 @@ fn take_before(
         log(format!("Could not save a turn for Undo: {error}"));
         TurnUnavailable::Error
     })?;
-    // Registered while the worktree is still read-locked, so no save can land
-    // between the copy and the registration unnoticed.
     if !ticket.open(project_id, &snapshot.id) {
-        // Nobody waits for this copy any more; the turn runs without Undo.
         store.remove_snapshot(&snapshot.id);
         return Err(TurnUnavailable::Timeout);
     }
     Ok(snapshot.id)
 }
 
-/// Reads one file and keeps its content in the store, returning its hash and
-/// bytes.
 fn keep_file(
     store: &Store,
     path: &Path,
@@ -680,8 +622,6 @@ fn keep_file(
     }
 }
 
-/// Saves the index with the cached entries the copy did not reach, so the
-/// next turn gets further.
 fn save_partial_index(store: &Store, index: &mut Index, cached: BTreeMap<String, IndexEntry>) {
     for (path, entry) in cached {
         index.files.entry(path).or_insert(entry);
@@ -689,10 +629,6 @@ fn save_partial_index(store: &Store, index: &mut Index, cached: BTreeMap<String,
     let _ = store.save_index(index);
 }
 
-// ---------------------------------------------------------------------------
-// finish
-
-/// Compares the project with the before-turn copy.
 pub(crate) fn finish(
     project_id: &str,
     snapshot_id: &str,
@@ -739,8 +675,6 @@ fn compare_turn(
         TurnUnavailable::Error
     })?;
     let _worktree = worktree_shared(project_id, deadline)?;
-    // Closed only once saves are blocked, so every save during the turn is
-    // either noted or part of the comparison below.
     let (app_writes, overlapped) = close_turn(project_id, snapshot_id).unwrap_or_default();
     let store = lock_store_for_turn(project_id, deadline, false)?.ok_or(TurnUnavailable::Error)?;
     let mut snapshot = store
@@ -800,7 +734,6 @@ struct Comparison<'a> {
     finished_ns: i64,
 }
 
-/// A change found by the comparison, with the bytes kept for line counts.
 struct Found {
     change: StoredChange,
     before_bytes: Option<Vec<u8>>,
@@ -816,12 +749,7 @@ impl Comparison<'_> {
     ) -> Result<(FinishRecord, Index), TurnUnavailable> {
         let before = &self.snapshot.before;
         let manifest_left_out = match self.snapshot.manifest_managed {
-            // Left out of the copy, so it stays out even when the turn broke
-            // it: listing it as added would let Undo delete it.
             Some(true) => true,
-            // Kept in the copy and compared like any file. One that only
-            // appeared during the turn as Oleafly's own manifest (saving the
-            // settings to the folder writes it) is Oleafly's, as above.
             Some(false) => {
                 !before.keys().any(|path| is_manifest_name(path)) && manifest_is_managed(location)
             }
@@ -860,8 +788,6 @@ impl Comparison<'_> {
             }
             let old = before.get(path.as_str());
             let new = tree.get(path.as_str());
-            // A file inside a folder that could not be read after the turn
-            // may well still be there.
             if old.is_some()
                 && new.is_none()
                 && ancestors(path).any(|folder| unreadable_after.contains(folder))
@@ -935,8 +861,6 @@ impl Comparison<'_> {
         ))
     }
 
-    /// Compares one path that is not build output. `Ok(Some(_))` is a
-    /// change to report, `Err(_)` the reason the path is skipped.
     fn compare(
         &self,
         path: &str,
@@ -949,7 +873,6 @@ impl Comparison<'_> {
         let kept = old.and_then(|entry| entry.sha256.as_deref().map(|sha| (entry, sha)));
         match (old, kept, new) {
             (None, _, None) => Ok(None),
-            // Before: not kept (skipped). Report it only if it changed.
             (Some(entry), None, new) => {
                 if skipped_unchanged(entry, new) {
                     Ok(None)
@@ -983,7 +906,6 @@ impl Comparison<'_> {
         }
     }
 
-    /// A file whose content the copy kept and that is still a file.
     fn compare_kept(
         &self,
         path: &str,
@@ -1031,7 +953,6 @@ impl Comparison<'_> {
         }))
     }
 
-    /// A file that was not there before the turn.
     fn compare_added(
         &self,
         path: &str,
@@ -1040,8 +961,6 @@ impl Comparison<'_> {
         index: &mut Index,
         budget: &mut Budget,
     ) -> Result<Found, TurnSkipReason> {
-        // A file inside a folder that could not be read before the turn may
-        // well have been there all along.
         if ancestors(path).any(|folder| unreadable_before.contains(folder)) {
             return Err(TurnSkipReason::Unreadable);
         }
@@ -1087,7 +1006,6 @@ impl Comparison<'_> {
         }
     }
 
-    /// Kept content small enough for line counts.
     fn counted_blob(&self, sha: &str, size: u64) -> Option<Vec<u8>> {
         (size <= lines::MAX_COUNTED_BYTES)
             .then(|| self.store.read_blob(sha, size))
@@ -1147,7 +1065,6 @@ fn stored_change(
     }
 }
 
-/// Build output is compared by size and time only.
 fn build_change(
     path: &str,
     old: Option<&BeforeEntry>,
@@ -1183,7 +1100,6 @@ fn build_change(
     })
 }
 
-/// Whether a file whose content was not kept looks the same after the turn.
 fn skipped_unchanged(entry: &BeforeEntry, new: Option<&Entry>) -> bool {
     match (entry.skip, new) {
         (Some(TurnSkipReason::Symlink), Some(Entry::Symlink)) => true,
@@ -1211,7 +1127,6 @@ fn json_len<T: Serialize>(value: &T) -> usize {
     serde_json::to_vec(value).map_or(256, |bytes| bytes.len() + 1)
 }
 
-/// How many changes fit the payload caps.
 fn shown_count(changes: &[StoredChange], skipped: &[TurnSkipped], limits: &Limits) -> u32 {
     let mut used = 256 + skipped.iter().map(json_len).sum::<usize>();
     let mut shown = 0_u32;
@@ -1237,21 +1152,10 @@ fn payload(snapshot_id: &str, record: &FinishRecord) -> TurnChanges {
     }
 }
 
-// ---------------------------------------------------------------------------
-// status and preview
-
-/// What is on disk now for one path.
 #[derive(Debug, PartialEq, Eq)]
 enum Disk {
     Absent,
-    File {
-        size: u64,
-        mtime: Option<i64>,
-    },
-    /// No entry of this exact name, but a case-insensitive disk resolved it
-    /// to one whose name differs only in letter case (after a case-only
-    /// rename, the only copy of the file). Counts as no file of this name,
-    /// and is never written over or removed under it.
+    File { size: u64, mtime: Option<i64> },
     OtherName,
     Other,
 }
@@ -1276,8 +1180,6 @@ fn disk_at(target: &Path, relative: &str) -> Disk {
     }
 }
 
-/// Whether a case-insensitive disk found `target` under a name that differs
-/// from `relative` only in letter case (compared by its trailing path parts).
 fn spelled_in_other_case(target: &Path, relative: &str) -> bool {
     let Ok(real) = std::fs::canonicalize(target) else {
         return false;
@@ -1303,7 +1205,6 @@ fn spelled_in_other_case(target: &Path, relative: &str) -> bool {
     other_case
 }
 
-/// Whether `disk` holds `side` at `target` (`None` = no file of that name).
 fn holds(disk: &Disk, target: &Path, relative: &str, side: Option<&Side>, index: &Index) -> bool {
     let Some(side) = side else {
         return matches!(disk, Disk::Absent | Disk::OtherName);
@@ -1321,7 +1222,6 @@ fn holds(disk: &Disk, target: &Path, relative: &str, side: Option<&Side>, index:
             }
             std::fs::read(target).is_ok_and(|bytes| store::sha256_hex(&bytes) == *sha)
         }
-        // Build output: size and time only.
         None => side.mtime.is_some() && side.mtime == mtime,
     }
 }
@@ -1347,7 +1247,6 @@ fn finished_record(store: &Store, snapshot_id: &str) -> Option<FinishRecord> {
         .filter(|record| record.unavailable.is_none())
 }
 
-/// Each shown file's state, from disk hashes; nothing is saved.
 pub(crate) fn status(project_id: &str, snapshot_id: &str) -> Result<TurnStatus, String> {
     let expired = TurnStatus {
         expired: true,
@@ -1356,8 +1255,6 @@ pub(crate) fn status(project_id: &str, snapshot_id: &str) -> Result<TurnStatus, 
     if !valid_snapshot_id(snapshot_id) {
         return Ok(expired);
     }
-    // The store is only held while reading it, never while hashing the
-    // project's files.
     let (record, index) = {
         let Some(store) = lock_store(project_id)? else {
             return Ok(expired);
@@ -1399,7 +1296,6 @@ fn preview_text(bytes: Option<Vec<u8>>) -> Result<Option<String>, ()> {
     }
 }
 
-/// Both sides of one change, as text when possible.
 pub(crate) fn preview(
     project_id: &str,
     snapshot_id: &str,
@@ -1448,7 +1344,6 @@ pub(crate) fn preview(
         state,
     };
     if change.build {
-        // Build output is not kept, so there is nothing to show.
         preview.binary = true;
         return Ok(preview);
     }
@@ -1470,9 +1365,6 @@ pub(crate) fn preview(
     }
     Ok(preview)
 }
-
-// ---------------------------------------------------------------------------
-// Undo and Redo
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Direction {
@@ -1501,7 +1393,6 @@ fn expired_for(indices: Option<&[u32]>) -> Applied {
     }
 }
 
-/// Undoes or redoes files of a turn inside the project mutation transaction.
 pub(crate) async fn apply_turn<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     state: &crate::state::AppState,
@@ -1592,8 +1483,6 @@ fn apply_changes(
             }
         }
     }
-    // Removals first: on a case-insensitive disk a case-only rename must
-    // lose its new name before the old one can come back.
     let removes_file = |change: &StoredChange| match direction {
         Direction::Undo => change.change == TurnChangeKind::Added,
         Direction::Redo => change.change == TurnChangeKind::Deleted,
@@ -1628,8 +1517,6 @@ fn apply_changes(
             applied.reverted.push(change.index);
             continue;
         }
-        // A name spelled in another case is a different file of the turn
-        // (a case-only rename): writing here would overwrite it.
         if disk == Disk::OtherName || !holds(&disk, &target, &change.path, from, &index) {
             applied.skipped.push(skip(TurnRevertSkipReason::Edited));
             continue;
@@ -1693,7 +1580,6 @@ impl<'a> WritableWhileSaving<'a> {
                 return false;
             }
             // NOSONAR: only the file Undo is restoring, only while it is
-            // written; Drop sets the read-only flag again.
             #[allow(clippy::permissions_set_readonly_false)]
             permissions.set_readonly(false); // NOSONAR
             std::fs::set_permissions(target, permissions).is_ok()
@@ -1723,7 +1609,6 @@ impl Drop for WritableWhileSaving<'_> {
     }
 }
 
-/// Deletes a file, retrying briefly while another program holds it open.
 fn remove_file(target: &Path) -> Result<(), String> {
     let deadline = Instant::now() + Duration::from_secs(if cfg!(windows) { 2 } else { 0 });
     let mut delay = Duration::from_millis(20);
@@ -1742,7 +1627,6 @@ fn remove_file(target: &Path) -> Result<(), String> {
     }
 }
 
-/// Removes folders the turn created once Undo has emptied them.
 fn prune_created_dirs(root: &Path, path: &str, created: &BTreeSet<String>) {
     for folder in ancestors(path) {
         if !created.contains(folder) || std::fs::remove_dir(root.join(folder)).is_err() {
@@ -1751,10 +1635,6 @@ fn prune_created_dirs(root: &Path, path: &str, created: &BTreeSet<String>) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Project removal
-
-/// Deletes every before-turn copy kept for a project.
 pub(crate) fn remove_project(project_id: &str) {
     if let Err(error) = remove_project_store(project_id) {
         log(format!(
@@ -1774,9 +1654,6 @@ fn remove_project_store(project_id: &str) -> Result<(), String> {
         Err(error) => Err(error.to_string()),
     }
 }
-
-// ---------------------------------------------------------------------------
-// Commands
 
 async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> T + Send + 'static,

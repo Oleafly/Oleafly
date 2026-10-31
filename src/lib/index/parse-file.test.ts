@@ -82,7 +82,6 @@ describe("parseFile: definitions", () => {
     const d = required(def(t, "section", "Intro to \\texttt{foo}"));
     expect(d).toBeDefined();
     expect(spanOk(t, d)).toBe(true);
-    // A following symbol still parses (scanning resumed past the whole title).
     const t2 = "\\section{A \\texttt{x}}\n\\label{sec:a}";
     expect(def(t2, "section", "A \\texttt{x}")).toBeDefined();
     expect(def(t2, "label", "sec:a")).toBeDefined();

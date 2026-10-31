@@ -7,11 +7,6 @@ import { TREE_DRAG_TYPE } from "@/lib/tree-drag";
 import type { ChatMessage, ChatTurnChanges, StoredChat } from "@/store/chats";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 
-// The built-in assistant's composer and the UI around it: drafts and
-// attachments, effort and web per chat, the usage meter, and regenerate,
-// retry, edit and resend. The agent loop itself is covered by
-// ChatCore.agent-loop.test.tsx; the setup here follows that file.
-
 interface RunOutcome {
   text: string;
   usage: { input: number; output: number };
@@ -122,7 +117,6 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-// The attachment store, in memory: a put returns `sha-<name>`.
 const { attachmentStore, attachmentReadFailures, normalizeExtras } = vi.hoisted(() => ({
   attachmentStore: new Map<string, { name: string; mime: string; bytes: Uint8Array }>(),
   attachmentReadFailures: new Set<string>(),
@@ -136,7 +130,6 @@ vi.mock("./agent-turn", async (importOriginal) => ({
 
 vi.mock("@oleafly/ai-core", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@oleafly/ai-core")>()),
-  // One model offers effort levels; every other model has none.
   effortChoicesFor: (_providerId: string, modelId: string) =>
     modelId === EFFORT_MODEL ? ["low", "medium", "high"] : [],
 }));
@@ -188,8 +181,6 @@ vi.mock("@/lib/attachments", async (importOriginal) => {
   };
 });
 
-// Normalizing keeps the file as it is; a test adds pages, text or page
-// images for a file by name.
 vi.mock("@/lib/attachments-normalize", () => ({
   normalizeAttachment: async (file: File) => ({
     name: file.name,
@@ -292,7 +283,6 @@ vi.mock("@oleafly/registry", () => ({
         create: ({ onImage }: { onImage?: (dataUrl: string) => void }) => ({
           preview_figure: { execute: async () => ({ success: true }) },
           insert_figure: { execute: async () => ({ success: true }) },
-          // Hands the image it loaded to the run, as the real tool does.
           load_image: {
             execute: async (input: unknown) => {
               const image = (input as { image?: string } | null)?.image;
@@ -500,7 +490,6 @@ beforeAll(async () => {
   ({ useAssistantRuntimeStore } = await import("@/store/assistant-runtime"));
   ({ useAgentHandoffStore } = await import("@/store/agent-handoff"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
-  // Load the lazy pieces before timing interactions with them.
   await import("@/components/usage/UsageReport");
   await import("./usage/UsagePopover");
   await import("@/lib/attachments-intake");
@@ -713,7 +702,6 @@ function seedChat(messages: ChatMessage[], extra: Partial<StoredChat> = {}) {
 }
 
 function composerDraft() {
-  // Each chat has its own draft; the chat on show is the active one.
   const { projectId, activeId } = { ...useFilesStore.getState(), ...useChatsStore.getState() };
   return useComposerDrafts.getState().drafts[builtinComposerId(projectId, activeId)];
 }
@@ -867,7 +855,6 @@ function turnChangesFor(paths: string[]): ChatTurnChanges {
   };
 }
 
-/** The props the transcript last rendered for one message. */
 function rowProps(messageId: string): MessageItemProps | undefined {
   for (let index = mocks.messageItemProps.length - 1; index >= 0; index -= 1) {
     const props = mocks.messageItemProps[index];
@@ -876,7 +863,6 @@ function rowProps(messageId: string): MessageItemProps | undefined {
   return undefined;
 }
 
-/** Runs a message action the way a click on its button does. */
 async function messageAction(action: "regenerate" | "edit", messageId: string) {
   const onMessageAction = mocks.messageItemProps.at(-1)?.onMessageAction;
   if (!onMessageAction) throw new Error("message actions are not wired");
@@ -1110,7 +1096,6 @@ describe("ChatCore composer, drafts and attachments", () => {
 
     await attach(rendered, [imageFile("plot.png")]);
     const notice = rendered.getByTestId("ai-attachment-notice");
-    // An <output> carries the status role itself.
     expect(rendered.getAllByRole("status")).toContain(notice);
     expect(notice).toHaveTextContent(
       enAi.attachments.visionUnsupported.replace("{{model}}", "GPT Text"),
@@ -1348,7 +1333,6 @@ describe("ChatCore composer, drafts and attachments", () => {
       status: "done",
       imageRef: { sha256: "sha-shot", mime: "image/png" },
     });
-    // Once the file is stored the chat holds the reference only, not the base64 as well.
     expect(tool).not.toHaveProperty("image");
   });
 
@@ -1854,7 +1838,6 @@ describe("ChatCore drafts per chat and queued follow-ups", () => {
     await waitFor(() => expect(composerBox()).toHaveValue("About the first chat"));
     act(() => mocks.historyProps?.onOpen(other));
     await waitFor(() => expect(composerBox()).toHaveValue("About the second chat"));
-    // Enter sends into the chat the text belongs to, never into another.
     pressEnter();
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
     expect(plainTranscript(mocks.runs[0].options.messages).at(-1)).toEqual({ role: "user", content: "About the second chat" });
@@ -1898,7 +1881,6 @@ describe("ChatCore drafts per chat and queued follow-ups", () => {
     sendFromComposer("Second question");
     act(() => mocks.modelSelectorProps?.onChange?.("openai", "gpt-4o-mini"));
 
-    // The queued message follows at once, so the run registry is not empty in between.
     await act(async () => {
       mocks.runs[0].options.handlers.onText("First answer.");
       mocks.runs[0].resolve({ text: "First answer.", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null });
@@ -2249,8 +2231,6 @@ describe("ChatCore message actions", () => {
     expect(rendered.queryByText("notes.txt")).toBeNull();
     expect(rendered.getByText("plot.png")).toHaveAttribute("data-status", "ready");
     expect(rendered.queryByText("old.pdf")).toBeNull();
-    // The chip reads the stored image while it is shown; a cached URL kept in
-    // the draft could be revoked under it.
     expect(composerDraft()?.attachments[0]).toMatchObject({ kind: "image", sha256: "sha-plot.png" });
     expect(composerDraft()?.attachments[0]?.thumbnailUrl).toBeUndefined();
 
@@ -2293,7 +2273,6 @@ describe("ChatCore message actions", () => {
     fireEvent.click(rendered.getByRole("button", { name: enAi.header.newChat }));
 
     expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
-    // The draft goes back to the chat it was typed in; the new chat has its own box.
     const projectId = useFilesStore.getState().projectId as string;
     expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId, "chat-1")]?.text).toBe("Unsent draft");
     expect(composerBox()).toHaveValue("");
@@ -2322,7 +2301,6 @@ describe("ChatCore message actions", () => {
 
     await waitFor(() => expect(useChatsStore.getState().activeId).toBe("chat-2"));
     expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
-    // Each chat has its own draft: it went back to chat-1 and is not in chat-2's box.
     expect(composerBox()).toHaveValue("");
     expect(rendered.queryByText("notes.txt")).toBeNull();
     act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-1") as StoredChat));
@@ -2446,7 +2424,6 @@ describe("ChatCore message actions", () => {
     await waitFor(() => expect(mocks.checkProjectBudget).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(activeChatRun()).toBeNull());
 
-    // The budget stopped the run: the question and the answer are still there, on screen, on disk and in the thread.
     expect(mocks.runs).toHaveLength(1);
     expect(mocks.agentThreadRollback).not.toHaveBeenCalled();
     expect(savedMessages().map((message) => message.content)).toEqual(["Summarise the notes", "Here is the summary."]);
@@ -2537,7 +2514,6 @@ describe("ChatCore message actions", () => {
     expect(useChatsStore.getState().byId(chatId)).toBeUndefined();
     expect(useChatsStore.getState().activeId).toBeNull();
     expect(rendered.queryByText("Long task")).toBeNull();
-    // The next message starts a chat of its own, not a copy of the deleted one.
     sendFromComposer("Another question");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
     expect(plainTranscript(mocks.runs[0].options.messages)).toEqual([{ role: "user", content: "Another question" }]);
@@ -2640,7 +2616,6 @@ describe("ChatCore chats, runs and what each keeps", () => {
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
     await runLoadImage("data:image/png;base64,UExPVA==");
 
-    // Deleting another chat now would collect every file not in this list.
     await waitFor(() => expect(draftAttachmentRefs(projectId)).toContain("sha-shot"));
     await completeRun(0, "It shows a rising curve.");
     expect(savedMessages().at(-1)?.toolCalls?.[0]?.imageRef?.sha256).toBe("sha-shot");
@@ -2685,7 +2660,6 @@ describe("ChatCore chats, runs and what each keeps", () => {
     act(() => mocks.historyProps?.onOpen(other));
     await waitFor(() => expect(rendered.getByTestId("ai-context-ring")).toHaveAttribute("data-state", "unknown"));
 
-    // Chat 1 shows its own saved usage again.
     act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-1") as StoredChat));
     await waitFor(() => expect(rendered.getByTestId("ai-context-ring")).toHaveAttribute("data-tone", "warning"));
     fireEvent.click(rendered.getByRole("button", { name: enAi.header.newChat }));
@@ -2762,7 +2736,6 @@ describe("ChatCore chats, runs and what each keeps", () => {
     await waitFor(() => expect(useChatsStore.getState().activeId).toBeNull());
     expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
     await waitFor(() => expect(composerBox()).toHaveValue("Half-written message"));
-    // Nothing is left behind for the chat that is gone.
     expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId, "chat-1")]).toBeUndefined();
   });
 
@@ -2782,7 +2755,6 @@ describe("ChatCore chats, runs and what each keeps", () => {
       await waitFor(() =>
         expect(useChatsStore.getState().live["chat-1"]?.at(-1)?.content).toBe("First part, second part"),
       );
-      // Saved now, not once the text stops for 400 ms.
       expect(saveMessages).toHaveBeenCalledWith(
         "chat-1",
         expect.arrayContaining([expect.objectContaining({ content: "First part, second part" })]),

@@ -10,7 +10,6 @@ const FONT_SIZE = 11;
 const LEADING = 16;
 const ASCENT = 8;
 const DESCENT = 3;
-/** Helvetica averages about half an em per character, close enough for boxes. */
 const ADVANCE = FONT_SIZE / 2;
 const LINES_PER_PAGE = Math.floor((PAGE_HEIGHT - 2 * MARGIN) / LEADING);
 const MAX_CHARS = Math.floor((PAGE_WIDTH - 2 * MARGIN) / ADVANCE);
@@ -38,7 +37,6 @@ interface Collected {
 
 export interface FakeEngineOptions {
   engines?: readonly DocumentEngineId[];
-  /** Waits this long before answering, so tests can stop a running compile. */
   delayMs?: number;
 }
 
@@ -92,7 +90,6 @@ function paginate(lines: readonly TypesetLine[]): TypesetLine[][] {
   return pages.length > 0 ? pages : [[]];
 }
 
-/** A PDF with one Helvetica text line per typeset line, positioned like the SyncTeX boxes. */
 function fakePdf(pages: readonly (readonly TypesetLine[])[]): Uint8Array {
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
@@ -188,13 +185,6 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/**
- * A stand-in engine for tests and the dev server, never for people. Every body
- * line of the main document and its `\input` files becomes one line of a real
- * PDF, with a SyncTeX file that maps it back, so a compile, click-to-source and
- * output upload can run without TeX. A line holding `\fakeerror` fails the
- * compile with a TeX-style error on that line.
- */
 export function createFakeEngine(options: FakeEngineOptions = {}): BrowserEngine {
   const engines = new Set<DocumentEngineId>(options.engines ?? ["latex", "latexmk", "typst", "markdown"]);
   return {

@@ -21,7 +21,6 @@ compose_pin_x86_64=$(sed -n 's/^compose_plugin_sha256_x86_64=//p' "$src/install.
 compose_pin_aarch64=$(sed -n 's/^compose_plugin_sha256_aarch64=//p' "$src/install.sh")
 # Dependabot moves Caddy's tag, so the tests read it from the release file.
 caddy_pin=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(caddy:[^[:space:]]*\).*$/\1/p' "$src/docker-compose.yml" | head -n 1)
-# The asset and checksum install.sh prints on this machine.
 case $(uname -m) in
 	aarch64 | arm64)
 		compose_arch=aarch64

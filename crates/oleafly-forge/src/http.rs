@@ -1,13 +1,3 @@
-//! The HTTP client every server call goes through.
-//!
-//! - Trust: the platform's certificate store plus the bundled roots, and an
-//!   optional certificate authority file per account.
-//! - Credentials travel only in an `Authorization` header. Redirects are
-//!   followed by hand, for reads only, and a redirect to another origin
-//!   drops the credential for the rest of the call. `https` never redirects
-//!   to plain `http`.
-//! - Errors carry no token: every detail built from a reply goes through
-//!   [`scrub`], and transport errors are rendered without the URL.
 use crate::ForgeError;
 use futures_util::StreamExt;
 use reqwest::header::HeaderMap;
@@ -17,15 +7,12 @@ use std::path::Path;
 use std::time::Duration;
 
 const MAX_REDIRECTS: usize = 5;
-/// Certificate authority files larger than this are refused.
 pub const CA_FILE_MAX_BYTES: u64 = 1024 * 1024;
 const JSON_REPLY_MAX_BYTES: usize = 8 * 1024 * 1024;
 const ERROR_BODY_MAX_BYTES: usize = 64 * 1024;
 const DETAIL_MAX_CHARS: usize = 200;
-/// The budget of one API call.
 pub(crate) const CALL_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// A configured client. Cheap to clone: clones share one connection pool.
 #[derive(Clone)]
 pub struct ForgeHttp {
     client: reqwest::Client,
@@ -58,7 +45,6 @@ pub(crate) enum CallBody {
     Form(Vec<(&'static str, String)>),
 }
 
-/// One request: method, URL, credential, headers, body and time budget.
 #[derive(Debug)]
 pub(crate) struct Call<'a> {
     pub method: Method,
@@ -111,8 +97,6 @@ impl<'a> Call<'a> {
 }
 
 impl ForgeHttp {
-    /// A client that trusts the platform's certificate store, the bundled
-    /// roots and, when given, the certificates in `ca_file`.
     pub fn new(ca_file: Option<&Path>) -> Result<ForgeHttp, ForgeError> {
         let mut builder = reqwest::Client::builder()
             .user_agent("Oleafly")
@@ -134,8 +118,6 @@ impl ForgeHttp {
         Ok(ForgeHttp { client })
     }
 
-    /// The certificates of a PEM bundle or a single DER certificate, at most
-    /// 1 MB. Errors never quote the file's contents.
     pub fn load_ca_certificates(path: &Path) -> Result<Vec<reqwest::Certificate>, ForgeError> {
         let ca_error = |detail: &str| ForgeError::CaFile {
             detail: detail.to_string(),
@@ -199,9 +181,6 @@ impl ForgeHttp {
         }
     }
 
-    /// Send a call. Reads follow up to five redirects; a redirect to another
-    /// origin drops the credential for good, and a redirect after a write is
-    /// an error.
     pub(crate) async fn send(&self, call: Call<'_>) -> Result<reqwest::Response, ForgeError> {
         let origin = call.url.origin();
         let mut url = call.url.clone();
@@ -250,8 +229,6 @@ fn location(response: &reqwest::Response, current: &url::Url) -> Result<url::Url
     current.join(value).map_err(|_| missing())
 }
 
-/// Whether a redirect from `from` to `to` may be followed: only to `http(s)`,
-/// and never from `https` down to plain `http`.
 pub(crate) fn redirect_allowed(from: &url::Url, to: &url::Url) -> bool {
     matches!(
         (from.scheme(), to.scheme()),
@@ -259,7 +236,6 @@ pub(crate) fn redirect_allowed(from: &url::Url, to: &url::Url) -> bool {
     )
 }
 
-/// The reply as JSON, or the error its status means.
 pub(crate) async fn read_json<T: DeserializeOwned>(
     response: reqwest::Response,
     secrets: &[&str],
@@ -272,8 +248,6 @@ pub(crate) async fn read_json<T: DeserializeOwned>(
     })
 }
 
-/// The reply itself when its status is a success, else the error the status
-/// means (with the body read for details).
 pub(crate) async fn ensure_success(
     response: reqwest::Response,
     secrets: &[&str],
@@ -296,7 +270,6 @@ pub(crate) async fn ensure_success(
     ))
 }
 
-/// Read at most `limit` bytes of a body. A longer body is an error.
 pub(crate) async fn read_limited(
     response: reqwest::Response,
     limit: usize,
@@ -315,8 +288,6 @@ pub(crate) async fn read_limited(
     Ok(body)
 }
 
-/// The error a non-success status means. Details come from the body and go
-/// through [`scrub`].
 pub(crate) fn error_for_status(
     status: StatusCode,
     headers: &HeaderMap,
@@ -360,7 +331,6 @@ pub(crate) fn error_for_status(
     }
 }
 
-/// The message of a JSON error reply, else the text itself.
 pub(crate) fn body_message(body: &str) -> String {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(body) else {
         return body.trim().to_string();
@@ -375,7 +345,6 @@ pub(crate) fn body_message(body: &str) -> String {
     body.trim().to_string()
 }
 
-/// Replace every secret in `text` with `***` and keep at most 200 characters.
 pub fn scrub(text: &str, secrets: &[&str]) -> String {
     let mut clean = text.to_string();
     for secret in secrets.iter().filter(|secret| !secret.is_empty()) {
@@ -401,8 +370,6 @@ fn transport_text(error: &reqwest::Error) -> String {
     parts.join(": ")
 }
 
-/// A failed connection: a certificate problem, or any other reason the
-/// server could not be reached. The URL is left out of the detail.
 pub(crate) fn map_transport_error(error: reqwest::Error) -> ForgeError {
     let error = error.without_url();
     let text = transport_text(&error);
@@ -484,7 +451,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_redirect_back_to_the_origin_does_not_regain_the_credential() {
-        // A → B → A. A's first answer names B, which exists only after A.
         let a = MockServer::start(vec![
             MockResponse::redirect(302, "/placeholder"),
             MockResponse::json(200, "{}"),

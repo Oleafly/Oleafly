@@ -194,7 +194,7 @@ export function HistoryVersionDialog({
       <ConfirmationDialog
         open={confirming?.scope === "project"}
         title={t(($) => $.collab.history.restoreProjectConfirm.title)}
-        description={t(($) => $.collab.history.restoreProjectConfirm.description, { time: when })}
+        description={t(($) => $.collab.history.restoreProjectConfirm.textAndDeleted, { time: when })}
         confirmLabel={t(($) => $.collab.history.restoreProjectConfirm.confirm)}
         destructive
         onConfirm={() => {

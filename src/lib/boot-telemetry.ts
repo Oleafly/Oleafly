@@ -1,9 +1,5 @@
 import { appendAppLog } from "@/lib/tauri";
 
-// Startup instrumentation: cheap performance marks at boot milestones. Dev
-// builds log the derived measures once so real-machine timings accumulate in
-// the app log; production pays only for the marks themselves.
-
 export type BootStage =
   | "entry-evaluated"
   | "contributions-registered"
@@ -17,8 +13,6 @@ const reported = new Set<BootStage>();
 let splashHeld = false;
 let splashHoldTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Index into the splash narration list (index.html): real boot progress
-// advances the stage text immediately instead of waiting on the 1s fallback.
 const SPLASH_STAGE_INDEX: Partial<Record<BootStage, number>> = {
   "entry-evaluated": 1,
   "contributions-registered": 2,
@@ -98,7 +92,6 @@ function totalAfterEntryMs(): number {
   }
 }
 
-/** Remove the inline HTML splash once React owns the screen. Idempotent. */
 export function dismissBootSplash(): void {
   if (window.__oleaflySplashTimer !== undefined) {
     clearInterval(window.__oleaflySplashTimer);

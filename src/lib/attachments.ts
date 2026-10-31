@@ -1,6 +1,3 @@
-// The attachment store (src-tauri/src/attachments.rs): files attached to
-// AI chats, kept once by content hash per project. This module stays
-// small; intake and normalization load lazily (attachments-intake.ts).
 import { invoke } from "@tauri-apps/api/core";
 import { encodeAttachmentUpload } from "@oleafly/ai-core";
 import type {
@@ -20,11 +17,9 @@ export interface StoredAttachmentMeta {
   hasText: boolean;
 }
 
-/** What the file picker offers: images, PDFs and text files. */
 export const ATTACHMENT_ACCEPT =
   "image/*,.pdf,.txt,.md,.tex,.typ,.bib,.cls,.sty,.bst,.csv,.tsv,.json,.yaml,.yml,.toml,.log,.xml,.html,.css,.js,.ts,.py,.r,.jl,.m,.sh,.ps1,.bat,.ipynb,.rst,.org";
 
-/** Stores a file; the bytes travel once as the raw request body. */
 export function attachmentPut(
   scope: string | null,
   name: string,
@@ -37,7 +32,6 @@ export function attachmentPut(
   );
 }
 
-/** Stores the text read from a PDF beside it, with its page count. */
 export function attachmentPutText(
   scope: string | null,
   sha256: string,
@@ -63,12 +57,10 @@ export function attachmentMeta(
   return invoke<StoredAttachmentMeta | null>("attachment_meta", { projectId: scope, sha256 });
 }
 
-/** Removes a project's stored files that `keep` does not list; returns the bytes freed. */
 export function attachmentGc(projectId: string, keep: readonly string[]): Promise<number> {
   return invoke<number>("attachment_gc", { projectId, keep: [...keep] });
 }
 
-/** A stored text file as UTF-8, or null when it cannot be read. */
 export async function attachmentText(scope: string | null, sha256: string): Promise<string | null> {
   try {
     const buffer = await attachmentRead(scope, sha256);
@@ -81,15 +73,9 @@ export async function attachmentText(scope: string | null, sha256: string): Prom
 const OBJECT_URL_LIMIT = 48;
 const objectUrls = new Map<string, string>();
 const pendingObjectUrls = new Map<string, Promise<string>>();
-/** URLs shown somewhere now, by how many: the cache drops them but does not revoke them. */
 const heldObjectUrls = new Map<string, number>();
-/** Held URLs the cache dropped; revoked when the last holder lets go. */
 const droppedObjectUrls = new Set<string>();
 
-/**
- * Keeps an object URL from `attachmentObjectUrl` valid until the returned
- * function is called (an image on screen, a preview that may open).
- */
 export function holdAttachmentObjectUrl(url: string): () => void {
   heldObjectUrls.set(url, (heldObjectUrls.get(url) ?? 0) + 1);
   let released = false;
@@ -106,11 +92,6 @@ export function holdAttachmentObjectUrl(url: string): () => void {
   };
 }
 
-/**
- * An object URL for a stored file, for thumbnails and previews. The newest
- * 48 stay cached (the oldest is revoked unless something still holds it);
- * concurrent requests share one read.
- */
 export function attachmentObjectUrl(
   scope: string | null,
   sha256: string,
@@ -153,10 +134,6 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/gif": "gif",
 };
 
-/**
- * Stores a tool screenshot (a data URL) so the chat keeps a reference
- * instead of the base64 text. Null when it cannot be stored.
- */
 export async function storeToolImage(
   scope: string | null,
   dataUrl: string,
@@ -178,7 +155,6 @@ export async function storeToolImage(
   }
 }
 
-/** Attachments stored and ready to send. */
 export function readyAttachments(items: readonly DraftAttachment[]): DraftAttachment[] {
   return items.filter((item) => item.status === "ready" && Boolean(item.sha256));
 }
@@ -189,7 +165,6 @@ function kindOf(mime: string): AttachmentKind {
   return "text";
 }
 
-/** The attachment as a saved chat message keeps it. */
 export function draftToChatAttachment(draft: DraftAttachment): AttachmentMeta {
   const meta: AttachmentMeta = {
     name: draft.name,
@@ -204,10 +179,6 @@ export function draftToChatAttachment(draft: DraftAttachment): AttachmentMeta {
   return meta;
 }
 
-/**
- * A saved message attachment back as a draft (edit and resend). Null for
- * attachments saved before 0.4.8, which kept only a name.
- */
 export function chatToDraftAttachment(
   meta: AttachmentMeta,
   scope: string | null,
@@ -229,7 +200,6 @@ export function chatToDraftAttachment(
   return draft;
 }
 
-/** A note under the composer when the model cannot read what is attached. */
 export function attachmentNotice(
   items: readonly DraftAttachment[],
   model: { name: string; vision: boolean; nativePdf: boolean },

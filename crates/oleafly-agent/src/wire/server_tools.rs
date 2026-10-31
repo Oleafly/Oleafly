@@ -1,12 +1,9 @@
-//! Web search and fetch run by the provider itself, where the provider and
-//! model offer them. Everywhere else the run uses the local web tools.
 use serde_json::{json, Value};
 
 use crate::complete::WebTools;
 use crate::provider::Wire;
 use crate::wire::reasoning::claude_version;
 
-/// The hosted web tools a request uses.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct NativeWeb {
     pub search: bool,
@@ -63,7 +60,6 @@ fn responses_web_model(model_id: &str) -> bool {
         .any(|prefix| id.starts_with(prefix))
 }
 
-/// Which of the requested web tools the provider runs itself.
 pub fn native_web(
     provider_id: &str,
     wire: &Wire,
@@ -94,7 +90,6 @@ pub fn native_web(
     }
 }
 
-/// Anthropic server tool definitions for the hosted web tools in use.
 pub(crate) fn anthropic_server_tools(model_id: &str, native: NativeWeb) -> Vec<Value> {
     let Some(versions) = anthropic_web_versions(model_id) else {
         return Vec::new();
@@ -115,7 +110,6 @@ pub(crate) fn anthropic_server_tools(model_id: &str, native: NativeWeb) -> Vec<V
     tools
 }
 
-/// The Responses hosted web search tool, when in use.
 pub(crate) fn responses_web_tool(native: NativeWeb) -> Option<Value> {
     native.search.then(|| json!({ "type": "web_search" }))
 }

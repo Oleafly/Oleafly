@@ -5,13 +5,6 @@ use std::sync::Mutex;
 use serde::Serialize;
 use serde_json::{json, Value};
 
-// Two-bucket structured logging, mirrored from the audited reference manager:
-// every entry separates fields that are safe to share (exit codes, pids,
-// durations) from fields that may carry user data or paths (stderr output,
-// file names). The in-memory ring holds both buckets for live debugging; the
-// support archive strips Sensitive by default so users can attach it to an
-// issue without leaking anything.
-
 const RING_CAPACITY: usize = 2000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -59,7 +52,6 @@ pub fn log(level: Level, message: &str, safe: Value, sensitive: Value) {
         safe,
         sensitive,
     };
-    // The persistent app.log line carries only the redacted form.
     let _ = crate::project::append_app_log(format!("{} {}", message, entry.safe));
     let mut ring = RING.lock().expect("log ring poisoned");
     let ring = ring.get_or_insert_with(|| VecDeque::with_capacity(RING_CAPACITY));
@@ -107,8 +99,8 @@ pub fn export_archive_to(dest: &std::path::Path, include_sensitive: bool) -> Res
     let file =
         std::fs::File::create(dest).map_err(|e| format!("failed to create log archive: {e}"))?;
     let mut archive = zip::ZipWriter::new(file);
-    let options: zip::write::FileOptions<'_, ()> =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
     archive
         .start_file("structured.jsonl", options)
         .and_then(|()| archive.write_all(lines.as_bytes()).map_err(Into::into))
@@ -123,10 +115,6 @@ pub fn export_archive_to(dest: &std::path::Path, include_sensitive: bool) -> Res
     Ok(())
 }
 
-/// The destination comes over IPC, so it is validated hard: absolute, a .zip
-/// name, an existing real parent directory, and never through a symlink.
-/// Without this the command would create or truncate any file the user can
-/// write.
 fn validate_archive_dest(dest: &std::path::Path) -> Result<(), String> {
     if !dest.is_absolute() {
         return Err("log archive destination must be an absolute path".to_string());
@@ -155,8 +143,6 @@ fn validate_archive_dest(dest: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Support-archive export; Sensitive fields are stripped unless explicitly
-/// requested from the settings UI.
 #[tauri::command(async)]
 pub fn export_log_archive(dest: String, include_sensitive: Option<bool>) -> Result<(), String> {
     crate::path_grants::require_save(&dest)?;

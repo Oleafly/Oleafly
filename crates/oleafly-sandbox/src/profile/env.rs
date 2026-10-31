@@ -1,8 +1,3 @@
-//! The environment of a run: every package and model cache inside the
-//! task's home, Python and plotting tuned for scripts, the linked data
-//! folders by name, and the host's proxy and certificate settings when the
-//! task has network access. Logins inside proxy and package-index URLs stay
-//! out of the task's environment unless the user opts in.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -12,7 +7,6 @@ use super::{LinkedFolder, RunProfile};
 const SEPARATOR: &str = if cfg!(windows) { ";" } else { ":" };
 const MAX_DATA_NAME: usize = 40;
 
-/// Host variables copied into runs that have network access.
 const NETWORK_VARS: [&str; 19] = [
     "HTTP_PROXY",
     "http_proxy",
@@ -35,8 +29,6 @@ const NETWORK_VARS: [&str; 19] = [
     "NODE_EXTRA_CA_CERTS",
 ];
 
-/// Network variables that hold URLs (one or several), which can carry a
-/// login as `user:password@host`.
 const URL_VARS: [&str; 10] = [
     "HTTP_PROXY",
     "http_proxy",
@@ -50,13 +42,8 @@ const URL_VARS: [&str; 10] = [
     "UV_DEFAULT_INDEX",
 ];
 
-/// Set to `1` in the host's environment to forward the logins inside proxy
-/// and package-index URLs to tasks that have network access. Off by default:
-/// code running in a task can read its own environment and send it anywhere
-/// the task's network reaches.
 pub const FORWARD_URL_LOGINS: &str = "OLEAFLY_SANDBOX_FORWARD_URL_LOGINS";
 
-/// Certificate files and folders named by the network variables.
 pub const CA_VARS: [&str; 5] = [
     "SSL_CERT_FILE",
     "SSL_CERT_DIR",
@@ -65,9 +52,6 @@ pub const CA_VARS: [&str; 5] = [
     "NODE_EXTRA_CA_CERTS",
 ];
 
-/// `value` with the login (`user:password@`) removed from every URL in it.
-/// A value can hold several URLs separated by white space; text that isn't
-/// a URL passes through.
 fn without_url_logins(value: &str) -> String {
     let mut result = String::with_capacity(value.len());
     let mut rest = value;
@@ -82,7 +66,6 @@ fn without_url_logins(value: &str) -> String {
     result
 }
 
-/// One URL without its login: the part of the authority before the last `@`.
 fn without_login(url: &str) -> String {
     let authority_start = url.find("://").map_or(0, |at| at + 3);
     let authority_end = url[authority_start..]
@@ -102,7 +85,6 @@ fn path_text(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-/// `OLEAFLY_DATA_<NAME>` for a linked folder's label.
 fn data_name(label: &str, id: &str) -> String {
     let mut name = String::new();
     let mut underscore = false;
@@ -132,7 +114,6 @@ fn data_name(label: &str, id: &str) -> String {
     name.trim_end_matches('_').to_string()
 }
 
-/// The variables of a run and the folders to put before the base `PATH`.
 pub fn run_env(
     profile: RunProfile,
     home: &Path,

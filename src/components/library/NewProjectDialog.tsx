@@ -35,8 +35,6 @@ import {
   type TemplateInfo,
 } from "@/lib/tauri";
 
-// Adapts the app's shadcn Select to the templates package's minimal kit contract
-// so the gallery uses a real design component instead of a native <select>.
 function KitSelect({
   value,
   onValueChange,
@@ -82,7 +80,6 @@ const HOST: TemplatesHost = {
 
 const FOCUS_RESTORE_FRAMES = 12;
 
-// Importing a template is rare, so its dialog loads when it is first opened.
 const TemplateImportDialog = lazy(() =>
   import("@/components/library/TemplateImportDialog").then((module) => ({
     default: module.TemplateImportDialog,
@@ -116,19 +113,12 @@ export function NewProjectDialog(props: Readonly<{
   const [generateOpen, setGenerateOpen] = useState(false);
   const [importTemplateOpen, setImportTemplateOpen] = useState(false);
   const [kind, setKind] = useState<ProjectKind | null>(null);
-  // This dialog is mounted in both app shells, so creating a project unmounts
-  // one host and mounts the other while the flow is still open. A host that
-  // arrives mid-flow must stay inert, or it opens the chooser over the
-  // workspace the project just landed in and leaves its overlay behind.
   const [armed, setArmed] = useState(!props.open);
   useEffect(() => {
     if (!props.open) setArmed(true);
   }, [props.open]);
   const flowOpen = props.open && armed;
   const activeKind: ProjectKind | null = kind ?? (props.initialTemplateId ? "template" : null);
-  // The flow hands off between two dialogs, so the one that closes last would
-  // restore focus to a card that no longer exists. Remember what opened the
-  // flow and give the focus back to that.
   const openerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (flowOpen) {
@@ -140,17 +130,11 @@ export function NewProjectDialog(props: Readonly<{
     const opener = openerRef.current;
     openerRef.current = null;
     if (!opener?.isConnected) return;
-    // The dialog that closes last restores focus on its own, to a control that
-    // belonged to the step before it and is already gone. Take the focus back
-    // once that has happened.
     let frame = 0;
     let attempts = 0;
     const restore = () => {
       if (!opener.isConnected) return;
       const active = document.activeElement;
-      // Yield the moment anything else takes the focus: a menu or a select
-      // opened right after this closed owns it, and stealing it back would
-      // dismiss them.
       if (active !== null && active !== document.body && active !== opener) return;
       if (active !== opener) opener.focus();
       attempts += 1;
@@ -220,8 +204,6 @@ export function NewProjectDialog(props: Readonly<{
             onClose={() => setImportTemplateOpen(false)}
             onImported={(templateId) => {
               setImportTemplateOpen(false);
-              // Reloads the gallery and lands on "Name your project" with the
-              // new template picked, so the first project is one step away.
               openTemplateInNewProject(templateId);
             }}
           />

@@ -116,7 +116,6 @@ test("the Tools page exposes all 22 converters and the palette opens one directl
   for (const id of CONVERTER_IDS) {
     await expect(tauriPage.getByTestId(`latex-tool-card-${id}`)).toBeVisible();
   }
-  // Cards with a picture show it in place of the tool's icon.
   await expect(
     tauriPage.getByTestId("latex-tool-card-arxiv-to-latex").locator('img[src="/tool-art/arxiv-to-latex.webp"]'),
   ).toBeVisible();
@@ -236,8 +235,6 @@ test("file, archive, PDF, and local-vision converters complete without a project
   const image = fixture("decay.png");
   server.setReply("\\begin{equation}VISIONLATEX=x^2\\end{equation}");
   await openCard(tauriPage, "image-to-latex");
-  // The Tools model starts on Automatic, which stays on this computer, and
-  // its menu offers only the Ollama models that read images.
   await expect(tauriPage.getByTestId("tools-model-picker")).toBeVisible({ timeout: 30_000 });
   await expect(tauriPage.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "device");
   await tauriPage.locator('[data-testid="tools-model-picker"] [role="combobox"]').click();
@@ -351,7 +348,6 @@ test("file, archive, PDF, and local-vision converters complete without a project
     tauriPage.getByTestId("converter-output").locator(".cm-line span").first(),
   ).toBeVisible();
 
-  // Leave the Tools model on Automatic for the specs that follow.
   await tauriPage.evaluate(`(async () => {
     const { setAiToolsModel, getConfig } = await import("/src/lib/tauri.ts");
     await setAiToolsModel(null);

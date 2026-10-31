@@ -224,6 +224,8 @@
     "suggestion_not_found": "Essa sugestão não existe mais. Talvez alguém a tenha aceitado ou recusado.",
     "suggestion_not_yours": "Só quem fez esta sugestão pode retirá-la.",
     "suggestion_role": "Sua função neste projeto não permite sugestões.",
+    "suggestion_changed": "O texto ao redor desta sugestão mudou, então um proprietário ou editor precisa aceitá-la ou recusá-la.",
+    "suggestion_too_long": "Uma exclusão sugerida pode ter no máximo 20.000 caracteres. Exclua uma parte menor de cada vez.",
     "chat_role": "Sua função neste projeto não permite fazer isso no chat.",
     "history_unavailable": "O histórico deste projeto ainda não está neste computador. Tente de novo quando ele terminar de sincronizar.",
     "account_storage_full": "A conta da pessoa dona do projeto ficou sem armazenamento neste servidor. Remova alguns arquivos para liberar espaço ou peça mais espaço ao administrador do servidor.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Restaurar o projeto inteiro?",
-      "description": "Todos os arquivos voltam a ficar como estavam em {{time}} para todas as pessoas deste projeto. O texto atual fica no histórico, então você pode voltar a ele.",
+      "textAndDeleted": "O texto de cada arquivo volta a ficar como estava em {{time}} para todas as pessoas deste projeto, e os arquivos excluídos voltam. Os arquivos renomeados mantêm o novo nome, e as figuras e os arquivos adicionados depois ficam como estão. O texto atual fica no histórico, então você pode voltar a ele.",
       "confirm": "Restaurar projeto"
     },
     "compareTitle": "Alterações entre duas versões",

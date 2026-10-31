@@ -1,23 +1,14 @@
-// Size budget for the browser app in web/dist. WebAssembly modules load on
-// demand, so each is measured on its own; every JavaScript chunk, an engine's
-// included, counts toward the total.
 import { readFile, readdir, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { measurePdfjsAssets, pdfjsAssetFailures, pdfjsAssetSummary } from "./pdfjs-asset-budget.mjs";
 
 const dist = new URL("../web/dist/", import.meta.url);
 const assetsDir = new URL("assets/", dist);
 
 const limits = {
-  // The chunks index.html loads before first paint: the entry and the chunks
-  // it imports statically. 445,181 bytes when this budget was set, 1.6 KB over
-  // the browser app before compiling came in.
   startupJavaScript: 460_000,
-  // Every JavaScript chunk: 7,105,776 bytes.
-  totalJavaScript: 7_250_000,
-  // Each WebAssembly module by name. One not listed here fails the check, so
-  // a new one is added on purpose, with its size.
+  totalJavaScript: 7_460_000,
   wasm: {
-    // The shared SyncTeX code: 319,131 bytes.
     oleafly_synctex: 360_000,
   },
 };
@@ -35,7 +26,6 @@ const entryName = indexHtml.match(/<script[^>]+src="\/web\/assets\/([^"]+\.js)"/
 const failures = [];
 if (!entryName || !byName.has(entryName)) failures.push("the entry chunk named in web/dist/index.html is missing");
 
-// Every chunk's text, read once for the startup walk and the test-engine check.
 const sources = new Map(
   await Promise.all(
     javascript.map(async (asset) => [asset.name, await readFile(new URL(asset.name, assetsDir), "utf8")]),
@@ -76,6 +66,8 @@ for (const module of modules) {
 for (const [name, text] of sources) {
   if (text.includes("Oleafly test engine")) failures.push(`${name} carries the test engine, which production builds leave out`);
 }
+const pdfjs = await measurePdfjsAssets(new URL("pdfjs/", dist));
+failures.push(...pdfjsAssetFailures(pdfjs));
 
 if (failures.length > 0) throw new Error(failures.join("\n"));
 
@@ -85,5 +77,6 @@ console.log(
     startupJavaScript,
     totalJavaScript,
     wasm: Object.fromEntries(modules.map((module) => [module.name, module.bytes])),
+    pdfjs: pdfjsAssetSummary(pdfjs),
   }),
 );

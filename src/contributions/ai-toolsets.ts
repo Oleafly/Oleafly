@@ -39,7 +39,6 @@ export function registerAiToolsets() {
     source: { kind: "project" },
     create: (opts: { confirm?: ConfirmFn }) => createOverleafAiTools(opts),
   });
-  // 0.4.8 I: present only once Desktop apps are on; Rust runs the calls.
   registerAiToolset({
     id: "desktop-apps",
     mode: "chat",

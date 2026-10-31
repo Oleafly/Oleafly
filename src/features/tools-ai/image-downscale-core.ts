@@ -1,15 +1,9 @@
-// How an image is shrunk and re-encoded for a hosted model or Mathpix. Used
-// by the module worker and by the main-thread fallback, so it has no imports
-// and touches no DOM global at load time.
-
 export interface FitSize {
   width: number;
   height: number;
   scale: number;
 }
 
-/** The size that fits `maxEdge` on its long edge; never upscaled, never
- * below 1×1. */
 export function fitWithin(width: number, height: number, maxEdge: number | null): FitSize {
   const sourceWidth = Math.max(1, Math.round(width));
   const sourceHeight = Math.max(1, Math.round(height));
@@ -73,7 +67,6 @@ export interface DownscaleContext {
 
 export interface DownscaleCanvas {
   getContext(kind: "2d"): DownscaleContext | null;
-  /** The encoded image, or null when this encoder cannot produce `mime`. */
   encode(mime: string, quality?: number): Promise<Blob | null>;
 }
 
@@ -82,8 +75,6 @@ export interface DownscaleEnv {
   canvas(width: number, height: number): DownscaleCanvas;
 }
 
-/** Decodes with the photo's EXIF orientation applied; engines that do not
- * know the option throw a TypeError and decode without it. */
 export async function decodeOriented(blob: Blob): Promise<ImageBitmap> {
   try {
     return await createImageBitmap(blob, { imageOrientation: "from-image" });
@@ -93,8 +84,6 @@ export async function decodeOriented(blob: Blob): Promise<ImageBitmap> {
   }
 }
 
-/** The format the encoder actually produced, read from the bytes: some
- * engines answer an unsupported request with PNG. */
 function encodedMime(bytes: Uint8Array): string | null {
   if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
     return "image/png";
@@ -159,7 +148,6 @@ export async function runDownscale(request: DownscaleRequest, env: DownscaleEnv)
       const canvas = env.canvas(size.width, size.height);
       const context = canvas.getContext("2d");
       if (!context) return { error: "unsupported" };
-      // JPEG has no alpha: transparent pixels would turn black.
       context.fillStyle = "#ffffff";
       context.fillRect(0, 0, size.width, size.height);
       context.drawImage(bitmap, 0, 0, size.width, size.height);

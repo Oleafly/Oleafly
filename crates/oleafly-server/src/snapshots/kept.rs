@@ -7,8 +7,6 @@ use tokio::time::Instant;
 
 use super::{Budgeted, Snapshots};
 
-// What a document is kept for. Each use keeps its own copy of a project, so
-// the copies of one use can go without the other's.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Keep {
     CommentChecks,
@@ -24,9 +22,6 @@ impl Keep {
     }
 }
 
-// Kept documents may hold this share of the snapshot memory budget between
-// them. The document kept last stays whatever its size, so the project
-// being checked is never read again for every change.
 const KEPT_SHARE: u64 = 2;
 
 struct Entry {
@@ -37,12 +32,6 @@ struct Entry {
 
 type Entries = HashMap<(Keep, SharedProjectId), Entry>;
 
-// Documents kept between comment checks and mention scans, so the next one
-// for a project starts from them instead of reading the project again. Each
-// keeps its share of the snapshot memory budget, but only while nothing else
-// needs that memory: a reservation that doesn't fit takes it from kept
-// documents first, least recently used first, so a document that is only
-// being kept never makes a check, a scan or a build wait.
 #[derive(Default)]
 pub(super) struct KeptDocuments {
     entries: Mutex<Entries>,
@@ -60,8 +49,6 @@ impl KeptDocuments {
             .sum()
     }
 
-    // Takes the least recently used document out, for the caller to free
-    // once no lock is held, since dropping it returns its reservation.
     pub(super) fn least_recent(&self) -> Option<Budgeted> {
         let mut entries = self.lock();
         let oldest = entries
@@ -79,8 +66,6 @@ fn idle(entries: &mut Entries, now: Instant) -> Vec<Entry> {
         .collect()
 }
 
-// Documents that leave the pool are freed once its lock is released, large
-// ones on a blocking thread (see `Snapshots::free`).
 impl Snapshots {
     fn free_entries(&self, entries: Vec<Entry>) -> usize {
         let count = entries.len();
@@ -149,7 +134,6 @@ impl Snapshots {
         self.free_entries(cleared);
     }
 
-    // Drops documents nobody has used for a while. Returns how many went.
     pub fn sweep_kept(&self) -> usize {
         let swept = idle(&mut self.kept.lock(), Instant::now());
         self.free_entries(swept)

@@ -1,7 +1,3 @@
-//! A stdio bridge to the app's MCP server (`<data>/mcp.json`), for clients
-//! that start a command rather than connect to a URL. The bearer token lives
-//! only in memory and in the `Authorization` header; it never reaches
-//! stdout, stderr or an error message.
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,11 +14,8 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 const STATUS_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_IN_FLIGHT: usize = 8;
 const LOOPBACK_PREFIX: &str = "http://127.0.0.1:";
-/// How long a confirmed "the app still has this project open" answer is
-/// reused before the next `tools/call` asks again.
 const PROJECT_CHECK_TTL: Duration = Duration::from_secs(1);
 
-/// The app's MCP endpoint.
 pub struct BridgeTarget {
     pub url: String,
     pub token: Zeroizing<String>,
@@ -47,8 +40,6 @@ fn loopback_url(url: &str) -> bool {
     !port.is_empty() && port.len() <= 5 && port.chars().all(|character| character.is_ascii_digit())
 }
 
-/// Reads `<data>/mcp.json` (a regular file of at most 64 KiB whose URL is
-/// the loopback `/mcp` endpoint).
 pub fn discover(data_root: &Path) -> Option<BridgeTarget> {
     let path = data_root.join("mcp.json");
     let metadata = std::fs::symlink_metadata(&path).ok()?;
@@ -93,7 +84,6 @@ async fn post(
     request.send().await.map_err(|_| ())
 }
 
-/// Whether the app's server answers a `ping` within `timeout`.
 pub async fn ping(target: &BridgeTarget, timeout: Duration) -> bool {
     let Some(client) = client() else {
         return false;
@@ -108,7 +98,6 @@ pub async fn ping(target: &BridgeTarget, timeout: Duration) -> bool {
     }
 }
 
-/// The project the app has open (its `get_status` tool), if it answers.
 pub async fn app_project_id(target: &BridgeTarget) -> Option<String> {
     let client = client()?;
     open_project_id(&client, target).await
@@ -128,7 +117,6 @@ async fn open_project_id(client: &reqwest::Client, target: &BridgeTarget) -> Opt
     status.get("project_id")?.as_str().map(str::to_owned)
 }
 
-/// The `data:` messages of an SSE body.
 fn sse_messages(body: &str) -> Vec<String> {
     let mut messages = Vec::new();
     let mut current: Vec<&str> = Vec::new();
@@ -161,8 +149,6 @@ fn stopped_answering(id: &Value) -> String {
     json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32603, "message": "The Oleafly app stopped answering."}}).to_string()
 }
 
-/// A failed tool result (the call reaches the client as a tool error, not
-/// a protocol error).
 fn tool_refused(id: &Value, text: &str) -> String {
     json!({"jsonrpc": "2.0", "id": id, "result": {"content": [{"type": "text", "text": text}], "isError": true}}).to_string()
 }
@@ -173,16 +159,11 @@ struct Shared {
     protocol: Mutex<Option<String>>,
     client: reqwest::Client,
     stdout: Mutex<tokio::io::Stdout>,
-    /// In auto mode, the project this folder is: every `tools/call` is
-    /// forwarded only while the app still has it open (the app's tools act
-    /// on whatever project it has open and take no project argument).
     expected_project: Option<String>,
-    /// When the app last confirmed `expected_project` was open.
     confirmed_at: std::sync::Mutex<Option<std::time::Instant>>,
 }
 
 impl Shared {
-    /// A copy of the endpoint, so no lock is held while a request runs.
     async fn target(&self) -> BridgeTarget {
         let target = self.target.lock().await;
         BridgeTarget {
@@ -191,7 +172,6 @@ impl Shared {
         }
     }
 
-    /// Why a `tools/call` must not be forwarded now, if it mustn't.
     async fn project_refusal(&self) -> Option<&'static str> {
         let expected = self.expected_project.as_deref()?;
         let fresh =
@@ -221,18 +201,12 @@ impl Shared {
     }
 }
 
-/// How one attempt to forward a message ended.
 enum Attempt {
-    /// The reply, if any, is written; nothing more to do.
     Delivered,
-    /// The app rejected the token and a fresh one was read; try again.
     RetryWithFreshToken,
-    /// The app didn't answer usefully.
     Failed,
 }
 
-/// Writes each message of a reply to stdout, remembering the protocol
-/// version an `initialize` reply names.
 async fn relay_messages(shared: &Shared, messages: Vec<String>, is_initialize: bool) {
     for text in messages {
         let Ok(value) = serde_json::from_str::<Value>(&text) else {
@@ -250,7 +224,6 @@ async fn relay_messages(shared: &Shared, messages: Vec<String>, is_initialize: b
     }
 }
 
-/// Sends `message` to the app once and relays what it answers.
 async fn forward_once(
     shared: &Shared,
     message: &Value,
@@ -272,7 +245,6 @@ async fn forward_once(
     };
     let status = response.status();
     if status == reqwest::StatusCode::UNAUTHORIZED && first_attempt {
-        // The app may have restarted with a new token.
         let Some(fresh) = discover(&shared.data_root) else {
             return Attempt::Failed;
         };
@@ -305,7 +277,6 @@ async fn forward_once(
     Attempt::Delivered
 }
 
-/// Forwards one message; writes the reply (if any) to stdout.
 async fn forward(shared: Arc<Shared>, message: Value) {
     let id = message.get("id").cloned();
     let method = message.get("method").and_then(Value::as_str);
@@ -330,8 +301,6 @@ async fn forward(shared: Arc<Shared>, message: Value) {
     }
 }
 
-/// Bridges stdin to the app until stdin closes. With `expected_project`,
-/// tool calls go through only while the app has that project open.
 pub async fn serve_bridge(
     data_root: &Path,
     target: BridgeTarget,
@@ -420,8 +389,6 @@ mod tests {
         );
     }
 
-    /// A one-request HTTP server answering `status` with `body`; returns the
-    /// request it saw.
     fn serve_once(
         status: &'static str,
         body: &'static str,
@@ -533,7 +500,6 @@ mod tests {
         let shared = shared_for(url, Some("thesis"));
         assert_eq!(shared.project_refusal().await, None);
         server.join().unwrap();
-        // The server has gone: a second check inside the TTL doesn't ask.
         assert_eq!(shared.project_refusal().await, None);
         *shared.confirmed_at.lock().unwrap() = None;
         assert!(shared.project_refusal().await.is_some());
@@ -547,8 +513,6 @@ mod tests {
 
     #[tokio::test]
     async fn requests_are_forwarded_side_by_side() {
-        // The server answers only once both requests have arrived, so a
-        // bridge that sends one request at a time never finishes.
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!(
             "http://127.0.0.1:{}/mcp",

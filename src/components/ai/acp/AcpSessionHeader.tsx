@@ -12,7 +12,6 @@ import { acpFork, acpLogout, acpSessionRename, type AcpSession } from "@/lib/acp
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { DeleteConversationDialog, RenameInput, deleteConversation } from "./AcpHistoryDialog";
 
-/** The open conversation's title, start revision, badges and actions. */
 export function AcpSessionHeader({
   projectId,
   session,

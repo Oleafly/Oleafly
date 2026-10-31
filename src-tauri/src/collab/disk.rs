@@ -26,8 +26,6 @@ pub struct DiskState {
 }
 
 impl DiskState {
-    // Where each owed move's files are now and where their node is laid
-    // out: the paths a scan and the writer leave alone until it moves.
     pub fn owed_paths(&self) -> Vec<String> {
         self.owed
             .iter()
@@ -69,7 +67,6 @@ pub fn as_text(bytes: &[u8]) -> Option<String> {
         .map(|text| lf_text(text).into_owned())
 }
 
-// The shared document and the editor hold LF only; the disk keeps each file's style.
 pub fn lf_text(text: &str) -> Cow<'_, str> {
     if text.contains('\r') {
         Cow::Owned(text.replace("\r\n", "\n").replace('\r', "\n"))
@@ -499,12 +496,6 @@ pub(crate) struct Followed {
     pub(crate) failed: Vec<(String, String)>,
 }
 
-// Moves each file or folder found at the first path of a pair to the
-// second, the path the layout gives its node, parents first, so the next
-// scan finds it under its node instead of importing it again. A folder
-// moves in one rename. When a move fails, it and everything inside it stay
-// where they are and the move is returned as failed, so the caller can
-// owe it and try again later.
 pub(crate) fn follow_layout(root: &Path, mut wanted: Vec<(String, String)>) -> Followed {
     wanted.retain(|(found, laid)| found != laid);
     wanted.sort_by_key(|(found, _)| found.matches('/').count());
@@ -531,8 +522,6 @@ pub(crate) fn follow_layout(root: &Path, mut wanted: Vec<(String, String)>) -> F
     Followed { moved, failed }
 }
 
-// Moves every key at or under `from` to the same place under `to` and
-// returns the old and new keys.
 pub(crate) fn rekey_moved(
     hashes: &mut BTreeMap<String, String>,
     from: &str,
@@ -554,7 +543,6 @@ pub(crate) fn rekey_moved(
     moved
 }
 
-// Where `path` is after `from` moved to `to`, if the move took it along.
 pub(crate) fn moved_key(path: &str, from: &str, to: &str) -> Option<String> {
     if path == from {
         return Some(to.to_owned());

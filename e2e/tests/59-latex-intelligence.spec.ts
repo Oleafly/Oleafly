@@ -93,8 +93,6 @@ test("corpus package completion is curated and package-gated", async ({
     tauriPage,
     "\\documentclass{article}\n\\usepackage{siunitx}\n\\begin{document}\nBody text anchor.\n\\end{document}\n",
   );
-  // Persist the seed and give the project index a full compile's worth of
-  // time — unsaved template edits are not what the worker analyzes.
   await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute(
     "data-severity",
@@ -102,7 +100,6 @@ test("corpus package completion is curated and package-gated", async ({
     { timeout: 90_000 },
   );
 
-  // Empty-query package completion: curated, no hidden directories.
   await typeInEditorAfter(
     tauriPage,
     "\\usepackage{siunitx}",
@@ -115,9 +112,6 @@ test("corpus package completion is curated and package-gated", async ({
     emptyQuery.some((entry) => entry.label.startsWith(".")),
   ).toBe(false);
 
-  // Narrowed query surfaces the corpus entry with its CTAN description.
-  // The probe package differs from the seeded one so the cleanup needle
-  // cannot collide with the real \\usepackage{siunitx} line.
   await typeInEditorAfter(tauriPage, "\\usepackage{", "geome", 2);
   await waitForCompletion(tauriPage);
   const narrowed = await completionEntries(tauriPage);
@@ -135,9 +129,6 @@ test("corpus package completion is curated and package-gated", async ({
   // fresh non-stale snapshot that has detected siunitx before probing —
   // further edits would keep resetting the debounced analysis.
   await waitForSettledIndex(tauriPage);
-  // The snapshot-backed source serves only non-stale queries whose text
-  // matches the indexed revision, so type the probe, let analysis settle,
-  // then re-trigger completion without typing (Ctrl-Space).
   await typeInEditorAfter(tauriPage, "Body text anchor.", " \\qty");
   await waitForSettledIndex(tauriPage);
   await tauriPage.evaluate(
@@ -165,7 +156,6 @@ test("% !TEX root override and broken-root warning surface in the toolbar", asyn
     timeout: 20_000,
   });
 
-  // A root that resolves to a real project file activates the indicator.
   await replaceEditorSource(
     tauriPage,
     "% !TEX root = main.tex\n\\documentclass{article}\n\\begin{document}\nx\n\\end{document}\n",
@@ -175,7 +165,6 @@ test("% !TEX root override and broken-root warning surface in the toolbar", asyn
   ).toBeVisible({ timeout: 15_000 });
   await maybeScreenshot(tauriPage, "e2e-texroot-active.png");
 
-  // A root pointing at a missing file shows the warning badge instead.
   await replaceEditorSource(
     tauriPage,
     "% !TEX root = ../missing.tex\n\\documentclass{article}\n\\begin{document}\nx\n\\end{document}\n",

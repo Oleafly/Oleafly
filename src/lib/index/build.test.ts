@@ -96,7 +96,6 @@ describe("buildIndex: renamePlan", () => {
     const def = required(idx.defs.find((d) => d.kind === "label" && d.name === "old"));
     const plan = idx.renamePlan(def, "new");
     expect(plan.collision).toBe(false);
-    // 1 def + 2 refs (\ref and the "old" in \cref) = 3 edits across 2 files.
     expect(plan.edits).toHaveLength(3);
     expect(plan.fileCount).toBe(2);
     for (const e of plan.edits) expect(e.newText).toBe("new");
@@ -106,7 +105,7 @@ describe("buildIndex: renamePlan", () => {
     const idx = buildIndex({ "m.tex": "\\newcommand{\\foo}{x}\n\\foo and \\foo" });
     const def = required(idx.defs.find((d) => d.kind === "macro" && d.name === "foo"));
     const plan = idx.renamePlan(def, "bar");
-    expect(plan.edits).toHaveLength(3); // def + 2 uses
+    expect(plan.edits).toHaveLength(3);
   });
 
   it("detects a collision with an existing same-kind def", () => {
@@ -119,7 +118,7 @@ describe("buildIndex: renamePlan", () => {
     const idx = buildIndex({ "m.tex": "\\label{a}\n\\ref{a}" });
     const use = required(idx.uses.find((u) => u.kind === "ref" && u.name === "a"));
     const plan = idx.renamePlan(use, "z");
-    expect(plan.edits).toHaveLength(2); // def + the ref
+    expect(plan.edits).toHaveLength(2);
   });
 });
 
@@ -143,8 +142,6 @@ describe("indexFromSymbols: Markdown links and anchors", () => {
   });
   const idx = indexFromSymbols(
     [
-      // A second LaTeX file defines the same label first; the link names
-      // paper.tex, so it must still land there.
       sym("label", "sec:results", "chapter.tex", 0),
       sym("label", "sec:results", "paper.tex", 10),
       sym("label", "sec:results", "other.md", 0),
@@ -189,14 +186,11 @@ describe("indexFromSymbols: Markdown links and anchors", () => {
       "other.md@0",
     ]);
     expect(idx.definitionFor(use("other.md", 30))).toBe(def("other.md"));
-    // third.md has its own anchor of that name, which is not a clash.
     expect(idx.renamePlan(def("other.md"), "sec:results").collision).toBe(false);
   });
 });
 
 describe("buildIndex: LaTeX and Typst labels stay apart", () => {
-  // A LaTeX and a Typst document that reuse label names, plus one citation
-  // key that both of them read from the same .bib file.
   const idx = buildIndex({
     "paper.tex": "\\label{eq:mae}\nSee \\eqref{eq:mae} and \\cite{alpha}.",
     "paper.typ": "$ x $ <eq:mae>\n= Other <eq:rmse>\nSee @eq:mae and @alpha.",

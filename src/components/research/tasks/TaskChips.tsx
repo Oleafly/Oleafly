@@ -65,14 +65,10 @@ export function TaskAgentChip({
   );
 }
 
-// 0.4.8 L: work the background helper runs after Oleafly quits.
-
 export type OwnerBadgeState = "background" | "movingBack" | null;
 
 type OwnerFields = Pick<ResearchTask, "owner" | "status" | "reclaimRequested">;
 
-/** "Moving back" while Oleafly waits for the helper to return the task;
- * "In background" while the helper runs it or will start it. */
 export function ownerBadgeState(task: OwnerFields): OwnerBadgeState {
   if (task.reclaimRequested) return "movingBack";
   if (task.owner === "daemon" && (task.status === "running" || task.status === "queued")) return "background";

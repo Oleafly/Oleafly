@@ -20,6 +20,11 @@ import {
 } from "@/lib/theme-customization";
 import { useSettingsStore } from "@/store/settings";
 import { ThemeCustomization } from "./ThemeCustomization";
+import { installCanvas } from "@/lib/test-canvas";
+
+beforeEach(() => {
+  installCanvas(null);
+});
 
 const customTheme = enSettings.appearance.customTheme;
 
@@ -209,7 +214,8 @@ describe("ThemeCustomization", () => {
     expect(readThemeCustomization().light.background).toBeUndefined();
   });
 
-  it("exports the current theme as a file", () => {
+  it("exports the current theme as a file", async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     const createObjectURL = vi.fn().mockReturnValue("blob:theme");
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", {
@@ -224,7 +230,9 @@ describe("ThemeCustomization", () => {
 
     fireEvent.click(screen.getByRole("button", { name: customTheme.exportTheme }));
     expect(createObjectURL).toHaveBeenCalled();
-    expect(revokeObjectURL).toHaveBeenCalledWith("blob:theme");
+    expect(click).toHaveBeenCalledOnce();
+    await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith("blob:theme"));
+    click.mockRestore();
   });
 
   it("imports a theme file and reports the tokens it skipped", async () => {

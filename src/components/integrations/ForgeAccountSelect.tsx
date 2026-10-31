@@ -19,9 +19,6 @@ function AccountLogo({ account }: Readonly<{ account: ForgeAccount }>) {
   );
 }
 
-/** Pick one of the signed-in Git hosting accounts. Each one shows its
- * service's logo beside the host and login, so the label lives in `label`
- * for screen readers only. */
 export function ForgeAccountSelect({
   accounts,
   value,

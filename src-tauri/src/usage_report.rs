@@ -89,8 +89,6 @@ pub struct UsageReportFilter {
     pub model_ids: Vec<String>,
     #[serde(default)]
     pub session_ids: Vec<String>,
-    /// With `session_ids`, also the sessions started under them (a chat's
-    /// subagents, and theirs), whose rows name their parent instead.
     #[serde(default)]
     pub include_child_sessions: bool,
     #[serde(default)]
@@ -760,9 +758,6 @@ fn add_runtime_filter(sql: &mut String, params: &mut Vec<SqlValue>, values: &[St
     sql.push(')');
 }
 
-/// Rows of the given sessions and of every session started under them, at
-/// any depth: a subagent's rows carry its own session id and name its
-/// parent's in `parent_session_id`.
 fn add_session_tree_filter(sql: &mut String, params: &mut Vec<SqlValue>, values: &[String]) {
     if values.is_empty() {
         return;

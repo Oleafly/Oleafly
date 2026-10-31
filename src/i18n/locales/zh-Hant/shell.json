@@ -1159,6 +1159,8 @@
     "exportTxt": "匯出為純文字（.txt）",
     "exportZipFailed": "無法匯出專案的 zip 檔",
     "exporting": "正在匯出 .{{format}}…",
+    "exportingStep": "正在匯出 .{{format}}：{{step}}",
+    "stopExport": "停止",
     "fork": "複製",
     "forkDescription": "將 <name>{{name}}</name> 及其 Git 歷史記錄複製成新專案。檢查點會從空的開始。",
     "forkFailed": "無法複製這個專案。",

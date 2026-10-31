@@ -1,12 +1,3 @@
-//! Supervised experiment runs. A task starts a run, keeps working, and is
-//! woken when the run finishes. Runs outlive the process that started them:
-//! a local run belongs to a small supervisor process, and every executor
-//! keeps its state in files, so a restarted app or the daemon reattaches.
-//!
-//! Each run has a folder outside the reviewed workspace,
-//! `<research-tasks>/runs/<task-id>/<run-id>/`, with `spec.json`,
-//! `handle.json`, `stdout.log`, `metrics.jsonl`, `status.json` and
-//! `exit_code`, the same for every executor.
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -29,7 +20,6 @@ pub use local::{supervisor_creation_flags, LocalExecutor, SupervisorCommand};
 pub use manager::{RunCompletion, RunManager, RunSummary, StartRun, WaitOutcome};
 pub use metrics::{parse_metrics_line, MetricsSummary};
 
-/// How often live runs are checked, unless their executor asks for longer.
 #[cfg(not(test))]
 pub const POLL_EVERY: Duration = Duration::from_secs(2);
 #[cfg(test)]
@@ -42,30 +32,21 @@ pub const WAIT_MAX: Duration = Duration::from_secs(300);
 pub const MAX_RUN_COMMAND_BYTES: usize = 16 * 1024;
 const MAX_RUN_ENV: usize = 32;
 const MAX_RUN_ENV_VALUE: usize = 4 * 1024;
-/// The `handle.json` schema this version writes and reads.
 pub const HANDLE_VERSION: u32 = 1;
 
-/// Where and how a run executes (C-8).
 #[async_trait::async_trait]
 pub trait RunExecutor: Send + Sync {
-    /// `"local"`, `"ssh"`, `"slurm"`, `"cua-space"`.
     fn id(&self) -> &'static str;
     async fn start(&self, spec: &RunSpec) -> Result<RunHandle, RunError>;
     async fn poll(&self, handle: &RunHandle) -> Result<RunStatus, RunError>;
     async fn read_log(&self, handle: &RunHandle, query: LogQuery) -> Result<String, RunError>;
     async fn cancel(&self, handle: &RunHandle) -> Result<(), RunError>;
-    /// Removes what the run left elsewhere (a remote folder, a per-task
-    /// Space) when its task is deleted. Best effort.
     async fn cleanup(&self, _handle: &RunHandle) -> Result<(), RunError> {
         Ok(())
     }
-    /// Removes the remote folder of a run whose start failed. Unlike
-    /// [`Self::cleanup`] it leaves what the task's other runs share alone.
     async fn discard(&self, handle: &RunHandle) -> Result<(), RunError> {
         self.cleanup(handle).await
     }
-    /// How often a live run is checked: a remote run costs a login (and a
-    /// scheduler query), so its executor asks for longer.
     fn poll_every(&self) -> Duration {
         POLL_EVERY
     }
@@ -84,15 +65,12 @@ mod secs {
     }
 }
 
-/// Everything an executor needs to start one run. Environment values stay
-/// in `spec.json` (owner-only) and never reach transcripts or errors.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RunSpec {
     pub task_id: String,
     pub run_id: String,
     pub command: String,
-    /// Portable path below the workspace, "" for the workspace itself.
     pub cwd_rel: String,
     pub env: BTreeMap<String, String>,
     #[serde(with = "secs")]
@@ -100,16 +78,12 @@ pub struct RunSpec {
     pub profile: RunProfile,
     pub workspace: PathBuf,
     pub resources: Option<Resources>,
-    /// The compute target id (`None` = this computer).
     pub target: Option<String>,
-    /// The run's own folder (logs, status, handle).
     pub run_dir: PathBuf,
     pub network: bool,
-    /// The confinement for local runs.
     pub sandbox: Option<oleafly_sandbox::SandboxSpec>,
 }
 
-/// What an executor remembers about a started run (`handle.json`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RunHandle {
@@ -119,12 +93,10 @@ pub struct RunHandle {
     pub run_id: String,
     pub run_dir: PathBuf,
     pub started_at: i64,
-    /// Executor-specific state.
     pub data: serde_json::Value,
 }
 
 impl RunHandle {
-    /// Reads a stored handle, refusing one written by a newer version.
     pub fn parse(json: &str) -> Result<Self, String> {
         let handle: Self = serde_json::from_str(json)
             .map_err(|_| "The run's saved state is unreadable.".to_string())?;
@@ -154,7 +126,6 @@ pub enum RunOutcomeKind {
 )]
 pub enum RunStatus {
     Starting,
-    /// Waiting for a scheduler (a Slurm job that is pending).
     Queued {
         reason: String,
     },
@@ -182,8 +153,6 @@ pub enum LogQuery {
     Grep { pattern: String, max_matches: usize },
 }
 
-/// Why an executor could not do something. Messages are English and never
-/// contain environment values or command text.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RunError {
     #[error("{0}")]
@@ -216,8 +185,6 @@ impl From<RunError> for String {
     }
 }
 
-/// A run's folder below the workspace: a portable `/` path without `..`,
-/// drive letters, UNC or verbatim prefixes, or backslashes.
 pub fn validate_cwd_rel(value: &str) -> Result<String, String> {
     const MESSAGE: &str = "Use a folder inside the task workspace, written with forward slashes.";
     let value = value.trim();
@@ -246,8 +213,6 @@ fn valid_env_name(name: &str) -> bool {
         && chars.all(|character| character.is_ascii_alphanumeric() || character == '_')
 }
 
-/// At most 32 variables with plain names; never the fixed ones or a
-/// loader variable.
 pub fn validate_run_env(env: &BTreeMap<String, String>) -> Result<(), String> {
     if env.len() > MAX_RUN_ENV {
         return Err("A run can set at most 32 environment variables.".into());
@@ -272,7 +237,6 @@ pub fn validate_run_env(env: &BTreeMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
-/// `r001`, `r002`, … per task.
 pub fn next_run_id(existing: usize) -> String {
     format!("r{:03}", existing + 1)
 }

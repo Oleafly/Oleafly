@@ -1,11 +1,3 @@
-//! Verified downloads of pinned toolchains (Typst, Tinymist, TinyTeX): one
-//! archive from a list of mirrors on allowed hosts, checked against pinned
-//! sizes and SHA-256 sums, extracted member by member and published
-//! atomically. Shared by the app and the `oleafly` CLI.
-//!
-//! In tests (and with the `test-support` feature) an install is visible
-//! only to the thread that started it, so parallel tests don't see each
-//! other's installs.
 use sha2::Digest as _;
 use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
@@ -664,9 +656,6 @@ impl VersionLock {
         let file = options
             .open(&path)
             .map_err(|error| filesystem_error("open", &path, error))?;
-        // Only a lock someone holds is another install; a folder that can't
-        // lock (a share without lock support) is a failed install, not one
-        // to wait for forever.
         fs4::FileExt::try_lock(&file).map_err(|error| lock_error(&path, error))?;
         Ok(Self { file })
     }
@@ -682,8 +671,6 @@ fn lock_error(path: &Path, error: fs4::TryLockError) -> ToolchainInstallError {
     }
 }
 
-/// The slowest download that still finishes: the whole-request limit
-/// grows with the archive (a stalled one fails at the stall timeout anyway).
 const SLOWEST_RATE: u64 = 8 * 1024;
 
 fn request_limit(total: Duration, archive_size: u64) -> Duration {
@@ -1966,7 +1953,6 @@ mod tests {
     fn a_large_archive_gets_time_to_arrive_on_a_slow_link() {
         let total = Duration::from_secs(30 * 60);
         assert_eq!(request_limit(total, 1024), total);
-        // 58 MB at 8 KiB/s is about two hours.
         assert!(request_limit(total, 58_000_000) > Duration::from_secs(7_000));
     }
 

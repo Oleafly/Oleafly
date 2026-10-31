@@ -81,13 +81,8 @@ pub async fn overleaf_sign_in<R: Runtime>(
     Ok(status_for(&base, Some(&signed_in)))
 }
 
-// 0.4.8 I: sign in with copied browser cookies
-/// One cookie from the main webview's store: name, value, domain, path and
-/// whether it is secure.
 pub(crate) type AppCookie = (String, String, Option<String>, Option<String>, bool);
 
-/// The errors a cookie sign-in keeps as they are, because they say what is
-/// wrong better than "the sign-in didn't work".
 const KEPT_SIGN_IN_ERRORS: &[&str] = &[
     "\"overleaf.unreachable\"",
     "\"overleaf.rate_limited\"",
@@ -144,8 +139,6 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
     Ok(status_for(&base, Some(&signed_in)))
 }
 
-/// The positions of the cookies that would go to `base`: the ones the
-/// browser sign-in copy brought in for it.
 fn copied_cookies(cookies: &[AppCookie], base: &str) -> Vec<usize> {
     let Ok(url) = tauri::Url::parse(base) else {
         return Vec::new();
@@ -160,8 +153,6 @@ fn copied_cookies(cookies: &[AppCookie], base: &str) -> Vec<usize> {
         .collect()
 }
 
-/// Cookie header for `base` from the main webview's cookies (name, value,
-/// domain, path, secure). Only cookies that would go to `base` are used.
 fn app_cookie_header(cookies: &[AppCookie], base: &str) -> Result<String, String> {
     let url = tauri::Url::parse(base).map_err(|_| {
         String::from(AppError::new("overleaf.invalid_server").param("server", base))
@@ -239,8 +230,6 @@ pub struct SyncStatus {
     pub last_sync_at: Option<u64>,
     pub token_saved: bool,
     pub imported_from: Option<ImportedFrom>,
-    /// Set when stopping the sync kept local files that linking with
-    /// Overleaf's versions had replaced: the folder they are in.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backups_folder: Option<String>,
 }
@@ -420,7 +409,6 @@ pub async fn overleaf_sync_link<R: Runtime>(
     let outcome = match mutation.value {
         Ok(outcome) => outcome,
         Err(error) => {
-            // Some files may be in their new state: the editor reloads them.
             if errors::files_may_have_changed(&error) {
                 let _ = publish(&app, &state, &project_id, project, true, generation);
             }
@@ -431,8 +419,6 @@ pub async fn overleaf_sync_link<R: Runtime>(
         sync::LinkOutcome::Linked { written } => ("linked", written.clone(), !written.is_empty()),
         sync::LinkOutcome::NeedsChoice(files) => ("needs-choice", files.clone(), false),
     };
-    // The files are written: the editor hears of them even when saving the
-    // link record fails.
     let event = publish(&app, &state, &project_id, project, changed, generation)?;
     if label == "linked" {
         let now = sync::now_seconds();
@@ -554,7 +540,6 @@ pub async fn overleaf_sync_check(project_id: String) -> Result<SyncReport, Strin
     ))
 }
 
-/// Tidies the mirror after a sync that worked, at most once a day.
 async fn maintain(repo: std::path::PathBuf) {
     let _ = blocking(move || {
         sync::maintain(&repo);
@@ -563,8 +548,6 @@ async fn maintain(repo: std::path::PathBuf) {
     .await;
 }
 
-/// What a sync has done here so far, so a step that fails after files were
-/// written still tells the editor about them.
 struct Progress {
     generation: Option<u64>,
     project: Option<crate::project::ProjectMeta>,
@@ -572,11 +555,8 @@ struct Progress {
     pulled: usize,
 }
 
-/// How a sync ended: its outcome, the files it names and whether it pushed.
 type Finished = (String, Vec<String>, bool);
 
-/// Fetches, merges and pushes, at most three rounds when Overleaf moves on
-/// during the push. `None` when it kept moving.
 async fn merge_rounds(
     state: &crate::state::AppState,
     project_id: &str,
@@ -692,8 +672,6 @@ pub async fn overleaf_sync_now<R: Runtime>(
             if !progress.changed && !errors::files_may_have_changed(&error) {
                 return Err(error);
             }
-            // The merge already wrote files here: the editor reloads them
-            // before the failure is reported.
             if let (Some(project), Some(generation)) = (progress.project, progress.generation) {
                 let _ = publish(&app, &state, &project_id, project, true, generation);
             }

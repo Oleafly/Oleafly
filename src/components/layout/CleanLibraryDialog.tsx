@@ -62,7 +62,6 @@ function ActionRow({ action }: { action: CleanAction }) {
   );
 }
 
-/** Tiny line diff: removed lines red, added lines green, context dimmed. */
 function DiffView({ outcome }: { outcome: CleanLibraryOutcome }) {
   const before = outcome.original.split("\n", 501);
   const after = outcome.cleaned.split("\n", 501);

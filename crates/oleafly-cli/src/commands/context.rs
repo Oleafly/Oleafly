@@ -1,5 +1,3 @@
-//! `oleafly context` (a map of the project for an agent or a person) and
-//! `oleafly log` (the last build's log and diagnostics).
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -179,7 +177,6 @@ fn run_log(ctx: &Context, args: LogArgs) -> Result<Outcome, CliError> {
     Ok(Outcome::success(fields))
 }
 
-/// `{branch, dirty, ahead, behind}` from `git status`, or `None`.
 fn git_summary(root: &Path) -> Option<Value> {
     let git = crate::typst_settings::find_git(root)?;
     let stdout = crate::process::read_git(
@@ -212,7 +209,6 @@ fn git_summary(root: &Path) -> Option<Value> {
     Some(json!({"branch": branch, "dirty": dirty, "ahead": ahead, "behind": behind}))
 }
 
-/// `{count, latest_at_ms, latest_label}` for the app's checkpoints, or `None`.
 fn checkpoint_summary(root: &Path, data_root: Option<&Path>) -> Option<Value> {
     let data_root = data_root?;
     let identity = crate::app_paths::project_identity(root, data_root)?;
@@ -259,7 +255,6 @@ fn project_value(opened: &OpenedProject, data_root: Option<&Path>) -> Value {
     })
 }
 
-/// The whole `oleafly context` result (also the MCP `context` tool's).
 pub(crate) async fn context_value(
     root: &Path,
     data_root: Option<PathBuf>,
@@ -277,7 +272,6 @@ pub(crate) async fn context_value(
         .await
         .ok()
         .flatten();
-    // Opening the checkpoint store can wait for the app's lock (up to 30 s).
     let checkpoints = {
         let root = opened.workspace.root().to_path_buf();
         let data_root = data_root.clone();
@@ -317,7 +311,6 @@ fn bounded_list(items: &[String]) -> String {
     }
 }
 
-/// The context as Markdown for a person or a prompt (at most 200 lines).
 fn context_markdown(value: &Value, scan: &ContextScan) -> String {
     let project = &value["project"];
     let mut lines: Vec<String> = Vec::new();
@@ -497,8 +490,6 @@ mod tests {
         let Some(git) = crate::typst_settings::find_git(repository.path()) else {
             return;
         };
-        // Under a commit hook GIT_DIR names the real repository: without
-        // clearing it, `init` and `config` here would rewrite that one.
         let git_in = |args: &[&str]| {
             let mut command = std::process::Command::new(&git);
             crate::process::clear_inherited_git_env(&mut command);

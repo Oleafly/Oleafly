@@ -1,5 +1,3 @@
-//! Streamed text chunks are joined before they are stored: one event per
-//! 100 ms (or 64 KiB) of the same message instead of one per token.
 use serde_json::{json, Value};
 use std::time::{Duration, Instant};
 
@@ -12,8 +10,6 @@ struct Held {
     message_id: Option<String>,
     text: String,
     first_at: Instant,
-    /// Bytes at the start of `text` held back by the last due flush; they
-    /// are stored with the message's next text or when it ends.
     carry: usize,
 }
 
@@ -23,14 +19,10 @@ pub(super) struct Coalescer {
 }
 
 pub(super) enum Pushed {
-    /// The chunk is held with earlier text of the same message.
     Held,
-    /// Earlier text of another message, to store before the new chunk.
     Flush(Value),
 }
 
-/// The text of a plain text chunk, or `None` for anything else (images,
-/// resources, v2 replacements), which is stored as it is.
 pub(super) fn chunk_text(update: &Value) -> Option<&str> {
     if update["replace"].as_bool() == Some(true) || update["content"]["type"] != "text" {
         return None;
@@ -39,8 +31,6 @@ pub(super) fn chunk_text(update: &Value) -> Option<&str> {
 }
 
 impl Coalescer {
-    /// Holds a text chunk (see [`chunk_text`]). Held text of another
-    /// message comes back to be stored before this one.
     pub fn push(
         &mut self,
         kind: &str,
@@ -73,7 +63,6 @@ impl Coalescer {
         }
     }
 
-    /// The held text as one chunk update.
     pub fn take(&mut self) -> Option<Value> {
         let held = self.held.take()?;
         Some(chunk_update(
@@ -83,13 +72,6 @@ impl Coalescer {
         ))
     }
 
-    /// The held text that is due, without an ending that could begin a
-    /// secret still streaming in (`holdback` says how long), which stays
-    /// held for the message's next text so a secret is never split between
-    /// two stored events. `redact` runs on all the held text first, so one
-    /// that already arrived whole is removed before the cut. Prose is
-    /// stored whole: a message that then waits (a tool call, an agent
-    /// waiting to be stopped) must not stay unseen until it ends.
     pub fn take_due(
         &mut self,
         holdback: impl Fn(&str) -> usize,
@@ -125,8 +107,6 @@ impl Coalescer {
         self.held.is_some()
     }
 
-    /// Only text held back by a due flush is held: nothing is due until
-    /// more of the message arrives.
     pub fn only_carry(&self) -> bool {
         self.held
             .as_ref()
@@ -206,7 +186,6 @@ mod tests {
         let start = Instant::now();
         let mut coalescer = Coalescer::default();
         let mut stored = Vec::new();
-        // The token arrives in pieces, each flush window ending inside it.
         let pieces = [
             "Your key is tok-0123",
             "456789abcdef01",
@@ -221,18 +200,15 @@ mod tests {
                 }
             }
         }
-        // The message ends: anything still held is stored as it is.
         if let Some(update) = coalescer.take() {
             stored.push(update["content"]["text"].as_str().unwrap().to_owned());
         }
-        // Each event is redacted on its own when it is stored.
         let redacted: Vec<String> = stored.iter().map(|text| redact(text)).collect();
         let joined: String = redacted.concat();
         assert!(!joined.contains("0123456789"), "{redacted:?}");
         assert_eq!(joined, "Your key is [credential omitted] and more");
     }
 
-    /// The longest ending of `text` that is a proper start of `secret`.
     fn overlap(text: &str, secret: &str) -> usize {
         (1..secret.len().min(text.len() + 1))
             .rev()

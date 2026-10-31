@@ -3,7 +3,6 @@ import { applyLocale } from "@/i18n";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type { ProjectIndex } from "@/lib/index/types";
 
-// Mock the Tauri command layer and the stores the tools reach into.
 const mocks = vi.hoisted(() => ({
   api: {
     readFileContent: vi.fn(),
@@ -195,8 +194,6 @@ describe("ai-tools: destructive edits require approval (U1)", () => {
     mocks.api.readFileContent.mockResolvedValue("x PLACEHOLDER y");
     const confirm = vi.fn().mockResolvedValue(true);
     const tools = createOleaflyTools({ confirm });
-    // `$$`, `$&`, `$1` etc. must land literally, not be interpreted by
-    // String.prototype.replace's substitution syntax.
     await tools.replace_in_file.execute({
       path: "a.tex",
       find: "PLACEHOLDER",
@@ -415,7 +412,6 @@ describe("ai-tools: command approval", () => {
       "run-7",
       "approval-token",
     );
-    // A native run id is already tracked, so no external registration happens.
     expect(mocks.api.agentExecRegisterExternal).not.toHaveBeenCalled();
   });
 
@@ -427,8 +423,6 @@ describe("ai-tools: command approval", () => {
       __execOwner: owner,
     });
 
-    // The child's owner wins over the run's native id, and is registered
-    // before authorizing so the native registry trusts it.
     expect(mocks.api.agentExecRegisterExternal).toHaveBeenCalledWith(owner);
     expect(mocks.api.agentExecAuthorize).toHaveBeenCalledWith("proj", "pwd", owner);
     expect(mocks.api.agentExec).toHaveBeenCalledWith("proj", "pwd", owner, "approval-token");

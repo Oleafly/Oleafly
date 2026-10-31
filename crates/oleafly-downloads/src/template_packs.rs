@@ -1,8 +1,3 @@
-//! Template packs: the catalog of downloadable template collections, each
-//! pack's template index, and verified downloads into
-//! `<templates>/packs/<pack>/<template>`. Shared by the app's template
-//! gallery and `oleafly new`/`oleafly templates`; callers pass the templates
-//! folder (the app's `<data>/templates`).
 use futures_util::{StreamExt, TryStreamExt};
 use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
@@ -28,14 +23,9 @@ const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const READ_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_REDIRECTS: usize = 5;
-/// The most a catalog or an index may hold.
 const MAX_TEXT_BYTES: usize = 16 << 20;
-/// The most one template file may hold (an index's size for the template
-/// is the tighter limit when it gives one).
 const MAX_FILE_BYTES: u64 = 256 << 20;
-/// Sizes in an index are rounded.
 const SIZE_SLACK: u64 = 64 << 10;
-/// How long an install waits for another one of the same pack.
 const INSTALL_LOCK_WAIT: Duration = Duration::from_secs(15 * 60);
 const INSTALL_LOCK: &str = ".install.lock";
 const MANIFEST: &str = "template.json";
@@ -793,9 +783,6 @@ const TOO_LARGE: &str = "sent more than";
 const NOT_TEXT: &str = "sent something that isn't text";
 const CHECKSUM: &str = "did not match its checksum";
 
-/// What a failed download was, from its message: the network, what the
-/// server sent (too large, not text, a wrong checksum), or this computer
-/// (writing the files).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DownloadFailure {
     Network,
@@ -935,12 +922,9 @@ pub struct TemplateJob {
     pub id: String,
     pub missing: Vec<PackFile>,
     pub preview: Option<String>,
-    /// The most one of its files may hold.
     pub max_file_bytes: u64,
 }
 
-/// The per-file limit for a template the index sizes at `bytes` (0: not
-/// sized).
 fn file_limit(bytes: u64) -> u64 {
     if bytes == 0 {
         MAX_FILE_BYTES
@@ -1022,9 +1006,6 @@ impl<F: Fn(DownloadProgress) + Sync> Tracker<'_, F> {
     }
 }
 
-/// A temporary name beside `dest`, of this process and this download only:
-/// two installs of one template (two `oleafly new`, or the app and the CLI)
-/// never write into the same file.
 fn part_path(dest: &Path) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let mut name = dest.as_os_str().to_owned();
@@ -1177,8 +1158,6 @@ async fn download_job<F: Fn(DownloadProgress) + Sync>(
     let max_bytes = job.max_file_bytes;
     let fetch = |file: PackFile| async move {
         let dest = dir.join(&file.name);
-        // Another install of the pack, which this one waited for, may have
-        // brought the file already.
         if tokio::fs::symlink_metadata(&dest)
             .await
             .is_ok_and(|metadata| metadata.is_file())
@@ -1227,8 +1206,6 @@ pub async fn download_templates<F: Fn(DownloadProgress) + Sync>(
         .await
 }
 
-/// The pack's install lock (`<pack>/.install.lock`), held for a whole
-/// install so two processes never write one template's files at once.
 async fn install_lock(dir: &Path) -> Result<std::fs::File, String> {
     tokio::fs::create_dir_all(dir)
         .await
@@ -1265,8 +1242,6 @@ async fn install_lock(dir: &Path) -> Result<std::fs::File, String> {
     }
 }
 
-/// Whether `actual` (a SHA-256 digest) matches the hex `expected`; no
-/// expectation matches anything.
 pub fn checksum_matches(expected: Option<&str>, actual: &[u8]) -> bool {
     let Some(expected) = expected else {
         return true;
@@ -1275,7 +1250,6 @@ pub fn checksum_matches(expected: Option<&str>, actual: &[u8]) -> bool {
     expected.trim().eq_ignore_ascii_case(&actual)
 }
 
-/// `<templates>/packs/<id>`, guarding the id.
 pub fn pack_install_dir_in(templates_root: &Path, id: &str) -> Result<PathBuf, String> {
     if !is_valid_id(id) {
         return Err(format!("illegal pack id: {id}"));
@@ -1283,14 +1257,12 @@ pub fn pack_install_dir_in(templates_root: &Path, id: &str) -> Result<PathBuf, S
     Ok(templates_root.join("packs").join(id))
 }
 
-/// Where a pack's downloaded index is cached.
 pub fn index_cache_path(templates_root: &Path, pack_id: &str) -> PathBuf {
     templates_root
         .join(INDEXES_DIR)
         .join(format!("{pack_id}.json"))
 }
 
-/// The pack with this id in `packs`.
 pub fn find_pack_in(packs: Vec<CatalogPack>, id: &str) -> Result<CatalogPack, String> {
     if !is_valid_id(id) {
         return Err(format!("illegal pack id: {id}"));
@@ -1301,8 +1273,6 @@ pub fn find_pack_in(packs: Vec<CatalogPack>, id: &str) -> Result<CatalogPack, St
         .ok_or_else(|| format!("unknown template pack: {id}"))
 }
 
-/// A pack's templates: from its cached index while fresh (or offline),
-/// else downloaded.
 pub async fn pack_templates_in(
     templates_root: &Path,
     pack: &CatalogPack,
@@ -1321,8 +1291,6 @@ pub async fn pack_templates_in(
     .await
 }
 
-/// Refreshes the cached catalog unless it is fresh or a refresh failed in
-/// the last minute (`force` skips both); `true` when it fetched.
 pub async fn refresh_catalog(templates_root: &Path, force: bool) -> Result<bool, String> {
     if !force && (catalog_fresh(templates_root, SystemTime::now()) || failed_recently()) {
         return Ok(false);
@@ -1332,7 +1300,6 @@ pub async fn refresh_catalog(templates_root: &Path, force: bool) -> Result<bool,
     result.map(|()| true)
 }
 
-/// Downloads `templates` of `pack` into its folder, reporting progress.
 pub async fn install_templates_in<F: Fn(DownloadProgress) + Sync>(
     templates_root: &Path,
     pack: &CatalogPack,

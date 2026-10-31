@@ -130,11 +130,12 @@ it("queues diagram edits immediately and rejects stale-project and leased callba
   expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: standaloneDiagramSource(EDITED), dirty: true, edits: 1 });
   expect(mocks.write).not.toHaveBeenCalled();
   useFilesStore.setState({ files: { "notes.txt": { content: "Saved", dirty: false } } });
-  const lease = acquireEditorMutationLease("project");
+  let lease!: ReturnType<typeof acquireEditorMutationLease>;
+  act(() => { lease = acquireEditorMutationLease("project"); });
   try {
     act(() => mocks.diagramChange?.(EDITED));
     expect(useFilesStore.getState().files["notes.txt"].content).toBe("Saved");
-  } finally { lease.release(); }
+  } finally { act(() => lease.release()); }
   act(() => {
     useFilesStore.setState({ projectId: "other", files: {} });
     mocks.diagramChange?.(EDITED);

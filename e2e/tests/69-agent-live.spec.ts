@@ -78,7 +78,6 @@ async function waitForRun(page: Page, timeoutMs = REPLY_TIMEOUT) {
 }
 
 test.describe("live provider", () => {
-  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run against a real provider");
 
   test("lists the models the key actually has access to", async ({ tauriPage }) => {
@@ -120,7 +119,6 @@ test.describe("live provider", () => {
   });
 
   test("streams the thinking phase separately from the answer", async ({ tauriPage }) => {
-    // Ignored on purpose for providers that never emit reasoning tokens.
     test.skip(!EXPECT_REASONING, `${PROVIDER} is not configured to expose reasoning tokens`);
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
@@ -130,7 +128,6 @@ test.describe("live provider", () => {
     await ask(tauriPage, "Think step by step, then answer: what is 17 times 23?");
     await waitForRun(tauriPage);
 
-    // Finished turns fold reasoning behind the Worked header.
     await tauriPage.evaluate(`(() => {
       const message = Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1);
       const worked = Array.from(message?.querySelectorAll('button') ?? [])

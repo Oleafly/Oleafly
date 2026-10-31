@@ -163,8 +163,6 @@ async fn the_edits_around_every_refused_comment_arrive_within_seconds(blocked: b
     append(&bob, &main, " ready");
     flushed(&bob);
     until(|| text(&alice, &main).ends_with(" ready")).await;
-    // Every check below runs on the document the server kept from the check
-    // of " ready", without reading the project again.
     let snapshots = &pair._server.state().snapshots;
     let reads = snapshots.document_reads();
     let author = pair.alice.tokens.account_id;
@@ -219,8 +217,6 @@ async fn the_edits_around_every_refused_comment_arrive_within_seconds(blocked: b
         arrived_promptly(&mut alice, &bob, &main, round, since, told).await;
         append(&bob, &main, &format!(" B{round}"));
         flushed(&bob);
-        // Alice gets Bob's word before the next round. Otherwise it can reach
-        // her between her two appends there, and land between them.
         let bobs = format!(" B{round}");
         until(|| text(&alice, &main).ends_with(&bobs)).await;
     }
@@ -258,9 +254,14 @@ async fn a_refused_comment_change_is_refused_again_and_the_next_edit_is_checked_
     };
     let state = pair._server.state();
     let check = |payload: Vec<u8>| {
-        state
-            .comment_guard
-            .check(&state.db, &state.snapshots, project, payload)
+        let reach = oleafly_server::peers::update_reach(&payload).expect("a reach");
+        let state = &state;
+        async move {
+            state
+                .comment_guard
+                .check(&state.db, &state.snapshots, project, payload, &reach)
+                .await
+        }
     };
     let one = typed(&mut doc, " one");
     assert_eq!(check(one.clone()).await.unwrap(), Verdict::Allowed);

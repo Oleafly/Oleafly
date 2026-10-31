@@ -119,11 +119,6 @@ function pageMatches(
   return results;
 }
 
-/**
- * Search every page without truncation. Work is bounded to four page proxies
- * at a time, and a failure is surfaced for the complete search rather than
- * silently returning a partial count.
- */
 export async function searchPdfDocument(
   document: pdfjsLib.PDFDocumentProxy,
   query: string,

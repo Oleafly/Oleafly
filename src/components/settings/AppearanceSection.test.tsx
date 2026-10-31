@@ -42,6 +42,11 @@ import {
 } from "@/lib/theme-customization";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutsSection } from "./ShortcutsSection";
+import { installCanvas } from "@/lib/test-canvas";
+
+beforeEach(() => {
+  installCanvas(null);
+});
 
 describe("Appearance settings tabs", () => {
   beforeEach(() => {

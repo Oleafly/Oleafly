@@ -32,7 +32,6 @@ export interface UploadProgress {
 export interface FileNoticesState {
   projectId: string | null;
   uploads: readonly CollabUploadFile[];
-  // How far each figure going up now got, by path.
   progress: Readonly<Record<string, UploadProgress>>;
   kept: readonly CollabLiveKeptFile[];
   retrying: boolean;
@@ -104,7 +103,6 @@ export const useFileNotices = create<FileNoticesState>((set, get) => ({
   dismissBroughtIn: () => set({ broughtIn: null }),
 }));
 
-// Progress only for figures still waiting to go up.
 function stillWaiting(
   progress: Readonly<Record<string, UploadProgress>>,
   files: readonly CollabUploadFile[],
@@ -138,7 +136,6 @@ function progressed(payload: CollabUploadProgress): void {
         progress: { ...progress, [payload.path]: { done: payload.done, total: payload.total } },
       };
     }
-    // Up: the next list of waiting figures no longer has it.
     const { [payload.path]: _finished, ...rest } = progress;
     return { projectId: payload.projectId, progress: rest };
   });

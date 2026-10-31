@@ -166,9 +166,6 @@ type Probed = (ProjectAvailability, Option<u64>);
 
 type Probe = Arc<dyn Fn(&str) -> Probed + Send + Sync>;
 
-/// `path` for display, with a leading `home` shown as `~`. The one format
-/// the backend uses for home-relative paths (linked folders, the shell
-/// command row); the UI mirrors it in `src/lib/display-path.ts`.
 pub(crate) fn abbreviated_display_path(path: &Path, home: Option<&Path>) -> String {
     let shown = without_verbatim_prefix(path);
     let home = home.map(without_verbatim_prefix);
@@ -258,11 +255,8 @@ pub(crate) fn short_spelling(path: &Path) -> Option<PathBuf> {
 
     let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
     let mut output = vec![0u16; 260];
-    // A second try is enough unless the folder is renamed in between.
     for _ in 0..3 {
         let capacity = u32::try_from(output.len()).ok()?;
-        // Writes at most `capacity` units; returns the length written, or the
-        // size needed (terminator included) when the buffer is too small.
         let written = unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), capacity) };
         let written = usize::try_from(written).ok()?;
         if written == 0 {

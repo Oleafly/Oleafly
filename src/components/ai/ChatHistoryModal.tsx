@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Badge } from "@/components/ui/badge";
 
-// FTS5 special characters would error inside MATCH; quote each term instead.
 function ftsQuery(raw: string): string {
   return raw
     .trim()
@@ -51,7 +50,6 @@ export function ChatHistoryModal({
   onClose: () => void;
   onOpen: (chat: StoredChat) => void;
   onDelete: (chatId: string) => void;
-  /** Chat files the last load could not read. */
   skipped?: number;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
@@ -59,8 +57,6 @@ export function ChatHistoryModal({
   const [query, setQuery] = useState("");
   const trimmed = query.trim();
   const listRef = useScrollTopOnChange(trimmed);
-  // Titles filter locally; message content matches come from the library.db
-  // session index ("find the chat where…").
   const contentHits = useQuery({
     queryKey: ["chat-content-search", trimmed],
     queryFn: () => chatsSearch(ftsQuery(trimmed)),
@@ -169,9 +165,6 @@ export function ChatHistoryModal({
       })
     );
 
-  // Portalled like the other app dialogs. Rendered in place, its z-index only
-  // counted inside the workspace panels' stacking context: the title bar stayed
-  // undimmed and the editor's pinned rows were drawn over the backdrop.
   return (
     <ModalShell
       open

@@ -1,6 +1,3 @@
-//! SyncTeX parsing and forward and inverse search. Nothing here touches the
-//! file system, so the app, the CLI and the browser app (built to
-//! WebAssembly by `oleafly-synctex-wasm`) share this one implementation.
 use flate2::read::GzDecoder;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -12,7 +9,6 @@ pub const SP_TO_BP: f64 = 1.0 / 65781.76;
 
 #[derive(Default)]
 pub struct Doc {
-    /// synctex tag → input file path.
     inputs: BTreeMap<i32, String>,
     nodes: Vec<Node>,
     marks: Vec<Mark>,
@@ -28,7 +24,6 @@ struct Node {
     page: i32,
     tag: i32,
     line: i32,
-    /// All in bp.
     h: f64,
     v: f64,
     width: f64,
@@ -58,9 +53,6 @@ pub struct SynctexRect {
     pub height: f64,
 }
 
-/// One typeset line holding text from the line a forward search asked for.
-/// `from`..`to` is the stretch of the line where that source line's text sits,
-/// in bp like the rest.
 #[derive(Serialize, Clone, Copy, Debug, PartialEq)]
 pub struct SynctexLine {
     pub page: i32,
@@ -72,8 +64,6 @@ pub struct SynctexLine {
     pub to: f64,
 }
 
-/// A forward search answer: the box to fall back on, plus every typeset line
-/// of the source line so the caller can find the cursor's word among them.
 #[derive(Serialize, Debug, PartialEq)]
 pub struct SynctexForwardHit {
     #[serde(flatten)]
@@ -131,8 +121,6 @@ fn unique_line_anchors(compiled: &[&str], current: &[&str]) -> Vec<LinePair> {
         return candidates;
     }
 
-    // Patience diff: retain the longest increasing sequence of current line
-    // positions so moved unique lines cannot become misleading anchors.
     let mut tails: Vec<usize> = Vec::new();
     let mut tail_candidates: Vec<usize> = Vec::new();
     let mut previous = vec![None; candidates.len()];
@@ -371,7 +359,6 @@ pub fn parse(text: &str) -> Doc {
     for raw in text.lines() {
         let line = raw.trim_end();
         if let Some(rest) = line.strip_prefix("Input:") {
-            // Input:<tag>:<path>
             if let Some(idx) = rest.find(':') {
                 if let Ok(tag) = rest[..idx].parse::<i32>() {
                     let path = &rest[idx + 1..];
@@ -428,10 +415,8 @@ fn parse_mark(line: &str, parent: Option<usize>) -> Option<Mark> {
     })
 }
 
-/// Parse a compact box line: `[tag,line:h,v:width,height,depth` (vbox) or
-/// `(tag,line:h,v:width,height,depth` (hbox).
 fn parse_box(line: &str, page: i32, kind: BoxKind, parent: Option<usize>) -> Option<Node> {
-    let rest = &line[1..]; // drop leading [ or (
+    let rest = &line[1..];
     let (head, tail) = rest.split_once(':')?;
     let (tag, line_no) = tag_and_line(head)?;
 
@@ -469,12 +454,32 @@ pub fn normalized_path(path: &str) -> String {
 }
 
 fn project_relative(path: &str, roots: &[String]) -> Option<String> {
-    roots
-        .iter()
-        .filter(|root| !root.is_empty())
+    let roots = || roots.iter().filter(|root| !root.is_empty());
+    roots()
         .find_map(|root| path.strip_prefix(root.as_str())?.strip_prefix('/'))
-        .filter(|relative| !relative.is_empty())
         .map(str::to_string)
+        .or_else(|| {
+            FOLDS_CASE
+                .then(|| roots().find_map(|root| strip_folded_root(path, root)))
+                .flatten()
+        })
+        .filter(|relative| !relative.is_empty())
+}
+
+const FOLDS_CASE: bool = cfg!(any(windows, target_os = "macos"));
+
+fn folded(path: &str) -> String {
+    path.to_lowercase()
+}
+
+fn strip_folded_root(path: &str, root: &str) -> Option<String> {
+    let mut parts = path.split('/');
+    for want in root.split('/') {
+        if folded(parts.next()?) != folded(want) {
+            return None;
+        }
+    }
+    Some(parts.collect::<Vec<_>>().join("/"))
 }
 
 fn basename(path: &str) -> &str {
@@ -495,12 +500,29 @@ pub fn tag_for_file(doc: &Doc, file: &str, roots: &[String]) -> Option<i32> {
             (*tag, path, relative)
         })
         .collect();
-    if let Some((tag, _, _)) = inputs
+    let folded_inputs: Vec<(i32, String, Option<String>)> = inputs
         .iter()
-        .find(|(_, path, relative)| relative.as_deref() == Some(want.as_str()) || *path == want)
-    {
-        return Some(*tag);
+        .map(|(tag, path, relative)| (*tag, folded(path), relative.as_deref().map(folded)))
+        .collect();
+    let folded_want = folded(&want);
+    exact_tag(&inputs, &want, false)
+        .or_else(|| exact_tag(&folded_inputs, &folded_want, true))
+        .or_else(|| nearby_tag(&inputs, &want))
+        .or_else(|| nearby_tag(&folded_inputs, &folded_want))
+}
+
+fn exact_tag(inputs: &[(i32, String, Option<String>)], want: &str, unique: bool) -> Option<i32> {
+    let mut exact = inputs
+        .iter()
+        .filter(|(_, path, relative)| relative.as_deref() == Some(want) || path == want);
+    let (tag, _, _) = exact.next()?;
+    if unique && exact.any(|(other, _, _)| other != tag) {
+        return None;
     }
+    Some(*tag)
+}
+
+fn nearby_tag(inputs: &[(i32, String, Option<String>)], want: &str) -> Option<i32> {
     let suffix = format!("/{want}");
     let depth = |path: &str| path.matches('/').count();
     let containing: Vec<&(i32, String, Option<String>)> = inputs
@@ -516,7 +538,7 @@ pub fn tag_for_file(doc: &Doc, file: &str, roots: &[String]) -> Option<i32> {
             _ => None,
         };
     }
-    let name = basename(&want);
+    let name = basename(want);
     let mut named = inputs.iter().filter(|(_, path, _)| basename(path) == name);
     match (named.next(), named.next()) {
         (Some((tag, _, _)), None) => Some(*tag),
@@ -524,20 +546,13 @@ pub fn tag_for_file(doc: &Doc, file: &str, roots: &[String]) -> Option<i32> {
     }
 }
 
-/// How `forward` found its box.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Found {
-    /// A typeset line holding text from the line.
     Text,
-    /// A box tagged with the line itself, such as a display or a float.
     Box,
-    /// Only the box tagged with the nearest line.
     Nearest,
 }
 
-/// Forward search: (file, line) → tightest box on its page, and how it was
-/// found. The rect is in PDF bp with origin at the page's top-left (y grows
-/// downward).
 pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<(SynctexRect, Found)> {
     let tag = tag_for_file(doc, file, roots)?;
     let real = |n: &Node| n.height + n.depth >= 4.0 && n.width >= 5.0;
@@ -559,7 +574,6 @@ pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<(Sy
         return Some((to_rect(chosen), Found::Text));
     }
 
-    // Prefer an exact-line match; among those, the tightest (smallest) real box.
     let exact: Vec<&Node> = doc
         .nodes
         .iter()
@@ -573,7 +587,6 @@ pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<(Sy
         return Some((to_rect(chosen), Found::Box));
     }
 
-    // No exact match: nearest real node by line distance.
     let chosen = doc
         .nodes
         .iter()
@@ -589,8 +602,6 @@ fn reading_order(a: &SynctexLine, b: &SynctexLine) -> std::cmp::Ordering {
         .then(a.x.total_cmp(&b.x))
 }
 
-/// How far `forward_hit` looks for a neighbouring line with text when the line
-/// itself left none.
 const NEIGHBOUR_LINES: i32 = 3;
 
 /// Forward search with every typeset line of the source line attached.
@@ -645,15 +656,6 @@ pub fn forward_hit(
     Some(SynctexForwardHit { rect, lines })
 }
 
-/// Every typeset line holding text from `line`, in reading order.
-///
-/// A source line that holds a whole paragraph spans many typeset lines, and a
-/// wrapped one usually two, so the first box alone puts the highlight lines
-/// away from the cursor. The caller picks the line with the cursor's word in
-/// it. Each line also carries the stretch where this source line's words sit:
-/// a word's record follows it (see `refine_line`), so they run from the last
-/// record of another line before the first of ours to our last record, or to
-/// the end of the typeset line when nothing from another line follows.
 fn forward_lines(doc: &Doc, tag: i32, line: i32) -> Vec<SynctexLine> {
     let real = |n: &Node| n.height + n.depth >= 4.0 && n.width >= 5.0;
     let owners: Vec<(usize, &Mark)> = doc
@@ -729,7 +731,6 @@ fn to_rect(n: &Node) -> SynctexRect {
     }
 }
 
-/// Inverse search: (page, x, y) in bp → (file, line).
 pub fn inverse(doc: &Doc, page: i32, x: f64, y: f64, roots: &[String]) -> Option<SynctexHit> {
     let chosen = pick_box(doc, page, x, y)?;
     let (tag, line) = refine_line(doc, chosen, x);
@@ -855,8 +856,6 @@ fn refine_line(doc: &Doc, chosen: usize, x: f64) -> (i32, i32) {
                 && trusted(doc, mark, chosen)
         })
         .collect();
-    // Current-point records only repeat the node before them, so they count
-    // only where nothing else was recorded.
     let solid: Vec<&Mark> = marks.iter().copied().filter(|mark| !mark.current).collect();
     let marks = if solid.is_empty() { marks } else { solid };
     // The glue TeX adds when it breaks a paragraph into lines (the left and
@@ -924,14 +923,10 @@ pub const MAX_SYNCTEX_FILE_BYTES: u64 = 256 * 1024 * 1024;
 /// tenfold, while gzip stretches a run of zeros a thousand times over.
 pub const MAX_SYNCTEX_TEXT_BYTES: u64 = 1024 * 1024 * 1024;
 
-/// Why `gunzip` gave up.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GunzipError {
-    /// The gzip file is over its limit.
     FileTooLarge,
-    /// Its text is over its limit, or does not fit in memory.
     TextTooLarge,
-    /// It isn't gzip, is cut short, or holds something other than UTF-8 text.
     Unreadable(String),
 }
 
@@ -1048,9 +1043,6 @@ mod tests {
         include_str!("../tests/fixtures/synctex/academic-article.inverse.tsv");
     const ARTICLE_FORWARD: &str =
         include_str!("../tests/fixtures/synctex/academic-article.forward.tsv");
-    // Ground truth from aligning every PDF word with the source word it was
-    // typed from: a hard-wrapped Tectonic article, and a LuaLaTeX project with
-    // `\input` chapters.
     const WRAPPED: &[u8] = include_bytes!("../tests/fixtures/synctex/wrapped-prose.synctex.gz");
     const WRAPPED_INVERSE: &str =
         include_str!("../tests/fixtures/synctex/wrapped-prose.inverse.tsv");
@@ -1295,9 +1287,6 @@ g3,5:6578176,13156352\n\
         }
     }
 
-    // One typeset line, x 100..600 bp, y 90..100 bp, of a paragraph that ended
-    // on line 9: a word from line 7, then the first word of line 8, then more
-    // of line 8 with a current-point record still naming line 7.
     const FIRST_WORD: &str = "SyncTeX Version:1\n\
 Input:1:/p/main.tex\n\
 Content:\n\
@@ -1319,7 +1308,6 @@ g1,9:39469056,6578176\n\
         let roots = fixture_roots();
         let at = |x: f64| inverse(&doc, 1, x, 95.0, &roots).unwrap().line;
         assert_eq!(at(125.0), 7);
-        // The space before the word ends line 7; the one after it is line 8's.
         assert_eq!(at(175.0), 8);
     }
 
@@ -1362,8 +1350,6 @@ g1,29:13156352,13156352\n\
         assert_eq!(inverse(&doc, 1, 160.0, 195.0, &roots).unwrap().line, 29);
     }
 
-    // A display closed on line 34: its spacing glue carries 34, while the
-    // nested boxes around 110 and 160 bp keep the lines typed in, 31 and 32.
     const DISPLAY: &str = "SyncTeX Version:1\n\
 Input:1:/p/main.tex\n\
 Content:\n\
@@ -1391,8 +1377,6 @@ g1,34:11840717,6578176\n\
         assert_eq!(at(170.0), 32);
     }
 
-    // Line 5 of a paragraph that ends on line 9 fills three typeset lines; the
-    // third also holds the start of line 8 from 150 bp on.
     const PARAGRAPH_LINE: &str = "SyncTeX Version:1\n\
 Input:1:/p/main.tex\n\
 Content:\n\
@@ -1425,7 +1409,6 @@ g1,5:9867264,7894000\n\
             (first.from.round() as i64, first.to.round() as i64),
             (100, 600)
         );
-        // Line 8 takes over after the word that ends at 150 bp.
         assert_eq!(
             (last.from.round() as i64, last.to.round() as i64),
             (100, 150)
@@ -1458,7 +1441,6 @@ g1,8:9867264,10525000\n\
         let roots = fixture_roots();
         let hit = forward_hit(&doc, "main.tex", 7, &roots).unwrap();
         assert_eq!(hit.lines.len(), 3);
-        // Its word follows line 6's text, so start at the last line of that.
         assert_eq!(hit.rect.y.round() as i64, 110);
     }
 
@@ -1617,13 +1599,11 @@ Content:\n\
 
     #[test]
     fn gunzip_stops_at_a_gzip_bomb_and_an_oversized_file() {
-        // 1 MiB of zeros is a few kilobytes of gzip.
         let bomb = gzip(&vec![0_u8; 1 << 20]);
         assert!(bomb.len() < 64 * 1024, "{}", bomb.len());
         let error = gunzip(&bomb, 1 << 20, 64 * 1024).unwrap_err();
         assert_eq!(error, GunzipError::TextTooLarge);
         assert!(error.to_string().contains("its text"), "{error}");
-        // Exactly at the limit still reads.
         assert_eq!(gunzip(&bomb, 1 << 20, 1 << 20).unwrap().len(), 1 << 20);
         let error = gunzip(&bomb, 1024, 1 << 30).unwrap_err();
         assert_eq!(error, GunzipError::FileTooLarge);
@@ -1683,7 +1663,6 @@ Content:\n\
         let doc = inputs(&["/w/book/main.tex", "main.tex", "/other.tex"]);
         assert!(infer_roots(&doc, &["notes.tex"]).is_empty());
         assert!(infer_roots::<&str>(&doc, &[]).is_empty());
-        // A relative input, or one at the top of the disk, needs no root.
         assert!(infer_roots(&doc, &["other.tex"]).is_empty());
     }
 
@@ -1701,6 +1680,48 @@ Content:\n\
         assert_eq!(infer_roots(&doc, &project), ["/b/deep", "/a", "/c"]);
         let tied = inputs(&["/z/deep/main.tex", "/y/main.tex", "/x/main.tex"]);
         assert_eq!(infer_roots(&tied, &["main.tex"]), ["/x", "/y", "/z/deep"]);
+    }
+
+    #[test]
+    fn an_input_spelled_with_other_case_is_found_when_no_exact_match_exists() {
+        let doc = inputs(&[
+            "/p/main.tex",
+            "/p/Chapters/Intro.tex",
+            "/p/Notes/Same.tex",
+            "/p/notes/same.tex",
+            "/p/Parts/X/One.tex",
+            "/p/parts/y/one.tex",
+        ]);
+        let roots = vec!["/p".to_string()];
+        assert_eq!(tag_for_file(&doc, "chapters/intro.tex", &roots), Some(2));
+        assert_eq!(tag_for_file(&doc, "CHAPTERS/INTRO.TEX", &[]), Some(2));
+        assert_eq!(tag_for_file(&doc, "intro.tex", &roots), Some(2));
+        assert_eq!(tag_for_file(&doc, "notes/same.tex", &roots), Some(4));
+        assert_eq!(tag_for_file(&doc, "Notes/Same.tex", &roots), Some(3));
+        assert_eq!(tag_for_file(&doc, "NOTES/SAME.TEX", &roots), None);
+        assert_eq!(tag_for_file(&doc, "parts/x/one.tex", &roots), Some(5));
+        assert_eq!(tag_for_file(&doc, "one.tex", &roots), Some(6));
+        assert_eq!(tag_for_file(&doc, "ONE.TEX", &roots), None);
+    }
+
+    #[cfg(any(windows, target_os = "macos"))]
+    #[test]
+    fn a_root_spelled_with_other_case_still_names_the_project_on_case_insensitive_disks() {
+        let doc = inputs(&["/Users/Ana/Thesis/Chapters/Intro.tex"]);
+        let roots = vec!["/Users/ana/thesis".to_string()];
+        assert_eq!(tag_for_file(&doc, "Chapters/Intro.tex", &roots), Some(1));
+        assert_eq!(
+            project_relative("/Users/Ana/Thesis/Chapters/Intro.tex", &roots).as_deref(),
+            Some("Chapters/Intro.tex")
+        );
+        assert_eq!(project_relative("/Users/Ana/Other/a.tex", &roots), None);
+    }
+
+    #[cfg(not(any(windows, target_os = "macos")))]
+    #[test]
+    fn a_root_spelled_with_other_case_is_another_folder_on_case_sensitive_disks() {
+        let roots = vec!["/home/ana/thesis".to_string()];
+        assert_eq!(project_relative("/home/Ana/Thesis/main.tex", &roots), None);
     }
 
     #[test]

@@ -729,12 +729,10 @@ describe("document context", () => {
       parseTikz(String.raw`\pagecolor{white}\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}`)
         ?.background,
     ).toBe("#ffffff");
-    // A whole document with no page colour is transparent on purpose.
     expect(
       parseTikz(String.raw`\begin{document}\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}\end{document}`)
         ?.background,
     ).toBe("");
-    // A bare snippet says nothing about the page, so the caller keeps its own.
     expect(
       parseTikz(String.raw`\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}`)?.background,
     ).toBeUndefined();

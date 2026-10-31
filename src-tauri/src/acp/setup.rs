@@ -19,7 +19,6 @@ use std::{
 /// How long `<cli> --version` may take (a first start of a large native CLI
 /// can be slow while antivirus scans it).
 const VERSION_LIMIT: Duration = Duration::from_secs(15);
-/// How long an agent may take to answer `initialize`.
 const INITIALIZE_LIMIT: Duration = Duration::from_secs(20);
 /// Pi's CLI needs this Node.js when it runs as a script.
 const PI_NODE: (u32, u32, u32) = (22, 19, 0);
@@ -42,7 +41,6 @@ impl Default for CheckLimits {
 
 static CHECKING: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 
-/// One Test per agent at a time (the key names the runtime and the agent).
 pub(crate) struct CheckFlight(String);
 
 impl CheckFlight {
@@ -70,8 +68,6 @@ impl Drop for CheckFlight {
     }
 }
 
-/// Paths the native picker returned in this process, per agent. Any other
-/// path needs a native confirmation before it is saved.
 static PICKED: Mutex<Vec<(String, PathBuf)>> = Mutex::new(Vec::new());
 const PICKED_LIMIT: usize = 64;
 
@@ -92,7 +88,6 @@ pub(crate) fn was_picked(agent_id: &str, path: &Path) -> bool {
     })
 }
 
-/// The `AppError` for a program that cannot be used.
 pub(crate) fn program_error(code: &str) -> AppError {
     AppError::new(match code {
         "not_found" => "acp.program.not_found",
@@ -109,8 +104,6 @@ pub(crate) fn program_error(code: &str) -> AppError {
     })
 }
 
-/// Setup commands change which program Oleafly runs, so only the main window
-/// may call them (like folder trust).
 pub(crate) fn require_main_window(label: &str) -> Result<(), String> {
     if label == "main" {
         Ok(())
@@ -131,8 +124,6 @@ pub(crate) fn handoff_refused(definition: &AgentDefinition, located: &Located) -
         && locator::npm_shim_target(&located.path).is_none()
 }
 
-/// Checks a program the user chose: the file rules (a `RejectReason` code),
-/// then the hand-off rule (`needs_exe`). Blocking.
 pub(crate) fn inspect_choice(
     definition: &AgentDefinition,
     path: &Path,
@@ -158,7 +149,6 @@ fn failed(code: &str, detail: Option<String>, program: Option<&Path>) -> AgentCh
     }
 }
 
-/// How long the check waits for `session/new`.
 const SESSION_CHECK_LIMIT: Duration = Duration::from_secs(20);
 
 fn plain_text(value: &Value) -> Option<String> {
@@ -193,12 +183,6 @@ fn node_text((major, minor, patch): catalog::NodeVersion) -> String {
     format!("{major}.{minor}.{patch}")
 }
 
-/// The Test check: never saves anything. Steps: the chosen file's rules;
-/// Node.js for Pi's script CLI; the vendor CLI's version probe (`--version`,
-/// or Hermes's `acp --version`; fatal when the bridge needs the CLI); Node.js
-/// for Node.js bridges; then a real start
-/// in an empty Oleafly-owned folder with the agent's environment, no tool
-/// servers, and `initialize` answered within the limit.
 pub(crate) async fn check_agent(
     root: &Path,
     definition: &AgentDefinition,
@@ -250,8 +234,6 @@ pub(crate) async fn check_agent_within(
     check_plan(root, definition, program, plan, limits).await
 }
 
-/// The Test check once the program is known and Oleafly has resolved what it
-/// would start.
 pub(crate) async fn check_plan(
     root: &Path,
     definition: &AgentDefinition,
@@ -373,9 +355,6 @@ pub(crate) async fn check_plan(
     start_and_initialize(root, &launch, shown, version, limits.initialize).await
 }
 
-/// The path the check reports: the program the user chose, else the CLI for
-/// bridges that start one, else what Oleafly starts (a bridge's script
-/// rather than `node`).
 fn shown_program(role: ProgramRole, program: Option<&Path>, plan: &Plan) -> Option<PathBuf> {
     if let Some(program) = program {
         return Some(program.to_path_buf());
@@ -469,8 +448,6 @@ async fn start_and_initialize(
                     super::types::now_ms(),
                 )),
             };
-            // A real session in the probe folder shows whether the agent is
-            // signed in and can work.
             let cwd = probe.path().to_string_lossy().into_owned();
             match tokio::time::timeout(SESSION_CHECK_LIMIT, client.new_session(&cwd, &[])).await {
                 Ok(Ok(session)) => {
@@ -505,8 +482,6 @@ async fn start_and_initialize(
     result
 }
 
-/// Opens the native file picker for an agent's program, starting in the
-/// folder of the program Oleafly uses today.
 pub(crate) async fn pick_program(
     app: &tauri::AppHandle,
     definition: &AgentDefinition,
@@ -542,7 +517,6 @@ pub(crate) async fn pick_program(
     Ok(Some(locator::child_path(&path)))
 }
 
-/// Asks before saving a program the picker did not return in this process.
 pub(crate) async fn confirm_program(
     app: &tauri::AppHandle,
     definition: &AgentDefinition,

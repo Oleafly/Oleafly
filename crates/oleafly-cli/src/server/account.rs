@@ -1,7 +1,3 @@
-//! The command line as its own device on collaboration servers: its device
-//! key and sessions live in the shared encrypted store under `cli:`, and
-//! its server list and document copies in `<data>/collab-cli`. The app's
-//! sign-ins are only ever read for presence.
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
@@ -22,34 +18,25 @@ use crate::auth::shared::{
 use crate::auth::ServerLogin;
 use crate::contract::{CliError, Context, ErrorKind};
 
-/// Where the command line keeps its collaboration state.
 pub(crate) const CLI_COLLAB_DIR: &str = "collab-cli";
 
 pub(crate) struct CliCollab {
-    /// `<data>/collab-cli`: this device's servers and document copies.
     pub paths: CollabPaths,
-    /// `<data>/collab`: the app's (read only).
     pub app_paths: CollabPaths,
     pub secrets: Arc<CliSecrets>,
     pub store: oleafly_secrets::SecretStore,
     data_root: std::path::PathBuf,
 }
 
-/// One server this device is signed in to, ready for calls.
 pub(crate) struct ServerLink {
     pub entry: ServerEntry,
     pub client: Arc<ServerClient>,
     pub sessions: Arc<SessionManager>,
-    /// The server at the address still is the one signed in to (checked
-    /// once before the first token goes out).
     verified: std::sync::atomic::AtomicBool,
 }
 
-/// How long a sign-out waits for the server.
 const SIGN_OUT_WAIT: Duration = Duration::from_secs(10);
 
-/// Refuses a server whose id isn't the one this device pinned (the address
-/// now points at another server), before a token is sent to it.
 async fn check_pin(client: &ServerClient, entry: &ServerEntry) -> Result<(), CollabError> {
     let advertised = client.capabilities().await?;
     if advertised.server_id == entry.server_id {
@@ -62,8 +49,6 @@ async fn check_pin(client: &ServerClient, entry: &ServerEntry) -> Result<(), Col
     }
 }
 
-/// Holds `<collab-cli>/servers.lock` while the server list is read,
-/// changed and saved, so two sign-ins never drop each other's entry.
 fn with_registry_lock<T>(
     collab: &CliCollab,
     change: impl FnOnce(&mut ServerRegistry) -> T,
@@ -112,13 +97,10 @@ impl CliCollab {
         ServerRegistry::load(&self.paths).map_err(|error| self.local(&error))
     }
 
-    /// The app's server list, or an empty one when it can't be read.
     pub(crate) fn app_registry(&self) -> ServerRegistry {
         ServerRegistry::load(&self.app_paths).unwrap_or_default()
     }
 
-    /// This device's sessions; `None` before its first sign-in unless
-    /// `create_key`.
     pub(crate) fn sessions(
         &self,
         create_key: bool,
@@ -133,7 +115,6 @@ impl CliCollab {
         Ok(key.map(|key| Arc::new(SessionManager::new(secrets, Arc::new(key)))))
     }
 
-    /// A server this device knows, by address, ID or name.
     pub(crate) fn find_server(&self, which: &str) -> Result<ServerEntry, CliError> {
         let registry = self.registry()?;
         let wanted = which.trim();
@@ -160,7 +141,6 @@ impl CliCollab {
         }
     }
 
-    /// A signed-in link to `entry`.
     pub(crate) fn link_to(&self, entry: ServerEntry) -> Result<ServerLink, CliError> {
         let signed_out = || {
             CliError::new(
@@ -194,7 +174,6 @@ impl CliCollab {
         self.link_to(entry)
     }
 
-    /// Whether this device holds a session for `server` (presence only).
     pub(crate) fn cli_signed_in(
         &self,
         server: oleafly_collab_protocol::ids::ServerId,
@@ -204,7 +183,6 @@ impl CliCollab {
             .map_err(|error| from_store(error, &self.data_root))
     }
 
-    /// Whether the app holds a session for `server` (presence only).
     pub(crate) fn app_signed_in(
         &self,
         server: oleafly_collab_protocol::ids::ServerId,
@@ -220,9 +198,6 @@ impl ServerLink {
         from_collab(error, &self.entry.url)
     }
 
-    /// Once per command, before the first token (or a refresh, which
-    /// sends the refresh token) goes to the address: the server there must
-    /// still be the one this device signed in to, as the app checks.
     async fn verify(&self) -> Result<(), CliError> {
         use std::sync::atomic::Ordering;
         if self.verified.load(Ordering::Acquire) {
@@ -243,8 +218,6 @@ impl ServerLink {
             .map_err(|error| self.error(&error))
     }
 
-    /// One call with a fresh token; a token the server turns away is
-    /// refreshed once and the call tried again.
     pub(crate) async fn call<T, F, Fut>(&self, mut call: F) -> Result<T, CliError>
     where
         F: FnMut(Arc<ServerClient>, String) -> Fut,
@@ -253,8 +226,6 @@ impl ServerLink {
         let access = self.access().await?;
         match call(Arc::clone(&self.client), access.clone()).await {
             Err(CollabError::Unauthorized) => {
-                // The refresh sends the refresh token: the server is
-                // checked again first.
                 check_pin(&self.client, &self.entry)
                     .await
                     .map_err(|error| self.error(&error))?;
@@ -272,7 +243,6 @@ impl ServerLink {
     }
 }
 
-/// How the device shows up in the server's device list.
 pub(crate) fn device_name() -> String {
     let host = host_name()
         .map(|name| name.trim().trim_end_matches(".local").to_string())
@@ -318,8 +288,6 @@ fn account_name(account: &AccountSummary) -> String {
         .unwrap_or_else(|| "your account".to_string())
 }
 
-/// Signs this command line in with a code shown to the person, and adds the
-/// server to its list.
 pub(crate) async fn sign_in(
     collab: &CliCollab,
     url: &str,
@@ -371,8 +339,6 @@ pub(crate) async fn sign_in(
             None
         }
     };
-    // The approval can take minutes: the list is read again now, and only
-    // this server's entry changes, under the list's lock.
     with_registry_lock(collab, |registry| {
         let added_at = registry
             .get(server)
@@ -418,8 +384,6 @@ pub(crate) fn setup_code(
     Ok(Some(code.as_str().to_string()))
 }
 
-/// `server sign-in` / `auth login server`: the code goes to standard error
-/// (and to `--events` as `sign_in_code`), so `--json` output stays clean.
 pub(crate) async fn sign_in_from(
     ctx: &Context,
     env: &Env,
@@ -446,8 +410,6 @@ pub(crate) async fn sign_in_from(
     sign_in(&collab, url, setup_code, &show).await
 }
 
-/// Signs this command line out of a server and forgets it. The app's own
-/// sign-in to that server is untouched.
 pub(crate) async fn sign_out(
     collab: &CliCollab,
     which: &str,
@@ -467,9 +429,6 @@ pub(crate) async fn sign_out(
     if let Some(sessions) = collab.sessions(false)? {
         let stored = sessions.tokens(entry.server_id);
         if !matches!(stored, Ok(None)) {
-            // The server forgets the device too. The stored access token
-            // lasts minutes, so a fresh one is taken (after the server is
-            // checked to be the one signed in to).
             ended_on_server = stored.is_ok()
                 && match ServerUrl::parse(&entry.url).and_then(ServerClient::new) {
                     Ok(client) => tokio::time::timeout(SIGN_OUT_WAIT, async {
@@ -502,7 +461,6 @@ pub(crate) async fn sign_out(
     Ok(report)
 }
 
-/// This device's current access token for a server (refreshed if needed).
 pub(crate) async fn access_token(
     collab: &CliCollab,
     which: &str,
@@ -511,8 +469,6 @@ pub(crate) async fn access_token(
     link.access().await.map(Zeroizing::new)
 }
 
-/// Every server the command line or the app knows, with who is signed in
-/// (presence only).
 pub(crate) fn status_rows(env: &Env) -> Result<Vec<Value>, CliError> {
     let collab = CliCollab::open(env);
     let mine = collab.registry().unwrap_or_default();
@@ -547,8 +503,6 @@ pub(crate) fn status_rows(env: &Env) -> Result<Vec<Value>, CliError> {
 }
 
 pub(crate) fn status_lines(row: &Value) -> Vec<String> {
-    // The server names itself and its account, so neither can start a line of
-    // its own or steer the terminal.
     let text = |value: &Value| one_line(value.as_str().unwrap_or_default());
     let cli = match (&row["cli"]["signedIn"], row["cli"]["account"].as_str()) {
         (Value::Bool(true), Some(account)) => {
@@ -720,7 +674,6 @@ mod tests {
         assert_eq!(dry.data["dryRun"], true);
         assert!(collab.cli_signed_in(lab.server_id).unwrap());
         let signed_out = sign_out(&collab, "Lab", false).await.unwrap();
-        // Nothing answers at that address: the sign-out there is unconfirmed.
         assert_eq!(signed_out.data["endedOnServer"], false);
         assert!(signed_out
             .warnings
@@ -748,7 +701,6 @@ mod pin_tests {
     use super::*;
     use crate::auth::test_env::env_at;
 
-    /// Answers every request with `manifest` and returns what it was sent.
     fn manifest_server(
         manifest: CapabilityManifest,
     ) -> (String, std::sync::mpsc::Receiver<String>) {

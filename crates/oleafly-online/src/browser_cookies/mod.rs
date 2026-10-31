@@ -1,7 +1,3 @@
-//! Reading a desktop browser's cookies for one site, so a sign-in made in
-//! that browser can be reused. Stores are opened read-only, only beneath the
-//! browser's own profile folder, never through links, and with limits on
-//! what is read.
 use std::{
     collections::HashSet,
     fmt,
@@ -125,7 +121,6 @@ impl ImportPolicy {
         }
     }
 
-    /// `supports` as the error a request gets.
     pub fn check(
         self,
         platform: HostPlatform,
@@ -285,7 +280,6 @@ impl fmt::Display for CookieImportError {
 
 impl std::error::Error for CookieImportError {}
 
-/// Where a Chromium browser's cookie key comes from.
 pub trait SafeStoragePasswordProvider {
     fn password(&self, browser: BrowserId) -> Result<Zeroizing<Vec<u8>>, CookieImportError>;
 }
@@ -335,7 +329,6 @@ pub fn validate_profile(profile: &str) -> Result<(), CookieImportError> {
     Ok(())
 }
 
-/// A hostname filter, lowercased; `None` when empty.
 pub fn normalize_import_domain(domain: Option<&str>) -> Result<Option<String>, CookieImportError> {
     let Some(domain) = domain.map(str::trim).filter(|value| !value.is_empty()) else {
         return Ok(None);
@@ -357,8 +350,6 @@ pub fn normalize_import_domain(domain: Option<&str>) -> Result<Option<String>, C
     Ok(Some(normalized))
 }
 
-/// The cookie store of `profile`, only when it sits beneath the browser's
-/// own folder in `home` with no links on the way.
 pub fn resolve_cookie_store_at(
     home: &Path,
     platform: HostPlatform,
@@ -461,8 +452,6 @@ fn resolve_real_browser_root(
     Ok(canonical_root)
 }
 
-/// One cookie per (name, domain, path), the first one read (the newest for
-/// Chromium stores) winning.
 pub fn unique_cookies(cookies: Vec<ImportedCookie>) -> Vec<ImportedCookie> {
     let mut identities = HashSet::new();
     let mut unique = Vec::with_capacity(cookies.len());
@@ -479,15 +468,11 @@ pub fn unique_cookies(cookies: Vec<ImportedCookie>) -> Vec<ImportedCookie> {
     unique
 }
 
-/// The `Cookie` header a browser would send to `url`.
 pub fn cookie_header_for(cookies: &[ImportedCookie], url: &url::Url) -> String {
     let host = url
         .host_str()
         .map(str::to_ascii_lowercase)
         .unwrap_or_default();
-    // A name that two cookies share (a `.host` one and a host-only one) is
-    // sent once, with the first value: the newest, for a Chromium store.
-    // `cookie_header` alone would keep the last.
     let mut names = HashSet::new();
     cookie_header(
         cookies
@@ -496,7 +481,6 @@ pub fn cookie_header_for(cookies: &[ImportedCookie], url: &url::Url) -> String {
                 if cookie.domain.starts_with('.') {
                     cookie_applies(Some(&cookie.domain), Some(&cookie.path), cookie.secure, url)
                 } else {
-                    // A host-only cookie never reaches other hosts.
                     cookie.domain.eq_ignore_ascii_case(&host)
                         && cookie_applies(None, Some(&cookie.path), cookie.secure, url)
                 }
@@ -506,7 +490,6 @@ pub fn cookie_header_for(cookies: &[ImportedCookie], url: &url::Url) -> String {
     )
 }
 
-/// Every browser profile in `home`, with what `policy` can read.
 pub fn detect_sources_at(
     home: &Path,
     platform: HostPlatform,
@@ -585,7 +568,6 @@ pub fn detect_sources_at(
     detected
 }
 
-/// Resolves the profile's store and reads its cookies for `domain`.
 pub fn read_cookies(
     home: &Path,
     platform: HostPlatform,
@@ -643,7 +625,6 @@ fn decrypt_chromium_cookie_with_key(
     let mut buffer = ciphertext.to_vec();
     let result = (|| {
         // NOSONAR: Chromium's v10 os_crypt format fixes the IV to sixteen
-        // spaces; decrypting cookies Chromium wrote requires matching it.
         let decryptor = cbc::Decryptor::<Aes128>::new(key.into(), (&[b' '; 16]).into()); // NOSONAR
         let plaintext = decryptor
             .decrypt_padded::<Pkcs7>(&mut buffer)
@@ -1071,8 +1052,6 @@ fn detected_source(
     }
 }
 
-/// Chromium's `Default` profile comes first, and for Firefox the profile the
-/// browser itself opens (`preferred`); the rest by name.
 fn profile_sort_key(profile: &str, preferred: Option<&str>) -> (u8, String) {
     (
         if profile == "Default" || preferred == Some(profile) {
@@ -1084,7 +1063,6 @@ fn profile_sort_key(profile: &str, preferred: Option<&str>) -> (u8, String) {
     )
 }
 
-/// The text of a small settings file, unless it is a link or too big.
 fn read_small_ini(path: &Path) -> Option<String> {
     let metadata = std::fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() || metadata.len() > 64 * 1024 {
@@ -1093,7 +1071,6 @@ fn read_small_ini(path: &Path) -> Option<String> {
     std::fs::read_to_string(path).ok()
 }
 
-/// `[section]` headers with their `key=value` lines.
 fn ini_sections(text: &str) -> Vec<(String, Vec<(String, String)>)> {
     let mut sections: Vec<(String, Vec<(String, String)>)> = Vec::new();
     for line in text.lines().map(str::trim) {

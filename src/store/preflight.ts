@@ -52,8 +52,6 @@ function compileInputFor(compileState: ReturnType<typeof useCompileStore.getStat
   };
 }
 
-// Bumped on every run so a preflight pass that finishes after the project was
-// switched can detect it is stale and not paint the old report into the new one.
 let preflightSeq = 0;
 
 export type CheckFlags = Record<CheckId, boolean>;
@@ -66,9 +64,7 @@ interface PreflightStore {
   showReader: boolean;
   error: string | null;
   ran: CheckFlags;
-  // null = use the document-type suggestion.
   enabled: CheckFlags | null;
-  // null = use the suggestion.
   open: CheckFlags | null;
   submissionProfile: SubmissionProfileId | null;
   anonymousReview: boolean;
@@ -114,8 +110,6 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
         set({ running: false, error: engineNotLoadedMessage(files) });
         return;
       }
-      // Lint the document currently in the editor so source offsets line up with
-      // the editor for jump-to-source; fall back to the main document.
       const path = files.activePath ?? files.mainDoc;
       const source = files.files[path]?.content ?? files.files[files.mainDoc]?.content ?? "";
 
@@ -157,7 +151,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
         }
         const { extractForPreflight } = await import("@oleafly/preflight/pdf-extract");
         const ex = await extractForPreflight(bytes);
-        if (stale()) return null; // project switched during PDF extraction
+        if (stale()) return null;
         const report = runPreflight({
           ...common,
           pages: ex.pages,

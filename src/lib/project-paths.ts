@@ -16,7 +16,6 @@ export function isManagedProjectPath(path: string, home: ManifestHome): boolean 
 
 const BINARY_PROJECT_FILE = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i;
 
-/** PDFs, images, fonts and archives open in a binary viewer tab, not as text. */
 export function isBinaryProjectPath(path: string): boolean {
   return BINARY_PROJECT_FILE.test(path);
 }

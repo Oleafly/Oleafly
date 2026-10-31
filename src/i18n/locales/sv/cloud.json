@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO och de flesta egenhostade servrar behöver det här."
   },
   "errors": {
+    "clock_skew": "Klockan på den här datorn går fel, så {{provider}} godtar inte förfrågningar från datorn. Ställ in rätt datum och tid för att fortsätta synkronisera.",
     "code_invalid": "Den koden fungerade inte. Försök igen.",
     "device_name_empty": "Ange ett namn.",
     "device_name_invalid": "Ett datornamn får inte innehålla \\ / : * ? \" < > | eller styrtecken och får vara högst 32 tecken långt.",

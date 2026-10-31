@@ -19,9 +19,6 @@ use crate::{write_atomic, CollabError};
 
 pub type DocSink = Arc<dyn Fn(DocMessage) + Send + Sync>;
 
-// Counted across every LiveProject in the process: each live start builds a
-// new one, and a late close from an earlier start must never match an editor
-// channel opened since.
 static NEXT_SESSION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 const DOC_FILE: &str = "doc.bin";
@@ -31,9 +28,6 @@ const DEVICES_FILE: &str = "devices.json";
 const AUTHORS_FILE: &str = "authors.json";
 const LOG_LIMIT: usize = 500;
 pub const BATCH_BYTES: usize = 4 * 1024 * 1024;
-// Several changes go out in pieces of about this size, so even a slow link
-// carries each one in seconds. One change that cannot be split may still be
-// as large as BATCH_BYTES.
 const PIECE_BYTES: usize = 512 * 1024;
 const SMALLEST_BATCH_BYTES: usize = 16 * 1024;
 
@@ -57,8 +51,6 @@ pub struct Outgoing {
     version: VersionVector,
     sent: bool,
     sent_at: std::time::Instant,
-    // Refused because the project is full: it waits for the next connection
-    // without counting as on its way.
     held: bool,
 }
 
@@ -96,8 +88,6 @@ struct CatchUp {
     authors: BTreeMap<AccountId, BTreeMap<String, u32>>,
 }
 
-// A catch-up is kept on disk until its report goes out, so quitting or a
-// dropped connection halfway through a long backlog loses nothing.
 #[derive(Serialize, Deserialize)]
 struct StoredCatchUp {
     #[serde(with = "crate::live::hex_bytes")]
@@ -106,9 +96,6 @@ struct StoredCatchUp {
     authors: BTreeMap<AccountId, BTreeMap<String, u32>>,
 }
 
-// The batch on its way up is kept with the sync state. After a restart it
-// goes out again under the same batch id, so a server that took it before
-// the app quit stores it once.
 #[derive(Serialize, Deserialize)]
 struct StoredOutgoing {
     batch: BatchId,
@@ -129,9 +116,6 @@ struct StoredState {
     catch_up: Option<StoredCatchUp>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     outgoing: Option<StoredOutgoing>,
-    // Changes that made the document engine panic, skipped from now on, and
-    // the changes of a batch that panicked, each taken in alone next time so
-    // the one at fault is found.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     skipped: BTreeSet<u64>,
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
@@ -256,11 +240,12 @@ pub struct LiveProject {
     damaged: bool,
     skipped: BTreeSet<u64>,
     suspect: BTreeSet<u64>,
-    // The person heard on this connection that the project is full.
     told_full: bool,
     edit_mode: crate::suggestions::EditMode,
     suggested: BTreeSet<String>,
     chatted: bool,
+    rewritten: bool,
+    refusals: HashMap<String, CollabError>,
 }
 
 struct ChangeLog {
@@ -271,15 +256,6 @@ struct ChangeLog {
 const FIRST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(120);
 const LONGEST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(3600);
 
-// Reloads from the server's snapshot for changes held back by a missing
-// dependency. The first reload goes at once. The snapshot it gets may still
-// predate the missing change, so another may follow, but only after a gap
-// of two minutes that doubles up to an hour, so neither an honest writer
-// building on a refused change nor updates with made-up dependencies can
-// keep anyone reloading. Once nothing is held back the gap starts over, but
-// the next reload still waits for the time the last one set, so a member
-// who supplies a missing change right after each reload can't make every
-// member download the snapshot again every minute.
 struct ResyncGuard {
     next: Option<std::time::Instant>,
     gap: std::time::Duration,
@@ -501,13 +477,11 @@ impl LiveProject {
             edit_mode: crate::suggestions::EditMode::default(),
             suggested: BTreeSet::new(),
             chatted: false,
+            rewritten: false,
+            refusals: HashMap::new(),
         }
     }
 
-    // The server refused the batch on its way because the project is full.
-    // It stays as it is and goes out again on the next connection, and
-    // until then it isn't waiting for an answer. True the first time on
-    // this connection, so the person hears it once per connection.
     pub(crate) fn refused_as_full(&mut self) -> bool {
         if let Some(outgoing) = self.outgoing.as_mut() {
             outgoing.held = true;
@@ -638,9 +612,6 @@ impl LiveProject {
         })
     }
 
-    // The document in memory can't be trusted after the engine panicked, so
-    // nothing of it is written. Only the changes to skip are added to the
-    // saved sync state, which still matches the document saved on disk.
     fn damaged_save(&self, dir: &Path) -> PendingSave {
         let state = std::fs::read(dir.join(STATE_FILE))
             .ok()
@@ -699,8 +670,6 @@ impl LiveProject {
         dir.join(DOC_FILE).is_file() && dir.join(STATE_FILE).is_file()
     }
 
-    // The saved change log had a torn or unreadable record. The next save
-    // writes the whole document again in place of the log.
     pub fn repaired_on_load(&self) -> bool {
         self.repaired
     }
@@ -723,6 +692,11 @@ impl LiveProject {
     }
 
     pub fn set_role(&mut self, role: ProjectRole) {
+        if role != self.role {
+            self.unsendable = false;
+            self.told_unsendable = false;
+            self.rewritten = false;
+        }
         self.role = role;
     }
 
@@ -761,6 +735,10 @@ impl LiveProject {
         }
         self.guarded(|live| Ok(live.doc.files_of_suggestions(&ids)))
             .unwrap_or_default()
+    }
+
+    pub fn take_refusal(&mut self, id: &str) -> Option<CollabError> {
+        self.refusals.remove(id)
     }
 
     pub fn take_chat_changes(&mut self) -> bool {
@@ -814,8 +792,6 @@ impl LiveProject {
         }
     }
 
-    // Rows from a list filtered to writer ids this copy did not know. They
-    // never count as the whole list: only the full listing vouches for that.
     pub fn add_peers(&mut self, listed: Vec<ProjectPeer>) {
         if self.devices.pin_peers(&listed) {
             self.devices_dirty = true;
@@ -959,7 +935,10 @@ impl LiveProject {
                         .apply_operation(id, &applied)
                         .and_then(|()| self.doc.drop_empty_suggestions(id).map(|_| ())),
                 };
-                if written.is_err() {
+                if let Err(error) = written {
+                    if matches!(error, CollabError::Api { .. }) {
+                        self.refusals.insert(id.to_owned(), error);
+                    }
                     self.note_offline(id, before);
                     self.disk.texts.insert(id.to_owned());
                     return self.reset_file(id);
@@ -1275,8 +1254,6 @@ impl LiveProject {
                 return Err(crate::doc::engine_failed());
             }
         };
-        // Too many scratch copies were left in memory. Only the changes that
-        // panicked in theirs are blamed; the others come again next start.
         if crate::doc::engine_budget_spent()
             || self.doc.scratch_failures() >= SCRATCH_FAILURES_PER_SESSION
         {
@@ -1320,9 +1297,6 @@ impl LiveProject {
         Ok(count + known_already.len() + passed_over)
     }
 
-    // What the arrivals that went in change: who wrote what, what the server
-    // holds, and the editors and catch-up counts. This reads the document
-    // Loro just changed, so a panic here counts like one during the import.
     fn take_in_imported(
         &mut self,
         fresh: &[Received],
@@ -1441,9 +1415,6 @@ impl LiveProject {
         self.went_bad(true);
     }
 
-    // `broken` when Loro panicked in the document itself. It is then left
-    // in memory, and a copy of the project as last saved stands in, so
-    // nothing that still reads the project trips over the broken one.
     pub(crate) fn went_bad(&mut self, broken: bool) {
         self.damaged = true;
         self.disk = DiskWork::default();
@@ -1497,11 +1468,6 @@ impl LiveProject {
         self.mark_seen(seq);
     }
 
-    // A snapshot from the server goes into the document like any change,
-    // so a panic there leaves the project damaged the same way. So does one
-    // that panicked in its scratch copy, or found no room for another: the
-    // next reload would fetch the same snapshot and fail again, so the
-    // session ends instead of reloading it over and over.
     fn import_contained(&mut self, bytes: &[u8]) -> Result<crate::doc::Imported, CollabError> {
         if self.damaged {
             return Err(crate::doc::engine_failed());
@@ -1539,8 +1505,6 @@ impl LiveProject {
         };
         let imported = self.import_contained(snapshot)?;
         advance(&mut self.confirmed, &imported.arrived);
-        // Own changes in the server's snapshot are held there too, even the
-        // ones this copy already had, so they are not sent again.
         if let Some(held) = held {
             self.confirmed.merge(&held);
         }
@@ -1554,8 +1518,6 @@ impl LiveProject {
         self.route_snapshot(imported.changes, snapshot)
     }
 
-    // Routing reads the document Loro just changed, so a panic there counts
-    // like one in the import of the snapshot.
     fn route_snapshot(&mut self, changes: DocChanges, snapshot: &[u8]) -> Result<(), CollabError> {
         #[cfg(not(test))]
         let _ = snapshot;
@@ -1566,9 +1528,6 @@ impl LiveProject {
         })
     }
 
-    // A reconnect halfway through keeps the catch-up already under way, so
-    // the report starts from the version before the first part and counts
-    // every part.
     pub fn begin_catch_up(&mut self) {
         if self.catch_up.is_some() {
             return;
@@ -1593,8 +1552,6 @@ impl LiveProject {
         })
     }
 
-    // The project as the server holds it, as far as this copy knows: every
-    // change the server confirmed and none of the ones still to send.
     pub fn confirmed_doc(&self) -> Result<ProjectDoc, CollabError> {
         self.doc.at_version(&self.confirmed)
     }
@@ -1784,7 +1741,24 @@ impl LiveProject {
     }
 
     fn suggesting_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
-        if self.damaged {
+        let current = self.doc.text(id)?;
+        self.suggesting_operation(id, &crate::merge::diff(&current, content))
+    }
+
+    pub fn suggested_operation(
+        &mut self,
+        id: &str,
+        operation: &TextOperation,
+    ) -> Result<bool, CollabError> {
+        self.guarded(|live| live.suggesting_operation(id, operation))
+    }
+
+    fn suggesting_operation(
+        &mut self,
+        id: &str,
+        operation: &TextOperation,
+    ) -> Result<bool, CollabError> {
+        if self.damaged || operation.is_noop() {
             return Ok(false);
         }
         let author = self.doc.author_account().ok_or_else(|| CollabError::Api {
@@ -1793,25 +1767,20 @@ impl LiveProject {
             message: "sign in again to suggest changes".to_owned(),
         })?;
         let before = self.own_counter();
-        let operation = self.doc.suggest_text(
+        let written = self.doc.suggest_operation(
             id,
-            content,
+            operation,
             author,
             self.device,
             crate::suggestions::now_ms(),
         );
         self.note_offline(id, before);
         self.disk.texts.insert(id.to_owned());
-        let operation = match operation {
-            Ok(operation) => operation,
-            Err(error) => {
-                self.reset_file(id)?;
-                return Err(error);
-            }
-        };
-        if operation.is_noop() {
-            return Ok(false);
+        if let Err(error) = written {
+            self.reset_file(id)?;
+            return Err(error);
         }
+        let operation = operation.clone();
         let Some(open) = self.open.get_mut(id) else {
             return Ok(true);
         };
@@ -1920,6 +1889,7 @@ impl LiveProject {
                 let content = old.text(&node.id)?;
                 let before = self.own_counter();
                 let changes = self.doc.restore_text(&node.id, &content)?;
+                changed |= self.doc.drop_suggestions_changed_since(&node.id, &old)?;
                 self.note_offline(&node.id, before);
                 if !changes.is_empty() {
                     changed = true;
@@ -2049,6 +2019,7 @@ impl LiveProject {
             if let Some(outgoing) = self.outgoing.take() {
                 self.confirmed.merge(&outgoing.version);
             }
+            self.rewritten = false;
             self.note_batch(seq, batch);
             self.mark_seen(seq);
         }
@@ -2074,10 +2045,45 @@ impl LiveProject {
         let Some(unsent) = self.doc.without_comment_changes_after(&base)? else {
             return Ok(None);
         };
+        self.took_rebuilt_doc(old_peer, &base)?;
+        Ok(Some(unsent))
+    }
+
+    pub fn edits_refused(&mut self) -> Result<bool, CollabError> {
+        if self.role != ProjectRole::Reviewer || self.damaged {
+            return Ok(false);
+        }
+        self.refused();
+        let author = self.doc.author_account();
+        let rewritten = match author {
+            Some(author) if !self.rewritten => {
+                let base = self.kept_base();
+                let old_peer = self.doc.peer_id();
+                let device = self.device;
+                let now = crate::suggestions::now_ms();
+                let done = self.guarded(|live| {
+                    live.doc
+                        .with_text_changes_suggested_after(&base, author, device, now)
+                })?;
+                if done {
+                    self.took_rebuilt_doc(old_peer, &base)?;
+                    let made = self.doc.index_suggestions().into_keys();
+                    self.suggested.extend(made);
+                }
+                done
+            }
+            _ => false,
+        };
+        self.rewritten = rewritten;
+        self.unsendable |= !rewritten;
+        Ok(rewritten)
+    }
+
+    fn took_rebuilt_doc(&mut self, old_peer: u64, base: &VersionVector) -> Result<(), CollabError> {
         self.doc_replacements += 1;
         self.forget_saved_document();
         self.keep_own_writer(old_peer);
-        self.move_offline_edits(old_peer, &base);
+        self.move_offline_edits(old_peer, base);
         let open: Vec<String> = self.open.keys().cloned().collect();
         for id in open {
             let current = self.doc.text(&id).ok();
@@ -2090,7 +2096,7 @@ impl LiveProject {
                 self.reset_file(&id)?;
             }
         }
-        Ok(Some(unsent))
+        Ok(())
     }
 
     fn kept_base(&self) -> VersionVector {
@@ -2235,8 +2241,6 @@ impl LiveProject {
         }
     }
 
-    // A damaged project writes nothing to disk: its stand-in document is
-    // older than the files there.
     pub fn take_disk_work(&mut self) -> DiskWork {
         let work = std::mem::take(&mut self.disk);
         if self.damaged {
@@ -2258,13 +2262,6 @@ impl LiveProject {
             .unwrap_or_default()
     }
 
-    // Desktop threads change and read the shared document too: saving,
-    // local edits, the disk pass, review and comment edits. A panic in that
-    // work is contained the way one in the sync task is: the project is
-    // marked damaged, the document Loro may have panicked in is left in
-    // memory, and the live session ends as failed, so nothing keeps
-    // writing into it. The edits and saves here go through this already,
-    // and the desktop runs its other work on the project through it too.
     pub fn guarded<T>(
         &mut self,
         work: impl FnOnce(&mut LiveProject) -> Result<T, CollabError>,
@@ -4482,6 +4479,30 @@ mod tests {
     }
 
     #[test]
+    fn a_suggested_deletion_the_editor_sends_over_the_limit_is_reset_and_its_reason_kept_once() {
+        let (_owner, mut rae, main, _) = reviewing(ProjectRole::Reviewer);
+        let long = "x".repeat(crate::suggestions::MAX_DELETED_CHARS + 5);
+        rae.local_text(&main, &long).unwrap();
+        let (sink, seen) = recorder();
+        let opened = rae.open_file(&main, sink).unwrap();
+        let mut operation = TextOperation::new();
+        operation
+            .delete(crate::suggestions::MAX_DELETED_CHARS + 1)
+            .retain(4);
+        rae.editor_change(&main, opened.rev, operation).unwrap();
+        assert_eq!(rae.doc().text(&main).unwrap(), long);
+        assert!(matches!(
+            seen.lock().unwrap().last(),
+            Some(DocMessage::Reset { .. })
+        ));
+        assert!(matches!(
+            rae.take_refusal(&main),
+            Some(CollabError::Api { code, .. }) if code == "suggestion_too_long"
+        ));
+        assert!(rae.take_refusal(&main).is_none());
+    }
+
+    #[test]
     fn a_reviewer_always_suggests_and_the_server_takes_the_whole_batch() {
         let (mut owner, mut rae, main, account) = reviewing(ProjectRole::Reviewer);
         assert_eq!(
@@ -4653,5 +4674,95 @@ mod tests {
         owner.local_text(&main, "Again").unwrap();
         owner.restore_version(&version, Some(&only)).unwrap();
         assert_eq!(owner.doc().text(&main).unwrap(), "Hello world");
+    }
+
+    #[test]
+    fn restoring_a_version_drops_the_suggestions_made_after_it() {
+        let (mut owner, mut rae, main, _) = reviewing(ProjectRole::Reviewer);
+        let sent = |rae: &mut LiveProject, owner: &mut LiveProject, seq: u64| {
+            let outgoing = rae.next_outgoing().unwrap().unwrap();
+            owner.import_update(seq, &outgoing.payload).unwrap();
+            rae.acknowledged(outgoing.batch, seq);
+        };
+        rae.suggested_text(&main, "Oh. Hello world").unwrap();
+        sent(&mut rae, &mut owner, 1);
+        let version = owner.doc().current_version_id();
+        rae.suggested_text(&main, "Oh. Hello").unwrap();
+        sent(&mut rae, &mut owner, 2);
+        assert_eq!(owner.doc().suggestions(&main).unwrap().len(), 2);
+        owner.restore_version(&version, None).unwrap();
+        assert_eq!(owner.doc().text(&main).unwrap(), "Oh. Hello world");
+        let left = owner.doc().suggestions(&main).unwrap();
+        assert_eq!(left.len(), 1, "{left:?}");
+        assert_eq!(left[0].kind, crate::suggestions::SuggestionKind::Insert);
+        let ids: Vec<_> = left.iter().map(|found| found.id).collect();
+        owner.doc_mut().reject_suggestions(&ids).unwrap();
+        assert_eq!(owner.doc().text(&main).unwrap(), "Hello world");
+    }
+
+    #[test]
+    fn restoring_a_version_drops_a_suggestion_changed_after_it_instead_of_mangling_the_text() {
+        let (mut owner, mut rae, main, _) = reviewing(ProjectRole::Reviewer);
+        rae.suggested_text(&main, "Hello there world").unwrap();
+        let outgoing = rae.next_outgoing().unwrap().unwrap();
+        owner.import_update(1, &outgoing.payload).unwrap();
+        rae.acknowledged(outgoing.batch, 1);
+        let version = owner.doc().current_version_id();
+        rae.suggested_text(&main, "Hello there").unwrap();
+        let outgoing = rae.next_outgoing().unwrap().unwrap();
+        owner.import_update(2, &outgoing.payload).unwrap();
+        owner.restore_version(&version, None).unwrap();
+        assert_eq!(owner.doc().text(&main).unwrap(), "Hello there world");
+        let ids: Vec<_> = owner
+            .doc()
+            .suggestions(&main)
+            .unwrap()
+            .iter()
+            .map(|found| found.id)
+            .collect();
+        owner.doc_mut().reject_suggestions(&ids).unwrap();
+        assert!(!owner.doc().text(&main).unwrap().contains("  "));
+    }
+
+    #[test]
+    fn edits_made_before_becoming_a_reviewer_go_out_as_suggestions_once_the_server_refuses_them() {
+        use oleafly_server::role_guard::RoleVerdict;
+        let (mut owner, mut rae, main, account) = reviewing(ProjectRole::Editor);
+        let (sink, seen) = recorder();
+        rae.open_file(&main, sink).unwrap();
+        rae.editor_change(&main, 0, insert(6, "brave ", 11))
+            .unwrap();
+        rae.set_role(ProjectRole::Reviewer);
+        rae.comment_doc().send_chat(account, 11, "Ready?").unwrap();
+        let outgoing = rae.next_outgoing().unwrap().unwrap();
+        assert_eq!(
+            judged_by_server(&owner, &outgoing.payload, ProjectRole::Reviewer, account),
+            RoleVerdict::Refused
+        );
+        assert!(rae.edits_refused().unwrap());
+        assert_eq!(rae.doc().text(&main).unwrap(), "Hello brave world");
+        assert!(!matches!(
+            seen.lock().unwrap().last(),
+            Some(DocMessage::Reset { .. })
+        ));
+        let listed = rae.doc().suggestions(&main).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(
+            (listed[0].author, listed[0].text.as_str()),
+            (account, "brave ")
+        );
+        let outgoing = rae.next_outgoing().unwrap().unwrap();
+        assert_eq!(
+            judged_by_server(&owner, &outgoing.payload, ProjectRole::Reviewer, account),
+            RoleVerdict::Allowed
+        );
+        assert!(owner.import_update(1, &outgoing.payload).unwrap());
+        assert_eq!(owner.doc().suggestions(&main).unwrap().len(), 1);
+        assert_eq!(owner.doc().chat_messages(None, 10).len(), 1);
+        assert!(!rae.edits_refused().unwrap());
+        assert!(rae.next_outgoing().unwrap().is_none());
+        assert!(rae.take_unsendable());
+        rae.set_role(ProjectRole::Editor);
+        assert!(rae.next_outgoing().unwrap().is_some());
     }
 }

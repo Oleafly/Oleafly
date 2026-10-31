@@ -76,8 +76,6 @@ describe("Preflight document suggestion checkpoint", () => {
     const ats = screen.getByLabelText("Enable ATS readiness");
     expect(ats).toHaveAttribute("aria-checked", "false");
 
-    // Editing the source alone intentionally does not make this large panel run
-    // document detection on every keystroke.
     act(() => {
       useFilesStore.setState((state) => ({
         files: {
@@ -86,12 +84,8 @@ describe("Preflight document suggestion checkpoint", () => {
         },
       }));
     });
-    // A failed compile changes status/log but must not publish a success
-    // checkpoint, so the suggestion remains the prior paper suggestion.
     act(() => {
       useCompileStore.setState({ status: "error", log: "compile failed" });
-      // Even an unrelated Preflight store update may re-render the panel; the
-      // suggestion remains memoized until a success checkpoint changes.
       usePreflightStore.setState({ running: true });
     });
     expect(ats).toHaveAttribute("aria-checked", "false");

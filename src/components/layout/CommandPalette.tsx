@@ -92,7 +92,6 @@ export function CommandPalette() {
     ],
   );
 
-  // Map preserves insertion order, so groups render in registration order.
   const groups = useMemo(() => {
     const cmds = commandsFor("palette", ctx);
     const search = query.trim();

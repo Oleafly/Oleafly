@@ -1,5 +1,5 @@
 import { ArrowLeft, FileText, FolderTree, MessageSquare, WifiOff, X } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,10 +16,11 @@ import { type DiscussionTab, type PaneView, type SidePane, useWeb } from "../sto
 import { AppHeader } from "./AppHeader";
 import { ChatPane } from "./ChatPane";
 import { CommentsPane } from "./CommentsPane";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { ActionsContext } from "./context";
 import { errorKey } from "./errors";
 import { FileTree } from "./FileTree";
-import { navigate, projectHref, useMediaQuery } from "./navigation";
+import { navigate, projectFromLocation, projectHref, useMediaQuery } from "./navigation";
 import { PdfPane } from "./PdfPane";
 import { PersonAvatar } from "./people";
 import { SourcePane } from "./SourcePane";
@@ -141,12 +142,14 @@ function Ended() {
       </EmptyState>
     );
   }
-  if (end === "no_access") {
+  if (end === "no_access" || end === "too_large") {
     return (
       <EmptyState
         className="flex-1 px-6 py-16"
         title={t(($) => $.web.ended.noAccessTitle)}
-        description={t(($) => $.web.ended.noAccessDescription)}
+        description={
+          end === "too_large" ? t(($) => $.web.errors.project_too_large) : t(($) => $.web.ended.noAccessDescription)
+        }
       >
         <Button type="button" size="sm" variant="outline" onClick={() => navigate(null)}>
           {t(($) => $.web.app.projects)}
@@ -219,6 +222,42 @@ export function ProjectView({
   const side = useWeb((state) => state.side);
   const files = useWeb((state) => state.files);
   const activeFileId = useWeb((state) => state.activeFileId);
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    const guard = (event: BeforeUnloadEvent) => {
+      if (!controller.unconfirmed()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [controller]);
+
+  useEffect(() => {
+    const back = () => {
+      if (!projectId || projectFromLocation() === projectId || !controller.unconfirmed()) return;
+      window.history.pushState(null, "", projectHref(projectId));
+      setLeaving(true);
+    };
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, [controller, projectId]);
+
+  const leave = (
+    <ConfirmDialog
+      open={leaving}
+      title={t(($) => $.web.leave.title)}
+      description={t(($) => $.web.leave.description)}
+      confirmLabel={t(($) => $.web.leave.confirm)}
+      onConfirm={() => {
+        setLeaving(false);
+        controller.discardUnsent();
+        navigate(null);
+      }}
+      onCancel={() => setLeaving(false)}
+    />
+  );
 
   const header = (
     <AppHeader me={me} onSignOut={onSignOut}>
@@ -227,7 +266,8 @@ export function ProjectView({
         onClick={(event) => {
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
           event.preventDefault();
-          navigate(null);
+          if (controller.unconfirmed()) setLeaving(true);
+          else navigate(null);
         }}
         aria-label={t(($) => $.web.app.projects)}
         className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7 shrink-0")}
@@ -249,6 +289,7 @@ export function ProjectView({
     return (
       <>
         {header}
+        {leave}
         <Ended />
       </>
     );
@@ -257,6 +298,7 @@ export function ProjectView({
   return (
     <ActionsContext.Provider value={controller}>
       {header}
+      {leave}
       {signOutFailed ? (
         <p role="alert" className="border-b px-3 py-1.5 text-xs text-destructive">
           {t(($) => $.web.app.signOutFailed)}

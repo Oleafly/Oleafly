@@ -18,15 +18,12 @@ export const typstFormsField = StateField.define<TypstFormCatalog>({
   },
 });
 
-// Null when no form could match, so a build without forms runs no forms code.
 export function formScopeFor(state: EditorState, tree: Tree): FormScope | null {
   const catalog = state.field(typstFormsField, false);
   if (!catalog || catalog.forms.length === 0) return null;
   return FormScope.create(buildFormIndex(catalog), documentBindings(state, tree));
 }
 
-// Keeps the field in step with the port, and tells the port which packages the document imports.
-// Catalog changes are dispatched in a microtask, never inside a view update.
 class TypstFormsSync {
   private readonly port: TypstFormsPort | null;
   private readonly unsubscribe: () => void;

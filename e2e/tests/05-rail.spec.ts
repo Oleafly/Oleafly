@@ -13,8 +13,6 @@ test("project search tab opens the search panel", async ({ tauriPage }) => {
 
 test("AI tab opens the chat panel", async ({ tauriPage }, testInfo) => {
   await openRailTab(tauriPage, "Research Assistant");
-  // Hermetic runs have no AI provider configured, so the connect prompt shows
-  // instead of the chat input.
   try {
     await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
   } catch (error) {
@@ -60,8 +58,6 @@ test("AI tab opens the chat panel", async ({ tauriPage }, testInfo) => {
 });
 
 test("preflight and git tabs are present for a LaTeX project", async ({ tauriPage }) => {
-  // The view switchers live in the sidebar bar, which renders while the sidebar
-  // is open; open it first, then assert the switchers are present.
   await openRailTab(tauriPage, "Explorer");
   await expect(tauriPage.locator('[aria-label="Preflight Checks"]')).toBeVisible();
   await expect(tauriPage.locator('[aria-label="Source Control"]')).toBeVisible();

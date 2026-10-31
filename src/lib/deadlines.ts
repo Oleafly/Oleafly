@@ -14,13 +14,9 @@ export interface Venue {
   deadlines: DeadlineEntry[];
   conf_date: string;
   place: string;
-  /** Projected from a prior-year schedule; no official CFP yet. */
   estimated?: boolean;
 }
 
-/** Named zones from official calls, as fixed offsets. DST-observing zones use
- *  their summer offset when the name is the daylight variant; the help notes
- *  tell users to verify against the official CFP either way. */
 const NAMED_ZONES: Record<string, number> = {
   AoE: -12,
   PST: -8,
@@ -39,7 +35,6 @@ const NAMED_ZONES: Record<string, number> = {
   UTC: 0,
 };
 
-/** "yyyy-mm-dd hh:mm:ss" in a "UTC±N" / named zone to an absolute instant. */
 export function deadlineInstant(at: string, timezone: string): Date {
   const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/.exec(at.trim());
   if (!m) return new Date(Number.NaN);
@@ -117,7 +112,6 @@ export function sortVenues(venues: Venue[], key: SortKey, now: Date): Venue[] {
   );
 }
 
-/** Urgency bucket for countdown coloring. */
 export function urgency(target: Date, now: Date): "critical" | "soon" | "comfortable" {
   const days = (target.getTime() - now.getTime()) / 86_400_000;
   if (days <= 3) return "critical";

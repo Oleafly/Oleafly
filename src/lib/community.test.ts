@@ -26,7 +26,6 @@ describe("community", () => {
     await expect(discordGetCommunityStats()).resolves.toEqual({ online: 12 });
 
     expect(invoke).toHaveBeenCalledTimes(1);
-    // No argument leaves the webview: the guild is fixed on the Rust side.
     expect(invoke.mock.calls[0]).toEqual(["discord_community_stats"]);
   });
 

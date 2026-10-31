@@ -1,4 +1,3 @@
-//! `oleafly open`, `init`, `clean` and `project info`.
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -83,7 +82,6 @@ fn run_open(ctx: &Context, args: OpenArgs) -> Result<Outcome, CliError> {
     Ok(Outcome::success(json!({"folder": folder})))
 }
 
-/// New LaTeX projects use latexmk when the app does.
 fn default_engine(ctx: &Context, args: &InitArgs) -> Option<Engine> {
     if let Some(engine) = args.engine {
         return Some(engine.into());
@@ -157,8 +155,6 @@ fn run_clean(ctx: &Context) -> Result<Outcome, CliError> {
     ))
 }
 
-/// The build lock for `clean`; `None` when the folder can't hold one
-/// (some cluster file systems), as for builds.
 fn lock_for_clean(build: &std::path::Path) -> Result<Option<BuildLock>, CliError> {
     match BuildLock::acquire(build, CLEAN_LOCK_BUDGET, &mut || {}) {
         Ok(lock) => Ok(Some(lock)),

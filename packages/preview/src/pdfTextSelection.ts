@@ -75,8 +75,6 @@ function compareSelectionBoundaries(
       stale: false,
     };
   } catch {
-    // A selected virtualized page can disappear between selectionchange
-    // events. Never compare a live range with a stale/different tree.
     return { modifyStart: false, stale: true };
   }
 }

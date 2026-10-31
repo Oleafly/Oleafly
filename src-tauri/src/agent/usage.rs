@@ -32,7 +32,6 @@ pub struct NativeUsageGuard {
     tally: Option<Arc<CostTally>>,
 }
 
-/// What a run and its subagents cost, summed as each one settles.
 #[derive(Default)]
 pub struct CostTally {
     total: Mutex<Option<f64>>,
@@ -120,13 +119,11 @@ impl NativeUsageGuard {
         }
     }
 
-    /// Adds this guard's final cost to `tally` when it settles.
     pub fn with_tally(mut self, tally: Arc<CostTally>) -> Self {
         self.tally = Some(tally);
         self
     }
 
-    /// The cost so far from the model's prices, when they are known.
     #[cfg(test)]
     pub fn estimated_cost_usd(&self) -> Option<f64> {
         super::lock_or_recover(&self.state).event.estimated_cost_usd
@@ -229,7 +226,6 @@ impl Drop for NativeUsageGuard {
     }
 }
 
-/// A provider account's remaining credit, where the provider reports it.
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderCredit {
@@ -290,8 +286,6 @@ fn credit_failed(provider: &str) -> String {
         .into()
 }
 
-/// Reads a balance endpoint. Errors name the provider only; nothing from
-/// the response (which could echo the key) reaches the message.
 async fn fetch_credit(
     client: &reqwest::Client,
     url: &str,
@@ -623,7 +617,6 @@ mod tests {
             &resolved,
         )
         .with_tally(tally.clone());
-        // Exclusive input counts are priced only with the cache counts known.
         guard.observe(&AgentEvent::usage(Usage {
             input: 1_000,
             output: 1_000,

@@ -30,13 +30,11 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
 }));
 
-// The composer reads the research defaults (time budget, network, background work) from the app config.
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   getConfig: appConfig.get,
 }));
 
-// The real "Where runs happen" control loads compute targets over IPC; it has its own tests.
 vi.mock("@/components/settings/research/ComputeBriefFields", () => ({
   ComputeBriefFields: ({
     id,
@@ -70,7 +68,6 @@ vi.mock("@/components/settings/research/ComputeBriefFields", () => ({
   ),
 }));
 
-// The composer checks the brief's compute target itself; outside the app the list doesn't load.
 const computeApi = vi.hoisted(() => ({ settings: vi.fn() }));
 vi.mock("@/components/settings/research/compute-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/settings/research/compute-api")>()),
@@ -116,7 +113,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   useResearchTasksStore.setState({ composerDrafts: {} });
-  // Outside the app the config is unavailable, as it was for these tests before 0.4.8.
   appConfig.get.mockReset().mockRejectedValue(new Error("The app config is not available."));
   computeApi.settings.mockReset().mockRejectedValue(new Error("The compute settings are not available."));
 });
@@ -176,7 +172,6 @@ function page() {
   return within(document.body);
 }
 
-/** A local date and time `days` from now, as a date field holds it; tests must not depend on today's date. */
 function startIn(days: number, hours = 9, minutes = 30): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -402,7 +397,6 @@ describe("TaskComposer brief", () => {
     keepRunningAfterQuit: boolean;
   }
 
-  /** The first argument of a mock's first call. */
   function sent(mock: { mock: { calls: unknown[][] } }): SentDraft {
     return mock.mock.calls[0][0] as SentDraft;
   }
@@ -676,7 +670,6 @@ describe("TaskComposer brief", () => {
     });
     first.unmount();
 
-    // The restored brief is the user's, so newer settings do not replace it.
     appConfig.get.mockResolvedValue({ research_background_enabled: true, research_time_budget_minutes: 720 });
     render(<TaskComposer {...input} />);
     openBrief();
@@ -761,7 +754,6 @@ describe("TaskComposer brief", () => {
 
     choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.composer.blankStarter);
 
-    // It still holds the value the starter set, so it goes back with the starter.
     expect(plan).not.toBeChecked();
   });
 
@@ -816,7 +808,6 @@ describe("TaskComposer brief", () => {
     first.unmount();
 
     render(<TaskComposer {...input} />);
-    // The restored draft shows the problem where it can be fixed.
     expect(page().getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true");
     expect(page().getByText(brief.invalidCostNumber.replace("{{example}}", "2.5"))).toBeInTheDocument();
     expect(page().queryByTestId("research-brief-problem")).toBeNull();

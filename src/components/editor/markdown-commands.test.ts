@@ -145,7 +145,6 @@ describe("markdown source syntax", () => {
     insertMarkdownTable(2, 3);
     const [tableTemplate, tableFrom, tableTo] = controller.insertTemplate.mock.calls[2];
     expect(tableTemplate.slice(tableFrom, tableTo)).toBe("Column 1");
-    // A header row, its delimiter, and one line per body row.
     expect(tableTemplate.trimEnd().split("\n")).toHaveLength(4);
     expect(tableTemplate).toContain("| --- | --- | --- |");
   });

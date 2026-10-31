@@ -13,8 +13,6 @@ describe("lintLatexText: environments", () => {
 
   it("flags a mismatched \\end (and the now-unclosed \\begin)", () => {
     const d = lintLatexText("\\begin{itemize}x\\end{enumerate}");
-    // The mismatch is reported, and since \begin{itemize} never closes it is
-    // also reported as unclosed.
     expect(d).toHaveLength(2);
     expect(d[0].severity).toBe("error");
     expect(d[0].message).toContain("Unclosed environment \\begin{itemize}");

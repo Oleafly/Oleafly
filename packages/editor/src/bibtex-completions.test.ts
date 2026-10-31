@@ -10,15 +10,11 @@ import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
 import { bibtexCompletions } from "./bibtex-completions";
 import { installEnglishEditorMessages } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
 installEnglishEditorMessages();
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 afterEach(() => {
   document.body.replaceChildren();

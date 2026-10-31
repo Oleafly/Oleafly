@@ -260,8 +260,6 @@ pub async fn zotero_web_connect(
     Ok(account)
 }
 
-/// Saves the Zotero web account under the connector-secrets lock, so a
-/// Mathpix or connector key saved at the same time is not dropped.
 fn store_web_account(account: &ZoteroAccount, api_key: String) -> Result<(), String> {
     crate::connectors::update_connector_secrets(|secrets| {
         secrets.insert(USER_ID_SECRET.to_string(), account.user_id.clone());
@@ -270,7 +268,6 @@ fn store_web_account(account: &ZoteroAccount, api_key: String) -> Result<(), Str
     })
 }
 
-/// Removes the Zotero web account under the connector-secrets lock.
 fn forget_web_account() -> Result<(), String> {
     crate::connectors::update_connector_secrets(|secrets| {
         for name in [USER_ID_SECRET, USERNAME_SECRET, API_KEY_SECRET] {
@@ -332,7 +329,6 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", dir.path());
         let (holding, held) = std::sync::mpsc::channel();
         let (release, released) = std::sync::mpsc::channel::<()>();
-        // A Mathpix save that has read the map and not written it back yet.
         let mathpix = std::thread::spawn(move || {
             crate::connectors::update_connector_secrets(|secrets| {
                 holding.send(()).unwrap();
@@ -348,7 +344,6 @@ mod tests {
             };
             store_web_account(&account, "zotero-key".into())
         });
-        // Time for a writer that skips the lock to finish first.
         std::thread::sleep(Duration::from_millis(200));
         release.send(()).unwrap();
         mathpix.join().unwrap().unwrap();

@@ -79,13 +79,10 @@ pub struct LibraryStorageSummary {
     pub unreadable_entries: u64,
     pub linked_folders_bytes: u64,
     pub linked_folder_count: u64,
-    // `source_bytes` split by kind of file. The four add up to it.
     pub document_bytes: u64,
     pub media_bytes: u64,
     pub data_bytes: u64,
     pub other_project_bytes: u64,
-    // The parts of `app_data_bytes` worth naming. The rest of it is settings,
-    // chats, assets and other small state.
     pub tex_distribution_bytes: u64,
     pub agents_bytes: u64,
     pub research_tasks_bytes: u64,
@@ -161,15 +158,13 @@ fn app_part(relative: &Path) -> AppPart {
         "tinytex" | "tinytex.installing" | "tinytex.previous" => AppPart::TexDistribution,
         "acp" => AppPart::Agents,
         "research-tasks" => AppPart::ResearchTasks,
-        "bin" => AppPart::Tools,
+        "bin" | "toolchains" => AppPart::Tools,
         "checkpoints" => AppPart::Checkpoints,
         "compiler-cache" => AppPart::CompileCache,
         _ => AppPart::Other,
     }
 }
 
-// Oleafly's own files in a project (its settings and project.json) count as
-// other files, whatever their extension.
 fn is_project_metadata(relative: &Path) -> bool {
     has_component(relative, ".oleafly")
         || (relative.components().count() == 3 && relative.ends_with("project.json"))
@@ -299,7 +294,6 @@ fn count_linked_folders(linked_root: &Path) -> u64 {
         .count() as u64
 }
 
-/// Adds one file to the totals and to the part of the bar it belongs to.
 fn record_file(summary: &mut LibraryStorageSummary, relative: &Path, bytes: u64) {
     summary.file_count += 1;
     summary.total_bytes = summary.total_bytes.saturating_add(bytes);
@@ -504,8 +498,6 @@ fn checkpoint_cleanup_root() -> Result<PathBuf, String> {
         return Ok(root);
     }
 
-    // Recycle operations already require this secured root. Its canonical
-    // parent is the exact application-data directory that owns the queue.
     let recycle_root = crate::paths::recycle_bin_root()?;
     let data = recycle_root
         .parent()
@@ -533,7 +525,6 @@ fn checkpoint_cleanup_root() -> Result<PathBuf, String> {
     if root.parent() != Some(data) {
         return Err("Checkpoint cleanup queue escapes the Oleafly data directory".into());
     }
-    // Persist the queue directory entry itself before any job is published.
     sync_directory(data)?;
     sync_directory(&root)?;
     Ok(root)
@@ -1132,9 +1123,6 @@ fn recycled_identity_exists_in_root(project_id: &str, root: &Path) -> Result<boo
         match std::fs::symlink_metadata(&manifest_path) {
             Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                // An empty allocation left behind before the project move does
-                // not own history. A recoverable worktree without readable
-                // identity data does, so fail closed instead of guessing.
                 if std::fs::symlink_metadata(path.join(RECYCLED_PROJECT_DIRECTORY)).is_ok() {
                     return Err(
                         "cannot prove Checkpoint ownership for a recycled project without metadata"
@@ -1161,9 +1149,6 @@ fn recycled_identity_exists(project_id: &str) -> Result<bool, String> {
     recycled_identity_exists_in_root(project_id, &root)
 }
 
-/// Checks recycle and cleanup reservations while the caller already holds the
-/// project's external worktree lock. This deliberately performs no retry or
-/// cleanup work, so it cannot recursively acquire that lock.
 pub(crate) fn recycled_project_identity_reserved_lock_held(
     project_id: &str,
 ) -> Result<bool, String> {
@@ -1192,16 +1177,10 @@ fn complete_cleanup_job_locked(
     if read_cleanup_job(path)? != *expected {
         return Err("Checkpoint cleanup metadata changed before retry".into());
     }
-    // The job may have been published immediately before a crash. Resume the
-    // exact intended recycle deletion first, while its manifest still proves
-    // the project identity. A mismatched or partially unprovable entry stays
-    // fail-closed with the durable job intact.
     remove_cleanup_target_if_present(expected)?;
     if active_project_identity_exists(&expected.project_id)?
         || recycled_identity_exists(&expected.project_id)?
     {
-        // This identity still has a visible owner. The pending deletion stays
-        // durable and reserved, but must not erase shared external history.
         return Ok(());
     }
     crate::checkpoints::remove_project_checkpoint_data(&expected.project_id)?;
@@ -1210,8 +1189,6 @@ fn complete_cleanup_job_locked(
     clear_cleanup_job(path, expected)
 }
 
-/// Removes a deleted project's chat history: its chat files and its rows in
-/// the search index. Best effort, as for its attachments.
 fn remove_project_chat_history(project_id: &str) {
     if let Err(error) = crate::chats::remove_project_chats(project_id) {
         let _ = crate::project::append_app_log(format!(
@@ -1481,11 +1458,6 @@ fn restore_recycled_project_sync(recycle_id: &str) -> Result<String, String> {
     }
     #[cfg(test)]
     maybe_inject_recycle_crash(RecycleCrashPoint::RestoreMove)?;
-    // The destination lock was acquired while the active path was absent. A
-    // recycle entry written by an older build may still carry a durable
-    // Checkpoint restore marker, so recover it under this already-held
-    // exclusive lock before exposing the active project. If recovery cannot
-    // be proven, move the complete worktree back into the recycle entry.
     if let Err(recovery_error) =
         crate::checkpoints::recover_interrupted_restore_lock_held(&manifest.project_id)
     {
@@ -1534,8 +1506,6 @@ fn permanently_delete_recycled_project_sync(recycle_id: &str) -> Result<(), Stri
         recycle_id: recycle_id.to_string(),
     };
     let linked_member = crate::linked_registry::id_reserved(&manifest.project_id)?;
-    // The durable job is published before the recoverable worktree disappears.
-    // A crash or later Store::destroy failure therefore remains retryable.
     let cleanup_path = write_cleanup_job(&cleanup)?;
     remove_cleanup_target_if_present(&cleanup)?;
     if let Err(error) = crate::project_ids::forget(&manifest.project_id) {
@@ -1668,6 +1638,7 @@ mod tests {
             root.join("acp/agents"),
             root.join("research-tasks/t1"),
             root.join("bin"),
+            root.join("toolchains/quarto/1.10.19/bin"),
             root.join("checkpoints/paper"),
             root.join("compiler-cache"),
             root.join("chats"),
@@ -1686,6 +1657,7 @@ mod tests {
             (root.join("acp/agents/claude"), "agent"),
             (root.join("research-tasks/t1/log"), "task"),
             (root.join("bin/pandoc"), "pandoc"),
+            (root.join("toolchains/quarto/1.10.19/bin/quarto"), "quarto"),
             (root.join("checkpoints/paper/1"), "cp"),
             (root.join("compiler-cache/x"), "cache"),
             (root.join("chats/c.json"), "chat"),
@@ -1709,10 +1681,10 @@ mod tests {
         assert_eq!(summary.tex_distribution_bytes, 3);
         assert_eq!(summary.agents_bytes, 5);
         assert_eq!(summary.research_tasks_bytes, 4);
-        assert_eq!(summary.tools_bytes, 6);
+        assert_eq!(summary.tools_bytes, 6 + 6);
         assert_eq!(summary.checkpoints_bytes, 2);
         assert_eq!(summary.compile_cache_bytes, 5);
-        assert_eq!(summary.app_data_bytes, 3 + 5 + 4 + 6 + 2 + 5 + 4 + 2);
+        assert_eq!(summary.app_data_bytes, 3 + 5 + 4 + 6 + 6 + 2 + 5 + 4 + 2);
     }
 
     #[test]

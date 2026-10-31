@@ -68,8 +68,6 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     id: "toggleTerminal",
     defaultBinding: { key: "`", ctrl: true },
   },
-  // Terminal tabs. Ctrl+Shift+` reports "~" as its key on US layouts; a
-  // binding on ` or ~ follows the physical key (see matchesShortcut).
   {
     id: "newTerminal",
     defaultBinding: { key: "~", ctrl: true, shift: true },
@@ -206,9 +204,6 @@ function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
   return physicalKey(event);
 }
 
-// ` and ~ are one physical key, left of 1, and what it types depends on the
-// layout: UK Shift gives ¬ and German and Spanish layouts type a dead key. A
-// binding on either follows the key itself, so Ctrl+Shift+` works everywhere.
 function isBackquoteBinding(key: string): boolean {
   return key === "`" || key === "~";
 }
@@ -231,7 +226,6 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
 }
 
 function bindingKey(event: KeyboardEvent, apple: boolean): string {
-  // The key left of 1 is recorded as ` or ~ whatever the layout types on it.
   if (event.code === "Backquote") return event.shiftKey ? "~" : "`";
   const optionLevel = optionLevelKey(event, apple);
   if (optionLevel) return optionLevel;

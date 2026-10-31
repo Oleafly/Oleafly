@@ -16,9 +16,7 @@ export function InlineDiffPreview({
   oldText,
   newText,
   className,
-  // 1-based; fallback scroll target if merge chunks aren't available yet.
   scrollToLine,
-  // When set, the diff's scroller is keyboard-focusable under this name.
   ariaLabel,
 }: Readonly<{
   path: string;
@@ -54,7 +52,7 @@ export function InlineDiffPreview({
         EditorState.readOnly.of(true),
         EditorView.editable.of(false),
         EditorView.theme({
-          "&": { height: "100%", fontSize: "12px" },
+          "&": { height: "100%", fontSize: "0.75rem" },
           ".cm-scroller": {
             overflow: "auto",
             fontFamily: "var(--cm-font-family, ui-monospace, monospace)",
@@ -87,14 +85,12 @@ export function InlineDiffPreview({
       scrollEditorPositionLocally(view, target);
     };
 
-    // Merge decorations / layout need a frame (sometimes two) before positions are stable.
     let frame = 0;
     view.requestMeasure({
       read: () => null,
       write: () => {
         frame = requestAnimationFrame(() => {
           scrollToChange();
-          // Second pass after collapsed-unchanged / chunk widgets settle.
           frame = requestAnimationFrame(scrollToChange);
         });
       },

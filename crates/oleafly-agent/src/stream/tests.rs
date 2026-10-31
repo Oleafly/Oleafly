@@ -797,7 +797,6 @@ fn a_custom_provider_on_a_lan_host_gets_the_self_hosted_idle_timeout() {
         );
     }
 
-    // A hosted catalog provider keeps the cloud default.
     let hosted = Resolved {
         provider_id: "openai".into(),
         wire: Wire::OpenAiResponses {
@@ -875,8 +874,6 @@ fn openai_compatible_streams_leave_unreported_cache_reads_unknown() {
     );
     assert_eq!(deepseek.usage().cache_read, Some(6));
 }
-
-// --- 0.4.8: block recorder, server tools, usage details --------------------
 
 fn sse(events: &[&str]) -> String {
     events
@@ -1243,7 +1240,6 @@ fn a_chat_error_frame_may_be_a_plain_string() {
         .to_string()
         .contains("The model has crashed without additional information."));
 
-    // An error object with no message still says what the server called it.
     let (_, typed) = run(
         WireKind::OpenAi,
         &sse(&[r#"{"error":{"type":"overloaded_error"}}"#]),

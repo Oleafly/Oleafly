@@ -68,9 +68,7 @@ export interface ChatComposerProps {
   busy?: boolean;
   onQueue?(): void;
   onStop?(): void;
-  /** Shows Stop but greyed out, for a stop already on its way. */
   stopDisabled?: boolean;
-  /** Disables sending, never typing or attaching. */
   disabled?: boolean;
   placeholder: string;
   attachments: readonly ComposerAttachment[];
@@ -81,16 +79,11 @@ export interface ChatComposerProps {
   onSlashSelect?(item: SlashItem): void;
   mentionItems?: (query: string) => MentionItem[] | Promise<MentionItem[]>;
   onMentionSelect?(item: MentionItem): void;
-  /** Earlier prompts, newest last. Defaults to the project's history. */
   history?: readonly string[];
-  /** The left group of the controls row. */
   controls?: ReactNode;
-  /** The right group, before the send or stop button. */
   trailingControls?: ReactNode;
-  /** `data-tour` on the textarea. */
   dataTour?: string;
   highlight?: { skillIds?: readonly string[]; paths?: Iterable<string> };
-  /** Shown under the textarea. */
   notice?: ReactNode;
   accept?: string;
   labels?: { send?: string; stop?: string; stopTitle?: string; textarea?: string };
@@ -113,7 +106,6 @@ function rootFontPx(): number {
   return Number.isFinite(size) && size > 0 ? size : 16;
 }
 
-/** The option the textarea points at: the highlighted mention, else the highlighted command. */
 function activeDescendantId(
   mention: { open: boolean; key: string | null },
   slash: { shown: boolean; id: string | null },
@@ -123,7 +115,6 @@ function activeDescendantId(
   return undefined;
 }
 
-/** The id of the menu the textarea controls while one is open. */
 function openMenuId(mentionOpen: boolean, slashShown: boolean): string | undefined {
   if (mentionOpen) return "ai-mention-menu";
   return slashShown ? "ai-slash-command-menu" : undefined;
@@ -172,8 +163,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
   const pendingCaret = useRef<number | null>(null);
   const recall = useRef<number | null>(null);
 
-  // Height: the stored resting height, a live preview while dragging, and
-  // the panel it may take up to 60% of.
   const storedHeight = useSettingsStore((state) => state.aiComposerHeight);
   const setStoredHeight = useSettingsStore((state) => state.setAiComposerHeight);
   const [previewHeight, setPreviewHeight] = useState<number | null>(null);
@@ -201,7 +190,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
   const growMax = composerGrowMax(resting);
   useAutoSizeTextarea(textareaRef, shellRef, value, placeholder, growMax, resting);
 
-  // Caret, for mentions and for placing it after programmatic edits.
   const [caretPosition, setCaretPosition] = useState(value.length);
   const syncCaret = useCallback((textarea: HTMLTextAreaElement) => {
     setCaretPosition(
@@ -211,7 +199,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
   useLayoutEffect(() => {
     const position = pendingCaret.current;
     const textarea = textareaRef.current;
-    if (position === null || !textarea) return;
+    if (position === null || !textarea || textarea.value !== value) return;
     pendingCaret.current = null;
     textarea.setSelectionRange(position, position);
     setCaretPosition(position);
@@ -226,7 +214,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       pendingCaret.current = caretAt;
       onChange(next);
       if (next === value) {
-        // No re-render follows, so place the caret now.
         pendingCaret.current = null;
         textareaRef.current?.setSelectionRange(caretAt, caretAt);
         setCaretPosition(caretAt);
@@ -235,7 +222,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     [onChange, value],
   );
 
-  // Slash menu.
   const [slashDismissedFor, setSlashDismissedFor] = useState<string | null>(null);
   const [activeSlashId, setActiveSlashId] = useState<string | null>(null);
   const slashQuery = slashItems?.length ? slashMenuQuery(value, slashItems, slashDismissedFor) : null;
@@ -255,7 +241,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       })),
     [slashItems],
   );
-  // The menu draws nothing when no command matches what was typed.
   const slashShown = useMemo(
     () => slashQuery !== null && filterSlashCommands(slashCommands, slashQuery).length > 0,
     [slashCommands, slashQuery],
@@ -268,11 +253,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     setSlashDismissedFor(inserted || null);
     setActiveSlashId(null);
     onSlashSelect?.(item);
-    // An action may open a picker of its own, so only inserted text takes focus back.
     if (inserted) requestAnimationFrame(focus);
   };
 
-  // Mentions.
   const mentionToken = mentionItems ? activeMentionQuery(value, caretPosition) : null;
   const mentionQuery = mentionToken?.query ?? null;
   const [mentionDismissedFor, setMentionDismissedFor] = useState<string | null>(null);
@@ -310,7 +293,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     requestAnimationFrame(focus);
   };
 
-  // Sending.
   const processing = attachments.some((item) => item.status === "processing");
   const ready = attachments.some((item) => item.status === "ready");
   const hasContent = value.trim() !== "" || ready;

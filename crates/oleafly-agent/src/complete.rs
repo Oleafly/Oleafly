@@ -37,33 +37,22 @@ pub struct CompletionRequest {
     pub idle_timeout_ms: Option<u64>,
     #[serde(default)]
     pub tools: Vec<ToolSchema>,
-    /// Internal stateless Responses API continuation. Renderer input is always
-    /// ignored; the Rust agent builds this only from provider-returned items.
     #[doc(hidden)]
     #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub openai_responses_input: Option<Vec<Value>>,
-    /// How hard the model thinks; `None` is the provider's default. Unknown
-    /// names from a newer renderer read as `None`.
     #[serde(default, deserialize_with = "crate::effort::lenient_effort")]
     pub effort: Option<Effort>,
-    /// Web search and fetch for this run.
     #[serde(default)]
     pub web: Option<WebTools>,
-    /// Ask the model for readable reasoning summaries.
     #[serde(default)]
     pub reasoning_summary: Option<bool>,
-    /// Per-run context sent after the system prompt, so the stable prompt
-    /// before it stays cacheable.
     #[serde(default)]
     pub system_suffix: Option<String>,
-    /// The Anthropic code-execution container to keep using. Set by the run
-    /// from the provider's replies only.
     #[doc(hidden)]
     #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub anthropic_container: Option<String>,
 }
 
-/// The web tools a run may use.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WebTools {
     #[serde(default)]
@@ -119,8 +108,6 @@ pub struct Usage {
     pub cache_write: Option<u32>,
     #[serde(default, skip_serializing_if = "is_unknown_input_semantics")]
     pub input_semantics: InputTokenSemantics,
-    /// Tokens spent on reasoning, when the provider reports them. They are
-    /// part of `output` too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<u32>,
 }
@@ -185,8 +172,6 @@ pub struct CompletionResponse {
     pub usage: Usage,
     pub provider_id: String,
     pub model_id: String,
-    /// Why the reply ended, as the provider said it (`stop`, `length`,
-    /// `max_tokens`, `refusal`, ...). `None` when the reply carries none.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<String>,
 }
@@ -361,8 +346,6 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
     ))
 }
 
-/// Why a blocking reply ended, named the way the streaming path names it, so
-/// `is_output_limit_stop` and `is_refusal_stop` read both.
 pub(crate) fn blocking_stop_reason(wire: &Wire, body: &Value) -> Option<String> {
     let reason = match wire {
         Wire::OpenAiChat { .. } => body
@@ -849,7 +832,6 @@ mod tests {
             retry_after(&headers(&[("retry-after", " 1.5 ")])),
             Some(Duration::from_millis(1_500))
         );
-        // The millisecond header wins where a provider sends both.
         assert_eq!(
             retry_after(&headers(&[
                 ("retry-after", "30"),
@@ -857,7 +839,6 @@ mod tests {
             ])),
             Some(Duration::from_millis(250))
         );
-        // A date, a negative number and a word are not waits.
         for value in ["Wed, 21 Oct 2026 07:28:00 GMT", "-5", "soon", "NaN"] {
             assert_eq!(retry_after(&headers(&[("retry-after", value)])), None);
         }

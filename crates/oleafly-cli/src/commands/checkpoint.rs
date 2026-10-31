@@ -1,6 +1,3 @@
-//! `oleafly checkpoint list|show|diff|restore`: the app's checkpoints of a
-//! project, read-only. `restore` copies a checkpoint into a new folder;
-//! restoring over the project stays in the app, which can undo it.
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
@@ -14,7 +11,6 @@ use super::CommandModule;
 use crate::app_paths::ProjectIdentity;
 use crate::contract::{path_arg, CliError, Context, ErrorKind, Outcome};
 
-/// Short ids show this many hex characters; a prefix needs at least 8.
 const SHORT_ID: usize = 12;
 const MIN_PREFIX: usize = 8;
 const MAX_TREE_FILES: usize = 20_000;
@@ -83,7 +79,6 @@ impl CommandModule for Commands {
 
     async fn run(self, ctx: &Context) -> Result<Outcome, CliError> {
         let Self::Checkpoint(command) = self;
-        // The store is SQLite and file reads; run them off the async workers.
         tokio::task::block_in_place(|| run_blocking(ctx, command))
     }
 }
@@ -137,7 +132,6 @@ fn history_error(error: oleafly_history::HistoryError) -> CliError {
     )
 }
 
-/// The app's checkpoint store of the project at `root`, read-only.
 fn open_store(ctx: &Context, root: &Path) -> Result<Option<(Store, ProjectIdentity)>, CliError> {
     let Some(data_root) = ctx.data_root() else {
         return Ok(None);
@@ -156,7 +150,6 @@ fn short_id(root: &SnapshotRoot) -> String {
     root.as_hex().chars().take(SHORT_ID).collect()
 }
 
-/// The checkpoint a hex prefix names.
 fn resolve(store: &Store, id: &str) -> Result<Checkpoint, CliError> {
     let wanted = id.trim().to_ascii_lowercase();
     if wanted.len() < MIN_PREFIX || !wanted.bytes().all(|byte| byte.is_ascii_hexdigit()) {
@@ -184,12 +177,10 @@ fn resolve(store: &Store, id: &str) -> Result<Checkpoint, CliError> {
     }
 }
 
-/// `2026-10-19 14:03 UTC` from Unix milliseconds.
 fn utc_time(ms: i64) -> String {
     let seconds = ms.div_euclid(1000);
     let days = seconds.div_euclid(86_400);
     let of_day = seconds.rem_euclid(86_400);
-    // Civil date from days since 1970-01-01 (Howard Hinnant's algorithm).
     let z = days + 719_468;
     let era = z.div_euclid(146_097);
     let doe = z.rem_euclid(146_097);
@@ -336,9 +327,6 @@ fn walk_tree(
     Ok(files)
 }
 
-/// Takes one entry of a folder into the capture: a folder is queued to be
-/// walked, a file is hashed into `files`, and whatever the capture rules
-/// leave out is passed over.
 fn capture_entry(
     entry: &std::fs::DirEntry,
     root: &Path,
@@ -394,7 +382,6 @@ struct Changes {
     unchanged: usize,
 }
 
-/// What changed from `before` to `after`.
 fn compare(
     before: &BTreeMap<String, ContentHash>,
     after: &BTreeMap<String, ContentHash>,
@@ -431,9 +418,6 @@ fn readable_text(path: &Path) -> Option<String> {
     String::from_utf8(std::fs::read(path).ok()?).ok()
 }
 
-/// The project's copy of `path` for a patch: only a file the walk hashed,
-/// and only while it is a regular file. A path that became a link since is
-/// shown as removed, and the link's target is never read.
 fn project_file(
     root: &Path,
     path: &str,
@@ -445,7 +429,6 @@ fn project_file(
     .then_some(file)
 }
 
-/// A unified diff of one file, or `None` for binary and large files.
 fn file_patch(path: &str, old: Option<&Path>, new: Option<&Path>) -> Option<String> {
     let old_text = match old {
         Some(file) => readable_text(file)?,
@@ -565,9 +548,6 @@ fn run_diff(ctx: &Context, prepared: &Prepared, args: &DiffArgs) -> Result<Outco
     Ok(Outcome::success(fields))
 }
 
-/// Files a restore writes keep the checkpoint store's owner-only modes. A copy
-/// for people gets the modes this user's own new folders and files get (0o777
-/// and 0o666 less their umask), so a strict umask stays strict.
 #[cfg(unix)]
 fn relax_permissions(folder: &Path) {
     use std::fs::Permissions;
@@ -595,8 +575,6 @@ fn relax_permissions(folder: &Path) {
     }
 }
 
-/// The mode a new folder gets in `folder`, read from a probe: the umask can
-/// only be read by changing it, which every other thread would see.
 #[cfg(unix)]
 fn new_folder_mode(folder: &Path) -> Option<u32> {
     use std::os::unix::fs::PermissionsExt;
@@ -788,7 +766,6 @@ mod tests {
             .unwrap();
         let linked = walk_tree(root.path(), true, &BTreeMap::new()).unwrap();
         assert_eq!(linked.keys().collect::<Vec<_>>(), ["main.tex"]);
-        // A large file the checkpoint holds (named by the build) is compared.
         let captured = BTreeMap::from([("data.csv".to_string(), linked["main.tex"])]);
         let linked = walk_tree(root.path(), true, &captured).unwrap();
         assert!(linked.contains_key("data.csv"));
@@ -804,10 +781,8 @@ mod tests {
         let file = folder.join("main.tex");
         std::fs::create_dir(&folder).unwrap();
         std::fs::write(&file, "x").unwrap();
-        // What the checkpoint store leaves behind.
         std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o700)).unwrap();
         std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
-        // What this user's umask gives a new folder and a new file.
         let reference = tempfile::tempdir().unwrap();
         let new_folder = reference.path().join("folder");
         std::fs::create_dir(&new_folder).unwrap();

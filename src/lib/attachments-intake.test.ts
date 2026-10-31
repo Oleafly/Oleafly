@@ -45,8 +45,6 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  // Reset, not clear: a test whose file is removed before preparation starts
-  // leaves its one-time normalizer answer unused, and the next test would get it.
   vi.resetAllMocks();
   useComposerDrafts.setState({ drafts: {} });
 });
@@ -230,7 +228,6 @@ describe("intake", () => {
     mocks.attachmentPut.mockResolvedValue(stored("a.png", "h1"));
     const running = intakeFiles([file("a.png", "image/png")], { composerId: COMPOSER, scope: "p1" });
     await vi.waitFor(() => expect(draftAttachments(COMPOSER)).toHaveLength(1));
-    // The first send of a new chat moves the draft to the chat it created.
     useComposerDrafts.getState().moveDraft(COMPOSER, "p1:builtin:chat-1");
     resolve({ name: "a.png", mime: "image/png", bytes: new Uint8Array([1]) });
     await running;
@@ -251,13 +248,11 @@ describe("intake", () => {
       .mockReturnValueOnce(new Promise((resolve) => { releasePage = resolve; }));
     const running = intakeFiles([file("scan.pdf", "application/pdf")], { composerId: COMPOSER, scope: "p1" });
     await vi.waitFor(() => expect(mocks.attachmentPut).toHaveBeenCalledTimes(2));
-    // The PDF is stored, its chip still says "processing" and has no hash.
     expect(draftAttachments(COMPOSER)[0].sha256).toBeUndefined();
     expect(draftAttachmentRefs("p1")).toContain("pdf");
     releasePage(stored("scan.pdf page 1.png", "page"));
     await running;
     expect(draftAttachmentRefs("p1").sort()).toEqual(["page", "pdf"]);
-    // Removed, nothing holds them any more.
     useComposerDrafts.getState().removeAttachments(COMPOSER, [draftAttachments(COMPOSER)[0].id]);
     expect(draftAttachmentRefs("p1")).toEqual([]);
   });
@@ -295,7 +290,6 @@ describe("reading a native drop", () => {
 
     expect(files.map((value) => value.name)).toEqual(["paper.pdf", "notes.txt"]);
     expect(order).toEqual(["paper:start", "paper:end", "notes"]);
-    // Nothing was pulled over IPC for what could not be attached.
     expect(video.read).not.toHaveBeenCalled();
     expect(archive.read).not.toHaveBeenCalled();
     expect(folder.read).not.toHaveBeenCalled();

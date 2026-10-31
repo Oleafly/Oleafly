@@ -29,16 +29,9 @@ use self::shell::{ShellChoice, ShellId, ShellKind, ShellOption};
 #[derive(Serialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub(crate) enum TerminalEvent {
-    /// `bytes` is the UTF-8 length of `data`, which the frontend
-    /// acknowledges once xterm has parsed it.
-    Output {
-        data: String,
-        bytes: usize,
-    },
+    Output { data: String, bytes: usize },
     Exit,
-    InputError {
-        message: String,
-    },
+    InputError { message: String },
 }
 
 struct TermSession {
@@ -50,7 +43,6 @@ struct TermSession {
     shell_pid: u32,
 }
 
-/// How long a hung-up shell gets to exit before it is killed.
 #[cfg(unix)]
 pub(crate) const HANGUP_GRACE: Duration = Duration::from_millis(500);
 
@@ -59,7 +51,6 @@ const MAX_PENDING_INPUT_WRITES: usize = 256;
 
 type WriteReceipt = tokio::sync::oneshot::Receiver<Result<(), String>>;
 
-/// The pair of handles a session reads from and writes to.
 type TerminalStreams = (Box<dyn Read + Send>, Box<dyn Write + Send>);
 
 type SharedMaster = Arc<Mutex<Box<dyn MasterPty + Send>>>;
@@ -267,7 +258,6 @@ impl<T> SessionRegistry<T> {
         Ok(&record.session)
     }
 
-    /// Every session the owner opened, with its id.
     fn owned<'a>(&'a self, owner: &'a SessionOwner) -> impl Iterator<Item = (&'a str, &'a T)> {
         self.sessions
             .iter()
@@ -374,9 +364,6 @@ fn kill_all_sessions() {
     stop_sessions(drained);
 }
 
-/// The output flows of sessions whose shell ended on its own while their
-/// pump still had output to send. Acks keep reaching them until the pump
-/// reaches the end of the output; only a close drops what is left.
 static DRAINING: Mutex<BTreeMap<String, OwnedSession<Arc<OutputFlow>>>> =
     Mutex::new(BTreeMap::new());
 
@@ -384,8 +371,6 @@ fn draining() -> std::sync::MutexGuard<'static, BTreeMap<String, OwnedSession<Ar
     DRAINING.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// Closes the draining flows of the owners `closing` picks: their remaining
-/// output is dropped and their pumps end.
 fn close_draining(closing: impl Fn(&SessionOwner) -> bool) {
     let flows: Vec<Arc<OutputFlow>> = {
         let mut draining = draining();
@@ -514,8 +499,6 @@ fn apply_terminal_env(cmd: &mut CommandBuilder) {
     }
 }
 
-/// Drops what an AppImage's launcher added to the environment, unless the
-/// shell itself comes from the AppImage.
 fn clear_appimage_env(cmd: &mut CommandBuilder) {
     let Some(program) = cmd.get_argv().first().cloned() else {
         return;
@@ -531,9 +514,6 @@ fn clear_appimage_env(cmd: &mut CommandBuilder) {
     }
 }
 
-/// Apply the project's trust rules to a shell command. A restricted folder
-/// never gets a shell started in the background, and a shell the user opens
-/// gets Git hardened. Applied last, so nothing a launch sets can undo it.
 fn project_shell(
     project_id: &str,
     root: &Path,
@@ -556,8 +536,6 @@ fn project_shell(
     Ok(cmd)
 }
 
-/// What a terminal starts with besides its project: a folder inside the
-/// project, extra environment and the shell setting.
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TerminalOpenOptions {
@@ -567,24 +545,17 @@ pub(crate) struct TerminalOpenOptions {
     pub env: Option<BTreeMap<String, String>>,
     #[serde(default)]
     pub shell: Option<ShellChoice>,
-    /// The session is opened to run a launch command the app types in.
     #[serde(default)]
     pub launch: bool,
 }
 
-/// The session id and how its shell quotes typed commands.
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TerminalOpened {
     pub id: String,
     pub shell: ShellKind,
     pub shell_id: ShellId,
-    /// The shell program's name (`zsh`, `bash`), which decides the bytes
-    /// Shift+Enter sends.
     pub shell_name: String,
-    /// The project folder's absolute path on this computer (never the
-    /// `\\?\` form), so the paths of files dropped on the terminal stay
-    /// right after a `cd`. `None` for a path that isn't valid Unicode.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub root: Option<String>,
 }
@@ -630,7 +601,6 @@ pub async fn term_open<R: Runtime>(
     .map_err(|e| format!("failed to start shell: {e}"))?
 }
 
-/// The shells this computer can start, for the picker in Settings.
 #[tauri::command]
 pub async fn term_shells() -> Vec<ShellOption> {
     tauri::async_runtime::spawn_blocking(|| {
@@ -759,12 +729,8 @@ fn open_terminal_with_ticket(
     Ok(id)
 }
 
-/// How long an open waits for a shell that could not be contained to turn out
-/// to have exited, before the failure counts as real.
 const CONTAINMENT_EXIT_GRACE: Duration = Duration::from_millis(250);
 
-/// Whether `child` exits within `patience`. The pty child has no timed wait,
-/// so this polls it.
 fn exited_within(child: &mut (dyn portable_pty::Child + Send + Sync), patience: Duration) -> bool {
     let deadline = Instant::now() + patience;
     loop {
@@ -845,8 +811,6 @@ fn spawn_exit_poller(poll_id: String, child: SharedChild) {
     });
 }
 
-/// Remove a session from the registry by id. The pump and the exit poller
-/// race to tear the same session down, so whichever arrives second gets None.
 fn take_session(session_id: &str) -> Option<TermSession> {
     let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
     sessions
@@ -854,11 +818,6 @@ fn take_session(session_id: &str) -> Option<TermSession> {
         .and_then(|registry| registry.remove_unchecked(session_id))
 }
 
-/// [`take_session`] for a shell that ended on its own. Its output flow stays
-/// open and reachable for acks (in [`DRAINING`]) until the pump has sent the
-/// rest of the output; the session that is stopped gets a new flow to close.
-/// The move happens under the registry lock, so a pump that reaches the end
-/// first finds the session itself and nothing is left behind.
 fn take_exited_session(session_id: &str) -> Option<TermSession> {
     let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
     let registry = sessions.as_mut()?;
@@ -875,10 +834,6 @@ fn take_exited_session(session_id: &str) -> Option<TermSession> {
     Some(session)
 }
 
-/// Start the output pump: a reader thread that blocks on the pty and queues
-/// chunks (a full queue blocks it, so a flooding program blocks on write),
-/// and an emitter thread that batches the chunks, waits while the frontend
-/// is behind and sends them.
 fn spawn_output_pump(
     session_id: String,
     reader: Box<dyn Read + Send>,
@@ -911,8 +866,6 @@ fn read_output(mut reader: Box<dyn Read + Send>, queue: &SyncSender<Vec<u8>>) {
     }
 }
 
-/// Forward shell output until the reader ends, then tear the session down
-/// and send the exit event while the channel is open.
 fn emit_output(
     session_id: &str,
     chunks: &Receiver<Vec<u8>>,
@@ -921,12 +874,10 @@ fn emit_output(
 ) {
     let mut pending: Vec<u8> = Vec::new();
     let mut channel_open = true;
-    // None means quiet, so the first chunk goes out at once.
     let mut last_flush: Option<Instant> = None;
     while let Some(batch) = next_batch(chunks, last_flush, OUTPUT_BATCH_WINDOW, OUTPUT_BATCH_BYTES)
     {
         if !channel_open {
-            // Keep draining so the reader never blocks on a dead channel.
             continue;
         }
         pending.extend_from_slice(&batch);
@@ -935,14 +886,10 @@ fn emit_output(
             continue;
         }
         if !flow.wait_for_room() {
-            // Closed while paused: drop the output, still send Exit later.
             pending.clear();
             continue;
         }
         let bytes = data.len();
-        // Counted before it goes out: the frontend can parse and ack it before
-        // `send` returns, and an ack must never find fewer bytes than it
-        // covers (the count would then drift up until output stops).
         flow.charge(bytes);
         if channel.send(TerminalEvent::Output { data, bytes }).is_err() {
             flow.ack(bytes);
@@ -962,7 +909,6 @@ fn emit_output(
     if let Some(session) = take_session(session_id) {
         stop_session(session);
     }
-    // A shell that ended on its own left its flow here for the acks.
     draining().remove(session_id);
     if channel_open {
         let delivered = channel.send(TerminalEvent::Exit).is_ok();
@@ -974,10 +920,6 @@ fn stop_session(session: TermSession) {
     stop_sessions(vec![session]);
 }
 
-/// Stop shells in three steps: hang up (Unix: SIGHUP to the shell's process
-/// group and to its foreground job; Windows: close the kill-on-close job),
-/// give every shell one shared HANGUP_GRACE to exit, then kill what is left.
-/// Quitting with ten terminals waits at most once.
 fn stop_sessions(sessions: Vec<TermSession>) {
     let stopping: Vec<Stopping> = sessions.into_iter().map(Stopping::hang_up).collect();
     #[cfg(unix)]
@@ -992,7 +934,6 @@ fn stop_sessions(sessions: Vec<TermSession>) {
     }
 }
 
-/// A session between its hang-up and its kill.
 struct Stopping {
     child: SharedChild,
     #[cfg(unix)]
@@ -1016,7 +957,6 @@ impl Stopping {
         } = session;
         flow.close();
         let shell_group = shell_pid as i32;
-        // Read the foreground job before anything closes.
         let foreground = jobs::unix_foreground_group(
             shell_group,
             master
@@ -1049,7 +989,6 @@ impl Stopping {
         } = session;
         flow.close();
         drop(writer);
-        // Closing the kill-on-close job ends every process in it.
         drop(containment);
         drop(master);
         Self { child }
@@ -1070,13 +1009,10 @@ impl Stopping {
             if let Some(group) = self.foreground {
                 crate::proc::signal_process_group(group, libc::SIGKILL);
             }
-            // Dropping the guard sends SIGKILL to the shell's process group.
             drop(self.containment);
             drop(self.master);
         }
         if let Ok(mut child) = self.child.lock() {
-            // A child the grace loop already reaped must not be signalled:
-            // its pid may belong to another process by now.
             if !matches!(child.try_wait(), Ok(Some(_))) {
                 let _ = child.kill();
             }
@@ -1106,7 +1042,6 @@ fn write_terminal(owner: &SessionOwner, id: &str, data: &str) -> Result<WriteRec
     session.writer.enqueue(data)
 }
 
-/// The frontend parsed `bytes` of a session's output.
 #[tauri::command]
 pub fn term_ack<R: Runtime>(
     webview: Webview<R>,
@@ -1128,7 +1063,6 @@ fn ack_terminal(owner: &SessionOwner, id: &str, bytes: u64) -> Result<(), String
             _ => None,
         }
     };
-    // A shell that ended on its own: its pump is still sending the rest.
     let flow = match open {
         Some(flow) => flow,
         None => {
@@ -1146,8 +1080,6 @@ fn ack_terminal(owner: &SessionOwner, id: &str, bytes: u64) -> Result<(), String
     Ok(())
 }
 
-/// Which of the project's terminals (all, or `ids`) run a program besides
-/// their shell. Only busy terminals are listed.
 #[tauri::command]
 pub async fn term_foreground<R: Runtime>(
     webview: Webview<R>,
@@ -1166,8 +1098,6 @@ pub async fn term_foreground<R: Runtime>(
     .map_err(|error| format!("failed to check the terminals: {error}"))
 }
 
-/// What the busy check needs from one session, taken under the registry
-/// lock so the slower process queries run without it.
 struct ForegroundProbe {
     id: String,
     shell_pid: u32,
@@ -1175,7 +1105,6 @@ struct ForegroundProbe {
     master: SharedMaster,
     #[cfg(windows)]
     processes: std::io::Result<Vec<u32>>,
-    /// Whether output arrived lately (the only sign of a program in WSL).
     #[cfg(windows)]
     recent_output: bool,
 }
@@ -1267,8 +1196,6 @@ fn resize_terminal(owner: &SessionOwner, id: &str, cols: u16, rows: u16) -> Resu
                 .master,
         )
     };
-    // Recover a poisoned master the way storage locks do. A panic in one
-    // resize must not make every later resize of that terminal fail.
     let master = master.lock().unwrap_or_else(PoisonError::into_inner);
     master
         .resize(PtySize {
@@ -1299,7 +1226,6 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
             None
         }
     };
-    // Closing a tab whose shell already ended drops the output still queued.
     if session.is_none() {
         let flow = {
             let mut draining = draining();

@@ -1,8 +1,3 @@
-//! Desktop apps for attended research tasks: a decorator around the task's
-//! research bridge. CLI-agent runs get the `oleafly-desktop-apps` server;
-//! built-in runs get the `desktop_apps` tool. Grants last for the task, and
-//! each generation has its own Cua session, ended when the bridge shuts down.
-
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -25,8 +20,6 @@ pub(crate) struct DesktopAppsTaskBridge {
 }
 
 impl DesktopAppsTaskBridge {
-    /// `inner` plus desktop apps, or `inner` alone when they aren't ready.
-    /// `title` names the task in its dialogs.
     pub(crate) async fn wrap(
         inner: Arc<dyn TaskBridge>,
         task_id: &str,

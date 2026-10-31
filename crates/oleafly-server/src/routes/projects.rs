@@ -42,8 +42,6 @@ use crate::state::AppState;
 use crate::transfers::declared_length;
 
 pub const SNAPSHOT_SEQ_HEADER: &str = "x-oleafly-snapshot-seq";
-// The app gives a hint 30 seconds. A build that takes longer goes on in the
-// background and the hint is answered 202 with the snapshot the server holds.
 const HINT_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 const MAX_TITLE_CHARS: usize = 200;
 const REFUSALS_FOLDED_MS: i64 = crate::state::DAY_MS;
@@ -486,9 +484,6 @@ fn by_link(
         note_rejoin_refused(conn, project, account, ip, now)?;
         return Err(ServerError::NotFound);
     }
-    // Only the owner can manage the people a link brings in, so a project
-    // whose owner was removed or suspended takes no one new until they are
-    // back.
     if members::account_status(conn, row.owner)? != Some(MemberStatus::Active) {
         return Err(owner_away());
     }
@@ -1277,9 +1272,6 @@ async fn remove_member(
             Ok(signed_out)
         })
         .await?;
-    // end_if_no_access signed these devices out inside the removal's
-    // transaction, so only their open connections are left to tell, and
-    // that can't fail after the removal has been committed.
     for device in signed_out {
         state
             .sockets

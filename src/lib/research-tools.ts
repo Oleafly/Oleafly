@@ -6,8 +6,6 @@ import {
   type ResearchTaskToolsHost,
   type ResearchToolsHost,
 } from "@oleafly/ai-tools";
-// Not components/ai/provider-config: it adds a window listener when imported,
-// and this module is imported by the MCP bridge at startup.
 import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { getConfig, type AppConfig } from "@/lib/tauri";
 import { retrieveProjectChunks } from "@/lib/ai-rag";
@@ -23,10 +21,8 @@ import { useFilesStore } from "@/store/files";
 import { researchTasksEnabled } from "@/store/research-tasks-flag";
 
 const MAX_SUMMARY = 2_000;
-/** What an agent reads when it asks for a task while the switch is off (0.4.8: experimental). */
 export const TASKS_OFF =
   "Research tasks are turned off. They are experimental in this version; the user can turn them on under Settings, Research, at their own risk.";
-/** The longest goal the composer takes; the task store refuses one over 4,000 characters. */
 const MAX_DEFAULT_GOAL = 2_000;
 
 function openProject(): string {
@@ -35,21 +31,14 @@ function openProject(): string {
   return projectId;
 }
 
-/** The goal of a task created without one: the start of its prompt, cut where a character ends. */
 export function defaultGoal(prompt: string): string {
   const trimmed = prompt.trim();
   if (trimmed.length <= MAX_DEFAULT_GOAL) return trimmed;
   const cut = trimmed.slice(0, MAX_DEFAULT_GOAL);
-  // A lone high surrogate is not text the backend can read.
   const last = cut.codePointAt(cut.length - 1) ?? 0;
   return (last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut).trimEnd();
 }
 
-/**
- * The built-in agent a task created by a tool runs on: the AI provider the
- * assistant uses (one with a key, or a custom provider that needs none), and its
- * model. A task without one fails as soon as it starts.
- */
 export async function builtinTaskAgent(config: AppConfig): Promise<{ agentId: string; modelId: string }> {
   const { providerId, modelId } = pickActiveProvider(config);
   if (!hasConfiguredProvider(config)) {
@@ -91,12 +80,9 @@ const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
     const projectId = openProject();
     const config = await getConfig();
     const agent = await builtinTaskAgent(config);
-    // A whole prompt can be longer than a goal may be.
     const brief = defaultBrief(input.brief.goal ?? defaultGoal(input.prompt));
     brief.successCriteria = input.brief.successCriteria ?? [];
     brief.reviewPlanFirst = input.brief.reviewPlanFirst ?? false;
-    // A task an agent creates asks before each command it runs, and has no network unless
-    // the agent asked for it and the user saw that in the confirmation.
     brief.permissions.commands = "ask";
     brief.permissions.network = input.brief.network ?? false;
     brief.budget.wallClockMinutes =
@@ -125,12 +111,10 @@ const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
   },
 };
 
-/** The literature tools, and the task tools while research tasks are on. */
 export function createResearchAiTools(opts?: { confirm?: ConfirmFn }) {
   return { ...createResearchTools(HOST, opts), ...createResearchTaskAiTools(opts) };
 }
 
-/** The research task tools alone (the app's MCP server offers these); none while tasks are off. */
 export function createResearchTaskAiTools(opts?: { confirm?: ConfirmFn }) {
   return researchTasksEnabled() ? createResearchTaskTools(HOST, opts) : {};
 }

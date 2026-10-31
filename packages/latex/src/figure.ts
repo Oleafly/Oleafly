@@ -18,8 +18,6 @@ export function buildStandaloneDoc(opts: {
   const libs = [...new Set((opts.libraries ?? []).map((l) => l.trim()).filter(Boolean))];
   const usepackages = uniquePackages.map((p) => String.raw`\usepackage{${p}}`).join("\n");
   const uselibs = libs.length ? `\\usetikzlibrary{${libs.join(",")}}\n` : "";
-  // A page background fills the whole cropped image (border included) via
-  // \pagecolor; xcolor is required and provided by \usepackage{xcolor}.
   const bgHex = (opts.background ?? "").replace("#", "").toUpperCase();
   const hasBg = /^[0-9A-F]{6}$/.test(bgHex);
   const bgPkg = hasBg ? "\\usepackage{xcolor}\n" : "";
@@ -61,7 +59,6 @@ export function slugifyFigureName(prompt: string): string {
   return slug || "figure";
 }
 
-// Chunked to avoid a call-stack overflow from spreading a large byte array.
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;

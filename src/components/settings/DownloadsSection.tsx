@@ -66,7 +66,6 @@ const setBusyId = (fontBusyId: string | null) =>
 const setProgress = (fontProgress: string) =>
   useDownloadActivity.setState({ fontProgress });
 
-// Importing a template is rare, so its dialog loads when it is first opened.
 const TemplateImportDialog = lazy(() =>
   import("@/components/library/TemplateImportDialog").then((module) => ({
     default: module.TemplateImportDialog,
@@ -109,7 +108,6 @@ export function DownloadsSection() {
     setLink(taken);
     setOpenPackId(taken.packId);
   }, [pendingLink]);
-  // Templates the person made: imported, saved from a project, or generated.
   const [ownOpen, setOwnOpen] = useState(false);
   const [ownTemplates, setOwnTemplates] = useState<TemplateInfo[]>([]);
   const [ownPreviews, setOwnPreviews] = useState<Record<string, string>>({});

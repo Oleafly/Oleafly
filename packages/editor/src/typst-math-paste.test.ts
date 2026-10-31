@@ -10,15 +10,11 @@ import {
   typstMathPaste,
   typstMathPasteOffer,
 } from "./typst-math-paste";
+import { stubRangeGeometry } from "./test-geometry";
 
 installEnglishEditorMessages();
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 

@@ -6,7 +6,6 @@ export interface SynctexRect {
   height: number;
 }
 
-/** A run of PDF text, in points from the top-left of the unrotated page. */
 export interface PdfTextRun {
   str: string;
   x: number;
@@ -16,7 +15,6 @@ export interface PdfTextRun {
   hasEOL?: boolean;
 }
 
-/** What `pageClickToBp` and `gotoRect` need from a page's scale-1 pdf.js viewport. */
 export interface PdfPageGeometry {
   viewBox: number[];
   convertToPdfPoint(x: number, y: number): number[];
@@ -61,15 +59,11 @@ export function setPdfLogger(fn: (scope: string, message: string) => void) {
 
 interface PageEntry {
   pageNo: number;
-  // Always present even before the page is rasterized, so SyncTeX positioning
-  // works against a virtualized page.
   el: HTMLElement;
 }
 
 let pages: PageEntry[] = [];
 let scale = 1;
-// Set by the active PdfViewer; used by forward SyncTeX to force-render a page
-// that virtualization has not rendered yet.
 let ensurePageRendered: ((pageNo: number) => void) | null = null;
 let pageGeometry: ((pageNo: number) => PdfPageGeometry | undefined) | null = null;
 let pageText: ((pageNo: number) => Promise<PdfTextRun[] | null>) | null = null;
@@ -78,7 +72,6 @@ export function registerPdfView(state: {
   pages: PageEntry[];
   scale: number;
   ensurePageRendered?: (pageNo: number) => void;
-  /** The page's scale-1 viewport as shown, rotation included. */
   pageGeometry?: (pageNo: number) => PdfPageGeometry | undefined;
   pageText?: (pageNo: number) => Promise<PdfTextRun[] | null>;
 }) {
@@ -96,7 +89,6 @@ export function clearPdfView() {
   pageText = null;
 }
 
-/** The page's text runs, in the frame SyncTeX uses. Null when no PDF is shown. */
 export function pdfPageText(pageNo: number): Promise<PdfTextRun[] | null> {
   return pageText?.(pageNo) ?? Promise.resolve(null);
 }
@@ -131,8 +123,6 @@ export function gotoRect(rect: SynctexRect, attempt = 0) {
     return;
   }
 
-  // The page may not be rasterized yet (virtualized); ask the viewer to render
-  // it. Positioning below is geometric (off the wrapper), so it works regardless.
   ensurePageRendered?.(rect.page);
 
   wrap.style.position = "relative";
@@ -201,7 +191,6 @@ export function pageClickToBp(
   if (x < 0 || y < 0 || x > rect.width / scale || y > rect.height / scale) {
     return null;
   }
-  // Back into the frame TeX laid the page out in, before any rotation.
   const geometry = pageGeometry?.(pageNo);
   if (!geometry) return { page: pageNo, x, y };
   const [pdfX, pdfY] = geometry.convertToPdfPoint(x, y);

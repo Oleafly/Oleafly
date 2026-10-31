@@ -71,11 +71,9 @@ describe("pdfSearchCounterLabel", () => {
 describe("PdfSearchBar", () => {
   it("steps through matches from the buttons and the keyboard", async () => {
     const { ref, findNext, findPrevious } = viewerRef();
-    const { container } = render(
-      <Harness state={searchState({ status: "success", current: 1, total: 4 })} pdfRef={ref} />,
-    );
+    render(<Harness state={searchState({ status: "success", current: 1, total: 4 })} pdfRef={ref} />);
 
-    const panel = container.querySelector("search");
+    const panel = screen.getByRole("form", { name: enPreview.search.panel });
     expect(panel).toHaveAttribute("id", "pdf-search-panel");
     expect(panel).toHaveAttribute("aria-label", enPreview.search.panel);
 
@@ -93,6 +91,22 @@ describe("PdfSearchBar", () => {
     await userEvent.click(screen.getByRole("button", { name: enPreview.search.previous }));
     expect(findNext).toHaveBeenCalledTimes(2);
     expect(findPrevious).toHaveBeenCalledTimes(2);
+  });
+
+  it("steps once per Enter without submitting the panel or pressing a button", async () => {
+    const { ref, findNext, findPrevious } = viewerRef();
+    const submitted = vi.fn();
+    document.addEventListener("submit", submitted);
+    render(<Harness state={searchState({ status: "success", current: 1, total: 4 })} pdfRef={ref} />);
+
+    const input = screen.getByLabelText(enPreview.search.input);
+    await userEvent.type(input, `${QUERY}{Enter}`);
+    expect(findNext).toHaveBeenCalledTimes(1);
+    await userEvent.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(findPrevious).toHaveBeenCalledTimes(1);
+    expect(findNext).toHaveBeenCalledTimes(1);
+    for (const [event] of submitted.mock.calls) expect(event.defaultPrevented).toBe(true);
+    document.removeEventListener("submit", submitted);
   });
 
   it("keeps stepping off until there is a match", () => {

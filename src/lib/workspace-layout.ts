@@ -28,7 +28,6 @@ function selectedLayout(state: ReturnType<typeof useSettingsStore.getState>): Wo
   return { viewMode, showTree, assistantOpen, workspaceHidden };
 }
 
-/** Apply defaults only on a project's first visit. Subscribe after restoration. */
 export function restoreWorkspaceLayout(projectId: string): () => void {
   const settings = useSettingsStore.getState();
   const saved = readWorkspaceLayout(projectId);

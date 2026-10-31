@@ -61,7 +61,6 @@ const STATUS_DOTS: Record<ResearchTaskStatus, string> = {
   plan_ready: "bg-amber-500",
 };
 
-/** The `Badge` tone of a task status. */
 export function statusBadgeVariant(status: ResearchTaskStatus): BadgeVariant {
   return STATUS_BADGES[status];
 }

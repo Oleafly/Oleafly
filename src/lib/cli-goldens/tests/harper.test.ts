@@ -13,10 +13,6 @@ import { BUILTIN_PROOFREADING_WORDS } from "@/lib/proofreading/ignored";
 import { buildLintConfig } from "@/lib/proofreading/lint-profile";
 import { byCodePoint, expectGolden, LINT_FIXTURES, normalizeEndings, readCases, REPO } from "./support";
 
-// Harper lints for each prose case, set up the way the proofreading worker
-// sets up harper.js. crates/oleafly-lint runs harper-core over the same prose
-// and compares against this golden.
-
 type ProseCase = { name: string; format: "latex" | "markdown" | "typst"; text: string };
 
 interface RecordedLint {
@@ -35,7 +31,6 @@ function prose(format: ProseCase["format"], text: string): string {
   return (format === "latex" ? maskLatexForProseRegions(text) : maskTypstForProseRegions(text)).prose;
 }
 
-/** `mappedSuggestionList`: the first eight, without empty replacements unless removing. */
 function suggestions(lint: Lint): RecordedLint["suggestions"] {
   const out: RecordedLint["suggestions"] = [];
   const all = lint.suggestions();

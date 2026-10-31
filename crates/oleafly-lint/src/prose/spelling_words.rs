@@ -1,17 +1,10 @@
-//! Word spans and the e-mail pattern (`packages/editor/src/spelling-words.ts`).
-
 use std::sync::LazyLock;
 
 use oleafly_preflight::jsre::JsRegex;
 use oleafly_preflight::text::SourceText;
 
-/// Scripts written without spaces between words; their letters never start
-/// or continue a spelling word.
 const UNSEGMENTED_SCRIPTS: &str = r"\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Thai}\p{sc=Lao}\p{sc=Khmer}\p{sc=Myanmar}\p{sc=Tibetan}";
 
-/// `RUN(?:JOINER RUN)*` without look-around. JavaScript's
-/// `"(?=\p{sc=Hebrew})` joiner is always followed by a run, whose first
-/// letter therefore must be Hebrew: `"[\p{L}&&\p{sc=Hebrew}]…`.
 fn word_pattern() -> String {
     let letter = format!(r"[\p{{L}}--[{UNSEGMENTED_SCRIPTS}]]");
     let run_tail = format!(r"(?:{letter}|\p{{M}})*");
@@ -36,8 +29,6 @@ pub fn email_address_pattern() -> &'static JsRegex {
     &EMAIL
 }
 
-/// A word in the scanned text; `compound` is the hyphenated whole a part
-/// belongs to.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpellingWordSpan {
     pub from: usize,
@@ -46,8 +37,6 @@ pub struct SpellingWordSpan {
     pub compound: Option<(usize, usize, String)>,
 }
 
-/// `spellingWordSpans`: every word, with hyphenated compounds split into
-/// parts that remember the whole.
 pub fn spelling_word_spans(masked: &SourceText) -> Vec<SpellingWordSpan> {
     let mut output = Vec::new();
     for compound in COMPOUND.find_all(masked).matches {

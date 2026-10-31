@@ -67,9 +67,6 @@ impl TestServer {
         }
     }
 
-    /// Starts the server behind a front at `public_url`, the address people
-    /// use, the way a reverse proxy setup works. `url()` stays the server's
-    /// own address.
     pub async fn start_at(mut config: ServerConfig, public_url: &str) -> TestServer {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await

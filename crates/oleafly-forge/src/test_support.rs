@@ -1,21 +1,15 @@
-//! A small HTTP/1.1 server for tests: it answers from a script and records
-//! every request it receives. Each connection gets one answer and is closed.
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-/// One scripted answer.
 #[derive(Clone, Debug)]
 pub struct MockResponse {
     status: u16,
     headers: Vec<(String, String)>,
     body: Vec<u8>,
-    /// Content-Length announced without sending a body, for size limits.
     declared_length: Option<u64>,
-    /// Answer only requests with this method whose target starts with this.
     route: Option<(String, String)>,
-    /// Wait this long, once the request is recorded, before answering.
     delay: Option<Duration>,
 }
 
@@ -46,7 +40,6 @@ impl MockResponse {
         MockResponse::raw(status, &[("location", location)], b"")
     }
 
-    /// Headers announcing `length` bytes, then the connection closes.
     pub fn declared(status: u16, length: u64) -> MockResponse {
         MockResponse {
             declared_length: Some(length),
@@ -54,15 +47,11 @@ impl MockResponse {
         }
     }
 
-    /// Answer only `method` requests whose target (path and query) starts
-    /// with `prefix`. Unrouted answers are used in order for any request.
     pub fn on(mut self, method: &str, prefix: &str) -> MockResponse {
         self.route = Some((method.to_string(), prefix.to_string()));
         self
     }
 
-    /// Answer `delay` after the request arrived, for tests that act while a
-    /// call is in flight.
     pub fn delayed(mut self, delay: Duration) -> MockResponse {
         self.delay = Some(delay);
         self
@@ -78,13 +67,10 @@ impl MockResponse {
     }
 }
 
-/// A request as the server saw it. `path` is the request target, query
-/// included.
 #[derive(Clone, Debug)]
 pub struct RecordedRequest {
     pub method: String,
     pub path: String,
-    /// Lowercase names.
     pub headers: Vec<(String, String)>,
     pub body: String,
 }
@@ -128,7 +114,6 @@ impl MockServer {
         MockServer { address, state }
     }
 
-    /// `http://127.0.0.1:<port>`.
     pub fn url(&self) -> String {
         format!("http://{}", self.address)
     }
@@ -137,8 +122,6 @@ impl MockServer {
         self.lock().requests.clone()
     }
 
-    /// Point a scripted redirect somewhere else, for servers that redirect
-    /// to each other.
     pub fn set_location(&self, index: usize, location: &str) {
         let mut state = self.lock();
         if let Some(Some(response)) = state.responses.get_mut(index) {

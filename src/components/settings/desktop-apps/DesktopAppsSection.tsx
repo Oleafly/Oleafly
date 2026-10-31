@@ -38,10 +38,8 @@ const AppPickerDialog = lazy(() => import("./AppPickerDialog"));
 
 const CUA_DRIVER_DOCS_URL = "https://cua.ai/docs/cua-driver";
 
-/** The change Rust asks the user about natively; saying no is not an error. */
 const CHANGE_DECLINED = "desktop_apps.change_declined";
 
-/** Settings › Integrations › Desktop apps. */
 export default function DesktopAppsSection() {
   const { t } = useTranslation(["common", "settings"]);
   const client = useQueryClient();
@@ -133,8 +131,6 @@ export default function DesktopAppsSection() {
         <DriverStatus status={data} projectId={projectId} onCheckAgain={() => void status.refetch()} />
       </IntegrationCard>
 
-      {/* The grants belong to the app the installer puts in place, so they
-          wait until Cua Driver is installed and new enough. */}
       {data.permissions && data.driverProblem === null ? (
         <PermissionsRow
           status={data}
@@ -211,7 +207,6 @@ export default function DesktopAppsSection() {
   );
 }
 
-/** The row for the GNOME helper; hidden where the helper does not apply. */
 function GnomeHelperRow({
   status,
   checking,
@@ -250,7 +245,6 @@ interface AllowedListProps {
   onSave(next: DesktopAppsSettings): void;
 }
 
-/** The apps agents may use, with Add and a remove button on each. */
 function AllowedApps({
   settings,
   missingApps,
@@ -313,7 +307,6 @@ interface AllowedSitesProps extends AllowedListProps {
   onSubmit(): void;
 }
 
-/** The sites agents may open, with a field to add one and a switch for each site's sign-in. */
 function AllowedSites({ settings, saving, siteError, site, onSiteChange, onSubmit, onSave }: Readonly<AllowedSitesProps>) {
   const { t } = useTranslation(["common", "settings"]);
   return (
@@ -405,7 +398,6 @@ function failedDetail(found: DesktopAppsTestReport): string {
   return found.problems.join(" ");
 }
 
-/** The button that tries a driver run, and what came back. */
 function DriverTest({ unavailable }: Readonly<{ unavailable: boolean }>) {
   const { t } = useTranslation(["common", "settings"]);
   const [testing, setTesting] = useState(false);
@@ -469,7 +461,6 @@ function DriverTest({ unavailable }: Readonly<{ unavailable: boolean }>) {
   );
 }
 
-/** Installed, missing or too old, with the official install line. */
 function DriverStatus({
   status,
   projectId,
@@ -540,7 +531,6 @@ function DriverStatus({
   );
 }
 
-/** macOS: whether Cua Driver holds Accessibility and Screen Recording. */
 function PermissionsRow({
   status,
   projectId,

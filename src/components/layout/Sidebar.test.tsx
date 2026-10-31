@@ -311,9 +311,6 @@ describe("FilesPanel section expansion", () => {
     for (const id of ["source-outline-resize", "outline-structure-resize"]) {
       const handle = document.getElementById(id);
       if (!handle) throw new Error(`missing ${id}`);
-      // Negative margins cancel the 10px band, so the next header sits flush
-      // with the divider and its hover tint reaches the line. The band keeps a
-      // real box so it stays visible and focusable, above both panels.
       expect(handle).toHaveClass("h-2.5", "-my-[5px]", "relative", "z-10");
       expect(handle).toHaveAttribute("tabindex", "0");
     }

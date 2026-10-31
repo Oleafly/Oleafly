@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Builds oleafly.mcpb, the bundle the MCP Registry entry points at, and the
-# server.json that describes it to the registry. Used by
-# .github/workflows/mcp-registry.yml; the bundle itself lives in mcpb/.
-#
-#   scripts/mcpb-release.sh pack VERSION OUT.mcpb
-#   scripts/mcpb-release.sh server-json VERSION SHA256 OUT.json
-#
-# MCPB_VERSION picks the @anthropic-ai/mcpb release that validates and packs.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

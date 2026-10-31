@@ -105,8 +105,6 @@ async function chooseList(page: Page, label: "Bulleted list" | "Numbered list") 
 async function insertTable2By2(page: Page) {
   for (let attempt = 0; attempt < 8; attempt++) {
     await clickToolbarControl(page, '[aria-label="Insert table"]', "Table");
-    // Find and click in one browser task; the grid cell can be clipped or
-    // remounted between a wait and a separate bridge click.
     const clicked = await page
       .waitForFunction(
         `(() => {

@@ -375,10 +375,6 @@ fn identity_logins(
         .collect())
 }
 
-// Projects where an account that is not active still holds a grant, but
-// whose seats active people have taken since, so making the account active
-// again would put them over the limit. The owner's own grant never counts:
-// nobody can join a project while its owner is away.
 pub fn projects_now_full(
     conn: &Connection,
     account: AccountId,

@@ -292,7 +292,6 @@ fn is_repository_marker(candidate: &Path) -> bool {
     }
 }
 
-/// Git from `PATH`, never a copy that sits in the project.
 pub(crate) fn find_git(project_root: &Path) -> Option<PathBuf> {
     let discovery = Discovery {
         path: std::env::var_os("PATH"),

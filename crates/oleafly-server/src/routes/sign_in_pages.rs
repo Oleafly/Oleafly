@@ -56,8 +56,6 @@ pub fn form(
     form_with(action, hidden, input, button, class)
 }
 
-// A small text link that still posts a form, for a choice almost nobody needs
-// but that has to stay one click away.
 pub fn quiet_form(action: &str, hidden: &[Field<'_>], button: &str) -> String {
     form_with(action, hidden, None, button, " class=\"quiet\"")
 }

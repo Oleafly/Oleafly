@@ -71,7 +71,6 @@ describe("diffWords", () => {
     const d = diffWords("the old cat", "the new cat");
     expect(d.filter((t) => t.kind === "del").map((t) => t.text.trim())).toContain("old");
     expect(d.filter((t) => t.kind === "add").map((t) => t.text.trim())).toContain("new");
-    // 'the' and 'cat' survive as 'same'
     expect(d.some((t) => t.kind === "same" && t.text.includes("the"))).toBe(true);
     expect(d.some((t) => t.kind === "same" && t.text.includes("cat"))).toBe(true);
   });

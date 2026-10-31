@@ -1,10 +1,6 @@
-// Connects the terminal key router to xterm's custom key handler. The router
-// decides; this applies the decision to the event and the terminal.
 import { routeTerminalKey, type TerminalKeyContext } from "@/lib/terminal-keys";
 
-/** The parts of an xterm Terminal the key handler uses. */
 export interface TerminalKeyTarget {
-  /** Sends bytes as if the user typed them (onData fires). */
   input(data: string): void;
   hasSelection(): boolean;
   getSelection(): string;

@@ -2,7 +2,6 @@ export interface TextItem {
   str: string;
   /** left edge, PDF user units, origin bottom-left */
   x: number;
-  /** baseline */
   y: number;
   width: number;
   height: number;
@@ -14,15 +13,12 @@ export interface PageInput {
   width: number;
   height: number;
   items: TextItem[];
-  /** filenames of figures extracted on this page */
   figureNames: string[];
 }
 
 export interface ConvertOptions {
-  /** 1-based inclusive */
   pageRange?: [number, number];
   columns?: "auto" | 1 | 2;
-  /** 0..1, default 0.5; higher means more headings */
   headingSensitivity?: number;
 }
 

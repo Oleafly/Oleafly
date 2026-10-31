@@ -1,10 +1,3 @@
-//! A headless run from the command line to one result: the prompt, the
-//! policy, the provider, the workspace, the user's MCP servers and skills,
-//! the agent loop, then the changes, the usage record and the report.
-//!
-//! Every string a run prints (text, tool lines, events, errors, the result)
-//! passes through the redactor first: provider keys, MCP values and
-//! connector keys never reach the terminal.
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -39,14 +32,9 @@ use super::{AgentApplyArgs, AgentRunArgs, AskArgs, ModelArgs};
 use crate::contract::{CliError, Context, ErrorKind, Exit, Outcome};
 use crate::engine::{open_project, ProjectOrigin};
 
-/// A prompt read from stdin or a file, at most.
 const MAX_PROMPT_BYTES: usize = 1 << 20;
-/// How long the end of a run waits for a tool that is still running.
 const FINISH_WAIT: Duration = Duration::from_secs(10);
-/// How long a second Ctrl+C waits for the sandbox release before quitting.
 const QUIT_RELEASE_WAIT: Duration = Duration::from_secs(5);
-/// Streamed text is held back until a space (so a key split across two
-/// pieces is still found), but never more than this.
 const MAX_HELD_TEXT: usize = 8 * 1024;
 const HELD_TAIL: usize = 512;
 
@@ -73,12 +61,10 @@ pub struct UsageSummary {
 #[serde(rename_all = "camelCase")]
 pub struct AgentRunReport {
     pub run_id: String,
-    /// `read`, `review` or `apply`.
     pub mode: &'static str,
     pub review_dir: Option<PathBuf>,
     pub provider: String,
     pub model: String,
-    /// `store`, `env:<VARIABLE>` or `none`.
     pub credential_source: String,
     pub stop_reason: StopKind,
     pub steps: u32,
@@ -88,13 +74,11 @@ pub struct AgentRunReport {
     pub usage: UsageSummary,
 }
 
-/// Everything a run was asked for.
 pub struct AgentRunRequest {
     pub prompt: String,
     pub allow: AllowSet,
     pub apply: bool,
     pub review_dir: Option<PathBuf>,
-    /// `oleafly ask`.
     pub question: bool,
     pub choice: ProviderChoice,
     pub max_steps: u32,
@@ -103,11 +87,9 @@ pub struct AgentRunRequest {
     pub mcp: McpSelection,
     pub keep_workspace: bool,
     pub run_id: String,
-    /// `--unsandboxed-commands`.
     pub unsandboxed_commands: bool,
 }
 
-/// Replaces every occurrence of a secret with `[redacted]`.
 pub struct Redactor {
     matcher: Option<AhoCorasick>,
 }
@@ -164,7 +146,6 @@ impl Redactor {
     }
 }
 
-/// `text` with every secret in `secrets` replaced by `[redacted]`.
 pub fn redact(text: &str, secrets: &[String]) -> String {
     Redactor::new(secrets).text(text)
 }
@@ -173,7 +154,6 @@ fn now_ms() -> i64 {
     i64::try_from(crate::record::now_ms()).unwrap_or(i64::MAX)
 }
 
-/// `<epoch ms>-<4 hex>`.
 pub fn new_run_id() -> String {
     format!("{}-{:04x}", crate::record::now_ms(), rand::random::<u16>())
 }
@@ -211,7 +191,6 @@ fn bounded_read(mut reader: impl Read, what: &str) -> Result<String, CliError> {
     })
 }
 
-/// The prompt from the argument, stdin (`-`) or a file.
 async fn read_prompt(inline: Option<String>, file: Option<PathBuf>) -> Result<String, CliError> {
     let prompt = match (inline, file) {
         (Some(dash), _) if dash == "-" => {
@@ -256,7 +235,6 @@ fn env_lookup(name: &str) -> Option<String> {
     std::env::var(name).ok()
 }
 
-/// `oleafly agent run`.
 pub async fn agent_run(ctx: &Context, args: AgentRunArgs) -> Result<Outcome, CliError> {
     let prompt = read_prompt(args.prompt, args.prompt_file).await?;
     let mcp = if args.no_mcp {
@@ -284,7 +262,6 @@ pub async fn agent_run(ctx: &Context, args: AgentRunArgs) -> Result<Outcome, Cli
     execute(ctx, request, &env_lookup).await
 }
 
-/// `oleafly ask`.
 pub async fn ask(ctx: &Context, args: AskArgs) -> Result<Outcome, CliError> {
     let prompt = read_prompt(args.question, None).await?;
     let request = AgentRunRequest {
@@ -322,14 +299,10 @@ fn project_folder(ctx: &Context) -> Result<PathBuf, CliError> {
     }
 }
 
-/// `oleafly agent apply`.
 pub async fn agent_apply(ctx: &Context, args: AgentApplyArgs) -> Result<Outcome, CliError> {
     let project = project_folder(ctx)?;
     let review = args.review_dir.clone();
     let dry_run = args.dry_run;
-    // Writing the files can't be stopped halfway without leaving the
-    // project half changed, so Ctrl+C waits for it and the result says what
-    // was applied (rather than "Stopped." over an apply that went on).
     let work = tokio::task::spawn_blocking(move || apply_review(&review, &project, dry_run));
     tokio::pin!(work);
     let mut told = false;
@@ -362,8 +335,6 @@ pub async fn agent_apply(ctx: &Context, args: AgentApplyArgs) -> Result<Outcome,
     ))
 }
 
-/// What the agent's events said so far (the run's `Err` paths carry no
-/// outcome).
 #[derive(Clone, Debug, Default)]
 struct Tracker {
     steps: u32,
@@ -382,8 +353,6 @@ impl Tracker {
         }
     }
 
-    /// Notes what an agent event said and returns the event to show, if
-    /// it is one a reader sees.
     fn record(&mut self, event: AgentEvent) -> Option<RunEvent> {
         match event {
             AgentEvent::StepStart { step } => {
@@ -415,8 +384,6 @@ impl Tracker {
     }
 }
 
-/// Holds streamed text until a whitespace, so a secret is never split
-/// between two printed pieces.
 #[derive(Default)]
 struct TextHold {
     pending: String,
@@ -452,8 +419,6 @@ impl TextHold {
     }
 }
 
-/// Prints a run's events: event lines with `--events`, text and tool lines
-/// for people, nothing with `--json` alone.
 struct Printer<'a> {
     ctx: &'a Context,
     redactor: &'a Redactor,
@@ -463,9 +428,6 @@ struct Printer<'a> {
     last_usage: (Option<u32>, Option<u32>),
 }
 
-/// An event's fields with every secret replaced: the long values are
-/// redacted whole before the event cuts them, so a key across the cut is
-/// still found.
 fn redacted_fields(event: &RunEvent, redactor: &Redactor) -> Value {
     let redacted = event.clone().redacted(&|text| redactor.text(text));
     redactor.value(redacted.fields())
@@ -506,9 +468,6 @@ impl<'a> Printer<'a> {
             .event(event.name(), redacted_fields(event, self.redactor));
     }
 
-    /// Model text can echo pages, MCP results or project files, so escape
-    /// sequences in it are shown, not acted on (as `human::plain` does for
-    /// everything else).
     fn print_text(&mut self, text: &str) {
         let text = self.redactor.text(text);
         let text = crate::human::plain(&text);
@@ -620,7 +579,6 @@ fn usage_summary(usage: &Usage, seen: bool, cost: Option<f64>) -> UsageSummary {
     }
 }
 
-/// The completion request a run starts with.
 pub(crate) fn build_request(
     system: String,
     prompt: String,
@@ -639,7 +597,6 @@ pub(crate) fn build_request(
     }
 }
 
-/// How the run ended, or the error it ends with.
 fn classify(
     result: &Result<RunOutcome, AgentError>,
     cancelled: bool,
@@ -706,7 +663,6 @@ fn spool_status(stop: Option<StopKind>) -> &'static str {
     }
 }
 
-/// A path for people: relative to the working folder when inside it.
 fn shown(path: &Path) -> String {
     std::env::current_dir()
         .ok()
@@ -718,13 +674,10 @@ fn shown(path: &Path) -> String {
         .to_string()
 }
 
-/// A review folder with nothing in it is removed.
 fn drop_empty_review(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
 }
 
-/// Every value the run must never print: the stored keys, the provider's
-/// credential and any provider key set in the environment.
 fn run_secrets(
     config: &DesktopConfig,
     resolved: &ResolvedProvider,
@@ -766,7 +719,6 @@ fn watch_for_interrupt(
     })
 }
 
-/// The warning code for a note about the files a run left out.
 fn workspace_warning_code(warning: &str) -> &'static str {
     if warning.contains("names a run can't use") {
         "agent.skipped_names"
@@ -779,7 +731,6 @@ fn workspace_warning_code(warning: &str) -> &'static str {
     }
 }
 
-/// Appends the run's usage for Oleafly's usage view; a failure is a warning.
 async fn record_usage(ctx: &Context, root: &Path, event: UsageSpoolEvent) {
     let root = root.to_path_buf();
     let appended = tokio::task::spawn_blocking(move || usage_spool::append(&root, &event)).await;
@@ -791,7 +742,6 @@ async fn record_usage(ctx: &Context, root: &Path, event: UsageSpoolEvent) {
     }
 }
 
-/// Warns when the run stopped at its step limit or its time limit.
 fn warn_if_cut_short(ctx: &Context, stop: StopKind, steps: u32, timeout: Duration) {
     match stop {
         StopKind::StepLimit => ctx.warn(
@@ -806,7 +756,6 @@ fn warn_if_cut_short(ctx: &Context, stop: StopKind, steps: u32, timeout: Duratio
     }
 }
 
-/// Tells a person where the run's changes went.
 fn say_changes(ctx: &Context, review_dir: Option<&Path>, mode: &WriteMode, count: usize) {
     let noun = if count == 1 { "change" } else { "changes" };
     match (review_dir, mode) {
@@ -821,7 +770,6 @@ fn say_changes(ctx: &Context, review_dir: Option<&Path>, mode: &WriteMode, count
     }
 }
 
-/// Runs the agent for `request` and reports.
 pub async fn execute(
     ctx: &Context,
     request: AgentRunRequest,
@@ -856,12 +804,6 @@ pub async fn execute(
         run_id: &request.run_id,
     })?;
 
-    // The run's commands run for an owner of their own (on Windows a
-    // profile of their own); it is released when the run ends, however it
-    // ends (an error, Ctrl+C, a finished report).
-    // Grants of runs that were killed (a second Ctrl+C, a crash) have no
-    // one left to take them off; a run with commands sweeps them first
-    // (Windows; nothing to do elsewhere). Research tasks' are the app's.
     if run_policy.allow.commands {
         let _ = tokio::task::spawn_blocking(oleafly_sandbox::release_abandoned).await;
     }
@@ -916,7 +858,6 @@ pub async fn execute(
             Ok(end) => end,
             Err(error) => return Err(error),
         };
-        // Ctrl+C before the run ended; then stop whatever a tool still runs.
         let interrupted = cancel.is_cancelled();
         cancel.cancel();
         for (code, message) in tool_warnings {
@@ -969,7 +910,6 @@ pub async fn execute(
         }
         let stop = match stop {
             Ok(stop) => stop,
-            // The run's work is kept: the error says where it is.
             Err(error) => {
                 if !ctx.json() && !ctx.quiet() {
                     say_changes(
@@ -1042,15 +982,12 @@ pub async fn execute(
         })
     }
     .await;
-    // What the sandbox holds for the run's commands goes before the command
-    // returns, off the async threads (on Windows it walks the folders).
     if let Some(owner) = sandbox_owner {
         owner.release_now(ctx).await;
     }
     reported
 }
 
-/// What the run left for the report.
 struct RunEnd {
     result: Result<RunOutcome, AgentError>,
     tracker: Tracker,
@@ -1061,8 +998,6 @@ struct RunEnd {
     price: Option<super::provider::Price>,
 }
 
-/// Connects the MCP servers this run may use. A server that fails is a
-/// warning; `None` when the run uses no server.
 async fn connect_mcp_hub(
     ctx: &Context,
     request: &AgentRunRequest,
@@ -1101,9 +1036,6 @@ async fn connect_mcp_hub(
     Some(Arc::new(hub))
 }
 
-/// Gives a run that may use the network its web tools and returns the
-/// runner that serves them. Without a search key the run only reads pages;
-/// if the web client can't be built it gets no web tools.
 fn with_web_tools(
     ctx: &Context,
     completion: &mut CompletionRequest,
@@ -1152,8 +1084,6 @@ async fn run_with(
     cancel: &CancellationToken,
 ) -> Result<RunEnd, CliError> {
     let config = Arc::new(config);
-    // Skills and the HTTP client first: nothing after the workspace opens
-    // may fail, so a review folder is never left half made.
     let pack = crate::app_paths::installed_app()
         .and_then(|app| app.resources_dir)
         .map(|resources| resources.join("skills"));
@@ -1172,7 +1102,6 @@ async fn run_with(
     let client =
         oleafly_agent::build_client().map_err(|error| CliError::internal(error.to_string()))?;
 
-    // The copy (review mode) or the project itself.
     let workspace = {
         let project = project.to_path_buf();
         let policy = run_policy.clone();
@@ -1185,7 +1114,6 @@ async fn run_with(
     };
     let workspace = Arc::new(workspace);
 
-    // The user's MCP servers. A server that fails is a warning.
     let hub = connect_mcp_hub(
         ctx, request, run_policy, &config, &workspace, redactor, cancel,
     )
@@ -1303,8 +1231,6 @@ async fn run_with(
             resolved.resolved.provider_id, resolved.resolved.model_id
         ));
     }
-    // Where the sandbox can't hold commands, say so before the first one
-    // runs (or is refused), not after.
     if run_policy.allow.commands {
         let root = data_root.map(Path::to_path_buf);
         let unavailable = tokio::task::spawn_blocking(move || {
@@ -1518,7 +1444,6 @@ mod tests {
     fn a_secret_across_the_event_cut_is_still_redacted() {
         let secret = "sk-live-0123456789abcdef";
         let redactor = Redactor::new(&[secret.into()]);
-        // The key starts just before the 4 KiB cut and ends after it.
         let arguments = format!("{}{secret}{}", "a".repeat(4086), "b".repeat(100));
         let fields = redacted_fields(
             &RunEvent::ToolCall {

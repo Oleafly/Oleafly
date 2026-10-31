@@ -24,7 +24,6 @@ export interface FileMentionSelection extends MentionEntry {
   text: string;
 }
 
-/** An agent the menu can mention; DelegationTarget fits. */
 export interface MentionAgent {
   id: string;
   label: string;

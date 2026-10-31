@@ -10,7 +10,6 @@ import {
 } from "./typst-forms";
 import { typstFormsGolden } from "./typst-forms-test-support";
 
-// Each list must name every key of its type, so a type change without a list change fails `tsc`.
 type Exhaustive<T, K extends readonly (keyof T & string)[]> = [Exclude<keyof T, K[number]>] extends [never] ? K : never;
 
 function keys<T>() {
@@ -19,7 +18,7 @@ function keys<T>() {
 
 const FORM_KEYS = keys<TypstFormDefinition>()(["id", "function", "binding", "label", "summary", "fields"]);
 const FIELD_KEYS = keys<TypstFormField>()(["arg", "label", "help", "placeholder", "required", "kind"]);
-const DIAGNOSTIC_KEYS = keys<TypstFormDiagnostic>()(["source", "severity", "code", "path", "line", "detail"]);
+const DIAGNOSTIC_KEYS = keys<TypstFormDiagnostic>()(["source", "severity", "code", "path", "line", "message"]);
 const KIND_KEYS: Record<TypstFieldKind["type"], readonly string[]> = {
   text: keys<Extract<TypstFieldKind, { type: "text" }>>()(["type", "multiline", "default"]),
   content: keys<Extract<TypstFieldKind, { type: "content" }>>()(["type"]),

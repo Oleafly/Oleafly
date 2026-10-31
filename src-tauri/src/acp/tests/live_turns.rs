@@ -1,6 +1,3 @@
-//! Skill folder reads, oversized tool updates and a turn that is still
-//! finishing when its agent disconnects (#84 review).
-
 use super::{fixture_definition, fixture_temp};
 use crate::acp::{
     protocol::{self, Frame},
@@ -56,8 +53,6 @@ async fn start(review: ReviewHooks) -> Harness {
     }
 }
 
-// ---- skill folder reads ------------------------------------------------------
-
 fn skill(folder: &Path) -> PromptSkill {
     PromptSkill {
         id: "claim-audit".into(),
@@ -70,8 +65,6 @@ fn skill(folder: &Path) -> PromptSkill {
     }
 }
 
-/// Sends one turn whose agent asks to use `path` with `kind`, and returns the
-/// outcome the agent was given.
 async fn ask(
     harness: &Harness,
     skill: Option<PromptSkill>,
@@ -218,8 +211,6 @@ async fn a_skill_turn_may_read_the_attached_skill_folder_and_nothing_else() {
     harness.runtime.close(&harness.id).await.unwrap();
 }
 
-// ---- oversized tool updates --------------------------------------------------
-
 #[tokio::test]
 async fn an_oversized_update_still_completes_its_tool_call() {
     let harness = start(ReviewHooks::inert()).await;
@@ -276,7 +267,6 @@ async fn an_oversized_tool_update_keeps_only_its_identity() {
         json!({"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"native","update":{"sessionUpdate":"tool_call_update","toolCallId":"edit-1","status":"completed","kind":"edit","title":"Edit refs.bib","truncated":true}}})
     );
 
-    // Fields of an unexpected type are left out rather than failing the read.
     let frame = one_frame(&json!({"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"native","update":{"sessionUpdate":"tool_call","toolCallId":"read-1","status":null,"title":{"text":"odd"},"content":[{"type":"content","content":{"type":"text","text":big}}]}}})).await;
     let Frame::TruncatedUpdate { message, .. } = frame else {
         panic!("expected a truncated tool call: {frame:?}");
@@ -286,7 +276,6 @@ async fn an_oversized_tool_update_keeps_only_its_identity() {
         json!({"sessionUpdate":"tool_call","toolCallId":"read-1","truncated":true})
     );
 
-    // Updates that are not about a tool call, or name none, are only counted.
     for update in [
         json!({"sessionUpdate":"agent_message_chunk","content":{"type":"text","text":big}}),
         json!({"sessionUpdate":"tool_call_update","content":[{"type":"content","content":{"type":"text","text":big}}]}),
@@ -297,8 +286,6 @@ async fn an_oversized_tool_update_keeps_only_its_identity() {
     let frame = one_frame(&json!({"jsonrpc":"2.0","method":"session/update","params":{"update":{"sessionUpdate":"tool_call_update","toolCallId":"edit-1","text":big}}})).await;
     assert!(matches!(frame, Frame::DroppedUpdate { .. }), "{frame:?}");
 }
-
-// ---- a turn still finishing when its agent disconnects -----------------------
 
 fn slow_finish(delay: Duration) -> ReviewHooks {
     ReviewHooks {
@@ -398,7 +385,6 @@ async fn a_reconnect_after_a_lost_write_continues_after_the_saved_events() {
         .await
         .unwrap();
     harness.runtime.close(&harness.id).await.unwrap();
-    // A record saved from an older copy of the session lags behind its events.
     let mut record = harness.runtime.record(&harness.id).unwrap();
     let saved = record.last_sequence;
     record.last_sequence = 1;
@@ -421,8 +407,6 @@ async fn a_reconnect_after_a_lost_write_continues_after_the_saved_events() {
     harness.runtime.close(&harness.id).await.unwrap();
 }
 
-// ---- launch roots on mapped network drives -----------------------------------
-
 #[cfg(unix)]
 #[test]
 fn a_network_root_is_spelled_through_the_drive_that_leads_to_it() {
@@ -443,12 +427,10 @@ fn a_network_root_is_spelled_through_the_drive_that_leads_to_it() {
         path_through_alias(&root, &[alias(&drive)]),
         Some(drive.join("thesis"))
     );
-    // The drive closest to the project wins.
     assert_eq!(
         path_through_alias(&root, &[alias(&drive), alias(&deep)]),
         Some(deep.clone())
     );
-    // A drive that maps a folder inside the project does not lead to it.
     assert_eq!(path_through_alias(&root, &[alias(&inside)]), None);
     assert_eq!(path_through_alias(&root, &[]), None);
     let unrelated = temp.path().join("unrelated");

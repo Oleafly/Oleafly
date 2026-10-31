@@ -224,6 +224,8 @@
     "suggestion_not_found": "Quel suggerimento non c'è più. Forse qualcuno l'ha accettato o rifiutato.",
     "suggestion_not_yours": "Solo chi ha fatto questo suggerimento può ritirarlo.",
     "suggestion_role": "Il tuo ruolo in questo progetto non consente suggerimenti.",
+    "suggestion_changed": "Il testo intorno a questo suggerimento è cambiato, quindi un proprietario o un editor deve accettarlo o rifiutarlo.",
+    "suggestion_too_long": "Un'eliminazione suggerita può contenere al massimo 20.000 caratteri. Elimina una parte più piccola alla volta.",
     "chat_role": "Il tuo ruolo in questo progetto non consente questa azione nella chat.",
     "history_unavailable": "La cronologia di questo progetto non è ancora su questo computer. Riprova quando si sarà sincronizzata.",
     "account_storage_full": "L'account del proprietario del progetto ha esaurito lo spazio di archiviazione su questo server. Rimuovi alcuni file per liberare spazio, oppure chiedi più spazio all'amministratore del server.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Ripristinare l'intero progetto?",
-      "description": "Per tutti in questo progetto ogni file torna a questa versione ({{time}}). Il testo attuale resta nella cronologia, quindi puoi tornarci.",
+      "textAndDeleted": "Per tutti in questo progetto il testo di ogni file torna a questa versione ({{time}}) e i file eliminati vengono ripristinati. I file rinominati mantengono il nuovo nome, mentre le figure e i file aggiunti dopo restano come sono. Il testo attuale resta nella cronologia, quindi puoi tornarci.",
       "confirm": "Ripristina progetto"
     },
     "compareTitle": "Modifiche tra due versioni",

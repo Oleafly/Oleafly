@@ -14,8 +14,6 @@ import type { ForgeAccount, ForgeRepo } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 
-/** The import dialog's Git step: clone any repository by its address, or
- * pick one from a connected account. */
 export function GitImportView({
   busy,
   onImport,
@@ -99,7 +97,6 @@ export function GitImportView({
       );
     }
     if (status === "error") {
-      // The accounts couldn't be read, which isn't the same as having none.
       return (
         <ErrorState
           message={error ?? t(($) => $.library.import.repositoriesFailed)}

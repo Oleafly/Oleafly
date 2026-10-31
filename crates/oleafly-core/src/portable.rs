@@ -7,11 +7,6 @@ pub enum PortableProblem {
     ProtectedRoot,
 }
 
-/// The key two names share when a case-insensitive file system treats them as
-/// one file. Those compare one character at a time (NTFS through its upcase
-/// table, APFS through simple case folding), so `µ` and `μ`, `ς` and `σ`, or
-/// `ſ` and `s` name the same file: a character folds through its uppercase
-/// form when that is a single character.
 pub fn fold(path: &str) -> String {
     let mut folded = String::with_capacity(path.len());
     for character in path.nfc() {
@@ -191,12 +186,10 @@ mod tests {
     fn folding_ignores_case_and_normalization_form() {
         assert_eq!(fold("Caf\u{0065}\u{0301}.tex"), fold("café.TEX"));
         assert_ne!(fold("main.tex"), fold("main2.tex"));
-        // Names a case-insensitive disk treats as one file share a key.
         assert_eq!(fold("\u{b5}m.png"), fold("\u{3bc}m.png"));
         assert_eq!(fold("\u{3c2}.tex"), fold("\u{3c3}.tex"));
         assert_eq!(fold("\u{17f}.tex"), fold("s.tex"));
         assert_eq!(fold("\u{212a}.tex"), fold("k.tex"));
-        // A character whose uppercase form is two letters keeps its own key.
         assert_ne!(fold("stra\u{df}e.tex"), fold("strasse.tex"));
     }
 }

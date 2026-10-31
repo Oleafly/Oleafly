@@ -124,7 +124,6 @@ setEditorTranslator(packageMessage);
 setEditorErrorReporter((scope, error) => void logError(scope, error));
 setWysiwygTranslator(wysiwygMessage);
 
-// Module side effect: must install before any lint runs.
 setSpellHost({
   t: packageMessage,
   getProjectId: () => useFilesStore.getState().projectId,
@@ -256,7 +255,6 @@ export function saveActiveFromKeymap(): void {
     });
 }
 
-// Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
   t: packageMessage,
   useActivePath: () => useFilesStore((s) => s.activePath),
@@ -331,8 +329,6 @@ const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
-  // First, so it runs before defaultKeymap's Mod-Enter (insertBlankLine): the
-  // recompile chord belongs to App.tsx and must not edit the document.
   recompileShortcutBinding,
   {
     key: "Enter",
@@ -359,10 +355,6 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
         const wasEnabled =
           previous.spellcheck || previous.harper;
         if (!disabled || !wasEnabled) return;
-        // This transition removes the final proofreading provider. Clear both
-        // surfaces synchronously with the settings store update so a completed
-        // worker generation cannot remain visible while React reconfigures
-        // the Source and Visual editors.
         cancelProofreading("source");
         cancelProofreading("visual");
       }),

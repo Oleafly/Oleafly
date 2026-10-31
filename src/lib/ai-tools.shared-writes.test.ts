@@ -152,8 +152,6 @@ describe("AI file tools in a live shared project", () => {
 });
 
 describe("AI edits while a shared project goes live", () => {
-  // The role isn't known yet, and the shared document isn't live, so a write
-  // would land on the local file. The files store refuses the same writes.
   function connecting(): void {
     useCollabEditorGate.setState({ projectId: "proj", viewer: false, connecting: true });
   }

@@ -1,6 +1,3 @@
-//! `preflight_check` and `lint_sources` for `oleafly mcp`: the `check` and
-//! `lint` reports as tool results. Both only read; `lint_sources` never
-//! fixes.
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -13,13 +10,8 @@ use crate::mcp::ToolMeta;
 
 pub struct CheckTools;
 
-/// Checks and lints that run at once, across calls. A blocking walk goes on
-/// after its client cancels the call, so the slot is held by the work, not
-/// by the call: cancelled calls can't pile up past the limit.
 static BLOCKING_SLOTS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(4);
 
-/// Sets its flag when the call is dropped (the client cancelled it), so the
-/// blocking work stops at its next stage.
 struct CancelOnDrop(Arc<AtomicBool>);
 
 impl Drop for CancelOnDrop {
@@ -35,9 +27,6 @@ async fn blocking_slot() -> Result<tokio::sync::SemaphorePermit<'static>, ToolEr
         .map_err(|_| ToolError("Oleafly is stopping.".into()))
 }
 
-/// A run's payload with its warnings (a stale build, a missing main
-/// document, proofreading that isn't available), which say what the
-/// findings don't cover.
 fn with_warnings(mut payload: Value, warnings: &[crate::contract::Warning]) -> Value {
     if let Some(object) = payload.as_object_mut() {
         object.insert("warnings".into(), json!(warnings));

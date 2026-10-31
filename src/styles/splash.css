@@ -62,7 +62,6 @@ body {
   opacity: 0.18;
 }
 
-/* The brand fill animation: the green leaf fills from the stem up. */
 .oleafly-splash-fill {
   animation: oleafly-splash-fill 1.4s ease-in-out infinite alternate;
 }
@@ -81,7 +80,6 @@ body {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  /* Shimmer: a bright band sweeps across text clipped to the gradient. */
   background: linear-gradient(
     90deg,
     rgba(82, 82, 91, 0.55) 0%,

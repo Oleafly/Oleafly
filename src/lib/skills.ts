@@ -59,7 +59,6 @@ export interface SkillEntry {
   enabled: boolean;
   removable: boolean;
   validation: SkillValidation;
-  /** Your own copy uses a built-in skill's id, so the built-in version never installs. */
   shadowsBundled?: boolean;
 }
 
@@ -148,7 +147,6 @@ export function updateBuiltinSkill(id: string): Promise<SkillEntry> {
   return invoke<SkillEntry>("skills_update_builtin", { id });
 }
 
-/** Moves your copy to a backup folder and installs the built-in version. */
 export function replaceSkillWithBuiltin(id: string): Promise<{ record: SkillEntry; backupPath: string }> {
   return invoke<{ record: SkillEntry; backupPath: string }>("skills_replace_with_builtin", { id });
 }

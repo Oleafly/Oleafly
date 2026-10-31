@@ -166,9 +166,7 @@ export function Book({
           )}
           style={{ width: "100%", aspectRatio: "8.5 / 11" }}
         >
-          {/* back cover - peeks below for thickness */}
           <div className="absolute inset-0 translate-y-[6px] rounded-md" style={{ background: dark }} />
-          {/* page edges (bottom) */}
           <div
             className="absolute inset-x-0 bottom-0 translate-y-[3px] rounded-b-md"
             style={{
@@ -178,7 +176,6 @@ export function Book({
                 "repeating-linear-gradient(to right, rgba(0,0,0,0.06) 0 1px, transparent 1px 3px)",
             }}
           />
-          {/* front cover */}
           <div className="absolute inset-0 flex overflow-hidden rounded-md shadow-lg" style={{ background: coverColor }}>
             {variant !== "simple" && (
               <div className="w-2.5 shrink-0" style={{ background: dark, boxShadow: "1px 0 2px rgba(0,0,0,0.18)" }} />

@@ -77,9 +77,6 @@ fn write_into(
     Ok(write_renaming(live, bases, reads, root, path, base, text)?.0)
 }
 
-// Writes an app's text into the document. A new file whose path the layout
-// changes, such as `aux.tex`, is written where the layout puts it, so that
-// path comes back paired with the one asked for, for the window to follow.
 fn write_renaming(
     live: &mut LiveProject,
     bases: &mut WrittenTexts,
@@ -111,20 +108,20 @@ fn write_renaming(
         return Ok(refused);
     }
     let added = match placed.get(&path).cloned() {
-        Some((id, NodeKind::Text, _)) if suggested => {
-            live.suggested_text(&id, &text)?;
-            None
-        }
         Some((id, NodeKind::Text, _)) => {
             let current = live.doc().text(&id)?;
             let chosen = match base {
                 Some(base) => Some(base.into_owned()),
                 None => closest_base(bases, reads, &path, &text),
             };
-            match chosen
+            let merged = chosen
                 .as_deref()
-                .and_then(|base| merged_onto(base, &text, &current))
-            {
+                .and_then(|base| merged_onto(base, &text, &current));
+            match merged {
+                Some(operation) if suggested => live.suggested_operation(&id, &operation)?,
+                None if suggested => {
+                    live.suggested_operation(&id, &oleafly_collab::merge::diff(&current, &text))?
+                }
                 Some(operation) => live.local_operation(&id, &operation)?,
                 None => live.local_text(&id, &text)?,
             };
@@ -359,8 +356,6 @@ fn undo_shared(
     Ok(())
 }
 
-// Writes every text or none: the first one refused undoes the others and
-// is returned. Otherwise returns the new files the layout put elsewhere.
 fn write_all_shared(
     live: &mut LiveProject,
     bases: &mut WrittenTexts,
@@ -558,6 +553,48 @@ mod tests {
         assert_eq!(
             live.doc().text(&main).unwrap(),
             "ONE\ntwo\nthree\nfour from a collaborator\n"
+        );
+    }
+
+    #[test]
+    fn a_reviewers_write_from_a_stale_base_suggests_only_its_own_change() {
+        let dir = tempfile::tempdir().unwrap();
+        let read = "one\ntwo\nthree\nfour\n";
+        let (mut live, main) = shared(read);
+        live.local_text(&main, "one\ntwo\nthree\nnew paragraph\nfour\n")
+            .unwrap();
+        live.set_role(ProjectRole::Reviewer);
+        live.doc_mut()
+            .set_author(&AccountId::new_v7().to_string(), "Rae");
+        assert!(write_into(
+            &mut live,
+            &mut WrittenTexts::default(),
+            None,
+            dir.path(),
+            "main.tex",
+            Some(read),
+            "ONE\ntwo\nthree\nfour\n",
+        )
+        .unwrap());
+        assert_eq!(
+            live.doc().text(&main).unwrap(),
+            "ONE\ntwo\nthree\nnew paragraph\nfour\n"
+        );
+        let suggested: Vec<String> = live
+            .doc()
+            .suggestions(&main)
+            .unwrap()
+            .into_iter()
+            .map(|found| found.text)
+            .collect();
+        assert!(
+            suggested.iter().all(|text| !text.contains("two")),
+            "{suggested:?}"
+        );
+        live.doc_mut().reject_file_suggestions(&main).unwrap();
+        assert_eq!(
+            live.doc().text(&main).unwrap(),
+            "one\ntwo\nthree\nnew paragraph\nfour\n"
         );
     }
 

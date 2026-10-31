@@ -1,12 +1,6 @@
-// Shape checks for what admins type into Access rules, matching the server's
-// own rules so the common slips are named before anything is sent. They only
-// ever refuse what the server would refuse too.
-
 const LABEL = /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?$/u;
 const SPACE_OR_CONTROL = /[\s\p{Cc}]/u;
 
-// Drops trailing dots with a plain loop. A regex like /\.+$/ backtracks over a
-// long run of dots that doesn't end the text.
 function withoutTrailingDots(text: string): string {
   let end = text.length;
   while (end > 0 && text[end - 1] === ".") end -= 1;

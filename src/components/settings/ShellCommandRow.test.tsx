@@ -52,7 +52,6 @@ function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, name: string) => values[name] ?? "");
 }
 
-// Settings blurs the paths in these sentences, which splits each into runs.
 async function expectState(text: string) {
   await waitFor(() => expect(screen.getByTestId("shell-command-state").textContent).toBe(text));
 }
@@ -89,7 +88,6 @@ describe("ShellCommandRow", () => {
       (await screen.findByRole("status")).textContent,
     ).toBe(fill(copy.result.linked, { path: "~/.local/bin/oleafly" }));
     await expectState(fill(copy.state.installed, { path: "~/.local/bin/oleafly" }));
-    // Like every path in Settings, it stays blurred until hovered or focused.
     const shown = within(screen.getByTestId("shell-command-state")).getByText("~/.local/bin/oleafly");
     expect(shown).toHaveAttribute("data-settings-path");
     expect(shown).toHaveAttribute("tabindex", "0");

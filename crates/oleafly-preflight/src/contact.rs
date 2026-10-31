@@ -1,5 +1,3 @@
-//! Contact detection (`packages/preflight/src/contact.ts`).
-
 use std::sync::LazyLock;
 
 use unicode_normalization::UnicodeNormalization;
@@ -11,10 +9,6 @@ static EMAIL: LazyLock<JsRegex> = LazyLock::new(|| {
     JsRegex::std(r"[0-9A-Za-z_.+-]{1,100}@[0-9A-Za-z_-]{1,100}\.[0-9A-Za-z_.-]{1,100}")
 });
 
-// Deliberately requires either a conventional grouped number or 10-15
-// contiguous digits. Candidate validation below rejects year ranges and other
-// numeric résumé content before it can masquerade as a phone number. The
-// separator classes hold a literal U+00A0.
 static PHONE_CANDIDATE: LazyLock<JsRegex> = LazyLock::new(|| {
     JsRegex::fancy(concat!(
         r"(?i)(?<![\p{L}\p{N}])(?:tel\s*:\s*)?",

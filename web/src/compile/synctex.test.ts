@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { type SyncTexModule, SyncTexError } from "../synctex";
-import { syncTexOpener } from "./synctex";
+import { syncTexEngine, syncTexOpener } from "./synctex";
 
-function engine(open: SyncTexModule["open"]): SyncTexModule {
-  return { open };
+function engine(open: SyncTexModule["open"], mapLine: SyncTexModule["mapLine"] = () => null): SyncTexModule {
+  return { open, mapLine };
 }
 
 const index = { forward: () => null, inverse: () => ({ file: "main.tex", line: 3, column: 0 }), dispose: vi.fn() };
@@ -43,6 +43,16 @@ describe("syncTexOpener", () => {
     );
     const open = syncTexOpener(load);
     await expect(open(new Uint8Array([1]), [])).rejects.toMatchObject({ code: "file-too-large" });
+    expect(load).toHaveBeenCalledOnce();
+  });
+
+  it("maps lines through the same module, loading it once", async () => {
+    const mapLine = vi.fn(() => ({ line: 4, exact: false }));
+    const load = vi.fn(async () => engine(() => index, mapLine));
+    const shared = syncTexEngine(load);
+    await expect(shared.mapLine("a", "b", 2, true)).resolves.toEqual({ line: 4, exact: false });
+    await shared.open(new Uint8Array([1]), ["main.tex"]);
+    expect(mapLine).toHaveBeenCalledWith("a", "b", 2, true);
     expect(load).toHaveBeenCalledOnce();
   });
 });

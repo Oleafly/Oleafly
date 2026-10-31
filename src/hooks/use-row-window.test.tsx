@@ -281,6 +281,21 @@ describe("useRowWindow with layout", () => {
     expect(view.queryByText("row 200")).toBeNull();
   });
 
+  it("measures again when a one-row list grows, since its only row was also its shorter last row", () => {
+    let rowCount = 1;
+    const layout = laidOutRows((index) => (index === rowCount - 1 ? 16 : 20), 200);
+    const view = render(<ScrolledRows count={rowCount} />);
+    expect(view.getByText("row 0")).toBeTruthy();
+
+    rowCount = 1_000;
+    view.rerender(<ScrolledRows count={rowCount} />);
+    layout.scrollTo(view.getByTestId("scroller"), 4_000);
+
+    expect(view.getByText("row 200")).toBeTruthy();
+    expect(view.queryByText("row 250")).toBeNull();
+    expect(view.getByTestId("list").style.paddingTop).toBe(`${188 * 20}px`);
+  });
+
   it("measures again when the list width changes while the first row changes too", () => {
     let height = 20;
     let width = 100;

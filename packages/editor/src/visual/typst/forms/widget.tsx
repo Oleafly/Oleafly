@@ -15,19 +15,16 @@ import type { FieldEdit, FormCallModel } from "./model";
 export interface FormHost {
   readonly view: EditorView;
   readonly model: FormCallModel;
-  // The call's source when the widget was drawn.
   readonly source: string;
   readonly readOnly: boolean;
+  readonly drafts: Map<string, string>;
   commit(field: number, edit: FieldEdit): Promise<CommitResult>;
   reveal(range: TextRange): void;
   history(command: HistoryCommand): void;
 }
 
-// What a widget knows about its call. The field model is read only when the widget is
-// drawn, so calls outside the viewport, and selection-only rebuilds, cost no model reads.
 export interface FormCallRef {
   readonly definition: TypstFormDefinition;
-  // Where the call's `#` is.
   readonly from: number;
   readonly source: string;
   read(): FormCallModel | null;
@@ -40,21 +37,26 @@ export function holdFormFocus(event: { readonly target: EventTarget | null; prev
   const target = event.target instanceof Element ? event.target : null;
   if (!target || target.closest("input:not([type='checkbox']), textarea, select")) return;
   event.preventDefault();
+  if (target.closest("[aria-expanded='true']")) return;
   target.closest<HTMLElement>("button, input")?.focus({ preventScroll: true });
 }
 
-// The call each widget element last drew, so a widget that only moved isn't drawn again.
 const drawn = new WeakMap<HTMLElement, { definition: TypstFormDefinition; source: string; readOnly: boolean }>();
 
-// Undo or redo in the document from a form. Undo puts the selection back where it was, which
-// may be far from here, so the form stays in view.
+const unsaved = new WeakMap<HTMLElement, Map<string, string>>();
+
+function draftsOf(element: HTMLElement): Map<string, string> {
+  const drafts = unsaved.get(element) ?? new Map<string, string>();
+  unsaved.set(element, drafts);
+  return drafts;
+}
+
 export function runFormHistory(view: EditorView, element: HTMLElement, command: HistoryCommand): void {
   (command === "redo" ? redo : undo)(view);
   const at = anchorsOf(view)?.at(element) ?? null;
   if (at !== null) view.dispatch({ effects: EditorView.scrollIntoView(at, { y: "nearest" }) });
 }
 
-// Shared by the card and the chip.
 export abstract class TypstFormWidget extends WidgetType {
   constructor(
     readonly call: FormCallRef,
@@ -74,7 +76,6 @@ export abstract class TypstFormWidget extends WidgetType {
 
   protected abstract readonly className: string;
 
-  // A card is a labelled group whose keys the app's shortcuts leave to the form.
   protected readonly group: boolean = false;
 
   protected abstract content(host: FormHost, element: HTMLElement): ReactNode;
@@ -87,7 +88,7 @@ export abstract class TypstFormWidget extends WidgetType {
       element.setAttribute("role", "group");
     }
     element.addEventListener("mousedown", holdFormFocus);
-    anchorsOf(view)?.track(element, this.call.from);
+    unsaved.set(element, new Map(anchorsOf(view)?.claim(this.call.from, this.call.definition.id)));
     this.render(element, view);
     if (this.group) {
       // The app leaves a form's history keys to the form. Added after React's own listener on
@@ -106,7 +107,6 @@ export abstract class TypstFormWidget extends WidgetType {
   // drafts and popover over.
   updateDOM(element: HTMLElement, view: EditorView): boolean {
     if (anchorsOf(view)?.at(element) !== this.call.from) return false;
-    // Text typed above the call only moved it, and the anchor followed, so nothing needs drawing.
     const last = drawn.get(element);
     if (last?.definition === this.call.definition && last.source === this.call.source && last.readOnly === this.readOnly) {
       return true;
@@ -133,6 +133,13 @@ export abstract class TypstFormWidget extends WidgetType {
   }
 
   private render(element: HTMLElement, view: EditorView): void {
+    const drafts = draftsOf(element);
+    anchorsOf(view)?.track(element, {
+      at: this.call.from,
+      source: this.call.source,
+      definition: this.call.definition.id,
+      drafts,
+    });
     drawn.set(element, { definition: this.call.definition, source: this.call.source, readOnly: this.readOnly });
     let model: FormCallModel | null = null;
     try {
@@ -147,13 +154,13 @@ export abstract class TypstFormWidget extends WidgetType {
     if (this.group) element.setAttribute("aria-label", model.definition.label);
     const definitionId = model.definition.id;
     const drawnFrom = model.range.from;
-    // Positions in the model are where the call was when drawn; the anchor says where it is now.
     const anchor = () => anchorsOf(view)?.at(element) ?? null;
     const host: FormHost = {
       view,
       model,
       source: this.call.source,
       readOnly: this.readOnly,
+      drafts,
       commit: (field, edit) =>
         new Promise((resolve) => {
           queueMicrotask(() => {
@@ -205,12 +212,12 @@ export const FormHeader: FC<{ readonly host: FormHost }> = ({ host }) => {
   );
 };
 
-// The form's header and fields, as both the card and the chip's popover show them.
 export const FormBody: FC<{ readonly host: FormHost }> = ({ host }) => (
   <>
     <FormHeader host={host} />
     <FormFields
       model={host.model}
+      drafts={host.drafts}
       readOnly={host.readOnly}
       onCommit={host.commit}
       onReveal={host.reveal}

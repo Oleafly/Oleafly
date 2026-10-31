@@ -101,7 +101,6 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
   useEffect(() => {
     if (editing) {
       setDraft(d.label);
-      // Focus + select on the next tick so the textarea is mounted.
       requestAnimationFrame(() => taRef.current?.select());
     }
   }, [editing, d.label]);
@@ -217,8 +216,6 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
         <Handle
           key={h.id}
           id={h.id}
-          // source + Loose connection mode: drag out to create, or accept
-          // reconnected arrow heads/tails from other shapes.
           type="source"
           position={h.pos}
           isConnectable
@@ -228,7 +225,6 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
             background: "var(--background)",
             border: `1px solid ${primaryColor}`,
             opacity: handlesVisible ? 1 : 0,
-            // Keep hit-testing available while hidden so edge reconnect still snaps.
             pointerEvents: "all",
             cursor: "crosshair",
             transition: "opacity 120ms",

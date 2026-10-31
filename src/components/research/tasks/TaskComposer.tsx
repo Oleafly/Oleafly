@@ -48,7 +48,6 @@ export interface ResearchTaskStarter {
   title: () => string;
   prompt: string;
   skillIds: string[];
-  /** Brief settings the starter turns on. */
   brief?: Partial<ResearchBrief>;
 }
 
@@ -114,10 +113,6 @@ interface TaskComposerProps {
   busy: boolean;
   onCancel: () => void;
   onDismiss?: () => void;
-  /**
-   * Opens Settings for a link in the brief. The composer has closed (its draft
-   * saved) by then; the caller can bring it back when Settings closes.
-   */
   onOpenSettings?: (open: () => void) => void;
   onCreate: (input: ResearchTaskEdit & { projectId: string }) => Promise<void>;
   onSave: (taskId: string, input: ResearchTaskEdit) => Promise<void>;
@@ -141,7 +136,6 @@ interface StarterBrief {
   previous: Record<string, unknown>;
 }
 
-/** A restored draft that began from a starter still has that starter's brief settings to undo. */
 function restoredStarterBrief(starterId: string | undefined): StarterBrief | null {
   const patch = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId)?.brief;
   if (!patch) return null;
@@ -153,7 +147,6 @@ export function composerDraftKey(projectId: string, editingTaskId: string | null
   return `${projectId}\u0000${editingTaskId ?? ""}`;
 }
 
-/** Whether the brief's compute target is gone from Settings; `false` until the list loads, or when it can't. */
 function useComputeTargetMissing(target: string | null): boolean {
   const [targets, setTargets] = useState<readonly string[] | null>(null);
   useEffect(() => {
@@ -164,7 +157,6 @@ function useComputeTargetMissing(target: string | null): boolean {
         .then((view) => {
           if (current) setTargets(view.targets.map((entry) => entry.id));
         })
-        // A list that failed to load says nothing about whether the target still exists.
         .catch(() => {});
     };
     load();
@@ -215,8 +207,6 @@ function TaskComposerDraft({
   const [brief, setBrief] = useState<ResearchBrief>(
     () => restored?.brief ?? editingTask?.brief ?? defaultBrief(),
   );
-  // A start time that already passed means "start now": the saved one on a task that
-  // waited behind another, or one in a draft left open for a while.
   const [runAfter, setRunAfter] = useState<number | null>(() =>
     upcomingStart(restored?.runAfter ?? editingTask?.runAfter ?? null),
   );
@@ -226,17 +216,12 @@ function TaskComposerDraft({
   const [backgroundEnabled, setBackgroundEnabled] = useState(false);
   const briefTouched = useRef(Boolean(restored?.brief || editingTask));
   const [error, setError] = useState<string | null>(null);
-  // The "Run on" fields found something that can't be saved (a removed target, bad Slurm text).
   const [computeFieldProblem, setComputeFieldProblem] = useState(false);
-  // Those fields sit in the collapsed part of the brief, so the composer checks
-  // the target itself: a task saved with a removed target fails every run.
   const targetMissing = useComputeTargetMissing(brief.compute.target);
   const computeProblem = computeFieldProblem || targetMissing;
-  // What the chosen starter set in the brief, and what each setting was before, so another choice can undo it.
   const starterBrief = useRef<StarterBrief | null>(restoredStarterBrief(restored?.starterId));
   const [pendingStarter, setPendingStarter] = useState<string | null>(null);
 
-  // New tasks start with the time budget and network choice from Settings.
   useEffect(() => {
     let current = true;
     void getConfig()
@@ -275,7 +260,6 @@ function TaskComposerDraft({
   const applyStarter = (nextStarterId: string) => {
     setStarterId(nextStarterId);
     const starter = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === nextStarterId);
-    // Settings the last starter turned on go back, unless the user changed them since.
     let next = brief;
     const applied = starterBrief.current;
     starterBrief.current = null;
@@ -303,7 +287,6 @@ function TaskComposerDraft({
     if (next !== brief) setBrief(next);
   };
 
-  /** A starter replaces the title and instructions, so ask first when the user changed them. */
   const chooseStarter = (nextStarterId: string) => {
     const known = RESEARCH_TASK_STARTERS.some((candidate) => candidate.id === nextStarterId);
     const current = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId);
@@ -320,12 +303,10 @@ function TaskComposerDraft({
   const submit = async () => {
     const agent = agents.find((candidate) => selectedAgentKey(candidate) === agentKey);
     if (busy || !agent || agent.available === false || !title.trim() || !prompt.trim()) return;
-    // A start time that passed while the form stayed open means "start now", as it does for a restored draft.
     const start = upcomingStart(runAfter) ?? (runAfter !== null && Number.isNaN(runAfter) ? runAfter : null);
     if (start !== runAfter) setRunAfter(start);
     const refusal = startError(start);
     if (Object.keys(briefErrors(brief)).length > 0 || refusal !== undefined || computeProblem) {
-      // Say why, so a click that saves nothing doesn't look like a dead button.
       setError(refusal ?? t(($) => $.researchTools.tasks.composer.cannotSave));
       return;
     }
@@ -372,8 +353,6 @@ function TaskComposerDraft({
     onCancel();
   };
 
-  // Settings opens above the app, not inside this modal dialog: the composer
-  // closes first, keeping the draft.
   const openSettingsFromBrief = (open: () => void) => {
     if (busy) return;
     dismiss();

@@ -13,7 +13,6 @@ import { TerminalPrompts } from "./TerminalPrompts";
 
 const stop = en.terminal.stop;
 
-// The backdrop behind the dialog is a button named Cancel too.
 function cancelButton(): HTMLElement {
   return within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ });
 }

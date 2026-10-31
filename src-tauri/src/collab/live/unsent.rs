@@ -663,8 +663,6 @@ mod tests {
         let lab = Lab::new(true);
         lab.type_text("hello\nfrom alice\n");
         assert!(lab.waiting());
-        // Signing out ends the live session from its own task a moment
-        // later, so the session is held here to be looked at once it is gone.
         let active = lab.active();
         let outcome = lab.sign_out(UnsentChoice::Ask);
         assert_eq!(

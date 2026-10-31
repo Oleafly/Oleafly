@@ -22,7 +22,6 @@ fn context(root: &Path) -> TaskRunContext {
 
 struct LoopbackBridge {
     url: String,
-    // Only the macOS and Linux sandbox tests count the bridge calls.
     #[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
     calls: Arc<Mutex<Vec<Value>>>,
     cancel: CancellationToken,
@@ -182,7 +181,6 @@ impl TaskHost for FixtureHost {
     }
 }
 
-/// What running tasks share, over a task store under `root`.
 fn task_services(root: &Path) -> TaskServices {
     let tasks_root = root.join("tasks");
     let clocks = Arc::new(oleafly_research::budget::BudgetClocks::default());
@@ -472,8 +470,6 @@ async fn acp_adapter_runs_confined_tools_and_replays_the_durable_transcript() {
     );
     assert_eq!(lock(&fixture.host.bridge.calls).len(), 1);
     fixture.assert_cleaned().await;
-    // The outcome names the agent's own session, as the background helper's
-    // does; the conversation is the task's one saved session.
     let native = outcome.native_session_id.unwrap();
     let sessions = fixture.adapter.runtime.list("project").unwrap();
     assert_eq!(
@@ -599,8 +595,6 @@ async fn acp_adapter_cancellation_stops_child_writes_before_returning() {
         std::fs::read_to_string(&heartbeat).is_ok_and(|text| text.lines().count() >= 3)
     })
     .await;
-    // The parent writes child.pid after the fork, so heartbeats do not prove it
-    // is written, and the cancel kills the parent. Read it before cancelling.
     #[cfg(target_os = "macos")]
     let child = test_wait::read_until(
         &fixture.workspace.join("analysis/child.pid"),

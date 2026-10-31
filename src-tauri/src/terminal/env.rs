@@ -1,7 +1,3 @@
-//! The environment and folder a terminal session starts with: the search
-//! path with the `oleafly` CLI's folder first, the variables a launch adds,
-//! and on Linux the AppImage variables a child shell must not inherit.
-
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -15,17 +11,13 @@ const MAX_LAUNCH_ENV: usize = 32;
 const MAX_LAUNCH_ENV_VALUE: usize = 8 * 1024;
 const MAX_LAUNCH_ENV_NAME: usize = 128;
 
-/// Where the `oleafly` CLI is, for children that should be able to run it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct CliEnv {
-    /// The folder that goes first on PATH.
     pub dir: Option<PathBuf>,
-    /// The program itself, exported as `OLEAFLY_CLI`.
     pub exe: Option<PathBuf>,
 }
 
 impl CliEnv {
-    /// The CLI the app recorded at startup, if any.
     pub(crate) fn current() -> Self {
         Self::from_program(crate::acp::cli_program())
     }
@@ -46,7 +38,6 @@ impl CliEnv {
     }
 }
 
-/// `dir` first, then every entry of `current` except `dir` itself.
 pub(crate) fn prepend_path(current: Option<&OsStr>, dir: &Path) -> OsString {
     let mut entries = vec![dir.to_path_buf()];
     if let Some(current) = current {
@@ -107,9 +98,6 @@ fn valid_env_name(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// The folder a terminal starts in: the project root, or a folder inside
-/// it given with `/` separators. Never a path outside the project, through
-/// `..`, a drive, an absolute path or a symlink; never a `\\?\` path.
 pub(crate) fn terminal_cwd(root: &Path, rel: Option<&str>) -> Result<PathBuf, String> {
     let rel = rel.map(str::trim).unwrap_or_default();
     if rel.is_empty() || rel == "." {
@@ -123,9 +111,6 @@ pub(crate) fn terminal_cwd(root: &Path, rel: Option<&str>) -> Result<PathBuf, St
     Ok(crate::program_locator::child_path(&path))
 }
 
-/// Set the session's environment, in order: the search path, the CLI,
-/// the AppImage clean-up (Linux), the shell's own variables, then the
-/// launch's variables.
 pub(crate) fn apply_session_env(
     cmd: &mut CommandBuilder,
     spec: &ShellSpec,
@@ -151,8 +136,6 @@ pub(crate) fn apply_session_env(
     }
 }
 
-/// The search path agents get, with the CLI folder first and, inside an
-/// AppImage, without the bundle's own folders.
 fn session_search_path(cli_dir: Option<&Path>) -> OsString {
     let prepend: Vec<PathBuf> = cli_dir.map(Path::to_path_buf).into_iter().collect();
     let path = crate::program_locator::child_search_path(&prepend, &[]);
@@ -171,7 +154,6 @@ fn session_search_path(cli_dir: Option<&Path>) -> OsString {
     path
 }
 
-/// One change to the inherited environment.
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -185,7 +167,6 @@ pub(crate) enum EnvEdit {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 const APPIMAGE_MARKERS: &[&str] = &["APPDIR", "APPIMAGE", "ARGV0", "OWD"];
 
-/// Single-path variables the bundle's AppRun hooks point into the bundle.
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 const APPIMAGE_HOOK_VARIABLES: &[&str] = &[
@@ -202,7 +183,6 @@ const APPIMAGE_HOOK_VARIABLES: &[&str] = &[
     "PYTHONHOME",
 ];
 
-/// Path lists the bundle prepends its own folders to.
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 const APPIMAGE_PATH_LISTS: &[&str] = &[
@@ -216,9 +196,6 @@ const APPIMAGE_PATH_LISTS: &[&str] = &[
     "GST_PLUGIN_SYSTEM_PATH_1_0",
 ];
 
-/// What to remove or rewrite so a shell started from the Linux AppImage
-/// does not load the bundle's libraries, GTK modules or Python. Nothing
-/// outside an AppImage (no absolute `APPDIR`).
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn appimage_env_edits(lookup: &dyn Fn(&str) -> Option<OsString>) -> Vec<EnvEdit> {
@@ -343,8 +320,6 @@ mod tests {
             launch_command_env(true, true),
             Some(("NoDefaultCurrentDirectoryInExePath".into(), "1".into()))
         );
-        // A terminal the user opens keeps cmd.exe's usual search, and the
-        // variable means nothing elsewhere.
         assert_eq!(launch_command_env(false, true), None);
         assert_eq!(launch_command_env(true, false), None);
     }

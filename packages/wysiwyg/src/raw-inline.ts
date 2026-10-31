@@ -59,9 +59,6 @@ export const RawInline = Node.create({
       const updatePresentation = () => {
         const exactSource = String(currentNode.attrs.source ?? "");
         if (isRawMathSource(exactSource)) {
-          // LIP-02: rendering is an enhancement, never a replacement for the
-          // exact editable expression. Keep the complete source in the visual
-          // document even after the preview paints.
           source.textContent = exactSource;
           source.title = wysiwygMessage("inline.mathTitle");
           dom.dataset.rawInlineKind = "math";

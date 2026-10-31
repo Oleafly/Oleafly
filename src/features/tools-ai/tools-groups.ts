@@ -1,6 +1,3 @@
-// The Tools model picker: Automatic and the local vision models first, then
-// vision models from every configured hosted provider, then Mathpix when its
-// keys are saved. Models turned off in Settings are not offered.
 import type { ModelSelectorGroup, ModelSelectorModel } from "@/components/ai/ModelSelector";
 import { i18n } from "@/i18n";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
@@ -16,7 +13,6 @@ import {
   visionCapable,
 } from "./tools-choice";
 
-/** `ollama` is null when Ollama could not be reached. */
 export function toolsModelGroups(
   cfg: AppConfig,
   ollama: readonly OllamaModelInfo[] | null,

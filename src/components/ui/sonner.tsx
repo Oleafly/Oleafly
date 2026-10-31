@@ -25,8 +25,6 @@ function RepeatedTitle({ message, count }: Readonly<{ message: string; count: nu
   );
 }
 
-// Toasts often carry a saved file or an error that names a folder, so home
-// paths in the message are shortened like every other displayed path.
 function titleFor(toast: Toast) {
   const message = displayText(toast.message);
   return toast.count > 1 ? <RepeatedTitle message={message} count={toast.count} /> : message;
@@ -47,8 +45,6 @@ function actionFor(toast: Toast) {
 export function Toaster() {
   const toasts = useToastStore((s) => s.toasts);
   const seenRef = useRef(new Map<number, Toast>());
-  // The Toaster mounts outside ThemeProvider in the main window, so follow the
-  // root element's theme class instead of the React context.
   const [theme, setTheme] = useState<"light" | "dark">(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light",
   );
@@ -97,8 +93,6 @@ export function Toaster() {
       }}
       toastOptions={{
         classNames: {
-          // Sonner draws focus as a ring of box-shadow. Show it as a border
-          // colour change on the toast and a dimmed action instead.
           toast:
             "group toast group-[.toaster]:bg-popover group-[.toaster]:text-popover-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg group-[.toaster]:focus-visible:!border-ring group-[.toaster]:focus-visible:!shadow-lg",
           title: "select-text",
@@ -106,10 +100,6 @@ export function Toaster() {
           actionButton:
             "group-[.toast]:!bg-transparent group-[.toast]:!text-primary group-[.toast]:!p-0 group-[.toast]:font-medium group-[.toast]:underline group-[.toast]:underline-offset-4 group-[.toast]:hover:opacity-80 group-[.toast]:focus-visible:!shadow-none group-[.toast]:focus-visible:opacity-80",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-          // Sonner pins the close button over the top start corner. Make it the
-          // last flex item instead, so it sits inside the toast at the inline
-          // end (left in RTL), centred by the toast's align-items, and the
-          // message wraps before it rather than running under it.
           closeButton:
             "group-[.toast]:!static group-[.toast]:!order-last group-[.toast]:!shrink-0 group-[.toast]:!-me-1 group-[.toast]:!transform-none group-[.toast]:!rounded-md group-[.toast]:!border-transparent group-[.toast]:!bg-transparent group-[.toast]:!text-muted-foreground group-[.toast]:hover:!bg-accent group-[.toast]:hover:!text-foreground group-[.toast]:focus-visible:!bg-accent group-[.toast]:focus-visible:!text-foreground group-[.toast]:focus-visible:!shadow-none",
         },

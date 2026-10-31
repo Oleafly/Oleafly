@@ -12,9 +12,6 @@ use super::*;
 use crate::client::test_util::{device_key, http_response, sample_manifest};
 use crate::MemorySecrets;
 
-// A long-poll server whose project reached its size limit: it refuses
-// every change with project_too_large and answers pings, and drops the
-// poll when the test asks so the session reconnects.
 struct Full {
     project: SharedProjectId,
     manifest: String,

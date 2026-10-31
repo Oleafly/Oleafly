@@ -80,16 +80,9 @@ async function collectNatively(
   }
 }
 
-/**
- * Counts the whole document: the root plus every file it `\input`s, with
- * unsaved buffers preferred over disk. Reading is why this is async, and why
- * nothing here runs until the panel is actually opened.
- */
 export async function collectProjectInfo(): Promise<ProjectInfoSnapshot> {
   const files = useFilesStore.getState();
   const { mainDoc } = resolveEffectiveMainDoc();
-  // Without a project there is nothing to walk; count the open buffer alone so
-  // a scratch file still reports something truthful.
   const root = files.projectId ? mainDoc : (files.activePath ?? mainDoc);
   const selected = activeSelectionText();
   let selectionWords: number | null = null;

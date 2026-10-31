@@ -1,6 +1,3 @@
-// Asking before a running program is stopped (closing a terminal tab, the
-// project or the app) and before Oleafly types a prepared command into a
-// terminal. One promise-based prompt store; TerminalPrompts renders it.
 import { create } from "zustand";
 import { terminalJobs } from "@/lib/terminal-sessions";
 import { useFolderAccessStore } from "@/store/folder-access";
@@ -30,7 +27,6 @@ interface TerminalPromptState {
   answer(id: number, ok: boolean): void;
 }
 
-/** A confirmed close or switch stands for this long, so one leave asks once. */
 const CONFIRMED_LEAVE_MS = 60_000;
 
 let nextPromptId = 1;
@@ -39,7 +35,6 @@ const resolvers = new Map<number, (ok: boolean) => void>();
 const hostWaiters = new Set<() => void>();
 const confirmedLeaves = new Map<string, number>();
 
-/** The answer when nobody can be asked: never block a stop, never run a launch. */
 function unattendedAnswer(prompt: TerminalPrompt): boolean {
   return prompt.kind === "stop";
 }
@@ -54,7 +49,6 @@ export const useTerminalPromptStore = create<TerminalPromptState>((set, get) => 
   },
 }));
 
-/** Shows a prompt and resolves with the answer. A newer prompt answers this one with no. */
 export function requestTerminalPrompt(prompt: TerminalPrompt): Promise<boolean> {
   if (hosts === 0) return Promise.resolve(unattendedAnswer(prompt));
   const store = useTerminalPromptStore.getState();
@@ -67,7 +61,6 @@ export function requestTerminalPrompt(prompt: TerminalPrompt): Promise<boolean> 
   });
 }
 
-/** Called by the component that renders prompts while it is mounted. */
 export function registerTerminalPromptHost(): () => void {
   hosts += 1;
   for (const wake of hostWaiters) wake();
@@ -82,7 +75,6 @@ export function registerTerminalPromptHost(): () => void {
   };
 }
 
-/** Resolves true once a prompt host is mounted, or false after `timeoutMs`. */
 export function waitForTerminalPromptHost(timeoutMs: number): Promise<boolean> {
   if (hosts > 0) return Promise.resolve(true);
   return new Promise<boolean>((resolve) => {
@@ -99,12 +91,6 @@ export function waitForTerminalPromptHost(timeoutMs: number): Promise<boolean> {
   });
 }
 
-/**
- * Whether the programs running in the project's terminals (all, or
- * `tabIds`) may be stopped. True without asking when asking is off, nothing
- * runs, or the check fails; a confirmed close or switch of the same project
- * is remembered for a minute, or until the project changes.
- */
 export async function confirmStopTerminals(request: {
   reason: TerminalStopReason;
   projectId?: string;
@@ -131,18 +117,10 @@ export async function confirmStopTerminals(request: {
   return ok;
 }
 
-/**
- * Ends the remembered leave of a project once the project has actually
- * changed, so a program started after coming back is asked about again.
- */
 export function forgetConfirmedLeave(projectId: string): void {
   confirmedLeaves.delete(projectId);
 }
 
-/**
- * Closes the tabs, first asking when a program still runs in one of them.
- * With asking off, `close` runs before this returns.
- */
 export function requestCloseTerminals(tabIds: readonly string[], close: () => void): Promise<boolean> {
   if (!useSettingsStore.getState().terminalConfirmClose) {
     close();
@@ -154,7 +132,6 @@ export function requestCloseTerminals(tabIds: readonly string[], close: () => vo
   });
 }
 
-/** Closes tabs; hides the dock when none would be left. */
 export function closeTerminalTabs(tabIds: readonly string[]): void {
   const closing = new Set(tabIds);
   if (!useTerminalsStore.getState().tabs.some((tab) => !closing.has(tab.id))) {
@@ -166,7 +143,6 @@ export function closeTerminalTabs(tabIds: readonly string[]): void {
   }
 }
 
-/** Test helper: forget remembered leaves. */
 export function resetTerminalLifecycleForTest(): void {
   confirmedLeaves.clear();
   const open = useTerminalPromptStore.getState().prompt;

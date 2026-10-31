@@ -338,27 +338,25 @@ function handleChat(peer: Peer, frame: Frame): void {
   const project = peer.project;
   if (peer.role === "viewer") throw new Refusal("chat_role");
   const action = text(frame.action);
-  let changed: ChatMessage[];
   if (action === "send") {
-    changed = [project.chatSend(peer.account.accountId, text(frame.body))];
+    project.chatSend(peer.account.accountId, text(frame.body));
   } else if (action === "delete") {
     const message = project.chat.find((entry) => entry.id === text(frame.id));
     if (!message) throw new Refusal("not_found");
     if (message.author !== peer.account.accountId) throw new Refusal("chat_role");
     message.deleted = true;
     message.body = "";
-    changed = [message];
   } else if (action === "clear") {
     if (peer.role !== "owner") throw new Refusal("chat_role");
     for (const message of project.chat) {
       message.deleted = true;
       message.body = "";
     }
-    changed = project.chat;
   } else {
     throw new Refusal("invalid");
   }
-  for (const other of viewersOf(project)) other.send({ t: "chat", messages: changed });
+  const page: ChatMessage[] = project.chatPage();
+  for (const other of viewersOf(project)) other.send({ t: "chat", messages: page });
 }
 
 function handleFrame(peer: Peer, frame: Frame): void {
@@ -367,7 +365,14 @@ function handleFrame(peer: Peer, frame: Frame): void {
     case "open": {
       const file = project.text(text(frame.fileId));
       peer.open.add(file.fileId);
-      peer.send({ t: "opened", fileId: file.fileId, rev: file.rev, text: file.text });
+      const resume = text(frame.resume);
+      peer.send({
+        t: "opened",
+        fileId: file.fileId,
+        rev: file.rev,
+        text: file.text,
+        ...(resume ? { resumed: project.resumed(peer.account.accountId, resume) } : {}),
+      });
       peer.send({ t: "threads", fileId: file.fileId, rev: file.rev, threads: project.fileThreads(file.fileId) });
       peer.send({
         t: "suggestions",
@@ -387,7 +392,10 @@ function handleFrame(peer: Peer, frame: Frame): void {
         peer.send({ t: "reset", fileId, rev: file.rev, text: file.text });
         return;
       }
+      const id = text(frame.id);
+      if (id && project.fateOf(peer.account.accountId, id)) return;
       const result = project.change(fileId, whole(frame.rev) ?? -1, frame.op as Wire, peer.account.accountId, peer.suggesting);
+      if (id) project.applied(peer.account.accountId, id);
       peer.send({ t: "ack", fileId, rev: result.rev, length: result.length });
       broadcastEdit(project, fileId, result, peer);
       return;
@@ -457,11 +465,14 @@ function upgrade(request: IncomingMessage, socket: Duplex): void {
         } catch {
           return;
         }
+        const reqId = typeof frame.reqId === "string" ? frame.reqId : null;
         try {
           handleFrame(peer, frame);
+          if (reqId) peer.send({ t: "done", reqId });
         } catch (error) {
           const code = error instanceof Refusal ? error.code : "server";
-          peer.send({ t: "error", code, message: error instanceof Error ? error.message : String(error) });
+          const message = error instanceof Error ? error.message : String(error);
+          peer.send({ t: "error", code, message, ...(reqId ? { reqId } : {}) });
         }
       },
       () => {
@@ -481,7 +492,7 @@ function upgrade(request: IncomingMessage, socket: Duplex): void {
     people: people(project),
     compile: project.compile,
   });
-  peer.send({ t: "chat", messages: project.chat });
+  peer.send({ t: "chat", messages: project.chatPage() });
   peer.send({ t: "output", items: project.outputItems() });
   sendPresence(project);
 }

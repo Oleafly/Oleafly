@@ -1,6 +1,3 @@
-//! Errors from the online LaTeX service, its Git bridge and local sync.
-//! The app turns them into its own localized errors; the CLI maps kinds to
-//! exit codes.
 use std::collections::BTreeMap;
 
 use serde::Serialize;
@@ -43,7 +40,6 @@ pub enum OnlineErrorKind {
 }
 
 impl OnlineErrorKind {
-    /// The snake_case name, which is also the app's error code suffix.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::InvalidServer => "invalid_server",
@@ -109,7 +105,6 @@ impl OnlineError {
         self
     }
 
-    /// A local failure (a file, a process) whose message is shown as is.
     pub fn io(message: impl Into<String>) -> Self {
         Self::new(OnlineErrorKind::Io).detail(message.into())
     }
@@ -127,9 +122,6 @@ impl std::fmt::Display for OnlineError {
 
 impl std::error::Error for OnlineError {}
 
-/// The app's error text: `@oleafly/error:{"code":"<service>.<kind>",…}`,
-/// the same shape the app's own errors serialize to, so the webview
-/// translates it. Local failures keep their plain message.
 impl From<OnlineError> for String {
     fn from(error: OnlineError) -> Self {
         #[derive(Serialize)]

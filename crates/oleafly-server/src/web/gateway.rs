@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::ws::{close_code, CloseFrame, Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
@@ -35,7 +36,7 @@ use crate::web::frames::{
     self, ChatAction, CommentAction, EditMode, Incoming, Outgoing, SuggestionAction, WebFeatures,
     WebMember, WebOutput, WebPeer,
 };
-use crate::web::room::{Applied, Hub, Sink, WebRoom};
+use crate::web::room::{Applied, Sink, WebRoom};
 use crate::web::{cross_site, pending_core, same_origin, Refusal, WebOn};
 use crate::web_sessions::{self, WebCaller};
 
@@ -102,6 +103,7 @@ pub async fn upgrade(
 enum Ending {
     Closed,
     Revoked,
+    Expired,
     Overloaded,
     Replaced,
     Restarting,
@@ -239,6 +241,7 @@ struct Session {
     connection: u64,
     role: ProjectRole,
     mode: String,
+    expires_at: i64,
     room: Arc<WebRoom>,
     sink: Sink,
     cursors: CursorGate,
@@ -317,6 +320,17 @@ async fn run(
             )
             .await
         }
+        Ending::Expired => {
+            refuse(
+                &mut socket,
+                &Refusal::new(
+                    "session_expired",
+                    "This browser session has expired. Sign in again.",
+                ),
+                timing,
+            )
+            .await
+        }
         Ending::Overloaded => {
             close(
                 &mut socket,
@@ -346,7 +360,7 @@ async fn run(
         Ending::Closed => {}
     }
     session.room.leave(session.id).await;
-    Hub::linger(Arc::clone(&session.room));
+    state.web.linger(session.account, Arc::clone(&session.room));
     leave_rooms(&state, ticket.id, device);
     state.sockets.unregister(device, ticket.id);
 }
@@ -390,6 +404,7 @@ impl Session {
             connection,
             role: role.unwrap_or(ProjectRole::Unknown),
             mode: caller.mode,
+            expires_at: caller.expires_at,
             room: state.web.room(project),
             sink,
             cursors: CursorGate::new(),
@@ -524,10 +539,14 @@ impl Session {
         let mut ping = tokio::time::interval_at(Instant::now() + every, every);
         ping.set_missed_tick_behavior(MissedTickBehavior::Delay);
         let mut unanswered_since: Option<Instant> = None;
+        let left = self.expires_at.saturating_sub(self.state.clock.now_ms());
+        let expiry = tokio::time::sleep(Duration::from_millis(u64::try_from(left).unwrap_or(0)));
+        tokio::pin!(expiry);
         loop {
             tokio::select! {
                 biased;
                 signal = control.recv() => return Ending::from_signal(signal),
+                () = &mut expiry => return Ending::Expired,
                 message = socket.recv() => {
                     unanswered_since = None;
                     match message {
@@ -603,14 +622,23 @@ impl Session {
             return;
         };
         match frame {
-            Incoming::Open { file_id } => {
-                if let Err(refusal) = self.room.open_file(self.id, &file_id).await {
+            Incoming::Open { file_id, resume } => {
+                let opened = self
+                    .room
+                    .open_file(&self.state.web, self.device, self.id, &file_id, resume)
+                    .await;
+                if let Err(refusal) = opened {
                     self.reply(Err(refusal), req_id);
                 }
             }
             Incoming::Close { file_id } => self.room.close_file(self.id, &file_id).await,
-            Incoming::Change { file_id, rev, op } => {
-                if let Err(refusal) = self.change(&file_id, rev, op).await {
+            Incoming::Change {
+                file_id,
+                rev,
+                op,
+                id,
+            } => {
+                if let Err(refusal) = self.change(&file_id, rev, op, id).await {
                     self.reply(Err(refusal), req_id);
                 }
             }
@@ -643,6 +671,7 @@ impl Session {
         file: &str,
         rev: u64,
         operation: TextOperation,
+        id: Option<String>,
     ) -> Result<(), Refusal> {
         let suggesting = self.suggesting();
         let allowed = if suggesting {
@@ -665,6 +694,7 @@ impl Session {
                 rev,
                 operation,
                 suggesting,
+                id,
             )
             .await
     }

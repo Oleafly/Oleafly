@@ -41,6 +41,10 @@ pub(crate) const MAX_CONFLICT_COPIES: usize = 100;
 const MAX_TREE_DEPTH: usize = 32;
 const APPLY_BATCH: usize = 32;
 const COPY_MIN_BYTES: u64 = 512 * 1024;
+const MAX_UNPUBLISHED: usize = 10_000;
+const SWEEP_EVERY_MS: u64 = 24 * 60 * 60 * 1000;
+const SWEEP_MIN_AGE: Duration = Duration::from_secs(24 * 60 * 60);
+const MAX_SWEEP_DELETES: usize = 1_000;
 const AUTHOR_FIELD: &str = "by";
 
 pub(crate) fn now_ms() -> u64 {
@@ -135,15 +139,8 @@ pub(crate) struct VersionManifest {
     pub(crate) extra: serde_json::Map<String, serde_json::Value>,
 }
 
-/// The manifests a manifest was built on, newest first. Providers that can
-/// only emulate compare-and-swap leave a short window in which two computers
-/// both publish; the one whose manifest is overwritten finds its own stamp
-/// missing here, and merges without trusting its base for deletions.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct Lineage {
-    /// The stamp of the manifest this lineage belongs to. An older Oleafly
-    /// copies fields it doesn't know forward, so a lineage whose `of` isn't
-    /// its manifest's own stamp says nothing.
     pub(crate) of: Stamp,
     pub(crate) ancestors: Vec<Stamp>,
 }
@@ -151,7 +148,6 @@ pub(crate) struct Lineage {
 const MAX_LINEAGE: usize = 128;
 
 impl Lineage {
-    /// The lineage of a manifest stamped `stamp` and built on `parent`.
     fn after(stamp: Stamp, parent: Option<(Stamp, Option<&Lineage>)>) -> Self {
         let mut ancestors = Vec::new();
         if let Some((parent_stamp, parent_lineage)) = parent {
@@ -168,9 +164,6 @@ impl Lineage {
     }
 }
 
-/// Whether `version` was written without seeing the manifest this computer's
-/// base agrees with. Unknown cases (no base yet, a manifest from an older
-/// Oleafly, a lineage cut short) count as not diverged, as before lineage.
 fn diverged_from(version: &VersionManifest, base: Option<Stamp>) -> bool {
     let Some(base) = base else {
         return false;
@@ -252,8 +245,6 @@ pub(crate) struct SyncOutcome {
 }
 
 pub(crate) type PendingHook = Arc<dyn Fn(&[PendingDelete]) + Send + Sync>;
-/// Saves agreed versions as soon as files are in place: a path with its new
-/// entry, or None once it is deleted.
 pub(crate) type BaseHook = Arc<dyn Fn(&[(String, Option<BaseEntry>)]) + Send + Sync>;
 
 pub(crate) struct RoundEnv {
@@ -280,30 +271,12 @@ pub(crate) fn version_remote(cloud: ProjectId) -> String {
     format!("{}/version.json", project_remote(cloud))
 }
 
+fn files_remote(cloud: ProjectId) -> String {
+    format!("{}/files", project_remote(cloud))
+}
+
 fn file_remote(cloud: ProjectId, portable: &str) -> String {
-    format!("{}/files/{portable}", project_remote(cloud))
-}
-
-/// What a round's uploads replace. A store that keeps one version of each
-/// file (S3) writes an upload only over the version named here, so a round
-/// that lost the race to another computer can't replace what that computer
-/// published. Set around `put_paths`, since a `BatchFile` doesn't carry it;
-/// stores that keep every revision ignore it.
-#[derive(Clone, Debug)]
-pub(crate) struct UploadBases {
-    /// The manifest the round builds on, and its revision, or `None` while
-    /// the project has none.
-    pub(crate) manifest: String,
-    pub(crate) manifest_rev: Option<String>,
-    pub(crate) device: String,
-    /// Each upload's remote path: `Update` with the version the manifest
-    /// holds, `Add` for a file it doesn't hold, `Overwrite` for a record
-    /// without a revision.
-    pub(crate) files: BTreeMap<String, WriteMode>,
-}
-
-tokio::task_local! {
-    pub(crate) static UPLOAD_BASES: UploadBases;
+    format!("{}/{portable}", files_remote(cloud))
 }
 
 pub(crate) fn tombstone_remote(cloud: ProjectId) -> String {
@@ -397,8 +370,6 @@ pub(crate) fn read_meta_value(root: &Path) -> Option<serde_json::Value> {
     read_json(&root.join(PROJECT_META))
 }
 
-/// The sync rules `project.json` sets, or None when there is none or it is
-/// not a manifest this version can read.
 fn policy_for(meta: Option<&serde_json::Value>) -> Option<OwnedPolicy> {
     let bytes = serde_json::to_vec(meta?).ok()?;
     let manifest = oleafly_core::sniff_oleafly_manifest(&bytes)?;
@@ -424,10 +395,8 @@ pub(crate) struct Capture {
     pub(crate) unobserved: BTreeSet<String>,
     pub(crate) skipped: Vec<SkippedFile>,
     policy: OwnedPolicy,
-    /// Whether `policy` was read from `project.json` this time.
     policy_read: bool,
     meta: Option<serde_json::Value>,
-    /// Keys of build-output-shaped files kept because Git tracks them.
     tracked: BTreeSet<String>,
 }
 
@@ -561,10 +530,8 @@ fn cloud_skip(relative: &Path) -> Option<SkipReason> {
     })
 }
 
-/// Per project root: the stamp of Git's index, and the files it listed.
 type TrackedCache = BTreeMap<PathBuf, ((u64, Option<SystemTime>), BTreeSet<String>)>;
 
-/// The files Git tracks in `root`, read again only when its index changes.
 fn tracked_files(root: &Path) -> BTreeSet<String> {
     static CACHE: std::sync::OnceLock<std::sync::Mutex<TrackedCache>> = std::sync::OnceLock::new();
     let Some(stamp) = git_dir(root)
@@ -591,7 +558,6 @@ fn tracked_files(root: &Path) -> BTreeSet<String> {
     paths
 }
 
-/// Git's list of tracked files, read the first time a walk needs it.
 struct Tracked<'a> {
     root: &'a Path,
     paths: Option<BTreeSet<String>>,
@@ -634,9 +600,6 @@ fn classify_entry(
     let mut decision = decide_with_siblings(relative, &info, fields, |sibling| {
         root.join(sibling).is_file()
     });
-    // A build-output-shaped file Git tracks, such as a committed log of
-    // results, is the user's to keep, so it backs up. The main PDF and helper
-    // folders stay out: they come back with the next compile.
     if decision == Decision::Skip(SkipReason::BuildOutput) && kind == EntryKind::File {
         if let Some(portable) = portable_path(relative) {
             if oleafly_core::exclude::is_build_artifact(&portable, |_| false)
@@ -722,17 +685,12 @@ struct Unhashed {
     metadata: std::fs::Metadata,
 }
 
-/// A walk of the project, with the files whose hash it couldn't reuse still
-/// to be read.
 struct Walked {
     capture: Capture,
     unhashed: Vec<Unhashed>,
 }
 
 impl Walked {
-    /// Reads the files the walk couldn't vouch for. This needs no lock on the
-    /// project, so saves aren't held up while a large project is read for the
-    /// first time; a file that changes while it is read waits for next round.
     fn finish(mut self) -> Capture {
         for item in self.unhashed {
             let Some(stamp) = self
@@ -824,8 +782,6 @@ fn walk(
     known: Option<&OwnedPolicy>,
 ) -> Result<Walked, RoundError> {
     let meta = read_meta_value(root);
-    // A project.json this version can't read, say one a newer version wrote,
-    // keeps the rules last read from it, so folders it leaves out stay out.
     let (policy, policy_read) = match policy_for(meta.as_ref()) {
         Some(policy) => (policy, true),
         None => (known.cloned().unwrap_or_default(), false),
@@ -932,8 +888,6 @@ pub(crate) async fn fetch_version<S: CloudStore>(
         return Ok(None);
     };
     let unreadable = || RoundError::Unreadable("the remote version record is unreadable".into());
-    // Read the format first without building the whole record in memory, so a
-    // newer format is told apart from a broken one.
     #[derive(Deserialize)]
     struct Probe {
         #[serde(default)]
@@ -979,8 +933,6 @@ fn tidy_label(name: &str) -> Option<String> {
 }
 
 pub(crate) fn sanitize_label(name: &str) -> String {
-    // A name like "conflicted copy" would turn the copy into a file sync
-    // ignores as another program's leftover, so it would never spread.
     tidy_label(name)
         .filter(|label| {
             !oleafly_core::exclude::is_quietly_ignored_name(&format!(
@@ -1060,7 +1012,6 @@ struct Planned {
     action: Action,
     settled: bool,
     backed_off: bool,
-    /// Left for a later round with its base and cloud record kept as they are.
     deferred: bool,
 }
 
@@ -1153,8 +1104,6 @@ fn decide_action(
         (true, false, false, true) if restore_deleted => Action::Download,
         (true, false, false, _) => Action::RemoteDelete,
         (false, true, _, true) | (true, true, false, true) => Action::Download,
-        // project.json missing from the cloud's record is never a reason to
-        // delete it here, and keeping files deleted elsewhere uploads them.
         (false, true, true, false) if is_meta || restore_deleted => Action::Upload,
         (false, true, _, false) => Action::LocalDelete,
         (true, true, true, true) if is_meta => Action::MetaMerge,
@@ -1172,8 +1121,6 @@ fn backed_off(
     remote.is_some_and(|record| {
         input.failed.get(entry_key).is_some_and(|failure| {
             failure.hash == record.hash
-                // A conflict copy goes under a new name, so a file that could
-                // not be replaced doesn't hold back the edit made here.
                 && !(failure.applying && *action == Action::Conflict)
                 && failure.waiting(input.now)
         })
@@ -1240,8 +1187,6 @@ fn plan(input: &PlanInput<'_>) -> Vec<Planned> {
     planned
 }
 
-/// How many `deleted` items are not one half of a move: a file that turns up
-/// under a new name, with the same content, in an `added` item with no base.
 fn deletions_beyond_moves<'a>(
     planned: &'a [Planned],
     deleted: &Action,
@@ -1282,9 +1227,6 @@ fn mass_delete(planned: &[Planned], base: &BTreeMap<String, BaseEntry>) -> Optio
     if too_many(here, total) {
         return Some(Hold::MassDelete { count: here, total });
     }
-    // Files that left the cloud's record, from a rollback, a broken record or
-    // a mass delete on another computer. project.json never counts: a record
-    // without it uploads it again.
     let files = base.keys().filter(|path| key(path) != PROJECT_META).count();
     let there = deletions_beyond_moves(planned, &Action::LocalDelete, &Action::Download, |item| {
         item.remote.as_ref().map(|record| record.hash.as_str())
@@ -1301,8 +1243,6 @@ fn staging_name(staging: &Path) -> PathBuf {
 
 const TRASH_KEEP: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
-/// Empties folders in Oleafly's own trash, used only when the system trash
-/// refused a file, once they are a month old.
 pub(crate) fn sweep_trash(trash: &Path) {
     let Ok(entries) = std::fs::read_dir(trash) else {
         return;
@@ -1415,7 +1355,6 @@ async fn stage_one<S: CloudStore>(
     let mut limit = if pinned {
         record.size
     } else {
-        // Without a revision any size can come back, so the disk bounds it.
         let free = free_space(staging).await.unwrap_or(u64::MAX);
         oleafly_core::exclude::MAX_SYNC_FILE_BYTES.min(free.saturating_sub(DISK_HEADROOM_BYTES))
     };
@@ -1430,7 +1369,9 @@ async fn stage_one<S: CloudStore>(
             limit,
         )
         .await?
-        .ok_or_else(|| StoreError::Verify(format!("{} is missing from dropbox", record.path)))?;
+        .ok_or_else(|| {
+            StoreError::Verify(format!("{} is missing from {}", record.path, store.label()))
+        })?;
     let (hash, matches) = if job_key == PROJECT_META {
         match tokio::fs::read(&temp).await {
             Ok(bytes) => {
@@ -1563,10 +1504,10 @@ fn unpack_zip(
     };
     let mut entries: BTreeMap<String, Option<usize>> = BTreeMap::new();
     for index in 0..zip.len() {
-        let Some((_, inner)) = zip
-            .name_for_index(index)
-            .and_then(|name| name.split_once('/'))
-        else {
+        let Some(Ok(name)) = zip.name_for_index(index) else {
+            continue;
+        };
+        let Some((_, inner)) = name.split_once('/') else {
             continue;
         };
         if inner.is_empty() || inner.ends_with('/') {
@@ -1707,8 +1648,6 @@ struct Applied {
     deleted: BTreeSet<String>,
     conflict_copies: BTreeMap<String, String>,
     merged_meta: Option<(String, Vec<u8>)>,
-    /// The cloud's project.json a merge started from, which is the agreed one
-    /// until the merged file uploads.
     meta_base: Option<serde_json::Value>,
     changed: BTreeSet<String>,
     failed: BTreeSet<String>,
@@ -1917,8 +1856,6 @@ fn place_meta(
     let incoming = read_json(temp).ok_or("the incoming project.json is unreadable")?;
     let merged = merge::with_device_fields(&incoming, local);
     let bytes = merge::pretty(&merged)?;
-    // A project.json this version can't open would leave the project
-    // unusable here, so the one on disk stays.
     crate::project::parse_project_meta(&bytes)?;
     write_meta(lock_id, target, &bytes)
 }
@@ -1932,8 +1869,6 @@ struct UploadJob {
     exec: bool,
     local_hash: Option<String>,
     signature: Option<String>,
-    /// A conflict copy that has to reach the cloud before this file replaces
-    /// the version it holds there.
     after: Option<String>,
 }
 
@@ -1953,8 +1888,6 @@ impl UploadJob {
     }
 }
 
-/// The record fields naming the computer that wrote this version of a file,
-/// for the name of a conflict copy made from it elsewhere.
 fn authored(author: &str) -> serde_json::Map<String, serde_json::Value> {
     let mut extra = serde_json::Map::new();
     extra.insert(
@@ -1980,7 +1913,7 @@ async fn upload_meta<S: CloudStore>(
     let digest = merge::meta_digest(&bytes).to_hex();
     let size = bytes.len() as u64;
     let rev = store
-        .put(&file_remote(cloud, &job.path), bytes, WriteMode::Overwrite)
+        .put_content(&file_remote(cloud, &job.path), bytes)
         .await?;
     Ok(FileRecord {
         path: job.path.clone(),
@@ -2038,8 +1971,6 @@ struct Publisher<'a, S: CloudStore> {
     context: &'a SyncContext,
     clock: HlcClock,
     rev: Option<String>,
-    /// The stamp and lineage of the manifest the next publish builds on: the
-    /// remote one, then each one this round publishes.
     parent: Option<(Stamp, Option<Lineage>)>,
     overwrite: bool,
     published: Vec<FileRecord>,
@@ -2084,20 +2015,62 @@ impl<S: CloudStore> Publisher<'_, S> {
             None if self.overwrite => WriteMode::Overwrite,
             None => WriteMode::Add,
         };
+        let replaced = matches!(mode, WriteMode::Update(_));
         let rev = self
             .store
             .put(&version_remote(self.cloud), bytes, mode)
             .await?;
         self.rev = Some(rev);
         self.parent = Some((stamp, Some(lineage)));
+        let superseded = if replaced {
+            let before = self
+                .published
+                .iter()
+                .filter_map(|record| Some((record.path.as_str(), record.rev.as_deref()?)));
+            unnamed_versions(self.cloud, before, &files)
+        } else {
+            Vec::new()
+        };
         self.published = files;
         self.published_pending = self.pending;
+        if !superseded.is_empty() {
+            self.store.retire_versions(&superseded).await;
+        }
         Ok(true)
     }
 }
 
-/// `raw` as a clock reading this computer may adopt, or 0 when it is more than
-/// a day ahead of the local clock.
+fn unnamed_versions<'a>(
+    cloud: ProjectId,
+    candidates: impl Iterator<Item = (&'a str, &'a str)>,
+    named: &[FileRecord],
+) -> Vec<BatchDelete> {
+    let kept: BTreeSet<(&str, &str)> = named
+        .iter()
+        .filter_map(|record| Some((record.path.as_str(), record.rev.as_deref()?)))
+        .collect();
+    candidates
+        .filter(|version| !kept.contains(version))
+        .map(|(path, rev)| BatchDelete {
+            remote: file_remote(cloud, path),
+            parent_rev: Some(rev.to_string()),
+        })
+        .collect()
+}
+
+fn unpublished_versions(run: &UploadRun) -> Vec<PendingDelete> {
+    run.sent
+        .iter()
+        .filter(|(record_key, _)| !run.published.contains(*record_key))
+        .filter_map(|(_, record)| {
+            Some(PendingDelete {
+                path: record.path.clone(),
+                rev: Some(record.rev.clone()?),
+            })
+        })
+        .collect()
+}
+
 pub(crate) fn plausible_hlc(raw: u64) -> u64 {
     if Hlc::from_raw(raw).wall_ms() <= now_ms().saturating_add(MAX_FUTURE_SKEW_MS) {
         raw
@@ -2234,6 +2207,7 @@ fn quiet_round(capture: &Capture, project: &ProjectState, options: &RoundOptions
     !options.forced()
         && capture.matches_base(&project.base)
         && project.pending_deletes.is_empty()
+        && project.unpublished.is_empty()
         && project.hold.is_none()
         && project.failed.values().all(|failure| failure.waiting(now))
 }
@@ -2360,8 +2334,6 @@ fn settle_meta(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
     });
 }
 
-/// What `settle` will agree on for files this round put in place or deleted,
-/// for saving before the rest of the round runs.
 fn applied_base(
     planned: &[Planned],
     applied: &Applied,
@@ -2431,7 +2403,6 @@ fn settle(
     }
     let mut seen = BTreeSet::new();
     out.uploads.retain(|job| seen.insert(job.key.clone()));
-    // Files that wait on a conflict copy go last, after the copies.
     out.uploads.sort_by_key(|job| job.after.is_some());
     out
 }
@@ -2447,12 +2418,11 @@ fn upload_skip_code(error: &StoreError) -> &'static str {
 #[derive(Default)]
 struct UploadRun {
     uploaded: BTreeMap<String, FileRecord>,
+    sent: BTreeMap<String, FileRecord>,
     published: BTreeSet<String>,
     skipped: Vec<SkippedFile>,
     error: Option<RoundError>,
-    /// Uploads a stopped round left for the next one.
     remaining: u64,
-    /// Files taken back because their conflict copy didn't upload.
     held_back: BTreeSet<String>,
 }
 
@@ -2469,7 +2439,6 @@ struct Round<'a, S: CloudStore> {
     project: ProjectState,
     outcome: SyncOutcome,
     skipped: Vec<SkippedFile>,
-    /// Files that failed to download, or to be put in place (`true`), by hash.
     failures: BTreeMap<String, (String, bool)>,
     error: Option<RoundError>,
     late_error: Option<RoundError>,
@@ -2562,8 +2531,6 @@ impl<S: CloudStore> Round<'_, S> {
                 self.outcome.quota_hit = true;
             }
         }
-        // A file renamed here keeps its old name in the cloud until the new
-        // one can upload, so other computers don't lose it in between.
         for item in planned.iter_mut() {
             if item.action != Action::RemoteDelete {
                 continue;
@@ -2619,8 +2586,6 @@ impl<S: CloudStore> Round<'_, S> {
                     Slot::Free
                 }
             };
-            // Named after the computer that wrote the other version, when its
-            // record says; older records only name the last one to publish.
             let author = record
                 .extra
                 .get(AUTHOR_FIELD)
@@ -2648,8 +2613,6 @@ impl<S: CloudStore> Round<'_, S> {
         if downloads.is_empty() {
             return Vec::new();
         }
-        // Files only go in with the project to themselves, so while something
-        // else works in it, downloading them now would only be thrown away.
         if let Some(id) = self.env.lock_id.clone() {
             let free = tauri::async_runtime::spawn_blocking(move || {
                 crate::worktree_lock::ProjectWorktreeLock::try_exclusive(&id)
@@ -2863,9 +2826,6 @@ impl<S: CloudStore> Round<'_, S> {
         queue
     }
 
-    /// Takes back uploads of files whose conflict copy didn't reach the cloud:
-    /// the version they replace there would then be on no other computer.
-    /// They upload again next round, after the copy.
     fn hold_without_copies(&mut self, done: &[&UploadJob], run: &mut UploadRun) {
         let tried: BTreeSet<&str> = done.iter().map(|job| job.key.as_str()).collect();
         for job in done {
@@ -2890,6 +2850,7 @@ impl<S: CloudStore> Round<'_, S> {
     ) -> bool {
         match result {
             Ok(record) => {
+                run.sent.insert(job.key.clone(), record.clone());
                 run.uploaded.insert(job.key.clone(), record);
                 false
             }
@@ -3070,18 +3031,8 @@ impl<S: CloudStore> Round<'_, S> {
                 bytes += queue[end].size;
                 end += 1;
             }
-            let bases = upload_bases(
-                self.cloud,
-                &queue[next..end],
-                view,
-                publisher.rev.clone(),
-                publisher.context.device,
-            );
-            let stop = UPLOAD_BASES
-                .scope(
-                    bases,
-                    self.upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources),
-                )
+            let stop = self
+                .upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources)
                 .await;
             self.hold_without_copies(&queue[..end], &mut run);
             next = end;
@@ -3107,6 +3058,59 @@ impl<S: CloudStore> Round<'_, S> {
             }
         }
         run
+    }
+
+    async fn retire_unpublished(&mut self, remote: Option<&Remote>) {
+        if self.project.unpublished.is_empty() {
+            return;
+        }
+        let unpublished = std::mem::take(&mut self.project.unpublished);
+        let candidates = unpublished
+            .iter()
+            .filter_map(|entry| Some((entry.path.as_str(), entry.rev.as_deref()?)));
+        let named = remote.map_or(&[][..], |remote| remote.version.files.as_slice());
+        let orphans = unnamed_versions(self.cloud, candidates, named);
+        if !orphans.is_empty() {
+            self.store.retire_versions(&orphans).await;
+        }
+    }
+
+    async fn sweep_stale_versions(&mut self, remote: Option<&Remote>) {
+        let Some(remote) = remote else {
+            return;
+        };
+        let now = now_ms();
+        if now.saturating_sub(self.project.swept_ms) < SWEEP_EVERY_MS {
+            return;
+        }
+        self.project.swept_ms = now;
+        let Ok(stale) = self
+            .store
+            .stale_versions(
+                &files_remote(self.cloud),
+                &version_remote(self.cloud),
+                &remote.rev,
+                SWEEP_MIN_AGE,
+            )
+            .await
+        else {
+            return;
+        };
+        let tracked: BTreeSet<(&str, &str)> = self
+            .project
+            .unpublished
+            .iter()
+            .filter_map(|entry| Some((entry.path.as_str(), entry.rev.as_deref()?)))
+            .collect();
+        let candidates = stale
+            .iter()
+            .map(|(path, rev)| (path.as_str(), rev.as_str()))
+            .filter(|version| !tracked.contains(version));
+        let mut orphans = unnamed_versions(self.cloud, candidates, &remote.version.files);
+        orphans.truncate(MAX_SWEEP_DELETES);
+        if !orphans.is_empty() {
+            self.store.retire_versions(&orphans).await;
+        }
     }
 
     async fn delete_remote(&mut self, deletions: &[&Planned], final_files: &[FileRecord]) {
@@ -3283,35 +3287,6 @@ fn publisher_for<'a, S: CloudStore>(
     }
 }
 
-fn upload_bases(
-    cloud: ProjectId,
-    jobs: &[&UploadJob],
-    view: &RemoteView,
-    manifest_rev: Option<String>,
-    device: DeviceId,
-) -> UploadBases {
-    let files = jobs
-        .iter()
-        .map(|job| {
-            let mode = match view.usable.get(&job.key) {
-                // After a case-only rename the file goes to a key of its own.
-                Some(record) if record.path == job.path => record
-                    .rev
-                    .clone()
-                    .map_or(WriteMode::Overwrite, WriteMode::Update),
-                _ => WriteMode::Add,
-            };
-            (file_remote(cloud, &job.path), mode)
-        })
-        .collect();
-    UploadBases {
-        manifest: version_remote(cloud),
-        manifest_rev,
-        device: device.to_string(),
-        files,
-    }
-}
-
 fn keep_unfinished(
     records: &mut BTreeMap<String, FileRecord>,
     run: &UploadRun,
@@ -3410,9 +3385,6 @@ impl<S: CloudStore> Round<'_, S> {
         if let Some(error) = run.error.take() {
             self.error.get_or_insert(error);
         }
-        // A file held back for its conflict copy keeps the version agreed
-        // before, so the next round sees the conflict again and waits for the
-        // copy, instead of an edit to upload on its own.
         for held in &run.held_back {
             let Some(item) = planned.iter().find(|item| &item.key == held) else {
                 continue;
@@ -3427,8 +3399,6 @@ impl<S: CloudStore> Round<'_, S> {
             }
         }
         self.incomplete |= keep_unfinished(&mut records, &run, &uploads, view);
-        // A file renamed here whose new name didn't upload keeps its old name
-        // in the cloud, so other computers don't lose it in between.
         let mut new_names: BTreeMap<&str, usize> = BTreeMap::new();
         for job in uploads
             .iter()
@@ -3467,6 +3437,8 @@ impl<S: CloudStore> Round<'_, S> {
             .publish_final(&mut publisher, &final_files, &deletions, &mut run)
             .await;
         stamp_uploads(&mut base, &run, &uploads);
+        self.project.unpublished.extend(unpublished_versions(&run));
+        self.project.unpublished.truncate(MAX_UNPUBLISHED);
         if final_published {
             for item in &deletions {
                 base.remove(&item.key);
@@ -3540,15 +3512,14 @@ pub(crate) async fn sync_project<S: CloudStore>(
     if let Some(remote) = &remote {
         observe_remote(&mut clock, remote);
     }
+    round.retire_unpublished(remote.as_ref()).await;
+    round.sweep_stale_versions(remote.as_ref()).await;
     let view = split_remote(
         remote.as_ref(),
         &captured.policy,
         &captured.tracked,
         &|rev| store.valid_rev(rev),
     );
-    // A manifest that never saw this computer's last one means two computers
-    // published at once. Merging against the base would read the files the
-    // other one never saw as deleted, so this round deletes nothing.
     let diverged = remote
         .as_ref()
         .is_some_and(|remote| diverged_from(&remote.version, round.project.base_manifest));
@@ -3596,8 +3567,6 @@ pub(crate) async fn sync_project<S: CloudStore>(
             persist(&changes);
         }
     }
-    // Content from the cloud is checked like a pull: a project trusted to run
-    // shell commands while compiling asks again before the next compile.
     let arrived = applied
         .downloaded
         .iter()
@@ -3660,6 +3629,30 @@ pub(crate) struct RemoteProject {
     pub(crate) size: u64,
     pub(crate) pending: Option<u64>,
     pub(crate) device: Option<String>,
+    pub(crate) rev: String,
+}
+
+pub(crate) async fn drop_changed_projects<S: CloudStore>(
+    store: &S,
+    cache: &mut BTreeMap<ProjectId, RemoteProject>,
+) {
+    let cached: Vec<(ProjectId, String)> = cache
+        .values()
+        .map(|project| (project.cloud, project.rev.clone()))
+        .collect();
+    let changed: Vec<ProjectId> = stream::iter(cached)
+        .map(|(cloud, rev)| async move {
+            let current = store.metadata(&version_remote(cloud)).await;
+            let same = matches!(current, Ok(Some(meta)) if meta.rev == rev);
+            (!same).then_some(cloud)
+        })
+        .buffer_unordered(DOWNLOAD_CONCURRENCY)
+        .filter_map(|changed| async move { changed })
+        .collect()
+        .await;
+    for cloud in changed {
+        cache.remove(&cloud);
+    }
 }
 
 pub(crate) async fn list_remote_projects<S: CloudStore>(
@@ -3699,6 +3692,7 @@ pub(crate) async fn list_remote_projects<S: CloudStore>(
                         .version
                         .device
                         .map(|device| device.chars().take(64).collect()),
+                    rev: remote.rev,
                 }))
         })
         .buffer_unordered(DOWNLOAD_CONCURRENCY)
@@ -3733,7 +3727,7 @@ pub(crate) async fn delete_project_folder<S: CloudStore>(
     let mut stack = vec![(project_remote(cloud), 0usize)];
     let mut emptied = Vec::new();
     while let Some((folder, depth)) = stack.pop() {
-        match store.delete(&folder, None).await {
+        match store.delete_folder(&folder).await {
             Ok(()) => {}
             Err(error) if too_many_files(&error) && depth < MAX_TREE_DEPTH => {
                 emptied.push(folder.clone());
@@ -3757,7 +3751,7 @@ pub(crate) async fn delete_project_folder<S: CloudStore>(
         }
     }
     for folder in emptied.into_iter().rev() {
-        store.delete(&folder, None).await?;
+        store.delete_folder(&folder).await?;
     }
     Ok(())
 }
@@ -3785,8 +3779,6 @@ fn place_download(
     let mut skipped = 0;
     for staged in placement.staged {
         let record = &placement.records[&staged.key];
-        // The folder starts empty, so anything already at the target is
-        // another record this disk treats as the same name.
         let target = resolve_target(&placement.root, &record.path)
             .filter(|target| std::fs::symlink_metadata(target).is_err());
         let Some(target) = target else {

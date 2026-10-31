@@ -8,7 +8,6 @@ import {
   type WordContext,
 } from "./word-context";
 
-/** A run of PDF text, in points from the top-left of the unrotated page. */
 export interface PdfTextRun {
   str: string;
   x: number;
@@ -18,7 +17,6 @@ export interface PdfTextRun {
   hasEOL?: boolean;
 }
 
-/** A box on a page, in the same frame as `PdfTextRun`. */
 export interface PageRect {
   page: number;
   x: number;
@@ -27,22 +25,16 @@ export interface PageRect {
   height: number;
 }
 
-/**
- * A typeset line holding text from the source line a forward search asked for.
- * `from`..`to` is the stretch of it where that source line's words sit.
- */
 export interface SyncTexLine extends PageRect {
   from: number;
   to: number;
 }
 
-/** The word under the cursor and the source text on each side of it. */
 export interface SourceWord extends WordContext {
   word: string;
 }
 
 const WORD = /[\p{L}\p{M}\p{N}]/u;
-/** PDF text taken on each side of an occurrence for the context comparison. */
 const TEXT_AROUND = 300;
 /**
  * Score added when an occurrence sits in the stretch SyncTeX gives for the
@@ -50,7 +42,6 @@ const TEXT_AROUND = 300;
  * around it, and the same phrase often repeats in them.
  */
 const STRETCH_BONUS = 2;
-/** Slack, in points, for the occurrence's estimated position. */
 const STRETCH_SLACK = 3;
 
 interface Spot {
@@ -60,7 +51,6 @@ interface Spot {
 
 interface FlowText {
   text: string;
-  /** Where each UTF-16 unit of `text` came from, and its character offset in that run. */
   spots: Spot[];
   offsets: number[];
 }
@@ -77,7 +67,6 @@ function flowText(pages: readonly number[], runsByPage: ReadonlyMap<number, read
   const offsets: number[] = [];
   const push = (piece: string, spot: Spot, offset: number) => {
     text += piece;
-    // One entry per UTF-16 unit of the piece.
     spots.push(...new Array<Spot>(piece.length).fill(spot));
     offsets.push(...new Array<number>(piece.length).fill(offset));
   };
@@ -103,12 +92,10 @@ function flowText(pages: readonly number[], runsByPage: ReadonlyMap<number, read
 
 interface Occurrence {
   spot: Spot;
-  /** Estimated middle of the word, in points. */
   middle: number;
   match: ContextMatch;
 }
 
-/** Every whole-word occurrence of the cursor's word, compared on context. */
 function occurrences(
   pages: readonly number[],
   runsByPage: ReadonlyMap<number, readonly PdfTextRun[]>,
@@ -185,7 +172,6 @@ export function pickForwardLine(
   return chosen;
 }
 
-/** Typeset lines after and before a Typst forward jump's anchor searched for the word. */
 const TYPST_LINES_AFTER = 60;
 const TYPST_LINES_BEFORE = 20;
 
@@ -211,8 +197,6 @@ export function linesFromAnchor(
   placed.slice(first, anchorIndex + TYPST_LINES_AFTER).forEach(({ page, run }, index) => {
     const own = first + index >= anchorIndex;
     const previous = lines.at(-1);
-    // Bold, italic or a link start a new run inside one typeset line; keep
-    // the line whole so the highlight covers it, not one piece of it.
     if (previous?.page === page && sameBaseline(previous, run)) {
       widenLine(previous, run, own);
       return;
@@ -230,11 +214,6 @@ export function linesFromAnchor(
   return lines;
 }
 
-/**
- * The visible runs on the anchor's page and the pages on either side, in
- * reading order, with the index of the run the anchor points at: the one under
- * it, or else the first one below it. -1 when there is none.
- */
 function runsAround(
   anchor: PageRect,
   runsByPage: ReadonlyMap<number, readonly PdfTextRun[]>,
@@ -258,7 +237,6 @@ function pointsAt(anchor: PageRect, run: PdfTextRun): boolean {
   return under || run.top >= anchor.y + anchor.height;
 }
 
-/** Grows `line` to cover `run`, and its own stretch too when the run is the block's. */
 function widenLine(line: SyncTexLine, run: PdfTextRun, own: boolean) {
   const right = Math.max(line.x + line.width, run.x + run.width);
   const bottom = Math.max(line.y + line.height, run.top + run.height);

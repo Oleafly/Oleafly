@@ -56,7 +56,6 @@ impl Pending {
         self.everything || self.paths.iter().any(|held| covers(held, path))
     }
 
-    // Whether moving `path` would carry a held file along.
     fn pins(&self, path: &str) -> bool {
         self.holds(path) || self.paths.iter().any(|held| covers(path, held))
     }
@@ -311,10 +310,6 @@ impl Active {
         }
     }
 
-    // A rename someone else made to a file the hold kept back waited for
-    // the decision, so the file stayed under its old name. It moves now,
-    // before the decision reads it, so the decision meets each file under
-    // its node's name. Returns the decided paths where they are now.
     fn follow_held_moves(
         &self,
         only: Option<Vec<String>>,
@@ -625,8 +620,6 @@ impl Shaped {
             .is_some_and(|hold| hold.holds(path) || hold.kind(path).is_some())
     }
 
-    // A file the hold holds until a decision doesn't move on disk until
-    // then, so a program that has it open keeps finding it.
     pub(super) fn pins(&self, path: &str) -> bool {
         self.held.as_ref().is_some_and(|hold| hold.pins(path))
     }

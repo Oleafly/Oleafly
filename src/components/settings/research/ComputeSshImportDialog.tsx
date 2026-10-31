@@ -36,7 +36,6 @@ export function targetFromHost(host: SshConfigHost): ComputeTarget {
   };
 }
 
-/** Picks hosts from the user's SSH config (read only) and adds them in order. */
 export function ComputeSshImportDialog({
   existing,
   onClose,
@@ -79,7 +78,6 @@ export function ComputeSshImportDialog({
   const added = new Set(
     existing.flatMap((target) => (target.kind === "cuaSpace" ? [] : [target.host.toLowerCase()])),
   );
-  // A host added by an import that stopped part way is added, not chosen again.
   const chosen = (hosts ?? []).filter((host) => selected.has(host.alias) && !added.has(host.alias.toLowerCase()));
 
   const importChosen = async () => {

@@ -1,11 +1,6 @@
 import type { Dialect } from "harper.js";
 import type { ProofreadingDialect } from "@oleafly/editor";
 
-/**
- * Single production mapping used by the worker and runtime smoke tests. Keep
- * dialect selection exhaustive so a settings option cannot silently fall
- * back to American English.
- */
 export function harperDialectFor(
   values: typeof import("harper.js").Dialect,
   dialect: ProofreadingDialect,

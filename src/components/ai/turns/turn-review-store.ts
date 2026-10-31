@@ -13,7 +13,6 @@ import { useFilesStore } from "@/store/files";
 
 export type TurnAction = "undo" | "redo";
 
-/** What the last Undo or Redo did, for the card's status line. */
 export interface TurnOutcome {
   action: TurnAction;
   done: number;
@@ -22,11 +21,6 @@ export interface TurnOutcome {
   failed: boolean;
 }
 
-/**
- * Review state of one agent turn. It lives outside the card, keyed by the
- * turn's `snapshotId`, because the message list unmounts rows that scroll
- * out of view and the card must come back the way the user left it.
- */
 export interface TurnReview {
   expanded: boolean;
   buildExpanded: boolean;

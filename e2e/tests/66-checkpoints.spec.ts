@@ -82,8 +82,6 @@ async function archiveRoundTrip(page: Page, template: string) {
     60_000,
   );
   await expect(page.getByTestId("checkpoint-entry")).toHaveCount(2, { timeout: 30_000 });
-  // Import restores history, while the working document stays on the V1
-  // revision restored above. Archive import must never apply sources.
   const source = await page.locator(".cm-content").textContent();
   expect(source).toContain("here.");
   expect(source).not.toContain(EDIT);

@@ -1,5 +1,3 @@
-//! HTTP calls to the online LaTeX service: the dashboard, the project API,
-//! template copies and project downloads. Redirects are never followed.
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -63,7 +61,6 @@ fn build_client(user_agent: &str) -> Result<reqwest::Client, OnlineError> {
         .map_err(|error| OnlineError::io(format!("could not start the connection: {error}")))
 }
 
-/// One client per process, built on first use with the caller's agent.
 fn shared_client(user_agent: &str) -> Result<reqwest::Client, OnlineError> {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     if let Some(client) = CLIENT.get() {
@@ -111,7 +108,6 @@ impl Http {
             .header(ORIGIN, &self.origin)
     }
 
-    /// A request for a public page, sent without the account's cookie.
     pub fn public_get(&self, path: &str) -> reqwest::RequestBuilder {
         self.client.get(self.url(path))
     }
@@ -137,9 +133,6 @@ impl Http {
             .map_err(|error| unreachable(&self.base, error))
     }
 
-    /// Whether `location` is this service's own login page, which is what a
-    /// signed-out request is sent to. A redirect anywhere else (another host,
-    /// a maintenance or challenge page) says nothing about the sign-in.
     fn is_login_redirect(&self, location: &str) -> bool {
         let Ok(base) = url::Url::parse(&format!("{}/", self.base)) else {
             return false;
@@ -175,10 +168,6 @@ impl Http {
         let response = self
             .send(self.get("/project", cookie).header(ACCEPT, "text/html"))
             .await?;
-        // The service sends a signed-out visitor to its login page. A refusal
-        // or a page without the account's id comes from something in front of
-        // it (a firewall challenge, a maintenance page) and says nothing about
-        // the sign-in, which must not be forgotten for it.
         if matches!(
             response.status(),
             StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
@@ -237,8 +226,6 @@ impl Http {
             .ok_or_else(|| OnlineError::new(OnlineErrorKind::Unrecognized))
     }
 
-    /// Ask the server to copy a gallery template into the account, as its
-    /// Open as Template button does, and return the new project's id.
     pub async fn create_from_template(
         &self,
         cookie: &str,
@@ -337,8 +324,6 @@ impl Http {
     }
 }
 
-/// The project id in a redirect to `/project/<id>`, absolute or relative,
-/// and under a server's sub-path too.
 pub fn project_id_in(location: &str) -> Option<String> {
     let path = location.split_once("://").map_or(location, |(_, rest)| {
         rest.find('/').map_or("", |at| &rest[at..])

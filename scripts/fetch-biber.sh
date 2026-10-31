@@ -26,8 +26,6 @@ cleanup_fetch() {
 }
 trap cleanup_fetch EXIT INT TERM
 
-# "<relative-path-under-binaries>:<archive-kind>:<sha256>[:lipo-arch]"
-# lipo-arch is optional: when set, extract a universal binary and thin to that arch.
 asset_for() {
   case "$1" in
     aarch64-apple-darwin)
@@ -121,8 +119,6 @@ fetch() {
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     rm -f "$archive"
     echo "→ fetching $target ($asset)"
-    # Mirror first: SourceForge is the least reliable origin in the toolchain.
-    # The checksum pin below keeps either origin honest.
     if ! curl -fSL --proto '=https' --connect-timeout 30 \
         --speed-limit 1024 --speed-time 60 \
         --retry 5 --retry-delay 3 --retry-connrefused \

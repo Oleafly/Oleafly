@@ -1,8 +1,7 @@
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
 import { installMainThreadPdfWorker } from "@oleafly/preview/mainThreadWorker";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+import { pdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
+import { createReadyPdfWorker, destroyPdfWorker, withTimeout } from "@oleafly/preview/pdfWorkerRuntime";
 
 const WORKER_SETUP_TIMEOUT_MS = 5_000;
 const LOAD_TIMEOUT_MS = 30_000;
@@ -18,22 +17,6 @@ export interface SlideDocument {
   destroy(): void;
 }
 
-function withTimeout<T>(promise: Promise<T>, milliseconds: number, what: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${what} timed out after ${milliseconds}ms`)), milliseconds);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error instanceof Error ? error : new Error(String(error)));
-      },
-    );
-  });
-}
-
 interface LoadedDocument {
   readonly document: pdfjsLib.PDFDocumentProxy;
   readonly task: pdfjsLib.PDFDocumentLoadingTask;
@@ -41,16 +24,15 @@ interface LoadedDocument {
 }
 
 async function loadWithWorker(bytes: Uint8Array): Promise<LoadedDocument> {
-  const worker = new pdfjsLib.PDFWorker();
+  const worker = await createReadyPdfWorker(WORKER_SETUP_TIMEOUT_MS, "pdf worker setup");
   let task: pdfjsLib.PDFDocumentLoadingTask | null = null;
   try {
-    await withTimeout(worker.promise, WORKER_SETUP_TIMEOUT_MS, "pdf worker setup");
-    task = pdfjsLib.getDocument({ data: bytes.slice(), worker });
+    task = pdfjsLib.getDocument(pdfDocumentOptions({ data: bytes.slice(), worker }));
     const document = await withTimeout(task.promise, LOAD_TIMEOUT_MS, "pdf load");
     return { document, task, worker };
   } catch (error) {
     void task?.destroy().catch(() => {});
-    worker.destroy();
+    destroyPdfWorker(worker);
     throw error;
   }
 }

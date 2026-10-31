@@ -10,7 +10,6 @@ import { appLinkInsertion, fileLinkInsertion, projectFileLinksExtension } from "
 
 const views: EditorView[] = [];
 
-/** `doc` with its first `|`, which marks the cursor, taken out. */
 function withoutCursor(doc: string, cursor: number): string {
   return cursor < 0 ? doc : doc.slice(0, cursor) + doc.slice(cursor + 1);
 }

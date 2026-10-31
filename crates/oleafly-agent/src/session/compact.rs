@@ -1,9 +1,3 @@
-//! Auto-compaction: when the context window is exhausted and the turn must
-//! continue, the older history is summarized in one non-streaming provider
-//! call and replaced by the summary plus a short kept tail. The summary is
-//! injected before the kept tail so the most recent user message is never
-//! summarized away.
-
 use std::collections::HashSet;
 
 use serde_json::Value;
@@ -16,23 +10,14 @@ use crate::provider::Resolved;
 use crate::stream::{is_output_limit_stop, is_refusal_stop};
 use crate::tasks::CancellationToken;
 
-/// The most messages the kept tail holds; it holds fewer when they are
-/// large (see `tail_char_budget`).
 pub(crate) const KEEP_LAST_MESSAGES: usize = 10;
-/// The window assumed when the model's is unknown: small, so a local model
-/// with a short window is not sent more than it holds.
 const UNKNOWN_WINDOW_TOKENS: u32 = 32_000;
-/// The kept tail gets at most this share of the window (a quarter).
 const TAIL_WINDOW_DIVISOR: usize = 4;
 const MIN_TAIL_CHARS: usize = 8_000;
 const MAX_TAIL_CHARS: usize = 400_000;
-/// The least a tool result in the kept tail is cut to.
 const MIN_TAIL_RESULT_CHARS: usize = 1_000;
-/// How many times a summary that overflows the window is retried with half
-/// the transcript.
 pub(crate) const MAX_SUMMARY_HALVINGS: u32 = 3;
 
-/// The opening tag of the message that holds a summary in history.
 const COMPACTION_OPEN: &str = "<context_compaction>";
 const COMPACTION_CLOSE: &str = "</context_compaction>";
 
@@ -46,31 +31,13 @@ history that did not fit; do not guess what it held. Be terse and factual; \
 omit pleasantries. This summary replaces the earlier transcript, so anything \
 you omit is gone. Reply with the summary only.";
 
-// The summarizer's input must itself fit in one provider call: compaction
-// runs precisely because the history grew too large, so shipping it verbatim
-// fails in the one case that matters. The input is a plain-text transcript in
-// one user message (a provider rejects tool calls without tools, and a
-// conversation that does not open with a user turn), sized to the model's
-// window. The first request and any earlier summary always stay in it; the
-// newest messages win the rest of the budget.
-/// The transcript budget in characters when the model's window is unknown:
-/// what a 32k-token window holds, so a small local model is not sent more.
 pub(crate) const SUMMARY_INPUT_CHAR_BUDGET: usize = 64_000;
-/// The most the transcript gets, however large the window.
 const MAX_SUMMARY_INPUT_CHARS: usize = 1_000_000;
-/// The least it gets, so a tiny window still sees something.
 pub(crate) const MIN_SUMMARY_INPUT_CHARS: usize = 8_000;
-/// Characters per token assumed when sizing the transcript: low, so code,
-/// LaTeX and CJK text still fit the window.
 const SUMMARY_CHARS_PER_TOKEN: usize = 2;
-/// Tokens kept free for the instructions and the transcript's markup.
 const SUMMARY_OVERHEAD_TOKENS: u32 = 4_000;
-/// The summary's own output ceiling.
 pub(crate) const SUMMARY_MAX_TOKENS: u32 = 16_000;
-/// Web results named in a summary-input marker.
 const MAX_SUMMARY_RESULTS: usize = 5;
-/// What one tool call's arguments, one tool result and one text part add to
-/// the transcript at most; the middle of a longer one is cut.
 const MAX_TOOL_ARGUMENT_CHARS: usize = 2_000;
 const MAX_TOOL_OUTPUT_CHARS: usize = 8_000;
 const MAX_TEXT_CHARS: usize = 32_000;
@@ -85,7 +52,6 @@ fn block_text(block: &Value, key: &str) -> String {
         .to_string()
 }
 
-/// A server block as plain text the summarizer can read.
 fn provider_block_text(block: &Value) -> String {
     match block
         .get("type")
@@ -154,8 +120,6 @@ fn ceil_boundary(text: &str, index: usize) -> usize {
     index
 }
 
-/// `text` within `max` bytes: when it is longer, its start and its end with
-/// a note in between (a log or a file is most useful at both ends).
 fn clip(text: &str, max: usize) -> String {
     if text.len() <= max {
         return text.to_string();
@@ -170,7 +134,6 @@ fn clip(text: &str, max: usize) -> String {
     )
 }
 
-/// `text` cut to `max` bytes, with a note when it was longer.
 fn hard_truncate(mut text: String, max: usize) -> String {
     if text.len() <= max {
         return text;
@@ -180,10 +143,6 @@ fn hard_truncate(mut text: String, max: usize) -> String {
     text
 }
 
-/// What the summarizer reads of one message, as plain lines: no thinking,
-/// media and server blocks as short markers, tool calls and results as
-/// sentences with their arguments and output cut to a sensible length.
-/// `None` when nothing of the message is left.
 fn render_message(message: &Message, text_cap: usize) -> Option<String> {
     let speaker = match message.role {
         Role::User => "User",
@@ -253,7 +212,6 @@ fn render_message(message: &Message, text_cap: usize) -> Option<String> {
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
-/// The message `apply_compaction` wrote for an earlier summary.
 fn is_compaction_summary(message: &Message) -> bool {
     matches!(
         message.content.first(),
@@ -261,11 +219,6 @@ fn is_compaction_summary(message: &Message) -> bool {
     )
 }
 
-/// The transcript the summarizer reads, within `budget` bytes. The first
-/// message (the user's request) and the latest earlier summary are always in
-/// it, cut to a share of the budget; the rest of the budget goes to the
-/// newest messages. Where messages were left out the transcript says how
-/// many, so the summarizer does not invent them.
 pub(crate) fn summary_transcript(messages: &[Message], budget: usize) -> String {
     let summary_at = messages.iter().rposition(is_compaction_summary);
     let mut anchors: Vec<(usize, usize)> = Vec::new();
@@ -309,8 +262,6 @@ pub(crate) fn summary_transcript(messages: &[Message], budget: usize) -> String 
         };
         let cost = text.len() + SEPARATOR.len();
         if cost > room {
-            // A newest message larger than the whole room is cut, not shipped
-            // whole; anything older that does not fit is left out.
             if newest.is_empty() && room > SEPARATOR.len() + TRUNCATED.len() {
                 newest.push((index, hard_truncate(text, room - SEPARATOR.len())));
             }
@@ -341,8 +292,6 @@ pub(crate) fn summary_transcript(messages: &[Message], budget: usize) -> String 
     format!("<transcript>\n{}\n</transcript>", body.trim_end())
 }
 
-/// The output ceiling of the summary: what a call may produce, and no more
-/// than a quarter of a small window.
 fn summary_max_tokens(caps: &crate::caps::ModelCaps) -> u32 {
     let ceiling = crate::wire::reasoning::default_max_tokens(caps, SUMMARY_MAX_TOKENS);
     match caps.context_window {
@@ -351,8 +300,6 @@ fn summary_max_tokens(caps: &crate::caps::ModelCaps) -> u32 {
     }
 }
 
-/// How much transcript fits the model's window next to the instructions and
-/// the summary it writes.
 fn summary_input_budget(caps: &crate::caps::ModelCaps, max_tokens: u32) -> usize {
     let Some(window) = caps.context_window.filter(|window| *window > 0) else {
         return SUMMARY_INPUT_CHAR_BUDGET;
@@ -364,15 +311,10 @@ fn summary_input_budget(caps: &crate::caps::ModelCaps, max_tokens: u32) -> usize
         .clamp(MIN_SUMMARY_INPUT_CHARS, MAX_SUMMARY_INPUT_CHARS)
 }
 
-/// The transcript budget a summary of this model's history starts with.
 pub(crate) fn summary_budget(caps: &crate::caps::ModelCaps) -> usize {
     summary_input_budget(caps, summary_max_tokens(caps))
 }
 
-/// Summarize the full history into a compact continuation text, the
-/// transcript within `budget` characters. Runs under the turn's
-/// cancellation token so an interrupt does not wait on the summarization
-/// call. The caller checks the reply with `usable_summary`.
 pub(crate) async fn compact_history(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -388,9 +330,6 @@ pub(crate) async fn compact_history(
     }
 }
 
-/// The text of a summary reply, or why it cannot replace the history: an
-/// empty reply, a refusal and a reply cut off at the output limit would each
-/// leave the run with nothing of what it did.
 pub(crate) fn usable_summary(response: &CompletionResponse) -> Result<String> {
     let reason = response.stop_reason.as_deref();
     if is_refusal_stop(reason) {
@@ -412,9 +351,6 @@ pub(crate) fn usable_summary(response: &CompletionResponse) -> Result<String> {
     Ok(summary.to_string())
 }
 
-/// The one-shot request that summarizes `messages`: the history as a text
-/// transcript in a single user message, low effort, no visible reasoning, no
-/// tools or web, and no more output than the model allows.
 #[cfg(test)]
 pub(crate) fn summary_request(
     messages: &[Message],
@@ -423,9 +359,6 @@ pub(crate) fn summary_request(
     summary_request_within(messages, caps, summary_budget(caps))
 }
 
-/// `summary_request` with the transcript cut to `budget` characters. The
-/// call is the largest of the run, so it gets the longest a blocking call
-/// may take rather than the default.
 fn summary_request_within(
     messages: &[Message],
     caps: &crate::caps::ModelCaps,
@@ -447,8 +380,6 @@ fn summary_request_within(
     }
 }
 
-/// What the kept tail may hold, in bytes of text: a quarter of the window
-/// at the planning ratio of two characters a token.
 fn tail_char_budget(caps: &crate::caps::ModelCaps) -> usize {
     let window = caps
         .context_window
@@ -458,8 +389,6 @@ fn tail_char_budget(caps: &crate::caps::ModelCaps) -> usize {
         .clamp(MIN_TAIL_CHARS, MAX_TAIL_CHARS)
 }
 
-/// About how much of the window `message` takes, in bytes of text. Images
-/// and documents are counted by their own limits.
 fn message_size(message: &Message) -> usize {
     message
         .content
@@ -488,7 +417,6 @@ fn block_type(block: &Value) -> &str {
         .unwrap_or_default()
 }
 
-/// The calls whose hosted fetch results are in `tail`.
 fn hosted_fetch_ids(tail: &[Message]) -> HashSet<String> {
     tail.iter()
         .flat_map(|message| &message.content)
@@ -506,8 +434,6 @@ fn hosted_fetch_ids(tail: &[Message]) -> HashSet<String> {
         .collect()
 }
 
-/// A cited text block that points into a fetched document rather than a
-/// search result.
 fn cites_a_document(block: &Value) -> bool {
     block_type(block) == "text"
         && block
@@ -520,10 +446,6 @@ fn cites_a_document(block: &Value) -> bool {
             })
 }
 
-/// Hosted fetch results in the kept tail as short text markers: a fetched
-/// PDF is otherwise sent again, whole, with every later request. Their
-/// calls and the text citing them become text too, since neither stands
-/// without the result.
 fn hosted_fetches_as_text(tail: &mut [Message]) {
     let fetched = hosted_fetch_ids(tail);
     if fetched.is_empty() {
@@ -555,9 +477,6 @@ fn hosted_fetches_as_text(tail: &mut [Message]) {
     }
 }
 
-/// The size each tool result in `tail` is cut to so the tail fits
-/// `budget`, or `None` when it fits as it is (or cutting results would not
-/// change it).
 fn tail_result_cap(tail: &[Message], budget: usize) -> Option<usize> {
     let total = tail.iter().map(message_size).fold(0, usize::saturating_add);
     if total <= budget {
@@ -579,9 +498,6 @@ fn tail_result_cap(tail: &[Message], budget: usize) -> Option<usize> {
     results.iter().any(|size| *size > cap).then_some(cap)
 }
 
-/// Whether compacting this history makes the request smaller: it drops
-/// messages, or the kept tail has tool results to cut or hosted fetches to
-/// turn into markers. When it does neither, summarizing only adds to it.
 pub(crate) fn compaction_would_shrink(messages: &[Message], caps: &crate::caps::ModelCaps) -> bool {
     let budget = tail_char_budget(caps);
     let start = compaction_tail_start(messages, budget);
@@ -589,12 +505,6 @@ pub(crate) fn compaction_would_shrink(messages: &[Message], caps: &crate::caps::
     start > 0 || tail_result_cap(tail, budget).is_some() || !hosted_fetch_ids(tail).is_empty()
 }
 
-/// Rewrite the request around the summary: `[summary, …kept tail]`. The
-/// tail fits a share of the model's window: it holds fewer messages when
-/// they are large, its tool results are cut to fit, and hosted fetch
-/// results in it become markers. The stateless Responses continuation
-/// cannot survive summarization, so it is dropped and rebuilt from messages
-/// on the next tool turn. Returns how many messages were summarized away.
 pub(crate) fn apply_compaction(
     request: &mut CompletionRequest,
     summary: String,
@@ -604,8 +514,6 @@ pub(crate) fn apply_compaction(
     let tail_start = compaction_tail_start(&request.messages, budget);
     let dropped = tail_start;
     let mut tail = request.messages.split_off(tail_start);
-    // Thinking is bound to the history before it, which the summary
-    // replaces; it is removed rather than replayed against a new prefix.
     for message in &mut tail {
         message.content.retain(|part| {
             !matches!(
@@ -634,7 +542,6 @@ pub(crate) fn apply_compaction(
     dropped
 }
 
-/// The id of a tool call, client or server.
 fn call_id(part: &ContentPart) -> Option<&str> {
     match part {
         ContentPart::ToolUse { id, .. } => Some(id.as_str()),
@@ -647,7 +554,6 @@ fn call_id(part: &ContentPart) -> Option<&str> {
     }
 }
 
-/// The call a result answers, client or server.
 fn result_id(part: &ContentPart) -> Option<&str> {
     match part {
         ContentPart::ToolResult { id, .. } => Some(id.as_str()),
@@ -658,11 +564,6 @@ fn result_id(part: &ContentPart) -> Option<&str> {
     }
 }
 
-/// Where the kept tail starts: the newest messages, at most
-/// `KEEP_LAST_MESSAGES` of them and no more than `budget` bytes (the last
-/// message always stays), then moved back so every result in it keeps the
-/// call it answers. That call is the nearest one before the result with its
-/// id: some providers' ids repeat from one reply to the next.
 fn compaction_tail_start(messages: &[Message], budget: usize) -> usize {
     let mut start = messages.len();
     let mut used = 0usize;
@@ -726,12 +627,10 @@ mod tests {
 
         assert_eq!(dropped, 15);
         assert_eq!(request.messages.len(), KEEP_LAST_MESSAGES + 1);
-        // Summary first, then the untouched tail in order.
         assert!(text_of(&request.messages[0]).contains("the summary"));
         assert!(text_of(&request.messages[0]).contains("<context_compaction>"));
         assert!(text_of(&request.messages[1]).contains("message 15"));
         assert!(text_of(request.messages.last().unwrap()).contains("message 24"));
-        // The stateless continuation cannot survive summarization.
         assert!(request.openai_responses_input.is_none());
     }
 
@@ -821,11 +720,9 @@ mod tests {
         assert!(transcript.contains("User: the task"));
         assert!(transcript.contains("User: recent-1"));
         assert!(transcript.contains("User: recent-2"));
-        // The oldest of the middle fell off first; the newest of it stayed.
         assert!(!transcript.contains("middle-00"));
         assert!(transcript.contains("middle-19"));
         assert!(transcript.contains("messages omitted]"));
-        // Oldest first, with the gap between the request and the tail.
         let gap = transcript.find(" omitted]").unwrap();
         assert!(transcript.find("the task").unwrap() < gap);
         assert!(gap < transcript.find("middle-19").unwrap());
@@ -854,7 +751,6 @@ mod tests {
 
     #[test]
     fn summary_input_reads_a_tool_result_whose_call_fell_off_as_plain_text() {
-        // No pairing rule applies to a transcript, so an orphan is harmless.
         let messages = vec![
             Message::user("task".to_string()),
             tool_result("call-9", "orphaned"),
@@ -912,8 +808,6 @@ mod tests {
     #[test]
     fn a_history_over_the_tool_call_cap_is_one_user_message_with_every_call() {
         use crate::session::context_window::validate_completion_request;
-        // 50 turns of six calls each: 300 calls in 100 messages, over the
-        // 256-call cap.
         let mut messages = Vec::new();
         for turn in 0..50 {
             let ids: Vec<String> = (0..6).map(|n| format!("call-{turn}-{n}")).collect();
@@ -955,8 +849,6 @@ mod tests {
 
     #[test]
     fn the_summary_request_has_no_tool_parts_and_opens_with_a_user_message() {
-        // A tool loop that crossed the message cap: the newest 128 messages
-        // used to start on an assistant tool call.
         let mut messages = vec![Message::user("task".to_string())];
         for turn in 0..70 {
             let id = format!("call-{turn}");
@@ -1017,7 +909,6 @@ mod tests {
         assert!(transcript.contains("Goal: port the paper to Typst."));
         assert!(transcript.contains("<context_compaction>"));
         assert!(transcript.contains("messages omitted]"));
-        // The newest messages fill what the anchors leave.
         assert!(transcript.contains("Tool read_file returned: ffff"));
     }
 
@@ -1058,10 +949,8 @@ mod tests {
             summary_input_budget(&caps(None), 16_000),
             SUMMARY_INPUT_CHAR_BUDGET
         );
-        // A 32k window leaves little room: well under the old fixed budget.
         let small = summary_input_budget(&caps(Some(32_768)), 8_192);
         assert!(small < 60_000, "{small}");
-        // A 200k window is about the old budget; a 1M window gets more.
         let medium = summary_input_budget(&caps(Some(200_000)), 16_000);
         assert!((300_000..=400_000).contains(&medium), "{medium}");
         let large = summary_input_budget(&caps(Some(1_000_000)), 16_000);
@@ -1069,7 +958,6 @@ mod tests {
             large > medium && large <= MAX_SUMMARY_INPUT_CHARS,
             "{large}"
         );
-        // Never zero, even for a window the summary alone would fill.
         assert_eq!(
             summary_input_budget(&caps(Some(4_000)), 1_000),
             MIN_SUMMARY_INPUT_CHARS
@@ -1089,7 +977,6 @@ mod tests {
         let request = summary_request(&messages, &caps);
         let sent =
             request.system.as_deref().map_or(0, str::len) + text_of(&request.messages[0]).len();
-        // Two characters per token is the planning ratio.
         let tokens = sent / 2 + request.max_tokens.unwrap() as usize;
         assert!(tokens < 32_768, "{tokens}");
     }
@@ -1331,8 +1218,6 @@ mod tests {
 
     #[test]
     fn large_recent_tool_results_are_cut_so_the_kept_tail_fits_the_window() {
-        // Five rounds of two 60 KB chapter reads on a 200k window: the old
-        // fixed ten-message tail kept all 600 KB.
         let mut request = CompletionRequest {
             messages: vec![Message::user("port the chapters".to_string())],
             ..CompletionRequest::default()
@@ -1347,13 +1232,11 @@ mod tests {
         let dropped = apply_compaction(&mut request, "summary".into(), &caps);
         assert!(dropped > 0);
         let budget = tail_char_budget(&caps);
-        // Every result is cut to fit, with room for the cut markers.
         assert!(
             tail_size(&request) <= budget + 2 * 64,
             "{}",
             tail_size(&request)
         );
-        // The tail opens on a call, so no result is orphaned.
         assert!(matches!(
             request.messages[1].content.first(),
             Some(ContentPart::ToolUse { .. })
@@ -1375,7 +1258,6 @@ mod tests {
         }
         let caps = window(200_000);
         let dropped = apply_compaction(&mut request, "summary".into(), &caps);
-        // 100 KB of tail room holds three 30 KB messages, not ten.
         assert_eq!(request.messages.len(), 4);
         assert_eq!(dropped, 12);
         assert!(text_of(request.messages.last().unwrap()).starts_with("9 "));
@@ -1383,10 +1265,8 @@ mod tests {
 
     #[test]
     fn a_history_that_compaction_cannot_shrink_is_not_summarized() {
-        // A single oversized first request: nothing to drop, nothing to cut.
         let single = vec![Message::user("x".repeat(500_000))];
         assert!(!compaction_would_shrink(&single, &window(200_000)));
-        // One huge tool result can still be cut.
         let mut cut = vec![Message::user("task".to_string())];
         cut.extend(tool_round("r", &[400_000]));
         assert!(compaction_would_shrink(&cut, &window(200_000)));
@@ -1402,8 +1282,6 @@ mod tests {
             messages.push(tool_result("call_read_file_1", "ok"));
         }
         messages.push(Message::user("next".to_string()));
-        // The newest ten start on a result; its call is just before it, not
-        // at the start of the history.
         let start = compaction_tail_start(&messages, tail_char_budget(&caps()));
         assert_eq!(start, messages.len() - KEEP_LAST_MESSAGES - 1);
         assert!(matches!(
@@ -1457,7 +1335,6 @@ mod tests {
         assert!(texts.contains(&"[web_fetch: https://e.org/p.pdf]"));
         assert!(texts.contains(&"[fetched https://e.org/p.pdf]"));
         assert!(texts.contains(&"The paper says so."));
-        // The search call has no fetch result and stays as it was.
         let blocks: Vec<&Value> = parts
             .iter()
             .filter_map(|part| match part {
@@ -1482,7 +1359,6 @@ mod tests {
     #[test]
     fn an_unknown_window_gets_a_transcript_a_small_model_can_hold() {
         assert_eq!(summary_budget(&caps()), 64_000);
-        // The kept tail is sized for a small window too.
         assert_eq!(tail_char_budget(&caps()), 16_000);
     }
 

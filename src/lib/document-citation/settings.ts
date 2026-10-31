@@ -1,13 +1,9 @@
 const STORAGE_KEY = "oleafly.document-citation.settings.v1";
 
 export interface DocumentCitationSettings {
-  /** Minimum relevance score (0–100) to keep a candidate. Default 60. */
   scoreThreshold: number;
-  /** Cap on results retained per literature source. Default 8. */
   maxResultsPerSource: number;
-  /** Cap on results retained per paragraph. Default 5. */
   maxResultsPerParagraph: number;
-  /** Cap on paragraphs scanned in one document pass. Default 20. */
   maxParagraphs: number;
 }
 

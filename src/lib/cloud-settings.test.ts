@@ -85,7 +85,6 @@ describe("settings that stay on each computer", () => {
       readLocalSnapshot(local, "system"),
     );
     if (!read.ok) throw new Error("expected readable settings");
-    // The time budget syncs; the network choice stays as this computer has it.
     expect(read.changed).toEqual(["research.timeBudgetMinutes"]);
   });
 

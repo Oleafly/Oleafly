@@ -23,20 +23,14 @@ function stayForRunningTerminals() {
   return cancelQuitFlush().catch((cancelError) => logError("stay for running terminals", cancelError));
 }
 
-/** The app menu's Reload Views, which the main window answers (menu.rs). */
 const RELOAD_VIEWS_REQUESTED = "menu://reload-views";
 
-/** What the guard is saving files for. */
 type LeaveAction = "quit" | "restart" | "reload";
 
 function actionFor(restart: boolean): LeaveAction {
   return restart ? "restart" : "quit";
 }
 
-/**
- * Whether the programs running in the project's terminals may stop. Asks
- * (once) when one runs; loaded on demand so the quit path stays light.
- */
 async function terminalsMayStop(action: LeaveAction): Promise<boolean> {
   try {
     const { confirmStopTerminals } = await import("@/lib/terminal-lifecycle");
@@ -47,7 +41,6 @@ async function terminalsMayStop(action: LeaveAction): Promise<boolean> {
   }
 }
 
-/** Quits, restarts or reloads once running terminal programs may stop. */
 async function leaveOnceTerminalsMayStop(action: LeaveAction): Promise<void> {
   if (!(await terminalsMayStop(action))) {
     if (action !== "reload") await stayForRunningTerminals();
@@ -57,14 +50,6 @@ async function leaveOnceTerminalsMayStop(action: LeaveAction): Promise<void> {
   else await confirmQuitFlush(action === "restart");
 }
 
-/**
- * Transactional quit: the Rust side blocks window close, Cmd+Q, and Restart
- * while dirty buffers may exist and emits `quit-flush-requested` (payload:
- * whether a restart, not a quit, is wanted). This guard runs the same durable
- * flush that project close/switch uses, then confirms the quit. When a save
- * fails the quit is blocked and the user chooses between staying (default)
- * and quitting anyway with unsaved changes.
- */
 export function QuitGuard() {
   const { t } = useTranslation(["shell"]);
   const [failure, setFailure] = useState<{ message: string; action: LeaveAction } | null>(null);
@@ -105,8 +90,6 @@ export function QuitGuard() {
     native,
   );
 
-  // Reload Views stops the terminal sessions and drops unsaved edits like a
-  // restart, so it saves and asks the same way first.
   useTauriEvent(
     RELOAD_VIEWS_REQUESTED,
     () => {
@@ -150,7 +133,6 @@ export function QuitGuard() {
       onConfirm={() => {
         const action = failure?.action ?? "quit";
         setFailure(null);
-        // Giving up the unsaved edits still asks before stopping running programs.
         void leaveOnceTerminalsMayStop(action).catch((error) =>
           notifyError(action === "reload" ? "reload anyway" : "quit anyway", error),
         );

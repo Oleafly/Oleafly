@@ -1,8 +1,3 @@
-//! The Typst prose mask (`packages/editor/src/typst-mask.ts`): a scanner
-//! that follows markup, code and content blocks, blanks code expressions,
-//! comments, math, raw text, labels, references, URLs and e-mail addresses,
-//! and decodes `\u{…}` escapes.
-
 use std::sync::LazyLock;
 
 use oleafly_preflight::jsre::JsRegex;
@@ -79,7 +74,6 @@ struct TypstConstruct {
     text: Vec<u16>,
 }
 
-/// A `#expression`: its code runs become masked segments when it ends.
 struct Owner {
     run_start: usize,
     kind: RegionKind,
@@ -87,7 +81,6 @@ struct Owner {
     segments: Vec<MaskSpan>,
 }
 
-/// Open `(` and `{` code groups since the current content block opened.
 #[derive(Clone, Copy, Default)]
 struct OpenCode {
     paren: usize,
@@ -304,7 +297,6 @@ fn stands_alone(text: &[u16], from: usize, to: usize) -> bool {
         && (after >= text.len() || text[after] == NEWLINE || text[after] == CARRIAGE_RETURN)
 }
 
-/// Typst's `blank`, which keeps `"\r"` as well as `"\n"`.
 fn blank(characters: &mut [u16], from: usize, to: usize) {
     for unit in characters.iter_mut().take(to).skip(from) {
         if *unit != NEWLINE && *unit != CARRIAGE_RETURN {
@@ -816,8 +808,6 @@ impl<'a> Scanner<'a> {
         if !open {
             return cursor + 1;
         }
-        // The root markup frame is never popped; an open count always has
-        // its frame above the current markup, so the guard never decides.
         while self.stack.len() > 1 && !self.accepts(unit, self.top()) {
             self.pop(cursor);
         }
@@ -849,8 +839,6 @@ fn mask_remote_targets(scanner: &mut Scanner<'_>, source: &[u16]) {
     }
 }
 
-/// `TYPST_MARKUP_MARKERS` (`^[ \t]*(=+)(?=[ \t])`, `^[ \t]*([-+])(?=[ \t])`,
-/// `^[ \t]*(\/)(?=[ \t])`, all `gmu`) at every line start of one snapshot.
 fn mask_typst_markup_markers(scanner: &mut Scanner<'_>) {
     let markup = scanner.characters.clone();
     let starts = js_line_starts(&markup);
@@ -929,7 +917,6 @@ fn scan_typst(text: &[u16]) -> TypstScan {
     }
 }
 
-/// Decoded units, and for each the source range it came from.
 #[derive(Default)]
 struct DecodeTables {
     decoded: Vec<u16>,
@@ -938,7 +925,6 @@ struct DecodeTables {
 }
 
 impl DecodeTables {
-    /// `keepUntil`: masked units up to `to` map to themselves.
     fn keep_until(&mut self, masked: &[u16], cursor: &mut usize, to: usize) {
         if to > *cursor {
             self.decoded
@@ -980,7 +966,6 @@ fn decode_scan(text: &[u16], scan: &TypstScan) -> DecodedProse {
     }
 }
 
-/// `maskTypstForProseRegions`.
 pub fn mask_typst_for_prose_regions(text: &[u16]) -> ProseMask {
     let scan = scan_typst(text);
     let mut out = scan.masked.clone();

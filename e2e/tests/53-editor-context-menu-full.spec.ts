@@ -63,7 +63,6 @@ async function openContextMenu(page: TauriPage) {
   await expect(page.getByRole("menu")).toBeVisible({ timeout: 5_000 });
 }
 
-// Every label but the last opens a submenu: ("Insert", "Heading", "Section").
 async function clickContextAction(page: TauriPage, ...path: string[]) {
   await openContextMenu(page);
   await clickEditorContextPath(page, path);
@@ -185,8 +184,6 @@ Context reference: \ref{sec:context-nav}.
     timeout: 15_000,
   });
 
-  // The context action can land as a silent no-op while the editor is still
-  // settling from the SyncTeX view switch; retry the whole gesture.
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:context-nav", 2);
     await clickContextAction(tauriPage, "Go to definition");

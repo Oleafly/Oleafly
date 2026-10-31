@@ -8,7 +8,6 @@ import {
   type TypstMathTheme,
 } from "./typst-math-render";
 
-// The Typst half lives on its own so the editor can reach it without KaTeX.
 export {
   cachedTypstMath,
   cssColorToHex,
@@ -211,7 +210,6 @@ function previewMacros(): Record<string, PreviewMacro> {
     "\\cref": reference,
     "\\Cref": reference,
     "\\eqref": unresolvedReference("(??)"),
-    // Only valid inside multline, which renders as gather below.
     "\\shoveleft": "#1",
     "\\shoveright": "#1",
   };
@@ -506,11 +504,6 @@ function observePreviewVisibility(
   };
 }
 
-/**
- * Mounts a lazily rendered, accessible preview. IntersectionObserver prevents
- * offscreen KaTeX work. The caller-provided identity guard makes delayed
- * observer callbacks harmless after a document/revision change.
- */
 export function mountMathPreview(
   host: HTMLElement,
   options: MountMathPreviewOptions,

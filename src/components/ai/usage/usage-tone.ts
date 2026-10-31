@@ -2,7 +2,6 @@ import type { UsageSnapshot, UsageWindow } from "./types";
 
 export type UsageTone = "normal" | "warning" | "critical";
 
-/** Under 75% normal, 75–90% warning, over 90% critical. */
 export function usageTone(fraction: number): UsageTone {
   if (!Number.isFinite(fraction)) return "normal";
   if (fraction > 0.9) return "critical";
@@ -22,14 +21,12 @@ export const USAGE_TONE_BAR: Record<UsageTone, string> = {
   critical: "bg-destructive",
 };
 
-/** The share of the context window in use, 0..1, or null when unknown. */
 export function contextFraction(snapshot: UsageSnapshot): number | null {
   const context = snapshot.context;
   if (!context || Number.isNaN(context.size) || context.size <= 0 || !Number.isFinite(context.used)) return null;
   return Math.min(1, Math.max(0, context.used / context.size));
 }
 
-/** A plan window's status counts before its utilization. */
 export function windowTone(window: UsageWindow): UsageTone {
   if (window.status === "blocked") return "critical";
   if (window.status === "warning") return "warning";

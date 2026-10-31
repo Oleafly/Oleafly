@@ -21,10 +21,7 @@ import { Spinner } from "@/components/ui/spinner";
 export interface CreatePersonaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Persists the persona (append for a new one, replace for an edit) into
-  // ai_personas. Returning ok: false keeps the dialog open with the message.
   onSubmit: (persona: Persona) => Promise<{ ok: boolean; message?: string }>;
-  // When set, the dialog edits this persona in place instead of creating one.
   editing?: Persona | null;
 }
 

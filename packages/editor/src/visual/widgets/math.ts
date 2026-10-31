@@ -2,8 +2,6 @@ import { type EditorView, WidgetType } from "@codemirror/view";
 import { type MathRenderResult, renderMathSource } from "../../math-render";
 import { placeSelectionInsideBlock } from "../selection";
 
-// Labels, references and environments KaTeX lacks are handled by the shared
-// renderer, so the tooltip, this widget and the hover card agree.
 export function renderVisualMath(source: string, display: boolean): MathRenderResult {
   return renderMathSource(source, display);
 }

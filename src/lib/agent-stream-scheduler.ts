@@ -1,7 +1,3 @@
-// Window-backed scheduling for the delta queues: text flushes ride
-// requestAnimationFrame while the surface is visible (a timer when hidden),
-// output flushes ride a 50 ms interval.
-
 import type { FlushScheduler } from "@oleafly/ai-core";
 
 export function windowFlushScheduler(): FlushScheduler {

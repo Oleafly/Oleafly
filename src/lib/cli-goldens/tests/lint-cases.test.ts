@@ -6,10 +6,6 @@ import { markdownToProse, maskLatexForProseRegions, maskTypstForProseRegions } f
 import { installEnglishEditorMessages } from "../../../../packages/editor/src/test-messages";
 import { byCodePoint, compressMap, expectGolden, LINT_FIXTURES, normalizeEndings, readCases } from "./support";
 
-// Goldens for crates/oleafly-lint: the editor's LaTeX and BibTeX linters and
-// the prose masks the proofreader reads. Messages are recorded as catalog
-// keys and params, so wording changes never break the Rust comparison.
-
 type TextCase = { name: string; text: string };
 type ProseCase = TextCase & { format: "latex" | "markdown" | "typst" };
 
@@ -44,7 +40,6 @@ function recorded(diagnostics: readonly Diagnostic[]): RecordedDiagnostic[] {
     );
 }
 
-/** The grammar input the proofreading worker builds (`grammarInput`). */
 function proseRecord(format: ProseCase["format"], text: string) {
   if (format === "markdown") {
     const { prose, map } = markdownToProse(text);

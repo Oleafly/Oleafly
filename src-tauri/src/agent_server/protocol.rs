@@ -1,19 +1,11 @@
-//! Agent-server protocol vocabulary: request methods, streamed notifications,
-//! and server-initiated requests, mirroring the desktop agent-server contract
-//! (protocol v2). Method and notification names are load-bearing — the
-//! renderer dispatcher keys on them verbatim.
-
 use serde::{Deserialize, Serialize};
 
 pub const APP_SERVER_PROTOCOL_VERSION: u32 = 2;
 pub const NATIVE_HOST_PROTOCOL_VERSION: u32 = 2;
 pub const SCHEMA_VERSION: u32 = 2;
 
-/// Error code returned when a conversation's request queue is full.
 pub const QUEUE_FULL_CODE: i64 = -32001;
 
-/// Request methods the client can call. Grouped by area; the scheduler keys
-/// off these strings, so they must match the renderer's dispatcher exactly.
 pub mod method {
     pub const INITIALIZE: &str = "initialize";
 
@@ -50,8 +42,6 @@ pub mod method {
     pub const CONFIG_VALUE_WRITE: &str = "config/value/write";
 }
 
-/// Methods that must never sit behind a busy queue: they steer, stop, or
-/// unblock an in-flight turn.
 pub const HIGH_PRIORITY_METHODS: [&str; 6] = [
     method::TURN_START,
     method::TURN_STEER,
@@ -61,8 +51,6 @@ pub const HIGH_PRIORITY_METHODS: [&str; 6] = [
     method::THREAD_APPROVE_GUARDIAN_DENIED_ACTION,
 ];
 
-/// Read-only methods whose duplicate submissions coalesce onto the first
-/// queued request instead of piling up.
 pub const COALESCED_METHODS: [&str; 5] = [
     method::CONFIG_READ,
     method::MODEL_LIST,
@@ -71,8 +59,6 @@ pub const COALESCED_METHODS: [&str; 5] = [
     method::THREAD_TURNS_LIST,
 ];
 
-/// Server-initiated request methods: the agent asks the client (ultimately
-/// the user) to resolve something before the turn can continue.
 pub mod server_request_method {
     pub const COMMAND_EXECUTION_APPROVAL: &str = "item/commandExecution/requestApproval";
     pub const FILE_CHANGE_APPROVAL: &str = "item/fileChange/requestApproval";
@@ -81,8 +67,6 @@ pub mod server_request_method {
     pub const MCP_ELICITATION: &str = "mcpServer/elicitation/request";
 }
 
-/// A user decision on a server-initiated request. Legacy wire spellings are
-/// accepted as aliases so older shells keep working.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RequestDecision {
@@ -130,7 +114,6 @@ impl AgentServerInfo {
     }
 }
 
-/// Token usage snapshot streamed on `thread/tokenUsage/updated`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenUsage {
@@ -142,7 +125,6 @@ pub struct TokenUsage {
     pub output_tokens: u64,
 }
 
-/// One todo entry carried by `turn/plan/updated`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanTodo {
@@ -150,7 +132,6 @@ pub struct PlanTodo {
     pub status: String,
 }
 
-/// How a turn ended, on `turn/completed`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TurnStatus {
@@ -159,7 +140,6 @@ pub enum TurnStatus {
     Interrupted,
 }
 
-/// Structured error taxonomy surfaced on the `error` notification.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ErrorInfo {
@@ -172,16 +152,9 @@ pub enum ErrorInfo {
     TurnNotSteerable,
 }
 
-/// Notifications streamed from the agent server to the shell. Serialized as
-/// `{ "method": "turn/started", "params": { … } }` — the shell's three-tier
-/// dispatcher routes on `method`.
-///
-/// Item payloads stay `serde_json::Value` in this layer: the session model
-/// owns the typed item union and stamps final shapes before these leave the
-/// process boundary.
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "method", content = "params", rename_all = "camelCase")]
-#[allow(dead_code)] // Emitters arrive with the session model; the wire shape is fixed first.
+#[allow(dead_code)]
 pub enum Notification {
     #[serde(rename = "turn/started")]
     TurnStarted(TurnStartedParams),
@@ -483,8 +456,6 @@ pub struct WarningParams {
     pub message: String,
 }
 
-/// A server-initiated request routed to the shell for resolution, serialized
-/// onto the notification channel with the same `{method, params}` envelope.
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "method", content = "params", rename_all = "camelCase")]
 pub enum ServerRequest {
@@ -511,8 +482,6 @@ impl ServerRequest {
         }
     }
 
-    /// Elicitations auto-decline after sustained foreground inactivity; the
-    /// other request kinds wait for the user indefinitely.
     pub fn auto_resolves_to_decline(&self) -> bool {
         matches!(self, Self::McpElicitation(_))
     }

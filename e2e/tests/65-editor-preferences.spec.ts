@@ -13,8 +13,6 @@ import {
 
 const PROJECT = "Editor Prefs";
 
-// Every test starts on a freshly reloaded SPA sitting in the library, so each
-// one opens the editor itself instead of inheriting the previous test's view.
 async function openPrefsProject(page: Page) {
   await waitLong(
     page,
@@ -44,8 +42,6 @@ async function openEditorAppearanceTab(page: Page) {
 }
 
 async function closeSettings(page: Page) {
-  // The backdrop shares the "Close settings" aria-label with the header
-  // button, so target the button by test id.
   await page.click('[data-testid="settings-close"]');
   await waitLong(
     page,
@@ -192,7 +188,6 @@ async function caretToEnd(page: Page) {
   );
 }
 
-// Give an asynchronous surface time to appear before asserting it did not.
 async function settle(page: Page, ms: number) {
   await page.evaluate(
     `new Promise((resolve) => setTimeout(() => resolve(1), ${ms}))`,
@@ -229,8 +224,6 @@ test("auto-close brackets inserts the closing brace, and stops when turned off",
   await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
   await caretToEnd(tauriPage);
   await typeAtCaret(tauriPage, "\\textit{");
-  // Give the editor the same settling time the enabled case got before
-  // asserting the closing brace is absent.
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
     .toContain("\\textit{");
@@ -270,9 +263,6 @@ test("auto-complete opens the popup while typing, and stays closed when off", as
   );
   await caretToEnd(tauriPage);
   await typeAtCaret(tauriPage, "\\alph");
-  // The popup is asynchronous. Polling would pass on its first read, before a
-  // late popup could appear, so wait out the completion delay first and then
-  // assert it never opened.
   await settle(tauriPage, 3_000);
   expect(
     await tauriPage.evaluate<boolean>(
@@ -309,7 +299,6 @@ test("cursor blinking styles change the cursor animation and Off stops it", asyn
     .poll(async () => await cursorRestartClass(tauriPage), { timeout: 10_000 })
     .toBe("");
 
-  // The editor keeps working after the compartment reconfigures.
   await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
   await caretToEnd(tauriPage);
   await typeAtCaret(tauriPage, "solid");
@@ -466,8 +455,6 @@ test("editor preferences persist across a reload", async ({ tauriPage }) => {
   );
   expect(stored).toBe("0,off");
 
-  // Restore the defaults so later specs in the shared app instance are not
-  // left with completions disabled.
   await toggleSetting(tauriPage, "Auto-complete", true);
   await chooseEditorSetting(tauriPage, "settings-editor-cursor-blinking-trigger", "Blink");
 });

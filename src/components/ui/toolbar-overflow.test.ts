@@ -53,8 +53,6 @@ describe("fitCount", () => {
 
   it("reserves room for the more button once anything overflows", () => {
     const exactlyThree = widthFor(3);
-    // Three of the four controls would fit, but the fourth needs a more button
-    // and that button has to fit too.
     const fitted = fitCount(icons(4), exactlyThree);
     expect(fitted).toBeLessThan(3);
     expect(
@@ -64,7 +62,6 @@ describe("fitCount", () => {
 
   it("collapses everything when there is no room at all", () => {
     expect(fitCount(icons(4), 0)).toBe(0);
-    // A zero width is what a not-yet-measured container reports.
     expect(fitCount(icons(4), ICON_BUTTON_WIDTH - 1)).toBe(0);
   });
 

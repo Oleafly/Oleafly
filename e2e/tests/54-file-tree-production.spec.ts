@@ -92,16 +92,11 @@ async function createEntry(
   const placeholder = mode === "file" ? "New file name" : "New folder name";
   const destination = parent ? `folder ${parent}` : "project root";
   const inputLabel = `New ${mode === "file" ? "file" : "folder"} name in ${destination}`;
-  // The tree refresh that follows a preceding import/create re-renders the
-  // toolbar and rows, which can swallow the opening click or unmount the
-  // inline input between its appearance and the commit. Reopen and retry
-  // until the value-plus-Enter commit actually lands on a live input.
   const commitDeadline = Date.now() + 30_000;
   for (;;) {
     if (parent) {
       await openRowAction(page, parent, mode === "file" ? "New file" : "New folder");
     } else {
-      // Source actions are revealed by hover or keyboard focus on the section.
       await page.focus('[aria-controls="source-tree-content"]');
       await page.click(
         mode === "file"
@@ -170,19 +165,6 @@ async function createEntry(
     30_000,
   );
   if (mode === "file") {
-    // The tree row appearing does NOT mean the new file is the one that edits
-    // and saves will land on. Three things carry a notion of "current file" and
-    // they settle independently:
-    //
-    //   - the editor controller's document path (the CodeMirror swap),
-    //   - the files store's `activePath`.
-    //
-    // `replaceEditorSource` writes through the shared view, while the update
-    // listener attributes that text with `host.getActivePath()` and `saveActive`
-    // saves `activePath`. Waiting on the controller alone is not enough: if the
-    // store still points at the previous file, the fixture is stored against it
-    // and the new file is saved empty - which is the "content was not persisted"
-    // failure. Wait for both.
     await page.waitForFunction(
       `import("/packages/editor/src/controller.ts").then(
         ({ getEditorDocumentPath }) => getEditorDocumentPath() === ${JSON.stringify(path)},
@@ -221,13 +203,6 @@ async function renameEntry(page: Page, from: string, toName: string) {
 }
 
 async function saveEditor(page: Page, expectedPath: string, expected: string) {
-  // CodeMirror's editor->store sync is suppressed while the component swaps
-  // documents (`suppressSyncRef`, released in a queueMicrotask), so a fixture
-  // dispatched inside that window never reaches the store - and Cmd+S then
-  // saves the file's original, empty content. Waiting on the active path is not
-  // enough because the path is set before the swap finishes. Confirm the store
-  // actually holds the text, re-applying through the view if it does not, and
-  // only then save.
   const stored = `import("/src/store/files.ts").then(
     ({ useFilesStore }) =>
       useFilesStore.getState().files[${JSON.stringify(expectedPath)}]?.content ===
@@ -358,8 +333,6 @@ ${marker}
   const probe = await compileAndProbe(tauriPage, 150_000);
   expect(probe.text).toContain(marker);
 
-  // Deleting the active root file must activate the most recently used
-  // surviving tab (the new main document), not leave an empty editor.
   await tauriPage.click(
     `[aria-label="Explorer file tree"] [data-path=${JSON.stringify(rootFile)}]`,
   );

@@ -7,18 +7,11 @@
 
 use serde_json::{json, Map, Value};
 
-/// Largest serialized event that is stored.
 pub const MAX_EVENT_BYTES: usize = 256 * 1024;
-/// Longest string kept inside a tool call's `content[]`.
 const MAX_CONTENT_STRING: usize = 32 * 1024;
-/// A diff whose old and new text together stay under this is kept whole, so
-/// the transcript can still show it as a real diff.
 const MAX_WHOLE_DIFF: usize = 200 * 1024;
-/// Fields kept when nothing else of an event fits.
 const IDENTIFYING_FIELDS: [&str; 5] = ["sessionUpdate", "toolCallId", "status", "kind", "title"];
 
-/// Returns `data` cut down so that it serializes to at most
-/// [`MAX_EVENT_BYTES`]. Strings inside `content[]` are always bounded.
 pub fn bound_event(mut data: Value) -> Value {
     if let Some(items) = data.get_mut("content").and_then(Value::as_array_mut) {
         for item in items {
@@ -36,8 +29,6 @@ pub fn bound_event(mut data: Value) -> Value {
             }
         }
     }
-    // A message's own text (`user_message`) is kept whole when cutting
-    // everything else is enough.
     if let Some(text) = data.get("text").filter(|text| text.is_string()).cloned() {
         let mut kept = data.clone();
         if let Some(object) = kept.as_object_mut() {
@@ -103,7 +94,6 @@ fn bound_content_item(item: &mut Value) {
     }
 }
 
-/// Cuts every string in `value` to `limit` bytes. Returns whether any was cut.
 fn truncate_strings(value: &mut Value, limit: usize) -> bool {
     match value {
         Value::String(text) => cut(text, limit),
@@ -117,7 +107,6 @@ fn truncate_strings(value: &mut Value, limit: usize) -> bool {
     }
 }
 
-/// Truncates `text` to at most `limit` bytes on a character boundary.
 fn cut(text: &mut String, limit: usize) -> bool {
     if text.len() <= limit {
         return false;

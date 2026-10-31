@@ -10,8 +10,6 @@ box=oleafly-e2e-box-$suffix
 docker_volume=oleafly-e2e-docker-$suffix
 work=$(mktemp -d "${TMPDIR:-/tmp}/oleafly-e2e.XXXXXX")
 
-# Nothing in here may fail: it runs on exit, and under set -e a failing
-# command would turn a passing run into a failed one.
 cleanup() {
 	docker rm -f "$box" "$registry" >/dev/null 2>&1 || true
 	docker volume rm "$docker_volume" >/dev/null 2>&1 || true

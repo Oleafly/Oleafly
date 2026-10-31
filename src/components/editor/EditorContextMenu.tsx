@@ -195,8 +195,6 @@ function CommentMenuItem() {
   return ready && canCompose ? <CommentMenuEntry /> : null;
 }
 
-// Rendered when the menu opens, so the enabled state reflects the selection
-// the right-click left behind.
 function ClipboardMenuItems() {
   const { t } = useTranslation(["common", "editor"]);
   const view = getEditorView();

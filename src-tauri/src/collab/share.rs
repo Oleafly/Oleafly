@@ -322,8 +322,6 @@ fn build_document(root: &Path, meta: &crate::project::ProjectMeta) -> Result<Bui
         files.insert(path, id);
         hashes.insert(path.clone(), hash);
     }
-    // The settings name the main file by its node, so they look it up
-    // where the layout puts it, which differs when the layout renames it.
     let layout = materialize::layout(&doc.nodes()?);
     let mut seeded = meta.clone();
     if let Some(placed) = files

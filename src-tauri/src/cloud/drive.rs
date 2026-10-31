@@ -8,9 +8,9 @@
 //! reports a conflict. The engine's lineage check covers the moment between.
 
 use super::store::{
-    file_state, retry_after, retry_delay, save_body, transient, AccountInfo, Changes, CloudStore,
-    Fetched, RemoteEntry, RemoteMeta, Space, StoreError, StoreResult, TokenRefresher, Uploaded,
-    Waited, WriteMode,
+    file_state, read_capped, retry_after, retry_delay, save_body, transient, AccountInfo, Changes,
+    CloudStore, Fetched, RemoteEntry, RemoteMeta, Space, StoreError, StoreResult, TokenRefresher,
+    Uploaded, Waited, WriteMode,
 };
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
@@ -27,14 +27,10 @@ const FOLDER: &str = "application/vnd.google-apps.folder";
 const ROOT_NAME: &str = "Oleafly";
 const MAX_ATTEMPTS: u32 = 4;
 const SIMPLE_UPLOAD_LIMIT: u64 = 5 * 1024 * 1024;
-/// Resumable uploads go in pieces that are a multiple of 256 KiB.
 const CHUNK: u64 = 8 * 1024 * 1024;
 const MAX_REPLY_BYTES: usize = 16 * 1024 * 1024;
 const MAX_LIST_PAGES: usize = 1_000;
-/// The limit on a lookup or other small request. Downloads have none, and an
-/// upload's grows with its size.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
-/// How long a download may go without a byte before it counts as stalled.
 const STREAM_READ_TIMEOUT: Duration = Duration::from_secs(60);
 const UPLOAD_CONCURRENCY: usize = 6;
 /// How often a wait for changes asks Drive, which has no long poll.
@@ -59,6 +55,12 @@ struct Item {
     folder: bool,
 }
 
+#[derive(Clone, Debug)]
+enum Known {
+    File(String),
+    Folders(Vec<String>),
+}
+
 pub(crate) struct DriveStore {
     endpoints: DriveEndpoints,
     token: Mutex<String>,
@@ -67,19 +69,10 @@ pub(crate) struct DriveStore {
     /// that from the start of a request until the reply's headers, so it
     /// would also cap the time to send an upload's body.
     timed: reqwest::Client,
-    /// For downloads, which run as long as bytes keep coming. Its read
-    /// timeout catches one that stalls.
     streaming: reqwest::Client,
     timeout: Duration,
-    /// Store paths to the items they resolved to. A path that stops resolving
-    /// is dropped and looked up again.
-    paths: Mutex<HashMap<String, Item>>,
-    /// Folder ids to their names, for mapping changes back to paths.
+    paths: Mutex<HashMap<String, Known>>,
     names: Mutex<HashMap<String, String>>,
-    /// Folders the upload batch in flight read in full, with every name found
-    /// in each. A name that isn't there needs no lookup before it goes up. It
-    /// holds only while that batch runs, so another computer's new files show
-    /// up again in the next one.
     indexed: Mutex<HashMap<String, HashSet<String>>>,
 }
 
@@ -123,8 +116,6 @@ impl DriveStore {
         )
     }
 
-    /// `request` limits each small request; `read` is how long a download
-    /// may go without a byte.
     pub(crate) fn with_timeouts(
         endpoints: DriveEndpoints,
         token: String,
@@ -133,8 +124,6 @@ impl DriveStore {
         read: Duration,
     ) -> Self {
         let client = |read: Option<Duration>| {
-            // A resumable upload answers 308 for "send the next piece", which
-            // must not be followed as a redirect.
             let mut builder = reqwest::Client::builder()
                 .user_agent("Oleafly")
                 .connect_timeout(Duration::from_secs(15))
@@ -164,8 +153,6 @@ impl DriveStore {
             .clone()
     }
 
-    /// Swaps in a fresh token for `stale`, the one Drive refused. False when
-    /// there's no way to get one.
     async fn renew(&self, stale: String) -> StoreResult<bool> {
         let Some(refresher) = &self.refresher else {
             return Ok(false);
@@ -178,16 +165,10 @@ impl DriveStore {
         Ok(true)
     }
 
-    /// A body gets the time a small request has plus a second for every 32
-    /// KiB in it, so an 8 MiB piece still goes up on a slow uplink.
     fn upload_timeout(&self, len: usize) -> Duration {
         self.timeout + Duration::from_secs(len as u64 / 32_768)
     }
 
-    /// Sends a request, trying again on a dropped connection, a busy or
-    /// failing Drive, and once with a fresh token. `timeout` is the limit on
-    /// the whole call; `None` is for a download, which instead fails when it
-    /// stalls.
     async fn send(
         &self,
         method: Method,
@@ -268,8 +249,6 @@ impl DriveStore {
             .map_err(|_| StoreError::Server("drive sent an unreadable reply".into()))
     }
 
-    /// Children of `parents` named `name`, oldest first, across every copy of
-    /// a folder two computers may have made at once.
     async fn children_named(&self, parents: &[String], name: &str) -> StoreResult<Vec<Item>> {
         let within = parents
             .iter()
@@ -327,8 +306,8 @@ impl DriveStore {
     /// The `Oleafly` folder at the top of My Drive. With `drive.file` the app
     /// sees only folders it made, so it finds its own or makes one.
     async fn root(&self, create: bool) -> StoreResult<Option<Vec<String>>> {
-        if let Some(item) = self.cached("") {
-            return Ok(Some(vec![item.id]));
+        if let Some(ids) = self.cached_folders("") {
+            return Ok(Some(ids));
         }
         let mut found = self.children_named(&["root".into()], ROOT_NAME).await?;
         found.retain(|item| item.folder);
@@ -342,12 +321,10 @@ impl DriveStore {
                 .await?;
         }
         let ids: Vec<String> = found.into_iter().map(|item| item.id).collect();
-        self.remember("", &ids[0], true);
+        self.remember_folders("", &ids);
         Ok(Some(ids))
     }
 
-    /// After making a folder, keeps the oldest of any that another computer
-    /// made at the same moment, and removes this one if it isn't that.
     async fn settle_folder(
         &self,
         parents: &[String],
@@ -369,7 +346,7 @@ impl DriveStore {
         Ok(found)
     }
 
-    fn cached(&self, path: &str) -> Option<Item> {
+    fn cached(&self, path: &str) -> Option<Known> {
         self.paths
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -377,23 +354,39 @@ impl DriveStore {
             .cloned()
     }
 
-    fn remember(&self, path: &str, id: &str, folder: bool) {
+    fn cached_file(&self, path: &str) -> Option<String> {
+        match self.cached(path)? {
+            Known::File(id) => Some(id),
+            Known::Folders(_) => None,
+        }
+    }
+
+    fn cached_folders(&self, path: &str) -> Option<Vec<String>> {
+        match self.cached(path)? {
+            Known::Folders(ids) if !ids.is_empty() => Some(ids),
+            _ => None,
+        }
+    }
+
+    fn remember_file(&self, path: &str, id: &str) {
         self.paths
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .insert(
-                path.to_string(),
-                Item {
-                    id: id.to_string(),
-                    folder,
-                },
-            );
-        if folder {
-            let (_, name) = parent_of(path);
-            self.names
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .insert(id.to_string(), name.to_string());
+            .insert(path.to_string(), Known::File(id.to_string()));
+    }
+
+    fn remember_folders(&self, path: &str, ids: &[String]) {
+        self.paths
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(path.to_string(), Known::Folders(ids.to_vec()));
+        let (_, name) = parent_of(path);
+        let mut names = self
+            .names
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for id in ids {
+            names.insert(id.clone(), name.to_string());
         }
     }
 
@@ -411,8 +404,6 @@ impl DriveStore {
             .retain(|known, _| known != path && !known.starts_with(&inside));
     }
 
-    /// Whether the batch in flight read the folder at `parent` and found
-    /// nothing named `name` in it.
     fn known_absent(&self, parent: &str, name: &str) -> bool {
         self.indexed
             .lock()
@@ -421,13 +412,46 @@ impl DriveStore {
             .is_some_and(|names| !names.contains(name))
     }
 
-    /// Reads every child of the folder at `path` in one listing, so the files a
-    /// batch puts there need no lookup each. False when it couldn't, and the
-    /// files are looked up one by one as before.
     async fn index_folder(&self, path: &str) -> StoreResult<bool> {
         let Some(parents) = self.folders(path, false).await? else {
             return Ok(false);
         };
+        let Some(children) = self.children_of(&parents).await? else {
+            return Ok(false);
+        };
+        let mut kinds: BTreeMap<&str, (Option<&Item>, Vec<String>)> = BTreeMap::new();
+        for (name, item) in &children {
+            let entry = kinds.entry(name.as_str()).or_default();
+            if item.folder {
+                entry.1.push(item.id.clone());
+            } else {
+                entry.0.get_or_insert(item);
+            }
+        }
+        for (name, (file, folders)) in &kinds {
+            let child = if path.is_empty() {
+                (*name).to_string()
+            } else {
+                format!("{path}/{name}")
+            };
+            if self.cached(&child).is_some() {
+                continue;
+            }
+            match (file, folders.is_empty()) {
+                (Some(file), true) => self.remember_file(&child, &file.id),
+                (None, false) => self.remember_folders(&child, folders),
+                _ => {}
+            }
+        }
+        let names = kinds.keys().map(|name| (*name).to_string()).collect();
+        self.indexed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(path.to_string(), names);
+        Ok(true)
+    }
+
+    async fn children_of(&self, parents: &[String]) -> StoreResult<Option<Vec<(String, Item)>>> {
         let within = parents
             .iter()
             .map(|parent| format!("'{}' in parents", escape(parent)))
@@ -477,46 +501,9 @@ impl DriveStore {
                 }
             }
         }
-        if !whole {
-            return Ok(false);
-        }
-        // Oldest first, as a lookup by name picks. A name used by a file and a
-        // folder both stays out of the cache and is looked up as before.
-        let mut oldest: BTreeMap<&str, (Option<&Item>, Option<&Item>)> = BTreeMap::new();
-        for (name, item) in &children {
-            let entry = oldest.entry(name.as_str()).or_default();
-            let slot = if item.folder {
-                &mut entry.1
-            } else {
-                &mut entry.0
-            };
-            slot.get_or_insert(item);
-        }
-        for (name, kinds) in &oldest {
-            let child = if path.is_empty() {
-                (*name).to_string()
-            } else {
-                format!("{path}/{name}")
-            };
-            let only = match kinds {
-                (Some(item), None) | (None, Some(item)) => item,
-                _ => continue,
-            };
-            if self.cached(&child).is_none() {
-                self.remember(&child, &only.id, only.folder);
-            }
-        }
-        let names = oldest.keys().map(|name| (*name).to_string()).collect();
-        self.indexed
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .insert(path.to_string(), names);
-        Ok(true)
+        Ok(whole.then_some(children))
     }
 
-    /// Readies a batch: makes its missing folders a level at a time, so files
-    /// landing in the same new folder at once never each make it, then reads
-    /// each folder it writes into once. Returns the folders it read.
     async fn prepare(&self, files: &[super::store::BatchFile]) -> Vec<String> {
         let parents: BTreeSet<String> = files
             .iter()
@@ -533,8 +520,6 @@ impl DriveStore {
                 levels.entry(depth).or_default().insert(walked.clone());
             }
         }
-        // A folder that can't be made here fails its own files' uploads, which
-        // report why.
         let _ = self.root(true).await;
         for level in levels.into_values() {
             let pending: Vec<_> = level.iter().map(|path| self.folders(path, true)).collect();
@@ -566,8 +551,6 @@ impl DriveStore {
         }
     }
 
-    /// Every copy of the folder at `path`, oldest first, made on the way if
-    /// `create` and missing. `None` when it doesn't exist.
     async fn folders(&self, path: &str, create: bool) -> StoreResult<Option<Vec<String>>> {
         let Some(mut current) = self.root(create).await? else {
             return Ok(None);
@@ -581,8 +564,8 @@ impl DriveStore {
                 walked.push('/');
             }
             walked.push_str(segment);
-            if let Some(item) = self.cached(&walked).filter(|item| item.folder) {
-                current = vec![item.id];
+            if let Some(ids) = self.cached_folders(&walked) {
+                current = ids;
                 continue;
             }
             let mut found = self.children_named(&current, segment).await?;
@@ -594,16 +577,15 @@ impl DriveStore {
                 let made = self.create_folder(&current[0], segment).await?;
                 found = self.settle_folder(&current, segment, made).await?;
             }
-            self.remember(&walked, &found[0].id, true);
             current = found.into_iter().map(|item| item.id).collect();
+            self.remember_folders(&walked, &current);
         }
         Ok(Some(current))
     }
 
-    /// The file at `path`, the oldest when names repeat.
     async fn file(&self, path: &str) -> StoreResult<Option<String>> {
-        if let Some(item) = self.cached(path).filter(|item| !item.folder) {
-            return Ok(Some(item.id));
+        if let Some(id) = self.cached_file(path) {
+            return Ok(Some(id));
         }
         let (parent, name) = parent_of(path);
         if self.known_absent(parent, name) {
@@ -616,7 +598,7 @@ impl DriveStore {
         let Some(item) = found.into_iter().find(|item| !item.folder) else {
             return Ok(None);
         };
-        self.remember(path, &item.id, false);
+        self.remember_file(path, &item.id);
         Ok(Some(item.id))
     }
 
@@ -667,7 +649,6 @@ impl DriveStore {
             Some(rev) => format!("{}/files/{id}/revisions/{rev}", self.endpoints.api),
             None => format!("{}/files/{id}", self.endpoints.api),
         };
-        // No total timeout: a large file takes as long as the link needs.
         let response = self
             .send(
                 Method::GET,
@@ -687,8 +668,6 @@ impl DriveStore {
         Ok(Some(response))
     }
 
-    /// Writes `content` as the new content of `id`, or as a new file named
-    /// `name` in `parent`, and returns the id and its new head revision.
     async fn upload(
         &self,
         target: Upload<'_>,
@@ -807,8 +786,6 @@ impl DriveStore {
                 content.unchanged().await?;
             }
             let token = self.token();
-            // Ok holds the offset Drive asked for; Err the wait before asking
-            // Drive where a failed piece left the upload.
             let kept_or_wait = match self.put_piece(&session, &token, piece, offset, total).await {
                 Ok(response) if response.status().as_u16() == 308 => {
                     Ok(kept(&response, end, total)?)
@@ -849,9 +826,6 @@ impl DriveStore {
         }
     }
 
-    /// Sends one piece of a resumable upload, once, moving its bytes into the
-    /// request. A failure is followed by asking Drive how much it kept, not
-    /// by sending the same bytes again.
     async fn put_piece(
         &self,
         session: &str,
@@ -875,8 +849,6 @@ impl DriveStore {
             .await
     }
 
-    /// Asks Drive how much of an interrupted upload it has. `sent` is the end
-    /// of the furthest piece sent.
     async fn standing(&self, session: &str, sent: u64, total: u64) -> StoreResult<Standing> {
         let response = self
             .send(
@@ -895,7 +867,6 @@ impl DriveStore {
         }
     }
 
-    /// The revisions of `id`, oldest first.
     async fn revisions(&self, id: &str) -> StoreResult<Vec<String>> {
         let mut revisions = Vec::new();
         let mut token: Option<String> = None;
@@ -933,8 +904,6 @@ impl DriveStore {
         ))
     }
 
-    /// Compare-and-swap on a file: writes only if its head is `expected`, and
-    /// undoes a write that raced another one.
     async fn swap(
         &self,
         path: &str,
@@ -960,10 +929,6 @@ impl DriveStore {
         if before == Some(expected) {
             return Ok(written);
         }
-        // Another computer wrote between the check and this write. While this
-        // write is still the newest, put that one back on top, so neither is
-        // lost: the engine reruns the round and merges both. A write that
-        // already followed this one is left alone.
         let theirs = before.filter(|_| position + 1 == revisions.len());
         if let Some(theirs) = theirs {
             if let Some(response) = self.download(id, Some(theirs)).await? {
@@ -1011,7 +976,7 @@ impl DriveStore {
             let _ = self.trash(&id).await;
             return Err(StoreError::Conflict);
         }
-        self.remember(path, &id, false);
+        self.remember_file(path, &id);
         Ok(rev)
     }
 
@@ -1022,15 +987,99 @@ impl DriveStore {
                 let id = self.file(path).await?.ok_or(StoreError::Conflict)?;
                 self.swap(path, &id, expected, bytes).await
             }
-            WriteMode::Overwrite => self.overwrite(path, Content::Memory(bytes)).await,
+            WriteMode::Overwrite => self
+                .overwrite(path, Content::Memory(bytes))
+                .await
+                .map(|(rev, _)| rev),
         }
     }
 
-    /// Writes `content` at `path`, over whatever is there.
-    async fn overwrite(&self, path: &str, content: Content<'_>) -> StoreResult<String> {
+    async fn oldest_file(&self, parent: &str, name: &str) -> StoreResult<Option<String>> {
+        let Some(parents) = self.folders(parent, false).await? else {
+            return Ok(None);
+        };
+        Ok(self
+            .children_named(&parents, name)
+            .await?
+            .into_iter()
+            .find(|item| !item.folder)
+            .map(|item| item.id))
+    }
+
+    async fn settle_parent(&self, parent: &str, created: &[&(String, String)]) -> Vec<String> {
+        let listed = match self.folders(parent, false).await {
+            Ok(Some(parents)) => self.children_of(&parents).await.ok().flatten(),
+            _ => None,
+        };
+        let mut lost = Vec::new();
+        for (path, id) in created.iter().copied() {
+            let (_, name) = parent_of(path);
+            let oldest = match &listed {
+                Some(children) => children
+                    .iter()
+                    .find(|(child, item)| child == name && !item.folder)
+                    .map(|(_, item)| item.id.clone()),
+                None => self.oldest_file(parent, name).await.ok().flatten(),
+            };
+            if oldest.is_some_and(|oldest| oldest != *id) {
+                let _ = self.trash(id).await;
+                self.forget(path);
+                lost.push(path.clone());
+            }
+        }
+        lost
+    }
+
+    async fn losing_creates(&self, created: &[(String, String)]) -> HashSet<String> {
+        let mut by_parent: BTreeMap<&str, Vec<&(String, String)>> = BTreeMap::new();
+        for entry in created {
+            by_parent
+                .entry(parent_of(&entry.0).0)
+                .or_default()
+                .push(entry);
+        }
+        let pending: Vec<_> = by_parent
+            .into_iter()
+            .map(|(parent, entries)| async move { self.settle_parent(parent, &entries).await })
+            .collect();
+        stream::iter(pending)
+            .buffer_unordered(UPLOAD_CONCURRENCY)
+            .flat_map(stream::iter)
+            .collect()
+            .await
+    }
+
+    async fn upload_file(
+        &self,
+        path: &str,
+        local: &Path,
+    ) -> StoreResult<(Uploaded, Option<String>)> {
+        let mut file = LocalFile::open(local).await?;
+        let size = file.size();
+        let content = if size <= SIMPLE_UPLOAD_LIMIT {
+            let bytes = file.piece(0, size).await?;
+            file.unchanged().await?;
+            Content::Memory(bytes)
+        } else {
+            Content::File(&mut file)
+        };
+        let (rev, created) = self.overwrite(path, content).await?;
+        let uploaded = Uploaded {
+            rev,
+            hash: file.finish()?,
+            size,
+        };
+        Ok((uploaded, created))
+    }
+
+    async fn overwrite(
+        &self,
+        path: &str,
+        content: Content<'_>,
+    ) -> StoreResult<(String, Option<String>)> {
         match self.file(path).await? {
             Some(id) => match self.upload(Upload::Update(&id), content).await {
-                Ok((_, rev)) => Ok(rev),
+                Ok((_, rev)) => Ok((rev, None)),
                 Err(error) => {
                     self.forget(path);
                     Err(error)
@@ -1051,8 +1100,8 @@ impl DriveStore {
                         content,
                     )
                     .await?;
-                self.remember(path, &id, false);
-                Ok(rev)
+                self.remember_file(path, &id);
+                Ok((rev, Some(id)))
             }
         }
     }
@@ -1120,8 +1169,6 @@ enum Upload<'a> {
     Create { parent: &'a str, name: &'a str },
 }
 
-/// What an upload sends: bytes in memory, or a file read from disk a piece at
-/// a time.
 enum Content<'a> {
     Memory(Vec<u8>),
     File(&'a mut LocalFile),
@@ -1153,9 +1200,6 @@ impl Content<'_> {
     }
 }
 
-/// A file that goes up straight from disk, so it never has to fit in memory.
-/// Each piece is read at the offset Drive asks for, and each byte goes into
-/// the hash once, in order, the first time it is read.
 struct LocalFile {
     file: tokio::fs::File,
     path: PathBuf,
@@ -1190,7 +1234,6 @@ impl LocalFile {
             .await
             .map_err(|error| StoreError::Io(error.to_string()))?;
         self.file.read_exact(&mut piece).await.map_err(|error| {
-            // The file is shorter than when the upload began.
             if error.kind() == std::io::ErrorKind::UnexpectedEof {
                 changed_while_read()
             } else {
@@ -1207,7 +1250,6 @@ impl LocalFile {
         Ok(piece)
     }
 
-    /// Fails when the file is no longer the one the upload began with.
     async fn unchanged(&self) -> StoreResult<()> {
         if file_state(&self.path).await? != self.state {
             return Err(changed_while_read());
@@ -1215,7 +1257,6 @@ impl LocalFile {
         Ok(())
     }
 
-    /// The hash of the whole file, once every byte of it has been read.
     fn finish(&self) -> StoreResult<ContentHash> {
         if self.hashed != self.size() {
             return Err(StoreError::Server(
@@ -1230,11 +1271,8 @@ fn changed_while_read() -> StoreError {
     StoreError::Io("the file changed while it was read".into())
 }
 
-/// Where an interrupted resumable upload stands.
 enum Standing {
-    /// Drive has every byte before this offset.
     At(u64),
-    /// Drive has the whole file, and the reply says what it wrote.
     Done(reqwest::Response),
 }
 
@@ -1256,8 +1294,6 @@ fn kept(response: &reqwest::Response, sent: u64, total: u64) -> StoreResult<u64>
         .ok_or_else(|| StoreError::Server("drive reported an upload range that doesn't fit".into()))
 }
 
-/// A reply worth trying again after a wait: Drive is failing or asks to slow
-/// down.
 fn retryable(response: &reqwest::Response) -> bool {
     let status = response.status().as_u16();
     status == 429 || status == 403 && rate_limited(response) || (500..600).contains(&status)
@@ -1270,21 +1306,6 @@ fn rate_limited(response: &reqwest::Response) -> bool {
     response
         .headers()
         .contains_key(reqwest::header::RETRY_AFTER)
-}
-
-async fn read_capped(mut response: reqwest::Response, cap: usize) -> StoreResult<Vec<u8>> {
-    let mut bytes = Vec::new();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| StoreError::Network(error.to_string()))?
-    {
-        if bytes.len() + chunk.len() > cap {
-            return Err(StoreError::Server("drive's reply is too large".into()));
-        }
-        bytes.extend_from_slice(&chunk);
-    }
-    Ok(bytes)
 }
 
 async fn failure(response: reqwest::Response) -> StoreError {
@@ -1313,6 +1334,10 @@ async fn failure(response: reqwest::Response) -> StoreError {
 }
 
 impl CloudStore for DriveStore {
+    fn label(&self) -> &'static str {
+        "Google Drive"
+    }
+
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>> {
         let path = normalize(remote);
         let Some(id) = self.file(&path).await? else {
@@ -1374,24 +1399,25 @@ impl CloudStore for DriveStore {
     }
 
     async fn put_path(&self, remote: &str, local: &Path) -> StoreResult<Uploaded> {
-        let mut file = LocalFile::open(local).await?;
-        let size = file.size();
-        let content = if size <= SIMPLE_UPLOAD_LIMIT {
-            // Small enough for one request, so it is read whole.
-            let bytes = file.piece(0, size).await?;
-            file.unchanged().await?;
-            Content::Memory(bytes)
-        } else {
-            // Read a piece at a time as it goes up: a file can be gigabytes,
-            // and several go up at once.
-            Content::File(&mut file)
-        };
-        let rev = self.overwrite(&normalize(remote), content).await?;
-        Ok(Uploaded {
-            rev,
-            hash: file.finish()?,
-            size,
-        })
+        let path = normalize(remote);
+        let (uploaded, created) = self.upload_file(&path, local).await?;
+        if let Some(id) = created {
+            if !self.losing_creates(&[(path, id)]).await.is_empty() {
+                return Err(StoreError::Conflict);
+            }
+        }
+        Ok(uploaded)
+    }
+
+    async fn put_content(&self, remote: &str, bytes: Vec<u8>) -> StoreResult<String> {
+        let path = normalize(remote);
+        let (rev, created) = self.overwrite(&path, Content::Memory(bytes)).await?;
+        if let Some(id) = created {
+            if !self.losing_creates(&[(path, id)]).await.is_empty() {
+                return Err(StoreError::Conflict);
+            }
+        }
+        Ok(rev)
     }
 
     async fn put_paths(
@@ -1400,21 +1426,39 @@ impl CloudStore for DriveStore {
         tick: &(dyn Fn() + Sync),
     ) -> Vec<StoreResult<Uploaded>> {
         let indexed = self.prepare(files).await;
-        // Collected before buffering, as the Send bound on commands needs.
         let pending: Vec<_> = files
             .iter()
             .map(|file| async move {
-                let uploaded = self.put_path(&file.remote, &file.local).await;
+                let path = normalize(&file.remote);
+                let uploaded = self.upload_file(&path, &file.local).await;
                 tick();
-                uploaded
+                (path, uploaded)
             })
             .collect();
-        let uploaded = stream::iter(pending)
+        let uploaded: Vec<_> = stream::iter(pending)
             .buffered(UPLOAD_CONCURRENCY)
             .collect()
             .await;
         self.unindex(&indexed);
+        let created: Vec<(String, String)> = uploaded
+            .iter()
+            .filter_map(|(path, result)| {
+                let id = result.as_ref().ok()?.1.clone()?;
+                Some((path.clone(), id))
+            })
+            .collect();
+        let lost = if created.is_empty() {
+            HashSet::new()
+        } else {
+            self.losing_creates(&created).await
+        };
         uploaded
+            .into_iter()
+            .map(|(path, result)| match result {
+                Ok(_) if lost.contains(&path) => Err(StoreError::Conflict),
+                result => result.map(|(uploaded, _)| uploaded),
+            })
+            .collect()
     }
 
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()> {
@@ -1423,22 +1467,44 @@ impl CloudStore for DriveStore {
         let Some(parents) = self.folders(parent, false).await? else {
             return Ok(());
         };
-        let found = self.children_named(&parents, name).await?;
-        if found.is_empty() {
-            return Ok(());
-        }
-        if let Some(expected) = parent_rev {
-            if let Some(file) = found.iter().find(|item| !item.folder) {
-                let current = self.head(&file.id).await?;
-                if current.is_some_and(|meta| meta.rev != expected) {
-                    return Err(StoreError::Conflict);
+        let files: Vec<Item> = self
+            .children_named(&parents, name)
+            .await?
+            .into_iter()
+            .filter(|item| !item.folder)
+            .collect();
+        let mut newer = false;
+        for file in &files {
+            if let Some(expected) = parent_rev {
+                match self.head(&file.id).await? {
+                    Some(meta) if meta.rev != expected => {
+                        newer = true;
+                        continue;
+                    }
+                    None => continue,
+                    Some(_) => {}
                 }
             }
+            self.trash(&file.id).await?;
         }
-        // Trashed, not deleted: Drive keeps it for 30 days, as Dropbox keeps
-        // a deleted file's history. A folder goes with everything in it.
-        for item in &found {
-            self.trash(&item.id).await?;
+        if !files.is_empty() || self.cached_file(&path).is_some() {
+            self.forget(&path);
+        }
+        if newer {
+            return Err(StoreError::Conflict);
+        }
+        Ok(())
+    }
+
+    async fn delete_folder(&self, remote: &str) -> StoreResult<()> {
+        let path = normalize(remote);
+        let (parent, name) = parent_of(&path);
+        let Some(parents) = self.folders(parent, false).await? else {
+            return Ok(());
+        };
+        let found = self.children_named(&parents, name).await?;
+        for folder in found.iter().filter(|item| item.folder) {
+            self.trash(&folder.id).await?;
         }
         self.forget(&path);
         Ok(())
@@ -1518,8 +1584,6 @@ impl CloudStore for DriveStore {
         for _ in 0..MAX_LIST_PAGES {
             let (changes, next, fresh) = self.change_page(&page).await?;
             for change in changes {
-                // A project's manifest changes with every publish, and its
-                // folder is named after the project.
                 if change["file"]["name"].as_str() != Some("version.json") {
                     continue;
                 }
@@ -1593,7 +1657,6 @@ impl CloudStore for DriveStore {
                 .as_str()
                 .and_then(|value| value.parse::<u64>().ok())
         };
-        // An account without a limit has no ring to fill.
         Ok(number("limit").map(|allocated| Space {
             used: number("usage").unwrap_or(0),
             allocated,

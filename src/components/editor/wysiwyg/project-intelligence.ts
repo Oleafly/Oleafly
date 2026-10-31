@@ -156,12 +156,6 @@ function tokenUseKinds(
   return ["citation", "reference"];
 }
 
-/**
- * Definitions a token with no resolved use can mean, found the way the worker
- * resolves a use of that kind in this file. A Markdown reference therefore
- * only sees anchors in its own file, and a LaTeX or Typst label of the same
- * name elsewhere cannot make it look ambiguous.
- */
 function candidateDefinitions(
   lookup: VisualLookup,
   path: string,

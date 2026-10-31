@@ -44,8 +44,6 @@ function needsGeometrySpace(
   const referenceHeight = availableHeights.length
     ? Math.min(...availableHeights)
     : 10;
-  // Text runs from the same word commonly have a sub-point rounding gap.
-  // A gap of at least 12% of the font height is a visible word boundary.
   return gap >= Math.max(0.75, referenceHeight * 0.12);
 }
 

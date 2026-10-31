@@ -11,7 +11,6 @@ import { ShortcutsSection } from "./ShortcutsSection";
 const commandPalette = enSettings.shortcuts.actions.commandPalette.label;
 const prompt = enSettings.shortcuts.application.prompt;
 
-// AltGr+Q on a German layout, from engines that report AltGr as Ctrl+Alt.
 const altGrAt = { key: "@", code: "KeyQ", ctrlKey: true, altKey: true, modifierAltGraph: true };
 // AltGr+Shift+4 on US-International, as WebView2 reports it.
 const altGrPound = { key: "£", code: "Digit4", shiftKey: true, modifierAltGraph: true };
@@ -71,7 +70,6 @@ describe("ShortcutsSection with AltGr layouts", () => {
     fireEvent.keyDown(capture, { key: "Control", code: "ControlLeft", ctrlKey: true });
     fireEvent.keyDown(capture, { key: "AltGraph", code: "AltRight", modifierAltGraph: true });
     fireEvent.keyDown(capture, { key: "@", code: "KeyQ", modifierAltGraph: true });
-    // Ctrl with the ^ accent key on a French layout.
     fireEvent.keyDown(capture, { key: "Dead", code: "BracketLeft", ctrlKey: true });
 
     expect(
@@ -79,7 +77,6 @@ describe("ShortcutsSection with AltGr layouts", () => {
     ).toBe(capture);
     expect(useShortcutStore.getState().bindings.commandPalette).toEqual({ key: "k", mod: true });
 
-    // Left Ctrl+Left Alt+K on a German layout, where AltGr+K types nothing.
     fireEvent.keyDown(capture, { key: "k", code: "KeyK", ctrlKey: true, altKey: true });
 
     expect(useShortcutStore.getState().bindings.commandPalette).toEqual({

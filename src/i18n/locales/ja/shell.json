@@ -1159,6 +1159,8 @@
     "exportTxt": "プレーンテキスト（.txt）として書き出す",
     "exportZipFailed": "プロジェクトの zip を書き出せませんでした",
     "exporting": ".{{format}} を書き出し中…",
+    "exportingStep": ".{{format}} を書き出し中: {{step}}",
+    "stopExport": "停止",
     "fork": "フォーク",
     "forkDescription": "<name>{{name}}</name>とその Git の履歴を新しいプロジェクトにコピーします。チェックポイントは空の状態から始まります。",
     "forkFailed": "プロジェクトをフォークできませんでした。",

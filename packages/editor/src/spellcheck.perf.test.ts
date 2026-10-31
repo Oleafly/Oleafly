@@ -25,11 +25,10 @@ afterEach(() => {
   view = null;
 });
 
-// Model: CLIP clip_paper.tex — ~300KB LaTeX, 901 diagnostics, page size 250.
 function buildDoc(): string {
   const paragraph =
     "The masqueharde model transferresZero-shot classificaiton performence %\n";
-  const block = paragraph.repeat(20); // ~2.9KB
+  const block = paragraph.repeat(20);
   return `\\documentclass{article}\n\\begin{document}\n${block.repeat(105)}\n\\end{document}\n`;
 }
 
@@ -116,14 +115,12 @@ describe("presentation refresh perf (large doc)", () => {
       resolveProofreading(buildResult(901, text.length));
       await new Promise((r) => setTimeout(r, 50));
 
-      // Act: flip to page 2 like the ProofreadingStatus pager does.
       page = 1;
       dispatchCount = 0;
       const t0 = performance.now();
       refreshEditorProofreadingPresentation(view);
       const syncMs = performance.now() - t0;
 
-      // Let every queued microtask/rAF/promise repaint settle.
       await new Promise((r) => setTimeout(r, 200));
       const settleMs = performance.now() - t0;
 
@@ -131,7 +128,7 @@ describe("presentation refresh perf (large doc)", () => {
       console.log(
         `sync: ${syncMs.toFixed(1)}ms, settled: ${settleMs.toFixed(1)}ms, dispatches: ${dispatchCount}, proofread calls: ${proofread.mock.calls.length}`,
       );
-      expect(proofread.mock.calls).toHaveLength(1); // no worker re-run
+      expect(proofread.mock.calls).toHaveLength(1);
     });
 
     it("stale lint results landing after a page flip cannot loop", { timeout: 30_000 }, async () => {
@@ -184,17 +181,14 @@ describe("presentation refresh perf (large doc)", () => {
       await vi.waitFor(() => expect(proofread).toHaveBeenCalled(), {
         timeout: 5_000,
       });
-      // Simulate the observed 21 back-to-back re-lints (doc unchanged).
       for (let i = 0; i < 20 && i < 5_000; i++) {
         forceLinting(view);
         await Promise.resolve();
       }
       const queued = proofread.mock.calls.length;
-      // Flip the page while all lint passes are still pending.
       page = 1;
       refreshEditorProofreadingPresentation(view);
       await new Promise((r) => setTimeout(r, 50));
-      // Now every stale pass resolves at once with the full result.
       running = true;
       dispatchCount = 0;
       const result = buildResult(901, text.length);
@@ -205,7 +199,6 @@ describe("presentation refresh perf (large doc)", () => {
       console.log(
         `queued lint passes: ${queued}, post-resolution dispatches: ${dispatchCount}`,
       );
-      // A feedback loop would dispatch unboundedly; a healthy settle is small.
       expect(dispatchCount).toBeLessThan(60);
     });
 
@@ -233,9 +226,6 @@ describe("presentation refresh perf (large doc)", () => {
           dialect: "american",
         }),
         proofread,
-        // Pathological: every presentation produces a different set, so the
-        // repair equality guard can NEVER converge. Before the loop guard
-        // this dispatched setDiagnostics forever inside microtasks.
         presentDiagnostics: (result) => {
           const from = page * PAGE + (call++ % 3);
           return result.diagnostics.slice(from, from + PAGE);
@@ -295,7 +285,6 @@ describe("presentation refresh perf (large doc)", () => {
           dialect: "american",
         }),
         proofread,
-        // Presentation is unbounded: the host returns every retained finding.
         presentDiagnostics: (result) => result.diagnostics,
         isSessionIgnored: () => false,
         isWordIgnored: () => false,
@@ -325,15 +314,12 @@ describe("presentation refresh perf (large doc)", () => {
       const t0 = performance.now();
       refreshEditorProofreadingPresentation(view);
       const syncMs = performance.now() - t0;
-      // Let the scheduled rAF/microtask repaints settle; they are bounded by
-      // the loop guards covered above and are not part of the assertion.
       await new Promise((r) => setTimeout(r, 150));
       // eslint-disable-next-line no-console
       console.log(
         `12k unbounded repaint: sync ${syncMs.toFixed(1)}ms, worker calls ${proofread.mock.calls.length}`,
       );
       expect(syncMs).toBeLessThan(500);
-      // The repaint is served from the retained cache, never a worker re-run.
       expect(proofread.mock.calls).toHaveLength(1);
     });
 });

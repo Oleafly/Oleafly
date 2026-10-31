@@ -410,8 +410,6 @@ export function ProvidersTab({
           const saved = savedKeys[p.id] ?? "";
           const dirty = value.trim().length > 0 && value !== saved;
           const hasSaved = saved.length > 0;
-          // A custom provider is usable the moment it's added, key or not
-          // (self-hosted bases may not require one).
           const isConfigured = hasSaved || isCustom;
           const isReplacingKey = !hasSaved || (editingKey[p.id] ?? false);
           const isSelected = activeProvider === p.id;

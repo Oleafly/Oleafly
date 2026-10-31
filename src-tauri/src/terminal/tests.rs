@@ -57,9 +57,6 @@ fn slow_resize_does_not_hold_the_global_session_registry() {
         .recv_timeout(std::time::Duration::from_secs(2))
         .unwrap();
     std::thread::sleep(std::time::Duration::from_millis(100));
-    // Other terminal tests share the registry and may hold it for a moment.
-    // A resize that kept it would hold it the whole time, so wait for it to
-    // come free instead of trusting one instant.
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
     let registry_available = loop {
         if SESSIONS.try_lock().is_ok() {
@@ -181,7 +178,6 @@ fn terminal_env_advertises_truecolor_and_identity() {
     );
     #[cfg(not(windows))]
     {
-        // Either the host already has a UTF-8-capable locale, or we supplied one.
         let host_has_locale = ["LC_ALL", "LC_CTYPE", "LANG"]
             .iter()
             .any(|k| std::env::var_os(k).is_some_and(|v| !v.is_empty()));
@@ -385,8 +381,6 @@ fn child_exit_sends_a_terminal_exit_event() {
         shell,
     )
     .unwrap();
-    // The contract is that the exit event arrives, not that it is the
-    // first event; a pty may emit terminal noise before the shell dies.
     let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
     let mut events = Vec::new();
     let exit_seen = loop {
@@ -437,8 +431,6 @@ fn system_probe_resolves_a_runnable_default_shell() {
         assert_eq!(spec.args, ["-l"]);
         assert!(Path::new(&spec.program).is_file(), "{}", spec.program);
     }
-    // 0.4.7 `shell_builder_targets_a_login_shell`: the shell gets a search
-    // path, with no empty entries.
     let mut cmd = CommandBuilder::new(&spec.program);
     env::apply_session_env(&mut cmd, &spec, &env::CliEnv::from_program(None), &[]);
     let path = cmd.get_env("PATH").expect("the shell gets a search path");
@@ -547,8 +539,6 @@ impl Drop for TerminalTestSession {
     }
 }
 
-/// The child the terminal tests run: `1` prints READY then a dot every
-/// 100 ms without reading input; `flood` writes 8 MiB at once, then waits.
 #[test]
 fn nonreading_terminal_child() {
     let mode = std::env::var("OLEAFLY_TERMINAL_TEST_CHILD").unwrap_or_default();
@@ -624,8 +614,6 @@ async fn wait_for_terminal_ready(
     .unwrap_or_else(|_| panic!("shell did not become ready; terminal output: {output:?}"));
 }
 
-/// Counts the output bytes a session sends, checks every event's byte
-/// count against its text, and notes the exit event. Never acknowledges.
 struct OutputCounter {
     total: Arc<AtomicUsize>,
     mismatched: Arc<AtomicBool>,
@@ -664,8 +652,6 @@ impl OutputCounter {
     }
 }
 
-/// Waits until some output arrived and the total then stayed the same for
-/// `quiet`, and returns that total.
 fn wait_until_steady(total: &AtomicUsize, quiet: Duration, limit: Duration) -> usize {
     let deadline = Instant::now() + limit;
     let mut last = total.load(Ordering::Acquire);
@@ -811,7 +797,6 @@ fn output_events_carry_their_utf8_byte_count() {
 
 #[test]
 fn an_ack_that_comes_back_during_the_send_is_counted() {
-    // The frontend can parse and acknowledge a batch before `send` returns.
     let flow = OutputFlow::new();
     let acking = Arc::clone(&flow);
     let channel = Channel::new(move |body| {
@@ -890,7 +875,6 @@ fn output_left_when_a_paused_shell_exits_on_its_own_still_arrives() {
         PAUSED_AT,
         "the output never paused"
     );
-    // The tab still acknowledges what it parses, and the rest comes through.
     let mut acked = 0;
     let deadline = Instant::now() + test_wait::CHILD_PATIENCE;
     while !counter.exited.load(Ordering::Acquire) && Instant::now() < deadline {
@@ -1195,15 +1179,11 @@ fn term_kill_terminates_background_descendants() {
     )
     .unwrap();
     let pid_path = project.join("descendant.pid");
-    // The shell's `>` creates descendant.pid before printf writes to it, so
-    // wait for the pid itself, not for the file.
     let descendant_pid =
         test_wait::read_until_blocking(&pid_path, test_wait::CHILD_PATIENCE, test_wait::pid)
             .expect("the shell never wrote its descendant's pid");
 
     kill_terminal(&owner, &session_id).unwrap();
-    // kill_terminal leaves the kill to a cleanup thread. Release the
-    // descendant only once it is gone, or once it has outlived term_kill.
     let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
     let mut descendant_gone = false;
     while std::time::Instant::now() < deadline {
@@ -1215,7 +1195,6 @@ fn term_kill_terminates_background_descendants() {
     }
     std::fs::write(project.join("release"), b"").unwrap();
     if !descendant_gone {
-        // A descendant that outlived term_kill writes its marker once released.
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
     let marker_exists = project.join("descendant-marker").exists();
@@ -1584,7 +1563,6 @@ fn term_open_starts_in_a_project_folder_with_the_launch_env() {
     };
     assert_eq!(opened.shell, ShellKind::Posix);
     assert_eq!(opened.shell_id, ShellId::Custom);
-    // The project folder, not the folder the shell started in.
     let host_root = std::path::PathBuf::from(opened.root.clone().unwrap());
     assert!(host_root.is_absolute());
     assert_eq!(

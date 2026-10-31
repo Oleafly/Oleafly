@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFilesStore } from "@/store/files";
 
-// Per-project AI spend controls: shows the ledger total and edits the budget
-// that gates new runs (soft warning at 80%, hard stop at 100%).
 export function ProjectBudget() {
   const { t } = useTranslation(["settings"]);
   const projectId = useFilesStore((s) => s.projectId);
@@ -27,8 +25,6 @@ export function ProjectBudget() {
     staleTime: 10_000,
     meta: { silent: true },
   });
-  // null draft means "not edited": the field shows the saved budget, and a
-  // background refetch can never clobber typing in progress.
   const [draft, setDraft] = useState<string | null>(null);
   const value = draft ?? (budget.data != null ? String(budget.data) : "");
   const save = useMutation({

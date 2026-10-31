@@ -32,7 +32,6 @@ fn context(root: &Path) -> TaskRunContext {
     }
 }
 
-/// What running tasks share, over the task store at `tasks_root`.
 fn services(tasks_root: &Path) -> TaskServices {
     let clocks = Arc::new(crate::budget::BudgetClocks::default());
     TaskServices {
@@ -326,7 +325,6 @@ impl Drop for LoopbackBridge {
     }
 }
 
-/// What the run reported to its usage sink.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct UsageRecord {
     status: Option<String>,
@@ -414,7 +412,6 @@ enum ProviderBehavior {
     Edit,
     Reject,
     Wait,
-    /// Asks for the same tool on every step, so the run reaches its limit.
     RepeatTool,
 }
 
@@ -600,7 +597,6 @@ async fn builtin_adapter_failure_closes_resources_without_success() {
     assert_eq!((row.1, row.2), (None, None));
 }
 
-// Task turns may take 2,000 steps; unit tests use the old cap of 50.
 #[tokio::test]
 async fn builtin_adapter_step_limit_closes_resources_without_success() {
     let root = tempfile::tempdir().unwrap();
@@ -649,7 +645,6 @@ async fn builtin_adapter_cancellation_waits_for_the_stream_and_bridge() {
     assert_eq!((row.0, row.1, row.2), ("cancelled".into(), None, None));
 }
 
-/// A host that counts how often skill folders are resolved.
 struct CountingHost {
     inner: Arc<FixtureHost>,
     resolved: std::sync::atomic::AtomicUsize,
@@ -700,13 +695,9 @@ async fn skill_read_paths_are_resolved_once_per_run_not_per_command() {
     assert_eq!(host.resolved.load(std::sync::atomic::Ordering::SeqCst), 1);
 }
 
-// 0.4.8: supervised runs and wake-ups, budgets, helpers and network.
-
-/// A reply a scripted provider sends for a request.
 type Script =
     Arc<dyn Fn(Value, usize) -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>;
 
-/// A script that answers at once.
 fn script(reply: impl Fn(&Value, usize) -> Value + Send + Sync + 'static) -> Script {
     Arc::new(
         move |request: Value, index: usize| -> Pin<Box<dyn Future<Output = Value> + Send>> {
@@ -716,7 +707,6 @@ fn script(reply: impl Fn(&Value, usize) -> Value + Send + Sync + 'static) -> Scr
     )
 }
 
-/// A script that may wait before it answers.
 fn script_async<F, Answer>(reply: F) -> Script
 where
     F: Fn(Value, usize) -> Answer + Send + Sync + 'static,
@@ -733,8 +723,6 @@ fn text_reply(text: &str) -> Value {
     json!({"content": text})
 }
 
-/// An OpenAI-compatible provider whose script picks each reply from the
-/// request (and its index). Every request is recorded.
 struct Scripted {
     url: String,
     requests: Arc<Mutex<Vec<Value>>>,
@@ -812,7 +800,6 @@ async fn within<T>(work: impl Future<Output = T>) -> T {
         .expect("the task did not finish in time")
 }
 
-/// The text of a request's last message.
 fn last_message(request: &Value) -> String {
     request["messages"]
         .as_array()
@@ -822,7 +809,6 @@ fn last_message(request: &Value) -> String {
         .to_owned()
 }
 
-/// What the tool calls so far returned, in call order.
 fn tool_outputs(request: &Value) -> Vec<String> {
     request["messages"]
         .as_array()
@@ -853,8 +839,6 @@ fn tool_description(request: &Value, name: &str) -> String {
         .to_owned()
 }
 
-/// A task the store at `tasks_root` is running, whose runs go to the
-/// `executor` compute target.
 fn running_task(tasks_root: &Path, executor: &str) -> ResearchTask {
     let store = TaskStore::new(tasks_root.to_path_buf()).unwrap();
     let mut brief = ResearchBrief::default();
@@ -876,8 +860,6 @@ fn task_context(task: &ResearchTask, workspace: &Path) -> TaskRunContext {
     }
 }
 
-/// Runs that keep going until the test releases them, with a log that
-/// prints one metric.
 struct HeldRuns {
     release: Arc<AtomicBool>,
 }
@@ -957,7 +939,6 @@ async fn the_agent_is_woken_when_a_run_finishes_after_its_turn() {
         sink,
     ));
 
-    // The turn ended while the run still went on: the agent waits for it.
     bounded_wait(|| {
         lock(&events).contains(&TaskRuntimeEvent::Phase {
             phase: TaskPhase::WaitingRuns,
@@ -1033,9 +1014,6 @@ async fn a_task_woken_two_hundred_times_stops_with_a_retry_message() {
             })
             .unwrap();
     }
-    // Every turn ends with one more run finished, so every wait wakes the
-    // agent. The long history is compacted on the way (calls not streamed),
-    // which finish nothing.
     let finishing = store.clone();
     let task_id = task.id.clone();
     let turns = Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -1142,7 +1120,6 @@ async fn network_for_commands_follows_the_brief() {
         within(adapter.run(task, CancellationToken::new(), event_log().1))
             .await
             .unwrap();
-        // The agent is told what its commands may reach...
         let described = tool_description(&provider.requests()[0], "run_command");
         assert_eq!(
             described.contains("Network access is allowed."),
@@ -1154,7 +1131,6 @@ async fn network_for_commands_follows_the_brief() {
             !network,
             "{described}"
         );
-        // ...and a command's sandbox gets the same permission.
         let home = root.path().join("home");
         std::fs::create_dir_all(&home).unwrap();
         let spec = crate::task_tools::command_spec(
@@ -1181,9 +1157,6 @@ fn is_helper(request: &Value) -> bool {
         .is_some_and(|system| system.starts_with(HELPER_PROMPT))
 }
 
-/// The task's agent hands a job to a helper. The helper tries to change the
-/// manuscript, writes its notes, then tries to start a run and a helper of
-/// its own.
 fn helper_script() -> Script {
     script(
         |request, _index| match (is_helper(request), tool_outputs(request).is_empty()) {
@@ -1252,7 +1225,6 @@ async fn spawned_readers_can_only_write_inside_the_record() {
         "{outputs:?}"
     );
     assert!(!outputs[1].contains("error"), "{outputs:?}");
-    // The task's agent learns what the helper wrote.
     let parent = requests
         .iter()
         .find(|request| !is_helper(request) && !tool_outputs(request).is_empty())
@@ -1292,7 +1264,6 @@ async fn spawned_readers_cannot_spawn_or_run() {
         .unwrap();
     let refused = json!({"error": "This tool is unavailable to helpers."}).to_string();
     assert_eq!(&tool_outputs(answered)[2..], [refused.clone(), refused]);
-    // The task's own agent has them.
     let parent = tool_names(requests.iter().find(|request| !is_helper(request)).unwrap());
     for name in [SPAWN_AGENT, "run_command", "start_run"] {
         assert!(
@@ -1302,7 +1273,6 @@ async fn spawned_readers_cannot_spawn_or_run() {
     }
 }
 
-/// Every transcript row of a generation, page by page.
 fn all_events(state: &ResearchTaskState, task_id: &str, generation: u64) -> Vec<TaskRuntimeEvent> {
     let mut events = Vec::new();
     let mut after = None;
@@ -1316,8 +1286,6 @@ fn all_events(state: &ResearchTaskState, task_id: &str, generation: u64) -> Vec<
     }
 }
 
-/// A queued, resumed task whose earlier attempt used all but 1.5 seconds of
-/// its five minute budget, with the queue it runs on.
 struct BudgetedTask {
     state: ResearchTaskState,
     store: TaskStore,
@@ -1355,9 +1323,6 @@ fn budgeted_task(data: &Path, executor: &str) -> BudgetedTask {
             ..Default::default()
         })
         .unwrap();
-    // An earlier attempt used all but 1.5 seconds of the five minutes; a
-    // resume keeps that time and the workspace (minutes are not scaled in
-    // tests).
     store.request_start(&task.id).unwrap();
     let earlier = store.claim_next().unwrap().unwrap();
     let isolation = crate::isolation::prepare_at(
@@ -1401,9 +1366,6 @@ async fn a_time_budget_stop_wraps_up_and_goes_to_review() {
         limit_ms,
     } = budgeted_task(data.path(), "local");
 
-    // The agent keeps calling tools. The wrap-up is answered once the queue
-    // has counted the whole budget (it saves the active time it counts), so
-    // the stop is the budget's.
     let (watched_root, watched_task) = (tasks.clone(), task.id.clone());
     let provider = Scripted::start(script_async(move |request, _index| {
         let (root, id) = (watched_root.clone(), watched_task.clone());
@@ -1478,8 +1440,6 @@ async fn a_time_budget_stop_wraps_up_and_goes_to_review() {
     state.shutdown().await;
 }
 
-/// Queues `budgeted` on the built-in runtime against the scripted provider and
-/// waits until it leaves the queue.
 async fn finish_budgeted(
     data: &Path,
     budgeted: &BudgetedTask,
@@ -1513,8 +1473,6 @@ async fn finish_budgeted(
     .await
 }
 
-/// A wrap-up script: the agent writes `handoff.md` with a tool call, then
-/// answers once the queue has counted the whole budget.
 fn wrap_up_script(budgeted: &BudgetedTask, marker: &'static str) -> Script {
     let (root, id, limit_ms) = (
         budgeted.tasks.clone(),
@@ -1549,7 +1507,6 @@ fn wrap_up_script(budgeted: &BudgetedTask, marker: &'static str) -> Script {
     })
 }
 
-/// What the wrap-up's `write_file` call answered and left in the workspace.
 fn assert_handoff_written(finished: &ResearchTask, requests: &[Value]) {
     let answered = requests
         .iter()
@@ -1597,7 +1554,6 @@ async fn a_task_that_waits_for_runs_when_its_time_ends_still_wraps_up() {
     const WRAP_UP: &str = "The time budget ended";
     let data = tempfile::tempdir().unwrap();
     let budgeted = budgeted_task(data.path(), "held");
-    // The run never finishes: only the budget ends the wait.
     budgeted
         .state
         .services()

@@ -1,24 +1,12 @@
-//! Tauri commands for the per-connector API keys the research toolset uses.
-//! Storage lives in `secrets.rs`; this module is transport only.
-//!
-//! The webview can save or clear a key and learn whether one is saved, but
-//! never read one back: only the backend uses the keys. Mathpix keys
-//! (`mathpix.*`) are written and read only by `mathpix.rs`, so the generic
-//! commands refuse them.
-
 use std::collections::HashMap;
 use std::sync::{Mutex, PoisonError};
 
-/// Serializes read-modify-write cycles on the connector secrets file, so two
-/// saves at once cannot drop each other's key.
 static CONNECTOR_WRITES: Mutex<()> = Mutex::new(());
 
-/// Accounts only the backend may read or write.
 pub(crate) fn is_reserved_connector(id: &str) -> bool {
     id.starts_with("mathpix.")
 }
 
-/// Reads the connector map, lets `edit` change it, and writes it back.
 pub(crate) fn update_connector_secrets(
     edit: impl FnOnce(&mut HashMap<String, String>),
 ) -> Result<(), String> {
@@ -30,22 +18,22 @@ pub(crate) fn update_connector_secrets(
     crate::secrets::write_connector_secrets(&all)
 }
 
-fn saved_connector_key(connector_id: &str) -> Result<Option<String>, String> {
+pub(crate) fn saved_connector_key(connector_id: &str) -> Result<Option<String>, String> {
     if is_reserved_connector(connector_id) {
         return Ok(None);
     }
     let all = crate::secrets::read_connector_secrets()?;
-    Ok(all.get(connector_id).cloned())
+    Ok(all
+        .get(connector_id)
+        .map(|key| key.trim().to_owned())
+        .filter(|key| !key.is_empty()))
 }
 
-/// Whether a key is saved for `connector_id`; the key itself stays here.
 #[tauri::command]
 pub fn connector_key_saved(connector_id: String) -> Result<bool, String> {
-    Ok(saved_connector_key(&connector_id)?.is_some_and(|key| !key.trim().is_empty()))
+    Ok(saved_connector_key(&connector_id)?.is_some())
 }
 
-/// Removes and returns a key, for a migration that moves it elsewhere in the
-/// backend. Nothing is written when no key is saved.
 pub(crate) fn take_connector_key(connector_id: &str) -> Result<Option<String>, String> {
     let _guard = CONNECTOR_WRITES
         .lock()
@@ -78,7 +66,6 @@ mod tests {
 
     #[test]
     fn mathpix_keys_never_cross_the_generic_connector_commands() {
-        // Both return before the secrets file is read.
         assert_eq!(saved_connector_key("mathpix.app_key").unwrap(), None);
         assert_eq!(saved_connector_key("mathpix.app_id").unwrap(), None);
         assert!(!connector_key_saved("mathpix.app_key".into()).unwrap());
@@ -124,8 +111,15 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", dir.path());
         set_connector_key("tavily".into(), "   ".into()).unwrap();
         assert!(!connector_key_saved("tavily".into()).unwrap());
+        assert_eq!(saved_connector_key("tavily").unwrap(), None);
         assert_eq!(take_connector_key("alphaxiv").unwrap(), None);
         set_connector_key("alphaxiv".into(), " legacy-key ".into()).unwrap();
+        for _ in 0..2 {
+            assert_eq!(
+                saved_connector_key("alphaxiv").unwrap().as_deref(),
+                Some("legacy-key")
+            );
+        }
         assert_eq!(
             take_connector_key("alphaxiv").unwrap().as_deref(),
             Some("legacy-key")

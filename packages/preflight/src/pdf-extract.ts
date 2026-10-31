@@ -1,11 +1,9 @@
 import "@oleafly/preview/polyfills";
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
+import "@oleafly/preview/pdfWorkerRuntime";
 import { reconstructPdfPageText } from "./pdf-text";
 import type { PdfExtractionStatus, PdfFacts, PositionedText } from "./types";
 import type { PdfUaFacts, StructNode, StructDoc } from "./structure";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export interface PdfExtract {
   pages: PositionedText[][];
@@ -335,8 +333,6 @@ function collectAnnotationFacts(annotations: PdfAnnotations, scan: PageScan): vo
       scan.links.push({ hasContents: typeof contents === "string" && contents.trim().length > 0 });
     }
     if (annotation.subtype === "Widget") scan.formFieldCount++;
-    // `\attachfile` embeds its file in an annotation, outside the
-    // catalog's EmbeddedFiles tree that getAttachments() reads.
     if (annotation.subtype === "FileAttachment") scan.annotationAttachmentCount++;
   }
 }
@@ -372,7 +368,6 @@ function fontResolved(page: PdfPage, fontId: string): boolean {
   }
 }
 
-/** How long a font that is still loading is waited for. */
 const FONT_WAIT_MS = 2_000;
 
 /** Resolves once pdf.js has resolved `fontId` (an embedded font loads
@@ -393,8 +388,6 @@ function waitForFont(page: PdfPage, fontId: string): Promise<void> {
   });
 }
 
-/** The fonts of a page's text that no page has been read for yet and
- * pdf.js hasn't resolved. */
 function unresolvedFontIds(page: PdfPage, items: PdfTextItems, scan: PageScan): string[] {
   const ids = new Set<string>();
   for (const item of items) {
@@ -413,7 +406,6 @@ async function resolvePageFonts(page: PdfPage, items: PdfTextItems, scan: PageSc
   try {
     await page.getOperatorList();
   } catch {
-    // The fonts keep their ids and an unknown embedding, as before.
     return;
   }
   await Promise.all(unresolvedFontIds(page, items, scan).map((id) => waitForFont(page, id)));
@@ -579,7 +571,11 @@ export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract
   const version = /%PDF-(\d+\.\d+)/.exec(header)?.[1] ?? null;
   // fontExtraProperties keeps each font's data after it loads; without it
   // pdf.js clears the data and no font reads as embedded.
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), fontExtraProperties: true });
+  const loadingTask = pdfjsLib.getDocument({
+    data: bytes.slice(),
+    fontExtraProperties: true,
+    useSystemFonts: true,
+  });
   try {
     const doc = await loadingTask.promise;
 

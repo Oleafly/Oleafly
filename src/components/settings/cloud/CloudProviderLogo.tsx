@@ -4,8 +4,6 @@ import { cn } from "@/lib/utils";
 import { Cloud, Database } from "lucide-react";
 import type { ComponentType } from "react";
 
-// Only the Cloud tab shows these, so they live here rather than in the shared
-// brand icons, which load at startup with the toolbar.
 function DropboxBrandIcon({ className }: BrandIconProps) {
   return (
     <BrandSvg className={className} viewBox="0 0 24 24">
@@ -41,7 +39,6 @@ const SIZE_CLASS = {
   sm: { tile: "size-8 rounded-md", icon: "size-4" },
 } as const;
 
-/** A provider's logo on its brand colour, or a cloud for no provider in particular. */
 export function CloudProviderLogo({
   kind,
   size = "md",

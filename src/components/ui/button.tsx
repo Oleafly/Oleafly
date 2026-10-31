@@ -23,8 +23,6 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-9 px-4 py-2",
-        // Capped: at a large theme radius a 24 px button turned into a pill
-        // next to rounded-rectangle buttons of the default size.
         xs: "h-6 rounded-[min(var(--radius-md),0.375rem)] px-2 text-[0.6875rem] [&_svg]:size-3",
         sm: "h-8 rounded-[min(var(--radius-md),0.5rem)] px-3 text-xs",
         lg: "h-10 rounded-md px-8",

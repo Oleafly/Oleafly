@@ -76,7 +76,6 @@ function RegistryResult({
 }: Readonly<{
   entry: AcpRegistryEntry;
   registered: boolean;
-  /** The entry is one of Oleafly's built-in agents, which is already on the list. */
   builtIn: boolean;
   busy: boolean;
   onRegister: (definition: AcpDefinition) => void;
@@ -140,7 +139,6 @@ function RegistryResult({
   );
 }
 
-/** The one setup step for a card, before any sign-in hint. */
 function nextStepText(
   agent: AcpAgentStatus,
   readiness: AcpReadiness,
@@ -168,9 +166,7 @@ function AgentCard({
   agent: AcpAgentStatus;
   projectId?: string | null;
   busy: string | null;
-  /** Changes when this card should expand and scroll into view. */
   focusToken?: number;
-  /** Changes after this agent's bridge was installed. */
   retestToken?: number;
   onInstall: (definition: AcpDefinition, opener: HTMLButtonElement) => void;
   onRemove: (agentId: string) => void;
@@ -178,7 +174,6 @@ function AgentCard({
   onStatus: (status: AcpAgentStatus) => void;
 }>) {
   const { t } = useTranslation(["common", "settings", "ai"]);
-  // The agent's own reason can name files; show the home folder as ~.
   const displayText = useDisplayText();
   const [open, setOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -547,19 +542,11 @@ function AgentCatalogEmptyState({
 
 export interface AcpAgentsTabProps {
   projectId?: string | null;
-  /** An agent whose card should expand and scroll into view (a settings deep link). */
   focusAgentId?: string | null;
-  /** Changes on every deep link, so the same agent can be requested again. */
   focusToken?: number;
-  /**
-   * Called with `focusToken` once the card focus is applied. The host drops the
-   * link then, so remounting this tab (the tab is unmounted while another AI
-   * tab is shown) does not expand, scroll and focus the card again.
-   */
   onFocusHandled?: (token: number) => void;
 }
 
-/** Puts one agent's fresh status into the shared catalog without a full re-check. */
 function applyAgentStatus(status: AcpAgentStatus) {
   useAcpSessionsStore.setState((state) => ({
     catalog: state.catalog.map((agent) =>

@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} 需要執行程式碼才能建置這份文件，但此專案的程式碼已關閉。若要編譯，請在此專案中允許程式碼。",
+    "export_stopped": "匯出已停止。",
     "quarto_missing": "尚未安裝 Quarto。請從設定 > 引擎 > Quarto 安裝，然後重新編譯。",
     "calepin_missing": "尚未安裝 Calepin。請從設定 > 引擎 > Calepin 安裝，然後重新編譯。",
     "not_offered": "Oleafly 無法為這台電腦下載 {{tool}}。請自行安裝，然後重新編譯。",

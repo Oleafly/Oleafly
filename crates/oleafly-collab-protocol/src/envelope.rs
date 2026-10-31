@@ -35,8 +35,6 @@ impl Envelope {
         bytes.extend_from_slice(self.project_id.as_uuid().as_bytes());
         bytes.extend_from_slice(self.batch_id.as_uuid().as_bytes());
         bytes.extend_from_slice(self.device_id.as_uuid().as_bytes());
-        // A mode this build can't read has no known byte, so its signature
-        // never checks out. Readers skip such an envelope before checking it.
         bytes.push(match self.mode {
             EnvelopeMode::Plain => 0,
             EnvelopeMode::E2ee => 1,

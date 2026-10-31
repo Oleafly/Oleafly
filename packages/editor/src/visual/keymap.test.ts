@@ -6,14 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { latexTreeSupport } from "../latex-tree";
 import { insertListItemOrLeaveHeading } from "./keymap";
 import { LIST_DOCUMENT, parsedView, positionOf } from "./test-document";
+import { stubRangeGeometry } from "../test-geometry";
 
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 

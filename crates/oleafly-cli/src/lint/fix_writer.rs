@@ -1,6 +1,3 @@
-//! Writing `--fix` edits back: offsets are UTF-16 in LF-normalised text,
-//! the file keeps its own line endings (and BOM), and a file that changed
-//! while it was checked is left alone.
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -25,14 +22,11 @@ impl std::fmt::Display for FixError {
     }
 }
 
-/// Byte offsets of the LF-normalised text mapped back to the original.
 pub struct LineEndingMap {
-    /// `normalized.len() + 1` entries.
     original: Vec<usize>,
 }
 
 impl LineEndingMap {
-    /// The text with `\r\n` and lone `\r` as `\n`, and the map back.
     pub fn new(original: &str) -> (String, Self) {
         let bytes = original.as_bytes();
         let mut normalized = String::with_capacity(original.len());
@@ -66,7 +60,6 @@ impl LineEndingMap {
     }
 }
 
-/// The file's length and time, to notice a change before writing.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileStamp {
     pub len: u64,
@@ -83,7 +76,6 @@ impl FileStamp {
     }
 }
 
-/// `original` with `edits` (UTF-16 ranges of `normalized`) applied.
 pub fn apply_fixes(
     original: &str,
     map: &LineEndingMap,
@@ -113,7 +105,6 @@ pub fn apply_fixes(
     Ok(out)
 }
 
-/// Writes `bytes` unless the file changed since `before`.
 pub fn write_if_unchanged(path: &Path, before: &FileStamp, bytes: &[u8]) -> Result<(), FixError> {
     let now = FileStamp::of(path).map_err(FixError::Io)?;
     if &now != before {
@@ -122,8 +113,6 @@ pub fn write_if_unchanged(path: &Path, before: &FileStamp, bytes: &[u8]) -> Resu
     oleafly_core::atomic::write_atomic(path, bytes).map_err(FixError::Io)
 }
 
-/// Drops edits that overlap an earlier one. What rides along with each
-/// range (the replacement, and whatever else the caller tracks) stays with it.
 pub fn without_overlaps<T>(mut edits: Vec<(usize, usize, T)>) -> Vec<(usize, usize, T)> {
     edits.sort_by_key(|(from, to, _)| (*from, *to));
     let mut kept: Vec<(usize, usize, T)> = Vec::new();
@@ -164,7 +153,6 @@ mod tests {
 
     #[test]
     fn crlf_files_keep_their_line_endings() {
-        // "We compare the the results.\r\nNext." : remove the second "the ".
         assert_eq!(
             fixed("We compare the the results.\r\nNext.\r\n", &[(15, 19, "")]),
             "We compare the results.\r\nNext.\r\n"

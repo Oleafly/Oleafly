@@ -1,5 +1,3 @@
-//! Which addresses the fetch client may reach: public hosts over https,
-//! checked again after every DNS lookup and every redirect.
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
@@ -30,9 +28,6 @@ fn is_public_v4(ip: Ipv4Addr) -> bool {
         || a >= 240)
 }
 
-/// An address on the public internet. Loopback, private, link-local,
-/// carrier-grade NAT, documentation, multicast and reserved ranges are not,
-/// including their IPv4-mapped and NAT64 forms.
 pub(crate) fn is_public_ip(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => is_public_v4(v4),
@@ -60,7 +55,6 @@ pub(crate) fn is_public_ip(ip: IpAddr) -> bool {
                 || (segments[0] & 0xffc0) == 0xfe80
                 // 2001:db8::/32, documentation
                 || (segments[0] == 0x2001 && segments[1] == 0x0db8)
-                // ::/96, IPv4-compatible
                 || segments[0..6] == [0, 0, 0, 0, 0, 0])
         }
     }
@@ -75,7 +69,6 @@ fn local_name(domain: &str) -> bool {
         || !domain.contains('.')
 }
 
-/// The rules every fetched URL meets: https, no credentials, a public host.
 pub(crate) fn check_url(url: &Url) -> WebResult<()> {
     if url.as_str().len() > MAX_URL_LEN || url.scheme() != "https" {
         return Err(WebError::InvalidUrl(url.to_string()));
@@ -98,12 +91,6 @@ pub(crate) fn check_url(url: &Url) -> WebResult<()> {
     }
 }
 
-/// Refuses a host name that resolves, here, to any address that is not
-/// public. Through a proxy the proxy resolves and connects, so
-/// `PublicResolver` never sees the name; this lookup runs before each request
-/// instead. A name that does not resolve here is refused too: a company or
-/// university proxy sits inside the network and resolves names that only
-/// exist there. (Without a proxy such a name could not be reached anyway.)
 pub(crate) async fn check_resolved_host(url: &Url) -> WebResult<()> {
     let Some(url::Host::Domain(domain)) = url.host() else {
         return Ok(());
@@ -131,13 +118,10 @@ pub(crate) async fn check_resolved_host(url: &Url) -> WebResult<()> {
     }
 }
 
-/// Whether the fetch follows a redirect to `next` after `hops` requests.
 pub(crate) fn redirect_allowed(next: &Url, hops: usize) -> bool {
     hops <= MAX_REDIRECTS && check_url(next).is_ok()
 }
 
-/// DNS that only returns public addresses, so a public name pointing at a
-/// private address (or one that changes to one) is never reached.
 pub(crate) struct PublicResolver;
 
 impl Resolve for PublicResolver {
@@ -162,20 +146,17 @@ mod tests {
 
     #[tokio::test]
     async fn a_name_that_resolves_to_a_private_address_is_refused_before_any_proxy() {
-        // `localhost` resolves through the hosts file on every platform.
         let local = Url::parse("https://localhost/page").unwrap();
         assert!(matches!(
             check_resolved_host(&local).await,
             Err(WebError::NotAllowed(_))
         ));
-        // An address literal is checked by `check_url`, not here.
         let literal = Url::parse("https://1.1.1.1/").unwrap();
         assert!(check_resolved_host(&literal).await.is_ok());
     }
 
     #[tokio::test]
     async fn a_name_this_computer_cannot_resolve_is_not_left_to_a_proxy() {
-        // A proxy inside the network would resolve an internal-only name.
         let unknown = Url::parse("https://does-not-exist.invalid/").unwrap();
         let error = check_resolved_host(&unknown).await.unwrap_err();
         assert!(matches!(error, WebError::NotAllowed(_)), "{error:?}");

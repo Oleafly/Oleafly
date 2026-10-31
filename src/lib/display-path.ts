@@ -23,7 +23,6 @@ import { displayHomes } from "@/lib/tauri";
 const VERBATIM_UNC = "\\\\?\\UNC\\";
 const VERBATIM = "\\\\?\\";
 
-// `\\?\C:\x` becomes `C:\x` and `\\?\UNC\server\share` becomes `\\server\share`.
 function withoutVerbatimPrefix(path: string): string {
   if (path.startsWith(VERBATIM_UNC)) return `\\\\${path.slice(VERBATIM_UNC.length)}`;
   if (path.startsWith(VERBATIM)) return path.slice(VERBATIM.length);
@@ -55,7 +54,6 @@ function samePrefix(path: string, home: string, windows: boolean): boolean {
   return fold(head) === fold(home);
 }
 
-/** `path` with a leading home folder replaced by `~`; anything else unchanged. */
 export function homeRelativePath(path: string, home: string | null | undefined): string {
   const shown = withoutVerbatimPrefix(path);
   const root = normalizedHome(home);
@@ -82,13 +80,10 @@ const textPatterns = new Map<string, RegExp>();
 function textPattern(home: string): RegExp | null {
   const cached = textPatterns.get(home);
   if (cached) return cached;
-  // A home with no folder name ("/", "C:") would match every absolute path.
   if (!/[^\\/:]/.test(home) || /^[A-Za-z]:$/.test(home)) return null;
   const body = Array.from(home, escapeForPattern).join("");
   const before = String.raw`(^|[^${NAME_CHAR}.~\\/])`;
   const verbatim = String.raw`(?:\\\\\?\\)?`;
-  // After the home folder comes a separator, the end, or a character that
-  // cannot continue a folder name ("/Users/ada." at the end of a sentence).
   const after = String.raw`(?=[\\/]|$|[^${NAME_CHAR}.]|\.(?![${NAME_CHAR}.]))`;
   const flags = isWindowsPath(home) ? "giu" : "gu";
   const pattern = new RegExp(`${before}${verbatim}${body}${after}`, flags);
@@ -96,7 +91,6 @@ function textPattern(home: string): RegExp | null {
   return pattern;
 }
 
-/** Free `text` with every path that starts at the home folder shortened to `~`. */
 export function homeRelativeText(text: string, home: string | null | undefined): string {
   const root = normalizedHome(home);
   if (!root || !text) return text;
@@ -126,10 +120,6 @@ let loaded = false;
 let loading: Promise<void> | null = null;
 const homesChanged = createEmitter();
 
-/**
- * Records the spellings of the home folder the backend builds paths from. The
- * longest goes first, so a canonical home that contains the plain one wins.
- */
 export function setDisplayHomes(next: readonly string[]): void {
   const unique = new Set<string>();
   for (const home of next) {
@@ -141,7 +131,6 @@ export function setDisplayHomes(next: readonly string[]): void {
   homesChanged.emit();
 }
 
-/** Forgets the loaded home folders (tests start from a clean slate). */
 export function resetDisplayHomes(): void {
   homes = [];
   loaded = false;
@@ -157,15 +146,9 @@ function insideDesktopApp(): boolean {
   }
 }
 
-/**
- * Asks the backend once for the home folder. A failed or empty answer is not
- * remembered, so the next caller asks again.
- */
 export function loadDisplayHomes(): Promise<void> {
   if (loaded || !insideDesktopApp()) return Promise.resolve();
   if (loading) return loading;
-  // Starting from a resolved promise turns a synchronous throw (no IPC
-  // bridge) into a failed answer instead of an exception in the caller.
   const request: Promise<void> = Promise.resolve()
     .then(() => displayHomes())
     .then(
@@ -219,24 +202,19 @@ export function displayTextRanges(text: string): DisplayTextRange[] {
   return rangesFor(homes, text);
 }
 
-/** A path from the backend, ready to show. */
 export function displayPath(path: string): string {
   return pathFor(homes, path);
 }
 
-/** Free text from the backend or an agent, ready to show. */
 export function displayText(text: string): string {
   return textFor(homes, text);
 }
 
-/** A run of display text, marked when it is a file or folder path. */
 export interface PathPart {
   readonly text: string;
   readonly path: boolean;
 }
 
-// A path runs until whitespace, a quote, a backtick or a shell bracket. Spaces
-// inside a path end the match, which only leaves the tail of the path clear.
 const PATH_CHAR = String.raw`[^\s"'\x60<>|]`;
 const SEGMENT_CHAR = String.raw`[^\s\\/"'\x60<>|]`;
 // Capture groups, not lookbehind: older WebKit builds reject lookbehind.
@@ -244,7 +222,6 @@ const PATH_START = String.raw`(^|[^${NAME_CHAR}.~\\/:])`;
 const HOME_PATH = String.raw`~(?=[\\/]|$|[^${NAME_CHAR}.~]|\.(?![${NAME_CHAR}]))(?:[\\/]${PATH_CHAR}*)?`;
 const DRIVE_PATH = String.raw`[A-Za-z]:[\\/]+${SEGMENT_CHAR}${PATH_CHAR}*`;
 const UNC_PATH = String.raw`\\\\${SEGMENT_CHAR}+[\\/]+${PATH_CHAR}+`;
-// Two segments at least, so a chat slash command ("/compact") stays clear.
 const POSIX_PATH = `/${SEGMENT_CHAR}+/${PATH_CHAR}*`;
 const PATH_PATTERN = new RegExp(
   `${PATH_START}(${HOME_PATH}|${DRIVE_PATH}|${UNC_PATH}|${POSIX_PATH})`,
@@ -252,23 +229,12 @@ const PATH_PATTERN = new RegExp(
 );
 const TRAILING_PUNCTUATION = new Set(".,;:!?)]}");
 
-/**
- * `value` without the punctuation at its end. A loop, not a `[...]+$`
- * pattern: the pattern tries again from each mark in a run that does not
- * reach the end, which is quadratic on a long one.
- */
 function withoutTrailingPunctuation(value: string): string {
   let end = value.length;
   while (end > 0 && TRAILING_PUNCTUATION.has(value.charAt(end - 1))) end -= 1;
   return value.slice(0, end);
 }
 
-/**
- * Splits display text into its paths and the text around them, so Settings
- * can blur the paths in a message (src/components/settings/SettingsPath.tsx).
- * Paths are home paths (as `displayText` leaves them, so `~/…` too) and
- * absolute paths.
- */
 export function pathParts(text: string): PathPart[] {
   if (typeof text !== "string" || text.length === 0) return [];
   const parts: PathPart[] = [];
@@ -297,13 +263,11 @@ function useDisplayHomes(): readonly string[] {
   return current;
 }
 
-/** `displayPath` for components: re-renders once the home folder is known. */
 export function useDisplayPath(): (path: string) => string {
   const current = useDisplayHomes();
   return useCallback((path: string) => pathFor(current, path), [current]);
 }
 
-/** `displayText` for components: re-renders once the home folder is known. */
 export function useDisplayText(): (text: string) => string {
   const current = useDisplayHomes();
   return useCallback((text: string) => textFor(current, text), [current]);

@@ -1,6 +1,3 @@
-//! Fakes for remote run tests: an `ssh` that runs the remote command in a
-//! local "remote home", Slurm commands that run jobs in the background, and
-//! a Cua host whose Space is a local folder.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -14,8 +11,6 @@ use super::{ComputeHost, McpStdioServer};
 #[cfg(unix)]
 use crate::runs::{RunExecutor, RunHandle, RunSpec, RunStatus};
 
-/// Writes an executable script through a child `sh`, so no thread of the
-/// test process holds a write descriptor a later `exec` would trip over.
 #[cfg(unix)]
 pub(crate) fn write_script(path: &Path, body: &str) {
     use std::io::Write;
@@ -106,7 +101,6 @@ impl World {
         }
     }
 
-    /// How many times the fake ssh ran.
     pub fn calls(&self) -> usize {
         std::fs::read_to_string(self.root.join("calls.log"))
             .map(|text| text.lines().count())
@@ -123,17 +117,14 @@ impl World {
         let _ = std::fs::remove_file(self.root.join("fail"));
     }
 
-    /// Uploads wait 5 s before unpacking.
     pub fn slow_tar(&self) {
         std::fs::write(self.root.join("slow"), "").unwrap();
     }
 
-    /// Copying a run's outputs waits 8 s before it starts.
     pub fn slow_outputs(&self) {
         std::fs::write(self.root.join("slow-outputs"), "").unwrap();
     }
 
-    /// Files a test reads or writes on the "remote" side.
     pub fn remote(&self, relative: &str) -> PathBuf {
         self.remote_home().join(relative)
     }
@@ -170,7 +161,6 @@ exec /bin/sh -c "$1"
     program
 }
 
-/// A world with one SSH (or Slurm) target reached through the fake ssh.
 #[cfg(unix)]
 pub(crate) fn world_with(target: impl FnOnce(String) -> ComputeTarget, rsync: bool) -> World {
     let dir = tempfile::tempdir().unwrap();
@@ -221,7 +211,6 @@ pub(crate) fn ssh_world(rsync: bool) -> World {
     )
 }
 
-/// Polls until the run ends (20 s at most).
 #[cfg(unix)]
 pub(crate) async fn wait_for_end(executor: &dyn RunExecutor, handle: &RunHandle) -> RunStatus {
     let deadline = std::time::Instant::now() + Duration::from_secs(20);
@@ -236,8 +225,6 @@ pub(crate) async fn wait_for_end(executor: &dyn RunExecutor, handle: &RunHandle)
     }
 }
 
-/// Cua Spaces as local folders: `space_bash` runs `sh -c` in the Space's
-/// home, `send_file` copies into its `Downloads`, `download` copies out.
 pub(crate) struct FakeSpaces {
     pub root: PathBuf,
     pub spaces: Mutex<Vec<(String, String, String)>>,
@@ -279,8 +266,6 @@ impl FakeSpaces {
         json!({"content": [{"type": "text", "text": text}]})
     }
 
-    /// `space_bash`: `sh -c` in the Space's home, with stderr and a failing
-    /// exit code appended the way Cua reports them.
     #[cfg(not(windows))]
     async fn bash(home: &Path, command: &str) -> Result<String, String> {
         let output = tokio::process::Command::new("/bin/sh")

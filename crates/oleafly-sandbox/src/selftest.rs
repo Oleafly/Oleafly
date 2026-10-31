@@ -1,8 +1,3 @@
-//! Live checks of the sandbox on a real machine, and a sandboxed run from the
-//! command line. Both run inside the app or CLI binary:
-//!
-//! - `--oleafly-sandbox-selftest [--network] [--python <path>] [--json]`
-//! - `--oleafly-sandbox-run --profile analysis|training [--network] --workspace <dir> -- <program> [args...]`
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -30,7 +25,6 @@ pub struct SelfTestReport {
     pub available: bool,
     pub reason: Option<String>,
     pub checks: Vec<SelfTestCheck>,
-    /// `whoami /priv` from inside the sandbox (Windows).
     pub privileges: Option<String>,
 }
 
@@ -43,7 +37,6 @@ pub struct SelfTestCheck {
     pub detail: String,
 }
 
-/// A sandboxed run from the command line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunRequest {
     pub profile: RunProfile,
@@ -55,7 +48,6 @@ pub struct RunRequest {
 
 const USAGE: &str = "usage: --oleafly-sandbox-run --profile analysis|training [--network] --workspace <dir> -- <program> [args...]";
 
-/// Parses the arguments after [`RUN_FLAG`].
 pub fn parse_run(argv: &[OsString]) -> Result<RunRequest, String> {
     let separator = argv
         .iter()
@@ -120,9 +112,7 @@ fn parse_selftest(argv: &[OsString]) -> Result<SelfTestOptions, String> {
     Ok(options)
 }
 
-/// Dispatches the self-test and run entries.
 pub fn main(flag: &str, argv: &[OsString]) -> i32 {
-    // What an earlier run that was killed still holds (Windows) goes first.
     let _ = crate::release_abandoned();
     match flag {
         SELFTEST_FLAG => match parse_selftest(argv) {
@@ -181,8 +171,6 @@ fn path_dirs() -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
-/// Runs `program args` in the sandbox with the given profile and returns
-/// its exit code.
 pub fn run_sandboxed(request: &RunRequest) -> i32 {
     let home = state_dir()
         .join("selftest-homes")
@@ -239,8 +227,6 @@ pub fn run_sandboxed(request: &RunRequest) -> i32 {
         }
     };
     let _ = release(&owner);
-    // The run's caches (pip, Hugging Face) are not worth keeping: every run
-    // gets a new home named after its process.
     let _ = std::fs::remove_dir_all(&home);
     code
 }
@@ -253,8 +239,6 @@ fn run_contained(command: &mut std::process::Command) -> std::io::Result<std::pr
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        // Resumed once it is in the job. The console and Ctrl+C stay as they
-        // are, unlike `isolate_std_process_tree`.
         const CREATE_SUSPENDED: u32 = 0x0000_0004;
         command.creation_flags(CREATE_SUSPENDED);
         let mut child = command.spawn()?;
@@ -375,7 +359,6 @@ fn check(id: &str, expected: &str, result: Result<bool, String>, detail: String)
     }
 }
 
-/// Runs the live checks and reports each one.
 pub fn run_selftest(options: &SelfTestOptions) -> SelfTestReport {
     let platform = std::env::consts::OS.to_string();
     let (available, reason) = match availability() {

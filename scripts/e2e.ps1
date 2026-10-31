@@ -1,6 +1,3 @@
-# Self-contained e2e run for Windows. A full suite launches a fresh real app
-# for every spec while retaining one throwaway data directory across the run.
-# Usage: powershell -File scripts/e2e.ps1 [--suite-max-failures=N] [--shard=K/N] [playwright args...]
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
@@ -8,9 +5,6 @@ Set-Location (Join-Path $PSScriptRoot "..")
 # Firefox transport even when the main-page Vite client is intercepted.
 if (-not $env:OLEAFLY_E2E_DISABLE_HMR) { $env:OLEAFLY_E2E_DISABLE_HMR = "1" }
 
-# Match the Unix runner: exercise bundled assets with a prebuilt e2e binary.
-# Build with VITE_E2E_HOOKS=1 and
-# `tauri build --debug --features e2e-testing --no-bundle --config src-tauri/tauri.e2e.conf.json`.
 $e2eIdentifier = [string](& node -p "require('./src-tauri/tauri.e2e.conf.json').identifier")
 $productionIdentifier = [string](& node -p "require('./src-tauri/tauri.conf.json').identifier")
 if ($LASTEXITCODE -ne 0 -or -not $e2eIdentifier.Trim() -or $e2eIdentifier.Trim() -eq $productionIdentifier.Trim()) {
@@ -70,9 +64,6 @@ $checkpointHints = ""
 $stamp = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
 $dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp"
 
-# Hermetic remote endpoints: specs 42/44/75 run a local fixture server on this
-# fixed port; other specs never call the pack/deadline commands, so this is
-# harmless. Mirrors scripts/e2e.sh.
 if (-not $env:OLEAFLY_PACKS_BASE_URL) { $env:OLEAFLY_PACKS_BASE_URL = "http://127.0.0.1:38999" }
 if (-not $env:OLEAFLY_DEADLINES_URL) { $env:OLEAFLY_DEADLINES_URL = "http://127.0.0.1:38999/allconf.yml" }
 if (-not $env:OLEAFLY_SKILLS_BASE_URL) { $env:OLEAFLY_SKILLS_BASE_URL = "http://127.0.0.1:38999" }
@@ -99,8 +90,6 @@ function Stop-AuxiliaryProcesses {
 function Stop-App {
   Stop-AuxiliaryProcesses
   if ($null -ne $script:app -and -not $script:app.HasExited) {
-    # Route taskkill output through cmd so its stderr never becomes a
-    # terminating NativeCommandError under $ErrorActionPreference = "Stop".
     cmd /c "taskkill /PID $($script:app.Id) /T /F >nul 2>&1"
     try { $script:app.WaitForExit(15000) | Out-Null } catch { Write-Verbose "e2e: the app process did not report an exit: $_" }
   }
@@ -334,9 +323,6 @@ try {
       }
     }
     if ($shardTotal -gt 0) {
-      # Round-robin split for parallel CI runners, matching scripts/e2e.sh.
-      # Every shard gets 02-create-compile first: it creates the shared
-      # "E2E Doc" project and warms the compile path later specs assume.
       $anchor = "02-create-compile.spec.ts"
       $selected = [System.Collections.Generic.List[object]]::new()
       foreach ($spec in $specs) {
@@ -356,7 +342,6 @@ try {
       if ($fromSpec -notin @($specs.Name)) {
         throw "e2e: start spec is not in this suite: $fromSpec"
       }
-      # A resumed sweep still needs the shared document created by the anchor.
       $specs = $specs | Where-Object { $_.Name -ge $fromSpec -or $_.Name -eq "02-create-compile.spec.ts" }
     }
     foreach ($spec in $specs) {

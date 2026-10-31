@@ -1,6 +1,3 @@
-// The PDF to LaTeX banner for a scanned PDF: what to do, the Tools model,
-// where the pages go and the estimate for the chosen page range. Loaded
-// lazily by PdfImportView, which the entry chunk carries.
 import { useTranslation } from "react-i18next";
 import { ScanEstimateText, ToolsModelNotice, ToolsModelPicker } from "@/components/tools/ToolsModelBar";
 import { selectedPages, type PageSize } from "@/features/tools-ai/scan-estimate";

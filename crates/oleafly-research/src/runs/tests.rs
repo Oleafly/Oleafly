@@ -113,7 +113,6 @@ fn log_grep_is_bounded() {
 fn log_grep_does_not_hold_a_huge_line_in_memory() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("stdout.log");
-    // The middle line is a progress bar of 300 KiB that never ends its line.
     let text = format!("match one\n{}\nmatch two\n", "x".repeat(300 * 1024));
     std::fs::write(&path, text).unwrap();
     assert_eq!(
@@ -397,7 +396,6 @@ async fn wait_returns_at_the_first_completion_and_reports_each_run_once() {
     assert_eq!(third.note.as_deref(), Some("No runs are in flight."));
 }
 
-// A local run has to start, which needs the macOS or Linux sandbox.
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 #[tokio::test]
 async fn start_run_never_records_env_values() {
@@ -456,8 +454,6 @@ async fn run_limits_and_policies_are_enforced_before_starting() {
     );
 }
 
-// The Windows sandbox is a beta that starts off, so a local run is refused
-// before it starts, with the setting that turns it on.
 #[cfg(windows)]
 #[tokio::test]
 async fn local_runs_say_the_windows_sandbox_is_missing() {
@@ -470,14 +466,11 @@ async fn local_runs_say_the_windows_sandbox_is_missing() {
     assert_eq!(error, super::remote::settings::WINDOWS_SWITCH_MESSAGE);
 }
 
-/// An executor the test controls: its start waits for a permit, and it
-/// remembers what it was asked to stop, clear or poll.
 #[derive(Clone)]
 struct Controlled {
     entered: Arc<tokio::sync::Notify>,
     release: Arc<tokio::sync::Semaphore>,
     fail_start: bool,
-    /// Run ids whose poll never answers.
     stuck: Arc<Vec<&'static str>>,
     calls: Arc<std::sync::Mutex<Vec<String>>>,
 }
@@ -533,7 +526,6 @@ impl RunExecutor for Controlled {
             started_at: crate::model::now_ms(),
             data: serde_json::json!({}),
         };
-        // Like the remote executors: written before anything changes remotely.
         std::fs::write(
             spec.run_dir.join("handle.json"),
             serde_json::to_vec(&handle).unwrap(),
@@ -623,8 +615,6 @@ async fn cancelling_a_run_that_is_still_starting_stops_it_once_it_has_a_handle()
         .unwrap();
     executor.entered.notified().await;
 
-    // The upload is under way, so there is no handle to stop yet: the cancel
-    // is recorded at once instead of failing.
     manager
         .cancel(&fixture.task.id, &record.run_id)
         .await
@@ -635,7 +625,6 @@ async fn cancelling_a_run_that_is_still_starting_stops_it_once_it_has_a_handle()
     );
     assert!(executor.calls().is_empty());
 
-    // The start ends with a handle, and the run is stopped there and then.
     executor.release.add_permits(1);
     executor.calls_become(&["cancel"]).await;
     assert_eq!(
@@ -686,8 +675,6 @@ async fn a_failed_start_stops_and_clears_what_it_left_remotely() {
         crate::model::RunState::Failed,
     )
     .await;
-    // The job may be running although its answer was lost: it is stopped and
-    // its folder removed (never the per-task Space the other runs share).
     executor.calls_become(&["cancel", "discard"]).await;
 }
 
@@ -711,7 +698,6 @@ async fn a_run_that_never_answers_holds_up_only_itself() {
         ("r001", "r002")
     );
 
-    // The first run's poll never returns; the second still gets recorded.
     run_becomes(
         &manager,
         &fixture.task.id,
@@ -747,7 +733,6 @@ async fn deleting_a_task_cleans_what_its_runs_left_elsewhere() {
     )
     .await;
 
-    // The rows go with the task, so the leftovers are read first.
     let leftovers = manager.cleanup_handles(&fixture.task.id);
     assert_eq!(leftovers.len(), 1);
     let store = TaskStore::new(fixture.root.clone()).unwrap();
@@ -761,11 +746,9 @@ async fn deleting_a_task_cleans_what_its_runs_left_elsewhere() {
     store.delete(&fixture.task.id).unwrap();
     assert!(manager.cleanup_handles(&fixture.task.id).is_empty());
     manager.cleanup_task(&fixture.task.id, leftovers).await;
-    // A run that was still going is stopped before its folder is removed.
     assert_eq!(executor.calls(), vec!["cancel", "cleanup"]);
 }
 
-/// Moves a run's start back in time, as if it began `minutes` ago.
 fn started_minutes_ago(fixture: &Fixture, run_id: &str, minutes: i64) {
     let connection = rusqlite::Connection::open(fixture.root.join("tasks.sqlite3")).unwrap();
     connection
@@ -791,7 +774,6 @@ async fn a_long_start_under_way_is_never_lost_for_taking_long() {
         .await
         .unwrap();
     executor.entered.notified().await;
-    // The upload has taken longer than the start deadline.
     started_minutes_ago(&fixture, &record.run_id, 30);
     manager.reattach();
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -810,8 +792,6 @@ async fn a_long_start_under_way_is_never_lost_for_taking_long() {
     assert!(executor.calls().is_empty(), "{:?}", executor.calls());
 }
 
-/// A start a quit cut off: its row has no handle, but the executor wrote
-/// `handle.json` before it changed anything remotely.
 fn cut_off_start(fixture: &Fixture, run_id: &str) -> PathBuf {
     let store = TaskStore::new(fixture.root.clone()).unwrap();
     let run_dir = fixture
@@ -887,7 +867,6 @@ async fn deleting_a_task_clears_what_a_cut_off_start_left() {
     assert_eq!(executor.calls(), vec!["cancel", "cleanup"]);
 }
 
-/// A remote host that drops the first `failures` cancels, then stops the run.
 #[derive(Clone, Default)]
 struct Unreachable {
     failures: Arc<std::sync::atomic::AtomicUsize>,
@@ -970,7 +949,6 @@ async fn a_cancel_that_did_not_reach_the_host_is_sent_again() {
         crate::model::RunState::Running,
     )
     .await;
-    // The VPN is down: the user's cancel fails, and so does the first retry.
     assert!(manager
         .cancel(&fixture.task.id, &record.run_id)
         .await
@@ -1003,7 +981,6 @@ async fn a_fresh_start_does_not_count_the_runs_before_it() {
         "The task reached its run limit of 1."
     );
 
-    // "Start over": the new attempt gets its own run limit.
     store
         .finish_failure(
             &fixture.task.id,

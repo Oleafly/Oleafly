@@ -21,7 +21,6 @@ function windowStatus(status: string): UsageWindow["status"] {
   return "ok";
 }
 
-/** The usage meter's view of what a CLI agent reported. */
 export function toUsageSnapshot(usage: AcpSessionUsage | null | undefined): UsageSnapshot {
   if (!usage) return {};
   const snapshot: UsageSnapshot = {};

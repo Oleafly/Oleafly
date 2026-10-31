@@ -1,12 +1,7 @@
-//! Citations in exports and bibliographies in imports live in
-//! `oleafly_doctools::pandoc_citations` (shared with the CLI); this module
-//! passes the app's home folder and turns failures into the app's errors.
 use std::path::Path;
 
 pub use oleafly_doctools::pandoc_citations::*;
 
-/// The bibliographies `text` names (or the .bib files beside it), with
-/// `~` meaning this user's home folder.
 pub(crate) fn collect_import_bibliographies(
     source: BibliographySource,
     source_path: &Path,
@@ -21,7 +16,6 @@ pub(crate) fn collect_import_bibliographies(
     )
 }
 
-/// The export's pandoc failure as the app's error message.
 pub(crate) fn export_failure(log: &str, root: &Path) -> String {
     let error = oleafly_doctools::pandoc_citations::export_failure(log, root);
     if error.code != "export.bibliography_unreadable" {

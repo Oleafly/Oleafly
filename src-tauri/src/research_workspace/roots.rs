@@ -412,7 +412,6 @@ pub fn remove_root(project_id: &str, root_id: &str) -> Result<ResearchWorkspace,
         .and_then(|workspace| workspace.roots.into_iter().find(|root| root.id == root_id))
         .map(|root| PathBuf::from(root.canonical_path));
     let workspace = remove_root_from(&path, project_id, root_id)?;
-    // The Windows sandbox stops sharing an unlinked folder with tasks.
     if let Some(folder) = folder.filter(|_| cfg!(windows)) {
         std::thread::spawn(move || {
             if let Err(error) =

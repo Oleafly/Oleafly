@@ -125,7 +125,6 @@ describe("maskLatex", () => {
     });
 
     it("keeps a real misspelling so it can be flagged", () => {
-      // Regression for: 'Senior Softwar Engineer' produced no warning.
       expect(words("Senior Softwar Engineer").has("Softwar")).toBe(true);
     });
 
@@ -171,7 +170,7 @@ describe("maskToProse (Harper input)", () => {
     // The gaps a masked \command leaves behind are what triggered Harper's
     // 'N spaces where there should be only one' false positives.
     const { prose } = maskToProse("Alpha \\hypersetup{colorlinks=true} Beta \\vspace{2pt} Gamma");
-    expect(prose).not.toMatch(/ {2,}/); // no run of 2+ spaces
+    expect(prose).not.toMatch(/ {2,}/);
     expect(prose.split(/\s+/)).toEqual(["Alpha", "Beta", "Gamma"]);
   });
 

@@ -104,7 +104,6 @@ describe("Typst content markup", () => {
     [String.raw`a \\] b`, String.raw`a \\\] b`],
     ["Price 5\\", "Price 5\\\\"],
     ["C:\\dir\\\\", "C:\\dir\\\\"],
-    // Raw text, strings in code, math, comments and links are left as written.
     ["use `]` here ]", String.raw`use ${"`]`"} here \]`],
     ["```\n]]\n``` [", "```\n]]\n``` \\["],
     ['#badge("]") and #badge("[")', '#badge("]") and #badge("[")'],
@@ -114,18 +113,32 @@ describe("Typst content markup", () => {
     ["/* ] */ ]", String.raw`/* ] */ \]`],
     ["[https://example.com]", "[https://example.com]"],
     ["see https://example.com/a] here", String.raw`see https://example.com/a\] here`],
+    ["price $5", String.raw`price \$5`],
+    ["$x$ costs $5", String.raw`$x$ costs \$5`],
+    ["in $M [a] and [b", String.raw`in \$M [a] and \[b`],
+    ["$5 [", String.raw`\$5 \[`],
+    ["a//b", String.raw`a\//b`],
+    ["note // ]", String.raw`note \// \]`],
+    ["keep // note\nnext", "keep // note\nnext"],
+    ["a /* b", String.raw`a \/\* b`],
+    ["a */ b", String.raw`a \*/ b`],
+    ["a /* b */ c", "a /* b */ c"],
+    ["use `code", String.raw`use \`code`],
+    ["```py x", String.raw`\`\`\`py x`],
+    ["$a // b", String.raw`\$a \// b`],
+    ["#f(a) // c", String.raw`#f(a) \// c`],
+    ["x // y\\", String.raw`x \// y\\`],
   ])("sanitizes %j", (markup, expected) => {
     expect(sanitizeTypstContent(markup)).toBe(expected);
   });
 
-  // Each part parses on its own as balanced markup; stray brackets and a trailing backslash are
-  // what the sanitizer has to fix.
   const PARTS = [
     "word", "*bold*", "_em_", "`]`", "```\n]]\n```", "`` ``", String.raw`\]`, String.raw`\\`, String.raw`\#`,
     '#badge("]")', '#f("a]b", x: [c])', "#emph[in]", "#f[a][b]", '#a.b("[")', "$[0, 1)$", '$ "]" $', "$ #box[x] $",
     "// note ]\n", "/* ] [ */", "https://x.com/[a]", "#(1 + (2))", '#{ "]" }', "[nested [text]]", "\n",
     '#link("https://x.com")[site]', "#f(/* ) */ 1)", "#f(`)`)",
   ];
+  const STRAYS = ["[", "]", "`", "```", "// x", "/* x", "*/"];
 
   function wrapsCleanly(content: string): boolean {
     const doc = `#box[${content}]`;
@@ -141,14 +154,15 @@ describe("Typst content markup", () => {
       const parts = Array.from({ length: 1 + Math.floor(random() * 8) }, () => {
         if (random() >= 0.2) return PARTS[Math.floor(random() * PARTS.length)];
         strays = true;
-        return random() < 0.5 ? "[" : "]";
+        return STRAYS[Math.floor(random() * STRAYS.length)];
       });
+      const dollar = random() < 0.15 ? ` $ ${PARTS[Math.floor(random() * PARTS.length)]}` : "";
       const trailing = random() < 0.1;
-      const markup = `${parts.join(" ")}${trailing ? " \\" : ""}`;
+      const markup = `${parts.join(" ")}${dollar}${trailing ? " \\" : ""}`;
       const sanitized = sanitizeTypstContent(markup);
       expect(wrapsCleanly(sanitized), JSON.stringify(sanitized)).toBe(true);
       expect(sanitizeTypstContent(sanitized)).toBe(sanitized);
-      if (!strays && !trailing) expect(sanitized).toBe(markup);
+      if (!strays && !dollar && !trailing) expect(sanitized).toBe(markup);
     }
   }, FUZZ_TIMEOUT_MS);
 });
@@ -165,7 +179,6 @@ describe("Typst numbers and booleans", () => {
     ["-2.5e3", false, -2500],
     [".5", false, 0.5],
     ["7", false, 7],
-    // A float field reads an integer literal past 2^53 as the nearest float.
     ["10000000000000000", false, 1e16],
     ["99999999999999999999", false, 1e20],
     ["-9007199254740993", false, -9_007_199_254_740_992],
@@ -193,7 +206,6 @@ describe("Typst numbers and booleans", () => {
     [1e21, false, "1e21"],
     [1e-7, false, "1e-7"],
     [5, false, "5"],
-    // Float fields keep the typed form, and never write 16 or more digits that read as an integer.
     [1e16, false, "1e16"],
     [-2.5e17, false, "-2.5e17"],
     [123_456_789_012_345_680, false, "1.2345678901234568e17"],

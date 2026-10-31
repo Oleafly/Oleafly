@@ -32,7 +32,6 @@ function largeReport(cards: number): string {
   return sections.join("\n");
 }
 
-// The document picker's value, mapped to the text it loads.
 function documentText(name: string): string {
   if (name === "edge-cases") return edgeCases;
   if (name === "large") return largeReport(300);
@@ -41,7 +40,6 @@ function documentText(name: string): string {
 
 const port = staticTypstForms(catalog);
 const emptyPort = staticTypstForms(EMPTY_TYPST_FORM_CATALOG);
-// "?forms=empty" mounts the port with no definitions, which must look exactly like no port.
 let emptyCatalog = false;
 const host = document.getElementById("editor") as HTMLElement;
 const sourcePane = document.getElementById("source") as HTMLTextAreaElement;

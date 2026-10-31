@@ -71,7 +71,6 @@ function awaitsAttention(task: ResearchTask): boolean {
   return task.status === "running" || task.status === "awaiting_review" || task.status === "failed";
 }
 
-/** The Files rail's task outputs; nothing while research tasks are off (0.4.8: experimental). */
 export function TaskOutputsSection() {
   const enabled = useResearchTasksEnabled();
   return enabled ? <TaskOutputs /> : null;
@@ -235,7 +234,6 @@ function TaskOutputs() {
                   variant="ghost"
                   className="shrink-0"
                   onClick={() => {
-                    // The review dialog belongs to the Research panel, so open that panel with it.
                     openTaskDetail(task.id, "review");
                     useSettingsStore.getState().setRailTab("research");
                   }}

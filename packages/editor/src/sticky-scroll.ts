@@ -12,14 +12,8 @@ import {
   type StickySource,
 } from "./sticky-structure";
 
-/** How many nested scopes may be pinned before the viewport starts to suffer. */
 const MAX_STICKY_ROWS = 6;
 
-/**
- * Rescanning is linear in the document, so it only runs inline while that is
- * certainly cheap. Past this, an edit schedules the rescan instead and the
- * previous scopes stay pinned for a fraction of a second.
- */
 const INLINE_RESCAN_LINES = 5_000;
 const RESCAN_DELAY_MS = 250;
 
@@ -29,13 +23,6 @@ const stickyTheme = EditorView.theme({
     top: "0",
     left: "0",
     right: "0",
-    // Above the scroller (z-index 0), whose stacking context holds the gutter,
-    // so the document's own line numbers never show through the pinned rows.
-    // Below the search panel (20) and app dialogs (80): the editor is not a
-    // stacking context of its own, so a larger value here drew the pinned rows
-    // over the search widget and over any dialog rendered in the workspace.
-    // The editor stays unisolated because a tooltip mounted inside it has to
-    // reach over the panes beside it.
     zIndex: "10",
     overflow: "hidden",
     fontFamily: "var(--cm-font-family, var(--font-mono))",
@@ -56,8 +43,6 @@ const stickyTheme = EditorView.theme({
     cursor: "pointer",
     background: "none",
     border: "none",
-    // A little more room than a document line, so the pinned rows read as a
-    // header rather than as cramped copies of the lines below them.
     padding: "0.25em 0",
     textAlign: "left",
     font: "inherit",
@@ -72,7 +57,6 @@ const stickyTheme = EditorView.theme({
     textAlign: "right",
     color: editorColor("lineNumbers"),
     paddingLeft: "var(--cm-gutter-inset, 6px)",
-    // Only until the gutter has been measured; see `measureColumns`.
     paddingRight: "8px",
   },
   ".cm-stickyCode": {
@@ -105,11 +89,8 @@ function sameRows(a: readonly RenderedRow[], b: readonly RenderedRow[]): boolean
   );
 }
 
-/** Horizontal offsets from the editor's left edge, in CSS pixels. */
 interface Columns {
-  /** Where the line-number digits end. */
   digitsEnd: number;
-  /** Where a line's text starts. */
   textStart: number;
 }
 
@@ -201,10 +182,6 @@ class StickyScrollPlugin {
     const { view } = this;
     const rect = view.scrollDOM.getBoundingClientRect();
     if (rect.height === 0) return 1;
-    // Measured from the scroller's true top edge, not from below the pinned
-    // rows: offsetting by the overlay's own height makes the row count feed
-    // back into the measurement, and a scope right at the boundary flickers in
-    // and out on every frame.
     const block = view.lineBlockAtHeight(rect.top - view.documentTop);
     return view.state.doc.lineAt(block.from).number;
   }
@@ -238,11 +215,6 @@ class StickyScrollPlugin {
     return measured;
   }
 
-  /**
-   * Reads the document's own columns so a pinned row's number sits under the
-   * line numbers and its text under the text, with the fold and diagnostic
-   * gutters in between. Null until the editor has been laid out.
-   */
   private measureColumns(): Columns | null {
     const { view } = this;
     const gutters = view.dom.querySelector<HTMLElement>(".cm-gutters-before");
@@ -256,8 +228,6 @@ class StickyScrollPlugin {
       Number.parseFloat(getComputedStyle(element)[side]) || 0;
     return {
       digitsEnd: Math.round((numberBox.right - left) / view.scaleX - padding(number, "paddingRight")),
-      // The text starts where the gutters end. Measured from them, not from a
-      // line, because the text scrolls sideways under the fixed gutters.
       textStart: Math.round(
         (gutters.getBoundingClientRect().right - left) / view.scaleX +
           padding(view.contentDOM, "paddingLeft") +
@@ -309,12 +279,6 @@ class StickyScrollPlugin {
     return button;
   }
 
-  /**
-   * Colorizes one line with the document's own highlight styles. Pinned rows
-   * live outside the document flow, so `syntaxHighlighting` never sees them and
-   * the tree has to be walked by hand. An unparsed region simply yields plain
-   * text, which is the correct fallback rather than a reason to skip the row.
-   */
   private fillHighlighted(
     target: HTMLElement,
     from: number,
@@ -350,11 +314,6 @@ class StickyScrollPlugin {
   }
 }
 
-/**
- * Keeps the enclosing sections and environments pinned to the top of the
- * editor while you scroll, so a paragraph deep inside a nested block still
- * says which section, figure, and environment it belongs to.
- */
 export function stickyScroll(source: StickySource = latexStickySource): Extension {
   return [stickyTheme, ViewPlugin.define((view) => new StickyScrollPlugin(view, source))];
 }

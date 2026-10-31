@@ -1,14 +1,6 @@
-// Async loader for the C2 hover asset thumbnails. Loads a project file and
-// turns it into a data: URL (the CSP only allows img-src data:), with a small
-// LRU cache so re-hovering the same \includegraphics doesn't re-read the file.
-// Never throws; every failure (missing file, oversized asset, broken PDF)
-// resolves to null and the null is cached too.
-
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { imageMime } from "@/lib/image-mime";
 
-// readFileBase64 returns the whole file as one base64 string; refuse anything
-// whose encoded size exceeds 8 MiB rather than jam the webview decoding it.
 const MAX_BASE64_LENGTH = 8 * 1024 * 1024;
 
 const CACHE_CAP = 16;
@@ -36,7 +28,7 @@ export async function loadAssetThumbnail(
   const key = `${projectId}\0${path}`;
   if (cache.has(key)) {
     const cached = cache.get(key) ?? null;
-    remember(key, cached); // refresh LRU recency
+    remember(key, cached);
     return cached;
   }
 

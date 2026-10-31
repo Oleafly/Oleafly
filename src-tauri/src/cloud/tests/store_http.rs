@@ -47,7 +47,7 @@ async fn downloads_return_the_bytes_and_the_revision_dropbox_reports() {
         .is_none());
     assert_eq!(
         server_error(store.get("/projects/café/main.tex", 4).await),
-        "dropbox response is too large"
+        "the cloud service's reply is too large"
     );
     fake.with(|dropbox| {
         dropbox.fault("files/download", None, Reply::Raw("<html>busy</html>"), 1);
@@ -813,7 +813,10 @@ async fn a_folder_downloads_as_one_zip_within_its_limit() {
         std::fs::metadata(&archive).unwrap().len()
     );
     let mut zip = zip::ZipArchive::new(std::fs::File::open(&archive).unwrap()).unwrap();
-    let mut names: Vec<String> = zip.file_names().map(str::to_string).collect();
+    let mut names: Vec<String> = zip
+        .file_names()
+        .map(|name| name.unwrap().into_owned())
+        .collect();
     names.sort();
     assert_eq!(
         names,
@@ -1119,7 +1122,6 @@ async fn a_commit_sent_again_after_its_reply_was_lost_counts_as_done() {
         2
     );
 
-    // A session that is gone with another file at the path did not go in.
     let other = [file_of(dir.path(), "c.tex", b"gamma")];
     fake.with(|dropbox| dropbox.write("/projects/p/files/c.tex", b"someone else".to_vec()));
     fake.with(|dropbox| {
@@ -1219,8 +1221,6 @@ async fn a_file_that_changes_while_it_uploads_is_not_committed() {
             std::time::Duration::from_secs(2),
         );
     });
-    // Change the file while Dropbox holds the session start: after it was
-    // read, before the upload is committed.
     let local = files[0].local.clone();
     let arrived = {
         let shared = fake.shared();

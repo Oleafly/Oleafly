@@ -61,12 +61,9 @@ const NETWORK_RETRIES: usize = 3;
 const SLOW_DOWN: Duration = Duration::from_secs(5);
 const SHORTEST_WAIT: Duration = Duration::from_secs(1);
 const LONGEST_WAIT: Duration = Duration::from_secs(60);
-/// A code is waited for until it expires, plus this.
 const EXPIRY_SLACK: Duration = Duration::from_secs(30);
-/// The longest a sign-in waits for approval, whatever the server says.
 const LONGEST_APPROVAL: Duration = Duration::from_secs(15 * 60);
 
-/// How long to wait for a code that expires in `expires_in` seconds.
 fn approval_deadline(expires_in: u64) -> Duration {
     Duration::from_secs(expires_in)
         .saturating_add(EXPIRY_SLACK)
@@ -79,9 +76,6 @@ fn server_wait(seconds: u64, at_least: Duration) -> Duration {
         .clamp(SHORTEST_WAIT, LONGEST_WAIT)
 }
 
-/// Polls until the code is approved, refused or expired. A server that
-/// keeps answering "pending" is given up on at `deadline` (the waits are
-/// counted), so a sign-in without a person never hangs.
 pub(crate) async fn wait_for_approval<Poll, Polled, Sleep, Slept>(
     interval: Duration,
     deadline: Duration,
@@ -132,8 +126,6 @@ where
     }
 }
 
-// The approval page must be the sign-in server's own, or a server could send
-// its users to approve a code another server issued for a key it holds.
 fn on_page(approval: &Url, shown: &str) -> bool {
     let Ok(shown) = Url::parse(shown) else {
         return false;

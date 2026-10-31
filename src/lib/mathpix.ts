@@ -1,6 +1,3 @@
-// Bridge to the Mathpix commands. The keys and every Mathpix request stay in
-// Rust (src-tauri/src/mathpix.rs): this module can save or clear the keys and
-// ask whether they exist, but never reads the key back.
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { AppError } from "@/lib/app-error";
 
@@ -11,7 +8,6 @@ export interface MathpixKeyStatus {
 
 export interface MathpixTextResult {
   text: string;
-  /** Only when the whole image is one equation. */
   latexStyled: string | null;
   confidence: number | null;
 }
@@ -24,8 +20,6 @@ export interface MathpixPdfProgress {
 
 const PAGE_RANGES_HEADER = "x-oleafly-page-ranges";
 const REQUEST_ID_HEADER = "x-oleafly-request-id";
-/** Rust's limit for a Mathpix PDF (`MAX_PDF_BYTES` in mathpix.rs), checked
- * here first so a larger file is never copied into Rust. */
 const MATHPIX_MAX_PDF_BYTES = 256 * 1024 * 1024;
 
 export const mathpixKeyStatus = () => invoke<MathpixKeyStatus>("mathpix_key_status");
@@ -39,10 +33,6 @@ function abortError(): DOMException {
   return new DOMException("Aborted", "AbortError");
 }
 
-/**
- * Reads one PNG or JPEG image (base64, no data URL prefix). Cancelling
- * through `signal` stops the request, or keeps it from being sent.
- */
 export async function mathpixText(
   imageBase64: string,
   mime: string,
@@ -87,8 +77,6 @@ export async function mathpixPdf(
   if (signal?.aborted) throw abortError();
   if (bytes.byteLength > MATHPIX_MAX_PDF_BYTES) throw new AppError("mathpix.pdf_too_large", {}, null);
   const requestId = crypto.randomUUID();
-  // One cancel call, whenever it comes: during the upload, between it and
-  // the wait, or during the wait.
   let cancelling: Promise<void> | null = null;
   const cancel = () => {
     cancelling ??= invoke<void>("mathpix_pdf_cancel", { requestId }).catch(() => undefined);
@@ -104,8 +92,6 @@ export async function mathpixPdf(
     const pdfId = await invoke<string>("mathpix_pdf_upload", bytes, {
       headers: { [PAGE_RANGES_HEADER]: options.pageRanges, [REQUEST_ID_HEADER]: requestId },
     });
-    // Stopped as the upload finished: the cancel goes first, so the wait
-    // below only deletes the uploaded PDF from Mathpix.
     if (signal?.aborted) await cancel();
     const markdown = await invoke<string>("mathpix_pdf_wait", {
       requestId,

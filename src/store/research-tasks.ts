@@ -46,13 +46,10 @@ interface ResearchTasksState {
   tasks: ResearchTask[];
   selectedTaskId: string | null;
   events: TaskTranscriptEvent[];
-  /** Older saved rows of the run come before this sequence; Load more reads them. */
   eventsPreviousSequence: number | null;
   loading: boolean;
   eventsLoading: boolean;
-  /** The task (or "create") of the latest action still running. */
   action: string | null;
-  /** Every task (or "create") with an action running; actions on other tasks don't affect each other. */
   pendingActions: string[];
   error: string | null;
   detailOpen: boolean;
@@ -87,8 +84,6 @@ let eventRequest = 0;
 let projectBinding = 0;
 let actionRequest = 0;
 
-// One entry per task (or "create") with an action running, so a slow cancel on
-// one task is not cleared by another task's action finishing.
 const runningActions = new Map<string, number>();
 
 function beginTaskAction(key: string): () => boolean {
@@ -117,7 +112,6 @@ function sorted(tasks: ResearchTask[]): ResearchTask[] {
   return [...tasks].sort((left, right) => right.createdAt - left.createdAt);
 }
 
-/** Puts `task` in a list kept newest first, without sorting the list again. */
 function upserted(tasks: ResearchTask[], task: ResearchTask): ResearchTask[] {
   const existing = tasks.findIndex((candidate) => candidate.id === task.id);
   const next = tasks.slice();
@@ -137,7 +131,6 @@ function upserted(tasks: ResearchTask[], task: ResearchTask): ResearchTask[] {
   return next;
 }
 
-/** The index of `sequence` in events sorted by sequence, or where it goes. */
 function sequenceSlot(events: TaskTranscriptEvent[], sequence: number): { index: number; found: boolean } {
   const last = events.length - 1;
   if (last < 0 || events[last].sequence < sequence) return { index: events.length, found: false };
@@ -152,15 +145,9 @@ function sequenceSlot(events: TaskTranscriptEvent[], sequence: number): { index:
   return { index: low, found: events[low]?.sequence === sequence };
 }
 
-// `undefined` until this page has told the backend anything: after a reload the
-// backend may still send the task the previous page watched, so the first
-// `watch(null)` goes out too.
 let watchedTask: string | null | undefined;
-// The dialog closed and the window stopped listening to its task, so the rows
-// this window holds may be behind until it opens again.
 let eventsMissed = false;
 
-/** Tells the backend which task this window shows (its live text). */
 function watch(taskId: string | null): void {
   if (watchedTask === taskId) return;
   watchedTask = taskId;
@@ -169,16 +156,11 @@ function watch(taskId: string | null): void {
   });
 }
 
-/** Marks the rows as behind when the window stops listening to a task. */
 function unwatch(): void {
   if (typeof watchedTask === "string") eventsMissed = true;
   watch(null);
 }
 
-/**
- * Gets the dialog's task ready after it opens: listens to it again and loads
- * its newest rows when the window wasn't listening.
- */
 function resumeSelectedTask(): void {
   const state = useResearchTasksStore.getState();
   const taskId = state.selectedTaskId;
@@ -192,23 +174,16 @@ function isTextRow(row: TaskTranscriptEvent): row is TextRow {
   return row.event.kind === "text" || row.event.kind === "reasoning";
 }
 
-/**
- * Joins two copies of one text row, such as a saved row and the live text
- * that arrived while it loaded. Each covers part of the row's text from its
- * `textStart`; the result covers both without repeating any text.
- */
 function joinTextRows(saved: TextRow, live: TextRow): TextRow {
   const [head, tail] = (live.textStart ?? 0) < (saved.textStart ?? 0) ? [live, saved] : [saved, live];
   const headStart = head.textStart ?? 0;
   const headEnd = headStart + head.event.text.length;
   const tailStart = tail.textStart ?? 0;
   if (tailStart + tail.event.text.length <= headEnd) return head;
-  // Text between the two (lost live text) can't be recovered; the tail follows on.
   const added = tailStart <= headEnd ? tail.event.text.slice(headEnd - tailStart) : tail.event.text;
   return { ...head, event: { ...head.event, text: head.event.text + added } };
 }
 
-/** The row to keep when `incoming` arrives for a sequence `current` holds. */
 function joinedRow(current: TaskTranscriptEvent, incoming: TaskTranscriptEvent): TaskTranscriptEvent {
   if (isTextRow(current) && isTextRow(incoming) && current.event.kind === incoming.event.kind) {
     return joinTextRows(current, incoming);
@@ -227,7 +202,6 @@ function mergedEvents(events: TaskTranscriptEvent[], task: ResearchTask): TaskTr
   return [...unique.values()].sort((left, right) => left.sequence - right.sequence);
 }
 
-/** Whether a task row from a fetched list replaces the one this window holds. */
 function replacesTask(
   task: ResearchTask,
   previous: ResearchTask | undefined,
@@ -241,7 +215,6 @@ function replacesTask(
   return previous === initial;
 }
 
-/** The window's tasks with a fetched list folded in: newer rows win. */
 function mergeTaskList(
   held: readonly ResearchTask[],
   projectId: string | null,
@@ -254,8 +227,6 @@ function mergeTaskList(
     if (task.projectId !== projectId) continue;
     if (replacesTask(task, tasks.get(task.id), initial.get(task.id))) tasks.set(task.id, task);
   }
-  // A task this window had when the list was asked for, still unchanged, and
-  // missing from the list was deleted elsewhere.
   const listed = new Set(incoming.map((task) => task.id));
   for (const [id, current] of tasks) {
     if (!listed.has(id) && initial.get(id) === current) tasks.delete(id);
@@ -306,7 +277,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
   composerDrafts: {},
 
   openTaskDetail: (taskId, tab) => {
-    // Open first, so the page selecting the task knows the dialog shows it.
     set({ detailOpen: true, detailTab: tab ?? null });
     if (get().selectedTaskId !== taskId) void get().selectTask(taskId);
     else resumeSelectedTask();
@@ -319,7 +289,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       return;
     }
     set({ detailOpen: false, detailTab: null });
-    // No dialog shows the task's live text, so the backend can stop sending it.
     unwatch();
   },
 
@@ -384,7 +353,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       detailOpen: false,
       detailTab: null,
     });
-    // The window no longer shows the previous project's task.
     eventsMissed = false;
     watch(null);
     if (!projectId) return;
@@ -417,8 +385,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
 
   selectTask: async (taskId) => {
     const request = ++eventRequest;
-    // Nothing shows a task's rows while its dialog is closed, so the window
-    // neither loads nor streams them until the dialog opens.
     const shown = get().detailOpen;
     eventsMissed = taskId !== null && !shown;
     set({
@@ -435,8 +401,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       return;
     }
     try {
-      // The newest rows first, so the latest activity shows at once and meets
-      // the live rows; older rows are behind Load more.
       const page = await loadResearchTaskEventsBefore(task.id, task.executionGeneration, NEWEST_EVENTS);
       if (request !== eventRequest || get().selectedTaskId !== taskId) return;
       set((state) => ({
@@ -458,7 +422,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
     const request = ++eventRequest;
     set({ eventsLoading: true });
     try {
-      // Pages backwards from the oldest row shown.
       const page = await loadResearchTaskEventsBefore(
         task.id,
         task.executionGeneration,
@@ -620,8 +583,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
   receiveEvent: (event) => {
     const { selectedTaskId, tasks, detailOpen } = get();
     if (!detailOpen) {
-      // An older backend sends every row; nothing shows them, and the dialog
-      // loads the task again when it opens.
       if (selectedTaskId === event.taskId) eventsMissed = true;
       return;
     }
@@ -651,7 +612,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
     }
     const task = tasks.find((candidate) => candidate.id === delta.taskId);
     if (!task || task.executionGeneration !== delta.executionGeneration) return;
-    // Where the append starts in its row, when the backend says.
     const start = delta.textLength === undefined ? undefined : Math.max(0, delta.textLength - delta.append.length);
     const live: TextRow = {
       taskId: delta.taskId,
@@ -672,7 +632,6 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
             event: { ...existing.event, text: existing.event.text + delta.append },
           };
         } else {
-          // Text this window already has (from a saved row) is not added again.
           const joined = existing.event.kind === delta.kind ? joinTextRows(existing, live) : existing;
           if (joined === existing) return state;
           events[slot.index] = joined;
@@ -693,8 +652,6 @@ let subscribers = 0;
 let listening: Promise<() => void> | null = null;
 
 async function listenOnce(): Promise<() => void> {
-  // The window answers PDF text requests from the app shell (research-pdf-bridge),
-  // so a task can read papers without a research view open.
   const started = await Promise.allSettled([
     listenForResearchTaskChanges((task) => useResearchTasksStore.getState().receiveTask(task)),
     listenForResearchTaskEvents((event) => useResearchTasksStore.getState().receiveEvent(event)),
@@ -703,7 +660,6 @@ async function listenOnce(): Promise<() => void> {
   const unlisten = started.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
   const failed = started.find((result): result is PromiseRejectedResult => result.status === "rejected");
   if (failed) {
-    // Stop the ones that started, so a retry doesn't listen twice.
     for (const stop of unlisten) stop();
     throw failed.reason;
   }
@@ -712,7 +668,6 @@ async function listenOnce(): Promise<() => void> {
   };
 }
 
-/** One set of listeners however many views mount it; the last unmount stops them. */
 export async function mountResearchTaskSubscriptions(): Promise<() => void> {
   subscribers += 1;
   listening ??= listenOnce();
@@ -731,9 +686,6 @@ export async function mountResearchTaskSubscriptions(): Promise<() => void> {
     stopped = true;
     subscribers -= 1;
     if (subscribers > 0 || listening !== current) return;
-    // A view that replaces this one in the same commit mounts before this
-    // microtask runs; the listeners stay on for it, so no event is missed
-    // while they would start again.
     queueMicrotask(() => {
       if (subscribers > 0 || listening !== current) return;
       listening = null;

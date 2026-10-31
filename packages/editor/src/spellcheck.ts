@@ -50,7 +50,6 @@ import {
 
 export interface GrammarSuggestion {
   text: string;
-  // 0 = Replace, 1 = Remove, 2 = InsertAfter.
   kind: number;
 }
 
@@ -62,7 +61,6 @@ export interface GrammarDiag {
   suggestions: GrammarSuggestion[];
 }
 
-// Installed once via setSpellHost; the linters are inert without it.
 export interface SpellHost {
   t: EditorTranslator;
   getProjectId(): string | null;
@@ -157,10 +155,6 @@ export function cancelSourceProofreading(path?: string): void {
   host?.cancelProofreading?.("source", path);
 }
 
-// Dispatched when the ignore list changes. `forceLinting` alone is a no-op when
-// the editor is idle (the lint plugin only re-runs if a lint is already
-// pending), so we tie the linters' `needsRefresh` to this effect: dispatching it
-// marks a re-lint as needed, and forceLinting then flushes it immediately.
 const refreshLints = StateEffect.define<null>();
 
 function needsRefresh(update: ViewUpdate): boolean {
@@ -221,10 +215,6 @@ const presentationRefreshGenerations = new WeakMap<
   EditorView,
   number
 >();
-// Presentation repair loop guard. The repair dispatch below carries this
-// effect; the diagnostics update listener skips transactions that carry it so
-// a repair can never re-trigger itself. The generation counter additionally
-// caps runaway repairs from pathological external writers.
 const presentationRepairEffect = StateEffect.define<null>();
 const presentationRepairs = new WeakMap<EditorView, { generation: number; count: number }>();
 
@@ -297,10 +287,6 @@ async function coordinateProofreadingRun(
   }
 }
 
-/**
- * Repaints a different bounded page from the last authoritative proofreading
- * result without sending the unchanged document through Harper/Hunspell again.
- */
 export function refreshEditorProofreadingPresentation(
   view: EditorView | null,
 ): void {
@@ -320,10 +306,6 @@ export function refreshEditorProofreadingPresentation(
   const repaintAfterBrowserTurn = () => {
     requestAnimationFrame(repaintIfCurrent);
   };
-  // Paint the requested page immediately when possible, then schedule a
-  // retained-result lint pass as the newest coordinated run. Without the
-  // latter, an older lint promise can settle after this dispatch and restore
-  // the previous presentation page on large documents.
   repaintIfCurrent();
   presentationRefreshViews.add(view);
   refreshEditorLints(view);
@@ -353,7 +335,6 @@ export function refreshEditorProofreadingPresentation(
   });
 }
 
-/** Short labels for the card footer; the stock tooltip needs the full sentence. */
 function ignoreEntries(
   h: SpellHost,
   projectId: string | null,
@@ -373,8 +354,6 @@ function suggestionEntries(
   suggestions: GrammarSuggestion[],
 ): ProofreadingCardAction[] {
   return suggestionActions(h, suggestions).map((action, index) => ({
-    // The action name is a quoted, elided preview meant for a button strip.
-    // Rows have room for the replacement itself.
     label: labelForSuggestion(h, suggestions[index]),
     action,
   }));
@@ -580,10 +559,6 @@ function dismissRange(
   forceLinting(view);
 }
 
-/**
- * Builds a diagnostic that the proofreading hover card can render, keeping the
- * plain `actions` so the lint panel and keyboard flows still work.
- */
 function proofreadingDiagnostic(
   h: SpellHost,
   projectId: string | null,
@@ -846,8 +821,6 @@ function repaintCachedProofreadingPresentation(
       ...retainedDiagnostics,
       ...proofreadingDiagnostics,
     ]),
-    // Tag as a presentation repair so the diagnostics update listener does
-    // not schedule another repair for our own transaction.
     { effects: presentationRepairEffect.of(null) },
   );
   return true;
@@ -861,9 +834,6 @@ function ignoreActions(h: SpellHost, projectId: string | null, word: string): Ac
     actions.push({
       name: h.t("spellcheck.ignoreWordInProject", { word: short }),
       apply: (view, from, to) => {
-        // Resolve the scope at action time. A lint card can remain mounted
-        // while the user switches projects; applying its captured project ID
-        // would silently mutate the previous project's dictionary.
         const activeProjectId = h.getProjectId();
         if (!activeProjectId) return;
         h.ignoreWordForProject(activeProjectId, word);
@@ -883,7 +853,6 @@ function ignoreActions(h: SpellHost, projectId: string | null, word: string): Ac
 
 let sourceRevision = 0;
 
-/** Every diagnostic renders through the shared hover card instead. */
 function noLintTooltip(): Diagnostic[] {
   return [];
 }
@@ -1067,7 +1036,6 @@ export function createSpellLinter() {
           return [];
         }
       }),
-    // Longer debounce on large docs reduces main-thread pressure while typing.
     { delay: 700, needsRefresh, tooltipFilter: noLintTooltip }
   );
 }
@@ -1228,8 +1196,6 @@ function proseGrammarDiagnostics(
 ): Diagnostic[] {
   const out: Diagnostic[] = [];
   for (const d of diags) {
-    // Category mutes from Settings (e.g. hide all
-    // regionalism/word-choice).
     if (
       grammarCategoryHidden(d.kind, prefs.showRegionalism, prefs.showWordChoice)
     ) {
@@ -1241,7 +1207,6 @@ function proseGrammarDiagnostics(
     if (to <= from) continue;
     const word = text.slice(from, to);
     if (h.isWordIgnored(projectId, word)) continue;
-    // regionalism ("Spanner"), word choice, or any style suggestion.
     out.push(
       proofreadingDiagnostic(
         h,
@@ -1277,15 +1242,9 @@ async function mainThreadGrammarDiagnostics(
   const projectId = h.getProjectId();
   const { showRegionalism, showWordChoice } = h.getLintPrefs();
   const text = view.state.doc.toString();
-  // Guard: masking + WASM grammar linting both run on the main thread,
-  // so on a very large document they would jank the editor after the
-  // debounce. Skip the pass above a generous cap (covers normal
-  // single-file docs).
   if (text.length > MAX_GRAMMAR_CHARS) {
     return localGrammarFallback(text, path, h);
   }
-  // Lint compacted prose (no masking gaps), then map spans back to the
-  // document.
   const { prose, map } = fallbackGrammarProse(text, path);
   const diags = await h.lintGrammar(prose, prose.length);
   return proseGrammarDiagnostics(h, projectId, path, text, map, diags, {
@@ -1319,30 +1278,17 @@ export function createHarperLinter(includeSpelling = false) {
           return localGrammarFallback(view.state.doc.toString(), path, h);
         }
       }),
-    // Idle-friendly: wait until typing pauses so Harper WASM does not fight
-    // CodeMirror for the main thread mid-keystroke.
     { delay: 900, needsRefresh, tooltipFilter: noLintTooltip }
   );
 }
 
 export const spellLintExtensions = (opts: { spell?: boolean; harper?: boolean } = {}) => {
   const exts = [];
-  // A combined worker pass keeps Harper authoritative for grammar and the
-  // selected Hunspell pack authoritative for spelling without racing two
-  // current-revision requests for the same Source surface.
   if (opts.spell && !opts.harper) exts.push(createSpellLinter());
   if (opts.harper) exts.push(createHarperLinter(Boolean(opts.spell)));
   return exts;
 };
 
-/**
- * Stable diagnostic presentation chrome shared by syntax, language-service,
- * compile, spelling, and grammar diagnostics.
- *
- * This is deliberately installed once with the editor rather than inside the
- * spell/grammar compartment. Toggling a proofreader must only add or remove its
- * linter—it must not add another gutter or change the content viewport width.
- */
 export function diagnosticPresentationExtensions(): Extension[] {
   return [
     // A presentation-page selection remains authoritative for the unchanged
@@ -1361,11 +1307,6 @@ export function diagnosticPresentationExtensions(): Extension[] {
       ) {
         return;
       }
-      // Repairs may only be triggered by OTHER writers. A transaction that
-      // carries our own repair effect must not schedule another repair:
-      // repair → setDiagnostics → listener → repair is an unbounded
-      // microtask feedback loop that starves the run loop and freezes the
-      // app whenever the equality guard cannot converge.
       const external = update.transactions.some(
         (transaction) =>
           !transaction.effects.some((effect) =>
@@ -1393,10 +1334,7 @@ export function diagnosticPresentationExtensions(): Extension[] {
         }
       });
     }),
-    // The shared card replaces CodeMirror's stock gutter tooltip.
     lintGutter({ tooltipFilter: noLintTooltip }),
-    // Fixed tooltips escape the editor pane without participating in document
-    // layout or changing any source-line measurements.
     tooltips({ position: "fixed", parent: document.body }),
     diagnosticCardTooltip(),
     diagnosticCardGutter(),

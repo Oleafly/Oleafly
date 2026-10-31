@@ -48,6 +48,11 @@
     "stoppedTitle": "Afbrudt",
     "stoppedDescription": "Genindlæs siden for at oprette forbindelse igen."
   },
+  "leave": {
+    "title": "Vil du forlade dette projekt?",
+    "description": "Nogle af dine ændringer er ikke nået frem til serveren endnu. Bliv, indtil de er sendt, eller forlad projektet og mist dem.",
+    "confirm": "Forlad"
+  },
   "access": {
     "changed": "Din rolle i dette projekt er nu {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Træk tilbage",
     "acceptAll": "Accepter alle",
     "rejectAll": "Afvis alle",
+    "rejectAllConfirm": {
+      "title": "Vil du afvise alle forslag i {{file}}?",
+      "description": "Den oprindelige tekst kommer tilbage i filen for alle i projektet. Ventende forslag: {{number}}.",
+      "confirm": "Afvis alle"
+    },
     "pending_one": "{{count}} forslag",
     "pending_other": "{{count}} forslag",
     "card": "Forslag fra {{name}}",

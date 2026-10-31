@@ -7,10 +7,9 @@ import { create } from "zustand";
 import { CodeMirrorEditor, type EditorHost } from "./CodeMirrorEditor";
 import { getEditorView } from "./controller";
 import { englishEditorMessage } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 interface HostState {
   content: string;

@@ -79,8 +79,6 @@ fetch() {
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     rm -f "$archive"
     echo "→ fetching $target ($asset)"
-    # Mirror first (our own origin), upstream as fallback. The checksum pin
-    # below makes the origin choice integrity-neutral.
     local fetched=""
     for origin in "$mirror_url" "$url"; do
       if curl -fSL --proto '=https' --connect-timeout 30 \

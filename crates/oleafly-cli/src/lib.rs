@@ -1,12 +1,10 @@
 extern crate self as oleafly_cli;
 
-// 0.4.8 L: the headless agent and the background helper.
 pub mod agent;
 pub mod daemon;
 
 pub mod app_config;
 pub mod app_paths;
-// 0.4.8 F2: accounts, the online LaTeX service and collaboration servers.
 pub mod auth;
 pub mod check;
 pub mod commands;
@@ -64,11 +62,7 @@ pub struct Cli {
 }
 
 pub fn main() -> ExitCode {
-    // MCP servers in this process report the CLI's version.
     oleafly_research::mcp::protocol::set_server_version(crate::version::APP_VERSION);
-    // 0.4.8 L: a sandboxed command, a detached run supervisor and the
-    // research tool bridge re-enter this binary with their own flags (the
-    // background helper started by `oleafly daemon run` runs them).
     if let Some(code) = daemon::reentry() {
         return ExitCode::from(u8::try_from(code).unwrap_or(1));
     }
@@ -95,7 +89,6 @@ pub fn main() -> ExitCode {
     }
 }
 
-/// `--json` or `--events` among the options (before `--`).
 fn wants_json(arguments: &[OsString]) -> bool {
     arguments
         .iter()
@@ -153,7 +146,6 @@ fn with_open_tip(mut error: clap::Error) -> clap::Error {
     error
 }
 
-/// `oleafly <folder>` means `oleafly open <folder>`.
 pub fn expand_open_shorthand<I, T>(arguments: I) -> Vec<OsString>
 where
     I: IntoIterator<Item = T>,
@@ -212,7 +204,6 @@ async fn interrupted() -> CliError {
     CliError::new(ErrorKind::Interrupted, "interrupted", "Stopped.")
 }
 
-/// What a panic said, as the internal error a command ends with.
 fn panic_error(payload: &(dyn std::any::Any + Send)) -> CliError {
     let said = payload
         .downcast_ref::<&str>()
@@ -223,9 +214,6 @@ fn panic_error(payload: &(dyn std::any::Any + Send)) -> CliError {
         .hint("Run the command again with RUST_BACKTRACE=1 and report the output as a bug.")
 }
 
-/// Runs a command; a panic in it becomes an internal error, so `--json` still
-/// gets its one result object and the exit code is the documented one (the
-/// panic itself is still reported on stderr).
 async fn guarded(
     work: impl std::future::Future<Output = Result<Outcome, CliError>>,
 ) -> Result<Outcome, CliError> {
@@ -302,18 +290,15 @@ mod tests {
         assert_eq!(error.kind, ErrorKind::Internal);
         assert_eq!(error.exit(), Exit::Internal);
         assert!(error.message.contains("the index is out of range"));
-        // A formatted message arrives as a String.
         let reason = String::from("byte index 9 is not a char boundary");
         let error = guarded(async move { panic!("{reason}") })
             .await
             .unwrap_err();
         assert!(error.message.contains("byte index 9"));
         assert!(error.hint.is_some());
-        // The envelope --json prints for it is the usual error object.
         let envelope = contract::error_envelope(Some("check"), &error, &[]);
         assert_eq!(envelope["ok"], false);
         assert_eq!(envelope["error"]["code"], "internal");
-        // A command that finishes is left alone.
         assert!(guarded(async { Ok(Outcome::printed()) }).await.is_ok());
     }
 
