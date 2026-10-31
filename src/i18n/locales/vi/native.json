@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Huỷ",
-    "fullAccess": {
-      "title": "Bật toàn quyền truy cập?",
-      "message": "Toàn quyền truy cập cho phép trợ lý chạy lệnh shell và sửa tệp mà không cần hỏi phê duyệt mỗi lần. Bật toàn quyền truy cập?",
-      "confirm": "Bật toàn quyền truy cập"
-    },
     "sharedShellEscape": {
       "title": "Cho phép lệnh bên ngoài trong dự án chia sẻ này?",
       "message": "Bất kỳ ai có thể sửa dự án này đều có thể chạy chương trình trên máy tính này khi bạn biên dịch. Chỉ cho phép nếu bạn tin tưởng mọi người trong dự án.",
@@ -155,6 +150,7 @@
       "site": "Trang web: {{origin}}",
       "signedIn": "Trình duyệt đã đăng nhập của bạn trên {{origin}}",
       "scripted": "Script Cua",
+      "noAsking": "Hành động chạy mà không hỏi bạn trước",
       "spacesTitle": "Cấp thêm quyền cho Cua Spaces?",
       "spacesMessage": "Các agent dùng Cua Spaces sẽ có thể:",
       "spacesChanges": "Tạo và xoá Space, và chạy lệnh trong đó",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Menu ứng dụng không khả dụng",
     "viewMenuUnavailable": "Menu Xem không khả dụng",
     "menuItemUnavailable": "Mục menu {{id}} không khả dụng",
-    "fullAccessDismissed": "Hộp xác nhận toàn quyền truy cập đã bị đóng.",
     "fullAccessDeclined": "Toàn quyền truy cập chưa được bật.",
     "approvalDialogClosed": "Hộp thoại phê duyệt gốc đã đóng ngoài ý muốn."
   },

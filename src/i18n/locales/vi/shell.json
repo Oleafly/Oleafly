@@ -544,6 +544,7 @@
     "specimenViewer": "Trình xem mẫu",
     "stackTrace": "Dấu vết ngăn xếp",
     "surfaceCrashed": "{{surface}} đã gặp sự cố.",
+    "surfaceClosed": "Cửa sổ đó gặp lỗi và đã đóng. Chi tiết đã được lưu vào nhật ký.",
     "surfaces": {
       "aiAssistant": "trợ lý AI",
       "assistantPanel": "bảng trợ lý",
@@ -552,7 +553,9 @@
       "editor": "trình soạn thảo",
       "pdfPreview": "xem trước PDF",
       "researchAssistant": "trợ lý nghiên cứu",
-      "terminalDock": "khay terminal"
+      "terminalDock": "khay terminal",
+      "library": "thư viện",
+      "tool": "công cụ"
     },
     "title": "Đã xảy ra lỗi"
   },

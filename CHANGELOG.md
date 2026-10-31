@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The interface speaks Vietnamese. Choose Tiếng Việt under
   Settings > General > Language, or leave the language on System default and
   Oleafly follows your computer. The collaboration server, the browser
-  project page and the sign-in pages it serves are translated as well.
+  project page, the sign-in pages it serves and the file manager's
+  Open with Oleafly action are translated as well.
 - Cloud sync works with Google Drive and S3-compatible storage as well as
   Dropbox (#317). Choose one under Settings > Data storage > Cloud sync.
   Google Drive keeps your projects in an Oleafly folder in My Drive. For S3

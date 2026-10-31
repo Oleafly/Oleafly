@@ -633,6 +633,7 @@
         "swatchAriaLabel": "Màu nhấn {{name}}"
       },
       "appIcon": {
+        "about": "Nơi biểu tượng ứng dụng hiển thị",
         "aurora": "Cực quang",
         "blue": "Xanh dương",
         "coral": "San hô",
@@ -1718,6 +1719,7 @@
         "granted": "Cua Driver có thể dùng Trợ năng và Ghi màn hình.",
         "needed": "Cua Driver cần Trợ năng và Ghi màn hình. Hãy chạy bước cấp quyền và làm theo hướng dẫn.",
         "unknown": "Oleafly không thể đọc quyền của Cua Driver.",
+        "unchecked": "Cua Driver chưa kiểm tra quyền của nó. Hãy dùng Cấp quyền, rồi bật Trợ năng và Ghi màn hình cho CuaDriver trong Cài đặt hệ thống.",
         "grant": "Cấp quyền",
         "terminalTitle": "Quyền của Cua Driver"
       },
@@ -1775,6 +1777,10 @@
       "scripted": {
         "label": "Điều khiển bằng script",
         "description": "Cho phép tác nhân chạy script Cua thực hiện nhiều bước cùng lúc. Oleafly hỏi trước mỗi script."
+      },
+      "ask": {
+        "label": "Hỏi trước mỗi hành động",
+        "description": "Phê duyệt từng lần nhấp, lần gõ phím, lần đổi trang và script trong một hộp thoại. Bạn có thể cho phép một loại hành động trong phần còn lại của cuộc trò chuyện, phiên hoặc tác vụ, trừ trình duyệt đã đăng nhập và script. Thêm ứng dụng hoặc trang web sẽ xoá các lựa chọn đó."
       },
       "test": {
         "action": "Kiểm tra kết nối",

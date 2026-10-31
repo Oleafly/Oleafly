@@ -21,6 +21,7 @@ Name[fi]=Avaa sovelluksella Oleafly
 Name[ro]=Deschide cu Oleafly
 Name[ja]=Oleafly で開く
 Name[ko]=Oleafly로 열기
+Name[vi]=Mở bằng Oleafly
 Exec=/usr/bin/oleafly-desktop --open-folder %F
 Icon-Name=oleafly-desktop
 Selection=s

@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly không thể xác minh chứng chỉ của {{host}}. Nếu tổ chức của bạn có cơ quan chứng thực riêng, hãy thêm tệp chứng chỉ của nó vào tài khoản trong Cài đặt.",
     "tracked_secret_files": "Đã dừng xuất bản vì các tệp trong lịch sử Git của dự án này có thể chứa khoá hoặc mật khẩu: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Toàn quyền truy cập chưa được bật."
-  },
+  "approvals": {},
   "trust": {
     "git": "Tin tưởng thư mục này để dùng Quản lý mã nguồn.",
     "repository": "Tin tưởng kho lưu trữ {{name}} để dùng Quản lý mã nguồn ở đây.",
@@ -398,6 +396,7 @@
     "too_many_sites": "Bạn có thể cho phép tối đa {{limit}} trang web.",
     "start_failed": "Cua Driver không thể khởi động: {{detail}}",
     "not_bounded": "Cua Driver không khởi động với giới hạn của Oleafly, nên Oleafly đã dừng nó.",
+    "needs_permissions": "Cua Driver đang chờ quyền trên macOS. Hãy bật Trợ năng và Ghi màn hình cho CuaDriver trong Cài đặt hệ thống rồi thử lại.",
     "task_unattended": "Tác vụ chạy theo lịch hoặc sau khi Oleafly đóng không thể dùng ứng dụng máy tính.",
     "main_window": "Hãy thay đổi Ứng dụng máy tính từ cửa sổ chính."
   }
