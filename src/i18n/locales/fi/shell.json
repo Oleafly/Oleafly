@@ -547,6 +547,7 @@
     "specimenViewer": "Näytekatselin",
     "stackTrace": "Kutsupino",
     "surfaceCrashed": "Kaatui: {{surface}}.",
+    "surfaceClosed": "Ikkunassa tapahtui virhe, ja se suljettiin. Tiedot tallennettiin lokiin.",
     "surfaces": {
       "aiAssistant": "tekoälyavustaja",
       "assistantPanel": "avustajapaneeli",
@@ -555,7 +556,9 @@
       "editor": "editori",
       "pdfPreview": "PDF-esikatselu",
       "researchAssistant": "tutkimusavustaja",
-      "terminalDock": "päätetelakka"
+      "terminalDock": "päätetelakka",
+      "library": "kirjasto",
+      "tool": "työkalu"
     },
     "title": "Jokin meni vikaan"
   },

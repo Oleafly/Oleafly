@@ -544,6 +544,7 @@
     "specimenViewer": "標本ビューア",
     "stackTrace": "スタックトレース",
     "surfaceCrashed": "{{surface}}がクラッシュしました。",
+    "surfaceClosed": "ウィンドウでエラーが発生したため、閉じました。詳細はログに保存されています。",
     "surfaces": {
       "aiAssistant": "AI アシスタント",
       "assistantPanel": "アシスタントパネル",
@@ -552,7 +553,9 @@
       "editor": "エディタ",
       "pdfPreview": "PDF プレビュー",
       "researchAssistant": "リサーチアシスタント",
-      "terminalDock": "ターミナルドック"
+      "terminalDock": "ターミナルドック",
+      "library": "ライブラリ",
+      "tool": "ツール"
     },
     "title": "問題が発生しました"
   },

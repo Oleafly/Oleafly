@@ -6,9 +6,12 @@ const listTemplates = vi.fn(async () => [] as unknown[]);
 const notifyError = vi.fn();
 const logError = vi.fn();
 const finishHomeTourAfterProjectCreation = vi.fn();
+const appendAppLog = vi.fn(async (_detail: string) => {});
+let crashOnOpen = false;
 
 vi.mock("@/lib/tauri", () => ({
   listTemplates: () => listTemplates(),
+  appendAppLog: (detail: string) => appendAppLog(detail),
 }));
 
 vi.mock("@/lib/toast", () => ({
@@ -50,8 +53,9 @@ vi.mock("@/components/library/NewProjectDialog", () => ({
     onClose: () => void;
     onCreate: (name: string, templateId: string, color: string) => void;
     onTemplatesChanged?: () => void;
-  }) =>
-    open ? (
+  }) => {
+    if (open && crashOnOpen) throw new Error("dialog broke");
+    return open ? (
       <div
         data-testid="new-project-dialog"
         data-busy={String(Boolean(busy))}
@@ -84,11 +88,14 @@ vi.mock("@/components/library/NewProjectDialog", () => ({
           <span>{"reload"}</span>
         </button>
       </div>
-    ) : null,
+    ) : null;
+  },
 }));
 
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
+import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
@@ -102,6 +109,9 @@ beforeEach(() => {
   notifyError.mockReset();
   logError.mockReset();
   finishHomeTourAfterProjectCreation.mockReset();
+  appendAppLog.mockClear();
+  vi.mocked(toast.error).mockClear();
+  crashOnOpen = false;
   createFromTemplate.mockReset();
   createFromTemplate.mockResolvedValue("proj-1");
   useFilesStore.setState({ createFromTemplate, projectId: null });
@@ -111,6 +121,28 @@ beforeEach(() => {
 });
 
 describe("GlobalNewProject", () => {
+  it("closes only the dialog when it crashes, and opens again", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    crashOnOpen = true;
+    render(
+      <>
+        <p data-testid="rest-of-app">{"library"}</p>
+        <GlobalNewProject />
+      </>,
+    );
+
+    await waitFor(() => expect(useSettingsStore.getState().newProjectOpen).toBe(false));
+    expect(screen.getByTestId("rest-of-app")).toBeInTheDocument();
+    expect(screen.queryByTestId("new-project-dialog")).not.toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalledWith(enShell.errorBoundary.surfaceClosed);
+    expect(appendAppLog).toHaveBeenCalledWith(expect.stringContaining("UI crash: Error: dialog broke"));
+
+    crashOnOpen = false;
+    act(() => useSettingsStore.setState({ newProjectOpen: true }));
+    expect(screen.getByTestId("new-project-dialog")).toBeInTheDocument();
+    errors.mockRestore();
+  });
+
   it("renders nothing while the dialog is closed", () => {
     useSettingsStore.setState({ newProjectOpen: false });
     render(<GlobalNewProject />);

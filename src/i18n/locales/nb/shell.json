@@ -547,6 +547,7 @@
     "specimenViewer": "Plansjeviser",
     "stackTrace": "Stakksporing",
     "surfaceCrashed": "{{surface}} krasjet.",
+    "surfaceClosed": "Vinduet fikk en feil og ble lukket. Detaljene er lagret i loggen.",
     "surfaces": {
       "aiAssistant": "AI-assistenten",
       "assistantPanel": "assistentpanelet",
@@ -555,7 +556,9 @@
       "editor": "editoren",
       "pdfPreview": "PDF-forhåndsvisningen",
       "researchAssistant": "forskningsassistenten",
-      "terminalDock": "terminalpanelet"
+      "terminalDock": "terminalpanelet",
+      "library": "biblioteket",
+      "tool": "verktøyet"
     },
     "title": "Noe gikk galt"
   },

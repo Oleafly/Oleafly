@@ -29,6 +29,7 @@ import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
 import { redo as cmRedo, undo as cmUndo } from "@codemirror/commands";
 import { ThemeProvider, applyAccentColor, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
+import { Contained } from "@/components/Contained";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
@@ -196,12 +197,14 @@ const SettingsModal = mountOnFirstOpen(
     import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
   ),
   () => useSettingsStore((s) => s.settingsOpen),
+  () => useSettingsStore.getState().setSettingsOpen(false),
 );
 const DiagramComposer = mountOnFirstOpen(
   lazy(() =>
     import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
   ),
   () => useHomeViewStore((s) => s.page === "diagram-composer"),
+  () => useHomeViewStore.getState().goTo("library"),
 );
 const DiagramComposerChooserHost = mountOnFirstOpen(
   lazy(() =>
@@ -210,6 +213,7 @@ const DiagramComposerChooserHost = mountOnFirstOpen(
     })),
   ),
   () => useDiagramComposerStore((s) => s.chooserOpen),
+  () => useDiagramComposerStore.getState().setChooserOpen(false),
 );
 const CopilotOverlay = lazy(() =>
   import("@/components/ai/CopilotOverlay").then((m) => ({ default: m.CopilotOverlay })),
@@ -219,6 +223,7 @@ const WordCountModal = mountOnFirstOpen(
     import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })),
   ),
   () => useSettingsStore((s) => s.wordCountOpen),
+  () => useSettingsStore.getState().setWordCountOpen(false),
 );
 const VersioningModal = mountOnFirstOpen(
   lazy(() =>
@@ -227,16 +232,19 @@ const VersioningModal = mountOnFirstOpen(
     })),
   ),
   () => useSettingsStore((s) => s.versioningOpen),
+  () => useSettingsStore.getState().closeVersioning(),
 );
 const HotkeysModal = mountOnFirstOpen(
   lazy(() =>
     import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })),
   ),
   () => useSettingsStore((s) => s.hotkeysOpen),
+  () => useSettingsStore.getState().setHotkeysOpen(false),
 );
 const TourGuide = mountOnFirstOpen(
   lazy(() => import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide }))),
   useTourGuideWanted,
+  () => useTourStore.getState().stop(),
 );
 // The language service has nothing to do before a project opens.
 const LanguageServiceRuntime = mountOnFirstOpen(LanguageServiceRuntimeBoundary, () =>
@@ -954,48 +962,80 @@ function AppContent() {
   if (!projectId) {
     return (
       <ThemeProvider>
-        <Library />
-        <CommandPalette />
-        <SearchOmnibar />
+        <ErrorBoundary surface="library" resetKey={homePage}>
+          <Library />
+        </ErrorBoundary>
+        <Contained resetKey={homePage}>
+          <CommandPalette />
+        </Contained>
+        <Contained resetKey={homePage}>
+          <SearchOmnibar />
+        </Contained>
         <GlobalNewProject />
         <LazyModals>
-          <CopyIntoLibraryDialog />
+          <Contained resetKey={homePage}>
+            <CopyIntoLibraryDialog />
+          </Contained>
         </LazyModals>
-        <SaveAsTemplateHost />
-        <Suspense fallback={null}>
-          {homePage === "pdf-import" && <PdfImportView />}
-          {homePage === "equation" && <EquationToolView />}
-          {homePage === "converter" && <ConverterToolView />}
-          {homePage === "reference" && <ReferenceToolView />}
-          {homePage === "bibtex" && <BibtexToolView />}
-          {homePage === "table" && <TableToolView />}
-          {homePage === "lab-search" && <LabSearchToolView />}
-          {homePage === "literature-search" && <LiteratureSearchToolView />}
-          {homePage === "deadlines" && <DeadlinesView />}
-          {homePage === "stats" && <StatsToolView />}
-          {homePage === "generators" && <GeneratorsToolView />}
-          {homePage === "symbols" && <SymbolsToolView />}
-          {homePage === "tools" && <LatexToolsView />}
-        </Suspense>
-        <ExternalToolApprovals />
+        <Contained resetKey={homePage}>
+          <SaveAsTemplateHost />
+        </Contained>
+        <ErrorBoundary surface="tool" resetKey={homePage}>
+          <Suspense fallback={null}>
+            {homePage === "pdf-import" && <PdfImportView />}
+            {homePage === "equation" && <EquationToolView />}
+            {homePage === "converter" && <ConverterToolView />}
+            {homePage === "reference" && <ReferenceToolView />}
+            {homePage === "bibtex" && <BibtexToolView />}
+            {homePage === "table" && <TableToolView />}
+            {homePage === "lab-search" && <LabSearchToolView />}
+            {homePage === "literature-search" && <LiteratureSearchToolView />}
+            {homePage === "deadlines" && <DeadlinesView />}
+            {homePage === "stats" && <StatsToolView />}
+            {homePage === "generators" && <GeneratorsToolView />}
+            {homePage === "symbols" && <SymbolsToolView />}
+            {homePage === "tools" && <LatexToolsView />}
+          </Suspense>
+        </ErrorBoundary>
+        <Contained resetKey={homePage}>
+          <ExternalToolApprovals />
+        </Contained>
         <LazyModals>
-          <EnginePickerModal />
+          <Contained resetKey={homePage}>
+            <EnginePickerModal />
+          </Contained>
         </LazyModals>
-        <TinytexGuards />
-        <QuitGuard />
-        <SaveBlockedDialog />
-        <OpenFolderStopDialog />
+        <Contained resetKey={homePage}>
+          <TinytexGuards />
+        </Contained>
+        <Contained resetKey={homePage}>
+          <QuitGuard />
+        </Contained>
+        <Contained resetKey={homePage}>
+          <SaveBlockedDialog />
+        </Contained>
+        <Contained resetKey={homePage}>
+          <OpenFolderStopDialog />
+        </Contained>
         <LazyModals>
-          <QuickActionOffer />
+          <Contained resetKey={homePage}>
+            <QuickActionOffer />
+          </Contained>
         </LazyModals>
-        <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        <Contained resetKey={aboutOpen} close={() => setAboutOpen(false)}>
+          <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        </Contained>
         {chatFloating && (
           <Suspense fallback={null}>
-            <CopilotOverlay />
+            <Contained resetKey={homePage}>
+              <CopilotOverlay />
+            </Contained>
           </Suspense>
         )}
         <SettingsModal />
-        <CiteOleaflyDialog />
+        <Contained resetKey={homePage}>
+          <CiteOleaflyDialog />
+        </Contained>
         <HotkeysModal />
         <DiagramComposer />
         <DiagramComposerChooserHost />
@@ -1016,17 +1056,39 @@ function AppContent() {
               back a few pixels only while the sidebar is competing for the width
               (see globals.css). */}
           <div hidden={zen} className={zen ? undefined : "contents"}>
-            <TopToolbar />
+            <Contained resetKey={projectId}>
+              <TopToolbar />
+            </Contained>
           </div>
-          {zen && <ZenTitleStrip />}
-        <BackendProtocolBanner />
-        <FolderUnavailableBanner />
-        <OpenedFolderBanners />
-        <CollabSyncPauseSlot />
-        <CollabActivitySlot />
-        <ShellCommandsBanner />
-        <CodeExecutionSlot />
-        <TypstCjkFontSlot />
+          {zen && (
+            <Contained resetKey={projectId} close={exitZenMode}>
+              <ZenTitleStrip />
+            </Contained>
+          )}
+        <Contained resetKey={projectId}>
+          <BackendProtocolBanner />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <FolderUnavailableBanner />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <OpenedFolderBanners />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <CollabSyncPauseSlot />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <CollabActivitySlot />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <ShellCommandsBanner />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <CodeExecutionSlot />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <TypstCjkFontSlot />
+        </Contained>
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
             resetKey={projectId}
@@ -1239,35 +1301,75 @@ function AppContent() {
             )}
         </div>
 
-        <CommandPalette />
-        <SearchOmnibar />
+        <Contained resetKey={projectId}>
+          <CommandPalette />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <SearchOmnibar />
+        </Contained>
         <GlobalNewProject />
         <LazyModals>
-          <CopyIntoLibraryDialog />
+          <Contained resetKey={projectId}>
+            <CopyIntoLibraryDialog />
+          </Contained>
         </LazyModals>
-        <SaveAsTemplateHost />
-        <AssistantOutputsBridge />
-        <ExternalToolApprovals />
+        <Contained resetKey={projectId}>
+          <SaveAsTemplateHost />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <AssistantOutputsBridge />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <ExternalToolApprovals />
+        </Contained>
         <LazyModals>
-          <EnginePickerModal />
-          <MainDocumentPicker />
+          <Contained resetKey={projectId}>
+            <EnginePickerModal />
+          </Contained>
+          <Contained resetKey={projectId}>
+            <MainDocumentPicker />
+          </Contained>
         </LazyModals>
-        <TinytexGuards />
-        <QuitGuard />
-        <SaveBlockedDialog />
-        <OpenFolderStopDialog />
+        <Contained resetKey={projectId}>
+          <TinytexGuards />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <QuitGuard />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <SaveBlockedDialog />
+        </Contained>
+        <Contained resetKey={projectId}>
+          <OpenFolderStopDialog />
+        </Contained>
         <LazyModals>
-          <QuickActionOffer />
+          <Contained resetKey={projectId}>
+            <QuickActionOffer />
+          </Contained>
         </LazyModals>
-        <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        <Contained resetKey={aboutOpen} close={() => setAboutOpen(false)}>
+          <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        </Contained>
         {chatFloating && !zen && (
           <Suspense fallback={null}>
-            <CopilotOverlay />
+            <Contained resetKey={projectId}>
+              <CopilotOverlay />
+            </Contained>
           </Suspense>
         )}
-        {zen && <ZenSession />}
-        {zen && <ZenCompileCorner />}
-        <CiteOleaflyDialog />
+        {zen && (
+          <Contained resetKey={projectId} close={exitZenMode}>
+            <ZenSession />
+          </Contained>
+        )}
+        {zen && (
+          <Contained resetKey={projectId}>
+            <ZenCompileCorner />
+          </Contained>
+        )}
+        <Contained resetKey={projectId}>
+          <CiteOleaflyDialog />
+        </Contained>
         <WordCountModal />
         <VersioningModal />
         <HotkeysModal />
@@ -1277,11 +1379,13 @@ function AppContent() {
         <DiagramComposer />
         <DiagramComposerChooserHost />
         {projectToolOpen && (
-          <Suspense fallback={null}>
-            <div className="fixed inset-0 z-[70]">
-              {homePage === "generators" ? <GeneratorsToolView /> : <SymbolsToolView />}
-            </div>
-          </Suspense>
+          <Contained resetKey={homePage} close={() => useHomeViewStore.getState().goTo("library")}>
+            <Suspense fallback={null}>
+              <div className="fixed inset-0 z-[70]">
+                {homePage === "generators" ? <GeneratorsToolView /> : <SymbolsToolView />}
+              </div>
+            </Suspense>
+          </Contained>
         )}
       </div>
     </ThemeProvider>
@@ -1494,6 +1598,7 @@ function OpenCompileKeeper() {
 }
 
 export default function App() {
+  const projectId = useFilesStore((state) => state.projectId);
   return (
     <>
       <ErrorBoundary
@@ -1501,15 +1606,31 @@ export default function App() {
       >
         <LanguageServiceRuntime />
       </ErrorBoundary>
-      <AutoCompileKeeper />
-      <ProjectAvailabilityKeeper />
-      <OpenFolderKeeper />
-      <FolderWatchKeeper />
-      <CloudSyncHost />
-      <CollabLiveKeeper />
-      <CollabLinkKeeper />
+      <Contained resetKey={projectId}>
+        <AutoCompileKeeper />
+      </Contained>
+      <Contained resetKey={projectId}>
+        <ProjectAvailabilityKeeper />
+      </Contained>
+      <Contained resetKey={projectId}>
+        <OpenFolderKeeper />
+      </Contained>
+      <Contained resetKey={projectId}>
+        <FolderWatchKeeper />
+      </Contained>
+      <Contained resetKey={projectId}>
+        <CloudSyncHost />
+      </Contained>
+      <Contained resetKey={projectId}>
+        <CollabLiveKeeper />
+      </Contained>
+      <Contained resetKey={projectId}>
+        <CollabLinkKeeper />
+      </Contained>
       <AppContent />
-      <OpenCompileKeeper />
+      <Contained resetKey={projectId}>
+        <OpenCompileKeeper />
+      </Contained>
     </>
   );
 }

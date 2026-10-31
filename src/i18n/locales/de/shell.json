@@ -547,6 +547,7 @@
     "specimenViewer": "Musterbetrachter",
     "stackTrace": "Aufrufliste",
     "surfaceCrashed": "{{surface}} ist abgestürzt.",
+    "surfaceClosed": "Das Fenster ist auf einen Fehler gestoßen und wurde geschlossen. Die Details stehen im Protokoll.",
     "surfaces": {
       "aiAssistant": "Der KI-Assistent",
       "assistantPanel": "Der Assistentenbereich",
@@ -555,7 +556,9 @@
       "editor": "Der Editor",
       "pdfPreview": "Die PDF-Vorschau",
       "researchAssistant": "Der Forschungsassistent",
-      "terminalDock": "Das Terminal-Dock"
+      "terminalDock": "Das Terminal-Dock",
+      "library": "Die Bibliothek",
+      "tool": "Das Werkzeug"
     },
     "title": "Etwas ist schiefgelaufen"
   },

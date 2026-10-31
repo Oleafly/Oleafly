@@ -3,12 +3,26 @@ import { act, render, screen } from "@testing-library/react";
 import { lazy, useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { create } from "zustand";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { mountOnFirstOpen } from "./mount-on-first-open";
+
+const toastError = vi.fn();
+const appendAppLog = vi.fn(async (_detail: string) => {});
+
+vi.mock("@/lib/toast", () => ({
+  toast: { error: (message: string) => toastError(message) },
+}));
+
+vi.mock("@/lib/tauri", () => ({
+  appendAppLog: (detail: string) => appendAppLog(detail),
+}));
 
 const useSurfaceStore = create<{ open: boolean }>(() => ({ open: false }));
 
 afterEach(() => {
   useSurfaceStore.setState({ open: false });
+  toastError.mockClear();
+  appendAppLog.mockClear();
 });
 
 function gatedSurface(onMount: () => void) {
@@ -56,5 +70,39 @@ describe("mountOnFirstOpen", () => {
     render(<Gated />);
 
     expect(await screen.findByText("open")).toBeInTheDocument();
+  });
+
+  it("closes a surface that crashes, logs it once, and opens it again", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    let broken = true;
+    function Surface() {
+      if (broken) throw new Error("surface broke");
+      return <p>{"working"}</p>;
+    }
+    const close = vi.fn(() => useSurfaceStore.setState({ open: false }));
+    const Gated = mountOnFirstOpen(
+      Surface,
+      () => useSurfaceStore((state) => state.open),
+      close,
+    );
+    render(
+      <>
+        <p>{"rest of the app"}</p>
+        <Gated />
+      </>,
+    );
+
+    act(() => useSurfaceStore.setState({ open: true }));
+
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(useSurfaceStore.getState().open).toBe(false);
+    expect(toastError).toHaveBeenCalledWith(enShell.errorBoundary.surfaceClosed);
+    expect(appendAppLog).toHaveBeenCalledWith(expect.stringContaining("UI crash: Error: surface broke"));
+    expect(screen.getByText("rest of the app")).toBeInTheDocument();
+
+    broken = false;
+    act(() => useSurfaceStore.setState({ open: true }));
+    expect(await screen.findByText("working")).toBeInTheDocument();
+    errors.mockRestore();
   });
 });

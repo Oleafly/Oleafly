@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { reportEditorError } from "../error-report";
 
 // One React root per widget element. CodeMirror reuses an element through `updateDOM`,
 // so the root, and the component state inside it, outlive each rebuild.
@@ -33,7 +34,7 @@ export class WidgetErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error(`${this.props.name} rendering failed`, error, info.componentStack);
+    reportEditorError(`${this.props.name} rendering failed\ncomponentStack:${info.componentStack ?? ""}`, error);
   }
 
   render(): ReactNode {

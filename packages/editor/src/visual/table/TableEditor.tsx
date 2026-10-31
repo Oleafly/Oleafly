@@ -5,6 +5,7 @@ import { Grid } from "./Grid";
 import { Toolbar } from "./Toolbar";
 import { type TableHost, TableProviders, useTableEditing, useTableHost, useTableSelection, useTableUi } from "./contexts";
 import { editorMessage } from "../../messages";
+import { reportEditorError } from "../../error-report";
 
 export const RenderingError: FC<{ view: EditorView; position: number }> = ({ view, position }) => (
   <div className="ofl-visual-table-error" role="alert">
@@ -31,7 +32,7 @@ class TableErrorBoundary extends Component<{ fallback: ReactNode; children: Reac
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("Visual table rendering failed", error, info.componentStack);
+    reportEditorError(`Visual table rendering failed\ncomponentStack:${info.componentStack ?? ""}`, error);
   }
 
   render(): ReactNode {

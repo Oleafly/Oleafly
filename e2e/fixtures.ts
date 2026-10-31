@@ -9,6 +9,15 @@ import {
   tauriExpect,
 } from "@srsholmes/tauri-playwright";
 import { tourRegistry } from "../src/lib/tours/registry";
+import {
+  allowsUiCrash,
+  appLogPath,
+  appLogSize,
+  uiCrashFailure,
+  uiCrashProblems,
+} from "./ui-crash-guard";
+
+export { ALLOWS_UI_CRASH } from "./ui-crash-guard";
 
 // Load opt-in secrets/flags from e2e/.env (gitignored; see e2e/.env.example).
 // This must run HERE, not only in playwright.config.ts: Playwright workers are
@@ -267,7 +276,7 @@ function failFastOnBridgeSilence(client: PluginClient): PluginClient {
 function createNativeTest(dismissTours: boolean) {
   const port = Number(process.env.TAURI_PLAYWRIGHT_TCP_PORT ?? 6274);
   const socket = process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock";
-  const test = base.extend<{ tauriPage: TauriPage }>({
+  const test = base.extend<{ tauriPage: TauriPage; uiCrashGuard: void }>({
     tauriPage: async ({}, use, testInfo) => {
       if (bridgeStoppedAnswering) throw new Error(bridgeStoppedAnswering);
       const client = failFastOnBridgeSilence(
@@ -354,6 +363,31 @@ function createNativeTest(dismissTours: boolean) {
         client.disconnect();
       }
     },
+    uiCrashGuard: [
+      async ({ tauriPage }, use, testInfo) => {
+        const logPath = appLogPath();
+        const offset = appLogSize(logPath);
+        await use();
+        if (testInfo.status === "skipped") return;
+        let problems: string[] = [];
+        try {
+          problems = await uiCrashProblems(
+            bridgeStoppedAnswering ? null : tauriPage,
+            logPath,
+            offset,
+          );
+        } catch {
+          problems = [];
+        }
+        if (problems.length === 0) return;
+        if (allowsUiCrash(testInfo)) {
+          testInfo.annotations.push({ type: "ui-crash-seen", description: problems.join("\n") });
+          return;
+        }
+        throw uiCrashFailure(problems);
+      },
+      { auto: true },
+    ],
   });
   return {
     test: test as unknown as ReturnType<typeof createTauriTest>["test"],

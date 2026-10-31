@@ -9,6 +9,7 @@
 // "@oleafly/editor/CodeMirrorEditor" subpath instead.
 export * from "./controller";
 export * from "./messages";
+export { setEditorErrorReporter, type EditorErrorReporter } from "./error-report";
 export { editorTheme } from "./theme";
 export { EDITOR_CURSOR_BLINKING, type EditorCursorBlinking } from "./cursor-blink";
 export { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight } from "./cursor-height";

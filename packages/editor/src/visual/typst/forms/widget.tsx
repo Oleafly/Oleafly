@@ -3,6 +3,7 @@ import { EditorSelection } from "@codemirror/state";
 import { EditorView, WidgetType } from "@codemirror/view";
 import type { FC, ReactNode } from "react";
 import { editorMessage } from "../../../messages";
+import { reportEditorError } from "../../../error-report";
 import type { TextRange } from "../../../typst-arguments";
 import { anchorsOf, releaseAnchor } from "./anchors";
 import { type CommitResult, commitFieldEdit } from "./commit";
@@ -137,7 +138,7 @@ export abstract class TypstFormWidget extends WidgetType {
     try {
       model = this.call.read();
     } catch (error) {
-      console.error("Typst form could not be read", error);
+      reportEditorError("Typst form could not be read", error);
     }
     if (!model) {
       renderWidget(element, <pre className="ofl-visual-form-source">{this.call.source}</pre>);

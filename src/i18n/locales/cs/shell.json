@@ -553,6 +553,7 @@
     "specimenViewer": "Prohlížeč vzorků",
     "stackTrace": "Výpis zásobníku",
     "surfaceCrashed": "{{surface}} spadl.",
+    "surfaceClosed": "Okno narazilo na chybu a zavřelo se. Podrobnosti jsou uložené v protokolu.",
     "surfaces": {
       "aiAssistant": "Asistent AI",
       "assistantPanel": "Panel asistenta",
@@ -561,7 +562,9 @@
       "editor": "Editor",
       "pdfPreview": "Náhled PDF",
       "researchAssistant": "Výzkumný asistent",
-      "terminalDock": "Dok terminálu"
+      "terminalDock": "Dok terminálu",
+      "library": "Panel knihovny",
+      "tool": "Nástroj"
     },
     "title": "Něco se pokazilo"
   },

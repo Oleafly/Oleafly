@@ -674,45 +674,61 @@ function rect(top: number, height: number, width = 780): DOMRect {
   };
 }
 
+const HAN = /\p{Script=Han}/u;
+
+function laidOutPackGrid(cardHeight: (card: Element) => number) {
+  let scrollTop = 0;
+  vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function (this: Element) {
+    return this.getAttribute("data-testid") === "scroller" ? 600 : 0;
+  });
+  vi.spyOn(Element.prototype, "clientWidth", "get").mockImplementation(function (this: Element) {
+    return this.getAttribute("data-testid") === "pack-template-grid" ? 780 : 0;
+  });
+  vi.spyOn(Element.prototype, "scrollTop", "get").mockImplementation(function (this: Element) {
+    return this.getAttribute("data-testid") === "scroller" ? scrollTop : 0;
+  });
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    if (this.hasAttribute("data-row-window-item")) return rect(0, cardHeight(this));
+    if (this.getAttribute("data-testid") === "pack-template-grid") return rect(-scrollTop, 0);
+    return rect(0, 600);
+  });
+  return {
+    scrollTo(top: number) {
+      scrollTop = top;
+      act(() => {
+        screen.getByTestId("scroller").dispatchEvent(new Event("scroll"));
+      });
+    },
+  };
+}
+
+async function openPackInScroller() {
+  useSettingsStore.setState({ settingsScrollTarget: "templates" });
+  const user = userEvent.setup();
+  render(
+    <div data-testid="scroller" style={{ overflowY: "auto" }}>
+      <DownloadsSection />
+    </div>,
+  );
+  await user.click(await screen.findByTestId("pack-open-open-letter"));
+  await screen.findByTestId("pack-template-tpl-0");
+  await act(async () => {});
+}
+
+const mounted = () => screen.getAllByTestId(/^pack-template-tpl-/).length;
+
 describe("pack view performance", () => {
   it("keeps a bounded window of lazy cards for 800 templates while scrolling", async () => {
     mocks.packIndex.mockResolvedValue(index(800));
-    let scrollTop = 0;
-    vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function (this: Element) {
-      return this.getAttribute("data-testid") === "scroller" ? 600 : 0;
-    });
-    vi.spyOn(Element.prototype, "clientWidth", "get").mockImplementation(function (this: Element) {
-      return this.getAttribute("data-testid") === "pack-template-grid" ? 780 : 0;
-    });
-    vi.spyOn(Element.prototype, "scrollTop", "get").mockImplementation(function (this: Element) {
-      return this.getAttribute("data-testid") === "scroller" ? scrollTop : 0;
-    });
-    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-      if (this.hasAttribute("data-row-window-item")) return rect(0, 240);
-      if (this.getAttribute("data-testid") === "pack-template-grid") return rect(-scrollTop, 0);
-      return rect(0, 600);
-    });
-    useSettingsStore.setState({ settingsScrollTarget: "templates" });
-    const user = userEvent.setup();
-    render(
-      <div data-testid="scroller" style={{ overflowY: "auto" }}>
-        <DownloadsSection />
-      </div>,
-    );
-    await user.click(await screen.findByTestId("pack-open-open-letter"));
-    await screen.findByTestId("pack-template-tpl-0");
-    await act(async () => {});
+    const layout = laidOutPackGrid(() => 240);
+    await openPackInScroller();
 
-    const mounted = () => screen.getAllByTestId(/^pack-template-tpl-/).length;
     expect(mounted()).toBeGreaterThan(0);
     expect(mounted()).toBeLessThan(60);
     const grid = screen.getByTestId("pack-template-grid");
     expect(grid.style.gridTemplateColumns).toBe("repeat(5, minmax(0, 1fr))");
 
-    scrollTop = 24_000;
-    act(() => {
-      screen.getByTestId("scroller").dispatchEvent(new Event("scroll"));
-    });
+    layout.scrollTo(24_000);
     expect(screen.queryByTestId("pack-template-tpl-0")).not.toBeInTheDocument();
     expect(screen.getByTestId("pack-template-tpl-500")).toBeInTheDocument();
     expect(mounted()).toBeLessThan(60);
@@ -720,5 +736,29 @@ describe("pack view performance", () => {
     const images = document.querySelectorAll("img");
     expect(images.length).toBeLessThan(60);
     for (const image of images) expect(image).toHaveAttribute("loading", "lazy");
+  });
+
+  it("keeps a steady window while scrolling past cards whose CJK names make their rows taller", async () => {
+    mocks.packIndex.mockResolvedValue({
+      ...index(800),
+      templates: Array.from({ length: 800 }, (_, i) =>
+        i >= 400 && i < 600 ? template(i, { name: `清华大学学位论文 ${i}` }) : template(i),
+      ),
+    });
+    const layout = laidOutPackGrid((card) => (HAN.test(card.textContent ?? "") ? 264 : 240));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    await openPackInScroller();
+
+    for (const [top, card] of [
+      [9_600, "tpl-200"],
+      [20_400, "tpl-425"],
+      [19_200, "tpl-400"],
+      [33_600, "tpl-700"],
+    ] as const) {
+      expect(() => layout.scrollTo(top)).not.toThrow();
+      expect(screen.getByTestId(`pack-template-${card}`)).toBeInTheDocument();
+      expect(mounted()).toBeLessThan(60);
+    }
+    expect(errors.mock.calls.flat().map(String).join("\n")).not.toContain("Maximum update depth");
   });
 });

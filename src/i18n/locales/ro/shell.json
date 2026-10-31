@@ -550,6 +550,7 @@
     "specimenViewer": "Vizualizator de specimene",
     "stackTrace": "Urma de execuție",
     "surfaceCrashed": "{{surface}} s-a blocat.",
+    "surfaceClosed": "Fereastra a întâmpinat o eroare și s-a închis. Detaliile au fost salvate în jurnal.",
     "surfaces": {
       "aiAssistant": "Asistentul AI",
       "assistantPanel": "Panoul asistentului",
@@ -558,7 +559,9 @@
       "editor": "Editorul",
       "pdfPreview": "Previzualizarea PDF",
       "researchAssistant": "Asistentul de cercetare",
-      "terminalDock": "Panoul de terminale"
+      "terminalDock": "Panoul de terminale",
+      "library": "Biblioteca",
+      "tool": "Instrumentul"
     },
     "title": "A apărut o problemă"
   },

@@ -420,12 +420,12 @@ const TemplateCard = memo(function TemplateCard({
           />
         )}
       </div>
-      <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
-        <span className="text-[0.5625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
+      <div className="mt-0.5 flex min-w-0 items-center gap-1.5 whitespace-nowrap px-0.5">
+        <span className="shrink-0 text-[0.5625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
           {compilerLabel(entry, t)}
         </span>
         {!entry.assets_ready && (
-          <span className="text-[0.5625rem] font-medium text-amber-600 dark:text-amber-400">
+          <span className="min-w-0 truncate text-[0.5625rem] font-medium text-amber-600 dark:text-amber-400">
             {t("dialog.needsSetup")}
           </span>
         )}

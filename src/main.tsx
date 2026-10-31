@@ -3,6 +3,7 @@ import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { Contained } from "@/components/Contained";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DevContextMenu } from "@/components/layout/DevContextMenu";
 import { IndexKeeper } from "@/components/editor/IndexKeeper";
@@ -127,12 +128,14 @@ const RenameDialog = mountOnFirstOpen(
     import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
   ),
   () => useRenameStore((state) => state.sym !== null),
+  () => useRenameStore.getState().close(),
 );
 const FileRenameDialog = mountOnFirstOpen(
   lazy(() =>
     import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })),
   ),
   () => useFileRenameStore((state) => state.target !== null),
+  () => useFileRenameStore.getState().close(),
 );
 // Mounted from the start: it runs the reference updates for renamed files.
 const FileReferencesDialog = lazy(() =>
@@ -143,6 +146,7 @@ const AddCitationDialog = mountOnFirstOpen(
     import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
   ),
   () => useCitationStore((state) => state.open),
+  () => useCitationStore.getState().setOpen(false),
 );
 const ZoteroDialogs = mountOnFirstOpen(
   lazy(() =>
@@ -156,18 +160,27 @@ const ZoteroDialogs = mountOnFirstOpen(
         state.handEdits !== null ||
         state.handList !== null,
     ),
+  () => {
+    const zotero = useZoteroDialogStore.getState();
+    zotero.bibliographyChoice?.resolve(null);
+    zotero.handEdits?.resolve(false);
+    zotero.handList?.resolve(false);
+    zotero.closeBulk();
+  },
 );
 const TableImportDialog = mountOnFirstOpen(
   lazy(() =>
     import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
   ),
   () => useTableImportStore((state) => state.open),
+  () => useTableImportStore.getState().setOpen(false),
 );
 const FigureDialog = mountOnFirstOpen(
   lazy(() =>
     import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
   ),
   () => useFigureDialogStore((state) => state.open),
+  () => useFigureDialogStore.getState().setOpen(false),
 );
 const PresentationWindow = lazy(() =>
   import("@/components/presentation/PresentationWindow").then((module) => ({ default: module.PresentationWindow })),
@@ -181,13 +194,21 @@ const TypstMigrationDialog = lazy(() =>
 
 function TypstMigrationHost() {
   const open = useTypstMigrationStore((state) => state.open);
-  return open ? <TypstMigrationDialog /> : null;
+  if (!open) return null;
+  return (
+    <Contained resetKey={open} close={() => useTypstMigrationStore.getState().close()}>
+      <Suspense fallback={null}>
+        <TypstMigrationDialog />
+      </Suspense>
+    </Contained>
+  );
 }
 const TypstDocumentPanels = mountOnFirstOpen(
   lazy(() =>
     import("@/components/editor/TypstDocumentPanels").then((module) => ({ default: module.TypstDocumentPanels })),
   ),
   () => useTypstDocumentPanelStore((state) => state.panel !== null),
+  () => useTypstDocumentPanelStore.getState().closePanel(),
 );
 
 // Dev builds only; the conditional import keeps devtools out of the bundle.
@@ -250,22 +271,32 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <AppZoom />
       <AppIcon />
       <App />
-      <Toaster />
+      <Contained>
+        <Toaster />
+      </Contained>
       <ConfirmHost />
-      <DevContextMenu />
-      <IndexKeeper />
-      <ZoteroKeeper />
-      <Suspense fallback={null}>
-        <RenameDialog />
-        <FileRenameDialog />
-        <FileReferencesDialog />
-        <AddCitationDialog />
-        <ZoteroDialogs />
-        <TableImportDialog />
-        <FigureDialog />
-        <TypstMigrationHost />
-        <TypstDocumentPanels />
-      </Suspense>
+      <Contained>
+        <DevContextMenu />
+      </Contained>
+      <Contained>
+        <IndexKeeper />
+      </Contained>
+      <Contained>
+        <ZoteroKeeper />
+      </Contained>
+      <RenameDialog />
+      <FileRenameDialog />
+      <Contained>
+        <Suspense fallback={null}>
+          <FileReferencesDialog />
+        </Suspense>
+      </Contained>
+      <AddCitationDialog />
+      <ZoteroDialogs />
+      <TableImportDialog />
+      <FigureDialog />
+      <TypstMigrationHost />
+      <TypstDocumentPanels />
       {ReactQueryDevtools && (
         <Suspense fallback={null}>
           <ReactQueryDevtools initialIsOpen={false} />

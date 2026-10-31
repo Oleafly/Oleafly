@@ -550,6 +550,7 @@
     "specimenViewer": "Visualizzatore di campioni",
     "stackTrace": "Traccia dello stack",
     "surfaceCrashed": "{{surface}} si è bloccato.",
+    "surfaceClosed": "La finestra ha riscontrato un errore e si è chiusa. I dettagli sono stati salvati nel log.",
     "surfaces": {
       "aiAssistant": "L'assistente AI",
       "assistantPanel": "Il pannello dell'assistente",
@@ -558,7 +559,9 @@
       "editor": "L'editor",
       "pdfPreview": "L'anteprima PDF",
       "researchAssistant": "L'assistente di ricerca",
-      "terminalDock": "Il pannello del terminale"
+      "terminalDock": "Il pannello del terminale",
+      "library": "Il pannello della libreria",
+      "tool": "Lo strumento"
     },
     "title": "Si è verificato un problema"
   },

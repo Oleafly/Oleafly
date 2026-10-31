@@ -553,6 +553,7 @@
     "specimenViewer": "Przeglądarka okazów",
     "stackTrace": "Ślad stosu",
     "surfaceCrashed": "Wystąpiła awaria: {{surface}}.",
+    "surfaceClosed": "Okno napotkało błąd i zostało zamknięte. Szczegóły zapisano w dzienniku.",
     "surfaces": {
       "aiAssistant": "asystent AI",
       "assistantPanel": "panel asystenta",
@@ -561,7 +562,9 @@
       "editor": "edytor",
       "pdfPreview": "podgląd PDF",
       "researchAssistant": "asystent badawczy",
-      "terminalDock": "dok terminala"
+      "terminalDock": "dok terminala",
+      "library": "biblioteka",
+      "tool": "narzędzie"
     },
     "title": "Coś poszło nie tak"
   },

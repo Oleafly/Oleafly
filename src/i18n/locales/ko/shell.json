@@ -544,6 +544,7 @@
     "specimenViewer": "표본 뷰어",
     "stackTrace": "스택 트레이스",
     "surfaceCrashed": "{{surface}}이(가) 중단되었습니다.",
+    "surfaceClosed": "창에서 오류가 발생해 창을 닫았습니다. 자세한 내용은 로그에 저장되었습니다.",
     "surfaces": {
       "aiAssistant": "AI 어시스턴트",
       "assistantPanel": "어시스턴트 패널",
@@ -552,7 +553,9 @@
       "editor": "편집기",
       "pdfPreview": "PDF 미리보기",
       "researchAssistant": "연구 어시스턴트",
-      "terminalDock": "터미널 독"
+      "terminalDock": "터미널 독",
+      "library": "라이브러리",
+      "tool": "도구"
     },
     "title": "문제가 발생했습니다"
   },

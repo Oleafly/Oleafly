@@ -550,6 +550,7 @@
     "specimenViewer": "Visor de especímenes",
     "stackTrace": "Traza de la pila",
     "surfaceCrashed": "Se bloqueó {{surface}}.",
+    "surfaceClosed": "La ventana encontró un error y se cerró. Los detalles se guardaron en el registro.",
     "surfaces": {
       "aiAssistant": "el asistente de IA",
       "assistantPanel": "el panel del asistente",
@@ -558,7 +559,9 @@
       "editor": "el editor",
       "pdfPreview": "la vista previa del PDF",
       "researchAssistant": "el asistente de investigación",
-      "terminalDock": "el panel del terminal"
+      "terminalDock": "el panel del terminal",
+      "library": "la biblioteca",
+      "tool": "la herramienta"
     },
     "title": "Algo salió mal"
   },

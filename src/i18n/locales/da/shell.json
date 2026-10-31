@@ -547,6 +547,7 @@
     "specimenViewer": "Præparatfremviser",
     "stackTrace": "Stakspor",
     "surfaceCrashed": "{{surface}} gik ned.",
+    "surfaceClosed": "Vinduet løb ind i en fejl og blev lukket. Detaljerne er gemt i loggen.",
     "surfaces": {
       "aiAssistant": "AI-assistenten",
       "assistantPanel": "assistentpanelet",
@@ -555,7 +556,9 @@
       "editor": "editoren",
       "pdfPreview": "PDF-forhåndsvisningen",
       "researchAssistant": "forskningsassistenten",
-      "terminalDock": "terminaldokken"
+      "terminalDock": "terminaldokken",
+      "library": "biblioteket",
+      "tool": "værktøjet"
     },
     "title": "Noget gik galt"
   },

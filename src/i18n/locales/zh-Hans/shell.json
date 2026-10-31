@@ -544,6 +544,7 @@
     "specimenViewer": "样本查看器",
     "stackTrace": "堆栈跟踪",
     "surfaceCrashed": "{{surface}}已崩溃。",
+    "surfaceClosed": "该窗口出错，已关闭。详细信息已保存到日志。",
     "surfaces": {
       "aiAssistant": "AI 助手",
       "assistantPanel": "助手面板",
@@ -552,7 +553,9 @@
       "editor": "编辑器",
       "pdfPreview": "PDF 预览",
       "researchAssistant": "研究助手",
-      "terminalDock": "终端停靠区"
+      "terminalDock": "终端停靠区",
+      "library": "库",
+      "tool": "工具"
     },
     "title": "出错了"
   },

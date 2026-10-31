@@ -547,6 +547,7 @@
     "specimenViewer": "Provvisare",
     "stackTrace": "Stackspårning",
     "surfaceCrashed": "{{surface}} kraschade.",
+    "surfaceClosed": "Fönstret stötte på ett fel och stängdes. Detaljerna sparades i loggen.",
     "surfaces": {
       "aiAssistant": "AI-assistenten",
       "assistantPanel": "assistentpanelen",
@@ -555,7 +556,9 @@
       "editor": "redigeraren",
       "pdfPreview": "PDF-förhandsvisningen",
       "researchAssistant": "forskningsassistenten",
-      "terminalDock": "terminaldockan"
+      "terminalDock": "terminaldockan",
+      "library": "biblioteket",
+      "tool": "verktyget"
     },
     "title": "Något gick fel"
   },
