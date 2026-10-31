@@ -1027,7 +1027,14 @@
       "selectionChanged": "Il testo selezionato è cambiato. Selezionalo di nuovo e aggiungi il tuo commento.",
       "tooLong": "Questo commento è troppo lungo. Accorcialo e riprova.",
       "empty": "Scrivi qualcosa prima di pubblicare."
-    }
+    },
+    "personalHint": "Personal notes saved on this computer. Select text and choose Add comment.",
+    "personalPlaceholder": "Add a todo or revision idea…",
+    "personalSaveFailed": "Your comments could not be saved. Keep this project open and retry.",
+    "personalConflict": "Comments changed in another window. Retry to combine the changes. Conflicting notes are kept separately.",
+    "personalDeleteTitle": "Delete this personal comment?",
+    "personalDeleteDescription": "This note will be removed from this computer.",
+    "personalEmpty": "No personal comments yet."
   },
   "suggestions": {
     "insertedBy": "{{name}} ha suggerito di aggiungere questo testo",

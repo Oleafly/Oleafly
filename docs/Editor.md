@@ -374,3 +374,11 @@ The contract requires all acceptance criteria for all nine features. Results
 are rejected when they belong to an older project revision. Performance gates
 are measured separately from cross-platform functional gates and use the fixed
 reference methodology recorded in the test fixture.
+
+## Personal comments and todos
+
+In a local project, select text in the source editor and choose **Add comment** from the selection menu or the right-click menu. You can also press **Ctrl+Alt+M** on Windows/Linux or **Cmd+Option+M** on macOS. This works for Typst as well as other source files.
+
+The **Comments** pane lists personal notes across the project. Click a quoted passage to return to it. Edit or delete a note, mark it resolved, and use **Show resolved comments** to find it again. Text highlights follow edits; when the entire passage is deleted, the note keeps its original quote and appears detached. Renaming a file or folder within Oleafly preserves its notes.
+
+Personal comments are saved in the app data directory on this computer, separately from the source, so they do not appear in the compiled PDF. They do not require an account or server. They are not included in project exports or shared with collaborators; shared projects continue to use their existing collaboration comments. Keep the project open and use Retry if a comment could not be saved.

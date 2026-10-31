@@ -4,6 +4,7 @@ import { confirmQuitDuringInstall, confirmQuitFlush } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { useFilesStore } from "@/store/files";
 import { i18n } from "@/i18n";
+import { flushPersonalComments } from "@/lib/personal-comments-flush";
 
 export const QUIT_FLUSH_REQUESTED = "quit-flush-requested";
 export const INSTALL_QUIT_BLOCKED = "tinytex-quit-blocked";
@@ -27,9 +28,14 @@ export function flushForQuitWithDeadline(): Promise<void> {
       reject(new Error(i18n.t(($) => $.shell.quitGuard.flushTimeout)));
     }, QUIT_FLUSH_TIMEOUT_MS);
   });
-  return Promise.race([useFilesStore.getState().flushForQuit(), deadline]).finally(() => {
-    if (timeout !== undefined) clearTimeout(timeout);
-  });
+  return Promise.race([
+    Promise.all([useFilesStore.getState().flushForQuit(), flushPersonalComments()]),
+    deadline,
+  ])
+    .then(() => undefined)
+    .finally(() => {
+      if (timeout !== undefined) clearTimeout(timeout);
+    });
 }
 
 function claim(responder: QuitResponder): () => void {

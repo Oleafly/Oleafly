@@ -1027,7 +1027,14 @@
       "selectionChanged": "Виділений текст змінився. Виділіть його знову й додайте коментар.",
       "tooLong": "Коментар задовгий. Скоротіть його та спробуйте ще раз.",
       "empty": "Напишіть щось перед надсиланням."
-    }
+    },
+    "personalHint": "Personal notes saved on this computer. Select text and choose Add comment.",
+    "personalPlaceholder": "Add a todo or revision idea…",
+    "personalSaveFailed": "Your comments could not be saved. Keep this project open and retry.",
+    "personalConflict": "Comments changed in another window. Retry to combine the changes. Conflicting notes are kept separately.",
+    "personalDeleteTitle": "Delete this personal comment?",
+    "personalDeleteDescription": "This note will be removed from this computer.",
+    "personalEmpty": "No personal comments yet."
   },
   "suggestions": {
     "insertedBy": "Користувач {{name}} запропонував додати цей текст",

@@ -1027,7 +1027,14 @@
       "selectionChanged": "Выделенный текст изменился. Выделите его снова и добавьте комментарий.",
       "tooLong": "Комментарий слишком длинный. Сократите его и попробуйте ещё раз.",
       "empty": "Напишите что-нибудь перед отправкой."
-    }
+    },
+    "personalHint": "Personal notes saved on this computer. Select text and choose Add comment.",
+    "personalPlaceholder": "Add a todo or revision idea…",
+    "personalSaveFailed": "Your comments could not be saved. Keep this project open and retry.",
+    "personalConflict": "Comments changed in another window. Retry to combine the changes. Conflicting notes are kept separately.",
+    "personalDeleteTitle": "Delete this personal comment?",
+    "personalDeleteDescription": "This note will be removed from this computer.",
+    "personalEmpty": "No personal comments yet."
   },
   "suggestions": {
     "insertedBy": "Участник {{name}} предложил добавить этот текст",

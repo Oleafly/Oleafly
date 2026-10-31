@@ -1027,7 +1027,14 @@
       "selectionChanged": "你选中的文本已更改。请重新选择后再添加评论。",
       "tooLong": "这条评论太长了。请缩短后再试。",
       "empty": "发布前请先写点内容。"
-    }
+    },
+    "personalHint": "Personal notes saved on this computer. Select text and choose Add comment.",
+    "personalPlaceholder": "Add a todo or revision idea…",
+    "personalSaveFailed": "Your comments could not be saved. Keep this project open and retry.",
+    "personalConflict": "Comments changed in another window. Retry to combine the changes. Conflicting notes are kept separately.",
+    "personalDeleteTitle": "Delete this personal comment?",
+    "personalDeleteDescription": "This note will be removed from this computer.",
+    "personalEmpty": "No personal comments yet."
   },
   "suggestions": {
     "insertedBy": "{{name}} 建议添加此内容",

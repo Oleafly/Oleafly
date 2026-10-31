@@ -5,30 +5,39 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 
-const loaded = vi.hoisted(() => ({ pane: vi.fn(), keeper: vi.fn(), activity: vi.fn() }));
+const loaded = vi.hoisted(() => ({ pane: vi.fn(), keeper: vi.fn(), activity: vi.fn(), personal: vi.fn() }));
 
-vi.mock("@/features/collab/comments/CommentsPane", () => ({
+vi.mock("@/features/personal-comments/PersonalComments", () => ({
+  PersonalCommentsKeeper: () => {
+    loaded.personal();
+    return null;
+  },
+  PersonalCommentsPane: () => <span>{"personal comments pane"}</span>,
+}));
+
+vi.mock("@/features/collab/comments", () => ({
   CommentsPane: () => {
     loaded.pane();
     return <span>{"comments pane"}</span>;
   },
-}));
-vi.mock("@/features/collab/comments/CommentsKeeper", () => ({
   CommentsKeeper: () => {
     loaded.keeper();
     return null;
   },
 }));
-vi.mock("@/features/collab/sharing/CollabActivityKeeper", () => ({
+vi.mock("@/features/collab/sharing/surfaces", () => ({
   CollabActivityKeeper: () => {
     loaded.activity();
     return null;
   },
 }));
+vi.mock("@/features/collab/suggestions", () => ({ SuggestionsKeeper: () => null }));
+vi.mock("@/features/collab/chat", () => ({ ChatKeeper: () => null }));
 
 import { useCollabRail } from "./collab-rail";
 import { CollabActivitySlot, CommentsPanel, CommentsRailIcon, commentsRailLabel } from "./CollabSlots";
 import { useCommentsRail } from "./comments-rail";
+import { useFilesStore } from "@/store/files";
 
 async function settle() {
   await act(async () => {
@@ -42,6 +51,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useFilesStore.setState({ projectId: null });
 });
 
 afterEach(() => {
@@ -60,8 +70,21 @@ describe("comment slots", () => {
   });
 
   it("load the Comments tab on demand", async () => {
+    useCollabRail.setState({ visible: true });
     render(<CommentsPanel />);
     expect(await screen.findByText("comments pane")).toBeInTheDocument();
+  });
+
+  it("starts personal comments without sharing or an account", async () => {
+    useFilesStore.setState({ projectId: "paper" });
+    render(<CollabActivitySlot />);
+    await vi.waitFor(() => expect(loaded.personal).toHaveBeenCalled());
+    expect(loaded.keeper).not.toHaveBeenCalled();
+  });
+
+  it("opens the personal pane for an unshared project", async () => {
+    render(<CommentsPanel />);
+    expect(await screen.findByText("personal comments pane")).toBeInTheDocument();
   });
 
   it("dot the rail icon and name the unseen activity", () => {

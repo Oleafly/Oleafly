@@ -1027,7 +1027,14 @@
       "selectionChanged": "Textul selectat s-a schimbat. Selectează-l din nou și adaugă comentariul.",
       "tooLong": "Acest comentariu este prea lung. Scurtează-l și încearcă din nou.",
       "empty": "Scrie ceva înainte să publici."
-    }
+    },
+    "personalHint": "Personal notes saved on this computer. Select text and choose Add comment.",
+    "personalPlaceholder": "Add a todo or revision idea…",
+    "personalSaveFailed": "Your comments could not be saved. Keep this project open and retry.",
+    "personalConflict": "Comments changed in another window. Retry to combine the changes. Conflicting notes are kept separately.",
+    "personalDeleteTitle": "Delete this personal comment?",
+    "personalDeleteDescription": "This note will be removed from this computer.",
+    "personalEmpty": "No personal comments yet."
   },
   "suggestions": {
     "insertedBy": "{{name}} a sugerat adăugarea acestui text",

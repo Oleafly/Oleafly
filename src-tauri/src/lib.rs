@@ -62,6 +62,7 @@ mod linked_copy;
 mod linked_registry;
 mod linked_removal;
 mod literature;
+mod local_comments;
 // Two-bucket logging; emit sites land with per-sidecar adoption.
 #[allow(dead_code)]
 mod logsafe;
@@ -1136,6 +1137,8 @@ pub fn run() {
             mcp::client::mcp_agent_tool_call,
             chats::load_project_chats,
             chats::save_project_chats,
+            local_comments::personal_comments_load,
+            local_comments::personal_comments_save,
             git::git_is_initialized,
             git::git_initialize,
             git::git_prepare_publish,

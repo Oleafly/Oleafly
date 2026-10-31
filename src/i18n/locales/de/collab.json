@@ -1027,7 +1027,14 @@
       "selectionChanged": "Der markierte Text hat sich geändert. Markieren Sie ihn erneut und fügen Sie Ihren Kommentar hinzu.",
       "tooLong": "Dieser Kommentar ist zu lang. Kürzen Sie ihn und versuchen Sie es erneut.",
       "empty": "Schreiben Sie etwas, bevor Sie es senden."
-    }
+    },
+    "personalHint": "Persönliche Notizen, die auf diesem Computer gespeichert werden. Text markieren und „Kommentar hinzufügen“ wählen.",
+    "personalPlaceholder": "Todo oder Überarbeitungsvorschlag notieren…",
+    "personalSaveFailed": "Ihre Kommentare konnten nicht gespeichert werden. Lassen Sie dieses Projekt geöffnet und versuchen Sie es erneut.",
+    "personalConflict": "Kommentare wurden in einem anderen Fenster geändert. Erneut versuchen, um die Änderungen zusammenzuführen. Bei Konflikten bleiben beide Notizen erhalten.",
+    "personalDeleteTitle": "Diesen persönlichen Kommentar löschen?",
+    "personalDeleteDescription": "Diese Notiz wird von diesem Computer entfernt.",
+    "personalEmpty": "Noch keine persönlichen Kommentare."
   },
   "suggestions": {
     "insertedBy": "{{name}} hat vorgeschlagen, dies einzufügen",

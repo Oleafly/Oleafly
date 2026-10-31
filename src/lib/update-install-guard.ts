@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import { useFilesStore } from "@/store/files";
+import { flushPersonalComments } from "@/lib/personal-comments-flush";
 
 export async function registerUpdateInstallGuard(setBusy: (busy: boolean) => void): Promise<() => void> {
   let active: { token: string; release: () => void } | null = null;
@@ -30,6 +31,7 @@ export async function registerUpdateInstallGuard(setBusy: (busy: boolean) => voi
           if (disposed || active !== request) return;
           await lease?.flush();
           await useFilesStore.getState().flushForQuit();
+          await flushPersonalComments();
           lease?.assertActive();
           if (disposed || active !== request) return;
           if (useFilesStore.getState().projectId !== projectId) {

@@ -59,6 +59,9 @@ const comments = () => import("@/features/collab/comments");
 
 const CommentsPane = lazy(() => comments().then((module) => ({ default: module.CommentsPane })));
 const CommentsKeeper = lazy(() => comments().then((module) => ({ default: module.CommentsKeeper })));
+const personalComments = () => import("@/features/personal-comments/PersonalComments");
+const PersonalCommentsKeeper = lazy(() => personalComments().then((module) => ({ default: module.PersonalCommentsKeeper })));
+const PersonalCommentsPane = lazy(() => personalComments().then((module) => ({ default: module.PersonalCommentsPane })));
 const suggestions = () => import("@/features/collab/suggestions");
 
 const SuggestionsKeeper = lazy(() => suggestions().then((module) => ({ default: module.SuggestionsKeeper })));
@@ -190,9 +193,11 @@ export function CollabRemovedFileSlot() {
 
 export function CollabActivitySlot() {
   const shared = useCollabRail((state) => state.visible);
+  const projectId = useFilesStore((state) => state.projectId);
   return (
     <Gate>
       <CollabActivityKeeper />
+      {!shared && projectId ? <PersonalCommentsKeeper /> : null}
       {shared ? (
         <Suspense fallback={null}>
           <CommentsKeeper />
@@ -234,9 +239,10 @@ export function CollabRailIcon({ className }: Readonly<{ className?: string }>) 
 }
 
 export function CommentsPanel() {
+  const shared = useCollabRail((state) => state.visible);
   return (
     <Gate>
-      <CommentsPane />
+      {shared ? <CommentsPane /> : <PersonalCommentsPane />}
     </Gate>
   );
 }

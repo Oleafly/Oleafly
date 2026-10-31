@@ -1027,7 +1027,14 @@
       "selectionChanged": "선택한 텍스트가 바뀌었습니다. 다시 선택한 다음 댓글을 추가하세요.",
       "tooLong": "댓글이 너무 깁니다. 줄인 다음 다시 시도하세요.",
       "empty": "게시하기 전에 내용을 입력하세요."
-    }
+    },
+    "personalHint": "Personal notes saved on this computer. Select text and choose Add comment.",
+    "personalPlaceholder": "Add a todo or revision idea…",
+    "personalSaveFailed": "Your comments could not be saved. Keep this project open and retry.",
+    "personalConflict": "Comments changed in another window. Retry to combine the changes. Conflicting notes are kept separately.",
+    "personalDeleteTitle": "Delete this personal comment?",
+    "personalDeleteDescription": "This note will be removed from this computer.",
+    "personalEmpty": "No personal comments yet."
   },
   "suggestions": {
     "insertedBy": "{{name}} 님이 이 텍스트 추가를 제안했습니다",

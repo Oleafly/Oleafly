@@ -1027,7 +1027,14 @@
       "selectionChanged": "選択したテキストが変更されました。もう一度選択してから、コメントを追加してください。",
       "tooLong": "このコメントは長すぎます。短くしてから、もう一度お試しください。",
       "empty": "投稿する前に何か書いてください。"
-    }
+    },
+    "personalHint": "Personal notes saved on this computer. Select text and choose Add comment.",
+    "personalPlaceholder": "Add a todo or revision idea…",
+    "personalSaveFailed": "Your comments could not be saved. Keep this project open and retry.",
+    "personalConflict": "Comments changed in another window. Retry to combine the changes. Conflicting notes are kept separately.",
+    "personalDeleteTitle": "Delete this personal comment?",
+    "personalDeleteDescription": "This note will be removed from this computer.",
+    "personalEmpty": "No personal comments yet."
   },
   "suggestions": {
     "insertedBy": "{{name}} がこのテキストの追加を提案しました",
