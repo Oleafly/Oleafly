@@ -7,7 +7,7 @@ const assetsDir = new URL("assets/", dist);
 
 const limits = {
   startupJavaScript: 460_000,
-  totalJavaScript: 7_460_000,
+  totalJavaScript: 7_570_000,
   wasm: {
     oleafly_synctex: 360_000,
   },

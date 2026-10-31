@@ -1,0 +1,260 @@
+{
+  "files": {
+    "collapseAll": "Thu gọn tất cả thư mục",
+    "confirmDelete": "Xoá {{path}}? Không thể hoàn tác.",
+    "conflict": {
+      "cancelAriaLabel": "Huỷ di chuyển tệp",
+      "createBody": "<destination>{{destination}}</destination> đã tồn tại. Giữ cả hai tệp bằng <suggestion>{{suggestion}}</suggestion>. Thao tác tạo không bao giờ thay thế tệp đang có.",
+      "dialogAriaLabel": "Xung đột di chuyển tệp",
+      "keepBoth": "Giữ cả hai",
+      "renameBody": "<destination>{{destination}}</destination> đã tồn tại. Giữ cả hai tệp bằng <suggestion>{{suggestion}}</suggestion>, hoặc thay thế đích đang có. Oleafly sẽ không thay thế trừ khi bạn chọn Thay thế.",
+      "replace": "Thay thế",
+      "title": "Tên đó đã được dùng",
+      "unchanged": "Đường dẫn gốc và đích được giữ nguyên.",
+      "renameFolderBody": "<destination>{{destination}}</destination> là thư mục đang có. Giữ cả hai bằng <suggestion>{{suggestion}}</suggestion>. Trong thư mục bạn mở tại chỗ, Oleafly không bao giờ thay thế cả một thư mục."
+    },
+    "createFailed": "Không thể tạo \"{{path}}\".",
+    "deleteFailed": "Không thể xoá \"{{path}}\".",
+    "expandAll": "Mở rộng tất cả thư mục",
+    "importAriaLabel": "Nhập vào thư mục đã chọn",
+    "importFiles": "Nhập tệp",
+    "importFolder": "Nhập thư mục",
+    "importTitle": "Nhập tệp hoặc thư mục (vào thư mục đã chọn)",
+    "makeCopy": "Tạo bản sao",
+    "moreActions": "Thêm thao tác cho {{name}}",
+    "moveFailed": "Không thể di chuyển \"{{path}}\". Đường dẫn gốc được giữ nguyên.",
+    "newEntry": {
+      "fileInFolder": "Tên tệp mới trong thư mục {{folder}}",
+      "fileInRoot": "Tên tệp mới ở gốc dự án",
+      "filePlaceholder": "Tên tệp mới",
+      "folderInFolder": "Tên thư mục mới trong thư mục {{folder}}",
+      "folderInRoot": "Tên thư mục mới ở gốc dự án",
+      "folderPlaceholder": "Tên thư mục mới"
+    },
+    "newFile": "Tệp mới",
+    "newFileAriaLabel": "Tệp mới trong thư mục đã chọn",
+    "newFileTitle": "Tệp mới (trong thư mục đã chọn)",
+    "newFolder": "Thư mục mới",
+    "newFolderAriaLabel": "Thư mục mới trong thư mục đã chọn",
+    "newFolderTitle": "Thư mục mới (trong thư mục đã chọn)",
+    "renameAriaLabel": "Đổi tên tệp",
+    "renameFailed": "Không thể đổi tên \"{{path}}\". Đường dẫn gốc được giữ nguyên.",
+    "setMain": "Đặt làm tài liệu chính",
+    "title": "Trình thám hiểm",
+    "treeAriaLabel": "Cây tệp của trình thám hiểm",
+    "setMainFailed": "Không thể đặt \"{{path}}\" làm tài liệu chính.",
+    "listingStopped": "Đang hiển thị {{limit}} mục đầu tiên. Phần còn lại của thư mục này không được liệt kê.",
+    "unreadable": "Không có quyền truy cập",
+    "unreadableHint": "Oleafly không có quyền mở mục này.",
+    "confirmTrash": "Chuyển {{path}} vào Thùng rác?",
+    "confirmTrashWindows": "Chuyển {{path}} vào Thùng rác?",
+    "confirmPermanentDelete": "Oleafly không thể chuyển {{path}} vào Thùng rác. Xoá vĩnh viễn thay vào đó? Không thể hoàn tác.",
+    "confirmPermanentDeleteWindows": "Oleafly không thể chuyển {{path}} vào Thùng rác. Xoá vĩnh viễn thay vào đó? Không thể hoàn tác.",
+    "linkedReadOnly": "Liên kết tới tệp ngoài thư mục này, nên chỉ đọc.",
+    "partialFolder": "Một số mục trong thư mục này không được liệt kê.",
+    "insertLink": "Chèn liên kết",
+    "copyLink": "Sao chép liên kết",
+    "linkCopied": "Đã sao chép liên kết",
+    "copyLinkFailed": "Không sao chép được liên kết. Hãy kiểm tra quyền truy cập bộ nhớ tạm và thử lại."
+  },
+  "explorer": {
+    "resizeSections": "Đổi kích thước {{first}} và {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "mơ hồ",
+      "cycle": "chu trình",
+      "definitions_other": "{{count}} định nghĩa",
+      "duplicate": "trùng lặp",
+      "external": "bên ngoài",
+      "folded": "đã gấp",
+      "incomplete": "chưa đầy đủ",
+      "missing": "thiếu"
+    },
+    "bibEntryIn": "Mục {{type}} trong {{file}}",
+    "duplicateKey": "Khoá trùng lặp.",
+    "duplicateKeyIn": "Khoá trùng lặp {{key}} trong {{file}}",
+    "folded": {
+      "description": "Nhánh này được gấp lại để giữ đồ thị dự án rất lớn phản hồi nhanh.",
+      "label": "Mở mã nguồn được liên kết để tiếp tục"
+    },
+    "fromFile": "{{kind}} từ {{file}}",
+    "groups": {
+      "bibliography": "Thư mục",
+      "bibtexEntries": "Mục BibTeX",
+      "commands": "Lệnh",
+      "definitions_other": "Định nghĩa",
+      "dependencies": "Liên kết & phụ thuộc",
+      "duplicateCitations": "Khoá trích dẫn trùng lặp",
+      "environments": "Môi trường",
+      "labels": "Nhãn & neo",
+      "occurrences": "Lần xuất hiện",
+      "sections": "Mục",
+      "unlinked": "Tệp không được liên kết",
+      "unresolvedCitations": "Trích dẫn chưa giải quyết",
+      "unresolvedDuplicate": "Chưa giải quyết & trùng lặp"
+    },
+    "inFile": "{{kind}} trong {{file}}",
+    "incompleteEntry": "Mục chưa đầy đủ.",
+    "kinds": {
+      "anchor": "neo",
+      "asset": "tài nguyên",
+      "bibentry": "mục thư mục",
+      "bibliography": "thư mục",
+      "citation": "trích dẫn",
+      "environment": "môi trường",
+      "file": "tệp",
+      "glossary": "bảng thuật ngữ",
+      "import": "import",
+      "include": "include",
+      "label": "nhãn",
+      "link": "liên kết",
+      "macro": "macro",
+      "reference": "tham chiếu",
+      "section": "mục"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Dàn ý tài liệu",
+    "collapseHeading": "Thu gọn {{title}}",
+    "collapseAll": "Thu gọn tất cả tiêu đề",
+    "empty": "Không có mục hay include trong tài liệu này.",
+    "emptyDetail": "Thêm tiêu đề mục để tạo dàn ý có thể điều hướng.",
+    "entryCount_other": "{{count}} mục dàn ý",
+    "expandHeading": "Mở rộng {{title}}",
+    "expandAll": "Mở rộng tất cả tiêu đề",
+    "title": "Dàn ý"
+  },
+  "panelError": {
+    "message": "Bố cục bảng gặp sự cố. Tệp dự án của bạn vẫn an toàn trên đĩa.",
+    "reload": "Tải lại Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Cấu trúc tài liệu",
+    "collapseAll": "Thu gọn tất cả mục cấu trúc",
+    "empty": "Không có tệp được hỗ trợ trong bản đồ dự án.",
+    "filterLabel": "Lọc cấu trúc dự án",
+    "filterPlaceholder": "Lọc bản đồ dự án…",
+    "expandAll": "Mở rộng tất cả mục cấu trúc",
+    "itemCount_other": "{{count}} mục cấu trúc",
+    "noMatch": "Không có cấu trúc nào khớp “{{query}}”.",
+    "notice": {
+      "partial": "Bản đồ một phần. Các tệp không đọc được hoặc sai định dạng vẫn hiển thị khi có thể.",
+      "stale": "Đang cập nhật. Cấu trúc của bản sửa đổi trước bị ẩn cho tới khi các phạm vi nguồn hiện tại sẵn sàng."
+    },
+    "title": "Cấu trúc",
+    "treeLabel": "Cấu trúc dự án",
+    "unavailable": {
+      "failed": {
+        "detail": "Không thể phân tích dự án. Tệp nguồn của bạn không bị thay đổi.",
+        "title": "Không thể dựng cấu trúc"
+      },
+      "mapping": {
+        "detail": "Oleafly đang lập chỉ mục tiêu đề, tệp liên kết, ký hiệu và mục thư mục.",
+        "title": "Đang lập bản đồ cấu trúc dự án"
+      },
+      "noProject": {
+        "detail": "Mở một dự án tài liệu để duyệt cấu trúc cục bộ và cấu trúc dự án của nó.",
+        "title": "Không có dự án đang mở"
+      },
+      "noSource": {
+        "detail": "Mở một tệp nguồn hoặc thư mục được hỗ trợ để xem cấu trúc của nó.",
+        "title": "Không có nguồn đang hoạt động"
+      },
+      "offline": {
+        "detail": "Phân tích dự án hiện không khả dụng cho không gian làm việc này.",
+        "title": "Dịch vụ cấu trúc không khả dụng"
+      },
+      "unsupported": {
+        "detail": "Loại tệp này không có nhà cung cấp cấu trúc dự án.",
+        "title": "Cấu trúc không khả dụng"
+      },
+      "waiting": {
+        "detail": "Bản sửa đổi dự án mới nhất chưa được lập chỉ mục.",
+        "title": "Đang chờ cấu trúc dự án"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Đang tải trợ lý",
+    "editor": "Đang tải trình soạn thảo",
+    "preview": "Đang tải bản xem trước",
+    "terminal": "Đang tải terminal"
+  },
+  "terminal": {
+    "activity": "Hoạt động mới",
+    "clipboard": {
+      "blocked": "Một chương trình trong terminal muốn sao chép văn bản."
+    },
+    "closeCurrent": "Đóng tab hiện tại",
+    "closeLeft": "Đóng tất cả tab bên trái",
+    "closeOthers": "Đóng các tab khác",
+    "closeRight": "Đóng tất cả tab bên phải",
+    "closeTab": "Đóng {{title}}",
+    "color": "Màu",
+    "dropRefused_other": "{{count}} tên tệp có ký tự điều khiển, nên terminal sẽ không gõ chúng.",
+    "errors": {
+      "input": "shell không thể nhận đầu vào",
+      "resize": "Terminal không thể đổi kích thước",
+      "start": "shell không thể khởi động"
+    },
+    "find": {
+      "count": "{{current}} trên {{total}}",
+      "label": "Tìm trong terminal",
+      "next": "Kết quả tiếp theo",
+      "none": "Không có kết quả",
+      "previous": "Kết quả trước"
+    },
+    "launch": {
+      "invalid": "Lệnh này không chạy được trong terminal.",
+      "noProject": "Mở một dự án để dùng terminal.",
+      "run": "Chạy",
+      "title": "Chạy lệnh này trong terminal?"
+    },
+    "limitReached": "Đóng một terminal để mở terminal khác",
+    "links": {
+      "openFile": "{{modifier}}-nhấp để mở",
+      "openUrl": "{{modifier}}-nhấp để mở trong trình duyệt",
+      "openUrlFailed": "Không thể mở liên kết."
+    },
+    "newTerminal": "Terminal mới",
+    "openInTerminal": "Mở trong terminal",
+    "settings": "Cài đặt terminal",
+    "starting": "Đang khởi động shell của dự án…",
+    "stop": {
+      "closeMany": "Đóng các terminal",
+      "closeOne": "Đóng terminal",
+      "closeProject": "Đóng dự án",
+      "dontAsk": "Không hỏi lại",
+      "dontAskHint": "Để bật lại, vào Cài đặt, Giao diện, Terminal, Hỏi trước khi đóng terminal đang bận.",
+      "many_other": "Chương trình vẫn đang chạy trong {{count}} terminal.",
+      "named": "{{process}} vẫn đang chạy trong {{title}}.",
+      "quit": "Thoát",
+      "reload": "Tải lại",
+      "restart": "Khởi động lại",
+      "switchProject": "Chuyển dự án",
+      "titleMany": "Dừng các chương trình đang chạy?",
+      "titleOne": "Dừng chương trình đang chạy?",
+      "unnamed": "Một chương trình vẫn đang chạy trong {{title}}."
+    },
+    "tabs": "Terminal",
+    "titleInput": "Tiêu đề terminal"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Xoá bộ lọc",
+    "filterPlaceholder": "Lọc…",
+    "noProject": "Không có dự án"
+  },
+  "fileReferences": {
+    "title": "Cập nhật tham chiếu tới {{name}}?",
+    "files_other": "{{count}} tệp",
+    "summary_other": "{{count}} tham chiếu trong $t(workspace:fileReferences.files, { \"count\": {{files}} }) vẫn dùng đường dẫn cũ, {{path}}.",
+    "fileCount_other": "{{count}} tham chiếu",
+    "dontAsk": "Không hỏi lại",
+    "update": "Cập nhật tham chiếu",
+    "skip": "Không cập nhật",
+    "failed_other": "{{count}} tệp đã thay đổi sau khi di chuyển hoặc không thể lưu. Chúng vẫn dùng đường dẫn cũ.",
+    "close": "Đóng mà không cập nhật tham chiếu"
+  }
+}

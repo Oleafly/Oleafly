@@ -30,7 +30,7 @@
           ) {
             theme = "light";
           }
-          var shipped = ["en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko"];
+          var shipped = ["en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko", "vi"];
           var aliases = { "zh-Hant": "zh-Hans", "pt": "pt-BR", "pt-PT": "pt-BR", "no": "nb", "nn": "nb" };
           var resolveTag = function (tag) {
             var parts = String(tag || "").toLowerCase().split(/[.@]/)[0].split(/[-_]/).filter(Boolean);
@@ -282,6 +282,15 @@
               "Oleafly Parsers를 불러오는 중"
             ],
             "starting": "Oleafly를 시작하는 중"
+          },
+          "vi": {
+            "stages": [
+              "Đang khởi tạo Oleafly",
+              "Đang tải Oleafly Core",
+              "Đang tải Oleafly Harness",
+              "Đang tải Oleafly Parsers"
+            ],
+            "starting": "Đang khởi động Oleafly"
           }
         };
         var texts = narration[window.__oleaflyBootLocale] || narration.en;

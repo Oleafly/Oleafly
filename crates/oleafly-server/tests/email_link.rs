@@ -313,8 +313,12 @@ async fn a_person_the_server_does_not_admit_learns_nothing_more_than_anyone_else
         text_of(&known).replace("ada@uni.edu", "ADDRESS"),
         text_of(&unknown).replace("eve@else.where", "ADDRESS")
     );
-    let email = latest_email(&setup.smtp, 2).await;
-    assert_eq!(email.rcpt_to, ["eve@else.where"]);
+    let both = wait_for_sign_in_emails(&setup.smtp, 2).await;
+    assert_eq!(both.len(), 2, "expected 2 sign-in emails");
+    let email = both
+        .into_iter()
+        .find(|email| email.rcpt_to == ["eve@else.where"])
+        .expect("eve@else.where gets a sign-in email");
     let back = landing(&open_link(&browser, &link_in(&email)).await);
     assert_eq!(
         app_callback(&back, &unknown_attempt.state),

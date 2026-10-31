@@ -1,0 +1,228 @@
+{
+  "citeOleafly": "Trích dẫn Oleafly trong bài báo này",
+  "empty": {
+    "citations": {
+      "detail": "Nhập thư viện tài liệu tham khảo hoặc thêm trích dẫn để bắt đầu.",
+      "title": "Chưa có trích dẫn"
+    },
+    "symbols": {
+      "detail": "Tiêu đề, nhãn, lệnh và môi trường sẽ xuất hiện ở đây khi dự án được viết.",
+      "title": "Chưa có ký hiệu"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Lọc trích dẫn",
+    "ariaLabelResults": "Lọc kết quả",
+    "ariaLabelSymbols": "Lọc ký hiệu",
+    "clear": "Xoá bộ lọc",
+    "noCitation": "Không có trích dẫn nào khớp “{{query}}”.",
+    "noResult": "Không có kết quả nào khớp “{{query}}”.",
+    "noSymbol": "Không có ký hiệu nào khớp “{{query}}”.",
+    "placeholderCitations": "Lọc khoá, tiêu đề, tác giả…",
+    "placeholderResults": "Lọc vị trí…",
+    "placeholderSymbols": "Lọc nhãn và lệnh…"
+  },
+  "import": {
+    "added_other": "Đã thêm {{count}} tham chiếu vào {{target}}.",
+    "addedWithDuplicates_other": "Đã thêm {{count}} tham chiếu vào {{target}}, {{duplicates}} đã có sẵn.",
+    "allDuplicates_other": "{{count}} tham chiếu đó đã có trong {{target}}.",
+    "defaultTarget": "thư mục",
+    "description": "Thêm tài liệu tham khảo từ trình quản lý trích dẫn hoặc tệp thư mục vào dự án này.",
+    "duplicateNote": "Các tham chiếu có DOI đã tồn tại trong thư mục sẽ bị bỏ qua.",
+    "empty": "Không tìm thấy tài liệu tham khảo nào trong tệp đó.",
+    "endnote": {
+      "button": "Chọn tệp XML, RIS hoặc BibTeX",
+      "description": "Chọn tệp EndNote XML, RIS hoặc BibTeX. Oleafly thêm các tham chiếu vào thư mục của dự án.",
+      "title": "EndNote, RIS hoặc BibTeX"
+    },
+    "failed": "Không thể nhập các tài liệu tham khảo đó.",
+    "nothingNew": "Không có gì mới để thêm vào {{target}}.",
+    "problems_other": "{{count}} vấn đề khi nhập. {{details}}",
+    "readFailed": "Không thể đọc tệp đó.",
+    "title": "Nhập thư viện tài liệu tham khảo",
+    "unrecognized": "Loại tệp không được nhận diện: {{name}}",
+    "zotero": {
+      "button": "Chọn tệp Zotero RDF",
+      "connect": "Kết nối tài khoản Zotero",
+      "connectedDescription": "Nhập mọi tài liệu tham khảo trong thư viện Zotero của bạn, hoặc chọn tệp Zotero RDF bạn đã xuất.",
+      "description": "Trong Zotero, chọn File → Export Library → Zotero RDF. Sau đó chọn tệp đã xuất.",
+      "empty": "Thư viện Zotero của bạn không có tài liệu tham khảo để nhập.",
+      "importLibrary": "Nhập thư viện Zotero",
+      "limited": "Oleafly đã đọc {{fetched}} mục đầu tiên trong {{total}} mục của thư viện Zotero.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Kết quả một phần. Các tệp sai định dạng hoặc không đọc được có thể bỏ sót một số lần xuất hiện.",
+    "stale": "Đang cập nhật. Trích dẫn, ký hiệu và phạm vi của bản sửa đổi trước bị ẩn."
+  },
+  "panel": {
+    "ariaLabel": "Tài liệu tham khảo (Shift-F12)",
+    "clearQuery": "Xoá truy vấn tham chiếu",
+    "cleanLibrary": "Làm sạch thư viện tham khảo",
+    "importAriaLabel": "Nhập tài liệu tham khảo",
+    "issues_other": "{{count}} vấn đề tham chiếu hoặc trích dẫn",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Tài liệu tham khảo",
+    "viewTabs": "Chế độ xem bảng tham chiếu"
+  },
+  "cleanLibrary": {
+    "title": "Làm sạch thư viện tham khảo",
+    "description": "Xem lại khoá trích dẫn và mục trùng lặp trước khi thay đổi tệp của bạn.",
+    "library": "Thư viện tham khảo",
+    "entryCount_other": "{{count}} mục",
+    "footer": "Xem trước sẽ lưu các tệp đang mở của bạn. Khi áp dụng, Oleafly kiểm tra chúng vẫn khớp với bản xem trước và sao lưu bản gốc.",
+    "noBib": "Dự án này không có tệp .bib để làm sạch.",
+    "entriesKept": "{{kept}} trên {{total}} mục sẽ được giữ lại.",
+    "changes": "Thay đổi và ghi chú",
+    "noChanges": "Không có thay đổi tệp để áp dụng.",
+    "filesToUpdate": "Tệp cần cập nhật: {{files}}",
+    "none": "Không có",
+    "introSafeChanges": "Khoá trích dẫn được chuẩn hoá. Bản trùng DOI chỉ bị xoá khi mọi chi tiết của chúng có thể được giữ lại.",
+    "introReview": "Các tiêu đề tương tự và siêu dữ liệu xung đột được giữ trong thư viện để xem xét.",
+    "preview": "Xem trước",
+    "reviewTitle": "Xem lại trước khi áp dụng",
+    "reviewBody": "Xem trước các thay đổi để biết mục và trích dẫn nào sẽ được cập nhật.",
+    "statusAttention": "Cần được chú ý",
+    "statusWorking": "Đang xử lý…",
+    "statusPreviewReady": "Bản xem trước đã sẵn sàng",
+    "statusReady": "Sẵn sàng xem trước",
+    "refreshPreview": "Làm mới bản xem trước",
+    "previewChanges": "Xem trước thay đổi",
+    "apply": "Áp dụng và viết lại trích dẫn",
+    "truncated": "Bản xem trước hiển thị 500 dòng đầu của mỗi phiên bản.",
+    "actionRenamed": "{{old}} được đổi tên thành {{new}}",
+    "actionDuplicate": "{{removed}} bị xoá vì trùng với {{kept}} (khớp theo {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Không thể tải lại các tệp đã làm sạch. Hãy mở lại dự án trước khi chỉnh sửa.",
+    "cleaned": "Đã làm sạch thư viện. Giữ {{kept}} trên {{total}} mục.",
+    "cleanedWithBackup": "Đã làm sạch thư viện. Giữ {{kept}} trên {{total}} mục. Tệp gốc được lưu tại {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Dự án đã thay đổi sau truy vấn này. Hãy chạy lại Tìm tham chiếu để dùng phạm vi nguồn hiện tại.",
+      "title": "Kết quả tham chiếu đã hết hạn"
+    },
+    "noLocations": {
+      "detail": "Ký hiệu tồn tại trong bản sửa đổi này, nhưng không có định nghĩa hay lần xuất hiện nào khớp.",
+      "title": "Không tìm thấy vị trí"
+    },
+    "none": {
+      "detail": "Đặt con trỏ trên một nhãn, trích dẫn, lệnh hoặc môi trường rồi nhấn Shift-F12.",
+      "title": "Không có truy vấn tham chiếu"
+    }
+  },
+  "tabs": {
+    "citations": "Trích dẫn",
+    "results": "Tài liệu tham khảo",
+    "symbols": "Ký hiệu"
+  },
+  "trees": {
+    "citations": "Trích dẫn trong dự án",
+    "noCitations": "Không tìm thấy mục thư mục hay lần dùng trích dẫn nào.",
+    "noSymbols": "Không tìm thấy ký hiệu do dự án định nghĩa.",
+    "symbols": "Ký hiệu dự án"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Không thể phân tích bản sửa đổi mới nhất của dự án. Tệp nguồn không bị thay đổi.",
+      "title": "Phân tích dự án thất bại"
+    },
+    "indexing": {
+      "detail": "Tham chiếu và trích dẫn sẽ xuất hiện khi bản sửa đổi hiện tại của dự án sẵn sàng.",
+      "title": "Đang lập chỉ mục trí tuệ dự án"
+    },
+    "noProject": {
+      "detail": "Mở một dự án tài liệu để xem trích dẫn, ký hiệu và tham chiếu chéo giữa các tệp.",
+      "title": "Không có dự án đang mở"
+    },
+    "offline": {
+      "detail": "Hiện không thể kiểm tra tham chiếu và trích dẫn trong không gian làm việc này.",
+      "title": "Dịch vụ phân tích không khả dụng"
+    },
+    "unsupported": {
+      "detail": "Dự án đang hoạt động không dùng engine tài liệu được hỗ trợ.",
+      "title": "Trí tuệ dự án không khả dụng"
+    },
+    "waiting": {
+      "detail": "Bản sửa đổi mới nhất của dự án chưa được lập chỉ mục.",
+      "title": "Đang chờ phân tích dự án"
+    }
+  },
+  "bibliographyStyle": {
+    "label": "Kiểu trích dẫn",
+    "ariaLabel": "Kiểu trích dẫn cho thư mục trong {{path}}",
+    "failed": "Oleafly không thể đổi kiểu trích dẫn."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} và cộng sự",
+      "noYear": "không ngày",
+      "keySource": {
+        "bbt": "Khoá từ Better BibTeX",
+        "native": "Khoá từ Zotero",
+        "extra": "Khoá từ trường Extra trong Zotero",
+        "generated": "Khoá do Oleafly tạo"
+      },
+      "addFailed": "Oleafly không thể thêm {{key}} vào thư mục. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Trong Zotero, mở Settings > Advanced và bật \"Allow other applications on this computer to communicate with Zotero\".",
+      "unsupported": "Cập nhật Zotero lên phiên bản 7 trở lên để tìm trong thư viện của bạn từ Oleafly.",
+      "keyRejected": "Zotero không còn chấp nhận API key của bạn. Hãy kết nối lại tài khoản trong cài đặt Zotero.",
+      "closed": "Mở Zotero để tìm trong thư viện của bạn ở đây, hoặc kết nối tài khoản zotero.org.",
+      "closedCached": "Zotero đã đóng. Kết quả từ lần đồng bộ cuối, {{time}}.",
+      "bbtMissing": "Better BibTeX không phản hồi, nên khoá mới đến từ Zotero. Hãy kiểm tra nó đã được cài và bật.",
+      "action": "Cài đặt Zotero"
+    },
+    "actions": {
+      "addFromZotero": "Thêm từ Zotero",
+      "addAllMissing_other": "Thêm tất cả {{count}} trích dẫn còn thiếu từ Zotero",
+      "notInLibrary": "{{key}} không có trong thư viện Zotero của bạn.",
+      "changed": "Mục này đã thay đổi trong Zotero kể từ khi bạn thêm.",
+      "changedEdited": "Mục này đã thay đổi trong Zotero, và bạn cũng đã sửa nó ở đây.",
+      "update": "Cập nhật từ Zotero",
+      "updated": "Đã cập nhật {{key}} từ Zotero.",
+      "updateFailed": "Oleafly không thể cập nhật {{key}} từ Zotero. Hãy thử lại."
+    },
+    "chooseBibliography": {
+      "title": "Tài liệu tham khảo mới nên đi đâu?",
+      "description": "Dự án này có nhiều tệp thư mục. Oleafly thêm tài liệu tham khảo mới vào tệp bạn chọn và ghi nhớ cho dự án này.",
+      "confirm": "Dùng tệp này"
+    },
+    "handEdits": {
+      "title": "Thay thế các chỉnh sửa của bạn?",
+      "description": "Bạn đã sửa {{key}} bằng tay. Thay thế bằng phiên bản từ Zotero sẽ xoá các thay đổi đó.",
+      "confirm": "Dùng phiên bản Zotero",
+      "cancel": "Giữ bản của tôi"
+    },
+    "handList": {
+      "title": "Di chuyển danh sách tham chiếu của bạn?",
+      "description": "Bài báo này liệt kê tài liệu tham khảo bằng tay. Hãy chuyển chúng vào {{path}} để dùng chung một danh sách đánh số với các bài bạn trích dẫn từ Zotero.",
+      "confirm": "Di chuyển danh sách"
+    },
+    "missing": {
+      "title": "Thêm trích dẫn còn thiếu từ Zotero",
+      "loading": "Đang kiểm tra thư viện Zotero của bạn…",
+      "none": "Mọi khoá được trích dẫn đều đã có trong thư mục của bạn.",
+      "found_other": "{{count}} khoá được trích dẫn có trong Zotero",
+      "duplicates_other": "{{count}} khoá trích dẫn các bài đã có trong thư mục của bạn",
+      "duplicateRow": "{{key}} là cùng bài với {{existing}}",
+      "notFound_other": "{{count}} khoá được trích dẫn không có trong Zotero",
+      "confirm_other": "Thêm {{count}} mục",
+      "done_other": "{{count}} mục hiện đã có trong {{path}}.",
+      "failed": "Oleafly không thể thêm các mục. {{detail}}"
+    },
+    "update": {
+      "title": "Cập nhật mục .bib từ Zotero",
+      "loading": "Đang kiểm tra thay đổi trong Zotero…",
+      "none": "Thư mục của bạn khớp với Zotero.",
+      "handEdited": "Đã sửa bằng tay",
+      "handEditedNote": "Các mục bạn sửa bằng tay không được chọn. Chọn một mục để thay bằng phiên bản từ Zotero.",
+      "confirm_other": "Cập nhật {{count}} mục",
+      "done_other": "Đã cập nhật {{count}} mục."
+    }
+  }
+}

@@ -313,12 +313,22 @@ fn inspect_zip(file: std::fs::File, policy: ArchiveMemberPolicy<'_>) -> Result<(
             .enclosed_name()
             .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?;
         let kind = if entry.is_dir() { "directory" } else { "file" };
-        if let Some(mode) = entry.unix_mode() {
+        if let Some(mode) = zip_member_mode(&entry) {
             validate_zip_member_mode(&path, mode, entry.is_dir())?;
         }
         manifest.record(kind, &path, entry.size(), None)?;
     }
     manifest.finish()
+}
+
+// zip's `unix_mode()` clears the setuid, setgid and sticky bits, which are the
+// bits `validate_tar_mode` refuses, so a Unix member's mode is read raw.
+fn zip_member_mode<R: std::io::Read>(entry: &zip::read::ZipFile<'_, R>) -> Option<u32> {
+    let attributes = entry.external_attributes();
+    if entry.system() == zip::System::Unix && attributes != 0 {
+        return Some(attributes >> 16);
+    }
+    entry.unix_mode()
 }
 
 pub(crate) fn extract_all(
@@ -538,16 +548,21 @@ mod tests {
     fn zip_members_with_unsafe_unix_permissions_are_rejected() {
         let directory = tempfile::tempdir().unwrap();
         let archive = directory.path().join("unsafe.zip");
-        let file = std::fs::File::create(&archive).unwrap();
-        let mut writer = zip::ZipWriter::new(file);
-        let options = zip::write::SimpleFileOptions::default()
-            .system(zip::System::Unix)
-            .unix_permissions(0o777);
-        writer.start_file("TinyTeX/tool", options).unwrap();
-        writer.write_all(b"x").unwrap();
-        writer.finish().unwrap();
+        // On Windows zip writes DOS entries unless told otherwise, and readers
+        // ignore a DOS entry's Unix bits. `unix_permissions()` keeps only 0o777,
+        // so the setuid member needs the raw attributes.
+        for mode in [0o100777, 0o104755] {
+            let file = std::fs::File::create(&archive).unwrap();
+            let mut writer = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default()
+                .system(zip::System::Unix)
+                .external_attributes(mode << 16);
+            writer.start_file("TinyTeX/tool", options).unwrap();
+            writer.write_all(b"x").unwrap();
+            writer.finish().unwrap();
 
-        let error = inspect_zip(std::fs::File::open(archive).unwrap(), policy()).unwrap_err();
-        assert!(error.contains("unsafe permissions"), "{error}");
+            let error = inspect_zip(std::fs::File::open(&archive).unwrap(), policy()).unwrap_err();
+            assert!(error.contains("unsafe permissions"), "{mode:o}: {error}");
+        }
     }
 }

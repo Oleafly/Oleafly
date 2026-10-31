@@ -1,0 +1,63 @@
+{
+  "title": "Cài đặt ứng dụng",
+  "description": "Lưu cài đặt của bạn vào tệp JSON, hoặc nạp tệp mà người khác chia sẻ với bạn. API key, tài khoản, tích hợp và agent không bao giờ được đưa vào.",
+  "export": "Xuất",
+  "import": "Nhập",
+  "view": {
+    "label": "Xem JSON cài đặt",
+    "summary": "Bản xem trước chỉ đọc của tệp mà mục Xuất lưu lại.",
+    "loading": "Đang đọc cài đặt của bạn",
+    "failed": "Không đọc được cài đặt của bạn."
+  },
+  "dialog": {
+    "pickTitle": "Nhập cài đặt",
+    "filterName": "Cài đặt Oleafly"
+  },
+  "toast": {
+    "exported": "Đã xuất {{name}} ra đĩa",
+    "exportFailed": "Không lưu được tệp cài đặt.",
+    "readFailed": "Không mở được tệp đó.",
+    "imported": "Đã nhập cài đặt.",
+    "unchanged": "Cài đặt của bạn đã khớp với {{name}}.",
+    "applyFailed": "Một số cài đặt không lưu được. Hãy thử nhập lại.",
+    "cloudEmpty": "{{provider}} của bạn chưa có cài đặt Oleafly nào. Hãy bật đồng bộ đám mây trên một máy khác trước.",
+    "cloudLoadFailed": "Không tải được cài đặt từ {{provider}} của bạn.",
+    "cloudUnreadable": "Không đọc được cài đặt trong {{provider}} của bạn."
+  },
+  "confirm": {
+    "title": "Thay thế cài đặt của bạn?",
+    "description": "Cài đặt từ {{name}} sẽ thay thế cài đặt của bạn. Những mục tệp không có sẽ giữ nguyên.",
+    "changes": "Cài đặt sẽ thay đổi: {{count}}",
+    "ignored": "Không nhận diện được nên sẽ bị bỏ qua:",
+    "action": "Nhập",
+    "cloudDescription": "Cài đặt từ {{provider}} của bạn sẽ thay thế cài đặt của bạn. Những mục không có sẽ giữ nguyên."
+  },
+  "error": {
+    "title": "{{name}} chưa được nhập",
+    "notJson": "Tệp không phải JSON hợp lệ.",
+    "notSettings": "Đây không phải tệp cài đặt Oleafly.",
+    "invalid": "Cấu hình cài đặt bạn muốn nhập không hợp lệ, hãy sửa các lỗi này rồi nhập lại:",
+    "more": "+{{count}} mục khác"
+  },
+  "valueErrors": {
+    "boolean": "phải là true hoặc false",
+    "oneOf": "phải là một trong: {{values}}",
+    "range": "phải là số từ {{min}} đến {{max}}",
+    "wholeRange": "phải là số nguyên từ {{min}} đến {{max}}",
+    "wholeRangeStep": "phải là số nguyên từ {{min}} đến {{max}}, theo bước {{step}}",
+    "hexColor": "phải là màu như #2563eb",
+    "hexColorOrEmpty": "phải là màu như #2563eb, hoặc \"\" để dùng màu của giao diện",
+    "text": "phải là văn bản, tối đa {{max}} ký tự",
+    "list": "phải là danh sách tối đa {{max}} mục",
+    "listItem": "không phải mục được phép",
+    "duplicate": "bị lặp hai lần",
+    "object": "phải là một nhóm cài đặt trong ngoặc nhọn",
+    "unknownKey": "không phải cài đặt mà Oleafly biết",
+    "dictionaryLocale": "phải là mã từ điển như en_US",
+    "shortcut": "phải là phím tắt như Mod-Shift-k, hoặc \"default\"",
+    "editorKey": "phải là phím như Mod-d, \"\" nếu không có, hoặc \"default\""
+  },
+  "importFromLocal": "Nhập từ thiết bị này",
+  "importFromCloud": "Nhập từ đám mây",
+  "cloudSource": "{{provider}} của bạn"
+}

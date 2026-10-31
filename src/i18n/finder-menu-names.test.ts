@@ -22,6 +22,7 @@ const FINDER_MENUS: Record<string, { services: string; quickActions: string; cus
   sv: { services: "Tjänster", quickActions: "Snabbåtgärder", customize: "Anpassa" },
   tr: { services: "Servisler", quickActions: "Hızlı Eylemler", customize: "Özelleştir" },
   uk: { services: "Служби", quickActions: "Швидкі дії", customize: "Налаштувати" },
+  vi: { services: "Dịch vụ", quickActions: "Thao tác nhanh", customize: "Tuỳ chỉnh" },
   "zh-Hans": { services: "服务", quickActions: "快速操作", customize: "自定义" },
   "zh-Hant": { services: "服務", quickActions: "快速動作", customize: "自訂" },
 };

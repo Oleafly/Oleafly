@@ -1,0 +1,686 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Bố cục hai cột",
+      "detailTwoColumn": "Bộ phân tích CV thường tuyến tính hoá hai cột sai thứ tự. Hãy dùng bố cục một cột cho tài liệu cần ATS phân tích.",
+      "titleMultiColumn": "Bố cục nhiều cột",
+      "detailMultiColumn": "Bộ phân tích CV thường tuyến tính hoá các cột sai thứ tự. Hãy dùng một cột cho tài liệu dành cho ATS."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Kiểm tra thứ tự đọc của bố cục hai cột",
+      "detailTwoColumn": "Bố cục xuất bản nhiều cột có thể vẫn tiếp cận được khi cây thẻ PDF giữ đúng trình tự dự kiến. Hãy biên dịch và xác nhận thứ tự đọc thực tế thay vì chỉ coi các cột trực quan là lỗi.",
+      "titleMultiColumn": "Kiểm tra thứ tự đọc của bố cục nhiều cột",
+      "detailMultiColumn": "Các cột không mặc nhiên là không tiếp cận được, nhưng thứ tự thẻ và nội dung phải còn ý nghĩa. Hãy biên dịch và xem trình tự đọc thực tế."
+    },
+    "no-glyphtounicode": {
+      "title": "Chưa khai báo bảng ánh xạ Unicode",
+      "detailEngineNeedsMap": "XeTeX, và engine đi kèm dựng trên đó, không tự tạo bảng ánh xạ glyph sang Unicode, nên văn bản trích xuất có thể không đọc được. Hãy biên dịch và kiểm tra chế độ trình đọc, và ưu tiên phông có ánh xạ Unicode đầy đủ.",
+      "detailAutomatic": "pdfLaTeX và LuaLaTeX đã tự tạo bảng này từ bản phát hành LaTeX 2021-06-01, nên không cần khai báo. Hãy biên dịch và xác nhận văn bản trích xuất. Trên XeTeX, hãy nạp cmap hoặc đổi engine."
+    },
+    "icon-near-contact": {
+      "title": "Biểu tượng cạnh thông tin liên hệ",
+      "detail": "Biểu tượng phông (như \\faPhone hoặc \\faEnvelope) kết xuất thành glyph mà bộ phân tích đọc là ký tự lạ và trình đọc màn hình không gắn nhãn được, nên chi tiết liên hệ bên cạnh có thể bị mất. Hãy đảm bảo email hoặc số điện thoại cũng có dạng văn bản thường chọn được."
+    },
+    "layout-table": {
+      "titleTable": "Nội dung bảng có thể không phân tích thành trường CV",
+      "detailTable": "Công cụ ATS thường làm phẳng nội dung dạng bảng khó đoán. Tránh dùng bảng để đặt văn bản CV cạnh nhau. Bảng dữ liệu nghiên cứu thật được kiểm tra riêng trong Trợ năng.",
+      "titleTikz": "Nội dung TikZ cần phương án thay thế ngữ nghĩa",
+      "detailTikz": "TikZ vẽ nội dung trực quan mà không bộc lộ ý nghĩa dưới dạng văn bản thường. Hãy cung cấp mô tả trợ năng cho đầu ra xuất bản và tránh dùng cho nội dung CV dành cho ATS."
+    },
+    "contact-in-header": {
+      "title": "Thông tin liên hệ ở đầu trang",
+      "detail": "Một số bộ phân tích CV bỏ qua đầu và cuối trang. Hãy đặt email và số điện thoại trong phần thân tài liệu để văn bản trích xuất giữ được chúng."
+    },
+    "figure-alt": {
+      "title": "Hình ảnh không có văn bản thay thế",
+      "detail": "Hình này không có văn bản thay thế mô tả, nên trình đọc màn hình không truyền đạt được. Hãy thêm mô tả, ví dụ \\includegraphics[alt={Ảnh chân dung của tác giả}]{...}. Đánh dấu hình chỉ để trang trí là artifact thay vì vậy.",
+      "detailTypst": "Hình này không có văn bản thay thế, nên trình đọc màn hình không truyền đạt được. Hãy thêm mô tả, ví dụ #image(\"chart.png\", alt: \"Biểu đồ cột doanh số theo năm\").",
+      "detailTypstFigure": "Hình này không có văn bản thay thế, nên trình đọc màn hình không truyền đạt được. Hãy mô tả trên hình hoặc trên figure chứa nó, ví dụ #figure(image(\"chart.png\"), alt: \"Biểu đồ cột doanh số theo năm\")."
+    },
+    "link-text": {
+      "title": "Văn bản liên kết không mô tả",
+      "detail": "Văn bản liên kết như 'nhấp vào đây' hoặc URL trần không cho người dùng trình đọc màn hình biết đích đến. Hãy dùng văn bản nêu rõ đích, ví dụ 'hồ sơ của tôi'."
+    },
+    "mathml-export-hint": {
+      "title": "Xuất bản HTML có MathML để kiểm tra trợ năng của toán",
+      "detail": "Tài liệu có công thức toán. Trình đọc màn hình đọc phương trình ổn định khi chúng là MathML. Hãy dùng Xuất dạng HTML, mà pandoc ghi với --mathml, và mở tệp bằng trình đọc màn hình hoặc công cụ kiểm trợ năng trước khi nộp."
+    },
+    "no-lang": {
+      "title": "Chưa đặt ngôn ngữ tài liệu",
+      "detail": "PDF không có ngôn ngữ, nên trình đọc màn hình có thể đọc với quy tắc phát âm sai. Hãy đặt, ví dụ \\usepackage[english]{babel} hoặc pdflang=en-US của hyperref."
+    },
+    "no-title": {
+      "title": "PDF không có tiêu đề",
+      "detail": "PDF không có tiêu đề trong siêu dữ liệu, thứ công nghệ hỗ trợ và trình duyệt dùng để thông báo tài liệu. Hãy đặt bằng hyperref, ví dụ \\hypersetup{pdftitle={Tên bạn, CV}}.",
+      "detailTypst": "PDF không có tiêu đề trong siêu dữ liệu, thứ công nghệ hỗ trợ và trình duyệt dùng để thông báo tài liệu. Hãy đặt bằng #set document(title: \"Tiêu đề của bạn\") hoặc truyền tiêu đề cho mẫu."
+    },
+    "heading-skip": {
+      "title": "Bỏ cấp tiêu đề",
+      "detail": "Tiêu đề này nhảy sâu hơn một bậc so với tiêu đề trước, phá vỡ dàn bài tài liệu mà trình đọc màn hình và bộ phân tích dựa vào. Đừng bỏ cấp, ví dụ đi section rồi subsection rồi subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Tiêu đề mục không chuẩn: \"{{heading}}\"",
+      "detail": "Bộ phân tích ánh xạ mục bằng cách nhận diện tiêu đề chuẩn như Experience, Education và Skills. Tiêu đề sáng tạo có thể khiến mục đó không được phân loại. Hãy cân nhắc tiêu đề quy ước."
+    },
+    "color-only": {
+      "title": "Kiểm tra màu không phải tín hiệu duy nhất",
+      "detail": "Kiểm tra trước thấy nội dung có màu nhưng không tự xác định được ý nghĩa. Nếu màu phân biệt trạng thái hoặc danh mục, hãy ghép với văn bản, hình khối, độ đậm hoặc tín hiệu nhận biết khác."
+    },
+    "reading-order-risk": {
+      "title": "Bố cục có thể làm lộn xộn thứ tự đọc",
+      "detail": "Ghi chú lề và hình bao đặt nội dung ngoài luồng chính, nên bộ phân tích và trình đọc màn hình có thể đọc sai thứ tự. Hãy kiểm tra thứ tự đọc trong bản xem trước bên dưới sau khi biên dịch."
+    },
+    "ua-standard-without-title": {
+      "title": "PDF/UA được khai báo nhưng thiếu tiêu đề tài liệu",
+      "detailBoth": "Tài liệu này khai báo pdfstandard=ua nhưng không đặt pdftitle và không đặt pdfdisplaydoctitle=true. PDF/UA yêu cầu tiêu đề trong siêu dữ liệu XMP và tuỳ chọn trình xem hiển thị nó, nên đầu ra sẽ tự nhận một chuẩn mà nó không đạt. Hãy nạp hyperref và đặt \\hypersetup{pdftitle={Tiêu đề của bạn}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "Tài liệu này khai báo pdfstandard=ua nhưng không đặt pdftitle. PDF/UA yêu cầu tiêu đề trong siêu dữ liệu XMP và tuỳ chọn trình xem hiển thị nó, nên đầu ra sẽ tự nhận một chuẩn mà nó không đạt. Hãy nạp hyperref và đặt \\hypersetup{pdftitle={Tiêu đề của bạn}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "Tài liệu này khai báo pdfstandard=ua nhưng không đặt pdfdisplaydoctitle=true. PDF/UA yêu cầu tiêu đề trong siêu dữ liệu XMP và tuỳ chọn trình xem hiển thị nó, nên đầu ra sẽ tự nhận một chuẩn mà nó không đạt. Hãy nạp hyperref và đặt \\hypersetup{pdftitle={Tiêu đề của bạn}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "Engine đi kèm không thể tạo đầu ra PDF/UA đã khai báo",
+      "detail": "Tài liệu này khai báo pdfstandard=ua, nhưng engine đi kèm không ghi được cây thẻ, nên PDF sẽ mang tuyên bố PDF/UA mà nó không đạt. Hãy biên dịch bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên, hoặc gỡ khoá pdfstandard."
+    },
+    "table-header-rows": {
+      "title": "Hàng tiêu đề bảng chưa được đánh dấu là tiêu đề",
+      "detail": "Bảng này có đường kẻ dưới hàng đầu, nên nó đọc như tiêu đề, nhưng LaTeX mặc định gắn thẻ mọi ô là ô dữ liệu. Trình đọc màn hình sau đó không gắn được giá trị với cột. Hãy khai báo hàng tiêu đề, ví dụ \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Các cột bị đọc ngang trong đầu ra",
+      "detail": "Trên trang này văn bản của hai cột nằm trên cùng các dòng, nên bộ phân tích đọc ngang thành văn bản lộn xộn và trình đọc màn hình thông báo sai thứ tự. Hãy dùng bố cục một cột cho nội dung cần phân tích. Xem chế độ trình đọc bên dưới."
+    },
+    "pdf-garbled": {
+      "title": "Văn bản lộn xộn hoặc chưa ánh xạ trong đầu ra",
+      "detail": "Văn bản trích xuất chứa ký tự không ánh xạ được sang Unicode, nên sao chép-dán và bộ phân tích thấy đầu ra lộn xộn và trình đọc màn hình không đọc được. Điều này thường nghĩa là thiếu bảng ánh xạ glyph sang Unicode hoặc phông không được nhúng dạng văn bản."
+    },
+    "pdf-selectable": {
+      "title": "Trang không có văn bản chọn được",
+      "detail": "Trang này có ít hoặc không có văn bản trích xuất được, nên bộ phân tích và trình đọc màn hình không thấy gì. Có lẽ nó được kết xuất dạng hình hoặc dùng phông không nhúng dạng văn bản. Hãy đảm bảo nội dung là văn bản thật, chọn được."
+    },
+    "output-clipped-content": {
+      "title": "Văn bản vượt ra ngoài trang",
+      "detail": "Văn bản chọn được nằm ngoài hộp media của trang này và có thể bị cắt hoặc mất khi in và xử lý xuất bản. Hãy kiểm tra công thức rộng, bảng, URL và nội dung định vị."
+    },
+    "output-small-text": {
+      "title": "Phát hiện văn bản rất nhỏ",
+      "detail_other": "{{count}} đoạn văn bản đo dưới khoảng 7 pt. Chữ nhỏ khó đọc khi in và ở mức thu phóng thường. Hãy xác nhận hội nghị cho phép và tăng kích thước các nhãn hoặc chú thích nhỏ không thiết yếu."
+    },
+    "pdf-no-bookmarks": {
+      "title": "PDF dài không có dấu trang",
+      "detail": "Tài liệu dài nên có dàn dấu trang phân cấp để người dùng bàn phím và công nghệ hỗ trợ điều hướng các mục mà không phải đọc từng trang. Đây là thực hành tốt của WCAG chứ không phải yêu cầu PDF/UA. Hãy nạp hyperref hoặc bookmark để phát ra dàn dấu trang."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "Không thể kiểm tra siêu dữ liệu PDF",
+      "detail": "Kiểm tra trước không đọc được siêu dữ liệu PDF, nên không xác minh được tiêu đề hoặc ngôn ngữ tài liệu. Đây là kết quả chưa rõ, không phải bằng chứng các trường đó thiếu. Hãy biên dịch lại và chạy kiểm tra lần nữa."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF thiếu ngôn ngữ và tiêu đề",
+      "titleLang": "PDF thiếu ngôn ngữ",
+      "titleTitle": "PDF thiếu tiêu đề",
+      "detail": "Công nghệ hỗ trợ và trình duyệt dùng ngôn ngữ catalogue và tiêu đề của PDF để thông báo tài liệu đúng cách. Hãy đặt bằng hyperref, ví dụ \\hypersetup{pdftitle={Tên bạn, CV}, pdflang=en-US}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "Không thể kiểm tra trạng thái gắn thẻ PDF",
+      "detail": "Kiểm tra trước không đọc được từ điển MarkInfo của PDF. Đó là kết quả chưa rõ, không phải bằng chứng theo hướng nào, nên nó sẽ không kết luận đầu ra có thẻ hay không chỉ dựa trên kiểm tra này."
+    },
+    "compile-failed": {
+      "title": "Lần biên dịch mới nhất thất bại",
+      "detail": "Đầu ra nộp bài phải đến từ bản dựng thành công. Hãy sửa lỗi biên dịch đầu tiên, biên dịch lại và chạy lại Kiểm tra trước."
+    },
+    "compile-overfull-box": {
+      "title_other": "{{count}} dòng tràn trong đầu ra",
+      "detail": "Trình biên dịch báo nội dung vượt hộp văn bản, tới {{width}} pt. Hãy kiểm tra các vị trí này để tìm văn bản, công thức, bảng hoặc liên kết bị cắt."
+    },
+    "compile-missing-glyph": {
+      "title_other": "{{count}} glyph bị thiếu",
+      "detail": "Phông đã chọn không kết xuất được mọi ký tự. Glyph thiếu có thể lặng lẽ biến mất khỏi PDF, kể cả ký hiệu trong tên, công thức và trích dẫn."
+    },
+    "compile-unresolved-references": {
+      "title": "Đầu ra đã biên dịch có tham chiếu chưa giải quyết",
+      "detail": "Ít nhất một trích dẫn hoặc tham chiếu chéo vẫn chưa giải quyết sau khi biên dịch. PDF nộp đi có thể chứa [?] hoặc ??. Hãy kiểm tra log và chạy các lượt thư mục và LaTeX cần thiết."
+    },
+    "compile-rerun-required": {
+      "title": "Cần thêm một lượt biên dịch",
+      "detail": "Log mới nhất nói nhãn, trích dẫn hoặc mục lục chưa ổn định. Hãy biên dịch lại cho tới khi cảnh báo chạy lại biến mất trước khi xuất."
+    },
+    "compile-duplicate-destination": {
+      "title": "Đích PDF trùng nhau",
+      "detail": "Hai neo chia sẻ cùng đích, nên liên kết hoặc dấu trang có thể nhảy sai chỗ. Điều này thường do nhãn trùng hoặc đặt lại số trang."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Kích thước trang hỗn hợp trong một PDF",
+      "detail_other": "PDF chứa {{count}} kích thước trang ({{sizes}}). Hộp media hỗn hợp thường cho thấy một trang hoặc hình được chèn sai và có thể trượt kiểm tra sản xuất của nhà xuất bản."
+    },
+    "output-tagpdf-warning": {
+      "title_other": "Gắn thẻ báo {{count}} vấn đề",
+      "detail": "Mã gắn thẻ đã ghi các cảnh báo này vào log: {{warnings}} Mỗi cảnh báo là một chỗ cây cấu trúc không khớp nội dung. Hãy sửa tại nguồn và biên dịch lại."
+    },
+    "output-tagging-status": {
+      "title_other": "Báo cáo trạng thái gắn thẻ đánh dấu {{count}} mục",
+      "detail": "LaTeX đã ghi báo cáo trạng thái gắn thẻ của riêng nó ở cuối bản dựng.",
+      "partClass": "Lớp {{name}} đang {{status}}.",
+      "partBlocking": "Không tương thích với gắn thẻ: {{files}}.",
+      "partUnproven": "Chưa có kết luận được ghi cho: {{files}}.",
+      "partPartial": "Chỉ gắn thẻ một phần: {{files}}.",
+      "partAdvice": "Bất cứ thứ gì không gắn thẻ được đều có thể khiến cả mục bị bỏ khỏi cây cấu trúc, nên hãy thay thế những gì có thể."
+    },
+    "pdf-structure-single-pass": {
+      "title": "Cây thẻ trông như lượt biên dịch đầu",
+      "detail": "PDF được đánh dấu là có thẻ nhưng cây cấu trúc gần như trống, đúng như một lượt biên dịch đơn tạo ra. Đầu ra có thẻ cần hai lượt. Hãy biên dịch lại và kiểm tra lại."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "PDF này tự nhận PDF/UA-{{part}} nhưng không đạt",
+      "detail": "Siêu dữ liệu XMP khai báo pdfuaid:part {{part}}, nhưng tệp không chứng minh được điều đó.",
+      "partNoXmpTitle": "Không có tiêu đề tài liệu trong siêu dữ liệu XMP.",
+      "partNoDisplayDocTitle": "DisplayDocTitle không được đặt thành true.",
+      "partNotTagged": "Tệp không được gắn thẻ.",
+      "partAdvice": "Bất cứ thứ gì tin vào tuyên bố này sẽ báo PDF là tuân thủ trong khi không phải, nên hãy lấp khoảng trống hoặc bỏ tuyên bố. Với hyperref, hãy đặt \\hypersetup{pdftitle={Tiêu đề của bạn}, pdfdisplaydoctitle=true} và biên dịch có bật gắn thẻ."
+    },
+    "pdf-xmp-title": {
+      "title": "Tiêu đề chỉ có trong từ điển Info",
+      "detail": "Tiêu đề tài liệu được đặt trong từ điển Info nhưng không phải dc:title trong siêu dữ liệu XMP, nơi PDF/UA tìm nó. Nạp hyperref với pdftitle sẽ ghi cả hai."
+    },
+    "pdf-display-doc-title": {
+      "title": "Trình đọc sẽ hiện tên tệp, không phải tiêu đề",
+      "detail": "ViewerPreferences không có mục DisplayDocTitle đặt true, nên trình đọc PDF thông báo tên tệp trong cửa sổ và cho công nghệ hỗ trợ. Hãy đặt bằng hyperref, ví dụ \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "PDF tự đánh dấu việc gắn thẻ của nó là không đáng tin",
+      "detail": "MarkInfo đặt Suspects thành true, tức là nhà sản xuất nói cây thẻ có thể không khớp nội dung hiển thị. Hãy biên dịch lại bằng engine hiện hành và kiểm tra cảnh báo gắn thẻ trong log."
+    },
+    "pdf-link-alt": {
+      "title_other": "{{count}} chú thích liên kết không có mô tả",
+      "detail": "Chú thích liên kết không có mục Contents không cho trình đọc màn hình thứ gì để thông báo khi nó liệt kê liên kết trên trang. Hãy mô tả đích trong văn bản liên kết và để hyperref mang văn bản đó vào chú thích."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}}% văn bản nằm ngoài cây thẻ",
+      "detail": "{{untagged}} trên {{total}} đoạn văn bản không được liên kết với gì trong cây thẻ, nên trình đọc màn hình bỏ qua chúng. Artifact không được tính. Nội dung thật phải được gắn thẻ, và nội dung trang trí phải được đánh dấu là artifact, ví dụ \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "Không thể kiểm tra đầy đủ cấu trúc PDF",
+      "detail_other": "Không thể trích xuất cây cấu trúc trợ năng cho các trang {{pages}}. Kiểm tra trước sẽ không coi cấu trúc không có sẵn là bằng chứng PDF không được gắn thẻ."
+    },
+    "pdf-untagged-output": {
+      "title": "PDF này không được gắn thẻ",
+      "detail": "PDF đã biên dịch không có cây cấu trúc, nên trình đọc màn hình không nhận được tiêu đề, danh sách, bảng hoặc thứ tự đọc, và tệp không thể đáp ứng điều 7.1 của PDF/UA-1. Đầu ra có thẻ cần pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên với \\DocumentMetadata{tagging=on}. Engine đi kèm không tạo được thẻ. Các kiểm tra nguồn và đầu ra ở trên vẫn áp dụng trong lúc chờ."
+    },
+    "pdf-structure-missing": {
+      "title": "PDF có thẻ nhưng không có cây cấu trúc đọc được",
+      "detail": "PDF tự khai báo có thẻ, nhưng Kiểm tra trước không tìm thấy cấu trúc tài liệu để điều hướng. Trình đọc màn hình có thể không nhận được tiêu đề, danh sách, bảng hoặc thứ tự đọc. Gắn thẻ cần hai lượt biên dịch, nên hãy biên dịch lại và kiểm tra lại trước khi coi đây là kết quả cuối."
+    },
+    "output-figure-alt": {
+      "title": "Hình có thẻ không có văn bản thay thế",
+      "detail": "Hình này có thẻ nhưng không có văn bản thay thế, nên trình đọc màn hình không mô tả được. Hãy thêm mô tả tại nguồn, ví dụ \\includegraphics[alt={...}]{...}. Đánh dấu hình trang trí bằng [artifact] thay vì vậy."
+    },
+    "output-formula-alt": {
+      "title": "Phương trình không có phương án văn bản thay thế",
+      "detail": "Theo PDF/UA-1, Formula cần Alt hoặc ActualText. Hãy thêm tại nguồn, ví dụ bằng \\tagpdfsetup hoặc khoá alt trên phương trình. Theo PDF/UA-2, bạn có thể liên kết MathML thay thế bằng cách biên dịch với LuaLaTeX và \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "Bảng có thẻ không có ô tiêu đề",
+      "detail": "Bảng này không có ô tiêu đề (TH), nên trình đọc màn hình không gắn được dữ liệu với tiêu đề cột hoặc hàng. Hãy đánh dấu hàng tiêu đề, ví dụ \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Bỏ cấp tiêu đề trong cây thẻ",
+      "detail": "Các tiêu đề có thẻ nhảy hơn một bậc (ví dụ H1 thẳng sang H3), phá vỡ dàn bài mà trình đọc màn hình dùng để điều hướng. Đừng bỏ cấp tiêu đề."
+    },
+    "ats-no-name": {
+      "title": "Bộ phân tích không nhận ra tên của bạn",
+      "detail": "Không tìm thấy tên người hợp lý trong văn bản trích xuất. Hãy giữ tên dưới dạng văn bản thường gần đầu tài liệu, ngoài đầu trang, đồ họa và hộp văn bản định vị."
+    },
+    "ats-no-email": {
+      "title": "Bộ phân tích không tìm thấy email của bạn",
+      "detail": "Không tìm thấy địa chỉ email trong văn bản trích xuất, trường mà bộ phân tích dựa vào nhất. Nếu email nằm cạnh biểu tượng hoặc trong đầu trang, nó có thể không phải văn bản chọn được. Hãy đặt trong phần thân dưới dạng văn bản thường."
+    },
+    "ats-no-phone": {
+      "title": "Bộ phân tích không tìm thấy số điện thoại",
+      "detail": "Không tìm thấy số điện thoại trong văn bản trích xuất. Nếu có nhưng bị ẩn sau biểu tượng hoặc trong đầu trang, hãy thêm dưới dạng văn bản thường chọn được trong phần thân."
+    },
+    "ats-no-experience": {
+      "title": "Bộ phân tích không phát hiện mục Kinh nghiệm làm việc",
+      "detail": "Không tìm thấy tiêu đề Experience chuẩn, nên bộ phân tích có thể không nhóm các vai trò của bạn thành lịch sử làm việc. Hãy dùng tiêu đề quy ước như Experience hoặc Work Experience dưới dạng văn bản thật, chọn được."
+    },
+    "ats-long-resume": {
+      "title_other": "CV dài {{count}} trang",
+      "detail": "Nhiều quy trình tuyển dụng mong đợi một hoặc hai trang, dù CV cấp cao, học thuật và nhà nước có thể dài hơn. Hãy xác nhận độ dài này phù hợp vai trò và loại tài liệu."
+    },
+    "refs-incomplete-metadata": {
+      "title_other": "{{count}} mục thư mục thiếu siêu dữ liệu",
+      "detail": "Bản ghi không đầy đủ có thể tạo tham chiếu hỏng hoặc mơ hồ trong kiểu của nhà xuất bản. {{examples}}.",
+      "detailTruncated": "Bản ghi không đầy đủ có thể tạo tham chiếu hỏng hoặc mơ hồ trong kiểu của nhà xuất bản. {{examples}} · …"
+    },
+    "refs-malformed-doi": {
+      "title_other": "{{count}} giá trị DOI có vẻ sai định dạng",
+      "detail": "Hãy xem lại trường DOI cho {{keys}}. Chỉ lưu định danh DOI, ví dụ 10.1000/example, thay vì văn bản mô tả."
+    },
+    "refs-duplicate-title": {
+      "title_other": "{{count}} nhóm tham chiếu có thể trùng",
+      "detail": "Các khoá này có tiêu đề chuẩn hoá giống nhau: {{groups}}. Hãy gộp bản trùng thật để kiểu trích dẫn và siêu dữ liệu nhất quán."
+    },
+    "refs-uncited-entries": {
+      "title_other": "{{count}} mục thư mục không được trích dẫn",
+      "detail": "Mục không dùng làm nhiễu siêu dữ liệu nộp bài và khiến quản lý trùng khó hơn. Hãy xem lại {{keys}}.",
+      "detailTruncated": "Mục không dùng làm nhiễu siêu dữ liệu nộp bài và khiến quản lý trùng khó hơn. Hãy xem lại {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_other": "{{count}} nhãn được định nghĩa trong nhiều tệp",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_other": "{{count}} nhãn hình, bảng hoặc phương trình không được tham chiếu",
+      "detail": "Hãy xác nhận mỗi kết quả được đánh số đều được bàn tới trong bản thảo: {{labels}}.",
+      "detailTruncated": "Hãy xác nhận mỗi kết quả được đánh số đều được bàn tới trong bản thảo: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "Trích dẫn \"{{key}}\" không có trong .bib nào",
+      "detail": "Không tìm thấy khoá trích dẫn này trong thư mục đã nạp, nên nó sẽ hiện [?] trong PDF. Hãy kiểm tra khoá, hoặc thêm mục vào .bib (Thêm trích dẫn có thể tải nó).",
+      "titleTypst": "Trích dẫn \"{{key}}\" không có trong thư mục",
+      "detailTypst": "Khoá này không có trong tệp thư mục nào dự án nạp, nên biên dịch thất bại. Hãy kiểm tra khoá, hoặc thêm mục vào tệp .bib hoặc .yml Hayagriva."
+    },
+    "refs-undefined-ref": {
+      "title": "Tham chiếu tới \"{{label}}\" không có \\label khớp",
+      "detail": "Tham chiếu chéo này trỏ tới nhãn chưa định nghĩa, nên nó sẽ hiện ?? trong PDF. Hãy kiểm tra tên nhãn, hoặc thêm \\label còn thiếu.",
+      "titleTypst": "Không có nhãn hoặc mục tên \"{{label}}\"",
+      "detailTypst": "Typst dừng biên dịch tại đây. Hãy kiểm tra chính tả, hoặc thêm <label> hoặc mục thư mục còn thiếu.",
+      "detailTypstPackage": "Không nhãn hay mục thư mục nào trong dự án có tên này. Một gói có thể tạo nhãn khi tài liệu biên dịch, như mục thuật ngữ. Nếu log biên dịch báo, hãy kiểm tra chính tả."
+    },
+    "refs-duplicate-label": {
+      "title": "Nhãn trùng \"{{label}}\"",
+      "detail": "Cùng một nhãn được định nghĩa nhiều lần, nên tham chiếu tới nó mơ hồ. Hãy làm mỗi nhãn duy nhất."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Không tìm thấy hình: {{file}}",
+      "detailImage": "\\includegraphics này trỏ tới tệp không có trong dự án, nên hình sẽ bị thiếu. Hãy kiểm tra tên tệp và đường dẫn.",
+      "titleInclude": "Không tìm thấy tệp include: {{file}}",
+      "detailInclude": "\\input hoặc \\include này trỏ tới tệp không có trong dự án. Hãy kiểm tra tên tệp và đường dẫn.",
+      "detailImageTypst": "Không tệp dự án nào khớp đường dẫn hình này, nên biên dịch thất bại. Typst đọc đường dẫn tương đối với tệp, hoặc từ gốc dự án khi bắt đầu bằng /.",
+      "detailIncludeTypst": "Không tệp dự án nào khớp đường dẫn #include hoặc #import này, nên biên dịch thất bại. Hãy kiểm tra tên tệp và đường dẫn."
+    },
+    "refs-bib-missing": {
+      "title": "Không tìm thấy tệp thư mục: {{file}}",
+      "detail": "\\bibliography hoặc \\addbibresource này trỏ tới tệp không có trong dự án, nên mọi trích dẫn sẽ hiện [?]. Hãy kiểm tra tên tệp, hoặc nhập thư viện tham chiếu để tạo nó.",
+      "detailTypst": "Lệnh #bibliography này trỏ tới tệp không có trong dự án, nên biên dịch thất bại. Hãy kiểm tra tên tệp, hoặc nhập thư viện tham chiếu để tạo nó."
+    },
+    "refs-duplicate-bib": {
+      "title": "Mục thư mục trùng: {{keys}}",
+      "detail": "Các mục này chia sẻ DOI {{doi}}, nên chúng là cùng một tham chiếu dưới các khoá khác nhau. Hãy giữ một và trích dẫn nó, nếu không thư mục sẽ liệt kê hai lần."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Khoá trích dẫn \"{{key}}\" được định nghĩa nhiều lần",
+      "detail": "Được định nghĩa tại {{places}}. BibTeX chỉ dùng mục đầu tiên với khoá này, và bỏ qua chữ hoa khi so khoá. Hãy giữ một mục, hoặc đặt khoá mới cho các mục khác và cập nhật trích dẫn dùng chúng.",
+      "detailBiber": "Được định nghĩa tại {{places}}. Khi biber dựng thư mục, nó chỉ dùng mục đầu tiên với khoá này. Hãy giữ một mục, hoặc đặt khoá mới cho các mục khác và cập nhật trích dẫn dùng chúng.",
+      "detailTypst": "Được định nghĩa tại {{places}}. Typst dừng biên dịch khi hai mục thư mục chia sẻ khoá. Hãy giữ một mục, hoặc đặt khoá mới cho các mục khác và cập nhật trích dẫn dùng chúng."
+    },
+    "submission-path-case": {
+      "title": "Chữ hoa thường của tên tệp không khớp: {{target}}",
+      "detailFigure": "Hình này chỉ phân giải được trên hệ thống tệp không phân biệt hoa thường. Dự án chứa \"{{match}}\", nên hãy khớp đúng chữ hoa thường đó trước khi nộp cho hệ thống dựng trên Linux.",
+      "detailInclude": "Tệp include này chỉ phân giải được trên hệ thống tệp không phân biệt hoa thường. Dự án chứa \"{{match}}\", nên hãy khớp đúng chữ hoa thường đó trước khi nộp cho hệ thống dựng trên Linux."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Thiếu hình: {{target}}",
+      "titleInclude": "Thiếu tệp include: {{target}}",
+      "detail": "Không tệp dự án nào phân giải tham chiếu này từ {{file}}. Bản dựng nộp bài sạch sẽ thất bại dù bộ nhớ đệm cục bộ hiện có thể cho tài liệu biên dịch."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "hình không có chú thích",
+      "titleTable": "bảng không có chú thích",
+      "detail": "Hình và bảng xuất bản nên có chú thích mô tả được đánh số để có thể tham chiếu và hiểu độc lập."
+    },
+    "submission-label-before-caption": {
+      "title": "Nhãn xuất hiện trước chú thích",
+      "detail": "Hãy đặt nhãn sau chú thích. Nếu không LaTeX có thể gắn nó với bộ đếm trước và tạo số hình hoặc bảng sai."
+    },
+    "privacy-sensitive-file": {
+      "title": "Có tệp nhạy cảm: {{file}}",
+      "detail": "Hãy gỡ thông tin đăng nhập và tệp khoá riêng khỏi dự án trước khi xuất, đồng bộ hoặc xuất bản kho lưu trữ nguồn."
+    },
+    "privacy-credential": {
+      "title": "Có thể có thông tin đăng nhập trong {{file}}",
+      "detail": "Dự án chứa văn bản giống token API, khoá truy cập đám mây hoặc khoá riêng. Hãy thu hồi thông tin đăng nhập bị lộ, rồi gỡ chúng khỏi dự án và lịch sử Git."
+    },
+    "privacy-internal-comment": {
+      "title": "Ghi chú nội bộ còn trong {{file}}",
+      "detail": "Chú thích mã nguồn không hiện trong PDF nhưng có thể công khai trong kho lưu trữ nguồn của hội nghị, tạp chí hoặc bản in trước. Hãy xem lại và gỡ ghi chú biên tập riêng tư."
+    },
+    "privacy-draft-artifact": {
+      "title": "Đánh dấu bản nháp vẫn bật",
+      "detail": "Mã nguồn bật đầu ra draft, TODO, theo dõi thay đổi, watermark hoặc gỡ lỗi nhãn. Hãy tắt và kiểm tra trực quan PDF cuối trước khi nộp."
+    },
+    "privacy-blind-author": {
+      "title": "Danh tính tác giả còn trong nguồn phản biện kín",
+      "detail": "Mã nguồn chứa tác giả, đơn vị, email, địa chỉ hoặc trường cảm ơn không ẩn danh. Hãy thay nội dung nhận dạng bằng chế độ phản biện ẩn danh của hội nghị.",
+      "detailTypst": "Mã nguồn gán tên tác giả, email hoặc đơn vị cho tài liệu hoặc mẫu của nó. Hãy gỡ, hoặc chuyển mẫu sang chế độ ẩn danh."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Lời cảm ơn có thể tiết lộ tác giả",
+      "detail": "Lời cảm ơn thường nhận dạng tổ chức, tài trợ, cộng tác viên hoặc cơ sở. Hãy gỡ khỏi bản nộp phản biện kín trừ khi hội nghị cho phép rõ ràng."
+    },
+    "privacy-pdf-author": {
+      "title": "Siêu dữ liệu PDF nhận dạng một tác giả",
+      "detail": "Trường Author của PDF là \"{{author}}\". Hãy xoá siêu dữ liệu tác giả trước khi tải PDF phản biện kín lên."
+    },
+    "submission-nonportable-filename": {
+      "title": "Tên tệp không di động: {{file}}",
+      "detail": "Hồ sơ này chỉ cho phép chữ cái, số, gạch dưới, cộng, trừ, chấm, phẩy, dấu bằng và dấu phân cách thư mục. Hãy đổi tên tệp và cập nhật tham chiếu."
+    },
+    "submission-absolute-path": {
+      "title": "Đường dẫn riêng máy trong {{file}}",
+      "detail": "Đường dẫn cục bộ tuyệt đối không tồn tại trên máy chủ dựng của nhà xuất bản. Hãy chuyển phụ thuộc vào dự án và tham chiếu bằng đường dẫn tương đối."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} yêu cầu thực thi lệnh ngoài",
+      "detail": "Nhiều bộ dựng xuất bản và lưu trữ tắt shell escape. Hãy tạo đầu ra trước hoặc xác nhận hội nghị đích hỗ trợ gói và lệnh này."
+    },
+    "submission-generated-file": {
+      "title": "Có tệp dựng được tạo: {{file}}",
+      "detail": "Tệp phụ trợ được tạo làm gói nguồn nhiễu và có thể giữ trạng thái cũ. Hãy loại trừ chúng trừ khi hội nghị đã chọn yêu cầu rõ tệp đó."
+    },
+    "submission-document-class": {
+      "title": "Lớp tài liệu {{profile}} chưa được dùng",
+      "detail": "Hồ sơ này mong đợi {{expected}}, nhưng dự án dùng {{actual}}. Hãy bắt đầu từ mẫu chính thức hiện hành của hội nghị.",
+      "detailNoClass": "Hồ sơ này mong đợi {{expected}}, nhưng không phát hiện lớp tài liệu. Hãy bắt đầu từ mẫu chính thức hiện hành của hội nghị.",
+      "titleTypst": "Mẫu {{profile}} chưa được dùng",
+      "detailTypst": "Hồ sơ này mong đợi mẫu Typst như {{expected}}, nhưng dự án nhập {{actual}}. Hãy bắt đầu từ một trong các mẫu đó.",
+      "detailNoTemplateTypst": "Hồ sơ này mong đợi mẫu Typst như {{expected}}, nhưng dự án không nhập mẫu nào. Hãy bắt đầu từ một trong các mẫu đó."
+    },
+    "submission-no-abstract": {
+      "title": "Không phát hiện tóm tắt",
+      "detail": "Hồ sơ xuất bản này mong đợi tóm tắt trong môi trường abstract chuẩn. Hãy thêm hoặc xác nhận hội nghị cụ thể không yêu cầu.",
+      "detailTypst": "Hồ sơ xuất bản này mong đợi tóm tắt. Hãy truyền cho mẫu, ví dụ abstract: [Tóm tắt của bạn], hoặc thêm tiêu đề Abstract."
+    },
+    "submission-no-keywords": {
+      "title": "Không phát hiện từ khoá xuất bản",
+      "detail": "Hồ sơ {{profile}} mong đợi từ khoá bằng lệnh hoặc môi trường mẫu chuẩn của nó.",
+      "detailTypst": "Hồ sơ {{profile}} mong đợi từ khoá. Hãy truyền cho mẫu, ví dụ keywords: (\"một\", \"hai\") hoặc index-terms: (\"một\", \"hai\")."
+    },
+    "submission-figure-format": {
+      "title": "Định dạng hình không hỗ trợ: {{file}}",
+      "detail": "{{profile}} chấp nhận tệp hình {{formats}} cho các luồng TeX được hỗ trợ. Hãy chuyển đổi hình này trước khi tải lên."
+    },
+    "submission-placeholder": {
+      "title": "Còn chỗ giữ chỗ bản nháp trong bản thảo",
+      "detail": "Mã nguồn chứa TODO, TBD, FIXME, văn bản giữ chỗ hoặc dấu hỏi. Hãy xem lại từng chỗ trước khi tạo bản nộp cuối.",
+      "detailTypst": "Tài liệu vẫn gọi #lorem hoặc chứa văn bản giữ chỗ. Hãy thay trước khi nộp cuối."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} thấp hơn phiên bản yêu cầu",
+      "detail": "{{profile}} yêu cầu PDF {{minimum}} trở lên. Hãy cập nhật thiết lập PDF của trình biên dịch và tạo lại tệp."
+    },
+    "submission-bookmarks": {
+      "title": "Không được phép có dấu trang PDF",
+      "detail": "{{profile}} từ chối dấu trang PDF. Hãy gỡ dàn bài tài liệu cho hồ sơ nộp bài này."
+    },
+    "submission-links": {
+      "title": "Không được phép có liên kết PDF",
+      "detail": "{{profile}} từ chối chú thích liên kết. Hãy tắt siêu liên kết được tạo cho PDF nộp."
+    },
+    "submission-attachments": {
+      "title": "PDF chứa tệp đính kèm nhúng",
+      "detail": "{{profile}} từ chối tệp đính kèm và gói PDF. Hãy gỡ mọi tệp nhúng trước khi nộp."
+    },
+    "submission-security": {
+      "title": "Đang bật hạn chế bảo mật PDF",
+      "detail": "{{profile}} yêu cầu PDF không có hạn chế mật khẩu hoặc quyền."
+    },
+    "submission-unembedded-font": {
+      "title_other": "{{count}} phông chưa được nhúng",
+      "detail": "{{profile}} yêu cầu mọi phông được nhúng hoặc tập con để văn bản và toán kết xuất ổn định. Hãy sửa {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Không xác minh được một số phông đã nhúng",
+      "detail": "Kiểm tra trước không chứng minh được trạng thái nhúng của {{fonts}}. Hãy xác nhận bằng công cụ kiểm PDF chính thức của hội nghị."
+    },
+    "empty-heading": {
+      "title": "Tiêu đề trống",
+      "detail": "Tiêu đề này không có văn bản. Trình đọc màn hình thông báo nó là mục trống trong dàn bài. Hãy thêm tiêu đề hoặc gỡ tiêu đề."
+    },
+    "todo-in-text": {
+      "title": "Ghi chú nháp trong văn bản",
+      "detail": "Ghi chú này là phần của văn bản, nên nó in ra trong PDF. Hãy giải quyết, hoặc chuyển thành chú thích //."
+    },
+    "no-author": {
+      "title": "Tài liệu không có tác giả",
+      "detail": "Siêu dữ liệu PDF không có tác giả. Hãy thêm bằng #set document(author: \"Tên bạn\") hoặc truyền tác giả cho mẫu. Bỏ trống nếu phản biện ẩn danh."
+    },
+    "privacy-local-path": {
+      "title": "Đường dẫn trên máy bạn: {{path}}",
+      "detail": "Đường dẫn này trỏ tới thư mục ngoài dự án. Nó có thể tiết lộ tên người dùng, và bản dựng thất bại trên máy khác. Hãy chuyển tệp vào dự án và dùng đường dẫn tương đối."
+    },
+    "privacy-blind-email": {
+      "title": "Địa chỉ email trong {{file}}",
+      "detail": "Địa chỉ email có thể nhận dạng tác giả trong phản biện kín. Hãy gỡ hoặc thay bằng chỗ giữ chỗ ẩn danh."
+    },
+    "refs-no-bibliography": {
+      "title": "Trích dẫn không có thư mục",
+      "detail": "Tài liệu trích dẫn nguồn nhưng không bao giờ gọi #bibliography, nên Typst không giải quyết được. Hãy thêm #bibliography(\"refs.bib\") ở nơi danh sách tham chiếu xuất hiện."
+    },
+    "submission-large-image": {
+      "title": "Hình rất lớn: {{file}}",
+      "detail": "Hình này vượt {{limit}}. Hình lớn làm chậm biên dịch và phình PDF. Một số hội nghị cũng giới hạn dung lượng tải lên. Hãy nén, hoặc xuất ở kích thước khi in."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Trợ năng",
+    "both": "ATS + Trợ năng",
+    "refs": "Tham chiếu",
+    "compile": "Biên dịch",
+    "submission": "Nộp bài",
+    "privacy": "Riêng tư"
+  },
+  "severity": {
+    "error": "Lỗi",
+    "warning": "Cảnh báo",
+    "info": "Ghi chú"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Dựng",
+    "a11y": "Tiếp cận",
+    "refs": "Tham chiếu",
+    "submission": "Nộp",
+    "privacy": "Riêng tư"
+  },
+  "checks": {
+    "compile": {
+      "label": "Biên dịch & bố cục",
+      "who": "Cho mọi tài liệu cuối",
+      "info": "Lỗi dựng, tham chiếu chưa giải quyết, glyph thiếu và vấn đề bố cục trang.",
+      "detail": "Kiểm tra log biên dịch và PDF mới nhất để tìm bản dựng thất bại, tham chiếu chưa giải quyết, glyph thiếu, nội dung tràn hoặc bị cắt, cảnh báo chạy lại cũ và kích thước trang hỗn hợp."
+    },
+    "submission": {
+      "label": "Sẵn sàng nộp bài",
+      "who": "Cho hội nghị, tạp chí, bản in trước và luận văn",
+      "info": "Quy tắc hồ sơ xuất bản và tệp không nên có trong gói nguồn.",
+      "detail": "Áp dụng hồ sơ xuất bản cho toàn bộ dự án: lớp tài liệu chính thức, đường dẫn nguồn di động, định dạng hình, tóm tắt và từ khoá, hạn chế PDF, chú thích và đóng gói nguồn sạch."
+    },
+    "ats": {
+      "label": "Sẵn sàng ATS",
+      "who": "Cho CV và resume",
+      "info": "Chi tiết liên hệ và các mục mà bộ phân tích CV khôi phục được.",
+      "detail": "Mô phỏng những gì Hệ thống theo dõi ứng viên (Workday, Taleo, Greenhouse) trích xuất từ PDF của bạn, và đánh dấu bố cục, định dạng làm nó lộn xộn. Không liên quan bài báo nghiên cứu."
+    },
+    "a11y": {
+      "label": "Trợ năng",
+      "who": "Cho PDF nghiên cứu, nhà nước và xuất bản",
+      "info": "Gắn thẻ, văn bản thay thế, ngôn ngữ và tiêu đề tài liệu, thiết lập trình xem, cấu trúc, liên kết và thứ tự đọc.",
+      "detail": "Kiểm tra PDF đã biên dịch theo phần kiểm tra máy được của PDF/UA-1 (ISO 14289-1) và kỹ thuật PDF của WCAG 2.2: gắn thẻ, văn bản thay thế, ngôn ngữ và tiêu đề tài liệu, thiết lập trình xem, cấu trúc tiêu đề và bảng, mô tả liên kết, thứ tự đọc và văn bản chọn được. Kiểm tra nguồn đánh dấu vấn đề có thể xảy ra trước khi biên dịch."
+    },
+    "refs": {
+      "label": "Tham chiếu & tài nguyên",
+      "who": "Cho tài liệu nghiên cứu và nhiều tệp",
+      "info": "Trích dẫn hỏng, nhãn trùng, mục thư mục không đầy đủ và tài nguyên thiếu.",
+      "detail": "Tìm trích dẫn và tham chiếu chéo chưa định nghĩa, nhãn trùng và hình hoặc tệp include thiếu, trước khi chúng làm hỏng PDF khi nộp."
+    },
+    "privacy": {
+      "label": "Riêng tư & phản biện kín",
+      "who": "Trước khi chia sẻ nguồn hoặc nộp ẩn danh",
+      "info": "Bí mật, ghi chú nháp, tệp nhạy cảm và lộ danh tính trong phản biện kín.",
+      "detail": "Tìm thông tin đăng nhập, khoá riêng, chú thích nội bộ, đánh dấu nháp, tệp dự án nhạy cảm, siêu dữ liệu tác giả và lộ danh tính trong bản nộp phản biện ẩn danh."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Xuất bản chung",
+      "description": "Nguồn di động, đầu ra sạch, siêu dữ liệu đầy đủ và rủi ro xuất bản phổ biến."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Nguồn di động có thể dựng lại trên hệ thống nộp bài phân biệt hoa thường của arXiv."
+    },
+    "ieee": {
+      "label": "Hội nghị / tạp chí IEEE",
+      "description": "Nguồn IEEEtran cùng các ràng buộc PDF được kiểm tra cho xuất bản IEEE Xplore."
+    },
+    "acm": {
+      "label": "Hội nghị / tạp chí ACM",
+      "description": "Cấu trúc nguồn acmart của ACM và siêu dữ liệu nghiên cứu sẵn sàng xuất bản."
+    },
+    "journal": {
+      "label": "Tạp chí khác",
+      "description": "Kiểm tra tạp chí trung lập nhà xuất bản. Hãy thêm giới hạn chính xác của tạp chí trước khi nộp."
+    },
+    "thesis": {
+      "label": "Luận văn / luận án",
+      "description": "Kiểm tra cấu trúc tài liệu dài, điều hướng, tham chiếu và nguồn di động."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Kinh nghiệm",
+      "education": "Học vấn",
+      "skills": "Kỹ năng",
+      "projects": "Dự án",
+      "summary": "Tóm tắt"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: đã xác minh {{passed}} trên {{total}} quy tắc kiểm tra được bằng máy. Đây là kiểm tra tập con, không phải tuyên bố tuân thủ.",
+    "coverageWithBlindSpots": "PDF/UA-1: đã xác minh {{passed}} trên {{total}} quy tắc kiểm tra được bằng máy. Oleafly đọc {{covered}} trong số đó, và {{unavailable}} quy tắc không kiểm tra được trong tệp này. Đây là kiểm tra tập con, không phải tuyên bố tuân thủ."
+  },
+  "taggingGate": {
+    "noSupport": "Lớp {{name}} không tạo được đầu ra có thẻ, và LaTeX Project không kỳ vọng điều đó.",
+    "noSupportWithNote": "Lớp {{name}} không tạo được đầu ra có thẻ, và LaTeX Project không kỳ vọng điều đó. {{note}}",
+    "currentlyIncompatible": "Lớp {{name}} chưa tương thích với gắn thẻ LaTeX, nên chuẩn bị nguồn này sẽ không cho bạn PDF tiếp cận được.",
+    "currentlyIncompatibleWithNote": "Lớp {{name}} chưa tương thích với gắn thẻ LaTeX, nên chuẩn bị nguồn này sẽ không cho bạn PDF tiếp cận được. {{note}}",
+    "partiallyCompatible": "Lớp {{name}} chỉ tương thích một phần với gắn thẻ, nên hãy mong đợi lỗ hổng trong cây cấu trúc.",
+    "partiallyCompatibleWithNote": "Lớp {{name}} chỉ tương thích một phần với gắn thẻ, nên hãy mong đợi lỗ hổng trong cây cấu trúc. {{note}}",
+    "unrecorded": "LaTeX Project chưa ghi nhận trạng thái gắn thẻ cho lớp {{name}}, nên kết quả chưa được chứng minh. Hãy biên dịch và kiểm tra đầu ra."
+  },
+  "prep": {
+    "metadataUpdated": "Đã thêm các khoá gắn thẻ cần thiết vào \\DocumentMetadata của bạn.",
+    "metadataAdded": "Đã thêm \\DocumentMetadata làm dòng đầu (bắt buộc, phải đứng trước \\documentclass).",
+    "headerRows": "Đã đặt table/header-rows thành 1 để hàng đầu của mỗi bảng được gắn thẻ là ô tiêu đề. Hãy đổi số nếu bảng có độ sâu tiêu đề khác.",
+    "unicodeMath": "Đã thêm \\usepackage{unicode-math}, thứ engine này cần cho toán có thẻ.",
+    "altPlaceholders_other": "Đã thêm chỗ giữ chỗ văn bản thay thế cho {{count}} hình. Hãy thay văn bản TODO bằng mô tả thật.",
+    "titleRequired": "PDF/UA cần tiêu đề tài liệu mà trình đọc hiển thị. Hãy nạp hyperref và đặt \\hypersetup{pdftitle={Tiêu đề của bạn}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_other": "Các gói này không tương thích với gắn thẻ: {{packages}}. Nội dung từ chúng có thể vào PDF mà không có thẻ. Hãy thay thế những gì có thể.",
+    "cautionPackages": "Các gói này chỉ gắn thẻ một phần, hoặc chưa có kết luận gắn thẻ: {{packages}}. Hãy biên dịch và kiểm tra cây cấu trúc để tìm lỗ hổng.",
+    "compileLua": "Hãy biên dịch nguồn đã chuẩn bị bằng LuaLaTeX từ TeX Live 2025 trở lên, rồi kiểm tra lại đầu ra.",
+    "compileAny": "Hãy biên dịch nguồn đã chuẩn bị bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên, rồi kiểm tra lại đầu ra. Toán tiếp cận được cần LuaLaTeX. Engine đi kèm không tạo được thẻ."
+  },
+  "gate": {
+    "incompatiblePackages_other": "Các gói này không tương thích với gắn thẻ: {{packages}}. Nội dung từ chúng có thể vào PDF mà không có thẻ.",
+    "incompatiblePackagesTruncated": "Các gói này không tương thích với gắn thẻ: {{packages}} và thêm {{more}} gói. Nội dung từ chúng có thể vào PDF mà không có thẻ.",
+    "partialPackages": "Các gói này chỉ gắn thẻ một phần: {{packages}}.",
+    "partialPackagesTruncated": "Các gói này chỉ gắn thẻ một phần: {{packages}} và thêm {{more}} gói.",
+    "unknownPackages": "Chưa có kết luận gắn thẻ cho {{packages}}.",
+    "unknownPackagesTruncated": "Chưa có kết luận gắn thẻ cho {{packages}} và thêm {{more}} gói.",
+    "cautionAdvice": "Hãy biên dịch và kiểm tra cây cấu trúc để tìm lỗ hổng."
+  },
+  "panel": {
+    "title": "Kiểm tra trước",
+    "readerDisabled": "Hãy biên dịch và chạy kiểm tra đầu ra trước",
+    "readerEnabled": "Mở văn bản trích xuất từ PDF",
+    "readerButton": "Trình đọc màn hình",
+    "aboutLabel": "Giới thiệu Kiểm tra trước",
+    "aboutTitle": "Kiểm tra trước kiểm tra gì",
+    "aboutIntro": "Kiểm tra trước đọc mã nguồn dự án, log biên dịch và PDF hiện tại. Chỉ bật các kiểm tra phù hợp tài liệu này.",
+    "aboutFooter": "Phát hiện đã xác minh đến từ quan sát trực tiếp. Phát hiện tư vấn vẫn cần bạn đánh giá. Báo cáo sạch giúp việc xem xét, nhưng không chứng nhận được chấp nhận hay trợ năng. Mọi kiểm tra chạy cục bộ.",
+    "enableCheck": "Bật {{check}}",
+    "runCheck": "Chạy {{check}}",
+    "rerunCheck": "Chạy lại {{check}}",
+    "run": "Chạy",
+    "rerun": "Chạy lại",
+    "collapse": "Thu gọn",
+    "expand": "Mở rộng",
+    "publicationProfile": "Hồ sơ xuất bản",
+    "anonymousReview": "Phản biện ẩn danh",
+    "anonymousReviewHint": "Đồng thời kiểm tra trường tác giả, lời cảm ơn và siêu dữ liệu PDF.",
+    "anonymousReviewToggle": "Kiểm tra danh tính phản biện ẩn danh",
+    "engineUnsupported": "Kiểm tra nguồn cho {{engine}} chưa được triển khai. Kiểm tra này chỉ dùng PDF đã biên dịch và không báo thiếu hỗ trợ nguồn là thất bại.",
+    "runToSeeResults": "Hãy chạy kiểm tra này để xem kết quả.",
+    "analyzing": "Đang phân tích…",
+    "runEnabled_other": "Chạy {{count}} kiểm tra đã bật",
+    "rerunEnabled_other": "Chạy lại {{count}} kiểm tra đã bật",
+    "failed": "Kiểm tra trước thất bại: {{error}}",
+    "standardsCaveat": "Oleafly đọc phần PDF/UA và WCAG có thể kiểm tra trong chính tệp. Nó không biết văn bản thay thế có ý nghĩa không, thứ tự đọc có hợp lý không, hay độ tương phản màu đủ cao không. Con người phải đánh giá những điều đó. Để có tuyên bố tuân thủ chính thức, hãy xác thực bằng veraPDF hoặc PAC 2024.",
+    "pdfRequired": "Cần PDF. Hãy biên dịch dự án và chạy lại. Kiểm tra này chưa được đánh giá.",
+    "compileFirst": "Hãy biên dịch dự án trước. Kiểm tra trước cần log biên dịch hoặc PDF hiện tại để đánh giá chất lượng bản dựng.",
+    "partialCoverage": "Đã xong kiểm tra nguồn. Hãy biên dịch dự án và chạy lại để hoàn tất kiểm tra cấp PDF.",
+    "unsupportedCoverage": "Chưa đánh giá. Kiểm tra nguồn cho engine này chưa được triển khai.",
+    "groupSource": "Dự án & nguồn",
+    "groupOutput": "Đầu ra đã biên dịch",
+    "fixAll_other": "Sửa tất cả {{count}} bằng AI",
+    "noProblems": "Không tìm thấy vấn đề."
+  },
+  "finding": {
+    "review": "Xem xét",
+    "manual": "Thủ công",
+    "page": "tr.{{page}}",
+    "needsJudgment": "Cần bạn đánh giá. Không công cụ nào tự quyết được việc này chỉ từ tệp.",
+    "jumpToSource": "Nhảy tới nguồn",
+    "fixWithAi": "Sửa bằng AI"
+  },
+  "score": {
+    "notEvaluated": "{{label}} chưa được đánh giá",
+    "readiness": "Mức sẵn sàng {{label}} {{score}} trên 100",
+    "notScored": "Chưa chấm điểm"
+  },
+  "reader": {
+    "title": "Trình đọc thấy gì",
+    "description": "Văn bản trích xuất từ PDF hiện tại theo thứ tự đọc. Gần với những gì trình đọc màn hình hoặc bộ phân tích tự động nhận.",
+    "pagesNav": "Các trang PDF",
+    "page": "Trang {{page}}",
+    "empty": "trống",
+    "extractedFrom": "Văn bản trích xuất từ trang {{page}}",
+    "pageOf": "Trang {{page}} trên {{total}}",
+    "noText": "Không tìm thấy văn bản chọn được trên trang này."
+  },
+  "atsCard": {
+    "title": "Bộ phân tích đã trích xuất gì",
+    "notFound": "Không tìm thấy",
+    "links_other": "{{count}} liên kết",
+    "detected": "{{section}}: đã phát hiện",
+    "requiredMissing": "{{section}}: không phát hiện mục bắt buộc",
+    "optionalMissing": "{{section}}: không phát hiện mục tuỳ chọn",
+    "detectedTitle": "Đã phát hiện mục {{section}}",
+    "requiredMissingTitle": "Cần có {{section}} nhưng không phát hiện",
+    "optionalMissingTitle": "{{section}} là tuỳ chọn và không được phát hiện",
+    "optionalSuffix": ", tuỳ chọn"
+  },
+  "prepExport": {
+    "title": "Xuất trợ năng",
+    "intro": "Chuẩn bị tài liệu này cho đầu ra có thẻ nhắm PDF/UA-2. Oleafly thêm \\DocumentMetadata với pdfstandard=ua-2 và tagging=on, cùng thiết lập văn bản thay thế và bảng mà nó điền được. Hãy biên dịch kết quả bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên, rồi kiểm tra lại. Toán tiếp cận được cần LuaLaTeX. Engine đi kèm không tạo được thẻ.",
+    "activeFileFallback": "Oleafly không tải được tài liệu chính, nên đã kiểm tra tệp bạn đang sửa. Hãy mở tài liệu chính để thấy lớp và gói mà bản dựng thực sự nạp.",
+    "prepare": "Chuẩn bị xuất trợ năng",
+    "unavailable": "Chuẩn bị bị tắt cho lớp tài liệu này. Hãy chuyển sang lớp mà mã gắn thẻ hỗ trợ, rồi chạy kiểm tra lại. Dữ liệu tương thích từ LaTeX Project, truy xuất {{retrieved}}.",
+    "unavailableUndated": "Chuẩn bị bị tắt cho lớp tài liệu này. Hãy chuyển sang lớp mà mã gắn thẻ hỗ trợ, rồi chạy kiểm tra lại. Dữ liệu tương thích từ LaTeX Project.",
+    "applied": "Đã áp dụng",
+    "apply": "Áp dụng vào tài liệu",
+    "copied": "Đã sao chép",
+    "copy": "Sao chép nguồn",
+    "compileTagged": "Biên dịch có thẻ và xác minh",
+    "compileTaggedWarning": "LuaLaTeX hệ thống có thể đọc tệp cục bộ. Chỉ chạy với dự án bạn tin tưởng.",
+    "noEngine": "Để tạo PDF có thẻ trong ứng dụng, hãy bật engine trong Cài đặt, LaTeX Engine. Hoặc biên dịch nguồn đã chuẩn bị bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên của bạn."
+  },
+  "typstStandards": {
+    "title": "Chuẩn PDF",
+    "intro": "Typst tự ghi PDF lưu trữ và trợ năng. Hãy chọn chuẩn, rồi xuất PDF.",
+    "standard": "Chuẩn",
+    "export": "Xuất PDF",
+    "tagged": "Typst {{version}} gắn thẻ mọi PDF cho trình đọc màn hình, nên không cần biên dịch có thẻ riêng.",
+    "untagged": "Typst {{version}} không gắn thẻ PDF cho trình đọc màn hình. Typst 0.14 trở lên có.",
+    "none": "Typst {{version}} không ghi được chuẩn PDF. Hãy chọn Typst 0.12 trở lên trong menu biên dịch.",
+    "uaNote": "PDF/UA-1 cần tiêu đề tài liệu và văn bản thay thế cho mọi hình."
+  }
+}

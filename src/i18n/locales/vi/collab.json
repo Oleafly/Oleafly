@@ -1,0 +1,1226 @@
+{
+  "section": {
+    "intro": "Chỉnh sửa dự án cùng người khác theo thời gian thực. Dự án đồng bộ qua một máy chủ cộng tác do bạn hoặc nhóm của bạn chạy, và máy chủ đó quyết định ai được tham gia.",
+    "servers": {
+      "title": "Máy chủ",
+      "add": "Thêm máy chủ",
+      "loading": "Đang tải máy chủ của bạn…",
+      "loadFailed": "Oleafly không thể tải máy chủ của bạn.",
+      "empty": {
+        "title": "Chưa có máy chủ nào",
+        "description": "Hãy hỏi người quản lý máy chủ của nhóm để biết địa chỉ, rồi thêm vào đây."
+      }
+    },
+    "server": {
+      "signedIn": "Đã đăng nhập",
+      "signedOut": "Đã đăng xuất",
+      "signedOutHint": "Máy tính này chưa đăng nhập vào máy chủ này.",
+      "suspended": "Đã tạm khoá",
+      "noAccess": "Không có quyền truy cập",
+      "suspendedHint": "Quản trị viên đã tạm khoá tài khoản của bạn trên {{server}}. Các thay đổi của bạn vẫn ở trên máy tính này. Bạn có thể đăng nhập lại khi quản trị viên kích hoạt tài khoản.",
+      "endedHint": "Bạn không còn quyền truy cập {{server}}. Các bản sao của bạn vẫn ở trên máy tính này dưới dạng dự án thường. Nếu quản trị viên thêm bạn lại, hãy đăng nhập lại.",
+      "endedGuestHint": "Bạn không còn quyền truy cập {{server}} vì bạn không thuộc dự án được chia sẻ nào của máy chủ. Các bản sao của bạn vẫn ở trên máy tính này dưới dạng dự án thường. Nếu được mời lại, hãy đăng nhập lại.",
+      "role": "Vai trò của bạn: {{role}}",
+      "signIn": "Đăng nhập",
+      "signOut": "Đăng xuất",
+      "remove": "Gỡ",
+      "manage": "Quản lý máy chủ",
+      "adminConsole": "Bảng điều khiển quản trị",
+      "manageHint": "Quản lý máy chủ hiển thị Mọi người, Người được phép, Tên miền, Cài đặt máy chủ, Email và Nhật ký bảo mật ở đây. Bảng điều khiển quản trị mở trong cửa sổ riêng và còn có tổng quan, dự án và kiểm tra kết nối.",
+      "test": "Kiểm tra kết nối",
+      "testShort": "Kiểm tra",
+      "removeConfirm": {
+        "title": "Gỡ {{name}}?",
+        "description": "Oleafly đăng xuất khỏi {{name}} và quên máy chủ này. Các dự án được chia sẻ từ {{name}} ngừng đồng bộ và vẫn ở trên máy tính này dưới dạng dự án thường, mỗi dự án được đổi tên thành bản sao cục bộ.",
+        "confirm": "Gỡ máy chủ"
+      },
+      "detached": "Các dự án được chia sẻ từ {{server}} đã ngừng đồng bộ. Chúng vẫn ở trên máy tính này dưới dạng dự án thường.",
+      "unsent": {
+        "title": "Một số thay đổi chưa được gửi",
+        "description": "Các dự án được chia sẻ này có thay đổi mà máy chủ chưa có. Nếu bạn giữ bản sao cục bộ, mỗi dự án sẽ ngừng đồng bộ và vẫn ở trên máy tính này dưới tên hiển thị bên dưới. Hoặc hãy giữ đăng nhập và thử lại sau.",
+        "removeDescription": "Các dự án được chia sẻ này có thay đổi mà máy chủ chưa có. Nếu bạn giữ bản sao cục bộ, mỗi dự án sẽ ngừng đồng bộ và vẫn ở trên máy tính này dưới tên hiển thị bên dưới. Hoặc hãy giữ máy chủ và thử lại sau.",
+        "changes": "Thay đổi chưa gửi: {{changes}}",
+        "staysAs": "Vẫn là {{name}}",
+        "keep": "Giữ bản sao cục bộ",
+        "stay": "Giữ đăng nhập",
+        "keepServer": "Giữ máy chủ"
+      },
+      "emails": {
+        "label": "Gửi email cho tôi khi có người chia sẻ dự án",
+        "description": "Email nêu tên dự án và có liên kết để mở.",
+        "mentionsLabel": "Gửi email cho tôi khi có người nhắc đến tôi trong bình luận",
+        "mentionsDescription": "Email trích bình luận và có liên kết để mở.",
+        "noMail": "Máy chủ này không gửi email. Các dự án được chia sẻ với bạn vẫn xuất hiện trong thư viện ở mục Được chia sẻ với bạn.",
+        "paused": "Quản trị viên máy chủ đã tắt email cho mọi người.",
+        "loadFailed": "Oleafly không thể tải cài đặt email của bạn."
+      }
+    },
+    "devices": {
+      "title": "Thiết bị của bạn",
+      "description": "Các máy tính đã đăng nhập vào máy chủ này bằng tài khoản của bạn. Hãy đăng xuất những máy bạn không còn dùng.",
+      "loading": "Đang tải thiết bị của bạn…",
+      "loadFailed": "Oleafly không thể tải thiết bị của bạn.",
+      "current": "Máy tính này",
+      "browser": "Trình duyệt",
+      "added": "Đã thêm {{date}}",
+      "lastSeen": "Lần cuối thấy {{date}}",
+      "neverSeen": "Chưa thấy lần nào",
+      "empty": "Không có thiết bị nào đăng nhập.",
+      "signOut": "Đăng xuất",
+      "signOutNamed": "Đăng xuất {{name}}",
+      "signOutConfirm": {
+        "title": "Đăng xuất {{name}}?",
+        "description": "Máy tính đó ngừng đồng bộ với máy chủ này cho đến khi có người đăng nhập lại trên máy đó.",
+        "confirm": "Đăng xuất thiết bị"
+      }
+    },
+    "checks": {
+      "title": "Kiểm tra kết nối",
+      "running": "Đang kiểm tra kết nối…",
+      "clockSkew": "Chênh lệch thời gian tính bằng giây: {{seconds}}",
+      "status": {
+        "pass": "Đạt",
+        "fail": "Thất bại",
+        "info": "Lưu ý",
+        "skipped": "Bỏ qua"
+      },
+      "items": {
+        "reachable": {
+          "label": "Địa chỉ",
+          "pass": "Máy chủ đã phản hồi.",
+          "fail": "Oleafly không thể kết nối tới địa chỉ này. Hãy kiểm tra địa chỉ và mạng của bạn.",
+          "info": "Máy chủ đã phản hồi nhưng chậm.",
+          "skipped": "Chưa kiểm tra."
+        },
+        "https": {
+          "label": "Kết nối bảo mật",
+          "pass": "Kết nối được mã hoá và chứng chỉ hợp lệ.",
+          "fail": "Chứng chỉ của máy chủ không hợp lệ, hoặc địa chỉ không dùng https.",
+          "info": "Đây là máy chủ thử nghiệm trên máy tính này nên chạy không có https.",
+          "skipped": "Chưa kiểm tra vì địa chỉ không phản hồi."
+        },
+        "protocol": {
+          "label": "Phiên bản",
+          "pass": "Phiên bản Oleafly này hoạt động với máy chủ.",
+          "fail": "Oleafly và máy chủ cần phiên bản khác nhau. Một trong hai cần được cập nhật.",
+          "info": "Máy chủ mới hơn phiên bản Oleafly này nhưng vẫn tương thích.",
+          "skipped": "Chưa kiểm tra vì một bước kiểm tra trước đó thất bại."
+        },
+        "webSocket": {
+          "label": "Kết nối trực tiếp",
+          "pass": "Chỉnh sửa trực tiếp có thể truyền qua.",
+          "fail": "Có gì đó giữa bạn và máy chủ chặn chỉnh sửa trực tiếp. Tường lửa hoặc proxy có thể cần thay đổi.",
+          "info": "Chỉnh sửa trực tiếp đi đường chậm hơn vì mạng này chặn đường thông thường. Chúng vẫn được truyền đến.",
+          "skipped": "Chưa kiểm tra vì một bước kiểm tra trước đó thất bại."
+        },
+        "signInProviders": {
+          "label": "Cách đăng nhập",
+          "pass": "Máy chủ có ít nhất một cách để đăng nhập.",
+          "fail": "Máy chủ chưa có cách đăng nhập nào. Hãy hỏi quản trị viên của máy chủ.",
+          "info": "Máy chủ có cách đăng nhập nhưng một số tuỳ chọn đang tắt.",
+          "skipped": "Chưa kiểm tra vì một bước kiểm tra trước đó thất bại."
+        },
+        "email": {
+          "label": "Email",
+          "pass": "Máy chủ có thể gửi email.",
+          "fail": "Cài đặt email của máy chủ không hoạt động.",
+          "info": "Máy chủ này chưa thiết lập email. Mọi người được thêm mà không cần email.",
+          "skipped": "Chưa kiểm tra vì một bước kiểm tra trước đó thất bại."
+        },
+        "clock": {
+          "label": "Đồng hồ",
+          "pass": "Đồng hồ của bạn và của máy chủ khớp nhau.",
+          "fail": "Đồng hồ của bạn và của máy chủ lệch nhau nhiều. Hãy kiểm tra ngày giờ trên máy tính này.",
+          "info": "Đồng hồ của bạn lệch một chút so với máy chủ.",
+          "skipped": "Chưa kiểm tra vì một bước kiểm tra trước đó thất bại."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Thêm máy chủ cộng tác",
+    "description": "Nhập địa chỉ mà nhóm của bạn đã cung cấp. Oleafly kiểm tra máy chủ trước khi bạn đăng nhập.",
+    "oleaflyDescription": "Máy chủ Oleafly công khai",
+    "addressLabel": "Địa chỉ máy chủ",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Tiếp tục",
+    "checking": "Đang kiểm tra máy chủ…",
+    "notAServer": "Không có máy chủ Oleafly nào phản hồi tại địa chỉ này. Hãy kiểm tra địa chỉ với người quản lý máy chủ. Trên Wi-Fi khách sạn hoặc khuôn viên, hãy mở một trang web bất kỳ trước phòng khi mạng cần bạn đăng nhập.",
+    "moved": "Địa chỉ này chuyển bạn tới {{target}}. Hãy thử địa chỉ đó.",
+    "useMoved": "Dùng địa chỉ đó",
+    "version": "Phiên bản {{version}}",
+    "serverTitle": "Đăng nhập vào {{server}}",
+    "serverDescription": "Máy chủ này quyết định ai được tham gia. Hãy chọn một cách đăng nhập.",
+    "setupTitle": "Thiết lập {{server}}",
+    "setupDescription": "Chưa ai thiết lập máy chủ này. Nếu bạn đã cài đặt, hãy nhập mã thiết lập mà trình cài đặt hiển thị. Mã này cũng có trong nhật ký máy chủ. Người đầu tiên đăng nhập bằng mã sẽ trở thành quản trị viên máy chủ. Nếu bạn không cài đặt, hãy đề nghị người quản lý hoàn tất thiết lập trước.",
+    "setupCodeLabel": "Mã thiết lập",
+    "signInDescription": "Trình duyệt của bạn mở ra để bạn đăng nhập ở đó. Oleafly không bao giờ thấy mật khẩu của bạn.",
+    "continueWith": "Tiếp tục với {{provider}}",
+    "noProviders": "Máy chủ này chưa có cách đăng nhập nào. Hãy đề nghị quản trị viên thiết lập.",
+    "signingInTitle": "Hoàn tất đăng nhập",
+    "waitingTitle": "Đang chờ trình duyệt của bạn",
+    "waitingDescription": "Hãy đăng nhập bằng {{provider}} trong cửa sổ trình duyệt đã mở, rồi quay lại đây.",
+    "waitingEmailDescription": "Hãy nhập địa chỉ email trong trình duyệt, rồi mở liên kết chúng tôi gửi trên máy tính này.",
+    "cancel": "Huỷ",
+    "back": "Quay lại",
+    "doneTitle": "Đã kết nối tới {{server}}",
+    "doneDescription": "Bạn đã đăng nhập với tên {{name}}. Giờ bạn có thể chia sẻ dự án và mở những dự án được chia sẻ với bạn.",
+    "doneManageDescription": "Bạn đã đăng nhập với tên {{name}}. Giờ bạn có thể chia sẻ dự án và mở những dự án được chia sẻ với bạn. Bạn cũng có thể quản lý máy chủ từ bảng điều khiển quản trị.",
+    "doneGuestDescription": "Bạn đã đăng nhập với tên {{name}}. Với tư cách khách, bạn có thể mở những dự án được mời tham gia.",
+    "done": "Xong",
+    "codeSignIn": "Dùng mã thay thế",
+    "codeTitle": "Đăng nhập bằng mã",
+    "codeRequesting": "Đang lấy mã…",
+    "codeSteps": "Trên điện thoại hoặc máy tính bất kỳ, hãy mở địa chỉ này và nhập mã.",
+    "codeAddressLabel": "Địa chỉ",
+    "codeLabel": "Mã",
+    "codeExpires": "Mã hết hiệu lực lúc {{time}}.",
+    "codeWaiting": "Đang chờ bạn đăng nhập",
+    "codeOpen": "Mở trong trình duyệt",
+    "codeOffer": "Trình duyệt không quay lại Oleafly?",
+    "codeHint": "Nếu trình duyệt không thể kết nối tới Oleafly, hãy đăng nhập bằng mã thay thế."
+  },
+  "errors": {
+    "unreachable": "Oleafly không thể kết nối tới máy chủ. Hãy kiểm tra địa chỉ và kết nối, rồi thử lại.",
+    "not_https": "Địa chỉ này không dùng kết nối bảo mật. Máy chủ cộng tác cần địa chỉ bắt đầu bằng https.",
+    "client_too_old": "Máy chủ này cần phiên bản Oleafly mới hơn. Hãy cập nhật Oleafly rồi thử lại.",
+    "server_too_old": "Máy chủ này cần được cập nhật trước khi tương thích với phiên bản Oleafly này. Hãy hỏi quản trị viên của máy chủ.",
+    "not_admitted": "Máy chủ này chưa cho bạn vào. Hãy đề nghị quản trị viên thêm bạn.",
+    "sign_in_cancelled": "Đăng nhập đã bị huỷ.",
+    "sign_in_timed_out": "Đăng nhập mất quá nhiều thời gian. Hãy thử lại.",
+    "unauthorized": "Bạn đã bị đăng xuất khỏi máy chủ này. Hãy đăng nhập lại.",
+    "forbidden": "Vai trò của bạn trên máy chủ này không cho phép thao tác đó.",
+    "not_found": "Máy chủ không tìm thấy mục đó. Có thể nó đã bị gỡ.",
+    "conflict": "Thao tác đó xung đột với thay đổi của người khác. Hãy tải lại và thử lại.",
+    "rate_limited": "Máy chủ đang bận. Hãy đợi một phút rồi thử lại.",
+    "setup_code_invalid": "Mã thiết lập đó không khớp. Hãy xem nhật ký máy chủ để lấy mã đúng.",
+    "server": "Máy chủ gặp sự cố. Hãy thử lại sau hoặc hỏi quản trị viên của máy chủ.",
+    "internal": "Đã xảy ra lỗi trong Oleafly. Hãy thử lại.",
+    "server_changed": "Địa chỉ này giờ thuộc về một máy chủ khác nên Oleafly không gửi gì đến đó. Nếu bạn tin máy chủ mới, hãy gỡ máy chủ này và thêm lại.",
+    "duplicate_server": "Máy chủ này đã có trong danh sách của bạn dưới địa chỉ khác. Nếu máy chủ đã chuyển, hãy gỡ mục cũ trước rồi thêm lại.",
+    "device_in_use": "Người khác đã đăng nhập vào máy chủ này từ tài khoản máy tính này. Mỗi người cần tài khoản riêng trên máy tính để đăng nhập.",
+    "server_unknown": "Liên kết này dành cho máy chủ bạn chưa thêm. Hãy thêm trong cài đặt Cộng tác, rồi mở lại liên kết.",
+    "too_large": "Một số tệp lớn hơn mức máy chủ này cho phép. Hãy làm chúng nhỏ hơn hoặc gỡ bớt, rồi thử lại.",
+    "invalid": "Máy chủ không chấp nhận dữ liệu đó. Hãy kiểm tra những gì bạn đã nhập, rồi thử lại.",
+    "invalid_domain": "Đó không phải tên miền. Hãy dùng dạng như cs.example.edu.",
+    "invalid_email": "Địa chỉ email đó có vẻ không đúng. Hãy kiểm tra rồi thử lại.",
+    "invalid_login": "Tên đăng nhập đó có vẻ không đúng. Hãy kiểm tra rồi thử lại.",
+    "guests_off": "Máy chủ này không cho phép khách. Hãy đề nghị quản trị viên bật khách.",
+    "link_sharing_off": "Máy chủ này không cho phép chia sẻ bằng liên kết. Hãy đề nghị quản trị viên bật.",
+    "access_log_off": "Máy chủ này không cho phép nhật ký truy cập. Hãy đề nghị quản trị viên bật.",
+    "last_admin": "Máy chủ này cần ít nhất một quản trị viên. Hãy đặt người khác làm quản trị viên trước.",
+    "duplicate_entry": "Mục đó đã tồn tại.",
+    "already_member": "Người đó đã có tài khoản. Hãy đổi vai trò của họ trong mục Mọi người.",
+    "project_not_shared": "Dự án này chưa được chia sẻ. Hãy chia sẻ trước rồi mời mọi người.",
+    "project_full": "Dự án này đã có số người tối đa mà máy chủ cho phép. Hãy gỡ một người trước, hoặc hỏi quản trị viên máy chủ.",
+    "owner_away": "Chủ sở hữu dự án đang bị tạm khoá hoặc đã bị gỡ trên máy chủ này nên dự án không thể nhận thêm người cho đến khi tài khoản của họ hoạt động lại.",
+    "wrong_server": "Máy chủ này gửi trang đăng nhập từ địa chỉ khác nên Oleafly đã dừng. Hãy kiểm tra địa chỉ máy chủ, hoặc hỏi người quản lý.",
+    "not_a_link": "Đó không phải liên kết tới dự án được chia sẻ. Hãy sao chép toàn bộ liên kết rồi thử lại.",
+    "signed_out": "Bạn đã bị đăng xuất khỏi máy chủ này. Hãy đăng nhập lại để đồng bộ dự án này.",
+    "server_removed": "Máy chủ của dự án này không còn trong danh sách của bạn. Hãy giữ dự án dưới dạng bản sao cục bộ, hoặc thêm lại máy chủ.",
+    "share_in_progress": "Dự án này đang được chia sẻ. Hãy chờ thao tác đó hoàn tất.",
+    "cancelled": "Việc mở dự án được chia sẻ đã bị huỷ.",
+    "cloud_synced": "Thư viện Oleafly của bạn nằm trong thư mục được dịch vụ đám mây đồng bộ. Hãy chuyển ra khỏi Dropbox, OneDrive hoặc iCloud Drive để chia sẻ hoặc tham gia dự án.",
+    "suggestion_not_found": "Đề xuất đó đã bị gỡ. Có thể ai đó đã chấp nhận hoặc từ chối.",
+    "suggestion_not_yours": "Chỉ người tạo đề xuất này mới có thể rút lại.",
+    "suggestion_role": "Vai trò của bạn trong dự án này không cho phép đề xuất.",
+    "suggestion_changed": "Văn bản xung quanh đề xuất này đã thay đổi nên chủ sở hữu hoặc biên tập viên cần chấp nhận hoặc từ chối nó.",
+    "suggestion_too_long": "Một đề xuất xóa có thể dài tối đa 20.000 ký tự. Hãy xóa mỗi lần một phần nhỏ hơn.",
+    "chat_role": "Vai trò của bạn trong dự án này không cho phép thao tác đó trong cuộc trò chuyện.",
+    "history_unavailable": "Lịch sử của dự án này chưa có trên máy tính này. Hãy thử lại sau khi đồng bộ xong.",
+    "account_storage_full": "Tài khoản của chủ sở hữu dự án đã hết dung lượng trên máy chủ này. Hãy gỡ bớt tệp để có chỗ, hoặc đề nghị quản trị viên máy chủ cấp thêm.",
+    "too_many_projects": "Bạn đã có số dự án được chia sẻ tối đa mà máy chủ này cho phép. Hãy ngừng chia sẻ một dự án trước khi chia sẻ dự án khác.",
+    "too_many_uploads": "Bạn đã tải lên quá nhiều trong giờ qua. Hãy thử lại sau."
+  },
+  "roles": {
+    "admin": "Quản trị viên",
+    "maintainer": "Người duy trì",
+    "member": "Thành viên",
+    "guest": "Khách",
+    "unknown": "Vai trò không rõ"
+  },
+  "admin": {
+    "title": "Quản lý {{name}}",
+    "back": "Quay lại máy chủ",
+    "loadFailed": "Oleafly không thể tải nội dung này từ máy chủ.",
+    "added": "Đã thêm {{date}}",
+    "tabs": {
+      "members": "Mọi người",
+      "allowlist": "Người được phép",
+      "domains": "Tên miền",
+      "settings": "Cài đặt máy chủ",
+      "log": "Nhật ký bảo mật",
+      "email": "Email"
+    },
+    "members": {
+      "description": "Mọi người đã đăng nhập vào máy chủ này.",
+      "addPeople": "Thêm người",
+      "addHint": "Để cho người mới vào, hãy thêm họ trong mục Người được phép.",
+      "loading": "Đang tải mọi người…",
+      "empty": "Chưa ai đăng nhập.",
+      "you": "Bạn",
+      "active": "Đang hoạt động",
+      "suspended": "Đã tạm khoá",
+      "removed": "Đã gỡ",
+      "roleLabel": "Vai trò của {{name}}",
+      "suspend": "Tạm khoá",
+      "reactivate": "Kích hoạt lại",
+      "remove": "Gỡ",
+      "devices": "Thiết bị",
+      "devicesTitle": "Thiết bị của {{name}}",
+      "devicesDescription": "Hãy đăng xuất thiết bị bị mất hoặc không còn dùng.",
+      "devicesLoading": "Đang tải thiết bị…",
+      "devicesLoadFailed": "Oleafly không thể tải các thiết bị này.",
+      "lastAdmin": "Máy chủ này cần ít nhất một quản trị viên. Hãy đặt người khác làm quản trị viên trước.",
+      "owned": {
+        "suspendOne": "{{name}} sở hữu một dự án được chia sẻ. Không ai khác quản lý được dự án đó trong khi {{name}} bị tạm khoá.",
+        "suspendMany": "Các dự án được chia sẻ do {{name}} sở hữu: {{number}}. Không ai khác quản lý được chúng trong khi {{name}} bị tạm khoá.",
+        "removeOne": "{{name}} sở hữu một dự án được chia sẻ. Sau khi gỡ {{name}}, không ai khác quản lý được dự án đó.",
+        "removeMany": "Các dự án được chia sẻ do {{name}} sở hữu: {{number}}. Sau khi gỡ {{name}}, không ai khác quản lý được chúng."
+      },
+      "removeConfirm": {
+        "title": "Gỡ {{name}} khỏi máy chủ này?",
+        "description": "Các thiết bị của họ bị đăng xuất ngay. Những dự án họ sở hữu vẫn ở trên máy chủ và bạn có thể thêm họ lại sau.",
+        "confirm": "Gỡ khỏi máy chủ"
+      },
+      "suspendConfirm": {
+        "title": "Tạm khoá {{name}}?",
+        "description": "{{name}} không thể đăng nhập hay đồng bộ cho đến khi quản trị viên kích hoạt lại tài khoản.",
+        "confirm": "Tạm khoá tài khoản"
+      },
+      "selfRoleConfirm": {
+        "title": "Đổi vai trò của chính bạn thành {{role}}?",
+        "description": "Bạn sẽ mất quyền quản trị trên máy chủ này, và chỉ quản trị viên khác mới có thể cấp lại.",
+        "confirm": "Đổi vai trò của tôi"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Đăng xuất {{name}}?",
+        "description": "Thiết bị đó ngừng đồng bộ với máy chủ này cho đến khi chủ thiết bị đăng nhập lại.",
+        "confirm": "Đăng xuất thiết bị"
+      }
+    },
+    "allowlist": {
+      "description": "Người được thêm ở đây có thể đăng nhập vào máy chủ với vai trò bạn chọn.",
+      "matchLabel": "Khớp theo",
+      "match": {
+        "email": "Địa chỉ email",
+        "login": "Tên đăng nhập"
+      },
+      "emailPlaceholder": "ten@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Cách đăng nhập",
+      "roleLabel": "Vai trò",
+      "add": "Thêm",
+      "loading": "Đang tải người được phép…",
+      "empty": "Chưa thêm ai.",
+      "loginEntry": "{{login}} trên {{provider}}",
+      "bound": "Đã đăng nhập",
+      "unbound": "Chưa đăng nhập",
+      "remove": "Gỡ",
+      "removeNamed": "Gỡ {{entry}}",
+      "duplicate": "Người đó đã được phép vào."
+    },
+    "domains": {
+      "description": "Bất kỳ ai có địa chỉ email đã xác minh tại các tên miền này đều có thể đăng nhập với vai trò bạn chọn.",
+      "domainLabel": "Tên miền",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Vai trò",
+      "add": "Thêm",
+      "loading": "Đang tải quy tắc tên miền…",
+      "empty": "Chưa có quy tắc tên miền nào.",
+      "remove": "Gỡ",
+      "removeNamed": "Gỡ {{domain}}",
+      "duplicate": "Tên miền đó đã có quy tắc."
+    },
+    "settings": {
+      "description": "Các cài đặt này áp dụng cho mọi người trên máy chủ này.",
+      "adminOnly": "Chỉ quản trị viên mới thay đổi được các cài đặt này.",
+      "loading": "Đang tải cài đặt…",
+      "guestsEnabled": {
+        "label": "Cho phép khách",
+        "description": "Thành viên có thể mời người ngoài máy chủ vào những dự án họ sở hữu."
+      },
+      "guestApprovalRequired": {
+        "label": "Phê duyệt khách trước",
+        "description": "Một người duy trì hoặc quản trị viên phê duyệt từng lời mời khách trước khi có hiệu lực."
+      },
+      "directoryVisible": {
+        "label": "Danh bạ thành viên",
+        "description": "Thành viên có thể tìm nhau theo tên khi họ chia sẻ dự án."
+      },
+      "directoryShowsEmail": {
+        "label": "Hiện địa chỉ email trong danh bạ",
+        "description": "Thành viên thấy địa chỉ email của nhau khi tìm ai đó."
+      },
+      "linkSharingAllowed": {
+        "label": "Cho phép chia sẻ bằng liên kết",
+        "description": "Chủ sở hữu dự án có thể cho bất kỳ thành viên nào mở dự án từ liên kết của nó."
+      },
+      "accessLogsAllowed": {
+        "label": "Cho phép nhật ký truy cập dự án",
+        "description": "Chủ sở hữu dự án có thể lưu nhật ký ai đã mở dự án của họ."
+      },
+      "commentsAllowed": {
+        "label": "Cho phép bình luận",
+        "description": "Người trong dự án được chia sẻ có thể bình luận trên văn bản và trả lời. Tắt tuỳ chọn này sẽ ẩn bình luận ở mọi nơi và vẫn giữ chúng được lưu."
+      },
+      "emailNotifications": {
+        "label": "Thông báo qua email",
+        "description": "Gửi các email này. Tắt để dừng gửi cho mọi người trên máy chủ."
+      },
+      "emailLinkSignIn": {
+        "label": "Đăng nhập bằng email",
+        "description": "Mọi người có thể đăng nhập bằng liên kết gửi đến địa chỉ email của họ. Tuỳ chọn này cần cài đặt email của máy chủ. Các quy tắc truy cập của bạn vẫn quyết định ai được vào."
+      }
+    },
+    "log": {
+      "description": "Đăng nhập, thay đổi thiết bị và hành động quản trị trên máy chủ này.",
+      "loading": "Đang tải nhật ký…",
+      "empty": "Chưa có gì xảy ra.",
+      "loadMore": "Hiện mục cũ hơn",
+      "server": "Máy chủ",
+      "unknownAccount": "Tài khoản không rõ",
+      "target": "Trên {{target}}",
+      "ip": "Từ {{ip}}",
+      "kinds": {
+        "setupCompleted": "Đã hoàn tất thiết lập máy chủ",
+        "signIn": "Đã đăng nhập",
+        "signInRefused": "Bị từ chối khi đăng nhập",
+        "deviceAdded": "Đã thêm thiết bị",
+        "deviceSignedOut": "Đã đăng xuất thiết bị",
+        "refreshReuseDetected": "Dùng lại đăng nhập cũ nên thiết bị đã bị đăng xuất",
+        "memberAdded": "Đã thêm thành viên",
+        "memberRemoved": "Đã gỡ thành viên",
+        "memberSuspended": "Đã tạm khoá thành viên",
+        "memberReactivated": "Đã kích hoạt lại thành viên",
+        "roleChanged": "Đã đổi vai trò",
+        "allowlistAdded": "Đã thêm người vào Người được phép",
+        "allowlistRemoved": "Đã gỡ người khỏi Người được phép",
+        "domainRuleAdded": "Đã thêm quy tắc tên miền",
+        "domainRuleRemoved": "Đã gỡ quy tắc tên miền",
+        "settingsChanged": "Đã thay đổi cài đặt máy chủ",
+        "projectShared": "Đã chia sẻ dự án",
+        "projectAccessGranted": "Đã cấp quyền truy cập dự án cho ai đó",
+        "projectAccessChanged": "Đã đổi quyền truy cập dự án của ai đó",
+        "projectAccessRemoved": "Đã gỡ ai đó khỏi dự án",
+        "projectLeft": "Đã rời dự án",
+        "projectLinkSharingOn": "Đã bật chia sẻ bằng liên kết cho dự án",
+        "projectLinkSharingOff": "Đã tắt chia sẻ bằng liên kết cho dự án",
+        "projectLinkRoleChanged": "Đã đổi quyền mà liên kết dự án cho phép",
+        "projectArchived": "Đã lưu trữ dự án",
+        "projectUnarchived": "Đã khôi phục dự án lưu trữ",
+        "projectSettingsChanged": "Đã thay đổi cài đặt dự án",
+        "projectAccessLogOn": "Đã bật nhật ký truy cập của dự án",
+        "projectAccessLogOff": "Đã tắt nhật ký truy cập của dự án",
+        "projectCommentsOn": "Đã bật bình luận trong dự án",
+        "projectCommentsOff": "Đã tắt bình luận trong dự án",
+        "projectRejoinRefused": "Cố tham gia lại dự án đã bị gỡ",
+        "commentsChangedWhileOff": "Đã thay đổi bình luận trong khi tính năng này tắt",
+        "guestInvited": "Đã mời khách",
+        "guestInvitationApproved": "Đã phê duyệt lời mời khách",
+        "guestInvitationDeclined": "Đã từ chối lời mời khách",
+        "guestInvitationRevoked": "Đã rút lại lời mời khách",
+        "guestAdmissionEnded": "Đã chấm dứt quyền truy cập máy chủ của khách",
+        "unknown": "Sự kiện máy chủ khác"
+      },
+      "details": {
+        "project": "Dự án: {{title}}",
+        "provider": "Bằng {{provider}}",
+        "providerEmailLink": "Bằng liên kết email",
+        "signInCode": "Đã dùng mã đăng nhập",
+        "via": {
+          "allowlist": "Được vào với tư cách người được phép",
+          "domain": "Được vào theo quy tắc tên miền",
+          "setup": "Đã dùng mã thiết lập",
+          "guest": "Được vào với tư cách khách",
+          "link": "Qua liên kết dự án",
+          "invitation": "Qua lời mời khách"
+        },
+        "newAccount": "Tài khoản mới",
+        "reactivated": "Tài khoản đã được kích hoạt lại",
+        "reasons": {
+          "suspended": "Tài khoản đang bị tạm khoá",
+          "notAdmitted": "Không có quy tắc truy cập nào cho họ vào",
+          "setupCodeInvalid": "Mã thiết lập sai",
+          "guestInvitationUnusable": "Lời mời khách của họ không còn hiệu lực",
+          "lockedOutIp": "Quá nhiều lần thử từ một địa chỉ mạng",
+          "lockedOutAddress": "Quá nhiều email đăng nhập gửi đến một địa chỉ",
+          "stoppedByPerson": "Đã dừng ở trang đăng nhập",
+          "otherBrowser": "Hoàn tất ở trình duyệt khác với lúc bắt đầu",
+          "inactiveAccountAddress": "Email của họ thuộc tài khoản đã bị gỡ hoặc tạm khoá",
+          "noProjectsLeft": "Không còn dự án nào"
+        },
+        "role": "Vai trò: {{role}}",
+        "roleChange": "Từ {{from}} sang {{to}}",
+        "device": "Thiết bị: {{name}}",
+        "byAdmin": "Từ bảng điều khiển quản trị",
+        "settingOn": "{{setting}}: bật",
+        "settingOff": "{{setting}}: tắt"
+      }
+    },
+    "email": {
+      "description": "Máy chủ gửi email cho mọi người khi bạn thêm họ, khi ai đó chia sẻ dự án với họ và khi tài khoản của họ đăng nhập trên thiết bị mới.",
+      "loading": "Đang tải cài đặt email…",
+      "on": {
+        "title": "Email đang bật",
+        "from": "Email được gửi từ {{from}}."
+      },
+      "off": {
+        "title": "Email đang tắt",
+        "description": "Máy chủ này chưa có cài đặt thư. Để bật email, hãy đặt OLEAFLY_SMTP_URL và OLEAFLY_MAIL_FROM trên máy chủ, rồi khởi động lại.",
+        "copyPath": "Cho đến lúc đó, hãy tự gửi liên kết này cho người mới. Liên kết sẽ thêm máy chủ vào Oleafly.",
+        "address": "Họ cũng có thể nhập địa chỉ này trong mục Thêm máy chủ:"
+      },
+      "broken": {
+        "title": "Email không hoạt động",
+        "description": "Máy chủ có cài đặt thư nhưng email không được gửi đi. Hãy kiểm tra cài đặt, rồi gửi email thử."
+      },
+      "needsSettings": "Hãy bật email cho máy chủ trước.",
+      "needsWorking": "Hãy gửi một email thử thành công, rồi bật tuỳ chọn này.",
+      "lastFailure": "Email thất bại gần nhất là vào {{date}}. Máy chủ thư cho biết:",
+      "test": {
+        "title": "Email thử",
+        "description": "Gửi email thử đến {{address}} để kiểm tra cài đặt hoạt động.",
+        "send": "Gửi email thử",
+        "sending": "Đang gửi…",
+        "sent": "Đã gửi đến {{address}}. Nếu không thấy trong hộp thư đến, hãy kiểm tra thư mục spam.",
+        "failed": "Máy chủ thư không chấp nhận email thử.",
+        "noAddress": "Tài khoản của bạn không có địa chỉ email đã xác minh nên không có nơi để gửi thử.",
+        "adminOnly": "Chỉ quản trị viên mới gửi được email thử."
+      }
+    }
+  },
+  "projectRoles": {
+    "owner": "Chủ sở hữu",
+    "editor": "Biên tập viên",
+    "reviewer": "Phản biện viên",
+    "commenter": "Người bình luận",
+    "viewer": "Người xem",
+    "unknown": "Vai trò không rõ"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Chỉnh sửa và xem xét đề xuất",
+    "reviewer": "Đề xuất thay đổi và bình luận",
+    "commenter": "Đọc và bình luận",
+    "viewer": "Chỉ đọc"
+  },
+  "share": {
+    "button": "Chia sẻ",
+    "copyAndShare": "Sao chép vào Oleafly và chia sẻ",
+    "title": "Chia sẻ {{name}}",
+    "description": "Làm việc trên dự án này cùng người khác qua một máy chủ cộng tác.",
+    "loading": "Đang tải…",
+    "linked": "Dự án này là một thư mục bên ngoài Oleafly. Oleafly sao chép nó vào thư viện của bạn và chia sẻ bản sao đó. Thư mục gốc không bị đụng tới.",
+    "editCopy": "Đây là bản sao được chia sẻ. Từ giờ hãy chỉnh sửa bản này, không sửa thư mục gốc.",
+    "serverLabel": "Máy chủ",
+    "noServers": "Hãy đăng nhập vào một máy chủ cộng tác trước, rồi quay lại để chia sẻ.",
+    "noServersYet": "Hãy thêm một máy chủ cộng tác và đăng nhập để chia sẻ dự án này.",
+    "addOleafly": "Thêm máy chủ Oleafly",
+    "openSettings": "Mở cài đặt Cộng tác",
+    "checking": "Đang kiểm tra dự án…",
+    "checkFailed": "Oleafly không thể kiểm tra dự án này.",
+    "files": "Tệp",
+    "size": "Kích thước",
+    "disclosure": "{{server}} có thể đọc các tệp của dự án này.",
+    "cloudSynced": "Thư viện Oleafly của bạn nằm trong thư mục được iCloud, Dropbox hoặc dịch vụ tương tự đồng bộ. Hai dịch vụ đồng bộ sẽ tranh nhau cùng một tệp nên Oleafly không thể chia sẻ từ đó. Hãy chuyển thư viện ra khỏi thư mục đó trước.",
+    "tooLarge": "Các tệp này vượt quá giới hạn {{size}} MB của máy chủ. Hãy làm chúng nhỏ hơn hoặc gỡ bớt trước khi chia sẻ.",
+    "renamed": "Một số tên không dùng được trên mọi máy tính. Người khác sẽ nhận những tệp này dưới tên hơi khác.",
+    "excluded": "Không được chia sẻ: các tệp build khác, cài đặt Oleafly và lịch sử Git. PDF đã biên dịch gần nhất được chia sẻ để đồng tác giả có thể đọc trong trình duyệt.",
+    "start": "Chia sẻ",
+    "preparing": "Đang chuẩn bị dự án…",
+    "uploading": "Đang tải hình và các tệp khác: {{done}} trên {{total}}",
+    "saving": "Đang lưu dự án trên máy chủ…",
+    "failed": "Chia sẻ chưa hoàn tất nên chưa có gì được chia sẻ.",
+    "trustAgain": "Bất kỳ ai bạn thêm vào dự án này đều có thể thay đổi tệp của nó, nên Oleafly yêu cầu bạn tin cậy lại dự án trên máy tính này trước khi chạy agent, lệnh terminal hay lệnh shell cho nó."
+  },
+  "manage": {
+    "sharedOn": "Được chia sẻ trên {{server}}",
+    "yourRole": "Vai trò của bạn: {{role}}",
+    "loading": "Đang tải ai có quyền truy cập…",
+    "loadFailed": "Oleafly không thể tải danh sách người có quyền truy cập.",
+    "people": "Người có quyền truy cập",
+    "you": "Bạn",
+    "inactive": "Đã bị gỡ hoặc tạm khoá",
+    "ownerInactive": "Chủ sở hữu đã bị gỡ hoặc tạm khoá",
+    "roleLabel": "Vai trò của {{name}}",
+    "remove": "Gỡ",
+    "removeNamed": "Gỡ {{name}}",
+    "removeConfirm": {
+      "title": "Gỡ {{name}} khỏi dự án này?",
+      "description": "Bản sao của họ ngừng đồng bộ và vẫn ở trên máy tính của họ dưới dạng dự án thường.",
+      "confirm": "Gỡ"
+    },
+    "add": {
+      "label": "Thêm người",
+      "placeholder": "Tên, tên đăng nhập hoặc email",
+      "roleLabel": "Vai trò cho những người bạn thêm",
+      "searching": "Đang tìm…",
+      "noResultsTryEmail": "Không ai trên {{server}} phù hợp. Hãy thử địa chỉ email đầy đủ của họ.",
+      "alreadyMember": "{{name}} đã có quyền truy cập.",
+      "allMembers": "Mọi người phù hợp đều đã có quyền truy cập.",
+      "noAccountNoGuests": "Chưa ai trên {{server}} dùng {{email}}. Hãy đề nghị quản trị viên của {{server}} cho họ vào, rồi thêm họ ở đây sau khi họ đăng nhập một lần.",
+      "guestCheckFailed": "Oleafly không thể kiểm tra xem {{server}} có cho phép khách không.",
+      "add": "Thêm",
+      "addNamed": "Thêm {{name}}"
+    },
+    "link": {
+      "copy": "Sao chép liên kết",
+      "copied": "Đã sao chép liên kết",
+      "copyFailed": "Không thể sao chép liên kết",
+      "sharing": "Chia sẻ bằng liên kết",
+      "sharingDescription": "Bất kỳ ai đã đăng nhập vào {{server}} và có liên kết đều có thể mở dự án này.",
+      "roleLabel": "Vai trò cho người mở liên kết"
+    },
+    "comments": {
+      "label": "Bình luận",
+      "description": "Chủ sở hữu, biên tập viên, phản biện viên và người bình luận có thể bình luận trên văn bản trong dự án này. Tắt tuỳ chọn này sẽ ẩn bình luận nhưng không xóa chúng.",
+      "serverOff": "Bình luận đã bị tắt trên {{server}}. Hãy đề nghị quản trị viên bật."
+    },
+    "stop": "Ngừng chia sẻ",
+    "stopConfirm": {
+      "title": "Ngừng chia sẻ {{name}}?",
+      "description": "Bản sao của mọi người ngừng đồng bộ và trở thành dự án thường. Máy chủ giữ bản sao được chia sẻ một thời gian rồi xóa.",
+      "confirm": "Ngừng chia sẻ"
+    },
+    "leave": "Rời dự án",
+    "leaveConfirm": {
+      "title": "Rời {{name}}?",
+      "description": "Bản sao của bạn ngừng đồng bộ và vẫn ở trên máy tính này dưới dạng dự án thường.",
+      "confirm": "Rời"
+    },
+    "accessLog": {
+      "label": "Nhật ký truy cập",
+      "description": "Máy chủ ghi lại ai mở dự án này, tham gia hoặc tải một bản sao, từ thiết bị nào và khi nào. Chỉ bạn thấy được danh sách này, trong bảng Cộng tác trực tiếp."
+    }
+  },
+  "sync": {
+    "upToDate": "Đã cập nhật",
+    "syncing": "Đang đồng bộ",
+    "offline": "Ngoại tuyến. Thay đổi đang chờ: {{number}}",
+    "reconnecting": "Đang kết nối lại",
+    "signedOut": "Đã đăng xuất",
+    "suspended": "Tài khoản bị tạm khoá",
+    "accessEnded": "Không có quyền truy cập",
+    "removed": "Đã bị gỡ quyền truy cập",
+    "archived": "Đã ngừng chia sẻ",
+    "paused": "Đã tạm dừng",
+    "serverRemoved": "Đã gỡ máy chủ",
+    "clientTooOld": "Oleafly cần được cập nhật",
+    "serverTooOld": "Máy chủ cần được cập nhật",
+    "serverChanged": "Máy chủ mới tại địa chỉ này",
+    "failed": "Đã dừng sau một lỗi",
+    "engineSpent": "Cần khởi động lại"
+  },
+  "toolbar": {
+    "noFile": "Không có tệp nào mở",
+    "unknownPerson": "Ai đó",
+    "viewing": "Đang xem {{path}}",
+    "editing": "Đang sửa {{path}}",
+    "reviewing": "Đang xem xét {{path}}",
+    "goTo": "Đi tới {{name}}",
+    "nowhere": "Không ở trong tệp nào nên không có nơi để đi"
+  },
+  "tree": {
+    "here": "{{name}} đang mở tệp này",
+    "clash": "{{other}} cũng có tên {{name}} nên tệp này được đặt tên mới trên đĩa."
+  },
+  "library": {
+    "kind": "được chia sẻ",
+    "location": "Dự án được chia sẻ",
+    "locationNotShared": "Trong Oleafly, chưa chia sẻ",
+    "flag": "Được chia sẻ",
+    "sharedWithYou": {
+      "title": "Được chia sẻ với bạn",
+      "loadFailed": "Oleafly không thể kiểm tra các dự án được chia sẻ với bạn.",
+      "from": "{{owner}} trên {{server}}",
+      "open": "Mở",
+      "openNamed": "Mở {{name}}"
+    },
+    "openLink": {
+      "menu": "Mở liên kết dự án được chia sẻ…",
+      "title": "Mở một dự án được chia sẻ",
+      "description": "Dán liên kết ai đó đã gửi cho bạn.",
+      "label": "Liên kết dự án",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Mở",
+      "noAccess": "Bạn không có quyền truy cập dự án này. Hãy hỏi chủ sở hữu."
+    }
+  },
+  "pane": {
+    "title": "Cộng tác trực tiếp",
+    "titleUnread": "Cộng tác trực tiếp, có hoạt động mới",
+    "manage": "Quản lý chia sẻ",
+    "people": "Mọi người",
+    "activity": "Hoạt động",
+    "empty": "Chưa có gì xảy ra.",
+    "here": "Đang ở đây",
+    "hereIn": "Đang ở đây trong {{path}}",
+    "away": "Hiện không ở đây",
+    "deleted": "Đã xóa gần đây",
+    "deletedEmpty": "Không có gì bị xóa gần đây.",
+    "deletedLoadFailed": "Oleafly không thể tải các tệp đã xóa gần đây.",
+    "unwritten": {
+      "title": "Một số tệp không thể ghi vào máy tính này",
+      "hint": "Oleafly vẫn tiếp tục thử. Trong lúc đó, dự án được chia sẻ vẫn có nội dung mới nhất.",
+      "reasons": {
+        "locked": "Không thể ghi {{path}}: chương trình khác đang mở tệp.",
+        "read_only": "Không thể ghi {{path}}: tệp hoặc thư mục của nó chỉ đọc.",
+        "no_space": "Không thể ghi {{path}}: đĩa đã đầy.",
+        "not_downloaded": "Chưa thể tải {{path}} từ máy chủ. Oleafly vẫn tiếp tục thử.",
+        "other": "Không thể ghi {{path}}."
+      }
+    },
+    "accessLog": "Nhật ký truy cập",
+    "status": "Trạng thái đồng bộ",
+    "waiting": "Thay đổi đang chờ: {{number}}"
+  },
+  "deleted": {
+    "restore": "Khôi phục",
+    "restoreLabel": "Khôi phục {{name}}",
+    "inFolder": "Từng ở trong {{folder}}",
+    "inProject": "Từng ở trong thư mục dự án",
+    "byYou": "Do bạn xóa",
+    "by": "Do {{name}} xóa"
+  },
+  "removed": {
+    "deletedBy": "{{name}} đã xóa {{file}}.",
+    "yoursDeleted": "Các thay đổi của bạn đối với {{file}} nằm trong mục Đã xóa gần đây vì {{name}} đã xóa tệp đó.",
+    "dismiss": "Bỏ qua"
+  },
+  "activity": {
+    "welcomeEdit": "Được {{owner}} chia sẻ trên {{server}}. Bạn có thể chỉnh sửa.",
+    "welcomeReview": "Được {{owner}} chia sẻ trên {{server}}. Bạn có thể đề xuất thay đổi và bình luận.",
+    "welcomeComment": "Được {{owner}} chia sẻ trên {{server}}. Bạn có thể bình luận.",
+    "welcomeView": "Được {{owner}} chia sẻ trên {{server}}. Bạn có thể xem.",
+    "joined": "{{name}} đã mở dự án",
+    "left": "{{name}} đã đóng dự án",
+    "rejoined": "{{name}} đã mở lại dự án",
+    "visited": "{{name}} đã mở và đóng dự án",
+    "online": "Đã trực tuyến lại",
+    "merged": "Đã gộp thay đổi từ người khác trong lúc bạn vắng mặt: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Hiện tệp",
+    "hideFiles": "Ẩn tệp",
+    "role": "Vai trò của bạn giờ là {{role}}",
+    "removed": "Bạn không còn quyền truy cập dự án được chia sẻ này. Bản sao của bạn vẫn ở đây dưới dạng dự án thường.",
+    "removedBy": "{{name}} đã gỡ bạn khỏi dự án được chia sẻ này. Bản sao của bạn vẫn ở đây dưới dạng dự án thường.",
+    "archived": "Chủ sở hữu đã ngừng chia sẻ dự án này. Bản sao của bạn vẫn ở đây dưới dạng dự án thường.",
+    "signedOut": "Bạn đã bị đăng xuất khỏi {{server}} nên dự án này không đồng bộ. Các thay đổi của bạn vẫn ở trên máy tính này.",
+    "suspended": "Quản trị viên đã tạm khoá tài khoản của bạn trên {{server}}. Các thay đổi của bạn vẫn ở trên máy tính này. Bạn có thể đăng nhập lại khi quản trị viên kích hoạt tài khoản.",
+    "clientTooOld": "Hãy cập nhật Oleafly để tiếp tục làm việc trên {{server}}. Các thay đổi của bạn vẫn ở trên máy tính này.",
+    "serverTooOld": "{{server}} cần được cập nhật trước khi tương thích với phiên bản Oleafly này. Hãy hỏi người quản lý. Các thay đổi của bạn vẫn ở trên máy tính này.",
+    "serverChanged": "Địa chỉ của {{server}} giờ trỏ tới một máy chủ khác. Hãy gỡ trong cài đặt Cộng tác và thêm lại. Các thay đổi của bạn vẫn ở trên máy tính này.",
+    "failed": "Việc đồng bộ dự án này đã dừng sau một lỗi. Hãy bật trực tiếp lại để tiếp tục.",
+    "goLiveAgain": "Bật trực tiếp lại",
+    "engineSpent": "Hãy khởi động lại Oleafly để tiếp tục đồng bộ dự án này.",
+    "restartApp": "Khởi động lại Oleafly",
+    "accessEnded": "Bạn không còn quyền truy cập {{server}}. Bản sao của bạn vẫn ở trên máy tính này dưới dạng dự án thường.",
+    "accessEndedGuest": "Bạn không còn quyền truy cập {{server}} vì bạn không thuộc dự án được chia sẻ nào của máy chủ. Bản sao của bạn vẫn ở trên máy tính này dưới dạng dự án thường.",
+    "signIn": "Đăng nhập",
+    "memberAdded": "{{by}} đã thêm {{name}}",
+    "memberAddedByYou": "Bạn đã thêm {{name}}",
+    "memberJoined": "{{name}} đã tham gia bằng liên kết dự án",
+    "memberRemoved": "{{by}} đã gỡ {{name}}",
+    "memberRemovedByYou": "Bạn đã gỡ {{name}}",
+    "memberLeft": "{{name}} đã rời dự án được chia sẻ này",
+    "newDevice": "{{name}} đã đăng nhập trên thiết bị mới",
+    "review": "Xem xét",
+    "renamed": "{{name}} đã đổi tên {{before}} thành {{theirs}} sau khi bạn đặt tên là {{ours}}",
+    "renamedPortable": "{{before}} được đổi tên thành {{theirs}} để dùng được trên mọi máy tính.",
+    "skipped": "Một thay đổi từ {{name}} không đọc được và đã bị bỏ qua.",
+    "skippedUnknown": "Một thay đổi từ ai đó không đọc được và đã bị bỏ qua.",
+    "mentioned": "{{name}} đã nhắc đến bạn trong bình luận trên {{path}}",
+    "mentionedHere": "{{name}} đã nhắc đến bạn trong một bình luận",
+    "showComment": "Hiện bình luận",
+    "settings": {
+      "mainDocument": "{{name}} đã đặt {{path}} làm tài liệu chính",
+      "mainDocumentNow": "{{path}} giờ là tài liệu chính",
+      "compiler": "{{name}} đã đặt trình biên dịch thành {{compiler}}",
+      "spellingLanguage": "{{name}} đã đặt ngôn ngữ chính tả thành {{language}}",
+      "spellingCleared": "{{name}} đã xóa ngôn ngữ chính tả của dự án",
+      "typstVersion": "{{name}} đã đặt phiên bản Typst thành {{version}}",
+      "typstDefault": "{{name}} đã đặt phiên bản Typst về mặc định",
+      "typstOptions": "{{name}} đã thay đổi tuỳ chọn Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Tự động",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
+  },
+  "mergeReview": {
+    "title": "Thay đổi được gộp trong lúc bạn vắng mặt",
+    "description": "Những gì người khác đã thay đổi khi bạn ngoại tuyến. Chế độ xem này chỉ đọc.",
+    "people": "Theo người",
+    "person": "{{name}}: {{number}}",
+    "files": "Theo tệp",
+    "loading": "Đang tải thay đổi",
+    "failed": "Không thể tải các thay đổi. Hãy thử lại sau.",
+    "noText": "Không có văn bản nào thay đổi nên không có gì để so sánh.",
+    "newFile": "Tệp mới",
+    "removedFile": "Đã gỡ",
+    "closedOldest": "Chỉ mở tối đa {{number}} tệp cùng lúc nên {{path}} đã đóng.",
+    "diffLabel": "Thay đổi trong {{path}}"
+  },
+  "console": {
+    "open": "Mở bảng điều khiển quản trị",
+    "windowTitle": "Bảng điều khiển quản trị máy chủ Oleafly",
+    "title": "Bảng điều khiển quản trị",
+    "sectionsLabel": "Các phần của bảng điều khiển quản trị",
+    "pendingGuestsBadge": "Đang chờ phê duyệt: {{number}}",
+    "sections": {
+      "overview": "Tổng quan",
+      "people": "Mọi người",
+      "access": "Quy tắc truy cập",
+      "projects": "Dự án",
+      "settings": "Cài đặt máy chủ",
+      "email": "Email",
+      "log": "Nhật ký bảo mật",
+      "checks": "Kiểm tra kết nối"
+    },
+    "health": {
+      "label": "Tình trạng máy chủ: {{status}}",
+      "checking": "Đang kiểm tra",
+      "ok": "Khỏe mạnh",
+      "warning": "Cần chú ý",
+      "unreachable": "Không kết nối được"
+    },
+    "states": {
+      "loading": "Đang mở bảng điều khiển quản trị…",
+      "loadFailed": "Oleafly không thể mở bảng điều khiển quản trị.",
+      "unknownTitle": "Máy chủ này không có trong danh sách của bạn",
+      "unknownDescription": "Hãy thêm lại máy chủ trong Cài đặt, rồi mở bảng điều khiển quản trị từ thẻ của nó.",
+      "signedOutTitle": "Bạn đã đăng xuất khỏi máy chủ này",
+      "signedOutDescription": "Hãy đăng nhập lại trong Cài đặt, rồi mở bảng điều khiển quản trị từ thẻ máy chủ.",
+      "refusedTitle": "Bảng điều khiển quản trị dành cho quản trị viên và người duy trì",
+      "refusedDescription": "Vai trò của bạn trên máy chủ này là {{role}}. Hãy hỏi quản trị viên nếu bạn cần quản lý máy chủ."
+    },
+    "overview": {
+      "loading": "Đang tải tổng quan…",
+      "health": {
+        "title": "Tình trạng",
+        "okLabel": "Mọi thứ đang hoạt động",
+        "okDescription": "Mọi người có thể đăng nhập và máy chủ có thể lưu tệp.",
+        "problem": "Đăng nhập bằng {{provider}} đã thất bại từ {{time}}",
+        "commentChange": "{{project}}, bị {{name}} thay đổi lúc {{time}}",
+        "commentChangeUnknown": "{{project}}, bị thay đổi lúc {{time}}",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Không ai đăng nhập được",
+            "description": "Hãy thiết lập đăng nhập GitHub hoặc OpenID trên máy chủ rồi khởi động lại. Nếu máy chủ gửi được email, bạn có thể bật Đăng nhập bằng email trong Cài đặt thay thế."
+          },
+          "storageNotWritable": {
+            "label": "Máy chủ không lưu được tệp",
+            "description": "Hãy kiểm tra thư mục dữ liệu tồn tại và máy chủ có thể ghi vào đó."
+          },
+          "signInFailing": {
+            "label": "Đăng nhập đang thất bại",
+            "description": "Mọi người không đăng nhập được bằng một trong các cách đăng nhập của máy chủ. Danh sách bên dưới cho biết cách nào và từ khi nào."
+          },
+          "signInEmailsPaused": {
+            "label": "Email đăng nhập đang tạm dừng",
+            "description": "Máy chủ đã gửi số email đăng nhập tối đa cho phép trong giờ này. Việc gửi sẽ tiếp tục khi hết giờ."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Bình luận bị thay đổi trong khi tính năng này tắt",
+            "description": "Máy chủ phát hiện thay đổi đối với bình luận mà nó đã lưu trước khi kiểm tra được, trong lúc bình luận đang tắt. Các dự án được liệt kê bên dưới và nhật ký bảo mật ghi từng thay đổi."
+          },
+          "unknown": {
+            "label": "Máy chủ báo có sự cố",
+            "description": "Hãy cập nhật Oleafly để xem chi tiết."
+          }
+        }
+      },
+      "glance": {
+        "title": "Tổng quan nhanh",
+        "people": "Mọi người",
+        "suspended": "Đã tạm khoá: {{number}}",
+        "devices": "Thiết bị",
+        "projects": "Dự án được chia sẻ",
+        "projectsDetail": "Đã lưu trữ: {{archived}}, đang tải lên: {{pending}}",
+        "online": "Đang trực tuyến",
+        "onlineDetail": "Dự án đang mở: {{number}}",
+        "started": "Đã khởi động",
+        "version": "Phiên bản",
+        "protocol": "Giao thức {{protocol}}",
+        "pendingGuests": "Lời mời khách đang chờ phê duyệt: {{number}}",
+        "reviewGuests": "Xem xét trong Mọi người"
+      },
+      "activity": {
+        "title": "Hoạt động",
+        "description": "Số lần đăng nhập trong 30 ngày qua, theo UTC. Oleafly giữ mọi người đăng nhập nên mục này đếm từng lần đăng nhập mới, không phải mọi lượt truy cập.",
+        "none": "Không ai đăng nhập trong 30 ngày qua.",
+        "daily": "Số lần đăng nhập mỗi ngày",
+        "dailyLabel": "Số lần đăng nhập mỗi ngày UTC trong 30 ngày qua",
+        "total": "{{number}} trong 30 ngày",
+        "hourly": "Số lần đăng nhập theo giờ",
+        "hourlyLabel": "Số lần đăng nhập theo thứ và giờ UTC",
+        "day": "Ngày",
+        "signInsColumn": "Đăng nhập",
+        "peopleColumn": "Mọi người",
+        "signIns": "Đăng nhập: {{number}}",
+        "people": "Mọi người: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, đăng nhập: {{number}}",
+        "hoursInUtc": "Giờ theo UTC",
+        "less": "Ít hơn",
+        "more": "Nhiều hơn"
+      },
+      "storage": {
+        "title": "Dung lượng lưu trữ",
+        "adminOnly": "Chỉ quản trị viên mới xem được dung lượng máy chủ đang dùng.",
+        "database": "Cơ sở dữ liệu",
+        "databaseDetail": "Tài khoản, cài đặt và nhật ký",
+        "snapshots": "Ảnh chụp dự án",
+        "snapshotsDetail": "Bản sao đã lưu của từng dự án",
+        "files": "Tệp",
+        "location": {
+          "disk": "Trên đĩa của máy chủ",
+          "s3": "Trong lưu trữ S3",
+          "unknown": "Trong lưu trữ khác"
+        }
+      },
+      "services": {
+        "title": "Email và đăng nhập",
+        "email": "Email",
+        "emailOn": "Đã thiết lập",
+        "emailOff": "Chưa thiết lập",
+        "emailOnDescription": "Máy chủ có thể gửi email.",
+        "emailOffDescription": "Máy chủ chưa gửi được email nên không ai được thông báo qua email.",
+        "openEmail": "Cài đặt email",
+        "signIn": "Cách đăng nhập",
+        "signInNone": "Chưa có cách nào. Không ai đăng nhập được cho đến khi thiết lập một cách.",
+        "emailLinkOption": "Liên kết email"
+      },
+      "settings": {
+        "title": "Cài đặt máy chủ",
+        "on": "Bật",
+        "off": "Tắt",
+        "change": "Thay đổi cài đặt"
+      },
+      "limits": "Giới hạn: {{project}} mỗi dự án, {{file}} mỗi tệp, {{people}} người mỗi dự án."
+    },
+    "projects": {
+      "description": "Mọi dự án được chia sẻ trên máy chủ này.",
+      "searchLabel": "Tìm dự án",
+      "searchPlaceholder": "Tìm theo tiêu đề hoặc chủ sở hữu",
+      "filterLabel": "Hiện dự án",
+      "filter": {
+        "all": "Tất cả",
+        "active": "Được chia sẻ",
+        "archived": "Đã lưu trữ",
+        "pending": "Đang tải lên"
+      },
+      "columns": {
+        "title": "Dự án",
+        "owner": "Chủ sở hữu",
+        "members": "Mọi người",
+        "size": "Kích thước",
+        "activity": "Hoạt động gần nhất",
+        "actions": "Hành động"
+      },
+      "sortBy": "Sắp xếp theo {{column}}",
+      "status": {
+        "archived": "Đã lưu trữ",
+        "pending": "Đang tải lên",
+        "unknown": "Không rõ"
+      },
+      "loading": "Đang tải dự án…",
+      "empty": "Chưa có dự án nào được chia sẻ trên máy chủ này.",
+      "noMatches": "Không có dự án nào phù hợp với tìm kiếm của bạn.",
+      "count": "Đang hiển thị {{shown}} trên {{total}}",
+      "loadMore": "Hiện thêm",
+      "archive": "Lưu trữ",
+      "archiveNamed": "Lưu trữ {{title}}",
+      "restore": "Khôi phục",
+      "restoreNamed": "Khôi phục {{title}}",
+      "archiveConfirm": {
+        "title": "Lưu trữ {{title}}?",
+        "description": "Mọi người ngừng đồng bộ và giữ bản sao riêng. Máy chủ sẽ xóa dự án sau {{days}} ngày trừ khi bạn khôi phục.",
+        "descriptionLater": "Mọi người ngừng đồng bộ và giữ bản sao riêng. Máy chủ sẽ xóa các dự án đã lưu trữ sau một thời gian trừ khi bạn khôi phục.",
+        "confirm": "Lưu trữ dự án"
+      },
+      "adminOnly": "Chỉ quản trị viên mới lưu trữ hoặc khôi phục dự án."
+    },
+    "checks": {
+      "description": "Kiểm tra kết nối từ máy tính này tới máy chủ."
+    }
+  },
+  "links": {
+    "malformed": "Oleafly không thể mở liên kết này. Hãy xin người gửi một liên kết mới.",
+    "opening": "Đang mở dự án được chia sẻ…",
+    "downloading": "Đang tải tệp: {{done}} trên {{total}}",
+    "cancelNamed": "Huỷ việc mở {{name}}",
+    "cancelling": "Đang huỷ…",
+    "confirm": {
+      "title": "Tham gia dự án được chia sẻ này?",
+      "body": "Tham gia sẽ thêm bạn vào dự án và sao chép các tệp của dự án về máy tính này. Chỉ tham gia nếu bạn biết ai đã gửi liên kết.",
+      "project": "Dự án",
+      "owner": "Chủ sở hữu",
+      "server": "Máy chủ",
+      "role": "Vai trò của bạn",
+      "join": "Tham gia"
+    }
+  },
+  "comments": {
+    "title": "Bình luận",
+    "titleUnread": "Bình luận, có hoạt động mới",
+    "add": "Thêm bình luận",
+    "showResolved": "Hiện bình luận đã giải quyết",
+    "hideResolved": "Ẩn bình luận đã giải quyết",
+    "empty": "Chưa có bình luận hay đề xuất nào.",
+    "emptyCanWrite": "Chưa có bình luận hay đề xuất nào. Hãy chọn một đoạn văn bản và chọn Thêm bình luận để bắt đầu.",
+    "allResolved": "Mọi bình luận đã được giải quyết.",
+    "loadFailed": "Không thể tải bình luận cho tệp này.",
+    "detached": "Đã tách rời",
+    "detachedHint": "Đoạn văn bản chứa các bình luận này đã bị xóa.",
+    "resolvedBy": "Được {{name}} giải quyết",
+    "edited": "Đã chỉnh sửa",
+    "deleted": "Bình luận này đã bị xóa.",
+    "newLabel": "Bình luận mới",
+    "newPlaceholder": "Thêm bình luận. Nhập @ để nhắc đến ai đó.",
+    "replyLabel": "Trả lời",
+    "replyPlaceholder": "Viết trả lời. Nhập @ để nhắc đến ai đó.",
+    "editLabel": "Sửa bình luận",
+    "post": "Bình luận",
+    "reply": "Trả lời",
+    "resolve": "Giải quyết",
+    "reopen": "Mở lại",
+    "deleteThread": "Xóa chuỗi bình luận",
+    "deleteThreadConfirm": {
+      "title": "Xóa chuỗi bình luận này?",
+      "description": "Bình luận và các trả lời của nó bị xóa với mọi người trong dự án này. Không thể hoàn tác."
+    },
+    "deleteMessageConfirm": {
+      "title": "Xóa bình luận này?",
+      "description": "Bình luận bị xóa với mọi người trong dự án này. Không thể hoàn tác."
+    },
+    "messageActions": "Thêm hành động cho bình luận này",
+    "threadActions": "Thêm hành động cho chuỗi này",
+    "showInEditor": "Hiện trong trình biên tập",
+    "thread": "Bình luận từ {{name}}",
+    "mentionList": "Người để nhắc đến",
+    "marker": "Hiện bình luận trên dòng này",
+    "unverifiedAuthor": "Không thể xác minh ai đã viết bình luận này",
+    "unverifiedThread": "Bình luận từ người mà Oleafly không xác minh được",
+    "resolvedUnverified": "Được giải quyết bởi người mà Oleafly không xác minh được",
+    "notSent": {
+      "written": "Bình luận đã bị tắt cho dự án này nên bình luận bạn viết không được gửi.",
+      "changed": "Bình luận đã bị tắt cho dự án này nên thay đổi bình luận của bạn không được gửi.",
+      "show": "Hiện nội dung bạn đã viết",
+      "hide": "Ẩn nội dung bạn đã viết",
+      "copy": "Sao chép văn bản",
+      "copyFailed": "Không thể sao chép",
+      "list": "Bình luận chưa được gửi"
+    },
+    "refusals": {
+      "notLive": "Dự án này hiện không được kết nối. Hãy thử lại khi nó kết nối lại.",
+      "notYours": "Chỉ người viết bình luận này mới sửa được.",
+      "offServer": "Bình luận đã bị tắt trên máy chủ này.",
+      "offProject": "Bình luận đã bị tắt cho dự án này. Hãy đề nghị chủ sở hữu bật lại.",
+      "viewer": "Bạn đọc được bình luận ở đây nhưng không viết được. Hãy đề nghị chủ sở hữu cấp quyền chỉnh sửa.",
+      "someoneReplied": "Người khác đã trả lời nên chuỗi này vẫn còn. Bạn có thể giải quyết thay vì xóa.",
+      "messageDeleted": "Bình luận này đã bị xóa nên bạn không sửa được.",
+      "selectionChanged": "Đoạn văn bản bạn chọn đã thay đổi. Hãy chọn lại và thêm bình luận.",
+      "tooLong": "Bình luận này quá dài. Hãy rút ngắn rồi thử lại.",
+      "empty": "Hãy viết nội dung trước khi gửi."
+    }
+  },
+  "suggestions": {
+    "insertedBy": "{{name}} đề xuất thêm phần này",
+    "deletedBy": "{{name}} đề xuất xóa phần này",
+    "unverifiedLabel": "Được đề xuất bởi người mà Oleafly không xác minh được",
+    "card": "Đề xuất từ {{name}}",
+    "unverifiedCard": "Đề xuất từ người mà Oleafly không xác minh được",
+    "added": "Đã thêm",
+    "deleted": "Đã xóa",
+    "accept": "Chấp nhận",
+    "reject": "Từ chối",
+    "withdraw": "Rút lại",
+    "acceptAll": "Chấp nhận tất cả",
+    "rejectAll": "Từ chối tất cả",
+    "fileActions": "Đề xuất trong {{file}}",
+    "pendingCount": "Đề xuất đang chờ: {{number}}",
+    "loadFailed": "Không thể tải các đề xuất cho tệp này.",
+    "rejectAllConfirm": {
+      "title": "Từ chối mọi đề xuất trong {{file}}?",
+      "description": "Văn bản gốc trở lại tệp với mọi người trong dự án này. Đề xuất đang chờ: {{number}}.",
+      "confirm": "Từ chối tất cả"
+    },
+    "withdrawConfirm": {
+      "title": "Rút lại đề xuất này?",
+      "description": "Văn bản gốc trở lại tệp với mọi người trong dự án này.",
+      "confirm": "Rút lại"
+    },
+    "pendingCompile": "Dự án này có đề xuất đang chờ xem xét: {{number}}. PDF hiển thị chúng như thể đã được chấp nhận.",
+    "pendingExport": "Dự án này có đề xuất đang chờ xem xét: {{number}}. Bản xuất bao gồm chúng như thể đã được chấp nhận.",
+    "mode": {
+      "label": "Chỉnh sửa hoặc đề xuất",
+      "editing": "Đang chỉnh sửa",
+      "suggesting": "Đang đề xuất",
+      "editingHint": "Chỉnh sửa: thay đổi của bạn sửa văn bản ngay",
+      "suggestingHint": "Đề xuất: thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận",
+      "reviewerHint": "Bạn là phản biện viên nên thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận"
+    }
+  },
+  "chat": {
+    "title": "Trò chuyện",
+    "titleUnread": "Trò chuyện, có tin nhắn mới",
+    "list": "Tin nhắn",
+    "empty": "Chưa có tin nhắn nào.",
+    "label": "Tin nhắn",
+    "placeholder": "Viết tin nhắn",
+    "send": "Gửi",
+    "readOnly": "Người xem đọc được trò chuyện nhưng không đăng tin.",
+    "offline": "Dự án này hiện không được kết nối nên bạn không đăng tin được.",
+    "delete": "Xóa tin nhắn",
+    "deleteConfirm": {
+      "title": "Xóa tin nhắn này?",
+      "description": "Tin nhắn bị xóa với mọi người trong dự án này."
+    },
+    "deleted": "Tin nhắn này đã bị xóa.",
+    "clear": "Xóa cuộc trò chuyện",
+    "clearConfirm": {
+      "title": "Xóa cuộc trò chuyện?",
+      "description": "Mọi tin nhắn bị gỡ với mọi người trong dự án này. Không thể hoàn tác.",
+      "confirm": "Xóa cuộc trò chuyện"
+    },
+    "loadFailed": "Oleafly không thể tải cuộc trò chuyện.",
+    "loadOlder": "Hiện tin nhắn cũ hơn"
+  },
+  "history": {
+    "title": "Lịch sử",
+    "refresh": "Làm mới lịch sử",
+    "empty": "Chưa có thay đổi nào.",
+    "loadFailed": "Oleafly không thể tải lịch sử của dự án.",
+    "loadMore": "Hiện thay đổi cũ hơn",
+    "earlier": "Thay đổi trước đó",
+    "timeRange": "{{from}} đến {{to}}",
+    "authorsMore": "{{names}} và {{number}} người khác",
+    "filesChanged": "Tệp đã thay đổi: {{number}}",
+    "open": "Mở",
+    "compare": "So sánh",
+    "compareWith": "So sánh với bản này",
+    "comparePick": "Chọn phiên bản thứ hai để so sánh.",
+    "cancelCompare": "Huỷ",
+    "name": "Đặt tên cho phiên bản này",
+    "rename": "Đổi tên",
+    "unname": "Gỡ tên",
+    "nameLabel": "Tên phiên bản",
+    "namePlaceholder": "Ví dụ, Đã gửi cho phản biện viên",
+    "versionDescription": "Dự án trông thế nào sau các thay đổi này. Bạn có thể đọc ở đây mà không thay đổi gì.",
+    "files": "Tệp",
+    "noFiles": "Không có tệp văn bản nào thay đổi trong phiên bản này.",
+    "fileLabel": "{{path}} tại thời điểm {{time}}",
+    "fileMissing": "Tệp này không tồn tại trong phiên bản này.",
+    "loadingFile": "Đang tải…",
+    "restoreFile": "Khôi phục tệp này",
+    "restoreProject": "Khôi phục toàn bộ dự án",
+    "restoreFileConfirm": {
+      "title": "Khôi phục {{path}}?",
+      "description": "Tệp trở về trạng thái tại {{time}} với mọi người trong dự án này. Nội dung hiện tại vẫn nằm trong lịch sử nên bạn có thể quay lại.",
+      "confirm": "Khôi phục tệp"
+    },
+    "restoreProjectConfirm": {
+      "title": "Khôi phục toàn bộ dự án?",
+      "textAndDeleted": "Văn bản của mọi tệp trở về trạng thái tại {{time}} với mọi người trong dự án này, và các tệp đã xóa được khôi phục. Tệp đã đổi tên giữ tên mới, còn hình và tệp được thêm sau đó giữ nguyên. Văn bản hiện tại vẫn nằm trong lịch sử nên bạn có thể quay lại.",
+      "confirm": "Khôi phục dự án"
+    },
+    "compareTitle": "Thay đổi giữa hai phiên bản",
+    "compareDescription": "Từ {{from}} đến {{to}}",
+    "changedFiles": "Tệp đã thay đổi: {{number}}",
+    "noChanges": "Không có văn bản nào thay đổi giữa các phiên bản này."
+  },
+  "accessLog": {
+    "opened": "{{name}} đã mở dự án",
+    "joinedLink": "{{name}} đã tham gia bằng liên kết",
+    "joinedShare": "{{name}} đã tham gia sau khi bạn chia sẻ",
+    "downloaded": "{{name}} đã tải một bản sao",
+    "unknown": "{{name}} đã dùng dự án",
+    "unknownDevice": "Thiết bị không rõ",
+    "span": "{{from}} đến {{to}}",
+    "more": "Hiện mục cũ hơn",
+    "loading": "Đang tải nhật ký truy cập…",
+    "loadFailed": "Oleafly không thể tải nhật ký truy cập.",
+    "empty": "Chưa ghi nhận gì."
+  },
+  "guests": {
+    "badge": "Khách",
+    "invite": {
+      "noAccount": "Chưa ai trên {{server}} dùng {{email}}. Hãy mời họ làm khách, họ chỉ thấy những dự án được mời tham gia.",
+      "button": "Mời làm khách",
+      "buttonNamed": "Mời {{email}} làm khách",
+      "duplicate": "Địa chỉ đó đã có lời mời tham gia dự án này.",
+      "tooMany": "Bạn đã gửi khá nhiều lời mời trong giờ qua. Hãy thử lại sau."
+    },
+    "sent": {
+      "emailed": "Đã gửi email mời đến {{email}}.",
+      "emailedAfterApproval": "Quản trị viên cần phê duyệt lời mời này. {{email}} sẽ nhận email sau khi được phê duyệt.",
+      "added": "{{email}} đã có tài khoản trên {{server}} nên hiện có quyền truy cập.",
+      "sendLink": "{{server}} không gửi email nên bạn hãy tự gửi liên kết này cho {{email}}. Họ dùng liên kết để thêm máy chủ và đăng nhập bằng địa chỉ đó.",
+      "sendLinkAfterApproval": "Quản trị viên cần phê duyệt lời mời này trước. {{server}} không gửi email nên bạn hãy tự gửi liên kết này cho {{email}}. Liên kết dùng được sau khi lời mời được phê duyệt.",
+      "linkLabel": "Liên kết để thêm {{server}}"
+    },
+    "list": {
+      "title": "Lời mời",
+      "status": {
+        "awaiting_approval": "Đang chờ phê duyệt",
+        "invited": "Đã mời",
+        "declined": "Đã từ chối"
+      },
+      "expires": "Hết hạn {{date}}",
+      "withdraw": "Rút lại",
+      "withdrawNamed": "Rút lại lời mời cho {{email}}"
+    },
+    "pending": {
+      "title": "Khách đang chờ",
+      "description": "Chủ sở hữu dự án đã mời những người này làm khách. Khách chỉ thấy những dự án được mời tham gia và không chia sẻ được chúng.",
+      "loadFailed": "Oleafly không thể tải các lời mời khách đang chờ phê duyệt.",
+      "invitedBy": "{{inviter}} đã mời họ vào {{project}}",
+      "approve": "Phê duyệt",
+      "approveNamed": "Phê duyệt {{email}}",
+      "decline": "Từ chối",
+      "declineNamed": "Từ chối {{email}}"
+    }
+  },
+  "access": {
+    "viewerBy": "{{name}} đã đặt bạn làm người xem. Bạn đọc được dự án này nhưng không chỉnh sửa được.",
+    "viewer": "Bạn giờ là người xem. Bạn đọc được dự án này nhưng không chỉnh sửa được.",
+    "commenterBy": "{{name}} đã đặt bạn làm người bình luận. Bạn đọc và bình luận được trên dự án này nhưng không chỉnh sửa được.",
+    "commenter": "Bạn giờ là người bình luận. Bạn đọc và bình luận được trên dự án này nhưng không chỉnh sửa được.",
+    "reviewerBy": "{{name}} đã đặt bạn làm phản biện viên. Thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận.",
+    "reviewer": "Bạn giờ là phản biện viên. Thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận.",
+    "viewOnly": "Bạn xem được dự án được chia sẻ này nhưng không chỉnh sửa được.",
+    "connecting": "Dự án được chia sẻ này vẫn đang kết nối nên chưa thay đổi được. Hãy thử lại sau giây lát.",
+    "unsentReadOnly": "Các thay đổi cuối của bạn đối với {{path}} không được gửi vì giờ bạn chỉ xem được dự án này.",
+    "unsentRefused": "Oleafly không thể gửi các thay đổi cuối của bạn đối với {{path}} nên chúng đã bị bỏ.",
+    "removedBy": "{{name}} đã gỡ bạn khỏi dự án này. Bản sao của bạn vẫn ở trên máy tính này và không còn được chia sẻ.",
+    "removed": "Bạn đã bị gỡ khỏi dự án này. Bản sao của bạn vẫn ở trên máy tính này và không còn được chia sẻ."
+  },
+  "files": {
+    "waiting": "Đang chờ chia sẻ: {{files}}",
+    "failed": "Không thể chia sẻ: {{files}}",
+    "uploading": "Đang tải {{file}}: {{done}} trên {{total}}",
+    "tooLarge": "{{file}} có kích thước {{size}}, lớn hơn mức máy chủ này cho phép ({{limit}}). Tệp chỉ nằm trên máy tính này.",
+    "tooLargeUnknown": "{{file}} lớn hơn mức máy chủ này cho phép. Tệp chỉ nằm trên máy tính này.",
+    "projectTooLarge": "{{file}} vẫn ở trên máy tính này vì dự án đã chạm giới hạn dung lượng {{limit}} của máy chủ. Hãy đề nghị người quản lý máy chủ tăng giới hạn.",
+    "projectTooLargeUnknown": "{{file}} vẫn ở trên máy tính này vì dự án đã chạm giới hạn dung lượng của máy chủ. Hãy đề nghị người quản lý máy chủ tăng giới hạn.",
+    "projectFull": "Dự án đã chạm giới hạn dung lượng của máy chủ nên thay đổi của bạn hiện vẫn ở trên máy tính này. Hãy đề nghị người quản lý máy chủ tăng giới hạn.",
+    "accountStorageFull": "Không thể chia sẻ vì chủ sở hữu dự án đã hết dung lượng trên máy chủ này: {{files}}",
+    "tooManyUploads": "Chưa chia sẻ vì bạn đã tải lên quá nhiều trong giờ qua: {{files}}. Hãy thử lại sau.",
+    "replaced": "{{name}} đã thay thế {{file}} cùng lúc với bạn. Phiên bản của bạn được giữ là {{copy}}.",
+    "added": "{{file}} giờ là {{copy}} vì {{name}} đã thêm một tệp cùng tên.",
+    "beside": "{{name}} cũng có một tệp tên {{file}}. Tệp của họ được giữ là {{copy}}.",
+    "localCopy": "Bạn đã thay đổi {{files}} trong {{name}} trong lúc không có quyền truy cập dự án này.",
+    "bringIn": "Mang thay đổi vào",
+    "keepSeparate": "Giữ riêng",
+    "broughtIn": "Các thay đổi của bạn từ {{name}} đã có trong dự án này.",
+    "retry": "Thử lại",
+    "dismiss": "Bỏ qua"
+  }
+}

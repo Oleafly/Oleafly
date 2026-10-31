@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter};
 
 pub const SUPPORTED: &[&str] = &[
     "en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr",
-    "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko",
+    "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko", "vi",
 ];
 pub const DEFAULT: &str = "en";
 pub const LOCALE_CHANGED_EVENT: &str = "i18n:locale-changed";
@@ -42,6 +42,7 @@ const SOURCES: &[(&str, &str)] = &[
     ("ro", include_str!("../../src/i18n/locales/ro/native.json")),
     ("ja", include_str!("../../src/i18n/locales/ja/native.json")),
     ("ko", include_str!("../../src/i18n/locales/ko/native.json")),
+    ("vi", include_str!("../../src/i18n/locales/vi/native.json")),
 ];
 
 type Catalog = HashMap<String, String>;
