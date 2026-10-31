@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly は {{host}} の証明書を検証できませんでした。組織で独自の認証局を運用している場合は、設定でその証明書ファイルをアカウントに追加してください。",
     "tracked_secret_files": "このプロジェクトの Git 履歴にあるファイルに鍵やパスワードが含まれている可能性があるため、公開を中止しました: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "フルアクセスは有効になりませんでした。"
-  },
+  "approvals": {},
   "trust": {
     "git": "ソース管理を使うには、このフォルダを信頼してください。",
     "repository": "ここでソース管理を使うには、リポジトリ {{name}} を信頼してください。",
@@ -387,10 +385,10 @@
     "command_declined": "MCP サーバーは保存されませんでした。"
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver がインストールされていません。「設定 → 連携 → デスクトップアプリ」でインストールしてください。",
+    "not_installed": "Cua Driver がインストールされていません。「設定 → 連携 → Computer Use」でインストールしてください。",
     "too_old": "Cua Driver {{version}} は古すぎます。{{minimum}} 以降に更新してください。",
     "no_app_bundle": "macOS の権限を保持できるよう、公式のインストーラで Cua Driver をインストールしてください。",
-    "change_declined": "デスクトップアプリの設定は以前のままです。",
+    "change_declined": "Computer Use の設定は以前のままです。",
     "app_blocked": "エージェントは {{name}} を使えません。",
     "app_invalid": "Oleafly は {{name}} をアプリとして使えません。",
     "site_invalid": "「{{site}}」は Oleafly で使えるウェブサイトのアドレスではありません。https:// を使ってください。このコンピュータ上のアドレスなら http:// も使えます。",
@@ -398,7 +396,8 @@
     "too_many_sites": "許可できるウェブサイトは {{limit}} 個までです。",
     "start_failed": "Cua Driver を起動できませんでした: {{detail}}",
     "not_bounded": "Cua Driver が Oleafly の制限付きで起動しなかったため、Oleafly が停止しました。",
+    "needs_permissions": "Cua Driver が macOS の権限を待っています。システム設定で CuaDriver の「アクセシビリティ」と「画面収録」をオンにしてから、もう一度お試しください。",
     "task_unattended": "スケジュールで実行するタスクや、Oleafly を閉じたあとに実行するタスクでは、デスクトップアプリを使えません。",
-    "main_window": "デスクトップアプリの設定はメインウィンドウで変更してください。"
+    "main_window": "Computer Use の設定はメインウィンドウで変更してください。"
   }
 }

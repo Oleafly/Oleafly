@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Avbryt",
-    "fullAccess": {
-      "title": "Aktivera fullständig åtkomst?",
-      "message": "Med fullständig åtkomst kan assistenten köra shell-kommandon och redigera filer utan att fråga om godkännande varje gång. Vill du aktivera fullständig åtkomst?",
-      "confirm": "Aktivera fullständig åtkomst"
-    },
     "sharedShellEscape": {
       "title": "Vill du tillåta externa kommandon i det här delade projektet?",
       "message": "Då kan alla som kan redigera projektet köra program på den här datorn när du kompilerar. Tillåt det bara om du litar på alla i projektet.",
@@ -107,7 +102,7 @@
       "confirm": "Tillåt på den här datorn"
     },
     "desktopApps": {
-      "title": "Skrivbordsappar",
+      "title": "Computer Use",
       "action": "{{agent}} vill {{action}}.",
       "steps": "{{agent}} vill köra de här stegen i en skrivbordsapp:",
       "moreSteps": "Steg som inte visas och inte körs: {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "Vill du tillåta styrning av skrivbordet?",
-      "message": "Agenter kommer att kunna använda följande. De frågar före varje åtgärd, och när du sparar rensas alla val av \"Tillåt för den här chatten\":",
+      "message": "Agenter kommer att kunna använda följande:",
       "confirm": "Tillåt",
-      "enabled": "Skrivbordsappar",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "Och {{count}} till",
       "site": "Webbplats: {{origin}}",
       "signedIn": "Din inloggade webbläsare på {{origin}}",
       "scripted": "Cua-skript",
+      "noAsking": "Åtgärder körs utan att fråga dig först",
       "spacesTitle": "Vill du ge Cua Spaces mer åtkomst?",
       "spacesMessage": "Agenter som använder Cua Spaces kommer att kunna:",
       "spacesChanges": "Skapa och radera Spaces och köra kommandon i dem",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Programmenyn är inte tillgänglig",
     "viewMenuUnavailable": "Menyn Visa är inte tillgänglig",
     "menuItemUnavailable": "Menyalternativet {{id}} är inte tillgängligt",
-    "fullAccessDismissed": "Bekräftelsen av fullständig åtkomst stängdes.",
     "fullAccessDeclined": "Fullständig åtkomst aktiverades inte.",
     "approvalDialogClosed": "Systemets godkännandedialog stängdes oväntat."
   },

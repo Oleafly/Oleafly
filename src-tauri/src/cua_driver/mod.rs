@@ -18,13 +18,16 @@
 pub(crate) mod agent;
 pub(crate) mod apps;
 pub(crate) mod bridge;
+pub(crate) mod browser;
 pub(crate) mod commands;
 pub(crate) mod config;
 pub(crate) mod detect;
 pub(crate) mod dispatch;
 pub(crate) mod gate;
+pub(crate) mod icons;
 pub(crate) mod manifest;
 pub(crate) mod policy;
+pub(crate) mod running;
 pub(crate) mod runtime;
 pub(crate) mod task;
 
@@ -259,7 +262,7 @@ pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
         .map(|config| config.cua_driver)
         .unwrap_or_default();
     let root = crate::paths::oleafly_root()?;
-    let platform = Platform::current().ok_or("Desktop apps are not available on this system.")?;
+    let platform = Platform::current().ok_or("Computer Use isn't available on this system.")?;
     let own_exe = commands::own_exe();
     // What is on disk was not necessarily written by Settings: keep only
     // what a save would have accepted. The names are checked here; the

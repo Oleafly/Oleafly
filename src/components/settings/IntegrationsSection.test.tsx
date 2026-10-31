@@ -35,7 +35,8 @@ vi.mock("@/components/settings/CitationSearchIntegrationSection", () => ({
 const mockInvoke = vi.mocked(invoke);
 
 beforeEach(() => {
-  useSettingsStore.setState({ settingsScrollTarget: null });
+  // The section only renders inside the open Settings dialog.
+  useSettingsStore.setState({ settingsScrollTarget: null, settingsOpen: true });
   Element.prototype.scrollIntoView = vi.fn();
   mockInvoke.mockReset().mockImplementation(async (command) => {
     if (command === "get_config") {
@@ -132,5 +133,18 @@ describe("IntegrationsSection", () => {
         screen.getByRole("heading", { name: enSettings.mcp.section.title }),
       ).toBeInTheDocument();
     });
+  });
+
+  it("leaves a link set while Settings closes for the next time it opens", () => {
+    const { rerender } = render(<IntegrationsSection />);
+    useSettingsStore.setState({ settingsOpen: false, settingsScrollTarget: "desktop-apps" });
+    rerender(<IntegrationsSection />);
+    expect(useSettingsStore.getState().settingsScrollTarget).toBe("desktop-apps");
+    expect(screen.getByTestId("integrations-tab-desktop-apps")).toHaveAttribute("aria-selected", "false");
+
+    useSettingsStore.setState({ settingsOpen: true });
+    rerender(<IntegrationsSection />);
+    expect(screen.getByTestId("integrations-tab-desktop-apps")).toHaveAttribute("aria-selected", "true");
+    expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
   });
 });

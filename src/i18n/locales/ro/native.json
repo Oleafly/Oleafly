@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Anulează",
-    "fullAccess": {
-      "title": "Activezi accesul complet?",
-      "message": "Accesul complet permite asistentului să ruleze comenzi shell și să modifice fișiere fără să ceară aprobare de fiecare dată. Activezi accesul complet?",
-      "confirm": "Activează accesul complet"
-    },
     "sharedShellEscape": {
       "title": "Permiți comenzi externe în acest proiect partajat?",
       "message": "Oricine poate edita acest proiect ar putea apoi să ruleze programe pe acest computer când compilezi. Permite asta doar dacă ai încredere în toți cei din proiect.",
@@ -107,7 +102,7 @@
       "confirm": "Permite pe acest computer"
     },
     "desktopApps": {
-      "title": "Aplicații desktop",
+      "title": "Computer Use",
       "action": "{{agent}} vrea să {{action}}.",
       "steps": "{{agent}} vrea să facă acești pași într-o aplicație desktop:",
       "moreSteps": "Pași neafișați și neexecutați: {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "Permiți controlul desktopului?",
-      "message": "Agenții vor putea folosi următoarele. Cer voie înainte de fiecare acțiune, iar salvarea șterge toate alegerile „Permite pentru această conversație”:",
+      "message": "Agenții vor putea folosi următoarele:",
       "confirm": "Permite",
-      "enabled": "Aplicații desktop",
+      "enabled": "Computer Use",
       "app": "Aplicație: {{identity}} ({{name}})",
       "more": "Și încă {{count}}",
       "site": "Site: {{origin}}",
       "signedIn": "Browserul tău autentificat pe {{origin}}",
       "scripted": "Scripturi Cua",
+      "noAsking": "Acțiunile rulează fără să te întrebe mai întâi",
       "spacesTitle": "Dai Cua Spaces mai mult acces?",
       "spacesMessage": "Agenții care folosesc Cua Spaces vor putea:",
       "spacesChanges": "Să creeze și să șteargă Space-uri și să ruleze comenzi în ele",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Meniul aplicației nu este disponibil",
     "viewMenuUnavailable": "Meniul Vizualizare nu este disponibil",
     "menuItemUnavailable": "Elementul de meniu {{id}} nu este disponibil",
-    "fullAccessDismissed": "Confirmarea accesului complet a fost închisă.",
     "fullAccessDeclined": "Accesul complet nu a fost activat.",
     "approvalDialogClosed": "Fereastra nativă de aprobare s-a închis neașteptat."
   },

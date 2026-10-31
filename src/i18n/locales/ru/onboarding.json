@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Интеграции",
-      "content": "Подключите Git-хостинг (GitHub, GitLab, Codeberg и другие), alphaXiv, Zotero, поиск по цитатам, приложения на компьютере для агентов и локальный сервер MCP от Oleafly."
+      "content": "Подключите Git-хостинг (GitHub, GitLab, Codeberg и другие), alphaXiv, Zotero, поиск по цитатам, Computer Use для агентов и локальный сервер MCP от Oleafly."
     },
     "shortcuts": {
       "title": "Сочетания клавиш",

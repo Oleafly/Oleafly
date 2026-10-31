@@ -962,7 +962,7 @@
         "experimentation": "实验室，测试版，beta，早期功能",
         "general": "偏好设置，语言，区域，拼写检查，拼写，错别字，离线，导览，终端命令",
         "help": "关于，版本，更新，更新日志，新功能，文档，支持，社区，Discord，许可证，崩溃报告",
-        "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 托管，桌面应用，Cua，MCP，引用，账户，连接",
+        "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 托管，Computer Use，桌面应用，Cua，MCP，引用，账户，连接",
         "shortcuts": "按键绑定，快捷键，热键，按键，键盘",
         "research": "研究 任务 预算 通知 保持唤醒 实验 运行 research tasks"
       },

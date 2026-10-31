@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use super::icons::IconSource;
 use super::Platform;
 
 /// The picker never lists more than this many apps.
@@ -27,6 +28,9 @@ pub(crate) struct InstalledApp {
     pub executable: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blocked: Option<BlockReason>,
+    /// Where the picker's icon comes from; it stays on this side.
+    #[serde(skip)]
+    pub icon: Option<IconSource>,
 }
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,6 +76,17 @@ const BUNDLE_IDS: &[(&str, BlockReason)] = &[
     ("dev.zed.Zed", Terminal),
     ("dev.zed.Zed-Preview", Terminal),
     ("com.google.android.studio", Terminal),
+    ("com.google.antigravity", Terminal),
+    ("dev.kiro.desktop", Terminal),
+    ("com.panic.Nova", Terminal),
+    ("com.apple.dt.Xcode", Terminal),
+    // Editors whose console runs code: Sublime Text's Python console,
+    // BBEdit's shell worksheets, and Vim's and Emacs's shell commands.
+    ("com.sublimetext.4", Terminal),
+    ("com.sublimetext.3", Terminal),
+    ("com.barebones.bbedit", Terminal),
+    ("org.vim.MacVim", Terminal),
+    ("org.gnu.Emacs", Terminal),
     ("com.apple.systempreferences", SystemSettings),
     ("com.apple.keychainaccess", Passwords),
     ("com.apple.Passwords", Passwords),
@@ -222,6 +237,12 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("dataspell64", Terminal),
     ("studio", Terminal),
     ("studio64", Terminal),
+    ("antigravity", Terminal),
+    ("kiro", Terminal),
+    ("sublime_text", Terminal),
+    ("subl", Terminal),
+    ("emacs", Terminal),
+    ("gvim", Terminal),
     ("systemsettings.exe", SystemSettings),
     ("control.exe", SystemSettings),
     ("mmc.exe", SystemSettings),
@@ -393,6 +414,7 @@ pub(crate) fn exec_program(exec: &str) -> Option<String> {
 pub(crate) struct DesktopEntry {
     pub name: String,
     pub program: String,
+    pub icon: Option<String>,
 }
 
 /// The key-file escapes (`\s`, `\n`, `\t`, `\r`, `\\`).
@@ -426,6 +448,7 @@ pub(crate) fn parse_desktop_entry(text: &str) -> Option<DesktopEntry> {
     let mut kind = None;
     let mut name = None;
     let mut exec = None;
+    let mut icon = None;
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
@@ -446,6 +469,7 @@ pub(crate) fn parse_desktop_entry(text: &str) -> Option<DesktopEntry> {
             "Type" => kind = Some(value.to_string()),
             "Name" => name = Some(unescape_value(value)),
             "Exec" => exec = Some(unescape_value(value)),
+            "Icon" if !value.is_empty() => icon = Some(unescape_value(value)),
             "NoDisplay" | "Hidden" if value.eq_ignore_ascii_case("true") => return None,
             // Terminal programs run inside a terminal, which is never allowed.
             "Terminal" if value.eq_ignore_ascii_case("true") => return None,
@@ -460,7 +484,11 @@ pub(crate) fn parse_desktop_entry(text: &str) -> Option<DesktopEntry> {
         return None;
     }
     let program = exec_program(&exec?)?;
-    Some(DesktopEntry { name, program })
+    Some(DesktopEntry {
+        name,
+        program,
+        icon,
+    })
 }
 
 fn display_name_from_stem(stem: &str) -> String {
@@ -541,11 +569,14 @@ pub(crate) fn app_from_executable(platform: Platform, path: &Path) -> Option<Ins
     let raw = path.to_string_lossy();
     let blocked = blocked_reason(platform, None, Some(&*raw), &own)
         .or_else(|| blocked_reason(platform, None, Some(executable.as_str()), &own));
+    let icon =
+        (platform == Platform::Windows).then(|| IconSource::Program(PathBuf::from(&executable)));
     Some(InstalledApp {
         name: display_name_from_stem(&stem),
         bundle_id: None,
         executable: Some(executable),
         blocked,
+        icon,
     })
 }
 
@@ -581,6 +612,7 @@ pub(crate) fn app_from_bundle(bundle: &Path) -> Option<InstalledApp> {
         bundle_id: Some(bundle_id),
         executable: None,
         blocked,
+        icon: Some(IconSource::Bundle(bundle.to_path_buf())),
     })
 }
 
@@ -714,6 +746,7 @@ fn windows_apps() -> Vec<InstalledApp> {
             apps.push(InstalledApp {
                 name: display,
                 bundle_id: None,
+                icon: Some(IconSource::Program(PathBuf::from(&executable))),
                 executable: Some(executable),
                 blocked,
             });
@@ -806,6 +839,7 @@ fn linux_apps() -> Vec<InstalledApp> {
                 bundle_id: None,
                 executable: Some(executable),
                 blocked,
+                icon: entry.icon.map(IconSource::Named),
             });
             if apps.len() >= 4 * MAX_INSTALLED_APPS {
                 return apps;
@@ -875,12 +909,13 @@ mod tests {
 
     #[test]
     fn desktop_entries_skip_hidden_and_non_applications() {
-        let visible = "[Desktop Entry]\nType=Application\nName[de]=Literatur\nName=Zotero\nExec=/opt/zotero/zotero %U\n\n[Desktop Action new]\nName=New window\nExec=/usr/bin/other\n";
+        let visible = "[Desktop Entry]\nType=Application\nName[de]=Literatur\nName=Zotero\nExec=/opt/zotero/zotero %U\nIcon=zotero\n\n[Desktop Action new]\nName=New window\nExec=/usr/bin/other\nIcon=other\n";
         assert_eq!(
             parse_desktop_entry(visible),
             Some(DesktopEntry {
                 name: "Zotero".into(),
-                program: "/opt/zotero/zotero".into()
+                program: "/opt/zotero/zotero".into(),
+                icon: Some("zotero".into())
             })
         );
         for hidden in [
@@ -899,7 +934,8 @@ mod tests {
             parse_desktop_entry(escaped).unwrap(),
             DesktopEntry {
                 name: "My App".into(),
-                program: "/opt/My App/app".into()
+                program: "/opt/My App/app".into(),
+                icon: None
             }
         );
     }
@@ -1066,6 +1102,10 @@ mod tests {
             ("com.microsoft.VSCode", BlockReason::Terminal),
             ("com.todesktop.230313mzl4w4u92", BlockReason::Terminal),
             ("dev.zed.Zed", BlockReason::Terminal),
+            ("com.google.antigravity", BlockReason::Terminal),
+            ("dev.kiro.desktop", BlockReason::Terminal),
+            ("com.sublimetext.4", BlockReason::Terminal),
+            ("com.panic.Nova", BlockReason::Terminal),
             ("com.jetbrains.pycharm.ce", BlockReason::Terminal),
             ("COM.JETBRAINS.INTELLIJ", BlockReason::Terminal),
         ] {
@@ -1265,6 +1305,7 @@ mod tests {
                 bundle_id: None,
                 executable: Some(format!("/opt/app{index}")),
                 blocked: None,
+                icon: None,
             })
             .collect();
         let apps = finish(apps);
@@ -1280,11 +1321,15 @@ mod tests {
             bundle_id: Some("com.apple.Terminal".into()),
             executable: None,
             blocked: Some(BlockReason::SystemSettings),
+            icon: Some(IconSource::Bundle(
+                "/System/Applications/Utilities/Terminal.app".into(),
+            )),
         };
         let json = serde_json::to_value(&app).unwrap();
         assert_eq!(json["bundleId"], "com.apple.Terminal");
         assert_eq!(json["blocked"], "system_settings");
         assert!(json.get("executable").is_none());
+        assert!(json.get("icon").is_none());
         assert_eq!(
             serde_json::to_value(BlockReason::Browser).unwrap(),
             "browser"

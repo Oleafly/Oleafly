@@ -525,7 +525,6 @@ let useAiToolSettingsStore: typeof import("@/store/ai-tool-settings").useAiToolS
 let useAssistantRuntimeStore: typeof import("@/store/assistant-runtime").useAssistantRuntimeStore;
 let useAgentHandoffStore: typeof import("@/store/agent-handoff").useAgentHandoffStore;
 let steerRunAlreadyEnded: typeof import("./ChatCore").steerRunAlreadyEnded;
-let APP_ERROR_PREFIX: string;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
 let act: typeof import("@testing-library/react").act;
@@ -599,7 +598,6 @@ beforeAll(async () => {
     PLAN_MODE_REVISION_LINE,
     steerRunAlreadyEnded,
   } = await import("./ChatCore"));
-  ({ APP_ERROR_PREFIX } = await import("@/lib/app-error"));
   ({ ChatPanel } = await import("./ChatPanel"));
   ({ CopilotOverlay } = await import("./CopilotOverlay"));
   ({ resetProviderConfigCache } = await import("./provider-config"));
@@ -4196,25 +4194,6 @@ describe("ChatCore agent turns", () => {
     expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.turnChanges?.committed).toEqual({
       "notes.md": "head-2",
     });
-  });
-
-  it("stays quiet when the user cancels the Full access confirmation", async () => {
-    mocks.approvalsModeSet.mockRejectedValue(
-      `${APP_ERROR_PREFIX}${JSON.stringify({ code: "approvals.full_access_declined", params: {}, detail: null })}`,
-    );
-    const rendered = await renderChat();
-    fireEvent.click(
-      rendered.getByRole("button", { name: "Approval mode. Approve for me" }),
-    );
-    fireEvent.click(rendered.getByRole("button", { name: "Full access" }));
-
-    await waitFor(() => expect(mocks.approvalsModeSet).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(
-        rendered.getByRole("button", { name: "Approval mode. Approve for me" }),
-      ).toBeTruthy(),
-    );
-    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
   it("reports an approval mode the backend could not save", async () => {

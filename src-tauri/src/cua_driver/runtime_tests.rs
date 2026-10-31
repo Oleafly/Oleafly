@@ -54,7 +54,7 @@ const started = new Set();
 let counted = 0;
 const names = ['start_session','end_session','list_apps','list_windows','get_window_state','get_browser_state','launch_app','click','double_click','right_click','type_text','press_key','hotkey','scroll','set_value','run_steps','run_script','browser_prepare','browser_navigate','browser_click','browser_type','browser_select','health_report'];
 const properties = {pid: {type: 'integer'}, session: {type: 'string'}};
-for (const key of ['window_id','element_index','element_token','snapshot_id','x','y','text','key','keys','url','ref','value','steps','stop_on_error','profile','note','bundle_id','include_screenshot']) properties[key] = {};
+for (const key of ['window_id','element_index','element_token','snapshot_id','x','y','text','key','keys','url','ref','value','steps','stop_on_error','profile','note','bundle_id','include_screenshot','target_id','tab_id','allow_launch','strategy','snapshot_format']) properties[key] = {};
 const tools = names.map((name) => ({
   name,
   description: name + ' does a thing. More detail here.',
@@ -91,6 +91,9 @@ lines.on('line', async (line) => {
   if (args.session !== undefined && !started.has(args.session)) { answer(refused('session_ended', 'that session ended')); return; }
   if (name === fail) { answer({content: [{type: 'text', text: 'it failed'}], isError: true, structuredContent: {code: 'tool_invocation_failed'}}); return; }
   if (name === huge) { answer({content: [{type: 'text', text: 'x'.repeat(40000)}]}); return; }
+  if (name === 'browser_prepare' && structured) { answer({content: [{type: 'text', text: 'launched'}], structuredContent: {status: 'ok', prepared_pid: 777}}); return; }
+  if (name === 'list_windows' && structured && args.pid === 777) { answer({content: [{type: 'text', text: '2 windows'}], structuredContent: {windows: [{pid: 777, window_id: 8, layer: 0, title: 'Restore pages?', bounds: {width: 320, height: 238}}, {pid: 777, window_id: 9, layer: 0, title: 'about:blank', bounds: {width: 1200, height: 900}}]}}); return; }
+  if (name === 'get_browser_state' && structured) { answer(args.target_id ? {content: [{type: 'text', text: 'snapshot'}], structuredContent: {mode: 'snapshot', status: 'ok', target_id: args.target_id, tab_id: args.tab_id}} : {content: [{type: 'text', text: 'bound'}], structuredContent: {mode: 'bind', status: 'ok', target_id: 'bt-1', tabs: [{tab_id: 'tab-1', active: true}]}}); return; }
   if (name === 'list_windows' && structured) { answer({content: [{type: 'text', text: '1 window'}], structuredContent: {windows: [{pid: 4312, window_id: 88, app_name: 'Zotero', title: 'My Library'}]}}); return; }
   if (name === 'get_window_state' && structured) { answer({content: [{type: 'text', text: 'window tree'}, {type: 'image', mimeType: 'image/png', data: 'iVBORw0KGgo='}], structuredContent: {snapshot_id: 's1', pid: args.pid, window_id: args.window_id, elements: [{element_index: 0, element_token: 'el-0', role: 'AXButton', label: 'Export'}]}}); return; }
   if (name === 'get_window_state') { answer({content: [{type: 'text', text: 'window tree'}, {type: 'image', mimeType: 'image/png', data: 'iVBORw0KGgo='}]}); return; }
@@ -273,6 +276,8 @@ fn settings(sites: &[(&str, bool)]) -> CuaDriverConfig {
             })
             .collect(),
         scripted_control: false,
+        // The approval tests need the dialogs.
+        ask_before_actions: true,
     }
 }
 
@@ -727,6 +732,118 @@ async fn a_deny_rule_refuses_before_the_driver() {
 }
 
 #[tokio::test]
+async fn oleafly_answers_list_apps_from_the_allowed_apps() {
+    // Cua Driver 0.38 refuses an unbounded list of apps or windows, so
+    // neither reaches the driver; a list of one app's windows does.
+    let mut config = settings(&[]);
+    // No computer runs this app, whatever the test machine has open.
+    config.apps = vec![AllowedApp {
+        name: "Nowhere".into(),
+        bundle_id: Some("org.example.never-installed".into()),
+        executable: Some("/nonexistent/oleafly-test-app".into()),
+    }];
+    let f = fixture(config, &[], ScriptedApprover::default());
+    let apps = dispatch(&f, &chat("run:a"), json!({"tool": "list_apps"})).await;
+    assert!(!apps.is_error, "{}", apps.text);
+    assert!(apps.text.starts_with("Allowed apps:"), "{}", apps.text);
+    assert!(apps.text.contains("Nowhere"), "{}", apps.text);
+    let windows = dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    assert!(!windows.is_error, "{}", windows.text);
+    assert!(
+        windows.text.contains("None of the allowed apps is running"),
+        "{}",
+        windows.text
+    );
+    assert!(!f
+        .launcher
+        .calls()
+        .iter()
+        .any(|entry| entry["tool"] == "list_apps" || entry["tool"] == "list_windows"));
+}
+
+#[tokio::test]
+async fn a_call_that_leaves_out_its_pid_gets_the_one_the_driver_gave() {
+    // Cua Driver 0.38 refuses a window call that names no pid ("window
+    // resource did not attest a pid"), and agents pass the window_id or
+    // element_token they were shown.
+    let f = fixture(
+        settings(&[]),
+        &[("FAKE_STRUCTURED", "1")],
+        ScriptedApprover::with(&[Answer::Once]),
+    );
+    let windows = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "list_windows", "args": {"pid": 4312}}),
+    )
+    .await;
+    assert!(!windows.is_error, "{}", windows.text);
+    let state = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "get_window_state", "args": {"window_id": 88}}),
+    )
+    .await;
+    assert!(!state.is_error, "{}", state.text);
+    // 0.38's element tokens are `<snapshot_id>:<row>`.
+    let typed = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "type_text", "args": {"element_token": "s1:0", "text": "hi"}}),
+    )
+    .await;
+    assert!(!typed.is_error, "{}", typed.text);
+    let pids: Vec<(String, Value)> = f
+        .launcher
+        .calls()
+        .iter()
+        .filter(|entry| entry["phase"] == "start")
+        .filter(|entry| entry["tool"] == "get_window_state" || entry["tool"] == "type_text")
+        .map(|entry| {
+            (
+                entry["tool"].as_str().unwrap().to_string(),
+                entry["args"]["pid"].clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        pids,
+        vec![
+            ("get_window_state".to_string(), json!(4312)),
+            ("type_text".to_string(), json!(4312)),
+        ]
+    );
+    // Nothing to go on: answered before any dialog, and the driver never
+    // hears of it.
+    let unknown = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "click", "args": {"window_id": 999}}),
+    )
+    .await;
+    assert!(unknown.is_error);
+    assert_eq!(unknown.text, super::policy::NEEDS_PID_TEXT);
+    assert_eq!(f.approver.asked().len(), 1);
+    assert!(!f
+        .launcher
+        .calls()
+        .iter()
+        .any(|entry| entry["tool"] == "click"));
+    // The driver's session ends with the turn, and its tokens with it: one
+    // carried into the next turn is refused before the user is asked.
+    turn_ended_in(&f.state, "run:a");
+    let carried = dispatch(
+        &f,
+        &chat("run:b"),
+        json!({"tool": "type_text", "args": {"element_token": "s1:0", "text": "again"}}),
+    )
+    .await;
+    assert!(carried.is_error);
+    assert_eq!(carried.text, super::policy::EARLIER_TURN_TEXT);
+    assert_eq!(f.approver.asked().len(), 1);
+}
+
+#[tokio::test]
 async fn the_session_option_grants_only_that_tool_for_that_key() {
     let f = fixture(
         settings(&[]),
@@ -741,7 +858,7 @@ async fn the_session_option_grants_only_that_tool_for_that_key() {
         !dispatch(
             &f,
             &chat("run:a"),
-            json!({"tool": "type_text", "args": {"text": "hi"}})
+            json!({"tool": "type_text", "args": {"pid": 1, "text": "hi"}})
         )
         .await
         .is_error
@@ -801,7 +918,7 @@ async fn typed_text_shows_in_the_dialog_but_never_in_the_log() {
     let outcome = dispatch(
         &f,
         &chat("run:a"),
-        json!({"tool": "type_text", "args": {"text": secret}}),
+        json!({"tool": "type_text", "args": {"pid": 1, "text": secret}}),
     )
     .await;
     assert!(!outcome.is_error, "{}", outcome.text);
@@ -877,6 +994,88 @@ async fn private_keys_cannot_steer_the_dispatcher() {
 }
 
 #[tokio::test]
+async fn a_website_runs_in_the_browser_oleafly_opened() {
+    // 0.38 binds a tab through its browser's window and wants the target
+    // and tab on every later call; agents pass none of them.
+    let f = fixture(
+        settings(&[("https://example.org", false)]),
+        &[("FAKE_STRUCTURED", "1")],
+        ScriptedApprover::with(&[Answer::Once, Answer::Once]),
+    );
+    let scope = chat("run:a");
+    let call = |tool: &str, args: Value| json!({"tool": tool, "args": args});
+    let early = dispatch(&f, &scope, call("get_browser_state", json!({}))).await;
+    assert_eq!(early.text, super::browser::PREPARE_FIRST_TEXT);
+    let prepared = dispatch(&f, &scope, call("browser_prepare", json!({}))).await;
+    assert!(!prepared.is_error, "{}", prepared.text);
+    // A page change before the bind would only be refused, after the dialog.
+    let unbound = dispatch(
+        &f,
+        &scope,
+        call("browser_navigate", json!({"url": "https://example.org"})),
+    )
+    .await;
+    assert_eq!(unbound.text, super::browser::BIND_FIRST_TEXT);
+    for (tool, args) in [
+        ("get_browser_state", json!({})),
+        ("browser_navigate", json!({"url": "https://example.org/a"})),
+        ("get_browser_state", json!({})),
+    ] {
+        let outcome = dispatch(&f, &scope, call(tool, args)).await;
+        assert!(!outcome.is_error, "{tool}: {}", outcome.text);
+    }
+    // Another site, or another browser in the separate profile, is answered
+    // before any dialog.
+    let away = dispatch(
+        &f,
+        &scope,
+        call(
+            "browser_navigate",
+            json!({"url": "https://www.wikipedia.org"}),
+        ),
+    )
+    .await;
+    assert_eq!(away.text, super::policy::OUTSIDE_TEXT);
+    let other = dispatch(&f, &scope, call("get_browser_state", json!({"pid": 1234}))).await;
+    assert_eq!(other.text, super::browser::OWN_BROWSER_TEXT);
+    assert_eq!(f.approver.asked().len(), 2);
+
+    let sent: Vec<(String, Value)> = f
+        .launcher
+        .calls()
+        .iter()
+        .filter(|entry| entry["phase"] == "start" && entry["kind"] == "browser")
+        // Not the start and its self-check.
+        .filter(|entry| entry["tool"] != "start_session" && entry["tool"] != "get_screen_size")
+        .map(|entry| {
+            let mut args = entry["args"].clone();
+            args.as_object_mut().unwrap().remove("session");
+            (entry["tool"].as_str().unwrap().to_string(), args)
+        })
+        .collect();
+    let tab = json!({"target_id": "bt-1", "tab_id": "tab-1", "snapshot_format": "semantic_v2"});
+    assert_eq!(
+        sent,
+        vec![
+            (
+                "browser_prepare".to_string(),
+                json!({"allow_launch": true, "profile": {"mode": "isolated_named", "name": "oleafly"}})
+            ),
+            ("list_windows".to_string(), json!({"pid": 777})),
+            (
+                "get_browser_state".to_string(),
+                json!({"pid": 777, "window_id": 9})
+            ),
+            (
+                "browser_navigate".to_string(),
+                json!({"target_id": "bt-1", "tab_id": "tab-1", "url": "https://example.org/a"})
+            ),
+            ("get_browser_state".to_string(), tab),
+        ]
+    );
+}
+
+#[tokio::test]
 async fn browser_tools_route_by_profile() {
     let f = fixture(
         settings(&[("https://a.org", true), ("https://b.org", false)]),
@@ -884,7 +1083,7 @@ async fn browser_tools_route_by_profile() {
         ScriptedApprover::with(&[Answer::Once, Answer::Once]),
     );
     let navigate = |browser: Option<&str>| {
-        let mut arguments = json!({"tool": "browser_navigate", "args": {"url": "https://a.org/x"}});
+        let mut arguments = json!({"tool": "browser_navigate", "args": {"url": "https://a.org/x", "target_id": "bt-1", "tab_id": "tab-1"}});
         if let Some(browser) = browser {
             arguments["browser"] = json!(browser);
         }
@@ -924,6 +1123,44 @@ async fn browser_tools_route_by_profile() {
 }
 
 #[tokio::test]
+async fn with_asking_off_actions_run_without_a_dialog() {
+    let config = CuaDriverConfig {
+        ask_before_actions: false,
+        ..settings(&[("https://a.org", true)])
+    };
+    let f = fixture(config, &[], ScriptedApprover::default());
+    let started = dispatch(&f, &chat("run:a"), json!({"tool": "start_session"})).await;
+    assert!(
+        started.text.contains("run without asking the user"),
+        "{}",
+        started.text
+    );
+    for request in [
+        json!({"tool": "click", "args": {"pid": 1}}),
+        json!({"tool": "browser_click", "browser": "signed_in",
+            "args": {"ref": "e1", "target_id": "bt-1", "tab_id": "tab-1"}}),
+    ] {
+        let outcome = dispatch(&f, &chat("run:a"), request).await;
+        assert!(!outcome.is_error, "{}", outcome.text);
+    }
+    assert!(f.approver.asked().is_empty());
+    // A deny rule still refuses.
+    crate::approvals::set_decision(
+        f.dir.path(),
+        "p1",
+        "desktop_apps",
+        Some(crate::approvals::ToolDecision::Deny),
+    )
+    .unwrap();
+    let scope = CuaScope {
+        project_id: Some("p1".into()),
+        ..chat("run:a")
+    };
+    let denied = dispatch(&f, &scope, json!({"tool": "click", "args": {"pid": 1}})).await;
+    assert_eq!(denied.text, super::gate::DENIED_TEXT);
+}
+
+#[tokio::test]
 async fn start_session_returns_the_rules_and_the_reference() {
     let f = fixture(settings(&[]), &[], ScriptedApprover::default());
     let outcome = dispatch(&f, &chat("run:a"), json!({"tool": "start_session"})).await;
@@ -954,7 +1191,12 @@ async fn images_reach_the_agent_as_data_urls() {
 #[tokio::test]
 async fn turn_end_ends_the_label_and_a_new_turn_starts_fresh() {
     let f = fixture(settings(&[]), &[], ScriptedApprover::default());
-    dispatch(&f, &chat("run:A"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:A"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     let first = session_label("Assistant", "run:A");
     turn_ended_in(&f.state, "run:A");
     assert!(
@@ -964,7 +1206,12 @@ async fn turn_end_ends_the_label_and_a_new_turn_starts_fresh() {
             }))
             .await
     );
-    dispatch(&f, &chat("run:B"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:B"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     let second = session_label("Assistant", "run:B");
     assert!(f.launcher.calls().iter().any(|entry| {
         entry["tool"] == "start_session" && entry["args"]["session"] == second.as_str()
@@ -974,7 +1221,12 @@ async fn turn_end_ends_the_label_and_a_new_turn_starts_fresh() {
 #[tokio::test]
 async fn dropping_the_turn_guard_ends_the_session() {
     let f = fixture(settings(&[]), &[], ScriptedApprover::default());
-    dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     let label = session_label("Assistant", "run:a");
     drop(TurnEndGuard::with_state(f.state.clone(), "run:a".into()));
     assert!(
@@ -1167,19 +1419,12 @@ async fn a_signed_in_action_always_asks_and_never_shares_a_separate_profile_gran
         &[],
         ScriptedApprover::with(&[Answer::Session, Answer::Session, Answer::Once]),
     );
-    let click =
-        |browser: &str| json!({"tool": "browser_click", "browser": browser, "args": {"ref": "e1"}});
+    let click = |browser: &str| json!({"tool": "browser_click", "browser": browser, "args": {"ref": "e1", "target_id": "bt-1", "tab_id": "tab-1"}});
     // Allowed for the chat in the separate profile...
-    assert!(
-        !dispatch(&f, &chat("run:a"), click("separate"))
-            .await
-            .is_error
-    );
-    assert!(
-        !dispatch(&f, &chat("run:a"), click("separate"))
-            .await
-            .is_error
-    );
+    for _ in 0..2 {
+        let outcome = dispatch(&f, &chat("run:a"), click("separate")).await;
+        assert!(!outcome.is_error, "{}", outcome.text);
+    }
     assert_eq!(f.approver.asked().len(), 1);
     // ...does not cover the user's own browser, and an answer of "for this
     // chat" there grants nothing (the dialog doesn't even offer it).
@@ -1228,7 +1473,7 @@ async fn the_signed_in_dialog_names_the_site_it_goes_to() {
         &f,
         &chat("run:a"),
         json!({"tool": "browser_navigate", "browser": "signed_in",
-            "args": {"url": "https://journal.example.org/submit"}}),
+            "args": {"url": "https://journal.example.org/submit", "target_id": "bt-1", "tab_id": "tab-1"}}),
     )
     .await;
     assert!(!outcome.is_error, "{}", outcome.text);
@@ -1277,7 +1522,7 @@ async fn allowing_a_batch_for_the_chat_allows_only_the_tools_it_listed() {
         !dispatch(
             &f,
             &chat("run:a"),
-            json!({"tool": "type_text", "args": {"text": "hi"}})
+            json!({"tool": "type_text", "args": {"pid": 1, "text": "hi"}})
         )
         .await
         .is_error
@@ -1347,7 +1592,7 @@ async fn steps_the_dialog_did_not_list_never_run_and_are_not_allowed_for_the_cha
         !dispatch(
             &f,
             &chat("run:a"),
-            json!({"tool": "hotkey", "args": {"keys": ["cmd", "c"]}})
+            json!({"tool": "hotkey", "args": {"pid": 1, "keys": ["cmd", "c"]}})
         )
         .await
         .is_error
@@ -1865,7 +2110,12 @@ async fn the_dialog_names_the_app_window_and_element_the_driver_described() {
         &[("FAKE_STRUCTURED", "1")],
         ScriptedApprover::with(&[Answer::Once]),
     );
-    dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "list_windows", "args": {"pid": 4312}}),
+    )
+    .await;
     dispatch(
         &f,
         &chat("run:a"),
@@ -1946,7 +2196,7 @@ async fn turning_desktop_apps_off_while_a_dialog_is_open_says_they_are_off() {
     assert!(outcome.is_error);
     assert_eq!(
         outcome.text,
-        "Desktop apps are off. The user can turn them on in Settings > Integrations > Desktop apps."
+        "Computer Use is off. The user can turn it on in Settings > Integrations > Computer Use."
     );
     assert!(!f.launcher.tools().contains(&"click".to_string()));
 }
@@ -1977,7 +2227,12 @@ async fn an_answer_too_large_to_read_says_how_to_ask_for_less_and_keeps_the_daem
     assert_eq!(f.state.runtimes.running(), vec![RuntimeKind::Desktop]);
     // The next call gets a new session on the same daemon, with no second
     // start (and no second bounded self-check).
-    let next = dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    let next = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     assert!(!next.is_error, "{}", next.text);
     assert_eq!(f.launcher.opened(RuntimeKind::Desktop), 2);
     let self_checks = f

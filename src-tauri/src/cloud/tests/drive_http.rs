@@ -479,3 +479,77 @@ async fn the_account_and_its_space_come_from_about() {
     let space = store.space().await.unwrap().unwrap();
     assert_eq!((space.used, space.allocated), (2048, 16_106_127_360));
 }
+
+/// A project's files spread over folders that don't exist yet, as on its first
+/// upload: `count` files in each folder.
+fn project_batch(directory: &std::path::Path) -> Vec<BatchFile> {
+    let mut batch = Vec::new();
+    for folder in ["figures", "figures/plots", "sections"] {
+        for index in 0..8 {
+            let local = directory.join(format!("{}-{index}.txt", folder.replace('/', "-")));
+            std::fs::write(&local, format!("{folder} {index}")).unwrap();
+            batch.push(BatchFile {
+                remote: format!("/projects/p/files/{folder}/f{index}.txt"),
+                local,
+            });
+        }
+    }
+    batch
+}
+
+#[tokio::test]
+async fn a_batch_makes_each_folder_once_and_looks_up_no_file_by_name() {
+    let fake = FakeDrive::start().await;
+    let directory = tempfile::tempdir().unwrap();
+    let batch = project_batch(directory.path());
+    let files = batch.len();
+
+    let before = fake.with(|drive| drive.calls);
+    let uploaded = fake.store().put_paths(&batch, &|| {}).await;
+    assert!(uploaded.iter().all(Result::is_ok), "{uploaded:?}");
+    let first = fake.with(|drive| drive.calls) - before;
+    // Uploads that land in the same new folder at once make it once: none is
+    // made again and thrown away.
+    let (folders, discarded) = fake.with(|drive| {
+        let folders = drive.files.values().filter(|file| file.folder).count();
+        let discarded = drive
+            .files
+            .values()
+            .filter(|file| file.folder && file.trashed)
+            .count();
+        (folders, discarded)
+    });
+    assert_eq!(discarded, 0, "{first} requests for {files} files");
+    // Oleafly, projects, p, files, figures, plots and sections.
+    assert_eq!(folders, 7);
+    // One request per file, and a few per folder: finding it, making it and
+    // reading what's in it. No file is looked up by name on its own.
+    assert!(
+        first <= files + 4 * folders,
+        "{first} requests for {files} files"
+    );
+
+    // Another computer, or this one after a restart, starts with nothing known:
+    // it finds each folder and reads the ones it writes into once, then updates
+    // every file with one request each.
+    let before = fake.with(|drive| drive.calls);
+    let again = fake.store().put_paths(&batch, &|| {}).await;
+    assert!(again.iter().all(Result::is_ok), "{again:?}");
+    let second = fake.with(|drive| drive.calls) - before;
+    assert!(
+        second <= files + 2 * folders,
+        "{second} requests for {files} files"
+    );
+    assert_eq!(
+        fake.with(|drive| drive.content("projects/p/files/figures/plots/f3.txt")),
+        Some(b"figures/plots 3".to_vec())
+    );
+    assert_eq!(
+        fake.with(|drive| drive
+            .files
+            .values()
+            .filter(|file| file.name == "f3.txt")
+            .count()),
+        3
+    );
+}

@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "キャンセル",
-    "fullAccess": {
-      "title": "フルアクセスを有効にしますか？",
-      "message": "フルアクセスを有効にすると、アシスタントは毎回の承認なしに shell コマンドの実行やファイルの編集ができるようになります。フルアクセスを有効にしますか？",
-      "confirm": "フルアクセスを有効にする"
-    },
     "sharedShellEscape": {
       "title": "この共有プロジェクトで外部コマンドを許可しますか？",
       "message": "許可すると、このプロジェクトを編集できる人なら誰でも、あなたがコンパイルするときにこのコンピュータでプログラムを実行できるようになります。プロジェクトの全員を信頼できる場合にのみ許可してください。",
@@ -107,7 +102,7 @@
       "confirm": "このコンピュータで許可"
     },
     "desktopApps": {
-      "title": "デスクトップアプリ",
+      "title": "Computer Use",
       "action": "{{agent}} が{{action}}ことを求めています。",
       "steps": "{{agent}} がデスクトップアプリで次の手順を実行しようとしています:",
       "moreSteps": "表示されず、実行もされない手順: {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "デスクトップの操作を許可しますか？",
-      "message": "エージェントは次のものを使えるようになります。操作のたびに確認が入り、保存すると「このチャットで許可」の選択はすべて解除されます:",
+      "message": "エージェントは次のものを使えるようになります:",
       "confirm": "許可",
-      "enabled": "デスクトップアプリ",
+      "enabled": "Computer Use",
       "app": "アプリ: {{identity}}（{{name}}）",
       "more": "ほか {{count}} 件",
       "site": "ウェブサイト: {{origin}}",
       "signedIn": "{{origin}} にサインイン済みのブラウザ",
       "scripted": "Cua スクリプト",
+      "noAsking": "操作は事前の確認なしで実行されます",
       "spacesTitle": "Cua Spaces にさらに多くの権限を与えますか？",
       "spacesMessage": "Cua Spaces を使うエージェントは、次のことができるようになります:",
       "spacesChanges": "Space の作成と削除、およびその中でのコマンドの実行",
@@ -165,7 +161,6 @@
     "menuUnavailable": "アプリケーションメニューを利用できません",
     "viewMenuUnavailable": "表示メニューを利用できません",
     "menuItemUnavailable": "メニュー項目 {{id}} を利用できません",
-    "fullAccessDismissed": "フルアクセスの確認が閉じられました。",
     "fullAccessDeclined": "フルアクセスは有効になりませんでした。",
     "approvalDialogClosed": "ネイティブの承認ダイアログが予期せず閉じました。"
   },

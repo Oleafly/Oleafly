@@ -65,6 +65,31 @@ pub(crate) struct DesktopResources {
     pub display: bool,
 }
 
+/// The tools of a browser runtime: the browser ones, and the window list
+/// Oleafly uses to find the window it binds.
+fn browser_tools() -> Vec<&'static str> {
+    let mut tools = policy::browser_allow_tools();
+    tools.extend_from_slice(policy::BROWSER_INTERNAL_TOOLS);
+    tools
+}
+
+/// The browsers Cua Driver launches or attaches to. Cua Driver 0.38 binds a
+/// tab only through its browser's window, and only a window of a listed app.
+/// They are never launched or quit from here, and the browser tools still
+/// only act on the listed sites.
+fn browser_apps() -> Vec<ManifestApp> {
+    super::browser::known_browsers()
+        .into_iter()
+        .map(|app| ManifestApp {
+            bundle_id: app.bundle_id,
+            executable: app.executable,
+            launch: false,
+            windows: "all",
+            terminate: "deny",
+        })
+        .collect()
+}
+
 fn manifest(tools: Vec<&'static str>, resources: Resources) -> Manifest {
     Manifest {
         version: MANIFEST_VERSION,
@@ -108,9 +133,15 @@ pub(crate) fn build_manifest(config: &CuaDriverConfig, kind: RuntimeKind) -> Opt
                 .map(|site| site.origin.clone())
                 .collect();
             (!origins.is_empty()).then(|| {
+                // The browser it launches opens on a blank page, and 0.38
+                // checks the page a tab is on before it leaves it.
+                let origins = std::iter::once("about:blank".to_string())
+                    .chain(origins)
+                    .collect();
                 manifest(
-                    policy::browser_allow_tools(),
+                    browser_tools(),
                     Resources {
+                        apps: browser_apps(),
                         browser: Some(BrowserResources {
                             profiles: vec![
                                 Profile { kind: "isolated" },
@@ -134,8 +165,9 @@ pub(crate) fn build_manifest(config: &CuaDriverConfig, kind: RuntimeKind) -> Opt
                 .collect();
             (!origins.is_empty()).then(|| {
                 manifest(
-                    policy::browser_allow_tools(),
+                    browser_tools(),
                     Resources {
+                        apps: browser_apps(),
                         browser: Some(BrowserResources {
                             profiles: vec![Profile {
                                 kind: "existing_profile",
@@ -217,6 +249,7 @@ mod tests {
                 },
             ],
             scripted_control,
+            ask_before_actions: false,
         }
     }
 
@@ -274,11 +307,27 @@ mod tests {
             for tool in &manifest.allow.tools {
                 assert!(
                     tool.starts_with("browser_")
-                        || ["get_browser_state", "start_session", "end_session"].contains(tool),
+                        || [
+                            "get_browser_state",
+                            "start_session",
+                            "end_session",
+                            "list_windows"
+                        ]
+                        .contains(tool),
                     "{kind:?} {tool}"
                 );
             }
-            assert!(manifest.resources.apps.is_empty());
+            // Only the browsers, whose windows a bind names; never launched
+            // or quit from here.
+            assert_eq!(
+                manifest.resources.apps.len(),
+                super::super::browser::known_browsers().len()
+            );
+            assert!(manifest
+                .resources
+                .apps
+                .iter()
+                .all(|app| !app.launch && app.windows == "all" && app.terminate == "deny"));
             assert!(manifest.resources.desktop.is_none());
         }
     }
@@ -300,7 +349,9 @@ mod tests {
 
         let separate = build_manifest(&full_config(false), RuntimeKind::Browser).unwrap();
         let browser = separate.resources.browser.unwrap();
-        assert_eq!(browser.origins.len(), 2);
+        // The launched browser starts on a blank page.
+        assert_eq!(browser.origins.len(), 3);
+        assert_eq!(browser.origins[0], "about:blank");
         assert!(browser
             .profiles
             .iter()

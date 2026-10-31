@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Integraties",
-      "content": "Verbind Git-hosting (GitHub, GitLab, Codeberg en anderen), alphaXiv, Zotero, citatie-zoeken, desktop-apps voor agents en de lokale MCP-server van Oleafly."
+      "content": "Verbind Git-hosting (GitHub, GitLab, Codeberg en anderen), alphaXiv, Zotero, citatie-zoeken, Computer Use voor agents en de lokale MCP-server van Oleafly."
     },
     "shortcuts": {
       "title": "Sneltoetsen",

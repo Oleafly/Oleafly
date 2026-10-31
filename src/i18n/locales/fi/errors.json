@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly ei voinut vahvistaa palvelimen {{host}} varmennetta. Jos organisaatiollasi on oma varmentaja, lisää sen varmennetiedosto tiliin asetuksissa.",
     "tracked_secret_files": "Julkaisu keskeytyi, koska projektin Git-historian tiedostot voivat sisältää avaimia tai salasanoja: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."
-  },
+  "approvals": {},
   "trust": {
     "git": "Luota tähän kansioon, jotta voit käyttää versionhallintaa.",
     "repository": "Luota repositorioon {{name}}, jotta voit käyttää versionhallintaa täällä.",
@@ -387,10 +385,10 @@
     "command_declined": "MCP-palvelinta ei tallennettu."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver -ohjelmaa ei ole asennettu. Asenna se kohdassa Asetukset → Integraatiot → Työpöytäsovellukset.",
+    "not_installed": "Cua Driver -ohjelmaa ei ole asennettu. Asenna se kohdassa Asetukset → Integraatiot → Computer Use.",
     "too_old": "Cua Driver {{version}} on liian vanha. Päivitä versioon {{minimum}} tai uudempaan.",
     "no_app_bundle": "Asenna Cua Driver virallisella asennusohjelmalla, jotta se voi saada macOS-käyttöoikeudet.",
-    "change_declined": "Aiemmat Työpöytäsovellukset-asetuksesi säilytettiin.",
+    "change_declined": "Aiemmat Computer Use -asetuksesi säilytettiin.",
     "app_blocked": "Agentit eivät voi käyttää sovellusta {{name}}.",
     "app_invalid": "Oleafly ei voi käyttää kohdetta {{name}} sovelluksena.",
     "site_invalid": "”{{site}}” ei ole sivuston osoite, jota Oleafly voi käyttää. Käytä muotoa https://, tai tälle koneelle muotoa http://.",
@@ -398,7 +396,8 @@
     "too_many_sites": "Voit sallia enintään {{limit}} sivustoa.",
     "start_failed": "Cua Driver ei käynnistynyt: {{detail}}",
     "not_bounded": "Cua Driver ei käynnistynyt Oleaflyn rajoituksin, joten Oleafly pysäytti sen.",
+    "needs_permissions": "Cua Driver -ohjelma odottaa macOS-käyttöoikeuksiaan. Ota Käyttöapu ja Näytön tallennus käyttöön CuaDriverille kohdassa Järjestelmäasetukset ja yritä sitten uudelleen.",
     "task_unattended": "Ajastetut tehtävät ja Oleaflyn sulkemisen jälkeen jatkuvat tehtävät eivät voi käyttää työpöytäsovelluksia.",
-    "main_window": "Muuta Työpöytäsovellukset-asetuksia pääikkunasta."
+    "main_window": "Muuta Computer Use -asetuksia pääikkunasta."
   }
 }

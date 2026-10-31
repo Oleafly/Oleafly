@@ -55,6 +55,7 @@ where
 {
     let mut request = request;
     drop_unsent_reasoning(resolved, &mut request.messages);
+    drop_unreadable_images(resolved, &mut request.messages);
     let mut result = RunOutcome::default();
     let mut ledger = TurnLedger {
         usage: TurnUsage {
@@ -499,7 +500,8 @@ where
         });
         results.push((call, output));
     }
-    let results = results_turn(results);
+    let mut results = results_turn(results);
+    drop_unreadable_images(resolved, std::slice::from_mut(&mut results));
     if let Some(input) = &mut responses_input {
         input.extend(outcome.response_items);
         input.extend(crate::wire::openai_responses_input(std::slice::from_ref(
@@ -597,6 +599,31 @@ fn drop_unsent_reasoning(resolved: &Resolved, messages: &mut [Message]) {
         message
             .content
             .retain(|part| !matches!(part, ContentPart::Reasoning { .. }));
+    }
+}
+
+/// A model whose metadata says it reads only text gets tool results without
+/// their images (a screenshot from Computer Use, a rendered page): providers
+/// turn the whole request down otherwise. The result says what was left out.
+/// Models whose metadata doesn't say keep them. Runs on the history a turn
+/// starts with (it may come from another model) and on each new result.
+fn drop_unreadable_images(resolved: &Resolved, messages: &mut [Message]) {
+    if crate::caps::accepts_images(resolved) != Some(false) {
+        return;
+    }
+    for message in messages {
+        for part in &mut message.content {
+            if let ContentPart::ToolResult { output, images, .. } = part {
+                if images.is_empty() {
+                    continue;
+                }
+                output.push_str(&format!(
+                    "\n[{} image(s) left out: this model reads only text. Use the text and element lists instead.]",
+                    images.len()
+                ));
+                images.clear();
+            }
+        }
     }
 }
 
@@ -999,6 +1026,57 @@ mod tests {
     }
 
     #[test]
+    fn a_text_only_model_gets_tool_results_without_their_images() {
+        let resolved = |images: Option<bool>| Resolved {
+            provider_id: "zai".into(),
+            model_id: "glm-5.3".into(),
+            credential: "key".into(),
+            auth: Some("key".into()),
+            wire: Wire::OpenAiChat {
+                base_url: OPENAI_BASE.into(),
+                reasoning_content: true,
+            },
+            caps: crate::caps::ModelCaps {
+                images,
+                ..crate::caps::ModelCaps::default()
+            },
+        };
+        let results = || {
+            vec![results_turn(vec![(
+                ToolCall {
+                    id: "call_1".into(),
+                    name: "desktop_apps".into(),
+                    arguments: "{}".into(),
+                    ..Default::default()
+                },
+                ToolOutput {
+                    output: "TextEdit window".into(),
+                    images: vec!["data:image/png;base64,AAAA".into()],
+                },
+            )])]
+        };
+        let mut text_only = results();
+        drop_unreadable_images(&resolved(Some(false)), &mut text_only);
+        let ContentPart::ToolResult { output, images, .. } = &text_only[0].content[0] else {
+            panic!("not a tool result");
+        };
+        assert!(images.is_empty());
+        assert!(
+            output.starts_with("TextEdit window\n[1 image(s) left out"),
+            "{output}"
+        );
+        // A model that reads images, or whose metadata doesn't say, keeps them.
+        for caps in [Some(true), None] {
+            let mut kept = results();
+            drop_unreadable_images(&resolved(caps), &mut kept);
+            let ContentPart::ToolResult { images, .. } = &kept[0].content[0] else {
+                panic!("not a tool result");
+            };
+            assert_eq!(images.len(), 1);
+        }
+    }
+
+    #[test]
     fn cumulative_presence_requires_every_step_to_report_each_counter() {
         let known = Usage {
             input: 10,
@@ -1091,6 +1169,59 @@ mod tests {
             ContentPart::ToolUse { ref id, ref thought_signature, .. }
                 if id == "b" && thought_signature.is_none()
         ));
+    }
+
+    #[tokio::test]
+    async fn a_screenshot_a_tool_returns_mid_turn_never_reaches_a_text_only_model() {
+        let resolved = Resolved {
+            provider_id: "zai".into(),
+            model_id: "glm-5.3".into(),
+            credential: "key".into(),
+            auth: Some("key".into()),
+            wire: Wire::OpenAiChat {
+                base_url: OPENAI_BASE.into(),
+                reasoning_content: true,
+            },
+            caps: crate::caps::ModelCaps {
+                images: Some(false),
+                ..crate::caps::ModelCaps::default()
+            },
+        };
+        let mut request = CompletionRequest::prompt("system", "read the window");
+        let outcome = StreamOutcome {
+            tool_calls: vec![ToolCall {
+                id: "call_1".into(),
+                name: "desktop_apps".into(),
+                arguments: "{}".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let runner: ToolRunner = Arc::new(|_| {
+            Box::pin(async {
+                ToolOutput {
+                    output: "window tree".into(),
+                    images: vec!["data:image/png;base64,AAAA".into()],
+                }
+            })
+        });
+        append_tool_turns(
+            &resolved,
+            &mut request,
+            outcome,
+            &default_pipeline(),
+            &runner,
+            &mut |_| {},
+        )
+        .await
+        .unwrap();
+        let ContentPart::ToolResult { output, images, .. } =
+            &request.messages.last().unwrap().content[0]
+        else {
+            panic!("not a tool result");
+        };
+        assert!(images.is_empty());
+        assert!(output.contains("1 image(s) left out"), "{output}");
     }
 
     #[tokio::test]

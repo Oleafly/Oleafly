@@ -1707,9 +1707,9 @@
       "gitFailed": "Oleafly kunde inte spara Git-token. Kontrollera att du klistrade in hela token."
     },
     "desktopApps": {
-      "tab": "Skrivbordsappar",
-      "title": "Skrivbordsappar",
-      "description": "Låt agenter använda appar och webbplatser på den här datorn via Cua Driver. Oleafly frågar före varje åtgärd, om du inte tillåter den typen av åtgärd för chatten, sessionen eller uppgiften. Din inloggade webbläsare och skript frågar alltid.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Låt agenter använda appar och webbplatser på den här datorn via Cua Driver. De når bara apparna och webbplatserna du anger här.",
       "docsLink": "Dokumentation för Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} är installerat.",
@@ -1734,6 +1734,7 @@
         "granted": "Cua Driver kan använda Hjälpmedel och Skärminspelning.",
         "needed": "Cua Driver behöver Hjälpmedel och Skärminspelning. Kör steget som ger behörigheterna och följ anvisningarna.",
         "unknown": "Oleafly kunde inte läsa behörigheterna för Cua Driver.",
+        "unchecked": "Cua Driver har inte kontrollerat sina behörigheter än. Använd ”Ge behörigheter” och slå sedan på Hjälpmedel och Skärminspelning för CuaDriver i Systeminställningar.",
         "grant": "Ge behörigheter",
         "terminalTitle": "Behörigheter för Cua Driver"
       },
@@ -1744,7 +1745,7 @@
       },
       "enable": {
         "label": "Låt agenter använda skrivbordsappar",
-        "description": "Agenter kan se apparna och webbplatserna nedan. Klick, inskrivning och sidbyten frågar dig först, om du inte tillåter dem för chatten, sessionen eller uppgiften. När du lägger till en app eller webbplats rensas de valen."
+        "description": "Agenter kan se och använda apparna och webbplatserna nedan."
       },
       "apps": {
         "heading": "Tillåtna appar",
@@ -1754,7 +1755,7 @@
         "missing": "Programmet hittades inte på den här datorn. Ta bort det, eller installera om appen.",
         "dialog": {
           "title": "Lägg till en app",
-          "description": "Välj en app som agenter får använda. De kan öppna den, läsa dess fönster och utföra åtgärder i den när du har godkänt.",
+          "description": "Välj en app som agenter får använda. De kan öppna den, läsa dess fönster och agera i den.",
           "search": "Sök appar",
           "loading": "Letar efter appar…",
           "none": "Inga appar matchar.",
@@ -1785,12 +1786,16 @@
         "signedIn": {
           "label": "Använd min inloggade webbläsare",
           "labelFor": "Använd min inloggade webbläsare på {{origin}}",
-          "description": "Agenter arbetar i din egen Chrome eller Edge på den här webbplatsen. Låt det vara av för att använda en separat webbläsarprofil."
+          "description": "Slå på ”Använd min inloggade webbläsare” för en webbplats om agenter ska arbeta i din egen Chrome eller Edge där. När det är av använder de en separat webbläsarprofil."
         }
       },
       "scripted": {
         "label": "Skriptstyrning",
-        "description": "Låt agenter köra Cua-skript som gör många steg på en gång. Oleafly frågar före varje skript."
+        "description": "Låt agenter köra Cua-skript som gör många steg på en gång."
+      },
+      "ask": {
+        "label": "Fråga före varje åtgärd",
+        "description": "Godkänn varje klick, tangenttryckning, sidbyte och skript i en dialogruta. Du kan tillåta en sorts åtgärd resten av en chatt, session eller uppgift, utom i din inloggade webbläsare och för skript. När du lägger till en app eller webbplats rensas de valen."
       },
       "test": {
         "action": "Testa anslutningen",
@@ -1801,12 +1806,12 @@
       },
       "tool": {
         "description": "Använd de skrivbordsappar och webbplatser som du har tillåtit i Inställningar.",
-        "note": "Att titta sker direkt. Klick, inskrivning och sidbyten frågar först, om du inte tillåter dem för chatten."
+        "note": "Fungerar bara i apparna och på webbplatserna du har tillåtit. Åtgärder frågar först när \"Fråga före varje åtgärd\" är på."
       },
       "task": {
-        "label": "Skrivbordsappar",
-        "description": "Låt den här uppgiften använda dina tillåtna skrivbordsappar. Du behöver vara vid datorn för att godkänna åtgärder.",
-        "off": "Slå på Skrivbordsappar i Inställningar först.",
+        "label": "Computer Use",
+        "description": "Låt den här uppgiften använda dina tillåtna skrivbordsappar. När \"Fråga före varje åtgärd\" är på behöver du vara vid datorn för att godkänna åtgärder.",
+        "off": "Slå på Computer Use i Inställningar först.",
         "unattended": "Uppgifter som körs enligt schema eller efter att Oleafly har stängts kan inte använda skrivbordsappar."
       },
       "spaces": {

@@ -1707,9 +1707,9 @@
       "gitFailed": "Oleafly kunne ikke lagre Git-tokenet. Sjekk at du limte inn hele tokenet."
     },
     "desktopApps": {
-      "tab": "Skrivebordsapper",
-      "title": "Skrivebordsapper",
-      "description": "La agenter bruke apper og nettsteder på denne maskinen via Cua Driver. Oleafly spør før hver handling, med mindre du tillater den typen handling for samtalen, økten eller oppgaven. Den innloggede nettleseren din og skript spør alltid.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "La agenter bruke apper og nettsteder på denne datamaskinen gjennom Cua Driver. De når bare appene og nettstedene du lister opp her.",
       "docsLink": "Dokumentasjon for Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} er installert.",
@@ -1734,6 +1734,7 @@
         "granted": "Cua Driver kan bruke Tilgjengelighet og Skjermopptak.",
         "needed": "Cua Driver trenger Tilgjengelighet og Skjermopptak. Kjør trinnet som gir tillatelsene, og følg instruksjonene.",
         "unknown": "Oleafly kunne ikke lese tillatelsene til Cua Driver.",
+        "unchecked": "Cua Driver har ikke sjekket tillatelsene sine ennå. Bruk «Gi tillatelser», og slå deretter på Tilgjengelighet og Skjermopptak for CuaDriver i Systeminnstillinger.",
         "grant": "Gi tillatelser",
         "terminalTitle": "Tillatelser for Cua Driver"
       },
@@ -1744,7 +1745,7 @@
       },
       "enable": {
         "label": "La agenter bruke skrivebordsapper",
-        "description": "Agenter kan se appene og nettstedene nedenfor. Klikk, skriving og sidebytter spør deg først, med mindre du tillater dem for samtalen, økten eller oppgaven. Når du legger til en app eller et nettsted, fjernes disse valgene."
+        "description": "Agenter kan se og bruke appene og nettstedene nedenfor."
       },
       "apps": {
         "heading": "Tillatte apper",
@@ -1754,7 +1755,7 @@
         "missing": "Programmet ble ikke funnet på denne maskinen. Fjern det, eller installer appen på nytt.",
         "dialog": {
           "title": "Legg til en app",
-          "description": "Velg en app agenter kan bruke. De kan åpne den, lese vinduene og handle i den etter at du har godkjent.",
+          "description": "Velg en app agenter kan bruke. De kan åpne den, lese vinduene og handle i den.",
           "search": "Søk i apper",
           "loading": "Leter etter apper…",
           "none": "Ingen apper passer.",
@@ -1785,12 +1786,16 @@
         "signedIn": {
           "label": "Bruk den innloggede nettleseren min",
           "labelFor": "Bruk den innloggede nettleseren min på {{origin}}",
-          "description": "Agenter jobber i din egen Chrome eller Edge på dette nettstedet. La det være av for å bruke en separat nettleserprofil."
+          "description": "Slå på «Bruk den innloggede nettleseren min» for et nettsted, så jobber agentene i din egen Chrome eller Edge der. Er den av, bruker de en separat nettleserprofil."
         }
       },
       "scripted": {
         "label": "Skriptstyring",
-        "description": "La agenter kjøre Cua-skript som gjør mange trinn på én gang. Oleafly spør før hvert skript."
+        "description": "La agenter kjøre Cua-skript som gjør mange trinn på én gang."
+      },
+      "ask": {
+        "label": "Spør før hver handling",
+        "description": "Godkjenn hvert klikk, tastetrykk, sidebytte og skript i en dialog. Du kan tillate en type handling resten av en samtale, økt eller oppgave, unntatt i den innloggede nettleseren din og for skript. Når du legger til en app eller et nettsted, fjernes disse valgene."
       },
       "test": {
         "action": "Test tilkoblingen",
@@ -1801,12 +1806,12 @@
       },
       "tool": {
         "description": "Bruk skrivebordsappene og nettstedene du har tillatt i Innstillinger.",
-        "note": "Å se skjer med en gang. Klikk, skriving og sidebytter spør først, med mindre du tillater dem for samtalen."
+        "note": "Virker bare i appene og på nettstedene du har tillatt. Handlinger spør først når «Spør før hver handling» er på."
       },
       "task": {
-        "label": "Skrivebordsapper",
-        "description": "La denne oppgaven bruke de tillatte skrivebordsappene dine. Du må være ved maskinen for å godkjenne handlinger.",
-        "off": "Slå på Skrivebordsapper i Innstillinger først.",
+        "label": "Computer Use",
+        "description": "La denne oppgaven bruke de tillatte skrivebordsappene dine. Når «Spør før hver handling» er på, må du være ved maskinen for å godkjenne handlinger.",
+        "off": "Slå på Computer Use i Innstillinger først.",
         "unattended": "Oppgaver som kjører etter en tidsplan eller etter at Oleafly er lukket, kan ikke bruke skrivebordsapper."
       },
       "spaces": {

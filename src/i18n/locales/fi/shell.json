@@ -979,7 +979,7 @@
         "experimentation": "kokeilut, kokeelliset ominaisuudet, beta, varhaiset ominaisuudet",
         "general": "asetukset, kieli, alue, kielialue, oikoluku, oikeinkirjoitus, kirjoitusvirheet, offline, esittelyt, päätekomento",
         "help": "tietoja, versio, päivitykset, muutosloki, mitä uutta, dokumentaatio, ohjeet, tuki, yhteisö, Discord, lisenssi, kaatumisraportti",
-        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-palvelut, työpöytäsovellukset, Cua, MCP, viittaukset, viitteet, tilit, yhteydet",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-palvelut, Computer Use, työpöytäsovellukset, Cua, MCP, viittaukset, viitteet, tilit, yhteydet",
         "shortcuts": "pikanäppäimet, näppäinyhdistelmät, näppäimet, näppäimistö",
         "research": "tutkimus tehtävät budjetti ilmoitukset hereillä pito kokeet ajot"
       },

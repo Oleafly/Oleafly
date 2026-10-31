@@ -962,7 +962,7 @@
         "experimentation": "실험실, 랩, 베타, 미리 보기 기능",
         "general": "환경 설정, 언어, 지역, 맞춤법 검사, 맞춤법, 오타, 오프라인, 둘러보기, 터미널 명령",
         "help": "정보, 버전, 업데이트, 변경 내역, 새로운 기능, 문서, 지원, 커뮤니티, Discord, 라이선스, 충돌 보고서",
-        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git 호스팅, 데스크톱 앱, Cua, MCP, 인용, 계정, 연결",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git 호스팅, Computer Use, 데스크톱 앱, Cua, MCP, 인용, 계정, 연결",
         "shortcuts": "키 바인딩, 단축키, 핫키, 키, 키보드",
         "research": "연구 작업 예산 알림 깨어 있음 실험 실행 research tasks"
       },

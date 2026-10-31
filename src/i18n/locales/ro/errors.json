@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly nu a putut verifica certificatul pentru {{host}}. Dacă organizația ta are propria autoritate de certificare, adaugă fișierul ei de certificat la cont, în Setări.",
     "tracked_secret_files": "Publicarea s-a oprit pentru că fișiere din istoricul Git al proiectului pot conține chei sau parole: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Accesul complet nu a fost activat."
-  },
+  "approvals": {},
   "trust": {
     "git": "Ai încredere în acest folder pentru a folosi controlul versiunilor.",
     "repository": "Ai încredere în depozitul {{name}} pentru a folosi aici controlul versiunilor.",
@@ -387,10 +385,10 @@
     "command_declined": "Serverul MCP nu a fost salvat."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver nu este instalat. Instalează-l din Setări, Integrări, Aplicații desktop.",
+    "not_installed": "Cua Driver nu este instalat. Instalează-l din Setări, Integrări, Computer Use.",
     "too_old": "Cua Driver {{version}} este prea vechi. Actualizează-l la {{minimum}} sau la o versiune mai nouă.",
     "no_app_bundle": "Instalează Cua Driver cu programul de instalare oficial, ca să poată păstra permisiunile macOS.",
-    "change_declined": "Ai păstrat setările anterioare pentru aplicațiile desktop.",
+    "change_declined": "Ai păstrat setările anterioare pentru Computer Use.",
     "app_blocked": "Agenții nu pot folosi {{name}}.",
     "app_invalid": "Oleafly nu poate folosi {{name}} ca aplicație.",
     "site_invalid": "„{{site}}” nu este o adresă de site pe care Oleafly o poate folosi. Folosește https://, sau http:// pentru acest computer.",
@@ -398,7 +396,8 @@
     "too_many_sites": "Numărul maxim de site-uri permise este {{limit}}.",
     "start_failed": "Cua Driver nu a putut porni: {{detail}}",
     "not_bounded": "Cua Driver nu a pornit cu limitele Oleafly, așa că Oleafly l-a oprit.",
+    "needs_permissions": "Cua Driver așteaptă permisiunile macOS. Activează Accesibilitatea și Înregistrarea ecranului pentru CuaDriver în Configurări sistem, apoi încearcă din nou.",
     "task_unattended": "Sarcinile care rulează programat sau după ce se închide Oleafly nu pot folosi aplicații desktop.",
-    "main_window": "Schimbă setările pentru aplicațiile desktop din fereastra principală."
+    "main_window": "Schimbă setările pentru Computer Use din fereastra principală."
   }
 }

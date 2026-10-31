@@ -1013,7 +1013,7 @@
         "experimentation": "laboratorium, beta, wczesne funkcje, eksperymentalne",
         "general": "preferencje, język, region, sprawdzanie pisowni, pisownia, literówki, offline, samouczki, polecenie terminala",
         "help": "o programie, wersja, aktualizacje, lista zmian, co nowego, dokumentacja, pomoc, wsparcie, społeczność, Discord, licencja, raport o awarii",
-        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, aplikacje na komputerze, Cua, MCP, cytowania, konta, połączenia",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, aplikacje na komputerze, Cua, MCP, cytowania, konta, połączenia",
         "shortcuts": "skróty klawiszowe, skróty, klawisze, klawiatura",
         "research": "badania zadania budżet powiadomienia nie usypiaj eksperymenty uruchomienia research tasks"
       },

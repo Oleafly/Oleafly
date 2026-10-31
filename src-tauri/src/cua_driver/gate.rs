@@ -11,13 +11,13 @@ use std::hash::Hash;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use super::policy::{bounded, clipped, preview_clipped, CuratedTool, Step, ToolClass};
 use super::{lock, BoxFuture, CuaScope, RuntimeKind, Surface};
 
 pub(crate) const DENIED_TEXT: &str =
-    "Desktop apps are denied for this project in the approval rules.";
+    "Computer Use is denied for this project in the approval rules.";
 pub(crate) const MAX_MESSAGE_CHARS: usize = 6_000;
 const MAX_STEP_LINE_CHARS: usize = 160;
 const MAX_TEXT_CHARS: usize = 200;
@@ -48,12 +48,14 @@ pub(crate) enum GateDecision {
 /// What the gate does with one call. `granted` says the user already allowed
 /// this tool for the chat, session or task. A call in the user's own
 /// signed-in browser never takes part in grants: it asks every time, and the
-/// dialog has no "Allow for this chat" choice.
+/// dialog has no "Allow for this chat" choice. With asking off in Settings
+/// nothing asks; a deny rule still refuses.
 pub(crate) fn decide(
     tool: &CuratedTool,
     denied_by_rules: bool,
     granted: bool,
     signed_in: bool,
+    asking: bool,
 ) -> GateDecision {
     if denied_by_rules {
         return GateDecision::Refuse(DENIED_TEXT);
@@ -61,6 +63,7 @@ pub(crate) fn decide(
     let session_grant = tool.session_grant && !signed_in;
     match tool.class {
         ToolClass::Session | ToolClass::Observe => GateDecision::Run,
+        ToolClass::Act if !asking => GateDecision::Run,
         ToolClass::Act if granted && session_grant => GateDecision::Run,
         ToolClass::Act => GateDecision::Ask {
             session_option: session_grant,
@@ -543,6 +546,18 @@ impl GrantStore {
     }
 }
 
+/// What the driver said about the browser one session uses on one runtime.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct SeenBrowser {
+    /// The browser `browser_prepare` opened.
+    pub prepared: Option<u64>,
+    /// The process and window Oleafly bound, from the driver's window list.
+    pub window: Option<(u64, u64)>,
+    /// The target and tab the last bind, page read or navigation named.
+    pub target: Option<String>,
+    pub tab: Option<String>,
+}
+
 /// An element as the driver's last look at its window described it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct SeenElement {
@@ -558,6 +573,16 @@ struct SeenElement {
 pub(crate) struct Seen {
     apps: HashMap<u64, String>,
     windows: HashMap<(u64, u64), String>,
+    /// Window id → the process that owns it.
+    owners: HashMap<u64, u64>,
+    /// A window read's `snapshot_id` → the session that read it, its process
+    /// and its window. Cua Driver 0.38 leaves the elements out of the
+    /// structured answer, and its element tokens are `<snapshot_id>:<row>`.
+    snapshots: HashMap<String, (String, u64, u64)>,
+    /// Snapshots read in a turn that has ended. The driver's session ended
+    /// with the turn, and their element tokens with it.
+    ended: HashSet<String>,
+    browsers: HashMap<(String, RuntimeKind), SeenBrowser>,
     /// By `element_token`, and by `<snapshot_id>#<element_index>`.
     elements: HashMap<String, SeenElement>,
     /// Session key → the origin of its signed-in browser tab.
@@ -588,6 +613,30 @@ fn number(value: Option<&Value>) -> Option<u64> {
     value
         .as_u64()
         .or_else(|| value.as_str().and_then(|text| text.trim().parse().ok()))
+}
+
+fn snapshot_id(value: Option<&Value>) -> Option<&str> {
+    value
+        .and_then(Value::as_str)
+        .filter(|snapshot| !snapshot.is_empty() && snapshot.len() <= 128)
+}
+
+/// The snapshot an element token or `snapshot_id` argument names.
+fn named_snapshot(args: &Value) -> Option<&str> {
+    args.get("element_token")
+        .and_then(Value::as_str)
+        .and_then(|token| token.split_once(':'))
+        .map(|(snapshot, _)| snapshot)
+        .or_else(|| snapshot_id(args.get("snapshot_id")))
+}
+
+/// Whether a call names its process, directly or in its `target`.
+pub(crate) fn names_pid(args: &Map<String, Value>) -> bool {
+    args.get("pid").is_some_and(|pid| !pid.is_null())
+        || args
+            .get("target")
+            .and_then(|target| target.get("pid"))
+            .is_some_and(|pid| !pid.is_null())
 }
 
 fn snapshot_key(snapshot: Option<&Value>, index: Option<&Value>) -> Option<String> {
@@ -625,12 +674,35 @@ impl Seen {
         {
             insert_bounded(&mut self.apps, MAX_SEEN, pid, name);
         }
-        if let (Some(window_id), Some(title)) = (
-            number(entry.get("window_id")),
-            shown_name(entry.get("title")),
-        ) {
+        let Some(window_id) = number(entry.get("window_id")) else {
+            return;
+        };
+        insert_bounded(&mut self.owners, MAX_SEEN, window_id, pid);
+        if let Some(title) =
+            shown_name(entry.get("title")).or_else(|| shown_name(entry.get("window_title")))
+        {
             insert_bounded(&mut self.windows, MAX_SEEN, (pid, window_id), title);
         }
+    }
+
+    /// Learns which session, process and window a window read's snapshot
+    /// belongs to.
+    fn record_snapshot(&mut self, session_key: &str, structured: &Value) {
+        let (Some(pid), Some(window_id), Some(snapshot)) = (
+            number(structured.get("pid")),
+            number(structured.get("window_id")),
+            snapshot_id(structured.get("snapshot_id")),
+        ) else {
+            return;
+        };
+        // A restarted driver counts its snapshots from the start again.
+        self.ended.remove(snapshot);
+        insert_bounded(
+            &mut self.snapshots,
+            MAX_SEEN,
+            snapshot.to_string(),
+            (session_key.to_string(), pid, window_id),
+        );
     }
 
     /// Learns from one successful answer to `tool`, called with `args` on
@@ -649,6 +721,11 @@ impl Seen {
         let structured = result
             .get("structuredContent")
             .filter(|structured| structured.is_object());
+        if kind != RuntimeKind::Desktop {
+            if let Some(structured) = structured {
+                self.record_browser(session_key, kind, tool, structured);
+            }
+        }
         if kind == RuntimeKind::SignedInBrowser {
             let url = if tool == "browser_navigate" {
                 args.get("url")
@@ -668,6 +745,7 @@ impl Seen {
             return;
         };
         self.record_app(structured);
+        self.record_snapshot(session_key, structured);
         for list in ["windows", "apps"] {
             for entry in structured
                 .get(list)
@@ -719,20 +797,43 @@ impl Seen {
         }
     }
 
-    /// The app, window and element an action's arguments point at, as far
-    /// as they were seen.
-    pub(crate) fn target(&self, args: &Value) -> Target {
-        let element = args
-            .get("element_token")
-            .and_then(Value::as_str)
+    /// The process, window and element an action's arguments point at: as
+    /// given, or as the driver described the element, snapshot or window.
+    fn located(&self, args: &Value) -> (Option<u64>, Option<u64>, Option<&SeenElement>) {
+        let token = args.get("element_token").and_then(Value::as_str);
+        let element = token
             .and_then(|token| self.elements.get(token))
             .or_else(|| {
                 snapshot_key(args.get("snapshot_id"), args.get("element_index"))
                     .and_then(|key| self.elements.get(&key))
             });
-        let pid = number(args.get("pid")).or_else(|| element.and_then(|seen| seen.pid));
-        let window_id =
-            number(args.get("window_id")).or_else(|| element.and_then(|seen| seen.window_id));
+        let snapshot = named_snapshot(args).and_then(|snapshot| self.snapshots.get(snapshot));
+        let window_id = number(args.get("window_id"))
+            .or_else(|| element.and_then(|seen| seen.window_id))
+            .or_else(|| snapshot.map(|(_, _, window_id)| *window_id));
+        let pid = number(args.get("pid"))
+            .or_else(|| element.and_then(|seen| seen.pid))
+            .or_else(|| snapshot.map(|(_, pid, _)| *pid))
+            .or_else(|| window_id.and_then(|window_id| self.owners.get(&window_id).copied()));
+        (pid, window_id, element)
+    }
+
+    /// Adds the `pid` the driver gave for the element, snapshot or window
+    /// the arguments name, when they leave it out. Cua Driver 0.38 refuses
+    /// a call to a window whose process the call doesn't name.
+    pub(crate) fn fill_pid(&self, args: &mut Map<String, Value>) {
+        if names_pid(args) {
+            return;
+        }
+        if let (Some(pid), _, _) = self.located(&Value::Object(args.clone())) {
+            args.insert("pid".into(), Value::from(pid));
+        }
+    }
+
+    /// The app, window and element an action's arguments point at, as far
+    /// as they were seen.
+    pub(crate) fn target(&self, args: &Value) -> Target {
+        let (pid, window_id, element) = self.located(args);
         Target {
             app: pid.and_then(|pid| self.apps.get(&pid).cloned()),
             window: pid
@@ -747,8 +848,91 @@ impl Seen {
         self.origins.get(session_key).cloned()
     }
 
+    /// Whether the arguments name a snapshot read in a turn that ended. Its
+    /// element tokens went with the driver's session, so the action would
+    /// only be refused, after the user had been asked.
+    pub(crate) fn names_ended_snapshot(&self, args: &Value) -> bool {
+        named_snapshot(args).is_some_and(|snapshot| self.ended.contains(snapshot))
+    }
+
+    fn browser_entry(&mut self, session_key: &str, kind: RuntimeKind) -> &mut SeenBrowser {
+        let key = (session_key.to_string(), kind);
+        if self.browsers.len() >= MAX_SEEN && !self.browsers.contains_key(&key) {
+            self.browsers.clear();
+        }
+        self.browsers.entry(key).or_default()
+    }
+
+    /// Learns the browser a session opened, and the target and tab a bind,
+    /// page read or navigation named.
+    fn record_browser(
+        &mut self,
+        session_key: &str,
+        kind: RuntimeKind,
+        tool: &str,
+        structured: &Value,
+    ) {
+        let seen = self.browser_entry(session_key, kind);
+        match tool {
+            "browser_prepare" => {
+                if let Some(pid) = number(structured.get("prepared_pid")) {
+                    *seen = SeenBrowser {
+                        prepared: Some(pid),
+                        ..SeenBrowser::default()
+                    };
+                }
+            }
+            "get_browser_state" | "browser_navigate" => {
+                if let Some(target) = structured
+                    .get("target_id")
+                    .and_then(Value::as_str)
+                    .filter(|target| !target.is_empty() && target.len() <= 256)
+                {
+                    seen.target = Some(target.to_string());
+                }
+                if let Some(tab) = super::browser::answered_tab(structured)
+                    .filter(|tab| !tab.is_empty() && tab.len() <= 256)
+                {
+                    seen.tab = Some(tab);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// The browser this session uses on `kind`, as the driver described it.
+    pub(crate) fn browser(&self, session_key: &str, kind: RuntimeKind) -> Option<&SeenBrowser> {
+        self.browsers.get(&(session_key.to_string(), kind))
+    }
+
+    /// Remembers the window Oleafly bound for this session, from the
+    /// driver's own window list.
+    pub(crate) fn note_browser_window(
+        &mut self,
+        session_key: &str,
+        kind: RuntimeKind,
+        pid: u64,
+        window_id: u64,
+    ) {
+        self.browser_entry(session_key, kind).window = Some((pid, window_id));
+    }
+
     pub(crate) fn forget_session(&mut self, session_key: &str) {
         self.origins.remove(session_key);
+        self.browsers.retain(|(key, _), _| key != session_key);
+        let ended: Vec<String> = self
+            .snapshots
+            .iter()
+            .filter(|(_, (key, _, _))| key == session_key)
+            .map(|(snapshot, _)| snapshot.clone())
+            .collect();
+        for snapshot in ended {
+            self.snapshots.remove(&snapshot);
+            if self.ended.len() >= MAX_SEEN {
+                self.ended.clear();
+            }
+            self.ended.insert(snapshot);
+        }
     }
 }
 
@@ -829,25 +1013,25 @@ mod tests {
     #[test]
     fn observation_runs_and_actions_ask() {
         assert_eq!(
-            decide(curated("list_windows").unwrap(), false, false, false),
+            decide(curated("list_windows").unwrap(), false, false, false, true),
             GateDecision::Run
         );
         assert_eq!(
-            decide(curated("start_session").unwrap(), false, false, false),
+            decide(curated("start_session").unwrap(), false, false, false, true),
             GateDecision::Run
         );
         assert_eq!(
-            decide(curated("click").unwrap(), false, false, false),
+            decide(curated("click").unwrap(), false, false, false, true),
             GateDecision::Ask {
                 session_option: true
             }
         );
         assert_eq!(
-            decide(curated("click").unwrap(), false, true, false),
+            decide(curated("click").unwrap(), false, true, false, true),
             GateDecision::Run
         );
         assert_eq!(
-            decide(curated("run_script").unwrap(), false, true, false),
+            decide(curated("run_script").unwrap(), false, true, false, true),
             GateDecision::Ask {
                 session_option: false
             }
@@ -858,7 +1042,13 @@ mod tests {
     fn the_signed_in_browser_always_asks_and_offers_no_session_choice() {
         for granted in [false, true] {
             assert_eq!(
-                decide(curated("browser_click").unwrap(), false, granted, true),
+                decide(
+                    curated("browser_click").unwrap(),
+                    false,
+                    granted,
+                    true,
+                    true
+                ),
                 GateDecision::Ask {
                     session_option: false
                 },
@@ -867,7 +1057,13 @@ mod tests {
         }
         // Looking is still free there.
         assert_eq!(
-            decide(curated("get_browser_state").unwrap(), false, false, true),
+            decide(
+                curated("get_browser_state").unwrap(),
+                false,
+                false,
+                true,
+                true
+            ),
             GateDecision::Run
         );
     }
@@ -890,7 +1086,7 @@ mod tests {
             "click",
         ] {
             assert_eq!(
-                decide(curated(name).unwrap(), true, true, false),
+                decide(curated(name).unwrap(), true, true, false, true),
                 GateDecision::Refuse(DENIED_TEXT),
                 "{name}"
             );
@@ -1329,6 +1525,100 @@ mod tests {
             &json!({"isError": true, "structuredContent": {"windows": [{"pid": 1, "app_name": "Fake"}]}}),
         );
         assert_eq!(seen.target(&json!({"pid": 1})).app, None);
+    }
+
+    #[test]
+    fn with_asking_off_actions_run_and_deny_rules_still_refuse() {
+        for name in ["click", "run_script", "browser_click", "launch_app"] {
+            for signed_in in [false, true] {
+                assert_eq!(
+                    decide(curated(name).unwrap(), false, false, signed_in, false),
+                    GateDecision::Run,
+                    "{name}"
+                );
+            }
+            assert_eq!(
+                decide(curated(name).unwrap(), true, false, false, false),
+                GateDecision::Refuse(DENIED_TEXT)
+            );
+        }
+    }
+
+    #[test]
+    fn a_missing_pid_comes_from_the_window_or_snapshot_the_driver_showed() {
+        let mut seen = Seen::default();
+        seen.record(
+            "run:a",
+            RuntimeKind::Desktop,
+            "list_windows",
+            &json!({}),
+            &json!({"structuredContent": {"windows": [
+                {"pid": 52508, "window_id": 178776, "app_name": "TextEdit", "title": ""}
+            ]}}),
+        );
+        // 0.38's window read: no elements, and tokens are `<snapshot_id>:<row>`.
+        seen.record(
+            "run:a",
+            RuntimeKind::Desktop,
+            "get_window_state",
+            &json!({"pid": 52508, "window_id": 178776}),
+            &json!({"structuredContent": {
+                "pid": 52508, "window_id": 178776, "app_name": "TextEdit",
+                "window_title": "Untitled.txt", "snapshot_id": "s00000001"
+            }}),
+        );
+        let filled = |args: Value| {
+            let Value::Object(mut map) = args else {
+                unreachable!()
+            };
+            seen.fill_pid(&mut map);
+            map.get("pid").cloned()
+        };
+        assert_eq!(filled(json!({"window_id": 178776})), Some(json!(52508)));
+        assert_eq!(
+            filled(json!({"element_token": "s00000001:1", "text": "hi"})),
+            Some(json!(52508))
+        );
+        // A pid the call gives is kept, and nothing is made up.
+        assert_eq!(
+            filled(json!({"pid": 7, "window_id": 178776})),
+            Some(json!(7))
+        );
+        assert_eq!(filled(json!({"window_id": 5, "text": "hi"})), None);
+        assert_eq!(filled(json!({"element_token": "s0000000f:1"})), None);
+        // The dialog can name the window an element token is in.
+        assert_eq!(
+            seen.target(&json!({"element_token": "s00000001:1"})),
+            Target {
+                app: Some("TextEdit".into()),
+                window: Some("Untitled.txt".into()),
+                element: None,
+            }
+        );
+        // The turn's end takes its snapshots along; another session's
+        // stay, and a driver that reuses the id makes it current again.
+        let read = |snapshot: &str| json!({"structuredContent": {"pid": 52508, "window_id": 178776, "snapshot_id": snapshot}});
+        let state = RuntimeKind::Desktop;
+        seen.record(
+            "run:b",
+            state,
+            "get_window_state",
+            &json!({}),
+            &read("s00000002"),
+        );
+        assert!(!seen.names_ended_snapshot(&json!({"element_token": "s00000001:1"})));
+        seen.forget_session("run:a");
+        assert!(seen.names_ended_snapshot(&json!({"element_token": "s00000001:1"})));
+        assert!(!seen.names_ended_snapshot(&json!({"element_token": "s00000002:1"})));
+        assert!(!seen.names_ended_snapshot(&json!({"element_token": "s0000000f:1"})));
+        seen.record(
+            "run:c",
+            state,
+            "get_window_state",
+            &json!({}),
+            &read("s00000001"),
+        );
+        assert!(!seen.names_ended_snapshot(&json!({"element_token": "s00000001:1"})));
     }
 
     #[test]

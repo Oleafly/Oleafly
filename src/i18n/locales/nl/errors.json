@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly kon het certificaat van {{host}} niet verifiëren. Als je organisatie een eigen certificeringsinstantie heeft, voeg dan het certificaatbestand ervan toe aan het account bij Instellingen.",
     "tracked_secret_files": "Publiceren gestopt omdat bestanden in de Git-geschiedenis van dit project sleutels of wachtwoorden kunnen bevatten: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Volledige toegang is niet ingeschakeld."
-  },
+  "approvals": {},
   "trust": {
     "git": "Vertrouw deze map om versiebeheer te gebruiken.",
     "repository": "Vertrouw de repository {{name}} om hier versiebeheer te gebruiken.",
@@ -387,10 +385,10 @@
     "command_declined": "De MCP-server is niet opgeslagen."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver is niet geïnstalleerd. Installeer het via Instellingen → Integraties → Desktop-apps.",
+    "not_installed": "Cua Driver is niet geïnstalleerd. Installeer het via Instellingen → Integraties → Computer Use.",
     "too_old": "Cua Driver {{version}} is te oud. Werk het bij naar {{minimum}} of nieuwer.",
     "no_app_bundle": "Installeer Cua Driver met het officiële installatieprogramma, zodat het de rechten van macOS kan behouden.",
-    "change_declined": "Je hebt je vorige instellingen voor desktop-apps behouden.",
+    "change_declined": "Je hebt je vorige instellingen voor Computer Use behouden.",
     "app_blocked": "Agents kunnen {{name}} niet gebruiken.",
     "app_invalid": "Oleafly kan {{name}} niet als app gebruiken.",
     "site_invalid": "'{{site}}' is geen websiteadres dat Oleafly kan gebruiken. Gebruik https://, of http:// voor deze computer.",
@@ -398,7 +396,8 @@
     "too_many_sites": "Je kunt maximaal {{limit}} websites toestaan.",
     "start_failed": "Cua Driver kon niet starten: {{detail}}",
     "not_bounded": "Cua Driver startte niet met de limieten van Oleafly, dus Oleafly heeft het gestopt.",
+    "needs_permissions": "Cua Driver wacht op zijn macOS-rechten. Zet Toegankelijkheid en Schermopname aan voor CuaDriver in Systeeminstellingen en probeer het daarna opnieuw.",
     "task_unattended": "Taken die volgens een schema of na het sluiten van Oleafly draaien, kunnen geen desktop-apps gebruiken.",
-    "main_window": "Wijzig desktop-apps vanuit het hoofdvenster."
+    "main_window": "Wijzig Computer Use vanuit het hoofdvenster."
   }
 }

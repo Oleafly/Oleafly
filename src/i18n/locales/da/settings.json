@@ -1707,9 +1707,9 @@
       "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet."
     },
     "desktopApps": {
-      "tab": "Skrivebordsapps",
-      "title": "Skrivebordsapps",
-      "description": "Lad agenter bruge apps og hjemmesider på denne computer via Cua Driver. Oleafly spørger før hver handling, medmindre du tillader den slags handling for chatten, sessionen eller opgaven. Din browser med login og scripts spørger altid.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Lad agenter bruge apps og hjemmesider på denne computer via Cua Driver. De kan kun nå de apps og hjemmesider, du angiver her.",
       "docsLink": "Dokumentation til Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} er installeret.",
@@ -1734,6 +1734,7 @@
         "granted": "Cua Driver kan bruge Tilgængelighed og Skærmoptagelse.",
         "needed": "Cua Driver kræver Tilgængelighed og Skærmoptagelse. Kør trinnet, der giver tilladelserne, og følg anvisningerne.",
         "unknown": "Oleafly kunne ikke læse tilladelserne for Cua Driver.",
+        "unchecked": "Cua Driver har ikke tjekket sine tilladelser endnu. Brug »Giv tilladelser«, og slå derefter Tilgængelighed og Skærmoptagelse til for CuaDriver under Systemindstillinger.",
         "grant": "Giv tilladelser",
         "terminalTitle": "Tilladelser til Cua Driver"
       },
@@ -1744,7 +1745,7 @@
       },
       "enable": {
         "label": "Lad agenter bruge skrivebordsapps",
-        "description": "Agenter kan se apps og hjemmesider nedenfor. Klik, indtastning og sideskift spørger dig først, medmindre du tillader dem for chatten, sessionen eller opgaven. Når du tilføjer en app eller hjemmeside, ryddes de valg."
+        "description": "Agenter kan se og bruge apps og hjemmesider nedenfor."
       },
       "apps": {
         "heading": "Tilladte apps",
@@ -1754,7 +1755,7 @@
         "missing": "Dette program blev ikke fundet på denne computer. Fjern den, eller geninstaller appen.",
         "dialog": {
           "title": "Tilføj en app",
-          "description": "Vælg en app, som agenter må bruge. De kan åbne den, læse dens vinduer og handle i den, når du har godkendt.",
+          "description": "Vælg en app, som agenter må bruge. De kan åbne den, læse dens vinduer og handle i den.",
           "search": "Søg i apps",
           "loading": "Leder efter apps…",
           "none": "Ingen apps passer.",
@@ -1785,12 +1786,16 @@
         "signedIn": {
           "label": "Brug min browser med login",
           "labelFor": "Brug min browser med login på {{origin}}",
-          "description": "Agenter arbejder i din egen Chrome eller Edge på denne hjemmeside. Lad den være slået fra for at bruge en separat browserprofil."
+          "description": "Slå »Brug min browser med login« til for en hjemmeside, så agenter arbejder i din egen Chrome eller Edge på den. Er den slået fra, bruger de en separat browserprofil."
         }
       },
       "scripted": {
         "label": "Scriptstyring",
-        "description": "Lad agenter køre Cua-scripts, der udfører mange trin på én gang. Oleafly spørger før hvert script."
+        "description": "Lad agenter køre Cua-scripts, der udfører mange trin på én gang."
+      },
+      "ask": {
+        "label": "Spørg før hver handling",
+        "description": "Godkend hvert klik, tastetryk, sideskift og script i en dialog. Du kan tillade en slags handling resten af en chat, session eller opgave, undtagen i din browser med login og for scripts. Når du tilføjer en app eller hjemmeside, ryddes de valg."
       },
       "test": {
         "action": "Test forbindelsen",
@@ -1801,12 +1806,12 @@
       },
       "tool": {
         "description": "Brug de skrivebordsapps og hjemmesider, du har tilladt under Indstillinger.",
-        "note": "Det at kigge sker med det samme. Klik, indtastning og sideskift spørger først, medmindre du tillader dem for chatten."
+        "note": "Virker kun i de apps og på de hjemmesider, du har tilladt. Handlinger spørger først, når »Spørg før hver handling« er slået til."
       },
       "task": {
-        "label": "Skrivebordsapps",
-        "description": "Lad denne opgave bruge dine tilladte skrivebordsapps. Du skal være ved computeren for at godkende handlinger.",
-        "off": "Slå Skrivebordsapps til under Indstillinger først.",
+        "label": "Computer Use",
+        "description": "Lad denne opgave bruge dine tilladte skrivebordsapps. Når »Spørg før hver handling« er slået til, skal du være ved computeren for at godkende handlinger.",
+        "off": "Slå Computer Use til under Indstillinger først.",
         "unattended": "Opgaver, der kører efter en tidsplan eller efter at Oleafly er lukket, kan ikke bruge skrivebordsapps."
       },
       "spaces": {

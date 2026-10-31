@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Integrationer",
-      "content": "Forbind Git-hosting (GitHub, GitLab, Codeberg med flere), alphaXiv, Zotero, citationssøgning, skrivebordsapps til agenter og Oleaflys lokale MCP-server."
+      "content": "Forbind Git-hosting (GitHub, GitLab, Codeberg med flere), alphaXiv, Zotero, citationssøgning, Computer Use til agenter og Oleaflys lokale MCP-server."
     },
     "shortcuts": {
       "title": "Tastaturgenveje",
