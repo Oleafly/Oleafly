@@ -1,224 +1,224 @@
 {
   "menu": {
     "app": "Oleafly",
-    "about": "About Oleafly",
-    "checkUpdates": "Check for Updates…",
-    "settings": "Settings…",
-    "reloadViews": "Reload Views",
-    "restartApp": "Restart Application",
-    "quit": "Quit Oleafly",
-    "hide": "Hide Oleafly",
-    "hideOthers": "Hide Others",
-    "showAll": "Show All",
-    "edit": "Edit",
-    "undo": "Undo",
-    "redo": "Redo",
-    "cut": "Cut",
-    "copy": "Copy",
-    "paste": "Paste",
-    "selectAll": "Select All",
-    "view": "View",
-    "toggleTerminal": "Toggle Terminal",
-    "file": "File",
-    "openFolder": "Open Folder…",
-    "openRecent": "Open Recent",
-    "noRecent": "No Recent Projects",
-    "window": "Window",
-    "minimize": "Minimize",
-    "fullscreen": "Toggle Full Screen",
-    "bringAllToFront": "Bring All to Front",
-    "zenMode": "Zen Mode"
+    "about": "Giới thiệu Oleafly",
+    "checkUpdates": "Kiểm tra cập nhật…",
+    "settings": "Cài đặt…",
+    "reloadViews": "Tải lại khung nhìn",
+    "restartApp": "Khởi động lại ứng dụng",
+    "quit": "Thoát Oleafly",
+    "hide": "Ẩn Oleafly",
+    "hideOthers": "Ẩn các ứng dụng khác",
+    "showAll": "Hiện tất cả",
+    "edit": "Sửa",
+    "undo": "Hoàn tác",
+    "redo": "Làm lại",
+    "cut": "Cắt",
+    "copy": "Sao chép",
+    "paste": "Dán",
+    "selectAll": "Chọn tất cả",
+    "view": "Xem",
+    "toggleTerminal": "Bật/tắt Terminal",
+    "file": "Tệp",
+    "openFolder": "Mở thư mục…",
+    "openRecent": "Mở gần đây",
+    "noRecent": "Không có dự án gần đây",
+    "window": "Cửa sổ",
+    "minimize": "Thu nhỏ",
+    "fullscreen": "Bật/tắt toàn màn hình",
+    "bringAllToFront": "Đưa tất cả ra trước",
+    "zenMode": "Chế độ Zen"
   },
   "dialog": {
-    "cancel": "Cancel",
+    "cancel": "Huỷ",
     "fullAccess": {
-      "title": "Enable full access?",
-      "message": "Full access lets the assistant run shell commands and edit files without asking for approval each time. Enable full access?",
-      "confirm": "Enable full access"
+      "title": "Bật toàn quyền truy cập?",
+      "message": "Toàn quyền truy cập cho phép trợ lý chạy lệnh shell và sửa tệp mà không cần hỏi phê duyệt mỗi lần. Bật toàn quyền truy cập?",
+      "confirm": "Bật toàn quyền truy cập"
     },
     "sharedShellEscape": {
-      "title": "Allow external commands in this shared project?",
-      "message": "Anyone who can edit this project could then run programs on this computer when you compile. Only allow this if you trust everyone in the project.",
-      "confirm": "Allow on this computer"
+      "title": "Cho phép lệnh bên ngoài trong dự án chia sẻ này?",
+      "message": "Bất kỳ ai có thể sửa dự án này đều có thể chạy chương trình trên máy tính này khi bạn biên dịch. Chỉ cho phép nếu bạn tin tưởng mọi người trong dự án.",
+      "confirm": "Cho phép trên máy tính này"
     },
     "cookieImport": {
-      "title": "Confirm cookie import",
-      "copyHost": "Copy the cookies for {{hostname}} from {{browser}} profile \"{{profile}}\" into Oleafly? They can sign you in to {{hostname}}.",
-      "copyAll": "Copy every cookie from {{browser}} profile \"{{profile}}\" into Oleafly? They can sign you in to websites.",
-      "copyConfirm": "Copy cookies"
+      "title": "Xác nhận nhập cookie",
+      "copyHost": "Sao chép cookie cho {{hostname}} từ hồ sơ \"{{profile}}\" của {{browser}} vào Oleafly? Những cookie này có thể đăng nhập bạn vào {{hostname}}.",
+      "copyAll": "Sao chép mọi cookie từ hồ sơ \"{{profile}}\" của {{browser}} vào Oleafly? Chúng có thể đăng nhập bạn vào các trang web.",
+      "copyConfirm": "Sao chép cookie"
     },
     "mcpApprove": {
-      "title": "Approve MCP tool",
-      "confirm": "Use tool"
+      "title": "Phê duyệt công cụ MCP",
+      "confirm": "Dùng công cụ"
     },
     "mcpCommand": {
-      "title": "Run this program?",
-      "message": "Oleafly will run this command whenever it starts the MCP server {{name}}:\n\n{{command}}\n\nOnly allow programs you trust.",
-      "environment": "It also sets these environment variables: {{names}}",
-      "confirm": "Allow"
+      "title": "Chạy chương trình này?",
+      "message": "Oleafly sẽ chạy lệnh này mỗi khi khởi động máy chủ MCP {{name}}:\n\n{{command}}\n\nChỉ cho phép chương trình bạn tin tưởng.",
+      "environment": "Lệnh cũng đặt các biến môi trường sau: {{names}}",
+      "confirm": "Cho phép"
     },
     "tableImport": {
-      "title": "Choose a spreadsheet to import",
-      "filter": "Spreadsheets"
+      "title": "Chọn bảng tính để nhập",
+      "filter": "Bảng tính"
     },
     "trustFolder": {
-      "title": "Trust this folder?",
-      "message": "Oleafly will turn on Git, the terminal, agents and LaTeX tools for {{name}}. Only trust folders whose contents you know.",
-      "messageParent": "Oleafly will trust {{name}} and every folder inside it, including ones you open later.",
-      "messageRepository": "Oleafly will run Git in {{name}} with the repository's own settings and hooks.",
-      "confirm": "Trust"
+      "title": "Tin tưởng thư mục này?",
+      "message": "Oleafly sẽ bật Git, terminal, agent và công cụ LaTeX cho {{name}}. Chỉ tin tưởng những thư mục bạn biết rõ nội dung.",
+      "messageParent": "Oleafly sẽ tin tưởng {{name}} và mọi thư mục bên trong, kể cả những thư mục bạn mở sau này.",
+      "messageRepository": "Oleafly sẽ chạy Git trong {{name}} với cài đặt và hook của chính kho lưu trữ.",
+      "confirm": "Tin tưởng"
     },
     "restrictedWrite": {
-      "title": "Allow this change?",
-      "message": "The assistant wants to change {{path}}. Files like this can run programs, and this folder isn't trusted yet.",
-      "confirm": "Allow"
+      "title": "Cho phép thay đổi này?",
+      "message": "Trợ lý muốn thay đổi {{path}}. Những tệp như thế này có thể chạy chương trình, và thư mục này chưa được tin tưởng.",
+      "confirm": "Cho phép"
     },
     "restrictedNetwork": {
-      "title": "Allow this request?",
-      "message": "The assistant wants to use {{tool}}, which sends text to an online service. This folder isn't trusted yet.",
-      "confirm": "Allow"
+      "title": "Cho phép yêu cầu này?",
+      "message": "Trợ lý muốn dùng {{tool}}, công cụ này gửi văn bản đến một dịch vụ trực tuyến. Thư mục này chưa được tin tưởng.",
+      "confirm": "Cho phép"
     },
     "locateFolder": {
-      "title": "Find the project folder"
+      "title": "Tìm thư mục dự án"
     },
     "rebindFolder": {
-      "title": "Use a different folder?",
-      "message": "{{name}} isn't the folder Oleafly had for this project. If you use it, Oleafly saves your unsaved changes there and closes this project's terminals and agent sessions. Anything running in them ends. Oleafly also stops trusting the folder, turns off Full Access, resets the assistant's approvals and unlinks research folders. Chats and history are kept.",
-      "confirm": "Use this folder"
+      "title": "Dùng một thư mục khác?",
+      "message": "{{name}} không phải thư mục Oleafly dành cho dự án này. Nếu dùng thư mục này, Oleafly sẽ lưu các thay đổi chưa lưu của bạn ở đó, rồi đóng terminal và phiên agent của dự án này. Mọi thứ đang chạy trong đó sẽ kết thúc. Oleafly cũng ngừng tin tưởng thư mục này, tắt Toàn quyền truy cập, đặt lại các phê duyệt của trợ lý và bỏ liên kết các thư mục nghiên cứu. Các cuộc trò chuyện và lịch sử được giữ lại.",
+      "confirm": "Dùng thư mục này"
     },
     "saveCopy": {
-      "title": "Choose where to save a copy",
-      "folderSuffix": "copy"
+      "title": "Chọn nơi lưu bản sao",
+      "folderSuffix": "bản sao"
     },
     "openFolder": {
-      "title": "Open a folder",
-      "inside": "Choose a folder inside {{name}}"
+      "title": "Mở một thư mục",
+      "inside": "Chọn một thư mục bên trong {{name}}"
     },
     "agentProgram": {
-      "title": "Use this program?",
-      "message": "Oleafly will start {{path}} whenever you use {{name}}. Only choose programs you trust.",
-      "confirm": "Use program",
-      "pickTitle": "Choose the program for {{name}}",
-      "filter": "Programs"
+      "title": "Dùng chương trình này?",
+      "message": "Oleafly sẽ khởi động {{path}} mỗi khi bạn dùng {{name}}. Chỉ chọn chương trình bạn tin tưởng.",
+      "confirm": "Dùng chương trình",
+      "pickTitle": "Chọn chương trình cho {{name}}",
+      "filter": "Chương trình"
     },
     "sharedCodeExecution": {
-      "title": "Allow code in this shared project?",
-      "message": "Compiling will then run the code in this project on this computer. Anyone with edit access can change that code. Only allow this if you trust everyone in the project.",
-      "confirm": "Allow on this computer"
+      "title": "Cho phép mã trong dự án chia sẻ này?",
+      "message": "Khi biên dịch, mã trong dự án này sẽ chạy trên máy tính này. Bất kỳ ai có quyền sửa đều có thể thay đổi mã đó. Chỉ cho phép nếu bạn tin tưởng mọi người trong dự án.",
+      "confirm": "Cho phép trên máy tính này"
     },
     "desktopApps": {
-      "title": "Desktop apps",
-      "action": "{{agent}} wants to {{action}}.",
-      "steps": "{{agent}} wants to run these steps in a desktop app:",
-      "moreSteps": "Steps not shown and not run: {{count}}",
-      "moreItems": "Items not shown: {{count}}",
-      "cut": "(characters not shown: {{count}})",
-      "signedIn": "This acts in your own signed-in browser.",
-      "signedInOn": "This acts in your own signed-in browser, on {{origin}}.",
-      "task": "Task: {{title}}",
-      "app": "App: {{name}}",
-      "window": "Window: {{title}}",
-      "element": "Element: {{element}}",
-      "text": "Text: \"{{text}}\"",
-      "address": "Address: {{url}}",
-      "allowOnce": "Allow once",
-      "allowChat": "Allow for this chat",
-      "allowSession": "Allow for this session",
-      "allowTask": "Allow for this task",
-      "deny": "Don't allow",
-      "pickedFile": "the file you picked",
+      "title": "Ứng dụng máy tính",
+      "action": "{{agent}} muốn {{action}}.",
+      "steps": "{{agent}} muốn chạy các bước sau trong một ứng dụng máy tính:",
+      "moreSteps": "Các bước không hiển thị và không chạy: {{count}}",
+      "moreItems": "Các mục không hiển thị: {{count}}",
+      "cut": "(ký tự không hiển thị: {{count}})",
+      "signedIn": "Thao tác này diễn ra trong trình duyệt đã đăng nhập của bạn.",
+      "signedInOn": "Thao tác này diễn ra trong trình duyệt đã đăng nhập của bạn, trên {{origin}}.",
+      "task": "Tác vụ: {{title}}",
+      "app": "Ứng dụng: {{name}}",
+      "window": "Cửa sổ: {{title}}",
+      "element": "Phần tử: {{element}}",
+      "text": "Văn bản: \"{{text}}\"",
+      "address": "Địa chỉ: {{url}}",
+      "allowOnce": "Cho phép một lần",
+      "allowChat": "Cho phép trong cuộc trò chuyện này",
+      "allowSession": "Cho phép trong phiên này",
+      "allowTask": "Cho phép cho tác vụ này",
+      "deny": "Không cho phép",
+      "pickedFile": "tệp bạn đã chọn",
       "actions": {
-        "launchApp": "open an app",
-        "click": "click in an app",
-        "doubleClick": "double-click in an app",
-        "rightClick": "right-click in an app",
-        "typeText": "type in an app",
-        "pressKey": "press a key in an app",
-        "hotkey": "press a keyboard shortcut in an app",
-        "scroll": "scroll in an app",
-        "setValue": "change a field in an app",
-        "browserPrepare": "open a browser for a website",
-        "browserNavigate": "go to a web page",
-        "browserClick": "click on a web page",
-        "browserType": "type on a web page",
-        "browserSelect": "pick an option on a web page",
-        "runScript": "run a Cua script"
+        "launchApp": "mở một ứng dụng",
+        "click": "nhấp trong một ứng dụng",
+        "doubleClick": "nhấp đúp trong một ứng dụng",
+        "rightClick": "nhấp chuột phải trong một ứng dụng",
+        "typeText": "nhập trong một ứng dụng",
+        "pressKey": "nhấn một phím trong một ứng dụng",
+        "hotkey": "nhấn phím tắt trong một ứng dụng",
+        "scroll": "cuộn trong một ứng dụng",
+        "setValue": "thay đổi một trường trong ứng dụng",
+        "browserPrepare": "mở trình duyệt cho một trang web",
+        "browserNavigate": "đi tới một trang web",
+        "browserClick": "nhấp trên một trang web",
+        "browserType": "nhập trên một trang web",
+        "browserSelect": "chọn một tuỳ chọn trên trang web",
+        "runScript": "chạy một script Cua"
       }
     },
     "desktopAppsSettings": {
-      "title": "Allow desktop control?",
-      "message": "Agents will be able to use these. They ask before each action, and saving this clears any \"Allow for this chat\" choices:",
-      "confirm": "Allow",
-      "enabled": "Desktop apps",
-      "app": "App: {{identity}} ({{name}})",
-      "more": "And {{count}} more",
-      "site": "Website: {{origin}}",
-      "signedIn": "Your signed-in browser on {{origin}}",
-      "scripted": "Cua scripts",
-      "spacesTitle": "Give Cua Spaces more access?",
-      "spacesMessage": "Agents that use Cua Spaces will be able to:",
-      "spacesChanges": "Create and delete Spaces, and run commands in them",
-      "spacesSignIns": "Use your Claude Code or Codex sign-in inside a Space"
+      "title": "Cho phép điều khiển máy tính?",
+      "message": "Agent sẽ có thể dùng các mục này. Chúng sẽ hỏi trước mỗi thao tác, và việc lưu sẽ xoá mọi lựa chọn \"Cho phép trong cuộc trò chuyện này\":",
+      "confirm": "Cho phép",
+      "enabled": "Ứng dụng máy tính",
+      "app": "Ứng dụng: {{identity}} ({{name}})",
+      "more": "Và {{count}} mục khác",
+      "site": "Trang web: {{origin}}",
+      "signedIn": "Trình duyệt đã đăng nhập của bạn trên {{origin}}",
+      "scripted": "Script Cua",
+      "spacesTitle": "Cấp thêm quyền cho Cua Spaces?",
+      "spacesMessage": "Các agent dùng Cua Spaces sẽ có thể:",
+      "spacesChanges": "Tạo và xoá Space, và chạy lệnh trong đó",
+      "spacesSignIns": "Dùng đăng nhập Claude Code hoặc Codex của bạn trong một Space"
     }
   },
   "errors": {
-    "menuUnavailable": "Application menu is unavailable",
-    "viewMenuUnavailable": "View menu is unavailable",
-    "menuItemUnavailable": "Menu item {{id}} is unavailable",
-    "fullAccessDismissed": "The full access confirmation was dismissed.",
-    "fullAccessDeclined": "Full access was not enabled.",
-    "approvalDialogClosed": "The native approval dialog closed unexpectedly."
+    "menuUnavailable": "Menu ứng dụng không khả dụng",
+    "viewMenuUnavailable": "Menu Xem không khả dụng",
+    "menuItemUnavailable": "Mục menu {{id}} không khả dụng",
+    "fullAccessDismissed": "Hộp xác nhận toàn quyền truy cập đã bị đóng.",
+    "fullAccessDeclined": "Toàn quyền truy cập chưa được bật.",
+    "approvalDialogClosed": "Hộp thoại phê duyệt gốc đã đóng ngoài ý muốn."
   },
   "systemIntegration": {
-    "openInOleafly": "Open in Oleafly",
-    "openWithOleafly": "Open with Oleafly"
+    "openInOleafly": "Mở trong Oleafly",
+    "openWithOleafly": "Mở bằng Oleafly"
   },
   "collab": {
-    "localCopy": "{{name}} (local copy)"
+    "localCopy": "{{name}} (bản sao cục bộ)"
   },
   "approvals": {
-    "helperRefused": "Refused by the {{tool}} rule in approvals.toml",
-    "unknownTool": "No tool is named {{name}}, so its rule does nothing.",
-    "unknownToolSuggestion": "No tool is named {{name}}, so its rule does nothing. Did you mean {{suggestion}}?"
+    "helperRefused": "Bị từ chối bởi quy tắc {{tool}} trong approvals.toml",
+    "unknownTool": "Không có công cụ nào tên {{name}}, nên quy tắc của nó không có tác dụng.",
+    "unknownToolSuggestion": "Không có công cụ nào tên {{name}}, nên quy tắc của nó không có tác dụng. Ý bạn là {{suggestion}}?"
   },
   "cloud": {
-    "connectedPage": "You're connected. You can close this tab and go back to Oleafly.",
-    "failedPage": "Sign-in did not finish. You can close this tab and go back to Oleafly."
+    "connectedPage": "Bạn đã kết nối. Bạn có thể đóng thẻ này và quay lại Oleafly.",
+    "failedPage": "Đăng nhập chưa hoàn tất. Bạn có thể đóng thẻ này và quay lại Oleafly."
   },
   "researchTasks": {
     "notify": {
       "reviewReady": {
-        "title": "Task ready for review",
+        "title": "Tác vụ sẵn sàng để xem xét",
         "body": "{{title}}"
       },
       "planReady": {
-        "title": "Plan ready to approve",
+        "title": "Kế hoạch sẵn sàng để phê duyệt",
         "body": "{{title}}"
       },
       "approvalNeeded": {
-        "title": "A task needs your approval",
+        "title": "Một tác vụ cần bạn phê duyệt",
         "body": "{{title}}"
       },
       "failed": {
-        "title": "Task stopped",
+        "title": "Tác vụ đã dừng",
         "body": "{{title}}"
       },
       "budgetReached": {
-        "title": "Task budget used up",
+        "title": "Ngân sách tác vụ đã dùng hết",
         "body": "{{title}}"
       }
     }
   },
   "backgroundHelper": {
     "started": {
-      "title": "Oleafly keeps working",
-      "body": "Research tasks you marked to keep running continue in the background. Open Oleafly to see their progress."
+      "title": "Oleafly tiếp tục làm việc",
+      "body": "Các tác vụ nghiên cứu bạn đặt chế độ tiếp tục chạy sẽ tiếp tục trong nền. Mở Oleafly để xem tiến độ."
     }
   },
   "acp": {
     "blockedMode": {
-      "title": "Permission checks are off ({{mode}})",
-      "description": "The agent can edit files and run commands without asking. Oleafly could not switch it to another mode. Change the mode in the agent's own settings."
+      "title": "Kiểm tra quyền đang tắt ({{mode}})",
+      "description": "Agent có thể sửa tệp và chạy lệnh mà không hỏi. Oleafly không thể chuyển nó sang chế độ khác. Hãy đổi chế độ trong cài đặt riêng của agent."
     }
   }
 }

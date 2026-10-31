@@ -1,271 +1,271 @@
 {
   "home": {
-    "label": "Getting started",
+    "label": "Bắt đầu",
     "overview": {
-      "title": "Home",
-      "content": "Your projects and project creation begin here."
+      "title": "Trang chủ",
+      "content": "Dự án của bạn và việc tạo dự án bắt đầu từ đây."
     },
     "create": {
-      "title": "Create a real project",
-      "content": "Choose New project to see the ways a piece of work can begin."
+      "title": "Tạo một dự án thật",
+      "content": "Chọn Dự án mới để xem những cách bắt đầu một công việc."
     },
     "kind": {
-      "title": "Three ways to begin",
-      "content": "Start a research project, bring in a manuscript you already have, or work from a prepared template."
+      "title": "Ba cách để bắt đầu",
+      "content": "Bắt đầu một dự án nghiên cứu, đưa vào một bản thảo bạn đã có, hoặc làm từ một mẫu có sẵn."
     },
     "kindTemplate": {
-      "title": "Work from a template",
-      "content": "Choose Use a template to open the gallery. The other two starting points are there whenever you need them."
+      "title": "Làm từ một mẫu",
+      "content": "Chọn Dùng một mẫu để mở thư viện mẫu. Hai điểm khởi đầu còn lại luôn ở đó khi bạn cần."
     },
     "gallery": {
-      "title": "Find your starting point",
-      "content": "Browse categories, search by name, and narrow templates by compiler or offline availability."
+      "title": "Tìm điểm khởi đầu của bạn",
+      "content": "Duyệt theo danh mục, tìm theo tên và lọc mẫu theo trình biên dịch hoặc khả năng dùng ngoại tuyến."
     },
     "template": {
-      "title": "Choose a template",
-      "content": "Select any real template to continue. Its files will become your new project."
+      "title": "Chọn một mẫu",
+      "content": "Chọn một mẫu thật để tiếp tục. Các tệp của mẫu sẽ trở thành dự án mới của bạn."
     },
     "name": {
-      "title": "Name your project",
-      "content": "Enter a project name. Next becomes available when the name is not empty."
+      "title": "Đặt tên cho dự án",
+      "content": "Nhập tên dự án. Nút Tiếp sẽ khả dụng khi tên không trống."
     },
     "color": {
-      "title": "Choose a cover color",
-      "content": "This color makes the project easy to spot on Home. You can keep the template default."
+      "title": "Chọn màu bìa",
+      "content": "Màu này giúp bạn dễ nhận ra dự án trên Trang chủ. Bạn có thể giữ mặc định của mẫu."
     },
     "createProject": {
-      "title": "Create your project",
-      "content": "Click \"Create project\" to create a project with the selected template."
+      "title": "Tạo dự án của bạn",
+      "content": "Nhấp \"Tạo dự án\" để tạo dự án với mẫu đã chọn."
     }
   },
   "workspace": {
-    "label": "Your workspace",
+    "label": "Không gian làm việc của bạn",
     "toolbar": {
-      "title": "Project toolbar",
-      "content": "Project actions and compilation controls live here."
+      "title": "Thanh công cụ dự án",
+      "content": "Thao tác dự án và điều khiển biên dịch nằm ở đây."
     },
     "sidebar": {
-      "title": "Workspace navigation",
-      "content": "Move between files, search, source control, preflight, references, and MCP activity."
+      "title": "Điều hướng không gian làm việc",
+      "content": "Chuyển giữa tệp, tìm kiếm, quản lý mã nguồn, kiểm tra trước, tài liệu tham khảo và hoạt động MCP."
     },
     "editor": {
-      "title": "Editor",
-      "content": "Write and navigate source with completion, diagnostics, formatting, and code intelligence."
+      "title": "Trình soạn thảo",
+      "content": "Viết và điều hướng mã nguồn với gợi ý hoàn thành, chẩn đoán, định dạng và hiểu biết mã."
     },
     "wysiwygToggle": {
-      "title": "Try WYSIWYG mode",
-      "content": "Switch between raw source and a formatted, Google-Docs-style view of your document."
+      "title": "Thử chế độ WYSIWYG",
+      "content": "Chuyển giữa mã nguồn thô và chế độ xem tài liệu đã định dạng, kiểu Google Docs."
     },
     "compile": {
-      "title": "Compile and recompile",
-      "content": "Build the current project here. The tour never compiles or changes your source."
+      "title": "Biên dịch và biên dịch lại",
+      "content": "Dựng dự án hiện tại ở đây. Chuyến tham quan không bao giờ biên dịch hay thay đổi mã nguồn của bạn."
     },
     "logs": {
-      "title": "Build logs",
-      "content": "Open build logs to inspect errors without changing project content. The adjacent status shows the latest compile time."
+      "title": "Nhật ký dựng",
+      "content": "Mở nhật ký dựng để xem lỗi mà không thay đổi nội dung dự án. Trạng thái bên cạnh hiển thị thời gian biên dịch gần nhất."
     },
     "preview": {
-      "title": "PDF preview",
-      "content": "The compiled document stays beside your source in split view."
+      "title": "Xem trước PDF",
+      "content": "Tài liệu đã biên dịch luôn ở cạnh mã nguồn trong chế độ chia đôi."
     },
     "zoom": {
-      "title": "Your complete PDF toolkit",
-      "content": "Open the outline, search text, jump between pages, choose single or two-page layouts, zoom or fit the page, invert colors, use the accessible reader view, rotate, download, save to the project, go fullscreen, or open the preview in its own window."
+      "title": "Bộ công cụ PDF đầy đủ của bạn",
+      "content": "Mở dàn ý, tìm văn bản, nhảy giữa các trang, chọn bố cục một hoặc hai trang, thu phóng hoặc vừa trang, đảo màu, dùng chế độ đọc dễ tiếp cận, xoay, tải xuống, lưu vào dự án, chuyển toàn màn hình hoặc mở bản xem trước trong cửa sổ riêng."
     },
     "sourceNavigation": {
-      "title": "PDF to source",
-      "content": "Click compiled PDF content to jump directly to the corresponding source."
+      "title": "Từ PDF tới mã nguồn",
+      "content": "Nhấp vào nội dung PDF đã biên dịch để nhảy thẳng tới mã nguồn tương ứng."
     }
   },
   "research": {
-    "label": "Research workspace",
+    "label": "Không gian nghiên cứu",
     "open": {
-      "title": "Research workspace",
-      "content": "Open it to hand research tasks to an agent and to link reading folders and datasets you keep elsewhere. This is new and in beta, so please report anything that breaks."
+      "title": "Không gian nghiên cứu",
+      "content": "Mở nó để giao tác vụ nghiên cứu cho agent và liên kết các thư mục đọc cùng bộ dữ liệu bạn lưu ở nơi khác. Tính năng này mới và đang thử nghiệm, hãy báo cáo mọi sự cố."
     },
     "tasks": {
-      "title": "Queue research tasks",
-      "content": "Describe a piece of work and hand it to an agent. Each task keeps its own conversation, outputs, and review notes."
+      "title": "Xếp hàng tác vụ nghiên cứu",
+      "content": "Mô tả một công việc và giao cho agent. Mỗi tác vụ giữ cuộc trò chuyện, đầu ra và ghi chú xem xét riêng."
     },
     "folders": {
-      "title": "Link folders you already keep",
-      "content": "Point the workspace at reading folders and datasets outside the project. Nothing is copied or moved."
+      "title": "Liên kết các thư mục bạn đã có",
+      "content": "Trỏ không gian làm việc tới các thư mục đọc và bộ dữ liệu bên ngoài dự án. Không có gì bị sao chép hay di chuyển."
     }
   },
   "settings": {
-    "label": "Settings",
+    "label": "Cài đặt",
     "navigation": {
-      "title": "Settings",
-      "content": "Move between preferences and integrations here."
+      "title": "Cài đặt",
+      "content": "Chuyển giữa tuỳ chọn và tích hợp ở đây."
     },
     "general": {
-      "title": "General preferences",
-      "content": "Control editing behavior, offline mode, shortcuts, and tour guides."
+      "title": "Tuỳ chọn chung",
+      "content": "Điều khiển hành vi soạn thảo, chế độ ngoại tuyến, phím tắt và hướng dẫn tham quan."
     },
     "appearance": {
-      "title": "Appearance",
-      "content": "Choose the theme, typography, default workspace layout, and accent color."
+      "title": "Giao diện",
+      "content": "Chọn chủ đề, kiểu chữ, bố cục không gian làm việc mặc định và màu nhấn."
     },
     "dictionary": {
-      "title": "Dictionary",
-      "content": "Review project-specific and global words ignored by spelling and grammar checks."
+      "title": "Từ điển",
+      "content": "Xem lại các từ riêng của dự án và toàn cục mà kiểm tra chính tả và ngữ pháp bỏ qua."
     },
     "data": {
-      "title": "Data Storage",
-      "content": "Inspect local project storage and manage application data."
+      "title": "Lưu trữ dữ liệu",
+      "content": "Kiểm tra lưu trữ dự án cục bộ và quản lý dữ liệu ứng dụng."
     },
     "ai": {
-      "title": "AI Assistant",
-      "content": "Configure providers, models, credentials, and the MCP servers the assistant can use."
+      "title": "Trợ lý AI",
+      "content": "Cấu hình nhà cung cấp, mô hình, thông tin xác thực và các máy chủ MCP mà trợ lý có thể dùng."
     },
     "compiler": {
-      "title": "Compiler",
-      "content": "Choose and configure the LaTeX engine used to build projects."
+      "title": "Trình biên dịch",
+      "content": "Chọn và cấu hình engine LaTeX dùng để dựng dự án."
     },
     "downloads": {
-      "title": "Downloads",
-      "content": "Manage packages and resources available for offline work."
+      "title": "Tải xuống",
+      "content": "Quản lý các gói và tài nguyên có sẵn để làm việc ngoại tuyến."
     },
     "integrations": {
-      "title": "Integrations",
-      "content": "Connect Git hosting (GitHub, GitLab, Codeberg and others), alphaXiv, Zotero, citation search, desktop apps for agents, and Oleafly's local MCP server."
+      "title": "Tích hợp",
+      "content": "Kết nối dịch vụ lưu trữ Git (GitHub, GitLab, Codeberg và các dịch vụ khác), alphaXiv, Zotero, tìm kiếm trích dẫn, ứng dụng máy tính cho agent và máy chủ MCP cục bộ của Oleafly."
     },
     "shortcuts": {
-      "title": "Keyboard Shortcuts",
-      "content": "Review, edit, set, and reset application keyboard shortcuts."
+      "title": "Phím tắt",
+      "content": "Xem, sửa, đặt và đặt lại phím tắt của ứng dụng."
     },
     "mcp": {
-      "title": "Assistant MCP",
-      "content": "Choose which MCP servers the assistant can use."
+      "title": "MCP của trợ lý",
+      "content": "Chọn những máy chủ MCP mà trợ lý có thể dùng."
     },
     "help": {
-      "title": "Help and About",
-      "content": "Restart the contextual tour, open documentation, view shortcuts, or report a problem."
+      "title": "Trợ giúp và Giới thiệu",
+      "content": "Khởi động lại chuyến tham quan theo ngữ cảnh, mở tài liệu, xem phím tắt hoặc báo cáo sự cố."
     }
   },
   "aiSettings": {
-    "label": "AI settings",
+    "label": "Cài đặt AI",
     "tabs": {
-      "title": "AI Assistant settings",
-      "content": "Manage providers and keys, instructions, personas, reusable skills, and MCP servers here."
+      "title": "Cài đặt Trợ lý AI",
+      "content": "Quản lý nhà cung cấp và khoá, hướng dẫn, persona, kỹ năng dùng lại và máy chủ MCP ở đây."
     },
     "providers": {
-      "title": "Connect providers",
-      "content": "Paste a key and it is validated against the provider before saving. Connected providers show a green badge and expand into a model list you can toggle, extend, or restore. Keys stay encrypted on this computer."
+      "title": "Kết nối nhà cung cấp",
+      "content": "Dán khoá và khoá sẽ được kiểm tra với nhà cung cấp trước khi lưu. Nhà cung cấp đã kết nối hiện huy hiệu xanh và mở rộng thành danh sách mô hình bạn có thể bật, thêm hoặc khôi phục. Khoá được mã hoá trên máy tính này."
     },
     "customProvider": {
-      "title": "Bring your own endpoint",
-      "content": "Any OpenAI-compatible base URL works here, including local servers like Ollama or LM Studio."
+      "title": "Dùng điểm cuối của riêng bạn",
+      "content": "Mọi URL gốc tương thích OpenAI đều dùng được ở đây, kể cả máy chủ cục bộ như Ollama hoặc LM Studio."
     },
     "openInstructions": {
-      "title": "Instructions",
-      "content": "Click the Instructions tab to continue."
+      "title": "Hướng dẫn",
+      "content": "Nhấp thẻ Hướng dẫn để tiếp tục."
     },
     "defaultModel": {
-      "title": "Default model",
-      "content": "New chats start with this model. You can still switch models per conversation from the chat panel."
+      "title": "Mô hình mặc định",
+      "content": "Cuộc trò chuyện mới bắt đầu với mô hình này. Bạn vẫn có thể đổi mô hình cho từng cuộc trò chuyện từ bảng trò chuyện."
     },
     "instructions": {
-      "title": "Custom instructions",
-      "content": "Your standing style preferences, added to every request the assistant makes."
+      "title": "Hướng dẫn tuỳ chỉnh",
+      "content": "Các tuỳ chọn phong cách thường trực của bạn, được thêm vào mọi yêu cầu của trợ lý."
     },
     "openPersonas": {
-      "title": "Personas",
-      "content": "Click the Personas tab to continue."
+      "title": "Phong cách",
+      "content": "Nhấp thẻ Phong cách để tiếp tục."
     },
     "personas": {
-      "title": "Create personas",
-      "content": "Named instruction sets with a color, switchable from the chat's Persona menu. Try a copyeditor, a reviewer, or a LaTeX purist."
+      "title": "Tạo persona",
+      "content": "Bộ hướng dẫn có tên và màu, có thể chuyển từ menu Phong cách của cuộc trò chuyện. Hãy thử một biên tập viên, một người phản biện hoặc một người theo chủ nghĩa LaTeX thuần tuý."
     }
   },
   "ai": {
-    "label": "AI Assistant",
+    "label": "Trợ lý AI",
     "assistant": {
-      "title": "AI Assistant",
-      "content": "Work with a project-aware assistant without sending anything during this tour."
+      "title": "Trợ lý AI",
+      "content": "Làm việc với trợ lý hiểu dự án mà không gửi gì trong chuyến tham quan này."
     },
     "runtime": {
-      "title": "Two kinds of agent",
-      "content": "The Oleafly agent runs on the model provider you configure. The CLI agent drives a coding agent already installed on this computer."
+      "title": "Hai loại agent",
+      "content": "Agent của Oleafly chạy trên nhà cung cấp mô hình bạn cấu hình. Agent CLI điều khiển một coding agent đã cài trên máy tính này."
     },
     "connectProvider": {
-      "title": "Connect a provider",
-      "content": "If no provider is configured, start here. The tour never asks for or changes credentials."
+      "title": "Kết nối nhà cung cấp",
+      "content": "Nếu chưa cấu hình nhà cung cấp, hãy bắt đầu ở đây. Chuyến tham quan không bao giờ hỏi hay thay đổi thông tin xác thực."
     },
     "providerModel": {
-      "title": "Provider and model",
-      "content": "Switch models for this conversation. Changes apply to this session only. Your default model is set in Settings. Logos identify each model's provider."
+      "title": "Nhà cung cấp và mô hình",
+      "content": "Đổi mô hình cho cuộc trò chuyện này. Thay đổi chỉ áp dụng cho phiên này. Mô hình mặc định được đặt trong Cài đặt. Logo cho biết nhà cung cấp của từng mô hình."
     },
     "prompts": {
-      "title": "Prompt shortcuts",
-      "content": "Choose a ready-made prompt to place it in the chat input."
+      "title": "Lối tắt câu lệnh",
+      "content": "Chọn một câu lệnh có sẵn để đặt vào ô nhập trò chuyện."
     },
     "persona": {
-      "title": "Persona",
-      "content": "Choose how the assistant should work. An active persona replaces your default instructions until you turn it off."
+      "title": "Phong cách",
+      "content": "Chọn cách trợ lý nên làm việc. Phong cách đang bật sẽ thay thế hướng dẫn mặc định của bạn cho tới khi bạn tắt nó."
     },
     "input": {
-      "title": "Chat input",
-      "content": "Describe what you need. The assistant can use project context, but this tour never sends a request."
+      "title": "Ô nhập trò chuyện",
+      "content": "Mô tả điều bạn cần. Trợ lý có thể dùng ngữ cảnh dự án, nhưng chuyến tham quan này không bao giờ gửi yêu cầu."
     },
     "attachments": {
-      "title": "Attachments",
-      "content": "Attach images, PDFs, and source files when a conversation needs extra context."
+      "title": "Tệp đính kèm",
+      "content": "Đính kèm hình ảnh, PDF và tệp mã nguồn khi cuộc trò chuyện cần thêm ngữ cảnh."
     },
     "history": {
-      "title": "Conversation history",
-      "content": "Reopen recent and full chat history while keeping each conversation tied to its project state."
+      "title": "Lịch sử trò chuyện",
+      "content": "Mở lại lịch sử trò chuyện gần đây và đầy đủ, đồng thời giữ mỗi cuộc trò chuyện gắn với trạng thái dự án của nó."
     },
     "usage": {
-      "title": "Usage",
-      "content": "Configured conversations show run, token, and estimated-cost usage here when available."
+      "title": "Mức sử dụng",
+      "content": "Cuộc trò chuyện đã cấu hình hiển thị số lần chạy, token và chi phí ước tính ở đây khi có."
     },
     "restore": {
-      "title": "Review agent changes",
-      "content": "When a turn changes files, open Review to see each change. Undo puts a file back, and Redo brings the change back."
+      "title": "Xem lại thay đổi của agent",
+      "content": "Khi một lượt thay đổi tệp, mở Xem lại để xem từng thay đổi. Hoàn tác đưa tệp về trước, Làm lại đưa thay đổi trở lại."
     }
   },
   "diagram": {
-    "label": "Diagram Composer",
+    "label": "Trình tạo sơ đồ",
     "composer": {
-      "title": "Diagram Composer",
-      "content": "Build diagrams visually or from TikZ code. The tour does not modify or save your work."
+      "title": "Trình tạo sơ đồ",
+      "content": "Dựng sơ đồ trực quan hoặc từ mã TikZ. Chuyến tham quan không sửa hay lưu công việc của bạn."
     },
     "import": {
-      "title": "Import a TikZ file",
-      "content": "Already have a .tikz or .tex file? Import it to replace this starter drawing. It stays a draft until you choose to save it."
+      "title": "Nhập tệp TikZ",
+      "content": "Đã có tệp .tikz hoặc .tex? Nhập nó để thay bản vẽ khởi đầu này. Bản vẽ vẫn là bản nháp cho tới khi bạn lưu."
     },
     "modes": {
-      "title": "Draw and Code",
-      "content": "Draw mode lets you work directly on the canvas. Code mode shows the generated TikZ and reusable snippets."
+      "title": "Vẽ và Mã",
+      "content": "Chế độ Vẽ cho bạn làm việc trực tiếp trên khung vẽ. Chế độ Mã hiện TikZ được tạo và các đoạn tái sử dụng."
     },
     "palette": {
-      "title": "Shape palette",
-      "content": "Choose a shape, then click and drag on the canvas to place and size it."
+      "title": "Bảng hình",
+      "content": "Chọn một hình, rồi nhấp và kéo trên khung vẽ để đặt và chỉnh kích thước."
     },
     "handles": {
-      "title": "Connect and resize",
-      "content": "A selected shape exposes connection and resize handles for precise structure and sizing."
+      "title": "Kết nối và chỉnh kích thước",
+      "content": "Hình được chọn hiện các tay nắm kết nối và chỉnh kích thước để dựng cấu trúc và kích thước chính xác."
     },
     "inspector": {
-      "title": "Inspector",
-      "content": "Select a shape or connection to adjust its style, text, routing, and stacking order."
+      "title": "Bảng thuộc tính",
+      "content": "Chọn một hình hoặc kết nối để điều chỉnh kiểu, văn bản, đường đi và thứ tự xếp lớp."
     },
     "preview": {
-      "title": "Compiled preview",
-      "content": "Compile opens a preview beside the editor with scale and background controls."
+      "title": "Bản xem trước đã biên dịch",
+      "content": "Biên dịch mở bản xem trước cạnh trình soạn thảo với điều khiển tỉ lệ và nền."
     },
     "compile": {
-      "title": "Compile",
-      "content": "Compile renders an isolated preview without inserting the diagram into your document."
+      "title": "Biên dịch",
+      "content": "Biên dịch hiển thị bản xem trước riêng mà không chèn sơ đồ vào tài liệu của bạn."
     },
     "saveProject": {
-      "title": "Save as project",
-      "content": "Save a finished diagram as a reusable image project that appears on Home."
+      "title": "Lưu thành dự án",
+      "content": "Lưu sơ đồ hoàn chỉnh thành dự án hình ảnh tái sử dụng, xuất hiện trên Trang chủ."
     },
     "download": {
-      "title": "Download",
-      "content": "Download the compiled diagram as a PNG file without saving it as a project."
+      "title": "Tải xuống",
+      "content": "Tải sơ đồ đã biên dịch dưới dạng tệp PNG mà không lưu thành dự án."
     }
   }
 }

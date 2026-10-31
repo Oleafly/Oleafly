@@ -1,1086 +1,1086 @@
 {
   "runtime": {
-    "ariaLabel": "Assistant runtime",
+    "ariaLabel": "Môi trường chạy trợ lý",
     "builtIn": "Oleafly Agent",
     "cli": "CLI Agent"
   },
   "shell": {
-    "float": "Float the assistant",
-    "floatAriaLabel": "Float the assistant over the app",
-    "overlayTitle": "AI assistant",
-    "dockAriaLabel": "Dock chat back to the sidebar",
-    "floatingNotice": "The assistant is floating over the app.",
-    "dockBack": "Dock it back",
-    "loadingAgents": "Loading agents…",
-    "openProjectForCli": "Open a project to work with a CLI agent."
+    "float": "Tách trợ lý nổi",
+    "floatAriaLabel": "Tách trợ lý nổi trên ứng dụng",
+    "overlayTitle": "Trợ lý AI",
+    "dockAriaLabel": "Gắn trò chuyện lại thanh bên",
+    "floatingNotice": "Trợ lý đang nổi trên ứng dụng.",
+    "dockBack": "Gắn lại",
+    "loadingAgents": "Đang tải agent…",
+    "openProjectForCli": "Hãy mở dự án để làm việc với CLI agent."
   },
   "minimap": {
-    "ariaLabel": "Conversation turns",
-    "jumpTo": "Jump to: {{text}}"
+    "ariaLabel": "Các lượt trò chuyện",
+    "jumpTo": "Nhảy tới: {{text}}"
   },
   "approval": {
     "modes": {
       "askForApproval": {
-        "label": "Ask for approval",
-        "description": "Ask before file edits, internet access, and commands."
+        "label": "Yêu cầu phê duyệt",
+        "description": "Hỏi trước khi sửa tệp, truy cập internet và chạy lệnh."
       },
       "approveForMe": {
-        "label": "Approve for me",
-        "description": "Ask only before actions classified as risky."
+        "label": "Tự phê duyệt cho tôi",
+        "description": "Chỉ hỏi trước các thao tác được phân loại là rủi ro."
       },
       "fullAccess": {
-        "label": "Full access",
-        "description": "Run tool actions without asking, except tools a deny rule blocks."
+        "label": "Toàn quyền truy cập",
+        "description": "Chạy thao tác công cụ mà không hỏi, trừ công cụ bị quy tắc từ chối chặn."
       },
       "custom": {
-        "label": "Custom (approvals.toml)",
-        "description": "Use the rules in approvals.toml. Edit them under Settings, AI Assistant."
+        "label": "Tuỳ chỉnh (approvals.toml)",
+        "description": "Dùng quy tắc trong approvals.toml. Sửa trong Cài đặt, Trợ lý AI."
       }
     },
-    "selectorAriaLabel": "Approval mode. {{mode}}",
-    "editProjectRules": "Edit project rules",
+    "selectorAriaLabel": "Chế độ phê duyệt. {{mode}}",
+    "editProjectRules": "Sửa quy tắc dự án",
     "confirm": {
-      "command": "Confirm command",
-      "externalTool": "Confirm external tool action",
-      "internet": "Confirm internet access",
-      "edit": "Confirm AI edit",
-      "researchTask": "Confirm research task"
+      "command": "Xác nhận lệnh",
+      "externalTool": "Xác nhận thao tác công cụ ngoài",
+      "internet": "Xác nhận truy cập internet",
+      "edit": "Xác nhận sửa của AI",
+      "researchTask": "Xác nhận tác vụ nghiên cứu"
     },
     "headline": {
-      "command": "The assistant wants to run this command",
-      "externalTool": "The assistant wants to use an external tool",
-      "internet": "The assistant wants to access the internet",
-      "edit": "The assistant wants to change your files",
-      "researchTask": "The assistant wants to create a research task"
+      "command": "Trợ lý muốn chạy lệnh này",
+      "externalTool": "Trợ lý muốn dùng công cụ ngoài",
+      "internet": "Trợ lý muốn truy cập internet",
+      "edit": "Trợ lý muốn thay đổi tệp của bạn",
+      "researchTask": "Trợ lý muốn tạo tác vụ nghiên cứu"
     },
-    "mcpNote": "This sends the arguments below to the configured MCP server.",
-    "line": "line {{line}}",
-    "sessionAutoApprove": "Session auto-approve is on for writes (deletes still need a click).",
-    "commandLabel": "Command",
-    "workingDirectory": "Working directory",
-    "mcpServer": "MCP server",
-    "toolLabel": "Tool",
-    "arguments": "Arguments",
-    "figureAlt": "Figure preview",
-    "firstChange": "first change · L{{line}}",
-    "reject": "Reject",
-    "alwaysInProject": "Always in this project",
-    "alwaysInProjectAriaLabel": "Always allow in this project",
-    "alwaysAllow": "Always allow",
-    "approve": "Approve",
+    "mcpNote": "Thao tác này gửi các đối số bên dưới tới máy chủ MCP đã cấu hình.",
+    "line": "dòng {{line}}",
+    "sessionAutoApprove": "Tự phê duyệt trong phiên đang bật cho thao tác ghi (xoá vẫn cần nhấp).",
+    "commandLabel": "Lệnh",
+    "workingDirectory": "Thư mục làm việc",
+    "mcpServer": "Máy chủ MCP",
+    "toolLabel": "Công cụ",
+    "arguments": "Đối số",
+    "figureAlt": "Bản xem trước hình",
+    "firstChange": "thay đổi đầu tiên · D{{line}}",
+    "reject": "Từ chối",
+    "alwaysInProject": "Luôn trong dự án này",
+    "alwaysInProjectAriaLabel": "Luôn cho phép trong dự án này",
+    "alwaysAllow": "Luôn cho phép",
+    "approve": "Phê duyệt",
     "external": {
-      "title": "External agent request (MCP)",
-      "moreWaiting_other": "{{count}} more waiting"
+      "title": "Yêu cầu agent ngoài (MCP)",
+      "moreWaiting_other": "{{count}} yêu cầu khác đang chờ"
     },
     "researchTask": {
-      "note": "The task works on its own in a copy of the project. You review its changes afterwards.",
-      "title": "Title",
-      "goal": "Goal",
-      "skills": "Skills",
-      "prompt": "Prompt",
-      "commands": "Commands",
-      "commandsAsk": "Ask before each one",
-      "network": "Network",
-      "timeBudget": "Time budget",
-      "timeBudgetDefault": "Default",
-      "minutes_other": "{{count}} minutes",
-      "planFirst": "Plan first",
-      "startNow": "Start now"
+      "note": "Tác vụ tự làm việc trong bản sao của dự án. Bạn xem lại thay đổi của nó sau.",
+      "title": "Tiêu đề",
+      "goal": "Mục tiêu",
+      "skills": "Kỹ năng",
+      "prompt": "Lời nhắc",
+      "commands": "Lệnh",
+      "commandsAsk": "Hỏi trước từng lệnh",
+      "network": "Mạng",
+      "timeBudget": "Ngân sách thời gian",
+      "timeBudgetDefault": "Mặc định",
+      "minutes_other": "{{count}} phút",
+      "planFirst": "Lập kế hoạch trước",
+      "startNow": "Bắt đầu ngay"
     }
   },
   "attachments": {
-    "remove": "Remove {{name}}",
-    "processing": "Preparing {{name}}…",
-    "failed": "{{name}} could not be attached.",
-    "pages_other": "{{count}} pages",
-    "pagesLimited": "Only the first {{limit}} of {{count}} pages are used.",
-    "tooMany": "You can attach up to {{max}} files to one message.",
-    "tooLarge": "{{name}} is larger than {{limit}}.",
-    "unsupported": "{{name}} can't be attached. Attach images, PDFs or text files.",
-    "unreadableImage": "Oleafly can't read the image format of {{name}}. Save it as PNG or JPEG and attach it again.",
-    "unreadablePdf": "{{name}} could not be opened as a PDF.",
-    "storeFailed": "{{name}} could not be saved for this chat.",
-    "visionUnsupported": "{{model}} can't read images, so the images in this message won't be sent.",
-    "scannedPdf": "{{name}} has no text layer, and {{model}} can't read images.",
-    "dropFiles": "Drop files to attach them",
-    "dropProjectFile": "Drop to mention this file",
-    "open": "Open {{name}}",
-    "saveCopy": "Save a copy of {{name}}",
-    "saved": "Saved a copy of {{name}}.",
-    "saveFailed": "Couldn't save {{name}}.",
-    "missing": "{{name}} is no longer available.",
-    "sentAsText": "{{name}} was sent as text because this model can't read it as a file.",
-    "skipped": "{{name}} was not sent.",
-    "dropUnreadable": "{{names}} could not be read.",
-    "notReplayed": "Files from an older version can't be sent again: {{names}}."
+    "remove": "Gỡ {{name}}",
+    "processing": "Đang chuẩn bị {{name}}…",
+    "failed": "Không thể đính kèm {{name}}.",
+    "pages_other": "{{count}} trang",
+    "pagesLimited": "Chỉ dùng {{limit}} trang đầu trong {{count}} trang.",
+    "tooMany": "Bạn có thể đính kèm tối đa {{max}} tệp cho một tin nhắn.",
+    "tooLarge": "{{name}} lớn hơn {{limit}}.",
+    "unsupported": "Không thể đính kèm {{name}}. Hãy đính kèm hình ảnh, PDF hoặc tệp văn bản.",
+    "unreadableImage": "Oleafly không đọc được định dạng ảnh của {{name}}. Hãy lưu thành PNG hoặc JPEG và đính kèm lại.",
+    "unreadablePdf": "Không thể mở {{name}} dưới dạng PDF.",
+    "storeFailed": "Không thể lưu {{name}} cho cuộc trò chuyện này.",
+    "visionUnsupported": "{{model}} không đọc được hình ảnh, nên các hình trong tin nhắn này sẽ không được gửi.",
+    "scannedPdf": "{{name}} không có lớp văn bản, và {{model}} không đọc được hình ảnh.",
+    "dropFiles": "Thả tệp để đính kèm",
+    "dropProjectFile": "Thả để nhắc tới tệp này",
+    "open": "Mở {{name}}",
+    "saveCopy": "Lưu bản sao của {{name}}",
+    "saved": "Đã lưu bản sao của {{name}}.",
+    "saveFailed": "Không thể lưu {{name}}.",
+    "missing": "{{name}} không còn khả dụng.",
+    "sentAsText": "{{name}} được gửi dạng văn bản vì mô hình này không đọc được nó dạng tệp.",
+    "skipped": "{{name}} không được gửi.",
+    "dropUnreadable": "Không đọc được {{names}}.",
+    "notReplayed": "Không thể gửi lại tệp từ phiên bản cũ: {{names}}."
   },
   "chat": {
     "pill": {
-      "plan": "PLAN",
-      "step": "STEP {{current}}/{{total}}",
-      "review": "REVIEW"
+      "plan": "KẾ HOẠCH",
+      "step": "BƯỚC {{current}}/{{total}}",
+      "review": "XEM XÉT"
     },
     "plan": {
-      "detailsAriaLabel": "Plan details",
-      "headingPlan": "Plan",
-      "headingChanges": "Changes",
-      "approve": "Approve plan",
-      "revise": "Revise",
-      "statusAwaiting": "Awaiting approval",
-      "statusApproved": "Approved"
+      "detailsAriaLabel": "Chi tiết kế hoạch",
+      "headingPlan": "Kế hoạch",
+      "headingChanges": "Thay đổi",
+      "approve": "Phê duyệt kế hoạch",
+      "revise": "Chỉnh sửa",
+      "statusAwaiting": "Đang chờ phê duyệt",
+      "statusApproved": "Đã phê duyệt"
     },
     "todos": {
       "ariaLabel": "{{status}}: {{content}}",
       "status": {
-        "completed": "completed",
-        "inProgress": "in progress",
-        "pending": "pending",
-        "cancelled": "cancelled"
+        "completed": "hoàn thành",
+        "inProgress": "đang thực hiện",
+        "pending": "đang chờ",
+        "cancelled": "đã huỷ"
       }
     },
     "fileChanges": {
-      "changed": "Changed",
-      "committed": "Committed {{commit}}"
+      "changed": "Đã thay đổi",
+      "committed": "Đã commit {{commit}}"
     },
     "runSummary": {
-      "plan": "Plan",
-      "stepsDone": "{{done}}/{{total}} done",
-      "filesChanged_other": "{{count}} files changed"
+      "plan": "Kế hoạch",
+      "stepsDone": "{{done}}/{{total}} xong",
+      "filesChanged_other": "{{count}} tệp đã thay đổi"
     },
-    "copyMessage": "Copy message",
+    "copyMessage": "Sao chép tin nhắn",
     "exploration": {
-      "explored": "Explored",
-      "exploredItems": "Explored {{items}}",
-      "files_other": "{{count}} files",
-      "searches_other": "{{count}} searches",
-      "lists_other": "{{count}} lists"
+      "explored": "Đã khám phá",
+      "exploredItems": "Đã khám phá {{items}}",
+      "files_other": "{{count}} tệp",
+      "searches_other": "{{count}} lượt tìm",
+      "lists_other": "{{count}} danh sách"
     },
     "reasoning": {
-      "thinking": "Thinking…",
-      "thoughtFor": "Thought for {{seconds}}s",
-      "label": "Reasoning"
+      "thinking": "Đang suy nghĩ…",
+      "thoughtFor": "Đã suy nghĩ {{seconds}} giây",
+      "label": "Lập luận"
     },
     "subagent": {
-      "finished": "Finished",
-      "failed": "Failed",
-      "stopped": "Stopped",
-      "usingTool": "Using {{tool}}",
-      "working": "Working on it",
-      "errorBody": "The agent could not complete this task.",
-      "stoppedBody": "The task was stopped before it answered.",
-      "openTask": "Open task"
+      "finished": "Đã xong",
+      "failed": "Thất bại",
+      "stopped": "Đã dừng",
+      "usingTool": "Đang dùng {{tool}}",
+      "working": "Đang xử lý",
+      "errorBody": "Agent không thể hoàn tất tác vụ này.",
+      "stoppedBody": "Tác vụ bị dừng trước khi trả lời.",
+      "openTask": "Mở tác vụ"
     },
     "workedSteps": {
-      "duration": "Worked for {{seconds}}s",
-      "steps_other": "Worked through {{count}} steps"
+      "duration": "Đã làm việc {{seconds}} giây",
+      "steps_other": "Đã làm qua {{count}} bước"
     },
-    "steered": "Steered",
-    "toolOutputError": "Error: {{message}}",
+    "steered": "Đã điều hướng",
+    "toolOutputError": "Lỗi: {{message}}",
     "errorHints": {
-      "emptyReply": "The model sent back an empty reply. Try again, or switch models {{where}}.",
-      "invalidKey": "Your API key looks invalid or expired. Update it in Settings → AI Assistant, or switch providers {{where}}.",
-      "invalidRequest": "The provider rejected this request. Try another model {{where}}.",
-      "outOfCredits": "Your AI provider is out of credits or quota. Top up the account, or switch to another provider (or local Ollama) {{where}}.",
-      "overloaded": "The provider's servers are overloaded right now (this was already retried). Wait a minute and try again, or switch to a sibling model {{where}}.",
-      "rateLimited": "The provider is rate-limiting requests. Wait a moment and retry, or switch providers {{where}}.",
-      "retiredModel": "The provider retired or restricted this model. Pick a newer model {{where}} (Settings → AI Assistant lists what your key can use).",
-      "serverError": "The provider had a server error. Wait a minute and try again, or switch models {{where}}.",
-      "timedOut": "The provider took too long to answer. Try again, or switch models {{where}}.",
-      "unreachable": "Couldn't reach the AI provider. Check your connection, or if you're using Ollama, make sure it's running (Settings → AI Assistant → Check for Ollama).",
+      "emptyReply": "Mô hình trả về câu trả lời trống. Hãy thử lại, hoặc đổi mô hình {{where}}.",
+      "invalidKey": "API key của bạn có vẻ không hợp lệ hoặc đã hết hạn. Hãy cập nhật trong Cài đặt → Trợ lý AI, hoặc đổi nhà cung cấp {{where}}.",
+      "invalidRequest": "Nhà cung cấp từ chối yêu cầu này. Hãy thử mô hình khác {{where}}.",
+      "outOfCredits": "Nhà cung cấp AI của bạn hết tín dụng hoặc hạn mức. Hãy nạp tiền cho tài khoản, hoặc chuyển sang nhà cung cấp khác (hoặc Ollama cục bộ) {{where}}.",
+      "overloaded": "Máy chủ nhà cung cấp đang quá tải (yêu cầu đã được thử lại). Hãy đợi một phút rồi thử lại, hoặc chuyển sang mô hình cùng dòng {{where}}.",
+      "rateLimited": "Nhà cung cấp đang giới hạn tốc độ yêu cầu. Hãy đợi một lát và thử lại, hoặc đổi nhà cung cấp {{where}}.",
+      "retiredModel": "Nhà cung cấp đã ngừng hoặc hạn chế mô hình này. Hãy chọn mô hình mới hơn {{where}} (Cài đặt → Trợ lý AI liệt kê những gì key của bạn dùng được).",
+      "serverError": "Nhà cung cấp gặp lỗi máy chủ. Hãy đợi một phút rồi thử lại, hoặc đổi mô hình {{where}}.",
+      "timedOut": "Nhà cung cấp trả lời quá lâu. Hãy thử lại, hoặc đổi mô hình {{where}}.",
+      "unreachable": "Không kết nối được tới nhà cung cấp AI. Hãy kiểm tra kết nối, hoặc nếu dùng Ollama, hãy chắc nó đang chạy (Cài đặt → Trợ lý AI → Kiểm tra Ollama).",
       "where": {
-        "inSettings": "in Settings, AI Assistant",
-        "modelMenu": "from the model menu above"
+        "inSettings": "trong Cài đặt, Trợ lý AI",
+        "modelMenu": "từ menu mô hình ở trên"
       }
     }
   },
   "composer": {
-    "addContext": "Add context",
-    "mentionMenuAgentsAndFiles": "Agents and project files",
-    "mentionMenuFiles": "Project files",
-    "mentionHeadingAgents": "Delegate to an agent",
-    "mentionHeadingFiles": "Project files",
-    "slashMenuAriaLabel": "Slash commands",
-    "placeholderEngineUnavailable": "Document engine unavailable. AI editing disabled",
-    "placeholderDefault": "Ask AI to help with your document…",
-    "planRevisionPlaceholder": "Describe what to change in the plan",
-    "prompts": "Prompts",
-    "promptShortcutsAriaLabel": "Prompt shortcuts",
-    "persona": "Persona",
-    "personaActiveTooltip": "{{name}} is active and replaces your default instructions.",
-    "personaChoose": "Choose persona",
-    "personaActiveAriaLabel": "Persona. {{name}} active and replacing default instructions.",
-    "personaCreate": "Create a persona in Settings",
-    "personaNone": "None",
-    "planModeOn": "Plan mode on",
-    "planModeOff": "Plan mode off",
-    "planModeAriaLabel": "Plan mode",
-    "plan": "Plan",
-    "planModeInfo": "About plan mode",
-    "planModeHint": "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.",
-    "stop": "Stop",
-    "stopTitle": "Stop generating",
-    "send": "Send",
-    "checkAgain": "Check again",
-    "resizeHandle": "Resize the message box",
-    "resizeHint": "Drag to resize. Double-click to reset."
+    "addContext": "Thêm ngữ cảnh",
+    "mentionMenuAgentsAndFiles": "Agent và tệp dự án",
+    "mentionMenuFiles": "Tệp dự án",
+    "mentionHeadingAgents": "Giao việc cho agent",
+    "mentionHeadingFiles": "Tệp dự án",
+    "slashMenuAriaLabel": "Lệnh gạch chéo",
+    "placeholderEngineUnavailable": "Engine tài liệu không khả dụng. Đã tắt chỉnh sửa bằng AI",
+    "placeholderDefault": "Nhờ AI giúp với tài liệu của bạn…",
+    "planRevisionPlaceholder": "Mô tả điều cần thay đổi trong kế hoạch",
+    "prompts": "Lời nhắc",
+    "promptShortcutsAriaLabel": "Phím tắt lời nhắc",
+    "persona": "Nhân cách",
+    "personaActiveTooltip": "{{name}} đang bật và thay thế hướng dẫn mặc định của bạn.",
+    "personaChoose": "Chọn nhân cách",
+    "personaActiveAriaLabel": "Nhân cách. {{name}} đang bật và thay thế hướng dẫn mặc định.",
+    "personaCreate": "Tạo nhân cách trong Cài đặt",
+    "personaNone": "Không",
+    "planModeOn": "Đã bật chế độ kế hoạch",
+    "planModeOff": "Đã tắt chế độ kế hoạch",
+    "planModeAriaLabel": "Chế độ kế hoạch",
+    "plan": "Kế hoạch",
+    "planModeInfo": "Giới thiệu chế độ kế hoạch",
+    "planModeHint": "Chế độ kế hoạch: trợ lý đề xuất kế hoạch trước khi sửa. Tắt Kế hoạch để cho trợ lý truy cập trực tiếp mọi công cụ.",
+    "stop": "Dừng",
+    "stopTitle": "Dừng tạo",
+    "send": "Gửi",
+    "checkAgain": "Kiểm tra lại",
+    "resizeHandle": "Đổi kích thước hộp tin nhắn",
+    "resizeHint": "Kéo để đổi kích thước. Nhấp đúp để đặt lại."
   },
   "commands": {
     "groups": {
-      "skills": "Skills"
+      "skills": "Kỹ năng"
     },
     "archive": {
-      "label": "Archive",
-      "description": "Archive this chat"
+      "label": "Lưu trữ",
+      "description": "Lưu trữ trò chuyện này"
     },
     "forkChat": {
-      "label": "Fork chat",
-      "description": "Create a new chat from this conversation"
+      "label": "Fork trò chuyện",
+      "description": "Tạo trò chuyện mới từ cuộc này"
     },
     "goal": {
-      "label": "Goal",
-      "description": "Set what the assistant should keep working toward"
+      "label": "Mục tiêu",
+      "description": "Đặt điều trợ lý nên tiếp tục hướng tới"
     },
     "mcp": {
       "label": "MCP",
-      "description": "View connected MCP servers and their status"
+      "description": "Xem máy chủ MCP đã kết nối và trạng thái"
     },
     "model": {
-      "label": "Model",
-      "description": "Choose the model for this chat"
+      "label": "Mô hình",
+      "description": "Chọn mô hình cho trò chuyện này"
     },
     "planMode": {
-      "enableLabel": "Enable Plan Mode",
-      "disableLabel": "Disable Plan Mode",
-      "description": "Turn structured planning on or off"
+      "enableLabel": "Bật chế độ kế hoạch",
+      "disableLabel": "Tắt chế độ kế hoạch",
+      "description": "Bật hoặc tắt lập kế hoạch có cấu trúc"
     },
     "recordSkill": {
-      "label": "Record a skill",
-      "description": "Save this chat's approach as an editable draft"
+      "label": "Ghi một kỹ năng",
+      "description": "Lưu cách làm của trò chuyện này thành bản nháp có thể sửa"
     },
     "files": {
-      "label": "Files",
-      "description": "Attach files to your next message"
+      "label": "Tệp",
+      "description": "Đính kèm tệp vào tin nhắn tiếp theo"
     }
   },
   "models": {
-    "ariaLabel": "AI model",
-    "placeholder": "Select a model",
-    "triggerTooltip": "{{model}}. Switch provider or model",
-    "searchLabel": "Search models",
-    "searchPlaceholder": "Search models…",
-    "emptyTitle": "No models found",
-    "emptyHint": "Try a different search.",
+    "ariaLabel": "Mô hình AI",
+    "placeholder": "Chọn một mô hình",
+    "triggerTooltip": "{{model}}. Đổi nhà cung cấp hoặc mô hình",
+    "searchLabel": "Tìm mô hình",
+    "searchPlaceholder": "Tìm mô hình…",
+    "emptyTitle": "Không tìm thấy mô hình",
+    "emptyHint": "Hãy thử từ khoá khác.",
     "trust": {
-      "verified": "Verified",
-      "untested": "Untested",
-      "blocked": "Blocked"
+      "verified": "Đã xác minh",
+      "untested": "Chưa thử",
+      "blocked": "Bị chặn"
     },
     "trustTitle": {
-      "verified": "Oleafly has run the assistant on this model",
-      "untested": "Not tried with the assistant yet. It is checked on first use",
-      "blocked": "The assistant cannot run on this model"
+      "verified": "Oleafly đã chạy trợ lý trên mô hình này",
+      "untested": "Chưa thử với trợ lý. Sẽ được kiểm tra khi dùng lần đầu",
+      "blocked": "Trợ lý không chạy được trên mô hình này"
     },
-    "chatOnlyHint": "Chat only, this model cannot use tools",
-    "checkingHint": "Checking this model",
-    "blockedWithReason": "This model is blocked for the assistant: {{reason}}",
-    "blocked": "This model is blocked for the assistant.",
-    "probeFailedWithDetail": "Could not check this model. {{detail}}",
-    "probeFailed": "Could not check this model."
+    "chatOnlyHint": "Chỉ trò chuyện, mô hình này không dùng được công cụ",
+    "checkingHint": "Đang kiểm tra mô hình này",
+    "blockedWithReason": "Mô hình này bị chặn cho trợ lý: {{reason}}",
+    "blocked": "Mô hình này bị chặn cho trợ lý.",
+    "probeFailedWithDetail": "Không thể kiểm tra mô hình này. {{detail}}",
+    "probeFailed": "Không thể kiểm tra mô hình này."
   },
   "history": {
-    "title": "Chat history",
-    "closeBackdrop": "Close chat history",
-    "searchLabel": "Search chats",
-    "searchPlaceholder": "Search titles and messages",
-    "emptyProject": "No saved chats for this project yet.",
-    "emptySearch": "No chats match that search.",
-    "untitled": "New chat",
-    "staleTitle": "This chat was started from an older version of the project",
-    "staleBadge": "older version",
-    "messages_other": "{{count}} msgs",
+    "title": "Lịch sử trò chuyện",
+    "closeBackdrop": "Đóng lịch sử trò chuyện",
+    "searchLabel": "Tìm trò chuyện",
+    "searchPlaceholder": "Tìm tiêu đề và tin nhắn",
+    "emptyProject": "Dự án này chưa có trò chuyện nào được lưu.",
+    "emptySearch": "Không có trò chuyện nào khớp.",
+    "untitled": "Trò chuyện mới",
+    "staleTitle": "Trò chuyện này bắt đầu từ phiên bản cũ của dự án",
+    "staleBadge": "phiên bản cũ",
+    "messages_other": "{{count}} tin",
     "tokens": "~{{amount}} tok",
-    "deleteAriaLabel": "Delete {{title}}",
-    "deleteFallbackTitle": "chat",
-    "deleteTitle": "Delete chat",
+    "deleteAriaLabel": "Xoá {{title}}",
+    "deleteFallbackTitle": "trò chuyện",
+    "deleteTitle": "Xoá trò chuyện",
     "relative": {
-      "justNow": "just now",
-      "minutes": "{{count}}m ago",
-      "hours": "{{count}}h ago",
-      "days": "{{count}}d ago"
+      "justNow": "vừa xong",
+      "minutes": "{{count}} phút trước",
+      "hours": "{{count}} giờ trước",
+      "days": "{{count}} ngày trước"
     },
-    "skipped_other": "{{count}} chats could not be loaded. They are still on disk.",
-    "openFailed": "Couldn't open this chat."
+    "skipped_other": "Không tải được {{count}} trò chuyện. Chúng vẫn còn trên đĩa.",
+    "openFailed": "Không thể mở trò chuyện này."
   },
   "tools": {
     "approval": {
-      "never": "Never",
-      "everyTime": "Every time, in the chat",
-      "askModeOnly": "Only in Ask for approval mode",
-      "unlessAllowed": "Yes, unless allowed for the project"
+      "never": "Không bao giờ",
+      "everyTime": "Mỗi lần, trong trò chuyện",
+      "askModeOnly": "Chỉ ở chế độ Yêu cầu phê duyệt",
+      "unlessAllowed": "Có, trừ khi được cho phép cho dự án"
     },
     "catalog": {
-      "readFile": "Read a project file, a slice at a time for long ones.",
-      "writeFile": "Write a whole file, replacing what was there.",
-      "replaceInFile": "Find an exact passage in a file and replace it.",
-      "createFile": "Create a new file or folder in the project.",
-      "renameFile": "Rename or move a file or folder.",
-      "deleteFile": "Delete a file or folder.",
-      "listFiles": "List every file and folder in the project.",
-      "searchProject": "Search the project's text and get file and line hits.",
-      "projectMap": "Read the document's outline: sections, labels, citation keys, macros, inputs, and anything unresolved.",
-      "showLocation": "Open a file at a line in the editor and move the PDF preview to that spot.",
-      "compile": "Compile the project with its engine and report errors.",
-      "getLog": "Read the last compile log.",
-      "getPdfText": "Read the text of the compiled PDF page by page.",
-      "verifyPdfPages": "Render compiled pages as images so a vision model can check the layout.",
-      "setMainDoc": "Change which file the project compiles from.",
-      "literatureSearch": "Search OpenAlex for papers by keyword, no key needed.",
-      "verifyCitation": "Turn a DOI or a title into verified BibTeX through doi.org or Crossref.",
-      "projectLibrarySearch": "Search the project's own text and notes by keyword.",
-      "previewFigure": "Render a TikZ or CeTZ figure on its own and show the result in the chat.",
-      "insertFigure": "Insert the finished figure at the cursor with a caption and label, and save a PNG under figures/.",
-      "loadImage": "Look at an image that is already in the project.",
-      "updateTodos": "Write or update the step by step plan shown in the chat.",
-      "getTodos": "Read the current plan.",
-      "rememberNote": "Save a project note that later chats will see.",
-      "forgetNote": "Remove a saved project note.",
-      "listNotes": "List the saved project notes.",
-      "loadSkill": "Load the full instructions of one skill before following it.",
-      "readSkillFile": "Read a reference file or script that ships with a skill.",
-      "spawnAgent": "Start a helper agent with its own task and tools.",
-      "sendMessage": "Send a message to a running helper agent.",
-      "followupTask": "Give a helper agent another task after it finishes.",
-      "waitAgent": "Wait for a helper agent to finish and read its result.",
-      "interruptAgent": "Stop what a helper agent is doing.",
-      "listAgents": "List the helper agents and their state.",
-      "closeAgent": "Close a helper agent.",
-      "runCommand": "Run a shell command in the project folder, with a two minute limit.",
-      "toggleTheme": "Switch between light and dark mode.",
-      "listOverleafProjects": "List your Overleaf projects, signing in first when needed.",
-      "importOverleafProjects": "Import Overleaf projects into your library, with their compiler and main file."
+      "readFile": "Đọc tệp dự án, từng phần một nếu dài.",
+      "writeFile": "Ghi cả tệp, thay thế nội dung cũ.",
+      "replaceInFile": "Tìm một đoạn chính xác trong tệp và thay thế.",
+      "createFile": "Tạo tệp hoặc thư mục mới trong dự án.",
+      "renameFile": "Đổi tên hoặc di chuyển tệp hay thư mục.",
+      "deleteFile": "Xoá tệp hoặc thư mục.",
+      "listFiles": "Liệt kê mọi tệp và thư mục trong dự án.",
+      "searchProject": "Tìm trong văn bản dự án và nhận vị trí tệp, dòng.",
+      "projectMap": "Đọc dàn bài tài liệu: mục, nhãn, khoá trích dẫn, macro, tệp include và mọi thứ chưa giải quyết.",
+      "showLocation": "Mở tệp tại một dòng trong trình soạn thảo và đưa bản xem trước PDF tới chỗ đó.",
+      "compile": "Biên dịch dự án bằng engine của nó và báo lỗi.",
+      "getLog": "Đọc log biên dịch cuối cùng.",
+      "getPdfText": "Đọc văn bản của PDF đã biên dịch theo từng trang.",
+      "verifyPdfPages": "Kết xuất các trang đã biên dịch thành hình để mô hình thị giác kiểm tra bố cục.",
+      "setMainDoc": "Đổi tệp mà dự án biên dịch.",
+      "literatureSearch": "Tìm bài báo trên OpenAlex theo từ khoá, không cần key.",
+      "verifyCitation": "Chuyển DOI hoặc tiêu đề thành BibTeX đã xác minh qua doi.org hoặc Crossref.",
+      "projectLibrarySearch": "Tìm trong văn bản và ghi chú của chính dự án theo từ khoá.",
+      "previewFigure": "Kết xuất hình TikZ hoặc CeTZ riêng lẻ và hiện kết quả trong trò chuyện.",
+      "insertFigure": "Chèn hình đã hoàn tất tại con trỏ kèm chú thích và nhãn, và lưu PNG dưới figures/.",
+      "loadImage": "Xem một hình đã có trong dự án.",
+      "updateTodos": "Viết hoặc cập nhật kế hoạch từng bước hiện trong trò chuyện.",
+      "getTodos": "Đọc kế hoạch hiện tại.",
+      "rememberNote": "Lưu ghi chú dự án để các trò chuyện sau thấy.",
+      "forgetNote": "Gỡ ghi chú dự án đã lưu.",
+      "listNotes": "Liệt kê ghi chú dự án đã lưu.",
+      "loadSkill": "Nạp toàn bộ hướng dẫn của một kỹ năng trước khi làm theo.",
+      "readSkillFile": "Đọc tệp tham chiếu hoặc script đi kèm một kỹ năng.",
+      "spawnAgent": "Khởi động agent phụ với tác vụ và công cụ riêng.",
+      "sendMessage": "Gửi tin nhắn tới agent phụ đang chạy.",
+      "followupTask": "Giao thêm tác vụ cho agent phụ sau khi nó xong.",
+      "waitAgent": "Đợi agent phụ xong và đọc kết quả.",
+      "interruptAgent": "Dừng việc agent phụ đang làm.",
+      "listAgents": "Liệt kê agent phụ và trạng thái.",
+      "closeAgent": "Đóng agent phụ.",
+      "runCommand": "Chạy lệnh shell trong thư mục dự án, giới hạn hai phút.",
+      "toggleTheme": "Chuyển giữa chế độ sáng và tối.",
+      "listOverleafProjects": "Liệt kê dự án Overleaf của bạn, đăng nhập trước khi cần.",
+      "importOverleafProjects": "Nhập dự án Overleaf vào thư viện, kèm trình biên dịch và tệp chính."
     },
-    "disableAll": "Disable all",
-    "emptyContext": "No tools are available in this context.",
-    "enableAll": "Enable all",
-    "enableTool": "Enable {{name}}",
-    "enabledCount": "{{enabled}} of {{total}} enabled",
+    "disableAll": "Tắt tất cả",
+    "emptyContext": "Không có công cụ nào trong ngữ cảnh này.",
+    "enableAll": "Bật tất cả",
+    "enableTool": "Bật {{name}}",
+    "enabledCount": "Đã bật {{enabled}} trên {{total}}",
     "groupHeading": "{{label}} {{server}}",
     "groups": {
-      "agents": "Agents",
-      "buildAndPdf": "Build and PDF",
-      "figures": "Figures",
-      "files": "Files",
-      "planAndMemory": "Plan and memory",
-      "research": "Research",
-      "skills": "Skills",
-      "system": "System"
+      "agents": "Agent",
+      "buildAndPdf": "Dựng và PDF",
+      "figures": "Hình",
+      "files": "Tệp",
+      "planAndMemory": "Kế hoạch và ghi nhớ",
+      "research": "Nghiên cứu",
+      "skills": "Kỹ năng",
+      "system": "Hệ thống"
     },
-    "managerAriaLabel": "Manage agent tools",
-    "managerHeading": "Tools",
-    "managerTooltip": "Tools",
-    "noDescription": "No description provided.",
+    "managerAriaLabel": "Quản lý công cụ agent",
+    "managerHeading": "Công cụ",
+    "managerTooltip": "Công cụ",
+    "noDescription": "Không có mô tả.",
     "notes": {
-      "latexOnly": "LaTeX projects only",
-      "latexAndTypstOnly": "LaTeX and Typst projects only",
-      "pdfCaptureSetting": "Needs the PDF page capture setting",
-      "chatApproval": "Approved in the chat, one command at a time"
+      "latexOnly": "Chỉ dự án LaTeX",
+      "latexAndTypstOnly": "Chỉ dự án LaTeX và Typst",
+      "pdfCaptureSetting": "Cần thiết lập chụp trang PDF",
+      "chatApproval": "Được phê duyệt trong trò chuyện, từng lệnh một"
     },
     "sourceGroups": {
-      "figure": "Figure",
+      "figure": "Hình",
       "mcp": "MCP",
-      "project": "Project tools",
-      "skills": "Skills"
+      "project": "Công cụ dự án",
+      "skills": "Kỹ năng"
     },
     "table": {
-      "tool": "Tool",
-      "whatItDoes": "What it does",
-      "asksFirst": "Asks first"
+      "tool": "Công cụ",
+      "whatItDoes": "Chức năng",
+      "asksFirst": "Hỏi trước"
     }
   },
   "toolCard": {
-    "approved": "Approved",
-    "rejected": "Rejected",
-    "binaryPreview": "This linked file is binary, so it cannot be previewed here.",
-    "previewTruncated": "Preview stopped at 256 KiB.",
-    "previewFailed": "This linked source could not be previewed.",
-    "showAll": "Show all {{characters}} characters",
-    "loadingSource": "Loading source",
-    "inspectSource": "Inspect source",
-    "openFile": "Open file",
-    "openSource": "Open source",
-    "openSourceTitled": "Open source: {{title}}",
-    "openTask": "Open task",
+    "approved": "Đã phê duyệt",
+    "rejected": "Đã từ chối",
+    "binaryPreview": "Tệp liên kết này là nhị phân, nên không xem trước được ở đây.",
+    "previewTruncated": "Bản xem trước dừng ở 256 KiB.",
+    "previewFailed": "Không thể xem trước nguồn liên kết này.",
+    "showAll": "Hiện tất cả {{characters}} ký tự",
+    "loadingSource": "Đang tải mã nguồn",
+    "inspectSource": "Xem mã nguồn",
+    "openFile": "Mở tệp",
+    "openSource": "Mở mã nguồn",
+    "openSourceTitled": "Mở mã nguồn: {{title}}",
+    "openTask": "Mở tác vụ",
     "doi": "DOI {{doi}}"
   },
   "toolPicture": {
-    "figurePreviewAlt": "Rendered figure preview",
-    "toolImageAlt": "Image from the tool",
-    "showFigure": "Show the rendered figure",
-    "showTikz": "Show the TikZ source",
-    "figureTab": "Figure",
+    "figurePreviewAlt": "Bản xem trước hình đã kết xuất",
+    "toolImageAlt": "Hình từ công cụ",
+    "showFigure": "Hiện hình đã kết xuất",
+    "showTikz": "Hiện mã nguồn TikZ",
+    "figureTab": "Hình",
     "tikzTab": "TikZ",
-    "saving": "Saving",
-    "saveToProject": "Save to project",
-    "copyCode": "Copy code",
-    "saved": "Saved {{path}}",
-    "saveNeedsProject": "Open a project to save this figure.",
-    "saveFailed": "The figure could not be saved."
+    "saving": "Đang lưu",
+    "saveToProject": "Lưu vào dự án",
+    "copyCode": "Sao chép mã",
+    "saved": "Đã lưu {{path}}",
+    "saveNeedsProject": "Hãy mở dự án để lưu hình này.",
+    "saveFailed": "Không thể lưu hình."
   },
   "transcript": {
-    "dialogTitle": "Delegated task transcript",
-    "dialogDescription": "Everything the delegated agent read, ran, and answered while it worked on this task.",
-    "loading": "Loading transcript",
-    "failed": "The transcript could not be loaded.",
-    "empty": "This task did not record a transcript."
+    "dialogTitle": "Bản ghi tác vụ được giao",
+    "dialogDescription": "Mọi thứ agent được giao đã đọc, chạy và trả lời khi làm tác vụ này.",
+    "loading": "Đang tải bản ghi",
+    "failed": "Không thể tải bản ghi.",
+    "empty": "Tác vụ này không ghi bản ghi nào."
   },
   "subagents": {
-    "working": "Subagents working",
-    "count": "Subagents ({{count}})",
-    "stopAll": "Stop all",
-    "stopFailed": "The subagents could not be stopped.",
-    "updates": "{{count}} updates",
-    "openTask": "Open task",
-    "awaitingPermission": "A delegated agent is waiting for permission.",
-    "taskFailed": "A delegated task failed. Open it to read the error.",
-    "transcriptTruncated": "This transcript is longer than the section shown here.",
-    "noTranscriptYet": "This task has not reported any transcript activity yet.",
-    "noSessionInfo": "This task did not record enough session information to open its transcript.",
-    "loadingTranscript": "Loading transcript…",
-    "transcriptFailed": "The transcript could not be loaded.",
-    "stillWorking": "This subagent is still working. Its full transcript opens when it finishes.",
-    "noFinalAnswer": "This agent did not record a final answer.",
-    "latest": "Latest: {{text}}",
-    "workingDetail": "working",
+    "working": "Agent phụ đang làm việc",
+    "count": "Agent phụ ({{count}})",
+    "stopAll": "Dừng tất cả",
+    "stopFailed": "Không thể dừng các agent phụ.",
+    "updates": "{{count}} cập nhật",
+    "openTask": "Mở tác vụ",
+    "awaitingPermission": "Một agent được giao đang chờ quyền.",
+    "taskFailed": "Một tác vụ được giao thất bại. Hãy mở để đọc lỗi.",
+    "transcriptTruncated": "Bản ghi này dài hơn phần hiển thị ở đây.",
+    "noTranscriptYet": "Tác vụ này chưa báo hoạt động bản ghi nào.",
+    "noSessionInfo": "Tác vụ này không ghi đủ thông tin phiên để mở bản ghi.",
+    "loadingTranscript": "Đang tải bản ghi…",
+    "transcriptFailed": "Không thể tải bản ghi.",
+    "stillWorking": "Agent phụ này vẫn đang làm. Bản ghi đầy đủ mở khi nó xong.",
+    "noFinalAnswer": "Agent này không ghi câu trả lời cuối.",
+    "latest": "Mới nhất: {{text}}",
+    "workingDetail": "đang làm",
     "status": {
-      "active": "working",
-      "awaiting": "needs permission",
-      "updated": "updated",
-      "interrupted": "stopped",
-      "completed": "done",
-      "failed": "failed"
+      "active": "đang làm",
+      "awaiting": "cần quyền",
+      "updated": "đã cập nhật",
+      "interrupted": "đã dừng",
+      "completed": "xong",
+      "failed": "thất bại"
     }
   },
   "acp": {
-    "newConversation": "New conversation",
-    "savedConversations": "Saved conversations",
-    "untitledConversation": "Untitled conversation",
-    "agentSetup": "Agent setup",
-    "usageReport": "Usage report",
+    "newConversation": "Cuộc trò chuyện mới",
+    "savedConversations": "Cuộc trò chuyện đã lưu",
+    "untitledConversation": "Cuộc trò chuyện chưa đặt tên",
+    "agentSetup": "Thiết lập agent",
+    "usageReport": "Báo cáo sử dụng",
     "permission": {
-      "ariaLabel": "Agent permission",
-      "namedHeadline": "{{agent}} needs permission",
-      "headline": "The agent needs permission",
-      "expired": "This request expired. Ask the agent to try again.",
-      "dismiss": "Dismiss",
+      "ariaLabel": "Quyền của agent",
+      "namedHeadline": "{{agent}} cần quyền",
+      "headline": "Agent cần quyền",
+      "expired": "Yêu cầu này đã hết hạn. Hãy nhờ agent thử lại.",
+      "dismiss": "Bỏ qua",
       "diff": {
-        "showChange": "Show change",
-        "hideChange": "Hide change",
-        "large": "Large change to {{path}}. Review it after the turn.",
-        "label": "Proposed change to {{path}}",
-        "loading": "Loading the change…"
+        "showChange": "Hiện thay đổi",
+        "hideChange": "Ẩn thay đổi",
+        "large": "Thay đổi lớn ở {{path}}. Hãy xem lại sau lượt này.",
+        "label": "Thay đổi đề xuất cho {{path}}",
+        "loading": "Đang tải thay đổi…"
       }
     },
     "readiness": {
-      "managedBridge": "Bridge {{version}} installed by Oleafly.",
-      "bridgeMissingWithCli": "{{cli}} found at {{path}}. Install the ACP bridge {{version}} to connect.",
-      "bridgeMissing": "Install the ACP bridge {{version}} to connect this agent.",
-      "cliNotFound": "This agent's command line tool was not found.",
-      "unavailable": "This agent cannot run on this computer."
+      "managedBridge": "Bridge {{version}} do Oleafly cài.",
+      "bridgeMissingWithCli": "Tìm thấy {{cli}} tại {{path}}. Hãy cài ACP bridge {{version}} để kết nối.",
+      "bridgeMissing": "Hãy cài ACP bridge {{version}} để kết nối agent này.",
+      "cliNotFound": "Không tìm thấy công cụ dòng lệnh của agent này.",
+      "unavailable": "Agent này không chạy được trên máy tính này."
     },
     "bridgeSource": {
-      "notInstalled": "Not installed",
-      "managed": "Managed by Oleafly"
+      "notInstalled": "Chưa cài",
+      "managed": "Do Oleafly quản lý"
     },
-    "installing": "Installing",
-    "installBridge": "Install bridge",
-    "assistantAriaLabel": "CLI agent assistant",
-    "loadEarlier": "Load earlier activity",
-    "starting": "Starting {{agent}}",
-    "startingFallback": "the agent",
-    "startingHint": "The agent's command line tool is launching. This takes a few seconds the first time.",
-    "readySubtitle": "{{agent}} is ready in this project",
-    "projectSubtitle": "Working on \"{{project}}\"",
-    "signInFallback": "Sign in using this agent's CLI, then reconnect.",
-    "reconnectAfterSignIn": "Reconnect after sign-in",
-    "reconnect": "Reconnect to conversation",
-    "resumeTask": "Open the research task to resume this work.",
-    "delegatedConversation": "This conversation belongs to a delegated agent run.",
-    "noResume": "This agent cannot resume saved conversations. Start a new conversation when you are ready.",
-    "imageReadFailed": "The image could not be read.",
-    "composerAriaLabel": "Message CLI agent",
-    "composerPlaceholderReady": "Ask the agent to work on this project",
-    "composerPlaceholderIdle": "Start or reconnect a conversation to send a message",
-    "startConversation": "Start a conversation with {{agent}}",
-    "startConversationFallback": "an agent",
-    "agentModel": "Agent model",
-    "modelManaged": "Model managed by the agent",
-    "stop": "Stop",
+    "installing": "Đang cài",
+    "installBridge": "Cài bridge",
+    "assistantAriaLabel": "Trợ lý CLI agent",
+    "loadEarlier": "Tải hoạt động trước đó",
+    "starting": "Đang khởi động {{agent}}",
+    "startingFallback": "agent",
+    "startingHint": "Công cụ dòng lệnh của agent đang khởi chạy. Lần đầu mất vài giây.",
+    "readySubtitle": "{{agent}} đã sẵn sàng trong dự án này",
+    "projectSubtitle": "Đang làm việc trên \"{{project}}\"",
+    "signInFallback": "Hãy đăng nhập bằng CLI của agent này, rồi kết nối lại.",
+    "reconnectAfterSignIn": "Kết nối lại sau khi đăng nhập",
+    "reconnect": "Kết nối lại cuộc trò chuyện",
+    "resumeTask": "Mở tác vụ nghiên cứu để tiếp tục công việc.",
+    "delegatedConversation": "Cuộc trò chuyện này thuộc một lượt agent được giao.",
+    "noResume": "Agent này không tiếp tục được cuộc trò chuyện đã lưu. Hãy bắt đầu cuộc mới khi sẵn sàng.",
+    "imageReadFailed": "Không thể đọc hình ảnh.",
+    "composerAriaLabel": "Nhắn cho CLI agent",
+    "composerPlaceholderReady": "Nhờ agent làm việc trên dự án này",
+    "composerPlaceholderIdle": "Bắt đầu hoặc kết nối lại cuộc trò chuyện để gửi tin nhắn",
+    "startConversation": "Bắt đầu cuộc trò chuyện với {{agent}}",
+    "startConversationFallback": "một agent",
+    "agentModel": "Mô hình của agent",
+    "modelManaged": "Mô hình do agent quản lý",
+    "stop": "Dừng",
     "stopReason": {
-      "refusal": "The agent declined to continue this request.",
-      "maxTokens": "The agent reached its output limit and stopped.",
-      "maxTurnRequests": "The agent reached its request limit for this turn and stopped."
+      "refusal": "Agent từ chối tiếp tục yêu cầu này.",
+      "maxTokens": "Agent chạm giới hạn đầu ra và dừng.",
+      "maxTurnRequests": "Agent chạm giới hạn yêu cầu cho lượt này và dừng."
     },
-    "stopTitle": "Stop the agent",
-    "send": "Send",
-    "connecting": "Connecting",
+    "stopTitle": "Dừng agent",
+    "send": "Gửi",
+    "connecting": "Đang kết nối",
     "sessionStatusPill": "{{agent}} · {{status}}",
     "sessionStatus": {
-      "connecting": "connecting",
-      "authRequired": "auth required",
-      "ready": "ready",
-      "running": "running",
-      "cancelling": "cancelling",
-      "cancelled": "cancelled",
-      "disconnected": "disconnected",
-      "failed": "failed"
+      "connecting": "đang kết nối",
+      "authRequired": "cần đăng nhập",
+      "ready": "sẵn sàng",
+      "running": "đang chạy",
+      "cancelling": "đang huỷ",
+      "cancelled": "đã huỷ",
+      "disconnected": "đã ngắt kết nối",
+      "failed": "thất bại"
     },
     "roster": {
-      "bridgeMissing": "install the bridge in Agent setup",
-      "cliMissing": "CLI not found on this computer",
-      "unavailable": "not available on this computer"
+      "bridgeMissing": "cài bridge trong Thiết lập agent",
+      "cliMissing": "Không tìm thấy CLI trên máy này",
+      "unavailable": "không khả dụng trên máy này"
     },
-    "messageTooLarge": "This message and its images are too large. Shorten the message or remove an image.",
-    "terminalCommand": "The agent is running a terminal command.",
-    "agentToolFallback": "Agent tool",
-    "agentReported": "The agent reported: {{detail}}",
-    "updateTooLarge": "Part of the agent's output was too large to show ({{size}}).",
-    "imageAttachmentName": "Image {{index}}",
-    "agentImage": "[The agent returned an image.]",
+    "messageTooLarge": "Tin nhắn này và các hình quá lớn. Hãy rút ngắn hoặc gỡ một hình.",
+    "terminalCommand": "Agent đang chạy lệnh terminal.",
+    "agentToolFallback": "Công cụ agent",
+    "agentReported": "Agent báo: {{detail}}",
+    "updateTooLarge": "Một phần đầu ra của agent quá lớn để hiển thị ({{size}}).",
+    "imageAttachmentName": "Hình {{index}}",
+    "agentImage": "[Agent đã trả về một hình.]",
     "setup": {
-      "cliNotFound": "Oleafly couldn't find {{cli}} on this computer.",
+      "cliNotFound": "Oleafly không tìm thấy {{cli}} trên máy tính này.",
       "rejected": {
-        "powershellScript": "Found {{file}}, but PowerShell scripts can't be started. Choose {{name}}.cmd or {{name}}.exe.",
-        "script": "Found {{file}}, but Oleafly can't start it directly. Choose {{name}}.exe.",
-        "isDirectory": "Found a folder named {{file}}. Choose the {{name}} program file.",
-        "notExecutable": "Found {{file}}, but it isn't a program Oleafly can start.",
-        "guiProgram": "Found {{file}}, but it's a desktop app. Choose the {{name}} command line tool.",
-        "networkPath": "Found {{file}} on a network location. Choose a copy on this computer."
+        "powershellScript": "Tìm thấy {{file}}, nhưng không khởi chạy được script PowerShell. Hãy chọn {{name}}.cmd hoặc {{name}}.exe.",
+        "script": "Tìm thấy {{file}}, nhưng Oleafly không khởi chạy trực tiếp được. Hãy chọn {{name}}.exe.",
+        "isDirectory": "Tìm thấy thư mục tên {{file}}. Hãy chọn tệp chương trình {{name}}.",
+        "notExecutable": "Tìm thấy {{file}}, nhưng nó không phải chương trình Oleafly khởi chạy được.",
+        "guiProgram": "Tìm thấy {{file}}, nhưng đó là ứng dụng đồ hoạ. Hãy chọn công cụ dòng lệnh {{name}}.",
+        "networkPath": "Tìm thấy {{file}} trên vị trí mạng. Hãy chọn bản sao trên máy này."
       },
-      "foundOnComputer": "Found on this computer.",
-      "usingChosen": "Using the program you chose.",
-      "bridgeSourceFound": "Found on this computer",
-      "setUp": "Set up {{name}}",
-      "backgroundTasks": "Background tasks: {{reason}}",
-      "cliMissingNextStep": "Install {{cli}}, or choose where it's installed.",
-      "installUnavailable": "Oleafly can't install this bridge on this computer.",
-      "builtIn": "Built in",
-      "showAgent": "Show"
+      "foundOnComputer": "Tìm thấy trên máy tính này.",
+      "usingChosen": "Đang dùng chương trình bạn chọn.",
+      "bridgeSourceFound": "Tìm thấy trên máy tính này",
+      "setUp": "Thiết lập {{name}}",
+      "backgroundTasks": "Tác vụ nền: {{reason}}",
+      "cliMissingNextStep": "Hãy cài {{cli}}, hoặc chọn nơi nó được cài.",
+      "installUnavailable": "Oleafly không cài được bridge này trên máy tính này.",
+      "builtIn": "Tích hợp sẵn",
+      "showAgent": "Hiện"
     },
     "export": {
-      "menuItem": "Export conversation…",
-      "saved": "Conversation exported",
+      "menuItem": "Xuất cuộc trò chuyện…",
+      "saved": "Đã xuất cuộc trò chuyện",
       "markdown": "Markdown",
       "json": "JSON",
-      "untitled": "Conversation",
-      "project": "Project",
+      "untitled": "Cuộc trò chuyện",
+      "project": "Dự án",
       "agent": "Agent",
-      "model": "Model",
-      "modelManaged": "Chosen by the agent",
-      "startRevision": "Started at commit",
-      "uncommitted": "{{revision}} with uncommitted changes",
-      "started": "Started",
-      "updated": "Last updated",
-      "you": "You",
-      "skill": "Skill: {{name}}",
-      "tool": "Tool: {{name}}",
-      "changedFiles": "Changed files",
-      "moreFiles_other": "and {{count}} more files",
-      "mode": "Mode",
-      "effort": "Effort",
-      "permissionProfile": "Approval mode",
-      "commits": "Commits"
+      "model": "Mô hình",
+      "modelManaged": "Do agent chọn",
+      "startRevision": "Bắt đầu tại commit",
+      "uncommitted": "{{revision}} có thay đổi chưa commit",
+      "started": "Bắt đầu",
+      "updated": "Cập nhật lần cuối",
+      "you": "Bạn",
+      "skill": "Kỹ năng: {{name}}",
+      "tool": "Công cụ: {{name}}",
+      "changedFiles": "Tệp đã thay đổi",
+      "moreFiles_other": "và thêm {{count}} tệp",
+      "mode": "Chế độ",
+      "effort": "Nỗ lực",
+      "permissionProfile": "Chế độ phê duyệt",
+      "commits": "Commit"
     },
-    "composerPlaceholderStart": "Message {{agent}} to start a conversation",
-    "composerPlaceholderConnecting": "Type now. It sends when the agent is ready.",
-    "composerPlaceholderRunning": "Type your next message. It sends when the agent finishes.",
-    "attachFile": "Attach files",
+    "composerPlaceholderStart": "Nhắn {{agent}} để bắt đầu cuộc trò chuyện",
+    "composerPlaceholderConnecting": "Cứ nhập. Tin sẽ gửi khi agent sẵn sàng.",
+    "composerPlaceholderRunning": "Nhập tin tiếp theo. Tin sẽ gửi khi agent xong.",
+    "attachFile": "Đính kèm tệp",
     "composer": {
-      "tooManyAttachments": "Attach up to 10 files to one message.",
-      "imagesUnsupported": "This agent does not accept images. Remove them and try again.",
-      "attachmentsNotReady": "Wait for the attachments to finish preparing.",
-      "removeSelection": "Remove quote {{label}}"
+      "tooManyAttachments": "Đính kèm tối đa 10 tệp cho một tin nhắn.",
+      "imagesUnsupported": "Agent này không nhận hình ảnh. Hãy gỡ chúng và thử lại.",
+      "attachmentsNotReady": "Hãy đợi các tệp đính kèm chuẩn bị xong.",
+      "removeSelection": "Gỡ trích đoạn {{label}}"
     },
     "queue": {
-      "queued": "Queued: sends when the agent finishes",
-      "remove": "Remove queued message",
-      "sendNow": "Send now",
-      "sendFailed": "This message was not sent. Send it again or remove it.",
-      "queuedConnecting": "Queued: sends when the agent is ready",
-      "queuedSignIn": "Queued: sends after you sign in",
-      "retry": "Send again",
-      "edit": "Edit"
+      "queued": "Trong hàng: gửi khi agent xong",
+      "remove": "Gỡ tin nhắn trong hàng",
+      "sendNow": "Gửi ngay",
+      "sendFailed": "Tin nhắn này không được gửi. Hãy gửi lại hoặc gỡ.",
+      "queuedConnecting": "Trong hàng: gửi khi agent sẵn sàng",
+      "queuedSignIn": "Trong hàng: gửi sau khi bạn đăng nhập",
+      "retry": "Gửi lại",
+      "edit": "Sửa"
     },
     "slash": {
-      "commands": "Agent commands",
-      "skills": "Skills"
+      "commands": "Lệnh agent",
+      "skills": "Kỹ năng"
     },
     "controls": {
-      "effort": "Effort",
-      "mode": "Mode",
-      "more": "More agent options",
-      "blockedMode": "Off in Oleafly",
-      "blockedModeHint": "Oleafly keeps permission checks on, so this mode is not available."
+      "effort": "Nỗ lực",
+      "mode": "Chế độ",
+      "more": "Thêm tuỳ chọn agent",
+      "blockedMode": "Tắt trong Oleafly",
+      "blockedModeHint": "Oleafly luôn bật kiểm tra quyền, nên chế độ này không khả dụng."
     },
     "usage": {
-      "ariaLabel": "View agent usage",
-      "tooltip": "Usage for this conversation",
-      "contextShare": "{{percent}}% of the context window used",
+      "ariaLabel": "Xem mức dùng của agent",
+      "tooltip": "Mức dùng cho cuộc trò chuyện này",
+      "contextShare": "Đã dùng {{percent}}% cửa sổ ngữ cảnh",
       "window": {
-        "fiveHour": "5-hour session",
-        "weekly": "Weekly, all models",
-        "weeklyOpus": "Weekly, Opus",
-        "weeklySonnet": "Weekly, Sonnet",
-        "overage": "Extra usage",
-        "other": "Usage limit {{id}}"
+        "fiveHour": "Phiên 5 giờ",
+        "weekly": "Hàng tuần, mọi mô hình",
+        "weeklyOpus": "Hàng tuần, Opus",
+        "weeklySonnet": "Hàng tuần, Sonnet",
+        "overage": "Dùng thêm",
+        "other": "Giới hạn dùng {{id}}"
       },
-      "costIn": "The agent reported a cost of {{amount}} {{currency}}.",
-      "modelTokens": "{{model}}: {{tokens}} tokens"
+      "costIn": "Agent báo chi phí {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} token"
     },
     "compaction": {
-      "running": "Summarizing earlier context",
-      "done": "Summarized earlier context",
-      "failed": "Could not summarize earlier context"
+      "running": "Đang tóm tắt ngữ cảnh trước",
+      "done": "Đã tóm tắt ngữ cảnh trước",
+      "failed": "Không thể tóm tắt ngữ cảnh trước"
     },
     "signIn": {
-      "inTerminal": "{{name}} in the terminal",
-      "afterTerminal": "Finish signing in in the terminal, then reconnect.",
-      "apiKeyLabel": "API key for {{provider}}",
-      "apiKeyPlaceholder": "Paste your API key",
-      "geminiGoogle": "Signing in with Google no longer works for individual plans. Use a Gemini API key or Vertex AI.",
-      "noProject": "Open a project to sign in from the terminal.",
-      "signOut": "Sign out",
-      "confirmTerminal": "{{agent}} signs in through the command below, which runs in a terminal tab. Check it before you agree.",
-      "remote": "This conversation runs on another machine. Sign in to the agent there."
+      "inTerminal": "{{name}} trong terminal",
+      "afterTerminal": "Hãy hoàn tất đăng nhập trong terminal, rồi kết nối lại.",
+      "apiKeyLabel": "API key cho {{provider}}",
+      "apiKeyPlaceholder": "Dán API key của bạn",
+      "geminiGoogle": "Đăng nhập bằng Google không còn dùng được cho gói cá nhân. Hãy dùng API key Gemini hoặc Vertex AI.",
+      "noProject": "Hãy mở dự án để đăng nhập từ terminal.",
+      "signOut": "Đăng xuất",
+      "confirmTerminal": "{{agent}} đăng nhập qua lệnh dưới đây, chạy trong một tab terminal. Hãy kiểm tra trước khi đồng ý.",
+      "remote": "Cuộc trò chuyện này chạy trên máy khác. Hãy đăng nhập agent ở đó."
     },
     "elicitation": {
-      "ariaLabel": "Agent request",
-      "from": "{{agent}} asks:",
-      "submit": "Send",
-      "decline": "Decline",
-      "cancel": "Cancel",
-      "required": "Required",
-      "invalid": "Check this field.",
-      "openUrl": "Open in browser",
-      "confirmTitle": "Open {{host}}?",
-      "confirmDescription": "The agent asked you to finish a step on this site. It opens in your browser.",
-      "waiting": "Waiting for the site to finish.",
-      "openFailed": "The link could not be opened in your browser."
+      "ariaLabel": "Yêu cầu từ agent",
+      "from": "{{agent}} hỏi:",
+      "submit": "Gửi",
+      "decline": "Từ chối",
+      "cancel": "Huỷ",
+      "required": "Bắt buộc",
+      "invalid": "Hãy kiểm tra trường này.",
+      "openUrl": "Mở trong trình duyệt",
+      "confirmTitle": "Mở {{host}}?",
+      "confirmDescription": "Agent nhờ bạn hoàn tất một bước trên trang này. Nó mở trong trình duyệt của bạn.",
+      "waiting": "Đang chờ trang hoàn tất.",
+      "openFailed": "Không thể mở liên kết trong trình duyệt."
     },
     "remote": {
-      "banner": "Hermes runs on {{host}} over SSH. Its changes stay on that machine."
+      "banner": "Hermes chạy trên {{host}} qua SSH. Thay đổi của nó ở lại máy đó."
     },
     "history": {
-      "all": "All conversations",
-      "title": "Conversations",
-      "search": "Search conversations",
-      "empty": "No conversations match.",
-      "loadMore": "Load more",
-      "rename": "Rename",
-      "renameLabel": "Conversation name",
-      "delete": "Delete",
-      "deleteTitle": "Delete this conversation?",
-      "deleteDescription": "Oleafly removes its transcript and attachments from this project.",
-      "deleteFromAgent": "Also delete it from {{agent}}",
-      "deleteAgentFailed": "Deleted in Oleafly. {{agent}} could not delete its copy: {{error}}",
-      "deleteRunning": "Stop the agent before you delete this conversation.",
-      "importFind": "Find {{agent}} conversations for this project",
-      "imported": "Already in Oleafly",
-      "importSelected": "Import selected",
-      "importEmpty": "{{agent}} has no other conversations for this project."
+      "all": "Mọi cuộc trò chuyện",
+      "title": "Cuộc trò chuyện",
+      "search": "Tìm cuộc trò chuyện",
+      "empty": "Không có cuộc nào khớp.",
+      "loadMore": "Tải thêm",
+      "rename": "Đổi tên",
+      "renameLabel": "Tên cuộc trò chuyện",
+      "delete": "Xoá",
+      "deleteTitle": "Xoá cuộc trò chuyện này?",
+      "deleteDescription": "Oleafly gỡ bản ghi và tệp đính kèm của nó khỏi dự án này.",
+      "deleteFromAgent": "Đồng thời xoá khỏi {{agent}}",
+      "deleteAgentFailed": "Đã xoá trong Oleafly. {{agent}} không thể xoá bản sao của nó: {{error}}",
+      "deleteRunning": "Hãy dừng agent trước khi xoá cuộc trò chuyện này.",
+      "importFind": "Tìm cuộc trò chuyện {{agent}} cho dự án này",
+      "imported": "Đã có trong Oleafly",
+      "importSelected": "Nhập mục đã chọn",
+      "importEmpty": "{{agent}} không có cuộc trò chuyện nào khác cho dự án này."
     },
     "header": {
-      "startedAt": "Started at {{revision}}",
-      "startedDirty": "Started at {{revision}} with uncommitted changes",
-      "menu": "Conversation actions",
-      "fork": "Fork conversation",
-      "forkUnsupported": "This agent cannot fork conversations.",
-      "forkBusy": "Wait for the agent to finish before you fork.",
-      "v2": "Protocol preview",
-      "remote": "Remote",
-      "signOutTitle": "Sign out of {{agent}}?",
-      "signOutDescription": "This ends the {{agent}} sign-in itself. A terminal that uses the same sign-in is signed out too, and this conversation stops until you sign in again.",
-      "signOutAccount": "Signed in with {{account}}"
+      "startedAt": "Bắt đầu tại {{revision}}",
+      "startedDirty": "Bắt đầu tại {{revision}} có thay đổi chưa commit",
+      "menu": "Thao tác cuộc trò chuyện",
+      "fork": "Fork cuộc trò chuyện",
+      "forkUnsupported": "Agent này không fork được cuộc trò chuyện.",
+      "forkBusy": "Hãy đợi agent xong trước khi fork.",
+      "v2": "Bản xem trước giao thức",
+      "remote": "Từ xa",
+      "signOutTitle": "Đăng xuất khỏi {{agent}}?",
+      "signOutDescription": "Thao tác này kết thúc đăng nhập {{agent}}. Terminal dùng cùng đăng nhập cũng bị đăng xuất, và cuộc trò chuyện này dừng cho tới khi bạn đăng nhập lại.",
+      "signOutAccount": "Đã đăng nhập với {{account}}"
     },
     "commit": {
       "button": "Commit",
-      "title": "Commit this turn",
-      "message": "Commit message",
-      "files": "Files to commit",
-      "defaultMessage": "Changes from {{agent}}",
-      "submit": "Commit files",
-      "cancel": "Cancel"
+      "title": "Commit lượt này",
+      "message": "Nội dung commit",
+      "files": "Tệp cần commit",
+      "defaultMessage": "Thay đổi từ {{agent}}",
+      "submit": "Commit tệp",
+      "cancel": "Huỷ"
     }
   },
   "agents": {
     "pickerAriaLabel": "CLI agent",
     "unavailableTooltip": "{{name}}: {{hint}}",
-    "notInstalled": "not installed",
-    "cliDetail": "CLI agent · uses its own account",
-    "builtInDetail": "{{provider}} · Oleafly agent"
+    "notInstalled": "chưa cài",
+    "cliDetail": "CLI agent · dùng tài khoản riêng",
+    "builtInDetail": "{{provider}} · agent Oleafly"
   },
   "home": {
-    "heading": "What would you like to do today?",
-    "headingAccent": "do today?",
-    "skillCategories": "Skill categories",
-    "skillLockedTitle": "{{name}} is turned off for this project",
-    "recentChats": "Recent chats",
-    "recentStaleTitle": "Started from an older version of the project",
-    "recentUntitled": "New chat",
-    "recentStaleBadge": "Older version",
-    "recentMessages_other": "{{count}} msgs",
-    "showAllHistory": "Show all history ({{count}})"
+    "heading": "Hôm nay bạn muốn",
+    "headingAccent": "làm gì?",
+    "skillCategories": "Danh mục kỹ năng",
+    "skillLockedTitle": "{{name}} bị tắt cho dự án này",
+    "recentChats": "Trò chuyện gần đây",
+    "recentStaleTitle": "Bắt đầu từ phiên bản cũ của dự án",
+    "recentUntitled": "Trò chuyện mới",
+    "recentStaleBadge": "Phiên bản cũ",
+    "recentMessages_other": "{{count}} tin",
+    "showAllHistory": "Hiện toàn bộ lịch sử ({{count}})"
   },
   "research": {
-    "sourceOpenFailed": "The source could not be opened.",
-    "noProjectPath": "This result does not contain a project file path.",
-    "resultOpenFailed": "The result file could not be opened."
+    "sourceOpenFailed": "Không thể mở nguồn.",
+    "noProjectPath": "Kết quả này không chứa đường dẫn tệp dự án.",
+    "resultOpenFailed": "Không thể mở tệp kết quả."
   },
   "shortcuts": {
     "categories": {
-      "writeAndEdit": "Write & edit",
-      "citationsAndLiterature": "Citations & literature",
-      "review": "Review",
-      "figuresAndTables": "Figures & tables"
+      "writeAndEdit": "Viết & sửa",
+      "citationsAndLiterature": "Trích dẫn & tài liệu",
+      "review": "Xem xét",
+      "figuresAndTables": "Hình & bảng"
     },
     "improveWriting": {
-      "label": "Improve writing",
-      "description": "Polish clarity, tone and flow"
+      "label": "Cải thiện văn phong",
+      "description": "Trau chuốt độ rõ ràng, giọng điệu và mạch văn"
     },
     "fixGrammar": {
-      "label": "Fix grammar",
-      "description": "Correct grammar and punctuation"
+      "label": "Sửa ngữ pháp",
+      "description": "Sửa ngữ pháp và dấu câu"
     },
     "fixLatexErrors": {
-      "label": "Fix LaTeX errors",
-      "description": "Repair broken code and compile errors"
+      "label": "Sửa lỗi LaTeX",
+      "description": "Sửa mã hỏng và lỗi biên dịch"
     },
     "writeEquation": {
-      "label": "Write equation",
-      "description": "Natural language to LaTeX math"
+      "label": "Viết phương trình",
+      "description": "Ngôn ngữ tự nhiên sang toán LaTeX"
     },
     "draftSection": {
-      "label": "Draft a section",
-      "description": "Write a new section in your style"
+      "label": "Soạn một mục",
+      "description": "Viết mục mới theo văn phong của bạn"
     },
     "paraphrase": {
-      "label": "Paraphrase",
-      "description": "Reword while keeping meaning"
+      "label": "Diễn đạt lại",
+      "description": "Đổi cách nói mà giữ nguyên ý"
     },
     "shorten": {
-      "label": "Shorten",
-      "description": "Make text more concise"
+      "label": "Rút gọn",
+      "description": "Làm văn bản súc tích hơn"
     },
     "expand": {
-      "label": "Expand",
-      "description": "Elaborate with detail"
+      "label": "Mở rộng",
+      "description": "Triển khai thêm chi tiết"
     },
     "journalFormat": {
-      "label": "Journal format",
-      "description": "Reformat for a target venue"
+      "label": "Định dạng tạp chí",
+      "description": "Định dạng lại cho hội nghị mục tiêu"
     },
     "writeAbstract": {
-      "label": "Write abstract",
-      "description": "Draft an abstract from the paper"
+      "label": "Viết tóm tắt",
+      "description": "Soạn tóm tắt từ bài báo"
     },
     "generateTitle": {
-      "label": "Generate title",
-      "description": "Compelling paper titles"
+      "label": "Tạo tiêu đề",
+      "description": "Tiêu đề bài báo hấp dẫn"
     },
     "keywords": {
-      "label": "Keywords",
-      "description": "Extract searchable keywords"
+      "label": "Từ khoá",
+      "description": "Trích xuất từ khoá có thể tìm kiếm"
     },
     "continueWriting": {
-      "label": "Continue writing",
-      "description": "Pick up where you left off"
+      "label": "Viết tiếp",
+      "description": "Tiếp tục từ chỗ bạn dừng"
     },
     "citationSearch": {
-      "label": "Citation search",
-      "description": "Search alphaXiv and OpenAlex for papers"
+      "label": "Tìm trích dẫn",
+      "description": "Tìm bài báo trên alphaXiv và OpenAlex"
     },
     "literatureReview": {
-      "label": "Literature review",
-      "description": "Survey related work with real sources"
+      "label": "Tổng quan tài liệu",
+      "description": "Khảo sát công trình liên quan với nguồn thật"
     },
     "citeClaim": {
-      "label": "Cite this claim",
-      "description": "Find and add a verified reference"
+      "label": "Trích dẫn nhận định này",
+      "description": "Tìm và thêm tham chiếu đã xác minh"
     },
     "myLibrary": {
-      "label": "My library",
-      "description": "Search your imported references"
+      "label": "Thư viện của tôi",
+      "description": "Tìm trong tham chiếu đã nhập"
     },
     "labSearch": {
-      "label": "Lab search",
-      "description": "Find research labs and institutions"
+      "label": "Tìm phòng lab",
+      "description": "Tìm phòng nghiên cứu và tổ chức"
     },
     "friendlyReview": {
-      "label": "Friendly review",
-      "description": "Constructive mentor-style feedback on this paper"
+      "label": "Nhận xét thân thiện",
+      "description": "Góp ý kiểu người hướng dẫn xây dựng cho bài này"
     },
     "fireReview": {
-      "label": "Fire review",
-      "description": "Strict Reviewer #2 stress-test of claims and methods"
+      "label": "Nhận xét gay gắt",
+      "description": "Kiểm tra căng thẳng nhận định và phương pháp kiểu Reviewer #2"
     },
     "academicPresentation": {
-      "label": "Academic presentation",
-      "description": "A Beamer slide deck from your paper"
+      "label": "Bài trình bày học thuật",
+      "description": "Bộ slide Beamer từ bài báo của bạn"
     },
     "academicPoster": {
-      "label": "Academic poster",
-      "description": "A conference poster from your paper"
+      "label": "Poster học thuật",
+      "description": "Poster hội nghị từ bài báo của bạn"
     },
     "generateTable": {
-      "label": "Generate table",
-      "description": "Draft a LaTeX table in chat"
+      "label": "Tạo bảng",
+      "description": "Soạn bảng LaTeX trong trò chuyện"
     },
     "tikzFigure": {
-      "label": "TikZ figure",
-      "description": "Draft TikZ code in chat"
+      "label": "Hình TikZ",
+      "description": "Soạn mã TikZ trong trò chuyện"
     },
     "typstVariants": {
       "fixErrors": {
-        "label": "Fix Typst errors"
+        "label": "Sửa lỗi Typst"
       },
       "writeEquation": {
-        "description": "Natural language to Typst math"
+        "description": "Ngôn ngữ tự nhiên sang toán Typst"
       },
       "academicPresentation": {
-        "description": "A Typst slide deck from your paper"
+        "description": "Bộ slide Typst từ bài báo của bạn"
       },
       "generateTable": {
-        "description": "Draft a Typst table in chat"
+        "description": "Soạn bảng Typst trong trò chuyện"
       },
       "figure": {
-        "label": "CeTZ figure",
-        "description": "Draft CeTZ code in chat"
+        "label": "Hình CeTZ",
+        "description": "Soạn mã CeTZ trong trò chuyện"
       }
     }
   },
   "turn": {
-    "thinking": "Thinking…",
-    "continuing": "Continuing…",
-    "reasoning": "Reasoning…",
-    "runningTool": "Running {{name}}…",
-    "processingResult": "Processing result…",
-    "summarizing": "Summarizing earlier conversation…"
+    "thinking": "Đang suy nghĩ…",
+    "continuing": "Đang tiếp tục…",
+    "reasoning": "Đang lập luận…",
+    "runningTool": "Đang chạy {{name}}…",
+    "processingResult": "Đang xử lý kết quả…",
+    "summarizing": "Đang tóm tắt cuộc trò chuyện trước…"
   },
   "toasts": {
-    "approvalModeSaveFailed": "Could not save the approval mode.",
-    "skillDraftSaved": "Draft skill saved. Review it before enabling.",
-    "skillDraftFailed": "Could not save the skill draft. {{error}}",
-    "chatArchived": "Chat archived.",
-    "chatArchiveFailed": "Could not archive this chat.",
-    "chatForked": "Chat forked.",
-    "chatForkFailed": "Could not fork this chat.",
-    "skillsLoadFailed": "Could not load enabled skills. Try again.",
-    "approvalModeLoadFailed": "Could not load the approval mode.",
-    "approvalRulesLoadFailed": "Could not load the project approval rules.",
-    "restoreFailed": "Could not restore: {{error}}",
-    "steerFailed": "The running turn could not be steered.",
-    "approvalRuleSaveFailed": "Could not save the project approval rule.",
-    "tooManyTools": "{{enabled}} tools are enabled, but a run supports up to {{max}}. Disable at least {{excess}} in Tools and try again."
+    "approvalModeSaveFailed": "Không thể lưu chế độ phê duyệt.",
+    "skillDraftSaved": "Đã lưu bản nháp kỹ năng. Hãy xem lại trước khi bật.",
+    "skillDraftFailed": "Không thể lưu bản nháp kỹ năng. {{error}}",
+    "chatArchived": "Đã lưu trữ trò chuyện.",
+    "chatArchiveFailed": "Không thể lưu trữ trò chuyện này.",
+    "chatForked": "Đã fork trò chuyện.",
+    "chatForkFailed": "Không thể fork trò chuyện này.",
+    "skillsLoadFailed": "Không thể tải kỹ năng đã bật. Hãy thử lại.",
+    "approvalModeLoadFailed": "Không thể tải chế độ phê duyệt.",
+    "approvalRulesLoadFailed": "Không thể tải quy tắc phê duyệt của dự án.",
+    "restoreFailed": "Không thể khôi phục: {{error}}",
+    "steerFailed": "Không thể điều hướng lượt đang chạy.",
+    "approvalRuleSaveFailed": "Không thể lưu quy tắc phê duyệt của dự án.",
+    "tooManyTools": "Đã bật {{enabled}} công cụ, nhưng một lượt hỗ trợ tối đa {{max}}. Hãy tắt ít nhất {{excess}} trong Công cụ và thử lại."
   },
   "header": {
-    "mcpTooltip": "Configure assistant MCP servers",
-    "mcpAriaLabel": "Assistant MCP settings",
-    "settings": "Assistant settings",
-    "usageAriaLabel": "View AI usage",
-    "usageReport": "Usage report",
-    "newChat": "New chat",
-    "chatHistory": "Chat history",
-    "staleChatHint": "This chat started from an older version of the project. File contents may differ from what the AI saw."
+    "mcpTooltip": "Cấu hình máy chủ MCP của trợ lý",
+    "mcpAriaLabel": "Cài đặt MCP của trợ lý",
+    "settings": "Cài đặt trợ lý",
+    "usageAriaLabel": "Xem mức dùng AI",
+    "usageReport": "Báo cáo sử dụng",
+    "newChat": "Trò chuyện mới",
+    "chatHistory": "Lịch sử trò chuyện",
+    "staleChatHint": "Trò chuyện này bắt đầu từ phiên bản cũ của dự án. Nội dung tệp có thể khác với thứ AI đã thấy."
   },
   "usage": {
-    "lastRun": "Last run",
-    "steps": "Steps",
-    "input": "Input",
-    "output": "Output",
-    "thisChat": "This chat",
-    "runs": "Runs",
-    "tokens": "Tokens",
-    "cacheNote": "Cache usage and cost estimates are in the usage report.",
-    "summaryRunWithTokens_other": "Last run: {{count}} steps, {{tokens}} reported tokens",
-    "summaryRunNoTokens_other": "Last run: {{count}} steps, token total unavailable",
-    "summaryChat": "This chat: {{steps}} steps, {{tokens}} tokens",
-    "summaryFallback": "AI usage",
-    "context": "Context",
-    "contextUsed": "{{used}} of {{size}} tokens",
-    "contextShare": "{{percent}} of the context window used",
-    "contextUnknown": "This model's context window is unknown.",
-    "reasoning": "Reasoning",
-    "cacheRead": "Cache reads",
-    "cacheWrite": "Cache writes",
-    "cost": "Estimated cost",
-    "budget": "Project budget",
-    "budgetUsed": "{{spent}} of {{limit}}",
-    "credit": "Credit left",
-    "creditOf": "{{remaining}} of {{limit}}",
-    "planLimits": "Plan limits",
-    "resetsAt": "Resets {{time}}",
-    "windowWarning": "Close to the limit",
-    "windowBlocked": "Limit reached",
-    "refreshPlan": "Refresh plan usage",
-    "refreshing": "Refreshing…",
-    "historyTrimmed_other": "Only the last {{count}} turns of this chat were sent to the model.",
-    "empty": "No usage in this chat yet.",
-    "loading": "Loading usage…"
+    "lastRun": "Lần chạy cuối",
+    "steps": "Bước",
+    "input": "Đầu vào",
+    "output": "Đầu ra",
+    "thisChat": "Trò chuyện này",
+    "runs": "Lượt chạy",
+    "tokens": "Token",
+    "cacheNote": "Mức dùng bộ nhớ đệm và ước tính chi phí có trong báo cáo sử dụng.",
+    "summaryRunWithTokens_other": "Lần chạy cuối: {{count}} bước, {{tokens}} token được báo",
+    "summaryRunNoTokens_other": "Lần chạy cuối: {{count}} bước, không có tổng token",
+    "summaryChat": "Trò chuyện này: {{steps}} bước, {{tokens}} token",
+    "summaryFallback": "Mức dùng AI",
+    "context": "Ngữ cảnh",
+    "contextUsed": "{{used}} trên {{size}} token",
+    "contextShare": "Đã dùng {{percent}}% cửa sổ ngữ cảnh",
+    "contextUnknown": "Chưa rõ cửa sổ ngữ cảnh của mô hình này.",
+    "reasoning": "Lập luận",
+    "cacheRead": "Đọc bộ nhớ đệm",
+    "cacheWrite": "Ghi bộ nhớ đệm",
+    "cost": "Chi phí ước tính",
+    "budget": "Ngân sách dự án",
+    "budgetUsed": "{{spent}} trên {{limit}}",
+    "credit": "Tín dụng còn lại",
+    "creditOf": "{{remaining}} trên {{limit}}",
+    "planLimits": "Giới hạn gói",
+    "resetsAt": "Đặt lại {{time}}",
+    "windowWarning": "Gần chạm giới hạn",
+    "windowBlocked": "Đã chạm giới hạn",
+    "refreshPlan": "Làm mới mức dùng gói",
+    "refreshing": "Đang làm mới…",
+    "historyTrimmed_other": "Chỉ {{count}} lượt cuối của trò chuyện này được gửi cho mô hình.",
+    "empty": "Trò chuyện này chưa có mức dùng.",
+    "loading": "Đang tải mức dùng…"
   },
   "provider": {
-    "connectTitle": "Connect an AI provider to continue",
-    "connectBody": "Bring your own API key (OpenAI, Anthropic, Groq, and more) or run a model locally with Ollama. The assistant can read and edit files, compile your project, and verify the PDF.",
-    "connectButton": "Connect a provider",
-    "runLocal": "Run a local model with Ollama",
-    "quotaWarning": "Chat history storage is full. Older chats were pruned and new messages may not be saved. Delete old chats from history to free space."
+    "connectTitle": "Kết nối nhà cung cấp AI để tiếp tục",
+    "connectBody": "Mang API key của bạn (OpenAI, Anthropic, Groq và hơn nữa) hoặc chạy mô hình cục bộ với Ollama. Trợ lý có thể đọc và sửa tệp, biên dịch dự án và xác minh PDF.",
+    "connectButton": "Kết nối nhà cung cấp",
+    "runLocal": "Chạy mô hình cục bộ với Ollama",
+    "quotaWarning": "Bộ nhớ lịch sử trò chuyện đã đầy. Các trò chuyện cũ bị cắt bớt và tin nhắn mới có thể không được lưu. Hãy xoá trò chuyện cũ trong lịch sử để giải phóng chỗ."
   },
   "conversation": {
-    "renderFailed": "This conversation failed to render. Start a new chat or reopen it from history.",
-    "checkpointRestored": "Project restored to this checkpoint",
-    "restoring": "Restoring…",
-    "restoreCheckpoint": "Restore code to before this response",
-    "restoreConfirm": "Restore project files to before this response? This also discards code changes made by later AI responses. The conversation will stay here.",
-    "noResponse": "No response arrived for this message. The stream was interrupted. Send it again, or start a new chat.",
-    "scrollToBottom": "Scroll to bottom",
-    "projectSubtitle": "Working on \"{{project}}\"",
-    "noOutput": "The model returned no output. Check Settings → AI Assistant.",
-    "planMissing": "No plan to approve yet. Ask the assistant for one, or turn Plan off.",
-    "planUnchanged": "The plan is unchanged.",
-    "stillWorking": "Still working ({{seconds}} s). Reasoning models and local models can be slow. Click Stop to cancel.",
-    "retrying": "Connection problem. Retrying ({{attempt}} of {{max}})…",
-    "stopped": "Stopped.",
-    "stepLimit": "Reached the step limit. Send another message to continue.",
-    "outputLimit": "The reply reached the model's output limit. Send another message to continue.",
-    "tooLargeToSave": "This chat is too long to save. New messages are kept until you close Oleafly. Export the chat to keep a copy.",
-    "exportChat": "Export chat",
-    "exported": "Chat exported.",
-    "exportFailed": "Couldn't export the chat.",
-    "saveFailed": "New messages in this chat could not be saved. Check that the disk has free space.",
-    "exportYou": "You",
-    "exportAssistant": "Assistant",
-    "exportAttachments": "Attachments",
-    "exportTools": "Tools used"
+    "renderFailed": "Không kết xuất được cuộc trò chuyện này. Hãy bắt đầu trò chuyện mới hoặc mở lại từ lịch sử.",
+    "checkpointRestored": "Đã khôi phục dự án về điểm lưu này",
+    "restoring": "Đang khôi phục…",
+    "restoreCheckpoint": "Khôi phục mã về trước câu trả lời này",
+    "restoreConfirm": "Khôi phục tệp dự án về trước câu trả lời này? Thao tác này cũng bỏ thay đổi mã của các câu trả lời AI sau đó. Cuộc trò chuyện vẫn ở đây.",
+    "noResponse": "Không có phản hồi cho tin nhắn này. Luồng bị gián đoạn. Hãy gửi lại, hoặc bắt đầu trò chuyện mới.",
+    "scrollToBottom": "Cuộn xuống cuối",
+    "projectSubtitle": "Đang làm việc trên \"{{project}}\"",
+    "noOutput": "Mô hình không trả về đầu ra. Hãy kiểm tra Cài đặt → Trợ lý AI.",
+    "planMissing": "Chưa có kế hoạch để phê duyệt. Hãy nhờ trợ lý lập, hoặc tắt Kế hoạch.",
+    "planUnchanged": "Kế hoạch không thay đổi.",
+    "stillWorking": "Vẫn đang làm ({{seconds}} giây). Mô hình lập luận và mô hình cục bộ có thể chậm. Nhấp Dừng để huỷ.",
+    "retrying": "Vấn đề kết nối. Đang thử lại ({{attempt}} trên {{max}})…",
+    "stopped": "Đã dừng.",
+    "stepLimit": "Đã chạm giới hạn bước. Hãy gửi thêm tin nhắn để tiếp tục.",
+    "outputLimit": "Câu trả lời chạm giới hạn đầu ra của mô hình. Hãy gửi thêm tin nhắn để tiếp tục.",
+    "tooLargeToSave": "Trò chuyện này quá dài để lưu. Tin nhắn mới được giữ cho tới khi bạn đóng Oleafly. Hãy xuất trò chuyện để giữ bản sao.",
+    "exportChat": "Xuất trò chuyện",
+    "exported": "Đã xuất trò chuyện.",
+    "exportFailed": "Không thể xuất trò chuyện.",
+    "saveFailed": "Không thể lưu tin nhắn mới trong trò chuyện này. Hãy kiểm tra đĩa còn chỗ trống.",
+    "exportYou": "Bạn",
+    "exportAssistant": "Trợ lý",
+    "exportAttachments": "Tệp đính kèm",
+    "exportTools": "Công cụ đã dùng"
   },
   "followUps": {
-    "steered": "Steered into the running turn: {{summary}}",
-    "sending": "Sent as the next turn: {{summary}}",
-    "waiting": "Waiting for a safe point in the run: {{summary}}",
-    "queued": "Queued for the next turn: {{summary}}",
-    "steerNow": "Steer now",
-    "startingRun": "Starting the run",
-    "discard": "Discard queued message"
+    "steered": "Đã điều hướng vào lượt đang chạy: {{summary}}",
+    "sending": "Đã gửi làm lượt tiếp theo: {{summary}}",
+    "waiting": "Đang chờ điểm an toàn trong lượt chạy: {{summary}}",
+    "queued": "Đã xếp cho lượt tiếp theo: {{summary}}",
+    "steerNow": "Điều hướng ngay",
+    "startingRun": "Đang bắt đầu lượt chạy",
+    "discard": "Bỏ tin nhắn đã xếp"
   },
   "goal": {
-    "editAriaLabel": "Edit goal: {{goal}}",
-    "clear": "Clear goal",
-    "formAriaLabel": "Set persistent goal",
-    "label": "Goal",
-    "placeholder": "What should the assistant keep working toward?",
-    "save": "Save goal"
+    "editAriaLabel": "Sửa mục tiêu: {{goal}}",
+    "clear": "Xoá mục tiêu",
+    "formAriaLabel": "Đặt mục tiêu lâu dài",
+    "label": "Mục tiêu",
+    "placeholder": "Trợ lý nên tiếp tục hướng tới điều gì?",
+    "save": "Lưu mục tiêu"
   },
   "suggestions": {
-    "literatureSweep": "Sweep the literature for this project",
-    "relatedWork": "Draft the related work section",
-    "verifyClaims": "Check every claim against its source",
-    "reviewManuscript": "Review it like a referee",
-    "latexBuild": "Fix any source errors in my document",
-    "preSubmission": "Get it ready to submit",
-    "slides": "Turn this paper into a talk",
-    "recompile": "Recompile and check for errors"
+    "literatureSweep": "Quét tài liệu cho dự án này",
+    "relatedWork": "Soạn mục công trình liên quan",
+    "verifyClaims": "Đối chiếu mọi nhận định với nguồn",
+    "reviewManuscript": "Nhận xét như phản biện viên",
+    "latexBuild": "Sửa mọi lỗi mã nguồn trong tài liệu của tôi",
+    "preSubmission": "Chuẩn bị để nộp",
+    "slides": "Chuyển bài báo này thành bài nói",
+    "recompile": "Biên dịch lại và kiểm tra lỗi"
   },
   "turnChanges": {
-    "ariaLabel": "Files changed in this turn",
-    "changed_other": "Changed {{count}} files",
-    "buildOnly": "Build files updated",
-    "review": "Review",
-    "undoAll": "Undo all",
-    "redoAll": "Redo all",
-    "undo": "Undo",
-    "redo": "Redo",
-    "undoFile": "Undo {{path}}",
-    "redoFile": "Redo {{path}}",
+    "ariaLabel": "Tệp đã thay đổi trong lượt này",
+    "changed_other": "Đã thay đổi {{count}} tệp",
+    "buildOnly": "Đã cập nhật tệp dựng",
+    "review": "Xem xét",
+    "undoAll": "Hoàn tác tất cả",
+    "redoAll": "Làm lại tất cả",
+    "undo": "Hoàn tác",
+    "redo": "Làm lại",
+    "undoFile": "Hoàn tác {{path}}",
+    "redoFile": "Làm lại {{path}}",
     "kind": {
-      "added": "Added",
-      "modified": "Modified",
-      "deleted": "Deleted"
+      "added": "Đã thêm",
+      "modified": "Đã sửa",
+      "deleted": "Đã xoá"
     },
-    "undone": "Undone",
-    "editedAfter": "Changed after this turn",
-    "alsoEdited": "You also edited this file during the turn",
-    "committed": "Committed in {{commit}}",
-    "buildFiles": "Build files updated",
-    "moreFiles_other": "{{count}} more files aren't listed",
-    "skipped_other": "{{count}} files couldn't be copied before the turn, so Undo can't put them back.",
-    "overlapped": "Another agent changed files at the same time. Undo files one by one.",
-    "expired": "Undo is no longer available for this turn.",
-    "waitForRun": "Undo is available when the agent finishes.",
+    "undone": "Đã hoàn tác",
+    "editedAfter": "Đã thay đổi sau lượt này",
+    "alsoEdited": "Bạn cũng đã sửa tệp này trong lượt",
+    "committed": "Đã commit trong {{commit}}",
+    "buildFiles": "Đã cập nhật tệp dựng",
+    "moreFiles_other": "{{count}} tệp khác không được liệt kê",
+    "skipped_other": "Không thể sao chép {{count}} tệp trước lượt, nên Hoàn tác không khôi phục được.",
+    "overlapped": "Agent khác đã thay đổi tệp cùng lúc. Hãy hoàn tác từng tệp.",
+    "expired": "Không còn hoàn tác được cho lượt này.",
+    "waitForRun": "Có thể hoàn tác khi agent xong.",
     "unavailable": {
-      "tooLarge": "Undo isn't available for this turn: the project is too large to copy.",
-      "tooManyFiles": "Undo isn't available for this turn: the project has too many files.",
-      "timeout": "Undo isn't available for this turn: copying the project took too long.",
-      "error": "Undo isn't available for this turn: the project couldn't be copied."
+      "tooLarge": "Không hoàn tác được cho lượt này: dự án quá lớn để sao chép.",
+      "tooManyFiles": "Không hoàn tác được cho lượt này: dự án có quá nhiều tệp.",
+      "timeout": "Không hoàn tác được cho lượt này: sao chép dự án mất quá lâu.",
+      "error": "Không hoàn tác được cho lượt này: không thể sao chép dự án."
     },
-    "previewLoading": "Loading the change…",
-    "previewFailed": "Couldn't load this change.",
-    "binary": "This file isn't text, so the change can't be shown.",
-    "tooLarge": "This change is too large to show here.",
-    "diffLabel": "Change to {{path}}",
-    "undid_other": "Undid {{count}} files.",
-    "redid_other": "Redid {{count}} files.",
-    "skippedEdited": "Some files changed after this turn, so Oleafly left them alone.",
-    "skippedFailed": "Some files couldn't be written.",
-    "undoFailed": "Couldn't undo the changes. Save your work and try again.",
-    "redoFailed": "Couldn't redo the changes. Save your work and try again."
+    "previewLoading": "Đang tải thay đổi…",
+    "previewFailed": "Không thể tải thay đổi này.",
+    "binary": "Tệp này không phải văn bản, nên không hiển thị được thay đổi.",
+    "tooLarge": "Thay đổi này quá lớn để hiển thị ở đây.",
+    "diffLabel": "Thay đổi ở {{path}}",
+    "undid_other": "Đã hoàn tác {{count}} tệp.",
+    "redid_other": "Đã làm lại {{count}} tệp.",
+    "skippedEdited": "Một số tệp đã thay đổi sau lượt này, nên Oleafly không đụng tới.",
+    "skippedFailed": "Không thể ghi một số tệp.",
+    "undoFailed": "Không thể hoàn tác thay đổi. Hãy lưu việc đang làm và thử lại.",
+    "redoFailed": "Không thể làm lại thay đổi. Hãy lưu việc đang làm và thử lại."
   },
   "presets": {
-    "literatureSweep": "Literature sweep",
-    "relatedWork": "Related work",
-    "citationAudit": "Citation audit",
-    "manuscriptReview": "Manuscript review",
-    "reproducibilityAudit": "Reproducibility audit",
-    "figureAudit": "Figure audit",
-    "gitReview": "Git review",
-    "referenceCleanup": "Reference cleanup",
-    "removeSkill": "Remove skill {{name}}",
-    "compilationRepair": "Compilation repair",
-    "submissionPrep": "Submission prep",
-    "reviewerResponse": "Reviewer response"
+    "literatureSweep": "Quét tài liệu",
+    "relatedWork": "Công trình liên quan",
+    "citationAudit": "Kiểm tra trích dẫn",
+    "manuscriptReview": "Xem xét bản thảo",
+    "reproducibilityAudit": "Kiểm tra khả năng tái lập",
+    "figureAudit": "Kiểm tra hình",
+    "gitReview": "Xem xét Git",
+    "referenceCleanup": "Dọn tham chiếu",
+    "removeSkill": "Gỡ kỹ năng {{name}}",
+    "compilationRepair": "Sửa biên dịch",
+    "submissionPrep": "Chuẩn bị nộp",
+    "reviewerResponse": "Phản hồi phản biện"
   },
   "effort": {
-    "label": "Effort",
-    "tooltip": "How much the model reasons before it answers",
-    "ariaLabel": "Reasoning effort: {{level}}",
-    "auto": "Auto",
-    "autoDescription": "Use the model's default",
+    "label": "Nỗ lực",
+    "tooltip": "Mô hình suy luận bao nhiêu trước khi trả lời",
+    "ariaLabel": "Mức nỗ lực lập luận: {{level}}",
+    "auto": "Tự động",
+    "autoDescription": "Dùng mặc định của mô hình",
     "levels": {
-      "none": "None",
-      "minimal": "Minimal",
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "xhigh": "Extra high",
-      "max": "Max"
+      "none": "Không",
+      "minimal": "Tối thiểu",
+      "low": "Thấp",
+      "medium": "Trung bình",
+      "high": "Cao",
+      "xhigh": "Rất cao",
+      "max": "Tối đa"
     }
   },
   "web": {
     "label": "Web",
-    "on": "Web search and page reading are on for this chat",
-    "off": "Turn on web search and page reading for this chat",
-    "ariaLabel": "Web access",
-    "searchUnavailable": "This model can't search the web without a search key.",
-    "addSearchKey": "Add a search key",
-    "needsKey": "This model needs a search key to search the web. It can still read pages you link to."
+    "on": "Tìm kiếm web và đọc trang đang bật cho trò chuyện này",
+    "off": "Bật tìm kiếm web và đọc trang cho trò chuyện này",
+    "ariaLabel": "Truy cập web",
+    "searchUnavailable": "Mô hình này không tìm kiếm web được nếu không có search key.",
+    "addSearchKey": "Thêm search key",
+    "needsKey": "Mô hình này cần search key để tìm kiếm web. Nó vẫn đọc được trang bạn liên kết."
   },
   "messageActions": {
-    "edit": "Edit message",
-    "regenerate": "Regenerate reply",
-    "retry": "Retry",
-    "editingLatest": "Editing your last message. Sending it replaces the reply.",
-    "editingEarlier": "Editing an earlier message. Sending it starts a new chat from there, and this chat stays in History.",
-    "cancelEdit": "Cancel edit",
-    "replaceTitle": "Replace this reply?",
-    "replaceDescription_other": "The reply changed {{count}} files. The changes stay in your project, but their undo card goes away with the reply.",
-    "replaceConfirm": "Replace reply",
-    "forked": "Started a new chat from the edited message.",
-    "failed": "Couldn't send the message again."
+    "edit": "Sửa tin nhắn",
+    "regenerate": "Tạo lại câu trả lời",
+    "retry": "Thử lại",
+    "editingLatest": "Đang sửa tin nhắn cuối của bạn. Gửi sẽ thay thế câu trả lời.",
+    "editingEarlier": "Đang sửa tin nhắn trước đó. Gửi sẽ bắt đầu trò chuyện mới từ đó, và trò chuyện này vẫn trong Lịch sử.",
+    "cancelEdit": "Huỷ sửa",
+    "replaceTitle": "Thay câu trả lời này?",
+    "replaceDescription_other": "Câu trả lời đã thay đổi {{count}} tệp. Thay đổi vẫn trong dự án, nhưng thẻ hoàn tác của chúng biến mất cùng câu trả lời.",
+    "replaceConfirm": "Thay câu trả lời",
+    "forked": "Đã bắt đầu trò chuyện mới từ tin nhắn đã sửa.",
+    "failed": "Không thể gửi lại tin nhắn."
   }
 }

@@ -276,7 +276,7 @@ mod tests {
             locales().collect::<Vec<_>>(),
             [
                 "en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru",
-                "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko"
+                "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko", "vi"
             ]
         );
         assert_eq!(locales().collect::<Vec<_>>(), LOCALES);

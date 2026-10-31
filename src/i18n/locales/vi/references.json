@@ -1,228 +1,228 @@
 {
-  "citeOleafly": "Cite Oleafly in this paper",
+  "citeOleafly": "Trích dẫn Oleafly trong bài báo này",
   "empty": {
     "citations": {
-      "detail": "Import a reference library or add a citation to begin.",
-      "title": "No citations yet"
+      "detail": "Nhập thư viện tài liệu tham khảo hoặc thêm trích dẫn để bắt đầu.",
+      "title": "Chưa có trích dẫn"
     },
     "symbols": {
-      "detail": "Headings, labels, commands, and environments appear here as the project is authored.",
-      "title": "No symbols yet"
+      "detail": "Tiêu đề, nhãn, lệnh và môi trường sẽ xuất hiện ở đây khi dự án được viết.",
+      "title": "Chưa có ký hiệu"
     }
   },
   "filter": {
-    "ariaLabelCitations": "Filter citations",
-    "ariaLabelResults": "Filter results",
-    "ariaLabelSymbols": "Filter symbols",
-    "clear": "Clear filter",
-    "noCitation": "No citation matches “{{query}}”.",
-    "noResult": "No result matches “{{query}}”.",
-    "noSymbol": "No symbol matches “{{query}}”.",
-    "placeholderCitations": "Filter keys, titles, authors…",
-    "placeholderResults": "Filter locations…",
-    "placeholderSymbols": "Filter labels and commands…"
+    "ariaLabelCitations": "Lọc trích dẫn",
+    "ariaLabelResults": "Lọc kết quả",
+    "ariaLabelSymbols": "Lọc ký hiệu",
+    "clear": "Xoá bộ lọc",
+    "noCitation": "Không có trích dẫn nào khớp “{{query}}”.",
+    "noResult": "Không có kết quả nào khớp “{{query}}”.",
+    "noSymbol": "Không có ký hiệu nào khớp “{{query}}”.",
+    "placeholderCitations": "Lọc khoá, tiêu đề, tác giả…",
+    "placeholderResults": "Lọc vị trí…",
+    "placeholderSymbols": "Lọc nhãn và lệnh…"
   },
   "import": {
-    "added_other": "{{count}} references added to {{target}}.",
-    "addedWithDuplicates_other": "{{count}} references added to {{target}}, {{duplicates}} already there.",
-    "allDuplicates_other": "Those {{count}} references are already in {{target}}.",
-    "defaultTarget": "the bibliography",
-    "description": "Add references from a citation manager or bibliography file to this project.",
-    "duplicateNote": "References with a DOI that already exists in the bibliography are skipped.",
-    "empty": "No references found in that file.",
+    "added_other": "Đã thêm {{count}} tham chiếu vào {{target}}.",
+    "addedWithDuplicates_other": "Đã thêm {{count}} tham chiếu vào {{target}}, {{duplicates}} đã có sẵn.",
+    "allDuplicates_other": "{{count}} tham chiếu đó đã có trong {{target}}.",
+    "defaultTarget": "thư mục",
+    "description": "Thêm tài liệu tham khảo từ trình quản lý trích dẫn hoặc tệp thư mục vào dự án này.",
+    "duplicateNote": "Các tham chiếu có DOI đã tồn tại trong thư mục sẽ bị bỏ qua.",
+    "empty": "Không tìm thấy tài liệu tham khảo nào trong tệp đó.",
     "endnote": {
-      "button": "Choose XML, RIS, or BibTeX file",
-      "description": "Choose an EndNote XML, RIS, or BibTeX file. Oleafly adds the references to the project bibliography.",
-      "title": "EndNote, RIS, or BibTeX"
+      "button": "Chọn tệp XML, RIS hoặc BibTeX",
+      "description": "Chọn tệp EndNote XML, RIS hoặc BibTeX. Oleafly thêm các tham chiếu vào thư mục của dự án.",
+      "title": "EndNote, RIS hoặc BibTeX"
     },
-    "failed": "Could not import those references.",
-    "nothingNew": "Nothing new to add to {{target}}.",
-    "problems_other": "{{count}} problems during import. {{details}}",
-    "readFailed": "Could not read that file.",
-    "title": "Import reference library",
-    "unrecognized": "Unrecognized file type: {{name}}",
+    "failed": "Không thể nhập các tài liệu tham khảo đó.",
+    "nothingNew": "Không có gì mới để thêm vào {{target}}.",
+    "problems_other": "{{count}} vấn đề khi nhập. {{details}}",
+    "readFailed": "Không thể đọc tệp đó.",
+    "title": "Nhập thư viện tài liệu tham khảo",
+    "unrecognized": "Loại tệp không được nhận diện: {{name}}",
     "zotero": {
-      "button": "Choose Zotero RDF file",
-      "connect": "Connect Zotero account",
-      "connectedDescription": "Import every reference in your Zotero library, or choose a Zotero RDF file you exported.",
-      "description": "In Zotero, select File → Export Library → Zotero RDF. Then choose the exported file.",
-      "empty": "Your Zotero library has no references to import.",
-      "importLibrary": "Import Zotero library",
-      "limited": "Oleafly read the first {{fetched}} of {{total}} items in your Zotero library.",
+      "button": "Chọn tệp Zotero RDF",
+      "connect": "Kết nối tài khoản Zotero",
+      "connectedDescription": "Nhập mọi tài liệu tham khảo trong thư viện Zotero của bạn, hoặc chọn tệp Zotero RDF bạn đã xuất.",
+      "description": "Trong Zotero, chọn File → Export Library → Zotero RDF. Sau đó chọn tệp đã xuất.",
+      "empty": "Thư viện Zotero của bạn không có tài liệu tham khảo để nhập.",
+      "importLibrary": "Nhập thư viện Zotero",
+      "limited": "Oleafly đã đọc {{fetched}} mục đầu tiên trong {{total}} mục của thư viện Zotero.",
       "title": "Zotero"
     }
   },
   "notice": {
-    "partial": "Partial results. Malformed or unreadable files may omit some occurrences.",
-    "stale": "Updating. Previous-revision citations, symbols, and ranges are hidden."
+    "partial": "Kết quả một phần. Các tệp sai định dạng hoặc không đọc được có thể bỏ sót một số lần xuất hiện.",
+    "stale": "Đang cập nhật. Trích dẫn, ký hiệu và phạm vi của bản sửa đổi trước bị ẩn."
   },
   "panel": {
-    "ariaLabel": "References (Shift-F12)",
-    "clearQuery": "Clear reference query",
-    "cleanLibrary": "Clean reference library",
-    "importAriaLabel": "Import references",
-    "issues_other": "{{count}} reference or citation issues",
+    "ariaLabel": "Tài liệu tham khảo (Shift-F12)",
+    "clearQuery": "Xoá truy vấn tham chiếu",
+    "cleanLibrary": "Làm sạch thư viện tham khảo",
+    "importAriaLabel": "Nhập tài liệu tham khảo",
+    "issues_other": "{{count}} vấn đề tham chiếu hoặc trích dẫn",
     "tabWithCount": "{{label}}, {{count}}",
-    "title": "References",
-    "viewTabs": "Reference panel view"
+    "title": "Tài liệu tham khảo",
+    "viewTabs": "Chế độ xem bảng tham chiếu"
   },
   "cleanLibrary": {
-    "title": "Clean the reference library",
-    "description": "Review citation keys and duplicate entries before changing your files.",
-    "library": "Reference library",
-    "entryCount_other": "{{count}} entries",
-    "footer": "Preview saves your open files. Applying checks that they still match the preview and backs up the originals.",
-    "noBib": "This project has no .bib file to clean.",
-    "entriesKept": "{{kept}} of {{total}} entries will remain.",
-    "changes": "Changes and notes",
-    "noChanges": "No file changes to apply.",
-    "filesToUpdate": "Files to update: {{files}}",
-    "none": "None",
-    "introSafeChanges": "Citation keys are standardized. DOI duplicates are removed only when all their details can be preserved.",
-    "introReview": "Similar titles and conflicting metadata stay in the library for review.",
-    "preview": "Preview",
-    "reviewTitle": "Review before applying",
-    "reviewBody": "Preview the changes to see which entries and citations will be updated.",
-    "statusAttention": "Needs attention",
-    "statusWorking": "Working…",
-    "statusPreviewReady": "Preview ready",
-    "statusReady": "Ready to preview",
-    "refreshPreview": "Refresh preview",
-    "previewChanges": "Preview changes",
-    "apply": "Apply and rewrite citations",
-    "truncated": "Preview shows the first 500 lines of each version.",
-    "actionRenamed": "{{old}} renamed to {{new}}",
-    "actionDuplicate": "{{removed}} removed as a duplicate of {{kept}} (matched by {{by}})",
+    "title": "Làm sạch thư viện tham khảo",
+    "description": "Xem lại khoá trích dẫn và mục trùng lặp trước khi thay đổi tệp của bạn.",
+    "library": "Thư viện tham khảo",
+    "entryCount_other": "{{count}} mục",
+    "footer": "Xem trước sẽ lưu các tệp đang mở của bạn. Khi áp dụng, Oleafly kiểm tra chúng vẫn khớp với bản xem trước và sao lưu bản gốc.",
+    "noBib": "Dự án này không có tệp .bib để làm sạch.",
+    "entriesKept": "{{kept}} trên {{total}} mục sẽ được giữ lại.",
+    "changes": "Thay đổi và ghi chú",
+    "noChanges": "Không có thay đổi tệp để áp dụng.",
+    "filesToUpdate": "Tệp cần cập nhật: {{files}}",
+    "none": "Không có",
+    "introSafeChanges": "Khoá trích dẫn được chuẩn hoá. Bản trùng DOI chỉ bị xoá khi mọi chi tiết của chúng có thể được giữ lại.",
+    "introReview": "Các tiêu đề tương tự và siêu dữ liệu xung đột được giữ trong thư viện để xem xét.",
+    "preview": "Xem trước",
+    "reviewTitle": "Xem lại trước khi áp dụng",
+    "reviewBody": "Xem trước các thay đổi để biết mục và trích dẫn nào sẽ được cập nhật.",
+    "statusAttention": "Cần được chú ý",
+    "statusWorking": "Đang xử lý…",
+    "statusPreviewReady": "Bản xem trước đã sẵn sàng",
+    "statusReady": "Sẵn sàng xem trước",
+    "refreshPreview": "Làm mới bản xem trước",
+    "previewChanges": "Xem trước thay đổi",
+    "apply": "Áp dụng và viết lại trích dẫn",
+    "truncated": "Bản xem trước hiển thị 500 dòng đầu của mỗi phiên bản.",
+    "actionRenamed": "{{old}} được đổi tên thành {{new}}",
+    "actionDuplicate": "{{removed}} bị xoá vì trùng với {{kept}} (khớp theo {{by}})",
     "actionField": "{{key}}: {{field}}",
-    "reloadFailed": "The cleaned files could not be reloaded. Reopen the project before editing.",
-    "cleaned": "Library cleaned. {{kept}} of {{total}} entries kept.",
-    "cleanedWithBackup": "Library cleaned. {{kept}} of {{total}} entries kept. Original files are saved in {{path}}."
+    "reloadFailed": "Không thể tải lại các tệp đã làm sạch. Hãy mở lại dự án trước khi chỉnh sửa.",
+    "cleaned": "Đã làm sạch thư viện. Giữ {{kept}} trên {{total}} mục.",
+    "cleanedWithBackup": "Đã làm sạch thư viện. Giữ {{kept}} trên {{total}} mục. Tệp gốc được lưu tại {{path}}."
   },
   "query": {
     "expired": {
-      "detail": "The project changed after this query. Run Find References again to use current source ranges.",
-      "title": "Reference results expired"
+      "detail": "Dự án đã thay đổi sau truy vấn này. Hãy chạy lại Tìm tham chiếu để dùng phạm vi nguồn hiện tại.",
+      "title": "Kết quả tham chiếu đã hết hạn"
     },
     "noLocations": {
-      "detail": "The symbol exists in this revision, but it has no matching definitions or occurrences.",
-      "title": "No locations found"
+      "detail": "Ký hiệu tồn tại trong bản sửa đổi này, nhưng không có định nghĩa hay lần xuất hiện nào khớp.",
+      "title": "Không tìm thấy vị trí"
     },
     "none": {
-      "detail": "Place the cursor on a label, citation, command, or environment and press Shift-F12.",
-      "title": "No reference query"
+      "detail": "Đặt con trỏ trên một nhãn, trích dẫn, lệnh hoặc môi trường rồi nhấn Shift-F12.",
+      "title": "Không có truy vấn tham chiếu"
     }
   },
   "tabs": {
-    "citations": "Citations",
-    "results": "References",
-    "symbols": "Symbols"
+    "citations": "Trích dẫn",
+    "results": "Tài liệu tham khảo",
+    "symbols": "Ký hiệu"
   },
   "trees": {
-    "citations": "Project citations",
-    "noCitations": "No bibliography entries or citation uses were found.",
-    "noSymbols": "No project-defined symbols were found.",
-    "symbols": "Project symbols"
+    "citations": "Trích dẫn trong dự án",
+    "noCitations": "Không tìm thấy mục thư mục hay lần dùng trích dẫn nào.",
+    "noSymbols": "Không tìm thấy ký hiệu do dự án định nghĩa.",
+    "symbols": "Ký hiệu dự án"
   },
   "unavailable": {
     "failed": {
-      "detail": "The latest project revision could not be analyzed. Source files were not changed.",
-      "title": "Project analysis failed"
+      "detail": "Không thể phân tích bản sửa đổi mới nhất của dự án. Tệp nguồn không bị thay đổi.",
+      "title": "Phân tích dự án thất bại"
     },
     "indexing": {
-      "detail": "References and citations will appear when the current project revision is ready.",
-      "title": "Indexing project intelligence"
+      "detail": "Tham chiếu và trích dẫn sẽ xuất hiện khi bản sửa đổi hiện tại của dự án sẵn sàng.",
+      "title": "Đang lập chỉ mục trí tuệ dự án"
     },
     "noProject": {
-      "detail": "Open a document project to inspect citations, symbols, and cross-file references.",
-      "title": "No project open"
+      "detail": "Mở một dự án tài liệu để xem trích dẫn, ký hiệu và tham chiếu chéo giữa các tệp.",
+      "title": "Không có dự án đang mở"
     },
     "offline": {
-      "detail": "References and citations cannot be checked in this workspace right now.",
-      "title": "Analysis service unavailable"
+      "detail": "Hiện không thể kiểm tra tham chiếu và trích dẫn trong không gian làm việc này.",
+      "title": "Dịch vụ phân tích không khả dụng"
     },
     "unsupported": {
-      "detail": "The active project does not use a supported document engine.",
-      "title": "Project intelligence unavailable"
+      "detail": "Dự án đang hoạt động không dùng engine tài liệu được hỗ trợ.",
+      "title": "Trí tuệ dự án không khả dụng"
     },
     "waiting": {
-      "detail": "The latest project revision has not been indexed yet.",
-      "title": "Waiting for project analysis"
+      "detail": "Bản sửa đổi mới nhất của dự án chưa được lập chỉ mục.",
+      "title": "Đang chờ phân tích dự án"
     }
   },
   "bibliographyStyle": {
-    "label": "Citation style",
-    "ariaLabel": "Citation style for the bibliography in {{path}}",
-    "failed": "Oleafly couldn't change the citation style."
+    "label": "Kiểu trích dẫn",
+    "ariaLabel": "Kiểu trích dẫn cho thư mục trong {{path}}",
+    "failed": "Oleafly không thể đổi kiểu trích dẫn."
   },
   "zotero": {
     "completion": {
       "library": "Zotero",
       "authorsTwo": "{{first}} & {{second}}",
-      "authorsMany": "{{first}} et al.",
-      "noYear": "n.d.",
+      "authorsMany": "{{first}} và cộng sự",
+      "noYear": "không ngày",
       "keySource": {
-        "bbt": "Key from Better BibTeX",
-        "native": "Key from Zotero",
-        "extra": "Key from the Extra field in Zotero",
-        "generated": "Key made by Oleafly"
+        "bbt": "Khoá từ Better BibTeX",
+        "native": "Khoá từ Zotero",
+        "extra": "Khoá từ trường Extra trong Zotero",
+        "generated": "Khoá do Oleafly tạo"
       },
-      "addFailed": "Oleafly couldn't add {{key}} to the bibliography. {{detail}}"
+      "addFailed": "Oleafly không thể thêm {{key}} vào thư mục. {{detail}}"
     },
     "hint": {
-      "apiDisabled": "In Zotero, open Settings > Advanced and turn on \"Allow other applications on this computer to communicate with Zotero\".",
-      "unsupported": "Update Zotero to version 7 or newer to search your library from Oleafly.",
-      "keyRejected": "Zotero no longer accepts your API key. Reconnect your account in Zotero settings.",
-      "closed": "Open Zotero to search your library here, or connect your zotero.org account.",
-      "closedCached": "Zotero is closed. Results are from the last sync, {{time}}.",
-      "bbtMissing": "Better BibTeX isn't responding, so new keys come from Zotero. Check that it is installed and turned on.",
-      "action": "Zotero settings"
+      "apiDisabled": "Trong Zotero, mở Settings > Advanced và bật \"Allow other applications on this computer to communicate with Zotero\".",
+      "unsupported": "Cập nhật Zotero lên phiên bản 7 trở lên để tìm trong thư viện của bạn từ Oleafly.",
+      "keyRejected": "Zotero không còn chấp nhận API key của bạn. Hãy kết nối lại tài khoản trong cài đặt Zotero.",
+      "closed": "Mở Zotero để tìm trong thư viện của bạn ở đây, hoặc kết nối tài khoản zotero.org.",
+      "closedCached": "Zotero đã đóng. Kết quả từ lần đồng bộ cuối, {{time}}.",
+      "bbtMissing": "Better BibTeX không phản hồi, nên khoá mới đến từ Zotero. Hãy kiểm tra nó đã được cài và bật.",
+      "action": "Cài đặt Zotero"
     },
     "actions": {
-      "addFromZotero": "Add from Zotero",
-      "addAllMissing_other": "Add all {{count}} missing citations from Zotero",
-      "notInLibrary": "{{key}} isn't in your Zotero library.",
-      "changed": "This entry changed in Zotero since you added it.",
-      "changedEdited": "This entry changed in Zotero, and you also edited it here.",
-      "update": "Update from Zotero",
-      "updated": "Updated {{key}} from Zotero.",
-      "updateFailed": "Oleafly couldn't update {{key}} from Zotero. Try again."
+      "addFromZotero": "Thêm từ Zotero",
+      "addAllMissing_other": "Thêm tất cả {{count}} trích dẫn còn thiếu từ Zotero",
+      "notInLibrary": "{{key}} không có trong thư viện Zotero của bạn.",
+      "changed": "Mục này đã thay đổi trong Zotero kể từ khi bạn thêm.",
+      "changedEdited": "Mục này đã thay đổi trong Zotero, và bạn cũng đã sửa nó ở đây.",
+      "update": "Cập nhật từ Zotero",
+      "updated": "Đã cập nhật {{key}} từ Zotero.",
+      "updateFailed": "Oleafly không thể cập nhật {{key}} từ Zotero. Hãy thử lại."
     },
     "chooseBibliography": {
-      "title": "Where should new references go?",
-      "description": "This project has more than one bibliography file. Oleafly adds new references to the one you pick and remembers it for this project.",
-      "confirm": "Use this file"
+      "title": "Tài liệu tham khảo mới nên đi đâu?",
+      "description": "Dự án này có nhiều tệp thư mục. Oleafly thêm tài liệu tham khảo mới vào tệp bạn chọn và ghi nhớ cho dự án này.",
+      "confirm": "Dùng tệp này"
     },
     "handEdits": {
-      "title": "Replace your edits?",
-      "description": "You edited {{key}} by hand. Replacing it with the version from Zotero removes those changes.",
-      "confirm": "Use the Zotero version",
-      "cancel": "Keep mine"
+      "title": "Thay thế các chỉnh sửa của bạn?",
+      "description": "Bạn đã sửa {{key}} bằng tay. Thay thế bằng phiên bản từ Zotero sẽ xoá các thay đổi đó.",
+      "confirm": "Dùng phiên bản Zotero",
+      "cancel": "Giữ bản của tôi"
     },
     "handList": {
-      "title": "Move your reference list?",
-      "description": "This paper lists its references by hand. Move them into {{path}} so they share one numbered list with the papers you cite from Zotero.",
-      "confirm": "Move list"
+      "title": "Di chuyển danh sách tham chiếu của bạn?",
+      "description": "Bài báo này liệt kê tài liệu tham khảo bằng tay. Hãy chuyển chúng vào {{path}} để dùng chung một danh sách đánh số với các bài bạn trích dẫn từ Zotero.",
+      "confirm": "Di chuyển danh sách"
     },
     "missing": {
-      "title": "Add missing citations from Zotero",
-      "loading": "Checking your Zotero library…",
-      "none": "Every cited key is already in your bibliography.",
-      "found_other": "{{count}} cited keys are in Zotero",
-      "duplicates_other": "{{count}} keys cite papers that are already in your bibliography",
-      "duplicateRow": "{{key}} is the same paper as {{existing}}",
-      "notFound_other": "{{count}} cited keys aren't in Zotero",
-      "confirm_other": "Add {{count}} entries",
-      "done_other": "{{count}} entries are now in {{path}}.",
-      "failed": "Oleafly couldn't add the entries. {{detail}}"
+      "title": "Thêm trích dẫn còn thiếu từ Zotero",
+      "loading": "Đang kiểm tra thư viện Zotero của bạn…",
+      "none": "Mọi khoá được trích dẫn đều đã có trong thư mục của bạn.",
+      "found_other": "{{count}} khoá được trích dẫn có trong Zotero",
+      "duplicates_other": "{{count}} khoá trích dẫn các bài đã có trong thư mục của bạn",
+      "duplicateRow": "{{key}} là cùng bài với {{existing}}",
+      "notFound_other": "{{count}} khoá được trích dẫn không có trong Zotero",
+      "confirm_other": "Thêm {{count}} mục",
+      "done_other": "{{count}} mục hiện đã có trong {{path}}.",
+      "failed": "Oleafly không thể thêm các mục. {{detail}}"
     },
     "update": {
-      "title": "Update .bib entries from Zotero",
-      "loading": "Checking Zotero for changes…",
-      "none": "Your bibliography matches Zotero.",
-      "handEdited": "Edited by hand",
-      "handEditedNote": "Entries you edited by hand are not selected. Select one to replace it with the version from Zotero.",
-      "confirm_other": "Update {{count}} entries",
-      "done_other": "Updated {{count}} entries."
+      "title": "Cập nhật mục .bib từ Zotero",
+      "loading": "Đang kiểm tra thay đổi trong Zotero…",
+      "none": "Thư mục của bạn khớp với Zotero.",
+      "handEdited": "Đã sửa bằng tay",
+      "handEditedNote": "Các mục bạn sửa bằng tay không được chọn. Chọn một mục để thay bằng phiên bản từ Zotero.",
+      "confirm_other": "Cập nhật {{count}} mục",
+      "done_other": "Đã cập nhật {{count}} mục."
     }
   }
 }
