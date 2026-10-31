@@ -6,63 +6,63 @@
       "bridgeTitle": "Cầu nối ACP",
       "bridgeUnresolved": "Chưa xác định được tệp thực thi cầu nối.",
       "checkAgain": "Kiểm tra lại",
-      "checkFailedTitle": "Không thể kiểm tra các tác nhân đã cài",
-      "checkInstalled": "Kiểm tra tác nhân đã cài",
+      "checkFailedTitle": "Không thể kiểm tra các agent đã cài",
+      "checkInstalled": "Kiểm tra agent đã cài",
       "checkingAction": "Đang kiểm tra",
       "checkingDescription": "Việc này có thể mất một chút trong khi Oleafly kiểm tra các công cụ dòng lệnh trên máy tính này.",
-      "checkingInstalled": "Đang kiểm tra tác nhân đã cài",
-      "checkingTitle": "Đang tìm tác nhân CLI",
+      "checkingInstalled": "Đang kiểm tra agent đã cài",
+      "checkingTitle": "Đang tìm CLI agent",
       "cliPathLabel": "Phát hiện tại",
       "cliTitle": "Công cụ dòng lệnh",
       "copySignInCommand": "Sao chép lệnh đăng nhập",
-      "emptyDescription": "Hãy cài một tác nhân CLI được hỗ trợ rồi kiểm tra lại.",
-      "emptyTitle": "Không tìm thấy tác nhân CLI nào",
+      "emptyDescription": "Hãy cài một CLI agent được hỗ trợ rồi kiểm tra lại.",
+      "emptyTitle": "Không tìm thấy CLI agent nào",
       "custom": {
-        "description": "Dán một định nghĩa tác nhân để đăng ký tác nhân mà Oleafly không cung cấp sẵn.",
-        "hint": "Dán định nghĩa tác nhân với gói npm hoặc uv được ghim phiên bản, một tệp nhị phân đã xác minh hoặc một tệp thực thi đã cài. Không đưa mật khẩu hay khoá API vào JSON này.",
-        "label": "Đăng ký tác nhân tuỳ chỉnh",
+        "description": "Dán một định nghĩa agent để đăng ký agent mà Oleafly không cung cấp sẵn.",
+        "hint": "Dán định nghĩa agent với gói npm hoặc uv được ghim phiên bản, một tệp nhị phân đã xác minh hoặc một tệp thực thi đã cài. Không đưa mật khẩu hay khoá API vào JSON này.",
+        "label": "Đăng ký agent tuỳ chỉnh",
         "submit": "Đăng ký định nghĩa",
-        "title": "Thêm tác nhân tuỳ chỉnh",
+        "title": "Thêm agent tuỳ chỉnh",
         "useExample": "Dùng ví dụ"
       },
       "install": {
         "confirm": "Cài đặt",
-        "description": "Oleafly tải gói đã ghim phiên bản này vào thư mục tác nhân riêng. Tác nhân sau đó chạy bằng tài khoản CLI của bạn khi bạn bắt đầu cuộc trò chuyện.",
+        "description": "Oleafly tải gói đã ghim phiên bản này vào thư mục agent riêng. Agent sau đó chạy bằng tài khoản CLI của bạn khi bạn bắt đầu cuộc trò chuyện.",
         "installing": "Đang cài đặt",
-        "location": "Thư mục tác nhân Oleafly, {{id}}/{{version}}",
+        "location": "Thư mục agent Oleafly, {{id}}/{{version}}",
         "locationLabel": "Cài vào",
         "packageLabel": "Gói",
         "title": "Cài cầu nối {{name}} {{version}}"
       },
       "installBridge": "Cài cầu nối",
       "installBridgeNextStep": "Hãy cài cầu nối ACP, rồi đăng nhập qua công cụ dòng lệnh.",
-      "intro": "Các tác nhân CLI như Claude Code, Codex và Gemini CLI kết nối qua Agent Client Protocol (ACP). Một số cần cầu nối, một bộ chuyển đổi nhỏ do Oleafly cài để có thể giao tiếp với chúng. Mỗi tác nhân tự quản lý mô hình, công cụ và đăng nhập, còn cài đặt nhà cung cấp API được tách riêng. Hãy dùng tài khoản CLI chính thức để đăng nhập: Oleafly không nhập token tài khoản hay ước tính hạn mức thuê bao.",
+      "intro": "Các CLI agent như Claude Code, Codex và Gemini CLI kết nối qua Agent Client Protocol (ACP). Một số cần cầu nối, một bộ chuyển đổi nhỏ do Oleafly cài để có thể giao tiếp với chúng. Mỗi agent tự quản lý mô hình, công cụ và đăng nhập, còn cài đặt nhà cung cấp API được tách riêng. Hãy dùng tài khoản CLI chính thức để đăng nhập: Oleafly không nhập token tài khoản hay ước tính hạn mức thuê bao.",
       "nextStepTitle": "Bước tiếp theo",
       "notReported": "Không được báo cáo",
       "notice": {
         "installed": "Đã cài {{name}}. Hãy đăng nhập qua CLI của nó trước khi bắt đầu cuộc trò chuyện.",
-        "registered": "Đã đăng ký {{name}}. Việc đăng ký không cài đặt hay khởi chạy tác nhân.",
-        "removed": "Đã gỡ định nghĩa tác nhân. Các tệp đã cài và cuộc trò chuyện đã lưu vẫn còn.",
-        "terminalOpen": "Terminal của dự án đang mở. Hãy chạy lệnh đăng nhập hiển thị cho tác nhân của bạn, rồi kết nối lại cuộc trò chuyện."
+        "registered": "Đã đăng ký {{name}}. Việc đăng ký không cài đặt hay khởi chạy agent.",
+        "removed": "Đã gỡ định nghĩa agent. Các tệp đã cài và cuộc trò chuyện đã lưu vẫn còn.",
+        "terminalOpen": "Terminal của dự án đang mở. Hãy chạy lệnh đăng nhập hiển thị cho agent của bạn, rồi kết nối lại cuộc trò chuyện."
       },
       "openSignInTerminal": "Mở terminal đăng nhập",
       "openTerminal": "Mở terminal",
       "platformLabel": "Nền tảng",
-      "refreshingStatus": "Đang làm mới trạng thái tác nhân. Danh sách hiện tại được giữ nguyên.",
+      "refreshingStatus": "Đang làm mới trạng thái agent. Danh sách hiện tại được giữ nguyên.",
       "registry": {
-        "description": "Tìm trong danh mục ACP các tác nhân CLI do nhóm khác phát hành.",
+        "description": "Tìm trong danh mục ACP các CLI agent do nhóm khác phát hành.",
         "hideDistribution": "Ẩn bản phân phối",
-        "register": "Đăng ký tác nhân",
+        "register": "Đăng ký agent",
         "registered": "Đã đăng ký",
         "reviewHint": "Các mục trong danh mục mô tả phần mềm do nhà phát hành cung cấp. Hãy xem xét bản phân phối trước khi đăng ký hoặc cài đặt.",
         "search": "Tìm kiếm",
-        "searchLabel": "Tìm một tác nhân CLI",
-        "searchPlaceholder": "Tìm tác nhân CLI",
+        "searchLabel": "Tìm một CLI agent",
+        "searchPlaceholder": "Tìm CLI agent",
         "searching": "Đang tìm",
         "showDistribution": "Hiện bản phân phối",
-        "title": "Tìm thêm tác nhân"
+        "title": "Tìm thêm agent"
       },
-      "sectionLabel": "Tác nhân CLI",
+      "sectionLabel": "CLI Agent",
       "signInCommandLabel": "Lệnh đăng nhập",
       "versionLabel": "Phiên bản",
       "updateBridge": "Cập nhật cầu nối",
@@ -126,13 +126,13 @@
         "title": "Thử nghiệm",
         "description": "Các mục này dùng những phần còn ở dạng nháp của Agent Client Protocol. Chúng có thể thay đổi hoặc ngừng hoạt động.",
         "v2": "Dùng ACP v2 khi có sẵn",
-        "v2Description": "Các tác nhân hỗ trợ phiên bản 2 dạng nháp sẽ dùng phiên bản này. Các tác nhân khác vẫn dùng phiên bản 1.",
-        "providers": "Cho phép tác nhân dùng khoá API Oleafly của tôi",
-        "providersDescription": "Tác nhân có thể định tuyến các lệnh gọi mô hình sẽ dùng khoá bạn chọn trên thẻ của nó. Khoá chỉ được gửi đến tiến trình của tác nhân đó."
+        "v2Description": "Các agent hỗ trợ phiên bản 2 dạng nháp sẽ dùng phiên bản này. Các agent khác vẫn dùng phiên bản 1.",
+        "providers": "Cho phép agent dùng khoá API Oleafly của tôi",
+        "providersDescription": "Agent có thể định tuyến các lệnh gọi mô hình sẽ dùng khoá bạn chọn trên thẻ của nó. Khoá chỉ được gửi đến tiến trình của agent đó."
       },
       "inactivity": {
-        "label": "Dừng tác nhân im lặng sau",
-        "description": "Khi tác nhân không gửi gì trong khoảng thời gian này, Oleafly sẽ dừng nó. Bạn có thể kết nối lại.",
+        "label": "Dừng agent im lặng sau",
+        "description": "Khi agent không gửi gì trong khoảng thời gian này, Oleafly sẽ dừng nó. Bạn có thể kết nối lại.",
         "minutes_other": "{{count}} phút"
       },
       "protocolLabel": "Giao thức",
@@ -141,12 +141,12 @@
         "effort": "Mức nỗ lực: {{name}}",
         "mode": "Chế độ: {{name}}",
         "forget": "Quên",
-        "none": "Cuộc trò chuyện mới dùng mặc định của tác nhân."
+        "none": "Cuộc trò chuyện mới dùng mặc định của agent."
       },
       "providers": {
         "label": "Dùng khoá API Oleafly của tôi",
-        "off": "Tắt (tác nhân tự đăng nhập)",
-        "note": "Oleafly gửi khoá đến tác nhân này khi cuộc trò chuyện bắt đầu và không đưa khoá vào bản ghi.",
+        "off": "Tắt (agent tự đăng nhập)",
+        "note": "Oleafly gửi khoá đến agent này khi cuộc trò chuyện bắt đầu và không đưa khoá vào bản ghi.",
         "unavailable": "Hãy thêm khoá API trong Cài đặt, Trợ lý AI, Nhà cung cấp và khoá để dùng ở đây."
       },
       "hermes": {
@@ -273,13 +273,13 @@
       "submitAddAnyway": "Thêm không có mô hình"
     },
     "instructions": {
-      "capabilitiesTitle": "Khả năng của tác nhân",
+      "capabilitiesTitle": "Khả năng của agent",
       "customDescription": "Được thêm vào mọi yêu cầu AI như phong cách và sở thích cá nhân của bạn. Trợ lý tuân theo các hướng dẫn này bên cạnh hành vi tích hợp sẵn. Chúng không thể ghi đè công cụ hay quy tắc an toàn của trợ lý.",
       "customPlaceholder": "Ví dụ: Luôn viết bằng tiếng Anh Anh. Giữ phần giải thích ngắn gọn. Ưu tiên gói enumitem cho danh sách.",
       "customTitle": "Hướng dẫn tuỳ chỉnh",
       "defaultModelDescription": "Được dùng mỗi khi bạn bắt đầu cuộc trò chuyện mới. Bạn vẫn có thể đổi mô hình cho từng cuộc trò chuyện từ bảng trò chuyện.",
       "defaultModelTitle": "Mô hình trò chuyện mặc định",
-      "pdfCaptureDescription": "Cho phép tác nhân chuyển các trang đã biên dịch thành ảnh (verify_pdf_pages) để kiểm tra bố cục bằng thị giác. Hãy tắt nếu bạn không muốn gửi ảnh trang đến nhà cung cấp.",
+      "pdfCaptureDescription": "Cho phép agent chuyển các trang đã biên dịch thành ảnh (verify_pdf_pages) để kiểm tra bố cục bằng thị giác. Hãy tắt nếu bạn không muốn gửi ảnh trang đến nhà cung cấp.",
       "pdfCaptureLabel": "Cho phép chụp trang PDF cho AI",
       "reasoningSummariesDescription": "Các mô hình suy nghĩ trước khi trả lời sẽ gửi một bản tóm tắt ngắn về lý luận của chúng. Áp dụng cho mô hình Anthropic và OpenAI.",
       "reasoningSummariesLabel": "Hiện tóm tắt lý luận",
@@ -427,7 +427,7 @@
       }
     },
     "section": {
-      "agentsLoading": "Đang tải tác nhân…",
+      "agentsLoading": "Đang tải agent…",
       "errors": {
         "invalidKey": "Khoá API không hợp lệ.",
         "keyNotKept": "URL cơ sở đã được lưu nhưng khoá thì chưa. Hãy nhập lại khoá.",
@@ -454,7 +454,7 @@
         "sectionName": "Trợ lý AI"
       },
       "tabs": {
-        "agents": "Tác nhân CLI",
+        "agents": "CLI Agent",
         "instructions": "Hướng dẫn",
         "mcp": "MCP",
         "personas": "Phong cách",
@@ -562,19 +562,19 @@
         "placeholder": "Tìm kỹ năng"
       },
       "share": {
-        "description": "Liên kết kỹ năng của bạn vào những thư mục mà các tác nhân lập trình khác trên máy tính này đã đọc, để bạn chỉ viết một lần và mọi tác nhân đều dùng được.",
-        "emptyBody": "Không tìm thấy thư mục tác nhân nào khác trên máy tính này.",
+        "description": "Liên kết kỹ năng của bạn vào những thư mục mà các agent lập trình khác trên máy tính này đã đọc, để bạn chỉ viết một lần và mọi agent đều dùng được.",
+        "emptyBody": "Không tìm thấy thư mục agent nào khác trên máy tính này.",
         "status": {
           "linked": "Đã liên kết {{linked}} trên {{total}}",
           "undetected": "Không tìm thấy trên thiết bị này",
           "unsupported": "Không được hỗ trợ trên hệ thống này"
         },
         "summary": {
-          "checking": "Đang kiểm tra thư mục tác nhân",
-          "linked_other": "Đã liên kết {{linked}} trên {{count}} tác nhân",
-          "none": "Không tìm thấy thư mục tác nhân nào khác"
+          "checking": "Đang kiểm tra thư mục agent",
+          "linked_other": "Đã liên kết {{linked}} trên {{count}} agent",
+          "none": "Không tìm thấy thư mục agent nào khác"
         },
-        "title": "Chia sẻ kỹ năng với các tác nhân khác trên máy tính này"
+        "title": "Chia sẻ kỹ năng với các agent khác trên máy tính này"
       },
       "source": {
         "added": "Đã thêm",
@@ -1694,7 +1694,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Cho phép tác nhân dùng ứng dụng và trang web trên máy tính này qua Cua Driver. Tác nhân chỉ truy cập được các ứng dụng và trang web bạn liệt kê ở đây.",
+      "description": "Cho phép agent dùng ứng dụng và trang web trên máy tính này qua Cua Driver. Agent chỉ truy cập được các ứng dụng và trang web bạn liệt kê ở đây.",
       "docsLink": "Tài liệu Cua Driver",
       "status": {
         "installed": "Đã cài Cua Driver {{version}}.",
@@ -1729,18 +1729,18 @@
         "active": "Trợ giúp cửa sổ GNOME đang bật."
       },
       "enable": {
-        "label": "Cho phép tác nhân dùng ứng dụng máy tính",
-        "description": "Tác nhân có thể thấy và dùng các ứng dụng và trang web bên dưới."
+        "label": "Cho phép agent dùng ứng dụng máy tính",
+        "description": "Agent có thể thấy và dùng các ứng dụng và trang web bên dưới."
       },
       "apps": {
         "heading": "Ứng dụng được phép",
-        "empty": "Chưa có ứng dụng nào. Tác nhân chỉ dùng được các ứng dụng bạn thêm ở đây.",
+        "empty": "Chưa có ứng dụng nào. Agent chỉ dùng được các ứng dụng bạn thêm ở đây.",
         "add": "Thêm ứng dụng",
         "remove": "Gỡ {{name}}",
         "missing": "Không tìm thấy chương trình này trên máy tính. Hãy gỡ hoặc cài lại ứng dụng.",
         "dialog": {
           "title": "Thêm ứng dụng",
-          "description": "Chọn một ứng dụng mà tác nhân được dùng. Chúng có thể mở ứng dụng, đọc cửa sổ và thao tác trong đó.",
+          "description": "Chọn một ứng dụng mà agent được dùng. Chúng có thể mở ứng dụng, đọc cửa sổ và thao tác trong đó.",
           "search": "Tìm ứng dụng",
           "loading": "Đang tìm ứng dụng…",
           "none": "Không có ứng dụng nào phù hợp.",
@@ -1771,12 +1771,12 @@
         "signedIn": {
           "label": "Dùng trình duyệt đã đăng nhập của tôi",
           "labelFor": "Dùng trình duyệt đã đăng nhập của tôi trên {{origin}}",
-          "description": "Bật Dùng trình duyệt đã đăng nhập của tôi cho một trang để tác nhân làm việc trong Chrome hoặc Edge của chính bạn ở đó. Khi tắt, tác nhân dùng một hồ sơ trình duyệt riêng."
+          "description": "Bật Dùng trình duyệt đã đăng nhập của tôi cho một trang để agent làm việc trong Chrome hoặc Edge của chính bạn ở đó. Khi tắt, agent dùng một hồ sơ trình duyệt riêng."
         }
       },
       "scripted": {
         "label": "Điều khiển bằng script",
-        "description": "Cho phép tác nhân chạy script Cua thực hiện nhiều bước cùng lúc."
+        "description": "Cho phép agent chạy script Cua thực hiện nhiều bước cùng lúc."
       },
       "ask": {
         "label": "Hỏi trước mỗi hành động",
@@ -1800,22 +1800,22 @@
         "unattended": "Tác vụ chạy theo lịch hoặc sau khi đóng Oleafly không dùng được ứng dụng máy tính."
       },
       "spaces": {
-        "title": "Không gian Cua",
-        "description": "Kết nối các màn hình máy tính và vùng chứa cô lập từ Không gian Cua dưới dạng máy chủ MCP.",
+        "title": "Cua Spaces",
+        "description": "Kết nối các màn hình máy tính và vùng chứa cô lập từ Cua Spaces dưới dạng máy chủ MCP.",
         "notInstalled": "Chưa cài lệnh cua.",
         "connect": {
-          "label": "Kết nối Không gian Cua",
-          "description": "Tác nhân có thể liệt kê các không gian của bạn và kiểm tra tác nhân đang chạy ở đó."
+          "label": "Kết nối Cua Spaces",
+          "description": "Agent có thể liệt kê các Spaces của bạn và kiểm tra agent đang chạy ở đó."
         },
         "fullAccess": {
           "label": "Cho phép thay đổi",
-          "description": "Tác nhân cũng có thể tạo, xóa không gian và chạy lệnh trong đó."
+          "description": "Agent cũng có thể tạo, xóa Spaces và chạy lệnh trong đó."
         },
         "credentials": {
-          "label": "Chia sẻ đăng nhập tác nhân của tôi",
-          "description": "Cho phép tác nhân khởi chạy trong một không gian dùng đăng nhập Claude Code hoặc Codex của bạn."
+          "label": "Chia sẻ đăng nhập agent của tôi",
+          "description": "Cho phép agent khởi chạy trong một Space dùng đăng nhập Claude Code hoặc Codex của bạn."
         },
-        "failed": "Oleafly không thể cập nhật kết nối Không gian Cua.",
+        "failed": "Oleafly không thể cập nhật kết nối Cua Spaces.",
         "install": {
           "terminalTitle": "Cài Cua",
           "confirm": "Thao tác này tải trình cài đặt Cua từ cua.ai và chạy trong terminal của bạn. Tiếp tục?"
