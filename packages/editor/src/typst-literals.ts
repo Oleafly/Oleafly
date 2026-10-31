@@ -221,18 +221,27 @@ function unmatched(markup: string): { readonly escapes: number[]; readonly equat
       index = end;
       continue;
     }
-    const character = markup[index];
-    const opener = openerOf(mode, character);
-    index += 1;
-    if (frame?.close === character) frames.pop();
-    else if (character === "#" && mode !== "code") index = embeddedCode(markup, index, frames);
-    else if (opener) frames.push({ ...opener, at: index - 1, inMarkup: mode === "markup" });
-    else if (character === "]" && !frame) escapes.push(index - 1);
+    index = advance(markup, index, mode, frames, escapes);
   }
   const equation = frames.find((frame) => frame.close === "$" && frame.inMarkup)?.at ?? null;
   for (const frame of frames) if (frame.close === "]") escapes.push(frame.at);
   if (index > markup.length) escapes.push(markup.length);
-  return { escapes: escapes.sort((a, b) => a - b), equation };
+  escapes.sort((a, b) => a - b);
+  return { escapes, equation };
+}
+
+function advance(markup: string, index: number, mode: Mode, frames: Frame[], escapes: number[]): number {
+  const frame = frames.at(-1);
+  const character = markup[index];
+  const next = index + 1;
+  if (frame?.close === character) frames.pop();
+  else if (character === "#" && mode !== "code") return embeddedCode(markup, next, frames);
+  else {
+    const opener = openerOf(mode, character);
+    if (opener) frames.push({ ...opener, at: index, inMarkup: mode === "markup" });
+    else if (character === "]" && !frame) escapes.push(index);
+  }
+  return next;
 }
 
 function withEscapes(text: string, positions: readonly number[]): string {

@@ -16,18 +16,19 @@ use oleafly_collab_protocol::snapshots::ProjectPeer;
 use ring::rand::{SecureRandom, SystemRandom};
 use ring::signature::Ed25519KeyPair;
 use serde_json::Value;
-use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::outputs;
 use crate::peers;
 use crate::projects;
-use crate::routes::ws::{Peer, ASIDE_BYTES};
+use crate::routes::ws::{CursorGate, Peer, ASIDE_BYTES};
 use crate::snapshots::{read_cost, Current, Held};
 use crate::sockets::SocketControl;
 use crate::state::AppState;
 use crate::web::frames::{CommentAction, Outgoing, WebFile, WebOutput, WebText};
+use crate::web::outbox::{Answer, Outbox, Queued, Reply, Writer};
 use crate::web::{pending_core, Refusal};
 
 pub const LINGER: Duration = Duration::from_secs(60);
@@ -59,6 +60,48 @@ impl Sink {
 
 type Sinks = HashMap<u64, Sink>;
 
+enum Waiting {
+    Frame(Outgoing),
+    Ack { order: u64, frame: Outgoing },
+}
+
+type Channels = HashMap<(u64, String), VecDeque<Waiting>>;
+
+const MAX_WAITING: usize = crate::web::gateway::SINK_CAPACITY;
+
+fn to_channel(waiting: &mut Channels, sinks: &Sinks, session: u64, file: &str, frame: Outgoing) {
+    match waiting.get_mut(&(session, file.to_string())) {
+        Some(queue) if queue.len() >= MAX_WAITING => {
+            if let Some(sink) = sinks.get(&session) {
+                sink.close();
+            }
+        }
+        Some(queue) if !queue.is_empty() => queue.push_back(Waiting::Frame(frame)),
+        _ => {
+            if let Some(sink) = sinks.get(&session) {
+                sink.send(&frame);
+            }
+        }
+    }
+}
+
+fn release(waiting: &mut Channels, sinks: &Sinks, through: u64) {
+    waiting.retain(|(session, _), queue| {
+        while let Some(front) = queue.front() {
+            if matches!(front, Waiting::Ack { order, .. } if *order > through) {
+                break;
+            }
+            let Some(Waiting::Frame(frame) | Waiting::Ack { frame, .. }) = queue.pop_front() else {
+                break;
+            };
+            if let Some(sink) = sinks.get(session) {
+                sink.send(&frame);
+            }
+        }
+        !queue.is_empty()
+    });
+}
+
 const LINGERING_PER_ACCOUNT: usize = 2;
 const KEPT_CHANGES: usize = 16;
 const KEPT_WRITERS: usize = 4_096;
@@ -66,6 +109,7 @@ const MAX_CHANGE_ID_CHARS: usize = 64;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Fate {
+    Queued(u64),
     Applied,
     Abandoned,
 }
@@ -76,16 +120,16 @@ struct Lingering {
     ticket: u64,
 }
 
-type Writer = (SharedProjectId, DeviceId);
+type Author = (SharedProjectId, DeviceId);
 
 #[derive(Default)]
 struct Changes {
     clock: u64,
-    writers: HashMap<Writer, (u64, VecDeque<(String, Fate)>)>,
+    writers: HashMap<Author, (u64, VecDeque<(String, Fate)>)>,
 }
 
 impl Changes {
-    fn fate(&self, writer: Writer, id: &str) -> Option<Fate> {
+    fn fate(&self, writer: Author, id: &str) -> Option<Fate> {
         self.writers
             .get(&writer)?
             .1
@@ -94,7 +138,7 @@ impl Changes {
             .map(|(_, fate)| *fate)
     }
 
-    fn note(&mut self, writer: Writer, id: &str, fate: Fate) {
+    fn note(&mut self, writer: Author, id: &str, fate: Fate) {
         self.clock += 1;
         if !self.writers.contains_key(&writer) && self.writers.len() >= KEPT_WRITERS {
             let oldest = self
@@ -237,7 +281,7 @@ impl Hub {
         let mut changes = locked(&self.changes);
         match changes.fate((project, device), id) {
             Some(Fate::Applied) => true,
-            Some(Fate::Abandoned) => false,
+            Some(Fate::Abandoned | Fate::Queued(_)) => false,
             None => {
                 changes.note((project, device), id, Fate::Abandoned);
                 false
@@ -250,6 +294,8 @@ pub struct WebRoom {
     project: SharedProjectId,
     doc: tokio::sync::Mutex<Option<RoomDoc>>,
     sessions: Mutex<Sinks>,
+    outbox: Mutex<Outbox>,
+    progress: watch::Sender<u64>,
 }
 
 impl Drop for WebRoom {
@@ -347,7 +393,11 @@ struct Failed {
 
 enum Taken {
     Skipped,
-    Applied(Option<Written>),
+    Applied {
+        ack: Outgoing,
+        written: Option<Written>,
+        tracked: bool,
+    },
 }
 
 struct Carried {
@@ -369,6 +419,8 @@ pub struct RoomDoc {
     stored: HashMap<DeviceId, Vec<(u64, i64)>>,
     files: Vec<WebFile>,
     compile: Settings,
+    waiting: Channels,
+    frozen: bool,
 }
 
 async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Refusal> {
@@ -425,6 +477,8 @@ async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Ref
         stored,
         files,
         compile,
+        waiting: HashMap::new(),
+        frozen: false,
     })
 }
 
@@ -518,20 +572,29 @@ impl RoomDoc {
             .any(|known| known.file_id == file && known.kind == "text")
     }
 
-    fn send_threads(&self, sinks: &Sinks, file: &str) {
-        let Ok(threads) = self.doc.comment_threads(file) else {
-            return;
-        };
-        for (session, sink) in sinks {
-            sink.send(&Outgoing::Threads {
-                file_id: file.to_string(),
-                rev: self.rev_of(*session, file),
-                threads: threads.clone(),
-            });
+    fn send_to_session(&mut self, sinks: &Sinks, session: u64, file: &str, frame: Outgoing) {
+        if self.rev_of(session, file).is_some() {
+            to_channel(&mut self.waiting, sinks, session, file, frame);
+        } else if let Some(sink) = sinks.get(&session) {
+            sink.send(&frame);
         }
     }
 
-    fn send_threads_if_any(&self, sinks: &Sinks, file: &str) {
+    fn send_threads(&mut self, sinks: &Sinks, file: &str) {
+        let Ok(threads) = self.doc.comment_threads(file) else {
+            return;
+        };
+        for session in sinks.keys() {
+            let frame = Outgoing::Threads {
+                file_id: file.to_string(),
+                rev: self.rev_of(*session, file),
+                threads: threads.clone(),
+            };
+            self.send_to_session(sinks, *session, file, frame);
+        }
+    }
+
+    fn send_threads_if_any(&mut self, sinks: &Sinks, file: &str) {
         if self
             .doc
             .comment_threads(file)
@@ -541,22 +604,23 @@ impl RoomDoc {
         }
     }
 
-    fn send_suggestions(&self, sinks: &Sinks, file: &str) {
+    fn send_suggestions(&mut self, sinks: &Sinks, file: &str) {
         let suggestions = pending_core::suggestions(&self.doc, file);
         self.send_suggestion_list(sinks, file, suggestions);
     }
 
-    fn send_suggestion_list(&self, sinks: &Sinks, file: &str, suggestions: Vec<Value>) {
-        for (session, sink) in sinks {
-            sink.send(&Outgoing::Suggestions {
+    fn send_suggestion_list(&mut self, sinks: &Sinks, file: &str, suggestions: Vec<Value>) {
+        for session in sinks.keys() {
+            let frame = Outgoing::Suggestions {
                 file_id: file.to_string(),
                 rev: self.rev_of(*session, file),
                 suggestions: suggestions.clone(),
-            });
+            };
+            self.send_to_session(sinks, *session, file, frame);
         }
     }
 
-    fn send_suggestions_if_any(&self, sinks: &Sinks, file: &str) {
+    fn send_suggestions_if_any(&mut self, sinks: &Sinks, file: &str) {
         let suggestions = pending_core::suggestions(&self.doc, file);
         if !suggestions.is_empty() {
             self.send_suggestion_list(sinks, file, suggestions);
@@ -611,13 +675,12 @@ impl RoomDoc {
             return;
         };
         let rev = channel.reset(text.clone());
-        if let Some(sink) = sinks.get(&session) {
-            sink.send(&Outgoing::Reset {
-                file_id: file.to_string(),
-                rev,
-                text,
-            });
-        }
+        let reset = Outgoing::Reset {
+            file_id: file.to_string(),
+            rev,
+            text,
+        };
+        to_channel(&mut self.waiting, sinks, session, file, reset);
     }
 
     fn open(
@@ -642,29 +705,30 @@ impl RoomDoc {
             .entry(file.to_string())
             .or_default()
             .insert(session, channel);
-        let Some(sink) = sinks.get(&session) else {
-            return Ok(());
-        };
-        sink.send(&Outgoing::Opened {
+        let opened = Outgoing::Opened {
             file_id: file.to_string(),
             rev,
             text,
             resumed,
-        });
-        sink.send(&Outgoing::Threads {
+        };
+        to_channel(&mut self.waiting, sinks, session, file, opened);
+        let threads = Outgoing::Threads {
             file_id: file.to_string(),
             rev: Some(rev),
             threads: self.doc.comment_threads(file).unwrap_or_default(),
-        });
-        sink.send(&Outgoing::Suggestions {
+        };
+        to_channel(&mut self.waiting, sinks, session, file, threads);
+        let suggestions = Outgoing::Suggestions {
             file_id: file.to_string(),
             rev: Some(rev),
             suggestions: pending_core::suggestions(&self.doc, file),
-        });
+        };
+        to_channel(&mut self.waiting, sinks, session, file, suggestions);
         Ok(())
     }
 
     fn close(&mut self, session: u64, file: &str) {
+        self.waiting.remove(&(session, file.to_string()));
         let Some(channels) = self.channels.get_mut(file) else {
             return;
         };
@@ -678,6 +742,7 @@ impl RoomDoc {
     }
 
     fn forget(&mut self, session: u64) {
+        self.waiting.retain(|(owner, _), _| *owner != session);
         for channels in self.channels.values_mut() {
             channels.remove(&session);
         }
@@ -702,14 +767,13 @@ impl RoomDoc {
                     broken.push(*session);
                     continue;
                 }
-                if let Some(sink) = sinks.get(session) {
-                    sink.send(&Outgoing::Remote {
-                        file_id: file.to_string(),
-                        rev: channel.rev(),
-                        op: operation.clone(),
-                        length: channel.length(),
-                    });
-                }
+                let remote = Outgoing::Remote {
+                    file_id: file.to_string(),
+                    rev: channel.rev(),
+                    op: operation.clone(),
+                    length: channel.length(),
+                };
+                to_channel(&mut self.waiting, sinks, *session, file, remote);
             }
         }
         for session in broken {
@@ -729,14 +793,13 @@ impl RoomDoc {
                     });
                     match routed {
                         Some(operation) => {
-                            if let Some(sink) = sinks.get(session) {
-                                sink.send(&Outgoing::Remote {
-                                    file_id: file.clone(),
-                                    rev: channel.rev(),
-                                    op: operation,
-                                    length: channel.length(),
-                                });
-                            }
+                            let remote = Outgoing::Remote {
+                                file_id: file.clone(),
+                                rev: channel.rev(),
+                                op: operation,
+                                length: channel.length(),
+                            };
+                            to_channel(&mut self.waiting, sinks, *session, file, remote);
                         }
                         None => broken.push(*session),
                     }
@@ -837,6 +900,9 @@ impl RoomDoc {
         suggesting: bool,
         now: i64,
     ) -> Result<Taken, Failed> {
+        if self.frozen {
+            return Ok(Taken::Skipped);
+        }
         let received = {
             let channel = self
                 .channels
@@ -880,31 +946,48 @@ impl RoomDoc {
             }
             return Err(Failed { refusal, dirty });
         }
-        if let Some(sink) = sinks.get(&session) {
-            sink.send(&Outgoing::Ack {
-                file_id: file.to_string(),
-                rev: acked,
-                length,
-            });
-        }
-        self.spread(sinks, file, Some(session), &applied);
-        self.send_threads_if_any(sinks, file);
-        if tracked {
-            self.send_suggestions(sinks, file);
-        }
+        let ack = Outgoing::Ack {
+            file_id: file.to_string(),
+            rev: acked,
+            length,
+        };
         if !self.doc.has_changes_since(&before) {
-            return Ok(Taken::Applied(None));
+            self.spread(sinks, file, Some(session), &applied);
+            return Ok(Taken::Applied {
+                ack,
+                written: None,
+                tracked: false,
+            });
         }
         let payload = self.doc.export_since(&before).map_err(|_| Failed {
             refusal: Refusal::server(),
             dirty: true,
         })?;
-        Ok(Taken::Applied(Some(Written {
-            payload,
-            peer,
-            texts: Vec::new(),
-            threads: Vec::new(),
-        })))
+        self.spread(sinks, file, Some(session), &applied);
+        Ok(Taken::Applied {
+            ack,
+            written: Some(Written {
+                payload,
+                peer,
+                texts: Vec::new(),
+                threads: Vec::new(),
+            }),
+            tracked,
+        })
+    }
+
+    fn changed(&mut self, sinks: &Sinks, file: &str, tracked: bool) {
+        self.send_threads_if_any(sinks, file);
+        if tracked {
+            self.send_suggestions(sinks, file);
+        }
+    }
+
+    fn hold_ack(&mut self, session: u64, file: &str, order: u64, frame: Outgoing) {
+        self.waiting
+            .entry((session, file.to_string()))
+            .or_default()
+            .push_back(Waiting::Ack { order, frame });
     }
 
     fn file_of_thread(&self, thread: CommentId) -> Result<String, Refusal> {
@@ -922,6 +1005,12 @@ impl RoomDoc {
         threads: Vec<String>,
         work: impl FnOnce(&mut ProjectDoc, i64) -> Result<(), Refusal>,
     ) -> Result<Option<Written>, Failed> {
+        if self.frozen {
+            return Err(Failed {
+                refusal: busy(),
+                dirty: false,
+            });
+        }
         let open: Vec<String> = self.channels.keys().cloned().collect();
         let texts_before: Vec<(String, String)> = open
             .iter()
@@ -1130,6 +1219,191 @@ impl WebRoom {
             project,
             doc: tokio::sync::Mutex::new(None),
             sessions: Mutex::new(HashMap::new()),
+            outbox: Mutex::new(Outbox::default()),
+            progress: watch::channel(0).0,
+        }
+    }
+
+    pub async fn settled(&self, session: u64) {
+        let mut progress = self.progress.subscribe();
+        while locked(&self.outbox).pending(session) > 0 {
+            if progress.changed().await.is_err() {
+                return;
+            }
+        }
+    }
+
+    fn finished(&self, sessions: &[u64], through: u64) {
+        let mut outbox = locked(&self.outbox);
+        for session in sessions {
+            outbox.finish(*session);
+        }
+        drop(outbox);
+        self.progress
+            .send_modify(|done| *done = (*done).max(through));
+    }
+
+    async fn reload_when_idle(
+        &self,
+        state: &AppState,
+        guard: &mut tokio::sync::MutexGuard<'_, Option<RoomDoc>>,
+    ) {
+        if locked(&self.outbox).busy() {
+            if let Some(room) = guard.as_mut() {
+                room.frozen = true;
+            }
+            return;
+        }
+        self.reload(state, guard).await;
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn enqueue(
+        self: &Arc<Self>,
+        state: &AppState,
+        room: &mut RoomDoc,
+        peer: &Peer<'_>,
+        key: &Ed25519KeyPair,
+        session: u64,
+        written: Written,
+        change: Option<String>,
+        reply: Option<Reply>,
+        ack: Option<(&str, Outgoing)>,
+    ) {
+        let order = locked(&self.outbox).next_order();
+        if let Some((file, frame)) = ack {
+            room.hold_ack(session, file, order, frame);
+        }
+        if let Some(id) = change.as_deref() {
+            state
+                .web
+                .note(self.project, peer.device, id, Fate::Queued(order));
+        }
+        let size = written.payload.len() as u64;
+        let mut envelope = Envelope {
+            v: 1,
+            project_id: self.project,
+            batch_id: BatchId::new_v7(),
+            device_id: peer.device,
+            mode: EnvelopeMode::Plain,
+            key_epoch: None,
+            payload: written.payload,
+            signature: Vec::new(),
+        };
+        envelope.signature = key.sign(&envelope.signing_bytes()).as_ref().to_vec();
+        let start = locked(&self.outbox).push(Queued {
+            order,
+            session,
+            writer: Writer::of(peer),
+            envelope,
+            peer: written.peer,
+            size,
+            change,
+            reply,
+        });
+        if start {
+            let room = Arc::clone(self);
+            let state = state.clone();
+            tokio::spawn(async move { room.drain(state).await });
+        }
+    }
+
+    async fn drain(self: Arc<Self>, state: AppState) {
+        loop {
+            let next = locked(&self.outbox).pop();
+            let Some(next) = next else {
+                let mut guard = self.doc.lock().await;
+                if !locked(&self.outbox).rest() {
+                    continue;
+                }
+                if guard.as_ref().is_some_and(|room| room.frozen) {
+                    self.reload(&state, &mut guard).await;
+                }
+                return;
+            };
+            let Queued {
+                order,
+                session,
+                writer,
+                envelope,
+                peer,
+                size,
+                change,
+                reply,
+            } = next;
+            let cursors = CursorGate::new();
+            let answer = writer
+                .peer(&state, &cursors)
+                .update(self.project, envelope)
+                .await;
+            let mut guard = self.doc.lock().await;
+            let sinks = self.sinks();
+            match answer {
+                ServerFrame::Ack { seq, .. } => {
+                    if let Some(room) = guard.as_mut() {
+                        if seq > 0 {
+                            room.mark(seq);
+                        }
+                        room.witness(&[ProjectPeer {
+                            peer,
+                            device_id: writer.device,
+                            account_id: writer.account,
+                        }]);
+                        release(&mut room.waiting, &sinks, order);
+                        if !room.held.grow(&state.snapshots, read_cost(0, size)) {
+                            self.unload(&mut guard, &sinks, busy());
+                        }
+                    }
+                    if let Some(id) = change.as_deref() {
+                        state
+                            .web
+                            .note(self.project, writer.device, id, Fate::Applied);
+                    }
+                    if let Some(reply) = reply {
+                        let _ = reply.send(Ok(()));
+                    }
+                    self.finished(&[session], order);
+                }
+                refused => {
+                    let refusal = match refused {
+                        ServerFrame::Error { code, message } => Refusal::from_frame(code, &message),
+                        _ => Refusal::server(),
+                    };
+                    let cancelled = locked(&self.outbox).cancel();
+                    self.reload(&state, &mut guard).await;
+                    match reply {
+                        Some(reply) => {
+                            let _ = reply.send(Err(refusal));
+                        }
+                        None => {
+                            if let Some(sink) = sinks.get(&session) {
+                                sink.send(&Outgoing::error(&refusal.code, &refusal.message, None));
+                            }
+                        }
+                    }
+                    let mut sessions = vec![session];
+                    let mut through = order;
+                    let abandoned = change.map(|id| (id, writer.device)).into_iter().chain(
+                        cancelled.iter().filter_map(|queued| {
+                            queued.change.clone().map(|id| (id, queued.writer.device))
+                        }),
+                    );
+                    for (id, device) in abandoned {
+                        state.web.note(self.project, device, &id, Fate::Abandoned);
+                    }
+                    for queued in cancelled {
+                        sessions.push(queued.session);
+                        through = through.max(queued.order);
+                        if let Some(reply) = queued.reply {
+                            let _ = reply.send(Err(Refusal::new(
+                                "conflict",
+                                "A change this one built on was refused. Try again.",
+                            )));
+                        }
+                    }
+                    self.finished(&sessions, through);
+                }
+            }
         }
     }
 
@@ -1204,10 +1478,18 @@ impl WebRoom {
         file: &str,
         resume: Option<String>,
     ) -> Result<(), Refusal> {
+        let resume = change_id(resume);
+        if let Some(Fate::Queued(order)) = resume
+            .as_deref()
+            .and_then(|id| hub.fate(self.project, device, id))
+        {
+            let mut progress = self.progress.subscribe();
+            let _ = progress.wait_for(|done| *done >= order).await;
+        }
         let sinks = self.sinks();
         let mut guard = self.doc.lock().await;
         let room = guard.as_mut().ok_or_else(cannot_open)?;
-        let resumed = change_id(resume).map(|id| hub.resumed(self.project, device, &id));
+        let resumed = resume.map(|id| hub.resumed(self.project, device, &id));
         room.open(&sinks, session, file, resumed)
     }
 
@@ -1275,7 +1557,7 @@ impl WebRoom {
                 return;
             }
             if page[0].seq != after + 1 {
-                self.reload(state, guard).await;
+                self.reload_when_idle(state, guard).await;
                 return;
             }
             for stored in page {
@@ -1392,58 +1674,9 @@ impl WebRoom {
         }
     }
 
-    async fn store(
-        &self,
-        state: &AppState,
-        guard: &mut tokio::sync::MutexGuard<'_, Option<RoomDoc>>,
-        peer: &Peer<'_>,
-        key: &Ed25519KeyPair,
-        written: Written,
-    ) -> Result<(), Refusal> {
-        let size = written.payload.len() as u64;
-        let mut envelope = Envelope {
-            v: 1,
-            project_id: self.project,
-            batch_id: BatchId::new_v7(),
-            device_id: peer.device,
-            mode: EnvelopeMode::Plain,
-            key_epoch: None,
-            payload: written.payload,
-            signature: Vec::new(),
-        };
-        envelope.signature = key.sign(&envelope.signing_bytes()).as_ref().to_vec();
-        match peer.update(self.project, envelope).await {
-            ServerFrame::Ack { seq, .. } => {
-                let sinks = self.sinks();
-                if let Some(room) = guard.as_mut() {
-                    if seq > 0 {
-                        room.mark(seq);
-                    }
-                    room.witness(&[ProjectPeer {
-                        peer: written.peer,
-                        device_id: peer.device,
-                        account_id: peer.account,
-                    }]);
-                    if !room.held.grow(&state.snapshots, read_cost(0, size)) {
-                        self.unload(guard, &sinks, busy());
-                    }
-                }
-                Ok(())
-            }
-            ServerFrame::Error { code, message } => {
-                self.reload(state, guard).await;
-                Err(Refusal::from_frame(code, &message))
-            }
-            _ => {
-                self.reload(state, guard).await;
-                Err(Refusal::server())
-            }
-        }
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn change(
-        &self,
+        self: &Arc<Self>,
         state: &AppState,
         peer: &Peer<'_>,
         key: &Ed25519KeyPair,
@@ -1475,23 +1708,49 @@ impl WebRoom {
             suggesting,
             now,
         );
-        let stored = match taken {
-            Ok(Taken::Skipped) => return Ok(()),
-            Ok(Taken::Applied(None)) => Ok(()),
-            Ok(Taken::Applied(Some(written))) => {
-                self.store(state, &mut guard, peer, key, written).await
+        match taken {
+            Ok(Taken::Skipped) => Ok(()),
+            Ok(Taken::Applied {
+                ack, written: None, ..
+            }) => {
+                to_channel(&mut room.waiting, &sinks, session, file, ack);
+                if let Some(id) = id.as_deref() {
+                    state.web.note(self.project, peer.device, id, Fate::Applied);
+                }
+                Ok(())
+            }
+            Ok(Taken::Applied {
+                ack,
+                written: Some(written),
+                tracked,
+            }) => {
+                self.enqueue(
+                    state,
+                    room,
+                    peer,
+                    key,
+                    session,
+                    written,
+                    id,
+                    None,
+                    Some((file, ack)),
+                );
+                room.changed(&sinks, file, tracked);
+                Ok(())
             }
             Err(failed) => {
                 if failed.dirty {
-                    self.reload(state, &mut guard).await;
+                    self.reload_when_idle(state, &mut guard).await;
                 }
-                return Err(failed.refusal);
+                Err(failed.refusal)
             }
-        };
-        if let (Ok(()), Some(id)) = (&stored, id.as_deref()) {
-            state.web.note(self.project, peer.device, id, Fate::Applied);
         }
-        stored
+    }
+
+    #[cfg(feature = "test-support")]
+    pub async fn ask_reload(&self, state: &AppState) {
+        let mut guard = self.doc.lock().await;
+        self.reload_when_idle(state, &mut guard).await;
     }
 
     pub async fn reset_file(&self, session: u64, file: &str) {
@@ -1501,21 +1760,23 @@ impl WebRoom {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn finish_write(
-        &self,
+        self: &Arc<Self>,
         state: &AppState,
         guard: &mut tokio::sync::MutexGuard<'_, Option<RoomDoc>>,
         peer: &Peer<'_>,
         key: &Ed25519KeyPair,
+        session: u64,
         outcome: Result<Option<Written>, Failed>,
         applied: Applied,
-    ) -> Result<(), Refusal> {
+    ) -> Result<Answer, Refusal> {
         let written = match outcome {
             Ok(Some(written)) => written,
-            Ok(None) => return Ok(()),
+            Ok(None) => return Ok(Answer::Done),
             Err(failed) => {
                 if failed.dirty {
-                    self.reload(state, guard).await;
+                    self.reload_when_idle(state, guard).await;
                 }
                 return Err(failed.refusal);
             }
@@ -1526,38 +1787,57 @@ impl WebRoom {
             suggestions: applied.suggestions,
             chat: applied.chat,
         };
-        self.store(state, guard, peer, key, written).await?;
         let sinks = self.sinks();
-        if let Some(room) = guard.as_mut() {
-            room.after_write(&sinks, &effects);
-        }
-        Ok(())
+        let room = guard.as_mut().ok_or_else(cannot_open)?;
+        room.after_write(&sinks, &effects);
+        let (reply, answer) = oneshot::channel();
+        self.enqueue(
+            state,
+            room,
+            peer,
+            key,
+            session,
+            written,
+            None,
+            Some(reply),
+            None,
+        );
+        Ok(Answer::Later(answer))
     }
 
     pub(crate) async fn comment(
-        &self,
+        self: &Arc<Self>,
         state: &AppState,
         peer: &Peer<'_>,
         key: &Ed25519KeyPair,
         session: u64,
         action: CommentAction,
         members: &[CommentMember],
-    ) -> Result<(), Refusal> {
+    ) -> Result<Answer, Refusal> {
         let mut guard = self.doc.lock().await;
         let room = guard.as_mut().ok_or_else(cannot_open)?;
         let now = state.clock.now_ms();
         let outcome = room.comment(session, peer.device, peer.account, action, members, now);
-        self.finish_write(state, &mut guard, peer, key, outcome, Applied::default())
-            .await
+        self.finish_write(
+            state,
+            &mut guard,
+            peer,
+            key,
+            session,
+            outcome,
+            Applied::default(),
+        )
+        .await
     }
 
     pub(crate) async fn apply(
-        &self,
+        self: &Arc<Self>,
         state: &AppState,
         peer: &Peer<'_>,
         key: &Ed25519KeyPair,
+        session: u64,
         work: impl FnOnce(&mut ProjectDoc, i64) -> Result<Applied, Refusal>,
-    ) -> Result<(), Refusal> {
+    ) -> Result<Answer, Refusal> {
         let mut guard = self.doc.lock().await;
         let room = guard.as_mut().ok_or_else(cannot_open)?;
         let now = state.clock.now_ms();
@@ -1566,7 +1846,7 @@ impl WebRoom {
             applied = work(doc, now)?;
             Ok(())
         });
-        self.finish_write(state, &mut guard, peer, key, outcome, applied)
+        self.finish_write(state, &mut guard, peer, key, session, outcome, applied)
             .await
     }
 }

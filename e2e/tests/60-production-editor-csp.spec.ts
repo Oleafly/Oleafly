@@ -1,6 +1,7 @@
 import { tourExpect as expect, tourTest as test } from "../fixtures";
 import { createProjectFromTemplate } from "../helpers";
 
+// Ignored on purpose against the Vite dev app, because the CSP under test only exists in a packaged build.
 test.skip(
   process.env.OLEAFLY_E2E_PRODUCTION !== "1",
   "requires an embedded production build, not the Vite-backed dev app",

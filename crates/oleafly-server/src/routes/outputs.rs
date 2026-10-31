@@ -15,7 +15,7 @@ use oleafly_collab_protocol::projects::{ProjectAction, ProjectStatus};
 use crate::error::ServerError;
 use crate::outputs::{self, NewOutput};
 use crate::quotas::Storage;
-use crate::routes::projects::{access, content_length_within, megabytes, require};
+use crate::routes::projects::{access, body_within, megabytes, require};
 use crate::routes::{path_id, Authenticated};
 use crate::state::AppState;
 use crate::transfers::declared_length;
@@ -140,7 +140,7 @@ pub(crate) async fn store_upload(
     let main_file = main_file(headers)?;
     let for_pdf = for_pdf(kind, headers)?;
     let limit = megabytes(state.config.limits.max_file_mb);
-    content_length_within(headers, limit)?;
+    let body = body_within(headers, body, limit).await?;
     let owner = state
         .db
         .call(move |conn| {

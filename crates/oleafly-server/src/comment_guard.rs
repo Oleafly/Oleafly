@@ -59,6 +59,8 @@ pub struct CommentGuard {
     slots: Arc<std::sync::Mutex<HashMap<SharedProjectId, Arc<Slot>>>>,
     warned: Arc<std::sync::Mutex<HashMap<SharedProjectId, Instant>>>,
     rechecks: Arc<Rechecks>,
+    #[cfg(feature = "test-support")]
+    role_gate: Arc<std::sync::Mutex<Option<Arc<tokio::sync::Semaphore>>>>,
 }
 
 #[derive(Default)]
@@ -519,6 +521,8 @@ impl CommentGuard {
         reach: &Reach,
         rule: RoleRule,
     ) -> Result<RoleVerdict, ServerError> {
+        #[cfg(feature = "test-support")]
+        self.pass_role_gate().await;
         let slot = self.slot(project);
         let _turn = slot.turn.lock().await;
         let current = self.current(db, snapshots, project, reach, false).await?;
@@ -610,6 +614,30 @@ impl CommentGuard {
             tracing::warn!(
                 "Stored a change to project {project} without checking it for comments, because {why}. The server checks it once it can read the project."
             );
+        }
+    }
+
+    #[cfg(feature = "test-support")]
+    pub fn hold_role_checks(&self) -> Arc<tokio::sync::Semaphore> {
+        let gate = Arc::new(tokio::sync::Semaphore::new(0));
+        *self
+            .role_gate
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(Arc::clone(&gate));
+        gate
+    }
+
+    #[cfg(feature = "test-support")]
+    async fn pass_role_gate(&self) {
+        let gate = self
+            .role_gate
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if let Some(gate) = gate {
+            if let Ok(permit) = gate.acquire().await {
+                permit.forget();
+            }
         }
     }
 

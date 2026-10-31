@@ -540,7 +540,9 @@ mod tests {
         let archive = directory.path().join("unsafe.zip");
         let file = std::fs::File::create(&archive).unwrap();
         let mut writer = zip::ZipWriter::new(file);
-        let options = zip::write::SimpleFileOptions::default().unix_permissions(0o4777);
+        let options = zip::write::SimpleFileOptions::default()
+            .system(zip::System::Unix)
+            .unix_permissions(0o777);
         writer.start_file("TinyTeX/tool", options).unwrap();
         writer.write_all(b"x").unwrap();
         writer.finish().unwrap();

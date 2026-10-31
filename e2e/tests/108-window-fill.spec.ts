@@ -14,6 +14,7 @@ import type { Page } from "../helpers";
 // they asked the window to be.
 
 const macOS = process.platform === "darwin";
+// Ignored on purpose off macOS, because the webview frame fix is macOS-only.
 test.skip(!macOS, "The webview frame fix is macOS-only.");
 
 type Frame = { x: number; y: number; width: number; height: number };

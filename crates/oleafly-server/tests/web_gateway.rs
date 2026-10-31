@@ -12,8 +12,9 @@ use people::{call, grant, send_frame};
 use reqwest::{Method, StatusCode};
 use serde_json::{json, Value};
 use web_support::{
-    browser_sign_in, ends, insert_at, next_web, open_socket, send_web, share_doc_project, until,
-    until_where, utf16, web_socket, web_stage, Desktop, Shared, WebSocket, DESKTOP_PEER, MAIN_TEXT,
+    browser_sign_in, ends, insert_at, next_web, open_socket, open_text, send_web,
+    share_doc_project, until, until_where, utf16, web_socket, web_stage, Desktop, Shared,
+    WebSocket, DESKTOP_PEER, MAIN_TEXT,
 };
 
 async fn opened(socket: &mut WebSocket, file: &str) -> u64 {
@@ -1130,15 +1131,6 @@ async fn a_file_a_desktop_adds_shows_in_the_browser_tree_and_a_reopened_socket_s
     send_web(&mut again, json!({ "t": "open", "fileId": shared.main })).await;
     let opened = until(&mut again, "opened").await;
     assert_eq!(opened["text"], format!("% again\n% top\n{MAIN_TEXT}"));
-}
-
-async fn open_text(socket: &mut WebSocket, file: &str, resume: Option<&str>) -> Value {
-    let mut frame = json!({ "t": "open", "fileId": file });
-    if let Some(resume) = resume {
-        frame["resume"] = json!(resume);
-    }
-    send_web(socket, frame).await;
-    until(socket, "opened").await
 }
 
 #[tokio::test]

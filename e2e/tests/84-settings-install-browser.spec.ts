@@ -125,6 +125,7 @@ async function setup(page: Page) {
 
 for (const browserType of [chromium, webkit]) {
   test(`${browserType.name()}: bridge confirmation is clickable above Settings and can retry`, async () => {
+    // Ignored on purpose when that Playwright browser was never downloaded on this runner.
     test.skip(!existsSync(browserType.executablePath()), "Browser executable is not installed");
     const browser = await browserType.launch();
     try {
@@ -182,6 +183,7 @@ for (const browserType of [chromium, webkit]) {
     }
   });
   test(`${browserType.name()}: a chosen Pi program is tested before it is saved`, async () => {
+    // Ignored on purpose when that Playwright browser was never downloaded on this runner.
     test.skip(!existsSync(browserType.executablePath()), "Browser executable is not installed");
     const browser = await browserType.launch();
     try {
@@ -222,6 +224,7 @@ for (const browserType of [chromium, webkit]) {
     }
   });
   test(`${browserType.name()}: TeX Live search, installed aliases, failure details and retry`, async () => {
+    // Ignored on purpose when that Playwright browser was never downloaded on this runner.
     test.skip(!existsSync(browserType.executablePath()), "Browser executable is not installed");
     const browser = await browserType.launch();
     try {

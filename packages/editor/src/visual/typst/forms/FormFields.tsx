@@ -91,7 +91,6 @@ interface ControlProps {
   readonly field: TypstFormField;
   readonly state: FieldState;
   readonly disabled: boolean;
-  readonly drafts?: Map<string, string>;
   commit(edit: FieldEdit): Promise<CommitResult>;
   report(problem: Problem): void;
   onHistory(command: HistoryCommand): void;
@@ -154,7 +153,7 @@ export function steppedNumber(kind: NumberKind, text: string, direction: 1 | -1)
   return String(next);
 }
 
-const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
+const DraftControl: FC<ControlProps & { readonly multiline: boolean; readonly drafts?: Map<string, string> }> = ({
   id,
   field,
   state,
@@ -167,9 +166,9 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
 }) => {
   const committed = committedText(state);
   const key = fieldKey(field);
-  const [draft, setDraftState] = useState<string | null>(() => drafts?.get(key) ?? null);
-  const setDraft = (next: string | null) => {
-    setDraftState(next);
+  const [draft, setDraft] = useState<string | null>(() => drafts?.get(key) ?? null);
+  const keepDraft = (next: string | null) => {
+    setDraft(next);
     if (next === null) drafts?.delete(key);
     else drafts?.set(key, next);
   };
@@ -194,7 +193,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
     if (saving.current) return saving.current;
     if (draft === null) return Promise.resolve(true);
     if (draft === committed) {
-      setDraft(null);
+      keepDraft(null);
       return Promise.resolve(true);
     }
     const next = edit(draft);
@@ -206,7 +205,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
       .then((result) => {
         const problem = problemFor(result);
         report(problem);
-        if (!problem) setDraft(null);
+        if (!problem) keepDraft(null);
         return problem === null;
       })
       .finally(() => {
@@ -254,7 +253,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
     }
     if (event.key === "Escape" && draft !== null) {
       event.preventDefault();
-      setDraft(null);
+      keepDraft(null);
       report(null);
     } else if (event.key === "Enter" && (!multiline || event.metaKey || event.ctrlKey)) {
       event.preventDefault();
@@ -263,7 +262,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
       const stepped = steppedNumber(kind, value, event.key === "ArrowUp" ? 1 : -1);
       if (stepped === null) return;
       event.preventDefault();
-      setDraft(stepped);
+      keepDraft(stepped);
       report(null);
     }
   };
@@ -278,7 +277,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
     disabled,
     placeholder: field.placeholder ?? defaultText(field) ?? undefined,
     "data-ofl-form-draft": dirty ? "" : undefined,
-    onChange: (event: { target: { value: string } }) => setDraft(event.target.value),
+    onChange: (event: { target: { value: string } }) => keepDraft(event.target.value),
     onBlur: () => {
       const pending = save();
       track?.(pending);
@@ -373,7 +372,7 @@ const FieldRow: FC<{
   const id = useId();
   const [problem, setProblem] = useState<Problem>(null);
   const kind = field.kind;
-  const controlProps: ControlProps = { id, field, state, disabled: readOnly, drafts, commit, report: setProblem, onHistory };
+  const controlProps: ControlProps = { id, field, state, disabled: readOnly, commit, report: setProblem, onHistory };
   let control: ReactNode;
   if (state.status === "readonly") {
     control = state.source ? (
@@ -387,7 +386,7 @@ const FieldRow: FC<{
     control = <ToggleControl {...controlProps} />;
   } else {
     const multiline = kind.type === "content" || (kind.type === "text" && (kind.multiline || /[\r\n]/u.test(committedText(state))));
-    control = <DraftControl {...controlProps} multiline={multiline} />;
+    control = <DraftControl {...controlProps} drafts={drafts} multiline={multiline} />;
   }
   const missing = state.status === "absent" && field.required;
   const fallback = state.status === "absent" && !field.required && kind.type !== "choice" ? defaultText(field) : null;

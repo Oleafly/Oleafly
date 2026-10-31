@@ -13,6 +13,13 @@ function asPath(dir) {
   return dir instanceof URL ? fileURLToPath(dir) : dir;
 }
 
+async function measureEntry(target, entry) {
+  if (!entry.isDirectory()) return { files: 1, bytes: (await stat(target)).size };
+  const files = (await readdir(target, { withFileTypes: true })).filter((file) => file.isFile());
+  const sizes = await Promise.all(files.map(async (file) => (await stat(path.join(target, file.name))).size));
+  return { files: files.length, bytes: sizes.reduce((total, size) => total + size, 0) };
+}
+
 export async function measurePdfjsAssets(pdfjsDir) {
   const root = asPath(pdfjsDir);
   const measured = {};
@@ -23,16 +30,10 @@ export async function measurePdfjsAssets(pdfjsDir) {
     if (error?.code === "ENOENT") return measured;
     throw error;
   }
-  for (const entry of entries) {
-    const target = path.join(root, entry.name);
-    if (!entry.isDirectory()) {
-      measured[entry.name] = { files: 1, bytes: (await stat(target)).size };
-      continue;
-    }
-    const files = (await readdir(target, { withFileTypes: true })).filter((file) => file.isFile());
-    const sizes = await Promise.all(files.map(async (file) => (await stat(path.join(target, file.name))).size));
-    measured[entry.name] = { files: files.length, bytes: sizes.reduce((total, size) => total + size, 0) };
-  }
+  const sizes = await Promise.all(entries.map((entry) => measureEntry(path.join(root, entry.name), entry)));
+  entries.forEach((entry, index) => {
+    measured[entry.name] = sizes[index];
+  });
   return measured;
 }
 

@@ -1068,35 +1068,34 @@ svg.animate-spin {
   }
 }
 
-/* --- CodeMirror merge (git diff) colors. `!important` is required because the
-   @codemirror/merge base theme injects its own `.cm-changedLine` etc. rules at
-   runtime with equal specificity, so without it our values are overridden.
+/* --- CodeMirror merge (git diff) colors. The @codemirror/merge base theme injects
+   rules scoped to the editor's theme classes (up to three classes) after this sheet,
+   so each target class repeats four times to outrank them without !important.
    `a` = old side (deletions, red), `b` = new side (insertions, green). --- */
-.cm-changedLine { background-color: #b6efc8 !important; }
-.cm-changedText { background-color: #7fdfa2 !important; }
-.cm-merge-a .cm-changedLine { background-color: #ffc2ca !important; }
-.cm-merge-a .cm-changedText { background-color: #f79ba6 !important; }
-.cm-deletedChunk { background-color: #ffd2d8 !important; }
-.cm-deletedChunk .cm-deletedText,
-.cm-deletedText { background-color: #f79ba6 !important; }
-.cm-collapsedLines {
-  background: #e5e7eb !important;
-  color: #374151 !important;
+.cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #b6efc8; }
+.cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #7fdfa2; }
+.cm-merge-a .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #ffc2ca; }
+.cm-merge-a .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #f79ba6; }
+.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk { background-color: #ffd2d8; }
+.cm-deletedChunk .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText,
+.cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText { background-color: #f79ba6; }
+.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines {
+  background: #e5e7eb;
+  color: #374151;
 }
-.cm-collapsedLines:hover { background: #d5d9df !important; }
-
-.dark .cm-changedLine { background-color: #14361f !important; }
-.dark .cm-changedText { background-color: #235c37 !important; }
-.dark .cm-merge-a .cm-changedLine { background-color: #45191e !important; }
-.dark .cm-merge-a .cm-changedText { background-color: #7f2731 !important; }
-.dark .cm-deletedChunk { background-color: #3a161a !important; }
-.dark .cm-deletedChunk .cm-deletedText,
-.dark .cm-deletedText { background-color: #7f2731 !important; }
-.dark .cm-collapsedLines {
-  background: #1f2937 !important;
-  color: #9ca3af !important;
+.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines:hover { background: #d5d9df; }
+.dark .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #14361f; }
+.dark .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #235c37; }
+.dark .cm-merge-a .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #45191e; }
+.dark .cm-merge-a .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #7f2731; }
+.dark .cm-deletedChunk.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk { background-color: #3a161a; }
+.dark .cm-deletedChunk .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText,
+.dark .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText { background-color: #7f2731; }
+.dark .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines {
+  background: #1f2937;
+  color: #9ca3af;
 }
-.dark .cm-collapsedLines:hover { background: #283445 !important; }
+.dark .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines:hover { background: #283445; }
 
 /* Diagram canvas (React Flow): keep the zoom controls and minimap legible in
    both the light and dark canvas themes (default control icons can render

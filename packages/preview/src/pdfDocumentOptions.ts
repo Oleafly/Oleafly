@@ -17,7 +17,8 @@ type SharedPdfDocumentOptions = {
 };
 
 function appUrl(path: string, base: string): string {
-  return `${base.endsWith("/") ? base : `${base}/`}${path}`;
+  const root = base.endsWith("/") ? base : `${base}/`;
+  return `${root}${path}`;
 }
 
 export function pdfjsStandardFontDataUrl(base: string = import.meta.env.BASE_URL): string {

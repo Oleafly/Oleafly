@@ -264,6 +264,25 @@ async function gotoLine(
 }
 
 test.beforeEach(async ({ tauriPage }) => {
+  // Skipped on Linux while a real hang is investigated, NOT because the tests
+  // are flaky there. Opening this project always compiles it, independently of
+  // the auto-compile preference (see App.tsx, where the skip-on-reopen fast
+  // path is deactivated). On the two-core CI runner that compile is requested,
+  // takes the lock, and never returns:
+  //
+  //     [app] compile: t0 crimson-pink-heron requested
+  //     [app] compile: t0 crimson-pink-heron lock after 0ms
+  //     (no "done", ever)
+  //
+  // Every other compile in the same job finished inside 1.2 s. A compile that
+  // never completes starves the webview so badly that even a one-line store
+  // read cannot answer inside the bridge's hard 30 s cap, which is what the
+  // failures actually looked like. That is a product question - whether the
+  // desktop bounds a compile at all, the way the CLI does - and it is worth
+  // answering properly rather than papering over here.
+  //
+  // macOS and Windows keep running these scenarios, so the coverage is not
+  // lost, only the platform where the hang blocks the lane.
   test.skip(
     process.platform === "linux",
     "the large-book compile hangs on the 2-core Linux runner; tracked separately",

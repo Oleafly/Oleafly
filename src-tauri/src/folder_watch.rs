@@ -1085,9 +1085,14 @@ mod tests {
             Box::new(|| {}),
         )
         .unwrap();
-        std::thread::sleep(Duration::from_millis(500));
-        std::fs::write(root.join("notes.md"), "notes").unwrap();
-        let change = next_change(&receiver);
+        let mut change = None;
+        for attempt in 0..20 {
+            std::fs::write(root.join("notes.md"), format!("notes {attempt}")).unwrap();
+            change = receiver.recv_timeout(Duration::from_millis(500)).ok();
+            if change.is_some() {
+                break;
+            }
+        }
         stop("linked-native-test", Some(token));
 
         let change = change.expect("a new file is reported");

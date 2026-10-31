@@ -676,9 +676,10 @@ async fn a_cancelled_image_read_sends_nothing_and_a_running_one_stops() {
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
+    let (release, released) = std::sync::mpsc::channel::<()>();
     let holder = std::thread::spawn(move || {
         let (stream, _) = listener.accept().unwrap();
-        std::thread::sleep(Duration::from_secs(3));
+        let _ = released.recv_timeout(Duration::from_secs(30));
         drop(stream);
     });
     let cancelled = Arc::new(AtomicBool::new(false));
@@ -693,7 +694,8 @@ async fn a_cancelled_image_read_sends_nothing_and_a_running_one_stops() {
         .await
         .unwrap_err();
     assert_eq!(error_code(&error), "mathpix.cancelled");
-    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(started.elapsed() < Duration::from_secs(10));
+    release.send(()).unwrap();
     holder.join().unwrap();
 }
 

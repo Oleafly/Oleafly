@@ -2,6 +2,7 @@ pub mod api;
 pub mod assets;
 pub mod frames;
 pub mod gateway;
+pub mod outbox;
 pub mod pending_core;
 pub mod room;
 pub mod sign_in;

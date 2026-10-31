@@ -315,6 +315,15 @@ pub async fn until_where(socket: &mut WebSocket, wanted: impl Fn(&Value) -> bool
     }
 }
 
+pub async fn open_text(socket: &mut WebSocket, file: &str, resume: Option<&str>) -> Value {
+    let mut frame = json!({ "t": "open", "fileId": file });
+    if let Some(resume) = resume {
+        frame["resume"] = json!(resume);
+    }
+    send_web(socket, frame).await;
+    until(socket, "opened").await
+}
+
 pub async fn send_web(socket: &mut WebSocket, frame: Value) {
     socket
         .send(Message::text(frame.to_string()))

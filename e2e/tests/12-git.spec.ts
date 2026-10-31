@@ -83,6 +83,7 @@ async function stageAllAndCommit(page: Page, message: string) {
 test("Source Control keeps local Git available while no Git hosting account is connected", async ({
   tauriPage,
 }) => {
+  // Ignored on purpose when a GitHub token is configured, because this case asserts the panel without an account.
   test.skip(
     !!process.env.E2E_GITHUB_TOKEN,
     "asserts the panel without an account; a saved token leaves an account connected",
@@ -204,6 +205,7 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
 });
 
 test("publish to GitHub creates a real repo and pushes the project", async ({ tauriPage }) => {
+  // Ignored on purpose without the opt-in push credentials, because the run creates a real remote repository.
   test.skip(
     process.env.E2E_GIT_PUSH !== "1" || !process.env.E2E_GITHUB_TOKEN,
     "set E2E_GIT_PUSH=1 and E2E_GITHUB_TOKEN to run",

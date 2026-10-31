@@ -192,6 +192,7 @@ test("word keys reach the shell", async ({ tauriPage }) => {
 });
 
 test("Ctrl+B goes to the shell, not the sidebar", async ({ tauriPage }) => {
+  // Skipped on macOS: the sidebar shortcut there is Cmd+B, so Ctrl+B proves nothing.
   test.skip(MAC, "On macOS the sidebar shortcut is Cmd+B; Ctrl+B is the shell's either way.");
   test.setTimeout(300_000);
   await openTerminalDock(tauriPage);

@@ -148,18 +148,34 @@ pub(crate) fn access(
     Ok((row, role))
 }
 
-pub(crate) fn content_length_within(headers: &HeaderMap, limit: u64) -> Result<(), ServerError> {
-    let declared = headers
-        .get(header::CONTENT_LENGTH)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.parse::<u64>().ok());
-    match declared {
+fn content_length_within(headers: &HeaderMap, limit: u64) -> Result<(), ServerError> {
+    match declared_length(headers) {
         Some(length) if length > limit => Err(ServerError::BadRequest(format!(
             "This file is larger than the server allows ({} MB).",
             limit / (1024 * 1024)
         ))),
         _ => Ok(()),
     }
+}
+
+const DRAIN_BEFORE_REFUSING: std::time::Duration = std::time::Duration::from_secs(30);
+
+pub(crate) async fn body_within(
+    headers: &HeaderMap,
+    body: Body,
+    limit: u64,
+) -> Result<Body, ServerError> {
+    let Err(refused) = content_length_within(headers, limit) else {
+        return Ok(body);
+    };
+    if declared_length(headers).is_some_and(|length| length <= limit.saturating_mul(2)) {
+        let mut data = body.into_data_stream();
+        let _ = tokio::time::timeout(DRAIN_BEFORE_REFUSING, async {
+            while let Some(Ok(_)) = futures_util::StreamExt::next(&mut data).await {}
+        })
+        .await;
+    }
+    Err(refused)
 }
 
 pub(crate) fn megabytes(value: u64) -> u64 {
@@ -651,7 +667,7 @@ async fn put_blob(
 ) -> Result<StatusCode, ServerError> {
     let (project, hash) = project_and_hash(path)?;
     let limit = megabytes(state.config.limits.max_file_mb);
-    content_length_within(&headers, limit)?;
+    let body = body_within(&headers, body, limit).await?;
     let account = auth.account_id;
     let (uploads, now) = (state.config.quotas.uploads_per_hour, state.clock.now_ms());
     let owner = state
@@ -802,7 +818,7 @@ async fn put_snapshot(
             state.config.limits.max_project_mb
         ))
     };
-    content_length_within(&headers, limit)?;
+    let body = body_within(&headers, body, limit).await?;
     let (account, device) = (auth.account_id, auth.device_id);
     let (uploads, counted_at) = (state.config.quotas.uploads_per_hour, state.clock.now_ms());
     let (newest, public_key, owner) = state

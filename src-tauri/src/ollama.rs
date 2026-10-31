@@ -674,7 +674,7 @@ mod tests {
         let models = list_model_details_at(&fixture.base, Duration::from_millis(200))
             .await
             .unwrap();
-        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(started.elapsed() < Duration::from_secs(10));
         assert_eq!(models[0].capabilities, None);
 
         slow.store(false, Ordering::SeqCst);

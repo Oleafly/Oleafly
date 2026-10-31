@@ -175,7 +175,7 @@ fn refusal(project_dir: &Path, input: &Path) -> Verdict {
     let quarto_root = quarto_project_dir(&main_dir).unwrap_or_else(|| main_dir.clone());
     let knitr = main
         .extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|extension| {
             extension.eq_ignore_ascii_case("rmd") || extension.eq_ignore_ascii_case("rmarkdown")
         });
@@ -598,7 +598,7 @@ fn lexical_join(base: &Path, raw: &str) -> PathBuf {
 
 fn is_markdown_notebook(path: &Path) -> bool {
     path.extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|extension| {
             ["qmd", "rmd", "md"]
                 .iter()
