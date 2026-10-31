@@ -17,7 +17,7 @@ proofread = ["dep:harper-core"]
 [dependencies]
 # `thesaurus` only feeds the BoringWords rule, which stays off, and
 # `concurrent` is off in the app's harper.js build too.
-harper-core = { version = "=2.10.0", default-features = false, optional = true }
+harper-core = { version = "=2.13.0", default-features = false, optional = true }
 icu_properties = "2.2"
 oleafly-preflight = { path = "../oleafly-preflight", default-features = false }
 serde = { version = "1", features = ["derive"] }
