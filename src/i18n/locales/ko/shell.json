@@ -437,7 +437,9 @@
       "title": "엔진(이 프로젝트)",
       "help": "Typst는 문서를 작성된 그대로 컴파일합니다. Calepin은 문서 안의 코드도 실행해 그 결과를 PDF에 넣습니다.",
       "typst": "Typst <note>[내장]</note>",
-      "calepin": "Calepin <note>[코드 실행]</note>"
+      "calepin": "Calepin <note>[코드 실행]</note>",
+      "calepinMissing": "Calepin <note>[설치되지 않음]</note>",
+      "installCalepin": "Calepin 설치…"
     },
     "code": {
       "title": "코드(이 컴퓨터)",
@@ -542,6 +544,7 @@
     "specimenViewer": "표본 뷰어",
     "stackTrace": "스택 트레이스",
     "surfaceCrashed": "{{surface}}이(가) 중단되었습니다.",
+    "surfaceCrashedAgain": "{{surface}}이(가) 다시 중단되었습니다. Oleafly를 다시 불러와 새로 시작하세요.",
     "surfaceClosed": "창에서 오류가 발생해 창을 닫았습니다. 자세한 내용은 로그에 저장되었습니다.",
     "surfaces": {
       "aiAssistant": "AI 어시스턴트",

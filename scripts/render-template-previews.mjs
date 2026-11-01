@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, cpSync, rmSync, copyFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const templatesDir = join(repoRoot, "src-tauri", "resources", "templates");
@@ -42,16 +42,58 @@ async function stageFonts(fontIds, workDir) {
   }
 }
 
-function sidecarBinary(name) {
+function hostTriple() {
   const arch = { arm64: "aarch64", x64: "x86_64" }[process.arch] ?? process.arch;
   const platform = {
     darwin: "apple-darwin",
     linux: "unknown-linux-gnu",
     win32: "pc-windows-msvc",
   }[process.platform];
-  const ext = process.platform === "win32" ? ".exe" : "";
-  const bin = join(repoRoot, "src-tauri", "binaries", `${name}-${arch}-${platform}${ext}`);
+  return `${arch}-${platform}`;
+}
+
+const EXE = process.platform === "win32" ? ".exe" : "";
+
+function sidecarBinary(name) {
+  const bin = join(repoRoot, "src-tauri", "binaries", `${name}-${hostTriple()}${EXE}`);
   return existsSync(bin) ? bin : null;
+}
+
+function onPath(cmd) {
+  try {
+    execFileSync(cmd, ["--version"], { stdio: "ignore" });
+    return cmd;
+  } catch {
+    return null;
+  }
+}
+
+// A copy Oleafly downloaded into ~/.oleafly (or the dev app's ~/.oleafly-dev),
+// newest version first.
+function downloadedToolchain(tool, relativePaths) {
+  for (const root of [".oleafly", ".oleafly-dev"]) {
+    const base = join(homedir(), root, "toolchains", tool);
+    if (!existsSync(base)) continue;
+    for (const version of readdirSync(base).sort().reverse()) {
+      for (const relative of relativePaths) {
+        const bin = join(base, version, relative);
+        if (existsSync(bin)) return bin;
+      }
+    }
+  }
+  return null;
+}
+
+function quartoBinary() {
+  return process.env.OLEAFLY_QUARTO ?? onPath("quarto") ?? downloadedToolchain("quarto", [`bin/quarto${EXE}`]);
+}
+
+function calepinBinary() {
+  return (
+    process.env.OLEAFLY_CALEPIN ??
+    onPath("calepin") ??
+    downloadedToolchain("calepin", [`calepin-${hostTriple()}/calepin${EXE}`, `calepin${EXE}`])
+  );
 }
 
 function tectonicBinary() {
@@ -118,6 +160,23 @@ function rasterize(pdftoppm, pdfPath, work, dir) {
   return Math.round(statSync(dest).size / 1024);
 }
 
+// Slide decks render to a web page, so their preview is the first slide at
+// 1280x720, saved 600 px wide like the Beamer previews.
+async function screenshotSlides(htmlPath, dir) {
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 600 / 1280 });
+    await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "load" });
+    await page.waitForFunction(() => globalThis.Reveal?.isReady?.() ?? true);
+    const dest = join(dir, "preview.png");
+    await page.screenshot({ path: dest });
+    return Math.round(statSync(dest).size / 1024);
+  } finally {
+    await browser.close();
+  }
+}
+
 async function render(id, tools) {
   const dir = join(templatesDir, id);
   const manifestPath = join(dir, "template.json");
@@ -160,6 +219,26 @@ async function render(id, tools) {
         { cwd: work, stdio: "pipe" },
       );
       pdf = join(work, "preview-out.pdf");
+    } else if (engineKind === "quarto") {
+      if (!tools.quarto) return { id, status: "skip", reason: "quarto not found (install it, or set OLEAFLY_QUARTO)" };
+      // Code off, as a new project first compiles: no R, Python or Jupyter needed.
+      execFileSync(tools.quarto, ["render", mainDoc, "--no-execute"], { cwd: work, stdio: "pipe" });
+      const stem = join(work, mainDoc.replace(/\.(qmd|Rmd)$/, ""));
+      if (existsSync(`${stem}.html`) && !existsSync(`${stem}.pdf`)) {
+        const kb = await screenshotSlides(`${stem}.html`, dir);
+        return { id, status: "ok", reason: `${kb} KB` };
+      }
+      pdf = `${stem}.pdf`;
+    } else if (engineKind === "calepin") {
+      if (!tools.calepin) return { id, status: "skip", reason: "calepin not found (install it, or set OLEAFLY_CALEPIN)" };
+      if (!tools.typst) return { id, status: "skip", reason: "typst sidecar missing (run scripts/fetch-typst.sh)" };
+      // Calepin runs the template's own chunks, so the preview shows their output.
+      execFileSync(
+        tools.calepin,
+        ["compile", mainDoc, "preview-out.pdf", "--format", "pdf", "--set", `executables.typst='${tools.typst}'`],
+        { cwd: work, stdio: "pipe", env: { ...process.env, CALEPIN_PYTHON: process.env.CALEPIN_PYTHON ?? "python3" } },
+      );
+      pdf = join(work, "preview-out.pdf");
     } else {
       return { id, status: "skip", reason: `engine ${engineKind}` };
     }
@@ -184,6 +263,8 @@ async function main() {
     tectonic: tectonicBinary(),
     typst: sidecarBinary("typst"),
     pandoc: pandocBinary(),
+    quarto: quartoBinary(),
+    calepin: calepinBinary(),
     pdftoppm,
   };
   const only = process.argv.slice(2);

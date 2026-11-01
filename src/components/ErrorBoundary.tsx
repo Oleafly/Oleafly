@@ -9,6 +9,10 @@ import { i18n } from "@/i18n";
 
 const APP_LOG_PATH = "~/.oleafly/app.log";
 
+// A crash this soon after Retry means re-rendering can't fix it, for example
+// when the fault is in module state rather than in the component tree.
+const RETRY_WINDOW_MS = 10_000;
+
 export type ErrorSurface =
   | "AI assistant"
   | "PDF preview"
@@ -45,6 +49,7 @@ interface Props {
 interface State {
   error: Error | null;
   componentStack: string | null;
+  failedRetry: boolean;
 }
 
 function CopyDiagnosticsButton({ text }: Readonly<{ text: string }>) {
@@ -87,14 +92,17 @@ function CopyStackButton({ text }: Readonly<{ text: string }>) {
 // leaves a blank window. This catches it, logs details to `~/.oleafly/app.log`
 // (so users can share it), and offers a reload.
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, componentStack: null };
+  state: State = { error: null, componentStack: null, failedRetry: false };
+  private retriedAt: number | null = null;
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    this.setState({ componentStack: info.componentStack ?? null });
+    const failedRetry = this.retriedAt !== null && Date.now() - this.retriedAt < RETRY_WINDOW_MS;
+    this.retriedAt = null;
+    this.setState({ componentStack: info.componentStack ?? null, failedRetry });
     const detail = `UI crash: ${error.name}: ${error.message}\n${
       error.stack ?? ""
     }\ncomponentStack:${info.componentStack ?? ""}`;
@@ -112,7 +120,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   reset = () => {
-    this.setState({ error: null, componentStack: null });
+    this.setState({ error: null, componentStack: null, failedRetry: false });
+  };
+
+  retry = () => {
+    this.retriedAt = Date.now();
+    this.reset();
   };
 
   diagnostics = () => {
@@ -129,24 +142,28 @@ export class ErrorBoundary extends Component<Props, State> {
 
     if (this.props.surface !== undefined) {
       const surfaceKey = SURFACE_KEYS[this.props.surface];
+      const surface = i18n.t(($) => $.shell.errorBoundary.surfaces[surfaceKey]);
+      const { failedRetry } = this.state;
       return (
         <div
           data-testid="surface-error-boundary"
           className="flex h-full min-h-24 w-full flex-1 flex-col items-center justify-center gap-3 p-6 text-center"
         >
           <p className="text-sm text-muted-foreground">
-            {i18n.t(($) => $.shell.errorBoundary.surfaceCrashed, {
-              surface: i18n.t(($) => $.shell.errorBoundary.surfaces[surfaceKey]),
-            })}
+            {failedRetry
+              ? i18n.t(($) => $.shell.errorBoundary.surfaceCrashedAgain, { surface })
+              : i18n.t(($) => $.shell.errorBoundary.surfaceCrashed, { surface })}
           </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={this.reset}
+              onClick={failedRetry ? () => window.location.reload() : this.retry}
               className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
               <RefreshCw className="size-3.5" />
-              {i18n.t(($) => $.common.actions.retry)}
+              {failedRetry
+                ? i18n.t(($) => $.shell.errorBoundary.reload)
+                : i18n.t(($) => $.common.actions.retry)}
             </button>
             <CopyDiagnosticsButton text={this.diagnostics()} />
           </div>

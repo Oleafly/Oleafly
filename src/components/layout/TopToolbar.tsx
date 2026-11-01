@@ -212,10 +212,12 @@ function ZenModeMenuItem() {
       onSelect={() => enterZenMode()}
     >
       <Focus className="size-4 text-muted-foreground" />
-      <span className="flex-1">{t(($) => $.shell.toolbar.layouts.zenMode)}</span>
-      <KbdGroup aria-hidden data-testid="layout-zen-mode-keys" className="ml-auto pl-3">
+      <span className="flex-1 whitespace-nowrap">{t(($) => $.shell.toolbar.layouts.zenMode)}</span>
+      <KbdGroup aria-hidden data-testid="layout-zen-mode-keys" className="ml-auto gap-0.5 pl-3">
         {shortcutParts(binding).map((part) => (
-          <Kbd key={part}>{part}</Kbd>
+          <Kbd key={part} className="h-4 min-w-4 rounded-[3px] px-0.5 text-[0.625rem]">
+            {part}
+          </Kbd>
         ))}
       </KbdGroup>
     </DropdownMenuItem>

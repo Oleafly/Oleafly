@@ -438,7 +438,9 @@
       "title": "Engine (dit project)",
       "help": "Typst compileert het document zoals het geschreven is. Calepin voert ook de code erin uit en zet de resultaten in de PDF.",
       "typst": "Typst <note>[ingebouwd]</note>",
-      "calepin": "Calepin <note>[voert code uit]</note>"
+      "calepin": "Calepin <note>[voert code uit]</note>",
+      "calepinMissing": "Calepin <note>[niet geïnstalleerd]</note>",
+      "installCalepin": "Calepin installeren…"
     },
     "code": {
       "title": "Code (deze computer)",
@@ -544,6 +546,7 @@
     "specimenViewer": "Specimenviewer",
     "stackTrace": "Stacktrace",
     "surfaceCrashed": "Er is een fout opgetreden in {{surface}}.",
+    "surfaceCrashedAgain": "Er is opnieuw een fout opgetreden in {{surface}}. Laad Oleafly opnieuw om vers te beginnen.",
     "surfaceClosed": "Het venster liep tegen een fout aan en is gesloten. De details staan in het logboek.",
     "surfaces": {
       "aiAssistant": "de AI-assistent",

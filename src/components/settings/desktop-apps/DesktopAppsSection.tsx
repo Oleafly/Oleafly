@@ -554,37 +554,36 @@ function PermissionsRow({
       label={t(($) => $.settings.integrations.desktopApps.permissions.heading)}
       description={description}
       details={
-        !granted && grant && !projectId ? (
-          <div className="mt-2 space-y-1">
-            <CodeBlock
-              code={shellCommandLine("posix", { command: grant.program, args: grant.args })}
-              preClassName="whitespace-pre-wrap break-words"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t(($) => $.settings.integrations.desktopApps.install.needsProject)}
-            </p>
-          </div>
-        ) : null
-      }
-      control={
         granted ? null : (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {grant ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!projectId}
-                onClick={() =>
-                  void runInTerminal(t(($) => $.settings.integrations.desktopApps.permissions.terminalTitle), grant)
-                }
-              >
-                {t(($) => $.settings.integrations.desktopApps.permissions.grant)}
-              </Button>
+          <div className="mt-2 space-y-2">
+            {grant && !projectId ? (
+              <CodeBlock
+                code={shellCommandLine("posix", { command: grant.program, args: grant.args })}
+                preClassName="whitespace-pre-wrap break-words"
+              />
             ) : null}
-            <Button type="button" variant="ghost" size="sm" disabled={checking} onClick={onCheckAgain}>
-              {t(($) => $.settings.integrations.desktopApps.install.checkAgain)}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {grant ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!projectId}
+                  onClick={() =>
+                    void runInTerminal(t(($) => $.settings.integrations.desktopApps.permissions.terminalTitle), grant)
+                  }
+                >
+                  {t(($) => $.settings.integrations.desktopApps.permissions.grant)}
+                </Button>
+              ) : null}
+              <Button type="button" variant="outline" size="sm" disabled={checking} onClick={onCheckAgain}>
+                {t(($) => $.settings.integrations.desktopApps.install.checkAgain)}
+              </Button>
+            </div>
+            {grant && !projectId ? (
+              <p className="text-xs text-muted-foreground">
+                {t(($) => $.settings.integrations.desktopApps.install.needsProject)}
+              </p>
+            ) : null}
           </div>
         )
       }

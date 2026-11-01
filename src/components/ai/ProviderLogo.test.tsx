@@ -11,6 +11,14 @@ describe("ProviderLogo", () => {
     expect(container.querySelector("span")).toBeNull();
   });
 
+  it("draws the brand mark for each common custom provider", () => {
+    for (const providerId of ["qwen", "kimi", "zhipu", "siliconflow", "volcengine-ark"]) {
+      const { container, unmount } = render(<ProviderLogo providerId={providerId} />);
+      expect(container.querySelector("span")).toBeNull();
+      unmount();
+    }
+  });
+
   it("draws a stable coloured letter tile for a custom provider", () => {
     const first = render(<ProviderLogo providerId="lab-llm" size={20} />);
     const tile = first.container.querySelector("span") as HTMLElement;

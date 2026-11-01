@@ -208,6 +208,7 @@
     "diffCrashed": "Vertailunäkymä kaatui. Sulje tämä välilehti ja yritä uudelleen.",
     "pdfLoadFailed": "PDF:n lataus epäonnistui: {{detail}}",
     "imageLoadFailed": "Kuvan lataus epäonnistui: {{detail}}",
+    "imageUnreadable": "Tätä tiedostoa ei voi näyttää kuvana. Se voi olla vioittunut, tai se ei ehkä ole kuva.",
     "binaryFile": "Binääritiedosto. Esikatselua ei ole.",
     "managedFileReadOnly": "Oleafly hallinnoi tiedostoa {{file}}, joten se on täällä vain luettavissa. Projektin asetuksia muutetaan Oleaflyn kautta, ei tätä tiedostoa muokkaamalla.",
     "noFileOpen": "Ei avointa tiedostoa.",

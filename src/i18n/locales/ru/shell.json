@@ -440,7 +440,9 @@
       "title": "Движок (этот проект)",
       "help": "Typst компилирует документ как есть. Calepin также запускает код в нём и помещает результаты в PDF.",
       "typst": "Typst <note>[встроенный]</note>",
-      "calepin": "Calepin <note>[запускает код]</note>"
+      "calepin": "Calepin <note>[запускает код]</note>",
+      "calepinMissing": "Calepin <note>[не установлен]</note>",
+      "installCalepin": "Установить Calepin…"
     },
     "code": {
       "title": "Код (этот компьютер)",
@@ -548,6 +550,7 @@
     "specimenViewer": "Просмотр образца",
     "stackTrace": "Трассировка стека",
     "surfaceCrashed": "Аварийно завершилось: {{surface}}.",
+    "surfaceCrashedAgain": "Снова аварийно завершилось: {{surface}}. Перезагрузите Oleafly, чтобы начать заново.",
     "surfaceClosed": "В окне произошла ошибка, и оно закрылось. Подробности сохранены в журнале.",
     "surfaces": {
       "aiAssistant": "ИИ-ассистент",

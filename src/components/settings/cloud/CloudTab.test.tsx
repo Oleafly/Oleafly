@@ -115,6 +115,7 @@ function cloudState(overrides: Partial<CloudState> = {}): CloudState {
     deviceName: "Desk",
     enabled: true,
     lastEmail: "ada@uni.edu",
+    lastProvider: "dropbox",
     lastSyncedMs: 0,
     lastError: null,
     quotaFull: false,
@@ -168,6 +169,23 @@ describe("CloudTab", () => {
     await act(async () => begin({ flowId: "f1", authUrl: "https://www.dropbox.com/oauth2/authorize", paste: false }));
     expect(await screen.findByTestId("cloud-connect-panel")).toBeInTheDocument();
     expect(mocks.open).toHaveBeenCalledWith("https://www.dropbox.com/oauth2/authorize");
+  });
+
+  it("shows the service and account it was last connected to", async () => {
+    serve(cloudState({ status: "disconnected", provider: null, email: null, lastProvider: "google_drive" }));
+    render(<CloudTab />);
+    const last = await screen.findByTestId("cloud-last-connection");
+    expect(last).toHaveTextContent("Last connected");
+    expect(last).toHaveTextContent("Google Drive");
+    expect(last).toHaveTextContent("ada@uni.edu");
+  });
+
+  it("shows only the account when the last service is unknown", async () => {
+    serve(cloudState({ status: "disconnected", provider: null, email: null, lastProvider: null }));
+    render(<CloudTab />);
+    const last = await screen.findByTestId("cloud-last-connection");
+    expect(last).toHaveTextContent("ada@uni.edu");
+    expect(last).not.toHaveTextContent(/Dropbox|Google Drive/);
   });
 
   it("keeps the panel and the open paste section while the paste flow starts", async () => {
@@ -322,6 +340,28 @@ describe("CloudTab", () => {
     expect(old).toHaveTextContent("Still uploading from another computer");
     const notes = rows.find((row) => within(row).queryByText("Notes")) as HTMLElement;
     expect(notes).toHaveTextContent("Waiting to sync");
+  });
+
+  it("counts a project as synced only once it has uploaded, and leaves the sync spinner to the button", async () => {
+    serve(
+      cloudState({
+        lastSyncedMs: Date.now() - 5 * 60_000,
+        projects: [
+          project({ localId: "a", cloudId: "c-a", name: "Alpha", lastSyncedMs: Date.now() - 60_000 }),
+          project({ localId: "b", cloudId: "c-b", name: "Beta" }),
+          project({ localId: "c", cloudId: "c-c", name: "Gamma" }),
+        ],
+      }),
+    );
+    render(<CloudTab />);
+    await waitFor(() =>
+      expect(screen.getByTestId("cloud-projects")).toHaveTextContent("1 synced, 2 not in Dropbox yet"),
+    );
+
+    act(() => useCloudStore.setState({ syncing: true }));
+    expect(screen.getByTestId("cloud-sync-status")).toHaveTextContent("Last synced 5 minutes ago");
+    expect(screen.getByTestId("cloud-projects")).not.toHaveTextContent(/Syncing/);
+    expect(screen.getByTestId("cloud-sync-now")).toBeDisabled();
   });
 
   it("lists local and Dropbox-only projects with their controls", async () => {
@@ -835,7 +875,7 @@ describe("CloudTab providers", () => {
     );
     expect(within(form).getByTestId("cloud-s3-connect")).toBeDisabled();
     expect(within(form).getByRole("button", { name: "Cancel" })).toBeDisabled();
-    serve(cloudState({ provider: "s3", email: S3_LABEL, lastEmail: S3_LABEL }), null);
+    serve(cloudState({ provider: "s3", email: S3_LABEL, lastEmail: S3_LABEL, lastProvider: "s3" }), null);
     await act(async () => finish({ email: S3_LABEL }));
     const card = await screen.findByTestId("cloud-provider-s3");
     expect(within(card).getByRole("heading", { name: "S3-compatible storage" })).toBeInTheDocument();

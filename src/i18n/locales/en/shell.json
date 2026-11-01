@@ -438,7 +438,9 @@
       "title": "Engine (this project)",
       "help": "Typst compiles the document as written. Calepin also runs the code in it and puts the results in the PDF.",
       "typst": "Typst <note>[built in]</note>",
-      "calepin": "Calepin <note>[runs code]</note>"
+      "calepin": "Calepin <note>[runs code]</note>",
+      "calepinMissing": "Calepin <note>[not installed]</note>",
+      "installCalepin": "Install Calepin…"
     },
     "code": {
       "title": "Code (this computer)",
@@ -544,6 +546,7 @@
     "specimenViewer": "Specimen Viewer",
     "stackTrace": "Stack trace",
     "surfaceCrashed": "The {{surface}} crashed.",
+    "surfaceCrashedAgain": "The {{surface}} crashed again. Reload Oleafly to start it fresh.",
     "surfaceClosed": "That window ran into an error and closed. Details were saved to the log.",
     "surfaces": {
       "aiAssistant": "AI assistant",

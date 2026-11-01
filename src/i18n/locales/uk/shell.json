@@ -440,7 +440,9 @@
       "title": "Рушій (цей проєкт)",
       "help": "Typst компілює документ як є. Calepin також запускає код у ньому і вставляє результати в PDF.",
       "typst": "Typst <note>[вбудований]</note>",
-      "calepin": "Calepin <note>[запускає код]</note>"
+      "calepin": "Calepin <note>[запускає код]</note>",
+      "calepinMissing": "Calepin <note>[не встановлено]</note>",
+      "installCalepin": "Встановити Calepin…"
     },
     "code": {
       "title": "Код (цей комп’ютер)",
@@ -548,6 +550,7 @@
     "specimenViewer": "Переглядач зразків",
     "stackTrace": "Трасування стека",
     "surfaceCrashed": "{{surface}} аварійно завершив роботу.",
+    "surfaceCrashedAgain": "{{surface}} знову аварійно завершив роботу. Перезавантажте Oleafly, щоб почати заново.",
     "surfaceClosed": "У вікні сталася помилка, і воно закрилося. Подробиці збережено в журналі.",
     "surfaces": {
       "aiAssistant": "Асистент ШІ",

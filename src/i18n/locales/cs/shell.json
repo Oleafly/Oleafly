@@ -440,7 +440,9 @@
       "title": "Engine (tento projekt)",
       "help": "Typst zkompiluje dokument tak, jak je napsaný. Calepin navíc spustí kód v dokumentu a výsledky vloží do PDF.",
       "typst": "Typst <note>[vestavěný]</note>",
-      "calepin": "Calepin <note>[spouští kód]</note>"
+      "calepin": "Calepin <note>[spouští kód]</note>",
+      "calepinMissing": "Calepin <note>[není nainstalován]</note>",
+      "installCalepin": "Nainstalovat Calepin…"
     },
     "code": {
       "title": "Kód (tento počítač)",
@@ -548,6 +550,7 @@
     "specimenViewer": "Prohlížeč vzorků",
     "stackTrace": "Výpis zásobníku",
     "surfaceCrashed": "{{surface}} spadl.",
+    "surfaceCrashedAgain": "{{surface}} spadl znovu. Znovu načtěte Oleafly a začněte načisto.",
     "surfaceClosed": "Okno narazilo na chybu a zavřelo se. Podrobnosti jsou uložené v protokolu.",
     "surfaces": {
       "aiAssistant": "Asistent AI",

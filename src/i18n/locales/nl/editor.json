@@ -208,6 +208,7 @@
     "diffCrashed": "De diffweergave is vastgelopen. Sluit dit tabblad en probeer het opnieuw.",
     "pdfLoadFailed": "Laden van de PDF is mislukt: {{detail}}",
     "imageLoadFailed": "Laden van de afbeelding is mislukt: {{detail}}",
+    "imageUnreadable": "Dit bestand kan niet als afbeelding worden getoond. Het is misschien beschadigd, of het is geen afbeelding.",
     "binaryFile": "Binair bestand. Geen voorbeeld beschikbaar.",
     "managedFileReadOnly": "{{file}} wordt door Oleafly beheerd en is hier alleen-lezen. Projectinstellingen wijzig je via Oleafly zelf, niet door dit bestand te bewerken.",
     "noFileOpen": "Geen bestand geopend.",

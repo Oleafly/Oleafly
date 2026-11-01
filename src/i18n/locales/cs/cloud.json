@@ -28,7 +28,7 @@
     "s3": "Použijte bucket v Amazon S3, MinIO nebo podobné službě."
   },
   "unavailable": "V tomto sestavení není k dispozici",
-  "lastConnected": "Naposledy připojeno k {{email}}.",
+  "lastConnection": "Naposledy připojeno",
   "finishInBrowser": "Dokončete v prohlížeči",
   "waiting": "Čekání na službu {{provider}}",
   "browserDidntOpen": "Prohlížeč se neotevřel? Otevřít {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Projekty",
     "synced": "Synchronizováno: {{count}}",
+    "waiting": "Zatím není v úložišti {{provider}}: {{count}}",
     "paused": "Pozastaveno: {{count}}",
     "onlyInCloud": "Jen v úložišti {{provider}}: {{count}}",
     "none": "Zatím žádné projekty",
-    "syncing": "Synchronizace projektů",
     "lastSynced": "Naposledy synchronizováno {{time}}",
     "notSynced": "Zatím nesynchronizováno",
     "off": "Synchronizace je na tomto počítači vypnutá",

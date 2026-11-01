@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { i18n } from "@/i18n";
+import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
@@ -254,10 +255,11 @@ export function AddCustomProviderDialog({
                       disabled={busy}
                       onClick={() => applyPreset(preset)}
                       className={cn(
-                        "rounded-full border px-3 py-1 text-xs transition-colors focus-visible:border-ring disabled:opacity-50",
+                        "inline-flex items-center gap-1.5 rounded-full border py-1 pr-3 pl-2 text-xs transition-colors focus-visible:border-ring disabled:opacity-50",
                         chosen ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent",
                       )}
                     >
+                      <ProviderLogo providerId={preset.id} size={14} />
                       {preset.name}
                     </button>
                   );

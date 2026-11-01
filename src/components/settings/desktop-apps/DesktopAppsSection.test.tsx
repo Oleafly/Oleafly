@@ -302,7 +302,11 @@ describe("DesktopAppsSection", () => {
     const row = await screen.findByTestId("desktop-apps-permissions");
     expect(within(row).getByRole("button", { name: copy.permissions.grant })).toBeDisabled();
     expect(within(row).getByText(copy.install.needsProject)).toBeVisible();
-    expect(within(row).getByText("/Applications/CuaDriver.app/Contents/MacOS/cua-driver permissions grant")).toBeVisible();
+    const command = within(row).getByText("/Applications/CuaDriver.app/Contents/MacOS/cua-driver permissions grant");
+    expect(command).toBeVisible();
+    // The buttons sit under the command, not beside it.
+    const grant = within(row).getByRole("button", { name: copy.permissions.grant });
+    expect(command.compareDocumentPosition(grant) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     mocks.status.mockResolvedValue(status({ permissions: { accessibility: true, screenRecording: true } }));
     await user.click(within(row).getByRole("button", { name: copy.install.checkAgain }));
     expect(await screen.findByText(copy.permissions.granted)).toBeVisible();

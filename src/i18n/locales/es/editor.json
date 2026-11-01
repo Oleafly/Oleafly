@@ -208,6 +208,7 @@
     "diffCrashed": "La vista de comparación se bloqueó. Cierra esta pestaña e inténtalo de nuevo.",
     "pdfLoadFailed": "No se pudo cargar el PDF: {{detail}}",
     "imageLoadFailed": "No se pudo cargar la imagen: {{detail}}",
+    "imageUnreadable": "Este archivo no se puede mostrar como imagen. Puede estar dañado o no ser una imagen.",
     "binaryFile": "Archivo binario. No hay vista previa disponible.",
     "managedFileReadOnly": "{{file}} lo gestiona Oleafly y aquí es de solo lectura. Los ajustes del proyecto se cambian desde Oleafly, no editando este archivo.",
     "noFileOpen": "Ningún archivo abierto.",

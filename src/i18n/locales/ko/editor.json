@@ -208,6 +208,7 @@
     "diffCrashed": "diff 보기가 중단되었습니다. 이 탭을 닫고 다시 시도하세요.",
     "pdfLoadFailed": "PDF를 불러오지 못했습니다: {{detail}}",
     "imageLoadFailed": "이미지를 불러오지 못했습니다: {{detail}}",
+    "imageUnreadable": "이 파일은 이미지로 표시할 수 없습니다. 손상되었거나 이미지가 아닐 수 있습니다.",
     "binaryFile": "바이너리 파일입니다. 미리보기를 제공하지 않습니다.",
     "managedFileReadOnly": "{{file}}은(는) Oleafly가 관리하므로 여기에서는 읽기 전용입니다. 프로젝트 설정은 이 파일을 편집하는 대신 Oleafly에서 바꾸세요.",
     "noFileOpen": "열린 파일이 없습니다.",

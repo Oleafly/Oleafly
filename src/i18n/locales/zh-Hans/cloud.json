@@ -28,7 +28,7 @@
     "s3": "使用 Amazon S3、MinIO 或类似服务上的存储桶。"
   },
   "unavailable": "此版本不可用",
-  "lastConnected": "上次连接到 {{email}}。",
+  "lastConnection": "上次连接",
   "finishInBrowser": "在浏览器中完成",
   "waiting": "正在等待 {{provider}}",
   "browserDidntOpen": "浏览器没有打开？打开 {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "项目",
     "synced": "{{count}} 个已同步",
+    "waiting": "{{count}} 个尚未在 {{provider}} 中",
     "paused": "{{count}} 个已暂停",
     "onlyInCloud": "{{count}} 个仅在 {{provider}} 中",
     "none": "还没有项目",
-    "syncing": "正在同步你的项目",
     "lastSynced": "上次同步：{{time}}",
     "notSynced": "尚未同步",
     "off": "这台电脑上的同步已关闭",

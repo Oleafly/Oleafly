@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} ble lastet ned, men bestod ikke integritetssjekken. Prøv å installere det på nytt.",
     "unknown_tool": "Oleafly kjenner ikke til noe verktøy som heter {{tool}}.",
     "not_managed": "Oleafly kan bare fjerne kopien av {{tool}} som den har lastet ned selv.",
-    "no_html_output": "Det finnes ingen HTML-utdata ennå. Kompiler dokumentet først."
+    "no_html_output": "Det finnes ingen HTML-utdata ennå. Kompiler dokumentet først.",
+    "quarto_needs_tex": "Dette formatet trenger LaTeX. Installer TinyTeX under Innstillinger > Motorer > LaTeX, eller bytt dokumentet til format: typst, som ikke trenger TeX.",
+    "r_package_missing": "En R-pakke som dokumentet trenger, mangler. Installer den i R, for eksempel med install.packages(), og kompiler på nytt.",
+    "jupyter_missing": "Python-koden i dokumentet trenger Jupyter for å kjøre. Installer det med python3 -m pip install jupyter, og kompiler på nytt. Eller slå av kode i Kompiler-menyen for å vise koden uten å kjøre den.",
+    "quarto_no_input": "Quarto kunne ikke lese hoveddokumentet. Sjekk at det er en .qmd- eller .Rmd-fil i prosjektet."
   },
   "attachments": {
     "too_large": "Denne filen er større enn {{max}} MB. Legg ved en mindre fil.",

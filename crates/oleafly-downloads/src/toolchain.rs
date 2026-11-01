@@ -15,8 +15,11 @@ const MAX_ERROR_BYTES: usize = 1024;
 const PROGRESS_STEP_BYTES: u64 = 256 * 1024;
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const COPY_BUFFER_BYTES: usize = 64 * 1024;
+// `xz -9` and `--lzma2=dict=64MiB` archives need 65 MiB to decode, and
+// Calepin's releases use that dictionary. The archive's SHA-256 is checked
+// before it is decoded, so this only bounds pinned files.
 #[cfg(not(windows))]
-const XZ_MEMORY_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
+const XZ_MEMORY_LIMIT_BYTES: u64 = 128 * 1024 * 1024;
 const STAGING_DIRECTORY: &str = ".staging";
 const USER_AGENT: &str = concat!("Oleafly-toolchain-installer/", env!("CARGO_PKG_VERSION"));
 
@@ -2108,6 +2111,30 @@ mod tests {
     #[tokio::test]
     async fn installs_the_member_of_a_tar_xz_archive() {
         installs_fixture(tar_xz_fixture()).await;
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn decodes_xz_with_a_64_mib_dictionary() {
+        // `printf calepin | xz --lzma2=dict=64MiB,mf=hc3,nice=8`: tiny, but
+        // decoding it needs 65 MiB, like Calepin's release archives.
+        const STREAM: &[u8] = &[
+            0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00, 0x00, 0x04, 0xe6, 0xd6, 0xb4, 0x46, 0x04, 0xc0,
+            0x0b, 0x07, 0x21, 0x01, 0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x90, 0x98, 0x35, 0xf1, 0x01, 0x00, 0x06, 0x63, 0x61, 0x6c, 0x65, 0x70, 0x69, 0x6e,
+            0x00, 0x00, 0x5d, 0xaa, 0x91, 0x04, 0xc0, 0xf6, 0x45, 0x38, 0x00, 0x01, 0x27, 0x07,
+            0xed, 0x92, 0x27, 0x64, 0x1f, 0xb6, 0xf3, 0x7d, 0x01, 0x00, 0x00, 0x00, 0x00, 0x04,
+            0x59, 0x5a,
+        ];
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("dict64.xz");
+        std::fs::write(&path, STREAM).unwrap();
+        let mut text = String::new();
+        xz_reader(File::open(&path).unwrap())
+            .unwrap()
+            .read_to_string(&mut text)
+            .unwrap();
+        assert_eq!(text, "calepin");
     }
 
     #[tokio::test]

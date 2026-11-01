@@ -439,7 +439,9 @@
       "title": "Moteur (ce projet)",
       "help": "Typst compile le document tel qu'il est écrit. Calepin exécute en plus le code qu'il contient et place les résultats dans le PDF.",
       "typst": "Typst <note>[intégré]</note>",
-      "calepin": "Calepin <note>[exécute du code]</note>"
+      "calepin": "Calepin <note>[exécute du code]</note>",
+      "calepinMissing": "Calepin <note>[non installé]</note>",
+      "installCalepin": "Installer Calepin…"
     },
     "code": {
       "title": "Code (cet ordinateur)",
@@ -546,6 +548,7 @@
     "specimenViewer": "Visionneuse de spécimen",
     "stackTrace": "Pile d'appels",
     "surfaceCrashed": "{{surface}} a planté.",
+    "surfaceCrashedAgain": "{{surface}} a de nouveau planté. Rechargez Oleafly pour repartir de zéro.",
     "surfaceClosed": "La fenêtre a rencontré une erreur et s'est fermée. Les détails ont été enregistrés dans le journal.",
     "surfaces": {
       "aiAssistant": "L'assistant IA",

@@ -28,7 +28,7 @@
     "s3": "Utilisez un bucket sur Amazon S3, MinIO ou un service similaire."
   },
   "unavailable": "Indisponible dans cette version",
-  "lastConnected": "Dernière connexion à {{email}}.",
+  "lastConnection": "Dernière connexion",
   "finishInBrowser": "Terminez dans votre navigateur",
   "waiting": "{{provider}} : en attente",
   "browserDidntOpen": "Le navigateur ne s'est pas ouvert ? Ouvrir {{provider}}",
@@ -65,11 +65,11 @@
   "useLocalSettings": "Utiliser les paramètres de cet ordinateur",
   "projects": {
     "title": "Projets",
-    "synced": "{{count}} en synchronisation",
+    "synced": "{{count}} synchronisés",
+    "waiting": "{{count}} pas encore dans {{provider}}",
     "paused": "{{count}} en pause",
     "onlyInCloud": "{{count}} uniquement dans {{provider}}",
     "none": "Aucun projet pour l'instant",
-    "syncing": "Synchronisation de vos projets",
     "lastSynced": "Dernière synchronisation : {{time}}",
     "notSynced": "Pas encore synchronisé",
     "off": "La synchronisation est désactivée sur cet ordinateur",

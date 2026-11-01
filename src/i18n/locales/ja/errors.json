@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} をダウンロードしましたが、整合性チェックに失敗しました。もう一度インストールしてください。",
     "unknown_tool": "Oleafly は {{tool}} というツールを認識できません。",
     "not_managed": "Oleafly が削除できるのは、自分でダウンロードした {{tool}} のコピーだけです。",
-    "no_html_output": "HTML の出力はまだありません。先に文書をコンパイルしてください。"
+    "no_html_output": "HTML の出力はまだありません。先に文書をコンパイルしてください。",
+    "quarto_needs_tex": "この形式には LaTeX が必要です。設定 > エンジン > LaTeX から TinyTeX をインストールするか、TeX が不要な format: typst に切り替えてください。",
+    "r_package_missing": "この文書に必要な R パッケージがありません。install.packages() などで R にインストールしてから、もう一度コンパイルしてください。",
+    "jupyter_missing": "この文書の Python コードを実行するには Jupyter が必要です。python3 -m pip install jupyter でインストールしてから、もう一度コンパイルしてください。または、コンパイルメニューでコードをオフにすると、コードを実行せずに表示します。",
+    "quarto_no_input": "Quarto がメイン文書を読み込めませんでした。プロジェクト内の .qmd または .Rmd ファイルであることを確認してください。"
   },
   "attachments": {
     "too_large": "このファイルは {{max}} MB を超えています。もっと小さいファイルを添付してください。",
