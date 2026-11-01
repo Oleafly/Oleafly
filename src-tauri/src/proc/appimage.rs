@@ -151,7 +151,7 @@ pub(crate) fn appimage_env_changes(
 }
 
 pub(crate) fn clear_appimage_env(command: &mut Command) {
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     if simulated::clear(command) {
         return;
     }
