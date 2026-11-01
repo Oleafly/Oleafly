@@ -160,7 +160,7 @@ pub(crate) fn clear_appimage_env(command: &mut Command) {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 pub(crate) mod simulated {
     use super::*;
     use std::cell::RefCell;

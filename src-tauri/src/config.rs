@@ -1824,6 +1824,7 @@ mod tests {
         let Ok(role) = std::env::var("OLEAFLY_CONFIG_TRANSACTION_ROLE") else {
             return;
         };
+        let _data_dir = crate::paths::data_dir_env_lock();
         let control = std::path::PathBuf::from(
             std::env::var_os("OLEAFLY_CONFIG_TRANSACTION_CONTROL").unwrap(),
         );

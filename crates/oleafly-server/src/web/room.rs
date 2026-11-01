@@ -60,6 +60,16 @@ impl Sink {
 
 type Sinks = HashMap<u64, Sink>;
 
+struct Done {
+    order: u64,
+    session: u64,
+    writer: Writer,
+    peer: u64,
+    size: u64,
+    change: Option<String>,
+    reply: Option<Reply>,
+}
+
 enum Waiting {
     Frame(Outgoing),
     Ack { order: u64, frame: Outgoing },
@@ -1338,73 +1348,120 @@ impl WebRoom {
                 .await;
             let mut guard = self.doc.lock().await;
             let sinks = self.sinks();
+            let done = Done {
+                order,
+                session,
+                writer,
+                peer,
+                size,
+                change,
+                reply,
+            };
             match answer {
-                ServerFrame::Ack { seq, .. } => {
-                    if let Some(room) = guard.as_mut() {
-                        if seq > 0 {
-                            room.mark(seq);
-                        }
-                        room.witness(&[ProjectPeer {
-                            peer,
-                            device_id: writer.device,
-                            account_id: writer.account,
-                        }]);
-                        release(&mut room.waiting, &sinks, order);
-                        if !room.held.grow(&state.snapshots, read_cost(0, size)) {
-                            self.unload(&mut guard, &sinks, busy());
-                        }
-                    }
-                    if let Some(id) = change.as_deref() {
-                        state
-                            .web
-                            .note(self.project, writer.device, id, Fate::Applied);
-                    }
-                    if let Some(reply) = reply {
-                        let _ = reply.send(Ok(()));
-                    }
-                    self.finished(&[session], order);
-                }
+                ServerFrame::Ack { seq, .. } => self.stored(&state, &mut guard, &sinks, seq, done),
                 refused => {
-                    let refusal = match refused {
-                        ServerFrame::Error { code, message } => Refusal::from_frame(code, &message),
-                        _ => Refusal::server(),
-                    };
-                    let cancelled = locked(&self.outbox).cancel();
-                    self.reload(&state, &mut guard).await;
-                    match reply {
-                        Some(reply) => {
-                            let _ = reply.send(Err(refusal));
-                        }
-                        None => {
-                            if let Some(sink) = sinks.get(&session) {
-                                sink.send(&Outgoing::error(&refusal.code, &refusal.message, None));
-                            }
-                        }
-                    }
-                    let mut sessions = vec![session];
-                    let mut through = order;
-                    let abandoned = change.map(|id| (id, writer.device)).into_iter().chain(
-                        cancelled.iter().filter_map(|queued| {
-                            queued.change.clone().map(|id| (id, queued.writer.device))
-                        }),
-                    );
-                    for (id, device) in abandoned {
-                        state.web.note(self.project, device, &id, Fate::Abandoned);
-                    }
-                    for queued in cancelled {
-                        sessions.push(queued.session);
-                        through = through.max(queued.order);
-                        if let Some(reply) = queued.reply {
-                            let _ = reply.send(Err(Refusal::new(
-                                "conflict",
-                                "A change this one built on was refused. Try again.",
-                            )));
-                        }
-                    }
-                    self.finished(&sessions, through);
+                    self.refused(&state, &mut guard, &sinks, refused, done)
+                        .await
                 }
             }
         }
+    }
+
+    fn stored(
+        &self,
+        state: &AppState,
+        guard: &mut tokio::sync::MutexGuard<'_, Option<RoomDoc>>,
+        sinks: &Sinks,
+        seq: u64,
+        done: Done,
+    ) {
+        let Done {
+            order,
+            session,
+            writer,
+            peer,
+            size,
+            change,
+            reply,
+        } = done;
+        if let Some(room) = guard.as_mut() {
+            if seq > 0 {
+                room.mark(seq);
+            }
+            room.witness(&[ProjectPeer {
+                peer,
+                device_id: writer.device,
+                account_id: writer.account,
+            }]);
+            release(&mut room.waiting, sinks, order);
+            if !room.held.grow(&state.snapshots, read_cost(0, size)) {
+                self.unload(guard, sinks, busy());
+            }
+        }
+        if let Some(id) = change.as_deref() {
+            state
+                .web
+                .note(self.project, writer.device, id, Fate::Applied);
+        }
+        if let Some(reply) = reply {
+            let _ = reply.send(Ok(()));
+        }
+        self.finished(&[session], order);
+    }
+
+    async fn refused(
+        &self,
+        state: &AppState,
+        guard: &mut tokio::sync::MutexGuard<'_, Option<RoomDoc>>,
+        sinks: &Sinks,
+        refused: ServerFrame,
+        done: Done,
+    ) {
+        let Done {
+            order,
+            session,
+            writer,
+            change,
+            reply,
+            ..
+        } = done;
+        let refusal = match refused {
+            ServerFrame::Error { code, message } => Refusal::from_frame(code, &message),
+            _ => Refusal::server(),
+        };
+        let cancelled = locked(&self.outbox).cancel();
+        self.reload(state, guard).await;
+        match reply {
+            Some(reply) => {
+                let _ = reply.send(Err(refusal));
+            }
+            None => {
+                if let Some(sink) = sinks.get(&session) {
+                    sink.send(&Outgoing::error(&refusal.code, &refusal.message, None));
+                }
+            }
+        }
+        let mut sessions = vec![session];
+        let mut through = order;
+        let abandoned = change.map(|id| (id, writer.device)).into_iter().chain(
+            cancelled
+                .iter()
+                .filter_map(|queued| queued.change.clone().map(|id| (id, queued.writer.device))),
+        );
+        for (id, device) in abandoned {
+            state.web.note(self.project, device, &id, Fate::Abandoned);
+        }
+        for queued in cancelled {
+            sessions.push(queued.session);
+            through = through.max(queued.order);
+            if let Some(reply) = queued.reply {
+                let _ = reply.send(Err(Refusal::new(
+                    "conflict",
+                    "A change this one built on was refused. Try again.",
+                )));
+            }
+        }
+        self.finished(&sessions, through);
     }
 
     fn sinks(&self) -> Sinks {

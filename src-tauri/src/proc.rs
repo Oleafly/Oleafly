@@ -15,7 +15,7 @@ use std::process::Command;
 
 mod appimage;
 mod output;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 pub(crate) use appimage::simulated::SimulatedAppImage;
 pub(crate) use appimage::{appimage_env_changes, clear_appimage_env};
 pub use output::{output_contained_with_bounds, output_contained_with_timeout, OutputBounds};

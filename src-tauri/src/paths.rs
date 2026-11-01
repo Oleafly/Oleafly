@@ -22,6 +22,10 @@ pub fn home_dir() -> Result<PathBuf, String> {
 }
 
 pub fn oleafly_root() -> Result<PathBuf, String> {
+    #[cfg(test)]
+    if reads_without_data_dir_lock() {
+        return default_data_dir();
+    }
     if let Some(dir) = std::env::var_os("OLEAFLY_DATA_DIR") {
         if !dir.is_empty() {
             return Ok(PathBuf::from(dir));
@@ -663,11 +667,45 @@ pub(crate) fn reparse_class(_path: &Path) -> std::io::Result<ReparseClass> {
 }
 
 #[cfg(test)]
+static DATA_DIR_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+#[cfg(test)]
+static DATA_DIR_LOCK_HOLDER: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+#[cfg(test)]
 pub(crate) fn data_dir_env_lock() -> std::sync::MutexGuard<'static, ()> {
-    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+    let guard = DATA_DIR_ENV_LOCK
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    *DATA_DIR_LOCK_HOLDER
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) =
+        std::thread::current().name().map(str::to_owned);
+    guard
+}
+
+#[cfg(test)]
+fn test_thread_name() -> Option<String> {
+    let name = std::thread::current().name()?.to_owned();
+    (name.contains("::") && !name.starts_with("tokio")).then_some(name)
+}
+
+#[cfg(test)]
+fn reads_without_data_dir_lock() -> bool {
+    let Some(reader) = test_thread_name() else {
+        return false;
+    };
+    match DATA_DIR_ENV_LOCK.try_lock() {
+        Ok(_) => true,
+        Err(std::sync::TryLockError::Poisoned(_)) => false,
+        Err(std::sync::TryLockError::WouldBlock) => {
+            DATA_DIR_LOCK_HOLDER
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref()
+                != Some(reader.as_str())
+        }
+    }
 }
 
 #[cfg(test)]
