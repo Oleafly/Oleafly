@@ -25,6 +25,7 @@ const MARKDOWN = /\.(?:md|markdown)$/i;
 
 type EditorController = typeof import("@/components/editor/cm/controller");
 type ReadyView = NonNullable<Awaited<ReturnType<EditorController["waitForEditorDocument"]>>>;
+type StillCurrent = (state?: ReturnType<typeof useFilesStore.getState>) => boolean;
 
 let pending: AbortController | null = null;
 
@@ -62,27 +63,69 @@ export function keptVisualEditor(path: string): "codemirror" | "tiptap" | null {
   return MARKDOWN.test(path) && !visual.markdownSplit ? "tiptap" : "codemirror";
 }
 
-async function revealInVisualEditor(
-  target: ProjectLocation,
-  options: OpenLocationOptions,
-  abort: AbortController,
-  current: (state?: ReturnType<typeof useFilesStore.getState>) => boolean,
-): Promise<boolean> {
+/** Runs `show`, cancelling it when the jump goes stale or the editor takes too long. */
+async function whileCurrent<T>(abort: AbortController, current: StillCurrent, show: () => Promise<T>): Promise<T> {
   const unsubscribe = useFilesStore.subscribe((state) => {
     if (!current(state)) abort.abort();
   });
   const giveUp = setTimeout(() => abort.abort(), EDITOR_DOCUMENT_WAIT_MS);
   try {
-    const visual = await import("@/components/editor/wysiwyg/reveal");
-    if (!current()) return false;
-    return await visual.revealVisualLocation(target, abort.signal, {
-      select: !options.keepSelection,
-      focus: !options.keepSelection && !options.keepFocus,
-    });
+    return await show();
   } finally {
     clearTimeout(giveUp);
     unsubscribe();
   }
+}
+
+function revealInVisualEditor(
+  target: ProjectLocation,
+  options: OpenLocationOptions,
+  abort: AbortController,
+  current: StillCurrent,
+): Promise<boolean> {
+  return whileCurrent(abort, current, async () => {
+    const visual = await import("@/components/editor/wysiwyg/reveal");
+    if (!current()) return false;
+    return visual.revealVisualLocation(target, abort.signal, {
+      select: !options.keepSelection,
+      focus: !options.keepSelection && !options.keepFocus,
+    });
+  });
+}
+
+/**
+ * Shows the location in the Markdown Visual editor when the user stays in
+ * Visual mode there, and otherwise switches to Code unless Visual mode is
+ * drawn in CodeMirror. True when the Visual editor already showed it.
+ */
+async function showInVisualMode(
+  target: ProjectLocation,
+  options: OpenLocationOptions,
+  abort: AbortController,
+  current: StillCurrent,
+): Promise<boolean> {
+  const kept = keptVisualEditor(target.path);
+  if (kept === "tiptap" && (await revealInVisualEditor(target, options, abort, current))) return true;
+  if (kept !== "codemirror" && current()) revealSourceEditor();
+  return false;
+}
+
+async function revealInCodeEditor(
+  target: ProjectLocation,
+  options: OpenLocationOptions,
+  abort: AbortController,
+  current: StillCurrent,
+): Promise<boolean> {
+  const editor = await import("@/components/editor/cm/controller");
+  if (!current()) return false;
+  return whileCurrent(abort, current, async () => {
+    const view = await editor.waitForEditorDocument(target.path, abort.signal);
+    if (!view || !current()) return false;
+    if (options.keepSelection) centre(editor, view, target);
+    else if (options.keepFocus) keepingFocus(editor, () => reveal(editor, view, target));
+    else reveal(editor, view, target);
+    return true;
+  });
 }
 
 function openTab(
@@ -139,32 +182,11 @@ async function openLocation(
   if (options.showEditor !== false) showEditor(options.pdfView);
   if (before.activePath !== target.path) await openTab(before, target.path, options.opener);
 
-  const current = (state = useFilesStore.getState()) =>
+  const current: StillCurrent = (state = useFilesStore.getState()) =>
     !abort.signal.aborted && state.projectId === projectId && state.activePath === target.path;
   if (!current()) return false;
   if (isBinaryProjectPath(target.path)) return true;
-  if (options.showEditor !== false && VISUAL_SOURCE.test(target.path)) {
-    const kept = keptVisualEditor(target.path);
-    if (kept === "tiptap" && (await revealInVisualEditor(target, options, abort, current))) return true;
-    if (!current()) return false;
-    if (kept !== "codemirror") revealSourceEditor();
-  }
-
-  const editor = await import("@/components/editor/cm/controller");
-  if (!current()) return false;
-  const unsubscribe = useFilesStore.subscribe((state) => {
-    if (!current(state)) abort.abort();
-  });
-  const giveUp = setTimeout(() => abort.abort(), EDITOR_DOCUMENT_WAIT_MS);
-  try {
-    const view = await editor.waitForEditorDocument(target.path, abort.signal);
-    if (!view || !current()) return false;
-    if (options.keepSelection) centre(editor, view, target);
-    else if (options.keepFocus) keepingFocus(editor, () => reveal(editor, view, target));
-    else reveal(editor, view, target);
-    return true;
-  } finally {
-    clearTimeout(giveUp);
-    unsubscribe();
-  }
+  const visualSource = options.showEditor !== false && VISUAL_SOURCE.test(target.path);
+  if (visualSource && (await showInVisualMode(target, options, abort, current))) return true;
+  return revealInCodeEditor(target, options, abort, current);
 }

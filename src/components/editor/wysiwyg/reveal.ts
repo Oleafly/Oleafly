@@ -58,7 +58,7 @@ export async function revealVisualLocation(
     preservedInlineRanges: markdownMathRanges(source),
   });
   const { doc } = editor.state;
-  if (!block || blockCount(doc) !== block.count) return false;
+  if (block?.count !== blockCount(doc)) return false;
   let pos = 0;
   for (let index = 0; index < block.index; index++) pos += doc.child(index).nodeSize;
   if (options.focus) editor.view.focus();
