@@ -24,7 +24,7 @@ zip = { version = "9.1", default-features = false, features = ["deflate"] }
 [target.'cfg(not(windows))'.dependencies]
 # Streaming decoder for .tar.xz toolchains. Static linking avoids a runtime
 # liblzma dependency; disabling defaults avoids bindgen.
-liblzma = { version = "=0.4.8", default-features = false, features = ["static"] }
+liblzma = { version = "=0.4.9", default-features = false, features = ["static"] }
 
 [features]
 # Installs are visible only to the thread that started them, so parallel
