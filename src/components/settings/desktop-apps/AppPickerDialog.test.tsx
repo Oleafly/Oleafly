@@ -84,7 +84,8 @@ describe("AppPickerDialog", () => {
     renderPicker();
     const list = await screen.findByTestId("desktop-apps-picker-list");
     expect(within(list).getAllByRole("button")).toHaveLength(MAX_PICKER_ROWS);
-    await user.type(screen.getByRole("searchbox", { name: copy.dialog.search }), "app 12");
+    await user.click(screen.getByRole("searchbox", { name: copy.dialog.search }));
+    await user.paste("app 12");
     await waitFor(() => {
       const rows = within(screen.getByTestId("desktop-apps-picker-list")).getAllByRole("button");
       expect(rows.length).toBeLessThanOrEqual(MAX_PICKER_ROWS);

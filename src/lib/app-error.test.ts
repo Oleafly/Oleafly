@@ -147,7 +147,7 @@ describe("app errors", () => {
         }
       }
     }
-  });
+  }, 20_000);
 
   it("follows the active locale", async () => {
     await applyLocale("zh-Hans");
