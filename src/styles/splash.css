@@ -62,7 +62,7 @@ body {
   opacity: 0.18;
 }
 
-/* The brand fill animation: the green leaf fills from the stem up. */
+/* The brand fill animation: the leaf fills from the stem up. */
 .oleafly-splash-fill {
   animation: oleafly-splash-fill 1.4s ease-in-out infinite alternate;
 }

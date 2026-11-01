@@ -88,6 +88,53 @@
       <div id="oleafly-splash-stage" class="oleafly-splash-stage">Initializing Oleafly</div>
     </div>
     <script>
+      (function () {
+        var quills = {
+          classic: ["#34B44A"],
+          pastel: ["#67E8F9", "#A78BFA", "#F472B6", "#FBBF24"],
+          blue: ["#2F6FDB"],
+          light: ["#2F6FDB"],
+          prism: ["#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#00B8D9", "#2F6FDB", "#8E44EF"],
+          iridescent: ["#22D3EE", "#3B82F6", "#8B5CF6", "#EC4899"],
+          ocean: ["#06B6D4", "#2563EB", "#1E3A8A"],
+          mint: ["#2DD4BF", "#0EA5E9", "#3B82F6"],
+          aurora: ["#22D3EE", "#34D399", "#84CC16"],
+          sunset: ["#F59E0B", "#F43F5E", "#A855F7"],
+          coral: ["#FDBA74", "#FB7185", "#E11D48"]
+        };
+        var colours = quills.classic;
+        try {
+          var saved = localStorage.getItem("oleafly.appIcon");
+          if (Object.prototype.hasOwnProperty.call(quills, saved)) colours = quills[saved];
+        } catch (e) {}
+        var svg = document.querySelector(".oleafly-splash-fill");
+        var path = svg && svg.querySelector("path");
+        if (!path) return;
+        if (colours.length === 1) {
+          path.setAttribute("fill", colours[0]);
+          return;
+        }
+        var ns = "http://www.w3.org/2000/svg";
+        var defs = document.createElementNS(ns, "defs");
+        var gradient = document.createElementNS(ns, "linearGradient");
+        gradient.setAttribute("id", "oleafly-splash-quill");
+        gradient.setAttribute("gradientUnits", "userSpaceOnUse");
+        gradient.setAttribute("x1", "3");
+        gradient.setAttribute("y1", "22");
+        gradient.setAttribute("x2", "21");
+        gradient.setAttribute("y2", "2");
+        for (var i = 0; i < colours.length; i += 1) {
+          var stop = document.createElementNS(ns, "stop");
+          stop.setAttribute("offset", String(i / (colours.length - 1)));
+          stop.setAttribute("stop-color", colours[i]);
+          gradient.appendChild(stop);
+        }
+        defs.appendChild(gradient);
+        svg.insertBefore(defs, path);
+        path.setAttribute("fill", "url(#oleafly-splash-quill)");
+      })();
+    </script>
+    <script>
       // Boot-stage narration. Real boot progress (boot-telemetry.ts) advances
       // the text the moment a stage is reached; a 1s fallback timer keeps it
       // moving on slow starts so the splash never looks frozen. The index is

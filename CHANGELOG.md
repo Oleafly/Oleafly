@@ -109,8 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **App icon** in Settings > Appearance offers eleven icons for the Dock or
   taskbar while Oleafly is open: classic, pastel, blue, light, prism,
   iridescent, ocean, mint, aurora, sunset and coral. Classic, the green quill,
-  is still the default. The quill next to the Oleafly name takes on the
-  colours of the icon you pick.
+  is still the default. The quill next to the Oleafly name and the one on the
+  startup screen take on the colours of the icon you pick.
 - Template authors can give their own Typst functions a form. Describe the
   arguments in `[tool.oleafly]` in a package's `typst.toml`, or in
   `oleafly-forms.toml` at the project root, and Visual mode shows each call as
