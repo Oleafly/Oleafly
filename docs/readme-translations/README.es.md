@@ -324,6 +324,7 @@ El paquete `research-core` incluido contiene 39 skills. Los nombres siguientes s
 | Plataforma | Paquete | Descarga |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![Descargar para macOS (Apple Silicon)](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [Descargar para macOS (Intel)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI o EXE | [![Descargar para Windows](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage, DEB o RPM | [![Descargar para Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage, DEB o RPM | [![Descargar para Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |

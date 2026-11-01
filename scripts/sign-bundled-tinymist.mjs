@@ -35,7 +35,12 @@ import { resourceArchivePath } from "./fetch-language-servers.mjs";
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 const MANIFEST_PATH = join(SCRIPT_DIR, "language-servers", "manifest.json");
-const TARGET = "aarch64-apple-darwin";
+const MACOS_TARGETS = ["aarch64-apple-darwin", "x86_64-apple-darwin"];
+const targetFlag = process.argv.indexOf("--target");
+const TARGET = targetFlag === -1 ? "aarch64-apple-darwin" : process.argv[targetFlag + 1];
+if (!MACOS_TARGETS.includes(TARGET)) {
+  throw new Error(`--target must be one of ${MACOS_TARGETS.join(", ")}, got ${TARGET ?? "nothing"}`);
+}
 
 const sha256 = (buffer) => createHash("sha256").update(buffer).digest("hex");
 const run = (file, args, options = {}) =>

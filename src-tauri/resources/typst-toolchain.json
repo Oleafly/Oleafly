@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-02",
+  "generatedAt": "2026-11-01",
   "supportedTargets": [
     "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
     "aarch64-unknown-linux-gnu",
     "x86_64-unknown-linux-gnu",
     "x86_64-pc-windows-msvc"
@@ -47,6 +48,17 @@
             "binarySize": 29891480,
             "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.11.1/typst-aarch64-apple-darwin.tar.xz",
             "githubUrl": "https://github.com/typst/typst/releases/download/v0.11.1/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "x86_64-apple-darwin": {
+            "asset": "typst-x86_64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-apple-darwin/typst",
+            "archiveSha256": "fea59ec1f7dd85805e21bffaa3843e6a647e2f35de362ffe6f81a143568fd162",
+            "archiveSize": 10505272,
+            "binarySha256": "98b7aee1453192f707886b6069629b27657eb72caedf1f8d8baece530a72aea4",
+            "binarySize": 31300144,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.11.1/typst-x86_64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.11.1/typst-x86_64-apple-darwin.tar.xz"
           },
           "aarch64-unknown-linux-gnu": {
             "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
@@ -122,6 +134,17 @@
             "binarySize": 31639368,
             "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.12.0/typst-aarch64-apple-darwin.tar.xz",
             "githubUrl": "https://github.com/typst/typst/releases/download/v0.12.0/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "x86_64-apple-darwin": {
+            "asset": "typst-x86_64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-apple-darwin/typst",
+            "archiveSha256": "cba1b1e43b992603da9cc7777ac1c8af2c413f381453169a22c57d9a9aa02efb",
+            "archiveSize": 11419360,
+            "binarySha256": "95ecabecfce794c2d7417672fde87e7741752e3f05d5dd355b4c8cbede3a41de",
+            "binarySize": 33159664,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.12.0/typst-x86_64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.12.0/typst-x86_64-apple-darwin.tar.xz"
           },
           "aarch64-unknown-linux-gnu": {
             "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
@@ -201,6 +224,17 @@
             "binarySize": 33631720,
             "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.13.1/typst-aarch64-apple-darwin.tar.xz",
             "githubUrl": "https://github.com/typst/typst/releases/download/v0.13.1/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "x86_64-apple-darwin": {
+            "asset": "typst-x86_64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-apple-darwin/typst",
+            "archiveSha256": "4dabfe647f7f01ed9cc13ad8196a6c7f5e16f0732821b522d50740d3a9f5207b",
+            "archiveSize": 11789644,
+            "binarySha256": "c8d4f613159ac9d2d180f64a857df2d37ce008c0f1751fee82352a829af5524d",
+            "binarySize": 35338680,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.13.1/typst-x86_64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.13.1/typst-x86_64-apple-darwin.tar.xz"
           },
           "aarch64-unknown-linux-gnu": {
             "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
@@ -296,6 +330,17 @@
             "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.14.2/typst-aarch64-apple-darwin.tar.xz",
             "githubUrl": "https://github.com/typst/typst/releases/download/v0.14.2/typst-aarch64-apple-darwin.tar.xz"
           },
+          "x86_64-apple-darwin": {
+            "asset": "typst-x86_64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-apple-darwin/typst",
+            "archiveSha256": "4e91d8e1e33ab164f949c5762e01ee3faa585c8615a2a6bd5e3677fa8506b249",
+            "archiveSize": 14079728,
+            "binarySha256": "30a58ba4b6ea9e0a005ceb2edf9902147a4b704c924661b147b51a7265929f4d",
+            "binarySize": 42878928,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.14.2/typst-x86_64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.14.2/typst-x86_64-apple-darwin.tar.xz"
+          },
           "aarch64-unknown-linux-gnu": {
             "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
             "archiveType": "tar.xz",
@@ -389,6 +434,17 @@
             "binarySize": 45012832,
             "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.0/typst-aarch64-apple-darwin.tar.xz",
             "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.0/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "x86_64-apple-darwin": {
+            "asset": "typst-x86_64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-apple-darwin/typst",
+            "archiveSha256": "30210c7c539c7954db94c063cd98b43fd0a0cad285d656dbbce2a40aee2e79be",
+            "archiveSize": 15619352,
+            "binarySha256": "472955622cf3cd10dd89dcf7c3cd9a6c0d2c100ab2f6ea9804a0f1256ad08705",
+            "binarySize": 47549056,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.0/typst-x86_64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.0/typst-x86_64-apple-darwin.tar.xz"
           },
           "aarch64-unknown-linux-gnu": {
             "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
@@ -484,6 +540,17 @@
             "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.1/typst-aarch64-apple-darwin.tar.xz",
             "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.1/typst-aarch64-apple-darwin.tar.xz"
           },
+          "x86_64-apple-darwin": {
+            "asset": "typst-x86_64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-apple-darwin/typst",
+            "archiveSha256": "7f9fdd9584866245de9a79e0add8f9236fae6f40a8a45e2c4771ccc14db4e0fa",
+            "archiveSize": 15635600,
+            "binarySha256": "a6fb5786e71f6f95d8323b326353770734c1e4624e7c108783ea578723916b46",
+            "binarySize": 47572336,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.1/typst-x86_64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-apple-darwin.tar.xz"
+          },
           "aarch64-unknown-linux-gnu": {
             "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
             "archiveType": "tar.xz",
@@ -542,6 +609,17 @@
             "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.11.32/tinymist-darwin-arm64",
             "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.11.32/tinymist-darwin-arm64"
           },
+          "x86_64-apple-darwin": {
+            "asset": "tinymist-darwin-x64",
+            "archiveType": "binary",
+            "archiveMember": null,
+            "archiveSha256": "cd2d575c314d392be23a850965450eeabe289bc726e8bb974c5f9317a22142c7",
+            "archiveSize": 48805240,
+            "binarySha256": "cd2d575c314d392be23a850965450eeabe289bc726e8bb974c5f9317a22142c7",
+            "binarySize": 48805240,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.11.32/tinymist-darwin-x64",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.11.32/tinymist-darwin-x64"
+          },
           "aarch64-unknown-linux-gnu": {
             "asset": "tinymist-linux-arm64",
             "archiveType": "binary",
@@ -593,6 +671,17 @@
             "binarySize": 48220352,
             "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.12.22/tinymist-aarch64-apple-darwin.tar.gz",
             "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.12.22/tinymist-aarch64-apple-darwin.tar.gz"
+          },
+          "x86_64-apple-darwin": {
+            "asset": "tinymist-x86_64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-apple-darwin/tinymist",
+            "archiveSha256": "6adb6774147f66351e7b79a4f0d1b44a982f9c5e2a165050c8096cb27de8a0f7",
+            "archiveSize": 23929657,
+            "binarySha256": "9b512717851d8735ebc7cb848e956b499f44c4799053f813200eed8866f2f6ac",
+            "binarySize": 52149036,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.12.22/tinymist-x86_64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.12.22/tinymist-x86_64-apple-darwin.tar.gz"
           },
           "aarch64-unknown-linux-gnu": {
             "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
@@ -646,6 +735,17 @@
             "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.13.30/tinymist-aarch64-apple-darwin.tar.gz",
             "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.13.30/tinymist-aarch64-apple-darwin.tar.gz"
           },
+          "x86_64-apple-darwin": {
+            "asset": "tinymist-x86_64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-apple-darwin/tinymist",
+            "archiveSha256": "50e9b5f5d315b7206752a5cd5ee29cb2db06948e97930013e5c9b4f97f612772",
+            "archiveSize": 25588990,
+            "binarySha256": "420cf7e5c077e82f419d912b940a1d2c8aca9654f82b55d72bc24f9b3eca398b",
+            "binarySize": 55500024,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.13.30/tinymist-x86_64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.13.30/tinymist-x86_64-apple-darwin.tar.gz"
+          },
           "aarch64-unknown-linux-gnu": {
             "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
             "archiveType": "tar.gz",
@@ -698,6 +798,17 @@
             "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.14.20/tinymist-aarch64-apple-darwin.tar.gz",
             "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.14.20/tinymist-aarch64-apple-darwin.tar.gz"
           },
+          "x86_64-apple-darwin": {
+            "asset": "tinymist-x86_64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-apple-darwin/tinymist",
+            "archiveSha256": "15163e547e76b7420bffc42b8c006c6431d9648a49a6589ca41c919e2b4e0e11",
+            "archiveSize": 29259932,
+            "binarySha256": "b9ed1df529e1045a58d437afce0ce0ef943b11bd67c394b8f856e05cc8e8c05e",
+            "binarySize": 64340988,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.14.20/tinymist-x86_64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.14.20/tinymist-x86_64-apple-darwin.tar.gz"
+          },
           "aarch64-unknown-linux-gnu": {
             "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
             "archiveType": "tar.gz",
@@ -749,6 +860,17 @@
             "binarySize": 64987632,
             "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-aarch64-apple-darwin.tar.gz",
             "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-aarch64-apple-darwin.tar.gz"
+          },
+          "x86_64-apple-darwin": {
+            "asset": "tinymist-x86_64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-apple-darwin/tinymist",
+            "archiveSha256": "0ca702f40c5028d5937e081799a2c07d30c3f8f2ce3e40ce469471856cd6cef1",
+            "archiveSize": 32377988,
+            "binarySha256": "c84ad141a790954b9038d7bdb0ab2383a614009552abc0fb8fe68489884ab9ac",
+            "binarySize": 71088800,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-x86_64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-x86_64-apple-darwin.tar.gz"
           },
           "aarch64-unknown-linux-gnu": {
             "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",

@@ -423,6 +423,7 @@ fn parse_manifest(json: &str) -> Result<ValidatedManifest, String> {
     }
     let expected_targets: HashSet<&str> = [
         "aarch64-apple-darwin",
+        "x86_64-apple-darwin",
         "aarch64-unknown-linux-gnu",
         "x86_64-unknown-linux-gnu",
         "x86_64-pc-windows-msvc",
@@ -1766,6 +1767,11 @@ fn current_target_triple() -> Result<&'static str, String> {
     Ok("aarch64-apple-darwin")
 }
 
+#[cfg(all(target_arch = "x86_64", target_os = "macos"))]
+fn current_target_triple() -> Result<&'static str, String> {
+    Ok("x86_64-apple-darwin")
+}
+
 #[cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"))]
 fn current_target_triple() -> Result<&'static str, String> {
     Ok("aarch64-unknown-linux-gnu")
@@ -1783,6 +1789,7 @@ fn current_target_triple() -> Result<&'static str, String> {
 
 #[cfg(not(any(
     all(target_arch = "aarch64", target_os = "macos"),
+    all(target_arch = "x86_64", target_os = "macos"),
     all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"),
     all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
     all(target_arch = "x86_64", target_os = "windows", target_env = "msvc")

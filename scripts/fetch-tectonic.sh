@@ -30,6 +30,7 @@ trap cleanup_fetch EXIT INT TERM
 asset_for() {
   case "$1" in
     aarch64-apple-darwin)     echo "tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar:a3f1cac7c5678f01661a92212f58480ae3b0634115d880dbc59e2953ded45667" ;;
+    x86_64-apple-darwin)      echo "tectonic-$VERSION-x86_64-apple-darwin.tar.gz:tar:7c90ef5b6ddb1eb1937e4337add5237b79338e4b9676459fa91187d24d6cdf80" ;;
     aarch64-unknown-linux-gnu) echo "tectonic-$VERSION-aarch64-unknown-linux-musl.tar.gz:tar:b10954a95404f3ab2328d2fa59a5ebab8e657f893fab096f98be8db7c0c979b8" ;;
     x86_64-pc-windows-msvc)   echo "tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip:f61ce51f0b0ade1015b7de7ef368541c5424e9756ecbd0d7af97d6d48030845f" ;;
     x86_64-unknown-linux-gnu) echo "tectonic-$VERSION-x86_64-unknown-linux-musl.tar.gz:tar:8533d07f9ccbd7a65824b9e0459041bca34af1eb33daba48f59215593753a3b7" ;;
@@ -37,7 +38,7 @@ asset_for() {
   esac
 }
 
-ALL_TARGETS="aarch64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu"
+ALL_TARGETS="aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu"
 
 checksum() {
   local file="$1"

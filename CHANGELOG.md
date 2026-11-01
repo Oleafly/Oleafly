@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Oleafly has a build for Intel Macs. Download the `x64` DMG from the release
+  page. It comes with the same Tectonic, Biber, Pandoc, Typst and Tinymist as
+  the Apple Silicon build, and other Typst versions, TexLab, Quarto and
+  Calepin download for Intel Macs too.
+
 ### Changed
 
 - Release notes are open from the start, in the update window and in What's

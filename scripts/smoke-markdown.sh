@@ -8,7 +8,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 case "$TARGET" in
-  aarch64-apple-darwin)
+  aarch64-apple-darwin|x86_64-apple-darwin)
     EXT=""; TECTONIC="src-tauri/binaries/tectonic-$TARGET" ;;
   aarch64-unknown-linux-gnu)
     EXT=""; TECTONIC="src-tauri/binaries/tectonic-$TARGET" ;;

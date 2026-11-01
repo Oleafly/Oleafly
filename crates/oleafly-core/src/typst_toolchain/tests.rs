@@ -117,6 +117,7 @@ fn the_embedded_catalog_parses_and_names_the_bundled_release() {
             .collect::<Vec<_>>(),
         [
             "aarch64-apple-darwin",
+            "x86_64-apple-darwin",
             "aarch64-unknown-linux-gnu",
             "x86_64-unknown-linux-gnu",
             "x86_64-pc-windows-msvc"
