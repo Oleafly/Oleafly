@@ -595,7 +595,7 @@ fn archive_escape_and_symlinks_are_rejected() {
     use std::io::Write;
     let temp = tempfile::tempdir().unwrap();
     let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
-    let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+    let options = zip::write::SimpleFileOptions::default();
     zip.start_file("../escape", options).unwrap();
     zip.write_all(b"x").unwrap();
     let bytes = zip.finish().unwrap().into_inner();

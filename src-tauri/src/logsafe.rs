@@ -107,8 +107,8 @@ pub fn export_archive_to(dest: &std::path::Path, include_sensitive: bool) -> Res
     let file =
         std::fs::File::create(dest).map_err(|e| format!("failed to create log archive: {e}"))?;
     let mut archive = zip::ZipWriter::new(file);
-    let options: zip::write::FileOptions<'_, ()> =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
     archive
         .start_file("structured.jsonl", options)
         .and_then(|()| archive.write_all(lines.as_bytes()).map_err(Into::into))
