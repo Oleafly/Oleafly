@@ -132,6 +132,7 @@ function AppAppearanceTab() {
   const appIcon = useSettingsStore((state) => state.appIcon);
   const setAppIcon = useSettingsStore((state) => state.setAppIcon);
   const appIconLabels: Readonly<Record<AppIconId, string>> = {
+    classic: t(($) => $.settings.appearance.app.appIcon.classic),
     pastel: t(($) => $.settings.appearance.app.appIcon.pastel),
     blue: t(($) => $.settings.appearance.app.appIcon.blue),
     light: t(($) => $.settings.appearance.app.appIcon.light),
@@ -356,7 +357,7 @@ function AppAppearanceTab() {
             src={appIconSource(appIcon)}
             alt=""
             draggable={false}
-            className="size-4 shrink-0"
+            className="size-10 shrink-0"
           />
         }
         title={t(($) => $.settings.appearance.app.appIcon.label)}

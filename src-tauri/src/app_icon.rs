@@ -5,6 +5,7 @@ use tauri::{AppHandle, Runtime};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum AppIconVariant {
     #[default]
+    Classic,
     Pastel,
     Blue,
     Light,
@@ -17,7 +18,12 @@ pub(crate) enum AppIconVariant {
     Coral,
 }
 
-const ICONS: [(AppIconVariant, &str, &[u8]); 10] = [
+const ICONS: [(AppIconVariant, &str, &[u8]); 11] = [
+    (
+        AppIconVariant::Classic,
+        "classic",
+        include_bytes!("../../public/app-icon/classic.png"),
+    ),
     (
         AppIconVariant::Pastel,
         "pastel",
@@ -72,7 +78,7 @@ const ICONS: [(AppIconVariant, &str, &[u8]); 10] = [
 
 impl AppIconVariant {
     pub(crate) const ALL: [Self; ICONS.len()] = {
-        let mut all = [Self::Pastel; ICONS.len()];
+        let mut all = [Self::Classic; ICONS.len()];
         let mut index = 0;
         while index < ICONS.len() {
             all[index] = ICONS[index].0;
@@ -98,7 +104,7 @@ impl AppIconVariant {
     }
 }
 
-static CURRENT: RwLock<AppIconVariant> = RwLock::new(AppIconVariant::Pastel);
+static CURRENT: RwLock<AppIconVariant> = RwLock::new(AppIconVariant::Classic);
 
 #[cfg(any(not(target_os = "macos"), test))]
 pub(crate) fn current() -> AppIconVariant {
@@ -488,6 +494,10 @@ mod tests {
 
     #[test]
     fn parses_every_icon_name_and_nothing_else() {
+        assert_eq!(
+            AppIconVariant::parse("classic"),
+            Some(AppIconVariant::Classic)
+        );
         assert_eq!(AppIconVariant::parse("blue"), Some(AppIconVariant::Blue));
         assert_eq!(AppIconVariant::parse("light"), Some(AppIconVariant::Light));
         assert_eq!(
@@ -497,6 +507,7 @@ mod tests {
         for refused in [
             "",
             "Blue",
+            "Classic",
             "LIGHT",
             " blue",
             "green",
@@ -510,12 +521,12 @@ mod tests {
         for variant in AppIconVariant::ALL {
             assert_eq!(AppIconVariant::parse(variant.id()), Some(variant));
         }
-        assert_eq!(AppIconVariant::default(), AppIconVariant::Pastel);
+        assert_eq!(AppIconVariant::default(), AppIconVariant::Classic);
     }
 
     #[test]
     fn the_table_lists_each_icon_once_in_declaration_order() {
-        assert_eq!(AppIconVariant::ALL.len(), 10);
+        assert_eq!(AppIconVariant::ALL.len(), 11);
         for (index, (variant, _, _)) in ICONS.iter().enumerate() {
             assert_eq!(variant.index(), index, "{variant:?}");
         }
@@ -613,13 +624,13 @@ mod tests {
 
     #[test]
     fn remembers_the_chosen_icon_and_reports_only_changes() {
-        assert_eq!(current(), AppIconVariant::Pastel);
-        assert!(!replace_current(AppIconVariant::Pastel));
+        assert_eq!(current(), AppIconVariant::Classic);
+        assert!(!replace_current(AppIconVariant::Classic));
         assert!(replace_current(AppIconVariant::Blue));
         assert_eq!(current(), AppIconVariant::Blue);
         assert!(!replace_current(AppIconVariant::Blue));
-        assert!(replace_current(AppIconVariant::Pastel));
-        assert_eq!(current(), AppIconVariant::Pastel);
+        assert!(replace_current(AppIconVariant::Classic));
+        assert_eq!(current(), AppIconVariant::Classic);
     }
 
     /// The PNG layers of an .icns file. The ARGB and legacy layers are skipped.
