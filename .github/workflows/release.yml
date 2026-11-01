@@ -53,8 +53,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # GitHub retired the macos-14 image on 2026-11-02. The macOS-only
+          # steps below check runner.os, not this label, so the next image
+          # change can't silently skip signing and notarization.
           - name: macOS (Apple Silicon)
-            os: macos-14
+            os: macos-15
             rust_target: aarch64-apple-darwin
             args: "--target aarch64-apple-darwin"
           - name: Linux (x86_64)
@@ -161,7 +164,7 @@ jobs:
       # unsigned. Sign it before Tauri bundles the resource, or the whole app is
       # rejected. No-op on other platforms and on unsigned builds.
       - name: Sign the bundled Tinymist binary (macOS)
-        if: matrix.os == 'macos-14'
+        if: runner.os == 'macOS'
         shell: bash
         env:
           SIGN_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -248,7 +251,7 @@ jobs:
       # build" (still succeeds, for forks and for before certs are set up).
       # See docs/signing.md for the one-time account/certificate setup.
       - name: Enable macOS signing & notarization (when secrets exist)
-        if: matrix.os == 'macos-14'
+        if: runner.os == 'macOS'
         shell: bash
         env:
           SECRET_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
