@@ -800,16 +800,21 @@ export function appZoomLevel(value: unknown): number {
 }
 
 export const APP_ICONS = [
-  { id: "pastel", src: "/app-icon/pastel.png" },
-  { id: "blue", src: "/app-icon/blue.png" },
-  { id: "light", src: "/app-icon/light.png" },
-  { id: "prism", src: "/app-icon/prism.png" },
-  { id: "iridescent", src: "/app-icon/iridescent.png" },
-  { id: "ocean", src: "/app-icon/ocean.png" },
-  { id: "mint", src: "/app-icon/mint.png" },
-  { id: "aurora", src: "/app-icon/aurora.png" },
-  { id: "sunset", src: "/app-icon/sunset.png" },
-  { id: "coral", src: "/app-icon/coral.png" },
+  { id: "classic", src: "/app-icon/classic.png", quill: ["#34B44A"] },
+  { id: "pastel", src: "/app-icon/pastel.png", quill: ["#67E8F9", "#A78BFA", "#F472B6", "#FBBF24"] },
+  { id: "blue", src: "/app-icon/blue.png", quill: ["#2F6FDB"] },
+  { id: "light", src: "/app-icon/light.png", quill: ["#2F6FDB"] },
+  {
+    id: "prism",
+    src: "/app-icon/prism.png",
+    quill: ["#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#00B8D9", "#2F6FDB", "#8E44EF"],
+  },
+  { id: "iridescent", src: "/app-icon/iridescent.png", quill: ["#22D3EE", "#3B82F6", "#8B5CF6", "#EC4899"] },
+  { id: "ocean", src: "/app-icon/ocean.png", quill: ["#06B6D4", "#2563EB", "#1E3A8A"] },
+  { id: "mint", src: "/app-icon/mint.png", quill: ["#2DD4BF", "#0EA5E9", "#3B82F6"] },
+  { id: "aurora", src: "/app-icon/aurora.png", quill: ["#22D3EE", "#34D399", "#84CC16"] },
+  { id: "sunset", src: "/app-icon/sunset.png", quill: ["#F59E0B", "#F43F5E", "#A855F7"] },
+  { id: "coral", src: "/app-icon/coral.png", quill: ["#FDBA74", "#FB7185", "#E11D48"] },
 ] as const;
 
 export type AppIconId = (typeof APP_ICONS)[number]["id"];
@@ -817,11 +822,15 @@ export type AppIconId = (typeof APP_ICONS)[number]["id"];
 export const APP_ICON_IDS: readonly AppIconId[] = APP_ICONS.map((icon) => icon.id);
 
 export function readAppIcon(value: unknown): AppIconId {
-  return APP_ICON_IDS.find((id) => id === value) ?? "pastel";
+  return APP_ICON_IDS.find((id) => id === value) ?? "classic";
 }
 
 export function appIconSource(id: AppIconId): string {
   return (APP_ICONS.find((icon) => icon.id === id) ?? APP_ICONS[0]).src;
+}
+
+export function appIconQuill(id: AppIconId): readonly string[] {
+  return (APP_ICONS.find((icon) => icon.id === id) ?? APP_ICONS[0]).quill;
 }
 
 export const EDITOR_FONT_SIZES: readonly number[] = [11, 12, 13, 14, 15, 16, 18, 20, 24];
@@ -1228,7 +1237,7 @@ const PREF_DEFAULTS = {
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
-  appIcon: "pastel" as AppIconId,
+  appIcon: "classic" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
@@ -1995,7 +2004,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.bgPattern", v);
     set({ bgPattern: v });
   },
-  appIcon: readAppIcon(ls("oleafly.appIcon", "pastel")),
+  appIcon: readAppIcon(ls("oleafly.appIcon", "classic")),
   setAppIcon: (v) => {
     const icon = readAppIcon(v);
     saveLs("oleafly.appIcon", icon);

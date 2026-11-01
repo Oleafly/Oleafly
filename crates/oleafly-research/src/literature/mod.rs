@@ -399,22 +399,45 @@ async fn search_pubmed(
         .map_err(|error| error.to_string());
     }
 
+    let summary_json = match pubmed_summary(http, &ids).await {
+        Ok(summary) if sources::pubmed_summary_has_records(&summary) => summary,
+        first => match pubmed_citation_summary(http, &ids).await {
+            Ok(summary) if sources::pubmed_summary_has_records(&summary) => summary,
+            _ => first?,
+        },
+    };
+    serde_json::to_string(&json!({ "total": total, "summary": summary_json }))
+        .map_err(|error| error.to_string())
+}
+
+async fn pubmed_summary(http: &reqwest::Client, ids: &str) -> Result<Value, String> {
     let summary = response_text(
         "PubMed",
         http.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi")
             .query(&[
                 ("db", "pubmed"),
-                ("id", ids.as_str()),
+                ("id", ids),
                 ("retmode", "json"),
                 ("version", "2.0"),
                 ("tool", "oleafly"),
             ]),
     )
     .await?;
-    let summary_json: Value = serde_json::from_str(&summary)
+    serde_json::from_str(&summary)
+        .map_err(|error| format!("PubMed returned invalid summary JSON: {error}"))
+}
+
+async fn pubmed_citation_summary(http: &reqwest::Client, ids: &str) -> Result<Value, String> {
+    let citations = response_text(
+        "PubMed",
+        http.get("https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/")
+            .query(&[("format", "csl"), ("id", ids)]),
+    )
+    .await?;
+    let citations: Value = serde_json::from_str(&citations)
         .map_err(|error| format!("PubMed returned invalid summary JSON: {error}"))?;
-    serde_json::to_string(&json!({ "total": total, "summary": summary_json }))
-        .map_err(|error| error.to_string())
+    let order: Vec<&str> = ids.split(',').collect();
+    Ok(sources::pubmed_summary_from_csl(&citations, &order))
 }
 
 async fn search_arxiv(

@@ -117,8 +117,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Kimi (Moonshot), Zhipu GLM, SiliconFlow and Volcengine Ark. Pick one and it
   fills in the name and base URL, so you only add your API key.
 - **App icon**, a section below Theme customization in Settings > Appearance,
-  offers ten icons for the Dock or taskbar while Oleafly is open: pastel,
-  blue, light, prism, iridescent, ocean, mint, aurora, sunset and coral.
+  offers eleven icons for the Dock or taskbar while Oleafly is open: classic,
+  pastel, blue, light, prism, iridescent, ocean, mint, aurora, sunset and
+  coral. Classic, the green quill, is still the default. The quill next to the
+  Oleafly name takes on the colours of the icon you pick.
 - Template authors can give their own Typst functions a form. Describe the
   arguments in `[tool.oleafly]` in a package's `typst.toml`, or in
   `oleafly-forms.toml` at the project root, and Visual mode shows each call as
@@ -180,8 +182,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Experimentation is gone.
 - With Oleafly in Chinese, DeepSeek is the suggested AI provider. It comes
   first in the provider list and is preselected until you set up a provider.
-- New app icon: a quill in a pastel gradient, cyan to amber, on a light
-  tile. The quill inside the app is blue.
 - Desktop apps is now called Computer Use. Its tab in Settings > Integrations
   has a cursor icon and comes after Oleafly MCP, and the app picker shows
   each app's icon.
@@ -201,6 +201,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer crashes the app (#359). If a dialog or panel does run into an
   error, only that part closes now and the details go to the log. Before, the
   whole window switched to the crash screen.
+- PubMed ID lookups and PubMed literature search keep working when PubMed's
+  summary service is down. Oleafly then gets the records from NCBI's
+  citation exporter. Before, Add citation and `oleaflyc cite` said PubMed had
+  no record for a real paper, and search showed no PubMed results.
 - Computer Use works with Cua Driver 0.38, the version its installer gives
   you now. Oleafly refused to start every 0.38 driver, saying it wasn't
   running with Oleafly's limits, because 0.38 words that check's answer

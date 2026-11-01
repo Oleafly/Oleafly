@@ -22,8 +22,9 @@ beforeEach(() => {
 });
 
 describe("app icon preference", () => {
-  it("offers pastel first, then blue, light and the other gradients, and starts on pastel", async () => {
+  it("offers classic first, then pastel, blue, light and the other gradients, and starts on classic", async () => {
     expect(APP_ICON_IDS).toEqual([
+      "classic",
       "pastel",
       "blue",
       "light",
@@ -35,7 +36,7 @@ describe("app icon preference", () => {
       "sunset",
       "coral",
     ]);
-    expect((await reload({})).appIcon).toBe("pastel");
+    expect((await reload({})).appIcon).toBe("classic");
   });
 
   it("saves the chosen icon and reads it back after a restart", async () => {
@@ -45,19 +46,20 @@ describe("app icon preference", () => {
     expect((await reload({})).appIcon).toBe("light");
   });
 
-  it("keeps a saved blue choice and falls back to pastel for a value it doesn't know", async () => {
+  it("keeps a saved choice and falls back to classic for a value it doesn't know", async () => {
     expect((await reload({ "oleafly.appIcon": "blue" })).appIcon).toBe("blue");
-    expect((await reload({ "oleafly.appIcon": "green" })).appIcon).toBe("pastel");
+    expect((await reload({ "oleafly.appIcon": "pastel" })).appIcon).toBe("pastel");
+    expect((await reload({ "oleafly.appIcon": "green" })).appIcon).toBe("classic");
     expect(readAppIcon("light")).toBe("light");
-    expect(readAppIcon("LIGHT")).toBe("pastel");
-    expect(readAppIcon("violet")).toBe("pastel");
-    expect(readAppIcon(undefined)).toBe("pastel");
+    expect(readAppIcon("LIGHT")).toBe("classic");
+    expect(readAppIcon("violet")).toBe("classic");
+    expect(readAppIcon(undefined)).toBe("classic");
   });
 
   it("never stores a value outside the list", () => {
     useSettingsStore.getState().setAppIcon("purple" as never);
-    expect(useSettingsStore.getState().appIcon).toBe("pastel");
-    expect(localStorage.getItem("oleafly.appIcon")).toBe("pastel");
+    expect(useSettingsStore.getState().appIcon).toBe("classic");
+    expect(localStorage.getItem("oleafly.appIcon")).toBe("classic");
   });
 
   it("counts as an appearance change until the appearance reset", () => {
@@ -65,8 +67,8 @@ describe("app icon preference", () => {
     useSettingsStore.getState().setAppIcon("light");
     expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
     useSettingsStore.getState().resetAppearancePreferences();
-    expect(useSettingsStore.getState().appIcon).toBe("pastel");
-    expect(localStorage.getItem("oleafly.appIcon")).toBe("pastel");
+    expect(useSettingsStore.getState().appIcon).toBe("classic");
+    expect(localStorage.getItem("oleafly.appIcon")).toBe("classic");
   });
 
   it("points each icon at its image", () => {
@@ -74,6 +76,7 @@ describe("app icon preference", () => {
     expect(appIconSource("light")).toBe("/app-icon/light.png");
     expect(appIconSource("prism")).toBe("/app-icon/prism.png");
     expect(appIconSource("pastel")).toBe("/app-icon/pastel.png");
+    expect(appIconSource("classic")).toBe("/app-icon/classic.png");
   });
 
   it("ships an image for every icon it offers", () => {
