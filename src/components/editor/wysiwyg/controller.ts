@@ -18,6 +18,8 @@ export interface WysiwygInsertions {
 let insertions: WysiwygInsertions | null = null;
 
 let editor: Editor | null = null;
+let loaded: { editor: Editor; path: string } | null = null;
+const documentChanged = createEmitter();
 let visible = false;
 let setVisibility: ((visible: boolean) => void) | null = null;
 let flushPendingEdits: (() => void) | null = null;
@@ -54,6 +56,33 @@ export function getWysiwygDocumentContext(): WysiwygDocumentContext {
 
 export function getWysiwygEditor(): Editor | null {
   return editor;
+}
+
+/** Records the file whose text a Visual editor holds, once it has loaded it. */
+export function setWysiwygDocument(owner: Editor, path: string | null) {
+  if (loaded?.editor === owner && loaded.path === path) return;
+  loaded = path === null ? null : { editor: owner, path };
+  documentChanged.emit();
+}
+
+/** Resolves with the Visual editor once it holds `path`, or null if aborted. */
+export function waitForWysiwygDocument(path: string, signal: AbortSignal): Promise<Editor | null> {
+  const ready = () => (editor && loaded?.editor === editor && loaded.path === path ? editor : null);
+  const now = ready();
+  if (now || signal.aborted) return Promise.resolve(now);
+  return new Promise((resolve) => {
+    const finish = (found: Editor | null) => {
+      unsubscribe();
+      signal.removeEventListener("abort", abort);
+      resolve(found);
+    };
+    const abort = () => finish(null);
+    const unsubscribe = documentChanged.subscribe(() => {
+      const found = ready();
+      if (found) finish(found);
+    });
+    signal.addEventListener("abort", abort, { once: true });
+  });
 }
 
 export function setWysiwygInsertions(value: WysiwygInsertions | null) {

@@ -907,6 +907,10 @@
         "description": "Vis den gengivne ligning over den, som markøren står i.",
         "label": "Forhåndsvisning af matematik"
       },
+      "keepVisualMode": {
+        "description": "Når du er i Visuel tilstand, åbner et hop fra dispositionen, en reference eller et problem også filen i Visuel tilstand. Når indstillingen er slået fra, skifter hoppet til Kode.",
+        "label": "Bliv i Visuel tilstand"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

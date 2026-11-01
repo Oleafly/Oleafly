@@ -907,6 +907,10 @@
         "description": "Vis den gjengitte ligningen over den som markøren står i.",
         "label": "Forhåndsvisning av matematikk"
       },
+      "keepVisualMode": {
+        "description": "Når du er i Visuell modus, åpner et hopp fra disposisjonen, en referanse eller et problem også filen i Visuell modus. Når innstillingen er av, bytter hoppet til Kode.",
+        "label": "Bli i Visuell modus"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

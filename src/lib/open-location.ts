@@ -2,6 +2,7 @@ import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
 import { isBinaryProjectPath } from "@/lib/project-paths";
 import { useFilesStore, type TabOpener } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { useVisualModeStore } from "@/store/visual-mode";
 
 export interface ProjectLocation {
   path: string;
@@ -20,6 +21,7 @@ export interface OpenLocationOptions {
 
 export const EDITOR_DOCUMENT_WAIT_MS = 4000;
 const VISUAL_SOURCE = /\.(?:tex|latex|ltx|md|markdown)$/i;
+const MARKDOWN = /\.(?:md|markdown)$/i;
 
 type EditorController = typeof import("@/components/editor/cm/controller");
 type ReadyView = NonNullable<Awaited<ReturnType<EditorController["waitForEditorDocument"]>>>;
@@ -44,6 +46,42 @@ function reveal(editor: EditorController, view: ReadyView, target: ProjectLocati
     editor.gotoLine(target.line ?? 1);
   } else {
     editor.gotoLine(target.line ?? 1, target.column);
+  }
+}
+
+/**
+ * Where a jump shows a file while the user stays in Visual mode: in
+ * CodeMirror, which draws Visual mode for LaTeX and Typst and shows Markdown
+ * beside its preview, or in the Markdown Visual editor. Null when the jump
+ * should switch to Code, which it does unless "Stay in Visual mode" is on.
+ */
+export function keptVisualEditor(path: string): "codemirror" | "tiptap" | null {
+  if (!useSettingsStore.getState().editorKeepVisualMode) return null;
+  const visual = useVisualModeStore.getState();
+  if (!visual.enabled) return null;
+  return MARKDOWN.test(path) && !visual.markdownSplit ? "tiptap" : "codemirror";
+}
+
+async function revealInVisualEditor(
+  target: ProjectLocation,
+  options: OpenLocationOptions,
+  abort: AbortController,
+  current: (state?: ReturnType<typeof useFilesStore.getState>) => boolean,
+): Promise<boolean> {
+  const unsubscribe = useFilesStore.subscribe((state) => {
+    if (!current(state)) abort.abort();
+  });
+  const giveUp = setTimeout(() => abort.abort(), EDITOR_DOCUMENT_WAIT_MS);
+  try {
+    const visual = await import("@/components/editor/wysiwyg/reveal");
+    if (!current()) return false;
+    return await visual.revealVisualLocation(target, abort.signal, {
+      select: !options.keepSelection,
+      focus: !options.keepSelection && !options.keepFocus,
+    });
+  } finally {
+    clearTimeout(giveUp);
+    unsubscribe();
   }
 }
 
@@ -105,7 +143,12 @@ async function openLocation(
     !abort.signal.aborted && state.projectId === projectId && state.activePath === target.path;
   if (!current()) return false;
   if (isBinaryProjectPath(target.path)) return true;
-  if (options.showEditor !== false && VISUAL_SOURCE.test(target.path)) revealSourceEditor();
+  if (options.showEditor !== false && VISUAL_SOURCE.test(target.path)) {
+    const kept = keptVisualEditor(target.path);
+    if (kept === "tiptap" && (await revealInVisualEditor(target, options, abort, current))) return true;
+    if (!current()) return false;
+    if (kept !== "codemirror") revealSourceEditor();
+  }
 
   const editor = await import("@/components/editor/cm/controller");
   if (!current()) return false;

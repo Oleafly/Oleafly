@@ -901,6 +901,10 @@
         "description": "커서가 있는 수식 위에 렌더링한 수식을 보여 줍니다.",
         "label": "수식 미리보기"
       },
+      "keepVisualMode": {
+        "description": "비주얼 모드에서 개요, 참조 또는 문제를 눌러 이동하면 그 파일도 비주얼 모드로 열립니다. 끄면 이동할 때 코드로 전환됩니다.",
+        "label": "비주얼 모드 유지"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

@@ -521,6 +521,18 @@ pub fn scan_sources(
     all_files: &[String],
     main_document: &str,
 ) -> ContextScan {
+    scan_sources_with(sources, all_files, main_document, &|_| false)
+}
+
+/// `unlisted_file` says whether a project-relative path is a file on disk.
+/// It is asked only about figures named inside folders the file walk skips,
+/// such as `.typ-img/plot.png`, so those are not reported as missing.
+fn scan_sources_with(
+    sources: &BTreeMap<String, String>,
+    all_files: &[String],
+    main_document: &str,
+    unlisted_file: &dyn Fn(&str) -> bool,
+) -> ContextScan {
     let main_document = normalize_project_path(main_document).unwrap_or_default();
     let main_document = main_document.as_str();
     let mut defs: Vec<Def> = Vec::new();
@@ -674,7 +686,14 @@ pub fn scan_sources(
         .into_iter()
         .collect();
 
-    let missing_files = missing_files(&uses, &resolved, all_files, main_document, &search_paths);
+    let missing_files = missing_files(
+        &uses,
+        &resolved,
+        all_files,
+        main_document,
+        &search_paths,
+        unlisted_file,
+    );
     packages.sort_by(|left, right| left.file.cmp(&right.file).then(left.line.cmp(&right.line)));
 
     ContextScan {
@@ -697,12 +716,39 @@ pub fn scan_sources(
     }
 }
 
+fn in_skipped_folder(path: &str) -> bool {
+    path.rsplit_once('/').is_some_and(|(folders, _)| {
+        folders
+            .split('/')
+            .any(crate::exclude::is_scan_skipped_directory)
+    })
+}
+
+fn unlisted_figure_exists(
+    folders: &[String],
+    raw: &str,
+    unlisted_file: &dyn Fn(&str) -> bool,
+) -> bool {
+    folders
+        .iter()
+        .filter_map(|folder| resolve_project_path_from(folder, raw, None))
+        .filter(|target| in_skipped_folder(target))
+        .any(|target| {
+            unlisted_file(&target)
+                || (!has_extension(&target)
+                    && FIGURE_EXTENSIONS
+                        .iter()
+                        .any(|extension| unlisted_file(&format!("{target}{extension}"))))
+        })
+}
+
 fn missing_files(
     uses: &[Use],
     resolved: &[bool],
     all_files: &[String],
     main_document: &str,
     search_paths: &[String],
+    unlisted_file: &dyn Fn(&str) -> bool,
 ) -> Vec<MissingFile> {
     let all_known = Known::new(all_files);
     let main_directory = dirname(main_document).to_string();
@@ -740,7 +786,8 @@ fn missing_files(
                             .in_directories(&folders, &use_.name, |target| {
                                 all_known.candidates(target, &FIGURE_EXTENSIONS)
                             })
-                            .is_empty(),
+                            .is_empty()
+                        || unlisted_figure_exists(&folders, &use_.name, unlisted_file),
                 )
             }
             UseKind::Bibliography => {
@@ -872,7 +919,18 @@ pub fn scan_project(
         total += bytes.len() as u64;
         sources.insert(path, normalize_source(&bytes));
     }
-    let mut scan = scan_sources(&sources, &all_files, main_document);
+    let real_root = root.canonicalize().ok();
+    let unlisted_file = |relative: &str| {
+        let Some(real_root) = real_root.as_deref() else {
+            return false;
+        };
+        let path = root.join(relative);
+        std::fs::symlink_metadata(&path).is_ok_and(|metadata| metadata.is_file())
+            && path
+                .canonicalize()
+                .is_ok_and(|real| real.starts_with(real_root))
+    };
+    let mut scan = scan_sources_with(&sources, &all_files, main_document, &unlisted_file);
     scan.truncated = truncated;
     scan.skipped = skipped;
     Ok(scan)
@@ -1157,6 +1215,62 @@ mod tests {
             "main.tex",
         );
         assert_eq!(missing(&scan), [("input", "gone.pgf")]);
+    }
+
+    #[test]
+    fn figures_in_hidden_folders_are_looked_for_on_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        for folder in [".typ-img", "images", ".figs"] {
+            std::fs::create_dir_all(dir.path().join(folder)).unwrap();
+        }
+        std::fs::write(dir.path().join(".typ-img/example.png"), "png").unwrap();
+        std::fs::write(dir.path().join("images/example.png"), "png").unwrap();
+        std::fs::write(dir.path().join(".figs/plot.pdf"), "pdf").unwrap();
+        std::fs::write(
+            dir.path().join("main.typ"),
+            "#image(\".typ-img/example.png\", width: 20mm)\n\
+             #image(\"images/example.png\", width: 20mm)\n\
+             #image(\".typ-img/missing.png\")\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("paper.tex"),
+            "\\includegraphics{.figs/plot}\\includegraphics{.figs/gone}\n",
+        )
+        .unwrap();
+
+        let scan = scan_project(dir.path(), "main.typ", &ContextLimits::default()).unwrap();
+        assert_eq!(
+            missing(&scan),
+            [("figure", ".typ-img/missing.png"), ("figure", ".figs/gone")]
+        );
+        assert!(!scan.roles.contains_key(".typ-img/example.png"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_hidden_figure_that_links_outside_the_project_stays_missing() {
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("secret.png"), "png").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join(".img")).unwrap();
+        std::os::unix::fs::symlink(
+            outside.path().join("secret.png"),
+            dir.path().join(".img/a.png"),
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(outside.path(), dir.path().join(".linked")).unwrap();
+        std::fs::write(
+            dir.path().join("main.typ"),
+            "#image(\".img/a.png\")\n#image(\".linked/secret.png\")\n",
+        )
+        .unwrap();
+
+        let scan = scan_project(dir.path(), "main.typ", &ContextLimits::default()).unwrap();
+        assert_eq!(
+            missing(&scan),
+            [("figure", ".img/a.png"), ("figure", ".linked/secret.png")]
+        );
     }
 
     #[test]

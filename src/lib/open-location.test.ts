@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   revealEditorRange: vi.fn(),
   scrollEditorPositionLocally: vi.fn(),
   editorView: null as { contentDOM: HTMLElement } | null,
+  keepVisualMode: false,
+  revealVisualLocation: vi.fn(),
 }));
 
 vi.mock("@/store/files", async () => {
@@ -30,11 +32,15 @@ vi.mock("@/store/settings", () => ({
       viewMode: mocks.viewMode,
       revealEditor: mocks.revealEditor,
       setViewMode: mocks.setViewMode,
+      editorKeepVisualMode: mocks.keepVisualMode,
     }),
   },
 }));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   revealSourceEditor: mocks.revealSourceEditor,
+}));
+vi.mock("@/components/editor/wysiwyg/reveal", () => ({
+  revealVisualLocation: mocks.revealVisualLocation,
 }));
 vi.mock("@/components/editor/cm/controller", () => ({
   waitForEditorDocument: mocks.waitForEditorDocument,
@@ -45,7 +51,8 @@ vi.mock("@/components/editor/cm/controller", () => ({
 }));
 
 import { useFilesStore } from "@/store/files";
-import { EDITOR_DOCUMENT_WAIT_MS, openProjectLocation } from "./open-location";
+import { useVisualModeStore } from "@/store/visual-mode";
+import { EDITOR_DOCUMENT_WAIT_MS, keptVisualEditor, openProjectLocation } from "./open-location";
 
 const view = { state: { doc: { length: 40 } } };
 const openFile = vi.fn(async (path: string) => {
@@ -64,6 +71,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.editorView = null;
   mocks.viewMode = "editor";
+  mocks.keepVisualMode = false;
+  mocks.revealVisualLocation.mockResolvedValue(true);
+  useVisualModeStore.setState({ enabled: false, markdownSplit: false });
   mocks.waitForEditorDocument.mockResolvedValue(view);
   useFilesStore.setState({ projectId: "proj", activePath: null, openFile });
   document.body.innerHTML = "";
@@ -269,5 +279,65 @@ describe("openProjectLocation", () => {
     mocks.gotoLine.mockImplementation(() => content.focus());
     await openProjectLocation({ path: "main.tex", line: 5 });
     expect(document.activeElement).toBe(content);
+  });
+
+  describe("with Stay in Visual mode on", () => {
+    beforeEach(() => {
+      mocks.keepVisualMode = true;
+      useVisualModeStore.setState({ enabled: true });
+    });
+
+    it("keeps a LaTeX file in Visual mode and moves the cursor there", async () => {
+      expect(await openProjectLocation({ path: "chapters/intro.tex", range: { from: 4, to: 9 } })).toBe(true);
+      expect(mocks.revealSourceEditor).not.toHaveBeenCalled();
+      expect(mocks.revealEditorRange).toHaveBeenCalledWith(view, 4, 9);
+      expect(mocks.revealVisualLocation).not.toHaveBeenCalled();
+    });
+
+    it("shows a Markdown location in the Visual editor instead of switching to Code", async () => {
+      const target = { path: "notes/README.md", range: { from: 12, to: 20 } };
+      expect(await openProjectLocation(target)).toBe(true);
+      expect(mocks.revealVisualLocation).toHaveBeenCalledWith(target, expect.any(AbortSignal), {
+        select: true,
+        focus: true,
+      });
+      expect(mocks.revealSourceEditor).not.toHaveBeenCalled();
+      expect(mocks.waitForEditorDocument).not.toHaveBeenCalled();
+    });
+
+    it("leaves the cursor and focus alone in the Visual editor when asked to keep the selection", async () => {
+      await openProjectLocation({ path: "notes/README.md", line: 3 }, { keepSelection: true });
+      expect(mocks.revealVisualLocation).toHaveBeenCalledWith(expect.anything(), expect.any(AbortSignal), {
+        select: false,
+        focus: false,
+      });
+    });
+
+    it("falls back to Code when the Visual editor cannot place the location", async () => {
+      mocks.revealVisualLocation.mockResolvedValue(false);
+      expect(await openProjectLocation({ path: "notes/README.md", line: 2 })).toBe(true);
+      expect(mocks.revealSourceEditor).toHaveBeenCalledOnce();
+      expect(mocks.gotoLine).toHaveBeenCalledWith(2);
+    });
+
+    it("uses the code pane for Markdown shown beside its preview", async () => {
+      useVisualModeStore.setState({ markdownSplit: true });
+      expect(await openProjectLocation({ path: "notes/README.md", line: 2 })).toBe(true);
+      expect(mocks.revealVisualLocation).not.toHaveBeenCalled();
+      expect(mocks.revealSourceEditor).not.toHaveBeenCalled();
+      expect(mocks.gotoLine).toHaveBeenCalledWith(2);
+    });
+
+    it("switches to Code as before while the editor is already in Code", () => {
+      useVisualModeStore.setState({ enabled: false });
+      expect(keptVisualEditor("main.tex")).toBeNull();
+    });
+  });
+
+  it("switches LaTeX to Code when Stay in Visual mode is off", async () => {
+    useVisualModeStore.setState({ enabled: true });
+    expect(keptVisualEditor("main.tex")).toBeNull();
+    await openProjectLocation({ path: "main.tex", line: 1 });
+    expect(mocks.revealSourceEditor).toHaveBeenCalledOnce();
   });
 });

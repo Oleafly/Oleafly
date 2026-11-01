@@ -913,6 +913,10 @@
         "description": "Muestra la fórmula compuesta encima de aquella en la que está el cursor.",
         "label": "Vista previa de fórmulas"
       },
+      "keepVisualMode": {
+        "description": "Si estás en el modo Visual, al saltar desde el esquema, una referencia o un problema, el archivo también se abre en el modo Visual. Si está desactivado, el salto cambia a Código.",
+        "label": "Seguir en el modo Visual"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

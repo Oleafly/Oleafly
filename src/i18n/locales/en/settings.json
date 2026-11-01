@@ -907,6 +907,10 @@
         "description": "Show the rendered equation above the one the cursor is in.",
         "label": "Math preview"
       },
+      "keepVisualMode": {
+        "description": "While you're in Visual mode, a jump from the outline, a reference or a problem opens the file in Visual mode too. With this off, the jump switches to Code.",
+        "label": "Stay in Visual mode"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

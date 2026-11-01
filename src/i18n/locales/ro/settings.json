@@ -913,6 +913,10 @@
         "description": "Arată formula randată deasupra celei în care se află cursorul.",
         "label": "Previzualizarea formulelor"
       },
+      "keepVisualMode": {
+        "description": "Când ești în modul Vizual, un salt din cuprins, de la o referință sau de la o problemă deschide fișierul tot în modul Vizual. Dacă opțiunea e oprită, saltul trece la Cod.",
+        "label": "Rămâi în modul Vizual"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

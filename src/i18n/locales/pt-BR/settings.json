@@ -913,6 +913,10 @@
         "description": "Mostra a equação renderizada acima daquela em que o cursor está.",
         "label": "Prévia da matemática"
       },
+      "keepVisualMode": {
+        "description": "Quando você está no modo Visual, um salto a partir do sumário, de uma referência ou de um problema também abre o arquivo no modo Visual. Com a opção desativada, o salto muda para Código.",
+        "label": "Continuar no modo Visual"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

@@ -907,6 +907,10 @@
         "description": "Näytä piirretty kaava sen kaavan yläpuolella, jossa kohdistin on.",
         "label": "Matematiikan esikatselu"
       },
+      "keepVisualMode": {
+        "description": "Kun olet visuaalisessa tilassa, siirtyminen jäsennyksestä, viitteestä tai ongelmasta avaa tiedoston myös visuaalisessa tilassa. Kun asetus on pois päältä, siirtyminen vaihtaa Koodi-tilaan.",
+        "label": "Pysy visuaalisessa tilassa"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

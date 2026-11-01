@@ -907,6 +907,10 @@
         "description": "Die gesetzte Formel über der Formel anzeigen, in der der Cursor steht.",
         "label": "Formelvorschau"
       },
+      "keepVisualMode": {
+        "description": "Wenn Sie im visuellen Modus sind, öffnet ein Sprung aus der Gliederung, von einer Referenz oder einem Problem die Datei ebenfalls im visuellen Modus. Ist die Option aus, wechselt der Sprung zu Code.",
+        "label": "Im visuellen Modus bleiben"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {
