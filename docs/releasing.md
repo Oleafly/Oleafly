@@ -63,6 +63,7 @@ by Tauri and for the canonical `latest.json` updater manifest. It also attaches
 one SPDX JSON software bill of materials (SBOM) for each supported build target:
 
 - macOS Apple Silicon
+- macOS Intel
 - Linux x86_64
 - Linux ARM64
 - Windows x86_64

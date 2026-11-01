@@ -415,7 +415,9 @@ grows with the documents. `CROWD_SOAK_MAX_CHARS` keeps that bounded.
 
 ## Releasing
 
-Packaging targets macOS Apple Silicon, Windows x64, Linux x64, and Linux ARM64.
+Packaging targets macOS Apple Silicon, macOS Intel, Windows x64, Linux x64, and
+Linux ARM64. The Intel Mac build is cross-compiled on the Apple Silicon runner,
+and Rosetta runs its x86_64 sidecars for the smoke tests.
 Each target gets matching Tectonic, Biber, Pandoc, Typst, and language-server
 resources that are fetched and smoke-tested in CI. Linux ARM64 gets a stub in
 place of Biber, because upstream publishes no 2.17 build for it. A tag produces

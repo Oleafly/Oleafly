@@ -40,6 +40,7 @@ const FETCHER_PATH = join(SCRIPT_DIR, "fetch-language-servers.mjs");
 const manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
 const EXPECTED_TARGETS = [
   "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
   "aarch64-unknown-linux-gnu",
   "x86_64-unknown-linux-gnu",
   "x86_64-pc-windows-msvc",
@@ -880,7 +881,7 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
   );
 
   const exactFetchPattern =
-    /^run: node scripts\/fetch-language-servers\.mjs --server tinymist --target (?:\$\{\{ matrix\.rust_target \}\}|aarch64-apple-darwin|aarch64-unknown-linux-gnu|x86_64-unknown-linux-gnu|x86_64-pc-windows-msvc) --install-mode resource$/;
+    /^run: node scripts\/fetch-language-servers\.mjs --server tinymist --target (?:\$\{\{ matrix\.rust_target \}\}|aarch64-apple-darwin|x86_64-apple-darwin|aarch64-unknown-linux-gnu|x86_64-unknown-linux-gnu|x86_64-pc-windows-msvc) --install-mode resource$/;
   for (const [name, workflow, expectedFetchCount] of [
     ["release", releaseWorkflow, 1],
     ["CI", ciWorkflow, 5],
@@ -1094,10 +1095,11 @@ test("CLI parsing and host mapping fail closed", () => {
   assert.throws(() => parseArgs(["--unknown"]), /unknown option/);
 
   assert.equal(currentTarget("darwin", "arm64"), "aarch64-apple-darwin");
+  assert.equal(currentTarget("darwin", "x64"), "x86_64-apple-darwin");
   assert.equal(currentTarget("linux", "arm64"), "aarch64-unknown-linux-gnu");
   assert.equal(currentTarget("linux", "x64"), "x86_64-unknown-linux-gnu");
   assert.equal(currentTarget("win32", "x64"), "x86_64-pc-windows-msvc");
-  assert.throws(() => currentTarget("darwin", "x64"), /unsupported host platform/);
+  assert.throws(() => currentTarget("freebsd", "x64"), /unsupported host platform/);
 });
 
 test("CLI help succeeds and unresolved TexLab resource mode is blocked", () => {

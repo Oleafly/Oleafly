@@ -184,7 +184,8 @@ style is appreciated but not required (e.g. `fix: reject absolute paths in resol
 
 Releases are cut by pushing a version tag; the
 [`Release` workflow](.github/workflows/release.yml) builds installers for macOS
-(Apple Silicon), Windows x64, and Linux x64 and attaches them to a **draft**
+(Apple Silicon and Intel), Windows x64, and Linux x64 and ARM64 and attaches
+them to a **draft**
 GitHub Release for review before publishing.
 
 ```bash

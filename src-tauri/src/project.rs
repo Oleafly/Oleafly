@@ -7003,6 +7003,12 @@ fn pandoc_asset_for(os: &str, arch: &str) -> Result<(String, bool, &'static str,
             "6e9eca844076bcbb599bbeebbba78a70f93b5307782b85c2c272872812c88875",
             PathBuf::from(format!("pandoc-{V}-arm64/bin/pandoc")),
         )),
+        ("macos", "x86_64") => Ok((
+            format!("{base}/pandoc-{V}-x86_64-macOS.zip"),
+            false,
+            "b9fbceabccbc8f34ac021a50483fc32f8160568d0b4b2c22d81bb29e3054fd82",
+            PathBuf::from(format!("pandoc-{V}-x86_64/bin/pandoc")),
+        )),
         ("linux", "x86_64") => Ok((
             format!("{base}/pandoc-{V}-linux-amd64.tar.gz"),
             true,
@@ -13986,6 +13992,13 @@ mod tests {
             "6e9eca844076bcbb599bbeebbba78a70f93b5307782b85c2c272872812c88875"
         );
         assert_eq!(member, Path::new("pandoc-3.9.0.2-arm64/bin/pandoc"));
+        let (url, tar, hash, member) = pandoc_asset_for("macos", "x86_64").unwrap();
+        assert!(!tar && url.ends_with("pandoc-3.9.0.2-x86_64-macOS.zip"));
+        assert_eq!(
+            hash,
+            "b9fbceabccbc8f34ac021a50483fc32f8160568d0b4b2c22d81bb29e3054fd82"
+        );
+        assert_eq!(member, Path::new("pandoc-3.9.0.2-x86_64/bin/pandoc"));
         let (url, tar, hash, _) = pandoc_asset_for("linux", "x86_64").unwrap();
         assert!(tar && url.ends_with("pandoc-3.9.0.2-linux-amd64.tar.gz"));
         assert_eq!(

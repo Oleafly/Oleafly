@@ -15,6 +15,7 @@ export const CATALOG_PATH = join(ROOT, "src-tauri", "resources", "typst-toolchai
 export const SCHEMA_VERSION = 1;
 export const SUPPORTED_TARGETS = [
   "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
   "aarch64-unknown-linux-gnu",
   "x86_64-unknown-linux-gnu",
   "x86_64-pc-windows-msvc",
@@ -68,12 +69,14 @@ export const TINYMIST_TOOL = {
 
 const TYPST_ASSET_TRIPLES = {
   "aarch64-apple-darwin": "aarch64-apple-darwin",
+  "x86_64-apple-darwin": "x86_64-apple-darwin",
   "aarch64-unknown-linux-gnu": "aarch64-unknown-linux-musl",
   "x86_64-unknown-linux-gnu": "x86_64-unknown-linux-musl",
   "x86_64-pc-windows-msvc": "x86_64-pc-windows-msvc",
 };
 const TINYMIST_BINARY_ASSETS = {
   "aarch64-apple-darwin": "tinymist-darwin-arm64",
+  "x86_64-apple-darwin": "tinymist-darwin-x64",
   "aarch64-unknown-linux-gnu": "tinymist-linux-arm64",
   "x86_64-unknown-linux-gnu": "tinymist-linux-x64",
   "x86_64-pc-windows-msvc": "tinymist-win32-x64.exe",
@@ -148,6 +151,7 @@ export function hostTarget(platform = process.platform, architecture = process.a
   return (
     {
       "darwin/arm64": "aarch64-apple-darwin",
+      "darwin/x64": "x86_64-apple-darwin",
       "linux/arm64": "aarch64-unknown-linux-gnu",
       "linux/x64": "x86_64-unknown-linux-gnu",
       "win32/x64": "x86_64-pc-windows-msvc",

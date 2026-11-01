@@ -182,6 +182,7 @@ export function parseArgs(argv) {
 export function currentTarget(platform = process.platform, architecture = process.arch) {
   const target = {
     "darwin:arm64": "aarch64-apple-darwin",
+    "darwin:x64": "x86_64-apple-darwin",
     "linux:arm64": "aarch64-unknown-linux-gnu",
     "linux:x64": "x86_64-unknown-linux-gnu",
     "win32:x64": "x86_64-pc-windows-msvc",

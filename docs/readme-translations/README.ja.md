@@ -324,6 +324,7 @@ skillはAgent Skillsの形式に従う通常の`SKILL.md`フォルダーです�
 | プラットフォーム | パッケージ | ダウンロード |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![macOS（Apple Silicon）をダウンロード](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [macOS（Intel）をダウンロード](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSIまたはEXE | [![Windowsをダウンロード](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage、DEB、またはRPM | [![Linux（x86_64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage、DEB、またはRPM | [![Linux（ARM64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
