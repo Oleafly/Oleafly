@@ -20,7 +20,7 @@ oleafly-secrets = { path = "../oleafly-secrets" }
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
 ring = "0.17"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "time"] }
@@ -29,7 +29,7 @@ zeroize = "=1.9.0"
 zip = { version = "9.1", default-features = false, features = ["deflate"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "=2.11.1"
+security-framework = "=3.7.0"
 
 [dev-dependencies]
 tempfile = { workspace = true }

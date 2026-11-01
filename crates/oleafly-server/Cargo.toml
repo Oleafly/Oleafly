@@ -28,7 +28,7 @@ oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
 ring = "0.17"
 oleafly-s3 = { path = "../oleafly-s3" }
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 rust-embed = { version = "8.5", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -43,7 +43,7 @@ futures-util = { version = "0.3", features = ["sink"] }
 oleafly-server = { path = ".", features = ["test-support"] }
 tempfile = { workspace = true }
 tokio = { version = "1", features = ["test-util"] }
-tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect"] }
 tower = { version = "0.5", features = ["util"] }
 
 [[example]]
