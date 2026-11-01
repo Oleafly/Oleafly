@@ -21,7 +21,7 @@ sha2 = "0.10"
 tempfile = { workspace = true }
 # Typst reads typst.toml with toml 0.8, a TOML 1.0 parser, so package
 # manifests are checked with it too. toml_edit gives the spans.
-toml = { version = "0.8", default-features = false, features = ["parse"] }
+toml = { version = "1.1", default-features = false, features = ["parse"] }
 toml_edit = "0.25"
 unicode-ident = "1"
 unicode-normalization = "0.1"
