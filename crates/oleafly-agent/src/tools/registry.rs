@@ -1,17 +1,10 @@
-//! Tool registry: per-tool execution policy (parallel vs exclusive) and
-//! model exposure. Unknown tools default to the exclusive policy so new or
-//! foreign tools never run concurrently by accident.
-
 use std::collections::BTreeMap;
 
 use crate::error::{AgentError, Result};
 use crate::stream::MAX_TOOL_CALLS_PER_TURN;
 
-/// Names reserved for the built-in shell tools; external registrations
-/// cannot shadow them.
 pub const RESERVED_TOOL_NAMES: [&str; 2] = ["exec_command", "shell_command"];
 
-/// Aggregate ceiling for one batch of tool results entering history.
 pub const MAX_TOOL_RESULT_BATCH_BYTES: usize = 96 * 1024 * 1024;
 
 pub fn validate_tool_calls_per_turn(calls: usize) -> Result<()> {
@@ -24,7 +17,6 @@ pub fn validate_tool_calls_per_turn(calls: usize) -> Result<()> {
     }
 }
 
-/// Accumulate one tool result's payload size against an aggregate ceiling.
 pub fn add_tool_batch_bytes(total: &mut usize, bytes: usize, limit: usize) -> Result<()> {
     let next = total
         .checked_add(bytes)
@@ -34,8 +26,6 @@ pub fn add_tool_batch_bytes(total: &mut usize, bytes: usize, limit: usize) -> Re
     Ok(())
 }
 
-/// Whether a tool's model-visible surface is exposed directly, deferred
-/// behind tool search, or restricted to direct model calls only.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolExposure {
     Direct,
@@ -43,18 +33,11 @@ pub enum ToolExposure {
     DirectModelOnly,
 }
 
-/// Whether a tool may run concurrently with others.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum ParallelPolicy {
-    /// Read-class tool: shares the gate's read side with every other
-    /// parallel tool.
     Parallel,
-    /// Mutating tool: takes the gate's write side, excluding all others.
     #[default]
     Exclusive,
-    /// Control-plane orchestration tool that may block on other tools (a
-    /// delegated child inherits the same gate). It acquires no gate at all,
-    /// so waiting on a child never starves the child's mutating tools.
     Unguarded,
 }
 
@@ -103,22 +86,14 @@ impl ToolRegistry {
         }
     }
 
-    /// Register a host-owned tool. Trusted registrations win collisions
-    /// silently (the host's policy is authoritative); the displaced name is
-    /// recorded in the collision ledger.
     pub fn register_trusted(&mut self, name: &str, tool: RegisteredTool) {
         self.insert(name.to_string(), tool);
     }
 
-    /// Register a host-owned tool at the front of the model-visible order
-    /// (placeholder for ordered exposure; the map keeps alphabetical keys).
     pub fn prepend_trusted(&mut self, name: &str, tool: RegisteredTool) {
         self.register_trusted(name, tool);
     }
 
-    /// Register a plugin/MCP tool. External tools never overwrite an
-    /// existing registration; with `error_on_collision` set, a collision is
-    /// an error the caller surfaces.
     pub fn register_external(
         &mut self,
         name: &str,
@@ -154,7 +129,6 @@ impl ToolRegistry {
         }
     }
 
-    /// Execution policy for a call. Unknown tools are exclusive.
     pub fn parallel_policy(&self, name: &str) -> ParallelPolicy {
         self.tools
             .get(name)
@@ -182,8 +156,6 @@ impl ToolRegistry {
         self.tools.keys().cloned().collect()
     }
 
-    /// First registration that displaced (or was displaced by) another tool
-    /// of the same name — the `first_collision` ledger of the desktop core.
     pub fn first_collisions(&self) -> &[String] {
         &self.first_collisions
     }

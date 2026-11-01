@@ -26,7 +26,6 @@ import { editorMessage } from "./messages";
  * actions.
  */
 
-/** How long the pointer must rest before the card appears. */
 const HOVER_TIME = 90;
 
 export type ProofreadingCardIcon = "project" | "everywhere" | "now" | "rule";
@@ -100,13 +99,10 @@ export interface ProofreadingCardSuggestion {
 }
 
 export interface ProofreadingCard {
-  /** The flagged word or phrase, shown in the header. */
   word: string;
-  /** Replacements, best first. */
   suggestions: readonly ProofreadingCardSuggestion[];
   loadSuggestions?: () => Promise<readonly ProofreadingCardSuggestion[]>;
   ignores: readonly ProofreadingCardAction[];
-  /** Shown instead of "Did you mean…" when there is no spelling suggestion. */
   message?: string;
   severity?: Diagnostic["severity"];
   kind?: string;
@@ -114,10 +110,6 @@ export interface ProofreadingCard {
   suppressionKey?: string | null;
 }
 
-/**
- * A card for a diagnostic that did not bring its own: the message becomes the
- * header and any quick fixes become the rows.
- */
 function cardFromDiagnostic(diagnostic: Diagnostic): ProofreadingCard {
   return {
     word: "",
@@ -141,9 +133,6 @@ function withoutReplacements(card: ProofreadingCard): ProofreadingCard {
   return { ...card, suggestions: [], loadSuggestions: undefined };
 }
 
-// Keyed by diagnostic identity: the presentation data never has to survive a
-// round trip through the diagnostic's own fields, and it is dropped with the
-// diagnostic it belongs to.
 const cards = new WeakMap<Diagnostic, ProofreadingCard>();
 
 export function attachProofreadingCard(
@@ -258,8 +247,6 @@ function renderCard(
   const dot = document.createElement("span");
   dot.className = `cm-proofread-dot is-${card.severity ?? "warning"}`;
   dot.setAttribute("aria-hidden", "true");
-  // The prose lives in its own element: the header is a flex row for the dot,
-  // and loose text nodes would each become a gapped flex item.
   const headerText = document.createElement("span");
   headerText.className = "cm-proofread-header-text select-text";
   const spelling = isSpellingDiagnosticKind(card.kind);
@@ -313,14 +300,6 @@ function renderCard(
   return root;
 }
 
-/**
- * Shows the card for the innermost proofreading diagnostic under the pointer.
- * Diagnostics without a card (compile errors, LaTeX syntax) are left to the
- * stock lint tooltip.
- *
- * Exported so the lookup and the rendered card can be tested without
- * synthesizing hover events.
- */
 export function diagnosticCardSource(
   view: EditorView,
   pos: number,
@@ -328,7 +307,6 @@ export function diagnosticCardSource(
   let found: { diagnostic: Diagnostic; from: number; to: number } | null = null;
   forEachDiagnostic(view.state, (diagnostic, from, to) => {
     if (pos < from || pos > to) return;
-    // Prefer the tightest range so a word inside a flagged phrase wins.
     if (!found || to - from < found.to - found.from) {
       found = { diagnostic, from, to };
     }
@@ -348,7 +326,6 @@ export function diagnosticCardTooltip(): Extension {
   return hoverTooltip(diagnosticCardSource, { hoverTime: HOVER_TIME });
 }
 
-/** Grace period so the pointer can travel from the marker into the card. */
 const GUTTER_CLOSE_DELAY = 120;
 
 function cardForLine(
@@ -366,14 +343,6 @@ function cardForLine(
   return hit;
 }
 
-/**
- * Shows the same card when the pointer rests on the lint gutter marker.
- *
- * `hoverTooltip` only covers the content area, so the gutter needs its own
- * controller. The card is appended to `document.body` and positioned fixed:
- * inside the editor it would be clipped by the pane and painted under the
- * neighbouring preview.
- */
 export function diagnosticCardGutter(): Extension {
   return ViewPlugin.define((view) => {
     let open: HTMLElement | null = null;
@@ -412,7 +381,6 @@ export function diagnosticCardGutter(): Extension {
       dom.addEventListener("mouseenter", keepOpen);
       dom.addEventListener("mouseleave", scheduleClose);
       document.body.append(dom);
-      // Keep the card inside the window once its size is known.
       const box = dom.getBoundingClientRect();
       if (box.right > window.innerWidth - 8) {
         dom.style.left = `${Math.max(8, window.innerWidth - box.width - 8)}px`;
@@ -440,7 +408,6 @@ export function diagnosticCardGutter(): Extension {
 
     return {
       update(update: ViewUpdate) {
-        // The suggestions describe a document that no longer exists.
         if (update.docChanged) close();
       },
       destroy() {

@@ -1,10 +1,6 @@
 import { safePdfExternalUrl } from "@oleafly/preview/controller";
-import { compilePathResolver, normalizeCompilePath } from "@/lib/compile-file-path";
+import { compilePathResolver } from "@/lib/compile-file-path";
 
-/**
- * A link found in one line of terminal text. Offsets are UTF-16 indices into
- * that text, `end` exclusive, so callers map them back to cells themselves.
- */
 export type TerminalLinkMatch =
   | { kind: "file"; start: number; end: number; path: string; line?: number; column?: number }
   | { kind: "url"; start: number; end: number; url: string };
@@ -31,7 +27,6 @@ const LOCATION_LINES = [
 // after each space is only a candidate until it names a project file.
 const MESSAGE_LINE = /^(?:error|warning):\s+([^:\s][^:]*:\d{1,8}(?::\d{1,8})?)(?=[:\s]|$)/d;
 const WORD_START = /(?<!\S)\S/g;
-// Bounds the resolver calls per hovered line; no file name has this many words.
 const MAX_PATH_WORDS = 12;
 const ABSOLUTE = /^(?:[/\\~]|[a-z]:[/\\]|file:)/i;
 // Typst packages (`@preview/...`) and shell or Windows variables live outside
@@ -51,8 +46,6 @@ function count(text: string, char: string): number {
   return total;
 }
 
-// Sentence punctuation and a wrapping bracket end up glued to URLs in prose;
-// a closing bracket stays only while the URL itself opened one.
 function trimUrl(url: string): string {
   let end = url.length;
   while (end > 0) {
@@ -99,8 +92,6 @@ function tokenMatch(token: string, offset: number): TerminalLinkMatch | null {
   return fileMatch(token.slice(from, to), offset + from);
 }
 
-// The longest candidate wins, so `My Chapter.tex` beats `Chapter.tex` when
-// both exist. With none accepted, the token pass links the words as usual.
 function messageLocation(
   text: string,
   accept: (path: string) => boolean,
@@ -117,14 +108,6 @@ function messageLocation(
   return null;
 }
 
-/**
- * Finds file locations and web URLs in plain terminal text: `path:line[:col]`
- * (pdflatex, Tectonic, Typst, gcc, grep), Python traceback frames, bare paths
- * with a slash or an extension, and http(s) URLs. It only reads the text;
- * whether a path names a project file is the resolver's call. `accept` settles
- * the one case the text cannot: whether the words before a path on an
- * `error:` line are part of it.
- */
 export function findTerminalLinks(
   text: string,
   accept: (path: string) => boolean = () => true,
@@ -147,7 +130,6 @@ export function findTerminalLinks(
     const start = match.index + 'File "'.length;
     add({ kind: "file", start, end: start + match[1].length, path: match[1], line });
   }
-  // Before the whitespace tokens, so a spaced path wins over its last piece.
   for (const pattern of LOCATION_LINES) {
     const match = pattern.exec(text);
     const span = match?.indices?.[1];
@@ -165,62 +147,19 @@ export function isAbsoluteTerminalPath(path: string): boolean {
 
 const RESOLVER_OPTIONS = { implicitTex: false, longerPaths: false };
 
-/**
- * Windows and macOS ignore letter case, so tools print a path the way the
- * source spelled it: `\input{Chapters/Intro}` compiles against
- * chapters/intro.tex, and the error names `Chapters\Intro.tex`. Case is set
- * aside only when the exact spelling names no file at all, and the folded name
- * must belong to one file, so a Linux tree holding both Intro.tex and
- * intro.tex links neither.
- */
-function anyCaseResolver(files: readonly string[]): (path: string) => string | null {
-  const names = files.map(normalizeCompilePath);
-  const owners = new Map<string, string[]>();
-  files.forEach((file, index) => {
-    const key = names[index].toLowerCase();
-    const same = owners.get(key);
-    if (!same) owners.set(key, [file]);
-    else if (!same.includes(file)) same.push(file);
-  });
-  const resolve = compilePathResolver([...owners.keys()], RESOLVER_OPTIONS);
-  const spelledExactly = (path: string) => {
-    const wanted = normalizeCompilePath(path);
-    return names.some((name) => name === wanted || name.endsWith(`/${wanted}`));
-  };
-  return (path) => {
-    if (spelledExactly(path)) return null;
-    const key = resolve(path.toLowerCase());
-    const found = key === null ? undefined : owners.get(key);
-    return found?.length === 1 ? found[0] : null;
-  };
-}
-
-/**
- * Maps a relative terminal path onto one project file: an exact match, a
- * unique file ending in it, or a unique basename, after leading `./` and
- * `../`, and failing those the same in any letter case. Absolute paths,
- * packages and variables get no answer, and neither do unknown leading
- * folders: the webview does not know the project root, so it cannot tell this
- * project's `main.tex` from `other-project/main.tex`. `../name` gets only a
- * root file of that exact name, never a namesake in a folder: from the project
- * root it lies outside the project.
- */
 export function terminalPathResolver(
   files: readonly string[],
 ): (path: string) => string | null {
   const resolve = compilePathResolver(files, RESOLVER_OPTIONS);
-  const resolveAnyCase = anyCaseResolver(files);
   return (path) => {
     if (isAbsoluteTerminalPath(path) || OUTSIDE_PROJECT.test(path)) return null;
     const relative = path.replace(LEADING_RELATIVE, "");
-    const found = resolve(relative) ?? resolveAnyCase(relative);
-    // With no folder in `relative`, only an exact match has none in `found`.
+    const found = resolve(relative);
     const namesake = found !== null && SEPARATOR.test(found) && !SEPARATOR.test(relative);
     return namesake && PARENT.test(path) ? null : found;
   };
 }
 
-/** Terminal output is untrusted: only plain web links leave the app. */
 export function safeTerminalUrl(text: string): string | null {
   const url = safePdfExternalUrl(text);
   if (!url) return null;

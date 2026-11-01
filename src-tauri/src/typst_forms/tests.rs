@@ -1,5 +1,5 @@
 use super::*;
-use oleafly_core::typst_forms::DiagnosticCode;
+use oleafly_core::typst_forms::{DiagnosticCode, DiagnosticMessage};
 use std::fs;
 use std::path::PathBuf;
 
@@ -93,8 +93,6 @@ fn packages_are_read_from_where_the_compiler_finds_them() {
     assert_eq!(cover_label(&read), "From the package path");
     assert_eq!(read.watch, [PROJECT_FORMS_FILE]);
 
-    // Vendoring swaps the app package path for the project's folder, as the
-    // compiler and Tinymist see it, so only the shared cache is still read.
     let read = catalog(project.path(), &vendoring, &[ACME]);
     assert_eq!(cover_label(&read), "From the cache");
     assert_eq!(read.watch, [PROJECT_FORMS_FILE, VENDORED_ACME]);
@@ -150,7 +148,6 @@ fn an_oversized_file_is_refused_without_being_read() {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let file = fs::File::create(path).unwrap();
         file.set_len(257 * 1024).unwrap();
-        // Unreadable to anyone but root: reading it would report Unreadable.
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -173,7 +170,13 @@ fn an_oversized_file_is_refused_without_being_read() {
             (ACME, DiagnosticCode::FileTooLarge),
         ]
     );
-    assert!(read.diagnostics[0].detail.contains("263168 bytes"));
+    assert_eq!(
+        read.diagnostics[0].message,
+        DiagnosticMessage::FileTooLarge {
+            size: 263168,
+            limit: MAX_FORMS_FILE_BYTES,
+        }
+    );
 
     let limit = project.path().join("limit.toml");
     write(
@@ -199,10 +202,7 @@ fn a_bom_or_non_utf8_project_file_is_handled() {
         codes(&read),
         [(PROJECT_FORMS_FILE, DiagnosticCode::Unreadable)]
     );
-    assert_eq!(
-        read.diagnostics[0].detail,
-        "The file could not be read: it is not UTF-8 text."
-    );
+    assert_eq!(read.diagnostics[0].message, DiagnosticMessage::NotUtf8);
 }
 
 #[cfg(unix)]
@@ -402,8 +402,6 @@ fn the_command_skips_folders_typst_0_11_never_reads() {
         &renamed("Vendored"),
     );
 
-    // The real data and cache folders are only read, and hold no such package
-    // unless someone installed one by hand.
     let read = catalog_blocking("forms-typst-0-11", &[ACME.to_owned()]).unwrap();
     assert!(ids(&read).contains(&"mod:template/memo.typ#memo-header"));
     assert!(

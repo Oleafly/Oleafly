@@ -271,7 +271,6 @@ async fn the_sink_refuses_a_line_at_the_frame_limit() {
 
 #[tokio::test(start_paused = true)]
 async fn the_sink_times_out_a_stuck_writer() {
-    // A pipe nobody reads: its buffer fills and the write never completes.
     let (writer, _reader) = tokio::io::duplex(16);
     let mut sink = Box::pin(outgoing_lines(writer));
     let error = sink.send("x".repeat(1024)).await.unwrap_err();

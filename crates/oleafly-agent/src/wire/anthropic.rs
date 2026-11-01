@@ -1,6 +1,3 @@
-//! The Anthropic Messages body: thinking and effort, prompt caching,
-//! documents, tool-result images, replayed thinking and server blocks, and
-//! hosted web tools.
 use serde_json::{json, Map, Value};
 
 use crate::complete::CompletionRequest;
@@ -19,10 +16,8 @@ use crate::wire::reasoning::{
 use crate::wire::server_tools::{anthropic_server_tools, native_web};
 use crate::wire::{role_str, sorted_tools};
 
-/// Lets a request replay thinking with a drop-on-mismatch safety net.
 pub(crate) const THINKING_BINDING_BETA: &str = "thinking-binding-controls-2026-08-01";
 
-/// The `anthropic-beta` header a body needs, if any.
 pub(crate) fn anthropic_beta_header(body: &Value) -> Option<&'static str> {
     body.pointer("/thinking/block_binding")
         .is_some()
@@ -54,7 +49,6 @@ fn tool_result_block(id: &str, output: &str, images: &[String]) -> Result<Value>
         }));
     }
     let mut content = Vec::with_capacity(images.len() + 1);
-    // The API refuses empty text blocks.
     if !output.trim().is_empty() {
         content.push(json!({ "type": "text", "text": output }));
     }
@@ -132,7 +126,6 @@ pub(crate) fn anthropic_accepts_temperature(model_id: &str) -> bool {
     if rest.starts_with('2') || rest.starts_with('3') || rest.starts_with("instant") {
         return true;
     }
-    // "sonnet-4", "sonnet-4-20250514", "opus-4-1-20250805", "haiku-4-5"
     let mut version = rest.split('-').skip(1);
     let major = version.next();
     let minor = version.next().unwrap_or("0");
@@ -187,8 +180,6 @@ pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Re
         "max_tokens".into(),
         json!(req.max_tokens.unwrap_or_else(|| {
             let ceiling = default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP);
-            // A large default would leave older models no room for the
-            // input; they get one closer to what they used to.
             if anthropic_checks_output_room(model) {
                 ceiling.min(OUTPUT_ROOM_MAX_TOKENS)
             } else {
@@ -234,7 +225,6 @@ pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Re
     if let Some(effort) = effort.filter(|effort| *effort != Effort::Off) {
         body.insert("output_config".into(), json!({ "effort": effort.as_str() }));
     }
-    // Automatic caching of the conversation so far.
     body.insert("cache_control".into(), ephemeral());
     if let Some(container) = &req.anthropic_container {
         body.insert("container".into(), json!(container));

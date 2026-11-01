@@ -80,6 +80,27 @@ describe("resolveCompilePath", () => {
     expect(resolve("C:/Users/me/.oleafly/linked/linked-0123/build/_oleafly_entry.tex")).toBeNull();
   });
 
+  it("falls back to a single match that differs only in case", () => {
+    const resolve = compilePathResolver([
+      "main.tex",
+      "chapters/intro.tex",
+      "Notes/Same.tex",
+      "notes/same.tex",
+      "parts/x/one.tex",
+      "parts/y/one.tex",
+    ]);
+    expect(resolve("Chapters/Intro.tex")).toBe("chapters/intro.tex");
+    expect(resolve("Chapters/Intro")).toBe("chapters/intro.tex");
+    expect(resolve("/Users/Me/Thesis/Chapters/Intro.tex")).toBe("chapters/intro.tex");
+    expect(resolve("Intro.tex")).toBe("chapters/intro.tex");
+    expect(resolve("X/One.tex")).toBe("parts/x/one.tex");
+    expect(resolve("notes/same.tex")).toBe("notes/same.tex");
+    expect(resolve("Notes/Same.tex")).toBe("Notes/Same.tex");
+    expect(resolve("NOTES/SAME.TEX")).toBeNull();
+    expect(resolve("/Users/Me/NOTES/SAME.TEX")).toBeNull();
+    expect(resolve("ONE.TEX")).toBeNull();
+  });
+
   it("maps absolute paths inside a folder opened in place by their project suffix", () => {
     const resolve = compilePathResolver(["main.tex", "chapters/one.tex"]);
     expect(resolve("/Users/me/Bob's Thèse, v2/./main.tex")).toBe("main.tex");

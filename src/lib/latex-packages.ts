@@ -1,12 +1,4 @@
 import { i18n } from "@/i18n";
-// Three axes per package:
-//  - scope:     "all" packages matter in every export; "pdf" only affect PDF.
-//  - defaultOn: part of the sensible default set for a new document.
-//  - tagging:   compatibility with tagged / accessible (PDF/UA) export:
-//               "ok" | "caution" (renders but may not tag cleanly) | "breaks".
-//
-// The tagging axis is what makes one catalog serve both research-PDF users
-// and the accessibility path. See the accessibility/ATS preflight design spec.
 
 import { packageTaggingVerdict, type TaggingCompatibility } from "@oleafly/preflight";
 

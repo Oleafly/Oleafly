@@ -1,7 +1,3 @@
-//! How hard a model thinks: the levels a chat can ask for, which levels each
-//! provider and model accepts, and the nearest accepted level for a request.
-//! `packages/ai-core/src/effort.ts` mirrors `effort_choices`; both run the
-//! shared table in `tests/fixtures/effort-cases.json`.
 use serde::Serialize;
 
 use crate::caps::{ModelCaps, ReasoningCaps};
@@ -10,8 +6,6 @@ use crate::provider::Resolved;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Effort {
-    /// No thinking. Serialized as `"none"`; the variant is not named `None`
-    /// so `Some(Off)` never reads like a missing value.
     #[serde(rename = "none")]
     Off,
     Minimal,
@@ -64,8 +58,6 @@ impl<'de> serde::Deserialize<'de> for Effort {
     }
 }
 
-/// A requested effort from the renderer. Unknown names and non-strings
-/// (a newer renderer, a stored chat) read as auto.
 pub(crate) fn lenient_effort<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<Effort>, D::Error> {
@@ -82,7 +74,6 @@ fn starts_with_any(id: &str, prefixes: &[&str]) -> bool {
     prefixes.iter().any(|prefix| id.starts_with(prefix))
 }
 
-/// `o1`…`o9` and their variants (`o3-mini`, `o4-mini-high`).
 fn openai_o_series(id: &str) -> bool {
     let bytes = id.as_bytes();
     bytes.len() >= 2 && bytes[0] == b'o' && matches!(bytes[1], b'1'..=b'9')
@@ -132,8 +123,6 @@ fn anthropic_fallback(id: &str, caps: &ModelCaps) -> Vec<Effort> {
     Vec::new()
 }
 
-/// The levels the selector offers for this model, ascending. Empty hides
-/// the selector (and the request then sends no effort).
 pub fn effort_choices(provider_id: &str, model_id: &str, caps: &ModelCaps) -> Vec<Effort> {
     let id = model_id.to_ascii_lowercase();
     let reasoning = &caps.reasoning;
@@ -158,7 +147,6 @@ pub fn effort_choices(provider_id: &str, model_id: &str, caps: &ModelCaps) -> Ve
     choices
 }
 
-/// Anthropic's wire levels and the levels the model offers (`wire`, `base`).
 fn anthropic_levels(id: &str, caps: &ModelCaps) -> (Vec<Effort>, Vec<Effort>) {
     let reasoning = &caps.reasoning;
     let mut wire = vec![Low, Medium, High, Xhigh, Max];
@@ -187,12 +175,10 @@ fn openai_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
     }
 }
 
-/// A budget model can turn thinking off when its budget starts at zero.
 fn budget_allows_off(reasoning: &ReasoningCaps) -> bool {
     reasoning.toggle || reasoning.budget.and_then(|budget| budget.min) == Some(0)
 }
 
-/// Google's wire levels and the levels the model offers (`wire`, `base`).
 fn google_levels(id: &str, caps: &ModelCaps) -> (Vec<Effort>, Vec<Effort>) {
     let reasoning = &caps.reasoning;
     let budget_model = google_budget_model(id, caps);
@@ -226,8 +212,6 @@ fn google_levels(id: &str, caps: &ModelCaps) -> (Vec<Effort>, Vec<Effort>) {
         }
         None => Vec::new(),
     };
-    // A budget model without metadata may still turn thinking off
-    // (Flash); the wire allows it whenever the base offers it.
     if budget_model && base.contains(&Off) && !wire.contains(&Off) {
         wire.push(Off);
     }
@@ -278,21 +262,16 @@ fn ollama_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
     }
 }
 
-/// The accepted level nearest to `requested` (ties go up); `None` when the
-/// model takes no effort.
 pub fn clamp_effort(requested: Effort, choices: &[Effort]) -> Option<Effort> {
     if choices.contains(&requested) {
         return Some(requested);
     }
     choices.iter().copied().min_by_key(|choice| {
         let distance = (choice.rank() - requested.rank()).abs();
-        // Equal distances prefer the higher level.
         (distance, -choice.rank())
     })
 }
 
-/// The effort a request sends for this model: the requested level clamped
-/// to what the model accepts. Auto (`None`) sends nothing.
 pub fn effective_effort(resolved: &Resolved, requested: Option<Effort>) -> Option<Effort> {
     requested.and_then(|effort| {
         clamp_effort(

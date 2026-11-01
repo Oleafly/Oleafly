@@ -157,11 +157,8 @@ function definitionDetail(
 }
 
 interface HoverExtras {
-  /** LaTeX source of the display math around a resolved label, rendered under the card. */
   math?: string;
-  /** Project-relative image/PDF path thumbnailed under the card. */
   assetPath?: string;
-  /** Number from the last successful compile's .aux files. */
   aux?: LabelNumber;
 }
 
@@ -320,8 +317,6 @@ export function projectHoverCard(view: EditorView, position: number) {
           if (rendered.status !== "ready") return;
           const math = document.createElement("div");
           math.className = "cm-code-hover-math";
-          // renderMathSource output is KaTeX HTML already sanitized
-          // against SAFE_KATEX_ELEMENTS with trust disabled.
           math.innerHTML = rendered.html;
           title.after(math);
         };
@@ -381,7 +376,7 @@ const theme = EditorView.baseTheme({
   ".cm-code-hover": {
     maxWidth: "22rem",
     padding: "6px 8px",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     lineHeight: "1.4",
     whiteSpace: "pre-wrap",
   },
@@ -390,7 +385,7 @@ const theme = EditorView.baseTheme({
     marginTop: "3px",
     opacity: "0.75",
     fontFamily: "monospace",
-    fontSize: "11px",
+    fontSize: "0.6875rem",
   },
   ".cm-code-hover-math": {
     marginTop: "4px",
@@ -399,7 +394,7 @@ const theme = EditorView.baseTheme({
   ".cm-code-hover-aux": {
     marginTop: "3px",
     opacity: "0.85",
-    fontSize: "11px",
+    fontSize: "0.6875rem",
   },
   ".cm-code-hover-thumb": {
     marginTop: "4px",

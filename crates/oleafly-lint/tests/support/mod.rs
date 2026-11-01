@@ -1,6 +1,3 @@
-//! Shared golden-fixture helpers. Inputs live in `tests/fixtures/cases`;
-//! expected output is written only by the TypeScript generators in
-//! `src/lib/cli-goldens/tests`.
 #![allow(dead_code)]
 
 use std::collections::HashSet;
@@ -65,7 +62,6 @@ pub fn assert_golden(name: &str, actual: &Value, expected: &Value) {
     pretty_assertions::assert_eq!(expected, actual, "golden mismatch for {name}");
 }
 
-/// Runs every case of a suite against `expected/<golden>.json`.
 pub fn run_suite(suite: &str, golden: &str, minimum: usize, mut run: impl FnMut(&Value) -> Value) {
     let cases = cases(suite);
     assert!(

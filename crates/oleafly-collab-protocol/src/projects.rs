@@ -22,9 +22,6 @@ pub struct PersonSummary {
     pub login: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub guest: bool,
-    // False for someone who was removed from or suspended on this server,
-    // so the app can mark former members and an owner who has left. Older
-    // servers never send it, and everyone they list is active.
     #[serde(default = "active", skip_serializing_if = "is_true")]
     pub active: bool,
 }

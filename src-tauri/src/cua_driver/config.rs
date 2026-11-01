@@ -1,7 +1,3 @@
-//! Desktop apps settings: which apps and websites agents may use. They are
-//! device-local (paths and bundle ids mean nothing on another computer), so
-//! they live in the app config, never in the settings file or cloud sync.
-
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -18,31 +14,48 @@ const MAX_PATH_BYTES: usize = 4096;
 const MAX_ORIGIN_BYTES: usize = 2048;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", from = "StoredCuaDriverConfig")]
 pub struct CuaDriverConfig {
-    #[serde(default)]
     pub enabled: bool,
-    #[serde(default)]
     pub apps: Vec<AllowedApp>,
-    #[serde(default)]
     pub sites: Vec<AllowedSite>,
-    /// Lets agents run Cua scripts (`run_script`).
-    #[serde(default)]
     pub scripted_control: bool,
-    /// Every action asks in a dialog first. Off, the allowed apps and sites
-    /// are the whole of the user's say, and actions run without asking.
-    #[serde(default)]
     pub ask_before_actions: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredCuaDriverConfig {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    apps: Vec<AllowedApp>,
+    #[serde(default)]
+    sites: Vec<AllowedSite>,
+    #[serde(default)]
+    scripted_control: bool,
+    #[serde(default)]
+    ask_before_actions: Option<bool>,
+}
+
+impl From<StoredCuaDriverConfig> for CuaDriverConfig {
+    fn from(stored: StoredCuaDriverConfig) -> Self {
+        Self {
+            ask_before_actions: stored.ask_before_actions.unwrap_or(stored.enabled),
+            enabled: stored.enabled,
+            apps: stored.apps,
+            sites: stored.sites,
+            scripted_control: stored.scripted_control,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AllowedApp {
     pub name: String,
-    /// macOS: the app's bundle identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bundle_id: Option<String>,
-    /// Windows and Linux: the absolute, canonical program path.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub executable: Option<String>,
 }
@@ -50,26 +63,21 @@ pub struct AllowedApp {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AllowedSite {
-    /// `https://host[:port]`, or `http://` for this computer.
     pub origin: String,
-    /// Use the user's own signed-in browser profile on this site.
     #[serde(default)]
     pub signed_in: bool,
 }
 
-/// Why a program path can't be an allowed app.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum AppRejection {
     NotFound,
     NotAProgram,
 }
 
-/// Turns a program path into its canonical, plain (never `\\?\`) form.
 pub(crate) trait ExecutableProbe: Send + Sync {
     fn check(&self, path: &str) -> Result<String, AppRejection>;
 }
 
-/// The real file system.
 pub(crate) struct SystemProbe;
 
 impl ExecutableProbe for SystemProbe {
@@ -88,9 +96,6 @@ impl ExecutableProbe for SystemProbe {
     }
 }
 
-/// Takes every program path as it is, without touching the file system:
-/// the quick check at startup, before `SystemProbe` runs in the background
-/// (a program on a share that can't be reached must not hold up the app).
 pub(crate) struct NameOnlyProbe;
 
 impl ExecutableProbe for NameOnlyProbe {
@@ -99,7 +104,6 @@ impl ExecutableProbe for NameOnlyProbe {
     }
 }
 
-/// Settings are usable: on, with something agents may use.
 pub(crate) fn ready(config: &CuaDriverConfig) -> bool {
     config.enabled && (!config.apps.is_empty() || !config.sites.is_empty())
 }
@@ -163,8 +167,6 @@ pub(crate) fn is_format_char(character: char) -> bool {
     )
 }
 
-/// A name without format characters, trimmed; control characters make it
-/// invalid.
 fn clean_name(name: &str) -> Result<String, String> {
     let visible: String = name.chars().filter(|c| !is_format_char(*c)).collect();
     let trimmed = visible.trim();
@@ -184,20 +186,13 @@ fn windows_program(path: &str) -> bool {
     name.ends_with(".exe") || name.ends_with(".com")
 }
 
-/// Why an app entry can't be used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum AppFault {
-    /// Not a usable entry: no bundle id or program path, or a script.
     Invalid,
-    /// An app agents may never use.
     Blocked,
-    /// A program that isn't on this computer (any more).
     Missing,
 }
 
-/// One entry, checked against the platform's rules and the blocklist, in its
-/// stored form (name trimmed, program path canonical). The fault comes with
-/// the entry's name for the error text.
 fn check_app(
     app: &AllowedApp,
     platform: Platform,
@@ -243,7 +238,6 @@ fn check_app(
             let executable = match probe.check(raw) {
                 Ok(executable) => executable,
                 Err(AppRejection::NotAProgram) => return Err(fail(AppFault::Invalid)),
-                // Gone, but still a name the blocklist knows.
                 Err(AppRejection::NotFound) => {
                     return Err(fail(
                         if blocked_reason(platform, None, Some(raw), own_exe).is_some() {
@@ -254,12 +248,9 @@ fn check_app(
                     ));
                 }
             };
-            // Scripts (.cmd, .bat, .ps1) are not programs to start.
             if platform == Platform::Windows && !windows_program(&executable) {
                 return Err(fail(AppFault::Invalid));
             }
-            // Both names count: a link named like an allowed program
-            // can point at a shell, and the other way round.
             if blocked_reason(platform, None, Some(raw), own_exe).is_some()
                 || blocked_reason(platform, None, Some(executable.as_str()), own_exe).is_some()
             {
@@ -281,7 +272,6 @@ fn fault_error((fault, name): (AppFault, String)) -> String {
     }
 }
 
-/// Checks and normalizes settings that were never saved: every app is new.
 #[cfg(test)]
 pub(crate) fn validate(
     config: CuaDriverConfig,
@@ -298,10 +288,6 @@ pub(crate) fn validate(
     )
 }
 
-/// Like `validate`, but an app that is already in `stored` exactly as it is
-/// kept as it is, without looking at the file system again. A program that
-/// went away, or that a newer blocklist names, then never stops an unrelated
-/// change from saving, and never stops desktop apps from being turned off.
 pub(crate) fn validate_against(
     config: CuaDriverConfig,
     platform: Platform,
@@ -353,11 +339,6 @@ pub(crate) fn validate_against(
     })
 }
 
-/// Settings read from the config file at startup, cleaned the way a save
-/// would: an entry that is no usable app or site, or that the blocklist
-/// names, is dropped (how many comes back for the log; duplicates are merged
-/// and not counted). A program that is only missing stays: it may be on a
-/// drive that isn't plugged in, and Settings shows it as removable.
 pub(crate) fn sanitize_loaded(
     config: CuaDriverConfig,
     platform: Platform,
@@ -407,8 +388,6 @@ pub(crate) fn sanitize_loaded(
     )
 }
 
-/// Stored apps whose program is gone (Windows and Linux; macOS apps are
-/// kept by bundle id only), by `executable`, for Settings to show.
 pub(crate) fn missing_apps(
     config: &CuaDriverConfig,
     platform: Platform,
@@ -445,8 +424,6 @@ fn loopback_host(host: &str) -> bool {
             .is_ok_and(|address| address.is_loopback())
 }
 
-/// `https://host[:port]` (or `http://` for this computer), lower case,
-/// without the default port. No path, query, credentials or wildcards.
 pub(crate) fn canonical_origin(input: &str) -> Result<String, String> {
     let trimmed = input.trim();
     if trimmed.is_empty() || trimmed.len() > MAX_ORIGIN_BYTES || !trimmed.contains("://") {
@@ -479,20 +456,13 @@ pub(crate) fn canonical_origin(input: &str) -> Result<String, String> {
     Ok(format!("{scheme}://{host}{port}"))
 }
 
-/// One thing a settings change lets agents do that they could not before.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Widening {
     Enabled,
-    /// An app by the name it was given and the identity that was validated:
-    /// the bundle id (macOS) or the canonical program path (elsewhere).
-    App {
-        name: String,
-        identity: String,
-    },
+    App { name: String, identity: String },
     Site(String),
     SignedIn(String),
     ScriptedControl,
-    /// Actions run without a dialog.
     NoAsking,
 }
 
@@ -540,7 +510,6 @@ pub(crate) fn widening(
     if new.scripted_control && !base.scripted_control {
         found.push(Widening::ScriptedControl);
     }
-    // Asking starts on in `empty` so turning the connector on names it.
     let asked_before = if old.enabled {
         old.ask_before_actions
     } else {
@@ -567,7 +536,6 @@ mod tests {
             }
         }
 
-        /// Hands back whatever it is given.
         fn echo() -> Self {
             Self { answer: None }
         }
@@ -935,7 +903,6 @@ mod tests {
             vec![Widening::NoAsking]
         );
         assert!(widening(&quiet, &asking, Platform::Macos).is_empty());
-        // Turning the connector on names it unless asking is on.
         let off = CuaDriverConfig::default();
         assert!(widening(&off, &quiet, Platform::Macos).contains(&Widening::NoAsking));
         assert!(!widening(&off, &asking, Platform::Macos).contains(&Widening::NoAsking));
@@ -1042,7 +1009,46 @@ mod tests {
         assert_eq!(empty, CuaDriverConfig::default());
     }
 
-    /// A probe that says these programs are gone.
+    #[test]
+    fn a_config_saved_before_asking_was_a_setting_keeps_asking_while_on() {
+        let saved_on = r#"{"cua_driver":{"enabled":true,"apps":[{"name":"Zotero","bundleId":"org.zotero.zotero"}],"sites":[{"origin":"https://a.org","signedIn":true}],"scriptedControl":true}}"#;
+        let loaded: crate::config::AppConfig = serde_json::from_str(saved_on).unwrap();
+        assert!(loaded.cua_driver.enabled && loaded.cua_driver.scripted_control);
+        assert!(loaded.cua_driver.ask_before_actions);
+        let (kept, _) = sanitize_loaded(
+            loaded.cua_driver.clone(),
+            Platform::Macos,
+            &FakeProbe::echo(),
+            "oleafly",
+        );
+        assert!(kept.ask_before_actions);
+        let quiet = CuaDriverConfig {
+            ask_before_actions: false,
+            ..kept.clone()
+        };
+        assert_eq!(
+            widening(&kept, &quiet, Platform::Macos),
+            vec![Widening::NoAsking]
+        );
+
+        let saved_off: CuaDriverConfig =
+            serde_json::from_str(r#"{"enabled":false,"scriptedControl":true}"#).unwrap();
+        assert!(!saved_off.ask_before_actions);
+        let turned_on = CuaDriverConfig {
+            enabled: true,
+            ..saved_off.clone()
+        };
+        assert!(widening(&saved_off, &turned_on, Platform::Macos).contains(&Widening::NoAsking));
+
+        for (json, asking) in [
+            (r#"{"enabled":true,"askBeforeActions":false}"#, false),
+            (r#"{"enabled":false,"askBeforeActions":true}"#, true),
+        ] {
+            let explicit: CuaDriverConfig = serde_json::from_str(json).unwrap();
+            assert_eq!(explicit.ask_before_actions, asking, "{json}");
+        }
+    }
+
     struct Gone(Vec<&'static str>);
 
     impl ExecutableProbe for Gone {
@@ -1065,7 +1071,6 @@ mod tests {
             ..Default::default()
         };
         let gone = Gone(vec![SLACK]);
-        // Turning off, and changing something else, don't need the program.
         let off = CuaDriverConfig {
             enabled: false,
             ..stored.clone()
@@ -1096,10 +1101,8 @@ mod tests {
             .unwrap(),
             with_site
         );
-        // Saving it from scratch (not stored yet) still needs the program.
         let error = validate(stored.clone(), Platform::Windows, &gone, "Oleafly.exe").unwrap_err();
         assert_eq!(code(&error), "desktop_apps.app_invalid");
-        // So does a new one, even next to the stored one.
         let added = CuaDriverConfig {
             apps: vec![exe("Slack", SLACK), exe("Zotero", r"C:\z\zotero.exe")],
             ..stored.clone()
@@ -1108,7 +1111,6 @@ mod tests {
         let error = validate_against(added, Platform::Windows, &gone_both, "Oleafly.exe", &stored)
             .unwrap_err();
         assert_eq!(code(&error), "desktop_apps.app_invalid");
-        // An entry that changed (a renamed copy) is looked at again.
         let renamed = CuaDriverConfig {
             apps: vec![exe("Chat", SLACK)],
             ..stored.clone()
@@ -1158,8 +1160,6 @@ mod tests {
         assert_eq!(kept.apps, vec![app("Zotero", "org.zotero.zotero")]);
         assert_eq!(kept.sites, vec![site("https://a.org", true)]);
         assert!(kept.enabled && kept.scripted_control);
-        // Chrome, Terminal, Bad and the invalid site; the duplicates merge
-        // and are not counted.
         assert_eq!(dropped, 4);
     }
 
@@ -1176,8 +1176,6 @@ mod tests {
         };
         let gone = Gone(vec![SLACK, r"C:\Windows\System32\cmd.exe"]);
         let (kept, dropped) = sanitize_loaded(loaded, Platform::Windows, &gone, "Oleafly.exe");
-        // The script and the shell can never be allowed; Slack may be on a
-        // drive that is not plugged in.
         assert_eq!(kept.apps, vec![exe("Slack", SLACK)]);
         assert_eq!(dropped, 2);
     }
@@ -1193,7 +1191,6 @@ mod tests {
             missing_apps(&config, Platform::Windows, &Gone(vec![SLACK])),
             vec![SLACK.to_string()]
         );
-        // macOS apps are stored by bundle id only.
         let mac = CuaDriverConfig {
             apps: vec![app("Zotero", "org.zotero.zotero")],
             ..config

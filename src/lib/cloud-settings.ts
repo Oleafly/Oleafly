@@ -29,7 +29,6 @@ const LOCAL_ONLY_PATHS: readonly (readonly string[])[] = [
   ["engine", "defaultLatexEngine"],
 ];
 
-/** `node` without the value at `path`, dropping parents it leaves empty. Never mutates. */
 function withoutPath(node: Record<string, unknown>, path: readonly string[]): Record<string, unknown> {
   const [head, ...rest] = path;
   if (head === undefined || !Object.hasOwn(node, head)) return node;

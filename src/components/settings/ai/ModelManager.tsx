@@ -48,7 +48,6 @@ export interface ModelManagerProps {
   refreshedAt?: number;
   probes?: Record<string, ModelProbe>;
   discoverable?: boolean;
-  /** A custom provider's address, named in refresh errors. */
   baseURL?: string;
 }
 
@@ -136,10 +135,6 @@ export function ModelManager({
         else apply.onChange(merged);
       } catch (e) {
         void logError("refresh provider models", e);
-        // A failed list changed nothing. A custom server is often local and
-        // just not started yet, so it may be tried again right away; a hosted
-        // provider keeps the throttle after a manual try, as it may be the
-        // one limiting requests.
         if (trigger === "auto" || baseURL) {
           clearModelListThrottle(providerId);
           setThrottledUntil(0);

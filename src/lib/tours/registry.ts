@@ -3,7 +3,6 @@ import { i18n } from "@/i18n";
 export const TOUR_IDS = ["home", "workspace", "research", "settings", "ai-settings", "ai", "diagram"] as const;
 
 export type TourId = (typeof TOUR_IDS)[number];
-/** Registry entries outside this allowlist stay dormant and cannot be launched. */
 export const AVAILABLE_TOUR_IDS = ["home", "workspace"] as const satisfies readonly TourId[];
 export type AvailableTourId = (typeof AVAILABLE_TOUR_IDS)[number];
 export type TourStatus = "pending" | "completed" | "dismissed";
@@ -29,7 +28,6 @@ export interface TourDefinition {
   version: number;
   contexts: readonly TourContext[];
   priority: number;
-  /** Whether the coordinator may start this tour just by entering its context. */
   autoStart?: boolean;
   steps: readonly TourStepDefinition[];
 }

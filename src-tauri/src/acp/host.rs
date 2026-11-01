@@ -1,5 +1,3 @@
-//! The app's [`ClientHost`]: what an agent sends, applied to its live
-//! session in wire order.
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock, Weak};
 
@@ -20,8 +18,6 @@ fn shows_auth_status(params: &Value) -> bool {
 pub(super) struct SessionHost {
     runtime: Weak<AcpRuntime>,
     session: OnceLock<Weak<LiveSession>>,
-    /// Set after a protocol error: later messages are ignored, as the old
-    /// reader stopped reading.
     failed: AtomicBool,
 }
 
@@ -34,7 +30,6 @@ impl SessionHost {
         })
     }
 
-    /// Connects the host to its session once the session exists.
     pub(super) fn bind(&self, session: &Arc<LiveSession>) {
         let _ = self.session.set(Arc::downgrade(session));
     }

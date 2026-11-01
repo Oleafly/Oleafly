@@ -385,15 +385,12 @@ export function DocumentCitationScanPanel() {
   const [settings, setSettings] = useState<DocumentCitationSettings>(() =>
     loadDocumentCitationSettings(),
   );
-  /** null until getConfig resolves; unknown is treated as heuristic. */
   const [providerReady, setProviderReady] = useState<boolean | null>(null);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<DocumentScanProgress | null>(null);
   const [paragraphs, setParagraphs] = useState<ParagraphCitationResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  /** Editor selection (or captured doc text) passed via command entry points. */
   const [selectionSource, setSelectionSource] = useState<string | null>(null);
-  /** .bib snapshot from command palette path (before closeProject clears files). */
   const [bibSource, setBibSource] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -469,8 +466,6 @@ export function DocumentCitationScanPanel() {
       .join("\n\n");
   }, [bibSource, tree, files]);
 
-  // Selection/doc overrides remain scannable after the home-tool navigation
-  // closes the open project (files store is cleared).
   const canScan =
     !offline &&
     sourceText.trim().length > 0 &&
@@ -591,7 +586,6 @@ export function DocumentCitationScanPanel() {
     }
   };
 
-  // E2E / DEV: inject canned scan results without network or LLM.
   useEffect(() => {
     if (!E2E_HOOKS) return;
     const w = window as unknown as {

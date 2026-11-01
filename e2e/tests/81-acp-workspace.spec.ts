@@ -76,7 +76,6 @@ async function selectAppOption(page: Page, testId: string, label: string) {
   await pickOverlayEntry(page, "option", "listbox", label);
 }
 
-/** Picks an option from a popover whose trigger button holds the element with this test id. */
 async function selectPopoverOption(page: Page, testId: string, label: string) {
   const button = `document.querySelector(${scriptValue(`[data-testid=${JSON.stringify(testId)}]`)})?.closest("button")`;
   await page.waitForFunction(`(() => {
@@ -104,7 +103,6 @@ async function selectAppMenuItemByValue(page: Page, testId: string, value: strin
   await chooseMenuItem(page, testId, `[role="menuitem"][data-value=${JSON.stringify(value)}]`);
 }
 
-/** Clicks the button with this exact text inside the first element matching `scope`. */
 async function clickButtonText(page: Page, scope: string, text: string) {
   const match = `[...(document.querySelector(${scriptValue(scope)})?.querySelectorAll("button") ?? [])].find((button) => (button.textContent ?? "").trim().startsWith(${scriptValue(text)}))`;
   await page.waitForFunction(`!!(${match})`, 20_000);
@@ -194,7 +192,6 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
       10_000,
     );
     await clickHeaderAction(page, "New conversation");
-    // A ready agent shows as a green dot and its name; any other status adds its label.
     const status = page.locator(`${assistantSelector} [data-testid="acp-session-status"]`);
     await expect(status).toHaveAttribute("data-status", login ? "auth_required" : "ready", { timeout: 30_000 });
     await expect(status).toContainText(login ? `E2E ACP ${fixture.run} · auth required` : `E2E ACP ${fixture.run}`);
@@ -232,7 +229,6 @@ async function onlySession(page: Page, fixture: AgentFixture) {
 async function sendPrompt(page: Page, prompt: string) {
   await expect(page.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
   await fillTextarea(page, composerSelector, prompt);
-  // The message box takes text in any state; Send waits until the agent can take the message.
   await expect(page.locator(sendSelector)).toBeEnabled({ timeout: 20_000 });
   await page.click(sendSelector);
 }
@@ -260,7 +256,6 @@ test("a custom ACP agent signs in, selects its model, and resolves a native perm
     const assistant = tauriPage.locator(assistantSelector);
     const session = await onlySession(tauriPage, fixture);
     expect(session.status).toBe("auth_required");
-    // The composer keeps taking text while the agent waits for a sign-in; only Send waits.
     await expect(tauriPage.locator(composerSelector)).toBeEnabled();
     await fillTextarea(tauriPage, composerSelector, `draft ${fixture.run}`);
     await expect(tauriPage.locator(sendSelector)).toBeDisabled();
@@ -429,7 +424,6 @@ test("an agent's edit shows as a turn change that can be reviewed, undone and re
 test("a long agent name never pushes the assistant panel sideways", async ({ tauriPage }) => {
   test.setTimeout(120_000);
   await withAgent(tauriPage, false, async (fixture) => {
-    // The selected agent's name widens the picker row; the panel must scroll the row, not itself.
     await tauriPage.click(`[data-testid="agent-picker-${fixture.agentId}"]`);
     const overflow = await tauriPage.evaluate<string[]>(`(() => {
       const section = document.querySelector(${scriptValue(assistantSelector)});

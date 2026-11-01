@@ -77,10 +77,6 @@ function rankHeuristic(papers: LiteratureRecord[]): RankedLiteraturePaper[] {
   }));
 }
 
-/**
- * Split a LaTeX document into paragraphs, search multi-source literature for
- * each, filter against the bibliography, rank candidates, and stream results.
- */
 export async function scanDocumentForCitations(args: {
   sourceText: string;
   bibText: string;
@@ -90,7 +86,6 @@ export async function scanDocumentForCitations(args: {
   search?: typeof searchLiterature;
   completeChat?: CompleteChatFn;
   arxivLookup?: ArxivLookupFn;
-  /** When `"heuristic"`, skip LLM and score with citation/rank heuristics. */
   rankMode?: DocumentScanRankMode;
   signal?: AbortSignal;
   onProgress?: (p: DocumentScanProgress) => void;
@@ -120,7 +115,6 @@ export async function scanDocumentForCitations(args: {
   });
   const totalParagraphs = paragraphs.length;
   const bibIds = parseBibliographyIdentities(args.bibText);
-  // Full-doc keyword context (built once) for the debate ranker.
   const fullDocContext = keywords(args.sourceText.slice(0, 4000), 60);
 
   const results: ParagraphCitationResult[] = [];
@@ -163,7 +157,6 @@ export async function scanDocumentForCitations(args: {
       throwIfAborted(signal);
 
       const filtered = filterNewLiteratureRecords(response.results, bibIds);
-      // Backfill authors for title-only sources (Google Scholar via Serper).
       const papers = await enrichAuthorlessRecords(
         filtered,
         args.arxivLookup ?? undefined,

@@ -49,6 +49,8 @@ export const COLLAB_ERROR_CODES = [
   "suggestion_not_found",
   "suggestion_not_yours",
   "suggestion_role",
+  "suggestion_changed",
+  "suggestion_too_long",
   "chat_role",
   "history_unavailable",
   "account_storage_full",
@@ -81,8 +83,6 @@ export function collabErrorMessage(code: CollabErrorCode, context?: CollabErrorC
   return i18n.t(($) => $.collab.errors[code]);
 }
 
-// A refusal the server has no code for comes back as `invalid` with the
-// server's own sentence, which says more than any general wording could.
 export function collabErrorText(error: unknown, context?: CollabErrorContext): string {
   const code = collabErrorCode(error);
   if (code === "invalid" && isCollabCommandError(error) && error.message.trim()) return error.message.trim();

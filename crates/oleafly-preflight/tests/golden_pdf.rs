@@ -1,4 +1,3 @@
-//! PDF facts read with lopdf against the facts pdf.js reads in the app.
 #![cfg(feature = "pdf")]
 
 mod support;

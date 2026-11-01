@@ -3,13 +3,11 @@ import { create } from "zustand";
 export interface AssistantFileOpen {
   path: string;
   reason: "read" | "write";
-  /** Monotonic open epoch so viewers can refetch even for the same path. */
   at: number;
 }
 
 interface AssistantOutputsState {
   fileOpen: AssistantFileOpen | null;
-  /** Bumped whenever a run produces a fresh compiled PDF worth showing. */
   pdfEpoch: number;
   openFile: (path: string, reason: AssistantFileOpen["reason"]) => void;
   openPdf: () => void;

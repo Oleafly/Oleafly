@@ -1,5 +1,3 @@
-// Scores chunks with a simple TF keyword score (no embeddings) - good enough
-// to surface relevant sections without pulling in external vector infra.
 import type {
   RagChunk,
   RagRetrieveOverride,
@@ -65,7 +63,6 @@ export function scoreChunk(queryTokens: string[], text: string): number {
   for (const t of queryTokens) {
     if (seen.has(t)) continue;
     seen.add(t);
-    // Count occurrences (capped) so rare terms still matter.
     let idx = 0;
     let hits = 0;
     while (hits < MAX_TOKEN_HITS) {
@@ -75,7 +72,6 @@ export function scoreChunk(queryTokens: string[], text: string): number {
       idx = j + t.length;
     }
     if (hits > 0) {
-      // Prefer longer tokens slightly.
       score += hits * (1 + Math.min(2, t.length / 8));
     }
   }

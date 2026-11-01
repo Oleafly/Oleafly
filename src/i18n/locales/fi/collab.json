@@ -224,6 +224,8 @@
     "suggestion_not_found": "Ehdotusta ei enää ole. Joku on ehkä jo hyväksynyt tai hylännyt sen.",
     "suggestion_not_yours": "Vain ehdotuksen tekijä voi perua sen.",
     "suggestion_role": "Roolisi tässä projektissa ei salli ehdotuksia.",
+    "suggestion_changed": "Ehdotuksen ympärillä oleva teksti muuttui, joten omistajan tai muokkaajan on hyväksyttävä tai hylättävä se.",
+    "suggestion_too_long": "Ehdotettu poisto voi olla enintään 20 000 merkkiä pitkä. Poista kerrallaan pienempi osa.",
     "chat_role": "Roolisi tässä projektissa ei salli tätä keskustelussa.",
     "history_unavailable": "Tämän projektin historia ei ole vielä tällä koneella. Yritä uudelleen, kun se on synkronoitu.",
     "account_storage_full": "Projektin omistajan tililtä on loppunut tallennustila tällä palvelimella. Poista joitakin tiedostoja vapauttaaksesi tilaa tai pyydä palvelimen ylläpitäjältä lisää tilaa.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Palautetaanko koko projekti?",
-      "description": "Kaikki tiedostot palautuvat kaikille tämän projektin jäsenille sellaisiksi kuin ne olivat ajankohtana {{time}}. Nykyinen teksti jää historiaan, joten voit palata siihen.",
+      "textAndDeleted": "Kaikkien tiedostojen teksti palautuu kaikille tämän projektin jäsenille sellaiseksi kuin se oli ajankohtana {{time}}, ja poistetut tiedostot palaavat takaisin. Uudelleen nimetyt tiedostot säilyttävät uudet nimensä, ja myöhemmin lisätyt kuvat ja tiedostot pysyvät ennallaan. Nykyinen teksti jää historiaan, joten voit palata siihen.",
       "confirm": "Palauta projekti"
     },
     "compareTitle": "Muutokset kahden version välillä",

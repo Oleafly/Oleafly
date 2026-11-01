@@ -1,11 +1,3 @@
-//! Process and filesystem boundaries for research-task commands and
-//! experiment runs, shared by the Oleafly app, the CLI and the daemon.
-//!
-//! A [`SandboxSpec`] names the workspace (the command's folder), extra
-//! read-only and read-write grants, a private home folder and whether the
-//! network is allowed. [`command`] turns it into a confined
-//! `std::process::Command`: `sandbox-exec` on macOS, bubblewrap on Linux and
-//! an AppContainer inside a kill-on-close job object on Windows.
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -29,8 +21,6 @@ mod safe_fs;
 pub mod selftest;
 #[cfg(windows)]
 pub mod windows;
-// The pure Windows helpers (quoting, environment, launcher arguments) build
-// and test on every system.
 #[cfg(not(windows))]
 #[path = "windows/cmdline.rs"]
 #[allow(dead_code)]
@@ -50,23 +40,15 @@ pub(crate) use resolve::{plain_path, resolve, ResolvedSpec};
 #[cfg(test)]
 mod tests;
 
-/// What a confined command may touch.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SandboxSpec {
-    /// The command's folder, readable as a whole. Writes need `read_write`.
     pub workspace: PathBuf,
-    /// Extra read grants (runtimes, skill folders). System folders and the
-    /// program are added by [`command`].
     pub read_only: Vec<PathBuf>,
-    /// Write grants, inside the workspace or the home folder.
     pub read_write: Vec<PathBuf>,
     pub network: bool,
-    /// GPU devices (Training run profile).
     #[serde(default)]
     pub gpu: bool,
-    /// Applied after the fixed variables. The fixed ones (`RESERVED_ENV`)
-    /// cannot be changed.
     #[serde(default)]
     pub env: BTreeMap<String, String>,
     /// The program starts helper processes with `posix_spawn` (macOS blocks
@@ -76,30 +58,17 @@ pub struct SandboxSpec {
     /// short task commands don't.
     #[serde(default)]
     pub child_processes: bool,
-    /// Private, writable HOME/TMP for the command.
     pub home: PathBuf,
-    /// Who the command runs for (`task:<id>` for a research task). On
-    /// Windows it names the AppContainer profile; empty only in self-tests.
-    /// Only `task:` owners may work in copies: [`release`] takes the entries
-    /// of any other owner off its folders.
     #[serde(default)]
     pub owner: String,
-    /// The project id, the scope of `project_read_only` grants on Windows.
     #[serde(default)]
     pub project: Option<String>,
-    /// The project's linked data folders (read-only).
     #[serde(default)]
     pub project_read_only: Vec<PathBuf>,
-    /// Paths inside a write grant that stay read-only (a copy's `.git` and
-    /// `.oleafly`).
     #[serde(default)]
     pub protected: Vec<PathBuf>,
-    /// Paths inside the workspace or another grant that the command can
-    /// neither read nor change (`.git/config`, `.private`, `.env`). Paths
-    /// that don't exist, or that no grant reaches, are ignored.
     #[serde(default)]
     pub deny_read: Vec<PathBuf>,
-    /// Folders placed before the platform's base `PATH`.
     #[serde(default)]
     pub path_prepend: Vec<PathBuf>,
 }
@@ -141,33 +110,23 @@ pub enum Availability {
 pub const UNSUPPORTED_MESSAGE: &str =
     "Isolated task commands are not supported on this operating system yet.";
 
-/// Variables a task cannot override.
 pub const RESERVED_ENV: [&str; 6] = ["PATH", "HOME", "LANG", "TMPDIR", "TMP", "TEMP"];
 
-/// Set inside every confined command: `macos`, `bubblewrap` or `appcontainer`.
 pub const SANDBOX_ENV: &str = "OLEAFLY_SANDBOX";
 
-/// `PATH` inside the sandbox on macOS and Linux.
 pub const UNIX_TASK_PATH: &str =
     "/opt/homebrew/bin:/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
 
-/// Commands longer than this are refused (they belong in a script file).
 pub const MAX_SHELL_TEXT: usize = 16 * 1024;
 
-/// Where the sandbox keeps its own state, and which binary relaunches into
-/// the Windows sandbox.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SandboxConfig {
-    /// `<data root>/sandbox`: the Windows grant ledger and self-test folders.
     pub state_dir: PathBuf,
-    /// The binary that handles `--oleafly-sandbox-launch`; the current
-    /// executable when `None`.
     pub launcher: Option<PathBuf>,
 }
 
 static CONFIG: OnceLock<SandboxConfig> = OnceLock::new();
 
-/// Sets the sandbox configuration; the first call wins.
 pub fn configure(config: SandboxConfig) {
     let _ = CONFIG.set(config);
 }
@@ -176,17 +135,13 @@ pub(crate) fn config() -> Option<&'static SandboxConfig> {
     CONFIG.get()
 }
 
-/// The shell a command string runs in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ShellKind {
-    /// `/bin/sh -c`.
     Posix,
-    /// `cmd.exe /D /S /C`.
     Cmd,
 }
 
-/// The shell confined command strings run in on this system.
 pub fn command_shell() -> ShellKind {
     if cfg!(windows) {
         ShellKind::Cmd
@@ -195,7 +150,6 @@ pub fn command_shell() -> ShellKind {
     }
 }
 
-/// Whether this machine can confine commands.
 pub fn availability() -> Availability {
     #[cfg(target_os = "macos")]
     {
@@ -219,7 +173,6 @@ pub fn availability() -> Availability {
     }
 }
 
-/// The user's home directory (`HOME`, then `USERPROFILE`).
 pub fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .filter(|value| !value.is_empty())
@@ -227,8 +180,6 @@ pub fn home_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// Check the private home folder and resolve it. Call this before creating
-/// anything for the command, so a bad folder fails without side effects.
 pub fn prepare_home(home: &Path) -> Result<PathBuf, SandboxError> {
     let metadata = std::fs::symlink_metadata(home).map_err(|_| {
         SandboxError::Invalid("The task command's temporary folder is unavailable.".into())
@@ -242,7 +193,6 @@ pub fn prepare_home(home: &Path) -> Result<PathBuf, SandboxError> {
         .map_err(|error| SandboxError::Io(error.to_string()))
 }
 
-/// System folders a confined program may read (those that exist).
 pub fn system_read_paths() -> Vec<PathBuf> {
     [
         "/System",
@@ -267,9 +217,6 @@ pub fn system_read_paths() -> Vec<PathBuf> {
     .collect()
 }
 
-/// Resolve the extra read grants: each must exist and must not be the
-/// filesystem root, the user's home folder or a folder that holds it, or a
-/// top-level system folder.
 pub fn resolve_read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
     let home = home_dir().and_then(|home| home.canonicalize().ok().or(Some(home)));
     let mut resolved = Vec::with_capacity(paths.len());
@@ -302,7 +249,6 @@ fn check_env(spec: &SandboxSpec) -> Result<(), SandboxError> {
     Ok(())
 }
 
-/// A confined command for `program args` under `spec`.
 pub fn command(
     spec: &SandboxSpec,
     program: &Path,
@@ -332,8 +278,6 @@ fn unix_command(
     args: &[OsString],
 ) -> Result<std::process::Command, SandboxError> {
     create_home_folders(&resolved.home);
-    // bubblewrap can only mount a path that exists; seatbelt denies one that
-    // doesn't as it is.
     #[cfg(target_os = "linux")]
     resolve::create_missing_protected(resolved)?;
     let mut readable = system_read_paths();
@@ -369,8 +313,6 @@ fn unix_command(
     Ok(command)
 }
 
-/// The folders the base environment points at, created when missing. The
-/// command can make any of them a link, so none is created through one.
 #[cfg(not(windows))]
 fn create_home_folders(home: &Path) {
     for folder in ["tmp", ".config", ".cache", ".local/state", ".local/share"] {
@@ -378,8 +320,6 @@ fn create_home_folders(home: &Path) {
     }
 }
 
-/// A confined command for the shell line `text` (`/bin/sh -c` on macOS and
-/// Linux, `cmd.exe /D /S /C` on Windows).
 pub fn shell_command(
     spec: &SandboxSpec,
     text: &str,
@@ -407,7 +347,6 @@ pub fn shell_command(
     }
 }
 
-/// The variables every confined command starts with on macOS and Linux.
 pub fn unix_environment(home: &Path, path_prepend: &[PathBuf]) -> Vec<(String, OsString)> {
     let mut path = String::new();
     for folder in path_prepend {
@@ -448,18 +387,10 @@ pub fn unix_environment(home: &Path, path_prepend: &[PathBuf]) -> Vec<(String, O
     ]
 }
 
-/// The variables every confined command starts with (kept for callers of
-/// 0.4.7's API; new code uses [`unix_environment`]).
 pub fn fixed_environment(temp: &Path) -> Vec<(String, OsString)> {
     unix_environment(temp, &[])
 }
 
-/// Releases what the sandbox holds for `owner`. On Windows that is the
-/// owner's profile and, unless the owner is a research task (`task:<id>`,
-/// whose folders are copies that go with the task), the access entries it
-/// put on folders that stay, such as a CLI run's project. Taking those off
-/// walks the folders, so call this off async and UI threads. Nothing to do
-/// on macOS and Linux.
 pub fn release(owner: &str) -> Result<(), SandboxError> {
     #[cfg(windows)]
     {
@@ -472,11 +403,6 @@ pub fn release(owner: &str) -> Result<(), SandboxError> {
     }
 }
 
-/// Releases every research task (`task:<id>`) not in `active_owners`
-/// (startup sweep), every other owner (a CLI run, a self-test) whose
-/// process is gone, and takes off the entries those runs left on folders
-/// when they were cut off. A CLI run that is working now is left alone.
-/// Returns how many owners were released.
 pub fn release_stale(active_owners: &[String]) -> Result<usize, SandboxError> {
     #[cfg(windows)]
     {
@@ -489,13 +415,6 @@ pub fn release_stale(active_owners: &[String]) -> Result<usize, SandboxError> {
     }
 }
 
-/// Releases what runs other than research tasks (a CLI run, a self-test)
-/// still hold although their process is gone, such as a run killed before
-/// it could release: the profile and the entries it put on folders that
-/// stay. Research tasks are left to the app, which knows which are active.
-/// The CLI calls this when it starts. Walks the folders, so call it off
-/// async and UI threads. Returns how many owners were released; nothing to
-/// do on macOS and Linux.
 pub fn release_abandoned() -> Result<usize, SandboxError> {
     #[cfg(windows)]
     {
@@ -507,19 +426,14 @@ pub fn release_abandoned() -> Result<usize, SandboxError> {
     }
 }
 
-/// A folder that stays readable to sandboxed commands across tasks
-/// (Windows only).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SharedGrantView {
     pub path: PathBuf,
-    /// `runtimes` or `project`.
     pub scope: String,
     pub project: Option<String>,
 }
 
-/// The shared read grants (interpreters, linked data folders) the Windows
-/// sandbox holds; empty elsewhere.
 pub fn shared_grants() -> Vec<SharedGrantView> {
     #[cfg(windows)]
     {
@@ -531,7 +445,6 @@ pub fn shared_grants() -> Vec<SharedGrantView> {
     }
 }
 
-/// Removes shared read grants; returns how many were removed.
 pub fn remove_shared_access(scope: SharedScope) -> Result<usize, SandboxError> {
     #[cfg(windows)]
     {
@@ -544,9 +457,6 @@ pub fn remove_shared_access(scope: SharedScope) -> Result<usize, SandboxError> {
     }
 }
 
-/// Handles the sandbox's own command-line entries before the app or CLI
-/// starts: the Windows launcher, the self-test and a sandboxed run. Returns
-/// the exit code when the arguments were one of them.
 pub fn entry(config: impl FnOnce() -> Option<SandboxConfig>) -> Option<i32> {
     let argv: Vec<OsString> = std::env::args_os().skip(1).collect();
     let first = argv.first()?.to_str()?.to_owned();
@@ -586,7 +496,6 @@ pub fn entry(config: impl FnOnce() -> Option<SandboxConfig>) -> Option<i32> {
     }
 }
 
-// Only the macOS and Linux backends read the request.
 #[cfg_attr(windows, allow(dead_code))]
 pub(crate) struct PlatformRequest<'a> {
     pub program: &'a Path,
@@ -602,7 +511,6 @@ pub(crate) struct PlatformRequest<'a> {
     pub child_processes: bool,
     pub readable: &'a [PathBuf],
     pub protected: &'a [PathBuf],
-    /// Covered after every grant: no reads, no writes.
     pub hidden: &'a [PathBuf],
 }
 

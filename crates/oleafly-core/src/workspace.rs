@@ -474,8 +474,6 @@ fn normalize_relative(value: &str) -> Result<String> {
         .join("/"))
 }
 
-/// `root/relative` when it stays inside `root` (links resolved); refuses
-/// `..`, absolute paths and drive prefixes.
 pub fn resolve_project_path(root: &Path, relative: &str) -> Result<PathBuf> {
     resolve_within(root, relative)
 }

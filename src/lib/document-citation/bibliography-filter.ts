@@ -6,7 +6,6 @@ export interface BibliographyIdentities {
   titles: Set<string>;
 }
 
-/** Lowercase alphanumeric only; first 60 chars for fuzzy title match. */
 export function normalizeTitleKey(title: string): string {
   return title
     .toLowerCase()
@@ -22,7 +21,6 @@ function normalizeDoiKey(doi: string): string {
     .toLowerCase();
 }
 
-/** Strip trailing arXiv version suffix (e.g. v2). */
 function normalizeArxivId(id: string): string {
   return id.trim().replace(/v\d+$/i, "");
 }
@@ -62,7 +60,6 @@ function applyBibliographyField(
     return;
   }
 
-  // url / note may embed arXiv abs links
   const arxiv = extractArxivFromUrl(value);
   if (arxiv) out.arxivIds.add(arxiv);
 }
@@ -90,7 +87,6 @@ export function parseBibliographyIdentities(bibText: string): BibliographyIdenti
     applyBibliographyField(key, value, { dois, arxivIds, titles });
   }
 
-  // Also catch bare arxiv.org/abs|pdf links anywhere in the bib text
   const absRe = /arxiv\.org\/(?:abs|pdf)\/([\w./-]+)/gi;
   for (
     let match = absRe.exec(bibText);

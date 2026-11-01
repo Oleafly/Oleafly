@@ -1,8 +1,3 @@
-//! The built-in task runtime: Oleafly's own agent loop running a research
-//! task with the workspace tools, the task tools and the scoped research MCP
-//! bridge. Long work goes to supervised runs; when the agent's turn ends
-//! while runs are in flight, it waits for them and is woken with their
-//! results.
 use std::collections::{BTreeSet, HashMap};
 use std::future::Future;
 use std::ops::ControlFlow;
@@ -20,7 +15,6 @@ use serde_json::{json, Value};
 
 use crate::approvals::gate;
 use crate::budget::{BudgetKind, WRAP_UP_LIMIT, WRAP_UP_STEPS};
-// 0.4.8 L: a conversation saved for a handoff.
 use crate::conversation::{self, ConversationSnapshot, CONVERSATION_VERSION};
 use crate::host::{ConnectorSecrets, NoSecrets};
 use crate::literature::paper::PdfTextExtractor;
@@ -40,18 +34,13 @@ use crate::task_tools::{
     MAX_OUTPUT_BYTES,
 };
 
-/// Input and output tokens of a run, when the provider reports them.
 type TokenCounts = (Option<u64>, Option<u64>);
 
-/// Steps one task turn may take (the run is long by design).
 #[cfg(not(test))]
 const TASK_MAX_STEPS: u32 = 2_000;
-/// The old cap in unit tests, so a test can reach the limit.
 #[cfg(test)]
 const TASK_MAX_STEPS: u32 = 50;
-/// Times a generation may be woken by finished runs.
 const MAX_WAKE_UPS: u32 = 200;
-/// The longest an agent turn may last without a budget.
 const DEFAULT_TURN_LIMIT: Duration = Duration::from_secs(2 * 60 * 60);
 const CHILD_MAX_STEPS: u32 = 40;
 const CHILDREN_AT_ONCE: usize = 3;
@@ -60,18 +49,12 @@ const WRAP_UP_WATCH: Duration = Duration::from_secs(2);
 #[cfg(test)]
 const WRAP_UP_WATCH: Duration = Duration::from_millis(20);
 
-/// How a wait for a task's runs between turns ended.
 enum Waited {
-    /// Nothing was in flight or left to report.
     Nothing,
-    /// These runs finished (empty when the time budget ended).
     Finished(Vec<RunSummary>),
-    /// 0.4.8 L: the task is moving to another process; its runs go on.
     Suspended,
 }
 
-/// The built-in task agent: Oleafly's own agent loop with the workspace
-/// tools and the research MCP bridge.
 #[derive(Clone)]
 pub struct BuiltinTaskAdapter {
     host: Arc<dyn TaskHost>,
@@ -89,41 +72,31 @@ impl BuiltinTaskAdapter {
     }
 }
 
-/// The model a run uses, and where its usage is recorded.
 pub struct TaskProvider {
     pub client: reqwest::Client,
     pub resolved: oleafly_agent::Resolved,
     pub usage: Box<dyn UsageSink>,
 }
 
-/// Records a run's token use (the app writes it to its usage table).
 pub trait UsageSink: Send + Sync {
     fn observe(&self, event: &AgentEvent);
     fn finish(&self, status: &str);
 }
 
-/// A scoped research MCP bridge a run talks to.
 pub trait TaskBridge: Send + Sync {
     fn mcp_server(&self) -> Value;
     fn call_tool(self: Arc<Self>, name: String, args: Value) -> TaskRuntimeFuture<Value>;
     fn shutdown(self: Arc<Self>) -> Pin<Box<dyn Future<Output = ()> + Send>>;
-    // 0.4.8 I: a decorator (desktop apps) adds a server and a tool; these
-    // defaults keep every other bridge as it was.
-    /// Every MCP server a CLI agent run gets from this bridge.
     fn mcp_servers(&self) -> Vec<Value> {
         vec![self.mcp_server()]
     }
-    /// The bridge tools a built-in run offers its model.
     fn tool_definitions(&self) -> Vec<crate::mcp::protocol::ToolMeta> {
         crate::mcp::tool_definitions()
     }
 }
 
-/// 0.4.8 I: the tool desktop apps add to a task through its bridge.
 pub const DESKTOP_APPS_TOOL: &str = "desktop_apps";
 
-/// An MCP tool result as tool output: text parts joined, images kept as
-/// data URLs, an error result as `{"error": …}`.
 fn mcp_output(result: &Value) -> ToolOutput {
     let mut texts = Vec::new();
     let mut images = Vec::new();
@@ -150,14 +123,12 @@ fn mcp_output(result: &Value) -> ToolOutput {
     }
 }
 
-/// Web reads for tasks with network permission.
 #[async_trait::async_trait]
 pub trait WebTools: Send + Sync {
     async fn fetch(&self, url: &str) -> Result<Value, String>;
     async fn search(&self, query: &str) -> Result<Value, String>;
 }
 
-/// One tool of a user MCP server a task may call.
 #[derive(Clone)]
 pub struct TaskMcpTool {
     pub schema: ToolSchema,
@@ -173,49 +144,38 @@ fn shared_literature() -> Arc<LiteratureClient> {
         .clone()
 }
 
-/// What a run needs from its host: skills, the provider and the bridge.
 pub trait TaskHost: Send + Sync {
     fn skills(&self, context: &TaskRunContext) -> Result<String, String>;
-    /// The selected skills' folders, readable from task commands. Resolved
-    /// once per run.
     fn skill_read_paths(&self, context: &TaskRunContext) -> Vec<PathBuf>;
     fn provider(&self, context: TaskRunContext) -> TaskRuntimeFuture<TaskProvider>;
-    /// The research bridge; with a binding it also serves the task tools.
     fn bridge(
         &self,
         context: TaskRunContext,
         binding: Option<TaskBinding>,
     ) -> TaskRuntimeFuture<Arc<dyn TaskBridge>>;
-    /// The project's linked data folders (canonical paths).
     fn linked_folders(
         &self,
         _context: &TaskRunContext,
     ) -> Vec<oleafly_sandbox::profile::LinkedFolder> {
         Vec::new()
     }
-    /// Folders interpreters are looked for in (the user's search path).
     fn program_search_dirs(&self) -> Vec<PathBuf> {
         std::env::var_os("PATH")
             .map(|path| std::env::split_paths(&path).collect())
             .unwrap_or_default()
     }
-    /// The real project folder; its virtual environments stay out of the
-    /// task's copy.
     fn project_root(&self, _project_id: &str) -> Option<PathBuf> {
         None
     }
-    /// One linked data folder by id.
     fn linked_root(&self, _project_id: &str, _root_id: &str) -> Option<PathBuf> {
         None
     }
     fn web(&self) -> Option<Arc<dyn WebTools>> {
         None
     }
-    /// Tools of the user's MCP servers allowed for tasks.
     fn task_mcp_tools(&self, _context: &TaskRunContext) -> TaskRuntimeFuture<Vec<TaskMcpTool>> {
         Box::pin(async { Ok(Vec::new()) })
     }
-    /// The same servers, for a CLI agent's `session/new`.
     fn task_mcp_servers(&self, _context: &TaskRunContext) -> Vec<Value> {
         Vec::new()
     }
@@ -225,7 +185,6 @@ pub trait TaskHost: Send + Sync {
     fn secrets(&self) -> Arc<dyn ConnectorSecrets> {
         Arc::new(NoSecrets)
     }
-    /// Indexes beyond the built-in ones (a connected alphaXiv server).
     fn literature_sources(&self) -> Vec<Arc<dyn LiteratureSource>> {
         Vec::new()
     }
@@ -234,14 +193,12 @@ pub trait TaskHost: Send + Sync {
     }
 }
 
-/// A run in progress, by session id, so it can be cancelled and awaited.
 #[derive(Clone)]
 pub struct ActiveTaskRun {
     pub token: CancellationToken,
     pub done: tokio::sync::watch::Receiver<bool>,
 }
 
-/// Removes a run from its adapter's table when the run ends, however it ends.
 pub struct ActiveToken {
     pub sessions: Arc<Mutex<HashMap<String, ActiveTaskRun>>>,
     pub session_id: String,
@@ -264,7 +221,6 @@ fn output(result: Result<Value, String>) -> ToolOutput {
     })
 }
 
-/// Everything a tool call of one run uses.
 struct ToolScope {
     files: Arc<TaskFiles>,
     jobs: Arc<CommandJobs>,
@@ -286,8 +242,6 @@ impl ToolScope {
         arguments: String,
         token: CancellationToken,
     ) -> ToolOutput {
-        // 0.4.8 I: desktop apps answer with MCP content; screenshots reach
-        // the model as images, and a cancelled task stops waiting.
         if name == DESKTOP_APPS_TOOL && self.names.contains(&name) && !token.is_cancelled() {
             let Ok(args) = serde_json::from_str::<Value>(&arguments) else {
                 return output(Err("Tool arguments must be valid JSON.".into()));
@@ -347,7 +301,6 @@ impl ToolScope {
                         &self.binding.gate_context(),
                         ApprovalKind::Mcp,
                         &format!("Use {name}"),
-                        // In full: a request too long to show is refused.
                         &args.to_string(),
                         &token,
                     )
@@ -365,8 +318,6 @@ impl ToolScope {
     }
 }
 
-/// The runner of one agent turn: its tool calls stop with `token`. Each turn
-/// gets a runner of its own, since a cancelled token refuses every call.
 fn tool_runner(scope: &Arc<ToolScope>, token: &CancellationToken) -> ToolRunner {
     let (scope, token) = (scope.clone(), token.clone());
     Arc::new(move |call| {
@@ -375,7 +326,6 @@ fn tool_runner(scope: &Arc<ToolScope>, token: &CancellationToken) -> ToolRunner 
     })
 }
 
-/// A helper agent with read tools and writes confined to the record.
 async fn spawn_child(
     scope: Arc<ToolScope>,
     args: &Value,
@@ -504,7 +454,6 @@ fn registry(names: &BTreeSet<String>, mcp: &HashMap<String, TaskMcpTool>) -> Too
         let tool = match name.as_str() {
             "read_file" | "list_files" | "search_project" => RegisteredTool::parallel(),
             "write_file" | "run_command" => RegisteredTool::exclusive(),
-            // 0.4.8 I: desktop actions never run beside anything else.
             DESKTOP_APPS_TOOL => RegisteredTool::exclusive(),
             name if mcp.contains_key(name) => RegisteredTool::exclusive(),
             name => match task_tool_policy(name) {
@@ -518,8 +467,6 @@ fn registry(names: &BTreeSet<String>, mcp: &HashMap<String, TaskMcpTool>) -> Too
     registry
 }
 
-/// Cancels the current turn when the time budget runs out, so the agent
-/// can wrap up in a turn of its own.
 fn watch_time(
     services: &TaskServices,
     task_id: &str,
@@ -559,9 +506,6 @@ impl BuiltinTaskAdapter {
             .is_some_and(|clock| clock.exhausted() == Some(BudgetKind::Time))
     }
 
-    /// Waits for in-flight runs until one finishes (or the budget ends).
-    /// 0.4.8 L: a suspend ends the wait (the runs keep going): the task then
-    /// moves to another process, which waits again.
     async fn wait_for_runs(
         &self,
         context: &TaskRunContext,
@@ -581,8 +525,6 @@ impl BuiltinTaskAdapter {
         events(TaskRuntimeEvent::Phase {
             phase: TaskPhase::WaitingRuns,
         });
-        // The wait sees the suspend only while it waits, so finished runs it
-        // already took are never lost.
         let stop = cancel.child();
         let relay = {
             let (suspend, stop) = (suspend.clone(), stop.clone());
@@ -591,7 +533,6 @@ impl BuiltinTaskAdapter {
                 stop.cancel();
             })
         };
-        // The wait also ends when the time budget does, so the agent can wrap up.
         let watcher = watch_time(&self.services, &context.task_id, stop.clone());
         let waited = loop {
             if self.time_ran_out(&context.task_id) {
@@ -622,8 +563,6 @@ impl BuiltinTaskAdapter {
         waited
     }
 
-    /// 0.4.8 L: saves the conversation for the next owner of the task. It
-    /// can be tens of MB written with fsync, so it goes to a blocking thread.
     async fn save_conversation(
         &self,
         context: &TaskRunContext,
@@ -647,8 +586,6 @@ impl BuiltinTaskAdapter {
             .map_err(|error| format!("The conversation could not be saved: {error}"))?
     }
 
-    /// 0.4.8 L: the conversation an earlier owner saved, when this
-    /// generation continues a handoff and the snapshot still fits.
     fn restored_conversation(
         &self,
         context: &TaskRunContext,
@@ -727,7 +664,6 @@ impl BuiltinTaskAdapter {
         tools.extend(task_tool_schemas(&brief, self.host.web().is_some()));
         let reserved: BTreeSet<String> = tools.iter().map(|tool| tool.name.clone()).collect();
         tools.extend(
-            // 0.4.8 I: the bridge's own tools (desktop apps when the task has them).
             bridge
                 .tool_definitions()
                 .into_iter()
@@ -783,8 +719,6 @@ impl BuiltinTaskAdapter {
         });
         let mut template = CompletionRequest::prompt(task_prompt(&context, &skills), String::new());
         template.tools = tools;
-        // 0.4.8 L: a handoff continues the saved conversation (or waits for
-        // runs again); without one the task starts from the record.
         let suspend = self.services.suspends.token(&context.task_id);
         let restored = self.restored_conversation(&context, &resolved, &events);
         let summary = restored
@@ -815,10 +749,8 @@ impl BuiltinTaskAdapter {
             messages,
             summary,
             wake_ups: 0,
-            // Set when the time budget ended: the agent gets one more turn.
             wrap_up: false,
         };
-        // `Ok(Some(file))`: suspended, with the conversation saved in `file`.
         let result: Result<Option<String>, String> = loop {
             if !wait_first {
                 if let ControlFlow::Break(result) = turns.working_turn().await {
@@ -870,8 +802,7 @@ impl BuiltinTaskAdapter {
         }
     }
 
-    /// One agent turn with the task's tools.
-    #[allow(clippy::too_many_arguments)] // Turn plumbing; each argument is load-bearing.
+    #[allow(clippy::too_many_arguments)]
     async fn agent_turn(
         &self,
         client: &reqwest::Client,
@@ -893,7 +824,6 @@ impl BuiltinTaskAdapter {
             &config,
             ToolPipeline {
                 token: token.clone(),
-                // 0.4.8 L: a handoff ends the turn at its next step boundary.
                 suspend: suspend.cloned(),
                 ..ToolPipeline::from_registry(registry.clone())
             },
@@ -917,7 +847,6 @@ impl BuiltinTaskAdapter {
     }
 }
 
-/// The message a task without a saved conversation starts with.
 fn first_message(context: &TaskRunContext) -> String {
     match &context.resume {
         Some(resume) => {
@@ -936,12 +865,8 @@ fn first_message(context: &TaskRunContext) -> String {
     }
 }
 
-/// How a step of the turn loop ended: `Break` ends the run with its result,
-/// `Ok(Some(file))` meaning it was suspended with the conversation in `file`.
 type LoopStep = ControlFlow<Result<Option<String>, String>>;
 
-/// The turn loop of one task run: what every turn needs, and the
-/// conversation so far.
 struct TurnLoop<'a> {
     adapter: &'a BuiltinTaskAdapter,
     context: &'a TaskRunContext,
@@ -962,7 +887,6 @@ struct TurnLoop<'a> {
 }
 
 impl TurnLoop<'_> {
-    /// One working turn of the agent.
     async fn working_turn(&mut self) -> LoopStep {
         let adapter = self.adapter;
         let context = self.context;
@@ -995,8 +919,6 @@ impl TurnLoop<'_> {
         if self.cancel.is_cancelled() {
             return ControlFlow::Break(Err("The task was cancelled.".into()));
         }
-        // 0.4.8 L: suspended at a step boundary: the next owner
-        // continues this conversation.
         if let Ok(outcome) = &outcome {
             if outcome.suspended {
                 return ControlFlow::Break(
@@ -1008,7 +930,6 @@ impl TurnLoop<'_> {
             }
         }
         if adapter.time_ran_out(&context.task_id) {
-            // The time budget ended: one short turn to leave a handoff.
             if let Ok(outcome) = &outcome {
                 self.messages = outcome.history.clone();
             }
@@ -1032,8 +953,6 @@ impl TurnLoop<'_> {
         ControlFlow::Continue(())
     }
 
-    /// Waits for the task's runs and turns the ones that finished into the
-    /// next message.
     async fn wait_and_wake(&mut self) -> LoopStep {
         let adapter = self.adapter;
         let context = self.context;
@@ -1049,8 +968,6 @@ impl TurnLoop<'_> {
                     .map(Some),
             ),
             Ok(Waited::Finished(finished)) if finished.is_empty() => {
-                // The budget ended while the task waited for its runs: the
-                // agent still gets its turn to leave a handoff.
                 self.wrap_up = adapter.time_ran_out(&context.task_id);
                 ControlFlow::Break(Ok(None))
             }
@@ -1069,8 +986,6 @@ impl TurnLoop<'_> {
         }
     }
 
-    /// The short turn after the time budget ended, where the agent leaves a
-    /// handoff.
     async fn wrap_up_turn(&mut self) {
         (self.events)(TaskRuntimeEvent::Phase {
             phase: TaskPhase::WrappingUp,
@@ -1079,8 +994,6 @@ impl TurnLoop<'_> {
             .push(Message::user(wrap_up_message(&self.context.record_dir)));
         let mut request = self.template.clone();
         request.messages = self.messages.clone();
-        // A turn of its own: the working turn's token is already cancelled
-        // and would refuse every tool call.
         let wrap_token = self.cancel.child();
         let wrapped = self
             .adapter
@@ -1165,7 +1078,6 @@ pub fn tool_result_status(output: &str) -> &'static str {
     let Ok(value) = serde_json::from_str::<Value>(output) else {
         return "done";
     };
-    // Task commands report `timedOut`; older tools used `timed_out`.
     let failed = value.get("error").is_some_and(|entry| !entry.is_null())
         || value.get("success") == Some(&Value::Bool(false))
         || value.get("timedOut") == Some(&Value::Bool(true))
@@ -1228,6 +1140,5 @@ pub fn builtin_event(event: AgentEvent) -> Option<TaskRuntimeEvent> {
 #[cfg(test)]
 mod tests;
 
-// 0.4.8 L: suspending and continuing a built-in task across a handoff.
 #[cfg(test)]
 mod handoff_tests;

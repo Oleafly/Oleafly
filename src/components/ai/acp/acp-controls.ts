@@ -9,11 +9,9 @@ export type ModeControl =
 
 export interface ControlGroups {
   model: ModelControl | null;
-  /** Options that belong with the model (Claude's Fast). */
   modelConfig: AcpConfigOption[];
   effort: AcpConfigOption | null;
   mode: ModeControl | null;
-  /** Everything else the agent reports. */
   more: AcpConfigOption[];
 }
 
@@ -54,7 +52,6 @@ function repeatsEffort(mode: ModeControl, effort: AcpConfigOption | null): boole
     && choices.every((choice) => levels.some((level) => level.value === choice.id || level.name === choice.name));
 }
 
-/** The display name of an option's current choice. */
 export function currentName(option: AcpConfigOption): string | null {
   if (option.kind.type === "select") {
     const current = option.kind.currentValue;
@@ -72,7 +69,6 @@ export interface ModelChoice {
   blocked: boolean;
 }
 
-/** The models the agent offers, in its order; empty when it gives no list to pick from. */
 export function modelChoices(model: ModelControl | null): ModelChoice[] {
   if (model?.kind === "config" && model.option.kind.type === "select") {
     return model.option.kind.options.map((choice) => ({
@@ -88,13 +84,11 @@ export function modelChoices(model: ModelControl | null): ModelChoice[] {
   return [];
 }
 
-/** The id of the model the agent runs now, when it reports one. */
 export function currentModelId(model: ModelControl | null): string | null {
   if (model?.kind === "config" && model.option.kind.type === "select") return model.option.kind.currentValue;
   return model?.kind === "legacy" ? model.current : null;
 }
 
-/** The group name to show above each choice: where a group starts, and null elsewhere. */
 export function groupHeadings(choices: readonly Pick<ModelChoice, "group">[]): (string | null)[] {
   let lastGroup: string | null = null;
   return choices.map((choice) => {
@@ -104,7 +98,6 @@ export function groupHeadings(choices: readonly Pick<ModelChoice, "group">[]): (
   });
 }
 
-/** The one choice in the tab order: the current model, else the first that can be chosen. */
 export function entryChoiceId(choices: readonly ModelChoice[], current: string | null): string | undefined {
   const entry = choices.find((choice) => choice.id === current && !choice.blocked)
     ?? choices.find((choice) => !choice.blocked);
@@ -117,24 +110,17 @@ export interface ModeChoice {
   blocked: boolean;
 }
 
-/** The modes the agent offers, in its order. */
 export function modeChoices(mode: ModeControl): ModeChoice[] {
   if (mode.kind === "legacy") return mode.modes;
   if (mode.option.kind.type !== "select") return [];
   return mode.option.kind.options.map((choice) => ({ id: choice.value, name: choice.name, blocked: choice.blocked }));
 }
 
-/** The id of the mode the agent is in, when it reports one. */
 export function currentModeId(mode: ModeControl): string | null {
   if (mode.kind === "legacy") return mode.current;
   return mode.option.kind.type === "select" ? mode.option.kind.currentValue : null;
 }
 
-/**
- * Which option takes focus after a key in a listbox: the arrows, Home and End,
- * or typing the start of a name. `labels` has null for an option that cannot
- * be chosen. Null when the key does nothing here.
- */
 export function listboxFocusTarget(labels: readonly (string | null)[], active: number, key: string): number | null {
   const enabled = labels.flatMap((label, index) => (label === null ? [] : [index]));
   if (enabled.length === 0) return null;

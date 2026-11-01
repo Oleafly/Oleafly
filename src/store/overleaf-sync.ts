@@ -172,7 +172,6 @@ export const useOverleafSyncStore = create<OverleafSyncState>((set, get) => ({
     if (!projectId || get().phase !== "idle") return;
     try {
       const status = await overleafSyncUnlink(projectId);
-      // The sync panel's status line says where the replaced files went.
       const kept = status.backupsFolder
         ? new AppError("overleaf.sync_backups_saved", { folder: status.backupsFolder }, null)
         : null;

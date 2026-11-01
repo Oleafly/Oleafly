@@ -1,7 +1,3 @@
-//! The built-in assistant's side of desktop apps: native dispatch of the
-//! `desktop_apps` tool, the run scope, the tag a subagent's calls carry, and
-//! the guard that ends a turn's Cua session however the turn ends.
-
 use std::sync::Arc;
 
 use serde_json::{json, Value};
@@ -9,19 +5,13 @@ use serde_json::{json, Value};
 use super::dispatch::{call_desktop_apps, turn_ended_in};
 use super::{global, CuaDriverState, CuaScope, Surface};
 
-/// Set by `exec_owner_tagging_runner` on a subagent's calls: the child's own
-/// session key (its exec owner).
 pub(crate) const SESSION_TAG: &str = "__cuaSession";
 
-/// Exec owners minted for children look like `external:<uuid>`.
 const CHILD_SESSION_PREFIX: &str = "external:";
 
-/// Who a chat run's desktop calls belong to.
 #[derive(Clone, Debug)]
 pub(crate) struct RunScope {
-    /// "Allow for this chat" grants live here: the chat thread, or the run.
     pub grant_key: String,
-    /// The run's own Cua session; the turn-end guard uses the same key.
     pub root_session_key: String,
     pub agent_label: String,
 }
@@ -40,10 +30,6 @@ impl RunScope {
     }
 }
 
-/// The session a call belongs to: a live subagent's tag, else the run's own.
-/// The runner that tags a subagent's calls overwrites whatever the model
-/// wrote; a root call's tag came from the model, so it only counts when it
-/// names a subagent that is running (its guard registered the key).
 fn session_key_for(state: &CuaDriverState, run: &RunScope, arguments: &Value) -> String {
     arguments
         .get(SESSION_TAG)
@@ -55,8 +41,6 @@ fn session_key_for(state: &CuaDriverState, run: &RunScope, arguments: &Value) ->
         .unwrap_or_else(|| run.root_session_key.clone())
 }
 
-/// Ends the Cua session of `key` when dropped, so a finished, cancelled or
-/// dropped run ends its session too.
 pub(crate) struct TurnEndGuard {
     key: String,
     state: Option<Arc<CuaDriverState>>,
@@ -72,8 +56,6 @@ impl TurnEndGuard {
         Self::registered(Some(state), session_key)
     }
 
-    /// A subagent's key (`external:…`) is registered while its guard lives:
-    /// its tagged calls may use it.
     fn registered(state: Option<Arc<CuaDriverState>>, session_key: String) -> Self {
         if let Some(state) = &state {
             if session_key.starts_with(CHILD_SESSION_PREFIX) {
@@ -100,7 +82,6 @@ fn tool_error(message: &str) -> oleafly_agent::ToolOutput {
     oleafly_agent::ToolOutput::text(json!({ "error": message }).to_string())
 }
 
-/// Native dispatch for the built-in agent and its subagents.
 pub(crate) async fn agent_tool(
     run: &RunScope,
     project_id: Option<&str>,
@@ -163,7 +144,6 @@ mod tests {
             ),
             "external:abc"
         );
-        // Only the shape the child tagging uses counts.
         assert_eq!(
             session_key_for(
                 &state,
@@ -180,12 +160,10 @@ mod tests {
         let run = RunScope::for_chat(Some("thread-1"), "run-1");
         let forged = json!({"tool": "click", SESSION_TAG: "external:made-up"});
         assert_eq!(session_key_for(&state, &run, &forged), "run-1");
-        // A live subagent's key works while it lives, and not after.
         let child = TurnEndGuard::with_state(state.clone(), "external:made-up".into());
         assert_eq!(session_key_for(&state, &run, &forged), "external:made-up");
         drop(child);
         assert_eq!(session_key_for(&state, &run, &forged), "run-1");
-        // A run's own key is never registered as a subagent's.
         let _run_guard = TurnEndGuard::with_state(state.clone(), "run-1".into());
         assert!(!state.is_child("run-1"));
     }

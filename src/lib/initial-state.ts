@@ -10,8 +10,6 @@ import { useFilesStore } from "@/store/files";
 let snapshotConfig: AppConfig | null = null;
 let snapshotPendingOpen: PendingOpenRequest[] = [];
 
-/** The config the backend handed over at boot; null before hydration or when
- * the snapshot failed. Consumers needing freshness still call getConfig(). */
 export function getSnapshotConfig(): AppConfig | null {
   return snapshotConfig;
 }

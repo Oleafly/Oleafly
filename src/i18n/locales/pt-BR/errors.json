@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "O {{engine}} precisa executar código para gerar este documento, e o código está desligado neste projeto. Permita código neste projeto para compilá-lo.",
+    "export_stopped": "A exportação foi interrompida.",
     "quarto_missing": "O Quarto não está instalado. Instale-o em Configurações > Motores > Quarto e compile de novo.",
     "calepin_missing": "O Calepin não está instalado. Instale-o em Configurações > Motores > Calepin e compile de novo.",
     "not_offered": "O Oleafly não pode baixar o {{tool}} para este computador. Instale-o você mesmo e compile de novo.",

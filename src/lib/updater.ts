@@ -20,21 +20,15 @@ const UPDATE_WINDOW_LABEL = "update";
 // server (`isTauri()` is false) every entry point is a no-op so nothing
 // throws.
 
-// Guard against overlapping checks (startup tick racing a manual click).
 let inFlight: Promise<Update | null> | null = null;
 let checking: Promise<Update | null> | null = null;
 
-// In the browser dev server (`!isTauri()`) there is no updater, so this
-// resolves to `null` just like "already up to date" - callers that need to
-// tell the two apart should check `isTauri()` themselves.
 export async function findUpdate(): Promise<Update | null> {
   if (!isTauri()) return null;
   checking ??= check({ timeout: 15000 }).then((update) => update ?? null).finally(() => { checking = null; });
   return checking;
 }
 
-// When the release doesn't advertise a content length, `onProgress` stays at
-// 0 until the download finishes (then jumps to 100).
 export async function installUpdate(
   update: Update,
   onProgress?: (percent: number) => void,
@@ -64,10 +58,6 @@ export async function installUpdate(
   await invoke("install_update", { rid });
 }
 
-// Records the outcome in the updates store so the in-app prompt
-// (`UpdateNotice`) and the About "last check failed" indicator stay in sync.
-// Failures are rethrown only when `rethrow` is set, which the manual checker
-// uses to render its own inline error state.
 export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } = {}): Promise<Update | null> {
   inFlight ??= (async () => {
     const store = useUpdatesStore.getState();
@@ -90,9 +80,6 @@ export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } 
   }
 }
 
-// `manual` keeps the window open to report "up to date" (menu-triggered);
-// the automatic path lets the window close itself when there's nothing to
-// install.
 export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise<void> {
   if (!isTauri()) return;
   const existing = await WebviewWindow.getByLabel(UPDATE_WINDOW_LABEL);

@@ -8,7 +8,6 @@ export interface RoleAbilities {
   resolve: boolean;
   chat: boolean;
   clearChat: boolean;
-  /** Shares a PDF compiled in this browser with the project. */
   share: boolean;
 }
 

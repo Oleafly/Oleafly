@@ -12,10 +12,9 @@ import { useInlineEditStore } from "@/store/inlineEdit";
 vi.mock("./InlineEditPanel", () => ({ InlineEditPanel: () => null }));
 
 import { acceptInlineEdit, inlineDiffPlugin } from "./plugin";
+import { stubRangeGeometry } from "../../../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const SETTINGS: ReturnType<EditorHost["useSettings"]> = {
   keymap: "default",

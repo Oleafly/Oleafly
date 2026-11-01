@@ -1,7 +1,3 @@
-//! Finding Cua Driver (and the `cua` command for Spaces), its version, the
-//! official install lines, and readers for its status commands. Oleafly
-//! never installs or updates Cua itself.
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
@@ -20,19 +16,14 @@ const GNOME_TIMEOUT: Duration = Duration::from_secs(2);
 const MAX_PROBLEMS: usize = 5;
 const MAX_PROBLEM_CHARS: usize = 300;
 
-/// A Cua Driver install found on this computer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct DriverInstall {
-    /// The `cua-driver` program, symlinks resolved.
     pub binary: PathBuf,
-    /// macOS: the CuaDriver.app bundle holding the binary.
     pub app_bundle: Option<PathBuf>,
-    /// `None` when `--version` could not be read; that counts as a problem.
     pub version: Option<(u64, u64, u64)>,
 }
 
 impl DriverInstall {
-    /// Why this install can't run desktop apps, if it can't.
     pub(crate) fn problem(&self, platform: Platform) -> Option<&'static str> {
         if self
             .version
@@ -43,8 +34,6 @@ impl DriverInstall {
         if platform == Platform::Macos && self.app_bundle.is_none() {
             return Some("no_app_bundle");
         }
-        // A driver that doesn't say its version (or took too long to, on its
-        // first launch) can't be shown to be 0.36 or newer.
         if self.version.is_none() {
             return Some("unreadable_version");
         }
@@ -56,7 +45,6 @@ pub(crate) fn version_string(version: (u64, u64, u64)) -> String {
     format!("{}.{}.{}", version.0, version.1, version.2)
 }
 
-/// The `AppError` for a driver problem code.
 pub(crate) fn problem_error(problem: &str, install: Option<&DriverInstall>) -> String {
     match problem {
         "too_old" => AppError::new("desktop_apps.too_old")
@@ -94,7 +82,6 @@ fn join(platform: Platform, base: &str, parts: &[&str]) -> String {
     path
 }
 
-/// Where the official installers put `cua-driver`, in search order.
 pub(crate) fn candidate_paths(
     platform: Platform,
     env: &dyn Fn(&str) -> Option<String>,
@@ -175,7 +162,6 @@ fn runnable(path: &Path) -> bool {
     }
 }
 
-/// The first official install location that holds the program, then PATH.
 pub(crate) fn locate_driver(platform: Platform) -> Option<PathBuf> {
     candidate_paths(platform, &process_env)
         .into_iter()
@@ -184,7 +170,6 @@ pub(crate) fn locate_driver(platform: Platform) -> Option<PathBuf> {
         .or_else(|| crate::program_locator::locate_native("cua-driver").map(|found| found.path))
 }
 
-/// `…/CuaDriver.app/Contents/MacOS/cua-driver` → `…/CuaDriver.app`.
 pub(crate) fn app_bundle_for(binary: &Path) -> Option<PathBuf> {
     let macos = binary.parent()?;
     let contents = macos.parent()?;
@@ -199,7 +184,6 @@ pub(crate) fn app_bundle_for(binary: &Path) -> Option<PathBuf> {
     (named(macos, "MacOS") && named(contents, "Contents") && is_app).then(|| bundle.to_path_buf())
 }
 
-/// `cua-driver 0.36.0` → `(0, 36, 0)`; pre-release tags are ignored.
 pub(crate) fn parse_version(stdout: &str) -> Option<(u64, u64, u64)> {
     stdout.split_whitespace().find_map(|word| {
         let word = word.trim_start_matches(['v', 'V']);
@@ -215,9 +199,6 @@ pub(crate) fn parse_version(stdout: &str) -> Option<(u64, u64, u64)> {
     })
 }
 
-/// The driver run for one command: the same small environment its daemon
-/// and client get (an AppImage's libraries and the shell's secrets stay
-/// behind), with telemetry and the update check off.
 fn driver_command(
     binary: &Path,
     args: &[&str],
@@ -232,8 +213,6 @@ fn driver_command(
     command
 }
 
-/// Runs the driver with telemetry and the update check off. Returns
-/// whether it exited 0, then stdout and stderr.
 pub(crate) fn run_driver(
     binary: &Path,
     args: &[&str],
@@ -248,7 +227,6 @@ pub(crate) fn run_driver(
     ))
 }
 
-/// Finds the driver and reads its version (blocking, up to 3 s).
 pub(crate) fn detect_install(platform: Platform) -> Option<DriverInstall> {
     let found = locate_driver(platform)?;
     let binary = std::fs::canonicalize(&found)
@@ -268,7 +246,6 @@ pub(crate) fn detect_install(platform: Platform) -> Option<DriverInstall> {
     })
 }
 
-/// The official install line, shown for copying.
 pub(crate) fn install_line(platform: Platform) -> &'static str {
     match platform {
         Platform::Windows => {
@@ -280,7 +257,6 @@ pub(crate) fn install_line(platform: Platform) -> &'static str {
     }
 }
 
-/// The official `cua` install line (Spaces), shown for copying.
 pub(crate) fn spaces_install_line(platform: Platform) -> &'static str {
     match platform {
         Platform::Windows => {
@@ -290,8 +266,6 @@ pub(crate) fn spaces_install_line(platform: Platform) -> &'static str {
     }
 }
 
-/// A program and its arguments for the terminal launcher, which quotes
-/// every word: an install line can't be passed as one word.
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TerminalCommand {
@@ -336,8 +310,6 @@ fn terminal_command_with(
                 windows_script.into(),
             ],
         },
-        // `sh -c` runs the official line exactly as written, whatever shell
-        // the terminal tab started.
         Platform::Macos | Platform::Linux => TerminalCommand {
             program: "/bin/sh".into(),
             args: vec!["-c".into(), line.into()],
@@ -361,7 +333,6 @@ pub(crate) fn spaces_install_command(platform: Platform) -> TerminalCommand {
     )
 }
 
-/// The `cua` command (Cua Spaces), when installed.
 pub(crate) fn locate_spaces_cli(platform: Platform) -> Option<PathBuf> {
     let name = if platform == Platform::Windows {
         "cua.exe"
@@ -381,7 +352,6 @@ pub(crate) fn locate_spaces_cli(platform: Platform) -> Option<PathBuf> {
         })
 }
 
-/// The driver's own folder (`CUA_DRIVER_RS_HOME`, else `~/.cua-driver`).
 pub(crate) fn driver_home(
     platform: Platform,
     env: &dyn Fn(&str) -> Option<String>,
@@ -471,8 +441,6 @@ fn scan_permissions(value: &Value, status: &mut PermissionsStatus, depth: usize)
     }
 }
 
-/// `cua-driver permissions status --json`, in the shapes seen so far.
-/// Anything unreadable is "unknown".
 pub(crate) fn parse_permissions_status(json: &str) -> PermissionsStatus {
     let mut status = PermissionsStatus::default();
     if let Ok(value) = serde_json::from_str::<Value>(json) {
@@ -533,7 +501,6 @@ fn collect_problems(value: &Value, problems: &mut Vec<String>, depth: usize) {
                     }
                 }
             }
-            // A summary object can hold the checks themselves.
             for child in map
                 .values()
                 .filter(|child| child.is_array() || child.is_object())
@@ -545,8 +512,6 @@ fn collect_problems(value: &Value, problems: &mut Vec<String>, depth: usize) {
     }
 }
 
-/// The failed checks of `cua-driver doctor --json`, at most five. When the
-/// output isn't JSON and the doctor failed, its first line stands in.
 pub(crate) fn parse_doctor(json: &str, exit_ok: bool) -> Vec<String> {
     let mut problems = Vec::new();
     match serde_json::from_str::<Value>(json) {
@@ -561,7 +526,6 @@ pub(crate) fn parse_doctor(json: &str, exit_ok: bool) -> Vec<String> {
     problems
 }
 
-/// `gnome-extensions info winrects@cua`: `State: ACTIVE` → on.
 pub(crate) fn parse_gnome_extension_state(text: &str) -> Option<bool> {
     text.lines().find_map(|line| {
         let (key, value) = line.trim().split_once(':')?;
@@ -574,7 +538,6 @@ pub(crate) fn parse_gnome_extension_state(text: &str) -> Option<bool> {
     })
 }
 
-/// macOS: Accessibility and Screen Recording for CuaDriver.app (blocking).
 pub(crate) fn permissions_status(binary: &Path) -> Option<PermissionsStatus> {
     let (_, stdout, _) = run_driver(
         binary,
@@ -584,7 +547,6 @@ pub(crate) fn permissions_status(binary: &Path) -> Option<PermissionsStatus> {
     Some(parse_permissions_status(&stdout))
 }
 
-/// `cua-driver doctor --json` (blocking, up to 5 s).
 pub(crate) fn doctor(binary: &Path) -> Vec<String> {
     let Some((ok, stdout, stderr)) = run_driver(binary, &["doctor", "--json"], DOCTOR_TIMEOUT)
     else {
@@ -599,8 +561,6 @@ pub(crate) fn doctor(binary: &Path) -> Vec<String> {
     problems
 }
 
-/// Linux on GNOME Wayland: whether the Cua window helper extension is on.
-/// `None` everywhere else.
 pub(crate) fn gnome_helper_state(env: &dyn Fn(&str) -> Option<String>) -> Option<bool> {
     let gnome = env("XDG_CURRENT_DESKTOP")
         .is_some_and(|desktop| desktop.to_ascii_uppercase().contains("GNOME"));
@@ -725,7 +685,6 @@ mod tests {
             version: None,
             ..unbundled
         };
-        // A version that can't be read is not a pass.
         assert_eq!(unknown.problem(Platform::Linux), Some("unreadable_version"));
         let error = problem_error("unreadable_version", Some(&unknown));
         assert!(error.contains("desktop_apps.start_failed"), "{error}");
@@ -807,7 +766,6 @@ mod tests {
             );
             assert!(command.program.as_bytes()[1] == b':', "{}", command.program);
         }
-        // A SystemRoot that isn't a drive path falls back to the usual one.
         for root in ["", ".", r"Windows", "\"C:\\x\" & calc", r"\\server\share"] {
             let env = |name: &str| (name == "SystemRoot").then(|| root.to_string());
             assert_eq!(
@@ -849,7 +807,6 @@ mod tests {
             Platform::current().unwrap_or(Platform::Linux),
             &parent,
         );
-        // Only the allowlist, plus what the shell itself sets.
         for name in names {
             assert!(
                 expected.contains_key(name) || matches!(name, "PWD" | "SHLVL" | "_" | "OLDPWD"),

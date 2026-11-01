@@ -1222,6 +1222,8 @@
     "exportTxt": "Eksportuj jako zwykły tekst (.txt)",
     "exportZipFailed": "Nie udało się wyeksportować archiwum zip projektu",
     "exporting": "Eksportowanie .{{format}}…",
+    "exportingStep": "Eksportowanie .{{format}}: {{step}}",
+    "stopExport": "Zatrzymaj",
     "fork": "Rozgałęź",
     "forkDescription": "Kopiuje projekt <name>{{name}}</name> wraz z jego historią Git do nowego projektu. Punkty kontrolne zaczynają się od zera.",
     "forkFailed": "Nie udało się rozgałęzić projektu.",

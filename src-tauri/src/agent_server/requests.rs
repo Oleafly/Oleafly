@@ -1,7 +1,3 @@
-//! Registry for server-initiated requests: the agent asks the shell to
-//! resolve an approval, user-input form, or MCP elicitation, and the turn
-//! pauses until the shell answers (or the request auto-resolves).
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -10,9 +6,7 @@ use tokio::sync::oneshot;
 
 use super::protocol::{RequestDecision, ServerRequest};
 
-/// Elicitations auto-decline after this much foreground inactivity.
 pub const FOREGROUND_INACTIVITY_AUTO_DECLINE_MS: u64 = 60_000;
-/// Clamps for a client-supplied auto-resolution window.
 pub const MIN_AUTO_RESOLUTION_MS: u64 = 5_000;
 pub const MAX_AUTO_RESOLUTION_MS: u64 = 300_000;
 
@@ -39,7 +33,6 @@ pub struct ServerRequestRegistry {
 }
 
 impl ServerRequestRegistry {
-    /// Register a request that waits for the shell's decision indefinitely.
     pub fn register(
         &self,
         request: &ServerRequest,
@@ -59,9 +52,6 @@ impl ServerRequestRegistry {
         (request_id, receiver)
     }
 
-    /// Register a request that auto-declines after `delay` so an abandoned
-    /// prompt cannot wedge a turn forever. The task is spawned onto whatever
-    /// runtime is current (the agent-server command runtime in production).
     pub fn register_with_auto_decline(
         self: &Arc<Self>,
         request: &ServerRequest,
@@ -83,8 +73,6 @@ impl ServerRequestRegistry {
         (request_id, receiver)
     }
 
-    /// Resolve a pending request from the shell. Returns false when nothing
-    /// was pending (already resolved, auto-declined, or abandoned).
     pub fn resolve(&self, request_id: &str, resolution: ResolvedRequest) -> bool {
         self.resolve_with(request_id, resolution)
     }
@@ -97,8 +85,6 @@ impl ServerRequestRegistry {
         }
     }
 
-    /// Drop a pending request without a decision (the waiter receives a
-    /// closed-channel error and treats it as abandoned).
     pub fn abandon(&self, request_id: &str) -> bool {
         lock(&self.pending).remove(request_id).is_some()
     }
@@ -168,7 +154,6 @@ mod tests {
             registry.register_with_auto_decline(&elicitation(), Duration::from_millis(1));
         let resolved = receiver.await.unwrap();
         assert_eq!(resolved.decision, RequestDecision::Decline);
-        // A late shell decision finds nothing pending.
         assert!(!registry.resolve(
             &request_id,
             ResolvedRequest {

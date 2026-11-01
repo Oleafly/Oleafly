@@ -17,13 +17,11 @@ use crate::contract::CliError;
 pub(crate) const MAX_LINE_BYTES: usize = 4 * 1024 * 1024;
 const MAX_CONCURRENT_CALLS: usize = 4;
 
-/// One stdin line: a message to handle, or a protocol error to send back.
 pub(crate) enum Line {
     Message(Value),
     Reply(Value),
 }
 
-/// Reads stdin line by line, capping each line at 4 MiB.
 pub(crate) struct StdinLines {
     reader: BufReader<tokio::io::Stdin>,
 }
@@ -35,7 +33,6 @@ impl StdinLines {
         }
     }
 
-    /// The next line (blank lines skipped), or `None` at end of input.
     pub async fn next(&mut self) -> Option<Line> {
         loop {
             let (line, oversized) = self.read_raw_line().await?;
@@ -54,9 +51,6 @@ impl StdinLines {
         }
     }
 
-    /// One line's bytes and whether it was over the cap (an oversized line is
-    /// read to its end and not kept). `None` at end of input or on a read
-    /// error.
     async fn read_raw_line(&mut self) -> Option<(Vec<u8>, bool)> {
         let mut line: Vec<u8> = Vec::new();
         let mut oversized = false;
@@ -130,13 +124,10 @@ async fn write_line(stdout: &Mutex<tokio::io::Stdout>, value: &Value) {
     let _ = stdout.flush().await;
 }
 
-/// The key a request id is tracked under (for cancellation).
 fn id_key(id: &Value) -> String {
     id.to_string()
 }
 
-/// Serves MCP on stdio until stdin closes, or until a signal asks it to stop
-/// (SIGTERM, SIGHUP or Ctrl+C), so the commands its tools started end with it.
 pub(crate) async fn serve_headless(context: ToolContext) -> Result<(), CliError> {
     let tools = all_tools();
     let instructions = instructions(&context.root);
@@ -192,8 +183,6 @@ pub(crate) async fn serve_headless(context: ToolContext) -> Result<(), CliError>
                 let in_flight_for_task = in_flight.clone();
                 let key = id_key(&id);
                 let task_key = key.clone();
-                // Tracked before the task can finish, so its reply is never
-                // mistaken for a cancelled one.
                 let mut tracked = in_flight.lock().await;
                 let handle = tasks.spawn(async move {
                     let Ok(_permit) = slots.acquire_owned().await else {
@@ -203,7 +192,6 @@ pub(crate) async fn serve_headless(context: ToolContext) -> Result<(), CliError>
                         Ok(structured) => tool_result(id, structured),
                         Err(error) => rpc_tool_error(id, &error.0),
                     };
-                    // A cancelled call is no longer tracked; its reply is dropped.
                     if in_flight_for_task.lock().await.remove(&task_key).is_some() {
                         write_line(&stdout, &reply).await;
                     }

@@ -15,10 +15,6 @@ pub const CHANGE_SKIPPED_EVENT: &str = "collab-change-skipped";
 pub const PROJECT_FULL_EVENT: &str = "collab-live-project-full";
 pub const LIVE_WRITTEN_EVENT: &str = "collab-live-written";
 
-// A file the session wrote while the window had it open, as it is on disk
-// now. It is fingerprinted the way the window fingerprints its own disk
-// snapshots: FNV-1a 64 over the bytes in hex, whether every line break is
-// CRLF, and the length in UTF-16 units.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WrittenFile {

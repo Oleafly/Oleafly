@@ -1,6 +1,3 @@
-//! Account flows the app and the CLI share: sign in with an access token,
-//! finish a browser (device) sign-in, check that an account still works,
-//! and give a token that was saved without an account its account.
 use crate::address::normalize_base_url;
 use crate::api::{self, Session};
 use crate::detect;
@@ -12,7 +9,6 @@ use crate::store::{ForgeAccount, ForgeStore};
 use crate::{blocking, ForgeError, ForgeToken};
 use serde::Serialize;
 
-/// What checking an account found.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CheckState {
@@ -27,7 +23,6 @@ pub struct AccountCheck {
     pub base: String,
     pub state: CheckState,
     pub account: Option<ForgeAccount>,
-    /// The account's login, name or picture changed and was saved.
     #[serde(skip)]
     pub changed: bool,
 }
@@ -84,7 +79,6 @@ pub async fn sign_in_with_token(
         base: &base,
         token,
     };
-    // A 401 here means the pasted token is wrong, not that a sign-in expired.
     let user = api::current_user(&session)
         .await
         .map_err(|error| match error {
@@ -135,8 +129,6 @@ pub async fn sign_in_with_token(
     Ok(account)
 }
 
-/// Finish a device sign-in: read the account with the granted token and
-/// save both.
 pub async fn finish_device_sign_in(
     store: &ForgeStore,
     http: &ForgeHttp,
@@ -177,10 +169,6 @@ pub async fn finish_device_sign_in(
     Ok(account)
 }
 
-/// Check that an account's token still works, refreshing it when needed,
-/// and save a changed login, name or picture. A revoked token reads as
-/// signed out and the account stays; so does a server that can't be
-/// reached.
 pub async fn check_account(
     store: &ForgeStore,
     http: &ForgeHttp,
@@ -229,8 +217,6 @@ pub async fn check_account(
     {
         return Ok(outcome(CheckState::Ok, Some(account), false));
     }
-    // Only the profile fields are written, into the account as it is now:
-    // a CA file the user set while this check ran stays.
     let writer = store.clone();
     let target = base.clone();
     let stored =
@@ -238,14 +224,10 @@ pub async fn check_account(
             .await?;
     Ok(match stored {
         Some(updated) => outcome(CheckState::Ok, Some(updated), true),
-        // Signed out while the check ran: leave it gone.
         None => outcome(CheckState::SignedOut, None, false),
     })
 }
 
-/// Give a token that was saved without an account (for example by an older
-/// command-line tool) its account: detect the server, read the user, and
-/// save the metadata. The token itself is not rewritten.
 pub async fn adopt_orphan(
     store: &ForgeStore,
     http: &ForgeHttp,
@@ -294,7 +276,6 @@ pub async fn adopt_orphan(
     if blocking(move || writer.put_account(saved, &read)).await? {
         return Ok(account);
     }
-    // Someone signed in to this server meanwhile: their account stays.
     let reader = store.clone();
     blocking(move || reader.account(&account.base))
         .await?
@@ -686,7 +667,6 @@ mod tests {
         assert_eq!(kept, fresh);
         assert_eq!(store.accounts().unwrap(), vec![fresh.clone()]);
 
-        // A token that changed after it was read gets no account either.
         let other = tempfile::tempdir().unwrap();
         let store = ForgeStore::new(other.path());
         oleafly_secrets::accounts::save_forge_token(

@@ -8,7 +8,6 @@ import type { UsageSnapshot } from "./types";
 
 const UsagePopover = lazy(() => import("./UsagePopover"));
 
-/** The context ring in the composer row; it opens the usage popover. */
 export function UsageMeter({
   snapshot,
   tooltip,

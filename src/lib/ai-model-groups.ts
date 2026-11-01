@@ -1,6 +1,3 @@
-// The "configured providers and their models" list every model picker shows:
-// the chat, the default-model setting, template generation and the Tools
-// model. One helper so they agree on what "configured" and "listed" mean.
 import type { ModelSelectorGroup, ModelSelectorModel } from "@/components/ai/ModelSelector";
 import { enabledModels } from "@/lib/ai-model-state";
 import { isProviderConfigured, mergeCustomProviders, type AIProvider } from "@/lib/ai-providers";
@@ -13,20 +10,13 @@ export interface ModelGroupSource {
 }
 
 export interface ModelGroupOptions {
-  /** Live Ollama tags. When non-empty they replace the stored Ollama list (ChatCore). */
   liveOllama?: readonly string[];
-  /** Keep this model in its provider's group even if nothing lists it (ChatCore's active model). A blank id keeps nothing. */
   keep?: { providerId: string; modelId: string };
-  /** Shape a stored model. Default: `{ id, name }`. */
   toModel?: (providerId: string, stored: StoredModel) => ModelSelectorModel;
-  /** Keep only matching models (the Tools picker keeps vision models). */
   include?: (providerId: string, model: ModelSelectorModel) => boolean;
-  /** Drop providers left with no models. Default true. */
   dropEmpty?: boolean;
 }
 
-/** Providers the user set up: a saved key or host, or a custom provider
- * that needs no key. In catalog order, custom providers last. */
 export function configuredProviders(source: ModelGroupSource): AIProvider[] {
   return mergeCustomProviders([...source.customProviders]).filter((provider) =>
     isProviderConfigured(provider.id, source.keys, source.customProviders),
@@ -48,9 +38,6 @@ export function catalogFirst(provider: AIProvider, stored: StoredModel[]): Store
     .sort((left, right) => (rank.get(left.id) ?? last) - (rank.get(right.id) ?? last));
 }
 
-/** Each configured provider with the models it offers: its enabled stored
- * models, or the catalog when nothing is stored. An empty stored list means
- * no models. */
 export function configuredModelGroups(
   source: ModelGroupSource,
   options: ModelGroupOptions = {},

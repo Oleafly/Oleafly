@@ -146,7 +146,6 @@ describe("exportConversation", () => {
   it("reads a long transcript a page at a time and writes the same Markdown as one pass", async () => {
     vi.mocked(pickSavePath).mockResolvedValue("/tmp/long.md");
     const all = transcript();
-    // The pages cut the assistant's reply and the tool call in the middle of the turn.
     const pages = [all.slice(0, 3), all.slice(3, 5), all.slice(5)];
     vi.mocked(acpEvents).mockImplementation(async (_project, _session, after = 0) => {
       const index = after === 0 ? 0 : after === 3 ? 1 : 2;

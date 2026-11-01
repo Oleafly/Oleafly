@@ -152,7 +152,6 @@ export function EnginePickerModal() {
 
   const installThenPin = async () => {
     await install();
-    // install() surfaces its own failure toast; only pin when latexmk exists.
     if (useEngineStore.getState().info?.latexmk) {
       await pinLatexmk(true);
     }
@@ -164,8 +163,6 @@ export function EnginePickerModal() {
       const { offer, dismissOffer } = useCompileStore.getState();
       if (offer?.kind === "engine-gap" && offer.projectId === projectId) dismissOffer();
     });
-    // For a latexmk project this is a real switch back, not just a dismissal
-    // ("xetex" is the stored name of the bundled Tectonic engine).
     if (alreadyLatexmk) {
       try {
         await setEngine("xetex");
@@ -304,10 +301,8 @@ export function EnginePickerModal() {
       )}
 
       <div className="flex flex-col gap-2">
-        {/* Option 1: system TeX via latexmk */}
         {renderSystemTexOption()}
 
-        {/* Option 2: on-demand TinyTeX (hidden when a system TeX already covers it) */}
         {!hasSystemTex && (
           <div className="rounded-lg border p-3">
             <div className="flex items-center gap-2">
@@ -333,7 +328,6 @@ export function EnginePickerModal() {
           </div>
         )}
 
-        {/* Option 3: stay on Tectonic */}
         <div className="rounded-lg border p-3">
           <div className="flex items-center gap-2">
             <Zap className="size-4 shrink-0 text-muted-foreground" />

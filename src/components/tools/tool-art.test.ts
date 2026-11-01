@@ -6,7 +6,6 @@ import { TOOL_ART_HEIGHT, TOOL_ART_WIDTH, toolArt } from "./tool-art";
 
 const ART_DIR = join(process.cwd(), "public", "tool-art");
 
-/** Width and height of a WebP file, read from its VP8, VP8L or VP8X header. */
 function webpSize(bytes: Buffer): { width: number; height: number } {
   expect(bytes.toString("ascii", 0, 4)).toBe("RIFF");
   expect(bytes.toString("ascii", 8, 12)).toBe("WEBP");

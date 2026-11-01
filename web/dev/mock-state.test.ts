@@ -108,6 +108,24 @@ describe("mock project", () => {
     expect(requestedByTheApp({ ...marked, origin: undefined })).toBe(false);
   });
 
+  it("remembers which tagged changes it applied, like the server", () => {
+    const mock = project("abc");
+    mock.applied("olive", "t:1");
+    expect(mock.fateOf("olive", "t:1")).toBe("applied");
+    expect(mock.resumed("olive", "t:1")).toBe(true);
+    expect(mock.resumed("olive", "t:2")).toBe(false);
+    expect(mock.fateOf("olive", "t:2")).toBe("abandoned");
+    expect(mock.fateOf("eddie", "t:1")).toBeNull();
+  });
+
+  it("sends the chat as its latest page", () => {
+    const mock = project();
+    for (let index = 0; index < 205; index += 1) mock.chatSend("olive", `message ${index}`);
+    const page = mock.chatPage();
+    expect(page).toHaveLength(200);
+    expect(page[0]?.body).toBe("message 5");
+  });
+
   it("writes a PDF with a valid cross-reference table", () => {
     const text = new TextDecoder().decode(minimalPdf(["Title (draft)"]));
     expect(text.startsWith("%PDF-1.4")).toBe(true);

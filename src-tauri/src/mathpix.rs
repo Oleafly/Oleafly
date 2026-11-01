@@ -30,7 +30,6 @@ use crate::app_error::AppError;
 pub const APP_ID_ACCOUNT: &str = "mathpix.app_id";
 pub const APP_KEY_ACCOUNT: &str = "mathpix.app_key";
 const API_BASE: &str = "https://api.mathpix.com";
-/// Mathpix takes a base64 `src` of up to 2 MB.
 const MAX_IMAGE_BASE64_CHARS: usize = 2_000_000;
 const MAX_PDF_BYTES: usize = 256 * 1024 * 1024;
 /// The most a PDF may be when the webview delivers it as a JSON array of
@@ -56,14 +55,12 @@ const TEXT_TIMEOUT: Duration = Duration::from_secs(60);
 const TOKEN_TIMEOUT: Duration = Duration::from_secs(15);
 const UPLOAD_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const POLL_TIMEOUT: Duration = Duration::from_secs(30);
-/// How often a running wait looks at its cancel flag.
 const CANCEL_CHECK: Duration = Duration::from_millis(100);
 
 #[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct MathpixKeyStatus {
     pub configured: bool,
-    /// Not secret: Settings shows "Connected as {app ID}".
     pub app_id: Option<String>,
 }
 
@@ -71,7 +68,6 @@ pub struct MathpixKeyStatus {
 #[serde(rename_all = "camelCase")]
 pub struct MathpixTextResult {
     pub text: String,
-    /// Only when the whole image is one equation.
     pub latex_styled: Option<String>,
     pub confidence: Option<f64>,
 }
@@ -122,7 +118,6 @@ impl MathpixKeys {
         Ok(headers)
     }
 
-    /// `text` with both credentials replaced by an ellipsis.
     fn scrub(&self, text: &str) -> String {
         let mut scrubbed = text.to_string();
         for secret in [&self.app_key, &self.app_id] {
@@ -134,8 +129,6 @@ impl MathpixKeys {
     }
 }
 
-/// Mathpix keys are printable ASCII without spaces, so nothing in them can
-/// break out of an HTTP header.
 fn valid_credential(value: &str) -> Result<(), String> {
     let printable = !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_graphic());
     if printable && value.len() <= MAX_CREDENTIAL_CHARS {
@@ -145,7 +138,6 @@ fn valid_credential(value: &str) -> Result<(), String> {
     }
 }
 
-/// A PDF id goes into a URL path: letters, digits, `_` and `-` only.
 fn valid_pdf_id(id: &str) -> Result<(), String> {
     let safe = id
         .bytes()
@@ -157,7 +149,6 @@ fn valid_pdf_id(id: &str) -> Result<(), String> {
     }
 }
 
-/// Mathpix page ranges such as `3-5` or `2,4-6`.
 fn valid_page_ranges(ranges: &str) -> Result<(), String> {
     let page = |text: &str| {
         !text.is_empty()
@@ -200,8 +191,6 @@ fn require_main(webview: &tauri::Webview) -> Result<(), String> {
     require_main_window(crate::caller::own_window_label(webview).as_deref())
 }
 
-/// Mathpix's own error text, made safe to show: no control characters, one
-/// space between words, neither credential, at most 200 characters.
 fn sanitize_reason(reason: &str, keys: &MathpixKeys) -> String {
     let visible: String = reason
         .chars()
@@ -217,7 +206,6 @@ fn sanitize_reason(reason: &str, keys: &MathpixKeys) -> String {
         .collect();
     let collapsed = visible.split_whitespace().collect::<Vec<_>>().join(" ");
     let scrubbed = keys.scrub(&collapsed);
-    // A key split by spaces would survive the replacement above.
     let compact: String = scrubbed
         .chars()
         .filter(|character| !character.is_whitespace())
@@ -313,7 +301,6 @@ fn occurs_in(haystack: &[u8], needle: &[u8]) -> bool {
         .unwrap_or(true)
 }
 
-/// The first candidate whose `--boundary` line does not occur in the PDF.
 fn pick_boundary(pdf: &[u8], candidates: impl IntoIterator<Item = String>) -> Option<String> {
     candidates
         .into_iter()
@@ -334,8 +321,6 @@ fn multipart_body(boundary: &str, options_json: &str, pdf: &[u8]) -> Vec<u8> {
     body
 }
 
-/// How a PDF wait polls: the first delay grows by `factor` up to `max`, and
-/// the whole wait ends at `deadline`.
 struct PollPlan {
     first: Duration,
     factor: f32,
@@ -356,10 +341,8 @@ impl PollPlan {
     }
 }
 
-/// What `GET /v3/pdf/{id}.mmd` answered.
 enum Mmd {
     Ready(String),
-    /// Not converted yet; Mathpix may say when to ask again.
     NotYet(Option<Duration>),
 }
 
@@ -398,7 +381,6 @@ impl Api {
         format!("{}{path}", self.base)
     }
 
-    /// Checks the keys with a free, short-lived app token.
     async fn verify(&self, keys: &MathpixKeys) -> Result<(), String> {
         let response = send(
             self.client
@@ -471,9 +453,6 @@ impl Api {
         })
     }
 
-    /// [`Self::text`], dropped when `cancelled` is set: an image read the
-    /// user stopped ends with its request, and one stopped before it started
-    /// sends nothing.
     async fn text_unless_cancelled(
         &self,
         keys: &MathpixKeys,
@@ -541,9 +520,6 @@ impl Api {
         Ok(pdf_id.to_owned())
     }
 
-    /// [`Self::pdf_upload`], dropped when `cancelled` is set: the request is
-    /// abandoned, so a PDF whose upload the user stopped is not converted
-    /// (and billed) behind their back.
     async fn pdf_upload_unless_cancelled(
         &self,
         keys: &MathpixKeys,
@@ -560,7 +536,6 @@ impl Api {
         }
     }
 
-    /// The PDF's progress, and the error Mathpix reported, if any.
     async fn pdf_status(
         &self,
         keys: &MathpixKeys,
@@ -630,7 +605,6 @@ impl Api {
             .map_err(|_| code("mathpix.invalid_response"))
     }
 
-    /// Removes the PDF and its results from Mathpix. Best effort.
     async fn pdf_delete(&self, keys: &MathpixKeys, pdf_id: &str) {
         let Ok(headers) = keys.headers() else {
             return;
@@ -644,7 +618,6 @@ impl Api {
             .await;
     }
 
-    /// Runs `work` until it finishes, the user cancels, or the deadline passes.
     async fn guarded<T>(
         &self,
         cancelled: &AtomicBool,
@@ -713,8 +686,6 @@ impl Api {
         }
     }
 
-    /// Waits for Mathpix to convert the PDF and returns its Mathpix Markdown.
-    /// The PDF is deleted from Mathpix on every way out.
     async fn pdf_wait(
         &self,
         keys: &MathpixKeys,
@@ -732,9 +703,6 @@ impl Api {
     }
 }
 
-/// Cancel flags of image reads, PDF uploads and PDF waits, by request id. A
-/// cancel can arrive before its wait starts (the upload was still running);
-/// it leaves a set flag behind.
 #[derive(Default)]
 struct CancelRegistry {
     flags: Mutex<HashMap<String, Arc<AtomicBool>>>,
@@ -745,8 +713,6 @@ impl CancelRegistry {
         self.flags.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Makes room for one entry. Flags already set go first: their wait has
-    /// stopped or never came.
     fn make_room(flags: &mut HashMap<String, Arc<AtomicBool>>) {
         if flags.len() < MAX_CANCEL_ENTRIES {
             return;
@@ -792,10 +758,6 @@ impl CancelRegistry {
     }
 }
 
-/// A wait's place in the registry, removed when the wait ends unless it was
-/// cancelled: a cancel that lands as an upload finishes must still stop the
-/// wait that follows under the same id, so its set flag stays (until
-/// [`CancelRegistry::make_room`] drops it).
 struct Registration<'a> {
     registry: &'a CancelRegistry,
     id: String,
@@ -894,8 +856,6 @@ fn upload_bytes(body: &tauri::ipc::InvokeBody) -> Result<Cow<'_, [u8]>, String> 
     upload_bytes_within(body, MAX_JSON_PDF_BYTES)
 }
 
-/// [`upload_bytes`] with `json_limit` as the most a JSON array may carry.
-/// The length is checked before any byte is converted.
 fn upload_bytes_within(
     body: &tauri::ipc::InvokeBody,
     json_limit: usize,
@@ -941,8 +901,6 @@ fn page_ranges_header(headers: &tauri::http::HeaderMap) -> Result<Option<String>
     Ok(Some(ranges.to_owned()))
 }
 
-/// The id the renderer gave this PDF's upload and wait, so Cancel reaches
-/// either; `None` when the header is absent.
 fn request_id_header(headers: &tauri::http::HeaderMap) -> Result<Option<String>, String> {
     let Some(value) = headers.get(REQUEST_ID_HEADER) else {
         return Ok(None);
@@ -966,8 +924,6 @@ pub async fn mathpix_key_status(webview: tauri::Webview) -> Result<MathpixKeySta
         .map_err(|_| code("mathpix.keys_missing"))
 }
 
-/// Checks the keys with Mathpix, then stores them encrypted. The key is never
-/// sent back.
 #[tauri::command]
 pub async fn mathpix_save_keys(
     webview: tauri::Webview,
@@ -986,8 +942,6 @@ pub async fn mathpix_clear_keys(webview: tauri::Webview) -> Result<(), String> {
         .map_err(|error| format!("failed to remove the Mathpix keys: {error}"))?
 }
 
-/// Reads one image (PNG or JPEG, base64) with Mathpix. With a `request_id`,
-/// `mathpix_text_cancel` with the same id stops the read.
 #[tauri::command]
 pub async fn mathpix_text(
     webview: tauri::Webview,
@@ -1005,7 +959,6 @@ pub async fn mathpix_text(
     {
         return Err(code("mathpix.invalid_response"));
     }
-    // Registered before the keys load, so a cancel from then on stops it.
     let registration = request_id.as_deref().map(|id| CANCELS.register(id));
     let keys = load_keys().await?;
     let api = Api::new()?;
@@ -1018,17 +971,11 @@ pub async fn mathpix_text(
     }
 }
 
-/// Stops the image read `mathpix_text` runs under `request_id`, also when
-/// it has not started yet.
 #[tauri::command]
 pub fn mathpix_text_cancel(request_id: String) {
     CANCELS.cancel(&request_id);
 }
 
-/// Uploads a PDF sent as the raw request body; the `x-oleafly-page-ranges`
-/// header names the pages Mathpix converts and bills. The optional
-/// `x-oleafly-request-id` header lets `mathpix_pdf_cancel` stop the upload
-/// itself, not only the wait that follows it. Returns the PDF id.
 #[tauri::command]
 pub async fn mathpix_pdf_upload(
     webview: tauri::Webview,
@@ -1049,8 +996,6 @@ pub async fn mathpix_pdf_upload(
     }
 }
 
-/// Waits for an uploaded PDF, reports progress, and returns its Mathpix
-/// Markdown. `mathpix_pdf_cancel` with the same request id stops it.
 #[tauri::command]
 pub async fn mathpix_pdf_wait(
     webview: tauri::Webview,

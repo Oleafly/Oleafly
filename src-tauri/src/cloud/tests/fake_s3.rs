@@ -19,11 +19,11 @@ pub(crate) const BUCKET: &str = "sync";
 pub(crate) const KEY_ID: &str = "AKIAFAKEFAKEFAKE";
 pub(crate) const SECRET: &str = "fake/secret+key";
 
-/// A failure the next request gets instead of its answer.
 pub(crate) struct Canned {
     pub(crate) status: u16,
     pub(crate) code: &'static str,
     pub(crate) retry_after: Option<u64>,
+    pub(crate) date: Option<&'static str>,
 }
 
 impl Canned {
@@ -32,6 +32,7 @@ impl Canned {
             status,
             code,
             retry_after: None,
+            date: None,
         }
     }
 
@@ -40,18 +41,22 @@ impl Canned {
             status,
             code,
             retry_after: Some(0),
+            date: None,
+        }
+    }
+
+    pub(crate) fn dated(status: u16, code: &'static str, date: &'static str) -> Self {
+        Self {
+            date: Some(date),
+            ..Self::new(status, code)
         }
     }
 }
 
-/// One uploaded part's bytes and ETag.
 type Part = (Vec<u8>, String);
 
-/// An object's user metadata, `x-amz-meta-*` and `x-goog-meta-*` headers.
 type Marks = Vec<(String, String)>;
 
-/// Keeps the first request that starts with `prefix` waiting: `arrived` is
-/// notified when it comes in, and it goes on once `release` is.
 pub(crate) struct Hold {
     pub(crate) prefix: String,
     pub(crate) arrived: Arc<Notify>,
@@ -60,36 +65,25 @@ pub(crate) struct Hold {
 
 #[derive(Default)]
 pub(crate) struct Bucket {
-    /// Object key to its bytes and ETag.
     pub(crate) objects: BTreeMap<String, (Vec<u8>, String)>,
-    /// Object key to the metadata it was written with.
     pub(crate) marks: BTreeMap<String, Marks>,
-    /// Upload id to the object key, its parts by number, and its metadata.
     pub(crate) uploads: BTreeMap<String, (String, BTreeMap<u32, Part>, Marks)>,
     next: u64,
     /// Most entries one listing page holds; zero means S3's 1,000.
     pub(crate) page_size: usize,
-    /// Writes ignore `If-Match` and `If-None-Match`, as some services do.
     pub(crate) ignore_conditions: bool,
-    /// Writes ignore `If-Match` only.
     pub(crate) ignore_if_match: bool,
-    /// Conditional writes answer 501, as Backblaze B2 does.
     pub(crate) refuse_conditions: bool,
-    /// The bucket doesn't exist.
     pub(crate) missing: bool,
-    /// A part number whose upload is refused.
     pub(crate) refuse_part: Option<u32>,
-    /// Completing a multipart upload answers 200 with an error inside.
     pub(crate) fail_completion: bool,
-    /// A conditional completion answers 501, while conditional writes work.
     pub(crate) refuse_conditional_completion: bool,
-    /// Object downloads go out this many bytes at a time, this far apart.
     pub(crate) trickle: Option<(usize, Duration)>,
-    /// Writes are answered this long after they arrive.
     pub(crate) slow_writes: Option<Duration>,
     pub(crate) hold: Option<Hold>,
     pub(crate) canned: VecDeque<Canned>,
-    /// `METHOD key?query` of every request that got past the signature check.
+    pub(crate) refused_prefix: Option<String>,
+    pub(crate) modified: BTreeMap<String, u64>,
     pub(crate) requests: Vec<String>,
 }
 
@@ -103,13 +97,18 @@ impl Bucket {
         self.objects.get(key).map(|(bytes, _)| bytes.clone())
     }
 
-    /// Replaces the object, as a write without metadata does.
     pub(crate) fn put(&mut self, key: &str, bytes: &[u8]) -> String {
         let etag = self.etag();
         self.objects
             .insert(key.to_string(), (bytes.to_vec(), etag.clone()));
         self.marks.remove(key);
+        self.modified
+            .insert(key.to_string(), crate::cloud::engine::now_ms());
         etag
+    }
+
+    fn modified_at(&self, key: &str) -> u64 {
+        self.modified.get(key).copied().unwrap_or(0)
     }
 
     pub(crate) fn count(&self, prefix: &str) -> usize {
@@ -192,6 +191,36 @@ impl FakeS3 {
     }
 }
 
+fn iso_date(ms: u64) -> String {
+    let stamp = sigv4::amz_date(i64::try_from(ms).unwrap_or(0));
+    format!(
+        "{}-{}-{}T{}:{}:{}.000Z",
+        &stamp[..4],
+        &stamp[4..6],
+        &stamp[6..8],
+        &stamp[9..11],
+        &stamp[11..13],
+        &stamp[13..15]
+    )
+}
+
+fn http_date(ms: u64) -> String {
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let stamp = sigv4::amz_date(i64::try_from(ms).unwrap_or(0));
+    let month: usize = stamp[4..6].parse().unwrap_or(1);
+    format!(
+        "Mon, {} {} {} {}:{}:{} GMT",
+        &stamp[6..8],
+        MONTHS[month - 1],
+        &stamp[..4],
+        &stamp[9..11],
+        &stamp[11..13],
+        &stamp[13..15]
+    )
+}
+
 fn xml_error(status: u16, code: &str) -> Response {
     let body = if code.is_empty() {
         String::new()
@@ -242,7 +271,6 @@ fn query_map(uri: &Uri) -> BTreeMap<String, String> {
         .collect()
 }
 
-/// Signs the request again with the fake's keys and compares the result.
 fn signed_correctly(method: &Method, uri: &Uri, headers: &HeaderMap, body: &[u8]) -> bool {
     let header = |name: &str| headers.get(name).and_then(|value| value.to_str().ok());
     let (Some(authorization), Some(amz_date), Some(payload)) = (
@@ -296,7 +324,6 @@ fn signed_correctly(method: &Method, uri: &Uri, headers: &HeaderMap, body: &[u8]
     expected.authorization == authorization
 }
 
-/// The object key a request names, after the bucket.
 fn key_of(uri: &Uri) -> (String, String) {
     let path = uri.path().trim_start_matches('/');
     let (name, raw_key) = path.split_once('/').unwrap_or((path, ""));
@@ -361,7 +388,20 @@ fn respond(
                 .headers_mut()
                 .insert("retry-after", after.to_string().parse().unwrap());
         }
+        if let Some(date) = canned.date {
+            response
+                .headers_mut()
+                .insert("date", HeaderValue::from_static(date));
+        }
         return response;
+    }
+    let line = bucket.requests.last().cloned().unwrap_or_default();
+    if bucket
+        .refused_prefix
+        .as_deref()
+        .is_some_and(|prefix| line.starts_with(prefix))
+    {
+        return xml_error(400, "InvalidArgument");
     }
     match *method {
         Method::GET if key.is_empty() => list(bucket, &query),
@@ -379,6 +419,7 @@ fn respond(
                     [
                         ("etag", etag.clone()),
                         ("content-length", bytes.len().to_string()),
+                        ("last-modified", http_date(bucket.modified_at(&key))),
                     ],
                 )
                     .into_response();
@@ -439,6 +480,7 @@ fn respond(
         Method::DELETE => {
             bucket.objects.remove(&key);
             bucket.marks.remove(&key);
+            bucket.modified.remove(&key);
             StatusCode::NO_CONTENT.into_response()
         }
         _ => xml_error(405, "MethodNotAllowed"),
@@ -455,7 +497,6 @@ fn marks_of(headers: &HeaderMap) -> Marks {
         .collect()
 }
 
-/// The answer to a write whose condition doesn't hold, or `None` to go on.
 fn refused(bucket: &Bucket, key: &str, headers: &HeaderMap) -> Option<Response> {
     let header = |name: &str| headers.get(name).and_then(|value| value.to_str().ok());
     let (if_match, if_none_match) = (header("if-match"), header("if-none-match"));
@@ -479,7 +520,6 @@ fn refused(bucket: &Bucket, key: &str, headers: &HeaderMap) -> Option<Response> 
     }
 }
 
-/// The object, sent `size` bytes at a time with `gap` before each piece.
 fn trickled(bytes: &[u8], etag: &str, size: usize, gap: Duration) -> Response {
     let pieces: Vec<Bytes> = bytes
         .chunks(size.max(1))
@@ -515,7 +555,6 @@ fn complete(
     if !bucket.uploads.contains_key(id) {
         return xml_error(404, "NoSuchUpload");
     }
-    // A refused completion leaves the upload open, to retry or abandon.
     if let Some(refused) = refused(bucket, key, headers) {
         return refused;
     }
@@ -553,6 +592,9 @@ fn complete(
         .objects
         .insert(key.to_string(), (bytes, etag.clone()));
     bucket.marks.insert(key.to_string(), marks);
+    bucket
+        .modified
+        .insert(key.to_string(), crate::cloud::engine::now_ms());
     format!(
         "<CompleteMultipartUploadResult><Key>{key}</Key><ETag>{}</ETag></CompleteMultipartUploadResult>",
         etag.replace('"', "&quot;")
@@ -570,12 +612,13 @@ fn list(bucket: &Bucket, query: &BTreeMap<String, String>) -> Response {
             0 => 1_000,
             size => size,
         });
+    let delimited = query.contains_key("delimiter");
     let mut entries = BTreeSet::new();
     for key in bucket.objects.keys() {
         let Some(rest) = key.strip_prefix(&prefix) else {
             continue;
         };
-        match rest.find('/') {
+        match rest.find('/').filter(|_| delimited) {
             Some(slash) => entries.insert((format!("{prefix}{}", &rest[..=slash]), true)),
             None => entries.insert((key.clone(), false)),
         };
@@ -593,7 +636,10 @@ fn list(bucket: &Bucket, query: &BTreeMap<String, String>) -> Response {
                 "<CommonPrefixes><Prefix>{name}</Prefix></CommonPrefixes>"
             ));
         } else {
-            xml.push_str(&format!("<Contents><Key>{name}</Key></Contents>"));
+            xml.push_str(&format!(
+                "<Contents><Key>{name}</Key><LastModified>{}</LastModified></Contents>",
+                iso_date(bucket.modified_at(name))
+            ));
         }
     }
     xml.push_str(&format!("<IsTruncated>{truncated}</IsTruncated>"));

@@ -216,7 +216,6 @@ describe("ACP session actions", () => {
   });
 
   it("catches up page by page after the last event it has", async () => {
-    // Since 0.4.8 the store keeps the transcript of a shown conversation only.
     useAcpSessionsStore.setState({ sessions: { s: session("s", "running", 2) }, events: { s: [event(2)] }, activeByProject: { p: "s" } });
     mocks.acpSnapshot.mockResolvedValue({ session: session("s", "running", 2), permissions: [] });
     mocks.acpEvents
@@ -303,7 +302,6 @@ describe("ACP live listeners", () => {
     });
     mocks.onAcpResync.mockResolvedValue(stopResync);
     mocks.acpSnapshot.mockResolvedValue({ session: session("s", "ready", 3), permissions: [] });
-    // Since 0.4.8 the store keeps the transcript of a shown conversation only.
     useAcpSessionsStore.setState({ sessions: { s: session("s", "running", 0) }, activeByProject: { p: "s" } });
 
     const detach = await attachAcpListeners();
@@ -341,7 +339,6 @@ describe("ACP live listeners", () => {
     });
     const detach = await attachAcpListeners();
 
-    // A reconnect after signing in: the snapshot says ready, no turn ended.
     useAcpSessionsStore.setState((state) => ({
       sessions: { ...state.sessions, s: session("s", "ready"), t: session("t", "ready") },
     }));

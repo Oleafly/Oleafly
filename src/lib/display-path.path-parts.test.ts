@@ -54,13 +54,9 @@ describe("pathParts", () => {
   });
 
   it("leaves off the punctuation that ends a path exactly as the pattern it replaced did", () => {
-    // The trailing-punctuation pattern before the trim became a loop, kept
-    // as the oracle. It retries from each mark of a run that does not reach
-    // the end.
     const previousTrailingPunctuation = /[.,;:!?)\]}]+$/u;
     const random = seededRandom(20260930);
     const pick = (choices: readonly string[]) => choices[Math.floor(random() * choices.length)];
-    // Every one of these continues a path, so the whole string is one path.
     const tail = [".", ",", ";", ":", "!", "?", ")", "]", "}", "a", "/", "(", "[", "{", "-", "\u00e9", "\u{1F600}"];
     const starts = ["/opt/tex", "~/paper", String.raw`C:\Users\Ada`, String.raw`\\server\share`];
     const mismatches: string[] = [];
@@ -77,7 +73,6 @@ describe("pathParts", () => {
   });
 
   it("stays linear on a long run of punctuation inside a path", () => {
-    // The previous pattern took seconds on each of these.
     const path = `/opt/tex/${".".repeat(50_000)}x`;
     const started = performance.now();
     expect(marked(path)).toEqual([path]);

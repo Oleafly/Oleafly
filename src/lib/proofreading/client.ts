@@ -27,10 +27,6 @@ type ProofreadingDocumentInput = Omit<
   ProofreadingInput,
   "identity" | "preferences"
 > & {
-  /**
-   * App-owned settings/dictionary identity. It is retained locally for an
-   * exact synchronous presentation repaint and is never sent to the worker.
-   */
   cacheKey?: string;
   identity: Omit<ProofreadingInput["identity"], "requestGeneration">;
   preferences: Omit<
@@ -666,10 +662,6 @@ class ProofreadingWorkerClient {
       pending.reject(error);
       return;
     }
-    // Publish the exact immutable result before the observable store becomes
-    // ready. Presentation-page changes may be dispatched synchronously by a
-    // store consumer; they must never observe "ready" without also being able
-    // to repaint from the matching worker result.
     this.retained.set(event.data.identity.surface, {
       cacheKey: pending.cacheKey,
       projectId: pending.request.identity.projectId,

@@ -25,11 +25,8 @@ use crate::runs::{
 
 pub const CUA_PERMISSIONS: &str =
     "spaces:readonly,spaces:create_space,spaces:start_space,spaces:space_bash,spaces:send_file";
-/// Base64 of this many bytes stays under `space_bash`'s 16,000-character cut.
 pub const CUA_LOG_CHUNK: u64 = 11_000;
 const MAX_CHUNKS_PER_POLL: usize = 4;
-/// The largest outputs archive downloaded: a little over the 512 MiB the
-/// unpacking keeps.
 #[cfg(not(test))]
 const MAX_OUTPUTS_DOWNLOAD: u64 = 640 * 1024 * 1024;
 #[cfg(test)]
@@ -41,7 +38,6 @@ const CREATE_TIMEOUT: u64 = 600;
 const INSTALL_HINT: &str =
     "Cua is not installed. Install it from cua.ai, then test the target in Settings › Research › Compute.";
 
-/// The `cua` MCP server with only the permissions runs need.
 pub fn cua_server(program: PathBuf, per_task: bool) -> McpStdioServer {
     let mut permissions = CUA_PERMISSIONS.to_string();
     if per_task {
@@ -70,7 +66,6 @@ pub struct SpaceInfo {
     pub name: String,
     pub os: String,
     pub ready: bool,
-    /// A Relay Space is the user's own computer, not an isolated machine.
     pub relay: bool,
 }
 
@@ -214,7 +209,6 @@ pub struct CuaSpaceExecutor {
     host: Arc<dyn ComputeHost>,
 }
 
-/// One Space as a run reaches it.
 struct Space<'a> {
     host: &'a dyn ComputeHost,
     server: McpStdioServer,
@@ -230,7 +224,6 @@ fn per_task_name(task_id: &str) -> String {
     format!("oleafly-{}", short.to_ascii_lowercase())
 }
 
-/// Starts the Cua daemon (detached) when a call says it is not running.
 async fn start_daemon(program: &Path) {
     let mut command = tokio::process::Command::new(program);
     command
@@ -281,7 +274,6 @@ impl Space<'_> {
         parse_bash(&result)
     }
 
-    /// Runs a script and returns its standard output when it exits 0.
     async fn script(&self, script: &str, seconds: u64) -> Result<String, RunError> {
         let result = self.bash(script, seconds).await?;
         if result.timed_out {
@@ -353,7 +345,6 @@ impl CuaSpaceExecutor {
         })
     }
 
-    /// The Space by name, created when missing and started when offline.
     async fn find_or_create(
         &self,
         server: &McpStdioServer,
@@ -598,7 +589,6 @@ impl RunExecutor for CuaSpaceExecutor {
         };
         let folder = absolute(&data.remote_home, &data.remote_dir);
         let downloads = handle.run_dir.join(".download");
-        // The whole log, when it fits the local copy.
         if report.log_size <= MIRROR_CAP {
             match space
                 .download(&format!("{folder}/stdout.log"), &downloads)
@@ -619,8 +609,6 @@ impl RunExecutor for CuaSpaceExecutor {
             )
             .await
         {
-            // The archive is downloaded whole before any cap applies to what
-            // is in it, so a huge one stays in the Space.
             Ok(printed) => match scripts::outputs_bytes(&printed) {
                 Some(bytes) if bytes > MAX_OUTPUTS_DOWNLOAD => Err(RunError::Invalid(format!(
                     "the archive is over {} MiB, so it stayed in the Space.",
@@ -745,8 +733,6 @@ impl RunExecutor for CuaSpaceExecutor {
             .map(|_| ())
     }
 
-    /// Removes the run's own folder; a per-task Space stays, since the task's
-    /// other runs may be using it.
     async fn discard(&self, handle: &RunHandle) -> Result<(), RunError> {
         let data: CuaHandleData = handle_data(handle)?;
         self.space(&data)?
@@ -977,7 +963,6 @@ mod tests {
             } => assert!(note.contains("stayed in the Space"), "{note}"),
             other => panic!("{other:?}"),
         }
-        // The archive was never downloaded, so none of it reached the workspace.
         let downloaded: Vec<String> = setup
             .spaces
             .calls_to("download")

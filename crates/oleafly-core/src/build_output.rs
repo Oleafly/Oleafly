@@ -1,20 +1,13 @@
-//! Sharing a build folder between the app and the CLI (or two CLIs): one
-//! build at a time through a lock file beside the folder, outputs written to
-//! a staging folder and renamed into place only when the build ends, and a
-//! snapshot that tells a fresh PDF from one a failed build left behind.
 use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
-/// Staging folders inside a build folder start with this.
 pub const STAGING_PREFIX: &str = ".oleafly-staging-";
 const FIRST_WAIT: Duration = Duration::from_millis(50);
 const LONGEST_WAIT: Duration = Duration::from_millis(500);
 
-/// `<parent>/<name>.lock` beside the build folder (`.oleafly/build.lock`,
-/// `linked/<id>/build.lock`).
 pub fn build_lock_path(build_dir: &Path) -> PathBuf {
     let name = build_dir
         .file_name()
@@ -24,7 +17,6 @@ pub fn build_lock_path(build_dir: &Path) -> PathBuf {
     parent.join(format!("{name}.lock"))
 }
 
-/// An exclusive hold on a build folder; released when dropped.
 #[derive(Debug)]
 pub struct BuildLock {
     file: File,
@@ -53,7 +45,6 @@ impl BuildLock {
         Ok((file, path))
     }
 
-    /// The lock now, or `None` while another build holds it.
     pub fn try_acquire(build_dir: &Path) -> io::Result<Option<BuildLock>> {
         let (file, path) = Self::open(build_dir)?;
         match fs4::FileExt::try_lock(&file) {
@@ -63,8 +54,6 @@ impl BuildLock {
         }
     }
 
-    /// Waits up to `budget` for the lock; `on_wait` runs once, when the
-    /// first try finds it held. Times out with `ErrorKind::TimedOut`.
     pub fn acquire(
         build_dir: &Path,
         budget: Duration,
@@ -104,12 +93,6 @@ impl Drop for BuildLock {
     }
 }
 
-/// Whether a [`BuildLock`] error says the file system can't lock files at
-/// all (NFS without a lock service, some cluster file systems), rather than
-/// that something is wrong with this lock file (a link, no permission, a
-/// full disk). Only then may a build take turns through a [`DirLock`]
-/// instead; any other lock error stops the build, because two builds in one
-/// folder overwrite each other's files. The app and the CLI both ask this.
 pub fn locks_unsupported(error: &io::Error) -> bool {
     #[cfg(unix)]
     {
@@ -140,11 +123,6 @@ pub fn locks_unsupported(error: &io::Error) -> bool {
     }
 }
 
-/// The lock for build folders whose file system can't lock files: the
-/// folder `<build>.lock.d` beside the build folder, made with a create that
-/// fails when it is there, holding the process id and the time its build
-/// started. Removed when dropped. One older than `stale_after` (longer than
-/// any build may run) is a stopped build's and is taken over.
 #[derive(Debug)]
 pub struct DirLock {
     path: PathBuf,
@@ -157,7 +135,6 @@ impl DirLock {
         PathBuf::from(name)
     }
 
-    /// The lock now, or `None` while another build holds it.
     pub fn try_acquire(build_dir: &Path, stale_after: Duration) -> io::Result<Option<DirLock>> {
         let path = Self::path_for(build_dir);
         for _ in 0..2 {
@@ -183,9 +160,6 @@ impl DirLock {
                     if metadata.is_dir() && age <= stale_after {
                         return Ok(None);
                     }
-                    // A stopped build's folder, or something else in the way
-                    // (a file, a link, never followed): removed, then tried
-                    // once more.
                     if metadata.is_dir() {
                         std::fs::remove_dir_all(&path)?;
                     } else {
@@ -209,7 +183,6 @@ impl Drop for DirLock {
     }
 }
 
-/// A private folder inside the build folder for one build's outputs.
 #[derive(Debug)]
 pub struct OutputStaging {
     dir: PathBuf,
@@ -275,7 +248,6 @@ impl OutputStaging {
     }
 }
 
-/// The outputs a viewer or an editor keeps open.
 fn is_viewed_output(name: &std::ffi::OsStr) -> bool {
     let name = name.to_string_lossy().to_ascii_lowercase();
     name.ends_with(".pdf") || name.ends_with(".synctex.gz") || name.ends_with(".synctex")
@@ -289,8 +261,6 @@ impl Drop for OutputStaging {
     }
 }
 
-/// Removes staging folders older than `older_than` (left by a crash).
-/// Returns how many went.
 pub fn sweep_stale_staging(build_dir: &Path, older_than: Duration) -> usize {
     let Ok(entries) = std::fs::read_dir(build_dir) else {
         return 0;
@@ -326,8 +296,6 @@ pub fn sweep_stale_staging(build_dir: &Path, older_than: Duration) -> usize {
 fn content_identity(path: &Path) -> Option<(u64, [u8; 32])> {
     use sha2::Digest;
     use std::io::Read;
-    // A link or a special file planted in the build folder is not an output:
-    // following it could hash another file, and opening a FIFO would block.
     let metadata = std::fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() {
         return None;
@@ -345,7 +313,6 @@ fn content_identity(path: &Path) -> Option<(u64, [u8; 32])> {
     Some((metadata.len(), hasher.finalize().into()))
 }
 
-/// What a set of build outputs looked like before a build ran in place.
 #[derive(Clone, Debug, Default)]
 pub struct ArtifactSnapshot {
     before: BTreeMap<PathBuf, Option<(u64, [u8; 32])>>,
@@ -361,8 +328,6 @@ impl ArtifactSnapshot {
         }
     }
 
-    /// The file exists and its length or content changed since the capture
-    /// (or it was not captured and exists now).
     pub fn is_fresh(&self, path: &Path) -> bool {
         let now = content_identity(path);
         match self.before.get(path) {
@@ -421,7 +386,6 @@ mod tests {
         for code in [libc::ENOLCK, libc::ENOTSUP, libc::ENOSYS, libc::EINVAL] {
             assert!(locks_unsupported(&io::Error::from_raw_os_error(code)));
         }
-        // A broken lock file is not a reason to build unlocked.
         for code in [libc::EACCES, libc::ENOSPC, libc::EROFS] {
             assert!(!locks_unsupported(&io::Error::from_raw_os_error(code)));
         }
@@ -462,7 +426,6 @@ mod tests {
             .unwrap();
         let taken = DirLock::try_acquire(&build, Duration::from_secs(60)).unwrap();
         assert!(taken.is_some());
-        // A link in the way is removed, never followed.
         drop(taken);
         let elsewhere = tempfile::tempdir().unwrap();
         std::os::unix::fs::symlink(elsewhere.path(), &left).unwrap();
@@ -508,9 +471,6 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn the_pdf_is_promoted_before_the_auxiliary_files() {
-        // A destination that cannot be replaced (a directory stands in for a
-        // PDF a viewer holds) fails the promotion at the first rename. The
-        // PDF goes first, so the log and aux files were not replaced yet.
         let dir = tempfile::tempdir().unwrap();
         let build = dir.path().join("build");
         std::fs::create_dir_all(build.join("main.pdf")).unwrap();
@@ -608,7 +568,6 @@ mod tests {
         std::os::unix::fs::symlink(&secret, &pdf).unwrap();
         assert_eq!(content_identity(&pdf), None);
         let snapshot = ArtifactSnapshot::capture(std::slice::from_ref(&pdf));
-        // Replacing the link with a real output counts as a new build.
         std::fs::remove_file(&pdf).unwrap();
         std::fs::write(&pdf, b"private").unwrap();
         assert!(snapshot.is_fresh(&pdf));

@@ -60,11 +60,6 @@ export function signInCommandLine(path: string, windows: boolean = isWindows): s
   return `'${path.replaceAll("'", POSIX_ESCAPED_QUOTE)}'`;
 }
 
-/**
- * Opens a project terminal that runs the agent's CLI, for agents that sign in
- * interactively. Resolves false when no terminal could be added (the tab
- * limit; the launcher already said so).
- */
 export async function openAgentSignInTerminal(projectId: string, cliPath: string): Promise<boolean> {
   useTerminalsStore.getState().setProject(projectId);
   const { openTerminalWith, TerminalLaunchError } = await import("@/lib/terminal-launch");
@@ -87,8 +82,6 @@ export function BridgeInstallCard({
   onError?: (message: string) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
-  // readinessDetail shows the CLI path with ~; this re-renders the card once
-  // the home folder is known, and shortens the hint below the same way.
   const displayText = useDisplayText();
   const { installing, install } = useBridgeInstall();
   const readiness = acpReadiness(agent);

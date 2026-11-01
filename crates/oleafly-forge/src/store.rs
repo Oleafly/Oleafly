@@ -1,13 +1,3 @@
-//! Git hosting accounts: non-secret metadata in `<root>/forge-accounts.json`,
-//! tokens in the encrypted `forge_tokens` secret of `oleafly-secrets`.
-//!
-//! `<root>/.forge-store.lock` serializes the app, the CLI and the daemon:
-//! readers take it shared, writers exclusive. Token refreshes take a second
-//! lock, `<root>/.forge-refresh.lock`, so a slow refresh never blocks a
-//! reader. Lock order is forge store, then the app's config, then the secret
-//! store; nothing takes them the other way round. A refresh holds the refresh
-//! lock and takes the store lock inside it; nothing takes the refresh lock
-//! while holding the store lock.
 use crate::address::normalize_base_url;
 use crate::git::valid_token;
 use crate::http::ForgeHttp;
@@ -23,16 +13,13 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 pub use oleafly_secrets::accounts::FORGE_TOKENS_ACCOUNT;
 
-/// The account metadata file inside the data folder.
 pub const ACCOUNTS_FILE: &str = "forge-accounts.json";
 const LOCK_FILE: &str = ".forge-store.lock";
 const REFRESH_LOCK_FILE: &str = ".forge-refresh.lock";
 
-/// One signed-in account. Never holds a token.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForgeAccount {
-    /// The normalized base URL, the account's key.
     pub base: String,
     pub kind: ForgeKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -42,17 +29,12 @@ pub struct ForgeAccount {
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub avatar_url: Option<String>,
-    /// A certificate authority file for servers whose certificate comes from
-    /// the user's organization.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ca_file: Option<String>,
     pub auth: AuthMethod,
-    /// Epoch milliseconds.
     pub added_at: u64,
 }
 
-/// The GitHub sign-in of 0.4.7 and earlier: `github_token` in the encrypted
-/// store and `github_user` in `config.json`.
 pub struct LegacyGithub {
     pub token: String,
     pub login: String,
@@ -76,8 +58,6 @@ struct AccountsFile {
     accounts: Vec<ForgeAccount>,
     #[serde(default)]
     legacy_github_migrated: bool,
-    /// The legacy GitHub token's fingerprint when last read (`""` for none),
-    /// so a sign-in an older build made after a downgrade is noticed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     legacy_github_seen: Option<String>,
 }
@@ -97,7 +77,6 @@ impl Default for AccountsFile {
     }
 }
 
-/// Holds one of the store's lock files until dropped.
 pub(crate) struct StoreLock {
     _file: std::fs::File,
 }
@@ -108,8 +87,6 @@ fn store_error(detail: impl std::fmt::Display) -> ForgeError {
     }
 }
 
-/// The accounts of one data folder. Cheap to clone, so async code can move a
-/// clone into blocking work.
 #[derive(Clone, Debug)]
 pub struct ForgeStore {
     root: PathBuf,
@@ -117,8 +94,6 @@ pub struct ForgeStore {
 }
 
 impl ForgeStore {
-    /// The store of the data folder `root` (the app's `oleafly_root`, the
-    /// CLI's `oleafly_secrets::paths::data_root`).
     pub fn new(root: impl Into<PathBuf>) -> ForgeStore {
         let root = root.into();
         ForgeStore {
@@ -166,7 +141,6 @@ impl ForgeStore {
         self.lock_named(LOCK_FILE, exclusive)
     }
 
-    /// Serializes token refreshes across processes.
     pub(crate) fn lock_refresh(&self) -> Result<StoreLock, ForgeError> {
         self.lock_named(REFRESH_LOCK_FILE, true)
     }
@@ -175,8 +149,6 @@ impl ForgeStore {
         self.root.join(ACCOUNTS_FILE)
     }
 
-    /// The accounts file. A missing file means no accounts; a corrupt one is
-    /// an error, never an empty list that a later write would save.
     fn read_file_locked(&self) -> Result<AccountsFile, ForgeError> {
         let path = self.file_path();
         if std::fs::symlink_metadata(&path)
@@ -208,7 +180,6 @@ impl ForgeStore {
         Ok(())
     }
 
-    /// Every account, in the order they were added.
     pub fn accounts(&self) -> Result<Vec<ForgeAccount>, ForgeError> {
         let _lock = self.lock(false)?;
         Ok(self.read_file_locked()?.accounts)
@@ -224,15 +195,11 @@ impl ForgeStore {
             .find(|account| account.base == base))
     }
 
-    /// The stored token for `base`, as it is (see [`ForgeStore::usable_token`]
-    /// for one that is refreshed when it is about to expire).
     pub fn token(&self, base: &str) -> Result<Option<ForgeToken>, ForgeError> {
         let base = normalize_base_url(base)?;
         secret_accounts::forge_token(&self.secrets, &base).map_err(store_error)
     }
 
-    /// Save an account and its token. The token is checked before anything
-    /// is written; an existing account for the same base is replaced.
     pub fn save(&self, account: ForgeAccount, token: ForgeToken) -> Result<(), ForgeError> {
         let mut account = account;
         account.base = normalize_base_url(&account.base)?;
@@ -264,8 +231,6 @@ impl ForgeStore {
         self.write_file_locked(&file)
     }
 
-    /// Replace an account's metadata (login, name, avatar, CA file). Never
-    /// touches its token.
     pub fn update_account(&self, account: ForgeAccount) -> Result<(), ForgeError> {
         let mut account = account;
         account.base = normalize_base_url(&account.base)?;
@@ -282,10 +247,6 @@ impl ForgeStore {
         self.write_file_locked(&file)
     }
 
-    /// Save a changed login, name or picture into the account as it is now.
-    /// Only those three fields change, inside the exclusive lock, so a check
-    /// that started before the user changed the CA file never writes the old
-    /// one back. Returns the stored account, or `None` when it was removed.
     pub fn update_profile(
         &self,
         base: &str,
@@ -300,8 +261,6 @@ impl ForgeStore {
         })
     }
 
-    /// Set or clear an account's CA file in the account as it is now.
-    /// Returns the stored account, or `None` when it was removed.
     pub fn set_ca_file(
         &self,
         base: &str,
@@ -334,11 +293,6 @@ impl ForgeStore {
         Ok(Some(after))
     }
 
-    /// Add the account of a token that was saved without one, without
-    /// touching the token. Insert-only: an account that appeared while the
-    /// server was asked who the token belongs to (the user signed in) is
-    /// kept, and nothing is added once the token is no longer `token_read`.
-    /// Returns whether the account was added.
     pub(crate) fn put_account(
         &self,
         account: ForgeAccount,
@@ -365,9 +319,6 @@ impl ForgeStore {
         Ok(true)
     }
 
-    /// Forget an account. The token goes first, so a failure part way leaves
-    /// an account that reads as signed out, never a hidden token. Returns
-    /// whether there was anything to forget.
     pub fn remove(&self, base: &str) -> Result<bool, ForgeError> {
         let base = normalize_base_url(base)?;
         let _lock = self.lock(true)?;
@@ -383,9 +334,6 @@ impl ForgeStore {
         Ok(had_token || had_account)
     }
 
-    /// Servers that have a token but no account, such as one saved by an
-    /// older command-line tool. [`crate::accounts::adopt_orphan`] completes
-    /// them.
     pub fn orphan_bases(&self) -> Result<Vec<String>, ForgeError> {
         let _lock = self.lock(false)?;
         let file = self.read_file_locked()?;
@@ -396,11 +344,6 @@ impl ForgeStore {
             .collect())
     }
 
-    /// Store a refreshed token, unless the account was signed out or signed
-    /// in again while the refresh ran: then the refreshed token is dropped,
-    /// so a sign-out is never undone. `spent_refresh` is the refresh token
-    /// the refresh used. Returns the token now stored (`None` when signed
-    /// out).
     pub(crate) fn replace_refreshed_token(
         &self,
         base: &str,
@@ -424,13 +367,6 @@ impl ForgeStore {
         Ok(Some(fresh.clone()))
     }
 
-    /// Turn the 0.4.7 GitHub sign-in into a github.com account the first
-    /// time, and later follow a new sign-in an older build made after a
-    /// downgrade (its token then replaces the github.com one). The legacy
-    /// token stays where it is so an older build keeps working. `read_legacy`
-    /// runs while this store's lock is held and may take the app's config
-    /// lock (lock order: forge store, config). Returns whether the github.com
-    /// account changed.
     pub fn migrate_legacy_github(
         &self,
         read_legacy: impl FnOnce() -> Result<Option<LegacyGithub>, String>,
@@ -449,17 +385,11 @@ impl ForgeStore {
             return Ok(false);
         }
         let first = !file.legacy_github_migrated;
-        // An older build signed in since this one last looked. (A file from
-        // before fingerprints only gets one recorded.)
         let signed_in_elsewhere = !first && file.legacy_github_seen.is_some();
         let existing = file
             .accounts
             .iter()
             .position(|account| account.base == GITHUB_COM);
-        // A github.com token saved without an account (`oleafly auth login
-        // git`) is newer than the 0.4.7 sign-in the first run would import,
-        // and it gets its account later; only a sign-in an older build made
-        // since then replaces it.
         let saved_token = secret_accounts::forge_token(&self.secrets, GITHUB_COM)
             .map_err(store_error)?
             .is_some();
@@ -507,14 +437,6 @@ impl ForgeStore {
         Ok(changed)
     }
 
-    /// Run `write_legacy`, which sets (or, for a sign-out, clears) the 0.4.7
-    /// `github_token` and `github_user` to mirror the github.com account, and
-    /// record that token's fingerprint. [`ForgeStore::migrate_legacy_github`]
-    /// then reads the mirror as this build's own write, not as a sign-in an
-    /// older build made, and leaves the account (its name, picture and CA
-    /// file) alone. `token` is what `write_legacy` writes, `None` when it
-    /// clears. `write_legacy` runs while this store's lock is held and may
-    /// take the app's config lock (lock order: forge store, config).
     pub fn mirror_legacy_github(
         &self,
         token: Option<&str>,
@@ -534,8 +456,6 @@ impl ForgeStore {
         self.write_file_locked(&file)
     }
 
-    /// The token for `base`, refreshed first when it is a GitLab OAuth token
-    /// about to expire. `Ok(None)` when no token is stored.
     pub async fn usable_token(
         &self,
         http: &ForgeHttp,
@@ -577,7 +497,6 @@ impl ForgeStore {
             blocking(move || Ok((store.account(&lookup)?, store.token(&lookup)?))).await?;
         let current = match current {
             Some(token) if oauth::needs_refresh(&token, now_ms) => token,
-            // Someone else refreshed or signed out while this one waited.
             other => return Ok(other),
         };
         let refreshable = account.filter(|account| {
@@ -591,7 +510,6 @@ impl ForgeStore {
         let grant = match oauth::refresh_gitlab(http, &base, client_id, &refresh).await {
             Ok(grant) => grant,
             Err(ForgeError::Unauthorized) => return Err(ForgeError::Unauthorized),
-            // A network problem: the token still works until it expires.
             Err(_) if !oauth::expired(&current, now_ms) => return Ok(Some(current)),
             Err(error) => return Err(error),
         };
@@ -613,7 +531,6 @@ impl ForgeStore {
 
 type Gate = Arc<tokio::sync::Mutex<()>>;
 
-/// One async mutex per data folder and base URL.
 fn refresh_gate(root: &Path, base: &str) -> Gate {
     static GATES: OnceLock<Mutex<HashMap<(PathBuf, String), Gate>>> = OnceLock::new();
     let mut gates = GATES
@@ -934,7 +851,6 @@ mod tests {
             .migrate_legacy_github(|| legacy("gho_legacy123"))
             .unwrap());
 
-        // A downgrade, a new sign-in in the older build, an upgrade again.
         assert!(store
             .migrate_legacy_github(|| legacy("gho_newer456"))
             .unwrap());
@@ -946,7 +862,6 @@ mod tests {
         assert!(!store
             .migrate_legacy_github(|| legacy("gho_newer456"))
             .unwrap());
-        // Signing out there leaves this build's account alone.
         assert!(!store.migrate_legacy_github(|| Ok(None)).unwrap());
         assert_eq!(
             store.token(GITHUB_COM).unwrap().unwrap().token,
@@ -1028,9 +943,7 @@ mod tests {
     fn mirroring_the_legacy_token_keeps_the_account_through_the_next_launch() {
         let dir = tempfile::tempdir().unwrap();
         let store = ForgeStore::new(dir.path());
-        // First launch of a new user: nothing to migrate yet.
         assert!(!store.migrate_legacy_github(|| Ok(None)).unwrap());
-        // Signing in saves the account, then mirrors the token for 0.4.7.
         let github = github_account_with_details();
         store
             .save(github.clone(), token("gho_signedin123"))
@@ -1044,7 +957,6 @@ mod tests {
             .unwrap();
         assert!(written);
 
-        // The next launch is a new process with a new store handle.
         let relaunched = ForgeStore::new(dir.path());
         let changed = relaunched
             .migrate_legacy_github(|| {
@@ -1141,7 +1053,6 @@ mod tests {
         assert!(store.accounts().unwrap().is_empty());
         assert_eq!(store.orphan_bases().unwrap(), [GITHUB_COM]);
 
-        // A sign-in an older build makes later still replaces it.
         assert!(store
             .migrate_legacy_github(|| legacy("gho_newer456"))
             .unwrap());
@@ -1158,10 +1069,8 @@ mod tests {
         store
             .save(account("https://gitlab.com"), token("glpat-abc12345"))
             .unwrap();
-        // A check read the account without a CA file...
         let snapshot = store.account("https://gitlab.com").unwrap().unwrap();
         assert_eq!(snapshot.ca_file, None);
-        // ...then the user set one before the check finished.
         store
             .set_ca_file("https://gitlab.com", Some("/etc/ssl/corp.pem".into()))
             .unwrap();

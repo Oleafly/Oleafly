@@ -10,22 +10,14 @@
  */
 
 export interface TableOptions {
-  /** Treat the first row as a header row. */
   header: boolean;
   /** Table caption (LaTeX) or figure caption (Typst). */
   caption?: string;
-  /** LaTeX label like `tab:results`. */
   label?: string;
-  /**
-   * Column alignment: "auto" infers per column (numbers right, text left),
-   * or an explicit string like "lcc".
-   */
   alignment?: string;
-  /** Bold the header row (default true when a header exists). */
   boldHeader?: boolean;
 }
 
-/** Quote-aware split of one record; `quoted` tracks being inside quotes. */
 function splitRecord(line: string, delimiter: string): string[] {
   const cells: string[] = [];
   let current = "";
@@ -79,18 +71,11 @@ function detectDelimiter(text: string): string {
   return tabs > 0 ? "\t" : ",";
 }
 
-/**
- * Parse CSV or TSV text into rows of cells. Embedded newlines inside quoted
- * CSV cells are supported by stitching physical lines while quotes stay
- * open. The delimiter is chosen from unquoted cells in the first record.
- */
 export function parseDelimited(text: string): string[][] {
   const normalized = text.replace(/\r\n?/g, "\n");
   const delimiter = detectDelimiter(normalized);
   const physical = normalized.split("\n");
 
-  // Stitch quoted cells that span physical lines: track whether quotes are
-  // open; each physical line with an odd number of quotes toggles the state.
   const records: string[] = [];
   let open = false;
   let carry = "";
@@ -112,14 +97,12 @@ export function parseDelimited(text: string): string[][] {
   const rows = records
     .filter((record) => record !== "")
     .map((record) => splitRecord(record, delimiter).map((cell) => cell.trim()));
-  // Drop fully-empty trailing records.
   while (rows.length > 0 && rows[rows.length - 1].every((cell) => cell === "")) {
     rows.pop();
   }
   return rows;
 }
 
-/** Normalize row widths so every row has `width` cells. */
 function padRows(rows: string[][]): { rows: string[][]; width: number } {
   const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
   return {
@@ -134,12 +117,6 @@ function padRows(rows: string[][]): { rows: string[][]; width: number } {
   };
 }
 
-/**
- * Whether a cell is a plain decimal number, with optional grouping commas,
- * decimal point, sign, and percent suffix. This deliberately uses a bounded
- * character scan instead of a nested regular expression: tables are imported
- * from untrusted files and this runs once for every populated cell.
- */
 function isNumericCell(value: string): boolean {
   let text = value;
   if (text.endsWith("%")) text = text.slice(0, -1);
@@ -197,7 +174,6 @@ export function isValidLatexLabel(value: string): boolean {
   return true;
 }
 
-/** Infer one alignment letter per column: r for numeric, l otherwise. */
 export function inferAlignment(rows: string[][], hasHeader: boolean): string {
   const { rows: padded, width } = padRows(rows);
   const body = hasHeader ? padded.slice(1) : padded;
@@ -211,12 +187,10 @@ export function inferAlignment(rows: string[][], hasHeader: boolean): string {
 }
 
 function flattenCell(value: string): string {
-  // A cell cannot contain a row break; join wrapped lines with a space.
   const lines = value.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
   return lines.length === 1 ? value : lines.map((line) => line.trim()).join(" ");
 }
 
-/** Escape one character exactly once; see the module comment. */
 export function escapeLatexCell(value: string): string {
   let out = "";
   for (const ch of flattenCell(value)) {
@@ -285,7 +259,6 @@ export function escapeTypstCell(value: string): string {
   return out;
 }
 
-/** Emit a booktabs `table`/`tabular` environment. */
 export function emitLatexTable(rowsInput: string[][], options: TableOptions): string {
   const { rows } = padRows(rowsInput);
   if (rows.length === 0) {
@@ -325,7 +298,6 @@ function typstAlignment(letter: string): string {
   return "left";
 }
 
-/** Emit a Typst `#table` with a strong header row. */
 export function emitTypstTable(rowsInput: string[][], options: TableOptions): string {
   const { rows } = padRows(rowsInput);
   if (rows.length === 0) {

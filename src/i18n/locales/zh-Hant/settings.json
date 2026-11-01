@@ -1477,6 +1477,7 @@
         "missing": "在這台電腦上找不到。"
       },
       "managedIdle": "未使用。Oleafly 會優先使用在這台電腦上找到的副本。",
+      "superseded": "未使用。Oleafly 現在使用的是 {{tool}} {{version}}。",
       "download": {
         "optional": "非必要。Oleafly 已經在使用這台電腦上的副本。",
         "license": "{{license}} 授權。",

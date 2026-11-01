@@ -36,7 +36,6 @@ fn draft(title: &str, run_after: Option<i64>) -> ResearchTaskDraft {
     }
 }
 
-/// A queued task the app handed to the helper.
 fn handed_to_helper(data_root: &Path, title: &str, run_after: Option<i64>) -> String {
     let app = TaskStore::new(data_root.join("research-tasks")).unwrap();
     let task = app.create(draft(title, run_after)).unwrap();
@@ -70,8 +69,6 @@ fn an_idle_helper_exits_after_its_grace() {
     assert!(started.elapsed() < Duration::from_secs(10));
     let paths = helper_paths(data.path());
     assert!(!paths.state.exists());
-    // The lock goes with the helper's last handle on it, which can trail the
-    // exit code on a busy machine.
     let deadline = Instant::now() + Duration::from_secs(5);
     while HelperLock::is_held_elsewhere(&paths.lock).unwrap() {
         assert!(
@@ -105,8 +102,6 @@ fn work_handed_over_while_the_helper_decides_to_exit_is_not_stranded() {
         .unwrap()
         .require(&id)
         .unwrap();
-    // The helper took it (its runtime is missing here, so it failed) instead
-    // of leaving it queued for a helper that was gone.
     assert_ne!(task.status, ResearchTaskStatus::Queued);
 }
 
@@ -161,7 +156,6 @@ fn the_helper_resumes_its_own_interrupted_tasks_at_start() {
     assert!(helper_store
         .set_isolation(&id, running.execution_generation, &isolation)
         .unwrap());
-    // The helper that ran it is gone.
     helper_store
         .set_owner(
             &id,
@@ -214,8 +208,6 @@ fn background_tasks_off_stops_a_helper_started_at_sign_in() {
     assert!(!helper_paths(data.path()).state.exists());
 }
 
-/// A signal reaches the whole test process, so the check runs in a child
-/// copy of this test binary (the parent's other tests stay out of it).
 #[cfg(unix)]
 #[test]
 fn termination_resolves_on_sigterm_and_sighup() {
@@ -230,7 +222,6 @@ fn termination_resolves_on_sigterm_and_sighup() {
             .unwrap();
         runtime.block_on(async {
             let mut waiting = Box::pin(termination());
-            // Polled once so the handlers exist before the parent signals.
             let _ = tokio::time::timeout(Duration::from_millis(50), &mut waiting).await;
             println!("ready");
             waiting.await;
@@ -250,8 +241,6 @@ fn termination_resolves_on_sigterm_and_sighup() {
             .stderr(Stdio::null())
             .spawn()
             .unwrap();
-        // The harness starts the line with the test's name, so "ready" ends
-        // it. The reader keeps draining the pipe until the child is gone.
         let stdout = child.stdout.take().unwrap();
         let (ready_sender, ready) = std::sync::mpsc::channel();
         let reader = std::thread::spawn(move || {

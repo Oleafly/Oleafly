@@ -22,7 +22,6 @@ import { exportConversation } from "@/components/ai/acp/export-conversation";
 
 const AcpHistoryDialog = lazy(() => import("@/components/ai/acp/AcpHistoryDialog"));
 
-/** Conversations listed in the history menu; the rest are in the dialog. */
 const MENU_CONVERSATIONS = 20;
 
 const UsageReportDialog = lazy(() =>
@@ -31,7 +30,6 @@ const UsageReportDialog = lazy(() =>
   })),
 );
 
-/** Opens Settings > AI > Agents, expanded on one agent's card when `agentId` is given. */
 export function openCliAgentSettings(agentId?: string) {
   const settings = useSettingsStore.getState();
   settings.setSettingsInitialSection("ai");

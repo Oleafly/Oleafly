@@ -524,8 +524,6 @@ fn watch_project_as(
     mode_override: Option<WatchMode>,
     fresh: bool,
 ) -> Result<Option<u64>, String> {
-    // Library projects are watched too: a terminal or agent started in one
-    // writes its files directly, and the open editor has to hear about it.
     let location = crate::project_location::locate(project_id)?;
     let shared = crate::collab::registry::is_shared(project_id);
     let network = crate::linked_registry::cached_membership(project_id)
@@ -1087,9 +1085,14 @@ mod tests {
             Box::new(|| {}),
         )
         .unwrap();
-        std::thread::sleep(Duration::from_millis(500));
-        std::fs::write(root.join("notes.md"), "notes").unwrap();
-        let change = next_change(&receiver);
+        let mut change = None;
+        for attempt in 0..20 {
+            std::fs::write(root.join("notes.md"), format!("notes {attempt}")).unwrap();
+            change = receiver.recv_timeout(Duration::from_millis(500)).ok();
+            if change.is_some() {
+                break;
+            }
+        }
         stop("linked-native-test", Some(token));
 
         let change = change.expect("a new file is reported");
@@ -1099,8 +1102,6 @@ mod tests {
         );
     }
 
-    // A terminal or agent started in a library project writes its files
-    // directly, so the editor has to hear about it like any opened folder.
     #[test]
     fn a_library_project_is_watched_its_own_save_is_silent_and_an_outside_edit_is_reported() {
         let library = crate::collab::testing::TempLibrary::new();
@@ -1125,8 +1126,6 @@ mod tests {
         .unwrap();
         let own = receiver.recv_timeout(Duration::from_millis(800));
         std::fs::write(root.join("main.tex"), "edited in a terminal").unwrap();
-        // The poll watcher compares whole-second times, so the edit must not
-        // land in the same second as the save before it.
         std::fs::File::options()
             .write(true)
             .open(root.join("main.tex"))

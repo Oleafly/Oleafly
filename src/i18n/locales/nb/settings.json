@@ -1488,6 +1488,7 @@
         "missing": "Ikke funnet på denne maskinen."
       },
       "managedIdle": "Ikke i bruk. Oleafly bruker først kopien som ble funnet på denne maskinen.",
+      "superseded": "Ikke i bruk. Oleafly bruker nå {{tool}} {{version}}.",
       "download": {
         "optional": "Valgfritt. Oleafly bruker allerede kopien på denne maskinen.",
         "license": "{{license}}-lisens.",

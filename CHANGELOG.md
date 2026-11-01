@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-10-31
+
 ### Added
 
 - The interface speaks Vietnamese. Choose Tiếng Việt under
@@ -16,16 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Open with Oleafly action are translated as well.
 - Cloud sync works with Google Drive and S3-compatible storage as well as
   Dropbox (#317). Choose one under Settings > Data storage > Cloud sync.
-  Google Drive keeps your projects in an Oleafly folder in My Drive. For S3
-  you enter the endpoint, the bucket and your keys; Amazon S3, Google Cloud
-  Storage with HMAC keys and MinIO all work. Before it connects, Oleafly
-  tries a few writes in the bucket. A service that ignores conditional
-  writes is turned down, because without them two computers syncing at once
-  could overwrite each other.
+  Google Drive keeps your projects in an Oleafly folder in My Drive. Files you
+  delete go to Google Drive's trash, and Oleafly checks Drive for changes from
+  your other computers once a minute. For S3 you enter the endpoint, the
+  bucket and your keys. Amazon S3, Google Cloud Storage with HMAC keys and
+  MinIO all work. Before it connects, Oleafly tries a few writes in the
+  bucket. A service that ignores conditional writes is turned down, because
+  without them two computers syncing at once could overwrite each other. When
+  two computers change the same file at the same moment, the one that syncs
+  second keeps both versions.
 - Storage usage has a bar of everything in the Oleafly data folder, split by
   what takes the space. Below it, each part has its size: documents and code,
-  images, PDFs, Git history, build cache, the TeX distribution, AI agents,
-  research tasks, checkpoints and the rest.
+  images, PDFs, Git history, build cache, the TeX distribution, tools Oleafly
+  downloaded such as Typst and Quarto, AI agents, research tasks, checkpoints
+  and the rest.
 - Cut, Copy, Paste and Select all in the editor's right-click menu (#319).
   Formatting, inserting, and import and export each moved into a submenu, so
   the menu is much shorter. In Markdown files, type `/table` or `/equation`
@@ -44,7 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lists suggestions next to the comments, and you can reply to one like a
   comment.
   AI edits and inserted citations made while suggesting become suggestions
-  too. A compile or export with suggestions waiting tells you how many.
+  too. A compile or export with suggestions waiting tells you how many. One
+  suggested deletion can be up to 20,000 characters. Delete more than that at
+  once and the text comes back, with a note that says why.
 - Reviewer and Commenter roles for shared projects. A reviewer comments and
   suggests changes, and every edit they make is a suggestion. A commenter
   reads and comments. Both can use the chat. You can give these roles to
@@ -57,7 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - History for shared projects, in the collaboration pane. It lists changes by
   time and person. Open any version to read it, compare two versions, restore
   one file or the whole project, or give a version a name such as "Sent to
-  the reviewers". Owners and editors restore and name versions. A restore is
+  the reviewers". Owners and editors restore and name versions. Restoring the
+  whole project brings back every file's text and the files deleted since.
+  Renamed files keep their new names, figures and files added later stay as
+  they are, and suggestions made after that version are dropped. A restore is
   a new change, so the text it replaces stays in the history.
 - Add server now offers the Oleafly server as a one-click choice above the
   address field. Any other server's address still works as before.
@@ -68,19 +79,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   browser** button. Whoever runs the server turns it on with
   `OLEAFLY_WEB=true`, and the published server image already includes the
   browser app.
-- After a successful compile of a shared project, an owner's or editor's app
-  uploads the PDF and its SyncTeX file to the server, at most once a minute,
-  so people reading the project in a browser see the newest PDF and who
-  compiled it.
+- After a successful compile of a shared project's main document, an owner's
+  or editor's app uploads the PDF and its SyncTeX file to the server, at most
+  once a minute, so people reading the project in a browser see the newest
+  PDF and who compiled it. The uploaded SyncTeX file names files only by
+  their place in the project. A build that read files you keep out of the
+  shared project isn't uploaded.
 - In the browser, click a word in the compiled PDF to open the source line
   it came from, or press Show in PDF (Ctrl+Shift+J, or Cmd+Shift+J on a Mac)
   to find the line you're on in the PDF. It works with the PDF and SyncTeX
   file the app uploads, whichever computer compiled them.
-- Oleafly Server sends the browser app a project's compile settings, and the
-  text of all its files in one request. An owner or editor can upload a PDF
-  and SyncTeX file from the browser, with the same checks as an upload from
-  the app. `OLEAFLY_WEB_CONNECT_SRC` lists the sites the browser app may
-  download from, by default `https://mirrors.oleafly.com`.
+- Oleafly Server's `OLEAFLY_WEB_CONNECT_SRC` lists the other sites the
+  browser app may connect to, by default `https://mirrors.oleafly.com`.
 - Oleafly Server can let anyone sign up. With `OLEAFLY_OPEN_SIGNUP=true`,
   anyone who signs in with one of the server's sign-in options gets an
   account, and each account gets 100 MB of storage, 50 shared projects and
@@ -106,11 +116,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Add custom provider** in Settings > AI has presets for Qwen (DashScope),
   Kimi (Moonshot), Zhipu GLM, SiliconFlow and Volcengine Ark. Pick one and it
   fills in the name and base URL, so you only add your API key.
-- **App icon** in Settings > Appearance offers eleven icons for the Dock or
-  taskbar while Oleafly is open: classic, pastel, blue, light, prism,
-  iridescent, ocean, mint, aurora, sunset and coral. Classic, the green quill,
-  is still the default. The quill next to the Oleafly name and the one on the
-  startup screen take on the colours of the icon you pick.
+- **App icon**, a section below Theme customization in Settings > Appearance,
+  offers eleven icons for the Dock or taskbar while Oleafly is open: classic,
+  pastel, blue, light, prism, iridescent, ocean, mint, aurora, sunset and
+  coral. Classic, the green quill, is still the default. The quill next to the
+  Oleafly name and the one on the startup screen take on the colours of the
+  icon you pick.
 - Template authors can give their own Typst functions a form. Describe the
   arguments in `[tool.oleafly]` in a package's `typst.toml`, or in
   `oleafly-forms.toml` at the project root, and Visual mode shows each call as
@@ -176,14 +187,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   has a cursor icon and comes after Oleafly MCP, and the app picker shows
   each app's icon.
 - Computer Use doesn't ask before each action anymore. Agents still reach
-  only the apps and websites you list. To approve each click, keystroke,
-  page change and script, turn on Ask before each action in Settings >
-  Integrations > Computer Use.
+  only the apps and websites you list, and when you turn Computer Use on,
+  Oleafly first tells you that actions will run without asking. To approve
+  each click, keystroke, page change and script, turn on Ask before each
+  action in Settings > Integrations > Computer Use. If Computer Use was
+  already on when you updated, Ask before each action stays on until you turn
+  it off.
 - Choosing Full access in the chat's approval menu applies right away,
   without a confirmation dialog.
-- Cloud sync shows Google Drive's own four-colour logo and gives S3 a green
-  tile. The page your browser opens after you sign in to Google Drive looks
-  like the collaboration sign-in pages.
 
 ### Fixed
 
@@ -191,6 +202,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer crashes the app (#359). If a dialog or panel does run into an
   error, only that part closes now and the details go to the log. Before, the
   whole window switched to the crash screen.
+- PubMed ID lookups and PubMed literature search keep working when PubMed's
+  summary service is down. Oleafly then gets the records from NCBI's
+  citation exporter. Before, Add citation and `oleaflyc cite` said PubMed had
+  no record for a real paper, and search showed no PubMed results.
 - Computer Use works with Cua Driver 0.38, the version its installer gives
   you now. Oleafly refused to start every 0.38 driver, saying it wasn't
   running with Oleafly's limits, because 0.38 words that check's answer
@@ -214,7 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you're asked.
 - An agent on a model that reads only text, such as GLM-5.3, no longer
   fails when a tool returns a picture, for example a Computer Use
-  screenshot. The provider turned the whole request down; now the picture is
+  screenshot. The provider turned the whole request down. Now the picture is
   left out and the model works from the text.
 - More code editors can't be added to Computer Use, because they run code
   or commands without asking you: Sublime Text, BBEdit, Nova, Xcode,
@@ -226,12 +241,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   terminal, Settings opens on Computer Use again, and the command in the
   terminal's confirmation wraps instead of running off the edge. A Cua Driver
   start that stops at its own permissions prompt says so.
-- Google Drive sync makes far fewer requests. Uploading a project creates
-  each folder once and looks up each folder's files once, instead of asking
-  for every file by name.
 - The Oleafly icon no longer looks bigger than other apps' icons in the Dock
-  and Finder on macOS 15 and earlier. The bundled icon and the icons in
-  Settings > Appearance now leave the margin macOS expects around an app icon.
+  and Finder on macOS 15 and earlier. The bundled icon now leaves the margin
+  macOS expects around an app icon.
 - Deleting a file or folder in the file tree asks first again, and so do
   restoring an earlier chat checkpoint and replacing an equation or diagram
   file. The question never showed up in the app, so all of these went ahead
@@ -240,24 +252,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI agents and research tasks keep your NO_PROXY list when you set only one
   spelling of it. On Linux and macOS the other spelling held only the local
   addresses, and agents that read it sent internal hosts through your proxy.
-- Google Drive and S3 sync no longer give up on a file that takes more than
-  two minutes to download, and S3 no longer fails larger uploads on a slow
-  connection. One such file used to stop sync for every project after it.
-- Google Drive uploads read large files from disk a piece at a time. Before,
-  the whole file sat in memory, twice when updating it, so a big video or
-  dataset could run Oleafly out of memory.
-- When two computers sync the same file to S3 at the same moment, the one that
-  loses no longer overwrites the other's copy in the bucket. It gets a
-  conflict instead, and its next sync keeps both versions.
 - In Typst document settings, clearing two values of one `#set` rule, or
   clearing one and setting another, could leave a broken rule such as
   `#set par(` without its closing parenthesis. Clearing a value on the line
   after a `//` comment, or in a rule written with its commas first, could
   break the rule too.
 - In a Typst table cell, one bracket without its pair turned every bracket in
-  the cell into plain text, and a cell that ended in `\` broke the table. Now
-  only the bracket without a pair is escaped. No borders also works when the
-  table's `stroke` value comes after a comment.
+  the cell into plain text, and a cell that ended in `\` broke the table. A
+  `$` without its pair, as in a price like `$5`, a `//` or `/*`, or a lone
+  backtick broke the table too, and did the same to a figure caption. Now
+  only what has no pair is escaped. No borders also works when the table's
+  `stroke` value comes after a comment.
 - In a Visual mode table cell, Ctrl+Z (Cmd+Z on macOS) undid the document
   instead of your typing in the cell, and Ctrl+B or Ctrl+I added bold or
   italic markup somewhere else in the text.
@@ -276,6 +281,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `http://localhost:13305`, is saved as `http://localhost:13305/v1` when that
   is where the models are. You can still add a provider that lists no models
   and type the model names yourself.
+- The custom provider dialog turns down a base URL that has your key or a `?`
+  in it, and tells you to put the key in the API key field (#344).
 - When a custom provider had no models, requests went to another provider you
   had set up, which could be a cloud one, without any sign. Now the assistant
   says the provider needs a model.
@@ -284,6 +291,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checked it again. Now only the model's actual answer decides that. Local
   and custom servers get two minutes to answer the check, and models that
   were blocked this way get checked again.
+- A model that failed the tool check is still used for requests that need no
+  tools. Before, Oleafly refused those too (#344).
 - When you changed a custom provider's address, the dialog said the saved key
   would be sent to the new one, but Oleafly removed it. The dialog now says
   the key stays behind: enter it again, or leave it blank for a server that
@@ -336,6 +345,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   look like normal replies.
 - Claude Code users with their own API endpoint were told to sign in to
   Anthropic, and the account line read "Signed in with Not logged in".
+- A CLI agent that crashed while starting, for example on a network
+  timeout, asked you to sign in when its error output happened to contain a
+  word like "OAuth" or "unauthorized", as file paths in a stack trace often
+  do. Oleafly now shows the crash, and asks you to sign in only when the
+  agent itself says so.
 - Permission requests expired after two minutes. They now wait for you, and
   a request for a file outside the project is refused with a note naming it.
 - A failed start left an empty conversation in History.
@@ -347,9 +361,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Some agent errors, such as asking you to trust the folder, showed as raw
   codes.
 - On DeepSeek, a reply cut short when DeepSeek ran out of capacity now
-  retries or shows an error, long tool calls were cut off at about 8,000
-  tokens, and timeouts, server errors, rejected requests and empty replies
-  now come with a hint. DeepSeek Flash is treated as reading images.
+  retries or shows an error, and long tool calls are no longer cut off at
+  about 8,000 tokens. DeepSeek Flash is treated as reading images.
+- When the assistant's request times out, the provider has a server error,
+  the request is turned down or the reply comes back empty, the error now
+  tells you what to try next. This works with every provider (#338).
 - When Tectonic crashed while looking for a font that isn't installed, the
   build failed with nothing in the error list, and only the last line of the
   log said the compiler had crashed. Tectonic 0.17 does this on some
@@ -364,26 +380,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open files in a library project reload when a terminal, an agent or
   another app changes them, as files in an opened folder already did. If you
   have unsaved edits, a bar above the editor lets you compare both versions,
-  keep yours, or reload.
+  keep yours, or reload. When a save stops because the file changed on disk,
+  you get the same bar instead of a separate message (#339).
+- Some PDFs showed pages with images or text missing, or with colours a
+  little off, because Oleafly didn't ship the extra files the PDF viewer
+  needs for them. It now includes the standard fonts for PDFs that don't
+  embed their own, decoders for the JPEG 2000 and JBIG2 images common in
+  scans, the character maps some Chinese, Japanese and Korean fonts rely on,
+  and the CMYK colour profile. The preview, presentation mode, PDF to
+  LaTeX and PDFs you attach in the assistant all use them.
+- On macOS and Windows, when `\input` spelled a file's name with other
+  capitals than the file has, such as `\input{Chapters/Intro}` for
+  `chapters/intro.tex`, Show in PDF and clicks in the PDF did nothing for
+  that file, and its compile errors weren't marked in the editor. Oleafly now
+  falls back to a match that ignores case when only one file fits.
+- A Typst equation preview that failed for a reason outside the equation,
+  such as a render that timed out during a long compile, kept showing that
+  error until you changed the equation. It now tries again the next time the
+  equation is drawn.
+- App font size in Settings > Appearance now also sizes the editor's search
+  bar buttons, the cards that open when you point at a label or command, and
+  the Visual mode table's toolbar and dialogs. Their text used to stay the
+  same size.
+- In the Linux AppImage, the programs a build starts, such as a TeX Live
+  installed on your system or Pandoc, still inherited the AppImage's
+  library paths, which Git and the terminal stopped doing in 0.4.8. They now
+  start without them.
+- If getting Pandoc ready for a Markdown build failed after you had already
+  switched to another project, that project's preview showed the Pandoc
+  error instead of its own build.
+- Disconnecting cloud sync during a long sync and then connecting another
+  account within a few minutes could let the old sync keep going. It could
+  bring back files you had deleted and add conflict copies, which the new
+  account then uploaded, and an error from it could mark the new account as
+  disconnected. Connecting now stops a running sync first, and a sync stops
+  when the account changes.
+- Clicking Apply again in a research task's details while its changes were
+  being applied started a second apply. It now applies once.
 
 ### Security
 
+- Updated zip, the library that reads and writes ZIP files, from 4.6.1 to
+  9.1.3. Oleafly unpacks ZIP files you import and ones it downloads, such as
+  TinyTeX, language servers, agent bridges and projects from an online LaTeX
+  service. The update fixes several GitHub security advisories in zip. One is
+  critical: zip could read an archive differently from other ZIP tools.
+  Another, rated high, is about where a symbolic link in an archive points.
+  The updater, tauri-plugin-updater, moved from 2.11.0 to 2.14.1 so it uses
+  the new zip as well.
+- Math in the assistant's replies now uses only KaTeX 0.18.7, the version the
+  rest of the app uses. A Markdown math package still brought in KaTeX
+  0.16.47, which has a security advisory (GHSA-238p-pmpm-9mq7).
 - Updated zstd, the compression library behind file history and the file
   snapshots taken during agent turns, from 0.13.3 to 0.14.3. It fixes four
   security advisories in how zstd handles memory (RUSTSEC-2026-0391,
   RUSTSEC-2026-0398, RUSTSEC-2026-0403 and RUSTSEC-2026-0410).
-- Updated zip, which opens and writes the app's ZIP files (downloaded tools
-  and agents, TinyTeX, imported and exported projects, log bundles), from
-  4.6.1 to 9.1.3. It fixes a critical advisory where an entry's two headers
-  disagree, so what passes the checks is not what gets written
-  (GHSA-m665-v7pm-7grj), and four more about symlinks, AES-encrypted entries
-  and old compression methods. The app updater moves to 2.14.1, so Windows
-  updates are unpacked with the fixed zip as well. That release also keeps
-  the installed app on macOS when an update fails.
-- Two Markdown libraries that still asked for KaTeX 0.16 now get 0.18, which
-  the rest of the app already uses, and seroval moves to 1.6.12. Both fix
-  security advisories (GHSA-238p-pmpm-9mq7, GHSA-9wx9-5pv9-3349 and
-  GHSA-f86p-h4j2-7qgj).
+- Updated pulldown-cmark, the Markdown parser behind spelling and grammar in
+  `oleafly lint`, from 0.13.4 to 0.13.5 (#348). It fixes a security advisory
+  where a small Markdown file with crafted wiki links could use up all
+  memory (RUSTSEC-2026-0414).
+- Saving an MCP server that runs a program on this computer asks first, in a
+  system dialog that shows the command and names any environment variables
+  it sets. It asks again when you change the program, its arguments or its
+  environment. If you say no, the server isn't saved (#336).
+- Each Oleafly window can only use the app commands it needs, and web pages
+  shown inside Oleafly can use none. Exports, imports, checkpoint archives,
+  skills, templates and other files outside a project only work with a file
+  or folder you picked in a file dialog, or on Linux one you just dropped on
+  the window. Saved connector keys, such as an alphaXiv key, no longer reach
+  the app window (#336).
+- With code off, Quarto reads all of a document's settings before it builds:
+  every YAML block, `_quarto.yml`, `_metadata.yml` and any metadata files
+  they name. If anything there could run a program, such as a Lua filter, a
+  pre- or post-render script, an unusual PDF engine, an engine option like
+  `-shell-escape` or a shortcode Quarto doesn't ship, Oleafly doesn't build
+  and asks you to allow code. Inline R anywhere in the document or the files
+  it includes counts as code too. Included files and metadata files must be
+  inside the project.
+- Oleafly Server checks comments and chat messages from reviewers and
+  commenters whatever app they use, not only in the browser. They can add
+  comments, replies and messages and change or delete their own, but they
+  can't delete other people's or clear the chat.
+- On a server that runs over https without a path prefix, the browser app's
+  session cookie is now `__Host-oleafly_web`, so a site on another subdomain
+  can't slip in a session of its own. If you already used the browser app on
+  such a server, you sign in again once. Behind a path prefix, a browser that
+  sends two different session cookies is treated as signed out.
+- A browser app session closes its open connection the moment it expires,
+  and the page asks you to sign in again.
 
 ## [0.4.8] - 2026-10-25
 
@@ -4228,7 +4312,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...HEAD
+[0.4.9]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/Oleafly/Oleafly/compare/v0.4.5...v0.4.6

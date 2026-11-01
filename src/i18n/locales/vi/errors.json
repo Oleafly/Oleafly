@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} phải chạy mã để dựng tài liệu này, và mã đang tắt cho dự án này. Hãy cho phép mã trong dự án để biên dịch.",
+    "export_stopped": "Việc xuất đã bị dừng.",
     "quarto_missing": "Quarto chưa được cài. Hãy cài từ Cài đặt > Engine > Quarto, rồi biên dịch lại.",
     "calepin_missing": "Calepin chưa được cài. Hãy cài từ Cài đặt > Engine > Calepin, rồi biên dịch lại.",
     "not_offered": "Oleafly không thể tải {{tool}} cho máy tính này. Hãy tự cài, rồi biên dịch lại.",

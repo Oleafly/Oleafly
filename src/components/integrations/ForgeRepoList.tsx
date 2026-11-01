@@ -15,11 +15,6 @@ import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-/** One account's repositories, a page at a time. GitLab searches on the
- * server; for the others the box filters the rows already loaded, and says so
- * when none of them match while more pages are left. Replies to an older
- * request (another account, query or page) are dropped, and a page that fails
- * to load leaves the rows already loaded in place. */
 export function ForgeRepoList({
   account,
   selectedId = null,
@@ -43,8 +38,6 @@ export function ForgeRepoList({
   const [nextPage, setNextPage] = useState<number | null>(null);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  // "first": the list could not start; "more": a later page failed and the
-  // rows loaded before it stay.
   const [failed, setFailed] = useState<false | "first" | "more">(false);
   const [attempt, setAttempt] = useState(0);
   const request = useRef(0);
@@ -106,7 +99,6 @@ export function ForgeRepoList({
       );
     }
     if (visible.length === 0) {
-      // The filter only reads the pages loaded so far.
       return (
         <EmptyState
           size="compact"

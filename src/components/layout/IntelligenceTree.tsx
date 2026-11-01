@@ -80,12 +80,6 @@ export interface IntelligenceTreeNode {
   };
 }
 
-/**
- * A monotonically identified command lets a parent repeat bulk tree actions
- * without taking ownership of the tree's normal keyboard and pointer state.
- * `modelKey` scopes a command to one authoritative snapshot so a delayed
- * render cannot apply it to newer project data.
- */
 export interface IntelligenceTreeExpansionCommand {
   readonly id: number;
   readonly action: "expand-all" | "collapse-all";
@@ -127,8 +121,6 @@ const KIND_ICON: Record<
   warning: CircleAlert,
 };
 
-/** File rows are labelled with the path or the base name; the icon keys off the
- *  base name either way. */
 function fileNameOf(node: IntelligenceTreeNode): string {
   const source = node.target?.path ?? node.label;
   return basename(source);
@@ -474,9 +466,7 @@ function IntelligenceTreeView({
   onActivate: (node: IntelligenceTreeNode) => void;
   className?: string;
   expansionCommand?: IntelligenceTreeExpansionCommand | null;
-  /** Changes when local expansion overrides should reset, normally by project. */
   modelKey?: string;
-  /** Snapshot identity used only to reject stale bulk commands. */
   expansionCommandKey?: string;
   onExpansionStateChange?: (state: IntelligenceTreeExpansionState) => void;
   memoryProjectId?: string | null;

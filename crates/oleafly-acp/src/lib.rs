@@ -1,7 +1,3 @@
-//! Oleafly's Agent Client Protocol client, without Tauri. The official
-//! `agent-client-protocol` SDK runs the JSON-RPC connection; this crate adds
-//! the limits, ordering, redaction and parsing Oleafly relies on, so the
-//! app, the CLI and the background daemon talk to CLI agents the same way.
 pub mod bound;
 pub mod capabilities;
 pub mod client;

@@ -1,6 +1,3 @@
-//! Metrics a run prints: JSON lines (`{"loss": 0.5}`), `key=value` pairs
-//! (`step=10 loss=0.25,lr=3e-4`) or one `key: value` line. Lines that say
-//! anything else are ignored.
 use std::collections::BTreeMap;
 use std::io::{BufRead, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -22,7 +19,6 @@ fn number(text: &str) -> Option<f64> {
     value.is_finite().then_some(value)
 }
 
-/// The metrics on one line, in the order they appear (JSON keys sorted).
 pub fn parse_metrics_line(line: &str) -> Vec<(String, f64)> {
     let line = line.trim().trim_end_matches('\r');
     if line.is_empty() || line.len() > 4_096 {
@@ -67,7 +63,6 @@ pub fn parse_metrics_line(line: &str) -> Vec<(String, f64)> {
     Vec::new()
 }
 
-/// The last value of every metric and how many points were recorded.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MetricsSummary {
@@ -75,7 +70,6 @@ pub struct MetricsSummary {
     pub points: usize,
 }
 
-/// One line of `metrics.jsonl`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MetricsPoint {
     pub t: i64,
@@ -83,7 +77,6 @@ pub struct MetricsPoint {
     pub metrics: BTreeMap<String, f64>,
 }
 
-/// Reads `metrics.jsonl`.
 pub fn summarize_file(path: &Path) -> MetricsSummary {
     let Ok(file) = std::fs::File::open(path) else {
         return MetricsSummary::default();
@@ -98,8 +91,6 @@ pub fn summarize_file(path: &Path) -> MetricsSummary {
     summary
 }
 
-/// Parses the last `max_bytes` of a plain log (remote runs whose executor
-/// only brought the log back).
 pub fn summarize_log(path: &Path, max_bytes: u64) -> MetricsSummary {
     let Ok(mut file) = std::fs::File::open(path) else {
         return MetricsSummary::default();
@@ -116,7 +107,6 @@ pub fn summarize_log(path: &Path, max_bytes: u64) -> MetricsSummary {
     let text = String::from_utf8_lossy(&text);
     let mut lines = text.lines();
     if start > 0 {
-        // The first line was cut in the middle.
         lines.next();
     }
     let mut summary = MetricsSummary::default();

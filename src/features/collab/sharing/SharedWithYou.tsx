@@ -30,12 +30,8 @@ function itemKey(item: CollabSharedWithMe): string {
 }
 
 const REFRESH_EVERY_MS = 30_000;
-// Settings can refresh every account at once, which reports one change per
-// server. Wait for them to settle and fetch the list once.
 const SERVER_CHANGE_DELAY_MS = 1_000;
 
-// Only which servers there are and whether each is signed in decide what can
-// be listed, so a store update that changes neither doesn't fetch again.
 function serversKey(servers: readonly CollabServer[]): string {
   return servers.map((server) => `${server.server_id}:${server.signed_in ? "in" : "out"}`).join(",");
 }
@@ -79,7 +75,6 @@ export function SharedWithYou() {
     if (serverChange.current !== null) window.clearTimeout(serverChange.current);
     serverChange.current = window.setTimeout(() => {
       serverChange.current = null;
-      // A hidden window catches up when it's shown again.
       if (!hidden()) setRequest((count) => count + 1);
     }, SERVER_CHANGE_DELAY_MS);
   });
@@ -131,7 +126,6 @@ export function SharedWithYou() {
       await files.refreshProjects();
       await files.openProject(localId);
     } catch (error_) {
-      // Stopping the download on purpose isn't a failure.
       if (collabErrorCode(error_) !== "cancelled") setError({ key, message: collabErrorText(error_) });
     } finally {
       setOpening(null);

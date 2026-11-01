@@ -55,7 +55,6 @@ function pi(overrides: Partial<AcpAgentStatus> = {}): AcpAgentStatus {
 
 let snapshots: Record<string, AcpSnapshot>;
 
-/** The terminal dock asks before a sign-in command runs; this one reads the question and agrees. */
 function agreeToTerminalPrompts() {
   const asked: { description: string; commandLine: string }[] = [];
   const unregister = registerTerminalPromptHost();
@@ -119,8 +118,6 @@ describe("CLI agent setup in the assistant", () => {
 
   it("signs in through a terminal method by running the CLI in the project terminal", async () => {
     vi.mocked(acpCatalog).mockResolvedValue([pi({ cli: { command: "pi", displayName: "Pi", path: "/Users/ada/.npm-global/bin/pi", version: "0.81.2", signInCommand: "pi" } })]);
-    // Since 0.4.8 the backend picks the sign-in command: here the terminal
-    // login pi reports, which the app runs in the open project's terminal.
     const login = ["/Users/ada/.npm-global/lib/node_modules/pi-acp/dist/index.js", "--terminal-login"];
     vi.mocked(acpSignInCommand).mockResolvedValue({ title: "Sign in to Pi", program: "/usr/local/bin/node", args: login, env: {} });
     useFilesStore.setState({ projectId: "paper" });
@@ -142,7 +139,6 @@ describe("CLI agent setup in the assistant", () => {
 
     await waitFor(() => expect(activeTerminal()?.launch).toEqual({ command: "/usr/local/bin/node", args: login }));
     prompts.done();
-    // The user saw the whole command line, program and arguments, before it ran.
     expect(prompts.asked).toHaveLength(1);
     expect(prompts.asked[0].commandLine).toContain("/usr/local/bin/node");
     expect(prompts.asked[0].commandLine).toContain("--terminal-login");
@@ -173,9 +169,6 @@ describe("CLI agent setup in the assistant", () => {
 
   it("runs a terminal method's own sign-in in the terminal when the CLI was not located", async () => {
     vi.mocked(acpCatalog).mockResolvedValue([pi({ cli: { command: "pi", displayName: "Pi", path: null, version: null, signInCommand: "pi" } })]);
-    // 0.4.7 asked the agent to authenticate here. Since 0.4.8 a terminal method
-    // always runs the sign-in command the backend gives: the agent with the
-    // method's own arguments.
     vi.mocked(acpSignInCommand).mockResolvedValue({ title: "Sign in to Pi", program: "/tools/pi-acp", args: ["--terminal-login"], env: {} });
     useFilesStore.setState({ projectId: "paper" });
     snapshots.saved = {

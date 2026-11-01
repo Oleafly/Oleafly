@@ -1,9 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
 
-// Registration is static: contributions are registered once at startup,
-// before the shell mounts, so readers treat the collections as immutable.
-// This is NOT a public plugin API; shapes may change freely.
-
 export interface AppContext {
   projectId: string | null;
   projectKind: string | null;
@@ -25,8 +21,6 @@ export interface RailTabContribution {
   order: number;
   hidden?: boolean;
   when?: (ctx: AppContext) => boolean;
-  // Called on every render of the tab's button, so it must follow the rules
-  // of hooks and the contribution must never change between renders.
   useBadge?: () => number;
   panel: ComponentType;
 }

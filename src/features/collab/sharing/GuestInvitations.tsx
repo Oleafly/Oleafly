@@ -38,8 +38,6 @@ function listedStatus(status: CollabGuestInvitation["status"]): ListedStatus | n
 
 export interface ProjectGuests {
   readonly info: CollabProjectGuestInvitations | null;
-  // The guest settings couldn't be loaded, so nobody knows whether guests
-  // can be invited. Callers say so with a retry instead of hiding the offer.
   readonly failed: boolean;
   readonly reload: () => void;
   readonly remove: (id: string) => void;

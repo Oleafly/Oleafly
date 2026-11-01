@@ -17,13 +17,10 @@ import {
 export const CUA_SPACES_SERVER_NAME = "Cua Spaces";
 const CREDENTIALS_ENV = "CUA_SPACES_AGENT_CREDENTIALS_HOME";
 const READ_ONLY_ARGS = ["--permissions", "spaces:readonly"] as const;
-/** The error Rust returns when the user says no to its question about more power. */
 const SPACES_CHANGE_DECLINED = "desktop_apps.change_declined";
 
 export interface CuaSpacesOptions {
-  /** Agents may also create, change and delete Spaces. */
   fullAccess: boolean;
-  /** Agents started in a Space may use the user's agent sign-ins. */
   shareCredentials: boolean;
 }
 
@@ -44,11 +41,6 @@ export function cuaSpacesServerConfig(
   };
 }
 
-/**
- * The server's config with the two switches set and everything else kept: the
- * user's command, extra arguments, other env values (still redacted; the
- * backend puts the stored ones back) and whether the server is on.
- */
 export function cuaSpacesUpdatedConfig(
   existing: McpServerConfig,
   options: CuaSpacesOptions,
@@ -87,7 +79,6 @@ function findSpacesServer(servers: readonly McpManagedServer[]): McpManagedServe
   return servers.find(isSpacesServer) ?? servers.find((server) => server.config.name === CUA_SPACES_SERVER_NAME);
 }
 
-/** The switches as a listed server has them; env values may be redacted. */
 export function readCuaSpacesOptions(server: McpManagedServer): CuaSpacesOptions {
   if (server.config.transport !== "stdio") return DEFAULT_OPTIONS;
   return {
@@ -101,7 +92,6 @@ interface CuaSpacesConnectorState {
   options: CuaSpacesOptions;
   loading: boolean;
   failed: boolean;
-  /** The user said no to the system question about more power; nothing changed. */
   declined: boolean;
   serverName: string | null;
   refresh(): Promise<void>;
@@ -122,14 +112,12 @@ export const useCuaSpacesConnectorStore = create<CuaSpacesConnectorState>((set, 
       const existing = findSpacesServer(await mcpServersList());
       let saved: McpManagedServer;
       if (existing && isSpacesServer(existing)) {
-        // Connect turns the server on; a switch leaves on or off as it was.
         const enabled = connect || existing.config.enabled;
         const config = cuaSpacesUpdatedConfig(existing.config, options, enabled);
         saved = enabled
           ? await mcpServerUpdateValidated(existing.config.name, config)
           : await mcpServerUpdate(existing.config.name, config);
       } else if (existing) {
-        // A server named like ours that runs something else is replaced.
         saved = await mcpServerUpdateValidated(
           existing.config.name,
           cuaSpacesServerConfig(command, options, existing.config.name),
@@ -141,7 +129,6 @@ export const useCuaSpacesConnectorStore = create<CuaSpacesConnectorState>((set, 
       set({ connected: saved.config.enabled, options, serverName: saved.config.name });
       return true;
     } catch (error) {
-      // Rust asks natively before Spaces gets more power; a no keeps the stored config.
       if (decodeAppError(error)?.code === SPACES_CHANGE_DECLINED) {
         set({ declined: true });
         return false;
@@ -165,7 +152,6 @@ export const useCuaSpacesConnectorStore = create<CuaSpacesConnectorState>((set, 
       try {
         const server = findSpacesServer(await mcpServersList());
         set({
-          // A server turned off in MCP settings gives agents no Spaces tools.
           connected: Boolean(server?.config.enabled),
           options: server ? readCuaSpacesOptions(server) : DEFAULT_OPTIONS,
           serverName: server?.config.name ?? null,

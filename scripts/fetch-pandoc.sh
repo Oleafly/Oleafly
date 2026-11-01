@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Fetch the exact Pandoc release binary bundled with Oleafly. The archive is
-# checksum-pinned and cached, while only the expected executable member is
-# extracted into Tauri's externalBin directory.
-
 VERSION="3.9.0.2"
 LICENSE_SHA256="9d56cac92294e206af026a5502bee0fed77200b08b51ec28aa63c9efda4dcfdd"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

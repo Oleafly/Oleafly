@@ -930,9 +930,6 @@ function backslashStep(scan: LatexLintScan, cursor: number): number | null {
     return null;
   }
 
-  // Control symbols such as \%, \_, \{, \}, \\ and \$ are complete
-  // two-character commands. Their second character must not be interpreted
-  // as a source delimiter.
   if (!commandCharacter(next)) return cursor + 2;
 
   let commandEnd = cursor + 2;
@@ -1012,12 +1009,6 @@ function reportUnclosedTokens(scan: LatexLintScan): void {
   }
 }
 
-/**
- * A recovery-oriented, linear LaTeX syntax pass. It intentionally keeps
- * scanning after damage, skips comments/verbatim content, and reports every
- * useful current-document delimiter/environment error instead of allowing one
- * malformed construct to blank the rest of the file.
- */
 export function lintLatexText(text: string): Diagnostic[] {
   const scan: LatexLintScan = {
     text,
@@ -1054,8 +1045,6 @@ export function createLatexLinter() {
       lintLatexText(view.state.doc.toString()),
     {
       delay: 500,
-    // Diagnostics render through the shared hover card, so the stock lint
-    // tooltip must not also appear.
     tooltipFilter: () => [],
     },
   );

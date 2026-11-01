@@ -8,8 +8,6 @@ pub enum AgentError {
     Provider {
         status: u16,
         message: String,
-        /// How long the provider asked the caller to wait before trying
-        /// again (`Retry-After`), when it said.
         retry_after: Option<Duration>,
     },
     Decode(String),
@@ -18,7 +16,6 @@ pub enum AgentError {
 }
 
 impl AgentError {
-    /// A provider rejection that carries no wait hint.
     pub fn provider(status: u16, message: impl Into<String>) -> Self {
         AgentError::Provider {
             status,
@@ -27,7 +24,6 @@ impl AgentError {
         }
     }
 
-    /// The wait the provider asked for before another attempt.
     pub fn retry_after(&self) -> Option<Duration> {
         match self {
             AgentError::Provider { retry_after, .. } => *retry_after,
@@ -62,9 +58,6 @@ impl AgentError {
         }
     }
 
-    /// A provider rejection that means the prompt exceeded the model's actual
-    /// context window. The turn loop treats this as a signal to compact and
-    /// retry, honoring the real deployed window rather than a static estimate.
     pub fn is_context_overflow(&self) -> bool {
         let AgentError::Provider {
             status, message, ..
@@ -72,7 +65,6 @@ impl AgentError {
         else {
             return false;
         };
-        // Providers report an oversized prompt as 400 (most) or 413 (payload).
         if *status != 400 && *status != 413 {
             return false;
         }
@@ -100,8 +92,6 @@ impl AgentError {
     }
 }
 
-/// A limit Oleafly sets itself, reported as a decode error. It reads as
-/// such, not as something the provider sent.
 fn is_local_limit(message: &str) -> bool {
     message.contains("safety limit")
 }

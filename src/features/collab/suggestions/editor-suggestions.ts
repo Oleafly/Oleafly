@@ -81,11 +81,11 @@ function clampSpan(doc: Text, span: SuggestionSpan): SuggestionSpan {
 
 function mapSpan(span: SuggestionSpan, changes: ChangeDesc): SuggestionSpan {
   if (span.kind === "delete") {
-    const at = changes.mapPos(span.from, -1);
+    const at = changes.mapPos(span.from, 1);
     return { ...span, from: at, to: at };
   }
   const from = changes.mapPos(span.from, 1);
-  return { ...span, from, to: Math.max(from, changes.mapPos(span.to, 1)) };
+  return { ...span, from, to: Math.max(from, changes.mapPos(span.to, -1)) };
 }
 
 function stateClass(base: string, id: string, active: string | null): string {

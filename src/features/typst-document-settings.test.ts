@@ -14,8 +14,6 @@ async function settingsOf(text: string) {
   return readTypstDocumentSettings(text, await parseTypstSource(text));
 }
 
-// The dialog splices the edits into the text when the main file isn't the active tab, and
-// dispatches them to CodeMirror when it is. Both must give the same document.
 async function edited(text: string, changes: TypstSettingChanges): Promise<string> {
   const edits = typstSettingsEdits(text, await parseTypstSource(text), changes);
   const spliced = applyTypstEdits(text, edits);

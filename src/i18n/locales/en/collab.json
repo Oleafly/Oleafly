@@ -224,6 +224,8 @@
     "suggestion_not_found": "That suggestion is already gone. Someone may have accepted or rejected it.",
     "suggestion_not_yours": "Only the person who made this suggestion can withdraw it.",
     "suggestion_role": "Your role in this project doesn't allow suggestions.",
+    "suggestion_changed": "The text around this suggestion changed, so an owner or editor needs to accept or reject it.",
+    "suggestion_too_long": "A suggested deletion can be at most 20,000 characters long. Delete a smaller part at a time.",
     "chat_role": "Your role in this project doesn't allow that in the chat.",
     "history_unavailable": "This project's history isn't on this computer yet. Try again once it has synced.",
     "account_storage_full": "The project owner's account is out of storage on this server. Remove some files to make room, or ask the server's admin for more space.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Restore the whole project?",
-      "description": "Every file goes back to how it was at {{time}} for everyone in this project. The current text stays in the history, so you can go back to it.",
+      "textAndDeleted": "Every file's text goes back to how it was at {{time}} for everyone in this project, and deleted files come back. Renamed files keep their new names, and figures and files added later stay as they are. The current text stays in the history, so you can go back to it.",
       "confirm": "Restore project"
     },
     "compareTitle": "Changes between two versions",

@@ -142,6 +142,30 @@ function IdleManagedCard({ tool, managed }: Readonly<{ tool: NotebookTool; manag
   );
 }
 
+function SupersededToolCard({
+  tool,
+  pinnedVersion,
+  versions,
+}: Readonly<{ tool: NotebookTool; pinnedVersion: string; versions: readonly string[] }>) {
+  const { t } = useTranslation(["settings"]);
+  const label = NOTEBOOK_TOOL_LABELS[tool];
+  return (
+    <div className="rounded-lg border p-3" data-testid={`${tool}-engine-superseded`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Cpu className="size-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm">{`${label} ${versions.join(", ")}`}</span>
+        <Badge variant="muted" size="sm">
+          {t(($) => $.settings.engine.notebook.source.managed)}
+        </Badge>
+        <RemoveManagedButton tool={tool} />
+      </div>
+      <p className="mt-1 text-[0.6875rem] text-muted-foreground">
+        {t(($) => $.settings.engine.notebook.superseded, { tool: label, version: pinnedVersion })}
+      </p>
+    </div>
+  );
+}
+
 function DownloadToolCard({ tool, status }: Readonly<{ tool: NotebookTool; status: NotebookToolStatus }>) {
   const { t } = useTranslation(["settings"]);
   const installs = useNotebookToolchainStore((s) => s.installs);
@@ -255,6 +279,7 @@ export function NotebookEngineTab({ tool }: Readonly<{ tool: NotebookTool }>) {
 
   const renderTool = () => {
     if (toolStatus) {
+      const superseded = toolStatus.supersededVersions ?? [];
       return (
         <>
           <ActiveToolCard tool={tool} status={toolStatus} />
@@ -262,6 +287,9 @@ export function NotebookEngineTab({ tool }: Readonly<{ tool: NotebookTool }>) {
             <IdleManagedCard tool={tool} managed={toolStatus.managed} />
           )}
           {!toolStatus.managed && <DownloadToolCard tool={tool} status={toolStatus} />}
+          {!toolStatus.managed && superseded.length > 0 && (
+            <SupersededToolCard tool={tool} pinnedVersion={toolStatus.pinnedVersion} versions={superseded} />
+          )}
         </>
       );
     }

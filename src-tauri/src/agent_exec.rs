@@ -32,9 +32,6 @@ struct ExecRegistry {
     active: HashMap<String, HashMap<String, ActiveExec>>,
     completions: HashMap<String, HashMap<String, tokio::sync::watch::Receiver<bool>>>,
     cancelled_runs: VecDeque<String>,
-    // Renderer-minted `external:` owners are only trusted once registered
-    // through a live command. Membership is TTL-bounded and cleared on cancel,
-    // so a compromised renderer cannot execute under an arbitrary forged id.
     external_owners: HashMap<String, Instant>,
 }
 
@@ -597,8 +594,6 @@ pub fn agent_exec_cwd(project_id: String) -> Result<String, String> {
         .ok_or_else(|| "project path is not valid UTF-8".to_string())
 }
 
-/// Keeps the start and the end of one output stream. The end, where commands
-/// print their errors and summaries, gets two thirds of the room.
 struct StreamCapture {
     head: Vec<u8>,
     tail: VecDeque<u8>,
@@ -631,8 +626,6 @@ impl StreamCapture {
         self.tail.drain(..excess);
     }
 
-    /// The stream cut to `budget` bytes (at most the capture's limit), with a
-    /// note where the middle was dropped.
     fn into_bytes(self, budget: usize) -> Vec<u8> {
         let tail = Vec::from(self.tail);
         let mut out = self.head;
@@ -665,9 +658,6 @@ where
     }
 }
 
-/// Splits the output budget between stdout and stderr. A stream that fits in
-/// half of it is kept whole and the other gets the rest, so a long build log
-/// on stdout cannot crowd out the error printed on stderr.
 fn split_output_budget(stdout_len: usize, stderr_len: usize, budget: usize) -> (usize, usize) {
     let stderr_budget = stderr_len.min(budget - stdout_len.min(budget / 2));
     (budget - stderr_budget, stderr_budget)
@@ -697,9 +687,6 @@ async fn execute_command(
     .await
 }
 
-/// The shell that runs an agent's command. When the app knows where the
-/// `oleafly` CLI is, its folder goes first on the inherited PATH and
-/// `OLEAFLY_CLI` names it, so commands can call `oleafly` by name.
 fn shell_command(command: &str, cli: &crate::terminal::env::CliEnv) -> tokio::process::Command {
     #[cfg(windows)]
     let mut c = {
@@ -818,8 +805,6 @@ async fn execute_command_with_timeout(
             status
         }
         Err(_) => {
-            // Close the owned Job Object before waiting, so grandchildren
-            // cannot outlive a timed-out command while cleanup is pending.
             lease.stop_process_tree();
             let _ = child.start_kill();
             let status = tokio::time::timeout(Duration::from_secs(2), child.wait())
@@ -1948,7 +1933,6 @@ mod tests {
 
     #[test]
     fn a_short_stream_keeps_all_of_its_share_of_the_output() {
-        // A long build log on stdout must not crowd out the error on stderr.
         assert_eq!(split_output_budget(1_000, 40, 100), (60, 40));
         assert_eq!(split_output_budget(40, 1_000, 100), (40, 60));
         assert_eq!(split_output_budget(1_000, 1_000, 100), (50, 50));
@@ -2014,8 +1998,6 @@ mod tests {
         let exec = result
             .expect("stderr flood blocked command completion")
             .unwrap();
-        // A blocked collection shows up here: the fixture's 4 s watchdog ends
-        // the shell before it prints.
         assert!(
             exec.output.contains("stdout-done"),
             "stderr flood blocked stdout collection: {:?}",

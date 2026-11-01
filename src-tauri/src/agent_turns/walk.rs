@@ -1,8 +1,3 @@
-//! Lists a project's files for a turn: every regular file with its size,
-//! modification time and cloud-placeholder state, plus symbolic links and
-//! folders or files that could not be read, and every folder visited.
-//! Nothing here reads content.
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::time::{Instant, UNIX_EPOCH};
@@ -30,25 +25,16 @@ pub(super) enum Entry {
 pub(super) enum WalkStop {
     TooManyFiles,
     Timeout,
-    /// The project folder itself could not be listed in full.
     RootUnreadable,
 }
 
-/// Project-relative, `/`-separated paths.
 pub(super) type Tree = BTreeMap<String, Entry>;
 
 pub(super) struct Walked {
     pub(super) tree: Tree,
-    /// Every folder visited, readable or not.
     pub(super) folders: BTreeSet<String>,
 }
 
-/// Walks `root`. `managed_root_file` names root-level files Oleafly manages
-/// itself (the library manifest), which are left out.
-///
-/// A folder whose listing fails, even part way, is recorded as unreadable so
-/// nothing under it is taken as added or deleted; for the project folder
-/// itself the walk stops.
 pub(super) fn walk(
     root: &Path,
     managed_root_file: &dyn Fn(&str) -> bool,
@@ -93,14 +79,10 @@ impl Walker<'_> {
         for entry in entries {
             let entry = entry.and_then(|entry| test_listing_error(prefix).map_or(Ok(entry), Err));
             let Ok(entry) = entry else {
-                // Nothing after the error can be trusted to be listed, so
-                // the whole folder counts as unreadable.
                 return self.unreadable(prefix);
             };
             let file_name = entry.file_name();
             let Some(name) = file_name.to_str() else {
-                // A name that is not valid Unicode cannot be addressed by a
-                // relative path string, so it can never be undone.
                 let lossy = file_name.to_string_lossy();
                 self.tree.insert(join(prefix, &lossy), Entry::Unreadable);
                 continue;
@@ -192,7 +174,6 @@ fn is_placeholder(metadata: &std::fs::Metadata, name: &str) -> bool {
 #[cfg(test)]
 static TEST_PLACEHOLDERS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
-/// Tests cannot make real cloud placeholders; they name files to treat as one.
 #[cfg(test)]
 pub(super) fn set_test_placeholders(names: &[&str]) {
     *TEST_PLACEHOLDERS
@@ -218,8 +199,6 @@ fn test_placeholder(_name: &str) -> bool {
 #[cfg(test)]
 static TEST_LISTING_ERRORS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
-/// Tests cannot make a folder listing fail part way; they name folders (`""`
-/// is the project folder) whose listing fails at its first entry.
 #[cfg(test)]
 pub(super) fn set_test_listing_errors(folders: &[&str]) {
     *TEST_LISTING_ERRORS

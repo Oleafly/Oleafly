@@ -2,17 +2,8 @@ import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
 import { readProjectSources } from "@/store/project-index";
 import type { ProjectIndex } from "@/lib/index/types";
 
-/** A recursion bound matching the outline's; a cycle can only cost this much. */
 const MAX_INCLUDE_DEPTH = 8;
 
-/**
- * Every source file the document is assembled from, in reading order: the root
- * followed by each `\input`/`\include` target it pulls in, depth first.
- *
- * Shares the project index with the outline rather than re-parsing, so what
- * Project info counts and what the outline lists can never disagree about the
- * shape of the document.
- */
 export function documentSourcePaths(
   index: ProjectIndex | null,
   root: string,
@@ -39,17 +30,11 @@ export function documentSourcePaths(
 }
 
 export interface DocumentSources {
-  /** Paths that were read, in reading order. */
   paths: string[];
   texts: string[];
-  /** Paths the index names but the filesystem could not produce. */
   unreadable: string[];
 }
 
-/**
- * Reads the whole document. Unsaved edits win over disk, because the counts
- * have to describe what is on screen, not what was last written.
- */
 export async function readDocumentSources(
   projectId: string,
   index: ProjectIndex | null,

@@ -1,5 +1,3 @@
-//! Figures: images a task added should be used somewhere, and every figure
-//! the changed text refers to should exist.
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -31,8 +29,6 @@ fn argument_after(text: &str, at: usize, open: char, close: char) -> Option<&str
     Some(&rest[start..end])
 }
 
-/// The figure paths a text file refers to: `\includegraphics[...]{p}`,
-/// `image("p")` and `![alt](p)`. Backslashes become slashes.
 pub fn figure_references(text: &str) -> Vec<String> {
     let mut found = Vec::new();
     for (at, _) in text.match_indices("\\includegraphics") {
@@ -54,7 +50,6 @@ pub fn figure_references(text: &str) -> Vec<String> {
     }
     for (at, _) in text.match_indices("](") {
         let before = &text[..at];
-        // Only an image: `![alt](path)` with nothing in between.
         if before
             .rfind("![")
             .is_some_and(|open| !before[open..].contains('\n') && !before[open..].contains("]("))

@@ -224,6 +224,8 @@
     "suggestion_not_found": "Det forslaget finnes ikke lenger. Noen kan ha godtatt eller avslått det.",
     "suggestion_not_yours": "Bare personen som kom med forslaget, kan trekke det tilbake.",
     "suggestion_role": "Rollen din i dette prosjektet gir ikke lov til forslag.",
+    "suggestion_changed": "Teksten rundt dette forslaget er endret, så en eier eller redaktør må godta eller avslå det.",
+    "suggestion_too_long": "En foreslått sletting kan være maks 20 000 tegn lang. Slett en mindre del om gangen.",
     "chat_role": "Rollen din i dette prosjektet gir ikke lov til det i chatten.",
     "history_unavailable": "Historikken til dette prosjektet er ikke på denne datamaskinen ennå. Prøv igjen når prosjektet er synkronisert.",
     "account_storage_full": "Kontoen til prosjekteieren har gått tom for lagringsplass på denne serveren. Fjern noen filer for å få plass, eller be administratoren for serveren om mer plass.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Gjenopprette hele prosjektet?",
-      "description": "Alle filene settes tilbake til slik de var {{time}}, for alle i prosjektet. Den nåværende teksten blir værende i historikken, så du kan gå tilbake til den.",
+      "textAndDeleted": "Teksten i alle filene settes tilbake til slik den var {{time}}, for alle i prosjektet, og slettede filer kommer tilbake. Filer som har fått nytt navn, beholder de nye navnene, og figurer og filer som er lagt til senere, blir som de er. Den nåværende teksten blir værende i historikken, så du kan gå tilbake til den.",
       "confirm": "Gjenopprett prosjektet"
     },
     "compareTitle": "Endringer mellom to versjoner",

@@ -110,8 +110,6 @@ describe("PreviewPane empty state", () => {
 
   it("reports the language service and its analysis as one startup stage", () => {
     render(<PreviewPane />);
-    // Separate rows let analysis show "complete" above a service that is still
-    // starting, which reads as an out-of-order checklist.
     expect(
       screen.queryByText(enPreview.startup.language.serviceLabel),
     ).not.toBeInTheDocument();

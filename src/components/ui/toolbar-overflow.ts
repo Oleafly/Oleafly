@@ -1,18 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-/**
- * Width-measured toolbar overflow.
- *
- * A toolbar declares each control's width up front, measures the space it
- * actually has, and moves the controls that do not fit into a "more" menu.
- * Declared widths are used rather than measured ones so the decision is made in
- * one pass, without a layout thrash per control on every resize.
- */
 export interface ToolbarControl {
   id: string;
   width: number;
   render: () => ReactNode;
-  /** The same control as menu rows, or null for separators. */
   renderMenu: () => ReactNode;
 }
 
@@ -46,13 +37,6 @@ export function useAvailableWidth() {
   return { containerRef, availableWidth };
 }
 
-/**
- * How many leading controls fit.
- *
- * The whole bar is measured first: room for the "more" button is only reserved
- * once something genuinely overflows, otherwise a bar that fits exactly would
- * hide its last controls behind a button it never needed.
- */
 export function fitCount(
   controls: readonly ToolbarControl[],
   availableWidth: number,

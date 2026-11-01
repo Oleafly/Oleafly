@@ -99,8 +99,6 @@ function useSymbol(use: ProjectUse): Sym | null {
     to: use.location.range.to,
     nameFrom: use.location.range.from,
     nameTo: use.location.range.to,
-    // A `file#anchor` link keeps its target so the index can resolve it in
-    // the file it names, as the resolver does.
     ...(use.target &&
     (kind === "inputedge" ||
       (kind === "ref" && referenceTargetFile(use.target) !== null))

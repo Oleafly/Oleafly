@@ -63,7 +63,8 @@ describe("terminal behavior settings", () => {
     await user.click(screen.getByRole("option", { name: labels.shell.options.custom }));
     expect(useSettingsStore.getState().terminalShell).toBe("custom");
     const path = screen.getByLabelText(labels.shell.path.ariaLabel);
-    await user.type(path, "  C:\\msys64\\usr\\bin\\zsh.exe ");
+    await user.click(path);
+    await user.paste("  C:\\msys64\\usr\\bin\\zsh.exe ");
     fireEvent.blur(path);
     expect(useSettingsStore.getState().terminalShellPath).toBe("C:\\msys64\\usr\\bin\\zsh.exe");
   });

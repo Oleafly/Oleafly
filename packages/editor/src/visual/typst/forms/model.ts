@@ -18,9 +18,6 @@ export type FieldValue =
 
 export type ReadOnlyReason = "expression" | "kind" | "unknownOption" | "locked";
 
-// How a multi-line `[..]` body sits in the source: the line break after `[`, the indent of
-// its lines, and what precedes `]`. The field shows the body without them and writes it back
-// inside them.
 export interface BlockLayout {
   readonly open: string;
   readonly indent: string;
@@ -40,7 +37,6 @@ export type FieldState =
 
 export interface FormCallModel {
   readonly definition: TypstFormDefinition;
-  // From the call's `#` to its end.
   readonly range: TextRange;
   readonly args: CallArguments;
   readonly fields: readonly FieldState[];
@@ -53,12 +49,10 @@ export type NumberProblem = "number" | "range";
 
 const LITERALS = new Set(["Str", "Int", "Float", "Bool", "None", "Auto", "Numeric", "ContentBlock"]);
 
-// Every slot lies inside the call, whose text `CallArguments` already holds.
 function sourceOf(args: CallArguments, node: TextRange): string {
   return args.text.slice(node.from - args.call.from, node.to - args.call.from);
 }
 
-// A body that opens with a line break and closes with one followed only by indentation.
 function splitBlock(body: string): { open: string; indent: string; rest: string; close: string } | null {
   const last = body.lastIndexOf("\n");
   if (!body.startsWith("\n") || last === 0 || !/^[ \t]*$/u.test(body.slice(last + 1))) return null;
@@ -81,12 +75,10 @@ export function layOutBlock(text: string, layout: BlockLayout | null): string {
   return `${layout.open}${lines.join("\n")}${layout.close}`;
 }
 
-// Only a set, named, optional argument can be removed from the call.
 export function canClear(field: TypstFormField, state: FieldState): boolean {
   return state.status === "value" && !field.required && "named" in field.arg;
 }
 
-// An integer beyond 2^53 can't be written back exactly, so it counts as no number at all.
 export function numberProblem(kind: Extract<TypstFieldKind, { type: "number" }>, value: number): NumberProblem | null {
   if (!Number.isFinite(value) || (kind.integer && !Number.isSafeInteger(value))) return "number";
   if ((kind.min !== null && value < kind.min) || (kind.max !== null && value > kind.max)) return "range";
@@ -118,7 +110,6 @@ function choiceValue(kind: Extract<TypstFieldKind, { type: "choice" }>, type: st
   return kind.options.some((option) => option.value === text) ? { value: { type: "choice", value: text }, written: "str" } : "unknownOption";
 }
 
-// What a literal argument holds for a field of this kind, or why the form can't edit it.
 function literalValue(kind: TypstFieldKind, type: string, source: string): LiteralValue | ReadOnlyReason {
   switch (kind.type) {
     case "text": {
@@ -162,7 +153,6 @@ function sameArg(a: ArgRef, b: ArgRef): boolean {
   return "named" in a ? "named" in b && a.named === b.named : "positional" in b && a.positional === b.positional;
 }
 
-// The parser only accepts a summary that names one of the form's fields.
 function summaryOf(definition: TypstFormDefinition, fields: readonly FieldState[]): string | null {
   const ref = definition.summary;
   const index = ref ? definition.fields.findIndex((field) => sameArg(field.arg, ref)) : -1;
@@ -177,8 +167,6 @@ function summaryOf(definition: TypstFormDefinition, fields: readonly FieldState[
   return String(state.value.value);
 }
 
-// Definition + the call's arguments → one state per declared field. Null when the
-// arguments contain a syntax error, so the call stays raw source.
 export function readFormCall(
   doc: SourceText,
   hash: SyntaxNode,

@@ -1,7 +1,3 @@
-//! Ordered capture of an Anthropic reply's content blocks, so the next step
-//! can replay them exactly: thinking with its signature, text with its
-//! citations, client tool calls, and the server's own tool calls and
-//! results.
 use std::collections::BTreeMap;
 
 use serde_json::{json, Value};
@@ -11,7 +7,6 @@ use crate::event::AgentEvent;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum AssistantBlock {
     Text(String),
-    /// A text block with citations, kept whole.
     Cited(Value),
     Thinking {
         thinking: String,
@@ -23,8 +18,6 @@ pub(crate) enum AssistantBlock {
         name: String,
         arguments: String,
     },
-    /// A server tool call, its result, or a block type this client does not
-    /// know, kept verbatim.
     Native(Value),
 }
 
@@ -51,7 +44,6 @@ enum Open {
     Raw(Value),
 }
 
-/// Cited sources appended to the visible answer, per text block.
 const MAX_SOURCE_LINKS: usize = 3;
 
 fn text_of(value: &Value, key: &str) -> String {
@@ -66,8 +58,6 @@ fn web_tool(name: &str) -> bool {
     matches!(name, "web_search" | "web_fetch")
 }
 
-/// What the user sees of a server web tool's result: titles and addresses,
-/// never the encrypted page content.
 fn result_summary(block: &Value) -> Option<String> {
     let kind = block.get("type").and_then(Value::as_str)?;
     let content = block.get("content")?;
@@ -306,7 +296,6 @@ impl AnthropicBlocks {
         events
     }
 
-    /// Every block in stream order, closing any still open.
     pub(crate) fn finish(&mut self) -> Vec<AssistantBlock> {
         for (index, open) in std::mem::take(&mut self.open) {
             let (block, _) = close(open);

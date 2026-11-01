@@ -1,10 +1,3 @@
-//! The CLI's project map against the app's (goldens written by
-//! `src/lib/project-intelligence/context-golden.test.ts` with
-//! `OLEAFLY_UPDATE_GOLDEN=1`), and the CLI-only extras against
-//! `expected.extras.json` (`OLEAFLY_WRITE_GOLDENS=1` rewrites those).
-//!
-//! Lists whose order the app doesn't promise (labels, keys, files, edges,
-//! sections across files) compare as sorted lists.
 use std::path::{Path, PathBuf};
 
 use oleafly_core::context::{scan_project, ContextLimits};

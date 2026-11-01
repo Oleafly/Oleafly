@@ -1,11 +1,6 @@
-//! On-demand citation metadata lookup. Thin async HTTP to three fixed hosts
-//! (doi.org, arXiv, Crossref); all parsing/normalization happens in TypeScript
-//! so it stays unit-testable. Only the identifier or query is ever sent.
-
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; citation lookup)";
 const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 
-/// Redirects a lookup follows, at most.
 const MAX_REDIRECTS: usize = 3;
 
 /// Whether a lookup follows a redirect to `next` after `previous` hops. A DOI
@@ -62,7 +57,6 @@ async fn response_json(response: reqwest::Response) -> Result<serde_json::Value,
         .map_err(|error| format!("The citation service returned invalid JSON: {error}"))
 }
 
-/// Canonical BibTeX for a DOI, via doi.org content negotiation.
 pub async fn fetch_doi_bibtex(doi: &str) -> Result<String, String> {
     let doi = doi
         .trim()
@@ -188,7 +182,6 @@ fn ascii_page_ranges(entry: &str) -> String {
     out
 }
 
-/// The arXiv Atom entry for an id (parsed to BibTeX in the frontend).
 pub async fn fetch_arxiv(id: &str) -> Result<String, String> {
     let id = id.trim().trim_start_matches("arXiv:").trim();
     if id.is_empty() {
@@ -206,7 +199,6 @@ pub async fn fetch_arxiv(id: &str) -> Result<String, String> {
     response_text(resp).await
 }
 
-/// Crossref bibliographic search (JSON parsed in the frontend).
 pub async fn crossref_search(query: &str) -> Result<String, String> {
     let q = query.trim();
     if q.is_empty() {
@@ -227,15 +219,10 @@ pub async fn crossref_search(query: &str) -> Result<String, String> {
     response_text(resp).await
 }
 
-// --- Citation verification ---------------------------------------------------
-
-/// Whether a reference is real: its DOI resolves to the given title, or a
-/// Crossref record carries the title.
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CitationCheck {
     pub verified: bool,
-    /// `"doi"` or `"crossref-search"`.
     pub source: String,
     pub doi: Option<String>,
     pub matched_title: Option<String>,
@@ -280,8 +267,6 @@ pub async fn crossref_work(doi: &str) -> Result<serde_json::Value, String> {
     Ok(body["message"].take())
 }
 
-/// The best-matching item of a Crossref search response for `title` (not
-/// simply the first one).
 pub fn best_crossref_match(title: &str, body: &serde_json::Value) -> CitationCheck {
     let best = body["message"]["items"]
         .as_array()
@@ -322,14 +307,12 @@ pub fn best_crossref_match(title: &str, body: &serde_json::Value) -> CitationChe
 
 const DOI_TITLE_UNKNOWN: &str = "The DOI resolves, but its title could not be read.";
 
-/// The `title` field of a BibTeX entry, braces removed.
 fn bibtex_title(bibtex: &str) -> Option<String> {
     let lower = bibtex.to_ascii_lowercase();
     let mut from = 0;
     while let Some(found) = lower[from..].find("title") {
         let start = from + found;
         from = start + 5;
-        // A field name, not the end of "booktitle" or "subtitle".
         if lower[..start]
             .chars()
             .next_back()
@@ -409,7 +392,6 @@ fn doi_check(
     }
 }
 
-/// Checks a reference by DOI (and title, when given) or by title alone.
 pub async fn verify_citation(
     doi: Option<&str>,
     title: Option<&str>,
@@ -452,9 +434,6 @@ pub async fn verify_citation(
     Ok(best_crossref_match(title, &body))
 }
 
-// --- ISBN and PMID lookups ---------------------------------------------------
-
-/// Strip separator characters and validate an ISBN-10/13 with its check digit.
 fn normalize_isbn(raw: &str) -> Result<String, String> {
     let isbn: String = raw
         .trim()
@@ -503,8 +482,6 @@ fn normalize_isbn(raw: &str) -> Result<String, String> {
     Ok(isbn)
 }
 
-/// Render a person list the way the app's cite keys expect it: family name
-/// first, then initials, joined with " and ".
 fn bibtex_authors(names: &[String]) -> String {
     names
         .iter()
@@ -541,7 +518,6 @@ fn bibtex_authors(names: &[String]) -> String {
         .join(" and ")
 }
 
-/// The app's citation key scheme (shared with the CLI).
 pub use oleafly_core::bibkey::{cite_key, year_of};
 
 fn brace_field(value: &str) -> String {
@@ -748,11 +724,62 @@ pub async fn fetch_isbn_bibtex(isbn: &str) -> Result<String, String> {
     isbn_bibtex(&record, &isbn)
 }
 
-/// BibTeX for an article, from NCBI's PubMed esummary record.
+struct PubmedRecord {
+    title: String,
+    authors: Vec<String>,
+    journal: String,
+    year: String,
+    volume: String,
+    issue: String,
+    pages: String,
+    doi: String,
+}
+
+fn pubmed_bibtex(record: &PubmedRecord, pmid: &str) -> String {
+    let author_list = bibtex_authors(&record.authors);
+    let key = cite_key(&author_list, &record.year, &record.title);
+    let mut fields = vec![
+        ("author", brace_field(&author_list)),
+        ("title", brace_field(&record.title)),
+    ];
+    for (name, value) in [
+        ("journal", &record.journal),
+        ("volume", &record.volume),
+        ("number", &record.issue),
+        ("pages", &record.pages),
+    ] {
+        if !value.trim().is_empty() {
+            fields.push((name, brace_field(value)));
+        }
+    }
+    if !record.year.is_empty() {
+        fields.push(("year", format!("{{{}}}", record.year)));
+    }
+    if !record.doi.is_empty() {
+        fields.push(("doi", brace_field(&record.doi)));
+    }
+    fields.push(("pmid", brace_field(pmid)));
+    format!(
+        "@article{{{key},\n{}\n}}",
+        fields
+            .iter()
+            .map(|(k, v)| format!("  {k} = {v}"))
+            .collect::<Vec<_>>()
+            .join(",\n")
+    )
+}
+
 pub fn pmid_bibtex(result: &serde_json::Value, pmid: &str) -> Result<String, String> {
     let entry = result
         .get(pmid)
         .ok_or_else(|| "PubMed returned no record for that PMID.".to_string())?;
+    let text = |key: &str| {
+        entry
+            .get(key)
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string()
+    };
     let title = entry
         .get("title")
         .and_then(|v| v.as_str())
@@ -767,61 +794,87 @@ pub fn pmid_bibtex(result: &serde_json::Value, pmid: &str) -> Result<String, Str
                 .collect()
         })
         .unwrap_or_default();
-    let journal = entry
-        .get("fulljournalname")
-        .and_then(|v| v.as_str())
-        .or_else(|| entry.get("source").and_then(|v| v.as_str()))
-        .unwrap_or_default();
-    let date = entry
-        .get("pubdate")
-        .and_then(|v| v.as_str())
-        .unwrap_or_default();
-    let year = year_of(date);
-    let volume = entry.get("volume").and_then(|v| v.as_str()).unwrap_or("");
-    let issue = entry.get("issue").and_then(|v| v.as_str()).unwrap_or("");
-    let pages = entry
-        .get("pages")
-        .and_then(|v| v.as_str())
-        .filter(|p| !p.trim().is_empty())
-        .unwrap_or("");
+    let journal = Some(text("fulljournalname"))
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| text("source"));
     let doi = entry
         .get("elocationid")
         .and_then(|v| v.as_str())
         .and_then(|v| v.split("doi:").nth(1))
         .map(|d| d.trim().trim_end_matches('.'))
-        .unwrap_or("");
-    let author_list = bibtex_authors(&authors);
-    let key = cite_key(&author_list, &year, title);
-    let mut fields = vec![
-        ("author", brace_field(&author_list)),
-        ("title", brace_field(title)),
-    ];
-    if !journal.is_empty() {
-        fields.push(("journal", brace_field(journal)));
+        .unwrap_or("")
+        .to_string();
+    Ok(pubmed_bibtex(
+        &PubmedRecord {
+            title: title.to_string(),
+            authors,
+            journal,
+            year: year_of(&text("pubdate")),
+            volume: text("volume"),
+            issue: text("issue"),
+            pages: text("pages"),
+            doi,
+        },
+        pmid,
+    ))
+}
+
+fn csl_scalar(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(text) => text.trim().to_string(),
+        serde_json::Value::Number(number) => number.to_string(),
+        _ => String::new(),
     }
-    if !volume.is_empty() {
-        fields.push(("volume", brace_field(volume)));
+}
+
+fn csl_text(entry: &serde_json::Value, key: &str) -> String {
+    entry.get(key).map(csl_scalar).unwrap_or_default()
+}
+
+fn csl_author(author: &serde_json::Value) -> Option<String> {
+    let family = csl_text(author, "family");
+    let given = csl_text(author, "given");
+    match (family.is_empty(), given.is_empty()) {
+        (false, false) => Some(format!("{family}, {given}")),
+        (false, true) => Some(family),
+        _ => Some(csl_text(author, "literal")).filter(|name| !name.is_empty()),
     }
-    if !issue.is_empty() {
-        fields.push(("number", brace_field(issue)));
+}
+
+pub fn pmid_csl_bibtex(csl: &serde_json::Value, pmid: &str) -> Result<String, String> {
+    let entry = match csl {
+        serde_json::Value::Array(items) => items.iter().find(|item| csl_text(item, "PMID") == pmid),
+        serde_json::Value::Object(_) if csl_text(csl, "PMID") == pmid => Some(csl),
+        _ => None,
     }
-    if !pages.is_empty() {
-        fields.push(("pages", brace_field(pages)));
+    .ok_or("PubMed returned no record for that PMID.")?;
+    let title = csl_text(entry, "title");
+    if title.is_empty() {
+        return Err("PubMed returned no title for that PMID.".to_string());
     }
-    if !year.is_empty() {
-        fields.push(("year", format!("{{{year}}}")));
-    }
-    if !doi.is_empty() {
-        fields.push(("doi", brace_field(doi)));
-    }
-    fields.push(("pmid", brace_field(pmid)));
-    Ok(format!(
-        "@article{{{key},\n{}\n}}",
-        fields
-            .iter()
-            .map(|(k, v)| format!("  {k} = {v}"))
-            .collect::<Vec<_>>()
-            .join(",\n")
+    let authors = entry
+        .get("author")
+        .and_then(|v| v.as_array())
+        .map(|list| list.iter().filter_map(csl_author).collect())
+        .unwrap_or_default();
+    let journal = Some(csl_text(entry, "container-title"))
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| csl_text(entry, "container-title-short"));
+    Ok(pubmed_bibtex(
+        &PubmedRecord {
+            title,
+            authors,
+            journal,
+            year: entry
+                .pointer("/issued/date-parts/0/0")
+                .map(csl_scalar)
+                .unwrap_or_default(),
+            volume: csl_text(entry, "volume"),
+            issue: csl_text(entry, "issue"),
+            pages: csl_text(entry, "page"),
+            doi: csl_text(entry, "DOI"),
+        },
+        pmid,
     ))
 }
 
@@ -831,7 +884,15 @@ pub async fn fetch_pmid_bibtex(pmid: &str) -> Result<String, String> {
     if pmid.is_empty() || pmid.len() > 10 || !pmid.chars().all(|c| c.is_ascii_digit()) {
         return Err("Not a valid PubMed ID.".to_string());
     }
-    let resp = client()?
+    let client = client()?;
+    match fetch_pmid_summary(&client, pmid).await {
+        Ok(bibtex) => Ok(bibtex),
+        Err(error) => fetch_pmid_citation(&client, pmid).await.map_err(|_| error),
+    }
+}
+
+async fn fetch_pmid_summary(client: &reqwest::Client, pmid: &str) -> Result<String, String> {
+    let resp = client
         .get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi")
         .query(&[("db", "pubmed"), ("id", pmid), ("retmode", "json")])
         .send()
@@ -847,6 +908,21 @@ pub async fn fetch_pmid_bibtex(pmid: &str) -> Result<String, String> {
         .cloned()
         .ok_or("PubMed returned no result for that PMID.")?;
     pmid_bibtex(&result, pmid)
+}
+
+async fn fetch_pmid_citation(client: &reqwest::Client, pmid: &str) -> Result<String, String> {
+    let resp = client
+        .get("https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/")
+        .query(&[("format", "csl"), ("id", pmid)])
+        .send()
+        .await
+        .map_err(|e| format!("lookup failed: {e}"))?
+        .error_for_status()
+        .map_err(|_| "No record found for that PMID.".to_string())?;
+    let data = response_json(resp)
+        .await
+        .map_err(|error| format!("PubMed returned an unreadable response: {error}"))?;
+    pmid_csl_bibtex(&data, pmid)
 }
 
 #[cfg(test)]
@@ -942,7 +1018,6 @@ mod tests {
             .send()
             .await;
         server.abort();
-        // The redirect is refused, so the answer never arrives.
         assert!(result.is_err(), "{result:?}");
     }
 
@@ -1152,5 +1227,83 @@ mod tests {
         assert!(bib.contains("pages = {1126-1131}"));
         assert!(bib.contains("doi = {10.1136/bmj.m1126}"));
         assert!(bib.contains("pmid = {32172672}"));
+    }
+
+    fn citation_exporter_record() -> serde_json::Value {
+        serde_json::json!({
+            "source": "PubMed",
+            "id": "pmid:32172672",
+            "title": "A tug-of-war between severe acute respiratory syndrome coronavirus 2 and host antiviral defence: lessons from other pathogenic viruses",
+            "author": [{"family": "Fung", "given": "Sin-Yee"}, {"family": "Yuen", "given": "Kit-San"}],
+            "container-title-short": "Emerg Microbes Infect",
+            "container-title": "Emerging microbes & infections",
+            "issued": {"date-parts": [[2020, 3, 14]]},
+            "page": "558-570",
+            "volume": "9",
+            "issue": "1",
+            "PMID": "32172672",
+            "DOI": "10.1080/22221751.2020.1736644",
+            "type": "article-journal"
+        })
+    }
+
+    #[test]
+    fn pmid_csl_bibtex_maps_a_citation_exporter_record() {
+        let bib = pmid_csl_bibtex(&citation_exporter_record(), "32172672").unwrap();
+        assert!(bib.starts_with("@article{fung2020"), "{bib}");
+        assert!(
+            bib.contains("author = {Fung, Sin-Yee and Yuen, Kit-San}"),
+            "{bib}"
+        );
+        assert!(bib.contains("title = {A tug-of-war between severe acute respiratory syndrome"));
+        assert!(bib.contains("journal = {Emerging microbes & infections}"));
+        assert!(bib.contains("volume = {9}"));
+        assert!(bib.contains("number = {1}"));
+        assert!(bib.contains("pages = {558-570}"));
+        assert!(bib.contains("year = {2020}"));
+        assert!(bib.contains("doi = {10.1080/22221751.2020.1736644}"));
+        assert!(bib.ends_with("pmid = {32172672}\n}"), "{bib}");
+    }
+
+    #[test]
+    fn pmid_csl_bibtex_finds_the_record_in_a_list_and_reports_a_missing_one() {
+        let other = serde_json::json!({"PMID": "1", "title": "Another paper"});
+        let list = serde_json::json!([other, citation_exporter_record()]);
+        assert!(pmid_csl_bibtex(&list, "32172672")
+            .unwrap()
+            .contains("pmid = {32172672}"));
+        for missing in [serde_json::json!([]), other, serde_json::json!(null)] {
+            assert_eq!(
+                pmid_csl_bibtex(&missing, "32172672").unwrap_err(),
+                "PubMed returned no record for that PMID."
+            );
+        }
+        let untitled = serde_json::json!({"PMID": "32172672", "title": "  "});
+        assert_eq!(
+            pmid_csl_bibtex(&untitled, "32172672").unwrap_err(),
+            "PubMed returned no title for that PMID."
+        );
+    }
+
+    #[test]
+    fn pmid_csl_bibtex_keeps_group_authors_numbers_and_the_short_journal() {
+        let record = serde_json::json!({
+            "PMID": "32172672",
+            "title": "Trial results",
+            "author": [{"literal": "RECOVERY Collaborative Group"}, {"family": "Horby"}, {"given": "Nobody"}],
+            "container-title-short": "N Engl J Med",
+            "issued": {"date-parts": [["2021"]]},
+            "volume": 384,
+            "issue": 8
+        });
+        let bib = pmid_csl_bibtex(&record, "32172672").unwrap();
+        assert!(bib.contains("journal = {N Engl J Med}"), "{bib}");
+        assert!(bib.contains("volume = {384}"), "{bib}");
+        assert!(bib.contains("number = {8}"), "{bib}");
+        assert!(bib.contains("year = {2021}"), "{bib}");
+        assert!(bib.contains(" and Horby}"), "{bib}");
+        assert!(!bib.contains("Nobody"), "{bib}");
+        assert!(!bib.contains("pages ="), "{bib}");
+        assert!(!bib.contains("doi ="), "{bib}");
     }
 }

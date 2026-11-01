@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 
-// 0.4.8: research tasks are experimental; the bridge offers their tools only while they are on.
 const flag = vi.hoisted(() => ({ enabled: true }));
 vi.mock("@/store/research-tasks-flag", () => ({
   researchTasksEnabled: () => flag.enabled,
@@ -11,8 +10,6 @@ vi.mock("@/store/research-tasks-flag", () => ({
   useResearchTasksFlagStore: { subscribe: () => () => {}, getState: () => ({ enabled: flag.enabled }) },
 }));
 
-// The bridge imports the app tool registry, which pulls stores + tauri; mock
-// the heavy edges the same way src/lib/ai-tools.test.ts does.
 const mocks = vi.hoisted(() => ({
   events: new Map<string, (event: { payload: unknown }) => void>(),
   listen: vi.fn(
@@ -352,7 +349,6 @@ describe("mcp tool registry", () => {
   it("is exposed through the MCP bridge while research tasks are on, and blocked in read-only mode", async () => {
     expect(registry.research_task_create).toBeDefined();
     expect(registry.research_task_status).toBeDefined();
-    // 0.4.8: research tasks are experimental and off by default; outside agents get no task tools then.
     flag.enabled = false;
     try {
       const off = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {} });
@@ -449,8 +445,6 @@ describe("mcp tool registry", () => {
 });
 
 describe("confirmForPolicy", () => {
-  // A request() that records whether it was consulted and always denies, so we
-  // can tell "prompted" (returns false) from "auto-approved" (returns true).
   const denyingRequest = () => {
     let prompted = false;
     const fn = async () => {
@@ -481,7 +475,6 @@ describe("confirmForPolicy", () => {
     const confirm = confirmForPolicy("auto_writes", r.fn);
     expect(await confirm(req("write_file"))).toBe(true);
     expect(await confirm(req("replace_in_file"))).toBe(true);
-    // A delete is never auto-approvable, so it routes through request() (deny).
     expect(await confirm(req("delete_file"))).toBe(false);
     expect(r.wasPrompted()).toBe(true);
   });
@@ -741,7 +734,6 @@ describe("MCP tool calls and the project's deny rules", () => {
 
     expect(mocks.api.approvalsList).toHaveBeenCalledWith("proj");
     expect(mocks.api.deleteFile).not.toHaveBeenCalled();
-    // The client gets the English sentence; the app's activity list the catalog text.
     expect(result).toEqual(
       bridge.toMcpResult({ error: "This tool is denied for this project in approvals.toml." }, []),
     );

@@ -6,8 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 
-/// The Oleafly Community server widget. A guild id is permanent while invite
-/// codes can rotate, so the count comes from the widget, not an invite lookup.
 const DISCORD_WIDGET_URL: &str = "https://discord.com/api/guilds/1550031474697437264/widget.json";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -20,8 +18,6 @@ struct DiscordWidgetResponse {
     presence_count: u64,
 }
 
-/// Load how many community members are online right now. Needs no account and
-/// sends nothing about the user or their projects.
 #[tauri::command]
 pub async fn discord_community_stats() -> Result<DiscordCommunityStats, String> {
     fetch_discord_community_stats(&http_client()?, DISCORD_WIDGET_URL).await
@@ -67,7 +63,6 @@ mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    /// Answer one request with `status` and `body`, then hang up.
     async fn serve_once(status: &'static str, body: &'static str) -> String {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();

@@ -58,11 +58,9 @@ export interface WebApi {
   me(): Promise<WebMe | null>;
   projects(): Promise<WebProjectSummary[]>;
   project(projectId: string): Promise<WebProjectDetail>;
-  /** The text of every text file, for a compile. */
   texts(projectId: string, signal?: AbortSignal): Promise<WebText[]>;
   blob(projectId: string, hash: string): Promise<Blob>;
   output(projectId: string, kind: OutputKind): Promise<Uint8Array | null>;
-  /** Shares a compiled output with the project; owners and editors only. */
   putOutput(projectId: string, kind: OutputKind, bytes: Uint8Array, mainFile: string): Promise<CollabOutputInfo | null>;
   signOut(): Promise<void>;
 }

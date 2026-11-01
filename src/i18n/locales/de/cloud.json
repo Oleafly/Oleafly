@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO und die meisten selbst betriebenen Server brauchen das."
   },
   "errors": {
+    "clock_skew": "Die Uhr dieses Computers geht falsch, daher nimmt {{provider}} keine Anfragen von ihm an. Stellen Sie Datum und Uhrzeit richtig ein, damit der Abgleich weiterläuft.",
     "code_invalid": "Dieser Code hat nicht funktioniert. Versuchen Sie es erneut.",
     "device_name_empty": "Geben Sie einen Namen ein.",
     "device_name_invalid": "Ein Computername darf weder \\ / : * ? \" < > | noch Steuerzeichen enthalten und höchstens 32 Zeichen lang sein.",

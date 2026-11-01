@@ -49,12 +49,6 @@ for (const p of envCandidates) {
   break;
 }
 
-// In `tauri` mode (the only mode we use), tests drive the REAL app over the
-// plugin's socket bridge: real webview, real Rust backend, real Tectonic
-// compiles. Start the app first:
-//
-//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing \
-//     --config src-tauri/tauri.e2e.conf.json
 let nativePageOpened = false;
 const productionE2e = process.env.OLEAFLY_E2E_PRODUCTION === "1";
 
@@ -104,9 +98,6 @@ export async function reloadNativePage(page: TauriPage) {
     timeout: 20_000,
   });
   await mainWindow.evaluate(`window.__E2E_RELOAD_PENDING__ = true`);
-  // Packaged builds have no dev server to import the reload helper from, but
-  // a plain location.reload() re-navigates the custom-protocol document and
-  // the plugin bridge re-injects on the fresh page.
   const scheduleReload = productionE2e
     ? `setTimeout(() => location.reload(), 0)`
     : `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`;
@@ -138,10 +129,6 @@ export async function reloadNativePage(page: TauriPage) {
         reloadPending: boolean;
         rootMounted: boolean;
       };
-      // "interactive" counts as ready: a dev-mode subresource can keep
-      // readyState from ever reaching "complete" on an otherwise fully
-      // booted page, and a cleared pending flag already proves the reload
-      // navigated to a fresh document.
       if (
         parsed.readyState !== "loading" &&
         parsed.pwActive &&
@@ -201,13 +188,7 @@ async function focusNativeWindow(page: TauriPage) {
   `);
 }
 
-// Specs drive the app through evaluated snippets that import modules by
-// dev-server URL. Packaged builds resolve those through the registry the app
-// installs at boot (src/lib/e2e-import-registry.ts), so in production mode
-// every evaluated string is rewritten to go through it. Dev mode passes
-// strings through untouched.
 function rewritePackagedEval(script: string): string {
-  // Whitespace-tolerant: specs also write `import(\n  "/src/..."\n)`.
   return script.replace(
     /import\(\s*("\/(?:src|packages)\/)/g,
     'window.__oleaflyE2EImport($1',
@@ -315,9 +296,6 @@ function createNativeTest(dismissTours: boolean) {
         throw error;
       }
       if (firstPage && !productionE2e) {
-        // Enable the experimental LaTeX tools (default off)
-        // so the gated e2e specs run. Wrapped as an IIFE expression, the form
-        // this bridge evaluates reliably (bare multi-statement strings time out).
         const locale = localeForSpec(testInfo.file);
         await page.evaluate(`(function(){
           localStorage.removeItem("oleafly.shortcuts");
@@ -337,9 +315,6 @@ function createNativeTest(dismissTours: boolean) {
       }
       if (dismissTours) {
         if (productionE2e) {
-          // Packaged runs seed localStorage before boot via
-          // OLEAFLY_E2E_BOOT_LOCALSTORAGE (see e2e.sh and lib.rs), so no
-          // reload is needed — verify the seed actually landed instead.
           const seeded = await page.evaluate(
             `(function(){ const raw = localStorage.getItem("oleafly.tours"); if (!raw) return false; try { return JSON.parse(raw).state?.enabled === false; } catch { return false; } })()`,
           );

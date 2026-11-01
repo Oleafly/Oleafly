@@ -27,9 +27,6 @@ function pressWithPointer(selectorExpr: string): string {
   })()`;
 }
 
-// The default-engine preference decides what a NEW project starts on, and it
-// persists in localStorage across runs. Pin it so these specs assert the
-// per-project choice rather than whatever the machine was left on.
 async function setDefaultEngine(page: Page, engine: "tectonic" | "latexmk") {
   await page.evaluate(
     `Promise.all([import("/src/store/settings.ts"), import("/src/lib/tauri.ts")]).then(
@@ -45,8 +42,6 @@ async function useTectonicDefault(page: Page) {
   await setDefaultEngine(page, "tectonic");
 }
 
-// Every test starts on a freshly reloaded SPA sitting in the library, so each
-// one opens the project itself instead of inheriting the previous test's view.
 async function openCompilerProject(page: Page) {
   await waitLong(
     page,
@@ -169,8 +164,6 @@ test("a new LaTeX project starts on Tectonic with no compiler pinned", async ({
     30_000,
   );
   await useTectonicDefault(tauriPage);
-  // Always a brand new project: the claim under test is about what a project
-  // starts as, which an already-pinned one from an earlier test cannot show.
   await createBlankProject(tauriPage, "Compiler Default");
   await waitLong(
     tauriPage,
@@ -216,7 +209,6 @@ test("picking pdfLaTeX moves the project to latexmk and pins the compiler", asyn
   await chooseCompiler(tauriPage, "compiler-pdflatex");
   await waitForEngine(tauriPage, "latexmk", "pdflatex");
 
-  // The menu reflects the stored pin, not just the engine.
   await openCompileMenu(tauriPage);
   await expectCheckedCompiler(tauriPage, "compiler-pdflatex");
   await tauriPage.press("body", "Escape");
@@ -230,15 +222,12 @@ test("the pinned compiler survives closing and reopening the project", async ({
   await chooseCompiler(tauriPage, "compiler-xelatex");
   await waitForEngine(tauriPage, "latexmk", "xelatex");
 
-  // openProject owns the library transition. Clicking Home here as well races
-  // its readiness check against the outgoing workspace.
   await openProject(tauriPage, PROJECT);
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
     30_000,
   );
-  // project.json carried the choice, so the reopened project is still pinned.
   await waitForEngine(tauriPage, "latexmk", "xelatex");
 });
 

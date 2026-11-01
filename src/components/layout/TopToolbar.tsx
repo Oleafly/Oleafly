@@ -84,7 +84,6 @@ const OverleafSyncButton = lazy(() =>
 
 type DocFormat = DocumentExportFormat;
 
-/** Backend export format id for a registry target ("md"/"tex" are the ids). */
 function formatForTarget(target: string): DocFormat {
   switch (target) {
     case "markdown":
@@ -191,9 +190,6 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
   },
 ];
 
-// A layout preset is defined only by the editor/preview/AI panes, never the
-// file tree (that is an independent surface), so the dropdown can always check
-// the active layout regardless of whether the tree is open.
 function activeLayoutPreset(
   viewMode: ViewMode,
   assistantOpen: boolean,
@@ -354,10 +350,8 @@ export function TopToolbar() {
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportKind, setExportKind] = useState<ExportKind>("doc");
 
-  // Imperative read (not a subscription) to avoid re-rendering on every keystroke.
   const prepareExportMenu = () => {
     const f = useFilesStore.getState();
-    // A root directive can redirect export to another document.
     const src = f.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
     setExportKind(classifyDoc(src, f.engine.capabilities.formatting_profile));
   };

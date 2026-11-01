@@ -15,7 +15,6 @@ use super::MAX_FRAME_BYTES;
 
 const SESSION_HEADER: &str = "mcp-session-id";
 const PROTOCOL_HEADER: &str = "mcp-protocol-version";
-/// An event stream is read up to this much while waiting for its answer.
 const MAX_STREAM_BYTES: usize = 16 << 20;
 const CLOSE_WAIT: Duration = Duration::from_secs(2);
 
@@ -34,8 +33,6 @@ pub struct HttpConnection {
     next_id: AtomicU64,
 }
 
-/// The configured headers; a name or value that is not a valid header is
-/// an error that names the header, never its value.
 fn header_map(headers: &BTreeMap<String, String>) -> Result<HeaderMap, String> {
     let mut map = HeaderMap::new();
     for (name, value) in headers {
@@ -84,7 +81,6 @@ impl HttpConnection {
         })
     }
 
-    /// The version `initialize` settled on, sent with every later message.
     pub fn set_protocol_version(&self, version: &str) {
         if !version.is_empty()
             && version.len() <= 32
@@ -192,7 +188,6 @@ impl HttpConnection {
         }
     }
 
-    /// Ends the session on the server (when it gave one).
     pub async fn close(&self) {
         let Some(session) = lock(&self.session).take() else {
             return;
@@ -233,7 +228,6 @@ async fn read_bounded(mut response: reqwest::Response, max: usize) -> Result<Vec
     Ok(body)
 }
 
-/// The response with `id` in a message or a batch.
 fn find_response(message: &Value, id: u64) -> Option<Value> {
     match message {
         Value::Array(items) => items.iter().find_map(|item| find_response(item, id)),
@@ -247,7 +241,6 @@ fn find_response(message: &Value, id: u64) -> Option<Value> {
     }
 }
 
-/// `data:` lines of one event, joined.
 fn event_data(event: &str) -> Option<String> {
     let lines: Vec<&str> = event
         .lines()
@@ -257,10 +250,6 @@ fn event_data(event: &str) -> Option<String> {
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
-/// The bytes of an event stream not yet split into events. Network chunks
-/// end anywhere (inside a character, between the `\r` and `\n` of a line
-/// end), so events are cut from the raw bytes and only a whole event is
-/// decoded.
 #[derive(Default)]
 struct EventBuffer {
     bytes: Vec<u8>,
@@ -275,14 +264,12 @@ impl EventBuffer {
         self.bytes.len()
     }
 
-    /// The next whole event (it ends with a blank line), line ends as `\n`.
     fn next_event(&mut self) -> Option<String> {
         let end = event_end(&self.bytes)?;
         let event: Vec<u8> = self.bytes.drain(..end).collect();
         Some(decode_event(&event))
     }
 
-    /// What is left when the stream closes.
     fn rest(&mut self) -> String {
         decode_event(&std::mem::take(&mut self.bytes))
     }
@@ -294,9 +281,6 @@ fn decode_event(bytes: &[u8]) -> String {
         .replace('\r', "\n")
 }
 
-/// Where the first event of `buffer` ends: just after its blank line. A
-/// line end is `\n`, `\r\n` or a lone `\r`; a `\r` at the very end waits for
-/// the next chunk, which may start with its `\n`.
 fn event_end(buffer: &[u8]) -> Option<usize> {
     let mut index = 0;
     let mut after_line_end = false;
@@ -323,7 +307,6 @@ fn event_end(buffer: &[u8]) -> Option<usize> {
     None
 }
 
-/// Reads an event stream until the response to `id`.
 async fn read_event_stream(mut response: reqwest::Response, id: u64) -> Result<Value, String> {
     let mut buffer = EventBuffer::default();
     let mut total = 0usize;
@@ -397,7 +380,6 @@ mod tests {
     #[test]
     fn a_character_split_across_chunks_is_not_corrupted() {
         let text = "data: {\"text\":\"日本語 café 😀\"}\n\n".as_bytes();
-        // Every split point, including the middle of each multi-byte character.
         for split in 1..text.len() {
             let events = events_from(&[&text[..split], &text[split..]]);
             assert_eq!(
@@ -424,7 +406,6 @@ mod tests {
                 "{split}"
             );
         }
-        // A lone \r is a line end too.
         assert_eq!(
             events_from(&[b"data: {\"id\":3}\r\rdata: {\"id\":4}\r\r"]),
             ["data: {\"id\":3}\n\n", "data: {\"id\":4}\n\n"]

@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 
-/** A full-size view of an attached image. Loaded lazily. */
 export default function AttachmentPreviewDialog({
   open,
   name,

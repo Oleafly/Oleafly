@@ -44,7 +44,6 @@ describe("compute-api", () => {
 
   it("counts the setup lines in bytes, as Rust does", () => {
     expect(validateTarget(ssh({ prelude: "a".repeat(4096) }))).toEqual({});
-    // 2,048 characters, 6,144 bytes: under the textarea's character limit, over Rust's.
     expect(validateTarget(ssh({ prelude: "模".repeat(2048) }))).toEqual({ prelude: "prelude" });
     expect(validateTarget(ssh({ prelude: "module load python\0" }))).toEqual({ prelude: "prelude" });
     expect(enResearch.compute.form.errors.prelude).toContain("4 KB");

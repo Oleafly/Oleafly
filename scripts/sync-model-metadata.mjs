@@ -118,8 +118,6 @@ function normalizeReasoningOption(option) {
   return option.type === "toggle" ? { type: "toggle" } : undefined;
 }
 
-// How a model's reasoning is controlled: effort names, a thinking budget,
-// or a switch. Unknown option types and effort names are dropped.
 export function normalizeReasoningOptions(value) {
   if (!Array.isArray(value)) return undefined;
   const options = value.map(normalizeReasoningOption).filter((option) => option !== undefined);

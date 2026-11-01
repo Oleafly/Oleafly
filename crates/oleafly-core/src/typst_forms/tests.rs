@@ -42,7 +42,6 @@ fn project(forms: &str) -> String {
     format!("[tool.oleafly]\nschema = 1\n\n{forms}")
 }
 
-/// Each diagnostic as (code, path, line).
 fn found(diagnostics: &[FormDiagnostic]) -> Vec<(DiagnosticCode, &str, Option<u32>)> {
     diagnostics
         .iter()
@@ -117,9 +116,10 @@ fn bad_fixtures_report_without_panicking() {
     assert_eq!(diagnostics[0].code, DiagnosticCode::ParseError);
     assert_eq!(diagnostics[0].severity, Severity::Error);
     assert!(diagnostics[0].line.is_some_and(|line| line >= 6));
-    assert!(diagnostics[0]
-        .detail
-        .starts_with("This is not valid TOML: "));
+    assert!(matches!(
+        &diagnostics[0].message,
+        DiagnosticMessage::NotToml { error } if !error.is_empty() && !error.ends_with('.')
+    ));
 
     let (forms, diagnostics) = parse_project_forms(bad!("unknown-kind"));
     assert_eq!(functions(&forms), ["memo-header"]);
@@ -205,7 +205,13 @@ fields = [{ arg = "x", kind = "text", label = "X" }]
             Some(18)
         )]
     );
-    assert!(diagnostics[0].detail.contains("card from a.typ"));
+    assert_eq!(
+        diagnostics[0].message,
+        DiagnosticMessage::DuplicateModuleFunction {
+            function: "card".into(),
+            module: "a.typ".into(),
+        }
+    );
 }
 
 #[test]
@@ -316,8 +322,10 @@ fields = [{ arg = "caption", kind = "content", label = "Caption" }]
     assert_eq!(diagnostics[0].severity, Severity::Warning);
     assert_eq!(diagnostics[0].code, DiagnosticCode::BuiltinName);
     assert_eq!(
-        diagnostics[0].detail,
-        "\"figure\" is a built-in Typst name. Bare calls keep the built-in widget, so only qualified or renamed calls use this form."
+        diagnostics[0].message,
+        DiagnosticMessage::BuiltinName {
+            function: "figure".into(),
+        }
     );
 }
 
@@ -532,7 +540,10 @@ fields = ["x"]"#,
             .unwrap_or_else(|| panic!("{form}: {diagnostics:#?}"));
         assert_eq!(diagnostic.severity, Severity::Error);
         assert!(diagnostic.line.is_some(), "{form}");
-        assert!(diagnostic.detail.ends_with('.'), "{}", diagnostic.detail);
+        assert!(
+            serde_json::to_value(&diagnostic.message).unwrap()["id"].is_string(),
+            "{form}"
+        );
     }
 }
 
@@ -579,8 +590,11 @@ fields = [
         .iter()
         .all(|diagnostic| diagnostic.severity == Severity::Warning));
     assert_eq!(
-        diagnostics[2].detail,
-        "multiline does not apply to toggle fields, so it is ignored."
+        diagnostics[2].message,
+        DiagnosticMessage::KeyNotForKind {
+            key: "multiline".into(),
+            kind: "toggle".into(),
+        }
     );
 }
 
@@ -720,7 +734,12 @@ fn sources_that_cannot_be_read_get_one_diagnostic_each() {
             ),
         ]
     );
-    assert!(catalog.diagnostics[1].detail.contains("permission denied"));
+    assert_eq!(
+        catalog.diagnostics[1].message,
+        DiagnosticMessage::Unreadable {
+            reason: "permission denied".into(),
+        }
+    );
     assert!(catalog
         .diagnostics
         .iter()
@@ -794,11 +813,9 @@ fn package_manifests_must_be_toml_1_0_because_typst_reads_them() {
             "{fields}"
         );
         assert!(
-            diagnostics[0].detail.starts_with(
-                "Typst reads typst.toml as TOML 1.0, and this file is not valid TOML 1.0: "
-            ),
-            "{}",
-            diagnostics[0].detail
+            matches!(&diagnostics[0].message, DiagnosticMessage::NotToml10 { error } if !error.is_empty()),
+            "{:?}",
+            diagnostics[0].message
         );
 
         let (forms, diagnostics) = parse_project_forms(&project(&format!(
@@ -811,8 +828,6 @@ fn package_manifests_must_be_toml_1_0_because_typst_reads_them() {
 
 #[test]
 fn identifiers_follow_the_typst_lexer() {
-    // The virama in नमस्ते and a combining accent are XID_Continue but not
-    // alphanumeric. A superscript digit is the other way round.
     for name in ["नमस्ते", "cafe\u{301}", "_draft", "info-box", "x1"] {
         assert!(is_identifier(name), "{name}");
     }
@@ -896,7 +911,142 @@ fields = [{ arg = 0, kind = "content", label = "Body" }]
         )]
     );
     assert_eq!(
-        diagnostics[0].detail,
-        "module \"@preview/cetz:0.3.4\" names a package. A package's forms go in that package's typst.toml."
+        diagnostics[0].message,
+        DiagnosticMessage::ModulePathPackage {
+            module: "@preview/cetz:0.3.4".into(),
+        }
+    );
+}
+
+const ENGLISH_EDITOR: &str = include_str!("../../../../src/i18n/locales/en/editor.json");
+
+fn every_message() -> Vec<DiagnosticMessage> {
+    let text = || String::from("x");
+    let found = ValueType::String;
+    let arg = ArgRef::Named("title".into());
+    vec![
+        DiagnosticMessage::FileTooLarge { size: 2, limit: 1 },
+        DiagnosticMessage::Unreadable { reason: text() },
+        DiagnosticMessage::NotUtf8,
+        DiagnosticMessage::InvalidPackageSpec { spec: text() },
+        DiagnosticMessage::NotToml { error: text() },
+        DiagnosticMessage::NotToml10 { error: text() },
+        DiagnosticMessage::NoOleaflyTable,
+        DiagnosticMessage::OleaflyNotTable { found },
+        DiagnosticMessage::FormsNotList,
+        DiagnosticMessage::FormNotTable { found },
+        DiagnosticMessage::NoSchema,
+        DiagnosticMessage::SchemaUnsupported { schema: 2 },
+        DiagnosticMessage::SchemaNotNumber { found },
+        DiagnosticMessage::SummaryNotAField { arg: arg.clone() },
+        DiagnosticMessage::DuplicateFunction { function: text() },
+        DiagnosticMessage::DuplicateModuleFunction {
+            function: text(),
+            module: text(),
+        },
+        DiagnosticMessage::ModuleNotAllowed,
+        DiagnosticMessage::ModuleRequired,
+        DiagnosticMessage::ModulePathEmpty { module: text() },
+        DiagnosticMessage::ModulePathPackage { module: text() },
+        DiagnosticMessage::ModulePathBackslash { module: text() },
+        DiagnosticMessage::ModulePathAbsolute { module: text() },
+        DiagnosticMessage::ModulePathParent { module: text() },
+        DiagnosticMessage::ModulePathEmptyFolder { module: text() },
+        DiagnosticMessage::InvalidFunction { function: text() },
+        DiagnosticMessage::BuiltinName { function: text() },
+        DiagnosticMessage::FieldsNotList { found },
+        DiagnosticMessage::NoFields,
+        DiagnosticMessage::FieldNotTable { found },
+        DiagnosticMessage::DuplicateArg { arg },
+        DiagnosticMessage::UnknownKind { kind: text() },
+        DiagnosticMessage::DefaultNotOption { value: text() },
+        DiagnosticMessage::MaxBelowMin {
+            min: text(),
+            max: text(),
+        },
+        DiagnosticMessage::StepNotPositive,
+        DiagnosticMessage::OptionsNotList { found },
+        DiagnosticMessage::NoOptions,
+        DiagnosticMessage::OptionNotStringOrTable { found },
+        DiagnosticMessage::DuplicateOption { value: text() },
+        DiagnosticMessage::NotArg { key: text() },
+        DiagnosticMessage::MissingKey { key: text() },
+        DiagnosticMessage::KeyNotForKind {
+            key: text(),
+            kind: text(),
+        },
+        DiagnosticMessage::UnknownKey { key: text() },
+        DiagnosticMessage::Blank { key: text() },
+        DiagnosticMessage::NotFinite { key: text() },
+        DiagnosticMessage::NotString { key: text(), found },
+        DiagnosticMessage::NotNumber { key: text(), found },
+        DiagnosticMessage::NotBoolean { key: text(), found },
+    ]
+}
+
+#[test]
+fn every_message_has_an_english_template_naming_its_values() {
+    let english: Json = serde_json::from_str(ENGLISH_EDITOR).unwrap();
+    let templates = english["typstForms"]["messages"].as_object().unwrap();
+    let mut ids = HashSet::new();
+    for message in every_message() {
+        let wire = serde_json::to_value(&message).unwrap();
+        let id = wire["id"].as_str().unwrap().to_owned();
+        let template = templates
+            .get(&id)
+            .and_then(Json::as_str)
+            .unwrap_or_else(|| panic!("no template for {id}"));
+        for name in wire
+            .as_object()
+            .unwrap()
+            .keys()
+            .filter(|name| *name != "id")
+        {
+            assert!(
+                template.contains(&format!("{{{{{name}}}}}")),
+                "{id} never shows {name}"
+            );
+        }
+        ids.insert(id);
+    }
+    let named: HashSet<String> = templates.keys().cloned().collect();
+    assert_eq!(ids, named);
+}
+
+#[test]
+fn value_types_and_arguments_reach_the_editor_as_words_it_can_translate() {
+    let english: Json = serde_json::from_str(ENGLISH_EDITOR).unwrap();
+    let forms = &english["typstForms"];
+    for found in [
+        ValueType::String,
+        ValueType::Integer,
+        ValueType::Float,
+        ValueType::Boolean,
+        ValueType::Datetime,
+        ValueType::Array,
+        ValueType::InlineTable,
+        ValueType::Table,
+        ValueType::ArrayOfTables,
+        ValueType::None,
+    ] {
+        let name = serde_json::to_value(found).unwrap();
+        assert!(
+            forms["valueType"][name.as_str().unwrap()].is_string(),
+            "{name}"
+        );
+    }
+    let (_, diagnostics) = parse_project_forms(&project(
+        "[[tool.oleafly.forms]]\nmodule = \"a.typ\"\nfunction = \"card\"\nlabel = 3\nfields = [{ arg = \"title\", kind = \"text\", label = \"Title\" }, { arg = \"title\", kind = \"text\", label = \"Again\" }]\n",
+    ));
+    let wire: Vec<Json> = diagnostics
+        .iter()
+        .map(|diagnostic| serde_json::to_value(&diagnostic.message).unwrap())
+        .collect();
+    assert_eq!(
+        wire,
+        [
+            json!({ "id": "notString", "key": "label", "found": "integer" }),
+            json!({ "id": "duplicateArg", "arg": { "named": "title" } }),
+        ]
     );
 }

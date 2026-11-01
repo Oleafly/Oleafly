@@ -10,7 +10,6 @@ use serde_json::{json, Value};
 pub const PROTOCOL_VERSION: &str = "2025-06-18";
 pub const SUPPORTED_VERSIONS: &[&str] = &["2025-06-18", "2025-03-26", "2024-11-05"];
 
-/// Who a server says it is in `initialize`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ServerInfo<'a> {
     pub name: &'a str,
@@ -18,10 +17,6 @@ pub struct ServerInfo<'a> {
     pub version: &'a str,
 }
 
-/// One advertised tool, registered by the webview so the MCP surface is
-/// byte-identical to the in-app agent's tool surface. Servers that build
-/// their own tools (the CLI) can also give a title, an output schema and
-/// behaviour hints.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolMeta {
     pub name: String,
@@ -73,13 +68,9 @@ pub struct ToolAnnotations {
     pub open_world_hint: Option<bool>,
 }
 
-/// What the transport should do with a dispatched message.
 pub enum RpcOutcome {
-    /// Respond 200 with this JSON-RPC body.
     Reply(Value),
-    /// Notification accepted: respond 202 with an empty body.
     Accepted,
-    /// `tools/call`: forward to the webview and reply asynchronously.
     ForwardCall {
         id: Value,
         name: String,
@@ -120,8 +111,6 @@ pub fn tool_result(id: Value, structured: Value) -> Value {
 
 static SERVER_VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-/// The version this process's servers report: the app's or the CLI's, set
-/// once at startup. Without it, this crate's own version.
 pub fn set_server_version(version: &str) {
     let _ = SERVER_VERSION.set(version.to_string());
 }
@@ -132,8 +121,6 @@ fn server_version() -> &'static str {
         .map_or(env!("CARGO_PKG_VERSION"), String::as_str)
 }
 
-/// [`dispatch_with`] as the app's server, with [`set_server_version`]'s
-/// version.
 pub fn dispatch(msg: &Value, tools: &[ToolMeta], instructions: &str) -> RpcOutcome {
     dispatch_with(
         msg,

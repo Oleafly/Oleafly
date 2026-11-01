@@ -320,9 +320,6 @@ describe("ignored-word normalisation", () => {
     const first = await analyze(forwards);
     expect(first.type).toBe("result");
 
-    // Same set, different order and casing duplicates: the worker must treat
-    // this as the identical request, which only holds if the list is sorted
-    // and de-duplicated before it becomes the cache key.
     const backwards = request(901, "spelling");
     backwards.ignoredWords = ["Beta", "alpha", "zeta"];
     const second = await analyze(backwards);

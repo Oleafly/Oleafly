@@ -51,7 +51,6 @@ export function ApprovalsFileEditor() {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  // What the backend noticed about a file it saved anyway.
   const [warnings, setWarnings] = useState<readonly string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
 

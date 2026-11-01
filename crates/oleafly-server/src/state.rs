@@ -137,8 +137,6 @@ impl AppState {
         if let Some(line) = setup_line {
             tracing::warn!("{line}");
         }
-        // OLEAFLY_SNAPSHOT_MEMORY_MB bounds documents and large transfers
-        // together: a quarter goes to transfers and the rest to documents.
         let memory = config.snapshot_memory_mb.saturating_mul(1024 * 1024);
         let transfer_budget = memory / 4;
         let snapshots = Snapshots::new(blobs.clone(), &config.data_dir);
@@ -154,6 +152,13 @@ impl AppState {
         ));
         #[cfg(feature = "web")]
         let web_policy = crate::web::assets::policy(&config.web_connect_src)?;
+        #[cfg(feature = "web")]
+        let web = Arc::new(crate::web::Hub::default());
+        #[cfg(feature = "web")]
+        {
+            let hub = Arc::downgrade(&web);
+            snapshots.on_pressure(move || hub.upgrade().is_some_and(|hub| hub.shed()));
+        }
         Ok(AppState {
             config: Arc::new(config),
             db: database,
@@ -175,7 +180,7 @@ impl AppState {
             mentions: Mentions::default(),
             transfers: Transfers::with_budget(transfer_budget),
             #[cfg(feature = "web")]
-            web: Arc::new(crate::web::Hub::default()),
+            web,
             #[cfg(feature = "web")]
             web_policy,
         })

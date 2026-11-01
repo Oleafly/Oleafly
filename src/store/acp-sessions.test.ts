@@ -37,7 +37,6 @@ function storedImage(name: string): DraftAttachment {
   return { id: name, name, mime: "image/png", size: 1024, status: "ready", kind: "image", scope: "p", sha256: `sha-${name}` };
 }
 
-/** The drafts-store key of the composer on screen. */
 function shownComposerId(): string {
   const id = Object.keys(useComposerDrafts.getState().drafts).find((key) => key.startsWith("p:acp:"));
   if (!id) throw new Error("Type in the composer first.");
@@ -69,8 +68,6 @@ describe("ACP session event recovery", () => {
     expect(merged[0]).toBe(first);
   });
   it("appends newer events to a long history without sorting it again", () => {
-    // Since 0.4.8 a transcript keeps at most MAX_VISIBLE_EVENTS events (tested
-    // in acp-sessions.queue.test.ts), so the history here fills it exactly.
     const length = MAX_VISIBLE_EVENTS - 2;
     const history = Array.from({ length }, (_, index) => event(index + 1));
     const sort = vi.spyOn(Array.prototype, "sort");
@@ -104,7 +101,6 @@ describe("ACP session event recovery", () => {
   });
   it("keeps each project's composer separate", () => {
     useAcpSessionsStore.setState({ composers: {} });
-    // 0.4.8: the text and files live in the shared drafts store; the composer keeps the skill and quotes.
     const skill = { id: "oleafly-literature-sweep", name: "Literature sweep" };
     useAcpSessionsStore.getState().setComposer("p", { skill });
     useAcpSessionsStore.getState().setComposer("q", { agentId: "claude" });
@@ -223,7 +219,6 @@ describe("ACP catalog and session-list request ordering", () => {
 
   it("does not replace live session progress with an older pending saved-conversation list", async () => {
     const original = { ...savedSession("s"), lastSequence: 2 };
-    // Since 0.4.8 the store keeps the transcript of a shown conversation only.
     useAcpSessionsStore.setState({ sessions: { s: original }, activeByProject: { p: "s" } });
     const pending = deferred<AcpSession[]>();
     vi.mocked(acpSessions).mockReturnValue(pending.promise);
@@ -268,8 +263,6 @@ describe("ACP controlled conversation selectors", () => {
     const first = savedSession("first");
     const second = savedSession("second", "disconnected");
     useAcpSessionsStore.setState({ catalog: [], sessions: { first, second }, events: {}, permissions: {}, activeByProject: { p: "first" }, composers: {}, errors: {} });
-    // Since 0.4.8 the composer's text and files live in the drafts store, so a
-    // draft an earlier test left behind (an image the agent can't read) is cleared too.
     useComposerDrafts.setState({ drafts: {} });
     vi.mocked(acpCatalog).mockResolvedValue([]);
     vi.mocked(acpSessions).mockResolvedValue([first, second]);

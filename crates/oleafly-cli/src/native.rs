@@ -1,8 +1,3 @@
-//! Builds on this computer with the same compilers, arguments, environment
-//! and diagnostics the desktop app uses (`oleafly_core::engine_spec`,
-//! `tex_errors`, `build_output`): one build per project at a time, outputs
-//! staged and moved into place when the build ends, the last good PDF kept
-//! when a build fails.
 use crate::app_paths::InstalledApp;
 use crate::contract::{CliError, ErrorKind as CliErrorKind};
 use crate::process;
@@ -70,11 +65,9 @@ const MAX_SEEDED_BYTES: u64 = 16 * 1024 * 1024;
 type LogCallback = dyn Fn(&str) + Send + Sync;
 static ALIAS_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-/// The engine flags a build takes (`--offline`, `--fast`, `--halt-on-error`).
 #[cfg(test)]
 pub type BuildOptions = EngineFlags;
 
-/// The flags `engine` has no use for.
 pub fn ignored_flags(flags: EngineFlags, engine: Engine) -> Vec<&'static str> {
     let (offline, fast, halt_on_error) = match engine {
         Engine::Tectonic => (false, false, false),
@@ -100,7 +93,6 @@ pub struct BuildError {
     pub kind: String,
     pub column: Option<u32>,
     pub hints: Vec<String>,
-    /// A plain-English explanation for common TeX errors.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub explanation: Option<String>,
 }
@@ -146,31 +138,23 @@ impl BuildError {
     }
 }
 
-/// What a build did. `log` holds the engine's log (and on failure its
-/// output), bounded to 1 MiB; commands decide how much of it to print.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct BuildResult {
     pub ok: bool,
     pub engine: Engine,
     pub main_document: String,
     pub build_directory: PathBuf,
-    /// The PDF this build wrote.
     pub output: Option<PathBuf>,
-    /// The PDF an earlier build left, when this one wrote none.
     pub previous_output: Option<PathBuf>,
     pub output_id: Option<String>,
     pub fresh: bool,
-    /// Where `-o` copied the PDF.
     pub copied_to: Option<PathBuf>,
     pub log: String,
-    /// The whole log, kept beside the build record.
     pub log_path: Option<PathBuf>,
     pub errors: Vec<BuildError>,
     pub diagnostics: Vec<LogDiagnostic>,
     pub compile_time_ms: u64,
-    /// How long the build waited for another build of the project.
     pub waited_ms: u64,
-    /// Things the build noticed and carried on past (printed by commands).
     #[serde(skip)]
     pub warnings: Vec<crate::contract::Warning>,
 }
@@ -200,21 +184,16 @@ impl std::fmt::Debug for CompilerLog {
     }
 }
 
-/// Where tools are looked for. Built once per command from the
-/// environment; tests build their own.
 #[derive(Clone, Debug, Default)]
 pub struct Discovery {
     pub workspace_root: PathBuf,
-    /// The CLI's own folder (links resolved).
     pub cli_dir: Option<PathBuf>,
     pub app: Option<InstalledApp>,
     pub data_root: Option<PathBuf>,
     pub tex: TexSearch,
     pub pandoc: PandocSearch,
     pub path: Option<OsString>,
-    /// `OLEAFLY_TECTONIC`, `OLEAFLY_LATEXMK`, `OLEAFLY_TYPST`, `OLEAFLY_PANDOC`.
     pub overrides: BTreeMap<&'static str, PathBuf>,
-    /// Debug builds also try the app's development sidecars.
     pub development: bool,
 }
 
@@ -264,8 +243,6 @@ impl Discovery {
         }
     }
 
-    /// Bundled copies of `name`: beside the CLI, then in the app, then the
-    /// development sidecars.
     pub(crate) fn bundled_candidates(&self, name: &str) -> Vec<PathBuf> {
         let mut candidates: Vec<PathBuf> = Vec::new();
         for folder in self
@@ -300,16 +277,12 @@ pub struct BuildTools {
     pub latexmk: Option<PathBuf>,
     pub typst: Option<PathBuf>,
     pub pandoc: Option<PathBuf>,
-    /// The Biber that ships with Tectonic, when it sits beside it.
     pub tectonic_biber: Option<PathBuf>,
-    /// TeX distribution folders compile children get on their PATH.
     pub tex_dirs: Vec<PathBuf>,
     pub pandoc_version: Option<String>,
-    /// Pandocs passed over for being older than 2.19.
     pub pandoc_too_old: Vec<(PathBuf, String)>,
     pub data_root: Option<PathBuf>,
     pub tex: TexSearch,
-    /// Where each tool came from (`override`, `bundled`, `app`, `path`, `tex`).
     pub sources: BTreeMap<&'static str, &'static str>,
     pandoc_probed: bool,
     rejected_overrides: BTreeMap<&'static str, ToolRejection>,
@@ -319,8 +292,6 @@ pub struct BuildTools {
 }
 
 impl BuildTools {
-    /// Finds tectonic, latexmk and typst (Pandoc waits for
-    /// [`BuildTools::resolve_pandoc`], which runs it).
     pub fn discover_with(discovery: &Discovery) -> Self {
         let root = &discovery.workspace_root;
         let mut tools = BuildTools {
@@ -366,8 +337,6 @@ impl BuildTools {
         tools
     }
 
-    /// Finds a Pandoc of 2.19 or later (each candidate runs `--version`, at
-    /// most 5 seconds).
     pub fn resolve_pandoc(&mut self, discovery: &Discovery) {
         if self.pandoc_probed {
             return;
@@ -384,7 +353,6 @@ impl BuildTools {
                             self.sources.insert("pandoc", "override");
                         }
                         Some((Some(version), false)) => self.pandoc_too_old.push((path, version)),
-                        // A Pandoc that won't say its version is taken at its word.
                         _ => {
                             self.pandoc = Some(path);
                             self.sources.insert("pandoc", "override");
@@ -506,7 +474,6 @@ impl BuildTools {
             .map(|rejection| (rejection.variable, rejection.path.as_path()))
     }
 
-    /// Why Pandoc is missing, when an older one was found.
     pub fn pandoc_too_old_message(&self) -> Option<String> {
         let (path, version) = self.pandoc_too_old.first()?;
         Some(format!(
@@ -567,7 +534,6 @@ struct ToolResolution {
     rejected_override: Option<ToolRejection>,
 }
 
-/// Makes the file names in Typst's errors relative to the project.
 async fn relativize_typst_errors(errors: &mut [BuildError], working_directory: &Path) {
     let canonical = tokio::fs::canonicalize(working_directory)
         .await
@@ -580,8 +546,6 @@ async fn relativize_typst_errors(errors: &mut [BuildError], working_directory: &
     }
 }
 
-/// Publishes the outputs a build staged. A failed build keeps the last good
-/// PDF (and its SyncTeX) in place.
 async fn promote_staging(staging: OutputStaging, ok: bool) -> std::result::Result<(), CliError> {
     if !ok {
         for name in [
@@ -629,7 +593,6 @@ impl NativeCompiler {
         self
     }
 
-    /// Runs once when another build of the project holds the lock.
     pub fn with_lock_wait(mut self, on_wait: Option<Arc<dyn Fn() + Send + Sync>>) -> Self {
         self.on_lock_wait = on_wait;
         self
@@ -644,12 +607,6 @@ impl NativeCompiler {
         self.build_prepared(&prepared, flags).await
     }
 
-    /// The project's build lock and how long it took. Where the file system
-    /// can't lock files at all (NFS without a lock service, some cluster
-    /// file systems) builds take turns through a lock folder instead. Any
-    /// other lock error (a linked lock file, no permission, a full disk)
-    /// stops the build: two builds in one folder overwrite each other's
-    /// files.
     async fn lock_build(
         &self,
         build_dir: &Path,
@@ -695,8 +652,6 @@ impl NativeCompiler {
     ) -> std::result::Result<BuildResult, CliError> {
         let build_dir = build.build_directory().to_path_buf();
         let (lock, waited_ms) = self.lock_build(&build_dir).await?;
-        // With the lock held, a staging folder left behind is no running
-        // build's: its own mtime only moves when files come and go in it.
         sweep_stale_staging(&build_dir, STALE_STAGING);
         let unlocked = lock.is_folder();
         let started = Instant::now();
@@ -704,8 +659,6 @@ impl NativeCompiler {
         let engine_log = build_dir.join(format!("{ENTRY_STEM}.log"));
 
         let mut command = self.command(build, flags, true)?;
-        // Only latexmk writes in place; the other engines write into the
-        // staging folder `command` made.
         let mut in_place = match command.staging {
             None => Some(InPlaceOutputs::prepare(&build_dir)?),
             Some(_) => None,
@@ -724,7 +677,6 @@ impl NativeCompiler {
 
         let tex_engine = matches!(build.engine(), Engine::Tectonic | Engine::Latexmk);
         let produced_pdf = command.produced_output.is_file();
-        // The engine's own log: in the staging folder, or in place for latexmk.
         let file_log_path = match &command.staging {
             Some(staging) => staging.path().join(format!("{ENTRY_STEM}.log")),
             None => engine_log.clone(),
@@ -802,9 +754,6 @@ impl NativeCompiler {
         })
     }
 
-    /// Builds again against the installed TeX bundle after the pinned one
-    /// could not be fetched. `output` becomes the log of both runs; the
-    /// retry's status and command come back.
     async fn retry_without_pinned_bundle(
         &self,
         build: &PreparedBuild,
@@ -1027,8 +976,6 @@ impl NativeCompiler {
         })
     }
 
-    /// PATH (the tool's folder, Tectonic's Biber, the TeX folders, then the
-    /// inherited PATH without the project) and Biber's unpack folder.
     fn tex_environment(&self, tool: &Path, project_root: &Path) -> Vec<(&'static str, OsString)> {
         let mut extra: Vec<PathBuf> = Vec::new();
         if let Some(folder) = self.tools.tectonic_biber.as_deref().and_then(Path::parent) {
@@ -1052,8 +999,6 @@ impl NativeCompiler {
         environment
     }
 
-    /// latexmk's arguments, and `TEXMFOUTPUT` when the build folder is
-    /// outside the project (a linked folder's build folder).
     fn latexmk_arguments(
         &self,
         build: &PreparedBuild,
@@ -1122,7 +1067,6 @@ impl NativeCompiler {
     }
 }
 
-/// Runs Pandoc and Typst for the shared document tools (300 s each).
 pub(crate) struct CliToolRunner;
 
 impl oleafly_doctools::ToolRunner for CliToolRunner {
@@ -1151,12 +1095,8 @@ impl oleafly_doctools::ToolRunner for CliToolRunner {
     }
 }
 
-/// A lock folder older than the build timeout plus this is a stopped
-/// build's, and is taken over.
 const DIR_LOCK_SLACK: Duration = Duration::from_secs(60);
 
-/// What keeps other builds of the project out while this one runs: the
-/// build lock, or a lock folder where the file system can't lock files.
 pub(crate) struct BuildHold {
     _file: Option<BuildLock>,
     folder: Option<DirLock>,
@@ -1193,8 +1133,6 @@ fn lock_failed(build_dir: &Path, error: &std::io::Error) -> CliError {
     )
 }
 
-/// The error a build gets when another build of the project holds the lock
-/// for the whole timeout.
 pub(crate) fn build_running() -> CliError {
     CliError::new(
         CliErrorKind::Conflict,
@@ -1222,7 +1160,6 @@ pub(crate) fn output_locked_or(error: std::io::Error) -> CliError {
     }
 }
 
-/// Line-level diagnostics, file names made project-relative.
 fn diagnostics_for(
     build: &PreparedBuild,
     file_log: Option<&str>,
@@ -1277,7 +1214,6 @@ fn diagnostic_of(error: &BuildError) -> LogDiagnostic {
 /// How deep [`remove_links`] looks into the build folder (latexmk writes
 /// `\include`d files' auxiliary files into matching subfolders).
 const MAX_LINK_SWEEP_DEPTH: usize = 8;
-/// The outputs a failed latexmk build puts back.
 const KEPT_OUTPUTS: [&str; 2] = ["pdf", "synctex.gz"];
 
 /// What a latexmk build writes in place in the build folder (the other
@@ -1294,7 +1230,6 @@ const KEPT_OUTPUTS: [&str; 2] = ["pdf", "synctex.gz"];
 /// them back too.
 struct InPlaceOutputs {
     build_dir: PathBuf,
-    /// Copies of the outputs as they were; `None` when no folder could be made.
     aside: Option<OutputStaging>,
     before: ArtifactSnapshot,
     finished: bool,
@@ -1309,7 +1244,6 @@ impl InPlaceOutputs {
                 let source = build_dir.join(&name);
                 let copy = aside.path().join(&name);
                 if source.is_file() && std::fs::copy(&source, &copy).is_err() {
-                    // A half copy would put a truncated PDF back.
                     let _ = std::fs::remove_file(&copy);
                 }
             }
@@ -1332,12 +1266,10 @@ impl InPlaceOutputs {
             .map(|extension| format!("{ENTRY_STEM}.{extension}"))
     }
 
-    /// The file exists and this build wrote it.
     fn is_fresh(&self, path: &Path) -> bool {
         self.before.is_fresh(path)
     }
 
-    /// The build ended. A failed one gets its last good outputs back.
     fn finish(&mut self, ok: bool) {
         if !ok {
             self.keep_last_good();
@@ -1356,8 +1288,6 @@ impl InPlaceOutputs {
                         oleafly_core::atomic::persist_with_retry(|| std::fs::rename(&copy, &path));
                 }
                 Some(_) => {}
-                // Nothing to put back: a failed build's best-effort output
-                // would pass for a good one, as no staged engine leaves it.
                 None if touched => {
                     let _ = std::fs::remove_file(&path);
                 }
@@ -1375,10 +1305,6 @@ impl Drop for InPlaceOutputs {
     }
 }
 
-/// Removes every symbolic link and non-regular file (a FIFO, a socket, a
-/// device) under `directory`, without following any link. Real folders are
-/// searched to [`MAX_LINK_SWEEP_DEPTH`]; another build's staging folder is
-/// left alone.
 fn remove_links(directory: &Path, depth: usize) -> Result<()> {
     let Ok(entries) = std::fs::read_dir(directory) else {
         return Ok(());
@@ -1421,8 +1347,6 @@ fn remove_links(directory: &Path, depth: usize) -> Result<()> {
     Ok(())
 }
 
-/// Copies the last build's intermediate files (`.aux`, `.toc`, ...) into a
-/// fresh staging folder.
 fn seed_staging(build_dir: &Path, staging: &Path) {
     let Ok(entries) = std::fs::read_dir(build_dir) else {
         return;
@@ -1454,7 +1378,6 @@ fn read_log_bounded(path: &Path) -> std::io::Result<String> {
     Ok(output)
 }
 
-/// The TeX log, plus the end of what the engine printed when it failed.
 fn with_engine_output_on_failure(mut log: String, output: &str, success: bool) -> String {
     if success || output.trim().is_empty() {
         return log;
@@ -1470,7 +1393,6 @@ fn with_engine_output_on_failure(mut log: String, output: &str, success: bool) -
     log
 }
 
-/// One compiler run.
 pub(crate) struct Launch<'a> {
     pub executable: &'a Path,
     pub arguments: &'a [OsString],
@@ -1478,14 +1400,12 @@ pub(crate) struct Launch<'a> {
     pub environment: &'a [(&'static str, OsString)],
     /// Variables the run must not inherit (LuaTeX can't take `openin_any=p`).
     pub unset: &'a [&'static str],
-    /// More variables, by owned name (set last).
     pub variables: &'a [(String, String)],
 }
 
 struct BuildCommand {
     executable: PathBuf,
     arguments: Vec<OsString>,
-    /// Where the PDF appears (the staging folder, or the build folder).
     produced_output: PathBuf,
     working_directory: PathBuf,
     environment: Vec<(&'static str, OsString)>,
@@ -1815,8 +1735,6 @@ fn typst_arguments(
     .map_err(|error| Error::new(ErrorKind::Build, error.to_string()))
 }
 
-/// Runs one compiler with its process tree contained; returns its output
-/// (bounded) and how it exited.
 pub(crate) async fn run_command(
     launch: &Launch<'_>,
     timeout: Duration,
@@ -1877,8 +1795,6 @@ pub(crate) async fn run_command(
         .take()
         .ok_or_else(|| Error::new(ErrorKind::Build, "compiler stderr was not captured"))?;
     let mut containment = Some(containment);
-    // Readers belong to this future, so cancellation closes them rather than
-    // leaving detached log tasks and pipe handles behind.
     let result = tokio::time::timeout(timeout, async {
         let wait = async {
             let status = child.wait().await?;

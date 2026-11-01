@@ -145,7 +145,6 @@ vi.mock("@/lib/agent-backend", () => ({
   providerCredit: (...args: unknown[]) => mocks.providerCredit(...args),
 }));
 
-// The attachment store, in memory: put returns `sha-<name>`.
 const attachmentStore = vi.hoisted(() => new Map<string, { name: string; mime: string; bytes: Uint8Array }>());
 vi.mock("@/lib/attachments", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/attachments")>();
@@ -619,9 +618,7 @@ beforeAll(async () => {
   ({ useAssistantRuntimeStore } = await import("@/store/assistant-runtime"));
   ({ useAgentHandoffStore } = await import("@/store/agent-handoff"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
-  // Load the lazy dialog before timing interactions with its trigger.
   await import("@/components/usage/UsageReport");
-  // The composer's usage popover loads lazily too.
   await import("./usage/UsagePopover");
 }, 60_000);
 
@@ -1291,7 +1288,8 @@ describe("ChatCore agent turns", () => {
 
   it("timestamps the user message at send and the assistant message at finalization", async () => {
     const rendered = await renderChat();
-    let now = 1_000;
+    const start = Date.now();
+    let now = start;
     const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now);
 
     try {
@@ -1299,19 +1297,19 @@ describe("ChatCore agent turns", () => {
       await waitFor(() => expect(mocks.runs).toHaveLength(1));
       await waitFor(() =>
         expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
-          expect.objectContaining({ role: "user", createdAt: 1_000 }),
-          expect.objectContaining({ role: "assistant", createdAt: 1_000 }),
+          expect.objectContaining({ role: "user", createdAt: start }),
+          expect.objectContaining({ role: "assistant", createdAt: start }),
         ]),
       );
 
-      now = 2_000;
+      now = start + 1_000;
       await act(async () => finishRun(0, "Timestamped response"));
       await waitFor(() => expect(activeChatRun()).toBeNull());
 
       await waitFor(() =>
         expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
-          expect.objectContaining({ role: "user", createdAt: 1_000 }),
-          expect.objectContaining({ role: "assistant", createdAt: 2_000 }),
+          expect.objectContaining({ role: "user", createdAt: start }),
+          expect.objectContaining({ role: "assistant", createdAt: start + 1_000 }),
         ]),
       );
     } finally {
@@ -3222,7 +3220,6 @@ describe("ChatCore agent turns", () => {
       expect(scroller).toBeTruthy();
       Object.defineProperty(overlay, "offsetHeight", { configurable: true, value: 220 });
       act(() => observers.resize(overlay));
-      // A card opened by hovering floats over the reply and keeps the pill's usual room.
       expect(scroller?.style.paddingBottom).toBe("");
 
       act(() => mocks.planProps.at(-1)?.onPinnedChange?.(true));
@@ -3882,7 +3879,6 @@ describe("ChatCore agent turns", () => {
     const projectId = useFilesStore.getState().projectId;
     submit(rendered, "Edit the intro");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
-    // Recorded while the run is open, so a reload now leaves a trace to close.
     expect(JSON.parse(window.sessionStorage.getItem(storageKey) ?? "[]")).toEqual([
       expect.objectContaining({ projectId, snapshotId: "snap-1" }),
     ]);
@@ -4187,7 +4183,6 @@ describe("ChatCore agent turns", () => {
       const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
       expect(turn?.commits).toContainEqual({ id: "head-2", files: ["notes.md"] });
     });
-    // notes.md is one of the unlisted files.
     mocks.agentTurnFinish.mockResolvedValue(turnChangesFor(["main.tex"], { moreFiles: 1 }));
     await act(async () => finishRun(0, "Committed"));
     await rendered.findByTestId("turn-changes");

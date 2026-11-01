@@ -21,6 +21,7 @@ function installedHost() {
   return mocks.setTypstMathHost.mock.calls.at(-1)?.[0] as {
     render(source: string): Promise<unknown>;
     typstVersion(): string | null;
+    projectId(): string | null;
   };
 }
 
@@ -63,8 +64,15 @@ describe("installTypstMathHost", () => {
     await expect(installedHost().render("$foo$")).resolves.toEqual({ status: "failed", message: "unknown variable: foo" });
   });
 
-  it("describes a failed bridge call", async () => {
+  it("rejects a failed bridge call with its description, so the preview isn't cached as an error", async () => {
     mocks.renderTypstSnippet.mockRejectedValue("offline");
-    await expect(installedHost().render("$x$")).resolves.toEqual({ status: "failed", message: "described: offline" });
+    await expect(installedHost().render("$x$")).rejects.toThrow("described: offline");
+  });
+
+  it("names the open project, so a render is never reused in another one", () => {
+    const host = installedHost();
+    expect(host.projectId()).toBe("p1");
+    mocks.state.projectId = null;
+    expect(host.projectId()).toBeNull();
   });
 });

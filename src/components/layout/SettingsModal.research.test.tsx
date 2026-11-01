@@ -20,8 +20,6 @@ vi.mock("@/components/settings/research/ResearchSettingsSection", () => ({
   ResearchSettingsSection: () => <div data-testid="research-section-stub" />,
 }));
 
-// 0.4.8: research tasks are experimental. The switch lives in Experimentation and
-// Rust keeps it; the test stands in for that command with a store of its own.
 const flag = await vi.hoisted(async () => {
   const { create } = await import("zustand");
   return { store: create<{ enabled: boolean }>(() => ({ enabled: false })), set: vi.fn() };

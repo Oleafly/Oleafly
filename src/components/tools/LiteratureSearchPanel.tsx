@@ -651,12 +651,10 @@ export function LiteratureSearchPanel() {
   const resultsRef = useScrollTopOnChange(response);
   const [error, setError] = useState<string | null>(null);
 
-  // Honor command-palette / selection entry points that request document mode.
   useEffect(() => {
     if (modeRequest !== "document") return;
     setMode("document");
     setTab("search");
-    // Reset so a later manual open of Citation Search defaults to search.
     useDocumentCitationUiStore.setState({ modeRequest: "search" });
   }, [modeRequest]);
 

@@ -119,8 +119,6 @@ pub async fn approve_code(
         cookies: BTreeMap::new(),
     };
     let start = Url::parse(verification_uri_complete).map_err(|error| error.to_string())?;
-    // The link already carries the code, so it opens the page that names the
-    // device and offers the ways to sign in.
     let confirm = browser.send(start, None).await?;
     let done = browser
         .submit(&confirm, &format!("Continue with {provider_label}"))

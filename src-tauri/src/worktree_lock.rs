@@ -1,9 +1,3 @@
-//! Cross-process coordination for one project's visible worktree.
-//!
-//! The lock file lives in validated application data, never inside the source
-//! tree. Restores can therefore replace portable project files while readers
-//! and writers continue to coordinate on one stable inode.
-
 use oleafly_core::locking::{lock_file, STORAGE_LOCK_TIMEOUT};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
@@ -73,10 +67,6 @@ impl ProjectWorktreeLock {
         Ok(lock)
     }
 
-    /// Acquire the read lock under the caller's own budget, which is far
-    /// shorter than the storage default. Project enumeration runs on every
-    /// visit to the library, so one holder of the write lock must not stall
-    /// the whole listing, and every action that triggers one after it.
     pub(crate) fn shared_bounded(project_id: &str, budget: Duration) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
         let deadline = Instant::now() + budget;
@@ -103,10 +93,6 @@ impl ProjectWorktreeLock {
         Ok(lock)
     }
 
-    /// Take the write lock only when it is free. Background maintenance that
-    /// can safely run later must never queue readers behind itself: waiting
-    /// callers spend the full storage budget before failing, so one slow
-    /// holder stalls every project listing for that long.
     pub(crate) fn try_exclusive(project_id: &str) -> Result<Option<Self>, String> {
         let file = open_lock_file(project_id)?;
         match fs4::FileExt::try_lock(&file) {
@@ -122,9 +108,6 @@ impl ProjectWorktreeLock {
         Ok(Some(lock))
     }
 
-    /// Identity allocation must serialize on the same stable lock, but an
-    /// already-owned candidate with a pending restore is a collision to skip,
-    /// not a reason to abort allocation of an unrelated new project id.
     pub(crate) fn exclusive_for_identity_allocation(project_id: &str) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
         {
@@ -137,9 +120,6 @@ impl ProjectWorktreeLock {
         Ok(Self { _file: file, _held })
     }
 
-    /// Dedicated admission for project-open and Checkpoint restore recovery.
-    /// Every ordinary reader and writer rejects the durable marker instead of
-    /// observing a worktree whose prior restore may have stopped mid-commit.
     pub(crate) fn exclusive_for_restore_recovery(project_id: &str) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
         {
@@ -301,9 +281,6 @@ fn open_lock_file(project_id: &str) -> Result<File, String> {
     if bound != current {
         return Err("project worktree lock changed while it was opened".into());
     }
-    // On Windows hardening invokes icacls, so avoid repeating it for every
-    // status refresh or source read. Two first-open racers may both harden the
-    // same file, which is harmless.
     if newly_created {
         crate::fsperm::harden_file(&path);
     }

@@ -633,9 +633,6 @@ async fn a_racing_writer_fails_the_commit_and_the_retry_loses_nothing() {
     assert_eq!(laptop.read("main.tex").as_deref(), Some("desk edit"));
 }
 
-// A provider that can only emulate compare-and-swap can let a manifest built
-// on an older one overwrite a newer one. The computer whose manifest was lost
-// sees its stamp missing from the new manifest's lineage and keeps its files.
 #[tokio::test]
 async fn a_manifest_written_alongside_ours_never_deletes_the_files_it_missed() {
     let (store, cloud, mut desk, mut laptop) = paired().await;
@@ -654,7 +651,6 @@ async fn a_manifest_written_alongside_ours_never_deletes_the_files_it_missed() {
         .iter()
         .any(|file| file.path == "desk.tex"));
 
-    // The laptop's write lands as if it never saw the desk's manifest.
     store
         .put(&version_remote(cloud), shared, WriteMode::Overwrite)
         .await
@@ -694,8 +690,6 @@ async fn a_lineage_copied_forward_by_an_older_oleafly_still_lets_deletes_through
     desk.sync(&store, cloud).await;
     assert!(desk.read("notes.md").is_some());
 
-    // An older Oleafly removes the file and republishes, copying the lineage
-    // it doesn't understand without updating it.
     let mut older = remote_version(&store, cloud);
     older.files.retain(|file| file.path != "notes.md");
     older.stamp = Stamp::new(
@@ -1400,7 +1394,7 @@ async fn a_missing_file_names_itself_in_the_error() {
     assert_eq!(
         error,
         Some(RoundError::Store(StoreError::Verify(
-            "main.tex is missing from dropbox".into()
+            "main.tex is missing from memory".into()
         )))
     );
 }
@@ -2501,10 +2495,6 @@ async fn files_that_arrive_are_agreed_on_before_the_rest_of_the_round() {
     );
 }
 
-/// The two-computer flows above, against a real S3-compatible service. They
-/// run when `OLEAFLY_S3_TEST_ENDPOINT`, `_BUCKET`, `_KEY` and `_SECRET` are
-/// set (`_REGION` and `_PATH_STYLE=0` are optional), for example with MinIO in
-/// Docker, and skip otherwise. Each run works in a fresh folder of the bucket.
 mod s3_live {
     use super::{file_remote, now_ms, thesis, today, version_remote, Device, ProjectId};
     use crate::cloud::engine::delete_project_folder;
@@ -2654,7 +2644,6 @@ mod s3_live {
     }
 }
 
-/// The two-computer flow through the Drive store, against the fake Drive.
 mod drive_fake {
     use super::{thesis, today, version_remote, Device, ProjectId};
     use crate::cloud::engine::delete_project_folder;
@@ -2710,13 +2699,136 @@ mod drive_fake {
 }
 
 mod s3_fake {
-    use super::{thesis, today, version_remote, Device, ProjectId};
+    use super::{download_into, now_ms, thesis, today, version_remote, Device, ProjectId};
     use crate::cloud::engine::delete_project_folder;
     use crate::cloud::store::CloudStore;
     use crate::cloud::tests::fake_s3::{FakeS3, Hold};
     use std::sync::Arc;
     use std::time::Duration;
     use tokio::sync::Notify;
+
+    fn copies_of(fake: &FakeS3, cloud: ProjectId, path: &str) -> usize {
+        let key = format!("oleafly/projects/{cloud}/files/{path}~");
+        fake.with(|bucket| {
+            bucket
+                .objects
+                .keys()
+                .filter(|object| object.starts_with(&key))
+                .count()
+        })
+    }
+
+    #[tokio::test]
+    async fn a_daily_sweep_removes_old_objects_no_manifest_names_and_keeps_the_rest() {
+        let fake = FakeS3::start().await;
+        let store = fake.store("oleafly");
+        let cloud = ProjectId::new();
+        let mut desk = Device::new("Desk");
+        thesis(&desk);
+        desk.sync(&store, cloud).await;
+        assert_eq!(desk.project.swept_ms, 0);
+
+        let hour = 60 * 60 * 1000;
+        let now = now_ms();
+        let files = format!("oleafly/projects/{cloud}/files/");
+        let object = |path: &str, id: u128| format!("{files}{path}~{id:032x}");
+        let manifest = format!("oleafly{}", version_remote(cloud));
+        let crashed = object("main.tex", 1);
+        let young = object("main.tex", 2);
+        let after_manifest = object("notes/ideas.md", 3);
+        fake.with(|bucket| {
+            for key in bucket.objects.keys().cloned().collect::<Vec<_>>() {
+                bucket.modified.insert(key, now - 50 * hour);
+            }
+            bucket.modified.insert(manifest.clone(), now - 48 * hour);
+            for (key, age) in [
+                (&crashed, 60 * hour),
+                (&young, hour / 2),
+                (&after_manifest, 30 * hour),
+            ] {
+                bucket.put(key, b"never published");
+                bucket.modified.insert(key.clone(), now - age);
+            }
+        });
+        let present = |key: &str| fake.with(|bucket| bucket.objects.contains_key(key));
+
+        desk.write("main.tex", "two");
+        let swept = desk.sync(&store, cloud).await;
+        assert!(swept.error.is_none(), "{:?}", swept.error);
+        assert!(!present(&crashed));
+        assert!(present(&young));
+        assert!(present(&after_manifest));
+        assert!(desk.project.swept_ms >= now);
+        let office = Device::new("Office");
+        download_into(
+            &fake.store("oleafly"),
+            cloud,
+            &office.root(),
+            &office.dir.path().join("staging"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(office.read("main.tex").as_deref(), Some("two"));
+        assert!(office.read("project.json").is_some());
+
+        let later = object("main.tex", 4);
+        fake.with(|bucket| {
+            bucket.modified.insert(manifest.clone(), now - 48 * hour);
+            bucket.put(&later, b"never published");
+            bucket.modified.insert(later.clone(), now - 60 * hour);
+        });
+        desk.write("main.tex", "three");
+        desk.sync(&store, cloud).await;
+        assert!(present(&later), "one sweep a day");
+
+        fake.with(|bucket| {
+            bucket.modified.insert(manifest.clone(), now - 48 * hour);
+        });
+        desk.project.swept_ms -= 25 * hour;
+        desk.write("main.tex", "four");
+        desk.sync(&store, cloud).await;
+        assert!(!present(&later));
+        assert!(present(&young));
+    }
+
+    #[tokio::test]
+    async fn a_round_cut_off_before_it_publishes_leaves_every_published_file_readable() {
+        let fake = FakeS3::start().await;
+        let desk_store = fake.store("oleafly");
+        let cloud = ProjectId::new();
+        let mut desk = Device::new("Desk");
+        thesis(&desk);
+        let first = desk.sync(&desk_store, cloud).await;
+        assert!(first.error.is_none(), "{:?}", first.error);
+
+        desk.write("main.tex", "desk edit");
+        let manifest = format!("PUT oleafly{}", version_remote(cloud));
+        fake.with(|bucket| bucket.refused_prefix = Some(manifest));
+        let cut_off = desk.sync(&desk_store, cloud).await;
+        assert!(cut_off.error.is_some());
+        assert_eq!(cut_off.outcome.uploaded, 0);
+        fake.with(|bucket| bucket.refused_prefix = None);
+
+        let office = Device::new("Office");
+        let downloaded = download_into(
+            &fake.store("oleafly"),
+            cloud,
+            &office.root(),
+            &office.dir.path().join("staging"),
+        )
+        .await;
+        assert!(matches!(downloaded, Ok(Some(_))), "{:?}", downloaded.err());
+        assert_eq!(office.read("main.tex").as_deref(), Some("one"));
+
+        desk.project.remote_dirty = true;
+        let retried = desk.sync(&desk_store, cloud).await;
+        assert!(retried.error.is_none(), "{:?}", retried.error);
+        assert_eq!(retried.outcome.uploaded, 1);
+        assert_eq!(copies_of(&fake, cloud, "main.tex"), 1);
+        assert_eq!(copies_of(&fake, cloud, "project.json"), 1);
+        assert!(desk.project.unpublished.is_empty());
+    }
 
     #[tokio::test]
     async fn a_round_that_loses_the_race_leaves_the_winners_copy_in_the_bucket() {
@@ -2730,8 +2842,6 @@ mod s3_fake {
         desk.sync(&desk_store, cloud).await;
         laptop.download(&laptop_store, cloud).await;
 
-        // The laptop's round reads the manifest, then its upload waits while
-        // the desk's round uploads the same file and publishes.
         desk.write("main.tex", "desk edit");
         laptop.write("main.tex", "laptop edit");
         let key = format!("oleafly/projects/{cloud}/files/main.tex");
@@ -2754,13 +2864,18 @@ mod s3_fake {
         });
         assert!(won.error.is_none(), "{:?}", won.error);
         assert_eq!(lost.outcome.uploaded, 0);
-        // The copy the desk's manifest names is still there.
-        assert_eq!(
-            fake.with(|bucket| bucket.read(&key)),
-            Some(b"desk edit".to_vec())
-        );
+        let office = Device::new("Office");
+        download_into(
+            &fake.store("oleafly"),
+            cloud,
+            &office.root(),
+            &office.dir.path().join("staging"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(office.read("main.tex").as_deref(), Some("desk edit"));
 
-        // The laptop's next round downloads it and keeps both edits.
         laptop.project.remote_dirty = true;
         let merged = laptop.sync(&laptop_store, cloud).await;
         assert!(merged.error.is_none(), "{:?}", merged.error);

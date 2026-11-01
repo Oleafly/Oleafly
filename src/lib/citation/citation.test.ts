@@ -124,7 +124,6 @@ describe("generateCiteKey", () => {
   it("stays within [a-z] past 26 collisions (no invalid chars)", () => {
     const fields = { author: "Smith, Jane", year: "2021", title: "Deep nets" };
     const base = "smith2021deep";
-    // Occupy base plus a..z so the 27th collision must use a multi-letter suffix.
     const existing = new Set([base]);
     for (let i = 0; i < 26; i++) existing.add(base + String.fromCharCode(97 + i));
     const key = generateCiteKey(fields, existing);
@@ -214,9 +213,7 @@ describe("arxivXmlToBibtex", () => {
         <author><name>Jane Doe</name></author>
       </entry></feed>`;
     const bib = arxivXmlToBibtex(withSpecials);
-    // Raw specials must be escaped so the entry compiles as literal text.
     expect(bib).toContain("A \\& B\\_C 50\\%");
-    // The escaped title round-trips through the parser.
     const p = required(parseEntry(bib));
     expect(p.fields.title).toBe("A \\& B\\_C 50\\%");
   });

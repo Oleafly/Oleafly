@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { COMPOSER_KEY_STEP } from "./composer-input";
 
-/** Page Up and Page Down move five lines at a time. */
 const COMPOSER_PAGE_STEP = COMPOSER_KEY_STEP * 5;
 
 interface DragState {
@@ -13,10 +12,6 @@ interface DragState {
   frame: number | null;
 }
 
-/**
- * The bar on the composer's top edge: drag it, or use the slider keys, to
- * change the message box's resting height. Double-click resets it.
- */
 export function ComposerResizeHandle({
   height,
   min,
@@ -38,7 +33,6 @@ export function ComposerResizeHandle({
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
-    // Keeps the drag from selecting text in the transcript.
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     drag.current = { startY: event.clientY, startHeight: height, latest: height, frame: null };
@@ -51,8 +45,6 @@ export function ComposerResizeHandle({
     if (next === state.latest) return;
     state.latest = next;
     if (state.frame !== null) return;
-    // At most one preview per frame: the first move shows at once, later
-    // ones in the same frame land when it ends.
     onPreview(next);
     let shown = next;
     state.frame = requestAnimationFrame(() => {
@@ -75,8 +67,6 @@ export function ComposerResizeHandle({
     onCommit(state.latest);
   };
 
-  // The keys of a slider: the arrows move one line, Page Up and Page Down
-  // five, Home and End go to the smallest and largest box.
   const keyTarget = (key: string): number | null => {
     switch (key) {
       case "ArrowUp":

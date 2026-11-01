@@ -13,9 +13,6 @@ import { canManageServer, toServerRole } from "./roles";
 import { ServerCard } from "./ServerCard";
 import { useCollabStore, watchServers } from "./store";
 
-// After Remove, the shared projects that server held stay as ordinary
-// projects, renamed as local copies. Name each and the name it has now, so
-// nobody wonders where their sync went or looks for the old name.
 function DetachedProjects() {
   const { t } = useTranslation(["collab", "common", "native"]);
   const detached = useCollabStore((state) => state.detached);
@@ -72,7 +69,6 @@ export function CollaborationSection() {
   }, [requestedUrl]);
 
   useEffect(() => watchServers(), []);
-  // What a Remove left behind is news only while Settings stays open.
   useEffect(() => () => useCollabStore.getState().dismissDetached(), []);
 
   const managed = managing === null ? null : (servers.find((entry) => entry.server_id === managing) ?? null);

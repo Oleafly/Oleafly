@@ -20,22 +20,12 @@ use crate::routes::read_body_within;
 const TOOK_TOO_LONG: &str = "The upload took too long. Try again.";
 const TOO_BUSY: &str = "The server is busy with other large files. Try again in a moment.";
 const KIB: u64 = 1024;
-// Bytes already in memory go to the connection in copied pieces of this
-// size, so what the connection holds never pins all of them.
 #[cfg(test)]
 const SEND_PIECE: usize = 64 * 1024;
-// Smaller transfers pass without waiting for room in the budget.
 pub const SMALL_TRANSFER: u64 = 1024 * 1024;
 pub const DEFAULT_TRANSFER_BUDGET: u64 = 256 * 1024 * 1024;
-// How long a large transfer waits for room in the budget before the server
-// answers that it is busy.
 pub const TRANSFER_WAIT: Duration = Duration::from_secs(30);
-// Large transfers one account may have under way at once, so one person
-// reading many files slowly can't hold the budget everyone shares.
 pub const LARGE_TRANSFERS_PER_ACCOUNT: usize = 4;
-// The share of the budget one account's large transfers may hold together.
-// A transfer the account starts with nothing else under way may take more,
-// up to the whole budget, so a large snapshot still goes through.
 pub const ACCOUNT_SHARE_DIVISOR: u32 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,18 +73,12 @@ struct UnderWay {
 
 type Accounts = Arc<Mutex<HashMap<AccountId, UnderWay>>>;
 
-// Uploads are held whole in memory, and downloads are read from the store
-// in pieces as the client takes them. Each large transfer takes its size
-// from one shared budget and waits while the budget is spent, so many
-// people opening a project at once take turns, and how many large
-// downloads keep a file or a bucket read open stays bounded.
 #[derive(Clone)]
 pub struct Transfers {
     timing: Arc<Mutex<UploadTiming>>,
     gate: Arc<Mutex<Gate>>,
     wait: Arc<Mutex<Duration>>,
     accounts: Accounts,
-    // Large transfers in line for room in the budget.
     in_line: Arc<AtomicUsize>,
 }
 
@@ -125,8 +109,6 @@ impl Drop for AccountTurn {
     }
 }
 
-// A large transfer's place in line, from the first time it finds no room
-// until it gets room or stops waiting.
 struct InLine<'a>(&'a AtomicUsize);
 
 impl<'a> InLine<'a> {
@@ -155,7 +137,6 @@ struct Unsent {
 
 struct Sending {
     unsent: Option<Unsent>,
-    // The connection, while it waits for the store's next piece.
     waiting: Option<Waker>,
 }
 
@@ -163,11 +144,6 @@ fn sending_of(shared: &Mutex<Sending>) -> std::sync::MutexGuard<'_, Sending> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-// A large download. When its send deadline passes, a timer drops what is
-// left of it, with its budget share and the account's turn, even while the
-// connection waits on a client that stopped reading and so asks the body
-// for nothing more, and wakes a connection waiting on the store. Asking
-// after that fails, and the connection is closed.
 struct Deadlined {
     sending: Arc<Mutex<Sending>>,
     left: u64,
@@ -238,10 +214,6 @@ impl HttpBody for Deadlined {
     }
 }
 
-// The response body for a large download. Its budget share and the
-// account's turn go back once its last piece is out, once the client goes,
-// or at the send deadline, when what is left is dropped and the response
-// ends, so a client that stops reading can't keep them.
 fn deadlined(held: Held, pieces: Pieces, left: u64) -> Body {
     let deadline = held.deadline;
     let sending = Arc::new(Mutex::new(Sending {
@@ -272,10 +244,6 @@ fn deadlined(held: Held, pieces: Pieces, left: u64) -> Body {
 }
 
 impl TransferPermit {
-    // Sends a stored file as the response body. A small one is read whole
-    // first, so a damaged one is refused before anything goes out. A large
-    // one is read from the store a piece at a time as the client takes it,
-    // and a damaged one ends in an error before its last piece.
     pub async fn send(self, reader: BlobReader) -> Result<Body, ServerError> {
         let Some(held) = self.0 else {
             let bytes = reader.read_all().await.map_err(|error| {
@@ -287,7 +255,6 @@ impl TransferPermit {
         Ok(deadlined(held, reader.pieces(), left))
     }
 
-    // Sends bytes already in memory, in copied pieces.
     #[cfg(test)]
     fn keep_with(self, bytes: Bytes) -> Body {
         let Some(held) = self.0 else {
@@ -305,7 +272,6 @@ impl TransferPermit {
     }
 }
 
-// A busy answer says when to try again.
 pub async fn retry_soon(mut response: Response) -> Response {
     if response.status() == StatusCode::SERVICE_UNAVAILABLE
         && !response.headers().contains_key(header::RETRY_AFTER)
@@ -393,8 +359,6 @@ impl Transfers {
         })))
     }
 
-    // Waits for room. A transfer joins the line only once the budget has
-    // queued it, so one that finds room at once is never counted.
     async fn wait_in_line<T>(&self, room: impl Future<Output = T>) -> T {
         let mut room = std::pin::pin!(room);
         let mut place = None;
@@ -413,15 +377,12 @@ impl Transfers {
         self.in_line.load(Ordering::SeqCst)
     }
 
-    // Room no transfer holds or has been promised.
     #[cfg(any(test, feature = "test-support"))]
     pub fn room_left(&self) -> u64 {
         let gate = self.gate.lock().unwrap_or_else(PoisonError::into_inner);
         gate.permits.available_permits() as u64 * KIB
     }
 
-    // The size of the large transfers an account has under way, counted
-    // until each one's room goes back.
     #[cfg(any(test, feature = "test-support"))]
     pub fn under_way(&self, account: AccountId) -> u64 {
         let accounts = self.accounts.lock().unwrap_or_else(PoisonError::into_inner);

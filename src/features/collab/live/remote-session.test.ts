@@ -340,8 +340,6 @@ describe("RemoteDocumentSession", () => {
     expect(channel.opens).toHaveLength(1);
   });
 
-  // Only a broken state can leave typing that doesn't fit, so these two set it
-  // up directly. The session must open again and say the typing was lost.
   it("opens again with the shared text when its unsent typing can't be kept, and says so", async () => {
     const channel = new FakeChannel("abc");
     const discarded = vi.fn();
@@ -534,6 +532,40 @@ describe("RemoteDocumentSession", () => {
     expect(editor.doc).toBe("shared text!");
     channel.drain();
     expect(channel.text).toBe("shared text!");
+  });
+
+  it("keeps typing made while an open came back empty and sends it once a later open finds the file", async () => {
+    const channel = new FakeChannel("shared text");
+    const transport = channel.transport();
+    let release: (value: CollabDocOpened | null) => void = () => {};
+    let found = false;
+    const onDiscarded = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "text", {
+      transport: {
+        ...transport,
+        open: (path, onMessage) =>
+          found
+            ? transport.open(path, onMessage)
+            : new Promise((resolve) => {
+                release = resolve;
+              }),
+      },
+      onDiscarded,
+    });
+    const editor = new Editor(session);
+    const opening = session.open();
+    editor.type([{ from: 4, to: 4, insert: "!" }]);
+    release(null);
+    await opening;
+    expect(session.phase).toBe("detached");
+    expect(session.unconfirmed).toBe(true);
+    found = true;
+    await session.open();
+    expect(session.phase).toBe("open");
+    expect(editor.doc).toBe("shared text!");
+    channel.drain();
+    expect(channel.text).toBe("shared text!");
+    expect(onDiscarded).not.toHaveBeenCalled();
   });
 
   it("applies only the messages newer than the opened revision", async () => {

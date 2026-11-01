@@ -222,6 +222,7 @@
     "pathStyleHint": "MinIO et la plupart des serveurs auto-hébergés en ont besoin."
   },
   "errors": {
+    "clock_skew": "Cet ordinateur n'est pas à l'heure, donc {{provider}} refuse ses requêtes. Réglez la date et l'heure exactes pour continuer à synchroniser.",
     "code_invalid": "Ce code n'a pas fonctionné. Réessayez.",
     "device_name_empty": "Saisissez un nom.",
     "device_name_invalid": "Le nom de l'ordinateur ne peut pas contenir \\ / : * ? \" < > | ni de caractères de contrôle, et fait 32 caractères au maximum.",

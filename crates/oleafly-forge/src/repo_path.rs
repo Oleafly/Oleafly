@@ -48,7 +48,6 @@ impl RepoPath {
         self.segments.join("/")
     }
 
-    /// The repository's own name, the last segment.
     pub fn name(&self) -> &str {
         self.segments.last().map(String::as_str).unwrap_or_default()
     }

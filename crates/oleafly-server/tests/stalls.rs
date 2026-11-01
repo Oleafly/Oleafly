@@ -15,10 +15,6 @@ use polling::opened;
 use reqwest::StatusCode;
 use tokio::sync::{Mutex, MutexGuard};
 
-// Each test runs the server on the test's only thread, so a ping that waits
-// shows the server's thread was busy with the large change rather than
-// beside it. They time that thread, so they live in a binary of their own
-// and run one at a time, with no other test using the CPU.
 static ONE_AT_A_TIME: Mutex<()> = Mutex::const_new(());
 
 async fn alone() -> MutexGuard<'static, ()> {
@@ -64,10 +60,6 @@ async fn next_change(socket: &mut Socket) -> Option<ServerFrame> {
     }
 }
 
-// The longest a ping waits on this machine just now, with nothing large
-// going on. A large change may add at most LONGEST_STALL to it, so a slow
-// or busy machine doesn't fail these tests, while a large change handled
-// on the server's thread still does.
 async fn quiet_stall(socket: &mut Socket) -> Duration {
     let done = AtomicBool::new(false);
     let stop = async {

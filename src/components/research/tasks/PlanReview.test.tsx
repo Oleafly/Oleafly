@@ -120,7 +120,6 @@ describe("PlanReview", () => {
     render(<PlanReview task={planReady()} busy={false} onApprove={vi.fn(async () => {})} onDiscard={vi.fn(async () => {})} />);
     const editor = await screen.findByRole("textbox", { name: copy.title });
 
-    // 30,000 characters of CJK text are about 90 KB.
     fireEvent.change(editor, { target: { value: "計".repeat(30_000) } });
 
     expect(screen.getByText(copy.tooLong)).toBeInTheDocument();

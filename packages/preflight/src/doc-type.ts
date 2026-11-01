@@ -15,6 +15,5 @@ export function looksLikeResumeSource(text: string): boolean {
       .map((match) => matchResumeSectionHeading(match[1]))
       .filter(isAtsResumeSection),
   );
-  // Two or more distinct standard resume headings is a strong signal.
   return sections.size >= 2;
 }

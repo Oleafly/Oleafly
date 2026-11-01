@@ -35,16 +35,12 @@ pub struct StdioConnection {
     next_id: AtomicU64,
     child: tokio::sync::Mutex<Option<Child>>,
     tree: Mutex<Option<oleafly_sandbox::process::ProcessTreeGuard>>,
-    /// The end of what the server wrote to stderr (never shown; tests read
-    /// its size).
     #[cfg_attr(not(test), allow(dead_code))]
     stderr: Arc<Mutex<VecDeque<u8>>>,
     closed: Arc<AtomicBool>,
     tasks: Mutex<Vec<tokio::task::JoinHandle<()>>>,
 }
 
-/// Reads one line of at most `max` bytes into `line` (without the newline).
-/// `Ok(false)` at the end of the stream.
 pub(crate) async fn read_frame<R: AsyncBufRead + Unpin>(
     reader: &mut R,
     line: &mut Vec<u8>,
@@ -101,7 +97,6 @@ fn fail_all(pending: &Pending, message: &str) {
     }
 }
 
-/// An error object's message, cut short.
 fn error_message(error: &Value) -> String {
     let message = error["message"]
         .as_str()
@@ -116,7 +111,6 @@ fn error_message(error: &Value) -> String {
 async fn route(message: Value, pending: &Pending, writer: &Writer) {
     let id = message.get("id").cloned();
     if let Some(method) = message["method"].as_str() {
-        // A request from the server (a notification has no id).
         if let Some(id) = id.filter(|id| !id.is_null()) {
             let reply = if method == "ping" {
                 json!({"jsonrpc": "2.0", "id": id, "result": {}})
@@ -141,8 +135,6 @@ async fn route(message: Value, pending: &Pending, writer: &Writer) {
 }
 
 impl StdioConnection {
-    /// Starts `command` with the server's own environment over the user's
-    /// (provider keys left out).
     pub async fn spawn(
         command: &str,
         args: &[String],
@@ -314,13 +306,11 @@ impl StdioConnection {
         .await
     }
 
-    /// How many bytes of stderr are kept (for tests; never shown).
     #[cfg(test)]
     pub fn stderr_len(&self) -> usize {
         lock(&self.stderr).len()
     }
 
-    /// Stops the server and its children.
     pub async fn close(&self) {
         self.closed.store(true, Ordering::Release);
         self.writer.lock().await.take();

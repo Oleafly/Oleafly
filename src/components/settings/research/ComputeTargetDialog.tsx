@@ -27,7 +27,6 @@ import {
   type TargetField,
 } from "./compute-api";
 
-/** What the form edits: numbers stay text until saving. */
 export interface Draft {
   label: string;
   host: string;
@@ -97,7 +96,6 @@ export function draftOf(target: ComputeTarget): Draft {
 
 const optional = (value: string) => (value.trim() === "" ? null : value.trim());
 
-/** A whole number, `null` when empty, `NaN` when it is not one. */
 function count(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed === "") return null;
@@ -117,7 +115,6 @@ function cuaSpaceFromDraft(id: string, draft: Draft): ComputeTarget {
   };
 }
 
-/** The fields an SSH host and a Slurm cluster share. */
 function remoteFromDraft(id: string, draft: Draft, parseErrors: ParseErrors) {
   const port = count(draft.port);
   if (Number.isNaN(port)) parseErrors.port = "port";
@@ -152,7 +149,6 @@ function slurmDefaultsFromDraft(draft: Draft, parseErrors: ParseErrors): Extract
   };
 }
 
-/** The target the draft describes, and the errors the form shows. */
 export function targetFromDraft(
   original: ComputeTarget,
   draft: Draft,
@@ -181,7 +177,6 @@ function Field({
   error,
   children,
 }: Readonly<{ id: string; label: string; hint?: string; error?: string; children: ReactNode }>) {
-  // An error replaces the hint.
   const note = error || hint;
   return (
     <div className="grid gap-1.5">

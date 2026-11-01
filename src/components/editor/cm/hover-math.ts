@@ -1,8 +1,3 @@
-// Pure helpers for the C1 hover equation preview: given a document and an
-// offset, find the math construct enclosing the offset without touching
-// CodeMirror. All scanning is bounded by `radius` so hovering inside a huge
-// document never walks the whole text.
-
 import { scanMathExpressions } from "@oleafly/editor";
 
 export interface EnclosingMath {
@@ -30,8 +25,6 @@ function stripStar(env: string): string {
   return env.endsWith("*") ? env.slice(0, -1) : env;
 }
 
-// A `\begin` preceded by an odd number of backslashes is `\\` + "begin"
-// (a line break followed by plain text), not an environment opener.
 function isEscaped(text: string, index: number): boolean {
   let slashes = 0;
   for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) slashes++;
@@ -39,13 +32,10 @@ function isEscaped(text: string, index: number): boolean {
 }
 
 interface OpenBegin {
-  env: string; // raw name, star included
-  bodyFrom: number; // absolute index just past the closing `}` of \begin{env}
+  env: string;
+  bodyFrom: number;
 }
 
-// Innermost math `\begin{env}` before `offset` that is not closed again before
-// `offset`. Nesting is tracked per environment name so `\begin{align}` inside
-// `\begin{equation}` resolves to the align.
 function findUnclosedBegin(
   text: string,
   offset: number,
@@ -77,9 +67,6 @@ function findUnclosedBegin(
   return innermost;
 }
 
-// Matching `\end{env}` for a begin whose body starts at `searchFrom`,
-// nesting-aware for same-name environments. Returns the absolute index of the
-// `\end` backslash, or null when no match starts before `limit`.
 function findMatchingEnd(
   text: string,
   env: string,

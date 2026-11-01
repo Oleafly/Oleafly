@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { ChatPlanNote } from "@/store/chats";
 
-/** The note under a plan-mode reply that left no new plan. */
 export function PlanNote({ note }: Readonly<{ note: ChatPlanNote }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (

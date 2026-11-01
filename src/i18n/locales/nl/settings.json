@@ -1488,6 +1488,7 @@
         "missing": "Niet gevonden op deze computer."
       },
       "managedIdle": "Niet in gebruik. Oleafly gebruikt eerst de kopie die op deze computer is gevonden.",
+      "superseded": "Niet in gebruik. Oleafly gebruikt nu {{tool}} {{version}}.",
       "download": {
         "optional": "Optioneel. Oleafly gebruikt de kopie op deze computer al.",
         "license": "{{license}}-licentie.",

@@ -45,12 +45,10 @@ async function connectAgent(page: Page) {
     `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
   );
   expect(connected, "the provider connection fixture must be available").toBe(true);
-  // 0.4.8: research tasks are experimental and off by default.
   const enabled = await page.evaluate<boolean>(`window.__researchTasksSet?.(true) ?? false`);
   expect(enabled, "the research tasks fixture must be available").toBe(true);
 }
 
-/** Opens the sidebar if it is collapsed; the rail with its tabs is inside it. */
 async function showSidebar(page: Page) {
   await page.evaluate(
     `(() => { const show = document.querySelector('[aria-label^="Show sidebar"]'); if (show) show.click(); })()`,
@@ -60,15 +58,11 @@ async function showSidebar(page: Page) {
 test("research tasks stay off until the Experimentation switch is turned on", async ({ tauriPage }) => {
   test.setTimeout(90_000);
   const run = Date.now().toString(36);
-  // A spec that ran earlier in this data dir may have turned tasks on.
   const reset = await tauriPage.evaluate<boolean>(`window.__researchTasksSet?.(false) ?? false`);
   expect(reset, "the research tasks fixture must be available").toBe(true);
   await createBlankProject(tauriPage, `Research switch ${run}`);
-  // The rail lives in the sidebar, which a fresh project may open collapsed:
-  // show it and check the Files tab is there before reading the Research tab.
   await showSidebar(tauriPage);
   await expect(tauriPage.locator('[data-tour="rail-files"]')).toHaveCount(1, { timeout: 10_000 });
-  // No Research tab in the rail, no Research section in Settings.
   await expect(tauriPage.locator('[data-tour="rail-research"]')).toHaveCount(0);
   await openSettings(tauriPage, "experimentation");
   await expect(tauriPage.locator('[data-testid="settings-section-research"]')).toHaveCount(0);
@@ -172,12 +166,10 @@ test("a research task runs in Rust, reaches review, and records the same native 
   expect(task.nativeSessionId).toBeTruthy();
   expect(task.resultSessionId).toBe(task.nativeSessionId);
   expect(server.requestCount()).toBeGreaterThan(0);
-  // The task changed no project files: its review is only its research record.
   expect(task.changedPaths.length).toBeGreaterThan(0);
   expect(task.changedPaths.every((path) => path.startsWith(`${task.recordDir}/`))).toBe(true);
 
   await clickTabByText(tauriPage, '[data-testid="research-task-detail"]', "Review");
-  // The record applies without a preview.
   await detail.getByText(`Apply ${task.changedPaths.length} selected`, { exact: true }).click();
   await expect(detail).toContainText("Completed", { timeout: 20_000 });
   await tauriPage.press("body", "Escape");
@@ -248,10 +240,6 @@ test("a linked folder keeps its access profile, previews a source, and unlinks w
       timeout: 20_000,
     });
 
-    // The button disables itself while the panel reloads, so a click can land
-    // on it between the readiness check and the commit that disables it and be
-    // discarded. Click until the dialog is actually up, the way the project
-    // creation helper does for the same reason.
     await tauriPage.waitForFunction(`(() => {
       const button = document.querySelector('[data-testid="research-root-link"]');
       return !!button && !button.disabled;
@@ -353,8 +341,6 @@ test("research project setup previews the planned tree and creates its queued fi
   await expect(dialog.getByText("Main document: main.md", { exact: true })).toBeVisible({
     timeout: 20_000,
   });
-  // The preview mirrors the Source Tree, so rows show the leaf name at a depth
-  // rather than the full path.
   for (const name of ["main.md", "sources", "reading-list.md", "claims.md", "notes.md"]) {
     await expect(dialog.getByText(name, { exact: true })).toBeVisible();
   }

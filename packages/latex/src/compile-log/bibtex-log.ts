@@ -26,10 +26,6 @@ function category(message: string): LogDiagnostic["category"] {
   return /didn't find a database entry/.test(message) ? "undefined-citation" : "bibtex";
 }
 
-/**
- * Parse a BibTeX .blg log into structured diagnostics.
- * Only the first {@link MAX_COMPILE_LOG_BYTES} characters are examined. Never throws.
- */
 export function parseBibtexLog(log: string): LogDiagnostic[] {
   const out: LogDiagnostic[] = [];
   const text = log.slice(0, MAX_COMPILE_LOG_BYTES);

@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO ve kendi barındırdığınız sunucuların çoğu buna ihtiyaç duyar."
   },
   "errors": {
+    "clock_skew": "Bu bilgisayarın saati yanlış olduğu için {{provider}} hizmeti bu bilgisayardan gelen istekleri kabul etmiyor. Eşitlemeye devam etmek için tarihi ve saati doğru ayarlayın.",
     "code_invalid": "O kod çalışmadı. Tekrar deneyin.",
     "device_name_empty": "Bir ad girin.",
     "device_name_invalid": "Bilgisayar adı \\ / : * ? \" < > | veya denetim karakterleri içeremez ve en fazla 32 karakter olabilir.",

@@ -1,5 +1,3 @@
-//! Pieces several commands share: argument types, install hints, how a
-//! build result is printed.
 use std::path::Path;
 
 use clap::ValueEnum;
@@ -9,9 +7,7 @@ use serde_json::{json, Value};
 use crate::contract::{Context, LogMode};
 use crate::native::BuildResult;
 
-/// JSON logs default to the last 16 KiB.
 pub const JSON_LOG_TAIL_BYTES: usize = 16 * 1024;
-/// People see the last 40 lines of a failed build's log.
 pub const HUMAN_LOG_TAIL_LINES: usize = 40;
 const LOG_TRUNCATION_MARKER: &str = "[Oleafly: compiler output truncated]";
 
@@ -58,7 +54,6 @@ impl From<CliCompiler> for TexFlavor {
     }
 }
 
-/// How to install an engine on this computer.
 pub fn install_hint(tool: &str) -> Option<String> {
     let (macos, linux, windows, home) = match tool {
         "tectonic" => (
@@ -100,7 +95,6 @@ pub fn install_hint(tool: &str) -> Option<String> {
     })
 }
 
-/// The last `max_bytes` of a log, starting at a line.
 pub fn log_tail_bytes(log: &str, max_bytes: usize) -> (String, bool) {
     if log.len() <= max_bytes {
         return (log.to_string(), false);
@@ -122,7 +116,6 @@ fn last_lines(text: &str, count: usize) -> String {
     lines[lines.len().saturating_sub(count)..].join("\n")
 }
 
-/// A build result as JSON, its log cut to `--log`.
 pub fn build_json(result: &BuildResult, mode: LogMode) -> Value {
     let mut value = serde_json::to_value(result).unwrap_or_else(|_| json!({}));
     let Some(fields) = value.as_object_mut() else {
@@ -160,8 +153,6 @@ fn location(file: Option<&str>, line: Option<u32>) -> String {
     }
 }
 
-/// The lines a person sees after a build (stdout for success, stderr for
-/// the failure summary). Warnings go through `ctx.warn` first.
 pub fn print_build(ctx: &Context, result: &BuildResult, streamed: bool) {
     if ctx.json() {
         return;
@@ -232,7 +223,6 @@ pub fn on_off(value: bool) -> String {
     if value { "on" } else { "off" }.to_string()
 }
 
-/// A path for display, relative to `base` when it is inside it.
 pub fn display_path(path: &Path, base: &Path) -> String {
     path.strip_prefix(base).map_or_else(
         |_| path.display().to_string(),

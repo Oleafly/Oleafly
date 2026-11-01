@@ -50,11 +50,6 @@ export function SidebarPanelHeader({
   );
 }
 
-/**
- * Shared Explorer and Source Control section chrome. The caller owns the
- * content state so a resizable panel can remain the source of truth for its
- * collapsed size while this component keeps the header reachable.
- */
 export function SidebarSection({
   id,
   title,

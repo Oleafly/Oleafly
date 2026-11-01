@@ -11,7 +11,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
-  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
   listenForResearchTaskDeltas: vi.fn(async () => () => {}),
   watchResearchTask: vi.fn(async () => {}),
   listResearchTaskApprovals: vi.fn(async () => []),

@@ -1550,10 +1550,6 @@ export class LanguageServiceClient {
       return;
     }
     if (notification.params.version === undefined) {
-      // Both pinned servers publish unversioned diagnostics. Keep only the
-      // latest candidate for this document epoch. A response to a request
-      // serialized after didOpen/didChange acknowledges the epoch, and a
-      // quiet window lets any older in-flight publication be replaced.
       epoch.candidate = { params: notification.params };
       if (epoch.barrierAcknowledged) {
         this.scheduleDiagnosticCandidate(notification.params.uri, epoch);

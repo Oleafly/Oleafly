@@ -10,7 +10,6 @@ import {
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 
-/** A queued follow-up's attachment: a stored file, sent by reference. */
 export type QueuedAttachment = DraftAttachment;
 
 export interface QueuedFollowUp {
@@ -149,7 +148,6 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
   queuedByChat: {},
 
   beginTurn: (chatId, threadId, clientTurnId, userText) => {
-    // The optimistic turn: a user message item exists before any request.
     const fold = new TurnFold(clientTurnId, clientTurnId).pushUserMessage(userText);
     folds.set(chatId, fold);
     const snapshot = structuredClone(fold.snapshot());
@@ -295,8 +293,6 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
   threadFor: async (chatId, projectId, claimPrewarmed, opts) => {
     const existing = get().threadByChat[chatId];
     if (existing) return existing;
-    // A thread persisted on the chat survives a restart: adopt it so the
-    // conversation continues its rollout instead of forking a new thread.
     const persisted = opts?.persistedThreadId;
     if (persisted) {
       set((state) => ({ threadByChat: { ...state.threadByChat, [chatId]: persisted } }));
@@ -338,7 +334,6 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
   },
 }));
 
-/** Stored attachments (page images included) that queued follow-ups still use. */
 export function queuedAttachmentRefs(): string[] {
   const refs = new Set<string>();
   for (const queue of Object.values(useAgentTurnsStore.getState().queuedByChat)) {

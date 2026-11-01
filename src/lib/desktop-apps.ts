@@ -1,7 +1,3 @@
-// 0.4.8 I: Desktop apps through Cua Driver. Rust owns the settings, the
-// approval gate and the tool itself (it answers `desktop_apps` before any
-// webview round trip); this module only talks to it. Keep its imports small:
-// the chat toolsets load it with the app.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { ToolSet } from "@/lib/chat-types";
 
@@ -13,9 +9,7 @@ export interface DesktopAppsToolSpec {
 
 export interface AllowedApp {
   name: string;
-  /** macOS. */
   bundleId?: string;
-  /** Windows and Linux: the canonical program path. */
   executable?: string;
 }
 
@@ -29,7 +23,6 @@ export interface DesktopAppsSettings {
   apps: AllowedApp[];
   sites: AllowedSite[];
   scriptedControl: boolean;
-  /** Every action asks in a dialog first; off by default. */
   askBeforeActions: boolean;
 }
 
@@ -48,7 +41,6 @@ export interface InstalledApp extends AllowedApp {
   blocked?: BlockReason;
 }
 
-/** A program and its arguments, for `openTerminalWith`. */
 export interface TerminalCommand {
   program: string;
   args: string[];
@@ -65,14 +57,11 @@ export interface DesktopAppsStatus {
   driverVersion: string | null;
   driverProblem: DriverProblem | null;
   minimumVersion: string;
-  /** The official install line, shown for copying. */
   installLine: string;
-  /** The same line as a program and its arguments, for the terminal. */
   installCommand: TerminalCommand;
   permissions: {
     accessibility: boolean | null;
     screenRecording: boolean | null;
-    /** Cua Driver answered that it hasn't checked yet; the grant step finds out. */
     unchecked?: boolean;
   } | null;
   gnomeHelper: boolean | null;
@@ -82,7 +71,6 @@ export interface DesktopAppsStatus {
   spacesInstallLine: string;
   spacesInstallCommand: TerminalCommand;
   settings: DesktopAppsSettings;
-  /** Allowed apps (Windows and Linux) whose program is no longer on this computer, by `executable`. */
   missingApps: string[];
 }
 
@@ -95,7 +83,6 @@ export interface DesktopAppsTestReport {
 
 export const cuaDriverStatus = () => invoke<DesktopAppsStatus>("cua_driver_status");
 
-/** Rust validates and asks natively before anything widens. */
 export const cuaDriverSettingsSet = (settings: DesktopAppsSettings) =>
   invoke<DesktopAppsSettings>("cua_driver_settings_set", { settings });
 
@@ -103,18 +90,15 @@ export const cuaDriverInstalledApps = () => invoke<InstalledApp[]>("cua_driver_i
 
 export const cuaDriverPickApp = () => invoke<InstalledApp | null>("cua_driver_pick_app");
 
-/** The picker rows' icons as data URLs, by row key; apps without one are left out. */
 export const cuaDriverAppIcons = (keys: string[]) =>
   invoke<Record<string, string>>("cua_driver_app_icons", { keys });
 
 export const cuaDriverTest = () => invoke<DesktopAppsTestReport>("cua_driver_test");
 
-/** The tool spec, which exists only once the connector is on with something allowed. */
 export const cuaDriverToolSpec = () => invoke<DesktopAppsToolSpec | null>("cua_driver_tool_spec");
 
 let toolSpec: DesktopAppsToolSpec | null = null;
 
-/** Refreshes the cached tool spec: `null` until the connector is ready. */
 export async function syncDesktopAppsTool(): Promise<void> {
   if (!isTauri()) {
     toolSpec = null;
@@ -127,10 +111,6 @@ export async function syncDesktopAppsTool(): Promise<void> {
   }
 }
 
-/**
- * The `desktop_apps` tool for chat runs, or nothing. Rust answers the call
- * before it reaches the webview, so `execute` only runs outside the app.
- */
 export function createDesktopAppsTools(): ToolSet {
   if (!toolSpec) return {};
   return {

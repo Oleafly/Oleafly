@@ -1,7 +1,3 @@
-//! Statistics calculators for the Tools panel: p-values, sample sizes, and
-//! confidence intervals. All distributions and their survival/inverse CDF
-//! functions come from `statrs`.
-
 use statrs::distribution::{ChiSquared, ContinuousCDF, Normal, StudentsT};
 
 fn normal_quantile(p: f64) -> Result<f64, String> {
@@ -57,9 +53,6 @@ pub struct PValueResult {
     pub label: String,
 }
 
-/// p-value for a test statistic. `test`: "t-two", "t-one", "z-two",
-/// "z-one", or "chi" (chi-square upper tail). `df` applies to the t and
-/// chi-square tests.
 #[tauri::command]
 pub async fn stats_p_value(
     test: String,
@@ -124,10 +117,6 @@ pub struct SampleSizeResult {
     pub finite_population: Option<u64>,
 }
 
-/// Sample size for a proportion: `n0 = z^2 * p(1-p) / e^2`, with the
-/// finite-population correction `n = n0 / (1 + (n0-1)/N)` when a population
-/// size is given. `proportion`, `margin_error`, and `confidence` are percents
-/// (e.g. 50, 5, 95).
 #[tauri::command]
 pub async fn stats_sample_size(
     proportion: f64,
@@ -186,10 +175,6 @@ pub struct ConfidenceIntervalResult {
     pub interval_method: String,
 }
 
-/// Confidence interval for a mean (`mode = "mean"`: mean, sd, n) or a
-/// proportion (`mode = "proportion"`: successes out of n). `confidence` is a
-/// percent. Mean intervals use the t distribution; proportions use the Wilson
-/// score interval.
 #[tauri::command]
 pub async fn stats_confidence_interval(
     mode: String,
@@ -266,8 +251,6 @@ pub async fn stats_confidence_interval(
             }
             let p_hat = successes / n;
             let z = normal_quantile(probability)?;
-            // Wilson's score interval remains informative for zero/all
-            // successes, unlike the Wald interval whose width collapses.
             let z_squared = z * z;
             let denominator = 1.0 + z_squared / n;
             let center = (p_hat + z_squared / (2.0 * n)) / denominator;
@@ -350,12 +333,10 @@ mod tests {
 
     #[tokio::test]
     async fn p_values_match_reference_implementation() {
-        // Two-tailed t with t=2.34, df=28.
         let r = stats_p_value("t-two".into(), 2.34, Some(28.0))
             .await
             .unwrap();
         assert!(close(r.p, 0.026640, 1e-5), "p = {}", r.p);
-        // Two-tailed z with z=1.96.
         let r = stats_p_value("z-two".into(), 1.96, None).await.unwrap();
         assert!(close(r.p, 0.049996, 1e-4), "p = {}", r.p);
         let r = stats_p_value("z-two".into(), 10.0, None).await.unwrap();
@@ -365,7 +346,6 @@ mod tests {
             .await
             .unwrap();
         assert!(close(r.p, 0.05, 1e-3), "p = {}", r.p);
-        // One-tailed t (upper) with t=-2.0, df=10.
         let r = stats_p_value("t-one".into(), -2.0, Some(10.0))
             .await
             .unwrap();
@@ -378,7 +358,6 @@ mod tests {
         let r = stats_sample_size(50.0, 5.0, 95.0, None).await.unwrap();
         assert_eq!(r.infinite_population, 385);
         assert!(close(r.z, 1.959964, 1e-4));
-        // With a population of 1000 the corrected size is 278.
         let r = stats_sample_size(50.0, 5.0, 95.0, Some(1000.0))
             .await
             .unwrap();
@@ -421,8 +400,6 @@ mod tests {
         )
         .await
         .is_err());
-        // A finite percentage can still round to an unusable inverse-CDF
-        // probability at either endpoint.
         assert!(stats_sample_size(50.0, 5.0, 99.999_999_999_999_99, None)
             .await
             .is_err());
@@ -468,7 +445,6 @@ mod tests {
             r.margin_of_error
         );
         assert!(close(r.lower, 88.470, 1e-3));
-        // Proportion 81/263, 95% Wilson score interval.
         let r = stats_confidence_interval(
             "proportion".into(),
             95.0,

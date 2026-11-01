@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-/** Turns web search and page reading on or off for the chat. */
 export function WebToggle({
   on,
   onChange,

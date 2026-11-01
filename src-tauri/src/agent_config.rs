@@ -25,10 +25,8 @@ scope, report a complete final answer, and do not spawn further agents.";
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MultiAgentConfig {
-    /// How deep agents may nest (2 = a run's children may not delegate).
     #[serde(alias = "max_agent_depth")]
     pub max_agent_depth: u32,
-    /// Concurrent running agents per session, audited default 8.
     #[serde(alias = "max_concurrent_subagents")]
     pub max_concurrent_subagents: usize,
     #[serde(alias = "min_wait_timeout_ms")]
@@ -39,10 +37,8 @@ pub struct MultiAgentConfig {
     pub default_wait_timeout_ms: u64,
     #[serde(alias = "wait_agent_enabled")]
     pub wait_agent_enabled: bool,
-    /// Delegation guidance injected into the parent's system prompt.
     #[serde(alias = "usage_hint_text")]
     pub usage_hint_text: String,
-    /// Developer instructions appended to every child's system prompt.
     #[serde(alias = "subagent_developer_instructions")]
     pub subagent_developer_instructions: String,
 }
@@ -63,7 +59,6 @@ impl Default for MultiAgentConfig {
 }
 
 impl MultiAgentConfig {
-    /// Enforce the audited invariants: wait bounds ordered and positive.
     pub fn sanitized(self) -> Self {
         let mut config = self;
         if config.max_agent_depth == 0 {

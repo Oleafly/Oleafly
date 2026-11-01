@@ -85,7 +85,6 @@ interface AgentTodoState {
   clear: () => void;
 }
 
-// In-run plan checklist the agent maintains via update_todos / get_todos.
 export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
   projectId: null,
   activeChatId: null,
@@ -143,7 +142,6 @@ export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
     }),
 }));
 
-// E2E / devtools: seed a plan checklist without a model call.
 if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __agentTodosSet?: (todos: AgentTodo[]) => void;

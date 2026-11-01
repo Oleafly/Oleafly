@@ -28,8 +28,6 @@ pub(crate) struct Observation {
     pub(crate) budget_left: bool,
 }
 
-/// A paused Web Inspector breakpoint looks just like a hang, so development
-/// builds leave the watchdog off unless OLEAFLY_WEB_WATCHDOG opts in.
 pub(crate) fn enabled(development_build: bool, opted_in: bool) -> bool {
     !development_build || opted_in
 }

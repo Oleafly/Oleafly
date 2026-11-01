@@ -58,13 +58,6 @@ pub fn slash_path(path: &Path) -> String {
         .join("/")
 }
 
-/// Visits every file of a project that is source, handing `visit` its path
-/// relative to `root` and its full path. Folders every other scan skips are
-/// not entered (`is_skipped_scan_directory`: dot folders such as `.venv` and
-/// `.idea`, `node_modules`, `target`, `build`, `out` and LaTeX's generated
-/// folders), and links are not followed.
-/// A folder below the root that can't be read (a root-owned Docker volume,
-/// say) is left out and the walk goes on; only the root failing is an error.
 pub fn walk_source_tree(
     root: &Path,
     label: &str,
@@ -80,8 +73,6 @@ pub fn walk_source_tree(
     walk.folder(root, 0)
 }
 
-/// [`walk_source_tree`], handing `unreadable` the root-relative path of each
-/// folder it couldn't read.
 pub fn walk_source_tree_noting(
     root: &Path,
     label: &str,
@@ -98,7 +89,6 @@ pub fn walk_source_tree_noting(
     walk.folder(root, 0)
 }
 
-/// [`walk_source_tree`] with its own rule for the folders it leaves out.
 pub fn walk_tree_skipping(
     root: &Path,
     label: &str,
@@ -202,8 +192,6 @@ mod tests {
             std::fs::write(directory.path().join(kept).join("part.tex"), "").unwrap();
         }
         std::fs::write(directory.path().join("main.tex"), "").unwrap();
-        // A Python environment, an IDE folder, latexmk output and LaTeX's
-        // generated folders hold files that are not the project's.
         for skipped in [
             ".venv/lib/site-packages/pkg",
             ".idea",
@@ -278,7 +266,6 @@ mod tests {
         std::fs::create_dir_all(&locked).unwrap();
         std::fs::write(locked.join("hidden.tex"), "").unwrap();
         std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
-        // Root reads anything; the case can't be made there.
         if std::fs::read_dir(&locked).is_ok() {
             std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
             return;

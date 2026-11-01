@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { cssColorToHex, readClassVariables } from "./css-color";
+import { installCanvas } from "./test-canvas";
+
+beforeEach(() => {
+  installCanvas(null);
+});
 
 describe("cssColorToHex", () => {
   it("normalizes hex forms without touching the canvas", () => {

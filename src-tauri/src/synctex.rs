@@ -1,6 +1,3 @@
-//! SyncTeX for the app: the parsing and search live in
-//! `oleafly_doctools::synctex`; this module finds a project's build folder
-//! and serves the commands.
 use oleafly_doctools::synctex::{forward_hit, inverse, map_source_line, parse};
 pub use oleafly_doctools::synctex::{SynctexForwardHit, SynctexHit, SynctexRect};
 
@@ -10,7 +7,6 @@ fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String
     let build = paths::existing_build_dir(project_id)?
         .ok_or_else(|| "failed to read synctex: this project has not been compiled".to_string())?;
     oleafly_doctools::synctex::read_synctex(&build).map_err(|error| match error.code {
-        // The folder is named for the log, as 0.4.7 named the file.
         "synctex.not_compiled" => format!(
             "failed to read synctex in {}: this project has not been compiled",
             build.display()

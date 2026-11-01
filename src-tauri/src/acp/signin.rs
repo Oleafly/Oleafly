@@ -1,5 +1,3 @@
-//! Signing in to an agent (in Oleafly, with an API key, or in a terminal),
-//! signing out, and the questions an agent asks the user (forms and links).
 use oleafly_acp::elicitation::{self, ElicitationView, ELICITATION_TTL_MS};
 use oleafly_acp::limits::{AUTH_ELICITATION_TIMEOUT, AUTH_TIMEOUT};
 use oleafly_acp::IncomingRequest;
@@ -28,9 +26,6 @@ fn env_name_ok(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// Names that change how a program or shell starts. An agent's sign-in
-/// method may not set them: the command it asks for would run with them in
-/// the user's terminal.
 fn env_name_blocked(name: &str) -> bool {
     let upper = name.to_ascii_uppercase();
     upper.starts_with("LD_")
@@ -67,9 +62,6 @@ fn env_name_blocked(name: &str) -> bool {
 }
 
 impl AcpRuntime {
-    /// Signs in with `method_id`. API-key methods take the key, which is
-    /// added to the session's redactor before anything is sent. The request
-    /// may take 180 s, or 15 minutes once the agent asks the user something.
     pub async fn authenticate(
         self: &Arc<Self>,
         id: &str,
@@ -158,12 +150,6 @@ impl AcpRuntime {
         self.snapshot(id).await
     }
 
-    /// The terminal command that signs in to an agent: the agent's own
-    /// sign-in command when it names one, else the agent's launch with the
-    /// method's arguments. Never carries `PATH` or secrets. What the agent
-    /// wrote (command, arguments, environment) comes from the agent, so a
-    /// conversation on another machine gets none of it: a terminal here
-    /// could not sign in there anyway.
     pub async fn sign_in_command(
         &self,
         agent_id: &str,
@@ -171,7 +157,6 @@ impl AcpRuntime {
         method_id: &str,
     ) -> Result<TerminalSignIn, String> {
         let definition = self.definition(agent_id)?;
-        // The conversation's project: Hermes signs in per project profile.
         let mut project_id = None;
         let methods = match session_id {
             Some(id) => {
@@ -207,8 +192,6 @@ impl AcpRuntime {
             })
             .await??
         };
-        // A project's Hermes sessions run in its own profile, which has its
-        // own sign-in: the terminal signs in to that profile.
         if let Some(project_id) = &project_id {
             let settings = self.hermes_settings(&definition, project_id);
             sign_in_profile(&mut launch, &definition, project_id, &settings)?;
@@ -266,9 +249,6 @@ impl AcpRuntime {
         self.snapshot(id).await
     }
 
-    /// `elicitation/create`: a form or a link for the user. Task sessions
-    /// decline (nobody watches them); at most four wait at once; unanswered
-    /// ones are cancelled after 10 minutes.
     pub(super) fn elicitation_requested(
         self: &Arc<Self>,
         session: &Arc<LiveSession>,
@@ -343,8 +323,6 @@ impl AcpRuntime {
         Ok(())
     }
 
-    /// Answers a question: `accept` (with the form content), `decline` or
-    /// `cancel`. The answer itself is never stored.
     pub async fn respond_elicitation(
         &self,
         id: &str,
@@ -366,8 +344,6 @@ impl AcpRuntime {
                 "accept" => {
                     let content = content.unwrap_or_default();
                     let answer = elicitation::accept(&pending.view, &content)?;
-                    // A password or token typed into the form is removed from
-                    // whatever the agent echoes back from now on.
                     for field in pending.view.fields.iter().filter(|field| field.secret) {
                         if let Some(value) = content.get(&field.name).and_then(Value::as_str) {
                             session.redactor.add_secret(value);
@@ -383,8 +359,6 @@ impl AcpRuntime {
         self.finish_elicitation(&session, elicitation_id, action, answer)
     }
 
-    /// `elicitation/complete`: the link the agent asked the user to open
-    /// finished; its card closes.
     pub(super) fn elicitation_completed(&self, session: &LiveSession, params: &Value) {
         let Some(agent_id) = params["elicitationId"].as_str() else {
             return;
@@ -431,7 +405,6 @@ impl AcpRuntime {
             .map_err(|error| error.to_string())
     }
 
-    /// Cancels every open question (the agent disconnected).
     pub(super) fn expire_elicitations_now(&self, session: &LiveSession) {
         let ids: Vec<String> = session
             .state
@@ -443,7 +416,6 @@ impl AcpRuntime {
         }
     }
 
-    /// `_auth/status_update`: how the agent is signed in, for the usage view.
     pub(super) fn auth_status_update(&self, session: &LiveSession, params: &Value) {
         let Ok(mut state) = session.state.lock() else {
             return;
@@ -469,8 +441,6 @@ impl AcpRuntime {
     }
 }
 
-/// The launch a terminal sign-in starts from: with a project in Hermes's
-/// project mode, the project's profile (`hermes -p oleafly-<project> …`).
 fn terminal_env(
     launch_env: &[(String, std::ffi::OsString)],
     handoff: Option<&str>,
@@ -530,9 +500,6 @@ fn sign_in_profile(
     super::hermes::apply_profile(launch, &definition_args, project_id, settings)
 }
 
-/// A question as it is stored and shown: every text the agent wrote is
-/// redacted here, field by field (the stored event skips the generic pass,
-/// which would turn the `secret` flags into text). The link stays whole.
 fn redact_view(view: &mut ElicitationView, redactor: &oleafly_acp::redact::Redactor) {
     view.message = redactor.text(&view.message);
     for field in &mut view.fields {
@@ -600,8 +567,6 @@ mod tests {
         }
     }
 
-    /// A runtime with the fixture agent and one stored conversation whose
-    /// sign-in method came from the agent.
     fn runtime_with_method(
         method: AuthMethod,
         remote: Option<RemoteTarget>,
@@ -714,7 +679,6 @@ mod tests {
     #[tokio::test]
     async fn a_conversation_on_another_machine_gets_no_agent_written_sign_in() {
         let mut method = agent_method(&[("CLAUDE_CODE_ENTRYPOINT", "cli")]);
-        // A command that exists on this machine: it still must not run.
         method.terminal_command = Some(TerminalAuthCommand {
             command: crate::acp::tests::fixture_python()
                 .to_string_lossy()
@@ -764,7 +728,6 @@ mod tests {
         };
         sign_in_profile(&mut project, &definition, "thesis", &settings).unwrap();
         assert_eq!(&project.args[..2], ["-p", "oleafly-thesis"]);
-        // Hermes's own default profile: the launch as it is.
         let mut default = launch();
         sign_in_profile(&mut default, &definition, "thesis", &Default::default()).unwrap();
         assert_eq!(default.args, launch().args);

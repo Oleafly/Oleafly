@@ -137,7 +137,6 @@ function TestEmail({
     try {
       const result = await collabAdminEmailTest(serverId);
       setTest(result.delivered ? { state: "sent", to: result.sent_to } : { state: "refused", detail: result.error });
-      // A delivered test proves email works, which can unlock notifications.
       if (result.delivered) onDelivered();
     } catch (error) {
       setTest({ state: "failed", message: collabErrorText(error) });
@@ -243,8 +242,6 @@ export function EmailTab({ server, actor }: Readonly<{ server: CollabServer; act
   if (!status) return <LoadingState size="compact" label={t(($) => $.collab.admin.email.loading)} />;
 
   const failure = status.last_failure;
-  // Notifications stay off while email fails. An older server doesn't say
-  // whether it works, so only its settings count there.
   const working = status.configured && status.working !== false;
   const notificationsNote = () => {
     if (!status.configured) return t(($) => $.collab.admin.email.needsSettings);

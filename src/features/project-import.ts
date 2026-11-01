@@ -77,7 +77,6 @@ export function importFileKind(path: string): ProjectImportFileKind | null {
   return null;
 }
 
-/** Project kinds the registry can import a file kind into. */
 export function importTargetsForKind(
   kind: ProjectImportFileKind,
 ): { target: ImportTarget; label: string; recommended?: boolean }[] {
@@ -130,7 +129,6 @@ export function showConversionNotice(projectId: string, target: ImportTarget): v
   );
 }
 
-/** Download an arXiv e-print and open it as a new project. */
 export function normalizeArxivImportId(input: string): string {
   let id = input.trim().replace(/^arxiv:\s*/i, "");
   if (/^https?:\/\//i.test(id)) {
@@ -163,7 +161,6 @@ async function openImported(projectId: string): Promise<void> {
   await files.openProject(projectId);
 }
 
-/** Import a repository from a Git hosting account and open it. */
 export async function importForgeRepository(
   base: string,
   repository: Pick<ForgeRepo, "fullName">,
@@ -171,7 +168,6 @@ export async function importForgeRepository(
   await openImported(await forgeImportRepo(base, repository.fullName));
 }
 
-/** Clone a repository by its HTTPS or SSH address and open it. */
 export async function cloneRepository(url: string): Promise<void> {
   await openImported(await gitCloneProject(url.trim()));
 }

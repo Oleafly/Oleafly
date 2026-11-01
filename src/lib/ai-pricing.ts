@@ -1,17 +1,14 @@
-// Approximate public list prices (USD per 1M tokens) for common models.
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 
 export interface ModelPrice {
   inputPerMTok: number;
   outputPerMTok: number;
-  // A second rate card for prompts longer than `aboveInputTokens`.
   longPrompt?: { aboveInputTokens: number; inputPerMTok: number; outputPerMTok: number };
   note?: string;
 }
 
 const PRICES: Record<string, ModelPrice> = {
-  // OpenAI
   "gpt-6.1-sol": { inputPerMTok: 2, outputPerMTok: 10 },
   "gpt-6-sol": { inputPerMTok: 2, outputPerMTok: 10 },
   "gpt-6-astra": { inputPerMTok: 10, outputPerMTok: 50 },
@@ -25,7 +22,6 @@ const PRICES: Record<string, ModelPrice> = {
   "gpt-4.1": { inputPerMTok: 2, outputPerMTok: 8 },
   "gpt-4.1-mini": { inputPerMTok: 0.4, outputPerMTok: 1.6 },
   "o3-mini": { inputPerMTok: 1.1, outputPerMTok: 4.4 },
-  // Anthropic
   "claude-fable-5-1": { inputPerMTok: 10, outputPerMTok: 50 },
   "claude-opus-5-5": { inputPerMTok: 4, outputPerMTok: 20 },
   "claude-sonnet-5-5": { inputPerMTok: 2, outputPerMTok: 10 },
@@ -38,7 +34,6 @@ const PRICES: Record<string, ModelPrice> = {
   "claude-opus-5": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
   "claude-haiku-4-5": { inputPerMTok: 1, outputPerMTok: 5 },
-  // Groq (approx)
   "openai/gpt-oss-120b": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
   "openai/gpt-oss-20b": { inputPerMTok: 0.075, outputPerMTok: 0.3 },
   "llama-3.3-70b-versatile": { inputPerMTok: 0.59, outputPerMTok: 0.79 },
@@ -53,7 +48,6 @@ const PRICES: Record<string, ModelPrice> = {
   "gemini-2.5-pro": { inputPerMTok: 1.25, outputPerMTok: 10 },
   "gemini-2.5-flash": { inputPerMTok: 0.3, outputPerMTok: 2.5 },
   "gemini-2.5-flash-lite": { inputPerMTok: 0.1, outputPerMTok: 0.4 },
-  // OpenRouter catalog ids
   "openai/gpt-4o-mini": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
   "anthropic/claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
   "google/gemini-3.8-flash": { inputPerMTok: 0.825, outputPerMTok: 4.125 },
@@ -64,7 +58,6 @@ const PRICES: Record<string, ModelPrice> = {
   "deepseek-flash": { inputPerMTok: 0.3, outputPerMTok: 1.2 },
   "deepseek-v4-flash": { inputPerMTok: 0.3, outputPerMTok: 1.2 },
   "deepseek-v4-pro": { inputPerMTok: 1.32, outputPerMTok: 3.96 },
-  // Mistral
   "mistral-large-latest": { inputPerMTok: 0.5, outputPerMTok: 1.5 },
   "mistral-medium-latest": { inputPerMTok: 1.5, outputPerMTok: 7.5 },
   "magistral-medium-latest": { inputPerMTok: 2, outputPerMTok: 5 },
@@ -107,10 +100,6 @@ export function lookupPrice(modelId: string): ModelPrice {
   if (PRICES[modelId]) return PRICES[modelId];
   const bare = modelId.includes("/") ? modelId.split("/").pop() ?? modelId : modelId;
   if (PRICES[bare]) return PRICES[bare];
-  // Longest PAID key that is a substring of the id. Free entries (mistral, gemma2,
-  // glm-*, ...) are skipped so a paid id like "mistral-large-2411" doesn't get
-  // mispriced as the free "mistral" family. Only `modelId.includes(k)` is tested
-  // (not the reverse), so "gpt-4" can't borrow "gpt-4o" pricing.
   const paid = Object.entries(PRICES)
     .filter(([, v]) => v.inputPerMTok > 0 || v.outputPerMTok > 0)
     .sort((a, b) => b[0].length - a[0].length);

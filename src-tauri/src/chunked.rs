@@ -6,11 +6,6 @@ use serde::Serialize;
 use tauri::ipc::Channel;
 use tokio::sync::mpsc;
 
-// Large command results stream to the webview as ordered chunks over a
-// Channel instead of one giant invoke return, mirrored by
-// src/lib/chunked-ipc.ts. The receiver acks every chunk (`chunked_ack`); the
-// sender keeps at most WINDOW chunks unacknowledged, so a slow webview slows
-// the producer instead of buffering the whole payload in the IPC queue.
 pub const MARKER: &str = "oleafly-chunked-message-v1";
 pub const CHUNK_BYTES: usize = 256 * 1024;
 const WINDOW: u64 = 4;
@@ -49,9 +44,6 @@ impl ChunkedMessage {
     }
 }
 
-/// Splits text into the ordered message sequence, respecting char boundaries.
-/// The live send path slices lazily; this stays as the reference splitting
-/// the tests assert against.
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn chunk_text(transfer_id: &str, text: &str) -> Vec<ChunkedMessage> {
     let mut messages = vec![ChunkedMessage::Start {
@@ -87,8 +79,6 @@ pub fn chunk_text(transfer_id: &str, text: &str) -> Vec<ChunkedMessage> {
 
 static ACKS: Mutex<Option<HashMap<String, mpsc::UnboundedSender<u64>>>> = Mutex::new(None);
 
-/// Removes the ack entry on drop, so a transfer future cancelled mid-send
-/// (webview closed, command aborted) cannot leak its registry slot.
 struct AckGuard(String);
 
 impl Drop for AckGuard {
@@ -116,9 +106,6 @@ pub fn chunked_ack(transfer_id: String, sequence: u64) {
     }
 }
 
-/// Streams `text` over `channel` with ack-driven backpressure. Chunks are
-/// sliced on the fly, so only the in-window copies exist at once instead of
-/// the whole payload being materialized up front.
 pub async fn send_chunked_text(
     channel: &Channel<ChunkedMessage>,
     text: &str,
@@ -152,8 +139,6 @@ pub async fn send_chunked_text(
             .map_err(|e| format!("chunked send failed: {e}"))?;
         while sequence.saturating_sub(acked) >= WINDOW {
             match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
-                // An ack can only cover what was actually sent; a bogus
-                // higher sequence must not disable backpressure.
                 Ok(Some(sequence_acked)) => acked = acked.max(sequence_acked.min(sequence)),
                 Ok(None) => return Err("chunked ack channel closed".to_string()),
                 Err(_) => return Err("chunked ack timeout".to_string()),

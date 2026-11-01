@@ -4,7 +4,6 @@ const DEFAULT_MIN_LENGTH = 30;
 const DEFAULT_MAX_PARAGRAPHS = 20;
 const DEFAULT_MAX_TERMS = 15;
 
-/** English + academic stop words (OpenLeaf baseline). */
 const STOP_WORDS = new Set([
   "a",
   "an",
@@ -152,10 +151,6 @@ export interface SplitParagraphOptions {
   maxParagraphs?: number;
 }
 
-/**
- * Split LaTeX source into prose paragraphs for citation scanning.
- * Uses body between `\begin{document}` … `\end{document}` when present.
- */
 export function splitIntoParagraphs(
   source: string,
   options?: SplitParagraphOptions,
@@ -191,11 +186,6 @@ export function splitIntoParagraphs(
   return paragraphs;
 }
 
-/**
- * Clean LaTeX and produce a short keyword query for literature search.
- * Short cleaned prose (≤200 chars) is returned as-is; longer text is
- * reduced to the first `maxTerms` content tokens (default 15).
- */
 export function extractKeywords(text: string, maxTerms: number = DEFAULT_MAX_TERMS): string {
   let cleaned = text;
   cleaned = cleaned.replace(/%[^\n\r\u2028\u2029]*/g, "");
@@ -236,7 +226,6 @@ export function keywordQuery(text: string, maxTerms: number = DEFAULT_MAX_TERMS)
   return words.slice(0, maxTerms).join(" ");
 }
 
-/** Strip simple LaTeX markup to plain text. */
 export function cleanLatex(text: string): string {
   let cleaned = text;
   cleaned = cleaned.replace(/%[^\n\r\u2028\u2029]*/g, "");

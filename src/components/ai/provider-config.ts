@@ -12,9 +12,7 @@ import type { AppConfig, CustomProvider, Persona, StoredModel } from "@/lib/taur
 export interface ProviderState {
   provider: string;
   model: string;
-  /** The active provider's saved key or host; empty for a key-less custom provider. */
   apiKey: string;
-  /** The active provider can take a request: it has a key or host, or is a custom provider that needs none. Gate the chat on this, not on `apiKey`. */
   ready: boolean;
   keysMap: Record<string, string>;
   providerModelsMap: Record<string, StoredModel[]>;

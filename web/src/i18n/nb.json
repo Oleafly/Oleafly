@@ -48,6 +48,11 @@
     "stoppedTitle": "Koblet fra",
     "stoppedDescription": "Last inn siden på nytt for å koble til igjen."
   },
+  "leave": {
+    "title": "Forlate dette prosjektet?",
+    "description": "Noen av endringene dine har ikke nådd serveren ennå. Bli værende til de er sendt, eller forlat prosjektet og mist dem.",
+    "confirm": "Forlat"
+  },
   "access": {
     "changed": "Rollen din i dette prosjektet er nå {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Trekk tilbake",
     "acceptAll": "Godta alle",
     "rejectAll": "Avslå alle",
+    "rejectAllConfirm": {
+      "title": "Avslå alle forslag i {{file}}?",
+      "description": "Den opprinnelige teksten kommer tilbake i filen for alle i prosjektet. Ventende forslag: {{number}}.",
+      "confirm": "Avslå alle"
+    },
     "pending_one": "{{count}} forslag",
     "pending_other": "{{count}} forslag",
     "card": "Forslag fra {{name}}",

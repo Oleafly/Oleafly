@@ -27,7 +27,6 @@ function Dismiss({ tone, onDismiss }: Readonly<{ tone: WorkspaceBannerTone; onDi
   );
 }
 
-// How far a figure that is going up now got.
 function UploadProgressLine({ path }: Readonly<{ path: string }>) {
   const { t } = useTranslation(["collab"]);
   const progress = useFileNotices((state) => state.progress[path]);
@@ -107,8 +106,6 @@ function TooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
   );
 }
 
-// A figure that would push the whole project past the server's limit. It
-// goes up by itself once the limit is raised and the upload is tried again.
 function ProjectTooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
   const { t } = useTranslation(["collab"]);
   const retrying = useFileNotices((state) => state.retrying);

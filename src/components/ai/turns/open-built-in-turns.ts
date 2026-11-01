@@ -14,13 +14,9 @@ const STORAGE_KEY = "oleafly.open-built-in-turns";
 interface OpenTurn {
   projectId: string;
   snapshotId: string;
-  /** The page load that began the turn. */
   page: string;
 }
 
-// Differs between loads of the window (performance.timeOrigin also survives
-// hot module reloads), so a run still going in this page is never taken for a
-// leftover.
 const PAGE = pageIdentity();
 
 function pageIdentity(): string {
@@ -85,10 +81,6 @@ export function forgetOpenBuiltInTurn(snapshotId: string): void {
 const closingIds = new Set<string>();
 let closing: Promise<void> = Promise.resolve();
 
-/**
- * Finishes the turns an earlier load of this window began and never finished.
- * Resolves once every such turn is closed; it never rejects.
- */
 export function closeLeftoverBuiltInTurns(): Promise<void> {
   const leftover = readTurns().filter(
     (turn) => turn.page !== PAGE && !closingIds.has(turn.snapshotId),

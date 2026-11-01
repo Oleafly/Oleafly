@@ -205,7 +205,6 @@ export function toolCallInput(args: unknown): string | undefined {
   return Object.keys(kept).length > 0 ? JSON.stringify(kept) : undefined;
 }
 
-/** A literature search that found nothing because indexes did not answer. */
 function searchFailed(data: Record<string, unknown> | null): boolean {
   return (
     Array.isArray(data?.records) &&
@@ -335,8 +334,6 @@ function literatureResult(value: unknown): LiteratureResultView | null {
   };
 }
 
-/** The papers a search returned: `records` from the merged search, or the
- * `results` and `works` that chats saved before it still hold. */
 function literatureHits(data: Record<string, unknown> | null): unknown[] {
   if (Array.isArray(data?.records)) return data.records;
   if (Array.isArray(data?.results)) return data.results;
@@ -353,7 +350,6 @@ const LITERATURE_SOURCE_NAMES: Record<string, string> = {
   alphaxiv: "alphaXiv",
 };
 
-/** Why each index of a merged search did not answer, naming the index once. */
 function sourceFailures(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value

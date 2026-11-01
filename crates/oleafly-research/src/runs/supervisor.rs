@@ -1,8 +1,3 @@
-//! The process that owns a local run. The app (or the daemon) starts it
-//! detached with `--oleafly-run-supervisor <run dir>`; it starts the
-//! confined command, writes `stdout.log`, `metrics.jsonl`, `status.json` and
-//! `exit_code`, stops the command on `cancel` or at its timeout, and exits.
-//! Because it is its own process, a run keeps going when Oleafly quits.
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
@@ -21,15 +16,11 @@ const POLL: Duration = Duration::from_millis(500);
 const TERMINATE_GRACE: Duration = Duration::from_secs(5);
 const LOG_CAPPED: &str = "[Oleafly stopped saving this log at 2 GiB]\n";
 
-/// What `status.json` says about a run.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusFile {
-    /// `running` or `finished`.
     pub state: String,
     pub child_pid: Option<u32>,
-    /// When the process `child_pid` names started, so a pid another process
-    /// has reused is never mistaken for it.
     pub child_started: Option<u64>,
     pub started_at: i64,
     pub finished_at: Option<i64>,
@@ -42,7 +33,6 @@ pub fn read_status(run_dir: &Path) -> Option<StatusFile> {
     serde_json::from_slice(&std::fs::read(run_dir.join("status.json")).ok()?).ok()
 }
 
-/// Writes `status.json` through a rename, so a reader never sees half.
 pub fn write_status(run_dir: &Path, status: &StatusFile) -> Result<(), String> {
     let staging = run_dir.join(format!("status.json.{}.tmp", std::process::id()));
     let bytes = serde_json::to_vec(status).map_err(|error| error.to_string())?;
@@ -52,8 +42,6 @@ pub fn write_status(run_dir: &Path, status: &StatusFile) -> Result<(), String> {
         .map_err(|error| format!("The run status could not be saved: {error}"))
 }
 
-/// Handles `--oleafly-run-supervisor <dir>` when it is the first argument.
-/// Call it first in `main`, before any app setup.
 pub fn run_if_requested() -> Option<i32> {
     let mut args = std::env::args_os().skip(1);
     if args.next()? != SUPERVISOR_FLAG {
@@ -65,8 +53,6 @@ pub fn run_if_requested() -> Option<i32> {
     })
 }
 
-/// Supervises the run in `run_dir` until it ends. Returns the process exit
-/// code of the supervisor itself (0 once the outcome is recorded).
 pub fn run_supervisor(run_dir: &Path) -> i32 {
     let started_at = now_ms();
     let spec = match std::fs::read(run_dir.join("spec.json"))
@@ -135,8 +121,6 @@ fn run_folder(spec: &RunSpec) -> Result<PathBuf, String> {
     Ok(resolved)
 }
 
-/// Appends lines to the log, up to its cap, and their metrics to
-/// `metrics.jsonl`.
 struct Recorder {
     log: std::fs::File,
     metrics: std::fs::File,
@@ -176,13 +160,8 @@ impl Recorder {
     }
 }
 
-/// The longest piece of output held in memory at once. A longer line (a
-/// progress bar that only returns the carriage, binary data) is recorded in
-/// pieces of this size instead of being buffered whole.
 const MAX_LINE_BYTES: usize = 64 * 1024;
 
-/// Reads up to the next newline into `buffer`, but at most `max` bytes in
-/// all. Returns how many bytes were read; 0 at the end of the stream.
 fn read_line_capped(
     reader: &mut impl BufRead,
     buffer: &mut Vec<u8>,
@@ -265,7 +244,6 @@ fn wait_with_stop(child: &mut Child, run_dir: &Path, timeout: Duration) -> Resul
     }
 }
 
-/// Asks the run's process group to stop, then kills it after a grace period.
 fn terminate(child: &mut Child, guard: oleafly_sandbox::process::ProcessTreeGuard) {
     #[cfg(unix)]
     {
@@ -278,8 +256,6 @@ fn terminate(child: &mut Child, guard: oleafly_sandbox::process::ProcessTreeGuar
             std::thread::sleep(Duration::from_millis(100));
         }
     }
-    // Dropping the guard kills the group (Unix) or closes the kill-on-close
-    // job (Windows).
     drop(guard);
     let _ = child.wait();
 }
@@ -351,7 +327,6 @@ fn supervise(run_dir: &Path, spec: &RunSpec, started_at: i64) -> Result<(), Stri
     .collect();
     let stop = wait_with_stop(&mut child, run_dir, spec.timeout)?;
     let exit_code = if stop == Stop::Exited {
-        // Background jobs the command left behind end with it.
         let status = child.wait().ok();
         drop(guard);
         status.and_then(|status| status.code())
@@ -359,8 +334,6 @@ fn supervise(run_dir: &Path, spec: &RunSpec, started_at: i64) -> Result<(), Stri
         terminate(&mut child, guard);
         None
     };
-    // Pipes close once every process of the group is gone; do not wait
-    // forever on a process that escaped the group.
     let (sender, receiver) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         for reader in readers {
@@ -414,7 +387,6 @@ mod tests {
     fn output_without_a_newline_is_recorded_in_bounded_pieces() {
         let dir = tempfile::tempdir().unwrap();
         let recorder = recorder(dir.path());
-        // A progress bar that never ends its line, then a normal line.
         let mut output = vec![b'x'; 3 * MAX_LINE_BYTES + 100];
         output.extend_from_slice(b"\nloss=0.5\n");
         drain(std::io::Cursor::new(output), recorder.clone())
@@ -423,9 +395,6 @@ mod tests {
 
         let log = std::fs::read(dir.path().join("stdout.log")).unwrap();
         let lines: Vec<&[u8]> = log.split(|byte| *byte == b'\n').collect();
-        // Three full pieces (each gets the newline it lacked), the 100 byte
-        // rest of the long line, the metric line and the empty tail after the
-        // last newline.
         assert_eq!(lines.len(), 6, "{}", log.len());
         assert!(lines[..3].iter().all(|line| line.len() == MAX_LINE_BYTES));
         assert!(lines[..3]

@@ -558,7 +558,6 @@ fn a_json_array_upload_is_refused_above_its_lower_limit_before_conversion() {
     assert_eq!(&*upload_bytes_within(&json, 4).unwrap(), b"%PDF");
     let error = upload_bytes_within(&json, 3).unwrap_err();
     assert_eq!(error_code(&error), "mathpix.pdf_too_large_ipc");
-    // The raw form keeps the full limit.
     let raw = tauri::ipc::InvokeBody::Raw(b"%PDF".to_vec());
     assert_eq!(&*upload_bytes_within(&raw, 0).unwrap(), b"%PDF");
 }
@@ -578,8 +577,6 @@ fn the_request_id_header_is_optional_but_must_be_valid() {
 
 #[tokio::test]
 async fn cancelling_an_upload_abandons_it_and_creates_no_pdf() {
-    // A server that takes the request and never answers: the upload is still
-    // running when the user cancels.
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
     let holder = std::thread::spawn(move || {
@@ -616,7 +613,6 @@ async fn a_cancel_that_arrived_before_the_upload_sends_nothing() {
     assert_eq!(error_code(&error), "mathpix.cancelled");
     assert!(server.requests("/").is_empty());
 
-    // Not cancelled: the upload goes through as before.
     let id = api
         .pdf_upload_unless_cancelled(&keys(), b"%PDF", None, &AtomicBool::new(false))
         .await
@@ -651,7 +647,6 @@ fn a_cancel_that_arrives_before_the_wait_still_stops_it() {
     assert!(late.flag.load(Ordering::SeqCst));
     drop(late);
 
-    // A wait that ends without a cancel leaves nothing behind.
     drop(registry.register("finished-request"));
     assert!(!registry.lock().contains_key("finished-request"));
 
@@ -664,7 +659,6 @@ fn a_cancel_that_lands_as_the_upload_finishes_still_stops_the_wait() {
     let registry = CancelRegistry::default();
     let upload = registry.register("request");
     registry.cancel("request");
-    // The upload's answer came in before it saw the flag.
     drop(upload);
     let wait = registry.register("request");
     assert!(wait.flag.load(Ordering::SeqCst));
@@ -680,12 +674,12 @@ async fn a_cancelled_image_read_sends_nothing_and_a_running_one_stops() {
     assert_eq!(error_code(&error), "mathpix.cancelled");
     assert!(server.requests("/").is_empty());
 
-    // A server that takes the request and never answers.
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
+    let (release, released) = std::sync::mpsc::channel::<()>();
     let holder = std::thread::spawn(move || {
         let (stream, _) = listener.accept().unwrap();
-        std::thread::sleep(Duration::from_secs(3));
+        let _ = released.recv_timeout(Duration::from_secs(30));
         drop(stream);
     });
     let cancelled = Arc::new(AtomicBool::new(false));
@@ -700,7 +694,8 @@ async fn a_cancelled_image_read_sends_nothing_and_a_running_one_stops() {
         .await
         .unwrap_err();
     assert_eq!(error_code(&error), "mathpix.cancelled");
-    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(started.elapsed() < Duration::from_secs(10));
+    release.send(()).unwrap();
     holder.join().unwrap();
 }
 
@@ -791,7 +786,6 @@ fn saving_keys_checks_them_with_a_free_app_token_first() {
     assert!(!serde_json::to_string(&key_status())
         .unwrap()
         .contains("sk-secret-123"));
-    // The generic connector command doesn't even report the key as saved.
     assert!(!crate::connectors::connector_key_saved(APP_KEY_ACCOUNT.into()).unwrap());
     clear_keys().unwrap();
     assert_eq!(

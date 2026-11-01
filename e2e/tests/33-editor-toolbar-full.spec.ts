@@ -12,9 +12,6 @@ import {
   waitEditorShowsFile,
 } from "../helpers";
 
-// Runs in a throwaway project: snippets like \href{}{} would break the
-// shared E2E Doc's compiles.
-
 const RUN = Date.now().toString(36);
 const NAME = `E2E Toolbar ${RUN}`;
 const CODE_INTEL_NAME = `E2E Code Intel ${RUN}`;
@@ -173,10 +170,6 @@ async function openCodeIntelligence(page: Page) {
 
 async function clickCodeIntelligenceAction(page: Page, label: string) {
   const buttonExpression = codeIntelligenceButtonExpression(label);
-  // Find and click in ONE evaluation: the toolbar's ResizeObserver relayout
-  // can remount the menu between a wait that sees the action and a separate
-  // click evaluation (same race class clickToolbarControl fixed). If the menu
-  // closed underneath us, reopen it and try again.
   const atomicClick = () =>
     page.evaluate<boolean>(`(() => {
       const button = ${buttonExpression};
@@ -283,11 +276,6 @@ test("code-intelligence toolbar menu runs definition, references, and rename act
     if (attempt >= 3) throw new Error("toolbar go-to-definition never landed");
   }
 
-  // The action can land as a silent no-op when the menu remounts mid-click or
-  // the caret state was consumed by the prior definition jump, so retry the
-  // whole caret -> menu -> action sequence until the dialog actually opens.
-  // (A promise-returning waitForFunction is truthy immediately in this bridge,
-  // so it cannot serve as the readiness gate here.)
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2e-toolbar", 2);
     await openCodeIntelligence(tauriPage);

@@ -18,22 +18,19 @@ export type HistoryCommand = "undo" | "redo";
 
 export interface FormFieldsProps {
   readonly model: FormCallModel;
+  readonly drafts?: Map<string, string>;
   readonly readOnly: boolean;
   onCommit(field: number, edit: FieldEdit): Promise<CommitResult>;
   onReveal(range: TextRange): void;
-  // Undo or redo in the document, for a history key pressed where the field has no typing of its own to undo.
   onHistory(command: HistoryCommand): void;
 }
 
-// Each save a field starts when it loses focus, resolving false when a problem keeps its draft.
-// The chip's popover listens, so it stays open until a draft it would close over is written.
 export const FormSaves = createContext<((save: Promise<boolean>) => void) | null>(null);
 
 const SUMMARY_LENGTH = 40;
 const graphemes =
   typeof Intl.Segmenter === "function" ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
 
-// User-perceived characters, or code points where the engine has no segmenter.
 function* characters(line: string): Generator<string> {
   if (!graphemes) {
     yield* line;
@@ -42,7 +39,6 @@ function* characters(line: string): Generator<string> {
   for (const { segment } of graphemes.segment(line)) yield segment;
 }
 
-// Cut by character, so an emoji or an accented letter is never split.
 export function shortSummary(summary: string | null): string | null {
   if (summary === null) return null;
   const line = summary.replaceAll(/\s+/gu, " ").trim();
@@ -56,7 +52,6 @@ export function shortSummary(summary: string | null): string | null {
   return line;
 }
 
-// Mod-Z, Mod-Shift-Z and Mod-Y, the same keys the app's history handler leaves to the form.
 export function historyCommand(event: {
   readonly key: string;
   readonly metaKey: boolean;
@@ -89,7 +84,7 @@ const REASONS: Record<ReadOnlyReason, EditorMessageKey> = {
   locked: "visual.typst.forms.reason.locked",
 };
 
-type Problem = "invalid" | "refused" | "readOnly" | NumberProblem | null;
+type Problem = "invalid" | "refused" | "readOnly" | "stale" | NumberProblem | null;
 
 interface ControlProps {
   readonly id: string;
@@ -115,8 +110,7 @@ function defaultText(field: TypstFormField): string | null {
 }
 
 function problemFor(result: CommitResult): Problem {
-  if (result.ok || result.reason === "stale") return null;
-  return result.reason;
+  return result.ok ? null : result.reason;
 }
 
 function rangeMessage(kind: TypstFieldKind): string {
@@ -127,9 +121,10 @@ function rangeMessage(kind: TypstFieldKind): string {
   return editorMessage("visual.typst.forms.atMost", { max: String(max) });
 }
 
-const PROBLEM_MESSAGES: Record<"invalid" | "readOnly" | "number", EditorMessageKey> = {
+const PROBLEM_MESSAGES: Record<"invalid" | "readOnly" | "stale" | "number", EditorMessageKey> = {
   invalid: "visual.typst.forms.invalid",
   readOnly: "visual.typst.forms.readOnly",
+  stale: "visual.typst.forms.stale",
   number: "visual.typst.forms.invalidNumber",
 };
 
@@ -137,7 +132,6 @@ function problemMessage(problem: Exclude<Problem, null | "refused">, field: Typs
   return problem === "range" ? rangeMessage(field.kind) : editorMessage(PROBLEM_MESSAGES[problem]);
 }
 
-// A history key in a control with nothing of its own to undo goes to the document.
 function historyKeyDown(event: KeyboardEvent, onHistory: (command: HistoryCommand) => void): boolean {
   const command = historyCommand(event);
   if (!command) return false;
@@ -148,8 +142,6 @@ function historyKeyDown(event: KeyboardEvent, onHistory: (command: HistoryComman
 
 type NumberKind = Extract<TypstFieldKind, { type: "number" }>;
 
-// ArrowUp and ArrowDown step by the field's `step` (1 when it has none), within min and max.
-// An empty field starts at its default, its minimum or 0.
 export function steppedNumber(kind: NumberKind, text: string, direction: 1 | -1): string | null {
   if (text.trim() === "") return String(kind.default ?? kind.min ?? 0);
   const current = Number(text);
@@ -161,21 +153,25 @@ export function steppedNumber(kind: NumberKind, text: string, direction: 1 | -1)
   return String(next);
 }
 
-// Text, content and number fields keep a draft until Enter (Mod-Enter in multi-line
-// fields), focus leaving the field, or a mousedown outside the form commits it. Escape
-// puts the committed value back.
-const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
+const DraftControl: FC<ControlProps & { readonly multiline: boolean; readonly drafts?: Map<string, string> }> = ({
   id,
   field,
   state,
   disabled,
+  drafts,
   multiline,
   commit,
   report,
   onHistory,
 }) => {
   const committed = committedText(state);
-  const [draft, setDraft] = useState<string | null>(null);
+  const key = fieldKey(field);
+  const [draft, setDraft] = useState<string | null>(() => drafts?.get(key) ?? null);
+  const keepDraft = (next: string | null) => {
+    setDraft(next);
+    if (next === null) drafts?.delete(key);
+    else drafts?.set(key, next);
+  };
   const value = draft ?? committed;
   const kind = field.kind;
   const element = useRef<HTMLElement | null>(null);
@@ -193,13 +189,11 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
     return { set: { type, value: text } as FieldValue };
   };
 
-  // A mousedown outside the form and the blur that follows it must commit once, so a second
-  // call while the first is in flight gets the same answer.
   const save = (): Promise<boolean> => {
     if (saving.current) return saving.current;
     if (draft === null) return Promise.resolve(true);
     if (draft === committed) {
-      setDraft(null);
+      keepDraft(null);
       return Promise.resolve(true);
     }
     const next = edit(draft);
@@ -211,7 +205,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
       .then((result) => {
         const problem = problemFor(result);
         report(problem);
-        if (!problem) setDraft(null);
+        if (!problem) keepDraft(null);
         return problem === null;
       })
       .finally(() => {
@@ -252,7 +246,6 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
     if (composing(event)) return;
     const command = historyCommand(event);
     if (command) {
-      // Typing not yet committed is undone in the field itself; anything else is the document's.
       event.preventDefault();
       if (dirty) (document as unknown as EditingDocument).execCommand(command);
       else onHistory(command);
@@ -260,7 +253,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
     }
     if (event.key === "Escape" && draft !== null) {
       event.preventDefault();
-      setDraft(null);
+      keepDraft(null);
       report(null);
     } else if (event.key === "Enter" && (!multiline || event.metaKey || event.ctrlKey)) {
       event.preventDefault();
@@ -269,7 +262,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
       const stepped = steppedNumber(kind, value, event.key === "ArrowUp" ? 1 : -1);
       if (stepped === null) return;
       event.preventDefault();
-      setDraft(stepped);
+      keepDraft(stepped);
       report(null);
     }
   };
@@ -284,7 +277,7 @@ const DraftControl: FC<ControlProps & { readonly multiline: boolean }> = ({
     disabled,
     placeholder: field.placeholder ?? defaultText(field) ?? undefined,
     "data-ofl-form-draft": dirty ? "" : undefined,
-    onChange: (event: { target: { value: string } }) => setDraft(event.target.value),
+    onChange: (event: { target: { value: string } }) => keepDraft(event.target.value),
     onBlur: () => {
       const pending = save();
       track?.(pending);
@@ -317,7 +310,6 @@ const ChoiceControl: FC<ControlProps> = ({ id, field, state, disabled, commit, r
   const unset = fallback
     ? editorMessage("visual.typst.forms.notSetDefault", { value: fallback })
     : editorMessage("visual.typst.forms.notSet");
-  // "Not set" is offered only when choosing it can remove the argument.
   const clearable = !field.required && "named" in field.arg;
   return (
     <select
@@ -371,11 +363,12 @@ const FieldRow: FC<{
   readonly field: TypstFormField;
   readonly state: FieldState;
   readonly readOnly: boolean;
+  readonly drafts?: Map<string, string>;
   readonly callRange: TextRange;
   commit(edit: FieldEdit): Promise<CommitResult>;
   onReveal(range: TextRange): void;
   onHistory(command: HistoryCommand): void;
-}> = ({ field, state, readOnly, callRange, commit, onReveal, onHistory }) => {
+}> = ({ field, state, readOnly, drafts, callRange, commit, onReveal, onHistory }) => {
   const id = useId();
   const [problem, setProblem] = useState<Problem>(null);
   const kind = field.kind;
@@ -392,12 +385,11 @@ const FieldRow: FC<{
   } else if (kind.type === "toggle") {
     control = <ToggleControl {...controlProps} />;
   } else {
-    const multiline = kind.type === "content" || (kind.type === "text" && kind.multiline);
-    control = <DraftControl {...controlProps} multiline={multiline} />;
+    const multiline = kind.type === "content" || (kind.type === "text" && (kind.multiline || /[\r\n]/u.test(committedText(state))));
+    control = <DraftControl {...controlProps} drafts={drafts} multiline={multiline} />;
   }
   const missing = state.status === "absent" && field.required;
   const fallback = state.status === "absent" && !field.required && kind.type !== "choice" ? defaultText(field) : null;
-  // A read-only document never shows its source in Visual mode, so the reveal actions would do nothing.
   const revealable = !readOnly;
   return (
     <div className="ofl-visual-form-field" data-field-kind={kind.type} data-field-status={state.status}>
@@ -443,7 +435,6 @@ const FieldRow: FC<{
             onClick={() =>
               void commit({ clear: true }).then((result) => {
                 setProblem(problemFor(result));
-                // The button goes away with the value, so focus moves to the field instead of the page.
                 if (result.ok) document.getElementById(id)?.focus({ preventScroll: true });
               })
             }
@@ -460,7 +451,7 @@ function fieldKey(field: TypstFormField): string {
   return "named" in field.arg ? `n:${field.arg.named}` : `p:${field.arg.positional}`;
 }
 
-export const FormFields: FC<FormFieldsProps> = ({ model, readOnly, onCommit, onReveal, onHistory }) => (
+export const FormFields: FC<FormFieldsProps> = ({ model, drafts, readOnly, onCommit, onReveal, onHistory }) => (
   <div className="ofl-visual-form-fields">
     {model.definition.fields.map((field, index) => (
       <FieldRow
@@ -468,6 +459,7 @@ export const FormFields: FC<FormFieldsProps> = ({ model, readOnly, onCommit, onR
         field={field}
         state={model.fields[index]}
         readOnly={readOnly}
+        drafts={drafts}
         callRange={model.range}
         commit={(edit) => onCommit(index, edit)}
         onReveal={onReveal}

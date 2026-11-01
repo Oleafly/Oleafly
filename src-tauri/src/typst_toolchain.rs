@@ -60,8 +60,6 @@ pub(crate) fn creation_pin(engine: &str) -> Option<oleafly_core::TypstSpec> {
     })
 }
 
-/// The app's side of the shared Typst toolchain: its data folder, bundled
-/// sidecar and default version, and the editor's engine descriptors.
 pub(crate) trait AppTypstToolchain: Sized {
     fn load(lookup: SystemLookup) -> Result<Self, String>;
     fn describe(&mut self, descriptor: &mut EngineDescriptor, pin: Option<&str>);

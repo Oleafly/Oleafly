@@ -1,5 +1,4 @@
 use crate::project_location::{ProjectKind, ProjectLocation};
-// The leave-out rules `oleafly checkpoint diff`/`restore` use too.
 use oleafly_core::linked_capture::{
     self, is_left_out_quietly, is_reparse_point, is_skipped_directory,
 };

@@ -1,6 +1,3 @@
-//! The preflight run (`packages/preflight/src/engine.ts`) without the PDF
-//! page, structure-tree and ATS inputs, which only the app extracts.
-
 use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
@@ -60,7 +57,6 @@ struct LatexSource {
     content: String,
 }
 
-/// The project's LaTeX sources with content, the main file first.
 fn latex_project_sources(project: Option<&ProjectContext>, fallback: &str) -> Vec<LatexSource> {
     let Some(project) = project else {
         return vec![LatexSource {

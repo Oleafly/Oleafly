@@ -9,8 +9,6 @@ use crate::project_location::{ProjectKind, ProjectLocation};
 use crate::project_manifest::Route;
 use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 
-/// Public path resolver (sandbox). Re-exported so call sites keep importing
-/// `crate::project::resolve_in_project`.
 pub use crate::sandbox::resolve_in_project;
 
 pub(crate) mod shared_shell_escape;
@@ -51,23 +49,14 @@ const DEFAULT_MAIN_DIAGRAM: &str = "\\documentclass[tikz,border=4pt]{standalone}
 \\end{tikzpicture}\n\
 \\end{document}\n";
 
-/// Reproducibility pin for latexmk projects: which TeX distribution and which
-/// package versions produced this project's output. Lives in project.json so
-/// it travels with git and every coauthor sees the same spec (the app-internal
-/// `.oleafly/` directory is deliberately gitignored, so it cannot live there).
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct TexSpec {
-    /// Distribution kind ("oleafly-tinytex", "mactex", "texlive", "miktex", ...).
     #[serde(default)]
     pub distribution: String,
-    /// Human label, e.g. "TeX Live 2025".
     #[serde(default)]
     pub distribution_label: String,
-    /// tlmgr package -> version (CTAN version or TeX Live revision). The
-    /// npm-lockfile role: coauthors are prompted to install what is missing.
     #[serde(default)]
     pub packages: std::collections::BTreeMap<String, String>,
-    /// Unix epoch seconds when the spec was captured.
     #[serde(default)]
     pub recorded_at: f64,
 }
@@ -80,12 +69,8 @@ pub struct ProjectMeta {
     pub main_doc: String,
     #[serde(default = "default_engine")]
     pub engine: String,
-    /// Present on latexmk projects once an engine spec has been recorded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex: Option<TexSpec>,
-    /// Explicit latexmk compiler ("pdflatex" | "xelatex" | "lualatex" |
-    /// "uplatex" | "platex"), the Overleaf-style per-project choice. Absent
-    /// means auto-detect from the source, which stays the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -94,12 +79,8 @@ pub struct ProjectMeta {
     pub dictionary_locale: Option<String>,
     #[serde(default)]
     pub allow_shell_escape: bool,
-    /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
-    /// default. Stored on disk so a project's color survives across machines.
     #[serde(default)]
     pub color: String,
-    /// "" / "document" for a normal project, "image" for a single-figure project
-    /// (standalone) that previews the compiled image and hides doc-only tools.
     #[serde(default)]
     pub kind: String,
     #[serde(default)]
@@ -110,8 +91,6 @@ pub struct ProjectMeta {
     pub forked_from: Option<String>,
     #[serde(default)]
     pub checkpoints: oleafly_core::CheckpointPolicy,
-    /// Preserve fields written by newer Oleafly releases when this version
-    /// updates metadata it understands.
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -584,10 +563,6 @@ impl CreateFileResult {
     }
 }
 
-/// Create a file or folder inside the project with the same portable
-/// collision rules as rename/copy: names that differ only by case collide on
-/// every platform, conflicts are structured and non-destructive, and
-/// `KeepBoth` diverts to the suggested sibling. Create never replaces.
 fn create_path_in_project(
     kind: ProjectKind,
     root: &Path,
@@ -698,8 +673,6 @@ pub struct ProjectInfo {
     pub has_preview: bool,
     pub exports: Vec<ProjectExportInfo>,
     pub forked_from: Option<String>,
-    /// True only for the ID-only placeholder returned while a crashed
-    /// Checkpoint restore must be recovered before project metadata is read.
     pub recovery_pending: bool,
     pub location: crate::project_availability::ProjectLocationInfo,
     pub last_opened_at: f64,
@@ -815,9 +788,6 @@ fn declared_typst(
         .and_then(|value| serde_json::from_value(value).ok())
 }
 
-/// Decode and normalize portable project metadata exactly as `read_meta`
-/// does before applying device-local trust. Archive import and restore use the
-/// same parser so they cannot accept a snapshot that project open later rejects.
 pub(crate) fn parse_project_meta(bytes: &[u8]) -> Result<ProjectMeta, String> {
     let mut meta: ProjectMeta =
         serde_json::from_slice(bytes).map_err(|e| format!("invalid project.json: {e}"))?;
@@ -1208,8 +1178,6 @@ pub(crate) fn rel_slash(root: &Path, path: &Path) -> String {
         .replace('\\', "/")
 }
 
-/// Cap recursion depth on directory walks so a deep (or symlink-induced) tree
-/// can't blow the stack or hang the app.
 pub(crate) const MAX_WALK_DEPTH: usize = 64;
 
 fn walk(
@@ -1242,9 +1210,6 @@ fn walk(
         if name_str == ".oleafly" || name_str == ".git" {
             continue;
         }
-        // Skip symlinks entirely (don't list or follow them) so a link pointing
-        // outside the project can't leak paths or create a walk cycle. Use
-        // `file_type()` (from the dir entry, no extra stat, doesn't follow links).
         let ft = match entry.file_type() {
             Ok(ft) => ft,
             Err(_) => continue,
@@ -1873,9 +1838,6 @@ pub(crate) fn read_project_worktree<T>(
     })
 }
 
-/// Metadata serialization for a caller whose `MutationAdmission` already owns
-/// the cross-process worktree lock. Keeping this separate prevents recursive
-/// acquisition of the same OS lock during restore, rename, and recycle.
 pub(crate) fn with_project_metadata_lock_held<T>(
     project_id: &str,
     operation: impl FnOnce() -> Result<T, String>,
@@ -2171,9 +2133,6 @@ where
     .await
 }
 
-/// The Checkpoint restore path is the only external worktree mutation allowed
-/// to enter while a prior durable restore marker exists. It must recover that
-/// journal before starting a new restore.
 pub(crate) async fn mutate_project_worktree_recovering<T, F>(
     state: &crate::state::AppState,
     project_id: String,
@@ -2462,8 +2421,6 @@ pub fn create_file(
 ) -> Result<CreateFileResult, String> {
     crate::collab::suggesting::tree_change_refused(&project_id, &[&path])?;
     let relative = mutation_relative_path(&project_id, &path, false)?;
-    // KeepBoth may divert to a sibling name, so the admission scope covers the
-    // whole parent rather than the single requested path.
     let scope = MutationScope::subtree(mutation_parent_path(&relative));
     let admission = admit_mutation(&project_id, vec![scope], expected_generation)?;
     let strategy = conflict_strategy.unwrap_or_default();
@@ -3351,9 +3308,6 @@ fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
     std::fs::rename(src, dst)
 }
 
-/// Copy a file or folder within a project. Files are byte-level copied (handles
-/// binaries like PDFs); folders are copied recursively (symlinks skipped, with
-/// an explicit depth error). Async + spawn_blocking keeps large copies off UI.
 #[tauri::command]
 pub async fn copy_file(
     project_id: String,
@@ -3441,8 +3395,6 @@ fn copy_path_in_project(
     Ok(name)
 }
 
-/// Write base64-encoded bytes to a project file (used to save a compiled PDF
-/// into the project tree).
 #[tauri::command]
 pub async fn save_file_base64(
     project_id: String,
@@ -3473,7 +3425,6 @@ pub async fn save_file_base64(
     .map_err(|e| e.to_string())?
 }
 
-/// Read a project file as base64 (for rendering binary files like PDFs).
 #[tauri::command]
 pub async fn read_file_base64(project_id: String, path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
@@ -3536,10 +3487,6 @@ pub async fn register_picked_file_for_e2e(
     Ok(display)
 }
 
-/// Read a spreadsheet (CSV/TSV/XLS/XLSX) the user picked through
-/// `pick_table_import_file` as base64, so the webview can parse it with
-/// SheetJS. Only allowlisted paths are readable, and the read still goes
-/// through an open file handle with a hard cap.
 #[tauri::command]
 pub async fn read_picked_file_base64(
     path: String,
@@ -3624,9 +3571,6 @@ fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, Stri
     Ok(bytes)
 }
 
-/// Append a line to the global app log at `~/.oleafly/app.log` (append-only,
-/// created if missing). Used by the frontend to record caught errors so users
-/// can share the file for debugging.
 #[tauri::command(async)]
 pub fn append_app_log(message: String) -> Result<(), String> {
     use std::io::Write;
@@ -3643,8 +3587,6 @@ pub fn append_app_log(message: String) -> Result<(), String> {
     writeln!(file, "[{secs}] {message}").map_err(|e| format!("failed to write app log: {e}"))
 }
 
-/// Read the tail (up to `max_bytes`) of the app log, for crash reports. Returns
-/// an empty string if the log doesn't exist yet.
 #[tauri::command(async)]
 pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
     let log_path = paths::oleafly_root()?.join("app.log");
@@ -3661,9 +3603,6 @@ async fn set_main_doc_synchronized(
     project_id: String,
     main_doc: String,
 ) -> Result<ProjectMeta, String> {
-    // Metadata selection and main-output publication share one lock. A main
-    // switch therefore happens wholly before or wholly after a compile, never
-    // between its final identity check and revision allocation.
     let _guard = state.compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || {
         let coordinator = project_mutation_coordinator(&project_id)?;
@@ -3834,10 +3773,6 @@ fn settle_opened_folder(project_id: &str) {
     crate::linked_registry::note_modified_on_disk(project_id);
 }
 
-/// Pin a project's compile engine in `project.json` (e.g. "xetex" for the
-/// bundled Tectonic, "latexmk" for a system TeX toolchain). Shares the compile
-/// lock with `set_main_doc` so an engine switch never lands between a compile's
-/// final identity check and its revision allocation.
 #[tauri::command]
 pub async fn set_project_engine(
     app: tauri::AppHandle,
@@ -4082,9 +4017,6 @@ fn set_project_shell_escape_unlocked(
     })
 }
 
-/// Normalize the per-project compiler choice. "auto" and empty mean
-/// auto-detect; an explicit compiler is only meaningful on latexmk, and
-/// switching to any other engine always clears it.
 pub(crate) fn validate_tex_flavor(
     engine: &str,
     flavor: Option<&str>,
@@ -4172,19 +4104,15 @@ async fn record_tex_spec(
     })
 }
 
-/// How this machine compares against the project's reproducibility pin.
 #[derive(Serialize)]
 pub struct TexStatus {
     pub pinned_label: String,
     pub local_label: Option<String>,
     pub distribution_differs: bool,
     pub missing_packages: Vec<String>,
-    /// Whether "install the missing packages" is actionable here (tlmgr found).
     pub can_install_missing: bool,
 }
 
-/// Compare the local TeX setup against the project pin (latexmk projects with
-/// a recorded spec only). Coauthors get prompted from this on project open.
 #[tauri::command]
 pub async fn project_tex_status(project_id: String) -> Result<Option<TexStatus>, String> {
     let prepared = tauri::async_runtime::spawn_blocking(
@@ -4233,8 +4161,6 @@ pub async fn project_tex_status(project_id: String) -> Result<Option<TexStatus>,
     }))
 }
 
-/// Record a successful compile's provenance under `.oleafly/builds/`.
-/// Best-effort: failures here must never fail the compile itself.
 pub(crate) fn write_build_metadata(
     project_id: &str,
     revision: u64,
@@ -4270,8 +4196,6 @@ pub(crate) fn write_build_metadata(
     prune_build_metadata(&dir, 20);
 }
 
-/// Keep only the newest `keep` build records (names sort chronologically
-/// because the revision is zero-padded).
 fn prune_build_metadata(dir: &Path, keep: usize) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -4333,10 +4257,6 @@ pub(crate) fn engine_for_new_project(main_doc: &str) -> Result<String, String> {
     Ok(latexmk)
 }
 
-/// The engine for a project made from a template. A template made for one
-/// LaTeX compiler (pdfLaTeX, XeLaTeX, ...) gets latexmk with that compiler,
-/// as an imported online project does; any other template follows the
-/// default engine for its main document.
 pub(crate) fn template_engine(
     main_doc: &str,
     tex_flavor: Option<&str>,
@@ -4714,8 +4634,6 @@ pub(crate) fn recover_project_on_open_for_test(
     Ok((project, recovered))
 }
 
-/// Persist a project's book-cover color to its `project.json` so it survives
-/// across machines (previously kept only in the browser's localStorage).
 #[tauri::command]
 pub async fn set_project_color(project_id: String, color: String) -> Result<ProjectMeta, String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -4976,9 +4894,6 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
         }
         let id = entry.file_name().to_string_lossy().into_owned();
         if let Err(error) = paths::validate_project_id(&id) {
-            // Same-filesystem project transactions intentionally use
-            // dot-prefixed sibling directories. They are internal state, not
-            // malformed user projects, and are expected to exist briefly.
             if !id.starts_with(".oleafly-") {
                 log_project_enumeration_skip(&id, &error);
             }
@@ -5201,9 +5116,6 @@ fn safe_ad_hoc_project_path(path: &str) -> Result<PathBuf, String> {
     Ok(normalized)
 }
 
-/// Publish converter output as one complete project. A normal text conversion
-/// supplies `text` and media under assets/. A source bundle supplies
-/// `mainFile` plus every file, as produced by the bounded arXiv extractor.
 #[tauri::command]
 pub async fn create_project_from_ad_hoc<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -5348,9 +5260,6 @@ fn create_project_from_ad_hoc_blocking(
     Ok(project_id)
 }
 
-/// Publish a converted PDF as one complete project. The library never observes
-/// a project containing only `main.tex` (or only some figures): every payload
-/// is validated and staged in a sibling directory before the final rename.
 #[tauri::command]
 pub async fn create_project_from_pdf_conversion<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -5494,13 +5403,10 @@ fn create_typst_project_in(
     Ok(project_id)
 }
 
-// --- Overleaf / external project import --------------------------------------
-
 const IMPORT_MAX_ENTRIES: usize = 5000;
-const IMPORT_MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024; // 2 GiB
+const IMPORT_MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const IMPORT_MAX_DEPTH: usize = 16;
 
-/// Junk and app-internal entries that never belong in an imported project.
 fn import_skip(rel: &str) -> bool {
     rel.split('/').any(|segment| {
         ["__MACOSX", ".DS_Store", ".git", ".oleafly", "Thumbs.db"]
@@ -5509,7 +5415,6 @@ fn import_skip(rel: &str) -> bool {
     })
 }
 
-/// Import an Overleaf export (ZIP) or a plain folder as a new project.
 #[tauri::command]
 pub async fn import_overleaf_project<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -5535,8 +5440,6 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
     import_overleaf_project_blocking_with(name, source, |_| None, |_| Ok(()))
 }
 
-/// Import an already-unpacked directory tree as a new project (shared by the
-/// arXiv e-print importer, which stages the unpack itself).
 pub(crate) fn import_project_directory_blocking(
     name: Option<String>,
     dir: &str,
@@ -5552,13 +5455,8 @@ pub(crate) fn import_project_directory_blocking(
 
 #[derive(Clone, Copy)]
 enum ImportSource<'a> {
-    /// A ZIP archive. A single wrapping folder is unwrapped.
     Archive(&'a Path),
-    /// A project archive downloaded from an online account. Its layout is
-    /// kept exactly, so the main file path the server gave stays valid and
-    /// paths written from the project root still resolve.
     OnlineProject(&'a Path),
-    /// A folder. A single wrapping folder is unwrapped.
     Folder(&'a Path),
 }
 
@@ -5668,8 +5566,6 @@ pub(crate) fn import_project_zip_bytes_with(
     result
 }
 
-/// Import a project archive downloaded from an online account, keeping its
-/// folders exactly as they are online.
 pub(crate) fn import_online_project_archive_with(
     name: String,
     archive: &Path,
@@ -5725,7 +5621,7 @@ pub(crate) fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), 
     for index in 0..zip.len() {
         let mut entry = zip.by_index(index).map_err(|e| e.to_string())?;
         let Some(rel) = entry.enclosed_name() else {
-            continue; // unsafe path (`..` escape): skip; absolute ones come back relative
+            continue;
         };
         let rel_text = rel.to_string_lossy().replace('\\', "/");
         if import_skip(&rel_text) || rel.components().count() > IMPORT_MAX_DEPTH {
@@ -5792,8 +5688,6 @@ pub(crate) fn copy_tree_for_import(
     Ok(())
 }
 
-/// Zipping a folder usually wraps everything in one top-level directory.
-/// Unwrap it so the project root holds the actual files.
 pub(crate) fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
     let entries: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| e.to_string())?
@@ -5828,7 +5722,6 @@ pub(crate) fn infer_main_document(dir: &Path) -> Result<String, String> {
         .ok_or_else(|| crate::app_error::AppError::new("project.import_no_main").into())
 }
 
-/// Resolve `.`/`..` inside a joined relative path; None when it escapes root.
 fn normalize_relative(path: &Path) -> Option<String> {
     let mut parts: Vec<String> = Vec::new();
     for component in path.components() {
@@ -5881,9 +5774,6 @@ fn initialize_git_for_project(project_id: &str) -> Result<bool, String> {
     initialize_git(project_id, false)
 }
 
-/// Create the repository for a managed, trusted project while the setting is
-/// on. With `first_commit`, a repository created here also gets one commit of
-/// the project's files. Returns whether a repository was created.
 fn initialize_git(project_id: &str, first_commit: bool) -> Result<bool, String> {
     if !git_auto_init_enabled() {
         return Ok(false);
@@ -5895,7 +5785,6 @@ fn initialize_git(project_id: &str, first_commit: bool) -> Result<bool, String> 
         return Ok(false);
     }
     let dir = location.root;
-    // A missing Git is logged once per session by the probe itself.
     if dir.join(".git").exists() || !crate::git::git_available() {
         return Ok(false);
     }
@@ -5924,7 +5813,6 @@ fn initialize_git(project_id: &str, first_commit: bool) -> Result<bool, String> 
     Ok(true)
 }
 
-/// The first few paths of a list for the app log, and how many more there are.
 fn describe_files(files: &[String]) -> String {
     const SHOWN: usize = 5;
     let mut text = files
@@ -5953,11 +5841,6 @@ pub(crate) fn initialize_git_for_project_quietly(project_id: &str) {
     }
 }
 
-/// Give a project Oleafly has just created or imported a Git repository with
-/// one first commit of its files, so Source Control and research tasks have a
-/// version to compare against. Only creation and import paths call this;
-/// opening a project never commits. Failures are logged and never fail the
-/// creation.
 pub(crate) fn initialize_git_for_new_project(project_id: &str) {
     if let Err(error) = initialize_git(project_id, true) {
         log_git_setup(format!(
@@ -5970,9 +5853,6 @@ fn schedule_git_initialization(project_id: String) -> tauri::async_runtime::Join
     tauri::async_runtime::spawn_blocking(move || initialize_git_for_project_quietly(&project_id))
 }
 
-/// Create an image-kind project whose `main.tex` is a standalone document
-/// (`source`). Used by "Save as project" in the diagram composer so a figure,
-/// its TikZ, and its embedded editor model all persist as a reusable project.
 #[tauri::command(async)]
 pub fn create_image_project<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -6025,11 +5905,6 @@ fn create_image_project_in(
     Ok(project_id)
 }
 
-/// Guarantees `source` is a compilable standalone document. The Diagram
-/// Composer's "save as project" flow wraps its output before calling this
-/// command, but this is the single place every diagram project's initial
-/// file passes through, so it doubles as a safety net against ever writing
-/// a project with a bare TikZ body and no preamble/`\begin{document}`.
 fn ensure_diagram_document(source: String) -> String {
     if source.contains("\\begin{document}") {
         return source;
@@ -6215,7 +6090,6 @@ pub fn save_figure_to_cache(
     })
 }
 
-// Random, human-meaningful project ids like "flying-pink-pikachu".
 const ADJECTIVES: &[&str] = &[
     "flying", "swift", "cosmic", "velvet", "silent", "crimson", "lucky", "hidden", "mellow",
     "quantum", "amber", "frosty", "jolly", "nimble", "rosy", "sunny", "tidy", "vivid", "witty",
@@ -6302,8 +6176,6 @@ impl ProjectDirectoryReservation {
         }
         std::fs::remove_dir(&self.path)
             .map_err(|error| format!("failed to release project reservation: {error}"))?;
-        // The reservation inode no longer exists. From this point onward Drop
-        // must not remove whatever another actor may place at the destination.
         self.committed = true;
         if let Err(error) = publish(staged, &self.path) {
             if let Some(store) = &self.identity_store {
@@ -6332,8 +6204,6 @@ impl Drop for ProjectDirectoryReservation {
         if self.identity.as_ref() != Some(&current) {
             return;
         }
-        // Close directory handles before recursive deletion on Windows. The
-        // worktree lock remains held until this Drop implementation returns.
         drop(current);
         drop(self.identity.take());
         let _ = std::fs::remove_dir_all(&self.path);
@@ -6407,9 +6277,6 @@ fn try_reserve_project_directory_adopting(
             if let Some(store) = &identity_store {
                 let _ = crate::project_ids::forget_at(store, project_id);
             }
-            // The directory is still empty and the worktree lock is held. Do
-            // not strand an unbound reservation that every later allocator
-            // would treat as an existing project.
             let _ = std::fs::remove_dir(&path);
             return Err(format!(
                 "failed to bind project identity {project_id}: {error}"
@@ -6426,16 +6293,12 @@ fn try_reserve_project_directory_adopting(
     }))
 }
 
-/// Reserve a unique project identity while holding the stable cross-process
-/// lock for that id. The directory creation is the atomic ownership boundary;
-/// every initializer writes only into the directory it reserved itself.
 fn reserve_unique_project_directory(
     root: &Path,
     coordinate_worktree: bool,
 ) -> Result<ProjectDirectoryReservation, String> {
     for _ in 0..32 {
         let mut seed = rand::random::<u64>();
-        // burn a couple of rounds so the time-seed doesn't bias the first pick
         pick(ADJECTIVES, &mut seed);
         pick(COLORS, &mut seed);
         let candidate = format!(
@@ -6538,7 +6401,6 @@ pub async fn export_pdf(
         .await
         .map_err(|error| format!("failed to export PDF: {error}"))??;
 
-    // Allow reveal_in_dir for this user-chosen export path.
     if let Ok(canon) = std::path::Path::new(&dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
         if allow.len() >= 1024 {
@@ -6570,8 +6432,6 @@ fn stage_exported_pdf(project_id: &str, dest: &str) -> Result<(), String> {
 }
 
 pub(crate) fn record_pdf_export(project_id: String, dest: String) -> Result<(), String> {
-    // The artifact is already durably published. Export-history bookkeeping is
-    // best-effort so a metadata failure never reports a false export failure.
     let _ = with_project_metadata(&project_id, || {
         let mut meta = read_meta(&project_id)?;
         let filename = Path::new(&dest)
@@ -6620,6 +6480,17 @@ pub(crate) fn find_pandoc() -> Option<String> {
         .and_then(|path| path.into_os_string().into_string().ok())
 }
 
+async fn notebook_export_lane<'a>(
+    state: &'a crate::state::AppState,
+    project_id: &str,
+) -> Result<Option<tokio::sync::MutexGuard<'a, ()>>, String> {
+    let meta = read_meta(project_id)?;
+    if !crate::document_engine::exports_through_engine(&meta.engine, &meta.main_doc) {
+        return Ok(None);
+    }
+    Ok(Some(state.compile_lock.lock().await))
+}
+
 /// Convert the main document to another format via `pandoc`. Pandoc infers the
 /// output format from the destination extension; `format` selects a few
 /// per-format flags that make the result usable (slide splitting for PowerPoint,
@@ -6638,6 +6509,7 @@ pub async fn export_document(
     let reveal_dest = dest.clone();
     crate::path_grants::require_save(&dest)?;
     guard_export_dest(&dest)?;
+    let compile_lane = notebook_export_lane(state.inner(), &project_id).await?;
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = read_meta(&project_id)?;
     if meta.main_doc != main_doc && !is_tex_root_override(&project_id, &meta, &main_doc) {
@@ -6649,6 +6521,9 @@ pub async fn export_document(
     resolve_export_main_document(&project_id, &main_doc)?;
     require_export_destination_outside_project(&root, &dest)?;
     if crate::document_engine::exports_through_engine(&meta.engine, &meta.main_doc) {
+        if compile_lane.is_none() {
+            return Err("The main document changed. Reopen the export menu and try again.".into());
+        }
         crate::document_engine::require_notebook_trust(&project_id, &meta.engine, &meta.main_doc)?;
         let effective = crate::trust::restrict_compile_meta(&project_id, meta.clone())?;
         let transaction = AtomicFile::for_export(&dest)?;
@@ -6659,6 +6534,8 @@ pub async fn export_document(
             format: &format,
             destination: transaction.staging_path(),
             allow_code: effective.allow_shell_escape,
+            cancel: Some(&state.compile_cancel),
+            log: Some(&app),
         })
         .await?;
         transaction.commit()?;
@@ -6737,31 +6614,20 @@ pub async fn export_document(
     Ok(())
 }
 
-/// One pandoc export of a project's main document into `output`.
 struct ExportJob<'a> {
     root: &'a Path,
-    /// The project's build folder, which holds the last compile's .aux files.
     build_dir: Option<PathBuf>,
     main_doc: &'a str,
     format: &'a str,
     output: &'a str,
-    /// Where the citation filter is staged: the project's data area (see
-    /// `export_staging_dir`).
     staging_dir: Option<PathBuf>,
-    /// The temporary folder the citation filter falls back to when pandoc
-    /// cannot reach the staging folder by a plain ASCII relative path (see
-    /// `prepare_export_filter`); `None` is the system's.
     temp_dir: Option<&'a Path>,
 }
 
-/// The folder an export stages its citation filter in: `.oleafly/` in a
-/// library project, the linked state area for a linked folder, so nothing
-/// appears among the user's files. `None` when it cannot be made.
 fn export_staging_dir(location: &crate::project_location::ProjectLocation) -> Option<PathBuf> {
     paths::state_subdirectory(location, crate::pandoc_citations::STAGING_DIR).ok()
 }
 
-/// Runs supervised compile children for the shared document tools.
 pub(crate) struct AppToolRunner;
 
 impl oleafly_doctools::ToolRunner for AppToolRunner {
@@ -6788,7 +6654,6 @@ fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
     oleafly_doctools::export::export_search_path(root, main_doc)
 }
 
-/// Runs pandoc for one export (see `oleafly_doctools::export`).
 async fn run_export_pandoc(pandoc: &Path, job: ExportJob<'_>) -> Result<(), String> {
     let shared = oleafly_doctools::export::ExportJob {
         root: job.root,
@@ -6994,8 +6859,6 @@ async fn create_project_from_pandoc_source(
     Ok(project_id)
 }
 
-/// Puts `note` at the top of a converted document, or at the end of a
-/// Markdown one so its front matter stays first.
 fn add_import_note(path: &Path, note: &str) -> Result<(), String> {
     let source = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     let is_markdown = path
@@ -7010,8 +6873,6 @@ fn add_import_note(path: &Path, note: &str) -> Result<(), String> {
     atomic_write(path, noted.as_bytes()).map_err(|e| e.to_string())
 }
 
-/// Removes the `bibliography: false` entry an import wrote into Markdown
-/// front matter when it dropped the source's bibliography.
 fn drop_false_bibliography_in(path: &Path) -> Result<(), String> {
     let source = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     let fixed = crate::conversion::drop_false_bibliography(&source);
@@ -7031,8 +6892,6 @@ fn apply_typst_fixup(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Create a LaTeX project from an uploaded .docx. The bytes are written inside
-/// the new project dir and pandoc runs there, so no external path is read.
 #[tauri::command]
 pub async fn create_project_from_docx<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -7048,10 +6907,6 @@ pub async fn create_project_from_docx<R: tauri::Runtime>(
     Ok(project_id)
 }
 
-/// Import a user-selected Word, Markdown, HTML, or Typst file as a new
-/// project. The extension selects the pandoc reader and `target` the project
-/// kind written ("latex", "markdown", or "typst"); both paths publish
-/// atomically.
 #[tauri::command]
 pub async fn import_document<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -7119,7 +6974,6 @@ pub(crate) async fn import_document_file(
     create_project_from_pandoc_source(name, plan, bytes, bibliographies).await
 }
 
-/// Whether a usable pandoc is already available (system or our cache).
 #[tauri::command]
 pub async fn has_pandoc() -> bool {
     tauri::async_runtime::spawn_blocking(|| find_pandoc().is_some())
@@ -7133,7 +6987,6 @@ struct PandocProgress {
     total: Option<u64>,
 }
 
-/// The pandoc release asset URL for this platform, and whether it's a tar.gz.
 fn pandoc_asset() -> Result<(String, bool, &'static str, PathBuf), String> {
     pandoc_asset_for(std::env::consts::OS, std::env::consts::ARCH)
 }
@@ -7175,7 +7028,6 @@ fn pandoc_asset_for(os: &str, arch: &str) -> Result<(String, bool, &'static str,
     }
 }
 
-/// Extract the `pandoc` binary from a downloaded archive to `dest`.
 fn extract_pandoc(
     archive: &std::path::Path,
     is_targz: bool,
@@ -7231,8 +7083,6 @@ fn extract_pandoc(
     Err("pandoc binary not found in the downloaded archive.".to_string())
 }
 
-/// Download pandoc on demand and cache it under `~/.oleafly/bin`. Emits
-/// `pandoc-download-progress` events; returns the path to the ready binary.
 #[tauri::command]
 pub async fn download_pandoc(
     app: tauri::AppHandle,
@@ -7495,8 +7345,6 @@ fn search_walk(
         if name_str == ".oleafly" || name_str == ".git" {
             continue;
         }
-        // Skip symlinks (don't follow or read them) to avoid escaping the project
-        // tree or looping through a cycle.
         let ft = match entry.file_type() {
             Ok(ft) => ft,
             Err(_) => continue,
@@ -7692,7 +7540,6 @@ fn bounded_search_walk(
     }
 }
 
-/// Search every project's text files for `query` (case-insensitive, substring).
 #[tauri::command]
 pub async fn search_docs(query: String) -> Result<Vec<SearchHit>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<SearchHit>, String> {
@@ -7830,9 +7677,6 @@ fn search_linked_folders(
     }
 }
 
-/// Search a SINGLE project's text files for `query`. Used by the AI assistant so
-/// a chat scoped to one project can't surface (and forward to the model) the
-/// contents of the user's other projects.
 #[tauri::command]
 pub async fn search_project(project_id: String, query: String) -> Result<Vec<SearchHit>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<SearchHit>, String> {
@@ -7923,7 +7767,6 @@ pub(crate) async fn search_project_bounded(
     result
 }
 
-/// Zip a project's source files (excluding `.oleafly`, `.git`) to `dest`.
 #[tauri::command]
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
     crate::path_grants::require_save(&dest)?;
@@ -7956,8 +7799,6 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
                 if name_str == ".oleafly" || name_str == ".git" {
                     continue;
                 }
-                // Skip symlinks so the archive can't include or follow a link
-                // pointing outside the project (or loop through a cycle).
                 let ft = match entry.file_type() {
                     Ok(ft) => ft,
                     Err(_) => continue,
@@ -7992,16 +7833,12 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
     .map_err(|e| e.to_string())?
 }
 
-/// Duplicate a project (copy everything including `.git` history).
 #[tauri::command]
 pub async fn duplicate_project(project_id: String, new_name: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         crate::project_location::refuse_linked(&project_id, "project.linked_not_duplicable")?;
         let root = paths::projects_root()?;
         let reservation = reserve_unique_project_directory(&root, true)?;
-        // Reserve the new identity before pinning the source so two concurrent
-        // duplications can never hold source A/B while waiting for the other
-        // source's per-id lock after a random candidate collision.
         let _source_worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let src = paths::project_dir(&project_id)?;
         let new_id = reservation.project_id().to_string();
@@ -8059,8 +7896,6 @@ fn copy_dir_recursive(
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
-        // Skip symlinks: don't copy or follow them (avoids escaping the source
-        // tree and recursion cycles).
         let ft = match entry.file_type() {
             Ok(ft) => ft,
             Err(_) => continue,
@@ -11356,8 +11191,6 @@ mod tests {
         let root = crate::paths::project_dir(&project_id).unwrap();
         assert!(root.join(".git").is_dir(), "the project is a repository");
         assert_eq!(git_output(&root, &["rev-list", "--all", "--count"]), "0");
-        // `.env` is left out of the checks below because a developer's global
-        // ignore list may hide it; `deploy.pem` alone must block the commit.
         let status = git_output(&root, &["status", "--porcelain", "--untracked-files=all"]);
         for path in ["deploy.pem", "main.tex", "project.json"] {
             assert!(
@@ -13738,8 +13571,6 @@ mod tests {
         assert!(!engine_runs_notebook_code("latexmk"));
     }
 
-    // Held across awaits deliberately: it serializes the shared test data-dir
-    // environment variable while proving the async compile lock ordering.
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn main_document_selection_waits_for_an_active_compile() {
@@ -13800,6 +13631,53 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn notebook_exports_wait_for_the_compile_lane_and_other_exports_do_not() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("notebook-export-lane");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        for (project_id, main_doc, engine) in [
+            ("notebook-export", "report.qmd", "quarto"),
+            ("latex-export", "main.tex", "xetex"),
+        ] {
+            let project_dir = root.join("projects").join(project_id);
+            std::fs::create_dir_all(&project_dir).unwrap();
+            std::fs::write(project_dir.join(main_doc), "text").unwrap();
+            write_meta_at(
+                &project_dir.join("project.json"),
+                &ProjectMeta {
+                    name: project_id.into(),
+                    main_doc: main_doc.into(),
+                    engine: engine.into(),
+                    ..ProjectMeta::default()
+                },
+            )
+            .unwrap();
+        }
+
+        let state = Arc::new(crate::state::AppState::default());
+        let compile_guard = state.compile_lock.lock().await;
+        assert!(super::notebook_export_lane(state.as_ref(), "latex-export")
+            .await
+            .unwrap()
+            .is_none());
+        let export_state = Arc::clone(&state);
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let export = tokio::spawn(async move {
+            let _ = started_tx.send(());
+            super::notebook_export_lane(export_state.as_ref(), "notebook-export")
+                .await
+                .map(|lane| lane.is_some())
+        });
+        started_rx.await.unwrap();
+        tokio::task::yield_now().await;
+        assert!(!export.is_finished());
+
+        drop(compile_guard);
+        assert!(export.await.unwrap().unwrap());
     }
 
     #[test]
@@ -14357,7 +14235,6 @@ mod tests {
         pandoc
     }
 
-    /// The visible text of a .docx, tags removed and whitespace collapsed.
     fn docx_text(path: &Path) -> String {
         use std::io::Read as _;
         let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
@@ -14412,7 +14289,6 @@ mod tests {
         Ok(docx_text(&staged))
     }
 
-    /// The names directly inside `folder`, sorted.
     fn top_level_names(folder: &Path) -> Vec<String> {
         let mut names: Vec<String> = std::fs::read_dir(folder)
             .map(|entries| {
@@ -14426,8 +14302,6 @@ mod tests {
         names
     }
 
-    /// Runs `work` and returns what it returned, with the names that
-    /// appeared directly inside each of `folders` while it ran.
     fn new_names_while<T>(
         folders: &[&Path],
         work: impl FnOnce() -> T,
@@ -14459,7 +14333,6 @@ mod tests {
         })
     }
 
-    /// Whether an export's filter folder was among `names`.
     fn holds_a_filter_folder(names: &std::collections::BTreeSet<String>) -> bool {
         names.iter().any(|name| name.starts_with("oleafly-export-"))
     }
@@ -14637,12 +14510,9 @@ mod tests {
         }
         #[cfg(unix)]
         {
-            // A folder whose name holds ':' cannot be listed; the root stays.
             let (_, texinputs) = super::export_search_path(&root, "odd:name/main.tex");
             assert_eq!(texinputs, ".");
         }
-        // --resource-path is split with the platform's own separator, so it
-        // keeps absolute folders: the main document's first, then the root.
         let (resource_path, _) = super::export_search_path(&root, "paper/main.tex");
         let expected = std::env::join_paths([root.join("paper"), root.clone()]).unwrap();
         assert_eq!(resource_path, expected.to_string_lossy());
@@ -14717,8 +14587,6 @@ mod tests {
             return;
         };
         const BROKEN_BIB: &str = "@article{old, author={Smith, title={A}, year=2020}\n";
-        // A LaTeX paper that cites nothing, with a half-edited backup .bib at
-        // the root. Nothing is cited, so no bibliography is read.
         let latex = tempfile::tempdir().unwrap();
         std::fs::write(
             latex.path().join("main.tex"),
@@ -14729,7 +14597,6 @@ mod tests {
         let text = export_docx(&pandoc, latex.path(), None, "main.tex").unwrap();
         assert!(text.contains("A paper without citations."), "{text}");
 
-        // Even one it declares: with nothing cited, the list stays empty.
         std::fs::write(
             latex.path().join("main.tex"),
             "\\documentclass{article}\n\\begin{document}\nStill no citations.\n\\bibliography{old-backup}\n\\end{document}\n",
@@ -14738,7 +14605,6 @@ mod tests {
         let text = export_docx(&pandoc, latex.path(), None, "main.tex").unwrap();
         assert!(text.contains("Still no citations."), "{text}");
 
-        // A Markdown project passes every project .bib; same rule.
         let markdown = tempfile::tempdir().unwrap();
         std::fs::write(
             markdown.path().join("main.md"),
@@ -14804,9 +14670,6 @@ mod tests {
         assert!(text.contains("We follow (Smith 2020)"), "{text}");
         assert!(text.contains("A Title"), "{text}");
         assert!(text.contains("Equation (3.2)"), "{text}");
-        // The filter is staged under .oleafly, never beside the user's files
-        // or in the temporary folder, and its folder is gone once pandoc
-        // exits.
         assert!(appeared[0].is_empty(), "{appeared:?}");
         assert!(holds_a_filter_folder(&appeared[1]), "{appeared:?}");
         assert!(appeared[2].is_empty(), "{appeared:?}");
@@ -14816,8 +14679,6 @@ mod tests {
         assert!(top_level_names(&scratch).is_empty());
     }
 
-    /// A paper under `root/paper` that cites smith2020 from its own refs.bib
-    /// and refers to a numbered equation.
     fn write_cited_paper(root: &Path) {
         std::fs::write(
             root.join("paper/main.tex"),
@@ -14871,7 +14732,6 @@ mod tests {
             staging.starts_with(data.path().canonicalize().unwrap()),
             "{staging:?}"
         );
-        // Pandoc found the filter in the state area by a relative path.
         assert!(appeared[0].is_empty(), "{appeared:?}");
         assert!(holds_a_filter_folder(&appeared[1]), "{appeared:?}");
         assert!(appeared[2].is_empty(), "{appeared:?}");
@@ -15052,8 +14912,6 @@ mod tests {
         assert!(top_level_names(&folder).is_empty());
     }
 
-    /// Imports `source` into a fresh data folder and returns the new
-    /// project's folder (kept alive by the returned guard).
     fn import_into_new_project(
         source: &Path,
         target: &str,
@@ -15109,7 +14967,6 @@ mod tests {
         let zotero = tempfile::tempdir().unwrap();
         let library = zotero.path().join("My Library.bib");
         std::fs::write(&library, SMITH_BIB).unwrap();
-        // A sibling .bib is not copied when the front matter names its own.
         std::fs::write(sources.path().join("unrelated.bib"), JONES_BIB).unwrap();
         let paper = sources.path().join("paper.md");
         std::fs::write(
@@ -15687,9 +15544,6 @@ mod tests {
         )
         .unwrap();
 
-        // Model the interval in which a conversion has finished staging every
-        // file but has not yet atomically renamed the directory to its valid
-        // project id.
         let staging = projects.join(".oleafly-pdf-import-test");
         let published = projects.join("published-project");
         let ready = Arc::new(std::sync::Barrier::new(2));
@@ -16008,8 +15862,6 @@ mod tests {
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
-    // Held across the await deliberately: it serializes access to the shared
-    // OLEAFLY_DATA_DIR env var against other tests, single-threaded runtime.
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn duplicate_project_records_the_fork_source() {
@@ -16836,7 +16688,6 @@ mod tests {
             spec.packages.get("siunitx").map(String::as_str),
             Some("3.3.20")
         );
-        // Projects without a pin keep project.json free of the field entirely.
         write_meta_at(
             &path,
             &ProjectMeta {
@@ -16865,11 +16716,9 @@ mod tests {
             validate_tex_flavor("latexmk", Some("lualatex")).unwrap(),
             Some("lualatex".to_string())
         );
-        // Auto and empty clear the pin on any engine.
         assert_eq!(validate_tex_flavor("latexmk", Some("auto")).unwrap(), None);
         assert_eq!(validate_tex_flavor("latexmk", None).unwrap(), None);
         assert_eq!(validate_tex_flavor("xetex", Some("")).unwrap(), None);
-        // An explicit compiler is meaningless off latexmk, and typos fail.
         assert!(validate_tex_flavor("xetex", Some("pdflatex")).is_err());
         assert!(validate_tex_flavor("latexmk", Some("pdftex")).is_err());
     }

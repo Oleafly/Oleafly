@@ -12,7 +12,6 @@ use std::time::Duration;
 
 pub const GITHUB_CLIENT_ID: &str = match option_env!("OLEAFLY_DESKTOP_GITHUB_CLIENT_ID") {
     Some(id) if !id.is_empty() => id,
-    // The name 0.4.7 builds read, for forks that still set it.
     _ => match option_env!("VITE_GITHUB_CLIENT_ID") {
         Some(id) if !id.is_empty() => id,
         _ => "Ov23li4f2jpz7iBljiYT",
@@ -23,16 +22,12 @@ pub const GITLAB_COM_CLIENT_ID: Option<&str> = match option_env!("OLEAFLY_DESKTO
     Some(id) if !id.is_empty() => Some(id),
     _ => None,
 };
-/// `repo` reads and writes repositories; `read:user` shows the account.
 pub const GITHUB_SCOPES: &str = "repo read:user";
 pub const GITLAB_SCOPES: &str = "api read_user write_repository";
-/// GitLab tokens are refreshed this long before they expire.
 pub const REFRESH_MARGIN_MS: u64 = 5 * 60 * 1000;
 const OAUTH_TIMEOUT: Duration = Duration::from_secs(20);
 const DEVICE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
 
-/// The kind and client id of a server that offers the device flow in this
-/// build: github.com always, gitlab.com when its client id is compiled in.
 pub fn device_client_id(base: &str) -> Option<(ForgeKind, &'static str)> {
     match base {
         GITHUB_COM => Some((ForgeKind::GitHub, GITHUB_CLIENT_ID)),
@@ -66,7 +61,6 @@ impl std::fmt::Debug for DeviceAuthorization {
 pub struct TokenGrant {
     pub access_token: String,
     pub refresh_token: Option<String>,
-    /// Seconds.
     pub expires_in: Option<u64>,
     pub scope: Option<String>,
 }
@@ -86,8 +80,6 @@ impl std::fmt::Debug for TokenGrant {
 }
 
 impl TokenGrant {
-    /// The token to store. The secret store keeps expiry in epoch seconds;
-    /// callers pass milliseconds.
     pub fn into_token(self, now_ms: u64) -> ForgeToken {
         let expires_at = self.expires_in.map(|seconds| {
             i64::try_from((now_ms / 1000).saturating_add(seconds)).unwrap_or(i64::MAX)
@@ -107,12 +99,10 @@ pub enum DevicePoll {
     Granted(TokenGrant),
 }
 
-/// Stored expiry (epoch seconds) in epoch milliseconds.
 fn expiry_ms(expires_at: i64) -> u64 {
     u64::try_from(expires_at).unwrap_or(0).saturating_mul(1000)
 }
 
-/// Whether a refreshable token expires within [`REFRESH_MARGIN_MS`].
 pub fn needs_refresh(token: &ForgeToken, now_ms: u64) -> bool {
     token.refresh.is_some()
         && token
@@ -120,7 +110,6 @@ pub fn needs_refresh(token: &ForgeToken, now_ms: u64) -> bool {
             .is_some_and(|at| expiry_ms(at) <= now_ms.saturating_add(REFRESH_MARGIN_MS))
 }
 
-/// Whether a token with an expiry has expired.
 pub fn expired(token: &ForgeToken, now_ms: u64) -> bool {
     token.expires_at.is_some_and(|at| expiry_ms(at) <= now_ms)
 }
@@ -196,7 +185,6 @@ fn web_address(value: Option<String>) -> Option<String> {
     matches!(parsed.scheme(), "https" | "http").then_some(value)
 }
 
-/// Ask for a user code.
 pub async fn device_start(
     http: &ForgeHttp,
     kind: ForgeKind,
@@ -243,7 +231,6 @@ pub async fn device_start(
     })
 }
 
-/// What one poll reply means.
 pub fn poll_from_body(body: &serde_json::Value) -> Result<DevicePoll, ForgeError> {
     if let Some(access_token) = text(body, "access_token") {
         return Ok(DevicePoll::Granted(grant_from_body(body, access_token)));
@@ -269,7 +256,6 @@ fn grant_from_body(body: &serde_json::Value, access_token: String) -> TokenGrant
     }
 }
 
-/// Check once whether the user finished in the browser.
 pub async fn device_poll(
     http: &ForgeHttp,
     kind: ForgeKind,
@@ -292,8 +278,6 @@ pub async fn device_poll(
     poll_from_body(&body)
 }
 
-/// Trade a GitLab refresh token for a new token pair. A refused refresh
-/// token means the user has to sign in again.
 pub async fn refresh_gitlab(
     http: &ForgeHttp,
     base: &str,
@@ -603,7 +587,6 @@ mod tests {
         assert_eq!(server.requests().len(), 1, "one refresh for four callers");
     }
 
-    /// Wait until the mock server has received a request.
     async fn request_arrived(server: &MockServer) {
         for _ in 0..500 {
             if !server.requests().is_empty() {

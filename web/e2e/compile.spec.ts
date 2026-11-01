@@ -18,8 +18,6 @@ test("an owner compiles in the browser, clicks between source and PDF, and share
   await expect(pdfPane.getByTestId("pdf-label")).toContainText("Compiled in your browser in");
   await expect(pdfPane.locator("canvas").first()).toBeVisible();
 
-  // The text of an \input file, typeset by the test engine, opens that file at its line.
-  // The clicked word ends up selected on that line.
   await pdfPane.locator(".textLayer span", { hasText: "Sea ice moves with wind" }).first().click();
   const intro = page.locator('[data-active-file="f-intro"]');
   const selected = intro.locator(".cm-selectionBackground").first();
@@ -39,7 +37,6 @@ test("an owner compiles in the browser, clicks between source and PDF, and share
     })
     .toEqual(["pdf:olive:main.tex", "synctex:olive:main.tex"]);
 
-  // A co-author sees the shared PDF and clicks through it to the source too.
   const other = await browser.newContext();
   const coauthor = await other.newPage();
   await coauthor.goto("/auth/start?flow=web&as=rita");

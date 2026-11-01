@@ -1,5 +1,3 @@
-//! `remote link`, `sync` and `diff`, through the service's Git bridge and
-//! the folder's private mirror.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -22,12 +20,9 @@ use crate::auth::shared::{from_online, Env, Report};
 use crate::contract::{CliError, ErrorKind, Exit};
 use crate::native::{executable_name, resolve_executable, CandidateResolution};
 
-/// Patches are cut here; `--name-only` lists every file.
 pub(crate) const MAX_PATCH_BYTES: usize = 8 << 20;
-/// Files a report names before it says "and N more".
 const LISTED_FILES: usize = 20;
 
-/// `files` as a short list for people.
 fn listed(files: &[String]) -> String {
     let shown: Vec<&str> = files
         .iter()
@@ -42,10 +37,6 @@ fn listed(files: &[String]) -> String {
     }
 }
 
-/// The files here the next sync would send online (those the online copy
-/// last fetched lacks, and with `modified` those it holds differently), as
-/// the sync stages them: for a folder, without what stays local
-/// (`kept_local`) or what its `.gitignore` names.
 fn pending_uploads(
     deps: &RemoteDeps,
     prepared: &Prepared,
@@ -62,7 +53,6 @@ fn pending_uploads(
     .map_err(|error| online_error(error, &prepared.server))
 }
 
-/// "1 file", "3 files".
 pub(crate) fn files(count: usize) -> String {
     if count == 1 {
         "1 file".to_string()
@@ -71,7 +61,6 @@ pub(crate) fn files(count: usize) -> String {
     }
 }
 
-/// "1 file differs", "3 files differ".
 fn files_differ(count: usize) -> String {
     if count == 1 {
         "1 file differs".to_string()
@@ -80,7 +69,6 @@ fn files_differ(count: usize) -> String {
     }
 }
 
-/// The system's Git, found outside the project.
 pub(crate) fn system_deps(folder: &Path) -> Result<RemoteDeps, CliError> {
     Ok(RemoteDeps {
         git: Arc::new(SystemGit::new(locate_git(folder)?)),
@@ -88,7 +76,6 @@ pub(crate) fn system_deps(folder: &Path) -> Result<RemoteDeps, CliError> {
     })
 }
 
-/// `name` from `PATH` (then `extra`), never from inside the project.
 pub(crate) fn locate_tool_in(
     name: &str,
     project_root: &Path,
@@ -149,8 +136,6 @@ pub(crate) fn locate_git(project_root: &Path) -> Result<PathBuf, CliError> {
         .ok_or_else(|| from_online(&OnlineError::new(OnlineErrorKind::GitNotInstalled)))
 }
 
-/// Where the files a link replaced are saved: beside the private copy, so
-/// unlinking keeps them.
 pub(crate) fn backups_folder(root: &Path) -> PathBuf {
     root.join(".oleafly").join("online-backups")
 }
@@ -162,7 +147,6 @@ fn side_of(side: SideArg) -> Side {
     }
 }
 
-/// `PATH=local` and `PATH=remote`, with project-relative paths.
 pub(crate) fn parse_resolutions(values: &[String]) -> Result<BTreeMap<String, Side>, CliError> {
     let mut resolutions = BTreeMap::new();
     for value in values {
@@ -205,15 +189,12 @@ struct Prepared {
     token: zeroize::Zeroizing<String>,
 }
 
-/// The linked folder's mirror, token and address.
 fn prepare_linked(env: &Env, deps: &RemoteDeps, folder: &Path) -> Result<Prepared, CliError> {
     let scope = resolve_scope(folder, &env.data_root)?;
     scope.ensure_no_pending_restore()?;
     let link = scope
         .current_link(&env.data_root)?
         .ok_or_else(|| from_online(&OnlineError::new(OnlineErrorKind::SyncNotLinked)))?;
-    // The link record is in the folder, so the server is not one the user
-    // named.
     let (token, _) = git_token_for(env, &link.server, false)?;
     let url = (deps.url_for)(&link.server, &link.remote_id)
         .map_err(|error| online_error(error, &link.server))?;
@@ -227,8 +208,6 @@ fn prepare_linked(env: &Env, deps: &RemoteDeps, folder: &Path) -> Result<Prepare
     })
 }
 
-/// `remote link`: fetches the online project and, when the two copies
-/// agree (or `--prefer` says which wins), records the link.
 pub(crate) fn link(
     env: &Env,
     deps: &RemoteDeps,
@@ -264,8 +243,6 @@ pub(crate) fn link(
         return Err(CliError::new(ErrorKind::InvalidInput, "remote.not_imported", "This Oleafly app project didn't come from the online service.")
             .hint("Link it from the Oleafly app, or import the online project with oleafly remote import."));
     }
-    // The project named on the command line (or its server) is the user's
-    // choice; where a folder says it came from is not.
     let named_by_user = args.target.is_some() || args.server.is_some();
     let (token, _) = git_token_for(env, &target.server, named_by_user)?;
     let url = (deps.url_for)(&target.server, &target.project_id)
@@ -292,8 +269,6 @@ pub(crate) fn link(
         library,
     );
     let linked = matches!(outcome, Ok(LinkOutcome::Linked { .. }));
-    // Files here changed (or may have): the app's shell-escape trust was for
-    // what was there before.
     let files_changed = match &outcome {
         Ok(LinkOutcome::Linked { written }) => !written.is_empty(),
         Ok(LinkOutcome::NeedsChoice(_)) => false,
@@ -304,16 +279,12 @@ pub(crate) fn link(
     } else {
         Ok(())
     };
-    // A copy of what the online version replaced is put where it stays.
     let backups = if linked && !args.dry_run && args.prefer == Some(SideArg::Remote) {
         export_link_backups(deps.git.as_ref(), &paths, &backups_folder(scope.root()))
             .map_err(|error| online_error(error, &target.server))
     } else {
         Ok(Vec::new())
     };
-    // The files here the first sync will send (those the online project
-    // lacks or holds differently), while the mirror still has the online
-    // copy.
     let uploads = if linked {
         let prepared = Prepared {
             scope: scope.clone(),
@@ -334,7 +305,6 @@ pub(crate) fn link(
         Vec::new()
     };
     if !existed && (args.dry_run || !linked) {
-        // A check or a refused link leaves no private copy behind.
         let _ = remove_link(&paths);
     }
     let outcome = outcome.map_err(|error| online_error(error, &target.server))?;
@@ -399,7 +369,6 @@ pub(crate) fn link(
     }
 }
 
-/// `remote sync`: merges online changes here and sends local ones.
 pub(crate) fn sync(
     env: &Env,
     deps: &RemoteDeps,
@@ -409,8 +378,6 @@ pub(crate) fn sync(
     let resolutions = parse_resolutions(&args.resolve)?;
     let prepared = prepare_linked(env, deps, folder)?;
     let _claim = claim(&prepared.paths).map_err(|error| online_error(error, &prepared.server))?;
-    // A dry run lists what the sync would send, before the plan moves the
-    // mirror.
     let uploads = if args.dry_run {
         let worktree = prepared.scope.worktree_lock(&env.data_root);
         pending_uploads(deps, &prepared, worktree.as_ref(), false)?
@@ -435,9 +402,6 @@ pub(crate) fn sync(
         &prepared.token,
         &options,
     );
-    // Files here changed (or may have): the app's shell-escape trust was for
-    // what was there before. The app does the same for every change it
-    // didn't make in its editor.
     let files_changed = match &summary {
         Ok(summary) => !(summary.written.is_empty() && summary.removed.is_empty()),
         Err(error) => error.params.contains_key(FILES_MAY_HAVE_CHANGED),
@@ -500,8 +464,6 @@ pub(crate) fn sync(
     Ok(report)
 }
 
-/// `remote diff`: what differs from the online project, and which files
-/// changed on both sides since the last sync.
 pub(crate) fn diff(
     env: &Env,
     deps: &RemoteDeps,
@@ -587,8 +549,6 @@ pub(crate) mod tests {
     use super::*;
     use crate::auth::test_env::env_at;
 
-    /// A bare repository standing in for the online project, reached
-    /// through a `file://` address.
     pub(crate) struct World {
         pub dir: tempfile::TempDir,
         pub env: Env,
@@ -598,7 +558,6 @@ pub(crate) mod tests {
 
     pub(crate) fn git(dir: &Path, args: &[&str]) {
         let mut command = Command::new("git");
-        // Under the pre-commit hook GIT_DIR names the real repository.
         crate::process::clear_inherited_git_env(&mut command);
         let status = command
             .args([
@@ -620,8 +579,6 @@ pub(crate) mod tests {
         );
     }
 
-    /// Test servers are `http://localhost/<folder>`; their Git remotes are
-    /// bare repositories in that folder.
     fn file_url(server: &str, remote_id: &str) -> Result<String, OnlineError> {
         let folder = server
             .strip_prefix("http://localhost")
@@ -648,8 +605,6 @@ pub(crate) mod tests {
     }
 
     impl World {
-        /// `remote.git` holds `main.tex` = "Hello\n"; the folder `paper`
-        /// holds the same file and is linked.
         pub(crate) fn linked() -> World {
             let dir = tempfile::tempdir().unwrap();
             let mut env = env_at(dir.path());
@@ -681,8 +636,6 @@ pub(crate) mod tests {
                 project,
                 dir,
             };
-            // As after `oleafly auth login online --with-token`: a server the
-            // environment's token may go to when only a folder names it.
             oleafly_online::session::save_git_token(
                 &world.env.store,
                 &world.server(),
@@ -697,8 +650,6 @@ pub(crate) mod tests {
             world
         }
 
-        /// An app library project that came from the world's online
-        /// project, with `main.tex` = `text`. Not linked yet.
         pub(crate) fn library_project(&self, id: &str, text: &str) -> PathBuf {
             let project = self.env.projects_root().join(id);
             std::fs::create_dir_all(&project).unwrap();
@@ -712,7 +663,6 @@ pub(crate) mod tests {
             project
         }
 
-        /// The app's shell-escape trust record for a project.
         pub(crate) fn trust_record(&self, id: &str) -> PathBuf {
             self.env
                 .data_root
@@ -738,7 +688,6 @@ pub(crate) mod tests {
             format!("{}/project/remote", self.server())
         }
 
-        /// Commits `text` as `main.tex` online.
         pub(crate) fn edit_online(&self, text: &str) {
             let work = self.dir.path().join("online-work");
             if !work.exists() {
@@ -784,7 +733,6 @@ pub(crate) mod tests {
         world.trust("lib-1");
         world.trust("bystander");
 
-        // Nothing to pull, and a dry run: the trust stays.
         sync(&world.env, &deps(), &project, SyncArgs::default()).unwrap();
         world.edit_online("Changed online\n");
         let dry = SyncArgs {
@@ -822,7 +770,6 @@ pub(crate) mod tests {
         assert_eq!(saved.len(), 1);
         assert_eq!(saved[0]["files"], json!(["main.tex"]));
         let folder = PathBuf::from(saved[0]["folder"].as_str().unwrap());
-        // The report names folders the way scope does (no `\\?\` on Windows).
         assert!(folder.starts_with(backups_folder(&dunce::canonicalize(&project).unwrap())));
         assert_eq!(read(&folder.join("main.tex")), "My own text\n");
         assert!(report
@@ -830,7 +777,6 @@ pub(crate) mod tests {
             .iter()
             .any(|line| line.starts_with("Your versions of 1 file are saved in")));
 
-        // Unlinking removes the private copy but not the saved files.
         let no_git = |_: &Path| -> Result<RemoteDeps, CliError> { Ok(deps()) };
         let unlinked = super::super::list::unlink(&world.env, &no_git, &project, false).unwrap();
         assert_eq!(unlinked.data["backups"][0]["files"], json!(["main.tex"]));
@@ -858,7 +804,6 @@ pub(crate) mod tests {
         let fetch = super::super::StatusArgs { fetch: true };
         let status = |_: &Path| -> Result<RemoteDeps, CliError> { Ok(deps()) };
         pending(super::super::list::status(&world.env, &status, &project, &fetch).unwrap_err());
-        // Nothing was read or written, and the trust is as it was.
         assert_eq!(read(&project.join("main.tex")), "Hello\n");
         assert!(world.trust_record("lib-3").exists());
 
@@ -870,7 +815,6 @@ pub(crate) mod tests {
     #[test]
     fn the_environments_git_token_only_goes_to_a_server_the_user_chose() {
         let world = World::linked();
-        // A link record planted in the folder names another server.
         let record = world.project.join(".oleafly/online/link.json");
         let planted = read(&record).replace(&world.server(), "https://evil.example");
         std::fs::write(&record, planted).unwrap();
@@ -881,7 +825,6 @@ pub(crate) mod tests {
             assert_eq!(failure.code, "online.git_token_missing");
         }
 
-        // So does a `project.json` that says where the folder came from.
         let other = world.dir.path().join("other");
         std::fs::create_dir_all(&other).unwrap();
         let record = json!({"importedFrom": {

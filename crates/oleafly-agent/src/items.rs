@@ -1,13 +1,8 @@
-//! The typed thread-item union: the canonical record of everything a turn
-//! did, as persisted to rollouts and threaded to the shell. Tags match the
-//! store union exactly (mostly camelCase, with `todo-list` kebab-case).
-
 use serde::{Deserialize, Serialize};
 
 use crate::complete::Usage;
 use crate::event::AgentEvent;
 
-/// One todo entry carried by todo-list items and `turn/plan/updated`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanTodo {
@@ -15,7 +10,6 @@ pub struct PlanTodo {
     pub status: String,
 }
 
-/// Execution status shared by command-execution and file-change items.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ExecutionStatus {
@@ -25,9 +19,6 @@ pub enum ExecutionStatus {
     Declined,
 }
 
-/// The store union. Field payloads stay lean: each variant carries what the
-/// shell renders plus what a rollout must replay; richer payloads (diffs,
-/// MCP results) travel as JSON values until their surfaces land.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
@@ -234,7 +225,6 @@ pub enum ThreadItem {
     },
 }
 
-/// An item with its identity and lifecycle stamp.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordedItem {
@@ -244,7 +234,6 @@ pub struct RecordedItem {
     pub completed: bool,
 }
 
-/// How a turn ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TurnRecordStatus {
@@ -254,7 +243,6 @@ pub enum TurnRecordStatus {
     Interrupted,
 }
 
-/// One turn as persisted: the items it produced plus bookkeeping.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TurnRecord {
@@ -271,10 +259,6 @@ pub struct TurnRecord {
     pub stopped_at_cap: bool,
 }
 
-/// Classify a tool name into its item type. Shell tools map to command
-/// executions; the file-mutation set maps to file changes; known MCP servers
-/// map to MCP calls; everything else (native read/set tools, dynamic tools)
-/// is a dynamic tool call.
 pub fn classify_tool(name: &str) -> ThreadItem {
     if name == "run_command" || name == "exec_command" || name == "shell_command" {
         return ThreadItem::CommandExecution {
@@ -307,7 +291,6 @@ pub fn classify_tool(name: &str) -> ThreadItem {
     }
 }
 
-/// Finalize a tool item's arguments from the call's JSON argument string.
 fn apply_arguments(item: &mut ThreadItem, arguments: &str) {
     let parsed = serde_json::from_str::<serde_json::Value>(arguments)
         .unwrap_or(serde_json::Value::String(arguments.to_string()));
@@ -379,13 +362,10 @@ fn tool_outcome(output: &str) -> (ExecutionStatus, Option<i32>) {
     )
 }
 
-/// Folds the event stream of one run into a persisted turn record — the
-/// Rust counterpart of the shell's `applyAgentEvent`.
 #[derive(Debug)]
 pub struct TurnRecorder {
     record: TurnRecord,
     next_item: u32,
-    /// Open tool-call items by provider call id.
     open_calls: std::collections::HashMap<String, usize>,
 }
 
@@ -424,7 +404,6 @@ impl TurnRecorder {
         self.record.items.len() - 1
     }
 
-    /// Fold one streamed event into the record.
     pub fn record(&mut self, event: &AgentEvent) {
         match event {
             AgentEvent::TextDelta { text } => {
@@ -493,7 +472,6 @@ impl TurnRecorder {
                 name,
                 arguments,
             } => {
-                // A request for a call we never saw Start for (native path).
                 if !self.open_calls.contains_key(id) {
                     let item = classify_tool(name);
                     let index = self.push(item, false);

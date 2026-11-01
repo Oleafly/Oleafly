@@ -1,5 +1,3 @@
-//! Bounded admission to storage transactions. A busy store must return an
-//! error without stealing its owner's lock or changing any stored data.
 use std::fs::File;
 use std::io;
 use std::sync::{Mutex, MutexGuard, TryLockError};

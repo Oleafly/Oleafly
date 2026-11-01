@@ -1,4 +1,3 @@
-//! The research task store: one SQLite file under the research-tasks root.
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -7,7 +6,6 @@ use rand::RngCore;
 use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde::de::DeserializeOwned;
 
-// 0.4.8 L: handoffs between the app and the background helper.
 use crate::handoff::{
     AcpHandoff, ForeignRequests, HandoffReason, HandoffRecord, OwnedWork, HANDOFF_VERSION,
 };
@@ -26,7 +24,6 @@ pub mod runs;
 const MAX_TASKS_PER_PROJECT: usize = 500;
 pub const MAX_EVENTS_PER_RUN: u64 = 5_000;
 const TEXT_EVENT_KINDS: [&str; 2] = ["text", "reasoning"];
-/// The `kind` column of a transcript row: the kind its JSON names.
 const EVENT_KIND_COLUMN: &str = "GENERATED ALWAYS AS (json_extract(event_json, '$.kind')) VIRTUAL";
 
 #[derive(Clone)]
@@ -34,14 +31,11 @@ pub struct TaskStore {
     root: PathBuf,
     owner: ProcessIdentity,
     probe: fn(u32) -> ProcessProbe,
-    /// Which kind of process claims queued work through this store.
     owner_kind: OwnerKind,
 }
 
-/// A running task's id and the process that owns it (pid, start time).
 type OwnerRow = (String, Option<i64>, Option<i64>);
 
-/// The task columns every read selects, in `read_stored_task` order.
 const TASK_COLUMNS: &str = "id, project_id, title, prompt, runtime_id, agent_id, model_id,
     skill_ids_json, status, execution_generation, session_id,
     native_session_id, source_revision, isolation_json, error,
@@ -55,7 +49,6 @@ const TASK_COLUMNS: &str = "id, project_id, title, prompt, runtime_id, agent_id,
        AND approval.execution_generation = research_tasks.execution_generation),
     reclaim_requested, resumed_from";
 
-/// One transcript row for [`TaskStore::write_events`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventWrite {
     pub task_id: String,
@@ -63,7 +56,6 @@ pub struct EventWrite {
     pub sequence: u64,
     pub event_json: String,
     pub created_at: i64,
-    /// Update an existing row (a growing text segment) instead of adding one.
     pub replace: bool,
 }
 
@@ -111,18 +103,15 @@ struct StoredTask {
     stop_reason: Option<String>,
     active_ms: i64,
     pending_approvals: i64,
-    // 0.4.8 L
     reclaim_requested: bool,
     resumed_from: Option<i64>,
 }
 
 impl TaskStore {
-    /// The app's store: it claims tasks the app runs.
     pub fn new(root: PathBuf) -> Result<Self, String> {
         Self::with_owner_kind(root, OwnerKind::App)
     }
 
-    /// A store that claims only tasks owned by `owner` (the app or the daemon).
     pub fn with_owner_kind(root: PathBuf, owner: OwnerKind) -> Result<Self, String> {
         ensure_real_directory(&root)?;
         let store = Self {
@@ -186,7 +175,6 @@ impl TaskStore {
         connection
             .execute_batch("PRAGMA foreign_keys = ON;")
             .map_err(|error| format!("could not configure the research task store: {error}"))?;
-        // Creating and migrating the schema runs only for a new or older store.
         if schema_version(&connection)? < SCHEMA_VERSION {
             initialize_schema(&mut connection)?;
         }
@@ -379,8 +367,6 @@ impl TaskStore {
         self.require(id)
     }
 
-    /// Claims the oldest started task this store's owner kind runs, whose
-    /// dependencies are complete and whose start time has come.
     pub fn claim_next(&self) -> Result<Option<ResearchTask>, String> {
         let mut connection = self.open()?;
         let transaction = connection
@@ -414,8 +400,6 @@ impl TaskStore {
             return Ok(None);
         };
         let pending: Option<PendingStart> = decode_optional(pending_start, "task pending start")?;
-        // A resumed generation keeps the saved workspace. The pending start
-        // stays until the run reads it (`clear_pending_start`).
         let (isolation_json, source_revision, plan_approved) = match &pending {
             Some(PendingStart::Resume {
                 isolation, reason, ..
@@ -427,7 +411,6 @@ impl TaskStore {
             _ => (None, None, false),
         };
         let session_id = fresh_id("research-session");
-        // 0.4.8 L: a resumed generation remembers the one it continues.
         let resumed = matches!(pending, Some(PendingStart::Resume { .. }));
         let updated = transaction
             .execute(
@@ -461,8 +444,6 @@ impl TaskStore {
         if updated != 1 {
             return Err("The task changed before it could start.".into());
         }
-        // Each generation keeps what it resumed, so its transcript's history
-        // stops at a fresh start.
         transaction
             .execute(
                 "INSERT OR REPLACE INTO research_task_generations
@@ -631,7 +612,6 @@ impl TaskStore {
         }))
     }
 
-    /// The next free transcript sequence of a generation.
     pub fn next_event_sequence(&self, id: &str, generation: u64) -> Result<u64, String> {
         self.open()?
             .query_row(
@@ -644,8 +624,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Writes a batch of transcript rows in one transaction. Rows of a
-    /// generation that stopped running are dropped (the running fence).
     pub fn write_events(&self, writes: &[EventWrite]) -> Result<(), String> {
         if writes.is_empty() {
             return Ok(());
@@ -654,12 +632,10 @@ impl TaskStore {
         Self::write_events_on(&mut connection, writes)
     }
 
-    /// A connection a transcript writer keeps open between its batches.
     pub(crate) fn writer_connection(&self) -> Result<Connection, String> {
         self.open()
     }
 
-    /// [`TaskStore::write_events`] on a connection the caller keeps open.
     pub(crate) fn write_events_on(
         connection: &mut Connection,
         writes: &[EventWrite],
@@ -854,7 +830,6 @@ impl TaskStore {
         Ok(cancelled)
     }
 
-    /// Every task that waits for `id`, directly or through other tasks.
     pub fn dependent_ids(&self, id: &str) -> Result<Vec<String>, String> {
         let connection = self.open()?;
         let mut statement = connection
@@ -875,9 +850,6 @@ impl TaskStore {
         Ok(ids)
     }
 
-    /// Queues a failed or cancelled task again. Resume keeps its workspace
-    /// and starts a new conversation from the record; Fresh copies the
-    /// project again and carries the research record over.
     pub fn retry_with(&self, id: &str, mode: RetryMode) -> Result<ResearchTask, String> {
         let task = self.require(id)?;
         if !matches!(
@@ -929,7 +901,6 @@ impl TaskStore {
         self.require(id)
     }
 
-    /// Ends a planning generation: the plan is written, the workspace kept.
     pub fn finish_plan_ready(&self, id: &str, generation: u64) -> Result<bool, String> {
         self.open()?
             .execute(
@@ -944,7 +915,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// The user approved the plan: queue the task to continue in its workspace.
     pub fn approve_plan(&self, id: &str) -> Result<ResearchTask, String> {
         let task = self.require(id)?;
         if task.status != ResearchTaskStatus::PlanReady {
@@ -974,8 +944,6 @@ impl TaskStore {
         self.require(id)
     }
 
-    /// Moves a running task to another owner (the daemon after the app
-    /// quits): it is queued to resume in its workspace there.
     pub fn hand_off(&self, id: &str, generation: u64, to: OwnerKind) -> Result<bool, String> {
         let task = self.require(id)?;
         let Some(isolation) = task.isolation.clone() else {
@@ -1024,8 +992,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// The phase of a generation: while it runs, and while its evidence is
-    /// checked after it finished.
     pub fn set_phase(&self, id: &str, generation: u64, phase: TaskPhase) -> Result<bool, String> {
         self.open()?
             .execute(
@@ -1039,7 +1005,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// The start mode was read by the run that just began.
     pub fn clear_pending_start(&self, id: &str, generation: u64) -> Result<(), String> {
         self.open()?
             .execute(
@@ -1051,8 +1016,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// The task's record folder name, assigned now for tasks created before
-    /// records existed.
     pub fn ensure_record_slug(&self, id: &str) -> Result<String, String> {
         let task = self.require(id)?;
         if !task.record_slug.is_empty() {
@@ -1068,7 +1031,6 @@ impl TaskStore {
         Ok(self.require(id)?.record_slug)
     }
 
-    /// Every task in the store (for maintenance sweeps).
     pub fn all_tasks(&self) -> Result<Vec<ResearchTask>, String> {
         let projects = self
             .open()?
@@ -1108,7 +1070,6 @@ impl TaskStore {
         self.update_running(id, generation, "todos_json", &encode_json(todos)?)
     }
 
-    /// Stores the evidence report of a finished generation (any status).
     pub fn set_evidence(
         &self,
         id: &str,
@@ -1125,7 +1086,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Clears the phase once a generation stopped running.
     pub fn clear_phase(&self, id: &str, generation: u64) -> Result<(), String> {
         self.open()?
             .execute(
@@ -1137,7 +1097,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// The completed tasks `id` depends on, with their summaries.
     pub fn dependency_results(&self, id: &str) -> Result<Vec<DependencyResult>, String> {
         let task = self.require(id)?;
         task.dependency_ids
@@ -1168,7 +1127,6 @@ impl TaskStore {
             .collect()
     }
 
-    /// The earliest future start time of a started task this store claims.
     pub fn next_run_after(&self) -> Result<Option<i64>, String> {
         self.open()?
             .query_row(
@@ -1181,8 +1139,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Per project: tasks waiting for review, for plan approval, or running
-    /// with an approval request open.
     pub fn attention(&self) -> Result<AttentionSummary, String> {
         let connection = self.open()?;
         let mut statement = connection
@@ -1238,8 +1194,6 @@ impl TaskStore {
         if applying.is_some() {
             return Err("This task is applying its result. Try again in a moment.".into());
         }
-        // Only a dependent that has not finished still needs this task's
-        // result (one waiting for its plan's approval resumes and reads it).
         let waiting: Option<String> = transaction
             .query_row(
                 "SELECT dependent.title FROM research_task_dependencies dependency
@@ -1257,7 +1211,6 @@ impl TaskStore {
                 "\"{title}\" depends on this task and hasn't finished. Cancel it or wait for it to finish."
             ));
         }
-        // Finished dependents keep their results; their link to this task goes.
         transaction
             .execute(
                 "DELETE FROM research_task_dependencies WHERE task_id = ?1 OR dependency_id = ?1",
@@ -1285,10 +1238,6 @@ impl TaskStore {
         Ok(recovered)
     }
 
-    /// An evidence check runs in the process that ran the task, untracked;
-    /// when that process exits during the check, nothing clears its phase
-    /// and the review would show "Checking" forever. Clears it for finished
-    /// tasks whose checking process is gone. Returns how many.
     fn clear_stale_evidence_checks(&self) -> Result<usize, String> {
         let connection = self.open()?;
         let checking: Vec<OwnerRow> = connection
@@ -1347,9 +1296,6 @@ impl TaskStore {
         let transaction = connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(store_error)?;
-        // 0.4.8 L: keep-running tasks and the other owner kind's tasks are
-        // recovered by `requeue_interrupted_keep_running` and the handoff
-        // functions instead.
         let running = transaction
             .prepare(
                 "SELECT id, owner_pid, owner_started FROM research_tasks
@@ -1382,7 +1328,6 @@ impl TaskStore {
                 )
                 .map_err(store_error)?;
             if failed == 1 {
-                // Its open approval requests can no longer be answered.
                 transaction
                     .execute(
                         "UPDATE research_task_approvals SET status = 'withdrawn', decided_at = ?2
@@ -1419,10 +1364,6 @@ impl TaskStore {
         self.events_page(id, generation, after_sequence, None, limit)
     }
 
-    /// A page of a generation's transcript, oldest row first. Forward from
-    /// `after_sequence` (`next_sequence` continues it), or, with
-    /// `before_sequence`, the newest rows below it (`previous_sequence`
-    /// continues backwards; a value above every row reads the newest page).
     pub fn events_page(
         &self,
         id: &str,
@@ -1508,8 +1449,6 @@ impl TaskStore {
             (true, true) => (None, events.first().map(|event| event.sequence)),
             (false, _) => (None, None),
         };
-        // Rows from before 0.4.8's last schema have no generation record:
-        // the task row still knows what its current generation resumed.
         let resumed_from: Option<i64> = connection
             .query_row(
                 "SELECT resumed_from FROM research_task_generations
@@ -1665,19 +1604,11 @@ impl TaskStore {
     }
 }
 
-// 0.4.8 L: handoffs between the app and the background helper. Exactly one
-// process runs a task: a handoff moves a running generation to `queued`
-// for the other owner kind (fenced on this process owning the row and on no
-// cancel being pending), and the other side claims it as a new generation
-// in the same workspace.
 impl TaskStore {
-    /// This process, exactly (pid and start time).
     fn is_me(&self, pid: Option<i64>, started: Option<i64>) -> bool {
         owner_from_columns(pid, started) == Some(self.owner)
     }
 
-    /// The row's owner stopped: no owner recorded, or one that is neither
-    /// this process nor still running.
     fn owner_gone(&self, pid: Option<i64>, started: Option<i64>) -> bool {
         match owner_from_columns(pid, started) {
             None => true,
@@ -1690,10 +1621,6 @@ impl TaskStore {
         }
     }
 
-    /// Hands a running generation to `to`: queued to resume in its workspace
-    /// (a row still preparing its workspace starts fresh), with `record`.
-    /// Refused when a cancel is pending (the cancel finishes the task) or
-    /// when another process owns the row.
     pub fn hand_off_with(
         &self,
         id: &str,
@@ -1738,8 +1665,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Hands a queued task of this owner kind to `to`. A conversation an
-    /// earlier handoff saved for it is kept.
     pub fn hand_off_queued(
         &self,
         id: &str,
@@ -1796,9 +1721,6 @@ impl TaskStore {
         Ok(updated == 1)
     }
 
-    /// The task's handoff record. An unreadable record, or one from a newer
-    /// version, reads as none: the next owner then resumes from the
-    /// research record alone.
     pub fn handoff_record(&self, id: &str) -> Result<Option<HandoffRecord>, String> {
         let json: Option<String> = self
             .open()?
@@ -1815,9 +1737,6 @@ impl TaskStore {
             .filter(|record| record.version <= HANDOFF_VERSION))
     }
 
-    /// Tasks of this owner kind marked to keep running that can move now:
-    /// running ones this process owns, and started queued ones that do not
-    /// wait for ordinary work (which stays with the app).
     pub fn handoff_candidates(&self) -> Result<Vec<ResearchTask>, String> {
         let connection = self.open()?;
         let ids = connection
@@ -1853,10 +1772,6 @@ impl TaskStore {
         ids.iter().map(|id| self.require(id)).collect()
     }
 
-    /// Re-queues a running row whose owner stopped without handing over:
-    /// it resumes in its workspace for `to`, told that its last turn was cut
-    /// short. A CLI agent's home from an earlier handoff is kept when it
-    /// still exists; the grant is kept.
     fn requeue_recovered(
         &self,
         transaction: &Transaction<'_>,
@@ -1887,7 +1802,6 @@ impl TaskStore {
             return Ok(false);
         };
         if cancel_requested {
-            // The user cancelled it before its owner stopped: it ends here.
             let cancelled = transaction
                 .execute(
                     "UPDATE research_tasks SET status = 'cancelled', start_requested = 0,
@@ -1919,7 +1833,6 @@ impl TaskStore {
             HandoffReason::Recovered,
             generation,
         );
-        // A snapshot from an earlier handoff predates the lost work.
         record.conversation = None;
         record.turn_interrupted = true;
         record.acp = previous
@@ -1974,10 +1887,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// The app opened while the helper runs tasks: queued helper tasks and
-    /// running ones whose helper is gone come back at once; the helper is
-    /// asked to give back the rest at their next step. Returns how many
-    /// tasks were moved or marked.
     pub fn request_reclaim(&self) -> Result<usize, String> {
         let mut connection = self.open()?;
         let transaction = connection
@@ -2016,8 +1925,6 @@ impl TaskStore {
         Ok(count)
     }
 
-    /// The app is quitting: the helper keeps the tasks it was asked to give
-    /// back.
     pub fn cancel_reclaim_requests(&self) -> Result<usize, String> {
         self.open()?
             .execute(
@@ -2028,8 +1935,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Cancels and reclaims the other process asked for, among the tasks
-    /// this process runs.
     pub fn foreign_requests(&self) -> Result<ForeignRequests, String> {
         let connection = self.open()?;
         let rows = connection
@@ -2067,8 +1972,6 @@ impl TaskStore {
         Ok(requests)
     }
 
-    /// The helper is not running: its queued tasks and the running ones it
-    /// left come back to the app. Returns their ids.
     pub fn adopt_orphaned_daemon_tasks(&self) -> Result<Vec<String>, String> {
         let mut connection = self.open()?;
         let transaction = connection
@@ -2108,9 +2011,6 @@ impl TaskStore {
         Ok(adopted)
     }
 
-    /// Keep-running tasks of this owner kind whose process stopped without
-    /// handing them over (a crash, a reboot, a sign-out) resume instead of
-    /// failing. Returns their ids.
     pub fn requeue_interrupted_keep_running(&self) -> Result<Vec<String>, String> {
         let mut connection = self.open()?;
         let transaction = connection
@@ -2134,9 +2034,6 @@ impl TaskStore {
         Ok(requeued)
     }
 
-    /// What this process runs (with the evidence checks it still runs for
-    /// tasks it finished), and the queued tasks of its owner kind that can
-    /// still run here.
     pub fn owned_work(&self) -> Result<OwnedWork, String> {
         self.open()?
             .query_row(
@@ -2167,8 +2064,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// Turns "keep running when Oleafly is closed" on or off for a task
-    /// that has not finished, while it waits or runs.
     pub fn set_keep_running(&self, id: &str, keep: bool) -> Result<ResearchTask, String> {
         let task = self.require(id)?;
         if !matches!(
@@ -2196,8 +2091,6 @@ impl TaskStore {
         self.require(id)
     }
 
-    /// Tasks updated after `updated_after` (epoch ms), oldest change first,
-    /// at most `limit` (1–500).
     pub fn changed_since(
         &self,
         updated_after: i64,
@@ -2224,7 +2117,6 @@ impl TaskStore {
             .collect()
     }
 
-    /// The row is running under another process that is still alive.
     pub fn owned_by_other_live_process(&self, id: &str) -> Result<bool, String> {
         let row: Option<(Option<i64>, Option<i64>)> = self
             .open()?
@@ -2240,7 +2132,6 @@ impl TaskStore {
         }))
     }
 
-    /// Whether the helper owns work, or the app asked for work back.
     pub fn has_daemon_work(&self) -> Result<bool, String> {
         self.open()?
             .query_row(
@@ -2253,7 +2144,6 @@ impl TaskStore {
             .map_err(store_error)
     }
 
-    /// The helper's tasks, queued or running.
     pub fn daemon_tasks(&self) -> Result<Vec<ResearchTask>, String> {
         let connection = self.open()?;
         let mut statement = connection
@@ -2337,7 +2227,6 @@ fn initialize_schema(connection: &mut Connection) -> Result<(), String> {
 
 #[cfg(test)]
 thread_local! {
-    /// Schema initializations on this thread (each test runs on its own).
     pub(crate) static SCHEMA_INITIALIZATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
@@ -2379,7 +2268,6 @@ fn read_stored_task(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredTask> {
         stop_reason: row.get(33)?,
         active_ms: row.get(34)?,
         pending_approvals: row.get(35)?,
-        // 0.4.8 L
         reclaim_requested: row.get(36)?,
         resumed_from: row.get(37)?,
     })
@@ -2436,7 +2324,6 @@ fn materialize_task(connection: &Connection, stored: StoredTask) -> Result<Resea
         active_ms: stored.active_ms.max(0) as u64,
         todos: decode_optional(stored.todos_json, "task todos")?.unwrap_or_default(),
         pending_start: decode_optional(stored.pending_start_json, "task pending start")?,
-        // 0.4.8 L
         reclaim_requested: stored.reclaim_requested,
         resumed_from: stored
             .resumed_from
@@ -2481,10 +2368,6 @@ fn validate_draft(
     Ok(())
 }
 
-/// Fails the tasks that were started and wait for `dependency_id`, which just
-/// failed or was cancelled, and in turn the tasks that wait for them. Tasks
-/// that were never started stay queued: starting them later is refused until
-/// the dependency is retried.
 fn fail_waiting_dependents(
     transaction: &Transaction<'_>,
     dependency_id: &str,
@@ -2549,7 +2432,6 @@ fn valid_metric_name(name: &str) -> bool {
         && chars.all(|character| character.is_ascii_alphanumeric() || "_./-".contains(character))
 }
 
-/// The limits of a brief, checked when a task is created or edited.
 pub fn validate_brief(brief: &ResearchBrief) -> Result<(), String> {
     if brief.goal.chars().count() > MAX_GOAL_CHARS {
         return Err("The brief goal is too long.".into());
@@ -2595,8 +2477,6 @@ pub fn validate_brief(brief: &ResearchBrief) -> Result<(), String> {
     if !(1..=720).contains(&budget.run_timeout_minutes) {
         return Err("Each run can last up to 12 hours.".into());
     }
-    // A cluster job's time limit is capped at the run limit, so a longer ask
-    // would silently do nothing.
     if brief
         .compute
         .resources
@@ -2613,8 +2493,6 @@ pub fn validate_brief(brief: &ResearchBrief) -> Result<(), String> {
     Ok(())
 }
 
-// 0.4.8 I: desktop apps ask before every action, so they need someone at
-// the computer: no scheduled start, no running after Oleafly closes.
 fn validate_desktop_apps(
     desktop_apps: bool,
     keep_running_after_quit: bool,
@@ -2771,14 +2649,9 @@ fn encode_json<T: serde::Serialize + ?Sized>(value: &T) -> Result<String, String
     serde_json::to_string(value).map_err(|error| format!("could not encode task data: {error}"))
 }
 
-/// Tool rows per generation that keep their whole detail. A tool row holds
-/// up to 48 KiB of arguments or output, so older ones keep only the start.
 const FULL_TOOL_ROWS: i64 = 500;
 const TRIMMED_TOOL_DETAIL_CHARS: i64 = 2 * 1024;
 
-/// Keeps the newest [`FULL_TOOL_ROWS`] tool rows of a generation whole and
-/// cuts the detail of older ones (never the rows themselves). Each row is
-/// cut once: the generation remembers how far it got.
 fn trim_old_tool_rows(
     transaction: &Transaction<'_>,
     id: &str,
@@ -2916,15 +2789,8 @@ const OWNER_SCHEMA_VERSION: i64 = 1;
 const BRIEF_SCHEMA_VERSION: i64 = 2;
 const HANDOFF_SCHEMA_VERSION: i64 = 3;
 const EVENT_KIND_SCHEMA_VERSION: i64 = 4;
-/// The store's `user_version`.
 pub const SCHEMA_VERSION: i64 = 5;
 
-/// Brings an older store up to [`SCHEMA_VERSION`] step by step. Version 1
-/// (0.4.7) added the run owner; version 2 (0.4.8) adds briefs, phases,
-/// budgets, runs and approvals; version 3 (0.4.8 L) adds handoffs between
-/// the app and the background helper; version 4 indexes the kind of every
-/// transcript row; version 5 records the generation each one resumed, the
-/// runs a fresh start leaves behind, and run cancels still to deliver.
 fn migrate(connection: &mut Connection) -> Result<(), String> {
     if schema_version(connection)? >= SCHEMA_VERSION {
         return Ok(());
@@ -2938,8 +2804,6 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
             .execute_batch(sql)
             .map_err(|error| format!("could not upgrade the research task store: {error}"))
     };
-    // Columns are added only when missing, so a store whose version lags its
-    // columns (an interrupted or mixed-version upgrade) still opens.
     let columns: HashSet<String> = {
         let mut statement = transaction
             .prepare("PRAGMA table_info(research_tasks)")
@@ -3013,8 +2877,6 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
                ON research_task_approvals(status, task_id);",
         )?;
     }
-    // 0.4.8 L: reclaim requests, handoff records and the generation a
-    // resumed one continues.
     if version < HANDOFF_SCHEMA_VERSION {
         add_columns(&[
             ("reclaim_requested", "INTEGER NOT NULL DEFAULT 0"),
@@ -3026,9 +2888,6 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
                ON research_tasks(owner_kind, status);",
         )?;
     }
-    // The kind of each transcript row (`text`, `tool`, ...), read from its
-    // JSON once when it is written, so pruning a long transcript counts rows
-    // from the index instead of parsing every payload.
     if version < EVENT_KIND_SCHEMA_VERSION {
         let has_kind = {
             let mut statement = transaction
@@ -3050,8 +2909,6 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
                ON research_task_events(task_id, execution_generation, kind, sequence);",
         )?;
     }
-    // Which generation each one resumed (a fresh start resumes none), the
-    // run count a fresh start leaves behind, and run cancels not delivered yet.
     if version < SCHEMA_VERSION {
         add_columns(&[("runs_baseline", "INTEGER NOT NULL DEFAULT 0")])?;
         let run_columns: HashSet<String> = {
@@ -3065,7 +2922,6 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
         };
         for (name, definition) in [
             ("cancel_requested", "INTEGER NOT NULL DEFAULT 0"),
-            // The process that started the run, while its start is under way.
             ("starter_pid", "INTEGER"),
             ("starter_started", "INTEGER"),
         ] {

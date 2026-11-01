@@ -84,7 +84,8 @@ describe("AppPickerDialog", () => {
     renderPicker();
     const list = await screen.findByTestId("desktop-apps-picker-list");
     expect(within(list).getAllByRole("button")).toHaveLength(MAX_PICKER_ROWS);
-    await user.type(screen.getByRole("searchbox", { name: copy.dialog.search }), "app 12");
+    await user.click(screen.getByRole("searchbox", { name: copy.dialog.search }));
+    await user.paste("app 12");
     await waitFor(() => {
       const rows = within(screen.getByTestId("desktop-apps-picker-list")).getAllByRole("button");
       expect(rows.length).toBeLessThanOrEqual(MAX_PICKER_ROWS);
@@ -106,7 +107,6 @@ describe("AppPickerDialog", () => {
       expect(textEdit.querySelector("img")).toHaveAttribute("src", "data:image/png;base64,iVBORw0KGgo="),
     );
     expect(mocks.icons).toHaveBeenCalledWith(["TextEdit\u0000com.apple.TextEdit", "Zotero\u0000org.zotero.zotero"]);
-    // The icon is decoration: the row is still named by the app alone.
     expect(textEdit.querySelector("img")).toHaveAttribute("alt", "");
     expect(screen.getByRole("button", { name: /^Zotero/ }).querySelector("img")).toBeNull();
   });
@@ -160,7 +160,6 @@ describe("AppPickerDialog", () => {
     await user.click(writer);
     expect(writer).toHaveAttribute("aria-pressed", "true");
     expect(calc).toHaveAttribute("aria-pressed", "false");
-    // A blocked row's reason is wired to it even when its path has spaces.
     const terminal = screen.getByRole("button", { name: /^Terminal/ });
     const reason = document.getElementById(terminal.getAttribute("aria-describedby") ?? "");
     expect(reason).toHaveTextContent(copy.blocked.terminal);

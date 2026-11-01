@@ -36,10 +36,8 @@ interface ReviewedCopy {
 }
 
 export interface BrowserSignInCopyProps {
-  /** The online LaTeX server whose sign-in is copied, such as https://www.example.org. */
   server: string;
   onSignedIn(status: OverleafStatus): void;
-  /** "row" is the settings card; "button" is a secondary button for the import panel. */
   variant?: "row" | "button";
 }
 
@@ -51,12 +49,6 @@ function serverHostname(server: string): string | null {
   }
 }
 
-/**
- * Copies the sign-in for the online LaTeX service from a browser profile on
- * this computer into Oleafly's cookie store, then signs in with it. The copy
- * is locked to the service's own host. Hidden until some browser profile can
- * be read (today only on macOS).
- */
 export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Readonly<BrowserSignInCopyProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const domain = serverHostname(server);

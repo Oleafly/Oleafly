@@ -1,7 +1,3 @@
-//! Files attached to AI chats, stored once by content hash under
-//! `<data>/attachments/<project id | global>/`. The renderer sends a
-//! reference (`attachment` part); the run resolves it into an image, a
-//! document or text for the model it talks to (see `resolve`).
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant, SystemTime};
@@ -27,10 +23,7 @@ const _: () = assert!(MAX_JSON_UPLOAD_BYTES <= MAX_ATTACHMENT_BYTES);
 const STORE_DIR: &str = "attachments";
 const MAX_NAME_CHARS: usize = 255;
 const MAX_MIME_LEN: usize = 100;
-/// How long a stored or used blob is safe from `attachment_gc`.
 const GC_GRACE: Duration = Duration::from_secs(10 * 60);
-/// How often puts that add bytes walk the whole store to keep it under its
-/// cap. Between walks the store may pass the cap by what those puts added.
 const CAP_CHECK_INTERVAL: Duration = Duration::from_secs(30);
 static LAST_CAP_CHECK: Mutex<Option<Instant>> = Mutex::new(None);
 
@@ -76,8 +69,6 @@ fn too_large(limit: usize) -> String {
         .into()
 }
 
-/// Splits an upload into its JSON header and the file bytes: a 4-byte
-/// little-endian header length, the header, then the file.
 pub(crate) fn decode_upload(body: &[u8]) -> Result<(UploadHeader, &[u8]), String> {
     let length = body
         .get(..4)
@@ -97,8 +88,6 @@ pub(crate) fn upload_bytes(body: &tauri::ipc::InvokeBody) -> Result<Vec<u8>, Str
     upload_bytes_within(body, MAX_JSON_UPLOAD_BYTES)
 }
 
-/// [`upload_bytes`] with `json_limit` as the most a JSON array may carry.
-/// The length is checked before any byte is converted.
 pub(crate) fn upload_bytes_within(
     body: &tauri::ipc::InvokeBody,
     json_limit: usize,
@@ -123,7 +112,6 @@ pub(crate) fn upload_bytes_within(
     }
 }
 
-/// The folder a project's attachments live in, or the global one.
 pub(crate) fn scope_name(project_id: Option<&str>) -> Result<String, String> {
     match project_id.map(str::trim).filter(|id| !id.is_empty()) {
         None if project_id.is_none() => Ok(GLOBAL_SCOPE.to_string()),
@@ -210,7 +198,6 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// [`store_bytes_reporting`] without the flag.
 #[cfg(test)]
 pub(crate) fn store_bytes(
     root: &Path,
@@ -249,14 +236,11 @@ fn store_bytes_reporting(
         let mut staged = tempfile::NamedTempFile::new_in(&dir).map_err(storage_failed)?;
         std::io::Write::write_all(&mut staged, bytes).map_err(storage_failed)?;
         if let Err(error) = staged.persist(&blob) {
-            // Another put of the same bytes may have won the race.
             if !same_size(&blob, size) {
                 return Err(storage_failed(error.error));
             }
         }
     } else {
-        // Attaching it again is a use: it goes to the back of the eviction
-        // order, and the collection grace period starts again.
         touch(&blob);
     }
     let previous = read_meta(root, scope, &hash).ok().flatten();
@@ -272,8 +256,6 @@ fn store_bytes_reporting(
     Ok((meta, added))
 }
 
-/// Stores text extracted from an attachment (a PDF's text layer, which the
-/// renderer reads) with its page count.
 pub(crate) fn store_text(
     root: &Path,
     scope: &str,
@@ -302,7 +284,6 @@ fn touch(path: &Path) {
     }
 }
 
-/// The stored bytes; reading counts as use for the store's eviction order.
 pub(crate) fn read_bytes(root: &Path, scope: &str, sha256: &str) -> Result<Vec<u8>, String> {
     let hash = valid_hash(sha256)?;
     let path = blob_path(root, scope, &hash);
@@ -339,7 +320,6 @@ pub(crate) fn read_meta(
     Ok(meta.filter(|meta| blob_path(root, scope, &hash).is_file() && meta.sha256 == hash))
 }
 
-/// Where a hash is stored: the project's own folder first, then global.
 pub(crate) fn locate(root: &Path, project_id: Option<&str>, sha256: &str) -> Option<String> {
     let hash = valid_hash(sha256).ok()?;
     let mut scopes = Vec::new();
@@ -380,10 +360,6 @@ fn blob_hashes(dir: &Path) -> Vec<String> {
         .collect()
 }
 
-/// Whether a blob was stored or used within [`GC_GRACE`] of `now`: a
-/// renderer may still be storing the rest of an attachment (a scanned PDF's
-/// text and page images) or holding a tool screenshot it has not saved to a
-/// chat yet, so `keep` does not list it.
 fn recently_used(path: &Path, now: SystemTime) -> bool {
     std::fs::metadata(path)
         .and_then(|metadata| metadata.modified())
@@ -393,8 +369,6 @@ fn recently_used(path: &Path, now: SystemTime) -> bool {
         })
 }
 
-/// Removes every blob in `scope` not listed in `keep`, except blobs stored
-/// or used in the last [`GC_GRACE`]. Returns the bytes freed.
 pub(crate) fn gc_scope(root: &Path, scope: &str, keep: &[String]) -> Result<u64, String> {
     let keep: Vec<String> = keep
         .iter()
@@ -410,8 +384,6 @@ pub(crate) fn gc_scope(root: &Path, scope: &str, keep: &[String]) -> Result<u64,
     Ok(freed)
 }
 
-/// Keeps the whole store under `cap` by removing the least recently used
-/// blobs (never `protect`). Returns the bytes freed.
 pub(crate) fn enforce_store_cap(
     root: &Path,
     cap: u64,
@@ -455,9 +427,6 @@ pub(crate) fn enforce_store_cap(
     Ok(freed)
 }
 
-/// Whether a put that added bytes walks the store for its cap now: at most
-/// once per [`CAP_CHECK_INTERVAL`], so a run that stores a screenshot every
-/// few seconds does not stat every blob each time.
 fn cap_check_due(last: &Mutex<Option<Instant>>, now: Instant) -> bool {
     let mut last = last.lock().unwrap_or_else(PoisonError::into_inner);
     if last.is_some_and(|checked| now.saturating_duration_since(checked) < CAP_CHECK_INTERVAL) {
@@ -467,7 +436,6 @@ fn cap_check_due(last: &Mutex<Option<Instant>>, now: Instant) -> bool {
     true
 }
 
-/// Deletes a project's attachments (the project was purged).
 pub(crate) fn remove_project(project_id: &str) -> Result<(), String> {
     crate::paths::validate_project_id(project_id)?;
     let dir = scope_dir(&crate::paths::oleafly_root()?, project_id);
@@ -492,8 +460,6 @@ fn store_root() -> Result<PathBuf, String> {
     crate::paths::oleafly_root()
 }
 
-/// Stores one attached file: `encodeAttachmentUpload(meta, bytes)` from
-/// `@oleafly/ai-core` as the raw request body.
 #[tauri::command]
 pub async fn attachment_put(request: tauri::ipc::Request<'_>) -> Result<AttachmentMeta, String> {
     let body = upload_bytes(request.body())?;
@@ -564,7 +530,6 @@ pub async fn attachment_meta(
     .await
 }
 
-/// Removes a project's attachments that no chat references any more.
 #[tauri::command]
 pub async fn attachment_gc(project_id: String, keep: Vec<String>) -> Result<u64, String> {
     blocking(move || {

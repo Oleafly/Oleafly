@@ -1,11 +1,5 @@
-// When the terminal dock hides, keys must not keep going to a shell nobody
-// can see. This remembers where focus was outside the dock and moves it back
-// there (or just blurs the terminal) when the dock hides.
-
 export interface TerminalFocusTracker {
-  /** Focus moved into the dock and has not moved out to the page since. */
   focusWasInDock(): boolean;
-  /** Focus the element focused before the dock, or blur whatever the dock holds. */
   restore(): void;
   dispose(): void;
 }

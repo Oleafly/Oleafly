@@ -9,7 +9,6 @@
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-/// How long a test waits on a child process before it gives up.
 pub(crate) const CHILD_PATIENCE: Duration = Duration::from_secs(30);
 
 const POLL: Duration = Duration::from_millis(10);
@@ -60,12 +59,10 @@ pub(crate) async fn read_until<T>(
     }
 }
 
-/// Accepts a file holding one process id, such as `printf '%s' "$!" > child.pid`.
 pub(crate) fn pid(text: &str) -> Option<i32> {
     text.trim().parse().ok().filter(|pid| *pid > 0)
 }
 
-/// Accepts a file whose whole content is `expected`.
 pub(crate) fn exactly(expected: &str) -> impl Fn(&str) -> Option<()> + '_ {
     move |text| (text == expected).then_some(())
 }

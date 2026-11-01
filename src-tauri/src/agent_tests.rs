@@ -481,7 +481,7 @@ fn native_dispatch_requires_the_pinned_project_to_still_be_active() {
     );
 }
 
-#[allow(clippy::await_holding_lock)] // env-lock fixture, same as the project tests
+#[allow(clippy::await_holding_lock)]
 #[tokio::test]
 async fn native_read_file_answers_with_project_content() {
     let _env_guard = crate::paths::data_dir_env_lock();
@@ -550,7 +550,6 @@ fn a_result_that_is_not_an_envelope_passes_through_verbatim() {
 
 #[test]
 fn tool_risk_mirrors_the_shell_approval_table() {
-    // Read class: runs unprompted, may run concurrently.
     for tool in [
         "read_file",
         "list_files",
@@ -562,11 +561,9 @@ fn tool_risk_mirrors_the_shell_approval_table() {
     ] {
         assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Read, "{tool}");
     }
-    // Network class: consent rides on connector configuration.
     for tool in ["literature_search", "verify_citation"] {
         assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Network, "{tool}");
     }
-    // Shell and write classes confirm.
     assert_eq!(tool_risk("run_command"), oleafly_agent::ToolRisk::Shell);
     for tool in ["write_file", "delete_file", "a_brand_new_tool"] {
         assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Write, "{tool}");
@@ -651,19 +648,15 @@ fn the_classifier_skips_without_a_project_and_denies_from_decisions() {
         arguments: "{}".into(),
         ..Default::default()
     };
-    // No project pinned: falls back to the risk table (write asks).
     let unpinned = approval_classifier(None);
     assert_eq!(unpinned(&call), ApprovalRequirement::NeedsApproval);
 
-    // Read-class without a project skips.
     let read_call = oleafly_agent::ToolCall {
         name: "read_file".into(),
         ..call.clone()
     };
     assert_eq!(unpinned(&read_call), ApprovalRequirement::Skip);
 
-    // A nonexistent project id yields no decisions, so the risk table
-    // governs rather than a blanket deny.
     let pinned = approval_classifier(Some("no-such-project".into()));
     assert_eq!(pinned(&call), ApprovalRequirement::NeedsApproval);
 }
@@ -939,7 +932,6 @@ async fn stopping_subagents_targets_the_registered_run_only() {
 
     let manager = std::sync::Arc::new(crate::agent::SubagentManager::default());
     crate::agent::register_manager_for_test(&state, "run-1", manager);
-    // No children yet: zero interrupted, no error.
     assert_eq!(crate::agent::subagents_stop(&state, "run-1").unwrap(), 0);
 }
 
@@ -1046,8 +1038,6 @@ async fn trusted_projects_run_tools_without_the_restricted_prompt() {
     assert_eq!(output.output, "executed");
     assert_eq!(*executed.lock().unwrap(), vec!["run_command".to_string()]);
 }
-
-// 0.4.8 C: run integration.
 
 #[test]
 fn resolve_with_attaches_model_caps_from_the_snapshot() {

@@ -21,15 +21,10 @@ import {
   surroundSelectionWithEnvironment,
 } from "./latex-structure-commands";
 import { setEditorDocumentPath } from "./controller";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
-/** Build an EditorState from a doc with a `|` cursor marker. */
 function stateAt(docWithCursor: string): EditorState {
   const cursor = docWithCursor.indexOf("|");
   if (cursor < 0) throw new Error("missing | cursor marker");
@@ -43,7 +38,6 @@ function applied(state: EditorState, spec: NonNullable<ReturnType<typeof continu
 }
 
 beforeEach(() => {
-  // Commands are gated to LaTeX documents via the controller's document path.
   setEditorDocumentPath("/project/main.tex");
 });
 
@@ -85,7 +79,6 @@ describe("continueListOnEnter", () => {
     expect(spec).not.toBeNull();
     const cursor = doc.indexOf("|");
     const result = applied(state, spec!);
-    // The fixture holds exactly one caret marker; splice it out explicitly.
     expect(result.doc).toBe(
       doc.slice(0, cursor) + insert + doc.slice(cursor + 1),
     );
@@ -223,7 +216,6 @@ describe("continueListOnEnter", () => {
     const spec = continueListOnEnter(state);
     expect(spec).not.toBeNull();
     const result = applied(state, spec!);
-    // The empty item line is cleared and replaced with a plain newline.
     expect(result.doc).toBe("\\begin{itemize}\n  \\item a\n\n");
     expect(result.head).toBe(result.doc.length);
   });
@@ -355,7 +347,6 @@ describe("closeEnvironmentAtCursor", () => {
 
   it.each([
     [
-      // Indent adopted from \begin{b}'s line.
       "closes the innermost environment of a nested pair",
       "\\begin{a}\n  \\begin{b}\n    x|",
       "\\begin{a}\n  \\begin{b}\n    x\n  \\end{b}",
@@ -436,8 +427,6 @@ describe("surroundSelectionWithEnvironment", () => {
       state: EditorState.create({
         doc,
         selection: EditorSelection.single(anchor, head),
-        // The real editor enables multiple selections; the mirrored snippet
-        // fields rely on it to select both `env` names at once.
         extensions: [EditorState.allowMultipleSelections.of(true)],
       }),
     });
@@ -454,7 +443,6 @@ describe("surroundSelectionWithEnvironment", () => {
     const v = makeView("hello", 0, 5);
     expect(surroundSelectionWithEnvironment(v)).toBe(true);
     expect(v.state.doc.toString()).toBe("\\begin{env}\nhello\n\\end{env}");
-    // Both `env` occurrences belong to the same snippet field (mirrored).
     const ranges = v.state.selection.ranges;
     expect(ranges).toHaveLength(2);
     expect(ranges.map((r) => v.state.sliceDoc(r.from, r.to))).toEqual([
@@ -466,7 +454,6 @@ describe("surroundSelectionWithEnvironment", () => {
   it("escapes snippet field syntax inside the selection", () => {
     const v = makeView("a${1:x}b", 0, 8);
     expect(surroundSelectionWithEnvironment(v)).toBe(true);
-    // The user text must survive verbatim, not become a snippet field.
     expect(v.state.doc.toString()).toBe("\\begin{env}\na${1:x}b\n\\end{env}");
   });
 

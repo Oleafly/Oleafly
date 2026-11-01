@@ -1,6 +1,3 @@
-//! What a task's Progress tab shows: the plan checklist, the todo list, the
-//! research ledger, the runs, the best value of the main metric and how much
-//! of the budget is used.
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -23,11 +20,9 @@ pub struct TaskProgress {
     pub phase: Option<TaskPhase>,
     pub plan: Vec<PlanItem>,
     pub todos: Vec<TodoItem>,
-    /// The last 50 ledger rows.
     pub ledger: Vec<LedgerRow>,
     pub best: Option<BestMetric>,
     pub runs_in_flight: Vec<RunRecord>,
-    /// The last 20 runs, newest first.
     pub recent_runs: Vec<RunRecord>,
     pub budget: BudgetUsage,
     pub evidence: Option<EvidenceReport>,
@@ -40,7 +35,6 @@ pub struct BestMetric {
     pub name: String,
     pub value: f64,
     pub run_id: String,
-    /// The metric over the last 30 finished runs, oldest first.
     pub series: Vec<f64>,
 }
 
@@ -55,9 +49,6 @@ pub struct BudgetUsage {
     pub max_runs: Option<u32>,
 }
 
-/// The plan checklist and every ledger row from the task's record, when its
-/// workspace still exists. The best result needs the whole ledger; the tab
-/// shows only [`recent_ledger`].
 pub fn record_contents(task: &ResearchTask) -> (Vec<PlanItem>, Vec<LedgerRow>) {
     let Some(isolation) = &task.isolation else {
         return (Vec::new(), Vec::new());
@@ -72,13 +63,10 @@ pub fn record_contents(task: &ResearchTask) -> (Vec<PlanItem>, Vec<LedgerRow>) {
     (plan, ledger)
 }
 
-/// The newest ledger rows, which the Progress tab lists.
 pub fn recent_ledger(ledger: &[LedgerRow]) -> Vec<LedgerRow> {
     ledger[ledger.len().saturating_sub(MAX_LEDGER_ROWS)..].to_vec()
 }
 
-/// The best value of the brief's main metric: over finished runs the ledger
-/// kept, or over every finished run when the ledger has no verdicts yet.
 pub fn best_metric(
     brief: &ResearchBrief,
     runs: &[RunRecord],
@@ -133,7 +121,6 @@ pub fn best_metric(
     })
 }
 
-/// Splits a task's runs into those in flight and the most recent ones.
 pub fn split_runs(mut runs: Vec<RunRecord>) -> (Vec<RunRecord>, Vec<RunRecord>) {
     runs.sort_by(|left, right| {
         right
@@ -218,8 +205,6 @@ mod tests {
 
     #[test]
     fn the_best_run_comes_from_the_whole_ledger_not_its_last_rows() {
-        // r012 is the best run and was kept long ago; the newest 50 rows only
-        // keep worse ones.
         let mut runs = vec![run("r012", 12, RunState::Succeeded, Some(1.05))];
         let mut ledger = vec![row("r012", "keep")];
         for index in 13..=80 {
@@ -229,7 +214,6 @@ mod tests {
         }
         assert_eq!(recent_ledger(&ledger).len(), MAX_LEDGER_ROWS);
         assert_eq!(recent_ledger(&ledger[..3]).len(), 3);
-        // The rows shown do not hold r012, but the best result does.
         assert!(recent_ledger(&ledger).iter().all(|row| row.id != "r012"));
         let best = best_metric(&brief(), &runs, &ledger).unwrap();
         assert_eq!((best.run_id.as_str(), best.value), ("r012", 1.05));

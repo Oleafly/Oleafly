@@ -25,7 +25,6 @@ pub fn parse_pandoc_version(version_stdout: &[u8]) -> Option<String> {
         .then(|| version.to_string())
 }
 
-/// Whether `pandoc --version` reports 2.19 or later.
 pub fn pandoc_version_supported(version_stdout: &[u8]) -> bool {
     let Some(version) = parse_pandoc_version(version_stdout) else {
         return false;
@@ -38,10 +37,8 @@ pub fn pandoc_version_supported(version_stdout: &[u8]) -> bool {
     (major, minor) >= MIN_PANDOC_VERSION
 }
 
-/// Where to look for Pandoc.
 #[derive(Clone, Debug, Default)]
 pub struct PandocSearch {
-    /// Folders holding a bundled copy (the CLI's own folder, the app's).
     pub bundled_dirs: Vec<PathBuf>,
     pub data_root: Option<PathBuf>,
     pub home: Option<PathBuf>,
@@ -106,7 +103,6 @@ fn pandoc_candidates_for(search: &PandocSearch, windows: bool) -> Vec<PathBuf> {
     candidates
 }
 
-/// Pandoc locations to try, best first.
 pub fn pandoc_candidates(search: &PandocSearch) -> Vec<PathBuf> {
     pandoc_candidates_for(search, cfg!(windows))
 }
@@ -115,12 +111,9 @@ pub fn pandoc_candidates(search: &PandocSearch) -> Vec<PathBuf> {
 pub struct PandocFound {
     pub path: Option<PathBuf>,
     pub version: Option<String>,
-    /// Older Pandocs that were passed over, with their versions.
     pub too_old: Vec<(PathBuf, String)>,
 }
 
-/// The first supported Pandoc among [`pandoc_candidates`], probed with
-/// `--version` (canonical path).
 pub fn find_pandoc(search: &PandocSearch, timeout: Duration) -> PandocFound {
     let mut found = PandocFound::default();
     let mut probed: Vec<PathBuf> = Vec::new();

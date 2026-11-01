@@ -133,7 +133,6 @@ describe("Cua Spaces connector", () => {
     });
     expect(mocks.notify).not.toHaveBeenCalled();
 
-    // The next change starts without the note.
     mocks.list.mockResolvedValueOnce([managed(cuaSpacesServerConfig(COMMAND, options))]);
     mocks.update.mockImplementation(async (_name: string, config: McpServerConfig) => managed(config));
     await useCuaSpacesConnectorStore.getState().update(COMMAND, { fullAccess: false, shareCredentials: false });

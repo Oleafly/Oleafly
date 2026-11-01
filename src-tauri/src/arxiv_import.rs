@@ -8,9 +8,9 @@ use std::path::Path;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 
-const MAX_EPRINT_BYTES: u64 = 512 * 1024 * 1024; // 512 MB download cap
+const MAX_EPRINT_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_EPRINT_ENTRIES: usize = 5000;
-const MAX_EPRINT_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024; // 2 GB unpacked
+const MAX_EPRINT_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_AD_HOC_SOURCE_BYTES: u64 = 128 * 1024 * 1024;
 
 /// Accept modern (`2301.01234`, with optional `v2`) and old-style
@@ -40,31 +40,26 @@ fn validate_arxiv_id(id: &str) -> Result<(), String> {
             && valid_version;
         matches
     };
-    let old_style = |s: &str| {
-        match s.split_once('/') {
-            Some((archive, raw_number)) => {
-                // Old-style archives look like hep-ph, math.GT, cond-mat.
-                let (number, version) = match raw_number.split_once('v') {
-                    Some((number, version)) => (number, Some(version)),
-                    None => (raw_number, None),
-                };
-                let valid_version = match version {
-                    Some(version) => {
-                        !version.is_empty() && version.chars().all(|c| c.is_ascii_digit())
-                    }
-                    None => true,
-                };
-                !archive.is_empty()
-                    && archive.len() <= 16
-                    && archive
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
-                    && number.len() == 7
-                    && number.chars().all(|c| c.is_ascii_digit())
-                    && valid_version
-            }
-            None => false,
+    let old_style = |s: &str| match s.split_once('/') {
+        Some((archive, raw_number)) => {
+            let (number, version) = match raw_number.split_once('v') {
+                Some((number, version)) => (number, Some(version)),
+                None => (raw_number, None),
+            };
+            let valid_version = match version {
+                Some(version) => !version.is_empty() && version.chars().all(|c| c.is_ascii_digit()),
+                None => true,
+            };
+            !archive.is_empty()
+                && archive.len() <= 16
+                && archive
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+                && number.len() == 7
+                && number.chars().all(|c| c.is_ascii_digit())
+                && valid_version
         }
+        None => false,
     };
     if modern(id) || old_style(id) {
         Ok(())
@@ -108,8 +103,6 @@ fn import_skip(rel: &str) -> bool {
     })
 }
 
-/// Extract a gzipped tar e-print into `dest`, enforcing the same import
-/// limits as ZIP imports. Returns the number of files written.
 #[derive(Debug)]
 enum TarExtractionError {
     NotTar(String),
@@ -212,7 +205,7 @@ fn extract_tar_gz_limited(
         let header = entry.header();
         let kind = header.entry_type();
         if !matches!(kind, tar::EntryType::Regular | tar::EntryType::Directory) {
-            continue; // symlinks, devices, and links never belong in a project
+            continue;
         }
         let entry_path = entry.path().map_err(|error| {
             TarExtractionError::InvalidArchive(format!(
@@ -231,7 +224,7 @@ fn extract_tar_gz_limited(
             .components()
             .all(|c| matches!(c, std::path::Component::Normal(_)));
         if !safe {
-            continue; // absolute or `..` traversal: skip
+            continue;
         }
         if rel.is_empty() || import_skip(&rel) || rel.split('/').count() > 16 {
             continue;
@@ -425,8 +418,6 @@ pub struct ArxivSourceResult {
     files: Vec<ArxivSourceArtifact>,
 }
 
-/// Preview an arXiv source bundle without publishing a project. Supplying an
-/// ID downloads the e-print; supplying gzip bytes is fully offline.
 #[tauri::command]
 pub async fn extract_arxiv_source(
     request: ArxivSourceRequest,
@@ -493,8 +484,6 @@ pub async fn extract_arxiv_source(
     .map_err(|error| error.to_string())?
 }
 
-/// Download an arXiv e-print and unpack it into a new project, inferring the
-/// main document the same way Overleaf ZIP imports do.
 #[tauri::command]
 pub async fn import_arxiv_eprint(
     app: tauri::AppHandle,

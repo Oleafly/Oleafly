@@ -137,9 +137,6 @@ describe("ChatHistoryModal list", () => {
   });
 
   it("covers the whole window rather than the assistant panel it opens from", () => {
-    // Rendered in place, the overlay was trapped in the workspace panels'
-    // stacking context and the title bar and the editor's pinned rows were
-    // drawn over it. Like the other app dialogs, it now lives on document.body.
     const { container } = render(
       <QueryClientProvider client={createAppQueryClient()}>
         <ChatHistoryModal

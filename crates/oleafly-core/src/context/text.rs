@@ -1,7 +1,3 @@
-//! Character-indexed source text and the project path rules the app's
-//! analyzer uses (`src/lib/project-intelligence/source.ts`).
-
-/// A source as characters, with line starts for 1-based line numbers.
 pub(crate) struct Source {
     pub chars: Vec<char>,
     line_starts: Vec<usize>,
@@ -62,7 +58,6 @@ pub(crate) fn is_mark(character: char) -> bool {
         | 0x1DC0..=0x1DFF | 0x20D0..=0x20FF | 0x302A..=0x302F | 0x3099..=0x309A | 0xFE20..=0xFE2F)
 }
 
-/// `\p{L}\p{M}\p{N}\p{Pc}`.
 pub(crate) fn is_name_character(character: char) -> bool {
     character.is_alphanumeric()
         || is_mark(character)
@@ -81,7 +76,6 @@ pub(crate) fn dirname(path: &str) -> &str {
     }
 }
 
-/// `normalizeProjectPath`: forward slashes, no `.`/`..`, never absolute.
 pub(crate) fn normalize_project_path(path: &str) -> Option<String> {
     let replaced = path.replace('\\', "/");
     let control = replaced
@@ -141,7 +135,6 @@ pub(crate) fn has_extension(path: &str) -> bool {
     }
 }
 
-/// `resolveProjectPathFrom`.
 pub(crate) fn resolve_project_path_from(
     directory: &str,
     raw_target: &str,
@@ -173,7 +166,6 @@ pub(crate) fn resolve_project_path_from(
     Some(normalized)
 }
 
-/// `resolveProjectPath`: relative to the referring file's folder.
 pub(crate) fn resolve_project_path(
     from_file: &str,
     raw_target: &str,

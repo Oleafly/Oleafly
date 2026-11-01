@@ -403,8 +403,6 @@ function SymbolButton({
   );
 }
 
-// A few macros (\nabla, \partial) live in more than one category, so the All
-// tab and search results dedupe by latex to avoid showing the same chip twice.
 const dedupeByLatex = (items: ToolbarSymbol[]) => [
   ...new Map(items.map((s) => [s.latex, s] as const)).values(),
 ];

@@ -6,19 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatNumber } from "@/lib/intl";
 
-/** What the find bar needs from xterm's search addon. */
 export interface TerminalSearch {
-  /** `incremental` keeps extending the current match while the user types. */
   findNext(term: string, incremental?: boolean): boolean;
   findPrevious(term: string): boolean;
   clear(): void;
-  /** Reports the active match index (-1 above the highlight limit) and the match count. */
   onResults(listener: (index: number, count: number) => void): () => void;
 }
 
 const iconButtonClass = "size-7 text-muted-foreground hover:text-foreground";
 
-/** Find in the terminal's output: Enter and Shift+Enter step, Escape closes. */
 export default function TerminalFindBar({
   search,
   onClose,

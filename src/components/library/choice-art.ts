@@ -1,8 +1,3 @@
-/**
- * The starting-point illustrations under public/project-kind/, used by the
- * project kind chooser, the empty library's welcome cards and the import
- * dialog. Each is a 720x406 WebP of 5 to 15 KB bundled with the app.
- */
 export const CHOICE_ART = {
   research: "/project-kind/research-project-light.webp",
   import: "/project-kind/import-project-light.webp",

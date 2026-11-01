@@ -194,6 +194,7 @@
     "pathStyleHint": "MinIO và hầu hết máy chủ tự vận hành cần mục này."
   },
   "errors": {
+    "clock_skew": "Đồng hồ của máy tính này bị lệch nên {{provider}} không chấp nhận yêu cầu từ máy. Hãy đặt đúng ngày và giờ để tiếp tục đồng bộ.",
     "code_invalid": "Mã đó không dùng được. Hãy thử lại.",
     "device_name_empty": "Hãy nhập tên.",
     "device_name_invalid": "Tên máy tính không được chứa \\ / : * ? \" < > | hoặc ký tự điều khiển, và dài tối đa 32 ký tự.",

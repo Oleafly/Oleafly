@@ -1,5 +1,3 @@
-//! A day-long cache of literature answers, so a task that repeats a search
-//! does not spend the indexes' rate limits again.
 use std::path::PathBuf;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -13,7 +11,6 @@ pub struct LiteratureCache {
     path: PathBuf,
 }
 
-/// The cache key of one source's answer to one query.
 pub fn cache_key(
     source: &str,
     query: &str,
@@ -52,7 +49,6 @@ impl LiteratureCache {
         Some(connection)
     }
 
-    /// A fresh answer, if one is cached.
     pub fn get(&self, key: &str, now: i64) -> Option<String> {
         self.open()?
             .query_row(
@@ -65,7 +61,6 @@ impl LiteratureCache {
             .flatten()
     }
 
-    /// Stores an answer; the oldest tenth goes when the cache is full.
     pub fn put(&self, key: &str, body: &str, now: i64) {
         if body.len() > MAX_BODY_BYTES {
             return;

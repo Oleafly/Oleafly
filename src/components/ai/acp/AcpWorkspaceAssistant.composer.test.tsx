@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render as renderWithoutProviders, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -93,6 +93,10 @@ const imageSession = () => session("saved", { capabilities: { ...session().capab
 
 let snapshots: Record<string, AcpSnapshot>;
 let history: Record<string, AcpEvent[]>;
+
+beforeAll(async () => {
+  await import("@/lib/terminal-launch");
+});
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -558,7 +562,6 @@ describe("ACP assistant session states", () => {
   });
 });
 
-/** The transcript, scrolled well above its end. */
 function scrolledUp(ui: ReturnType<typeof render>): HTMLElement {
   const scroller = ui.getByTestId("acp-transcript");
   Object.defineProperty(scroller, "scrollHeight", { configurable: true, value: 2000 });
@@ -580,7 +583,6 @@ describe("ACP composer on the shared composer (0.4.8)", () => {
 
     typeMessage(composer, "Outline the paper");
     fireEvent.keyDown(composer, { key: "Enter" });
-    // Nothing runs yet, so the message does not wait for a turn to finish.
     expect(await ui.findByTestId("acp-queued")).toHaveTextContent(enAi.acp.queue.queuedConnecting);
     expect(composer).toHaveValue("");
     expect(acpPrompt).not.toHaveBeenCalled();
@@ -866,7 +868,6 @@ describe("ACP drafts, failed sends and queued messages", () => {
     render(<AcpWorkspaceAssistant projectId="paper" />);
     await waitFor(() => expect(sessionsMock).toHaveBeenCalled());
 
-    // The user opens another conversation from the history while the panel is still loading.
     act(() => useAcpSessionsStore.getState().setActive("paper", "second"));
     await act(async () => {
       loading.resolve([session("saved"), session("second", { title: "Second conversation" })]);

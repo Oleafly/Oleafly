@@ -82,8 +82,6 @@ test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await compileForLibraryPreview(tauriPage);
 
-  // Reveal the preview overlay: it mounts only for a compiled project with the
-  // default-on hover-preview setting, and its thumbnail loads on hover.
   await tauriPage.evaluate(
     `(() => {
       const el = Array.from(document.querySelectorAll('[data-testid="project-grid"] button[aria-label^="Open "]'))
@@ -138,7 +136,6 @@ test("fork a project from the context menu", async ({ tauriPage }) => {
   await expect(tauriPage.getByText("Fork project")).toBeVisible({ timeout: 10_000 });
   await tauriPage.getByText("Fork project").click();
 
-  // Give the fork a unique name so re-runs never collide.
   await expect(tauriPage.locator('input[placeholder="New project name"]')).toBeVisible();
   const forkName = `E2E Fork ${Date.now().toString(36)}`;
   await tauriPage.fill('input[placeholder="New project name"]', forkName);

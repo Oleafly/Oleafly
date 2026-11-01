@@ -13,7 +13,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(), loadResearchTaskEventsBefore: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
-  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
   listenForResearchTaskDeltas: vi.fn(async () => () => {}),
   watchResearchTask: vi.fn(async () => {}),
   listResearchTaskApprovals: vi.fn(async () => []),
@@ -95,7 +94,6 @@ describe("ResearchTasksPanel rendering", () => {
 
   it("streams activity for the selected task without rendering the task list again", async () => {
     await mountList(12);
-    // Activity streams only into an open dialog.
     await act(async () => useResearchTasksStore.getState().openTaskDetail("t5"));
     const before = new Map(chipRenders);
 
@@ -112,7 +110,6 @@ describe("ResearchTasksPanel rendering", () => {
     });
 
     expect(useResearchTasksStore.getState().events).toHaveLength(5);
-    // The dialog shows t5 and draws again; no row of the list does.
     for (const [id, count] of before) {
       if (id !== "t5") expect(chipRenders.get(id)).toBe(count);
     }

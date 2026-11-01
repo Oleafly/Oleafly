@@ -82,7 +82,6 @@ describe("enclosingMathEnvironment", () => {
     const text = `\\begin{equation}${"x".repeat(200)}\\end{equation}`;
     const offset = text.indexOf("\\end") - 5;
     expect(enclosingMathEnvironment(text, offset, 50)).toBeNull();
-    // Sanity: with a large enough radius the same offset resolves.
     expect(enclosingMathEnvironment(text, offset, 4096)).not.toBeNull();
   });
 
@@ -116,7 +115,6 @@ describe("enclosingMathEnvironment", () => {
       body: " a+b ",
       environment: "display",
     });
-    // The expression's opener lies before the window, so it cannot be seen.
     const farAfter = text.length - 10;
     expect(enclosingMathEnvironment(text, farAfter, 64)).toBeNull();
   });

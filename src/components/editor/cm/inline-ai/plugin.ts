@@ -38,9 +38,6 @@ class AddWidget extends WidgetType {
   }
 }
 
-// Inline diff marks and the block panel widget live in separate fields: a single
-// set mixing block and inline decorations can become invalid (and get silently
-// dropped) if a diff span lands at the block widget's line-end position.
 const setDiffDeco = StateEffect.define<DecorationSet>();
 const setPanelDeco = StateEffect.define<DecorationSet>();
 
@@ -69,7 +66,7 @@ function buildDiffSet(state: EditorState): DecorationSet {
   const docLength = state.doc.length;
   const ranges = [];
   for (const sp of buildDecoSpans(s.original, s.proposed, s.from)) {
-    if (sp.from > docLength || sp.to > docLength) continue; // out of bounds guard
+    if (sp.from > docLength || sp.to > docLength) continue;
     if (sp.kind === "del" && sp.to > sp.from) {
       ranges.push(Decoration.mark({ class: "cm-inline-del" }).range(sp.from, sp.to));
     } else if (sp.kind === "add") {
@@ -112,9 +109,6 @@ function followPendingRange(update: ViewUpdate): void {
   if (!session) return;
   let range: PendingRange = { from: session.from, to: session.to };
   let withdrawn = session.phase === "withdrawn";
-  // Only a suggestion can go stale. While the instruction is still being
-  // typed, or after an error, the range just follows the edit, and the run
-  // reads the text again when it starts.
   const suggesting = session.phase === "streaming" || session.phase === "reviewing";
   for (const tr of update.transactions) {
     if (!tr.docChanged) continue;
@@ -175,7 +169,6 @@ export function acceptInlineEdit(view: EditorView): void {
   useInlineEditStore.getState().reset();
 }
 
-// No document change to undo here: the diff preview never mutated the doc.
 export function rejectInlineEdit(_view: EditorView): void {
   useInlineEditStore.getState().reset();
 }

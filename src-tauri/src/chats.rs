@@ -1,17 +1,3 @@
-//! AI chat history on disk, one file per chat under
-//! `~/.oleafly/chats/<project id>/<chat id>.json`.
-//!
-//! Until 0.4.8 each project kept one `chats/<project id>.json` array, which
-//! capped history at 50 chats and rewrote every chat on each save. The first
-//! load merges that file into per-chat files and leaves it where it is, so a
-//! downgrade to 0.4.7 still finds its history; a marker beside the per-chat
-//! files records which version of the file was merged and which chats came
-//! from it. A file 0.4.7 wrote later is merged again: a chat deleted here
-//! since stays deleted, and a chat continued in both versions is kept twice,
-//! the 0.4.7 copy as a chat of its own.
-//! History before that lived in the webview's localStorage; the frontend
-//! still migrates that payload on first load.
-
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
@@ -23,27 +9,18 @@ use crate::paths;
 static SAVE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
-/// The start of a save error for a chat past the size limit; the webview
-/// keeps such a chat in memory and offers an export.
 pub(crate) const CHAT_TOO_LARGE: &str = "[chat_too_large]";
-/// One chat on disk.
 const MAX_CHAT_JSON_BYTES: usize = 8 * 1024 * 1024;
-/// Full chat bodies one load returns, newest first; older chats come back
-/// as stubs the webview loads when they are opened.
 const LOAD_BUDGET_BYTES: usize = 32 * 1024 * 1024;
 const MAX_CHAT_ID_LEN: usize = 128;
-/// A backup an earlier 0.4.8 build made by renaming the legacy file.
 const MIGRATED_SUFFIX: &str = ".json.migrated";
-/// Records, inside a project's chat folder, which legacy file was merged.
 const LEGACY_MARKER: &str = ".legacy-merged";
-/// What a load learned about the older chats, so it need not read them again.
 const STUB_INDEX: &str = ".stubs.json";
 /// Names Windows reserves for devices, in any case.
 const RESERVED_NAMES: [&str; 22] = [
     "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
     "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
-/// Fields a stub keeps so the history list can show the chat.
 const STUB_FIELDS: [&str; 10] = [
     "id",
     "projectId",
@@ -72,55 +49,35 @@ struct ChatHead {
     updated_at: Option<f64>,
 }
 
-/// The legacy file a merge saw, how many of its chats could not be merged,
-/// and the chats taken from it, kept beside the per-chat files.
 #[derive(Serialize, Deserialize)]
 struct LegacyMarker {
     stamp: String,
     skipped: u32,
-    /// By chat id. Markers from earlier 0.4.8 builds have none.
     #[serde(default)]
     merged: std::collections::HashMap<String, MergedChat>,
 }
 
-/// A chat a merge took from the legacy file.
 #[derive(Clone, Serialize, Deserialize)]
 struct MergedChat {
-    /// Its `updatedAt` in the legacy file at that merge.
     updated_at: Option<f64>,
-    /// The per-chat file holding the legacy copy when it is not the chat's
-    /// own: both copies had changed, so the legacy one became a chat of its
-    /// own beside the other.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     copy: Option<String>,
 }
 
-/// The id a legacy copy gets when the chat changed in both versions: the
-/// chat's id, shortened if need be, and the copy's `updatedAt`.
 fn legacy_copy_id(chat_id: &str, updated_at: Option<f64>) -> String {
     let suffix = format!("-legacy-{}", updated_at.unwrap_or(0.0).max(0.0) as u64);
-    // Chat ids are ASCII, so any byte is a character boundary.
     let keep = chat_id.len().min(MAX_CHAT_ID_LEN - suffix.len());
     format!("{}{suffix}", &chat_id[..keep])
 }
 
-/// What a merge does with one legacy chat.
 enum MergeStep {
-    /// Leave the per-chat files as they are; the record is what the marker
-    /// keeps for the chat.
     Keep(MergedChat),
-    /// Write the legacy copy to the per-chat file of `target`; `copy` is
-    /// `target` when that is not the chat's own id.
     Write {
         target: String,
         copy: Option<String>,
     },
 }
 
-/// Decides [`MergeStep`] for the legacy chat `chat_id`, whose `updatedAt` in
-/// the legacy file is `incoming`. `seen` is what an earlier merge recorded
-/// for it; `local_updated_at` reads the `updatedAt` of a per-chat file
-/// (`None` when there is no file).
 fn merge_step(
     chat_id: &str,
     incoming: Option<f64>,
@@ -128,7 +85,6 @@ fn merge_step(
     local_updated_at: impl Fn(&str) -> Option<Option<f64>>,
 ) -> MergeStep {
     let Some(seen) = seen else {
-        // New to the merges: whichever copy is newer wins.
         let newer_here = local_updated_at(chat_id)
             .is_some_and(|existing| existing.unwrap_or(f64::MIN) >= incoming.unwrap_or(f64::MIN));
         return if newer_here {
@@ -144,23 +100,18 @@ fn merge_step(
         };
     };
     if seen.updated_at == incoming {
-        // 0.4.7 has not changed it since the last merge.
         return MergeStep::Keep(seen.clone());
     }
     let target = seen.copy.clone().unwrap_or_else(|| chat_id.to_owned());
     match local_updated_at(&target) {
-        // Deleted here since: it stays deleted.
         None => MergeStep::Keep(MergedChat {
             updated_at: incoming,
             copy: seen.copy.clone(),
         }),
-        // Unchanged here since: the newer legacy copy replaces it.
         Some(local) if local == seen.updated_at => MergeStep::Write {
             target,
             copy: seen.copy.clone(),
         },
-        // Changed in both versions: the legacy copy becomes a chat of its
-        // own, so neither loses messages.
         Some(_) => {
             let id = legacy_copy_id(chat_id, incoming);
             MergeStep::Write {
@@ -171,9 +122,6 @@ fn merge_step(
     }
 }
 
-/// Writes a legacy chat to the per-chat file of `id` (its own id, or the id
-/// of its legacy copy) and indexes it. `false` when it is over the size
-/// limit and was not written.
 fn write_merged(
     root: &Path,
     project_id: &str,
@@ -197,23 +145,16 @@ fn write_merged(
         return Ok(false);
     }
     save_to_path(&dir.join(format!("{id}.json")), &json)?;
-    // Best effort, a chat at a time: the whole history is never held as one
-    // string to index it.
     let _ = crate::library_db::index_chat(root, project_id, chat);
     Ok(true)
 }
 
-/// What a legacy merge did.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct Migration {
-    /// The legacy file was merged by this call.
     pub merged: bool,
-    /// Chats in the legacy file that cannot be per-chat files (an id that is
-    /// not a file name, a body over the limit): they stay in that file only.
     pub skipped: u32,
 }
 
-/// One chat as the last load left it: enough to list it without reading it.
 #[derive(Serialize, Deserialize)]
 struct StubEntry {
     len: u64,
@@ -275,8 +216,6 @@ fn read_head(json: &str) -> Option<ChatHead> {
     serde_json::from_str(json).ok()
 }
 
-/// The length and modification time of a file as one string: what tells a
-/// file that changed from the one a merge saw.
 fn file_stamp(path: &Path) -> Option<String> {
     let meta = std::fs::metadata(path).ok()?;
     Some(format!("{}:{}", meta.len(), modified_nanos(&meta)?))
@@ -292,19 +231,8 @@ fn modified_nanos(meta: &std::fs::Metadata) -> Option<u128> {
     )
 }
 
-/// Merges a legacy per-project array into per-chat files. The array itself
-/// stays, so 0.4.7 still reads it; a marker records the version that was
-/// merged and the chats taken from it, and the array is merged again only
-/// when it has changed since (0.4.7 saved to it).
-///
-/// A chat the first merge sees is written unless its per-chat file is at
-/// least as new. A chat an earlier merge took is looked at again only when
-/// 0.4.7 changed it since: deleted here since, it stays deleted; unchanged
-/// here since, the legacy copy replaces it; changed in both versions, the
-/// legacy copy is kept beside it as a chat of its own.
 pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration, String> {
     let legacy = legacy_path(root, project_id)?;
-    // Stamped before it is read: a write in between only causes a re-merge.
     let Some(stamp) = file_stamp(&legacy) else {
         return Ok(Migration::default());
     };
@@ -327,7 +255,6 @@ pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration,
         .map_err(|error| format!("legacy chats file is not valid JSON: {error}"))?;
     std::fs::create_dir_all(&dir)
         .map_err(|error| format!("failed to create the chats folder: {error}"))?;
-    // The `updatedAt` of a per-chat file, `None` when there is no file.
     let local_updated_at = |id: &str| {
         std::fs::read_to_string(dir.join(format!("{id}.json")))
             .ok()
@@ -381,7 +308,6 @@ pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration,
     })
 }
 
-/// [`migrate_legacy`] for callers that only ask whether a merge ran.
 pub(crate) fn migrate_legacy_chats(root: &Path, project_id: &str) -> Result<bool, String> {
     migrate_legacy(root, project_id).map(|migration| migration.merged)
 }
@@ -403,7 +329,6 @@ fn stub_of(value: &serde_json::Value) -> serde_json::Value {
     serde_json::Value::Object(stub)
 }
 
-/// A chat file found in a project's folder, as its directory entry shows it.
 struct ChatFile {
     stem: String,
     path: PathBuf,
@@ -418,15 +343,6 @@ fn read_stub_index(dir: &Path) -> std::collections::HashMap<String, StubEntry> {
         .unwrap_or_default()
 }
 
-/// A project's chats as one JSON array, newest first: full bodies while
-/// they fit `budget`, stubs after that. Unreadable files are skipped and
-/// counted; nothing is created when the project has no chats.
-///
-/// A chat's body is read only when it goes into the answer in full. The
-/// stub of every other chat comes from an index kept beside the files
-/// (`.stubs.json`, keyed by each file's length and modification time), so a
-/// project with hundreds of long chats opens by reading the newest few. A
-/// file the index does not know, or that changed, is read once and added.
 pub(crate) fn read_project_chats(
     root: &Path,
     project_id: &str,
@@ -509,7 +425,6 @@ pub(crate) fn read_project_chats(
         listed.push((file, entry.updated_at));
         index.insert(stem, entry);
     }
-    // Files that are gone leave the index too.
     changed |= !known.is_empty();
     listed.sort_by(|left, right| right.1.total_cmp(&left.1));
 
@@ -518,8 +433,6 @@ pub(crate) fn read_project_chats(
     for (file, _) in &listed {
         let full = used.saturating_add(file.len as usize) <= budget;
         let item = if full {
-            // Read again to include it, and checked again: it may have
-            // changed since the listing.
             match std::fs::read_to_string(&file.path) {
                 Ok(body) if read_head(&body).is_some_and(|head| head.id == file.stem) => {
                     used += body.len();
@@ -543,7 +456,6 @@ pub(crate) fn read_project_chats(
     }
     json.push(']');
     if changed {
-        // Best effort: without it the next load reads those files again.
         if let Ok(text) = serde_json::to_string(&index) {
             let _ = save_to_path(&dir.join(STUB_INDEX), &text);
         }
@@ -585,7 +497,6 @@ pub(crate) fn write_chat(
         .map_err(|error| format!("failed to create the chats folder: {error}"))?;
     save_to_path(&path, json)?;
     if index {
-        // Best effort: the file on disk stays canonical.
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(json) {
             let _ = crate::library_db::index_chat(root, project_id, &value);
         }
@@ -630,7 +541,6 @@ fn remove_project_chats_in(root: &Path, project_id: &str) -> Result<(), String> 
     remove_if_present(&backup)
 }
 
-/// Removes every chat of a project: its folder, a legacy file and its backup.
 pub(crate) fn remove_project_chats(project_id: &str) -> Result<(), String> {
     remove_project_chats_in(&paths::oleafly_root()?, project_id)
 }
@@ -643,22 +553,17 @@ async fn blocking<T: Send + 'static>(
         .map_err(|error| format!("chats task failed: {error}"))?
 }
 
-/// A project's chats, migrating a legacy file first.
 #[tauri::command]
 pub async fn chats_load(project_id: String) -> Result<ChatsLoad, String> {
     blocking(move |root| {
         let migration = migrate_logged(&root, &project_id);
         let mut load = read_project_chats(&root, &project_id, LOAD_BUDGET_BYTES)?;
-        // Chats the legacy file holds that cannot be per-chat files are
-        // counted with the files that could not be read.
         load.skipped = load.skipped.saturating_add(migration.skipped);
         Ok(load)
     })
     .await
 }
 
-/// Merges a legacy file, logging a failure instead of returning it: the
-/// per-chat files load either way.
 fn migrate_logged(root: &Path, project_id: &str) -> Migration {
     migrate_legacy(root, project_id).unwrap_or_else(|error| {
         crate::logsafe::info(
@@ -675,8 +580,6 @@ pub async fn chat_read(project_id: String, chat_id: String) -> Result<String, St
     blocking(move |root| read_chat(&root, &project_id, &chat_id)).await
 }
 
-/// Saves one chat. Saves while a reply streams pass `index: false`; the
-/// save at the end of the run updates the search index.
 #[tauri::command]
 pub async fn chat_save(
     project_id: String,
@@ -693,8 +596,6 @@ pub async fn chat_delete(project_id: String, chat_id: String) -> Result<(), Stri
     blocking(move |root| delete_chat(&root, &project_id, &chat_id)).await
 }
 
-/// Every chat of a project with its full body (never stubs), as one array.
-/// Kept for the backend-port contract.
 #[tauri::command]
 pub async fn load_project_chats(project_id: String) -> Result<String, String> {
     blocking(move |root| {
@@ -704,8 +605,6 @@ pub async fn load_project_chats(project_id: String) -> Result<String, String> {
     .await
 }
 
-/// Writes each chat of the array to its own file and deletes nothing. Kept
-/// for the backend-port contract.
 #[tauri::command]
 pub async fn save_project_chats(project_id: String, json: String) -> Result<(), String> {
     blocking(move |root| {

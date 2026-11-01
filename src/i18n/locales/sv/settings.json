@@ -1488,6 +1488,7 @@
         "missing": "Hittades inte på den här datorn."
       },
       "managedIdle": "Används inte. Oleafly använder först kopian som hittades på den här datorn.",
+      "superseded": "Används inte. Oleafly använder nu {{tool}} {{version}}.",
       "download": {
         "optional": "Valfritt. Oleafly använder redan kopian på den här datorn.",
         "license": "{{license}}-licens.",

@@ -65,16 +65,11 @@ interface EngineStore {
   info: EngineInfo | null;
   installing: boolean;
   removing: boolean;
-  /** Which install phase is running (null when idle). */
   installPhase: InstallPhase | null;
-  /** Download percentage when the total size is known. */
   progress: number | null;
-  /** Bytes of a previous interrupted download waiting to be resumed. */
   partialDownloadBytes: number;
-  /** A compile was requested mid-install; run it when the install lands. */
   compileQueuedDuringInstall: boolean;
   compileQueuedExplicitly: boolean;
-  /** "TinyTeX is still downloading" notice (Recompile during install). */
   installWaitNoticeOpen: boolean;
   installWaitNoticeShown: boolean;
   installed: string[];
@@ -216,8 +211,6 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       const detail = e instanceof Error ? e.message : String(e);
       const state = await tinytexInstallState().catch(() => null);
       set({ partialDownloadBytes: state?.partial_download_bytes ?? 0 });
-      // The backend message already says whether progress was kept; show it
-      // verbatim instead of a generic apology.
       toast.errorUnique(
         TINYTEX_INSTALL_TOAST_KEY,
         detail || i18n.t(($) => $.core.tinytex.installFailed),
@@ -298,7 +291,6 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
   closeInstallWaitNotice: () => set({ installWaitNoticeOpen: false }),
 }));
 
-/** Human label for the current install phase, shared by modal and Settings. */
 export function installPhaseLabel(
   phase: InstallPhase | null,
   progress: number | null,

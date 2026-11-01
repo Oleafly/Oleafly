@@ -1,15 +1,3 @@
-//! On-demand downloadable assets (font packs).
-//!
-//! To keep the installer small, richer templates declare the font packs they need
-//! in their manifest (`requires.fonts`), and those packs are downloaded on demand
-//! into a shared cache under `~/.oleafly/assets/fonts/<packId>/`. When a project
-//! is created from such a template, the cached fonts are copied into the project's
-//! `fonts/` folder, so the document is self-contained, portable, and compiles
-//! offline with the bundled Tectonic (via `\setmainfont{...}[Path=fonts/]`).
-//!
-//! The catalog is data, not code: `resources/font-packs.json` (bundled) is the
-//! single source of truth, read here and by the preview-render script.
-
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
@@ -53,7 +41,6 @@ pub struct FontPack {
     pub families: Vec<String>,
 }
 
-/// Gallery-facing view of a downloadable component.
 #[derive(Serialize)]
 pub struct ComponentInfo {
     pub id: String,
@@ -66,7 +53,6 @@ pub struct ComponentInfo {
     pub families: Vec<String>,
 }
 
-/// What a template needs before it can be created without a download.
 #[derive(Serialize)]
 pub struct Prerequisite {
     pub id: String,
@@ -75,7 +61,6 @@ pub struct Prerequisite {
     pub installed: bool,
 }
 
-/// Streamed to the webview as each file downloads.
 #[derive(Serialize, Clone)]
 pub(crate) struct AssetProgress {
     pub(crate) component: String,
@@ -164,7 +149,6 @@ fn pack_installed(pack: &FontPack) -> bool {
     !pack.files.is_empty() && pack.files.iter().all(|f| dir.join(&f.name).is_file())
 }
 
-/// Whether every listed font pack is present in the cache. Empty list = ready.
 pub fn fonts_ready(app: &AppHandle, font_ids: &[String]) -> bool {
     if font_ids.is_empty() {
         return true;
@@ -312,8 +296,6 @@ pub fn template_prerequisites(
     Ok(out)
 }
 
-/// Download whatever a template needs that isn't already cached. Safe to call
-/// unconditionally (a no-op when everything is present).
 #[tauri::command]
 pub async fn ensure_template_assets(app: AppHandle, template_id: String) -> Result<(), String> {
     let dir = crate::templates::template_dir(&app, &template_id)?;
@@ -327,8 +309,6 @@ pub async fn ensure_template_assets(app: AppHandle, template_id: String) -> Resu
     Ok(())
 }
 
-/// Copy a template's required font files from the cache into `<project>/fonts/`.
-/// Called during project creation so the document carries its own fonts.
 pub fn stage_template_fonts(
     app: &AppHandle,
     manifest: &TemplateManifest,

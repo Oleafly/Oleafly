@@ -1,8 +1,16 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { VITE_CLIENT_WITHOUT_TRANSPORT } from "./e2e/vite-client-without-transport";
+import {
+  PDFJS_CMAPS_PATH,
+  PDFJS_ICCS_PATH,
+  PDFJS_STANDARD_FONTS_PATH,
+  PDFJS_WASM_PATH,
+} from "./packages/preview/src/pdfDocumentOptions";
 import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
@@ -59,7 +67,6 @@ type OutputSummary = {
   imports?: readonly string[];
 };
 
-/** Entry chunks that import something before the polyfills chunk. */
 export function entriesLoadingBeforePolyfills(outputs: readonly OutputSummary[]): string[] {
   const chunks = outputs.filter((output) => output.type === "chunk");
   const polyfills = chunks.find((chunk) => chunk.name === POLYFILLS_CHUNK);
@@ -86,6 +93,55 @@ const preserveWorkerExports = (): Plugin => ({
   options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
 });
 
+export const PDFJS_DIST_DIR = path.dirname(createRequire(import.meta.url).resolve("pdfjs-dist/package.json"));
+
+const PDFJS_ASSET_FOLDERS = [
+  { appPath: PDFJS_STANDARD_FONTS_PATH, folder: "standard_fonts" },
+  { appPath: PDFJS_WASM_PATH, folder: "wasm" },
+  { appPath: PDFJS_CMAPS_PATH, folder: "cmaps" },
+  { appPath: PDFJS_ICCS_PATH, folder: "iccs" },
+] as const;
+
+const PDFJS_SCRIPTING_ONLY = /^quickjs-eval\./;
+
+const PDFJS_ASSET_TYPES: Record<string, string> = {
+  ".js": "text/javascript",
+  ".wasm": "application/wasm",
+};
+
+export function pdfjsAssetFiles(distDir = PDFJS_DIST_DIR): Map<string, string> {
+  const files = new Map<string, string>();
+  for (const { appPath, folder } of PDFJS_ASSET_FOLDERS) {
+    const dir = path.join(distDir, folder);
+    const names = readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && !PDFJS_SCRIPTING_ONLY.test(entry.name))
+      .map((entry) => entry.name)
+      .sort();
+    for (const name of names) files.set(`${appPath}${name}`, path.join(dir, name));
+  }
+  return files;
+}
+
+export const pdfjsAssets = (distDir = PDFJS_DIST_DIR): Plugin => ({
+  name: "pdfjs-assets",
+  configureServer(server) {
+    const base = server.config.base;
+    const files = pdfjsAssetFiles(distDir);
+    server.middlewares.use((request, response, next) => {
+      const url = request.url?.split("?")[0] ?? "";
+      const source = url.startsWith(base) ? files.get(url.slice(base.length)) : undefined;
+      if (!source) return next();
+      response.setHeader("Content-Type", PDFJS_ASSET_TYPES[path.extname(source)] ?? "application/octet-stream");
+      response.end(readFileSync(source));
+    });
+  },
+  generateBundle() {
+    for (const [fileName, source] of pdfjsAssetFiles(distDir)) {
+      this.emitFile({ type: "asset", fileName, source: readFileSync(source) });
+    }
+  },
+});
+
 export const rejectProductionDevHooks = (): Plugin => ({
   name: "reject-production-dev-hooks",
   // E2E-only HTML fixtures intentionally use inline styles in the dev server.
@@ -102,9 +158,6 @@ export const rejectProductionDevHooks = (): Plugin => ({
     },
   },
   generateBundle(_options, bundle) {
-    // The packaged e2e build (VITE_E2E_HOOKS=1, consumed by scripts/e2e.sh
-    // via OLEAFLY_E2E_APP_BINARY) deliberately carries the test hooks; every
-    // other production build must stay clean, so the audit remains fatal.
     if (process.env.VITE_E2E_HOOKS === "1") {
       this.warn(
         "VITE_E2E_HOOKS=1: this bundle contains test hooks and must never ship to users",
@@ -135,6 +188,7 @@ export default defineConfig(async () => ({
     rejectProductionDevHooks(),
     requirePolyfillsFirst(),
     staticE2eClient(),
+    pdfjsAssets(),
   ],
   optimizeDeps: {
     exclude: ["harper.js"],
@@ -224,7 +278,6 @@ export default defineConfig(async () => ({
       "@oleafly/conversion-registry": path.resolve(__dirname, "./packages/conversion-registry/src"),
     },
   },
-  // Vite options tailored for Tauri development
   clearScreen: false,
   server: {
     port: 1420,

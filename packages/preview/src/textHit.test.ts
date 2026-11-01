@@ -131,7 +131,6 @@ describe("measuring the character under the pointer", () => {
     else Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
   });
 
-  /** Lays `text` out from x = 100 with the given character widths. */
   function laidOut(text: string, widths: number[]): Text {
     const node = document.createTextNode(text);
     const edges = widths.reduce((all, width) => [...all, (all.at(-1) as number) + width], [100]);
@@ -147,8 +146,6 @@ describe("measuring the character under the pointer", () => {
   }
 
   it("finds the character from the browser's layout, not from equal widths", () => {
-    // Narrow letters then wide ones: at x = 150 the equal-width guess is in
-    // "ill", the layout says "mmm".
     const text = "ill ill mmm";
     const node = laidOut(text, [3, 3, 3, 4, 3, 3, 3, 4, 30, 30, 30]);
     const offset = measuredTextOffset(node, 150);

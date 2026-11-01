@@ -356,8 +356,6 @@ async fn back_online(side: &mut Side) -> bool {
     reached(side, |status| *status == LiveStatus::Online).await
 }
 
-// Carries what the app sends at `up` bytes a second and what the server
-// sends at `down`, full speed where none is given, like a home or hotel link.
 async fn throttled_link(
     upstream: std::net::SocketAddr,
     up: Option<usize>,

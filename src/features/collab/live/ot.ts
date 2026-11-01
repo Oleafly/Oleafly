@@ -180,7 +180,6 @@ export class TextOperation {
     return this.steps.every(isRetain);
   }
 
-  // How many retain, insert and delete steps the operation has.
   get size(): number {
     return this.steps.length;
   }
@@ -315,8 +314,6 @@ export function replacementOperation(before: string, after: string): TextOperati
     .retain(suffix);
 }
 
-// More differing lines than this and the diff falls back to one replacement,
-// which keeps the work bounded on the UI thread.
 const MAX_LINE_EDITS = 400;
 
 type LineStep = "equal" | "delete" | "insert";
@@ -364,8 +361,6 @@ function walkBack(trace: readonly Int32Array[], n: number, m: number, offset: nu
   return steps.reverse();
 }
 
-// Myers' diff over lines: the shortest list of kept, removed and added lines,
-// or null when more than `limit` lines differ.
 function lineScript(a: readonly string[], b: readonly string[], limit: number): LineStep[] | null {
   const n = a.length;
   const m = b.length;
@@ -398,9 +393,6 @@ function appendReplacement(operation: TextOperation, removed: string, added: str
   });
 }
 
-// Turns `before` into `after` changing only the lines that differ, and within
-// a changed run of lines only the characters that differ. Positions in
-// unchanged lines, such as a cursor or typing made meanwhile, stay put.
 export function diffOperation(before: string, after: string): TextOperation {
   if (before === after) return new TextOperation().retain(before.length);
   const a = linesOf(before);

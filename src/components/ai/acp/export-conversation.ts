@@ -13,7 +13,6 @@ import { currentName, groupControls } from "./acp-controls";
 export interface ConversationExportInput {
   session: AcpSession;
   events: readonly AcpEvent[];
-  /** The project's display name; the absolute folder path is never written. */
   projectName: string | null;
   agentName: string;
 }
@@ -112,7 +111,6 @@ function assistantBody(message: ChatMessage): string[] {
   return lines;
 }
 
-/** The conversation as Markdown: header, then each turn with its changed files. */
 export function conversationMarkdown(input: ConversationExportInput): string {
   return markdownFromRows(input, projectAcpEvents(input.events, false));
 }
@@ -141,14 +139,8 @@ function markdownFromRows(
   return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`;
 }
 
-/** Events read from the store per request; the backend serves at most this many. */
 const EVENT_PAGE = 500;
 
-/**
- * The whole conversation, projected as its events arrive a page at a time:
- * no single response carries the transcript, the projector applies only each
- * page's new events, and the window gets to paint between pages.
- */
 async function projectStoredEvents(projectId: string, sessionId: string): Promise<RenderedMessage[]> {
   const project = createAcpProjector();
   let events: AcpEvent[] = [];
@@ -157,7 +149,6 @@ async function projectStoredEvents(projectId: string, sessionId: string): Promis
   for (;;) {
     const page = await acpEvents(projectId, sessionId, after, EVENT_PAGE);
     if (page.events.length === 0) break;
-    // A new array each time: the projector tells a growing list from a changed one by its ends.
     events = [...events, ...page.events];
     rows = project(events, false);
     after = page.events[page.events.length - 1].sequence;
@@ -171,13 +162,6 @@ function fileName(title: string): string {
   return safe || i18n.t(($) => $.ai.acp.export.untitled);
 }
 
-/**
- * Asks where to save and writes the conversation. The format follows the
- * chosen extension: `.json` is written by the backend straight from the
- * store (large transcripts never cross into the page), anything else is
- * Markdown, built from the stored events read a page at a time. Resolves
- * false when the dialog is cancelled.
- */
 export async function exportConversation({
   projectId,
   session,

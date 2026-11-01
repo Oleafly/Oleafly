@@ -13,9 +13,6 @@ import {
   openNewProject,
 } from "../helpers";
 
-// Overleaf import end to end: ZIP in, main document inferred, engine flow
-// wired. Fixtures are built at run time so the specs stay hermetic.
-
 function writeZip(name: string, entries: Record<string, string>): string {
   const dir = mkdtempSync(join(tmpdir(), "oleafly-ovl-"));
   const files: Record<string, Uint8Array> = {};
@@ -120,10 +117,8 @@ test("wrapped Overleaf ZIP unwraps and follows the TeX root magic comment", asyn
   });
   await importZip(tauriPage, zipPath);
   const state = await projectState(tauriPage);
-  // No file named main.tex: the magic root comment selects thesis.tex.
   expect(state.main).toBe("thesis.tex");
   expect(state.name).toBe("wrapped-thesis");
-  // The single top-level folder from the ZIP was unwrapped.
   expect(state.paths).toContain("thesis.tex");
   expect(state.paths).toContain("chapters/ch1.tex");
   expect(state.paths.some((p) => p.startsWith("wrapped-thesis/"))).toBe(false);
@@ -161,8 +156,6 @@ test("a Tectonic project with an engine gap opens the engine picker on open", as
   await tauriPage.evaluate(
     `import("/src/store/settings.ts").then((m) => m.useSettingsStore.getState().setViewMode("editor"))`,
   );
-  // openProject owns the library transition. Clicking Home here as well races
-  // its readiness check against the outgoing workspace.
   await openProject(tauriPage, "minted-gap");
   await waitLong(
     tauriPage,
@@ -208,7 +201,6 @@ test("a Tectonic project with an engine gap opens the engine picker on open", as
     `!document.querySelector('[data-testid="engine-picker-modal"]')`,
     10_000,
   );
-  // The choice is remembered: the project stays on the bundled engine.
   const state = await projectState(tauriPage);
   expect(state.engineId).toBe("latex");
   expect(state.allowShellEscape).toBe(false);
@@ -247,7 +239,6 @@ test("the template chooser imports an Overleaf ZIP from its header button", asyn
   });
   await openNewProject(tauriPage);
   await chooseProjectKind(tauriPage, "import");
-  // The path must be queued before the click: the picker opens immediately.
   await setNextImportPaths(tauriPage, [zipPath]);
   await tauriPage.click('[data-testid="project-import-project"]');
   await waitLong(

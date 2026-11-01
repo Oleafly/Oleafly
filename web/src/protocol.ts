@@ -42,7 +42,6 @@ export interface WebPeer {
   head: number | null;
 }
 
-/** The project's compile settings as the server stores them: setting name to value. */
 export type CompileSettings = Readonly<Record<string, string>>;
 
 export interface WebPerson {
@@ -61,7 +60,7 @@ export type ServerFrame =
       people: WebPerson[];
       compile: CompileSettings;
     }
-  | { t: "opened"; fileId: string; rev: number; text: string }
+  | { t: "opened"; fileId: string; rev: number; text: string; resumed: boolean | null }
   | { t: "ack"; fileId: string; rev: number; length: number | null }
   | { t: "remote"; fileId: string; rev: number; op: CollabTextOperation; length: number }
   | { t: "reset"; fileId: string; rev: number; text: string }
@@ -73,7 +72,8 @@ export type ServerFrame =
   | { t: "output"; items: CollabOutputInfo[] }
   | { t: "compile"; settings: CompileSettings }
   | { t: "access"; role: CollabProjectRole }
-  | { t: "error"; code: string; message: string };
+  | { t: "done"; reqId: string }
+  | { t: "error"; code: string; message: string; reqId: string | null };
 
 export type ThreadsFrame = Extract<ServerFrame, { t: "threads" }>;
 export type SuggestionsFrame = Extract<ServerFrame, { t: "suggestions" }>;
@@ -108,15 +108,15 @@ export type SuggestionFrame =
 
 export type ChatFrame = { action: "send"; body: string } | { action: "delete"; id: string } | { action: "clear" };
 
+export type RequestFrame = ({ t: "comment" } & CommentFrame) | ({ t: "suggestion" } & SuggestionFrame) | ({ t: "chat" } & ChatFrame);
+
 export type ClientFrame =
-  | { t: "open"; fileId: string }
-  | { t: "change"; fileId: string; rev: number; op: CollabTextOperation }
+  | { t: "open"; fileId: string; resume?: string }
+  | { t: "change"; fileId: string; rev: number; op: CollabTextOperation; id?: string }
   | { t: "close"; fileId: string }
   | { t: "mode"; mode: CollabEditMode }
   | { t: "presence"; fileId: string | null; anchor: number | null; head: number | null }
-  | ({ t: "comment" } & CommentFrame)
-  | ({ t: "suggestion" } & SuggestionFrame)
-  | ({ t: "chat" } & ChatFrame);
+  | (RequestFrame & { reqId?: string });
 
 const ROLES = new Set<CollabProjectRole>(["owner", "editor", "reviewer", "commenter", "viewer"]);
 
@@ -322,7 +322,7 @@ function parseKnown(frame: Raw): ServerFrame | null {
       };
     case "opened":
       return fileId && rev !== null && typeof frame.text === "string"
-        ? { t: "opened", fileId, rev, text: frame.text }
+        ? { t: "opened", fileId, rev, text: frame.text, resumed: typeof frame.resumed === "boolean" ? frame.resumed : null }
         : null;
     case "ack":
       return fileId && rev !== null ? { t: "ack", fileId, rev, length: count(frame.length) } : null;
@@ -360,8 +360,17 @@ function parseKnown(frame: Raw): ServerFrame | null {
       return { t: "compile", settings: parseCompileSettings(frame.settings) };
     case "access":
       return { t: "access", role: parseRole(frame.role) };
+    case "done": {
+      const reqId = text(frame.reqId);
+      return reqId ? { t: "done", reqId } : null;
+    }
     case "error":
-      return { t: "error", code: text(frame.code) ?? "server", message: text(frame.message) ?? "" };
+      return {
+        t: "error",
+        code: text(frame.code) ?? "server",
+        message: text(frame.message) ?? "",
+        reqId: text(frame.reqId),
+      };
     default:
       return null;
   }

@@ -1,6 +1,3 @@
-//! Two-way sync through a private Git mirror (in `oleafly-online`), run
-//! with the app's Git runner and kept in the app's data folder. The names
-//! and string errors are the ones the commands have used since 0.4.7.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Output;
@@ -16,8 +13,6 @@ use oleafly_online::OnlineError;
 
 use super::errors::app_error;
 
-/// Git through the app's runner, which locates Git and bounds every call.
-/// Its errors are already in the app's format and pass through as they are.
 pub(crate) struct AppMirrorGit;
 
 impl MirrorGit for AppMirrorGit {
@@ -41,13 +36,11 @@ impl MirrorGit for AppMirrorGit {
     }
 }
 
-/// `<data>/overleaf-sync/<project id>` and its lock.
 pub(crate) fn paths(project_id: &str) -> Result<SyncPaths, String> {
     crate::paths::validate_project_id(project_id)?;
     SyncPaths::for_app_project(&crate::paths::oleafly_root()?, project_id).map_err(app_error)
 }
 
-/// One sync at a time per project, in this app and across the CLI.
 pub(crate) fn claim(project_id: &str) -> Result<SyncClaim, String> {
     oleafly_online::sync::claim(&paths(project_id)?).map_err(app_error)
 }
@@ -68,15 +61,10 @@ pub(crate) fn write_link(project_id: &str, link: &SyncLink) -> Result<(), String
     oleafly_online::sync::write_link(&paths(project_id)?, link).map_err(app_error)
 }
 
-/// Removes the mirror and the link record.
 pub(crate) fn remove_link(project_id: &str) -> Result<(), String> {
     oleafly_online::sync::remove_link(&paths(project_id)?).map_err(app_error)
 }
 
-/// Where the local files that linking with Overleaf's versions replaced are
-/// kept once the mirror goes: `<data>/overleaf-sync-backups/<project id>`,
-/// outside the mirror and outside the project, so a later link never
-/// uploads them.
 pub(crate) fn backups_dir(project_id: &str) -> Result<PathBuf, String> {
     crate::paths::validate_project_id(project_id)?;
     Ok(crate::paths::oleafly_root()?
@@ -84,11 +72,6 @@ pub(crate) fn backups_dir(project_id: &str) -> Result<PathBuf, String> {
         .join(project_id))
 }
 
-/// Removes the mirror and the link record, first saving the copies of local
-/// files that linking with Overleaf's versions replaced (the mirror is their
-/// only home) under [`backups_dir`]. When they can't be read out, the whole
-/// mirror moves there instead of being deleted. Returns the folder when
-/// anything was kept.
 pub(crate) fn retire_mirror(project_id: &str) -> Result<Option<PathBuf>, String> {
     let paths = paths(project_id)?;
     let folder = backups_dir(project_id)?;
@@ -121,8 +104,6 @@ pub(crate) fn retire_mirror(project_id: &str) -> Result<Option<PathBuf>, String>
     Ok(kept)
 }
 
-/// Tidies the mirror at most once a day; see
-/// [`oleafly_online::sync::maintain`]. Call it with the sync claim held.
 pub(crate) fn maintain(repo: &Path) {
     oleafly_online::sync::maintain(&AppMirrorGit, repo);
 }

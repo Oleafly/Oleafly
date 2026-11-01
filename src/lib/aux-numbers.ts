@@ -21,9 +21,7 @@ export interface LabelNumber {
 }
 
 const ENTRY_AUX = "_oleafly_entry.aux";
-/** Cap on parsed aux input, per file chain and per single parse call. */
 const MAX_AUX_CHARS = 1024 * 1024;
-/** Cap on how many aux files one refresh may read (cycle/fan-out guard). */
 const MAX_AUX_FILES = 20;
 
 interface AuxCache {
@@ -34,22 +32,14 @@ interface AuxCache {
 }
 
 let cache: AuxCache | null = null;
-/** Orders refreshes so a slow older refresh cannot clobber a newer result. */
 let refreshSeq = 0;
 let unsubscribe: (() => void) | null = null;
 
-/** Test seam: drops the cached numbers (does not touch the subscription). */
 export function clearAuxNumbers(): void {
   cache = null;
   refreshSeq++;
 }
 
-/**
- * Reads one balanced `{...}` group starting at `line[open]` (which must be
- * `{`). Escaped braces (`\{`, `\}`) do not affect the balance. Returns the
- * group's content and the index just past the closing brace, or null when the
- * group never closes on this line.
- */
 function readBalancedGroup(
   line: string,
   open: number,
@@ -59,7 +49,7 @@ function readBalancedGroup(
   for (let i = open; i < line.length; i++) {
     const ch = line[i];
     if (ch === "\\") {
-      i++; // skip the escaped character
+      i++;
       continue;
     }
     if (ch === "{") depth++;
@@ -123,7 +113,6 @@ export function parseAuxLabels(aux: string): Map<string, LabelNumber> {
   return out;
 }
 
-/** `\@input{child.aux}` references, sanitized to project-relative aux names. */
 function auxInputReferences(content: string): string[] {
   const refs: string[] = [];
   for (const match of content.matchAll(/\\@input\{([^{}]+)\}/g)) {
@@ -192,13 +181,6 @@ async function collectAuxChain(
   return { merged, entryRead };
 }
 
-/**
- * Re-reads the aux chain for a successful compile output and swaps the cache.
- *
- * No-op when the cache already holds `outputId`. Follows `\@input{X.aux}`
- * references breadth-first (≤ 20 files, cycle-safe, ≤ 1 MB total). Any
- * failure — including an unreadable entry aux — keeps the old cache silently.
- */
 export async function refreshAuxNumbers(
   projectId: string,
   mainDocument: string,
@@ -215,9 +197,7 @@ export async function refreshAuxNumbers(
   const seq = ++refreshSeq;
   try {
     const { merged, entryRead } = await collectAuxChain(projectId);
-    // Without the entry aux there is nothing trustworthy to cache.
     if (!entryRead) return;
-    // A newer refresh (or clear) superseded this one while files were read.
     if (seq !== refreshSeq) return;
     cache = { projectId, mainDocument, outputId, map: merged };
   } catch {
@@ -225,11 +205,6 @@ export async function refreshAuxNumbers(
   }
 }
 
-/**
- * Number/page for `label`, or null. Hits are returned only while the cache
- * identity matches the CURRENT stores (active project and effective main
- * document), so numbers from an earlier project or root never surface.
- */
 export function auxNumberFor(label: string): LabelNumber | null {
   if (cache === null) return null;
   if (cache.projectId !== useFilesStore.getState().projectId) return null;
@@ -237,10 +212,6 @@ export function auxNumberFor(label: string): LabelNumber | null {
   return cache.map.get(label) ?? null;
 }
 
-/**
- * Idempotent: subscribes to the compile store once and refreshes the cache
- * whenever a new successful compile checkpoint appears.
- */
 export function installAuxNumbers(): void {
   if (unsubscribe !== null) return;
   let lastOutputId =

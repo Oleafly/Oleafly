@@ -1,5 +1,3 @@
-// Pure AI helpers for figure generation (no app/store/Tauri deps).
-
 function isModelIdCharacter(character: string): boolean {
   const code = character.charCodeAt(0);
   return (
@@ -29,9 +27,6 @@ function isQwenVisionModel(model: string): boolean {
   return false;
 }
 
-// `inputModalities` comes from the model's catalog metadata when the app has
-// it. A model listed with image input counts even when its id matches none of
-// the patterns below.
 export function modelSupportsVision(
   provider: string,
   model: string,
@@ -48,7 +43,6 @@ export function modelSupportsVision(
   if (/llava|bakllava|(?:^|[-_.])vl\b|vision|moondream|minicpm-v/.test(m))
     return true;
   if (isQwenVisionModel(m)) return true;
-  // Gemma 3's 4B, 12B, and 27B variants accept images. The compact 1B model does not.
   if (/gemma3(?!(?::|[-_])?1b\b)/.test(m)) return true;
   if (/^glm-[\d.]+v\b/.test(m)) return true;
   if (provider === "xai" && /vision|grok-[4-9]/.test(m)) return true;

@@ -20,7 +20,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(), loadResearchTaskEventsBefore: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
-  // 0.4.8: live text, watching, plans, approvals, progress, evidence and keep running.
   listenForResearchTaskDeltas: vi.fn(async () => () => {}),
   watchResearchTask: vi.fn(async () => {}),
   approveResearchTaskPlan: vi.fn(),
@@ -261,7 +260,6 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(page().queryByText(`Result ${current.id}`)).not.toBeInTheDocument();
     expect(page().queryByText("before -> main.tex")).not.toBeInTheDocument();
     expect(api.cancelResearchTask).toHaveBeenCalledWith(current.id);
-    // A task without a saved workspace can only start over.
     expect(api.retryResearchTask).toHaveBeenCalledWith(current.id, "fresh");
     expect(api.startResearchTask).toHaveBeenCalledWith(current.id);
   });
@@ -284,7 +282,6 @@ describe("ResearchTasksPanel lifecycle", () => {
     act(() => changedTask?.({ ...running, cancelRequested: true }));
     expect(page().getByRole("button", { name: enResearchTools.tasks.detail.stopping })).toBeDisabled();
     view.unmount();
-    // The shared listeners stop once the last view unmounts (asynchronously since 0.4.8).
     await waitFor(() => expect(unlistenTasks).toHaveBeenCalledOnce());
     expect(unlistenEvents).toHaveBeenCalledOnce();
   });
@@ -553,6 +550,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(useResearchTasksStore.getState().selectedTaskId).toBe(review.id);
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.viewTask }));
     expect(within(page().getByRole("dialog")).getByRole("heading", { name: review.title })).toBeInTheDocument();
+    await waitFor(() => expect(useResearchTasksStore.getState().eventsLoading).toBe(false));
   });
 
   it("filters the task list by run state without losing the other tasks", async () => {

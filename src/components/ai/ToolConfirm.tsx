@@ -46,7 +46,6 @@ function researchTaskDetails(req: ToolApprovalRequest): ResearchTaskApprovalDeta
   return details as ResearchTaskApprovalDetails;
 }
 
-/** What a research task an agent wants to create may do, as the approval card lists it. */
 function ResearchTaskDetails({ task }: Readonly<{ task: ResearchTaskApprovalDetails }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
@@ -83,7 +82,6 @@ function ResearchTaskDetails({ task }: Readonly<{ task: ResearchTaskApprovalDeta
       </div>
       <div className="space-y-1 border-t border-border/60 pt-2">
         <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.prompt)}</p>
-        {/* Plain text on purpose: the user reads exactly what the task will be told. */}
         <div
           data-select-all-scope
           className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 text-xs text-foreground"
@@ -95,7 +93,6 @@ function ResearchTaskDetails({ task }: Readonly<{ task: ResearchTaskApprovalDeta
   );
 }
 
-// Re-export so MCP shell and others keep a single import path.
 export { AI_GRADIENT, AiChrome, AiMark } from "@/components/ai/AiChrome";
 export { isAutoApprovable } from "@/store/mcp-approvals";
 
@@ -112,7 +109,6 @@ export function ToolConfirm({
   onApprove: () => void;
   onReject: () => void;
   onApproveSession?: () => void;
-  /** Persists an allow decision for this tool in this project, then approves. */
   onApproveProject?: () => void;
   sessionAutoApprove?: boolean;
   embedded?: boolean;
@@ -140,8 +136,6 @@ export function ToolConfirm({
   const filePath = req.diff?.path ?? req.path;
   const changeLine = req.diff ? firstChangedLine(req.diff.oldText, req.diff.newText) : null;
 
-  // Jump the editor to the first changed line so the user sees the edit site
-  // next to the approval card (open the file first if it isn't active).
   useEffect(() => {
     if (!filePath) return;
     let cancelled = false;
@@ -150,7 +144,6 @@ export function ToolConfirm({
       if (files.activePath !== filePath) {
         await files.openFile(filePath, { opener: "assistant" });
       }
-      // Let CodeMirror remount on the new active file before scrolling.
       await new Promise((r) => window.setTimeout(r, 40));
       if (cancelled) return;
       gotoLine(changeLine ?? 1);
@@ -223,7 +216,6 @@ export function ToolConfirm({
           <div className="space-y-1">
             <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.commandLabel)}</p>
             <pre data-select-all-scope className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
-              {/* A command often starts with `cd` into the same home path as the working directory. */}
               {displayText(req.command ?? req.summary)}
             </pre>
           </div>
@@ -348,7 +340,6 @@ export function ToolConfirm({
     </div>
   );
 
-  // Content only; the MCP floating panel owns the gradient shell.
   if (embedded) {
     return (
       <div

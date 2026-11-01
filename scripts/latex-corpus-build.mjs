@@ -38,12 +38,10 @@ const TEXMF_CANDIDATES = [
 /** A macro name is a TeX control word (letters) or a single control symbol. */
 const CONTROL_WORD = /^(?:[A-Za-z@]+|.)$/;
 
-/** Escape a name for regex interpolation: \[ and \, are legal macro names. */
 function reEscape(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
-/** Drop comments so a commented-out declaration is never read as a real one. */
 function stripComments(source) {
   return source
     .split("\n")
@@ -64,7 +62,6 @@ function stripComments(source) {
     .join("\n");
 }
 
-/** Read a balanced brace group at `open`; returns its body and end index. */
 function readGroup(text, open) {
   if (text[open] !== "{") return null;
   let depth = 0;
@@ -83,7 +80,6 @@ function readGroup(text, open) {
   return null;
 }
 
-/** Read a balanced [..] group at `pos`, skipping leading whitespace. */
 function readOptional(text, pos) {
   let i = pos;
   while (i < text.length && /\s/.test(text[i])) i += 1;
@@ -104,7 +100,6 @@ function readOptional(text, pos) {
   return null;
 }
 
-/** A snippet mirrors the call shape: one placeholder per declared argument. */
 function buildSnippet(name, argCount, hasOptional) {
   if (!argCount) return null;
   const parts = [];
@@ -122,7 +117,6 @@ function buildSnippet(name, argCount, hasOptional) {
   return `${name}${parts.join("")}`;
 }
 
-/** Registers hold a value and are never called with arguments. */
 function looksUnusual(name, source) {
   const n = reEscape(name);
   return (
@@ -168,7 +162,6 @@ function commandArgumentShape(text, pos) {
 }
 
 function collectCommandDefinitions(text, addMacro) {
-  // \newcommand{\foo}[n][default]{...} and the LaTeX2e/xparse relatives.
   const cmdRe =
     /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand|DeclareTextCommand|NewDocumentCommand|DeclareDocumentCommand|ProvideDocumentCommand)\s*\*?\s*/g;
   for (let m = cmdRe.exec(text); m; m = cmdRe.exec(text)) {
@@ -205,14 +198,12 @@ function collectPlainTexDefinitions(text, addMacro) {
 }
 
 function collectDeclaredNames(text, addMacro) {
-  // \let aliases expose a usable name too.
   const letRe = /\\let\s*\\([A-Za-z@]+)\s*(?:=\s*)?\\[A-Za-z@]+/g;
   for (let m = letRe.exec(text); m; m = letRe.exec(text)) addMacro(m[1], { name: m[1] });
 
   const opRe = /\\DeclareMathOperator\s*(?:\*\s*)?\{\\([A-Za-z@]+)\}/g;
   for (let m = opRe.exec(text); m; m = opRe.exec(text)) addMacro(m[1], { name: m[1] });
 
-  // Symbol declarations — how the maths font packages name hundreds of glyphs.
   for (const re of [
     /\\DeclareMathSymbol\s*\{?\\([A-Za-z@]+)/g,
     /\\DeclareMathDelimiter\s*\{?\\([A-Za-z@]+)/g,
@@ -224,14 +215,12 @@ function collectDeclaredNames(text, addMacro) {
     for (let m = re.exec(text); m; m = re.exec(text)) addMacro(m[1], { name: m[1] });
   }
 
-  // LaTeX3 document-level commands; \__private ones stay private.
   const expl3Re = /\\cs_(?:new|set|gset)(?:_protected)?(?::Npn|:Npx|_nopar:Npn)\s*\\([A-Za-z@_]+)/g;
   for (let m = expl3Re.exec(text); m; m = expl3Re.exec(text)) {
     const name = m[1];
     if (!name.startsWith("__") && !/^[a-z]+_/.test(name)) addMacro(name, { name });
   }
 
-  // Registers: settable, never called.
   for (const re of [
     /\\newlength\s*\{?\\([A-Za-z@]+)/g,
     /\\newdimen\s*\\([A-Za-z@]+)/g,
@@ -270,8 +259,6 @@ function collectOptionKeys(text) {
     const name = m[1].trim();
     if (name && name !== "*") optNames.push(name);
   }
-  // Key=value families: \define@key{FAMILY}{key}. Collect per family so the
-  // keys can also be offered inside whichever command consumes that family.
   const byFamily = new Map();
   const keyRe = /\\define@key\s*\{([^}]*)\}\s*\{([^}]+)\}/g;
   for (let m = keyRe.exec(text); m; m = keyRe.exec(text)) {
@@ -295,7 +282,6 @@ function collectKeyConsumers(text, byFamily) {
     const name = m[1];
     if (name.includes("@")) continue;
     const body = m[2] ?? "";
-    // The captured body may stop mid-group, so the closing brace is optional.
     const fam = /\\(?:kv)?setkeys\s*(?:\[[^\]]*\]\s*)?\{([^}\s]+)\}?/.exec(body);
     if (fam && byFamily.has(fam[1].trim())) {
       consumers.set(name, fam[1].trim());
@@ -314,7 +300,7 @@ export function extract(source, pkgName) {
 
   const addMacro = (name, entry) => {
     if (!name || !CONTROL_WORD.test(name)) return;
-    if (name.includes("@")) return; // package-internal by convention
+    if (name.includes("@")) return;
     const list = macros.get(name) ?? [];
     if (!list.some((e) => e.snippet === entry.snippet)) list.push(entry);
     macros.set(name, list);
@@ -358,7 +344,6 @@ function findTexmf(explicit) {
   throw new Error("no TeX installation found; pass --texmf <path to texmf-dist>");
 }
 
-/** Index the .sty files, plus every readable source grouped by its bundle. */
 async function collectSources(texmf) {
   const root = join(texmf, "tex");
   const sty = new Map();
@@ -396,10 +381,6 @@ async function collectSources(texmf) {
   return { sty, cls, byBundle };
 }
 
-/**
- * Read a package's own source, widening to its bundle only when the .sty turns
- * out to be a loader.
- */
 function bundleKeyFor(styPath) {
   const rel = styPath.split("/tex/")[1]?.split("/") ?? [];
   return rel.length > 1
@@ -412,9 +393,6 @@ async function readSiblingSources(siblings, budgetLimit) {
   let budget = budgetLimit;
   for (const sp of siblings) {
     if (budget <= 0) break;
-    // Skip a package's own legacy-compatibility sources. Their commands still
-    // work, but they exist to keep old documents compiling — suggesting them
-    // in a new document points people at the interface they should not use.
     if (/-(?:v[12]|compat|legacy|deprecated|obsolete)\b/.test(basename(sp))) continue;
     let size = 0;
     try {
@@ -442,9 +420,6 @@ async function readPackageSources(styPath, byBundle, pkgName) {
   const siblings = (byBundle.get(bundleKeyFor(styPath)) ?? []).filter(
     (p) => p !== styPath,
   );
-  // A small bundle is one package split across a few files, and reading it
-  // whole is right. A large one holds many independent packages, and reading
-  // it whole would make every shim in it claim the bundle's entire interface.
   if (siblings.length > 60) return primary;
 
   const parts = [primary, ...(await readSiblingSources(siblings, 2_000_000))];
@@ -482,7 +457,6 @@ async function main() {
   const { sty, cls, byBundle } = await collectSources(texmf);
   process.stderr.write(`texmf: ${texmf}\n${sty.size} .sty, ${cls.size} .cls\n`);
 
-  // Document classes are catalogued the same way and addressed as class-<name>.
   const targets = only
     ? [only]
     : [...[...sty.keys()].sort((a, b) => Number(a > b) - Number(a < b)), ...[...cls.keys()].sort((a, b) => Number(a > b) - Number(a < b)).map((n) => `class-${n}`)];

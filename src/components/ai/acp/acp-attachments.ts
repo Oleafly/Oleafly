@@ -8,7 +8,6 @@ import { composerMentionPaths } from "@/lib/composer-tokens";
 import type { FileEntry } from "@/lib/tauri";
 import type { AcpPromptDraft, AcpSelection } from "@/store/acp-sessions";
 
-/** The largest `session/prompt` payload, leaving room for the envelope. */
 export const PROMPT_BUDGET = 1024 * 1024 - 1024;
 export const MAX_ACP_ATTACHMENTS = 10;
 const MAX_TEXT_BYTES = 256 * 1024;
@@ -31,7 +30,6 @@ const PROBLEM_TEXT: Record<AcpPromptProblem, () => string> = {
   notReady: () => i18n.t(($) => $.ai.acp.composer.attachmentsNotReady),
 };
 
-/** The message for a prompt the composer could not prepare, if it is one. */
 export function promptErrorMessage(error: unknown): string | null {
   return error instanceof AcpPromptError ? PROBLEM_TEXT[error.reason]() : null;
 }
@@ -39,13 +37,11 @@ export function promptErrorMessage(error: unknown): string | null {
 const encoder = new TextEncoder();
 const byteLength = (text: string) => encoder.encode(text).length;
 
-/** Raw image bytes each image may take within the frame budget. */
 export function imageByteBudget(textBytes: number, otherBytes: number, images: number): number {
   if (images <= 0) return 0;
   return Math.floor(((PROMPT_BUDGET - 512 - textBytes - otherBytes) * 3) / 4 / images);
 }
 
-/** Reads stored images back, re-encoding large ones smaller until they fit. */
 export async function prepareImages(items: readonly DraftAttachment[], perImage: number): Promise<AcpImage[]> {
   const images: AcpImage[] = [];
   for (const item of items) {
@@ -71,18 +67,11 @@ export async function prepareImages(items: readonly DraftAttachment[], perImage:
   return images;
 }
 
-/** The project files a message's text mentions (folders are left out). */
 export function promptMentions(text: string, tree: readonly FileEntry[]): string[] {
   const filesByPath = new Map(tree.map((entry) => [entry.path, entry.is_dir]));
   return composerMentionPaths(text, filesByPath.keys()).filter((path) => filesByPath.get(path) === false);
 }
 
-/**
- * What one message sends: text, images inline, other files by reference.
- * `tree` is the conversation's project as the window shows it; null when the
- * window shows another project, and the mentions read when the message was
- * queued are used instead.
- */
 export async function toPromptInput(
   draft: AcpPromptDraft,
   session: AcpSession,
@@ -133,7 +122,6 @@ export function selectionLabel(doc: Text, from: number, to: number, name: string
   return name ? `${name}:${lines}` : lines;
 }
 
-/** The editor selection as a quote, or null when nothing is selected. */
 export async function quoteSelection(): Promise<AcpSelection | null> {
   const [{ getEditorView }, { useFilesStore }] = await Promise.all([
     import("@/components/editor/cm/controller"),

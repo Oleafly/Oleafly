@@ -365,8 +365,6 @@ fn a_panic_in_desktop_work_on_the_document_marks_it_damaged_and_leaves_it_unpois
 
 #[test]
 fn opening_a_project_after_its_session_ended_says_why() {
-    // Keeping a local copy of the project whose access ended names it after
-    // the library's projects, so the test needs a library of its own.
     let _library = crate::collab::testing::TempLibrary::new();
     let _turn = write::rig::live_turn();
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -1549,8 +1547,6 @@ fn quitting_with_a_file_another_program_holds_waits_no_longer_than_its_budget() 
     use std::os::windows::fs::OpenOptionsExt as _;
     const FILE_SHARE_READ: u32 = 0x0001;
     let (_dir, root, _host, rig) = watched_rig("held-at-quit", &[("main.tex", "abc")]);
-    // Open for reading only, as a viewer holds a file: it can still be read,
-    // but not replaced, which is what makes a write retry for seconds.
     let holder = std::fs::OpenOptions::new()
         .read(true)
         .share_mode(FILE_SHARE_READ)

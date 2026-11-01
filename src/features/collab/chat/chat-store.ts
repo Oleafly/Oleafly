@@ -49,14 +49,13 @@ function chatOpen(): boolean {
 let loadToken = 0;
 
 export async function loadChat(): Promise<void> {
-  const { projectId, messages } = useChat.getState();
+  const { projectId } = useChat.getState();
   if (!projectId) return;
   const token = ++loadToken;
   if (useChat.getState().phase !== "ready") useChat.setState({ phase: "loading", error: null });
-  const limit = Math.max(CHAT_PAGE, messages.length);
   let listed: CollabChatMessage[];
   try {
-    listed = await collabChatList(projectId, null, limit);
+    listed = await collabChatList(projectId, null, CHAT_PAGE);
   } catch (error) {
     if (token !== loadToken || useChat.getState().projectId !== projectId) return;
     const code = collabErrorCode(error);
@@ -69,13 +68,17 @@ export async function loadChat(): Promise<void> {
     return;
   }
   if (token !== loadToken || useChat.getState().projectId !== projectId) return;
-  const next = chronological(listed);
-  useChat.setState((state) => ({
-    messages: same(state.messages, next) ? state.messages : next,
-    phase: "ready",
-    error: null,
-    hasOlder: listed.length >= limit,
-  }));
+  useChat.setState((state) => {
+    const known = new Set(state.messages.map((message) => message.id));
+    const joins = listed.some((message) => known.has(message.id));
+    const next = joins ? merged(state.messages, listed) : chronological(listed);
+    return {
+      messages: same(state.messages, next) ? state.messages : next,
+      phase: "ready",
+      error: null,
+      hasOlder: joins ? state.hasOlder : listed.length >= CHAT_PAGE,
+    };
+  });
 }
 
 export async function loadOlderChat(): Promise<void> {

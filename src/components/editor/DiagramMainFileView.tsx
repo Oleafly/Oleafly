@@ -85,9 +85,6 @@ function loadDiagram(language: DiagramLanguageId, content: string): Promise<Load
   return Promise.resolve(loadTikz(content));
 }
 
-// Lazy-loaded from Editor.tsx (React.lazy): this is the only place the
-// always-mounted editor would otherwise pull in @oleafly/diagram (and its
-// @xyflow/react dependency), which used to bloat the main bundle.
 export default function DiagramMainFileView({
   projectId,
   path,

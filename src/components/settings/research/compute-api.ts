@@ -108,21 +108,18 @@ export interface SandboxCheckReport {
   privileges?: string | null;
 }
 
-/** Fired on `window` after a target is saved or removed. */
 export const COMPUTE_TARGETS_CHANGED = "oleafly:compute-targets-changed";
 
 export function announceTargetsChanged() {
   window.dispatchEvent(new CustomEvent(COMPUTE_TARGETS_CHANGED));
 }
 
-/** Fired on `window` after the Windows sandbox switch is saved; `detail` is the new `SandboxStatus`. */
 export const COMPUTE_SANDBOX_CHANGED = "oleafly:compute-sandbox-changed";
 
 export function announceSandboxChanged(status: SandboxStatus) {
   window.dispatchEvent(new CustomEvent<SandboxStatus>(COMPUTE_SANDBOX_CHANGED, { detail: status }));
 }
 
-/** The executor that runs a target's runs (`local` for this computer). */
 export function executorFor(target: ComputeTarget | null | undefined): string {
   if (!target) return "local";
   if (target.kind === "cuaSpace") return "cua-space";
@@ -158,7 +155,6 @@ export type TargetError =
   | "count"
   | "prelude";
 
-/** Rust's limit on a target's setup lines, in UTF-8 bytes. */
 const MAX_PRELUDE_BYTES = 4 * 1024;
 
 const HOST = /^[A-Za-z0-9._:%-]{1,253}$/;
@@ -204,7 +200,6 @@ function validateRemoteHost(target: Exclude<ComputeTarget, CuaSpaceTarget>, erro
   ) {
     errors.remoteRoot = "remoteRoot";
   }
-  // Rust counts bytes, so accented or CJK setup lines reach the limit sooner than the character count suggests.
   const prelude = target.prelude ?? "";
   if (new TextEncoder().encode(prelude).length > MAX_PRELUDE_BYTES || prelude.includes("\0")) {
     errors.prelude = "prelude";
@@ -222,7 +217,6 @@ function validateSlurmDefaults(defaults: SlurmTarget["defaults"], errors: Target
   if (!wholeIn(defaults.cpus, 1, 1024)) errors.cpus = "count";
 }
 
-/** The same rules the Rust side applies; values are error keys under `compute.form.errors`. */
 export function validateTarget(target: ComputeTarget): TargetErrors {
   const errors: TargetErrors = {};
   const label = target.label.trim();
@@ -276,7 +270,6 @@ export function isSlurmName(value: string): boolean {
   return NAME.test(value);
 }
 
-/** A whole number from `min` to `max`, or `null` for anything else (such as "4 GPUs"). */
 export function parseCount(text: string, min: number, max: number): number | null {
   const trimmed = text.trim();
   if (!/^\d+$/.test(trimmed)) return null;
@@ -284,7 +277,6 @@ export function parseCount(text: string, min: number, max: number): number | nul
   return value >= min && value <= max ? value : null;
 }
 
-/** Gigabytes from `16`, `16G`, `16GB` or `1T`. */
 export function parseMemory(text: string): number | null {
   const match = /^(\d{1,7})\s*([gt])?b?$/i.exec(text.trim());
   if (!match) return null;
@@ -292,7 +284,6 @@ export function parseMemory(text: string): number | null {
   return amount >= 1 && amount <= 65_536 ? amount : null;
 }
 
-/** Where a target runs, for one line of text. */
 export function targetSummary(target: ComputeTarget, resolved?: string | null): string {
   if (resolved) return resolved;
   if (target.kind === "cuaSpace") {

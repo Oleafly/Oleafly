@@ -404,7 +404,6 @@ interface SerperScholarResponse {
   }>;
 }
 
-/** Normalize Serper Google Scholar organic results. */
 export function parseGoogleScholarLiterature(raw: string): ParsedSource {
   const response = parseJson<SerperScholarResponse>(raw);
   const organic = response?.organic ?? [];
@@ -645,8 +644,6 @@ export function mergeLiteratureRecords(
   const indexByIdentity = new Map<string, number>();
   const longestGroup = Math.max(0, ...groups.map((group) => group.length));
 
-  // Round-robin preserves each index's relevance ordering while avoiding a
-  // first-source bias in the combined result list.
   for (let rank = 0; rank < longestGroup; rank++) {
     for (const group of groups) {
       const record = group[rank];

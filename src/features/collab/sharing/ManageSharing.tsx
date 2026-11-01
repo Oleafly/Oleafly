@@ -140,8 +140,6 @@ function AddPeople({
 
   const quiet = (text: string) => <p className="text-xs text-muted-foreground">{text}</p>;
 
-  // Nobody has that address on the server yet: invite them as a guest, or
-  // say who can let them in when guests are off.
   const renderNewAddress = (email: string) => {
     if (guests.failed) {
       return (
@@ -171,8 +169,6 @@ function AddPeople({
     }
     if (people.length === 0 && looksLikeEmailAddress(trimmed)) return renderNewAddress(trimmed.toLowerCase());
     if (people.length === 0) {
-      // Without the member directory the server matches only a whole email
-      // address, so a name finds nobody.
       return quiet(t(($) => $.collab.manage.add.noResultsTryEmail, { server }));
     }
     return (

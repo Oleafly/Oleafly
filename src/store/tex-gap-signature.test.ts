@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { texGapSignature } from "./files";
 import { packageSuggestionSignature } from "./compile";
 
-// Both signatures answer the same question: "have I already told the user
-// about exactly this set of packages?" Order and repeats must not change the
-// answer, or the same gap gets reported twice.
 describe.each([
   ["texGapSignature", texGapSignature],
   ["packageSuggestionSignature", packageSuggestionSignature],

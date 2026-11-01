@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
+import { withOccurrenceKeys } from "@/lib/occurrence-keys";
 import {
   cancelResearchTaskRun,
   type PlanItem,
@@ -23,7 +24,6 @@ import { relativeTime, runStateLabel } from "../task-status";
 import { Sparkline } from "./Sparkline";
 
 const POLL_EVERY_MS = 3_000;
-/** The backend sends the last 50 ledger rows. */
 const LEDGER_ROWS = 50;
 
 function verdictLabel(verdict: string): string {
@@ -60,7 +60,6 @@ function money(value: number): string {
   });
 }
 
-/** Plan lines have no id, so each is keyed by its text, numbered when the same line comes up again. */
 function keyedPlan(items: PlanItem[]): Array<PlanItem & { key: string }> {
   const seen = new Map<string, number>();
   return items.map((item) => {
@@ -76,26 +75,22 @@ function TodoIcon({ status }: Readonly<{ status: TodoItem["status"] }>) {
   return <Circle aria-hidden className="mt-0.5 size-3.5 shrink-0" />;
 }
 
-/** The task's plan, ledger, runs, best result and budget, refreshed while it runs. */
 export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [progress, setProgress] = useState<TaskProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<{ runId: string; text: string } | null>(null);
   const [stopping, setStopping] = useState<string | null>(null);
-  // Stopping a run can end hours of work on a cluster, so it asks first.
   const [confirmRun, setConfirmRun] = useState<RunRecord | null>(null);
   const running = task.status === "running";
   const loadRequest = useRef(0);
   const loading = useRef(false);
-  // The run whose log is open; a log of a live run is read again with each refresh.
   const openLog = useRef<string | null>(null);
 
   const readLog = useCallback(
     async (runId: string) => {
       try {
         const text = await researchTaskRunLog(task.id, runId);
-        // Another log may have been opened while this one was read.
         if (openLog.current === runId) setLog({ runId, text });
       } catch (cause) {
         setError(describeError(cause));
@@ -106,13 +101,11 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
 
   const load = useCallback(
     async (poll = false) => {
-      // A slow backend isn't asked again while it still answers the last poll.
       if (poll && loading.current) return;
       const request = ++loadRequest.current;
       loading.current = true;
       try {
         const next = await progressResearchTask(task.id);
-        // An older answer must not replace a newer one.
         if (request !== loadRequest.current) return;
         setProgress(next);
         setError(null);
@@ -171,7 +164,6 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
   }
 
   const { budget, best } = progress;
-  // Runs come by value from each refresh, so they are matched by id.
   const finishedRuns = progress.recentRuns
     .filter((run) => !progress.runsInFlight.some((live) => live.runId === run.runId))
     .slice(0, 8);
@@ -350,8 +342,8 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {progress.ledger.map((row, index) => (
-                <TableRow key={`${row.id}-${index}`} className="align-top">
+              {withOccurrenceKeys(progress.ledger, (row) => row.id).map(({ item: row, key }) => (
+                <TableRow key={key} className="align-top">
                   <TableCell className="align-top font-mono">{row.id}</TableCell>
                   <TableCell className="whitespace-nowrap align-top tabular-nums text-muted-foreground">
                     {row.time}

@@ -98,8 +98,6 @@ fn quick_links(server: &TestServer, timing: LinkTiming) {
     server.state().sockets.set_timing(timing);
 }
 
-// Waits for this socket's acknowledgement, passing over changes others
-// made in the meantime, and gives its seq.
 async fn acknowledged_seq(socket: &mut Socket) -> u64 {
     loop {
         match next_frame(socket).await {

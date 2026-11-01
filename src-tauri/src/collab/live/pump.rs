@@ -156,9 +156,6 @@ pub(super) async fn pump(
     }
 }
 
-// The server refused a change because the project reached its size limit,
-// so changes stay on this computer until the limit is raised. The sync
-// engine says so once per session.
 pub(super) fn on_project_full(active: &Active) {
     let _ = crate::project::append_app_log(format!(
         "Live collaboration in project {} reached the server's size limit; changes stay on this computer for now",

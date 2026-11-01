@@ -13,23 +13,10 @@ import {
   type AtSuggestion,
 } from "@oleafly/latex-intelligence";
 
-// `@`-shortcut math snippets (`@a` → \alpha, `@/` → \frac),
-// vendored into public/latex-intelligence/at-suggestions.json. The source is
-// synchronous, so the corpus is cached here like src/lib/latex-corpus.ts:
-// completions return null until the background load resolves.
-
-/** Characters scanned on each side of the cursor when detecting math. */
 const MATH_WINDOW = 2048;
 
-/** The `@`-token being completed, anchored at the cursor. */
 const AT_TOKEN = /@[A-Za-z()[\]{}|<>+\-*=.]*$/;
 
-/**
- * True when `pos` sits strictly inside the body of a math expression
- * ($...$, \(...\), \[...\], $$...$$). Only a ±2 KB window around `pos` is
- * scanned, so an expression whose opening delimiter lies outside the window
- * is not recognized.
- */
 export function isMathContext(text: string, pos: number): boolean {
   const from = Math.max(0, Math.min(pos, text.length) - MATH_WINDOW);
   const to = Math.min(text.length, pos + MATH_WINDOW);
@@ -47,7 +34,6 @@ let cachedSuggestions: AtSuggestion[] | null = null;
 let cachedOptions: Completion[] | null = null;
 let loadRequested = false;
 
-/** Kick off the lazy corpus load; the sync cache fills when it resolves. */
 export function warmAtSuggestions(): void {
   if (loadRequested) return;
   loadRequested = true;
@@ -56,7 +42,6 @@ export function warmAtSuggestions(): void {
   });
 }
 
-/** Test seam: seed (or clear, with null) the sync suggestion cache. */
 export function setAtSuggestionsForTest(value: AtSuggestion[] | null): void {
   cachedSuggestions = value;
   cachedOptions = null;
@@ -73,10 +58,6 @@ function baseOptions(suggestions: AtSuggestion[]): Completion[] {
   return cachedOptions;
 }
 
-/**
- * Math-only `@` shortcut completions. Applying an option replaces the whole
- * `@`-token with the shortcut's snippet.
- */
 export const atSuggestionCompletion: CompletionSource = (context) => {
   const token = context.matchBefore(AT_TOKEN);
   if (!token) return null;

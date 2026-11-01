@@ -48,6 +48,11 @@
     "stoppedTitle": "Bağlantı kesildi",
     "stoppedDescription": "Yeniden bağlanmak için sayfayı yenileyin."
   },
+  "leave": {
+    "title": "Bu projeden ayrılıyor musunuz?",
+    "description": "Bazı düzenlemeleriniz henüz sunucuya ulaşmadı. Gönderilene kadar bekleyin ya da ayrılın ve onları kaybedin.",
+    "confirm": "Ayrıl"
+  },
   "access": {
     "changed": "Bu projedeki yeni rolünüz: {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Geri çek",
     "acceptAll": "Tümünü kabul et",
     "rejectAll": "Tümünü reddet",
+    "rejectAllConfirm": {
+      "title": "{{file}} dosyasındaki tüm öneriler reddedilsin mi?",
+      "description": "Özgün metin, bu projedeki herkes için dosyaya geri döner. Bekleyen öneriler: {{number}}.",
+      "confirm": "Tümünü reddet"
+    },
     "pending_one": "{{count}} öneri",
     "pending_other": "{{count}} öneri",
     "card": "{{name}} kişisinin önerisi",

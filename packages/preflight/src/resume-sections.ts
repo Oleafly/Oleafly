@@ -90,12 +90,6 @@ const SECTION_ALIASES: Readonly<Record<ResumeSectionId, readonly string[]>> = {
   achievements: ["achievement", "achievements"],
 };
 
-/**
- * Normalize a complete heading candidate, not arbitrary prose. Removing
- * separators lets PDF runs such as `GitHubProjects` match the same canonical
- * alias as `GitHub Projects`, while retaining every letter and digit prevents
- * substring matches such as `Projects I built at GitHub`.
- */
 export function normalizeResumeSectionHeading(value: string): string {
   return value
     .normalize("NFKC")

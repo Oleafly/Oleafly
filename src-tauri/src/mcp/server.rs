@@ -17,8 +17,6 @@ use tokio::sync::{oneshot, watch, Mutex, OwnedSemaphorePermit, Semaphore};
 use super::protocol::{rpc_error, rpc_result, rpc_tool_error, RpcOutcome, ToolMeta};
 use crate::paths;
 
-/// Upper bound for one forwarded tool call: compiles and human approvals are
-/// slow; anything past this returns a JSON-RPC error to the client.
 const CALL_TIMEOUT: Duration = Duration::from_secs(300);
 const REQUEST_BODY_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_REQUEST_BODY_BYTES: usize = 20 * 1024 * 1024;
@@ -34,9 +32,7 @@ const INSTRUCTIONS: &str = "Oleafly is a local-first editor for documents writte
 pub struct McpState {
     pub(crate) control: Mutex<()>,
     pub lifecycle: Mutex<()>,
-    /// Tool metadata pushed by the webview at startup (and on policy change).
     pub registry: Mutex<Vec<ToolMeta>>,
-    /// In-flight forwarded calls awaiting a webview result.
     pub(crate) pending: std::sync::Mutex<HashMap<u64, PendingCall>>,
     pub call_seq: AtomicU64,
     pub(crate) epoch: AtomicU64,
@@ -48,7 +44,6 @@ pub struct McpState {
     renderer_lease_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
     request_slots: Arc<Semaphore>,
     pub token: Mutex<Option<String>>,
-    /// Present while the server runs; sending true triggers graceful shutdown.
     pub shutdown: Mutex<Option<watch::Sender<bool>>>,
     pub bound_port: Mutex<Option<u16>>,
     pub active_project: Mutex<Option<String>>,

@@ -92,9 +92,24 @@ describe("committing a field", () => {
   });
 
   it("refuses content that would break the call and dispatches nothing", () => {
-    const { result, text } = commit('#info-box(title: "a")[b]', "info-box", 2, set("content", "price $5"));
+    const { result, text } = commit('#info-box(title: "a")[b]', "info-box", 2, set("content", "price *5"));
     expect(result).toEqual({ ok: false, reason: "invalid" });
     expect(text).toBe('#info-box(title: "a")[b]');
+  });
+
+  it("escapes a lone $, comment or backtick the same way table cells and captions do", () => {
+    const { result, text } = commit('#info-box(title: "a")[b]', "info-box", 2, set("content", "price $5 // net `x"));
+    expect(result).toEqual({ ok: true });
+    expect(text).toBe(String.raw`#info-box(title: "a")[price \$5 \// net \`x]`);
+  });
+
+  it.each([
+    ["new\nend // note", '#info-box(title: "a")[\n  new\n  end // note\n]'],
+    ["new\nend\\", '#info-box(title: "a")[\n  new\n  end\\\n]'],
+  ])("keeps %j as written when the body closes on its own line", (value, expected) => {
+    const { result, text } = commit('#info-box(title: "a")[\n  old\n]', "info-box", 2, set("content", value));
+    expect(result).toEqual({ ok: true });
+    expect(text).toBe(expected);
   });
 
   it("reports a call that went away or changed form as stale", () => {

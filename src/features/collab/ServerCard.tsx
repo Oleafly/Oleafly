@@ -53,7 +53,6 @@ function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; r
   );
 }
 
-// Which projects hold the changes, and the name each keeps as a local copy.
 function UnsentProjects({ projects }: Readonly<{ projects: readonly CollabUnsentProject[] }>) {
   const { t } = useTranslation(["collab", "native"]);
   return (
@@ -155,9 +154,6 @@ export function ServerCard({
     </Button>
   );
 
-  // Folded, the header sums up who is signed in: their picture and their
-  // role, since being signed in shows already. Open, the card says that
-  // itself and the header holds Remove. Why someone is signed out stays.
   const headerTrailing = () => {
     if (!account) {
       return (
@@ -190,7 +186,6 @@ export function ServerCard({
         id={`collab-server-${serverId}`}
         title={server.name}
         description={server.url}
-        // The server's own icon, as the add-server dialog shows it.
         leading={
           <Avatar
             person={{ id: serverId, name: server.name, imageUrl: server.icon_url }}
@@ -202,8 +197,6 @@ export function ServerCard({
         onOpenChange={setOpen}
         trailing={headerTrailing()}
       >
-        {/* Who is signed in on the left, the actions on the right. They wrap
-            below it when the card is too narrow for one line. */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="min-w-0 flex-1 basis-60">
             {account ? (

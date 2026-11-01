@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 
 const { restore } = await vi.hoisted(async () => {
@@ -45,6 +45,13 @@ const withValues = (template: string, values: Record<string, string>) =>
   );
 
 let catalog: AcpAgentStatus[];
+beforeAll(async () => {
+  await Promise.all([
+    import("./acp/AcpAgentPreferenceSections"),
+    import("./acp/AcpExperimentalSection"),
+    import("./acp/HermesSection"),
+  ]);
+});
 beforeEach(() => {
   vi.resetAllMocks();
   catalog = [];
@@ -76,9 +83,16 @@ function openSection(ui: Ui, id: string) {
   fireEvent.click(ui.getByTestId(`acp-section-${id}-toggle`));
 }
 
+async function openCard(card: HTMLElement) {
+  const toggle = within(card).getByRole("button", { expanded: false });
+  await act(async () => {
+    fireEvent.click(toggle);
+  });
+}
+
 async function expandAgent(ui: Ui, id = "fixture") {
   const card = await ui.findByTestId(`acp-agent-card-${id}`);
-  fireEvent.click(within(card).getByRole("button", { expanded: false }));
+  await openCard(card);
   return card;
 }
 
@@ -385,7 +399,7 @@ describe("ACP agent setup acceptance", () => {
     expect(card).toHaveTextContent("Bridge needed");
     expect(card).toHaveTextContent("Claude Code 2.1.258 found at ~/.local/bin/claude");
     expect(card).not.toHaveTextContent("Not installed");
-    fireEvent.click(within(card).getByRole("button", { expanded: false }));
+    await openCard(card);
     const cliDetails = within(card).getByRole("region", {
       name: copy.cliTitle,
     });
@@ -445,11 +459,9 @@ describe("ACP agent setup acceptance", () => {
       copy.versionLabel,
       copy.platformLabel,
       copy.bridgeSourceLabel,
-      // Since 0.4.8: the protocol version the agent reported, if it has run.
       copy.protocolLabel,
     ]);
     expect(within(card).getByTestId("acp-agent-protocol-claude")).toHaveTextContent(copy.notReported);
-    // With the Protocol row: two columns, four from the sm width up.
     expect(bridgeDetails.querySelector("dl")).toHaveClass("grid-cols-2", "sm:grid-cols-4");
     expect(within(card).getByTestId("acp-agent-install-claude")).toHaveTextContent(
       copy.installBridge,
@@ -473,7 +485,7 @@ describe("ACP agent setup acceptance", () => {
     expect(card).toHaveTextContent("CLI not found");
     expect(card).toHaveTextContent("Oleafly couldn't find Codex on this computer.");
     expect(card).not.toHaveTextContent("PATH");
-    fireEvent.click(within(card).getByRole("button", { expanded: false }));
+    await openCard(card);
     const install = within(card).getByTestId("acp-agent-install-codex");
     expect(install).toBeDisabled();
     const reasonId = install.getAttribute("aria-describedby");
@@ -605,7 +617,7 @@ describe("CLI agent program setup", () => {
     const ui = render(<AcpAgentsTab projectId="paper" />);
     const card = await ui.findByTestId("acp-agent-card-pi");
     expect(card).toHaveTextContent("Found pi.ps1, but PowerShell scripts can't be started. Choose pi.cmd or pi.exe.");
-    fireEvent.click(within(card).getByRole("button", { expanded: false }));
+    await openCard(card);
     const nextStep = within(card).getByRole("region", { name: copy.nextStepTitle });
     const lines = Array.from(nextStep.querySelectorAll("p")).map((node) => node.textContent);
     expect(lines[0]).toBe(setupCopy.cliMissingNextStep.replace("{{cli}}", "Pi"));

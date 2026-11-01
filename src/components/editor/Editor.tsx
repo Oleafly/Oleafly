@@ -89,7 +89,6 @@ function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: st
   return <PdfViewer data={bytes} scale={1} />;
 }
 
-// data: URLs, not blob:, because the CSP only allows img-src data:.
 function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [src, setSrc] = useState<string | null>(null);
@@ -132,8 +131,6 @@ function openFileKind(activePath: string | null) {
   return {
     isPdfFile: activePath?.toLowerCase().endsWith(".pdf"),
     isImageFile: activePath != null && isImagePath(activePath),
-    // No in-app preview for these; show a notice instead of an empty text
-    // editor a save could clobber them from.
     isOpaqueFile:
       activePath != null &&
       /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath),
@@ -178,12 +175,8 @@ export function Editor() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
-      // Require CodeMirror focus, else Cmd/Ctrl+B/I typed in the AI chat box
-      // or any other input would silently mutate the document.
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest(".cm-editor")) return;
-      // A form field or a table cell inside the text keeps the key: the wrap would land at
-      // the editor's hidden selection, somewhere else in the document.
       if (inWidgetControl(el)) return;
       const { activePath: path, engine, engineLoaded } = useFilesStore.getState();
       const action = FORMATTING_SHORTCUTS.get(e.key.toLowerCase());
@@ -206,8 +199,6 @@ export function Editor() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
-  // Any Markdown file gets the Markdown toolbar, whatever engine the project
-  // compiles with: README.md inside a LaTeX project edits like a Markdown project.
   const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
   const toolbarProfile = formattingProfileForPath(engine, engineLoaded, activePath);
   const showLatexToolbar = !zen && toolbarProfile === "latex";

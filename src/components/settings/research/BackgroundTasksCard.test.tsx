@@ -75,7 +75,6 @@ describe("BackgroundTasksCard", () => {
     await screen.findByText("Working on 1 task");
 
     api.getBackgroundHelperStatus.mockRejectedValue(new Error("The helper socket is busy."));
-    // The helper reports a change, and the card asks for its status again.
     const onHelperChange = api.listenForBackgroundHelper.mock.calls[0][0] as () => void;
     await act(async () => onHelperChange());
     await waitFor(() => expect(api.getBackgroundHelperStatus).toHaveBeenCalledTimes(2));

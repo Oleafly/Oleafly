@@ -179,20 +179,12 @@ function shouldAcceptPreviewState(
   if (!current || current.identity.projectId !== candidate.identity.projectId) {
     return true;
   }
-  // Project revision is shared across producers/windows even though request
-  // generation is not. Once a newer whole-project revision is announced, a
-  // delayed success for an older dependency graph cannot become current just
-  // because its backend output revision is numerically newer.
   if (
     candidate.identity.projectRevision <
     current.identity.projectRevision
   ) {
     return false;
   }
-  // Backend output revisions are process-wide, whereas request generations
-  // are local to one producer window. A successful compile from another
-  // window therefore wins by output revision even when its local request
-  // generation is numerically smaller.
   if (candidate.status === "success" && candidate.checkpoint) {
     return (
       candidate.identity.projectRevision >
@@ -272,15 +264,7 @@ function PreviewMessage({
   );
 }
 
-// Detached PDF preview window (`?view=preview`). Every disk read is accepted
-// only after its checkpoint fingerprint matches; delayed loads and events can
-// therefore never replace a newer document.
 export interface PreviewWindowProps {
-  /**
-   * Component-harness seam for secondary-window coverage. Native E2E cannot
-   * attach a second WebView through the bridge, so a browser harness supplies
-   * deterministic bytes and disables only the Tauri event/read boundary.
-   */
   harnessBytes?: Uint8Array;
   disableNativeBridge?: boolean;
 }
@@ -530,7 +514,6 @@ export function PreviewWindow({
     const off = listen<PreviewWorkspaceSnapshot>("preview:workspace", ({ payload }) => {
       if (!disposed && payload?.projectId === projectId && typeof payload.log === "string" && typeof payload.status === "string" && Array.isArray(payload.errors) && payload.engine) {
         setWorkspace(payload);
-        // Reopening can miss a compile event while the new webview loads.
         if (payload.previewState?.identity?.projectId === projectId) acceptCompileState(payload.previewState);
       }
     });
@@ -1199,7 +1182,6 @@ export function PreviewWindow({
       {renderStaleNotice()}
 
       <div className={cn("relative min-h-0 flex-1 overflow-hidden bg-sidebar", logsOpen && "hidden")}>
-        {/* Kept mounted while a document is loaded so closing animates too. */}
         {previewDocument && (
           <PdfOutlinePanel
             id="detached-pdf-outline"

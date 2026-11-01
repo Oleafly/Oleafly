@@ -11,7 +11,9 @@
     "./controller": "./src/controller.ts",
     "./polyfills": "./src/polyfills.ts",
     "./pdf.worker": "./src/pdf.worker.ts",
-    "./mainThreadWorker": "./src/mainThreadWorker.ts"
+    "./mainThreadWorker": "./src/mainThreadWorker.ts",
+    "./pdfDocumentOptions": "./src/pdfDocumentOptions.ts",
+    "./pdfWorkerRuntime": "./src/pdfWorkerRuntime.ts"
   },
   "dependencies": {
     "@oleafly/i18n-contract": "workspace:*",

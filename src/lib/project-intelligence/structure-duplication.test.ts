@@ -49,9 +49,6 @@ describe("structure panel duplication", () => {
   });
 
   it("does not list a heading twice when a language server reports it too", () => {
-    // The section needs a body: the local node's range spans the heading AND
-    // its content, which is exactly what makes it differ from what a language
-    // server reports.
     const base = snapshot({
       "main.tex": String.raw`\section{Background}
 Prior work is summarised here, at some length, so that the local
@@ -62,9 +59,6 @@ outline node spans considerably more than the command itself.`,
     expect(section, "fixture must produce a local section").toBeDefined();
     if (!section) return;
 
-    // A language server reports its own span for the same heading - here the
-    // title alone rather than the whole command. Any difference in the end
-    // offset used to defeat the duplicate check.
     const merged = mergeLanguageServiceIntelligence(base, {
       identity,
       definitions: [

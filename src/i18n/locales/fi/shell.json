@@ -1180,6 +1180,8 @@
     "exportTxt": "Vie pelkkänä tekstinä (.txt)",
     "exportZipFailed": "Projektin zip-vienti ei onnistunut",
     "exporting": "Viedään .{{format}}…",
+    "exportingStep": "Viedään .{{format}}: {{step}}",
+    "stopExport": "Pysäytä",
     "fork": "Haaroita",
     "forkDescription": "Kopioi projektin <name>{{name}}</name> ja sen Git-historian uudeksi projektiksi. Tarkistuspisteet alkavat tyhjinä.",
     "forkFailed": "Projektin haaroittaminen ei onnistunut.",

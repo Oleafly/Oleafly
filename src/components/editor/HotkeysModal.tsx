@@ -21,7 +21,6 @@ import { shortcut } from "@/lib/utils";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SectionHeading } from "@/components/ui/section-heading";
 
-// Leaves rows that already spell out both conventions (e.g. "Ctrl-Space") untouched.
 const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
 
 function modifierTokens(combination: string): string[] {

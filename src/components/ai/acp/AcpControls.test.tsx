@@ -141,7 +141,6 @@ describe("AcpControls", () => {
     const listbox = await openModelPicker();
     const current = within(listbox).getByRole("option", { name: "GPT-5.5" });
     const mini = within(listbox).getByRole("option", { name: "GPT-5.5 mini" });
-    // The chosen model is the one Tab reaches; the others wait for the arrow keys.
     expect(current).toHaveAttribute("tabindex", "0");
     expect(mini).toHaveAttribute("tabindex", "-1");
 
@@ -158,7 +157,6 @@ describe("AcpControls", () => {
     expect(current).toHaveFocus();
     fireEvent.keyDown(current, { key: "g" });
     expect(mini).toHaveFocus();
-    // A key that is not a movement is left alone.
     expect(fireEvent.keyDown(mini, { key: "Enter" })).toBe(true);
   });
 

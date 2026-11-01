@@ -28,8 +28,6 @@ const GUESTS_IMPLEMENTED: bool = true;
 const READINESS_REUSED_FOR: Duration = Duration::from_secs(5);
 const BUCKET_READY_FOR: Duration = Duration::from_secs(5 * 60);
 const BUCKET_FAILING_FOR: Duration = Duration::from_secs(30);
-// Health checks wait behind the probe, so it gets a few seconds and a
-// bucket slower than that counts as failing.
 const BUCKET_PROBE_LIMIT: Duration = Duration::from_secs(5);
 const READINESS_KEY: &str = "readiness_probe";
 
@@ -69,8 +67,6 @@ struct Readiness {
     bucket: Mutex<Option<(Instant, bool)>>,
 }
 
-// An S3 bucket is probed with a small file at most every few minutes, and
-// sooner again after a failure.
 async fn bucket_ready(state: &AppState, readiness: &Readiness) -> bool {
     let mut bucket = readiness.bucket.lock().await;
     if let Some((checked, ready)) = *bucket {

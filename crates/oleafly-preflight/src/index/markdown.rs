@@ -1,11 +1,3 @@
-//! Markdown anchors and same-project links for the index.
-//!
-//! This is a smaller version of the app's Markdown analysis: ATX headings get
-//! their explicit `{#id}` or Pandoc's automatic identifier, `{#id}` attribute
-//! blocks define anchors, and `[text](#anchor)` / `[text](file#anchor)` links
-//! are references. Markdown only feeds preflight through unreferenced-float
-//! labels, and Markdown documents get no source rules.
-
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -144,8 +136,6 @@ fn resolve_link(file: &str, target: &str) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("/"))
 }
 
-/// The name of a heading: its explicit `{#id}`, or a slug of its title that
-/// no earlier heading uses.
 fn heading_name(title: &str, used: &HashSet<String>) -> String {
     let explicit = HEADING_ATTRIBUTES
         .first_str(title)
@@ -162,7 +152,6 @@ fn heading_name(title: &str, used: &HashSet<String>) -> String {
     }
 }
 
-/// Opens a code fence with `marker`, or closes the open one it matches.
 fn toggle_fence(fence: &mut Option<String>, marker: &str) {
     match fence {
         None => *fence = Some(marker.to_string()),
@@ -171,8 +160,6 @@ fn toggle_fence(fence: &mut Option<String>, marker: &str) {
     }
 }
 
-/// Adds a definition for each heading outside code fences and returns the
-/// lines outside code fences.
 fn heading_definitions<'a>(text: &'a str, symbols: &mut FileSymbols) -> Vec<(usize, &'a str)> {
     let mut used = HashSet::new();
     let mut fence: Option<String> = None;
@@ -202,7 +189,6 @@ fn heading_definitions<'a>(text: &'a str, symbols: &mut FileSymbols) -> Vec<(usi
     visible_lines
 }
 
-/// Adds a definition for each `{#id}` attribute block in a line.
 fn attribute_definitions(offset: usize, line: &str, symbols: &mut FileSymbols) {
     for found in ATTRIBUTE_BLOCK.captures_str(line).0 {
         if let (Some(name), Some((start, _))) = (found.group(line, 1), found.groups[1]) {
@@ -216,7 +202,6 @@ fn attribute_definitions(offset: usize, line: &str, symbols: &mut FileSymbols) {
     }
 }
 
-/// Adds a reference for each link to an anchor in a line.
 fn anchor_references(file: &str, offset: usize, line: &str, symbols: &mut FileSymbols) {
     for found in LINK.captures_str(line).0 {
         let target = found.group(line, 3).unwrap_or("");

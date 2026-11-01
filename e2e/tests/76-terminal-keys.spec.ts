@@ -15,7 +15,6 @@ const NEW_TERMINAL = '[data-testid="dock-terminal-tabs"] [aria-label="New termin
 const TERMINAL_TOGGLE = '[data-testid="rail-terminal-toggle"]';
 const WINDOWS = process.platform === "win32";
 const MAC = process.platform === "darwin";
-// Printed with the halves apart, so the typed command line never matches.
 const READY = "bytes-ready";
 const DONE = "bytes-done";
 
@@ -106,7 +105,6 @@ async function pressInTerminal(page: Page, key: Key): Promise<void> {
   );
 }
 
-/** A cold shell on a busy runner can take minutes; nudge with Enter until a prompt paints. */
 async function waitForPrompt(page: Page): Promise<void> {
   const tail = async () => (await terminalOutput(page)).trimEnd().slice(-160);
   const promptPattern = /[$#%>❯➜]\s*$/u;
@@ -124,17 +122,13 @@ function occurrences(text: string, marker: string): number {
   return text.split(marker).length - 1;
 }
 
-/** Prints the next `count` bytes the program reads (Unix) or the next key with its modifiers (Windows). */
 function readerCommand(count: number): string {
   if (WINDOWS) {
     return `"bytes-" + "ready"; $k = [Console]::ReadKey($true); "key:$($k.Key)|$($k.Modifiers)"; "bytes-" + "done"`;
   }
-  // The ready line prints after raw mode is on, so no key reaches the line
-  // discipline (where ^W and ^U would edit the line instead).
   return `stty raw -echo; printf '%s-%s\\r\\n' bytes ready; od -An -tx1 -N ${count}; stty sane; printf '%s-%s\\n' bytes done`;
 }
 
-/** Runs the reader, presses the keys once it waits, and returns what it printed, spaces collapsed. */
 async function readKeys(page: Page, keys: Key[], count = 1): Promise<string> {
   const before = await terminalOutput(page);
   const ready = occurrences(before, READY);

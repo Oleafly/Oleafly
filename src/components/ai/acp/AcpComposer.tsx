@@ -18,22 +18,17 @@ import { acpAttachmentKinds, acpMentionItems, acpSlashItems, composerMode } from
 import { promptMentions } from "./acp-attachments";
 import { settleSelectionQuotes, unsettleSelectionQuote, useSelectionQuote } from "./selection-quote";
 
-/** The composer a conversation's draft lives in; before one starts, the chosen agent's. */
 export function acpDraftId(projectId: string, agentId: string | null, session: AcpSession | undefined): string {
   return session ? acpComposerId(projectId, session.agentId, session.id) : acpComposerId(projectId, agentId);
 }
 
-/** A snapshot of what the composer would send, and a way to clear it. */
 function takeDraft(projectId: string, composerId: string): AcpPromptDraft {
   const draft = useComposerDrafts.getState().drafts[composerId];
   const composer = useAcpSessionsStore.getState().composers[projectId];
   const text = draft?.text ?? "";
   return {
     text,
-    // A file that could not be prepared stays out of the message, as in the
-    // built-in composer. Clearing the draft removes its chip.
     attachments: (draft?.attachments ?? EMPTY_ATTACHMENTS).filter((item) => item.status === "ready"),
-    // Read now, from this project: a queued message may go while another one is open.
     mentions: promptMentions(text, useFilesStore.getState().tree),
     selections: [...(composer?.selections ?? [])],
     skill: composer?.skill ?? null,
@@ -48,11 +43,6 @@ function clearDraft(projectId: string, composerId: string): void {
   useAcpSessionsStore.getState().setComposer(projectId, { skill: null, selections: [] });
 }
 
-/**
- * Puts a draft back after a failed send or start. What the user has typed
- * since stays: the restored text goes before it, and files join the ones
- * already attached.
- */
 export function restoreDraft(projectId: string, composerId: string, draft: AcpPromptDraft): void {
   const drafts = useComposerDrafts.getState();
   const current = drafts.drafts[composerId];
@@ -78,14 +68,12 @@ export interface AcpComposerProps {
   agent: AcpAgentStatus | undefined;
   agentId: string | null;
   onStart(draft: AcpPromptDraft): void;
-  /** A message is about to go to the agent. */
   onSend(): void;
   onError(message: string | null): void;
   leftControls: ReactNode;
   trailingControls?: ReactNode;
 }
 
-/** The CLI-agent composer: B's ChatComposer with the agent's commands, queueing and quotes. */
 export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(function AcpComposer(
   { projectId, session, agent, agentId, onStart, onSend, onError, leftControls, trailingControls },
   ref,

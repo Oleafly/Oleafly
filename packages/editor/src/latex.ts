@@ -45,11 +45,6 @@ export function setBibKeysProvider(fn: () => string[]) {
   bibKeysProvider = fn;
 }
 
-/**
- * Corpus-backed completion data supplied by the host application. Getters
- * return null while the corpus is still loading so callers can fall back to
- * the built-in lists.
- */
 export interface LatexCorpusProvider {
   coreCommands(): readonly Completion[] | null;
 }
@@ -75,7 +70,6 @@ export const latexLanguage = () =>
     [latexIgnoredRangesField],
   );
 
-/** For content that's bare math (no surrounding $...$ or \[...\]), e.g. the equation preview tool. */
 export const latexMathLanguage = () =>
   new LanguageSupport(StreamLanguage.define(stexMath));
 
@@ -637,8 +631,6 @@ function collectPackageNames(
     let cursor = skipWhitespace(text, match.index + match[0].length);
     if (text[cursor] === "[") {
       const optionsEnd = latexBalancedGroupEnd(text, cursor, "[", "]");
-      // An unclosed option group owns the rest of the source. Stop instead of
-      // repeatedly rescanning that suffix from every command-like substring.
       if (optionsEnd === null) break;
       cursor = skipWhitespace(text, optionsEnd);
     }
@@ -654,12 +646,6 @@ function collectPackageNames(
   }
 }
 
-/**
- * Builds the current-revision fallback catalog in one linear pass per
- * immutable CodeMirror document. Project intelligence can add cross-file
- * symbols, but completion must not disappear while that service starts or
- * while another file is malformed.
- */
 function collectClassicCommands(
   catalogText: string,
   commands: Map<string, LocalCommand>,
@@ -866,9 +852,6 @@ function localCommandCompletions(
   });
 }
 
-// Package-aware additions keep completion useful even before an LSP is
-// installed. The project language service can still contribute richer symbols
-// when TexLab is available.
 function packageCommands(): Record<string, Completion[]> {
   return {
     amsmath: [
@@ -1178,11 +1161,6 @@ function referenceCitationCompletions(
   return null;
 }
 
-/**
- * Lightweight current-document reference/citation fallback. App hosts can
- * compose this after a revision-strict project source so autocomplete remains
- * useful while a newly typed query is waiting for project re-indexing.
- */
 export function latexReferenceCitationCompletions(
   context: CompletionContext,
 ): CompletionResult | null {

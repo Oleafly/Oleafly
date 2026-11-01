@@ -12,7 +12,6 @@ const sample: ConnectorManifest = {
 
 describe("connector registry", () => {
   beforeEach(() => {
-    // Registry state is module-level and persists within a test file, so reset it for each test.
     _clearRegistry();
   });
 

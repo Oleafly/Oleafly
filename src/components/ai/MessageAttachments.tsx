@@ -9,6 +9,7 @@ import { attachmentRead } from "@/lib/attachments";
 import { bytesToBase64 } from "@/lib/base64";
 import { formatBytes } from "@/lib/format-bytes";
 import { logError } from "@/lib/log";
+import { withOccurrenceKeys } from "@/lib/occurrence-keys";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { writeBytesFile } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -42,7 +43,6 @@ function ImageChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: stri
       onClick={() => setOpen(true)}
       aria-label={t(($) => $.ai.attachments.open, { name: meta.name })}
       className={cn(
-        // A missing file keeps its tooltip, so the disabled chip still takes the pointer.
         "h-auto gap-1.5 bg-background/60 p-0.5 pr-2 text-xs font-normal disabled:pointer-events-auto disabled:cursor-default disabled:opacity-100",
         failed && "opacity-60 disabled:opacity-60",
       )}
@@ -119,18 +119,17 @@ function FileChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: strin
   );
 }
 
-/** A sent message's stored attachments: thumbnails, previews and saved copies. */
 export default function MessageAttachments({
   attachments,
 }: Readonly<{ attachments: readonly AttachmentMeta[] }>) {
   const scope = useFilesStore((state) => state.projectId);
   return (
     <div className="mt-1.5 flex flex-wrap gap-1.5">
-      {attachments.map((meta, index) =>
+      {withOccurrenceKeys(attachments, (meta) => meta.sha256 ?? meta.name).map(({ item: meta, key }) =>
         kindOf(meta) === "image" ? (
-          <ImageChip key={`${meta.sha256 ?? meta.name}-${index}`} meta={meta} scope={scope} />
+          <ImageChip key={key} meta={meta} scope={scope} />
         ) : (
-          <FileChip key={`${meta.sha256 ?? meta.name}-${index}`} meta={meta} scope={scope} />
+          <FileChip key={key} meta={meta} scope={scope} />
         ),
       )}
     </div>

@@ -34,6 +34,24 @@ function containingMatch(known: readonly KnownPath[], variants: string[]): strin
   return undefined;
 }
 
+function foldCase(path: string): string {
+  return path.toLowerCase();
+}
+
+function longestUniqueContainingMatch(
+  known: readonly KnownPath[],
+  variants: string[],
+): string | null | undefined {
+  for (const variant of variants) {
+    const containing = known.filter(([, name]) => variant.endsWith(`/${name}`));
+    if (containing.length === 0) continue;
+    const longest = Math.max(...containing.map(([, name]) => name.length));
+    const top = containing.filter(([, name]) => name.length === longest);
+    return top.length === 1 ? top[0][0] : null;
+  }
+  return undefined;
+}
+
 function uniqueMatch(
   known: readonly KnownPath[],
   variants: string[],
@@ -60,18 +78,37 @@ export function compilePathResolver(
   const known = [...new Set(candidates)].map(
     (candidate): KnownPath => [candidate, normalizeCompilePath(candidate)],
   );
+  const folded = known.map(([candidate, name]): KnownPath => [candidate, foldCase(name)]);
   return (path) => {
     const wanted = normalizeCompilePath(path);
     if (!wanted) return null;
     const variants = lookupVariants(wanted, implicitTex);
-    const direct =
-      exactMatch(known, variants) ?? (longerPaths ? containingMatch(known, variants) : undefined);
-    if (direct !== undefined) return direct;
-    const nested = uniqueMatch(known, variants, (name, variant) => name.endsWith(`/${variant}`));
-    if (nested !== undefined) return nested;
-    if (wanted.includes("/")) return null;
-    return uniqueMatch(known, variants, (name, variant) => basename(name) === variant) ?? null;
+    const exact = resolveAmong(known, variants, wanted, longerPaths, false);
+    if (exact !== undefined) return exact;
+    return resolveAmong(folded, variants.map(foldCase), wanted, longerPaths, true) ?? null;
   };
+}
+
+function resolveAmong(
+  known: readonly KnownPath[],
+  variants: string[],
+  wanted: string,
+  longerPaths: boolean,
+  folded: boolean,
+): string | null | undefined {
+  const exact = folded
+    ? uniqueMatch(known, variants, (name, variant) => name === variant)
+    : exactMatch(known, variants);
+  if (exact !== undefined) return exact;
+  if (longerPaths) {
+    const containing = folded
+      ? longestUniqueContainingMatch(known, variants)
+      : containingMatch(known, variants);
+    if (containing !== undefined) return containing;
+  }
+  const nested = uniqueMatch(known, variants, (name, variant) => name.endsWith(`/${variant}`));
+  if (nested !== undefined || wanted.includes("/")) return nested;
+  return uniqueMatch(known, variants, (name, variant) => basename(name) === variant);
 }
 
 export function resolveCompilePath(

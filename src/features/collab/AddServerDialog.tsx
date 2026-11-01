@@ -47,8 +47,6 @@ type Step =
       url: string;
       capabilities: CollabCapabilities;
       code: CollabSignInCode | null;
-      // The way this person picked before falling back to a code, so the
-      // browser page offers only that one instead of asking again.
       provider: CollabProvider | null;
     }
   | { kind: "done"; server: CollabServer };
@@ -84,8 +82,6 @@ export type ProbeTrouble =
   | { kind: "unreachable" }
   | { kind: "other"; message: string };
 
-// Drops every trailing `mark` with a plain loop. A regex like /\/+$/ backtracks
-// over a long run of marks that doesn't end the text.
 function withoutTrailing(text: string, mark: string): string {
   let end = text.length;
   while (end > 0 && text[end - 1] === mark) end -= 1;
@@ -115,8 +111,6 @@ export function probeTrouble(error: unknown, probed: string): ProbeTrouble {
     const target = movedTarget(said, probed);
     return target ? { kind: "moved", target } : { kind: "notAServer" };
   }
-  // An error in the server's own words came from an Oleafly server that
-  // answered but ran into a problem. A web page or an empty answer did not.
   if (code === "server" && said !== "" && !said.startsWith("<")) {
     return { kind: "other", message: collabErrorText(error) };
   }
@@ -135,8 +129,6 @@ function cancelPendingSignIn() {
   collabServerSignInCancel().catch(() => undefined);
 }
 
-// The page Oleafly opens already has the code, and the way picked in Oleafly
-// tells it to offer only that way to sign in.
 function codePageLink(code: CollabSignInCode, provider: CollabProvider | null): string {
   if (!provider) return code.verificationUriComplete;
   try {
@@ -307,7 +299,6 @@ export function AddServerDialog({
     } catch (error_) {
       if (current !== attempt.current) return;
       setError(collabErrorText(error_));
-      // A code that ran out can be replaced with a new one right away.
       setCodeHint(collabErrorCode(error_) === "sign_in_timed_out" ? provider : null);
       setStep({ kind: "server", url, capabilities });
     }
@@ -611,8 +602,6 @@ export function AddServerDialog({
     const role = toServerRole(server.account?.server_role);
     const name = server.account?.display_name ?? server.name;
     if (canManageServer(role)) return t(($) => $.collab.addServer.doneManageDescription, { name });
-    // A role from a later server reads as no role and grants nothing, so it
-    // gets no promise of sharing either.
     const laterRole = server.account != null && role === null;
     if (laterRole || (role !== null && !serverRoleAllows(role, "shareProjects"))) {
       return t(($) => $.collab.addServer.doneGuestDescription, { name });

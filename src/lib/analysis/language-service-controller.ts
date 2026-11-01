@@ -882,10 +882,6 @@ export class LanguageServiceController {
         this.desired.snapshot.engineId,
       ) === languageServiceKindForEngine(snapshot.engineId);
     if (canCoalesceLifecycle && this.desired) {
-      // Same-project/same-server edits update the in-flight target in place.
-      // Its object identity remains the cancellation boundary, so initial
-      // startup and large document syncs converge on the newest revision
-      // without killing and respawning the native process.
       this.desired.snapshot = snapshot;
       this.desired.revision = this.projectRevision;
       this.desired.effectiveTexts = effectiveTexts;
@@ -898,10 +894,6 @@ export class LanguageServiceController {
       !lifecycleChanged &&
       this.desired?.projectId === snapshot.projectId
     ) {
-      // Keep non-lifecycle publication inputs current without replacing the
-      // desired object: in-flight start/sync work uses its identity as the
-      // cancellation token. Dirty flags and index rebuild metadata must not
-      // supersede valid language-service work.
       this.desired.snapshot = snapshot;
       this.desired.effectiveTexts = effectiveTexts;
       this.publishLocalDocuments(this.desired);
@@ -1464,9 +1456,6 @@ export class LanguageServiceController {
       this.runtime?.cleanupFailed &&
       this.forcedRestartToken !== this.runtime.token
     ) {
-      // The failed runtime retains the only client that can retry its native
-      // session cleanup. Ordinary snapshot updates must not spin on teardown
-      // or start a replacement; explicit retry authorizes one new attempt.
       this.publishUnavailable(
         safeCleanupFailure(),
         LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
@@ -2277,9 +2266,6 @@ export class LanguageServiceController {
         }),
       );
     } catch {
-      // Local project intelligence stays authoritative and available. Clear
-      // this attempt so a later current-revision index publication can retry
-      // without turning an optional server enrichment into a restart loop.
       if (runtime.intelligenceIdentityKey === identityKey) {
         runtime.intelligenceIdentityKey = null;
       }
@@ -2390,8 +2376,6 @@ export class LanguageServiceController {
       await runtime.client.stop();
     } catch {
       try {
-        // LanguageServiceClient retains a failed transport cleanup identity,
-        // so one bounded retry can finish teardown without losing ownership.
         await runtime.client.stop();
       } catch (error) {
         stopFailure = error;

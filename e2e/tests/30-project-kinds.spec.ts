@@ -1,13 +1,8 @@
 import { test, expect } from "../fixtures";
 import { clickCompile, createProjectFromTemplate } from "../helpers";
 
-// Templates differ in class, packages, and layout, so this is the suite's
-// regression net for "we changed something and a template broke".
-
 const RUN = Date.now().toString(36);
 
-// modern-resume downloads its font pack on creation, so it is network-gated
-// like the font tests. diagram is the image-kind project, tested separately below.
 const TEX_TEMPLATES = [
   "acm",
   "article-academic",
@@ -44,9 +39,6 @@ async function createFromTemplate(page: import("../helpers").Page, id: string, n
   await createProjectFromTemplate(page, id, name);
 }
 
-// TeX templates must still land on "ok". Only the Typst and Markdown ones
-// legitimately report warnings, so widen the accepted severity per template
-// rather than for the whole matrix.
 async function compileClean(
   page: import("../helpers").Page,
   severities: readonly string[] = ["ok"],

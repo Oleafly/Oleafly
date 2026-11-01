@@ -2,17 +2,14 @@
 // on the clipboard. Only writes are supported: reading the clipboard back
 // (`?`) would let any program see what the user copied.
 
-/** Largest decoded payload accepted. */
 export const OSC52_MAX_BYTES = 1024 * 1024;
 
 export type Osc52Request = { kind: "write"; text: string } | { kind: "query" } | { kind: "invalid" };
 
 const INVALID: Osc52Request = { kind: "invalid" };
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
-/** Base64 length of OSC52_MAX_BYTES, plus padding slack. */
 const MAX_ENCODED = Math.ceil(OSC52_MAX_BYTES / 3) * 4 + 4;
 
-/** Parses the text after `52;`: a selection list, `;`, then base64 or `?`. */
 export function parseOsc52(data: string): Osc52Request {
   const separator = data.indexOf(";");
   if (separator < 0) return INVALID;

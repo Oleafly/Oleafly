@@ -1,6 +1,3 @@
-//! The app's side of the research MCP bridge. The server, its tools and the
-//! stdio relay live in the research crate; this module admits the project
-//! and supplies the app's skills, linked folders and connector keys.
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -39,7 +36,6 @@ pub async fn start_restricted(
     .await
 }
 
-/// One linked folder's current path, through the research workspace's checks.
 pub(crate) fn linked_root(project_id: &str, root_id: &str) -> Result<PathBuf, String> {
     AppLinkedRoots.resolve(project_id, root_id)
 }
@@ -106,7 +102,6 @@ fn services(skills_root: PathBuf, skills_pack: Option<PathBuf>) -> BridgeService
     }
 }
 
-/// Skills from Oleafly's library folder and the bundled pack.
 struct AppSkills {
     root: PathBuf,
     pack: Option<PathBuf>,
@@ -153,7 +148,6 @@ impl SkillSource for AppSkills {
     }
 }
 
-/// Linked folders resolved through the research workspace's checks.
 struct AppLinkedRoots;
 
 impl LinkedRoots for AppLinkedRoots {

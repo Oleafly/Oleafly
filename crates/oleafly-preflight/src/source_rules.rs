@@ -1,8 +1,3 @@
-//! LaTeX source rules (`packages/preflight/src/source-rules.ts`).
-//!
-//! The rules run on the comment-masked text, which keeps every UTF-16 offset,
-//! so the ranges they report point into the original source.
-
 use std::sync::LazyLock;
 
 use crate::contact::contains_contact_token;
@@ -434,8 +429,6 @@ fn nonstandard_headings(text: &SourceText) -> Vec<Finding> {
             )
         })
         .collect();
-    // Only treat this as a resume (and thus flag odd headings) when at least
-    // one standard resume heading is present. Avoids false positives on papers.
     let looks_like_resume = titles
         .iter()
         .any(|(label, _, _)| match_resume_section_heading(label).is_some());
@@ -601,8 +594,6 @@ fn table_header_rows(text: &SourceText) -> Vec<Finding> {
     Vec::new()
 }
 
-/// Runs every LaTeX source rule on LF-normalised text. Comments are masked
-/// first so `% \usepackage{multicol}` raises nothing.
 pub fn run_source_rules(text: &str, engine: PreflightEngine) -> Vec<Finding> {
     let masked = SourceText::new(mask_comments(text));
     let groups = [

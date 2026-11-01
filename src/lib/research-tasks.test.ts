@@ -52,7 +52,6 @@ import {
   type TaskTranscriptEvent,
 } from "./research-tasks";
 
-/** A task as the 0.4.7 backend sent it: none of the 0.4.8 fields. */
 const OLD_TASK: Parameters<typeof normalizeTask>[0] = {
   id: "t1",
   projectId: "paper",
@@ -80,7 +79,6 @@ const OLD_TASK: Parameters<typeof normalizeTask>[0] = {
   finishedAt: 6,
 };
 
-/** The 0.4.8 fields a 0.4.7 task gets. */
 const NEW_FIELD_DEFAULTS = {
   brief: defaultBrief(),
   recordSlug: "",

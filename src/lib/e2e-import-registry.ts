@@ -1,11 +1,3 @@
-// The e2e suite drives the app through evaluated snippets that import app
-// modules by their Vite dev-server URL ("/src/lib/tauri.ts"). A packaged
-// build has no dev server, so the packaged e2e boot (the init script in
-// src-tauri/src/lib.rs sets window.__OLEAFLY_E2E_BOOT__) registers this
-// resolver and the test fixtures rewrite those imports to go through it.
-// The map is gated on E2E_HOOKS so ordinary builds tree-shake every entry:
-// left ungated, the 29 dynamic-import edges added ~160 KB of chunk overhead
-// to production and broke the performance budget.
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {

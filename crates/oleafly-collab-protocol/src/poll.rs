@@ -75,8 +75,6 @@ struct Posted {
     frames: OneByOne,
 }
 
-// Each posted frame is held as raw text and parsed on its own, and reading
-// stops at the limit, so a long list of small frames never piles up.
 struct OneByOne(Vec<ClientFrame>);
 
 impl<'de> Deserialize<'de> for OneByOne {
@@ -111,8 +109,6 @@ pub struct PollReplies {
     pub frames: Vec<ServerFrame>,
 }
 
-// Far above what a server sends in one answer: a poll batch carries at most
-// 4 MiB of changes, and each one is a few hundred bytes at the least.
 pub const MAX_POLLED_FRAMES: usize = 65_536;
 
 impl PollBatch {

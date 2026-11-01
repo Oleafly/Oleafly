@@ -24,7 +24,6 @@ describe("useAttachmentUrl", () => {
       return useAttachmentUrl("p1", { sha256: "abc", mime: "image/png" });
     });
     await waitFor(() => expect(result.current.url).toBe("blob:one"));
-    // Let any loop show itself: a looping hook would keep rendering and calling.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
     });

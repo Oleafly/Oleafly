@@ -61,8 +61,6 @@ export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
   );
 }
 
-// Only the AI-only layout hides the editor/preview region entirely; the rest
-// always show it and select panes through the view mode.
 export function layoutPresetHidesWorkspace(preset: LayoutPreset): boolean {
   return preset === "ai-only";
 }
@@ -103,7 +101,6 @@ export function readDictionaryLocale(raw: string): string {
 }
 export type { EditorThemeId } from "@/lib/editor-themes";
 export type TerminalCursorStyle = "block" | "underline" | "bar";
-/** The shell new terminals start. Windows-only ids mean the login shell elsewhere. */
 export type TerminalShellId = "auto" | "pwsh" | "powershell" | "cmd" | "gitBash" | "wsl" | "custom";
 export const TERMINAL_SHELL_IDS: readonly TerminalShellId[] = [
   "auto",
@@ -114,7 +111,6 @@ export const TERMINAL_SHELL_IDS: readonly TerminalShellId[] = [
   "wsl",
   "custom",
 ];
-/** What Shift+Enter sends: a newline inside the program's input, or plain Enter. */
 export type TerminalShiftEnter = "newline" | "enter";
 export const TERMINAL_SHIFT_ENTER_OPTIONS: readonly TerminalShiftEnter[] = ["newline", "enter"];
 export const TERMINAL_SCROLLBACK_OPTIONS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000] as const;
@@ -162,7 +158,6 @@ export interface TerminalThemeColors {
 export interface TerminalColorTheme {
   id: TerminalColorThemeId;
   name: string;
-  /** Which app theme this palette is designed for; "system" follows the app. */
   appearance: "dark" | "light" | "system";
   colors: TerminalThemeColors;
 }
@@ -192,8 +187,6 @@ function palette(
 }
 
 export const TERMINAL_COLOR_THEMES: Record<TerminalColorThemeId, TerminalColorTheme> = {
-  // Resolved at render time to "dark" or "light" depending on the app theme.
-  // The colors here are only a placeholder for code that reads the map directly.
   system: {
     id: "system",
     get name() { return i18n.t(($) => $.core.themes.matchApp); },
@@ -366,10 +359,6 @@ export const TERMINAL_COLOR_THEMES: Record<TerminalColorThemeId, TerminalColorTh
   },
 };
 
-/**
- * The palette to paint for a chosen theme id. "system" follows the app's
- * resolved light/dark theme so a plain shell looks right in either mode.
- */
 export interface TerminalAppearanceColors {
   terminalColorTheme: TerminalColorThemeId;
   terminalBackground: string;
@@ -377,11 +366,6 @@ export interface TerminalAppearanceColors {
   terminalCursorColor: string;
 }
 
-/**
- * The exact xterm theme to paint: the resolved palette plus the user's base
- * color overrides. "Match app theme" ignores the overrides because they were
- * captured for one fixed palette and would not fit both light and dark.
- */
 export function resolveTerminalTheme(
   appearance: TerminalAppearanceColors,
   appTheme: "light" | "dark",
@@ -396,7 +380,6 @@ export function resolveTerminalTheme(
   };
 }
 
-/** Hook form of resolveTerminalTheme for components rendering terminal chrome. */
 export function useResolvedTerminalTheme(appTheme: "light" | "dark"): TerminalThemeColors {
   const terminalColorTheme = useSettingsStore((state) => state.terminalColorTheme);
   const terminalBackground = useSettingsStore((state) => state.terminalBackground);
@@ -439,7 +422,6 @@ export const TERMINAL_GLYPH_FALLBACK_FONTS = [
   '"Symbols Nerd Font"',
 ].join(", ");
 
-/** Append the glyph fallbacks ahead of the trailing generic family. */
 export function withTerminalGlyphFallbacks(fontFamily: string): string {
   const family = fontFamily.trim() || DEFAULT_TERMINAL_FONT_FAMILY;
   if (family.includes("Nerd Font") && family.includes("Symbols")) return family;
@@ -546,7 +528,6 @@ function saveLs(k: string, v: string) {
   }
 }
 
-// 0.4.8 I: the in-app browser is gone. 0.4.7 left these keys behind.
 const RETIRED_BROWSER_KEYS = ["oleafly.webBrowser", "oleafly.browser.homePage", "oleafly.browser.searchEngine"] as const;
 
 function removeRetiredBrowserKeys(): void {
@@ -604,9 +585,6 @@ export const TERMINAL_FONTS: { name: string; value: string }[] = [
   ...EDITOR_FONTS.filter(({ value }) => value),
 ];
 
-// Syntax/surface colors for each id are defined in globals.css under
-// `[data-editor-theme="..."]`; "system" applies no override and follows
-// the app's own light/dark mode.
 export const EDITOR_THEMES: { id: EditorThemeId; name: string }[] = [
   { id: "system", get name() { return i18n.t(($) => $.core.themes.matchApp); } },
   { id: "linear", name: "Linear" },
@@ -911,27 +889,22 @@ interface SettingsState {
   editorCursorColorLight: string;
   editorCursorColorDark: string;
   setEditorCursorColor: (surface: EditorSurface, v: string) => void;
-  /** Completion popups while typing (Ctrl+Space always works). */
   editorAutocomplete: boolean;
   setEditorAutocomplete: (v: boolean) => void;
-  /** Auto-insert closing brackets, parentheses, and quotes. */
   editorAutoCloseBrackets: boolean;
   setEditorAutoCloseBrackets: (v: boolean) => void;
   editorAutoCloseMath: boolean;
   setEditorAutoCloseMath: (v: boolean) => void;
   editorAutoCloseEnvironments: boolean;
   setEditorAutoCloseEnvironments: (v: boolean) => void;
-  /** Dim inline preview of the most likely completion, accepted with Tab. */
   editorGhostCompletion: boolean;
   setEditorGhostCompletion: (v: boolean) => void;
   editorCursorBlinking: EditorCursorBlinking;
   setEditorCursorBlinking: (v: EditorCursorBlinking) => void;
   editorHighlightCurrentLine: boolean;
   setEditorHighlightCurrentLine: (v: boolean) => void;
-  /** Pin the enclosing sections and environments to the top while scrolling. */
   editorStickyScroll: boolean;
   setEditorStickyScroll: (v: boolean) => void;
-  /** Show the rendered result of the equation the cursor is in. */
   editorMathPreview: boolean;
   setEditorMathPreview: (v: boolean) => void;
   fileMoveReferences: FileMoveReferences;
@@ -991,24 +964,14 @@ interface SettingsState {
   setSettingsOpen: (v: boolean) => void;
   settingsInitialSection: string;
   setSettingsInitialSection: (v: string) => void;
-  /** Appearance tab to show when the settings modal next opens; cleared once consumed. */
   settingsInitialAppearanceTab: string | null;
   setSettingsInitialAppearanceTab: (v: string | null) => void;
-  /** Open the settings modal on a section, optionally on an Appearance tab. */
   openSettingsAt: (section: string, appearanceTab?: string | null) => void;
-  // One-shot scroll target within a settings section (e.g. "templates" inside
-  // Downloads); consumed and cleared by the section that renders it so it
-  // never re-triggers on a later, unrelated open.
   settingsScrollTarget: string | null;
   setSettingsScrollTarget: (v: string | null) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
-  // Make the editor pane visible (opening a file from the tree): reveal the
-  // workspace if the AI-only layout hid it, and switch a preview-only view to
-  // a split so the editor is on screen. A no-op when the editor already shows.
   revealEditor: () => void;
-  // The editor/preview region is hidden only for the AI-only layout; every
-  // other layout shows it and picks the panes through viewMode.
   workspaceHidden: boolean;
   defaultView: LayoutPreset;
   setDefaultView: (v: LayoutPreset) => void;
@@ -1018,7 +981,6 @@ interface SettingsState {
   setHoverPreview: (v: boolean) => void;
   chatFloating: boolean;
   setChatFloating: (v: boolean) => void;
-  /** The chat message box's resting height in px, shared by every composer. */
   aiComposerHeight: number;
   setAiComposerHeight: (v: number) => void;
   terminalOpen: boolean;
@@ -1048,10 +1010,8 @@ interface SettingsState {
   setTerminalForeground: (v: string) => void;
   terminalCursorColor: string;
   setTerminalCursorColor: (v: string) => void;
-  /** Stays on this computer: never synced through cloud settings. */
   terminalShell: TerminalShellId;
   setTerminalShell: (v: TerminalShellId) => void;
-  /** The program a `custom` shell runs; stays on this computer. */
   terminalShellPath: string;
   setTerminalShellPath: (v: string) => void;
   terminalShiftEnter: TerminalShiftEnter;
@@ -1063,7 +1023,6 @@ interface SettingsState {
   setTerminalOptionIsMeta: (v: boolean) => void;
   terminalScrollback: number;
   setTerminalScrollback: (v: number) => void;
-  /** Ask before closing a terminal, the project or the app while a program runs. */
   terminalConfirmClose: boolean;
   setTerminalConfirmClose: (v: boolean) => void;
   editorFontSize: number;
@@ -1110,9 +1069,6 @@ interface SettingsState {
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
-  // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
-  // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
-  // their own pin in project.json.
   defaultLatexEngine: DefaultLatexEngine;
   setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
   resetGeneralPreferences: () => void;
@@ -1293,9 +1249,6 @@ export type PreferenceKey = Exclude<PrefKey, "vim" | "offline">;
 
 export type PreferenceValues = { [K in PreferenceKey]: SettingsState[K] };
 
-// What each Settings section's Reset button restores, mapped to the storage key
-// that persists it (null: kept for the session only). The reset and
-// sectionDiffersFromDefaults both read this map, so they cannot drift apart.
 export const SECTION_SETTINGS = {
   general: {
     uiLocalePreference: "oleafly.locale",
@@ -1383,7 +1336,6 @@ export const SECTION_SETTINGS = {
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
   },
-  // Research defaults live in the app config, not in browser storage.
   research: {},
 } satisfies Record<string, Partial<Record<PrefKey, string | null>>>;
 
@@ -1393,14 +1345,11 @@ function sectionEntries(section: SettingsSection): [PrefKey, string | null][] {
   return Object.entries(SECTION_SETTINGS[section]) as [PrefKey, string | null][];
 }
 
-// Same encoding the individual setters write: flags as "1"/"0", lists as JSON.
 export function storedDefault(value: unknown): string {
   if (typeof value === "boolean") return value ? "1" : "0";
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
-// Persists a section's defaults and returns them for set(). Lists are copied
-// so the store never shares an array with PREF_DEFAULTS.
 function restoreSection(section: SettingsSection): Partial<SettingsState> {
   const restored: Record<string, unknown> = {};
   for (const [key, storageKey] of sectionEntries(section)) {
@@ -1420,7 +1369,6 @@ export function sectionDiffersFromDefaults(
     const value: unknown = PREF_DEFAULTS[key];
     const current = state[key];
     if (Array.isArray(value) && Array.isArray(current)) {
-      // Order is ignored: removing a pattern and adding it back is not a change.
       return (
         value.length !== current.length ||
         value.some((item) => !current.includes(item))
@@ -1747,7 +1695,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   settingsScrollTarget: null,
   setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
   viewMode: "editor",
-  // Choosing an explicit editor/split/pdf view always reveals the workspace.
   setViewMode: (v) => set({ viewMode: v, workspaceHidden: false }),
   revealEditor: () => {
     const s = get();
@@ -1772,9 +1719,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
   },
-  // The message box height is a panel size set by dragging its handle. Like
-  // the other panel sizes it stays on this device: no Settings row, no
-  // settings file entry, and Appearance's Reset leaves it alone.
   aiComposerHeight: readNumberInRange(ls("oleafly.ai.composerHeight", "56"), 56, 56, 2000),
   setAiComposerHeight: (v) => {
     const value = Number.isFinite(v) ? Math.round(Math.min(2000, Math.max(56, v))) : 56;
@@ -1787,8 +1731,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   assistantOpen: false,
   setAssistantOpen: (v) => {
-    // Closing the assistant while the workspace is hidden (AI-only layout)
-    // would leave nothing on screen, so reveal the workspace as it closes.
     set(v ? { assistantOpen: true } : { assistantOpen: false, workspaceHidden: false });
   },
   closeDocks: () => {
@@ -2086,9 +2028,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",
   setRailTab: (v) => set({ railTab: v }),
-  // A layout preset controls only the editor/preview/AI panes. The file tree
-  // is an independent surface (its own toggle and the "show file tree on
-  // open" preference), so switching layouts never opens or closes it.
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
@@ -2110,8 +2049,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         set({ viewMode: "pdf", assistantOpen: false, workspaceHidden: false });
         break;
       case "ai-only":
-        // No editor or preview: hide the whole workspace region and let the
-        // assistant fill it.
         set({ assistantOpen: true, workspaceHidden: true });
         break;
     }

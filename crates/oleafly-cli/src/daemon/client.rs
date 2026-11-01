@@ -1,6 +1,3 @@
-//! Talking to the background helper from outside: is it running, which
-//! tasks does it have, please stop, start one. `oleafly daemon status|stop`
-//! and the app use these.
 use std::ffi::OsString;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -17,12 +14,10 @@ use super::paths::helper_paths;
 use super::state::{read_state, Phase, ServeMode};
 use crate::app_paths::Platform;
 
-/// The flag the app binary starts the helper with.
 pub const DAEMON_FLAG: &str = "--oleafly-daemon";
 const POLL: Duration = Duration::from_millis(100);
 const READY_POLL: Duration = Duration::from_millis(50);
 
-/// Windows: no console, a new process group, out of the app's job.
 pub const DETACHED_PROCESS: u32 = 0x0000_0008;
 pub const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
 pub const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
@@ -78,7 +73,6 @@ fn status_label(status: &ResearchTaskStatus) -> String {
         .unwrap_or_default()
 }
 
-/// The helper's tasks (queued or running for it), read from the task store.
 pub fn helper_tasks(data_root: &Path) -> Vec<HelperTask> {
     let root = data_root.join("research-tasks");
     if !root.is_dir() {
@@ -102,7 +96,6 @@ pub fn helper_tasks(data_root: &Path) -> Vec<HelperTask> {
         .collect()
 }
 
-/// Whether a helper runs (it holds the lock), and what it reported.
 pub fn status(data_root: &Path) -> io::Result<HelperStatus> {
     let paths = helper_paths(data_root);
     let running = HelperLock::is_held_elsewhere(&paths.lock)?;
@@ -124,12 +117,10 @@ pub fn status(data_root: &Path) -> io::Result<HelperStatus> {
     })
 }
 
-/// Asks the helper to hand its tasks back and exit.
 pub fn request_stop(data_root: &Path, by: &str) -> io::Result<()> {
     write_stop_request(&helper_paths(data_root).stop_request, by)
 }
 
-/// Waits up to `timeout` for the helper to let go of its lock.
 pub fn wait_stopped(data_root: &Path, timeout: Duration) -> io::Result<bool> {
     let lock = helper_paths(data_root).lock;
     let deadline = Instant::now() + timeout;
@@ -144,8 +135,6 @@ pub fn wait_stopped(data_root: &Path, timeout: Duration) -> io::Result<bool> {
     }
 }
 
-/// The recorded helper process is the one running now (same pid, same
-/// start time).
 fn recorded_process_is_live(state: &super::state::HelperState) -> bool {
     match probe(state.pid) {
         ProcessProbe::Gone => false,
@@ -156,8 +145,6 @@ fn recorded_process_is_live(state: &super::state::HelperState) -> bool {
     }
 }
 
-/// A helper holds the lock but its heartbeat did not move across
-/// `observe` (it beats every 5 seconds).
 pub fn is_hung(data_root: &Path, observe: Duration) -> io::Result<bool> {
     let paths = helper_paths(data_root);
     if !HelperLock::is_held_elsewhere(&paths.lock)? {
@@ -198,8 +185,6 @@ fn kill(pid: u32) -> bool {
     }
 }
 
-/// Ends the helper, but only the process `state.json` names (same start
-/// time). Its tasks resume after a crash recovery.
 pub fn terminate(data_root: &Path) -> io::Result<bool> {
     let paths = helper_paths(data_root);
     let Some(state) = read_state(&paths.state) else {
@@ -215,29 +200,21 @@ pub fn terminate(data_root: &Path) -> io::Result<bool> {
     Ok(ended)
 }
 
-/// Removes `state.json` when it still names the process that was just
-/// ended: a killed helper never gets to, and the file would read as a
-/// running helper to anything that only looks for it.
 fn remove_state_of(path: &Path, pid: u32) {
     if read_state(path).is_some_and(|state| state.pid == pid) {
         let _ = std::fs::remove_file(path);
     }
 }
 
-/// How the app starts the helper.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpawnSpec {
     pub program: PathBuf,
     pub args: Vec<OsString>,
-    /// The data folder, so the helper never keeps another folder in use.
     pub cwd: PathBuf,
     pub env_remove: Vec<&'static str>,
-    /// Windows creation flags.
     pub windows_flags: u32,
 }
 
-/// The helper is the app's own executable with `--oleafly-daemon` (an
-/// AppImage relaunches itself, without the old mount's variables).
 pub fn spawn_spec(
     platform: Platform,
     exe: &Path,
@@ -298,7 +275,6 @@ pub fn spawn(spec: &SpawnSpec) -> io::Result<u32> {
         Err(error) => return Err(error),
     };
     let pid = child.id();
-    // Reaps the helper if it exits while this process still runs.
     let _ = std::thread::Builder::new()
         .name("oleafly-helper-reaper".into())
         .spawn(move || {
@@ -308,7 +284,6 @@ pub fn spawn(spec: &SpawnSpec) -> io::Result<u32> {
     Ok(pid)
 }
 
-/// Waits until the helper with `pid` says it is ready.
 pub fn wait_ready(data_root: &Path, pid: u32, timeout: Duration) -> bool {
     let state = helper_paths(data_root).state;
     let deadline = Instant::now() + timeout;
@@ -413,7 +388,6 @@ mod tests {
         assert!(sleeper.try_wait().unwrap().is_none());
         write_state(&paths.state, &state(started)).unwrap();
         assert_eq!(terminate(data.path()).unwrap(), started.is_some());
-        // The file that named the process it ended goes with it.
         assert_eq!(paths.state.exists(), started.is_none());
         let _ = sleeper.kill();
         let _ = sleeper.wait();

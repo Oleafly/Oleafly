@@ -1,10 +1,11 @@
 use std::collections::{BTreeSet, HashMap};
+use std::sync::{Arc, Mutex, PoisonError};
 
-use oleafly_collab::doc::{encode_version, NodeKind, ProjectDoc};
+use oleafly_collab::doc::{encode_version, FileNode, NodeKind, NodeParent, ProjectDoc};
 use oleafly_collab::history::HistoryPage;
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::review::changed_files;
+use oleafly_collab::review::changed_between;
 use oleafly_collab::{load_binding, CollabError};
 use oleafly_collab_protocol::ids::{AccountId, VersionId};
 use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction, ProjectRole};
@@ -34,16 +35,81 @@ fn io(error: impl std::fmt::Display) -> CollabError {
     CollabError::Io(error.to_string())
 }
 
+const KEPT_VERSIONS: usize = 4;
+
+pub(crate) struct Versions<'a> {
+    doc: &'a ProjectDoc,
+    old: &'a mut Vec<(String, ProjectDoc)>,
+}
+
+impl<'a> Versions<'a> {
+    fn of(doc: &'a ProjectDoc, old: &'a mut Vec<(String, ProjectDoc)>) -> Versions<'a> {
+        Versions { doc, old }
+    }
+
+    fn doc(&self) -> &ProjectDoc {
+        self.doc
+    }
+
+    fn hold(&mut self, version: &str) -> Result<(), CollabError> {
+        if let Some(index) = self.old.iter().position(|(id, _)| id == version) {
+            let kept = self.old.remove(index);
+            self.old.push(kept);
+            return Ok(());
+        }
+        let copy = self.doc.at_history(version)?;
+        if self.old.len() >= KEPT_VERSIONS {
+            self.old.remove(0);
+        }
+        self.old.push((version.to_owned(), copy));
+        Ok(())
+    }
+
+    fn at(&self, version: &str) -> Result<&ProjectDoc, CollabError> {
+        self.old
+            .iter()
+            .find(|(id, _)| id == version)
+            .map(|(_, copy)| copy)
+            .ok_or_else(|| CollabError::Corrupt("a version copy went missing".to_owned()))
+    }
+}
+
+struct Loaded {
+    doc: ProjectDoc,
+    old: Vec<(String, ProjectDoc)>,
+}
+
 struct Copied {
-    snapshot: Vec<u8>,
+    snapshot: Mutex<Option<Vec<u8>>>,
     authors: oleafly_collab::comments::Authorship,
     author: Option<(String, String)>,
+    loaded: tokio::sync::OnceCell<Arc<Mutex<Loaded>>>,
+}
+
+impl Copied {
+    fn load(&self) -> Result<Loaded, CollabError> {
+        let snapshot = self
+            .snapshot
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
+            .ok_or_else(|| CollabError::Corrupt("this copy was already loaded".to_owned()))?;
+        let mut doc = ProjectDoc::load_contained(&snapshot)?;
+        doc.set_authorship(self.authors.clone());
+        if let Some((account, name)) = &self.author {
+            doc.set_author(account, name);
+        }
+        Ok(Loaded {
+            doc,
+            old: Vec::new(),
+        })
+    }
 }
 
 fn copied(live: &LiveProject) -> Result<Copied, CollabError> {
     let doc = live.doc();
     Ok(Copied {
-        snapshot: doc.snapshot()?,
+        snapshot: Mutex::new(Some(doc.snapshot()?)),
         authors: doc.authorship().clone(),
         author: doc.author_key().map(|account| {
             (
@@ -51,23 +117,62 @@ fn copied(live: &LiveProject) -> Result<Copied, CollabError> {
                 doc.author_name().unwrap_or_default().to_owned(),
             )
         }),
+        loaded: tokio::sync::OnceCell::new(),
     })
+}
+
+struct LastCopy {
+    project_id: String,
+    version: Vec<u8>,
+    copy: Arc<Copied>,
+}
+
+static LAST_COPY: Mutex<Option<LastCopy>> = Mutex::new(None);
+
+fn live_copy(project_id: &str) -> Option<Result<Arc<Copied>, CollabError>> {
+    let mut last = LAST_COPY.lock().unwrap_or_else(PoisonError::into_inner);
+    super::live::read_live(project_id, |live| {
+        let version = encode_version(&live.doc().version());
+        if let Some(kept) = last
+            .as_ref()
+            .filter(|kept| kept.project_id == project_id && kept.version == version)
+        {
+            return Ok(Arc::clone(&kept.copy));
+        }
+        let copy = Arc::new(copied(live)?);
+        *last = Some(LastCopy {
+            project_id: project_id.to_owned(),
+            version,
+            copy: Arc::clone(&copy),
+        });
+        Ok(copy)
+    })
+}
+
+async fn loaded(copy: Arc<Copied>) -> Result<Arc<Mutex<Loaded>>, CollabError> {
+    let cell = Arc::clone(&copy);
+    cell.loaded
+        .get_or_try_init(|| async move {
+            tokio::task::spawn_blocking(move || copy.load())
+                .await
+                .map_err(io)?
+                .map(|loaded| Arc::new(Mutex::new(loaded)))
+        })
+        .await
+        .cloned()
 }
 
 async fn with_copy<T: Send + 'static>(
     state: &CollabState,
     project_id: &str,
-    work: impl FnOnce(&ProjectDoc) -> Result<T, CollabError> + Send + 'static,
+    work: impl FnOnce(&mut Versions<'_>) -> Result<T, CollabError> + Send + 'static,
 ) -> Result<T, CollabError> {
-    if let Some(copy) = super::live::read_live(project_id, copied) {
-        let copy = copy?;
+    if let Some(copy) = live_copy(project_id) {
+        let held = loaded(copy?).await?;
         return tokio::task::spawn_blocking(move || {
-            let mut doc = ProjectDoc::load_contained(&copy.snapshot)?;
-            doc.set_authorship(copy.authors);
-            if let Some((account, name)) = copy.author {
-                doc.set_author(&account, &name);
-            }
-            work(&doc)
+            let mut held = held.lock().unwrap_or_else(PoisonError::into_inner);
+            let Loaded { doc, old } = &mut *held;
+            work(&mut Versions::of(doc, old))
         })
         .await
         .map_err(io)?;
@@ -78,31 +183,91 @@ async fn with_copy<T: Send + 'static>(
     let dir = paths.document_dir(project_id)?;
     tokio::task::spawn_blocking(move || {
         let saved = LiveProject::load(&dir, ProjectRole::Viewer)?;
-        work(saved.doc())
+        work(&mut Versions::of(saved.doc(), &mut Vec::new()))
     })
     .await
     .map_err(io)?
 }
 
-fn names_of(doc: &ProjectDoc) -> HashMap<String, String> {
-    let nodes = doc.nodes().unwrap_or_default();
-    let mut names: HashMap<String, String> = nodes
-        .iter()
-        .map(|node| (node.id.clone(), node.name.clone()))
-        .collect();
-    for (id, placed) in materialize::layout(&nodes) {
-        names.insert(id, placed.path);
+struct Labels {
+    alive: HashMap<String, String>,
+    gone: HashMap<String, String>,
+}
+
+impl Labels {
+    fn of(doc: &ProjectDoc) -> Labels {
+        let nodes = doc.nodes().unwrap_or_default();
+        let alive: HashMap<String, String> = materialize::layout(&nodes)
+            .into_iter()
+            .map(|(id, placed)| (id, placed.path))
+            .collect();
+        let folders: HashMap<String, Option<String>> = doc
+            .trashed()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|trashed| (trashed.id, trashed.folder))
+            .collect();
+        let by_id: HashMap<&str, &FileNode> =
+            nodes.iter().map(|node| (node.id.as_str(), node)).collect();
+        let mut gone = HashMap::new();
+        for node in &nodes {
+            if alive.contains_key(&node.id) {
+                continue;
+            }
+            let mut names = vec![node.name.clone()];
+            let mut current = node;
+            for _ in 0..nodes.len() {
+                match &current.parent {
+                    NodeParent::Node(parent) => match by_id.get(parent.as_str()) {
+                        Some(found) => {
+                            names.push(found.name.clone());
+                            current = found;
+                        }
+                        None => break,
+                    },
+                    NodeParent::Trash => {
+                        if let Some(Some(folder)) = folders.get(&current.id) {
+                            names.push(folder.clone());
+                        }
+                        break;
+                    }
+                    NodeParent::Root => break,
+                }
+            }
+            names.reverse();
+            gone.insert(node.id.clone(), names.join("/"));
+        }
+        Labels { alive, gone }
     }
-    names
+
+    fn label(&self, id: &str) -> Option<&String> {
+        self.alive.get(id).or_else(|| self.gone.get(id))
+    }
+
+    fn id_for(&self, then: &materialize::Layout, path: &str) -> Option<String> {
+        let named = |labels: &HashMap<String, String>| {
+            labels
+                .iter()
+                .find(|(_, label)| label.as_str() == path)
+                .map(|(id, _)| id.clone())
+        };
+        named(&self.alive)
+            .or_else(|| named(&self.gone))
+            .or_else(|| {
+                then.iter()
+                    .find(|(_, placed)| placed.path == path)
+                    .map(|(id, _)| id.clone())
+            })
+    }
 }
 
 pub(crate) fn page_with_paths(doc: &ProjectDoc, mut page: HistoryPage) -> HistoryPage {
-    let names = names_of(doc);
+    let names = Labels::of(doc);
     for entry in &mut page.entries {
         let mut paths: Vec<String> = entry
             .files
             .iter()
-            .filter_map(|file| names.get(file).cloned())
+            .filter_map(|file| names.label(file).cloned())
             .collect();
         paths.sort();
         paths.dedup();
@@ -111,14 +276,26 @@ pub(crate) fn page_with_paths(doc: &ProjectDoc, mut page: HistoryPage) -> Histor
     page
 }
 
+#[cfg(test)]
 pub(crate) fn file_at_version(
     doc: &ProjectDoc,
     version: &str,
     path: &str,
 ) -> Result<FileAtVersion, CollabError> {
-    let old = doc.at_history(version)?;
-    let layout = materialize::layout(&old.nodes()?);
-    let found = layout.into_iter().find(|(_, placed)| placed.path == path);
+    file_in(&mut Versions::of(doc, &mut Vec::new()), version, path)
+}
+
+fn file_in(
+    versions: &mut Versions<'_>,
+    version: &str,
+    path: &str,
+) -> Result<FileAtVersion, CollabError> {
+    versions.hold(version)?;
+    let (doc, old) = (versions.doc(), versions.at(version)?);
+    let mut layout = materialize::layout(&old.nodes()?);
+    let found = Labels::of(doc)
+        .id_for(&layout, path)
+        .and_then(|id| layout.remove(&id).map(|placed| (id, placed)));
     Ok(match found {
         Some((id, placed)) if placed.kind == NodeKind::Text => FileAtVersion {
             path: path.to_owned(),
@@ -138,35 +315,52 @@ pub(crate) fn file_at_version(
     })
 }
 
+#[cfg(test)]
 pub(crate) fn files_changed_between(
     doc: &ProjectDoc,
     from: &str,
     to: &str,
 ) -> Result<Vec<String>, CollabError> {
-    let before = encode_version(&doc.version_of(from)?);
-    let after = encode_version(&doc.version_of(to)?);
-    Ok(changed_files(doc, &before, &after)?
-        .into_iter()
-        .map(|file| file.path)
-        .collect())
+    changed_in(&mut Versions::of(doc, &mut Vec::new()), from, to)
 }
 
+fn changed_in(
+    versions: &mut Versions<'_>,
+    from: &str,
+    to: &str,
+) -> Result<Vec<String>, CollabError> {
+    versions.hold(from)?;
+    versions.hold(to)?;
+    let labels = Labels::of(versions.doc());
+    let mut paths: Vec<String> = changed_between(versions.at(from)?, versions.at(to)?)?
+        .into_iter()
+        .map(|file| labels.label(&file.id).cloned().unwrap_or(file.path))
+        .collect();
+    paths.sort();
+    paths.dedup();
+    Ok(paths)
+}
+
+#[cfg(test)]
 pub(crate) fn ids_for(
     doc: &ProjectDoc,
     version: &str,
     paths: &[String],
 ) -> Result<BTreeSet<String>, CollabError> {
-    let old = doc.at_history(version)?;
-    let then = materialize::layout(&old.nodes()?);
-    let now = materialize::layout(&doc.nodes()?);
+    ids_in(&mut Versions::of(doc, &mut Vec::new()), version, paths)
+}
+
+fn ids_in(
+    versions: &mut Versions<'_>,
+    version: &str,
+    paths: &[String],
+) -> Result<BTreeSet<String>, CollabError> {
+    versions.hold(version)?;
+    let then = materialize::layout(&versions.at(version)?.nodes()?);
+    let labels = Labels::of(versions.doc());
     Ok(paths
         .iter()
-        .filter_map(|path| {
-            then.iter()
-                .chain(now.iter())
-                .find(|(_, placed)| placed.path == *path)
-                .map(|(id, _)| id.clone())
-        })
+        .filter_map(|path| labels.id_for(&then, path))
         .collect())
 }
 
@@ -208,7 +402,8 @@ pub async fn collab_history_list(
     before: Option<String>,
     limit: usize,
 ) -> Result<HistoryPage, CollabCommandError> {
-    with_copy(state.inner(), &project_id, move |doc| {
+    with_copy(state.inner(), &project_id, move |versions| {
+        let doc = versions.doc();
         let page = doc.history(before.as_deref(), limit);
         Ok(page_with_paths(doc, page))
     })
@@ -223,8 +418,8 @@ pub async fn collab_history_file(
     version_id: String,
     path: String,
 ) -> Result<FileAtVersion, CollabCommandError> {
-    with_copy(state.inner(), &project_id, move |doc| {
-        file_at_version(doc, &version_id, &path)
+    with_copy(state.inner(), &project_id, move |versions| {
+        file_in(versions, &version_id, &path)
     })
     .await
     .map_err(CollabCommandError::from)
@@ -237,8 +432,8 @@ pub async fn collab_history_changed_files(
     from_version: String,
     to_version: String,
 ) -> Result<Vec<String>, CollabCommandError> {
-    with_copy(state.inner(), &project_id, move |doc| {
-        files_changed_between(doc, &from_version, &to_version)
+    with_copy(state.inner(), &project_id, move |versions| {
+        changed_in(versions, &from_version, &to_version)
     })
     .await
     .map_err(CollabCommandError::from)
@@ -246,6 +441,7 @@ pub async fn collab_history_changed_files(
 
 #[tauri::command]
 pub async fn collab_history_restore(
+    app: tauri::AppHandle,
     state: tauri::State<'_, CollabState>,
     project_id: String,
     version_id: String,
@@ -254,8 +450,8 @@ pub async fn collab_history_restore(
     let files = match paths {
         Some(paths) => {
             let version = version_id.clone();
-            let ids = with_copy(state.inner(), &project_id, move |doc| {
-                ids_for(doc, &version, &paths)
+            let ids = with_copy(state.inner(), &project_id, move |versions| {
+                ids_in(versions, &version, &paths)
             })
             .await
             .map_err(CollabCommandError::from)?;
@@ -263,11 +459,12 @@ pub async fn collab_history_restore(
         }
         None => None,
     };
-    super::live::review_live(&project_id, |live, _| {
+    let restored = super::live::review_live(&project_id, |live, _| {
         restore_in(live, &version_id, files.as_ref())
     })
-    .map(|_| ())
-    .map_err(CollabCommandError::from)
+    .map_err(CollabCommandError::from)?;
+    super::suggesting::tell_local(&app, &project_id, &restored.into_iter().collect());
+    Ok(())
 }
 
 #[tauri::command]
@@ -360,6 +557,98 @@ mod tests {
         for key in ["id", "at", "until", "authors", "files", "name", "versionId"] {
             assert!(wire["entries"][0].get(key).is_some(), "{key} in {wire}");
         }
+    }
+
+    #[test]
+    fn a_moved_or_deleted_file_is_found_in_an_older_version_by_the_name_it_is_listed_under() {
+        let (mut live, intro, _) = project();
+        let sections = live
+            .doc_mut()
+            .add_node(None, "sections", NodeKind::Dir, None, "")
+            .unwrap();
+        let old = live
+            .doc_mut()
+            .add_node(Some(&sections), "old.tex", NodeKind::Text, None, "old text")
+            .unwrap();
+        let version = live.doc().current_version_id();
+        live.doc_mut().move_to(&intro, None).unwrap();
+        live.doc_mut().trash(&old).unwrap();
+        live.local_text(&intro, "second").unwrap();
+        let later = live.doc().current_version_id();
+        let page = page_with_paths(live.doc(), live.doc().history(None, 50));
+        let listed: Vec<&str> = page
+            .entries
+            .iter()
+            .flat_map(|entry| entry.files.iter().map(String::as_str))
+            .collect();
+        assert!(listed.contains(&"intro.tex"), "{listed:?}");
+        assert!(listed.contains(&"sections/old.tex"), "{listed:?}");
+        for (path, text) in [("intro.tex", "first"), ("sections/old.tex", "old text")] {
+            let then = file_at_version(live.doc(), &version, path).unwrap();
+            assert!(then.existed, "{path}");
+            assert_eq!(then.text.as_deref(), Some(text), "{path}");
+        }
+        assert_eq!(
+            ids_for(live.doc(), &version, &["sections/old.tex".to_owned()]).unwrap(),
+            BTreeSet::from([old])
+        );
+        let changed = files_changed_between(live.doc(), &version, &later).unwrap();
+        assert!(changed.contains(&"intro.tex".to_owned()), "{changed:?}");
+        let after = file_at_version(live.doc(), &later, "intro.tex").unwrap();
+        assert_eq!(after.text.as_deref(), Some("second"));
+    }
+
+    #[test]
+    fn history_reads_share_one_copy_of_the_project_until_it_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("project");
+        std::fs::create_dir_all(&root).unwrap();
+        let rig = crate::collab::live::write::rig::LiveRig::start(
+            "history-copy",
+            &root,
+            &[("main.tex", "abc")],
+        );
+        let _live = rig.go_live();
+        let first = live_copy("history-copy").unwrap().unwrap();
+        let again = live_copy("history-copy").unwrap().unwrap();
+        assert!(Arc::ptr_eq(&first, &again));
+        let (one, two) = tauri::async_runtime::block_on(async {
+            (
+                loaded(Arc::clone(&first)).await.unwrap(),
+                loaded(Arc::clone(&again)).await.unwrap(),
+            )
+        });
+        assert!(Arc::ptr_eq(&one, &two));
+        rig.remote("main.tex", "abcd");
+        let changed = live_copy("history-copy").unwrap().unwrap();
+        assert!(!Arc::ptr_eq(&first, &changed));
+        assert!(live_copy("not-live").is_none());
+    }
+
+    #[test]
+    fn versions_read_for_history_are_kept_for_the_next_request_up_to_a_few() {
+        let (mut live, intro, _) = project();
+        let mut ids = vec![live.doc().current_version_id()];
+        for text in ["two", "three", "four", "five", "six"] {
+            live.local_text(&intro, text).unwrap();
+            ids.push(live.doc().current_version_id());
+        }
+        let mut kept = Vec::new();
+        let mut versions = Versions::of(live.doc(), &mut kept);
+        let first = file_in(&mut versions, &ids[0], "chapters/intro.tex").unwrap();
+        assert_eq!(first.text.as_deref(), Some("first"));
+        let held = versions.at(&ids[0]).unwrap() as *const ProjectDoc;
+        file_in(&mut versions, &ids[0], "chapters/intro.tex").unwrap();
+        assert_eq!(versions.at(&ids[0]).unwrap() as *const ProjectDoc, held);
+        for id in &ids[1..] {
+            file_in(&mut versions, id, "chapters/intro.tex").unwrap();
+        }
+        assert_eq!(kept.len(), KEPT_VERSIONS);
+        assert!(kept.iter().all(|(id, _)| id != &ids[0]));
+        assert_eq!(
+            kept.last().map(|(id, _)| id.as_str()),
+            ids.last().map(String::as_str)
+        );
     }
 
     #[test]

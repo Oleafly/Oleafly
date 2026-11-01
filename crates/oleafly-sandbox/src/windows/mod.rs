@@ -53,7 +53,6 @@ fn state_dir() -> Result<PathBuf, SandboxError> {
         })
 }
 
-/// The binary that relaunches into the sandbox.
 fn launcher_path() -> Result<PathBuf, SandboxError> {
     let path = match config().and_then(|config| config.launcher.clone()) {
         Some(path) => path,
@@ -62,10 +61,6 @@ fn launcher_path() -> Result<PathBuf, SandboxError> {
     Ok(crate::plain_path(&path))
 }
 
-/// Whether the sandbox works here: configured, the launcher present, and a
-/// profile can be created and deleted. A success is remembered for the life
-/// of the process, a failure for a short while (a busy profile service or a
-/// locked ledger is not a reason to stay off until the app restarts).
 pub(crate) fn availability() -> Availability {
     static CACHE: ProbeCache = ProbeCache::new();
     CACHE.get(probe)
@@ -94,10 +89,8 @@ fn probe() -> Availability {
     }
 }
 
-/// What a prepared task launch needs.
 pub(crate) struct Prepared {
     pub container: String,
-    /// Capability SIDs (SDDL) for the task's token.
     pub capabilities: Vec<String>,
 }
 
@@ -108,9 +101,6 @@ fn walk_locks() -> &'static WalkLocks {
     &LOCKS
 }
 
-/// One lock per access entry in this process: a second command that needs
-/// the same folder waits for the first one's walk instead of repeating it.
-/// The entry leaves the map when the last command that wanted it is done.
 struct WalkLock {
     key: String,
     lock: Arc<Mutex<()>>,
@@ -119,8 +109,6 @@ struct WalkLock {
 impl Drop for WalkLock {
     fn drop(&mut self) {
         let mut locks = walk_locks().lock().unwrap_or_else(PoisonError::into_inner);
-        // This handle and the map's own: nobody else holds or waits for it,
-        // and nobody can take it without the map's lock.
         if Arc::strong_count(&self.lock) == 2 {
             locks.remove(&self.key);
         }
@@ -139,9 +127,6 @@ fn walk_lock(record: &GrantRecord) -> WalkLock {
     WalkLock { key, lock }
 }
 
-/// Writes the entry `record` describes. `force` walks the folder again even
-/// when its own entry is there. An exclusion returns the file's access list
-/// from before (SDDL).
 fn apply(record: &GrantRecord, force: bool) -> Result<Option<String>, SandboxError> {
     let sid = OwnedSid::from_sddl(&record.sid)?;
     let path = record.path.as_path();
@@ -157,21 +142,13 @@ fn apply(record: &GrantRecord, force: bool) -> Result<Option<String>, SandboxErr
     }
 }
 
-/// Entries on one folder alone, with no walk below it. They are quick, so
-/// they skip the ledger round trip of [`run_step`] and their marks are saved
-/// together at the end of [`prepare`].
 fn is_quick(access: GrantAccess) -> bool {
     matches!(access, GrantAccess::Traverse | GrantAccess::DenyDeleteChild)
 }
 
-/// Makes one entry, outside the ledger lock: the walk below a folder can
-/// take minutes, and everything else that needs the ledger (other tasks,
-/// the Settings page, the startup sweep) must not wait for it. The record
-/// was saved before; it is marked applied afterwards.
 fn run_step(state: &Path, step: &Step, force: bool) -> Result<(), SandboxError> {
     let walk = walk_lock(&step.record);
     let _held = walk.lock.lock().unwrap_or_else(PoisonError::into_inner);
-    // Another command may have finished this entry while this one waited.
     if ledger::lock(state)?.load()?.is_applied(&step.record) {
         return Ok(());
     }
@@ -185,15 +162,12 @@ fn run_step(state: &Path, step: &Step, force: bool) -> Result<(), SandboxError> 
     lock.save(&ledger_state)
 }
 
-/// Makes a quick entry (see [`is_quick`]) without touching the ledger.
 fn run_quick_step(step: &Step, force: bool) -> Result<(), SandboxError> {
     let walk = walk_lock(&step.record);
     let _held = walk.lock.lock().unwrap_or_else(PoisonError::into_inner);
     apply(&step.record, force).map(|_| ())
 }
 
-/// Saves the marks of the quick entries of one [`prepare`] in one go: the
-/// ones made, and the traverse entries a folder refused (not needed).
 fn settle_quick_steps(
     state: &Path,
     finished: &[GrantRecord],
@@ -213,9 +187,6 @@ fn settle_quick_steps(
     lock.save(&ledger_state)
 }
 
-/// Creates the task's profile and grants it what `spec` allows. The ledger
-/// lock is held to record what is about to be written and to mark it done,
-/// never during the writes themselves.
 pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
     if spec.owner.trim().is_empty() {
         return Err(SandboxError::Invalid(
@@ -228,15 +199,11 @@ pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
         ));
     }
     let state = state_dir()?;
-    // A deny entry needs something to sit on: a protected folder that isn't
-    // there yet is created empty first.
     crate::resolve::create_missing_protected(spec)?;
     let name = container_name(&spec.owner);
     let (steps, pending, capabilities) = {
         let lock = ledger::lock(&state)?;
         let mut ledger_state = lock.load()?;
-        // The process that uses the profile is on record, so a sweep can
-        // tell a run that was killed from one that is working.
         let process = Some(identity::current());
         match ledger_state.containers.get_mut(&name) {
             None => {
@@ -277,8 +244,6 @@ pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
         let mut recorded = false;
         for (index, step) in steps.iter().enumerate() {
             if let Begin::Apply { force } = ledger_state.begin(&step.record) {
-                // A new record is written ahead of its call; one found
-                // unfinished is already on file.
                 recorded |= !force;
                 pending.push((index, force));
             }
@@ -306,8 +271,6 @@ pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
         };
         if let Err(error) = result {
             match step.chain {
-                // A folder that refuses a traverse entry ends that climb; the
-                // rest above it is the user's own business.
                 Some(chain) => {
                     refused.insert(chain);
                     quick_refused.push(step.record.clone());
@@ -319,8 +282,6 @@ pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
             }
         }
     }
-    // The quick entries made so far are on record even when a later one
-    // failed.
     let settled = settle_quick_steps(&state, &quick_finished, &quick_refused);
     outcome?;
     settled?;
@@ -330,16 +291,11 @@ pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
     })
 }
 
-/// `%SystemRoot%\System32\cmd.exe`.
 pub(crate) fn cmd_exe() -> PathBuf {
     let root = std::env::var_os("SystemRoot").unwrap_or_else(|| OsString::from(r"C:\Windows"));
     PathBuf::from(root).join("System32").join("cmd.exe")
 }
 
-/// Writes the Python temp-folder shim into the home when missing or old. The
-/// task can write in its home and turn a folder there into a junction, so
-/// the folder is created without following links (a link is an error) and
-/// the file is replaced, never written through.
 pub(crate) fn write_python_shim(home: &Path) -> std::io::Result<PathBuf> {
     let shim_dir = env::python_shim_dir(home);
     let relative = shim_dir.strip_prefix(home).map_err(std::io::Error::other)?;
@@ -357,7 +313,6 @@ pub(crate) fn write_python_shim(home: &Path) -> std::io::Result<PathBuf> {
     Ok(file)
 }
 
-/// A confined command for `program args`.
 pub(crate) fn command(
     spec: &ResolvedSpec,
     program: &Path,
@@ -373,7 +328,6 @@ pub(crate) fn command(
     )
 }
 
-/// A confined command with a ready command line.
 pub(crate) fn command_raw(
     spec: &ResolvedSpec,
     program: &Path,
@@ -416,7 +370,6 @@ pub(crate) fn command_raw(
             continue;
         }
         if name.eq_ignore_ascii_case("PYTHONPATH") {
-            // The shim folder stays first.
             let shim = env::python_shim_dir(&spec.home);
             let mut joined = shim.into_os_string();
             joined.push(";");
@@ -436,7 +389,6 @@ pub(crate) fn command_raw(
     Ok(command)
 }
 
-/// The real Windows operations for the ledger's release logic.
 struct RealOps;
 
 impl GrantOps for RealOps {
@@ -445,8 +397,6 @@ impl GrantOps for RealOps {
     }
 
     fn revoke(&self, record: &GrantRecord) -> Result<(), SandboxError> {
-        // A folder that is gone has nothing to revoke. Any other failure to
-        // reach it is reported, and the record stays.
         if let Err(error) = std::fs::symlink_metadata(&record.path) {
             if error.kind() == std::io::ErrorKind::NotFound {
                 return Ok(());
@@ -457,8 +407,6 @@ impl GrantOps for RealOps {
             GrantAccess::Traverse | GrantAccess::DenyDeleteChild => {
                 acl::revoke_traverse(&record.path, &sid)
             }
-            // Only the last run that excludes the file carries its original
-            // list (see `ledger::hand_over_originals`).
             GrantAccess::Excluded => match &record.original {
                 Some(original) => acl::restore_file(&record.path, &sid, original),
                 None => Ok(()),
@@ -478,12 +426,8 @@ impl GrantOps for RealOps {
             GrantAccess::Read => Access::Read,
             GrantAccess::ReadWrite => Access::ReadWrite,
             GrantAccess::Traverse => Access::Traverse,
-            // Only shared read entries are checked, and these belong to a
-            // task.
             _ => return Presence::Unknown,
         };
-        // A folder that is missing or can't be reached (an unplugged drive,
-        // a locked file) proves nothing about its entry.
         if std::fs::symlink_metadata(&record.path).is_err() {
             return Presence::Unknown;
         }
@@ -496,8 +440,6 @@ impl GrantOps for RealOps {
 
     fn process_is_live(&self, process: Option<ProcessIdentity>) -> bool {
         let current = identity::current();
-        // This process's own runs are working; a record with this pid and
-        // another start time is from an earlier process.
         process == Some(current) || identity::owner_is_live(process, current, identity::probe)
     }
 }
@@ -507,16 +449,12 @@ fn with_ledger<T>(
 ) -> Result<T, SandboxError> {
     let state = state_dir()?;
     let lock = ledger::lock(&state)?;
-    // A ledger that can't be read stops here, before anything is saved over it.
     let mut ledger_state = lock.load()?;
     let result = call(&mut ledger_state);
     lock.save(&ledger_state)?;
     result
 }
 
-/// Revokes `records` with the ledger unlocked (a walk below a project can
-/// take minutes), then forgets the ones that went. The ones that failed stay
-/// on record for the next sweep; the first failure is returned.
 fn revoke_and_forget(records: &[GrantRecord]) -> Result<(), SandboxError> {
     let mut done = Vec::new();
     let mut first_error = None;
@@ -537,15 +475,11 @@ fn revoke_and_forget(records: &[GrantRecord]) -> Result<(), SandboxError> {
     first_error.map_or(Ok(()), Err)
 }
 
-/// Deletes `owner`'s profile and, for a run that worked on folders that
-/// stay, takes its entries off them. Walks the folders, so call it off the
-/// UI and async threads.
 pub(crate) fn release(owner: &str) -> Result<(), SandboxError> {
     let to_revoke = with_ledger(|state| ledger::release_begin(&RealOps, state, owner))?;
     revoke_and_forget(&to_revoke)
 }
 
-/// Releases the runs other than research tasks whose process is gone.
 pub(crate) fn release_abandoned() -> Result<usize, SandboxError> {
     let (released, orphans) = with_ledger(|state| {
         let released = ledger::release_abandoned_with(&RealOps, state)?;
@@ -560,8 +494,6 @@ pub(crate) fn release_stale(active: &[String]) -> Result<usize, SandboxError> {
         let released = ledger::release_stale_with(&RealOps, state, active)?;
         Ok((released, ledger::orphan_revocations(state)))
     })?;
-    // Entries an earlier run left behind (it was cut off before it could
-    // take them off its folders).
     revoke_and_forget(&orphans)?;
     Ok(released)
 }
@@ -650,7 +582,6 @@ mod tests {
             original: None,
         };
         assert!(RealOps.revoke(&record).is_ok());
-        // Missing says nothing about whether the entry is still there.
         assert_eq!(RealOps.present(&record), Presence::Unknown);
     }
 
@@ -670,7 +601,6 @@ mod tests {
         let name = key(&first);
         assert!(Arc::ptr_eq(&first.lock, &second.lock));
         drop(first);
-        // Someone still holds it.
         assert!(walk_locks()
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -687,7 +617,6 @@ mod tests {
         let current = identity::current();
         assert!(RealOps.process_is_live(Some(current)));
         assert!(!RealOps.process_is_live(None));
-        // An earlier process with this pid.
         assert!(!RealOps.process_is_live(Some(ProcessIdentity {
             pid: current.pid,
             started: current.started.map(|started| started.wrapping_add(1)),

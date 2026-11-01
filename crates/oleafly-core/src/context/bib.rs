@@ -1,8 +1,6 @@
-//! Citation keys from BibTeX/BibLaTeX files and Hayagriva YAML.
 use super::text::Source;
 use super::{Def, DefKind, FileFacts};
 
-/// `@type{key,` entries, except `@comment`, `@string` and `@preamble`.
 pub(crate) fn analyze_bibtex(file: &str, text: &str) -> FileFacts {
     let source = Source::new(text);
     let chars = &source.chars;
@@ -85,10 +83,7 @@ fn split_mapping_key(line: &str) -> Option<(&str, &str)> {
     None
 }
 
-/// The most UTF-16 units a YAML bibliography may have
-/// (`MAX_BIBLIOGRAPHY_YAML_CHARACTERS`).
 const MAX_BIBLIOGRAPHY_YAML_CHARACTERS: usize = 1_000_000;
-/// How much of a YAML file the Hayagriva sniff reads.
 const SNIFF_WINDOW: usize = 8192;
 
 /// A YAML line without its comment (a `#` at the start or after a space,
@@ -111,7 +106,6 @@ fn without_comment(line: &str) -> &str {
     line.trim_end()
 }
 
-/// The keys of a flow mapping (`{type: Article, title: X}`).
 fn flow_map_keys(value: &str) -> Vec<String> {
     let Some(body) = value
         .trim()
@@ -141,8 +135,6 @@ fn flow_map_keys(value: &str) -> Vec<String> {
     keys
 }
 
-/// `looksLikeHayagriva`: the first entry of the file has a `type` or a
-/// `title` field.
 fn looks_like_hayagriva(text: &str) -> bool {
     let mut window = String::new();
     let mut units = 0;
@@ -193,14 +185,11 @@ fn looks_like_hayagriva(text: &str) -> bool {
         .any(|(name, _)| is_entry_field(name.trim().trim_matches(['"', '\''])))
 }
 
-/// `acceptsBibliographyYaml`: small enough, and Hayagriva-shaped or named
-/// by a Typst `#bibliography`.
 pub(crate) fn accepts_bibliography_yaml(text: &str, named: bool) -> bool {
     text.chars().map(char::len_utf16).sum::<usize>() <= MAX_BIBLIOGRAPHY_YAML_CHARACTERS
         && (looks_like_hayagriva(text) || named)
 }
 
-/// Top-level keys of a Hayagriva file (`key:` at the start of a line).
 pub(crate) fn analyze_hayagriva(file: &str, text: &str) -> FileFacts {
     let mut facts = FileFacts::default();
     let mut offset = 0;
@@ -280,7 +269,6 @@ mod tests {
         assert!(!accepts_bibliography_yaml(conda, false));
         let compose = "services:\n  web:\n    image: nginx\nvolumes:\n  data: {}\n";
         assert!(!accepts_bibliography_yaml(compose, false));
-        // A Typst `#bibliography("x.yml")` vouches for it.
         assert!(accepts_bibliography_yaml(conda, true));
         let huge = format!("{hayagriva}{}", "# padding\n".repeat(110_000));
         assert!(!accepts_bibliography_yaml(&huge, true));

@@ -1,7 +1,3 @@
-//! What an agent sends as `session/update`: streamed output (text is
-//! coalesced before it is stored), controls, usage, slash commands, titles,
-//! notices and compaction summaries. Output kinds are kept only during a
-//! turn; the rest are kept at any time.
 use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -21,7 +17,6 @@ const MAX_TITLE: usize = 80;
 const MAX_SYSTEM_ERROR: usize = 16 * 1024;
 const FLUSH_TICK: Duration = Duration::from_millis(100);
 
-/// A compaction the agent is reporting, merged from its updates.
 #[derive(Clone, Debug, Default)]
 pub(super) struct Compaction {
     status: String,
@@ -36,8 +31,6 @@ fn bounded(text: &str, limit: usize) -> String {
         .collect()
 }
 
-/// The agent's slash commands: at most 128; names of `[A-Za-z0-9:_./-]`,
-/// at most 64 characters; descriptions and hints redacted and cut.
 pub(super) fn parse_commands(value: &Value, redactor: &Redactor) -> Vec<AvailableCommand> {
     value
         .as_array()
@@ -71,7 +64,6 @@ pub(super) fn parse_commands(value: &Value, redactor: &Redactor) -> Vec<Availabl
         .unwrap_or_default()
 }
 
-/// A notice: severity info, warning or error; title and description cut.
 pub(super) fn parse_notice(update: &Value, redactor: &Redactor) -> Value {
     let severity = update["severity"]
         .as_str()
@@ -101,9 +93,6 @@ fn block_text(value: &Value) -> String {
     }
 }
 
-/// Whether an update still applies while a loading session replays history
-/// that is already stored: only the agent's state (options, usage,
-/// commands).
 fn applies_while_replaying(kind: &str) -> bool {
     matches!(
         kind,
@@ -116,10 +105,6 @@ fn applies_while_replaying(kind: &str) -> bool {
     )
 }
 
-/// An update for a session other than the live one: ignored when the live
-/// session is forking or resuming or the id is one it set aside (a fork, or
-/// a session the agent opened in place of the resumed one), an error
-/// otherwise.
 fn foreign_update(session: &LiveSession, native: Option<&str>) -> Result<(), String> {
     let forked = session.forking.load(Ordering::Acquire)
         || session.resuming.load(Ordering::Acquire)
@@ -136,7 +121,6 @@ fn foreign_update(session: &LiveSession, native: Option<&str>) -> Result<(), Str
 }
 
 impl AcpRuntime {
-    /// A `session/update` from the agent, in wire order.
     pub(super) fn handle_update(
         self: &Arc<Self>,
         session: &Arc<LiveSession>,
@@ -147,7 +131,6 @@ impl AcpRuntime {
             .lock()
             .map_err(|_| "The ACP session is unavailable.")?;
         if state.record.native_session_id.is_none() {
-            // `session/new` answered, but its id is not recorded yet.
             if state.early.len() < 64 {
                 state.early.push(params.clone());
             }
@@ -161,13 +144,9 @@ impl AcpRuntime {
         let kind = update["sessionUpdate"]
             .as_str()
             .ok_or("The agent update has no type.")?;
-        // A loading session replays history that is already stored; only
-        // the agent's state (options, usage, commands) still applies.
         if state.replaying && !applies_while_replaying(kind) {
             return Ok(());
         }
-        // During a hidden plan-usage turn the agent's controls and commands
-        // still apply (the mode guard included); its output stays hidden.
         if state.hidden.is_some() && !Self::kept_while_hidden(kind) {
             Self::hidden_update(session, &mut state, kind, update);
             return Ok(());
@@ -206,7 +185,6 @@ impl AcpRuntime {
         Ok(())
     }
 
-    /// The agent changed its options, model or mode.
     fn controls_update(
         self: &Arc<Self>,
         session: &Arc<LiveSession>,
@@ -221,7 +199,6 @@ impl AcpRuntime {
         let controls = serde_json::to_value(&state.record.controls).map_err(|e| e.to_string())?;
         let blocked = !state.replaying && state.record.controls.blocked_mode(None).is_some();
         self.emit_locked(session, state, "controls", json!({"controls": controls}))?;
-        // The agent went into a mode with permission checks off.
         if blocked {
             let (runtime, session) = (self.clone(), session.clone());
             tokio::spawn(async move { runtime.leave_blocked_mode(&session).await });
@@ -229,7 +206,6 @@ impl AcpRuntime {
         Ok(())
     }
 
-    /// The agent reported its context and cost counters.
     fn usage_update(
         &self,
         session: &LiveSession,
@@ -258,7 +234,6 @@ impl AcpRuntime {
         )
     }
 
-    /// The agent named the session; a title the user set stays.
     fn session_info_update(
         &self,
         session: &LiveSession,
@@ -289,7 +264,6 @@ impl AcpRuntime {
         self.emit_locked(session, state, "session_info", json!({"title": title}))
     }
 
-    /// Streamed output, tool calls and plans: kept only during a turn.
     fn agent_output(
         self: &Arc<Self>,
         session: &Arc<LiveSession>,
@@ -297,9 +271,6 @@ impl AcpRuntime {
         kind: &str,
         update: &Value,
     ) -> Result<(), String> {
-        // Outside a turn, or after the agent ended it: the status
-        // only changes once the turn task runs, which can be after
-        // the agent's next updates arrive.
         if state.turn_closed
             || !matches!(
                 state.record.status,
@@ -328,8 +299,6 @@ impl AcpRuntime {
         self.emit_locked(session, state, kind, update.clone())
     }
 
-    /// Holds a text chunk for coalescing; held text of another message is
-    /// stored, and the rest is stored once it is due.
     fn hold_chunk(
         self: &Arc<Self>,
         session: &Arc<LiveSession>,
@@ -363,7 +332,6 @@ impl AcpRuntime {
         Ok(())
     }
 
-    /// Stores held text once it is 100 ms old, while nothing else arrives.
     fn schedule_flush(self: &Arc<Self>, session: &Arc<LiveSession>) {
         let runtime = Arc::downgrade(self);
         let session = Arc::downgrade(session);
@@ -376,8 +344,6 @@ impl AcpRuntime {
                 let Ok(mut state) = session.state.lock() else {
                     return;
                 };
-                // Text held back by a due flush waits for the message's next
-                // text or its end, which store it.
                 if !state.coalescer.is_holding() || state.coalescer.only_carry() {
                     state.flush_timer = false;
                     return;
@@ -391,7 +357,6 @@ impl AcpRuntime {
         });
     }
 
-    /// Updates handled as usual during a hidden plan-usage turn.
     fn kept_while_hidden(kind: &str) -> bool {
         matches!(
             kind,
@@ -403,9 +368,6 @@ impl AcpRuntime {
         )
     }
 
-    /// During a hidden plan-usage turn only the answer text and usage count.
-    /// A tool call means the command runs the model (a prompt command the
-    /// project defines under that name): the turn is cancelled.
     fn hidden_update(session: &LiveSession, state: &mut LiveState, kind: &str, update: &Value) {
         match kind {
             "tool_call" | "tool_call_update" if !state.hidden_tools => {

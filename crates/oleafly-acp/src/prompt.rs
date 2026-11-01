@@ -1,6 +1,3 @@
-//! The content blocks of one `session/prompt`: the user's text, a skill's
-//! instructions, images, links to files and embedded file text, checked
-//! against what the agent accepts and the frame budget.
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -8,11 +5,8 @@ use serde_json::{json, Value};
 use crate::capabilities::AgentCapabilities;
 use crate::limits::PROMPT_BUDGET;
 
-/// Files, images and selections one message may carry.
 pub const MAX_ATTACHMENTS: usize = 10;
-/// The longest message text.
 pub const MAX_PROMPT_TEXT: usize = 256 * 1024;
-/// Room the stored `user_message` event keeps for everything but the text.
 const USER_MESSAGE_ROOM: usize = 4 * 1024;
 
 /// Whether `text` is short enough to send and to store whole: once
@@ -31,7 +25,6 @@ pub struct ImagePrompt {
     pub data: String,
 }
 
-/// A file the agent reads itself (`resource_link`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResourceLink {
     pub uri: String,
@@ -40,8 +33,6 @@ pub struct ResourceLink {
     pub size: Option<u64>,
 }
 
-/// File text sent inside the message (`resource`), or quoted when the agent
-/// cannot take embedded context.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EmbeddedText {
     pub uri: Option<String>,
@@ -101,16 +92,12 @@ fn fenced(text: &EmbeddedText) -> String {
     )
 }
 
-/// The blocks in order: text (when not blank, or when there is no skill),
-/// the skill block, images, file links and embedded texts.
 pub fn prompt_blocks(
     session_id: &str,
     parts: &PromptParts<'_>,
     caps: &AgentCapabilities,
 ) -> Result<Vec<Value>, PromptError> {
     let has_text = !parts.text.trim().is_empty();
-    // A file's embedded text repeats its link: together they are one
-    // attachment, not two.
     let copies = parts
         .texts
         .iter()
@@ -133,8 +120,6 @@ pub fn prompt_blocks(
     if !parts.images.is_empty() && !caps.image {
         return Err(PromptError::ImagesUnsupported);
     }
-    // Text files the agent cannot take as embedded context, and that have no
-    // file to link to, are quoted after the message.
     let mut text = parts.text.to_owned();
     let mut embedded = Vec::new();
     let mut extra_links = Vec::new();
@@ -367,8 +352,6 @@ mod tests {
         );
     }
 
-    /// Small text files as the app resolves them for an agent that takes
-    /// embedded context: each has a link and an embedded copy of its text.
     fn linked_texts(count: usize) -> (Vec<ResourceLink>, Vec<EmbeddedText>) {
         let links: Vec<_> = (0..count)
             .map(|index| link(&format!("{index}.tex")))
@@ -435,7 +418,6 @@ mod tests {
 
     #[test]
     fn a_text_that_could_not_be_stored_whole_is_refused() {
-        // Under the raw limit, but twice that once its quotes are escaped.
         let quoted = "\"".repeat(200 * 1024);
         let parts = PromptParts {
             text: &quoted,

@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 
-// Best-effort - never throws, so it is safe to call from any catch block.
 export async function logError(scope: string, e: unknown): Promise<void> {
   let detail: string;
   if (e instanceof Error) {

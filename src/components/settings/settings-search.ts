@@ -42,7 +42,6 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
   data: [["shell", "settings", "data"], ["settings", "checkpoints"], keywords("data")],
   ai: [
     ["settings", "ai"],
-    // The assistant's own MCP servers, on the AI section's MCP tab.
     ["settings", "mcp", "servers"],
     ["settings", "mcp", "registry"],
     ["settings", "mcp", "import"],
@@ -50,9 +49,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
   ],
   research: [
     ["researchTools", "tasks", "settings"],
-    // Run targets (SSH, Slurm, Cua Spaces) and the local sandbox.
     ["researchTools", "compute"],
-    // 0.4.8 L: tasks that keep running after Oleafly closes.
     ["settings", "research", "background"],
     keywords("research"),
   ],
@@ -62,14 +59,12 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
     ["settings", "integrations", "actions"],
     ["settings", "integrations", "alphaxiv"],
     ["settings", "integrations", "overleaf"],
-    // The browser sign-in copy sits with the online LaTeX account.
     ["settings", "integrations", "cookies"],
     ["settings", "integrations", "zotero"],
     ["settings", "integrations", "desktopApps"],
     ["settings", "gitHosting"],
     ["settings", "github"],
     ["settings", "citations"],
-    // The Oleafly MCP server that other apps connect to.
     ["settings", "mcp", "section"],
     keywords("integrations"),
   ],
@@ -82,7 +77,6 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
 
 export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
   ["settings", "reset"],
-  // Validation messages and the task brief's own lines are not settings.
   ["researchTools", "compute", "form", "errors"],
   ["settings", "research", "mcpServers"],
   ["researchTools", "compute", "brief"],
@@ -94,12 +88,6 @@ export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
   ["shell", "settings", "search"],
 ];
 
-/**
- * The sub-tab each row lives on, by catalog path below the namespace, where
- * the row's keys do not name the tab. The longest matching prefix wins. Rows
- * not listed here open a tab one of their keys names, if any. Rows on a
- * section's default tab are listed too, so they open from any other tab.
- */
 export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "appearance.customTheme": "app",
   "appearance.preview": "pdf",
@@ -120,7 +108,6 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "engine.notebook": "quarto",
   github: "git-hosting",
   gitHosting: "git-hosting",
-  // Its rows' keys also name the Providers tab ("ai.agents.providers").
   "ai.agents": "agents",
   "ai.approvals": "providers",
   "ai.budget": "providers",
@@ -133,7 +120,6 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
 
 export type SettingsSearchPlatform = "macos" | "windows" | "linux";
 
-/** Rows the app shows on one platform only, by catalog path below the namespace. */
 const PLATFORM_ROWS: Readonly<Record<string, SettingsSearchPlatform>> = {
   "systemIntegration.quickAction": "macos",
   "systemIntegration.explorerMenu": "windows",
@@ -146,11 +132,6 @@ const PLATFORM_ROWS: Readonly<Record<string, SettingsSearchPlatform>> = {
   "integrations.desktopApps.gnome": "linux",
 };
 
-/**
- * Flows a button opens, such as a picker or an import dialog. Their titles are
- * not on the page until then, so they are not rows, but their words still find
- * the section.
- */
 const FLOW_PATHS: ReadonlySet<string> = new Set([
   "mcp.import",
   "mcp.registry",
@@ -159,14 +140,11 @@ const FLOW_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 const SKIPPED_KEY_WORDS = new Set(["aria", "error", "errors", "failed", "toast", "confirm"]);
-/** Settings whose key has one of those words but which are rows on the page. */
 const KEPT_PATHS: ReadonlySet<string> = new Set(["appearance.terminal.confirmClose"]);
-/** Subtrees that are dialogs, sign-in steps or empty states, not rows on the page. */
 const NOT_A_ROW_KEY_WORDS = new Set(["dialog", "device", "empty"]);
 const ROW_LABEL_KEYS = ["label", "title", "heading", "name"] as const;
 const MAX_ROWS_PER_SECTION = 3;
 
-/** Scripts written without spaces between words, where a match inside a word is still a word match. */
 const UNSPACED_SCRIPT =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
@@ -177,7 +155,6 @@ const MATCH_RANK: Readonly<Record<SettingsSearchMatch, number>> = { title: 0, ro
 
 export interface SettingsSearchRowHit {
   label: string;
-  /** Catalog keys below the namespace, e.g. ["appearance", "editor", "fontSize"]. */
   path: readonly string[];
 }
 
@@ -188,7 +165,6 @@ export interface SettingsSearchRow extends SettingsSearchRowHit {
 
 export interface SettingsSearchEntry {
   text: string;
-  /** The section's own search keywords, normalized. */
   keywords: string;
   rows: SettingsSearchRow[];
 }
@@ -200,7 +176,6 @@ export type CatalogLookup = (path: CatalogPath) => unknown;
 export interface SettingsSearchHit<Id extends string = string> {
   id: Id;
   rows: SettingsSearchRowHit[];
-  /** What matched: the section title, a row label, the section keywords or other text. */
   match?: SettingsSearchMatch;
 }
 
@@ -216,8 +191,6 @@ export function normalizeSearchText(value: string, locale?: string): string {
 
 export function cleanCatalogText(value: string): string {
   let text = value.replace(/\{\{[^{}]*\}\}/g, " ");
-  // Repeat until nothing changes: one pass can leave a tag behind
-  // ("<scr<b>ipt>" becomes "<script>").
   let previous: string;
   do {
     previous = text;
@@ -242,7 +215,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** A dialog, flow, sign-in step or empty state: its title is never a row on the page. */
 function isTransient(node: Record<string, unknown>, path: readonly string[]): boolean {
   const key = path.at(-1) ?? "";
   return (
@@ -273,7 +245,6 @@ interface IndexContext {
   platform: SettingsSearchPlatform;
 }
 
-/** `path` is the catalog path below the namespace. */
 function collectText(
   node: unknown,
   path: readonly string[],
@@ -323,7 +294,6 @@ function collectRows(
   }
 }
 
-/** Builds the index for one locale, leaving out rows other platforms show. */
 export function buildSettingsIndex(
   lookup: CatalogLookup,
   locale: string,
@@ -348,7 +318,6 @@ export function buildSettingsIndex(
   return index;
 }
 
-/** The sub-tab a row lives on when its keys do not name it, or null. */
 export function settingsTabFor(path: readonly string[]): string | null {
   for (let length = path.length; length > 0; length -= 1) {
     const tab = SETTINGS_SEARCH_TABS[path.slice(0, length).join(".")];
@@ -362,17 +331,11 @@ export function searchTerms(query: string, locale?: string): string[] {
 }
 
 function characterBefore(text: string, index: number): string {
-  // At a low surrogate codePointAt returns that unit alone, so this asks
-  // whether the unit before `index` is a low surrogate, the end of a pair.
   const code = text.codePointAt(index - 1) ?? 0;
   const pair = code >= 0xdc00 && code <= 0xdfff && index >= 2;
   return text.slice(pair ? index - 2 : index - 1, index);
 }
 
-/**
- * True when the term starts a word in the text, so "ai" finds "AI budget"
- * but not "install". Text in scripts written without spaces matches anywhere.
- */
 function startsWord(text: string, term: string): boolean {
   const unspacedTerm = UNSPACED_SCRIPT.test(String.fromCodePoint(term.codePointAt(0) ?? 0));
   for (let at = text.indexOf(term); at !== -1; at = text.indexOf(term, at + 1)) {
@@ -407,7 +370,6 @@ function matchingRows(
   return { rows: [...byLabel, ...byText].slice(0, MAX_ROWS_PER_SECTION), byLabel: byLabel.length > 0 };
 }
 
-/** Hits come back in the order of `sections`; use bestSettingsHit to pick one to open. */
 export function searchSettings<Id extends string>(
   index: SettingsSearchIndex,
   sections: readonly { id: Id; label: string }[],
@@ -434,11 +396,6 @@ export function searchSettings<Id extends string>(
   return hits;
 }
 
-/**
- * The section to open for a search: a title match first, then a row label,
- * then the section keywords, then any other text. Ties go to `current` when
- * it is one of them, and otherwise to the first in list order.
- */
 export function bestSettingsHit<Id extends string>(
   hits: readonly SettingsSearchHit<Id>[],
   current?: Id,

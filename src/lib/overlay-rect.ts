@@ -5,9 +5,6 @@ export interface Viewport { width: number; height: number }
 
 export const OVERLAY_MIN_W = ASSISTANT_MIN_WIDTH;
 export const OVERLAY_MIN_H = 400;
-// The AI chat holds back-and-forth conversation and agentic flows, so unlike the
-// file-tree sidebar it needs room: its width floor is the larger of an absolute
-// minimum and 30% of the viewport (but never wider than the viewport itself).
 export const OVERLAY_MIN_W_FRACTION = 0.3;
 
 export function overlayMinWidth(
@@ -20,8 +17,6 @@ export function overlayMinWidth(
   );
 }
 
-// Never larger than the viewport, so the overlay can't become an effective
-// fullscreen window.
 export function clampRect(
   rect: Rect,
   vp: Viewport,

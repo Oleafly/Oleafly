@@ -1,7 +1,6 @@
 use crate::project_location::{ProjectKind, ProjectLocation};
 use std::path::{Path, PathBuf};
 
-/// Compile entry wrapper (neutralizes pdfLaTeX-only commands under XeTeX).
 pub const ENTRY_TEX: &str = "_oleafly_entry.tex";
 pub const ENTRY_STEM: &str = "_oleafly_entry";
 
@@ -22,11 +21,11 @@ pub fn home_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "could not determine user home directory".to_string())
 }
 
-/// The Oleafly library root: `~/.oleafly/`, or `$OLEAFLY_DATA_DIR` when
-/// set and non-empty (e2e tests point this at a throwaway directory so runs
-/// are hermetic and never touch the user's real projects). Unit tests never
-/// fall back to `~/.oleafly`; see `default_data_dir`.
 pub fn oleafly_root() -> Result<PathBuf, String> {
+    #[cfg(test)]
+    if reads_without_data_dir_lock() {
+        return default_data_dir();
+    }
     if let Some(dir) = std::env::var_os("OLEAFLY_DATA_DIR") {
         if !dir.is_empty() {
             return Ok(PathBuf::from(dir));
@@ -40,11 +39,6 @@ fn default_data_dir() -> Result<PathBuf, String> {
     Ok(home_dir()?.join(".oleafly"))
 }
 
-// A unit test without a data folder of its own still logs, takes runtime
-// locks and touches caches in passing. Those writes go to one temporary
-// folder shared by the test process instead of the developer's real app log
-// and data. Tests that check what lands in the data folder still need their
-// own (see `TempLibrary`).
 #[cfg(test)]
 fn default_data_dir() -> Result<PathBuf, String> {
     static DIR: std::sync::OnceLock<Result<PathBuf, String>> = std::sync::OnceLock::new();
@@ -58,9 +52,6 @@ fn default_data_dir() -> Result<PathBuf, String> {
     .clone()
 }
 
-/// The downloadable-assets cache: `~/.oleafly/assets/` (created if missing).
-/// Holds on-demand font packs (and future package/engine caches) so the shipped
-/// installer stays small.
 pub fn assets_root() -> Result<PathBuf, String> {
     let root = oleafly_root()?.join("assets");
     if !root.exists() {
@@ -70,7 +61,6 @@ pub fn assets_root() -> Result<PathBuf, String> {
     Ok(root)
 }
 
-/// `~/.oleafly/templates/` — downloaded template packs and user-made templates.
 pub fn templates_data_root() -> Result<PathBuf, String> {
     let dir = oleafly_root()?.join("templates");
     std::fs::create_dir_all(&dir)
@@ -89,7 +79,6 @@ pub fn catalogs_root() -> Result<PathBuf, String> {
     Ok(oleafly_root()?.join("catalogs"))
 }
 
-/// The projects directory: `~/.oleafly/projects/` (created if missing).
 pub fn projects_root() -> Result<PathBuf, String> {
     let root = oleafly_root()?.join("projects");
     if !root.exists() {
@@ -99,8 +88,6 @@ pub fn projects_root() -> Result<PathBuf, String> {
     Ok(root)
 }
 
-/// Recoverable project deletions live beside the active projects directory so
-/// moving a project into or out of the recycle bin stays on the same volume.
 pub fn recycle_bin_root() -> Result<PathBuf, String> {
     let data = oleafly_root()?;
     ensure_data_directory(&data)?;
@@ -118,9 +105,6 @@ pub fn recycle_bin_root() -> Result<PathBuf, String> {
     Ok(recycle_bin)
 }
 
-/// A stable lock file for one project worktree. The lock lives outside the
-/// project so a transactional restore can replace every portable project file
-/// without replacing the inode that coordinates readers and writers.
 pub fn project_worktree_lock_file(project_id: &str) -> Result<PathBuf, String> {
     validate_project_id(project_id)?;
     let data = oleafly_root()?;
@@ -139,9 +123,6 @@ pub fn project_worktree_lock_file(project_id: &str) -> Result<PathBuf, String> {
     Ok(locks.join(format!("{project_id}.lock")))
 }
 
-/// Resolves the external Checkpoints store path for one project without
-/// creating the final directory. Store::open owns creation under its
-/// cross-process namespace lock.
 pub fn checkpoint_store_dir(project_id: &str) -> Result<PathBuf, String> {
     validate_project_id(project_id)?;
     let data = oleafly_root()?;
@@ -181,8 +162,6 @@ pub fn checkpoint_store_dir(project_id: &str) -> Result<PathBuf, String> {
     }
 }
 
-/// Resolves an existing external Checkpoints store without creating any app
-/// data path. Listing a project with no history must remain side-effect free.
 pub fn existing_checkpoint_store_dir(project_id: &str) -> Result<Option<PathBuf>, String> {
     validate_project_id(project_id)?;
     let data = oleafly_root()?;
@@ -298,9 +277,6 @@ pub fn collab_root() -> Result<PathBuf, String> {
     Ok(oleafly_root()?.join("collab"))
 }
 
-/// Validate a project id. Ids are a single path segment of safe characters, so
-/// a crafted id (`..`, `/etc/x`, `a/b`, an absolute path, or a Windows drive
-/// prefix) can never escape the projects root when joined. Every path-taking
 pub fn validate_project_id(project_id: &str) -> Result<(), String> {
     if project_id.is_empty() {
         return Err("empty project id".to_string());
@@ -462,20 +438,14 @@ fn verify_project_directory(root: PathBuf, dir: PathBuf) -> Result<PathBuf, Stri
     Ok(resolved)
 }
 
-/// The per-project build directory: `<project>/.oleafly/build/`.
 pub fn build_dir(project_id: &str) -> Result<PathBuf, String> {
     secure_build_subdirectory(project_id, "build")
 }
 
-/// The per-project isolated figure build directory: `<project>/.oleafly/figbuild/`.
-/// Separate from `build_dir` so figure iteration never clobbers the main preview PDF.
 pub fn figure_build_dir(project_id: &str) -> Result<PathBuf, String> {
     secure_build_subdirectory(project_id, "figbuild")
 }
 
-/// Build metadata records: `<project>/.oleafly/builds/`. One small JSON per
-/// successful compile (engine + distribution + lockfile hash) so "my
-/// coauthor's PDF looks different" is diagnosable.
 pub fn builds_metadata_dir(project_id: &str) -> Result<PathBuf, String> {
     secure_build_subdirectory(project_id, "builds")
 }
@@ -696,18 +666,48 @@ pub(crate) fn reparse_class(_path: &Path) -> std::io::Result<ReparseClass> {
     Ok(classify_reparse_tag(0, 0))
 }
 
-/// Serializes every process environment mutation a test performs, because a
-/// change to any variable can make a concurrent read of another one miss.
+#[cfg(test)]
+static DATA_DIR_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+#[cfg(test)]
+static DATA_DIR_LOCK_HOLDER: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
 #[cfg(test)]
 pub(crate) fn data_dir_env_lock() -> std::sync::MutexGuard<'static, ()> {
-    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+    let guard = DATA_DIR_ENV_LOCK
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    *DATA_DIR_LOCK_HOLDER
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) =
+        std::thread::current().name().map(str::to_owned);
+    guard
 }
 
-// A test that writes project files must use a temporary data folder of its
-// own (see `TempLibrary`), never the developer's real one.
+#[cfg(test)]
+fn test_thread_name() -> Option<String> {
+    let name = std::thread::current().name()?.to_owned();
+    (name.contains("::") && !name.starts_with("tokio")).then_some(name)
+}
+
+#[cfg(test)]
+fn reads_without_data_dir_lock() -> bool {
+    let Some(reader) = test_thread_name() else {
+        return false;
+    };
+    match DATA_DIR_ENV_LOCK.try_lock() {
+        Ok(_) => true,
+        Err(std::sync::TryLockError::Poisoned(_)) => false,
+        Err(std::sync::TryLockError::WouldBlock) => {
+            DATA_DIR_LOCK_HOLDER
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref()
+                != Some(reader.as_str())
+        }
+    }
+}
+
 #[cfg(test)]
 fn temporary_data_dir(configured: Option<&std::ffi::OsStr>) -> bool {
     configured.is_some_and(|dir| !dir.is_empty())

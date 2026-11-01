@@ -94,8 +94,6 @@ pub struct ModelMetadata {
     pub tool_call: bool,
     #[serde(default)]
     pub reasoning: bool,
-    /// models.dev `reasoning_options`, kept as raw entries: older snapshots
-    /// lack it and newer ones may add shapes this release does not know.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_options: Option<Vec<serde_json::Value>>,
     #[serde(default)]
@@ -418,9 +416,6 @@ pub(crate) fn snapshot() -> Arc<MetadataSnapshot> {
     service().snapshot()
 }
 
-/// What a model can do, from the snapshot, else from the metadata stored
-/// with the user's configured model (local providers fill it from the
-/// server), else unknown.
 pub(crate) fn model_caps(
     snapshot: &MetadataSnapshot,
     stored: Option<&serde_json::Value>,

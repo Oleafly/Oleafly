@@ -318,8 +318,6 @@ describe("files a live session wrote while they were open", () => {
   it("count as what the disk holds once the session stops, so the next save checks against them", async () => {
     mocks.readFileContent.mockResolvedValue("a\n");
     await useFilesStore.getState().openFile("main.tex");
-    // The session wrote a collaborator's line to disk and the buffer, and the
-    // window never heard about the write.
     useFilesStore.setState((state) => ({
       files: { ...state.files, "main.tex": { content: "a\nremote\n", dirty: false } },
     }));
@@ -358,8 +356,6 @@ describe("files a live session wrote while they were open", () => {
   it("keep the old snapshot when the disk holds text the buffer doesn't, so the save stops on a conflict", async () => {
     mocks.readFileContent.mockResolvedValue("a\n");
     await useFilesStore.getState().openFile("main.tex");
-    // A collaborator's line reached the disk, but the session closed before
-    // the editor had it.
     const changed = refreshDiskSnapshots("project", [
       { path: "main.tex", hash: diskHash("a\ncollaborator\n"), crlf: false, length: 15 },
     ]);
@@ -405,8 +401,6 @@ describe("files a live session wrote while they were open", () => {
 });
 
 describe("leaving a live project", () => {
-  // The live session hands back typing the shared document hasn't confirmed,
-  // the way live editing does, while the store still has the project.
   function handingBack(order: string[]): () => void {
     mocks.collabWriteText.mockImplementation(async () => {
       order.push("save");

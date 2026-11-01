@@ -82,9 +82,6 @@ function ToolCard({ tool }: Readonly<{
           draggable={false}
           loading="lazy"
           decoding="async"
-          // The background is the pictures' average glass blue, as on the
-          // project-kind cards, so a picture still loading never shows as an
-          // empty patch.
           className="pointer-events-none aspect-[16/9] w-full shrink-0 select-none bg-[#acd2f8] object-cover"
         />
       )}

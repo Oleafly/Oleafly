@@ -24,7 +24,6 @@ mod store;
 
 pub use store::{SecretFile, SecretStore, KEY_FILE};
 
-/// 256-bit random token as 64 lowercase hex characters.
 pub fn generate_token() -> String {
     use rand::RngCore;
     let mut bytes = [0u8; 32];

@@ -1,5 +1,3 @@
-//! Literature search and citation lookups (the research bridge's tools, with
-//! the same names, arguments and limits), and the connector keys they use.
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -18,11 +16,8 @@ const TOOLS: [&str; 5] = [
     "fetch_arxiv",
     "crossref_search",
 ];
-/// A source's answer is cut at this size, like the research bridge.
 const MAX_SOURCE_BYTES: usize = 256 * 1024;
 
-/// Connector keys from the app's encrypted store, by the names the
-/// literature tools ask for (`openalex-api-key`, `semantic-scholar`, …).
 #[derive(Default)]
 pub struct StoreSecrets {
     values: BTreeMap<String, Zeroizing<String>>,

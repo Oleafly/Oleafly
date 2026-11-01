@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-// One weekday and hour with something recorded. Weekday 0 is Sunday. A null
-// value is an hour with activity whose amount isn't known.
 export type HeatmapCell = Readonly<{
   weekday: number;
   hour: number;
@@ -17,9 +15,6 @@ function cellTone(cell: HeatmapCell | undefined): string {
   return "fill-primary";
 }
 
-// A weekday by hour grid, darker where more happened, with a Less to More
-// legend. `describe` words one cell for its hover title and for the screen
-// reader list of every cell with activity.
 export function WeekHourHeatmap({
   cells,
   weekdays,
@@ -28,7 +23,6 @@ export function WeekHourHeatmap({
   legend,
 }: Readonly<{
   cells: readonly HeatmapCell[];
-  // Seven short names, Sunday first.
   weekdays: readonly string[];
   label: string;
   describe: (weekday: string, hour: number, cell: HeatmapCell | undefined) => string;

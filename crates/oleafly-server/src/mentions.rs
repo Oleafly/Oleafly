@@ -258,7 +258,6 @@ fn kept(text: &str) -> String {
     text.chars().take(KEPT_CHARS).collect()
 }
 
-// The ids a change's operations take, per writer.
 pub fn spans_of(reach: &Reach) -> Vec<Span> {
     reach
         .ends
@@ -376,7 +375,6 @@ impl Mentions {
     }
 }
 
-// None while email notifications are off, after dropping what was waiting.
 fn waiting_scans(
     conn: &Connection,
     project: SharedProjectId,

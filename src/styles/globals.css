@@ -4,11 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Vercel Geist-inspired neutral palette (shadcn "neutral" base)
- *
- * Light surfaces use three distinct steps (mirrors dark hierarchy):
- * Card/popover stay pure white so floating UI lifts off the shell.
- */
 :root,
 .light {
   --radius: 0.625rem;
@@ -37,11 +32,8 @@
   --sidebar-border: oklch(0.9 0 0);
   --sidebar-accent: oklch(0.94 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  /* The home page is plain white in light mode, independent of any later
-     tweak to --background. */
   --home-background: #ffffff;
 
-  /* CodeMirror syntax tokens (light) */
   --cm-comment: #6a737d;
   --cm-keyword: #cf222e;
   --cm-number: #0550ae;
@@ -92,7 +84,6 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --home-background: oklch(0.155 0.004 266);
 
-  /* CodeMirror syntax tokens (dark) */
   --cm-comment: #8b949e;
   --cm-keyword: #ff7b72;
   --cm-number: #79c0ff;
@@ -103,8 +94,6 @@
   --cm-tag: #7ee787;
   --cm-operator: #79c0ff;
 
-  /* Dark mode darkens the surface first, so a stronger accent share buys
-   * chroma without lifting the selection band off the page. */
   --cm-selection-default: color-mix(
     in srgb,
     var(--primary) 28%,
@@ -117,24 +106,11 @@
   background-color: #121212;
 }
 
-/* These two overlay-style palettes read slightly lighter than other dialogs. */
 .dark [data-testid="template-gallery"],
 .dark [data-testid="latex-tools-view"] {
   background-color: #181818;
 }
 
-/* Editor color themes: independent of the app's light/dark mode. Each
- * scopes --cm-editor-bg/fg/gutter-fg/active-line/selection/cursor (the
- * editor's own surface, unset otherwise so it falls back to the app's
- * --background/--foreground) plus the --cm-* syntax token vars that
- * packages/editor/src/theme.ts's highlightStyle already reads. Chrome
- * shared with the rest of the app (panels, tooltips, buttons) is
- * intentionally left alone.
- *
- * --cm-selection is an opaque mix of the palette's own blue into that
- * palette's --cm-editor-bg, not a translucent wash. Alpha over a near-black
- * surface desaturates toward grey, which is what made the selection band read
- * as a washed-out smudge; mixing keeps the hue's chroma while staying dark. */
 [data-editor-theme="linear"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #08090a;
@@ -362,9 +338,6 @@
   background: var(--background);
 }
 
-/* The inline-AI widgets float over the editor rather than sitting in a panel,
- * so in dark mode they take the same elevated surface as the app's modals
- * instead of the composer's flatter --neutral-900. */
 .dark .ai-prompt-surface.ai-surface-elevated {
   --background: #181818;
   background: #181818;
@@ -379,7 +352,6 @@
   color: var(--foreground);
   caret-color: var(--cm-cursor-custom, auto);
 }
-/* Tables and images inserted from the Markdown toolbar in Visual mode. */
 .wysiwyg-content .ProseMirror table {
   border-collapse: collapse;
   table-layout: fixed;
@@ -769,7 +741,6 @@
   .cm-editor .cm-content[contenteditable="false"] {
     cursor: auto;
   }
-  /* Cursors: every interactive control gets an appropriate pointer. */
   button,
   summary,
   label,
@@ -933,8 +904,6 @@ select:focus-visible {
   display: block;
   margin: 0.75em 0;
   overflow-x: auto;
-  /* Card styling to match the mermaid diagram block: a subtle inset surface
-     with padding around the formula. No copy affordance. */
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   background-color: color-mix(in oklch, var(--background) 70%, transparent);
@@ -948,7 +917,6 @@ select:focus-visible {
   white-space: nowrap;
 }
 
-/* Shimmering label for AI "thinking" states (inline AI edit, etc.). */
 @keyframes ai-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
@@ -1100,36 +1068,34 @@ svg.animate-spin {
   }
 }
 
-/* --- CodeMirror merge (git diff) colors. `!important` is required because the
-   @codemirror/merge base theme injects its own `.cm-changedLine` etc. rules at
-   runtime with equal specificity, so without it our values are overridden.
+/* --- CodeMirror merge (git diff) colors. The @codemirror/merge base theme injects
+   rules scoped to the editor's theme classes (up to three classes) after this sheet,
+   so each target class repeats four times to outrank them without !important.
    `a` = old side (deletions, red), `b` = new side (insertions, green). --- */
-/* Light theme (default). */
-.cm-changedLine { background-color: #b6efc8 !important; }  /* inserted (new / unified) */
-.cm-changedText { background-color: #7fdfa2 !important; }
-.cm-merge-a .cm-changedLine { background-color: #ffc2ca !important; } /* deleted (old side) */
-.cm-merge-a .cm-changedText { background-color: #f79ba6 !important; }
-.cm-deletedChunk { background-color: #ffd2d8 !important; }
-.cm-deletedChunk .cm-deletedText,
-.cm-deletedText { background-color: #f79ba6 !important; }
-.cm-collapsedLines {
-  background: #e5e7eb !important;
-  color: #374151 !important;
+.cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #b6efc8; }
+.cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #7fdfa2; }
+.cm-merge-a .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #ffc2ca; }
+.cm-merge-a .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #f79ba6; }
+.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk { background-color: #ffd2d8; }
+.cm-deletedChunk .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText,
+.cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText { background-color: #f79ba6; }
+.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines {
+  background: #e5e7eb;
+  color: #374151;
 }
-.cm-collapsedLines:hover { background: #d5d9df !important; }
-
-.dark .cm-changedLine { background-color: #14361f !important; }
-.dark .cm-changedText { background-color: #235c37 !important; }
-.dark .cm-merge-a .cm-changedLine { background-color: #45191e !important; }
-.dark .cm-merge-a .cm-changedText { background-color: #7f2731 !important; }
-.dark .cm-deletedChunk { background-color: #3a161a !important; }
-.dark .cm-deletedChunk .cm-deletedText,
-.dark .cm-deletedText { background-color: #7f2731 !important; }
-.dark .cm-collapsedLines {
-  background: #1f2937 !important;
-  color: #9ca3af !important;
+.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines:hover { background: #d5d9df; }
+.dark .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #14361f; }
+.dark .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #235c37; }
+.dark .cm-merge-a .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #45191e; }
+.dark .cm-merge-a .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #7f2731; }
+.dark .cm-deletedChunk.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk { background-color: #3a161a; }
+.dark .cm-deletedChunk .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText,
+.dark .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText { background-color: #7f2731; }
+.dark .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines {
+  background: #1f2937;
+  color: #9ca3af;
 }
-.dark .cm-collapsedLines:hover { background: #283445 !important; }
+.dark .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines:hover { background: #283445; }
 
 /* Diagram canvas (React Flow): keep the zoom controls and minimap legible in
    both the light and dark canvas themes (default control icons can render
@@ -1223,8 +1189,6 @@ body[data-tour-active] [data-tour-hide] {
   content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230ea5e9' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E") !important;
 }
 
-/* Gutter markers and the action buttons inside a lint tooltip are clickable, so
-   they should say so on hover. */
 .cm-lint-marker,
 .cm-diagnosticAction {
   cursor: pointer !important;
@@ -1236,7 +1200,6 @@ body[data-tour-active] [data-tour-hide] {
    transparent lets project/LSP hover siblings render over the source text. */
 .cm-tooltip:has(> .cm-proofread-card) {
   overflow: hidden;
-  /* Above the editor and preview panes, below app modals (z-80). */
   z-index: 60;
 }
 .cm-proofread-card-floating {
@@ -1257,13 +1220,9 @@ body[data-tour-active] [data-tour-hide] {
     0 2px 6px oklch(0 0 0 / 0.18);
   font-family: inherit;
 }
-/* The card sits over the editor surface rather than over the app background, so
-   in dark mode it lifts one step above --popover (#121212) to stay legible. */
 .dark .cm-proofread-card {
   background: #181818;
 }
-/* Project, language-service, and proofreading sections share this raised
-   surface, whether one source or several match the hovered range. */
 .dark .cm-tooltip-hover {
   background: #181818 !important;
 }
@@ -1292,7 +1251,6 @@ body[data-tour-active] [data-tour-hide] {
   width: 0.375rem;
   height: 0.375rem;
   border-radius: 9999px;
-  /* Matches the squiggle under the text so the card reads as the same signal. */
   background: oklch(0.7 0.19 25);
   transform: translateY(-1px);
 }
@@ -1302,7 +1260,6 @@ body[data-tour-active] [data-tour-hide] {
 .cm-proofread-dot.is-info {
   background: oklch(0.7 0.13 230);
 }
-/* A diagnostic message is prose, not a short question: let it wrap. */
 .cm-proofread-header-text.is-message {
   color: var(--popover-foreground);
   line-height: 1.45;
@@ -1342,7 +1299,6 @@ body[data-tour-active] [data-tour-hide] {
   background: var(--accent);
   outline: none;
 }
-/* The leading check marks the replacement the checker ranks first. */
 .cm-proofread-suggestion-top::before {
   content: "";
   position: absolute;
@@ -1386,8 +1342,6 @@ body[data-tour-active] [data-tour-hide] {
   flex: 0 0 auto;
   opacity: 0.75;
 }
-/* Hover label for the fold gutter marker, replacing the native `title` tooltip
-   so it matches the app's tooltips. */
 .cm-fold-label {
   position: fixed;
   z-index: 60;
@@ -1408,11 +1362,6 @@ body[data-tour-active] [data-tour-hide] {
   background: #181818;
 }
 
-/*
- * The empty-state mascot gives the writer a quick double blink every two
- * seconds. Both frames stay in the document so the blink never waits on an
- * image request; only the closed-eye layer's opacity changes.
- */
 @keyframes oleafly-assistant-blink {
   0%,
   74%,
@@ -1446,26 +1395,15 @@ body[data-tour-active] [data-tour-hide] {
 
 .oleafly-assistant-mascot-blink {
   opacity: 0;
-  /* The source frames differ only around the eyes. Cropping the overlay avoids
-     recompositing the mascot body and its translucent edges. */
   clip-path: inset(35.5% 39.5% 50.5% 33%);
   will-change: opacity;
   animation: oleafly-assistant-blink 2s steps(1, end) infinite;
 }
 
-/*
- * Entering any shared mascot instance prompts one immediate blink. Leaving
- * removes this animation name, so entering again always starts a fresh blink.
- */
 .oleafly-assistant-mascot:hover .oleafly-assistant-mascot-blink {
   animation: oleafly-assistant-hover-blink 320ms linear 1;
 }
 
-/*
- * A restrained animated spectrum for tool-approval prompts. The prompt
- * surface remains opaque while the existing two-pixel chrome exposes the
- * moving background as its border.
- */
 @keyframes ai-tool-approval-border-shine {
   0% {
     background-position: 0% 50%;
@@ -1663,10 +1601,6 @@ body[data-tour-active] [data-tour-hide] {
   }
 }
 
-/* The line-number gutter gives back a few pixels while the sidebar is open,
-   because that is the only time the horizontal space is contested. With the
-   sidebar closed the editor has room to spare and the roomier defaults in
-   packages/editor/src/theme.ts apply unchanged. */
 [data-sidebar-open="true"] .cm-editor {
   --cm-gutter-inset: 3px;
   --cm-gutter-number-inset: 3px;
@@ -1678,8 +1612,6 @@ body[data-tour-active] [data-tour-hide] {
   mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, #000 30%, transparent 100%);
 }
 
-/* Scrollable, but with no visible bar. The tab strip needs to scroll
-   horizontally without a track sitting under the tabs. */
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1721,7 +1653,6 @@ body[data-tour-active] [data-tour-hide] {
   width: 2px;
 }
 
-/* ---- Visual editor: native LaTeX nodes (math, footnotes, theorems, figures, tables, colours) ---- */
 .wysiwyg-content .ProseMirror h4,
 .wysiwyg-content .ProseMirror h5 {
   font-size: 1em;
@@ -2061,7 +1992,6 @@ body[data-tour-active] [data-tour-hide] {
   border-radius: 0.15em;
   padding: 0 0.15em;
 }
-/* ---- end visual editor native LaTeX nodes ---- */
 
 html,
 body {

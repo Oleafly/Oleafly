@@ -3,13 +3,11 @@ export type AiSettingsTab = "providers" | "agents" | "instructions" | "personas"
 export interface AiSettingsDestination {
   tab: AiSettingsTab;
   elementId?: string;
-  /** A CLI agent whose card the Agents tab expands and scrolls to. */
   agentId?: string;
 }
 
 const AGENT_TARGET_PREFIX = "ai-agents:";
 
-/** The settings target that opens the Agents tab, optionally on one agent's card. */
 export function aiAgentsTarget(agentId?: string | null): string {
   return agentId ? `${AGENT_TARGET_PREFIX}${agentId}` : "ai-agents";
 }

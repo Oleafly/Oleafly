@@ -1,8 +1,3 @@
-// The editor toolbar's Image to LaTeX and Image to Typst. They use the Tools
-// model (Settings, AI, Tools), the same one the converters use: local Ollama
-// unless the user picked another. With nothing picked and no local model that
-// can run, they use the assistant's model when it reads images, as before
-// 0.4.8. A hosted model says where the image goes while it works.
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { toolsImageReady } from "@/features/tools-ai/tools-choice";
 import { describeError } from "@/lib/app-error";
@@ -12,8 +7,6 @@ import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { i18n } from "@/i18n";
 
-/** Whether the toolbar shows the button: with the automatic choice, any AI
- * set up; with a picked model, that model can run. */
 export async function imageToLatexAvailable(): Promise<boolean> {
   try {
     return toolsImageReady(await getConfigCached());
@@ -26,7 +19,6 @@ interface TranscriptionTarget {
   readonly kind: "LaTeX" | "Typst";
   readonly failed: (detail: string) => string;
   readonly copied: () => string;
-  /** The result could not be inserted or copied for the user. */
   readonly notInserted: () => string;
 }
 
@@ -110,8 +102,6 @@ async function transcribeImage(file: File, target: TranscriptionTarget): Promise
   );
   try {
     const { transcribeEditorImage, modelInfo } = await import("@/features/tools-ai/transcribe");
-    // Set when the assistant's model reads the image because no Tools model
-    // is saved and Ollama cannot: the user should know it left this computer.
     const resolved: { fallbackTo: string | null } = { fallbackTo: null };
     const text = await transcribeEditorImage(file, target.kind, {
       typstVersion: target.kind === "Typst" ? typstVersion() : null,

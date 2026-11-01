@@ -1,5 +1,3 @@
-//! Saved conversations (rename, delete, import, fork, commit this turn),
-//! attachments and event routing.
 use super::super::attachments::{attachment_dir, PromptFile, PromptInput};
 use super::super::types::*;
 use super::{fixture_definition, fixture_temp, runtime};
@@ -82,7 +80,6 @@ async fn fork_opens_the_new_session_in_a_new_agent_process() {
         .await
         .unwrap();
     assert_ne!(fork.session.id, id);
-    // The usage ledger starts after the events the fork copied.
     assert!(parent_events > 0);
     assert_eq!(fork.session.fork_sequence, Some(parent_events));
     assert_eq!(runtime.record(&id).unwrap().fork_sequence, None);
@@ -96,7 +93,6 @@ async fn fork_opens_the_new_session_in_a_new_agent_process() {
         runtime.snapshot(&id).await.unwrap().session.status,
         SessionStatus::Ready
     );
-    // The fork shows the conversation it came from.
     assert!(runtime
         .events_all(&fork.session.id)
         .unwrap()
@@ -119,7 +115,6 @@ async fn updates_for_the_new_session_around_a_forks_reply_do_not_fail_the_parent
         .fork(&id, Some("fixture-window".into()), Vec::new())
         .await
         .unwrap();
-    // Let the late update be read.
     tokio::time::sleep(Duration::from_millis(300)).await;
     let parent = runtime.snapshot(&id).await.unwrap();
     assert_eq!(parent.session.status, SessionStatus::Ready);
@@ -146,7 +141,6 @@ async fn starting_sessions_count_toward_the_limit_and_free_their_place() {
                 .expect("a place is free"),
         );
     }
-    // The ninth is refused, and so is the same session starting twice.
     let Err(error) = runtime.reserve_slot("starting-8", None, None).await else {
         panic!("the ninth start is refused");
     };
@@ -390,8 +384,6 @@ async fn a_conversation_made_on_another_machine_is_not_resumed_here() {
     );
 }
 
-/// A task's workspace as the scheduler makes it: `<task>/<generation>`, with
-/// the agent's home from the background helper next to it.
 fn task_workspace(temp: &tempfile::TempDir) -> (std::path::PathBuf, std::path::PathBuf) {
     let task = temp.path().join("workspaces").join("task-1");
     let workspace = task.join("2");
@@ -520,7 +512,6 @@ async fn task_homes_left_by_a_crash_are_removed_at_startup() {
     std::fs::create_dir_all(&left).unwrap();
     std::fs::write(left.join(".credentials.json"), "{\"refresh\":\"x\"}").unwrap();
     let _runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
-    // Moved aside before any session can start, then deleted.
     assert!(!temp.path().join("acp/task-temp").exists());
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
@@ -553,7 +544,6 @@ async fn changing_one_remembered_choice_keeps_the_others() {
         )
         .await
         .unwrap();
-    // Another window changes the mode with its own, older copy in hand.
     let prefs = runtime
         .set_agent_preference(
             "fixture-agent",

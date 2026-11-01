@@ -1,7 +1,3 @@
-//! `oleafly auth`: sign in to online LaTeX services, collaboration servers
-//! and Git hosts, and see or remove what is saved. Everything goes into the
-//! encrypted store the Oleafly app uses, so the two share sign-ins (the
-//! command line is its own device on collaboration servers).
 pub(crate) mod forge;
 pub(crate) mod online;
 pub(crate) mod shared;
@@ -253,7 +249,6 @@ impl CommandModule for Commands {
     }
 }
 
-/// Every saved sign-in, by presence only: no secret, and no part of one.
 pub(crate) fn status(env: &Env, only: Option<AccountKind>) -> Result<Report, CliError> {
     let wants = |kind: AccountKind| only.is_none_or(|only| only == kind);
     let mut data = serde_json::Map::new();
@@ -315,7 +310,6 @@ pub(crate) fn status(env: &Env, only: Option<AccountKind>) -> Result<Report, Cli
     Ok(Report::new(Value::Object(data)).lines(lines))
 }
 
-/// One token as plain text (`--json` is refused before this runs).
 pub(crate) async fn token(env: &Env, target: TokenTarget) -> Result<Report, CliError> {
     let token = match target {
         TokenTarget::Online { server } => online::token(env, server.as_deref())?,
@@ -337,7 +331,6 @@ pub(crate) mod test_env {
 
     use super::shared::Env;
 
-    /// An `Env` over temporary folders, with no terminal.
     pub(crate) fn env_at(root: &Path) -> Env {
         let data_root = root.join("data");
         let home = root.join("home");
@@ -354,7 +347,6 @@ pub(crate) mod test_env {
         }
     }
 
-    /// Fails when `text` holds a secret or its first 4, 6 or 8 characters.
     pub(crate) fn assert_secret_free(text: &str, secrets: &[&str]) {
         for secret in secrets {
             assert!(!text.contains(secret), "{secret} leaked");

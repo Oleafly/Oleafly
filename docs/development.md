@@ -204,8 +204,9 @@ crate `oleafly-agent` build on Rust 1.87.
 `oleafly-research` need 1.88 because they read PDFs with lopdf 0.42, which uses
 let chains (it declares 1.85, which is too low); research gets it through
 pdf-extract. `oleafly-acp` needs 1.88 for the official Agent Client Protocol
-crates. `oleafly-downloads` needs 1.88 for zip 9, which unpacks the toolchain
-archives. `oleafly-lint` builds on 1.88 without its `proofread` feature.
+crates. `oleafly-downloads` needs 1.88 for zip 9, the first zip release with
+the fixes for its 2026 advisories. `oleafly-lint` builds on 1.88 without its
+`proofread` feature.
 `oleafly-online` needs 1.89 for the `aes` crate that decrypts copied browser
 cookies, and `oleaflyc` needs 1.89 because it links the collaboration client.
 CI checks each group with explicit `cargo +1.87.0`, `cargo +1.88.0` and

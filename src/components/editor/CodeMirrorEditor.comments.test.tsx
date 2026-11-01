@@ -20,10 +20,9 @@ import { useVisualModeStore } from "@/store/visual-mode";
 import { getEditorView } from "./cm/controller";
 import { setCommentsEditorExtension } from "./cm/comments-slot";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const SOURCE = "\\section{Intro}\nHello there.\n";
 const marker = Facet.define<string>();

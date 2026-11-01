@@ -3,9 +3,6 @@ export const PROOFREADING_PROTOCOL_VERSION = 2 as const;
 export const PROOFREADING_LIMITS = {
   grammarCharacters: 500_000,
   spellingCharacters: 500_000,
-  // A full stress-size document can legitimately contain one finding for
-  // every source character. This is a protocol safety ceiling, not a product
-  // cutoff: the worker never truncates findings to reach it.
   diagnostics: 500_000,
   ignoredWords: 10_000,
   wordCharacters: 128,
@@ -86,7 +83,6 @@ export interface ProofreadingRequest {
     showRegionalism: boolean;
     showWordChoice: boolean;
     dialect: ProofreadingDialect;
-    /** Optional Hunspell pack (for example en_GB or de_DE). */
     dictionaryLocale?: string;
     disabledRules?: string[];
     enabledRules?: string[];
@@ -101,9 +97,7 @@ export interface ProofreadingResult {
   status: ProofreadingResultStatus;
   diagnostics: ProofreadingDiagnostic[];
   message?: string;
-  /** Exact Hunspell pack that produced a spelling result. */
   activeDictionaryLocale?: string;
-  /** Retained for protocol compatibility; production results are never cut. */
   truncated?: boolean;
 }
 

@@ -5,7 +5,6 @@ import { registerPresentationCommands } from "@/contributions/presentation-comma
 
 let registered = false;
 
-// Idempotent; called once at startup, before the app shell mounts (see main.tsx).
 export function registerContributions() {
   if (registered) return;
   registered = true;

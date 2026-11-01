@@ -9,9 +9,6 @@ import { degrees, PDFDocument, PDFHeader, PDFName, PDFString, StandardFonts } fr
 import type { PdfFacts } from "@oleafly/preflight";
 import { byCodePoint, expectGolden, PREFLIGHT_FIXTURES, REPO, WRITE } from "./support";
 
-// PDF facts read by pdf.js, the reader the app uses. crates/oleafly-preflight
-// reads the same files with lopdf and compares against this golden.
-
 vi.mock("pdfjs-dist", async () => await import("pdfjs-dist/legacy/build/pdf.mjs"));
 
 const PDF_DIR = path.join(PREFLIGHT_FIXTURES, "pdf");
@@ -123,8 +120,6 @@ async function embeddedFont(): Promise<Uint8Array> {
   return doc.save({ useObjectStreams: false });
 }
 
-// A file attached the way `\attachfile` does it: in a FileAttachment
-// annotation, not in the catalog's EmbeddedFiles tree.
 async function fileAttachmentAnnotation(): Promise<Uint8Array> {
   const doc = await PDFDocument.create({ updateMetadata: false });
   const page = doc.addPage([612, 792]);

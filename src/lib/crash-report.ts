@@ -30,8 +30,6 @@ async function systemBlock(): Promise<string> {
   return lines.join("\n");
 }
 
-// No token needed: the user reviews and submits the pre-filled issue
-// themselves, so they see exactly what's shared. Best-effort; never throws.
 export async function reportCrashToGithub(errorTitle?: string): Promise<void> {
   const title = errorTitle ? `Crash: ${errorTitle}` : "Crash report";
   const sections: string[] = [
@@ -48,16 +46,12 @@ export async function reportCrashToGithub(errorTitle?: string): Promise<void> {
     /* log may be unreadable */
   }
 
-  // Trim only the log tail until the *encoded* body fits under the cap; other
-  // sections stay intact.
   const logSection = (text: string) => `### Recent log (app.log)\n\`\`\`\n${text}\n\`\`\``;
   const build = (logText: string) =>
     (logText ? [...sections, logSection(logText)] : sections).join("\n\n");
 
   let body = build(log);
   if (log && encodeURIComponent(body).length > MAX_ENCODED_BODY) {
-    // Binary-search the longest log prefix that fits; the head is more useful
-    // than the tail for a crash trace.
     let lo = 0;
     let hi = log.length;
     while (lo < hi) {

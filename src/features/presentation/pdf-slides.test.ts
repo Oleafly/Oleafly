@@ -36,6 +36,7 @@ vi.mock("@oleafly/preview/mainThreadWorker", () => ({
   installMainThreadPdfWorker: pdf.state.installMainThreadPdfWorker,
 }));
 
+import { sharedPdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
 import { openSlideDocument } from "./pdf-slides";
 
 function page(renderPromise: () => Promise<void> = () => Promise.resolve()) {
@@ -80,7 +81,11 @@ describe("slide documents", () => {
 
     expect(slides.numPages).toBe(1);
     expect(pdf.state.getDocument).toHaveBeenCalledWith(
-      expect.objectContaining({ data: new Uint8Array([1, 2, 3]), worker: pdf.state.workers[0] }),
+      expect.objectContaining({
+        ...sharedPdfDocumentOptions(),
+        data: new Uint8Array([1, 2, 3]),
+        worker: pdf.state.workers[0],
+      }),
     );
     expect(canvas.width).toBe(800);
     expect(canvas.height).toBe(400);

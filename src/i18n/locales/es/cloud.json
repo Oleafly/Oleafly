@@ -222,6 +222,7 @@
     "pathStyleHint": "MinIO y la mayoría de los servidores autoalojados lo necesitan."
   },
   "errors": {
+    "clock_skew": "El reloj de este ordenador está desajustado, así que {{provider}} no acepta peticiones desde él. Pon la fecha y la hora correctas para seguir sincronizando.",
     "code_invalid": "Ese código no funcionó. Inténtalo de nuevo.",
     "device_name_empty": "Escribe un nombre.",
     "device_name_invalid": "El nombre del ordenador no puede contener \\ / : * ? \" < > | ni caracteres de control, y tiene como máximo 32 caracteres.",

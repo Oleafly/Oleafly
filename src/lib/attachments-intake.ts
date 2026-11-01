@@ -1,5 +1,3 @@
-// Taking files into a composer: limits, kind detection, and preparation
-// (normalize, store, record). Loaded lazily the first time a file is added.
 import type { AttachmentKind, DraftAttachment, StoredAttachmentRef } from "@/components/ai/composer/types";
 import { i18n } from "@/i18n";
 import { attachmentPut, attachmentPutText } from "@/lib/attachments";
@@ -52,7 +50,6 @@ function extensionOf(name: string): string {
   return dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
-/** Image, PDF or text, by type or extension (any case); null when unsupported. */
 export function attachmentKind(file: { name: string; type: string }): AttachmentKind | null {
   const type = file.type.toLowerCase();
   const extension = extensionOf(file.name);
@@ -76,7 +73,6 @@ function byteLimit(kind: AttachmentKind): number {
   return ATTACHMENT_LIMITS.textBytes;
 }
 
-/** Which files may be attached, checked without reading them. */
 export function screenFiles(
   files: readonly File[],
   existing: number,
@@ -104,7 +100,6 @@ export function screenFiles(
   return { accepted, rejected };
 }
 
-/** One sentence per rejected file; every "too many" collapses into one. */
 export function rejectionMessage(rejections: readonly IntakeRejection[]): string {
   const sentences: string[] = [];
   let tooMany = false;
@@ -167,7 +162,6 @@ function isDrafted(composerId: string, id: string): boolean {
   return composerHolding(composerId, id) !== null;
 }
 
-/** Stores a PDF's text layer; whether it was stored. A failure is logged, not fatal. */
 async function storePdfText(
   scope: string | null,
   sha256: string,
@@ -183,7 +177,6 @@ async function storePdfText(
   }
 }
 
-/** Stores the page images of a scanned PDF (at most a few), in page order. */
 function storePageImages(
   scope: string | null,
   normalized: NormalizedAttachment,
@@ -219,16 +212,13 @@ function readyPatch(
   return patch;
 }
 
-/** Prepares and stores one file, then marks its chip ready, or error when that fails. */
 async function prepareAttachment(
   { file, kind, draft }: { file: File; kind: AttachmentKind; draft: DraftAttachment },
   ctx: { composerId: string; scope: string | null },
   normalizer: Normalizer,
 ): Promise<void> {
   const drafts = useComposerDrafts.getState();
-  // The draft can move to another composer meanwhile; the chip is found where it is now.
   const holder = () => composerHolding(ctx.composerId, draft.id) ?? ctx.composerId;
-  // Stored but not on the chip yet: a collection (a chat deleted meanwhile) must keep them.
   const held: string[] = [];
   const release = registerAttachmentHolder(() => held);
   try {
@@ -260,11 +250,6 @@ async function prepareAttachment(
   }
 }
 
-/**
- * Adds files to a composer's draft: rejected files are reported in one
- * toast; accepted ones show as "processing" chips and are prepared one at
- * a time (one large PDF in memory at once), then stored by hash.
- */
 export async function intakeFiles(
   files: readonly File[],
   ctx: { composerId: string; scope: string | null; kinds?: readonly AttachmentKind[] },
@@ -309,13 +294,6 @@ export async function intakeFiles(
   }
 }
 
-/**
- * Reads files dropped through the native bridge (Linux), where every byte
- * crosses the IPC boundary. Only an item that could be attached is read, so a
- * video or an archive never is; the rest are named in one toast. Items are read
- * one after another, and one that cannot be read (a folder) does not stop the
- * others.
- */
 export async function readDroppedFiles(
   items: readonly { name: string; read: () => Promise<File> }[],
 ): Promise<File[]> {

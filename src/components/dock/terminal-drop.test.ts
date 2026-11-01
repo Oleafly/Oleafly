@@ -38,7 +38,6 @@ describe("terminal drops", () => {
     expect(terminalDropText(drop, "posix", "windows", "", { ...windowsRoot, wsl: true })).toBe(
       "'/mnt/c/Users/u/paper/figures/plot one.png' ",
     );
-    // WSL can't name a network share, so the path stays relative to the start folder.
     expect(
       terminalDropText(drop, "posix", "windows", "figures", { path: String.raw`\\server\share\paper`, wsl: true }),
     ).toBe("'plot one.png' ");

@@ -13,7 +13,6 @@ import { ModelSelector } from "@/components/ai/ModelSelector";
 
 export interface InstructionsTabProps {
   cfg: AppConfig;
-  /** False until the stored config is read: the switches stay off so a click can't write the defaults. */
   configLoaded: boolean;
   savedKeys: Record<string, string>;
   persist: (next: AppConfig) => Promise<void>;
@@ -37,9 +36,6 @@ export function InstructionsTab({
 }: Readonly<InstructionsTabProps>) {
   const { t, i18n } = useTranslation(["settings"]);
   const [toolsOpen, setToolsOpen] = useState(false);
-  // Providers the user has actually connected (saved key, or a custom
-  // provider with an optional key), same "configured" definition ChatCore
-  // uses for its own model switcher.
   const defaultModelGroups = configuredModelGroups(
     {
       keys: savedKeys,
@@ -108,7 +104,6 @@ export function InstructionsTab({
             disabled={!configLoaded}
             onCheckedChange={(checked) => {
               const on = checked === true;
-              // persist() merges into the stored config; the box changes only once it is saved.
               void persist({ ...cfg, ai_pdf_capture: on })
                 .then(() => {
                   try {

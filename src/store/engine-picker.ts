@@ -30,13 +30,6 @@ export function takeEngineChoiceOnOpen(projectId: string): boolean {
   return openingCompiles.delete(projectId);
 }
 
-// --- "Don't nag" memory -------------------------------------------------------
-//
-// The project-open hint is shown once per project per set of findings. Choosing
-// "Keep using Tectonic" (or dismissing the toast) records the finding signature;
-// the hint returns only when a NEW gap appears (e.g. the user adds minted).
-// Compile-failure prompts are not gated: a failing compile is worth interrupting.
-
 const dismissKey = (projectId: string) => `oleafly.engineHint.${projectId}`;
 
 export function engineHintDismissed(

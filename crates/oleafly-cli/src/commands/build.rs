@@ -1,4 +1,3 @@
-//! `oleafly build` and `oleafly watch`.
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
@@ -98,7 +97,6 @@ impl CommandModule for Commands {
     }
 }
 
-/// Compiler output streams to stderr for people who asked for the full log.
 fn streams_compiler_output(ctx: &Context) -> bool {
     !ctx.json() && !ctx.quiet() && ctx.log_mode() == LogMode::Full
 }
@@ -197,7 +195,6 @@ async fn run_build(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
 
 async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> {
     let opened = open(ctx, &args)?;
-    // An unknown variant is an error, not a build to wait out.
     crate::engine::typst_variant(&opened.workspace, args.variant.as_deref())?;
     let root = opened.workspace.root().to_path_buf();
     let (sender, mut receiver) = mpsc::unbounded_channel();
@@ -205,7 +202,6 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
     watcher
         .watch(&root, RecursiveMode::Recursive)
         .map_err(notify_error)?;
-    // `ok` as 0.4.7 sent it on every watch event.
     ctx.stream_event(
         "watching",
         json!({"ok": true, "project": opened.workspace.info()?, "warnings": ctx.warnings()}),
@@ -214,10 +210,7 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
         ctx.say(format!("Watching {}", root.display()));
     }
     let request = request_for(ctx, &args);
-    // The copy `-o` makes lands in the project when it names a file or folder
-    // there, and would start the next build if its events counted.
     let output = watched_output(&root, &args, &opened.workspace.manifest().main_doc);
-    // One future for the whole run, so a signal between two builds isn't lost.
     let mut stop = Box::pin(crate::stop_requested());
     if !watch_build(ctx, &root, &args, &request, true, &mut stop).await? {
         return Ok(Outcome::printed());
@@ -269,9 +262,6 @@ fn create_watcher(
     }
 }
 
-/// One build in watch mode; `false` when `stop` (Ctrl+C, or SIGTERM or SIGHUP
-/// on Unix) ended it. Settings the Typst can't apply are only reported for
-/// the `first` build.
 async fn watch_build(
     ctx: &Context,
     root: &Path,
@@ -319,8 +309,6 @@ async fn watch_build(
     Ok(true)
 }
 
-/// Whether `event` is a change to the project's own files. `output` is where
-/// the `-o` copy lands, relative to `root` (see [`watched_output`]).
 pub(crate) fn relevant_event(event: &Event, root: &Path, output: Option<&Path>) -> bool {
     if !matches!(
         event.kind,
@@ -337,15 +325,10 @@ pub(crate) fn relevant_event(event: &Event, root: &Path, output: Option<&Path>) 
         })
 }
 
-/// A folder's own time moving, which a polling watcher reports whenever a
-/// file in it comes or goes (the project folder, the folder `-o` copies
-/// into). The file has its own event, and this one alone is no edit.
 fn folder_changed(kind: EventKind, path: &Path) -> bool {
     matches!(kind, EventKind::Modify(_)) && path.is_dir()
 }
 
-/// The `-o` copy, the temporary file it is written through, and the files
-/// editors and sync tools leave beside the sources: none is a source change.
 fn written_by_oleafly(path: &Path, root: &Path, output: Option<&Path>) -> bool {
     if path
         .file_name()
@@ -362,8 +345,6 @@ fn written_by_oleafly(path: &Path, root: &Path, output: Option<&Path>) -> bool {
         .eq_ignore_ascii_case(&output.to_string_lossy())
 }
 
-/// Where `-o` copies the PDF when that is inside the project, relative to
-/// its folder.
 fn watched_output(root: &Path, args: &BuildArgs, main_document: &str) -> Option<PathBuf> {
     let destination = output_destination(args.output.as_deref()?, main_document).ok()?;
     let parent = destination
@@ -480,8 +461,6 @@ mod tests {
                 Some(output),
             )
         };
-        // The copy, the file it is written through, and its rename (one
-        // event with both paths).
         assert!(!modified(root.join("out/paper.pdf")));
         assert!(!modified(root.join("out/Paper.PDF")));
         assert!(!modified(root.join("out/.paper.pdf.oleafly-x1y2.tmp")));
@@ -494,10 +473,8 @@ mod tests {
             root,
             Some(output)
         ));
-        // Editor leftovers are not source changes either.
         assert!(!modified(root.join("chapters/.one.tex.swp")));
         assert!(!modified(root.join("chapters/one.tex~")));
-        // A source, and a PDF that is not the copy, still are.
         assert!(modified(root.join("chapters/one.tex")));
         assert!(modified(root.join("figures/plot.pdf")));
         assert!(modified(root.join("paper.pdf")));
@@ -512,11 +489,8 @@ mod tests {
         std::fs::write(root.join("main.tex"), "x").unwrap();
         let metadata = EventKind::Modify(ModifyKind::Metadata(MetadataKind::WriteTime));
         let on = |path: PathBuf| relevant_event(&Event::new(metadata).add_path(path), root, None);
-        // What a polling watcher says about the folders after the copy `-o`
-        // made in them: no edit, or the build would run on for ever.
         assert!(!on(root.to_path_buf()));
         assert!(!on(root.join("out")));
-        // The same event on a file is one, and so is a folder appearing.
         assert!(on(root.join("main.tex")));
         assert!(relevant_event(
             &Event::new(EventKind::Create(CreateKind::Folder)).add_path(root.join("out")),
@@ -541,7 +515,6 @@ mod tests {
             compiler: None,
             output: Some(output),
         };
-        // A file, and a folder (the main document's name with .pdf).
         assert_eq!(
             watched_output(root, &args(root.join("out/paper.pdf")), "main.tex"),
             Some(PathBuf::from("out/paper.pdf"))
@@ -554,7 +527,6 @@ mod tests {
             watched_output(root, &args(root.join("paper.pdf")), "main.tex"),
             Some(PathBuf::from("paper.pdf"))
         );
-        // Outside the project, nothing to ignore; so too without `-o`.
         assert_eq!(
             watched_output(root, &args(outside.path().join("paper.pdf")), "main.tex"),
             None

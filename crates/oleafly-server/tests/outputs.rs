@@ -3,7 +3,9 @@ mod support;
 use axum::body::Body;
 use axum::http::{header, HeaderMap, Method, Request, StatusCode};
 use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
-use oleafly_collab_protocol::outputs::{OutputKind, ProjectOutput, MAIN_FILE_HEADER};
+use oleafly_collab_protocol::outputs::{
+    OutputKind, ProjectOutput, FOR_PDF_HEADER, MAIN_FILE_HEADER,
+};
 use oleafly_collab_protocol::projects::{ProjectRole, ProjectStatus};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::blobs::sha256_hex;
@@ -63,6 +65,35 @@ async fn put_output(
         builder = builder.header(MAIN_FILE_HEADER, main);
     }
     ask(app, builder.body(Body::from(bytes)).expect("request")).await
+}
+
+async fn put_synctex_for(
+    app: &TestApp,
+    project: SharedProjectId,
+    token: &str,
+    bytes: Vec<u8>,
+    pdf_hash: &str,
+) -> Answer {
+    let request = Request::builder()
+        .method(Method::PUT)
+        .uri(format!("/api/v1/projects/{project}/output/synctex"))
+        .header(header::AUTHORIZATION, format!("Bearer {token}"))
+        .header(header::CONTENT_LENGTH, bytes.len())
+        .header(MAIN_FILE_HEADER, "main.tex")
+        .header(FOR_PDF_HEADER, pdf_hash)
+        .body(Body::from(bytes))
+        .expect("request");
+    ask(app, request).await
+}
+
+async fn kinds(app: &TestApp, project: SharedProjectId, token: &str) -> Vec<OutputKind> {
+    let listed: Vec<ProjectOutput> = serde_json::from_slice(
+        &get(app, &format!("/api/v1/projects/{project}/output"), token)
+            .await
+            .bytes,
+    )
+    .expect("list");
+    listed.iter().map(|output| output.kind).collect()
 }
 
 async fn get(app: &TestApp, path: &str, token: &str) -> Answer {
@@ -323,11 +354,73 @@ async fn a_replaced_output_whose_file_a_project_also_holds_keeps_that_file() {
 }
 
 #[tokio::test]
+async fn a_new_pdf_takes_the_old_synctex_with_it() {
+    let people = people().await;
+    let (app, project) = (&people.app, people.project);
+    let token = &people.editor.access_token;
+    let old_sync = synctex(2000);
+    let old_hash = sha256_hex(&old_sync);
+    put_output(app, project, "pdf", token, pdf(2000), Some("main.tex")).await;
+    put_output(app, project, "synctex", token, old_sync, Some("main.tex")).await;
+    assert_eq!(
+        kinds(app, project, token).await,
+        [OutputKind::Pdf, OutputKind::Synctex]
+    );
+    let newer = put_output(app, project, "pdf", token, pdf(2100), Some("main.tex")).await;
+    assert_eq!(newer.status, StatusCode::OK);
+    assert_eq!(kinds(app, project, token).await, [OutputKind::Pdf]);
+    assert!(!held(app, &old_hash).await, "the old synctex is removed");
+    let missing = get(
+        app,
+        &format!("/api/v1/projects/{project}/output/synctex"),
+        token,
+    )
+    .await;
+    assert_eq!(missing.status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn a_synctex_naming_a_pdf_that_was_replaced_is_refused() {
+    let people = people().await;
+    let (app, project) = (&people.app, people.project);
+    let token = &people.editor.access_token;
+    let first = pdf(2000);
+    let second = pdf(2200);
+    let (first_hash, second_hash) = (sha256_hex(&first), sha256_hex(&second));
+    put_output(app, project, "pdf", token, first, Some("main.tex")).await;
+    put_output(app, project, "pdf", token, second.clone(), Some("main.tex")).await;
+    let late = synctex(1500);
+    let late_hash = sha256_hex(&late);
+    let refused = put_synctex_for(app, project, token, late, &first_hash).await;
+    assert_eq!(refused.status, StatusCode::CONFLICT, "{:?}", refused.json());
+    assert_eq!(refused.code(), "conflict");
+    assert!(
+        pending(app).await.contains(&late_hash),
+        "the refused synctex is queued for removal"
+    );
+    assert_eq!(kinds(app, project, token).await, [OutputKind::Pdf]);
+    let paired = put_synctex_for(app, project, token, synctex(1500), &second_hash).await;
+    assert_eq!(paired.status, StatusCode::OK, "{:?}", paired.json());
+    assert_eq!(
+        kinds(app, project, token).await,
+        [OutputKind::Pdf, OutputKind::Synctex]
+    );
+    let fetched = get(
+        app,
+        &format!("/api/v1/projects/{project}/output/pdf"),
+        token,
+    )
+    .await;
+    assert_eq!(fetched.bytes, second);
+}
+
+#[tokio::test]
 async fn pdf_and_synctex_are_kept_apart() {
     let people = people().await;
     let (app, project) = (&people.app, people.project);
     let token = &people.editor.access_token;
     let sync = synctex(2000);
+    put_output(app, project, "pdf", token, pdf(2000), Some("main.tex")).await;
     let stored = put_output(
         app,
         project,
@@ -338,7 +431,6 @@ async fn pdf_and_synctex_are_kept_apart() {
     )
     .await;
     assert_eq!(stored.status, StatusCode::OK, "{:?}", stored.json());
-    put_output(app, project, "pdf", token, pdf(2000), Some("main.tex")).await;
     let listed: Vec<ProjectOutput> = serde_json::from_slice(
         &get(app, &format!("/api/v1/projects/{project}/output"), token)
             .await

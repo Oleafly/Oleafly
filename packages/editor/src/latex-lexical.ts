@@ -89,11 +89,6 @@ function delimitedBodyEnd(
   return { to: closing + 1, complete: true };
 }
 
-/**
- * Reads a complete or recoverable inline-verbatim construct beginning at a
- * backslash. The returned span is same-revision source data and may safely be
- * used both to mask completion catalogs and to skip syntax linting.
- */
 export function latexInlineVerbatimSpan(
   text: string,
   start: number,
@@ -202,12 +197,6 @@ function verbatimEnvironmentEnd(
   return closing < 0 ? text.length : closing + close.length;
 }
 
-/**
- * Produces non-overlapping ignored ranges in one forward pass. Completion,
- * local symbol indexing, and the syntax linter intentionally share this
- * lexical definition so a command cannot be hidden in one feature and active
- * in another.
- */
 export function latexIgnoredRanges(text: string): LatexIgnoredRange[] {
   return lexIgnoredRanges(text, 0, true, null).ranges;
 }
@@ -299,8 +288,6 @@ function lexIgnoredStep(
     if (opaque) return { range: opaque.range, cursor: opaque.to };
   }
 
-  // Skip a control sequence/control symbol as a unit. In particular, this
-  // prevents an escaped percent sign from being mistaken for a comment.
   return {
     range: null,
     cursor:

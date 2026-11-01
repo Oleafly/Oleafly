@@ -162,7 +162,6 @@ pub(crate) fn evict_idle_linked_builds(now: SystemTime) -> Result<EvictionOutcom
             Ok(Some(_lock)) if build_in_use(&record.id) => {
                 outcome.skipped_busy.push(record.id.clone());
             }
-            // A CLI build of this folder holds the lock beside its build folder.
             Ok(Some(_lock)) => {
                 match oleafly_core::build_output::BuildLock::try_acquire(&state_dir.join("build")) {
                     Ok(Some(_build)) => evict_if_still_idle(&state_dir, &record, now, &mut outcome),

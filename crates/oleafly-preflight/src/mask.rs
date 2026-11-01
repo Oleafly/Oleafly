@@ -1,5 +1,3 @@
-//! LaTeX comment masking (`packages/preflight/src/mask.ts`).
-
 use crate::text::utf16_len;
 
 /// Replaces every `%` comment with spaces, one per UTF-16 unit, so every

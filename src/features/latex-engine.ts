@@ -213,15 +213,10 @@ export async function compileTaggedAndVerify(): Promise<void> {
   const files = useFilesStore.getState();
   const capturedProjectId = files.projectId;
   const projectId = files.projectId ?? "default";
-  // Honour an active `% !TEX root` override, like the main compile lane.
   const main = resolveEffectiveMainDoc().mainDoc;
   const requestIdentity = beginCompileRequestIdentity(projectId, main);
   const checkpointAtStart =
     useCompileStore.getState().lastCompileCheckpoint;
-  // Same rule as the main compile store: an edit during the build makes the
-  // tagged output stale, not worthless, so it must not be discarded here.
-  // The project and main-document checks stay local and explicit - they are
-  // what this lane is actually guarding.
   const matchesAttemptIdentity = () => {
     const currentFiles = useFilesStore.getState();
     return (
@@ -246,8 +241,6 @@ export async function compileTaggedAndVerify(): Promise<void> {
   try {
     await saveAllForCompile();
   } catch (e) {
-    // The same reason as the main compile: it names the file that couldn't
-    // be saved, in the app's language.
     markTaggedCompileFailed(requestIdentity, e, compileSaveFailureReason(e));
     reportCompileSaveFailure("save before tagged compile", files, e, true);
     return;
@@ -276,8 +269,6 @@ export async function compileTaggedAndVerify(): Promise<void> {
       checkpoint: null,
     });
     const res = await compileTagged(projectId, main);
-    // The tagged compile can take minutes; don't paint its result into a
-    // different project/main document the user may have switched to meanwhile.
     if (!canContinueAfterBackendResult(taggedOutputRevision(res))) {
       return;
     }

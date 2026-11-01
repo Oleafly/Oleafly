@@ -181,7 +181,7 @@ describe("emitTable", () => {
       ],
       { header: true, target: "latex", label: "tab:x" },
     );
-    expect(source).toContain("\\begin{tabular}{lr}"); // 50% infers as numeric
+    expect(source).toContain("\\begin{tabular}{lr}");
     expect(source).toContain("x\\&y & 50\\%");
     expect(source).toContain("\\label{tab:x}");
   });

@@ -29,13 +29,9 @@ import {
   latexPairInputHandler,
   latexPairKeymap,
 } from "./latex-pairs";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 const views: EditorView[] = [];
 let transactionCount = 0;

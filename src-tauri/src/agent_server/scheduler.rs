@@ -1,13 +1,7 @@
-//! Request scheduler: priority admission with per-conversation queue caps
-//! and read-method coalescing. Lower priority numbers win; the numeric values
-//! mirror the desktop agent-server contract (critical 16, interactive 64,
-//! background 128).
-
 use std::collections::HashMap;
 
 use super::protocol;
 
-/// Lower value = admitted sooner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Priority {
     Critical = 16,
@@ -18,7 +12,6 @@ pub enum Priority {
 pub const MAX_IN_FLIGHT: usize = 6;
 pub const MAX_PER_CONVERSATION: usize = 20;
 
-/// Methods that must never queue behind turn traffic.
 pub fn priority_for(method: &str) -> Priority {
     if protocol::HIGH_PRIORITY_METHODS.contains(&method) {
         Priority::Critical
@@ -50,22 +43,14 @@ pub struct QueuedRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SubmitOutcome {
-    /// A slot was free; run immediately.
     Admitted,
-    /// Queued behind higher-priority work; wait for this ticket to be handed
-    /// out by `next_admission`.
     Queued { ticket: u64 },
-    /// An identical coalescable request is already queued; share its ticket
-    /// instead of duplicating the work.
     Coalesced { ticket: u64 },
-    /// The conversation's queue is at capacity; reject with `queue-full`.
     QueueFull,
 }
 
 #[derive(Default)]
 pub struct SchedulerState {
-    /// Ordered oldest-first per priority band; four bands cannot occur (three
-    /// priorities), so a flat Vec scanned on admission stays tiny.
     queued: Vec<QueuedRequest>,
     in_flight: usize,
     coalesce_tickets: HashMap<String, u64>,
@@ -101,9 +86,6 @@ impl SchedulerState {
 
         if self.in_flight < MAX_IN_FLIGHT {
             self.in_flight += 1;
-            // Admitted immediately: coalescers arriving while this runs must
-            // not attach to a ticket that will never be handed out again, so
-            // no coalesce entry is recorded.
             return SubmitOutcome::Admitted;
         }
 
@@ -120,9 +102,6 @@ impl SchedulerState {
         SubmitOutcome::Queued { ticket }
     }
 
-    /// Hand out the next runnable request, respecting priority then age. Only
-    /// call this after a `complete` freed a slot: the handed-out request
-    /// re-takes that slot until its own `complete` arrives.
     pub fn next_admission(&mut self) -> Option<QueuedRequest> {
         if self.in_flight >= MAX_IN_FLIGHT {
             return None;
@@ -141,8 +120,6 @@ impl SchedulerState {
         Some(request)
     }
 
-    /// Release the slot taken by a request that was admitted (directly or via
-    /// `next_admission`).
     pub fn complete(&mut self, _conversation: Option<&str>) {
         self.in_flight = self.in_flight.saturating_sub(1);
     }
@@ -155,8 +132,6 @@ impl SchedulerState {
         self.queued.len()
     }
 
-    /// A coalesced request completes together with the request it attached
-    /// to, so the shared ticket's completion must surface to every waiter.
     pub fn coalesce_partner_of(&self, method: &str, conversation: Option<&str>) -> Option<u64> {
         coalesce_key(method, conversation).and_then(|key| self.coalesce_tickets.get(&key).copied())
     }
@@ -234,7 +209,6 @@ mod tests {
             scheduler.submit("fs/readFile", Some("t1")),
             SubmitOutcome::QueueFull
         );
-        // Another conversation is unaffected.
         assert!(matches!(
             scheduler.submit("fs/readFile", Some("t2")),
             SubmitOutcome::Queued { .. }
@@ -255,12 +229,10 @@ mod tests {
             scheduler.submit("model/list", None),
             SubmitOutcome::Coalesced { ticket: first }
         );
-        // Different conversations coalesce separately.
         assert!(matches!(
             scheduler.submit("model/list", Some("t1")),
             SubmitOutcome::Queued { .. }
         ));
-        // The coalesce entry disappears once the request is admitted.
         scheduler.complete(None);
         let admitted = scheduler.next_admission().unwrap();
         assert_eq!(admitted.ticket, first);

@@ -981,8 +981,6 @@ export function McpServersManager() {
           const name = record.config.name;
           const validating = busy.has(`validate:${name}`);
           const toggling = busy.has(`toggle:${name}`);
-          // Local servers usually run from paths under home. Display only: the
-          // editor and the saved config keep the real command.
           const endpoint = displayText(
             record.config.transport === "stdio"
               ? [record.config.command, ...record.config.args].join(" ")

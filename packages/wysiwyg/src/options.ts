@@ -10,7 +10,6 @@ export type AssetUrlResolver = (path: string) => Promise<string | null>;
 
 export type LinkHrefLocalizer = (href: string) => string | null;
 
-/** Opens the project file a link's href points at; false when it points at none. */
 export type LinkHrefOpener = (href: string) => boolean;
 
 export interface WysiwygExtensionOptions {

@@ -29,8 +29,6 @@ fn system_git() -> SystemGit {
     SystemGit::new(git_program())
 }
 
-/// Plain Git as a co-author would run it, with the mirror's isolation from
-/// the developer's own settings.
 fn run(dir: &Path, args: &[&str]) -> String {
     let mut full = vec![
         "-c",
@@ -282,7 +280,6 @@ fn plan() -> SyncOptions {
     }
 }
 
-/// Every file outside `.oleafly`, with its bytes.
 fn snapshot_of(dir: &Path) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
     let mut stack = vec![(dir.to_path_buf(), String::new())];
@@ -322,7 +319,6 @@ fn copy_tree(from: &Path, to: &Path) {
     }
 }
 
-/// Git that counts remote calls.
 struct CountingGit {
     inner: SystemGit,
     remote: AtomicUsize,
@@ -696,9 +692,6 @@ fn guards_refuse_unsafe_trees_tokens_and_ids() {
     );
 }
 
-/// Claims `paths` within 2 s. A lock dropped by this test can stay held for a
-/// moment by a process another test is starting, whose copy of our
-/// descriptors closes when it execs.
 fn claimed_soon(paths: &SyncPaths) -> bool {
     let deadline = Instant::now() + Duration::from_secs(2);
     loop {
@@ -737,7 +730,6 @@ fn claim_fails_fast_when_another_process_holds_the_sync_lock() {
         .write(true)
         .open(&paths.lock)
         .unwrap();
-    // Stands in for the other process.
     oleafly_core::locking::lock_file(&held, true, Duration::ZERO).unwrap();
     let started = Instant::now();
     assert_eq!(claim(&paths).err().unwrap().kind, OnlineErrorKind::SyncBusy);
@@ -758,14 +750,11 @@ fn claim_waits_out_a_lock_that_is_released_a_moment_later() {
         .write(true)
         .open(&paths.lock)
         .unwrap();
-    // Stands in for a process another thread is starting: its copy of the
-    // descriptor keeps the lock until it execs.
     oleafly_core::locking::lock_file(&held, true, Duration::ZERO).unwrap();
     let releaser = std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(10));
         drop(held);
     });
-    // One attempt, no retry: the claim itself has to wait it out.
     assert!(claim(&paths).is_ok());
     releaser.join().unwrap();
 }
@@ -1042,8 +1031,6 @@ fn an_interrupted_sync_converges_on_the_next_run() {
     world.write("notes.tex", "Mine\n");
     let base = world.base();
     let remote = fetch(&world.git, &world.repo, &world.url(), TOKEN).unwrap();
-    // The remote changes reach the folder, then the process dies before the
-    // base moves or anything is pushed.
     integrate(
         &world.git,
         &world.project,
@@ -1397,7 +1384,6 @@ fn forward_slashes(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-// Only the Unix tests (links, modes) apply a sync.
 #[cfg(unix)]
 fn apply_options() -> SyncOptions {
     SyncOptions {
@@ -1479,18 +1465,14 @@ fn the_mirror_config_keeps_only_the_repository_format() {
         text,
         "[core]\n\trepositoryformatversion = 1\n\tfilemode = false\n\tbare = false\n\tignorecase = true\n[extensions]\n\trefstorage = reftable\n\tobjectformat = sha256\n"
     );
-    // Values of another shape are not carried over.
     let odd = "[core]\n\trepositoryformatversion = 2\n\tignorecase = maybe\n[extensions]\n\trefstorage = $(touch x)\n";
     assert_eq!(mirror_config_text(odd, true), mirror_config_text("", true));
-    // Extensions mean nothing in a version 0 repository.
     assert!(
         !mirror_config_text("[extensions]\n\trefstorage = reftable\n", false)
             .contains("extensions")
     );
 }
 
-/// A project folder that is itself a Git repository with an uncommitted edit,
-/// linked to the world's online project.
 struct Outer {
     folder: PathBuf,
     paths: SyncPaths,
@@ -1508,8 +1490,6 @@ impl Outer {
         Outer { folder, paths }
     }
 
-    /// Everything about the user's own repository that a stray Git call
-    /// could change.
     fn state(&self) -> (String, String, String, Vec<u8>) {
         (
             run(&self.folder, &["rev-parse", "HEAD"]),
@@ -1561,7 +1541,6 @@ fn a_mirror_that_stays_broken_is_refused_before_anything_changes() {
     let error = fetch(&world.git, &outer.paths.repo, &world.url(), TOKEN).unwrap_err();
     assert_eq!(error.kind, OnlineErrorKind::SyncNeedsRelink);
     assert_eq!(outer.state(), before);
-    // A `.git` that is a file pointing elsewhere is no mirror either.
     std::fs::remove_dir_all(&git_dir).unwrap();
     std::fs::write(
         &git_dir,
@@ -1657,7 +1636,6 @@ fn a_file_edited_after_it_was_read_is_never_overwritten_or_deleted() {
     );
     assert_eq!(names_in(&project), ["a.tex", "b.tex"]);
 
-    // A file that appeared since, or vanished since, counts as changed too.
     stored(&repo, &[("new.tex", "from online\n")]);
     stored(&project, &[("new.tex", "typed meanwhile\n")]);
     assert!(write_back(&project, &repo, &["new.tex".into()], &[], true, &seen).is_err());
@@ -1694,7 +1672,6 @@ fn a_file_that_is_as_it_was_read_is_replaced_and_removed() {
         "new\n"
     );
     assert!(!project.join("gone").exists());
-    // No staging or moved-aside copies are left behind.
     assert_eq!(names_in(&project), ["a.tex", "deep"]);
 }
 
@@ -1801,7 +1778,6 @@ fn a_tracked_file_swapped_for_a_link_is_not_a_deletion_to_send() {
         Some("@book{a, title={A}}\n")
     );
 
-    // The same for a folder that became a link.
     std::fs::remove_file(world.project.join("refs.bib")).unwrap();
     stored(&world.project, &[("refs.bib", "@book{a, title={A}}\n")]);
     let outside = world.temp.path().join("outside");
@@ -1910,7 +1886,6 @@ fn oleafly_and_editor_leftovers_are_never_synced() {
 #[test]
 fn failures_are_told_apart_by_what_git_said_not_by_the_address() {
     let offline = |text: &str| classify_remote_failure(text).kind == OnlineErrorKind::SyncOffline;
-    // A project id or a port inside the address looks like a status code.
     assert!(offline(
         "fatal: unable to access 'https://git.overleaf.com/6403a1b2c3d4e5f600000000/': Could not resolve host: git.overleaf.com"
     ));
@@ -2022,11 +1997,9 @@ fn linking_with_the_online_version_saves_the_replaced_files_where_they_can_be_ex
         std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
         "My notes\n"
     );
-    // A file that was only here was never at risk.
     assert!(!folder.join("only-here.tex").exists());
     assert_eq!(names_in(&backups), vec![saved[0].name.clone()]);
 
-    // Asking again keeps what is there, and unlinking keeps it too.
     assert_eq!(
         export_link_backups(&world.git, &world.paths, &backups).unwrap(),
         saved
@@ -2106,7 +2079,6 @@ fn a_folder_never_sends_its_secrets_build_output_or_ignored_files() {
         world.link_at(&paths, &world.project, None),
         LinkOutcome::Linked { .. }
     ));
-    // The online build output is not written over the one here.
     assert_eq!(world.local("main.pdf").as_deref(), Some("my local build\n"));
 
     let mut uploads = pending_uploads(&world.git, &paths, &world.project, false, None).unwrap();
@@ -2147,7 +2119,6 @@ fn a_folder_never_sends_its_secrets_build_output_or_ignored_files() {
         assert!(world.remote_file(kept).is_none(), "{kept}");
         assert!(world.project.join(kept).is_file(), "{kept}");
     }
-    // A build output online is neither replaced nor deleted.
     assert_eq!(
         world.remote_file("main.pdf").as_deref(),
         Some("the online build\n")
@@ -2189,14 +2160,12 @@ fn link_backups_are_never_written_through_a_link() {
     );
     assert!(names_in(&elsewhere).is_empty());
 
-    // A real folder there works.
     std::fs::remove_file(&backups).unwrap();
     let saved = export_link_backups(&world.git, &paths, &backups).unwrap();
     assert_eq!(saved.len(), 1);
     assert_eq!(saved[0].files, ["notes.tex"]);
 }
 
-/// Git that records every local call's arguments.
 struct RecordingGit {
     inner: SystemGit,
     calls: std::sync::Mutex<Vec<Vec<String>>>,
@@ -2264,7 +2233,6 @@ fn the_mirror_is_tidied_after_a_sync_at_most_once_a_day() {
     maintain(&git, &world.repo);
     let calls = git.gc_calls();
     assert_eq!(calls.len(), 1);
-    // Every other call turns auto-gc off; this one turns it back on.
     for setting in [
         "gc.auto=256",
         "gc.autoDetach=false",
@@ -2279,6 +2247,5 @@ fn the_mirror_is_tidied_after_a_sync_at_most_once_a_day() {
     maintain(&git, &world.repo);
     assert_eq!(git.gc_calls().len(), 1);
 
-    // The mirror still syncs.
     assert_eq!(world.sync().outcome, SyncOutcome::UpToDate);
 }

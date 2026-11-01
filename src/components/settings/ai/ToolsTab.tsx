@@ -1,6 +1,3 @@
-// Settings, AI, Tools: the model the converters and the editor's Image to
-// LaTeX use, and the optional Mathpix keys. The Mathpix key is held only in
-// the input until it is saved; the backend never sends it back.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

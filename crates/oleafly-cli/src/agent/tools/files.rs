@@ -1,5 +1,3 @@
-//! Reading, searching and changing the run's files, through the path-guarded
-//! workspace.
 use std::sync::Arc;
 
 use serde_json::{json, Value};
@@ -137,7 +135,6 @@ fn run(ctx: &ToolContext, name: &str, arguments: &Value) -> Result<Value, String
     result.map_err(|error| error.to_string())
 }
 
-/// Runs a file tool off the async threads.
 pub(super) async fn call(
     ctx: Arc<ToolContext>,
     name: String,

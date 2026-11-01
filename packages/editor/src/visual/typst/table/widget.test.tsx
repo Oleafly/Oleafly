@@ -10,6 +10,7 @@ import { loadTypstParser, typstLanguage } from "../../../typst";
 import { parsedView } from "../../test-document";
 import { typstVisualMode } from "../index";
 import { NO_PORTS } from "../test-support";
+import { stubRangeGeometry } from "../../../test-geometry";
 
 const DOC = `Intro.
 #table(
@@ -26,9 +27,7 @@ beforeAll(async () => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   installEnglishEditorMessages();
   await loadTypstParser();
-  if (!globalThis.Range.prototype.getClientRects) {
-    Object.defineProperty(globalThis.Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-  }
+  stubRangeGeometry();
 });
 
 afterEach(async () => {
@@ -86,6 +85,20 @@ describe("the Typst table grid", () => {
     fireEvent.input(input!, { target: { value: "one ] two" } });
     fireEvent.keyDown(grid(editor), { key: "Enter" });
     expect(editor.state.doc.toString()).toBe(DOC.replace("[Alpha], [1],", "[Alpha], [one \\] two],"));
+  });
+
+  it("escapes a lone $, comment or backtick in a cell, so the table stays whole", async () => {
+    const editor = await mount();
+    fireEvent.mouseDown(cells(editor)[3], { button: 0 });
+    fireEvent.keyDown(grid(editor), { key: "Enter" });
+    const input = editor.dom.querySelector<HTMLTextAreaElement>(".ofl-visual-table-cell-input");
+    fireEvent.input(input!, { target: { value: "$5 // net `x" } });
+    await act(async () => {
+      fireEvent.keyDown(grid(editor), { key: "Enter" });
+      parsedView(editor);
+    });
+    expect(editor.state.doc.toString()).toBe(DOC.replace("[Alpha], [1],", String.raw`[Alpha], [\$5 \// net \`x],`));
+    expect(cells(editor)).toHaveLength(6);
   });
 
   it("adds a row in Typst syntax when tabbing past the last cell", async () => {
@@ -178,7 +191,9 @@ describe("the Typst table grid", () => {
     fireEvent.click(editor.dom.querySelector('.ofl-visual-table-toolbar [aria-label="Delete"]')!);
     expect(editor.state.doc.toString()).not.toContain("[Alpha]");
     fireEvent.mouseDown(grid(editor).querySelectorAll(".ofl-visual-table-handle-row")[0], { button: 0 });
-    fireEvent.click(editor.dom.querySelector('.ofl-visual-table-toolbar [aria-label="Remove table"]')!);
+    await act(async () => {
+      fireEvent.click(editor.dom.querySelector('.ofl-visual-table-toolbar [aria-label="Remove table"]')!);
+    });
     expect(editor.state.doc.toString()).toBe("Intro.\nOutro.");
   });
 });

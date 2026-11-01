@@ -119,7 +119,6 @@ describe("AcpHistoryDialog", () => {
     await waitFor(() =>
       expect(acpSessionPage).toHaveBeenLastCalledWith("paper", { query: undefined, before: 200, beforeId: "task", limit: 50 }),
     );
-    // A page of delegated conversations alone still moves on.
     await waitFor(() => expect(screen.getByRole("button", { name: "Load more" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     await screen.findByText("Chapter zero");
@@ -150,7 +149,6 @@ describe("AcpHistoryDialog", () => {
     const { onClose } = show();
     await screen.findByText("Chapter one");
     const buttons = screen.getAllByRole("button", { name: "Close" });
-    // The invisible backdrop also closes; the one in the header is the visible control.
     fireEvent.click(buttons.at(-1) as HTMLElement);
     expect(onClose).toHaveBeenCalledOnce();
   });

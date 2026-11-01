@@ -1,10 +1,3 @@
-//! Agent server: the process-local agent protocol owner. The shell speaks
-//! typed request methods (`turn/start`, `thread/resume`, …) to this module
-//! and receives streamed `{method, params}` notifications back; the agent
-//! can invert the flow with server-initiated requests (approvals, user
-//! input, elicitations) that pause the turn until the shell resolves them.
-//! Model credentials never leave this side of the IPC boundary.
-
 pub mod protocol;
 pub mod requests;
 pub mod scheduler;
@@ -16,7 +9,6 @@ use std::time::{Duration, Instant};
 use requests::{ResolvedRequest, ServerRequestRegistry};
 use scheduler::SchedulerState;
 
-/// How long an unclaimed prewarmed thread stays warm.
 pub const PREWARM_TTL: Duration = Duration::from_secs(10 * 60);
 
 struct PrewarmedThread {
@@ -32,9 +24,6 @@ struct PrewarmRegistry {
 const MAX_PREWARMED_PER_PROJECT: usize = 8;
 
 impl PrewarmRegistry {
-    /// Register a warmed thread, sweeping expired entries and capping the
-    /// per-project backlog so repeated warms with no claim cannot grow the
-    /// registry without bound.
     fn warm(&mut self, thread_id: String, project_id: &str) {
         let now = Instant::now();
         self.sweep(now, PREWARM_TTL);
@@ -55,8 +44,6 @@ impl PrewarmRegistry {
         self.by_project.retain(|_, entries| !entries.is_empty());
     }
 
-    /// Hand out one unexpired prewarmed thread for the project, sweeping
-    /// expired entries on the way.
     fn claim(&mut self, project_id: &str, now: Instant, ttl: Duration) -> Option<String> {
         self.sweep(now, ttl);
         let entries = self.by_project.get_mut(project_id)?;
@@ -89,9 +76,6 @@ fn lock_or_recover<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// Capability handshake. Shells call this once at startup and pass the
-/// notification methods they want suppressed; every later response can rely
-/// on the negotiated protocol versions in the reply.
 #[tauri::command]
 pub fn agent_server_initialize(
     state: tauri::State<'_, AgentServerState>,
@@ -105,9 +89,6 @@ pub fn agent_server_initialize(
     Ok(protocol::AgentServerInfo::current())
 }
 
-/// Resolve a server-initiated request the shell received (approval, user
-/// input, or elicitation). Unknown or already-resolved ids resolve to an
-/// error so bugs surface instead of silently dropping decisions.
 #[tauri::command]
 pub fn agent_server_resolve_request(
     state: tauri::State<'_, AgentServerState>,
@@ -125,8 +106,6 @@ pub fn agent_server_resolve_request(
     }
 }
 
-/// Abandon a server-initiated request without a decision (the shell view it
-/// was routed to went away).
 #[tauri::command]
 pub fn agent_server_abandon_request(
     state: tauri::State<'_, AgentServerState>,
@@ -139,9 +118,6 @@ pub fn agent_server_abandon_request(
     }
 }
 
-/// Register a server-initiated request against the registry, applying the
-/// auto-decline policy for elicitations. Returns the id assigned to the
-/// request (the caller streams the envelope to the shell itself).
 pub fn register_server_request(
     state: &AgentServerState,
     request: &protocol::ServerRequest,
@@ -171,8 +147,6 @@ fn new_thread_id() -> String {
     format!("thread-{nanos:x}-{}", NEXT.fetch_add(1, Ordering::Relaxed))
 }
 
-/// List threads from the SQLite mirror (turn counts, usage, recency),
-/// newest first; archived threads are excluded unless requested.
 #[tauri::command]
 pub async fn agent_thread_list(
     include_archived: Option<bool>,
@@ -181,7 +155,6 @@ pub async fn agent_thread_list(
     off_thread(move |root| crate::library_db::thread_summaries(&root, include_archived)).await
 }
 
-/// Replay a thread's recorded turns.
 #[tauri::command]
 pub async fn agent_thread_read(
     thread_id: String,
@@ -189,7 +162,6 @@ pub async fn agent_thread_read(
     off_thread(move |root| crate::rollout::read_turns(&root, &thread_id)).await
 }
 
-/// Full-text search across thread content.
 #[tauri::command]
 pub async fn agent_thread_search(
     query: String,
@@ -199,8 +171,6 @@ pub async fn agent_thread_search(
     off_thread(move |root| crate::library_db::search_threads(&root, &query, limit)).await
 }
 
-/// Drop the last `num_turns` turns (the retry-turn flow rolls back one),
-/// resync the mirror, and return the remaining records.
 #[tauri::command]
 pub async fn agent_thread_rollback(
     thread_id: String,
@@ -215,8 +185,6 @@ pub async fn agent_thread_rollback(
     .await
 }
 
-/// Fork a thread into a new one, optionally excluding trailing turns.
-/// Returns the new thread id.
 #[tauri::command]
 pub async fn agent_thread_fork(
     thread_id: String,
@@ -238,8 +206,6 @@ pub async fn agent_thread_fork(
     .await
 }
 
-/// Move a thread's rollout to the archive tree and mark it archived in the
-/// mirror.
 #[tauri::command]
 pub async fn agent_thread_archive(thread_id: String) -> Result<bool, String> {
     off_thread(move |root| {
@@ -252,7 +218,6 @@ pub async fn agent_thread_archive(thread_id: String) -> Result<bool, String> {
     .await
 }
 
-/// Delete a thread's rollout everywhere, mirror included.
 #[tauri::command]
 pub async fn agent_thread_delete(thread_id: String) -> Result<(), String> {
     off_thread(move |root| {
@@ -263,9 +228,6 @@ pub async fn agent_thread_delete(thread_id: String) -> Result<(), String> {
     .await
 }
 
-/// Warm a hidden thread so the next turn in this project starts instantly.
-/// The id is claimed by `agent_thread_claim_prewarmed` when a real turn
-/// begins; unclaimed threads expire after the prewarm TTL.
 #[tauri::command]
 pub fn agent_thread_prewarm(
     state: tauri::State<'_, AgentServerState>,
@@ -276,7 +238,6 @@ pub fn agent_thread_prewarm(
     Ok(thread_id)
 }
 
-/// Claim a prewarmed thread for a project, if one is still warm.
 #[tauri::command]
 pub fn agent_thread_claim_prewarmed(
     state: tauri::State<'_, AgentServerState>,
@@ -285,9 +246,6 @@ pub fn agent_thread_claim_prewarmed(
     Ok(lock_or_recover(&state.prewarmed).claim(&project_id, Instant::now(), PREWARM_TTL))
 }
 
-/// Import a legacy per-project chat as a thread: converts its messages into
-/// turn records, writes them to a fresh rollout, and mirrors it. The legacy
-/// JSON stays untouched as a backup. Returns the new thread id.
 #[tauri::command]
 pub async fn agent_thread_import_chat(
     project_id: String,
@@ -310,10 +268,6 @@ pub async fn agent_thread_import_chat(
     .await
 }
 
-/// The migration proper, factored out of the command so it can be tested
-/// against a real temp root without the app's filesystem and IPC plumbing:
-/// parse the project's chats, locate the chat, convert it to turn records,
-/// append them to a fresh rollout, and mirror it into the search index.
 fn import_chat_into_thread(
     root: &std::path::Path,
     chats_json: &str,
@@ -377,8 +331,6 @@ mod tests {
 
         let turns = crate::rollout::read_turns(&root, "thread-import-1").unwrap();
         assert_eq!(turns.len(), 1);
-        // The user message and assistant reply both survived the migration
-        // and round-tripped through the rollout file.
         let joined = serde_json::to_string(&turns[0].items).unwrap();
         assert!(joined.contains("fix my bib"));
         assert!(joined.contains("Done."));
@@ -419,7 +371,6 @@ mod tests {
             registry.claim("proj", now, PREWARM_TTL),
             Some("thread-a".into())
         );
-        // The claim is single-shot and per-project.
         assert_eq!(
             registry.claim("other", now, PREWARM_TTL),
             Some("thread-c".into())
@@ -430,8 +381,6 @@ mod tests {
         );
         assert_eq!(registry.claim("proj", now, PREWARM_TTL), None);
 
-        // After the TTL passes, a warm thread is no longer claimable and the
-        // expired entry is swept.
         registry.warm("thread-late".into(), "proj");
         let later = now + PREWARM_TTL + Duration::from_secs(1);
         assert_eq!(registry.claim("proj", later, PREWARM_TTL), None);
@@ -448,8 +397,6 @@ mod tests {
         });
         let (id, receiver) = register_server_request(&state, &elicitation, None);
         assert!(id.starts_with("req-"));
-        // The production clamp floors the window at 5s; the registry applies
-        // it verbatim, so poke the resolved channel instead of waiting.
         assert!(state.requests.resolve(
             &id,
             ResolvedRequest {
@@ -474,7 +421,6 @@ mod tests {
             },
         );
         let (_id, receiver) = register_server_request(&state, &approval, None);
-        // Approvals never auto-resolve: a resolve attempt finds it pending.
         drop(receiver);
         assert_eq!(state.requests.pending_count(), 1);
     }

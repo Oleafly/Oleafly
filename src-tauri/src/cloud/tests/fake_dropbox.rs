@@ -90,7 +90,6 @@ pub(crate) struct Inner {
     pub(crate) token_forms: Vec<BTreeMap<String, String>>,
     pub(crate) revoked: Vec<String>,
     pub(crate) delays: BTreeMap<String, std::time::Duration>,
-    /// Requests counted as they arrive, before any delay.
     pub(crate) arrivals: BTreeMap<String, usize>,
 }
 
@@ -310,8 +309,6 @@ impl Inner {
         });
     }
 
-    /// Carries the request out, then answers with `reply` instead, the way a
-    /// reply lost on the way back looks to the client.
     pub(crate) fn fault_after(&mut self, route: &str, reply: Reply, times: usize) {
         self.faults.push(Fault {
             route: route.to_string(),

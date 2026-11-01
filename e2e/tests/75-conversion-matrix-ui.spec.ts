@@ -1,7 +1,3 @@
-// Level-3 UI evidence for the conversion matrix: drives the real app UI
-// (menus, dialogs, previews) and saves screenshots to
-// e2e-artifacts/conversion-matrix/. Assertions are on visible DOM so the
-// pass means the features work through the interface, not just the IPC.
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "../fixtures";
@@ -200,7 +196,6 @@ test("equation context menu exports a real svg image", async ({ tauriPage }) => 
     tauriPage,
     "\\documentclass{article}\n\\begin{document}\n\\begin{equation}\n  E = mc^2\n\\end{equation}\n\\end{document}\n",
   );
-  // Put the caret inside the equation, then right-click the editor.
   await setEditorCaretAfter(tauriPage, "E = mc", 1);
   await tauriPage.evaluate(
     `import("/src/components/editor/cm/controller.ts").then((m) => {
@@ -260,7 +255,6 @@ test("references panel cleaner shows the dry-run diff", async ({ tauriPage }) =>
   await atLibrary(tauriPage);
   await createProject(tauriPage, "latex", "cleaner-ui");
   await writeProjectText(tauriPage, "references.bib", readFileSync(fixture("dirty.bib"), "utf8"));
-  // The rail tab's registered label carries its shortcut hint.
   await openRailTab(tauriPage, "References & citations (Shift-F12)");
   await waitLong(tauriPage, `!!document.querySelector('[data-testid="clean-library-button"]')`, 20_000);
   await tauriPage.locator('[data-testid="clean-library-button"]').click();
@@ -340,7 +334,6 @@ test("writing generator uses the active project for its assistant prompt", async
   await expect(tauriPage.getByTestId("generator-prompt-preview")).toContainText("Keep the abstract under 200 words.");
   await shot(tauriPage, "12-generators-gallery.png");
   await tauriPage.getByTestId("generator-launch").click();
-  // The assistant surface opens (or settings, when no provider is set).
   await waitLong(
     tauriPage,
     `(!!document.querySelector('[data-testid="research-assistant"]') && !document.querySelector('[data-testid="generators-tool-view"]')) || !!document.querySelector('[role="dialog"][aria-label="Settings"] [data-testid="settings-section-ai"][aria-current="page"]')`,

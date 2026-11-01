@@ -6,7 +6,7 @@ use loro::{
     ContainerID, EncodedBlobMode, ExportMode, LoroDoc, LoroMap, LoroText, LoroTree, LoroValue,
     TextDelta, TreeID, TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
 };
-use oleafly_collab_protocol::ids::FileId;
+use oleafly_collab_protocol::ids::{AccountId, DeviceId, FileId};
 use ring::rand::{SecureRandom, SystemRandom};
 use serde::{Deserialize, Serialize};
 
@@ -33,8 +33,6 @@ pub(crate) fn engine_failed() -> CollabError {
     CollabError::Corrupt("a change made the document engine fail".to_owned())
 }
 
-// Not the change's fault: the engine failed too often in this run of the
-// app to try more changes in a scratch copy.
 pub(crate) fn engine_spent() -> CollabError {
     CollabError::Corrupt(
         "the document engine failed too often since the app started, so it takes no more \
@@ -73,17 +71,11 @@ pub(crate) fn blob_meta(bytes: &[u8], check_checksum: bool) -> Meta {
 // changes turned away for that reason are not blamed for it.
 pub(crate) const MOST_LEFT_DOCUMENTS: usize = 8;
 
-// A scratch copy left in memory per change that made Loro panic in it. At
-// this many for one open project it takes no more large changes, and the
-// live session ends, which bounds what a member's changes can cost every
-// other member.
 pub(crate) const MOST_SCRATCH_FAILURES: usize = 3;
 
 #[cfg(not(test))]
 static LEFT_DOCUMENTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
-// Each test counts on its own thread, so tests that make Loro panic don't
-// spend the budget of the others.
 #[cfg(test)]
 thread_local! {
     static LEFT_DOCUMENTS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
@@ -191,8 +183,6 @@ pub(crate) mod failpoint {
 
     static SLOWED: Mutex<Vec<(Vec<u8>, At, std::time::Duration)>> = Mutex::new(Vec::new());
 
-    // Taking in this change keeps the thread busy this long, the way a large
-    // change does on a slow computer.
     pub(crate) fn slow_on(payload: &[u8], at: At, busy: std::time::Duration) {
         SLOWED
             .lock()
@@ -325,8 +315,6 @@ pub struct Imported {
 pub(crate) struct ImportFailure {
     pub(crate) kept: Imported,
     pub(crate) error: CollabError,
-    // The change that made Loro panic in its scratch copy, which is not
-    // tried again.
     pub(crate) panicked: Option<usize>,
 }
 
@@ -524,8 +512,6 @@ impl ProjectDoc {
         })
     }
 
-    // A project without a trash folder still opens: any editor's change can
-    // delete or rename it, so the app makes a new one when it next needs it.
     pub fn load(bytes: &[u8]) -> Result<ProjectDoc, CollabError> {
         let doc = LoroDoc::new();
         doc.set_peer_id(fresh_peer()?).map_err(doc_error)?;
@@ -533,9 +519,6 @@ impl ProjectDoc {
         ProjectDoc::wrap(doc)
     }
 
-    // For bytes from elsewhere, such as the server's snapshot a joiner
-    // starts from. A panic in Loro is contained (see `filled`) and reads as
-    // the engine failing on them.
     pub fn load_contained(bytes: &[u8]) -> Result<ProjectDoc, CollabError> {
         if engine_budget_spent() {
             return Err(engine_spent());
@@ -646,6 +629,64 @@ impl ProjectDoc {
         rebuilt.authors = std::mem::take(&mut self.authors);
         *self = rebuilt;
         Ok(Some(unsent))
+    }
+
+    pub fn with_text_changes_suggested_after(
+        &mut self,
+        base: &VersionVector,
+        author: AccountId,
+        device: Option<DeviceId>,
+        now: i64,
+    ) -> Result<bool, CollabError> {
+        if !self.doc.oplog_vv().includes_vv(base) {
+            return Err(CollabError::Corrupt(
+                "the shared project never had this version".to_owned(),
+            ));
+        }
+        let from = self.doc.vv_to_frontiers(base);
+        let to = self.doc.oplog_frontiers();
+        let mut kept = DiffBatch::default();
+        let mut texts = Vec::new();
+        for (container, change) in self.doc.diff(&from, &to).map_err(doc_error)?.iter() {
+            if let ContainerID::Root { name, .. } = container {
+                if let Some(id) = name.as_str().strip_prefix(TEXT_PREFIX) {
+                    texts.push(id.to_owned());
+                    continue;
+                }
+            }
+            if !crate::suggestions::outside_suggestions(&self.doc, container) {
+                continue;
+            }
+            kept.push(container.clone(), change.clone())
+                .map_err(|_| CollabError::Corrupt("a change was listed twice".to_owned()))?;
+        }
+        if texts.is_empty() {
+            return Ok(false);
+        }
+        let peer = fresh_peer()?;
+        let mut rebuilt = self.copy_at(&from, |copy| {
+            copy.set_peer_id(peer).map_err(doc_error)?;
+            copy.apply_diff(kept).map_err(doc_error)?;
+            copy.commit();
+            Ok(())
+        })?;
+        for id in &texts {
+            let operation = crate::merge::diff(&rebuilt.text(id)?, &self.text(id)?);
+            if !operation.is_noop()
+                && rebuilt
+                    .suggest_operation(id, &operation, author, device, now)
+                    .is_err()
+            {
+                return Ok(false);
+            }
+        }
+        if !self.same_files_as(&rebuilt)? {
+            return Ok(false);
+        }
+        rebuilt.log = std::mem::take(&mut self.log);
+        rebuilt.authors = std::mem::take(&mut self.authors);
+        *self = rebuilt;
+        Ok(true)
     }
 
     fn same_files_as(&self, other: &ProjectDoc) -> Result<bool, CollabError> {
@@ -884,9 +925,6 @@ impl ProjectDoc {
         Ok(())
     }
 
-    // Two members who do this at once make two trash folders; every member
-    // then uses the one with the smallest id, and files in the other still
-    // count as deleted.
     fn recreate_trash(&mut self) -> Result<TreeID, CollabError> {
         let trash = self.tree.create(TreeParentId::Root).map_err(doc_error)?;
         let meta = self.tree.get_meta(trash).map_err(doc_error)?;
@@ -948,8 +986,6 @@ impl ProjectDoc {
         Ok(changes)
     }
 
-    // The changes are kept even when the work fails, because a batch import
-    // applies every update it can before it reports the one that failed.
     pub(crate) fn recording<T>(
         &self,
         work: impl FnOnce(&LoroDoc) -> Result<T, CollabError>,
@@ -988,9 +1024,6 @@ impl ProjectDoc {
                 _ => continue,
             };
             let meta = self.tree.get_meta(node.id).map_err(doc_error)?;
-            // A deleted file is stamped when it goes to the trash, so it
-            // stays deleted even if an edit turns the trash folder into an
-            // ordinary one.
             let parent = if meta.get("trashed_at").is_some() {
                 NodeParent::Trash
             } else {
@@ -1069,8 +1102,6 @@ impl ProjectDoc {
         self.scratch_failures
     }
 
-    // A document standing in for one the engine broke: comment edits made
-    // on it would never be saved or sent, so they are refused.
     pub(crate) fn freeze(&mut self) {
         self.frozen = true;
     }
@@ -1133,10 +1164,6 @@ impl ProjectDoc {
             .map_err(|failure| failure.error)
     }
 
-    // Records from this computer's own change log went into the document
-    // once already, so their scratch copies don't count against the caps.
-    // Turning them away would read as a damaged log, and the next save
-    // would write the document without them.
     pub(crate) fn import_saved(&mut self, records: &[&[u8]]) -> Result<Imported, CollabError> {
         self.import_from(records, Source::Saved)
             .map_err(|failure| failure.error)
@@ -1283,8 +1310,6 @@ impl ProjectDoc {
         self.keep(imported, &before, status, changes)
     }
 
-    // A change the document already holds in full needs no scratch copy:
-    // taking it in again changes nothing.
     fn holds_all_of(&self, bytes: &[u8]) -> bool {
         matches!(
             blob_meta(bytes, false),
@@ -1292,9 +1317,6 @@ impl ProjectDoc {
         )
     }
 
-    // One writer carrying on from the document's only head, say someone
-    // pasting while the others are idle, has nothing concurrent to merge, so
-    // a plain import is as fast as it gets and the fork is skipped.
     fn continues_its_own_head(&self, bytes: &[u8]) -> bool {
         let Meta::Read(meta) = blob_meta(bytes, false) else {
             return false;
@@ -1320,12 +1342,6 @@ impl ProjectDoc {
         }
     }
 
-    // A large change is tried in a scratch copy first. If Loro panics there,
-    // while it takes the change in or while the pieces are read back out,
-    // the copy is left in memory (see `filled`) and the change counts as
-    // unreadable: the document itself never sees it. The copy is made from
-    // the project's own snapshot, so a panic while that is written is the
-    // document's, not the change's, and unwinds to the guard around it.
     fn staged(&mut self, bytes: &[u8], source: Source) -> Result<Option<Staged>, CollabError> {
         if self.doc.oplog_vv().is_empty()
             || self.continues_its_own_head(bytes)

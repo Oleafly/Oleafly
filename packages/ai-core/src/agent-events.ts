@@ -1,11 +1,5 @@
 import type { AgentUsage } from "./usage";
 
-// The agent event wire union (mirrors crates/oleafly-agent/src/event.rs,
-// serde tag "kind", camelCase fields). The app's transport layer
-// (src/lib/agent-backend.ts) re-exports this; the package owns the shape so
-// folds stay framework-free.
-
-/** Things the user should know about a run that are not errors. */
 export type AgentNoticeCode =
   | "attachment_sent_as_text"
   | "attachment_skipped"
@@ -24,7 +18,6 @@ export type AgentEvent =
   | {
       kind: "usage";
       usage: AgentUsage;
-      /** The latest step alone: the context the model just saw. */
       lastStep?: AgentUsage | null;
       contextWindow?: number | null;
     }

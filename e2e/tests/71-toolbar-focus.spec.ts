@@ -67,9 +67,6 @@ function pressUndo(page: Page, mod: "ctrl" | "meta") {
   })()`);
 }
 
-// Opening a project in split view auto-compiles, which disables the compile
-// button. Drive that build to completion before touching anything, otherwise
-// the click lands on a disabled control.
 async function openWithCaretInEditor(page: Page) {
   await openProject(page, "E2E Doc");
   await waitEditorShowsFile(page, "main.tex");

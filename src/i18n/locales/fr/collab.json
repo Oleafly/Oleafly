@@ -224,6 +224,8 @@
     "suggestion_not_found": "Cette suggestion n'existe plus. Quelqu'un l'a peut-être acceptée ou refusée.",
     "suggestion_not_yours": "Seule la personne qui a fait cette suggestion peut la retirer.",
     "suggestion_role": "Votre rôle dans ce projet ne permet pas de faire des suggestions.",
+    "suggestion_changed": "Le texte autour de cette suggestion a changé. Un propriétaire ou un éditeur doit donc l'accepter ou la refuser.",
+    "suggestion_too_long": "Une suppression suggérée peut compter 20 000 caractères au maximum. Supprimez une partie plus petite à la fois.",
     "chat_role": "Votre rôle dans ce projet ne permet pas cette action dans le chat.",
     "history_unavailable": "L'historique de ce projet n'est pas encore sur cet ordinateur. Réessayez une fois la synchronisation terminée.",
     "account_storage_full": "Le compte de la personne propriétaire du projet n'a plus d'espace de stockage sur ce serveur. Retirez des fichiers pour libérer de la place, ou demandez plus d'espace à l'administrateur du serveur.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Restaurer tout le projet ?",
-      "description": "Pour tout le monde dans ce projet, chaque fichier revient à cette version ({{time}}). Le texte actuel reste dans l'historique, vous pouvez donc y revenir.",
+      "textAndDeleted": "Pour tout le monde dans ce projet, le texte de chaque fichier revient à cette version ({{time}}), et les fichiers supprimés reviennent. Les fichiers renommés gardent leur nouveau nom, et les figures et fichiers ajoutés depuis restent tels quels. Le texte actuel reste dans l'historique, vous pouvez donc y revenir.",
       "confirm": "Restaurer le projet"
     },
     "compareTitle": "Modifications entre deux versions",

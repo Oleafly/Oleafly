@@ -22,7 +22,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   loadResearchTaskEventsBefore: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
-  // Selecting a task tells the backend which task this window shows.
   watchResearchTask: vi.fn(async () => {}),
 }));
 
@@ -110,7 +109,6 @@ describe("research task store", () => {
       eventsLoading: false,
       action: null,
       error: null,
-      // The transcript loads and streams only while the task dialog shows it.
       detailOpen: true,
       detailTab: null,
     });
@@ -158,7 +156,6 @@ describe("research task store", () => {
     vi.mocked(api.listResearchTasks).mockReturnValue(listing.promise);
 
     const refreshing = useResearchTasksStore.getState().refresh();
-    // A live update replaces this row while the list is on its way.
     const live = { ...changedMeanwhile, title: "changed (live)" };
     useResearchTasksStore.setState({
       tasks: useResearchTasksStore.getState().tasks.map((item) => (item.id === live.id ? live : item)),
@@ -424,7 +421,6 @@ describe("research task store", () => {
     const selected = task("selected", "paper");
     const pending = deferred<TaskTranscriptPage>();
     const event = (sequence: number): TaskTranscriptEvent => ({ taskId: selected.id, executionGeneration: 1, sequence, createdAt: sequence, event: { kind: "text", text: `Step ${sequence}` } });
-    // The newest rows are loaded; Load more reads the older ones before them.
     useResearchTasksStore.setState({ projectId: "paper", tasks: [selected], selectedTaskId: selected.id, events: [event(3)], eventsPreviousSequence: 3 });
     vi.mocked(api.loadResearchTaskEventsBefore).mockReturnValue(pending.promise);
     const loading = useResearchTasksStore.getState().loadMoreEvents();
@@ -509,7 +505,6 @@ describe("research task store", () => {
     const loading = operation === "bind"
       ? useResearchTasksStore.getState().bindProject("paper")
       : useResearchTasksStore.getState().refresh();
-    // Binding closes the dialog; the task is opened in it again.
     useResearchTasksStore.setState({ detailOpen: true });
     useResearchTasksStore.getState().receiveTask(next);
     useResearchTasksStore.getState().receiveTask(added);

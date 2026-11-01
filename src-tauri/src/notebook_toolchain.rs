@@ -144,6 +144,7 @@ pub(crate) struct ToolStatus {
     download_bytes: Option<u64>,
     license: String,
     installing: bool,
+    superseded_versions: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -201,6 +202,44 @@ fn managed_tool(tool: NotebookTool) -> Option<PathBuf> {
         &artifact.archive_sha256,
         &candidates,
     )
+}
+
+fn superseded_in(root: &Path, pinned: &str) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return Vec::new();
+    };
+    let mut versions: Vec<String> = entries
+        .flatten()
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| name != pinned && !name.starts_with('.'))
+        .collect();
+    versions.sort();
+    versions
+}
+
+fn remove_superseded_in(root: &Path, pinned: &str) {
+    for version in superseded_in(root, pinned) {
+        let path = root.join(version);
+        if let Err(error) = std::fs::remove_dir_all(&path) {
+            let _ = crate::project::append_app_log(format!(
+                "Could not remove the unused download {}: {error}",
+                path.display()
+            ));
+        }
+    }
+}
+
+fn superseded_versions(tool: NotebookTool) -> Vec<String> {
+    install_root(tool)
+        .map(|root| superseded_in(&root, &tool.release().version))
+        .unwrap_or_default()
+}
+
+fn remove_superseded(tool: NotebookTool) {
+    if let Ok(root) = install_root(tool) {
+        remove_superseded_in(&root, &tool.release().version);
+    }
 }
 
 fn known_locations(tool: NotebookTool, home: Option<&Path>) -> Vec<PathBuf> {
@@ -279,10 +318,16 @@ pub(crate) fn parse_version(text: &str) -> Option<String> {
     })
 }
 
-fn probe_version(path: &Path) -> Option<String> {
+fn probe_command(path: &Path) -> std::process::Command {
     let mut command = std::process::Command::new(path);
     command.arg("--version").no_console();
-    let output = crate::proc::output_contained_with_timeout(command, PROBE_TIMEOUT).ok()?;
+    crate::proc::clear_appimage_env(&mut command);
+    command
+}
+
+fn probe_version(path: &Path) -> Option<String> {
+    let output =
+        crate::proc::output_contained_with_timeout(probe_command(path), PROBE_TIMEOUT).ok()?;
     if !output.status.success() {
         return None;
     }
@@ -320,6 +365,7 @@ fn tool_status(tool: NotebookTool) -> ToolStatus {
         download_bytes: artifact.map(|artifact| artifact.archive_size),
         license: release.license.clone(),
         installing: installing(tool),
+        superseded_versions: superseded_versions(tool),
     }
 }
 
@@ -575,6 +621,11 @@ pub async fn install_notebook_tool(
     crate::toolchain_download::install_tree(request, cancel, progress)
         .await
         .map_err(|error| install_failure(tool, &error))?;
+    blocking(move || {
+        remove_superseded(tool);
+        Ok(())
+    })
+    .await?;
     drop(claim);
     blocking(|| Ok(current_status())).await
 }
@@ -595,6 +646,27 @@ pub async fn open_compiled_html(project_id: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn version_probes_drop_the_appimage_launcher_paths_for_host_programs() {
+        let image = crate::proc::SimulatedAppImage::start();
+        let applied = |program: &Path| -> BTreeMap<String, Option<std::ffi::OsString>> {
+            probe_command(program)
+                .get_envs()
+                .map(|(name, value)| {
+                    (
+                        name.to_string_lossy().into_owned(),
+                        value.map(std::ffi::OsStr::to_os_string),
+                    )
+                })
+                .collect()
+        };
+        let rscript = applied(Path::new("/usr/bin/Rscript"));
+        assert_eq!(rscript["PYTHONHOME"], None);
+        assert_eq!(rscript["LD_LIBRARY_PATH"], None);
+        assert!(applied(&image.root.join("usr/bin/tectonic")).is_empty());
+    }
 
     #[test]
     fn the_bundled_manifest_pins_both_tools_for_every_release_target() {
@@ -676,6 +748,29 @@ mod tests {
         assert!(calepin
             .iter()
             .any(|path| path.starts_with(home.join(".cargo"))));
+    }
+
+    #[test]
+    fn a_download_left_by_an_older_pin_is_reported_and_removed_without_touching_the_pinned_one() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        for folder in ["1.10.18/bin", "1.10.19/bin", "1.9.0", ".staging"] {
+            std::fs::create_dir_all(root.join(folder)).unwrap();
+        }
+        std::fs::write(root.join("1.10.18/bin/quarto"), "old").unwrap();
+        std::fs::write(root.join("1.10.19/bin/quarto"), "pinned").unwrap();
+        std::fs::write(root.join("notes"), "not a version").unwrap();
+
+        assert_eq!(superseded_in(root, "1.10.19"), ["1.10.18", "1.9.0"]);
+
+        remove_superseded_in(root, "1.10.19");
+
+        assert!(superseded_in(root, "1.10.19").is_empty());
+        assert!(root.join("1.10.19/bin/quarto").is_file());
+        assert!(root.join(".staging").is_dir());
+        assert!(root.join("notes").is_file());
+        assert!(!root.join("1.10.18").exists());
+        assert!(superseded_in(&root.join("missing"), "1.10.19").is_empty());
     }
 
     #[test]

@@ -28,13 +28,23 @@ const COMMENT_LIMIT = 10_000;
 const NO_THREADS: readonly CollabCommentThread[] = [];
 const NO_SUGGESTIONS: readonly CollabSuggestion[] = [];
 
-function useRun(): [ErrorKey | null, (action: () => Promise<void>) => void] {
+function useRun(): [ErrorKey | null, (action: () => Promise<void>) => void, boolean] {
   const [error, setError] = useState<ErrorKey | null>(null);
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
   const run = (action: () => Promise<void>) => {
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
     setError(null);
-    action().catch((failure: unknown) => setError(failureKey(failure)));
+    action()
+      .catch((failure: unknown) => setError(failureKey(failure)))
+      .finally(() => {
+        running.current = false;
+        setBusy(false);
+      });
   };
-  return [error, run];
+  return [error, run, busy];
 }
 
 function InlineError({ error }: Readonly<{ error: ErrorKey | null }>) {
@@ -303,7 +313,7 @@ export function SuggestionCard({
   const selected = useWeb((state) => state.selectedSuggestionId === suggestion.id);
   const abilities = abilitiesFor(role, features);
   const withdraw = !abilities.resolve && suggestion.verified && canWithdraw(role, suggestion.author, self);
-  const [error, run] = useRun();
+  const [error, run, busy] = useRun();
   const name = nameOf(suggestion.author, suggestion.verified);
   return (
     <li>
@@ -337,17 +347,35 @@ export function SuggestionCard({
           <div className="flex flex-wrap gap-1.5">
             {abilities.resolve ? (
               <>
-                <Button type="button" size="xs" variant="secondary" onClick={() => run(() => actions.acceptSuggestions([suggestion.id]))}>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => run(() => actions.acceptSuggestions([suggestion.id]))}
+                >
                   <Check aria-hidden />
                   {t(($) => $.web.suggestions.accept)}
                 </Button>
-                <Button type="button" size="xs" variant="ghost" onClick={() => run(() => actions.rejectSuggestions([suggestion.id]))}>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => run(() => actions.rejectSuggestions([suggestion.id]))}
+                >
                   <X aria-hidden />
                   {t(($) => $.web.suggestions.reject)}
                 </Button>
               </>
             ) : (
-              <Button type="button" size="xs" variant="ghost" onClick={() => run(() => actions.withdrawSuggestions([suggestion.id]))}>
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => run(() => actions.withdrawSuggestions([suggestion.id]))}
+              >
                 <Undo2 aria-hidden />
                 {t(($) => $.web.suggestions.withdraw)}
               </Button>
@@ -380,7 +408,8 @@ function FileGroup({
   const features = useWeb((state) => state.features);
   const abilities = abilitiesFor(role, features);
   const [showResolved, setShowResolved] = useState(false);
-  const [error, run] = useRun();
+  const [confirming, setConfirming] = useState(false);
+  const [error, run, busy] = useRun();
   const linked = new Set(suggestions.map((suggestion) => suggestion.threadId).filter(Boolean));
   const byId = new Map(threads.map((thread) => [thread.id, thread]));
   const loose = threads.filter((thread) => !linked.has(thread.id));
@@ -403,16 +432,27 @@ function FileGroup({
         ) : null}
         {abilities.resolve && suggestions.length > 0 ? (
           <div className="flex basis-full justify-end gap-1">
-            <Button type="button" size="xs" variant="ghost" onClick={() => run(() => actions.acceptFile(fileId))}>
+            <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => run(() => actions.acceptFile(fileId))}>
               {t(($) => $.web.suggestions.acceptAll)}
             </Button>
-            <Button type="button" size="xs" variant="ghost" onClick={() => run(() => actions.rejectFile(fileId))}>
+            <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => setConfirming(true)}>
               {t(($) => $.web.suggestions.rejectAll)}
             </Button>
           </div>
         ) : null}
       </header>
       <InlineError error={error} />
+      <ConfirmDialog
+        open={confirming}
+        title={t(($) => $.web.suggestions.rejectAllConfirm.title, { file: path.split("/").at(-1) ?? path })}
+        description={t(($) => $.web.suggestions.rejectAllConfirm.description, { number: suggestions.length })}
+        confirmLabel={t(($) => $.web.suggestions.rejectAllConfirm.confirm)}
+        onConfirm={() => {
+          setConfirming(false);
+          run(() => actions.rejectFile(fileId));
+        }}
+        onCancel={() => setConfirming(false)}
+      />
       <ul className="space-y-1">
         {sortedSuggestions.map((suggestion) => (
           <SuggestionCard

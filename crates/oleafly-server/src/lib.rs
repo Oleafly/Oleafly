@@ -57,13 +57,8 @@ use crate::state::AppState;
 
 pub const MAX_BODY_BYTES: usize = 256 * 1024;
 const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
-// Documents kept between comment checks and mention scans are dropped once
-// idle, even when no check or scan comes along to do it.
 const KEPT_SWEEP_INTERVAL: Duration = Duration::from_secs(60);
-// How often the server checks it can still reach its mail server. Sign-in by
-// email is only offered while it can.
 const MAIL_CHECK_INTERVAL: Duration = Duration::from_secs(10 * 60);
-// Sockets are told the server is restarting and get this long to close.
 const SOCKET_FAREWELL: Duration = Duration::from_secs(2);
 
 pub fn log_filter(level: Level) -> Targets {
@@ -95,8 +90,6 @@ pub fn build_router(state: AppState) -> Router {
 
 #[derive(Debug)]
 pub enum ServeError {
-    // A setting or the machine stops the server from starting. The message
-    // names the setting to check.
     CannotStart(String),
     Failed(ServerError),
 }
@@ -376,7 +369,6 @@ mod tests {
         std::fs::create_dir(&locked).unwrap();
         std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o500)).unwrap();
         if std::fs::write(locked.join("probe"), b"x").is_ok() {
-            // Running as root, which ignores the folder's permissions.
             return;
         }
         let mut config = test_config();

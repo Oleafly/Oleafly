@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useModalAccessibility } from "./use-modal-accessibility";
 
 const DIALOG_LABEL = "Dialog";
+const BACKDROP_LABEL = "Close";
 const NAME_LABEL = "Name";
 
 function Dialog({
@@ -22,7 +23,8 @@ function Dialog({
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, onClose);
   if (!open) return null;
   return (
-    <div data-testid="backdrop" onMouseDown={onBackdropMouseDown}>
+    <div>
+      <button type="button" aria-label={BACKDROP_LABEL} data-testid="backdrop" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         aria-label={DIALOG_LABEL}

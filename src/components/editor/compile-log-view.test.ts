@@ -9,10 +9,9 @@ import {
   setLogHomeRanges,
   syncLogDocument,
 } from "./compile-log-view";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const noHomes = () => [];
 const views: EditorView[] = [];

@@ -1,14 +1,3 @@
-//! CLI-agent research tasks in the background helper. The app hands over
-//! the agent's sandboxed launch (spec, program, arguments) and its home
-//! folder with the copied sign-in files; the helper starts the agent the
-//! same way, resumes its own session (`session/resume`, else
-//! `session/load`, else a new session), answers its requests under the
-//! task's rules and the shared approval queue, and records the transcript
-//! through the research runtime.
-//!
-//! When the task moves on (quit, reclaim, the helper stopping) the agent is
-//! closed between turns, or its turn is cancelled, and the session id and
-//! home go to the next owner.
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -41,8 +30,6 @@ use tokio::sync::{mpsc, watch};
 
 use super::hosts::DaemonTaskHost;
 
-/// Starts an agent from its launch. The default rebuilds the sandboxed
-/// command; tests start a fixture directly.
 pub type AcpLauncher =
     Arc<dyn Fn(&AcpLaunch) -> Result<tokio::process::Command, String> + Send + Sync>;
 
@@ -51,7 +38,6 @@ const RESUME_FAILED: &str =
     "The agent's previous session could not be resumed, so the task starts fresh.";
 const CANCELLED: &str = "The task was cancelled.";
 const INTERRUPTED_PREFIX: &str = "Your previous turn was interrupted.";
-/// ACP tool kinds; a kind outside the list follows the "unlisted" rule.
 const KNOWN_KINDS: [&str; 10] = [
     "read",
     "edit",
@@ -65,20 +51,11 @@ const KNOWN_KINDS: [&str; 10] = [
     "other",
 ];
 const MAX_CREDENTIAL_BYTES: u64 = 256 * 1024;
-/// Permission requests that may wait for an approval at once (the app's
-/// cap); more are cancelled.
 const MAX_PENDING_REQUESTS: usize = 16;
-/// Paths kept per tool call; a call naming more is judged as outside.
 const MAX_TRACKED_PATHS: usize = 256;
-/// Tool calls remembered per session; past it the list starts again.
 const MAX_TRACKED_CALLS: usize = 64;
-/// A path no project contains, standing for the paths past the limit.
 const UNTRACKED_PATH: &str = "../untracked";
-/// Switches out of a mode with permission checks off before Oleafly says it
-/// couldn't (the app's limit).
 const MAX_MODE_SWITCHES: u32 = 3;
-/// The project's tool rules, which the app writes and the helper re-reads
-/// for each request.
 const APPROVALS_FILE: &str = "approvals.toml";
 const MAX_APPROVALS_BYTES: u64 = 4 * 1024 * 1024;
 
@@ -88,8 +65,6 @@ fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// The sandboxed command, rebuilt from the launch the app granted (the
-/// sandbox clears the environment, so nothing of the helper's leaks in).
 pub fn default_launcher() -> AcpLauncher {
     Arc::new(|launch: &AcpLaunch| {
         let args: Vec<OsString> = launch.args.iter().map(OsString::from).collect();
@@ -105,7 +80,6 @@ pub fn default_launcher() -> AcpLauncher {
     })
 }
 
-/// The sign-in files each agent keeps in its home (the app copies the same).
 pub fn credential_files(agent_id: &str) -> &'static [&'static str] {
     match agent_id {
         "claude" => &[".claude/.credentials.json"],
@@ -150,16 +124,9 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
         .map_err(|_| "The agent's sign-in file could not be written.".to_string())
 }
 
-/// Copies the agent's sign-in files from the user's own home into the
-/// task's home, as the app's `prepare_credentials` does: the app no longer
-/// copies them at quit for a task that is only queued, so the helper does
-/// when it starts the agent. A file already in the task's home (an older
-/// handoff, or the agent's own refreshed token) is kept. A source that is a
-/// link, leaves the home, is over 256 KiB or isn't JSON is refused.
 pub fn copy_credentials(user_home: &Path, task_home: &Path, agent_id: &str) -> Result<(), String> {
     private_folder(task_home)?;
     let Ok(user_home) = user_home.canonicalize() else {
-        // No home to sign in from: the agent says it needs a sign-in.
         return Ok(());
     };
     for relative in credential_files(agent_id) {
@@ -208,8 +175,6 @@ pub fn copy_credentials(user_home: &Path, task_home: &Path, agent_id: &str) -> R
     Ok(())
 }
 
-/// A redactor for everything the agent sends: the sign-in values found in
-/// its home and the MCP servers' values.
 pub fn redactor_for_home(home: &Path, agent_id: &str, mcp_servers: &[Value]) -> Redactor {
     let mut values = Vec::new();
     for relative in credential_files(agent_id) {
@@ -239,7 +204,6 @@ pub fn redactor_for_home(home: &Path, agent_id: &str, mcp_servers: &[Value]) -> 
     redactor
 }
 
-/// The first message of a generation that continues a handed-off session.
 pub fn continuation_prompt(
     resume: Option<&ResumeContext>,
     record_dir: &str,
@@ -265,8 +229,6 @@ fn tool_status(status: &str) -> String {
     .into()
 }
 
-/// A session update as a transcript event; the app's mapping
-/// (`acp_event`), by the update's kind and data.
 pub fn map_update(
     kind: &str,
     data: &Value,
@@ -318,16 +280,12 @@ pub fn map_update(
     }
 }
 
-/// What the agent announced about a tool call, for its later permission
-/// requests: adapters announce a call with its kind and paths and then ask
-/// with only its id (the app's `ToolCallView`, without the diff text).
 #[derive(Clone, Debug, Default)]
 struct CallView {
     kind: Option<String>,
     locations: Vec<String>,
     input_paths: Vec<String>,
     diff_paths: Vec<String>,
-    /// More paths came than are kept.
     overflowed: bool,
 }
 
@@ -344,8 +302,6 @@ fn kept_paths<'a>(paths: impl Iterator<Item = &'a str>, overflowed: &mut bool) -
 }
 
 impl CallView {
-    /// Applies the fields a `tool_call`, `tool_call_update` or permission
-    /// `toolCall` carries; fields it leaves out keep their earlier values.
     fn apply(&mut self, update: &Value) {
         if let Some(kind) = update["kind"].as_str() {
             self.kind = Some(kind.chars().take(32).collect());
@@ -369,7 +325,6 @@ impl CallView {
         }
     }
 
-    /// Every path the call names, for the path policy.
     fn paths(&self) -> impl Iterator<Item = &str> {
         self.locations
             .iter()
@@ -380,7 +335,6 @@ impl CallView {
     }
 }
 
-/// Remembers what a `tool_call` or `tool_call_update` says.
 fn track_call(calls: &mut HashMap<String, CallView>, update: &Value) {
     let Some(id) = update["toolCallId"]
         .as_str()
@@ -394,9 +348,6 @@ fn track_call(calls: &mut HashMap<String, CallView>, update: &Value) {
     calls.entry(id.to_owned()).or_default().apply(update);
 }
 
-/// A permission request as the helper judges it: its kind (or the
-/// announced call's) and every path the request and the call it refers to
-/// name, as the app's `policy_view` does.
 fn judged_request(
     calls: &HashMap<String, CallView>,
     tool: &Value,
@@ -417,16 +368,12 @@ fn judged_request(
     (kind, paths)
 }
 
-/// The task's folder as requests may name it: canonical (what a path must
-/// really be inside), and the spellings the agent may use (the plain form
-/// it was started in, and the stored one).
 struct TaskRoots {
     canonical: PathBuf,
     spellings: [PathBuf; 2],
 }
 
 impl TaskRoots {
-    /// Canonicalizes `stored` (file work: call it off the async threads).
     fn resolve(stored: &Path) -> Result<Self, String> {
         let canonical = std::fs::canonicalize(stored)
             .map_err(|_| "The task's folder could not be found.".to_string())?;
@@ -437,7 +384,6 @@ impl TaskRoots {
         })
     }
 
-    /// Whether every path leads inside the folder.
     fn contains_all<'a>(&self, mut paths: impl Iterator<Item = &'a str>) -> bool {
         paths.all(|path| {
             self.spellings.iter().any(|spelled| {
@@ -447,8 +393,6 @@ impl TaskRoots {
     }
 }
 
-/// The Oleafly tools whose rules cover an ACP request of this kind (the
-/// app's `tools_for_acp_kind`).
 fn tools_for_kind(kind: Option<&str>) -> &'static [&'static str] {
     match kind {
         Some("execute") => &["run_command"],
@@ -461,9 +405,6 @@ fn tools_for_kind(kind: Option<&str>) -> &'static [&'static str] {
     }
 }
 
-/// The tools the project's rules deny, read from the app's approvals file
-/// now. `None` when the file can't be read or isn't what the app writes,
-/// which refuses everything, as in the app.
 fn denied_tools(data_root: &Path, project_id: &str) -> Option<Vec<String>> {
     let path = data_root.join(APPROVALS_FILE);
     let text = match std::fs::symlink_metadata(&path) {
@@ -490,10 +431,6 @@ fn denied_tools(data_root: &Path, project_id: &str) -> Option<Vec<String>> {
     Some(denied)
 }
 
-/// Whether the project's rules refuse a request of `kind` now (the app's
-/// `task_request_refused`): a deny rule for its tool refuses it, and while
-/// the project has any deny rule a kind no tool's rules cover is refused
-/// too. An unreadable rules file refuses.
 fn rules_refuse(data_root: &Path, project_id: &str, kind: Option<&str>) -> bool {
     let Some(denied) = denied_tools(data_root, project_id) else {
         return true;
@@ -505,20 +442,13 @@ fn rules_refuse(data_root: &Path, project_id: &str, kind: Option<&str>) -> bool 
         || (tools.is_empty() && !denied.is_empty())
 }
 
-/// A request judged against the task's folder and the project's rules.
 struct Judged {
     kind: Option<String>,
-    /// Every path it names is inside the task's folder.
     in_root: bool,
-    /// It (or the call it refers to) names a path at all.
     names_paths: bool,
-    /// The project's rules, read now, refuse it.
     refused_now: bool,
 }
 
-/// How a judged request is answered: a read or change that names no path
-/// is refused rather than allowed on a guess, as are kinds the project's
-/// rules refuse now; then the grant's rules and the command policy.
 fn request_decision(grant: &AcpGrant, judged: &Judged, commands: CommandPolicy) -> PermissionPath {
     let file_request = matches!(
         judged.kind.as_deref(),
@@ -530,20 +460,15 @@ fn request_decision(grant: &AcpGrant, judged: &Judged, commands: CommandPolicy) 
     permission_decision(grant, judged.kind.as_deref(), commands)
 }
 
-/// The agent's modes and options, kept to move it out of a mode with
-/// permission checks off (the app's `leave_blocked_mode`).
 #[derive(Default)]
 struct ModeGuard {
     controls: SessionControls,
     switches: u32,
-    /// A switch is on its way.
     switching: bool,
     warned: bool,
 }
 
 impl ModeGuard {
-    /// The switch to try now: the agent is in a blocked mode, it offers
-    /// another one, and attempts remain.
     fn next_switch(&mut self) -> Option<ModeSwitch> {
         if self.switching || self.switches >= MAX_MODE_SWITCHES {
             return None;
@@ -553,7 +478,6 @@ impl ModeGuard {
         Some(switch)
     }
 
-    /// What to tell the user, once, when the agent stays in a blocked mode.
     fn notice(&mut self, redactor: &Redactor) -> Option<String> {
         if self.warned || self.switching {
             return None;
@@ -566,7 +490,6 @@ impl ModeGuard {
         ))
     }
 
-    /// Applies the agent's answer to a switch.
     fn switched(&mut self, switch: &ModeSwitch, answer: &Value) {
         self.switching = false;
         if answer["configOptions"].is_array() {
@@ -609,9 +532,6 @@ async fn send_switch(
     .map_err(|error| error.to_string())
 }
 
-/// During a turn: starts a switch out of a blocked mode in the background
-/// (its answer comes back as [`FromAgent::Switched`]), or says once that
-/// the agent stays in it.
 fn guard_mode(
     guard: &mut ModeGuard,
     client: &Arc<AcpClient>,
@@ -634,8 +554,6 @@ fn guard_mode(
     }
 }
 
-/// `work`, unless `cancel` fires first (the start-up requests each wait up
-/// to a minute for the agent).
 async fn until_cancelled<T>(
     cancel: &CancellationToken,
     work: impl std::future::Future<Output = T>,
@@ -647,18 +565,12 @@ async fn until_cancelled<T>(
     }
 }
 
-/// What the helper keeps about the running session: the announced tool
-/// calls and the agent's modes.
 #[derive(Default)]
 struct SessionView {
     calls: HashMap<String, CallView>,
     mode: ModeGuard,
 }
 
-/// One session update of the running turn: tool calls are kept for their
-/// permission requests, mode and option changes for the mode guard, and the
-/// update goes to the transcript. Whether the agent's modes or options
-/// changed.
 fn apply_update(
     params: &Value,
     session_id: &str,
@@ -697,8 +609,6 @@ pub enum PermissionPath {
     Allow,
 }
 
-/// How a request is answered: refused by the project's rules or the
-/// task's command policy, sent to the approval queue, or allowed.
 pub fn permission_decision(
     grant: &AcpGrant,
     kind: Option<&str>,
@@ -742,8 +652,6 @@ fn answer(request: IncomingRequest, option: Option<String>) {
     };
 }
 
-/// The command a request runs, for the approval (at most 16 KiB, secrets
-/// removed).
 fn command_detail(redactor: &Redactor, tool_call: &Value) -> String {
     let command = match &tool_call["rawInput"]["command"] {
         Value::String(text) => text.clone(),
@@ -762,7 +670,6 @@ enum FromAgent {
     Permission(Box<IncomingRequest>),
     Withdrawn,
     Disconnected,
-    /// A switch out of a blocked mode finished (`None`: it failed).
     Switched(ModeSwitch, Option<Value>),
 }
 
@@ -796,7 +703,6 @@ impl ClientHost for TaskClientHost {
     }
 }
 
-/// The helper's CLI-agent runtime.
 #[derive(Clone)]
 pub struct DaemonAcpAdapter {
     host: Arc<DaemonTaskHost>,
@@ -804,17 +710,11 @@ pub struct DaemonAcpAdapter {
     registry: Option<Arc<PidRegistry>>,
     launcher: AcpLauncher,
     tokens: Arc<Mutex<HashMap<String, ActiveTaskRun>>>,
-    /// The step and approval-withdraw tokens of every run, instead of the
-    /// scheduler's (tests).
     suspend_tokens: Option<(CancellationToken, CancellationToken)>,
-    /// The home the agents' sign-in files are copied from (the user's;
-    /// tests pass their own).
     user_home: Option<PathBuf>,
 }
 
 impl DaemonAcpAdapter {
-    /// `acp_root` holds the agents' process list (`agents.pids`), shared
-    /// with the app.
     pub fn new(
         acp_root: PathBuf,
         host: Arc<DaemonTaskHost>,
@@ -851,8 +751,6 @@ impl DaemonAcpAdapter {
         self
     }
 
-    /// The token that ends the task's generation at its next step and the
-    /// one that withdraws its approval waits.
     fn suspend_tokens(&self, task_id: &str) -> (CancellationToken, CancellationToken) {
         match &self.suspend_tokens {
             Some(tokens) => tokens.clone(),
@@ -865,7 +763,6 @@ impl DaemonAcpAdapter {
 }
 
 impl TaskRuntimeAdapter for DaemonAcpAdapter {
-    /// The grant decides which agent runs.
     fn supports(&self, _agent_id: &str) -> bool {
         true
     }
@@ -914,7 +811,6 @@ impl TaskRuntimeAdapter for DaemonAcpAdapter {
     }
 }
 
-/// How the agent's turn ended.
 enum TurnEnd {
     Finished(Value),
     Suspended { turn_interrupted: bool },
@@ -923,9 +819,6 @@ enum TurnEnd {
 }
 
 impl DaemonAcpAdapter {
-    /// The launch for this generation: the granted program, arguments and
-    /// variables, with the sandbox's folders made for this generation's
-    /// workspace (a task handed over before it started has none yet).
     fn launch_for(
         grant: &AcpGrant,
         context: &TaskRunContext,
@@ -968,7 +861,6 @@ impl DaemonAcpAdapter {
         if cancel.is_cancelled() {
             return Err(CANCELLED.into());
         }
-        // The grant is a database read.
         let grant = {
             let host = self.host.clone();
             let task_id = context.task_id.clone();
@@ -983,8 +875,6 @@ impl DaemonAcpAdapter {
             ));
         }
         let acp = grant.acp.clone().ok_or_else(|| OPEN_OLEAFLY.to_string())?;
-        // Looking up the folders and runtimes is file work (on Windows an
-        // ACL walk), so it stays off the async threads.
         let (launch, handoff) = {
             let acp = acp.clone();
             let context = context.clone();
@@ -992,8 +882,6 @@ impl DaemonAcpAdapter {
                 .await
                 .map_err(|_| "The agent's sandbox could not be prepared.".to_string())??
         };
-        // The grant, skill and program-folder lookups read files and the
-        // task database: off the helper's two async threads.
         let (skills, read_paths, linked_roots, search_dirs, project_root) = {
             let host = self.host.clone();
             let context = context.clone();
@@ -1070,8 +958,6 @@ impl DaemonAcpAdapter {
                 .unwrap_or_default()
         };
         servers.extend(task_servers);
-        // A task queued at quit comes with a home but without the agent's
-        // sign-in files; they are copied now, when the agent starts.
         if let Some(user_home) = self.user_home.clone() {
             let home = launch.sandbox.home.clone();
             let agent = acp.agent_id.clone();
@@ -1084,8 +970,6 @@ impl DaemonAcpAdapter {
             &acp.agent_id,
             &servers,
         ));
-        // Building the sandboxed command can grant folder access on Windows
-        // (it walks permissions), so it stays off the async threads.
         let command = {
             let launcher = self.launcher.clone();
             let prepared = launch.clone();
@@ -1170,8 +1054,6 @@ impl DaemonAcpAdapter {
                     .map_err(|_| "The task's folder could not be found.".to_string())??,
             )
         };
-        // Each start-up request may wait a minute for the agent, so a stop
-        // or cancel ends the wait.
         let negotiated = until_cancelled(cancel, client.initialize(&options))
             .await?
             .map_err(|error| redactor.text(&error.to_string()))?;
@@ -1200,14 +1082,11 @@ impl DaemonAcpAdapter {
                 until_cancelled(cancel, start_session(client, &cwd, &servers, redactor)).await??
             }
         };
-        // The agent's own session id, the same one the handoff carries.
         events(TaskRuntimeEvent::SessionBound {
             native_session_id: session_id.clone(),
         });
         let mut view = SessionView::default();
         view.mode.controls.merge(&redactor.value(&started));
-        // An agent may start in a mode with permission checks off (its own
-        // settings); move it out before the turn.
         while let Some(switch) = view.mode.next_switch() {
             match until_cancelled(cancel, send_switch(client, &session_id, &switch)).await? {
                 Ok(answer) => view.mode.switched(&switch, &redactor.value(&answer)),
@@ -1244,7 +1123,6 @@ impl DaemonAcpAdapter {
         };
         let pending_asks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let hold_sender = Arc::new(hold_sender);
-        // Cancelled while the agent started: the turn never begins.
         if cancel.is_cancelled() {
             return Err(CANCELLED.into());
         }
@@ -1257,7 +1135,6 @@ impl DaemonAcpAdapter {
         let mut suspending = false;
         let mut turn_interrupted = false;
         let mut cancelling = false;
-        // Set when a cancel goes out; past it the agent is stopped.
         let mut stop_at: Option<tokio::time::Instant> = None;
         let end = loop {
             tokio::select! {
@@ -1269,28 +1146,18 @@ impl DaemonAcpAdapter {
                 }
                 _ = step.cancelled(), if !suspending && !cancelling => {
                     suspending = true;
-                    // A quit, an update or the helper stopping: the turn ends
-                    // now and the next owner continues it. A reclaim waits
-                    // for the turn to end.
                     if withdraw.is_cancelled() {
                         turn_interrupted = true;
                         stop_at.get_or_insert_with(|| tokio::time::Instant::now() + CANCEL_GRACE);
                         let _ = client.cancel(&session_id);
                     }
                 }
-                // A reclaim waits for the turn; a quit, update or stop that
-                // comes while it does still ends the turn now.
                 _ = withdraw.cancelled(), if suspending && !turn_interrupted && !cancelling => {
                     turn_interrupted = true;
                     stop_at.get_or_insert_with(|| tokio::time::Instant::now() + CANCEL_GRACE);
                     let _ = client.cancel(&session_id);
                 }
                 result = &mut prompt => {
-                    // The client queues every update the agent sent before
-                    // its reply, then resolves the reply. This task can still
-                    // see the reply first (it may be polling on another thread
-                    // while those updates arrive), so the turn's last updates
-                    // are read here, or its final text would be lost.
                     while let Ok(message) = receiver.try_recv() {
                         match message {
                             FromAgent::Update(params) => {
@@ -1334,9 +1201,6 @@ impl DaemonAcpAdapter {
                             answer(request, None);
                             continue;
                         }
-                        // The request's paths with those the call it refers
-                        // to announced, and the project's rules as they are
-                        // now (the files are read off the async threads).
                         let (kind, paths) = judged_request(&view.calls, &params["toolCall"]);
                         let judged = {
                             let roots = roots.clone();
@@ -1407,9 +1271,6 @@ impl DaemonAcpAdapter {
                         // The prompt returns the disconnect as its error.
                     }
                 },
-                // A turn that doesn't settle after a cancel is stopped, which
-                // ends the prompt. That also covers a cancel that went out
-                // before the prompt did, which no agent can act on.
                 _ = tokio::time::sleep_until(stop_at.unwrap_or_else(tokio::time::Instant::now)), if stop_at.is_some() => {
                     stop_at = None;
                     client.request_stop();
@@ -1461,8 +1322,6 @@ impl DaemonAcpAdapter {
         }
     }
 
-    /// Ends the agent between turns and leaves its session and home to the
-    /// next owner.
     #[allow(clippy::too_many_arguments)]
     async fn suspend(
         &self,
@@ -1493,8 +1352,6 @@ impl DaemonAcpAdapter {
     }
 }
 
-/// Turns an HTTP MCP server into a stdio one, for an agent that only
-/// speaks stdio.
 fn bridge_http_servers(servers: &mut [Value]) -> Result<(), String> {
     for server in servers {
         if server["type"] == "http" {
@@ -1504,9 +1361,6 @@ fn bridge_http_servers(servers: &mut [Value]) -> Result<(), String> {
     Ok(())
 }
 
-/// Resumes the agent's own session when it can; a loaded session replays its
-/// history first, which is already in the transcript. The session's id and
-/// the agent's answer (its modes and options) when it came back.
 async fn restore_session(
     client: &Arc<AcpClient>,
     handoff: &AcpHandoff,
@@ -1530,8 +1384,6 @@ async fn restore_session(
     restored.map(|answer| (session.clone(), answer))
 }
 
-/// Starts a new session; its id, once the agent gave a usable one, and the
-/// agent's answer.
 async fn start_session(
     client: &Arc<AcpClient>,
     cwd: &str,
@@ -1550,8 +1402,6 @@ async fn start_session(
     Ok((id, value))
 }
 
-/// Why a finished turn is not a finished task: its stop reason, unless it
-/// ended normally.
 fn unfinished_reason(response: &Value) -> Option<String> {
     let stop = response["stopReason"].as_str().unwrap_or_default();
     if stop == "end_turn" {
@@ -1564,7 +1414,6 @@ fn unfinished_reason(response: &Value) -> Option<String> {
     })
 }
 
-/// The turn's token counts from the prompt answer.
 fn record_usage(response: &Value, outcome: &mut TaskRuntimeOutcome, events: &TaskEventSink) {
     let Some(usage) = response.get("usage") else {
         return;

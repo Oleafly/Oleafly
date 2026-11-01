@@ -1,5 +1,3 @@
-// Pure helper for which PDF pages an agent should inspect after compile.
-
 export function pickPagesToVerify(
   numPages: number,
   opts: { cursorPage?: number; maxPages?: number } = {},
@@ -26,9 +24,6 @@ export function pickPagesToVerify(
 
   const all = [...set].sort((a, b) => a - b);
   if (all.length <= maxPages) return all;
-  // Over budget (maxPages smaller than the seeded first/last/cursor set): keep
-  // the endpoints and take the earliest middles, so first and last always
-  // survive the cap rather than being sliced off the tail.
   if (maxPages === 1) return [1];
   const middles = all.filter((p) => p !== 1 && p !== numPages).slice(0, maxPages - 2);
   return [1, ...middles, numPages];

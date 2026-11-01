@@ -12,13 +12,9 @@ const clipboard = vi.hoisted(() => ({
 vi.mock("@/lib/clipboard", () => clipboard);
 
 import { copySelection, cutSelection, hasSelectedText, pasteClipboard, selectAllText } from "./clipboard-commands";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 class FakeDataTransfer {
   private readonly data = new Map<string, string>();

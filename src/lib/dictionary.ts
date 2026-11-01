@@ -25,12 +25,8 @@ const memoryStorage: StateStorage = {
   },
 };
 
-// Words can be ignored just for one project or everywhere. Persisted to the
-// webview's localStorage so it survives restarts.
 interface DictionaryState {
-  // Keyed by projectId -> ignored words (as written).
   ignored: Record<string, string[]>;
-  // Words ignored across every project.
   global: string[];
   suppressed: Record<string, string[]>;
   revision: number;

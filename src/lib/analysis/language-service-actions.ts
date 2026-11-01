@@ -36,8 +36,6 @@ export async function setupActiveLanguageService(): Promise<void> {
   try {
     await activeActions.setup();
   } catch {
-    // The backend error can contain local paths or signed URLs. UI callers get
-    // one stable, actionable message while the controller owns detailed state.
     throw new Error(LANGUAGE_SERVICE_SETUP_FAILURE_REASON);
   }
 }

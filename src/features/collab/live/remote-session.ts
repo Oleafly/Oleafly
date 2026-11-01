@@ -5,20 +5,13 @@ import { diffOperation, editsFromOperation, OtError, operationFromEdits, TextOpe
 export interface RemoteSessionTransport {
   open(path: string, onMessage: (message: CollabDocMessage) => void): Promise<CollabDocOpened | null>;
   change(fileId: string, rev: number, op: CollabTextOperation): Promise<void> | void;
-  // `session` is the token `open` returned, so a late close can't shut a
-  // channel the same file opened since.
   close(fileId: string, session: number): Promise<void> | void;
 }
 
 export type RemoteSessionPhase = "opening" | "open" | "detached" | "closed";
 
-// Why typing that never reached the shared document was dropped: the person
-// can only view the project now, or the shared document refused it twice.
 export type DiscardReason = "read_only" | "refused";
 
-// Confirmed changes are composed into one operation instead of being applied
-// to the confirmed text each time. Past this many steps the text is rebuilt,
-// so composing stays cheap.
 const CONFIRMED_STEPS = 64;
 
 export interface RemoteSessionOptions {
@@ -40,20 +33,13 @@ export class RemoteDocumentSession implements DocumentSession {
   private localVersion = 0;
   private serverRev = 0;
   private channel: Channel | null = null;
-  // The shared text at `serverRev`, as far as Rust has confirmed it, is
-  // `confirmedText` with `confirmedSince` applied. Local typing that isn't
-  // confirmed yet is the difference between it and `content`. Keeping the
-  // confirmed changes as an operation means an edit copies the file once.
   private confirmedText: string;
   private confirmedSince: TextOperation | null = null;
-  // While opening, `pending` holds the typing relative to `base`.
   private base: string;
   private pending: TextOperation | null = null;
   private outstanding: TextOperation | null = null;
   private buffer: TextOperation | null = null;
-  // Unsent typing went out again after a reset and hasn't been confirmed yet.
   private resent = false;
-  // An input method is composing: typing collects in `buffer` until it ends.
   private holding = false;
   private generation = 0;
   private current: RemoteSessionPhase = "opening";
@@ -99,12 +85,10 @@ export class RemoteDocumentSession implements DocumentSession {
     return this.pending === null && this.outstanding === null && this.buffer === null;
   }
 
-  // The text holds typing the shared document never confirmed.
   get unconfirmed(): boolean {
     return !this.synchronized;
   }
 
-  // The shared text as Rust last confirmed it.
   confirmed(): string {
     if (this.confirmedSince) {
       this.confirmedText = this.confirmedSince.apply(this.confirmedText);
@@ -232,11 +216,8 @@ export class RemoteDocumentSession implements DocumentSession {
     return outstanding ?? buffer;
   }
 
-  // Keeps typing Rust hasn't confirmed: it goes out again once the file is
-  // open, moved past whatever changed in the shared text meanwhile. Typing
-  // that no longer fits the text it was recorded on is dropped, and the
-  // person is told, instead of leaving the file stuck between channels.
   private keepUnsent(): void {
+    if (this.pending && this.outstanding === null && this.buffer === null) return;
     let base = this.content;
     let pending: TextOperation | null = null;
     let lost = false;
@@ -264,9 +245,6 @@ export class RemoteDocumentSession implements DocumentSession {
     if (pending && !pending.isNoop()) this.options.onDiscarded?.("refused");
   }
 
-  // Moves typing made on `base` onto the shared text and sends it. False when
-  // the typing doesn't fit the text it was recorded on, which only a broken
-  // state can cause, so the caller falls back to taking the shared text.
   private rebase(pending: TextOperation, serverText: string): boolean {
     let mine: TextOperation;
     let theirs: TextOperation;
@@ -281,7 +259,6 @@ export class RemoteDocumentSession implements DocumentSession {
     return true;
   }
 
-  // Sends typing now, or keeps it while an input method is composing.
   private queue(operation: TextOperation): void {
     if (this.holding) {
       this.buffer = this.buffer ? this.buffer.compose(operation) : operation;
@@ -327,8 +304,6 @@ export class RemoteDocumentSession implements DocumentSession {
     let operation = server;
     let outstanding = this.outstanding;
     let buffer = this.buffer;
-    // Typing held while an input method composes waits in `buffer` with
-    // nothing in flight, so each one moves past the remote change on its own.
     if (outstanding) [outstanding, operation] = TextOperation.transform(outstanding, operation);
     if (buffer) [buffer, operation] = TextOperation.transform(buffer, operation);
     const next = operation.apply(this.content);
@@ -340,12 +315,6 @@ export class RemoteDocumentSession implements DocumentSession {
     this.checkLength(length);
   }
 
-  // Rust sends a reset when it refused a change or couldn't route one. Typing
-  // it never took, in flight or waiting, is moved onto the reset text and sent
-  // once more. Rust drops a change based on a revision before the reset
-  // without answering it, so nothing waits for that answer. The typing is
-  // dropped only when the person can only view the project now or Rust
-  // already refused it once.
   private reset(rev: number, text: string): void {
     const unsent = this.unsent();
     let discarded: DiscardReason | null = null;
@@ -370,14 +339,10 @@ export class RemoteDocumentSession implements DocumentSession {
       this.settle();
       return;
     }
-    // Only typing that goes out again counts as sent once more. Typing held
-    // for a composition waits unsent, so another reset can't refuse it.
     this.resent = !this.holding;
     this.queue(mine);
   }
 
-  // `length` is the shared text's length after the message, which is what
-  // the confirmed text must hold whatever local typing is still in flight.
   private checkLength(length: number): boolean {
     if (this.confirmedLength() === length) return true;
     this.resync();
@@ -393,9 +358,6 @@ export class RemoteDocumentSession implements DocumentSession {
     this.confirmedSince = null;
   }
 
-  // Rust confirmed `operation` on top of the confirmed text. With nothing
-  // unconfirmed left, the session's own text is the confirmed text, so it is
-  // shared rather than copied.
   private confirm(operation: TextOperation): void {
     if (this.synchronized) {
       this.setConfirmed(this.content);

@@ -151,25 +151,58 @@ pub(crate) fn appimage_env_changes(
 }
 
 pub(crate) fn clear_appimage_env(command: &mut Command) {
+    #[cfg(all(test, unix))]
+    if simulated::clear(command) {
+        return;
+    }
     if let Some(appdir) = running() {
         appdir.clear_with(command, |name| std::env::var_os(name));
     }
 }
 
-// AppImages exist only on Linux, and the launcher's variables are
-// colon-separated path lists, which Windows splits on semicolons instead. The
-// code these tests cover does nothing outside Linux (see `running`).
 #[cfg(all(test, unix))]
-mod tests {
+pub(crate) mod simulated {
     use super::*;
+    use std::cell::RefCell;
 
-    struct Image {
-        _temp: tempfile::TempDir,
-        root: PathBuf,
-        appdir: AppDir,
+    type Launch = (AppDir, HashMap<&'static str, OsString>);
+
+    thread_local! {
+        static ACTIVE: RefCell<Option<Launch>> = const { RefCell::new(None) };
     }
 
-    fn image() -> Image {
+    pub(crate) struct SimulatedAppImage {
+        _temp: tempfile::TempDir,
+        pub(crate) root: PathBuf,
+    }
+
+    impl SimulatedAppImage {
+        pub(crate) fn start() -> Self {
+            let (temp, root, appdir) = fake_image();
+            let inherited = launched(&root);
+            ACTIVE.with(|active| *active.borrow_mut() = Some((appdir, inherited)));
+            Self { _temp: temp, root }
+        }
+    }
+
+    impl Drop for SimulatedAppImage {
+        fn drop(&mut self) {
+            ACTIVE.with(|active| active.borrow_mut().take());
+        }
+    }
+
+    pub(super) fn clear(command: &mut Command) -> bool {
+        ACTIVE.with(|active| {
+            let active = active.borrow();
+            let Some((appdir, inherited)) = active.as_ref() else {
+                return false;
+            };
+            appdir.clear_with(command, |name| inherited.get(name).cloned());
+            true
+        })
+    }
+
+    pub(super) fn fake_image() -> (tempfile::TempDir, PathBuf, AppDir) {
         let temp = tempfile::tempdir().unwrap();
         let root = temp
             .path()
@@ -183,14 +216,10 @@ mod tests {
             Some(&root.join("usr/bin/oleafly-desktop")),
         )
         .unwrap();
-        Image {
-            _temp: temp,
-            root,
-            appdir,
-        }
+        (temp, root, appdir)
     }
 
-    fn launched(root: &Path) -> HashMap<&'static str, OsString> {
+    pub(super) fn launched(root: &Path) -> HashMap<&'static str, OsString> {
         let root = root.display();
         HashMap::from([
             (
@@ -214,6 +243,30 @@ mod tests {
             ("GTK_THEME", "Adwaita:light".into()),
             ("PATH", format!("{root}/usr/bin/:{root}/usr/sbin/:/usr/bin:/bin").into()),
         ])
+    }
+}
+
+// AppImages exist only on Linux, and the launcher's variables are
+// colon-separated path lists, which Windows splits on semicolons instead. The
+// code these tests cover does nothing outside Linux (see `running`).
+#[cfg(all(test, unix))]
+mod tests {
+    use super::simulated::{fake_image, launched};
+    use super::*;
+
+    struct Image {
+        _temp: tempfile::TempDir,
+        root: PathBuf,
+        appdir: AppDir,
+    }
+
+    fn image() -> Image {
+        let (temp, root, appdir) = fake_image();
+        Image {
+            _temp: temp,
+            root,
+            appdir,
+        }
     }
 
     fn lookup<'a>(

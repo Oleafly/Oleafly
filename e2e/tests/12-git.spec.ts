@@ -12,9 +12,6 @@ import {
   type Page,
 } from "../helpers";
 
-// Only the publish flow needs a real token. Repository initialization,
-// staging, diffs, and commits are fully local operations.
-
 const RUN = Date.now().toString(36);
 
 async function initializeRepository(page: Page) {
@@ -154,8 +151,6 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
   await typeInEditorAfter(tauriPage, "here.", ` ${marker}`);
 
   await openRailTab(tauriPage, "Source Control");
-  // Observe autosave before requesting one final Git snapshot. Repeated
-  // refresh clicks invalidate in-flight snapshots on a slow Windows host.
   await tauriPage.waitForFunction(
     `import("/src/store/files.ts").then(({ useFilesStore }) =>
       useFilesStore.getState().files["main.tex"]?.dirty === false)`,
@@ -170,8 +165,6 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
     15_000,
   );
 
-  // Keep the working diff open while its INDEX baseline changes. The editor
-  // must remove staged additions and show them again after unstaging.
   await stageAllGitChanges(tauriPage);
   try {
     await tauriPage.waitForFunction(
@@ -205,18 +198,12 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
 
   const message = `e2e: commit ${marker}`;
   await stageAllAndCommit(tauriPage, message);
-  // The success card proves the real git commit completed. The working tree
-  // can legitimately gain a later autosave, so "No changes" is not a stable
-  // assertion for the commit operation itself.
   await tauriPage.waitForFunction(
     `document.body.innerText.includes(${JSON.stringify(`Committed: "${message}"`)})`,
     15_000,
   );
 });
 
-// Deleting the remote repo needs the delete_repo scope; if the token lacks it
-// the test tells you to delete manually. Opt in with E2E_GIT_PUSH=1 alongside
-// E2E_GITHUB_TOKEN.
 test("publish to GitHub creates a real repo and pushes the project", async ({ tauriPage }) => {
   // Ignored on purpose without the opt-in push credentials, because the run creates a real remote repository.
   test.skip(
@@ -239,7 +226,6 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   await openRailTab(tauriPage, "Source Control");
   await openSourceControlMoreActions(tauriPage);
 
-  // A previous run may have left a remote linked; unlink to get the Publish CTA.
   await tauriPage.waitForFunction(
     `Array.from(document.querySelectorAll('[role="menuitem"]')).some(entry =>
       (entry.getAttribute("data-testid") === "source-control-publish" ||
@@ -265,7 +251,6 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   expect((await gh(`/repos/${me.login}/${repoName}`)).status).toBe(200);
   expect((await gh(`/repos/${me.login}/${repoName}/contents/main.tex`)).status).toBe(200);
 
-  // Unlink too, so re-runs start from the Publish CTA again.
   const del = await gh(`/repos/${me.login}/${repoName}`, { method: "DELETE" });
   if (del.status !== 204) {
     console.warn(
@@ -280,8 +265,6 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   await waitForPublishItem(tauriPage);
 });
 
-// The publish item reads "Change repo" while a remote is linked; wait for it
-// to offer publishing again.
 async function waitForPublishItem(page: Page) {
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('[data-testid="source-control-publish"][role="menuitem"]')).some(entry =>

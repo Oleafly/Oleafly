@@ -1,10 +1,3 @@
-//! The headless agent's tools. Names match the app's assistant and research
-//! tasks, so skills read the same. What a run is offered follows `--allow`:
-//! reading always, writing and building with `write`, shell commands with
-//! `commands`, literature, citations and the web with `network`.
-//!
-//! Some pieces are ports the background helper shares: [`CliSkills`],
-//! [`StoreSecrets`] and [`CliWorkspaceTools`].
 pub mod build;
 pub mod cite;
 pub mod command;
@@ -38,29 +31,24 @@ use super::workspace::AgentWorkspace;
 
 pub type EventSink = Arc<dyn Fn(RunEvent) + Send + Sync>;
 
-/// One native tool and what it needs.
 pub struct ToolSpec {
     pub name: &'static str,
     pub needs: Allow,
-    /// Changes files (refused in a read-only run).
     pub writes: bool,
     pub schema: ToolSchema,
 }
 
-/// What a build in the run left, for `get_build_log`.
 #[derive(Clone, Debug, Default)]
 pub struct LastBuild {
     pub ok: bool,
     pub log: String,
 }
 
-/// Everything a tool call of one run uses.
 pub struct ToolContext {
     pub workspace: Arc<AgentWorkspace>,
     pub policy: RunPolicy,
     pub config: Arc<DesktopConfig>,
     pub data_root: Option<PathBuf>,
-    /// The app's id of the project, when the app knows it.
     pub project_id: Option<String>,
     pub run_id: String,
     pub mcp: Option<Arc<McpHub>>,
@@ -68,16 +56,11 @@ pub struct ToolContext {
     pub events: EventSink,
     pub last_build: Mutex<Option<LastBuild>>,
     pub warned_unsandboxed: AtomicBool,
-    /// `--unsandboxed-commands`: a review run may run commands the sandbox
-    /// can't hold.
     pub unsandboxed_commands: bool,
     pub skills: Arc<CliSkills>,
-    /// Folders commands may read besides the run's folder (selected skills).
     pub read_paths: Vec<PathBuf>,
     pub secrets: Arc<StoreSecrets>,
-    /// Tool calls so far.
     pub calls: AtomicU32,
-    /// Warnings for the result (`code`, message), taken by the driver.
     pub warnings: Mutex<Vec<(&'static str, String)>>,
 }
 
@@ -88,7 +71,6 @@ impl ToolContext {
         }
     }
 
-    /// The warnings recorded since the last call.
     pub fn take_warnings(&self) -> Vec<(&'static str, String)> {
         std::mem::take(&mut *lock(&self.warnings))
     }
@@ -118,7 +100,6 @@ pub(crate) fn schema(
     }
 }
 
-/// The native tools a run with `policy` is offered, sorted by name.
 pub fn native_tools(policy: &RunPolicy) -> Vec<ToolSpec> {
     let mut tools: Vec<ToolSpec> = files::specs()
         .into_iter()
@@ -134,7 +115,6 @@ pub fn native_tools(policy: &RunPolicy) -> Vec<ToolSpec> {
     tools
 }
 
-/// The text a tool result carries.
 fn tool_output(result: Result<Value, String>) -> ToolOutput {
     ToolOutput::text(match result {
         Ok(value) => value.to_string(),
@@ -142,7 +122,6 @@ fn tool_output(result: Result<Value, String>) -> ToolOutput {
     })
 }
 
-/// Runs one call of a native tool.
 async fn dispatch(ctx: &Arc<ToolContext>, name: &str, arguments: Value) -> Result<Value, String> {
     if ctx.cancel.is_cancelled() {
         return Err("The run was stopped.".into());
@@ -162,8 +141,6 @@ async fn dispatch(ctx: &Arc<ToolContext>, name: &str, arguments: Value) -> Resul
     }
 }
 
-/// The run's tool runner: native tools, then the user's MCP tools. A tool
-/// the run was not offered is refused.
 pub fn runner(
     ctx: Arc<ToolContext>,
     tools: Arc<Vec<ToolSpec>>,
@@ -222,7 +199,6 @@ pub fn runner(
     })
 }
 
-/// The app's `User-Agent` for web reads, with this CLI's version.
 pub(crate) fn web_user_agent() -> String {
     format!(
         "Oleafly/{} (+https://oleafly.com)",
@@ -230,9 +206,6 @@ pub(crate) fn web_user_agent() -> String {
     )
 }
 
-/// The local web tools a run needs on this model (those its provider does
-/// not run itself), the app's rule: fetch always, search only with a key.
-/// Returns whether web search is unavailable.
 pub fn add_local_web_tools(
     request: &mut CompletionRequest,
     resolved: &Resolved,
@@ -284,7 +257,6 @@ pub(crate) mod test_support {
         policy(WriteMode::ReadOnly, AllowSet::default(), true)
     }
 
-    /// A tool context over `project` with `policy` and no MCP servers.
     pub fn context(project: &std::path::Path, policy: RunPolicy) -> Arc<ToolContext> {
         let workspace =
             AgentWorkspace::open(project, &policy, &STAGE_LIMITS, &CancellationToken::new())
@@ -310,10 +282,8 @@ pub(crate) mod test_support {
         })
     }
 
-    /// Tests that change the process environment hold this.
     pub static ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-    /// Variables set for a test and put back when it ends.
     pub struct Environment {
         saved: Vec<(String, Option<std::ffi::OsString>)>,
         _lock: tokio::sync::MutexGuard<'static, ()>,

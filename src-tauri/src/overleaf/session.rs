@@ -1,5 +1,3 @@
-//! Signed-in sessions and Git tokens (in `oleafly-online`), kept in the
-//! app's data folder, which the CLI reads too.
 pub(crate) use oleafly_online::service::DEFAULT_SERVER;
 pub(crate) use oleafly_online::session::{
     cookie_applies, cookie_header, merge_set_cookies, origin_of, Session,
@@ -7,7 +5,6 @@ pub(crate) use oleafly_online::session::{
 
 use super::errors::app_error;
 
-/// Who saved a session the app's sign-in window opened.
 pub(crate) const SAVED_BY_APP: &str = "app";
 
 pub(crate) fn normalize_server(input: Option<&str>) -> Result<String, String> {

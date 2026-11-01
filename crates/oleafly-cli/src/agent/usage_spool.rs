@@ -1,11 +1,3 @@
-//! Model usage recorded outside the app. The usage ledger lives in the
-//! app's library database, which only the app writes, so the headless agent
-//! and the background helper append their usage to
-//! `<data>/daemon/usage-spool.jsonl`. The app imports it (each event once,
-//! by its id) at launch and while the helper runs.
-//!
-//! An event holds token counts, a cost and names. It never holds a key, a
-//! prompt or a reply.
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -16,21 +8,15 @@ use serde::{Deserialize, Serialize};
 const SPOOL_FILE: &str = "usage-spool.jsonl";
 const LOCK_FILE: &str = "usage-spool.lock";
 const LOCK_BUDGET: Duration = Duration::from_secs(5);
-/// A line longer than this is not an event this version wrote.
 const MAX_LINE_BYTES: usize = 16 * 1024;
-/// Readers look at the last part of a spool this large.
 const MAX_READ_BYTES: u64 = 32 << 20;
-/// A spool past this size drops events older than [`KEEP_FOR_MS`] when the
-/// app has imported it.
 pub const COMPACT_AFTER_BYTES: u64 = 8 << 20;
 pub const KEEP_FOR_MS: i64 = 45 * 24 * 60 * 60 * 1000;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageSpoolEvent {
-    /// Unique per event; the app records each id once.
     pub id: String,
-    /// `cli-agent` or `daemon`.
     pub source: String,
     #[serde(default)]
     pub task_id: Option<String>,
@@ -50,13 +36,10 @@ pub struct UsageSpoolEvent {
     pub cache_write_tokens: Option<u32>,
     #[serde(default)]
     pub cost_usd: Option<f64>,
-    /// `completed`, `failed`, `cancelled` or `interrupted`.
     pub status: String,
-    /// When the usage happened (epoch ms).
     pub at: i64,
 }
 
-/// A new event id: time, process and a random part.
 pub fn event_id(source: &str) -> String {
     format!(
         "{source}-{}-{}-{:08x}",
@@ -66,7 +49,6 @@ pub fn event_id(source: &str) -> String {
     )
 }
 
-/// `<data>/daemon/usage-spool.jsonl`.
 pub fn spool_path(data_root: &Path) -> PathBuf {
     data_root.join("daemon").join(SPOOL_FILE)
 }
@@ -106,7 +88,6 @@ fn open_append(path: &Path) -> io::Result<File> {
     Ok(file)
 }
 
-/// Appends one event (one line, written at once).
 pub fn append(data_root: &Path, event: &UsageSpoolEvent) -> io::Result<()> {
     let dir = spool_dir(data_root)?;
     let mut line = serde_json::to_vec(event).map_err(io::Error::other)?;
@@ -123,8 +104,6 @@ pub fn append(data_root: &Path, event: &UsageSpoolEvent) -> io::Result<()> {
     file.flush()
 }
 
-/// Every readable event in the spool, oldest first. A spool larger than
-/// 32 MiB is read from its last 32 MiB.
 pub fn read_all(data_root: &Path) -> io::Result<Vec<UsageSpoolEvent>> {
     let path = spool_path(data_root);
     let mut file = match File::open(&path) {
@@ -148,7 +127,6 @@ pub fn read_all(data_root: &Path) -> io::Result<Vec<UsageSpoolEvent>> {
             break;
         }
         if std::mem::take(&mut first) && skip_partial {
-            // The read started inside a line.
             continue;
         }
         if line.len() > MAX_LINE_BYTES {
@@ -161,7 +139,6 @@ pub fn read_all(data_root: &Path) -> io::Result<Vec<UsageSpoolEvent>> {
     Ok(events)
 }
 
-/// The events of `task_id` at or after `since_ms`.
 pub fn read_since(
     data_root: &Path,
     task_id: &str,
@@ -173,9 +150,6 @@ pub fn read_since(
         .collect())
 }
 
-/// Drops events older than `keep_after_ms` once the spool passes
-/// [`COMPACT_AFTER_BYTES`]. The app calls it after an import, so nothing it
-/// drops is still waiting to be recorded. Returns whether it rewrote.
 pub fn compact(data_root: &Path, keep_after_ms: i64) -> io::Result<bool> {
     let path = spool_path(data_root);
     match std::fs::metadata(&path) {

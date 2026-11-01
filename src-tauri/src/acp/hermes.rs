@@ -17,7 +17,6 @@ const MAX_OUTPUT: usize = 64 * 1024;
 const PROFILE_PREFIX: &str = "oleafly-";
 const DEFAULT_PROFILE: &str = "default";
 const MAX_PROFILE: usize = 64;
-/// Settings the Nous tool gateway serves when it is on.
 const GATEWAY_KEYS: [&str; 5] = [
     "web.backend",
     "image_gen.provider",
@@ -51,16 +50,12 @@ pub struct HermesStatus {
     pub mode: HermesMode,
     pub profile: Option<String>,
     pub exists: bool,
-    /// ready | starting | stopped | unknown | outdated (a Hermes without
-    /// `gateway ensure`)
     pub gateway: String,
     pub reason: Option<String>,
     pub memory: bool,
     pub tool_gateway: bool,
 }
 
-/// How to run the `hermes` CLI: the program Oleafly resolved for the agent
-/// and the arguments that come before Hermes's own.
 #[derive(Clone, Debug)]
 pub struct HermesProgram {
     pub program: PathBuf,
@@ -68,8 +63,6 @@ pub struct HermesProgram {
 }
 
 impl HermesProgram {
-    /// From the agent's launch, without the definition's own arguments
-    /// (`acp`).
     pub fn from_launch(launch: &Launch, definition_args: &[String]) -> Self {
         let args = &launch.args;
         let prefix = if args.len() >= definition_args.len()
@@ -86,7 +79,6 @@ impl HermesProgram {
     }
 }
 
-/// `hermes [-p profile] args…`, without a shell.
 pub fn hermes_command(
     hermes: &HermesProgram,
     profile: Option<&str>,
@@ -111,9 +103,6 @@ pub fn valid_profile_name(name: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_' || *b == b'-')
 }
 
-/// The profile Oleafly makes for a project: `oleafly-<slug>`, with a short
-/// hash of the id when the slug had to change, so two projects never share
-/// one.
 pub fn project_profile_name(project_id: &str) -> String {
     let slug: String = project_id
         .chars()
@@ -139,8 +128,6 @@ pub fn project_profile_name(project_id: &str) -> String {
     format!("{PROFILE_PREFIX}{short}-{suffix}")
 }
 
-/// The profile folder from `hermes profile show` output (`Path: …`). Only a
-/// folder named under `profiles/` is accepted.
 pub fn profile_path_from_show(output: &str, home: &Path) -> Option<PathBuf> {
     let line = output
         .lines()
@@ -165,9 +152,6 @@ pub(super) struct HermesOutput {
     pub stderr: String,
 }
 
-/// The first 64 KiB of a stream. The rest is read and dropped, so a command
-/// that prints more is never left blocked on a full pipe (or killed by a
-/// closed one).
 async fn read_limited<R: tokio::io::AsyncRead + Unpin>(reader: Option<R>) -> String {
     let Some(reader) = reader else {
         return String::new();
@@ -179,9 +163,6 @@ async fn read_limited<R: tokio::io::AsyncRead + Unpin>(reader: Option<R>) -> Str
     String::from_utf8_lossy(&buffer).into_owned()
 }
 
-/// Runs one Hermes command, without input and with bounded output.
-/// `contained` commands are stopped with their process tree on timeout;
-/// `gateway ensure` runs uncontained, so a gateway it starts outlives it.
 pub(super) async fn run_hermes(
     hermes: &HermesProgram,
     profile: Option<&str>,
@@ -288,11 +269,6 @@ pub async fn set_tool_gateway(
     Ok(())
 }
 
-/// Makes sure the project's profile exists. A missing one is created (a
-/// clone of the default one, without a shell alias), with memory turned off
-/// and the memories it cloned removed; an existing one is left as it is, with
-/// whatever memory the user let it collect. Returns the profile's name and
-/// whether it was just created.
 pub async fn create_project_profile(
     hermes: &HermesProgram,
     project_id: &str,
@@ -337,7 +313,6 @@ pub async fn create_project_profile(
     Ok((name, true))
 }
 
-/// The profile a project's sessions run in (`None` = Hermes's default).
 pub fn active_profile(project_id: &str, settings: &HermesSettings) -> Option<String> {
     match settings.mode {
         HermesMode::Project => Some(project_profile_name(project_id)),
@@ -431,7 +406,6 @@ fn gateway_state(output: &HermesOutput) -> (String, Option<String>) {
     (gateway, reason)
 }
 
-/// A project-profile launch: `hermes -p <profile> acp`.
 pub fn apply_profile(
     launch: &mut Launch,
     definition_args: &[String],
@@ -452,10 +426,6 @@ pub fn apply_profile(
     Ok(())
 }
 
-/// The settings to store for a project. The memory and tool gateway flags
-/// mirror the project's profile and only `hermes_set_option` (or creating the
-/// profile) changes them, so the copy a window sends back never overwrites
-/// them. A profile made now starts with memory off.
 async fn settings_to_save(
     hermes: Option<&HermesProgram>,
     project_id: &str,
@@ -483,7 +453,6 @@ async fn settings_to_save(
 }
 
 impl super::runtime::AcpRuntime {
-    /// The `hermes` CLI as Oleafly would start it.
     async fn hermes_program(&self) -> Result<HermesProgram, String> {
         let definition = self.definition(HERMES_ID)?;
         let program = self.store.agent_program(HERMES_ID)?;
@@ -517,9 +486,6 @@ impl super::runtime::AcpRuntime {
             .set_project_agent_settings(project_id, HERMES_ID, &stored)
     }
 
-    /// Saves how a project runs Hermes. Project mode creates the project's
-    /// profile when it is missing; the profile name is always derived from
-    /// the project.
     pub async fn set_hermes_project_settings(
         &self,
         project_id: &str,
@@ -558,8 +524,6 @@ impl super::runtime::AcpRuntime {
         Ok(status(&hermes, project_id, &settings).await)
     }
 
-    /// Turns memory or the Nous tool gateway on or off for the project's
-    /// profile.
     pub async fn hermes_set_option(
         &self,
         project_id: &str,
@@ -590,8 +554,6 @@ impl super::runtime::AcpRuntime {
 mod tests {
     use super::*;
 
-    /// A stand-in `hermes` that keeps its profiles and a log of its calls in
-    /// a folder, so tests can see what Oleafly asked it to do.
     struct FakeHermes {
         state: tempfile::TempDir,
         program: HermesProgram,
@@ -687,7 +649,6 @@ else:
         create_project_profile(&fake.program, "thesis", "Thesis")
             .await
             .unwrap();
-        // The user turned memory on and the profile collected some.
         std::fs::write(
             fake.memory_file("thesis", "MEMORY.md"),
             "learned over weeks",
@@ -708,7 +669,6 @@ else:
             .await
             .unwrap();
         assert!(!created);
-        // The window's copy of the settings is stale: memory is off in it.
         let saved = settings_to_save(
             Some(&fake.program),
             "thesis",
@@ -837,7 +797,6 @@ else:
         });
         let text = read_limited(Some(reader)).await;
         assert_eq!(text.len(), MAX_OUTPUT);
-        // The writer finished its whole output: it never saw a closed pipe.
         writing.await.unwrap().unwrap();
     }
 

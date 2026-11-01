@@ -29,10 +29,9 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCitationStore } from "@/store/citation";
 import { useFilesStore } from "@/store/files";
 import { AddCitationDialog } from "./AddCitationDialog";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const copy = enShell.addCitation;
 

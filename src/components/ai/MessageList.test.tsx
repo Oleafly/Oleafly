@@ -36,7 +36,8 @@ vi.mock("@/components/ai/chat-parts", async () => {
     }) {
       itemRenders.set(msg.id ?? "", (itemRenders.get(msg.id ?? "") ?? 0) + 1);
       return (
-        <div
+        <button
+          type="button"
           data-testid="message-item"
           data-scope={expansionScope}
           data-content={msg.content}
@@ -45,7 +46,7 @@ vi.mock("@/components/ai/chat-parts", async () => {
           onClick={() => onMessageAction?.("edit", msg.id ?? "")}
         >
           {msg.id}
-        </div>
+        </button>
       );
     }),
   };

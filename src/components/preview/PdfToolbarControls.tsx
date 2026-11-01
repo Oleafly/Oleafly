@@ -116,9 +116,6 @@ export function PdfToolbarControls({
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const { containerRef: pdfToolbarRef, availableWidth: pdfToolbarWidth } =
     useAvailableWidth();
-  // The preview toolbar carries more controls than a narrow split pane can
-  // show. Declaring them as a measured list lets the ones that do not fit move
-  // into a "more" menu instead of wrapping the bar onto a second line.
   const iconControl = (
     id: string,
     Icon: typeof ZoomIn,
@@ -128,8 +125,6 @@ export function PdfToolbarControls({
       disabled?: boolean;
       active?: boolean;
       tooltip?: string;
-      // Swaps the icon for a spinner in place. Work a single control owns
-      // belongs on that control, not behind a pane-sized overlay.
       busy?: boolean;
     } = {},
   ): ToolbarControl => ({
@@ -179,7 +174,6 @@ export function PdfToolbarControls({
     userZoom(() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2)));
   const zoomIn = () =>
     userZoom(() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2)));
-  // Rendered by the zoom trigger and, when the bar collapses, by the overflow menu.
   const zoomMenuItems = () => (
     <>
       <DropdownMenuGroup>
@@ -216,8 +210,6 @@ export function PdfToolbarControls({
     </>
   );
 
-  // Grouped so the bar reads in a fixed order and the dividers fall out of
-  // which groups actually have controls, rather than being placed by hand.
   const buildPreviewToolbarGroups = () => {
     const layoutGroup: ToolbarControl[] = [];
     const pageGroup: ToolbarControl[] = [];
@@ -227,15 +219,11 @@ export function PdfToolbarControls({
     const fileGroup: ToolbarControl[] = [];
     const windowGroup: ToolbarControl[] = [];
     if (numPages > 0 && !isImage) {
-      // A one-page document has nothing to lay out: hide the toggles entirely.
       if (numPages > 1) {
         layoutGroup.push(
           {
             id: "layout",
-            // Two segments inside one padded track.
             width: 62,
-            // One page layout is in effect at a time, so the two options are a
-            // radio group rather than two independently pressed buttons.
             render: () => (
               <div
                 role="radiogroup"
@@ -294,9 +282,6 @@ export function PdfToolbarControls({
       pageGroup.push(
         {
           id: "page-nav",
-          // Two buttons plus the page field and its "of N" label. Estimates are
-          // rounded up: overshooting collapses one control early, undershooting
-          // clips the bar.
           width: 140,
           render: () => (
             <>
@@ -343,8 +328,6 @@ export function PdfToolbarControls({
               </Tooltip>
             </>
           ),
-          // The page field cannot live in a menu row, so the collapsed form keeps
-          // the navigation and reports where the reader currently is.
           renderMenu: () => (
             <DropdownMenuSub key="page-nav">
               <DropdownMenuSubTrigger>
@@ -403,7 +386,6 @@ export function PdfToolbarControls({
     }
     zoomGroup.push({
       id: "zoom",
-      // Zoom out, the percentage trigger, and zoom in.
       width: 128,
       render: () => (
         <>

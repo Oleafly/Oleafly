@@ -558,10 +558,6 @@ pub fn follow_project(
     })
 }
 
-// Points the project's main document at the name a move on disk gave it,
-// for example when sharing renamed `main.tex` beside `Main.tex` to fit the
-// shared layout, so the compile still finds it. Returns what changed, with
-// a notice for the activity.
 pub fn follow_renamed_main(project_id: &str, renamed: &[(String, String)]) -> Option<Applied> {
     let moved = |main: &str| {
         renamed

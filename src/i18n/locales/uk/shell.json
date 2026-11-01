@@ -1222,6 +1222,8 @@
     "exportTxt": "Експортувати як звичайний текст (.txt)",
     "exportZipFailed": "Не вдалося експортувати zip проєкту",
     "exporting": "Експорт .{{format}}…",
+    "exportingStep": "Експорт .{{format}}: {{step}}",
+    "stopExport": "Зупинити",
     "fork": "Відгалузити",
     "forkDescription": "Копіює <name>{{name}}</name> і його історію Git у новий проєкт. Контрольні точки починаються з нуля.",
     "forkFailed": "Не вдалося відгалузити проєкт.",

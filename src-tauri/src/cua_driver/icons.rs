@@ -1,8 +1,3 @@
-//! App icons for the app picker: a small picture per installed app, read
-//! when the picker first shows it and kept for the rest of the run. Only apps
-//! from the last listing have a source, so the renderer can't ask for the
-//! icon of any path it likes.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
@@ -12,18 +7,13 @@ use base64::Engine as _;
 use super::apps::InstalledApp;
 use super::lock;
 
-/// Pixels per side: the picker draws icons at 32 px, twice that for Retina.
 #[cfg_attr(target_os = "linux", allow(dead_code))]
 const EDGE: u32 = 64;
-/// Icon files bigger than this are left out (Linux reads them whole).
 const MAX_ICON_BYTES: u64 = 512 * 1024;
-/// One request asks for at most the rows the picker shows.
 pub(crate) const MAX_ICONS_PER_CALL: usize = 200;
 
-/// Where an app's icon comes from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum IconSource {
-    /// macOS: the `.app` bundle.
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Bundle(PathBuf),
     /// Windows: the program, whose first icon is the app's.
@@ -35,13 +25,11 @@ pub(crate) enum IconSource {
 #[derive(Default)]
 struct Icons {
     sources: HashMap<String, IconSource>,
-    /// Data URLs, `None` for an app without a usable icon.
     loaded: HashMap<String, Option<String>>,
 }
 
 static ICONS: LazyLock<Mutex<Icons>> = LazyLock::new(Mutex::default);
 
-/// The picker's key for an app's row: its name, then its bundle id or program.
 pub(crate) fn row_key(app: &InstalledApp) -> String {
     let identity = app
         .bundle_id
@@ -51,7 +39,6 @@ pub(crate) fn row_key(app: &InstalledApp) -> String {
     format!("{}\u{0}{identity}", app.name)
 }
 
-/// Records where each listed app's icon is, replacing the last listing.
 pub(crate) fn remember(apps: &[InstalledApp]) {
     let sources: HashMap<String, IconSource> = apps
         .iter()
@@ -62,7 +49,6 @@ pub(crate) fn remember(apps: &[InstalledApp]) {
     icons.sources = sources;
 }
 
-/// Data URLs for the listed apps among `keys` that have an icon (blocking).
 pub(crate) fn icons_for(keys: &[String]) -> HashMap<String, String> {
     let mut found = HashMap::new();
     for key in keys.iter().take(MAX_ICONS_PER_CALL) {
@@ -176,7 +162,6 @@ fn bundle_icon(_bundle: &Path) -> Option<Vec<u8>> {
     None
 }
 
-/// Windows: the program's first icon at `EDGE` px, as the shell draws it.
 #[cfg(windows)]
 fn program_icon(program: &Path) -> Option<Vec<u8>> {
     use std::os::windows::ffi::OsStrExt as _;
@@ -198,8 +183,6 @@ fn program_icon(program: &Path) -> Option<Vec<u8>> {
     crate::app_icon::encode_png(&image?)
 }
 
-/// The pixels of an `EDGE` px icon, with the mask applied to icons that
-/// carry no alpha of their own.
 #[cfg(windows)]
 fn icon_pixels(
     icon: windows_sys::Win32::UI::WindowsAndMessaging::HICON,
@@ -216,7 +199,6 @@ fn icon_pixels(
         info.bmiHeader = BITMAPINFOHEADER {
             biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
             biWidth: EDGE as i32,
-            // Negative: rows top to bottom.
             biHeight: -(EDGE as i32),
             biPlanes: 1,
             biBitCount: 32,
@@ -263,7 +245,6 @@ fn icon_pixels(
     for (at, pixel) in pixels.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         pixel.swap(0, 2);
         if !has_alpha {
-            // A black mask pixel is part of the icon, a white one is not.
             let shown = mask.as_ref().is_some_and(|mask| mask[at * 4] == 0);
             pixel[3] = if shown { 255 } else { 0 };
         }
@@ -398,8 +379,6 @@ mod tests {
         );
     }
 
-    // Named icons come from Linux `.desktop` files, and their lookup reads
-    // Unix paths, so these two don't run on Windows.
     #[cfg(not(windows))]
     #[test]
     fn only_listed_apps_get_an_icon() {
@@ -421,7 +400,6 @@ mod tests {
             "{}",
             icons[&key]
         );
-        // A new listing without the app forgets its icon.
         remember(&[]);
         assert!(icons_for(&[key]).is_empty());
     }
@@ -462,7 +440,6 @@ mod tests {
         );
         assert_eq!(named_icon_path("big", &dirs), None);
         assert_eq!(named_icon_path("missing", &dirs), None);
-        // Only plain names and absolute paths: no climbing out of the theme.
         assert_eq!(named_icon_path("../pixmaps/stata", &dirs), None);
         let absolute = pixmaps.join("stata.png");
         assert_eq!(

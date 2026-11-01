@@ -103,10 +103,6 @@ export const useMcpActivityStore = create<McpActivityState>((set) => ({
   endCall: (id, result) => {
     const now = Date.now();
     set((s) => {
-      // Only count an unread completion when the entry is still present. It may
-      // have been evicted by the MAX_LOGS cap, or endCall may fire twice for one
-      // id; bumping unread regardless would drift the badge above the visible
-      // completed calls.
       if (!s.logs.some((e) => e.id === id && e.status === "running")) return s;
       return {
         unread: s.unread + 1,

@@ -8,10 +8,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { projectIntelligenceCompletion } from "./project-intelligence";
+import { stubRangeGeometry } from "../../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const FILES = [
   "main.tex",
@@ -27,7 +26,6 @@ const FILES = [
 const views: EditorView[] = [];
 
 function viewFor(active: string, doc: string): EditorView {
-  // The first `|` marks the cursor; it is taken out by position.
   const cursor = doc.indexOf("|");
   const text = cursor < 0 ? doc : doc.slice(0, cursor) + doc.slice(cursor + 1);
   useFilesStore.setState({

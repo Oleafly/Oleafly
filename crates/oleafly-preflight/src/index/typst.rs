@@ -1,8 +1,3 @@
-//! Typst labels and references for the index: the editor's Typst masks
-//! (`packages/editor/src/typst-syntax.ts`, `maskTypstSource`), the legacy
-//! label and `@reference` extraction (`src/lib/index/parse-typst.ts`) and the
-//! explicit `#ref(<label>)` uses `analyze-file.ts` adds.
-
 use std::sync::LazyLock;
 
 use super::{Definition, FileSymbols, Reference, SymKind};
@@ -11,7 +6,6 @@ use crate::text::{
     index_of_units, is_js_space_unit, starts_with_units, to_units, SourceText, NEWLINE, SPACE,
 };
 
-/// `TYPST_LABEL_PATTERN` of the editor (with ZWNJ and ZWJ).
 const LABEL_PATTERN: &str = r"[\p{L}\p{M}\p{N}\p{Pc}][\p{L}\p{M}\p{N}\p{Pc}\x{200C}\x{200D}.:-]*";
 
 const BACKSLASH: u16 = b'\\' as u16;
@@ -33,7 +27,6 @@ fn autolink_character(unit: u16) -> bool {
         .is_some_and(|ch| ch.is_ascii_alphanumeric() || "!#$%&*+,-./:;=?@_~'".contains(ch))
 }
 
-/// `typstAutolinkEnd`: brackets inside a URL must balance.
 pub fn typst_autolink_end(text: &[u16], from: usize) -> Option<usize> {
     if text.get(from) != Some(&(b'h' as u16))
         || (!starts_with_units(text, from, "http://") && !starts_with_units(text, from, "https://"))
@@ -88,7 +81,6 @@ fn block_comment_end(text: &[u16], from: usize) -> usize {
     text.len()
 }
 
-/// `typstRawEnd`.
 pub fn typst_raw_end(text: &[u16], from: usize) -> usize {
     let mut width = 1;
     while text.get(from + width) == Some(&BACKTICK) {
@@ -167,8 +159,6 @@ fn opens_line_code(text: &[u16], hash: usize) -> bool {
     })
 }
 
-/// The state of `mask_typst_source`: the masks so far and the nesting of
-/// markup and code around the unit being read.
 struct Masker<'a> {
     raw: &'a [u16],
     masks: Masks,
@@ -176,7 +166,6 @@ struct Masker<'a> {
 }
 
 impl Masker<'_> {
-    /// Reads one unit of markup and returns the index to continue from.
     fn markup_step(&mut self, i: usize, close: bool, brackets: i64) -> usize {
         let raw = self.raw;
         let unit = raw[i];
@@ -215,8 +204,6 @@ impl Masker<'_> {
         i + 1
     }
 
-    /// Reads one unit inside a string in code and returns the index to
-    /// continue from.
     fn string_step(&mut self, i: usize, frame: CodeFrame) -> usize {
         let raw = self.raw;
         let unit = raw[i];
@@ -241,8 +228,6 @@ impl Masker<'_> {
         cursor + 1
     }
 
-    /// Reads one unit of code outside strings and returns the index to
-    /// continue from. Leaving the code ends it without moving on.
     fn code_step(&mut self, i: usize, frame: CodeFrame) -> usize {
         let raw = self.raw;
         let unit = raw[i];
@@ -327,8 +312,6 @@ impl Masker<'_> {
     }
 }
 
-/// `maskTypstSource`: `text` blanks comments and raw text; `code` also blanks
-/// string contents and bare URLs in markup. Both keep every newline.
 pub fn mask_typst_source(raw: &[u16]) -> (Vec<u16>, Vec<u16>) {
     let mut masker = Masker {
         raw,
@@ -353,7 +336,6 @@ pub fn mask_typst_source(raw: &[u16]) -> (Vec<u16>, Vec<u16>) {
     (masker.masks.text, masker.masks.code)
 }
 
-/// `isTypstEscaped`: an odd number of backslashes before `offset`.
 fn is_escaped(text: &[u16], offset: usize) -> bool {
     text[..offset]
         .iter()
@@ -364,8 +346,6 @@ fn is_escaped(text: &[u16], offset: usize) -> bool {
         == 1
 }
 
-/// `maskQuotedContents` of `analyze-file.ts`: string contents (and escaped
-/// characters in them) become spaces, wherever a `"` opens one.
 fn mask_quoted_contents(source: &[u16]) -> Vec<u16> {
     let mut chars = source.to_vec();
     let mut quoted = false;
@@ -423,8 +403,6 @@ pub(super) fn analyze(text: &str) -> FileSymbols {
         if is_escaped(code.units(), found.from) {
             continue;
         }
-        // A label inside `#ref(`, `#link(` or `#cite(` is a use, not a
-        // definition.
         let before = source.slice(found.from.saturating_sub(80), found.from);
         if INSIDE_CALL.is_match(&before) {
             continue;

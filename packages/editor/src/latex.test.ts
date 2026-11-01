@@ -25,15 +25,11 @@ import {
 import { latexPairChange, latexPairInputHandler } from "./latex-pairs";
 import { setBibStyleProvider } from "./bibliography-styles";
 import { installEnglishEditorMessages } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
 installEnglishEditorMessages();
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 function completion(
   source: string,
@@ -509,7 +505,6 @@ describe("recovery-oriented LaTeX completion", () => {
       new CompletionContext(initial, initial.doc.length, false),
     );
     const firstCandidate = option(first, "\\widget");
-    // A newer request against the same source revision supersedes the first.
     await Promise.resolve();
     latexCommandCompletions(
       new CompletionContext(initial, initial.doc.length, false),

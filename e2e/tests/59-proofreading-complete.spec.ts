@@ -267,9 +267,6 @@ async function addDictionaryWord(
 ): Promise<void> {
   const selector = `[aria-label=${JSON.stringify(inputLabel)}]`;
   await page.fill(selector, word);
-  // The native bridge can issue Enter in the same render turn as fill.
-  // Wait until React has committed the controlled value and enabled this
-  // form's submit button so the test exercises a real accepted submission.
   await page.waitForFunction(
     `(() => {
       const input = document.querySelector(${JSON.stringify(selector)});

@@ -33,7 +33,6 @@ function Add-Row([string]$Check, [string]$Expected, [bool]$Ok, [string]$Detail, 
   if ($Must -and -not $Ok) { $script:MustFail = $true }
 }
 
-# The app is a GUI program, so its output comes back through files.
 function Invoke-Oleafly([string[]]$Arguments, [int]$TimeoutSeconds = 120) {
   $out = [System.IO.Path]::GetTempFileName()
   $err = [System.IO.Path]::GetTempFileName()
@@ -66,11 +65,8 @@ function Get-TaskProfiles {
     Select-Object -ExpandProperty Name)
 }
 
-# Research tasks have profiles with the same prefix, so only the ones this
-# script adds count in the cleanup check.
 $ProfilesBefore = Get-TaskProfiles
 
-# 1. Self-test
 $selfArgs = @("--oleafly-sandbox-selftest", "--json")
 if ($Network) { $selfArgs += "--network" }
 $python = (Get-Command python.exe -ErrorAction SilentlyContinue | Where-Object { $_.Source -notlike "*WindowsApps*" } | Select-Object -First 1)
@@ -87,7 +83,6 @@ try {
   Add-Row "selftest" "JSON report" $false ($self.Err + $self.Out)
 }
 
-# 2. Scenario runs in a workspace with spaces and non-ASCII letters
 $Base = Join-Path $env:TEMP ("oleafly-sbx-" + [System.Guid]::NewGuid().ToString("N").Substring(0, 8))
 $Workspace = Join-Path $Base "Prüfung Ordner"
 New-Item -ItemType Directory -Path $Workspace -Force | Out-Null
@@ -137,13 +132,11 @@ if (-not $SkipAgents) {
   }
 }
 
-# A workspace path of 250 characters must be refused clearly.
 $Long = Join-Path $Base ("x" * [Math]::Max(1, 250 - $Base.Length - 1))
 New-Item -ItemType Directory -Path $Long -Force | Out-Null
 $longRun = Invoke-SandboxRun $Long @("cmd.exe", "/c", "ver")
 Add-Row "long workspace path" "refused as too long" ($longRun.Err -match "too long") ($longRun.Err)
 
-# No profiles left for the released self-test owners.
 $left = @(Get-TaskProfiles | Where-Object { $ProfilesBefore -notcontains $_ })
 Add-Row "cleanup" "no self-test profiles left" ($left.Count -eq 0) ($left -join ", ")
 

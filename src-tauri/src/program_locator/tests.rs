@@ -662,8 +662,6 @@ fn every_agent_launch_bypasses_the_proxy_for_loopback_in_both_spellings() {
         ("HTTP_PROXY", "http://127.0.0.1:7890"),
     ]);
     let env = agent_env(&process, &login, false);
-    // Both spellings carry the entries of either, so a tool that reads the
-    // spelling the user didn't set still skips the proxy for them.
     let both = Some(".internal,corp.example,127.0.0.1,localhost,::1");
     assert_eq!(value_of(&env, "NO_PROXY"), both);
     assert_eq!(value_of(&env, "no_proxy"), both);
@@ -1005,8 +1003,6 @@ fn invalid_program_names_are_never_searched() {
     }
 }
 
-// --- Windows package-manager shims -----------------------------------------
-
 /// npm's cmd-shim 9 template, with optional shebang arguments.
 fn npm_shim(target: &str, args: &str, variables: &str) -> String {
     format!(
@@ -1234,8 +1230,6 @@ fn cmd_launches_refuse_network_folders_and_long_paths() {
     assert!(!network_folder(Path::new("//server/share")));
 }
 
-// --- Windows-only process behaviour (runs on the Windows CI job) ------------
-
 #[cfg(windows)]
 mod windows_processes {
     use super::*;
@@ -1280,7 +1274,6 @@ mod windows_processes {
         assert_eq!(String::from_utf8_lossy(&output.stdout), "started ok");
     }
 
-    /// cmd.exe scripts in awkward folders receive their arguments literally.
     #[test]
     fn cmd_scripts_in_awkward_folders_receive_arguments_literally() {
         let python = python();
@@ -1341,9 +1334,6 @@ mod windows_processes {
         }
     }
 
-    /// A `node.cmd` planted in the working folder (a downloaded project, or
-    /// the folder Oleafly was started from) never runs when a shim calls a
-    /// bare `node`.
     #[test]
     fn a_planted_node_in_the_working_folder_never_runs() {
         let temp = tempfile::tempdir().unwrap();
@@ -1392,7 +1382,6 @@ mod windows_processes {
         }
     }
 
-    /// Dropping the containment guard ends a `.cmd → python → sleeper` tree.
     #[tokio::test]
     async fn containment_ends_a_script_launched_grandchild() {
         let python = python();

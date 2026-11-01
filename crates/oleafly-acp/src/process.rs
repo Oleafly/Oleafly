@@ -1,6 +1,3 @@
-//! The agent's process tree and its stderr tail. Containment comes from the
-//! sandbox crate, so the app, the CLI and the daemon kill agent trees the
-//! same way.
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -11,7 +8,6 @@ use crate::limits::MAX_STDERR_TAIL;
 const MAX_TAIL_LINES: usize = 20;
 const MAX_TAIL_CHARS: usize = 1000;
 
-/// The last bytes an agent wrote to stderr, for error messages.
 #[derive(Clone, Default)]
 pub(crate) struct StderrTail(Arc<Mutex<VecDeque<u8>>>);
 
@@ -25,9 +21,6 @@ impl StderrTail {
         }
     }
 
-    /// The last 20 non-empty lines joined by spaces, without control
-    /// characters: their last 1,000 characters, so the final error line is
-    /// always there.
     pub(crate) fn text(&self) -> String {
         let bytes: Vec<u8> = self
             .0

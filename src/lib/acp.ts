@@ -36,11 +36,8 @@ export interface AcpAgentStatus {
   taskUnavailableReason: string | null;
   cli: AcpCliStatus | null;
   bridgeSharedWithCli: boolean;
-  /** The program the user chose for this agent, when set. */
   programOverride?: string | null;
-  /** The bridge cannot work without the vendor CLI (Pi). */
   cliRequired?: boolean;
-  /** What the agent reported the last time it was checked or connected. */
   runtime?: AcpAgentRuntimeInfo | null;
 }
 export interface AcpAuthMethod {
@@ -50,9 +47,7 @@ export interface AcpAuthMethod {
   kind?: string | null;
   args?: string[];
   env?: Record<string, string>;
-  /** The provider whose API key this method takes. */
   apiKeyProvider?: string | null;
-  /** The agent's own sign-in command. */
   terminalCommand?: { command: string; args: string[]; label: string | null } | null;
 }
 export interface AcpAgentRuntimeInfo {
@@ -76,16 +71,13 @@ export interface AcpCliStatus {
   path: string | null;
   version: string | null;
   signInCommand: string;
-  /** "auto" when found by searching, "override" when chosen by the user. */
   source?: "auto" | "override" | null;
-  /** Files with the right name that cannot be started. */
   rejected?: AcpRejectedCandidate[];
 }
 export type AcpCheckCode =
   | "ready" | "not_found" | "is_directory" | "unsupported_script" | "not_executable" | "gui_program" | "interpreter"
   | "network_path" | "cli_missing" | "bridge_missing" | "node_missing" | "node_too_old" | "start_failed" | "timeout"
   | "exited" | "not_acp" | "needs_sign_in" | "session_failed";
-/** Result of the agent Test check. */
 export interface AcpAgentCheck {
   ok: boolean;
   code: AcpCheckCode;
@@ -93,19 +85,16 @@ export interface AcpAgentCheck {
   program: string | null;
   version: string | null;
   agentName: string | null;
-  /** Sign-in methods, when the check found the agent needs a sign-in. */
   authMethods?: AcpAuthMethod[];
 }
 export type AcpReadiness = "ready" | "bridge-missing" | "cli-missing" | "unavailable";
 export function acpReadiness(agent: AcpAgentStatus): AcpReadiness {
-  // A bridge that cannot run without the vendor CLI (Pi) is not ready while the CLI is missing.
   if (agent.cliRequired && !agent.cli?.path) return "cli-missing";
   if (agent.installed) return "ready";
   if (agent.cli && !agent.cli.path) return "cli-missing";
   if (agent.canInstall || agent.cli?.path) return "bridge-missing";
   return "unavailable";
 }
-/** Whether a conversation can start with this agent right now. */
 export function acpUsable(agent: AcpAgentStatus): boolean {
   return acpReadiness(agent) === "ready";
 }
@@ -125,7 +114,6 @@ export interface AcpRegistryEntry {
   version: string;
   definition: AcpDefinition | null;
   reason: string | null;
-  /** The built-in agent this registry entry corresponds to, when known. */
   builtinId?: string | null;
 }
 export type AcpSessionStatus = "connecting" | "auth_required" | "ready" | "running" | "cancelling" | "cancelled" | "disconnected" | "failed";
@@ -160,16 +148,13 @@ export interface AcpSession {
     providers?: boolean;
     steering?: boolean;
     authStatus?: boolean;
-    /** The negotiated protocol (0 for sessions saved before 0.4.8). */
     protocol?: number;
   };
   controls: {
     models: { modelId: string; name: string }[];
     modelId: string | null;
     modelConfigId: string | null;
-    /** Every option the agent reports, in its order. */
     options?: AcpConfigOption[];
-    /** Legacy modes. */
     modes?: AcpModeOption[];
     modeId?: string | null;
     legacyModels?: boolean;
@@ -177,13 +162,10 @@ export interface AcpSession {
   authMethods: AcpAuthMethod[];
   error: string | null;
   lastSequence: number;
-  /** HEAD commit when the session started, when the project is a Git repository. */
   startRevision?: string | null;
-  /** Whether the working tree had uncommitted changes when the session started. */
   startDirty?: boolean | null;
   usage?: AcpSessionUsage | null;
   availableCommands?: AcpCommand[];
-  /** The user renamed the conversation. */
   titleLocked?: boolean;
   commits?: AcpTurnCommit[];
   forkedFrom?: string | null;
@@ -267,9 +249,7 @@ export interface AcpPermission {
   expiresAt: number;
   /** The ACP tool kind (for example "edit"), when reported. */
   kind?: string | null;
-  /** Target paths, project-relative when inside the project. */
   locations?: string[];
-  /** The proposed file changes, redacted and size-capped. */
   diffs?: AcpPermissionDiff[];
 }
 export interface AcpPermissionDiff { path: string; oldText: string | null; newText: string | null; truncated: boolean }
@@ -371,31 +351,21 @@ export const acpAuthenticate = (projectId: string, sessionId: string, methodId: 
 export const acpSetModel = (projectId: string, sessionId: string, modelId: string) => invoke<AcpSnapshot>("acp_set_model", { projectId, sessionId, modelId });
 export const acpPermission = (projectId: string, sessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_permission", { projectId, sessionId, permissionId, optionId });
 export const acpDelegatedPermission = (projectId: string, sessionId: string, parentSessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_delegated_permission", { projectId, sessionId, parentSessionId, permissionId, optionId });
-/** `before` and `beforeId` are the update time and id of the last conversation shown (a keyset cursor). */
 export const acpSessionPage = (projectId: string, options: { query?: string; before?: number; beforeId?: string; limit?: number } = {}) =>
   invoke<AcpSessionPage>("acp_sessions", {
     projectId, query: options.query ?? null, before: options.before ?? null, beforeId: options.beforeId ?? null, limit: options.limit ?? null,
   });
-/** The 200 newest conversations of a project, as many as 0.4.7 kept in the panel; History pages through the rest. */
 export const acpSessions = (projectId: string) => acpSessionPage(projectId, { limit: 200 }).then((page) => page.sessions);
 export const acpSnapshot = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_snapshot", { projectId, sessionId });
 export const acpEvents = (projectId: string, sessionId: string, after = 0, limit = 300) => invoke<AcpEventPage>("acp_events", { projectId, sessionId, after, limit });
 
-// CLI agent setup (#84)
-/** Tests an agent program without saving it: `path`, or the current resolution when omitted. */
 export const acpCheckAgent = (agentId: string, path: string | null = null) => invoke<AcpAgentCheck>("acp_check_agent", { agentId, path }).then(decodedCheck);
-/** Opens a native file dialog; resolves to the chosen path or null when cancelled. */
 export const acpPickAgentProgram = (agentId: string) => invoke<string | null>("acp_pick_agent_program", { agentId });
-/** Saves (or clears with null) the program the user chose for an agent. */
 export const acpSetAgentProgram = (agentId: string, path: string | null) => changedCatalog(invoke<AcpAgentStatus>("acp_set_agent_program", { agentId, path }).then(decodedStatus));
 
-// CLI agent conversations (#84)
-/** Writes the conversation as JSON to `path`. */
 export const acpSessionExport = (projectId: string, sessionId: string, path: string) => invoke<void>("acp_session_export", { projectId, sessionId, path });
-/** Every stored event of a conversation, oldest first. */
 export const acpSessionEventsAll = (projectId: string, sessionId: string) => invoke<AcpEvent[]>("acp_session_events_all", { projectId, sessionId });
 
-// 0.4.8: options, usage, sign-in, steering, sessions, Hermes
 export const acpSetConfigOption = (projectId: string, sessionId: string, configId: string, value: AcpConfigValue) => invoke<AcpSnapshot>("acp_set_config_option", { projectId, sessionId, configId, value });
 export const acpSetMode = (projectId: string, sessionId: string, modeId: string) => invoke<AcpSnapshot>("acp_set_mode", { projectId, sessionId, modeId });
 export const acpSteer = (projectId: string, sessionId: string, text: string) => invoke<AcpSteerOutcome>("acp_steer", { projectId, sessionId, text });
@@ -414,7 +384,6 @@ export const acpPreferences = () => invoke<AcpPreferences>("acp_preferences");
 export const acpSetPreferences = (prefs: AcpPreferences) => invoke<AcpPreferences>("acp_set_preferences", { prefs });
 export const acpAgentPreferences = (agentId: string) => invoke<AcpAgentPreferences>("acp_agent_preferences", { agentId });
 export const acpSetAgentPreferences = (agentId: string, prefs: AcpAgentPreferences) => invoke<AcpAgentPreferences>("acp_set_agent_preferences", { agentId, prefs });
-/** Changes one remembered choice and keeps the others as stored (`null` forgets it). */
 export const acpSetAgentPreference = (
   agentId: string,
   slot: "effort" | "mode" | "provider",
@@ -447,18 +416,12 @@ export function acpStartCancelled(error: unknown): boolean {
 function errorMessage(error: unknown): string | null {
   if (typeof error === "string") return error;
   if (error instanceof Error) return error.message;
-  // `acp_prompt` reports a turn that failed after the message went out as `{ delivered, message }`.
   if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
     return (error as { message: string }).message;
   }
   return null;
 }
 
-/**
- * Whether a failed `acp_prompt` still delivered the message (the turn failed
- * after the agent got it). Null when the error does not say: a plain string
- * from an older build, or a failure before the request was made.
- */
 export function acpPromptDelivered(error: unknown): boolean | null {
   if (typeof error === "string") return null;
   if (error && typeof error === "object" && typeof (error as { delivered?: unknown }).delivered === "boolean") {

@@ -1,8 +1,5 @@
 import { registerContextProvider } from "@oleafly/registry";
 
-// Editor is the default context: active whenever a project is open. Diagram
-// and library providers (higher priority when their view is showing) arrive in
-// later milestones.
 export function registerContextProviders() {
   registerContextProvider({
     id: "editor",

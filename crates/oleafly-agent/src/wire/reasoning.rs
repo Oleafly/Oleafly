@@ -1,5 +1,3 @@
-//! Per-wire effort, thinking and output-ceiling fragments. Every builder
-//! calls `effective_effort` once and hands the result here.
 use serde_json::{json, Map, Value};
 
 use crate::caps::{BudgetRange, ModelCaps};
@@ -12,8 +10,6 @@ pub(crate) const STREAMING_MAX_TOKENS_CAP: u32 = 64_000;
 pub(crate) const BLOCKING_MAX_TOKENS_CAP: u32 = 16_000;
 pub(crate) const FALLBACK_MAX_TOKENS: u32 = 16_000;
 
-/// The output ceiling a request gets when it sets none: the model's own
-/// limit, else a conservative default, never above `cap`.
 pub(crate) fn default_max_tokens(caps: &ModelCaps, cap: u32) -> u32 {
     caps.output_limit
         .filter(|limit| *limit > 0)
@@ -84,7 +80,6 @@ pub(crate) fn anthropic_adaptive_model(model_id: &str) -> bool {
     )
 }
 
-/// The Anthropic `thinking` object, or `None` to leave it out.
 pub(crate) fn anthropic_thinking(
     resolved: &Resolved,
     req: &CompletionRequest,
@@ -105,8 +100,6 @@ pub(crate) fn anthropic_thinking(
         thinking["display"] = json!("summarized");
     }
     if replays_thinking {
-        // Earlier thinking that no longer matches its prefix is dropped
-        // instead of failing the request.
         thinking["block_binding"] = json!({ "prefix_mismatch_behavior": "drop_block" });
     }
     Some(thinking)
@@ -124,7 +117,6 @@ fn responses_reasoning_model(resolved: &Resolved) -> bool {
             && openai_reasoning_id(&resolved.model_id.to_ascii_lowercase()))
 }
 
-/// The Responses `reasoning` object for reasoning models.
 pub(crate) fn responses_reasoning(
     resolved: &Resolved,
     req: &CompletionRequest,
@@ -136,7 +128,6 @@ pub(crate) fn responses_reasoning(
     }
     let mut reasoning = Map::new();
     if let Some(effort) = effort {
-        // Hosted web search refuses minimal effort.
         let effort = if web_search && effort == Effort::Minimal {
             Effort::Low
         } else {
@@ -152,7 +143,6 @@ pub(crate) fn responses_reasoning(
     (!reasoning.is_empty()).then_some(Value::Object(reasoning))
 }
 
-/// Extra body fields for OpenAI-compatible chat providers.
 pub(crate) fn chat_reasoning_fields(
     resolved: &Resolved,
     req: &CompletionRequest,
@@ -283,8 +273,6 @@ pub(crate) fn google_thinking_config(
     Some(config)
 }
 
-/// The system prompt with the per-run suffix after it, for wires that take
-/// one string.
 pub(crate) fn joined_system(req: &CompletionRequest) -> Option<String> {
     let system = req.system.as_deref().filter(|text| !text.is_empty());
     let suffix = req.system_suffix.as_deref().filter(|text| !text.is_empty());

@@ -1,6 +1,3 @@
-//! What an agent reports about usage: context, cost, tokens, plan limit
-//! windows and how it is signed in. Every value is read leniently: a
-//! malformed number or string is skipped, never fatal.
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -9,7 +6,6 @@ use crate::redact::Redactor;
 const MAX_WINDOWS: usize = 8;
 const MAX_MODELS: usize = 16;
 const MAX_TEXT: usize = 200;
-/// The plan summary kept from a hidden `/usage` or `/status` turn.
 pub const MAX_PLAN_MARKDOWN: usize = 16 * 1024;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -17,14 +13,11 @@ pub const MAX_PLAN_MARKDOWN: usize = 16 * 1024;
 pub struct SessionUsage {
     pub context_used: Option<u64>,
     pub context_size: Option<u64>,
-    /// Cumulative cost as the agent reports it.
     pub cost_amount: Option<f64>,
     pub cost_currency: Option<String>,
     pub last_turn: Option<TurnTokens>,
-    /// The sum of every turn's reported tokens in this session.
     pub session_tokens: Option<TurnTokens>,
     pub model_usage: Vec<ModelTokens>,
-    /// The latest window of each kind, at most 8.
     pub rate_limits: Vec<RateLimitWindow>,
     pub auth: Option<AuthStatus>,
     pub plan_markdown: Option<String>,
@@ -56,16 +49,12 @@ pub struct ModelTokens {
 pub struct RateLimitWindow {
     pub id: String,
     pub status: String,
-    /// 0..=1.
     pub utilization: Option<f64>,
-    /// Epoch milliseconds.
     pub resets_at: Option<u64>,
     pub overage_status: Option<String>,
     pub using_overage: Option<bool>,
 }
 
-/// How the agent is signed in. Never the account's email address or
-/// organization.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AuthStatus {
@@ -75,7 +64,6 @@ pub struct AuthStatus {
     pub plan: Option<String>,
 }
 
-/// A utilization as a fraction: values above 1 are percentages.
 pub fn normalize_utilization(raw: f64) -> f64 {
     if !raw.is_finite() || raw <= 0.0 {
         return 0.0;
@@ -84,7 +72,6 @@ pub fn normalize_utilization(raw: f64) -> f64 {
     fraction.clamp(0.0, 1.0)
 }
 
-/// An epoch time in milliseconds; values below 1e11 are seconds.
 pub fn normalize_epoch_ms(raw: f64) -> Option<u64> {
     if !raw.is_finite() || raw <= 0.0 {
         return None;
@@ -190,8 +177,6 @@ impl TurnTokens {
         (tokens != Self::default()).then_some(tokens)
     }
 
-    /// A turn's tokens from its `session/prompt` answer: `usage`, else the
-    /// `_meta.quota.token_count` some agents send instead.
     pub fn from_prompt_response(response: &Value) -> Option<Self> {
         Self::parse(&response["usage"])
             .or_else(|| Self::parse(&response["_meta"]["quota"]["token_count"]))
@@ -231,9 +216,6 @@ fn rate_window(value: &Value) -> Option<RateLimitWindow> {
 }
 
 impl SessionUsage {
-    /// A copy for a usage event. The plan summary (up to 16 KiB) is left
-    /// out: views keep the one from the event that brought it, and every
-    /// other update would only repeat it in the transcript.
     pub fn without_plan(&self) -> Self {
         Self {
             context_used: self.context_used,
@@ -301,8 +283,6 @@ impl SessionUsage {
         self.updated_at = now;
     }
 
-    /// A `session/prompt` answer: its `usage` and the `_meta.quota` some
-    /// agents add.
     pub fn apply_prompt_response(&mut self, response: &Value, now: u64) {
         let quota = &response["_meta"]["quota"];
         if let Some(turn) = TurnTokens::from_prompt_response(response) {
@@ -331,8 +311,6 @@ impl SessionUsage {
         self.updated_at = now;
     }
 
-    /// `_auth/status_update`: `{authStatus: {kind, label, detail?, account: {plan?}}}`.
-    /// The account's email and organization are never kept.
     pub fn apply_auth_status(&mut self, params: &Value, now: u64) {
         let status = if params["authStatus"].is_object() {
             &params["authStatus"]
@@ -351,7 +329,6 @@ impl SessionUsage {
         self.updated_at = now;
     }
 
-    /// Sets the plan summary from a hidden usage turn, cut to 16 KiB.
     pub fn set_plan_markdown(&mut self, markdown: &str, now: u64) {
         let trimmed = markdown.trim();
         if trimmed.is_empty() {
@@ -366,7 +343,6 @@ impl SessionUsage {
         self.updated_at = now;
     }
 
-    /// Passes every agent-written text through the session's redactor.
     pub fn redact(&mut self, redactor: &Redactor) {
         let clean = |text: &mut String| *text = redactor.text(text);
         if let Some(auth) = &mut self.auth {

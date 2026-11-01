@@ -84,9 +84,6 @@ import { mainDocumentMissing } from "@/lib/main-document";
 import { compiledHtmlOutput } from "@/lib/notebook-engines";
 import type { NotebookTool } from "@/lib/notebook-commands";
 
-// Bumped on every recompile so a compile that finishes after the project was
-// switched (or a newer compile started) can detect it is stale and not overwrite
-// the current preview.
 let compileSeq = 0;
 let rerunQueued = false;
 let rerunOrigin: CompileOrigin = "automatic";
@@ -142,7 +139,6 @@ export type CompileStatus =
   | "error"
   | "unavailable";
 
-// User-facing phase while status === "compiling" (package download vs build).
 export type CompilePhase = "idle" | "saving" | "downloading" | "building";
 
 function phaseFromLogChunk(chunk: string, prev: CompilePhase): CompilePhase {
@@ -175,11 +171,6 @@ function identityForGeneration(
   };
 }
 
-/**
- * Starts a compile identity lane for non-standard producers such as the
- * tagged-PDF pipeline. The main compile store uses the same monotonically
- * increasing generation, so either producer supersedes older async work.
- */
 export function beginCompileRequestIdentity(
   projectId: string,
   mainDocument: string,
@@ -203,21 +194,6 @@ export function isCompileRequestIdentityCurrent(
   );
 }
 
-/**
- * Whether a finished compile's output still belongs to the surface that asked
- * for it.
- *
- * Deliberately ignores `projectRevision`. That counter advances on every edit
- * (`useIndexStore.updateFile`), so including it here discarded a completed
- * compile whenever the user typed while it ran - one keystroke during a long
- * book build threw the PDF away with nothing requeued. Editing during a
- * compile makes the result *stale*, not worthless: the checkpoint records the
- * revision it was built from, and the preview already labels a non-current PDF
- * as stale rather than hiding it.
- *
- * What genuinely invalidates an output is still checked: a different project, a
- * different main document, or a newer compile having superseded this one.
- */
 export function isCompileOutputStillWanted(
   identity: CompileRequestIdentity,
 ): boolean {
@@ -245,11 +221,6 @@ function samePaths(
   );
 }
 
-/**
- * Captures the exact source inputs visible to the compiler. Clean buffers and
- * indexed unopened files are already disk-backed and retain their string
- * identity; only missing/dirty non-active inputs require an IPC read.
- */
 export async function captureCompileSourceSnapshot(
   projectId: string,
 ): Promise<CompileSourceSnapshot | null> {
@@ -319,9 +290,6 @@ export function isCompileCheckpointCurrent(
     return true;
   }
 
-  // Revisions remain monotonic for async race rejection. Freshness may still
-  // recover when edit + undo/backspace restores the byte-for-byte source set
-  // that produced the currently displayed output.
   const compile = useCompileStore.getState();
   return (
     sameCompileOutput(checkpoint, compile.lastCompileCheckpoint) &&
@@ -355,29 +323,17 @@ export interface CompileState {
   htmlOutput: CompiledHtmlOutput | null;
   autoCompile: boolean;
   setAutoCompile: (v: boolean) => void;
-  /// `fast` trades reference/TOC freshness for a single typesetting pass.
   compileMode: CompileMode;
   setCompileMode: (mode: CompileMode) => void;
-  /// Refuse to compile a main document whose delimiters or environments are
-  /// unbalanced, rather than handing TeX source it cannot make sense of.
   checkSyntaxBeforeCompile: boolean;
   setCheckSyntaxBeforeCompile: (check: boolean) => void;
-  /// Stop at the first TeX error instead of pushing on to a best-effort PDF.
   stopOnFirstError: boolean;
   setStopOnFirstError: (stop: boolean) => void;
-  /// Ends the running compile. Resolves once the compiler has been asked to stop.
   stopCompile: () => Promise<void>;
   reset: () => void;
   recompile: (options?: RecompileOptions) => Promise<CompileResult | undefined>;
   offer: CompileOffer | null;
   dismissOffer: () => void;
-  /**
-   * Seed the preview and success checkpoint from the persisted compile
-   * fingerprint plus the already-built PDF on disk, skipping the on-open
-   * compile entirely. Returns false (leaving the store untouched) whenever
-   * the record is missing/stale, the store already holds a checkpoint, or
-   * the on-disk PDF is not the fingerprinted output.
-   */
   restoreFromDisk: (projectId: string, mainDoc: string) => Promise<boolean>;
   livePreview: LivePreviewState;
   setLivePreviewStatus: (projectId: string, status: LivePreviewStatus, message?: string | null) => void;
@@ -514,8 +470,6 @@ function readStoredCompileMode(): CompileMode {
   }
 }
 
-/// Reports the unbalanced-delimiter class of error the linter can prove without
-/// running TeX. Offsets are resolved to 1-based lines for the log pane.
 async function mainDocumentSyntaxErrors(
   projectId: string,
   mainDoc: string,
@@ -593,8 +547,6 @@ const MUTATION_CONFLICT = "mutation conflict at generation";
 const USER_TREE_NOTICE =
   /^The system TeX tree is not writable, so the packages went into your personal tree at (.+?)\.?$/;
 
-// Identifies a set of missing packages independently of the order the log
-// happened to mention them in, so the same gap is only ever offered once.
 export function packageSuggestionSignature(
   packages: readonly string[],
 ): string {
@@ -918,9 +870,6 @@ async function saveAllDirtyRetryingConflicts(): Promise<void> {
   }
 }
 
-// The files a build of mainDoc reads, from the project graph: the main
-// document, what it includes or imports, and the bibliographies and assets
-// those name. Null without a graph for this project, so every file counts.
 function filesTheCompileReads(projectId: string | null, mainDoc: string): Set<string> | null {
   const graph = useIndexStore.getState().intelligenceState?.data;
   if (!graph || !projectId || graph.identity.projectId !== projectId) return null;
@@ -988,9 +937,6 @@ function engineReadsExtensions(
     : null;
 }
 
-// A failed save stops the compile when the build may read that file: the
-// graph names it, or the engine reads files of its kind. A failure that says
-// the project folder itself is gone stops it whatever the file.
 function saveFailureStopsCompile(
   error: unknown,
   projectId: string | null,
@@ -1009,9 +955,6 @@ function saveFailureStopsCompile(
   );
 }
 
-// Saves every open file. A file the build doesn't read that can't be saved,
-// such as notes changed on disk by a sync client, gets the usual save notice
-// and doesn't stop the compile. Anything else stops it.
 export async function saveAllForCompile(
   options: { readonly mainDoc?: string; readonly explicit?: boolean } = {},
 ): Promise<void> {
@@ -1046,8 +989,6 @@ export function clearFolderPause(): void {
   );
 }
 
-// Each failed file is reported under its own path with its own reason, so
-// one file's "changed on disk" never marks another file as changed.
 export function reportCompileSaveFailure(
   scope: string,
   files: ReturnType<typeof useFilesStore.getState>,
@@ -1204,6 +1145,7 @@ async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean>
   if (ctx.files.engine.capabilities.compiler_prerequisite !== "pandoc") return true;
   try {
     if (!(await ensurePandoc({ notify: ctx.origin === "explicit" }))) {
+      if (!compileIdentityGate(ctx)) return false;
       setCompileUnavailable(
         ctx,
         "Pandoc is required for this document engine and is not available.",
@@ -1212,8 +1154,9 @@ async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean>
       return false;
     }
   } catch (e) {
-    setCompileUnavailable(ctx, `Pandoc setup failed: ${String(e)}`);
     void logError("Pandoc setup", e);
+    if (!compileIdentityGate(ctx)) return false;
+    setCompileUnavailable(ctx, `Pandoc setup failed: ${String(e)}`);
     ctx.abortIntent();
     return false;
   }
@@ -1232,7 +1175,8 @@ async function notebookPrerequisiteGate(ctx: CompileGateContext, tool: NotebookT
     cached && (cached[tool].active || ctx.origin !== "explicit")
       ? cached
       : await useNotebookToolchainStore.getState().refresh();
-  if (!status || status[tool].active || !ctx.capturedProjectId) return compileIdentityGate(ctx);
+  if (!compileIdentityGate(ctx)) return false;
+  if (!status || status[tool].active || !ctx.capturedProjectId) return true;
   const installing =
     status[tool].installing || useNotebookToolchainStore.getState().installs[tool] !== undefined;
   ctx.set({
@@ -1250,9 +1194,6 @@ async function notebookPrerequisiteGate(ctx: CompileGateContext, tool: NotebookT
 
 function systemTexPrerequisiteGate(ctx: CompileGateContext): boolean {
   if (ctx.files.engine.capabilities.compiler_prerequisite !== "system_tex") return true;
-  // A TinyTeX install may be in flight: queue this compile behind it
-  // instead of failing with "latexmk not found". The engine store runs
-  // the queued compile the moment the install lands.
   const engineStore = useEngineStore.getState();
   if (engineStore.installing) {
     engineStore.queueCompileAfterInstall(ctx.origin);
@@ -1330,13 +1271,10 @@ async function syntaxCheckGate(ctx: CompileGateContext, projectId: string): Prom
   if (!compileSettingsForEngine(engine).syntaxCheck || !pathUsesEngineSource(engine, ctx.mainDoc)) {
     return true;
   }
-  // Runs after the save so it reads exactly the source the compiler would.
   let syntaxErrors: CompileError[] = [];
   try {
     syntaxErrors = await mainDocumentSyntaxErrors(projectId, ctx.mainDoc);
   } catch {
-    // The checker is an optimization, never a gate of its own: if the
-    // source cannot be read here, let the compiler report the real problem.
     syntaxErrors = [];
   }
   if (!compileIdentityGate(ctx)) return false;
@@ -1506,8 +1444,6 @@ function createCompileLogPump(
 }
 
 function applyStoppedCompile(set: CompileSet, identityStale: () => boolean): void {
-  // A stop is not a failed document: keep the preview and the previous
-  // log rather than reporting an error the source did not cause.
   clearQueuedRerun();
   set((state) =>
     identityStale()
@@ -1643,6 +1579,7 @@ function settleAlreadyShownOutput(
           errors: result.errors,
           diagnostics: result.diagnostics ?? null,
           log: `${ctx.offlineNoticePrefix}${result.log}`,
+          htmlOutput: null,
         },
   );
   return true;
@@ -1725,7 +1662,7 @@ async function applyCompileResult(
       lastCompileCheckpoint: checkpoint ?? state.lastCompileCheckpoint,
       compiledSources: checkpoint ? ctx.compiledSourceSnapshot : state.compiledSources,
       compileTimeMs: checkpoint ? (result.compile_time_ms ?? 0) : state.compileTimeMs,
-      htmlOutput: checkpoint ? null : state.htmlOutput,
+      htmlOutput: null,
     };
   });
   if (!applied) return result;
@@ -1736,7 +1673,6 @@ async function applyCompileResult(
     maybeOfferEngineChoice(ctx, result.log, result.errors, opening);
     maybeSuggestMissingPackages(ctx, result.log);
   }
-  // Tell detached windows (PDF preview, other OS windows) to reload.
   void import("@/lib/preview-window")
     .then((module) =>
       module.refreshPreviewWindow({
@@ -1946,9 +1882,6 @@ function clearOrphanedCompilingState(
   requestIdentity: CompileRequestIdentity,
   checkpointAtStart: CompileSuccessCheckpoint | null,
 ): void {
-  // A same-project main-document switch does not run the project-reset
-  // effect. Clear only this attempt's orphaned "compiling" indicator;
-  // never replace a success checkpoint that arrived while it was active.
   set((state) => {
     if (
       state.status !== "compiling" ||
@@ -2027,8 +1960,6 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     set({ stopOnFirstError: stop });
   },
   stopCompile: async () => {
-    // Drop any queued rerun too: the user asked for compilation to end, not to
-    // be replaced by the next one in line.
     clearQueuedRerun();
     try {
       await cancelCompile();
@@ -2070,15 +2001,12 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     );
   },
   restoreFromDisk: async (projectId, mainDoc) => {
-    // Only seed a fresh store: once any compile has produced a checkpoint in
-    // this session, disk state is older by definition.
     if (get().lastCompileCheckpoint || get().status !== "idle") return false;
     const validated = await validateCompileFingerprint(projectId, mainDoc).catch(() => null);
     if (!validated || validated.main_document !== mainDoc) return false;
     const buffer = await readCompiledPdf(projectId).catch(() => null);
     if (!buffer) return false;
     const bytes = new Uint8Array(buffer);
-    // The PDF on disk must be the exact output the fingerprint describes.
     if (fingerprintCompileOutput(bytes) !== validated.output_id) return false;
     if (!Number.isSafeInteger(validated.output_revision) || validated.output_revision <= 0) {
       return false;
@@ -2088,8 +2016,6 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     const checkpoint = createCompileSuccessCheckpoint({
       projectId,
       mainDocument: mainDoc,
-      // The record was validated against the sources on disk, which are
-      // exactly what this freshly opened project loaded.
       projectRevision: projectRevisionFor(projectId),
       outputKind: "standard",
       producerId: currentCompileProducerId(),
@@ -2113,10 +2039,6 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   },
 
   recompile: async (options) => {
-    // Compiles share one build dir, so never run two at once. A request made
-    // mid-compile queues exactly one rerun so a manual Cmd+Enter during the
-    // on-open auto-compile still compiles the latest edits instead of being
-    // silently dropped.
     const origin = options?.origin ?? "explicit";
     if (activeCompileIntent !== null || get().status === "compiling") {
       queueRerun(origin);
@@ -2153,9 +2075,6 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       }
     };
 
-    // The effective main document honours an active `% !TEX root` override,
-    // falling back to the stored main doc. Every identity check below must
-    // agree with this resolution or the compile invalidates itself.
     const mainDoc = resolveEffectiveMainDoc().mainDoc;
     const checkpointAtStart = get().lastCompileCheckpoint;
     const matchesProjectAndMain = () => {
@@ -2208,8 +2127,6 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     );
     const offlineNoticePrefix = offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "";
     const seq = ++compileSeq;
-    // True once this compile's result is no longer the one the UI should show
-    // (project switched, or a newer compile started).
     const identityStale = () => {
       return seq !== compileSeq || !isCompileOutputStillWanted(requestIdentity);
     };

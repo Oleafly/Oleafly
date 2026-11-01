@@ -1,4 +1,15 @@
-import { downloadProjectZip, exportDocument, exportPdf, revealInDir, exportProjectImage } from "@/lib/tauri";
+import {
+  cancelCompile,
+  downloadProjectZip,
+  EXPORT_LOG_EVENT,
+  exportDocument,
+  exportPdf,
+  revealInDir,
+  exportProjectImage,
+  withEventListener,
+} from "@/lib/tauri";
+import { decodeAppError, describeError } from "@/lib/app-error";
+import { isNotebookEngine } from "@/lib/notebook-engines";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -14,8 +25,33 @@ import { noteUnreviewedSuggestions } from "@/lib/collab-live-bridge";
 export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
 
 const EXPORT_TOAST_KEY = "export-result";
+const EXPORT_STOPPED = "notebook.export_stopped";
+const STEP_LENGTH = 120;
 
 let documentExportInFlight = false;
+
+function exportStepReader(onStep: (step: string) => void): (chunk: string) => void {
+  let partial = "";
+  return (chunk) => {
+    const lines = `${partial}${chunk}`.split(/\r\n|\n|\r/);
+    partial = (lines.pop() ?? "").slice(-STEP_LENGTH * 4);
+    for (let index = lines.length - 1; index >= 0; index--) {
+      const step = lines[index].trim();
+      if (!step) continue;
+      onStep(step.length > STEP_LENGTH ? `${step.slice(0, STEP_LENGTH - 1)}…` : step);
+      return;
+    }
+  };
+}
+
+function stopExport(): void {
+  void cancelCompile().catch((error: unknown) => notifyError("stop export", error));
+}
+
+function exportFailed(error: unknown): void {
+  if (decodeAppError(error)?.code === EXPORT_STOPPED) toast.info(describeError(error));
+  else notifyError("export document", error);
+}
 
 export async function exportCurrentDocument(format: DocumentExportFormat | "zip"): Promise<void> {
   if (documentExportInFlight) return;
@@ -43,18 +79,26 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
     assertProject();
     await useFilesStore.getState().flushForQuit();
     assertProject();
-    progress = toast.infoUnique(
+    const stoppable = format !== "zip" && isNotebookEngine(engine);
+    const toastId = toast.infoUnique(
       EXPORT_TOAST_KEY,
       i18n.t(($) => $.shell.toolbar.exporting, { format: extension }),
-      undefined,
+      stoppable ? { label: i18n.t(($) => $.shell.toolbar.stopExport), onClick: stopExport } : undefined,
       true,
     );
+    progress = toastId;
     if (format === "zip") await downloadProjectZip(projectId, destination);
-    else await exportDocument(projectId, mainDoc, format, destination, activeTypstVariant(projectId, engine));
+    else {
+      const showStep = (step: string) =>
+        toast.update(toastId, i18n.t(($) => $.shell.toolbar.exportingStep, { format: extension, step }));
+      await withEventListener(EXPORT_LOG_EVENT, exportStepReader(showStep), () =>
+        exportDocument(projectId, mainDoc, format, destination, activeTypstVariant(projectId, engine)),
+      );
+    }
     exportSuccessToast(extension.toUpperCase(), destination);
     progress = undefined;
   } catch (error) {
-    notifyError("export document", error);
+    exportFailed(error);
   } finally {
     if (progress !== undefined) toast.dismiss(progress);
     documentExportInFlight = false;
@@ -66,7 +110,6 @@ function errorDetail(e: unknown): string {
   return typeof e === "string" ? e : "";
 }
 
-/** Show in Finder/Explorer; never flip a successful save into a failure toast. */
 function revealExportedFile(dest: string): void {
   void revealInDir(dest).catch(() => {
     toast.info(i18n.t(($) => $.core.export.revealFailed));
@@ -104,7 +147,6 @@ export async function exportCurrentPdf(): Promise<void> {
       throw new Error("The open project changed. Start the export again from the project you want to save.");
     }
     await exportPdf(projectId, dest);
-    // Destination path is known and the file was published — always success.
     exportSuccessToast("PDF", dest);
   } catch (e) {
     const detail = errorDetail(e);
@@ -120,7 +162,6 @@ export async function exportCurrentPdf(): Promise<void> {
   }
 }
 
-// For image projects, where the output is an image rather than a document.
 export async function exportCurrentImagePng(scale = 3): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
   const { pdfBytes } = useCompileStore.getState();

@@ -61,8 +61,6 @@ test("a LaTeX error surfaces as an error status, and fixing it recovers", async 
     await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "error", {
       timeout: 90_000,
     });
-    // A failed compile can retain either the previous preview tab or the Logs
-    // tab from an earlier test, so converge on Logs instead of toggling it.
     await showCompileLogs(tauriPage);
     await expect(tauriPage.getByText("Copy log")).toBeVisible();
     await expect(tauriPage.getByText("Ask AI", { exact: true })).toBeVisible();

@@ -1,5 +1,3 @@
-//! The editor socket's handshake, used once per import to read a project's
-//! settings (compiler, TeX Live image, main document).
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use reqwest::header::SET_COOKIE;
@@ -114,8 +112,6 @@ fn absorb_cookies(cookie: &str, response: &reqwest::Response) -> String {
     session::merge_set_cookies(cookie, lines.iter().map(String::as_str))
 }
 
-/// The project as the editor's socket sends it (settings, root document).
-/// Failures are reported as `Unreachable` with what went wrong as detail.
 pub async fn fetch_project(
     http: &Http,
     cookie: &str,

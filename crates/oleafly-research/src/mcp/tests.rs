@@ -18,7 +18,6 @@ use crate::scheduler::{SuspendSignals, TaskRuntimeFuture, TaskServices};
 use crate::task_tools::extra::{TaskBinding, SPAWN_AGENT};
 use crate::test_support as test_wait;
 
-/// Skills and linked folders from plain values.
 struct FakeServices {
     skills: Vec<Value>,
     linked: std::collections::HashMap<String, std::path::PathBuf>,
@@ -422,7 +421,6 @@ async fn dropping_the_owner_closes_the_listener() {
             if tokio::net::TcpStream::connect(&authority).await.is_err() {
                 break;
             }
-            // Paced so a long wait cannot run out of local ports and stop on AddrNotAvailable.
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })
@@ -799,10 +797,6 @@ async fn skills_and_linked_roots_come_from_the_ports() {
     bridge.shutdown().await;
 }
 
-// 0.4.8: a CLI agent working on a research task gets the task's tools
-// through its bridge; chat sessions keep the research tools only.
-
-/// A task host for bridges that never run a model.
 struct NoModelHost;
 
 impl crate::builtin::TaskHost for NoModelHost {
@@ -867,15 +861,12 @@ async fn a_run_waiting_for_approval_is_not_cut_off_at_the_task_call_limit() {
     let root = tempfile::tempdir().unwrap();
     let mut binding = task_binding(root.path(), &root.path().join("tasks"));
     let usual = transport::task_call_limit("start_run", &binding);
-    // Without a question to the user, a task tool gets the usual six minutes.
     assert_eq!(usual, Duration::from_secs(360));
     binding.brief.permissions.commands = crate::model::CommandPolicy::Ask;
-    // A run the user must approve waits for the answer (up to a day).
     assert!(transport::task_call_limit("start_run", &binding) >= crate::approvals::APPROVAL_EXPIRY);
     assert_eq!(transport::task_call_limit("wait_runs", &binding), usual);
 }
 
-/// The tools a `tools/list` request returns.
 async fn listed_tools(bridge: &ScopedResearchMcp) -> Vec<Value> {
     let response: Value = client()
         .post(&bridge.url)
@@ -934,8 +925,6 @@ async fn acp_task_bridges_offer_the_task_tools_but_not_spawn_agent() {
         );
     }
     assert!(!names.contains(&SPAWN_AGENT.to_owned()), "{names:?}");
-    // The research tools stay; the task's literature search replaces the
-    // single-index one.
     for name in ["research_context", "read_file", "list_files", "load_skill"] {
         assert!(
             names.contains(&name.to_owned()),
@@ -959,8 +948,6 @@ async fn acp_task_bridges_offer_the_task_tools_but_not_spawn_agent() {
             .is_some(),
         "{literature}"
     );
-    // The task tools answer for the task's own runs; a helper agent is not
-    // served here (a CLI agent starts its own).
     let status = bridge.call_tool("run_status", &json!({})).await.unwrap();
     assert_eq!(decode(&status), json!([]));
     let refused = bridge

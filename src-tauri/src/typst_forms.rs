@@ -1,8 +1,3 @@
-//! Reads the Typst function forms a project can use: its `oleafly-forms.toml`
-//! and the `typst.toml` of each package its documents import, from the package
-//! folders the compiler uses. Nothing here fetches, installs or compiles, so a
-//! package that isn't on disk yet simply has no forms.
-
 use std::collections::BTreeSet;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -17,8 +12,6 @@ use crate::typst_packages::{package_dir, PackageSpec, TypstPackageDirs};
 
 const PACKAGE_MANIFEST: &str = "typst.toml";
 
-/// The project file first, then each requested package once, in the order
-/// asked. A string that isn't a package spec becomes an invalid-spec source.
 pub(crate) fn read_sources(
     project_root: &Path,
     dirs: &TypstPackageDirs,
@@ -65,8 +58,6 @@ fn has_entry_named(directory: &Path, name: &str) -> std::io::Result<bool> {
         .any(|entry| entry.file_name() == name))
 }
 
-/// A vendored package is watched at its place in the project, whether or not
-/// it has been copied there yet, so vendoring it reloads the catalog.
 fn package_source(project_root: &Path, dirs: &TypstPackageDirs, spec: &PackageSpec) -> SourceRead {
     let watch = dirs
         .package_path
@@ -109,7 +100,7 @@ fn read_text(path: &Path) -> SourceText {
     }
     match String::from_utf8(bytes) {
         Ok(text) => SourceText::Text(text),
-        Err(_) => SourceText::Unreadable("it is not UTF-8 text.".into()),
+        Err(_) => SourceText::NotUtf8,
     }
 }
 
@@ -137,15 +128,12 @@ fn compiler_package_dirs(
     }
 }
 
-/// The catalog for a project, read the way its compiles see packages. A
-/// project that doesn't build with Typst has an empty one.
 fn catalog_blocking(project_id: &str, packages: &[String]) -> Result<FormCatalog, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     let meta = crate::project::read_meta(project_id)?;
     let root = crate::project_location::locate(project_id)?.root;
     Ok(match crate::typst_packages::for_compile(&meta, &root)? {
         Some(configured) => {
-            // The version the compile resolves, without running it.
             let version = meta
                 .typst_version_pin()
                 .map_or_else(crate::typst_toolchain::default_version, str::to_owned);

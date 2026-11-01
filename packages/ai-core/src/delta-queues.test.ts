@@ -22,7 +22,6 @@ describe("DeltaQueues", () => {
     queues.enqueueOutput(() => seen.push("y"));
     scheduler.runInterval();
     expect(seen).toEqual(["x", "y"]);
-    // The interval canceled itself once the queue drained.
     scheduler.runInterval();
     expect(seen).toEqual(["x", "y"]);
   });
@@ -43,7 +42,6 @@ describe("DeltaQueues", () => {
     const scheduler = new ManualScheduler();
     const queues = new DeltaQueues(scheduler);
     const order: string[] = [];
-    // Over the batch cap: leftovers stay queued after the drain.
     for (let i = 0; i < 600; i += 1) {
       queues.enqueueFrameText(() => order.push(`t${i}`));
     }
@@ -51,7 +49,6 @@ describe("DeltaQueues", () => {
     expect(deferred).toBeInstanceOf(Function);
     expect(order[order.length - 1]).not.toBe("terminal");
     expect(queues.pendingFrameText()).toBeGreaterThan(0);
-    // The host drains again and replays the terminal event.
     const replay = deferred as () => void;
     const second = queues.drainBeforeTerminal(replay);
     expect(second).toBeNull();

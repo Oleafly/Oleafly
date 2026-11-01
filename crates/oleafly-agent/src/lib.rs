@@ -3,7 +3,6 @@ pub mod complete;
 pub mod effort;
 pub mod error;
 pub mod event;
-// The typed item record; consumed by the rollout store and the shell.
 #[allow(dead_code)]
 pub mod items;
 pub mod message;

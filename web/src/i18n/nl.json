@@ -48,6 +48,11 @@
     "stoppedTitle": "Verbinding verbroken",
     "stoppedDescription": "Laad de pagina opnieuw om weer verbinding te maken."
   },
+  "leave": {
+    "title": "Dit project verlaten?",
+    "description": "Sommige van je bewerkingen hebben de server nog niet bereikt. Blijf tot ze zijn verstuurd, of ga weg en raak ze kwijt.",
+    "confirm": "Verlaten"
+  },
   "access": {
     "changed": "Je nieuwe rol in dit project: {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Intrekken",
     "acceptAll": "Alles accepteren",
     "rejectAll": "Alles weigeren",
+    "rejectAllConfirm": {
+      "title": "Alle suggesties in {{file}} weigeren?",
+      "description": "De oorspronkelijke tekst komt terug in het bestand, voor iedereen in dit project. Wachtende suggesties: {{number}}.",
+      "confirm": "Alles weigeren"
+    },
     "pending_one": "{{count}} suggestie",
     "pending_other": "{{count}} suggesties",
     "card": "Suggestie van {{name}}",

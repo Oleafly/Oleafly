@@ -224,6 +224,8 @@
     "suggestion_not_found": "Förslaget finns inte längre. Någon kan ha accepterat eller avvisat det.",
     "suggestion_not_yours": "Bara den som gjorde förslaget kan dra tillbaka det.",
     "suggestion_role": "Din roll i det här projektet tillåter inte förslag.",
+    "suggestion_changed": "Texten runt förslaget har ändrats, så en ägare eller redigerare måste acceptera eller avvisa det.",
+    "suggestion_too_long": "En föreslagen borttagning får vara högst 20 000 tecken lång. Ta bort en mindre del åt gången.",
     "chat_role": "Din roll i det här projektet tillåter inte det i chatten.",
     "history_unavailable": "Projektets historik finns inte på den här datorn än. Försök igen när den har synkats.",
     "account_storage_full": "Projektägarens konto har slut på lagringsutrymme på den här servern. Ta bort några filer för att frigöra utrymme, eller be serverns administratör om mer utrymme.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Återställ hela projektet?",
-      "description": "Alla filer återställs till hur de var {{time}} för alla i projektet. Den nuvarande texten finns kvar i historiken, så du kan gå tillbaka till den.",
+      "textAndDeleted": "Texten i varje fil återställs till hur den var {{time}} för alla i projektet, och raderade filer kommer tillbaka. Omdöpta filer behåller sina nya namn, och figurer och filer som lagts till senare lämnas som de är. Den nuvarande texten finns kvar i historiken, så du kan gå tillbaka till den.",
       "confirm": "Återställ projektet"
     },
     "compareTitle": "Ändringar mellan två versioner",

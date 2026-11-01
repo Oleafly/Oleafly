@@ -1,18 +1,4 @@
 #!/usr/bin/env bash
-#
-# Set the Oleafly version in one place so a release tag never drifts from the
-# manifests. Updates all five spots that carry the version:
-#
-#   - package.json            ("version")
-#   - src-tauri/tauri.conf.json ("version")
-#   - src-tauri/Cargo.toml     ([package] version)
-#   - Cargo.lock               (the oleafly package entry)
-#   - src-tauri/linux/com.oleafly.app.metainfo.xml (a <release> dated today, UTC)
-#
-# Usage:
-#   ./scripts/bump-version.sh 0.2.0
-#   ./scripts/bump-version.sh v0.2.0   # a leading "v" is stripped
-#
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,10 +8,8 @@ if [[ "$#" -ne 1 ]]; then
   exit 1
 fi
 
-# Strip a leading "v" so both `0.2.0` and `v0.2.0` work.
 VERSION="${1#v}"
 
-# Basic semver check (major.minor.patch with an optional -prerelease/+build tail).
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+.][0-9A-Za-z.-]+)?$ ]]; then
   echo "error: '$VERSION' is not a valid semver version (e.g. 0.2.0)" >&2
   exit 1
@@ -51,7 +35,6 @@ perl -0pi -e 's/("version"\s*:\s*")[^"]*(")/${1}'"$VERSION"'${2}/' "$conf"
 # match `^version = `.
 perl -pi -e 'if (!$seen && /^version = "/) { s/^version = "[^"]*"/version = "'"$VERSION"'"/; $seen = 1 }' "$cargo"
 
-# Cargo.lock: the version line immediately under the oleafly package entry.
 perl -0pi -e 's/(name = "oleafly"\nversion = ")[^"]*(")/${1}'"$VERSION"'${2}/' "$lock"
 
 if ! grep -q "<release version=\"$VERSION\"" "$metainfo"; then

@@ -24,7 +24,6 @@ vi.mock("@tauri-apps/api/event", () => ({
     mocks.handlers.set(name, set);
     return () => set.delete(handler);
   }),
-  // An app event reaches every listener, this window's own too.
   emit: vi.fn(async (name: string, payload: unknown) => {
     for (const handler of [...(mocks.handlers.get(name) ?? [])]) handler({ payload });
   }),

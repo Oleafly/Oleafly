@@ -286,8 +286,6 @@ beforeEach(() => {
 
 describe("compile output lifecycle", () => {
   it("coalesces bursty compiler output so WebKit gets a paint frame", async () => {
-    // This case measures log buffering; syntax validation has separate cases
-    // below and lazily loads the language service on the first compile.
     useCompileStore.setState({ checkSyntaxBeforeCompile: false });
     const compile = deferred<{
       ok: boolean;
@@ -692,6 +690,19 @@ describe("compile output lifecycle", () => {
     await compiling;
     expect(mocks.saveAllDirty).not.toHaveBeenCalled();
     expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("drops a missing-Pandoc answer that arrives after another project opened", async () => {
+    mocks.files.mainDoc = "main.md";
+    mocks.files.engine = { ...LATEX_ENGINE, id: "markdown", label: "Markdown / Pandoc", source_format: "markdown", main_document: "main.md", source_extensions: ["md"], capabilities: { ...LATEX_ENGINE.capabilities, compiler_prerequisite: "pandoc" } };
+    let finish: ((value: boolean) => void) | undefined;
+    mocks.ensurePandoc.mockReturnValue(new Promise<boolean>((resolve) => { finish = resolve; }));
+    const compiling = useCompileStore.getState().recompile();
+    mocks.files.projectId = "another-project";
+    finish?.(false);
+    await compiling;
+    expect(useCompileStore.getState().status).not.toBe("unavailable");
+    expect(useCompileStore.getState().failureReason).toBeNull();
   });
 
   it("reports a nonzero compile as an error but still shows the best-effort PDF", async () => {
@@ -1434,7 +1445,6 @@ describe("restore from the on-disk compile fingerprint", () => {
     expect(state.pdfBytes).toEqual(pdfBytes);
     expect(state.lastCompileCheckpoint?.outputRevision).toBe(57);
     expect(state.lastCompileCheckpoint?.outputId).toBe(fingerprintCompileOutput(pdfBytes));
-    // The logs pane must not come back empty after a restored open.
     expect(state.log).toBe("Output written on main.pdf (2 pages).");
     expect(mocks.compileProject).not.toHaveBeenCalled();
   });
@@ -1686,7 +1696,6 @@ describe("compile options", () => {
     await useCompileStore.getState().recompile();
 
     const state = useCompileStore.getState();
-    // A stop is not a failed document: no error, and the PDF stays on screen.
     expect(state.status).toBe("success");
     expect(state.failureReason).toBeNull();
     expect(state.pdfBytes).toEqual(bytes);

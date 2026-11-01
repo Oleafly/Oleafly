@@ -1477,6 +1477,7 @@
         "missing": "이 컴퓨터에서 찾을 수 없습니다."
       },
       "managedIdle": "사용 중이 아닙니다. Oleafly는 이 컴퓨터에서 찾은 사본을 먼저 사용합니다.",
+      "superseded": "사용 중이 아닙니다. Oleafly는 이제 {{tool}} {{version}}을(를) 사용합니다.",
       "download": {
         "optional": "선택 사항입니다. Oleafly가 이미 이 컴퓨터에 있는 사본을 사용하고 있습니다.",
         "license": "{{license}} 라이선스입니다.",

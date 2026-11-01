@@ -1,10 +1,5 @@
-//! What a checkpoint of a folder the app opened in place leaves out, in one
-//! place for the app's capture and `oleafly checkpoint diff`/`restore`, so
-//! both list the same files.
 use std::fs::Metadata;
 
-/// Files larger than this are left out unless the build named them (or a
-/// checkpoint already holds them).
 pub const LARGE_FILE_BYTES: u64 = 25 * 1024 * 1024;
 
 /// Names left out without a word: Oleafly's own files and temp names, OS
@@ -15,23 +10,16 @@ pub fn is_left_out_quietly(name: &str) -> bool {
         || name.eq_ignore_ascii_case(".git")
 }
 
-/// Folders a capture doesn't enter (dot folders, build and dependency
-/// folders).
 pub fn is_skipped_directory(name: &str) -> bool {
     crate::exclude::is_linked_skipped_directory(name)
 }
 
-/// Whether an entry (its metadata read without following links) is one a
-/// capture never opens: a link, a reparse point, or a cloud placeholder,
-/// which reading would download.
 pub fn is_never_read(metadata: &Metadata) -> bool {
     metadata.file_type().is_symlink()
         || is_reparse_point(metadata)
         || crate::is_cloud_placeholder(metadata)
 }
 
-/// Whether a file of `bytes` is too large to capture unless it was named on
-/// purpose.
 pub fn is_large(bytes: u64) -> bool {
     bytes > LARGE_FILE_BYTES
 }

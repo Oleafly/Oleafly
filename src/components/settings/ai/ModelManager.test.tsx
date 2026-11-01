@@ -93,6 +93,7 @@ describe("ModelManager refresh", () => {
   });
 
   it("names a custom provider's address when its list fails, and frees Refresh at once", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     mockList.mockRejectedValueOnce(new Error("[provider] The provider returned 404."));
     mockList.mockResolvedValueOnce([{ id: "Bonsai-8B-gguf", name: "Bonsai-8B-gguf", trust: "untested" }]);
     const onChange = renderManager({
@@ -107,7 +108,10 @@ describe("ModelManager refresh", () => {
     expect(await screen.findByTestId("ai-refresh-error-lemonade")).toHaveTextContent(
       enSettings.ai.customProvider.discovery.rejected.replace("{{url}}", "http://localhost:13305/v1"),
     );
-    await waitFor(() => expect(screen.getByTestId("ai-refresh-models-lemonade")).toBeEnabled());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByTestId("ai-refresh-models-lemonade")).toBeEnabled();
     fireEvent.click(screen.getByTestId("ai-refresh-models-lemonade"));
     await vi.waitFor(() => expect(onChange).toHaveBeenCalledOnce());
     expect(screen.queryByTestId("ai-refresh-error-lemonade")).not.toBeInTheDocument();

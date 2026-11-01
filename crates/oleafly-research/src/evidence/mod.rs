@@ -1,7 +1,3 @@
-//! Evidence checks before review: does the project build, do references
-//! resolve, are new bibliography entries real, do numbers match the runs
-//! they cite, are new figures used. The checks only warn; the review never
-//! waits on them and nothing is blocked.
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -28,14 +24,12 @@ const MAX_TEXT_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_WALK_ENTRIES: usize = 20_000;
 const CLI_MISSING: &str = "The command-line tool isn't available.";
 
-/// What the checks look at.
 pub struct EvidenceInputs<'a> {
     pub isolation: &'a TaskIsolation,
     pub changes: &'a [TaskFileChange],
     pub runs: Vec<RunRecord>,
     pub ledger: Vec<LedgerRow>,
     pub workspace: Option<Arc<dyn WorkspaceTools>>,
-    /// The project folder the task's workspace was copied from.
     pub project_root: Option<PathBuf>,
 }
 
@@ -65,9 +59,6 @@ pub(crate) async fn check_evidence_with(
     if !cancel.is_cancelled() {
         checks.push(references_check(inputs.workspace.as_deref(), &root, &baseline).await);
     }
-    // The file checks below read up to thousands of files and parse
-    // BibTeX: they run on a blocking thread, off the async workers that
-    // also answer the app's commands.
     if !cancel.is_cancelled() {
         let (changes, root, baseline) = (inputs.changes.to_vec(), root.clone(), baseline.clone());
         let entries =
@@ -181,7 +172,6 @@ async fn build_check(
     }
 }
 
-/// The keys a project map lists as unresolved references and citations.
 fn unresolved(map: &Value) -> BTreeSet<String> {
     [
         "unresolvedRefs",
@@ -203,8 +193,6 @@ fn unresolved(map: &Value) -> BTreeSet<String> {
     .collect()
 }
 
-/// Whether a capped project map cut a list of unresolved references or
-/// citations (`truncatedCounts` names each cut list by its dotted path).
 fn unresolved_cut(map: &Value) -> bool {
     map.get("truncatedCounts")
         .and_then(Value::as_object)
@@ -237,8 +225,6 @@ async fn references_check(
     ) else {
         return not_checked();
     };
-    // A map cut to fit a tool result may leave out some unresolved keys: the
-    // diff would then name keys the task did not add (or miss ones it did).
     if unresolved_cut(&after) || unresolved_cut(&before) {
         return not_checked();
     }
@@ -265,7 +251,6 @@ fn changed_after(changes: &[TaskFileChange]) -> impl Iterator<Item = &TaskFileCh
         .filter(|change| change.after_sha256.is_some())
 }
 
-/// The entries the task added to the `.bib` files it changed (blocking).
 fn bibliography_entries(
     changes: &[TaskFileChange],
     root: &Path,
@@ -348,7 +333,6 @@ fn numbers_check(
     check(EvidenceCheckId::Numbers, items)
 }
 
-/// Portable paths of the workspace's files (bounded).
 fn workspace_files(root: &Path) -> BTreeSet<String> {
     let mut files = BTreeSet::new();
     let mut pending = vec![PathBuf::new()];

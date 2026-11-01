@@ -14,10 +14,6 @@ import {
 import { OVERLEAF_FIXTURE_TEMPLATE, startOverleafFixtureServer } from "../overleaf-fixture-server";
 import { scriptValue } from "../script-value";
 
-// Custom templates end to end: a ZIP becomes a template in the gallery, the
-// projects made from it are independent copies, a project is saved back as a
-// template, and a gallery link is copied through the signed-in account.
-
 let server: Awaited<ReturnType<typeof startOverleafFixtureServer>>;
 
 test.beforeAll(async () => {
@@ -86,7 +82,6 @@ test("a ZIP imported as a template makes independent projects with every file", 
   });
   await tauriPage.click('[data-testid="template-import-save"]');
 
-  // Saving lands on "Name your project" with the new template picked.
   await expect(tauriPage.locator("#new-project-name")).toBeVisible({ timeout: 30_000 });
   await tauriPage.fill("#new-project-name", "First from template");
   await finishProjectCreation(tauriPage);
@@ -145,7 +140,6 @@ test("a library project is saved as a template from its menu", async ({ tauriPag
 
   const template = await customTemplate(tauriPage, "Saved lab master");
   expect(template?.category).toBe("Custom");
-  // Templates live in the gallery, never in the project library.
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   const books = await tauriPage.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[data-testid="project-grid"] button[aria-label^="Open "]')).map((b) => b.getAttribute("aria-label") ?? "")`,
@@ -172,7 +166,6 @@ test("a gallery link is imported through the signed-in account", async ({ tauriP
   await expect(details).toContainText(OVERLEAF_FIXTURE_TEMPLATE.license);
 
   await tauriPage.click('[data-testid="template-import-link-save"]');
-  // A fresh fixture port has no saved sign-in, so the dialog asks for one.
   await expect(tauriPage.locator('[data-testid="template-import-sign-in"]')).toBeVisible({ timeout: 30_000 });
   expect(server.templateCopies()).toBe(0);
   await tauriPage.click('[data-testid="template-import-sign-in"]');

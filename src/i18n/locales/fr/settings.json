@@ -1499,6 +1499,7 @@
         "missing": "Introuvable sur cet ordinateur."
       },
       "managedIdle": "Copie non utilisée. Oleafly utilise d'abord celle trouvée sur cet ordinateur.",
+      "superseded": "Copie non utilisée. Oleafly utilise désormais {{tool}} {{version}}.",
       "download": {
         "optional": "Facultatif. Oleafly utilise déjà la copie présente sur cet ordinateur.",
         "license": "Licence {{license}}.",

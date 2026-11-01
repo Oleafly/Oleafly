@@ -1,6 +1,3 @@
-//! Which sign-in a remote Git command uses: the token of the account whose
-//! base URL the remote lies under, or the user's own Git setup for every
-//! other remote (SSH, other servers, servers without an account).
 use super::{app_error, host_label, http_for_async, now_ms, store};
 use crate::git::{AccountCredential, RemoteAuth};
 use oleafly_forge::address::{self, RemoteProtocol};
@@ -9,8 +6,6 @@ use oleafly_forge::{ForgeAccount, ForgeError, ForgeToken};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// The sign-in for a remote address. Only `http(s)` remotes under an
-/// account's base get its token; a GitLab OAuth token is refreshed first.
 pub(crate) async fn remote_auth_for_url(url: &str) -> Result<RemoteAuth, String> {
     let Some(remote) = address::parse_remote(url) else {
         return Ok(RemoteAuth::User);
@@ -33,8 +28,6 @@ pub(crate) async fn remote_auth_for_url(url: &str) -> Result<RemoteAuth, String>
             Ok((store, accounts)) => address::account_for_remote(&accounts, &target)
                 .cloned()
                 .map(|account| (store, account)),
-            // An account store that can't be read (damaged, locked) never
-            // stops a remote: Git signs in as the user set it up to.
             Err(error) => {
                 note_unreadable_accounts(&error);
                 None
@@ -52,15 +45,11 @@ pub(crate) async fn remote_auth_for_url(url: &str) -> Result<RemoteAuth, String>
         .map_err(|error| app_error(&error, &host))?;
     match store.usable_token(&http, &account.base, now_ms()).await {
         Ok(Some(token)) => Ok(RemoteAuth::Account(credential_for(&account, &token)?)),
-        // An account without a token reads as signed out in Settings; Git
-        // still gets a chance with the user's own sign-in.
         Ok(None) => Ok(RemoteAuth::User),
         Err(error) => Err(app_error(&error, &host)),
     }
 }
 
-/// Write an account store that can't be read to the app log, once per
-/// process.
 fn note_unreadable_accounts(error: &str) {
     static LOGGED: AtomicBool = AtomicBool::new(false);
     if LOGGED.swap(true, Ordering::Relaxed) {
@@ -72,8 +61,6 @@ fn note_unreadable_accounts(error: &str) {
     ));
 }
 
-/// What Git needs to sign in as `account`: its base URL as the credential
-/// scope, the server's user name for tokens, the token and any CA file.
 pub(crate) fn credential_for(
     account: &ForgeAccount,
     token: &ForgeToken,

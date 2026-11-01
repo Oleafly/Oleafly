@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO and most self-hosted servers need this."
   },
   "errors": {
+    "clock_skew": "This computer's clock is off, so {{provider}} won't accept requests from it. Set the correct date and time to keep syncing.",
     "code_invalid": "That code didn't work. Try again.",
     "device_name_empty": "Enter a name.",
     "device_name_invalid": "A computer name can't contain \\ / : * ? \" < > | or control characters, and it can be at most 32 characters long.",

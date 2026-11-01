@@ -135,8 +135,6 @@ test("detached preview shares compilation and keeps logs in its window", async (
   const restoredPreview = await page.waitForWindow(w => w.label === 'preview', { timeout: 20_000 });
   await expect.poll(async () => restoredPreview.evaluate(`({ width: innerWidth, height: innerHeight })`)).toEqual(geometry);
   await expect.poll(async () => restoredPreview.evaluate(`!!document.querySelector('[data-testid="preview-reattach"]')`)).toBe(true);
-  // Reattaching destroys this webview. Acknowledge the bridge command before
-  // clicking, then observe the result from the surviving main window.
   await restoredPreview.evaluate(`setTimeout(() => document.querySelector('[data-testid="preview-reattach"]').click(), 0)`);
   await expect.poll(async () => (await page.listWindows()).some(w => w.label === 'preview')).toBe(false);
   await expect.poll(async () => page.evaluate(`!!document.querySelector('.pdf-canvas')`), { timeout: 15_000 }).toBe(true);

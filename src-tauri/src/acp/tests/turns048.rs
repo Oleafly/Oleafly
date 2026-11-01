@@ -1,6 +1,3 @@
-//! 0.4.8 turn behavior against the fixture agent: usage metadata, the
-//! hidden plan-usage turn, questions, file reads, steering, events outside
-//! turns, coalescing and ACP v2.
 use super::super::buffers::BufferSource;
 use super::super::types::*;
 use super::{fixture_definition, fixture_temp, runtime};
@@ -45,8 +42,6 @@ async fn usage_meta_reaches_the_record_but_not_the_transcript() {
 async fn refreshing_plan_usage_runs_a_hidden_turn() {
     let (_temp, runtime, session) = runtime(vec!["--commands-on-start".into()]).await;
     let id = session.session.id.clone();
-    // The agent lists its commands in an update just after the session
-    // starts, which can arrive after the start returns.
     tokio::time::timeout(Duration::from_secs(5), async {
         while runtime
             .snapshot(&id)
@@ -143,7 +138,6 @@ async fn updates_outside_turns_keep_titles_notices_and_compactions() {
         .unwrap();
     assert_eq!(completed.data["summary"], "abc");
     assert!(!texts(&events).contains("Not kept outside a turn"));
-    // A renamed conversation keeps its name.
     runtime.rename_session(&id, "My title").await.unwrap();
     runtime
         .prompt(&id, "outside-events".into(), Vec::new())
@@ -423,8 +417,6 @@ async fn experimental_v2_negotiates_and_runs_a_turn() {
         .find(|event| event.kind == "turn_complete")
         .unwrap();
     assert_eq!(complete.data["stopReason"], "end_turn");
-    // A message after the agent went idle belongs to no turn, even when it
-    // arrives before the turn has finished here.
     runtime
         .prompt(&id, "late-after-idle".into(), Vec::new())
         .await
@@ -603,7 +595,6 @@ async fn routing_sends_providers_set_before_session_new_and_never_stores_the_key
             .unwrap(),
         )
         .unwrap();
-    // Without a saved key, routing is skipped and the session still starts.
     runtime
         .set_preferences(AcpPreferences {
             experimental_providers: true,
@@ -649,7 +640,6 @@ async fn routing_sends_providers_set_before_session_new_and_never_stores_the_key
     runtime.close(&snapshot.session.id).await.unwrap();
 }
 
-/// Counts the windows asked for open text; none has the file open.
 struct CountingBuffers(Arc<std::sync::atomic::AtomicUsize>);
 
 impl BufferSource for CountingBuffers {
@@ -744,14 +734,12 @@ async fn a_stored_question_keeps_its_secret_flags_and_an_echoed_answer_is_redact
         .unwrap();
     turn.await.unwrap().unwrap();
     let events = runtime.events_all(&id).unwrap();
-    // The agent echoed the token back; the transcript has it removed.
     assert!(texts(&events).contains("Answer: accept"));
     assert!(texts(&events).contains("\"eu\""));
     assert!(!serde_json::to_string(&events).unwrap().contains(marker));
     runtime.close(&id).await.unwrap();
 }
 
-/// Waits until the agent has listed its commands.
 async fn wait_for_commands(runtime: &Arc<AcpRuntime>, id: &str) {
     tokio::time::timeout(Duration::from_secs(5), async {
         while runtime
@@ -794,7 +782,6 @@ async fn a_plan_usage_refresh_shows_as_working_and_notes_its_cost_outside_any_tu
         .find(|event| event.kind == "usage" && event.data["source"] == "acp_context")
         .expect("the agent's total after the refresh is noted");
     assert_eq!(cost.data["costAmount"], json!(0.05));
-    // It belongs to no turn, so the usage ledger charges no turn for it.
     assert!(after.iter().all(|event| event.turn_id.is_none()));
     assert_eq!(runtime.snapshot(&id).await.unwrap().session.turn_id, turn);
     runtime.close(&id).await.unwrap();
@@ -823,7 +810,6 @@ async fn a_status_command_that_starts_a_tool_is_stopped_and_the_agent_stays_conn
     assert!(!kinds(&after)
         .iter()
         .any(|kind| kind.starts_with("tool_call")));
-    // The agent still answers.
     runtime
         .prompt(&id, "Hello".into(), Vec::new())
         .await
@@ -876,7 +862,6 @@ async fn a_message_delivered_in_a_turn_that_fails_is_reported_as_delivered() {
     let wire = serde_json::to_value(&failure).unwrap();
     assert_eq!(wire["delivered"], true);
     assert!(wire["message"].as_str().unwrap().contains("Agent failure"));
-    // A message refused before it is sent stays a plain string.
     let refused = runtime
         .send_prompt(&id, PromptInput::default(), None)
         .await

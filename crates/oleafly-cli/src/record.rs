@@ -1,6 +1,3 @@
-//! What the last CLI build left in the build folder: `oleafly-build.json`
-//! (result, errors, diagnostics) and `oleafly-build.log` (the whole bounded
-//! compiler log), so `oleafly log` and `oleafly context` can report on it.
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
@@ -19,7 +16,6 @@ const MAX_RECORD_BYTES: u64 = 8 * 1024 * 1024;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BuildRecord {
     pub schema_version: u32,
-    /// The CLI version that built it.
     pub version: String,
     pub engine: Engine,
     pub main_document: String,
@@ -40,18 +36,12 @@ pub fn now_ms() -> u64 {
         .map_or(0, |elapsed| elapsed.as_millis() as u64)
 }
 
-/// Writes the record and its log (each in one rename).
 pub fn write_record(build_dir: &Path, record: &BuildRecord, log: &str) -> std::io::Result<()> {
     let text = serde_json::to_vec_pretty(record).map_err(std::io::Error::other)?;
     oleafly_core::atomic::write_atomic(&build_dir.join(LOG_FILE), log.as_bytes())?;
     oleafly_core::atomic::write_atomic(&build_dir.join(RECORD_FILE), &text)
 }
 
-/// Opens `path` to read it, only when it is a regular file and not a link.
-/// A project can ship files in its build folder that point elsewhere
-/// (`.oleafly/build/oleafly-build.log` -> a key file), and what a build
-/// leaves there is never a link, so reading through one would hand a
-/// stranger's choice of file to whoever runs `oleafly log` (or an agent).
 pub fn open_regular_file(path: &Path) -> std::io::Result<std::fs::File> {
     let refused = || {
         std::io::Error::new(
@@ -67,8 +57,6 @@ pub fn open_regular_file(path: &Path) -> std::io::Result<std::fs::File> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        // Closes the gap between the check and the open: a link swapped in
-        // fails, and a pipe swapped in doesn't wait for a writer.
         options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
     }
     let file = options.open(path)?;
@@ -79,7 +67,6 @@ pub fn open_regular_file(path: &Path) -> std::io::Result<std::fs::File> {
     }
 }
 
-/// The record (≤ 8 MiB), or `None` when missing or unreadable.
 pub fn read_record(build_dir: &Path) -> Option<BuildRecord> {
     let path = build_dir.join(RECORD_FILE);
     let mut file = open_regular_file(&path).ok()?;
@@ -94,9 +81,6 @@ pub fn read_record(build_dir: &Path) -> Option<BuildRecord> {
     serde_json::from_slice(&bytes).ok()
 }
 
-/// The last `max_lines` lines of `path`, reading at most `max_bytes` from its
-/// end (so a 1 GB log costs no more than a small one). `true` when lines were
-/// left out.
 pub fn read_tail(path: &Path, max_lines: usize, max_bytes: u64) -> std::io::Result<(String, bool)> {
     let mut file = open_regular_file(path)?;
     let length = file.metadata()?.len();
@@ -107,7 +91,6 @@ pub fn read_tail(path: &Path, max_lines: usize, max_bytes: u64) -> std::io::Resu
     let mut text = String::from_utf8_lossy(&bytes).into_owned();
     let mut truncated = start > 0;
     if start > 0 {
-        // The first line is probably cut; drop it.
         if let Some(newline) = text.find('\n') {
             text.drain(..=newline);
         }
@@ -124,8 +107,6 @@ pub fn read_tail(path: &Path, max_lines: usize, max_bytes: u64) -> std::io::Resu
     Ok((tail, truncated))
 }
 
-/// The last `max_chars` characters of `text`, starting at a line when one
-/// begins inside that window.
 pub fn tail_chars(text: &str, max_chars: usize) -> (String, bool) {
     let count = text.chars().count();
     if count <= max_chars {
@@ -146,9 +127,7 @@ pub fn tail_chars(text: &str, max_chars: usize) -> (String, bool) {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LogSource {
-    /// The CLI's own record and log.
     Cli,
-    /// The engine's log (the app or another tool built last).
     Engine,
 }
 
@@ -174,8 +153,6 @@ fn modified_ms(path: &Path) -> Option<u64> {
         .map(|elapsed| elapsed.as_millis() as u64)
 }
 
-/// The newest log in the build folder: the CLI's record when no engine log
-/// or PDF is newer than it, else the engine's `_oleafly_entry.log`.
 pub fn latest_log(build_dir: &Path, main_document: &str) -> Option<LatestLog> {
     let engine_log = build_dir.join(format!("{ENTRY_STEM}.log"));
     let engine_pdf = build_dir.join(format!("{ENTRY_STEM}.pdf"));
@@ -187,7 +164,6 @@ pub fn latest_log(build_dir: &Path, main_document: &str) -> Option<LatestLog> {
         .filter(|record| record.main_document == main_document || main_document.is_empty());
     let cli_log = build_dir.join(LOG_FILE);
     if let Some(record) = record {
-        // A margin for file systems that round times.
         let newer_engine = engine_time.is_some_and(|time| time > record.finished_at_ms + 2_000);
         if !newer_engine && is_regular_file(&cli_log) {
             return Some(LatestLog {
@@ -278,7 +254,6 @@ mod tests {
         assert!(open_regular_file(&build.join(LOG_FILE)).is_err());
         assert!(read_tail(&build.join(LOG_FILE), 10, 1024).is_err());
         assert_eq!(read_record(&build), None);
-        // Not the CLI's log and not the engine's: neither is a regular file.
         std::fs::remove_file(build.join(RECORD_FILE)).unwrap();
         std::fs::write(
             build.join(RECORD_FILE),
@@ -286,7 +261,6 @@ mod tests {
         )
         .unwrap();
         assert!(latest_log(&build, "main.tex").is_none());
-        // A real file is read as before.
         std::fs::remove_file(build.join(LOG_FILE)).unwrap();
         std::fs::write(build.join(LOG_FILE), "cli\n").unwrap();
         let latest = latest_log(&build, "main.tex").unwrap();

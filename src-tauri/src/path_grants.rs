@@ -1,10 +1,3 @@
-//! Paths the user chose in a native open or save dialog.
-//!
-//! Commands that read or write outside a project accept only paths recorded
-//! here (or, on Linux, paths the user just dropped on the window), so a script
-//! in the webview can't name an arbitrary path itself. The dialogs run in Rust
-//! and record their result before handing it to the webview.
-
 use std::collections::VecDeque;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -17,13 +10,10 @@ const GRANT_LIMIT: usize = 256;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Access {
-    /// Chosen in an open dialog: the path may be read.
     Open,
-    /// Chosen in a save dialog: the path may be written.
     Save,
 }
 
-/// Picked paths, oldest first. Once `limit` is reached the oldest goes.
 struct Grants {
     entries: VecDeque<(Access, PathBuf)>,
     limit: usize,
@@ -60,8 +50,6 @@ fn grants() -> MutexGuard<'static, Grants> {
     GRANTS.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// The form a path is compared in. A file that doesn't exist yet (a save
-/// destination) is its canonical parent plus its name.
 fn grant_key(path: &Path) -> Option<PathBuf> {
     if let Ok(canonical) = path.canonicalize() {
         return Some(canonical);
@@ -83,7 +71,6 @@ pub fn granted(access: Access, path: &Path) -> bool {
     grant_key(path).is_some_and(|key| grants().contains(access, &key))
 }
 
-/// Refuses a path the user didn't choose in Oleafly's own dialog.
 pub fn require(access: Access, path: &Path) -> Result<(), String> {
     if granted(access, path) {
         return Ok(());
@@ -100,12 +87,10 @@ pub fn require(access: Access, path: &Path) -> Result<(), String> {
     })
 }
 
-/// Refuses a write the user didn't choose in Oleafly's save dialog.
 pub fn require_save(dest: &str) -> Result<(), String> {
     require(Access::Save, Path::new(dest))
 }
 
-/// Refuses a read the user didn't choose in Oleafly's open dialog.
 pub fn require_open(source: &str) -> Result<(), String> {
     require(Access::Open, Path::new(source))
 }
@@ -141,7 +126,6 @@ pub struct SaveDialogOptions {
     can_create_directories: Option<bool>,
 }
 
-/// What a native file dialog is asked to show.
 #[derive(Debug, Default, PartialEq)]
 struct DialogSpec {
     title: Option<String>,
@@ -181,8 +165,6 @@ enum PickKind {
     Save,
 }
 
-/// The dialog plugin's own handling of a default path: an existing folder
-/// opens there, anything else opens in its parent with its name filled in.
 fn dialog_start(default_path: &Path) -> (Option<PathBuf>, Option<String>) {
     let default_path: PathBuf = default_path.components().collect();
     if default_path.is_dir() {
@@ -210,8 +192,6 @@ fn display(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-/// Shows `spec` as a native dialog and waits for the user's choice. `None`
-/// means they cancelled.
 async fn native_pick<R: Runtime>(
     webview: &Webview<R>,
     spec: DialogSpec,
@@ -264,8 +244,6 @@ async fn native_pick<R: Runtime>(
     })
 }
 
-/// Asks `pick` for an open dialog and records what the user picked as
-/// readable.
 async fn open_with<P, Fut>(
     options: OpenDialogOptions,
     pick: P,
@@ -295,7 +273,6 @@ where
     Ok(Some(paths.iter().map(|path| display(path)).collect()))
 }
 
-/// Asks `pick` for a save dialog and records the chosen path as writable.
 async fn save_with<P, Fut>(options: SaveDialogOptions, pick: P) -> Result<Option<String>, String>
 where
     P: FnOnce(DialogSpec, PickKind) -> Fut,
@@ -317,7 +294,6 @@ where
     Ok(Some(display(&path)))
 }
 
-/// Shows a native open dialog and records what the user picked as readable.
 #[tauri::command]
 pub async fn pick_open_paths<R: Runtime>(
     webview: Webview<R>,
@@ -329,7 +305,6 @@ pub async fn pick_open_paths<R: Runtime>(
     .await
 }
 
-/// Shows a native save dialog and records the chosen path as writable.
 #[tauri::command]
 pub async fn pick_save_path<R: Runtime>(
     webview: Webview<R>,
@@ -341,8 +316,6 @@ pub async fn pick_save_path<R: Runtime>(
     .await
 }
 
-/// E2E and dev builds can stand in for the operating-system picker (the
-/// webview's `E2E_HOOKS`); release builds refuse.
 fn require_test_build() -> Result<(), String> {
     if cfg!(any(feature = "e2e-testing", debug_assertions)) {
         return Ok(());
@@ -350,7 +323,6 @@ fn require_test_build() -> Result<(), String> {
     Err("Picked-path registration is available only in e2e and development builds.".into())
 }
 
-/// Records paths a test chose the way `pick_open_paths` records a pick.
 #[tauri::command]
 pub fn grant_test_open_paths(paths: Vec<String>) -> Result<Vec<String>, String> {
     require_test_build()?;
@@ -360,7 +332,6 @@ pub fn grant_test_open_paths(paths: Vec<String>) -> Result<Vec<String>, String> 
     Ok(paths)
 }
 
-/// Records a path a test chose the way `pick_save_path` records a pick.
 #[tauri::command]
 pub fn grant_test_save_path(path: String) -> Result<String, String> {
     require_test_build()?;
@@ -581,7 +552,6 @@ mod tests {
             tauri::async_runtime::block_on(save_with(Default::default(), |_, _| async { answer }))
         };
         assert_eq!(save(Ok(None)), Ok(None));
-        // A pick the dialog couldn't turn into a local path.
         assert_eq!(save(Ok(Some(Vec::new()))), Ok(None));
         let closed = "The save dialog closed unexpectedly.".to_string();
         assert_eq!(save(Err(closed.clone())), Err(closed));

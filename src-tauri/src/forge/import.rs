@@ -1,6 +1,3 @@
-//! Import a repository from a Git hosting account: the server's archive of
-//! one commit goes through the guarded ZIP import, then the repository's
-//! history is attached at that same commit.
 use super::cancel::{cancel_on_event, ImportCancel};
 use super::remote_auth::credential_for;
 use super::{account_and_token, app_error, host_label};
@@ -10,9 +7,6 @@ use oleafly_forge::api::{self, Session, ARCHIVE_MAX_BYTES};
 use oleafly_forge::repo_path::RepoPath;
 use oleafly_forge::ForgeError;
 
-/// Import a repository of an account as a new project. The webview can
-/// cancel it by emitting the import-cancel event with `cancel_id`: the
-/// download or the Git fetch stops and no project is created.
 #[tauri::command]
 pub async fn forge_import_repo(
     app: tauri::AppHandle,
@@ -37,8 +31,6 @@ pub async fn forge_import_repo(
             Some(branch) if !info.empty => branch,
             _ => return Err(fail(ForgeError::RepositoryEmpty)),
         };
-        // The archive and the history come from this one commit, even when
-        // the branch moves while the import runs.
         let commit = api::branch_commit(&session, &path, &branch)
             .await
             .map_err(fail)?;
@@ -47,7 +39,6 @@ pub async fn forge_import_repo(
             .map_err(fail)?;
         Ok((branch, commit, archive))
     };
-    // Dropping the download stops it; the cancel event ends it at once.
     let (branch, commit, archive) = tokio::select! {
         downloaded = download => downloaded?,
         () = cancel.cancelled() => return Err(ImportCancel::error()),

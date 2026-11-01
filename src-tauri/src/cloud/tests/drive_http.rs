@@ -8,8 +8,6 @@ use std::time::Duration;
 
 const MIB: usize = 1024 * 1024;
 
-/// Bytes with no short period, so a piece read from the wrong offset can't
-/// match by chance.
 fn pattern(len: usize, seed: u8) -> Vec<u8> {
     (0..len as u32)
         .map(|index| (index.wrapping_mul(2_654_435_761) >> 24) as u8 ^ seed)
@@ -67,7 +65,6 @@ async fn records_are_created_once_read_listed_and_trashed() {
         (listed[1].name.as_str(), listed[1].folder),
         ("version.json", false)
     );
-    // Everything lives in one visible folder at the top of My Drive.
     assert_eq!(
         fake.with(|drive| drive.content("projects/p/files/main.tex")),
         Some(b"tex".to_vec())
@@ -88,15 +85,160 @@ async fn records_are_created_once_read_listed_and_trashed() {
         .await
         .unwrap()
         .is_none());
-    // A folder goes to the trash with everything in it.
-    store.delete("/projects/p", None).await.unwrap();
+    store.delete_folder("/projects/p").await.unwrap();
     assert!(store
         .metadata("/projects/p/files/main.tex")
         .await
         .unwrap()
         .is_none());
     assert!(store.list("/projects/p").await.unwrap().is_empty());
-    store.delete("/projects/gone", None).await.unwrap();
+    store.delete_folder("/projects/gone").await.unwrap();
+}
+
+#[tokio::test]
+async fn deleting_a_file_leaves_a_folder_of_the_same_name_alone() {
+    let fake = FakeDrive::start().await;
+    let store = fake.store();
+    let directory = tempfile::tempdir().unwrap();
+    let file = directory.path().join("figures");
+    std::fs::write(&file, "old file").unwrap();
+    let plot = directory.path().join("plot.pdf");
+    std::fs::write(&plot, "plot").unwrap();
+    let old = store
+        .put_path("/projects/p/files/figures", &file)
+        .await
+        .unwrap();
+    store
+        .put_path("/projects/p/files/figures/plot.pdf", &plot)
+        .await
+        .unwrap();
+
+    store
+        .delete("/projects/p/files/figures", Some(&old.rev))
+        .await
+        .unwrap();
+    assert_eq!(
+        fake.with(|drive| drive.content("projects/p/files/figures/plot.pdf")),
+        Some(b"plot".to_vec())
+    );
+    let fresh = fake.store();
+    let back = directory.path().join("back.pdf");
+    assert!(fresh
+        .fetch_to("/projects/p/files/figures/plot.pdf", None, &back, u64::MAX)
+        .await
+        .unwrap()
+        .is_some());
+    assert!(fresh
+        .metadata("/projects/p/files/figures")
+        .await
+        .unwrap()
+        .is_none());
+}
+
+#[tokio::test]
+async fn a_new_file_that_races_another_of_its_name_keeps_the_older_one() {
+    let fake = FakeDrive::start().await;
+    let store = fake.store();
+    let directory = tempfile::tempdir().unwrap();
+    let seed = directory.path().join("seed.md");
+    std::fs::write(&seed, "seed").unwrap();
+    store
+        .put_path("/projects/p/files/seed.md", &seed)
+        .await
+        .unwrap();
+    let notes = directory.path().join("notes.md");
+    std::fs::write(&notes, "mine").unwrap();
+
+    fake.with(|drive| drive.race_next_create = true);
+    assert_eq!(
+        store.put_path("/projects/p/files/notes.md", &notes).await,
+        Err(StoreError::Conflict)
+    );
+    let live = |name: &str| {
+        fake.with(|drive| {
+            drive
+                .files
+                .values()
+                .filter(|file| file.name == name && !file.trashed)
+                .count()
+        })
+    };
+    assert_eq!(live("notes.md"), 1);
+    assert_eq!(
+        fake.with(|drive| drive.content("projects/p/files/notes.md")),
+        Some(b"theirs".to_vec())
+    );
+
+    fake.with(|drive| drive.race_next_create = true);
+    let batch = [BatchFile {
+        remote: "/projects/p/files/ideas.md".into(),
+        local: notes.clone(),
+    }];
+    let uploaded = fake.store().put_paths(&batch, &|| {}).await;
+    assert_eq!(uploaded, vec![Err(StoreError::Conflict)]);
+    assert_eq!(live("ideas.md"), 1);
+
+    fake.with(|drive| drive.race_next_create = true);
+    assert_eq!(
+        store
+            .put_content("/projects/p/files/project.json", b"{}".to_vec())
+            .await,
+        Err(StoreError::Conflict)
+    );
+    assert_eq!(live("project.json"), 1);
+}
+
+#[tokio::test]
+async fn every_copy_of_a_folder_is_searched_after_the_first_lookup() {
+    let fake = FakeDrive::start().await;
+    let store = fake.store();
+    let directory = tempfile::tempdir().unwrap();
+    let local = directory.path().join("a.txt");
+    std::fs::write(&local, "a").unwrap();
+    store
+        .put_path("/projects/p/files/figures/a.txt", &local)
+        .await
+        .unwrap();
+    fake.with(|drive| {
+        let (files_id, _) = drive
+            .files
+            .iter()
+            .find(|(_, file)| file.name == "files" && file.folder)
+            .map(|(id, file)| (id.clone(), file.clone()))
+            .unwrap();
+        let copy = format!("copy-{}", drive.files.len());
+        let mut folder = drive
+            .files
+            .values()
+            .find(|file| file.name == "figures")
+            .unwrap()
+            .clone();
+        folder.parents = vec![files_id];
+        folder.created += 1_000;
+        drive.files.insert(copy.clone(), folder);
+        let mut file = drive
+            .files
+            .values()
+            .find(|file| file.name == "a.txt")
+            .unwrap()
+            .clone();
+        file.name = "b.txt".into();
+        file.parents = vec![copy];
+        file.created += 1_000;
+        file.revisions = vec![("r-b".into(), b"b".to_vec())];
+        drive.files.insert("b-file".into(), file);
+    });
+    let fresh = fake.store();
+    for name in ["a.txt", "b.txt", "a.txt", "b.txt"] {
+        assert!(
+            fresh
+                .metadata(&format!("/projects/p/files/figures/{name}"))
+                .await
+                .unwrap()
+                .is_some(),
+            "{name}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -126,8 +268,6 @@ async fn a_stale_update_is_refused_and_a_racing_one_is_undone() {
         Err(StoreError::Conflict)
     );
 
-    // Another computer's write lands between the check and this write: the
-    // write reports a conflict and theirs ends up on top again.
     fake.with(|drive| drive.race_next_update = Some(b"theirs".to_vec()));
     assert_eq!(
         store
@@ -237,8 +377,6 @@ async fn a_download_runs_past_the_request_timeout_while_bytes_keep_coming() {
         )
         .await
         .unwrap();
-    // Eight pieces a quarter second apart take longer than a small request
-    // may, and none waits long enough to look stalled.
     fake.with(|drive| drive.media_pace = Some((8 * 1024, Duration::from_millis(250))));
     let store = fake.store_timed(Duration::from_secs(1), Duration::from_secs(3));
     let back = directory.path().join("back.bin");
@@ -250,7 +388,6 @@ async fn a_download_runs_past_the_request_timeout_while_bytes_keep_coming() {
     assert_eq!(fetched.hash, ContentHash::digest(&bytes));
     assert_eq!(std::fs::read(&back).unwrap(), bytes);
 
-    // One that stops sending fails instead of hanging, and leaves nothing.
     fake.with(|drive| drive.media_pace = Some((8 * 1024, Duration::from_secs(5))));
     let store = fake.store_timed(Duration::from_secs(1), Duration::from_millis(300));
     let stalled = directory.path().join("stalled.bin");
@@ -270,8 +407,6 @@ async fn a_slow_upload_piece_gets_time_for_its_size_not_the_request_timeout() {
     let local = directory.path().join("large.bin");
     let bytes = pattern(6 * MIB, 0);
     std::fs::write(&local, &bytes).unwrap();
-    // Drive takes longer to answer the piece than a small request may take,
-    // and longer than a download may go without a byte.
     fake.with(|drive| drive.piece_delay = Some(Duration::from_millis(2500)));
     let store = fake.store_timed(Duration::from_secs(1), Duration::from_secs(1));
     let uploaded = store
@@ -298,11 +433,8 @@ async fn a_piece_sent_again_is_read_from_the_offset_drive_reports() {
         drive.piece_faults.extend([
             // Drive persists 3 MiB of the first piece and asks for the rest.
             (3 * MIB, 308),
-            // It keeps 1 MiB of the next one, then fails.
             (MIB, 503),
-            // The third lands whole.
             (usize::MAX, 308),
-            // The last lands too, but its reply is lost.
             (usize::MAX, 503),
         ]);
     });
@@ -346,7 +478,6 @@ async fn a_file_that_changes_size_while_it_goes_up_fails_and_drive_keeps_the_old
         .unwrap();
     let second = pattern(13 * MIB, 0x5a);
 
-    // Cut short once the first piece is up: the next piece can't be read.
     std::fs::write(&local, &second).unwrap();
     let cut = local.clone();
     fake.with(|drive| {
@@ -360,7 +491,6 @@ async fn a_file_that_changes_size_while_it_goes_up_fails_and_drive_keeps_the_old
         Err(StoreError::Io(_))
     ));
 
-    // Grown once the first piece is up: the last piece is never sent.
     std::fs::write(&local, &second).unwrap();
     let grown = local.clone();
     fake.with(|drive| {
@@ -381,7 +511,6 @@ async fn a_file_that_changes_size_while_it_goes_up_fails_and_drive_keeps_the_old
         Some(first)
     );
 
-    // Left alone, it goes up.
     std::fs::write(&local, &second).unwrap();
     let uploaded = store
         .put_path("/projects/p/files/data.bin", &local)
@@ -411,7 +540,6 @@ async fn the_change_feed_names_the_projects_whose_manifest_changed() {
     let quiet = store.wait_for_changes(&cursor, 1).await.unwrap().unwrap();
     assert!(!quiet.changes);
 
-    // Another computer publishes the project.
     let other = fake.store();
     other
         .put(
@@ -480,8 +608,6 @@ async fn the_account_and_its_space_come_from_about() {
     assert_eq!((space.used, space.allocated), (2048, 16_106_127_360));
 }
 
-/// A project's files spread over folders that don't exist yet, as on its first
-/// upload: `count` files in each folder.
 fn project_batch(directory: &std::path::Path) -> Vec<BatchFile> {
     let mut batch = Vec::new();
     for folder in ["figures", "figures/plots", "sections"] {
@@ -508,8 +634,6 @@ async fn a_batch_makes_each_folder_once_and_looks_up_no_file_by_name() {
     let uploaded = fake.store().put_paths(&batch, &|| {}).await;
     assert!(uploaded.iter().all(Result::is_ok), "{uploaded:?}");
     let first = fake.with(|drive| drive.calls) - before;
-    // Uploads that land in the same new folder at once make it once: none is
-    // made again and thrown away.
     let (folders, discarded) = fake.with(|drive| {
         let folders = drive.files.values().filter(|file| file.folder).count();
         let discarded = drive
@@ -520,18 +644,12 @@ async fn a_batch_makes_each_folder_once_and_looks_up_no_file_by_name() {
         (folders, discarded)
     });
     assert_eq!(discarded, 0, "{first} requests for {files} files");
-    // Oleafly, projects, p, files, figures, plots and sections.
     assert_eq!(folders, 7);
-    // One request per file, and a few per folder: finding it, making it and
-    // reading what's in it. No file is looked up by name on its own.
     assert!(
         first <= files + 4 * folders,
         "{first} requests for {files} files"
     );
 
-    // Another computer, or this one after a restart, starts with nothing known:
-    // it finds each folder and reads the ones it writes into once, then updates
-    // every file with one request each.
     let before = fake.with(|drive| drive.calls);
     let again = fake.store().put_paths(&batch, &|| {}).await;
     assert!(again.iter().all(Result::is_ok), "{again:?}");

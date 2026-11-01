@@ -45,8 +45,6 @@ export function symbolAt(
   path: string,
   offset: number,
 ): ProjectSymbol | null {
-  // Uses win an exact tie: at a reference token F12 should navigate to its
-  // definition rather than treating a broad containing definition as active.
   return (
     narrowest(snapshot.uses.filter((use) => contains(use, path, offset))) ??
     narrowest(

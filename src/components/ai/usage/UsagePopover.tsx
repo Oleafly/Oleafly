@@ -27,7 +27,6 @@ function money(value: number, currency = "USD"): string {
   }
 }
 
-/** "in 3 hours" for a time ahead of now. */
 function untilLabel(at: number, now: number): string {
   const ahead = Math.max(0, at - now);
   if (ahead < HOUR_MS) return formatRelativeTime(Math.max(1, Math.round(ahead / MINUTE_MS)), "minute");
@@ -156,7 +155,6 @@ function sessionTokenTotal(session: SessionUsage): number {
   return (session.inputTokens ?? 0) + (session.outputTokens ?? 0);
 }
 
-/** The chat has run something, so its totals are worth showing. */
 function sessionHasUsage(session: SessionUsage): boolean {
   return sessionTokenTotal(session) > 0 || (session.steps ?? 0) > 0 || (session.costUsd ?? 0) > 0;
 }
@@ -247,7 +245,6 @@ function planMarkdownSection(usage: UsageSnapshot): ReactNode {
   );
 }
 
-/** The extras `loadExtras` fetches once, when the popover opens. */
 function useUsageExtras(loadExtras: (() => Promise<Partial<UsageSnapshot>>) | undefined): Partial<UsageSnapshot> {
   const [extras, setExtras] = useState<Partial<UsageSnapshot>>({});
   const loadRef = useRef(loadExtras);
@@ -269,7 +266,6 @@ function useUsageExtras(loadExtras: (() => Promise<Partial<UsageSnapshot>>) | un
   return extras;
 }
 
-/** The usage popover's body; loaded the first time the meter opens. */
 export function UsagePopover({
   snapshot,
   loadExtras,

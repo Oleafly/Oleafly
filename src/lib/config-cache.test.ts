@@ -6,7 +6,6 @@ vi.mock("@/lib/tauri", () => ({
   getConfig: (...args: unknown[]) => getConfig(...args),
 }));
 
-// Module-level cache state: import a fresh copy per test.
 async function loadModule() {
   vi.resetModules();
   return import("./config-cache");

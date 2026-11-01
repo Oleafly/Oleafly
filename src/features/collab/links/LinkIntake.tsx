@@ -80,7 +80,6 @@ function findServer(address: string): CollabServer | undefined {
   return useCollabStore.getState().servers.find((entry) => sameServer(entry.url, address));
 }
 
-// The library project that is this shared project on this computer, if any.
 async function localCopyOf(server: CollabServer, sharedProjectId: string): Promise<string | null> {
   const shared = useFilesStore.getState().projects.filter((project) => project.shared);
   for (const project of shared) {
@@ -103,9 +102,6 @@ async function reach(server: CollabServer, link: OpenLink, agreed: boolean): Pro
       return refused(error);
     }
   }
-  // A link can come from any web page. A project already on this computer
-  // opens without asking, and anything that would download one, even for
-  // someone who is already a member, is shown first for the person to decide.
   const local = await localCopyOf(server, link.project);
   if (local !== null) return { localId: local };
   try {
@@ -198,14 +194,9 @@ interface FlowUi {
 function createFlow(ui: FlowUi) {
   const queue: AppLink[] = [];
   const seen = new Map<string, number>();
-  // Links the person ended on purpose, by declining the join or stopping the
-  // download. The same link pasted or opened again right after is meant, so
-  // the window that drops a link the system delivers twice doesn't apply.
   const ended = new Set<string>();
   let serverWait: ((server: CollabServer | null) => void) | null = null;
   let joinWait: ((join: boolean) => void) | null = null;
-  // Set when the person stops the download, so whatever answer comes back
-  // for that link is dropped instead of opening the project or an error.
   let stopped = false;
 
   const show = (notice: Notice) => ui.setStep({ kind: "notice", notice });

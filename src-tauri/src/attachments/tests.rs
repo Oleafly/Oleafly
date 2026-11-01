@@ -16,7 +16,6 @@ fn modified(path: &Path) -> SystemTime {
 
 #[test]
 fn uploads_decode_their_framed_header() {
-    // The same bytes as the TypeScript encoder's test vector.
     let json = r#"{"projectId":"p1","name":"é.pdf","mime":"application/pdf"}"#.as_bytes();
     assert_eq!(json.len(), 59);
     let mut body = vec![59, 0, 0, 0];
@@ -60,7 +59,6 @@ fn a_json_array_upload_is_refused_above_its_lower_limit_before_conversion() {
     assert_eq!(upload_bytes_within(&body, 4).unwrap(), vec![1, 2, 3, 4]);
     let error = upload_bytes_within(&body, 3).unwrap_err();
     assert!(error.contains("attachments.too_large"), "{error}");
-    // The raw form is not held to it.
     let raw = tauri::ipc::InvokeBody::Raw(vec![1, 2, 3, 4]);
     assert_eq!(upload_bytes_within(&raw, 0).unwrap(), vec![1, 2, 3, 4]);
 }
@@ -174,7 +172,6 @@ fn text_sidecars_record_pages_and_has_text() {
             .as_deref(),
         Some("page text")
     );
-    // A second put keeps what the text sidecar recorded.
     let again = store_bytes(
         root.path(),
         "p1",
@@ -244,7 +241,6 @@ fn the_store_evicts_least_recently_used_blobs_beyond_the_cap() {
 fn gc_keeps_only_listed_hashes_and_reports_freed_bytes() {
     let root = tempfile::tempdir().unwrap();
     let keep = store_bytes(root.path(), "p1", "a", "text/plain", b"keep", 10).unwrap();
-    // Stored long ago, so past the grace period for fresh blobs.
     for (name, bytes) in [("b", &b"drop-1"[..]), ("c", &b"drop-22"[..])] {
         let meta = store_bytes(root.path(), "p1", name, "text/plain", bytes, 10).unwrap();
         set_modified(&blob_path(root.path(), "p1", &meta.sha256), 1_000);
@@ -260,8 +256,6 @@ fn gc_keeps_only_listed_hashes_and_reports_freed_bytes() {
 #[test]
 fn gc_spares_blobs_stored_in_the_last_few_minutes() {
     let root = tempfile::tempdir().unwrap();
-    // A scanned PDF whose page images are still being stored: no chat or
-    // draft lists it yet.
     let fresh = store_bytes(
         root.path(),
         "p1",

@@ -1,7 +1,3 @@
-//! LaTeX comment and verbatim ranges over UTF-16 units
-//! (`packages/editor/src/latex-lexical.ts`). The editor's linter, the project
-//! index and the prose masks share this one definition of what TeX ignores.
-
 use crate::text::{
     index_of_units, is_js_space_unit, is_letter_unit, is_mark_unit, js_trim, units_eq_str,
     BACKSLASH, CLOSE_BRACE, NEWLINE, OPEN_BRACE, PERCENT, SPACE, TAB,
@@ -52,7 +48,6 @@ pub struct InlineVerbatimSpan {
     pub complete: bool,
 }
 
-/// `/[\p{L}\p{M}@]/u` on one unit.
 pub fn is_command_unit(unit: Option<u16>) -> bool {
     unit.is_some_and(|unit| unit == AT || is_letter_unit(unit) || is_mark_unit(unit))
 }
@@ -69,8 +64,6 @@ fn skip_inline_whitespace(text: &[u16], start: usize) -> usize {
     cursor
 }
 
-/// The offset just past the group that opens at `start`, skipping escaped
-/// characters. `None` when `start` is not `opening` or the group never closes.
 pub fn latex_balanced_group_end(
     text: &[u16],
     start: usize,
@@ -182,8 +175,6 @@ fn listings_verbatim_span(
     })
 }
 
-/// A `\verb`, `\lstinline` or `\mintinline` construct starting at a
-/// backslash, complete or recoverable.
 pub fn latex_inline_verbatim_span(text: &[u16], start: usize) -> Option<InlineVerbatimSpan> {
     let (command, cursor) = inline_verbatim_head(text, start)?;
     if command == InlineVerbatimCommand::Verb {
@@ -268,8 +259,6 @@ fn lex_ignored_step(text: &[u16], cursor: usize) -> (Option<IgnoredRange>, usize
             return (Some(range), to);
         }
     }
-    // Skip a control sequence or control symbol as a unit, so an escaped
-    // percent sign is never mistaken for a comment.
     let next = if command_end > cursor + 1 {
         command_end
     } else {
@@ -278,7 +267,6 @@ fn lex_ignored_step(text: &[u16], cursor: usize) -> (Option<IgnoredRange>, usize
     (None, next)
 }
 
-/// Non-overlapping comment and verbatim ranges in one forward pass.
 pub fn latex_ignored_ranges(text: &[u16]) -> Vec<IgnoredRange> {
     let mut ranges = Vec::new();
     let mut cursor = 0;
@@ -292,7 +280,6 @@ pub fn latex_ignored_ranges(text: &[u16]) -> Vec<IgnoredRange> {
     ranges
 }
 
-/// Blanks the ranges with spaces, keeping newlines and every offset.
 pub fn mask_latex_ignored_regions(text: &[u16], ranges: &[IgnoredRange]) -> Vec<u16> {
     let mut out = text.to_vec();
     for range in ranges {

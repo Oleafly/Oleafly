@@ -1,11 +1,8 @@
-//! Each scholarly index's answer as [`LiteratureRecord`]s (the same fields
-//! the app's literature panel reads in TypeScript).
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// A scholarly index Oleafly searches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LiteratureSourceId {
@@ -58,7 +55,6 @@ impl LiteratureSourceId {
     }
 }
 
-/// One work, merged across the indexes that returned it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct LiteratureRecord {
@@ -76,7 +72,6 @@ pub struct LiteratureRecord {
     pub citation_count: Option<u64>,
     pub open_access: Option<bool>,
     pub sources: Vec<LiteratureSourceId>,
-    /// Each source's own id for the work, by source name.
     pub source_ids: BTreeMap<String, String>,
 }
 
@@ -140,7 +135,6 @@ fn strip_tags(text: &str) -> String {
     out
 }
 
-/// Plain text: tags removed (JATS too), entities decoded, spaces collapsed.
 pub fn clean_text(value: &str) -> Option<String> {
     let cleaned = decode_entities(&strip_tags(value))
         .split_whitespace()
@@ -201,7 +195,6 @@ fn year_from(value: &Value) -> Option<u16> {
     })
 }
 
-/// An arXiv id without its version suffix.
 pub fn arxiv_id(value: &str) -> Option<String> {
     let id = value
         .trim()
@@ -446,6 +439,97 @@ pub fn parse_pubmed(body: &str) -> Vec<LiteratureRecord> {
         .collect()
 }
 
+pub fn pubmed_summary_has_records(summary: &Value) -> bool {
+    summary["result"]["uids"]
+        .as_array()
+        .is_some_and(|uids| !uids.is_empty())
+}
+
+fn csl_pubmed_author(author: &Value) -> Option<String> {
+    let initials: String = author["given"]
+        .as_str()
+        .unwrap_or_default()
+        .split(|c: char| c.is_whitespace() || c == '-')
+        .filter_map(|part| part.chars().next())
+        .filter(|c| c.is_alphabetic())
+        .flat_map(char::to_uppercase)
+        .collect();
+    match text(&author["family"]) {
+        Some(family) if initials.is_empty() => Some(family),
+        Some(family) => Some(format!("{family} {initials}")),
+        None => text(&author["literal"]),
+    }
+}
+
+fn csl_pubdate(item: &Value) -> Option<String> {
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let parts = item["issued"]["date-parts"][0].as_array()?;
+    let number = |index: usize| {
+        parts
+            .get(index)
+            .and_then(|part| part.as_u64().or_else(|| part.as_str()?.trim().parse().ok()))
+    };
+    let year = number(0)?;
+    let month =
+        number(1).and_then(|month| MONTHS.get(usize::try_from(month).ok()?.checked_sub(1)?));
+    Some(match (month, number(2)) {
+        (Some(month), Some(day)) => format!("{year} {month} {day}"),
+        (Some(month), None) => format!("{year} {month}"),
+        _ => year.to_string(),
+    })
+}
+
+pub fn pubmed_summary_from_csl(citations: &Value, order: &[&str]) -> Value {
+    let items: Vec<&Value> = match citations {
+        Value::Array(items) => items.iter().collect(),
+        Value::Object(_) => vec![citations],
+        _ => Vec::new(),
+    };
+    let mut result = serde_json::Map::new();
+    let mut uids = Vec::new();
+    for uid in order.iter().map(|uid| uid.trim()) {
+        let Some(item) = items
+            .iter()
+            .find(|item| text(&item["PMID"]).as_deref() == Some(uid))
+        else {
+            continue;
+        };
+        let Some(title) = text(&item["title"]) else {
+            continue;
+        };
+        let authors: Vec<Value> = item["author"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(csl_pubmed_author)
+            .map(|name| serde_json::json!({ "name": name }))
+            .collect();
+        let articleids: Vec<Value> = [("doi", "DOI"), ("pmc", "PMCID")]
+            .into_iter()
+            .filter_map(|(kind, key)| {
+                text(&item[key]).map(|value| serde_json::json!({ "idtype": kind, "value": value }))
+            })
+            .collect();
+        let mut entry = serde_json::json!({
+            "uid": uid,
+            "title": title,
+            "authors": authors,
+            "pubdate": csl_pubdate(item),
+            "source": text(&item["container-title-short"]).or_else(|| text(&item["container-title"])),
+            "articleids": articleids,
+        });
+        if let Some(fields) = entry.as_object_mut() {
+            fields.retain(|_, value| !value.is_null());
+        }
+        uids.push(Value::String(uid.to_owned()));
+        result.insert(uid.to_owned(), entry);
+    }
+    result.insert("uids".to_owned(), Value::Array(uids));
+    serde_json::json!({ "result": result })
+}
+
 pub fn parse_arxiv(body: &str) -> Vec<LiteratureRecord> {
     let Ok(document) = roxmltree::Document::parse(body) else {
         return Vec::new();
@@ -547,6 +631,95 @@ pub fn parse_google_scholar(body: &str) -> Vec<LiteratureRecord> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn citation_exporter_records() -> Value {
+        serde_json::json!([
+            {
+                "id": "pmid:33301246",
+                "title": "Safety and Efficacy of the BNT162b2 mRNA Covid-19 Vaccine",
+                "author": [{"family": "Polack", "given": "Fernando P"}, {"literal": "C4591001 Clinical Trial Group"}],
+                "container-title-short": "N Engl J Med",
+                "container-title": "The New England journal of medicine",
+                "issued": {"date-parts": [[2020, 12, 31]]},
+                "PMID": "33301246",
+                "PMCID": "PMC7745181",
+                "DOI": "10.1056/NEJMoa2034577"
+            },
+            {
+                "id": "pmid:32172672",
+                "title": "A tug-of-war between severe acute respiratory syndrome coronavirus 2 and host antiviral defence",
+                "author": [{"family": "Fung", "given": "Sin-Yee"}, {"family": "Yuen", "given": "Kit-San"}],
+                "container-title": "Emerging microbes & infections",
+                "issued": {"date-parts": [["2020", "3"]]},
+                "PMID": "32172672",
+                "DOI": "10.1080/22221751.2020.1736644"
+            },
+            {"PMID": "1", "author": [{"family": "Untitled"}]}
+        ])
+    }
+
+    #[test]
+    fn citation_exporter_records_read_like_a_pubmed_summary_in_search_order() {
+        let summary = pubmed_summary_from_csl(
+            &citation_exporter_records(),
+            &["32172672", "1", " 33301246", "999"],
+        );
+        assert!(pubmed_summary_has_records(&summary));
+        assert_eq!(
+            summary["result"]["uids"],
+            serde_json::json!(["32172672", "33301246"])
+        );
+        assert_eq!(summary["result"]["32172672"]["pubdate"], "2020 Mar");
+        assert_eq!(summary["result"]["33301246"]["pubdate"], "2020 Dec 31");
+        let body = serde_json::json!({ "total": "2", "summary": summary }).to_string();
+        let records = parse_pubmed(&body);
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].authors, ["Fung SY", "Yuen KS"]);
+        assert_eq!(records[0].year, Some(2020));
+        assert_eq!(
+            records[0].venue.as_deref(),
+            Some("Emerging microbes & infections")
+        );
+        assert_eq!(
+            records[0].doi.as_deref(),
+            Some("10.1080/22221751.2020.1736644")
+        );
+        assert_eq!(records[0].open_access, None);
+        assert_eq!(
+            records[1].title,
+            "Safety and Efficacy of the BNT162b2 mRNA Covid-19 Vaccine"
+        );
+        assert_eq!(
+            records[1].authors,
+            ["Polack FP", "C4591001 Clinical Trial Group"]
+        );
+        assert_eq!(records[1].venue.as_deref(), Some("N Engl J Med"));
+        assert_eq!(records[1].open_access, Some(true));
+        assert_eq!(
+            records[1].url.as_deref(),
+            Some("https://pubmed.ncbi.nlm.nih.gov/33301246/")
+        );
+    }
+
+    #[test]
+    fn an_empty_or_unknown_citation_export_has_no_records() {
+        for citations in [
+            serde_json::json!([]),
+            serde_json::json!(null),
+            serde_json::json!("oops"),
+        ] {
+            let summary = pubmed_summary_from_csl(&citations, &["32172672"]);
+            assert!(!pubmed_summary_has_records(&summary));
+            assert_eq!(summary["result"]["uids"], serde_json::json!([]));
+        }
+        let single = pubmed_summary_from_csl(&citation_exporter_records()[1], &["32172672"]);
+        assert!(pubmed_summary_has_records(&single));
+        let missing = serde_json::json!({ "result": { "uids": [] } });
+        assert!(!pubmed_summary_has_records(&missing));
+        assert!(!pubmed_summary_has_records(
+            &serde_json::json!({ "error": "DocSum Backend failed" })
+        ));
+    }
 
     #[test]
     fn crossref_jats_abstracts_become_plain_text() {

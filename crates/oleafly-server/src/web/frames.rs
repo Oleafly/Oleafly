@@ -93,6 +93,8 @@ pub enum Outgoing {
         file_id: String,
         rev: u64,
         text: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        resumed: Option<bool>,
     },
     Ack {
         file_id: String,
@@ -273,11 +275,15 @@ pub enum ChatAction {
 pub enum Incoming {
     Open {
         file_id: String,
+        #[serde(default)]
+        resume: Option<String>,
     },
     Change {
         file_id: String,
         rev: u64,
         op: TextOperation,
+        #[serde(default)]
+        id: Option<String>,
     },
     Close {
         file_id: String,
@@ -336,13 +342,35 @@ mod tests {
         let change =
             incoming(json!({ "t": "change", "fileId": "f1", "rev": 3, "op": [2, "x", -1, 4] }));
         match change.frame {
-            Some(Incoming::Change { file_id, rev, op }) => {
+            Some(Incoming::Change {
+                file_id,
+                rev,
+                op,
+                id,
+            }) => {
                 assert_eq!(file_id, "f1");
                 assert_eq!(rev, 3);
                 assert_eq!(op.base_len(), 7);
+                assert_eq!(id, None);
             }
             other => panic!("{other:?}"),
         }
+        let tagged = incoming(
+            json!({ "t": "change", "fileId": "f1", "rev": 3, "op": [7], "id": "tab-1:4" }),
+        );
+        assert!(matches!(
+            tagged.frame,
+            Some(Incoming::Change { id: Some(id), .. }) if id == "tab-1:4"
+        ));
+        let resumed = incoming(json!({ "t": "open", "fileId": "f1", "resume": "tab-1:4" }));
+        assert!(matches!(
+            resumed.frame,
+            Some(Incoming::Open { resume: Some(id), .. }) if id == "tab-1:4"
+        ));
+        assert!(matches!(
+            incoming(json!({ "t": "open", "fileId": "f1" })).frame,
+            Some(Incoming::Open { resume: None, .. })
+        ));
         let create = incoming(json!({
             "t": "comment", "action": "create", "fileId": "f1", "path": "main.tex",
             "from": 1, "to": 4, "rev": null, "body": "Why?", "members": [], "reqId": "r1"
@@ -454,6 +482,25 @@ mod tests {
             text,
             json!({ "fileId": "f", "path": "main.tex", "text": "Hi" })
         );
+        let opened = serde_json::to_value(Outgoing::Opened {
+            file_id: "f".into(),
+            rev: 2,
+            text: "Hi".into(),
+            resumed: None,
+        })
+        .unwrap();
+        assert_eq!(
+            opened,
+            json!({ "t": "opened", "fileId": "f", "rev": 2, "text": "Hi" })
+        );
+        let resumed = serde_json::to_value(Outgoing::Opened {
+            file_id: "f".into(),
+            rev: 0,
+            text: "Hi".into(),
+            resumed: Some(true),
+        })
+        .unwrap();
+        assert_eq!(resumed["resumed"], json!(true));
         let done = serde_json::to_value(Outgoing::Done { req_id: "r".into() }).unwrap();
         assert_eq!(done, json!({ "t": "done", "reqId": "r" }));
         let file = serde_json::to_value(WebFile {

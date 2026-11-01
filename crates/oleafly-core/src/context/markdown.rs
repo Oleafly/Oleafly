@@ -1,5 +1,3 @@
-//! Markdown (Pandoc): headings, `{#id}` and automatic heading anchors,
-//! `@key` citations, front-matter `bibliography:` and `!include` lines.
 use std::collections::{HashMap, HashSet};
 
 use super::text::{is_js_space, resolve_project_path, string_of, trim_js, Source};
@@ -24,7 +22,6 @@ fn fence_marker(line: &str) -> Option<(char, usize)> {
 }
 
 fn strip_trailing_attributes(title: &str) -> String {
-    // `(?<!\s)\s+\{[^{}]*\}\s*$`
     let trimmed_end = title.trim_end();
     if trimmed_end.ends_with('}') {
         if let Some(open) = trimmed_end.rfind('{') {
@@ -42,7 +39,6 @@ fn strip_trailing_attributes(title: &str) -> String {
 }
 
 fn strip_closing_hashes(title: &str) -> String {
-    // `(?<!\s)\s+#+\s*$`
     let trimmed_end = title.trim_end();
     let without = trimmed_end.trim_end_matches('#');
     if without.len() < trimmed_end.len()
@@ -81,7 +77,6 @@ fn mask_code_spans(line: &str) -> String {
     string_of(&out)
 }
 
-/// `title` without HTML tags.
 fn strip_html_tags(title: &str) -> String {
     let mut without_tags = String::new();
     let mut inside = false;
@@ -97,8 +92,6 @@ fn strip_html_tags(title: &str) -> String {
     without_tags
 }
 
-/// The `[text](target)` link that starts at `start`: where its text closes
-/// and where its target ends.
 fn link_bounds(chars: &[char], start: usize) -> Option<(usize, usize)> {
     if chars[start] != '[' {
         return None;
@@ -111,7 +104,6 @@ fn link_bounds(chars: &[char], start: usize) -> Option<(usize, usize)> {
     Some((close, paren))
 }
 
-/// Links and images keep their text.
 fn keep_link_text(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut linked = String::new();
@@ -133,7 +125,6 @@ fn keep_link_text(text: &str) -> String {
     linked
 }
 
-/// Underscores at word edges and markup characters go.
 fn strip_markup_characters(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::new();
@@ -222,8 +213,6 @@ impl UsedIdentifiers {
         if !self.used.contains(base) {
             return base.to_string();
         }
-        // Suffixes below the stored one were taken when last tried, and
-        // anchors are never given back.
         let suffix = self.next_suffix.entry(base.to_string()).or_insert(1);
         while self.used.contains(&format!("{base}-{suffix}")) {
             *suffix += 1;
@@ -232,7 +221,6 @@ impl UsedIdentifiers {
     }
 }
 
-/// `{#id .class key=value}` → `id` and its offset inside the braces.
 fn attribute_identifier(attributes: &str) -> Option<(String, usize)> {
     let chars: Vec<char> = attributes.chars().collect();
     let mut index = 0;
@@ -259,8 +247,6 @@ fn attribute_identifier(attributes: &str) -> Option<(String, usize)> {
     None
 }
 
-/// Every `{...}` attribute block in the visible text (contents and the
-/// offset of the contents).
 fn attribute_blocks(visible: &[char]) -> Vec<(String, usize)> {
     let mut blocks = Vec::new();
     let mut index = 0;
@@ -296,7 +282,6 @@ fn attribute_blocks(visible: &[char]) -> Vec<(String, usize)> {
 fn url_ranges(visible: &[char]) -> Vec<(usize, usize)> {
     let mut ranges = Vec::new();
     let text = string_of(visible);
-    // `](target)` link targets.
     for (index, _) in text
         .char_indices()
         .filter(|(_, character)| *character == ']')
@@ -310,7 +295,6 @@ fn url_ranges(visible: &[char]) -> Vec<(usize, usize)> {
             ranges.push((from, to));
         }
     }
-    // Bare URLs.
     for scheme in ["http:", "https:", "ftp:", "mailto:"] {
         let mut search = 0;
         let lower = text.to_ascii_lowercase();
@@ -329,11 +313,8 @@ fn url_ranges(visible: &[char]) -> Vec<(usize, usize)> {
     ranges
 }
 
-/// A heading: its title, the offset of the title, its level (the first is
-/// 0) and its line.
 type Heading = (String, usize, u32, usize);
 
-/// A file's facts, as the scans below add them.
 struct Facts<'a> {
     file: &'a str,
     source: &'a Source,
@@ -374,15 +355,12 @@ impl Facts<'_> {
         });
     }
 
-    /// A `bibliography:` entry in the front matter.
     fn bibliography(&mut self, raw: String, from: usize) {
         let target = resolve_project_path(self.file, &raw, None);
         self.use_(UseKind::Bibliography, raw, from, target);
     }
 }
 
-/// The fence a fence line opens or closes: a line of the same character, at
-/// least as long, closes the open one.
 fn toggle_fence(fence: Option<Fence>, character: char, run: usize) -> Option<Fence> {
     match fence {
         None => Some(Fence {
@@ -394,7 +372,6 @@ fn toggle_fence(fence: Option<Fence>, character: char, run: usize) -> Option<Fen
     }
 }
 
-/// `# Title`, from the line and its code-span-masked copy.
 fn atx_heading(line: &str, visible: &str, offset: usize, index: usize) -> Option<Heading> {
     let hashes = visible
         .chars()
@@ -416,7 +393,6 @@ fn atx_heading(line: &str, visible: &str, offset: usize, index: usize) -> Option
     Some((name, offset + title_start, (hashes - 1) as u32, index))
 }
 
-/// A line underlined with `===` or `---`.
 fn setext_heading(lines: &[&str], index: usize, visible: &str, offset: usize) -> Option<Heading> {
     let line = lines[index];
     let underline = lines.get(index + 1)?.trim();
@@ -433,7 +409,6 @@ fn setext_heading(lines: &[&str], index: usize, visible: &str, offset: usize) ->
     Some((name, offset + leading, level, index))
 }
 
-/// Legacy headings (ATX and setext), outside front matter and fences.
 fn legacy_headings(text: &str, lines: &[&str]) -> Vec<Heading> {
     let mut offset = 0;
     let mut fence: Option<Fence> = None;
@@ -469,7 +444,6 @@ fn mask(visible: &mut [char], from: usize, count: usize) {
     }
 }
 
-/// Blanks the code spans of an ordinary line that starts at `offset`.
 fn mask_line_code_spans(visible: &mut [char], line: &str, offset: usize) {
     let masked = mask_code_spans(line);
     for (position, character) in masked.chars().enumerate() {
@@ -484,8 +458,6 @@ fn mask_line_code_spans(visible: &mut [char], line: &str, offset: usize) {
     }
 }
 
-/// `bibliography: refs.bib` or `bibliography: [a.bib, b.bib]` (the line,
-/// which starts at `offset`, and the declared value).
 fn bibliography_declaration(facts: &mut Facts<'_>, line: &str, offset: usize, value: &str) {
     let values: Vec<String> = if value.starts_with('[') && value.ends_with(']') {
         value[1..value.len() - 1]
@@ -509,7 +481,6 @@ fn bibliography_declaration(facts: &mut Facts<'_>, line: &str, offset: usize, va
     }
 }
 
-/// An item (`- refs.bib`) of a `bibliography:` list.
 fn bibliography_list_item(facts: &mut Facts<'_>, line: &str, offset: usize, item: &str) {
     let raw = item.trim().trim_matches(['"', '\'']).to_string();
     if raw.is_empty() {
@@ -521,8 +492,6 @@ fn bibliography_list_item(facts: &mut Facts<'_>, line: &str, offset: usize, item
     facts.bibliography(raw, offset + at);
 }
 
-/// Notes the `bibliography:` declarations of a front matter line.
-/// `in_list` is whether a list of them is open.
 fn note_front_matter_line(facts: &mut Facts<'_>, line: &str, offset: usize, in_list: &mut bool) {
     let lower = line.to_ascii_lowercase();
     if let Some(rest) = lower
@@ -545,8 +514,6 @@ fn note_front_matter_line(facts: &mut Facts<'_>, line: &str, offset: usize, in_l
     }
 }
 
-/// The visible text: front matter, fences and code spans masked. The front
-/// matter's `bibliography:` declarations are noted on the way.
 fn visible_text(facts: &mut Facts<'_>, text: &str, lines: &[&str]) -> Vec<char> {
     let mut visible: Vec<char> = facts.source.chars.clone();
     let mut offset = 0;
@@ -581,8 +548,6 @@ fn in_url(urls: &[(usize, usize)], offset: usize) -> bool {
         .any(|(from, to)| offset >= *from && offset < *to)
 }
 
-/// Whether the `@` at `index` (with a `-` in front of it, when there is one)
-/// follows a non-word character.
 fn citation_boundary(visible: &[char], index: usize) -> bool {
     let start = if index > 0 && visible[index - 1] == '-' {
         index - 1
@@ -595,7 +560,6 @@ fn citation_boundary(visible: &[char], index: usize) -> bool {
     }
 }
 
-/// Where the key of the citation at `index` ends.
 fn citation_key_end(visible: &[char], index: usize) -> usize {
     let mut end = index + 1;
     while end < visible.len()
@@ -606,7 +570,6 @@ fn citation_key_end(visible: &[char], index: usize) -> usize {
     end
 }
 
-/// Citations: `@key` / `-@key` after a non-word character.
 fn citations(facts: &mut Facts<'_>, visible: &[char], urls: &[(usize, usize)]) {
     let mut index = 0;
     while index < visible.len() {
@@ -632,7 +595,6 @@ fn citations(facts: &mut Facts<'_>, visible: &[char], urls: &[(usize, usize)]) {
     }
 }
 
-/// Explicit `{#id}` anchors, with the line each is on.
 fn explicit_anchors(
     facts: &mut Facts<'_>,
     visible: &[char],
@@ -652,7 +614,6 @@ fn explicit_anchors(
     explicit
 }
 
-/// Heading anchors: the explicit id, else Pandoc's automatic one.
 fn heading_anchors(
     facts: &mut Facts<'_>,
     lines: &[&str],
@@ -707,7 +668,6 @@ fn include_argument(line: &str) -> Option<&str> {
         .and_then(|rest| after_keyword(rest.trim_start()))
 }
 
-/// The included path: `(["']?)([^"'\s}%>]+)\1`.
 fn include_target(argument: &str) -> Option<String> {
     let quote = argument
         .chars()
@@ -722,8 +682,6 @@ fn include_target(argument: &str) -> Option<String> {
     (!raw.is_empty() && closed).then_some(raw)
 }
 
-/// Include directives (`addMarkdownIncludes`), read from the visible text so
-/// an example inside a code fence is not one.
 fn include_lines(facts: &mut Facts<'_>, visible: &[char]) {
     let text = string_of(visible);
     let mut line_offset = 0;
@@ -740,7 +698,6 @@ fn include_lines(facts: &mut Facts<'_>, visible: &[char]) {
     }
 }
 
-/// Everything the project map needs from one Markdown file.
 pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
     let source = Source::new(text);
     let lines: Vec<&str> = text.split('\n').collect();

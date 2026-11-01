@@ -93,7 +93,6 @@ import {
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
 
-// The dialog loads with its first use, so it stays out of the entry chunk.
 const PublishDialog = lazy(() =>
   import("@/components/integrations/PublishDialog").then((module) => ({
     default: module.PublishDialog,
@@ -1293,8 +1292,6 @@ export function SourceControl() {
   );
 }
 
-/** "Publish to GitLab" when exactly one account is connected, else a
- * neutral "Publish…": the dialog then asks where. */
 function usePublishLabel(): { label: string; namesGitHub: boolean } {
   const { t } = useTranslation(["shell"]);
   const accounts = useForgeAccountsStore((s) => s.accounts);
@@ -1322,8 +1319,6 @@ const HOST_OS: HostOs = hostOs(isWindows, isMac);
 const GIT_FOR_WINDOWS_URL = "https://git-scm.com/downloads/win";
 const MAC_TOOLS_COMMAND = "xcode-select --install";
 
-/** Shown instead of Source Control when no usable Git is installed: how to
- * get Git on this operating system, with at most one action. */
 export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
   const { t } = useTranslation(["shell"]);
   const [copied, setCopied] = useState(false);

@@ -224,6 +224,8 @@
     "suggestion_not_found": "Đề xuất đó đã bị gỡ. Có thể ai đó đã chấp nhận hoặc từ chối.",
     "suggestion_not_yours": "Chỉ người tạo đề xuất này mới có thể rút lại.",
     "suggestion_role": "Vai trò của bạn trong dự án này không cho phép đề xuất.",
+    "suggestion_changed": "Văn bản xung quanh đề xuất này đã thay đổi nên chủ sở hữu hoặc biên tập viên cần chấp nhận hoặc từ chối nó.",
+    "suggestion_too_long": "Một đề xuất xóa có thể dài tối đa 20.000 ký tự. Hãy xóa mỗi lần một phần nhỏ hơn.",
     "chat_role": "Vai trò của bạn trong dự án này không cho phép thao tác đó trong cuộc trò chuyện.",
     "history_unavailable": "Lịch sử của dự án này chưa có trên máy tính này. Hãy thử lại sau khi đồng bộ xong.",
     "account_storage_full": "Tài khoản của chủ sở hữu dự án đã hết dung lượng trên máy chủ này. Hãy gỡ bớt tệp để có chỗ, hoặc đề nghị quản trị viên máy chủ cấp thêm.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Khôi phục toàn bộ dự án?",
-      "description": "Mọi tệp trở về trạng thái tại {{time}} với mọi người trong dự án này. Nội dung hiện tại vẫn nằm trong lịch sử nên bạn có thể quay lại.",
+      "textAndDeleted": "Văn bản của mọi tệp trở về trạng thái tại {{time}} với mọi người trong dự án này, và các tệp đã xóa được khôi phục. Tệp đã đổi tên giữ tên mới, còn hình và tệp được thêm sau đó giữ nguyên. Văn bản hiện tại vẫn nằm trong lịch sử nên bạn có thể quay lại.",
       "confirm": "Khôi phục dự án"
     },
     "compareTitle": "Thay đổi giữa hai phiên bản",

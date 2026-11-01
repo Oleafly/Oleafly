@@ -21,7 +21,6 @@ const TINYTEX_TAG: &str = "v2026.08";
 
 #[derive(Clone, serde::Serialize)]
 pub struct EngineInfo {
-    /// "system" (found on PATH / a standard TeX Live), "tinytex" (our install), or "none".
     pub kind: String,
     pub lualatex: Option<String>,
     pub tlmgr: Option<String>,
@@ -43,7 +42,6 @@ impl EngineInfo {
     }
 }
 
-/// A `latexmk` from any detected TeX distribution (stat-only probe).
 fn find_latexmk() -> Option<String> {
     crate::tex_distro::find_tex_tool("latexmk").map(|p| p.to_string_lossy().into_owned())
 }
@@ -333,7 +331,6 @@ fn find_in_texdir(root: &Path, name: &str) -> Option<PathBuf> {
         .find_map(|bin| crate::tex_distro::find_tool_in_dir(&bin, name))
 }
 
-/// Our own TinyTeX install root: `~/.oleafly/tinytex`.
 fn tinytex_root() -> Result<PathBuf, String> {
     Ok(paths::oleafly_root()?.join("tinytex"))
 }
@@ -427,31 +424,20 @@ pub async fn has_tagging_engine() -> bool {
     find_engine().await.lualatex.is_some()
 }
 
-// --- TinyTeX install machinery -----------------------------------------------
-//
-// The install is long (200 MB+ download, large extraction) and must survive
-// user impatience: progress is phased, the partial download resumes across
-// failures and app launches, and quitting mid-install is intercepted so the
-// user decides deliberately.
-
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static TINYTEX_MUTATION_ACTIVE: AtomicBool = AtomicBool::new(false);
 static INSTALL_ACTIVE: AtomicBool = AtomicBool::new(false);
 static QUIT_CONFIRMED: AtomicBool = AtomicBool::new(false);
 
-/// True while a TinyTeX download/extract is running (drives quit interception).
 pub fn install_in_progress() -> bool {
     INSTALL_ACTIVE.load(Ordering::SeqCst) || crate::toolchain_download::install_in_progress()
 }
 
-/// True once the user explicitly confirmed quitting mid-install.
 pub fn quit_confirmed() -> bool {
     QUIT_CONFIRMED.load(Ordering::SeqCst)
 }
 
-/// The user confirmed the "quit during install?" dialog: let the close
-/// through — as a restart when that is what started this quit sequence.
 #[tauri::command]
 pub fn confirm_quit_during_install(app: tauri::AppHandle) {
     QUIT_CONFIRMED.store(true, Ordering::SeqCst);
@@ -598,8 +584,6 @@ impl Drop for TinytexMutationGuard {
     }
 }
 
-/// One progress event for the whole install. `phase` is "download",
-/// "extract", or "packages"; totals are only meaningful for the download.
 #[derive(Clone, serde::Serialize)]
 struct EngineProgress {
     phase: &'static str,
@@ -607,7 +591,6 @@ struct EngineProgress {
     total: Option<u64>,
 }
 
-/// Bytes of free disk space at `path`'s filesystem, when the OS can tell us.
 fn free_disk_space(path: &Path) -> Option<u64> {
     #[cfg(unix)]
     {
@@ -617,7 +600,6 @@ fn free_disk_space(path: &Path) -> Option<u64> {
         if unsafe { libc::statvfs(c_path.as_ptr(), &mut stat) } != 0 {
             return None;
         }
-        // f_bavail: blocks available to unprivileged users.
         Some(stat.f_bavail as u64 * stat.f_frsize as u64)
     }
     #[cfg(windows)]
@@ -652,8 +634,6 @@ fn gigabytes(bytes: u64) -> f64 {
     bytes as f64 / 1_000_000_000.0
 }
 
-/// State the frontend needs to offer "Resume download" after a failure or a
-/// force-quit: how much of the archive is already on disk.
 #[derive(Clone, serde::Serialize)]
 pub struct TinytexInstallState {
     pub installing: bool,
@@ -1412,7 +1392,6 @@ pub async fn install_tinytex(
     install_prepared_tinytex(&app, &state, &asset).await
 }
 
-/// Remove our TinyTeX install to free disk space.
 #[tauri::command]
 pub async fn delete_tinytex(state: tauri::State<'_, AppState>) -> Result<(), String> {
     delete_tinytex_synchronized(&state).await
@@ -1577,7 +1556,6 @@ fn parse_tlmgr_versions(stdout: &str) -> std::collections::BTreeMap<String, Stri
     versions
 }
 
-/// Install TeX packages by name via tlmgr. Returns the combined output log.
 #[tauri::command]
 pub async fn tlmgr_install(
     state: tauri::State<'_, AppState>,
@@ -1586,7 +1564,6 @@ pub async fn tlmgr_install(
     tlmgr_mutate_synchronized(&state, "install", packages, false).await
 }
 
-/// Remove TeX packages by name via tlmgr.
 #[tauri::command]
 pub async fn tlmgr_remove(
     state: tauri::State<'_, AppState>,
@@ -2092,8 +2069,6 @@ mod tests {
 
     #[test]
     fn tinytex_asset_uses_the_pinned_release() {
-        // Every supported platform must build a URL under the pinned tag with
-        // the versioned asset name; the moving "daily" tag must never appear.
         let asset = tinytex_asset();
         if let Ok(asset) = asset {
             assert!(asset.url.contains(&format!("/download/{TINYTEX_TAG}/")));
@@ -2523,8 +2498,6 @@ mod tests {
         let release = root.join("release-descendant");
         let args = vec![
             "-c".into(),
-            // The descendant holds the pipes and writes only after the test releases
-            // it (or after ~30 s), so a late stop on a loaded machine cannot let it write.
             "(n=0; while [ ! -e \"$2\" ] && [ \"$n\" -lt 600 ]; do sleep 0.05; n=$((n + 1)); done; printf leaked > \"$1\") & exit 0".into(),
             "oleafly-pipe-test".into(),
             leaked.to_string_lossy().into_owned(),
@@ -2757,7 +2730,6 @@ mod tests {
 
     #[test]
     fn parse_tlmgr_versions_defaults_missing_versions_to_installed() {
-        // Packages without a CTAN catalogue version print an empty field.
         let out = "scheme-infraonly,\nhyphen-base,\n";
         let map = parse_tlmgr_versions(out);
         assert_eq!(map["scheme-infraonly"], "installed");
@@ -2766,8 +2738,6 @@ mod tests {
 
     #[test]
     fn parse_tlmgr_versions_skips_malformed_lines() {
-        // Lines without a comma (warnings, blank lines) and empty names are
-        // dropped instead of poisoning the pin.
         let out = "tlmgr: package repository ...\n\namsmath,2.17o\n,orphan\n";
         let map = parse_tlmgr_versions(out);
         assert_eq!(map.len(), 1);

@@ -32,8 +32,6 @@ case "$PLATFORM" in
   *) echo "unsupported PLATFORM $PLATFORM" >&2; exit 2 ;;
 esac
 
-# Interactive flags only when there is a terminal, so the script also works
-# from a pipe, a CI step, or a background job.
 TTY_FLAGS=(-i)
 [[ -t 0 ]] && [[ -t 1 ]] && TTY_FLAGS=(-i -t)
 

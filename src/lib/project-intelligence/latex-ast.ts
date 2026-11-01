@@ -34,7 +34,6 @@ function ensureUnifiedLatexLoaded(): Promise<void> {
   return unifiedLatexLoad;
 }
 
-/** Resolves when the AST parser is available (or has failed to load). */
 export function latexAstReady(): Promise<void> {
   return ensureUnifiedLatexLoaded();
 }
@@ -83,10 +82,6 @@ function trimmedRaw(
   return api.printRaw(nodes as LatexNode[]).trim();
 }
 
-/**
- * Collect the brace-group arguments following an unknown macro, skipping an
- * optional leading `[...]` written as loose string tokens.
- */
 function optionalBracketState(
   content: string,
   inOptional: boolean,
@@ -219,11 +214,6 @@ function walk(
   }
 }
 
-/**
- * Parse a LaTeX file with unified-latex and extract structures the lexical
- * scanner misses. Returns null when the source is too large or the parse
- * fails; callers fall back to lexical-only results.
- */
 export function astAugmentLatexFile(
   file: string,
   source: string,

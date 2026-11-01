@@ -14,8 +14,6 @@ const mockList = vi.mocked(agentListModels);
 const BONSAI: ProviderModel[] = [{ id: "Bonsai-8B-gguf", name: "Bonsai-8B-gguf", trust: "untested" }];
 const discovery = enSettings.ai.customProvider.discovery;
 
-// The agent's listing answers per base URL, the way a local server does:
-// only the addresses in `routes` answer, and everything else is a 404.
 function serve(routes: Record<string, ProviderModel[] | Error>) {
   mockList.mockImplementation(async ({ baseURL }) => {
     const answer = routes[baseURL ?? "saved"];

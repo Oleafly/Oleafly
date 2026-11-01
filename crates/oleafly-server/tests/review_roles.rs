@@ -1,6 +1,6 @@
 mod people;
 
-use loro::{ExportMode, LoroDoc, LoroMap};
+use loro::{ExportMode, LoroDoc, LoroList, LoroMap};
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
@@ -10,6 +10,7 @@ use oleafly_collab_protocol::poll::{
     PROTOCOL_HEADER, SIGNATURE_HEADER,
 };
 use oleafly_collab_protocol::projects::{ProjectRole, ProjectSummary};
+use oleafly_server::role_guard::{RoleRule, RoleVerdict};
 use oleafly_server::test_support::challenge_nonce;
 use oleafly_server::test_support::suggestions::{
     file_text, remove_suggestion, suggest_delete, suggest_insert,
@@ -123,6 +124,27 @@ fn account(person: &Person) -> String {
     person.tokens.account_id.to_string()
 }
 
+fn comment_as(doc: &LoroDoc, thread: &str, author: &str) {
+    let thread = doc
+        .get_map("comments")
+        .insert_container(thread, LoroMap::new())
+        .unwrap();
+    thread.insert("quote", "world").unwrap();
+    thread.insert("created_by", author).unwrap();
+    let messages = thread
+        .insert_container("messages", LoroList::new())
+        .unwrap();
+    let message = messages.push_container(LoroMap::new()).unwrap();
+    message.insert("author", author).unwrap();
+    message.insert("body", "Why?").unwrap();
+}
+
+fn chat_as(doc: &LoroDoc, author: &str, body: &str) {
+    let message = doc.get_list("chat").push_container(LoroMap::new()).unwrap();
+    message.insert("author", author).unwrap();
+    message.insert("body", body).unwrap();
+}
+
 #[tokio::test]
 async fn a_reviewer_can_suggest_comment_and_chat() {
     let stage = stage().await;
@@ -143,21 +165,13 @@ async fn a_reviewer_can_suggest_comment_and_chat() {
     assert!(stored(&deleted), "{deleted:?}");
     let (commented, _) = alice
         .send(&stage.alice, shared.project, |doc| {
-            doc.get_map("comments")
-                .insert_container("f1/t1", LoroMap::new())
-                .unwrap()
-                .insert("quote", "world")
-                .unwrap();
+            comment_as(doc, "f1/t1", &me);
         })
         .await;
     assert!(stored(&commented), "{commented:?}");
     let (chatted, _) = alice
         .send(&stage.alice, shared.project, |doc| {
-            doc.get_list("chat")
-                .push_container(LoroMap::new())
-                .unwrap()
-                .insert("body", "Looks good")
-                .unwrap();
+            chat_as(doc, &me, "Looks good");
         })
         .await;
     assert!(stored(&chatted), "{chatted:?}");
@@ -307,24 +321,23 @@ async fn a_commenter_can_comment_and_chat_but_not_touch_text_or_suggestions() {
     let mut alice = Writer::open(&stage, &stage.alice, shared.project, 41, &shared.known).await;
     let (commented, _) = alice
         .send(&stage.alice, shared.project, |doc| {
-            doc.get_map("comments")
-                .insert_container("f1/t1", LoroMap::new())
-                .unwrap()
-                .insert("quote", "world")
-                .unwrap();
+            comment_as(doc, "f1/t1", &me);
         })
         .await;
     assert!(stored(&commented), "{commented:?}");
     let (chatted, _) = alice
         .send(&stage.alice, shared.project, |doc| {
-            doc.get_list("chat")
-                .push_container(LoroMap::new())
-                .unwrap()
-                .insert("body", "Hi")
-                .unwrap();
+            chat_as(doc, &me, "Hi");
         })
         .await;
     assert!(stored(&chatted), "{chatted:?}");
+    let (wiped, _) = alice
+        .send(&stage.alice, shared.project, |doc| {
+            doc.get_map("comments").delete("f1/t1").unwrap();
+            doc.get_list("chat").delete(0, 1).unwrap();
+        })
+        .await;
+    assert!(forbidden(&wiped), "{wiped:?}");
     let mut typist = Writer::open(&stage, &stage.alice, shared.project, 42, &shared.known).await;
     let (typed, _) = typist
         .send(&stage.alice, shared.project, |doc| {
@@ -529,5 +542,49 @@ async fn over_long_poll_a_reviewer_is_held_to_suggestions_too() {
     assert!(
         matches!(replies.as_slice(), [reply] if stored(reply)),
         "{replies:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_change_checked_once_is_judged_again_when_its_rule_changes_before_it_is_stored() {
+    let stage = stage().await;
+    let shared = shared_with(&stage, &stage.alice, ProjectRole::Reviewer).await;
+    let me = account(&stage.alice);
+    let doc = LoroDoc::new();
+    doc.import(&first_snapshot())
+        .expect("the first snapshot loads");
+    for update in &shared.known {
+        doc.import(update).expect("an earlier change loads");
+    }
+    doc.set_peer_id(41).expect("peer");
+    let before = doc.oplog_vv();
+    comment_as(&doc, "f1/t9", &me);
+    doc.commit();
+    let update = doc.export(ExportMode::updates(&before)).expect("update");
+    let reach = oleafly_server::peers::update_reach(&update).expect("a reach");
+    let state = stage.server.state();
+    let on = RoleRule {
+        role: ProjectRole::Reviewer,
+        account: stage.alice.tokens.account_id,
+        comments_off: false,
+    };
+    let off = RoleRule {
+        comments_off: true,
+        ..on
+    };
+    let checked = |rule| {
+        state.comment_guard.check_role(
+            &state.db,
+            &state.snapshots,
+            shared.project,
+            update.clone(),
+            &reach,
+            rule,
+        )
+    };
+    assert_eq!(checked(on).await.expect("a check"), RoleVerdict::Allowed);
+    assert_eq!(
+        checked(off).await.expect("a check"),
+        RoleVerdict::ChangesComments
     );
 }

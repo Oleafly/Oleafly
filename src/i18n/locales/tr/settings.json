@@ -1488,6 +1488,7 @@
         "missing": "Bu bilgisayarda bulunamadı."
       },
       "managedIdle": "Kullanılmıyor. Oleafly önce bu bilgisayarda bulunan kopyayı kullanır.",
+      "superseded": "Kullanılmıyor. Oleafly artık {{tool}} {{version}} sürümünü kullanıyor.",
       "download": {
         "optional": "İsteğe bağlı. Oleafly zaten bu bilgisayardaki kopyayı kullanıyor.",
         "license": "{{license}} lisansı.",

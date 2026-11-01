@@ -42,11 +42,8 @@ export function registerRailTabs() {
     icon: FlaskConical,
     section: "assist",
     order: 60,
-    // 0.4.8: research tasks are experimental and off by default; the rail
-    // entry comes and goes with the switch (WorkspaceControls re-renders on it).
     when: () => researchTasksEnabled(),
     panel: ResearchWorkspacePanel,
-    // Tasks waiting for a review, a plan approval or a command approval.
     useBadge: () => useResearchAttentionBadge(),
   });
   registerRailTab({
@@ -107,7 +104,6 @@ export function registerRailTabs() {
     icon: ShieldCheck,
     section: "review",
     order: 40,
-    // Preflight checks target documents, not single figures.
     when: (ctx) => ctx.projectKind !== "image" && ctx.projectKind !== "diagram",
     panel: PreflightPanel,
   });
@@ -119,8 +115,6 @@ export function registerRailTabs() {
     order: 50,
     panel: ReferencesPanel,
   });
-  // Live log of tools/call traffic from external MCP clients. Only while the
-  // local MCP server is running (Settings → Integrations → Oleafly MCP).
   registerRailTab({
     id: "mcp",
     label: () => i18n.t(($) => $.shell.rail.mcp),

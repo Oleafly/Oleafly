@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} musi uruchomić kod, aby skompilować ten dokument, a kod jest wyłączony w tym projekcie. Zezwól na kod w tym projekcie, a potem skompiluj dokument.",
+    "export_stopped": "Eksport został zatrzymany.",
     "quarto_missing": "Narzędzie Quarto nie jest zainstalowane. Zainstaluj je w sekcji Ustawienia > Silniki > Quarto, a potem skompiluj ponownie.",
     "calepin_missing": "Narzędzie Calepin nie jest zainstalowane. Zainstaluj je w sekcji Ustawienia > Silniki > Calepin, a potem skompiluj ponownie.",
     "not_offered": "Oleafly nie może pobrać narzędzia {{tool}} na ten komputer. Zainstaluj je samodzielnie, a potem skompiluj ponownie.",

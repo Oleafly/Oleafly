@@ -106,7 +106,6 @@ SCORE: 20
       batchSize: 10,
       completeChat: async ({ user }) => {
         calls += 1;
-        // Second batch has only paper 11 (local 1. → global index 10)
         if (calls === 1) {
           return `
 1.
@@ -136,7 +135,6 @@ SCORE: 72
     expect(ranked[9].score).toBe(55);
     expect(ranked[10].score).toBe(72);
     expect(ranked[10].reasoning?.for).toMatch(/Second batch only paper/i);
-    // Unparsed papers in batch 1 fall back to heuristic with null reasoning
     expect(ranked[1].reasoning).toBeNull();
   });
 });

@@ -23,17 +23,14 @@ import {
   type SandboxStatus,
 } from "./compute-api";
 
-/** Checks that may fail without the sandbox being broken. */
 const EXPECTED_FAILURES = new Set(["python_multiprocessing"]);
 
-/** The first problem a self-test found, or `null` when it passed. */
 export function checkProblem(report: SandboxCheckReport): string | null {
   if (!report.available) return report.reason ?? report.platform;
   const failed = report.checks.find((check) => !check.ok && !EXPECTED_FAILURES.has(check.id));
   return failed ? `${failed.id}: ${failed.detail || failed.expected}` : null;
 }
 
-/** What the sandbox is on this platform: the Windows beta switch, or a ready or unavailable badge. */
 function SandboxStatusRow({
   status,
   onSetWindows,
@@ -82,7 +79,6 @@ interface SandboxSelfTestProps {
   onRun(): void;
 }
 
-/** The self-test button and what the last run found. */
 function SandboxSelfTest({ available, checking, check, onRun }: Readonly<SandboxSelfTestProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const problem = check ? checkProblem(check) : null;
@@ -111,7 +107,6 @@ function SandboxSelfTest({ available, checking, check, onRun }: Readonly<Sandbox
   );
 }
 
-/** The interpreters the sandbox found, with a button that looks again. */
 function SandboxRuntimes({
   runtimes,
   refreshing,
@@ -146,7 +141,6 @@ function SandboxRuntimes({
   );
 }
 
-/** Windows: the folders the sandbox was given access to, with a button that removes the access. */
 function SandboxAccess({
   grants,
   removing,
@@ -182,7 +176,6 @@ function SandboxAccess({
   );
 }
 
-/** The local sandbox: status, the Windows beta switch, interpreters and shared access. */
 export function ComputeSandboxCard() {
   const { t } = useTranslation(["common", "researchTools"]);
   const [status, setStatus] = useState<SandboxStatus | null>(null);
@@ -271,7 +264,6 @@ export function ComputeSandboxCard() {
         onSetWindows={(enabled) =>
           void apply(async () => {
             const next = await setWindowsSandbox(enabled);
-            // A task brief that warns about the sandbox being off checks again.
             announceSandboxChanged(next);
             return next;
           })

@@ -118,7 +118,6 @@ export function SidebarViews() {
   useEffect(() => {
     if (!commentsShown && railTab === "comments") setRailTab("files");
   }, [commentsShown, railTab, setRailTab]);
-  // 0.4.8: the Research tab exists only while research tasks (experimental) are on.
   const researchShown = useResearchTasksEnabled();
   useEffect(() => {
     if (!researchShown && railTab === "research") setRailTab("files");
@@ -190,7 +189,6 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
   const { t } = useTranslation(["shell", "workspace"]);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
-  // A program rang the bell in a terminal that was out of sight.
   const terminalActivity = useTerminalsStore((s) => s.tabs.some((tab) => tab.bell));
   const terminalActivityId = useId();
   const showTerminalActivity = terminalActivity && !terminalOpen;

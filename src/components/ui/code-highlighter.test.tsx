@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearHighlightCache, HighlightedCode } from "./code-highlighter";
 
@@ -16,7 +16,8 @@ vi.mock("@codemirror/legacy-modes/mode/javascript", () => ({
   javascript: {},
 }));
 
-vi.mock("@lezer/highlight", () => ({
+vi.mock("@lezer/highlight", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@lezer/highlight")>()),
   classHighlighter: {},
   highlightCode,
 }));
@@ -53,9 +54,7 @@ describe("HighlightedCode", () => {
     const observer = new MutationObserver((batch) => records.push(...batch));
     observer.observe(pre, { childList: true, subtree: true });
 
-    await act(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 20));
-    });
+    await waitFor(() => expect(pre.querySelectorAll(".tok-keyword")).toHaveLength(400));
     records.push(...observer.takeRecords());
     observer.disconnect();
 
@@ -88,10 +87,7 @@ describe("HighlightedCode", () => {
       <HighlightedCode language="javascript" source="oldSource" />,
     );
 
-    await act(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 20));
-    });
-    expect(container.querySelector(".tok-keyword")).toHaveTextContent("oldSource");
+    await waitFor(() => expect(container.querySelector(".tok-keyword")).toHaveTextContent("oldSource"));
 
     rerender(<HighlightedCode language="javascript" source="newSource" />);
 
@@ -108,10 +104,9 @@ describe("HighlightedCode", () => {
     const first = render(
       <HighlightedCode language="javascript" source="const answer = 42;" />,
     );
-    await act(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 20));
-    });
-    expect(first.container.querySelector(".tok-keyword")).toHaveTextContent("const answer = 42;");
+    await waitFor(() =>
+      expect(first.container.querySelector(".tok-keyword")).toHaveTextContent("const answer = 42;"),
+    );
     first.unmount();
 
     const second = render(

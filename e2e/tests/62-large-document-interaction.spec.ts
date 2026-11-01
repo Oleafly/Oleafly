@@ -12,16 +12,6 @@ import {
   LARGE_BOOK_LINE_COUNT,
 } from "../../test/fixtures/editor-support/large-book";
 
-// 58-editor-core-stability drives one fixed scripted pass over a 6,200-line
-// book. That caught the obvious breakages, but a single fixed path cannot find
-// the ones that only appear at a particular position or interleaving. These
-// scenarios reuse the same document and vary WHERE and WHEN the user acts:
-// extremes, pseudo-random positions that differ per run, scrolling that never
-// settles, and edits landing in the middle of that motion.
-//
-// Every scenario ends in the same coherence check, so a failure names the
-// interaction that broke the editor rather than just "the chaos test failed".
-
 const PROJECT = "E2E Large Interaction";
 
 // The seed picks which lines this spec exercises, and it is printed so any
@@ -36,7 +26,6 @@ const seedFromEnv = process.env.E2E_INTERACTION_SEED?.trim();
 const SEED = seedFromEnv ? Number(seedFromEnv) : Date.now() % 100_000;
 
 function seededLines(count: number): number[] {
-  // Mulberry32: small, deterministic, good enough to spread positions.
   let state = SEED >>> 0;
   const next = () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -131,12 +120,6 @@ async function coherence(
   );
 }
 
-// The editor legitimately re-measures for a frame or two after a change, so a
-// single immediate reading cannot tell "still settling" apart from "broken".
-// Poll until each fully visible gutter label overlaps the exact logical line
-// named by that label. This catches a one-row shift without relying on a magic
-// pixel tolerance that changes with font rasterization and device scale.
-
 async function expectCoherent(
   page: Parameters<typeof expectDesktopShellAnchored>[0],
   context: string,
@@ -215,8 +198,6 @@ async function settleOpenCompile(
   );
 }
 
-/// Turn auto-compile off and put the app in split view. Safe to call from the
-/// library before a project is open: both stores are global.
 async function quietTheCompiler(
   page: Parameters<typeof openProject>[0],
 ): Promise<void> {
@@ -333,9 +314,6 @@ test("the first and last lines both render without a blank viewport", async ({
 test("scrolling that never settles still leaves the editor painted", async ({
   tauriPage,
 }) => {
-  // Deliberately does not wait for the editor to settle between moves: each
-  // scroll interrupts the previous render, which is what a user flicking a
-  // trackpad actually produces.
   const probe = await tauriPage.evaluate<{ blank: number; steps: number }>(
     `import("/src/components/editor/cm/controller.ts").then(async ({ getEditorView }) => {
       ${FRAME_HELPER}
@@ -442,8 +420,6 @@ test("a burst of edits at scattered lines survives undo", async ({
   expect(during).toBeGreaterThan(before);
   await expectCoherent(tauriPage, "after a burst of edits");
 
-  // Uses the app's own undo entry point rather than CodeMirror's command, so
-  // this exercises the path the toolbar and keyboard shortcut actually take.
   const undoLengths: number[] = [];
   for (let i = 0; i < targets.length; i++) {
     undoLengths.push(

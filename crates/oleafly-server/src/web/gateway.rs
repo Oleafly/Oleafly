@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::ws::{close_code, CloseFrame, Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
@@ -35,7 +36,8 @@ use crate::web::frames::{
     self, ChatAction, CommentAction, EditMode, Incoming, Outgoing, SuggestionAction, WebFeatures,
     WebMember, WebOutput, WebPeer,
 };
-use crate::web::room::{Applied, Hub, Sink, WebRoom};
+use crate::web::outbox::Answer;
+use crate::web::room::{Applied, Sink, WebRoom};
 use crate::web::{cross_site, pending_core, same_origin, Refusal, WebOn};
 use crate::web_sessions::{self, WebCaller};
 
@@ -102,6 +104,7 @@ pub async fn upgrade(
 enum Ending {
     Closed,
     Revoked,
+    Expired,
     Overloaded,
     Replaced,
     Restarting,
@@ -150,6 +153,17 @@ async fn refuse(socket: &mut WebSocket, refusal: &Refusal, timing: crate::socket
         if send_text(socket, text, timing).await {
             close(socket, close_code::POLICY, &refusal.message).await;
         }
+    }
+}
+
+fn reply_to(sink: &Sink, result: Result<(), Refusal>, req_id: Option<String>) {
+    match result {
+        Ok(()) => {
+            if let Some(req_id) = req_id {
+                sink.send(&Outgoing::Done { req_id });
+            }
+        }
+        Err(refusal) => sink.send(&Outgoing::error(&refusal.code, &refusal.message, req_id)),
     }
 }
 
@@ -239,6 +253,7 @@ struct Session {
     connection: u64,
     role: ProjectRole,
     mode: String,
+    expires_at: i64,
     room: Arc<WebRoom>,
     sink: Sink,
     cursors: CursorGate,
@@ -317,6 +332,17 @@ async fn run(
             )
             .await
         }
+        Ending::Expired => {
+            refuse(
+                &mut socket,
+                &Refusal::new(
+                    "session_expired",
+                    "This browser session has expired. Sign in again.",
+                ),
+                timing,
+            )
+            .await
+        }
         Ending::Overloaded => {
             close(
                 &mut socket,
@@ -345,8 +371,9 @@ async fn run(
         Ending::Removed => close(&mut socket, close_code::POLICY, "Access ended.").await,
         Ending::Closed => {}
     }
+    session.room.settled(session.id).await;
     session.room.leave(session.id).await;
-    Hub::linger(Arc::clone(&session.room));
+    state.web.linger(session.account, Arc::clone(&session.room));
     leave_rooms(&state, ticket.id, device);
     state.sockets.unregister(device, ticket.id);
 }
@@ -390,6 +417,7 @@ impl Session {
             connection,
             role: role.unwrap_or(ProjectRole::Unknown),
             mode: caller.mode,
+            expires_at: caller.expires_at,
             room: state.web.room(project),
             sink,
             cursors: CursorGate::new(),
@@ -524,10 +552,14 @@ impl Session {
         let mut ping = tokio::time::interval_at(Instant::now() + every, every);
         ping.set_missed_tick_behavior(MissedTickBehavior::Delay);
         let mut unanswered_since: Option<Instant> = None;
+        let left = self.expires_at.saturating_sub(self.state.clock.now_ms());
+        let expiry = tokio::time::sleep(Duration::from_millis(u64::try_from(left).unwrap_or(0)));
+        tokio::pin!(expiry);
         loop {
             tokio::select! {
                 biased;
                 signal = control.recv() => return Ending::from_signal(signal),
+                () = &mut expiry => return Ending::Expired,
                 message = socket.recv() => {
                     unanswered_since = None;
                     match message {
@@ -570,16 +602,20 @@ impl Session {
     }
 
     fn reply(&self, result: Result<(), Refusal>, req_id: Option<String>) {
+        reply_to(&self.sink, result, req_id);
+    }
+
+    fn answer(&self, result: Result<Answer, Refusal>, req_id: Option<String>) {
         match result {
-            Ok(()) => {
-                if let Some(req_id) = req_id {
-                    self.sink.send(&Outgoing::Done { req_id });
-                }
+            Ok(Answer::Done) => self.reply(Ok(()), req_id),
+            Ok(Answer::Later(answer)) => {
+                let sink = self.sink.clone();
+                tokio::spawn(async move {
+                    let result = answer.await.unwrap_or_else(|_| Err(Refusal::server()));
+                    reply_to(&sink, result, req_id);
+                });
             }
-            Err(refusal) => {
-                self.sink
-                    .send(&Outgoing::error(&refusal.code, &refusal.message, req_id))
-            }
+            Err(refusal) => self.reply(Err(refusal), req_id),
         }
     }
 
@@ -603,14 +639,23 @@ impl Session {
             return;
         };
         match frame {
-            Incoming::Open { file_id } => {
-                if let Err(refusal) = self.room.open_file(self.id, &file_id).await {
+            Incoming::Open { file_id, resume } => {
+                let opened = self
+                    .room
+                    .open_file(&self.state.web, self.device, self.id, &file_id, resume)
+                    .await;
+                if let Err(refusal) = opened {
                     self.reply(Err(refusal), req_id);
                 }
             }
             Incoming::Close { file_id } => self.room.close_file(self.id, &file_id).await,
-            Incoming::Change { file_id, rev, op } => {
-                if let Err(refusal) = self.change(&file_id, rev, op).await {
+            Incoming::Change {
+                file_id,
+                rev,
+                op,
+                id,
+            } => {
+                if let Err(refusal) = self.change(&file_id, rev, op, id).await {
                     self.reply(Err(refusal), req_id);
                 }
             }
@@ -625,15 +670,15 @@ impl Session {
             } => self.presence(file_id, anchor, head),
             Incoming::Comment(action) => {
                 let result = self.comment(action).await;
-                self.reply(result, req_id);
+                self.answer(result, req_id);
             }
             Incoming::Suggestion(action) => {
                 let result = self.suggestion(action).await;
-                self.reply(result, req_id);
+                self.answer(result, req_id);
             }
             Incoming::Chat(action) => {
                 let result = self.chat(action).await;
-                self.reply(result, req_id);
+                self.answer(result, req_id);
             }
         }
     }
@@ -643,6 +688,7 @@ impl Session {
         file: &str,
         rev: u64,
         operation: TextOperation,
+        id: Option<String>,
     ) -> Result<(), Refusal> {
         let suggesting = self.suggesting();
         let allowed = if suggesting {
@@ -665,6 +711,7 @@ impl Session {
                 rev,
                 operation,
                 suggesting,
+                id,
             )
             .await
     }
@@ -702,7 +749,7 @@ impl Session {
         }
     }
 
-    async fn comment(&mut self, action: CommentAction) -> Result<(), Refusal> {
+    async fn comment(&mut self, action: CommentAction) -> Result<Answer, Refusal> {
         if !pending_core::may_comment(self.role) {
             return Err(Refusal::new(
                 "comment_viewer",
@@ -729,7 +776,7 @@ impl Session {
             .await
     }
 
-    async fn suggestion(&mut self, action: SuggestionAction) -> Result<(), Refusal> {
+    async fn suggestion(&mut self, action: SuggestionAction) -> Result<Answer, Refusal> {
         let allowed = match &action {
             SuggestionAction::Withdraw { .. } => pending_core::may_suggest(self.role),
             _ => pending_core::may_resolve(self.role),
@@ -743,7 +790,7 @@ impl Session {
         let account = self.account;
         let peer = self.peer();
         self.room
-            .apply(&self.state, &peer, &self.key, move |doc, _| {
+            .apply(&self.state, &peer, &self.key, self.id, move |doc, _| {
                 let files = match action {
                     SuggestionAction::Accept { ids } => {
                         pending_core::accept_suggestions(doc, &ids)?
@@ -769,7 +816,7 @@ impl Session {
             .await
     }
 
-    async fn chat(&mut self, action: ChatAction) -> Result<(), Refusal> {
+    async fn chat(&mut self, action: ChatAction) -> Result<Answer, Refusal> {
         let allowed = match &action {
             ChatAction::Clear => self.role == ProjectRole::Owner,
             ChatAction::Send { .. } | ChatAction::Delete { .. } => {
@@ -785,7 +832,7 @@ impl Session {
         let account = self.account;
         let peer = self.peer();
         self.room
-            .apply(&self.state, &peer, &self.key, move |doc, now| {
+            .apply(&self.state, &peer, &self.key, self.id, move |doc, now| {
                 match action {
                     ChatAction::Send { body } => pending_core::send_chat(doc, account, now, &body)?,
                     ChatAction::Delete { id } => pending_core::delete_chat(doc, &id, account)?,

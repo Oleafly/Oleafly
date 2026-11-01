@@ -70,12 +70,9 @@ function focusIsVisible(el: Element) {
   return keyboardModality;
 }
 
-/** The bubble's look, shared with tooltips that position themselves. */
 export const TOOLTIP_BUBBLE_CLASS =
   "pointer-events-none fixed z-[200] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md";
 
-// Portal to <body> and clamped to the viewport, so it's never clipped by
-// ancestor `overflow` or the window edges. Replaces native `title`.
 export function Tooltip({
   label,
   children,
@@ -93,15 +90,7 @@ export function Tooltip({
   delay?: number;
   className?: string;
   wide?: boolean;
-  /**
-   * Holds the tooltip closed while an overlay owned by the same trigger is
-   * open, so it cannot sit on top of that overlay.
-   */
   suppressed?: boolean;
-  /**
-   * Role for the wrapper. Pass "none" where the extra element would otherwise
-   * break a required parent/child relationship, such as tree → treeitem.
-   */
   role?: "none";
   relative?: boolean;
 }>) {
@@ -269,9 +258,6 @@ export function Tooltip({
             role="tooltip"
             className={cn(
               TOOLTIP_BUBBLE_CLASS,
-              // overflow-wrap anywhere: labels can carry long unbroken paths
-              // (TeX bin directories), which must wrap instead of spilling
-              // past the bubble.
               wide
                 ? "max-w-xs whitespace-normal font-normal leading-relaxed [overflow-wrap:anywhere]"
                 : "w-max max-w-[260px] whitespace-normal font-medium [overflow-wrap:anywhere]",

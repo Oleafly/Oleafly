@@ -1,6 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
 
-/** A card in Settings, Research: an icon, a title and an optional line under it, then the card's rows. */
 export function ResearchCard({
   id,
   icon: Icon,
@@ -9,7 +8,6 @@ export function ResearchCard({
   testId,
   children,
 }: Readonly<{
-  /** The id of the title, which names the card for screen readers. */
   id: string;
   icon: ComponentType<{ "aria-hidden"?: boolean; className?: string }>;
   title: ReactNode;

@@ -187,8 +187,6 @@ pub(crate) async fn checked_setup_code(
     })
 }
 
-// Offered only while email is known to work, so nobody waits for a link
-// that a misconfigured or unreachable mail server will never send.
 pub(crate) async fn email_link_available(state: &AppState) -> Result<bool, ServerError> {
     if !state.mailer.is_working() {
         return Ok(false);

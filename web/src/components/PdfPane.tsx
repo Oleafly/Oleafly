@@ -9,7 +9,7 @@ import { cn, shortcut } from "@/lib/utils";
 import { outputUrl, type WebApi } from "../api";
 import { outputKey, sharedOutputs, shownLocal } from "../compile/outputs";
 import { previewMessage } from "../i18n/packages";
-import { useWeb } from "../store";
+import { patchCompile, useWeb } from "../store";
 import { useActions } from "./context";
 import { dateTime } from "./format";
 import { CompileLog } from "./CompileLog";
@@ -24,16 +24,22 @@ const STEP = 1.2;
 type Status = "idle" | "loading" | "ready" | "missing" | "failed";
 
 function usePdfBytes(api: WebApi, projectId: string, key: string | null) {
-  const [state, setState] = useState<{ status: Status; data: Uint8Array | null; key: string | null }>({
+  const [state, setState] = useState<{
+    status: Status;
+    data: Uint8Array | null;
+    key: string | null;
+    output: string | null;
+  }>({
     status: "idle",
     data: null,
     key: null,
+    output: null,
   });
   const [attempt, setAttempt] = useState(0);
   const request = key ? `${key}#${attempt}` : null;
   useEffect(() => {
-    if (!request) {
-      setState({ status: "idle", data: null, key: null });
+    if (!request || !key) {
+      setState({ status: "idle", data: null, key: null, output: null });
       return;
     }
     let cancelled = false;
@@ -41,7 +47,11 @@ function usePdfBytes(api: WebApi, projectId: string, key: string | null) {
     api.output(projectId, "pdf").then(
       (data) => {
         if (cancelled) return;
-        setState(data ? { status: "ready", data, key: request } : { status: "missing", data: null, key: request });
+        setState(
+          data
+            ? { status: "ready", data, key: request, output: key }
+            : { status: "missing", data: null, key: request, output: null },
+        );
       },
       () => {
         if (!cancelled) setState((current) => ({ ...current, status: "failed" }));
@@ -50,7 +60,7 @@ function usePdfBytes(api: WebApi, projectId: string, key: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [api, projectId, request]);
+  }, [api, projectId, request, key]);
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { ...state, retry };
 }
@@ -92,6 +102,10 @@ export function PdfPane({ api, projectId }: Readonly<{ api: WebApi; projectId: s
   const local = useWeb(shownLocal);
   const remote = usePdfBytes(api, projectId, local ? null : outputKey(shared));
   const data = local?.pdf ?? remote.data;
+  const shownShared = local || !remote.data ? null : remote.output;
+  useEffect(() => {
+    if (useWeb.getState().compile.shownShared !== shownShared) patchCompile({ shownShared });
+  }, [shownShared]);
   const localUrl = useObjectUrl(local?.pdf ?? null);
   const identity = local ? `web-compile:${compile.finishedAt ?? 0}` : `web-output:${remote.key ?? ""}`;
   const [scale, setScale] = useState(1);

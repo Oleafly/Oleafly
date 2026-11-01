@@ -1,5 +1,3 @@
-//! `oleafly agent run`, `oleafly ask` and `oleafly agent apply` as people
-//! and scripts run them, against a scripted provider.
 mod support;
 
 #[path = "support/mock_provider.rs"]
@@ -20,8 +18,6 @@ struct Fixture {
 }
 
 impl Fixture {
-    /// A project with `main.tex` and a data folder whose settings name the
-    /// scripted provider `mock` (no key needed) at `mock`.
     fn new(mock: &MockProvider) -> Self {
         let project = tempfile::tempdir().unwrap();
         std::fs::write(
@@ -548,7 +544,6 @@ fn a_saved_review_applies_and_a_conflict_exits_8() {
         "new"
     );
 
-    // A second review of the original text now conflicts.
     let mock = MockProvider::script(vec![
         tool_call("edit_file", r#"{"path":"main.tex","old":"Hi","new":"Hey"}"#),
         text("Done"),
@@ -630,9 +625,6 @@ fn a_review_copy_of_a_linked_folder_builds_with_the_apps_settings() {
         .unwrap();
     let value = json(&output);
     assert_eq!(value["ok"], true, "{value}");
-    // The copy has no project.json; detection would pick main.tex. The
-    // system prompt names draft.tex either way, so only the tool's answer
-    // is read.
     let request = &mock.requests()[1];
     let answer = request["messages"]
         .as_array()

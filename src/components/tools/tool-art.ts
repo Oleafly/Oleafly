@@ -1,14 +1,8 @@
 import type { ToolId } from "@/lib/tool-catalog";
 
-/** Every illustration under public/tool-art/ is 720x406, like the project-kind art. */
 export const TOOL_ART_WIDTH = 720;
 export const TOOL_ART_HEIGHT = 406;
 
-/**
- * Tools with a header picture at public/tool-art/<id>.webp, drawn in the
- * style of the project-kind illustrations and kept under 10 KB each. A tool
- * missing from this list shows its icon on the gallery card instead.
- */
 const TOOL_ART_IDS: ReadonlySet<ToolId> = new Set<ToolId>([
   "image-to-latex",
   "pdf-to-latex",
@@ -59,7 +53,6 @@ const TOOL_ART_IDS: ReadonlySet<ToolId> = new Set<ToolId>([
   "symbols",
 ]);
 
-/** The header picture for a tool card, or undefined when the tool has none. */
 export function toolArt(id: ToolId): string | undefined {
   return TOOL_ART_IDS.has(id) ? `/tool-art/${id}.webp` : undefined;
 }

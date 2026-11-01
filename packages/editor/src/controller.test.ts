@@ -422,7 +422,6 @@ describe("selecting the word clicked in the PDF", () => {
     const lines = ["x", String.raw`\caption{The effect of the change.}`, ...Array.from({ length: 30 }, () => "filler text"), String.raw`As Figure~\ref{fig:a} shows, the model fits.`];
     const editor = mount(`${lines.join("\n")}\n`);
     editor.dispatch({ selection: { anchor: 0 } });
-    // "Figure 1:" is typeset by \caption; the only "Figure" in the source is 31 lines away.
     expect(selectWordNearLine(2, "Figure", { before: "", after: " 1: The effect of the change." })).toBe(false);
     expect(editor.state.selection.main.from).toBe(0);
   });

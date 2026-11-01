@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO en de meeste zelf gehoste servers hebben dit nodig."
   },
   "errors": {
+    "clock_skew": "De klok van deze computer staat verkeerd, dus {{provider}} accepteert geen verzoeken van deze computer. Stel de juiste datum en tijd in om te blijven synchroniseren.",
     "code_invalid": "Die code werkte niet. Probeer het opnieuw.",
     "device_name_empty": "Voer een naam in.",
     "device_name_invalid": "Een computernaam mag geen \\ / : * ? \" < > | of besturingstekens bevatten en mag maximaal 32 tekens lang zijn.",

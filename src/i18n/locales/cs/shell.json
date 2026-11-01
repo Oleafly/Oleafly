@@ -1222,6 +1222,8 @@
     "exportTxt": "Exportovat jako prostý text (.txt)",
     "exportZipFailed": "Archiv zip projektu se nepodařilo vyexportovat",
     "exporting": "Exportuje se .{{format}}…",
+    "exportingStep": "Exportuje se .{{format}}: {{step}}",
+    "stopExport": "Zastavit",
     "fork": "Rozvětvit",
     "forkDescription": "Zkopíruje projekt <name>{{name}}</name> i jeho historii v Gitu do nového projektu. Záchytné body začínají prázdné.",
     "forkFailed": "Projekt se nepodařilo rozvětvit.",

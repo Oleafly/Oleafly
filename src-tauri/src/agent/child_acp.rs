@@ -98,9 +98,6 @@ impl AcpChild {
                 .await?
         };
         *super::lock_or_recover(&self.session_id) = Some(snapshot.session.id.clone());
-        // The runtime never approves a helper's request by itself. Each request
-        // goes to the parent conversation, and run_connected answers it from
-        // the rules as they are when it arrives.
         self.runtime
             .set_permission_delegate(
                 &snapshot.session.id,
@@ -241,8 +238,6 @@ fn event_activity(event: &crate::acp::AcpEvent) -> Option<(&'static str, Option<
     })
 }
 
-/// A delegated agent asked for a model it does not offer fails, rather than
-/// running on the agent's own default: the parent asked for that model.
 fn asked_model_offered(
     choice: crate::acp::ModelChoice,
     agent_id: &str,
@@ -257,15 +252,10 @@ fn asked_model_offered(
     Ok(())
 }
 
-/// The helper's activity line for a request a deny rule refused, in the app's
-/// language.
 fn refused_by_rule_detail(tool: &str) -> String {
     crate::i18n::t_with("approvals.helperRefused", &[("tool", tool)])
 }
 
-/// How the project's rules answer a helper agent's permission request. `None`
-/// leaves it to the parent conversation. `Some(option)` answers it with that
-/// option, or declines it when the request offers no matching option.
 fn rules_answer(
     root: &std::path::Path,
     project_id: &str,
@@ -289,11 +279,6 @@ fn rules_answer(
     None
 }
 
-/// Answers a helper agent's pending permission requests from the project's
-/// rules as they are now: a deny rule refuses its tool without a card in
-/// every mode, and Full access approves the rest, except requests of a kind
-/// no rule covers while the project has a deny rule. Other requests stay with
-/// the parent conversation. Returns the tools whose rules refused a request.
 async fn answer_pending_by_rules(
     runtime: &crate::acp::AcpRuntime,
     session_id: &str,

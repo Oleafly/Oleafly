@@ -1,6 +1,5 @@
 #[cfg(unix)]
 pub(crate) mod unix;
-// 0.4.8 F1: the Windows terminal command.
 #[cfg(windows)]
 mod windows;
 // A glob, so the items #[tauri::command] generates beside each command come

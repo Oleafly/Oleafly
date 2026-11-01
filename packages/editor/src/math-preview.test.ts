@@ -41,7 +41,6 @@ function mount(doc = DOC) {
   return editor;
 }
 
-/** Runs the debounce that builds decorations, then the deferred first paint. */
 function settle() {
   vi.advanceTimersByTime(250);
 }

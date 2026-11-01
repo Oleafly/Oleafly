@@ -30,8 +30,6 @@ describe("pickPagesToVerify", () => {
   });
 
   it("keeps first and last even when the budget is smaller than the seeds", () => {
-    // maxPages 2 with a cursor seeds {1, 10, 5}; the cap must not drop the last
-    // page. Endpoints win over the cursor.
     const pages = pickPagesToVerify(10, { cursorPage: 5, maxPages: 2 });
     expect(pages).toEqual([1, 10]);
   });

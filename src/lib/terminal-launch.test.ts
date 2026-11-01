@@ -156,7 +156,6 @@ describe("terminal launches", () => {
       }),
     );
     expect(useTerminalsStore.getState().tabs).toHaveLength(1);
-    // The dock opened so the question could be asked.
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
   });
 
@@ -205,7 +204,6 @@ describe("terminal launches", () => {
       { title: "t", env: { Path: "x" } },
       { title: "t", env: { "A=B": "x" } },
       { title: "t", env: { A: "x\u0000y" } },
-      // 4,097 characters but 8,194 bytes.
       { title: "t", env: { A: "é".repeat(4097) } },
       { title: "t", env: tooMany },
       { title: "t", command: "echo", args: ["a\nrm -rf ~"] },

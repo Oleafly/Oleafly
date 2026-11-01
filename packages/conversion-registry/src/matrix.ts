@@ -1,8 +1,3 @@
-/**
- * Assemble the conversion matrix table from the registry. Used by
- * scripts/generate-conversion-matrix.mjs to write docs/conversion-matrix.md
- * and by the test that keeps the doc in sync.
- */
 import { REGISTRY, type ConversionRoute, type SourceFormat, type TargetFormat } from "./index.ts";
 
 const SOURCE_ORDER: SourceFormat[] = [

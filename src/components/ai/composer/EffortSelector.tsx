@@ -15,7 +15,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 const AUTO = "auto";
 
-/** How hard the model reasons; hidden for models without effort levels. */
 export function EffortSelector({
   choices,
   value,

@@ -67,11 +67,6 @@ export function groupSkills(skills: readonly SkillEntry[]): SkillGroup[] {
   return groups;
 }
 
-/**
- * True when every word of `query` appears in one of `fields`, ignoring case.
- * An empty query matches everything. Fields are joined with a newline so a
- * word cannot match across two of them.
- */
 export function matchesSkillSearch(
   query: string,
   fields: readonly (string | null | undefined)[],

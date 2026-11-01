@@ -32,10 +32,9 @@ import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { resetZoteroLibraryForTest, useZoteroLibraryStore } from "@/store/zotero-library";
 import { zoteroCitationSource } from "./zotero-completion";
+import { stubRangeGeometry } from "../../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const BIB = "@article{smithProject2019,\n  author = {Smith, John},\n  title = {Smithing metals},\n  year = {2019},\n  doi = {10.1/proj}\n}\n";
 

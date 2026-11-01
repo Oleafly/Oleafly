@@ -129,8 +129,6 @@ async function readDiskText(
   return { content: normalizeTextContent(raw), snapshot: diskSnapshotOf(raw) };
 }
 
-// Identifies a set of missing packages independently of the order the backend
-// reported them in, so reopening a project with the same gap stays quiet.
 export function texGapSignature(missing: readonly string[]): string {
   return [...new Set(missing)]
     .sort((a, b) => Number(a > b) - Number(a < b))
@@ -299,9 +297,6 @@ export function reportFileSaveFailure(
   );
 }
 
-// Library projects and opened folders alike: the banner over the editor
-// offers Compare, Keep mine and Reload. A toast names the file only when a
-// save the user asked for is blocked in a tab they are not looking at.
 function reportDiskConflict(projectId: string, path: string, explicit: boolean): void {
   noteChangedOnDisk(projectId, path);
   if (explicit && useFilesStore.getState().activePath !== path) reportBackgroundDiskConflict(projectId, path);
@@ -406,8 +401,6 @@ const describeFailure = (error: unknown): string =>
 interface FilesStore {
   projectId: string | null;
   projectName: string;
-  // Project kind: "" for a normal document project, "image" for a single-figure
-  // project (hides doc-only tools like Insert diagram).
   projectKind: string;
   projectDictionaryLocale: string | null;
   manifestHome: ManifestHome;
@@ -420,8 +413,6 @@ interface FilesStore {
   treeTruncated: boolean;
   files: Record<string, FileState>;
   openTabs: string[];
-  // Open-order stamp per file tab, shared with diff tabs so the editor renders
-  // files and diffs interleaved by the order they were opened.
   tabOrder: Record<string, number>;
   assistantTabs: string[];
   activePath: string | null;
@@ -437,12 +428,6 @@ interface FilesStore {
   closeProject: () => Promise<void>;
   dismissSaveBlocked: () => void;
   discardUnsavedAndLeave: () => Promise<void>;
-  /**
-   * Durably write every dirty buffer of the open project before the app
-   * quits. Serialized with project transitions; rejects (and leaves buffers
-   * dirty) when a save fails so the caller can block the quit. Does not tear
-   * down project state — the window closes right after.
-   */
   flushForQuit: () => Promise<void>;
   createProject: (name: string) => Promise<void>;
   importProject: (path: string) => Promise<string>;
@@ -462,11 +447,6 @@ interface FilesStore {
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
   closeTabs: (paths: readonly string[]) => void;
-  // `base` is the text the caller built `content` from, when that may be older
-  // than the buffer. A live project merges the change from it, so edits that
-  // reached the buffer since are kept.
-  // `unsaved` marks text the buffer may already hold but the disk doesn't,
-  // such as typing a shared file's session never had confirmed.
   setContent: (
     path: string,
     content: string,
@@ -590,13 +570,7 @@ function activeAfterDelete(
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
-// Every path edited since the last flush. The single debounce timer saves the
-// whole set, so editing file A then switching to B before the timer fires no
-// longer drops A's changes.
 const pendingSaves = new Set<string>();
-// Writes to the same project path must land in edit order. Without this queue,
-// a slow autosave can finish after a newer transition flush and put stale
-// content back on disk.
 const pendingWrites = new Map<string, Promise<number>>();
 const diskSnapshots = new Map<string, DiskSnapshot>();
 const sharedSaveBases = new Map<string, string>();
@@ -605,11 +579,7 @@ let knownMutationProjectId: string | null = null;
 let knownMutationGeneration: number | null = null;
 let lastProjectStateRevision = 0;
 let fileReloadRevision = 0;
-// Project opens and closes are state transactions. Serializing them keeps a
-// double click or a close during an open from interleaving two project states.
 let projectTransition: Promise<void> = Promise.resolve();
-// Bumped on every openProject so an in-flight load from a previous project can
-// detect it is stale and stop writing into the newly opened project's state.
 let openSeq = 0;
 let mainDocSeq = 0;
 let projectsInFlight: Promise<ProjectInfo[]> | null = null;
@@ -694,16 +664,6 @@ function snapshotHolds(snapshot: DiskSnapshot, content: string): boolean {
   return bytes.length === snapshot.length && diskHash(bytes) === snapshot.hash;
 }
 
-// A live session that stopped wrote these files while editors had them open,
-// and the window doesn't hear about such writes, so its disk snapshots of them
-// are out of date. Each comes with the snapshot of what the disk holds now,
-// so a save that follows isn't taken for a change made outside Oleafly.
-//
-// A snapshot is taken only for text the window has: a file with no buffer,
-// the buffer itself, or the base a handed-back buffer merges from. Anything
-// else on disk, such as a collaborator's change the session never applied,
-// keeps the old snapshot, and its path is returned so the caller checks the
-// file like any outside change.
 export function refreshDiskSnapshots(
   projectId: string,
   files: readonly ({ path: string } & DiskSnapshot)[],
@@ -845,8 +805,6 @@ function enqueueWrite(
     .then(async (expectedGeneration) => {
       const snapshot = diskSnapshots.get(key);
       const crlf = snapshot?.crlf ?? false;
-      // The shared document takes LF text and restores CRLF on disk itself, so
-      // only the direct disk write below uses the file's own line endings.
       const bytes = crlf ? crlfBytes(content) : content;
       if (await writeSharedText(projectId, path, content, sharedBase)) {
         diskSnapshots.set(key, { hash: diskHash(bytes), crlf, length: bytes.length });
@@ -877,9 +835,6 @@ function enqueueWrite(
 }
 
 async function drainProjectWrites(projectId: string, assertCurrent: () => void = () => {}): Promise<void> {
-  // Take repeated snapshots because completing one queued write can expose the
-  // next write for the same path. A restore must begin only after none of the
-  // old revision's writes can still land on top of it.
   for (;;) {
     assertCurrent();
     const prefix = `${projectId}\0`;
@@ -954,8 +909,6 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore, asser
     return;
   }
 
-  // A save can finish while the user is still editing. Loop until the current
-  // project has no dirty snapshots left, then the caller may safely reset it.
   for (;;) {
     assertCurrent();
     const state = get();
@@ -998,9 +951,6 @@ function assertNoUnsavedBuffers(
   }
 }
 
-// A queued autosave must not recreate a file after the backend removes it.
-// Let already-running writes settle, discard queued snapshots for the
-// deleted subtree, and then perform the delete.
 function discardQueuedSavesUnder(
   projectId: string,
   isDeletedPath: (candidate: string) => boolean,
@@ -1115,8 +1065,6 @@ async function reopenMainDocAfterDelete(
   }
 }
 
-// Only split off an extension for files; a folder name is copied whole (so
-// "v1.0" doesn't become "v1 copy.0").
 function copyDestinationFor(path: string, isDir: boolean): string {
   const slash = path.lastIndexOf("/");
   const dir = slash >= 0 ? path.slice(0, slash) : "";
@@ -1465,11 +1413,6 @@ async function preloadBibliographies(
   }
 }
 
-/**
- * The CLI-agent conversations of a project the window leaves are disconnected
- * when idle, so they do not keep running unseen (or count toward the session
- * limit). One mid-turn keeps working; the project's assistant shows it again.
- */
 function releaseIdleAgents(projectId: string): void {
   void import("@/store/acp-sessions")
     .then(({ useAcpSessionsStore }) => useAcpSessionsStore.getState().releaseProject(projectId))
@@ -1808,9 +1751,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   changedOnDisk: [],
 
   refreshProjects: async () => {
-    // Single-flight: the app shell and the library both ask for the list on
-    // boot. Share one in-flight IPC instead of dropping a caller, so
-    // returning to the library still refetches (external edits, new dates).
     projectsInFlight ??= listProjects().finally(() => {
       projectsInFlight = null;
     });
@@ -2000,8 +1940,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const key = fileOpenKey(projectId, path);
     const requestSeq = ++fileOpenSeq;
     pendingFileOpens.set(key, requestSeq);
-    // Binary files (PDFs/images) aren't readable as text - skip the text load
-    // and just open the tab; the editor renders them via a binary viewer.
     const isBinary = isBinaryProjectPath(path);
     const superseded = () =>
       fileOpenSuperseded(projectId, epoch, key, requestSeq, get);
@@ -2031,8 +1969,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       releasePendingFileOpen(key, requestSeq);
       return;
     }
-    // Opening a file makes it the active view, so unfocus any git diff (otherwise
-    // the diff keeps the editor and the newly opened file never becomes active).
     useDiffStore.getState().clearActiveDiff();
     set((s) => {
       const isNew = !s.openTabs.includes(path);
@@ -2065,9 +2001,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, manifestHome, tree } = get();
     if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
     const before = get().files[path];
-    // A viewer can't change a shared project, and while it goes live the role
-    // isn't known yet. Refusing here keeps the buffer as it was instead of
-    // leaving a tab that can never be saved, or one saved to the local file.
     const refusal = sharedWriteRefusal(projectId);
     if (refusal) {
       const key = refusal instanceof SharedConnectingError ? CONNECTING_TOAST : VIEW_ONLY_TOAST;
@@ -2092,9 +2025,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       pendingSaves.delete(path);
       if (projectId) settleSaveFailure(projectId, path, get().files);
     } else {
-      // Debounce a save of THIS file. Track every edited path so the single timer
-      // flushes them all, instead of only whichever tab happens to be active when
-      // it fires (which silently lost edits to background tabs).
       pendingSaves.add(path);
     }
     scheduleAutosave(get);
@@ -2113,8 +2043,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, files } = get();
     const state = files[path];
     if (!projectId || !state) return;
-    // A clean buffer has nothing to persist. Writing it anyway bumps the
-    // project mtime and invalidates the library thumbnail cache for a no-op.
     if (!state.dirty) return;
     const written = state.content;
     const reloadRevision = fileReloadRevision;
@@ -2130,12 +2058,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set((s) => {
       if (s.projectId !== projectId) return {};
       const cur = s.files[path];
-      // The file was deleted while the write was in flight: do not resurrect it
-      // as an entry with undefined content.
       if (!cur) return {};
       if (fileReloadRevision !== reloadRevision) return {};
-      // Newer keystrokes landed during the write, so what is on disk is already
-      // stale. Leave it dirty; a later autosave will persist the newer content.
       if (cur.content !== written) return {};
       return { files: { ...s.files, [path]: { ...cur, dirty: false } } };
     });
@@ -2193,7 +2117,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await get().refreshTree();
     if (touchesRootManifest([result.path])) await get().refreshManifestHome();
     if (get().projectId !== projectId) return;
-    // keep_both may have diverted to a sibling name; open what was created.
     if (!isDir) await get().openFile(result.path);
   },
 
@@ -2205,7 +2128,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       candidate === path || candidate.startsWith(`${path}/`);
     assertNoUnsavedBuffers(get, isDeletedPath);
     const { discardedPending, writes } = discardQueuedSavesUnder(projectId, isDeletedPath);
-    // Deleting one subtree must not suspend autosave for unrelated buffers.
     scheduleAutosave(get);
     let deleted = false;
     try {
@@ -2241,8 +2163,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return to;
     const previousMainDoc = get().mainDoc;
-    // A pending write to the old path could otherwise recreate it after the
-    // filesystem move. Drain all dirty buffers through the per-path queue first.
     await flushDirtyBuffers(projectId, get);
     await drainProjectWrites(projectId);
     const expectedGeneration = await refreshMutationGeneration(projectId);
@@ -2255,9 +2175,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       expectedGeneration,
     );
     await refreshMutationGeneration(projectId);
-    // Follow the moved/renamed path in memory so an open tab, its buffer, the
-    // active file, and the main-doc pointer don't go stale (also handles folder
-    // moves, which carry every descendant path with them).
     const remap = (p: string) => {
       if (p === from) return destination;
       return p.startsWith(`${from}/`)
@@ -2366,11 +2283,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
           expectedGeneration,
         );
       } catch (error) {
-        // Imports are additive and the backend rejects a stale generation
-        // before publishing anything. A save can be admitted in the narrow
-        // window between our generation read and import admission, so retry
-        // that safe preflight conflict once against the new authoritative
-        // generation instead of dropping the user's chosen import.
         if (!String(error).includes("mutation conflict at generation")) throw error;
         expectedGeneration = await refreshMutationGeneration(projectId);
         result = await apiImportPathsIntoProject(
@@ -2475,8 +2387,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   writeProjectFile: async (projectId, path, content, options) => {
     if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessage());
-    // A shared project still going live would take this write on the local
-    // file, so it is refused like a viewer's until the role is known.
     const refusal = sharedWriteRefusal(projectId);
     if (refusal) throw refusal;
     const baselineRevision = fileReloadRevision;
@@ -2487,7 +2397,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
     const base = options?.base === undefined ? undefined : normalizeTextContent(options.base);
-    // LF into the shared document; CRLF only for the direct disk write.
     const shared = await writeSharedText(projectId, path, canonicalContent, base);
     const result = shared
       ? null
@@ -2553,10 +2462,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     return true;
   },
 
-  // Called after an external actor (e.g. the AI assistant) mutates a file on
-  // disk, so the in-memory editor buffer stays in sync and the next save does
-  // not clobber the edit. Cross-window broadcast is done by the AI host so
-  // listeners can re-apply without echoing forever.
   applyExternalWrite: (projectId, path, content, options) => {
     if (get().projectId !== projectId) return false;
     const canonicalContent = normalizeTextContent(content);
@@ -2845,14 +2750,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (!current()) return;
       const compile = await compileStore;
       if (!current()) return;
-      // The backend serializes this metadata change after any active compile.
-      // Invalidate the matching frontend attempt/output before exposing the new
-      // main document so its late IPC response cannot paint the old PDF.
       compile.useCompileStore.getState().reset();
-      // Metadata is already committed under the backend compile lock. Publish
-      // its source identity immediately while capabilities remain fail-closed;
-      // otherwise an old compile could still match `mainDoc` during the engine
-      // descriptor request and repopulate the cleared preview.
       set({ mainDoc: meta.main_doc, mainDecision: "auto" });
       const engine = await fetchProjectEngineQuietly(projectId, current);
       if (!current()) return;
@@ -2868,9 +2766,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   setEngine: async (engineName, flavor = null) => {
     const { projectId } = get();
     if (!projectId) return;
-    // Same race protections as setMainDoc: an engine switch invalidates the
-    // current compile output and must not let a late descriptor request from a
-    // previous selection win.
     const seq = ++mainDocSeq;
     const current = () => seq === mainDocSeq && get().projectId === projectId;
     const compileStore = import("@/store/compile");
@@ -3054,8 +2949,6 @@ export function useActiveContent(): string {
   );
 }
 
-// Flush the debounced autosave immediately when the page is going away, so an
-// edit made within the debounce window of a reload or quit is not lost.
 function flushPendingSaves() {
   stopAutosaveTimer();
   const state = useFilesStore.getState();
@@ -3077,8 +2970,6 @@ if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", flushPendingSaves);
 
   if (E2E_HOOKS) {
-    // E2E / devtools hook for observing explicit Source Control commits without
-    // opening the Source Control panel.
     (window as unknown as { __gitCommitCount?: () => Promise<number> }).__gitCommitCount =
       async () => {
         const id = useFilesStore.getState().projectId;

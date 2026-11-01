@@ -795,11 +795,6 @@ export function createTauriLanguageServiceTransport(): TauriLanguageServiceTrans
   return new TauriLanguageServiceTransport();
 }
 
-/**
- * Sole frontend owner of the fixed language-service IPC allowlist. Callers
- * provide only a project id and closed server kind; the backend resolves the
- * canonical workspace and executable profile.
- */
 export class TauriLanguageServiceTransport
   implements LanguageServiceTransport
 {
@@ -976,8 +971,6 @@ export class TauriLanguageServiceTransport
           onEvent: channel,
         },
       );
-      // A valid opaque identity is enough to stop a process if the rest of
-      // the response fails exact DTO or requested-project validation.
       startedSession = sessionForCleanup(rawResponse);
       const response = parseStartResponse(rawResponse);
       if (

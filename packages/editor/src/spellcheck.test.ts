@@ -268,9 +268,6 @@ describe("proofreading presentation refresh", () => {
     });
     expect(diagnosticCardSource(view, 1)).not.toBeNull();
 
-    // A separate linter can publish much later than the presentation event,
-    // after all event-owned frames and promises have settled. The persistent
-    // diagnostics transaction guard must still keep the selected page.
     await new Promise((resolve) => setTimeout(resolve, 20));
     view.dispatch(
       setDiagnostics(view.state, [
@@ -336,8 +333,6 @@ describe("proofreading presentation refresh", () => {
           injectedPageChange = true;
           requestedPage = true;
           refreshEditorProofreadingPresentation(view);
-          // This represents the older page that was already being returned
-          // when the user selected the new bounded diagnostics page.
           return [];
         }
         return requestedPage ? workerResult.diagnostics : [];

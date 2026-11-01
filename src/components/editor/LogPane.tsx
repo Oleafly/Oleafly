@@ -114,11 +114,9 @@ function LogText({ text }: Readonly<{ text: string }>) {
           body = <span className="text-muted-foreground">{inline(ln)}</span>;
         }
 
-        // Errors/refs flush-left to stand out.
         const pad = cat === "error" || cat === "warn" || cat === "lineref" ? 0 : indent;
         return (
           <span
-            // Log lines are an append-oriented, stateless transcript.
             // biome-ignore lint/suspicious/noArrayIndexKey: preserving a line's position is the intended identity
             key={index}
             className="block whitespace-pre-wrap break-words"
@@ -281,7 +279,6 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
           onClick={() => setExpanded((value) => !value)}
           className="flex min-w-0 flex-1 items-start gap-2 rounded px-1 text-left disabled:cursor-default focus-visible:bg-accent/60"
         >
-          {/* Only offer a chevron when there is an excerpt to reveal. */}
           {collapsible &&
             (expanded ? (
               <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
@@ -611,7 +608,6 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     const infos: LogDiagnostic[] = [];
     for (const d of structured) {
       if (d.severity === "error") {
-        // Rust-side errors[] cards stay authoritative; skip duplicates.
         if (!reportedAsCard(d, reported)) errs.push(d);
       } else if (d.category === "undefined-reference" || d.category === "undefined-citation") {
         if (!reportedAsCard(d, reported)) refs.push(d);

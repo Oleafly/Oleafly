@@ -194,6 +194,7 @@
     "pathStyleHint": "MinIO 和大多數自架伺服器都需要啟用此項。"
   },
   "errors": {
+    "clock_skew": "這台電腦的時鐘不準，因此 {{provider}} 不會接受來自它的請求。請設定正確的日期和時間以繼續同步。",
     "code_invalid": "該代碼無效。請再試一次。",
     "device_name_empty": "請輸入名稱。",
     "device_name_invalid": "電腦名稱不能包含 \\ / : * ? \" < > | 或控制字元，且最多 32 個字元。",

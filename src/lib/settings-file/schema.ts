@@ -505,7 +505,6 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   config("ai.reasoningSummaries", "ai_reasoning_summaries", bool),
   config("ai.personas", "ai_personas", personas),
 
-  // The MCP servers tasks may use are device-specific and not exported.
   config("research.keepAwake", "research_keep_awake", bool),
   config("research.notifications", "research_notifications", bool),
   config("research.commandNetwork", "research_command_network", bool),

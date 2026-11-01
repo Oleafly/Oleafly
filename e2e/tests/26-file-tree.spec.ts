@@ -7,10 +7,6 @@ import {
   type Page,
 } from "../helpers";
 
-// Open every row menu through its real three-dot control. The button itself
-// dispatches the context-menu event used by Radix, so this covers both the
-// visible production affordance and the menu action.
-
 async function openTreeRowMenu(page: Page & { getByText(t: string): unknown }, fileName: string) {
   const ok = await page.evaluate<boolean>(
     `(() => {
@@ -84,8 +80,6 @@ async function createRootEntry(page: Page, name: string, mode: "file" | "dir") {
   }
 }
 
-// The open question that hasn't been answered yet. The bridge's chained
-// getByText ignores the dialog scope, so answers are clicked in an evaluate.
 const OPEN_QUESTION = '[role="alertdialog"]:not([data-e2e-answered])';
 
 async function answerQuestion(page: Page, label: string) {
@@ -147,8 +141,6 @@ test("rename a file via the tree three-dot menu", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Explorer");
-  // A retry after a mid-rename failure may find the file already renamed
-  // (the inline input commits on blur), so accept either starting state.
   await tauriPage.waitForFunction(
     `['scratch.tex', 'renamed.tex'].some(n => (document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes(n))`,
     15_000,
@@ -164,8 +156,6 @@ test("rename a file via the tree three-dot menu", async ({ tauriPage }) => {
       "Rename",
       `!!document.querySelector('[aria-label="Rename file"]')`,
     );
-    // Set the name and commit with Enter in ONE evaluate: the input commits
-    // on blur, so a separate fill-then-press can lose the input in between.
     const committed = await tauriPage.evaluate<boolean>(
       `(() => {
         const el = document.querySelector('[aria-label="Rename file"]');
@@ -195,7 +185,6 @@ test("delete a file via the tree three-dot menu", async ({ tauriPage }) => {
     15_000,
   );
 
-  // Scoped confirm override: only accept the dialog naming this file.
   await tauriPage.evaluate(
     `(window.confirm = (msg) => typeof msg === 'string' && msg.includes('renamed.tex'), 1)`,
   );
@@ -236,8 +225,6 @@ test("delete asks in the app's dialog: Cancel keeps the file, Delete removes it"
   await pickMenuItem(tauriPage, name, "Delete", asking);
   await expect(question).toContainText(name);
   await answerQuestion(tauriPage, "Delete");
-  // Where the folder has no trash, a second question asks before deleting it
-  // permanently.
   await tauriPage.waitForFunction(`!document.querySelector(${JSON.stringify(row)}) || ${asking}`, 15_000);
   if (await tauriPage.evaluate<boolean>(asking)) {
     await expect(question).toContainText(name);
@@ -351,8 +338,6 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
   await createRootEntry(tauriPage, taken, "file");
   await typeInEditorAtStart(tauriPage, `% original-${run}\n`);
 
-  // Creating the same name again must surface the structured conflict
-  // dialog rather than silently failing (the old behavior) or replacing.
   await tauriPage.click('[data-path="main.tex"]');
   await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
@@ -363,13 +348,11 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
   await expect(conflict).toBeVisible({ timeout: 10_000 });
   await expect(conflict.getByText("Replace", { exact: true })).toHaveCount(0);
 
-  // Cancel leaves the original untouched.
   await conflict.getByText("Cancel", { exact: true }).click();
   await tauriPage.click(`[data-path=${JSON.stringify(taken)}]`);
   await waitEditorShowsFile(tauriPage, taken);
   await expect(tauriPage.locator(".cm-content")).toContainText(`original-${run}`);
 
-  // Keep both creates the suggested sibling and opens it.
   await tauriPage.click('[data-path="main.tex"]');
   await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');

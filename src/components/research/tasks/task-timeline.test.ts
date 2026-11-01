@@ -414,7 +414,6 @@ describe("buildTaskTimeline runs, approvals and phases", () => {
 });
 
 describe("buildTaskTimelineIncremental", () => {
-  /** A long run: text that streams, reasoning, paired tools, statuses and usage. */
   function longRun(count: number): TaskTranscriptEvent[] {
     const events: TaskRuntimeEvent[] = [];
     for (let index = 0; events.length < count; index += 1) {
@@ -437,7 +436,6 @@ describe("buildTaskTimelineIncremental", () => {
     for (let length = 1; length <= rows.length; length += 37) {
       const shown = rows.slice(0, length);
       const last = shown[shown.length - 1];
-      // The newest row is replaced as its text grows, as a live delta does it.
       if (last.event.kind === "text") shown[shown.length - 1] = { ...last, event: { ...last.event, text: `${last.event.text}+` } };
       const built = buildTaskTimelineIncremental(shown, true, cache);
       expect(built.timeline).toEqual(buildTaskTimeline(shown, true));

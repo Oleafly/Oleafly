@@ -1201,6 +1201,8 @@
     "exportTxt": "Exportar como texto simples (.txt)",
     "exportZipFailed": "Não foi possível exportar o zip do projeto",
     "exporting": "Exportando .{{format}}…",
+    "exportingStep": "Exportando .{{format}}: {{step}}",
+    "stopExport": "Parar",
     "fork": "Bifurcar",
     "forkDescription": "Copia <name>{{name}}</name> e o histórico dele no Git para um novo projeto. Os pontos de verificação começam vazios.",
     "forkFailed": "Não foi possível bifurcar o projeto.",

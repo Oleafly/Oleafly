@@ -39,8 +39,6 @@ function shapeOptions(n: DiagNode): string[] {
   if (n.shape === "circle") return ["circle"];
   if (n.shape === "ellipse") return ["ellipse"];
   if (n.shape === "diamond") return ["diamond"];
-  // Flowchart I/O box: a trapezium with equal-and-supplementary side angles is a
-  // parallelogram. `trapezium stretches` lets minimum width/height set the box.
   if (n.shape === "parallelogram") {
     const angle = +((Math.atan2(n.h, n.w * 0.22) * 180) / Math.PI).toFixed(3);
     return [
@@ -180,12 +178,6 @@ export const DIAGRAM_LIBS = [
   "backgrounds",
 ];
 
-// Color defs are emitted before the tikzpicture block: \definecolor is legal
-// in the surrounding body, but \node/\draw only exist inside tikzpicture.
-// An unlabeled roundrect is the "group container" convention (drawn behind a
-// cluster of other shapes), so it belongs under the edges too: otherwise a
-// connector that terminates inside the group renders hidden under the
-// container's own fill right where it should meet its target.
 function isGroupContainer(n: DiagNode): boolean {
   return n.shape === "roundrect" && !n.label;
 }

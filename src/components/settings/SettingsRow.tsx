@@ -33,7 +33,6 @@ export function SettingsRow({
     <div className="text-sm font-medium">{label}</div>
   );
   const text = (
-    // break-words lets a long unbroken value (a site origin, a host name, a path) wrap instead of running under the control.
     <div className="min-w-0 break-words">
       {title}
       {description ? <div className="text-xs text-muted-foreground">{description}</div> : null}

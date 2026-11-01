@@ -1,5 +1,3 @@
-//! How to start an agent, as data, so the daemon and SSH launches can carry
-//! it across a process boundary.
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -11,7 +9,6 @@ pub struct LaunchSpec {
     pub program: PathBuf,
     #[serde(default)]
     pub args: Vec<String>,
-    /// Set after `env_remove`.
     #[serde(default)]
     pub env: BTreeMap<String, String>,
     #[serde(default)]

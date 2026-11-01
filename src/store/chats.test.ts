@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Deferred per-call resolvers so tests control when each disk load lands.
 const loadCalls: Array<{ pid: string; resolve: (raw: string) => void }> = [];
 const chatSave = vi.hoisted(() =>
   vi.fn(async (_projectId: string, _chatId: string, _json: string, _index?: boolean) => {}),
@@ -89,8 +88,6 @@ describe("chats store thread mapping", () => {
 
 describe("chats store load", () => {
   it("applies each project's chats on a normal A to B switch", async () => {
-    // Regression: the guard must compare against the latest REQUEST, not the
-    // store's own (still stale) projectId, or B's chats never load.
     const pa = useChatsStore.getState().load("A");
     loadCalls[0].resolve(chatJson("A", "a1"));
     await pa;

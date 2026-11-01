@@ -105,9 +105,6 @@ function visibleHeadings(
 
     const id = ids[index] ?? "";
 
-    // A collapsed ancestor hides every deeper heading, while peers and the
-    // next top-level heading remain visible. Keep walking hidden branches so
-    // their descendants still regain the correct parent when re-expanded.
     if (ancestors.every((ancestor) => !collapsedHeadingIds.has(ancestor.id))) {
       visible.push({
         item,
@@ -126,17 +123,6 @@ function visibleHeadings(
 const NO_WRAPPER_SECTIONS: ReadonlyMap<string, readonly LatexWrapperSection[]> = new Map();
 const NO_LATEX_MACROS: ReadonlyMap<string, string> = new Map();
 
-// The section list for the document you are actually editing, following
-// \input and \include so a split thesis reads as one outline.
-//
-// This is deliberately not the same thing as Structure below it. Structure
-// answers "what is in this project" - every file, label, citation key and
-// dependency, addressed by file:line. Outline answers "where am I in this
-// document", which is the question you have while writing, and it needs to
-// stay quiet enough to scan in one glance.
-//
-// Derived entirely from the shared project index, so it stays in step with
-// everything else that reads the index and does no parsing or file IO here.
 export function DocumentOutline({
   collapsed: controlledCollapsed,
   onCollapsedChange,
@@ -182,9 +168,6 @@ export function DocumentOutline({
     () =>
       index && activePath
         ? outlineFromIndex(index, activePath, (file) => wrapperSections.get(file) ?? []).filter(
-            // Sections only. An \input whose target has no headings of its own
-            // contributed a bare filename row, which is file-tree information,
-            // not an outline.
             (item) => item.kind === "section",
           )
         : [],
@@ -212,10 +195,6 @@ export function DocumentOutline({
       ? `${projectId ?? ""}:${activePath}`
       : null;
 
-  // An empty outline should stay out of the way on first load. This runs once
-  // per resolved document, so a reader can still open the empty section by
-  // hand without it immediately closing again. If that automatic collapse is
-  // followed by a document that has headings, restore the normal open default.
   useEffect(() => {
     if (!resolvedDocumentKey) return;
 
@@ -228,10 +207,6 @@ export function DocumentOutline({
           setUncontrolledCollapsed(true);
           onCollapsedChange?.(true);
         } else if (autoCollapsedDocumentKey.current !== null) {
-          // Keep ownership of an automatic collapse while the reader moves
-          // through empty documents. That way the first heading in the current
-          // document restores the normal open default; a manual collapse has
-          // already cleared this marker in setOpen.
           autoCollapsedDocumentKey.current = resolvedDocumentKey;
         }
         return;
@@ -240,9 +215,6 @@ export function DocumentOutline({
       return;
     }
 
-    // A controlled owner can open the section through its resize handle,
-    // bypassing setOpen. Treat that as a manual choice instead of immediately
-    // applying the empty-document default again.
     if (items.length === 0) {
       if (!collapsed) autoCollapsedDocumentKey.current = null;
       return;
@@ -262,9 +234,6 @@ export function DocumentOutline({
   );
   const previousProjectId = useRef(projectId);
 
-  // Indexing can replace the current document while the panel stays mounted.
-  // Discard IDs no longer present so a stale branch cannot affect a later
-  // document that happens to contain a similarly shaped outline.
   useEffect(() => {
     if (previousProjectId.current !== projectId) {
       previousProjectId.current = projectId;
@@ -305,9 +274,6 @@ export function DocumentOutline({
     ready: resolvedDocumentKey !== null,
   });
   const activeRef = useRef<HTMLButtonElement | null>(null);
-  // A long outline scrolls itself to follow the editor, but never while the
-  // pointer is over the panel: yanking the list out from under a reader who is
-  // about to click a different section is worse than losing the highlight.
   const hoveringRef = useRef(false);
   useEffect(() => {
     if (collapsed || activeIndex < 0 || !activeHeadingVisible) return;
@@ -319,10 +285,6 @@ export function DocumentOutline({
   }, [activeHeadingVisible, activeIndex, collapsed]);
 
   const jump = useCallback((item: OutlineItem) => {
-    // Goes through the shared navigation path, which opens the file, reveals
-    // the editor and selects the range as one operation. The original outline
-    // opened the file and then guessed at an 80ms delay before jumping, which
-    // lost the jump whenever the open took longer.
     void navigateToProjectRange({
       path: item.file,
       range: { from: item.from, to: item.to },
@@ -420,10 +382,6 @@ export function DocumentOutline({
               return (
                 <div
                   key={`${item.file}:${item.line}:${item.kind}:${item.title}`}
-                  // Indent by heading depth so the shape of the document is
-                  // visible without reading any of the titles. The active
-                  // marker takes 2px off the left padding so the accent bar
-                  // does not shift the title it marks.
                   style={{ paddingLeft: `${item.level * 12 + 12 - (active ? 2 : 0)}px` }}
                   className={cn(
                     "group flex min-h-7 w-full items-center gap-1 py-1 pr-2 text-[0.8125rem] leading-5 hover:bg-sidebar-accent hover:text-sidebar-foreground",

@@ -1,6 +1,5 @@
 import type { JsonRpcMessage } from "./json-rpc";
 
-/** Closed Rust-side sidecar allowlist. Document engines map to this elsewhere. */
 export type LanguageServiceKind = "texlab" | "tinymist";
 
 export interface LanguageServiceSession {
@@ -93,15 +92,6 @@ export type LanguageServiceEventSink = (
   event: LanguageServiceTransportEvent,
 ) => void;
 
-/**
- * Platform-neutral transport boundary. A Tauri sidecar, worker, WebSocket, or
- * test double can implement this without leaking its runtime into the client.
- *
- * Every operation carries the full session identity. Implementations must not
- * route a send or stop intended for an old generation to a restarted process.
- * The transport, rather than the client, owns session allocation: Tauri's
- * backend returns an opaque session id and generation from `start`.
- */
 export interface LanguageServiceTransport {
   status(): LanguageServiceTransportStatus;
   start(
@@ -116,10 +106,6 @@ export interface LanguageServiceTransport {
     session: LanguageServiceSession,
   ): Promise<LanguageServiceTransportStatus>;
   stop(session: LanguageServiceSession): Promise<void>;
-  /**
-   * Retries transport-owned cleanup that could not be attached to a complete
-   * runtime session DTO. This must be safe to call when nothing is retained.
-   */
   cleanup(): Promise<void>;
   install?(
     kind: LanguageServiceKind,

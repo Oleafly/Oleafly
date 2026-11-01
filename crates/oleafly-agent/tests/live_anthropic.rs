@@ -1,7 +1,3 @@
-//! Live checks against the Anthropic API. Ignored by default; run them with
-//! a key before a release that changes the Anthropic wire:
-//!
-//! OLEAFLY_LIVE_ANTHROPIC_KEY=… cargo test -p oleafly-agent --test live_anthropic -- --ignored --nocapture
 use std::sync::{Arc, Mutex};
 
 use oleafly_agent::{

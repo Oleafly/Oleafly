@@ -714,14 +714,17 @@ async function openS3Form() {
   return screen.getByTestId("cloud-s3-form");
 }
 
+async function enter(field: HTMLElement, text: string) {
+  await userEvent.clear(field);
+  await userEvent.paste(text);
+}
+
 async function fillS3Form(form: HTMLElement, endpoint = "https://s3.eu-west-1.amazonaws.com") {
-  await userEvent.type(within(form).getByLabelText("Endpoint URL"), endpoint);
-  const region = within(form).getByLabelText("Region");
-  await userEvent.clear(region);
-  await userEvent.type(region, "eu-west-1");
-  await userEvent.type(within(form).getByLabelText("Bucket"), "papers");
-  await userEvent.type(within(form).getByLabelText("Access key ID"), "AKIAEXAMPLE");
-  await userEvent.type(within(form).getByLabelText("Secret access key"), "s3cret");
+  await enter(within(form).getByLabelText("Endpoint URL"), endpoint);
+  await enter(within(form).getByLabelText("Region"), "eu-west-1");
+  await enter(within(form).getByLabelText("Bucket"), "papers");
+  await enter(within(form).getByLabelText("Access key ID"), "AKIAEXAMPLE");
+  await enter(within(form).getByLabelText("Secret access key"), "s3cret");
 }
 
 describe("CloudTab providers", () => {
@@ -800,11 +803,9 @@ describe("CloudTab providers", () => {
     );
     expect(connect).toBeDisabled();
     const endpoint = within(form).getByLabelText("Endpoint URL");
-    await userEvent.clear(endpoint);
-    await userEvent.type(endpoint, "ftp://files.example.com");
+    await enter(endpoint, "ftp://files.example.com");
     expect(connect).toBeDisabled();
-    await userEvent.clear(endpoint);
-    await userEvent.type(endpoint, "http://minio.local:9000");
+    await enter(endpoint, "http://minio.local:9000");
     expect(connect).toBeEnabled();
     expect(within(form).queryByText("Enter a URL that starts with https:// or http://.")).toBeNull();
     await userEvent.clear(within(form).getByLabelText("Bucket"));

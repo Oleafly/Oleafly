@@ -85,9 +85,6 @@ describe("research seed catalog", () => {
     const used = RESEARCH_SEED_PROJECTS.map((project) => project.color);
     for (const color of used) expect(palette).toContain(color);
 
-    // Every palette entry earns a place, and no color is over-used relative to
-    // another, so a seeded library reads as a varied shelf rather than a wall
-    // of default blue.
     expect(new Set(used)).toEqual(new Set(palette));
     const counts = palette.map((hex) => used.filter((color) => color === hex).length);
     expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
@@ -110,8 +107,6 @@ describe("research seed catalog", () => {
   it("never carries generated output or an authored project manifest", () => {
     for (const project of RESEARCH_SEED_PROJECTS) {
       const files = fixtureFiles(fixtureDir(project));
-      // The archive builder writes project.json itself, and a checked-in PDF or
-      // build directory would be stale the moment a fixture changes.
       expect(files, `${project.slug}`).not.toContain("project.json");
       for (const file of files) {
         expect(file.endsWith(".pdf"), `${project.slug}: ${file}`).toBe(false);
@@ -137,8 +132,6 @@ describe("research seed catalog", () => {
       for (const file of fixtureFiles(fixtureDir(project))) {
         if (!file.endsWith(".typ")) continue;
         const source = readFileSync(join(fixtureDir(project), file), "utf8");
-        // A withdrawn package version broke the previous corpus. Built-in
-        // features only means a fixture cannot rot or need the network.
         expect(source, `${project.slug}/${file} imports a remote package`).not.toMatch(
           /@preview\//,
         );

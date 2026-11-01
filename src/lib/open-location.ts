@@ -4,29 +4,21 @@ import { useFilesStore, type TabOpener } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
 export interface ProjectLocation {
-  /** Project-relative path. */
   path: string;
-  /** 1-based. */
   line?: number;
-  /** 1-based; clamped to the line length. */
   column?: number;
-  /** Character offsets into the document; wins over line and column. */
   range?: { from: number; to: number };
 }
 
 export interface OpenLocationOptions {
-  /** Hand keyboard focus back to where it was, for jumps the user did not start. */
   keepFocus?: boolean;
   keepSelection?: boolean;
-  /** Bring the source editor forward from a layout that hides it. Defaults to true. */
   showEditor?: boolean;
-  /** From the PDF-only view, show the editor beside the PDF or in its place. Defaults to "split". */
   pdfView?: "editor" | "split";
   opener?: TabOpener;
 }
 
 export const EDITOR_DOCUMENT_WAIT_MS = 4000;
-// Visual mode renders LaTeX and Markdown; a cursor jump needs their source.
 const VISUAL_SOURCE = /\.(?:tex|latex|ltx|md|markdown)$/i;
 
 type EditorController = typeof import("@/components/editor/cm/controller");
@@ -84,13 +76,6 @@ function keepingFocus(editor: EditorController, move: () => void) {
   }
 }
 
-/**
- * Opens a project file and moves the cursor to a line, column or range once
- * CodeMirror has installed that document. A newer call cancels an older one,
- * so a slow file read can never move the cursor in a tab the user has left.
- * PDFs and images open in their viewer tab with no cursor move. Resolves true
- * when the location is on screen.
- */
 export async function openProjectLocation(
   target: ProjectLocation,
   options: OpenLocationOptions = {},
@@ -120,11 +105,8 @@ async function openLocation(
     !abort.signal.aborted && state.projectId === projectId && state.activePath === target.path;
   if (!current()) return false;
   if (isBinaryProjectPath(target.path)) return true;
-  // Turning Visual mode off is saved for the whole project, so do it only for
-  // a file Visual mode renders, never for a PDF, a script or a data file.
   if (options.showEditor !== false && VISUAL_SOURCE.test(target.path)) revealSourceEditor();
 
-  // Loaded on demand so callers outside the editor do not pull CodeMirror in.
   const editor = await import("@/components/editor/cm/controller");
   if (!current()) return false;
   const unsubscribe = useFilesStore.subscribe((state) => {

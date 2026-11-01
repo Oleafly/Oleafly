@@ -34,18 +34,15 @@ export type CompileStatus = "idle" | "running" | "done" | "failed";
 export type ShareStatus = "idle" | "sharing" | "shared" | "failed";
 
 export interface CompileState {
-  /** An engine in this browser compiles the project. */
   ready: boolean;
   status: CompileStatus;
   output: CompileOutput | null;
   finishedAt: number | null;
-  /** The compile failed before it made any output, with this message. */
   error: string | null;
-  /** Which PDF the pane shows: this browser's compile, or the one the project shares. */
   shown: "local" | "shared";
   share: ShareStatus;
-  /** The shared output this browser uploaded, so it isn't downloaded back. */
   sharedKey: string | null;
+  shownShared: string | null;
   logOpen: boolean;
 }
 
@@ -103,6 +100,7 @@ export function initialCompileState(): CompileState {
     shown: "shared",
     share: "idle",
     sharedKey: null,
+    shownShared: null,
     logOpen: false,
   };
 }
@@ -183,11 +181,7 @@ export function mergePeople(
   return next ?? current;
 }
 
-export function mergeChat(
-  current: readonly CollabChatMessage[],
-  incoming: readonly CollabChatMessage[],
-): CollabChatMessage[] {
-  const byId = new Map(current.map((message) => [message.id, message]));
-  for (const message of incoming) byId.set(message.id, message);
+export function latestChat(page: readonly CollabChatMessage[]): CollabChatMessage[] {
+  const byId = new Map(page.map((message) => [message.id, message]));
   return [...byId.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }

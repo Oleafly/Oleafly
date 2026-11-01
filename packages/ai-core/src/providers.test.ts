@@ -32,7 +32,6 @@ describe("ai-providers", () => {
   it("defaultModel returns the provider's first model, and nothing for a provider the catalog lacks", () => {
     const first = getProvider("openai")?.models[0]?.id;
     expect(defaultModel("openai")).toBe(first);
-    // A custom provider has no preset model; borrowing another provider's would be sent to its endpoint.
     expect(defaultModel("does-not-exist")).toBe("");
   });
 

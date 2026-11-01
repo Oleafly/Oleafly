@@ -1,9 +1,3 @@
-//! Cancelling a clone or an import of a Git repository. The webview emits
-//! [`IMPORT_CANCEL_EVENT`]; that flips an [`ImportCancel`], which stops the
-//! Git command that is running (its whole process tree) and every step after
-//! it. The event names the import it stops by the id the webview gave the
-//! command, so a Cancel in one window never stops another window's import.
-//! An event without an id stops every import, as before ids.
 use std::io;
 use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,16 +7,12 @@ use tauri::{AppHandle, EventId, Listener, Runtime};
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::sync::watch;
 
-/// Emitted by the import dialog's Cancel button and by closing the dialog
-/// while a repository is being fetched.
 pub(crate) const IMPORT_CANCEL_EVENT: &str = "import-cancel";
 
 /// A transfer's output beyond this is dropped; Git's progress lines are small.
 const OUTPUT_LIMIT: usize = 16 * 1024 * 1024;
 const CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// A switch one import checks between its steps and waits on while a command
-/// runs. Cheap to clone; every clone is the same switch.
 #[derive(Clone)]
 pub(crate) struct ImportCancel {
     switch: Arc<watch::Sender<bool>>,
@@ -43,18 +33,15 @@ impl ImportCancel {
         *self.switch.borrow()
     }
 
-    /// Resolves once the switch is flipped (at once when it already is).
     pub(crate) async fn cancelled(&self) {
         let mut receiver = self.switch.subscribe();
         let _ = receiver.wait_for(|cancelled| *cancelled).await;
     }
 
-    /// The error a cancelled import ends with.
     pub(crate) fn error() -> String {
         crate::app_error::AppError::new("git.import_cancelled").into()
     }
 
-    /// `Err` once cancelled, for the places between two steps.
     pub(crate) fn check(&self) -> Result<(), String> {
         if self.is_cancelled() {
             Err(ImportCancel::error())
@@ -64,7 +51,6 @@ impl ImportCancel {
     }
 }
 
-/// Keeps an [`ImportCancel`] wired to [`IMPORT_CANCEL_EVENT`] while it lives.
 pub(crate) struct CancelOnEvent<R: Runtime> {
     app: AppHandle<R>,
     id: EventId,
@@ -76,7 +62,6 @@ impl<R: Runtime> Drop for CancelOnEvent<R> {
     }
 }
 
-/// What the cancel event carries.
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CancelRequest {
@@ -84,8 +69,6 @@ struct CancelRequest {
     cancel_id: Option<String>,
 }
 
-/// Whether a cancel event with `payload` stops the import with `cancel_id`:
-/// when both name an import, only the same one.
 fn stops(payload: &str, cancel_id: Option<&str>) -> bool {
     let requested = serde_json::from_str::<CancelRequest>(payload)
         .ok()
@@ -96,8 +79,6 @@ fn stops(payload: &str, cancel_id: Option<&str>) -> bool {
     }
 }
 
-/// A new switch that the cancel event for `cancel_id` flips until the
-/// returned guard drops. Call it before the command's first await.
 pub(crate) fn cancel_on_event<R: Runtime>(
     app: &AppHandle<R>,
     cancel_id: Option<String>,
@@ -118,10 +99,6 @@ pub(crate) fn cancel_on_event<R: Runtime>(
     )
 }
 
-/// Run `command` to its end like `proc::output_contained_with_bounds`: its
-/// process tree is contained, a command that stays silent for `idle` or runs
-/// past `total` is stopped. Unlike it, flipping `cancel` stops the command at
-/// once (`ErrorKind::Interrupted`). Blocking: call it from a blocking worker.
 pub(crate) fn output_until_cancelled(
     command: Command,
     idle: Duration,
@@ -168,8 +145,6 @@ async fn collect(
         let finished = async {
             let wait = async {
                 let status = child.wait().await?;
-                // A helper may leave a descendant holding a pipe open: stop
-                // the owned tree as soon as its leader is done.
                 drop(containment.take());
                 Ok::<_, io::Error>(status)
             };
@@ -209,8 +184,6 @@ fn interrupted() -> io::Error {
     io::Error::new(io::ErrorKind::Interrupted, "cancelled")
 }
 
-/// Read a pipe to its end, keeping the first [`OUTPUT_LIMIT`] bytes. Every
-/// read counts as the command making progress.
 async fn drain(
     mut pipe: impl AsyncRead + Unpin,
     started: Instant,
@@ -229,7 +202,6 @@ async fn drain(
     }
 }
 
-/// Resolves once neither pipe has delivered anything for `idle`.
 async fn quiet(started: Instant, activity: &AtomicU64, idle: Duration) {
     loop {
         let last = Duration::from_millis(activity.load(Ordering::Relaxed));
@@ -260,7 +232,6 @@ mod tests {
         assert!(!mine.is_cancelled(), "another window's Cancel");
         assert!(theirs.is_cancelled());
 
-        // A cancel without an id stops every import, as before ids.
         app.handle().emit(IMPORT_CANCEL_EVENT, ()).unwrap();
         assert!(mine.is_cancelled());
     }
@@ -309,7 +280,6 @@ mod tests {
     fn cancelling_stops_the_command_and_what_it_started() {
         let marker = tempfile::tempdir().unwrap();
         let grandchild = marker.path().join("grandchild-ran");
-        // The shell starts a background sleeper and then waits for it.
         let script = format!(
             "(sleep 60; touch '{}') & wait",
             grandchild.to_string_lossy()

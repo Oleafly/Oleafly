@@ -34,7 +34,6 @@ type BriefCompute = ResearchBrief["compute"];
 
 const LOCAL = "local";
 
-/** Every resource field, missing ones as `null`. */
 export function fullResources(partial?: Partial<ComputeResources> | null): ComputeResources {
   return {
     timeMinutes: partial?.timeMinutes ?? null,
@@ -47,7 +46,6 @@ export function fullResources(partial?: Partial<ComputeResources> | null): Compu
   };
 }
 
-/** The brief's compute choice after picking `target` (this computer when `null`). */
 export function computeFor(target: ComputeTarget | null): BriefCompute {
   if (!target) return { executor: "local", target: null, resources: null };
   return {
@@ -57,11 +55,6 @@ export function computeFor(target: ComputeTarget | null): BriefCompute {
   };
 }
 
-/**
- * The Slurm fields of a task. Text that is not valid stays in its field with a
- * message, the brief keeps the last valid value, and `onProblemChange` tells
- * the composer so it doesn't submit that older value.
- */
 function SlurmResources({
   id,
   resources,
@@ -96,7 +89,6 @@ function SlurmResources({
 
   const field = <T,>(text: string, parse: (text: string) => T | null, apply: (value: T | null) => ComputeResources) => {
     const parsed = blank(text) ? null : parse(text);
-    // Only a value that reads, or an emptied field, reaches the brief.
     if (blank(text) || parsed !== null) onChange(apply(parsed));
   };
   const message = (invalid: boolean, text: string) =>
@@ -184,7 +176,6 @@ function SlurmResources({
   );
 }
 
-/** Where a task's runs execute: this computer or a target from Settings, with Slurm resources. */
 export function ComputeBriefFields({
   id,
   value,
@@ -196,9 +187,7 @@ export function ComputeBriefFields({
   id?: string;
   value: BriefCompute;
   onChange: (next: BriefCompute) => void;
-  /** Tells the composer whether this choice can't be saved: a removed target or a field that doesn't read. */
   onProblemChange?: (problem: boolean) => void;
-  /** Opens Settings; the composer closes first, since Settings can't open inside it. */
   onOpenSettings?: (open: () => void) => void;
   disabled?: boolean;
 }>) {
@@ -249,7 +238,6 @@ export function ComputeBriefFields({
         if (live) setWindowsOff(status.windowsEnabled !== true);
       })
       .catch(() => {});
-    // Turning the sandbox on in Settings clears the note at once.
     const changed = (event: Event) => {
       const status = (event as CustomEvent<SandboxStatus | undefined>).detail;
       if (live && status) setWindowsOff(status.windowsEnabled !== true);
@@ -262,7 +250,6 @@ export function ComputeBriefFields({
   }, [local, platform]);
 
   const selected = value.target ? view?.targets.find((target) => target.id === value.target) : undefined;
-  // A list that failed to load says nothing about whether the target still exists.
   const missing = Boolean(value.target && view && !loadFailed && !selected);
   const tested = selected ? view?.tested[selected.id] : undefined;
   const problem = missing || resourceProblem;

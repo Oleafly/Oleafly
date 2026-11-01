@@ -127,7 +127,6 @@ describe("FileTree Git status", () => {
     try {
       render(<FileTree />);
 
-      // main.tex is already listed, so saving it again needs no new status.
       save("main.tex");
       await act(() => vi.advanceTimersByTimeAsync(1_000));
       expect(gitStatusCalls()).toBe(0);

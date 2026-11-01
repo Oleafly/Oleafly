@@ -1,12 +1,3 @@
-//! The app's skills, read the way the app reads them, without changing
-//! anything: `<data>/skills/<id>/SKILL.md` (the app copies its bundled skills
-//! there), with the bundled pack as a fallback, and the user's on/off
-//! choices from `skills-state.json`.
-//!
-//! The tool payloads have the app's shapes (`list_skills`, `load_skill`,
-//! `read_skill_file`), so a skill reads the same in the app, in a research
-//! task and here. The background helper uses [`CliSkills`] for its tasks'
-//! research bridge.
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -23,9 +14,7 @@ use crate::skills_read::{parse_frontmatter, read_skills, valid_skill_id, SkillEn
 const STATE_FILE: &str = "skills-state.json";
 const MAX_STATE_BYTES: u64 = 16 * 1024 * 1024;
 const STATE_VERSION: u8 = 2;
-/// A skill file is read up to this size (the app's limit).
 const MAX_SKILL_FILE_BYTES: u64 = 4 * 1024 * 1024;
-/// The selected skills' instructions in one prompt, at most (the app's).
 pub const MAX_SKILL_PROMPT_BYTES: usize = 192 * 1024;
 const MAX_DEPTH: usize = 8;
 const MAX_ENTRIES: usize = 2_000;
@@ -34,24 +23,16 @@ const FIRST_PARTY_MARKER_FILE: &str = ".oleafly-first-party";
 const SCRIPT_PROGRAM_DIRECTORIES: [&str; 4] =
     ["/usr/bin", "/bin", "/usr/local/bin", "/opt/homebrew/bin"];
 
-/// Who reads a skill's instructions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SkillAudience {
-    /// A research task (the helper): its tools run bundled scripts and read
-    /// skill files.
     Task,
-    /// The headless agent: the same tools, and the user's own MCP servers.
     Agent,
 }
 
-/// The app's skills folder, the bundled pack, and the skills turned off.
 #[derive(Clone, Debug, Default)]
 pub struct CliSkills {
-    /// `<data>/skills`.
     pub root: PathBuf,
-    /// The installed app's bundled skills (`<resources>/skills`).
     pub pack: Option<PathBuf>,
-    /// Skill ids the user turned off (for the project the run is for).
     pub disabled: BTreeSet<String>,
 }
 
@@ -66,8 +47,6 @@ struct SkillsState {
 }
 
 impl SkillsState {
-    /// The app's rule: a project override, else the global switch; a skill
-    /// the app has not seen yet is on.
     fn available(&self, project_id: Option<&str>, id: &str) -> bool {
         let scoped = |map: &BTreeMap<String, BTreeSet<String>>| {
             project_id
@@ -95,7 +74,6 @@ fn read_state(data_root: &Path) -> SkillsState {
         .unwrap_or_default()
 }
 
-/// A real file (not a link), at most `limit` bytes.
 fn read_regular_file(path: &Path, limit: u64) -> Option<Vec<u8>> {
     let metadata = std::fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() || metadata.file_type().is_symlink() || metadata.len() > limit {
@@ -110,7 +88,6 @@ fn read_regular_file(path: &Path, limit: u64) -> Option<Vec<u8>> {
     (bytes.len() as u64 <= limit).then_some(bytes)
 }
 
-/// One loaded skill.
 #[derive(Clone, Debug)]
 struct Skill {
     id: String,
@@ -118,11 +95,9 @@ struct Skill {
     description: String,
     dir: PathBuf,
     instructions: String,
-    /// Supporting files (`SKILL.md` left out), slash paths, sorted.
     files: Vec<(String, u64)>,
 }
 
-/// The body after the front matter.
 fn instructions_of(markdown: &str) -> String {
     let normalized = markdown.replace("\r\n", "\n");
     let mut lines = normalized.lines();
@@ -237,7 +212,6 @@ fn quoted(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\\\""))
 }
 
-/// `(path, command)` for each bundled script, as the app builds them.
 fn scripts(skill: &Skill) -> Vec<(String, String)> {
     skill
         .files
@@ -254,7 +228,6 @@ fn scripts(skill: &Skill) -> Vec<(String, String)> {
         .collect()
 }
 
-/// A file inside the skill folder: no `..`, no drive or stream, no link.
 fn resolve_skill_file(directory: &Path, relative: &str) -> Result<PathBuf, String> {
     if relative.trim().is_empty() {
         return Err("Name a file inside the skill folder.".into());
@@ -304,12 +277,10 @@ fn resolve_skill_file(directory: &Path, relative: &str) -> Result<PathBuf, Strin
 }
 
 impl CliSkills {
-    /// No skills (tests, or a run without a data folder).
     pub fn empty() -> Self {
         Self::default()
     }
 
-    /// The app's skills as the app offers them for `project_id`.
     pub fn from_app(data_root: &Path, pack: Option<PathBuf>, project_id: Option<&str>) -> Self {
         let state = read_state(data_root);
         let root = data_root.join("skills");
@@ -328,7 +299,6 @@ impl CliSkills {
         skills
     }
 
-    /// Every skill: the skills folder first, then pack skills it lacks.
     fn entries(&self) -> Vec<SkillEntry> {
         let mut entries = if self.root.as_os_str().is_empty() {
             Vec::new()
@@ -367,7 +337,6 @@ impl CliSkills {
         load(&entry)
     }
 
-    /// The folders of `ids`, for commands that run a skill's scripts.
     pub fn read_paths(&self, ids: &[String]) -> Vec<PathBuf> {
         let mut paths: Vec<PathBuf> = ids
             .iter()
@@ -438,7 +407,6 @@ impl SkillSource for CliSkills {
     }
 }
 
-/// One selected skill's part of a system prompt (the app's wording).
 fn section(skill: &Skill, audience: SkillAudience) -> String {
     let mut section = format!("\n\nSelected skill: {}\n", skill.name);
     section.push_str(&format!(
@@ -478,8 +446,6 @@ fn section(skill: &Skill, audience: SkillAudience) -> String {
     section
 }
 
-/// The sections of the skills `ids` for a system prompt, at most 192 KiB.
-/// A skill that is off or missing is an error naming it.
 pub fn skill_prompt(
     skills: &CliSkills,
     _project_id: Option<&str>,

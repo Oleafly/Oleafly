@@ -177,8 +177,6 @@ fn linux_bwrap_arguments_are_unchanged_for_a_fixed_spec() {
     );
     assert!(!args.iter().any(|arg| arg == "--share-net"));
     assert_eq!(&args[4..8], ["--proc", "/proc", "--dev", "/dev"]);
-    // The workspace is mounted read-only as a whole, then the write grants
-    // and the home folder on top of it.
     let workspace = spec.workspace.to_string_lossy().into_owned();
     let mount = args
         .windows(3)
@@ -204,7 +202,6 @@ fn linux_bwrap_arguments_are_unchanged_for_a_fixed_spec() {
     assert!(online.get_args().any(|arg| arg == "--share-net"));
 }
 
-// Windows has its own sandbox now; this covers every other system.
 #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
 #[test]
 fn unsupported_platforms_report_the_0_4_7_message() {
@@ -228,7 +225,6 @@ fn the_fixed_environment_cannot_be_overridden() {
         let message = invalid(command(&spec, &program(), &[]));
         assert!(message.contains(reserved), "{message}");
     }
-    // The variables below are the macOS and Linux base environment.
     if cfg!(windows) || availability() != Availability::Available {
         return;
     }
@@ -370,7 +366,6 @@ fn child_processes_drop_only_the_posix_spawn_deny() {
     assert!(allowed.contains("SYS_setsid SYS_setpgid"));
 }
 
-/// Runs `script` with `/bin/sh -c` in the sandbox of `spec`.
 #[cfg(unix)]
 fn run_sh(spec: &SandboxSpec, script: &str) -> (i32, String) {
     let args: Vec<OsString> = vec!["-c".into(), script.into()];
@@ -411,7 +406,6 @@ fn hidden_paths_cannot_be_read_or_changed_by_a_confined_command() {
         "TOKEN=secret-token"
     );
     assert!(!workspace.join(".private/new.txt").exists());
-    // Without the list the same command reads them.
     spec.deny_read.clear();
     let (_, output) = run_sh(&spec, "cat .env");
     assert!(output.contains("secret-token"), "{output}");
@@ -427,8 +421,6 @@ fn a_confined_command_cannot_create_git_or_oleafly_state_in_its_workspace() {
     let workspace = fixture.workspace.path().canonicalize().unwrap();
     let mut spec = fixture.spec(false);
     spec.read_write = vec![workspace.clone()];
-    // A write the sandbox allows, so a sandbox that can't start here (it
-    // nests badly inside another one) skips the test.
     let (code, _) = run_sh(&spec, "echo ok > fine.txt");
     if code != 0 || !workspace.join("fine.txt").is_file() {
         return;
@@ -446,7 +438,6 @@ fn a_confined_command_cannot_create_git_or_oleafly_state_in_its_workspace() {
 #[test]
 fn child_processes_let_programs_that_posix_spawn_start_helpers() {
     let fixture = Fixture::new();
-    // awk's system() and Rust's Command start their children with posix_spawn.
     let script = "/usr/bin/awk 'BEGIN { exit system(\"/bin/echo helper\") }'";
     let (code, _) = run_sh(&fixture.spec(false), script);
     assert_ne!(code, 0);

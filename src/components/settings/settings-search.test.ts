@@ -23,18 +23,12 @@ import {
 
 const BUNDLES: Record<string, unknown> = {
   core: enCore,
-  // Settings › Research takes its task defaults from the research tools catalog.
   researchTools: enResearchTools,
   settings: enSettings,
   settingsFile: enSettingsFile,
   shell: enShell,
 };
 
-/**
- * Catalogs whose subtrees are split between settings sections. The research
- * tools catalog lends one subtree to Settings › Research; its other strings
- * belong to the research panel, not to a settings section.
- */
 const SETTINGS_CATALOGS: ReadonlySet<string> = new Set(["core", "settings", "settingsFile", "shell"]);
 
 function lookup(path: CatalogPath): unknown {
@@ -166,8 +160,6 @@ describe("settings search index", () => {
     const sections = [{ id: "appearance" as const, label: "Look" }];
     const entry = (text: string): SettingsSearchIndex =>
       new Map([["appearance", { text: normalizeSearchText(text), keywords: "", rows: [] }]]);
-    // A letter (U+1D400) keeps the term inside a word; an emoji or a lone
-    // surrogate does not, and a Han character is in a script without spaces.
     expect(matchSettingsSections(entry("\u{1D400}ai budget"), sections, "ai")).toEqual([]);
     expect(matchSettingsSections(entry("\u{1F600}ai budget"), sections, "ai")).toEqual(["appearance"]);
     expect(matchSettingsSections(entry("\uDC00ai budget"), sections, "ai")).toEqual(["appearance"]);

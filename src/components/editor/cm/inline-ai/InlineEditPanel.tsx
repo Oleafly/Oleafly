@@ -21,8 +21,6 @@ import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
 import { PromptPopover } from "./PromptPopover";
 import { DiffActionBar, DiffErrorBar, DiffWithdrawnBar } from "./DiffActionBar";
 
-// Rendered inside a CodeMirror block widget below the target line; the widget
-// mounts it when a session opens and unmounts it when it closes.
 export function InlineEditPanel() {
   const { t } = useTranslation(["common", "editor"]);
   const session = useInlineEditStore((s) => s.session);
@@ -102,7 +100,6 @@ export function InlineEditPanel() {
     if (!instruction) return;
     const store = useInlineEditStore.getState();
     store.setInstruction(instruction);
-    // Someone may have edited the target while the instruction was typed.
     const view = getEditorView();
     const original = view ? view.state.sliceDoc(s.from, s.to) : s.original;
     store.startStreaming(original);
@@ -127,11 +124,6 @@ export function InlineEditPanel() {
     }
   };
 
-  // Presets from the selection menu arrive with their instruction already
-  // chosen, so skip the prompt box and stream immediately. Waits for `config`:
-  // the provider is read asynchronously, and firing before it lands would send
-  // the request without the user's configured model. The flag is cleared first
-  // so this can never run twice, and so Retry falls back to the prompt box.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `run` reads the live store; re-creating the effect on its identity would re-fire the request.
   useEffect(() => {
     if (!session?.autoRun || session.phase !== "prompting") return;
@@ -143,7 +135,6 @@ export function InlineEditPanel() {
     void run(instruction);
   }, [session?.autoRun, session?.phase, session?.instruction, providerReady, config]);
 
-  // Capture phase so this wins over the editor keymap; stopPropagation so no stray newline lands.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribes on each session change; handlers read the live store/view.
   useEffect(() => {
     if (!session) return;
@@ -199,7 +190,6 @@ export function InlineEditPanel() {
   };
 
   const selectModel = async (providerId: string, modelId: string) => {
-    // The panel's copy can be older than the saved settings; change only the model.
     const current = await getConfig();
     const next = { ...current, ai_provider: providerId, ai_model: modelId };
     setConfig(next);

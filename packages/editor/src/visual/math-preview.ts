@@ -349,7 +349,6 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
     else closeMenu();
   });
 
-  // The height cap CodeMirror applied when the formula was last fitted.
   let fittedHeight = "";
   const fit = () => {
     fittedHeight = dom.style.height;
@@ -378,7 +377,6 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
         fitOnceFontsLoad();
         return;
       }
-      // The first formula previewed before KaTeX has loaded fills in after it.
       void loadMathRender().then(
         (loaded) => {
           if (destroyed) return;
@@ -524,8 +522,6 @@ const escapeHidesPreview = keymap.of([
   },
 ]);
 
-// Opening an editor that previews KaTeX math starts loading KaTeX, so the
-// first preview is normally painted at once.
 const loadMathRenderEarly = ViewPlugin.define(() => {
   void loadMathRender().catch(() => {});
   return {};
@@ -552,7 +548,6 @@ const mathPreviewTooltipTheme = EditorView.baseTheme({
     display: "flex",
     alignItems: "flex-start",
     gap: "6px",
-    // Wide enough that only an unusually long formula has to be scaled down.
     maxWidth: "min(60rem, 90vw)",
     padding: "6px 6px 6px 10px",
     borderRadius: "8px",
@@ -561,8 +556,6 @@ const mathPreviewTooltipTheme = EditorView.baseTheme({
     color: "var(--popover-foreground, var(--foreground))",
     boxShadow: "0 2px 10px rgba(0, 0, 0, 0.14)",
   },
-  // Never a scroll container: the formula is shown whole, and one too wide
-  // for the tooltip is scaled down by `fitMathToTooltip`.
   ".ofl-visual-math-tooltip-output": {
     flex: "1 1 auto",
     minWidth: "0",

@@ -1,6 +1,3 @@
-//! `oleafly lint`: the editor's LaTeX and BibTeX checks plus spelling and
-//! grammar (Harper), with human, JSON and SARIF reports. `--fix` repairs the
-//! spelling and grammar problems whose fix is certain.
 pub mod fix_writer;
 pub mod select;
 
@@ -98,7 +95,6 @@ impl CommandModule for Commands {
     }
 }
 
-/// Everything one lint run needs, owned.
 pub struct LintInput {
     pub root: PathBuf,
     pub cwd: PathBuf,
@@ -203,8 +199,6 @@ fn row_of(
     }
 }
 
-/// One file's problems: the LaTeX and BibTeX rules, then spelling and
-/// grammar when a proofreader is given.
 fn diagnose(
     target: &str,
     source: &SourceText,
@@ -237,7 +231,6 @@ fn diagnose(
     diagnostics
 }
 
-/// The proofreader, or `None` with a warning when it can't start.
 fn start_proofreader(
     dialect: DialectArg,
     ignored: &IgnoredWords,
@@ -262,8 +255,6 @@ fn start_proofreader(
     }
 }
 
-/// A file's text, and whether it was valid UTF-8 (if not, invalid bytes
-/// read as replacement characters).
 fn decode(bytes: Vec<u8>) -> (String, bool) {
     match String::from_utf8(bytes) {
         Ok(text) => (text, true),
@@ -274,12 +265,8 @@ fn decode(bytes: Vec<u8>) -> (String, bool) {
     }
 }
 
-/// A planned fix: its range, its replacement and the finding it fixes (an
-/// index into the file's findings).
 type PlannedEdit = (usize, usize, (String, usize));
 
-/// The certain, non-overlapping fixes for a file's spelling and grammar
-/// problems. None for a file that isn't prose.
 fn planned_edits(
     diagnostics: &[LintDiagnostic],
     source: &SourceText,
@@ -299,9 +286,6 @@ fn planned_edits(
     without_overlaps(edits)
 }
 
-/// The fixes of `edits` that were written, as the report lists them: one
-/// per edit, for the finding it was planned for (two rules flagging one
-/// span make one fix). `source` is the text before the fixes.
 fn applied_fixes(
     target: &str,
     diagnostics: &[LintDiagnostic],
@@ -322,7 +306,6 @@ fn applied_fixes(
         .collect()
 }
 
-/// Adds `more` to `warnings`, leaving out any already there.
 fn add_new_warnings(warnings: &mut Vec<Warning>, more: Vec<Warning>) {
     for warning in more {
         let known = warnings
@@ -334,7 +317,6 @@ fn add_new_warnings(warnings: &mut Vec<Warning>, more: Vec<Warning>) {
     }
 }
 
-/// Why a file was left unfixed.
 fn fix_warning(target: &str, error: &FixError) -> Warning {
     match error {
         FixError::ChangedOnDisk => Warning::new(
@@ -352,7 +334,6 @@ fn fix_warning(target: &str, error: &FixError) -> Warning {
     }
 }
 
-/// Why a file was left unread.
 fn unreadable_warning(target: &str, error: &std::io::Error) -> Warning {
     Warning::new(
         "lint.file_unreadable",
@@ -360,13 +341,10 @@ fn unreadable_warning(target: &str, error: &std::io::Error) -> Warning {
     )
 }
 
-/// Lints the targets (blocking: reads files, runs Harper on this thread).
 pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
     execute_lint_until(input, &std::sync::atomic::AtomicBool::new(false))
 }
 
-/// [`execute_lint`], stopping between files once `cancel` is set (an MCP
-/// client cancelled the call, whose blocking work can't be aborted).
 pub fn execute_lint_until(
     input: LintInput,
     cancel: &std::sync::atomic::AtomicBool,
@@ -389,7 +367,6 @@ pub fn execute_lint_until(
     } else {
         None
     };
-    // Only Harper's findings need its rule descriptions.
     let harper_rules = if proofreader.is_some() {
         oleafly_lint::proofread::rule_descriptions()
     } else {
@@ -433,8 +410,6 @@ pub fn execute_lint_until(
             }
         };
         let (original, utf8) = decode(bytes);
-        // The app won't open a file in another encoding, and a lossy read
-        // would report fragments of words as misspelled.
         if !utf8 {
             warnings.push(Warning::new(
                 "lint.not_utf8",
@@ -463,9 +438,6 @@ pub fn execute_lint_until(
                     Ok(fixed_text) => {
                         fixed_files += 1;
                         fixed.extend(applied_fixes(target, &diagnostics, &edits, &source));
-                        // What is left is what the fixed file has, where it
-                        // has it: a fix moves every column after it on its
-                        // line, and one that joins lines moves every line.
                         let (after, _) = LineEndingMap::new(&fixed_text);
                         source = SourceText::new(after);
                         let mut recheck = Vec::new();
@@ -530,8 +502,6 @@ async fn run(ctx: &Context, args: LintArgs) -> Result<Outcome, CliError> {
         ctx.warn(warning.code.clone(), warning.message.clone());
     }
     let workspace = &opened.workspace;
-    // `--fix` writes sources, so it waits for the app's hold on the project
-    // (and refuses while a checkpoint restore is pending) like `cite --add`.
     let _project_lock = if args.fix {
         crate::commands::cite::app_project_lock(ctx, workspace)?
     } else {
@@ -841,7 +811,6 @@ mod tests {
         let error = run(&ctx, lint_args(true)).await.unwrap_err();
         assert_eq!(error.code, "conflict.restore_pending");
         assert_eq!(std::fs::read_to_string(&notes).unwrap(), source);
-        // Reading is not writing: a lint without --fix goes on.
         assert!(run(&ctx, lint_args(false)).await.is_ok());
     }
 
@@ -852,8 +821,6 @@ mod tests {
         }
         let project = tempfile::tempdir().unwrap();
         let notes = project.path().join("main.tex");
-        // The repeated word runs across a line break, and fixing it takes a
-        // line out of the file; the unclosed figure is below it.
         std::fs::write(
             &notes,
             "\\documentclass{article}\n\\begin{document}\nWe compare the\nthe results.\n\\begin{figure}\nx\n\\end{document}\n",
@@ -879,7 +846,6 @@ mod tests {
         .unwrap();
         assert_eq!(run.fixed, 1, "{:?}", run.payload["findings"]);
         let after = std::fs::read_to_string(&notes).unwrap();
-        // The file had seven lines; the fix may have joined two of them.
         let removed = 7 - u32::try_from(after.lines().count()).unwrap();
         assert_eq!(removed, 1, "{after:?}");
         let (was, now) = (line_of(&before), line_of(&run));

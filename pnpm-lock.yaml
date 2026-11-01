@@ -15,17 +15,17 @@ overrides:
   '@tiptap/core': 3.30.5
   rehype-katex>katex: 0.18.7
   mermaid>katex: 0.18.7
-  '@lobehub/ui>katex': 0.18.7
   micromark-extension-math>katex: 0.18.7
+  '@lobehub/ui>katex': 0.18.7
   nanoid@<3.3.18: 3.3.18
   postcss@<8.5.23: 8.5.23
-  source-map-js@<1.2.2: 1.2.2
   undici@<7.30.1: 7.30.1
+  source-map-js@<1.2.2: 1.2.2
+  seroval@<1.6.12: 1.6.12
   mermaid@<11.16.1: 11.16.1
   dompurify@<3.4.17: 3.4.17
   markdown-it@<14.3.3: 14.3.3
   solid-js@<1.9.16: 1.9.16
-  seroval@<1.6.11: 1.6.12
   browserslist@<4.28.7: 4.28.7
   '@xmldom/xmldom@<0.9.12': 0.9.12
   '@codemirror/state': 6.7.0
@@ -204,7 +204,7 @@ importers:
         specifier: ^2.3.6
         version: 2.3.6
       '@tauri-apps/plugin-updater':
-        specifier: ~2.14.1
+        specifier: ~2.14.0
         version: 2.14.1
       '@tiptap/core':
         specifier: 3.30.5

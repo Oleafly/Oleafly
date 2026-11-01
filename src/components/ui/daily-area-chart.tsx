@@ -1,8 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { formatDate } from "@/lib/intl";
 
-// One UTC day on the chart. A null value is a day whose amount isn't known:
-// the line breaks there instead of dropping to zero. A marked day gets a dot.
 export type DailyAreaPoint = Readonly<{
   day: string;
   value: number | null;
@@ -13,7 +11,6 @@ const TICK_STEPS = [1, 2, 3, 7, 14, 30, 60, 90];
 const BASELINE = 37;
 const HEIGHT = 33;
 
-// A day such as "2026-08-01", or a time in milliseconds, as a short UTC date.
 export function formatUtcDay(value: number | string, withYear = false): string {
   const date = typeof value === "string" ? new Date(`${value}T00:00:00.000Z`) : new Date(value);
   return formatDate(date, {
@@ -67,9 +64,6 @@ function geometry(points: readonly DailyAreaPoint[]) {
   return { plotted, segments, ticks, x };
 }
 
-// A filled line of one amount per UTC day, with a date axis and a reading of
-// the day under the pointer. Callers add a screen reader table of the same
-// days, since the drawing itself is one image.
 export function DailyAreaChart({
   points,
   label,

@@ -5,11 +5,6 @@ import { AiChrome } from "@/components/ai/AiChrome";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-// One segment of the accept/reject/retry group. Icon-only: the labels live in
-// the tooltip and in `aria-label`, so the bar stays narrow enough to sit over a
-// wrapped line without covering it. `keyShortcut` is exposed to assistive tech
-// via aria-keyshortcuts but deliberately not rendered - the shortcuts still
-// work, they just no longer crowd the buttons.
 function DiffAction({
   icon: Icon,
   label,
@@ -57,10 +52,6 @@ export function DiffActionBar({
       className="w-fit"
       contentClassName="ai-surface-elevated flex items-center gap-1 p-1 text-popover-foreground"
     >
-      {/* Hairline separators instead of gaps, so the three read as one control.
-          They go on the group (`divide-x`), not the buttons: Tooltip wraps each
-          child in its own span, so a `first:` variant on the button would match
-          every one of them and no separator would ever render. */}
       <div className="flex items-center divide-x divide-primary/20 overflow-hidden rounded-md bg-primary/10">
         <DiffAction
           icon={Check}
@@ -103,9 +94,6 @@ export function DiffErrorBar({
 }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
-    // Primary border, labelled buttons: the animated outline and the icon-only
-    // group are reserved for the diff decision, where the choice is the whole
-    // point of the widget. This is a message, so it reads as one.
     <AiChrome
       borderVariant="primary"
       className="w-full"

@@ -14,7 +14,6 @@ const REPLY = [
 ].join("\n");
 
 beforeAll(async () => {
-  // Keep cold loading of the lazy renderer outside the waitFor deadline.
   await import("@/components/ui/markdown-renderer");
 });
 
@@ -40,9 +39,7 @@ describe("home paths in chat messages", () => {
     expect(prose.textContent).toBe(
       'I updated ~/.oleafly/projects/p/main.tex; the old copy is at "~/.oleafly/projects/p/old.tex".',
     );
-    // Two `~` in one paragraph must not turn into strikethrough.
     expect(container.querySelector("del")).toBeNull();
-    // Fenced code keeps the real path: its own copy button copies what it shows.
     expect(container.querySelector("pre")?.textContent).toContain('cp "/Users/ada/My Docs/a.tex" .');
 
     fireEvent.click(screen.getByRole("button", { name: "Copy message" }));

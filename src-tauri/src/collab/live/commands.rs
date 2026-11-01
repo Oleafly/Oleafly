@@ -28,8 +28,6 @@ pub async fn collab_live_start(
     Ok(info)
 }
 
-// What follows every start of a live session: tell the window about a sync
-// decision that still waits, and watch the folder.
 pub(crate) async fn settle_started(app: tauri::AppHandle, project_id: String) {
     announce(&project_id, &app);
     if !crate::folder_watch::is_watching(&project_id) {
@@ -43,8 +41,6 @@ pub async fn collab_live_stop(project_id: String) -> Result<(), CollabCommandErr
     Ok(())
 }
 
-// `wait_for_figures` is for the compile barrier: it also waits up to five
-// seconds for figures that are still downloading.
 #[tauri::command]
 pub async fn collab_live_flush(
     project_id: String,

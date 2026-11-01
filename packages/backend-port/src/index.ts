@@ -1,22 +1,4 @@
-// The transport contract between any Oleafly frontend shell and its backend.
-// Pure types: no Tauri, no HTTP, no runtime code. The desktop shell implements
-// it over Tauri IPC — src/lib/backend-port-conformance.ts proves that at
-// compile time, so drift between this contract and src/lib/tauri.ts fails
-// `tsc` and `pnpm build`. A web shell implements the same surface over
-// HTTP/WS. Grow the contract here first; the conformance check then demands
-// the desktop implementation.
-
-/**
- * Version of this contract. Bump on any breaking change to the command
- * surface. The desktop backend reports its own version through
- * `backendProtocolInfo`; a mismatch means the shell and backend were built
- * against different contracts and the shell must degrade gracefully.
- * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
- * test (src/lib/backend-port-protocol.test.ts) fails on drift.
- */
-// 7 covers every command 0.4.8 removes or renames (one bump per release).
 export const PROTOCOL_VERSION = 7;
-/** Feature areas the shell requires from its backend. Keep sorted. */
 export const BACKEND_CAPABILITIES = [
     "agent-server",
     "agent-stream",
@@ -36,8 +18,6 @@ export interface BackendProtocolInfo {
     protocol_version: number;
     capabilities: string[];
 }
-/** Agent-server handshake reply (protocol v2). Mirrors
- * src-tauri/src/agent_server/protocol.rs. */
 export interface AgentServerInfo {
     app_server_protocol_version: number;
     native_host_protocol_version: number;
@@ -51,15 +31,11 @@ export interface AgentClientInfo {
 export interface AgentClientCapabilities {
     optOutNotificationMethods: string[];
 }
-/** Decision on a server-initiated request (approval / user input /
- * elicitation). Legacy wire spellings are accepted by the backend. */
 export type AgentRequestDecision =
     | "accept"
     | "acceptForSession"
     | "acceptWithExecpolicyAmendment"
     | "decline";
-/** One-round-trip startup snapshot the backend pre-computes; fields are
- * best-effort and never block first paint. */
 export interface InitialState {
     config: AppConfig | null;
     projects: ProjectInfo[];
@@ -71,7 +47,6 @@ export interface PendingOpenRequest {
     display_name: string;
     source: OpenRequestSource;
 }
-/** Persisted per-project tool-approval decision (~/.oleafly/approvals.toml). */
 export type ToolDecision = "allow" | "deny";
 export interface ChatSearchHit {
     project_id: string;
@@ -169,7 +144,6 @@ export interface DocumentEngineDescriptor {
     main_document: string;
     source_extensions: string[];
     capabilities: EngineCapabilities;
-    /** Pinned latexmk compiler; absent means auto-detect from the source. */
     tex_flavor?: TexFlavor;
     allow_shell_escape: boolean;
     typst_version?: string | null;
@@ -210,7 +184,6 @@ export interface ValidatedCompileFingerprint {
     output_id: string;
     output_revision: number;
     compiled_at_ms: number;
-    /** Log of the fingerprinted compile; restores the logs pane on reopen. */
     log: string;
 }
 export interface ProjectSourcesKnownHash {
@@ -281,7 +254,6 @@ export interface RagChunk {
     text: string;
     score: number;
 }
-/** Null means the persisted record is missing or stale: compile normally. */
 export interface FileEntry {
     path: string;
     is_dir: boolean;
@@ -462,12 +434,10 @@ export interface LibraryStorageSummary {
     unreadable_entries: number;
     linked_folders_bytes: number;
     linked_folder_count: number;
-    /** `source_bytes` split by kind of file. */
     document_bytes: number;
     media_bytes: number;
     data_bytes: number;
     other_project_bytes: number;
-    /** The named parts of `app_data_bytes`. */
     tex_distribution_bytes: number;
     agents_bytes: number;
     research_tasks_bytes: number;
@@ -546,7 +516,6 @@ export interface TemplateInfo {
     assets_ready: boolean;
     order: number;
     source: string;
-    /** The LaTeX compiler a template was made for, when it names one. */
     tex_flavor?: TexFlavor | null;
 }
 export interface ComponentInfo {
@@ -784,14 +753,12 @@ export interface ModelCost {
     output?: number;
     cacheRead?: number;
 }
-/** One models.dev reasoning control: effort names, a token budget, or an on/off switch. */
 export interface ReasoningOption {
     type: "effort" | "budget_tokens" | "toggle";
     values?: string[];
     min?: number;
     max?: number;
 }
-/** A project's chats as one JSON array, and how many files could not be read. */
 export interface ChatsLoadResult {
     json: string;
     skipped: number;
@@ -875,25 +842,12 @@ export interface AppConfig {
     research_command_network?: boolean;
     research_time_budget_minutes?: number;
     research_task_mcp_servers?: string[];
-    /** 0.4.8: research tasks are experimental and off until the user turns
-     * them on. Absent = off. Only `research_tasks_set_enabled` changes it;
-     * `set_config` keeps the stored value. */
     research_tasks_enabled?: boolean;
-    /** 0.4.8 L: tasks marked to keep running move to the background helper
-     * when Oleafly quits. Absent = on. `set_config` keeps the stored value;
-     * `background_tasks_set_enabled` changes it. */
     research_background_enabled?: boolean;
-    /** 0.4.8 L: the helper starts at sign-in. Absent = off. Only
-     * `background_helper_set_login_item` changes it. */
     research_background_at_login?: boolean;
-    /** 0.4.8 H: the Tools model. Absent = automatic local (Ollama). Only
-     * `set_ai_tools_model` changes it; `set_config` keeps the stored value. */
     ai_tools_model?: ToolsModelChoice | null;
-    /** 0.4.8 I: Desktop apps. Device-local; only `cua_driver_settings_set`
-     * changes it, and `set_config` keeps the stored value. */
     cua_driver?: { enabled: boolean; apps: unknown[]; sites: unknown[] };
 }
-/** The provider and model the Tools converters send images to. */
 export interface ToolsModelChoice {
     provider: string;
     model: string;
@@ -959,29 +913,23 @@ export interface ProviderModel {
 export type ForgeKind = "github" | "gitlab" | "gitea";
 export type ForgeFlavor = "gitea" | "forgejo";
 export type ForgeAuthMethod = "oauth" | "token";
-/** A signed-in Git hosting account. Never carries a token. */
 export interface ForgeAccount {
-    /** Normalized base URL, such as `https://gitlab.com` or `https://example.org/gitlab`. */
     base: string;
     kind: ForgeKind;
     flavor?: ForgeFlavor;
     login: string;
     name?: string;
     avatarUrl?: string;
-    /** Certificate authority file for a server signed by an organization's own authority. */
     caFile?: string;
     auth: ForgeAuthMethod;
-    /** Epoch milliseconds. */
     addedAt: number;
 }
 export interface ForgeServerInfo {
     base: string;
     kind: ForgeKind | null;
     flavor: ForgeFlavor | null;
-    /** Whether this build offers browser (device code) sign-in for the server. */
     deviceFlow: boolean;
 }
-/** A started browser sign-in. The device code stays in the backend. */
 export interface ForgeDeviceStart {
     flowId: string;
     userCode: string;
@@ -1012,7 +960,6 @@ export interface ForgeRepo {
 export interface ForgeRepoPage {
     repos: ForgeRepo[];
     nextPage: number | null;
-    /** Whether the server filtered by the query; otherwise filter the loaded rows. */
     searched: boolean;
 }
 export interface GitHubRepoStats {
@@ -1035,13 +982,10 @@ export interface GitPullResult {
 }
 export interface GitPublishPrepared {
     committed: boolean;
-    /** The branch has a commit to push. */
     hasCommit: boolean;
-    /** Project-relative paths not staged because they look like secrets. */
     leftOut: string[];
 }
 export interface GitPublishPreflight {
-    /** Secret-looking paths already in the branch history, which a push uploads. */
     trackedSecretFiles: string[];
 }
 export interface GitFileChange {
@@ -1064,7 +1008,6 @@ export interface GitWorkspaceSnapshot {
     conflicts: GitConflict[];
     branches: string[];
     commits: GitCommit[];
-    /** False when no usable `git` program is installed. */
     gitAvailable?: boolean;
 }
 export interface GitWorktreeOperationResult {
@@ -1080,15 +1023,10 @@ export interface SynctexRect {
     width: number;
     height: number;
 }
-/**
- * A typeset line holding text from the source line a forward search asked for.
- * `from`..`to` is the stretch of it where that source line's words sit.
- */
 export interface SynctexLine extends SynctexRect {
     from: number;
     to: number;
 }
-/** A forward search answer: the box to fall back on, and every typeset line of the source line. */
 export interface SynctexForwardHit extends SynctexRect {
     lines?: SynctexLine[];
 }
@@ -1098,7 +1036,6 @@ export interface SynctexHit {
     column: number;
 }
 
-// "unknown" is a role from a later server: no rights at all.
 export type CollabServerRole = "admin" | "maintainer" | "member" | "guest" | "unknown";
 export type CollabProviderKind = "github" | "oidc" | "email_link" | "unknown";
 export interface CollabProvider {
@@ -1159,7 +1096,6 @@ export interface CollabMember {
     account: CollabAccount;
     status: CollabMemberStatus;
     created_at: number;
-    // Shared projects this person owns. Older servers leave it out.
     owned_projects?: number;
 }
 export interface CollabMemberPatch {
@@ -1220,9 +1156,6 @@ export type CollabSecurityEventKind =
     | "domain_rule_added"
     | "domain_rule_removed"
     | "settings_changed"
-    // A change stored while comments were off in its project that turned out
-    // to change comments once the server could check it. The actor made it,
-    // and `detail` is `{ project, seq, device }`.
     | "comments_changed_while_off"
     | "unknown";
 export interface CollabSecurityEvent {
@@ -1296,6 +1229,8 @@ export type CollabErrorCode =
     | "suggestion_not_found"
     | "suggestion_not_yours"
     | "suggestion_role"
+    | "suggestion_changed"
+    | "suggestion_too_long"
     | "chat_role"
     | "history_unavailable"
     | "account_storage_full"
@@ -1308,7 +1243,6 @@ export interface CollabCommandError {
 export interface CollabServerChanged {
     serverId: string;
 }
-// "unknown" is a role from a later server: read-only, like a viewer.
 export type CollabProjectRole = "owner" | "editor" | "reviewer" | "commenter" | "viewer" | "unknown";
 export type CollabProjectStatus = "pending" | "active" | "archived" | "unknown";
 export interface CollabPerson {
@@ -1355,7 +1289,6 @@ export interface CollabShareProgress {
     done: number;
     total: number;
 }
-// Downloading a shared project: `total` files to fetch, `done` fetched so far.
 export interface CollabJoinProgress {
     serverId: string;
     sharedProjectId: string;
@@ -1370,11 +1303,7 @@ export type CollabLiveEndReason =
     | "client_too_old"
     | "server_too_old"
     | "server_changed"
-    // The document engine hit an error on a change. The next start skips
-    // that change, so going live again continues.
     | "failed"
-    // Too many shared documents broke in this run of the app, so a new start
-    // would fail too. Restarting the app clears it.
     | "engine_spent";
 export type CollabLiveState =
     | { state: "connecting" }
@@ -1442,8 +1371,6 @@ export interface CollabDocOpened {
     file_id: string;
     rev: number;
     text: string;
-    // Identifies the channel this open registered. Closing passes it back so
-    // a late close can't shut a channel the same file opened since.
     session: number;
 }
 export interface ProjectSharing {
@@ -1451,11 +1378,6 @@ export interface ProjectSharing {
     role: CollabProjectRole;
 }
 
-/**
- * The structured destination-collision failure surfaced by rename and
- * create. Implementations throw their own Error subclass carrying these
- * fields; consumers detect it through `isFileConflictError`.
- */
 export interface FileConflictInfo {
   destination: string;
   suggestedDestination: string;
@@ -1479,7 +1401,6 @@ export interface BackendPort {
     projectId: string,
     mainDoc: string,
   ) => Promise<ValidatedCompileFingerprint | null>;
-  compileTex: (projectId: string, mainDoc: string, source: string) => Promise<CompileResult>;
   recordProjectTexSpec: (projectId: string) => Promise<TexSpec | null>;
   importOverleafProjectCmd: (path: string, name?: string) => Promise<string>;
   projectTexStatus: (projectId: string) => Promise<TexStatus | null>;
@@ -1535,8 +1456,6 @@ export interface BackendPort {
   createProjectFromDocx: (name: string, dataBase64: string) => Promise<string>;
   appendAppLog: (message: string) => Promise<void>;
   readAppLog: (maxBytes: number) => Promise<string>;
-  /** Same data as readAppLog, streamed in acknowledged chunks so a large log
-   * cannot jank the webview with one giant IPC return. */
   readAppLogChunked: (maxBytes: number) => Promise<string>;
   setMainDocCmd: (projectId: string, mainDoc: string) => Promise<ProjectMeta>;
   setProjectEngineCmd: (projectId: string, engine: string, flavor?: TexFlavor | null) => Promise<ProjectMeta>;
@@ -1565,9 +1484,7 @@ export interface BackendPort {
     content_base64?: string;
 }[]) => Promise<void>;
   deleteCustomTemplate: (slug: string) => Promise<void>;
-  /** Import a ZIP or a folder as a custom template; resolves to its id. */
   importTemplateFromPath: (path: string, name: string) => Promise<string>;
-  /** Save a project's files as a custom template; resolves to its id. */
   saveProjectAsTemplate: (projectId: string, name: string, previewPngBase64?: string | null) => Promise<string>;
   listTemplates: () => Promise<TemplateInfo[]>;
   templatePreview: (templateId: string) => Promise<string | null>;
@@ -1707,18 +1624,15 @@ export interface BackendPort {
     key?: string;
     baseURL?: string;
   }) => Promise<ProviderModel[]>;
-  /** Agent-server capability handshake; call once at shell startup. */
   agentServerInitialize: (
     clientInfo: AgentClientInfo,
     capabilities: AgentClientCapabilities,
   ) => Promise<AgentServerInfo>;
-  /** Answer a server-initiated request the shell received. */
   agentServerResolveRequest: (
     requestId: string,
     decision: AgentRequestDecision,
     payload?: unknown,
   ) => Promise<void>;
-  /** Drop a server-initiated request without a decision. */
   agentServerAbandonRequest: (requestId: string) => Promise<void>;
   mcpSetActiveProject: (projectId: string | null) => Promise<void>;
   mcpToolResult: (callId: number, result: unknown, rendererSession: number) => Promise<void>;
@@ -1736,7 +1650,6 @@ export interface BackendPort {
   forgeCreateRepo: (base: string, name: string, isPrivate: boolean) => Promise<ForgeRepo>;
   forgeImportRepo: (base: string, fullName: string) => Promise<string>;
   gitCloneProject: (url: string) => Promise<string>;
-  /** Another window or the backend added, changed or removed an account. */
   onForgeAccountsChanged: (handler: () => void) => Promise<() => void>;
   discordCommunityStats: () => Promise<DiscordCommunityStats>;
   collabServersList: () => Promise<CollabServer[]>;
@@ -1866,17 +1779,12 @@ export interface CollabLiveRenamed {
   ours: string;
   theirs: string;
 }
-// A change the app couldn't import, even on its own, so it was skipped and
-// syncing went on. `deviceId` names the device that made it when known.
 export interface CollabChangeSkipped {
   projectId: string;
   seq: number;
   deviceId: string | null;
 }
-// Why a file of a live project couldn't be written to this computer.
 export type CollabUnwrittenReason = "locked" | "read_only" | "no_space" | "not_downloaded" | "other";
-// Files that still couldn't be written after a second try. An empty list
-// means every file is written again.
 export interface CollabLiveUnwritten {
   projectId: string;
   files: { path: string; reason: CollabUnwrittenReason }[];
@@ -1897,9 +1805,6 @@ export interface CollabUnsentProject {
   name: string;
   changes: number;
 }
-// `handled` is false when the shared document didn't take the write.
-// `reason` says why when it was refused rather than not shared: "read_only"
-// when this person can only view the project.
 export interface CollabWriteOutcome {
   handled: boolean;
   reason?: string;
@@ -1911,8 +1816,6 @@ export interface CollabDetachedProject {
 export interface CollabSignOut {
   signed_out: boolean;
   unsent: CollabUnsentProject[];
-  // Projects that stopped syncing because their server was removed. They stay
-  // on this computer as ordinary projects. Always empty after a sign-out.
   detached: CollabDetachedProject[];
 }
 export interface CollabLiveRemovedFile {
@@ -1927,8 +1830,6 @@ export interface CollabLiveRemoved {
   files: CollabLiveRemovedFile[];
   restored: string[];
 }
-// "project_too_large": the project as a whole reached the server's size
-// limit, so the file waits until the limit is raised.
 export type CollabUploadState =
   | "waiting"
   | "failed"
@@ -1942,22 +1843,13 @@ export interface CollabUploadFile {
   size: number;
   limit: number | null;
 }
-// The server refused a change because the project's change log reached its
-// size limit. Sent at the first refusal after each connect.
 export interface CollabLiveProjectFull {
   projectId: string;
 }
-// Sent when a live session stops or the server ends it: the files it wrote
-// while editors had them open, each with the disk snapshot of what it holds
-// now (the window's own hash, whether it has CRLF line ends, and its length in
-// UTF-16 units). Files changed outside Oleafly since are left out, so their
-// change still shows.
 export interface CollabLiveWritten {
   projectId: string;
   files: { path: string; hash: string; crlf: boolean; length: number }[];
 }
-// How far the upload of one figure got, in bytes. Sent a few times a second
-// at most while it goes up.
 export interface CollabUploadProgress {
   projectId: string;
   path: string;
@@ -1993,15 +1885,11 @@ export type CollabHealthIssue =
     | "sign_in_emails_paused"
     | "comments_changed_while_off"
     | "unknown";
-// A sign-in option that keeps failing: its provider id, when it started and
-// the provider's own message.
 export interface CollabSignInProblem {
     provider: string;
     at: number;
     reason: string;
 }
-// One change the server stored while comments were off in its project and
-// later found had changed comments.
 export interface CollabCommentChangeWhileOff {
     project_id: string;
     project_title?: string | null;
@@ -2018,7 +1906,6 @@ export interface CollabServerCounts {
     pending_projects: number;
     open_rooms: number;
     people_online: number;
-    // Guest invitations an admin or maintainer still has to approve.
     pending_guest_approvals: number;
 }
 export interface CollabStorageUsage {
@@ -2027,22 +1914,16 @@ export interface CollabStorageUsage {
     file_bytes: number;
     files_location: CollabFilesLocation;
 }
-// Sign-ins on one UTC day, starting at `day` (midnight UTC, in ms): how many,
-// and how many different people.
 export interface CollabDailyActivity {
     day: number;
     sign_ins: number;
     people: number;
 }
-// Sign-ins in one UTC hour of one weekday over the whole range. Weekday 0 is
-// Sunday.
 export interface CollabHourlyActivity {
     weekday: number;
     hour: number;
     sign_ins: number;
 }
-// The security log's sign-ins over `days` UTC days from `since`. Only days
-// and hours with a sign-in are listed.
 export interface CollabServerActivity {
     since: number;
     days: number;
@@ -2064,9 +1945,7 @@ export interface CollabAdminOverview {
     limits: CollabCapabilities["limits"];
     archive_days: number;
     sign_in_problems?: CollabSignInProblem[];
-    // Newest first, at most 20 from the last 30 days. Left out when empty.
     comments_changed_while_off?: CollabCommentChangeWhileOff[];
-    // Left out by servers older than the activity charts.
     activity?: CollabServerActivity;
 }
 export type CollabAdminProjectSort = "title" | "owner" | "members" | "size" | "activity" | "created";
@@ -2111,7 +1990,6 @@ export interface CollabEmailStatus {
     from: string | null;
     notifications: boolean;
     last_failure: CollabEmailFailure | null;
-    // Whether email is known to get through. An older server leaves it out.
     working?: boolean | null;
 }
 export interface CollabEmailTestResult {
@@ -2259,8 +2137,6 @@ export interface BackendPort {
 
 export interface CollabPerson {
     guest?: boolean;
-    // False for someone removed from or suspended on this server. Older
-    // servers never send it, and everyone they list is active.
     active?: boolean;
 }
 export type CollabGuestInvitationStatus =
@@ -2388,8 +2264,6 @@ export interface BackendPort {
 }
 
 export type CollabSessionEnd = "account_suspended" | "access_ended";
-// `server_removed` never arrives in a status event: the app shows it when a
-// live start is refused because the project's server is no longer listed.
 export type CollabLiveEndedReason = CollabLiveEndReason | CollabSessionEnd | "server_removed";
 export type CollabLiveSyncState =
     | Exclude<CollabLiveState, { state: "ended" }>

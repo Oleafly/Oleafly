@@ -1,7 +1,3 @@
-//! Typst versions: which ones are installed (bundled, downloaded, system),
-//! which a project may pin or the app may use by default, and installing a
-//! catalog version. Shared by the app's Settings › Downloads and
-//! `oleafly typst`.
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
@@ -18,22 +14,17 @@ use crate::toolchain::{
     InstallProgress, ToolchainInstallError, ToolchainInstallErrorKind, ToolchainInstallRequest,
 };
 
-/// The error code for a pinned version that isn't installed.
 pub const VERSION_MISSING: &str = "typst_version_missing";
 const SYSTEM_RECHECK_AFTER: Duration = Duration::from_secs(30);
 
 static SYSTEM_TYPST: Mutex<Option<(Instant, Option<SystemTypst>)>> = Mutex::new(None);
 static INSTALLING: Mutex<Option<String>> = Mutex::new(None);
 
-/// A Typst failure. Errors with a `code` carry the app's error code (its
-/// translations keep working) and a `version` parameter; `message` is
-/// English for the CLI.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypstToolchainError {
     pub code: Option<&'static str>,
     pub version: Option<String>,
     pub message: String,
-    /// What went wrong in a download, for a failed install.
     pub install: Option<ToolchainInstallErrorKind>,
 }
 
@@ -86,7 +77,6 @@ impl std::fmt::Display for TypstToolchainError {
 
 impl std::error::Error for TypstToolchainError {}
 
-/// The app's error envelope (`@oleafly/error:{code, params, detail}`).
 #[derive(Serialize)]
 struct Envelope<'a> {
     code: &'a str,
@@ -94,8 +84,6 @@ struct Envelope<'a> {
     detail: Option<&'a str>,
 }
 
-/// The text the app's error type produces: the envelope for coded errors,
-/// the message otherwise.
 impl From<&TypstToolchainError> for String {
     fn from(error: &TypstToolchainError) -> Self {
         let Some(code) = error.code else {
@@ -162,26 +150,18 @@ pub struct TypstInstallProgress {
     pub total_bytes: u64,
 }
 
-/// How much to look for a Typst on `PATH` when loading.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SystemLookup {
-    /// Only when nothing else resolves.
     Lazy,
-    /// Reuse a recent lookup.
     Cached,
-    /// Look again now.
     Fresh,
 }
 
-/// Where Typst versions come from on this computer.
 #[derive(Clone, Debug)]
 pub struct TypstToolchain {
     pub data_root: PathBuf,
-    /// The catalog target of this computer (`None`: no downloads offered).
     pub target: Option<&'static str>,
-    /// The Typst that ships with the app.
     pub bundled: Option<PathBuf>,
-    /// The app's default version when it isn't the bundled one.
     pub default_choice: Option<String>,
     pub system: Option<SystemTypst>,
     pub system_known: bool,
@@ -205,7 +185,6 @@ pub fn parse_version(version: &str) -> Result<ToolchainVersion, TypstToolchainEr
     })
 }
 
-/// The Typst on `PATH` (cached for 30 seconds).
 pub fn system_typst(
     data_root: &Path,
     bundled: Option<&Path>,
@@ -225,7 +204,6 @@ pub fn system_typst(
     cached.as_ref().and_then(|(_, system)| system.clone())
 }
 
-/// The version this process is installing.
 pub fn installing_version() -> Option<String> {
     INSTALLING
         .lock()
@@ -233,7 +211,6 @@ pub fn installing_version() -> Option<String> {
         .clone()
 }
 
-/// One Typst install at a time per process.
 pub struct InstallClaim;
 
 impl InstallClaim {
@@ -277,8 +254,6 @@ fn minor_key(text: &str) -> Option<(u64, u64)> {
     Some((major.parse().ok()?, minor.parse().ok()?))
 }
 
-/// The Tinymist build for a Typst version: the newest one made for the same
-/// or an earlier minor, else the oldest.
 pub fn release_for_typst<'a>(
     catalog: &'a TypstToolchainCatalog,
     typst: &ToolchainVersion,
@@ -305,7 +280,6 @@ pub fn tinymist_version_for(typst: &str) -> Option<String> {
 }
 
 impl TypstToolchain {
-    /// The toolchain of `data_root`, looking for a system Typst as asked.
     pub fn new(
         data_root: PathBuf,
         target: Option<&'static str>,
@@ -353,8 +327,6 @@ impl TypstToolchain {
         })
     }
 
-    /// Resolves `pin`, looking for a system Typst only when nothing else
-    /// matches.
     pub fn resolve_lazily(
         &mut self,
         pin: Option<&str>,
@@ -377,7 +349,6 @@ impl TypstToolchain {
         oleafly_core::typst_toolchain::typst_install_dir(&self.data_root, version)
     }
 
-    /// Every catalog version, newest first, with where each is installed.
     pub fn status(&self, installing: Option<String>) -> TypstToolchainStatus {
         let catalog = catalog();
         let mut entries: BTreeMap<ToolchainVersion, TypstVersionEntry> = BTreeMap::new();
@@ -490,7 +461,6 @@ impl TypstToolchain {
         found
     }
 
-    /// Tinymist downloads no installed Typst needs.
     pub fn unused_tinymist(&self) -> Vec<(ToolchainVersion, PathBuf)> {
         let needed = self.needed_tinymist();
         self.tinymist_downloads()
@@ -513,7 +483,6 @@ impl TypstToolchain {
         }
     }
 
-    /// Removes a downloaded version (and the Tinymist build only it needed).
     pub fn remove_downloaded(
         &self,
         version: &str,
@@ -550,7 +519,6 @@ impl TypstToolchain {
         }
     }
 
-    /// A version a project may pin: a catalog, bundled or system version.
     pub fn accepted_pin(&self, version: &str) -> Result<String, TypstToolchainError> {
         let parsed = parse_version(version)?;
         let known = catalog().typst_release(&parsed.to_string()).is_some()
@@ -569,8 +537,6 @@ impl TypstToolchain {
         }
     }
 
-    /// The default to store for `version`: `None` follows the app's bundled
-    /// version; any other must be installed.
     pub fn default_choice_for(
         &self,
         version: Option<&str>,
@@ -612,7 +578,6 @@ impl TypstToolchain {
         Ok(self.install_dir(&parsed))
     }
 
-    /// The verified download of a catalog version for this computer.
     pub fn install_request(
         &self,
         version: &str,
@@ -652,8 +617,6 @@ pub fn progress_percent(progress: &InstallProgress) -> Option<u64> {
         .then(|| progress.received_bytes.min(progress.total_bytes) * 100 / progress.total_bytes)
 }
 
-/// Progress for one version, sent only when the phase or the whole percent
-/// changes; a `send` that returns `false` cancels the install.
 pub fn throttled_progress<F>(
     version: String,
     cancel: CancelToken,
@@ -684,7 +647,6 @@ where
     }
 }
 
-/// Downloads and verifies a catalog version; returns the installed binary.
 pub async fn install_version<F>(
     toolchain: &TypstToolchain,
     version: &str,

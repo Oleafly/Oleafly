@@ -130,7 +130,6 @@ test.describe("live provider", () => {
     await ask(tauriPage, "Think step by step, then answer: what is 17 times 23?");
     await waitForRun(tauriPage);
 
-    // Finished turns fold reasoning behind the Worked header.
     await tauriPage.evaluate(`(() => {
       const message = Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1);
       const worked = Array.from(message?.querySelectorAll('button') ?? [])

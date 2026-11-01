@@ -75,8 +75,6 @@ pub(crate) async fn canned(response: String) -> ServerUrl {
 
 pub(crate) type Heard = Arc<std::sync::Mutex<Vec<String>>>;
 
-// A server that answers each path with its own list of responses, one per
-// request and the last one again after that, and keeps every request it got.
 pub(crate) async fn routed(
     routes: impl FnOnce(&ServerUrl) -> Vec<(&'static str, Vec<String>)>,
 ) -> (ServerUrl, Heard) {
@@ -161,8 +159,6 @@ pub(crate) struct UpgradeFront {
 }
 
 impl UpgradeFront {
-    // Passes everything on to `upstream` and keeps the head of every
-    // WebSocket upgrade, answering those with `refusal` when one is given.
     pub(crate) async fn start(upstream: &ServerUrl, refusal: Option<String>) -> UpgradeFront {
         let target = upstream.endpoint("/");
         let upstream = format!(
@@ -259,7 +255,6 @@ pub(crate) fn device_key() -> DeviceKey {
     DeviceKey::load_or_create(&MemorySecrets::default()).expect("device key")
 }
 
-// Follows redirects like a browser.
 pub(crate) async fn browse(url: &str) -> Option<reqwest::Response> {
     let client = reqwest::Client::builder()
         .no_proxy()
@@ -490,10 +485,6 @@ pub(crate) async fn two_people() -> Pair {
     }
 }
 
-// A copy that keeps only the history after its current state, and a change
-// someone made from an earlier state. The change reads like any other but
-// the copy cannot take it in: the shape of a change from a modified client
-// or one that hits a Loro bug.
 pub(crate) fn trimmed_and_unreadable(doc: &crate::doc::ProjectDoc) -> (Vec<u8>, Vec<u8>) {
     let loro = doc.loro();
     let trimmed = loro

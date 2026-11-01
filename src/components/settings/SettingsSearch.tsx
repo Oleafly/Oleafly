@@ -109,10 +109,6 @@ function isShown(element: Element): boolean {
   return !element.closest("[hidden]") && !element.closest(".sr-only");
 }
 
-/**
- * What to tint for a heading only screen readers see: the region it labels,
- * or else the first row after it.
- */
 function visibleStandIn(container: HTMLElement, heading: HTMLElement): HTMLElement | null {
   if (heading.id) {
     for (const region of container.querySelectorAll<HTMLElement>("[aria-labelledby]")) {
@@ -168,16 +164,6 @@ function pressTab(tab: HTMLElement, visited: Set<HTMLElement>) {
   tab.click();
 }
 
-/**
- * Rows inside a section's sub-tab are not mounted until that tab is picked.
- * Press the tab settingsTabFor names for the row. For other rows, the catalog
- * keys usually name the tab ("appearance.editor.fontSize" lives on the Editor
- * tab), so press the first closed tab they name.
- *
- * `visited` holds the tabs seen open or already pressed while looking for
- * this row. None of them is pressed again, so a user who picks another tab
- * while the row is still being looked for is not pulled back.
- */
 export function openSettingsTabFor(
   container: HTMLElement,
   path: readonly string[],
@@ -274,8 +260,6 @@ export function useSettingsSearch<Id extends string>({
     clearHits(containerRef.current);
   }, [containerRef, store]);
 
-  // Start over each time Settings opens, and when it is sent to another
-  // section (a new resetKey) while open.
   const openedForRef = useRef<{ resetKey: unknown } | null>(null);
   useEffect(() => {
     if (!open) {
@@ -308,9 +292,6 @@ export function useSettingsSearch<Id extends string>({
   bestHitRef.current = hits ? bestSettingsHit(hits, currentSection) : null;
   const selectedForRef = useRef<string | null>(null);
 
-  // Open the best match once per query, and again if the open section drops
-  // out of the list. A section picked by hand from the list is left alone.
-  // A layout effect, so the list and the open section never disagree on screen.
   useLayoutEffect(() => {
     const best = bestHitRef.current;
     const newQuery = selectedForRef.current !== applied;
@@ -318,7 +299,6 @@ export function useSettingsSearch<Id extends string>({
     if (best && (newQuery || !currentVisible)) selectRef.current(best);
   }, [applied, currentVisible]);
 
-  // A new query drops the row the last one revealed.
   const clearedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (clearedForRef.current === applied) return;
@@ -338,9 +318,6 @@ export function useSettingsSearch<Id extends string>({
         if (revealSettingsRow(container, pendingRow.label)) return;
         openSettingsTabFor(container, pendingRow.path, visited);
       }
-      // A row the backend fills in shows up a moment later. Past the window,
-      // the row is not on the page right now (a list that is empty, or a panel
-      // that is closed), so stop looking but keep it in the results.
       if (performance.now() - started < REVEAL_TIMEOUT_MS) frame = requestAnimationFrame(attempt);
     };
     attempt();

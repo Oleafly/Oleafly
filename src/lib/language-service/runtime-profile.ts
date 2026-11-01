@@ -42,12 +42,6 @@ function jsonObject(
     : null;
 }
 
-/**
- * The packaged manifest is the single production source of server arguments
- * and handshake settings. This parser validates the complete runtime-profile
- * shape and refuses to synthesize defaults: a malformed or partially packaged
- * profile cannot silently re-enable a server's build/export behavior.
- */
 export function parseLanguageServiceRuntimeProfile(
   manifest: unknown,
   kind: LanguageServiceKind,

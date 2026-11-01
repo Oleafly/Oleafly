@@ -1,8 +1,3 @@
-//! Installed apps for the picker, and the apps Oleafly never allows.
-//!
-//! Blocked apps stay in the list with a reason, so the picker can show why
-//! they can't be added.
-
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -10,11 +5,8 @@ use serde::Serialize;
 use super::icons::IconSource;
 use super::Platform;
 
-/// The picker never lists more than this many apps.
 pub(crate) const MAX_INSTALLED_APPS: usize = 2000;
-/// Desktop entries are small; anything larger is skipped.
 const MAX_ENTRY_BYTES: u64 = 64 * 1024;
-/// Info.plist files list document types and can be large (office suites).
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 const MAX_INFO_PLIST_BYTES: u64 = 1024 * 1024;
 
@@ -28,7 +20,6 @@ pub(crate) struct InstalledApp {
     pub executable: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blocked: Option<BlockReason>,
-    /// Where the picker's icon comes from; it stays on this side.
     #[serde(skip)]
     pub icon: Option<IconSource>,
 }
@@ -44,8 +35,6 @@ pub(crate) enum BlockReason {
     Scripting,
     Wrapper,
     Sandboxed,
-    /// A web browser: websites are allowed one by one, with their own
-    /// limits, under Allowed websites.
     Browser,
 }
 
@@ -67,7 +56,6 @@ const BUNDLE_IDS: &[(&str, BlockReason)] = &[
     ("co.zeit.hyper", Terminal),
     ("org.tabby", Terminal),
     ("com.raphaelamorim.rio", Terminal),
-    // Code editors with a built-in terminal.
     ("com.microsoft.VSCode", Terminal),
     ("com.microsoft.VSCodeInsiders", Terminal),
     ("com.vscodium", Terminal),
@@ -135,13 +123,8 @@ const BUNDLE_IDS: &[(&str, BlockReason)] = &[
     ("one.ablaze.floorp", Browser),
 ];
 
-/// Bundle id prefixes: every app of that maker is blocked.
-const BUNDLE_ID_PREFIXES: &[(&str, BlockReason)] = &[
-    // JetBrains IDEs have a built-in terminal.
-    ("com.jetbrains.", Terminal),
-];
+const BUNDLE_ID_PREFIXES: &[(&str, BlockReason)] = &[("com.jetbrains.", Terminal)];
 
-/// Lower-case file names (Windows and Linux).
 const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("oleafly", Oleafly),
     ("oleafly.exe", Oleafly),
@@ -177,7 +160,6 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("zsh", Terminal),
     ("fish", Terminal),
     ("dash", Terminal),
-    // Windows names count with or without `.exe`.
     ("powershell_ise", Terminal),
     ("mintty", Terminal),
     ("git-bash", Terminal),
@@ -203,7 +185,6 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("x-terminal-emulator", Terminal),
     ("cool-retro-term", Terminal),
     ("deepin-terminal", Terminal),
-    // Code editors with a built-in terminal.
     ("code", Terminal),
     ("code-insiders", Terminal),
     ("codium", Terminal),
@@ -274,7 +255,6 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("javaw", Wrapper),
     ("flatpak", Sandboxed),
     ("snap", Sandboxed),
-    // Windows names count with or without `.exe`.
     ("chrome", Browser),
     ("google-chrome", Browser),
     ("google-chrome-stable", Browser),
@@ -319,7 +299,6 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("thorium-browser", Browser),
 ];
 
-/// The last path component in lower case; both separators count.
 pub(crate) fn file_name_lower(path: &str) -> String {
     path.trim()
         .rsplit(['/', '\\'])
@@ -338,7 +317,6 @@ fn file_reason(name: &str) -> Option<BlockReason> {
         .map(|(_, reason)| *reason)
 }
 
-/// Why agents may not use this app, if they may not.
 pub(crate) fn blocked_reason(
     platform: Platform,
     bundle_id: Option<&str>,
@@ -417,7 +395,6 @@ pub(crate) struct DesktopEntry {
     pub icon: Option<String>,
 }
 
-/// The key-file escapes (`\s`, `\n`, `\t`, `\r`, `\\`).
 fn unescape_value(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     let mut characters = value.chars();
@@ -442,7 +419,6 @@ fn unescape_value(value: &str) -> String {
     out
 }
 
-/// A visible application entry: its untranslated name and program.
 pub(crate) fn parse_desktop_entry(text: &str) -> Option<DesktopEntry> {
     let mut in_entry = false;
     let mut kind = None;
@@ -471,7 +447,6 @@ pub(crate) fn parse_desktop_entry(text: &str) -> Option<DesktopEntry> {
             "Exec" => exec = Some(unescape_value(value)),
             "Icon" if !value.is_empty() => icon = Some(unescape_value(value)),
             "NoDisplay" | "Hidden" if value.eq_ignore_ascii_case("true") => return None,
-            // Terminal programs run inside a terminal, which is never allowed.
             "Terminal" if value.eq_ignore_ascii_case("true") => return None,
             _ => {}
         }
@@ -504,7 +479,6 @@ fn display_name_from_stem(stem: &str) -> String {
     }
 }
 
-// Only Windows reads App Paths; the parsing is tested on every OS.
 #[cfg_attr(not(windows), allow(dead_code))]
 fn looks_like_windows_absolute(path: &str) -> bool {
     let bytes = path.as_bytes();
@@ -512,8 +486,6 @@ fn looks_like_windows_absolute(path: &str) -> bool {
         || path.starts_with(r"\\")
 }
 
-/// One `App Paths` entry: the key name (`EXCEL.EXE`) and its default value,
-/// expanded and unquoted. Returns `(display name, program path)`.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn app_paths_value(
     key: &str,
@@ -548,7 +520,6 @@ fn own_exe() -> String {
         .unwrap_or_default()
 }
 
-/// The canonical, plain form of a program path, the way settings store it.
 pub(crate) fn canonical_program(path: &Path) -> Option<String> {
     let canonical = std::fs::canonicalize(path).ok()?;
     canonical.is_file().then(|| {
@@ -558,7 +529,6 @@ pub(crate) fn canonical_program(path: &Path) -> Option<String> {
     })
 }
 
-/// The app a program file stands for (Windows and Linux), for the picker.
 pub(crate) fn app_from_executable(platform: Platform, path: &Path) -> Option<InstalledApp> {
     let executable = canonical_program(path)?;
     let stem = Path::new(&executable)
@@ -580,7 +550,6 @@ pub(crate) fn app_from_executable(platform: Platform, path: &Path) -> Option<Ins
     })
 }
 
-/// The app an `.app` bundle stands for (macOS), for the picker.
 #[cfg(target_os = "macos")]
 pub(crate) fn app_from_bundle(bundle: &Path) -> Option<InstalledApp> {
     let info = bundle.join("Contents").join("Info.plist");
@@ -621,7 +590,6 @@ pub(crate) fn app_from_bundle(_bundle: &Path) -> Option<InstalledApp> {
     None
 }
 
-/// Apps on this computer, blocked ones included, sorted by name and capped.
 pub(crate) fn list_installed_apps(platform: Platform) -> Vec<InstalledApp> {
     let apps = match platform {
         Platform::Macos => macos_apps(),
@@ -760,7 +728,6 @@ fn windows_apps() -> Vec<InstalledApp> {
     Vec::new()
 }
 
-/// `$XDG_DATA_HOME/applications`, then each `$XDG_DATA_DIRS/applications`.
 pub(crate) fn linux_application_dirs(env: &dyn Fn(&str) -> Option<String>) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     let data_home = env("XDG_DATA_HOME")
@@ -798,8 +765,6 @@ fn linux_apps() -> Vec<InstalledApp> {
         let mut files = Vec::new();
         collect_desktop_files(&dir, &dir, 1, &mut files);
         for (id, file) in files {
-            // An entry earlier in the search order hides later ones with the
-            // same id, hidden entries included.
             if !ids.insert(id) {
                 continue;
             }
@@ -1073,7 +1038,6 @@ mod tests {
                 "{path}"
             );
         }
-        // Other programs that merely contain a browser's name stay allowed.
         assert_eq!(
             blocked_reason(
                 Platform::Linux,
@@ -1206,7 +1170,6 @@ mod tests {
                 "{path}"
             );
         }
-        // Names that only start like a blocked one stay allowed.
         assert_eq!(
             blocked_reason(
                 Platform::Linux,

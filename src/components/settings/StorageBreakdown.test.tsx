@@ -59,7 +59,6 @@ describe("StorageBreakdown", () => {
     const grow = (part: string) =>
       Number(segments(container).find((segment) => segment.dataset.part === part)?.style.flexGrow);
     expect(grow("texDistribution")).toBeCloseTo(0.4);
-    // Data files, other files, tools, checkpoints, settings and the Recycle Bin.
     expect(grow("other")).toBeCloseTo((15 + 5 + 40 + 30 + 20 + 10) / 1000);
   });
 

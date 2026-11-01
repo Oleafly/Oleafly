@@ -1,23 +1,17 @@
-// How big a scanned-PDF run is before it starts: the page count, and for a
-// hosted model or Mathpix a rough price. Converters ask for confirmation
-// from five pages on; one run takes at most 50 pages.
 import { lookupPrice, peakRateMultiplier } from "@/lib/ai-pricing";
 import { fitWithin } from "./image-downscale-core";
 import { destinationName, type ToolsChoiceSummary } from "./tools-choice";
 
 export const LONG_SCAN_PAGES = 5;
 export const SCAN_PAGE_LIMIT = 50;
-/** pdf.js renders each scanned page at this scale before the model reads it. */
 export const SCAN_RENDER_SCALE = 1.6;
 export const OUTPUT_TOKENS_PER_PAGE = 1_200;
 export const PROMPT_TOKENS_PER_PAGE = 120;
 /** Mathpix's list price for one PDF page, in US dollars. */
 export const MATHPIX_USD_PER_PDF_PAGE = 0.005;
 const HOSTED_MAX_EDGE = 2_000;
-/** Vision models bill an image by its 28-pixel patches. */
 const PATCH_PIXELS = 28;
 
-/** A page size in PDF points. */
 export interface PageSize {
   width: number;
   height: number;
@@ -26,11 +20,8 @@ export interface PageSize {
 export type ScanEstimate =
   | { kind: "ollama"; pages: number }
   | { kind: "cost"; pages: number; usd: number }
-  /** A subscription covers it, such as a coding plan or Ollama Cloud. */
   | { kind: "plan"; pages: number; provider: string }
-  /** A model server on this computer other than Ollama. */
   | { kind: "local"; pages: number }
-  /** The model's listed price is zero. */
   | { kind: "free"; pages: number }
   | { kind: "unknown"; pages: number; provider: string };
 
@@ -38,7 +29,6 @@ function finite(value: number): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
-/** The rendered page in pixels. */
 export function pagePixels(size: PageSize): { width: number; height: number } {
   return {
     width: Math.round(finite(size.width) * SCAN_RENDER_SCALE),
@@ -46,14 +36,11 @@ export function pagePixels(size: PageSize): { width: number; height: number } {
   };
 }
 
-/** Input tokens for one image after it is shrunk to 2,000 px. */
 export function imageTokens(width: number, height: number): number {
   const fit = fitWithin(width, height, HOSTED_MAX_EDGE);
   return Math.ceil(fit.width / PATCH_PIXELS) * Math.ceil(fit.height / PATCH_PIXELS);
 }
 
-/** USD per million input and output tokens, `"plan"` when a subscription
- * covers the model, or null when the price is not known. */
 function ratesFor(summary: ToolsChoiceSummary): { input: number; output: number } | "plan" | null {
   const cost = summary.metadata?.cost;
   if (typeof cost?.input === "number" && typeof cost.output === "number") {
@@ -97,8 +84,6 @@ export function estimateScan(sizes: readonly PageSize[], summary: ToolsChoiceSum
   };
 }
 
-/** Thrown when a scan of `LONG_SCAN_PAGES` or more pages needs the user's
- * go-ahead; `sizes` feed the estimate the confirmation shows. */
 export class ScanConfirmationNeeded extends Error {
   readonly sizes: readonly PageSize[];
 
@@ -109,8 +94,6 @@ export class ScanConfirmationNeeded extends Error {
   }
 }
 
-/** The 1-based pages of a `total`-page PDF that `range` selects, cut to the
- * pages that exist. Matches how the PDF importer reads a range. */
 export function selectedPages(total: number, range?: readonly [number, number]): number[] {
   const count = Math.max(0, Math.floor(total));
   const first = range ? Math.max(1, Math.floor(range[0])) : 1;

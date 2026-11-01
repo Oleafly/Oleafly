@@ -1,8 +1,3 @@
-//! Math recognition for Markdown (`packages/editor/src/math-source.ts`,
-//! `scanMathExpressions` with `format: "markdown"` and the helpers it
-//! reaches). Escaped delimiters, code, comments, tags, link destinations and
-//! URLs are skipped; an unterminated opener stops at the end of its line.
-
 use std::sync::LazyLock;
 
 use oleafly_preflight::jsre::JsRegex;
@@ -61,7 +56,6 @@ fn starts_at_line_prefix(text: &[u16], index: usize) -> bool {
     prefix.len() <= 3 && prefix.iter().all(|&unit| unit == SPACE || unit == TAB)
 }
 
-/// `(char, length)` of a fence opening at `index`.
 fn fence_at(text: &[u16], index: usize) -> Option<(u16, usize)> {
     if !starts_at_line_prefix(text, index) {
         return None;
@@ -77,7 +71,6 @@ fn fence_at(text: &[u16], index: usize) -> Option<(u16, usize)> {
     (length >= 3).then_some((marker, length))
 }
 
-/// `/^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/u` on a line.
 fn closing_fence(line: &[u16]) -> Option<(u16, usize)> {
     let indent = line
         .iter()
@@ -176,8 +169,6 @@ fn after_markdown_tag(text: &[u16], index: usize, limit: usize) -> usize {
     }
 }
 
-/// `afterPlainUrl`. The scan always runs to the end of the text, so the
-/// anchored match runs on the rest of the string instead of a copy of it.
 fn after_plain_url(source: &SourceText, index: usize, limit: usize) -> Option<usize> {
     let unit = source.unit(index)?;
     if !matches!(unit, 0x68 | 0x48 | 0x77 | 0x57) {
@@ -325,7 +316,6 @@ fn incomplete_end(text: &[u16], body_from: usize, limit: usize) -> usize {
     }
 }
 
-/// `appendMathExpression`: the next cursor, pushing the expression's range.
 fn append_expression(
     expressions: &mut Vec<MaskSpan>,
     text: &[u16],
@@ -343,7 +333,6 @@ fn append_expression(
         });
         return expression_to;
     }
-    // Unmatched currency such as "$20" is not damaged math.
     if opener == Opener::Dollar && is_digit(text.get(body_from).copied()) {
         return cursor + opener_length;
     }
@@ -355,7 +344,6 @@ fn append_expression(
     (cursor + opener_length).max(expression_to)
 }
 
-/// The `[from, to)` range of every math expression in Markdown `text`.
 pub fn scan_markdown_math(source: &SourceText) -> Vec<MaskSpan> {
     let text = source.units();
     let to = text.len();

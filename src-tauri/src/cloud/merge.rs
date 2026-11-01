@@ -50,9 +50,6 @@ fn item_id(item: &Value) -> Option<&str> {
     item.get("id").and_then(Value::as_str)
 }
 
-/// Merges lists of objects that each carry an `id`, such as AI personas, item
-/// by item. Merging them as whole values would keep both edits of one item
-/// as two entries with the same id, which every computer then rejects.
 fn merge_by_id(base: Option<&[Value]>, local: &[Value], remote: &[Value]) -> Option<Value> {
     let all_have_ids = |items: &[Value]| items.iter().all(|item| item_id(item).is_some());
     if local.is_empty() && remote.is_empty()
@@ -74,7 +71,6 @@ fn merge_by_id(base: Option<&[Value]>, local: &[Value], remote: &[Value]) -> Opt
         }
         match (find(remote, id), before(id)) {
             (Some(theirs), before) => merged.push(merge3(before.as_ref(), item, &theirs)),
-            // Removed on the other computer and not changed here since.
             (None, Some(before)) if before == *item => {}
             (None, _) => merged.push(item.clone()),
         }
@@ -85,7 +81,6 @@ fn merge_by_id(base: Option<&[Value]>, local: &[Value], remote: &[Value]) -> Opt
             continue;
         }
         match before(id) {
-            // Removed here and not changed on the other computer since.
             Some(before) if before == *item => {}
             _ => merged.push(item.clone()),
         }
@@ -278,8 +273,6 @@ mod tests {
             persona("a", "Editor", "Be brief"),
             persona("b", "Critic", "Be harsh")
         ]);
-        // One edit to each side of persona a, persona b removed here, persona
-        // c added there.
         let local = json!([persona("a", "Copy editor", "Be brief")]);
         let remote = json!([
             persona("a", "Editor", "Be brief and kind"),
@@ -293,7 +286,6 @@ mod tests {
                 persona("c", "Coach", "Encourage")
             ])
         );
-        // An item edited on one side survives its removal on the other.
         let edited = json!([
             persona("a", "Editor", "Be brief"),
             persona("b", "Critic", "Be fair")

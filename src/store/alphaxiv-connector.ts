@@ -51,8 +51,6 @@ function findAlphaXivServer(servers: readonly McpManagedServer[]): McpManagedSer
   );
 }
 
-// An older version saved the key as a plain connector key. Rust moves it to
-// the MCP server, so the key never reaches the webview.
 async function adoptLegacyKey(): Promise<McpManagedServer | null> {
   try {
     return await mcpAdoptAlphaXivKey();

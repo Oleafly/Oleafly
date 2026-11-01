@@ -1,5 +1,3 @@
-//! The app's side of sync: its Git adapter and the commands. The sync
-//! engine itself is tested in `oleafly-online`.
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -37,7 +35,6 @@ fn run(dir: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&output.stdout).trim().to_string()
 }
 
-/// A bare remote seeded with a small project, served over `file://`.
 struct Remote {
     temp: tempfile::TempDir,
     server: String,
@@ -132,7 +129,6 @@ impl Remote {
     }
 }
 
-/// A library project that says it was imported from `world`'s project.
 fn imported_project(world: &Remote) -> (String, PathBuf) {
     let project_id = crate::project::create_blank_project("Synced".into()).unwrap();
     let root = crate::paths::project_dir(&project_id).unwrap();
@@ -347,7 +343,6 @@ fn the_check_pushes_local_edits_and_hands_remote_changes_to_the_merge() {
         .last_sync_at
         .is_some());
 
-    // The CLI and the app share the sync lock.
     let held = sync::claim(&project_id).unwrap();
     assert!(check(&project_id)
         .err()

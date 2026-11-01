@@ -20,7 +20,6 @@ export function CollapsibleSection({
   title: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  // Drawn before the title in place of `icon`, for a picture such as a logo.
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
   defaultOpen?: boolean;

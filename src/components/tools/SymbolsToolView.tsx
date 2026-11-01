@@ -64,7 +64,6 @@ function categoryFor(name: string): Category {
   return "Miscellaneous";
 }
 
-/** First glyph character from a corpus detail like "𝔸 (\"mathbb\" command)". */
 function glyphFromDetail(detail: string): string {
   const first = [...detail].find((ch) => /\p{L}|\p{S}|\p{N}/u.test(ch) && !/[a-zA-Z()"]/.test(ch));
   return first ?? "";

@@ -1,6 +1,3 @@
-//! Approvals for unattended work: a task whose brief says "ask before
-//! running" waits here until the user approves or denies, or a day passes.
-//! The wait does not count against the task's time budget.
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -24,12 +21,9 @@ const POLL: Duration = Duration::from_secs(1);
 pub const COMMANDS_OFF: &str = "Commands are turned off for this task.";
 pub const DENIED: &str = "The user didn't approve this command.";
 pub const EXPIRED: &str = "Nobody answered the approval request in 24 hours.";
-/// The request is larger than an approval shows (16 KiB).
 pub const TOO_LONG_TO_SHOW: &str =
     "This request is too long to show for approval (over 16 KiB). Ask again with a shorter command or smaller arguments.";
 const CANCELLED: &str = "The task was cancelled.";
-/// 0.4.8 L: the result an approval wait gets when the task moves to another
-/// process before anyone answered. The next owner asks again.
 pub const APPROVAL_WITHDRAWN: &str =
     "The task paused before anyone answered this request. Ask again.";
 
@@ -69,7 +63,6 @@ impl ApprovalQueue {
         TaskStore::new(self.store_root.clone())
     }
 
-    /// Opens a request for the running generation of a task; returns its id.
     pub fn request(
         &self,
         task_id: &str,
@@ -92,7 +85,6 @@ impl ApprovalQueue {
             .map(|record| record.id)
     }
 
-    /// Waits for the decision. The task's clock pauses meanwhile.
     pub async fn wait(
         &self,
         approval_id: &str,
@@ -103,9 +95,6 @@ impl ApprovalQueue {
         self.wait_inner(approval_id, cancel).await
     }
 
-    /// 0.4.8 L: like [`Self::wait`], but `None` when `withdraw` fires first
-    /// (the task moves to another process). A decision that arrived first
-    /// wins.
     pub async fn wait_or_withdraw(
         &self,
         approval_id: &str,
@@ -124,7 +113,6 @@ impl ApprovalQueue {
     async fn wait_inner(&self, approval_id: &str, cancel: &CancellationToken) -> Decision {
         loop {
             let decided = self.decided.notified();
-            // Read every second for up to a day: off the async workers.
             let (root, id) = (self.store_root.clone(), approval_id.to_owned());
             let read = tokio::task::spawn_blocking(move || {
                 TaskStore::new(root).and_then(|store| store.approval(&id))
@@ -157,7 +145,6 @@ impl ApprovalQueue {
         }
     }
 
-    /// Approves or denies a request while its task still waits for it.
     pub fn decide(&self, approval_id: &str, approve: bool) -> Result<ApprovalRecord, String> {
         let record = self.store()?.decide_approval(approval_id, approve)?;
         self.decided.notify_waiters();
@@ -169,7 +156,6 @@ impl ApprovalQueue {
     }
 }
 
-/// Who asks, and under which policy.
 #[derive(Clone)]
 pub struct GateContext {
     pub task_id: String,
@@ -177,7 +163,6 @@ pub struct GateContext {
     pub task_title: String,
     pub generation: u64,
     pub policy: CommandPolicy,
-    /// The task's transcript, for the request and its outcome.
     pub events: Option<TaskEventSink>,
 }
 
@@ -187,10 +172,6 @@ fn emit(ctx: &GateContext, event: TaskRuntimeEvent) {
     }
 }
 
-/// A request whose wait is under way. When the wait is dropped before it
-/// ends (a bridge call that timed out, a client that left), the request is
-/// withdrawn and the task goes back to working, so no pending request lingers
-/// that nobody waits on.
 struct OpenRequest {
     tasks_root: PathBuf,
     ctx: GateContext,
@@ -226,8 +207,6 @@ impl Drop for OpenRequest {
     }
 }
 
-/// Lets an action through under the task's policy: at once (Allow), never
-/// (Off), or after the user approves it (Ask).
 pub async fn gate(
     services: &TaskServices,
     ctx: &GateContext,
@@ -241,13 +220,9 @@ pub async fn gate(
         CommandPolicy::Off => return Err(COMMANDS_OFF.into()),
         CommandPolicy::Ask => {}
     }
-    // The user approves exactly what runs: a request the approval could
-    // show only in part is refused instead of shortened.
     if detail.len() > MAX_DETAIL_BYTES {
         return Err(TOO_LONG_TO_SHOW.into());
     }
-    // 0.4.8 L: a task moving to another process asks nothing more here; a
-    // wait under way is withdrawn and the next owner asks again.
     let withdraw = services.suspends.approvals(&ctx.task_id);
     if withdraw.is_cancelled() {
         return Err(APPROVAL_WITHDRAWN.into());
@@ -324,7 +299,6 @@ mod tests {
     use crate::store::approvals::NO_LONGER_WAITING;
     use crate::test_support::{draft, CHILD_PATIENCE};
 
-    /// A running task (its first generation) and the services its tools use.
     struct Fixture {
         _directory: tempfile::TempDir,
         root: PathBuf,
@@ -382,7 +356,6 @@ mod tests {
         }
     }
 
-    /// Asks in the background, as a task tool does.
     fn ask(
         fixture: &Fixture,
         cancel: &CancellationToken,
@@ -403,7 +376,6 @@ mod tests {
         })
     }
 
-    /// The id of the request the task waits on.
     async fn waiting_request(fixture: &Fixture) -> String {
         tokio::time::timeout(CHILD_PATIENCE, async {
             loop {
@@ -431,7 +403,6 @@ mod tests {
             .unwrap()
     }
 
-    /// The approval states the transcript got, in order.
     fn statuses(fixture: &Fixture) -> Vec<ApprovalStatus> {
         lock(&fixture.events)
             .iter()
@@ -442,7 +413,6 @@ mod tests {
             .collect()
     }
 
-    /// Every request row in the store.
     fn request_rows(fixture: &Fixture) -> i64 {
         rusqlite::Connection::open(fixture.root.join("tasks.sqlite3"))
             .unwrap()
@@ -511,7 +481,6 @@ mod tests {
             .pending("paper")
             .unwrap()
             .is_empty());
-        // At the limit it is asked as it is.
         let services = fixture.services.clone();
         let asking = tokio::spawn(async move {
             gate(
@@ -560,7 +529,6 @@ mod tests {
         let lifetime = record.expires_at - record.created_at;
         assert!((day - 5_000..=day).contains(&lifetime), "{lifetime}");
 
-        // Only the generation that runs may ask.
         assert_eq!(
             queue
                 .request(
@@ -596,7 +564,6 @@ mod tests {
             let id = queue
                 .request(task_id, generation, ApprovalKind::Command, "Run", "ls")
                 .unwrap();
-            // Distinct creation times keep the order deterministic.
             std::thread::sleep(Duration::from_millis(2));
             id
         };
@@ -616,7 +583,6 @@ mod tests {
 
         queue.decide(&first_id, true).unwrap();
         assert_eq!(ids("paper"), vec![second_id.clone()]);
-        // A task that stopped running has nothing waiting.
         fixture
             .store
             .finish_failure(&second.id, second.execution_generation, "stopped")
@@ -727,7 +693,6 @@ mod tests {
         let fixture = fixture();
         let asking = ask(&fixture, &CancellationToken::new());
         let id = waiting_request(&fixture).await;
-        // A day passes without an answer.
         let connection = rusqlite::Connection::open(fixture.root.join("tasks.sqlite3")).unwrap();
         connection.busy_timeout(Duration::from_secs(5)).unwrap();
         connection
@@ -890,7 +855,6 @@ mod tests {
             .insert(&fixture.task_id, clock.clone());
         let asking = ask(&fixture, &CancellationToken::new());
         let id = waiting_request(&fixture).await;
-        // The tool call around the wait times out and is dropped.
         asking.abort();
         let _ = asking.await;
 
@@ -953,7 +917,6 @@ mod tests {
         let waiting = queue.wait(&id, &fixture.task_id, &cancel);
         let answering = async {
             tokio::time::sleep(Duration::from_millis(50)).await;
-            // The user takes ten minutes to answer.
             *lock(&now) += Duration::from_secs(10 * 60);
             assert_eq!(clock.active_ms(), 5 * 60 * 1000);
             queue.decide(&id, true).unwrap();

@@ -26,8 +26,6 @@ use crate::research_tasks::{
     TaskRuntimeFuture, TaskRuntimeOutcome, ToolPhase,
 };
 
-// Task commands are built by the research crate; the ACP runtime confines
-// CLI-agent tasks with the same function.
 #[cfg(test)]
 use oleafly_research::task_tools::sandbox_task_command_with_reads;
 pub use oleafly_research::task_tools::task_sandbox_spec_for;
@@ -92,13 +90,9 @@ fn skill_read_paths(context: &TaskRunContext) -> Vec<PathBuf> {
     skill_read_paths_in(&root, pack.as_deref(), context)
 }
 
-/// Who reads a skill's instructions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SkillAudience {
-    /// A research task: its tools run bundled scripts and read skill files.
     Task,
-    /// A CLI agent in a conversation: it reads the skill folder with its own
-    /// tools, so no Oleafly tool names and no bundled scripts are mentioned.
     CliAgent,
 }
 
@@ -136,8 +130,6 @@ pub(crate) fn skill_section(
         ));
     }
     section.push_str(&record.instructions);
-    // Tasks read papers with literature_search and read_paper until an
-    // alphaXiv server is connected to them.
     section.push_str(&oleafly_research::aliases::tool_alias_note(
         &record.instructions,
         &oleafly_research::aliases::AliasAudience::Task {
@@ -208,8 +200,6 @@ struct NativeTaskHost {
     web: Option<Arc<dyn WebTools>>,
 }
 
-/// Web reads for tasks with network permission: the assistant's public-only
-/// fetcher and the search key from Settings.
 struct AppWeb {
     client: oleafly_agent::tools::web::WebClient,
 }
@@ -301,7 +291,6 @@ impl TaskHost for NativeTaskHost {
     ) -> TaskRuntimeFuture<Arc<dyn TaskBridge>> {
         let app = self.app.clone();
         Box::pin(async move {
-            // 0.4.8 I: read before the context moves into the bridge.
             let desktop_apps = context.desktop_apps;
             let task_id = context.task_id.clone();
             let generation = context.execution_generation;
@@ -319,8 +308,6 @@ impl TaskHost for NativeTaskHost {
             if !desktop_apps {
                 return Ok(bridge);
             }
-            // 0.4.8 I: attended tasks whose brief allows it also get desktop
-            // apps. If they can't start, the task runs without them.
             Ok(crate::cua_driver::task::DesktopAppsTaskBridge::wrap(
                 bridge.clone(),
                 &task_id,
@@ -430,7 +417,6 @@ impl TaskHost for NativeTaskHost {
     }
 }
 
-/// The app records task usage in its usage table.
 struct NativeUsage(super::usage::NativeUsageGuard);
 
 impl UsageSink for NativeUsage {
@@ -476,7 +462,6 @@ pub fn register_task_runtimes(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Sends a task agent's command requests to the task's approval queue.
 struct GateApproval {
     services: TaskServices,
     context: oleafly_research::approvals::GateContext,
@@ -506,9 +491,6 @@ impl crate::acp::TaskCommandApproval for GateApproval {
     }
 }
 
-// 0.4.8 L: how a task's turn starts and ends around a handoff.
-/// How the turn starts: a resumed session, one adopted from the background
-/// helper, and whether the previous turn was cut short.
 #[derive(Clone, Copy, Debug, Default)]
 struct PromptStart {
     resumed: bool,
@@ -516,7 +498,6 @@ struct PromptStart {
     turn_interrupted: bool,
 }
 
-/// How the turn ended: the task finished, or it stopped for a handoff.
 enum PromptEnd {
     Finished(TaskRuntimeOutcome),
     Suspended(TaskRuntimeOutcome),
@@ -625,8 +606,6 @@ impl AcpTaskAdapter {
         let (mut options, generation) = acp_task_start(&self.runtime, &context, files.root.clone());
         let mut bridge_context = context.clone();
         bridge_context.execution_root = files.root.to_string_lossy().into_owned();
-        // The agent reaches runs, the record and the literature tools through
-        // the bridge.
         let binding = TaskBinding {
             task_id: context.task_id.clone(),
             project_id: context.project_id.clone(),
@@ -661,18 +640,13 @@ impl AcpTaskAdapter {
             bridge.shutdown().await;
             return Err("The task was cancelled.".into());
         }
-        // 0.4.8 I: every server the bridge brings (desktop apps included).
         let mut servers = bridge.mcp_servers();
         servers.extend(self.host.task_mcp_servers(&context));
-        // A retry in the same workspace continues the agent's own session
-        // when the agent can load it; otherwise the task starts fresh.
         let previous = context
             .resume
             .as_ref()
             .and_then(|resume| resume.previous_native_session_id.clone());
         let mut resumed = false;
-        // 0.4.8 L: a session the background helper handed back continues in
-        // the agent's retained home, with the agent's own session.
         let handed_back = context
             .handoff
             .as_ref()
@@ -754,8 +728,6 @@ impl AcpTaskAdapter {
             }
         };
         let id = session.id.clone();
-        // The agent's own session id, as the background helper records it:
-        // whoever runs the task next resumes that session.
         if let Some(native) = session.native_session_id.clone() {
             events(TaskRuntimeEvent::SessionBound {
                 native_session_id: native,
@@ -770,7 +742,6 @@ impl AcpTaskAdapter {
             .prompt_task(&context, &id, &skills, start, &cancel, &events)
             .await;
         match outcome {
-            // 0.4.8 L: the agent's home and session go to the next owner.
             Ok(PromptEnd::Suspended(outcome)) => {
                 let destination = oleafly_research::handoff::acp_home_path(
                     &self.services.tasks_root,
@@ -797,8 +768,6 @@ impl AcpTaskAdapter {
                     }
                 }
             }
-            // The agent's home (its own session history) is kept, so a
-            // retry or the approved plan's generation resumes its session.
             Ok(PromptEnd::Finished(outcome)) => {
                 let cleanup = self.runtime.end_task_session(&id).await;
                 bridge.shutdown().await;
@@ -839,8 +808,6 @@ impl AcpTaskAdapter {
                 ),
             });
         }
-        // Only this turn's events: a resumed session's record already holds
-        // the earlier generation's.
         let before = self.runtime.snapshot(id).await?.session;
         let mut receiver = self.runtime.subscribe();
         let mut sequence = before.last_sequence;
@@ -853,8 +820,6 @@ impl AcpTaskAdapter {
             output_tokens: None,
         };
         let text = first_prompt(context, skills, start);
-        // 0.4.8 L: a quit or an update ends the turn now; the next owner
-        // continues the agent's session. A reclaim lets the turn finish.
         let step = self.services.suspends.token(&context.task_id);
         let withdraw = self.services.suspends.approvals(&context.task_id);
         let mut suspending = false;
@@ -873,8 +838,6 @@ impl AcpTaskAdapter {
                 }
                 _ = withdraw.cancelled(), if suspending && !turn_cancelled => {
                     turn_cancelled = true;
-                    // The turn is cancelled in the background: the prompt
-                    // below must keep running to its end.
                     let runtime = self.runtime.clone();
                     let session = id.to_owned();
                     tokio::spawn(async move {
@@ -947,13 +910,8 @@ impl AcpTaskAdapter {
     }
 }
 
-/// The turn a task's agent starts with. A resumed agent already has the
-/// task and gets the handoff; a fresh session of a retried or approved task
-/// gets the task and what the earlier generation left (the approved plan,
-/// the handoff), never the bare task alone.
 fn first_prompt(context: &TaskRunContext, skills: &str, start: PromptStart) -> String {
     match (&context.resume, start.resumed) {
-        // 0.4.8 L: an agent session handed back says where it stopped.
         (resume, true) if start.adopted => oleafly_cli::daemon::acp_task::continuation_prompt(
             resume.as_ref(),
             &context.record_dir,
@@ -980,8 +938,6 @@ fn acp_tool_status(status: &str) -> String {
     .into()
 }
 
-// 0.4.8 L: crate-visible so a test can hold the background helper's copy
-// (`oleafly_cli::daemon::acp_task::map_update`) to the same mapping.
 pub(crate) fn acp_event(
     event: &crate::acp::AcpEvent,
     outcome: &mut TaskRuntimeOutcome,
@@ -1160,12 +1116,10 @@ mod tests {
             }),
             ..Default::default()
         };
-        // The earlier session could not be continued: a fresh one starts.
         let fresh = first_prompt(&context, "", PromptStart::default());
         assert!(fresh.contains("approved the plan"), "{fresh}");
         assert!(fresh.contains("1. Read the three papers"), "{fresh}");
         assert!(fresh.starts_with(&task_prompt(&context, "")), "{fresh}");
-        // A continued session already has the task.
         let resumed = first_prompt(
             &context,
             "",
@@ -1176,7 +1130,6 @@ mod tests {
         );
         assert!(!resumed.contains(&task_prompt(&context, "")));
         assert!(resumed.contains("approved the plan"));
-        // Without anything to resume, the task alone.
         let first = TaskRunContext {
             resume: None,
             ..context.clone()

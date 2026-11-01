@@ -83,7 +83,6 @@ describe("a draft per conversation", () => {
     expect(builtinComposerId("p1", null)).toBe("p1:builtin");
     expect(builtinComposerId("p1", "chat_1")).toBe("p1:builtin:chat_1");
     expect(builtinComposerId(null)).toBe("none:builtin");
-    // Prompt history stays per project, whichever chat the prompt was typed in.
     expect(composerHistoryKey("p1:builtin:chat_1")).toBe("p1");
   });
 
@@ -121,7 +120,6 @@ describe("an attachment whose draft moved", () => {
     expect(composerHolding("p1:builtin", "a")).toBe("p1:builtin");
     drafts.moveDraft("p1:builtin", "p1:builtin:chat-1");
     expect(composerHolding("p1:builtin", "a")).toBe("p1:builtin:chat-1");
-    // Another project's composers are never searched.
     drafts.moveDraft("p1:builtin:chat-1", "p2:builtin");
     expect(composerHolding("p1:builtin", "a")).toBeNull();
   });
@@ -186,7 +184,6 @@ describe("prompt history", () => {
     const parse = vi.spyOn(JSON, "parse");
     for (let step = 0; step < 5; step += 1) expect(promptHistory("p1:builtin")).toEqual(["first"]);
     expect(parse).not.toHaveBeenCalled();
-    // Another window wrote it meanwhile: the new text is read.
     localStorage.setItem(
       "oleafly.composer.history",
       JSON.stringify({ v: 1, byProject: { p1: { at: 1, items: ["from another window"] } } }),

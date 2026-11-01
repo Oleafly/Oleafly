@@ -1,6 +1,3 @@
-//! Git-host tokens (GitHub, GitLab, Gitea and others) from `oleafly auth`.
-//! The command line only stores tokens; the Oleafly app keeps the account
-//! records and makes the host's API calls.
 use std::io::Read;
 
 use oleafly_secrets::accounts::{self, ForgeToken, GITHUB_TOKEN_ACCOUNT};
@@ -12,8 +9,6 @@ use crate::contract::{CliError, ErrorKind};
 
 const GITHUB: &str = "https://github.com";
 
-/// The account key the app uses for `host` (`www.` and API paths dropped,
-/// https required), so a token saved here is the one the app finds.
 fn host_base(host: &str) -> Result<String, CliError> {
     oleafly_forge::address::normalize_base_url(host).map_err(|error| {
         CliError::new(
@@ -25,7 +20,6 @@ fn host_base(host: &str) -> Result<String, CliError> {
     })
 }
 
-/// `auth login git`: reads the token and saves it for the host.
 pub(crate) fn login(
     env: &Env,
     host: &str,
@@ -67,11 +61,6 @@ pub(crate) fn login(
     Ok(Report::new(json!({"host": base, "saved": !dry_run, "dryRun": dry_run})).line(line))
 }
 
-/// `auth logout git`: removes the host's token. For github.com it also
-/// removes the token of the Oleafly app's own GitHub sign-in (`github_token`,
-/// which the app keeps in step with its github.com account): `auth token`
-/// would otherwise still hand out a working token after the logout. The app
-/// then shows the account as signed out.
 pub(crate) fn logout(env: &Env, host: &str, dry_run: bool) -> Result<Report, CliError> {
     let base = host_base(host)?;
     let saved = accounts::forge_token(&env.store, &base)
@@ -116,7 +105,6 @@ pub(crate) fn logout(env: &Env, host: &str, dry_run: bool) -> Result<Report, Cli
     Ok(Report::new(json!({"removed": removed, "dryRun": dry_run})).line(line))
 }
 
-/// The host's token, or the Oleafly app's GitHub sign-in for github.com.
 pub(crate) fn token(env: &Env, host: &str) -> Result<Zeroizing<String>, CliError> {
     let base = host_base(host)?;
     if let Some(saved) = accounts::forge_token(&env.store, &base)
@@ -141,7 +129,6 @@ pub(crate) fn token(env: &Env, host: &str) -> Result<Zeroizing<String>, CliError
     .hint(format!("Run oleafly auth login git --host {base}.")))
 }
 
-/// Hosts with a token: the store's, plus the app's GitHub sign-in.
 pub(crate) fn status_rows(env: &Env) -> Result<Vec<Value>, CliError> {
     let tokens =
         accounts::forge_tokens(&env.store).map_err(|error| from_store(error, &env.data_root))?;
@@ -225,7 +212,6 @@ mod tests {
         let dry = login(&env, "gitlab.com", true, &mut "glpat-FORGE99".as_bytes()).unwrap();
         assert_eq!(dry.data["saved"], false);
         assert!(accounts::forge_tokens(&env.store).unwrap().is_empty());
-        // Plain http to a server elsewhere is refused, as the app refuses it.
         assert_eq!(
             login(&env, "http://git.example.org", true, &mut "tok".as_bytes())
                 .unwrap_err()
@@ -282,7 +268,6 @@ mod tests {
             .lines
             .iter()
             .any(|line| line.contains("GitHub sign-in")));
-        // Nothing hands out a GitHub token any more, and no row lists one.
         assert_eq!(
             token(&env, "github.com").unwrap_err().code,
             "git.token_missing"
@@ -294,7 +279,6 @@ mod tests {
             .map(|row| row["host"].as_str().unwrap().to_string())
             .collect();
         assert_eq!(hosts, ["https://gitlab.com"]);
-        // Other hosts keep theirs.
         assert_eq!(token(&env, "gitlab.com").unwrap().as_str(), "glpat-FORGE99");
     }
 
@@ -311,7 +295,6 @@ mod tests {
             json!([{"kind": "appGithubToken", "target": "https://github.com"}])
         );
         assert!(!env.store.contains(GITHUB_TOKEN_ACCOUNT).unwrap());
-        // Other hosts never touch it.
         env.store
             .set(&[(GITHUB_TOKEN_ACCOUNT, "gho_APPSIGNIN1")])
             .unwrap();

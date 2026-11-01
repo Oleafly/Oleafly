@@ -5,10 +5,9 @@ import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setTypstMathHost, type TypstMathOutcome } from "../../math-render";
 import { TypstMathWidget } from "./math";
+import { stubRangeGeometry } from "../../test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 let counter = 0;

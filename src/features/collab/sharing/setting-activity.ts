@@ -30,8 +30,6 @@ function languageName(locale: string): string {
   return dictionaryLabel({ id: locale, language: locale, region: null }, currentLocale());
 }
 
-// `byPerson` is false for a change that came with no account, such as the
-// main document following its file to the name the shared layout gave it.
 export function settingActivityText(change: CollabSettingNotice, name: string, t: CollabT, byPerson = true): string {
   switch (change.kind) {
     case "mainDocument":

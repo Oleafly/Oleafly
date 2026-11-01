@@ -52,7 +52,6 @@ describe("ToolConfirm home paths", () => {
     const args = container.querySelector("pre") as HTMLElement;
     expect(args).toHaveTextContent('"path": "~/paper/refs.bib"');
     expect(container.textContent).not.toContain("/Users/ada");
-    // Only Settings blurs paths.
     expect(container.querySelector("[data-settings-path]")).toBeNull();
   });
 });

@@ -36,11 +36,7 @@ pub(crate) struct Drive {
     next: u64,
     changes: Vec<(u64, String)>,
     sessions: BTreeMap<String, Session>,
-    /// Bytes another computer writes to a file just before the next update
-    /// of it lands, as if its write slipped between the check and the write.
     pub(crate) race_next_update: Option<Vec<u8>>,
-    /// A file of the same name another computer creates just before the next
-    /// create in that folder lands.
     pub(crate) race_next_create: bool,
     pub(crate) calls: usize,
     /// How the next resumable pieces go, one entry each: Drive keeps the
@@ -48,16 +44,9 @@ pub(crate) struct Drive {
     /// part of a piece; 503 is a failure after keeping some, or after keeping
     /// all of it with only the reply lost.
     pub(crate) piece_faults: VecDeque<(usize, u16)>,
-    /// Runs once after the next resumable piece lands, as another program
-    /// writing to the file that is going up.
     pub(crate) after_piece: Option<Box<dyn FnOnce() + Send>>,
-    /// The offset and length of every resumable piece Drive took, whole or
-    /// in part.
     pub(crate) pieces: Vec<(usize, usize)>,
-    /// How long Drive takes to answer anything sent to an upload session.
     pub(crate) piece_delay: Option<Duration>,
-    /// File contents go out in pieces of this many bytes with this pause
-    /// before each one after the first, as over a slow link.
     pub(crate) media_pace: Option<(usize, Duration)>,
 }
 
@@ -66,7 +55,6 @@ struct Session {
     target: Option<String>,
     metadata: Value,
     received: Vec<u8>,
-    /// The file the upload made or updated, once it had every byte.
     done: Option<String>,
 }
 
@@ -113,7 +101,6 @@ impl Drive {
         Some(rev)
     }
 
-    /// The live file at a path below the `Oleafly` folder, for assertions.
     pub(crate) fn content(&self, path: &str) -> Option<Vec<u8>> {
         let mut parent = self
             .files
@@ -202,8 +189,6 @@ impl FakeDrive {
         DriveStore::at(self.endpoints(), token.into(), Some(refresher))
     }
 
-    /// A store with short limits: `request` on each small request, `read` on
-    /// how long a download may go without a byte.
     pub(crate) fn store_timed(&self, request: Duration, read: Duration) -> DriveStore {
         let token = self.lock().token.clone();
         DriveStore::with_timeouts(self.endpoints(), token, None, request, read)
@@ -231,7 +216,6 @@ fn unescape(text: &str) -> String {
     out
 }
 
-/// The quoted values in `q` that precede `suffix`, as in `'id' in parents`.
 fn quoted_before(q: &str, suffix: &str) -> Vec<String> {
     let mut found = Vec::new();
     let mut rest = q;
@@ -317,7 +301,6 @@ fn created(drive: &mut Drive, metadata: &Value, bytes: Option<Vec<u8>>) -> Respo
     axum::Json(file_json(&id, file)).into_response()
 }
 
-/// File contents, all at once or, with `pace`, a piece at a time.
 fn media(pace: Option<(usize, Duration)>, bytes: Vec<u8>) -> Response {
     let Some((size, pause)) = pace else {
         return (StatusCode::OK, bytes).into_response();
@@ -617,8 +600,6 @@ fn resume(drive: &mut Drive, path: &str, headers: &HeaderMap, body: &[u8]) -> Re
     }
 }
 
-/// Makes or updates the file once its upload has every byte, and notes which
-/// file that was. `None` when the file to update is gone.
 fn finish(drive: &mut Drive, key: &str) -> Option<String> {
     let session = drive.sessions.get(key)?;
     let (target, metadata, received) = (

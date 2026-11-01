@@ -34,6 +34,82 @@ function blank(chars: string[], from: number, to: number) {
   for (let i = from; i < to; i++) if (chars[i] !== "\n") chars[i] = " ";
 }
 
+export function htmlCommentRanges(text: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf("<!--", from);
+    if (start === -1) return ranges;
+    const end = text.indexOf("-->", start + 4);
+    if (end === -1) return ranges;
+    ranges.push([start, end + 3]);
+    from = end + 3;
+  }
+}
+
+function lineBracketRanges(
+  text: string,
+  open: string,
+  close: string,
+  opens: (text: string, start: number) => boolean,
+  accept: (text: string, start: number, end: number) => boolean,
+): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf(open, from);
+    if (start === -1) return ranges;
+    if (!opens(text, start)) {
+      from = start + 1;
+      continue;
+    }
+    let end = start + 1;
+    while (end < text.length && text[end] !== close && text[end] !== "\n") end++;
+    if (end < text.length && text[end] === close && accept(text, start, end + 1)) {
+      ranges.push([start, end + 1]);
+    }
+    from = end + 1;
+  }
+}
+
+const TAG_OPENING = /^<\/?[A-Za-z]/u;
+const AUTOLINK_OPENING = /^<(?:https?:\/\/|mailto:)/iu;
+const CITATION_KEY = /@[-\p{L}\p{N}_:.#/+]/u;
+const AUTOLINK_OPENING_MAX = "<https://".length;
+
+export function htmlTagRanges(text: string): Array<[number, number]> {
+  return lineBracketRanges(
+    text,
+    "<",
+    ">",
+    (source, start) => TAG_OPENING.test(source.slice(start, start + 3)),
+    () => true,
+  );
+}
+
+export function autolinkRanges(text: string): Array<[number, number]> {
+  return lineBracketRanges(
+    text,
+    "<",
+    ">",
+    (source, start) => AUTOLINK_OPENING.test(source.slice(start, start + AUTOLINK_OPENING_MAX)),
+    (source, start, end) => {
+      const opening = AUTOLINK_OPENING.exec(source.slice(start, start + AUTOLINK_OPENING_MAX));
+      return opening !== null && start + opening[0].length < end - 1;
+    },
+  );
+}
+
+export function bracketedCitationRanges(text: string): Array<[number, number]> {
+  return lineBracketRanges(
+    text,
+    "[",
+    "]",
+    () => true,
+    (source, start, end) => CITATION_KEY.test(source.slice(start, end)),
+  );
+}
+
 function closesFence(
   marker: RegExpExecArray | null,
   fence: { char: string; length: number },
@@ -83,7 +159,6 @@ function maskBlockLines(chars: string[], text: string): void {
       blank(chars, offset, offset + line.length);
       footnoteContinuation = false;
     } else if (footnote) {
-      // The footnote label is metadata, but its body is rendered prose.
       blank(chars, offset, offset + footnote[0].length);
       footnoteContinuation = true;
     } else if (footnoteContinuation && continuesFootnote(line)) {
@@ -233,9 +308,7 @@ export function maskMarkdown(text: string): string {
 
   maskBlockLines(chars, text);
 
-  for (const match of chars.join("").matchAll(/<!--[\s\S]*?-->/gu)) {
-    blank(chars, match.index!, match.index! + match[0].length);
-  }
+  for (const [from, to] of htmlCommentRanges(chars.join(""))) blank(chars, from, to);
   for (const match of chars
     .join("")
     .matchAll(
@@ -243,9 +316,7 @@ export function maskMarkdown(text: string): string {
     )) {
     blank(chars, match.index!, match.index! + match[0].length);
   }
-  for (const match of chars.join("").matchAll(/<\/?[A-Za-z][^>\n]*>/gu)) {
-    blank(chars, match.index!, match.index! + match[0].length);
-  }
+  for (const [from, to] of htmlTagRanges(chars.join(""))) blank(chars, from, to);
   maskPandocAttributes(chars);
   maskInlineCode(chars);
   maskLinkDestinations(chars);
@@ -253,8 +324,8 @@ export function maskMarkdown(text: string): string {
   for (const match of chars.join("").matchAll(/\[\^[^[\]\s]+\]/gu)) {
     blank(chars, match.index, match.index + match[0].length);
   }
+  for (const [from, to] of autolinkRanges(chars.join(""))) blank(chars, from, to);
   for (const pattern of [
-    /<(?:https?:\/\/|mailto:)[^>\n]+>/giu,
     /<[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}>/giu,
     /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
     EMAIL_ADDRESS_PATTERN,
@@ -266,13 +337,7 @@ export function maskMarkdown(text: string): string {
   // Pandoc citations are metadata references, not visible prose. Mask
   // bracketed multi-cites (including locator/prefix text) first, followed by
   // bare @key citations. E-mail addresses have already been masked above.
-  for (const match of chars
-    .join("")
-    .matchAll(
-      /\[(?:[^\]\n@]|@(?![-\p{L}\p{N}_:.#/+]))*@[-\p{L}\p{N}_:.#/+]+(?![-\p{L}\p{N}_:.#/+])[^\]\n]*\]/gu,
-    )) {
-    blank(chars, match.index!, match.index! + match[0].length);
-  }
+  for (const [from, to] of bracketedCitationRanges(chars.join(""))) blank(chars, from, to);
   for (const match of chars
     .join("")
     .matchAll(/(^|[^\p{L}\p{N}._%+-])@[-\p{L}\p{N}_:.#/+]+/gmu)) {

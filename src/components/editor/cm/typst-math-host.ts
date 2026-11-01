@@ -14,7 +14,7 @@ async function renderTypstMathSvg(source: string): Promise<TypstMathOutcome> {
     if (result.image.format !== "svg") return { status: "failed", message: "" };
     return { status: "rendered", svg: result.image.svg };
   } catch (error) {
-    return { status: "failed", message: describeError(error) };
+    throw new Error(describeError(error));
   }
 }
 
@@ -22,5 +22,6 @@ export function installTypstMathHost(): void {
   setTypstMathHost({
     render: renderTypstMathSvg,
     typstVersion: () => useFilesStore.getState().engine.typst_resolved?.version ?? null,
+    projectId: () => useFilesStore.getState().projectId,
   });
 }

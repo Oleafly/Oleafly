@@ -7,15 +7,12 @@
 
 use std::path::{Path, PathBuf};
 
-/// Locate a version-pinned `tectonic-biber` binary for the current app layout.
 pub fn find_tectonic_biber() -> Option<PathBuf> {
     tectonic_biber_candidates()
         .into_iter()
         .find(|path| path.is_file())
 }
 
-// The unpack folder, fingerprints and the compile PATH are shared with the
-// CLI through `oleafly_core::biber_env`.
 pub(crate) use oleafly_core::biber_env::unpack_dir_for;
 #[cfg(test)]
 use oleafly_core::biber_env::{binary_fingerprint, stamp_last_use, FINGERPRINT_SAMPLE_BYTES};
@@ -30,18 +27,14 @@ pub fn biber_for_child(program: &Path, path_env: &std::ffi::OsStr) -> Option<Pat
     choose_child_biber(program, path_env, find_tectonic_biber)
 }
 
-/// What a supervised child needs so that the Biber it runs can start.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChildBiber {
     /// The folder PAR::Packer unpacks into (`PAR_GLOBAL_TMPDIR`).
     pub unpack_dir: PathBuf,
-    /// A folder holding a thin copy of a universal macOS Biber, which has to
-    /// come first on the child's PATH.
     pub thin_dir: Option<PathBuf>,
 }
 
 impl ChildBiber {
-    /// The child's PATH with the thin Biber folder, if any, in front.
     pub fn path_env(&self, path_env: &std::ffi::OsStr) -> std::ffi::OsString {
         let Some(thin_dir) = &self.thin_dir else {
             return path_env.to_os_string();
@@ -52,8 +45,6 @@ impl ChildBiber {
     }
 }
 
-/// Prepare the Biber a child will run. This reads and may copy a large file,
-/// so async callers should run it on a blocking thread.
 pub fn prepare_child_biber(
     data_root: &Path,
     program: &Path,
@@ -105,8 +96,6 @@ fn choose_child_biber(
     bundled().or_else(|| first_biber_on(path_env))
 }
 
-/// Subfolder of a Biber's unpack folder that holds the thin copy of a
-/// universal macOS Biber.
 const THIN_BIBER_DIR: &str = "bin";
 
 const THIN_BIBER_NAME: &str = "biber";
@@ -119,9 +108,6 @@ const FAT_ARCH_LEN: usize = 20;
 
 const FAT_ARCH_64_LEN: usize = 32;
 
-/// Real universal binaries hold a handful of slices. The cap also rules out
-/// Java class files, which share `0xcafebabe` and keep their class-file
-/// version (45 or more) where a universal binary keeps its slice count.
 const MAX_FAT_SLICES: u32 = 16;
 
 const FAT_HEADER_MAX: u64 = 8 + MAX_FAT_SLICES as u64 * FAT_ARCH_64_LEN as u64;
@@ -136,7 +122,6 @@ const CPU_SUBTYPE_ARM64E: u32 = 2;
 
 const CPU_SUBTYPE_X86_64_H: u32 = 8;
 
-/// Where one architecture's slice sits inside a universal (fat) Mach-O file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct FatSlice {
     offset: u64,
@@ -208,8 +193,6 @@ fn extract_host_slice(
         return Ok(Some(dir));
     }
     std::fs::create_dir_all(&dir)?;
-    // Two compiles can race here, so each writes its own temporary file and
-    // renames it into place; the rename replaces the file atomically.
     let mut staged = tempfile::Builder::new()
         .prefix(".biber-")
         .tempfile_in(&dir)?;
@@ -221,8 +204,6 @@ fn extract_host_slice(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        // Owner only: the copy lives in this user's app folder and only this
-        // user runs it.
         staged
             .as_file()
             .set_permissions(std::fs::Permissions::from_mode(0o700))?;
@@ -231,9 +212,6 @@ fn extract_host_slice(
     Ok(Some(dir))
 }
 
-/// Find the slice built for `cpu_type` in the header of a universal Mach-O
-/// file. Returns None for thin binaries, for anything that is not a
-/// well-formed universal header, and when no slice matches.
 fn fat_slice_for(header: &[u8], file_len: u64, cpu_type: u32) -> Option<FatSlice> {
     let entry_len = match be_u32(header, 0)? {
         FAT_MAGIC => FAT_ARCH_LEN,
@@ -523,8 +501,6 @@ fn remove_link(path: &Path, _file_type: std::fs::FileType) -> std::io::Result<()
     std::fs::remove_file(path)
 }
 
-/// Directories that should precede PATH when spawning Tectonic so it can find
-/// `tectonic-biber` and common system TeX helpers.
 pub fn compile_path_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
@@ -554,7 +530,6 @@ pub fn compile_path_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// Build a PATH value with toolchain directories first.
 #[cfg(test)]
 pub fn compile_path_env() -> std::ffi::OsString {
     compile_path_env_with_inherited(std::env::var_os("PATH").as_deref(), None, None)
@@ -658,7 +633,6 @@ fn strip_biber_log_prefix(line: &str) -> &str {
     }
 }
 
-/// Classify a failed or incomplete Biber step for the user-facing log.
 pub fn diagnose_biber_gap(log: &str, biber: Option<&Path>) -> String {
     let mut message = String::from(
         "\n[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.\n",
@@ -701,9 +675,6 @@ fn missing_data_source(log: &str) -> Option<&str> {
     Some(&rest[..end])
 }
 
-/// CLI args for running Biber on the entry stem written under `out_dir`.
-/// Callers should spawn via the supervised compile process path so timeout,
-/// cancel, and process-group isolation match Tectonic.
 pub fn biber_cli_args(out_dir: &Path, entry_stem: &str) -> Vec<String> {
     vec![
         "--output-directory".into(),
@@ -757,8 +728,6 @@ pub(crate) fn host_triple_guess() -> Option<&'static str> {
 }
 
 fn tex_bin_search_dirs() -> Vec<PathBuf> {
-    // Shared discovery (MacTeX, TeX Live by year, MiKTeX, TinyTeX variants) so
-    // PATH injection and the latexmk engine agree on where TeX tools live.
     crate::tex_distro::tex_bin_dirs()
 }
 

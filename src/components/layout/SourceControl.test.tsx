@@ -624,7 +624,6 @@ describe("SourceControl", () => {
       "leading-4",
     );
     const stagedEmpty = within(staged).getByText("No staged changes").parentElement;
-    // The icon sits above the text, both centered.
     expect(stagedEmpty).toHaveClass("flex-col", "items-center", "justify-center", "text-center");
     expect(stagedEmpty?.firstElementChild?.querySelector("svg.lucide-book-plus")).toBeInTheDocument();
     expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
@@ -752,7 +751,6 @@ describe("SourceControl", () => {
     );
     await user.click(screen.getByRole("menuitem", { name: "Commit & Push" }));
 
-    // Since 0.4.8 the reason is the error's message, without the "Error: " prefix.
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Committed locally, but push failed: Remote is unavailable.",
     );

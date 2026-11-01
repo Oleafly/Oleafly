@@ -75,7 +75,6 @@ describe("proofreading presentation (unbounded)", () => {
 
     const nextIdentity = identity(2);
     useProofreadingStore.getState().begin(nextIdentity);
-    // The previous set stays visible while the refresh is in flight.
     expect(
       useProofreadingStore.getState().source.diagnostics,
     ).toHaveLength(3_000);

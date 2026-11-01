@@ -1,11 +1,3 @@
-//! Message references and the English catalog.
-//!
-//! Findings carry a [`MessageRef`] (a catalog key plus parameters) exactly
-//! like the TypeScript rules, so goldens compare keys and parameters rather
-//! than English sentences. Text comes from the app's own English catalog,
-//! embedded at build time, and is rendered the way the test translator in
-//! `packages/i18n-contract/src/testing.ts` renders it.
-
 use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::LazyLock;
@@ -16,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::text::{js_number_to_string, js_trim};
 use crate::types::Finding;
 
-/// A message parameter: JavaScript `string | number`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ParamValue {
@@ -98,7 +89,6 @@ pub fn message(key: &str) -> MessageRef {
     }
 }
 
-/// `msg!("rules.x.title", "count" => 2, "file" => path)`.
 #[macro_export]
 macro_rules! msg {
     ($key:expr $(, $name:literal => $value:expr)* $(,)?) => {{
@@ -112,7 +102,6 @@ macro_rules! msg {
 static PLACEHOLDER: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\{\{\s*([0-9A-Za-z_.-]+)\s*\}\}").unwrap());
 
-/// An English message catalog (a nested JSON object of strings).
 pub struct Catalog {
     root: serde_json::Value,
 }
@@ -125,8 +114,6 @@ static PREFLIGHT: LazyLock<Catalog> = LazyLock::new(|| {
 });
 
 impl Catalog {
-    /// Parses `json`, optionally keeping only one top-level subtree (the
-    /// editor catalog keeps its package strings under `package`).
     pub fn from_json(json: &str, subtree: Option<&str>) -> Self {
         let parsed: serde_json::Value =
             serde_json::from_str(json).unwrap_or(serde_json::Value::Null);
@@ -137,13 +124,10 @@ impl Catalog {
         Self { root }
     }
 
-    /// The preflight catalog the app ships (`src/i18n/locales/en/preflight.json`).
     pub fn preflight() -> &'static Catalog {
         &PREFLIGHT
     }
 
-    /// The string at a dotted key (`catalogEntry` in the TypeScript test
-    /// translator): `None` for a missing key or a key that names an object.
     pub fn template(&self, key: &str) -> Option<&str> {
         let mut node = &self.root;
         for part in key.split('.') {
@@ -152,7 +136,6 @@ impl Catalog {
         node.as_str()
     }
 
-    /// The object at a dotted key, for callers that list a rule's strings.
     pub fn object(&self, key: &str) -> Option<&serde_json::Map<String, serde_json::Value>> {
         let mut node = &self.root;
         for part in key.split('.') {
@@ -161,9 +144,6 @@ impl Catalog {
         node.as_object()
     }
 
-    /// English plural forms first (`key_one` / `key_other` when `count` is a
-    /// number), then the key itself, then the bare key as text. Placeholders
-    /// without a parameter stay as written.
     pub fn render(&self, message: &MessageRef) -> String {
         let plural = message
             .params
@@ -194,8 +174,6 @@ fn interpolate(template: &str, params: &Params) -> String {
         .into_owned()
 }
 
-/// A finding's detail followed by its detail parts, joined with spaces, as
-/// `src/components/preflight/message.ts` renders it.
 pub fn render_detail(catalog: &Catalog, finding: &Finding) -> String {
     std::iter::once(&finding.detail)
         .chain(finding.detail_parts.iter().flatten())
@@ -210,9 +188,6 @@ static COUNT_PLACEHOLDER: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\{\{\s*count\s*\}\} ?").unwrap());
 static SPACES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r" {2,}").unwrap());
 
-/// Rule text without parameters, for SARIF rule descriptions: `\{{name}}`
-/// tokens and a leading `{{count}} ` disappear, other placeholders become
-/// `…`, and the first letter is upper case.
 pub fn describe_template(template: &str) -> String {
     let without_commands = ESCAPED_PLACEHOLDER.replace_all(template, "");
     let without_count = COUNT_PLACEHOLDER.replace_all(&without_commands, "");
@@ -247,8 +222,6 @@ fn first_template<'c>(catalog: &'c Catalog, base: &str, prefix: &str) -> Option<
         .find_map(|name| entries.get(name).and_then(|value| value.as_str()))
 }
 
-/// A short and a full description of a preflight rule from the catalog's
-/// `rules.<id>.title*` and `rules.<id>.detail*` strings.
 pub fn describe_rule(id: &str) -> (String, String) {
     let catalog = Catalog::preflight();
     let base = format!("rules.{id}");

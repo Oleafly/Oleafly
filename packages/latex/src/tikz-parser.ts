@@ -20,8 +20,6 @@ const MIN_NODE_W = 44;
 const MIN_NODE_H = 28;
 const ORIGIN_MARGIN = 40;
 const HANDLE_TOLERANCE = 6;
-// Unambiguous: a digit run can be matched exactly one way, so no input makes
-// the engine backtrack over it.
 const NUMBER = String.raw`[+-]?(?:\d+(?:\.\d+)?|\.\d+)`;
 const DIMENSION = new RegExp(`^(${NUMBER})([a-z]{0,4})$`, "i");
 const POLAR = new RegExp(String.raw`^(${NUMBER})\s*:\s*(${NUMBER})([a-z]{0,4})$`, "i");

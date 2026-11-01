@@ -2,14 +2,6 @@ import { Fragment, type ReactNode } from "react";
 import { pathParts, useDisplayPath } from "@/lib/display-path";
 import "./settings-path.css";
 
-/**
- * File and folder paths in Settings stay blurred, and hover or keyboard focus
- * shows them (the rules are in settings-path.css). The blur is visual only:
- * the text stays in the page for screen readers, and copy buttons keep the
- * real path. Nothing else in Settings, and nothing outside it, is blurred.
- */
-
-/** Pass `focusable={false}` inside a button or link, which shows the path on focus. */
 function BlurredPath({
   children,
   focusable = true,
@@ -30,7 +22,6 @@ function BlurredPath({
   );
 }
 
-/** One path from the backend, shown with the home folder as `~`. */
 export function SettingsPath({
   path,
   focusable,
@@ -48,7 +39,6 @@ export function SettingsPath({
   );
 }
 
-/** A message that may name paths: only the paths in it are blurred. */
 export function SettingsPathText({
   text,
   focusable,

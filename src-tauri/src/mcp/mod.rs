@@ -87,7 +87,6 @@ pub async fn start_configured(app: AppHandle, _preferred_port: u16) -> Result<u1
     Ok(port)
 }
 
-/// The MCP bridge lives in the main window; no other webview may drive it.
 fn require_bridge_webview<R: tauri::Runtime>(webview: &tauri::Webview<R>) -> Result<(), String> {
     match crate::caller::own_window_label(webview).as_deref() {
         Some("main") => Ok(()),

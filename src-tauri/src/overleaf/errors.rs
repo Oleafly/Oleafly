@@ -1,12 +1,8 @@
-//! Errors from `oleafly-online` in the app's format, with the codes
-//! `errors.json` has had since 0.4.7.
 use oleafly_online::sync::FILES_MAY_HAVE_CHANGED;
 use oleafly_online::{OnlineError, OnlineErrorKind};
 
 use crate::app_error::AppError;
 
-/// The app's code for `kind`. The kinds only the CLI meets (a folder that
-/// already exists, a busy worktree lock) read as a failed sync.
 pub(crate) fn legacy_code(kind: OnlineErrorKind) -> &'static str {
     use OnlineErrorKind as Kind;
     match kind {
@@ -45,9 +41,6 @@ pub(crate) fn legacy_code(kind: OnlineErrorKind) -> &'static str {
     }
 }
 
-/// A failure the app's Git runner reported keeps its message (it is already
-/// in the app's format); everything else becomes an app error. A sync that
-/// may have changed files here never says they are unchanged.
 pub(crate) fn app_error(error: OnlineError) -> String {
     if error.kind == OnlineErrorKind::Io
         && error
@@ -72,24 +65,18 @@ pub(crate) fn app_error(error: OnlineError) -> String {
     app.into()
 }
 
-/// The code of a sync that stopped after it had changed files here.
 const SYNC_INCOMPLETE: &str = "overleaf.sync_incomplete";
 
-/// The code, parameters and detail of an app error envelope.
 fn envelope(error: &str) -> Option<serde_json::Value> {
     serde_json::from_str(error.strip_prefix(crate::app_error::PREFIX)?).ok()
 }
 
-/// Whether a failed sync reported that files here may have changed.
 pub(crate) fn files_may_have_changed(error: &str) -> bool {
     envelope(error).is_some_and(|found| {
         found["code"] == SYNC_INCOMPLETE || found["params"][FILES_MAY_HAVE_CHANGED] == "true"
     })
 }
 
-/// `error` for a sync that had already written files here when it failed:
-/// a failure that would say the files are unchanged says they changed. A
-/// more specific reason (offline, a refused token) is kept.
 pub(crate) fn after_files_changed(error: String) -> String {
     let Some(found) = envelope(&error) else {
         return AppError::new(SYNC_INCOMPLETE)

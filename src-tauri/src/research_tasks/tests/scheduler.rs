@@ -58,8 +58,6 @@ impl Drop for DataRoot {
     }
 }
 
-// The scheduler tests that drive runs step by step live in the research
-// crate; these only need to start a run and finish it.
 struct StartedRun {
     context: TaskRunContext,
     complete: oneshot::Sender<Result<TaskRuntimeOutcome, String>>,
@@ -163,7 +161,6 @@ async fn stop(state: &ResearchTaskState) {
         .expect("the scheduler did not finish shutdown");
 }
 
-// 0.4.8: research tasks are experimental and off until the user turns them on.
 #[tokio::test]
 async fn the_switch_refuses_new_work_while_off_and_stops_running_work_when_turned_off() {
     let data = DataRoot::new();
@@ -185,8 +182,6 @@ async fn the_switch_refuses_new_work_while_off_and_stops_running_work_when_turne
     let run = next_run(&mut starts).await;
     assert_eq!(run.context.task_id, task.id);
 
-    // Turning tasks off cancels the run; the fixture runtime ends its run
-    // once it has been asked to stop, as a real one does.
     let turning_off = {
         let state = state.clone();
         tokio::spawn(async move { set_enabled(&state, false).await })

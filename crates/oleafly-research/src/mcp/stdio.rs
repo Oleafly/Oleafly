@@ -7,9 +7,6 @@ pub const STDIO_FLAG: &str = "--oleafly-mcp-stdio";
 const URL_VAR: &str = "OLEAFLY_MCP_URL";
 const TOKEN_VAR: &str = "OLEAFLY_MCP_TOKEN";
 const MAX_LINE_BYTES: usize = 256 * 1024;
-// Longer than the server's longest call (`TASK_CALL_TIMEOUT`, 360 s, which
-// covers `wait_runs` at its 300 s maximum and a desktop apps call waiting
-// for approval), so the server's own answer always arrives first.
 const CALL_TIMEOUT: Duration = Duration::from_secs(390);
 const SETUP_TIMEOUT: Duration = Duration::from_secs(10);
 

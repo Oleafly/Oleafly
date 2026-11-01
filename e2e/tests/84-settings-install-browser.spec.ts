@@ -215,7 +215,6 @@ for (const browserType of [chromium, webkit]) {
             .filter(
               (command: string) =>
                 command.startsWith("acp_") &&
-                // Reads that land in no fixed order: the catalog and the effort and model preferences.
                 !["acp_catalog", "acp_preferences", "acp_agent_preferences"].includes(command),
             ),
         ),

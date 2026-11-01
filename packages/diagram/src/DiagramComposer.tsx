@@ -265,8 +265,6 @@ function readNow(language: DiagramLanguage, source: string, hint: DiagramModel |
 
 type Mode = "draw" | "code";
 
-// Headless with respect to the app: all compile/file/editor/AI access goes
-// through `host` (see DiagramHost) and UI primitives come from DiagramKit.
 export function DiagramComposer({
   open,
   projectId,
@@ -292,15 +290,8 @@ export function DiagramComposer({
   languageExtensions?: Partial<Record<DiagramLanguageId, Extension[]>>;
   isMac?: boolean;
   fullscreen?: boolean;
-  // Opens the preview pane and compiles the current drawing once so there is
-  // something in it. Lets an app-level caller (e.g. a product tour) point at
-  // a real compiled preview instead of describing UI that isn't there.
   forcePreviewOpen?: boolean;
-  // App-supplied brand/back element, rendered in place of the default back
-  // button + title so this matches the app's own project toolbar.
   brand?: ReactNode;
-  // App-supplied OS window controls (min/max/close), rendered at the far right
-  // of the toolbar on platforms that draw a frameless window (e.g. Windows).
   windowControls?: ReactNode;
   language?: DiagramLanguageId;
   languageRequest?: number;
@@ -334,18 +325,11 @@ export function DiagramComposer({
   const [busy, setBusy] = useState(false);
   const [hasCompiled, setHasCompiled] = useState(false);
   const [scale, setScale] = useState(2);
-  // Figure page background: hex "#RRGGBB", or "" for transparent. Default white.
   const [background, setBackground] = useState("#ffffff");
-  // Preview is on-demand (not realtime): open after Compile, hide when minimized.
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pendingLine, setPendingLine] = useState<{ line: number; column: number | null } | null>(null);
   const cmRef = useRef<CmHandle>(null);
   const codeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // True while the code buffer holds hand-written content the drawing model
-  // does not describe. While set, nothing may regenerate code from the model:
-  // that is how pasted TikZ used to be silently replaced on a tab switch.
-  // Which side owns the buffer, and what the model was last read out of, so a
-  // Draw/Code round trip neither re-parses needlessly nor loses canvas edits.
   const syncRef = useRef<ComposerSync>(emptySync());
   const savePickerRef = useRef<HTMLDivElement>(null);
   const downloadPickerRef = useRef<HTMLDivElement>(null);
@@ -378,7 +362,6 @@ export function DiagramComposer({
     void lang.load().catch(() => undefined);
   }, [lang]);
 
-  // Model -> code (debounced), so the Code tab and compile reflect the drawing.
   const onModelChange = useCallback((m: DiagramModel) => {
     if (!shouldPublishModel(syncRef.current, m)) return;
     syncRef.current = drawnSync(syncRef.current);
@@ -400,9 +383,6 @@ export function DiagramComposer({
   }, []);
 
   const applyLoadedContent = useCallback(async (content: string, id: DiagramLanguageId, nextBackground?: string) => {
-    // A React Flow change can leave a debounced model-to-code update pending.
-    // Imported/loaded content is authoritative, so cancel that older write
-    // before replacing the editor document.
     if (codeTimerRef.current) {
       clearTimeout(codeTimerRef.current);
       codeTimerRef.current = null;
@@ -419,12 +399,8 @@ export function DiagramComposer({
       setMode("code");
       return false;
     }
-    // The buffer stays exactly as written: the model describes it, so nothing
-    // regenerates over it until the canvas itself is edited.
     syncRef.current = readSync(content, read.model);
     setModel(read.model);
-    // Keep "" (transparent) if the source stored it; a snippet that says
-    // nothing about the page leaves the current background alone.
     const loadedBackground = nextBackground ?? read.model.background;
     if (loadedBackground !== undefined) setBackground(loadedBackground);
     setMode("draw");
@@ -432,8 +408,6 @@ export function DiagramComposer({
   }, [adoptRead]);
 
   const handleCodeChange = useCallback((next: string) => {
-    // Typing takes the buffer back, so a pending regeneration must not land on
-    // top of the keystrokes that follow it.
     if (codeTimerRef.current) {
       clearTimeout(codeTimerRef.current);
       codeTimerRef.current = null;
@@ -558,7 +532,6 @@ export function DiagramComposer({
     setLog((result.log ?? "").slice(-4000));
     if (result.has_pdf) {
       const bytes = new Uint8Array(await host.readIsolatedPdf(projectId));
-      // The PDF already carries the chosen background (\pagecolor), so render as-is.
       setPng(
         await host.pdfToPng(
           bytes,
@@ -575,7 +548,6 @@ export function DiagramComposer({
 
   const compile = useCallback(async (overrideCode?: string, overrideBackground?: string) => {
     if (!projectId || busy) return;
-    // In draw mode the code is debounced; compile the freshest generated TikZ.
     const raw = overrideCode ?? sourceToCompile(syncRef.current, mode, model, code, (m) => writeCode(m));
     const nextBackground = overrideBackground ?? background;
     setBusy(true);
@@ -595,10 +567,6 @@ export function DiagramComposer({
     }
   }, [projectId, busy, code, model, mode, background, language, writeCode, compileTypst, compileMermaid, compileTikz]);
 
-  // When a caller (the product tour) forces the preview pane open, compile the
-  // starter drawing once so the pane demonstrates a real preview instead of
-  // the empty "Compile to see a preview" placeholder. Compiles are isolated
-  // and never touch the user's document, so this is safe to do unprompted.
   useEffect(() => {
     if (!forcePreviewOpen || hasCompiled || busy) return;
     void compile();
@@ -865,9 +833,6 @@ export function DiagramComposer({
     }
   }, [importing, host, toast, t, applyLoadedContent, resetPreview]);
 
-  // Ask the configured AI to fix a failed compile from the log. One-shot: it
-  // returns corrected TikZ, which we drop into Code and recompile (undoable in
-  // the editor).
   const [fixing, setFixing] = useState(false);
   const fixWithAi = useCallback(async () => {
     if (fixing || !host.fixWithAi) return;
@@ -893,7 +858,6 @@ export function DiagramComposer({
 
   const compileFailed = failure?.kind === "failed";
 
-  // Clicking outside the name editor cancels (same as project title in TopToolbar).
   useEffect(() => {
     if (!editingName) return;
     const onDown = (e: MouseEvent) => {
@@ -949,8 +913,6 @@ export function DiagramComposer({
   if (!open) return null;
 
   const enterCode = () => {
-    // Entering Code: flush debounced generation so Code mirrors the canvas,
-    // but never over hand-written code the model does describe.
     if (shouldWriteCode(syncRef.current, hasDrawing)) {
       if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
       setCode(writeCode(model));
@@ -959,9 +921,6 @@ export function DiagramComposer({
   };
 
   const enterDraw = () => {
-    // Entering Draw with hand-written code: read the TikZ into a model so the
-    // canvas shows what the code says. Re-reading the same buffer is skipped so
-    // canvas edits made since the last adoption survive the round trip.
     if (!shouldReadCode(syncRef.current, code)) {
       setMode("draw");
       return;

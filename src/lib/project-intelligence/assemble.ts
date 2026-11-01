@@ -502,9 +502,6 @@ function resolvedUse(
       original.kind === "glossary") &&
     candidates.length === 0
   ) {
-    // The local index intentionally knows only project definitions. Package,
-    // class, and language built-ins remain the language server's domain.
-    // Glossary keys may also live in external resources the index never sees.
     return null;
   }
   let kind = original.kind;
@@ -611,9 +608,6 @@ function hierarchyFor(
     })
     .sort((left, right) => left.file.localeCompare(right.file));
   const nodeFiles = new Set(nodes.map((node) => node.file));
-  // Any resolved edge, not just include/import: the structure view renders
-  // every edge's target inline, so a bibliography or asset target is already
-  // on screen and must not also be a root.
   const incoming = new Set(
     edges
       .filter(

@@ -1201,6 +1201,8 @@
     "exportTxt": "Exportă ca text simplu (.txt)",
     "exportZipFailed": "Arhiva zip a proiectului nu a putut fi exportată",
     "exporting": "Se exportă .{{format}}…",
+    "exportingStep": "Se exportă .{{format}}: {{step}}",
+    "stopExport": "Oprește",
     "fork": "Bifurcă",
     "forkDescription": "Copiază <name>{{name}}</name> și istoricul lui Git într-un proiect nou. Punctele de control pornesc goale.",
     "forkFailed": "Proiectul nu a putut fi bifurcat.",

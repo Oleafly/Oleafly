@@ -135,12 +135,10 @@ describe("ElicitationCard", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("Open auth.example.org?")).toBeInTheDocument();
     expect(mocks.open).not.toHaveBeenCalled();
-    // The dialog's buttons end with their key hint (↵, esc), so match how their names start.
     fireEvent.click(within(dialog).getByRole("button", { name: /^Open in browser/ }));
     await waitFor(() => expect(mocks.open).toHaveBeenCalledWith("https://auth.example.org/approve?code=1"));
     await waitFor(() => expect(onRespond).toHaveBeenCalledWith("accept", undefined));
     expect(await screen.findByText("Waiting for the site to finish.")).toBeInTheDocument();
-    // The step on the site may never finish: Decline stays.
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
   });
 
@@ -164,7 +162,6 @@ describe("ElicitationCard", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The link could not be opened in your browser.");
     expect(onRespond).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
-    // A second try that works clears the message.
     mocks.open.mockResolvedValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Open in browser" }));
     fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: /^Open in browser/ }));

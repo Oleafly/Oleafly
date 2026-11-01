@@ -1,6 +1,3 @@
-//! Forward and inverse answers on the SyncTeX fixtures, written out as JSON
-//! for the browser app's WebAssembly build to match (`web/src/synctex`).
-//! Rewrite them after a deliberate change with `UPDATE_SYNCTEX_GOLDEN=1`.
 use std::path::{Path, PathBuf};
 
 use oleafly_doctools::synctex::{
@@ -9,7 +6,6 @@ use oleafly_doctools::synctex::{
 };
 use serde::Serialize;
 
-/// Each fixture was compiled in `/p`, with these files in the project.
 const FIXTURES: &[(&str, &[&str])] = &[
     ("academic-article", &["main.tex"]),
     (
@@ -62,7 +58,6 @@ fn json<T: Serialize + ?Sized>(value: &T) -> String {
     serde_json::to_string(value).unwrap()
 }
 
-/// One query per line, so a change shows up as the lines it moved.
 fn golden(name: &str, project: &[&str]) -> String {
     let dir = fixtures_dir();
     let gz = std::fs::read(dir.join(format!("{name}.synctex.gz"))).unwrap();
@@ -73,8 +68,6 @@ fn golden(name: &str, project: &[&str]) -> String {
         .into_iter()
         .map(|cells| (cells[0].clone(), cells[1].parse().unwrap()))
         .collect();
-    // A line before the first record, one past the end, and a file that
-    // isn't in the output.
     let first = project[0].to_string();
     forward.extend([
         (first.clone(), 0),
@@ -91,7 +84,6 @@ fn golden(name: &str, project: &[&str]) -> String {
             )
         })
         .collect();
-    // The corners of the first page, its middle, and a page past the end.
     inverse_queries.extend([
         (1, 0.0, 0.0),
         (1, 612.0, 792.0),

@@ -68,7 +68,6 @@ export function canManageServer(role: ServerRole | null): boolean {
   return role !== null && serverRoleAllows(role, "manageMembers");
 }
 
-// A project role a later server sends as "unknown" can only read, like a viewer.
 export function isReadOnlyProjectRole(role: CollabProjectRole | null | undefined): boolean {
   return role === "viewer" || role === "commenter" || role === "unknown";
 }

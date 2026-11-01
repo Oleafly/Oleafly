@@ -1201,6 +1201,8 @@
     "exportTxt": "Esporta come testo semplice (.txt)",
     "exportZipFailed": "Non è stato possibile esportare lo zip del progetto",
     "exporting": "Esportazione .{{format}}…",
+    "exportingStep": "Esportazione .{{format}}: {{step}}",
+    "stopExport": "Ferma",
     "fork": "Duplica",
     "forkDescription": "Copia <name>{{name}}</name> e la sua cronologia Git in un nuovo progetto. I checkpoint partono vuoti.",
     "forkFailed": "Non è stato possibile duplicare il progetto.",

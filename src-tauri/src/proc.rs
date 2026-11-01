@@ -15,10 +15,11 @@ use std::process::Command;
 
 mod appimage;
 mod output;
+#[cfg(all(test, unix))]
+pub(crate) use appimage::simulated::SimulatedAppImage;
 pub(crate) use appimage::{appimage_env_changes, clear_appimage_env};
 pub use output::{output_contained_with_bounds, output_contained_with_timeout, OutputBounds};
 
-/// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 #[cfg(windows)]
@@ -26,9 +27,7 @@ const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
 #[cfg(windows)]
 const CREATE_SUSPENDED: u32 = 0x0000_0004;
 
-/// exactly where it would set any other builder option.
 pub trait NoConsole {
-    /// Suppress the child's console window on Windows; no-op elsewhere.
     fn no_console(&mut self) -> &mut Self;
 }
 
@@ -59,8 +58,6 @@ impl NoConsole for tokio::process::Command {
     }
 }
 
-/// Spawn a short-lived platform helper without blocking the Tauri command.
-/// The reaper owns the containment guard until the helper exits.
 pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
     #[cfg(windows)]
     {
@@ -90,9 +87,6 @@ pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
     }
 }
 
-/// Starts `command` and waits for it on a thread of its own, so the helper
-/// never stays behind as a zombie (nothing else reaps unknown children).
-/// Returns its process id.
 #[cfg(not(windows))]
 fn spawn_reaped(command: &mut Command) -> std::io::Result<u32> {
     let mut child = command.spawn()?;
@@ -105,12 +99,9 @@ fn spawn_reaped(command: &mut Command) -> std::io::Result<u32> {
     Ok(pid)
 }
 
-// The process-tree helpers live in the sandbox crate so the CLI and the
-// daemon contain their children the same way.
-pub use oleafly_sandbox::process::{contain_process_tree, isolate_process_tree, ProcessTreeGuard};
-// Terminal hang-up and foreground-job helpers, from the same crate.
 #[cfg(windows)]
 pub use oleafly_sandbox::process::process_image_name;
+pub use oleafly_sandbox::process::{contain_process_tree, isolate_process_tree, ProcessTreeGuard};
 #[cfg(unix)]
 pub use oleafly_sandbox::process::{process_name, signal_process_group};
 
@@ -142,8 +133,6 @@ mod unix_tests {
         let mut command = Command::new("/bin/sh");
         command.args(["-c", "exit 0"]);
         let pid = spawn_reaped(&mut command).unwrap() as libc::pid_t;
-        // The reaper waits from the start, so it collects the helper the
-        // moment it exits; by now nothing is left for anyone else.
         std::thread::sleep(std::time::Duration::from_millis(500));
         let mut status = 0;
         let found = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };

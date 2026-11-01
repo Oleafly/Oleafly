@@ -30,9 +30,6 @@ const DATA_DIR = resolve(
   "../../../../public/latex-intelligence",
 );
 
-// The production loader fetches the corpus over HTTP from public/. Tests run
-// under Node, so back the transport with the filesystem copy instead, then
-// warm the module's sync cache through the same load path production uses.
 beforeAll(async () => {
   setCorpusTransport(async (relativePath) => {
     try {
@@ -44,7 +41,6 @@ beforeAll(async () => {
   warmAtSuggestions();
   const loaded = await loadAtSuggestions();
   expect(loaded).not.toBeNull();
-  // Let warmAtSuggestions' .then() populate the sync cache.
   await new Promise((resolve) => setTimeout(resolve, 0));
 });
 
@@ -75,10 +71,8 @@ describe("isMathContext", () => {
     const doc = "prose $a+b$ prose";
     expect(isMathContext(doc, doc.indexOf("a"))).toBe(true);
     expect(isMathContext(doc, doc.indexOf("+"))).toBe(true);
-    // Just after the opening $ and just before the closing $ count as inside.
     expect(isMathContext(doc, doc.indexOf("$") + 1)).toBe(true);
     expect(isMathContext(doc, doc.lastIndexOf("$"))).toBe(true);
-    // On/outside the delimiters does not.
     expect(isMathContext(doc, doc.indexOf("$"))).toBe(false);
     expect(isMathContext(doc, doc.lastIndexOf("$") + 1)).toBe(false);
     expect(isMathContext(doc, 0)).toBe(false);
@@ -112,9 +106,6 @@ describe("isMathContext", () => {
   });
 
   it("does not see an opening delimiter beyond the 2 KB window", () => {
-    // An unclosed $ keeps the cursor in math while the $ is inside the
-    // window, but once the cursor drifts more than 2 KB past the opening
-    // delimiter the window no longer contains it.
     const doc = `$${"x".repeat(5000)}`;
     expect(isMathContext(doc, 1000)).toBe(true);
     expect(isMathContext(doc, doc.length)).toBe(false);
@@ -152,13 +143,11 @@ describe("atSuggestionCompletion", () => {
   it("returns null while the data is unloaded, then recovers once loaded", async () => {
     setAtSuggestionsForTest(null);
     try {
-      // Unloaded: null, but the query kicks warmAtSuggestions.
       expect(complete("$@")).toBeNull();
       await loadAtSuggestions();
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(complete("$@")).not.toBeNull();
     } finally {
-      // The load above restored the cache from the fs-backed transport.
       expect(complete("$@")).not.toBeNull();
     }
   });
@@ -205,7 +194,6 @@ describe("atSuggestionCompletion", () => {
       ) as CompletionResult | null;
       const alpha = option(result, "@a");
       expect(alpha).toBeTruthy();
-      // The document changes before the completion is applied.
       view.dispatch({ changes: { from: 0, to: 0, insert: "z" } });
       const applyStale = alpha?.apply;
       if (typeof applyStale !== "function") {

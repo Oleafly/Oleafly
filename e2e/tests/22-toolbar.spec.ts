@@ -79,7 +79,6 @@ test("export menu lists the document formats", async ({ tauriPage }) => {
   await expect(tauriPage.getByText("Export as PDF")).toBeVisible();
   await expect(tauriPage.getByText("Export as Word (.docx)")).toBeVisible();
   await expect(tauriPage.getByText("Export as Markdown (.md)")).toBeVisible();
-  // Close via the backdrop; actual exports open native save dialogs (manual).
   await tauriPage.press('[aria-label="Export"]', "Enter");
 });
 

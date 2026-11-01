@@ -17,7 +17,6 @@ const SECTION_LEVEL: Record<string, number> = {
 };
 const SECTION_RE = /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/;
 
-// Bound the forward scan so folding stays cheap on very large documents.
 const WINDOW = 200_000;
 
 function environmentFoldRange(

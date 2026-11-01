@@ -1,5 +1,3 @@
-//! Durable Checkpoint publication outcome shared by compile IPC and the UI.
-
 use oleafly_history::{Candidate, ContentHash};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -19,8 +17,6 @@ pub enum CheckpointSkipReason {
     IncompleteCapture,
 }
 
-/// Publication is supplementary to compilation. A skipped outcome never
-/// changes an otherwise successful compile into a failure.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum CheckpointPublicationOutcome {
@@ -304,16 +300,11 @@ fn request_publication_cancel(
     true
 }
 
-/// Stops the in-flight background publication for a project and drops its
-/// successor. Worktree mutations and store deletions call this first so they
-/// never wait behind supplementary work.
 pub(crate) fn cancel_project_publications(project_id: &str) {
     let mut lanes = lock_publication_lanes();
     request_publication_cancel(&mut lanes, project_id);
 }
 
-/// Cancels like [`cancel_project_publications`] and then waits, bounded, for
-/// the lane to drain so a store deletion cannot race a late publication.
 pub(crate) fn cancel_project_publications_and_wait(project_id: &str) {
     let registry = publication_registry();
     let deadline = std::time::Instant::now() + PUBLICATION_DRAIN_TIMEOUT;
@@ -462,11 +453,6 @@ fn publication_request(
     }
 }
 
-/// Hands the project snapshot to the background lane behind the compile
-/// result. At most one publication runs per project. A newer request cancels
-/// the running one and becomes its single successor, so there is never a
-/// queue. Nothing here reads a file, opens a store, or takes a lock: every
-/// decision, the checkpoints switch included, is made inside the lane.
 pub(crate) fn schedule_after_successful_compile<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     project_id: &str,
@@ -513,10 +499,6 @@ fn is_missing_file(error: &oleafly_history::HistoryError) -> bool {
     matches!(error, oleafly_history::HistoryError::Io(io) if io.kind() == std::io::ErrorKind::NotFound)
 }
 
-/// A writer can delete a file between the walk and the seal. That must cost
-/// the vanished file, never the whole checkpoint, so walk once more and seal
-/// what is still on disk. Every other sealing failure stands: a file that is
-/// present still has to pass the store's validation.
 fn stage_with_one_rewalk(
     store: &oleafly_history::Store,
     project_root: &Path,
@@ -551,8 +533,6 @@ fn snapshot_evidence(
     .map_err(|error| AdapterFailure::silent(format!("compile evidence is invalid: {error}")))
 }
 
-/// Snapshots the project tree behind one successful compile. Every failure
-/// remains supplementary: a compile that succeeded stays successful.
 async fn walk_if_changed(
     project_id: &str,
     project_root: &Path,

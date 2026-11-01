@@ -14,16 +14,13 @@ export type ResearchSeedFigure =
   | "table";
 
 export interface ResearchSeedProject {
-  /** Fixture directory under `fixtures/research-seeds/` and the archive name. */
   slug: string;
   name: string;
   kind: ResearchSeedKind;
   engine: ResearchSeedEngine;
   mainDoc: string;
-  /** Book-cover hex, drawn from the library palette in `Book.tsx`. */
   color: string;
   figureTypes: ResearchSeedFigure[];
-  /** What this fixture is meant to exercise in the app. */
   summary: string;
 }
 

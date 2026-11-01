@@ -19,7 +19,6 @@ pub enum CheckId {
     Privacy,
 }
 
-/// `CHECK_IDS` in the TypeScript order.
 pub const CHECK_IDS: [CheckId; 6] = [
     CheckId::Ats,
     CheckId::Compile,
@@ -223,7 +222,6 @@ pub struct Finding {
 }
 
 impl Finding {
-    /// A finding with only the fields every rule sets.
     pub fn new(
         id: &str,
         lens: Lens,
@@ -266,8 +264,6 @@ impl Finding {
     }
 }
 
-/// Scores and coverage per check, serialised in `CHECK_IDS` order (the
-/// derived `Ord` of [`CheckId`] is that order).
 pub type CheckScores = BTreeMap<CheckId, i64>;
 pub type CheckCoverage = BTreeMap<CheckId, Coverage>;
 

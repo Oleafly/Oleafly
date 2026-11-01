@@ -1488,6 +1488,7 @@
         "missing": "Ei löytynyt tältä koneelta."
       },
       "managedIdle": "Ei käytössä. Oleafly käyttää ensisijaisesti tältä koneelta löytynyttä kopiota.",
+      "superseded": "Ei käytössä. Oleafly käyttää nyt työkalua {{tool}} {{version}}.",
       "download": {
         "optional": "Valinnainen. Oleafly käyttää jo tällä koneella olevaa kopiota.",
         "license": "{{license}}-lisenssi.",

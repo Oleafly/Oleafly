@@ -53,11 +53,6 @@ async function pageValue(tauriPage: TauriPage): Promise<string> {
   return reported;
 }
 
-/**
- * Poll until the toolbar reports `expected`. Navigation is asynchronous, so
- * this must retry the way `expect(locator).toHaveValue()` does - reading once
- * races the update and fails on a slower machine.
- */
 async function expectPage(tauriPage: TauriPage, expected: string) {
   const deadline = Date.now() + 15_000;
   let seen = "";
@@ -70,7 +65,6 @@ async function expectPage(tauriPage: TauriPage, expected: string) {
   expect(seen).toBe(expected);
 }
 
-/** Step one page in whichever presentation the toolbar is currently using. */
 async function stepPage(tauriPage: TauriPage, label: "Next page" | "Previous page") {
   const inline = tauriPage.locator(`[aria-label="${label}"]`);
   if (await inline.isVisible()) {
@@ -169,9 +163,6 @@ test.beforeEach(async ({ tauriPage }) => {
   if (hasBaseline) {
     await openProject(tauriPage, "E2E Doc");
   } else {
-    // The native bridge is shared across focused local runs. Recreate the
-    // deterministic baseline if another suite intentionally reset its isolated
-    // data directory instead of making every preview assertion order-dependent.
     await createBlankProject(tauriPage, "E2E Doc");
   }
   await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
@@ -196,8 +187,6 @@ async function chooseZoom(page: Parameters<typeof openZoomMenu>[0], label: strin
 
 test("zoom controls change the zoom level", async ({ tauriPage }) => {
   const zoom = () => zoomPercent(tauriPage);
-  // Select a scale explicitly so the initial automatic fit cannot change the
-  // baseline between the two button clicks.
   await chooseZoom(tauriPage, "100%");
   await expect.poll(zoom).toBe(100);
   const activate = async (label: "Zoom in" | "Zoom out") => {
@@ -299,8 +288,6 @@ Page three
   await stepPage(tauriPage, "Previous page");
   await expectPage(tauriPage, "2");
 
-  // Typing a destination only exists in the expanded toolbar - the collapsed
-  // form has no input to type into - so exercise it only when it is rendered.
   const pageField = tauriPage.locator('[aria-label="Page number"]');
   if (await pageField.isVisible()) {
     await tauriPage.fill('[aria-label="Page number"]', "1");
@@ -315,9 +302,6 @@ Page three
     await stepPage(tauriPage, "Previous page");
     await expectPage(tauriPage, "1");
   }
-  // Narrow split panes move page layout into the measured overflow menu.
-  // Exercise whichever production presentation is active, then assert the
-  // preview's actual layout state rather than assuming the inline buttons fit.
   await selectPageLayout(tauriPage, "Two-page view", "double");
   await stepPage(tauriPage, "Next page");
   await expectPage(tauriPage, "3");
@@ -327,8 +311,6 @@ Page three
 });
 
 test("invert colors toggles on and off", async ({ tauriPage }) => {
-  // Toggle through whichever form the toolbar is showing and assert the pane's
-  // own state: the collapsed menu item carries no aria-pressed.
   const pane = tauriPage.getByTestId("preview-pane");
   const initial = await pane.getAttribute("data-preview-inverted");
   expect(["true", "false"]).toContain(initial);

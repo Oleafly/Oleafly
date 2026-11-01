@@ -436,7 +436,6 @@ async fn the_state_follows_the_account_from_disconnected_to_revoked() {
     std::fs::create_dir_all(&record).unwrap();
     assert_eq!(code(&cloud_state().await.err().unwrap()), "cloud.local_io");
     std::fs::remove_dir(&record).unwrap();
-    // A record that can't be read is set aside, so this computer can connect again.
     std::fs::write(&record, vec![b' '; 1024 * 1024 + 1]).unwrap();
     assert_eq!(state().await["status"], "disconnected");
     assert!(!record.exists());
@@ -1374,20 +1373,76 @@ async fn keys_for_a_bucket_connect_only_once_the_bucket_can_hold_sync() {
     assert_eq!(first["error"], Value::Null);
     assert_eq!(report_for(&first, "alpha")["uploaded"], 2);
     let main = format!(
-        "oleafly{}/files/main.tex",
+        "oleafly{}/files/main.tex~",
         project_remote(cloud_of("alpha"))
     );
     assert_eq!(
-        bucket.with(|bucket| bucket.read(&main)),
-        Some(b"alpha v1".to_vec())
+        bucket.with(|bucket| {
+            bucket
+                .objects
+                .iter()
+                .filter(|(key, _)| key.starts_with(&main))
+                .map(|(_, (bytes, _))| bytes.clone())
+                .collect::<Vec<_>>()
+        }),
+        vec![b"alpha v1".to_vec()]
     );
 
-    // Without its keys the connection can't be used until they are entered again.
     let backend = crate::secrets::cloud_secret_backend().backend;
     crate::secrets::delete_cloud_secret(ProviderKind::S3.secret_account(), backend).unwrap();
     let report = sync().await;
     assert_eq!(code_of(&report["error"]), "cloud.revoked");
     assert_eq!(state().await["status"], "revoked");
+}
+
+#[tokio::test]
+async fn details_for_a_bucket_read_a_manifest_again_only_once_it_changed() {
+    let _harness = Harness::new().await;
+    let bucket = FakeS3::start().await;
+    cloud_connect_credentials(
+        ProviderKind::S3,
+        bucket.config("oleafly"),
+        KEY_ID.into(),
+        SECRET.into(),
+    )
+    .await
+    .unwrap();
+    let cloud = ProjectId::new();
+    let key = format!("oleafly{}", version_remote(cloud));
+    let publish = |name: &str| {
+        let version = json!({
+            "v": 1,
+            "project": cloud,
+            "name": name,
+            "manifest": {"name": name, "main_doc": "main.tex"},
+            "stamp": fresh_stamp(),
+            "device": "Laptop",
+            "files": []
+        });
+        bucket.with(|bucket| bucket.put(&key, &serde_json::to_vec(&version).unwrap()));
+    };
+    let reads = || {
+        bucket.with(|bucket| {
+            (
+                bucket.count(&format!("GET {key}")),
+                bucket.count(&format!("HEAD {key}")),
+            )
+        })
+    };
+    publish("From the laptop");
+
+    let first = view(cloud_details().await.unwrap());
+    assert_eq!(first["remote"][0]["name"], "From the laptop");
+    assert_eq!(reads(), (1, 0));
+
+    let again = view(cloud_details().await.unwrap());
+    assert_eq!(again["remote"][0]["name"], "From the laptop");
+    assert_eq!(reads(), (1, 1));
+
+    publish("Renamed on the laptop");
+    let renamed = view(cloud_details().await.unwrap());
+    assert_eq!(renamed["remote"][0]["name"], "Renamed on the laptop");
+    assert_eq!(reads(), (2, 2));
 }
 
 #[tokio::test]

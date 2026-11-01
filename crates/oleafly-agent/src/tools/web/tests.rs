@@ -11,7 +11,6 @@ struct Route {
     content_type: &'static str,
     body: Vec<u8>,
     location: Option<String>,
-    /// How long the site waits before it answers.
     delay: Duration,
 }
 
@@ -42,7 +41,6 @@ struct Site {
     hits: Arc<AtomicUsize>,
 }
 
-/// A local site serving `routes` by path; unknown paths are 404.
 fn site(routes: Vec<(&'static str, Route)>) -> Site {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
@@ -333,8 +331,6 @@ async fn a_url_the_model_wrote_into_another_tool_is_not_fetched() {
     let site = site(vec![("/c", route("200 OK", "text/plain", "stolen"))]);
     let url = format!("{}/c?d=bWFpbi50ZXg", site.base);
     let ctx = Arc::new(WebToolContext::for_tests(None));
-    // read_file fails naming the path it was given; a note tool hands its
-    // text back.
     let inner: ToolRunner = Arc::new(|call: ToolCall| {
         Box::pin(async move {
             let args: Value = serde_json::from_str(&call.arguments).unwrap();
@@ -417,7 +413,6 @@ fn hosted_search_results_become_fetchable_for_the_whole_run() {
     ctx.observe_event(&outcome(
         json!({ "sources": [{ "url": "https://e.org/2" }] }),
     ));
-    // Only result lists are read, never other text, and never an error.
     ctx.observe_event(&outcome(json!({ "note": "https://evil.example/n" })));
     ctx.observe_event(&outcome(
         json!({ "error": "x", "results": [{ "url": "https://evil.example/e" }] }),
@@ -485,8 +480,6 @@ async fn text_that_decoding_grows_past_the_cap_is_marked_truncated() {
 async fn a_slow_robots_txt_counts_against_the_fetch_timeout() {
     let site = site(vec![
         (
-            // Far longer than the fetch timeout: the fetch must give up long
-            // before robots.txt answers, whatever the load on the machine.
             "/robots.txt",
             slow(route("200 OK", "text/plain", ""), Duration::from_secs(20)),
         ),
@@ -501,8 +494,6 @@ async fn a_slow_robots_txt_counts_against_the_fetch_timeout() {
         .await
         .unwrap_err();
     assert_eq!(error, WebError::Timeout);
-    // A loaded runner polls the timeout late by a second or two; waiting out
-    // the robots route would take ten times longer.
     assert!(started.elapsed() < Duration::from_secs(10));
 }
 

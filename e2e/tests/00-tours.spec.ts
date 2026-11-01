@@ -191,9 +191,6 @@ async function createProjectAndWaitForWorkspaceTour(page: Page, projectName: str
   while (Date.now() < deadline) {
     if (last.tourTitleVisible) return;
     if (last.alerts.length > 0) {
-      // notifyError persists the underlying command error asynchronously.
-      // Give that diagnostic invoke a short opportunity to finish before
-      // collecting the state that will be attached to a CI failure.
       await new Promise((resolve) => setTimeout(resolve, 250));
       const diagnostic = await projectHandoffSnapshot(
         page,
@@ -231,9 +228,6 @@ async function createProjectAndWaitForWorkspaceTour(page: Page, projectName: str
         checked.createButtonVisible &&
         checked.createButtonEnabled
       ) {
-        // The bridge acknowledged the first command but the exact same button
-        // is still live and neither the store nor disk saw a project. Retry
-        // this one dropped click; never retry once creation has begun.
         await page.locator(selector).click();
         retriedDroppedClick = true;
       }

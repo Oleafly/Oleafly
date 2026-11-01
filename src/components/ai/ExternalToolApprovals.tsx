@@ -4,8 +4,6 @@ import { AI_PROMPT_SURFACE } from "@/components/ai/AiChrome";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { cn } from "@/lib/utils";
 
-// Reuses the ToolConfirm card from the in-app chat so approval semantics
-// and the diff preview stay identical for MCP (external agent) requests.
 export function ExternalToolApprovals() {
   const { t } = useTranslation(["common", "ai"]);
   const queue = useMcpApprovalStore((s) => s.queue);

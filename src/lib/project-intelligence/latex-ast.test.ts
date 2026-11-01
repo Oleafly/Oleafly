@@ -5,8 +5,6 @@ import { astAugmentLatexFile, latexAstReady } from "./latex-ast";
 import { lineStarts } from "./source";
 import type { ProjectIntelligenceSnapshot } from "./types";
 
-// The AST parser loads lazily in production; tests wait for it so the
-// augmentation path is exercised deterministically.
 beforeAll(async () => {
   await latexAstReady();
 });

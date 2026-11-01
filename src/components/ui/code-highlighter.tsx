@@ -1,5 +1,6 @@
 import { memo, useEffect, useState, type ReactNode } from "react";
 import type { Language, StreamParser } from "@codemirror/language";
+import type { tags } from "@lezer/highlight";
 import { cn } from "@/lib/utils";
 import { RenderCache } from "./render-cache";
 
@@ -68,11 +69,35 @@ function loadLanguage(language: string) {
   if (cached) return cached;
   const parserLoader = parserLoaders[name];
   if (!parserLoader) return Promise.resolve(null);
-  const pending = Promise.all([import("@codemirror/language"), parserLoader()]).then(
-    ([{ StreamLanguage }, parser]) => StreamLanguage.define(parser),
+  const pending = Promise.all([
+    import("@codemirror/language"),
+    import("@lezer/highlight"),
+    parserLoader(),
+  ]).then(([{ StreamLanguage }, lezerHighlight, parser]) =>
+    StreamLanguage.define({
+      ...parser,
+      tokenTable: { ...legacyTokenTags(lezerHighlight.tags), ...parser.tokenTable },
+    }),
   );
   languageCache.set(name, pending);
   return pending;
+}
+
+function legacyTokenTags(t: typeof tags) {
+  return {
+    attribute: t.attributeName,
+    builtin: t.standard(t.variableName),
+    def: t.definition(t.variableName),
+    error: t.invalid,
+    header: t.heading,
+    property: t.propertyName,
+    qualifier: t.modifier,
+    "string-2": t.special(t.string),
+    tag: t.tagName,
+    type: t.typeName,
+    variable: t.variableName,
+    "variable-2": t.special(t.variableName),
+  };
 }
 
 const tokenColors: Record<string, string> = {

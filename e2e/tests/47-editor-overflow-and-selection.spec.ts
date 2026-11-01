@@ -21,9 +21,6 @@ test("toolbar overflow menu surfaces controls that don't fit the bar", async ({ 
     10_000,
   );
 
-  // Force the toolbar's measured container down to a width that fits nothing,
-  // so every control deterministically lands in the overflow menu (real
-  // ResizeObserver-driven layout, not a mock of the fitCount logic).
   await tauriPage.evaluate(
     `(() => {
       const anchor = document.querySelector('[aria-label^="Bold ("]')
@@ -46,9 +43,6 @@ test("toolbar overflow menu surfaces controls that don't fit the bar", async ({ 
     })()`,
     10_000,
   );
-  // Click the trigger's own DOM node directly: the bridge's click command is
-  // coordinate/occlusion-based (see helpers.ts caretIn notes), which is
-  // unreliable against an element whose ancestor was just forced to 20px.
   await tauriPage.evaluate(
     `document.querySelector('[aria-label="More formatting options"]').click()`,
   );
@@ -63,9 +57,6 @@ test("forward SyncTeX switches to split view and locates the PDF position", asyn
 }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // The open-project auto-compile only fires in split view; a previous spec
-  // can leave the persisted layout in editor-only mode where the status chip
-  // never gains a severity.
   await tauriPage.evaluate(
     `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
       useSettingsStore.getState().setViewMode("split"),
@@ -93,7 +84,6 @@ test("forward SyncTeX switches to split view and locates the PDF position", asyn
   );
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 20_000 });
 
-  // Leave the view mode as found.
   await tauriPage.click('[aria-label="Split View"]');
 });
 
@@ -101,9 +91,6 @@ test("selecting text in the editor reveals the Ask AI action bubble", async ({ t
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  // Fire-and-forget listener storing the payload on a window global: this
-  // bridge's evaluate() does not await returned promises, so a listener that
-  // resolves a Promise inside evaluate() would never actually be waited on.
   await tauriPage.evaluate(
     `(() => {
       window.__lastAiSelectionPrompt = null;
@@ -131,9 +118,6 @@ test("selecting text in the editor reveals the Ask AI action bubble", async ({ t
   const detail = await tauriPage.evaluate<string>(`window.__lastAiSelectionPrompt`);
   expect(detail).toContain("Write");
 
-  // The presets rewrite the selection, so they open an inline edit over it
-  // rather than handing off to the agent panel: the session carries the
-  // preset's instruction and targets exactly the selected range.
   await tauriPage.waitForFunction(
     `import("/src/store/inlineEdit.ts").then(({ useInlineEditStore }) => {
       const session = useInlineEditStore.getState().session;
@@ -142,7 +126,6 @@ test("selecting text in the editor reveals the Ask AI action bubble", async ({ t
     })`,
     5_000,
   );
-  // ...and it must not have switched the rail over to the chat panel.
   expect(
     await tauriPage.evaluate<string>(
       `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
@@ -150,7 +133,6 @@ test("selecting text in the editor reveals the Ask AI action bubble", async ({ t
     ),
   ).not.toBe("ai");
 
-  // Leave no session behind for the next test in this file.
   await tauriPage.evaluate(
     `import("/src/store/inlineEdit.ts").then(({ useInlineEditStore }) =>
       useInlineEditStore.getState().reset())`,

@@ -1,14 +1,8 @@
-//! Tool orchestrator: per-call approval classification before dispatch.
-//! `Forbidden` calls are short-circuited without any round trip; `Skip`
-//! calls may execute natively without asking; `NeedsApproval` calls pause
-//! for the shell's approval flow (which the tool runner performs).
-
 use std::sync::Arc;
 
 use crate::run::{ToolOutput, ToolRunner};
 use crate::stream::ToolCall;
 
-/// Risk classes mirror the shell's approval-risk table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolRisk {
     Read,
@@ -17,27 +11,19 @@ pub enum ToolRisk {
     Network,
 }
 
-/// A persisted per-project decision from approval settings.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyDecision {
     Allow,
     Deny,
 }
 
-/// What the orchestrator does with a call.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ApprovalRequirement {
-    /// No approval needed (read-class, or the project allowlisted the tool).
     Skip,
-    /// Route through the approval flow before executing.
     NeedsApproval,
-    /// The project denied the tool; never execute, never ask.
     Forbidden,
 }
 
-/// Classify one call from its risk class and the project's persisted
-/// decision for that tool. A denial always wins; an explicit allow or a
-/// read-class tool skips approval; everything else asks.
 pub fn classification_from_policy(
     risk: ToolRisk,
     decision: Option<PolicyDecision>,
@@ -56,9 +42,6 @@ pub fn classification_from_policy(
 
 pub type Classifier = Arc<dyn Fn(&ToolCall) -> ApprovalRequirement + Send + Sync>;
 
-/// Wraps a tool runner with classification: `Forbidden` calls return an
-/// error output without invoking the runner, so a denied tool's output can
-/// never reach the model even if the shell-side gate fails.
 pub struct ToolOrchestrator;
 
 impl ToolOrchestrator {

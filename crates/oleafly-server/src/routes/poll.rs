@@ -89,8 +89,6 @@ fn only(frames: Vec<ServerFrame>) -> PollBatch {
     }
 }
 
-// A batch that carries large changes is encoded on the blocking pool, as a
-// socket does with the frames it sends.
 async fn reply(batch: PollBatch) -> Result<Response, ServerError> {
     let size = batch
         .frames
@@ -160,8 +158,6 @@ async fn open(
         .unwrap_or_default();
     let now = state.clock.now_ms();
     let server_id = state.server_id;
-    // Registered before the proof, like a socket, so a sign-out that lands
-    // while the proof runs still reaches this session.
     let ticket = state.sockets.register(device);
     let refuse = |error: ServerError| {
         state.sockets.unregister(device, ticket.id);
@@ -260,9 +256,6 @@ async fn frames(
     if session.is_ended() {
         return Err(ServerError::NotFound);
     }
-    // A session reads one post at a time and an account at most a few
-    // across its sessions, and a large one takes its room in the transfer
-    // budget before its body is read.
     let _posting = session.posting().ok_or(ServerError::RateLimited)?;
     let _turn = state
         .polls

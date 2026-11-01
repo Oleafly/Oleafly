@@ -236,6 +236,7 @@
     "pathStyleHint": "Vyžaduje to MinIO a většina serverů, které si provozujete sami."
   },
   "errors": {
+    "clock_skew": "Hodiny tohoto počítače nejsou správně nastavené, proto služba {{provider}} nepřijímá jeho požadavky. Nastavte správné datum a čas, aby synchronizace mohla pokračovat.",
     "code_invalid": "Tento kód nefungoval. Zkuste to znovu.",
     "device_name_empty": "Zadejte název.",
     "device_name_invalid": "Název počítače nesmí obsahovat \\ / : * ? \" < > | ani řídicí znaky a může mít nejvýše 32 znaků.",

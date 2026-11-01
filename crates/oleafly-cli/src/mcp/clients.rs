@@ -1,6 +1,3 @@
-//! Where AI clients keep their MCP server lists, and the `oleafly` entry
-//! each needs. Writes keep every other server and setting, back the file up
-//! first, and never include tokens or secrets.
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
@@ -72,7 +69,6 @@ impl Scope {
     }
 }
 
-/// Where this computer keeps things.
 #[derive(Clone, Debug)]
 pub struct ClientEnv {
     pub platform: Platform,
@@ -101,7 +97,6 @@ impl ClientEnv {
     }
 }
 
-/// The file a client keeps its servers in for `scope`, if it has one.
 pub fn client_config_path(
     client: Client,
     scope: Scope,
@@ -167,7 +162,6 @@ pub fn entry_for(client: Client, _scope: Scope, command: &str) -> Value {
     }
 }
 
-/// The entry as text to paste into the client's file.
 pub fn snippet(client: Client, name: &str, entry: &Value) -> String {
     if client.toml() {
         let args: Vec<String> = entry["args"]
@@ -176,7 +170,6 @@ pub fn snippet(client: Client, name: &str, entry: &Value) -> String {
             .flatten()
             .map(|arg| format!("{arg}"))
             .collect();
-        // A name with dots or spaces must be a quoted key.
         format!(
             "[mcp_servers.{}]\ncommand = {}\nargs = [{}]\ntool_timeout_sec = {}\n",
             toml_edit::Key::new(name),
@@ -201,7 +194,6 @@ fn read_limited(path: &Path) -> Result<Option<Vec<u8>>, String> {
     }
 }
 
-/// Whether the file at `path` lists a server called `name`.
 fn lists_server(client: Client, path: &Path, name: &str) -> bool {
     let Ok(Some(bytes)) = read_limited(path) else {
         return false;
@@ -225,7 +217,6 @@ fn lists_server(client: Client, path: &Path, name: &str) -> bool {
         .is_some()
 }
 
-/// Every client and scope whose settings list `oleafly`.
 pub fn configured_clients(env: &ClientEnv, root: Option<&Path>) -> Vec<(Client, Scope, PathBuf)> {
     let mut found = Vec::new();
     for client in Client::ALL {
@@ -292,7 +283,6 @@ fn toml_value(value: &Value) -> toml_edit::Item {
     }
 }
 
-/// The new file text, and what changed.
 fn updated_text(
     client: Client,
     existing: Option<&str>,
@@ -355,15 +345,10 @@ fn updated_text(
     Ok((format!("{text}\n"), action))
 }
 
-/// A file outside the project couldn't be written (exit 4, not 3: the
-/// project is fine).
 fn not_written(error: std::io::Error) -> CliError {
     CliError::new(ErrorKind::System, "io.failed", error.to_string())
 }
 
-/// Adds or updates `name` in the client's file. The file as it was before
-/// Oleafly first changed it is kept as `<file>.oleafly-backup` (a later
-/// write leaves that backup alone); an identical entry writes nothing.
 pub fn write_entry(
     client: Client,
     path: &Path,
@@ -388,10 +373,7 @@ pub fn write_entry(
                 .unwrap_or_default();
             name.push(BACKUP_SUFFIX);
             let backup = path.with_file_name(name);
-            // The first backup is the user's own file; a second write must
-            // not replace it with Oleafly's earlier edit.
             if std::fs::symlink_metadata(&backup).is_err() {
-                // The client's config can hold its other servers' keys.
                 oleafly_core::atomic::write_atomic_private(&backup, bytes).map_err(not_written)?;
             }
             Some(backup)

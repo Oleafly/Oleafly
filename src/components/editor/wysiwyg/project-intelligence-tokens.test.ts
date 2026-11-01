@@ -174,7 +174,6 @@ describe("visual project intelligence tokens", () => {
     expect(results?.class).not.toContain("is-duplicate");
     expect(results?.title).not.toContain(token.stateDuplicate);
 
-    // A Markdown anchor in the same file still resolves.
     const local = rawInlineTokenAttributes(snapshot, "a.md", "\\ref{sec:local}");
     expect(local?.class).toContain("is-resolved");
   });

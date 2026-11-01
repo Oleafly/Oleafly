@@ -1,6 +1,3 @@
-//! 0.4.8 L: a built-in task that moves to another process continues the
-//! same conversation, waits for its runs again, or falls back to the
-//! research record when its conversation cannot be restored.
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -34,8 +31,6 @@ enum Reply {
     Text(&'static str),
 }
 
-/// An OpenAI-compatible provider that answers each request with the next
-/// scripted reply. With `hold_first`, the first reply waits for `release`.
 struct Provider {
     url: String,
     requests: Arc<Mutex<Vec<Value>>>,
@@ -198,7 +193,6 @@ fn setup() -> Setup {
     }
 }
 
-/// A queue running as `owner` over the shared task store.
 fn queue(setup: &Setup, owner: OwnerKind, provider: &Provider) -> ResearchTaskState {
     let mut host = setup.host.clone();
     host.owner = owner;
@@ -251,7 +245,6 @@ async fn wait_for_status(
     store.require(id).unwrap()
 }
 
-/// Starts the task in `app` and suspends it after its first tool call.
 async fn run_until_suspended(
     app: &ResearchTaskState,
     provider: &Provider,
@@ -309,7 +302,6 @@ async fn a_handed_off_builtin_task_continues_the_same_conversation() {
     let continued = requests[1]["messages"].to_string();
     assert!(continued.contains("original manuscript"), "{continued}");
     assert!(!continued.contains("You are resuming"), "{continued}");
-    // A finished task keeps no snapshot.
     assert!(!crate::conversation::conversation_path(store.root(), &task.id, generation).exists());
     app.shutdown().await;
     helper.shutdown().await;
@@ -415,7 +407,6 @@ async fn a_task_waiting_for_runs_resumes_by_waiting_not_by_calling_the_model() {
     let helper = queue(&setup, OwnerKind::Daemon, &provider);
     helper.launch_ready().await.unwrap();
     let finished = wait_for_status(&helper, &task.id, ResearchTaskStatus::AwaitingReview).await;
-    // Nothing was left in flight, so the task ended without another turn.
     assert_eq!(provider.count(), 0);
     assert_eq!(finished.result.unwrap().summary, "Started r001.");
     helper.shutdown().await;

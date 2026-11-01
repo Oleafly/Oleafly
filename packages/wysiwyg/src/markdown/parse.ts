@@ -19,10 +19,6 @@ const FRONTMATTER_RE = /^(---\r?\n[\s\S]*?\r?\n---)\r?\n?/;
 export type PreservedMarkdownInlineRange = PreservedInlineRange;
 
 export interface ParseMarkdownBodyOptions {
-  /**
-   * Absolute source ranges that Markdown must not consume or normalize. The
-   * caller uses this for exact math delimiters after syntax-aware scanning.
-   */
   preservedInlineRanges?: readonly PreservedMarkdownInlineRange[];
 }
 

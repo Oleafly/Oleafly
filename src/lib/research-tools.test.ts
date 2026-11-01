@@ -22,7 +22,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   listResearchTasks: mocks.listResearchTasks,
 }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => ({ projectId: files.projectId }) } }));
-// 0.4.8: research tasks are experimental; the task tools exist only while they are on.
 const flag = vi.hoisted(() => ({ enabled: true }));
 vi.mock("@/store/research-tasks-flag", () => ({ researchTasksEnabled: () => flag.enabled }));
 
@@ -143,7 +142,6 @@ describe("app-level research tools wiring", () => {
 
 describe("creating research tasks from the assistant", () => {
   it("creates a task in the open project with the default brief and starts it", async () => {
-    // The listed config shows a stored key as a marker.
     mocks.getConfig.mockResolvedValue({ ai_keys: { openai: "__stored__" } });
     mocks.createResearchTask.mockResolvedValue(task("t1", { title: "Survey" }));
     mocks.startResearchTask.mockResolvedValue(task("t1", { title: "Survey", status: "running" }));
@@ -163,7 +161,6 @@ describe("creating research tasks from the assistant", () => {
       modelId: defaultModel("openai"),
       skillIds: [],
       dependencyIds: [],
-      // A task an agent creates asks before each command and has no network.
       brief: {
         ...defaultBrief("Find papers on sparse attention"),
         permissions: { network: false, commands: "ask", desktopApps: false },

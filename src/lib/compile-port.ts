@@ -1,11 +1,6 @@
 import { type CompilePort, CompileStopped } from "@oleafly/compile-port";
 import { cancelCompile, compileProject, readCompiledPdf, synctexForward, synctexInverse } from "@/lib/tauri";
 
-/**
- * The desktop behind the shared compile contract. Rust compiles the project
- * folder with the engine and flavour stored in the project, so the target only
- * names the main document, and SyncTeX stays on disk next to the build.
- */
 export function createDesktopCompilePort(projectId: string): CompilePort {
   let running = 0;
   return {

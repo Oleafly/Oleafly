@@ -6,7 +6,6 @@ interface SparklineProps {
   className?: string;
 }
 
-/** A small line of values, drawn in the current text colour. */
 export function Sparkline({ values, width = 120, height = 28, label, className }: Readonly<SparklineProps>) {
   const finite = values.filter(Number.isFinite);
   if (finite.length < 2) return null;

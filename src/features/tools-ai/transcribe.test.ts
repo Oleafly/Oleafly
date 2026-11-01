@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
   mathpixText: vi.fn(),
   mathpixPdf: vi.fn(),
   renderPages: vi.fn(),
-  /** The pages renderPages drew, and how many times it closed its document. */
   rendered: [] as number[],
   closed: 0,
   downscaleImage: vi.fn(),
@@ -151,14 +150,12 @@ describe("image transcription", () => {
         message: researchTools.converterErrors.outputLimit,
       });
     }
-    // A scanned page that is cut off stops the run before the next page.
     mocks.completeViaBackend.mockClear();
     mocks.completeViaBackend.mockResolvedValue({ text: "half", stop_reason: "max_tokens" });
     await expect(transcribePdfPages(new Uint8Array([1]), [1, 2, 3], "Markdown")).rejects.toThrow(
       researchTools.converterErrors.outputLimit,
     );
     expect(mocks.completeViaBackend).toHaveBeenCalledOnce();
-    // Other reasons, and none at all, are fine.
     mocks.completeViaBackend.mockResolvedValue({ text: "ok", stop_reason: "end_turn" });
     await expect(
       transcribeImage(claude, PNG, { target: "Typst", mode: "image", fragment: true }),
@@ -373,7 +370,6 @@ describe("scanned PDF transcription", () => {
     expect(mocks.mathpixPdf).toHaveBeenCalledWith(bytes, expect.objectContaining({ pageRanges: "3-5" }));
     expect(progress.mock.calls.map(([event]) => event)).toEqual([
       { step: "uploadingPdf", model: "Mathpix" },
-      // Mathpix counts finished pages: the page it reads is the next one.
       { step: "transcribingPage", page: 1, total: 3, pdfPage: 3, model: "Mathpix" },
       { step: "transcribingPage", page: 2, total: 3, pdfPage: 4, model: "Mathpix" },
       { step: "transcribingPage", page: 3, total: 3, pdfPage: 5, model: "Mathpix" },
@@ -411,7 +407,6 @@ describe("scanned PDF transcription", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(progress).toHaveBeenCalledWith({ step: "transcribingPage", page: 1, total: 2, pdfPage: 4, model: "llava" });
     expect(mocks.rendered).toEqual([4]);
-    // The document is closed even though the run stopped part-way.
     expect(mocks.closed).toBe(1);
   });
 
@@ -463,7 +458,6 @@ describe("editor transcription", () => {
     await expect(transcribeEditorImage(file, "Typst", { onModel, typstVersion: "0.13.1" })).resolves.toBe(
       "$ E = m c^2 $",
     );
-    // The editor alone may fall back to the assistant's model (0.4.7 used it).
     expect(mocks.resolveToolsModel).toHaveBeenCalledWith("image", { assistantFallback: true });
     expect(onModel).toHaveBeenCalledWith(llm());
     expect(sent().system).toContain("Return only Typst source");

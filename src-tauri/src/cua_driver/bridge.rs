@@ -1,11 +1,3 @@
-//! `oleafly-desktop-apps`: a loopback MCP endpoint that gives one CLI agent
-//! session or one research task the `desktop_apps` tool. It speaks the same
-//! stateless Streamable HTTP as the research bridge: 127.0.0.1 only, a
-//! Bearer token, an exact Host, no Origin, 64 KiB requests. Calls go
-//! through the same dispatcher and gate as the built-in assistant's.
-//!
-//! The token never reaches a log line or an error.
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -55,7 +47,6 @@ fn random_hex(bytes: usize) -> Zeroizing<String> {
 }
 
 impl CuaBridge {
-    /// Serves `scope` with this desktop apps state.
     pub(crate) async fn start_with(
         scope: CuaScope,
         state: Arc<CuaDriverState>,
@@ -99,7 +90,6 @@ impl CuaBridge {
         })
     }
 
-    /// The `mcpServers` entry for `session/new`.
     pub(crate) fn mcp_server(&self) -> Value {
         json!({
             "type": "http",
@@ -120,8 +110,6 @@ impl CuaBridge {
         &self.context.scope
     }
 
-    /// Refuses further calls and ends the Cua session. The server keeps
-    /// answering 410 until `shutdown` or drop stops it.
     pub(crate) fn close(&self) {
         if self.context.closed.swap(true, Ordering::AcqRel) {
             return;
@@ -154,9 +142,6 @@ impl Drop for CuaBridge {
     }
 }
 
-/// The bridge for a new or reconnected CLI agent session, or `None` when
-/// desktop apps aren't ready (or the folder isn't trusted). Startup errors
-/// are logged and never stop the agent from starting.
 pub(crate) async fn acp_bridge(project_id: &str, agent_label: &str) -> Option<CuaBridge> {
     let state = global()?;
     if !ready(&state.settings())
@@ -183,8 +168,6 @@ pub(crate) async fn acp_bridge(project_id: &str, agent_label: &str) -> Option<Cu
     }
 }
 
-/// Remembers which bridge an ACP session uses, so its turn end can end the
-/// bridge's Cua session.
 pub(crate) fn bind_acp_session(acp_session_id: &str, session_key: &str) {
     if let Some(state) = global() {
         lock(&state.acp).insert(acp_session_id.to_string(), session_key.to_string());
@@ -286,7 +269,6 @@ async fn request(State(context): State<Arc<BridgeContext>>, request: Request) ->
             .into_response();
         }
     };
-    // A project that denies desktop apps lists no tool.
     let tools: Vec<_> = tool_meta(&context.state.settings())
         .filter(|_| !project_denied(&context.state, context.scope.project_id.as_deref()))
         .into_iter()
@@ -457,7 +439,6 @@ mod tests {
             .unwrap();
         let auth = token(&bridge);
         let secret = auth.trim_start_matches("Bearer ").to_string();
-        // list_apps starts the runtime, which fails: no driver here.
         let response = post(
             &bridge,
             Some(&auth),

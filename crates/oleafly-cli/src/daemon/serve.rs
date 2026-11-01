@@ -1,19 +1,3 @@
-//! The background helper: it runs the research tasks marked "keep running
-//! when Oleafly is closed" that the app handed it, one helper at a time,
-//! and gives them back when the app asks or it is stopped.
-//!
-//! ```text
-//! lock → state.json (starting) → recover → ready → every second:
-//!   stop request? hand tasks to the app, exit
-//!   signal?       keep tasks for the next helper, exit
-//!   start queued tasks, handle the app's cancels and reclaims
-//!   idle long enough? exiting → check once more → exit
-//! ```
-//!
-//! The app commits a handoff before it reads `state.json`; the helper
-//! writes `exiting` before its last look at its work. Either the app sees
-//! `ready` (and the helper sees the work) or it sees `exiting` or nothing
-//! and starts a new helper, which waits for this one's lock.
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::Arc;
@@ -39,44 +23,26 @@ pub use super::state::ServeMode;
 
 pub const TICK: Duration = Duration::from_secs(1);
 pub const HEARTBEAT: Duration = Duration::from_secs(5);
-/// How long a new helper waits for one that is exiting.
 pub const LOCK_BUDGET: Duration = Duration::from_secs(10);
-/// `oleafly daemon run` waits less: someone is watching.
 const FOREGROUND_LOCK_BUDGET: Duration = Duration::from_secs(2);
-/// How long running tasks get to stop when the app takes them back. The
-/// app waits `STOP_SUSPEND + CANCEL_GRACE` and a margin before it ends the
-/// helper (`STOP_WAIT` in the app's `daemon_handoff`).
 const STOP_SUSPEND: Duration = Duration::from_secs(30);
-/// … and when the helper is told to end.
 const SIGNAL_SUSPEND: Duration = Duration::from_secs(10);
-/// Past its suspend budget a release cancels what still runs and waits for
-/// it; this bounds that wait, so the whole release ends inside the app's
-/// stop wait (a helper ended mid-handoff leaves tasks with a dead owner).
 const RELEASE_MARGIN: Duration = Duration::from_secs(10);
-/// How often the helper reads the notification and keep-awake settings
-/// again.
 const PREFS_REFRESH: Duration = Duration::from_secs(10);
-/// How often a release looks whether the app's reclaims under way are done.
 const IN_FLIGHT_POLL: Duration = Duration::from_millis(200);
 const CONCURRENCY: usize = 2;
-/// Exit code when another helper runs (`oleafly daemon run`).
 pub const ALREADY_RUNNING: i32 = 8;
 
-/// Turns a text key and its parameters into the user's language.
 pub type Localizer = Arc<dyn Fn(&str, &[(&str, &str)]) -> String + Send + Sync>;
 
-/// How a notification click opens the app.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppLaunch {
-    /// macOS: `open -b <bundle id>`.
     MacBundle(&'static str),
     Program(PathBuf),
-    /// Linux: the AppImage, started without the old mount's variables.
     AppImage(PathBuf),
 }
 
 impl AppLaunch {
-    /// Starts the app as its own process.
     pub fn open(&self) {
         let mut command = match self {
             Self::MacBundle(bundle) => {
@@ -111,21 +77,15 @@ impl AppLaunch {
 pub struct ServeOptions {
     pub mode: ServeMode,
     pub data_root: PathBuf,
-    /// The binary the helper runs as (the app, or `oleafly`).
     pub exe: PathBuf,
-    /// The app's resources (bundled skills), when known.
     pub resources_dir: Option<PathBuf>,
     pub app_launch: Option<AppLaunch>,
     pub localize: Option<Localizer>,
-    /// Keep running with nothing to do.
     pub stay: bool,
     pub log_to_stderr: bool,
-    /// How long the helper stays with nothing to do.
     pub idle_grace: Duration,
 }
 
-/// Called between writing `exiting` and the last look at the work, for the
-/// helper of that data folder (tests).
 #[cfg(test)]
 #[allow(clippy::type_complexity)]
 pub(crate) static BEFORE_FINAL_CHECK: std::sync::Mutex<Option<(PathBuf, Box<dyn Fn() + Send>)>> =
@@ -135,8 +95,6 @@ fn store(tasks_root: &Path) -> Result<TaskStore, String> {
     TaskStore::with_owner_kind(tasks_root.to_path_buf(), OwnerKind::Daemon)
 }
 
-/// Runs the helper until it is stopped or has nothing to do. Builds its
-/// own runtime; call it from a thread that runs none.
 pub fn serve(options: ServeOptions) -> i32 {
     let paths = helper_paths(&options.data_root);
     if let Err(error) = ensure_dir(&paths) {
@@ -253,10 +211,6 @@ pub fn serve(options: ServeOptions) -> i32 {
     if let Ok(heartbeat) = heartbeat {
         let _ = heartbeat.join();
     }
-    // The lock goes before the state file: a held lock with no state file
-    // reads as a live helper, so a quit in between would start none. Past
-    // the lock the state says this helper is going, which starts a new one
-    // (it waits for nothing), and only this helper's own file is removed.
     let _ = state.set_phase(Phase::Exiting);
     drop(lock);
     state.remove();
@@ -293,8 +247,6 @@ pub(crate) fn termination() -> impl std::future::Future<Output = ()> {
             }
         }
     }
-    // A closed console, a logoff or a shutdown ends the process as surely as
-    // Ctrl+C, so the helper hands its tasks back for those too.
     #[cfg(windows)]
     {
         use tokio::signal::windows::{ctrl_c, ctrl_close, ctrl_logoff, ctrl_shutdown};
@@ -342,8 +294,6 @@ fn status_of(task: &ResearchTask) -> bool {
     task.status == ResearchTaskStatus::Running
 }
 
-/// Ends this helper's running tasks and hands them to `to` (the app, or
-/// the next helper), and with `to == App` its queued ones too.
 async fn release(
     tasks: &ResearchTaskState,
     store: &TaskStore,
@@ -363,10 +313,6 @@ async fn release(
             .map(|task| task.id.clone())
             .collect()
     };
-    // A task the app is taking back (or cancelling) is being suspended
-    // already: suspending it a second time races that one for its saved
-    // conversation, and the loser hands it over without it. Those finish
-    // first (they hand their task over themselves), within the budget.
     let started = Instant::now();
     let mut running = running_ids();
     while running.iter().any(|id| in_flight.contains(id)) && started.elapsed() < deadline {
@@ -376,10 +322,6 @@ async fn release(
     let deadline = deadline
         .saturating_sub(started.elapsed())
         .max(IN_FLIGHT_POLL);
-    // The suspend cancels what is still running past `deadline` and waits
-    // for it; the wait is bounded so the release ends inside the app's stop
-    // wait. Tasks still running then stay this helper's, and the next owner
-    // recovers them as interrupted.
     let bound = deadline + oleafly_acp::limits::CANCEL_GRACE + RELEASE_MARGIN;
     let results = match tokio::time::timeout(
         bound,
@@ -441,7 +383,6 @@ async fn release(
     tasks.shutdown().await;
 }
 
-/// Stops agents an earlier Oleafly left behind (their owner is gone).
 fn reap_orphans(acp_root: &Path) {
     use oleafly_sandbox::process::identity::{current, owner_is_live, probe, ProcessProbe};
     let me = current();
@@ -457,7 +398,6 @@ fn reap_orphans(acp_root: &Path) {
     );
 }
 
-/// What the main loop keeps once the tasks are recovered.
 struct Started {
     store: TaskStore,
     notifier: Arc<Notifier>,
@@ -465,8 +405,6 @@ struct Started {
     research_host: Arc<DaemonResearchHost>,
 }
 
-/// Opens the task store, registers the runtimes, recovers interrupted
-/// tasks and announces `ready`. `None` once it has logged why it couldn't.
 async fn start_tasks(
     options: &ServeOptions,
     prefs: Prefs,
@@ -556,8 +494,6 @@ async fn start_tasks(
     })
 }
 
-/// Reads the notification and keep-awake settings again; settings that
-/// can't be read leave the earlier ones in place.
 async fn reload_prefs(data_root: &Path, research_host: &DaemonResearchHost) {
     let root = data_root.to_path_buf();
     if let Ok(Ok(prefs)) =
@@ -567,7 +503,6 @@ async fn reload_prefs(data_root: &Path, research_host: &DaemonResearchHost) {
     }
 }
 
-/// A reclaim or cancel is done once its task isn't running here.
 fn forget_finished_requests(store: &TaskStore, in_flight: &mut std::collections::HashSet<String>) {
     if in_flight.is_empty() {
         return;
@@ -582,16 +517,12 @@ fn forget_finished_requests(store: &TaskStore, in_flight: &mut std::collections:
     in_flight.retain(|id| running.contains(id));
 }
 
-/// Tells the user the helper took up work, unless the app is open and
-/// already shows it.
 fn announce_started(app_open: &Path, notifier: &Notifier) {
-    // A user who reopened the app already sees the tasks.
     if !super::control::app_is_open(app_open) {
         notifier.started();
     }
 }
 
-/// Runs the hook a test registered for this data folder, if there is one.
 #[cfg(test)]
 fn run_before_final_check_hook(data_root: &Path) {
     let hook = BEFORE_FINAL_CHECK
@@ -633,7 +564,6 @@ async fn run(
     let mut idle_since = Instant::now();
     let mut announced = false;
     let mut prefs_read = Instant::now();
-    // Tasks the app is taking back or cancelling, handled in the background.
     let mut in_flight = std::collections::HashSet::new();
     loop {
         if prefs_read.elapsed() >= PREFS_REFRESH {

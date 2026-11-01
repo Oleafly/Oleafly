@@ -41,15 +41,15 @@ pub(crate) enum StoreError {
     Rejected(String),
     Verify(String),
     Reset,
-    /// The provider won't remove a folder this large in one call; the caller
-    /// empties it piece by piece.
     FolderTooLarge,
+    ClockSkew,
 }
 
 impl StoreError {
     pub(crate) fn code(&self) -> &'static str {
         match self {
             Self::Revoked => "cloud.revoked",
+            Self::ClockSkew => "cloud.clock_skew",
             Self::Network(_) => "cloud.network",
             Self::Server(_) | Self::Reset | Self::Rejected(_) | Self::FolderTooLarge => {
                 "cloud.server"
@@ -66,7 +66,11 @@ impl StoreError {
     pub(crate) fn ends_round(&self) -> bool {
         matches!(
             self,
-            Self::Revoked | Self::Network(_) | Self::RateLimited | Self::TrafficLimit
+            Self::Revoked
+                | Self::Network(_)
+                | Self::RateLimited
+                | Self::TrafficLimit
+                | Self::ClockSkew
         )
     }
 
@@ -96,6 +100,9 @@ impl fmt::Display for StoreError {
             Self::Reset => formatter.write_str("the change cursor was reset"),
             Self::FolderTooLarge => {
                 formatter.write_str("the folder holds too many files to remove at once")
+            }
+            Self::ClockSkew => {
+                formatter.write_str("the cloud service refused this computer's clock")
             }
             Self::Network(message)
             | Self::Server(message)
@@ -173,10 +180,8 @@ pub(crate) struct Changes {
     pub(crate) cursor: String,
 }
 
-/// Who the store belongs to, as the provider names them.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct AccountInfo {
-    /// Stable for the account, and unique across providers.
     pub(crate) account_id: String,
     pub(crate) email: String,
     pub(crate) display_name: String,
@@ -188,16 +193,12 @@ pub(crate) struct Space {
     pub(crate) allocated: u64,
 }
 
-/// A revision as most providers write one: opaque, short and printable.
 fn plain_rev(rev: &str) -> bool {
     !rev.is_empty() && rev.len() <= 256 && rev.bytes().all(|byte| byte.is_ascii_graphic())
 }
 
-/// The storage one provider offers sync. The engine works only through this,
-/// so a provider is an implementation of it plus its sign-in; see
-/// `provider.rs`. Calls with a default are optional: a provider without a
-/// change feed, a quota or server-side copies leaves them out.
 pub(crate) trait CloudStore: Send + Sync {
+    fn label(&self) -> &'static str;
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>>;
     async fn metadata(&self, remote: &str) -> StoreResult<Option<RemoteMeta>>;
     async fn fetch_to(
@@ -209,6 +210,9 @@ pub(crate) trait CloudStore: Send + Sync {
     ) -> StoreResult<Option<Fetched>>;
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String>;
     async fn put_path(&self, remote: &str, local: &Path) -> StoreResult<Uploaded>;
+    async fn put_content(&self, remote: &str, bytes: Vec<u8>) -> StoreResult<String> {
+        self.put(remote, bytes, WriteMode::Overwrite).await
+    }
     async fn put_paths(
         &self,
         files: &[BatchFile],
@@ -231,12 +235,25 @@ pub(crate) trait CloudStore: Send + Sync {
         Ok(false)
     }
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()>;
+    async fn delete_folder(&self, remote: &str) -> StoreResult<()> {
+        self.delete(remote, None).await
+    }
     async fn delete_paths(&self, items: &[BatchDelete]) -> Vec<StoreResult<()>> {
         let mut results = Vec::with_capacity(items.len());
         for item in items {
             results.push(self.delete(&item.remote, item.parent_rev.as_deref()).await);
         }
         results
+    }
+    async fn retire_versions(&self, _versions: &[BatchDelete]) {}
+    async fn stale_versions(
+        &self,
+        _files_remote: &str,
+        _manifest_remote: &str,
+        _manifest_rev: &str,
+        _min_age: Duration,
+    ) -> StoreResult<Vec<(String, String)>> {
+        Ok(Vec::new())
     }
     async fn copy_paths(&self, items: &[BatchCopy]) -> Vec<StoreResult<Copied>> {
         items
@@ -250,12 +267,9 @@ pub(crate) trait CloudStore: Send + Sync {
     async fn account(&self) -> StoreResult<AccountInfo> {
         Err(StoreError::Server("this store has no account".into()))
     }
-    /// Used and total bytes, or `None` when the provider has no quota to show.
     async fn space(&self) -> StoreResult<Option<Space>> {
         Ok(None)
     }
-    /// Waits up to `timeout_secs` for a change after `cursor`. `None` means
-    /// the provider can't wait for changes, and sync falls back to its timer.
     async fn wait_for_changes(
         &self,
         _cursor: &str,
@@ -263,14 +277,9 @@ pub(crate) trait CloudStore: Send + Sync {
     ) -> StoreResult<Option<Waited>> {
         Ok(None)
     }
-    /// Whether `rev` looks like a revision this provider hands out. A manifest
-    /// entry with any other value is ignored.
     fn valid_rev(&self, rev: &str) -> bool {
         plain_rev(rev)
     }
-    /// The hash a server-side copy of `local` reports, to check the copy
-    /// against. `None` means copies can't be checked, so they aren't trusted
-    /// and the file is uploaded instead.
     async fn copy_check_hash(&self, _local: &Path) -> Option<String> {
         None
     }
@@ -556,7 +565,6 @@ fn upload_timeout(len: usize) -> Duration {
     RPC_TIMEOUT + Duration::from_secs(u64::try_from(len / 32_768).unwrap_or(u64::MAX))
 }
 
-/// Gets a fresh access token, given the one Dropbox just refused.
 pub(crate) type TokenRefresher =
     Arc<dyn Fn(String) -> BoxFuture<'static, StoreResult<String>> + Send + Sync>;
 
@@ -693,9 +701,6 @@ impl DropboxStore {
         }
     }
 
-    /// An account call made once. A lookup that fails is reported rather than
-    /// retried, so a slow or broken reply doesn't hold up connecting or the
-    /// settings tab; an expired token is still renewed once, like every call.
     async fn lookup(&self, route: &str, what: &str) -> StoreResult<serde_json::Value> {
         let null = serde_json::Value::Null;
         let call = Call {
@@ -718,7 +723,7 @@ impl DropboxStore {
                 }
                 return Err(StoreError::Revoked);
             }
-            let bytes = Self::read_capped(response, MAX_SMALL_BYTES).await?;
+            let bytes = read_capped(response, MAX_SMALL_BYTES).await?;
             if !status.is_success() {
                 return Err(StoreError::Network(format!(
                     "dropbox {what} failed with status {status}"
@@ -730,27 +735,9 @@ impl DropboxStore {
         }
     }
 
-    async fn read_capped(response: reqwest::Response, cap: usize) -> StoreResult<Vec<u8>> {
-        let mut response = response;
-        let mut bytes = Vec::new();
-        while let Some(chunk) = response
-            .chunk()
-            .await
-            .map_err(|error| StoreError::Network(error.to_string()))?
-        {
-            if bytes.len() + chunk.len() > cap {
-                return Err(StoreError::Server("dropbox response is too large".into()));
-            }
-            bytes.extend_from_slice(&chunk);
-        }
-        Ok(bytes)
-    }
-
     async fn refusal(response: reqwest::Response) -> Refusal {
         let status = response.status().as_u16();
-        let bytes = Self::read_capped(response, 64 * 1024)
-            .await
-            .unwrap_or_default();
+        let bytes = read_capped(response, 64 * 1024).await.unwrap_or_default();
         let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
         let summary = value
             .get("error_summary")
@@ -828,7 +815,7 @@ impl DropboxStore {
             Ok(response) => response,
             Err(refusal) => return Ok(Err(refusal)),
         };
-        let bytes = Self::read_capped(response, MAX_SMALL_BYTES).await?;
+        let bytes = read_capped(response, MAX_SMALL_BYTES).await?;
         let value = serde_json::from_slice(&bytes)
             .map_err(|_| StoreError::Server(format!("dropbox {route} reply was unreadable")))?;
         Ok(Ok(value))
@@ -852,7 +839,7 @@ impl DropboxStore {
             Ok(response) => response,
             Err(refusal) => return Ok(Err(refusal)),
         };
-        let bytes = Self::read_capped(response, MAX_SMALL_BYTES).await?;
+        let bytes = read_capped(response, MAX_SMALL_BYTES).await?;
         if bytes.is_empty() {
             return Ok(Ok(serde_json::Value::Null));
         }
@@ -995,8 +982,26 @@ impl DropboxStore {
     }
 }
 
-/// What tells a file changed while it was being read: its length and the time
-/// it was last written.
+pub(crate) async fn read_capped(
+    mut response: reqwest::Response,
+    cap: usize,
+) -> StoreResult<Vec<u8>> {
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|error| StoreError::Network(error.to_string()))?
+    {
+        if bytes.len() + chunk.len() > cap {
+            return Err(StoreError::Server(
+                "the cloud service's reply is too large".into(),
+            ));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
+}
+
 pub(crate) async fn file_state(path: &Path) -> StoreResult<(u64, Option<std::time::SystemTime>)> {
     let metadata = tokio::fs::metadata(path)
         .await
@@ -1036,7 +1041,6 @@ impl DropboxStore {
         let first = read_full(&mut file, SESSION_CHUNK).await?;
         hasher.update(&first);
         dropbox.update(&first);
-        // Close with the last bytes, so a file of whole chunks needs no empty append.
         let mut closed = first.len() < SESSION_CHUNK || first.len() as u64 >= length;
         let started = self
             .upload_call(
@@ -1089,7 +1093,6 @@ impl DropboxStore {
                 })
             })
             .collect();
-        // The commit is one synchronous call, so a large batch takes longer.
         let timeout = RPC_TIMEOUT
             + COMMIT_TIME_PER_FILE
                 .saturating_mul(u32::try_from(sessions.len()).unwrap_or(u32::MAX));
@@ -1246,9 +1249,6 @@ impl DropboxStore {
         match (refusal, parent_rev) {
             (Refusal::NotFound, _) => Ok(()),
             (Refusal::RateLimited, _) => Err(StoreError::RateLimited),
-            // A delete pinned to a revision is refused once another computer
-            // replaced the file, and then the newer file stays. Any other
-            // refusal leaves the file there, so it is still to be deleted.
             (refusal, Some(rev)) => match self.metadata(remote).await? {
                 Some(meta) if meta.rev == rev => Err(refusal_error(refusal)),
                 _ => Ok(()),
@@ -1396,6 +1396,10 @@ pub(crate) async fn save_body(
 }
 
 impl CloudStore for DropboxStore {
+    fn label(&self) -> &'static str {
+        "Dropbox"
+    }
+
     async fn account(&self) -> StoreResult<AccountInfo> {
         let value = self
             .lookup("users/get_current_account", "account lookup")
@@ -1467,7 +1471,7 @@ impl CloudStore for DropboxStore {
             })
             .filter(|rev| dropbox_rev(rev))
             .ok_or_else(|| StoreError::Server("dropbox download reply had no revision".into()))?;
-        let bytes = Self::read_capped(response, cap).await?;
+        let bytes = read_capped(response, cap).await?;
         Ok(Some((bytes, rev)))
     }
 
@@ -1848,8 +1852,6 @@ mod tests {
         assert!(!dropbox_rev("short"));
         assert!(!dropbox_rev("../../etc"));
         assert!(!dropbox_rev(&"a".repeat(65)));
-        // Other providers hand out revisions of other shapes: generations,
-        // quoted ETags, opaque ids. None of them may carry a space or be empty.
         assert!(plain_rev("1700000000000000"));
         assert!(plain_rev("\"d41d8cd98f00b204e9800998ecf8427e\""));
         assert!(!plain_rev(""));

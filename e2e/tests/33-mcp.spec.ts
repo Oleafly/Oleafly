@@ -47,8 +47,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await expect(tauriPage.getByTestId("oleafly-mcp-server")).toBeVisible();
   const enableToggle = tauriPage.locator('[data-testid="mcp-enable-toggle"]');
   await expect(enableToggle).toHaveAttribute("aria-checked", /^(?:true|false)$/);
-  // Retries reuse the same isolated app data directory. Drive the switch to
-  // the desired state instead of blindly inverting the persisted value.
   if ((await enableToggle.getAttribute("aria-checked")) !== "true") {
     await enableToggle.click();
   }
@@ -56,9 +54,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await expect(tauriPage.locator('[data-testid="mcp-status"]')).toContainText("Running", {
     timeout: 15_000,
   });
-  // "Running" renders as soon as the native start command returns, while the
-  // registry/token refresh still owns the busy lock. Wait for the real restart
-  // control before navigating away so the following command cannot race it.
   await expect(
     tauriPage.locator(
       '[aria-label="Restart MCP server and select an available port"]',
@@ -120,7 +115,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   });
   expect(unauthorized.status).toBe(401);
 
-  // Tool list mirrors the in-app agent (bridge registers after mount).
   let names: string[] = [];
   for (let i = 0; i < 20; i++) {
     const list = await rpc(restarted.url, token, {
@@ -165,7 +159,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   const write = await writePromise;
   const writePayload = toolPayload((write.json as { result?: unknown })?.result);
   expect(writePayload.success, JSON.stringify(writePayload)).toBe(true);
-  // Drain leftover approval cards so they don't interfere with the delete flow.
   for (let i = 0; i < 5; i++) {
     const q = await tauriPage.evaluate<string[]>(`window.__mcpQueue?.() ?? []`);
     if (q.length === 0) break;
@@ -207,8 +200,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   const rereadPayload = toolPayload((reread.json as { result?: unknown })?.result);
   expect(rereadPayload.content, JSON.stringify(rereadPayload)).toContain("written over MCP");
 
-  // MCP-enabled persists in the shared e2e config, so disable it here or it
-  // leaks into later specs (e.g. 36, which asserts the tab is off by default).
   await openOleaflyMcpSettings(tauriPage);
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
   await tauriPage.click('[aria-label="Close settings"]');

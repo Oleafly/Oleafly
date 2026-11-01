@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import type { StoredAttachmentRef } from "@/components/ai/composer/types";
 import { attachmentObjectUrl, holdAttachmentObjectUrl } from "@/lib/attachments";
 
-/** An object URL for a stored file, or `failed` when it cannot be read. */
 export function useAttachmentUrl(
   scope: string | null,
   ref: StoredAttachmentRef | undefined,
@@ -12,15 +11,12 @@ export function useAttachmentUrl(
     url: null,
     failed: false,
   });
-  // Callers often build `ref` anew on every render, so the effect depends on
-  // its two fields: depending on the object would reload on every render.
   const sha256 = ref?.sha256;
   const mime = ref?.mime;
   const key = sha256 === undefined ? "" : `${scope ?? ""}:${sha256}:${mime}`;
   useEffect(() => {
     if (sha256 === undefined || mime === undefined) return;
     let cancelled = false;
-    // Held while shown: the cache may drop it for newer files meanwhile.
     let release: (() => void) | undefined;
     const settle = (url: string | null, failed: boolean) =>
       setState((current) =>

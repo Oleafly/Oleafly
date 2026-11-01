@@ -222,6 +222,7 @@
     "pathStyleHint": "MinIO e la maggior parte dei server self-hosted ne hanno bisogno."
   },
   "errors": {
+    "clock_skew": "L'orologio di questo computer non è corretto, quindi {{provider}} non ne accetta le richieste. Imposta la data e l'ora corrette per continuare a sincronizzare.",
     "code_invalid": "Quel codice non ha funzionato. Riprova.",
     "device_name_empty": "Inserisci un nome.",
     "device_name_invalid": "Il nome del computer non può contenere \\ / : * ? \" < > | né caratteri di controllo, e può avere al massimo 32 caratteri.",

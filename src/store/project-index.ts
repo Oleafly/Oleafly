@@ -41,7 +41,6 @@ const PROJECT_ANALYSIS_IDLE_MS = 300;
 
 export interface IndexStore {
   index: ProjectIndex | null;
-  // Path -> exact text represented by the pending/current analysis request.
   texts: Record<string, string>;
   building: boolean;
   projectRevision: number;
@@ -714,9 +713,6 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       const projectId = useFilesStore.getState().projectId;
       if (!projectId) return;
       ensureProject(projectId);
-      // Invalidate synchronously when the file tree changes. The debounced
-      // disk read may follow, but an old graph must not remain current during
-      // that debounce window or while an older worker response is in flight.
       rebuildSequence++;
       stopAnalysisTimer();
       projectRevision = Math.max(1, projectRevision + 1);
@@ -947,9 +943,6 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         current.intelligenceState.stale ||
         !sameIdentity(snapshot.identity, contribution.identity)
       ) {
-        // The worker is still producing this exact identity. Retain the
-        // current-revision contribution and merge it atomically when the local
-        // snapshot arrives; never paint it onto the retained stale snapshot.
         return true;
       }
       const merged = mergeLanguageServiceIntelligence(

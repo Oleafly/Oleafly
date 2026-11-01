@@ -94,7 +94,6 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
   );
   expect(activeProjectId).not.toBe("");
 
-  // A word no dictionary knows. Linting is debounced + lazy-loads WASM.
   await typeInEditorAfter(tauriPage, "here.", ` ${WORD}.`);
   const targetLint = `Array.from(document.querySelectorAll('.cm-lintRange')).find(
     (mark) => mark.textContent?.includes(${JSON.stringify(WORD)})
@@ -150,9 +149,6 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
     `document.querySelector('[data-e2e-proofreading-card="true"]')?.remove()`,
   );
 
-  // The real tooltip manager re-focuses the editor after an action and causes
-  // this refresh as part of its teardown. Our deterministic, directly mounted
-  // card has no manager, so flush the same public refresh explicitly.
   await tauriPage.evaluate(`window.__e2eRefreshEditorLints()`);
   // CodeMirror recycles line DOM independently of the lint state, so a
   // detached/reused `.cm-lintRange` is not a reliable absence selector.

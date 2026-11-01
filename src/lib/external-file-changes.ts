@@ -62,9 +62,6 @@ async function refreshAfterFolderChange(
   await useIndexStore.getState().rebuildFromDisk();
 }
 
-// A file a live document session holds was written from text this window
-// already has: the session mirrors it into the store as it arrives. Reading it
-// back would only cost IPC, hashing and a document resync on every keystroke.
 function updateIndexFromHeld(paths: readonly string[]): void {
   const files = useFilesStore.getState().files;
   for (const path of paths) {
@@ -109,8 +106,6 @@ function changePaths(change: ExternalFileChange | undefined): string[] {
   return change.kind === "rename" ? [change.from, change.to] : [change.path];
 }
 
-// Another window or an assistant tool wrote to disk. A change that names no path may have
-// touched anything.
 function refreshFormsAfter(payload: ExternalFileChangePayload): void {
   const paths = [...(payload.paths ?? []), ...changePaths(payload.change)];
   if (paths.length === 0 || formsChangeNeedsRefresh(paths)) void useTypstFormsStore.getState().refresh();

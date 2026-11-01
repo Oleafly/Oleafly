@@ -17,11 +17,11 @@ describe("parseDiff", () => {
     const rows = parseDiff(SAMPLE);
     const kinds = rows.map((r) => r.kind);
     expect(kinds).toEqual([
-      "meta", // diff --git
-      "meta", // index
-      "meta", // ---
-      "meta", // +++
-      "hunk", // @@
+      "meta",
+      "meta",
+      "meta",
+      "meta",
+      "hunk",
       "context",
       "del",
       "add",
@@ -29,9 +29,9 @@ describe("parseDiff", () => {
     ]);
     const del = required(rows.find((r) => r.kind === "del"));
     const add = required(rows.find((r) => r.kind === "add"));
-    expect(del.text).toBe("old line"); // leading "-" stripped
-    expect(add.text).toBe("new line"); // leading "+" stripped
-    expect(rows[5].text).toBe("context"); // leading " " stripped
+    expect(del.text).toBe("old line");
+    expect(add.text).toBe("new line");
+    expect(rows[5].text).toBe("context");
   });
 
   it("tracks old/new line numbers from the hunk header", () => {
@@ -57,7 +57,6 @@ describe("parseDiff", () => {
 describe("toSplitPairs", () => {
   it("pairs a deletion with its corresponding addition side by side", () => {
     const pairs = toSplitPairs(parseDiff(SAMPLE));
-    // meta rows dropped; hunk + 2 contexts kept; the del/add form one pair.
     const changed = pairs.find((p) => p.l?.kind === "del");
     expect(changed?.l?.text).toBe("old line");
     expect(changed?.r?.kind).toBe("add");
@@ -69,7 +68,6 @@ describe("toSplitPairs", () => {
     const pairs = toSplitPairs(rows);
     const withDels = pairs.filter((p) => p.l?.kind === "del");
     expect(withDels).toHaveLength(2);
-    // second deletion has no matching addition
     expect(withDels[1].r).toBeUndefined();
     expect(withDels[0].r?.text).toBe("c");
   });

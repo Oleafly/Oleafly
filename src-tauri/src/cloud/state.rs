@@ -71,15 +71,11 @@ impl<'de> Deserialize<'de> for PendingDelete {
 pub(crate) struct Failure {
     pub(crate) hash: String,
     pub(crate) at_ms: u64,
-    /// The file downloaded but could not be put in place, for example because
-    /// another program had it open. That clears up sooner than a download.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) applying: bool,
 }
 
 impl Failure {
-    /// Whether sync still waits before trying this file again. A clock set
-    /// back ends the wait instead of stretching it.
     pub(crate) fn waiting(&self, now: u64) -> bool {
         let wait = if self.applying {
             crate::cloud::engine::RETRY_APPLY_MS
@@ -99,9 +95,7 @@ pub(crate) struct SkippedFile {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub(crate) enum Hold {
-    /// Files deleted on this computer that would be deleted from the cloud.
     MassDelete { count: usize, total: usize },
-    /// Files missing from the cloud that would be deleted on this computer.
     RemoteDelete { count: usize, total: usize },
 }
 
@@ -117,8 +111,6 @@ pub(crate) struct ProjectState {
     pub(crate) meta_base: Option<serde_json::Value>,
     #[serde(default)]
     pub(crate) remote_rev: Option<String>,
-    /// The stamp of the manifest `base` agrees with, to tell a manifest that
-    /// followed it from one written alongside it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) base_manifest: Option<oleafly_core::hlc::Stamp>,
     #[serde(default = "dirty_by_default")]
@@ -138,6 +130,10 @@ pub(crate) struct ProjectState {
     #[serde(default)]
     pub(crate) pending_deletes: Vec<PendingDelete>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) unpublished: Vec<PendingDelete>,
+    #[serde(default)]
+    pub(crate) swept_ms: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) conflict_copies: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) skipped_files: Vec<SkippedFile>,
@@ -145,7 +141,6 @@ pub(crate) struct ProjectState {
     pub(crate) failed: BTreeMap<String, Failure>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) remove_pending: bool,
-    /// The sync rules last read from the project's `project.json`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) policy: Option<crate::cloud::engine::OwnedPolicy>,
 }
@@ -171,6 +166,8 @@ impl Default for ProjectState {
             hold: None,
             removed_by: None,
             pending_deletes: Vec::new(),
+            unpublished: Vec::new(),
+            swept_ms: 0,
             conflict_copies: Vec::new(),
             skipped_files: Vec::new(),
             failed: BTreeMap::new(),
@@ -262,8 +259,6 @@ fn file_stamp(path: &Path) -> Option<(SystemTime, u64)> {
     Some((metadata.modified().ok()?, metadata.len()))
 }
 
-/// Moves a record that can't be read out of the way, kept beside it for a look
-/// later, so sync starts over instead of failing on it every time.
 pub(crate) fn set_aside(path: &Path) {
     let Some(name) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
         return;
@@ -275,9 +270,6 @@ pub(crate) fn set_aside(path: &Path) {
     let _ = std::fs::rename(path, aside);
 }
 
-/// Reads the sync state. One that can't be read is set aside and sync starts
-/// from nothing agreed: every file is compared again, and files that differ
-/// get conflict copies, so nothing is lost.
 pub(crate) fn read_at(path: &Path) -> Result<EngineState, String> {
     match std::fs::read(path) {
         Ok(bytes) => {

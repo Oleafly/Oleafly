@@ -47,7 +47,6 @@ describe("Mathpix bridge", () => {
     );
     const bytes = new Uint8Array([37, 80, 68, 70]);
     await expect(mathpixPdf(bytes, { pageRanges: "3-5" })).resolves.toBe("P1");
-    // The upload carries the request id too, so Cancel can reach it.
     expect(mocks.invoke).toHaveBeenNthCalledWith(1, "mathpix_pdf_upload", bytes, {
       headers: { "x-oleafly-page-ranges": "3-5", "x-oleafly-request-id": expect.any(String) },
     });
@@ -126,8 +125,6 @@ describe("Mathpix bridge", () => {
     const uploadHeaders = (mocks.invoke.mock.calls[0][2] as { headers: Record<string, string> }).headers;
     controller.abort();
     await expect(running).rejects.toMatchObject({ name: "AbortError" });
-    // The cancel reached the upload by its request id, and no wait was
-    // started for a PDF that was never created.
     expect(mocks.invoke).toHaveBeenCalledWith("mathpix_pdf_cancel", {
       requestId: uploadHeaders["x-oleafly-request-id"],
     });

@@ -199,8 +199,6 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
             .clone()
             .oneshot(request(Method::GET, Body::empty())),
     );
-    // Room goes to transfers in the order they asked for it, so the upload
-    // starts only once the download is in line.
     assert!(
         eventually(|| transfers.waiting_for_room() == 1).await,
         "the download waits for room"
@@ -246,7 +244,6 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
     assert_eq!(transfers.room_left(), MIB as u64, "all the room comes back");
 }
 
-// Waits for a change another task makes. The limit only bounds a failure.
 async fn eventually(check: impl Fn() -> bool) -> bool {
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
     loop {

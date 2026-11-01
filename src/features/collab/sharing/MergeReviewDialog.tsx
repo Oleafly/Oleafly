@@ -22,8 +22,6 @@ export interface MergeReviewEntry {
 
 type Loaded = { state: "loading" } | { state: "failed" } | { state: "ready"; files: CollabMergeReviewFile[] };
 
-// Each open diff runs a full text comparison on the main thread, so only a
-// few are open at once. Opening another closes the one opened longest ago.
 export const MAX_OPEN_DIFFS = 3;
 
 function total(files: readonly MergedFileCount[]): number {
@@ -42,7 +40,6 @@ export function MergeReviewDialog({
   const members = useCollabLiveStore((state) => state.members);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
   const [open, setOpen] = useState<readonly string[]>([]);
-  // The file that closed because another one opened, so the closing is said.
   const [closedOldest, setClosedOldest] = useState<string | null>(null);
   const before = entry.review?.before ?? "";
   const after = entry.review?.after ?? "";
@@ -153,8 +150,6 @@ export function MergeReviewDialog({
             <p className="text-xs text-muted-foreground">{t(($) => $.collab.mergeReview.noText)}</p>
           ) : null}
           {loaded.state === "ready" ? (
-            // Mounted with the list and empty until a file closes, so the
-            // change is announced. Out of the flow while empty.
             <output className={closedOldest ? "block text-xs text-muted-foreground" : "sr-only"}>
               {closedOldest
                 ? t(($) => $.collab.mergeReview.closedOldest, {

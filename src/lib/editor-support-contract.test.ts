@@ -497,7 +497,6 @@ describe("editor support acceptance contract", () => {
         `${fixture.path} must use a ${fixture.engine} extension`,
       ).toContain(extname(fixturePath).toLowerCase());
 
-      // Match the editor's source normalization on Windows checkouts too.
       const source = readFileSync(fixturePath, "utf8").replace(/\r\n?/gu, "\n");
       fixtureSources.set(fixture.path, source);
       for (const marker of fixture.markers) {

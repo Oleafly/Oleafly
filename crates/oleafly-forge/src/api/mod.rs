@@ -1,10 +1,3 @@
-//! The REST calls Oleafly makes, per server kind: the signed-in user, token
-//! scopes, repository pages, creating a repository, repository details, a
-//! branch's commit and a repository archive.
-//!
-//! Clone and web addresses are always built from the account's base and the
-//! repository path ([`crate::address::clone_url`]), never copied from a
-//! reply, so they stay inside the account's credential scope.
 mod gitea;
 mod github;
 mod gitlab;
@@ -16,13 +9,9 @@ use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// Repository archives larger than this are refused.
 pub const ARCHIVE_MAX_BYTES: usize = 256 * 1024 * 1024;
-/// The whole archive download; a stalled transfer fails sooner through the
-/// client's read timeout.
 const ARCHIVE_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 
-/// A signed-in account's view of one server.
 pub struct Session<'a> {
     pub http: &'a ForgeHttp,
     pub kind: ForgeKind,
@@ -56,7 +45,6 @@ impl<'a> Session<'a> {
         self.kind.scopes_hint()
     }
 
-    /// The API root plus `segments`, each percent-encoded as one segment.
     fn endpoint(&self, segments: &[&str]) -> Result<url::Url, ForgeError> {
         let mut url = self.kind.api_root(self.base)?;
         {
@@ -99,7 +87,6 @@ pub struct ForgeUser {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForgeRepo {
-    /// The server's numeric id, as text.
     pub id: String,
     pub full_name: String,
     pub name: String,
@@ -114,8 +101,6 @@ pub struct ForgeRepo {
 pub struct RepoPage {
     pub repos: Vec<ForgeRepo>,
     pub next_page: Option<u32>,
-    /// Whether the server filtered by the query. Otherwise the caller
-    /// filters the rows it has loaded.
     pub searched: bool,
 }
 
@@ -132,8 +117,6 @@ fn non_empty(value: Option<String>) -> Option<String> {
 }
 
 impl ForgeRepo {
-    /// A row for a repository path the server reported, or `None` when the
-    /// path is not one Oleafly can use.
     fn from_path(
         kind: ForgeKind,
         base: &str,
@@ -156,7 +139,6 @@ impl ForgeRepo {
     }
 }
 
-/// The account behind the token.
 pub async fn current_user(session: &Session<'_>) -> Result<ForgeUser, ForgeError> {
     let user = match session.kind {
         ForgeKind::GitHub => github::current_user(session).await?.0,
@@ -170,7 +152,6 @@ pub async fn current_user(session: &Session<'_>) -> Result<ForgeUser, ForgeError
     })
 }
 
-/// The token's scopes when the server reports them, else `None`.
 pub async fn token_scopes(session: &Session<'_>) -> Result<Option<Vec<String>>, ForgeError> {
     match session.kind {
         ForgeKind::GitHub => Ok(github::current_user(session).await?.1),
@@ -194,7 +175,6 @@ pub async fn list_repos(
     }
 }
 
-/// Create an empty repository under the signed-in user.
 pub async fn create_repo(
     session: &Session<'_>,
     name: &str,
@@ -222,8 +202,6 @@ pub async fn repo_info(session: &Session<'_>, repo: &RepoPath) -> Result<RepoInf
     })
 }
 
-/// The commit a branch points at: 40 or 64 lowercase hex characters. A
-/// missing branch means the repository has no commits yet.
 pub async fn branch_commit(
     session: &Session<'_>,
     repo: &RepoPath,
@@ -254,7 +232,6 @@ pub async fn branch_commit(
     Ok(commit)
 }
 
-/// The repository's files at `commit` as a ZIP archive, at most `max_bytes`.
 pub async fn download_archive(
     session: &Session<'_>,
     repo: &RepoPath,
@@ -303,7 +280,6 @@ pub async fn download_archive(
     Ok(archive)
 }
 
-/// A full commit id: SHA-1 or SHA-256, lowercase hex.
 pub fn valid_commit(commit: &str) -> bool {
     matches!(commit.len(), 40 | 64)
         && commit
@@ -332,7 +308,6 @@ pub fn valid_branch(branch: &str) -> bool {
         })
 }
 
-/// The `page=` of the `rel="next"` link in a `Link` header.
 fn next_page_from_link(header: &str) -> Option<u32> {
     header.split(',').find_map(|link| {
         let (target, params) = link.split_once(';')?;

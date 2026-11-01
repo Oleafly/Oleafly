@@ -46,8 +46,6 @@ pub struct Appended {
 }
 
 impl Appended {
-    // A change made only of operations the server already holds is
-    // acknowledged with seq 0 and never stored, so it can't be logged twice.
     pub fn nothing_new() -> Appended {
         Appended {
             seq: 0,
@@ -104,8 +102,6 @@ fn seq_to(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
 
-// A savepoint works whether or not the caller already holds a transaction,
-// and undoes every statement of `work` if one of them fails.
 fn all_or_nothing<T>(
     conn: &Connection,
     name: &str,
@@ -376,8 +372,6 @@ pub fn members(
     Ok(list)
 }
 
-// People removed from or suspended on the server keep their grants, so
-// adding them back restores their projects, but they don't take a seat.
 pub fn member_count(conn: &Connection, project: SharedProjectId) -> Result<u32, ServerError> {
     let count: i64 = conn.query_row(
         "SELECT COUNT(*) FROM project_grants g JOIN accounts a ON a.id = g.account_id \
@@ -637,16 +631,11 @@ pub fn drop_unused_blob(
     Ok(orphan)
 }
 
-// What a project keeps on this server: its files and its change log.
-// Snapshots are left out because they are rebuilt from those. Triggers
-// keep both totals, so this reads one row.
 pub fn stored_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
     let (log, files) = sizes(conn, project)?;
     Ok(log.saturating_add(files))
 }
 
-// Changes count only the change log against the project's size limit, so
-// a project whose files fill it can still take typing.
 pub fn log_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
     Ok(sizes(conn, project)?.0)
 }

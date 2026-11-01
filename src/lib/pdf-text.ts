@@ -1,7 +1,6 @@
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+import { pdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
+import "@oleafly/preview/pdfWorkerRuntime";
 
 function textContentToPageText(items: readonly unknown[]): string {
   const line: string[] = [];
@@ -48,22 +47,16 @@ async function readPages(
   return { pages, numPages };
 }
 
-/**
- * The text of each page, up to `maxPages` (all pages by default).
- * `numPages` is always the document's real page count. Rejects when the
- * document takes longer than `timeoutMs` (20 seconds by default).
- */
 export async function extractPdfText(
   bytes: Uint8Array,
   opts?: { maxPages?: number; timeoutMs?: number },
 ): Promise<{ pages: string[]; numPages: number }> {
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
+  const loadingTask = pdfjsLib.getDocument(pdfDocumentOptions({ data: bytes.slice() }));
   let timedOut = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => {
       timedOut = true;
-      // A wedged worker does not answer a destroy either, so nothing waits for it.
       void Promise.resolve()
         .then(() => loadingTask.destroy())
         .catch(() => {});
@@ -71,7 +64,6 @@ export async function extractPdfText(
     }, opts?.timeoutMs ?? EXTRACT_TIMEOUT_MS);
   });
   const work = readPages(loadingTask, opts?.maxPages);
-  // After a timeout the destroy aborts the work, which rejects with nobody listening.
   work.catch(() => {});
   try {
     return await Promise.race([work, timeout]);

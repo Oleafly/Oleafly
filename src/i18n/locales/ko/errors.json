@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "이 문서를 빌드하려면 {{engine}}이(가) 코드를 실행해야 하지만, 이 프로젝트에서는 코드가 꺼져 있습니다. 컴파일하려면 이 프로젝트에서 코드를 허용하세요.",
+    "export_stopped": "내보내기가 중지되었습니다.",
     "quarto_missing": "Quarto가 설치되어 있지 않습니다. 설정 > 엔진 > Quarto에서 설치한 다음 다시 컴파일하세요.",
     "calepin_missing": "Calepin이 설치되어 있지 않습니다. 설정 > 엔진 > Calepin에서 설치한 다음 다시 컴파일하세요.",
     "not_offered": "Oleafly는 이 컴퓨터용 {{tool}}을(를) 내려받을 수 없습니다. 직접 설치한 다음 다시 컴파일하세요.",

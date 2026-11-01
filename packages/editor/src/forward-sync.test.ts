@@ -59,8 +59,6 @@ describe("finding the cursor's word among a source line's typeset lines", () => 
   });
 
   it("prefers the stretch SyncTeX gives for the source line when a phrase repeats", () => {
-    // A wrapped source line ends the first typeset line and starts the second;
-    // the start of the first belongs to the source line above.
     const typeset = new Map([[1, page(["noise of the data and the start of our line", "noise of the data ends it and the next one"])]]);
     const lines = [line(1, 0, 100, [200, 287]), line(1, 1, 100, [72, 160])];
     const spot = { word: "noise", before: "", after: " of the data" };
@@ -78,7 +76,6 @@ describe("finding the cursor's word among a source line's typeset lines", () => 
       [1, page(["the model of the noise and the value", "of the study and the model"])],
       [2, page(["of the field reduces the error"])],
     ]);
-    // Only the words after it tell the two apart, and they are on the next page.
     const spot = { word: "model", before: "", after: " of the field reduces the error" };
     expect(pickForwardLine([line(1, 0), line(1, 1), line(2, 0)], pages, spot)).toEqual(line(1, 1));
   });
@@ -111,7 +108,6 @@ describe("finding the cursor's word on a page SyncTeX has no line for", () => {
 });
 
 describe("candidate lines around a Typst forward jump", () => {
-  /** Where the app draws a Typst jump: 96 by 12 points from 9 above the baseline. */
   function jump(pageNo: number, run: PdfTextRun) {
     return { page: pageNo, x: run.x, y: run.top + run.height - 9, width: 96, height: 12 };
   }

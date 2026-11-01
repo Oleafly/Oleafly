@@ -25,7 +25,6 @@ use super::{ServerUrl, CONNECT_TIMEOUT};
 use crate::{CollabError, DeviceKey};
 
 const FRAME_TIMEOUT: Duration = Duration::from_secs(10);
-// The server's own limit: an 8 MiB change in base64 with its envelope fits.
 pub(crate) const MAX_MESSAGE_BYTES: usize = 12 * 1024 * 1024;
 
 fn socket_config() -> WebSocketConfig {
@@ -45,9 +44,6 @@ fn now_ticks() -> u64 {
     u64::try_from(clock().elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
-// The connection under the socket, noting when bytes last came in. A large
-// frame on a slow downlink takes longer than the quiet window to arrive
-// whole, and the bytes on their way show the connection is alive.
 pub(crate) struct Counted {
     stream: TcpStream,
     heard: Arc<std::sync::atomic::AtomicU64>,
@@ -250,9 +246,6 @@ pub(crate) async fn open_socket(
     }
 }
 
-// Connects the way the HTTPS client does: through the proxy the system or
-// HTTPS_PROXY names (with a CONNECT tunnel, honouring NO_PROXY), and racing
-// the server's addresses so a dead IPv6 route falls back to IPv4 quickly.
 pub(crate) async fn connect_tcp(target: &::url::Url) -> Result<TcpStream, CollabError> {
     let host = target
         .host_str()

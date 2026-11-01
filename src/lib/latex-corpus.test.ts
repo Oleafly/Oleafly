@@ -32,7 +32,6 @@ beforeAll(async () => {
   });
   installLatexCorpus();
   await loadCore();
-  // Let the corpus module's .then() callbacks fill its synchronous caches.
   await new Promise((done) => setTimeout(done, 0));
 });
 

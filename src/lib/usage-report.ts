@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { downloadBlob } from "@/lib/download-blob";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { uint8ToBase64, writeBytesFile } from "@/lib/tauri";
 
@@ -26,7 +27,6 @@ export type UsageReportFilter = {
   providerIds: string[];
   modelIds: string[];
   sessionIds: string[];
-  /** With `sessionIds`, also the sessions started under them (subagents). */
   includeChildSessions?: boolean;
   page: number;
   pageSize: number;
@@ -354,16 +354,7 @@ export async function saveUsageReportCsv(report: UsageReport): Promise<string | 
   const csv = usageReportCsv(report);
   const filename = usageReportCsvFilename(report);
   if (!isTauri()) {
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    try {
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.rel = "noopener";
-      anchor.click();
-    } finally {
-      window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    }
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), filename);
     return null;
   }
   const destination = await pickSavePath({

@@ -48,6 +48,11 @@
     "stoppedTitle": "Yhteys katkaistu",
     "stoppedDescription": "Lataa sivu uudelleen, niin yhteys muodostetaan uudelleen."
   },
+  "leave": {
+    "title": "Poistutaanko tästä projektista?",
+    "description": "Osa muokkauksistasi ei ole vielä päässyt palvelimelle. Odota, kunnes ne on lähetetty, tai poistu ja menetä ne.",
+    "confirm": "Poistu"
+  },
   "access": {
     "changed": "Uusi roolisi tässä projektissa: {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Peru",
     "acceptAll": "Hyväksy kaikki",
     "rejectAll": "Hylkää kaikki",
+    "rejectAllConfirm": {
+      "title": "Hylätäänkö kaikki ehdotukset tiedostossa {{file}}?",
+      "description": "Alkuperäinen teksti palautetaan tiedostoon kaikille tämän projektin jäsenille. Odottavia ehdotuksia: {{number}}.",
+      "confirm": "Hylkää kaikki"
+    },
     "pending_one": "{{count}} ehdotus",
     "pending_other": "{{count}} ehdotusta",
     "card": "Ehdotus käyttäjältä {{name}}",

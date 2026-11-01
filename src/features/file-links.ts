@@ -110,7 +110,6 @@ export function startFileLinkInsertion(): boolean {
   return true;
 }
 
-/** Opens a project file a link points at; false when the project has no such file. */
 export function openLinkedProjectFile(path: string): boolean {
   if (!useFilesStore.getState().tree.some((entry) => entry.path === path && !entry.is_dir)) return false;
   void openProjectLocation({ path });
@@ -122,18 +121,12 @@ function visualLinkBase(): string | null {
   return activePath ? linkBase(activePath, mainDoc) : null;
 }
 
-/**
- * The Visual editor's href for a link that carries the app's own address: the
- * path relative to the open file, URL-encoded like every href in its document.
- * Null for any other link.
- */
 export function localizedVisualHref(href: string): string | null {
   const base = visualLinkBase();
   const target = base ? localizeAppLink(href, base) : null;
   return target ? linkHrefForPath(target.path, target.fragment) : null;
 }
 
-/** Opens the project file a Visual-mode link points at; false when there is none. */
 export function openVisualLinkHref(href: string): boolean {
   const base = visualLinkBase();
   const target = base ? projectFileForHref(base, href) : null;

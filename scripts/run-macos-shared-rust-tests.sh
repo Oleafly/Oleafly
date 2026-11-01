@@ -10,8 +10,6 @@ cleanup_first_log() {
 }
 trap cleanup_first_log EXIT
 
-# The crates with macOS-only code or tests. CI's macOS clippy step lints the
-# same list; keep the two in step.
 run_shared_tests() {
   cargo test --all-targets \
     -p oleafly-core -p oleafly-cli -p oleafly-sandbox -p oleafly-secrets \

@@ -76,15 +76,6 @@ interface HeaderAction {
   indices: number[] | null;
 }
 
-/**
- * Undo all covers every changed source file except files the user also edited,
- * files the assistant committed and files already changed again. `null` asks
- * the backend for all of them, including files beyond the listed ones
- * (`moreFiles`), which no row can reach. The backend skips files the user also
- * edited, counts files already in the target state as done and leaves files
- * changed again alone, so `null` is safe in both directions as long as nothing
- * was committed. With committed files only the listed, uncommitted ones go.
- */
 function headerActionFor(
   changes: ChatTurnChanges,
   source: readonly TurnChange[],
@@ -101,7 +92,6 @@ function headerActionFor(
   const toRedo = eligible.filter((file) => stateOf(file) === "undone");
   const anyCommitted = Object.keys(committed).length > 0;
   if (changes.moreFiles > 0 && !anyCommitted) {
-    // Unlisted files have no status row; Undo and Redo report them by index.
     const listed = new Set(changes.files.map((file) => file.index));
     const unlistedUndone = Object.entries(states).some(
       ([index, state]) => state === "undone" && !listed.has(Number(index)),
@@ -440,7 +430,6 @@ function TurnOutcomeMessages({ status, failed }: Readonly<{ status: string; fail
   );
 }
 
-/** The inline "Commit this turn" form: message and the files to commit. */
 function CommitTurnForm({
   files,
   defaultMessage,
@@ -514,12 +503,6 @@ function CommitTurnForm({
   );
 }
 
-/**
- * "Changed N files · Review · Undo all" under the turn that changed them, for
- * both the built-in assistant and CLI agents. Every Undo or Redo goes through
- * the project transaction so open editors reload and unsaved edits are saved
- * first. The card never calls these copies anything but Undo and Redo.
- */
 export function TurnChangesCard({
   projectId,
   changes,
@@ -530,10 +513,8 @@ export function TurnChangesCard({
 }: Readonly<{
   projectId: string;
   changes: ChatTurnChanges;
-  /** Show the "Undo isn't available" line (hosts pass it once per session). */
   showUnavailable?: boolean;
   className?: string;
-  /** "Commit this turn" (CLI agents in Git projects only). */
   onCommit?: (paths: string[], message: string) => Promise<void>;
   commitDefaultMessage?: string;
 }>) {
@@ -573,7 +554,6 @@ export function TurnChangesCard({
   const status = outcomeText(review.outcome);
   const failed = review.outcome?.failed ? review.outcome.action : null;
   const pendingAll = review.pending === "all";
-  // Files of this turn that can still be committed: not committed, not undone.
   const committable = onCommit
     ? source
         .filter((file) => !changes.committed?.[file.path] && (review.states[file.index] ?? "applied") !== "undone")

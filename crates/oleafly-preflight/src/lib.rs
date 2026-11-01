@@ -1,12 +1,3 @@
-//! Preflight checks for the Oleafly CLI.
-//!
-//! A port of the app's preflight rules (`packages/preflight`): LaTeX and Typst
-//! source rules, references, submission and privacy rules, build-log rules
-//! and PDF facts, together with the project snapshot, index and contexts the
-//! app's preflight store builds. Every offset is a UTF-16 code unit in
-//! LF-normalised text, exactly as in the app, and golden fixtures generated
-//! from the TypeScript code keep the two in step.
-
 pub mod bib;
 pub mod check;
 pub mod collate;

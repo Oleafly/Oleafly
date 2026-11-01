@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   applyEditorColors,
   editorColorKey,
@@ -11,6 +11,11 @@ import {
   readEditorThemeColors,
   validateEditorColors,
 } from "./editor-themes";
+import { installCanvas } from "./test-canvas";
+
+beforeEach(() => {
+  installCanvas(null);
+});
 
 const root = document.documentElement;
 

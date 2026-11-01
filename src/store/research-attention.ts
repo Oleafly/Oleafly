@@ -4,14 +4,12 @@ import { useFilesStore } from "@/store/files";
 import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 
 interface ResearchAttentionState {
-  /** Tasks needing the user per project: a result, a plan or a request. */
   byProject: Record<string, number>;
 }
 
 export const useResearchAttentionStore = create<ResearchAttentionState>(() => ({ byProject: {} }));
 
 let started: Promise<void> | null = null;
-// Kept once it works, so a retry after a failed load doesn't listen twice.
 let listening: Promise<unknown> | null = null;
 
 async function listenAndLoad(): Promise<void> {
@@ -27,7 +25,6 @@ async function listenAndLoad(): Promise<void> {
   useResearchAttentionStore.setState({ byProject: summary.byProject });
 }
 
-/** One listener for the whole app, however many badges mount. */
 export function startResearchAttention(): Promise<void> {
   started ??= listenAndLoad().catch(() => {
     started = null;
@@ -35,7 +32,6 @@ export function startResearchAttention(): Promise<void> {
   return started;
 }
 
-/** How many research tasks of the open project need the user; none while tasks are off. */
 export function useResearchAttentionBadge(): number {
   const enabled = useResearchTasksEnabled();
   useEffect(() => {

@@ -1,10 +1,6 @@
 import type { PackageCatalog } from "@oleafly/latex-intelligence";
 import { isLatexGraphicsPath } from "@/lib/image-mime";
 
-// Pure completion-context recognizers over the text before (and, for
-// package options, after) the cursor. Kept free of CodeMirror imports so
-// each recognizer is testable as a plain function.
-
 export interface GlossaryKeyContext {
   readonly query: string;
 }
@@ -67,7 +63,6 @@ const PACKAGE_OPTION_BEFORE_RE =
   /\\(usepackage|RequirePackage|documentclass)\s*\[(?:[^\]]*,)?([^,\]]*)$/u;
 const PACKAGE_OPTION_AFTER_RE = /^[^\]]*\]\s*\{([^{},]+)\}/u;
 
-/** `\usepackage[<cursor>]{name}` — the target name is read after the cursor. */
 export function recognizePackageOption(
   before: string,
   after: string,
@@ -127,7 +122,6 @@ export function recognizeFileTarget(
 const BIB_TARGET_RE = /\.bib$/iu;
 const SOURCE_TARGET_RE = /\.(?:tex|latex|ltx)$/iu;
 
-/** Extension filter for the file kinds a command actually accepts. */
 export function fileTargetAccepts(
   command: string,
   path: string,
@@ -154,7 +148,6 @@ function keysForLookup(
     .flatMap(([, keys]) => keys);
 }
 
-/** Option keys accepted by `\usepackage[...]{name}` / `\documentclass[...]{name}`. */
 export function optionKeysForCatalog(
   catalog: PackageCatalog,
   kind: "package" | "class",
@@ -170,7 +163,6 @@ export function optionKeysForCatalog(
   return [...new Set([...(catalog.options ?? []), ...keys])].sort((a, b) => a.localeCompare(b));
 }
 
-/** Key=value keys accepted inside the arguments of `\<command>{...}`. */
 export function keyvalKeysForCommand(
   catalogs: readonly PackageCatalog[],
   command: string,

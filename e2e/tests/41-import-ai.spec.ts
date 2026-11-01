@@ -15,10 +15,6 @@ import {
 } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
-// Tier 2 of the import pipeline: the refine handoff and image-to-LaTeX both
-// need a vision-capable model, so connect the keyless Ollama provider with a
-// "llava" model id against the mock server (llava passes modelSupportsVision).
-
 let server: MockAiServer;
 const RUN = Date.now().toString(36);
 
@@ -60,7 +56,6 @@ test("refine with AI creates the project and hands off to the agent", async ({ t
   await expect(tauriPage.locator('[data-testid="import-refine"]')).toBeVisible({
     timeout: 20_000,
   });
-  // wait for the conversion result: refine is a no-op while the button is disabled
   await waitLong(
     tauriPage,
     `(document.querySelector('[data-testid="import-source"]')?.textContent ?? "").includes("documentclass")`,
@@ -105,9 +100,6 @@ IMAGEANCHOR
     timeout: 20_000,
   });
 
-  // The native bridge cannot choose a file in the OS picker. Still exercise
-  // the real toolbar control and its input.click() wiring, then provide the
-  // deterministic File through the same production input change handler.
   await tauriPage.evaluate(
     `(() => {
       const input = document.querySelector('[data-testid="image-to-latex-input"]');

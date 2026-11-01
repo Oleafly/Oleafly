@@ -69,11 +69,6 @@ const positiveInteger = (value: unknown, field: string): void => {
   }
 };
 
-/**
- * Parses the consent disclosure from the same packaged manifest used by the
- * installer. Invalid or incomplete policy metadata fails closed so the UI
- * cannot offer a download without first describing the pinned artifact.
- */
 export function parseLanguageServiceSetupDisclosure(
   manifest: unknown,
   kind: LanguageServiceKind,

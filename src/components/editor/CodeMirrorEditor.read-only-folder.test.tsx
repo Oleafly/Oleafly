@@ -19,10 +19,9 @@ import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const SOURCE = "\\section{Intro}\nHello.\n";
 

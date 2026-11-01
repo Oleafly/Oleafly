@@ -6,12 +6,6 @@ import type {
 } from "./types";
 
 /**
- * The one place that decides which definitions a use can resolve to. The
- * worker's assembler, the language-service merge and the editor's stale
- * fallback all key definitions through here, so they cannot drift apart.
- */
-
-/**
  * The pool a label or anchor name lives in. LaTeX `\label`, Typst `<label>`
  * and a Markdown anchor are resolved by different compilers, so a name in one
  * engine never satisfies, or duplicates, the same name in another. Markdown
@@ -30,11 +24,6 @@ export function labelScope(
   return engine === "markdown" ? `markdown:${file}` : (engine ?? "unknown");
 }
 
-/**
- * The file a `file#anchor` reference, such as a Markdown
- * `[results](paper.tex#sec:results)`, points into. Null for a reference that
- * names no file.
- */
 export function referenceTargetFile(target: string | undefined): string | null {
   const hash = target?.indexOf("#") ?? -1;
   return target && hash >= 0 ? target.slice(0, hash) : null;

@@ -15,7 +15,6 @@ import {
 import type { EditorTranslator } from "./messages";
 import { preserveCase } from "./preserve-case";
 
-// Lucide paths, matching the icon set the surrounding app uses.
 const ICON_PATHS = {
   chevronRight: ["m9 18 6-6-6-6"],
   chevronDown: ["m6 9 6 6 6-6"],
@@ -65,7 +64,7 @@ function btn(
   b.title = title;
   b.setAttribute("aria-label", title);
   b.className = `cm-vs-btn ${extraClass}`.trim();
-  b.onmousedown = (e) => e.preventDefault(); // keep editor/inputs from losing focus
+  b.onmousedown = (e) => e.preventDefault();
   b.onclick = onClick;
   return b;
 }
@@ -229,7 +228,6 @@ function createSearchPanel(view: EditorView, t: EditorTranslator): Panel {
   replaceBox.append(replaceInput, preserveBtn);
 
   const doReplaceNext = () => {
-    // Preserve case (literal search only): map the match's case onto the replacement.
     if (preserveCaseOn && !regexp) {
       const q = getSearchQuery(view.state);
       const sel = view.state.selection.main;
@@ -369,8 +367,6 @@ const searchTheme = EditorView.theme({
     zIndex: "20",
     pointerEvents: "none",
   },
-  // Mirrors the PDF search bar: one popover surface, a borderless field, and
-  // ghost icon buttons, rather than boxes nested inside boxes.
   ".cm-vs-search": {
     position: "relative",
     pointerEvents: "auto",
@@ -445,8 +441,6 @@ const searchTheme = EditorView.theme({
   ".cm-vs-input::placeholder": { color: "var(--muted-foreground, #999)" },
   ".cm-vs-input:focus": { outline: "none" },
   ".cm-vs-input:focus-visible": { outline: "none" },
-  // The field carries its own border and fill, so focus reads from the caret
-  // and a keyboard-only border tint rather than a nested outline ring.
   ".cm-vs-box:focus-within": {
     borderColor: "var(--ring, #2563eb)",
   },
@@ -481,7 +475,7 @@ const searchTheme = EditorView.theme({
     minWidth: "3.25rem",
     padding: "0 4px",
     color: "var(--muted-foreground, #888)",
-    fontSize: "11px",
+    fontSize: "0.6875rem",
     fontVariantNumeric: "tabular-nums",
     textAlign: "center",
     whiteSpace: "nowrap",

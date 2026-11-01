@@ -48,6 +48,11 @@
     "stoppedTitle": "Disconnesso",
     "stoppedDescription": "Ricarica la pagina per riconnetterti."
   },
+  "leave": {
+    "title": "Vuoi abbandonare questo progetto?",
+    "description": "Alcune delle tue modifiche non sono ancora arrivate al server. Resta finché non vengono inviate, oppure abbandona e le perderai.",
+    "confirm": "Abbandona"
+  },
   "access": {
     "changed": "Il tuo nuovo ruolo in questo progetto: {{role}}."
   },
@@ -157,6 +162,11 @@
     "withdraw": "Ritira",
     "acceptAll": "Accetta tutto",
     "rejectAll": "Rifiuta tutto",
+    "rejectAllConfirm": {
+      "title": "Rifiutare tutti i suggerimenti in {{file}}?",
+      "description": "Il testo originale torna nel file per tutti in questo progetto. Suggerimenti in attesa: {{number}}.",
+      "confirm": "Rifiuta tutto"
+    },
     "pending_one": "{{count}} suggerimento",
     "pending_many": "{{count}} suggerimenti",
     "pending_other": "{{count}} suggerimenti",

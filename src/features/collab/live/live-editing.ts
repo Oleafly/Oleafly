@@ -11,10 +11,13 @@ import {
   collabLiveFlush,
   collabPresenceLeave,
   collabPresenceSet,
+  onCollabSuggestionRefused,
 } from "@/lib/tauri-collab";
+import type { CollabErrorCode } from "@/lib/tauri";
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { collabErrorMessage } from "../errors";
 import { canEditProjectRole, isReadOnlyProjectRole } from "../roles";
 import { LiveSessions } from "./live-sessions";
 import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
@@ -81,16 +84,9 @@ function mirrorText(projectId: string, path: string, text: string): void {
 }
 
 export const BACKGROUND_INDEX_MS = 400;
-// How long a project that is closing waits for the shared document to take
-// typing in flight before it hands that typing back to the files store.
 export const HAND_BACK_WAIT_MS = 1_500;
+export const REFUSAL_FRESH_MS = 10_000;
 
-// A collaborator's edit to a shared file in a background tab reaches the
-// store through the session, but the index keeper forwards only the active
-// file, and Rust doesn't report a file it writes while an editor has it open.
-// Without this a label or a bibliography entry someone adds there stays
-// unknown to completion and reference checks until the file is opened. At
-// most one update per file runs in each interval, with the text it has then.
 function backgroundIndexer(projectId: string) {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   const run = (path: string) => {
@@ -134,6 +130,13 @@ export function startLiveEditing(live: LiveSession): () => void {
   const { projectId } = live;
   const isViewer = () => isReadOnlyProjectRole(useCollabLiveStore.getState().role);
   const indexer = backgroundIndexer(projectId);
+  const refusals = new Map<string, { code: CollabErrorCode; at: number }>();
+  const stopRefusals = onCollabSuggestionRefused((refused) => {
+    if (refused.projectId === projectId) refusals.set(refused.path, { code: refused.code, at: Date.now() });
+  }).catch((error: unknown) => {
+    void logError("collab suggestion refusals listen", error);
+    return () => undefined;
+  });
   const sessions = new LiveSessions({
     transport: {
       open: (path, onMessage) => collabDocOpen(projectId, path, onMessage),
@@ -152,10 +155,6 @@ export function startLiveEditing(live: LiveSession): () => void {
     detached: (path, text, edited, shared) => {
       const files = useFilesStore.getState();
       if (files.projectId !== projectId) return;
-      // The mirror already put this text in the buffer as saved, so say it
-      // isn't, or the typing would never reach the disk. Merging from the text
-      // Rust confirmed sends a project that is still live exactly the typing
-      // it never got.
       if (edited) files.setContent(path, text, { unsaved: true, base: shared });
       if (files.activePath === path) files.bumpDocVersion();
     },
@@ -164,6 +163,12 @@ export function startLiveEditing(live: LiveSession): () => void {
       return files.projectId === projectId && (files.openTabs.includes(path) || files.activePath === path);
     },
     discarded: (path, reason) => {
+      const refusal = refusals.get(path);
+      refusals.delete(path);
+      if (reason === "refused" && refusal && Date.now() - refusal.at < REFUSAL_FRESH_MS) {
+        toast.info(collabErrorMessage(refusal.code));
+        return;
+      }
       toast.info(
         reason === "read_only"
           ? i18n.t(($) => $.collab.access.unsentReadOnly, { path })
@@ -181,8 +186,6 @@ export function startLiveEditing(live: LiveSession): () => void {
     documentSession: (path) =>
       useFilesStore.getState().projectId === projectId ? sessions.documentSession(path) : null,
     holds: (path) => useFilesStore.getState().projectId === projectId && sessions.holds(path),
-    // A compile reads figures too, so this flush waits for ones still
-    // downloading.
     flush: (id) =>
       id === projectId
         ? sessions.flush(() => collabLiveFlush(projectId, { waitForFigures: true }))
@@ -229,6 +232,7 @@ export function startLiveEditing(live: LiveSession): () => void {
     stopDeletes();
     uninstallPort();
     sessions.close();
+    void stopRefusals.then((unlisten) => unlisten());
     indexer.dispose();
     useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
     const files = useFilesStore.getState();

@@ -369,8 +369,6 @@ function appendMathExpression(
     return expressionTo;
   }
 
-  // Avoid treating ordinary unmatched currency such as "$20" as damaged
-  // Pandoc math. A completed "$20$" expression is still recognized above.
   if (
     format === "markdown" &&
     delimiter === "$" &&
@@ -379,7 +377,6 @@ function appendMathExpression(
     return cursor + openerLength;
   }
 
-  // An unterminated opener must not swallow the rest of the document.
   const expressionTo = incompleteEnd(text, bodyFrom, to);
   expressions.push({
     from: cursor,
@@ -518,11 +515,6 @@ function scanTypstMath(
   return expressions;
 }
 
-/**
- * Recognizes math without changing the input. The returned ranges always point
- * into the exact source string. Escaped delimiters, Markdown code/fences and
- * comments, plus LaTeX comments/verbatim regions are ignored.
- */
 export function scanMathExpressions(
   text: string,
   options: MathScanOptions,

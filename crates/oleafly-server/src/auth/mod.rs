@@ -160,8 +160,6 @@ impl ProviderRegistry {
             .map(|info| info.kind)
     }
 
-    // A failure the server saw itself, while building the provider's address
-    // or exchanging the code. Only these carry the provider's own words.
     pub fn note_problem(&self, provider: &str, at: i64, reason: &str) {
         self.problems
             .lock()
@@ -179,9 +177,6 @@ impl ProviderRegistry {
             );
     }
 
-    // An error the browser brought back from the provider. Anyone can send
-    // one, so only a well-formed error code is kept, it says that it is the
-    // browser's report, and it never replaces a failure the server saw.
     pub fn note_reported_error(&self, provider: &str, at: i64, error: &str) {
         let Some(code) = error_code(error) else {
             return;
@@ -215,9 +210,6 @@ impl ProviderRegistry {
             .remove(provider);
     }
 
-    // Whether a failure the server saw itself is still recent. A browser's
-    // report can sit in the list, but on its own it never says that sign-in
-    // is failing.
     pub fn failing(&self, now: i64) -> bool {
         self.problems
             .lock()
@@ -266,9 +258,6 @@ const INVISIBLE: [RangeInclusive<char>; 5] = [
     '\u{e0000}'..='\u{e007f}',
 ];
 
-// Text from a provider or a browser, made safe for one log line: control
-// characters such as CR and LF, and the marks that reorder or break lines,
-// become spaces, and invisible format characters are dropped.
 pub fn plain(text: &str) -> String {
     text.chars().filter_map(printable).collect()
 }
@@ -280,8 +269,6 @@ pub fn short(text: &str) -> String {
         .collect()
 }
 
-// A device name or system as the app sent it, cleaned the same way and with
-// its spaces collapsed, before it is stored or logged.
 pub fn clean_label(text: &str) -> String {
     plain(text).split_whitespace().collect::<Vec<_>>().join(" ")
 }

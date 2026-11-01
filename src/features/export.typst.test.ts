@@ -33,7 +33,12 @@ vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({ pdfByt
 vi.mock("@/lib/tex-root", () => ({ resolveEffectiveMainDoc: () => ({ mainDoc: "main.typ" }) }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
-vi.mock("@/lib/tauri", () => ({ exportDocument: mocks.exportDocument }));
+vi.mock("@/lib/tauri", () => ({
+  EXPORT_LOG_EVENT: "export:log",
+  cancelCompile: vi.fn(),
+  exportDocument: mocks.exportDocument,
+  withEventListener: (_event: string, _handler: unknown, run: () => Promise<unknown>) => run(),
+}));
 vi.mock("@/lib/typst-options", () => ({ exportTypstDocument: mocks.exportTypstDocument }));
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,

@@ -87,7 +87,8 @@ beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", false);
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await vi.dynamicImportSettled();
   vi.unstubAllGlobals();
 });
 

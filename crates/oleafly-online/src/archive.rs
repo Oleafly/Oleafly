@@ -1,5 +1,3 @@
-//! Downloading an online project into a new folder, with its settings
-//! written to the folder's `project.json`.
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -15,9 +13,6 @@ use crate::sync::{check_remote_paths, now_seconds};
 
 const SKIPPED_NAMES: [&str; 5] = ["__MACOSX", ".DS_Store", ".git", ".oleafly", "Thumbs.db"];
 const MAX_FOLDER_NAME: usize = 80;
-/// The longest folder name in bytes. File systems cap a name at 255 bytes,
-/// and the staging names add 37, so 80 characters that each take three or
-/// four bytes would not fit.
 const MAX_FOLDER_BYTES: usize = 180;
 const MANIFEST: &str = "project.json";
 
@@ -29,7 +24,6 @@ pub struct ImportLimits {
 }
 
 impl Default for ImportLimits {
-    /// The app's import limits.
     fn default() -> Self {
         ImportLimits {
             max_entries: 5_000,
@@ -66,7 +60,6 @@ fn reserved_on_windows(stem: &str) -> bool {
         })
 }
 
-/// A folder name for a project, safe on every OS.
 pub fn folder_name_for(project_name: &str) -> String {
     let replaced: String = project_name
         .chars()
@@ -102,7 +95,6 @@ pub fn folder_name_for(project_name: &str) -> String {
     name
 }
 
-/// `parent/name`, or `parent/name-2`, `-3`, … when that is taken.
 pub fn unique_folder(parent: &Path, name: &str) -> PathBuf {
     let taken = |path: &Path| std::fs::symlink_metadata(path).is_ok();
     let first = parent.join(name);
@@ -115,8 +107,6 @@ pub fn unique_folder(parent: &Path, name: &str) -> PathBuf {
         .unwrap_or(first)
 }
 
-/// The entry's path with `/` separators, or `None` when it would land
-/// outside the folder (absolute, a drive, `..`).
 fn entry_path(raw: &str) -> Option<String> {
     if raw.contains('\0') {
         return None;
@@ -153,10 +143,6 @@ fn write_error(path: &Path, error: std::io::Error) -> OnlineError {
     OnlineError::io(format!("could not write {}: {error}", path.display()))
 }
 
-/// Unpacks a project archive into `dest`. Unsafe paths, junk and app
-/// folders and links are skipped; limits and file-name problems are checked
-/// for the whole archive before anything is written. Returns the number of
-/// files written.
 pub fn extract_project_zip(
     archive: &Path,
     dest: &Path,
@@ -232,10 +218,6 @@ fn usable_main(folder: &Path, main: &str) -> bool {
         && folder.join(main).is_file()
 }
 
-/// Replaces the `importedFrom` record in a `project.json` that came with the
-/// archive. Anyone who can edit the online project can put a record there that
-/// names another server, and the command line trusts that record to say where
-/// a folder came from. The rest of the file stays as it was.
 fn claim_origin(path: &Path, origin: Value) -> Result<(), OnlineError> {
     let Ok(Value::Object(mut manifest)) = std::fs::read(path)
         .map_err(|_| ())
@@ -253,8 +235,6 @@ fn claim_origin(path: &Path, origin: Value) -> Result<(), OnlineError> {
     oleafly_secrets::fs::write_atomic(path, &bytes).map_err(OnlineError::io)
 }
 
-/// Writes the folder's `project.json` from the project's online settings,
-/// unless the archive brought its own. True when written.
 pub fn write_folder_manifest(
     folder: &Path,
     settings: &ProjectSettings,
@@ -292,8 +272,6 @@ pub fn write_folder_manifest(
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_string(),
-        // The service compiles from the project root, so paths stay
-        // root-relative here too.
         main_doc,
         engine: engine.manifest_name().to_string(),
         tex_flavor,
@@ -307,7 +285,6 @@ pub fn write_folder_manifest(
     Ok(true)
 }
 
-/// The download and the half-built folder, removed on every way out.
 struct Staging {
     archive: PathBuf,
     folder: PathBuf,
@@ -325,12 +302,10 @@ fn main_doc_of(folder: &Path) -> Option<String> {
     oleafly_core::sniff_oleafly_manifest(&bytes).map(|manifest| manifest.main_doc)
 }
 
-/// Whether anything, even a broken link, is at `path`.
 fn path_exists(path: &Path) -> bool {
     std::fs::symlink_metadata(path).is_ok()
 }
 
-/// Downloads `remote` into the new folder `target` (which must not exist).
 pub async fn import_into_folder(
     http: &Http,
     cookie: &str,
@@ -755,7 +730,6 @@ mod tests {
                 name.len()
             );
             assert!(!name.is_empty());
-            // The staging name for it stays under the 255-byte limit.
             let staged = format!(".{name}.oleafly-import-{:016x}.zip", 0_u64);
             assert!(staged.len() <= 255, "{wide}: {}", staged.len());
         }

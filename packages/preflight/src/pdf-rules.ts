@@ -3,10 +3,7 @@ import { annotate, standardsFor } from "./standards";
 import { message } from "./messages";
 import type { Finding, PdfExtractionStatus, PdfFacts, PositionedText, StandardRef } from "./types";
 
-// Rows within this many PDF units of each other count as the same visual line.
 const ROW_TOLERANCE = 3;
-// A horizontal gap this wide (about one inch at 72dpi) between two runs on the
-// same line signals a column break, i.e. two columns merged into one row.
 const COLUMN_GAP = 72;
 
 export function analyzeReadingOrder(pages: PositionedText[][]): Finding[] {

@@ -54,7 +54,6 @@ function codeSignInShowing(result: Promise<CollabServer>) {
   );
 }
 
-// The code is a fallback: it appears once a browser sign-in timed out.
 async function codeAfterTimeout(user: ReturnType<typeof userEvent.setup>) {
   mocks.collabServerSignIn.mockRejectedValueOnce(collabError("sign_in_timed_out"));
   await user.click(await screen.findByRole("button", { name: github }));
@@ -86,8 +85,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // A test that times out leaves its queued one-off replies behind, and the
-  // next test would consume them. Resetting drops them.
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.collabServerSignInCancel.mockResolvedValue(undefined);
   useCollabStore.setState({ servers: [], status: "ready", loadError: null, pending: {} });
@@ -237,8 +234,6 @@ describe("AddServerDialog", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  // A `server` error in the server's own words came from a server that
-  // answered, so it reads as that server's problem, not as no server.
   const notAServer = new Set(["not_found", "invalid"]);
   it.each(COLLAB_ERROR_CODES)("shows the %s error code in plain words where it happened", async (code) => {
     mocks.collabServerProbe.mockRejectedValueOnce(collabError(code));

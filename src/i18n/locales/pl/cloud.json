@@ -236,6 +236,7 @@
     "pathStyleHint": "Wymaga tego MinIO i większość serwerów hostowanych samodzielnie."
   },
   "errors": {
+    "clock_skew": "Zegar na tym komputerze jest źle ustawiony, więc usługa {{provider}} nie przyjmuje od niego żądań. Ustaw poprawną datę i godzinę, aby kontynuować synchronizację.",
     "code_invalid": "Ten kod nie zadziałał. Spróbuj ponownie.",
     "device_name_empty": "Podaj nazwę.",
     "device_name_invalid": "Nazwa komputera nie może zawierać \\ / : * ? \" < > | ani znaków sterujących i może mieć maksymalnie 32 znaki.",

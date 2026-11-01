@@ -39,7 +39,6 @@ describe("composer keys", () => {
     expect(composerKeyAction({ ...recalled, key: "ArrowUp", caretOnFirstLine: true })).toBe("historyPrev");
     expect(composerKeyAction({ ...recalled, key: "ArrowDown", caretOnLastLine: false })).toBe("default");
     expect(composerKeyAction({ ...recalled, key: "ArrowDown", caretOnLastLine: true })).toBe("historyNext");
-    // Without the caret's position the keys step history as before.
     expect(composerKeyAction({ ...recalled, key: "ArrowUp" })).toBe("historyPrev");
     expect(composerKeyAction({ ...recalled, key: "ArrowDown" })).toBe("historyNext");
   });
@@ -50,7 +49,6 @@ describe("composer keys", () => {
     expect(caretLines(text, 5, 5)).toEqual({ onFirstLine: false, onLastLine: false });
     expect(caretLines(text, text.length, text.length)).toEqual({ onFirstLine: false, onLastLine: true });
     expect(caretLines("single line", 4, 4)).toEqual({ onFirstLine: true, onLastLine: true });
-    // A selection spanning lines is judged by its two ends.
     expect(caretLines(text, 1, 6)).toEqual({ onFirstLine: true, onLastLine: false });
   });
 

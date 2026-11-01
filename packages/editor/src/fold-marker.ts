@@ -12,7 +12,6 @@ import { EditorView } from "@codemirror/view";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/** Lucide chevron-down / chevron-right, matching the app's icon set. */
 const CHEVRON = {
   open: "m6 9 6 6 6-6",
   closed: "m9 18 6-6-6-6",
@@ -86,8 +85,6 @@ export const foldMarkerTheme = EditorView.baseTheme({
     alignItems: "center",
     justifyContent: "center",
     width: "12px",
-    // Intrinsic height: the gutter element is a bare block that collapses to
-    // zero if its only child sizes itself from the parent.
     height: "1.2em",
     cursor: "pointer",
     color: "var(--muted-foreground)",

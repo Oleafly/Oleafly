@@ -1,7 +1,5 @@
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
-// Pure logic behind the LaTeX tools view: BibTeX parsing/validation and
-// LaTeX table generation. Kept UI-free so it is unit-testable.
 
 import { escapeLatex } from "./citation/text";
 
@@ -168,7 +166,6 @@ function readBibEntry(
   return parsed.next;
 }
 
-/** Tolerant BibTeX parser: balanced-brace field values, quoted values, bare numbers. */
 export function parseBib(src: string): { entries: BibEntry[]; parseErrors: string[] } {
   const entries: BibEntry[] = [];
   const parseErrors: string[] = [];

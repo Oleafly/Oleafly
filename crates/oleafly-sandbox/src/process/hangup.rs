@@ -1,12 +1,5 @@
-//! Signals for a whole process group, so a terminal can hang up its shell
-//! and the shell's jobs before it falls back to a kill.
-
 use super::tree::ProcessTreeGuard;
 
-/// Send `signal` to every process in `process_group`. Returns whether the
-/// signal was delivered. Group ids 0 and 1 are refused: `kill(0, …)` would
-/// signal the caller's own group and `kill(-1, …)` every process the user
-/// owns.
 pub fn signal_process_group(process_group: i32, signal: libc::c_int) -> bool {
     if process_group <= 1 {
         return false;
@@ -15,8 +8,6 @@ pub fn signal_process_group(process_group: i32, signal: libc::c_int) -> bool {
 }
 
 impl ProcessTreeGuard {
-    /// The process group this guard kills when it is dropped (0 once
-    /// disarmed).
     pub fn process_group(&self) -> i32 {
         self.process_group
     }

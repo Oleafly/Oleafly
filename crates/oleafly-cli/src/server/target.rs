@@ -1,5 +1,3 @@
-//! Which shared project a command means: `--shared` with `--server`, or
-//! the shared project the Oleafly app keeps for this folder.
 use std::path::Path;
 
 use oleafly_collab::{load_binding, ServerEntry};
@@ -15,9 +13,7 @@ use crate::contract::{CliError, ErrorKind};
 pub(crate) struct SharedTarget {
     pub entry: ServerEntry,
     pub shared: SharedProjectId,
-    /// The app's project for this shared project, when it has one.
     pub local_project_id: Option<String>,
-    /// The role the app last saw (the server's word wins).
     pub saved_role: Option<ProjectRole>,
 }
 
@@ -30,7 +26,6 @@ fn not_shared() -> CliError {
     .hint("Pass --shared and --server, or share it from the Oleafly app.")
 }
 
-/// The app project whose share binding names `shared`.
 fn local_for(collab: &CliCollab, shared: SharedProjectId) -> Option<String> {
     let entries = std::fs::read_dir(collab.app_paths.root()).ok()?;
     entries.flatten().find_map(|entry| {

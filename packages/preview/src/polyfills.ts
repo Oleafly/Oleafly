@@ -508,6 +508,18 @@ export function installArrayBufferTransfer(ctor: { prototype: object } | undefin
 
 installArrayBufferTransfer(typeof ArrayBuffer !== "undefined" ? ArrayBuffer : undefined);
 
+async function bodyBytes(this: { arrayBuffer(): Promise<ArrayBuffer> }): Promise<Uint8Array> {
+  return new Uint8Array(await this.arrayBuffer());
+}
+
+export function installBodyBytes(ctor: { prototype: object } | undefined) {
+  if (!ctor) return;
+  defineMissing(ctor.prototype, "bytes", bodyBytes);
+}
+
+installBodyBytes(typeof Response !== "undefined" ? Response : undefined);
+installBodyBytes(typeof Blob !== "undefined" ? Blob : undefined);
+
 const CONTROL_ESCAPES: Readonly<Record<string, string>> = {
   "\t": String.raw`\t`,
   "\n": String.raw`\n`,

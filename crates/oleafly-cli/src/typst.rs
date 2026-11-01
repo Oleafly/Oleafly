@@ -28,7 +28,6 @@ impl TypstOrigin {
         }
     }
 
-    /// The source word `oleafly version` prints.
     pub(crate) const fn report_label(self) -> &'static str {
         match self {
             Self::Override => "override",
@@ -61,9 +60,6 @@ pub(crate) struct TypstInventory {
 }
 
 impl TypstInventory {
-    /// Every Typst Oleafly can use: `OLEAFLY_TYPST`, the versions the app
-    /// downloaded, the bundled one (beside the CLI, then in the app), then
-    /// the system's.
     pub(crate) fn discover_with(discovery: &Discovery) -> Self {
         let workspace_root = discovery.workspace_root.as_path();
         let mut inventory = Self::default();

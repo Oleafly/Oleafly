@@ -78,13 +78,10 @@ pub struct AgentStatus {
     pub task_unavailable_reason: Option<String>,
     pub cli: Option<CliStatus>,
     pub bridge_shared_with_cli: bool,
-    /// The program the user chose for this agent, when set.
     #[serde(default)]
     pub program_override: Option<String>,
-    /// The bridge cannot work without the vendor CLI (Pi).
     #[serde(default)]
     pub cli_required: bool,
-    /// What the agent reported the last time it was checked or connected.
     #[serde(default)]
     pub runtime: Option<AgentRuntimeInfo>,
 }
@@ -97,10 +94,8 @@ pub struct CliStatus {
     pub path: Option<String>,
     pub version: Option<String>,
     pub sign_in_command: String,
-    /// "auto" when found by searching, "override" when chosen by the user.
     #[serde(default)]
     pub source: Option<String>,
-    /// Files with the right name that cannot be started, with the reason.
     #[serde(default)]
     pub rejected: Vec<RejectedCandidate>,
 }
@@ -109,38 +104,27 @@ pub struct CliStatus {
 #[serde(rename_all = "camelCase")]
 pub struct RejectedCandidate {
     pub path: String,
-    /// Snake-case reason code, e.g. "unsupported_script".
     pub reason: String,
 }
 
-/// Result of the agent "Test" check.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentCheck {
     pub ok: bool,
-    /// "ready" | "not_found" | "is_directory" | "unsupported_script" | "not_executable"
-    /// | "gui_program" | "interpreter" | "network_path" | "cli_missing" | "bridge_missing"
-    /// | "node_missing" | "node_too_old" | "start_failed" | "timeout" | "exited" | "not_acp"
-    /// | "needs_sign_in" | "session_failed"
     pub code: String,
     pub detail: Option<String>,
     pub program: Option<String>,
     pub version: Option<String>,
     pub agent_name: Option<String>,
-    /// Sign-in methods, when the check found the agent needs a sign-in.
     #[serde(default)]
     pub auth_methods: Vec<AuthMethod>,
-    /// What the agent reported, stored by the runtime (never sent).
     #[serde(skip)]
     pub runtime: Option<AgentRuntimeInfo>,
 }
 
-// Capabilities, auth methods and session controls are parsed by the ACP
-// crate; the names stay the same here so records and commands do not change.
 pub use oleafly_acp::capabilities::{AgentCapabilities as Capabilities, AuthMethod};
 pub use oleafly_acp::controls::SessionControls;
 
-/// The capabilities in a v1 `initialize` answer.
 #[cfg(test)]
 pub fn capabilities_from_initialize(value: &Value) -> Result<Capabilities, String> {
     oleafly_acp::capabilities::parse_initialize(value, oleafly_acp::ProtocolVersion::V1)
@@ -183,38 +167,26 @@ pub struct SessionRecord {
     pub auth_methods: Vec<AuthMethod>,
     pub error: Option<String>,
     pub last_sequence: u64,
-    /// HEAD commit when the session started, when the project is a Git repository.
     #[serde(default)]
     pub start_revision: Option<String>,
-    /// Whether the working tree had uncommitted changes when the session started.
     #[serde(default)]
     pub start_dirty: Option<bool>,
-    /// Context, cost, plan windows and sign-in status the agent reported.
     #[serde(default)]
     pub usage: Option<SessionUsage>,
-    /// The agent's slash commands.
     #[serde(default)]
     pub available_commands: Vec<AvailableCommand>,
-    /// The user renamed the conversation: the agent's titles no longer apply.
     #[serde(default)]
     pub title_locked: bool,
-    /// Commits made from this conversation with "Commit this turn".
     #[serde(default)]
     pub commits: Vec<TurnCommit>,
-    /// The conversation this one was forked from.
     #[serde(default)]
     pub forked_from: Option<String>,
-    /// The project's approval mode when the session started.
     #[serde(default)]
     pub permission_profile: Option<String>,
-    /// Where a remote (SSH) agent runs.
     #[serde(default)]
     pub remote: Option<RemoteTarget>,
-    /// The Oleafly provider whose key the agent was routed through.
     #[serde(default)]
     pub routed_provider: Option<String>,
-    /// For a fork: the last event copied from the conversation it was made
-    /// from. Those events were counted there, not here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fork_sequence: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -277,8 +249,6 @@ pub struct DeleteOutcome {
     pub agent_error: Option<String>,
 }
 
-/// A terminal command that signs in to an agent. Maps onto the terminal
-/// launch `{title, command, args, env}`; it opens at the project root.
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalSignIn {
@@ -291,9 +261,7 @@ pub struct TerminalSignIn {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SteerOutcome {
-    /// The message joined the running turn.
     Injected,
-    /// The agent finished first: send the message as a new turn.
     PromptRequired,
 }
 
@@ -318,10 +286,8 @@ pub struct PermissionRequest {
     /// The ACP tool kind (for example "edit"), when reported.
     #[serde(default)]
     pub kind: Option<String>,
-    /// Target paths, project-relative when inside the project.
     #[serde(default)]
     pub locations: Vec<String>,
-    /// The proposed file changes, redacted and size-capped.
     #[serde(default)]
     pub diffs: Vec<PermissionDiff>,
 }
@@ -352,8 +318,6 @@ pub struct UsageCounters {
     pub cost_amount: Option<f64>,
     #[serde(default)]
     pub cost_currency: Option<String>,
-    /// The session's usage after this event, so views update without a
-    /// snapshot.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session: Option<SessionUsage>,
 }
@@ -371,7 +335,6 @@ pub struct AcpEvent {
     pub timestamp: u64,
     pub kind: String,
     pub data: Value,
-    /// The window or task that owns the session. Never stored or sent.
     #[serde(skip)]
     pub owner: Option<Arc<str>>,
 }
@@ -388,16 +351,11 @@ pub struct EventPage {
 pub struct SessionSnapshot {
     pub session: SessionRecord,
     pub permissions: Vec<PermissionRequest>,
-    /// Questions from the agent waiting for an answer.
     #[serde(default)]
     pub elicitations: Vec<ElicitationView>,
 }
 
-/// Asks the user, through a research task's approval queue, whether the
-/// agent may run a command.
 pub trait TaskCommandApproval: Send + Sync {
-    /// `Ok(())` when approved; `Err` with the reason when denied, expired or
-    /// cancelled.
     fn ask(
         &self,
         summary: String,
@@ -405,7 +363,6 @@ pub trait TaskCommandApproval: Send + Sync {
     ) -> futures_util::future::BoxFuture<'static, Result<(), String>>;
 }
 
-/// What a research task lets its agent do with commands.
 #[derive(Clone)]
 pub enum TaskCommands {
     Allow,
@@ -432,7 +389,6 @@ pub struct StartSession {
     pub task_id: Option<String>,
     pub owner: Option<String>,
     pub allowed_paths: Option<Vec<String>>,
-    /// The task's command policy; `None` outside research tasks.
     pub task_commands: Option<TaskCommands>,
 }
 

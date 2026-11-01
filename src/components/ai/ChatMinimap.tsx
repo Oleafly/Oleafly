@@ -22,8 +22,6 @@ function firstLine(text: string): string {
   return nl === -1 ? trimmed : trimmed.slice(0, nl);
 }
 
-// The turn a prompt belongs to: the prompt and the assistant reply paired with
-// it, so the hover card reads like the conversation at that point.
 function turnPreview(messages: ChatMessage[], index: number): {
   user: string;
   assistant: string;
@@ -37,13 +35,6 @@ function turnPreview(messages: ChatMessage[], index: number): {
   };
 }
 
-/**
- * A conversation minimap for the full-width AI pane. One tick per user prompt,
- * the group centered vertically, the prompt whose turn is on screen
- * highlighted, a hover card previewing the turn, and click to scroll. Rendered
- * only when the caller says the pane is full width and there are at least two
- * prompts to move between.
- */
 export function ChatMinimap({
   scrollRef,
   messages,

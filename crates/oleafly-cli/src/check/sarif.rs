@@ -8,12 +8,9 @@ use sha2::{Digest, Sha256};
 
 use super::report::{Level, ReportRow, RuleMeta};
 
-/// Where SARIF paths start: the Git root holding the project, else the
-/// project itself.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SarifBase {
     pub base_dir: PathBuf,
-    /// The project folder below `base_dir` (`"paper/"`, or `""`).
     pub project_prefix: String,
 }
 
@@ -74,7 +71,6 @@ pub fn file_uri(path: &Path) -> String {
     file_uri_from(&path.to_string_lossy(), cfg!(windows))
 }
 
-/// A folder as a `file:` URI ending in `/`.
 pub fn file_uri_from(path: &str, windows: bool) -> String {
     let mut uri = if windows {
         let path = if let Some(rest) = path.strip_prefix(r"\\?\UNC\") {
@@ -96,12 +92,10 @@ pub fn file_uri_from(path: &str, windows: bool) -> String {
     uri
 }
 
-/// A project file's path from the SARIF base, percent-encoded.
 pub fn relative_uri(prefix: &str, file: &str) -> String {
     encode_path(&format!("{prefix}{file}"))
 }
 
-/// 16 hex digits of SHA-256 over the rule and the trimmed line.
 pub fn line_hash(rule_id: &str, line_text: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(rule_id.as_bytes());

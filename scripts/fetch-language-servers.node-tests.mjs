@@ -398,8 +398,6 @@ test("download URLs, assets, and archive members are safe and exact", () => {
       assert.equal(isSafeArchivePath(entry.archiveMember), true, entry.archiveMember);
       assert.equal(entry.archiveMember.endsWith("/"), false);
       if (entry.upstreamChecksumUrl) {
-        // Deliberately upstream, not the mirror: verifying a mirror-served
-        // archive against GitHub's checksum defends against mirror tampering.
         const repository = new URL(server.repository);
         const checksumUrl = new URL(entry.upstreamChecksumUrl);
         assert.equal(checksumUrl.protocol, "https:");
@@ -862,8 +860,6 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
     "x86_64-pc-windows-msvc",
     cargoBuildPattern,
   );
-  // Every e2e shard consumes a prebuilt app; the staging obligation follows
-  // the build, so it lives in the three jobs that actually compile.
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
     "e2e-build-macos",
@@ -912,9 +908,6 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
         ),
       );
       if (buildIndex === -1) continue;
-      // Shards that run the suite against a prebuilt bundle
-      // (OLEAFLY_E2E_APP_BINARY) do not build Tauri; the job that builds the
-      // bundle carries the staging obligation and is asserted above.
       if (job.source.includes("OLEAFLY_E2E_APP_BINARY")) continue;
       const fetchIndex = job.source.indexOf(
         "run: node scripts/fetch-language-servers.mjs --server tinymist",
@@ -965,9 +958,6 @@ test("the release workflow carries no live-provider gate", async () => {
     join(ROOT, ".github", "workflows", "release.yml"),
     "utf8",
   );
-  // Provider wire formats are covered by unit tests, so publishing no longer
-  // depends on live third-party credentials. Guard against reintroducing that
-  // coupling by accident.
   assert.ok(!/^\s{2}provider-[a-z]+:/m.test(workflow));
   assert.ok(!workflow.includes("ANTHROPIC_API_KEY"));
   assert.ok(!workflow.includes("GOOGLE_API_KEY"));

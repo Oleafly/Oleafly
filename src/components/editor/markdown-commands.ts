@@ -142,7 +142,6 @@ export function insertMarkdownSubscript() {
   wrapSelectionOrPlaceholder("~", "~", "text");
 }
 
-/** Visual mode: the current link's href, or null when the cursor is not in a link. */
 export function currentMarkdownLinkHref(): string | null {
   if (!isWysiwygActive()) return null;
   const editor = getWysiwygEditor();
@@ -167,11 +166,6 @@ function visualLinkHref(typed: string): string {
   return hash < 0 ? linkHrefForPath(path) : linkHrefForPath(path.slice(0, hash), path.slice(hash));
 }
 
-/**
- * Source mode inserts the `[text](url)` template. Visual mode needs a URL:
- * it links the selection (or inserts "link text") and, with an empty `href`,
- * removes the link instead.
- */
 export function insertMarkdownLink(href?: string) {
   if (isWysiwygActive()) {
     const editor = getWysiwygEditor();
@@ -197,7 +191,6 @@ export function insertMarkdownLink(href?: string) {
   insertTemplate(template, start, start + "link text".length);
 }
 
-/** Source mode inserts the `![caption](file)` template; Visual mode needs a path. */
 export function insertMarkdownImage(src?: string) {
   if (isWysiwygActive()) {
     const editor = getWysiwygEditor();

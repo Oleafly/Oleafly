@@ -137,8 +137,9 @@ describe("assistant readiness card", () => {
     expect(ui.getByTestId("acp-bridge-card-pi")).not.toHaveTextContent("sign in with /login");
   });
 
-  it("opens the general agent setup from the gear button", () => {
+  it("opens the general agent setup from the gear button", async () => {
     const ui = render(<AssistantShellAcpActions />);
+    expect(await ui.findByRole("button", { name: enAi.acp.usageReport })).toBeInTheDocument();
     fireEvent.click(ui.getByRole("button", { name: enAi.acp.agentSetup }));
     const settings = useSettingsStore.getState();
     expect(settings.settingsOpen).toBe(true);
@@ -159,8 +160,6 @@ describe("terminal sign-in", () => {
     const terminals = useTerminalsStore.getState();
     expect(terminals.projectId).toBe("paper");
     const tab = terminals.tabs.find((value) => value.id === terminals.activeId);
-    // Since 0.4.8 the tab gets the command to start, and the terminal types it
-    // quoted for the shell that started, instead of a pre-quoted line.
     expect(tab?.launch).toEqual({ command: "/usr/local/bin/pi", args: [] });
     expect(tab?.title).toBe("pi");
     expect(useSettingsStore.getState().terminalOpen).toBe(true);

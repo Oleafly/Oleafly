@@ -5,9 +5,6 @@ import { toast } from "@/lib/toast";
 
 export type BudgetGate = "ok" | "warned" | "blocked";
 
-// Soft warning past 80% of the project's AI budget, hard stop at 100%.
-// Ledger problems never block a run; the budget is a guard rail, not a lock
-// the user cannot get past when the database is unavailable.
 export async function checkProjectBudget(projectId: string): Promise<BudgetGate> {
   try {
     const budget = await budgetGet(projectId);

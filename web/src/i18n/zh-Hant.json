@@ -48,6 +48,11 @@
     "stoppedTitle": "已中斷連線",
     "stoppedDescription": "重新載入頁面即可再次連線。"
   },
+  "leave": {
+    "title": "要離開這個專案嗎？",
+    "description": "你的部分編輯還沒有送到伺服器。請等待送出完成。現在離開會失去這些編輯。",
+    "confirm": "離開"
+  },
   "access": {
     "changed": "你在這個專案中的角色已變更為 {{role}}。"
   },
@@ -155,6 +160,11 @@
     "withdraw": "撤回",
     "acceptAll": "全部接受",
     "rejectAll": "全部拒絕",
+    "rejectAllConfirm": {
+      "title": "要拒絕 {{file}} 中的所有建議嗎？",
+      "description": "檔案會為本專案中的所有人還原成原本的文字。等待審閱的建議：{{number}}。",
+      "confirm": "全部拒絕"
+    },
     "pending_other": "{{count}} 個建議",
     "card": "{{name}} 的建議",
     "lineBreak": "換行"

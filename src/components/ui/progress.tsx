@@ -8,9 +8,7 @@ export function Progress({
   indicatorClassName,
 }: Readonly<{
   value: number;
-  // Work is happening but how much is left isn't known yet.
   indeterminate?: boolean;
-  // What the bar measures, for screen readers.
   label?: string;
   className?: string;
   indicatorClassName?: string;

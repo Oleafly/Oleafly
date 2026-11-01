@@ -1,5 +1,3 @@
-//! Encrypted, portable backup and restore for a project's complete history.
-
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
@@ -246,9 +244,6 @@ fn import_checkpoint_archive_sync(
     };
     let store = Store::open(&store_path)
         .map_err(|error| format!("could not open Checkpoints storage: {error}"))?;
-    // A failed first import deliberately leaves the empty initialized store in
-    // place. Removing it here could delete a store concurrently opened by
-    // another app process after this function observed it as absent.
     import_archive_for_kind(&store, source, password, kind)
 }
 

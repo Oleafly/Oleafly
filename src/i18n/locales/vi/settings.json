@@ -1477,6 +1477,7 @@
         "missing": "Không tìm thấy trên máy tính này."
       },
       "managedIdle": "Không được dùng. Oleafly ưu tiên bản sao tìm thấy trên máy tính này.",
+      "superseded": "Không được dùng. Oleafly hiện dùng {{tool}} {{version}}.",
       "download": {
         "optional": "Tuỳ chọn. Oleafly đã dùng bản sao trên máy tính này.",
         "license": "Giấy phép {{license}}.",

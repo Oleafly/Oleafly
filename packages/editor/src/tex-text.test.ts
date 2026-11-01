@@ -5,7 +5,6 @@ function spelled(source: string) {
   return renderedTex(source).text;
 }
 
-/** The source text behind `word` in the rendered text. */
 function sourceOf(source: string, word: string) {
   const rendered = renderedTex(source);
   const at = rendered.text.indexOf(word);

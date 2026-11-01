@@ -101,6 +101,25 @@ async function markedUntaggedPdf(): Promise<Uint8Array> {
   return document.save({ useObjectStreams: false });
 }
 
+describe("standard fonts the PDF does not embed", () => {
+  it("reads them as not embedded without loading pdf.js's own copy of the font", async () => {
+    const document = await PDFDocument.create({ updateMetadata: false });
+    const font = await document.embedFont(StandardFonts.Helvetica);
+    document.addPage([612, 792]).drawText("Standard font", { x: 72, y: 720, size: 12, font });
+    const bytes = await document.save({ useObjectStreams: false });
+    const warn = vi.spyOn(console, "warn");
+    try {
+      const result = await extractForPreflight(bytes);
+
+      expect(result.facts.fonts).toEqual([{ name: "Helvetica", embedded: false }]);
+      expect(result.pageText.join(" ")).toContain("Standard font");
+      expect(warn.mock.calls.flat().join("\n")).not.toMatch(/standardFontDataUrl/);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
 describe("MarkInfo read through the real pdf.js API", () => {
   it("reads the Marked and Suspects flags from the catalog", async () => {
     const result = await extractForPreflight(await markedUntaggedPdf());

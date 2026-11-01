@@ -1,6 +1,3 @@
-// The model messages for a user turn and its history when attachments are
-// involved. Images and PDFs go by reference (the run resolves them for the
-// model); text files are read back and inlined. Loaded lazily.
 import type {
   AttachmentKind,
   DraftAttachment,
@@ -10,7 +7,6 @@ import { HISTORY_MSG_MAX_CHARS, packChatHistoryInfo, truncateText } from "@/lib/
 import type { AttachmentPart, FilePart, ModelMessage, TextPart } from "@/lib/chat-types";
 import type { AttachmentMeta, ChatMessage } from "@/store/chats";
 
-/** A project file or folder listing mentioned with @, as a data URL. */
 export interface MentionAttachment {
   id: string;
   name: string;
@@ -20,19 +16,15 @@ export interface MentionAttachment {
 
 export interface AttachmentModelContext {
   readText(scope: string | null, sha256: string): Promise<string | null>;
-  /** Characters of attached text one message may carry. */
   textBudget: number;
-  /** Send a scanned PDF's page images (vision without PDF input). */
   pageImages: boolean;
 }
 
-/** User turns whose attachments are sent again with a new message. */
 export const RESEND_ATTACHMENT_TURNS = 3;
 
 const MIN_TEXT_BUDGET = 48_000;
 const MAX_TEXT_BUDGET = 400_000;
 
-/** Characters of attachment text for a context window (about 40% of it). */
 export function attachmentTextBudget(contextWindow?: number): number {
   if (!contextWindow || !Number.isFinite(contextWindow) || contextWindow <= 0) {
     return MIN_TEXT_BUDGET;
@@ -90,7 +82,6 @@ async function partsFor(
   ctx: AttachmentModelContext,
   textBudget: number,
 ): Promise<UserPart[]> {
-  // Text files are read side by side; the budget is spent in order below.
   const loaded = await Promise.all(
     files.map(async (file) => ({
       file,
@@ -136,7 +127,6 @@ function mentionParts(mentions: readonly MentionAttachment[]): FilePart[] {
   }));
 }
 
-/** The new user turn: its text, attachments, then mentioned files. */
 export async function userModelMessage(
   text: string,
   attachments: readonly DraftAttachment[],
@@ -161,7 +151,6 @@ function describe(meta: AttachmentMeta): string {
   return `${meta.name} (text)`;
 }
 
-/** A note in place of attachments that are not sent again. */
 export function skippedAttachmentNote(attachments: readonly AttachmentMeta[]): string {
   return `[Attachments from this message are not sent again: ${attachments.map(describe).join(", ")}.]`;
 }
@@ -183,7 +172,6 @@ function assistantMessage(message: ChatMessage, content: string): ModelMessage {
   };
 }
 
-/** One prior turn as a model message; a user turn with stored attachments sends them again when `resend`. */
 async function historyMessage(
   message: ChatMessage,
   content: string,
@@ -206,11 +194,6 @@ async function historyMessage(
   return { role: "user", content: parts };
 }
 
-/**
- * The conversation before the new turn, packed like `packChatHistory`.
- * The last few user turns with stored attachments send them again; older
- * ones, and attachments saved before 0.4.8, leave a note instead.
- */
 export async function historyModelMessages(
   prior: readonly ChatMessage[],
   scope: string | null,
@@ -229,7 +212,6 @@ export async function historyModelMessages(
     }
     return 0;
   })();
-  // Only the last few user turns carry files, so few of these do any reading.
   const messages = await Promise.all(
     kept.map((message, index) =>
       historyMessage(message, packed.messages[index].content, index >= resendFrom, scope, ctx),

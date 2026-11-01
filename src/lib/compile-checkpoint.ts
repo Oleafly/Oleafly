@@ -3,29 +3,11 @@ export const COMPILE_CHECKPOINT_VERSION = 1 as const;
 
 export type CompileOutputKind = "standard" | "tagged";
 
-/**
- * Identifies one successful main-document output across every app window.
- *
- * `outputRevision` is allocated by the Rust backend while it still owns the
- * process-wide compile lock. `outputId` fingerprints the PDF written by that
- * revision, so a receiver can reject a delayed event if a newer compile has
- * already replaced the file before IPC reads it.
- */
 export interface CompileSuccessCheckpoint {
   version: typeof COMPILE_CHECKPOINT_VERSION;
   projectId: string;
   mainDocument: string;
-  /**
-   * The complete project dependency-graph revision that produced this PDF.
-   * This is deliberately distinct from `outputRevision`, which only orders
-   * backend output files.
-   */
   projectRevision: number;
-  /**
-   * Identifies the compile request within the producing app runtime. Together
-   * with the project fields above it is the acceptance identity used by the
-   * preview and detached preview window.
-   */
   requestGeneration: number;
   outputKind: CompileOutputKind;
   producerId: string;
@@ -102,11 +84,6 @@ export function createCompileSuccessCheckpoint({
   };
 }
 
-/**
- * A compact, deterministic identity for non-adversarial output race detection.
- * Two independently mixed 32-bit lanes cover every byte and include the length.
- * The backend uses the same algorithm before releasing the compile lock.
- */
 export function fingerprintCompileOutput(bytes: Uint8Array): string {
   let first = 0x811c9dc5;
   let second = 0x9e3779b9;
@@ -173,11 +150,6 @@ export function isNewerCompileCheckpoint(
   return current === null || candidate.outputRevision > current.outputRevision;
 }
 
-/**
- * True when another successful compile became current after a local attempt
- * started. Failed and best-effort results have no revision of their own, so
- * they must not replace the status/PDF belonging to that newer success.
- */
 export function hasCompileCheckpointAdvanced(
   checkpointAtStart: CompileSuccessCheckpoint | null,
   current: CompileSuccessCheckpoint | null,
@@ -185,11 +157,6 @@ export function hasCompileCheckpointAdvanced(
   return current !== null && isNewerCompileCheckpoint(current, checkpointAtStart);
 }
 
-/**
- * Apply successful local output only when its backend revision is newer than
- * the latest accepted output. A failed/best-effort result is eligible only
- * while no success checkpoint has advanced since the attempt began.
- */
 export function canApplyLocalCompileOutcome(
   candidate: CompileSuccessCheckpoint | null,
   current: CompileSuccessCheckpoint | null,

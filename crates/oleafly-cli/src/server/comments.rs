@@ -1,8 +1,3 @@
-//! `server comments`: read and write comment threads on a shared project.
-//! Writing goes through a short live session of the command line's own
-//! device and its own document copy (`<data>/collab-cli/<shared id>`), so
-//! it never writes into the app's copy. A comment that isn't acknowledged
-//! in time stays in that copy and goes out with the next command.
 use std::collections::BTreeMap;
 use std::io::Read as _;
 use std::path::PathBuf;
@@ -30,10 +25,7 @@ use super::target::SharedTarget;
 use crate::auth::shared::{from_collab, now_ms, one_line, plain_text, Report};
 use crate::contract::{path_arg, CliError, ErrorKind};
 
-/// How long to wait to connect and catch up, and again for the server to
-/// take a change.
 const LIVE_WAIT: Duration = Duration::from_secs(30);
-/// The longest comment text read from a file or standard input.
 const MAX_BODY: u64 = 64 * 1024;
 
 #[derive(Debug, Subcommand)]
@@ -126,15 +118,10 @@ fn lock(live: &SharedLive) -> MutexGuard<'_, LiveProject> {
     live.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-// ---------------------------------------------------------------------------
-// Text positions (UTF-16 code units, as the shared document counts them)
-
 fn utf16_len(text: &str) -> usize {
     text.encode_utf16().count()
 }
 
-/// Lines `first..=last` (1-based) as UTF-16 offsets; the end stops before
-/// the line break (`\n` or `\r\n`).
 pub(crate) fn line_range_utf16(text: &str, first: usize, last: usize) -> Option<(usize, usize)> {
     if first == 0 || last < first {
         return None;
@@ -155,7 +142,6 @@ pub(crate) fn line_range_utf16(text: &str, first: usize, last: usize) -> Option<
     None
 }
 
-/// The first place `quote` appears (inside `within` when given).
 pub(crate) fn quote_range_utf16(
     text: &str,
     quote: &str,
@@ -178,7 +164,6 @@ pub(crate) fn quote_range_utf16(
     None
 }
 
-/// The 1-based line holding a UTF-16 offset.
 pub(crate) fn line_of_utf16(text: &str, offset: usize) -> usize {
     let mut line = 1;
     for (seen, unit) in text.encode_utf16().enumerate() {
@@ -221,9 +206,6 @@ fn parse_lines(value: &str) -> Result<(usize, usize), CliError> {
     }
 }
 
-// ---------------------------------------------------------------------------
-// The shared document
-
 fn layout_of(doc: &ProjectDoc) -> materialize::Layout {
     doc.nodes()
         .map(|nodes| materialize::layout(&nodes))
@@ -238,7 +220,6 @@ fn file_missing(path: &str) -> CliError {
     )
 }
 
-/// The text file at `path`.
 fn file_at(doc: &ProjectDoc, path: &str) -> Result<String, CliError> {
     let path = path.trim().trim_start_matches("./").replace('\\', "/");
     layout_of(doc)
@@ -248,10 +229,6 @@ fn file_at(doc: &ProjectDoc, path: &str) -> Result<String, CliError> {
         .ok_or_else(|| file_missing(&path))
 }
 
-/// The thread whose ID is `thread`, or starts or ends with it (8
-/// characters or more). IDs are UUIDv7: their first characters are a
-/// timestamp that threads made the same minute share, their last ones
-/// random, so the end is the part worth typing.
 pub(crate) fn find_thread(
     doc: &ProjectDoc,
     thread: &str,
@@ -335,7 +312,6 @@ fn thread_json(
     row
 }
 
-/// Every thread in `doc` (open ones unless `all`), optionally of one file.
 fn threads_in(
     doc: &ProjectDoc,
     file: Option<&str>,
@@ -375,8 +351,6 @@ fn threads_in(
             } else {
                 ""
             };
-            // The quote and the comments are other people's text: nothing in
-            // them can steer the terminal or pass as a line of its own.
             lines.push(format!(
                 "{place}  \"{}\"  ({}){state}",
                 one_line(thread.anchor.quote.lines().next().unwrap_or_default()),
@@ -398,9 +372,6 @@ fn threads_in(
     }
     Ok((rows, lines))
 }
-
-// ---------------------------------------------------------------------------
-// A live session of this device
 
 struct LiveSession {
     link: ServerLink,
@@ -454,7 +425,6 @@ fn ended(reason: EndReason, server: &str) -> CliError {
 }
 
 impl LiveSession {
-    /// Opens this device's copy (fetching it the first time) and connects.
     async fn open(
         collab: &CliCollab,
         target: &SharedTarget,
@@ -532,8 +502,6 @@ impl LiveSession {
         })
     }
 
-    /// Waits until the session is online and has every change up to
-    /// `head`. False when it isn't in time.
     async fn caught_up(&mut self, head: u64, wait: Duration) -> Result<bool, CliError> {
         let deadline = tokio::time::Instant::now() + wait;
         let mut online = false;
@@ -553,7 +521,6 @@ impl LiveSession {
         }
     }
 
-    /// Sends what this copy holds and waits for the server to take it.
     async fn delivered(&mut self, wait: Duration) -> Result<Delivery, CliError> {
         self.handle.flush();
         let deadline = tokio::time::Instant::now() + wait;
@@ -579,8 +546,6 @@ impl LiveSession {
         }
     }
 
-    /// Saves this device's copy (so a change not yet taken survives) and
-    /// ends the session.
     async fn close(self) -> Result<(), CliError> {
         let saved = lock(&self.live).save(&self.dir);
         self.handle.stopped().await;
@@ -588,10 +553,6 @@ impl LiveSession {
     }
 }
 
-/// Runs `work` on the project as this device and sends the result. `work`
-/// learns whether the copy caught up with the server's head (a copy that
-/// didn't is this computer's saved one, however long the wait), and so
-/// does the caller.
 async fn with_cli_live_checked<T: Send>(
     collab: &CliCollab,
     target: &SharedTarget,
@@ -617,9 +578,6 @@ async fn with_cli_live_checked<T: Send>(
     closed?;
     Ok(outcome)
 }
-
-// ---------------------------------------------------------------------------
-// Commands
 
 fn read_body(body: &BodyArgs) -> Result<String, CliError> {
     let text = match (&body.body, &body.body_file) {
@@ -667,8 +625,6 @@ fn read_body(body: &BodyArgs) -> Result<String, CliError> {
     Ok(text)
 }
 
-/// Where a new thread goes: `--line`, `--quote` (within `--line`), or the
-/// first line.
 fn anchor_in(
     text: &str,
     path: &str,
@@ -723,8 +679,6 @@ fn comment_members(members: &[ProjectMember]) -> Vec<CommentMember> {
         .collect()
 }
 
-/// The freshest copy on this computer without connecting: this device's,
-/// else the app's.
 fn saved_copy(collab: &CliCollab, target: &SharedTarget) -> Result<Option<LiveProject>, CliError> {
     let mine = collab
         .paths
@@ -802,8 +756,6 @@ async fn list(
     Ok(live_listing(rows, lines, args.all, delivery, current))
 }
 
-/// The threads of a live session. A session that never caught up with the
-/// server shows this computer's saved copy, and says so.
 fn live_listing(
     rows: Vec<Value>,
     lines: Vec<String>,
@@ -880,8 +832,6 @@ fn not_sent(report: Report, delivery: Delivery, caught_up: bool) -> Report {
     }
 }
 
-/// A line number counted on a copy that hasn't caught up may name another
-/// line than the one meant.
 fn stale_line(line: Option<&str>, quote: Option<&str>, caught_up: bool) -> Result<(), CliError> {
     if caught_up || line.is_none() || quote.is_some() {
         return Ok(());
@@ -895,7 +845,6 @@ fn stale_line(line: Option<&str>, quote: Option<&str>, caught_up: bool) -> Resul
     .retryable())
 }
 
-/// `add`, `reply` and `resolve` (and their dry runs).
 async fn write(
     collab: &CliCollab,
     target: &SharedTarget,
@@ -1017,8 +966,6 @@ async fn write(
     }
 }
 
-/// Checks the file, anchor or thread against the freshest saved copy;
-/// nothing connects or changes.
 fn dry_run_report(
     collab: &CliCollab,
     target: &SharedTarget,
@@ -1281,8 +1228,6 @@ mod tests {
         for line in &lines {
             assert!(!line.contains(['\u{1b}', '\u{7}', '\r']), "{line:?}");
         }
-        // A line break in the body stays under its author, so the next line
-        // can't pass as another person's comment.
         assert!(
             lines[1].ends_with(": ok\n      Mallory: forged[2J"),
             "{lines:?}"
@@ -1312,11 +1257,8 @@ mod tests {
         let collab = CliCollab::open(&env);
         let (target, open_id) = saved_project(&collab, "abc");
         let live = saved_copy(&collab, &target).unwrap().unwrap();
-        // Thread ids are time-ordered (UUIDv7): two made in the same minute
-        // share their first characters, so the prefix reaches the random part.
         let (_, found) = find_thread(live.doc(), &open_id[..open_id.len() - 4]).unwrap();
         assert_eq!(found.id.to_string(), open_id);
-        // The random end is enough on its own.
         let (_, found) = find_thread(live.doc(), &open_id[open_id.len() - 8..]).unwrap();
         assert_eq!(found.id.to_string(), open_id);
         assert_eq!(

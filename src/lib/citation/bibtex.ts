@@ -57,7 +57,6 @@ function parseEntryFields(body: string): Record<string, string> {
   return fields;
 }
 
-// Tolerant of nested braces, quoted, or bare field values.
 export function parseEntry(bibtex: string): ParsedBib | null {
   const text = bibtex.trim();
   const head = /^@(\w+)\s*\{\s*([^,\s}]+)\s*,/.exec(text);

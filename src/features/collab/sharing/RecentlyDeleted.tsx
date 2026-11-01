@@ -27,7 +27,6 @@ function sameEntries(left: readonly CollabTrashEntry[], right: readonly CollabTr
 interface TrashState {
   projectId: string | null;
   entries: readonly CollabTrashEntry[];
-  // Why the last read failed. A list read earlier stays on screen.
   failure: string | null;
 }
 
@@ -37,7 +36,6 @@ function useTrash(): readonly [readonly CollabTrashEntry[], () => Promise<void>,
   const [state, setState] = useState<TrashState>({ projectId: null, entries: NONE, failure: null });
   const latest = useRef(projectId);
   latest.current = projectId;
-  // What is on screen, so an answer that changes nothing doesn't redraw.
   const shown = useRef(state);
   shown.current = state;
   const request = useRef(0);
@@ -59,7 +57,6 @@ function useTrash(): readonly [readonly CollabTrashEntry[], () => Promise<void>,
     }
     if (ticket !== request.current || latest.current !== projectId) return;
     const current = shown.current;
-    // An empty answer looks the same for any project.
     const same =
       current.failure === null &&
       sameEntries(current.entries, entries) &&
@@ -195,8 +192,6 @@ export function RecentlyDeleted({
   const [failure, setFailure] = useState<string | null>(null);
   const rows = useBusyRows();
   const run = rows.run;
-  // Entries this window restored. If the list hadn't caught up and the same
-  // restore goes out again, the server no longer has it, which is success.
   const restored = useRef(new Set<string>());
   const title = t(($) => $.collab.pane.deleted);
   const restore = useCallback(

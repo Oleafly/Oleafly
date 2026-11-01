@@ -1,6 +1,3 @@
-// The glue between the page and crates/oleafly-synctex-wasm's C ABI: bytes go
-// in through `synctex_alloc`, and each call returns a status with its JSON
-// answer or error message in the module's output buffer.
 import type { SynctexForwardHit, SynctexHit } from "@oleafly/backend-port";
 
 export type SyncTexErrorCode =
@@ -30,8 +27,13 @@ export interface SyncTexFile {
   dispose(): void;
 }
 
+export interface SyncTexMappedLine {
+  line: number;
+  exact: boolean;
+}
+
 export interface SyncTexModule {
-  /** Throws a `SyncTexError` when the file isn't gzipped SyncTeX or is too large. */
+  mapLine(compiled: string, current: string, line: number, currentToCompiled: boolean): SyncTexMappedLine | null;
   open(gz: Uint8Array, projectPaths: readonly string[]): SyncTexFile;
 }
 
@@ -43,11 +45,18 @@ export interface SyncTexExports {
   synctex_forward(index: number, file: number, fileLen: number, line: number): number;
   synctex_inverse(index: number, page: number, x: number, y: number): number;
   synctex_close(index: number): number;
+  synctex_map_line(
+    compiled: number,
+    compiledLen: number,
+    current: number,
+    currentLen: number,
+    line: number,
+    currentToCompiled: number,
+  ): number;
   synctex_output_ptr(): number;
   synctex_output_len(): number;
 }
 
-// The `STATUS_*` constants in crates/oleafly-synctex-wasm/src/lib.rs.
 const STATUS_CODES: ReadonlyMap<number, SyncTexErrorCode> = new Map([
   [-1, "bad-input"],
   [-2, "file-too-large"],
@@ -62,8 +71,6 @@ export function createSyncTexModule(exports: SyncTexExports): SyncTexModule {
   const decoder = new TextDecoder();
   let crashed = false;
 
-  // A trap (the module ran out of memory, say) leaves it in no state to
-  // trust, so every later call fails too; load the module again instead.
   function call<T>(run: () => T): T {
     if (crashed) throw new SyncTexError("crashed", "SyncTeX stopped after an earlier error. Reload it to search again.");
     try {
@@ -93,7 +100,6 @@ export function createSyncTexModule(exports: SyncTexExports): SyncTexModule {
     return status === 0 ? null : (JSON.parse(output()) as T);
   }
 
-  /** Copies each buffer into the module for the length of `run`. */
   function withBuffers(buffers: readonly Uint8Array[], run: (pointers: number[]) => number): number {
     const pointers: number[] = [];
     try {
@@ -101,7 +107,6 @@ export function createSyncTexModule(exports: SyncTexExports): SyncTexModule {
         const ptr = exports.synctex_alloc(buffer.length) >>> 0;
         if (ptr === 0) throw new SyncTexError("out-of-memory", "SyncTeX ran out of memory.");
         pointers.push(ptr);
-        // Allocating can grow the memory, which detaches older views.
         new Uint8Array(exports.memory.buffer, ptr, buffer.length).set(buffer);
       }
       return run(pointers);
@@ -137,6 +142,17 @@ export function createSyncTexModule(exports: SyncTexExports): SyncTexModule {
   }
 
   return {
+    mapLine(compiled, current, line, currentToCompiled) {
+      const before = encoder.encode(compiled);
+      const after = encoder.encode(current);
+      return call(() =>
+        answer<SyncTexMappedLine>(
+          withBuffers([before, after], ([beforePtr, afterPtr]) =>
+            exports.synctex_map_line(beforePtr, before.length, afterPtr, after.length, line, currentToCompiled ? 1 : 0),
+          ),
+        ),
+      );
+    },
     open(gz, projectPaths) {
       const paths = encoder.encode(JSON.stringify(projectPaths));
       const status = call(() =>

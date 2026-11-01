@@ -74,8 +74,6 @@ async function ask(page: Page, text: string) {
 
 async function limitTools(page: Page, readFile = false) {
   await page.click('[aria-label="Manage agent tools"]');
-  // Skill tools load asynchronously. Wait before disabling the catalog,
-  // or tools arriving after the click remain enabled.
   await waitLong(page, `!!document.querySelector('[aria-label="Enable load_skill"]')`, 20_000);
   await page.getByText("Disable all", { exact: true }).click();
   await waitLong(page, `!document.querySelector('[data-testid="ai-tool-manager"] [role="switch"][aria-checked="true"]')`, 10_000);
@@ -116,8 +114,6 @@ test.describe("local Ollama", () => {
     await connectOllama(tauriPage);
     await openChat(tauriPage);
 
-    // Keep the streaming check independent of a small model choosing a tool
-    // instead of answering. The separate tool test exercises real file access.
     await limitTools(tauriPage);
     await ask(tauriPage, "Reply with exactly this word and nothing else: pineapple");
     await waitLong(
@@ -151,8 +147,6 @@ test.describe("local Ollama", () => {
     await connectOllama(tauriPage);
     await openChat(tauriPage);
 
-    // Small local models can choose a command instead and wait for command
-    // approval. Exercise the actual user tool picker to isolate file reading.
     await limitTools(tauriPage, true);
     await ask(tauriPage, "Use the read_file tool to read main.tex. Then say DONE.");
     await waitForRun(tauriPage);

@@ -40,11 +40,6 @@ export interface Finding {
   to?: number;
   page?: number;
   file?: string;
-  /**
-   * Verified findings are direct observations. Advisory findings are strong,
-   * documented heuristics. Manual findings identify requirements that cannot
-   * be proved from the source/PDF data available to the app.
-   */
   certainty?: "verified" | "advisory" | "manual";
   standards?: StandardRef[];
   method?: FindingMethod;

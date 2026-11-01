@@ -6,21 +6,10 @@ import {
 } from "@oleafly/editor";
 import { typstDocumentCounts } from "@/lib/document-stats-typst";
 
-/**
- * The document summary shown in Project info.
- *
- * Word buckets partition the prose exactly once: `words === wordsInText +
- * wordsInHeaders + wordsOutsideText`. That invariant is ours, not texcount's —
- * texcount's headline "Sum count" folds in per-header and per-caption weights,
- * which makes its own three sub-counts fail to add up and confuses everyone who
- * checks the arithmetic.
- */
 export interface DocumentStats {
   words: number;
-  /** Body prose: everything that is not a heading, caption, or footnote. */
   wordsInText: number;
   wordsInHeaders: number;
-  /** Captions, footnotes, and other float text that sits beside the body. */
   wordsOutsideText: number;
   headers: number;
   figures: number;
@@ -53,9 +42,6 @@ const HEADING_CMDS = new Set([
   "subparagraph",
 ]);
 
-// Prose that belongs to the document but not to its running text. texcount
-// calls this "words outside text"; it is the bucket a reader skips when they
-// read the argument straight through.
 const OUTSIDE_TEXT_CMDS = new Set([
   "caption",
   "captionof",
@@ -66,9 +52,6 @@ const OUTSIDE_TEXT_CMDS = new Set([
 
 const FIGURE_ENVS = new Set(["figure", "figure*", "wrapfigure", "SCfigure"]);
 
-// Display-math environments a reader would count as one displayed equation.
-// Helpers that only ever nest inside those (split, aligned, cases, array) are
-// deliberately absent: counting them would double-count their parent.
 const DISPLAY_MATH_ENVS = new Set([
   "displaymath",
   "equation",
@@ -94,7 +77,6 @@ interface Span {
   to: number;
 }
 
-/** True when `offset` sits inside any span. Spans are sorted and disjoint. */
 function inSpans(spans: readonly Span[], offset: number): boolean {
   let low = 0;
   let high = spans.length - 1;
@@ -108,11 +90,6 @@ function inSpans(spans: readonly Span[], offset: number): boolean {
   return false;
 }
 
-/**
- * End offset (exclusive) of the brace or bracket group opening at `open`, or
- * -1 when it never closes. Backslash escapes are skipped so `\{` inside an
- * argument cannot unbalance the scan.
- */
 function groupEnd(text: string, open: number): number {
   const opener = text[open];
   const closer = opener === "{" ? "}" : "]";
@@ -129,7 +106,6 @@ function groupEnd(text: string, open: number): number {
   return -1;
 }
 
-/** First non-whitespace offset at or after `from`, bounded by the text end. */
 function skipSpace(text: string, from: number): number {
   let i = from;
   while (i < text.length && /\s/.test(text[i])) i++;
@@ -144,15 +120,6 @@ interface StructureScan {
   displayMathEnvs: number;
 }
 
-/**
- * One linear pass over the source that finds heading and caption arguments and
- * counts headings, figures, and display-math environments.
- *
- * It walks the raw source rather than the spellchecker mask because the mask
- * blanks braces and command names — the very tokens this needs — while keeping
- * offsets aligned, so the spans produced here address the same coordinates the
- * mask's word ranges do.
- */
 function environmentStep(
   text: string,
   i: number,
@@ -179,8 +146,6 @@ function proseArgumentStep(
   heading: boolean,
   scan: StructureScan,
 ): number {
-  // \captionof{figure}{prose} names its float type first; the prose is the
-  // second group. Every other command here takes prose in its first group.
   let groupsToSkip = name === "captionof" ? 1 : 0;
   let cursor = start;
   for (;;) {
@@ -188,9 +153,6 @@ function proseArgumentStep(
     if (text[open] !== "{" && text[open] !== "[") break;
     const close = groupEnd(text, open);
     if (close < 0) break;
-    // Optional arguments hold short-form titles, which are prose too, but
-    // they duplicate the main argument; skipping them avoids counting the
-    // same heading twice.
     if (text[open] === "[") {
       cursor = close;
       continue;
@@ -226,7 +188,6 @@ function scanStructureStep(
   if (ch !== "\\") return i + 1;
 
   const name = /^[a-zA-Z]+/.exec(text.slice(i + 1, i + 32))?.[0];
-  // An escaped character (\\, \{, \%) — never the start of a command.
   if (!name) return i + 2;
   const cursor = i + 1 + name.length;
 
@@ -259,14 +220,6 @@ function scanStructure(text: string): StructureScan {
   return scan;
 }
 
-/**
- * Summary counts for one source file.
- *
- * Words come from the spellchecker's LaTeX mask, so the total matches what a
- * reader perceives as prose: equation bodies, listings, comments, citation
- * keys, and dimension arguments never inflate it. When masking throws, every
- * count degrades to zero rather than reporting a number nobody can trust.
- */
 export function isTypstPath(path: string | null | undefined): boolean {
   return typeof path === "string" && /\.typ$/i.test(path);
 }
@@ -340,7 +293,6 @@ export function documentStats(text: string, path?: string | null): DocumentStats
   };
 }
 
-/** Adds per-file stats into one whole-document summary. */
 export function sumDocumentStats(parts: readonly DocumentStats[]): DocumentStats {
   const total = { ...EMPTY_DOCUMENT_STATS };
   for (const part of parts) {

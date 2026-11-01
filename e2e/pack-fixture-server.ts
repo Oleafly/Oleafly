@@ -2,10 +2,6 @@ import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import { gzipSync } from "node:zlib";
 
-// Serves a template-pack catalog and a ccfddl-style deadlines aggregate on the
-// fixed port scripts/e2e.sh points OLEAFLY_PACKS_BASE_URL /
-// OLEAFLY_DEADLINES_URL at. The Rust process fetches these, so the port must
-// be known before the app starts.
 export const PACK_FIXTURE_PORT = 38999;
 const FIXTURE_BASE = `http://127.0.0.1:${PACK_FIXTURE_PORT}`;
 

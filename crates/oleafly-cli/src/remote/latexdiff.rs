@@ -1,5 +1,3 @@
-//! `remote diff --latexdiff`: the main document marked up with what
-//! changed since the online version, as LaTeX or (with `--pdf`) compiled.
 use std::ffi::OsStr;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -16,7 +14,6 @@ use crate::auth::shared::{from_online, Report};
 use crate::contract::{CliError, ErrorKind};
 
 const LATEXDIFF_TIMEOUT: Duration = Duration::from_secs(120);
-/// The most latexdiff output kept.
 const MAX_OUTPUT: u64 = 64 << 20;
 
 fn missing() -> CliError {
@@ -37,7 +34,6 @@ fn failed(detail: impl Into<String>) -> CliError {
     .details(json!({"cause": detail.into()}))
 }
 
-/// latexdiff from `PATH` or the TeX distribution, never from the project.
 pub(crate) fn locate_latexdiff(project_root: &Path) -> Result<PathBuf, CliError> {
     let mut extra = Vec::new();
     if cfg!(target_os = "macos") {
@@ -49,7 +45,6 @@ pub(crate) fn locate_latexdiff(project_root: &Path) -> Result<PathBuf, CliError>
     locate_tool_in("latexdiff", project_root, path.as_deref(), &extra).ok_or_else(missing)
 }
 
-/// `latexdiff --flatten OLD NEW`, run directly (no shell).
 pub(crate) fn latexdiff_command(program: &Path, old_main: &Path, new_main: &Path) -> Command {
     let mut command = Command::new(program);
     command
@@ -70,7 +65,6 @@ pub(crate) fn latexdiff_command(program: &Path, old_main: &Path, new_main: &Path
     command
 }
 
-/// Runs latexdiff with a time limit and returns what it printed.
 pub(crate) fn run_latexdiff(
     program: &Path,
     old_main: &Path,
@@ -122,7 +116,6 @@ pub(crate) fn run_latexdiff(
             None => std::thread::sleep(Duration::from_millis(50)),
         }
     };
-    // Whatever the wrapper left running goes with it.
     drop(tree);
     let output = out.join().unwrap_or_default();
     let errors = err.join().unwrap_or_default();
@@ -132,7 +125,6 @@ pub(crate) fn run_latexdiff(
     Ok(output)
 }
 
-/// Compiles the marked-up document with this command's own `build`.
 pub(crate) fn compile_diff_pdf(
     project_root: &Path,
     diff_tex: &str,
@@ -164,7 +156,6 @@ pub(crate) fn compile_diff_pdf(
     Ok(())
 }
 
-/// The project's main document, which must be LaTeX.
 fn main_document(root: &Path) -> Result<String, CliError> {
     let opened = crate::engine::open_project(root, None, None)?;
     let main = opened.workspace.manifest().main_doc.clone();
@@ -178,8 +169,6 @@ fn main_document(root: &Path) -> Result<String, CliError> {
     Ok(main)
 }
 
-/// Runs latexdiff between the online version (checked out in the mirror)
-/// and this folder, then puts the mirror back.
 pub(crate) fn latexdiff_report(
     deps: &RemoteDeps,
     scope: &RemoteScope,
@@ -221,8 +210,6 @@ fn latexdiff_report_with(
                     )),
                 )
             }
-            // The document is the answer, so it is in the data as well as on
-            // screen (`--json` prints no lines).
             None => {
                 let text = String::from_utf8_lossy(&marked).trim_end().to_string();
                 Ok(Report::new(json!({"tex": null, "pdf": null, "text": text})).line(text))
@@ -341,9 +328,6 @@ mod tests {
         let tools = world.dir.path().join("tools");
         std::fs::create_dir_all(&tools).unwrap();
         let fake = tools.join("latexdiff");
-        // A child shell writes the script, so a test running at the same time
-        // can't fork while this process holds the file open for writing
-        // (which makes the exec fail with ETXTBSY).
         let mut writer = Command::new("sh")
             .args(["-c", "cat > \"$1\" && chmod 700 \"$1\"", "sh"])
             .arg(&fake)

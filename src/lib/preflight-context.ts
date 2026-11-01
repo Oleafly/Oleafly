@@ -13,17 +13,10 @@ import type { ProjectIndex, Sym } from "@/lib/index/types";
 import { labelScope } from "@/lib/project-intelligence/resolution";
 import { engineForPath } from "@/lib/project-intelligence/source";
 
-// The references and project contexts preflight runs on. The preflight store
-// builds them from the open project; the CLI's golden fixtures build them from
-// files on disk, and crates/oleafly-preflight/src/context.rs ports this file.
-
 export interface PreflightContextInput {
   readonly mainDoc: string;
-  /** Non-directory tree paths, in the file tree's order. */
   readonly treePaths: readonly string[];
-  /** Texts the project index read. */
   readonly indexTexts: Readonly<Record<string, string>>;
-  /** Editor buffers, which win over the index texts. */
   readonly openTexts: Readonly<Record<string, string>>;
   readonly index: ProjectIndex | null;
 }
@@ -67,9 +60,6 @@ function unresolvedBibliographiesFor(
   return unresolved;
 }
 
-// The .bib files the document loads, so conflict copies from sync clients,
-// backups and template samples next to them don't count. A project that
-// declares nothing keeps every .bib file.
 function declaredBibTexts(
   texts: Readonly<Record<string, string>>,
   declared: readonly DeclaredBibliography[],
@@ -141,8 +131,6 @@ function collectLabelFacts(index: ProjectIndex | null): {
   unreferencedLabels: { label: string; file: string }[];
 } {
   const labelFiles = new Map<string, { label: string; files: Set<string> }>();
-  // A reference counts for the label it points at, the way rename resolves it:
-  // same engine, and for a `file#anchor` link, only a label in the named file.
   const referenceKey = (scope: string, file: string | null, name: string) => {
     const target = file === null ? "*" : `=${file}`;
     return `${scope}\0${target}\0${name}`;
@@ -162,9 +150,6 @@ function collectLabelFacts(index: ProjectIndex | null): {
   };
   for (const definition of index?.defs ?? []) {
     if (definition.kind !== "label") continue;
-    // Labels are pooled the way rename and resolution pool them: one pool per
-    // engine, so a LaTeX and a Typst label may share a name, and a Markdown
-    // anchor in its own file's pool, so one heading in two files is no clash.
     const key = `${nameTarget("label", definition).scope}\0${definition.name}`;
     const entry = labelFiles.get(key) ?? { label: definition.name, files: new Set<string>() };
     entry.files.add(definition.file);
@@ -189,13 +174,7 @@ function projectTexts(input: Omit<PreflightContextInput, "index">): Record<strin
 }
 
 export function buildRefsContext(input: PreflightContextInput): RefsContext {
-  // Labels and bib keys come from the shared project index (the single parser);
-  // runRefsRules also re-scans the active source for its own labels, so a just-
-  // typed label resolves even before the debounced index catches up.
   const { index } = input;
-  // The refs rules lint the project's LaTeX sources whatever tab is open, so a
-  // \ref reaches the labels in the main document's pool. A main document of
-  // no known engine keeps every label rather than flag each \ref.
   const mainEngine = engineForPath(input.mainDoc);
   const mainScope = mainEngine ? labelScope(mainEngine, input.mainDoc) : null;
   const definedLabels = index
@@ -204,12 +183,8 @@ export function buildRefsContext(input: PreflightContextInput): RefsContext {
         .map((d) => d.name)
     : [];
   const bibKeys = index ? index.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : [];
-  // Duplicate detection needs DOIs, which the index does not store, so parse the
-  // loaded .bib files for those.
   const texts = projectTexts(input);
 
-  // Project files (for missing-asset checks) must include images too, so use the
-  // full tree rather than the index (which only indexes source files).
   const projectFiles = [...input.treePaths];
   const knownPaths = [...new Set([...projectFiles, ...Object.keys(input.openTexts)])];
   const declared = declaredBibliographies(texts);

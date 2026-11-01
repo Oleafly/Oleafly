@@ -319,14 +319,12 @@ describe("PDF import request identity", () => {
     });
     expect(useImportStore.getState().pdfBytes).toEqual(new Uint8Array([1]));
 
-    // Whatever the stopped run still reports or returns stays out.
     report({ step: "transcribingPage", page: 2, total: 3, model: "glm-ocr" });
     transcription.resolve({ text: "late result", model: { label: "glm-ocr", sentTo: null } });
     await running;
     expect(useImportStore.getState()).toMatchObject({ scanProgress: null, scanTranscribed: false });
     expect(useImportStore.getState().result?.tex).toBe("scan");
 
-    // The scan can be transcribed again.
     mocks.transcribePdfPages.mockResolvedValue({ text: "second try", model: { label: "glm-ocr", sentTo: null } });
     await useImportStore.getState().transcribeScan();
     expect(useImportStore.getState().result?.tex).toBe("second try");

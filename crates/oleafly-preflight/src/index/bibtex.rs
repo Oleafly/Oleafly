@@ -1,8 +1,3 @@
-//! Bibliography keys for the index: the BibTeX scanner of
-//! `src/lib/project-intelligence/parse-bibtex.ts` (entry heads, field values
-//! and recovery, so an `@` inside a value is never an entry) and Hayagriva
-//! entries that have a `type` or a `title`.
-
 use super::{Definition, FileSymbols, SymKind};
 use crate::bib::{hayagriva_entry_keys, is_bibtex_directive};
 use crate::text::{is_js_space_unit, last_index_of_units, to_units};
@@ -27,8 +22,6 @@ fn is_name_continue(unit: u16) -> bool {
         && ((unit as u8).is_ascii_alphanumeric() || unit == b'_' as u16 || unit == b'-' as u16)
 }
 
-/// `/^@?([A-Za-z][A-Za-z0-9_-]*)\s*/` at `at`: the name's end and the offset
-/// after the trailing whitespace.
 fn name_at(source: &[u16], at: usize) -> Option<(usize, usize)> {
     if !source.get(at).copied().is_some_and(is_ascii_letter) {
         return None;
@@ -183,7 +176,6 @@ fn nearest(comma: Option<usize>, end: Option<usize>, otherwise: usize) -> usize 
     }
 }
 
-/// The position after an entry's field list.
 fn parse_entry_fields(source: &[u16], start: usize, close: u16) -> usize {
     let mut position = start;
     while position < source.len() && source[position] != AT {
@@ -229,7 +221,6 @@ fn trimmed(source: &[u16], from: usize, to: usize) -> (usize, usize) {
     (start, end)
 }
 
-/// `(key, keyFrom, keyTo)` of every entry with a key, in source order.
 pub fn bibtex_keys(text: &str) -> Vec<(String, usize, usize)> {
     let source = to_units(text);
     let mut keys = Vec::new();

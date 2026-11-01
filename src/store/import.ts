@@ -22,9 +22,7 @@ interface ImportState {
   figures: ExtractedFigure[];
   result: ConvertResult | null;
   scanTranscribed: boolean;
-  /** The Tools model that transcribed the scan, and where the pages went. */
   scanModel: TranscriptionModelInfo | null;
-  /** How far a running scan transcription is; null when none runs. */
   scanProgress: ConverterProgress | null;
   busy: boolean;
   error: string | null;
@@ -33,7 +31,6 @@ interface ImportState {
   openWithPdf: (bytes: Uint8Array, fileName: string) => Promise<void>;
   rerun: (options: ConvertOptions) => void;
   transcribeScan: () => Promise<void>;
-  /** Stops a running scan transcription and keeps the PDF open. */
   cancelScan: () => void;
   setView: (v: "preview" | "source" | "split") => void;
   close: () => void;
@@ -113,7 +110,6 @@ export const useImportStore = create<ImportState>((set, get) => ({
         import("@/features/tools-ai/scan-estimate"),
         import("@/features/ad-hoc-converters"),
       ]);
-      // The pages the conversion shows: the chosen range, not the first N.
       const numbers = selectedPages(pages.length, options.pageRange);
       const { text, model } = await transcribePdfPages(
         pdfBytes,
@@ -151,7 +147,6 @@ export const useImportStore = create<ImportState>((set, get) => ({
     if (!scanController) return;
     scanController.abort();
     scanController = null;
-    // A new generation, so the stopped run cannot write into a later one.
     set((state) => ({
       requestGeneration: state.requestGeneration + 1,
       busy: false,

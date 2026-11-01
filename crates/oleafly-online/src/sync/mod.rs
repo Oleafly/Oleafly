@@ -1,7 +1,3 @@
-//! Two-way sync through a private Git mirror of the online project. The
-//! mirror keeps a base commit (the last state both sides agreed on); local
-//! edits are committed on top of it and merged with the remote tip, and the
-//! result is written back here and pushed there.
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
@@ -19,7 +15,6 @@ use crate::service::{
 };
 
 pub const BASE_REF: &str = "refs/heads/oleafly-base";
-/// Where a folder keeps its mirror and link: `<folder>/.oleafly/online`.
 pub const FOLDER_STATE: [&str; 2] = [".oleafly", "online"];
 const MAX_FILES: usize = 5_000;
 const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
@@ -32,11 +27,6 @@ const MIRROR_ATTRIBUTES: &str = "* -text -filter -ident\n";
 /// user's own, for a folder-scope mirror), where `checkout --force` would
 /// rewrite their files. The paths are relative to the mirror, where Git runs.
 const MIRROR_PIN: [&str; 3] = ["--git-dir=.git", "--work-tree=.", "--no-replace-objects"];
-/// How long a claim waits for another holder of the lock file before calling
-/// the project busy. A sync that just ended can leave the lock held for a
-/// moment: a process another thread is starting keeps a copy of the
-/// descriptor until it execs. A sync that is really running holds it far
-/// longer.
 const CLAIM_PATIENCE: Duration = Duration::from_millis(250);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
@@ -81,26 +71,21 @@ pub enum PushResult {
     Rejected,
 }
 
-/// `Plan` computes what a sync would do and leaves files and refs alone.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     Apply,
     Plan,
 }
 
-/// Where one project's mirror, link record and sync lock live.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SyncPaths {
     pub dir: PathBuf,
     pub repo: PathBuf,
     pub link: PathBuf,
-    /// Outside `dir`, so unlinking works while a sync holds the lock.
     pub lock: PathBuf,
 }
 
 impl SyncPaths {
-    /// The app's mirror of a library project:
-    /// `<data>/overleaf-sync/<id>/{repo,link.json}`.
     pub fn for_app_project(data_root: &Path, project_id: &str) -> Result<SyncPaths, OnlineError> {
         if project_id.is_empty()
             || project_id.len() > 128
@@ -120,8 +105,6 @@ impl SyncPaths {
         })
     }
 
-    /// Any other folder keeps its sync state inside itself, so a copied or
-    /// moved folder carries a base that matches its own files.
     pub fn for_folder(folder: &Path) -> SyncPaths {
         let state = folder.join(FOLDER_STATE[0]);
         let dir = state.join(FOLDER_STATE[1]);
@@ -160,8 +143,6 @@ impl SyncPaths {
 
 static RUNNING: Mutex<Option<HashSet<PathBuf>>> = Mutex::new(None);
 
-/// One sync at a time per project, across processes. Dropping it releases
-/// both the in-process slot and the lock file.
 #[derive(Debug)]
 pub struct SyncClaim {
     key: PathBuf,
@@ -223,8 +204,6 @@ pub fn claim(paths: &SyncPaths) -> Result<SyncClaim, OnlineError> {
         Ok(()) => Ok(SyncClaim { key, _file: file }),
         Err(error) => {
             release();
-            // Only a lock someone else keeps holding means busy. A file system
-            // that refuses locks would otherwise say "busy" forever.
             if error.kind() == std::io::ErrorKind::TimedOut {
                 Err(OnlineError::new(OnlineErrorKind::SyncBusy))
             } else {
@@ -262,7 +241,6 @@ pub fn write_link(paths: &SyncPaths, link: &SyncLink) -> Result<(), OnlineError>
     oleafly_secrets::fs::write_atomic(&paths.link, &raw).map_err(OnlineError::io)
 }
 
-/// Removes the mirror and the link record.
 pub fn remove_link(paths: &SyncPaths) -> Result<(), OnlineError> {
     match std::fs::remove_dir_all(&paths.dir) {
         Ok(()) => Ok(()),
@@ -284,8 +262,6 @@ pub fn remote_url(server: &str, remote_id: &str) -> Result<String, OnlineError> 
     if server == DEFAULT_SERVER {
         return Ok(format!("{DEFAULT_GIT_ORIGIN}/{remote_id}"));
     }
-    // A link record read from a folder is not checked when it is read; the
-    // token goes wherever this address points.
     if !crate::session::is_secure_server(server) {
         return Err(OnlineError::new(OnlineErrorKind::InvalidServer).param("server", server));
     }
@@ -304,7 +280,6 @@ fn pinned<'a>(args: &[&'a str]) -> Vec<&'a str> {
     full
 }
 
-/// `git args` in the mirror, pinned to the mirror's own repository.
 fn mirror_run(git: &dyn MirrorGit, repo: &Path, args: &[&str]) -> Result<Output, OnlineError> {
     git.run(repo, &pinned(args))
 }
@@ -350,9 +325,6 @@ pub fn rev(git: &dyn MirrorGit, repo: &Path, name: &str) -> Option<String> {
         .filter(|sha| !sha.is_empty())
 }
 
-/// The repository-format settings a mirror's `.git/config` keeps, read from
-/// text that may have been planted. Only these keys count, and only values of
-/// the expected shape; nothing else is carried over.
 #[derive(Debug, Default, PartialEq, Eq)]
 struct FormatSettings {
     version: Option<&'static str>,
@@ -422,8 +394,6 @@ fn mirror_config_text(old: &str, case_insensitive: bool) -> String {
     text
 }
 
-/// Replaces whatever is at `path` (a link, a folder) with a file holding
-/// `bytes`, unless that file already holds them.
 fn replace_with_file(path: &Path, bytes: &[u8]) -> Result<(), OnlineError> {
     match std::fs::symlink_metadata(path) {
         Ok(found) if found.is_file() => {
@@ -439,7 +409,6 @@ fn replace_with_file(path: &Path, bytes: &[u8]) -> Result<(), OnlineError> {
     oleafly_secrets::fs::write_atomic(path, bytes).map_err(OnlineError::io)
 }
 
-/// A real folder at `path`, replacing a link or a file that sits there.
 fn ensure_real_folder(path: &Path) -> Result<(), OnlineError> {
     match std::fs::symlink_metadata(path) {
         Ok(found) if found.is_dir() => return Ok(()),
@@ -453,9 +422,6 @@ fn ensure_real_folder(path: &Path) -> Result<(), OnlineError> {
     Ok(())
 }
 
-/// Puts the mirror's own `.git` files back to what Oleafly expects: the
-/// template config, no pointer to another repository's files, and the
-/// attributes that keep file bytes as they are.
 fn harden_git_dir(git_dir: &Path) -> Result<(), OnlineError> {
     let config = git_dir.join("config");
     let old = std::fs::read_to_string(&config).unwrap_or_default();
@@ -471,7 +437,6 @@ fn harden_git_dir(git_dir: &Path) -> Result<(), OnlineError> {
         "objects/info/alternates",
         "objects/info/http-alternates",
     ] {
-        // Missing is the usual case; a folder of that name points nowhere.
         let _ = std::fs::remove_file(git_dir.join(stray));
     }
     let info = git_dir.join("info");
@@ -500,15 +465,12 @@ pub fn ensure_repo(git: &dyn MirrorGit, repo: &Path) -> Result<(), OnlineError> 
     if !existed || !git_dir.join("HEAD").is_file() {
         std::fs::create_dir_all(repo)
             .map_err(|error| OnlineError::io(format!("could not create the sync copy: {error}")))?;
-        // `init` is the one call that must not be pinned: there is no
-        // repository yet.
         let output = git.run(repo, &["init", "--quiet"])?;
         if !output.status.success() {
             return Err(OnlineError::io(git.failure_text(&output)));
         }
         harden_git_dir(&git_dir)?;
     }
-    // A damaged mirror must fail here, before any call that rewrites files.
     let output = mirror_run(git, repo, &["rev-parse", "--git-dir"])?;
     if !output.status.success() {
         let text = git.failure_text(&output);
@@ -528,8 +490,6 @@ pub fn clear_stale_lock(repo: &Path) {
     }
 }
 
-/// `text` with each address replaced by `<address>`, so a project id or a
-/// port inside one never reads as a status code.
 fn without_addresses(text: &str) -> String {
     let mut clean = String::with_capacity(text.len());
     let mut rest = text;
@@ -554,8 +514,6 @@ fn without_addresses(text: &str) -> String {
     clean
 }
 
-/// Whether `lower` reports HTTP status `code` ("error: 403", "http 403"),
-/// and not a longer number that starts with it.
 fn reports_status(lower: &str, code: &str) -> bool {
     ["error: ", "http ", "http/1.1 ", "http/2 ", "status "]
         .iter()
@@ -713,9 +671,7 @@ pub fn set_base(git: &dyn MirrorGit, repo: &Path, commit: &str) -> Result<(), On
     git_ok(git, repo, &["update-ref", BASE_REF, commit]).map(|_| ())
 }
 
-/// How often a mirror is tidied at most.
 const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
-/// When the mirror was last tidied, by its modification time.
 const MAINTENANCE_STAMP: &str = "oleafly-maintenance";
 /// What `git gc --auto` runs for here. Every other mirror call passes
 /// `gc.auto=0`, so this is the only place objects are ever packed, and a
@@ -735,9 +691,6 @@ const MAINTENANCE: [&str; 12] = [
     "--quiet",
 ];
 
-/// Packs the mirror's objects and drops the ones nothing refers to, at most
-/// once a day. Call it after a sync that worked, with the sync claim held.
-/// Best effort: a failure only means the mirror stays as large as it is.
 pub fn maintain(git: &dyn MirrorGit, repo: &Path) {
     let stamp = repo.join(".git").join(MAINTENANCE_STAMP);
     let recent = std::fs::symlink_metadata(&stamp)
@@ -745,7 +698,6 @@ pub fn maintain(git: &dyn MirrorGit, repo: &Path) {
         .ok()
         .and_then(|modified| modified.elapsed().ok())
         .is_some_and(|age| age < MAINTENANCE_INTERVAL);
-    // Stamped first, so a gc that keeps failing isn't tried on every sync.
     if recent || oleafly_secrets::fs::write_atomic(&stamp, b"").is_err() {
         return;
     }
@@ -763,18 +715,12 @@ pub fn excluded(rel: &str) -> bool {
     {
         return true;
     }
-    // Oleafly's own staging files, editor temp files, `._` copies and cloud
-    // conflict copies are never part of the project.
     rel.split('/').any(|part| {
         IGNORED_NAMES.contains(&part.to_ascii_lowercase().as_str())
             || oleafly_core::exclude::is_quietly_ignored_name(part)
     })
 }
 
-/// Whose files a sync carries. A folder outside the app's library (the CLI's
-/// folder and linked scopes) keeps its mirror inside itself, at
-/// `<folder>/.oleafly/online/repo`. Such a folder is often a whole working
-/// folder, so more of it stays here: see [`kept_local`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Scope {
     Library,
@@ -790,17 +736,12 @@ impl Scope {
         }
     }
 
-    /// Whether `rel` stays out of the sync: never sent online, never
-    /// written here from online, and never deleted online for being missing
-    /// here.
     fn skips(self, project: &Path, rel: &str) -> bool {
         excluded(rel)
             || (self == Scope::Folder && kept_local(rel, |sibling| project.join(sibling).is_file()))
     }
 }
 
-/// A file name that holds secrets: `.env` files, `.private`, private keys
-/// and certificate bundles. A public SSH key (`.pub`) is not one.
 fn private_name(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     lower.starts_with(".env")
@@ -814,11 +755,6 @@ fn private_name(name: &str) -> bool {
             && !lower.ends_with(".pub"))
 }
 
-/// Whether a folder's file stays here: anything under a dot-folder (or a
-/// dependency or build folder, as a linked folder skips them), `.env` files,
-/// `.private`, private keys, and TeX build output such as `main.aux`, or
-/// `main.pdf` beside `main.tex`. `has_sibling` says whether a project path
-/// exists here.
 pub fn kept_local(rel: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
     let mut parts: Vec<&str> = rel.split('/').collect();
     let Some(name) = parts.pop() else {
@@ -866,8 +802,6 @@ pub fn check_remote_paths(paths: &[String]) -> Result<(), OnlineError> {
     check_remote_paths_on(paths, cfg!(windows))
 }
 
-/// Refuses remote file names that clash by case, or (with `windows`) that
-/// Windows cannot hold.
 pub fn check_remote_paths_on(paths: &[String], windows: bool) -> Result<(), OnlineError> {
     let mut seen: BTreeMap<String, &String> = BTreeMap::new();
     let mut clashes: BTreeSet<String> = BTreeSet::new();
@@ -897,13 +831,10 @@ pub fn check_remote_paths_on(paths: &[String], windows: bool) -> Result<(), Onli
     Ok(())
 }
 
-/// Every synced file of a library project, by relative path.
 pub fn project_files(root: &Path) -> Result<BTreeMap<String, PathBuf>, OnlineError> {
     files_in(root, Scope::Library)
 }
 
-/// Every file of `root` that `scope` syncs, by relative path. A folder's
-/// skipped folders are never entered.
 fn files_in(root: &Path, scope: Scope) -> Result<BTreeMap<String, PathBuf>, OnlineError> {
     let mut found = FoundFiles::default();
     let mut stack = vec![(root.to_path_buf(), String::new())];
@@ -936,8 +867,6 @@ fn files_in(root: &Path, scope: Scope) -> Result<BTreeMap<String, PathBuf>, Onli
     Ok(found.files)
 }
 
-/// The path of `name` inside the folder at relative path `prefix` (empty for
-/// the root).
 fn child_rel(prefix: &str, name: &str) -> String {
     if prefix.is_empty() {
         name.to_string()
@@ -946,7 +875,6 @@ fn child_rel(prefix: &str, name: &str) -> String {
     }
 }
 
-/// The files a walk has found so far, held to the size and count limits.
 #[derive(Default)]
 struct FoundFiles {
     files: BTreeMap<String, PathBuf>,
@@ -954,8 +882,6 @@ struct FoundFiles {
 }
 
 impl FoundFiles {
-    /// Takes in the file at relative path `rel`, unless `scope` keeps it out
-    /// of the sync; fails when it, or the files so far, are over a limit.
     fn add(
         &mut self,
         scope: Scope,
@@ -999,7 +925,6 @@ fn reset_to(git: &dyn MirrorGit, repo: &Path, commit: &str) -> Result<(), Online
     Ok(())
 }
 
-/// A file's size and SHA-256, to tell later whether it changed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Fingerprint {
     len: u64,
@@ -1016,11 +941,8 @@ fn fingerprint(bytes: &[u8]) -> Fingerprint {
     }
 }
 
-/// What each project file held when the sync read it.
 type Snapshot = BTreeMap<String, Fingerprint>;
 
-/// Copies `source` over `destination`; true when that changed it. Also
-/// returns what `source` held.
 fn copy_into(source: &Path, destination: &Path) -> Result<(bool, Fingerprint), OnlineError> {
     let bytes = std::fs::read(source).map_err(|error| {
         OnlineError::io(format!("could not read {}: {error}", source.display()))
@@ -1041,8 +963,6 @@ fn copy_into(source: &Path, destination: &Path) -> Result<(bool, Fingerprint), O
     Ok((true, read))
 }
 
-/// Whether a link sits on the way to `rel` in `project`, at the file or in a
-/// folder above it. Oleafly neither reads nor writes through links.
 fn link_on_path(project: &Path, rel: &str) -> bool {
     let mut current = project.to_path_buf();
     for part in rel.split('/') {
@@ -1060,11 +980,8 @@ fn sync_stopped(detail: impl ToString) -> OnlineError {
     OnlineError::new(OnlineErrorKind::SyncFailed).detail(detail)
 }
 
-/// The project's files as staged in the mirror.
 struct Staged {
-    /// The mirror differs from its last commit.
     changed: bool,
-    /// What each file held when it was copied.
     seen: Snapshot,
 }
 
@@ -1081,7 +998,6 @@ fn stage_project(
             .into_iter()
             .filter(|rel| !scope.skips(project, rel) && !files.contains_key(rel))
             .collect();
-        // A file swapped for a link is not a deletion to send online.
         if let Some(rel) = missing.iter().find(|rel| link_on_path(project, rel)) {
             return Err(sync_stopped(format!(
                 "{rel} is a link now, and Oleafly doesn't sync links. Replace the link with the file itself, then sync again."
@@ -1100,8 +1016,6 @@ fn stage_project(
         seen.insert(rel.clone(), read);
     }
     match scope {
-        // Every file of a library project syncs, whatever a `.gitignore`
-        // in it says.
         Scope::Library => git_ok(git, repo, &["add", "--all", "--force", "--", "."])?,
         // A folder's own `.gitignore` files, copied in with the rest, keep
         // what they name here. The user's global excludes don't count, so
@@ -1167,13 +1081,8 @@ fn prune_empty_parents(root: &Path, path: &Path) {
     }
 }
 
-/// The parameter an error carries when a failed sync may still have changed
-/// files in the project.
 pub const FILES_MAY_HAVE_CHANGED: &str = "filesMayHaveChanged";
 
-/// The changes `write_back` makes in the project, kept so a failure partway
-/// can undo them. Replaced and removed files are moved aside first and only
-/// deleted once every change has gone through.
 struct Journal<'a> {
     project: &'a Path,
     steps: Vec<Step>,
@@ -1182,15 +1091,14 @@ struct Journal<'a> {
 }
 
 enum Step {
-    /// A file was moved to `backup`; with `replaced`, a new file took its
-    /// place.
     Moved {
         destination: PathBuf,
         backup: PathBuf,
         replaced: bool,
     },
-    /// A new file was put where there was none.
-    Added { destination: PathBuf },
+    Added {
+        destination: PathBuf,
+    },
 }
 
 impl<'a> Journal<'a> {
@@ -1203,8 +1111,6 @@ impl<'a> Journal<'a> {
         }
     }
 
-    /// A name beside `destination` for a staged or moved-aside file. Oleafly's
-    /// scans skip it (`excluded`).
     fn sidecar(&mut self, destination: &Path) -> PathBuf {
         self.sequence += 1;
         let name = destination
@@ -1302,8 +1208,6 @@ impl<'a> Journal<'a> {
         Ok(())
     }
 
-    /// Every change went through: drop the moved-aside files and the
-    /// folders that `removed` files left empty.
     fn finish(self, removed: &[PathBuf]) {
         for step in &self.steps {
             if let Step::Moved { backup, .. } = step {
@@ -1315,8 +1219,6 @@ impl<'a> Journal<'a> {
         }
     }
 
-    /// A change failed: put every earlier one back. The failure is returned,
-    /// with a note when something could not be put back.
     fn undo(self, failure: OnlineError) -> OnlineError {
         let mut stuck = Vec::new();
         for step in self.steps.into_iter().rev() {
@@ -1332,8 +1234,6 @@ impl<'a> Journal<'a> {
                     if replaced {
                         let _ = std::fs::remove_file(&destination);
                     }
-                    // Something new at the old place wins; the old file stays
-                    // under its backup name.
                     if std::fs::symlink_metadata(&destination).is_ok()
                         || oleafly_secrets::fs::replace_file(&backup, &destination).is_err()
                     {
@@ -1356,8 +1256,6 @@ impl<'a> Journal<'a> {
             .detail
             .clone()
             .map_or(String::new(), |detail| format!("{detail} "));
-        // Some files here are not as they were: callers that guard against
-        // changes made outside an editor look for this.
         OnlineError::io(format!(
             "{detail}The sync stopped partway and could not put back every file. Your earlier versions are saved as {}.",
             names.join(", ")
@@ -1366,8 +1264,6 @@ impl<'a> Journal<'a> {
     }
 }
 
-/// Whether `path` still holds what the sync read (`seen`), or is still
-/// missing when the sync read nothing there.
 fn unchanged_since_read(path: &Path, seen: Option<&Fingerprint>) -> Result<bool, OnlineError> {
     match std::fs::read(path) {
         Ok(bytes) => Ok(seen == Some(&fingerprint(&bytes))),
@@ -1386,9 +1282,6 @@ fn changed_while_syncing(files: &[String]) -> OnlineError {
     ))
 }
 
-/// Writes mirror files back to the project (or, without `apply`, only
-/// lists what would change). A file that is no longer what the sync read
-/// (`seen`), or any failure, stops the run and leaves the project as it was.
 fn write_back(
     project: &Path,
     repo: &Path,
@@ -1426,8 +1319,6 @@ fn write_back_steps(
     Ok((wrote, deleted))
 }
 
-/// Deletes the project files the mirror removed (only lists them without
-/// `apply`) and returns their paths.
 fn remove_files(
     project: &Path,
     scope: Scope,
@@ -1461,7 +1352,6 @@ fn remove_files(
     Ok(deleted)
 }
 
-/// The bytes of a project file, or `None` when it doesn't exist.
 fn read_current(destination: &Path) -> Result<Option<Vec<u8>>, OnlineError> {
     match std::fs::read(destination) {
         Ok(current) => Ok(Some(current)),
@@ -1473,8 +1363,6 @@ fn read_current(destination: &Path) -> Result<Option<Vec<u8>>, OnlineError> {
     }
 }
 
-/// Copies the mirror files that differ into the project (only lists them
-/// without `apply`) and returns their paths.
 fn write_files(
     project: &Path,
     repo: &Path,
@@ -1561,8 +1449,6 @@ fn resolve(git: &dyn MirrorGit, repo: &Path, path: &str, side: Side) -> Result<(
     Ok(())
 }
 
-/// Commits the project's files on top of `base`; `None` when nothing
-/// changed.
 pub fn commit_local(
     git: &dyn MirrorGit,
     project: &Path,
@@ -1743,18 +1629,12 @@ pub fn link_local(
 
 const BACKUP_REF_PREFIX: &str = "refs/oleafly/";
 
-/// A copy of local files that linking with the online version winning
-/// replaced, saved when `link_local` made it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct LinkBackup {
-    /// Its folder name, `before-link-<time>`.
     pub name: String,
-    /// The files it holds.
     pub files: Vec<String>,
 }
 
-/// Whether `path` is a link or a Windows reparse point (a junction),
-/// read without following it.
 fn is_link(path: &Path) -> bool {
     std::fs::symlink_metadata(path)
         .is_ok_and(|found| found.file_type().is_symlink() || is_reparse_point(&found))
@@ -1779,10 +1659,6 @@ fn through_a_link(place: &Path) -> OnlineError {
     ))
 }
 
-/// Refuses a destination that goes through a link anywhere below the
-/// folder that owns the mirror (the project folder, or the app's data
-/// folder). A folder from someone else can carry `.oleafly/online-backups`
-/// as a link to anywhere.
 fn check_destination(paths: &SyncPaths, destination: &Path) -> Result<(), OnlineError> {
     let owner = paths.dir.parent().and_then(Path::parent);
     let below = owner.and_then(|owner| {
@@ -1808,11 +1684,6 @@ fn check_destination(paths: &SyncPaths, destination: &Path) -> Result<(), Online
     }
 }
 
-/// Puts each saved copy of replaced local files in its own folder under
-/// `destination`, as plain files. A copy that already has its folder is
-/// skipped. Returns the copies that now have a folder, so the caller can say
-/// where they are before the mirror (their only other home) goes away.
-/// Nothing is written through a link below the folder that owns the mirror.
 pub fn export_link_backups(
     git: &dyn MirrorGit,
     paths: &SyncPaths,
@@ -1870,9 +1741,6 @@ pub fn export_link_backups(
     Ok(exported)
 }
 
-/// The files a saved link copy holds that the link overwrote, from the
-/// `-z` pairs (status, path) of its diff against its parent. Files that were
-/// only here were never at risk.
 fn overwritten_files(entries: Vec<String>) -> Vec<String> {
     let mut replaced = Vec::new();
     let mut entries = entries.into_iter();
@@ -1884,9 +1752,6 @@ fn overwritten_files(entries: Vec<String>) -> Vec<String> {
     replaced
 }
 
-/// Writes `files` of the saved copy `reference` into the new folder
-/// `folder`, through `partial` beside it, so a failed export leaves no
-/// half-written folder behind.
 fn export_backup_folder(
     git: &dyn MirrorGit,
     repo: &Path,
@@ -1903,8 +1768,6 @@ fn export_backup_folder(
     written
 }
 
-/// Writes each of `files` as it is in `reference` under `partial`, then
-/// moves `partial` to `folder`.
 fn write_backup_files(
     git: &dyn MirrorGit,
     repo: &Path,
@@ -1934,9 +1797,6 @@ fn write_backup_files(
         .map_err(|error| OnlineError::io(format!("could not write {}: {error}", folder.display())))
 }
 
-// CLI-level operations. The caller holds the sync claim.
-
-/// The app's per-project worktree lock, held while files are written.
 #[derive(Clone, Debug)]
 pub struct WorktreeLock {
     pub path: PathBuf,
@@ -1999,7 +1859,6 @@ pub struct SyncSummary {
     pub written: Vec<String>,
     pub removed: Vec<String>,
     pub pushed: bool,
-    /// A planned run found local changes it would send online.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub would_push: bool,
 }
@@ -2017,8 +1876,6 @@ impl SyncSummary {
     }
 }
 
-/// Fetches, merges, writes back and pushes, retrying when the remote moves
-/// on during the push.
 pub fn sync_project(
     git: &dyn MirrorGit,
     paths: &SyncPaths,
@@ -2031,7 +1888,6 @@ pub fn sync_project(
     let repo = &paths.repo;
     clear_stale_lock(repo);
     ensure_repo(git, repo)?;
-    // A huge folder fails before any network call.
     files_in(project, Scope::of(project, repo))?;
     let mut base = rev(git, repo, BASE_REF)
         .ok_or_else(|| OnlineError::new(OnlineErrorKind::SyncNeedsRelink))?;
@@ -2137,8 +1993,6 @@ pub fn sync_project(
     Ok(summary)
 }
 
-/// Links a project to an online project: fetches it and, when the two
-/// agree (or `prefer` says which side wins), writes the remote files here.
 #[allow(clippy::too_many_arguments)]
 pub fn link_project(
     git: &dyn MirrorGit,
@@ -2153,8 +2007,6 @@ pub fn link_project(
     worktree: Option<&WorktreeLock>,
     auto: bool,
 ) -> Result<LinkOutcome, OnlineError> {
-    // Linking again to the same project keeps the old record until the new
-    // link succeeds.
     if let Some(existing) = read_link(paths)? {
         if existing.server != server || existing.remote_id != remote_id {
             return Err(OnlineError::new(OnlineErrorKind::SyncAlreadyLinked));
@@ -2221,9 +2073,6 @@ pub struct DiffSummary {
     pub truncated: bool,
 }
 
-/// What differs between this project and the online project, and which
-/// files changed on both sides since the last sync. The mirror is left at
-/// the base.
 pub fn diff_project(
     git: &dyn MirrorGit,
     paths: &SyncPaths,
@@ -2277,8 +2126,6 @@ pub fn diff_project(
         let Some(path) = iter.next() else {
             break;
         };
-        // Staged project over the remote: "A" exists only here, "D" only
-        // there.
         let change = match status.chars().next() {
             Some('A') => ChangeKind::Added,
             Some('D') => ChangeKind::Removed,
@@ -2317,11 +2164,6 @@ pub fn diff_project(
     })
 }
 
-/// The files here the next sync would send online: those the online copy
-/// last fetched lacks, and with `modified` also those it holds differently
-/// (a link that keeps the local versions). For a folder this leaves out what
-/// stays here ([`kept_local`]) and what its `.gitignore` names, as the sync
-/// does. The mirror is left at its base.
 pub fn pending_uploads(
     git: &dyn MirrorGit,
     paths: &SyncPaths,
@@ -2358,7 +2200,6 @@ pub fn pending_uploads(
     Ok(uploads)
 }
 
-/// Puts the mirror's worktree at the remote tip (for `latexdiff`).
 pub fn checkout_remote(git: &dyn MirrorGit, paths: &SyncPaths) -> Result<PathBuf, OnlineError> {
     let remote = remote_tip(git, &paths.repo)
         .ok_or_else(|| OnlineError::new(OnlineErrorKind::SyncNeedsRelink))?;
@@ -2366,8 +2207,6 @@ pub fn checkout_remote(git: &dyn MirrorGit, paths: &SyncPaths) -> Result<PathBuf
     Ok(paths.repo.clone())
 }
 
-/// Puts the mirror's worktree back at the last synced version after
-/// [`checkout_remote`].
 pub fn restore_base(git: &dyn MirrorGit, paths: &SyncPaths) -> Result<(), OnlineError> {
     let target = rev(git, &paths.repo, BASE_REF)
         .or_else(|| remote_tip(git, &paths.repo))
@@ -2382,7 +2221,6 @@ pub struct Probe {
     pub local_changed: bool,
 }
 
-/// Whether either side changed since the last sync, without merging.
 pub fn probe(
     git: &dyn MirrorGit,
     paths: &SyncPaths,

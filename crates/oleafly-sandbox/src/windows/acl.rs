@@ -62,20 +62,14 @@ impl Access {
     }
 }
 
-/// What a deny entry takes from the task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Deny {
-    /// Writing, adding, deleting and renaming; reading stays.
     Write,
-    /// Everything.
     All,
 }
 
 impl Deny {
     fn mask(self) -> u32 {
-        // Not FILE_GENERIC_WRITE: it carries SYNCHRONIZE and READ_CONTROL,
-        // and denying those would stop the task from opening the folder
-        // for reading too.
         let write = FILE_WRITE_DATA
             | FILE_APPEND_DATA
             | FILE_WRITE_EA
@@ -89,7 +83,6 @@ impl Deny {
     }
 }
 
-/// A path for the security calls: the `\\?\` form at 260 characters or more.
 fn wide_path(path: &Path) -> Vec<u16> {
     let plain = crate::plain_path(path);
     let text = plain.as_os_str().to_string_lossy();
@@ -153,7 +146,6 @@ fn read_dacl(path: &Path) -> Result<Dacl, SandboxError> {
     Ok(Dacl { dacl, descriptor })
 }
 
-/// Whether `path` already has an allow entry for `sid` covering `access`.
 pub(crate) fn has_allow(path: &Path, sid: &OwnedSid, access: Access) -> Result<bool, SandboxError> {
     let dacl = read_dacl(path)?;
     if dacl.dacl.is_null() {
@@ -252,7 +244,6 @@ fn write_this_only(path: &Path, dacl: *mut ACL) -> Result<(), SandboxError> {
     result
 }
 
-/// Writes `dacl` to `path` alone. The caller owns `dacl`.
 fn set_this_only(path: &Path, dacl: *const ACL) -> Result<(), SandboxError> {
     let name = wide_path(path);
     // SAFETY: the descriptor lives on the stack for the call and `dacl`
@@ -273,9 +264,6 @@ fn set_this_only(path: &Path, dacl: *const ACL) -> Result<(), SandboxError> {
     result.map_err(|code| error("writing the access list of", path, code))
 }
 
-/// Grants `access` to `sid` on `path` and everything below it. An entry
-/// that is on `path` already ends the call, unless `force`: the entry says
-/// nothing about the files below it when an earlier walk was cut short.
 pub(crate) fn grant(
     path: &Path,
     sid: &OwnedSid,
@@ -295,8 +283,6 @@ pub(crate) fn grant(
     write_named(path, dacl, 0)
 }
 
-/// Keeps `sid` out of `folder` and everything below it as far as `kind` says:
-/// an inheritable deny entry, which beats the grants the folder inherits.
 pub(crate) fn deny(folder: &Path, sid: &OwnedSid, kind: Deny) -> Result<(), SandboxError> {
     let entry = explicit(
         sid,
@@ -308,16 +294,12 @@ pub(crate) fn deny(folder: &Path, sid: &OwnedSid, kind: Deny) -> Result<(), Sand
     write_named(folder, dacl, 0)
 }
 
-/// Keeps `sid` from deleting or renaming anything in `folder` through the
-/// folder itself (the entries on the files stay as they are, so the task can
-/// still delete what it may delete). This folder only, no walk.
 pub(crate) fn deny_delete_child(folder: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
     let entry = explicit(sid, DENY_ACCESS, FILE_DELETE_CHILD, NO_INHERITANCE);
     let (dacl, _current) = merged(folder, &entry)?;
     write_this_only(folder, dacl)
 }
 
-/// Lets `sid` pass through `dir` to a granted folder below it.
 pub(crate) fn grant_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
     if has_allow(dir, sid, Access::Traverse)? {
         return Ok(());
@@ -327,9 +309,6 @@ pub(crate) fn grant_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxEr
     write_this_only(dir, dacl)
 }
 
-/// Removes `sid`'s entries from `path` and everything below it: its allow
-/// entries and its deny entries alike (REVOKE_ACCESS would leave the deny
-/// entries in place).
 pub(crate) fn revoke(path: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
     let current = read_dacl(path)?;
     if current.dacl.is_null() {
@@ -340,8 +319,6 @@ pub(crate) fn revoke(path: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
     set_named(path, acl.as_ptr().cast::<ACL>(), 0)
 }
 
-/// Removes `sid`'s entries from `dir` only: a traverse grant and the
-/// folder-only delete deny.
 pub(crate) fn revoke_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
     let current = read_dacl(dir)?;
     if current.dacl.is_null() {
@@ -381,7 +358,6 @@ fn without_own_entries(dacl: &Dacl, sid: &OwnedSid, keep_inherited: bool) -> Res
                 continue;
             }
             if own && (kind == ACCESS_ALLOWED_ACE_TYPE || kind == ACCESS_DENIED_ACE_TYPE) {
-                // Both entry types put the SID at the same place.
                 let entry = ace.cast::<ACCESS_ALLOWED_ACE>();
                 let ace_sid = std::ptr::addr_of!((*entry).SidStart) as PSID;
                 if EqualSid(ace_sid, sid.as_psid()) != 0 {
@@ -399,7 +375,6 @@ fn without_own_entries(dacl: &Dacl, sid: &OwnedSid, keep_inherited: bool) -> Res
     }
 }
 
-/// `dacl`'s descriptor as SDDL text (its DACL and whether it is protected).
 fn dacl_sddl(dacl: &Dacl) -> Result<String, u32> {
     let mut text: *mut u16 = std::ptr::null_mut();
     let mut length = 0u32;
@@ -472,12 +447,6 @@ pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<String, Sandbo
     Ok(original)
 }
 
-/// Writes back an excluded file's access list from before the exclusion
-/// (`original`, SDDL), without `sid`'s own entries. A list that inherited
-/// from its folder inherits again: the inherited entries are recomputed from
-/// the folder, so the copies the exclusion made (of other runs' entries too)
-/// go. A protected list is written as it was. A folder found where the file
-/// was is left alone.
 pub(crate) fn restore_file(
     file: &Path,
     sid: &OwnedSid,
@@ -527,7 +496,6 @@ pub(crate) fn restore_file(
         }));
     }
     if present == 0 || saved.dacl.is_null() {
-        // Exclusion refuses a file without a DACL: nothing was saved to put back.
         return Ok(());
     }
     let (acl, inheritance) = if control & SE_DACL_PROTECTED != 0 {
@@ -569,7 +537,6 @@ fn without_sid(dacl: &Dacl, sid: &OwnedSid) -> Result<Vec<u32>, u32> {
             let header = &*ace.cast::<ACE_HEADER>();
             let kind = u32::from(header.AceType);
             if kind == ACCESS_ALLOWED_ACE_TYPE || kind == ACCESS_DENIED_ACE_TYPE {
-                // Both entry types put the SID at the same place.
                 let entry = ace.cast::<ACCESS_ALLOWED_ACE>();
                 let ace_sid = std::ptr::addr_of!((*entry).SidStart) as PSID;
                 if EqualSid(ace_sid, sid.as_psid()) != 0 {
@@ -600,7 +567,6 @@ mod tests {
         unsafe { (*dacl.dacl).AceCount }
     }
 
-    /// Whether `path` has a deny entry for `sid` covering all of `wanted`.
     fn has_deny(path: &Path, sid: &OwnedSid, wanted: u32) -> bool {
         let dacl = read_dacl(path).unwrap();
         if dacl.dacl.is_null() {
@@ -637,7 +603,6 @@ mod tests {
         let write = Deny::Write.mask();
         assert!(has_deny(dir.path(), &sid, write));
         assert!(has_deny(&child, &sid, write));
-        // Reading is not denied.
         assert!(!has_deny(dir.path(), &sid, FILE_GENERIC_READ));
         revoke(dir.path(), &sid).unwrap();
         assert!(!has_deny(dir.path(), &sid, write));
@@ -680,7 +645,6 @@ mod tests {
         let count = ace_count(dir.path());
         grant(dir.path(), &sid, Access::Read, false).unwrap();
         assert_eq!(ace_count(dir.path()), count);
-        // A forced grant walks again but does not add a second entry.
         grant(dir.path(), &sid, Access::Read, true).unwrap();
         assert_eq!(ace_count(dir.path()), count);
         revoke(dir.path(), &sid).unwrap();
@@ -739,7 +703,6 @@ mod tests {
         assert!(is_protected(&env));
         restore_file(&env, &sid, &original).unwrap();
         assert!(!is_protected(&env));
-        // The folder's entry reaches the file again, and goes with it.
         assert!(has_allow(&env, &sid, Access::ReadWrite).unwrap());
         revoke(dir.path(), &sid).unwrap();
         assert!(!has_allow(&env, &sid, Access::ReadWrite).unwrap());

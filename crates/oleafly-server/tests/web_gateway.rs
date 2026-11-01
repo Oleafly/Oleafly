@@ -12,8 +12,9 @@ use people::{call, grant, send_frame};
 use reqwest::{Method, StatusCode};
 use serde_json::{json, Value};
 use web_support::{
-    browser_sign_in, ends, insert_at, next_web, open_socket, send_web, share_doc_project, until,
-    until_where, utf16, web_socket, web_stage, Desktop, Shared, WebSocket, DESKTOP_PEER, MAIN_TEXT,
+    browser_sign_in, ends, insert_at, next_web, open_socket, open_text, send_web,
+    share_doc_project, until, until_where, utf16, web_socket, web_stage, Desktop, Shared,
+    WebSocket, DESKTOP_PEER, MAIN_TEXT,
 };
 
 async fn opened(socket: &mut WebSocket, file: &str) -> u64 {
@@ -992,6 +993,22 @@ async fn stopping_sharing_or_signing_out_ends_the_open_socket() {
 }
 
 #[tokio::test]
+async fn an_open_socket_ends_when_its_browser_session_expires() {
+    let stage = web_stage().await;
+    let shared = share_doc_project(&stage, ProjectRole::Editor).await;
+    let browser = browser_sign_in(&stage.server, "github2", "/web/").await;
+    stage
+        .server
+        .clock()
+        .advance(oleafly_server::web_sessions::SESSION_TTL_MS - 1_500);
+    let mut socket = web_socket(&stage.server, &browser, shared.project).await;
+    until(&mut socket, "hello").await;
+    let ended = until(&mut socket, "error").await;
+    assert_eq!(ended["code"], "session_expired");
+    assert!(ends(&mut socket).await);
+}
+
+#[tokio::test]
 async fn a_project_beyond_the_memory_budget_is_refused_before_hello() {
     let stage = web_stage().await;
     let shared = share_doc_project(&stage, ProjectRole::Editor).await;
@@ -1114,4 +1131,228 @@ async fn a_file_a_desktop_adds_shows_in_the_browser_tree_and_a_reopened_socket_s
     send_web(&mut again, json!({ "t": "open", "fileId": shared.main })).await;
     let opened = until(&mut again, "opened").await;
     assert_eq!(opened["text"], format!("% again\n% top\n{MAIN_TEXT}"));
+}
+
+#[tokio::test]
+async fn a_change_whose_ack_was_lost_is_reported_on_reopen_and_never_applied_twice() {
+    let (stage, shared, mut first, browser) = alice_in(ProjectRole::Editor).await;
+    let rev = opened(&mut first, &shared.main).await;
+    let length = utf16(MAIN_TEXT);
+    send_web(
+        &mut first,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev, "op": insert_at(0, "Hi ", length), "id": "tab:1" }),
+    )
+    .await;
+    assert_eq!(until(&mut first, "ack").await["rev"], rev + 1);
+    let mut second = web_socket(&stage.server, &browser, shared.project).await;
+    until(&mut second, "hello").await;
+    let resumed = open_text(&mut second, &shared.main, Some("tab:1")).await;
+    assert_eq!(resumed["resumed"], true);
+    assert_eq!(resumed["text"], format!("Hi {MAIN_TEXT}"));
+    let lost = open_text(&mut second, &shared.main, Some("tab:2")).await;
+    assert_eq!(lost["resumed"], false);
+    let plain = open_text(&mut second, &shared.main, None).await;
+    assert!(plain.get("resumed").is_none(), "{plain}");
+    send_web(
+        &mut first,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev + 1, "op": insert_at(0, "X", length + 3), "id": "tab:2" }),
+    )
+    .await;
+    send_web(
+        &mut first,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev + 1, "op": insert_at(0, "Y", length + 3), "id": "tab:3" }),
+    )
+    .await;
+    let ack = until(&mut first, "ack").await;
+    assert_eq!(ack["rev"], rev + 2);
+    assert_eq!(ack["length"], length + 4);
+    send_web(
+        &mut first,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev + 2, "op": insert_at(0, "Z", length + 4), "id": "tab:3" }),
+    )
+    .await;
+    send_web(
+        &mut first,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev + 2, "op": insert_at(0, "W", length + 4), "id": "tab:4" }),
+    )
+    .await;
+    let ack = until(&mut first, "ack").await;
+    assert_eq!(ack["rev"], rev + 3);
+    assert_eq!(ack["length"], length + 5);
+    let again = open_text(&mut second, &shared.main, None).await;
+    assert_eq!(again["text"], format!("WYHi {MAIN_TEXT}"));
+}
+
+#[tokio::test]
+async fn a_suggestion_refused_partway_leaves_nothing_behind_in_the_room() {
+    let (stage, shared, mut socket, browser) = alice_in(ProjectRole::Reviewer).await;
+    let mut desktop = Desktop::open(&stage, &stage.bob, &shared, DESKTOP_PEER).await;
+    let long = "x".repeat(20_010);
+    assert!(matches!(
+        desktop.type_at(&stage.bob, &shared.main, 0, &long).await,
+        ServerFrame::Ack { .. }
+    ));
+    until(&mut socket, "hello").await;
+    let full = format!("{long}{MAIN_TEXT}");
+    let opened = open_text(&mut socket, &shared.main, None).await;
+    assert_eq!(opened["text"], full);
+    let rev = opened["rev"].as_u64().expect("a revision");
+    let rest = utf16(&full) - 20_005;
+    send_web(
+        &mut socket,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev, "op": ["y", -20_005, rest] }),
+    )
+    .await;
+    let refused = until(&mut socket, "error").await;
+    assert_ne!(refused["code"], "server_busy");
+    let mut other = web_socket(&stage.server, &browser, shared.project).await;
+    until(&mut other, "hello").await;
+    let seen = open_text(&mut other, &shared.main, None).await;
+    assert_eq!(seen["text"], full);
+}
+
+#[tokio::test]
+async fn reloading_a_room_after_a_refused_change_frees_the_old_copy_first() {
+    let mut config = web_support::web_config();
+    config.limits.max_project_mb = 1;
+    config.limits.max_file_mb = 1;
+    let stage = people::stage_with(config).await;
+    let shared = share_doc_project(&stage, ProjectRole::Editor).await;
+    let browser = browser_sign_in(&stage.server, "github2", "/web/").await;
+    let mut socket = web_socket(&stage.server, &browser, shared.project).await;
+    let rev = opened(&mut socket, &shared.main).await;
+    let snapshots = &stage.server.state().snapshots;
+    let room = snapshots.in_use();
+    assert!(room > 0);
+    snapshots.set_budget(Budget {
+        memory_bytes: room + room / 2,
+        max_snapshot_bytes: 1 << 30,
+    });
+    let length = utf16(MAIN_TEXT);
+    let paste = "p".repeat(1_200_000);
+    send_web(
+        &mut socket,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev, "op": insert_at(0, &paste, length) }),
+    )
+    .await;
+    let (mut refused, mut reset) = (None, None);
+    while refused.is_none() || reset.is_none() {
+        let frame = next_web(&mut socket)
+            .await
+            .expect("the socket stays open after a refusal");
+        match frame["t"].as_str() {
+            Some("error") => refused = Some(frame),
+            Some("reset") => reset = Some(frame),
+            _ => {}
+        }
+    }
+    let (refused, reset) = (refused.unwrap_or_default(), reset.unwrap_or_default());
+    assert_eq!(refused["code"], "too_large", "{refused}");
+    assert_eq!(reset["text"], MAIN_TEXT);
+    let after = reset["rev"].as_u64().expect("a revision");
+    send_web(
+        &mut socket,
+        json!({ "t": "change", "fileId": shared.main, "rev": after, "op": insert_at(0, "ok ", length) }),
+    )
+    .await;
+    assert_eq!(until(&mut socket, "ack").await["length"], length + 3);
+}
+
+async fn browser_writers(stage: &people::Stage, shared: &Shared) -> usize {
+    let project = shared.project;
+    let alice = stage.alice.tokens.account_id;
+    let rows = stage
+        .server
+        .state()
+        .db
+        .read(move |conn| oleafly_server::peers::table(conn, project))
+        .await
+        .expect("peers");
+    rows.iter().filter(|row| row.account_id == alice).count()
+}
+
+#[tokio::test]
+async fn a_browser_writes_with_one_writer_id_across_room_loads() {
+    let (stage, shared, mut socket, browser) = alice_in(ProjectRole::Editor).await;
+    let rev = opened(&mut socket, &shared.main).await;
+    let length = utf16(MAIN_TEXT);
+    send_web(
+        &mut socket,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev, "op": insert_at(0, "A", length) }),
+    )
+    .await;
+    until(&mut socket, "ack").await;
+    assert_eq!(browser_writers(&stage, &shared).await, 1);
+    drop(socket);
+    let web = &stage.server.state().web;
+    for _ in 0..200 {
+        web.shed();
+        if web.live(shared.project).is_none() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert!(web.live(shared.project).is_none(), "the room was let go");
+    let mut again = web_socket(&stage.server, &browser, shared.project).await;
+    until(&mut again, "hello").await;
+    let opened = open_text(&mut again, &shared.main, None).await;
+    let rev = opened["rev"].as_u64().expect("a revision");
+    send_web(
+        &mut again,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev, "op": insert_at(0, "B", length + 1) }),
+    )
+    .await;
+    until(&mut again, "ack").await;
+    assert_eq!(browser_writers(&stage, &shared).await, 1);
+}
+
+#[tokio::test]
+async fn a_browser_that_joins_hears_suggestions_in_files_it_has_not_opened() {
+    let (stage, shared, mut socket, browser) = alice_in(ProjectRole::Reviewer).await;
+    let rev = opened(&mut socket, &shared.main).await;
+    let length = utf16(MAIN_TEXT);
+    send_web(
+        &mut socket,
+        json!({ "t": "change", "fileId": shared.main, "rev": rev, "op": insert_at(5, ", dear", length) }),
+    )
+    .await;
+    until(&mut socket, "ack").await;
+    let mut joined = web_socket(&stage.server, &browser, shared.project).await;
+    until(&mut joined, "hello").await;
+    let listed = until(&mut joined, "suggestions").await;
+    assert_eq!(listed["fileId"], shared.main.as_str());
+    assert_eq!(listed["rev"], Value::Null);
+    assert_eq!(listed["suggestions"][0]["kind"], "insert");
+}
+
+#[tokio::test]
+async fn idle_browser_rooms_are_capped_per_person_and_give_way_when_memory_is_short() {
+    let stage = web_stage().await;
+    let first = share_doc_project(&stage, ProjectRole::Editor).await;
+    let second = share_doc_project(&stage, ProjectRole::Editor).await;
+    let third = share_doc_project(&stage, ProjectRole::Editor).await;
+    let browser = browser_sign_in(&stage.server, "github2", "/web/").await;
+    let state = stage.server.state();
+    for shared in [&first, &second, &third] {
+        browser
+            .json(&format!("/web/api/projects/{}", shared.project))
+            .await;
+    }
+    assert!(state.web.live(first.project).is_none());
+    assert!(state.web.live(second.project).is_some());
+    assert!(state.web.live(third.project).is_some());
+    let held = state.snapshots.in_use();
+    state.snapshots.set_budget(Budget {
+        memory_bytes: held + held / 4,
+        max_snapshot_bytes: 1 << 30,
+    });
+    let read = state
+        .snapshots
+        .read_current(&state.db, first.project)
+        .await
+        .expect("a read");
+    assert!(
+        matches!(read, oleafly_server::snapshots::Current::Read(..)),
+        "the idle rooms gave their memory to the read"
+    );
 }

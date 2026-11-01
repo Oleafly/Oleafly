@@ -57,8 +57,6 @@ export function isUnbindableKey(key: string): boolean {
   return UNBINDABLE_KEYS.has(key);
 }
 
-// Named key values such as ArrowUp, F5 or Enter. Any other key value is text
-// the layout typed, which can be longer than one code point.
 const NAMED_KEY = /^[A-Z][A-Za-z0-9]+$/;
 const PRINTABLE_ASCII = /^[\x21-\x7e]$/;
 

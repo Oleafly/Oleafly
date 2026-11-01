@@ -1,11 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// The browser app against the dev mock server, with the test engine built in:
-//
-//   pnpm web:e2e
-//
-// Both servers start on their own ports, so a `pnpm web:dev` already running
-// on the usual ones is left alone.
 const MOCK_PORT = 4884;
 const WEB_PORT = 1431;
 

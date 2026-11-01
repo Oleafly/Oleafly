@@ -27,8 +27,6 @@ const QUIT_ITEM: &str = "quit_app";
 const SETTINGS_ITEM: &str = "open_settings";
 const SETTINGS_ACCELERATOR: &str = "CmdOrCtrl+,";
 const SETTINGS_EVENT: &str = "settings:open";
-/// Asks the main window to save its files and check for running terminal
-/// programs; it then reloads every view through the `reload_views` command.
 const RELOAD_VIEWS_EVENT: &str = "menu://reload-views";
 const TOGGLE_TERMINAL_ITEM: &str = "toggle_terminal";
 const TOGGLE_ZEN_ITEM: &str = "toggle_zen_mode";
@@ -462,8 +460,6 @@ fn reload_views<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Route a menu click to the webview. The frontend listens for these events and
-/// opens the matching in-app surface.
 pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
     if app
         .try_state::<crate::updater::UpdateState>()
@@ -494,8 +490,6 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             let _ = app.emit_to("main", SETTINGS_EVENT, ());
         }
         "reload_views" => {
-            // A reload stops the main window's terminal sessions, so the main
-            // window asks first. Without one there is nothing to ask about.
             if app.get_window("main").is_some() {
                 let _ = app.emit_to("main", RELOAD_VIEWS_EVENT, ());
             } else {
@@ -503,9 +497,6 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             }
         }
         "restart_app" => {
-            // A restart tears the webview down exactly like a quit, so it
-            // must flush dirty buffers first; the frontend calls
-            // `confirm_quit_flush { restart: true }` when the flush is done.
             if !crate::quit_gate::flush_confirmed() {
                 let _ = app.emit("quit-flush-requested", true);
             } else {
@@ -513,9 +504,6 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             }
         }
         "quit_app" => {
-            // Cmd+Q flushes dirty buffers first (`quit-flush-requested`);
-            // the TinyTeX install confirm then runs from `confirm_quit_flush`
-            // so confirming it can no longer discard unsaved edits.
             if !crate::quit_gate::flush_confirmed() {
                 let _ = app.emit("quit-flush-requested", false);
             } else if crate::latex_engine::install_in_progress()

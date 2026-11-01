@@ -19,7 +19,6 @@ function lookup(path: CatalogPath): unknown {
   return node;
 }
 
-/** The top-level tab strip of each section whose rows all sit inside it, as Radix tab values. */
 const SECTION_TABS: readonly (readonly [SettingsSearchSection, readonly string[]])[] = [
   ["appearance", ["app", "editor", "terminal", "pdf", "files"]],
   ["data", ["local", "cloud"]],
@@ -58,7 +57,6 @@ function pressed(
   return clicked;
 }
 
-/** Selects a tab the way a user would, without the reveal knowing. */
 function select(container: HTMLElement, testId: string) {
   for (const tab of container.querySelectorAll<HTMLElement>('[role="tab"]')) {
     tab.setAttribute("aria-selected", String(tab.dataset.testid === testId));
@@ -156,9 +154,7 @@ describe("openSettingsTabFor", () => {
       "appearance-tab-app",
     );
     const visited = new Set<HTMLElement>();
-    // The row's tab is already open, but the row is not on it (a collapsed panel).
     expect(pressed(appearance, ["appearance", "customTheme", "radius"], visited)).toBeNull();
-    // The user moves on to another tab while the reveal is still looking.
     select(appearance, "appearance-tab-editor");
     expect(pressed(appearance, ["appearance", "customTheme", "radius"], visited)).toBeNull();
   });

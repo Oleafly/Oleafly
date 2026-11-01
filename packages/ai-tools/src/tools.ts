@@ -43,8 +43,6 @@ export interface RevealLocationResult {
   note?: string;
 }
 
-// The app builds one adapter over its Tauri client and stores; this package
-// stays free of them.
 export interface AiToolsHost {
   getProjectId(): string | null;
   readFileContent(projectId: string, path: string): Promise<string>;
@@ -90,7 +88,6 @@ export interface AiToolsHost {
   getPdfBytes(): Uint8Array | null;
   extractPdfText(bytes: Uint8Array): Promise<{ pages: string[]; numPages: number }>;
   getPdfCursorPage?(): number | null | undefined;
-  // Symbol index (built lazily by the host when absent).
   getProjectIndex(): Promise<ProjectIndexView | null>;
   compileIsolated(
     projectId: string,
@@ -98,7 +95,6 @@ export interface AiToolsHost {
   ): Promise<{ ok: boolean; errors: unknown[]; has_pdf: boolean; log?: string | null }>;
   readIsolatedPdf(projectId: string): Promise<ArrayBuffer | ArrayLike<number>>;
   pdfToPng(bytes: Uint8Array, page: number, scale: number): Promise<string>;
-  // Figure session state (last preview, insert target from a selection).
   setLastFigurePreview(v: FigurePreview | null): void;
   getLastFigurePreview(): FigurePreview | null;
   getFigureInsertTarget(): { from: number; to: number } | null;
@@ -116,15 +112,11 @@ export interface AiToolsHost {
     text: string,
     mutationAllowed?: () => boolean,
   ): boolean | Promise<boolean>;
-  // Project-relative path of the document insertAtCursor and replaceRange edit.
   insertTargetPath?(projectId: string): string | null;
-  // Agent plan checklist (update_todos / get_todos).
   getAgentTodos(): { id: string; content: string; status: string }[];
   setAgentTodos(todos: { id: string; content: string; status: string }[]): void;
-  // PDF vision verify (optional privacy gate).
   getAiPdfCaptureEnabled(): boolean;
   revealLocation?(target: RevealLocationTarget): Promise<RevealLocationResult>;
-  // Sticky project memory notes (across chats).
   rememberNote(content: string): { id: string; content: string } | { error: string };
   forgetNote(id: string): { success: boolean; error?: string };
   listNotes(): { id: string; content: string }[];
@@ -312,8 +304,6 @@ export function createOleaflyTools(
         required: ["task_name", "prompt"],
         additionalProperties: false,
       },
-      // The backend intercepts the multi-agent tools before webview
-      // dispatch; reaching this executor means the run is not agentic.
       execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     send_message: {
@@ -440,8 +430,6 @@ export function createOleaflyTools(
             content = content.slice(0, MAX_CHARS);
             truncated = true;
           }
-          // Legacy encodings decode lossily on the backend; flag it so the
-          // model knows a rewrite would bake U+FFFD in permanently.
           const legacy = content.includes("\uFFFD");
           return {
             path,
@@ -571,7 +559,6 @@ export function createOleaflyTools(
             : original.slice(0, idx) + replace + original.slice(idx + find.length);
           const sizeError = mutationSizeError(updated);
           if (sizeError) return { error: sizeError };
-          // Nothing has been written yet; declining leaves the file untouched.
           if (confirm && !(await confirm({
             tool: "replace_in_file",
             summary: `Edit ${path}`,
@@ -1114,7 +1101,6 @@ export function createOleaflyTools(
             numPages,
             pages: selected,
             images_captured: images.length,
-            // data URLs omitted from JSON echo to keep tool-result small; images go via onImage
             text: text.slice(0, 12000),
             note:
               images.length > 0
@@ -1152,9 +1138,6 @@ export function createOleaflyTools(
         const projectId = pid();
         if (!projectId) return { error: "No project open" };
         if (!confirm) return { ...declined("run_command"), command };
-        // A subagent tags its commands with its own execution owner so that
-        // stopping the subagent cancels exactly its process tree. Absent for a
-        // top-level run, which uses the run's own id.
         const ownerOverride =
           typeof input.__execOwner === "string" ? input.__execOwner : undefined;
         try {
@@ -1179,9 +1162,6 @@ export function createOleaflyTools(
             host.refreshOpenFiles?.(projectId);
           }
           return {
-            // Structured so the exec card renders command, output, and status;
-            // the model also reads the flat fields. Output goes last so a
-            // head-only preview of an oversized result keeps the status.
             exec: true,
             command: result.command,
             exit_code: result.exit_code,
@@ -1404,7 +1384,6 @@ export function createFigureTools(
           } else {
             setLastFigurePreview(null);
           }
-          // Hand the rendered image to the loop (Tier 2 vision refine).
           if (bytes && onImage) {
             try {
               onImage(await pdfPageToPng(bytes, 1, 2));
@@ -1457,7 +1436,6 @@ export function createFigureTools(
           engine === "typst"
             ? await typstFigureText(id, { code, caption, label, raw })
             : figureLatex(code, caption, label, raw);
-        // Render the compiled figure so the user sees what they are approving.
         const png = await previewImage(getLastFigurePreview(), pdfPageToPng);
         if (
           confirm &&
@@ -1497,7 +1475,6 @@ export function createFigureTools(
         } catch {
           /* saving the raster copy is optional; the LaTeX is already inserted */
         }
-        // The paths this call wrote, so the assistant's turn claims them as its own.
         return {
           success: true,
           ...(documentPath ? { path: documentPath } : {}),

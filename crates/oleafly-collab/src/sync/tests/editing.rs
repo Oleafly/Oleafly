@@ -79,10 +79,6 @@ async fn hiding_tells_the_others_this_device_left_after_its_last_presence() {
     assert!(!alice.handle.as_ref().unwrap().is_finished());
 }
 
-// The server keeps only the latest cursor or leave of each device beside its
-// edit queue, so a cursor sent just before leaving may be folded into the
-// leave. Waits for the leave and checks that no cursor of that device comes
-// after it.
 pub(super) async fn left_without_a_later_cursor(side: &mut Side, device: DeviceId) {
     tokio::time::timeout(WAIT, async {
         while let Some(event) = side.events.recv().await {

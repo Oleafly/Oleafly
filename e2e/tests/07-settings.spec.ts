@@ -20,10 +20,6 @@ async function openSettingsProject(page: Page & { getByText(t: string): { click(
   else await createBlankProject(page, PROJECT);
 }
 
-// The test fixture reloads the whole frontend before every test, so the
-// two-test pair below proves persistence across a renderer restart, not merely
-// React component state.
-
 test("settings modal opens with all sections", async ({ tauriPage }) => {
   await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -36,8 +32,6 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
       '[aria-label="Settings sections"] [data-testid="settings-section-mcp"]',
     ),
   ).toHaveCount(0);
-  // The "Show advanced" toggle persists (localStorage), so only click it when
-  // advanced sections are currently hidden.
   const dictionary = tauriPage.locator('[data-testid="settings-section-dictionary"]');
   if (!(await dictionary.isVisible())) {
     await tauriPage.click('[data-testid="settings-toggle-advanced"]');
@@ -243,7 +237,6 @@ test("vim mode: modal editing, live toggle, and persistence part 1", async ({ ta
 });
 
 test("vim mode survived the app restart, then disable it (part 2)", async ({ tauriPage }) => {
-  // The fixture reloaded the entire app between these two tests.
   await expect
     .poll(
       () =>
@@ -262,7 +255,7 @@ test("vim mode survived the app restart, then disable it (part 2)", async ({ tau
   await expect(
     tauriPage.locator('[cmdk-item][aria-selected="true"]'),
   ).toHaveText("Disable vim mode", { timeout: 10_000 });
-  await tauriPage.press("[cmdk-input]", "Enter"); // restore off
+  await tauriPage.press("[cmdk-input]", "Enter");
   await expect
     .poll(
       () =>

@@ -64,7 +64,6 @@ function choiceProblem(kind: ChoiceKind, value: Value): boolean {
   return Array.isArray(value) ? value.some((item) => !known.has(item)) : !known.has(String(value));
 }
 
-/** The client-side check, mirroring the one Oleafly runs before sending. */
 export function fieldProblem(field: AcpElicitationField, value: Value | undefined): boolean {
   const empty = value === undefined || value === "" || (Array.isArray(value) && value.length === 0);
   if (empty) return field.required;
@@ -95,7 +94,6 @@ function textInputType(secret: boolean, format: string | null): "password" | "em
   return format === "email" ? "email" : "text";
 }
 
-/** One checkbox per option, for a choice the agent lets the user pick several of. */
 function MultiChoice({
   id,
   options,
@@ -119,7 +117,6 @@ function MultiChoice({
   );
 }
 
-/** The control that fits the field's kind: a switch, checkboxes, a select or an input. */
 function FieldControl({
   field,
   id,
@@ -180,7 +177,6 @@ function FieldControl({
   );
 }
 
-/** A field of the form: its label, its description, its control and, once checked, what is wrong. */
 function FieldRow({
   field,
   requestId,
@@ -191,7 +187,6 @@ function FieldRow({
   field: AcpElicitationField;
   requestId: string;
   value: Value | undefined;
-  /** Set once the user has tried to submit; only then are the fields marked. */
   checked: boolean;
   onChange(name: string, next: Value | undefined): void;
 }>) {
@@ -211,7 +206,6 @@ function FieldRow({
   );
 }
 
-/** A question from the agent: a form to fill in, or a site to finish a step on. */
 export function ElicitationCard({
   request,
   agentName,
@@ -219,7 +213,6 @@ export function ElicitationCard({
 }: Readonly<{
   request: AcpElicitation;
   agentName: string;
-  /** Resolves false when the answer did not reach the agent. */
   onRespond(action: Action, content?: Record<string, unknown>): Promise<boolean>;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
@@ -255,14 +248,12 @@ export function ElicitationCard({
   const openLink = async () => {
     setConfirming(false);
     if (!request.url) return;
-    // Opened first: when no browser opens, the agent is not told it was.
     if (!(await openInSystemBrowser(request.url))) {
       setLinkFailed(true);
       return;
     }
     setLinkFailed(false);
     setWaiting(true);
-    // The agent never heard the answer: the card offers the link and Decline again.
     if (!(await respond("accept"))) setWaiting(false);
   };
 
@@ -321,7 +312,6 @@ export function ElicitationCard({
       {linkFailed && (
         <p role="alert" className="text-destructive">{t(($) => $.ai.acp.elicitation.openFailed)}</p>
       )}
-      {/* Decline stays while the agent waits for the site: the step may never finish. */}
       {request.mode === "url" && (
         <div className="flex gap-2">
           <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => void respond("decline")}>

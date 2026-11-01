@@ -1,5 +1,3 @@
-//! Password-encrypted streaming envelope for portable checkpoint archives.
-
 use std::io::{Read, Write};
 use std::num::NonZeroU32;
 
@@ -30,9 +28,6 @@ const HEADER_V2_BYTES: usize = 56;
 const DATA_FRAME: u8 = 0;
 const FINAL_FRAME: u8 = 1;
 
-/// Encrypts a logical archive stream with a passphrase-derived AES-256-GCM
-/// key. Every frame and the final end marker are authenticated. The password
-/// is never persisted in the envelope.
 #[cfg(test)]
 pub(crate) fn encrypt(
     mut plaintext: impl Read,
@@ -45,11 +40,6 @@ pub(crate) fn encrypt(
     writer.finish().map(|_| ())
 }
 
-/// Decrypts and authenticates an archive stream.
-///
-/// Callers that write to durable storage must supply a staging destination and
-/// publish it only after this function returns. A late authentication failure
-/// can otherwise leave already-decoded frames in the writer.
 #[cfg(test)]
 pub(crate) fn decrypt(
     encrypted: impl Read,
@@ -64,9 +54,6 @@ pub(crate) fn decrypt(
         .map_err(|error| format!("could not finish restored archive: {error}"))
 }
 
-/// A bounded-memory authenticated writer used to compose the logical history
-/// exporter directly with the encrypted envelope. Plaintext never needs to be
-/// written to a temporary file.
 pub(crate) struct ArchiveEncryptWriter<W: Write> {
     encrypted: W,
     key: aead::LessSafeKey,
@@ -168,9 +155,6 @@ impl<W: Write> Write for ArchiveEncryptWriter<W> {
     }
 }
 
-/// A bounded-memory authenticated reader used to feed the logical history
-/// importer. Authentication completes before each plaintext frame is exposed,
-/// and EOF is returned only after the authenticated final marker is verified.
 pub(crate) struct ArchiveDecryptReader<R: Read> {
     encrypted: R,
     key: aead::LessSafeKey,

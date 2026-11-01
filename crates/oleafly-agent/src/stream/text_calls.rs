@@ -15,11 +15,8 @@ const CLOSE: &str = "</tool_call>";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Watch {
-    /// Nothing but whitespace yet.
     Undecided,
-    /// Prose, shown as it comes, until a `<tool_call>` tag appears.
     Prose,
-    /// Held from the start of what may be a call.
     Holding,
 }
 
@@ -43,7 +40,6 @@ impl TextCallWatch {
         !self.pending.is_empty()
     }
 
-    /// Takes a text delta and returns the part that can be shown now.
     pub(crate) fn push(&mut self, text: &str) -> Option<String> {
         self.pending.push_str(text);
         if self.state == Watch::Undecided {
@@ -73,16 +69,12 @@ impl TextCallWatch {
         (!shown.is_empty()).then_some(shown)
     }
 
-    /// Ends the watch and returns the text still held. Used when the reply
-    /// turns out to carry structured calls, so its text is only text.
     pub(crate) fn release(&mut self) -> Option<String> {
         self.state = Watch::Prose;
         let held = std::mem::take(&mut self.pending);
         (!held.is_empty()).then_some(held)
     }
 
-    /// Settles the reply at its end: the held text as calls, or as text when
-    /// it is not a call this request can run.
     pub(crate) fn finish(&mut self) -> Settled {
         if self.state == Watch::Holding {
             if let Some(calls) = parse_calls(&self.pending, &self.tools) {
@@ -101,12 +93,9 @@ impl TextCallWatch {
 pub(crate) enum Settled {
     Nothing,
     Text(String),
-    /// Each call's tool name and its arguments as a JSON object.
     Calls(Vec<(String, String)>),
 }
 
-/// The length of the longest end of `text` that could be the start of a
-/// `<tool_call>` tag split across deltas.
 fn partial_tag_len(text: &str) -> usize {
     (1..OPEN.len())
         .rev()
@@ -114,9 +103,6 @@ fn partial_tag_len(text: &str) -> usize {
         .unwrap_or(0)
 }
 
-/// Reads `text` as one or more calls separated by whitespace, each a JSON
-/// object, optionally wrapped in `<tool_call>` tags. `None` unless all of
-/// the text is calls the request offered.
 fn parse_calls(text: &str, tools: &BTreeSet<String>) -> Option<Vec<(String, String)>> {
     let mut calls = Vec::new();
     let mut rest = text.trim();
@@ -133,9 +119,6 @@ fn parse_calls(text: &str, tools: &BTreeSet<String>) -> Option<Vec<(String, Stri
     (!calls.is_empty()).then_some(calls)
 }
 
-/// A call is `{"name": …, "arguments": {…}}`, with `parameters` accepted in
-/// place of `arguments` and arguments sent as a JSON string read as one.
-/// Any other key means the object is something else.
 fn read_call(mut call: Map<String, Value>, tools: &BTreeSet<String>) -> Option<(String, String)> {
     let Some(Value::String(name)) = call.remove("name") else {
         return None;
@@ -169,8 +152,6 @@ mod tests {
             .collect()
     }
 
-    /// Streams `deltas` through a watch; returns what was shown along the
-    /// way and how the reply settled.
     fn watch(deltas: &[&str]) -> (String, Settled) {
         let mut watch = TextCallWatch::new(tools());
         let shown: String = deltas

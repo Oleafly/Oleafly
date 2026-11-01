@@ -11,8 +11,6 @@ issues_url=https://github.com/Oleafly/oleafly-server/issues
 docker_script_commit=ada7a567e59b3935bd601bb21e422da50e80e376
 docker_script_sha256=2b102d809152ea157a59f171319f489d971273b2d26dd7e9a6d1d737ce89289d
 docker_script_url=https://raw.githubusercontent.com/docker/docker-install/$docker_script_commit/install.sh
-# The Compose plugin release the printed steps download, with the checksums
-# from that release's .sha256 files.
 compose_plugin_version=v5.5.1
 compose_plugin_sha256_x86_64=db1889184726840f75c4f9c001048430d4f25b3be3cb084d3ddd762bc0aed576
 compose_plugin_sha256_aarch64=732e3a84c1a0f67256ce80bc2598a24546b10ca05f9faa97efceb1171ece2ef7
@@ -652,8 +650,6 @@ place_release_files() {
 		as_root rm -rf "$incoming"
 		return 1
 	fi
-	# .env.example goes last. Nothing reads it, and every file moved before
-	# it has a .previous copy, so a failed move can always be undone.
 	for file in docker-compose.yml Caddyfile litestream.yml install.sh .env.example; do
 		if ! as_root mv -f "$incoming/$file" "$dir/$file" 2>>"$tmp/place.log"; then
 			as_root rm -rf "$incoming"
@@ -664,7 +660,6 @@ place_release_files() {
 	as_root rmdir "$incoming" || true
 }
 
-# The advice after a failed write: only a full disk is about space.
 next_step_after() {
 	if grep -Eqi 'no space left|quota' "$1" 2>/dev/null; then
 		printf '%s' "Free some disk space, then run the installer again."
@@ -681,7 +676,6 @@ stage_release_files() {
 	as_root install -m 755 "$tmp/release/install.sh" "$1/install.sh" || return 1
 }
 
-# The files the update keeps as name.previous before it stops the server.
 previous_files='docker-compose.yml Caddyfile litestream.yml install.sh'
 
 restore_previous_files() {
@@ -1357,8 +1351,6 @@ back_up_data() {
 		cat "$tmp/copy.log" >&2
 		fail "Couldn't make $dir/backups for the copy of the data. Nothing was changed." "$(next_step_after "$tmp/copy.log")"
 	fi
-	# These copies come before the stop, so a full disk ends the update while
-	# the server still runs.
 	for file in $previous_files; do
 		if [ -f "$dir/$file" ] && ! as_root cp -p "$dir/$file" "$dir/$file.previous" 2>"$tmp/copy.log"; then
 			cat "$tmp/copy.log" >&2
@@ -1382,7 +1374,6 @@ back_up_data() {
 		fail "Couldn't copy the data before the update. Its message is above." "Nothing else was changed, but Docker couldn't start the server again. Start it with: cd $dir && sudo docker compose start" "$next"
 	fi
 	item "Copied the data to $dir/backups/$backup_name"
-	# An old copy that can't be removed doesn't stop the update.
 	for old in $(as_root ls -1 "$dir/backups" | grep '^oleafly-data-.*\.tar\.gz$' | sort -r | tail -n +4); do
 		as_root rm -f "$dir/backups/$old" || note "Couldn't remove the old copy $dir/backups/$old."
 	done
@@ -1499,8 +1490,6 @@ refresh_install() {
 		tail -n 5 "$tmp/place.log" >&2
 		next=$(next_step_after "$tmp/place.log")
 		if [ "$stopped_for_backup" = 1 ]; then
-			# The new release never started, so the data is as it was. Only
-			# files to put back, if some were already replaced.
 			files_now="None of the installed files changed."
 			if [ "$placed" = 1 ]; then
 				if ! restore_previous_files; then

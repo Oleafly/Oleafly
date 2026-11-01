@@ -379,9 +379,6 @@ struct Registry {
 pub struct LanguageServiceState {
     registry: Arc<Registry>,
     installer: Arc<InstallerState>,
-    // Starting is intentionally serialized. Besides keeping the session limit
-    // deterministic, this lets a newly mounted frontend reclaim a project
-    // whose previous WebView/runtime disappeared before it could send `stop`.
     start_gate: Arc<tokio::sync::Mutex<()>>,
 }
 
@@ -1655,9 +1652,6 @@ async fn run_session(runtime: SessionRuntime) {
         }
     };
 
-    // The process group/job is an ownership boundary, not just a stop helper.
-    // Closing it after the leader exits also terminates helpers that detached
-    // their stdio and would otherwise survive a successful or failed session.
     drop(containment);
 
     if !stdout_joined {
@@ -2426,7 +2420,6 @@ mod tests {
 
     #[test]
     fn configuration_may_not_select_an_executable() {
-        // The shipped profile only flips a behavioural flag, so it must pass.
         assert!(validate_json_rpc_value(&json!({
             "jsonrpc": "2.0",
             "method": "workspace/didChangeConfiguration",
@@ -2434,8 +2427,6 @@ mod tests {
         }))
         .is_ok());
 
-        // Anything that picks a program, its arguments or its environment is
-        // refused however deeply it is nested, and whatever its casing.
         for settings in [
             json!({"settings": {"texlab": {"build": {"executable": "/bin/sh"}}}}),
             json!({"settings": {"texlab": {"build": {"Executable": "/bin/sh"}}}}),
@@ -2455,8 +2446,6 @@ mod tests {
             );
         }
 
-        // The restriction is scoped to configuration: ordinary traffic that
-        // happens to carry such a word is untouched.
         assert!(validate_json_rpc_value(&json!({
             "jsonrpc": "2.0",
             "id": 1,

@@ -10,6 +10,7 @@ import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createTabularDecoration } from "./decoration";
 import { tableTheme } from "./theme";
+import { stubRangeGeometry } from "../../test-geometry";
 
 const DOC = `Intro text.
 \\begin{table}
@@ -47,12 +48,7 @@ let view: EditorView | null = null;
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  if (!globalThis.Range.prototype.getClientRects) {
-    Object.defineProperty(globalThis.Range.prototype, "getClientRects", {
-      configurable: true,
-      value: () => [],
-    });
-  }
+  stubRangeGeometry();
 });
 
 afterEach(async () => {
@@ -429,7 +425,9 @@ describe("table toolbar", () => {
   it("removes the whole table", async () => {
     const editor = await mount();
     selectCell(editor, 0);
-    fireEvent.click(control("visual.table.removeTable"));
+    await act(async () => {
+      fireEvent.click(control("visual.table.removeTable"));
+    });
     expect(editor.state.doc.toString()).toBe("Intro text.\nOutro text.\n");
   });
 

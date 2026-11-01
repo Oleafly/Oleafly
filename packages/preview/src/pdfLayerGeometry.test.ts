@@ -120,8 +120,6 @@ describe("pdfLayerGeometry", () => {
     );
     expect(geometry.canvasWidth).toBeLessThanOrEqual(MAX_PDF_CANVAS_DIMENSION);
     expect(geometry.canvasHeight).toBeLessThanOrEqual(MAX_PDF_CANVAS_DIMENSION);
-    // CSS geometry remains near the exact 12k x 18k viewport; only its backing
-    // raster is restricted. Text and annotations share these CSS dimensions.
     expect(geometry.cssWidthPx).toBeGreaterThan(11_990);
     expect(geometry.cssHeightPx).toBeGreaterThan(17_990);
     expect(geometry.outputScaleX).toBeLessThan(1);

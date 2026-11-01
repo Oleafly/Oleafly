@@ -1,8 +1,3 @@
-/**
- * Equation to SVG/PNG export (G16). MathJax 3 runs lazily in the webview
- * through its lite DOM adaptor, so no network endpoints are involved and the
- * chunk only loads on first use. Rasterization happens on a canvas.
- */
 import { enclosingMathEnvironment } from "@/components/editor/cm/hover-math";
 import { activeSelectionText } from "@/components/editor/selection-text";
 import { getEditorView } from "@oleafly/editor";
@@ -67,7 +62,6 @@ async function loadMathJax(): Promise<Convert> {
   return mathjaxConvert;
 }
 
-/** Render TeX to a standalone `<svg>` document string. */
 export async function equationToSvgDocument(tex: string, display = true): Promise<string> {
   const convert = await loadMathJax();
   const markup = convert(tex, display);
@@ -83,7 +77,6 @@ export async function equationToSvgDocument(tex: string, display = true): Promis
   return svg;
 }
 
-/** Rasterize an SVG document to PNG bytes at `scale` (default 3x). */
 export async function svgDocumentToPngBytes(
   svg: string,
   scale = 3,
@@ -120,8 +113,6 @@ export async function svgDocumentToPngBytes(
   }
 }
 
-/** The equation to export: the selection when one exists, otherwise the
- * math environment enclosing the caret. Null when neither applies. */
 export function equationAtCursor(): { tex: string; display: boolean } | null {
   const view = getEditorView();
   if (!view) return null;
@@ -352,7 +343,6 @@ async function saveBytes(defaultName: string, filters: { name: string; extension
   });
 }
 
-/** Save the equation under the cursor (or selection) as an SVG file. */
 export async function saveEquationAsSvg(): Promise<void> {
   const equation = exportEquationAtCursor();
   if (!equation) {
@@ -376,7 +366,6 @@ export async function saveEquationAsSvg(): Promise<void> {
   }
 }
 
-/** Save the equation under the cursor (or selection) as a PNG file. */
 export async function saveEquationAsPng(scale = 3, background: string | null = "#ffffff"): Promise<void> {
   const equation = exportEquationAtCursor();
   if (!equation) {
@@ -402,7 +391,5 @@ export async function saveEquationAsPng(scale = 3, background: string | null = "
 
 if (E2E_HOOKS && typeof window !== "undefined") {
   const w = window as unknown as Record<string, unknown>;
-  // Renders an equation through the real MathJax path for the
-  // conversion-matrix e2e spec.
   w.__e2eEquationSvg = equationToSvgDocument;
 }

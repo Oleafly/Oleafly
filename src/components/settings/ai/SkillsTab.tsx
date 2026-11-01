@@ -63,7 +63,6 @@ import { SectionHeading } from "@/components/ui/section-heading";
 
 type EditorTarget = "create" | SkillEntry | null;
 
-/** Which setting the skill toggles show and change while a project is open. */
 type SkillScope = "device" | "project";
 
 interface EditorForm {
@@ -242,7 +241,6 @@ function SkillEditorDialog({
 
 type SkillGroup = ReturnType<typeof groupSkills>[number];
 
-/** The groups with only the skills that match the search, empty groups dropped. */
 function filterSkillGroups(
   groups: SkillGroup[],
   search: string,
@@ -269,7 +267,6 @@ function filterSkillGroups(
     .filter((group) => group.skills.length > 0);
 }
 
-/** What the installed list shows once loading and load errors are out of the way. */
 function installedListState(
   skillCount: number,
   showNoMatch: boolean,
@@ -286,7 +283,6 @@ const SCOPE_SEGMENT_ACTIVE = "border-border bg-background text-foreground";
 const SCOPE_SEGMENT_IDLE =
   "border-transparent text-muted-foreground hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground";
 
-/** All projects or This project: what each skill's switch changes. */
 function SkillScopeControl({
   scope,
   onChange,
@@ -318,7 +314,6 @@ function SkillScopeControl({
   );
 }
 
-/** One installed skill: its switch, the project marker, files and actions. */
 function SkillCard({
   skill,
   busy,
@@ -645,8 +640,6 @@ export function SkillsTab() {
     );
   };
 
-  // In This project, a choice that matches the device setting clears the
-  // override instead of pinning it, so the skill keeps following the device.
   const toggleSkill = (skill: SkillEntry, enabled: boolean) => {
     if (projectScope) {
       applyProjectScope(skill.id, enabled === skill.enabled ? null : enabled);
@@ -781,7 +774,6 @@ export function SkillsTab() {
     (count, group) => count + group.skills.length,
     0,
   );
-  // One "No skills match" for the whole tab when neither list has a hit.
   const showNoMatch =
     searching && skills.length > 0 && installedMatches === 0 && shelfMatches === 0;
   const listState =

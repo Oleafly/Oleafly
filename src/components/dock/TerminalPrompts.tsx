@@ -15,11 +15,6 @@ import { useSettingsStore } from "@/store/settings";
 type StopPrompt = Extract<ActiveTerminalPrompt, { kind: "stop" }>;
 type LaunchPrompt = Extract<ActiveTerminalPrompt, { kind: "launch" }>;
 
-/**
- * Renders the terminal prompts while mounted. The dialogs go to the document
- * body: the dock may be hidden (and so invisible) when a project closes or
- * the app quits.
- */
 export function TerminalPrompts() {
   const prompt = useTerminalPromptStore((state) => state.prompt);
   useEffect(() => registerTerminalPromptHost(), []);
@@ -104,7 +99,6 @@ function LaunchDialog({ prompt }: Readonly<{ prompt: LaunchPrompt }>) {
   return (
     <ConfirmationDialog
       open
-      // The terminal has just taken focus; a stray Enter must back out, not run the command.
       confirmOnEnter={false}
       title={t(($) => $.workspace.terminal.launch.title)}
       description={prompt.description}
@@ -112,7 +106,6 @@ function LaunchDialog({ prompt }: Readonly<{ prompt: LaunchPrompt }>) {
       onConfirm={() => answer(true)}
       onCancel={() => answer(false)}
     >
-      {/* Wrapped, so the whole command shows before the user agrees to it. */}
       <CodeBlock
         code={prompt.commandLine}
         className="mt-3"

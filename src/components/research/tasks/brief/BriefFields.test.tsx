@@ -11,7 +11,6 @@ import type { DesktopAppsStatus } from "@/lib/desktop-apps";
 import type { ResearchBrief } from "@/lib/research-tasks";
 import { briefFixture } from "../tests/task-fixtures";
 
-// The connector status comes from the query cache in these tests; never from the system.
 vi.mock("@/lib/desktop-apps", () => ({
   cuaDriverStatus: vi.fn(() => new Promise(() => undefined)),
   cuaDriverInstalledApps: vi.fn(async () => []),
@@ -51,7 +50,6 @@ interface HarnessProps {
   onKeepRunning?: (keep: boolean) => void;
 }
 
-/** Holds the brief the way the task composer does. */
 function Harness({
   initial = briefFixture(),
   initialRunAfter = null,
@@ -146,7 +144,6 @@ describe("BriefFields", () => {
     expect(criteria[1]).toBe("second check");
     expect(criteria[2]).toHaveLength(500);
     expect(criteria.at(-1)).toBe("extra 9");
-    // The box keeps what the user typed, blank lines and spaces included.
     expect(screen.getByLabelText(copy.criteriaLabel)).toHaveValue(lines.join("\n"));
   });
 
@@ -206,7 +203,6 @@ describe("BriefFields", () => {
     expect(cost).toHaveAttribute("aria-invalid", "true");
     fireEvent.change(cost, { target: { value: "lots" } });
     expect(last(onBrief).budget.usdCap).toBeNaN();
-    // Each problem says what is wrong with the amount.
     expect(screen.getByText(notANumber)).toBeInTheDocument();
     fireEvent.change(cost, { target: { value: "10001" } });
     expect(screen.getByText(overTheLimit)).toBeInTheDocument();
@@ -458,7 +454,6 @@ describe("BriefFields", () => {
   it("says a folded option needs fixing, and opens on the problem when the draft already has one", () => {
     const bad = briefFixture({ budget: { wallClockMinutes: 120, usdCap: Number.NaN, maxRuns: null, runTimeoutMinutes: 60 } });
     const view = render(<Harness initial={bad} />);
-    // Opens on the bad value, where it can be fixed.
     expect(screen.getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(notANumber)).toBeInTheDocument();
     expect(screen.queryByTestId("research-brief-problem")).toBeNull();
@@ -572,7 +567,6 @@ describe("brief helpers", () => {
     expect(briefErrors(briefFixture({ primaryMetric: { name: "x".repeat(65), goal: "maximize" } }))).toEqual({
       metric: copy.invalidMetric,
     });
-    // The task store's rule: a letter or underscore first, and slashes are fine.
     expect(briefErrors(briefFixture({ primaryMetric: { name: "1acc", goal: "maximize" } }))).toEqual({
       metric: copy.invalidMetric,
     });
@@ -596,7 +590,6 @@ describe("brief helpers", () => {
     expect(parseLocalDateTime("2026-10-2")).toBeNaN();
     expect(parseLocalDateTime("2026-10-24")).toBeNaN();
     expect(parseLocalDateTime("tomorrow 9am")).toBeNaN();
-    // A day that rolls over into the next month is not a day.
     expect(parseLocalDateTime("2026-02-31T10:00")).toBeNaN();
     expect(parseLocalDateTime("2026-13-01T10:00")).toBeNaN();
     expect(parseLocalDateTime("2026-10-24T25:00")).toBeNaN();

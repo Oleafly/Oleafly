@@ -1,6 +1,3 @@
-//! SyncTeX for the app and the CLI. Parsing and search live in
-//! `oleafly_synctex`, which the browser app runs as WebAssembly too; this
-//! module reads a build's SyncTeX file from disk.
 use std::io::Read;
 use std::path::Path;
 
@@ -12,10 +9,6 @@ pub use oleafly_synctex::{
 
 use crate::DocError;
 
-/// The SyncTeX file of the last LaTeX build in `build_dir`, unzipped.
-/// Creates nothing. A link in the build folder is refused rather than read
-/// through, and a file or its text over `MAX_SYNCTEX_FILE_BYTES` or
-/// `MAX_SYNCTEX_TEXT_BYTES` is refused too.
 pub fn read_synctex(build_dir: &Path) -> Result<String, DocError> {
     read_synctex_limited(build_dir, MAX_SYNCTEX_FILE_BYTES, MAX_SYNCTEX_TEXT_BYTES)
 }
@@ -25,8 +18,6 @@ fn read_synctex_limited(
     max_file_bytes: u64,
     max_text_bytes: u64,
 ) -> Result<String, DocError> {
-    // Compiles run through the `_oleafly_entry` wrapper, so the synctex file
-    // is named after it.
     let path = build_dir.join(format!(
         "{}.synctex.gz",
         oleafly_core::engine_spec::ENTRY_STEM
@@ -108,14 +99,11 @@ mod tests {
     #[test]
     fn read_synctex_stops_at_a_gzip_bomb_and_an_oversized_file() {
         let build = tempfile::tempdir().unwrap();
-        // 1 MiB of zeros is a few kilobytes of gzip (how few depends on the
-        // deflate backend the workspace's features pick).
         let bomb = gzip(&vec![0_u8; 1 << 20]);
         assert!(bomb.len() < 64 * 1024, "{}", bomb.len());
         std::fs::write(synctex_file(build.path()), &bomb).unwrap();
         let error = read_synctex_limited(build.path(), 1 << 20, 64 * 1024).unwrap_err();
         assert!(error.message.contains("its text"), "{error}");
-        // Just under the limit still reads.
         assert_eq!(
             read_synctex_limited(build.path(), 1 << 20, 1 << 20)
                 .unwrap()

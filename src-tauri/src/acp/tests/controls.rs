@@ -1,4 +1,3 @@
-//! Agent options: effort, mode, fast; remembered choices; legacy modes.
 use super::super::preferences::RememberedChoice;
 use super::super::types::*;
 use super::{fixture_definition, fixture_temp, runtime};
@@ -338,7 +337,6 @@ async fn an_agent_that_goes_into_a_blocked_mode_later_is_moved_out_of_it() {
         .prompt(&id, "go-bypass".into(), Vec::new())
         .await
         .unwrap();
-    // The switch runs behind the update that announced the mode.
     let mut mode = None;
     for _ in 0..200 {
         let snapshot = runtime.snapshot(&id).await.unwrap();
@@ -379,7 +377,6 @@ async fn a_task_model_the_agent_lacks_is_reported_not_fatal() {
 
 #[test]
 fn permission_delegate_has_no_auto_allow() {
-    // Compile-level: every delegate is handled here.
     for delegate in [
         PermissionDelegateCheck::None,
         PermissionDelegateCheck::ParentChat,

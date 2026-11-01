@@ -9,15 +9,6 @@ import { cancelQuitFlush, confirmQuitDuringInstall } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { claimInstallQuitRequests, INSTALL_QUIT_BLOCKED } from "@/lib/quit-flush";
 
-/**
- * Two guards around a running TinyTeX install:
- *
- * - Quit interception: the Rust side blocks window close / Cmd+Q while an
- *   install runs and emits `tinytex-quit-blocked`; the user confirms before
- *   the app really exits. The partial download survives and resumes.
- * - Recompile notice: compiling while the install runs queues the compile and
- *   tells the user it will start as soon as the engine is ready.
- */
 export function TinytexGuards() {
   const { t } = useTranslation(["common", "shell"]);
   const [quitAsked, setQuitAsked] = useState(false);
@@ -50,10 +41,6 @@ export function TinytexGuards() {
     native,
   );
 
-  // The install finished (or failed) while the dialog was up: quitting is no
-  // longer destructive, so stop asking — and re-arm the quit flush gate. The
-  // quit attempt that opened this dialog already confirmed its flush; if the
-  // user now stays and keeps editing, the next quit must flush again.
   useEffect(() => {
     if (!anyInstalling) {
       setQuitAsked((asked) => {
@@ -67,8 +54,6 @@ export function TinytexGuards() {
   const confirmQuit = () => {
     void confirmQuitDuringInstall().catch((error) => notifyError("quit during install", error));
   };
-  // This dialog can be reached after the quit flush confirmed; staying
-  // must re-arm the flush gate or the next quit would skip saving.
   const stay = () => {
     setQuitAsked(false);
     void cancelQuitFlush().catch(() => {});

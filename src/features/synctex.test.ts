@@ -1,7 +1,5 @@
 import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
 
-// Inverse SyncTeX reaches into the tauri bridge, the editor/pdf controllers and
-// the files store. Mock them all so we can assert the multi-file switch logic.
 const mocks = vi.hoisted(() => ({
   synctexInverse: vi.fn(),
   synctexForward: vi.fn(),
@@ -109,7 +107,6 @@ import {
 } from "./synctex";
 
 beforeEach(() => {
-  // nextFrames() awaits rAF; run it synchronously so tests don't hang.
   globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
     cb(0);
     return 0;

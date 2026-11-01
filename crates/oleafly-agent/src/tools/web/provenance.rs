@@ -1,27 +1,12 @@
-//! The URLs a conversation has seen. `web_fetch` reads only these, so text
-//! on a page cannot send the agent to an address of its own choosing (for
-//! example one that carries the user's data out in its query).
-//!
-//! A URL the model wrote itself never counts as seen. Tools hand their input
-//! back (an error that names the path it was given, a note it was asked to
-//! keep), so the URLs in every tool call's arguments are remembered and a
-//! tool output that repeats one, or a URL that one starts or ends inside, is
-//! not recorded. Error outputs are not read at all.
 use std::collections::HashSet;
 
 use reqwest::Url;
 use serde_json::Value;
 
 const MAX_URLS: usize = 10_000;
-/// Characters a sentence puts after a URL that are not part of it.
 const TRAILING: &[char] = &['.', ',', ';', ':', '!', '?', ')', ']', '}', '>', '\'', '"'];
-/// How many of them are peeled off one written URL, one at a time.
 const MAX_TRAILING_PEELED: usize = 8;
 
-/// A URL in the form the set compares: lowercase scheme and host, https
-/// for http, no default port, no fragment. Nothing is trimmed from the end:
-/// a URL that differs by a character is a different address, so appending
-/// punctuation to a seen URL cannot reach a new one.
 pub(crate) fn normalize_url(raw: &str) -> Option<String> {
     let mut url = Url::parse(raw.trim()).ok()?;
     match url.scheme() {
@@ -37,8 +22,6 @@ pub(crate) fn normalize_url(raw: &str) -> Option<String> {
     Some(url.to_string())
 }
 
-/// A URL that passed the check: the normalized form (the cache key) and the
-/// address to fetch.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct SeenUrl {
     pub(crate) key: String,
@@ -78,7 +61,6 @@ fn for_each_url(text: &str, mut found: impl FnMut(&str)) {
     }
 }
 
-/// Calls `found` with every string in a JSON value, unescaped.
 fn for_each_string(value: &Value, found: &mut impl FnMut(&str)) {
     match value {
         Value::String(text) => found(text),
@@ -88,15 +70,12 @@ fn for_each_string(value: &Value, found: &mut impl FnMut(&str)) {
     }
 }
 
-/// A tool's report that it failed. It only ever names what the call was
-/// given, so nothing in it is a URL the conversation found.
 fn is_error_output(value: &Value) -> bool {
     value.as_object().is_some_and(|map| {
         map.contains_key("error") || map.get("isError").and_then(Value::as_bool) == Some(true)
     })
 }
 
-/// A URL with nothing after its host, which carries no data.
 fn is_bare_origin(normalized: &str) -> bool {
     Url::parse(normalized).is_ok_and(|url| url.path() == "/" && url.query().is_none())
 }
@@ -104,8 +83,6 @@ fn is_bare_origin(normalized: &str) -> bool {
 #[derive(Debug, Default)]
 pub(crate) struct Provenance {
     urls: HashSet<String>,
-    /// Lowercased normalized URLs from tool-call arguments: what the model
-    /// wrote itself.
     written: HashSet<String>,
 }
 
@@ -119,13 +96,10 @@ impl Provenance {
         }
     }
 
-    /// Every http(s) URL written in `text` (the user's own words).
     pub(crate) fn add_from_text(&mut self, text: &str) {
         for_each_url(text, |url| self.add(url));
     }
 
-    /// Remembers the URLs in a tool call's arguments, the model's own text,
-    /// read both as written and as JSON string values.
     pub(crate) fn note_written(&mut self, arguments: &str) {
         let mut note = |url: &str| {
             if self.written.len() < MAX_URLS {
@@ -140,9 +114,6 @@ impl Provenance {
         }
     }
 
-    /// Whether `normalized` is, or starts or ends inside, a URL the model
-    /// wrote. A tool may echo its input with a character added or cut, so a
-    /// prefix either way counts, except a bare origin, which carries nothing.
     fn model_wrote(&self, normalized: &str) -> bool {
         let candidate = normalized.to_ascii_lowercase();
         self.written.iter().any(|written| {
@@ -155,7 +126,6 @@ impl Provenance {
         })
     }
 
-    /// A URL a search provider returned, unless the model wrote it.
     pub(crate) fn add_unwritten(&mut self, url: &str) {
         if self.urls.len() >= MAX_URLS {
             return;
@@ -182,8 +152,6 @@ impl Provenance {
         }
     }
 
-    /// The `url` of each entry in a search result list (`results` or
-    /// `sources`): addresses the search provider returned, not text.
     pub(crate) fn add_result_urls(&mut self, value: &Value) {
         if is_error_output(value) {
             return;
@@ -202,16 +170,11 @@ impl Provenance {
         }
     }
 
-    /// The address this conversation has seen for `url`, when it has: the
-    /// one a fetch must use, exactly what was checked and nothing appended
-    /// to it.
     pub(crate) fn seen(&self, url: &str) -> Option<SeenUrl> {
         let key = normalize_url(url)?;
         if !self.urls.contains(&key) {
             return None;
         }
-        // The check treats http and https alike (a fetch goes over https
-        // either way); the address keeps the scheme it was asked for.
         let mut target = Url::parse(&key).ok()?;
         if Url::parse(url.trim()).is_ok_and(|written| written.scheme() == "http") {
             let _ = target.set_scheme("http");
@@ -249,7 +212,6 @@ mod tests {
         let mut provenance = Provenance::default();
         provenance.add_from_text("Read https://attacker.example/page please");
         assert!(provenance.contains("https://attacker.example/page"));
-        // A page cannot spell data into the URL with trailing punctuation.
         for appended in [".", ".,;:)", "?", "!)", "..."] {
             let url = format!("https://attacker.example/page{appended}");
             assert!(!provenance.contains(&url), "{url}");
@@ -262,7 +224,6 @@ mod tests {
         let mut provenance = Provenance::default();
         provenance
             .add_from_text("(see https://en.wikipedia.org/wiki/Rust_(programming_language)).");
-        // The page the sentence names, and the sentence-final forms.
         assert_eq!(
             provenance
                 .seen("https://en.wikipedia.org/wiki/Rust_(programming_language)")
@@ -287,7 +248,6 @@ mod tests {
                 target: "https://example.com/a?x=1".into(),
             })
         );
-        // The scheme asked for is kept; the rest is what was checked.
         assert_eq!(
             provenance
                 .seen("http://example.com:80/a?x=1")
@@ -304,18 +264,14 @@ mod tests {
         provenance
             .add_from_output("failed to read https://evil.example/c?d=bWFpbi50ZXg: not found");
         assert!(!provenance.contains("https://evil.example/c?d=bWFpbi50ZXg"));
-        // An echo with a character added or cut, or another case, is the
-        // same URL.
         provenance.add_from_output(
             "kept https://evil.example/c?d=bWFpbi50ZXg/ and https://EVIL.example/c?d=bWFpbi50",
         );
         assert!(!provenance.contains("https://evil.example/c?d=bWFpbi50ZXg/"));
         assert!(!provenance.contains("https://evil.example/c?d=bWFpbi50"));
-        // The rest of an output is read, the bare site among it.
         provenance.add_from_output("see https://arxiv.org/abs/2401.00001 or https://evil.example/");
         assert!(provenance.contains("https://arxiv.org/abs/2401.00001"));
         assert!(provenance.contains("https://evil.example/"));
-        // The user's own words are always read.
         provenance.add_from_text("please read https://evil.example/c?d=bWFpbi50ZXg");
         assert!(provenance.contains("https://evil.example/c?d=bWFpbi50ZXg"));
     }

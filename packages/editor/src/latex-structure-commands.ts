@@ -1,15 +1,3 @@
-// LaTeX structural editing commands:
-//  - continueListOnEnter: Enter inside an itemize/enumerate/description list
-//    continues the list with a new `\item`, or exits it on an empty item.
-//  - closeEnvironmentAtCursor: inserts `\end{...}` for the innermost unclosed
-//    environment above the cursor.
-//  - surroundSelectionWithEnvironment: wraps the selection in a
-//    `\begin{env}…\end{env}` snippet with mirrored environment-name fields.
-//
-// The pure helpers take an EditorState and return a TransactionSpec (or null
-// when they do not apply), so they are directly unit-testable; the keymaps
-// wrap them as view commands.
-
 import {
   countColumn,
   EditorSelection,
@@ -25,10 +13,6 @@ import { snippet } from "@codemirror/autocomplete";
 import { getEditorDocumentPath } from "./controller";
 import { inLatexIgnoredRegion, latexMaskedSlice } from "./latex-lexical";
 
-// EXTRA_KEYMAP (and the palette) are registered globally, for every document
-// the shared editor shows. These commands only make sense in LaTeX sources,
-// so each entry point re-checks the active document path and bows out
-// otherwise, letting default keybindings (e.g. plain Enter) proceed.
 const LATEX_PATH = /\.(tex|latex|ltx|sty|cls)$/i;
 
 export function isLatexDocument(): boolean {
@@ -45,16 +29,12 @@ export function vimOwnsInput(view: { state: EditorState }): boolean {
   return vim !== undefined && vim.insertMode !== true;
 }
 
-/** Environments whose `\item` lines Enter should continue. */
 const LIST_NAMES = new Set(["itemize", "enumerate", "description"]);
 
-/** Any `\begin{...}` / `\end{...}` pair; the name keeps a trailing star. */
 const ANY_ENVIRONMENT = /\\(begin|end)\s*\{([^{}]+)\}/g;
 
-/** `\item` at the start of a line (after indentation), not `\itemize` etc. */
 const ITEM_LINE = /^(\s*)\\item(?![a-zA-Z])/;
 
-/** A line that is exactly an empty item: `\item` or `\item `. */
 const EMPTY_ITEM_LINE = /^\s*\\item(?![a-zA-Z])(?:\s*\[\s*\]\s*|\s*)$/;
 
 const ITEM_MARKER = /^(\s*)(\\item(?![a-zA-Z])(\s*\[[^\]]*\])?)/;
@@ -68,12 +48,10 @@ const ENVIRONMENT_CLOSE_LINE = /^\s*\\end\{([^{}]+)\}\s*$/;
 
 const LINE_WINDOW = 2 * 1024;
 
-/** Upward scan bound for list detection (bytes). */
 const LIST_SCAN_LIMIT = 4 * 1024;
 
 const LIST_CLOSE_SCAN_LIMIT = 4 * 1024;
 
-/** Upward scan bound for environment-balance detection (bytes). */
 const ENV_SCAN_LIMIT = 16 * 1024;
 
 function leadingWhitespace(text: string): string {
@@ -98,7 +76,6 @@ function listScanStart(state: EditorState, upTo: number): number {
   return line.from === limit ? limit : Math.min(upTo, line.to + 1);
 }
 
-/** Drops the innermost matching entry and everything opened after it. */
 function truncateToMatch<T>(stack: T[], matches: (entry: T) => boolean): void {
   for (let level = stack.length - 1; level >= 0; level--) {
     if (matches(stack[level])) {
@@ -333,14 +310,6 @@ export function deleteItemMarkupBackward(view: EditorView): boolean {
   return true;
 }
 
-/**
- * Close the innermost unclosed environment above the cursor.
- *
- * Scans upward (bounded) tracking `\begin`/`\end` balance across all
- * environment names with a stack. Returns a spec inserting `\end{name}` at
- * the cursor — on its own correctly-indented line when the cursor line is
- * non-empty — or null when everything in range is balanced.
- */
 export function closeEnvironmentAtCursor(state: EditorState): TransactionSpec | null {
   if (!isLatexDocument()) return null;
   const head = state.selection.main.head;
@@ -353,8 +322,6 @@ export function closeEnvironmentAtCursor(state: EditorState): TransactionSpec | 
     if (m[1] === "begin") {
       stack.push({ name: m[2], pos: scanFrom + m.index });
     } else {
-      // Close the nearest matching open environment; anything opened after it
-      // is treated as implicitly closed. Stray \end entries are ignored.
       const name = m[2];
       truncateToMatch(stack, (entry) => entry.name === name);
     }
@@ -368,9 +335,6 @@ export function closeEnvironmentAtCursor(state: EditorState): TransactionSpec | 
   );
   const line = state.doc.lineAt(head);
   const closing = `\\end{${open.name}}`;
-  // Non-empty line: put \end on its own line, indented like its \begin.
-  // Empty line: adopt the \begin indent. Whitespace-only line: the existing
-  // whitespace already serves as indentation.
   const emptyLineInsert = line.length === 0 ? `${indent}${closing}` : closing;
   const insert =
     line.length > LINE_WINDOW || lineWindow(state, line).trim().length > 0
@@ -394,11 +358,6 @@ export function escapeSnippetText(text: string): string {
   return text.replace(/[{}]/g, (brace) => `\\${brace}`);
 }
 
-/**
- * Wrap the primary selection in a `\begin{env}…\end{env}` snippet whose two
- * `env` fields mirror each other while the snippet is active. With an empty
- * selection, inserts the template with an empty body field instead.
- */
 export function surroundSelectionWithEnvironment(view: EditorView): boolean {
   if (!isLatexDocument()) return false;
   const { from, to } = view.state.selection.main;

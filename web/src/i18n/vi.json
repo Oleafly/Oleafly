@@ -48,6 +48,11 @@
     "stoppedTitle": "Đã ngắt kết nối",
     "stoppedDescription": "Hãy tải lại trang để kết nối lại."
   },
+  "leave": {
+    "title": "Rời dự án này?",
+    "description": "Một số chỉnh sửa của bạn chưa đến được máy chủ. Hãy ở lại cho đến khi chúng được gửi, hoặc rời đi và mất chúng.",
+    "confirm": "Rời"
+  },
   "access": {
     "changed": "Vai trò của bạn trong dự án này giờ là {{role}}."
   },
@@ -155,6 +160,11 @@
     "withdraw": "Rút lại",
     "acceptAll": "Chấp nhận tất cả",
     "rejectAll": "Từ chối tất cả",
+    "rejectAllConfirm": {
+      "title": "Từ chối mọi đề xuất trong {{file}}?",
+      "description": "Văn bản gốc trở lại tệp với mọi người trong dự án này. Đề xuất đang chờ: {{number}}.",
+      "confirm": "Từ chối tất cả"
+    },
     "pending_other": "{{count}} đề xuất",
     "card": "Đề xuất của {{name}}",
     "lineBreak": "Ngắt dòng"

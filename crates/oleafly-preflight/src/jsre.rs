@@ -20,8 +20,6 @@ pub enum JsRegex {
     Fancy(fancy_regex::Regex),
 }
 
-/// A match in byte offsets of the searched `&str`. `groups[0]` is the whole
-/// match; unmatched groups are `None`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ByteMatch {
     pub start: usize,
@@ -43,8 +41,6 @@ impl ByteMatch {
     }
 }
 
-/// A match in UTF-16 offsets of a [`SourceText`]. `groups[0]` is the whole
-/// match.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JsMatch {
     pub from: usize,
@@ -54,7 +50,6 @@ pub struct JsMatch {
 }
 
 impl JsMatch {
-    /// The text of a capture group, borrowed from the searched text.
     pub fn text<'t>(&self, source: &'t SourceText, index: usize) -> Option<&'t str> {
         self.bytes.group(source.as_str(), index)
     }
@@ -75,8 +70,6 @@ thread_local! {
     static LIMIT_HITS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Runs `f` with `scope` as the name recorded for regex limit hits, so a
-/// warning can say which rule family gave up.
 pub fn with_scope<T>(scope: &'static str, f: impl FnOnce() -> T) -> T {
     let previous = SCOPE.replace(scope);
     let out = f();
@@ -84,7 +77,6 @@ pub fn with_scope<T>(scope: &'static str, f: impl FnOnce() -> T) -> T {
     out
 }
 
-/// The scopes whose regexes hit the backtrack limit since the last call.
 pub fn take_limit_hits() -> Vec<&'static str> {
     LIMIT_HITS.with(|hits| std::mem::take(&mut *hits.borrow_mut()))
 }
@@ -108,7 +100,6 @@ fn next_char_boundary(text: &str, at: usize) -> usize {
 }
 
 impl JsRegex {
-    /// Patterns are constants: an invalid one is a bug the tests catch.
     pub fn std(pattern: &str) -> Self {
         match regex::Regex::new(pattern) {
             Ok(regex) => Self::Std(regex),
@@ -167,8 +158,6 @@ impl JsRegex {
         }
     }
 
-    /// Every match, `matchAll` style, in byte offsets. The flag is true when
-    /// the backtrack limit stopped the search early.
     pub fn captures_str(&self, text: &str) -> (Vec<ByteMatch>, bool) {
         let mut out = Vec::new();
         let mut position = 0;
@@ -192,12 +181,10 @@ impl JsRegex {
         (out, false)
     }
 
-    /// The first match (`exec` without `g`), in byte offsets.
     pub fn first_str(&self, text: &str) -> Option<ByteMatch> {
         self.first_str_at(text, 0)
     }
 
-    /// The first match starting the search at byte `start` (`lastIndex`).
     pub fn first_str_at(&self, text: &str, start: usize) -> Option<ByteMatch> {
         if start > text.len() {
             return None;
@@ -211,7 +198,6 @@ impl JsRegex {
         }
     }
 
-    /// `regex.test(text)`. A backtrack-limit error counts as no match.
     pub fn is_match(&self, text: &str) -> bool {
         match self {
             Self::Std(regex) => regex.is_match(text),
@@ -262,8 +248,6 @@ fn to_js_match(text: &SourceText, bytes: ByteMatch) -> JsMatch {
     }
 }
 
-/// `text.split(regex)` for a separator regex without capture groups that
-/// always consumes at least one character.
 pub fn split<'t>(regex: &JsRegex, text: &'t str) -> Vec<&'t str> {
     let (found, _) = regex.captures_str(text);
     let mut out = Vec::with_capacity(found.len() + 1);

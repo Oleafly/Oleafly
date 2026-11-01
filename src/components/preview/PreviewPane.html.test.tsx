@@ -140,6 +140,17 @@ describe("preview of a document built as a web page", () => {
     expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument();
   });
 
+  it("drops the old page as soon as the document builds a PDF, before the next compile", () => {
+    show({ engine: quarto("pdf"), status: "idle" });
+    expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: copy.open })).not.toBeInTheDocument();
+  });
+
+  it("drops the old page when the main document moves to another engine", () => {
+    show({ engine: LATEX_ENGINE, status: "success" });
+    expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument();
+  });
+
   it("leaves a failed first build to the usual error state", () => {
     show({ status: "unavailable", htmlOutput: null });
     expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument();

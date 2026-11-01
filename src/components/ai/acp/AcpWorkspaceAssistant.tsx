@@ -72,14 +72,12 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const agentId = composer?.agentId ?? null;
   const setComposer = useAcpSessionsStore((state) => state.setComposer);
   const error = useAcpSessionsStore((state) => state.errors[projectId] ?? null);
-  // Why this conversation's last message did not go out (kept with it, not the project).
   const sessionError = useAcpSessionsStore((state) => (activeId ? state.sessionErrors[activeId] ?? null : null));
   const starting = useAcpSessionsStore((state) => state.starting[projectId] ?? false);
   const setProjectError = useAcpSessionsStore((state) => state.setError);
   const setError = useCallback(
     (message: string | null) => {
       setProjectError(projectId, message);
-      // A new action clears what the open conversation last reported, as it clears the project's.
       if (message === null) {
         const shown = useAcpSessionsStore.getState().activeByProject[projectId];
         if (shown) useAcpSessionsStore.getState().setSessionError(shown, null);
@@ -88,7 +86,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     [projectId, setProjectError],
   );
   const [busy, setBusy] = useState(false);
-  // Connecting to the agent (reconnect, sign in); the status pill says so, unlike other actions.
   const [connecting, setConnecting] = useState(false);
   const [cancellingStart, setCancellingStart] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -114,12 +111,9 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const focusComposer = useCallback(() => {
     requestAnimationFrame(() => composerRef.current?.focus());
   }, []);
-  // Sending brings the transcript down to the new message and the answer.
   const followSentMessage = useCallback(() => {
     nearBottomRef.current = true;
   }, []);
-  // A picked skill travels with the next message as a chip; the agent gets its
-  // instructions inline, so it works for agents without Oleafly's tools (Pi).
   const pickSkill = useCallback(
     (skill: SkillEntry) => {
       setComposer(projectId, { skill: { id: skill.id, name: skill.name } });
@@ -136,7 +130,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     setConnecting(true);
     try { await perform(action); } finally { setConnecting(false); }
   }, [perform]);
-  // A draft stays with what the user is writing for when a conversation starts from this panel.
   const carryDraft = (fromId: string) => {
     const state = useAcpSessionsStore.getState();
     const id = state.activeByProject[projectId];
@@ -191,8 +184,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   useEffect(() => {
     let disposed = false;
     let detach: (() => void) | undefined;
-    // The project's last error only: why a conversation's message did not go
-    // out stays until the user does something there.
     setProjectError(projectId, null);
     void (async () => {
       detach = await attachAcpListeners();
@@ -200,7 +191,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       const state = useAcpSessionsStore.getState();
       await Promise.all([state.refreshCatalog(), state.loadProject(projectId)]);
       if (disposed) return;
-      // Read after the waits: a conversation opened from History meanwhile stays shown.
       const id = useAcpSessionsStore.getState().activeByProject[projectId];
       if (id) await state.open(projectId, id);
     })().catch((error_: unknown) => { if (!disposed) setError(acpError(error_)); });
@@ -217,7 +207,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     if (!catalog.length) return;
     if (agentId && catalog.some((agent) => agent.definition.id === agentId)) return;
     const preferred = catalog.find((agent) => acpUsable(agent)) ?? catalog[0];
-    // Text typed before the catalog loaded was kept under no agent.
     useComposerDrafts.getState().moveDraft(acpComposerId(projectId, null), acpComposerId(projectId, preferred.definition.id));
     setComposer(projectId, { agentId: preferred.definition.id });
   }, [catalog, agentId, projectId, setComposer]);
@@ -228,7 +217,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     try { await acpPermission(projectId, activeId, id, option); }
     catch (error_) { setError(acpError(error_)); }
   };
-  /** False when the answer did not reach the agent (the banner says why). */
   const answerQuestion = async (id: string, action: "accept" | "decline" | "cancel", content?: Record<string, unknown>) => {
     if (!activeId) return false;
     setError(null);
@@ -248,7 +236,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     await useAcpSessionsStore.getState().start(projectId, agentId);
     carryDraft(shownDraft);
   });
-  // Enter with no conversation starts one and sends the message when ready.
   const startWithDraft = useCallback((draft: AcpPromptDraft) => {
     if (!agentId) return;
     void perform(async () => {
@@ -261,8 +248,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     });
   }, [agentId, perform, projectId]);
 
-  // A preset fills the composer and starts a conversation when none is open.
-  // It never sends: the researcher reads and adjusts the prompt first.
   const pickPreset = (preset: ResearchPreset) => {
     if (preset.action === "clean-library") {
       setCleanLibraryOpen(true);
@@ -271,7 +256,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const presetSkill = preset.skillId
       ? skills.find((entry) => entry.id === preset.skillId && entry.validation.status === "valid" && isSkillAvailable(entry))
       : undefined;
-    // Added after what the user typed, which stays.
     const draftId = acpDraftId(projectId, agentId, session);
     const typed = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
     let text = preset.prompt;
@@ -538,7 +522,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
           <BridgeInstallCard agent={selectedAgent} onError={setError} />
         </div>
       )}
-      {/* The agent is settled once the conversation has a message; "+" starts another. */}
       {!hasMessages && (
         <div className="px-3 pb-1.5 pt-1">
           <AgentPickerRow
@@ -632,8 +615,6 @@ const AcpConversationMessages = memo(function AcpConversationMessages({
   );
 });
 
-/** "Thinking…" while the agent works, as the Oleafly Agent shows it. A live
- *  reasoning block shows its own, so there is one indicator at a time. */
 const AcpThinkingRow = memo(function AcpThinkingRow({
   conversation,
   scrollRef,
@@ -675,7 +656,6 @@ const STATUS_TONE: Record<AcpSession["status"], BadgeVariant> = {
   failed: "destructive",
 };
 
-/** The statuses in which the agent is busy: their dot pulses, unless motion is reduced. */
 const PULSING_STATUSES: ReadonlySet<AcpSession["status"]> = new Set(["connecting", "running", "cancelling"]);
 
 function sessionStatusLabel(status: AcpSession["status"]): string {
@@ -732,7 +712,6 @@ function SessionStatusPill({ session, agentName, connecting }: Readonly<{ sessio
         />
       )}
       <span className="truncate">{text}</span>
-      {/* Ready shows as the green dot alone; screen readers still hear it. */}
       {!connecting && session.status === "ready" && (
         <span className="sr-only"> {sessionStatusLabel(session.status)}</span>
       )}
@@ -746,7 +725,6 @@ function rosterHint(readiness: ReturnType<typeof acpReadiness>): string {
   return i18n.t(($) => $.ai.acp.roster.unavailable);
 }
 
-/** The agents in the catalog, ready ones selectable. */
 export function agentRoster(catalog: AcpAgentStatus[]): AgentPickerEntry[] {
   return catalog.map((agent) => {
     const readiness = acpReadiness(agent);

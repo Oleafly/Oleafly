@@ -165,7 +165,10 @@ describe("CompileRunner", () => {
     const { api, runner, openSyncTex, index } = setup({ role: "viewer" });
     await runner.start();
     expect(await runner.syncIndex()).toBeNull();
-    useWeb.setState({ output: [pdfInfo(), pdfInfo({ kind: "synctex", compiledAt: 1_001 })] });
+    useWeb.setState((state) => ({
+      output: [pdfInfo(), pdfInfo({ kind: "synctex", compiledAt: 1_001 })],
+      compile: { ...state.compile, shownShared: outputKey(pdfInfo()) },
+    }));
     expect(await runner.syncIndex()).toBe(index);
     expect(await runner.syncIndex()).toBe(index);
     expect(api.output).toHaveBeenCalledOnce();
@@ -174,6 +177,22 @@ describe("CompileRunner", () => {
     expect(await runner.syncIndex()).toBe(index);
     expect(openSyncTex).toHaveBeenCalledTimes(2);
     expect(index.dispose).toHaveBeenCalledOnce();
+    runner.stop();
+  });
+
+  it("finds no SyncTeX while the pane still shows an older shared PDF than the newest output", async () => {
+    const { runner, openSyncTex, index } = setup({ role: "viewer" });
+    await runner.start();
+    const older = pdfInfo();
+    const newer = pdfInfo({ compiledBy: "ana", compiledAt: 5_000 });
+    useWeb.setState((state) => ({
+      output: [newer, pdfInfo({ kind: "synctex", compiledBy: "ana", compiledAt: 5_001 })],
+      compile: { ...state.compile, shownShared: outputKey(older) },
+    }));
+    expect(await runner.syncIndex()).toBeNull();
+    expect(openSyncTex).not.toHaveBeenCalled();
+    useWeb.setState((state) => ({ compile: { ...state.compile, shownShared: outputKey(newer) } }));
+    expect(await runner.syncIndex()).toBe(index);
     runner.stop();
   });
 

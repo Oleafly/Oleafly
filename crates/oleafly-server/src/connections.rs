@@ -15,11 +15,6 @@ use hyper_util::service::TowerToHyperService;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
 
-// A new connection must send the headers of its first request within
-// `first_request`, so a client can't hold one open by trickling them in
-// before anything has checked who it is. After each response a connection
-// may wait, and then send its next request's headers, for `keep_alive` in
-// all before it is closed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ConnectionTimeouts {
     pub first_request: Duration,
@@ -44,9 +39,6 @@ tokio::task_local! {
     static CONNECTION: Connection;
 }
 
-// Gives each request the address it came from, and notes that its
-// connection got a request through. Requests are handled on their
-// connection's task, which holds both.
 pub(crate) async fn connect_info(mut request: Request, next: Next) -> Response {
     let remote = CONNECTION.try_with(|connection| {
         connection.asked.store(true, Ordering::SeqCst);
@@ -58,8 +50,6 @@ pub(crate) async fn connect_info(mut request: Request, next: Next) -> Response {
     next.run(request).await
 }
 
-// Serves the app until `shutdown` finishes, then lets each connection
-// finish what it is doing and waits for them.
 pub(crate) async fn serve<F>(
     mut listener: TcpListener,
     app: Router,

@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO ja useimmat itse ylläpidetyt palvelimet tarvitsevat tätä."
   },
   "errors": {
+    "clock_skew": "Tämän tietokoneen kello on väärässä, joten palvelu {{provider}} ei hyväksy sen pyyntöjä. Aseta oikea päivämäärä ja kellonaika, jotta synkronointi voi jatkua.",
     "code_invalid": "Koodi ei toiminut. Yritä uudelleen.",
     "device_name_empty": "Anna nimi.",
     "device_name_invalid": "Tietokoneen nimessä ei saa olla merkkejä \\ / : * ? \" < > | eikä ohjausmerkkejä, ja nimen enimmäispituus on 32 merkkiä.",

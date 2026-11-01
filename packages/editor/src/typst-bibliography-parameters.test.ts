@@ -12,13 +12,9 @@ import {
 } from "./typst-bibliography-parameters";
 import { installEnglishEditorMessages } from "./test-messages";
 import { typstSlashCompletions } from "./typst-snippets";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 beforeAll(() => installEnglishEditorMessages());
 

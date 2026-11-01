@@ -57,9 +57,6 @@ const LANGUAGE_SERVICE_PATH =
 const COMPLETION_TIMEOUT_MS = 2_500;
 const HOVER_TIMEOUT_MS = 3_000;
 const SEMANTIC_TOKENS_TIMEOUT_MS = 5_000;
-// Syntax highlighting remains immediate. Semantic-token range requests wait
-// until kinetic/trackpad scrolling settles so the language service never
-// replaces decoration sets in the middle of a paint-critical scroll burst.
 const SEMANTIC_VIEWPORT_DEBOUNCE_MS = 180;
 const MAX_COMPLETION_ITEMS = 500;
 const MAX_COMPLETION_TEXT = 20_000;
@@ -98,7 +95,6 @@ function completionType(kind: unknown): string | undefined {
   return undefined;
 }
 
-/** Trims the package extension: the column already reads as "where from". */
 function completionDetail(detail: unknown): string | undefined {
   const text = boundedText(detail, 1_000);
   return text ? text.replace(/\.sty$/u, "") : undefined;
@@ -599,8 +595,6 @@ export const languageServiceCompletion: CompletionSource = async (
       ? { from: fallbackFrom, options, filter: false }
       : null;
   } catch {
-    // Static and project-index completion remain available while the service
-    // is starting, synchronizing, unsupported, or recovering.
     return null;
   }
 };
@@ -642,10 +636,6 @@ function packageNameBefore(text: string): string {
   return text.slice(start);
 }
 
-/**
- * The hovered `\usepackage`/`\documentclass` argument doubles as a CTAN
- * package id, which gives the hover card a stable documentation link.
- */
 interface HoverLink {
   href: string;
   label: string;
@@ -868,8 +858,6 @@ export function languageServiceDiagnostics(): Extension[] {
   const diagnostics = linter(currentLanguageServiceDiagnostics, {
     delay: 0,
     needsRefresh: diagnosticsNeedRefresh,
-    // Diagnostics render through the shared hover card, so the stock lint
-    // tooltip must not also appear.
     tooltipFilter: () => [],
   });
   const lifecycle = ViewPlugin.define((view) => {
@@ -880,9 +868,6 @@ export function languageServiceDiagnostics(): Extension[] {
     const refresh = () => {
       if (disposed) return;
       if (debounceTimer !== null) clearTimeout(debounceTimer);
-      // Trailing debounce: the analysis store can emit dozens of updates
-      // while a large project indexes. Each forced lint re-runs the full
-      // proofreading pass, so coalesce a burst into one.
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
         if (queued || disposed) return;

@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} moet code uitvoeren om dit document te bouwen, en code staat uit voor dit project. Sta code toe in dit project om het te compileren.",
+    "export_stopped": "De export is gestopt.",
     "quarto_missing": "Quarto is niet geïnstalleerd. Installeer het via Instellingen > Engines > Quarto en compileer daarna opnieuw.",
     "calepin_missing": "Calepin is niet geïnstalleerd. Installeer het via Instellingen > Engines > Calepin en compileer daarna opnieuw.",
     "not_offered": "Oleafly kan {{tool}} niet downloaden voor deze computer. Installeer het zelf en compileer daarna opnieuw.",

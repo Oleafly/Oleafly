@@ -520,7 +520,6 @@ fn run_shell(
     command
         .args(flags)
         .args(["-c", script])
-        // An AppImage's own library folder must not leak into the user's shell.
         .env_remove("APPDIR")
         .env_remove("APPIMAGE")
         .env_remove("LD_LIBRARY_PATH")

@@ -104,7 +104,6 @@ describe("parseLatexLog", () => {
     ].join("\n");
 
     const diags = parseLatexLog(log);
-    // The "There were undefined references." summary line is swallowed.
     expect(diags).toHaveLength(2);
 
     expect(diags[0].severity).toBe("warning");
@@ -244,8 +243,6 @@ describe("parseLatexLog", () => {
   });
 
   it("only parses the first MAX_COMPILE_LOG_BYTES of the log", () => {
-    // Exactly MAX_COMPILE_LOG_BYTES of filler, so the error after it is
-    // sliced off before parsing.
     const filler = `${"x".repeat(1023)}\n`.repeat(MAX_COMPILE_LOG_BYTES / 1024);
     const log = `${filler}! Undefined control sequence.\nl.3 \\bad\n`;
 

@@ -1,4 +1,3 @@
-//! `oleafly mcp` (the server) and `oleafly mcp config` (client setup).
 use std::path::PathBuf;
 use std::time::Duration;
 

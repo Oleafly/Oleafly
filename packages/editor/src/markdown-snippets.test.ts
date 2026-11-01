@@ -18,13 +18,9 @@ import { getEditorView } from "./controller";
 import { markdownLanguage } from "./markdown";
 import { MARKDOWN_SNIPPETS, markdownSlashCompletions } from "./markdown-snippets";
 import { englishEditorMessage, installEnglishEditorMessages } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 const views: EditorView[] = [];
 

@@ -70,7 +70,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 31] = [
+const PASSED_THROUGH: [&str; 33] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -97,6 +97,8 @@ const PASSED_THROUGH: [&str; 31] = [
     "suggestion_not_found",
     "suggestion_not_yours",
     "suggestion_role",
+    "suggestion_changed",
+    "suggestion_too_long",
     "chat_role",
     "history_unavailable",
     "account_storage_full",
@@ -144,7 +146,6 @@ pub trait CollabHost: Send + Sync {
     fn signed_in(&self);
     fn device_name(&self) -> String;
     fn platform(&self) -> String;
-    // Sharing moved these files to the names the shared layout gives them.
     fn renamed_on_disk(&self, _project_id: &str, _renamed: &[(String, String)]) {}
     fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
 }
@@ -775,9 +776,6 @@ pub async fn remove_server(
     Ok(detached)
 }
 
-// After a sign-in whose account read failed, the account is read again a
-// few times in the background, so the server card gets its name, avatar
-// and admin rights without the person having to reopen the section.
 pub(crate) const ACCOUNT_READS: [Duration; 5] = [
     Duration::from_secs(2),
     Duration::from_secs(5),
@@ -1695,7 +1693,7 @@ mod tests {
         );
     }
 
-    const NEW_CODES: [(u16, &str); 30] = [
+    const NEW_CODES: [(u16, &str); 32] = [
         (400, "invalid_domain"),
         (400, "invalid_email"),
         (400, "invalid_login"),
@@ -1721,6 +1719,8 @@ mod tests {
         (404, "suggestion_not_found"),
         (403, "suggestion_not_yours"),
         (403, "suggestion_role"),
+        (409, "suggestion_changed"),
+        (413, "suggestion_too_long"),
         (403, "chat_role"),
         (404, "history_unavailable"),
         (413, "account_storage_full"),
@@ -2385,11 +2385,6 @@ mod tests {
         }
         assert_eq!(relay.requests("GET /.well-known/oleafly-server"), 1);
         assert_eq!(relay.requests("GET /api/v1/admin/members"), 4);
-        // The HTTP client puts a finished connection back in its pool from
-        // a spawned task, so on a busy runner the next request can start
-        // first and open another connection. How many connections open is
-        // therefore a race. That they stay open and carry more than one
-        // request is not.
         assert!(relay.most_requests_on_one_connection() >= 2);
     }
 

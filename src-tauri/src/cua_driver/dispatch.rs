@@ -1,11 +1,3 @@
-//! `desktop_apps {tool, args, browser?}`, the one entry point every agent
-//! surface uses: it checks the call, asks through the gate (before any
-//! runtime lock), labels the session, runs the call on the right runtime and
-//! turns the result into tool output.
-//!
-//! The app log gets only `desktop apps: <tool> <ok|refused:<code>|error>`,
-//! never arguments or typed text.
-
 use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
@@ -19,7 +11,6 @@ use super::runtime::{BATCH_TIMEOUT, CALL_TIMEOUT};
 use super::{global, lock, log, CuaDriverState, CuaScope, RuntimeKind, Surface, DESKTOP_APPS_TOOL};
 use crate::mcp::client::McpServerTool;
 
-/// The largest image (as a data URL) the agent accepts in a tool result.
 const MAX_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
 const IMAGE_TYPES: &[&str] = &["image/png", "image/jpeg", "image/webp", "image/gif"];
 
@@ -33,8 +24,6 @@ const STOPPED_AT_TURN_END_TEXT: &str =
     "The turn ended, so Oleafly stopped this call. Check the app's state before you try again.";
 const BATCH_TOO_LONG_TEXT: &str =
     "That batch is too long for the approval dialog. Send fewer steps at a time.";
-/// The most elements a chat result lists from the driver's structured
-/// answer, and the most characters that list takes.
 const MAX_LISTED_ELEMENTS: usize = 300;
 const MAX_ELEMENT_LIST_CHARS: usize = 24 * 1024;
 const MAX_ELEMENT_LINE_CHARS: usize = 240;
@@ -43,10 +32,8 @@ const NO_SIGNED_IN_TEXT: &str = "No website is marked for the user's signed-in b
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DesktopAppsOutcome {
     pub text: String,
-    /// `data:` URLs.
     pub images: Vec<String>,
     pub is_error: bool,
-    /// The same, as an MCP `tools/call` result (images kept) for the bridge.
     pub mcp_result: Value,
 }
 
@@ -65,7 +52,6 @@ impl DesktopAppsOutcome {
         Self::text(text, true)
     }
 
-    /// Adds a line the model reads, to the text and to the MCP result.
     fn add_note(&mut self, note: &str) {
         if !self.text.is_empty() {
             self.text.push('\n');
@@ -81,9 +67,6 @@ impl DesktopAppsOutcome {
     }
 }
 
-/// The elements of a `get_window_state` answer as lines the model can act
-/// on, for a chat, which reads only text: index, token, role and label, and
-/// the snapshot they belong to. Bounded; says how many it left out.
 fn element_list(structured: &Value) -> Option<String> {
     let elements = structured.get("elements").and_then(Value::as_array)?;
     if elements.is_empty() {
@@ -137,7 +120,6 @@ fn element_list(structured: &Value) -> Option<String> {
 /// Bounded like the element list.
 fn page_text(structured: &Value) -> Option<String> {
     let mut sections = Vec::new();
-    // The outline leaves out the page itself, whose name is its title.
     if let Some(title) = structured
         .get("content_refs")
         .and_then(Value::as_array)
@@ -207,21 +189,14 @@ fn page_text(structured: &Value) -> Option<String> {
     (!sections.is_empty()).then(|| sections.join("\n"))
 }
 
-/// An error string as the model should read it: AppError envelopes in
-/// English, everything else as is.
 fn readable(error: &str) -> String {
     crate::app_error::english(error).unwrap_or_else(|| error.to_string())
 }
 
-/// Text parts joined, images as data URLs (oversized ones left out with a
-/// notice), and refusals as plain text the model can act on. Keeps the whole
-/// result as an MCP result too, for the bridge.
 pub(crate) fn outcome_from_result(result: &Value) -> DesktopAppsOutcome {
     outcome_with(result, true)
 }
 
-/// `outcome_from_result`; `keep_mcp: false` leaves `mcp_result` null, so a
-/// screenshot is not held a third time when nothing will read it.
 fn outcome_with(result: &Value, keep_mcp: bool) -> DesktopAppsOutcome {
     if let Some((_, text)) = policy::refusal(result) {
         return DesktopAppsOutcome::error(text);
@@ -287,8 +262,6 @@ fn outcome_with(result: &Value, keep_mcp: bool) -> DesktopAppsOutcome {
         .get("structuredContent")
         .and_then(|structured| element_list(structured).or_else(|| page_text(structured)))
     {
-        // The element tokens are only in the structured answer, and a chat
-        // reads text alone.
         text.push('\n');
         text.push_str(&listed);
     }
@@ -324,7 +297,6 @@ fn result_status(result: &Value) -> String {
     }
 }
 
-/// The kinds that have something to do with these settings.
 fn available_kinds(config: &CuaDriverConfig) -> Vec<RuntimeKind> {
     let mut kinds = Vec::new();
     if !config.apps.is_empty() {
@@ -388,7 +360,6 @@ fn kind_label(kind: RuntimeKind) -> &'static str {
     }
 }
 
-/// Starts one runtime and the label's session on it, and reads its tools.
 async fn start_kind(
     state: &CuaDriverState,
     kind: RuntimeKind,
@@ -401,9 +372,6 @@ async fn start_kind(
     state.runtimes.tools(kind).await
 }
 
-/// The rules, what is allowed and how to call each tool. Each runtime the
-/// settings need starts on its own: one that can't start is listed with its
-/// reason, and the rest still work.
 async fn start_session(
     state: &CuaDriverState,
     config: &CuaDriverConfig,
@@ -478,8 +446,6 @@ async fn start_session(
     DesktopAppsOutcome::text(sections.join("\n\n"), false)
 }
 
-/// Strips private keys (`__…`) and any `session` the model sent: Oleafly
-/// sets the session itself.
 fn clean_args(args: Option<&Value>) -> Result<Map<String, Value>, String> {
     match args {
         None | Some(Value::Null) => Ok(Map::new()),
@@ -492,7 +458,24 @@ fn clean_args(args: Option<&Value>) -> Result<Map<String, Value>, String> {
     }
 }
 
-/// Whether the project's approval rules deny desktop apps.
+async fn launch_outside_list(
+    tool: &'static str,
+    args: &Map<String, Value>,
+    apps: &[AllowedApp],
+) -> Option<&'static str> {
+    if tool != "launch_app" {
+        return None;
+    }
+    let (args, apps) = (args.clone(), apps.to_vec());
+    tauri::async_runtime::spawn_blocking(move || {
+        policy::launch_outside_list(tool, &args, &apps, &|path| {
+            super::apps::app_from_bundle(std::path::Path::new(path)).and_then(|app| app.bundle_id)
+        })
+    })
+    .await
+    .unwrap_or(Some(policy::OUTSIDE_TEXT))
+}
+
 pub(crate) fn project_denied(state: &CuaDriverState, project_id: Option<&str>) -> bool {
     match (project_id, &state.data_root) {
         (Some(project), Some(root)) => {
@@ -503,9 +486,6 @@ pub(crate) fn project_denied(state: &CuaDriverState, project_id: Option<&str>) -
     }
 }
 
-/// Whether the user already allowed everything this call does for the
-/// chat, session or task. A batch counts when each of its steps' tools is
-/// allowed, the same as if they came one by one.
 fn already_allowed(
     state: &CuaDriverState,
     scope: &CuaScope,
@@ -522,7 +502,6 @@ fn already_allowed(
     }
 }
 
-/// One `desktop_apps` call from any surface.
 pub(crate) async fn call_desktop_apps(
     state: &CuaDriverState,
     scope: &CuaScope,
@@ -564,7 +543,6 @@ pub(crate) async fn call_desktop_apps(
     if !matches!(browser, "separate" | "signed_in") {
         return DesktopAppsOutcome::error("browser must be \"separate\" or \"signed_in\".");
     }
-    // A project that denies desktop apps gets nothing, not even a session.
     let denied = project_denied(state, scope.project_id.as_deref());
     if denied && tool.name == "start_session" {
         log_outcome(tool.name, "refused:approval_rules");
@@ -595,7 +573,7 @@ pub(crate) async fn call_desktop_apps(
         }
     };
     let args = schema_known_args(state, kind, tool, args, &mut steps);
-    if let Some(text) = policy::launch_outside_list(tool.name, &args, &config.apps) {
+    if let Some(text) = launch_outside_list(tool.name, &args, &config.apps).await {
         log_outcome(tool.name, "refused:outside_list");
         return DesktopAppsOutcome::error(text);
     }
@@ -622,7 +600,6 @@ pub(crate) async fn call_desktop_apps(
 
     let signed_in = kind == RuntimeKind::SignedInBrowser;
     let granted = !signed_in && already_allowed(state, scope, kind, tool, steps.as_deref());
-    // Steps the dialog had no room for; they don't run.
     let skipped_steps =
         match gate::decide(tool, denied, granted, signed_in, config.ask_before_actions) {
             GateDecision::Run => 0,
@@ -645,7 +622,6 @@ pub(crate) async fn call_desktop_apps(
     } else {
         CALL_TIMEOUT
     };
-    // A batch runs exactly the steps that were checked and shown.
     let observed_args = Value::Object(args.clone());
     let mut forwarded = forwarded_args(args, steps.as_deref());
     forwarded.insert("session".into(), Value::String(label.clone()));
@@ -693,8 +669,6 @@ pub(crate) async fn call_desktop_apps(
     }
 }
 
-/// Whether `app` matches a `list_windows` `app` filter, which Cua Driver
-/// reads as part of the name or the exact bundle id.
 fn matches_app_filter(app: &AllowedApp, filter: Option<&str>) -> bool {
     let Some(filter) = filter.map(str::trim).filter(|filter| !filter.is_empty()) else {
         return true;
@@ -706,8 +680,6 @@ fn matches_app_filter(app: &AllowedApp, filter: Option<&str>) -> bool {
             .is_some_and(|id| id.eq_ignore_ascii_case(filter))
 }
 
-/// `list_apps` as Oleafly answers it: the allowed apps and the processes of
-/// those that run.
 pub(crate) fn allowed_apps_result(apps: &[(AllowedApp, Vec<u32>)]) -> Value {
     let mut lines = vec!["Allowed apps:".to_string()];
     let mut listed = Vec::new();
@@ -742,8 +714,6 @@ pub(crate) fn allowed_apps_result(apps: &[(AllowedApp, Vec<u32>)]) -> Value {
     })
 }
 
-/// The windows of every `list_windows` answer in `answers`, as one answer in
-/// the driver's own shape.
 pub(crate) fn merged_windows_result(answers: &[Value], any_running: bool) -> Value {
     let windows: Vec<Value> = answers
         .iter()
@@ -841,8 +811,6 @@ async fn allowed_listing(
     Some(Some(Ok(merged_windows_result(&answers, any_running))))
 }
 
-/// The runtime a tool runs on. A call for the user's signed-in browser needs
-/// a site marked for it; otherwise the text says why it can't run.
 fn runtime_kind(
     tool: &policy::CuratedTool,
     browser: &str,
@@ -861,7 +829,6 @@ fn runtime_kind(
     }
 }
 
-/// The steps of a `run_steps` call; every other tool has none.
 fn batch_steps(
     tool: &policy::CuratedTool,
     args: &Map<String, Value>,
@@ -872,9 +839,6 @@ fn batch_steps(
     policy::parse_steps(&Value::Object(args.clone())).map(Some)
 }
 
-/// What the dialog lists and what the driver gets: only the arguments the
-/// driver's own schema names (once a start has listed them). The steps of a
-/// batch are narrowed in place; a single call's arguments are returned.
 fn schema_known_args(
     state: &CuaDriverState,
     kind: RuntimeKind,
@@ -947,8 +911,6 @@ fn with_pids(
         }
     }
     seen.fill_pid(&mut args);
-    // Steps that name no window take the batch's, so a batch whose steps
-    // all act in one process names it for them.
     if !gate::names_pid(&args) && !args.contains_key("app") {
         let mut pids = steps
             .iter()
@@ -1001,7 +963,6 @@ async fn with_browser_targets(
                 }
             }
             fill_tab(&seen, &mut args);
-            // Without a bound tab the driver refuses it, after the dialog.
             if !args.contains_key("target_id") {
                 return Err(browser::BIND_FIRST_TEXT);
             }
@@ -1013,8 +974,6 @@ async fn with_browser_targets(
                 bind_args(state, scope, kind, label, &seen, &mut args).await?;
             } else {
                 fill_tab(&seen, &mut args);
-                // The semantic read carries the page's text; the older
-                // default lists only links and fields.
                 args.entry("snapshot_format")
                     .or_insert_with(|| Value::from("semantic_v2"));
             }
@@ -1024,8 +983,6 @@ async fn with_browser_targets(
     Ok(args)
 }
 
-/// The target and tab of the last bind, page read or navigation, for a call
-/// that names neither (or names that target without a tab).
 fn fill_tab(seen: &SeenBrowser, args: &mut Map<String, Value>) {
     let Some(target) = seen.target.as_deref() else {
         return;
@@ -1038,9 +995,6 @@ fn fill_tab(seen: &SeenBrowser, args: &mut Map<String, Value>) {
     }
 }
 
-/// The pid and window a bind names: the browser `browser_prepare` opened
-/// (in the signed-in profile, the user's running Chrome or Edge) and its
-/// largest window, from the driver's own window list.
 async fn bind_args(
     state: &CuaDriverState,
     scope: &CuaScope,
@@ -1097,10 +1051,6 @@ async fn bind_args(
     Err(browser::NO_WINDOW_TEXT)
 }
 
-/// Asks the user about an action and waits for the answer. `Ok` holds how
-/// many steps of a batch the dialog had no room for: the batch is cut to the
-/// steps shown, and the rest don't run. `Err` is the text for a call that
-/// must not run.
 async fn ask_approval(
     state: &CuaDriverState,
     scope: &CuaScope,
@@ -1124,8 +1074,6 @@ async fn ask_approval(
         log_outcome(tool.name, "error");
         return Err(BATCH_TOO_LONG_TEXT);
     }
-    // The dialog stays up until answered; the turn it belongs to may
-    // end first (Stop, a timeout), and then nothing runs.
     let mut ended = state.turn_signal(&scope.session_key);
     let answer = tokio::select! {
         biased;
@@ -1154,7 +1102,6 @@ async fn ask_approval(
             log_outcome(tool.name, "refused:turn_ended");
             return Err(TURN_ENDED_TEXT);
         }
-        // Turned off while the dialog was open.
         _ if !ready(&state.settings()) => {
             log_outcome(tool.name, "refused:off");
             return Err(OFF_TEXT);
@@ -1169,7 +1116,6 @@ async fn ask_approval(
         ),
         Answer::Session | Answer::Once => {}
     }
-    // Only the steps the dialog listed run.
     let Some(steps) = steps.as_mut() else {
         return Ok(0);
     };
@@ -1178,8 +1124,6 @@ async fn ask_approval(
     Ok(skipped)
 }
 
-/// Remembers that the user allowed this tool, or the tools of a batch's
-/// listed steps, for the rest of the chat, session or task.
 fn grant_for_session(
     state: &CuaDriverState,
     scope: &CuaScope,
@@ -1190,7 +1134,6 @@ fn grant_for_session(
 ) {
     let mut grants = lock(&state.grants);
     match steps {
-        // Only the steps the dialog listed were seen.
         Some(steps) => {
             for step in steps.iter().take(shown_steps) {
                 grants.grant(&scope.grant_key, &gate::grant_name(kind, &step.tool));
@@ -1200,8 +1143,6 @@ fn grant_for_session(
     }
 }
 
-/// The arguments the driver gets. A batch sends exactly the steps that were
-/// checked and shown.
 fn forwarded_args(args: Map<String, Value>, steps: Option<&[policy::Step]>) -> Map<String, Value> {
     match steps {
         Some(steps) => match policy::steps_payload(&Value::Object(args), steps) {
@@ -1212,9 +1153,6 @@ fn forwarded_args(args: Map<String, Value>, steps: Option<&[policy::Step]>) -> M
     }
 }
 
-/// Waits for the driver's answer. A CLI agent's or a task's turn can end
-/// (Stop) while the call waits for the runtime or runs; then it stops too
-/// (`None`). A chat's own Stop drops it.
 async fn call_until_turn_ends(
     state: &CuaDriverState,
     scope: &CuaScope,
@@ -1231,8 +1169,6 @@ async fn call_until_turn_ends(
     }
 }
 
-/// The task, the targets and the signed-in tab a dialog names, from what
-/// the driver said before.
 fn dialog_context(
     state: &CuaDriverState,
     scope: &CuaScope,
@@ -1252,9 +1188,7 @@ fn dialog_context(
     }
 }
 
-/// Ends the Cua session a turn used, if it used one. Runs in the background.
 pub(crate) fn turn_ended_in(state: &Arc<CuaDriverState>, session_key: &str) {
-    // A call still waiting on the user's answer stops waiting.
     state.end_turn(session_key);
     lock(&state.seen).forget_session(session_key);
     let Some(label) = lock(&state.labels).remove(session_key) else {
@@ -1270,7 +1204,6 @@ pub(crate) fn turn_ended_in(state: &Arc<CuaDriverState>, session_key: &str) {
 pub(crate) static TEST_ACP_TURN_ENDS: std::sync::Mutex<Vec<String>> =
     std::sync::Mutex::new(Vec::new());
 
-/// An ACP session's turn ended: end the Cua session of its bridge.
 pub(crate) fn acp_turn_ended(acp_session_id: &str) {
     let Some(state) = global() else {
         #[cfg(test)]
@@ -1356,7 +1289,6 @@ mod tests {
 
     #[test]
     fn a_page_read_reaches_a_chat_as_text() {
-        // The driver's text only counts what it read.
         let semantic = json!({"content": [{"type": "text", "text": "semantic snapshot p2: 1 action ref(s), 13 content ref(s)"}],
             "structuredContent": {"outline": "- heading \"Example Domain\"\n- paragraph",
                 "content_refs": [{"ref": "p2:0", "role": "rootwebarea", "name": "Example Domain"}],

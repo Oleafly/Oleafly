@@ -1,5 +1,3 @@
-//! Which paths a permission request may touch, and file URIs for
-//! `resource_link` prompt blocks.
 use std::path::{Component, Path};
 
 use serde_json::Value;
@@ -34,7 +32,6 @@ fn lexical_path_within(path: &Path, root: &Path) -> bool {
         })
 }
 
-/// Raw input fields that hold one path.
 const RAW_PATH_KEYS: [&str; 17] = [
     "path",
     "file_path",
@@ -55,10 +52,8 @@ const RAW_PATH_KEYS: [&str; 17] = [
     "workingDirectory",
 ];
 
-/// Raw input fields that hold a list of paths.
 const RAW_PATH_LISTS: [&str; 4] = ["paths", "files", "file_paths", "filePaths"];
 
-/// The paths in the usual fields of a tool call's raw input.
 pub fn raw_input_paths(tool: &Value) -> impl Iterator<Item = &str> {
     let raw = &tool["rawInput"];
     RAW_PATH_KEYS
@@ -73,8 +68,6 @@ pub fn raw_input_paths(tool: &Value) -> impl Iterator<Item = &str> {
         }))
 }
 
-/// Every path a permission request names: its locations and the usual path
-/// fields of its raw input.
 pub fn permission_paths(tool: &Value) -> impl Iterator<Item = &str> {
     tool["locations"]
         .as_array()
@@ -84,17 +77,10 @@ pub fn permission_paths(tool: &Value) -> impl Iterator<Item = &str> {
         .chain(raw_input_paths(tool))
 }
 
-/// Whether every path of a permission request is inside the canonical
-/// `root` (the agent may spell it as `spelled_root`, for example a mapped
-/// drive letter).
 pub fn permission_paths_allowed(root: &Path, spelled_root: &Path, tool: &Value) -> bool {
     permission_paths(tool).all(|path| path_within(root, spelled_root, Path::new(path)))
 }
 
-/// Whether a request only reads inside the skill folder attached to the
-/// turn (`folder` as the skill block names it): its kind is `read` or
-/// `search` and it names at least one path, every one absolute and really
-/// inside the folder (links out of it do not count).
 pub fn skill_read_allowed(
     folder: &Path,
     spelled_folder: &Path,
@@ -115,8 +101,6 @@ pub fn skill_read_allowed(
         })
 }
 
-/// A relative path the agent's own tools expand outside the folder it is
-/// joined to: `~/…`, `$HOME/…`, `%USERPROFILE%\…`.
 fn expands_elsewhere(path: &Path) -> bool {
     path.components().next().is_some_and(|part| {
         matches!(part, Component::Normal(name)
@@ -124,8 +108,6 @@ fn expands_elsewhere(path: &Path) -> bool {
     })
 }
 
-/// Whether `path` (relative ones are joined to `root`) leads inside the
-/// canonical `root`, spelled either as `root` or as `spelled`.
 pub fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
     if path
         .components()
@@ -141,8 +123,6 @@ pub fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
     } else {
         root.join(path)
     };
-    // A dangling link counts as there: its target is what the agent would
-    // reach, and it cannot be resolved, so the path is refused below.
     let mut existing = candidate.as_path();
     while existing.symlink_metadata().is_err() {
         let Some(parent) = existing.parent() else {
@@ -156,8 +136,6 @@ pub fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
     {
         return false;
     }
-    // The agent was started in the launch root (for example a mapped drive
-    // letter), so its paths may use that spelling.
     if lexical_path_within(&candidate, root) || lexical_path_within(&candidate, spelled) {
         return true;
     }
@@ -174,8 +152,6 @@ pub fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
     false
 }
 
-/// A `file://` URI for an absolute path, percent-encoded, without the
-/// Windows `\\?\` prefix.
 pub fn file_uri(path: &Path) -> Result<String, String> {
     let plain = oleafly_core::plain_path(path);
     if !plain.is_absolute() {
@@ -213,7 +189,6 @@ mod tests {
         ] {
             assert!(!path_within(&root, &root, Path::new(path)), "{path}");
         }
-        // Only a leading component expands.
         assert!(path_within(&root, &root, Path::new("notes/~draft.tex")));
     }
 

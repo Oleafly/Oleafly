@@ -28,13 +28,11 @@ export interface UnsentWork {
   projects: readonly CollabUnsentProject[];
 }
 
-// The shared projects one removed server left behind as ordinary projects.
 export interface DetachedNotice {
   server: string;
   projects: readonly CollabDetachedProject[];
 }
 
-// A second Remove adds to what the first one listed instead of replacing it.
 function withDetached(
   notices: readonly DetachedNotice[],
   server: string,
@@ -127,9 +125,6 @@ async function end(
   return null;
 }
 
-// One listener reloads the list whenever the backend says a server changed,
-// for as long as anything watches. Without it, a session that ended while
-// Settings was closed still looks signed in everywhere else.
 let watchers = 0;
 let listening: { stop: (() => void) | null; released: boolean } | null = null;
 
@@ -203,8 +198,6 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
   stay: (serverId) => set((state) => ({ unsent: without(state.unsent, serverId) })),
   dismissDetached: () => set({ detached: [] }),
   refreshAccounts: async () => {
-    // Apply each answer as it comes, and only while nothing has changed the
-    // list since: a refresh started before a sign-out must not sign back in.
     const started = loadRequest;
     const signedIn = get().servers.filter((entry) => entry.signed_in);
     await Promise.all(

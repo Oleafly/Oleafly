@@ -1,11 +1,3 @@
-//! Local-first literature search transport.
-//!
-//! The webview invokes one source at a time and fans the calls out in parallel.
-//! This module deliberately exposes a small source enum instead of an arbitrary
-//! URL fetcher: every request goes directly from the desktop app to a reviewed,
-//! fixed scholarly-data host. Normalization, deduplication, caching, and library
-//! persistence stay in TypeScript where they are easy to unit test.
-
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -31,7 +23,6 @@ pub use sources::{LiteratureRecord, LiteratureSourceId};
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; literature search)";
 const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 
-/// Trim and validate an OpenAlex polite-pool contact email.
 fn sanitize_openalex_email(raw: &str) -> Option<&str> {
     let email = raw.trim();
     if email.is_empty() || !email.contains('@') {
@@ -51,7 +42,6 @@ fn openalex_api_key(secrets: &dyn ConnectorSecrets) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
-/// User-Agent for OpenAlex only: appends mailto when a contact email is configured.
 fn literature_user_agent(secrets: &dyn ConnectorSecrets) -> String {
     let mut ua = UA.to_string();
     if let Some(email) = secrets.get("openalex-email") {
@@ -75,7 +65,6 @@ fn request_error(source: &str, error: reqwest::Error) -> String {
     format!("{source} search failed: {}", error.without_url())
 }
 
-/// Retries after a rate limit or an unavailable answer, at most.
 const MAX_RETRIES: u32 = 2;
 const MAX_RETRY_WAIT: Duration = Duration::from_secs(10);
 
@@ -163,7 +152,6 @@ fn year_range(year_from: Option<u16>, year_to: Option<u16>) -> Option<(u16, u16)
     Some((from.min(to), from.max(to)))
 }
 
-/// Words of one abstract at most (the inverted index can name any position).
 const MAX_ABSTRACT_WORDS: usize = 5_000;
 
 /// OpenAlex sends abstracts as a word → positions index. Rebuilds each into
@@ -204,8 +192,6 @@ pub fn with_openalex_abstracts(body: &str) -> Result<String, String> {
     serde_json::to_string(&value).map_err(|error| error.to_string())
 }
 
-/// The OpenAlex works request. The API key goes in the Authorization header,
-/// never in the URL; the contact email stays in the User-Agent.
 fn openalex_request(
     http: &reqwest::Client,
     secrets: &dyn ConnectorSecrets,
@@ -258,7 +244,6 @@ async fn search_openalex(
     .await
     .and_then(|body| with_openalex_abstracts(&body));
     if result.is_err() && !has_key {
-        // Keyless requests share a tiny daily pool; say what to do about it.
         return result.map_err(|error| {
             format!("{error} Without an OpenAlex API key this source is heavily limited. Add one in Settings, Integrations.")
         });
@@ -414,22 +399,45 @@ async fn search_pubmed(
         .map_err(|error| error.to_string());
     }
 
+    let summary_json = match pubmed_summary(http, &ids).await {
+        Ok(summary) if sources::pubmed_summary_has_records(&summary) => summary,
+        first => match pubmed_citation_summary(http, &ids).await {
+            Ok(summary) if sources::pubmed_summary_has_records(&summary) => summary,
+            _ => first?,
+        },
+    };
+    serde_json::to_string(&json!({ "total": total, "summary": summary_json }))
+        .map_err(|error| error.to_string())
+}
+
+async fn pubmed_summary(http: &reqwest::Client, ids: &str) -> Result<Value, String> {
     let summary = response_text(
         "PubMed",
         http.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi")
             .query(&[
                 ("db", "pubmed"),
-                ("id", ids.as_str()),
+                ("id", ids),
                 ("retmode", "json"),
                 ("version", "2.0"),
                 ("tool", "oleafly"),
             ]),
     )
     .await?;
-    let summary_json: Value = serde_json::from_str(&summary)
+    serde_json::from_str(&summary)
+        .map_err(|error| format!("PubMed returned invalid summary JSON: {error}"))
+}
+
+async fn pubmed_citation_summary(http: &reqwest::Client, ids: &str) -> Result<Value, String> {
+    let citations = response_text(
+        "PubMed",
+        http.get("https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/")
+            .query(&[("format", "csl"), ("id", ids)]),
+    )
+    .await?;
+    let citations: Value = serde_json::from_str(&citations)
         .map_err(|error| format!("PubMed returned invalid summary JSON: {error}"))?;
-    serde_json::to_string(&json!({ "total": total, "summary": summary_json }))
-        .map_err(|error| error.to_string())
+    let order: Vec<&str> = ids.split(',').collect();
+    Ok(sources::pubmed_summary_from_csl(&citations, &order))
 }
 
 async fn search_arxiv(
@@ -483,9 +491,6 @@ async fn search_google_scholar(
     .await
 }
 
-/// Search one reviewed scholarly source. The frontend invokes this once per
-/// selected source with `Promise.allSettled`, so one slow or unavailable index
-/// never suppresses results from the others.
 pub async fn literature_search(
     secrets: &dyn ConnectorSecrets,
     source: &str,
@@ -570,15 +575,11 @@ fn parse_raw(source: LiteratureSourceId, body: &str) -> Vec<LiteratureRecord> {
     }
 }
 
-/// What a unified search asks.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct LiteratureQuery {
     pub query: String,
-    /// Empty: OpenAlex, Semantic Scholar, Crossref, arXiv and PubMed, plus
-    /// alphaXiv when connected.
     pub sources: Vec<LiteratureSourceId>,
-    /// Per source, 1–25.
     pub limit: u8,
     pub year_from: Option<u16>,
     pub year_to: Option<u16>,
@@ -610,21 +611,17 @@ pub struct SourceFailure {
 pub struct LiteratureResults {
     pub records: Vec<LiteratureRecord>,
     pub failures: Vec<SourceFailure>,
-    /// Sources answered from the day-long cache.
     pub cached: Vec<LiteratureSourceId>,
 }
 
-/// An index outside the built-in ones (the app's alphaXiv connector).
 #[async_trait::async_trait]
 pub trait LiteratureSource: Send + Sync {
     fn id(&self) -> LiteratureSourceId;
     async fn search(&self, query: &LiteratureQuery) -> Result<Vec<LiteratureRecord>, String>;
 }
 
-/// How long one source may take, retries included.
 const SOURCE_DEADLINE: Duration = Duration::from_secs(25);
 
-/// One HTTP client, polite pacing per index and the answer cache.
 pub struct LiteratureClient {
     http: reqwest::Client,
     cache: cache::LiteratureCache,
@@ -706,8 +703,6 @@ impl LiteratureClient {
     }
 }
 
-/// Searches every requested index at once and merges the answers. A source
-/// that fails or sends too much is reported and the others are kept.
 pub async fn search_all(
     client: &LiteratureClient,
     secrets: &dyn ConnectorSecrets,
@@ -772,8 +767,6 @@ pub async fn search_all(
 
 const MAX_QUERY_CHARS: usize = 500;
 
-/// Why a literature search failed. The app turns the first three into its
-/// localized errors (`literature.*`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiteratureError {
     QueryEmpty,
@@ -783,7 +776,6 @@ pub enum LiteratureError {
 }
 
 impl LiteratureError {
-    /// The app's error code for this failure, when it has one.
     pub fn code(&self) -> Option<&'static str> {
         match self {
             Self::QueryEmpty => Some("literature.query_empty"),
@@ -794,8 +786,6 @@ impl LiteratureError {
     }
 }
 
-/// The same text the app's error type produces, so tool results read the
-/// same from the app, the CLI and the daemon.
 impl From<LiteratureError> for String {
     fn from(error: LiteratureError) -> Self {
         let envelope = |code: &str, params: Value| {

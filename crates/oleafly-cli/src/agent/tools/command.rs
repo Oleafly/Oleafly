@@ -1,12 +1,3 @@
-//! `run_command`: a shell command in the run's folder. Where Oleafly's
-//! sandbox works (macOS, Linux with bubblewrap, Windows once it is set up)
-//! the command can write only to the run's folder and reach the network
-//! only with `--allow network`. Elsewhere it runs as the user, with a
-//! warning given before the run starts, only with `--apply` or
-//! `--unsandboxed-commands`: never in a read-only run, and not in a review
-//! run otherwise (it could change the real project, not the review copy).
-//!
-//! Children never inherit provider keys.
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -21,23 +12,16 @@ use crate::agent::policy::{Allow, WriteMode};
 use crate::agent::workspace::protected_folders;
 use crate::app_paths::Platform;
 
-/// The longest a command may run.
 const MAX_TIMEOUT_SECONDS: u64 = 600;
 const DEFAULT_TIMEOUT_SECONDS: u64 = 120;
-/// Output kept from stdout and stderr together.
 pub(crate) const MAX_COMMAND_OUTPUT: usize = 48 * 1024;
 const MAX_COMMAND_TEXT: usize = 16 * 1024;
 const UNSANDBOXED: &str = "Commands run without a sandbox on this system.";
 
-/// Who a run's sandboxed commands run for (on Windows the name of the run's
-/// AppContainer profile).
 fn sandbox_owner(run_id: &str) -> String {
     format!("agent:{run_id}")
 }
 
-/// Releases what the sandbox holds for a run's commands when it goes out of
-/// scope, however the run ended (on Windows the run's profile; nothing to
-/// release elsewhere).
 pub(crate) struct OwnerRelease {
     owner: String,
 }
@@ -53,9 +37,6 @@ impl OwnerRelease {
         &self.owner
     }
 
-    /// Releases now, on a blocking thread, saying so where it can take a
-    /// while (Windows takes the access entries off the project's folders).
-    /// `Drop` then has nothing left to do.
     pub(crate) async fn release_now(mut self, ctx: &crate::contract::Context) {
         let owner = std::mem::take(&mut self.owner);
         if cfg!(windows) && !ctx.json() && !ctx.quiet() {
@@ -73,8 +54,6 @@ impl Drop for OwnerRelease {
     }
 }
 
-/// Why a command may not run without the sandbox in a run of `mode`, if it
-/// may not. `allowed` is `--unsandboxed-commands`.
 pub(crate) fn unsandboxed_refusal(mode: &WriteMode, allowed: bool, reason: &str) -> Option<String> {
     match mode {
         WriteMode::ReadOnly => Some(format!("Commands need Oleafly's sandbox to run in a read-only run. {reason} Run again with --allow write.")),
@@ -83,8 +62,6 @@ pub(crate) fn unsandboxed_refusal(mode: &WriteMode, allowed: bool, reason: &str)
     }
 }
 
-/// The note a run with commands gets before it starts when the sandbox
-/// can't hold them: that they run as the user, or that they won't run.
 pub(crate) fn unsandboxed_note(
     mode: &WriteMode,
     allowed: bool,
@@ -96,10 +73,6 @@ pub(crate) fn unsandboxed_note(
     }
 }
 
-/// Why commands can't run in the sandbox here, if they can't. On Windows the
-/// sandbox is a beta with a switch in the app's settings, and it is checked
-/// first, as the app does: availability creates a probe profile, and a run
-/// with the switch off must never change a folder's permissions.
 pub(crate) fn sandbox_unavailable(data_root: Option<&Path>) -> Option<String> {
     if cfg!(windows)
         && !data_root.is_some_and(oleafly_research::runs::remote::settings::windows_sandbox_enabled)
@@ -112,7 +85,6 @@ pub(crate) fn sandbox_unavailable(data_root: Option<&Path>) -> Option<String> {
     }
 }
 
-/// How a shell line is started on a platform.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ShellInvocation {
     pub program: PathBuf,
@@ -122,7 +94,6 @@ pub(crate) struct ShellInvocation {
     pub raw_tail: Option<String>,
 }
 
-/// `cmd.exe /d /s /c "<command>"` on Windows, `/bin/sh -c <command>` elsewhere.
 pub(crate) fn shell_invocation(platform: Platform, command: &str) -> ShellInvocation {
     match platform {
         Platform::Windows => ShellInvocation {
@@ -205,7 +176,6 @@ fn plain_command(ctx: &ToolContext, text: &str, temp: &std::path::Path) -> std::
     command
 }
 
-/// Runs `text` for at most `timeout_seconds`.
 pub(crate) async fn run_command(
     ctx: &ToolContext,
     text: &str,
@@ -219,8 +189,6 @@ pub(crate) async fn run_command(
         .prefix("oleafly-agent-command-")
         .tempdir()
         .map_err(|error| format!("The command's temporary folder could not be made: {error}"))?;
-    // The check can take the sandbox's ledger lock (Windows), so it stays
-    // off the async threads.
     let data_root = ctx.data_root.clone();
     let unavailable =
         tokio::task::spawn_blocking(move || sandbox_unavailable(data_root.as_deref()))
@@ -230,8 +198,6 @@ pub(crate) async fn run_command(
     let command = if sandboxed {
         let line = text.to_string();
         let home = temp.path().to_path_buf();
-        // Spec building looks up runtimes and may grant folder access on
-        // Windows, so it stays off the async threads.
         let inputs = SandboxInputs::from(ctx);
         tokio::task::spawn_blocking(move || inputs.command(&line, &home))
             .await
@@ -286,7 +252,6 @@ pub(crate) async fn run_command(
         _ = ctx.cancel.cancelled() => (None, false, true),
         _ = tokio::time::sleep(timeout) => (None, true, false),
     };
-    // Ends the whole process group (or job), children included.
     drop(tree);
     let _ = child.start_kill();
     let reaped = tokio::time::timeout(Duration::from_secs(2), child.wait())
@@ -315,7 +280,6 @@ pub(crate) async fn run_command(
     }))
 }
 
-/// What the sandboxed command needs, owned, for a blocking thread.
 struct SandboxInputs {
     root: PathBuf,
     read_paths: Vec<PathBuf>,
@@ -353,7 +317,6 @@ impl SandboxInputs {
             } else {
                 Vec::new()
             },
-            // What the file tools refuse to read stays unreadable too.
             deny_read: hidden_files(&self.root),
             network: self.network,
             home: home.to_path_buf(),
@@ -364,8 +327,6 @@ impl SandboxInputs {
     }
 }
 
-/// Files a command may not read: the repository's config (remote addresses
-/// can carry tokens), `.private`, and `.env` files at the project root.
 fn hidden_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut hidden = vec![root.join(".git").join("config"), root.join(".private")];
     if let Ok(entries) = std::fs::read_dir(root) {
@@ -383,7 +344,6 @@ fn hidden_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
     hidden
 }
 
-/// The tool call.
 pub(super) async fn call(ctx: &Arc<ToolContext>, arguments: Value) -> Result<Value, String> {
     let text = arguments["command"]
         .as_str()
@@ -522,8 +482,6 @@ pub(crate) mod tests {
         std::fs::create_dir_all(project.path().join(".oleafly")).unwrap();
         std::fs::write(project.path().join(".git/config"), "[core]\n").unwrap();
         let ctx = context(project.path(), commands_policy());
-        // A write the sandbox allows, so a sandbox that can't start here
-        // (it nests badly inside another one) skips the test.
         let value = run_command(&ctx, "echo ok > fine.txt", 30).await.unwrap();
         if value["exitCode"] != 0 || !project.path().join("fine.txt").is_file() {
             return;
@@ -599,8 +557,6 @@ pub(crate) mod tests {
 
     #[test]
     fn dropping_the_release_guard_is_harmless_without_an_owner() {
-        // Nothing to release on macOS and Linux, and a missing profile on
-        // Windows is not an error.
         let guard = OwnerRelease::new("1792000000000-00ab");
         assert_eq!(guard.owner, "agent:1792000000000-00ab");
         drop(guard);

@@ -14,8 +14,6 @@ import { pickOpenPath } from "@/lib/native-file-dialog";
 import { getConfig, setConfig, type AppConfig, type ForgeAccount } from "@/lib/tauri";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 
-/** Settings › Integrations › Git hosting: the accounts Oleafly pushes, pulls,
- * publishes and imports with, and the switch that gives every project Git. */
 export function GitHostingSection() {
   const { t } = useTranslation(["common", "settings"]);
   const status = useForgeAccountsStore((s) => s.status);
@@ -141,8 +139,6 @@ export function GitHostingSection() {
   );
 }
 
-/** "Initialise Git for every project": writes on top of the config as it is
- * stored at the time of the click, in click order. */
 function GitAutoInitToggle() {
   const { t } = useTranslation(["settings"]);
   const [configState, setConfigState] = useState<AppConfig | null>(null);
@@ -178,7 +174,6 @@ function GitAutoInitToggle() {
       .then((latest) => setConfig({ ...latest, git_auto_init: value }))
       .catch(async () => {
         setConfigError("save");
-        // A later click brings its own value; otherwise show what is stored.
         if (request !== configRequest.current) return;
         try {
           const stored = await getConfig();

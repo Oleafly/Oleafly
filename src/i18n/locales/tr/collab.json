@@ -224,6 +224,8 @@
     "suggestion_not_found": "Bu öneri artık yok. Biri onu kabul etmiş ya da reddetmiş olabilir.",
     "suggestion_not_yours": "Bu öneriyi yalnızca öneriyi yapan kişi geri çekebilir.",
     "suggestion_role": "Bu projedeki rolünüz öneri yapmaya izin vermiyor.",
+    "suggestion_changed": "Bu önerinin çevresindeki metin değişti, bu yüzden öneriyi bir sahip ya da düzenleyen kabul etmeli veya reddetmeli.",
+    "suggestion_too_long": "Bir silme önerisi en fazla 20.000 karakter uzunluğunda olabilir. Her seferinde daha küçük bir bölümü silin.",
     "chat_role": "Bu projedeki rolünüz sohbette bunu yapmaya izin vermiyor.",
     "history_unavailable": "Bu projenin geçmişi henüz bu bilgisayarda yok. Proje eşitlendikten sonra yeniden deneyin.",
     "account_storage_full": "Proje sahibinin hesabının bu sunucudaki depolama alanı doldu. Yer açmak için bazı dosyaları kaldırın veya sunucunun yöneticisinden daha fazla alan isteyin.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Tüm proje geri yüklensin mi?",
-      "description": "Her dosya, bu projedeki herkes için {{time}} itibarıyla olduğu hâline döner. Şu anki metin geçmişte tutulur, böylece ona geri dönebilirsiniz.",
+      "textAndDeleted": "Her dosyanın metni, bu projedeki herkes için {{time}} itibarıyla olduğu hâline döner ve silinen dosyalar geri gelir. Yeniden adlandırılan dosyalar yeni adlarını korur, sonradan eklenen şekiller ve dosyalar ise olduğu gibi kalır. Şu anki metin geçmişte tutulur, böylece ona geri dönebilirsiniz.",
       "confirm": "Projeyi geri yükle"
     },
     "compareTitle": "İki sürüm arasındaki değişiklikler",

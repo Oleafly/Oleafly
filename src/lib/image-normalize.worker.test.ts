@@ -7,7 +7,6 @@ const scope = {
   postMessage: vi.fn(),
 };
 
-/** An OffscreenCanvas whose pixels are opaque unless `transparent`, and which encodes only `encodes`. */
 function stubOffscreenCanvas(options: { transparent?: boolean; encodes?: string[]; noContext?: boolean } = {}) {
   const encodes = options.encodes ?? ["image/webp", "image/png", "image/jpeg"];
   const context = {

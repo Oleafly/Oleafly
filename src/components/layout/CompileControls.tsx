@@ -59,15 +59,8 @@ import {
   useTypstToolchainStore,
 } from "@/store/typst-toolchain";
 
-/**
- * Shows which document a compile would actually build when the active file's
- * `% !TEX root` magic comment overrides the stored main document, and warns
- * when that comment points at a file that does not exist.
- */
 function TexRootIndicator() {
   const { t } = useTranslation(["shell"]);
-  // Flattened so the shallow comparison only re-renders when the effective
-  // root, its provenance, or the broken-target details really change.
   const [mainDoc, overriddenBy, brokenIn, brokenTarget, brokenReason] = useFilesStore(
     useShallow(() => {
       const effective = resolveEffectiveMainDoc();
@@ -134,12 +127,6 @@ function TypstLivePreviewKeeper() {
   return <TypstLivePreviewSync key={JSON.stringify([projectId, typst, typstMissing, engineLoaded])} />;
 }
 
-/**
- * The compile action and its options menu, joined as one split control.
- *
- * The menu owns the settings that change how the next compile runs, so it lives
- * with the button that starts one rather than in the settings dialog.
- */
 export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: boolean }> = {}) {
   const projectId = useFilesStore((s) => s.projectId);
   const detached = usePreviewDetachedStore((s) => projectId !== null && s.projectId === projectId);
@@ -715,8 +702,6 @@ export function CompileControlsView({
         className={cn(
           "rounded-md bg-primary text-white shadow-sm hover:bg-primary hover:text-white",
           "h-7 gap-1.5 px-2.5",
-          // Set here rather than by ButtonGroup: the tooltip wrapper sits
-          // between the group and this button.
           "rounded-r-none",
           blocked && "cursor-not-allowed opacity-50",
         )}
@@ -748,11 +733,6 @@ export function CompileControlsView({
             "rounded-md rounded-l-none bg-primary text-white shadow-sm hover:bg-primary hover:text-white data-[state=open]:text-white",
             "h-7 border-l border-white/25 px-1.5",
           )}
-          // Openable while compiling, otherwise "Stop compilation" inside is
-          // unreachable: it is the one item that requires a running compile,
-          // and the trigger used to close the menu off for exactly that state.
-          // Everything else here is a preference that applies to the next
-          // compile, and "Recompile from scratch" disables itself.
           disabled={!engineLoaded}
           aria-label={t(($) => $.shell.compile.options)}
         >

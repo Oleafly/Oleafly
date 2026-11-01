@@ -1,10 +1,3 @@
-//! "Refresh plan usage": a hidden turn sends the agent's own `/usage` (or
-//! `/status`) command and keeps its answer as the plan summary. None of its
-//! messages reach the transcript or the before-turn copies; the session
-//! shows as working meanwhile, its permission requests are refused, and a
-//! command that starts a tool (one the project defines under that name,
-//! which runs the model) is cancelled. Its cost is noted as the agent's
-//! latest total, outside any turn, so the next turn is not charged for it.
 use oleafly_acp::TurnTiming;
 use serde_json::json;
 use std::sync::Arc;
@@ -18,9 +11,6 @@ use super::types::{
 const HIDDEN_INACTIVITY: Duration = Duration::from_secs(60);
 const HIDDEN_ABSOLUTE: Duration = Duration::from_secs(90);
 
-/// The command that reports plan usage: `usage`, else `status`. A command
-/// the agent marks as the project's or the user's own is a prompt, not a
-/// report, and is never used.
 fn usage_command(commands: &[AvailableCommand]) -> Option<&'static str> {
     ["usage", "status"].into_iter().find(|name| {
         commands.iter().any(|command| {
@@ -49,8 +39,6 @@ impl AcpRuntime {
             .native_session_id
             .clone()
             .ok_or("The ACP session is not ready.")?;
-        // The hidden turn's events belong to no turn: the last turn keeps
-        // its id once it ends.
         let last_turn = {
             let mut state = session
                 .state
@@ -71,7 +59,6 @@ impl AcpRuntime {
             }
             last_turn
         };
-        // Running out of time ends the refresh, not the agent.
         let result = session
             .client
             .prompt_or_cancel(
@@ -126,9 +113,6 @@ impl AcpRuntime {
         self.snapshot(id).await
     }
 
-    /// Stores what the hidden turn brought: the plan summary when it
-    /// answered, and the agent's counters (its cumulative cost included, so
-    /// the usage ledger charges the next turn only for that turn).
     fn finish_hidden(
         &self,
         session: &super::runtime::LiveSession,

@@ -1,9 +1,3 @@
-/*
- * File and folder paths in Settings (src/components/settings/SettingsPath.tsx)
- * stay blurred, so a screenshot of Settings does not show where things live on
- * this computer. Hover shows one clearly, and so does keyboard focus, which
- * adds a background tint instead of a focus line.
- */
 [data-settings-path] {
   filter: blur(4px);
   transition: filter 120ms ease-out;
@@ -28,10 +22,6 @@
   border-radius: 0.25rem;
 }
 
-/*
- * Inside a text field a filter would blur the whole box, so the path is drawn
- * as a soft shadow of the text instead. Hover or focus shows it.
- */
 [data-settings-path-field]:not(:hover, :focus) {
   color: transparent;
   text-shadow: 0 0 4px var(--foreground);

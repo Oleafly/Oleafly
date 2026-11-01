@@ -48,7 +48,6 @@ function renderParaBody(
   counts: BodyCounts,
 ): string {
   if (level) {
-    // the title consumed level 1, so remaining levels shift up
     const eff = (hasTitle ? Math.max(1, level - 1) : level) as HeadingLevel;
     counts.headings++;
     return `${SECTION_CMD[eff]}{${escapeLatex(para.text)}}`;

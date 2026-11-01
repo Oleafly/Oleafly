@@ -226,7 +226,6 @@ pub(crate) mod macos_grid {
     const SHADOW_BLUR: f64 = 10.0 / 1024.0;
     const SHADOW_OPACITY: f64 = 0.3;
 
-    /// Redraws a full-bleed square icon on the grid, at the same size.
     pub(crate) fn frame(image: &Rgba) -> Option<Rgba> {
         if image.width == 0 || image.width != image.height {
             return None;
@@ -258,7 +257,6 @@ pub(crate) mod macos_grid {
                 } else {
                     [0.0; 4]
                 };
-                // The shadow is black, so it adds coverage and no colour.
                 let total = alpha + shadow[y * edge + x] * SHADOW_OPACITY * (1.0 - alpha);
                 let straight = |value: f64| if total > 0.0 { value / total } else { 0.0 };
                 pixels.extend(
@@ -274,7 +272,6 @@ pub(crate) mod macos_grid {
         })
     }
 
-    /// How much of the pixel centred at (x, y) the tile covers.
     fn coverage(x: f64, y: f64, centre: f64, half: f64, radius: f64) -> f64 {
         let dx = (x - centre).abs() - (half - radius);
         let dy = (y - centre).abs() - (half - radius);
@@ -282,8 +279,6 @@ pub(crate) mod macos_grid {
         (0.5 - distance).clamp(0.0, 1.0)
     }
 
-    /// Area-averaged resize of a square image to `side` px, as premultiplied
-    /// colour from 0 to 1.
     fn resample(image: &Rgba, side: usize) -> Vec<[f64; 4]> {
         let edge = image.width as usize;
         let source: Vec<[f64; 4]> = image
@@ -323,7 +318,6 @@ pub(crate) mod macos_grid {
         sum
     }
 
-    /// For each of `to` pixels, the `from` pixels it overlaps and by how much.
     fn area_taps(from: usize, to: usize) -> Vec<Vec<(usize, f64)>> {
         let scale = from as f64 / to as f64;
         (0..to)
@@ -340,7 +334,6 @@ pub(crate) mod macos_grid {
             .collect()
     }
 
-    /// Gaussian blur of a square coverage plane; outside the plane is empty.
     fn blur(plane: &mut [f64], edge: usize, sigma: f64) {
         let reach = (sigma * 3.0).ceil() as usize;
         let mut kernel: Vec<f64> = (0..=2 * reach)
@@ -633,7 +626,6 @@ mod tests {
         assert_eq!(current(), AppIconVariant::Classic);
     }
 
-    /// The PNG layers of an .icns file. The ARGB and legacy layers are skipped.
     fn icns_png_layers(icns: &[u8]) -> Vec<([u8; 4], Rgba)> {
         assert_eq!(&icns[..4], b"icns");
         let mut layers = Vec::new();
@@ -704,9 +696,6 @@ mod tests {
         );
     }
 
-    /// `icon.icns` is `icons/app-icon.png` on Apple's grid. After changing the
-    /// master, rebuild it on a Mac with
-    /// `OLEAFLY_WRITE_GOLDENS=1 cargo test -p oleafly --lib bundled_macos_icon_is_the_master`.
     #[test]
     fn the_bundled_macos_icon_is_the_master_on_the_macos_grid() {
         let master = decode_png(include_bytes!("../icons/app-icon.png")).unwrap();

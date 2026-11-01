@@ -1,4 +1,3 @@
-//! Owned SIDs, AppContainer and capability names, and SDDL text.
 use std::os::windows::ffi::OsStrExt;
 
 use sha2::{Digest, Sha256};
@@ -8,8 +7,6 @@ use windows_sys::Win32::Security::{DeriveCapabilitySidsFromName, FreeSid, PSID};
 
 use crate::SandboxError;
 
-/// The capability every task token carries: read access to interpreters,
-/// agent installs and skill folders, granted once per machine.
 pub(crate) const RUNTIME_CAPABILITY: &str = "oleaflyRunRead";
 pub(crate) const INTERNET_CLIENT: &str = "S-1-15-3-1";
 pub(crate) const PRIVATE_NETWORK: &str = "S-1-15-3-3";
@@ -19,7 +16,6 @@ enum Free {
     Local,
 }
 
-/// A SID owned by Rust, freed the way it was allocated.
 pub(crate) struct OwnedSid {
     sid: PSID,
     free: Free,
@@ -29,7 +25,6 @@ pub(crate) struct OwnedSid {
 unsafe impl Send for OwnedSid {}
 
 impl OwnedSid {
-    /// A SID allocated by a profile call (freed with `FreeSid`).
     pub(crate) fn from_profile(sid: PSID) -> Self {
         Self {
             sid,
@@ -114,7 +109,6 @@ pub(crate) fn container_name(owner: &str) -> String {
     format!("Oleafly.Task.{}", hex_digest(owner, 32))
 }
 
-/// The capability that reads one project's linked data folders.
 pub(crate) fn project_capability(project: &str) -> String {
     format!("oleaflyProject{}", hex_digest(project, 16))
 }

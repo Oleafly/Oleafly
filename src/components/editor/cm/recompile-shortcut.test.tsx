@@ -12,6 +12,7 @@ import { approvalsReadRaw } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { latexLanguage } from "./latex";
+import { stubRangeGeometry } from "../../../../packages/editor/src/test-geometry";
 
 vi.mock("@/lib/tauri", () => ({
   approvalsReadRaw: vi.fn(),
@@ -20,9 +21,7 @@ vi.mock("@/lib/tauri", () => ({
   approvalsModeSet: vi.fn(),
 }));
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 const SOURCE = "\\draw (0,0) -- (1,1);\n\\node at (0,0) {A};\n";
 const TOML = '["$approval_modes"]\nproj-1 = "custom"\n';
@@ -52,8 +51,6 @@ function pressCtrlEnter(view: EditorView, at: number): void {
   });
 }
 
-// Stands in for App.tsx's bubble-phase window listener, which owns the
-// recompile chord everywhere in the main window.
 let recompiles = 0;
 function countRecompile(event: KeyboardEvent): void {
   if (matchesShortcut(event, useShortcutStore.getState().bindings.recompile)) recompiles += 1;

@@ -1,7 +1,3 @@
-// Transcription with the Tools model: images, equation images, typed
-// equations and scanned PDF pages, for a general vision model, an OCR model
-// with its own prompt, or Mathpix. OCR Markdown goes through the bundled
-// Pandoc so tables and math survive in LaTeX, Typst and Markdown.
 import { isOutputLimitStop, isRefusalStop } from "@oleafly/ai-core";
 import type { ConverterProgressReporter } from "@/features/ad-hoc-converters";
 import { i18n } from "@/i18n";
@@ -41,9 +37,7 @@ import {
 
 export interface TranscribeOptions {
   target: OcrTarget;
-  /** `equation` returns one bare LaTeX expression. */
   mode: "image" | "equation";
-  /** The result goes into someone else's document: no preamble. */
   fragment: boolean;
   signal?: AbortSignal;
   typstVersion?: string | null;
@@ -51,7 +45,6 @@ export interface TranscribeOptions {
 
 export interface TranscriptionModelInfo {
   label: string;
-  /** Where the input went, or null when it stayed on this computer. */
   sentTo: string | null;
 }
 
@@ -86,10 +79,6 @@ function systemPrompt(target: OcrTarget, mode: TranscribeOptions["mode"]): strin
   ].join(" ");
 }
 
-// Transcription copies what is on the page, so no thinking: the lowest effort
-// the model accepts (none where thinking can be turned off). Thinking would
-// be billed as output and count against the reply's token ceiling, which is
-// where a dense page gets cut off.
 function llmRequest(model: ResolvedLlm, system: string | null, content: AgentContentPart[]): AgentCompletionRequest {
   return {
     ...(system ? { system } : {}),
@@ -109,12 +98,9 @@ async function complete(model: ResolvedLlm, request: AgentCompletionRequest, sig
     signal,
     { provider_id: model.providerId, model_id: model.modelId },
   );
-  // A reply cut off at the output limit is half a page. Passing it on would
-  // put an unfinished equation or table into the user's document unmarked.
   if (isOutputLimitStop(response.stop_reason)) {
     throw new ToolsModelError(i18n.t(($) => $.researchTools.converterErrors.outputLimit));
   }
-  // So is a refused or filtered reply: a part of the page, or the refusal.
   if (isRefusalStop(response.stop_reason)) {
     throw new ToolsModelError(i18n.t(($) => $.researchTools.converterErrors.refused));
   }
@@ -123,8 +109,6 @@ async function complete(model: ResolvedLlm, request: AgentCompletionRequest, sig
 
 const PANDOC_TARGET = { LaTeX: "latex", Typst: "typst", Markdown: "markdown" } as const;
 
-/** OCR Markdown in the target format. A `document` gets a preamble; a
- * `fragment` avoids anything only a preamble defines. */
 export async function ocrMarkdownTo(
   target: OcrTarget,
   markdown: string,
@@ -172,8 +156,6 @@ async function readImage(
 async function mathpixImage(image: ImageInput, options: TranscribeOptions): Promise<string> {
   const prepared = await prepareImage(image, IMAGE_BUDGETS.mathpix);
   throwIfAborted(options.signal);
-  // The signal cancels the Mathpix request itself, so a cancelled read is
-  // not billed.
   const result = await mathpixText(prepared.base64, prepared.mime, { signal: options.signal });
   throwIfAborted(options.signal);
   const latex = result.latexStyled?.trim() ?? "";
@@ -193,8 +175,6 @@ async function mathpixImage(image: ImageInput, options: TranscribeOptions): Prom
   );
 }
 
-/** An image in the target format, or one bare LaTeX expression in
- * `equation` mode. */
 export async function transcribeImage(
   model: ResolvedToolsModel,
   image: ImageInput,
@@ -234,7 +214,6 @@ export async function transcribeEquationText(
   return nonEmpty(extractSingleMath(reply));
 }
 
-/** Mathpix page ranges for 1-based page numbers, such as "3-5" or "1,4-6". */
 function pageRanges(pages: readonly number[]): string {
   const sorted = [...new Set(pages)].sort((left, right) => left - right);
   const parts: string[] = [];
@@ -291,8 +270,6 @@ export async function transcribePdfPages(
       pageRanges: pageRanges(pages),
       signal,
       onProgress: (progress) => {
-        // Mathpix counts the pages it has finished; the page it reads now
-        // is the next one, never "page 0".
         const total = progress.pagesTotal;
         if (total < 1) return;
         const page = Math.min(total, progress.pagesDone + 1);
@@ -314,7 +291,6 @@ export async function transcribePdfPages(
   const { renderPages } = await import("@/lib/pdf-image");
   const budget = model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
   const transcribed: string[] = [];
-  // pdf.js loads the PDF once for all the pages, not once per page.
   const rendered = renderPages(bytes, pages, SCAN_RENDER_SCALE, "#ffffff");
   try {
     for (let index = 0; index < pages.length; index += 1) {
@@ -342,9 +318,6 @@ export async function transcribePdfPages(
   return { text: nonEmpty(text), model: info };
 }
 
-/** The editor toolbar's Image to LaTeX/Typst: reads the image, resolves the
- * Tools model (or the assistant's, when nothing is saved and no local model
- * can run), tells the caller which model runs, and returns a fragment. */
 export async function transcribeEditorImage(
   file: File,
   target: "LaTeX" | "Typst",

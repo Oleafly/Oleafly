@@ -60,8 +60,6 @@ beforeEach(() => {
     mainDoc: "main.tex",
     engine: LATEX_ENGINE,
   });
-  // The analysis snapshot is the canonical project revision, so an event is
-  // only current when it names the revision this window has activated.
   useProjectAnalysisStore.getState().activateProject({
     projectId: "project",
     projectRevision: 0,
@@ -101,7 +99,6 @@ describe("cross-window successful output synchronization", () => {
       lastCompileCheckpoint: prior,
       log: "local compile failed",
     });
-    // The file is readable, but it is the old output, not the event's output.
     mocks.readCompiledPdf.mockResolvedValue(priorBytes.buffer);
 
     await expect(

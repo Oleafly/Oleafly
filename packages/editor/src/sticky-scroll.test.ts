@@ -146,13 +146,9 @@ describe("stickyScroll", () => {
       Number(getComputedStyle(mounted.dom.querySelector(selector) as HTMLElement).zIndex);
 
     const pinned = zIndex(".cm-stickyScroll");
-    // The scroller's stacking context holds the gutter and the text.
     expect(pinned).toBeGreaterThan(zIndex(".cm-scroller"));
     expect(pinned).toBeLessThan(zIndex(".cm-panels-top"));
-    // App dialogs sit at z-index 80 and up, in the same stacking context.
     expect(pinned).toBeLessThan(80);
-    // Not isolated: a tooltip mounted inside the editor has to reach over the
-    // panes beside it.
     expect(getComputedStyle(mounted.dom).isolation).not.toBe("isolate");
   });
 
@@ -166,11 +162,7 @@ describe("stickyScroll", () => {
   });
 
   it("lines a pinned row up with the line numbers and the text", async () => {
-    // The number column ends 40px from the editor's left edge and the gutters
-    // at 60px: the fold and diagnostic gutters sit in between, and a pinned
-    // row has to skip them.
     const mounted = mount(3, [lineNumbers()]);
-    // After mount, which stubs the scroller's own box on the instance.
     const measure = HTMLElement.prototype.getBoundingClientRect;
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
       this: HTMLElement,

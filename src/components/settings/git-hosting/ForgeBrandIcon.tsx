@@ -8,9 +8,6 @@ import {
 import { accountKey } from "@/lib/forge";
 import type { ForgeAccount } from "@/lib/tauri";
 
-/** The logo of a Git hosting service. With a `base`, Codeberg shows its own
- * logo; without one, a Gitea-compatible server shows Forgejo or Gitea, which
- * matches the kind label beside it. */
 export function ForgeBrandIcon({
   base,
   kind,

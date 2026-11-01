@@ -20,7 +20,6 @@ import { getConfig, mcpServersList, setConfig as saveConfig, type AppConfig } fr
 import { ResearchCard } from "./ResearchCard";
 import { ResearchBackgroundSlot, ResearchComputeSlot } from "./slots";
 
-/** The config keys this section writes; a save sets only the ones its change touched. */
 const OWNED_KEYS = [
   "research_keep_awake",
   "research_notifications",
@@ -31,7 +30,6 @@ const OWNED_KEYS = [
 
 type OwnedKey = (typeof OWNED_KEYS)[number];
 
-/** The defaults the app config starts with (see `AppConfig::default` in the Rust config). */
 function researchDefaults(): Pick<AppConfig, OwnedKey> {
   return {
     research_keep_awake: true,
@@ -42,7 +40,6 @@ function researchDefaults(): Pick<AppConfig, OwnedKey> {
   };
 }
 
-/** Settings › Research: defaults and behaviour of research tasks. */
 export function ResearchSettingsSection() {
   const { t } = useTranslation(["common", "researchTools", "settings"]);
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -51,10 +48,8 @@ export function ResearchSettingsSection() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const request = useRef(0);
-  // The settings as the switches show them, for the saves waiting in line.
   const shown = useRef<AppConfig | null>(null);
   const saves = useRef<Promise<void>>(Promise.resolve());
-  // The patches of the saves in line, oldest first.
   const waiting = useRef<Partial<AppConfig>[]>([]);
   const [serversFailed, setServersFailed] = useState(false);
   const serversRequest = useRef(0);
@@ -119,10 +114,7 @@ export function ResearchSettingsSection() {
     setConfig(next);
     setSaveFailed(false);
     waiting.current.push(patch);
-    // Changes when the section closes or loads the config again.
     const generation = request.current;
-    // Each save reads the config again and sets only the keys of this change, so
-    // a change another writer made to anything else is not written over.
     saves.current = saves.current
       .then(async () => {
         try {
@@ -130,7 +122,6 @@ export function ResearchSettingsSection() {
           await saveConfig({ ...latest, ...patch });
         } catch {
           setSaveFailed(true);
-          // Show what is stored, with the changes still waiting to be saved on top.
           try {
             const stored = await getConfig();
             if (request.current !== generation) return;
@@ -154,7 +145,6 @@ export function ResearchSettingsSection() {
   };
 
   const chosenServers = config?.research_task_mcp_servers ?? [];
-  // Chosen names the server list no longer has (renamed or removed), so they can be unticked.
   const missingServers = servers ? chosenServers.filter((name) => !servers.includes(name)) : [];
   const minutes = config?.research_time_budget_minutes ?? 120;
   const budgetOptions = TIME_BUDGET_OPTIONS.includes(minutes)

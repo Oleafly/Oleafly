@@ -646,10 +646,6 @@ done
         });
         let before_start = Instant::now();
         let (session, started) = registry.ensure(host.clone(), fixture.target.clone()).await;
-        // The idle clock starts with the watcher process. On a loaded machine the fake
-        // watcher can take longer than this short idle period to print its first cycle,
-        // and then the session stops before that cycle and the compile says why. Either
-        // way the session has to stop itself, and never sooner than the idle period.
         if let Err(error) = session.compile(false, started).await {
             assert_eq!(error, "the live preview stopped after a long idle period");
         }

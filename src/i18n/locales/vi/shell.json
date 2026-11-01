@@ -1159,6 +1159,8 @@
     "exportTxt": "Xuất thành văn bản thuần (.txt)",
     "exportZipFailed": "Không xuất được tệp zip của dự án",
     "exporting": "Đang xuất .{{format}}…",
+    "exportingStep": "Đang xuất .{{format}}: {{step}}",
+    "stopExport": "Dừng",
     "fork": "Fork",
     "forkDescription": "Sao chép <name>{{name}}</name> và lịch sử Git của nó vào dự án mới. Điểm lưu bắt đầu trống.",
     "forkFailed": "Không fork được dự án.",

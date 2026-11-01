@@ -48,6 +48,11 @@
     "stoppedTitle": "연결 끊김",
     "stoppedDescription": "다시 연결하려면 페이지를 새로 고치세요."
   },
+  "leave": {
+    "title": "이 프로젝트에서 나갈까요?",
+    "description": "일부 편집 내용이 아직 서버에 전달되지 않았습니다. 전송이 끝날 때까지 머무르세요. 지금 나가면 해당 편집 내용을 잃게 됩니다.",
+    "confirm": "나가기"
+  },
   "access": {
     "changed": "이 프로젝트에서 내 역할이 변경되었습니다: {{role}}"
   },
@@ -155,6 +160,11 @@
     "withdraw": "철회",
     "acceptAll": "모두 수락",
     "rejectAll": "모두 거부",
+    "rejectAllConfirm": {
+      "title": "{{file}}의 모든 제안을 거부할까요?",
+      "description": "이 프로젝트의 모든 사람에게 원래 텍스트가 파일로 돌아갑니다. 검토 대기 중인 제안: {{number}}개.",
+      "confirm": "모두 거부"
+    },
     "pending_other": "제안 {{count}}개",
     "card": "{{name}} 님의 제안",
     "lineBreak": "줄바꿈"

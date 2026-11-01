@@ -111,7 +111,6 @@ function DomainChip({
   );
 }
 
-/** "All" plus one chip per domain on the shelf. */
 function DomainChips({
   domains,
   active,
@@ -143,7 +142,6 @@ function DomainChips({
   );
 }
 
-/** The shelf's domains, and the rows left after the domain and search filters. */
 function filterShelf(
   catalog: SkillCatalog | null,
   domain: string | null,
@@ -162,7 +160,6 @@ function filterShelf(
   return { entries, domains, active, matches };
 }
 
-/** One shelf skill with its install, update or uninstall buttons. */
 function ShelfRow({
   entry,
   busy,
@@ -240,7 +237,6 @@ function ShelfRow({
   );
 }
 
-/** The result of the last action in the Skills tab or on the shelf. */
 export function SkillResultMessage({ ok, text }: Readonly<{ ok: boolean; text: string }>) {
   return (
     <div
@@ -263,9 +259,7 @@ export function SkillCatalogList({
   onMatchCountChange,
 }: Readonly<{
   search?: string;
-  /** The parent already shows "No skills match" for the whole tab. */
   hideNoMatch?: boolean;
-  /** Shelf rows left after filtering, or null while the catalog loads. */
   onMatchCountChange?: (count: number | null) => void;
 }> = {}) {
   const { t } = useTranslation(["common", "settings"]);

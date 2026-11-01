@@ -10,11 +10,6 @@ import {
   waitLong,
 } from "../helpers";
 
-// Marker design: the assistant is asked to CONCATENATE two words, so the
-// marker appears only in the REPLY, never in our own prompt. Chat titles are
-// derived from the first user message and stay visible in the recent-chats
-// list after "New chat", so a literal marker there would false-positive.
-
 const TOKEN = process.env.E2E_AI_TOKEN;
 const RUN = Date.now().toString(36);
 
@@ -43,8 +38,6 @@ test("references panel guides toward Shift-F12", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "References & citations (Shift-F12)");
-  // Only the guidance empty-state; populated results are covered by the
-  // code-intel spec's real find-references.
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('Shift-F12') || document.body.innerText.includes('References')`,
     10_000,
@@ -63,7 +56,6 @@ test("new chat clears the transcript and history brings it back", async ({ tauri
   const tag = `chat ${RUN}h`;
   await askForConcat(tauriPage, tag, "ZEBRA", "APPLE");
 
-  // The old chat's TITLE may stay visible in the recent list - expected.
   await tauriPage.click('[aria-label="New chat"]');
   await tauriPage.waitForFunction(
     `!document.body.innerText.includes('ZEBRAAPPLE')`,
@@ -90,8 +82,6 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await ensureAiConnected(tauriPage);
 
-  // Unique per run so the Save button is always enabled (it disables when
-  // the text is unchanged).
   const prefix = `MANGO${RUN}`;
   await openSettings(tauriPage, "ai");
   await tauriPage.waitForFunction(
@@ -122,9 +112,6 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
     180_000,
   );
 
-  // The modal hydrates the textarea from an async config fetch; clearing
-  // before that resolves gets clobbered back to the saved text, leaving
-  // Save disabled - hence the wait below before clearing.
   await openSettings(tauriPage, "ai");
   await tauriPage.locator('[data-testid="ai-settings-tab-instructions"]').focus();
   await tauriPage.locator('[data-testid="ai-settings-tab-instructions"]').press("Enter");

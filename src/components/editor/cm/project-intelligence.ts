@@ -94,10 +94,6 @@ import {
 } from "@/features/zotero-actions";
 
 const SUPPORTED_SOURCE_RE = /\.(?:tex|latex|ltx|sty|cls|md|markdown|qmd|rmd|typ|bib)$/i;
-// This cap is applied only after the current query has filtered the complete
-// project index. Completion results deliberately omit `validFor`, so every
-// completion-query edit reruns the source and symbols beyond the initial page
-// remain reachable by narrowing.
 const FILTERED_COMPLETION_LIMIT = 200;
 const STANDARD_LATEX_ENVIRONMENTS = [
   "document",
@@ -367,11 +363,6 @@ function citationOptions(
   );
 }
 
-/**
- * Shared completion info panel: optional description paragraph, optional
- * muted meta line, optional external link. Returns undefined when empty so
- * callers can spread it conditionally.
- */
 export function completionInfoPanel(options: {
   description?: string;
   meta?: string;
@@ -1694,12 +1685,6 @@ function fallbackLookup(
   return lookup;
 }
 
-/**
- * How many definitions `use` would resolve to once the worker catches up:
- * the current file's fresh definitions stand in for the snapshot's stale copy
- * of that file. The keys are the worker's own, so a LaTeX \ref never counts a
- * Typst label and a Markdown anchor link stays inside its file.
- */
 function candidateCount(
   use: ProjectUse,
   path: string,
@@ -1791,8 +1776,6 @@ export function currentFileReferenceDiagnostics(
       snapshot.fileStates[path].sourceRevision + 1,
     );
   } catch {
-    // The authoritative worker owns error presentation. A fallback parser
-    // failure must never turn into guessed or unmasked findings.
     return [];
   }
   const project = fallbackLookup(snapshot);
@@ -1875,8 +1858,6 @@ export function projectIntelligenceExtensions(): Extension[] {
     {
       delay: 0,
       needsRefresh: needsProjectRefresh,
-      // Diagnostics render through the shared hover card, so the stock lint
-      // tooltip must not also appear.
       tooltipFilter: () => [],
     },
   );
@@ -1891,8 +1872,6 @@ export function projectIntelligenceExtensions(): Extension[] {
     const refresh = (requestGeneration: number) => {
       if (disposed) return;
       if (debounceTimer !== null) clearTimeout(debounceTimer);
-      // Trailing debounce: intelligence updates stream in bursts while a
-      // large project indexes; each forced lint re-runs full proofreading.
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
         if (refreshQueued || disposed) return;

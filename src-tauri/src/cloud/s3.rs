@@ -4,11 +4,12 @@
 //! the layout the Dropbox app folder uses. Sync relies on compare-and-swap, so
 //! a bucket is only accepted once `probe` finds conditional writes work there.
 
-use super::engine::UPLOAD_BASES;
 use super::store::{
-    file_state, retry_after, retry_delay, save_body, transient, AccountInfo, Changes, CloudStore,
-    Fetched, RemoteEntry, RemoteMeta, StoreError, StoreResult, Uploaded, WriteMode,
+    file_state, read_capped, retry_after, retry_delay, save_body, transient, AccountInfo,
+    BatchDelete, Changes, CloudStore, Fetched, RemoteEntry, RemoteMeta, StoreError, StoreResult,
+    Uploaded, WriteMode,
 };
+use axum::body::Bytes;
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
 use oleafly_s3::sigv4::{self, Credentials, Request};
@@ -21,19 +22,20 @@ use std::time::{Duration, SystemTime};
 use tokio::io::AsyncReadExt;
 
 const MAX_ATTEMPTS: u32 = 4;
-/// Files up to this size go up in one request; larger ones in parts.
 const SINGLE_PUT_LIMIT: u64 = 64 * 1024 * 1024;
 const PART_SIZE: usize = 16 * 1024 * 1024;
 const MAX_ERROR_BYTES: usize = 64 * 1024;
 const MAX_LIST_BYTES: usize = 8 * 1024 * 1024;
 const MAX_LIST_PAGES: usize = 1_000;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
-/// A download has no deadline; it ends once this long passes without a byte.
 const STREAM_READ_TIMEOUT: Duration = Duration::from_secs(60);
-/// The slowest uplink a write's deadline allows for, on top of
-/// `REQUEST_TIMEOUT`.
 const UPLOAD_BYTES_PER_SECOND: u64 = 32 * 1024;
 const UPLOAD_CONCURRENCY: usize = 8;
+const VERSION_MARK: &str = "o-";
+const VERSION_DIGITS: usize = 32;
+const MAX_CLOCK_SKEW_MS: u64 = 15 * 60 * 1000;
+const MANIFEST_MARGIN_MS: i64 = 60 * 60 * 1000;
+const MAX_SWEEP_PAGES: usize = 100;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,7 +44,6 @@ pub(crate) struct S3Config {
     #[serde(default)]
     pub(crate) region: String,
     pub(crate) bucket: String,
-    /// The folder inside the bucket that sync uses.
     #[serde(default)]
     pub(crate) prefix: String,
     #[serde(default = "path_style_by_default")]
@@ -77,46 +78,43 @@ enum Dialect {
     Gcs,
 }
 
-/// How long a request may run.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Limit {
-    /// Up to the request timeout, plus time to send the body at a slow rate.
     Timed,
-    /// For as long as the reply keeps arriving.
     Streamed,
 }
 
-/// What one upload replaces, from the round that asked for it.
-struct Placement {
-    mode: WriteMode,
-    manifest: String,
-    manifest_rev: Option<String>,
-    device: String,
+fn new_version() -> String {
+    format!(
+        "{:0width$x}",
+        rand::random::<u128>(),
+        width = VERSION_DIGITS
+    )
 }
 
-impl Placement {
-    fn of(remote: &str) -> Option<Self> {
-        UPLOAD_BASES
-            .try_with(|bases| {
-                bases.files.get(remote).map(|mode| Self {
-                    mode: mode.clone(),
-                    manifest: bases.manifest.clone(),
-                    manifest_rev: bases.manifest_rev.clone(),
-                    device: bases.device.clone(),
-                })
-            })
-            .ok()
-            .flatten()
-    }
-
-    /// The manifest revision an upload is marked with; a quoted ETag or a
-    /// generation number is never "none".
-    fn base_mark(&self) -> String {
-        self.manifest_rev.clone().unwrap_or_else(|| "none".into())
-    }
+fn version_of(rev: &str) -> Option<&str> {
+    rev.strip_prefix(VERSION_MARK).filter(|digits| {
+        digits.len() == VERSION_DIGITS && digits.bytes().all(|byte| byte.is_ascii_hexdigit())
+    })
 }
 
-/// Why a bucket can't hold sync, in the terms the connect form shows.
+fn header_ms(
+    headers: &reqwest::header::HeaderMap,
+    name: reqwest::header::HeaderName,
+) -> Option<i64> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .and_then(sigv4::parse_http_date)
+}
+
+fn skewed(headers: &reqwest::header::HeaderMap) -> bool {
+    header_ms(headers, reqwest::header::DATE).is_some_and(|server_ms| {
+        let local_ms = i64::try_from(crate::cloud::engine::now_ms()).unwrap_or(i64::MAX);
+        server_ms.abs_diff(local_ms) > MAX_CLOCK_SKEW_MS
+    })
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum ProbeError {
     Endpoint(String),
@@ -177,7 +175,6 @@ impl S3Config {
             .unwrap_or_default()
     }
 
-    /// The address and folder, as the settings tab names the connection.
     pub(crate) fn label(&self) -> String {
         let place = match self.prefix() {
             "" => self.bucket().to_string(),
@@ -186,8 +183,6 @@ impl S3Config {
         format!("{place} on {}", self.host())
     }
 
-    /// Sync state is kept per bucket and folder, so another bucket or folder
-    /// is another account.
     pub(crate) fn account_id(&self) -> String {
         format!("s3:{}/{}/{}", self.host(), self.bucket(), self.prefix())
     }
@@ -210,10 +205,7 @@ pub(crate) struct S3Store {
     key_prefix: String,
     region: String,
     dialect: Dialect,
-    /// For requests with a deadline: metadata, and uploads, whose deadline
-    /// grows with their size. A read timeout would cap sending a body too.
     timed: reqwest::Client,
-    /// For downloads, which run as long as bytes keep arriving.
     streaming: reqwest::Client,
     request_timeout: Duration,
     /// Multipart completions here go without a condition. Google's XML API
@@ -233,7 +225,6 @@ fn client(read_timeout: Option<Duration>) -> reqwest::Result<reqwest::Client> {
     builder.build()
 }
 
-/// The whole file, as long as it didn't change since `before`.
 async fn read_unchanged(local: &Path, before: (u64, Option<SystemTime>)) -> StoreResult<Vec<u8>> {
     let bytes = tokio::fs::read(local)
         .await
@@ -247,6 +238,7 @@ async fn read_unchanged(local: &Path, before: (u64, Option<SystemTime>)) -> Stor
 struct Listing {
     files: Vec<String>,
     folders: Vec<String>,
+    stamped: Vec<(String, Option<i64>)>,
     next: Option<String>,
 }
 
@@ -317,7 +309,6 @@ impl S3Store {
         })
     }
 
-    /// The store with shorter timeouts, so a test can outlast them.
     #[cfg(test)]
     pub(crate) fn with_timeouts(mut self, request: Duration, read: Duration) -> Self {
         self.request_timeout = request;
@@ -325,9 +316,19 @@ impl S3Store {
         self
     }
 
-    /// The object key of a store path such as `/projects/<id>/version.json`.
     fn key(&self, remote: &str) -> String {
         format!("{}{}", self.key_prefix, remote.trim_start_matches('/'))
+    }
+
+    fn versioned(&self, remote: &str, digits: &str) -> String {
+        format!("{}~{digits}", self.key(remote))
+    }
+
+    fn object_key(&self, remote: &str, rev: Option<&str>) -> String {
+        match rev.and_then(version_of) {
+            Some(digits) => self.versioned(remote, digits),
+            None => self.key(remote),
+        }
     }
 
     fn url(&self, key: &str, query: &str) -> Url {
@@ -352,6 +353,7 @@ impl S3Store {
         body: Option<Vec<u8>>,
         limit: Limit,
     ) -> StoreResult<reqwest::Response> {
+        let body = body.map(Bytes::from);
         let sending = body.as_ref().map_or(0, |bytes| bytes.len() as u64);
         let deadline =
             self.request_timeout + Duration::from_secs(sending / UPLOAD_BYTES_PER_SECOND);
@@ -372,7 +374,9 @@ impl S3Store {
             .join("&");
         let url = self.url(key, &canonical_query);
         let payload_sha256 = match &body {
-            Some(bytes) => hex(ring::digest::digest(&ring::digest::SHA256, bytes).as_ref()),
+            Some(bytes) => {
+                hex(ring::digest::digest(&ring::digest::SHA256, bytes.as_ref()).as_ref())
+            }
             None => sigv4::EMPTY_PAYLOAD_SHA256.to_string(),
         };
         let mut attempt = 0;
@@ -462,33 +466,8 @@ impl S3Store {
         }
     }
 
-    /// The metadata an upload carries: the manifest its round built on and the
-    /// computer it ran on, which tell a later round whether a version no
-    /// manifest holds can still be published.
-    fn marks(&self, placement: &Placement) -> Vec<(&'static str, String)> {
-        let (base, device) = self.mark_names();
-        vec![
-            (base, placement.base_mark()),
-            (device, placement.device.clone()),
-        ]
-    }
-
-    fn mark_names(&self) -> (&'static str, &'static str) {
-        match self.dialect {
-            Dialect::Aws => ("x-amz-meta-oleafly-base", "x-amz-meta-oleafly-device"),
-            Dialect::Gcs => ("x-goog-meta-oleafly-base", "x-goog-meta-oleafly-device"),
-        }
-    }
-
-    async fn put_key(
-        &self,
-        key: &str,
-        bytes: Vec<u8>,
-        mode: &WriteMode,
-        marks: &[(&'static str, String)],
-    ) -> StoreResult<String> {
-        let mut headers = self.conditions(mode);
-        headers.extend_from_slice(marks);
+    async fn put_key(&self, key: &str, bytes: Vec<u8>, mode: &WriteMode) -> StoreResult<String> {
+        let headers = self.conditions(mode);
         let response = self
             .send(Method::PUT, key, &[], &headers, Some(bytes), Limit::Timed)
             .await?;
@@ -500,57 +479,45 @@ impl S3Store {
         })
     }
 
-    /// After an upload over the version its round read was refused: the write
-    /// to make instead, when what is there now can't end up in a manifest, or
-    /// `None` when another computer may still publish it. The round then
-    /// counts a conflict and merges once that computer has published.
-    async fn replaceable(
-        &self,
-        key: &str,
-        placement: &Placement,
-    ) -> StoreResult<Option<WriteMode>> {
-        // A manifest published since the round started may hold it.
-        let manifest = self.head_key(&self.key(&placement.manifest)).await?;
-        if manifest.map(|meta| meta.rev) != placement.manifest_rev {
-            return Ok(None);
+    async fn put_version(&self, remote: &str, bytes: Vec<u8>) -> StoreResult<String> {
+        let digits = new_version();
+        self.put_key(&self.versioned(remote, &digits), bytes, &WriteMode::Add)
+            .await?;
+        Ok(format!("{VERSION_MARK}{digits}"))
+    }
+
+    async fn confirm_refusal(&self, key: &str) -> StoreError {
+        match self.list_page(key, None, Some(1)).await {
+            Ok(_) => StoreError::Server(
+                "AccessDenied: the storage service refused to read a file".into(),
+            ),
+            Err(error) => error,
         }
+    }
+
+    async fn head_headers(&self, key: &str) -> StoreResult<Option<reqwest::header::HeaderMap>> {
         let response = self
             .send(Method::HEAD, key, &[], &[], None, Limit::Timed)
             .await?;
         if response.status().as_u16() == 404 {
-            return Ok(Some(WriteMode::Add));
-        }
-        if !response.status().is_success() {
-            return Err(failure(response).await);
-        }
-        let headers = response.headers();
-        let (base, device) = self.mark_names();
-        let mark = |name: &str| headers.get(name).and_then(|value| value.to_str().ok());
-        // Another computer wrote it over the same manifest, and publishes it
-        // next unless this round publishes first. Anything else is this
-        // computer's own write from a round that didn't publish, or one whose
-        // round built on an older manifest and so can't publish any more.
-        if mark(base) == Some(placement.base_mark().as_str())
-            && mark(device) != Some(placement.device.as_str())
-        {
             return Ok(None);
         }
-        Ok(self.rev_of(headers).map(WriteMode::Update))
+        if !response.status().is_success() {
+            let error = failure(response).await;
+            if error == StoreError::Revoked {
+                return Err(self.confirm_refusal(key).await);
+            }
+            return Err(error);
+        }
+        Ok(Some(response.headers().clone()))
     }
 
     async fn head_key(&self, key: &str) -> StoreResult<Option<RemoteMeta>> {
-        let response = self
-            .send(Method::HEAD, key, &[], &[], None, Limit::Timed)
-            .await?;
-        if response.status().as_u16() == 404 {
+        let Some(headers) = self.head_headers(key).await? else {
             return Ok(None);
-        }
-        if !response.status().is_success() {
-            return Err(failure(response).await);
-        }
-        let rev = self.rev_of(response.headers()).unwrap_or_default();
-        let size = response
-            .headers()
+        };
+        let rev = self.rev_of(&headers).unwrap_or_default();
+        let size = headers
             .get(reqwest::header::CONTENT_LENGTH)
             .and_then(|value| value.to_str().ok())
             .and_then(|value| value.parse().ok())
@@ -574,11 +541,23 @@ impl S3Store {
         token: Option<&str>,
         max_keys: Option<u32>,
     ) -> StoreResult<Listing> {
+        self.list_request(prefix, token, max_keys, true).await
+    }
+
+    async fn list_request(
+        &self,
+        prefix: &str,
+        token: Option<&str>,
+        max_keys: Option<u32>,
+        delimited: bool,
+    ) -> StoreResult<Listing> {
         let mut query = vec![
             ("list-type", "2".to_string()),
             ("prefix", prefix.to_string()),
-            ("delimiter", "/".to_string()),
         ];
+        if delimited {
+            query.push(("delimiter", "/".to_string()));
+        }
         if let Some(token) = token {
             query.push(("continuation-token", token.to_string()));
         }
@@ -591,26 +570,18 @@ impl S3Store {
         if !response.status().is_success() {
             return Err(failure(response).await);
         }
-        let body = read_capped(response, MAX_LIST_BYTES).await?;
+        let body = read_text(response, MAX_LIST_BYTES).await?;
         parse_listing(&body, prefix)
     }
 
-    async fn upload_parts(
-        &self,
-        key: &str,
-        local: &Path,
-        placement: Option<&Placement>,
-    ) -> StoreResult<Uploaded> {
+    async fn upload_parts(&self, key: &str, local: &Path) -> StoreResult<(ContentHash, u64)> {
         let before = file_state(local).await?;
-        let marks = placement
-            .map(|placement| self.marks(placement))
-            .unwrap_or_default();
         let response = self
             .send(
                 Method::POST,
                 key,
                 &[("uploads", String::new())],
-                &marks,
+                &[],
                 None,
                 Limit::Timed,
             )
@@ -618,13 +589,11 @@ impl S3Store {
         if !response.status().is_success() {
             return Err(failure(response).await);
         }
-        let created = read_capped(response, MAX_ERROR_BYTES).await?;
+        let created = read_text(response, MAX_ERROR_BYTES).await?;
         let upload_id = xml_text(&created, "UploadId").ok_or_else(|| {
             StoreError::Server("the storage service didn't start the upload".into())
         })?;
-        let uploaded = self
-            .send_parts(key, local, &upload_id, before, placement)
-            .await;
+        let uploaded = self.send_parts(key, local, &upload_id, before).await;
         if uploaded.is_err() {
             let _ = self
                 .send(
@@ -646,8 +615,7 @@ impl S3Store {
         local: &Path,
         upload_id: &str,
         before: (u64, Option<SystemTime>),
-        placement: Option<&Placement>,
-    ) -> StoreResult<Uploaded> {
+    ) -> StoreResult<(ContentHash, u64)> {
         let mut file = tokio::fs::File::open(local)
             .await
             .map_err(|error| StoreError::Io(error.to_string()))?;
@@ -715,25 +683,9 @@ impl S3Store {
             ));
         }
         manifest.push_str("</CompleteMultipartUpload>");
-        let mode = placement.map_or(WriteMode::Overwrite, |placement| placement.mode.clone());
-        let rev = match self.complete(key, upload_id, &manifest, &mode).await {
-            Err(StoreError::Conflict) => {
-                let instead = match placement {
-                    Some(placement) => self.replaceable(key, placement).await?,
-                    None => None,
-                };
-                match instead {
-                    Some(mode) => self.complete(key, upload_id, &manifest, &mode).await?,
-                    None => return Err(StoreError::Conflict),
-                }
-            }
-            completed => completed?,
-        };
-        Ok(Uploaded {
-            rev,
-            hash: hasher.finish(),
-            size,
-        })
+        self.complete(key, upload_id, &manifest, &WriteMode::Add)
+            .await?;
+        Ok((hasher.finish(), size))
     }
 
     async fn complete(
@@ -742,7 +694,7 @@ impl S3Store {
         upload_id: &str,
         parts: &str,
         mode: &WriteMode,
-    ) -> StoreResult<String> {
+    ) -> StoreResult<()> {
         loop {
             let conditions = if self.plain_completions.load(Ordering::Relaxed) {
                 Vec::new()
@@ -760,23 +712,16 @@ impl S3Store {
                 )
                 .await?;
             let status = response.status();
-            let headers = response.headers().clone();
-            let body = read_capped(response, MAX_ERROR_BYTES).await?;
+            let date_skewed = skewed(response.headers());
+            let body = read_text(response, MAX_ERROR_BYTES).await?;
             let code = xml_text(&body, "Code");
             // A completion can fail after the reply has started, so S3
             // reports it inside a 200.
             if status.is_success() && code.is_none() {
-                return self
-                    .rev_of(&headers)
-                    .or_else(|| xml_text(&body, "ETag"))
-                    .ok_or_else(|| {
-                        StoreError::Server("the upload finished without a version".into())
-                    });
+                return Ok(());
             }
-            match refusal(status.as_u16(), &body) {
+            match refusal(status.as_u16(), &body, date_skewed) {
                 StoreError::Conflict => return Err(StoreError::Conflict),
-                // The probe tries conditional writes, not conditional
-                // completions; a service without them completes as before.
                 StoreError::Rejected(detail)
                     if !conditions.is_empty() && detail.starts_with("NotImplemented") =>
                 {
@@ -792,9 +737,6 @@ impl S3Store {
         }
     }
 
-    /// Checks that sync can work in this bucket: the keys are accepted, the
-    /// bucket can be listed and written, and writes can be made conditional.
-    /// Leaves nothing behind.
     pub(crate) async fn probe(&self) -> Result<(), ProbeError> {
         self.list_page(&self.key_prefix, None, Some(1))
             .await
@@ -817,13 +759,10 @@ impl S3Store {
             other => probe_failure(other, what),
         };
         let first = self
-            .put_key(key, b"one".to_vec(), &WriteMode::Add, &[])
+            .put_key(key, b"one".to_vec(), &WriteMode::Add)
             .await
             .map_err(|error| refused(error, "a create-only write"))?;
-        match self
-            .put_key(key, b"two".to_vec(), &WriteMode::Add, &[])
-            .await
-        {
+        match self.put_key(key, b"two".to_vec(), &WriteMode::Add).await {
             Err(StoreError::Conflict) => {}
             Ok(_) => {
                 return Err(ProbeError::NoConditionalWrites(
@@ -837,7 +776,7 @@ impl S3Store {
             Dialect::Gcs => "1".to_string(),
         };
         match self
-            .put_key(key, b"three".to_vec(), &WriteMode::Update(stale), &[])
+            .put_key(key, b"three".to_vec(), &WriteMode::Update(stale))
             .await
         {
             Err(StoreError::Conflict) => {}
@@ -848,7 +787,7 @@ impl S3Store {
             }
             Err(error) => return Err(refused(error, "a write against an old version")),
         }
-        self.put_key(key, b"four".to_vec(), &WriteMode::Update(first), &[])
+        self.put_key(key, b"four".to_vec(), &WriteMode::Update(first))
             .await
             .map_err(|error| match error {
                 StoreError::Conflict => ProbeError::NoConditionalWrites(
@@ -887,24 +826,11 @@ fn xml_escape(text: &str) -> String {
         .replace('"', "&quot;")
 }
 
-async fn read_capped(mut response: reqwest::Response, cap: usize) -> StoreResult<String> {
-    let mut bytes = Vec::new();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| StoreError::Network(error.to_string()))?
-    {
-        if bytes.len() + chunk.len() > cap {
-            return Err(StoreError::Server(
-                "the storage service's reply is too large".into(),
-            ));
-        }
-        bytes.extend_from_slice(&chunk);
-    }
+async fn read_text(response: reqwest::Response, cap: usize) -> StoreResult<String> {
+    let bytes = read_capped(response, cap).await?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// The text of the first element named `name`, anywhere in `xml`.
 fn xml_text(xml: &str, name: &str) -> Option<String> {
     let document = roxmltree::Document::parse(xml).ok()?;
     document
@@ -928,17 +854,25 @@ fn parse_listing(xml: &str, prefix: &str) -> StoreResult<Listing> {
     let mut listing = Listing {
         files: Vec::new(),
         folders: Vec::new(),
+        stamped: Vec::new(),
         next: None,
     };
     for node in root.children().filter(roxmltree::Node::is_element) {
         match node.tag_name().name() {
             "Contents" => {
-                if let Some(name) = child_text(node, "Key")
+                let Some(name) = child_text(node, "Key")
                     .and_then(|key| key.strip_prefix(prefix).map(str::to_string))
-                    .filter(|name| !name.is_empty() && !name.contains('/'))
-                {
-                    listing.files.push(name);
+                    .filter(|name| !name.is_empty())
+                else {
+                    continue;
+                };
+                let modified = child_text(node, "LastModified")
+                    .as_deref()
+                    .and_then(sigv4::parse_iso8601);
+                if !name.contains('/') {
+                    listing.files.push(name.clone());
                 }
+                listing.stamped.push((name, modified));
             }
             "CommonPrefixes" => {
                 if let Some(name) = child_text(node, "Prefix").and_then(|key| {
@@ -969,13 +903,14 @@ fn parse_listing(xml: &str, prefix: &str) -> StoreResult<Listing> {
 
 async fn failure(response: reqwest::Response) -> StoreError {
     let status = response.status().as_u16();
-    let body = read_capped(response, MAX_ERROR_BYTES)
+    let date_skewed = skewed(response.headers());
+    let body = read_text(response, MAX_ERROR_BYTES)
         .await
         .unwrap_or_default();
-    refusal(status, &body)
+    refusal(status, &body, date_skewed)
 }
 
-fn refusal(status: u16, body: &str) -> StoreError {
+fn refusal(status: u16, body: &str, date_skewed: bool) -> StoreError {
     let code = xml_text(body, "Code").unwrap_or_default();
     match (status, code.as_str()) {
         // AWS answers a write against a version of a key that is gone with
@@ -984,6 +919,8 @@ fn refusal(status: u16, body: &str) -> StoreError {
         | (_, "PreconditionFailed")
         | (404, "NoSuchKey")
         | (409, "ConditionalRequestConflict" | "OperationAborted") => StoreError::Conflict,
+        (_, "RequestTimeTooSkewed" | "RequestExpired") => StoreError::ClockSkew,
+        (401 | 403, _) if date_skewed => StoreError::ClockSkew,
         (401 | 403, "AccessDenied") => {
             StoreError::Server(format!("AccessDenied: {}", message(body)))
         }
@@ -1012,6 +949,10 @@ fn message(body: &str) -> String {
 }
 
 impl CloudStore for S3Store {
+    fn label(&self) -> &'static str {
+        "S3-compatible storage"
+    }
+
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>> {
         let mut response = self
             .send(
@@ -1051,17 +992,14 @@ impl CloudStore for S3Store {
     async fn fetch_to(
         &self,
         remote: &str,
-        _rev: Option<&str>,
+        rev: Option<&str>,
         local: &Path,
         limit: u64,
     ) -> StoreResult<Option<Fetched>> {
-        // A bucket keeps only the latest version; the engine checks what
-        // arrives against the record's hash. An upload replaces only the
-        // version its round read, so a mismatch has a newer manifest coming.
         let response = self
             .send(
                 Method::GET,
-                &self.key(remote),
+                &self.object_key(remote, rev),
                 &[],
                 &[],
                 None,
@@ -1078,36 +1016,30 @@ impl CloudStore for S3Store {
     }
 
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String> {
-        self.put_key(&self.key(remote), bytes, &mode, &[]).await
+        self.put_key(&self.key(remote), bytes, &mode).await
+    }
+
+    async fn put_content(&self, remote: &str, bytes: Vec<u8>) -> StoreResult<String> {
+        self.put_version(remote, bytes).await
     }
 
     async fn put_path(&self, remote: &str, local: &Path) -> StoreResult<Uploaded> {
-        let key = self.key(remote);
-        let placement = Placement::of(remote);
         let before = file_state(local).await?;
         if before.0 > SINGLE_PUT_LIMIT {
-            return self.upload_parts(&key, local, placement.as_ref()).await;
+            let digits = new_version();
+            let (hash, size) = self
+                .upload_parts(&self.versioned(remote, &digits), local)
+                .await?;
+            return Ok(Uploaded {
+                rev: format!("{VERSION_MARK}{digits}"),
+                hash,
+                size,
+            });
         }
         let bytes = read_unchanged(local, before).await?;
         let hash = ContentHash::digest(&bytes);
         let size = bytes.len() as u64;
-        let Some(placement) = placement else {
-            let rev = self
-                .put_key(&key, bytes, &WriteMode::Overwrite, &[])
-                .await?;
-            return Ok(Uploaded { rev, hash, size });
-        };
-        let marks = self.marks(&placement);
-        let rev = match self.put_key(&key, bytes, &placement.mode, &marks).await {
-            Err(StoreError::Conflict) => {
-                let Some(mode) = self.replaceable(&key, &placement).await? else {
-                    return Err(StoreError::Conflict);
-                };
-                let bytes = read_unchanged(local, before).await?;
-                self.put_key(&key, bytes, &mode, &marks).await?
-            }
-            written => written?,
-        };
+        let rev = self.put_version(remote, bytes).await?;
         Ok(Uploaded { rev, hash, size })
     }
 
@@ -1116,8 +1048,6 @@ impl CloudStore for S3Store {
         files: &[super::store::BatchFile],
         tick: &(dyn Fn() + Sync),
     ) -> Vec<StoreResult<Uploaded>> {
-        // Collected before buffering: a stream that maps to futures borrowing
-        // each file doesn't satisfy the Send bound the commands need.
         let pending: Vec<_> = files
             .iter()
             .map(|file| async move {
@@ -1133,25 +1063,92 @@ impl CloudStore for S3Store {
     }
 
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()> {
+        if let Some(digits) = parent_rev.and_then(version_of) {
+            return self.delete_key(&self.versioned(remote, digits)).await;
+        }
         let key = self.key(remote);
-        match self.head_key(&key).await? {
-            Some(meta) => {
-                if parent_rev.is_some_and(|rev| rev != meta.rev) {
-                    return Err(StoreError::Conflict);
+        let Some(meta) = self.head_key(&key).await? else {
+            return Ok(());
+        };
+        if parent_rev.is_some_and(|rev| rev != meta.rev) {
+            return Err(StoreError::Conflict);
+        }
+        self.delete_key(&key).await
+    }
+
+    async fn delete_folder(&self, remote: &str) -> StoreResult<()> {
+        let prefix = format!("{}/", self.key(remote).trim_end_matches('/'));
+        let inside = self.list_page(&prefix, None, Some(1)).await?;
+        if inside.files.is_empty() && inside.folders.is_empty() {
+            Ok(())
+        } else {
+            Err(StoreError::FolderTooLarge)
+        }
+    }
+
+    async fn retire_versions(&self, versions: &[BatchDelete]) {
+        let keys: Vec<String> = versions
+            .iter()
+            .filter_map(|item| {
+                let digits = item.parent_rev.as_deref().and_then(version_of)?;
+                Some(self.versioned(&item.remote, digits))
+            })
+            .collect();
+        let pending: Vec<_> = keys.iter().map(|key| self.delete_key(key)).collect();
+        let _: Vec<_> = stream::iter(pending)
+            .buffer_unordered(UPLOAD_CONCURRENCY)
+            .collect()
+            .await;
+    }
+
+    async fn stale_versions(
+        &self,
+        files_remote: &str,
+        manifest_remote: &str,
+        manifest_rev: &str,
+        min_age: Duration,
+    ) -> StoreResult<Vec<(String, String)>> {
+        let Some(headers) = self.head_headers(&self.key(manifest_remote)).await? else {
+            return Ok(Vec::new());
+        };
+        let published = header_ms(&headers, reqwest::header::LAST_MODIFIED);
+        let (true, Some(published)) = (
+            self.rev_of(&headers).as_deref() == Some(manifest_rev),
+            published,
+        ) else {
+            return Ok(Vec::new());
+        };
+        let now = header_ms(&headers, reqwest::header::DATE)
+            .unwrap_or_else(|| i64::try_from(crate::cloud::engine::now_ms()).unwrap_or(i64::MAX));
+        let min_age = i64::try_from(min_age.as_millis()).unwrap_or(i64::MAX);
+        let cutoff = published
+            .saturating_sub(MANIFEST_MARGIN_MS)
+            .min(now.saturating_sub(min_age));
+        let prefix = format!("{}/", self.key(files_remote).trim_end_matches('/'));
+        let mut stale = Vec::new();
+        let mut token: Option<String> = None;
+        for _ in 0..MAX_SWEEP_PAGES {
+            let page = self
+                .list_request(&prefix, token.as_deref(), None, false)
+                .await?;
+            for (name, modified) in page.stamped {
+                if modified.is_none_or(|modified| modified >= cutoff) {
+                    continue;
                 }
-                self.delete_key(&key).await
+                let Some((path, digits)) = name.rsplit_once('~') else {
+                    continue;
+                };
+                let rev = format!("{VERSION_MARK}{digits}");
+                if !path.is_empty() && version_of(&rev).is_some() {
+                    stale.push((path.to_string(), rev));
+                }
             }
-            // A bucket has no folders, only keys that share a prefix; one with
-            // anything under it is emptied by the caller, file by file.
-            None => {
-                let inside = self.list_page(&format!("{key}/"), None, Some(1)).await?;
-                if inside.files.is_empty() && inside.folders.is_empty() {
-                    Ok(())
-                } else {
-                    Err(StoreError::FolderTooLarge)
-                }
+            match page.next {
+                Some(next) => token = Some(next),
+                None => break,
             }
         }
+        Ok(stale)
     }
 
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>> {

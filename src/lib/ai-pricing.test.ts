@@ -17,20 +17,16 @@ describe("lookupPrice", () => {
   });
 
   it("does not misprice a paid model as the free local family", () => {
-    // "mistral-large-2411" only shares the "mistral" substring with the free
-    // local key; it must fall to the paid default, not $0.
     const p = lookupPrice("mistral-large-2411");
     expect(p.inputPerMTok).toBeGreaterThan(0);
     expect(p.note).toBe("estimate");
   });
 
   it("does not let a short unknown id borrow a longer id's price", () => {
-    // "gpt-4" is not a table key; it must not resolve to gpt-4o pricing.
     expect(lookupPrice("gpt-4").note).toBe("estimate");
   });
 
   it("still fuzzy-matches a paid id by a specific substring", () => {
-    // A versioned OpenAI id should still find its base paid price.
     expect(lookupPrice("gpt-4o-2024-08-06").inputPerMTok).toBeGreaterThan(0);
   });
 

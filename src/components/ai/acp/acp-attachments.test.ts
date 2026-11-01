@@ -183,7 +183,6 @@ describe("CLI prompt attachments", () => {
     const queued = draft({ text: "Tighten @chapters/results.tex", mentions: ["chapters/results.tex"] });
     const input = await toPromptInput(queued, session("s"), null);
     expect(input.files).toEqual([{ kind: "project", path: "chapters/results.tex" }]);
-    // With the conversation's project on show, its files now decide.
     const shown = await toPromptInput(queued, session("s"), tree);
     expect(shown.files).toEqual([]);
   });

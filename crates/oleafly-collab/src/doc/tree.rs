@@ -281,10 +281,6 @@ impl ProjectDoc {
         Ok(())
     }
 
-    // A node moved anywhere outside the trash is no longer deleted, so the
-    // stamps that keep it deleted go, as when it is restored. The desktop
-    // brings a deleted file back this way when it was moved on disk, and a
-    // stamp left behind would have the next disk pass remove the file.
     pub(super) fn moved_out_of_trash(
         &self,
         node: TreeID,

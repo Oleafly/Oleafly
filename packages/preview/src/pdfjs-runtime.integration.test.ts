@@ -56,6 +56,8 @@ const RECENT_FEATURES: readonly (readonly [object, string])[] = [
   [Array.prototype, "toSpliced"],
   [Array.prototype, "with"],
   [URL, "parse"],
+  [Response.prototype, "bytes"],
+  [Blob.prototype, "bytes"],
 ];
 
 const SHIPPED_BUILDS = ["build/pdf.mjs", "build/pdf.worker.min.mjs", "web/pdf_viewer.mjs"];
@@ -76,6 +78,7 @@ const RECENT_BUILT_INS: readonly (readonly [string, RegExp, "polyfilled" | "dete
   ["Iterator helpers", /\.(?:keys|values|entries)\(\)\.(?:map|filter|take|drop|flatMap|reduce|toArray|forEach|some|every|find)\(|\.toArray\(\)/u, "polyfilled"],
   ["Iterator.from, concat and zip", /Iterator\.(?:from|concat|zip)\(/u, "missing"],
   ["URL.parse", /URL\.parse\(/u, "polyfilled"],
+  ["Response and Blob bytes", /\.bytes\(\)/u, "polyfilled"],
   ["URL.canParse", /URL\.canParse\(/u, "missing"],
   ["Array change by copy", /\.(?:toReversed|toSorted|toSpliced)\(/u, "polyfilled"],
   ["Object and Map groupBy", /(?:Object|Map)\.groupBy\(/u, "missing"],
@@ -118,7 +121,7 @@ async function loadedFonts(fixture: string) {
   });
   try {
     const data = new Uint8Array(readFileSync(new URL(`./__fixtures__/${fixture}`, import.meta.url)));
-    const task = pdfjs.getDocument({ data, fontExtraProperties: true });
+    const task = pdfjs.getDocument({ data, fontExtraProperties: true, useSystemFonts: true });
     const page = await (await task.promise).getPage(1);
     const operators = await page.getOperatorList();
     const fonts = new Map<string, LoadedFont>();
@@ -173,7 +176,7 @@ function onePagePdf(filter: string, encoded: Uint8Array) {
 async function readFirstPage(data: Uint8Array) {
   const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
   try {
-    const task = pdfjs.getDocument({ data, fontExtraProperties: true });
+    const task = pdfjs.getDocument({ data, fontExtraProperties: true, useSystemFonts: true });
     const page = await (await task.promise).getPage(1);
     const operators = await page.getOperatorList();
     const fonts: { name?: string; data?: Uint8Array }[] = [];

@@ -1,7 +1,3 @@
-//! CLI-agent preferences kept in `sessions.sqlite`: the Experimental
-//! switches, how long a silent agent may run, what each agent remembers
-//! (model, effort, mode, the Oleafly key it is routed through), per-project
-//! agent settings and what each agent reported about itself.
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -16,11 +12,8 @@ const MAX_CHOICE_VALUE: usize = 256;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AcpPreferences {
-    /// "Use ACP v2 when available".
     pub experimental_v2: bool,
-    /// "Let agents use my Oleafly API keys".
     pub experimental_providers: bool,
-    /// Minutes an agent may send nothing before Oleafly stops it.
     pub inactivity_minutes: u32,
 }
 
@@ -56,12 +49,10 @@ pub struct AgentPreferences {
     pub effort: Option<RememberedChoice>,
     pub mode: Option<RememberedChoice>,
     pub model: Option<RememberedChoice>,
-    /// The Oleafly provider whose key this agent is routed through.
     pub provider: Option<String>,
 }
 
 impl AgentPreferences {
-    /// Bounds what a window may store.
     pub fn normalized(mut self) -> Self {
         for choice in [&mut self.effort, &mut self.mode, &mut self.model] {
             if let Some(value) = choice {
@@ -83,7 +74,6 @@ impl AgentPreferences {
     }
 }
 
-/// A choice Oleafly applies to new sessions; `name` is shown in Settings.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RememberedChoice {
@@ -135,7 +125,6 @@ pub fn protocol_label(protocol: ProtocolVersion) -> String {
 }
 
 impl AgentRuntimeInfo {
-    /// What an `initialize` answer says, with agent-written texts redacted.
     pub fn from_negotiated(
         negotiated: &Negotiated,
         auth_methods: Vec<AuthMethod>,

@@ -1,5 +1,3 @@
-//! The "Test" button in Settings › Research › Compute: connects to a target,
-//! checks what runs need there, and asks about an unknown host key.
 use std::time::Duration;
 
 use oleafly_agent::CancellationToken;
@@ -91,7 +89,6 @@ else
 fi
 "#;
 
-/// The check script (with the Slurm lines for a cluster).
 pub fn test_script(slurm: bool) -> &'static str {
     use std::sync::OnceLock;
     static WITH_SLURM: OnceLock<String> = OnceLock::new();
@@ -122,7 +119,6 @@ fn is_version(value: &str) -> bool {
         })
 }
 
-/// The checks the script printed.
 pub fn parse_test_output(stdout: &str) -> Vec<ComputeCheck> {
     let mut checks = Vec::new();
     let mut gpus: Vec<String> = Vec::new();
@@ -424,7 +420,6 @@ async fn test_cua(
     found.relay
 }
 
-/// Tests a target and records the result in `compute.json`.
 pub async fn test_target(
     host: &dyn ComputeHost,
     target: &ComputeTarget,
