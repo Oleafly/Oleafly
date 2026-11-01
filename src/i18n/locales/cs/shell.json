@@ -56,12 +56,7 @@
     "assistantMascot": "Maskot asistenta AI aplikace Oleafly"
   },
   "changelog": {
-    "installed": "Máte tuto verzi",
-    "sectionItems_one": "{{count}} změna",
-    "sectionItems_few": "{{count}} změny",
-    "sectionItems_many": "{{count}} změny",
-    "sectionItems_other": "{{count}} změn",
-    "showNotes": "Zobrazit poznámky"
+    "installed": "Máte tuto verzi"
   },
   "citeOleafly": {
     "description": "V tomto projektu nebyl nalezen soubor bibliografie, takže se nic nezměnilo. Zkopírujte si záznam níže do své bibliografie, nebo jej později najdete v Nastavení, Nápověda a informace.",

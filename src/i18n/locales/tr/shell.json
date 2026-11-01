@@ -54,10 +54,7 @@
     "assistantMascot": "Oleafly yapay zeka asistanı maskotu"
   },
   "changelog": {
-    "installed": "Bu sürümü kullanıyorsunuz",
-    "sectionItems_one": "{{count}} değişiklik",
-    "sectionItems_other": "{{count}} değişiklik",
-    "showNotes": "Notları göster"
+    "installed": "Bu sürümü kullanıyorsunuz"
   },
   "citeOleafly": {
     "description": "Bu projede kaynakça dosyası bulunamadı, bu yüzden hiçbir şey değişmedi. Aşağıdaki kaydı kaynakçanıza kopyalayın veya daha sonra Ayarlar'daki Yardım ve hakkında bölümünden yeniden bulun.",

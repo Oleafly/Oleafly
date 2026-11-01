@@ -53,9 +53,7 @@
     "assistantMascot": "Oleafly AI 助理吉祥物"
   },
   "changelog": {
-    "installed": "你目前使用的版本",
-    "sectionItems_other": "{{count}} 項變更",
-    "showNotes": "顯示說明"
+    "installed": "你目前使用的版本"
   },
   "citeOleafly": {
     "description": "這個專案中找不到參考文獻檔案，因此未做任何變更。請將下方條目複製到你的參考文獻中，或稍後在設定的「說明與關於」中再次找到它。",

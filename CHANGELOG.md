@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Release notes are open from the start, in the update window and in What's
+  new. Every section of every release shows in full, however many changes it
+  has. Before, a long section such as Fixed showed only a count until you
+  clicked it, and What's new closed the releases you already had.
+
 ## [0.4.9] - 2026-10-31
 
 ### Added

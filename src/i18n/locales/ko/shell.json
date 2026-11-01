@@ -53,9 +53,7 @@
     "assistantMascot": "Oleafly AI 어시스턴트 마스코트"
   },
   "changelog": {
-    "installed": "현재 쓰고 있는 버전입니다",
-    "sectionItems_other": "변경 사항 {{count}}개",
-    "showNotes": "릴리스 노트 보기"
+    "installed": "현재 쓰고 있는 버전입니다"
   },
   "citeOleafly": {
     "description": "이 프로젝트에서 참고문헌 파일을 찾지 못해 아무것도 바꾸지 않았습니다. 아래 항목을 참고문헌에 복사하거나, 나중에 설정의 도움말 및 정보에서 다시 찾으세요.",

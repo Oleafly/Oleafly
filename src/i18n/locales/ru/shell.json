@@ -56,12 +56,7 @@
     "assistantMascot": "Маскот ИИ-ассистента Oleafly"
   },
   "changelog": {
-    "installed": "У вас эта версия",
-    "sectionItems_one": "{{count}} изменение",
-    "sectionItems_few": "{{count}} изменения",
-    "sectionItems_many": "{{count}} изменений",
-    "sectionItems_other": "{{count}} изменения",
-    "showNotes": "Показать заметки о выпуске"
+    "installed": "У вас эта версия"
   },
   "citeOleafly": {
     "description": "В этом проекте не найден файл библиографии, поэтому ничего не изменилось. Скопируйте запись ниже в свою библиографию или найдите её позже в настройках, раздел «Справка и о программе».",

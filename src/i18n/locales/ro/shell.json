@@ -55,11 +55,7 @@
     "assistantMascot": "Mascota asistentului AI Oleafly"
   },
   "changelog": {
-    "installed": "Ai această versiune",
-    "sectionItems_one": "{{count}} modificare",
-    "sectionItems_few": "{{count}} modificări",
-    "sectionItems_other": "{{count}} de modificări",
-    "showNotes": "Arată notele de lansare"
+    "installed": "Ai această versiune"
   },
   "citeOleafly": {
     "description": "Nu s-a găsit niciun fișier de bibliografie în acest proiect, așa că nu s-a schimbat nimic. Copiază intrarea de mai jos în bibliografia ta sau găsește-o din nou mai târziu în Setări, Ajutor și Despre.",

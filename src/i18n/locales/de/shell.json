@@ -54,10 +54,7 @@
     "assistantMascot": "Maskottchen des Oleafly KI-Assistenten"
   },
   "changelog": {
-    "installed": "Sie nutzen diese Version",
-    "sectionItems_one": "{{count}} Änderung",
-    "sectionItems_other": "{{count}} Änderungen",
-    "showNotes": "Hinweise anzeigen"
+    "installed": "Sie nutzen diese Version"
   },
   "citeOleafly": {
     "description": "In diesem Projekt wurde keine Bibliografiedatei gefunden, deshalb wurde nichts geändert. Kopieren Sie den Eintrag unten in Ihr Literaturverzeichnis oder finden Sie ihn später unter Einstellungen, Hilfe & Über wieder.",

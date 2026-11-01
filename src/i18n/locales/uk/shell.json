@@ -56,12 +56,7 @@
     "assistantMascot": "Маскот асистента ШІ Oleafly"
   },
   "changelog": {
-    "installed": "У вас ця версія",
-    "sectionItems_one": "{{count}} зміна",
-    "sectionItems_few": "{{count}} зміни",
-    "sectionItems_many": "{{count}} змін",
-    "sectionItems_other": "{{count}} зміни",
-    "showNotes": "Показати примітки"
+    "installed": "У вас ця версія"
   },
   "citeOleafly": {
     "description": "У цьому проєкті не знайдено файлу бібліографії, тож нічого не змінено. Скопіюйте запис нижче у свою бібліографію або знайдіть його пізніше в налаштуваннях, розділ «Довідка та про застосунок».",

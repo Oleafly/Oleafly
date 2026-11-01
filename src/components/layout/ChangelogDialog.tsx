@@ -7,12 +7,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { loadReleaseNotesRenderer, openableReleaseLink } from "@/components/layout/ReleaseNotes";
 import { ReleaseTimeline, VersionTag, type ReleaseHistoryView } from "@/components/layout/ReleaseTimeline";
-import {
-  compareVersions,
-  tauriReleasePageFetcher,
-  useReleaseHistory,
-  type ReleaseEntry,
-} from "@/lib/release-history";
+import { compareVersions, tauriReleasePageFetcher, useReleaseHistory } from "@/lib/release-history";
 import { appVersion } from "@/lib/tauri";
 import { openUpdateWindow } from "@/lib/updater";
 
@@ -38,11 +33,6 @@ export function ChangelogView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const newest = history.entries[0]?.version;
   const behind = Boolean(installedVersion && newest && compareVersions(installedVersion, newest) < 0);
-  const expandRelease = useCallback(
-    (entry: ReleaseEntry, index: number) =>
-      index === 0 || Boolean(installedVersion && compareVersions(entry.version, installedVersion) > 0),
-    [installedVersion],
-  );
 
   return (
     <div
@@ -92,7 +82,6 @@ export function ChangelogView({
           scrollRef={scrollRef}
           history={history}
           installedVersion={installedVersion || undefined}
-          expandRelease={expandRelease}
           locale={locale}
           now={now}
           onOpenLink={onOpenLink}

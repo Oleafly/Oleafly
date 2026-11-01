@@ -54,10 +54,7 @@
     "assistantMascot": "Maskot för Oleaflys AI-assistent"
   },
   "changelog": {
-    "installed": "Du kör den här versionen",
-    "sectionItems_one": "{{count}} ändring",
-    "sectionItems_other": "{{count}} ändringar",
-    "showNotes": "Visa anteckningar"
+    "installed": "Du kör den här versionen"
   },
   "citeOleafly": {
     "description": "Ingen bibliografifil hittades i det här projektet, så ingenting ändrades. Kopiera posten nedan till din bibliografi, eller hitta den igen senare under Inställningar, Hjälp och om.",

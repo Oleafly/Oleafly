@@ -131,7 +131,7 @@ function renderEntries(installedVersion: string, entries: ReturnType<typeof gith
 describe("ChangelogView release notes", () => {
   beforeAll(() => loadReleaseNotesRenderer());
 
-  it("keeps the GitHub download note out and folds older releases to a section summary", () => {
+  it("keeps the GitHub download note out and shows older releases in full", () => {
     const [newest, older] = renderEntries("0.4.3", [
       githubRelease("0.4.3", 1, githubBody("0.4.3", { Added: 1, Fixed: 2 })),
       githubRelease("0.4.2", 4, githubBody("0.4.2", { Added: 1, Fixed: 2 })),
@@ -140,47 +140,40 @@ describe("ChangelogView release notes", () => {
     expect(within(newest).getByText("Fixed item 2 in 0.4.3.")).toBeInTheDocument();
     expect(screen.queryByText(/installer below/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Downloads:/)).not.toBeInTheDocument();
-
-    const summary = within(older).getByRole("button", { expanded: false });
-    expect(summary).toHaveTextContent("Added 1 · Fixed 2");
-    expect(within(older).queryByText("Fixed item 1 in 0.4.2.")).not.toBeInTheDocument();
-    fireEvent.click(summary);
-    expect(summary).toHaveAttribute("aria-expanded", "true");
-    expect(within(older).getByText("Fixed item 1 in 0.4.2.")).toBeInTheDocument();
+    expect(within(older).getByText("Added item 1 in 0.4.2.")).toBeInTheDocument();
+    expect(within(older).getByText("Fixed item 2 in 0.4.2.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { expanded: false })).not.toBeInTheDocument();
   });
 
-  it("folds the big sections of the newest release behind a count", () => {
+  it("shows every section of a big release in full", () => {
     const [newest] = renderEntries("0.4.3", [
-      githubRelease("0.4.3", 1, githubBody("0.4.3", { Added: 2, Changed: 1, Fixed: 52, Security: 4 })),
+      githubRelease("0.4.3", 1, githubBody("0.4.3", { Added: 21, Changed: 18, Fixed: 59, Security: 10 })),
     ]);
-    expect(within(newest).getByText("Added item 2 in 0.4.3.")).toBeInTheDocument();
-    expect(within(newest).getByText("Changed item 1 in 0.4.3.")).toBeInTheDocument();
-    expect(within(newest).queryByText("Fixed item 1 in 0.4.3.")).not.toBeInTheDocument();
-    expect(within(newest).queryByText("Security item 1 in 0.4.3.")).not.toBeInTheDocument();
-
-    const fixed = within(newest).getByRole("button", { name: /Fixed/ });
-    expect(fixed).toHaveAttribute("aria-expanded", "false");
-    expect(fixed).toHaveTextContent("52 changes");
-    expect(within(newest).getByRole("button", { name: /Security/ })).toHaveTextContent("4 changes");
-    fireEvent.click(fixed);
-    expect(fixed).toHaveAttribute("aria-expanded", "true");
-    expect(within(newest).getByText("Fixed item 52 in 0.4.3.")).toBeInTheDocument();
-    expect(within(newest).queryByText("Security item 1 in 0.4.3.")).not.toBeInTheDocument();
+    for (const text of [
+      "Added item 21 in 0.4.3.",
+      "Changed item 18 in 0.4.3.",
+      "Fixed item 1 in 0.4.3.",
+      "Fixed item 59 in 0.4.3.",
+      "Security item 10 in 0.4.3.",
+    ]) {
+      expect(within(newest).getByText(text)).toBeInTheDocument();
+    }
+    expect(within(newest).getByRole("heading", { name: "Fixed" })).toBeInTheDocument();
+    expect(within(newest).queryByRole("button", { expanded: false })).not.toBeInTheDocument();
   });
 
-  it("keeps every release newer than the installed one open", () => {
-    const items = renderEntries("0.4.1", [
+  it("keeps the installed release and older ones open", () => {
+    const items = renderEntries("0.4.2", [
       githubRelease("0.4.3", 1, githubBody("0.4.3", { Added: 1 })),
       githubRelease("0.4.2", 4, githubBody("0.4.2", { Added: 1 })),
       githubRelease("0.4.1", 12, githubBody("0.4.1", { Added: 1 })),
     ]);
     expect(within(items[0]).getByText("Added item 1 in 0.4.3.")).toBeInTheDocument();
     expect(within(items[1]).getByText("Added item 1 in 0.4.2.")).toBeInTheDocument();
-    expect(within(items[2]).queryByText("Added item 1 in 0.4.1.")).not.toBeInTheDocument();
-    expect(within(items[2]).getByRole("button", { expanded: false })).toHaveTextContent("Added 1");
+    expect(within(items[2]).getByText("Added item 1 in 0.4.1.")).toBeInTheDocument();
   });
 
-  it("shows a folded release's opening note once, without a repeated title", () => {
+  it("shows an older release's opening note once, without a repeated title", () => {
     const repeated = githubBody("0.4.0", { Added: 1 }, "> Before updating from 0.3.13, save your work.").replace(
       "## What's new in 0.4.0\r\n",
       "## What's new in 0.4.0\r\n\r\n## What's new in 0.4.0\r\n",
@@ -189,12 +182,12 @@ describe("ChangelogView release notes", () => {
       githubRelease("0.4.3", 1, githubBody("0.4.3", { Added: 1 })),
       githubRelease("0.4.0", 20, repeated),
     ]);
-    expect(within(older).getByText("Before updating from 0.3.13, save your work.")).toBeInTheDocument();
+    expect(within(older).getAllByText("Before updating from 0.3.13, save your work.")).toHaveLength(1);
     expect(within(older).queryByText("What's new in 0.4.0")).not.toBeInTheDocument();
-    expect(within(older).getByRole("button", { expanded: false })).toHaveTextContent("Added 1");
+    expect(within(older).getByText("Added item 1 in 0.4.0.")).toBeInTheDocument();
   });
 
-  it("offers to show the notes of a long folded release that has no sections", () => {
+  it("shows the notes of an older release that has no sections", () => {
     const install = [
       "Download the installer for your platform below.",
       "",
@@ -206,11 +199,8 @@ describe("ChangelogView release notes", () => {
       githubRelease("0.1.0", 300, install),
     ]);
     expect(within(pointer).getByText(/See the changelog/)).toBeInTheDocument();
-    expect(within(pointer).queryByRole("button", { expanded: false })).not.toBeInTheDocument();
-    const show = within(legacy).getByRole("button", { expanded: false });
-    expect(show).toHaveTextContent(enShell.changelog.showNotes);
-    expect(within(legacy).queryByText("Install step 1 for this platform.")).not.toBeInTheDocument();
-    fireEvent.click(show);
     expect(within(legacy).getByText("Install step 1 for this platform.")).toBeInTheDocument();
+    expect(within(legacy).getByText("Install step 6 for this platform.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { expanded: false })).not.toBeInTheDocument();
   });
 });

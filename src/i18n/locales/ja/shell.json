@@ -53,9 +53,7 @@
     "assistantMascot": "Oleafly の AI アシスタントのマスコット"
   },
   "changelog": {
-    "installed": "現在お使いのバージョンです",
-    "sectionItems_other": "{{count}} 件の変更",
-    "showNotes": "リリースノートを表示"
+    "installed": "現在お使いのバージョンです"
   },
   "citeOleafly": {
     "description": "このプロジェクトに参考文献ファイルが見つからなかったため、何も変更していません。下の項目を参考文献ファイルにコピーしてください。あとから設定の「ヘルプと情報」でも見つけられます。",

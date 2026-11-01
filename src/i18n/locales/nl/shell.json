@@ -54,10 +54,7 @@
     "assistantMascot": "Mascotte van de Oleafly AI-assistent"
   },
   "changelog": {
-    "installed": "Je hebt deze versie",
-    "sectionItems_one": "{{count}} wijziging",
-    "sectionItems_other": "{{count}} wijzigingen",
-    "showNotes": "Releaseopmerkingen tonen"
+    "installed": "Je hebt deze versie"
   },
   "citeOleafly": {
     "description": "Er is geen bibliografiebestand in dit project gevonden, dus er is niets gewijzigd. Kopieer het item hieronder naar je bibliografie, of vind het later terug bij Instellingen, Help en Over.",

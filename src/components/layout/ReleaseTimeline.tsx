@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, ExternalLink, RotateCcw } from "lucide-react";
+import { ExternalLink, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PRIMARY_TEXT, ReleaseNotes } from "@/components/layout/ReleaseNotes";
 import {
   inAppReleaseNotes,
-  leadStaysVisible,
   outlineReleaseNotes,
-  releaseSectionFolds,
   withoutClosingHashes,
   type ReleaseNotesOutline,
   type ReleaseNotesSection,
@@ -157,51 +155,14 @@ function TimelineNode({ emphasis, hollow }: Readonly<{ emphasis?: boolean; hollo
   );
 }
 
-const DISCLOSURE =
-  "-mx-1.5 flex max-w-[calc(100%+0.75rem)] items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground";
-
-function DisclosureChevron({ open }: Readonly<{ open: boolean }>) {
-  return (
-    <ChevronRight
-      aria-hidden="true"
-      className={cn("size-3.5 shrink-0 text-muted-foreground motion-safe:transition-transform", open && "rotate-90")}
-    />
-  );
-}
-
 function ReleaseSection({
   section,
   onOpenLink,
 }: Readonly<{ section: ReleaseNotesSection; onOpenLink: (url: string) => void }>) {
-  const { t } = useTranslation(["shell"]);
-  const folds = releaseSectionFolds(section);
-  const [open, setOpen] = useState(!folds);
-  const contentId = useId();
-  const headingClass = "mb-1.5 text-sm font-semibold text-foreground";
   return (
     <section data-release-notes-section={section.heading} className="mt-4 first:mt-0">
-      {folds ? (
-        <h3 className={headingClass}>
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={contentId}
-            onClick={() => setOpen((value) => !value)}
-            className={DISCLOSURE}
-          >
-            <DisclosureChevron open={open} />
-            <span>{section.heading}</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              {t(($) => $.shell.changelog.sectionItems, { count: section.items })}
-            </span>
-          </button>
-        </h3>
-      ) : (
-        <h3 className={headingClass}>{section.heading}</h3>
-      )}
-      <div id={contentId} hidden={!open}>
-        {open && section.body ? <ReleaseNotes source={section.body} onOpenLink={onOpenLink} /> : null}
-      </div>
+      <h3 className="mb-1.5 text-sm font-semibold text-foreground">{section.heading}</h3>
+      {section.body ? <ReleaseNotes source={section.body} onOpenLink={onOpenLink} /> : null}
     </section>
   );
 }
@@ -217,12 +178,11 @@ function keyedSections(sections: readonly ReleaseNotesSection[]) {
 
 function OutlinedReleaseNotes({
   outline,
-  showLead = true,
   onOpenLink,
-}: Readonly<{ outline: ReleaseNotesOutline; showLead?: boolean; onOpenLink: (url: string) => void }>) {
+}: Readonly<{ outline: ReleaseNotesOutline; onOpenLink: (url: string) => void }>) {
   return (
     <>
-      {showLead && outline.lead ? (
+      {outline.lead ? (
         <ReleaseNotes source={outline.lead} onOpenLink={onOpenLink} className={outline.sections.length ? "mb-3" : undefined} />
       ) : null}
       {keyedSections(outline.sections).map(({ key, section }) => (
@@ -240,50 +200,10 @@ export function ReleaseNotesBody({
   return <OutlinedReleaseNotes outline={outline} onOpenLink={onOpenLink} />;
 }
 
-function releaseSummary(outline: ReleaseNotesOutline): string {
-  return outline.sections
-    .map((section) => (section.items > 0 ? `${section.heading} ${section.items}` : section.heading))
-    .join(" · ");
-}
-
-function FoldableReleaseNotes({
-  body,
-  defaultExpanded,
-  onOpenLink,
-}: Readonly<{ body: string; defaultExpanded: boolean; onOpenLink: (url: string) => void }>) {
-  const { t } = useTranslation(["shell"]);
-  const outline = useMemo(() => outlineReleaseNotes(body), [body]);
-  const [toggled, setToggled] = useState<boolean | null>(null);
-  const contentId = useId();
-  const leadVisible = leadStaysVisible(outline.lead);
-  const foldable = outline.sections.length > 0 || Boolean(outline.lead && !leadVisible);
-  if (defaultExpanded || !foldable) return <OutlinedReleaseNotes outline={outline} onOpenLink={onOpenLink} />;
-  const expanded = toggled ?? false;
-  return (
-    <>
-      {leadVisible ? <ReleaseNotes source={outline.lead} onOpenLink={onOpenLink} className="mb-1.5" /> : null}
-      <button
-        type="button"
-        aria-expanded={expanded}
-        aria-controls={contentId}
-        onClick={() => setToggled(!expanded)}
-        className={cn(DISCLOSURE, "text-xs text-muted-foreground")}
-      >
-        <DisclosureChevron open={expanded} />
-        <span className="min-w-0 truncate">{releaseSummary(outline) || t(($) => $.shell.changelog.showNotes)}</span>
-      </button>
-      <div id={contentId} hidden={!expanded} className="mt-2">
-        {expanded ? <OutlinedReleaseNotes outline={outline} showLead={!leadVisible} onOpenLink={onOpenLink} /> : null}
-      </div>
-    </>
-  );
-}
-
 function TimelineItem({
   sectionKey,
   entry,
   installed,
-  defaultExpanded,
   locale,
   now,
   onOpenLink,
@@ -291,7 +211,6 @@ function TimelineItem({
   sectionKey: string;
   entry: ReleaseEntry;
   installed: boolean;
-  defaultExpanded: boolean;
   locale: string;
   now: () => number;
   onOpenLink: (url: string) => void;
@@ -326,19 +245,16 @@ function TimelineItem({
           <ExternalLink aria-hidden="true" className="size-3" />
         </button>
       </div>
-      {body ? <FoldableReleaseNotes body={body} defaultExpanded={defaultExpanded} onOpenLink={onOpenLink} /> : null}
+      {body ? <ReleaseNotesBody source={body} onOpenLink={onOpenLink} /> : null}
     </li>
   );
 }
-
-const EXPAND_EVERY_RELEASE = () => true;
 
 export function ReleaseTimeline({
   scrollRef,
   history,
   lead,
   installedVersion,
-  expandRelease = EXPAND_EVERY_RELEASE,
   endLabel,
   locale,
   now = Date.now,
@@ -348,7 +264,6 @@ export function ReleaseTimeline({
   history?: ReleaseHistoryView;
   lead?: { version: string; content: ReactNode };
   installedVersion?: string;
-  expandRelease?: (entry: ReleaseEntry, index: number) => boolean;
   endLabel?: string | null;
   locale: string;
   now?: () => number;
@@ -402,13 +317,12 @@ export function ReleaseTimeline({
           {lead.content}
         </li>
       )}
-      {history?.entries.map((entry, index) => (
+      {history?.entries.map((entry) => (
         <TimelineItem
           key={entry.version}
           sectionKey={entry.version}
           entry={entry}
           installed={Boolean(installedVersion) && entry.version === installedVersion}
-          defaultExpanded={expandRelease(entry, index)}
           locale={locale}
           now={now}
           onOpenLink={onOpenLink}

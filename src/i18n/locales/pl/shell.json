@@ -56,12 +56,7 @@
     "assistantMascot": "Maskotka asystenta AI Oleafly"
   },
   "changelog": {
-    "installed": "Masz tę wersję",
-    "sectionItems_one": "{{count}} zmiana",
-    "sectionItems_few": "{{count}} zmiany",
-    "sectionItems_many": "{{count}} zmian",
-    "sectionItems_other": "{{count}} zmiany",
-    "showNotes": "Pokaż informacje o wydaniu"
+    "installed": "Masz tę wersję"
   },
   "citeOleafly": {
     "description": "W tym projekcie nie znaleziono pliku bibliografii, więc nic nie zostało zmienione. Skopiuj poniższą pozycję do swojej bibliografii albo znajdź ją później w Ustawieniach, w sekcji Pomoc i informacje.",

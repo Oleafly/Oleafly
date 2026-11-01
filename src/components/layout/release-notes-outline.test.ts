@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { inAppReleaseNotes, outlineReleaseNotes, releaseSectionFolds } from "./release-notes-outline";
+import { inAppReleaseNotes, outlineReleaseNotes } from "./release-notes-outline";
 import { splitNotesTitle } from "./ReleaseTimeline";
 
 const FOOTER_043 =
@@ -49,7 +49,7 @@ describe("splitNotesTitle", () => {
 });
 
 describe("outlineReleaseNotes", () => {
-  it("splits the lead from the sections and counts top-level items", () => {
+  it("splits the lead from the sections", () => {
     const outline = outlineReleaseNotes(
       [
         "> Save your work first.",
@@ -71,11 +71,10 @@ describe("outlineReleaseNotes", () => {
       ].join("\n"),
     );
     expect(outline.lead).toBe("> Save your work first.");
-    expect(outline.sections.map(({ heading, items }) => [heading, items])).toEqual([
-      ["Added", 2],
-      ["Fixed", 1],
-    ]);
+    expect(outline.sections.map(({ heading }) => heading)).toEqual(["Added", "Fixed"]);
+    expect(outline.sections[0].body).toBe("- One that wraps\n  onto a second line.\n  - A nested point.\n- Two.");
     expect(outline.sections[1].body).toContain("### not a heading");
+    expect(outline.sections[1].body).toContain("* Three.");
   });
 
   it("does not take inline code that starts a line for a code fence", () => {
@@ -95,10 +94,8 @@ describe("outlineReleaseNotes", () => {
         "- Two.",
       ].join("\n"),
     );
-    expect(outline.sections.map(({ heading, items }) => [heading, items])).toEqual([
-      ["Fixed", 2],
-      ["Security", 2],
-    ]);
+    expect(outline.sections.map(({ heading }) => heading)).toEqual(["Fixed", "Security"]);
+    expect(outline.sections[0].body).toContain("- Two.");
   });
 
   it("closes a fence only on a bare run of the same character, at least as long", () => {
@@ -112,16 +109,16 @@ describe("outlineReleaseNotes", () => {
         "~~~~",
         "```` not a close",
         "````  ",
-        "- One.",
+        "### One",
         "",
         "~~~",
-        "- not an item",
+        "### not a heading either",
         "```",
         "~~~",
-        "- Two.",
+        "### Two",
       ].join("\n"),
     );
-    expect(outline.sections.map(({ heading, items }) => [heading, items])).toEqual([["Fixed", 2]]);
+    expect(outline.sections.map(({ heading }) => heading)).toEqual(["Fixed", "One", "Two"]);
   });
 
   it("outlines the full 0.4.3 notes with every section", () => {
@@ -131,23 +128,11 @@ describe("outlineReleaseNotes", () => {
     expect(start).toBeGreaterThanOrEqual(0);
     const notes = changelog.slice(changelog.indexOf("\n", start) + 1, end);
     const outline = outlineReleaseNotes(inAppReleaseNotes(`${notes}\n\n${FOOTER_043}`));
-    expect(outline.sections.map(({ heading, items }) => [heading, items])).toEqual([
-      ["Added", 8],
-      ["Changed", 8],
-      ["Fixed", 52],
-      ["Security", 4],
-    ]);
+    expect(outline.sections.map(({ heading }) => heading)).toEqual(["Added", "Changed", "Fixed", "Security"]);
+    expect(outline.sections[2].body.split("\n").filter((line) => line.startsWith("- "))).toHaveLength(52);
   });
 
   it("returns only a lead when the notes have no sections", () => {
     expect(outlineReleaseNotes("See the changelog.")).toEqual({ lead: "See the changelog.", sections: [] });
-  });
-
-  it("folds big sections other than Added and Changed", () => {
-    expect(releaseSectionFolds({ heading: "Fixed", body: "", items: 52 })).toBe(true);
-    expect(releaseSectionFolds({ heading: "Security", body: "", items: 4 })).toBe(true);
-    expect(releaseSectionFolds({ heading: "Fixed", body: "", items: 3 })).toBe(false);
-    expect(releaseSectionFolds({ heading: "Added", body: "", items: 8 })).toBe(false);
-    expect(releaseSectionFolds({ heading: "Changed", body: "", items: 26 })).toBe(true);
   });
 });

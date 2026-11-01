@@ -55,11 +55,7 @@
     "assistantMascot": "Mascote do assistente de IA do Oleafly"
   },
   "changelog": {
-    "installed": "Você está nesta versão",
-    "sectionItems_one": "{{count}} mudança",
-    "sectionItems_many": "{{count}} mudanças",
-    "sectionItems_other": "{{count}} mudanças",
-    "showNotes": "Mostrar notas da versão"
+    "installed": "Você está nesta versão"
   },
   "citeOleafly": {
     "description": "Nenhum arquivo de bibliografia foi encontrado neste projeto, então nada foi alterado. Copie a entrada abaixo para a sua bibliografia ou encontre-a depois em Configurações, Ajuda e sobre.",

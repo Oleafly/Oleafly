@@ -54,10 +54,7 @@
     "assistantMascot": "Oleafly AI assistant mascot"
   },
   "changelog": {
-    "installed": "You're on this version",
-    "sectionItems_one": "{{count}} change",
-    "sectionItems_other": "{{count}} changes",
-    "showNotes": "Show notes"
+    "installed": "You're on this version"
   },
   "citeOleafly": {
     "description": "No bibliography file was found in this project, so nothing was changed. Copy the entry below into your bibliography, or find it again later under Settings, Help & About.",

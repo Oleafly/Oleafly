@@ -54,10 +54,7 @@
     "assistantMascot": "Maskot for Oleaflys AI-assistent"
   },
   "changelog": {
-    "installed": "Du har denne version",
-    "sectionItems_one": "{{count}} ændring",
-    "sectionItems_other": "{{count}} ændringer",
-    "showNotes": "Vis noter"
+    "installed": "Du har denne version"
   },
   "citeOleafly": {
     "description": "Der blev ikke fundet nogen litteraturfil i dette projekt, så intet blev ændret. Kopier posten nedenfor ind i din litteraturliste, eller find den igen senere under Indstillinger, Hjælp og Om.",

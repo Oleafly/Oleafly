@@ -113,6 +113,47 @@ describe("UpdateDialog", () => {
     expect(screen.getByTestId("release-history-end")).toHaveTextContent("You're on v0.4.1");
   });
 
+  it("opens every section of the new release and of each skipped one, however long", () => {
+    const section = (version: string, heading: string, count: number) => [
+      `### ${heading}`,
+      "",
+      ...Array.from({ length: count }, (_, index) => `- ${heading} ${index + 1} in ${version}.`),
+      "",
+    ];
+    const notes = (version: string) =>
+      [
+        `## What's new in ${version}`,
+        "",
+        ...section(version, "Added", 21),
+        ...section(version, "Changed", 18),
+        ...section(version, "Fixed", 59),
+        ...section(version, "Security", 10),
+      ].join("\n");
+    render(
+      <UpdateDialog
+        {...props({ notes: notes("0.4.3") })}
+        history={history({
+          status: "done",
+          entries: [
+            {
+              version: "0.4.2",
+              publishedAt: new Date(NOW - 14 * DAY).toISOString(),
+              body: notes("0.4.2"),
+              url: "https://github.com/Oleafly/Oleafly/releases/tag/v0.4.2",
+            },
+          ],
+        })}
+      />,
+    );
+    const items = screen.getAllByTestId("release-timeline-item");
+    for (const [index, version] of [[0, "0.4.3"], [1, "0.4.2"]] as const) {
+      for (const text of ["Added 21", "Changed 18", "Fixed 1", "Fixed 59", "Security 10"]) {
+        expect(within(items[index]).getByText(`${text} in ${version}.`)).toBeInTheDocument();
+      }
+    }
+    expect(screen.queryByRole("button", { expanded: false })).not.toBeInTheDocument();
+  });
+
   it("asks for the next release only while the history is idle", () => {
     const idle = history();
     const { rerender } = render(<UpdateDialog {...props()} history={idle} />);

@@ -53,9 +53,7 @@
     "assistantMascot": "Linh vật trợ lý AI Oleafly"
   },
   "changelog": {
-    "installed": "Bạn đang dùng phiên bản này",
-    "sectionItems_other": "{{count}} thay đổi",
-    "showNotes": "Hiện ghi chú"
+    "installed": "Bạn đang dùng phiên bản này"
   },
   "citeOleafly": {
     "description": "Không tìm thấy tệp tài liệu tham khảo nào trong dự án này, nên không có gì bị thay đổi. Hãy sao chép mục bên dưới vào tài liệu tham khảo của bạn, hoặc tìm lại sau trong Cài đặt, Trợ giúp & Giới thiệu.",

@@ -54,10 +54,7 @@
     "assistantMascot": "Oleaflyn tekoälyavustajan maskotti"
   },
   "changelog": {
-    "installed": "Käytössä on tämä versio",
-    "sectionItems_one": "{{count}} muutos",
-    "sectionItems_other": "{{count}} muutosta",
-    "showNotes": "Näytä julkaisutiedot"
+    "installed": "Käytössä on tämä versio"
   },
   "citeOleafly": {
     "description": "Tästä projektista ei löytynyt lähdeluettelotiedostoa, joten mitään ei muutettu. Kopioi alla oleva viite lähdeluetteloosi tai etsi se myöhemmin kohdasta Asetukset, Ohje ja tietoja.",
