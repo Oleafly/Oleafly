@@ -31,10 +31,10 @@ jobs:
       matrix:
         include:
           - name: macOS (Apple Silicon)
-            os: macos-14
+            os: macos-15
             target: aarch64-apple-darwin
           - name: macOS (Intel)
-            os: macos-14
+            os: macos-15
             target: x86_64-apple-darwin
           - name: Linux (x86_64, gnu)
             os: ubuntu-22.04

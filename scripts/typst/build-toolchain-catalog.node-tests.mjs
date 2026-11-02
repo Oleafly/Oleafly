@@ -103,7 +103,7 @@ test("the committed catalog validates and is serialized deterministically", () =
   assert.deepEqual(catalog.allowedDownloadHosts, ALLOWED_DOWNLOAD_HOSTS);
 });
 
-test("every curated Typst version carries all four targets with full hashes", () => {
+test("every curated Typst version carries every supported target with full hashes", () => {
   assert.deepEqual(
     catalog.typst.versions.map((release) => release.version),
     [...TYPST_VERSIONS].sort(compareVersions),
@@ -307,7 +307,15 @@ test("asset naming follows each upstream's release layout", () => {
     asset: "tinymist-win32-x64.exe",
     archiveType: "binary",
   });
-  assert.throws(() => typstAssetFor("x86_64-apple-darwin"), /unsupported target/u);
+  assert.deepEqual(typstAssetFor("x86_64-apple-darwin"), {
+    asset: "typst-x86_64-apple-darwin.tar.xz",
+    archiveType: "tar.xz",
+  });
+  assert.deepEqual(tinymistAssetCandidates("x86_64-apple-darwin"), [
+    { asset: "tinymist-x86_64-apple-darwin.tar.gz", archiveType: "tar.gz" },
+    { asset: "tinymist-darwin-x64", archiveType: "binary" },
+  ]);
+  assert.throws(() => typstAssetFor("x86_64-unknown-freebsd"), /unsupported target/u);
   assert.equal(minorOf("0.15.1"), "0.15");
   assert.equal(compareVersions("0.9.0", "0.11.1"), -1);
   assert.equal(isSafeArchiveMember("typst-x/typst"), true);

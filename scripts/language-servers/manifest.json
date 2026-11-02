@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-10-02",
+  "verifiedAt": "2026-11-01",
   "supportedTargets": [
     "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
     "aarch64-unknown-linux-gnu",
     "x86_64-unknown-linux-gnu",
     "x86_64-pc-windows-msvc"
@@ -92,6 +93,18 @@
           "binarySize": 15265888,
           "outputFilename": "texlab-aarch64-apple-darwin",
           "url": "https://mirrors.oleafly.com/language-servers/texlab/5.26.0/texlab-aarch64-macos.tar.gz",
+          "upstreamChecksumUrl": null
+        },
+        "x86_64-apple-darwin": {
+          "asset": "texlab-x86_64-macos.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "texlab",
+          "archiveSha256": "6091611f756b28e1a57612b130c196df4b0bb6e22dde5cf5d890578513397daf",
+          "archiveSize": 10253264,
+          "binarySha256": "7ffd8a3a6c71b7d5f90ca765079cf350a50d1a08e74fbed466b153b47518d19e",
+          "binarySize": 15468684,
+          "outputFilename": "texlab-x86_64-apple-darwin",
+          "url": "https://mirrors.oleafly.com/language-servers/texlab/5.26.0/texlab-x86_64-macos.tar.gz",
           "upstreamChecksumUrl": null
         },
         "aarch64-unknown-linux-gnu": {
@@ -200,6 +213,19 @@
           "resourceRelativePath": "resources/language-servers/tinymist/0.15.8/tinymist-aarch64-apple-darwin.tar.gz",
           "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-aarch64-apple-darwin.tar.gz",
           "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-aarch64-apple-darwin.tar.gz.sha256"
+        },
+        "x86_64-apple-darwin": {
+          "asset": "tinymist-x86_64-apple-darwin.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "tinymist-x86_64-apple-darwin/tinymist",
+          "archiveSha256": "0ca702f40c5028d5937e081799a2c07d30c3f8f2ce3e40ce469471856cd6cef1",
+          "archiveSize": 32377988,
+          "binarySha256": "c84ad141a790954b9038d7bdb0ab2383a614009552abc0fb8fe68489884ab9ac",
+          "binarySize": 71088800,
+          "outputFilename": "tinymist-x86_64-apple-darwin",
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.8/tinymist-x86_64-apple-darwin.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-x86_64-apple-darwin.tar.gz",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-x86_64-apple-darwin.tar.gz.sha256"
         },
         "aarch64-unknown-linux-gnu": {
           "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",

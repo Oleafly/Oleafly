@@ -324,6 +324,7 @@ Tectonic、Typst 和 Pandoc 随应用提供，因此新项目无需安装任何�
 | 平台 | 软件包 | 下载 |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![下载 macOS 版（Apple Silicon）](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [下载 macOS 版（Intel）](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI 或 EXE | [![下载 Windows 版](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage、DEB 或 RPM | [![下载 Linux 版（x86_64）](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage、DEB 或 RPM | [![下载 Linux 版（ARM64）](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |

@@ -22,11 +22,12 @@ must equal this manifest's.
 The target allowlist matches Oleafly's existing sidecar tooling:
 
 - `aarch64-apple-darwin`
+- `x86_64-apple-darwin`
 - `aarch64-unknown-linux-gnu`
 - `x86_64-unknown-linux-gnu`
 - `x86_64-pc-windows-msvc`
 
-Production releases build all four targets.
+Production releases build all five targets.
 
 ## Authoritative runtime profiles
 
@@ -349,14 +350,15 @@ that carries the archive as-is fails outright:
     The signature does not include a secure timestamp.
     The executable does not have the hardened runtime enabled.
 
-`scripts/sign-bundled-tinymist.mjs` therefore runs on the macOS release leg. It
+`scripts/sign-bundled-tinymist.mjs` therefore runs on both macOS release legs,
+with `--target` naming the leg's triple. It
 verifies the staged archive against the upstream pin, extracts the binary, signs
 it with our Developer ID under the hardened runtime with a secure timestamp,
 rebuilds the archive with the same internal layout, and rewrites the manifest
 entry to the digests of what we now ship.
 
 **The gap.** After that rewrite, `archiveSha256` and `binarySha256` for
-`aarch64-apple-darwin` describe our re-signed artifact, not upstream's published
+`aarch64-apple-darwin` and `x86_64-apple-darwin` describe our re-signed artifact, not upstream's published
 one. The original digests are preserved as `upstreamArchiveSha256` and
 `upstreamBinarySha256`, but nothing enforces them past the signing step, so the
 supply-chain guarantee for that one target is weaker than for the others: the

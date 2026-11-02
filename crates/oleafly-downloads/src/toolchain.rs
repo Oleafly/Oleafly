@@ -2800,6 +2800,8 @@ mod tests {
     fn running_target() -> &'static str {
         if cfg!(all(target_arch = "aarch64", target_os = "macos")) {
             "aarch64-apple-darwin"
+        } else if cfg!(all(target_arch = "x86_64", target_os = "macos")) {
+            "x86_64-apple-darwin"
         } else if cfg!(all(target_arch = "aarch64", target_os = "linux")) {
             "aarch64-unknown-linux-gnu"
         } else if cfg!(all(target_arch = "x86_64", target_os = "linux")) {

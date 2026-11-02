@@ -324,6 +324,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 | المنصة | الحزمة | التنزيل |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![تنزيل لـ macOS (Apple Silicon)](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [تنزيل لـ macOS (Intel)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI أو EXE | [![تنزيل لـ Windows](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage أو DEB أو RPM | [![تنزيل لـ Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage أو DEB أو RPM | [![تنزيل لـ Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
