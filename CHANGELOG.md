@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Cinnamon showed a generic icon unless the AppImage had been added to the
   applications menu. The icon you pick under App icon in Settings > Appearance
   now changes the taskbar icon on Linux too.
+- On Linux, text in the PDF preview no longer gets orange and blue edges when
+  the desktop uses subpixel font smoothing, such as Rgba antialiasing in
+  Cinnamon. It made the text look as if it had no antialiasing. The preview now
+  draws PDF text in grayscale whatever the desktop setting.
 
 ## [0.4.10] - 2026-11-02
 
