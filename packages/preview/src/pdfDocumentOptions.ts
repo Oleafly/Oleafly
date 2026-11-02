@@ -1,4 +1,5 @@
 import type { getDocument } from "pdfjs-dist";
+import { isWebKit } from "./worker-decompression";
 
 type PdfDocumentParams = NonNullable<Parameters<typeof getDocument>[0]>;
 
@@ -14,6 +15,7 @@ type SharedPdfDocumentOptions = {
   cMapPacked: true;
   iccUrl: string;
   useWorkerFetch: true;
+  disableFontFace?: true;
 };
 
 function appUrl(path: string, base: string): string {
@@ -37,7 +39,19 @@ export function pdfjsIccUrl(base: string = import.meta.env.BASE_URL): string {
   return appUrl(PDFJS_ICCS_PATH, base);
 }
 
-export function sharedPdfDocumentOptions(base: string = import.meta.env.BASE_URL): SharedPdfDocumentOptions {
+// WebKitGTK draws text from a loaded FontFace into a 2D canvas with the
+// desktop's font smoothing. When the desktop asks for subpixel smoothing, every
+// glyph on the page gets orange and blue edges. Glyphs drawn as paths stay
+// grayscale. Other engines keep canvas text grayscale, so they keep FontFace,
+// which renders pages faster.
+export function smoothsCanvasTextLikeTheDesktop(userAgent: string): boolean {
+  return /\bLinux\b/.test(userAgent) && isWebKit(userAgent);
+}
+
+export function sharedPdfDocumentOptions(
+  base: string = import.meta.env.BASE_URL,
+  userAgent: string = globalThis.navigator?.userAgent ?? "",
+): SharedPdfDocumentOptions {
   return {
     standardFontDataUrl: pdfjsStandardFontDataUrl(base),
     wasmUrl: pdfjsWasmUrl(base),
@@ -45,6 +59,7 @@ export function sharedPdfDocumentOptions(base: string = import.meta.env.BASE_URL
     cMapPacked: true,
     iccUrl: pdfjsIccUrl(base),
     useWorkerFetch: true,
+    ...(smoothsCanvasTextLikeTheDesktop(userAgent) ? { disableFontFace: true as const } : {}),
   };
 }
 
