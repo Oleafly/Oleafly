@@ -49,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Accessible export no longer breaks the build on the bundled engine. The
+  `\DocumentMetadata` line it adds now sits inside a version check, so LaTeX
+  older than November 2025 skips it and builds the document untagged. Before,
+  the bundled engine stopped with an error, and TeX Live 2025 as first
+  released wrote a PDF that claimed PDF/UA-2 with no tags. Preflight now says
+  when a build skipped tagging and which LaTeX it ran.
 - Calepin failed to install on macOS and Linux with "failed its integrity
   check". Its archives need 65 MiB of memory to unpack, and Oleafly allowed
   64 MiB.

@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "内置引擎无法生成声明的 PDF/UA 输出",
-      "detail": "此文档声明了 pdfstandard=ua，但内置引擎无法写入标签树，因此生成的 PDF 会带有并不符合实际的 PDF/UA 声明。请使用 TeX Live 2025 或更新版本中的 pdfLaTeX 或 LuaLaTeX 编译，或移除 pdfstandard 键。"
+      "detail": "此文档声明了 pdfstandard=ua，但内置引擎无法写入标签树，因此生成的 PDF 会带有并不符合实际的 PDF/UA 声明。请使用 TeX Live 2026（或 2025 年 11 月以来更新过的 TeX Live）中的 pdfLaTeX 或 LuaLaTeX 编译，或移除 pdfstandard 键。"
     },
     "table-header-rows": {
       "title": "表格首行未标记为表头",
@@ -142,6 +142,11 @@
       "title": "需要再进行一轮编译",
       "detail": "最新日志显示标签、引用或目录尚未稳定。请在导出前重新编译，直到重编译警告消失。"
     },
+    "compile-tagging-skipped": {
+      "title": "由于此 LaTeX 版本过旧，已跳过加标签",
+      "detail": "本次编译运行的是 {{date}} 发布的 LaTeX。带标签的 PDF 需要 {{required}} 或更新版本的 LaTeX，因此 \\DocumentMetadata 周围的检查关闭了加标签，该 PDF 也不带 PDF/UA 声明。要获得带标签的 PDF，请在 TeX Live 2026 中使用“编译带标签版本并验证”，或更新你的 TeX Live 后重新编译。",
+      "detailUndated": "带标签的 PDF 需要 {{required}} 或更新版本的 LaTeX，而本次编译运行的版本更旧，因此 \\DocumentMetadata 周围的检查关闭了加标签，该 PDF 也不带 PDF/UA 声明。要获得带标签的 PDF，请在 TeX Live 2026 中使用“编译带标签版本并验证”，或更新你的 TeX Live 后重新编译。"
+    },
     "compile-duplicate-destination": {
       "title": "PDF 目标位置重复",
       "detail": "两个锚点共享同一目标位置，链接或书签可能因此跳转到错误的位置。这通常由标签重复或页码重新编号引起。"
@@ -201,7 +206,7 @@
     },
     "pdf-untagged-output": {
       "title": "此 PDF 未加标签",
-      "detail": "编译得到的 PDF 不含结构树，屏幕阅读器无法获得标题、列表、表格或阅读顺序，文件也无法满足 PDF/UA-1 第 7.1 条。带标签的输出需要 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX，并配合 \\DocumentMetadata{tagging=on}。内置引擎无法生成标签。在此期间，上方的源码和输出检查仍然适用。"
+      "detail": "编译得到的 PDF 不含结构树，屏幕阅读器无法获得标题、列表、表格或阅读顺序，文件也无法满足 PDF/UA-1 第 7.1 条。带标签的输出需要 TeX Live 2026（或 2025 年 11 月以来更新过的 TeX Live）的 pdfLaTeX 或 LuaLaTeX，并配合 \\DocumentMetadata{tagging=on}。内置引擎无法生成标签。在此期间，上方的源码和输出检查仍然适用。"
     },
     "pdf-structure-missing": {
       "title": "带标签的 PDF 缺少可读取的结构树",
@@ -568,15 +573,15 @@
   },
   "prep": {
     "metadataUpdated": "已将所需的标签键添加到你的 \\DocumentMetadata 中。",
-    "metadataAdded": "已将 \\DocumentMetadata 添加为第一行（必需，必须位于 \\documentclass 之前）。",
+    "metadataAdded": "已将 \\DocumentMetadata 添加为第一行（必需，必须位于 \\documentclass 之前）。它位于一个版本检查之内：早于 {{date}} 的 LaTeX（包括内置引擎）会跳过它，并以无标签方式编译文档，而不是报错失败。",
     "headerRows": "已将 table/header-rows 设置为 1，使每个表格的第一行被标记为表头单元格。如果表格的表头深度不同，请更改此数字。",
     "unicodeMath": "已添加 \\usepackage{unicode-math}，此引擎的数学公式标签功能需要它。",
     "altPlaceholders_other": "已为 {{count}} 张图片添加替代文本占位符。请将 TODO 文本替换为实际描述。",
     "titleRequired": "PDF/UA 需要一个可由阅读器显示的文档标题。请加载 hyperref 并设置 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
     "incompatiblePackages_other": "以下宏包与标签功能不兼容：{{packages}}。来自这些宏包的内容可能未加标签就进入 PDF。请尽可能替换这些宏包。",
     "cautionPackages": "这些宏包仅部分添加标签，或没有记录的标签判定结果：{{packages}}。请编译并检查结构树是否存在缺失。",
-    "compileLua": "请使用 TeX Live 2025 或更新版本中的 LuaLaTeX 编译准备好的源码，然后重新检查输出。",
-    "compileAny": "请使用 TeX Live 2025 或更新版本中的 pdfLaTeX 或 LuaLaTeX 编译准备好的源码，然后重新检查输出。无障碍数学公式需要 LuaLaTeX。内置引擎无法生成标签。"
+    "compileLua": "请使用 TeX Live 2026（或 2025 年 11 月以来更新过的 TeX Live）中的 LuaLaTeX 编译准备好的源码，然后重新检查输出。",
+    "compileAny": "请使用 TeX Live 2026（或 2025 年 11 月以来更新过的 TeX Live）中的 pdfLaTeX 或 LuaLaTeX 编译准备好的源码，然后重新检查输出。无障碍数学公式需要 LuaLaTeX。内置引擎无法生成标签。"
   },
   "gate": {
     "incompatiblePackages_other": "这些宏包与标签功能不兼容：{{packages}}。来自这些宏包的内容可能未加标签就进入 PDF。",
@@ -660,7 +665,7 @@
   },
   "prepExport": {
     "title": "无障碍导出",
-    "intro": "为本文档准备面向 PDF/UA-2 的带标签输出。Oleafly 会添加 \\DocumentMetadata（设置 pdfstandard=ua-2 和 tagging=on），并加入它可填充的替代文本与表格设置。请使用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 编译结果，然后重新检查。无障碍数学公式需要 LuaLaTeX。内置引擎无法生成标签。",
+    "intro": "为本文档准备面向 PDF/UA-2 的带标签输出。Oleafly 会添加 \\DocumentMetadata（设置 pdfstandard=ua-2 和 tagging=on），并加入它可填充的替代文本与表格设置。请使用 TeX Live 2026（或 2025 年 11 月以来更新过的 TeX Live）的 pdfLaTeX 或 LuaLaTeX 编译结果，然后重新检查。无障碍数学公式需要 LuaLaTeX。内置引擎无法生成标签。",
     "activeFileFallback": "Oleafly 无法加载主文档，因此检查了你正在编辑的文件。请打开主文档，查看构建实际加载的文档类和宏包。",
     "prepare": "准备无障碍导出",
     "unavailable": "此文档类不支持准备工作。请切换到标签代码支持的文档类，然后重新运行检查。兼容性数据来自 LaTeX Project，检索于 {{retrieved}}。",
@@ -671,7 +676,7 @@
     "copy": "复制源码",
     "compileTagged": "编译带标签版本并验证",
     "compileTaggedWarning": "系统 LuaLaTeX 可以读取本地文件。请仅对可信项目运行。",
-    "noEngine": "要在应用内生成带标签的 PDF，请在设置的“LaTeX 引擎”中启用一个引擎。也可以使用你自己的 TeX Live 2025 或更新版本中的 pdfLaTeX 或 LuaLaTeX 编译准备好的源码。"
+    "noEngine": "要在应用内生成带标签的 PDF，请在设置的“LaTeX 引擎”中启用一个引擎。也可以使用你自己的 TeX Live 2026（或 2025 年 11 月以来更新过的 TeX Live）中的 pdfLaTeX 或 LuaLaTeX 编译准备好的源码。"
   },
   "typstStandards": {
     "title": "PDF 标准",

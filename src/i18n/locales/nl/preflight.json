@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "De meegeleverde engine kan de opgegeven PDF/UA-uitvoer niet maken",
-      "detail": "Dit document geeft pdfstandard=ua op, maar de meegeleverde engine kan geen tagstructuur schrijven, dus de PDF zou een PDF/UA-claim dragen waaraan hij niet voldoet. Compileer met pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer, of haal de sleutel pdfstandard weg."
+      "detail": "Dit document geeft pdfstandard=ua op, maar de meegeleverde engine kan geen tagstructuur schrijven, dus de PDF zou een PDF/UA-claim dragen waaraan hij niet voldoet. Compileer met pdfLaTeX of LuaLaTeX uit TeX Live 2026 (of een TeX Live die sinds november 2025 is bijgewerkt), of haal de sleutel pdfstandard weg."
     },
     "table-header-rows": {
       "title": "De koprij van de tabel is niet als kop gemarkeerd",
@@ -145,6 +145,11 @@
       "title": "Er is nog een compilatiedoorgang nodig",
       "detail": "Het laatste logboek zegt dat labels, citaties of de inhoudsopgave nog niet vastliggen. Compileer opnieuw tot de waarschuwing over opnieuw uitvoeren verdwijnt, en exporteer daarna pas."
     },
+    "compile-tagging-skipped": {
+      "title": "Taggen is overgeslagen omdat deze LaTeX te oud is",
+      "detail": "Deze build draaide LaTeX van {{date}}. Getagde PDF's hebben LaTeX van {{required}} of nieuwer nodig, dus de controle rond \\DocumentMetadata heeft taggen uitgezet en de PDF doet geen PDF/UA-claim. Wil je een getagde PDF, gebruik dan de knop Getagd compileren en controleren met TeX Live 2026, of werk je TeX Live bij en compileer opnieuw.",
+      "detailUndated": "Getagde PDF's hebben LaTeX van {{required}} of nieuwer nodig en deze build draaide een oudere versie, dus de controle rond \\DocumentMetadata heeft taggen uitgezet en de PDF doet geen PDF/UA-claim. Wil je een getagde PDF, gebruik dan de knop Getagd compileren en controleren met TeX Live 2026, of werk je TeX Live bij en compileer opnieuw."
+    },
     "compile-duplicate-destination": {
       "title": "Dubbele PDF-bestemmingen",
       "detail": "Twee ankers delen dezelfde bestemming, dus links of bladwijzers kunnen naar de verkeerde plek springen. Dit komt vaak door dubbele labels of doordat de paginanummering opnieuw begint."
@@ -209,7 +214,7 @@
     },
     "pdf-untagged-output": {
       "title": "Deze PDF is niet getagd",
-      "detail": "De gecompileerde PDF draagt geen structuurboom, dus een schermlezer krijgt geen koppen, lijsten, tabellen of leesvolgorde en het bestand kan niet voldoen aan PDF/UA-1 clausule 7.1. Getagde uitvoer vraagt pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer met \\DocumentMetadata{tagging=on}. De meegeleverde engine kan geen tags maken. De bron- en uitvoercontroles hierboven blijven intussen gewoon gelden."
+      "detail": "De gecompileerde PDF draagt geen structuurboom, dus een schermlezer krijgt geen koppen, lijsten, tabellen of leesvolgorde en het bestand kan niet voldoen aan PDF/UA-1 clausule 7.1. Getagde uitvoer vraagt pdfLaTeX of LuaLaTeX uit TeX Live 2026 (of een TeX Live die sinds november 2025 is bijgewerkt) met \\DocumentMetadata{tagging=on}. De meegeleverde engine kan geen tags maken. De bron- en uitvoercontroles hierboven blijven intussen gewoon gelden."
     },
     "pdf-structure-missing": {
       "title": "Getagde PDF heeft geen leesbare structuurboom",
@@ -584,7 +589,7 @@
   },
   "prep": {
     "metadataUpdated": "De vereiste tagsleutels zijn aan je \\DocumentMetadata toegevoegd.",
-    "metadataAdded": "\\DocumentMetadata is als eerste regel toegevoegd (verplicht, moet vóór \\documentclass staan).",
+    "metadataAdded": "\\DocumentMetadata is als eerste regel toegevoegd (verplicht, moet vóór \\documentclass staan). Het staat in een versiecontrole: LaTeX ouder dan {{date}}, inclusief de meegeleverde engine, slaat het over en compileert het document ongetagd in plaats van te falen.",
     "headerRows": "table/header-rows is op 1 gezet, zodat de eerste rij van elke tabel als kopcellen wordt getagd. Wijzig het getal als een tabel een andere kopdiepte heeft.",
     "unicodeMath": "\\usepackage{unicode-math} is toegevoegd, dat deze engine nodig heeft voor getagde wiskunde.",
     "altPlaceholders_one": "Er zijn plaatshouders voor alt-tekst toegevoegd aan {{count}} afbeelding. Vervang de TODO-tekst door een echte beschrijving.",
@@ -593,8 +598,8 @@
     "incompatiblePackages_one": "Dit pakket is niet geschikt voor taggen: {{packages}}. Inhoud eruit kan ongetagd in de PDF belanden. Vervang het waar je kunt.",
     "incompatiblePackages_other": "Deze pakketten zijn niet geschikt voor taggen: {{packages}}. Inhoud eruit kan ongetagd in de PDF belanden. Vervang ze waar je kunt.",
     "cautionPackages": "Deze pakketten taggen maar deels, of er is geen tagoordeel voor vastgelegd: {{packages}}. Compileer en controleer de structuurboom op gaten.",
-    "compileLua": "Compileer de voorbereide broncode met LuaLaTeX uit TeX Live 2025 of nieuwer en controleer de uitvoer daarna opnieuw.",
-    "compileAny": "Compileer de voorbereide broncode met pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer en controleer de uitvoer daarna opnieuw. Toegankelijke wiskunde vraagt LuaLaTeX. De meegeleverde engine kan geen tags maken."
+    "compileLua": "Compileer de voorbereide broncode met LuaLaTeX uit TeX Live 2026 (of een TeX Live die sinds november 2025 is bijgewerkt) en controleer de uitvoer daarna opnieuw.",
+    "compileAny": "Compileer de voorbereide broncode met pdfLaTeX of LuaLaTeX uit TeX Live 2026 (of een TeX Live die sinds november 2025 is bijgewerkt) en controleer de uitvoer daarna opnieuw. Toegankelijke wiskunde vraagt LuaLaTeX. De meegeleverde engine kan geen tags maken."
   },
   "gate": {
     "incompatiblePackages_one": "Dit pakket is niet geschikt voor taggen: {{packages}}. Inhoud eruit kan ongetagd in de PDF belanden.",
@@ -683,7 +688,7 @@
   },
   "prepExport": {
     "title": "Toegankelijke export",
-    "intro": "Bereid dit document voor op getagde uitvoer volgens PDF/UA-2. Oleafly voegt \\DocumentMetadata met pdfstandard=ua-2 en tagging=on toe, plus de alt-tekst- en tabelinstellingen die het zelf kan invullen. Compileer het resultaat met pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer en controleer het daarna opnieuw. Toegankelijke wiskunde vraagt LuaLaTeX. De meegeleverde engine kan geen tags maken.",
+    "intro": "Bereid dit document voor op getagde uitvoer volgens PDF/UA-2. Oleafly voegt \\DocumentMetadata met pdfstandard=ua-2 en tagging=on toe, plus de alt-tekst- en tabelinstellingen die het zelf kan invullen. Compileer het resultaat met pdfLaTeX of LuaLaTeX uit TeX Live 2026 (of een TeX Live die sinds november 2025 is bijgewerkt) en controleer het daarna opnieuw. Toegankelijke wiskunde vraagt LuaLaTeX. De meegeleverde engine kan geen tags maken.",
     "activeFileFallback": "Oleafly kon het hoofddocument niet laden en heeft daarom het bestand bekeken waarin je werkt. Open het hoofddocument om de class en pakketten te zien die je build echt laadt.",
     "prepare": "Voorbereiden op toegankelijke export",
     "unavailable": "Voorbereiden staat uit voor deze documentklasse. Stap over op een class die de tagcode ondersteunt en voer de controle opnieuw uit. Compatibiliteitsgegevens van het LaTeX Project, opgehaald op {{retrieved}}.",
@@ -694,7 +699,7 @@
     "copy": "Broncode kopiëren",
     "compileTagged": "Getagd compileren en controleren",
     "compileTaggedWarning": "De LuaLaTeX van je systeem kan lokale bestanden lezen. Voer hem alleen uit voor een project dat je vertrouwt.",
-    "noEngine": "Schakel een engine in bij Instellingen, LaTeX-engine om de getagde PDF in de app te maken. Of compileer de voorbereide broncode met je eigen pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer."
+    "noEngine": "Schakel een engine in bij Instellingen, LaTeX-engine om de getagde PDF in de app te maken. Of compileer de voorbereide broncode met je eigen pdfLaTeX of LuaLaTeX uit TeX Live 2026 (of een TeX Live die sinds november 2025 is bijgewerkt)."
   },
   "typstStandards": {
     "title": "PDF-standaarden",

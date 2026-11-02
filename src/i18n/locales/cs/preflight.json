@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Vestavěný engine neumí vytvořit deklarovaný výstup PDF/UA",
-      "detail": "Tento dokument deklaruje pdfstandard=ua, ale vestavěný engine neumí zapsat strom tagů, takže by PDF neslo tvrzení o PDF/UA, které nesplňuje. Zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího, nebo klíč pdfstandard odeberte."
+      "detail": "Tento dokument deklaruje pdfstandard=ua, ale vestavěný engine neumí zapsat strom tagů, takže by PDF neslo tvrzení o PDF/UA, které nesplňuje. Zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2026 (nebo z TeX Live aktualizovaného od listopadu 2025), nebo klíč pdfstandard odeberte."
     },
     "table-header-rows": {
       "title": "Záhlaví tabulky není označeno jako záhlaví",
@@ -150,6 +150,11 @@
     "compile-rerun-required": {
       "title": "Je potřeba další průchod kompilace",
       "detail": "Poslední protokol říká, že návěští, citace nebo obsah nejsou ustálené. Kompilujte znovu, dokud varování o opakovaném průchodu nezmizí, a teprve pak exportujte."
+    },
+    "compile-tagging-skipped": {
+      "title": "Tagování bylo přeskočeno, protože tento LaTeX je příliš starý",
+      "detail": "Toto sestavení použilo LaTeX z {{date}}. Tagovaná PDF potřebují LaTeX z {{required}} či novější, proto kontrola kolem \\DocumentMetadata tagování vypnula a PDF netvrdí, že splňuje PDF/UA. Chcete-li tagované PDF, použijte „Zkompilovat s tagy a ověřit“ s TeX Live 2026, nebo si TeX Live aktualizujte a zkompilujte znovu.",
+      "detailUndated": "Tagovaná PDF potřebují LaTeX z {{required}} či novější a toto sestavení použilo starší verzi, proto kontrola kolem \\DocumentMetadata tagování vypnula a PDF netvrdí, že splňuje PDF/UA. Chcete-li tagované PDF, použijte „Zkompilovat s tagy a ověřit“ s TeX Live 2026, nebo si TeX Live aktualizujte a zkompilujte znovu."
     },
     "compile-duplicate-destination": {
       "title": "Duplicitní cíle v PDF",
@@ -225,7 +230,7 @@
     },
     "pdf-untagged-output": {
       "title": "Toto PDF není tagované",
-      "detail": "Zkompilované PDF neobsahuje strom struktury, takže čtečka obrazovky nedostane nadpisy, seznamy, tabulky ani pořadí čtení a soubor nemůže splnit článek 7.1 normy PDF/UA-1. Tagovaný výstup potřebuje pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího s \\DocumentMetadata{tagging=on}. Vestavěný engine tagy vytvořit neumí. Kontroly zdroje a výstupu uvedené výše mezitím platí dál."
+      "detail": "Zkompilované PDF neobsahuje strom struktury, takže čtečka obrazovky nedostane nadpisy, seznamy, tabulky ani pořadí čtení a soubor nemůže splnit článek 7.1 normy PDF/UA-1. Tagovaný výstup potřebuje pdfLaTeX nebo LuaLaTeX z TeX Live 2026 (nebo z TeX Live aktualizovaného od listopadu 2025) s \\DocumentMetadata{tagging=on}. Vestavěný engine tagy vytvořit neumí. Kontroly zdroje a výstupu uvedené výše mezitím platí dál."
     },
     "pdf-structure-missing": {
       "title": "Tagované PDF nemá čitelný strom struktury",
@@ -616,7 +621,7 @@
   },
   "prep": {
     "metadataUpdated": "Do vašeho \\DocumentMetadata byly přidány potřebné klíče pro tagování.",
-    "metadataAdded": "\\DocumentMetadata bylo přidáno jako první řádek (je povinné a musí předcházet \\documentclass).",
+    "metadataAdded": "\\DocumentMetadata bylo přidáno jako první řádek (je povinné a musí předcházet \\documentclass). Řádek je uzavřen do kontroly verze: LaTeX starší než {{date}}, včetně vestavěného enginu, jej přeskočí a dokument zkompiluje bez tagů, místo aby selhal.",
     "headerRows": "Nastaveno table/header-rows na 1, takže se první řádek každé tabulky taguje jako buňky záhlaví. Pokud má tabulka jinou hloubku záhlaví, číslo změňte.",
     "unicodeMath": "Přidáno \\usepackage{unicode-math}, které tento engine potřebuje pro tagovanou matematiku.",
     "altPlaceholders_one": "K {{count}} obrázku byly přidány zástupné alternativní texty. Nahraďte text TODO skutečným popisem.",
@@ -629,8 +634,8 @@
     "incompatiblePackages_many": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů. Kde to jde, nahraďte je.",
     "incompatiblePackages_other": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů. Kde to jde, nahraďte je.",
     "cautionPackages": "Tyto balíčky tagují jen zčásti nebo nemají zaznamenaný verdikt o tagování: {{packages}}. Zkompilujte a zkontrolujte strom struktury kvůli mezerám.",
-    "compileLua": "Připravený zdroj zkompilujte pomocí LuaLaTeX z TeX Live 2025 či novějšího a pak výstup znovu zkontrolujte.",
-    "compileAny": "Připravený zdroj zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího a pak výstup znovu zkontrolujte. Přístupná matematika potřebuje LuaLaTeX. Vestavěný engine tagy vytvořit neumí."
+    "compileLua": "Připravený zdroj zkompilujte pomocí LuaLaTeX z TeX Live 2026 (nebo z TeX Live aktualizovaného od listopadu 2025) a pak výstup znovu zkontrolujte.",
+    "compileAny": "Připravený zdroj zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2026 (nebo z TeX Live aktualizovaného od listopadu 2025) a pak výstup znovu zkontrolujte. Přístupná matematika potřebuje LuaLaTeX. Vestavěný engine tagy vytvořit neumí."
   },
   "gate": {
     "incompatiblePackages_one": "Tento balíček není kompatibilní s tagováním: {{packages}}. Obsah z něj může v PDF skončit bez tagů.",
@@ -729,7 +734,7 @@
   },
   "prepExport": {
     "title": "Přístupný export",
-    "intro": "Připravte tento dokument na tagovaný výstup mířící na PDF/UA-2. Oleafly přidá \\DocumentMetadata s pdfstandard=ua-2 a tagging=on plus nastavení alternativních textů a tabulek, které dokáže doplnit. Výsledek zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího a pak jej znovu zkontrolujte. Přístupná matematika potřebuje LuaLaTeX. Vestavěný engine tagy vytvořit neumí.",
+    "intro": "Připravte tento dokument na tagovaný výstup mířící na PDF/UA-2. Oleafly přidá \\DocumentMetadata s pdfstandard=ua-2 a tagging=on plus nastavení alternativních textů a tabulek, které dokáže doplnit. Výsledek zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2026 (nebo z TeX Live aktualizovaného od listopadu 2025) a pak jej znovu zkontrolujte. Přístupná matematika potřebuje LuaLaTeX. Vestavěný engine tagy vytvořit neumí.",
     "activeFileFallback": "Oleafly nedokázal načíst hlavní dokument, proto zkontroloval soubor, který právě upravujete. Otevřete hlavní dokument, abyste viděli třídu a balíčky, které vaše sestavení skutečně načítá.",
     "prepare": "Připravit na přístupný export",
     "unavailable": "Příprava je pro tuto třídu dokumentu vypnutá. Přepněte na třídu, kterou tagovací kód podporuje, a spusťte kontrolu znovu. Data o kompatibilitě z projektu LaTeX, získáno {{retrieved}}.",
@@ -740,7 +745,7 @@
     "copy": "Kopírovat zdroj",
     "compileTagged": "Zkompilovat s tagy a ověřit",
     "compileTaggedWarning": "Systémový LuaLaTeX umí číst místní soubory. Spouštějte jej jen u projektu, kterému věříte.",
-    "noEngine": "Chcete-li tagované PDF vytvořit přímo v aplikaci, zapněte engine v Nastavení, Engine LaTeX. Nebo připravený zdroj zkompilujte vlastním pdfLaTeX či LuaLaTeX z TeX Live 2025 nebo novějšího."
+    "noEngine": "Chcete-li tagované PDF vytvořit přímo v aplikaci, zapněte engine v Nastavení, Engine LaTeX. Nebo připravený zdroj zkompilujte vlastním pdfLaTeX či LuaLaTeX z TeX Live 2026 (nebo z TeX Live aktualizovaného od listopadu 2025)."
   },
   "typstStandards": {
     "title": "Standardy PDF",

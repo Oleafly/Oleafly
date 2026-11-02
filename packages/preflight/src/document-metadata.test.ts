@@ -1,5 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { requestsTaggedPdf } from "./document-metadata";
+import {
+  findDocumentMetadata,
+  formatGuardDate,
+  guardedDocumentMetadata,
+  requestsTaggedPdf,
+} from "./document-metadata";
+
+describe("formatGuardDate", () => {
+  const at = (source: string) => findDocumentMetadata(source)?.start ?? -1;
+
+  it("reads the date of the guard Oleafly writes", () => {
+    const source = `${guardedDocumentMetadata("tagging=on")}\n\\documentclass{article}`;
+    expect(formatGuardDate(source, at(source))).toBe("2025-11-01");
+  });
+
+  it("allows spaces and line breaks inside the guard", () => {
+    const source = "\\IfFormatAtLeastTF { 2026-06-01 }\n  {\n  \\DocumentMetadata{tagging=on}}{}";
+    expect(formatGuardDate(source, at(source))).toBe("2026-06-01");
+  });
+
+  it("is null for an unguarded declaration or a guard that does not wrap it", () => {
+    const plain = "\\DocumentMetadata{tagging=on}\n\\documentclass{article}";
+    expect(formatGuardDate(plain, at(plain))).toBeNull();
+    const elsewhere = "\\IfFormatAtLeastTF{2025-11-01}{}{}\n\\DocumentMetadata{tagging=on}";
+    expect(formatGuardDate(elsewhere, at(elsewhere))).toBeNull();
+  });
+
+  it("still counts the guarded line as a request for a tagged PDF", () => {
+    expect(requestsTaggedPdf(guardedDocumentMetadata("lang=en,pdfstandard=ua-2,tagging=on"))).toBe(true);
+  });
+});
 
 describe("requestsTaggedPdf", () => {
   it("is false without \\DocumentMetadata or with metadata that leaves tagging off", () => {

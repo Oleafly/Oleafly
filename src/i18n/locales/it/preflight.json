@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Il motore incluso non può produrre l'output PDF/UA dichiarato",
-      "detail": "Questo documento dichiara pdfstandard=ua, ma il motore incluso non sa scrivere un albero dei tag, quindi il PDF porterebbe una dichiarazione PDF/UA che non rispetta. Compila con pdfLaTeX o LuaLaTeX da TeX Live 2025 o successive, oppure rimuovi la chiave pdfstandard."
+      "detail": "Questo documento dichiara pdfstandard=ua, ma il motore incluso non sa scrivere un albero dei tag, quindi il PDF porterebbe una dichiarazione PDF/UA che non rispetta. Compila con pdfLaTeX o LuaLaTeX da TeX Live 2026 (o da un TeX Live aggiornato da novembre 2025 in poi), oppure rimuovi la chiave pdfstandard."
     },
     "table-header-rows": {
       "title": "La riga di intestazione della tabella non è marcata come intestazione",
@@ -147,6 +147,11 @@
     "compile-rerun-required": {
       "title": "Serve un'altra passata di compilazione",
       "detail": "L'ultimo log dice che etichette, citazioni o indice non si sono ancora stabilizzati. Ricompila finché l'avviso di nuova esecuzione non scompare, prima di esportare."
+    },
+    "compile-tagging-skipped": {
+      "title": "Il tagging è stato saltato perché questo LaTeX è troppo vecchio",
+      "detail": "Questa compilazione ha usato la versione {{date}} di LaTeX. I PDF taggati richiedono LaTeX {{required}} o successivo, quindi il controllo attorno a \\DocumentMetadata ha disattivato il tagging e il PDF non porta nessuna dichiarazione PDF/UA. Per ottenere un PDF taggato, usa \"Compila con i tag e verifica\" con TeX Live 2026, oppure aggiorna il tuo TeX Live e compila di nuovo.",
+      "detailUndated": "I PDF taggati richiedono LaTeX {{required}} o successivo e questa compilazione ne ha usato uno più vecchio, quindi il controllo attorno a \\DocumentMetadata ha disattivato il tagging e il PDF non porta nessuna dichiarazione PDF/UA. Per ottenere un PDF taggato, usa \"Compila con i tag e verifica\" con TeX Live 2026, oppure aggiorna il tuo TeX Live e compila di nuovo."
     },
     "compile-duplicate-destination": {
       "title": "Destinazioni PDF duplicate",
@@ -217,7 +222,7 @@
     },
     "pdf-untagged-output": {
       "title": "Questo PDF non è taggato",
-      "detail": "Il PDF compilato non porta nessun albero della struttura, quindi uno screen reader non riceve titoli, elenchi, tabelle né ordine di lettura, e il file non può soddisfare la clausola 7.1 di PDF/UA-1. L'output taggato richiede pdfLaTeX o LuaLaTeX da TeX Live 2025 o successive con \\DocumentMetadata{tagging=on}. Il motore incluso non sa produrre i tag. Nel frattempo i controlli sul sorgente e sull'output qui sopra restano validi."
+      "detail": "Il PDF compilato non porta nessun albero della struttura, quindi uno screen reader non riceve titoli, elenchi, tabelle né ordine di lettura, e il file non può soddisfare la clausola 7.1 di PDF/UA-1. L'output taggato richiede pdfLaTeX o LuaLaTeX da TeX Live 2026 (o da un TeX Live aggiornato da novembre 2025 in poi) con \\DocumentMetadata{tagging=on}. Il motore incluso non sa produrre i tag. Nel frattempo i controlli sul sorgente e sull'output qui sopra restano validi."
     },
     "pdf-structure-missing": {
       "title": "Il PDF taggato non ha un albero della struttura leggibile",
@@ -600,7 +605,7 @@
   },
   "prep": {
     "metadataUpdated": "Aggiunte le chiavi di tagging necessarie al tuo \\DocumentMetadata.",
-    "metadataAdded": "Aggiunto \\DocumentMetadata come prima riga (obbligatorio, deve precedere \\documentclass).",
+    "metadataAdded": "Aggiunto \\DocumentMetadata come prima riga (obbligatorio, deve precedere \\documentclass). È racchiuso in un controllo di versione: un LaTeX precedente a {{date}}, compreso il motore incluso, lo salta e compila il documento senza tag invece di fallire.",
     "headerRows": "Impostato table/header-rows a 1, così la prima riga di ogni tabella viene taggata come celle di intestazione. Cambia il numero se una tabella ha un'intestazione di profondità diversa.",
     "unicodeMath": "Aggiunto \\usepackage{unicode-math}, che questo motore richiede per la matematica taggata.",
     "altPlaceholders_one": "Aggiunti segnaposto di testo alternativo a {{count}} immagine. Sostituisci il testo TODO con una descrizione reale.",
@@ -611,8 +616,8 @@
     "incompatiblePackages_many": "Questi pacchetti non sono compatibili con il tagging: {{packages}}. I loro contenuti possono finire nel PDF senza tag. Sostituiscili dove puoi.",
     "incompatiblePackages_other": "Questi pacchetti non sono compatibili con il tagging: {{packages}}. I loro contenuti possono finire nel PDF senza tag. Sostituiscili dove puoi.",
     "cautionPackages": "Questi pacchetti taggano solo in parte, oppure non hanno un verdetto di tagging registrato: {{packages}}. Compila e controlla se l'albero della struttura ha lacune.",
-    "compileLua": "Compila il sorgente preparato con LuaLaTeX da TeX Live 2025 o successive, poi ricontrolla l'output.",
-    "compileAny": "Compila il sorgente preparato con pdfLaTeX o LuaLaTeX da TeX Live 2025 o successive, poi ricontrolla l'output. La matematica accessibile richiede LuaLaTeX. Il motore incluso non sa produrre i tag."
+    "compileLua": "Compila il sorgente preparato con LuaLaTeX da TeX Live 2026 (o da un TeX Live aggiornato da novembre 2025 in poi), poi ricontrolla l'output.",
+    "compileAny": "Compila il sorgente preparato con pdfLaTeX o LuaLaTeX da TeX Live 2026 (o da un TeX Live aggiornato da novembre 2025 in poi), poi ricontrolla l'output. La matematica accessibile richiede LuaLaTeX. Il motore incluso non sa produrre i tag."
   },
   "gate": {
     "incompatiblePackages_one": "Questo pacchetto non è compatibile con il tagging: {{packages}}. I suoi contenuti possono finire nel PDF senza tag.",
@@ -706,7 +711,7 @@
   },
   "prepExport": {
     "title": "Esportazione accessibile",
-    "intro": "Prepara questo documento per un output taggato che punta a PDF/UA-2. Oleafly aggiunge \\DocumentMetadata con pdfstandard=ua-2 e tagging=on, più la configurazione di testo alternativo e tabelle che riesce a compilare. Compila il risultato con pdfLaTeX o LuaLaTeX da TeX Live 2025 o successive, poi ricontrolla. La matematica accessibile richiede LuaLaTeX. Il motore incluso non sa produrre i tag.",
+    "intro": "Prepara questo documento per un output taggato che punta a PDF/UA-2. Oleafly aggiunge \\DocumentMetadata con pdfstandard=ua-2 e tagging=on, più la configurazione di testo alternativo e tabelle che riesce a compilare. Compila il risultato con pdfLaTeX o LuaLaTeX da TeX Live 2026 (o da un TeX Live aggiornato da novembre 2025 in poi), poi ricontrolla. La matematica accessibile richiede LuaLaTeX. Il motore incluso non sa produrre i tag.",
     "activeFileFallback": "Oleafly non è riuscito a caricare il documento principale, quindi ha controllato il file che stai modificando. Apri il documento principale per vedere la classe e i pacchetti che la tua compilazione carica davvero.",
     "prepare": "Prepara per l'esportazione accessibile",
     "unavailable": "La preparazione non è disponibile per questa classe di documento. Passa a una classe supportata dal codice di tagging, poi esegui di nuovo il controllo. Dati di compatibilità del LaTeX Project, recuperati il {{retrieved}}.",
@@ -717,7 +722,7 @@
     "copy": "Copia il sorgente",
     "compileTagged": "Compila con i tag e verifica",
     "compileTaggedWarning": "Il LuaLaTeX di sistema può leggere i file locali. Eseguilo solo per un progetto di cui ti fidi.",
-    "noEngine": "Per produrre il PDF taggato dentro l'app, abilita un motore nelle impostazioni, in Motore LaTeX. Oppure compila il sorgente preparato con il tuo pdfLaTeX o LuaLaTeX da TeX Live 2025 o successive."
+    "noEngine": "Per produrre il PDF taggato dentro l'app, abilita un motore nelle impostazioni, in Motore LaTeX. Oppure compila il sorgente preparato con il tuo pdfLaTeX o LuaLaTeX da TeX Live 2026 (o da un TeX Live aggiornato da novembre 2025 in poi)."
   },
   "typstStandards": {
     "title": "Standard PDF",

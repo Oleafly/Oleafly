@@ -1,5 +1,5 @@
 import { maskComments } from "./mask";
-import { findDocumentMetadata, parseMetadataKeys } from "./document-metadata";
+import { findDocumentMetadata, formatGuardDate, parseMetadataKeys } from "./document-metadata";
 import { containsContactToken } from "./contact";
 import { matchResumeSectionHeading } from "./resume-sections";
 import { annotate } from "./standards";
@@ -411,10 +411,17 @@ const mathMlExportHint: Rule = (text) => {
   ];
 };
 
+// The bundled engine's TeX bundle carries LaTeX 2021-11-15. A declaration
+// wrapped in \IfFormatAtLeastTF with a later date never runs there, so that
+// build makes no PDF/UA claim.
+const BUNDLED_FORMAT_DATE = "2021-11-15";
+
 const uaStandardOnBundledEngine: Rule = (text, context) => {
   if (context.engine !== "bundled") return [];
   const declaration = uaStandardDeclaration(text);
   if (!declaration) return [];
+  const guard = formatGuardDate(text, declaration.from);
+  if (guard && guard > BUNDLED_FORMAT_DATE) return [];
   return [
     make(
       "ua-standard-on-tectonic",

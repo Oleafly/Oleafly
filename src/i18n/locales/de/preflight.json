@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Die mitgelieferte Engine kann die deklarierte PDF/UA-Ausgabe nicht erzeugen",
-      "detail": "Dieses Dokument deklariert pdfstandard=ua, aber die mitgelieferte Engine kann keinen Tag-Baum schreiben, das PDF würde also eine PDF/UA-Behauptung tragen, die es nicht erfüllt. Kompilieren Sie mit pdfLaTeX oder LuaLaTeX aus TeX Live 2025 oder neuer oder entfernen Sie den Schlüssel pdfstandard."
+      "detail": "Dieses Dokument deklariert pdfstandard=ua, aber die mitgelieferte Engine kann keinen Tag-Baum schreiben, das PDF würde also eine PDF/UA-Behauptung tragen, die es nicht erfüllt. Kompilieren Sie mit pdfLaTeX oder LuaLaTeX aus TeX Live 2026 (oder einem seit November 2025 aktualisierten TeX Live) oder entfernen Sie den Schlüssel pdfstandard."
     },
     "table-header-rows": {
       "title": "Die Kopfzeile der Tabelle ist nicht als Kopfzeile ausgezeichnet",
@@ -145,6 +145,11 @@
       "title": "Ein weiterer Kompilierlauf ist nötig",
       "detail": "Das letzte Protokoll sagt, dass Labels, Zitationen oder das Inhaltsverzeichnis noch nicht stabil sind. Kompilieren Sie erneut, bis die Warnung verschwindet, bevor Sie exportieren."
     },
+    "compile-tagging-skipped": {
+      "title": "Tagging wurde übersprungen, weil diese LaTeX-Version zu alt ist",
+      "detail": "Diese Kompilierung hat LaTeX vom {{date}} verwendet. Getaggte PDFs brauchen LaTeX vom {{required}} oder neuer, daher hat die Prüfung rund um \\DocumentMetadata das Tagging abgeschaltet, und das PDF trägt keine PDF/UA-Behauptung. Für ein getaggtes PDF verwenden Sie „Getaggt kompilieren und prüfen“ mit TeX Live 2026 oder aktualisieren Sie Ihr TeX Live und kompilieren Sie erneut.",
+      "detailUndated": "Getaggte PDFs brauchen LaTeX vom {{required}} oder neuer, und diese Kompilierung hat eine ältere Version verwendet, daher hat die Prüfung rund um \\DocumentMetadata das Tagging abgeschaltet, und das PDF trägt keine PDF/UA-Behauptung. Für ein getaggtes PDF verwenden Sie „Getaggt kompilieren und prüfen“ mit TeX Live 2026 oder aktualisieren Sie Ihr TeX Live und kompilieren Sie erneut."
+    },
     "compile-duplicate-destination": {
       "title": "Doppelte PDF-Sprungziele",
       "detail": "Zwei Anker teilen sich dasselbe Ziel, deshalb können Verweise oder Lesezeichen an die falsche Stelle springen. Das kommt meist von doppelten Labels oder von zurückgesetzter Seitennummerierung."
@@ -209,7 +214,7 @@
     },
     "pdf-untagged-output": {
       "title": "Dieses PDF ist nicht getaggt",
-      "detail": "Das kompilierte PDF trägt keinen Strukturbaum, deshalb bekommt ein Screenreader weder Überschriften noch Listen, Tabellen oder eine Lesereihenfolge, und die Datei kann Abschnitt 7.1 von PDF/UA-1 nicht erfüllen. Getaggte Ausgabe braucht pdfLaTeX oder LuaLaTeX aus TeX Live 2025 oder neuer mit \\DocumentMetadata{tagging=on}. Die mitgelieferte Engine kann keine Tags erzeugen. Die Prüfungen von Quelltext und Ausgabe oben gelten in der Zwischenzeit weiter."
+      "detail": "Das kompilierte PDF trägt keinen Strukturbaum, deshalb bekommt ein Screenreader weder Überschriften noch Listen, Tabellen oder eine Lesereihenfolge, und die Datei kann Abschnitt 7.1 von PDF/UA-1 nicht erfüllen. Getaggte Ausgabe braucht pdfLaTeX oder LuaLaTeX aus TeX Live 2026 (oder einem seit November 2025 aktualisierten TeX Live) mit \\DocumentMetadata{tagging=on}. Die mitgelieferte Engine kann keine Tags erzeugen. Die Prüfungen von Quelltext und Ausgabe oben gelten in der Zwischenzeit weiter."
     },
     "pdf-structure-missing": {
       "title": "Getaggtes PDF ohne lesbaren Strukturbaum",
@@ -584,7 +589,7 @@
   },
   "prep": {
     "metadataUpdated": "Die nötigen Tagging-Schlüssel wurden zu Ihrem \\DocumentMetadata hinzugefügt.",
-    "metadataAdded": "\\DocumentMetadata wurde als erste Zeile ergänzt (erforderlich, muss vor \\documentclass stehen).",
+    "metadataAdded": "\\DocumentMetadata wurde als erste Zeile ergänzt (erforderlich, muss vor \\documentclass stehen). Die Zeile steht in einer Versionsprüfung: Ein LaTeX, das älter als {{date}} ist, überspringt sie, die mitgelieferte Engine eingeschlossen, und kompiliert das Dokument ohne Tags, statt zu scheitern.",
     "headerRows": "table/header-rows wurde auf 1 gesetzt, damit die erste Zeile jeder Tabelle als Kopfzellen getaggt wird. Ändern Sie die Zahl, wenn eine Tabelle eine andere Kopftiefe hat.",
     "unicodeMath": "\\usepackage{unicode-math} wurde ergänzt, das diese Engine für getaggte Formeln braucht.",
     "altPlaceholders_one": "In {{count}} Bild wurden Platzhalter für Alternativtexte ergänzt. Ersetzen Sie den TODO-Text durch eine echte Beschreibung.",
@@ -593,8 +598,8 @@
     "incompatiblePackages_one": "Dieses Paket ist mit dem Tagging nicht verträglich: {{packages}}. Inhalt daraus kann ungetaggt im PDF landen. Ersetzen Sie es, wo Sie können.",
     "incompatiblePackages_other": "Diese Pakete sind mit dem Tagging nicht verträglich: {{packages}}. Inhalt daraus kann ungetaggt im PDF landen. Ersetzen Sie sie, wo Sie können.",
     "cautionPackages": "Diese Pakete taggen nur teilweise oder tragen kein erfasstes Tagging-Urteil: {{packages}}. Kompilieren Sie und prüfen Sie den Strukturbaum auf Lücken.",
-    "compileLua": "Kompilieren Sie den vorbereiteten Quelltext mit LuaLaTeX aus TeX Live 2025 oder neuer und prüfen Sie die Ausgabe dann erneut.",
-    "compileAny": "Kompilieren Sie den vorbereiteten Quelltext mit pdfLaTeX oder LuaLaTeX aus TeX Live 2025 oder neuer und prüfen Sie die Ausgabe dann erneut. Barrierefreie Formeln brauchen LuaLaTeX. Die mitgelieferte Engine kann keine Tags erzeugen."
+    "compileLua": "Kompilieren Sie den vorbereiteten Quelltext mit LuaLaTeX aus TeX Live 2026 (oder einem seit November 2025 aktualisierten TeX Live) und prüfen Sie die Ausgabe dann erneut.",
+    "compileAny": "Kompilieren Sie den vorbereiteten Quelltext mit pdfLaTeX oder LuaLaTeX aus TeX Live 2026 (oder einem seit November 2025 aktualisierten TeX Live) und prüfen Sie die Ausgabe dann erneut. Barrierefreie Formeln brauchen LuaLaTeX. Die mitgelieferte Engine kann keine Tags erzeugen."
   },
   "gate": {
     "incompatiblePackages_one": "Dieses Paket ist mit dem Tagging nicht verträglich: {{packages}}. Inhalt daraus kann ungetaggt im PDF landen.",
@@ -683,7 +688,7 @@
   },
   "prepExport": {
     "title": "Barrierefreier Export",
-    "intro": "Bereitet dieses Dokument für getaggte Ausgabe nach PDF/UA-2 vor. Oleafly ergänzt \\DocumentMetadata mit pdfstandard=ua-2 und tagging=on sowie die Einrichtung für Alternativtexte und Tabellen, soweit es sie ausfüllen kann. Kompilieren Sie das Ergebnis mit pdfLaTeX oder LuaLaTeX aus TeX Live 2025 oder neuer und prüfen Sie dann erneut. Barrierefreie Formeln brauchen LuaLaTeX. Die mitgelieferte Engine kann keine Tags erzeugen.",
+    "intro": "Bereitet dieses Dokument für getaggte Ausgabe nach PDF/UA-2 vor. Oleafly ergänzt \\DocumentMetadata mit pdfstandard=ua-2 und tagging=on sowie die Einrichtung für Alternativtexte und Tabellen, soweit es sie ausfüllen kann. Kompilieren Sie das Ergebnis mit pdfLaTeX oder LuaLaTeX aus TeX Live 2026 (oder einem seit November 2025 aktualisierten TeX Live) und prüfen Sie dann erneut. Barrierefreie Formeln brauchen LuaLaTeX. Die mitgelieferte Engine kann keine Tags erzeugen.",
     "activeFileFallback": "Oleafly konnte das Hauptdokument nicht laden und hat deshalb die Datei geprüft, die Sie gerade bearbeiten. Öffnen Sie das Hauptdokument, um die Klasse und die Pakete zu sehen, die Ihr Bau tatsächlich lädt.",
     "prepare": "Für barrierefreien Export vorbereiten",
     "unavailable": "Das Vorbereiten ist für diese Dokumentklasse abgeschaltet. Wechseln Sie zu einer Klasse, die der Tagging-Code unterstützt, und führen Sie die Prüfung erneut aus. Verträglichkeitsdaten vom LaTeX Project, abgerufen {{retrieved}}.",
@@ -694,7 +699,7 @@
     "copy": "Quelltext kopieren",
     "compileTagged": "Getaggt kompilieren und prüfen",
     "compileTaggedWarning": "Das System-LuaLaTeX kann lokale Dateien lesen. Führen Sie es nur für ein Projekt aus, dem Sie vertrauen.",
-    "noEngine": "Um das getaggte PDF in der App zu erzeugen, aktivieren Sie unter Einstellungen, LaTeX-Engine eine Engine. Oder kompilieren Sie den vorbereiteten Quelltext mit Ihrem eigenen pdfLaTeX oder LuaLaTeX aus TeX Live 2025 oder neuer."
+    "noEngine": "Um das getaggte PDF in der App zu erzeugen, aktivieren Sie unter Einstellungen, LaTeX-Engine eine Engine. Oder kompilieren Sie den vorbereiteten Quelltext mit Ihrem eigenen pdfLaTeX oder LuaLaTeX aus TeX Live 2026 (oder einem seit November 2025 aktualisierten TeX Live)."
   },
   "typstStandards": {
     "title": "PDF-Standards",

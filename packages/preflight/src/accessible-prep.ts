@@ -1,9 +1,11 @@
 import { maskComments } from "./mask";
 import {
   findDocumentMetadata,
+  guardedDocumentMetadata,
   type MetadataKeys,
   parseMetadataKeys,
   serializeMetadataKeys,
+  TAGGING_FORMAT_DATE,
   unwrapBraces,
 } from "./document-metadata";
 import { loadedPackagesOf, packageTaggingVerdict } from "./tagging-status";
@@ -72,8 +74,8 @@ function applyDocumentMetadata(
   if (!existing) {
     const headerRows = needsHeaderRows ? ",tagging-setup={table/header-rows={1}}" : "";
     return {
-      out: `\\DocumentMetadata{lang=${lang},pdfstandard=ua-2,tagging=on${headerRows}}\n${source}`,
-      changes: [{ kind: "add", summary: message("prep.metadataAdded") }],
+      out: `${guardedDocumentMetadata(`lang=${lang},pdfstandard=ua-2,tagging=on${headerRows}`)}\n${source}`,
+      changes: [{ kind: "add", summary: message("prep.metadataAdded", { date: TAGGING_FORMAT_DATE }) }],
       headerRowsSet: needsHeaderRows,
     };
   }

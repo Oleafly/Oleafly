@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Paketlenmiş motor, bildirilen PDF/UA çıktısını üretemez",
-      "detail": "Bu belge pdfstandard=ua bildiriyor, ancak paketlenmiş motor etiket ağacı yazamaz. Bu yüzden PDF, karşılamadığı bir PDF/UA iddiası taşır. TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyin veya pdfstandard anahtarını kaldırın."
+      "detail": "Bu belge pdfstandard=ua bildiriyor, ancak paketlenmiş motor etiket ağacı yazamaz. Bu yüzden PDF, karşılamadığı bir PDF/UA iddiası taşır. TeX Live 2026'dan (veya Kasım 2025'ten sonra güncellenmiş bir TeX Live kurulumundan) pdfLaTeX ya da LuaLaTeX ile derleyin veya pdfstandard anahtarını kaldırın."
     },
     "table-header-rows": {
       "title": "Tablo başlık satırı başlık olarak işaretlenmemiş",
@@ -145,6 +145,11 @@
       "title": "Bir derleme geçişi daha gerekiyor",
       "detail": "En son günlük, etiketlerin, atıfların veya içindekiler tablosunun oturmadığını söylüyor. Dışa aktarmadan önce yeniden derleme uyarısı kaybolana kadar derleyin."
     },
+    "compile-tagging-skipped": {
+      "title": "Bu LaTeX çok eski olduğu için etiketleme atlandı",
+      "detail": "Bu derleme {{date}} tarihli LaTeX ile çalıştı. Etiketli PDF'ler {{required}} tarihli veya daha yeni bir LaTeX gerektirir. Bu yüzden \\DocumentMetadata çevresindeki denetim etiketlemeyi kapattı ve PDF herhangi bir PDF/UA iddiası taşımıyor. Etiketli PDF için TeX Live 2026 ile \"Etiketli derle ve doğrula\" düğmesini kullanın veya TeX Live kurulumunuzu güncelleyip yeniden derleyin.",
+      "detailUndated": "Etiketli PDF'ler {{required}} tarihli veya daha yeni bir LaTeX gerektirir, bu derleme ise daha eski bir sürümle çalıştı. Bu yüzden \\DocumentMetadata çevresindeki denetim etiketlemeyi kapattı ve PDF herhangi bir PDF/UA iddiası taşımıyor. Etiketli PDF için TeX Live 2026 ile \"Etiketli derle ve doğrula\" düğmesini kullanın veya TeX Live kurulumunuzu güncelleyip yeniden derleyin."
+    },
     "compile-duplicate-destination": {
       "title": "Yinelenen PDF hedefleri",
       "detail": "İki çapa aynı hedefi paylaşıyor, bu yüzden bağlantılar veya yer imleri yanlış yere atlayabilir. Bu genellikle yinelenen etiketlerden veya sayfa numaralandırmasının sıfırlanmasından kaynaklanır."
@@ -209,7 +214,7 @@
     },
     "pdf-untagged-output": {
       "title": "Bu PDF etiketlenmemiş",
-      "detail": "Derlenen PDF hiç yapı ağacı taşımıyor, bu yüzden ekran okuyucu başlık, liste, tablo veya okuma sırası alamaz ve dosya PDF/UA-1 madde 7.1'i karşılayamaz. Etiketli çıktı, TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile ve \\DocumentMetadata{tagging=on} ile üretilir. Paketlenmiş motor etiket üretemez. Bu arada yukarıdaki kaynak ve çıktı denetimleri yine geçerlidir."
+      "detail": "Derlenen PDF hiç yapı ağacı taşımıyor, bu yüzden ekran okuyucu başlık, liste, tablo veya okuma sırası alamaz ve dosya PDF/UA-1 madde 7.1'i karşılayamaz. Etiketli çıktı, TeX Live 2026'dan (veya Kasım 2025'ten sonra güncellenmiş bir TeX Live kurulumundan) pdfLaTeX ya da LuaLaTeX ile ve \\DocumentMetadata{tagging=on} ile üretilir. Paketlenmiş motor etiket üretemez. Bu arada yukarıdaki kaynak ve çıktı denetimleri yine geçerlidir."
     },
     "pdf-structure-missing": {
       "title": "Etiketli PDF'in okunabilir yapı ağacı yok",
@@ -584,7 +589,7 @@
   },
   "prep": {
     "metadataUpdated": "Gerekli etiketleme anahtarları \\DocumentMetadata içinize eklendi.",
-    "metadataAdded": "\\DocumentMetadata ilk satır olarak eklendi (zorunludur, \\documentclass öncesinde olmalıdır).",
+    "metadataAdded": "\\DocumentMetadata ilk satır olarak eklendi (zorunludur, \\documentclass öncesinde olmalıdır). Bir sürüm denetiminin içinde yer alır: {{date}} tarihinden eski LaTeX, paketlenmiş motor dahil, bunu atlar ve belgeyi hata vermek yerine etiketsiz derler.",
     "headerRows": "Her tablonun ilk satırı başlık hücresi olarak etiketlensin diye table/header-rows 1 yapıldı. Bir tablonun başlık derinliği farklıysa sayıyı değiştirin.",
     "unicodeMath": "Bu motorun etiketli matematik için gereksinim duyduğu \\usepackage{unicode-math} eklendi.",
     "altPlaceholders_one": "{{count}} görsele alternatif metin yer tutucusu eklendi. TODO metnini gerçek bir açıklamayla değiştirin.",
@@ -593,8 +598,8 @@
     "incompatiblePackages_one": "Bu paket etiketlemeyle uyumlu değil: {{packages}}. Ondan gelen içerik PDF'te etiketsiz kalabilir. Değiştirebiliyorsanız değiştirin.",
     "incompatiblePackages_other": "Bu paketler etiketlemeyle uyumlu değil: {{packages}}. Onlardan gelen içerik PDF'te etiketsiz kalabilir. Değiştirebiliyorsanız değiştirin.",
     "cautionPackages": "Bu paketler yalnızca kısmen etiketliyor ya da kayıtlı bir etiketleme sonucu taşımıyor: {{packages}}. Derleyip yapı ağacını boşluklar açısından denetleyin.",
-    "compileLua": "Hazırlanan kaynağı TeX Live 2025 veya daha yenisinden LuaLaTeX ile derleyin, sonra çıktıyı tekrar denetleyin.",
-    "compileAny": "Hazırlanan kaynağı TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyin, sonra çıktıyı tekrar denetleyin. Erişilebilir matematik LuaLaTeX gerektirir. Paketlenmiş motor etiket üretemez."
+    "compileLua": "Hazırlanan kaynağı TeX Live 2026'dan (veya Kasım 2025'ten sonra güncellenmiş bir TeX Live kurulumundan) LuaLaTeX ile derleyin, sonra çıktıyı tekrar denetleyin.",
+    "compileAny": "Hazırlanan kaynağı TeX Live 2026'dan (veya Kasım 2025'ten sonra güncellenmiş bir TeX Live kurulumundan) pdfLaTeX ya da LuaLaTeX ile derleyin, sonra çıktıyı tekrar denetleyin. Erişilebilir matematik LuaLaTeX gerektirir. Paketlenmiş motor etiket üretemez."
   },
   "gate": {
     "incompatiblePackages_one": "Bu paket etiketlemeyle uyumlu değil: {{packages}}. Ondan gelen içerik PDF'te etiketsiz kalabilir.",
@@ -683,7 +688,7 @@
   },
   "prepExport": {
     "title": "Erişilebilir dışa aktarma",
-    "intro": "Bu belgeyi PDF/UA-2 hedefleyen etiketli çıktı için hazırlayın. Oleafly, pdfstandard=ua-2 ve tagging=on ile birlikte \\DocumentMetadata ekler, ayrıca doldurabildiği alternatif metin ve tablo ayarlarını yapar. Sonucu TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyip tekrar denetleyin. Erişilebilir matematik LuaLaTeX gerektirir. Paketlenmiş motor etiket üretemez.",
+    "intro": "Bu belgeyi PDF/UA-2 hedefleyen etiketli çıktı için hazırlayın. Oleafly, pdfstandard=ua-2 ve tagging=on ile birlikte \\DocumentMetadata ekler, ayrıca doldurabildiği alternatif metin ve tablo ayarlarını yapar. Sonucu TeX Live 2026'dan (veya Kasım 2025'ten sonra güncellenmiş bir TeX Live kurulumundan) pdfLaTeX ya da LuaLaTeX ile derleyip tekrar denetleyin. Erişilebilir matematik LuaLaTeX gerektirir. Paketlenmiş motor etiket üretemez.",
     "activeFileFallback": "Oleafly ana belgeyi yükleyemedi, bu yüzden düzenlemekte olduğunuz dosyayı denetledi. Derlemenizin gerçekte yüklediği sınıfı ve paketleri görmek için ana belgeyi açın.",
     "prepare": "Erişilebilir dışa aktarma için hazırla",
     "unavailable": "Bu belge sınıfı için hazırlık kapalı. Etiketleme kodunun desteklediği bir sınıfa geçin, sonra denetimi yeniden çalıştırın. Uyumluluk verileri LaTeX Projesi'nden alındı, {{retrieved}}.",
@@ -694,7 +699,7 @@
     "copy": "Kaynağı kopyala",
     "compileTagged": "Etiketli derle ve doğrula",
     "compileTaggedWarning": "Sistem LuaLaTeX'i yerel dosyaları okuyabilir. Onu yalnızca güvendiğiniz bir proje için çalıştırın.",
-    "noEngine": "Etiketli PDF'i uygulama içinde üretmek için Ayarlar'daki LaTeX Motoru bölümünden bir motor etkinleştirin. Ya da hazırlanan kaynağı TeX Live 2025 veya daha yenisinden kendi pdfLaTeX veya LuaLaTeX kurulumunuzla derleyin."
+    "noEngine": "Etiketli PDF'i uygulama içinde üretmek için Ayarlar'daki LaTeX Motoru bölümünden bir motor etkinleştirin. Ya da hazırlanan kaynağı TeX Live 2026'dan (veya Kasım 2025'ten sonra güncellenmiş bir TeX Live kurulumundan) kendi pdfLaTeX veya LuaLaTeX kurulumunuzla derleyin."
   },
   "typstStandards": {
     "title": "PDF standartları",

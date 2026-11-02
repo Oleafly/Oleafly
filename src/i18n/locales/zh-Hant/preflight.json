@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "內建引擎無法產生所宣告的 PDF/UA 輸出",
-      "detail": "這份文件宣告了 pdfstandard=ua，但內建引擎無法寫出標記樹，PDF 會帶著它其實不符合的 PDF/UA 宣告。請改用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯，或移除 pdfstandard 鍵。"
+      "detail": "這份文件宣告了 pdfstandard=ua，但內建引擎無法寫出標記樹，PDF 會帶著它其實不符合的 PDF/UA 宣告。請改用 TeX Live 2026（或 2025 年 11 月起更新過的 TeX Live）的 pdfLaTeX 或 LuaLaTeX 編譯，或移除 pdfstandard 鍵。"
     },
     "table-header-rows": {
       "title": "表格的標頭列未標記為標頭",
@@ -142,6 +142,11 @@
       "title": "需要再編譯一次",
       "detail": "最新的記錄檔顯示標籤、引用或目錄尚未穩定。匯出前請持續重新編譯，直到重跑警告消失為止。"
     },
+    "compile-tagging-skipped": {
+      "title": "這個 LaTeX 版本太舊，因此略過了標記",
+      "detail": "這次編譯執行的是 {{date}} 發行的 LaTeX。標記式 PDF 需要 {{required}} 或更新版本的 LaTeX，所以 \\DocumentMetadata 周圍的檢查關閉了標記，這份 PDF 也不帶 PDF/UA 宣告。若要取得標記式 PDF，請在 TeX Live 2026 中使用「編譯標記式輸出並驗證」，或更新你的 TeX Live 後重新編譯。",
+      "detailUndated": "標記式 PDF 需要 {{required}} 或更新版本的 LaTeX，而這次編譯執行的版本更舊，所以 \\DocumentMetadata 周圍的檢查關閉了標記，這份 PDF 也不帶 PDF/UA 宣告。若要取得標記式 PDF，請在 TeX Live 2026 中使用「編譯標記式輸出並驗證」，或更新你的 TeX Live 後重新編譯。"
+    },
     "compile-duplicate-destination": {
       "title": "PDF 目的地重複",
       "detail": "有兩個錨點共用同一個目的地，連結或書籤可能會跳到錯誤的位置。這通常來自重複的標籤或頁碼重設。"
@@ -201,7 +206,7 @@
     },
     "pdf-untagged-output": {
       "title": "這個 PDF 沒有加上標記",
-      "detail": "編譯出的 PDF 沒有結構樹，螢幕閱讀器因此拿不到標題、清單、表格與閱讀順序，這個檔案也無法滿足 PDF/UA-1 的 7.1 條款。標記式輸出需要 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX，並加上 \\DocumentMetadata{tagging=on}。內建引擎無法產生標記。在此之前，上面的原始碼與輸出檢查仍然適用。"
+      "detail": "編譯出的 PDF 沒有結構樹，螢幕閱讀器因此拿不到標題、清單、表格與閱讀順序，這個檔案也無法滿足 PDF/UA-1 的 7.1 條款。標記式輸出需要 TeX Live 2026（或 2025 年 11 月起更新過的 TeX Live）的 pdfLaTeX 或 LuaLaTeX，並加上 \\DocumentMetadata{tagging=on}。內建引擎無法產生標記。在此之前，上面的原始碼與輸出檢查仍然適用。"
     },
     "pdf-structure-missing": {
       "title": "標記式 PDF 沒有可讀的結構樹",
@@ -568,15 +573,15 @@
   },
   "prep": {
     "metadataUpdated": "已在你的 \\DocumentMetadata 中加入必要的標記鍵。",
-    "metadataAdded": "已把 \\DocumentMetadata 加為第一行（必要，且必須在 \\documentclass 之前）。",
+    "metadataAdded": "已把 \\DocumentMetadata 加為第一行（必要，且必須在 \\documentclass 之前）。它位於版本檢查之內：早於 {{date}} 的 LaTeX（包括內建引擎）會略過它，並以無標記方式編譯文件，而不是失敗。",
     "headerRows": "已將 table/header-rows 設為 1，讓每個表格的第一列標記為標頭儲存格。若某個表格的標頭深度不同，請自行調整數字。",
     "unicodeMath": "已加入 \\usepackage{unicode-math}，這個引擎的標記式數學需要它。",
     "altPlaceholders_other": "已為 {{count}} 張圖片加入替代文字的預留位置。請把 TODO 文字換成實際的說明。",
     "titleRequired": "PDF/UA 需要一個閱讀器會顯示的文件標題。請載入 hyperref 並設定 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
     "incompatiblePackages_other": "這些套件不相容於標記：{{packages}}。它們的內容可能未加標記就進入 PDF。可以的話請替換掉。",
     "cautionPackages": "這些套件只有部分標記，或沒有記錄標記結論：{{packages}}。請編譯後檢查結構樹是否有缺漏。",
-    "compileLua": "請用 TeX Live 2025 或更新版本的 LuaLaTeX 編譯準備好的原始碼，然後重新檢查輸出。",
-    "compileAny": "請用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯準備好的原始碼，然後重新檢查輸出。無障礙數學需要 LuaLaTeX。內建引擎無法產生標記。"
+    "compileLua": "請用 TeX Live 2026（或 2025 年 11 月起更新過的 TeX Live）的 LuaLaTeX 編譯準備好的原始碼，然後重新檢查輸出。",
+    "compileAny": "請用 TeX Live 2026（或 2025 年 11 月起更新過的 TeX Live）的 pdfLaTeX 或 LuaLaTeX 編譯準備好的原始碼，然後重新檢查輸出。無障礙數學需要 LuaLaTeX。內建引擎無法產生標記。"
   },
   "gate": {
     "incompatiblePackages_other": "這些套件不相容於標記：{{packages}}。它們的內容可能未加標記就進入 PDF。",
@@ -660,7 +665,7 @@
   },
   "prepExport": {
     "title": "無障礙匯出",
-    "intro": "為這份文件準備以 PDF/UA-2 為目標的標記式輸出。Oleafly 會加入 \\DocumentMetadata 並設定 pdfstandard=ua-2 與 tagging=on，同時補上它能填入的替代文字與表格設定。請用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯結果，然後重新檢查。無障礙數學需要 LuaLaTeX。內建引擎無法產生標記。",
+    "intro": "為這份文件準備以 PDF/UA-2 為目標的標記式輸出。Oleafly 會加入 \\DocumentMetadata 並設定 pdfstandard=ua-2 與 tagging=on，同時補上它能填入的替代文字與表格設定。請用 TeX Live 2026（或 2025 年 11 月起更新過的 TeX Live）的 pdfLaTeX 或 LuaLaTeX 編譯結果，然後重新檢查。無障礙數學需要 LuaLaTeX。內建引擎無法產生標記。",
     "activeFileFallback": "Oleafly 無法載入主要文件，因此改為檢查你正在編輯的檔案。請開啟主要文件，才能看到建置實際載入的文件類別與套件。",
     "prepare": "準備無障礙匯出",
     "unavailable": "這個文件類別無法進行準備。請改用標記程式碼支援的類別，再執行一次檢查。相容性資料來自 LaTeX Project，取得時間為 {{retrieved}}。",
@@ -671,7 +676,7 @@
     "copy": "複製原始碼",
     "compileTagged": "編譯標記式輸出並驗證",
     "compileTaggedWarning": "系統的 LuaLaTeX 可以讀取本機檔案。請只在你信任的專案上執行。",
-    "noEngine": "若要在應用程式內產生標記式 PDF，請在設定的「LaTeX 引擎」中啟用引擎。或者用你自己的 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯準備好的原始碼。"
+    "noEngine": "若要在應用程式內產生標記式 PDF，請在設定的「LaTeX 引擎」中啟用引擎。或者用你自己的 TeX Live 2026（或 2025 年 11 月起更新過的 TeX Live）的 pdfLaTeX 或 LuaLaTeX 編譯準備好的原始碼。"
   },
   "typstStandards": {
     "title": "PDF 標準",
