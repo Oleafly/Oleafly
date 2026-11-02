@@ -8,6 +8,7 @@ export interface UnsentTyping {
 }
 
 export type UnsentFiles = Readonly<Record<string, UnsentTyping>>;
+export type UnsentSaveResult = "saved" | "too_large" | "unavailable";
 
 const PREFIX = "oleafly.web.unsent.v1.";
 export const MAX_UNSENT_CHARS = 2_000_000;
@@ -55,22 +56,21 @@ export function readUnsent(projectId: string, now = Date.now()): UnsentFiles {
   return kept;
 }
 
-export function writeUnsent(projectId: string, fileId: string, typing: UnsentTyping | null, now = Date.now()): void {
+export function writeUnsent(projectId: string, fileId: string, typing: UnsentTyping | null, now = Date.now()): UnsentSaveResult {
   const store = storage();
-  if (!store) return;
+  if (!store) return "unavailable";
   const key = `${PREFIX}${projectId}`;
   const files: Record<string, UnsentTyping> = { ...readUnsent(projectId, now) };
   if (typing) files[fileId] = typing;
   else delete files[fileId];
   try {
     const text = JSON.stringify(files);
+    if (text.length > MAX_UNSENT_CHARS) return "too_large";
     if (Object.keys(files).length === 0) store.removeItem(key);
-    else if (text.length > MAX_UNSENT_CHARS) {
-      delete files[fileId];
-      store.setItem(key, JSON.stringify(files));
-    } else store.setItem(key, text);
+    else store.setItem(key, text);
+    return "saved";
   } catch {
-    return;
+    return "unavailable";
   }
 }
 

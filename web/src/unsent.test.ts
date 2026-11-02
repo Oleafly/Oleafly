@@ -1,11 +1,33 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { forgetUnsent, MAX_UNSENT_AGE_MS, MAX_UNSENT_CHARS, readUnsent, writeUnsent } from "./unsent";
 
 const typing = (base: string, at = Date.now()) => ({ base, inflight: null, rest: [base.length, "!"], at });
 
-afterEach(() => sessionStorage.clear());
+afterEach(() => {
+  vi.restoreAllMocks();
+  sessionStorage.clear();
+});
 
 describe("unsent typing in this tab", () => {
+  it("preserves every previous recovery record when a replacement exceeds the project budget", () => {
+    const previous = typing("x".repeat(1_100_000));
+    writeUnsent("p1", "f1", previous);
+    writeUnsent("p1", "f2", typing("y".repeat(800_000)));
+    expect(writeUnsent("p1", "f1", typing("x".repeat(1_250_000)))).toBe("too_large");
+    expect(readUnsent("p1").f1).toEqual(previous);
+    expect(Object.keys(readUnsent("p1"))).toEqual(["f1", "f2"]);
+  });
+
+  it("reports storage failures and keeps the previous recovery point", () => {
+    const previous = typing("abc");
+    writeUnsent("p1", "f1", previous);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota", "QuotaExceededError");
+    });
+    expect(writeUnsent("p1", "f1", typing("abcd"))).toBe("unavailable");
+    expect(readUnsent("p1").f1).toEqual(previous);
+  });
+
   it("keeps typing per project and file, and forgets a file once it is cleared", () => {
     writeUnsent("p1", "f1", typing("abc"));
     writeUnsent("p1", "f2", typing("xyz"));

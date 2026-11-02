@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { WebApi, WebMe } from "../api";
 import { ProjectController } from "../controller";
-import { resetWebState } from "../store";
+import { resetWebState, useWeb } from "../store";
 import { FakeServer } from "../testing/fake-socket";
 import { projectHref } from "./navigation";
 import { ProjectView } from "./ProjectView";
@@ -41,6 +41,14 @@ function reloadPrevented(): boolean {
 }
 
 describe("ProjectView", () => {
+  it("warns against leaving while unsent recovery cannot be persisted", () => {
+    shown("no_access");
+    act(() => useWeb.setState({ end: null, connection: "offline", recoveryFailed: true }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Some of your edits have not reached the server yet. Stay until they are sent, or leave and lose them.");
+    act(() => useWeb.setState({ recoveryFailed: false }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("says a project too large for the browser can't be opened, instead of waiting offline", () => {
     shown("too_large");
     expect(screen.getByText("This project is too large to open in a browser.")).toBeInTheDocument();

@@ -90,8 +90,14 @@ function Banners() {
   const roleChanged = useWeb((state) => state.roleChanged);
   const discarded = useWeb((state) => state.discarded);
   const notice = useWeb((state) => state.notice);
+  const recoveryFailed = useWeb((state) => state.recoveryFailed);
   return (
     <>
+      {recoveryFailed ? (
+        <WorkspaceBanner tone="warning" role="alert">
+          {t(($) => $.web.leave.description)}
+        </WorkspaceBanner>
+      ) : null}
       {connection === "offline" ? (
         <WorkspaceBanner tone="warning" role="status">
           <WifiOff aria-hidden className="size-3.5" />
