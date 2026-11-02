@@ -437,7 +437,9 @@
       "title": "エンジン（このプロジェクト）",
       "help": "Typst は文書を書かれたとおりにコンパイルします。Calepin はさらに文書内のコードを実行し、その結果を PDF に入れます。",
       "typst": "Typst <note>[組み込み]</note>",
-      "calepin": "Calepin <note>[コードを実行]</note>"
+      "calepin": "Calepin <note>[コードを実行]</note>",
+      "calepinMissing": "Calepin <note>[未インストール]</note>",
+      "installCalepin": "Calepin をインストール…"
     },
     "code": {
       "title": "コード（このコンピュータ）",
@@ -542,6 +544,7 @@
     "specimenViewer": "標本ビューア",
     "stackTrace": "スタックトレース",
     "surfaceCrashed": "{{surface}}がクラッシュしました。",
+    "surfaceCrashedAgain": "{{surface}}がまたクラッシュしました。Oleafly を再読み込みすると最初からやり直せます。",
     "surfaceClosed": "ウィンドウでエラーが発生したため、閉じました。詳細はログに保存されています。",
     "surfaces": {
       "aiAssistant": "AI アシスタント",

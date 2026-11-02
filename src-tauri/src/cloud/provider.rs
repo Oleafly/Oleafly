@@ -98,6 +98,19 @@ impl ProviderKind {
             Self::S3 => provider_id.to_string(),
         }
     }
+
+    /// The provider behind a key made by `account_key`.
+    pub(crate) fn of_account_key(key: &str) -> Option<Self> {
+        if key.starts_with("dbid:") {
+            Some(Self::Dropbox)
+        } else if key.starts_with("gdrive:") {
+            Some(Self::GoogleDrive)
+        } else if key.starts_with("s3:") {
+            Some(Self::S3)
+        } else {
+            None
+        }
+    }
 }
 
 pub(crate) fn providers() -> Vec<ProviderInfo> {
@@ -287,5 +300,20 @@ mod tests {
             ProviderKind::S3.secret_account(),
             ProviderKind::Dropbox.secret_account()
         );
+    }
+
+    #[test]
+    fn account_keys_name_their_provider() {
+        for (kind, id) in [
+            (ProviderKind::Dropbox, "dbid:AAH4"),
+            (ProviderKind::GoogleDrive, "123"),
+            (ProviderKind::S3, "s3:127.0.0.1:9000/papers/oleafly"),
+        ] {
+            assert_eq!(
+                ProviderKind::of_account_key(&kind.account_key(id)),
+                Some(kind)
+            );
+        }
+        assert_eq!(ProviderKind::of_account_key("someone"), None);
     }
 }

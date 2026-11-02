@@ -208,6 +208,7 @@
     "diffCrashed": "Widok porównania uległ awarii. Zamknij tę kartę i spróbuj ponownie.",
     "pdfLoadFailed": "Nie udało się wczytać pliku PDF: {{detail}}",
     "imageLoadFailed": "Nie udało się wczytać obrazu: {{detail}}",
+    "imageUnreadable": "Tego pliku nie można wyświetlić jako obrazu. Może być uszkodzony albo nie jest obrazem.",
     "binaryFile": "Plik binarny. Podgląd niedostępny.",
     "managedFileReadOnly": "Plikiem {{file}} zarządza Oleafly i jest on tutaj tylko do odczytu. Ustawienia projektu zmienia się w samym Oleafly, a nie przez edycję tego pliku.",
     "noFileOpen": "Nie otwarto pliku.",

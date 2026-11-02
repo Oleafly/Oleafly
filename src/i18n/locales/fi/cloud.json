@@ -28,7 +28,7 @@
     "s3": "Käytä bucketia Amazon S3:ssa, MinIOssa tai vastaavassa palvelussa."
   },
   "unavailable": "Ei saatavilla tässä versiossa",
-  "lastConnected": "Viimeksi yhdistetty tiliin {{email}}.",
+  "lastConnection": "Viimeksi yhdistetty",
   "finishInBrowser": "Viimeistele selaimessa",
   "waiting": "Odotetaan palvelua {{provider}}",
   "browserDidntOpen": "Selain ei avautunut? Avaa palvelu {{provider}}",
@@ -65,11 +65,11 @@
   "useLocalSettings": "Käytä tämän tietokoneen asetuksia",
   "projects": {
     "title": "Projektit",
-    "synced": "{{count}} synkronoinnissa",
+    "synced": "{{count}} synkronoitu",
+    "waiting": "{{count}} ei vielä palvelussa {{provider}}",
     "paused": "{{count}} tauolla",
     "onlyInCloud": "{{count}} vain palvelussa {{provider}}",
     "none": "Ei vielä projekteja",
-    "syncing": "Synkronoidaan projektejasi",
     "lastSynced": "Viimeksi synkronoitu {{time}}",
     "notSynced": "Ei vielä synkronoitu",
     "off": "Synkronointi on pois päältä tällä tietokoneella",

@@ -368,6 +368,18 @@ describe("Editor shell", () => {
     );
   });
 
+  it("says so when an image file's bytes are not a picture", async () => {
+    openFile("figures/plot.png");
+    render(<Editor />);
+
+    fireEvent.error(await screen.findByAltText("plot.png"));
+
+    const notice = screen.getByTestId("image-undecodable");
+    expect(notice).toHaveTextContent("plot.png");
+    expect(notice).toHaveTextContent(shell.imageUnreadable);
+    expect(screen.queryByAltText("plot.png")).toBeNull();
+  });
+
   it("shows the loading state until the file bytes arrive", () => {
     tauri.readFileBase64.mockReturnValueOnce(new Promise(() => {}));
     openFile("out/paper.pdf");

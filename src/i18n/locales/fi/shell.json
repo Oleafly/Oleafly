@@ -438,7 +438,9 @@
       "title": "Moottori (tämä projekti)",
       "help": "Typst kääntää dokumentin sellaisenaan. Calepin myös suorittaa sen koodin ja lisää tulokset PDF:ään.",
       "typst": "Typst <note>[sisäänrakennettu]</note>",
-      "calepin": "Calepin <note>[suorittaa koodia]</note>"
+      "calepin": "Calepin <note>[suorittaa koodia]</note>",
+      "calepinMissing": "Calepin <note>[ei asennettu]</note>",
+      "installCalepin": "Asenna Calepin…"
     },
     "code": {
       "title": "Koodi (tämä kone)",
@@ -544,6 +546,7 @@
     "specimenViewer": "Näytekatselin",
     "stackTrace": "Kutsupino",
     "surfaceCrashed": "Kaatui: {{surface}}.",
+    "surfaceCrashedAgain": "Kaatui uudelleen: {{surface}}. Lataa Oleafly uudelleen, niin se alkaa alusta.",
     "surfaceClosed": "Ikkunassa tapahtui virhe, ja se suljettiin. Tiedot tallennettiin lokiin.",
     "surfaces": {
       "aiAssistant": "tekoälyavustaja",

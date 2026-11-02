@@ -131,10 +131,14 @@ function summaryLine(
   cloudOnly: number,
   remote: RemoteListState,
 ): string {
-  const synced = local.filter((project) => project.mode === "sync" || project.mode === "held").length;
-  const paused = local.length - synced;
+  const syncing = local.filter((project) => project.mode === "sync" || project.mode === "held");
+  // Same rule as the rows: a project counts as synced once it has a last sync.
+  const synced = syncing.filter((project) => project.lastSyncedMs > 0).length;
+  const waiting = syncing.length - synced;
+  const paused = local.length - syncing.length;
   const parts = [
     synced > 0 ? t(($) => $.cloud.projects.synced, { count: synced }) : null,
+    waiting > 0 ? t(($) => $.cloud.projects.waiting, { count: waiting, provider }) : null,
     paused > 0 ? t(($) => $.cloud.projects.paused, { count: paused }) : null,
     cloudOnly > 0 ? t(($) => $.cloud.projects.onlyInCloud, { count: cloudOnly, provider }) : null,
   ].filter((part): part is string => part !== null);
@@ -148,11 +152,9 @@ function statusLine(
   t: CloudTranslate,
   provider: string,
   state: CloudState,
-  syncing: boolean,
   syncError: string | null,
   now: number,
 ): { text: string; problem: boolean } {
-  if (syncing) return { text: t(($) => $.cloud.projects.syncing), problem: false };
   if (!state.enabled) return { text: t(($) => $.cloud.projects.off), problem: false };
   const problem = syncError ?? state.lastError;
   const code = cloudErrorCode(problem);
@@ -603,7 +605,6 @@ export function CloudProjectsCard() {
   const { t } = useTranslation(["cloud"]);
   const state = useCloudStore((s) => s.state);
   const remote = useCloudStore((s) => s.remote);
-  const syncing = useCloudStore((s) => s.syncing);
   const syncError = useCloudStore((s) => s.syncError);
   const remoteList = useCloudStore((s): RemoteListState => {
     if (s.status !== "connected") return "idle";
@@ -625,7 +626,7 @@ export function CloudProjectsCard() {
   const known = new Set(local.map((project) => project.cloudId).filter(Boolean));
   const cloudOnly = remote.filter((project) => project.mode === "download" && !known.has(project.cloudId));
   const downloadable = cloudOnly.filter((project) => !project.recycled).length;
-  const status = statusLine(t, provider, state, syncing, syncError, now);
+  const status = statusLine(t, provider, state, syncError, now);
   const settled = remoteList === "ready" || remoteList === "idle";
   const empty = local.length === 0 && cloudOnly.length === 0 && settled;
   const copy = confirm ? confirmCopy(t, provider, confirm) : null;
@@ -657,7 +658,6 @@ export function CloudProjectsCard() {
               data-testid="cloud-sync-status"
               className={cn("flex items-center gap-1.5", status.problem && "text-amber-700 dark:text-amber-300")}
             >
-              {syncing ? <Spinner size="sm" /> : null}
               {status.text}
             </span>
           </>

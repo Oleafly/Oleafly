@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} s-a descărcat, dar nu a trecut verificarea integrității. Încearcă să-l instalezi din nou.",
     "unknown_tool": "Oleafly nu cunoaște niciun instrument numit {{tool}}.",
     "not_managed": "Oleafly poate elimina doar copia {{tool}} pe care a descărcat-o el.",
-    "no_html_output": "Nu există încă un rezultat HTML. Compilează mai întâi documentul."
+    "no_html_output": "Nu există încă un rezultat HTML. Compilează mai întâi documentul.",
+    "quarto_needs_tex": "Acest format are nevoie de LaTeX. Instalează TinyTeX din Setări > Motoare > LaTeX sau trece documentul la format: typst, care nu are nevoie de TeX.",
+    "r_package_missing": "Lipsește un pachet R de care are nevoie acest document. Instalează-l în R, de exemplu cu install.packages(), apoi compilează din nou.",
+    "jupyter_missing": "Codul Python din acest document are nevoie de Jupyter ca să ruleze. Instalează-l cu python3 -m pip install jupyter, apoi compilează din nou. Sau oprește codul din meniul Compilează ca să afișezi codul fără să-l rulezi.",
+    "quarto_no_input": "Quarto nu a putut citi documentul principal. Verifică dacă este un fișier .qmd sau .Rmd din proiect."
   },
   "attachments": {
     "too_large": "Acest fișier depășește {{max}} MB. Atașează un fișier mai mic.",

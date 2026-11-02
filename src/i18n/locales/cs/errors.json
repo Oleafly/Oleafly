@@ -347,7 +347,11 @@
     "install_unverified": "Nástroj {{tool}} se stáhl, ale neprošel kontrolou integrity. Zkuste ho nainstalovat znovu.",
     "unknown_tool": "Oleafly nezná žádný nástroj s názvem {{tool}}.",
     "not_managed": "Oleafly může odebrat jen kopii nástroje {{tool}}, kterou sám stáhl.",
-    "no_html_output": "Výstup HTML zatím neexistuje. Nejprve dokument zkompilujte."
+    "no_html_output": "Výstup HTML zatím neexistuje. Nejprve dokument zkompilujte.",
+    "quarto_needs_tex": "Tento formát potřebuje LaTeX. Nainstalujte TinyTeX v Nastavení > Enginy > LaTeX, nebo dokument přepněte na format: typst, který TeX nepotřebuje.",
+    "r_package_missing": "Chybí balíček R, který tento dokument potřebuje. Nainstalujte ho v R, například pomocí install.packages(), a pak znovu spusťte kompilaci.",
+    "jupyter_missing": "Kód v Pythonu v tomto dokumentu potřebuje ke spuštění Jupyter. Nainstalujte ho příkazem python3 -m pip install jupyter a pak znovu spusťte kompilaci. Nebo vypněte kód v nabídce Kompilovat a dokument zobrazí kód bez spuštění.",
+    "quarto_no_input": "Quarto nedokázalo přečíst hlavní dokument. Zkontrolujte, že jde o soubor .qmd nebo .Rmd uvnitř projektu."
   },
   "attachments": {
     "too_large": "Tento soubor je větší než {{max}} MB. Připojte menší soubor.",

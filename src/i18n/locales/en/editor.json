@@ -208,6 +208,7 @@
     "diffCrashed": "The diff view crashed. Close this tab and try again.",
     "pdfLoadFailed": "Failed to load PDF: {{detail}}",
     "imageLoadFailed": "Failed to load image: {{detail}}",
+    "imageUnreadable": "This file can't be shown as an image. It may be damaged, or it may not be an image.",
     "binaryFile": "Binary file. No preview available.",
     "managedFileReadOnly": "{{file}} is managed by Oleafly and is read-only here. Project settings change through Oleafly itself, not by editing this file.",
     "noFileOpen": "No file open.",

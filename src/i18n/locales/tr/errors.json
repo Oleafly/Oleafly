@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} indirildi ancak bütünlük denetiminden geçemedi. Yeniden kurmayı deneyin.",
     "unknown_tool": "Oleafly, {{tool}} adlı bir aracı tanımıyor.",
     "not_managed": "Oleafly yalnızca kendi indirdiği {{tool}} kopyasını kaldırabilir.",
-    "no_html_output": "Henüz HTML çıktısı yok. Önce belgeyi derleyin."
+    "no_html_output": "Henüz HTML çıktısı yok. Önce belgeyi derleyin.",
+    "quarto_needs_tex": "Bu biçim LaTeX gerektirir. TinyTeX'i Ayarlar > Motorlar > LaTeX bölümünden kurun ya da belgeyi TeX gerektirmeyen format: typst biçimine geçirin.",
+    "r_package_missing": "Bu belgenin ihtiyaç duyduğu bir R paketi eksik. Paketi R'de, örneğin install.packages() ile kurun, sonra yeniden derleyin.",
+    "jupyter_missing": "Bu belgedeki Python kodunun çalışması için Jupyter gerekir. python3 -m pip install jupyter ile kurun, sonra yeniden derleyin. Ya da kodu çalıştırmadan göstermek için Derle menüsünden kodu kapatın.",
+    "quarto_no_input": "Quarto ana belgeyi okuyamadı. Projenin içindeki bir .qmd ya da .Rmd dosyası olduğunu kontrol edin."
   },
   "attachments": {
     "too_large": "Bu dosya {{max}} MB sınırını aşıyor. Daha küçük bir dosya ekleyin.",

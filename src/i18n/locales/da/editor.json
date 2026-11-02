@@ -208,6 +208,7 @@
     "diffCrashed": "Visningen af forskelle gik ned. Luk denne fane, og prøv igen.",
     "pdfLoadFailed": "Kunne ikke indlæse PDF'en: {{detail}}",
     "imageLoadFailed": "Kunne ikke indlæse billedet: {{detail}}",
+    "imageUnreadable": "Filen kan ikke vises som billede. Den kan være beskadiget, eller den er måske ikke et billede.",
     "binaryFile": "Binær fil. Der er ingen forhåndsvisning.",
     "managedFileReadOnly": "{{file}} styres af Oleafly og er skrivebeskyttet her. Projektindstillinger ændres i Oleafly selv, ikke ved at redigere denne fil.",
     "noFileOpen": "Ingen fil er åben.",

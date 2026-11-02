@@ -208,6 +208,7 @@
     "diffCrashed": "Chế độ diff gặp sự cố. Hãy đóng tab này và thử lại.",
     "pdfLoadFailed": "Không tải được PDF: {{detail}}",
     "imageLoadFailed": "Không tải được ảnh: {{detail}}",
+    "imageUnreadable": "Không thể hiển thị tệp này dưới dạng hình ảnh. Tệp có thể bị hỏng hoặc không phải là hình ảnh.",
     "binaryFile": "Tệp nhị phân. Không có bản xem trước.",
     "managedFileReadOnly": "{{file}} do Oleafly quản lý và chỉ đọc ở đây. Cài đặt dự án đổi qua chính Oleafly, không bằng sửa tệp này.",
     "noFileOpen": "Không có tệp đang mở.",

@@ -208,6 +208,7 @@
     "diffCrashed": "Zobrazení rozdílů spadlo. Zavřete tuto kartu a zkuste to znovu.",
     "pdfLoadFailed": "Načtení PDF selhalo: {{detail}}",
     "imageLoadFailed": "Načtení obrázku selhalo: {{detail}}",
+    "imageUnreadable": "Tento soubor nelze zobrazit jako obrázek. Může být poškozený, nebo to vůbec není obrázek.",
     "binaryFile": "Binární soubor. Náhled není k dispozici.",
     "managedFileReadOnly": "{{file}} spravuje Oleafly a je tu jen ke čtení. Nastavení projektu se mění přímo v Oleafly, ne úpravou tohoto souboru.",
     "noFileOpen": "Není otevřený žádný soubor.",

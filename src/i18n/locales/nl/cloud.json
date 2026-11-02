@@ -28,7 +28,7 @@
     "s3": "Gebruik een bucket op Amazon S3, MinIO of een vergelijkbare dienst."
   },
   "unavailable": "Niet beschikbaar in deze versie",
-  "lastConnected": "Laatst verbonden met {{email}}.",
+  "lastConnection": "Laatst verbonden",
   "finishInBrowser": "Voltooi in je browser",
   "waiting": "Wachten op {{provider}}",
   "browserDidntOpen": "Browser niet geopend? Open {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Projecten",
     "synced": "{{count}} gesynchroniseerd",
+    "waiting": "{{count}} nog niet in {{provider}}",
     "paused": "{{count}} gepauzeerd",
     "onlyInCloud": "{{count}} alleen in {{provider}}",
     "none": "Nog geen projecten",
-    "syncing": "Je projecten worden gesynchroniseerd",
     "lastSynced": "Laatst gesynchroniseerd: {{time}}",
     "notSynced": "Nog niet gesynchroniseerd",
     "off": "Synchronisatie staat uit op deze computer",

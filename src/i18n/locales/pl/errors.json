@@ -347,7 +347,11 @@
     "install_unverified": "Narzędzie {{tool}} zostało pobrane, ale nie przeszło kontroli integralności. Spróbuj zainstalować je ponownie.",
     "unknown_tool": "Oleafly nie zna narzędzia o nazwie {{tool}}.",
     "not_managed": "Oleafly może usunąć tylko pobraną przez siebie kopię narzędzia {{tool}}.",
-    "no_html_output": "Nie ma jeszcze wyniku HTML. Najpierw skompiluj dokument."
+    "no_html_output": "Nie ma jeszcze wyniku HTML. Najpierw skompiluj dokument.",
+    "quarto_needs_tex": "Ten format wymaga LaTeX-a. Zainstaluj TinyTeX w sekcji Ustawienia > Silniki > LaTeX albo przełącz dokument na format: typst, który nie wymaga TeX-a.",
+    "r_package_missing": "Brakuje pakietu R, którego potrzebuje ten dokument. Zainstaluj go w R, na przykład za pomocą install.packages(), a potem skompiluj ponownie.",
+    "jupyter_missing": "Kod Pythona w tym dokumencie potrzebuje Jupytera do uruchomienia. Zainstaluj go poleceniem python3 -m pip install jupyter, a potem skompiluj ponownie. Możesz też wyłączyć kod w menu Kompiluj, aby pokazać kod bez uruchamiania.",
+    "quarto_no_input": "Quarto nie mogło odczytać głównego dokumentu. Sprawdź, czy to plik .qmd lub .Rmd w projekcie."
   },
   "attachments": {
     "too_large": "Ten plik jest większy niż {{max}} MB. Dołącz mniejszy plik.",

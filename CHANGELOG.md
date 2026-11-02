@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page. It comes with the same Tectonic, Biber, Pandoc, Typst and Tinymist as
   the Apple Silicon build, and other Typst versions, TexLab, Quarto and
   Calepin download for Intel Macs too.
+- The Quarto article, Quarto slides and Calepin report templates have
+  previews in the template gallery.
+- The common custom AI providers (Qwen, Kimi, Zhipu, SiliconFlow and
+  Volcengine Ark), Brave Search, Tavily and Mathpix show their own logos in
+  Settings.
 - Settings > Appearance > Editor has a Stay in Visual mode switch (#366).
   Turn it on, and jumping from the outline, a reference or a problem no
   longer drops you into Code while you work in Visual mode. LaTeX and Typst
@@ -26,6 +31,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   new. Every section of every release shows in full, however many changes it
   has. Before, a long section such as Fixed showed only a count until you
   clicked it, and What's new closed the releases you already had.
+- Cloud sync's service cards put the logo above the name and description.
+  After you disconnect, Last connected shows the service and the account in a
+  badge.
+- The Projects summary in Cloud sync counts a project as synced once it has
+  uploaded, and says how many are not in your storage yet. The second
+  "Syncing your projects" line is gone, because Sync now already shows a
+  spinner.
+- Storage usage and the Recycle Bin show their layout while they load, so the
+  page doesn't jump when the numbers arrive.
+- Citation search lists the sources that need no key first.
+- The Grant permissions and Check again buttons for Cua Driver sit under the
+  command instead of beside it.
+- Zen Mode's label stays on one line in the layout menu.
+- The compile menu greys out Calepin until it is installed, with an
+  Install Calepin item that opens its settings.
+
+### Fixed
+
+- Calepin failed to install on macOS and Linux with "failed its integrity
+  check". Its archives need 65 MiB of memory to unpack, and Oleafly allowed
+  64 MiB.
+- When Quarto can't run a document's Python code because Jupyter is missing,
+  the log shows it as an error with the fix: install Jupyter, or turn code
+  off. Quarto's setup hints now appear in your language.
+- An image file that can't be decoded shows a message instead of a broken
+  image.
+- When Retry on a crashed panel crashes again, the panel offers to reload
+  Oleafly.
 
 ### Fixed
 

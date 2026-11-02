@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComponentType } from "react";
-import { LibraryBig, Search } from "lucide-react";
+import { Brave, Tavily, type IconType } from "@lobehub/icons";
+import { LibraryBig } from "lucide-react";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import {
   CrossrefBrandIcon,
@@ -34,6 +35,11 @@ const KEY_FREE_SOURCES: readonly {
 type WebSearchConnector = "brave-search" | "tavily";
 
 const WEB_SEARCH_CONNECTORS: readonly WebSearchConnector[] = ["brave-search", "tavily"];
+
+const WEB_SEARCH_LOGOS: Readonly<Record<WebSearchConnector, IconType>> = {
+  "brave-search": Brave.Color,
+  tavily: Tavily.Color,
+};
 
 interface WebSearchKeyStrings {
   hint: string;
@@ -310,11 +316,12 @@ export function CitationSearchIntegrationSection() {
 
   const webSearchCard = (connector: WebSearchConnector, title: string, docsHref: string) => {
     const strings = webSearchStrings[connector];
+    const Logo = WEB_SEARCH_LOGOS[connector];
     return (
       <IntegrationCard
         key={connector}
         framed
-        icon={<Search className="size-4 text-muted-foreground" />}
+        icon={<Logo size={16} />}
         title={title}
         badge={webConnected[connector] ? <ConnectedBadge label={connectedLabel} /> : null}
         description={strings.hint}
@@ -366,6 +373,24 @@ export function CitationSearchIntegrationSection() {
           </p>
         </div>
       </div>
+
+      <IntegrationCard
+        framed
+        title={t(($) => $.settings.citations.keyFree.title)}
+        description={t(($) => $.settings.citations.keyFree.description)}
+      >
+        <div className="mt-3 flex flex-wrap gap-2">
+          {KEY_FREE_SOURCES.map(({ name, Icon, tone }) => (
+            <span
+              key={name}
+              className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground"
+            >
+              <Icon className={cn("size-3.5", tone)} />
+              {name}
+            </span>
+          ))}
+        </div>
+      </IntegrationCard>
 
       <IntegrationCard
         framed
@@ -503,24 +528,6 @@ export function CitationSearchIntegrationSection() {
       </p>
       {webSearchCard("brave-search", "Brave Search", "https://brave.com/search/api/")}
       {webSearchCard("tavily", "Tavily", "https://docs.tavily.com/")}
-
-      <IntegrationCard
-        framed
-        title={t(($) => $.settings.citations.keyFree.title)}
-        description={t(($) => $.settings.citations.keyFree.description)}
-      >
-        <div className="mt-3 flex flex-wrap gap-2">
-          {KEY_FREE_SOURCES.map(({ name, Icon, tone }) => (
-            <span
-              key={name}
-              className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground"
-            >
-              <Icon className={cn("size-3.5", tone)} />
-              {name}
-            </span>
-          ))}
-        </div>
-      </IntegrationCard>
     </div>
   );
 }

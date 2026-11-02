@@ -28,7 +28,7 @@
     "s3": "Użyj zasobnika w Amazon S3, MinIO lub podobnej usłudze."
   },
   "unavailable": "Niedostępne w tej wersji",
-  "lastConnected": "Ostatnie połączenie: {{email}}.",
+  "lastConnection": "Ostatnie połączenie",
   "finishInBrowser": "Dokończ w przeglądarce",
   "waiting": "Oczekiwanie na usługę {{provider}}",
   "browserDidntOpen": "Przeglądarka się nie otworzyła? Otwórz {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Projekty",
     "synced": "Zsynchronizowane: {{count}}",
+    "waiting": "Jeszcze nie w usłudze {{provider}}: {{count}}",
     "paused": "Wstrzymane: {{count}}",
     "onlyInCloud": "Tylko w usłudze {{provider}}: {{count}}",
     "none": "Nie ma jeszcze projektów",
-    "syncing": "Synchronizowanie projektów",
     "lastSynced": "Ostatnia synchronizacja: {{time}}",
     "notSynced": "Jeszcze nie zsynchronizowano",
     "off": "Synchronizacja jest wyłączona na tym komputerze",

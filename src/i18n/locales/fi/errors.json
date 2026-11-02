@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} ladattiin, mutta se ei läpäissyt eheystarkistusta. Yritä asentaa se uudelleen.",
     "unknown_tool": "Oleafly ei tunne työkalua nimeltä {{tool}}.",
     "not_managed": "Oleafly voi poistaa vain sen kopion työkalusta {{tool}}, jonka se on itse ladannut.",
-    "no_html_output": "HTML-tulostetta ei ole vielä. Käännä dokumentti ensin."
+    "no_html_output": "HTML-tulostetta ei ole vielä. Käännä dokumentti ensin.",
+    "quarto_needs_tex": "Tämä muoto tarvitsee LaTeXin. Asenna TinyTeX kohdasta Asetukset > Moottorit > LaTeX tai vaihda dokumentin muodoksi format: typst, joka ei tarvitse TeXiä.",
+    "r_package_missing": "Dokumentin tarvitsema R-paketti puuttuu. Asenna se R:ssä esimerkiksi komennolla install.packages() ja käännä sitten uudelleen.",
+    "jupyter_missing": "Dokumentin Python-koodi tarvitsee Jupyterin toimiakseen. Asenna se komennolla python3 -m pip install jupyter ja käännä sitten uudelleen. Tai ota koodi pois päältä Käännä-valikosta, niin koodi näytetään suorittamatta.",
+    "quarto_no_input": "Quarto ei voinut lukea päädokumenttia. Tarkista, että se on projektin sisällä oleva .qmd- tai .Rmd-tiedosto."
   },
   "attachments": {
     "too_large": "Tämä tiedosto on yli {{max}} MB. Liitä pienempi tiedosto.",

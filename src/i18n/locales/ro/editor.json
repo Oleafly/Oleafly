@@ -208,6 +208,7 @@
     "diffCrashed": "Vizualizarea comparației s-a blocat. Închide fila și încearcă din nou.",
     "pdfLoadFailed": "PDF-ul nu a putut fi încărcat: {{detail}}",
     "imageLoadFailed": "Imaginea nu a putut fi încărcată: {{detail}}",
+    "imageUnreadable": "Acest fișier nu poate fi afișat ca imagine. Poate fi deteriorat sau poate nu este o imagine.",
     "binaryFile": "Fișier binar. Nu există previzualizare.",
     "managedFileReadOnly": "{{file}} este gestionat de Oleafly și nu poate fi modificat aici. Setările proiectului se schimbă din Oleafly, nu prin editarea acestui fișier.",
     "noFileOpen": "Niciun fișier deschis.",

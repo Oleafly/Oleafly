@@ -28,7 +28,7 @@
     "s3": "Amazon S3, MinIO 또는 비슷한 서비스의 버킷을 사용합니다."
   },
   "unavailable": "이 빌드에서는 사용할 수 없습니다",
-  "lastConnected": "마지막 연결: {{email}}",
+  "lastConnection": "마지막 연결",
   "finishInBrowser": "브라우저에서 완료하세요",
   "waiting": "{{provider}} 대기 중",
   "browserDidntOpen": "브라우저가 열리지 않았나요? {{provider}} 열기",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "프로젝트",
     "synced": "{{count}}개 동기화됨",
+    "waiting": "{{count}}개 아직 {{provider}}에 없음",
     "paused": "{{count}}개 일시 중지됨",
     "onlyInCloud": "{{count}}개 {{provider}}에만 있음",
     "none": "아직 프로젝트 없음",
-    "syncing": "프로젝트를 동기화하는 중",
     "lastSynced": "마지막 동기화: {{time}}",
     "notSynced": "아직 동기화되지 않음",
     "off": "이 컴퓨터에서는 동기화가 꺼져 있습니다",

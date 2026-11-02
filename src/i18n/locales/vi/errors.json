@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} đã tải nhưng không qua kiểm tra toàn vẹn. Hãy thử cài lại.",
     "unknown_tool": "Oleafly không biết công cụ tên {{tool}}.",
     "not_managed": "Oleafly chỉ gỡ được bản sao {{tool}} nó đã tải.",
-    "no_html_output": "Chưa có đầu ra HTML. Hãy biên dịch tài liệu trước."
+    "no_html_output": "Chưa có đầu ra HTML. Hãy biên dịch tài liệu trước.",
+    "quarto_needs_tex": "Định dạng này cần LaTeX. Hãy cài TinyTeX từ Cài đặt > Engine > LaTeX, hoặc chuyển tài liệu sang format: typst, không cần TeX.",
+    "r_package_missing": "Thiếu một gói R mà tài liệu này cần. Hãy cài gói đó trong R, ví dụ bằng install.packages(), rồi biên dịch lại.",
+    "jupyter_missing": "Mã Python trong tài liệu này cần Jupyter để chạy. Hãy cài bằng python3 -m pip install jupyter, rồi biên dịch lại. Hoặc tắt mã trong menu Biên dịch để hiển thị mã mà không chạy.",
+    "quarto_no_input": "Quarto không đọc được tài liệu chính. Hãy kiểm tra xem đó có phải là tệp .qmd hoặc .Rmd trong dự án không."
   },
   "attachments": {
     "too_large": "Tệp này lớn hơn {{max}} MB. Hãy đính kèm tệp nhỏ hơn.",

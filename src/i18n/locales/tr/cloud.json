@@ -28,7 +28,7 @@
     "s3": "Amazon S3, MinIO veya benzer bir hizmette bulunan bir bucket kullanın."
   },
   "unavailable": "Bu sürümde kullanılamıyor",
-  "lastConnected": "Son bağlanılan: {{email}}.",
+  "lastConnection": "Son bağlanılan",
   "finishInBrowser": "Tarayıcıda tamamlayın",
   "waiting": "{{provider}} bekleniyor",
   "browserDidntOpen": "Tarayıcı açılmadı mı? {{provider}} sayfasını aç",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Projeler",
     "synced": "{{count}} eşitlendi",
+    "waiting": "{{count}} henüz {{provider}} hizmetinde değil",
     "paused": "{{count}} duraklatıldı",
     "onlyInCloud": "{{count}} yalnızca {{provider}} hizmetinde",
     "none": "Henüz proje yok",
-    "syncing": "Projeleriniz eşitleniyor",
     "lastSynced": "Son eşitleme: {{time}}",
     "notSynced": "Henüz eşitlenmedi",
     "off": "Bu bilgisayarda eşitleme kapalı",

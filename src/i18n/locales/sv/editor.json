@@ -208,6 +208,7 @@
     "diffCrashed": "Jämförelsevyn kraschade. Stäng den här fliken och försök igen.",
     "pdfLoadFailed": "Det gick inte att läsa in PDF:en: {{detail}}",
     "imageLoadFailed": "Det gick inte att läsa in bilden: {{detail}}",
+    "imageUnreadable": "Filen kan inte visas som en bild. Den kan vara skadad, eller så är den kanske ingen bild.",
     "binaryFile": "Binär fil. Ingen förhandsvisning är tillgänglig.",
     "managedFileReadOnly": "{{file}} hanteras av Oleafly och är skrivskyddad här. Projektinställningar ändras via Oleafly, inte genom att redigera den här filen.",
     "noFileOpen": "Ingen fil är öppen.",

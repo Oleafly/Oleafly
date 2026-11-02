@@ -208,6 +208,7 @@
     "diffCrashed": "Fark görünümü çöktü. Bu sekmeyi kapatıp yeniden deneyin.",
     "pdfLoadFailed": "PDF yüklenemedi: {{detail}}",
     "imageLoadFailed": "Görsel yüklenemedi: {{detail}}",
+    "imageUnreadable": "Bu dosya görüntü olarak gösterilemiyor. Dosya bozuk olabilir ya da bir görüntü olmayabilir.",
     "binaryFile": "İkili dosya. Önizleme yok.",
     "managedFileReadOnly": "{{file}} Oleafly tarafından yönetilir ve burada salt okunurdur. Proje ayarları bu dosya düzenlenerek değil, Oleafly üzerinden değişir.",
     "noFileOpen": "Açık dosya yok.",
