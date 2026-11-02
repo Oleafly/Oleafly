@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity, AppWindow, LogIn, LogOut, Server, ShieldCheck, Trash2 } from "lucide-react";
+import { Activity, AppWindow, LogIn, LogOut, Server, ShieldCheck, Trash2 } from "@/components/icons/pack";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

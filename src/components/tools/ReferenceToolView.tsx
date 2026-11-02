@@ -8,15 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  AlertCircle,
-  Check,
-  Copy,
-  Download,
-  Plus,
-  RotateCcw,
-  Search,
-} from "lucide-react";
+import { AlertCircle, Check, Plus, RotateCcw } from "lucide-react";
+import { Copy, Download, Search } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";

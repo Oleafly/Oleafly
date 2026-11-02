@@ -682,6 +682,17 @@
       "theme": {
         "description": "System følger operativsystemet og endrer seg når det gjør det.",
         "label": "Utseende"
+      },
+      "iconPack": {
+        "color": "Farger",
+        "description": "Nøytrale strekikoner følger med Oleafly. Fargeikoner lastes ned separat.",
+        "download": "Last ned ({{size}})",
+        "downloading": "Laster ned…",
+        "failedCheck": "De nedlastede ikonene stemte ikke med det Oleafly forventer, så de ble ikke installert.",
+        "failedNetwork": "Kunne ikke laste ned fargeikonene. Sjekk tilkoblingen og prøv igjen.",
+        "label": "Ikoner",
+        "neutral": "Nøytrale",
+        "remove": "Fjern fargeikoner"
       }
     },
     "customTheme": {

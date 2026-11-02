@@ -686,6 +686,17 @@
       "theme": {
         "description": "Sistema sigue al sistema operativo y cambia cuando él cambia.",
         "label": "Apariencia"
+      },
+      "iconPack": {
+        "color": "Color",
+        "description": "Los iconos de línea neutros vienen con Oleafly. Los iconos de color se descargan aparte.",
+        "download": "Descargar ({{size}})",
+        "downloading": "Descargando…",
+        "failedCheck": "Los iconos descargados no coincidían con lo que Oleafly espera, así que no se instalaron.",
+        "failedNetwork": "No se pudieron descargar los iconos de color. Comprueba tu conexión e inténtalo de nuevo.",
+        "label": "Iconos",
+        "neutral": "Neutros",
+        "remove": "Quitar iconos de color"
       }
     },
     "customTheme": {

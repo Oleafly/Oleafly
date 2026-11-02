@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Lock, ShieldAlert, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Lock, ShieldAlert } from "@/components/icons/pack";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { copyIntoLibrary, useCopyIntoLibraryStore } from "@/store/copy-into-library";

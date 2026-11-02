@@ -682,6 +682,17 @@
       "theme": {
         "description": "Sistem, işletim sistemini izler ve o değiştiğinde değişir.",
         "label": "Görünüm"
+      },
+      "iconPack": {
+        "color": "Renkli",
+        "description": "Nötr çizgi simgeler Oleafly ile birlikte gelir. Renkli simgeler ayrıca indirilir.",
+        "download": "İndir ({{size}})",
+        "downloading": "İndiriliyor…",
+        "failedCheck": "İndirilen simgeler Oleafly'nin beklediğiyle eşleşmediği için yüklenmedi.",
+        "failedNetwork": "Renkli simgeler indirilemedi. Bağlantınızı kontrol edip yeniden deneyin.",
+        "label": "Simgeler",
+        "neutral": "Nötr",
+        "remove": "Renkli simgeleri kaldır"
       }
     },
     "customTheme": {

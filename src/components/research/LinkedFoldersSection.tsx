@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  Link2,
-  Lock,
-  RefreshCw,
-} from "lucide-react";
+import { ChevronRight, RefreshCw } from "lucide-react";
+import { Folder, FolderOpen, Link2, Lock } from "@/components/icons/pack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

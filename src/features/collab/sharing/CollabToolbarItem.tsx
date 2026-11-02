@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { CopyPlus, Share2 } from "lucide-react";
+import { CopyPlus, Share2 } from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { Avatar, AvatarStack, type AvatarAction, type AvatarPerson } from "@/components/ui/avatar";

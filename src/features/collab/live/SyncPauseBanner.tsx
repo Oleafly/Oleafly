@@ -1,4 +1,4 @@
-import { FolderSync, FolderX } from "lucide-react";
+import { FolderSync, FolderX } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";

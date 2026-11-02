@@ -690,6 +690,17 @@
       "theme": {
         "description": "Systémový se řídí operačním systémem a mění se spolu s ním.",
         "label": "Vzhled"
+      },
+      "iconPack": {
+        "color": "Barevné",
+        "description": "Neutrální čárové ikony jsou součástí Oleafly. Barevné ikony se stahují zvlášť.",
+        "download": "Stáhnout ({{size}})",
+        "downloading": "Stahování…",
+        "failedCheck": "Stažené ikony neodpovídaly tomu, co Oleafly očekává, takže nebyly nainstalovány.",
+        "failedNetwork": "Barevné ikony se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu.",
+        "label": "Ikony",
+        "neutral": "Neutrální",
+        "remove": "Odebrat barevné ikony"
       }
     },
     "customTheme": {

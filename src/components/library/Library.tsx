@@ -1,13 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  BookmarkX,
-  Clock3,
-  FolderInput,
-  SearchX,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { SearchX, X } from "lucide-react";
+import { BookmarkX, Clock3, FolderInput, SlidersHorizontal } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

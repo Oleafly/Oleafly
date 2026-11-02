@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { CloudUpload, ShieldCheck } from "lucide-react";
+import { CloudUpload, ShieldCheck } from "@/components/icons/pack";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 import {
   knownProviderConfig,

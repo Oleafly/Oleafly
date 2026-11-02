@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Cloud, Info } from "lucide-react";
+import { Info } from "lucide-react";
+import { Cloud } from "@/components/icons/pack";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import type { ProofreadingDiagnostic, ProofreadingSurface } from "@oleafly/editor";
 import { Button } from "@/components/ui/button";

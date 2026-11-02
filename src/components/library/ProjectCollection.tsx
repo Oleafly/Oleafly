@@ -6,22 +6,21 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { Eye, Info } from "lucide-react";
 import {
   Bookmark,
   BookmarkCheck,
   CopyPlus,
-  Eye,
   FileText,
   FolderMinus,
   FolderOpen,
   GitFork,
   History,
-  Info,
   LayoutTemplate,
   Palette,
   Share2,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { Badge } from "@/components/ui/badge";
 import { Book, BOOK_COLOR_OPTIONS, useBookColorLabels } from "@/components/library/Book";
 import {

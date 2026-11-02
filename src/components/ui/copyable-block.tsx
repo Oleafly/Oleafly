@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check } from "lucide-react";
+import { Copy } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { cn } from "@/lib/utils";

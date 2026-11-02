@@ -9,7 +9,7 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Ghost, Search } from "lucide-react";
+import { Ghost, Search } from "@/components/icons/pack";
 import {
   bestSettingsHit,
   buildSettingsIndex,

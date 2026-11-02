@@ -1,12 +1,5 @@
-import {
-  CheckCircle2,
-  CircleDashed,
-  ClipboardCheck,
-  CircleSlash,
-  FlaskConical,
-  Loader2,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, CircleDashed, CircleSlash, Loader2, XCircle } from "lucide-react";
+import { ClipboardCheck, FlaskConical } from "@/components/icons/pack";
 import type { BadgeVariant } from "@/components/ui/badge";
 import { i18n } from "@/i18n";
 import { formatRelativeTimeFrom } from "@/lib/intl";

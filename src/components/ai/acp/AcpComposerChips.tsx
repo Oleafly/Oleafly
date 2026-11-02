@@ -1,4 +1,5 @@
-import { Clock, Pencil, Quote, RotateCcw, Send, Sparkles, X } from "lucide-react";
+import { Quote, RotateCcw, X } from "lucide-react";
+import { Clock, Pencil, Send, Sparkles } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { AcpSession } from "@/lib/acp";

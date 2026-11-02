@@ -4,26 +4,28 @@ import {
   Bold,
   ChevronDown,
   Code,
-  Highlighter,
-  Image as ImageIcon,
   Italic,
-  Link as LinkIcon,
   List,
   MoreHorizontal,
-  PenTool,
   Quote,
-  ScanSearch,
-  Search,
-  SlidersHorizontal,
+  Redo2,
   Strikethrough,
   Subscript,
   Superscript,
-  Table,
   Type,
   Underline,
   Undo2,
-  Redo2,
 } from "lucide-react";
+import {
+  Highlighter,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  PenTool,
+  ScanSearch,
+  Search,
+  SlidersHorizontal,
+  Table,
+} from "@/components/icons/pack";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { isQuartoEngine } from "@/lib/notebook-engines";
 import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";

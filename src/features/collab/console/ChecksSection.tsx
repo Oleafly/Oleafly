@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity } from "lucide-react";
+import { Activity } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
 import { ConnectionChecks } from "../ConnectionChecks";

@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookmarkPlus, Search, Tag } from "lucide-react";
+import { BookmarkPlus, Search, Tag } from "@/components/icons/pack";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";

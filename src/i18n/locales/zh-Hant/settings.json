@@ -678,6 +678,17 @@
       "theme": {
         "description": "「系統」會跟隨作業系統，並隨它一起變更。",
         "label": "外觀"
+      },
+      "iconPack": {
+        "color": "彩色",
+        "description": "中性線條圖示隨 Oleafly 提供。彩色圖示需要另外下載。",
+        "download": "下載（{{size}}）",
+        "downloading": "正在下載…",
+        "failedCheck": "下載的圖示與 Oleafly 的預期不符，因此沒有安裝。",
+        "failedNetwork": "無法下載彩色圖示。請檢查網路連線後再試一次。",
+        "label": "圖示",
+        "neutral": "中性",
+        "remove": "移除彩色圖示"
       }
     },
     "customTheme": {

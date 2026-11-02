@@ -686,6 +686,17 @@
       "theme": {
         "description": "Varianta Sistem urmează sistemul de operare și se schimbă odată cu el.",
         "label": "Aspect"
+      },
+      "iconPack": {
+        "color": "Color",
+        "description": "Pictogramele neutre cu linii vin cu Oleafly. Pictogramele color se descarcă separat.",
+        "download": "Descarcă ({{size}})",
+        "downloading": "Se descarcă…",
+        "failedCheck": "Pictogramele descărcate nu corespundeau cu ce așteaptă Oleafly, așa că nu au fost instalate.",
+        "failedNetwork": "Pictogramele color nu au putut fi descărcate. Verifică-ți conexiunea și încearcă din nou.",
+        "label": "Pictograme",
+        "neutral": "Neutre",
+        "remove": "Elimină pictogramele color"
       }
     },
     "customTheme": {

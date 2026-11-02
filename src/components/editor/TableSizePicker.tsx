@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Table as TableIcon } from "lucide-react";
+import { Table as TableIcon } from "@/components/icons/pack";
 import { Popover } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { insertTable } from "@/components/editor/latex-commands";

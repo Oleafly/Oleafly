@@ -682,6 +682,17 @@
       "theme": {
         "description": "Systeem volgt het besturingssysteem en verandert mee.",
         "label": "Weergave"
+      },
+      "iconPack": {
+        "color": "Kleur",
+        "description": "Neutrale lijniconen worden met Oleafly meegeleverd. Kleuriconen download je apart.",
+        "download": "Downloaden ({{size}})",
+        "downloading": "Bezig met downloaden…",
+        "failedCheck": "De gedownloade iconen kwamen niet overeen met wat Oleafly verwacht en zijn daarom niet geïnstalleerd.",
+        "failedNetwork": "Kan de kleuriconen niet downloaden. Controleer je verbinding en probeer het opnieuw.",
+        "label": "Iconen",
+        "neutral": "Neutraal",
+        "remove": "Kleuriconen verwijderen"
       }
     },
     "customTheme": {

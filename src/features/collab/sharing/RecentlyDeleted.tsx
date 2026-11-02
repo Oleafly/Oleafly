@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, Folder, Trash2 } from "lucide-react";
+import { FileText, Folder, Trash2 } from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";

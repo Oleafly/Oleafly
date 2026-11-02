@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Wrench } from "lucide-react";
+import { Wrench } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";

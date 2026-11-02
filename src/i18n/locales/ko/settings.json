@@ -678,6 +678,17 @@
       "theme": {
         "description": "시스템을 고르면 운영체제 설정을 따르고 그에 맞춰 바뀝니다.",
         "label": "모양"
+      },
+      "iconPack": {
+        "color": "컬러",
+        "description": "중립적인 선 아이콘은 Oleafly에 포함되어 있습니다. 컬러 아이콘은 따로 다운로드합니다.",
+        "download": "다운로드 ({{size}})",
+        "downloading": "다운로드 중…",
+        "failedCheck": "다운로드한 아이콘이 Oleafly가 예상한 것과 일치하지 않아 설치하지 않았습니다.",
+        "failedNetwork": "컬러 아이콘을 다운로드하지 못했습니다. 연결을 확인하고 다시 시도하세요.",
+        "label": "아이콘",
+        "neutral": "중립",
+        "remove": "컬러 아이콘 제거"
       }
     },
     "customTheme": {

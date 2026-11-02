@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CheckCircle2, Download, ExternalLink, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, RotateCcw, X } from "lucide-react";
+import { Download } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { LeafLogo } from "@/components/layout/LeafLogo";

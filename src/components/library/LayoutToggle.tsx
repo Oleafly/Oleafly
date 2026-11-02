@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { LayoutGrid, List } from "lucide-react";
+import { List } from "lucide-react";
+import { LayoutGrid } from "@/components/icons/pack";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { HomeProjectLayout } from "@/store/settings";
 import { cn } from "@/lib/utils";

@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Link2 } from "@/components/icons/pack";
 import { useLinkInbox } from "@/components/collab/link-inbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,7 +1,8 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { RotateCw, Search } from "lucide-react";
+import { RotateCw } from "lucide-react";
+import { Search } from "@/components/icons/pack";
 import { Book, BOOK_SWATCHES } from "@/components/library/Book";
 import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";

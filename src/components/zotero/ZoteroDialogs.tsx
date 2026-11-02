@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookPlus, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { BookPlus } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

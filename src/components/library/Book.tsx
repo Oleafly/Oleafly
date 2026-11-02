@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Bookmark, BookmarkCheck, GitFork } from "lucide-react";
+import { Bookmark, BookmarkCheck, GitFork } from "@/components/icons/pack";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { randomFraction } from "@/lib/random";

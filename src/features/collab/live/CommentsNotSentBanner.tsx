@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
-import { MessageSquareOff, X } from "lucide-react";
+import { X } from "lucide-react";
+import { MessageSquareOff } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";

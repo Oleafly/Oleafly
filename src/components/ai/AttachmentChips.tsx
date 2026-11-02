@@ -1,4 +1,5 @@
-import { FileText, X } from "lucide-react";
+import { X } from "lucide-react";
+import { FileText } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import type { AttachmentKind, ComposerAttachment } from "@/components/ai/composer/types";
 import { useAttachmentUrl } from "@/components/ai/composer/use-attachment-url";

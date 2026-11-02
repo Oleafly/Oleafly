@@ -1,17 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Command } from "cmdk";
-import {
-  Bookmark,
-  FileText,
-  Ghost,
-  Link2,
-  Moon,
-  NotebookText,
-  Plus,
-  Search,
-  Settings,
-  Sun,
-} from "lucide-react";
+import { Plus } from "lucide-react";
+import { Bookmark, FileText, Ghost, Link2, Moon, NotebookText, Search, Settings, Sun } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import {
   commandKeywords,

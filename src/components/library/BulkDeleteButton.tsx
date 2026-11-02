@@ -1,6 +1,6 @@
 import { type ReactNode, useLayoutEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Trash2 } from "lucide-react";
+import { Trash2 } from "@/components/icons/pack";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

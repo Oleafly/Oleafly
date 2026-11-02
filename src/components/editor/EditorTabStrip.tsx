@@ -7,7 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Sparkles } from "@/components/icons/pack";
 import {
   ContextMenu,
   ContextMenuContent,

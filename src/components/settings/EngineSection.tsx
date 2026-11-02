@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Cpu, Download, HardDrive, Info, Trash2 } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
+import { Cpu, Download, HardDrive, Trash2 } from "@/components/icons/pack";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import {
   sectionDiffersFromDefaults,

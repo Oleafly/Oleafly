@@ -1,4 +1,5 @@
-import { Eye, MessageSquare, PencilLine, UserX, X, type LucideIcon } from "lucide-react";
+import { Eye, type LucideIcon, X } from "lucide-react";
+import { MessageSquare, PencilLine, UserX } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { useFilesStore } from "@/store/files";

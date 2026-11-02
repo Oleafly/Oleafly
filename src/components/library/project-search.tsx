@@ -1,27 +1,23 @@
 import type { ReactNode } from "react";
 import type { useTranslation } from "react-i18next";
+import { ArrowDownUp, CircleCheck, CircleDot, CircleOff, Eye } from "lucide-react";
 import {
-  ArrowDownUp,
   BookmarkCheck,
   CalendarClock,
   CalendarDays,
   CalendarPlus,
-  CircleCheck,
-  CircleDot,
-  CircleOff,
-  Eye,
   FileCode2,
   FileDown,
   FileText,
   FolderOpen,
   GitFork,
+  History,
   Image,
   Library,
   Palette,
   Shapes,
   TextSearch,
-  History,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import {
   absenceField,
   defineSchema,

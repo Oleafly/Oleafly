@@ -68,6 +68,7 @@ import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
+import { IconPackCard } from "@/components/settings/IconPackCard";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
@@ -243,6 +244,8 @@ function AppAppearanceTab() {
           })}
         </div>
       </div>
+
+      <IconPackCard />
 
       <SettingsRow
         testId="settings-row-accent"

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import { ShieldAlert, ShieldCheck } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

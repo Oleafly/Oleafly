@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { FileDiff } from "lucide-react";
+import { FileDiff } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { DiffPreview } from "@/components/ai/turns/DiffPreview";
 import { useDisplayPath } from "@/lib/display-path";

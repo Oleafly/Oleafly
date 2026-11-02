@@ -686,6 +686,17 @@
       "theme": {
         "description": "A opção Sistema segue o sistema operacional e muda junto com ele.",
         "label": "Aparência"
+      },
+      "iconPack": {
+        "color": "Coloridos",
+        "description": "Os ícones de linha neutros vêm com o Oleafly. Os ícones coloridos são baixados à parte.",
+        "download": "Baixar ({{size}})",
+        "downloading": "Baixando…",
+        "failedCheck": "Os ícones baixados não correspondiam ao que o Oleafly espera, então não foram instalados.",
+        "failedNetwork": "Não foi possível baixar os ícones coloridos. Verifique sua conexão e tente de novo.",
+        "label": "Ícones",
+        "neutral": "Neutros",
+        "remove": "Remover ícones coloridos"
       }
     },
     "customTheme": {

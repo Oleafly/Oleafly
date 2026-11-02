@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { I18nextProvider, useTranslation } from "react-i18next";
-import { ImageDown } from "lucide-react";
+import { ImageDown } from "@/components/icons/pack";
 import { create } from "zustand";
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";

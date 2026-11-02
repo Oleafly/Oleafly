@@ -19,29 +19,21 @@ import type {
   GitWorkspaceSnapshot,
   ProjectStateChanged,
 } from "@oleafly/backend-port";
+import { Check, ChevronDown, Diff, MoreHorizontal, Plus, RefreshCw, RotateCcw, Undo2, X } from "lucide-react";
 import {
   Archive,
   BookPlus,
-  Check,
-  ChevronDown,
   CloudDownload,
   Copy,
-  Diff,
-  FileSymlink,
   Files,
+  FileSymlink,
   GitBranch,
   GitCommitHorizontal,
   GitMerge,
   GitPullRequest,
-  MoreHorizontal,
-  Plus,
-  RefreshCw,
-  RotateCcw,
   ShieldAlert,
-  Undo2,
   Upload,
-  X,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import * as tauri from "@/lib/tauri";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

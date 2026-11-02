@@ -1,4 +1,4 @@
-import { Settings2 } from "lucide-react";
+import { Settings2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { zoteroHintText } from "@/lib/zotero/hint";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FlaskConical } from "lucide-react";
+import { FlaskConical } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

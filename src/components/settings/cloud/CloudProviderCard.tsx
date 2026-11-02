@@ -19,7 +19,7 @@ import type { CloudProviderInfo, CloudProviderKind } from "@/lib/cloud";
 import { cloudProviderName } from "@/lib/cloud-providers";
 import { cn } from "@/lib/utils";
 import { cloudErrorCode, useCloudStore } from "@/store/cloud";
-import { Files, HardDriveUpload, History, Settings2, ShieldCheck, Unplug } from "lucide-react";
+import { Files, HardDriveUpload, History, Settings2, ShieldCheck, Unplug } from "@/components/icons/pack";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 

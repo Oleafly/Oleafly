@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComponentType } from "react";
-import { LibraryBig, Search } from "lucide-react";
+import { LibraryBig, Search } from "@/components/icons/pack";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import {
   CrossrefBrandIcon,

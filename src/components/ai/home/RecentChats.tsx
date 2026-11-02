@@ -1,4 +1,4 @@
-import { History, MessageSquareText } from "lucide-react";
+import { History, MessageSquareText } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { currentLocale } from "@/i18n";
 import { Badge } from "@/components/ui/badge";

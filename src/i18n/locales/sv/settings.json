@@ -682,6 +682,17 @@
       "theme": {
         "description": "System följer operativsystemet och ändras när det gör det.",
         "label": "Utseende"
+      },
+      "iconPack": {
+        "color": "Färg",
+        "description": "Neutrala linjeikoner följer med Oleafly. Färgikoner laddas ned separat.",
+        "download": "Ladda ned ({{size}})",
+        "downloading": "Laddar ned…",
+        "failedCheck": "De nedladdade ikonerna stämde inte med det Oleafly förväntar sig, så de installerades inte.",
+        "failedNetwork": "Det gick inte att ladda ned färgikonerna. Kontrollera anslutningen och försök igen.",
+        "label": "Ikoner",
+        "neutral": "Neutrala",
+        "remove": "Ta bort färgikoner"
       }
     },
     "customTheme": {

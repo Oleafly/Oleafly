@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { LibraryBig } from "lucide-react";
+import { LibraryBig } from "@/components/icons/pack";
 import { LiteratureSearchPanel } from "@/components/tools/LiteratureSearchPanel";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import { toolName } from "@/lib/tool-catalog";

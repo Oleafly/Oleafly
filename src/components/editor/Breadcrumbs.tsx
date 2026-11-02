@@ -1,6 +1,7 @@
 import { Fragment, memo, useEffect, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, FileText } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { FileText } from "@/components/icons/pack";
 import { sectionCrumbsForState, type SectionCrumb } from "./breadcrumbs-source";
 import {
   editorCursorRevision,

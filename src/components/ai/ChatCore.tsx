@@ -47,31 +47,25 @@ import {
   agentThreadRollback,
   type AgentMessage,
 } from "@/lib/agent-backend";
+import { Check, ChevronDown, Info, type LucideIcon, Plus, RotateCcw, X } from "lucide-react";
 import {
   BarChart3,
   BookOpen,
   Brain,
-  Check,
-  ChevronDown,
   ClipboardCheck,
   Glasses,
   History,
-  Info,
   Lightbulb,
-  Plus,
   Presentation,
-  RotateCcw,
   Search,
   Send,
   Settings2,
   Sparkles,
   Target,
   Trash2,
-  type LucideIcon,
   WalletCards,
   Wrench,
-  X,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { useFilesStore } from "@/store/files";
 import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
 import { agentTurnBegin, agentTurnFinish, type TurnBegin } from "@/lib/agent-turns";

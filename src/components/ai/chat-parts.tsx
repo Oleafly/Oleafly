@@ -11,22 +11,17 @@ import {
   type RefObject,
 } from "react";
 import {
-  Bot,
-  Brain,
   Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Circle,
   CircleSlash,
-  Copy,
   Info,
-  Paperclip,
-  Pencil,
   RotateCcw,
-  Sparkles,
   XCircle,
 } from "lucide-react";
+import { Bot, Brain, Copy, Paperclip, Pencil, Sparkles } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import type { AttachmentMeta, ChatMessage, ReasoningBlockData, SubagentEntry, ToolEntry } from "@/store/chats";
 import { agentTodoProgress, type AgentTodo } from "@/store/agent-todos";

@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Trans } from "react-i18next";
-import { Check, Copy, Github, RefreshCw } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
+import { Copy, Github } from "@/components/icons/pack";
 import { appendAppLog } from "@/lib/tauri";
 import { reportCrashToGithub } from "@/lib/crash-report";
 import { SpecimenIllustration } from "@/components/SpecimenIllustration";

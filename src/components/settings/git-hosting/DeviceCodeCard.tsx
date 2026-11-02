@@ -1,5 +1,6 @@
 import { Trans, useTranslation } from "react-i18next";
-import { Check, Copy } from "lucide-react";
+import { Check } from "lucide-react";
+import { Copy } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopyStatus } from "@/components/ui/use-copy-status";

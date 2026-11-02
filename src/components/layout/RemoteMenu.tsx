@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ExternalLink, GitBranch, Link as LinkIcon, Settings } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { GitBranch, Link as LinkIcon, Settings } from "@/components/icons/pack";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";

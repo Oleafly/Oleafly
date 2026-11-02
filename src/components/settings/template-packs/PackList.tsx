@@ -1,6 +1,7 @@
 import { memo, useMemo, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Info, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
+import { Download, Search, Trash2 } from "@/components/icons/pack";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { Input } from "@/components/ui/input";
 import { SECTION_HEADING_CLASS, SectionHeading } from "@/components/ui/section-heading";

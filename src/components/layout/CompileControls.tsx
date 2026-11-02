@@ -1,14 +1,7 @@
 import { useEffect } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  ChevronDown,
-  FileText,
-  Info,
-  Play,
-  RefreshCw,
-  ShieldAlert,
-} from "lucide-react";
+import { AlertTriangle, ChevronDown, Info, Play, RefreshCw } from "lucide-react";
+import { FileText, ShieldAlert } from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";

@@ -678,6 +678,17 @@
       "theme": {
         "description": "“跟随系统”会随操作系统外观的变化自动切换。",
         "label": "外观"
+      },
+      "iconPack": {
+        "color": "彩色",
+        "description": "中性线条图标随 Oleafly 提供。彩色图标需要单独下载。",
+        "download": "下载（{{size}}）",
+        "downloading": "正在下载…",
+        "failedCheck": "下载的图标与 Oleafly 的预期不一致，因此没有安装。",
+        "failedNetwork": "无法下载彩色图标。请检查网络连接后重试。",
+        "label": "图标",
+        "neutral": "中性",
+        "remove": "移除彩色图标"
       }
     },
     "customTheme": {

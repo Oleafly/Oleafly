@@ -686,6 +686,17 @@
       "theme": {
         "description": "Système suit le système d'exploitation et change en même temps que lui.",
         "label": "Apparence"
+      },
+      "iconPack": {
+        "color": "Couleur",
+        "description": "Les icônes au trait neutres sont fournies avec Oleafly. Les icônes en couleur se téléchargent à part.",
+        "download": "Télécharger ({{size}})",
+        "downloading": "Téléchargement…",
+        "failedCheck": "Les icônes téléchargées ne correspondaient pas à ce qu'attend Oleafly. Elles n'ont donc pas été installées.",
+        "failedNetwork": "Impossible de télécharger les icônes en couleur. Vérifiez votre connexion et réessayez.",
+        "label": "Icônes",
+        "neutral": "Neutres",
+        "remove": "Supprimer les icônes en couleur"
       }
     },
     "customTheme": {

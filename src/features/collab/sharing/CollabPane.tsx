@@ -11,13 +11,11 @@ import {
   type SVGProps,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { Ban, CircleAlert, CircleArrowUp, RotateCcw, TriangleAlert } from "lucide-react";
 import {
   Activity,
   Archive,
   AtSign,
-  Ban,
-  CircleAlert,
-  CircleArrowUp,
   CloudCheck,
   CloudOff,
   GitMerge,
@@ -26,11 +24,9 @@ import {
   PencilLine,
   RadioTower,
   Replace,
-  RotateCcw,
   ServerCog,
   Share2,
   SlidersHorizontal,
-  TriangleAlert,
   UserCog,
   UserLock,
   UserMinus,
@@ -39,7 +35,7 @@ import {
   UserRoundPlus,
   Users,
   UserX,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { openCommentThread } from "@/components/collab/comments-rail";
 import { useShareDialog } from "@/components/collab/share-dialog";

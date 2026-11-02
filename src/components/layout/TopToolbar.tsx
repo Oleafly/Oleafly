@@ -2,24 +2,21 @@ import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { reattachPreviewWindow } from "@/lib/preview-window";
 import { type ComponentType, lazy, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { AlertTriangle, Check, ChevronRight, X } from "lucide-react";
 import {
-  AlertTriangle,
   BookOpen,
-  Check,
   Columns2,
-  ChevronRight,
   Download,
-  FileText,
   Focus,
   GitFork,
   History,
-  Presentation,
+  ImageDown,
   LayoutGrid,
   LayoutTemplate,
-  ImageDown,
-  SquarePen,
-  X,
-} from "lucide-react";
+  PdfViewIcon,
+  Presentation,
+  SourceViewIcon,
+} from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -172,7 +169,7 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
     get label() {
       return i18n.t(($) => $.shell.toolbar.views.editor);
     },
-    icon: SquarePen,
+    icon: SourceViewIcon,
   },
   {
     mode: "split",
@@ -186,7 +183,7 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
     get label() {
       return i18n.t(($) => $.shell.toolbar.views.pdf);
     },
-    icon: FileText,
+    icon: PdfViewIcon,
   },
 ];
 

@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Link2, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Plus, RefreshCw } from "lucide-react";
+import { Link2 } from "@/components/icons/pack";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

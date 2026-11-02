@@ -678,6 +678,17 @@
       "theme": {
         "description": "Chế độ Hệ thống theo hệ điều hành và thay đổi cùng hệ điều hành.",
         "label": "Giao diện"
+      },
+      "iconPack": {
+        "color": "Màu",
+        "description": "Biểu tượng nét trung tính có sẵn trong Oleafly. Biểu tượng màu được tải xuống riêng.",
+        "download": "Tải xuống ({{size}})",
+        "downloading": "Đang tải xuống…",
+        "failedCheck": "Biểu tượng đã tải xuống không khớp với những gì Oleafly mong đợi nên chưa được cài đặt.",
+        "failedNetwork": "Không thể tải xuống biểu tượng màu. Hãy kiểm tra kết nối và thử lại.",
+        "label": "Biểu tượng",
+        "neutral": "Trung tính",
+        "remove": "Gỡ biểu tượng màu"
       }
     },
     "customTheme": {

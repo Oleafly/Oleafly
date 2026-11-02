@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { GitBranch, LibraryBig, MousePointer2 } from "lucide-react";
+import { MousePointer2 } from "lucide-react";
+import { GitBranch, LibraryBig } from "@/components/icons/pack";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHostingSection } from "@/components/settings/git-hosting/GitHostingSection";

@@ -1,13 +1,6 @@
 import { Children, Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import {
-  SlidersHorizontal,
-  GitFork,
-  PanelLeft,
-  PanelLeftClose,
-  Settings as SettingsIcon,
-  Sparkles,
-  SquareTerminal,
-} from "lucide-react";
+import { PanelLeft, PanelLeftClose } from "lucide-react";
+import { GitFork, Settings as SettingsIcon, SlidersHorizontal, Sparkles, SquareTerminal } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { railSections, railTabLabel, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Ghost, RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Download, Ghost, Trash2 } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { i18n } from "@/i18n";

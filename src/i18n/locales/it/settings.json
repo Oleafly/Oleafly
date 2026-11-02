@@ -686,6 +686,17 @@
       "theme": {
         "description": "Sistema segue il sistema operativo e cambia insieme a lui.",
         "label": "Aspetto"
+      },
+      "iconPack": {
+        "color": "A colori",
+        "description": "Le icone a linee neutre sono incluse in Oleafly. Le icone a colori si scaricano a parte.",
+        "download": "Scarica ({{size}})",
+        "downloading": "Download in corso…",
+        "failedCheck": "Le icone scaricate non corrispondevano a quanto previsto da Oleafly, quindi non sono state installate.",
+        "failedNetwork": "Impossibile scaricare le icone a colori. Controlla la connessione e riprova.",
+        "label": "Icone",
+        "neutral": "Neutre",
+        "remove": "Rimuovi le icone a colori"
       }
     },
     "customTheme": {
