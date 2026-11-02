@@ -901,6 +901,10 @@
         "description": "在光标所在的公式上方显示渲染后的公式。",
         "label": "公式预览"
       },
+      "keepVisualMode": {
+        "description": "在可视化模式下，从大纲、引用或问题跳转时，目标文件也会以可视化模式打开。关闭后，跳转会切换到代码模式。",
+        "label": "保持可视化模式"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

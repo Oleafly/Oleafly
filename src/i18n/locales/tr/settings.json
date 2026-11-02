@@ -907,6 +907,10 @@
         "description": "İmlecin içinde bulunduğu denklemin işlenmiş halini üstünde gösterir.",
         "label": "Matematik önizlemesi"
       },
+      "keepVisualMode": {
+        "description": "Görsel kipteyken anahattan, bir kaynaktan veya bir sorundan atladığınızda dosya da Görsel kipte açılır. Kapalıyken atlama Kod kipine geçer.",
+        "label": "Görsel kipte kal"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

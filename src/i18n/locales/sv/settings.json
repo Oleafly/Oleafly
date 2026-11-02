@@ -907,6 +907,10 @@
         "description": "Visa den renderade ekvationen ovanför den som markören står i.",
         "label": "Förhandsvisning av matematik"
       },
+      "keepVisualMode": {
+        "description": "När du är i visuellt läge öppnar ett hopp från dispositionen, en referens eller ett problem också filen i visuellt läge. När inställningen är av byter hoppet till Kod.",
+        "label": "Stanna i visuellt läge"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

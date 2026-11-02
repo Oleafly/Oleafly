@@ -110,3 +110,40 @@ export function parseMarkdownBody(
 
   return { doc, frontmatter, layout };
 }
+
+function isEmptyParagraph(node: JSONContent | undefined): boolean {
+  return node?.type === "paragraph" && !node.content?.length;
+}
+
+/**
+ * Which top-level block of `parseMarkdownBody(source, options).doc` holds a
+ * source offset, and how many blocks the document has, not counting an empty
+ * paragraph at the end. Null when the source has no block layout to map
+ * through.
+ */
+export function markdownBlockAt(
+  source: string,
+  offset: number,
+  options: ParseMarkdownBodyOptions = {},
+): { index: number; count: number } | null {
+  const { doc, layout } = parseMarkdownBody(source, options);
+  const nodes = doc.content ?? [];
+  const count = isEmptyParagraph(nodes.at(-1)) ? nodes.length - 1 : nodes.length;
+  if (!layout || count === 0) return null;
+  const mapped =
+    layout.units.reduce((sum, unit) => sum + unit.source.length, 0) +
+    layout.separators.reduce((sum, separator) => sum + separator.length, 0) +
+    layout.trailing.length;
+  // Front matter and blank lines before the first block are not in the layout.
+  let start = source.length - mapped;
+  let node = 0;
+  for (const [index, unit] of layout.units.entries()) {
+    const end = start + unit.source.length + (layout.separators[index]?.length ?? 0);
+    if (offset < end || index === layout.units.length - 1) {
+      return { index: Math.min(node, count - 1), count };
+    }
+    node += unit.nodes;
+    start = end;
+  }
+  return null;
+}

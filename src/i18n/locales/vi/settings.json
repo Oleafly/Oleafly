@@ -901,6 +901,10 @@
         "description": "Hiện công thức đã kết xuất phía trên công thức chứa con trỏ.",
         "label": "Xem trước công thức"
       },
+      "keepVisualMode": {
+        "description": "Khi bạn đang ở chế độ Trực quan, nhảy từ dàn ý, một tham chiếu hoặc một lỗi cũng mở tệp ở chế độ Trực quan. Khi tắt, thao tác nhảy sẽ chuyển sang Mã.",
+        "label": "Giữ chế độ Trực quan"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {
