@@ -33,7 +33,10 @@ asset_for() {
       echo "MacOS/biber-darwin_universal.tar.gz:tar:182e1efa074d8a2a23a8893f2a22440d4e463cce55e4ed02076ac4c0ee0614b2:arm64"
       ;;
     x86_64-apple-darwin)
-      echo "MacOS/biber-darwin_x86_64.tar.gz:tar:aa72ccdd01d59367b919d517f7a116e5dc40848abc1909cd812b485f791df7f4"
+      # Same universal binary, thinned to x86_64. The x86_64-only 2.17 tarball
+      # is a one-architecture fat file whose loader stops with "Cannot find
+      # thin binary" when it starts.
+      echo "MacOS/biber-darwin_universal.tar.gz:tar:182e1efa074d8a2a23a8893f2a22440d4e463cce55e4ed02076ac4c0ee0614b2:x86_64"
       ;;
     x86_64-unknown-linux-gnu)
       echo "Linux/biber-linux_x86_64.tar.gz:tar:129d2e0332a57e985ffa253e5e9fbd28ef99af5a068d1b141145211969aa8999"

@@ -22,6 +22,8 @@ asset_for() {
   case "$1" in
     aarch64-apple-darwin)
       echo "pandoc-$VERSION-arm64-macOS.zip|zip|6e9eca844076bcbb599bbeebbba78a70f93b5307782b85c2c272872812c88875|pandoc-$VERSION-arm64/bin/pandoc" ;;
+    x86_64-apple-darwin)
+      echo "pandoc-$VERSION-x86_64-macOS.zip|zip|b9fbceabccbc8f34ac021a50483fc32f8160568d0b4b2c22d81bb29e3054fd82|pandoc-$VERSION-x86_64/bin/pandoc" ;;
     aarch64-unknown-linux-gnu)
       echo "pandoc-$VERSION-linux-arm64.tar.gz|tar|b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528|pandoc-$VERSION/bin/pandoc" ;;
     x86_64-unknown-linux-gnu)
@@ -154,7 +156,7 @@ stage_license
 
 case "${1:-}" in
   all)
-    for target in aarch64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu; do
+    for target in aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu; do
       fetch "$target"
     done
     ;;

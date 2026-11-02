@@ -32,7 +32,7 @@ test checks both.
 {
   "schemaVersion": 1,
   "generatedAt": "2026-10-02",
-  "supportedTargets": ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"],
+  "supportedTargets": ["aarch64-apple-darwin", "x86_64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"],
   "allowedDownloadHosts": ["mirrors.oleafly.com", "github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"],
   "typst": {
     "repository": "https://github.com/typst/typst",
@@ -74,7 +74,7 @@ test checks both.
 }
 ```
 
-The example shows one target. Real entries always list all four supported
+The example shows one target. Real entries always list all five supported
 targets, in the order of `supportedTargets`.
 
 | Field | Meaning |
@@ -94,8 +94,8 @@ Linux targets use Typst's static `*-unknown-linux-musl` builds, the same
 assets the bundled sidecar has always used. Tinymist Linux targets use its
 `*-unknown-linux-gnu` archives, matching the language-server manifest.
 Tinymist 0.11.32 published no archives, so its entries point at the bare
-`tinymist-darwin-arm64`, `tinymist-linux-arm64`, `tinymist-linux-x64` and
-`tinymist-win32-x64.exe` executables. The Tinymist Windows zip holds
+`tinymist-darwin-arm64`, `tinymist-darwin-x64`, `tinymist-linux-arm64`,
+`tinymist-linux-x64` and `tinymist-win32-x64.exe` executables. The Tinymist Windows zip holds
 `tinymist.exe` at its root; every other archive nests the executable in a
 directory named after the asset.
 
@@ -186,7 +186,7 @@ The generator:
 6. writes keys in a fixed order, so unchanged inputs give a byte-identical
    file. `generatedAt` only moves when some other field changes.
 
-Probing needs a host that is one of the four supported targets. Elsewhere, pass
+Probing needs a host that is one of the five supported targets. Elsewhere, pass
 `--skip-probe` to keep the committed capabilities. `tar` must be able to read
 `xz` archives. Set `GITHUB_TOKEN` to avoid the anonymous API rate limit.
 

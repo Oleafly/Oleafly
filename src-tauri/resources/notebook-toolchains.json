@@ -20,6 +20,14 @@
           "executables": ["bin/quarto", "quarto-1.10.19/bin/quarto"],
           "url": "https://github.com/quarto-dev/quarto-cli/releases/download/v1.10.19/quarto-1.10.19-macos.tar.gz"
         },
+        "x86_64-apple-darwin": {
+          "asset": "quarto-1.10.19-macos.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveSha256": "c617db5422824e506750573ea94a1e26a475532adfe18c8fea310816ced97f47",
+          "archiveSize": 247498232,
+          "executables": ["bin/quarto", "quarto-1.10.19/bin/quarto"],
+          "url": "https://github.com/quarto-dev/quarto-cli/releases/download/v1.10.19/quarto-1.10.19-macos.tar.gz"
+        },
         "x86_64-unknown-linux-gnu": {
           "asset": "quarto-1.10.19-linux-amd64.tar.gz",
           "archiveType": "tar.gz",
@@ -58,6 +66,14 @@
           "archiveSize": 10268720,
           "executables": ["calepin-aarch64-apple-darwin/calepin", "calepin"],
           "url": "https://github.com/vincentarelbundock/calepin/releases/download/v0.0.61/calepin-aarch64-apple-darwin.tar.xz"
+        },
+        "x86_64-apple-darwin": {
+          "asset": "calepin-x86_64-apple-darwin.tar.xz",
+          "archiveType": "tar.xz",
+          "archiveSha256": "be49ea8b5f9d15e5adb864516dd602b8f1f5a47fad4f447ad702c7408f9516c2",
+          "archiveSize": 10810664,
+          "executables": ["calepin-x86_64-apple-darwin/calepin", "calepin"],
+          "url": "https://github.com/vincentarelbundock/calepin/releases/download/v0.0.61/calepin-x86_64-apple-darwin.tar.xz"
         },
         "x86_64-unknown-linux-gnu": {
           "asset": "calepin-x86_64-unknown-linux-gnu.tar.xz",

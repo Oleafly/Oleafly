@@ -70,8 +70,8 @@ git commit -m "chore: release v0.2.2"
 git tag v0.2.2 && git push origin main --tags   # triggers the Release workflow
 ```
 
-The workflow builds macOS Apple Silicon, Windows x64, Linux x64, and Linux
-ARM64 artifacts. It signs available platform and updater artifacts, generates
+The workflow builds macOS Apple Silicon, macOS Intel, Windows x64, Linux x64,
+and Linux ARM64 artifacts. It signs available platform and updater artifacts, generates
 `latest.json`, and creates a verified **draft** release. To publish, rerun the
 workflow manually for the same tag with **Publish the release** enabled.
 

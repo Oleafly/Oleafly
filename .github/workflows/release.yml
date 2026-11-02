@@ -33,6 +33,7 @@ permissions:
 env:
   RELEASE_TARGETS: >-
     aarch64-apple-darwin
+    x86_64-apple-darwin
     x86_64-unknown-linux-gnu
     aarch64-unknown-linux-gnu
     x86_64-pc-windows-msvc
@@ -53,10 +54,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # GitHub retired the macos-14 image on 2026-11-02. The macOS-only
+          # steps below check runner.os, not this label, so the next image
+          # change can't silently skip signing and notarization.
           - name: macOS (Apple Silicon)
-            os: macos-14
+            os: macos-15
             rust_target: aarch64-apple-darwin
             args: "--target aarch64-apple-darwin"
+          # Intel Macs are cross-compiled on the Apple Silicon runner, the same
+          # way release-cli.yml builds the Intel CLI. Rosetta runs the x86_64
+          # sidecars for the smoke tests.
+          - name: macOS (Intel)
+            os: macos-15
+            rust_target: x86_64-apple-darwin
+            args: "--target x86_64-apple-darwin"
           - name: Linux (x86_64)
             os: ubuntu-22.04
             rust_target: x86_64-unknown-linux-gnu
@@ -134,6 +145,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: . -> src-tauri/target
+          # Both macOS legs run on the same arm64 host, so the automatic key
+          # alone would give them one shared cache.
+          key: ${{ matrix.rust_target }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -161,7 +175,7 @@ jobs:
       # unsigned. Sign it before Tauri bundles the resource, or the whole app is
       # rejected. No-op on other platforms and on unsigned builds.
       - name: Sign the bundled Tinymist binary (macOS)
-        if: matrix.os == 'macos-14'
+        if: runner.os == 'macOS'
         shell: bash
         env:
           SIGN_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -202,7 +216,7 @@ jobs:
             -s -k "$KEYCHAIN_PW" "$KEYCHAIN" >/dev/null
           # shellcheck disable=SC2086
           security list-keychains -d user -s "$KEYCHAIN" $ORIGINAL_KEYCHAINS
-          node scripts/sign-bundled-tinymist.mjs
+          node scripts/sign-bundled-tinymist.mjs --target ${{ matrix.rust_target }}
 
       - name: Fetch Typst sidecar
         shell: bash
@@ -219,6 +233,17 @@ jobs:
         run: |
           bash scripts/fetch-pandoc.sh ${{ matrix.rust_target }}
           test -f src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
+
+      - name: Install Rosetta for the Intel smoke tests
+        if: matrix.rust_target == 'x86_64-apple-darwin'
+        shell: bash
+        run: |
+          if /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
+            echo "Rosetta is already installed"
+          else
+            sudo softwareupdate --install-rosetta --agree-to-license
+            /usr/bin/arch -x86_64 /usr/bin/true
+          fi
 
       - name: Smoke-test Typst sidecar
         shell: bash
@@ -248,7 +273,7 @@ jobs:
       # build" (still succeeds, for forks and for before certs are set up).
       # See docs/signing.md for the one-time account/certificate setup.
       - name: Enable macOS signing & notarization (when secrets exist)
-        if: matrix.os == 'macos-14'
+        if: runner.os == 'macOS'
         shell: bash
         env:
           SECRET_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -324,7 +349,7 @@ jobs:
             echo ""
             echo "---"
             echo ""
-            echo "**Downloads:** grab your platform's installer below (macOS Apple Silicon \`.dmg\`, Windows x86_64 \`.msi\` / \`-setup.exe\`, Linux x86_64 or ARM64 \`.AppImage\` / \`.deb\` / \`.rpm\`)."
+            echo "**Downloads:** grab your platform's installer below (macOS Apple Silicon or Intel \`.dmg\`, Windows x86_64 \`.msi\` / \`-setup.exe\`, Linux x86_64 or ARM64 \`.AppImage\` / \`.deb\` / \`.rpm\`)."
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -490,15 +515,18 @@ jobs:
 
       - name: Verify staged compiler sidecars and Tinymist resource policy
         shell: bash
+        env:
+          TARGET: ${{ matrix.rust_target }}
         run: |
-          node scripts/fetch-language-servers.mjs --check --server tinymist --target ${{ matrix.rust_target }} --install-mode resource
-          if [[ "${{ matrix.rust_target }}" == "aarch64-apple-darwin" || "${{ matrix.rust_target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            RUNTIME_DIR="src-tauri/target/${{ matrix.rust_target }}/release"
+          node scripts/fetch-language-servers.mjs --check --server tinymist --target "$TARGET" --install-mode resource
+          # Legs built with --target put their binaries under target/<triple>.
+          if [[ "$TARGET" == *-apple-darwin || "$TARGET" == "aarch64-unknown-linux-gnu" ]]; then
+            RUNTIME_DIR="src-tauri/target/$TARGET/release"
             test -f "$RUNTIME_DIR/tectonic"
             test ! -e "$RUNTIME_DIR/tinymist"
             test -f "$RUNTIME_DIR/pandoc"
             test -f "$RUNTIME_DIR/typst"
-          elif [[ "${{ matrix.rust_target }}" == *windows* ]]; then
+          elif [[ "$TARGET" == *windows* ]]; then
             RUNTIME_DIR="src-tauri/target/release"
             test -f "$RUNTIME_DIR/tectonic.exe"
             test ! -e "$RUNTIME_DIR/tinymist.exe"
@@ -550,7 +578,7 @@ jobs:
   # the release's current manifest. Those read/delete/upload operations are not
   # atomic across a matrix, so the last writer can otherwise lose a concurrent
   # platform. Preserve every leg's local candidate above, then retain only the
-  # keys owned by that leg and publish one deterministic manifest after all four
+  # keys owned by that leg and publish one deterministic manifest after all five
   # builds succeed.
   finalize-updater:
     name: Finalize updater manifest (all targets)
@@ -575,10 +603,11 @@ jobs:
         run: |
           set -euo pipefail
           mac="updater-fragments/updater-fragment-aarch64-apple-darwin/latest.json"
+          mac_x64="updater-fragments/updater-fragment-x86_64-apple-darwin/latest.json"
           windows="updater-fragments/updater-fragment-x86_64-pc-windows-msvc/latest.json"
           linux_x64="updater-fragments/updater-fragment-x86_64-unknown-linux-gnu/latest.json"
           linux_arm64="updater-fragments/updater-fragment-aarch64-unknown-linux-gnu/latest.json"
-          fragments=("$mac" "$windows" "$linux_x64" "$linux_arm64")
+          fragments=("$mac" "$mac_x64" "$windows" "$linux_x64" "$linux_arm64")
           for fragment in "${fragments[@]}"; do
             test -s "$fragment" || { echo "missing updater fragment: $fragment" >&2; exit 1; }
             jq -e '.version and (.platforms | type == "object")' "$fragment" >/dev/null
@@ -590,6 +619,7 @@ jobs:
           }
           jq -n \
             --slurpfile mac "$mac" \
+            --slurpfile mac_x64 "$mac_x64" \
             --slurpfile windows "$windows" \
             --slurpfile linux_x64 "$linux_x64" \
             --slurpfile linux_arm64 "$linux_arm64" '
@@ -599,9 +629,10 @@ jobs:
               {
                 version: $mac[0].version,
                 notes: $mac[0].notes,
-                pub_date: ([$mac[0].pub_date, $windows[0].pub_date, $linux_x64[0].pub_date, $linux_arm64[0].pub_date] | max),
+                pub_date: ([$mac[0].pub_date, $mac_x64[0].pub_date, $windows[0].pub_date, $linux_x64[0].pub_date, $linux_arm64[0].pub_date] | max),
                 platforms: (
                   owned($mac[0]; "darwin-aarch64")
+                  + owned($mac_x64[0]; "darwin-x86_64")
                   + owned($windows[0]; "windows-x86_64")
                   + owned($linux_x64[0]; "linux-x86_64")
                   + owned($linux_arm64[0]; "linux-aarch64")
@@ -610,6 +641,7 @@ jobs:
             ' > latest.json
           required=(
             darwin-aarch64 darwin-aarch64-app
+            darwin-x86_64 darwin-x86_64-app
             windows-x86_64 windows-x86_64-msi windows-x86_64-nsis
             linux-x86_64 linux-x86_64-appimage linux-x86_64-deb
             linux-aarch64 linux-aarch64-appimage linux-aarch64-deb
@@ -715,7 +747,8 @@ jobs:
           # One representative artifact per supported architecture, plus the
           # updater feed. Architecture-specific names prevent one Linux build
           # from accidentally satisfying both checks.
-          grep -qE '\.dmg$'                  <<<"$assets" || missing+=("macOS .dmg")
+          grep -qE '_aarch64\.dmg$'          <<<"$assets" || missing+=("macOS Apple Silicon .dmg")
+          grep -qE '_x64\.dmg$'              <<<"$assets" || missing+=("macOS Intel .dmg")
           grep -qE '\.(msi|exe)$'            <<<"$assets" || missing+=("Windows .msi/.exe")
           grep -qE '_(amd64|x86_64)\.AppImage$' <<<"$assets" || missing+=("Linux x86_64 .AppImage")
           grep -qE '_(arm64|aarch64)\.AppImage$' <<<"$assets" || missing+=("Linux ARM64 .AppImage")
@@ -733,7 +766,7 @@ jobs:
           # The updater feed must offer every platform too, or clients on a
           # missing one silently never see the release.
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p latest.json -D . --clobber
-          for platform in darwin-aarch64 windows-x86_64 linux-x86_64 linux-aarch64; do
+          for platform in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64 linux-aarch64; do
             jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
               || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
           done
@@ -783,7 +816,8 @@ jobs:
           assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
           echo "$assets"
           missing=()
-          grep -qE '\.dmg$'                  <<<"$assets" || missing+=("macOS .dmg")
+          grep -qE '_aarch64\.dmg$'          <<<"$assets" || missing+=("macOS Apple Silicon .dmg")
+          grep -qE '_x64\.dmg$'              <<<"$assets" || missing+=("macOS Intel .dmg")
           grep -qE '\.(msi|exe)$'            <<<"$assets" || missing+=("Windows .msi/.exe")
           grep -qE '_(amd64|x86_64)\.AppImage$' <<<"$assets" || missing+=("Linux x86_64 .AppImage")
           grep -qE '_(arm64|aarch64)\.AppImage$' <<<"$assets" || missing+=("Linux ARM64 .AppImage")
@@ -799,7 +833,7 @@ jobs:
             exit 1
           fi
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p latest.json -D . --clobber
-          for platform in darwin-aarch64 windows-x86_64 linux-x86_64 linux-aarch64; do
+          for platform in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64 linux-aarch64; do
             jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
               || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
           done

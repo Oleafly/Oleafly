@@ -167,10 +167,22 @@ fn a_computer_without_catalog_builds_keeps_the_bundled_tinymist() {
             catalog,
             &version("0.12.0"),
             root.path(),
-            Some("x86_64-apple-darwin")
+            Some("x86_64-unknown-freebsd")
         ),
         TinymistChoice::Bundled
     );
+}
+
+#[test]
+fn an_intel_mac_gets_the_catalog_tinymist_for_older_typst() {
+    let root = tempfile::tempdir().unwrap();
+    let choice = choose(
+        super::super::catalog(),
+        &version("0.12.0"),
+        root.path(),
+        Some("x86_64-apple-darwin"),
+    );
+    assert_eq!(chosen_version(&choice).as_deref(), Some("0.12.22"));
 }
 
 #[test]

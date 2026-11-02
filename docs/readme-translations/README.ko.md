@@ -324,6 +324,7 @@ Skills는 Agent Skills 형식을 따르는 일반 `SKILL.md` 폴더입니다. �
 | 플랫폼 | 패키지 | 다운로드 |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![macOS(Apple Silicon)용 다운로드](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [macOS(Intel)용 다운로드](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI 또는 EXE | [![Windows용 다운로드](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage, DEB 또는 RPM | [![Linux(x86_64)용 다운로드](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage, DEB 또는 RPM | [![Linux(ARM64)용 다운로드](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |

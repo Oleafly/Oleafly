@@ -235,8 +235,8 @@ records.
   folders first, then for the copy it downloaded.
 - Settings > Engines > Quarto can download Quarto into
   `~/.oleafly/toolchains/quarto/1.10.19` after you click the download button.
-  The download exists for Apple silicon Macs, Linux on x86-64 and ARM, and
-  64-bit Windows. On other computers, install Quarto yourself. The archive is
+  The download exists for Macs (Apple silicon and Intel), Linux on x86-64 and
+  ARM, and 64-bit Windows. On other computers, install Quarto yourself. The archive is
   checked against a pinned size and SHA-256 before anything is unpacked, and
   only links that stay inside the install are accepted.
 - The first format the document declares that Oleafly can show decides the
@@ -293,8 +293,8 @@ records.
   reject unexpected archive members. TinyTeX pins a canonical manifest naming
   the upstream assets it accepts: Windows x64, a universal macOS archive,
   Linux x64, and Linux ARM64. Those names describe TinyTeX's own downloads,
-  not Oleafly's build targets. Oleafly releases macOS on Apple Silicon only,
-  alongside Windows x64, Linux x64, and Linux ARM64.
+  not Oleafly's build targets. Oleafly releases macOS for Apple Silicon and
+  Intel, alongside Windows x64, Linux x64, and Linux ARM64.
 - Language servers are not Tauri external binaries. Tinymist ships inside the
   app as a pinned archive, and the app checks it before installing it into
   app data. TexLab downloads only after the user agrees, and the prompt shows
