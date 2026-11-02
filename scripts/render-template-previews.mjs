@@ -177,12 +177,82 @@ async function screenshotSlides(htmlPath, dir) {
   }
 }
 
+const TYPST_MISSING = "typst sidecar missing (run scripts/fetch-typst.sh)";
+
+// Each engine compiles the template copied into `work` and returns { pdf },
+// { kb } when it saved the preview itself, or { skip } with the reason.
+async function compileTectonic({ work, mainDoc, manifest, tools }) {
+  await stageFonts(manifest.requires?.fonts, work);
+  execFileSync(tools.tectonic, ["-X", "compile", "--keep-logs", mainDoc], { cwd: work, stdio: "pipe" });
+  return { pdf: join(work, mainDoc.replace(/\.tex$/, ".pdf")) };
+}
+
+function compileTypst({ work, mainDoc, tools }) {
+  if (!tools.typst) return { skip: TYPST_MISSING };
+  execFileSync(tools.typst, ["compile", mainDoc, "preview-out.pdf"], { cwd: work, stdio: "pipe" });
+  return { pdf: join(work, "preview-out.pdf") };
+}
+
+function compilePandoc({ work, mainDoc, tools }) {
+  if (!tools.pandoc) return { skip: "pandoc not found (needed for markdown previews)" };
+  // Pandoc validates the --pdf-engine BASENAME against its known engine names,
+  // so the target-triple sidecar name is rejected. Expose Tectonic under the
+  // exact name `tectonic` (the app does the same by shipping the sidecar
+  // without its triple suffix).
+  const enginePath = join(work, `tectonic${EXE}`);
+  try {
+    symlinkSync(tools.tectonic, enginePath);
+  } catch {
+    copyFileSync(tools.tectonic, enginePath);
+  }
+  execFileSync(
+    tools.pandoc,
+    [mainDoc, "-o", "preview-out.pdf", `--pdf-engine=${enginePath}`, "--citeproc"],
+    { cwd: work, stdio: "pipe" },
+  );
+  return { pdf: join(work, "preview-out.pdf") };
+}
+
+async function compileQuarto({ work, dir, mainDoc, tools }) {
+  if (!tools.quarto) return { skip: "quarto not found (install it, or set OLEAFLY_QUARTO)" };
+  // Code off, as a new project first compiles: no R, Python or Jupyter needed.
+  execFileSync(tools.quarto, ["render", mainDoc, "--no-execute"], { cwd: work, stdio: "pipe" });
+  const stem = join(work, mainDoc.replace(/\.(qmd|Rmd)$/, ""));
+  if (existsSync(`${stem}.html`) && !existsSync(`${stem}.pdf`)) {
+    return { kb: await screenshotSlides(`${stem}.html`, dir) };
+  }
+  return { pdf: `${stem}.pdf` };
+}
+
+function compileCalepin({ work, mainDoc, tools }) {
+  if (!tools.calepin) return { skip: "calepin not found (install it, or set OLEAFLY_CALEPIN)" };
+  if (!tools.typst) return { skip: TYPST_MISSING };
+  // Calepin runs the template's own chunks, so the preview shows their output.
+  execFileSync(
+    tools.calepin,
+    ["compile", mainDoc, "preview-out.pdf", "--format", "pdf", "--set", `executables.typst='${tools.typst}'`],
+    { cwd: work, stdio: "pipe", env: { ...process.env, CALEPIN_PYTHON: process.env.CALEPIN_PYTHON ?? "python3" } },
+  );
+  return { pdf: join(work, "preview-out.pdf") };
+}
+
+const COMPILERS = {
+  tectonic: compileTectonic,
+  typst: compileTypst,
+  pandoc: compilePandoc,
+  markdown: compilePandoc,
+  quarto: compileQuarto,
+  calepin: compileCalepin,
+};
+
 async function render(id, tools) {
   const dir = join(templatesDir, id);
   const manifestPath = join(dir, "template.json");
   if (!existsSync(manifestPath)) return { id, status: "skip", reason: "no manifest" };
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const engineKind = manifest.requires?.engine ?? "tectonic";
+  const compile = COMPILERS[engineKind];
+  if (!compile) return { id, status: "skip", reason: `engine ${engineKind}` };
   const mainDoc = manifest.main_doc ?? "main.tex";
 
   const work = mkdtempSync(join(tmpdir(), `oleafly-preview-${id}-`));
@@ -191,60 +261,11 @@ async function render(id, tools) {
     rmSync(join(work, "template.json"), { force: true });
     rmSync(join(work, "preview.png"), { force: true });
 
-    let pdf;
-    if (engineKind === "tectonic") {
-      await stageFonts(manifest.requires?.fonts, work);
-      execFileSync(tools.tectonic, ["-X", "compile", "--keep-logs", mainDoc], { cwd: work, stdio: "pipe" });
-      pdf = join(work, mainDoc.replace(/\.tex$/, ".pdf"));
-    } else if (engineKind === "typst") {
-      if (!tools.typst) return { id, status: "skip", reason: "typst sidecar missing (run scripts/fetch-typst.sh)" };
-      execFileSync(tools.typst, ["compile", mainDoc, "preview-out.pdf"], { cwd: work, stdio: "pipe" });
-      pdf = join(work, "preview-out.pdf");
-    } else if (engineKind === "pandoc" || engineKind === "markdown") {
-      if (!tools.pandoc) return { id, status: "skip", reason: "pandoc not found (needed for markdown previews)" };
-      // Pandoc validates the --pdf-engine BASENAME against its known engine names,
-      // so the target-triple sidecar name is rejected. Expose Tectonic under the
-      // exact name `tectonic` (the app does the same by shipping the sidecar
-      // without its triple suffix).
-      const ext = process.platform === "win32" ? ".exe" : "";
-      const enginePath = join(work, `tectonic${ext}`);
-      try {
-        symlinkSync(tools.tectonic, enginePath);
-      } catch {
-        copyFileSync(tools.tectonic, enginePath);
-      }
-      execFileSync(
-        tools.pandoc,
-        [mainDoc, "-o", "preview-out.pdf", `--pdf-engine=${enginePath}`, "--citeproc"],
-        { cwd: work, stdio: "pipe" },
-      );
-      pdf = join(work, "preview-out.pdf");
-    } else if (engineKind === "quarto") {
-      if (!tools.quarto) return { id, status: "skip", reason: "quarto not found (install it, or set OLEAFLY_QUARTO)" };
-      // Code off, as a new project first compiles: no R, Python or Jupyter needed.
-      execFileSync(tools.quarto, ["render", mainDoc, "--no-execute"], { cwd: work, stdio: "pipe" });
-      const stem = join(work, mainDoc.replace(/\.(qmd|Rmd)$/, ""));
-      if (existsSync(`${stem}.html`) && !existsSync(`${stem}.pdf`)) {
-        const kb = await screenshotSlides(`${stem}.html`, dir);
-        return { id, status: "ok", reason: `${kb} KB` };
-      }
-      pdf = `${stem}.pdf`;
-    } else if (engineKind === "calepin") {
-      if (!tools.calepin) return { id, status: "skip", reason: "calepin not found (install it, or set OLEAFLY_CALEPIN)" };
-      if (!tools.typst) return { id, status: "skip", reason: "typst sidecar missing (run scripts/fetch-typst.sh)" };
-      // Calepin runs the template's own chunks, so the preview shows their output.
-      execFileSync(
-        tools.calepin,
-        ["compile", mainDoc, "preview-out.pdf", "--format", "pdf", "--set", `executables.typst='${tools.typst}'`],
-        { cwd: work, stdio: "pipe", env: { ...process.env, CALEPIN_PYTHON: process.env.CALEPIN_PYTHON ?? "python3" } },
-      );
-      pdf = join(work, "preview-out.pdf");
-    } else {
-      return { id, status: "skip", reason: `engine ${engineKind}` };
-    }
-
-    if (!existsSync(pdf)) throw new Error("no PDF produced");
-    const kb = rasterize(tools.pdftoppm, pdf, work, dir);
+    const out = await compile({ work, dir, mainDoc, manifest, tools });
+    if (out.skip) return { id, status: "skip", reason: out.skip };
+    if (out.kb !== undefined) return { id, status: "ok", reason: `${out.kb} KB` };
+    if (!existsSync(out.pdf)) throw new Error("no PDF produced");
+    const kb = rasterize(tools.pdftoppm, out.pdf, work, dir);
     return { id, status: "ok", reason: `${kb} KB` };
   } catch (e) {
     return { id, status: "fail", reason: String(e.message || e).slice(0, 200) };
