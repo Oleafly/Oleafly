@@ -51,6 +51,11 @@ describe("CitationSearchIntegrationSection", () => {
     expect(screen.getByText(citations.keyFree.title)).toBeInTheDocument();
     expect(screen.getByText(citations.keyFree.description)).toBeInTheDocument();
     expect(screen.getByText(citations.semanticScholar.hint)).toBeInTheDocument();
+    // The sources that need no key come first, above Semantic Scholar.
+    expect(
+      screen.getByText(citations.keyFree.title).compareDocumentPosition(screen.getByText(citations.semanticScholar.hint)) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByText(citations.openAlex.hint)).toBeInTheDocument();
     expect(screen.getByText(citations.serper.hint)).toBeInTheDocument();
     expect(

@@ -439,7 +439,9 @@
       "title": "Motor (acest proiect)",
       "help": "Typst compilează documentul așa cum este scris. Calepin rulează și codul din el și pune rezultatele în PDF.",
       "typst": "Typst <note>[inclus]</note>",
-      "calepin": "Calepin <note>[rulează cod]</note>"
+      "calepin": "Calepin <note>[rulează cod]</note>",
+      "calepinMissing": "Calepin <note>[neinstalat]</note>",
+      "installCalepin": "Instalează Calepin…"
     },
     "code": {
       "title": "Cod (acest computer)",
@@ -546,6 +548,7 @@
     "specimenViewer": "Vizualizator de specimene",
     "stackTrace": "Urma de execuție",
     "surfaceCrashed": "{{surface}} s-a blocat.",
+    "surfaceCrashedAgain": "{{surface}} s-a blocat din nou. Reîncarcă Oleafly ca să pornească de la zero.",
     "surfaceClosed": "Fereastra a întâmpinat o eroare și s-a închis. Detaliile au fost salvate în jurnal.",
     "surfaces": {
       "aiAssistant": "Asistentul AI",

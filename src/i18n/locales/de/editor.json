@@ -208,6 +208,7 @@
     "diffCrashed": "Die Vergleichsansicht ist abgestürzt. Schließen Sie diesen Reiter und versuchen Sie es erneut.",
     "pdfLoadFailed": "PDF konnte nicht geladen werden: {{detail}}",
     "imageLoadFailed": "Bild konnte nicht geladen werden: {{detail}}",
+    "imageUnreadable": "Diese Datei lässt sich nicht als Bild anzeigen. Sie ist vielleicht beschädigt oder gar kein Bild.",
     "binaryFile": "Binärdatei. Keine Vorschau verfügbar.",
     "managedFileReadOnly": "{{file}} wird von Oleafly verwaltet und ist hier schreibgeschützt. Projekteinstellungen ändern Sie über Oleafly selbst, nicht durch Bearbeiten dieser Datei.",
     "noFileOpen": "Keine Datei geöffnet.",

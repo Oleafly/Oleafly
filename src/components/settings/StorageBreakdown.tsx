@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber } from "@/lib/intl";
@@ -200,6 +201,67 @@ export function StorageBreakdown({ summary }: Readonly<{ summary: LibraryStorage
               </ul>
             </section>
           ))}
+      </div>
+    </div>
+  );
+}
+
+// Row counts of a typical library, so the card is about its final height
+// before the numbers arrive.
+const SKELETON_GROUPS: readonly { id: GroupId; rows: readonly (readonly [PartId, string])[] }[] = [
+  {
+    id: "projects",
+    rows: [
+      ["documents", "w-28"],
+      ["images", "w-14"],
+      ["pdfs", "w-10"],
+      ["data", "w-16"],
+      ["otherFiles", "w-20"],
+      ["git", "w-16"],
+      ["build", "w-18"],
+    ],
+  },
+  {
+    id: "appData",
+    rows: [
+      ["texDistribution", "w-24"],
+      ["agents", "w-16"],
+      ["researchTasks", "w-24"],
+      ["checkpoints", "w-20"],
+      ["compileCache", "w-24"],
+      ["otherAppData", "w-36"],
+    ],
+  },
+];
+
+export function StorageBreakdownSkeleton() {
+  const { t } = useTranslation(["shell"]);
+  return (
+    <div aria-hidden className="space-y-3 border-t px-4 py-3" data-testid="storage-breakdown-skeleton">
+      <div className="h-2.5 w-full rounded-full bg-muted motion-safe:animate-pulse" />
+      <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        {SKELETON_GROUPS.map((group) => (
+          <section key={group.id} className="min-w-0">
+            <h4 className="mb-1 flex items-baseline justify-between gap-2 text-xs font-medium text-foreground">
+              <span className="truncate">{t(($) => $.shell.settings.data.storage.groups[group.id])}</span>
+              <Skeleton className="h-2.5 w-12" />
+            </h4>
+            <ul className="space-y-0.5">
+              {group.rows.map(([id, width]) => (
+                <li key={id} className="flex items-center gap-2 text-xs">
+                  <span className="size-2 shrink-0 rounded-full bg-muted" />
+                  <span className="min-w-0 flex-1">
+                    <Skeleton className={cn("h-2.5", width)} />
+                  </span>
+                  <Skeleton className="h-2.5 w-12" />
+                  <span className="w-10 shrink-0 text-right">
+                    <Skeleton className="h-2.5 w-7" />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
     </div>
   );

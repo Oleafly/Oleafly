@@ -10,6 +10,11 @@ import {
   Ollama,
   Perplexity,
   ZAI,
+  Qwen,
+  Kimi,
+  Zhipu,
+  SiliconCloud,
+  Volcengine,
 } from "@lobehub/icons";
 import type { IconType } from "@lobehub/icons";
 
@@ -17,6 +22,8 @@ import type { IconType } from "@lobehub/icons";
 // their `.Color` subcomponent; brands whose official mark is already a
 // single color (OpenAI, Anthropic, Groq, Grok/xAI, Ollama) use the default
 // export directly, since those have no `.Color` member in @lobehub/icons.
+// Kimi's `.Color` draws a white K that vanishes on light themes, so it uses
+// the single-color mark too.
 const ICONS: Record<string, IconType> = {
   openai: OpenAI,
   anthropic: Anthropic,
@@ -29,6 +36,11 @@ const ICONS: Record<string, IconType> = {
   ollama: Ollama,
   perplexity: Perplexity.Color,
   zai: ZAI,
+  qwen: Qwen.Color,
+  kimi: Kimi,
+  zhipu: Zhipu.Color,
+  siliconflow: SiliconCloud.Color,
+  "volcengine-ark": Volcengine.Color,
 };
 
 const MONO_COLORS = ["#e11d48", "#0ea5e9", "#16a34a", "#a855f7", "#f59e0b", "#64748b"];

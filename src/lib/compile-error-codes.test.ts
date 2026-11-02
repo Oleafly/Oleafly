@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { explainCodedCompileErrors } from "./compile-error-codes";
 
@@ -24,5 +25,13 @@ describe("explainCodedCompileErrors", () => {
     expect(needed.explanation).toBe(enShell.codeExecution.needed);
     expect(plain.explanation).toBeNull();
     expect(skipped.message).toBe("From the engine");
+  });
+
+  it("gives Quarto's setup problems a translatable explanation", () => {
+    const codes = ["quarto_needs_tex", "r_package_missing", "jupyter_missing", "quarto_no_input"] as const;
+    const explained = explainCodedCompileErrors(codes.map((code) => warning(`notebook.${code}`)));
+    codes.forEach((code, index) => {
+      expect(explained[index].explanation).toBe(enErrors.notebook[code]);
+    });
   });
 });

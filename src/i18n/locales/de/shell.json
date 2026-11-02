@@ -438,7 +438,9 @@
       "title": "Engine (dieses Projekt)",
       "help": "Typst kompiliert das Dokument so, wie es geschrieben ist. Calepin führt außerdem den Code darin aus und fügt die Ergebnisse in das PDF ein.",
       "typst": "Typst <note>[eingebaut]</note>",
-      "calepin": "Calepin <note>[führt Code aus]</note>"
+      "calepin": "Calepin <note>[führt Code aus]</note>",
+      "calepinMissing": "Calepin <note>[nicht installiert]</note>",
+      "installCalepin": "Calepin installieren…"
     },
     "code": {
       "title": "Code (dieser Computer)",
@@ -544,6 +546,7 @@
     "specimenViewer": "Musterbetrachter",
     "stackTrace": "Aufrufliste",
     "surfaceCrashed": "{{surface}} ist abgestürzt.",
+    "surfaceCrashedAgain": "{{surface}} ist erneut abgestürzt. Laden Sie Oleafly neu, um von vorn zu beginnen.",
     "surfaceClosed": "Das Fenster ist auf einen Fehler gestoßen und wurde geschlossen. Die Details stehen im Protokoll.",
     "surfaces": {
       "aiAssistant": "Der KI-Assistent",

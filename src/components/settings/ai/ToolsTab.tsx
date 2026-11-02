@@ -10,6 +10,7 @@ import {
   IntegrationConnected,
   IntegrationError,
 } from "@/components/settings/IntegrationCard";
+import { MathpixBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { ToolsModelNotice, ToolsModelPicker } from "@/components/tools/ToolsModelBar";
 import { describeError } from "@/lib/app-error";
 import {
@@ -80,6 +81,7 @@ function MathpixCard() {
     <IntegrationCard
       testId="mathpix-card"
       framed
+      icon={<MathpixBrandIcon className="size-4" />}
       title={t(($) => $.settings.ai.tools.mathpix.title)}
       description={t(($) => $.settings.ai.tools.mathpix.description)}
       docs={{ href: MATHPIX_CONSOLE, label: t(($) => $.settings.ai.tools.mathpix.docs) }}

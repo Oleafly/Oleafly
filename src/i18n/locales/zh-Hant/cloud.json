@@ -28,7 +28,7 @@
     "s3": "使用 Amazon S3、MinIO 或類似服務上的儲存貯體。"
   },
   "unavailable": "此版本無法使用",
-  "lastConnected": "上次連接到 {{email}}。",
+  "lastConnection": "上次連接",
   "finishInBrowser": "在瀏覽器中完成",
   "waiting": "正在等待 {{provider}}",
   "browserDidntOpen": "瀏覽器沒有開啟？開啟 {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "專案",
     "synced": "{{count}} 個已同步",
+    "waiting": "{{count}} 個尚未在 {{provider}} 中",
     "paused": "{{count}} 個已暫停",
     "onlyInCloud": "{{count}} 個只在 {{provider}} 中",
     "none": "還沒有專案",
-    "syncing": "正在同步你的專案",
     "lastSynced": "上次同步：{{time}}",
     "notSynced": "尚未同步",
     "off": "這台電腦上的同步已關閉",

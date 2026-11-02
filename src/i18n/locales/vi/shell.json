@@ -437,7 +437,9 @@
       "title": "Engine (dự án này)",
       "help": "Typst biên dịch tài liệu đúng như đã viết. Calepin còn chạy mã trong đó và đưa kết quả vào PDF.",
       "typst": "Typst <note>[tích hợp sẵn]</note>",
-      "calepin": "Calepin <note>[chạy mã]</note>"
+      "calepin": "Calepin <note>[chạy mã]</note>",
+      "calepinMissing": "Calepin <note>[chưa cài đặt]</note>",
+      "installCalepin": "Cài đặt Calepin…"
     },
     "code": {
       "title": "Mã (máy này)",
@@ -542,6 +544,7 @@
     "specimenViewer": "Trình xem mẫu",
     "stackTrace": "Dấu vết ngăn xếp",
     "surfaceCrashed": "{{surface}} đã gặp sự cố.",
+    "surfaceCrashedAgain": "{{surface}} lại gặp sự cố. Hãy tải lại Oleafly để bắt đầu lại từ đầu.",
     "surfaceClosed": "Cửa sổ đó gặp lỗi và đã đóng. Chi tiết đã được lưu vào nhật ký.",
     "surfaces": {
       "aiAssistant": "trợ lý AI",

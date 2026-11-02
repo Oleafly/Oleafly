@@ -208,6 +208,7 @@
     "diffCrashed": "差异视图已崩溃。请关闭此标签页后重试。",
     "pdfLoadFailed": "加载 PDF 失败：{{detail}}",
     "imageLoadFailed": "加载图片失败：{{detail}}",
+    "imageUnreadable": "无法将此文件显示为图片。它可能已损坏，或者根本不是图片。",
     "binaryFile": "二进制文件，无法预览。",
     "managedFileReadOnly": "{{file}} 由 Oleafly 管理，在此处为只读。项目设置通过 Oleafly 本身修改，而不是编辑此文件。",
     "noFileOpen": "未打开文件。",

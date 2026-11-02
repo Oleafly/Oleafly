@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
-import { FileText, Settings2 } from "lucide-react";
+import { FileText, ImageOff, Settings2 } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
@@ -93,11 +93,13 @@ function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: 
   const { t } = useTranslation(["common", "editor"]);
   const [src, setSrc] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [undecodable, setUndecodable] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setSrc(null);
     setErr(null);
+    setUndecodable(false);
     readFileBase64(projectId, path)
       .then((b64) => { if (!cancelled) setSrc(`data:${imageMime(path)};base64,${b64}`); })
       .catch((e) => { if (!cancelled) setErr(String(e)); });
@@ -112,9 +114,26 @@ function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: 
     );
   }
   if (!src) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
+  if (undecodable) {
+    return (
+      <div
+        data-testid="image-undecodable"
+        className="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
+      >
+        <ImageOff className="mb-3 size-10 opacity-30" />
+        <p className="text-sm">{basename(path)}</p>
+        <p className="text-xs">{t(($) => $.editor.shell.imageUnreadable)}</p>
+      </div>
+    );
+  }
   return (
     <div className="flex h-full items-center justify-center overflow-auto p-4">
-      <img src={src} alt={basename(path)} className="max-h-full max-w-full object-contain" />
+      <img
+        src={src}
+        alt={basename(path)}
+        onError={() => setUndecodable(true)}
+        className="max-h-full max-w-full object-contain"
+      />
     </div>
   );
 }

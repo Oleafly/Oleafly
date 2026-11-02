@@ -23,7 +23,7 @@ import type { NotebookToolchainStatus } from "@/lib/notebook-commands";
 import type { DocumentEngineDescriptor, TypstOptionsDescriptor } from "@/lib/tauri";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
-import { QUARTO_SETTINGS_TARGET, useNotebookToolchainStore } from "@/store/notebook-toolchain";
+import { CALEPIN_SETTINGS_TARGET, QUARTO_SETTINGS_TARGET, useNotebookToolchainStore } from "@/store/notebook-toolchain";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
 import { useToastStore } from "@/store/toast";
@@ -155,6 +155,28 @@ describe("code in the compile menu", () => {
 });
 
 describe("Typst or Calepin in the compile menu", () => {
+  beforeEach(() => {
+    useNotebookToolchainStore.setState({ status: null, ensureLoaded: vi.fn(async () => null) });
+  });
+
+  it("greys Calepin out until it's installed and points to its settings", async () => {
+    useNotebookToolchainStore.setState({
+      status: { calepin: { active: null } } as unknown as NotebookToolchainStatus,
+    });
+    useSettingsStore.setState({ settingsOpen: false, settingsScrollTarget: null });
+    renderView(engine("typst"));
+    const user = await openOptions();
+    const calepin = screen.getByTestId("typ-engine-calepin");
+    expect(calepin).toHaveAttribute("data-disabled");
+    expect(calepin).toHaveTextContent("[not installed]");
+    await user.click(screen.getByTestId("typ-engine-install-calepin"));
+    expect(setEngine).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsScrollTarget: CALEPIN_SETTINGS_TARGET,
+    });
+  });
+
   it("switches a Typst document to Calepin", async () => {
     renderView(engine("typst"));
     const user = await openOptions();

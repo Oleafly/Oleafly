@@ -45,6 +45,8 @@ struct ConnectionFile {
     #[serde(default)]
     last_email: Option<String>,
     #[serde(default)]
+    last_provider: Option<ProviderKind>,
+    #[serde(default)]
     account: Option<ConnectedAccount>,
 }
 
@@ -98,6 +100,7 @@ pub struct CloudStateView {
     device_name: String,
     enabled: bool,
     last_email: Option<String>,
+    last_provider: Option<ProviderKind>,
     last_synced_ms: u64,
     last_error: Option<String>,
     quota_full: bool,
@@ -113,7 +116,11 @@ pub struct CloudDetailsView {
     error: Option<String>,
 }
 
-fn disconnected_view(device_name: String, last_email: Option<String>) -> CloudStateView {
+fn disconnected_view(
+    device_name: String,
+    last_email: Option<String>,
+    last_provider: Option<ProviderKind>,
+) -> CloudStateView {
     CloudStateView {
         status: "disconnected",
         provider: None,
@@ -122,6 +129,7 @@ fn disconnected_view(device_name: String, last_email: Option<String>) -> CloudSt
         device_name,
         enabled: false,
         last_email,
+        last_provider,
         last_synced_ms: 0,
         last_error: None,
         quota_full: false,
@@ -420,6 +428,7 @@ fn new_connection() -> ConnectionFile {
         device_id: DeviceId::new(),
         device_name: computer_name(),
         last_email: None,
+        last_provider: None,
         account: None,
     }
 }
@@ -570,6 +579,7 @@ async fn finish_connect(provider: ProviderKind, tokens: TokenSet) -> Result<Conn
     }
     update_connection(|file| {
         file.last_email = Some(account.email.clone());
+        file.last_provider = Some(provider);
         file.account = Some(ConnectedAccount {
             provider,
             account_id: account_id.clone(),
@@ -771,6 +781,7 @@ pub async fn cloud_connect_credentials(
     clear_token_cache();
     update_connection(|file| {
         file.last_email = Some(account.email.clone());
+        file.last_provider = Some(provider);
         file.account = Some(ConnectedAccount {
             provider,
             account_id: account.account_id.clone(),
@@ -1013,10 +1024,26 @@ fn local_view(
 #[tauri::command]
 pub async fn cloud_state() -> Result<CloudStateView, String> {
     let Some(file) = read_connection()? else {
-        return Ok(disconnected_view(computer_name(), None));
+        return Ok(disconnected_view(computer_name(), None, None));
     };
     let Some(account) = file.account.clone() else {
-        return Ok(disconnected_view(file.device_name, file.last_email));
+        // Records written before last_provider was kept: the sync state still
+        // names the account that synced last.
+        let last_provider = file.last_provider.or_else(|| {
+            state::read(|engine_state| {
+                engine_state
+                    .account
+                    .as_deref()
+                    .and_then(ProviderKind::of_account_key)
+            })
+            .ok()
+            .flatten()
+        });
+        return Ok(disconnected_view(
+            file.device_name,
+            file.last_email,
+            last_provider,
+        ));
     };
     let (library, linked_count) = split_library(library_projects().await);
     let bindings = crate::project_ids::all_bindings().unwrap_or_default();
@@ -1067,6 +1094,7 @@ pub async fn cloud_state() -> Result<CloudStateView, String> {
         device_name: file.device_name,
         enabled: account.enabled,
         last_email: file.last_email,
+        last_provider: file.last_provider,
         last_synced_ms,
         last_error,
         quota_full,
@@ -1279,6 +1307,7 @@ pub async fn cloud_disconnect() -> Result<DisconnectDone, String> {
     update_connection(|file| {
         if let Some(account) = file.account.take() {
             file.last_email = Some(account.email);
+            file.last_provider = Some(account.provider);
         }
         Ok(())
     })?;
@@ -2286,15 +2315,16 @@ pub async fn cloud_settings_keep_local(values: serde_json::Value) -> Result<(), 
 mod tests {
     use super::{
         changed_clouds, dirty_keys, extract_pasted_code, read_connection_at, validate_device_name,
-        write_connection_at, ConnectionFile, DirtyFile, SettingsSyncView,
+        write_connection_at, ConnectionFile, DirtyFile, ProviderKind, SettingsSyncView,
     };
     use oleafly_core::ids::{DeviceId, ProjectId};
 
     #[test]
     fn state_views_always_serialize_projects() {
-        let view = super::disconnected_view("Desk".into(), None);
+        let view = super::disconnected_view("Desk".into(), None, Some(ProviderKind::S3));
         let value = serde_json::to_value(view).unwrap();
         assert_eq!(value["projects"], serde_json::json!([]));
+        assert_eq!(value["lastProvider"], "s3");
         assert_eq!(value["deviceName"], "Desk");
         assert_eq!(value["status"], "disconnected");
     }
@@ -2359,6 +2389,7 @@ mod tests {
             device_id: DeviceId::new(),
             device_name: "Desk".into(),
             last_email: Some("ada@example.org".into()),
+            last_provider: Some(ProviderKind::GoogleDrive),
             account: None,
         };
         write_connection_at(&path, &file).unwrap();
@@ -2366,6 +2397,7 @@ mod tests {
         assert_eq!(read.device_id, file.device_id);
         assert_eq!(read.device_name, "Desk");
         assert_eq!(read.last_email.as_deref(), Some("ada@example.org"));
+        assert_eq!(read.last_provider, Some(ProviderKind::GoogleDrive));
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(!text.contains("refresh"));
         assert!(!text.contains("token"));

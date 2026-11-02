@@ -3,6 +3,7 @@ import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   ChevronDown,
+  Download,
   FileText,
   Info,
   Play,
@@ -43,6 +44,7 @@ import { typstSupports, type TypstOptionsUpdate } from "@/lib/typst-options";
 import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
 import { applyShellEscape } from "@/lib/latex-compile-actions";
 import { isCalepinEngine, isNotebookEngine } from "@/lib/notebook-engines";
+import { openNotebookToolSettings, useNotebookToolchainStore } from "@/store/notebook-toolchain";
 import { recompileWithPreview } from "@/lib/compile-preview";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
 import { cn, shortcut } from "@/lib/utils";
@@ -289,6 +291,12 @@ function TypEngineMenuGroup({
 }>) {
   const { t } = useTranslation(["shell", "errors"]);
   const current = isCalepinEngine(engine) ? "calepin" : "typst";
+  const ensureToolchain = useNotebookToolchainStore((s) => s.ensureLoaded);
+  // Only once the status is known, so a slow check never blocks the choice.
+  const calepinMissing = useNotebookToolchainStore((s) => s.status !== null && s.status.calepin.active === null);
+  useEffect(() => {
+    void ensureToolchain();
+  }, [ensureToolchain]);
   return (
     <>
       <DropdownMenuSeparator />
@@ -316,15 +324,33 @@ function TypEngineMenuGroup({
         <DropdownMenuRadioItem
           value="calepin"
           data-testid="typ-engine-calepin"
-          disabled={locked || trustNeeded}
+          disabled={locked || trustNeeded || calepinMissing}
         >
-          <Trans
-            ns="shell"
-            i18nKey={($) => $.shell.compile.typEngine.calepin}
-            components={{ note: <span className="ml-1 text-muted-foreground" /> }}
-          />
+          {calepinMissing ? (
+            <Trans
+              ns="shell"
+              i18nKey={($) => $.shell.compile.typEngine.calepinMissing}
+              components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+            />
+          ) : (
+            <Trans
+              ns="shell"
+              i18nKey={($) => $.shell.compile.typEngine.calepin}
+              components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+            />
+          )}
         </DropdownMenuRadioItem>
       </DropdownMenuRadioGroup>
+      {calepinMissing && !locked && (
+        <DropdownMenuItem
+          data-testid="typ-engine-install-calepin"
+          className="gap-2 text-xs text-muted-foreground"
+          onSelect={() => openNotebookToolSettings("calepin")}
+        >
+          <Download className="size-3.5 shrink-0" />
+          {t(($) => $.shell.compile.typEngine.installCalepin)}
+        </DropdownMenuItem>
+      )}
       {trustNeeded && (
         <TrustFolderMenuItem
           label={t(($) => $.errors.trust.notebook)}

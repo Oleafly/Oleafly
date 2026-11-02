@@ -37,6 +37,7 @@ const LOOK: Readonly<Record<CloudProviderKind, { icon: ComponentType<{ className
 const SIZE_CLASS = {
   md: { tile: "size-10 rounded-lg", icon: "size-5" },
   sm: { tile: "size-8 rounded-md", icon: "size-4" },
+  xs: { tile: "size-4 rounded-[4px]", icon: "size-2.5" },
 } as const;
 
 export function CloudProviderLogo({

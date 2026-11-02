@@ -208,6 +208,7 @@
     "diffCrashed": "A comparação travou. Feche esta aba e tente de novo.",
     "pdfLoadFailed": "Falha ao carregar o PDF: {{detail}}",
     "imageLoadFailed": "Falha ao carregar a imagem: {{detail}}",
+    "imageUnreadable": "Este arquivo não pode ser exibido como imagem. Ele pode estar danificado ou não ser uma imagem.",
     "binaryFile": "Arquivo binário. Nenhuma prévia disponível.",
     "managedFileReadOnly": "{{file}} é gerenciado pelo Oleafly e fica somente leitura aqui. As configurações do projeto mudam pelo próprio Oleafly, não editando este arquivo.",
     "noFileOpen": "Nenhum arquivo aberto.",

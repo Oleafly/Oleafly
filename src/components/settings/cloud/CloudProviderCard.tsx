@@ -93,7 +93,7 @@ function ProviderOption({
       aria-describedby={`${id}-hint`}
       disabled={!provider.available || connectBusy}
       onClick={() => onChoose(provider)}
-      className="flex min-w-0 items-start gap-3 rounded-lg border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent focus-visible:border-primary focus-visible:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-background"
+      className="flex min-w-0 flex-col items-start gap-2.5 rounded-lg border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent focus-visible:border-primary focus-visible:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-background"
     >
       <CloudProviderLogo kind={provider.kind} size="sm" />
       <span className="min-w-0">
@@ -128,6 +128,30 @@ function ProviderChooser({ onCredentials }: Readonly<{ onCredentials: (kind: Clo
         </div>
       </fieldset>
       <ConnectError />
+    </div>
+  );
+}
+
+function LastConnection({ email, kind }: Readonly<{ email: string; kind: CloudProviderKind | null }>) {
+  const { t } = useTranslation(["cloud"]);
+  return (
+    <div
+      data-testid="cloud-last-connection"
+      className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground"
+    >
+      <span>{t(($) => $.cloud.lastConnection)}</span>
+      <Badge variant="quiet" className={cn("min-w-0 max-w-full gap-1.5 py-1 pr-2", kind ? "pl-1" : "pl-2")}>
+        {kind ? (
+          <>
+            <CloudProviderLogo kind={kind} size="xs" />
+            <span>{cloudProviderName(kind)}</span>
+            <span aria-hidden className="h-3 w-px shrink-0 bg-border" />
+          </>
+        ) : null}
+        <Tooltip label={email} className="min-w-0">
+          <span className="block truncate font-normal text-muted-foreground">{email}</span>
+        </Tooltip>
+      </Badge>
     </div>
   );
 }
@@ -185,11 +209,7 @@ function ConnectView() {
           </ul>
         </div>
         {connect}
-        {state?.lastEmail ? (
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.cloud.lastConnected, { email: state.lastEmail })}
-          </p>
-        ) : null}
+        {state?.lastEmail ? <LastConnection email={state.lastEmail} kind={state.lastProvider} /> : null}
       </div>
     </section>
   );

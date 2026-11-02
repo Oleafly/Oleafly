@@ -437,7 +437,9 @@
       "title": "引擎（本项目）",
       "help": "Typst 按原样编译文档。Calepin 还会运行其中的代码，并将结果放入 PDF。",
       "typst": "Typst <note>[内置]</note>",
-      "calepin": "Calepin <note>[运行代码]</note>"
+      "calepin": "Calepin <note>[运行代码]</note>",
+      "calepinMissing": "Calepin <note>[未安装]</note>",
+      "installCalepin": "安装 Calepin…"
     },
     "code": {
       "title": "代码（本机）",
@@ -542,6 +544,7 @@
     "specimenViewer": "样本查看器",
     "stackTrace": "堆栈跟踪",
     "surfaceCrashed": "{{surface}}已崩溃。",
+    "surfaceCrashedAgain": "{{surface}}再次崩溃。重新加载 Oleafly 即可从头开始。",
     "surfaceClosed": "该窗口出错，已关闭。详细信息已保存到日志。",
     "surfaces": {
       "aiAssistant": "AI 助手",

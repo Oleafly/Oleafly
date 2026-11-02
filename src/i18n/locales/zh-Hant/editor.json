@@ -208,6 +208,7 @@
     "diffCrashed": "差異檢視已當機。請關閉此分頁後再試一次。",
     "pdfLoadFailed": "無法載入 PDF：{{detail}}",
     "imageLoadFailed": "無法載入影像：{{detail}}",
+    "imageUnreadable": "無法將此檔案顯示為圖片。它可能已損毀，或者根本不是圖片。",
     "binaryFile": "二進位檔案。無法預覽。",
     "managedFileReadOnly": "{{file}} 由 Oleafly 管理，在這裡是唯讀的。專案設定要透過 Oleafly 本身修改，而不是編輯這個檔案。",
     "noFileOpen": "未開啟任何檔案。",

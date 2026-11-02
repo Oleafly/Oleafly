@@ -208,6 +208,7 @@
     "diffCrashed": "Diffvisningen krasjet. Lukk denne fanen og prøv igjen.",
     "pdfLoadFailed": "Kunne ikke laste PDF-en: {{detail}}",
     "imageLoadFailed": "Kunne ikke laste bildet: {{detail}}",
+    "imageUnreadable": "Filen kan ikke vises som bilde. Den kan være skadet, eller den er kanskje ikke et bilde.",
     "binaryFile": "Binærfil. Ingen forhåndsvisning tilgjengelig.",
     "managedFileReadOnly": "{{file}} styres av Oleafly og er skrivebeskyttet her. Prosjektinnstillinger endrer du i Oleafly, ikke ved å redigere denne filen.",
     "noFileOpen": "Ingen filer er åpne.",

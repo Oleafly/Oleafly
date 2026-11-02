@@ -437,7 +437,9 @@
       "title": "引擎（本專案）",
       "help": "Typst 會依文件原樣編譯。Calepin 還會執行其中的程式碼，並把結果放進 PDF。",
       "typst": "Typst <note>[內建]</note>",
-      "calepin": "Calepin <note>[執行程式碼]</note>"
+      "calepin": "Calepin <note>[執行程式碼]</note>",
+      "calepinMissing": "Calepin <note>[未安裝]</note>",
+      "installCalepin": "安裝 Calepin…"
     },
     "code": {
       "title": "程式碼（這台電腦）",
@@ -542,6 +544,7 @@
     "specimenViewer": "標本檢視器",
     "stackTrace": "堆疊追蹤",
     "surfaceCrashed": "{{surface}}當機了。",
+    "surfaceCrashedAgain": "{{surface}}又當機了。重新載入 Oleafly 即可重新開始。",
     "surfaceClosed": "該視窗發生錯誤，已關閉。詳細資訊已儲存至記錄檔。",
     "surfaces": {
       "aiAssistant": "AI 助理",

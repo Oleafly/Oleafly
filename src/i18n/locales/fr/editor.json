@@ -208,6 +208,7 @@
     "diffCrashed": "La vue de comparaison a planté. Fermez cet onglet et réessayez.",
     "pdfLoadFailed": "Échec du chargement du PDF : {{detail}}",
     "imageLoadFailed": "Échec du chargement de l'image : {{detail}}",
+    "imageUnreadable": "Ce fichier ne peut pas être affiché comme image. Il est peut-être endommagé, ou ce n'est pas une image.",
     "binaryFile": "Fichier binaire. Aucun aperçu disponible.",
     "managedFileReadOnly": "{{file}} est géré par Oleafly et reste en lecture seule ici. Les réglages du projet se modifient depuis Oleafly, pas en éditant ce fichier.",
     "noFileOpen": "Aucun fichier ouvert.",

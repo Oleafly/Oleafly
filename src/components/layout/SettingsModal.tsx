@@ -47,8 +47,9 @@ import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
 import { NavItem } from "@/components/ui/nav-item";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatGrid } from "@/components/ui/stat-grid";
-import { StorageBreakdown } from "@/components/settings/StorageBreakdown";
+import { StorageBreakdown, StorageBreakdownSkeleton } from "@/components/settings/StorageBreakdown";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath } from "@/components/settings/SettingsPath";
@@ -632,15 +633,19 @@ export function SettingsModal() {
       );
     }
     if (storageLoading && !storageSummary) {
+      const pending = { value: <Skeleton className="h-3.5 w-12" />, detail: <Skeleton className="h-2 w-10" /> };
       return (
-        <output
-          className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
-        >
-          <RefreshCw
-            aria-hidden
-            className="size-4 animate-spin motion-reduce:animate-none"
+        <output aria-busy="true" data-testid="storage-skeleton" className="block">
+          <span className="sr-only">{t(($) => $.shell.settings.data.storage.calculating)}</span>
+          <StatGrid
+            stats={[
+              { id: "projects", label: t(($) => $.shell.settings.data.storage.stats.projects), ...pending },
+              { id: "files", label: t(($) => $.shell.settings.data.storage.stats.files), ...pending },
+              { id: "images", label: t(($) => $.shell.settings.data.storage.stats.images), ...pending },
+              { id: "pdfs", label: t(($) => $.shell.settings.data.storage.stats.pdfs), ...pending },
+            ]}
           />
-          {t(($) => $.shell.settings.data.storage.calculating)}
+          <StorageBreakdownSkeleton />
         </output>
       );
     }
@@ -691,14 +696,14 @@ export function SettingsModal() {
   const renderRecycleBin = () => {
     if (storageLoading && !storageSummary) {
       return (
-        <output
-          className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
-        >
-          <RefreshCw
-            aria-hidden
-            className="size-4 animate-spin motion-reduce:animate-none"
-          />
-          {t(($) => $.shell.settings.data.recycleBin.loading)}
+        <output aria-busy="true" data-testid="recycle-bin-skeleton" className="block px-4 py-3">
+          <span className="sr-only">{t(($) => $.shell.settings.data.recycleBin.loading)}</span>
+          <span aria-hidden className="block text-sm">
+            <Skeleton className="h-3.5 w-40" />
+          </span>
+          <span aria-hidden className="mt-0.5 block text-[0.625rem]">
+            <Skeleton className="h-2 w-28" />
+          </span>
         </output>
       );
     }

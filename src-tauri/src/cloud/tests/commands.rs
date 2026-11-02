@@ -312,6 +312,7 @@ async fn connecting_by_pasted_code_or_by_the_loopback_page_stores_the_account() 
     assert_eq!(connected["displayName"], DISPLAY_NAME);
     assert_eq!(connected["enabled"], true);
     assert_eq!(connected["lastEmail"], EMAIL);
+    assert_eq!(connected["lastProvider"], "dropbox");
 
     harness.fake.with(|dropbox| dropbox.omit_refresh = true);
     let begin = view(cloud_connect_begin(None, true).await.unwrap());
@@ -516,6 +517,7 @@ async fn the_state_follows_the_account_from_disconnected_to_revoked() {
     let gone = state().await;
     assert_eq!(gone["status"], "disconnected");
     assert_eq!(gone["lastEmail"], EMAIL);
+    assert_eq!(gone["lastProvider"], "dropbox");
     assert_eq!(gone["deviceName"], "Desk");
 }
 

@@ -208,6 +208,7 @@
     "diffCrashed": "差分表示がクラッシュしました。このタブを閉じてもう一度お試しください。",
     "pdfLoadFailed": "PDF を読み込めませんでした: {{detail}}",
     "imageLoadFailed": "画像を読み込めませんでした: {{detail}}",
+    "imageUnreadable": "このファイルは画像として表示できません。破損しているか、画像ではない可能性があります。",
     "binaryFile": "バイナリファイルです。プレビューはできません。",
     "managedFileReadOnly": "{{file}} は Oleafly が管理しているため、ここでは読み取り専用です。プロジェクトの設定は、このファイルを編集するのではなく Oleafly 上で変更してください。",
     "noFileOpen": "ファイルが開かれていません。",

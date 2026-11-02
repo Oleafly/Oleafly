@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} is gedownload, maar de integriteitscontrole is mislukt. Probeer het opnieuw te installeren.",
     "unknown_tool": "Oleafly kent geen tool met de naam {{tool}}.",
     "not_managed": "Oleafly kan alleen de kopie van {{tool}} verwijderen die het zelf heeft gedownload.",
-    "no_html_output": "Er is nog geen HTML-uitvoer. Compileer eerst het document."
+    "no_html_output": "Er is nog geen HTML-uitvoer. Compileer eerst het document.",
+    "quarto_needs_tex": "Dit formaat heeft LaTeX nodig. Installeer TinyTeX via Instellingen > Engines > LaTeX, of zet het document op format: typst, dat geen TeX nodig heeft.",
+    "r_package_missing": "Er ontbreekt een R-pakket dat dit document nodig heeft. Installeer het in R, bijvoorbeeld met install.packages(), en compileer daarna opnieuw.",
+    "jupyter_missing": "De Python-code in dit document heeft Jupyter nodig om te draaien. Installeer het met python3 -m pip install jupyter en compileer daarna opnieuw. Of zet code uit in het menu Compileren om de code te tonen zonder die uit te voeren.",
+    "quarto_no_input": "Quarto kon het hoofddocument niet lezen. Controleer of het een .qmd- of .Rmd-bestand in het project is."
   },
   "attachments": {
     "too_large": "Dit bestand is groter dan {{max}} MB. Voeg een kleiner bestand toe.",
