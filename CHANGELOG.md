@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On Linux, the AppImage shows the Oleafly icon in the taskbar and window
+  list. The window icon was too large, so GTK dropped it, and desktops such as
+  Cinnamon showed a generic icon unless the AppImage had been added to the
+  applications menu. The icon you pick under App icon in Settings > Appearance
+  now changes the taskbar icon on Linux too.
+
 ## [0.4.10] - 2026-11-02
 
 ### Added
