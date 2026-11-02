@@ -71,6 +71,7 @@ export {
 } from "./source-editing";
 export { htmlToLatex, type HtmlToLatexOptions } from "./paste/html-to-latex";
 export {
+  markdownBlockAt,
   parseMarkdownBody,
   type ParseMarkdownBodyOptions,
   type PreservedMarkdownInlineRange,

@@ -907,6 +907,10 @@
         "description": "Toon de opgemaakte vergelijking boven de vergelijking waarin de cursor staat.",
         "label": "Wiskundevoorbeeld"
       },
+      "keepVisualMode": {
+        "description": "Als je in de visuele modus werkt, opent een sprong vanuit het overzicht, een referentie of een probleem het bestand ook in de visuele modus. Staat dit uit, dan schakelt de sprong over naar Code.",
+        "label": "In de visuele modus blijven"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

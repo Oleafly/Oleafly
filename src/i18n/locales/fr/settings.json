@@ -913,6 +913,10 @@
         "description": "Afficher l'équation composée au-dessus de celle où se trouve le curseur.",
         "label": "Aperçu des maths"
       },
+      "keepVisualMode": {
+        "description": "Quand vous êtes en mode Visuel, un saut depuis le plan, une référence ou un problème ouvre aussi le fichier en mode Visuel. Si l'option est désactivée, le saut passe en mode Code.",
+        "label": "Rester en mode Visuel"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

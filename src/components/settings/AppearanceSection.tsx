@@ -676,6 +676,8 @@ function EditorAppearanceTab() {
   const editorCursorBlinking = useSettingsStore((state) => state.editorCursorBlinking);
   const setEditorCursorBlinking = useSettingsStore((state) => state.setEditorCursorBlinking);
   const editorMathPreview = useSettingsStore((state) => state.editorMathPreview);
+  const editorKeepVisualMode = useSettingsStore((state) => state.editorKeepVisualMode);
+  const setEditorKeepVisualMode = useSettingsStore((state) => state.setEditorKeepVisualMode);
   const setEditorMathPreview = useSettingsStore(
     (state) => state.setEditorMathPreview,
   );
@@ -986,6 +988,12 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.mathPreview.description)}
         checked={editorMathPreview}
         onChange={setEditorMathPreview}
+      />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.keepVisualMode.label)}
+        description={t(($) => $.settings.appearance.editor.keepVisualMode.description)}
+        checked={editorKeepVisualMode}
+        onChange={setEditorKeepVisualMode}
       />
       <SettingsRow
         testId="settings-row-file-move-references"

@@ -919,6 +919,10 @@
         "description": "Pokazuj wyrenderowany wzór nad tym, w którym stoi kursor.",
         "label": "Podgląd wzoru"
       },
+      "keepVisualMode": {
+        "description": "Gdy pracujesz w trybie wizualnym, przejście z konspektu, odwołania lub problemu otwiera plik również w trybie wizualnym. Gdy opcja jest wyłączona, przejście przełącza na Kod.",
+        "label": "Zostań w trybie wizualnym"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

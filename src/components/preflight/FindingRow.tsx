@@ -5,6 +5,7 @@ import { standardChips, type Finding, type Severity } from "@oleafly/preflight";
 import { gotoRange } from "@/components/editor/cm/controller";
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
 import { askAiAboutFinding } from "@/features/ask-ai-preflight";
+import { keptVisualEditor } from "@/lib/open-location";
 import { useFilesStore } from "@/store/files";
 import { cn } from "@/lib/utils";
 import { renderDetail, renderMessage, type PreflightTranslate } from "./message";
@@ -31,7 +32,8 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
     if (finding.file && useFilesStore.getState().activePath !== finding.file) {
       await useFilesStore.getState().openFile(finding.file);
     }
-    revealSourceEditor();
+    const path = finding.file ?? useFilesStore.getState().activePath ?? "";
+    if (keptVisualEditor(path) !== "codemirror") revealSourceEditor();
     requestAnimationFrame(() => gotoRange(sourceRange.from, sourceRange.to));
   };
 

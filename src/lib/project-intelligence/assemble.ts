@@ -12,6 +12,7 @@ import type { LatexSearchPaths } from "@oleafly/editor/file-references";
 import { dirname } from "@/lib/path-utils";
 import {
   engineForPath,
+  isInUnlistedFolder,
   normalizeProjectPath,
   resolveProjectPathFrom,
   stableId,
@@ -405,6 +406,31 @@ function filesInDirectories(
     if (candidates.length > 0) return candidates;
   }
   return [];
+}
+
+function assetLookupTargets(edge: ProjectEdge, search: AssetSearch): string[] {
+  if (edge.searchPath) {
+    return assetSearchDirectories(edge, search)
+      .map((directory) => resolveProjectPathFrom(directory, edge.rawTarget))
+      .filter((target): target is string => target !== null);
+  }
+  const target = edge.targetFile ? normalizeProjectPath(edge.targetFile) : null;
+  return target ? [target] : [];
+}
+
+function withUnlistedPaths(edge: ProjectEdge, search: AssetSearch): ProjectEdge {
+  if (edge.kind !== "asset" || edge.resolution !== "unresolved") return edge;
+  const paths: string[] = [];
+  for (const target of assetLookupTargets(edge, search)) {
+    if (!isInUnlistedFolder(target)) continue;
+    const spellings = /\.[a-z0-9]+$/i.test(target)
+      ? [target]
+      : [target, ...ASSET_EXTENSIONS.map((extension) => `${target}${extension}`)];
+    for (const path of spellings) {
+      if (!paths.includes(path)) paths.push(path);
+    }
+  }
+  return paths.length > 0 ? { ...edge, unlistedPaths: paths } : edge;
 }
 
 function candidateTargetFiles(
@@ -803,6 +829,7 @@ export function assembleProjectIntelligenceResult(
   };
   const edges = linked
     .map((edge) => (edge.searchPath ? resolveEdge(edge, known, knownByLower, search) : edge))
+    .map((edge) => withUnlistedPaths(edge, search))
     .sort(
       (left, right) =>
         left.fromFile.localeCompare(right.fromFile) ||

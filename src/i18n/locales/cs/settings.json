@@ -919,6 +919,10 @@
         "description": "Zobrazovat vykreslenou rovnici nad tou, ve které je kurzor.",
         "label": "Náhled matematiky"
       },
+      "keepVisualMode": {
+        "description": "Když jste ve vizuálním režimu, skok z osnovy, odkazu nebo problému otevře soubor také ve vizuálním režimu. Když je volba vypnutá, skok přepne na Kód.",
+        "label": "Zůstat ve vizuálním režimu"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {

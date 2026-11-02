@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page. It comes with the same Tectonic, Biber, Pandoc, Typst and Tinymist as
   the Apple Silicon build, and other Typst versions, TexLab, Quarto and
   Calepin download for Intel Macs too.
+- Settings > Appearance > Editor has a Stay in Visual mode switch (#366).
+  Turn it on, and jumping from the outline, a reference or a problem no
+  longer drops you into Code while you work in Visual mode. LaTeX and Typst
+  files open in Visual mode, and in a Markdown file the Visual editor scrolls
+  to the heading or paragraph. The switch is off by default, so jumps still
+  switch to Code unless you change it.
 
 ### Changed
 
@@ -20,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   new. Every section of every release shows in full, however many changes it
   has. Before, a long section such as Fixed showed only a count until you
   clicked it, and What's new closed the releases you already had.
+
+### Fixed
+
+- Oleafly no longer reports an image in a hidden folder, such as
+  `#image(".typ-img/example.png")`, as missing when the file is there (#374).
+  The file list still leaves hidden and generated folders out, but when a
+  document names an image inside one, Oleafly looks for it on disk.
+  `oleafly context` no longer lists it as missing either.
 
 ## [0.4.9] - 2026-10-31
 

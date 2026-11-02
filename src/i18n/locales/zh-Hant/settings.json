@@ -901,6 +901,10 @@
         "description": "在游標所在的公式上方顯示排版後的公式。",
         "label": "公式預覽"
       },
+      "keepVisualMode": {
+        "description": "在視覺化模式下，從大綱、參照或問題跳轉時，目標檔案也會以視覺化模式開啟。關閉後，跳轉會切換到程式碼模式。",
+        "label": "保持視覺化模式"
+      },
       "typst": {
         "title": "Typst",
         "formatOnSave": {
