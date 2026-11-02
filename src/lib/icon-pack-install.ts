@@ -17,7 +17,7 @@ export class IconPackError extends Error {
 }
 
 // The pack may only draw shapes and gradients, so a tampered file cannot run code or load anything.
-const NUMBER = /^-?[0-9.]+(e-?[0-9]+)?%?$/i;
+const NUMBER = /^-?[\d.]+(e-?\d+)?%?$/i;
 const ATTRIBUTES: Readonly<Record<string, readonly [string, RegExp]>> = {
   class: ["className", /^[a-z0-9 -]+$/],
   d: ["d", /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s-]+$/],
