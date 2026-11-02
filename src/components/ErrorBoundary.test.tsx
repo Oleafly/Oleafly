@@ -91,6 +91,32 @@ describe("ErrorBoundary surface mode", () => {
     expect(screen.queryByText(crashed("chat"))).not.toBeInTheDocument();
   });
 
+  it("offers a window reload when Retry crashes again", () => {
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    try {
+      render(
+        <ErrorBoundary surface="chat">
+          <Bomb />
+        </ErrorBoundary>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: i18n.t(($) => $.common.actions.retry) }));
+
+      expect(
+        screen.getByText(
+          i18n.t(($) => $.shell.errorBoundary.surfaceCrashedAgain, {
+            surface: i18n.t(($) => $.shell.errorBoundary.surfaces.chat),
+          }),
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: i18n.t(($) => $.common.actions.retry) })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: copy.reload }));
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("copy diagnostics puts the error and component stack on the clipboard", async () => {
     const writeText = vi.fn((_text: string) => Promise.resolve());
     Object.defineProperty(navigator, "clipboard", {

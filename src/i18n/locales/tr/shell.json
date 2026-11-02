@@ -438,7 +438,9 @@
       "title": "Motor (bu proje)",
       "help": "Typst belgeyi yazıldığı gibi derler. Calepin ayrıca içindeki kodu çalıştırır ve sonuçları PDF'e ekler.",
       "typst": "Typst <note>[yerleşik]</note>",
-      "calepin": "Calepin <note>[kod çalıştırır]</note>"
+      "calepin": "Calepin <note>[kod çalıştırır]</note>",
+      "calepinMissing": "Calepin <note>[kurulu değil]</note>",
+      "installCalepin": "Calepin'i kur…"
     },
     "code": {
       "title": "Kod (bu bilgisayar)",
@@ -544,6 +546,7 @@
     "specimenViewer": "Örnek Görüntüleyici",
     "stackTrace": "Yığın izi",
     "surfaceCrashed": "{{surface}} çöktü.",
+    "surfaceCrashedAgain": "{{surface}} yeniden çöktü. Baştan başlamak için Oleafly'yi yeniden yükleyin.",
     "surfaceClosed": "Pencerede bir hata oluştu ve pencere kapandı. Ayrıntılar günlüğe kaydedildi.",
     "surfaces": {
       "aiAssistant": "Yapay zeka asistanı",

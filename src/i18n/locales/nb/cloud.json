@@ -28,7 +28,7 @@
     "s3": "Bruk en bucket på Amazon S3, MinIO eller en lignende tjeneste."
   },
   "unavailable": "Ikke tilgjengelig i denne versjonen",
-  "lastConnected": "Sist tilkoblet {{email}}.",
+  "lastConnection": "Sist tilkoblet",
   "finishInBrowser": "Fullfør i nettleseren",
   "waiting": "Venter på {{provider}}",
   "browserDidntOpen": "Åpnet ikke nettleseren? Åpne {{provider}}",
@@ -65,11 +65,11 @@
   "useLocalSettings": "Bruk innstillingene på denne datamaskinen",
   "projects": {
     "title": "Prosjekter",
-    "synced": "{{count}} synkroniseres",
+    "synced": "{{count}} synkronisert",
+    "waiting": "{{count}} ikke i {{provider}} ennå",
     "paused": "{{count}} på pause",
     "onlyInCloud": "{{count}} bare i {{provider}}",
     "none": "Ingen prosjekter ennå",
-    "syncing": "Synkroniserer prosjektene dine",
     "lastSynced": "Sist synkronisert {{time}}",
     "notSynced": "Ikke synkronisert ennå",
     "off": "Synkronisering er slått av på denne datamaskinen",

@@ -28,7 +28,7 @@
     "s3": "Amazon S3、MinIO、または同様のサービスのバケットを使います。"
   },
   "unavailable": "このビルドでは利用できません",
-  "lastConnected": "前回の接続先：{{email}}",
+  "lastConnection": "前回の接続先",
   "finishInBrowser": "ブラウザで完了してください",
   "waiting": "{{provider}} を待機中",
   "browserDidntOpen": "ブラウザが開きませんでしたか？ {{provider}} を開く",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "プロジェクト",
     "synced": "同期済み {{count}} 件",
+    "waiting": "まだ {{provider}} にない {{count}} 件",
     "paused": "一時停止中 {{count}} 件",
     "onlyInCloud": "{{provider}} のみ {{count}} 件",
     "none": "プロジェクトはまだありません",
-    "syncing": "プロジェクトを同期しています",
     "lastSynced": "最終同期：{{time}}",
     "notSynced": "まだ同期されていません",
     "off": "このコンピューターでは同期がオフです",

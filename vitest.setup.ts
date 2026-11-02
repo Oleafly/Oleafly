@@ -51,6 +51,13 @@ vi.mock("@lobehub/icons", () => {
     Ollama: stub(),
     Perplexity: stub(),
     ZAI: stub(),
+    Qwen: stub(),
+    Kimi: stub(),
+    Zhipu: stub(),
+    SiliconCloud: stub(),
+    Volcengine: stub(),
+    Brave: stub(),
+    Tavily: stub(),
     MCP: stub(),
     Browserless: stub(),
   };

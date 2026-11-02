@@ -191,6 +191,12 @@ export interface ProjectEdge {
   readonly candidateFiles: readonly string[];
   readonly bibliographyEngine?: BibliographyEngine;
   readonly searchPath?: "graphics" | "svg";
+  /**
+   * For an unresolved asset: the paths it may have inside folders the
+   * project file list leaves out (`.typ-img/plot.png`). The app checks them
+   * on disk and reanalyses with the ones that exist.
+   */
+  readonly unlistedPaths?: readonly string[];
 }
 
 export interface ProjectHierarchy {

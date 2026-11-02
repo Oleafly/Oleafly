@@ -908,6 +908,8 @@ interface SettingsState {
   setEditorStickyScroll: (v: boolean) => void;
   editorMathPreview: boolean;
   setEditorMathPreview: (v: boolean) => void;
+  editorKeepVisualMode: boolean;
+  setEditorKeepVisualMode: (v: boolean) => void;
   fileMoveReferences: FileMoveReferences;
   setFileMoveReferences: (v: FileMoveReferences) => void;
   zenFullScreen: boolean;
@@ -1187,6 +1189,7 @@ const PREF_DEFAULTS = {
   editorHighlightCurrentLine: true,
   editorStickyScroll: true,
   editorMathPreview: true,
+  editorKeepVisualMode: false,
   fileMoveReferences: "ask" as FileMoveReferences,
   zenFullScreen: true,
   zenShowPdfOnCompile: true,
@@ -1289,6 +1292,7 @@ export const SECTION_SETTINGS = {
     editorHighlightCurrentLine: "oleafly.editor.highlightCurrentLine",
     editorStickyScroll: "oleafly.editor.stickyScroll",
     editorMathPreview: "oleafly.editor.mathPreview",
+    editorKeepVisualMode: "oleafly.editor.keepVisualMode",
     fileMoveReferences: "oleafly.editor.fileMoveReferences",
     zenFullScreen: "oleafly.zen.fullScreen",
     zenShowPdfOnCompile: "oleafly.zen.showPdfOnCompile",
@@ -1540,6 +1544,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorMathPreview: (v) => {
     saveLs("oleafly.editor.mathPreview", v ? "1" : "0");
     set({ editorMathPreview: v });
+  },
+  editorKeepVisualMode: ls("oleafly.editor.keepVisualMode", "0") === "1",
+  setEditorKeepVisualMode: (v) => {
+    saveLs("oleafly.editor.keepVisualMode", v ? "1" : "0");
+    set({ editorKeepVisualMode: v });
   },
   fileMoveReferences: readFileMoveReferences(),
   setFileMoveReferences: (v) => {

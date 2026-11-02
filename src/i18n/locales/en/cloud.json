@@ -28,7 +28,7 @@
     "s3": "Use a bucket on Amazon S3, MinIO or a similar service."
   },
   "unavailable": "Not available in this build",
-  "lastConnected": "Last connected to {{email}}.",
+  "lastConnection": "Last connected",
   "finishInBrowser": "Finish in your browser",
   "waiting": "Waiting for {{provider}}",
   "browserDidntOpen": "Browser didn't open? Open {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Projects",
     "synced": "{{count}} synced",
+    "waiting": "{{count}} not in {{provider}} yet",
     "paused": "{{count}} paused",
     "onlyInCloud": "{{count}} only in {{provider}}",
     "none": "No projects yet",
-    "syncing": "Syncing your projects",
     "lastSynced": "Last synced {{time}}",
     "notSynced": "Not synced yet",
     "off": "Sync is off on this computer",

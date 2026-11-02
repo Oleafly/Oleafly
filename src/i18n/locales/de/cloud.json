@@ -28,7 +28,7 @@
     "s3": "Verwenden Sie einen Bucket in Amazon S3, MinIO oder einem ähnlichen Dienst."
   },
   "unavailable": "In dieser Version nicht verfügbar",
-  "lastConnected": "Zuletzt verbunden mit {{email}}.",
+  "lastConnection": "Zuletzt verbunden",
   "finishInBrowser": "Im Browser abschließen",
   "waiting": "Warten auf {{provider}}",
   "browserDidntOpen": "Browser nicht geöffnet? {{provider}} öffnen",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Projekte",
     "synced": "{{count}} abgeglichen",
+    "waiting": "{{count}} noch nicht in {{provider}}",
     "paused": "{{count}} pausiert",
     "onlyInCloud": "{{count}} nur in {{provider}}",
     "none": "Noch keine Projekte",
-    "syncing": "Ihre Projekte werden abgeglichen",
     "lastSynced": "Zuletzt abgeglichen: {{time}}",
     "notSynced": "Noch nicht abgeglichen",
     "off": "Der Abgleich ist auf diesem Computer ausgeschaltet",

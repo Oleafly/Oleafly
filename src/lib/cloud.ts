@@ -78,6 +78,7 @@ export interface CloudState {
   deviceName: string;
   enabled: boolean;
   lastEmail: string | null;
+  lastProvider: CloudProviderKind | null;
   lastSyncedMs: number;
   lastError: string | null;
   quotaFull: boolean;

@@ -70,6 +70,26 @@ export function normalizeProjectPath(path: string): string | null {
   return parts.length > 0 ? parts.join("/") : null;
 }
 
+const UNLISTED_FOLDERS = new Set(["node_modules", "target", "build", "out", "__MACOSX", "svg-inkscape"]);
+
+/**
+ * Whether a project path sits inside a folder the project file list leaves
+ * out: hidden folders and generated ones. Mirrors
+ * `oleafly_core::exclude::is_scan_skipped_directory`.
+ */
+export function isInUnlistedFolder(path: string): boolean {
+  return path
+    .split("/")
+    .slice(0, -1)
+    .some(
+      (folder) =>
+        folder.startsWith(".") ||
+        UNLISTED_FOLDERS.has(folder) ||
+        folder.startsWith("_minted") ||
+        folder.startsWith("pythontex-files-"),
+    );
+}
+
 export function resolveProjectPath(
   fromFile: string,
   rawTarget: string,

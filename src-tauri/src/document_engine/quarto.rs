@@ -569,19 +569,21 @@ fn strip_ansi(line: &str) -> String {
     plain
 }
 
-fn quarto_explanation(message: &str) -> Option<&'static str> {
+// Each explanation carries a code, so the app shows it in the user's language.
+// The English here is the fallback.
+fn quarto_explanation(message: &str) -> Option<(&'static str, &'static str)> {
     let lower = message.to_ascii_lowercase();
     if lower.contains("no tex installation") || lower.contains("no tex distribution") {
-        return Some("This format needs LaTeX. Install TinyTeX from Settings > Engines > LaTeX, or switch the document to format: typst, which needs no TeX.");
+        return Some(("notebook.quarto_needs_tex", "This format needs LaTeX. Install TinyTeX from Settings > Engines > LaTeX, or switch the document to format: typst, which needs no TeX."));
     }
     if lower.contains("there is no package called") {
-        return Some("An R package this document needs is missing. Install it in R, for example with install.packages(), then compile again.");
+        return Some(("notebook.r_package_missing", "An R package this document needs is missing. Install it in R, for example with install.packages(), then compile again."));
     }
     if lower.contains("jupyter is not available") || lower.contains("no module named 'jupyter") {
-        return Some("Quarto needs Jupyter in the Python it uses. Install it with python3 -m pip install jupyter, then compile again.");
+        return Some(("notebook.jupyter_missing", "This document's Python code needs Jupyter to run. Install it with python3 -m pip install jupyter, then compile again. Or turn code off in the Compile menu to show the code without running it."));
     }
     if lower.contains("no valid input files") {
-        return Some("Quarto could not read the main document. Check that it is a .qmd or .Rmd file inside the project.");
+        return Some(("notebook.quarto_no_input", "Quarto could not read the main document. Check that it is a .qmd or .Rmd file inside the project."));
     }
     None
 }
@@ -666,8 +668,10 @@ fn python_exception(line: &str) -> bool {
 
 fn error(message: impl Into<String>) -> CompileError {
     let message = message.into();
+    let explained = quarto_explanation(&message);
     CompileError {
-        explanation: quarto_explanation(&message).map(str::to_owned),
+        explanation: explained.map(|(_, text)| text.to_owned()),
+        code: explained.map(|(code, _)| code.to_owned()),
         message,
         kind: "error".into(),
         ..CompileError::default()
@@ -792,6 +796,11 @@ fn cell_error(lines: &[String], index: &mut usize) -> CompileError {
 fn failure_line(line: &str) -> Option<CompileError> {
     if let Some(message) = line.strip_prefix("! ") {
         return Some(error(message.trim()));
+    }
+    // Quarto prints this bare, after the Python traceback, when the Python it
+    // found has no Jupyter.
+    if line.starts_with("Jupyter is not available") {
+        return Some(error(line));
     }
     (line.starts_with("Error in ") || line.starts_with("Error: ")).then(|| error(line))
 }
@@ -1095,6 +1104,30 @@ mod tests {
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].message, "NameError: name 'value' is not defined");
         assert_eq!(errors[0].hints, ["print(value)"]);
+    }
+
+    #[test]
+    fn missing_jupyter_is_an_error_with_the_fix() {
+        let log = "Starting python3 kernel...Traceback (most recent call last):\n\
+                   ModuleNotFoundError: No module named 'nbformat'\n\
+                   \n\
+                   Jupyter is not available in this Python installation.\n\
+                   Install with \u{1b}[1mpython3 -m pip install jupyter\u{1b}[22m\n\
+                   \n\
+                   \u{1b}[33mWARN: Error encountered when rendering files\u{1b}[39m\n";
+        let errors = parse_quarto_log(log);
+        assert_eq!(errors.len(), 2);
+        assert_eq!(errors[0].kind, "error");
+        assert_eq!(
+            errors[0].message,
+            "Jupyter is not available in this Python installation."
+        );
+        assert!(errors[0]
+            .explanation
+            .as_deref()
+            .is_some_and(|text| text.contains("python3 -m pip install jupyter")));
+        assert_eq!(errors[0].code.as_deref(), Some("notebook.jupyter_missing"));
+        assert_eq!(errors[1].kind, "warning");
     }
 
     #[test]

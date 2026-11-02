@@ -25,19 +25,22 @@ import {
   ProjectIntelligenceWorkerError,
   type ProjectIntelligenceAnalyzeInput,
 } from "@/lib/project-intelligence/worker-client";
-import type {
-  ProjectFileUpsert,
-  ProjectUnreadableFile,
+import {
+  PROJECT_INTELLIGENCE_LIMITS,
+  type ProjectFileUpsert,
+  type ProjectUnreadableFile,
 } from "@/lib/project-intelligence/worker-protocol";
 import {
   readProjectSourcesBatch,
   resetProjectSourcesCache,
 } from "@/lib/project-sources";
+import { existingProjectFiles } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
 import { useFilesStore } from "@/store/files";
 
 const PROJECT_ANALYSIS_IDLE_MS = 300;
+const MAX_UNLISTED_ASSET_CHECKS = 200;
 
 export interface IndexStore {
   index: ProjectIndex | null;
@@ -82,6 +85,11 @@ let analysisTimer: ReturnType<typeof setTimeout> | null = null;
 let scheduledAnalysis: ScheduledAnalysis | null = null;
 let workerClient: ProjectIntelligenceWorkerClient | null = null;
 let externalContribution: ExternalProjectIntelligence | null = null;
+// Assets a source names inside hidden or generated folders, which the file
+// tree leaves out, that were found on disk. They join the known files so
+// `#image(".typ-img/plot.png")` resolves.
+let unlistedAssets = new Set<string>();
+let unlistedAssetGeneration = 0;
 
 const initialIntelligenceState = (
   reason: ProjectIntelligenceReason = { key: "noProject" },
@@ -120,6 +128,8 @@ function resetRuntimeState(): void {
   unreadableFiles = new Set();
   sourceRevisions = new Map();
   externalContribution = null;
+  unlistedAssets = new Set();
+  unlistedAssetGeneration++;
 }
 
 function ensureProject(projectId: string): void {
@@ -136,6 +146,8 @@ function ensureProject(projectId: string): void {
   unreadableFiles = new Set();
   sourceRevisions = new Map();
   externalContribution = null;
+  unlistedAssets = new Set();
+  unlistedAssetGeneration++;
 }
 
 function nextSourceRevision(path: string): number {
@@ -186,6 +198,45 @@ function extraKnownPath(
     return null;
   }
   return normalizedExtra;
+}
+
+function withUnlistedAssets(knownFiles: readonly string[]): readonly string[] {
+  const listed = new Set(knownFiles);
+  const extra = [...unlistedAssets].filter((path) => !listed.has(path));
+  if (
+    extra.length === 0 ||
+    knownFiles.length + extra.length > PROJECT_INTELLIGENCE_LIMITS.maxKnownFiles
+  ) {
+    return knownFiles;
+  }
+  return [...knownFiles, ...extra].sort(compareKnownPaths);
+}
+
+function unlistedAssetPaths(snapshot: ProjectIntelligenceSnapshot): string[] {
+  const paths = new Set<string>();
+  for (const edge of snapshot.hierarchy.edges) {
+    for (const path of edge.unlistedPaths ?? []) paths.add(path);
+  }
+  return [...paths].slice(0, MAX_UNLISTED_ASSET_CHECKS);
+}
+
+/**
+ * Drops unlisted assets that are gone, since nothing watches their folders.
+ * Says whether any went.
+ */
+async function recheckUnlistedAssets(projectId: string): Promise<boolean> {
+  if (unlistedAssets.size === 0) return false;
+  const generation = ++unlistedAssetGeneration;
+  let found: readonly string[];
+  try {
+    found = await existingProjectFiles(projectId, [...unlistedAssets]);
+  } catch {
+    return false;
+  }
+  if (generation !== unlistedAssetGeneration || activeProjectId !== projectId) return false;
+  const gone = found.length < unlistedAssets.size;
+  unlistedAssets = new Set(found);
+  return gone;
 }
 
 function currentKnownFiles(extraPath?: string): string[] {
@@ -562,6 +613,34 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         ...(merged.reason ? { reason: merged.reason } : {}),
       },
     });
+    void findUnlistedAssets(scheduled, merged);
+  };
+
+  const findUnlistedAssets = async (
+    scheduled: ScheduledAnalysis,
+    snapshot: ProjectIntelligenceSnapshot,
+  ): Promise<void> => {
+    const paths = unlistedAssetPaths(snapshot);
+    if (paths.length === 0) return;
+    const { projectId } = scheduled.identity;
+    const generation = unlistedAssetGeneration;
+    let found: readonly string[];
+    try {
+      found = await existingProjectFiles(projectId, paths);
+    } catch {
+      return;
+    }
+    if (generation !== unlistedAssetGeneration || activeProjectId !== projectId) return;
+    const analysed = new Set(scheduled.input.knownFiles);
+    let added = false;
+    for (const path of found) {
+      unlistedAssets.add(path);
+      if (!analysed.has(path)) added = true;
+    }
+    // A newer analysis already on its way reads the set when it is scheduled,
+    // and its own result checks again for anything it missed.
+    if (!added || !sameIdentity(get().intelligenceState.identity, scheduled.identity)) return;
+    scheduleCurrentTexts(projectId, [], { immediate: true });
   };
 
   const scheduleAnalysis = (
@@ -610,7 +689,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         ...(options.mainDocument
           ? { mainDocument: options.mainDocument }
           : {}),
-        knownFiles: [...options.knownFiles],
+        knownFiles: [...withUnlistedAssets(options.knownFiles)],
         upserts: [...combinedUpserts.values()],
         removals: reset ? [] : [...combinedRemovals],
         unreadable: [...combinedUnreadable.values()],
@@ -754,21 +833,19 @@ export const useIndexStore = create<IndexStore>((set, get) => {
 
       const knownFiles = currentKnownFiles();
       try {
-        const loaded = await readIndexSources(
-          projectId,
-          candidatePathsFromKnown(knownFiles),
-        );
+        const [loaded, unlistedAssetsGone] = await Promise.all([
+          readIndexSources(projectId, candidatePathsFromKnown(knownFiles)),
+          recheckUnlistedAssets(projectId),
+        ]);
         if (rebuildSuperseded(sequence, projectId, knownFiles)) {
           return;
         }
 
         const previous = get();
         const nextKnownSignature = normalizedKnownSignature(knownFiles);
-        const { changedPaths, removedPaths, projectChanged } = rebuildDelta(
-          previous.texts,
-          loaded,
-          nextKnownSignature,
-        );
+        const delta = rebuildDelta(previous.texts, loaded, nextKnownSignature);
+        const { changedPaths, removedPaths } = delta;
+        const projectChanged = delta.projectChanged || unlistedAssetsGone;
 
         bumpRebuiltSourceRevisions(changedPaths, loaded.unreadable, removedPaths);
         unreadableFiles = loaded.unreadable;

@@ -33,7 +33,7 @@ export function SettingsRow({
     <div className="text-sm font-medium">{label}</div>
   );
   const text = (
-    <div className="min-w-0 break-words">
+    <div className="min-w-0 flex-1 break-words">
       {title}
       {description ? <div className="text-xs text-muted-foreground">{description}</div> : null}
       {details}
@@ -49,7 +49,7 @@ export function SettingsRow({
       )}
     >
       {icon ? (
-        <div className="flex min-w-0 items-start gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           {icon}
           {text}
         </div>

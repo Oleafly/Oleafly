@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} wurde heruntergeladen, hat aber die Integritätsprüfung nicht bestanden. Versuchen Sie die Installation erneut.",
     "unknown_tool": "Oleafly kennt kein Werkzeug namens {{tool}}.",
     "not_managed": "Oleafly kann nur die Kopie von {{tool}} entfernen, die es selbst heruntergeladen hat.",
-    "no_html_output": "Es gibt noch keine HTML-Ausgabe. Kompilieren Sie zuerst das Dokument."
+    "no_html_output": "Es gibt noch keine HTML-Ausgabe. Kompilieren Sie zuerst das Dokument.",
+    "quarto_needs_tex": "Dieses Format braucht LaTeX. Installieren Sie TinyTeX unter Einstellungen > Engines > LaTeX, oder stellen Sie das Dokument auf format: typst um, das kein TeX braucht.",
+    "r_package_missing": "Ein R-Paket, das dieses Dokument braucht, fehlt. Installieren Sie es in R, zum Beispiel mit install.packages(), und kompilieren Sie dann erneut.",
+    "jupyter_missing": "Der Python-Code in diesem Dokument braucht Jupyter, um zu laufen. Installieren Sie es mit python3 -m pip install jupyter und kompilieren Sie dann erneut. Oder schalten Sie Code im Menü „Kompilieren“ aus, um den Code ohne Ausführung anzuzeigen.",
+    "quarto_no_input": "Quarto konnte das Hauptdokument nicht lesen. Prüfen Sie, ob es eine .qmd- oder .Rmd-Datei im Projekt ist."
   },
   "attachments": {
     "too_large": "Diese Datei ist größer als {{max}} MB. Hängen Sie eine kleinere Datei an.",

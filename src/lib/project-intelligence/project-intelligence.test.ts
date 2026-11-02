@@ -1446,6 +1446,52 @@ describe("project paths in different Unicode normal forms", () => {
   });
 });
 
+describe("assets in folders the file list leaves out", () => {
+  function assetEdge(value: ProjectIntelligenceSnapshot, raw: string) {
+    return value.hierarchy.edges.find((edge) => edge.kind === "asset" && edge.rawTarget === raw);
+  }
+
+  const typst = {
+    "main.typ": [
+      '#image(".typ-img/example.png", width: 20mm)',
+      '#image("images/example.png", width: 20mm)',
+    ].join("\n"),
+  };
+
+  it("names where a hidden-folder image may be, and resolves it once it is known", () => {
+    const before = snapshot(typst, ["main.typ", "images/example.png"]);
+    expect(assetEdge(before, ".typ-img/example.png")).toMatchObject({
+      resolution: "unresolved",
+      unlistedPaths: [".typ-img/example.png"],
+    });
+    expect(assetEdge(before, "images/example.png")).not.toHaveProperty("unlistedPaths");
+
+    const after = snapshot(typst, ["main.typ", "images/example.png", ".typ-img/example.png"]);
+    expect(assetEdge(after, ".typ-img/example.png")).toMatchObject({
+      resolution: "resolved",
+      targetFile: ".typ-img/example.png",
+    });
+    expect(assetEdge(after, ".typ-img/example.png")).not.toHaveProperty("unlistedPaths");
+    expect(after.diagnostics.filter((found) => found.code === "unresolved-target")).toEqual([]);
+  });
+
+  it("gives no paths to check for a missing image in a listed folder", () => {
+    const value = snapshot({ "main.md": "![plot](figures/missing.png)\n" });
+    expect(assetEdge(value, "figures/missing.png")).toMatchObject({ resolution: "unresolved" });
+    expect(assetEdge(value, "figures/missing.png")).not.toHaveProperty("unlistedPaths");
+  });
+
+  it("checks every folder and extension LaTeX would try", () => {
+    const value = snapshot({
+      "main.tex": String.raw`\input{chapters/intro}`,
+      "chapters/intro.tex": String.raw`\includegraphics{.figs/plot}`,
+    });
+    const paths = assetEdge(value, ".figs/plot")?.unlistedPaths ?? [];
+    expect(paths).toEqual(expect.arrayContaining([".figs/plot", ".figs/plot.pdf", ".figs/plot.png"]));
+    expect(paths).toEqual(expect.arrayContaining(["chapters/.figs/plot.png"]));
+  });
+});
+
 describe("LaTeX graphics search paths", () => {
   function assetEdge(value: ProjectIntelligenceSnapshot, raw: string) {
     return value.hierarchy.edges.find((edge) => edge.kind === "asset" && edge.rawTarget === raw);

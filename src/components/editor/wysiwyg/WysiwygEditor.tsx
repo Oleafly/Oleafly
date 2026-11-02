@@ -44,6 +44,7 @@ import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import { isRecompileShortcut } from "@/components/editor/cm/recompile-shortcut";
 import {
   getWysiwygProjectSessionGeneration,
+  setWysiwygDocument,
   setWysiwygDocumentContext,
   setWysiwygEditor,
   setWysiwygFlushController,
@@ -75,6 +76,7 @@ import {
   visualProofreadingMessage,
 } from "./proofreading";
 import { scrollVisualSelectionLocally } from "./scroll";
+import { markdownMathRanges } from "./markdown-source";
 import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
 import { publishVisualEditorHistory } from "@/components/editor/history-signal";
 
@@ -116,15 +118,6 @@ const ExternalMutationGate = Extension.create({
     })];
   },
 });
-const MARKDOWN_FRONTMATTER_RE = /^(---\r?\n[\s\S]*?\r?\n---)\r?\n?/u;
-
-function markdownMathRanges(source: string) {
-  const bodyOffset = MARKDOWN_FRONTMATTER_RE.exec(source)?.[0].length ?? 0;
-  return scanMathExpressions(source, {
-    format: "markdown",
-    from: bodyOffset,
-  }).map(({ from, to }) => ({ from, to }));
-}
 
 function replaceContentAndResetHistory(editor: Editor, content: Parameters<Editor["commands"]["setContent"]>[0]) {
   editor.chain().setContent(content, { emitUpdate: false }).setMeta("addToHistory", false).setMeta(EXTERNAL_DOCUMENT_SYNC, true).run();
@@ -796,6 +789,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       lastSyncedTextRef.current = "";
       markdownSourceRef.current = null;
       replaceContentAndResetHistory(editor, { type: "doc", content: [{ type: "paragraph" }] });
+      setWysiwygDocument(editor, null);
       return;
     }
     const raw = useFilesStore.getState().files[activePath]?.content ?? "";
@@ -844,6 +838,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       editor,
       intelligenceRevisionRef.current,
     );
+    setWysiwygDocument(editor, activePath);
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: path, visibility and document version deliberately retrigger the imperative editor synchronization.
   useEffect(() => {

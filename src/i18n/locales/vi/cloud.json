@@ -28,7 +28,7 @@
     "s3": "Dùng một bucket trên Amazon S3, MinIO hoặc dịch vụ tương tự."
   },
   "unavailable": "Không khả dụng trong bản dựng này",
-  "lastConnected": "Kết nối gần nhất với {{email}}.",
+  "lastConnection": "Kết nối gần nhất",
   "finishInBrowser": "Hoàn tất trong trình duyệt",
   "waiting": "Đang chờ {{provider}}",
   "browserDidntOpen": "Trình duyệt không mở? Mở {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Dự án",
     "synced": "{{count}} đã đồng bộ",
+    "waiting": "{{count}} chưa có trong {{provider}}",
     "paused": "{{count}} tạm dừng",
     "onlyInCloud": "{{count}} chỉ có trong {{provider}}",
     "none": "Chưa có dự án",
-    "syncing": "Đang đồng bộ dự án của bạn",
     "lastSynced": "Đồng bộ lần cuối {{time}}",
     "notSynced": "Chưa đồng bộ",
     "off": "Đồng bộ đang tắt trên máy tính này",

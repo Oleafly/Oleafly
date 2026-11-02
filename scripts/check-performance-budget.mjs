@@ -185,7 +185,9 @@ const limits = {
   // provider cards, the S3 form, the provider choice in the Cloud tab), the
   // storage bar in Settings and the entry growth above: 20,738,409 bytes on
   // macOS.
-  totalJavaScript: 21_020_000,
+  // +60 KB for the brand logos of the common custom AI providers, Brave Search,
+  // Tavily and Mathpix in Settings: 21,044,294 bytes on macOS and Linux.
+  totalJavaScript: 21_080_000,
   largestLocaleChunk: 950_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,

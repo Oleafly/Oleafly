@@ -446,6 +446,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.editor.highlightCurrentLine", "editorHighlightCurrentLine", bool),
   pref("appearance.editor.stickyScroll", "editorStickyScroll", bool),
   pref("appearance.editor.mathPreview", "editorMathPreview", bool),
+  pref("appearance.editor.keepVisualMode", "editorKeepVisualMode", bool),
   pref("appearance.editor.autocomplete", "editorAutocomplete", bool),
   pref("appearance.editor.ghostCompletion", "editorGhostCompletion", bool),
   pref("appearance.editor.autoCloseBrackets", "editorAutoCloseBrackets", bool),

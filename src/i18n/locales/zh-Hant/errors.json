@@ -347,7 +347,11 @@
     "install_unverified": "{{tool}} 已下載，但未通過完整性檢查。請再安裝一次。",
     "unknown_tool": "Oleafly 無法辨識名為 {{tool}} 的工具。",
     "not_managed": "Oleafly 只能移除自己下載的 {{tool}} 副本。",
-    "no_html_output": "還沒有 HTML 輸出。請先編譯文件。"
+    "no_html_output": "還沒有 HTML 輸出。請先編譯文件。",
+    "quarto_needs_tex": "此格式需要 LaTeX。請從設定 > 引擎 > LaTeX 安裝 TinyTeX，或將文件改為不需要 TeX 的 format: typst。",
+    "r_package_missing": "缺少這份文件需要的 R 套件。請在 R 中安裝，例如使用 install.packages()，然後重新編譯。",
+    "jupyter_missing": "這份文件中的 Python 程式碼需要 Jupyter 才能執行。請用 python3 -m pip install jupyter 安裝，然後重新編譯。也可以在「編譯」選單中關閉程式碼，只顯示程式碼而不執行。",
+    "quarto_no_input": "Quarto 無法讀取主文件。請確認它是專案中的 .qmd 或 .Rmd 檔案。"
   },
   "attachments": {
     "too_large": "這個檔案超過 {{max}} MB。請附加較小的檔案。",

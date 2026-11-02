@@ -208,6 +208,7 @@
     "diffCrashed": "La vista diff si è bloccata. Chiudi questa scheda e riprova.",
     "pdfLoadFailed": "Caricamento del PDF non riuscito: {{detail}}",
     "imageLoadFailed": "Caricamento dell'immagine non riuscito: {{detail}}",
+    "imageUnreadable": "Questo file non può essere mostrato come immagine. Potrebbe essere danneggiato o non essere un'immagine.",
     "binaryFile": "File binario. Nessuna anteprima disponibile.",
     "managedFileReadOnly": "{{file}} è gestito da Oleafly ed è in sola lettura qui. Le impostazioni del progetto si cambiano da Oleafly stesso, non modificando questo file.",
     "noFileOpen": "Nessun file aperto.",

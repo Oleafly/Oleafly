@@ -78,6 +78,7 @@ function cloudState(overrides: Partial<CloudState> = {}): CloudState {
     deviceName: "Desk",
     enabled: true,
     lastEmail: "ada@uni.edu",
+    lastProvider: "dropbox",
     lastSyncedMs: 0,
     lastError: null,
     quotaFull: false,

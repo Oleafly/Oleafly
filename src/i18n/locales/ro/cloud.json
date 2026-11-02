@@ -28,7 +28,7 @@
     "s3": "Folosește un bucket din Amazon S3, MinIO sau dintr-un serviciu similar."
   },
   "unavailable": "Indisponibil în această versiune",
-  "lastConnected": "Ultima conectare la {{email}}.",
+  "lastConnection": "Ultima conectare",
   "finishInBrowser": "Finalizează în browser",
   "waiting": "Se așteaptă {{provider}}",
   "browserDidntOpen": "Browserul nu s-a deschis? Deschide {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Proiecte",
     "synced": "Sincronizate: {{count}}",
+    "waiting": "Încă nu sunt în {{provider}}: {{count}}",
     "paused": "Întrerupte: {{count}}",
     "onlyInCloud": "Doar în {{provider}}: {{count}}",
     "none": "Niciun proiect încă",
-    "syncing": "Se sincronizează proiectele",
     "lastSynced": "Ultima sincronizare: {{time}}",
     "notSynced": "Nesincronizat încă",
     "off": "Sincronizarea este dezactivată pe acest computer",

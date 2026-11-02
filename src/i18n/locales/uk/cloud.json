@@ -28,7 +28,7 @@
     "s3": "Використовуйте бакет у Amazon S3, MinIO або подібному сервісі."
   },
   "unavailable": "Недоступно в цій збірці",
-  "lastConnected": "Останнє підключення: {{email}}.",
+  "lastConnection": "Останнє підключення",
   "finishInBrowser": "Завершіть у браузері",
   "waiting": "Очікування {{provider}}",
   "browserDidntOpen": "Браузер не відкрився? Відкрити {{provider}}",
@@ -66,10 +66,10 @@
   "projects": {
     "title": "Проєкти",
     "synced": "Синхронізовано: {{count}}",
+    "waiting": "Ще немає у сховищі {{provider}}: {{count}}",
     "paused": "Призупинено: {{count}}",
     "onlyInCloud": "Лише в сховищі {{provider}}: {{count}}",
     "none": "Проєктів ще немає",
-    "syncing": "Синхронізація проєктів",
     "lastSynced": "Остання синхронізація: {{time}}",
     "notSynced": "Ще не синхронізовано",
     "off": "Синхронізацію на цьому комп'ютері вимкнено",

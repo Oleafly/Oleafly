@@ -440,7 +440,9 @@
       "title": "Silnik (ten projekt)",
       "help": "Typst kompiluje dokument w takiej postaci, w jakiej został napisany. Calepin dodatkowo uruchamia zawarty w nim kod i umieszcza wyniki w pliku PDF.",
       "typst": "Typst <note>[wbudowany]</note>",
-      "calepin": "Calepin <note>[uruchamia kod]</note>"
+      "calepin": "Calepin <note>[uruchamia kod]</note>",
+      "calepinMissing": "Calepin <note>[nie zainstalowano]</note>",
+      "installCalepin": "Zainstaluj Calepin…"
     },
     "code": {
       "title": "Kod (ten komputer)",
@@ -548,6 +550,7 @@
     "specimenViewer": "Przeglądarka okazów",
     "stackTrace": "Ślad stosu",
     "surfaceCrashed": "Wystąpiła awaria: {{surface}}.",
+    "surfaceCrashedAgain": "Ponownie wystąpiła awaria: {{surface}}. Przeładuj Oleafly, aby zacząć od nowa.",
     "surfaceClosed": "Okno napotkało błąd i zostało zamknięte. Szczegóły zapisano w dzienniku.",
     "surfaces": {
       "aiAssistant": "asystent AI",

@@ -438,7 +438,9 @@
       "title": "Motor (det här projektet)",
       "help": "Typst kompilerar dokumentet som det är skrivet. Calepin kör också koden i det och lägger in resultaten i PDF-filen.",
       "typst": "Typst <note>[inbyggd]</note>",
-      "calepin": "Calepin <note>[kör kod]</note>"
+      "calepin": "Calepin <note>[kör kod]</note>",
+      "calepinMissing": "Calepin <note>[inte installerad]</note>",
+      "installCalepin": "Installera Calepin…"
     },
     "code": {
       "title": "Kod (den här datorn)",
@@ -544,6 +546,7 @@
     "specimenViewer": "Provvisare",
     "stackTrace": "Stackspårning",
     "surfaceCrashed": "{{surface}} kraschade.",
+    "surfaceCrashedAgain": "{{surface}} kraschade igen. Läs in Oleafly på nytt för att börja om.",
     "surfaceClosed": "Fönstret stötte på ett fel och stängdes. Detaljerna sparades i loggen.",
     "surfaces": {
       "aiAssistant": "AI-assistenten",
