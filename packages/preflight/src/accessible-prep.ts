@@ -73,8 +73,9 @@ function applyDocumentMetadata(
   const existing = findDocumentMetadata(maskComments(source));
   if (!existing) {
     const headerRows = needsHeaderRows ? ",tagging-setup={table/header-rows={1}}" : "";
+    const metadata = guardedDocumentMetadata(`lang=${lang},pdfstandard=ua-2,tagging=on${headerRows}`);
     return {
-      out: `${guardedDocumentMetadata(`lang=${lang},pdfstandard=ua-2,tagging=on${headerRows}`)}\n${source}`,
+      out: `${metadata}\n${source}`,
       changes: [{ kind: "add", summary: message("prep.metadataAdded", { date: TAGGING_FORMAT_DATE }) }],
       headerRowsSet: needsHeaderRows,
     };
