@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "El motor incluido no puede producir la salida PDF/UA declarada",
-      "detail": "Este documento declara pdfstandard=ua, pero el motor incluido no puede escribir un árbol de etiquetas, así que el PDF llevaría una declaración PDF/UA que no cumple. Compila con pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior, o quita la clave pdfstandard."
+      "detail": "Este documento declara pdfstandard=ua, pero el motor incluido no puede escribir un árbol de etiquetas, así que el PDF llevaría una declaración PDF/UA que no cumple. Compila con pdfLaTeX o LuaLaTeX de TeX Live 2026 (o un TeX Live actualizado desde noviembre de 2025), o quita la clave pdfstandard."
     },
     "table-header-rows": {
       "title": "La fila de encabezado de la tabla no está marcada como encabezado",
@@ -147,6 +147,11 @@
     "compile-rerun-required": {
       "title": "Hace falta otra pasada de compilación",
       "detail": "El último registro dice que las etiquetas, las citas o el índice no están estabilizados. Vuelve a compilar hasta que desaparezca el aviso de repetición antes de exportar."
+    },
+    "compile-tagging-skipped": {
+      "title": "Se omitió el etiquetado porque esta versión de LaTeX es demasiado antigua",
+      "detail": "Esta compilación usó LaTeX del {{date}}. Los PDF etiquetados necesitan LaTeX del {{required}} o posterior, así que la comprobación en torno a \\DocumentMetadata desactivó el etiquetado y el PDF no hace ninguna declaración PDF/UA. Para obtener un PDF etiquetado, usa \"Compilar con etiquetado y verificar\" con TeX Live 2026, o actualiza tu TeX Live y vuelve a compilar.",
+      "detailUndated": "Los PDF etiquetados necesitan LaTeX del {{required}} o posterior, y esta compilación usó una versión anterior, así que la comprobación en torno a \\DocumentMetadata desactivó el etiquetado y el PDF no hace ninguna declaración PDF/UA. Para obtener un PDF etiquetado, usa \"Compilar con etiquetado y verificar\" con TeX Live 2026, o actualiza tu TeX Live y vuelve a compilar."
     },
     "compile-duplicate-destination": {
       "title": "Destinos de PDF duplicados",
@@ -217,7 +222,7 @@
     },
     "pdf-untagged-output": {
       "title": "Este PDF no está etiquetado",
-      "detail": "El PDF compilado no lleva árbol de estructura, así que un lector de pantalla no recibe títulos, listas, tablas ni orden de lectura, y el archivo no puede cumplir la cláusula 7.1 de PDF/UA-1. La salida etiquetada necesita pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior con \\DocumentMetadata{tagging=on}. El motor incluido no puede generar etiquetas. Mientras tanto, las comprobaciones de código y de salida de arriba siguen siendo válidas."
+      "detail": "El PDF compilado no lleva árbol de estructura, así que un lector de pantalla no recibe títulos, listas, tablas ni orden de lectura, y el archivo no puede cumplir la cláusula 7.1 de PDF/UA-1. La salida etiquetada necesita pdfLaTeX o LuaLaTeX de TeX Live 2026 (o un TeX Live actualizado desde noviembre de 2025) con \\DocumentMetadata{tagging=on}. El motor incluido no puede generar etiquetas. Mientras tanto, las comprobaciones de código y de salida de arriba siguen siendo válidas."
     },
     "pdf-structure-missing": {
       "title": "El PDF etiquetado no tiene un árbol de estructura legible",
@@ -600,7 +605,7 @@
   },
   "prep": {
     "metadataUpdated": "Se añadieron las claves de etiquetado necesarias a tu \\DocumentMetadata.",
-    "metadataAdded": "Se añadió \\DocumentMetadata como primera línea (obligatorio, tiene que ir antes de \\documentclass).",
+    "metadataAdded": "Se añadió \\DocumentMetadata como primera línea (obligatorio, tiene que ir antes de \\documentclass). La línea va dentro de una comprobación de versión: un LaTeX anterior al {{date}}, como el del motor incluido, la omite y compila el documento sin etiquetar en lugar de fallar.",
     "headerRows": "Se puso table/header-rows en 1 para que la primera fila de cada tabla se etiquete como celdas de encabezado. Cambia el número si alguna tabla tiene otra profundidad de encabezado.",
     "unicodeMath": "Se añadió \\usepackage{unicode-math}, que este motor necesita para las fórmulas etiquetadas.",
     "altPlaceholders_one": "Se añadieron marcadores de texto alternativo a {{count}} imagen. Sustituye el texto TODO por una descripción real.",
@@ -611,8 +616,8 @@
     "incompatiblePackages_many": "Estos paquetes no son compatibles con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF. Sustitúyelos donde puedas.",
     "incompatiblePackages_other": "Estos paquetes no son compatibles con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF. Sustitúyelos donde puedas.",
     "cautionPackages": "Estos paquetes solo etiquetan en parte o no tienen un veredicto de etiquetado registrado: {{packages}}. Compila y revisa si hay huecos en el árbol de estructura.",
-    "compileLua": "Compila el código preparado con LuaLaTeX de TeX Live 2025 o posterior y vuelve a comprobar la salida.",
-    "compileAny": "Compila el código preparado con pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior y vuelve a comprobar la salida. Las matemáticas accesibles necesitan LuaLaTeX. El motor incluido no puede generar etiquetas."
+    "compileLua": "Compila el código preparado con LuaLaTeX de TeX Live 2026 (o un TeX Live actualizado desde noviembre de 2025) y vuelve a comprobar la salida.",
+    "compileAny": "Compila el código preparado con pdfLaTeX o LuaLaTeX de TeX Live 2026 (o un TeX Live actualizado desde noviembre de 2025) y vuelve a comprobar la salida. Las matemáticas accesibles necesitan LuaLaTeX. El motor incluido no puede generar etiquetas."
   },
   "gate": {
     "incompatiblePackages_one": "Este paquete no es compatible con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF.",
@@ -706,7 +711,7 @@
   },
   "prepExport": {
     "title": "Exportación accesible",
-    "intro": "Prepara este documento para una salida etiquetada que apunte a PDF/UA-2. Oleafly añade \\DocumentMetadata con pdfstandard=ua-2 y tagging=on, además del texto alternativo y la configuración de tablas que puede rellenar. Compila el resultado con pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior y vuelve a comprobarlo. Las matemáticas accesibles necesitan LuaLaTeX. El motor incluido no puede generar etiquetas.",
+    "intro": "Prepara este documento para una salida etiquetada que apunte a PDF/UA-2. Oleafly añade \\DocumentMetadata con pdfstandard=ua-2 y tagging=on, además del texto alternativo y la configuración de tablas que puede rellenar. Compila el resultado con pdfLaTeX o LuaLaTeX de TeX Live 2026 (o un TeX Live actualizado desde noviembre de 2025) y vuelve a comprobarlo. Las matemáticas accesibles necesitan LuaLaTeX. El motor incluido no puede generar etiquetas.",
     "activeFileFallback": "Oleafly no pudo cargar el documento principal, así que comprobó el archivo que estás editando. Abre el documento principal para ver la clase y los paquetes que carga tu compilación de verdad.",
     "prepare": "Preparar para la exportación accesible",
     "unavailable": "La preparación está desactivada para esta clase de documento. Cambia a una clase compatible con el código de etiquetado y vuelve a ejecutar la comprobación. Datos de compatibilidad del Proyecto LaTeX, obtenidos el {{retrieved}}.",
@@ -717,7 +722,7 @@
     "copy": "Copiar el código",
     "compileTagged": "Compilar con etiquetado y verificar",
     "compileTaggedWarning": "El LuaLaTeX del sistema puede leer archivos locales. Ejecútalo solo con proyectos en los que confíes.",
-    "noEngine": "Para generar el PDF etiquetado dentro de la aplicación, activa un motor en Ajustes, Motor de LaTeX. O compila el código preparado con tu propio pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior."
+    "noEngine": "Para generar el PDF etiquetado dentro de la aplicación, activa un motor en Ajustes, Motor de LaTeX. O compila el código preparado con tu propio pdfLaTeX o LuaLaTeX de TeX Live 2026 (o un TeX Live actualizado desde noviembre de 2025)."
   },
   "typstStandards": {
     "title": "Estándares de PDF",

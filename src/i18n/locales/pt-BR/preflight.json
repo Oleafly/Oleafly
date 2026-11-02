@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "O motor embutido não consegue produzir a saída PDF/UA declarada",
-      "detail": "Este documento declara pdfstandard=ua, mas o motor embutido não grava árvore de marcação, então o PDF carregaria uma alegação de PDF/UA que não cumpre. Compile com pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo, ou remova a chave pdfstandard."
+      "detail": "Este documento declara pdfstandard=ua, mas o motor embutido não grava árvore de marcação, então o PDF carregaria uma alegação de PDF/UA que não cumpre. Compile com pdfLaTeX ou LuaLaTeX do TeX Live 2026 (ou de um TeX Live atualizado desde novembro de 2025), ou remova a chave pdfstandard."
     },
     "table-header-rows": {
       "title": "A linha de cabeçalho da tabela não está marcada como cabeçalho",
@@ -147,6 +147,11 @@
     "compile-rerun-required": {
       "title": "É preciso mais uma passagem de compilação",
       "detail": "O último log diz que rótulos, citações ou o sumário ainda não se estabilizaram. Compile de novo até o aviso de nova passagem sumir, antes de exportar."
+    },
+    "compile-tagging-skipped": {
+      "title": "A marcação foi ignorada porque este LaTeX é antigo demais",
+      "detail": "Esta compilação usou um LaTeX de {{date}}. PDFs marcados precisam de um LaTeX de {{required}} ou mais novo, então a verificação em torno de \\DocumentMetadata desativou a marcação e o PDF não faz nenhuma alegação de PDF/UA. Para obter um PDF marcado, use o TeX Live 2026 e Compilar com marcação e conferir, ou atualize seu TeX Live e compile de novo.",
+      "detailUndated": "PDFs marcados precisam de um LaTeX de {{required}} ou mais novo, e esta compilação usou um mais antigo, então a verificação em torno de \\DocumentMetadata desativou a marcação e o PDF não faz nenhuma alegação de PDF/UA. Para obter um PDF marcado, use o TeX Live 2026 e Compilar com marcação e conferir, ou atualize seu TeX Live e compile de novo."
     },
     "compile-duplicate-destination": {
       "title": "Destinos duplicados no PDF",
@@ -217,7 +222,7 @@
     },
     "pdf-untagged-output": {
       "title": "Este PDF não está marcado",
-      "detail": "O PDF compilado não carrega árvore de estrutura, então um leitor de tela não recebe títulos, listas, tabelas nem ordem de leitura, e o arquivo não consegue cumprir a cláusula 7.1 do PDF/UA-1. Saída marcada precisa de pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo, com \\DocumentMetadata{tagging=on}. O motor embutido não produz marcação. As verificações de código e de saída acima continuam valendo enquanto isso."
+      "detail": "O PDF compilado não carrega árvore de estrutura, então um leitor de tela não recebe títulos, listas, tabelas nem ordem de leitura, e o arquivo não consegue cumprir a cláusula 7.1 do PDF/UA-1. Saída marcada precisa de pdfLaTeX ou LuaLaTeX do TeX Live 2026 (ou de um TeX Live atualizado desde novembro de 2025), com \\DocumentMetadata{tagging=on}. O motor embutido não produz marcação. As verificações de código e de saída acima continuam valendo enquanto isso."
     },
     "pdf-structure-missing": {
       "title": "O PDF marcado não tem árvore de estrutura legível",
@@ -600,7 +605,7 @@
   },
   "prep": {
     "metadataUpdated": "Acrescentamos as chaves de marcação necessárias ao seu \\DocumentMetadata.",
-    "metadataAdded": "Acrescentamos \\DocumentMetadata como primeira linha (obrigatório, precisa vir antes de \\documentclass).",
+    "metadataAdded": "Acrescentamos \\DocumentMetadata como primeira linha (obrigatório, precisa vir antes de \\documentclass). A linha fica dentro de uma verificação de versão: um LaTeX anterior a {{date}}, incluindo o motor embutido, pula essa linha e compila o documento sem marcação em vez de falhar.",
     "headerRows": "Definimos table/header-rows como 1, para a primeira linha de cada tabela ser marcada como células de cabeçalho. Mude o número se alguma tabela tiver outra profundidade de cabeçalho.",
     "unicodeMath": "Acrescentamos \\usepackage{unicode-math}, de que este motor precisa para matemática marcada.",
     "altPlaceholders_one": "Acrescentamos textos alternativos provisórios a {{count}} imagem. Substitua o texto TODO por uma descrição de verdade.",
@@ -611,8 +616,8 @@
     "incompatiblePackages_many": "Estes pacotes não são compatíveis com a marcação: {{packages}}. O conteúdo vindo deles pode cair no PDF sem marcação. Substitua onde der.",
     "incompatiblePackages_other": "Estes pacotes não são compatíveis com a marcação: {{packages}}. O conteúdo vindo deles pode cair no PDF sem marcação. Substitua onde der.",
     "cautionPackages": "Estes pacotes marcam só em parte, ou não têm veredicto de marcação registrado: {{packages}}. Compile e confira a árvore de estrutura em busca de lacunas.",
-    "compileLua": "Compile o código preparado com o LuaLaTeX do TeX Live 2025 ou mais novo e depois confira a saída outra vez.",
-    "compileAny": "Compile o código preparado com pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo e depois confira a saída outra vez. Matemática acessível precisa de LuaLaTeX. O motor embutido não produz marcação."
+    "compileLua": "Compile o código preparado com o LuaLaTeX do TeX Live 2026 (ou de um TeX Live atualizado desde novembro de 2025) e depois confira a saída outra vez.",
+    "compileAny": "Compile o código preparado com pdfLaTeX ou LuaLaTeX do TeX Live 2026 (ou de um TeX Live atualizado desde novembro de 2025) e depois confira a saída outra vez. Matemática acessível precisa de LuaLaTeX. O motor embutido não produz marcação."
   },
   "gate": {
     "incompatiblePackages_one": "Este pacote não é compatível com a marcação: {{packages}}. O conteúdo vindo dele pode cair no PDF sem marcação.",
@@ -706,7 +711,7 @@
   },
   "prepExport": {
     "title": "Exportação acessível",
-    "intro": "Prepare este documento para uma saída marcada que mira o PDF/UA-2. O Oleafly acrescenta \\DocumentMetadata com pdfstandard=ua-2 e tagging=on, mais a configuração de texto alternativo e de tabelas que ele consegue preencher. Compile o resultado com pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo e confira de novo. Matemática acessível precisa de LuaLaTeX. O motor embutido não produz marcação.",
+    "intro": "Prepare este documento para uma saída marcada que mira o PDF/UA-2. O Oleafly acrescenta \\DocumentMetadata com pdfstandard=ua-2 e tagging=on, mais a configuração de texto alternativo e de tabelas que ele consegue preencher. Compile o resultado com pdfLaTeX ou LuaLaTeX do TeX Live 2026 (ou de um TeX Live atualizado desde novembro de 2025) e confira de novo. Matemática acessível precisa de LuaLaTeX. O motor embutido não produz marcação.",
     "activeFileFallback": "O Oleafly não conseguiu carregar o documento principal, então conferiu o arquivo que você está editando. Abra o documento principal para ver a classe e os pacotes que a sua compilação realmente carrega.",
     "prepare": "Preparar para exportação acessível",
     "unavailable": "A preparação está desligada para esta classe de documento. Mude para uma classe compatível com o código de marcação e rode a verificação de novo. Dados de compatibilidade do LaTeX Project, obtidos em {{retrieved}}.",
@@ -717,7 +722,7 @@
     "copy": "Copiar o código",
     "compileTagged": "Compilar com marcação e conferir",
     "compileTaggedWarning": "O LuaLaTeX do sistema pode ler arquivos locais. Só rode isso em um projeto em que você confia.",
-    "noEngine": "Para produzir o PDF marcado dentro do aplicativo, ative um motor em Configurações, Motor LaTeX. Ou compile o código preparado com o seu próprio pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo."
+    "noEngine": "Para produzir o PDF marcado dentro do aplicativo, ative um motor em Configurações, Motor LaTeX. Ou compile o código preparado com o seu próprio pdfLaTeX ou LuaLaTeX do TeX Live 2026 (ou de um TeX Live atualizado desde novembro de 2025)."
   },
   "typstStandards": {
     "title": "Padrões de PDF",

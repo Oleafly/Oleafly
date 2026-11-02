@@ -68,6 +68,24 @@ export function unwrapBraces(value: string): string {
   return trimmed.startsWith("{") && trimmed.endsWith("}") ? trimmed.slice(1, -1) : trimmed;
 }
 
+// The first LaTeX release whose stable kernel tags with tagging=on. Older
+// kernels reject the key (2024-11-01 ignores it but still writes the PDF/UA
+// claim) or do not know \DocumentMetadata at all (the bundled engine's
+// 2021-11-15), so Oleafly guards the line it inserts with this date.
+export const TAGGING_FORMAT_DATE = "2025-11-01";
+export const TAGGING_SKIPPED_NOTICE = `Tagging is off: tagged PDF needs LaTeX ${TAGGING_FORMAT_DATE} or newer.`;
+
+export function guardedDocumentMetadata(body: string): string {
+  return String.raw`\IfFormatAtLeastTF{${TAGGING_FORMAT_DATE}}{\DocumentMetadata{${body}}}{\typeout{${TAGGING_SKIPPED_NOTICE}}}`;
+}
+
+const FORMAT_GUARD = /\\IfFormatAtLeastTF\s{0,20}\{\s{0,20}(\d{4}-\d{2}-\d{2})\s{0,20}\}\s{0,20}\{\s{0,20}$/;
+
+/** The date of the \IfFormatAtLeastTF guard that directly wraps the text at `start`, if any. */
+export function formatGuardDate(source: string, start: number): string | null {
+  return FORMAT_GUARD.exec(source.slice(Math.max(0, start - 120), start))?.[1] ?? null;
+}
+
 export function requestsTaggedPdf(source: string): boolean {
   if (!source.includes(String.raw`\DocumentMetadata`)) return false;
   const metadata = findDocumentMetadata(maskComments(source));

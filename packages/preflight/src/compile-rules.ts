@@ -1,5 +1,6 @@
 import { annotate } from "./standards";
 import { message, type MessageRef } from "./messages";
+import { TAGGING_FORMAT_DATE, TAGGING_SKIPPED_NOTICE } from "./document-metadata";
 import type { Finding, PdfFacts } from "./types";
 
 export interface CompileContext {
@@ -21,6 +22,7 @@ const REPORT_END = /^\s*End\s+of\s+status\s+report\s*$/i;
 const CLASS_LINE = /^\s*(\S+\.cls)\s+is\s(.*)$/;
 const SECTION_LINE = /^\s*([1-6])\.\s(.*)$/;
 const TAGPDF_WARNING = "Package tagpdf Warning:";
+const KERNEL_BANNER = /LaTeX2e <(\d{4}-\d{2}-\d{2})>/;
 const FILE_LINE = /^\s*(\S+\.(?:sty|def|ldf|cfg|tex|clo|cls))\s*$/;
 
 export type TaggingStatusGroup =
@@ -118,6 +120,28 @@ function taggingStatusFinding(report: TaggingStatusReport): Finding[] {
         title: message("rules.output-tagging-status.title", { count: flagged }),
         detail: message("rules.output-tagging-status.detail"),
         detailParts: [...parts, message("rules.output-tagging-status.partAdvice")],
+        certainty: "verified",
+      },
+      "compile-log",
+    ),
+  ];
+}
+
+// The guard Oleafly writes around \DocumentMetadata prints this notice when the
+// kernel is too old to tag, so the build succeeds untagged and claims nothing.
+function taggingSkippedFinding(log: string): Finding[] {
+  if (!log.includes(TAGGING_SKIPPED_NOTICE)) return [];
+  const date = KERNEL_BANNER.exec(log)?.[1];
+  return [
+    annotate(
+      {
+        id: "compile-tagging-skipped",
+        lens: "a11y",
+        severity: "warning",
+        title: message("rules.compile-tagging-skipped.title"),
+        detail: date
+          ? message("rules.compile-tagging-skipped.detail", { date, required: TAGGING_FORMAT_DATE })
+          : message("rules.compile-tagging-skipped.detailUndated", { required: TAGGING_FORMAT_DATE }),
         certainty: "verified",
       },
       "compile-log",
@@ -267,7 +291,7 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
     }
   }
 
-  out.push(...taggingLogFindings(logLines));
+  out.push(...taggingSkippedFinding(log), ...taggingLogFindings(logLines));
 
   return out;
 }

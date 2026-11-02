@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Motorul inclus nu poate produce rezultatul PDF/UA declarat",
-      "detail": "Acest document declară pdfstandard=ua, dar motorul inclus nu poate scrie un arbore de etichete, așa că PDF-ul ar purta o pretenție PDF/UA pe care nu o îndeplinește. Compilează cu pdfLaTeX sau LuaLaTeX din TeX Live 2025 ori mai nou sau elimină cheia pdfstandard."
+      "detail": "Acest document declară pdfstandard=ua, dar motorul inclus nu poate scrie un arbore de etichete, așa că PDF-ul ar purta o pretenție PDF/UA pe care nu o îndeplinește. Compilează cu pdfLaTeX sau LuaLaTeX din TeX Live 2026 (sau dintr-un TeX Live actualizat începând din noiembrie 2025) sau elimină cheia pdfstandard."
     },
     "table-header-rows": {
       "title": "Rândul de antet al tabelului nu este marcat ca antet",
@@ -147,6 +147,11 @@
     "compile-rerun-required": {
       "title": "Mai este nevoie de o trecere de compilare",
       "detail": "Ultimul jurnal spune că etichetele, citările sau cuprinsul nu s-au stabilizat. Recompilează până dispare avertismentul de recompilare, înainte să exporți."
+    },
+    "compile-tagging-skipped": {
+      "title": "Etichetarea a fost omisă deoarece acest LaTeX este prea vechi",
+      "detail": "Această compilare a rulat un LaTeX din {{date}}. PDF-urile etichetate au nevoie de un LaTeX din {{required}} sau mai nou, așa că verificarea din jurul lui \\DocumentMetadata a dezactivat etichetarea, iar PDF-ul nu face nicio pretenție PDF/UA. Pentru un PDF etichetat, folosește Compilează etichetat și verifică cu TeX Live 2026 sau actualizează TeX Live și compilează din nou.",
+      "detailUndated": "PDF-urile etichetate au nevoie de un LaTeX din {{required}} sau mai nou, iar această compilare a rulat unul mai vechi, așa că verificarea din jurul lui \\DocumentMetadata a dezactivat etichetarea, iar PDF-ul nu face nicio pretenție PDF/UA. Pentru un PDF etichetat, folosește Compilează etichetat și verifică cu TeX Live 2026 sau actualizează TeX Live și compilează din nou."
     },
     "compile-duplicate-destination": {
       "title": "Destinații PDF duplicate",
@@ -217,7 +222,7 @@
     },
     "pdf-untagged-output": {
       "title": "Acest PDF nu este etichetat",
-      "detail": "PDF-ul compilat nu are niciun arbore de structură, așa că un cititor de ecran nu primește titluri, liste, tabele sau ordine de citire, iar fișierul nu poate satisface clauza 7.1 din PDF/UA-1. Rezultatul etichetat are nevoie de pdfLaTeX sau LuaLaTeX din TeX Live 2025 ori mai nou, cu \\DocumentMetadata{tagging=on}. Motorul inclus nu poate produce etichete. Verificările de sursă și de rezultat de mai sus rămân valabile între timp."
+      "detail": "PDF-ul compilat nu are niciun arbore de structură, așa că un cititor de ecran nu primește titluri, liste, tabele sau ordine de citire, iar fișierul nu poate satisface clauza 7.1 din PDF/UA-1. Rezultatul etichetat are nevoie de pdfLaTeX sau LuaLaTeX din TeX Live 2026 (sau dintr-un TeX Live actualizat începând din noiembrie 2025), cu \\DocumentMetadata{tagging=on}. Motorul inclus nu poate produce etichete. Verificările de sursă și de rezultat de mai sus rămân valabile între timp."
     },
     "pdf-structure-missing": {
       "title": "PDF-ul etichetat nu are un arbore de structură lizibil",
@@ -600,7 +605,7 @@
   },
   "prep": {
     "metadataUpdated": "S-au adăugat cheile de etichetare necesare în \\DocumentMetadata.",
-    "metadataAdded": "S-a adăugat \\DocumentMetadata ca primă linie (obligatoriu, trebuie să preceadă \\documentclass).",
+    "metadataAdded": "S-a adăugat \\DocumentMetadata ca primă linie (obligatoriu, trebuie să preceadă \\documentclass). Linia se află într-o verificare de versiune: un LaTeX mai vechi de {{date}}, inclusiv motorul inclus, o omite și compilează documentul fără etichetare, în loc să eșueze.",
     "headerRows": "S-a setat table/header-rows pe 1, ca primul rând al fiecărui tabel să fie etichetat drept celule de antet. Schimbă numărul dacă un tabel are un antet mai adânc.",
     "unicodeMath": "S-a adăugat \\usepackage{unicode-math}, de care acest motor are nevoie pentru formule etichetate.",
     "altPlaceholders_one": "S-au adăugat texte alternative de rezervă la {{count}} imagine. Înlocuiește textul TODO cu o descriere reală.",
@@ -611,8 +616,8 @@
     "incompatiblePackages_few": "Aceste pachete nu sunt compatibile cu etichetarea: {{packages}}. Conținutul lor poate ajunge neetichetat în PDF. Înlocuiește-le unde poți.",
     "incompatiblePackages_other": "Aceste pachete nu sunt compatibile cu etichetarea: {{packages}}. Conținutul lor poate ajunge neetichetat în PDF. Înlocuiește-le unde poți.",
     "cautionPackages": "Aceste pachete etichetează doar parțial sau nu au un verdict de etichetare înregistrat: {{packages}}. Compilează și verifică arborele de structură pentru lipsuri.",
-    "compileLua": "Compilează sursa pregătită cu LuaLaTeX din TeX Live 2025 sau mai nou, apoi verifică din nou rezultatul.",
-    "compileAny": "Compilează sursa pregătită cu pdfLaTeX sau LuaLaTeX din TeX Live 2025 sau mai nou, apoi verifică din nou rezultatul. Formulele accesibile au nevoie de LuaLaTeX. Motorul inclus nu poate produce etichete."
+    "compileLua": "Compilează sursa pregătită cu LuaLaTeX din TeX Live 2026 (sau dintr-un TeX Live actualizat începând din noiembrie 2025), apoi verifică din nou rezultatul.",
+    "compileAny": "Compilează sursa pregătită cu pdfLaTeX sau LuaLaTeX din TeX Live 2026 (sau dintr-un TeX Live actualizat începând din noiembrie 2025), apoi verifică din nou rezultatul. Formulele accesibile au nevoie de LuaLaTeX. Motorul inclus nu poate produce etichete."
   },
   "gate": {
     "incompatiblePackages_one": "Acest pachet nu este compatibil cu etichetarea: {{packages}}. Conținutul lui poate ajunge neetichetat în PDF.",
@@ -706,7 +711,7 @@
   },
   "prepExport": {
     "title": "Export accesibil",
-    "intro": "Pregătește acest document pentru un rezultat etichetat care țintește PDF/UA-2. Oleafly adaugă \\DocumentMetadata cu pdfstandard=ua-2 și tagging=on, plus configurația de text alternativ și de tabele pe care o poate completa. Compilează rezultatul cu pdfLaTeX sau LuaLaTeX din TeX Live 2025 ori mai nou, apoi verifică din nou. Formulele accesibile au nevoie de LuaLaTeX. Motorul inclus nu poate produce etichete.",
+    "intro": "Pregătește acest document pentru un rezultat etichetat care țintește PDF/UA-2. Oleafly adaugă \\DocumentMetadata cu pdfstandard=ua-2 și tagging=on, plus configurația de text alternativ și de tabele pe care o poate completa. Compilează rezultatul cu pdfLaTeX sau LuaLaTeX din TeX Live 2026 (sau dintr-un TeX Live actualizat începând din noiembrie 2025), apoi verifică din nou. Formulele accesibile au nevoie de LuaLaTeX. Motorul inclus nu poate produce etichete.",
     "activeFileFallback": "Oleafly nu a putut încărca documentul principal, așa că a verificat fișierul pe care îl editezi. Deschide documentul principal ca să vezi clasa și pachetele pe care le încarcă efectiv compilarea ta.",
     "prepare": "Pregătește pentru export accesibil",
     "unavailable": "Pregătirea este dezactivată pentru această clasă de document. Treci la o clasă pe care codul de etichetare o acceptă, apoi rulează verificarea din nou. Datele de compatibilitate provin de la Proiectul LaTeX, preluate la {{retrieved}}.",
@@ -717,7 +722,7 @@
     "copy": "Copiază sursa",
     "compileTagged": "Compilează etichetat și verifică",
     "compileTaggedWarning": "LuaLaTeX din sistem poate citi fișiere locale. Rulează-l doar pentru un proiect în care ai încredere.",
-    "noEngine": "Ca să produci PDF-ul etichetat în aplicație, activează un motor din Setări, Motor LaTeX. Sau compilează sursa pregătită cu propriul tău pdfLaTeX ori LuaLaTeX din TeX Live 2025 sau mai nou."
+    "noEngine": "Ca să produci PDF-ul etichetat în aplicație, activează un motor din Setări, Motor LaTeX. Sau compilează sursa pregătită cu propriul tău pdfLaTeX ori LuaLaTeX din TeX Live 2026 (sau dintr-un TeX Live actualizat începând din noiembrie 2025)."
   },
   "typstStandards": {
     "title": "Standarde PDF",

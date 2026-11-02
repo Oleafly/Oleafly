@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Den medfølgende motor kan ikke lave den angivne PDF/UA-udgave",
-      "detail": "Dokumentet angiver pdfstandard=ua, men den medfølgende motor kan ikke skrive et tagtræ, så PDF'en ville bære en PDF/UA-påstand, den ikke lever op til. Kompiler med pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere, eller fjern nøglen pdfstandard."
+      "detail": "Dokumentet angiver pdfstandard=ua, men den medfølgende motor kan ikke skrive et tagtræ, så PDF'en ville bære en PDF/UA-påstand, den ikke lever op til. Kompiler med pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live, der er opdateret siden november 2025), eller fjern nøglen pdfstandard."
     },
     "table-header-rows": {
       "title": "Tabellens hovedrække er ikke markeret som hoved",
@@ -145,6 +145,11 @@
       "title": "Der skal køres endnu et kompileringsgennemløb",
       "detail": "Den seneste log siger, at etiketter, citationer eller indholdsfortegnelsen ikke er faldet på plads. Kompiler, indtil advarslen om at køre igen forsvinder, før du eksporterer."
     },
+    "compile-tagging-skipped": {
+      "title": "Tagging blev sprunget over, fordi denne version af LaTeX er for gammel",
+      "detail": "Denne build kørte LaTeX fra {{date}}. Taggede PDF'er kræver LaTeX fra {{required}} eller nyere, så tjekket omkring \\DocumentMetadata slog tagging fra, og PDF'en fremsætter ingen PDF/UA-påstand. Hvis du vil have en tagget PDF, så brug \"Kompiler med tagging, og kontroller\" med TeX Live 2026, eller opdater din TeX Live, og kompiler igen.",
+      "detailUndated": "Taggede PDF'er kræver LaTeX fra {{required}} eller nyere, og denne build kørte en ældre version, så tjekket omkring \\DocumentMetadata slog tagging fra, og PDF'en fremsætter ingen PDF/UA-påstand. Hvis du vil have en tagget PDF, så brug \"Kompiler med tagging, og kontroller\" med TeX Live 2026, eller opdater din TeX Live, og kompiler igen."
+    },
     "compile-duplicate-destination": {
       "title": "Dublerede destinationer i PDF",
       "detail": "To ankre deler samme destination, så links eller bogmærker kan hoppe det forkerte sted hen. Det skyldes ofte dublerede etiketter eller nulstillet sidenummerering."
@@ -209,7 +214,7 @@
     },
     "pdf-untagged-output": {
       "title": "Denne PDF er ikke tagget",
-      "detail": "Den kompilerede PDF har intet strukturtræ, så en skærmlæser får hverken overskrifter, lister, tabeller eller læserækkefølge, og filen kan ikke opfylde punkt 7.1 i PDF/UA-1. Tagget resultat kræver pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere med \\DocumentMetadata{tagging=on}. Den medfølgende motor kan ikke lave tags. Tjekkene af kilde og resultat ovenfor gælder stadig indtil da."
+      "detail": "Den kompilerede PDF har intet strukturtræ, så en skærmlæser får hverken overskrifter, lister, tabeller eller læserækkefølge, og filen kan ikke opfylde punkt 7.1 i PDF/UA-1. Tagget resultat kræver pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live, der er opdateret siden november 2025) med \\DocumentMetadata{tagging=on}. Den medfølgende motor kan ikke lave tags. Tjekkene af kilde og resultat ovenfor gælder stadig indtil da."
     },
     "pdf-structure-missing": {
       "title": "Den taggede PDF har intet læsbart strukturtræ",
@@ -584,7 +589,7 @@
   },
   "prep": {
     "metadataUpdated": "Tilføjede de nødvendige taggingnøgler til din \\DocumentMetadata.",
-    "metadataAdded": "Tilføjede \\DocumentMetadata som første linje (påkrævet, skal stå før \\documentclass).",
+    "metadataAdded": "Tilføjede \\DocumentMetadata som første linje (påkrævet, skal stå før \\documentclass). Linjen ligger inde i et versionstjek: LaTeX ældre end {{date}}, inklusive den medfølgende motor, springer den over og kompilerer dokumentet uden tags i stedet for at fejle.",
     "headerRows": "Satte table/header-rows til 1, så den første række i hver tabel tagges som hovedceller. Ændr tallet, hvis en tabel har et andet antal hovedrækker.",
     "unicodeMath": "Tilføjede \\usepackage{unicode-math}, som denne motor har brug for til tagget matematik.",
     "altPlaceholders_one": "Tilføjede pladsholdere til alternativ tekst i {{count}} billede. Erstat TODO-teksten med en rigtig beskrivelse.",
@@ -593,8 +598,8 @@
     "incompatiblePackages_one": "Denne pakke er ikke forenelig med tagging: {{packages}}. Indhold fra den kan ende utagget i PDF'en. Erstat den, hvor du kan.",
     "incompatiblePackages_other": "Disse pakker er ikke forenelige med tagging: {{packages}}. Indhold fra dem kan ende utagget i PDF'en. Erstat dem, hvor du kan.",
     "cautionPackages": "Disse pakker tagger kun delvist eller har ingen registreret taggingvurdering: {{packages}}. Kompiler, og se strukturtræet efter for huller.",
-    "compileLua": "Kompiler den klargjorte kilde med LuaLaTeX fra TeX Live 2025 eller nyere, og tjek så resultatet igen.",
-    "compileAny": "Kompiler den klargjorte kilde med pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere, og tjek så resultatet igen. Tilgængelig matematik kræver LuaLaTeX. Den medfølgende motor kan ikke lave tags."
+    "compileLua": "Kompiler den klargjorte kilde med LuaLaTeX fra TeX Live 2026 (eller en TeX Live, der er opdateret siden november 2025), og tjek så resultatet igen.",
+    "compileAny": "Kompiler den klargjorte kilde med pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live, der er opdateret siden november 2025), og tjek så resultatet igen. Tilgængelig matematik kræver LuaLaTeX. Den medfølgende motor kan ikke lave tags."
   },
   "gate": {
     "incompatiblePackages_one": "Denne pakke er ikke forenelig med tagging: {{packages}}. Indhold fra den kan ende utagget i PDF'en.",
@@ -683,7 +688,7 @@
   },
   "prepExport": {
     "title": "Tilgængelig eksport",
-    "intro": "Klargør dette dokument til tagget resultat, der sigter mod PDF/UA-2. Oleafly tilføjer \\DocumentMetadata med pdfstandard=ua-2 og tagging=on samt den opsætning af alternativ tekst og tabeller, den selv kan udfylde. Kompiler resultatet med pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere, og tjek så igen. Tilgængelig matematik kræver LuaLaTeX. Den medfølgende motor kan ikke lave tags.",
+    "intro": "Klargør dette dokument til tagget resultat, der sigter mod PDF/UA-2. Oleafly tilføjer \\DocumentMetadata med pdfstandard=ua-2 og tagging=on samt den opsætning af alternativ tekst og tabeller, den selv kan udfylde. Kompiler resultatet med pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live, der er opdateret siden november 2025), og tjek så igen. Tilgængelig matematik kræver LuaLaTeX. Den medfølgende motor kan ikke lave tags.",
     "activeFileFallback": "Oleafly kunne ikke indlæse hoveddokumentet og tjekkede derfor den fil, du redigerer. Åbn hoveddokumentet for at se den klasse og de pakker, dit build rent faktisk indlæser.",
     "prepare": "Klargør til tilgængelig eksport",
     "unavailable": "Klargøring er slået fra for denne dokumentklasse. Skift til en klasse, som taggingkoden understøtter, og kør så tjekket igen. Forenelighedsdata fra LaTeX Project, hentet {{retrieved}}.",
@@ -694,7 +699,7 @@
     "copy": "Kopier kilden",
     "compileTagged": "Kompiler med tagging, og kontroller",
     "compileTaggedWarning": "Systemets LuaLaTeX kan læse lokale filer. Kør den kun på et projekt, du har tillid til.",
-    "noEngine": "Slå en motor til under Indstillinger, LaTeX-motor, for at lave den taggede PDF i appen. Eller kompiler den klargjorte kilde med din egen pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere."
+    "noEngine": "Slå en motor til under Indstillinger, LaTeX-motor, for at lave den taggede PDF i appen. Eller kompiler den klargjorte kilde med din egen pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live, der er opdateret siden november 2025)."
   },
   "typstStandards": {
     "title": "PDF-standarder",
