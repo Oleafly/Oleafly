@@ -390,6 +390,24 @@ describe("ProjectController", () => {
     expect(sessionStorage.length).toBe(0);
   });
 
+  it("reports failed recovery writes and clears the warning once persistence works", async () => {
+    const context = await started("owner");
+    await openMain(context, "abc");
+    context.server.current.drop();
+    const session = context.controller.sessionFor("main.tex");
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    const save = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota", "QuotaExceededError");
+    });
+    context.controller.flushUnsent();
+    expect(useWeb.getState().recoveryFailed).toBe(true);
+    save.mockRestore();
+    session?.applyLocal([{ from: 4, to: 4, insert: "?" }], session.version());
+    context.controller.flushUnsent();
+    expect(useWeb.getState().recoveryFailed).toBe(false);
+    expect(sessionStorage.length).toBe(1);
+  });
+
   it("does not send typing again after a reload when the server took it before the drop", async () => {
     const before = await started("owner");
     await openMain(before, "abc");

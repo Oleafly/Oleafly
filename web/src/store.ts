@@ -79,6 +79,7 @@ export interface WebState {
   people: Readonly<Record<string, WebPerson>>;
   notice: Notice | null;
   discarded: DiscardReason | null;
+  recoveryFailed: boolean;
   selection: PlacedRange | null;
   draft: CommentDraft | null;
   selectedThreadId: string | null;
@@ -137,6 +138,7 @@ export function initialWebState(): WebState {
     people: {},
     notice: null,
     discarded: null,
+    recoveryFailed: false,
     selection: null,
     draft: null,
     selectedThreadId: null,

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The browser keeps its last recovery copy when newer unsent edits exceed
+  its storage budget, and warns when edits cannot be kept for recovery.
+
 ## [0.4.10] - 2026-11-02
 
 ### Added

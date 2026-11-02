@@ -139,6 +139,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
   private presenceTimer: ReturnType<typeof setTimeout> | null = null;
   private kept: Record<string, UnsentTyping>;
   private readonly saved: Set<string>;
+  private readonly recoveryFailures = new Set<string>();
   private readonly saves = new Map<string, () => void>();
   private readonly flush = () => this.flushUnsent();
 
@@ -422,6 +423,8 @@ export class ProjectController implements ProjectActions, EditorBridge {
     this.saves.clear();
     this.kept = {};
     this.saved.clear();
+    this.recoveryFailures.clear();
+    useWeb.setState({ recoveryFailed: false });
     forgetUnsent(this.projectId);
   }
 
@@ -437,7 +440,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
     const session = this.entries.get(fileId)?.session;
     if (!session || fileId in this.kept) return;
     if (!session.unconfirmed || session.phase === "closed") {
-      if (this.saved.delete(fileId)) writeUnsent(this.projectId, fileId, null);
+      if (this.saved.has(fileId) || this.recoveryFailures.has(fileId)) this.persistUnsent(fileId, null);
       return;
     }
     const base = session.confirmed();
@@ -449,13 +452,24 @@ export class ProjectController implements ProjectActions, EditorBridge {
       after = base;
     }
     const inflight = after === base ? null : flight;
-    this.saved.add(fileId);
-    writeUnsent(this.projectId, fileId, {
+    this.persistUnsent(fileId, {
       base,
       inflight,
       rest: diffOperation(after, session.text()).toWire(),
       at: Date.now(),
     });
+  }
+
+  private persistUnsent(fileId: string, typing: UnsentTyping | null): void {
+    const result = writeUnsent(this.projectId, fileId, typing);
+    if (result === "saved") {
+      this.recoveryFailures.delete(fileId);
+      if (typing) this.saved.add(fileId);
+      else this.saved.delete(fileId);
+    } else {
+      this.recoveryFailures.add(fileId);
+    }
+    useWeb.setState({ recoveryFailed: this.recoveryFailures.size > 0 });
   }
 
   private restoreUnsent(fileId: string, session: WebDocumentSession): void {
