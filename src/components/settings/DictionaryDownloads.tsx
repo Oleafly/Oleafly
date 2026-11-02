@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookA, Info, Trash2 } from "lucide-react";
+import { Info } from "lucide-react";
+import { BookA, Trash2 } from "@/components/icons/pack";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import { Tooltip } from "@/components/ui/tooltip";
 import { currentLocale } from "@/i18n";

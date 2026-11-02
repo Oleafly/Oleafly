@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, FolderDown } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { FolderDown } from "@/components/icons/pack";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

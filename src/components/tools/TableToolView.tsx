@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Table2 } from "lucide-react";
+import { Table2 } from "@/components/icons/pack";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import { TableGeneratorPanel } from "@/components/tools/TableGeneratorPanel";
 import { toolName } from "@/lib/tool-catalog";

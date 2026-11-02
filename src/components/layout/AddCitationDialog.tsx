@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, AtSign, BookOpen, Search } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { AtSign, BookOpen, Search } from "@/components/icons/pack";
 import { useCitationStore } from "@/store/citation";
 import { resolveCitation, bibtexForHit, addCitation } from "@/features/citation";
 import { citationBibliographyChoices } from "@/features/citation-bibliographies";

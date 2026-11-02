@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   ClipboardCheck,
@@ -10,8 +11,7 @@ import {
   Search,
   Send,
   Wrench,
-  type LucideIcon,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { i18n } from "@/i18n";
 
 export interface ResearchPreset {

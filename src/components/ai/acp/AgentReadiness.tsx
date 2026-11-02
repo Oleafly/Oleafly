@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Download, Settings2, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
+import { Download, Settings2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

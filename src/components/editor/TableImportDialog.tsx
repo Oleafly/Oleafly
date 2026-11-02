@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, FileSpreadsheet } from "lucide-react";
+import { Copy, FileSpreadsheet } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

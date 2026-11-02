@@ -4,10 +4,8 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Download,
-  ExternalLink,
-} from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { Download } from "@/components/icons/pack";
 import {
   retryActiveLanguageService,
   setupActiveLanguageService,

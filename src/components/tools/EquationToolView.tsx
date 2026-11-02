@@ -1,16 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import katex from "katex";
-import {
-  ArrowLeft,
-  Braces,
-  Copy,
-  Download,
-  FileCode2,
-  FolderPlus,
-  Image as ImageIcon,
-  Sigma,
-} from "lucide-react";
+import { ArrowLeft, Braces } from "lucide-react";
+import { Copy, Download, FileCode2, FolderPlus, Image as ImageIcon, Sigma } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverItem } from "@/components/ui/popover";

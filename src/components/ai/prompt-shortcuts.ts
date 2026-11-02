@@ -1,29 +1,22 @@
+import { Check, Hash, type LucideIcon, Maximize2, Minimize2, Quote, RefreshCw, Type } from "lucide-react";
 import {
   BookOpen,
-  Check,
   FileCheck,
   FileText,
   FlaskConical,
-  Hash,
   Library,
-  Maximize2,
   MessageSquare,
-  Minimize2,
   MonitorPlay,
   PenLine,
   PenTool,
   Presentation,
-  Quote,
-  RefreshCw,
   Search,
   Sigma,
   Sparkles,
   Table,
-  Type,
   Wand2,
   Wrench,
-  type LucideIcon,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { i18n } from "@/i18n";
 
 export interface PromptShortcut {

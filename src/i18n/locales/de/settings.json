@@ -682,6 +682,17 @@
       "theme": {
         "description": "System folgt dem Betriebssystem und wechselt mit ihm.",
         "label": "Darstellung"
+      },
+      "iconPack": {
+        "color": "Farbig",
+        "description": "Neutrale Strichsymbole sind in Oleafly enthalten. Farbige Symbole werden separat heruntergeladen.",
+        "download": "Herunterladen ({{size}})",
+        "downloading": "Wird heruntergeladen…",
+        "failedCheck": "Die heruntergeladenen Symbole entsprachen nicht dem, was Oleafly erwartet, und wurden daher nicht installiert.",
+        "failedNetwork": "Die farbigen Symbole konnten nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+        "label": "Symbole",
+        "neutral": "Neutral",
+        "remove": "Farbige Symbole entfernen"
       }
     },
     "customTheme": {

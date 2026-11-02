@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { GitBranch, Lock, X } from "lucide-react";
+import { X } from "lucide-react";
+import { GitBranch, Lock } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";

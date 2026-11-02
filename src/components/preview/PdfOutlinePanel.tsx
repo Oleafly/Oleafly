@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { SquareArrowOutUpRight, TableOfContents, X } from "lucide-react";
+import { SquareArrowOutUpRight, X } from "lucide-react";
+import { TableOfContents } from "@/components/icons/pack";
 import { Spinner } from "@/components/ui/spinner";
 import type { PdfOutlineState, PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import { Button } from "@/components/ui/button";

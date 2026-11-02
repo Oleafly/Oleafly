@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AtSign, Mail } from "lucide-react";
+import { AtSign, Mail } from "@/components/icons/pack";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { Button } from "@/components/ui/button";
 import type { CollabEmailPreferences } from "@/lib/tauri";

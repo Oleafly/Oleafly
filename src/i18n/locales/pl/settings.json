@@ -690,6 +690,17 @@
       "theme": {
         "description": "Opcja systemowa podąża za systemem operacyjnym i zmienia się razem z nim.",
         "label": "Wygląd"
+      },
+      "iconPack": {
+        "color": "Kolorowe",
+        "description": "Neutralne ikony liniowe są dołączone do Oleafly. Kolorowe ikony pobiera się osobno.",
+        "download": "Pobierz ({{size}})",
+        "downloading": "Pobieranie…",
+        "failedCheck": "Pobrane ikony nie zgadzały się z tym, czego oczekuje Oleafly, więc nie zostały zainstalowane.",
+        "failedNetwork": "Nie udało się pobrać kolorowych ikon. Sprawdź połączenie i spróbuj ponownie.",
+        "label": "Ikony",
+        "neutral": "Neutralne",
+        "remove": "Usuń kolorowe ikony"
       }
     },
     "customTheme": {

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { ICON_PACKS, type IconPack, setIconPack as applyIconPack } from "@/components/icons/icon-pack";
 import type { EditorColorId } from "@oleafly/editor/color-roles";
 import { EDITOR_CURSOR_BLINKING, type EditorCursorBlinking } from "@oleafly/editor/cursor-blink";
 import { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight } from "@oleafly/editor/cursor-height";
@@ -1061,6 +1062,9 @@ interface SettingsState {
   setLayoutPreset: (v: LayoutPreset) => void;
   dockPlacement: DockPlacement;
   setDockPlacement: (v: DockPlacement) => void;
+  /** Neutral line icons, or the downloadable colour pack once it is installed. */
+  iconPack: IconPack;
+  setIconPack: (v: IconPack) => void;
   bgPattern: BackgroundPattern;
   setBgPattern: (v: BackgroundPattern) => void;
   appIcon: AppIconId;
@@ -1236,6 +1240,7 @@ const PREF_DEFAULTS = {
   terminalConfirmClose: true,
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
+  iconPack: "neutral" as IconPack,
   bgPattern: "dots" as BackgroundPattern,
   appIcon: "classic" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
@@ -1326,6 +1331,7 @@ export const SECTION_SETTINGS = {
     hoverPreview: "oleafly.hoverPreview",
     accentColor: "oleafly.accent",
     dockPlacement: "oleafly.dockPlacement",
+    iconPack: "oleafly.iconPack",
     bgPattern: "oleafly.bgPattern",
     appIcon: "oleafly.appIcon",
     homeProjectLayout: "oleafly.library.projectLayout",
@@ -1390,6 +1396,12 @@ function dropRetiredLiveCollaborationFlag(): void {
 }
 
 dropRetiredLiveCollaborationFlag();
+
+const storedIconPack: IconPack = (() => {
+  const value = ls("oleafly.iconPack", "neutral");
+  return (ICON_PACKS as readonly string[]).includes(value) ? (value as IconPack) : "neutral";
+})();
+applyIconPack(storedIconPack);
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   editorKeymap: initialEditorKeymap,
@@ -1998,6 +2010,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setDockPlacement: (v) => {
     saveLs("oleafly.dockPlacement", v);
     set({ dockPlacement: v });
+  },
+  iconPack: storedIconPack,
+  setIconPack: (v) => {
+    saveLs("oleafly.iconPack", v);
+    applyIconPack(v);
+    set({ iconPack: v });
   },
   bgPattern: (ls("oleafly.bgPattern", "dots") as BackgroundPattern) || "dots",
   setBgPattern: (v) => {

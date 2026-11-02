@@ -1,19 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  CircleAlert,
-  CircleCheck,
-  CircleHelp,
-  File,
-  Folder,
-  FolderOpen,
-  FolderPlus,
-  Link2Off,
-  Lock,
-  MoreHorizontal,
-  Pencil,
-  RefreshCw,
-} from "lucide-react";
+import { CircleAlert, CircleCheck, Link2Off, MoreHorizontal, RefreshCw } from "lucide-react";
+import { CircleHelp, File, Folder, FolderOpen, FolderPlus, Lock, Pencil } from "@/components/icons/pack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

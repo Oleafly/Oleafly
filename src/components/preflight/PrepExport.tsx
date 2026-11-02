@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, Copy, FileCheck2, Info, Pencil, Plus, Wand2 } from "lucide-react";
+import { AlertTriangle, Check, Info, Plus } from "lucide-react";
+import { Copy, FileCheck2, Pencil, Wand2 } from "@/components/icons/pack";
 import { isTauri } from "@tauri-apps/api/core";
 import { prepareAccessibleSource, type PrepChange, type PrepResult } from "@oleafly/preflight";
 import { useFilesStore } from "@/store/files";

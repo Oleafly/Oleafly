@@ -2,7 +2,8 @@ import {
   lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
   useSyncExternalStore, type MutableRefObject, type RefObject,
 } from "react";
-import { Brain, Plus, Server } from "lucide-react";
+import { Plus } from "lucide-react";
+import { Brain, Server } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";

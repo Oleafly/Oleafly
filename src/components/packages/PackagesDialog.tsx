@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { I18nextProvider, useTranslation } from "react-i18next";
-import { Package, Search } from "lucide-react";
+import { Package, Search } from "@/components/icons/pack";
 import { create } from "zustand";
 import { i18n } from "@/i18n";
 import { ModalShell } from "@/components/ui/modal-shell";

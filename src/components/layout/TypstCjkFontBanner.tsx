@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Languages, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Languages } from "@/components/icons/pack";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";

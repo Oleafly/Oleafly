@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppWindow, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { AppWindow } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CollabProvider, CollabServer } from "@/lib/tauri";

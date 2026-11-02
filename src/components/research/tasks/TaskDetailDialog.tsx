@@ -1,15 +1,7 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  AlertCircle,
-  AlertTriangle,
-  ChevronRight,
-  ExternalLink,
-  FileDiff,
-  GitMerge,
-  Paperclip,
-  Trash2,
-} from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronRight, ExternalLink } from "lucide-react";
+import { FileDiff, GitMerge, Paperclip, Trash2 } from "@/components/icons/pack";
 import { cn } from "@/lib/utils";
 import { formatCompactCount } from "@/lib/format";
 import { formatDateTime, formatNumber } from "@/lib/intl";

@@ -9,7 +9,8 @@ import {
   unifiedMergeView,
 } from "@codemirror/merge";
 import { scrollEditorPositionLocally } from "@oleafly/editor";
-import { ChevronDown, ChevronUp, Columns2, GitCompare, Lock, Rows3 } from "lucide-react";
+import { ChevronDown, ChevronUp, Rows3 } from "lucide-react";
+import { Columns2, GitCompare, Lock } from "@/components/icons/pack";
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { MERGE_DIFF_CONFIG } from "./diff-config";

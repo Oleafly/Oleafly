@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { Check, Copy, ExternalLink, Github, Hash, KeyRound, Mail, Server } from "lucide-react";
+import { Check, ExternalLink, Hash } from "lucide-react";
+import { Copy, Github, KeyRound, Mail, Server } from "@/components/icons/pack";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {

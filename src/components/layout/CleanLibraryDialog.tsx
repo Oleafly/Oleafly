@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpenCheck, FileDiff, Sparkles } from "lucide-react";
+import { BookOpenCheck, FileDiff, Sparkles } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

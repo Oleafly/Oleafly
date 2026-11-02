@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollText } from "lucide-react";
+import { ScrollText } from "@/components/icons/pack";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

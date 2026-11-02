@@ -1,12 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Bot,
-  CheckCircle2,
-  MessageSquareText,
-  ShieldAlert,
-  Square,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, Square, XCircle } from "lucide-react";
+import { Bot, MessageSquareText, ShieldAlert } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { subagentDisplayStatus } from "@oleafly/ai-core";
 import { i18n } from "@/i18n";

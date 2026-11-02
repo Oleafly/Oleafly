@@ -9,6 +9,8 @@ import { DevContextMenu } from "@/components/layout/DevContextMenu";
 import { IndexKeeper } from "@/components/editor/IndexKeeper";
 import { ZoteroKeeper } from "@/components/zotero/ZoteroKeeper";
 import { ThemeProvider } from "@/lib/theme";
+import { IconPackHost } from "@/components/icons/pack-icon";
+import { loadStoredColorIconPack } from "@/lib/icon-pack-install";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
@@ -264,6 +266,7 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
     <QueryClientProvider client={queryClient}>
       <AppZoom />
       <AppIcon />
+      <IconPackHost />
       <App />
       <Contained>
         <Toaster />
@@ -314,6 +317,8 @@ async function bootstrap(): Promise<void> {
   }
   registerContributions();
   markBootStage("contributions-registered");
+  // The colour icon pack is optional; a missing or stale one leaves the neutral icons.
+  void loadStoredColorIconPack();
   await installDevelopmentProbe();
   installErrorLogging();
   installSelectAllRouting();

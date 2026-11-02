@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   FolderKanban,
@@ -7,8 +8,7 @@ import {
   Settings2,
   ShieldCheck,
   Users,
-  type LucideIcon,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { serverRoleAllows, type ServerAction, type ServerRole } from "../roles";
 
 export const CONSOLE_SECTIONS = [

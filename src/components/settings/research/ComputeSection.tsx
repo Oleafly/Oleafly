@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Cpu, Laptop, type LucideIcon, MoreHorizontal, Plus, Server, ShieldCheck } from "lucide-react";
+import { type LucideIcon, MoreHorizontal, Plus } from "lucide-react";
+import { Box, Cpu, Laptop, Server, ShieldCheck } from "@/components/icons/pack";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { GitBranch, GitFork, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
+import { GitBranch, GitFork, LogOut, Trash2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

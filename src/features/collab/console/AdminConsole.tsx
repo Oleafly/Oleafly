@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Server, ShieldCheck } from "lucide-react";
+import { Server, ShieldCheck } from "@/components/icons/pack";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { NavItem } from "@/components/ui/nav-item";

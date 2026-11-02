@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileWarning } from "lucide-react";
+import { FileWarning } from "@/components/icons/pack";
 import { notifyError } from "@/lib/toast";
 import { diffKey, useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CheckCircle2, ScrollText, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { ScrollText } from "@/components/icons/pack";
 import type { CompileState } from "@/store/compile";
 import { cn } from "@/lib/utils";
 

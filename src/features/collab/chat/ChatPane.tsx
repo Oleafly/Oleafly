@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Eraser, MessagesSquare, ShieldQuestion, Trash2 } from "lucide-react";
+import { Eraser, MessagesSquare, ShieldQuestion, Trash2 } from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Avatar } from "@/components/ui/avatar";

@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
-import { ChevronDown, ChevronRight, Download, FileText, FileUp, Info, LayoutTemplate, Trash2, Type } from "lucide-react";
+import { ChevronDown, ChevronRight, Info, Type } from "lucide-react";
+import { Download, FileText, FileUp, LayoutTemplate, Trash2 } from "@/components/icons/pack";
 import { PackList } from "@/components/settings/template-packs/PackList";
 import { PackView } from "@/components/settings/template-packs/PackView";
 import { announceSavedTemplate } from "@/features/custom-templates";

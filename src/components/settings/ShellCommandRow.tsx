@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Check, Copy, SquareTerminal } from "lucide-react";
+import { Check } from "lucide-react";
+import { Copy, SquareTerminal } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { useCopyStatus } from "@/components/ui/use-copy-status";

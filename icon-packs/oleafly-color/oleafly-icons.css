@@ -1,0 +1,147 @@
+/* Oleafly Icons: colour command icons drawn on a 20-unit grid. Hairline strokes that keep their
+   width at any size, ink outlines over top-lit gradient fills (#oi-g-* in OleaflyIconDefs), and a
+   palette of system colours with its own dark values. Interface glyphs stay Lucide line icons. */
+:root {
+  --oi-ink: #2c2c2e;
+  --oi-line: #636366;
+  --oi-rim: #ffffff;
+  --oi-knock: var(--background);
+  --oi-paper: #eceef3;
+  --oi-paper-top: #ffffff;
+  --oi-blue: #007aff;
+  --oi-blue-soft: #b9d8ff;
+  --oi-blue-soft-top: #e6f1ff;
+  --oi-blue-top: #4ea3ff;
+  --oi-blue-deep: #0064d9;
+  --oi-green: #1fa34a;
+  --oi-green-soft: #b6ecc6;
+  --oi-green-soft-top: #e5f8ea;
+  --oi-green-top: #5bd77d;
+  --oi-green-deep: #1f9a45;
+  --oi-red: #e8352b;
+  --oi-red-soft: #ffc0bb;
+  --oi-red-soft-top: #ffe8e6;
+  --oi-red-top: #ff6c62;
+  --oi-red-deep: #de2419;
+  --oi-yellow: #f2b600;
+  --oi-yellow-soft: #ffe58a;
+  --oi-yellow-soft-top: #fff7d1;
+  --oi-yellow-top: #ffdb4d;
+  --oi-yellow-deep: #f2b100;
+  --oi-amber: #ea8600;
+  --oi-amber-soft: #ffd59c;
+  --oi-amber-soft-top: #fff1dd;
+  --oi-amber-top: #ffb340;
+  --oi-amber-deep: #ef7f00;
+  --oi-purple: #a845d6;
+  --oi-purple-soft: #e5c2f7;
+  --oi-purple-soft-top: #f7ebfd;
+  --oi-purple-top: #cb83f2;
+  --oi-purple-deep: #9a3bcc;
+  --oi-graphite: #48484a;
+  --oi-graphite-soft: #d8d8dc;
+  --oi-graphite-soft-top: #f2f2f4;
+  --oi-graphite-top: #6e6e73;
+  --oi-graphite-deep: #2c2c2e;
+}
+
+.dark {
+  --oi-ink: #e5e5ea;
+  --oi-line: #aeaeb2;
+  --oi-rim: #6a6a70;
+  --oi-paper: #2b2b2f;
+  --oi-paper-top: #424247;
+  --oi-blue: #4ea1ff;
+  --oi-blue-soft: #1d3f68;
+  --oi-blue-soft-top: #2f5a8f;
+  --oi-blue-top: #5fb0ff;
+  --oi-blue-deep: #0a72e6;
+  --oi-green: #3ad763;
+  --oi-green-soft: #18422a;
+  --oi-green-soft-top: #29613f;
+  --oi-green-top: #5fe285;
+  --oi-green-deep: #21a648;
+  --oi-red: #ff6b62;
+  --oi-red-soft: #4d1f1d;
+  --oi-red-soft-top: #713230;
+  --oi-red-top: #ff8077;
+  --oi-red-deep: #e2352c;
+  --oi-yellow: #ffd60a;
+  --oi-yellow-soft: #4f4213;
+  --oi-yellow-soft-top: #6f5d1c;
+  --oi-yellow-top: #ffe35a;
+  --oi-yellow-deep: #e6b800;
+  --oi-amber: #ffa733;
+  --oi-amber-soft: #4f3514;
+  --oi-amber-soft-top: #71501f;
+  --oi-amber-top: #ffbd5c;
+  --oi-amber-deep: #e88a00;
+  --oi-purple: #d58cff;
+  --oi-purple-soft: #43264f;
+  --oi-purple-soft-top: #613a72;
+  --oi-purple-top: #de9dff;
+  --oi-purple-deep: #a64fdb;
+  --oi-graphite: #aeaeb2;
+  --oi-graphite-soft: #3a3a3c;
+  --oi-graphite-soft-top: #515154;
+  --oi-graphite-top: #8e8e93;
+  --oi-graphite-deep: #48484a;
+}
+
+/* Roles. o: ink outline; of: paper with a grey edge; ol: grey edge only; wh/wf: white mark or
+   fill on a solid shape; knock: cut-out in the surface colour; glint, gl: white highlight, filled or a line. Per hue
+   x in b g r y n p k (blue, green, red, yellow, amber, purple, graphite): x stroke only, xf soft
+   fill with an edge, xs solid fill, xw soft fill. Modifiers: thick, ln and half (faint and half-strength lines). */
+/* Drawn a fifth larger than the box the neutral icon used, so the colour pack reads at the same
+   weight without moving any layout. */
+.oi { flex: none; overflow: visible; color: var(--oi-ink); scale: 1.2; }
+.oi * { stroke-width: 0.9px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.oi .o { fill: none; stroke: currentColor; }
+.oi .of { fill: url(#oi-g-paper) var(--oi-paper); stroke: var(--oi-line); stroke-width: 0.75px; }
+.oi .ol { fill: none; stroke: var(--oi-line); stroke-width: 0.75px; }
+.oi .wh { fill: none; stroke: #fff; }
+.oi .wf { fill: #fff; stroke: #fff; }
+.oi .knock { fill: var(--oi-knock); stroke: none; }
+.oi .glint { fill: #fff; stroke: none; opacity: 0.85; }
+.oi .gl { fill: none; stroke: #fff; opacity: 0.5; }
+.oi .b { fill: none; stroke: var(--oi-blue); }
+.oi .bf { fill: url(#oi-g-blue-soft) var(--oi-blue-soft); stroke: var(--oi-blue); stroke-width: 0.75px; }
+.oi .bs { fill: url(#oi-g-blue-solid) var(--oi-blue); stroke: none; }
+.oi .bw { fill: url(#oi-g-blue-soft) var(--oi-blue-soft); stroke: none; }
+.oi .g { fill: none; stroke: var(--oi-green); }
+.oi .gf { fill: url(#oi-g-green-soft) var(--oi-green-soft); stroke: var(--oi-green); stroke-width: 0.75px; }
+.oi .gs { fill: url(#oi-g-green-solid) var(--oi-green); stroke: none; }
+.oi .gw { fill: url(#oi-g-green-soft) var(--oi-green-soft); stroke: none; }
+.oi .r { fill: none; stroke: var(--oi-red); }
+.oi .rf { fill: url(#oi-g-red-soft) var(--oi-red-soft); stroke: var(--oi-red); stroke-width: 0.75px; }
+.oi .rs { fill: url(#oi-g-red-solid) var(--oi-red); stroke: none; }
+.oi .rw { fill: url(#oi-g-red-soft) var(--oi-red-soft); stroke: none; }
+.oi .y { fill: none; stroke: var(--oi-yellow); }
+.oi .yf { fill: url(#oi-g-yellow-soft) var(--oi-yellow-soft); stroke: var(--oi-amber); stroke-width: 0.75px; }
+.oi .ys { fill: url(#oi-g-yellow-solid) var(--oi-yellow); stroke: none; }
+.oi .yw { fill: url(#oi-g-yellow-soft) var(--oi-yellow-soft); stroke: none; }
+.oi .n { fill: none; stroke: var(--oi-amber); }
+.oi .nf { fill: url(#oi-g-amber-soft) var(--oi-amber-soft); stroke: var(--oi-amber); stroke-width: 0.75px; }
+.oi .ns { fill: url(#oi-g-amber-solid) var(--oi-amber); stroke: none; }
+.oi .nw { fill: url(#oi-g-amber-soft) var(--oi-amber-soft); stroke: none; }
+.oi .p { fill: none; stroke: var(--oi-purple); }
+.oi .pf { fill: url(#oi-g-purple-soft) var(--oi-purple-soft); stroke: var(--oi-purple); stroke-width: 0.75px; }
+.oi .ps { fill: url(#oi-g-purple-solid) var(--oi-purple); stroke: none; }
+.oi .pw { fill: url(#oi-g-purple-soft) var(--oi-purple-soft); stroke: none; }
+.oi .k { fill: none; stroke: var(--oi-graphite); }
+.oi .kf { fill: url(#oi-g-graphite-soft) var(--oi-graphite-soft); stroke: var(--oi-graphite); stroke-width: 0.75px; }
+.oi .ks { fill: url(#oi-g-graphite-solid) var(--oi-graphite); stroke: none; }
+.oi .kw { fill: url(#oi-g-graphite-soft) var(--oi-graphite-soft); stroke: none; }
+/* Brand marks: solid ink, or the brand's own colour. */
+.oi .ink { fill: currentColor; stroke: none; }
+.oi .brand-discord { fill: #5865f2; stroke: none; }
+.oi .thick { stroke-width: 1.3px; }
+.oi .heavy { stroke-width: 2px; }
+.oi .edge { stroke-width: 0.75px; }
+.oi .ln { opacity: 0.35; }
+.oi .half { opacity: 0.55; }
+
+/* On a solid button the colour drawing would fight the fill, so it becomes a plain outline in the
+   button's text colour, as white glyphs on a filled button. */
+:is(.bg-primary, .bg-destructive) .oi * { fill: none; stroke: currentColor; opacity: 1; }
+:is(.bg-primary, .bg-destructive) .oi :is(.gl, .glint, .knock) { display: none; }

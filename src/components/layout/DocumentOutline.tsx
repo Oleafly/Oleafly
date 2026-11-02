@@ -1,12 +1,6 @@
 import { useTranslation } from "react-i18next";
-import {
-  ChevronDown,
-  ChevronRight,
-  CopyMinus,
-  CopyPlus,
-  FileText,
-  List,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, CopyMinus, List } from "lucide-react";
+import { CopyPlus, FileText } from "@/components/icons/pack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createLatexOutlineMacroCollector,

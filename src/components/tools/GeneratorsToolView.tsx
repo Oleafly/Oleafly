@@ -1,4 +1,5 @@
-import { FileText, ListChecks, RefreshCcw, ScrollText, Send } from "lucide-react";
+import { RefreshCcw } from "lucide-react";
+import { FileText, ListChecks, ScrollText, Send } from "@/components/icons/pack";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";

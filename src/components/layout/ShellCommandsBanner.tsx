@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "@/components/icons/pack";
 import { needsShellEscapeFinding } from "@oleafly/latex";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";

@@ -18,16 +18,8 @@ import { formatBytes } from "@/lib/format-bytes";
 import { formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { cloudErrorCode, remoteBusyKey, useCloudProviderName, useCloudStore } from "@/store/cloud";
-import {
-  ChevronRight,
-  CloudOff,
-  Copy,
-  Download,
-  FileWarning,
-  MoreHorizontal,
-  RefreshCw,
-  ShieldAlert,
-} from "lucide-react";
+import { ChevronRight, MoreHorizontal, RefreshCw } from "lucide-react";
+import { CloudOff, Copy, Download, FileWarning, ShieldAlert } from "@/components/icons/pack";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 

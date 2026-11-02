@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { FolderOpen, X } from "lucide-react";
+import { X } from "lucide-react";
+import { FolderOpen } from "@/components/icons/pack";
 import { addQuickAction, dismissQuickActionOffer } from "@/features/quick-action-offer";
 import { useQuickActionOfferStore } from "@/store/quick-action-offer";
 import { Spinner } from "@/components/ui/spinner";

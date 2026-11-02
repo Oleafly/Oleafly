@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucide-react";
+import { Plus } from "lucide-react";
+import { PenTool, Search, Settings as SettingsIcon, ToolCase } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu } from "@/components/layout/ThemeControls";

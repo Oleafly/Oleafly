@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { KeyRound, SquareTerminal } from "lucide-react";
+import { KeyRound, SquareTerminal } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

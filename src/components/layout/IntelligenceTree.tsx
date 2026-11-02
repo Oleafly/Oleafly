@@ -1,23 +1,6 @@
 import { useTranslation } from "react-i18next";
-import {
-  BookOpenText,
-  Braces,
-  Box,
-  ChevronRight,
-  CircleAlert,
-  CircleDot,
-  FileInput,
-  FileText,
-  FolderTree,
-  Hash,
-  Heading,
-  Link2,
-  Quote,
-  Search,
-  Sigma,
-  Tags,
-  X,
-} from "lucide-react";
+import { Braces, ChevronRight, CircleAlert, CircleDot, Hash, Heading, Quote, X } from "lucide-react";
+import { BookOpenText, Box, FileInput, FileText, FolderTree, Link2, Search, Sigma, Tags } from "@/components/icons/pack";
 import {
   memo,
   startTransition,

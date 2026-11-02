@@ -14,15 +14,8 @@ import {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import {
-  BookOpenCheck,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { BookOpenCheck, Trash2 } from "@/components/icons/pack";
 import { renderMathExpression } from "@oleafly/editor/math-render";
 import { scanMathExpressions } from "@oleafly/editor/math-source";
 import {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "@/components/icons/pack";
 import type { PdfLoadState } from "@/components/pdf/PdfViewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

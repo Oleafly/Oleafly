@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { MessageSquareQuote, Search, Trash2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { chatMessageCount, type StoredChat } from "@/store/chats";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, FolderOpen, FolderTree, Star } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { FolderOpen, FolderTree, Star } from "@/components/icons/pack";
 import { FileIcon } from "@/components/files/fileIcon";
 import { HighlightedCode } from "@/components/ui/code-highlighter";
 import { Button } from "@/components/ui/button";

@@ -8,18 +8,18 @@ import {
   DiscordOnlineCount,
   XBrandIcon,
 } from "@/components/community/DiscordJoin";
+import { Check, ChevronRight, ExternalLink, RefreshCw, RotateCcw, TriangleAlert, X } from "lucide-react";
 import {
   Blocks,
   BookMarked,
   BookOpen,
-  Check,
-  ChevronRight,
+  BugReportIcon,
   CircleHelp,
   Compass,
   Copy,
   Cpu,
   Database,
-  ExternalLink,
+  ExperimentIcon,
   FlaskConical,
   FolderOpen,
   GitFork,
@@ -29,18 +29,14 @@ import {
   Keyboard,
   LifeBuoy,
   Palette,
-  RotateCcw,
-  RefreshCw,
   Scale,
   ScrollText,
   Settings,
   Sparkles,
   Star,
   Trash2,
-  TriangleAlert,
   Users,
-  X,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
@@ -272,7 +268,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
     get label() {
       return i18n.t(($) => $.shell.settings.nav.experimentation);
     },
-    icon: FlaskConical,
+    icon: ExperimentIcon,
   },
   {
     id: "help",
@@ -1586,7 +1582,7 @@ function HelpSection() {
       external: true,
     },
     {
-      icon: TriangleAlert,
+      icon: BugReportIcon,
       label: t(($) => $.shell.settings.help.resources.reportCrash),
       onClick: () => void reportCrashToGithub(),
       external: true,

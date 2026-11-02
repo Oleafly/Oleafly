@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, Mail, Trash2 } from "lucide-react";
+import { Check } from "lucide-react";
+import { Copy, Mail, Trash2 } from "@/components/icons/pack";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ArrowRight, ChevronLeft, ChevronRight, Download, ExternalLink, X } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import { Download } from "@/components/icons/pack";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Spinner } from "@/components/ui/spinner";

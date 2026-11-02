@@ -1,6 +1,6 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, Search } from "lucide-react";
+import { FileText, Search } from "@/components/icons/pack";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import type { SearchHit } from "@/lib/tauri";

@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { ArrowUpRight } from "lucide-react";
 import {
-  ArrowUpRight,
   BookOpen,
   Glasses,
   Image as ImageIcon,
@@ -11,7 +11,7 @@ import {
   Send,
   Sparkles,
   Wrench,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { groupSkills, type SkillGroup } from "@/lib/skill-groups";
 import { isSkillAvailable, type SkillEntry } from "@/lib/skills";

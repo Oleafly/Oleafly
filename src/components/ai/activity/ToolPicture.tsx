@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Check, Code2, Copy, FolderDown, Image as ImageIcon } from "lucide-react";
+import { Check, Code2 } from "lucide-react";
+import { Copy, FolderDown, Image as ImageIcon } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import type { ToolEntry } from "@/store/chats";

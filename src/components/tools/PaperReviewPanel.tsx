@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  Flame,
-  HandHeart,
-  Square,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, Square } from "lucide-react";
+import { Flame, HandHeart, Trash2 } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {

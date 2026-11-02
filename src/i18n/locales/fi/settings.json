@@ -682,6 +682,17 @@
       "theme": {
         "description": "Järjestelmä seuraa käyttöjärjestelmää ja muuttuu sen mukana.",
         "label": "Ulkoasu"
+      },
+      "iconPack": {
+        "color": "Värikkäät",
+        "description": "Neutraalit viivakuvakkeet tulevat Oleaflyn mukana. Värikkäät kuvakkeet ladataan erikseen.",
+        "download": "Lataa ({{size}})",
+        "downloading": "Ladataan…",
+        "failedCheck": "Ladatut kuvakkeet eivät vastanneet sitä, mitä Oleafly odottaa, joten niitä ei asennettu.",
+        "failedNetwork": "Värikkäitä kuvakkeita ei voitu ladata. Tarkista yhteys ja yritä uudelleen.",
+        "label": "Kuvakkeet",
+        "neutral": "Neutraalit",
+        "remove": "Poista värikkäät kuvakkeet"
       }
     },
     "customTheme": {

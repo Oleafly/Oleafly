@@ -6,22 +6,8 @@ import {
   type FormEvent,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  Bookmark,
-  BookmarkCheck,
-  Check,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  Info,
-  KeyRound,
-  Pause,
-  RefreshCw,
-  Search,
-  SlidersHorizontal,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, ExternalLink, Info, Pause, RefreshCw } from "lucide-react";
+import { Bookmark, BookmarkCheck, FileText, KeyRound, Search, SlidersHorizontal, Trash2 } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";

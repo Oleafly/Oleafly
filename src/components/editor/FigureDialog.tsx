@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderOpen, ImageOff } from "lucide-react";
+import { FolderOpen, ImageOff } from "@/components/icons/pack";
 import type { FileEntry } from "@oleafly/backend-port";
 import { Button } from "@/components/ui/button";
 import {

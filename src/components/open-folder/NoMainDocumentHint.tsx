@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Star } from "lucide-react";
+import { Star } from "@/components/icons/pack";
 
 export function NoMainDocumentHint() {
   const { t } = useTranslation(["shell"]);

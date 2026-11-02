@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Bug, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Bug } from "@/components/icons/pack";
 import { MenuRow } from "@/components/ui/menu-row";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { openDevtools } from "@/lib/tauri";

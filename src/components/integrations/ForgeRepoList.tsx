@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Lock, Search } from "lucide-react";
+import { Check } from "lucide-react";
+import { Lock, Search } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";

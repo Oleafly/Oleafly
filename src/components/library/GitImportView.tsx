@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ExternalLink, GitBranch } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { GitBranch } from "@/components/icons/pack";
 import { ForgeAccountSelect } from "@/components/integrations/ForgeAccountSelect";
 import { ForgeRepoList } from "@/components/integrations/ForgeRepoList";
 import { Button } from "@/components/ui/button";
