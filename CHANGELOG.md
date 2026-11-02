@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.10] - 2026-11-02
+
 ### Added
 
 - Oleafly has a build for Intel Macs. Download the `x64` DMG from the release
@@ -65,9 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   image.
 - When Retry on a crashed panel crashes again, the panel offers to reload
   Oleafly.
-
-### Fixed
-
 - Oleafly no longer reports an image in a hidden folder, such as
   `#image(".typ-img/example.png")`, as missing when the file is there (#374).
   The file list still leaves hidden and generated folders out, but when a
@@ -4379,7 +4378,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.10...HEAD
+[0.4.10]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...v0.4.7
