@@ -134,6 +134,8 @@ fn apply<R: Runtime>(app: &AppHandle<R>, variant: AppIconVariant) {
     mac::set_application_icon(app, variant);
     #[cfg(not(target_os = "macos"))]
     windowed::set_every_window_icon(app, variant);
+    #[cfg(target_os = "linux")]
+    crate::system_integration::refresh_launcher_icon();
 }
 
 #[derive(Debug, PartialEq, Eq)]

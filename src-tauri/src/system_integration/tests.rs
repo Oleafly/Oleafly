@@ -1595,3 +1595,182 @@ fn every_item_serializes_with_the_names_the_settings_screen_reads() {
         assert_eq!(serde_json::from_value::<ItemId>(text.into()).unwrap(), id);
     }
 }
+
+const APPIMAGE: &str = "/home/ada/Apps/Oleafly 0.4.11.AppImage";
+
+fn appimage_launcher(root: &Path) -> launcher::Launcher {
+    launcher::Launcher {
+        appimage: APPIMAGE.to_string(),
+        app_id: LINUX_BINARY.to_string(),
+        data_home: root.join("data"),
+        data_dirs: vec![root.join("share")],
+    }
+}
+
+fn app_icon() -> &'static [u8] {
+    crate::app_icon::AppIconVariant::default().png()
+}
+
+#[test]
+fn the_appimage_menu_entry_is_the_bundled_one_pointed_at_this_file() {
+    let icon = Path::new("/home/ada/.local/share/icons/hicolor/512x512/apps/oleafly-desktop.png");
+    let expected = include_str!("../../linux/appimage.desktop")
+        .replace(
+            "\nExec=oleafly-desktop %F\n",
+            "\nExec=\"/home/ada/Apps/Oleafly 0.4.11.AppImage\" %F\nTryExec=/home/ada/Apps/Oleafly 0.4.11.AppImage\n",
+        )
+        .replace(
+            "\nIcon=oleafly-desktop\n",
+            "\nIcon=/home/ada/.local/share/icons/hicolor/512x512/apps/oleafly-desktop.png\n",
+        )
+        + "X-Oleafly-AppImage=true\n";
+    assert_eq!(launcher::entry(APPIMAGE, LINUX_BINARY, icon), expected);
+    let renamed = launcher::entry(APPIMAGE, "oleafly-nightly", icon);
+    assert!(renamed.contains("\nStartupWMClass=oleafly-nightly\n"));
+    assert!(!renamed.contains("StartupWMClass=oleafly-desktop"));
+}
+
+#[test]
+fn an_appimage_gets_a_menu_entry_and_icon_and_keeps_them_current() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut launcher = appimage_launcher(temp.path());
+    assert_eq!(
+        launcher::sync(&launcher, app_icon(), false).unwrap(),
+        launcher::Outcome::Written
+    );
+    let entry = launcher.entry_path();
+    assert_eq!(
+        entry,
+        temp.path()
+            .join("data/applications/oleafly-desktop.desktop")
+    );
+    let icon = launcher.icon_path(512);
+    assert_eq!(std::fs::read(&icon).unwrap(), app_icon());
+    assert_eq!(
+        std::fs::read_to_string(&entry).unwrap(),
+        launcher::entry(APPIMAGE, LINUX_BINARY, &icon)
+    );
+    assert_eq!(
+        launcher::sync(&launcher, app_icon(), true).unwrap(),
+        launcher::Outcome::Current
+    );
+
+    launcher.appimage = "/home/ada/Oleafly-0.4.12.AppImage".to_string();
+    assert_eq!(
+        launcher::sync(&launcher, app_icon(), true).unwrap(),
+        launcher::Outcome::Written
+    );
+    assert!(std::fs::read_to_string(&entry)
+        .unwrap()
+        .contains("\nExec=/home/ada/Oleafly-0.4.12.AppImage %F\n"));
+
+    let ocean = crate::app_icon::AppIconVariant::Ocean.png();
+    assert_eq!(
+        launcher::sync(&launcher, ocean, true).unwrap(),
+        launcher::Outcome::Current
+    );
+    assert_eq!(std::fs::read(&icon).unwrap(), ocean);
+}
+
+#[test]
+fn a_removed_appimage_menu_entry_stays_removed() {
+    let temp = tempfile::tempdir().unwrap();
+    let launcher = appimage_launcher(temp.path());
+    launcher::sync(&launcher, app_icon(), false).unwrap();
+    std::fs::remove_file(launcher.entry_path()).unwrap();
+    assert_eq!(
+        launcher::sync(&launcher, app_icon(), true).unwrap(),
+        launcher::Outcome::Removed
+    );
+    assert!(!launcher.entry_path().exists());
+}
+
+#[test]
+fn an_installed_package_or_another_tool_keeps_its_own_menu_entry() {
+    let temp = tempfile::tempdir().unwrap();
+    let launcher = appimage_launcher(temp.path());
+    launcher::sync(&launcher, app_icon(), false).unwrap();
+    let packaged = temp.path().join("share/applications/Oleafly.desktop");
+    std::fs::create_dir_all(packaged.parent().unwrap()).unwrap();
+    std::fs::write(&packaged, include_str!("../../linux/appimage.desktop")).unwrap();
+    assert_eq!(
+        launcher::sync(&launcher, app_icon(), true).unwrap(),
+        launcher::Outcome::Elsewhere
+    );
+    assert!(!launcher.entry_path().exists());
+    assert!(packaged.exists());
+
+    let temp = tempfile::tempdir().unwrap();
+    let launcher = appimage_launcher(temp.path());
+    let path = launcher.entry_path();
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, "[Desktop Entry]\nName=Mine\n").unwrap();
+    assert_eq!(
+        launcher::sync(&launcher, app_icon(), false).unwrap(),
+        launcher::Outcome::Elsewhere
+    );
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "[Desktop Entry]\nName=Mine\n"
+    );
+
+    let temp = tempfile::tempdir().unwrap();
+    let launcher = appimage_launcher(temp.path());
+    let others = temp.path().join("share/applications");
+    std::fs::create_dir_all(&others).unwrap();
+    std::fs::write(
+        others.join("other.desktop"),
+        "[Desktop Entry]\nStartupWMClass=oleafly-desktop-helper\n",
+    )
+    .unwrap();
+    std::fs::write(
+        others.join("oleafly-handler.desktop"),
+        "[Desktop Entry]\nName=Oleafly\nExec=oleafly %u\n",
+    )
+    .unwrap();
+    assert_eq!(
+        launcher::sync(&launcher, app_icon(), false).unwrap(),
+        launcher::Outcome::Written
+    );
+}
+
+// XDG_DATA_DIRS is a Unix list: Windows splits paths on ';' and has no rooted "/usr/share".
+#[cfg(unix)]
+#[test]
+fn the_appimage_own_share_folder_is_not_an_installed_package() {
+    let appdir = Path::new("/tmp/.mount_OleaflXYZ");
+    let defaults = [
+        PathBuf::from("/usr/local/share"),
+        PathBuf::from("/usr/share"),
+    ];
+    assert_eq!(
+        launcher::host_data_dirs(
+            Some(OsString::from(
+                "/tmp/.mount_OleaflXYZ/usr/share:/usr/local/share:/usr/share"
+            )),
+            Some(appdir)
+        ),
+        defaults
+    );
+    assert_eq!(
+        launcher::host_data_dirs(
+            Some(OsString::from("/tmp/.mount_OleaflXYZ/usr/share:")),
+            Some(appdir)
+        ),
+        defaults
+    );
+    assert_eq!(launcher::host_data_dirs(None, None), defaults);
+    assert_eq!(
+        launcher::host_data_dirs(Some(OsString::from("relative:/opt/share")), None),
+        [PathBuf::from("/opt/share")]
+    );
+}
+
+#[test]
+fn the_menu_icon_size_comes_from_the_png() {
+    assert_eq!(launcher::png_edge(app_icon()), Some(512));
+    for variant in crate::app_icon::AppIconVariant::ALL {
+        assert_eq!(launcher::png_edge(variant.png()), Some(512), "{variant:?}");
+    }
+    assert_eq!(launcher::png_edge(b"not a png"), None);
+}

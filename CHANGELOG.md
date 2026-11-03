@@ -15,11 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the bundled engine stopped with an error, and TeX Live 2025 as first
   released wrote a PDF that claimed PDF/UA-2 with no tags. Preflight now says
   when a build skipped tagging and which LaTeX it ran.
-- On Linux, the AppImage shows the Oleafly icon in the taskbar and window
-  list. The window icon was too large, so GTK dropped it, and desktops such as
-  Cinnamon showed a generic icon unless the AppImage had been added to the
-  applications menu. The icon you pick under App icon in Settings > Appearance
-  now changes the taskbar icon on Linux too.
+- On Linux, the AppImage shows the Oleafly icon in the taskbar, dock and window
+  list. On X11 desktops such as Cinnamon, the window icon was too large, so GTK
+  dropped it. Wayland desktops such as GNOME only take an app's icon from the
+  applications menu, so the AppImage now adds itself to that menu when it
+  starts, unless an installed package or another tool already has. If you
+  delete that entry, it stays deleted. The icon you pick under App icon in
+  Settings > Appearance now changes the taskbar and menu icon on Linux too.
 - On Linux, text in the PDF preview no longer gets orange and blue edges when
   the desktop uses subpixel font smoothing, such as Rgba antialiasing in
   Cinnamon. It made the text look as if it had no antialiasing. The preview now
