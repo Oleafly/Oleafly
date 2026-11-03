@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "내장 엔진은 선언된 PDF/UA 출력을 만들 수 없습니다",
-      "detail": "이 문서는 pdfstandard=ua를 선언했지만 내장 엔진은 태그 트리를 쓸 수 없어, PDF가 지키지 못하는 PDF/UA 주장을 담게 됩니다. TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 컴파일하거나 pdfstandard 키를 빼세요."
+      "detail": "이 문서는 pdfstandard=ua를 선언했지만 내장 엔진은 태그 트리를 쓸 수 없어, PDF가 지키지 못하는 PDF/UA 주장을 담게 됩니다. TeX Live 2026(또는 2025년 11월 이후 업데이트한 TeX Live)의 pdfLaTeX나 LuaLaTeX로 컴파일하거나 pdfstandard 키를 빼세요."
     },
     "table-header-rows": {
       "title": "표의 머리글 행이 머리글로 표시되어 있지 않습니다",
@@ -142,6 +142,11 @@
       "title": "컴파일을 한 번 더 해야 합니다",
       "detail": "최근 로그에 레이블, 인용 또는 목차가 아직 확정되지 않았다고 나옵니다. 내보내기 전에 재실행 경고가 사라질 때까지 다시 컴파일하세요."
     },
+    "compile-tagging-skipped": {
+      "title": "이 LaTeX는 너무 오래되어 태그 처리를 건너뛰었습니다",
+      "detail": "이번 빌드는 {{date}} 버전의 LaTeX로 실행되었습니다. 태그된 PDF에는 {{required}} 이상의 LaTeX가 필요해서 \\DocumentMetadata를 감싼 검사가 태그 처리를 껐고, PDF에는 PDF/UA 주장이 담기지 않습니다. 태그된 PDF가 필요하면 TeX Live 2026에서 ‘태그를 켜고 컴파일해 확인’ 버튼을 사용하거나, TeX Live를 업데이트한 뒤 다시 컴파일하세요.",
+      "detailUndated": "태그된 PDF에는 {{required}} 이상의 LaTeX가 필요한데 이번 빌드는 그보다 오래된 버전으로 실행되어, \\DocumentMetadata를 감싼 검사가 태그 처리를 껐고 PDF에는 PDF/UA 주장이 담기지 않습니다. 태그된 PDF가 필요하면 TeX Live 2026에서 ‘태그를 켜고 컴파일해 확인’ 버튼을 사용하거나, TeX Live를 업데이트한 뒤 다시 컴파일하세요."
+    },
     "compile-duplicate-destination": {
       "title": "PDF 대상이 중복됩니다",
       "detail": "앵커 두 개가 같은 대상을 공유해 링크나 북마크가 엉뚱한 곳으로 이동할 수 있습니다. 보통 레이블 중복이나 쪽 번호 초기화에서 생깁니다."
@@ -201,7 +206,7 @@
     },
     "pdf-untagged-output": {
       "title": "이 PDF에는 태그가 없습니다",
-      "detail": "컴파일된 PDF에 구조 트리가 없어 화면 낭독기가 제목, 목록, 표, 읽기 순서를 얻지 못하며 PDF/UA-1의 7.1절을 충족할 수 없습니다. 태그된 출력에는 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX와 \\DocumentMetadata{tagging=on}이 필요합니다. 내장 엔진은 태그를 만들지 못합니다. 그동안에도 위의 소스 및 출력 검사는 그대로 적용됩니다."
+      "detail": "컴파일된 PDF에 구조 트리가 없어 화면 낭독기가 제목, 목록, 표, 읽기 순서를 얻지 못하며 PDF/UA-1의 7.1절을 충족할 수 없습니다. 태그된 출력에는 TeX Live 2026(또는 2025년 11월 이후 업데이트한 TeX Live)의 pdfLaTeX나 LuaLaTeX와 \\DocumentMetadata{tagging=on}이 필요합니다. 내장 엔진은 태그를 만들지 못합니다. 그동안에도 위의 소스 및 출력 검사는 그대로 적용됩니다."
     },
     "pdf-structure-missing": {
       "title": "태그된 PDF에 읽을 수 있는 구조 트리가 없습니다",
@@ -568,15 +573,15 @@
   },
   "prep": {
     "metadataUpdated": "\\DocumentMetadata에 태그 처리에 필요한 키를 추가했습니다.",
-    "metadataAdded": "\\DocumentMetadata를 첫 줄로 추가했습니다(필수이며 \\documentclass보다 앞에 와야 합니다).",
+    "metadataAdded": "\\DocumentMetadata를 첫 줄로 추가했습니다(필수이며 \\documentclass보다 앞에 와야 합니다). 이 줄은 버전 검사 안에 들어 있어서, {{date}}보다 오래된 LaTeX(내장 엔진 포함)는 이를 건너뛰고 실패하는 대신 태그 없이 문서를 컴파일합니다.",
     "headerRows": "각 표의 첫 행이 머리글 칸으로 태그되도록 table/header-rows를 1로 설정했습니다. 머리글 깊이가 다른 표가 있으면 숫자를 바꾸세요.",
     "unicodeMath": "이 엔진이 태그된 수식에 필요로 하는 \\usepackage{unicode-math}를 추가했습니다.",
     "altPlaceholders_other": "이미지 {{count}}개에 대체 텍스트 자리 표시자를 넣었습니다. TODO 문구를 실제 설명으로 바꾸세요.",
     "titleRequired": "PDF/UA에는 뷰어가 표시하는 문서 제목이 필요합니다. hyperref를 불러온 뒤 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}를 설정하세요.",
     "incompatiblePackages_other": "다음 패키지는 태그 처리와 호환되지 않습니다: {{packages}}. 이 패키지의 내용은 태그 없이 PDF에 들어갈 수 있습니다. 가능한 것은 바꾸세요.",
     "cautionPackages": "다음 패키지는 일부만 태그하거나 기록된 태그 판정이 없습니다: {{packages}}. 컴파일해서 구조 트리에 빠진 곳이 없는지 확인하세요.",
-    "compileLua": "준비된 소스를 TeX Live 2025 이상의 LuaLaTeX로 컴파일한 뒤 출력을 다시 확인하세요.",
-    "compileAny": "준비된 소스를 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 컴파일한 뒤 출력을 다시 확인하세요. 접근 가능한 수식에는 LuaLaTeX가 필요합니다. 내장 엔진은 태그를 만들지 못합니다."
+    "compileLua": "준비된 소스를 TeX Live 2026(또는 2025년 11월 이후 업데이트한 TeX Live)의 LuaLaTeX로 컴파일한 뒤 출력을 다시 확인하세요.",
+    "compileAny": "준비된 소스를 TeX Live 2026(또는 2025년 11월 이후 업데이트한 TeX Live)의 pdfLaTeX나 LuaLaTeX로 컴파일한 뒤 출력을 다시 확인하세요. 접근 가능한 수식에는 LuaLaTeX가 필요합니다. 내장 엔진은 태그를 만들지 못합니다."
   },
   "gate": {
     "incompatiblePackages_other": "다음 패키지는 태그 처리와 호환되지 않습니다: {{packages}}. 이 패키지의 내용은 태그 없이 PDF에 들어갈 수 있습니다.",
@@ -660,7 +665,7 @@
   },
   "prepExport": {
     "title": "접근 가능한 내보내기",
-    "intro": "PDF/UA-2를 목표로 하는 태그된 출력을 만들도록 이 문서를 준비합니다. Oleafly가 pdfstandard=ua-2와 tagging=on이 담긴 \\DocumentMetadata를 넣고, 채울 수 있는 대체 텍스트와 표 설정을 함께 추가합니다. 결과물은 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 컴파일한 뒤 다시 확인하세요. 접근 가능한 수식에는 LuaLaTeX가 필요합니다. 내장 엔진은 태그를 만들지 못합니다.",
+    "intro": "PDF/UA-2를 목표로 하는 태그된 출력을 만들도록 이 문서를 준비합니다. Oleafly가 pdfstandard=ua-2와 tagging=on이 담긴 \\DocumentMetadata를 넣고, 채울 수 있는 대체 텍스트와 표 설정을 함께 추가합니다. 결과물은 TeX Live 2026(또는 2025년 11월 이후 업데이트한 TeX Live)의 pdfLaTeX나 LuaLaTeX로 컴파일한 뒤 다시 확인하세요. 접근 가능한 수식에는 LuaLaTeX가 필요합니다. 내장 엔진은 태그를 만들지 못합니다.",
     "activeFileFallback": "Oleafly가 주 문서를 불러오지 못해 지금 편집 중인 파일을 검사했습니다. 빌드가 실제로 불러오는 클래스와 패키지를 보려면 주 문서를 여세요.",
     "prepare": "접근 가능한 내보내기 준비",
     "unavailable": "이 문서 클래스에서는 준비 기능을 쓸 수 없습니다. 태그 코드가 지원하는 클래스로 바꾼 뒤 검사를 다시 실행하세요. 호환성 데이터는 LaTeX 프로젝트에서 {{retrieved}}에 가져왔습니다.",
@@ -671,7 +676,7 @@
     "copy": "소스 복사",
     "compileTagged": "태그를 켜고 컴파일해 확인",
     "compileTaggedWarning": "시스템 LuaLaTeX는 로컬 파일을 읽을 수 있습니다. 신뢰하는 프로젝트에서만 실행하세요.",
-    "noEngine": "앱에서 태그된 PDF를 만들려면 설정의 LaTeX 엔진에서 엔진을 켜세요. 아니면 준비된 소스를 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 직접 컴파일하세요."
+    "noEngine": "앱에서 태그된 PDF를 만들려면 설정의 LaTeX 엔진에서 엔진을 켜세요. 아니면 준비된 소스를 TeX Live 2026(또는 2025년 11월 이후 업데이트한 TeX Live)의 pdfLaTeX나 LuaLaTeX로 직접 컴파일하세요."
   },
   "typstStandards": {
     "title": "PDF 표준",

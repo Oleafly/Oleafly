@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "The bundled engine cannot produce the declared PDF/UA output",
-      "detail": "This document declares pdfstandard=ua, but the bundled engine cannot write a tag tree, so the PDF would carry a PDF/UA claim it does not meet. Compile with pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer, or remove the pdfstandard key."
+      "detail": "This document declares pdfstandard=ua, but the bundled engine cannot write a tag tree, so the PDF would carry a PDF/UA claim it does not meet. Compile with pdfLaTeX or LuaLaTeX from TeX Live 2026 (or a TeX Live updated since November 2025), or remove the pdfstandard key."
     },
     "table-header-rows": {
       "title": "Table header row is not marked as a header",
@@ -145,6 +145,11 @@
       "title": "Another compilation pass is required",
       "detail": "The latest log says labels, citations, or the table of contents are not settled. Recompile until the rerun warning disappears before exporting."
     },
+    "compile-tagging-skipped": {
+      "title": "Tagging was skipped because this LaTeX is too old",
+      "detail": "This build ran LaTeX from {{date}}. Tagged PDFs need LaTeX from {{required}} or later, so the check around \\DocumentMetadata switched tagging off and the PDF makes no PDF/UA claim. For a tagged PDF, use Compile tagged and verify with TeX Live 2026, or update your TeX Live and compile again.",
+      "detailUndated": "Tagged PDFs need LaTeX from {{required}} or later, and this build ran an older one, so the check around \\DocumentMetadata switched tagging off and the PDF makes no PDF/UA claim. For a tagged PDF, use Compile tagged and verify with TeX Live 2026, or update your TeX Live and compile again."
+    },
     "compile-duplicate-destination": {
       "title": "Duplicate PDF destinations",
       "detail": "Two anchors share the same destination, so links or bookmarks can jump to the wrong place. This commonly comes from duplicate labels or page numbering resets."
@@ -209,7 +214,7 @@
     },
     "pdf-untagged-output": {
       "title": "This PDF is not tagged",
-      "detail": "The compiled PDF carries no structure tree, so a screen reader gets no headings, lists, tables, or reading order, and the file cannot satisfy PDF/UA-1 clause 7.1. Tagged output needs pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer with \\DocumentMetadata{tagging=on}. The bundled engine cannot produce tags. The source and output checks above still apply in the meantime."
+      "detail": "The compiled PDF carries no structure tree, so a screen reader gets no headings, lists, tables, or reading order, and the file cannot satisfy PDF/UA-1 clause 7.1. Tagged output needs pdfLaTeX or LuaLaTeX from TeX Live 2026 (or a TeX Live updated since November 2025) with \\DocumentMetadata{tagging=on}. The bundled engine cannot produce tags. The source and output checks above still apply in the meantime."
     },
     "pdf-structure-missing": {
       "title": "Tagged PDF has no readable structure tree",
@@ -584,7 +589,7 @@
   },
   "prep": {
     "metadataUpdated": "Added the required tagging keys to your \\DocumentMetadata.",
-    "metadataAdded": "Added \\DocumentMetadata as the first line (required, must precede \\documentclass).",
+    "metadataAdded": "Added \\DocumentMetadata as the first line (required, must precede \\documentclass). It sits inside a version check: LaTeX older than {{date}}, including the bundled engine, skips it and compiles the document untagged instead of failing.",
     "headerRows": "Set table/header-rows to 1 so the first row of each table is tagged as header cells. Change the number if a table has a different header depth.",
     "unicodeMath": "Added \\usepackage{unicode-math}, which this engine needs for tagged math.",
     "altPlaceholders_one": "Added alt-text placeholders to {{count}} image. Replace the TODO text with a real description.",
@@ -593,8 +598,8 @@
     "incompatiblePackages_one": "This package is not compatible with tagging: {{packages}}. Content from it can land in the PDF untagged. Replace it where you can.",
     "incompatiblePackages_other": "These packages are not compatible with tagging: {{packages}}. Content from them can land in the PDF untagged. Replace them where you can.",
     "cautionPackages": "These packages only partly tag, or carry no recorded tagging verdict: {{packages}}. Compile and check the structure tree for gaps.",
-    "compileLua": "Compile the prepared source with LuaLaTeX from TeX Live 2025 or newer, then re-check the output.",
-    "compileAny": "Compile the prepared source with pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer, then re-check the output. Accessible math needs LuaLaTeX. The bundled engine cannot produce tags."
+    "compileLua": "Compile the prepared source with LuaLaTeX from TeX Live 2026 (or a TeX Live updated since November 2025), then re-check the output.",
+    "compileAny": "Compile the prepared source with pdfLaTeX or LuaLaTeX from TeX Live 2026 (or a TeX Live updated since November 2025), then re-check the output. Accessible math needs LuaLaTeX. The bundled engine cannot produce tags."
   },
   "gate": {
     "incompatiblePackages_one": "This package is not compatible with tagging: {{packages}}. Content from it can land in the PDF untagged.",
@@ -683,7 +688,7 @@
   },
   "prepExport": {
     "title": "Accessible export",
-    "intro": "Prepare this document for tagged output that targets PDF/UA-2. Oleafly adds \\DocumentMetadata with pdfstandard=ua-2 and tagging=on, plus the alt-text and table setup it can fill in. Compile the result with pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer, then re-check. Accessible math needs LuaLaTeX. The bundled engine cannot produce tags.",
+    "intro": "Prepare this document for tagged output that targets PDF/UA-2. Oleafly adds \\DocumentMetadata with pdfstandard=ua-2 and tagging=on, plus the alt-text and table setup it can fill in. Compile the result with pdfLaTeX or LuaLaTeX from TeX Live 2026 (or a TeX Live updated since November 2025), then re-check. Accessible math needs LuaLaTeX. The bundled engine cannot produce tags.",
     "activeFileFallback": "Oleafly could not load the main document, so it checked the file you are editing. Open the main document to see the class and packages your build actually loads.",
     "prepare": "Prepare for accessible export",
     "unavailable": "Preparation is off for this document class. Switch to a class the tagging code supports, then run the check again. Compatibility data from the LaTeX Project, retrieved {{retrieved}}.",
@@ -694,7 +699,7 @@
     "copy": "Copy source",
     "compileTagged": "Compile tagged and verify",
     "compileTaggedWarning": "System LuaLaTeX can read local files. Run it only for a project you trust.",
-    "noEngine": "To produce the tagged PDF in the app, enable an engine in Settings, LaTeX Engine. Or compile the prepared source with your own pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer."
+    "noEngine": "To produce the tagged PDF in the app, enable an engine in Settings, LaTeX Engine. Or compile the prepared source with your own pdfLaTeX or LuaLaTeX from TeX Live 2026 (or a TeX Live updated since November 2025)."
   },
   "typstStandards": {
     "title": "PDF standards",

@@ -97,6 +97,16 @@ describe("ua-standard-on-tectonic", () => {
   it("does not fire when the engine is not known", () => {
     expect(has(SRC, "ua-standard-on-tectonic")).toBe(false);
   });
+  it("does not fire when a version guard keeps the bundled engine from running the declaration", () => {
+    const guarded =
+      "\\IfFormatAtLeastTF{2025-11-01}{\\DocumentMetadata{pdfstandard=ua-2,tagging=on}}{\\typeout{off}}\\documentclass{article}";
+    expect(has(guarded, "ua-standard-on-tectonic", "bundled")).toBe(false);
+  });
+  it("still fires when the guard date is one the bundled engine passes", () => {
+    const tooEarly =
+      "\\IfFormatAtLeastTF{2020-10-01}{\\DocumentMetadata{pdfstandard=ua-2,tagging=on}}{}\\documentclass{article}";
+    expect(has(tooEarly, "ua-standard-on-tectonic", "bundled")).toBe(true);
+  });
   it("still sees the declaration when the keys are nested and reordered", () => {
     const nested = "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}\\documentclass{article}";
     expect(has(nested, "ua-standard-on-tectonic", "bundled")).toBe(true);

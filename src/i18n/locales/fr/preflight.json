@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Le moteur fourni ne peut pas produire la sortie PDF/UA déclarée",
-      "detail": "Ce document déclare pdfstandard=ua, mais le moteur fourni ne sait pas écrire d'arbre de balises : le PDF porterait donc une revendication PDF/UA qu'il ne respecte pas. Compilez avec pdfLaTeX ou LuaLaTeX de TeX Live 2025 ou plus récent, ou retirez la clé pdfstandard."
+      "detail": "Ce document déclare pdfstandard=ua, mais le moteur fourni ne sait pas écrire d'arbre de balises : le PDF porterait donc une revendication PDF/UA qu'il ne respecte pas. Compilez avec pdfLaTeX ou LuaLaTeX de TeX Live 2026 (ou d'un TeX Live mis à jour depuis novembre 2025), ou retirez la clé pdfstandard."
     },
     "table-header-rows": {
       "title": "La ligne d'en-tête du tableau n'est pas marquée comme en-tête",
@@ -147,6 +147,11 @@
     "compile-rerun-required": {
       "title": "Une passe de compilation supplémentaire est nécessaire",
       "detail": "Le dernier journal indique que les étiquettes, les citations ou la table des matières ne sont pas stabilisées. Recompilez jusqu'à la disparition de l'avertissement avant d'exporter."
+    },
+    "compile-tagging-skipped": {
+      "title": "Le balisage a été ignoré, car ce LaTeX est trop ancien",
+      "detail": "Cette compilation a utilisé la version {{date}} de LaTeX. Les PDF balisés exigent la version {{required}} ou plus récente, donc la vérification autour de \\DocumentMetadata a désactivé le balisage et le PDF ne porte aucune revendication PDF/UA. Pour obtenir un PDF balisé, utilisez « Compiler avec balisage et vérifier » avec TeX Live 2026, ou mettez à jour votre TeX Live et compilez à nouveau.",
+      "detailUndated": "Les PDF balisés exigent LaTeX {{required}} ou plus récent, et cette compilation a utilisé une version plus ancienne, donc la vérification autour de \\DocumentMetadata a désactivé le balisage et le PDF ne porte aucune revendication PDF/UA. Pour obtenir un PDF balisé, utilisez « Compiler avec balisage et vérifier » avec TeX Live 2026, ou mettez à jour votre TeX Live et compilez à nouveau."
     },
     "compile-duplicate-destination": {
       "title": "Destinations PDF en double",
@@ -217,7 +222,7 @@
     },
     "pdf-untagged-output": {
       "title": "Ce PDF n'est pas balisé",
-      "detail": "Le PDF compilé ne porte aucun arbre de structure : un lecteur d'écran n'obtient donc ni titres, ni listes, ni tableaux, ni ordre de lecture, et le fichier ne peut pas satisfaire la clause 7.1 de PDF/UA-1. Une sortie balisée demande pdfLaTeX ou LuaLaTeX de TeX Live 2025 ou plus récent avec \\DocumentMetadata{tagging=on}. Le moteur fourni ne peut pas produire de balises. Les vérifications du source et de la sortie ci-dessus restent valables en attendant."
+      "detail": "Le PDF compilé ne porte aucun arbre de structure : un lecteur d'écran n'obtient donc ni titres, ni listes, ni tableaux, ni ordre de lecture, et le fichier ne peut pas satisfaire la clause 7.1 de PDF/UA-1. Une sortie balisée demande pdfLaTeX ou LuaLaTeX de TeX Live 2026 (ou d'un TeX Live mis à jour depuis novembre 2025) avec \\DocumentMetadata{tagging=on}. Le moteur fourni ne peut pas produire de balises. Les vérifications du source et de la sortie ci-dessus restent valables en attendant."
     },
     "pdf-structure-missing": {
       "title": "Le PDF balisé n'a pas d'arbre de structure lisible",
@@ -600,7 +605,7 @@
   },
   "prep": {
     "metadataUpdated": "Les clés de balisage nécessaires ont été ajoutées à votre \\DocumentMetadata.",
-    "metadataAdded": "\\DocumentMetadata a été ajouté en première ligne (obligatoire, doit précéder \\documentclass).",
+    "metadataAdded": "\\DocumentMetadata a été ajouté en première ligne (obligatoire, doit précéder \\documentclass). Il est placé dans une vérification de version : un LaTeX antérieur à {{date}}, y compris le moteur fourni, l'ignore et compile le document sans balisage au lieu d'échouer.",
     "headerRows": "table/header-rows a été mis à 1 pour que la première ligne de chaque tableau soit balisée en cellules d'en-tête. Changez le nombre si un tableau a une profondeur d'en-tête différente.",
     "unicodeMath": "\\usepackage{unicode-math} a été ajouté, ce moteur en a besoin pour des maths balisées.",
     "altPlaceholders_one": "Des textes alternatifs de remplacement ont été ajoutés à {{count}} image. Remplacez le texte TODO par une vraie description.",
@@ -611,8 +616,8 @@
     "incompatiblePackages_many": "Ces paquets ne sont pas compatibles avec le balisage : {{packages}}. Leur contenu peut arriver non balisé dans le PDF. Remplacez-les si vous le pouvez.",
     "incompatiblePackages_other": "Ces paquets ne sont pas compatibles avec le balisage : {{packages}}. Leur contenu peut arriver non balisé dans le PDF. Remplacez-les si vous le pouvez.",
     "cautionPackages": "Ces paquets ne balisent que partiellement, ou n'ont aucun verdict de balisage enregistré : {{packages}}. Compilez et cherchez les manques dans l'arbre de structure.",
-    "compileLua": "Compilez le source préparé avec LuaLaTeX de TeX Live 2025 ou plus récent, puis revérifiez la sortie.",
-    "compileAny": "Compilez le source préparé avec pdfLaTeX ou LuaLaTeX de TeX Live 2025 ou plus récent, puis revérifiez la sortie. Des maths accessibles exigent LuaLaTeX. Le moteur fourni ne peut pas produire de balises."
+    "compileLua": "Compilez le source préparé avec LuaLaTeX de TeX Live 2026 (ou d'un TeX Live mis à jour depuis novembre 2025), puis revérifiez la sortie.",
+    "compileAny": "Compilez le source préparé avec pdfLaTeX ou LuaLaTeX de TeX Live 2026 (ou d'un TeX Live mis à jour depuis novembre 2025), puis revérifiez la sortie. Des maths accessibles exigent LuaLaTeX. Le moteur fourni ne peut pas produire de balises."
   },
   "gate": {
     "incompatiblePackages_one": "Ce paquet n'est pas compatible avec le balisage : {{packages}}. Son contenu peut arriver non balisé dans le PDF.",
@@ -706,7 +711,7 @@
   },
   "prepExport": {
     "title": "Export accessible",
-    "intro": "Préparez ce document pour une sortie balisée visant PDF/UA-2. Oleafly ajoute \\DocumentMetadata avec pdfstandard=ua-2 et tagging=on, ainsi que la configuration des textes alternatifs et des tableaux qu'il peut remplir. Compilez le résultat avec pdfLaTeX ou LuaLaTeX de TeX Live 2025 ou plus récent, puis revérifiez. Des maths accessibles exigent LuaLaTeX. Le moteur fourni ne peut pas produire de balises.",
+    "intro": "Préparez ce document pour une sortie balisée visant PDF/UA-2. Oleafly ajoute \\DocumentMetadata avec pdfstandard=ua-2 et tagging=on, ainsi que la configuration des textes alternatifs et des tableaux qu'il peut remplir. Compilez le résultat avec pdfLaTeX ou LuaLaTeX de TeX Live 2026 (ou d'un TeX Live mis à jour depuis novembre 2025), puis revérifiez. Des maths accessibles exigent LuaLaTeX. Le moteur fourni ne peut pas produire de balises.",
     "activeFileFallback": "Oleafly n'a pas pu charger le document principal, il a donc vérifié le fichier que vous modifiez. Ouvrez le document principal pour voir la classe et les paquets que votre compilation charge réellement.",
     "prepare": "Préparer pour un export accessible",
     "unavailable": "La préparation est désactivée pour cette classe de document. Passez à une classe prise en charge par le code de balisage, puis relancez la vérification. Données de compatibilité du LaTeX Project, récupérées le {{retrieved}}.",
@@ -717,7 +722,7 @@
     "copy": "Copier le source",
     "compileTagged": "Compiler avec balisage et vérifier",
     "compileTaggedWarning": "Le LuaLaTeX du système peut lire des fichiers locaux. Ne le lancez que pour un projet de confiance.",
-    "noEngine": "Pour produire le PDF balisé dans l'application, activez un moteur dans Paramètres, Moteur LaTeX. Ou compilez le source préparé avec votre propre pdfLaTeX ou LuaLaTeX de TeX Live 2025 ou plus récent."
+    "noEngine": "Pour produire le PDF balisé dans l'application, activez un moteur dans Paramètres, Moteur LaTeX. Ou compilez le source préparé avec votre propre pdfLaTeX ou LuaLaTeX de TeX Live 2026 (ou d'un TeX Live mis à jour depuis novembre 2025)."
   },
   "typstStandards": {
     "title": "Normes PDF",
