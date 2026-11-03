@@ -60,6 +60,7 @@ export interface ModalShellProps {
   describedBy?: string;
   className?: string;
   testId?: string;
+  focusPanel?: boolean;
 }
 
 export function ModalShell({
@@ -80,6 +81,7 @@ export function ModalShell({
   describedBy,
   className,
   testId,
+  focusPanel = false,
 }: Readonly<ModalShellProps>) {
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLElement>(open, onClose);
 
@@ -98,6 +100,7 @@ export function ModalShell({
     "aria-labelledby": labelledBy,
     "aria-describedby": describedBy,
     "data-testid": testId,
+    "data-modal-initial-focus": focusPanel || undefined,
     tabIndex: -1,
     className: panelClassName,
   };
