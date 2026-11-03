@@ -67,6 +67,42 @@ pub(crate) fn host_data_dirs(
     }
 }
 
+/// Where this user's desktop entries and icons go: `$XDG_DATA_HOME` when it is an absolute
+/// path, otherwise `~/.local/share`.
+#[cfg(any(target_os = "linux", all(test, unix)))]
+pub(crate) fn data_home(
+    xdg_data_home: Option<std::ffi::OsString>,
+    home: Result<PathBuf, String>,
+) -> Result<PathBuf, String> {
+    xdg_data_home
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .map_or_else(|| home.map(|home| home.join(".local/share")), Ok)
+}
+
+/// The launcher for this run, read from the environment through `var`, or `None` outside an
+/// AppImage. The app id is GTK's program name, or else the executable's file name.
+#[cfg(any(target_os = "linux", all(test, unix)))]
+pub(crate) fn from_env(
+    var: impl Fn(&str) -> Option<std::ffi::OsString>,
+    program: Option<String>,
+    exe: Option<PathBuf>,
+    data_home: Result<PathBuf, String>,
+) -> Option<Launcher> {
+    let appimage = var("APPIMAGE")?
+        .into_string()
+        .ok()
+        .filter(|path| Path::new(path).is_absolute())?;
+    let app_id = program.or_else(|| exe?.file_name()?.to_str().map(str::to_string))?;
+    let appdir = var("APPDIR").map(PathBuf::from);
+    Some(Launcher {
+        appimage,
+        app_id,
+        data_home: data_home.ok()?,
+        data_dirs: host_data_dirs(var("XDG_DATA_DIRS"), appdir.as_deref()),
+    })
+}
+
 pub(crate) fn png_edge(png: &[u8]) -> Option<u32> {
     let side = |at: usize| Some(u32::from_be_bytes(png.get(at..at + 4)?.try_into().ok()?));
     let (width, height) = (side(16)?, side(20)?);

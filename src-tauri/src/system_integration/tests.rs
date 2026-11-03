@@ -1766,6 +1766,125 @@ fn the_appimage_own_share_folder_is_not_an_installed_package() {
     );
 }
 
+#[cfg(unix)]
+fn env(pairs: &'static [(&'static str, &'static str)]) -> impl Fn(&str) -> Option<OsString> {
+    move |name| {
+        pairs
+            .iter()
+            .find(|(key, _)| *key == name)
+            .map(|(_, value)| OsString::from(value))
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn the_appimage_launcher_is_read_from_the_environment_apprun_sets() {
+    let apprun = env(&[
+        ("APPIMAGE", APPIMAGE),
+        ("APPDIR", "/tmp/.mount_OleaflXYZ"),
+        (
+            "XDG_DATA_DIRS",
+            "/tmp/.mount_OleaflXYZ/usr/share:/usr/share",
+        ),
+    ]);
+    let home = || Ok(PathBuf::from("/home/ada/.local/share"));
+    let launcher =
+        launcher::from_env(&apprun, Some(LINUX_BINARY.to_string()), None, home()).unwrap();
+    assert_eq!(launcher.appimage, APPIMAGE);
+    assert_eq!(launcher.app_id, LINUX_BINARY);
+    assert_eq!(launcher.data_home, PathBuf::from("/home/ada/.local/share"));
+    assert_eq!(launcher.data_dirs, [PathBuf::from("/usr/share")]);
+
+    let exe = PathBuf::from("/tmp/.mount_OleaflXYZ/usr/bin/oleafly-nightly");
+    assert_eq!(
+        launcher::from_env(&apprun, None, Some(exe), home())
+            .unwrap()
+            .app_id,
+        "oleafly-nightly"
+    );
+    assert!(launcher::from_env(&apprun, None, None, home()).is_none());
+    assert!(launcher::from_env(
+        &apprun,
+        Some(LINUX_BINARY.to_string()),
+        None,
+        Err("no home".to_string())
+    )
+    .is_none());
+    for outside in [
+        env(&[]),
+        env(&[("APPIMAGE", "")]),
+        env(&[("APPIMAGE", "Oleafly.AppImage")]),
+    ] {
+        assert!(
+            launcher::from_env(outside, Some(LINUX_BINARY.to_string()), None, home()).is_none()
+        );
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn menu_entries_go_under_xdg_data_home_or_local_share() {
+    let home = || Ok(PathBuf::from("/home/ada"));
+    let local_share = Ok(PathBuf::from("/home/ada/.local/share"));
+    assert_eq!(launcher::data_home(None, home()), local_share);
+    assert_eq!(
+        launcher::data_home(Some(OsString::from("/data/ada")), home()),
+        Ok(PathBuf::from("/data/ada"))
+    );
+    assert_eq!(
+        launcher::data_home(Some(OsString::from("relative")), home()),
+        local_share
+    );
+    assert!(launcher::data_home(None, Err("no home".to_string())).is_err());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn a_run_outside_an_appimage_leaves_the_menu_alone() {
+    if std::env::var_os("APPIMAGE").is_none() {
+        assert!(launcher().is_none());
+    }
+}
+
+#[test]
+fn a_launch_adds_the_menu_entry_once_and_an_icon_change_never_adds_it() {
+    let temp = tempfile::tempdir().unwrap();
+    let launcher = appimage_launcher(temp.path());
+    let prefs = temp.path().join("prefs.json");
+    let recorded = |prefs: &Path| read_prefs_at(prefs).get(LAUNCHER_PREF).cloned();
+
+    assert_eq!(
+        sync_launcher_at(&launcher, app_icon(), false, &prefs).unwrap(),
+        launcher::Outcome::Removed
+    );
+    assert!(!launcher.entry_path().exists());
+    assert_eq!(recorded(&prefs), None);
+
+    assert_eq!(
+        sync_launcher_at(&launcher, app_icon(), true, &prefs).unwrap(),
+        launcher::Outcome::Written
+    );
+    assert_eq!(recorded(&prefs), Some(Value::Bool(true)));
+    let ocean = crate::app_icon::AppIconVariant::Ocean.png();
+    assert_eq!(
+        sync_launcher_at(&launcher, ocean, false, &prefs).unwrap(),
+        launcher::Outcome::Current
+    );
+    assert_eq!(std::fs::read(launcher.icon_path(512)).unwrap(), ocean);
+
+    std::fs::remove_file(launcher.entry_path()).unwrap();
+    assert_eq!(
+        sync_launcher_at(&launcher, app_icon(), true, &prefs).unwrap(),
+        launcher::Outcome::Removed
+    );
+    assert!(!launcher.entry_path().exists());
+
+    // A failed sync records nothing, so the next launch tries again.
+    let fresh = temp.path().join("fresh-prefs.json");
+    assert!(sync_launcher_at(&launcher, b"not a png", true, &fresh).is_err());
+    assert_eq!(recorded(&fresh), None);
+}
+
 #[test]
 fn the_menu_icon_size_comes_from_the_png() {
     assert_eq!(launcher::png_edge(app_icon()), Some(512));

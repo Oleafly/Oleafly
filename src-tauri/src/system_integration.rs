@@ -274,7 +274,7 @@ fn repair() {
 #[cfg(target_os = "linux")]
 const NAUTILUS_PREF: &str = "nautilus_script";
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", test))]
 const LAUNCHER_PREF: &str = "appimage_menu_entry";
 
 #[cfg(target_os = "linux")]
@@ -304,62 +304,55 @@ fn linux_layout(context: &Context) -> Result<file_manager::Layout, String> {
 
 #[cfg(target_os = "linux")]
 fn data_home() -> Result<PathBuf, String> {
-    std::env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .map_or_else(
-            || crate::paths::home_dir().map(|home| home.join(".local/share")),
-            Ok,
-        )
+    launcher::data_home(std::env::var_os("XDG_DATA_HOME"), crate::paths::home_dir())
 }
 
 /// GTK names the window after its program name, which Wayland desktops match to a desktop
 /// entry. Tauri sets no GTK application id here (`enableGTKAppId` is off).
 #[cfg(target_os = "linux")]
 fn launcher() -> Option<launcher::Launcher> {
-    let appimage = std::env::var("APPIMAGE")
-        .ok()
-        .filter(|path| Path::new(path).is_absolute())?;
-    let app_id = gtk::glib::prgname()
-        .map(|name| name.to_string())
-        .or_else(|| {
-            std::env::current_exe()
-                .ok()?
-                .file_name()?
-                .to_str()
-                .map(str::to_string)
-        })?;
-    let appdir = std::env::var_os("APPDIR").map(PathBuf::from);
-    Some(launcher::Launcher {
-        appimage,
-        app_id,
-        data_home: data_home().ok()?,
-        data_dirs: launcher::host_data_dirs(std::env::var_os("XDG_DATA_DIRS"), appdir.as_deref()),
-    })
+    launcher::from_env(
+        |name| std::env::var_os(name),
+        gtk::glib::prgname().map(|name| name.to_string()),
+        std::env::current_exe().ok(),
+        data_home(),
+    )
 }
 
 #[cfg(target_os = "linux")]
 fn sync_launcher(launcher: &launcher::Launcher, may_create: bool) {
+    // Read at run time, so a launch-time sync that runs late keeps the icon picked meanwhile.
+    let icon = crate::app_icon::current().png();
+    let synced =
+        prefs_path().and_then(|prefs| sync_launcher_at(launcher, icon, may_create, &prefs));
+    if let Err(error) = synced {
+        log(format!("AppImage menu entry: {error}"));
+    }
+}
+
+/// Syncs the menu entry and notes in the prefs file at `prefs` that it was written, so a
+/// deleted entry stays deleted. Without `may_create` (the icon changed) it never adds one.
+#[cfg(any(target_os = "linux", test))]
+fn sync_launcher_at(
+    launcher: &launcher::Launcher,
+    icon: &[u8],
+    may_create: bool,
+    prefs: &Path,
+) -> Result<launcher::Outcome, String> {
     static LOCK: Mutex<()> = Mutex::new(());
     let _guard = LOCK.lock().unwrap_or_else(PoisonError::into_inner);
     let wrote_before = !may_create
-        || read_prefs()
+        || read_prefs_at(prefs)
             .get(LAUNCHER_PREF)
             .and_then(Value::as_bool)
             .unwrap_or(false);
-    // Read at run time, so a launch-time sync that runs late keeps the icon picked meanwhile.
-    let icon = crate::app_icon::current().png();
-    match launcher::sync(launcher, icon, wrote_before) {
-        Ok(launcher::Outcome::Written) => {
-            if let Err(error) =
-                update_prefs(|prefs| prefs.insert(LAUNCHER_PREF.to_string(), Value::Bool(true)))
-            {
-                log(format!("AppImage menu entry: {error}"));
-            }
-        }
-        Ok(_) => {}
-        Err(error) => log(format!("AppImage menu entry: {error}")),
+    let outcome = launcher::sync(launcher, icon, wrote_before)?;
+    if outcome == launcher::Outcome::Written {
+        update_prefs_at(prefs, |prefs| {
+            prefs.insert(LAUNCHER_PREF.to_string(), Value::Bool(true))
+        })?;
     }
+    Ok(outcome)
 }
 
 /// Puts the AppImage in the applications menu, so Wayland docks and taskbars show its icon.
