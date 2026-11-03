@@ -9,18 +9,20 @@ fn strings(args: Vec<OsString>) -> Vec<String> {
 
 #[test]
 fn tectonic_args_pin_the_bundle_to_the_oleafly_mirror() {
+    // Read once: the override test below sets the variable while tests run.
+    let bundle = tex_bundle_url();
     let args = strings(tectonic_args(
         Path::new("out"),
         &[Path::new("src")],
         Path::new("main.tex"),
-        Some(&tex_bundle_url()),
+        Some(&bundle),
         EngineFlags::default(),
     ));
     let position = args
         .iter()
         .position(|arg| arg == "--bundle")
         .expect("--bundle flag present");
-    assert_eq!(args[position + 1], tex_bundle_url());
+    assert_eq!(args[position + 1], bundle);
     assert!(TEX_BUNDLE_MIRROR_URL.starts_with("https://mirrors.oleafly.com/"));
 }
 
