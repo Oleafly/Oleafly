@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the bundled engine stopped with an error, and TeX Live 2025 as first
   released wrote a PDF that claimed PDF/UA-2 with no tags. Preflight now says
   when a build skipped tagging and which LaTeX it ran.
+- The managed TinyTeX install works on Windows again. Since 0.4.9 it stopped
+  after the download with "TinyTeX archive member manifest does not match the
+  reviewed release", although the downloaded archive was complete and
+  correct. The check now reads member names exactly as the archive stores
+  them.
 - On Linux, the AppImage shows the Oleafly icon in the taskbar, dock and window
   list. On X11 desktops such as Cinnamon, the window icon was too large, so GTK
   dropped it. Wayland desktops such as GNOME only take an app's icon from the
