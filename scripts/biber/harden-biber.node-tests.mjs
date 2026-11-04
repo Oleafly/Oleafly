@@ -228,10 +228,13 @@ test("the binary to patch must be a file in the temporary folder or the checkout
     const binary = join(folder, "biber");
     await writeFile(binary, "x");
     assert.equal(await confinedBinary(binary), binary);
-    await assert.rejects(confinedBinary("/etc/hosts"), /outside/u);
+    await assert.rejects(confinedBinary(process.execPath), /outside/u);
     await assert.rejects(confinedBinary(folder), /not a regular file/u);
-    await symlink("/etc/hosts", join(folder, "link"));
-    await assert.rejects(confinedBinary(join(folder, "link")), /outside/u);
+    // Windows runners cannot create symlinks without extra rights.
+    if (process.platform !== "win32") {
+      await symlink(process.execPath, join(folder, "link"));
+      await assert.rejects(confinedBinary(join(folder, "link")), /outside/u);
+    }
   } finally {
     await rm(folder, { recursive: true, force: true });
   }
