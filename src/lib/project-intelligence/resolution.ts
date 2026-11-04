@@ -15,7 +15,7 @@ import type {
  * units keep separate LaTeX documents apart.
  *
  * The legacy rename index (`@/lib/index/build`) scopes labels through this
- * too, so rename and resolution agree.
+ * and the compilation units too, so rename and resolution agree.
  */
 export function labelScope(
   engine: ProjectIntelligenceEngine | null,

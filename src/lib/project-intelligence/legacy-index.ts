@@ -129,7 +129,7 @@ export function legacyIndexFromProjectIntelligence(
   const uses = snapshot.uses
     .map(useSymbol)
     .filter((symbol): symbol is Sym => symbol !== null);
-  return indexFromSymbols(definitions, uses);
+  return indexFromSymbols(definitions, uses, snapshot.compilationUnits);
 }
 
 const lazyIndexes = new WeakMap<ProjectIntelligenceSnapshot, ProjectIndex>();

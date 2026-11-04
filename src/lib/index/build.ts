@@ -1,7 +1,14 @@
 import type { DefKind, Edit, FileSymbols, ProjectIndex, RenamePlan, Sym, UseKind } from "./types";
 import { parseFile, maskComments } from "./parse-file";
-import { labelScope, referenceTargetFile } from "@/lib/project-intelligence/resolution";
+import {
+  externalLabels,
+  labelScope,
+  NO_COMPILATION_UNITS,
+  referenceTargetFile,
+  shareCompilationUnit,
+} from "@/lib/project-intelligence/resolution";
 import { engineForPath } from "@/lib/project-intelligence/source";
+import type { CompilationUnits } from "@/lib/project-intelligence/types";
 import { escapeRegExp } from "@/lib/regexp";
 
 const DEF_KINDS = new Set<string>(["label", "macro", "bibentry", "theorem", "glossary", "environment", "section", "file"]);
@@ -161,13 +168,27 @@ function sameTarget(a: NameTarget, b: NameTarget): boolean {
   );
 }
 
+// Within a scope, a name is visible only between files that share a
+// compilation unit, as in the project-intelligence resolver. File symbols are
+// project paths, so units never hide them.
+function visibleFrom(units: CompilationUnits, kind: DefKind, from: string, to: string): boolean {
+  return kind === "file" || shareCompilationUnit(units, from, to);
+}
+
 function defKey(kind: DefKind, scope: string, name: string): string {
   return `${kind}:${scope}:${name}`;
+}
+
+interface Reference {
+  use: Sym;
+  /** Length of the xr prefix in front of the name. */
+  prefix: number;
 }
 
 export function indexFromSymbols(
   definitionSymbols: readonly Sym[],
   useSymbols: readonly Sym[],
+  units: CompilationUnits = NO_COMPILATION_UNITS,
 ): ProjectIndex {
   const defs = [...definitionSymbols];
   const uses = [...useSymbols];
@@ -178,20 +199,47 @@ export function indexFromSymbols(
     if (sameKey) sameKey.push(d);
     else defsByKey.set(key, [d]);
   }
+  // What a reference to `name` in `file` reaches: the definitions its
+  // documents see and, for a label, those they import through xr.
+  const reachable = (kind: DefKind, scope: string, file: string, name: string): Sym[] => {
+    const local = (defsByKey.get(defKey(kind, scope, name)) ?? []).filter((d) =>
+      visibleFrom(units, kind, file, d.file),
+    );
+    if (kind !== "label") return local;
+    const imported = externalLabels(units, file, name).flatMap((label) =>
+      (defsByKey.get(defKey(kind, scope, label.name)) ?? []).filter((d) =>
+        units.rootsByFile[d.file]?.includes(label.document),
+      ),
+    );
+    return [...new Set([...local, ...imported])];
+  };
   const lookup = (kind: DefKind, from: Sym, name = from.name): Sym | null => {
     const { scope, file } = nameTarget(kind, from);
-    const candidates = defsByKey.get(defKey(kind, scope, name)) ?? [];
+    const candidates = reachable(kind, scope, from.file, name);
     return (file === null ? candidates[0] : candidates.find((d) => d.file === file)) ?? null;
   };
-  const usesOf = (kind: DefKind, name: string, origin: Sym): Sym[] => {
+  const usesOf = (kind: DefKind, name: string, origin: Sym): Reference[] => {
     const useKinds = DEF_TO_USES[kind] ?? [];
     const target = nameTarget(kind, origin);
-    return uses.filter(
-      (u) =>
-        useKinds.includes(u.kind as UseKind) &&
-        u.name === name &&
-        sameTarget(nameTarget(kind, u), target),
-    );
+    const found: Reference[] = [];
+    for (const u of uses) {
+      if (!useKinds.includes(u.kind as UseKind)) continue;
+      const useTarget = nameTarget(kind, u);
+      if (!sameTarget(useTarget, target)) continue;
+      if (u.name === name && visibleFrom(units, kind, u.file, origin.file)) {
+        found.push({ use: u, prefix: 0 });
+      } else if (
+        kind === "label" &&
+        useTarget.file === null &&
+        u.name.endsWith(name) &&
+        externalLabels(units, u.file, u.name).some(
+          (label) => label.name === name && units.rootsByFile[origin.file]?.includes(label.document),
+        )
+      ) {
+        found.push({ use: u, prefix: u.name.length - name.length });
+      }
+    }
+    return found;
   };
 
   const symbolAt = (file: string, offset: number): Sym | null => {
@@ -223,7 +271,7 @@ export function indexFromSymbols(
     const out: Sym[] = [];
     if (def && def.to > def.from) out.push(def);
     if (!kind) return out;
-    out.push(...usesOf(kind, name, def ?? sym));
+    out.push(...usesOf(kind, name, def ?? sym).map(({ use }) => use));
     return out;
   };
 
@@ -234,16 +282,29 @@ export function indexFromSymbols(
     const origin = def ?? sym;
 
     const originScope = nameTarget(kind, origin).scope;
-    const collision = defs.some(
-      (d) => d.kind === kind && d.name === newName && d !== def && nameScope(kind, d.file) === originScope,
+    // A use in a file that several documents include may name a different
+    // definition in another of them. The rename rewrites it all the same, which
+    // breaks that document; refusing such a rename is a later step.
+    const found = usesOf(kind, name, origin);
+    // The new name lands in the definition's file and, after any xr prefix, in
+    // every use not tied to a file, so it collides wherever one of those already
+    // reaches a definition of that name.
+    const written = [
+      { file: origin.file, name: newName },
+      ...found
+        .filter(({ use }) => nameTarget(kind, use).file === null)
+        .map(({ use, prefix }) => ({ file: use.file, name: `${use.name.slice(0, prefix)}${newName}` })),
+    ];
+    const collision = written.some((place) =>
+      reachable(kind, originScope, place.file, place.name).some((d) => d !== def),
     );
 
     const edits: Edit[] = [];
     if (def && def.nameTo > def.nameFrom) {
       edits.push({ file: def.file, from: def.nameFrom, to: def.nameTo, newText: newName });
     }
-    for (const u of usesOf(kind, name, origin)) {
-      edits.push({ file: u.file, from: u.nameFrom, to: u.nameTo, newText: newName });
+    for (const { use, prefix } of found) {
+      edits.push({ file: use.file, from: use.nameFrom + prefix, to: use.nameTo, newText: newName });
     }
     edits.sort((a, b) => (a.file === b.file ? b.from - a.from : a.file.localeCompare(b.file)));
     const fileCount = new Set(edits.map((e) => e.file)).size;
