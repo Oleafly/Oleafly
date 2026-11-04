@@ -1,7 +1,7 @@
 use super::{
-    acquire_tex_runtime_read, acquire_tex_runtime_write, run_tex_utility, tlmgr_path, tlmgr_run_at,
-    validate_package_names, within_flow_budget, AppState, Path, TexUtilityOutput,
-    TinytexMutationGuard, TLMGR_FLOW_BUDGET, TLMGR_INFO_TIMEOUT,
+    acquire_tex_runtime_read, acquire_tex_runtime_write, check_tlmgr_self_update, run_tex_utility,
+    tlmgr_path, tlmgr_run_at, validate_package_names, within_flow_budget, AppState, Path,
+    TexUtilityOutput, TinytexMutationGuard, TLMGR_FLOW_BUDGET, TLMGR_INFO_TIMEOUT,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -100,6 +100,7 @@ fn cross_release_error(output: &TexUtilityOutput) -> Option<String> {
 
 async fn search_at(tlmgr: &str, pattern: String, files: bool) -> Result<SearchResult, String> {
     let local = run_search(tlmgr, &pattern, files, false).await?;
+    check_tlmgr_self_update(tlmgr, &local)?;
     if let Some(error) = cross_release_error(&local) {
         return Err(error);
     }
@@ -111,6 +112,7 @@ async fn search_at(tlmgr: &str, pattern: String, files: bool) -> Result<SearchRe
         return Ok(result);
     }
     let global = run_search(tlmgr, &pattern, files, true).await?;
+    check_tlmgr_self_update(tlmgr, &global)?;
     if let Some(error) = cross_release_error(&global) {
         return Err(error);
     }
@@ -338,6 +340,34 @@ mod tests {
 
     #[cfg(unix)]
     const CROSS_RELEASE: &str = "tlmgr: Local TeX Live (2025) is older than remote repository (2026). Cross release updates are only supported with update-tlmgr-latest(.sh/.exe) --update";
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn self_update_refusals_stop_missing_file_installation_at_each_stage() {
+        for stage in ["local", "global", "install"] {
+            let (root, manager) = scripted_manager(&format!(
+                "if [ '{stage}' = local ] || [ '{stage}' = global -a \"$2\" = --global ] || [ \"$1\" = install ]; then\necho 'tlmgr itself needs to be updated' >&2\nexit 0\nfi\nif [ '{stage}' = install ]; then\nprintf '%s\\n' '{{\"packages\":{{}},\"files\":{{\"pgf\":[\"texmf-dist/tex/latex/pgf/tikz.sty\"]}}}}'\nelse\nprintf '%s\\n' '{{\"packages\":{{}},\"files\":{{}}}}'\nfi"
+            ));
+            let error = install_missing_at(&manager, vec!["tikz.sty".into()])
+                .await
+                .unwrap_err();
+            assert!(
+                error.contains("tlmgr itself needs to be updated"),
+                "{error}"
+            );
+            assert!(error.contains("tlmgr update --self"), "{error}");
+            let calls = std::fs::read_to_string(root.path().join("calls")).unwrap();
+            let local = "search\n--json\n--file\n--\n(^|/)(tikz\\.sty)$\n";
+            let expected = match stage {
+                "local" => local.to_string(),
+                "global" => {
+                    format!("{local}search\n--global\n--json\n--file\n--\n(^|/)(tikz\\.sty)$\n")
+                }
+                _ => format!("{local}install\n--\npgf\n"),
+            };
+            assert_eq!(calls, expected);
+        }
+    }
 
     #[cfg(unix)]
     #[tokio::test]

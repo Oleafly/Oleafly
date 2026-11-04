@@ -323,6 +323,20 @@ fn utility_error(output: &TexUtilityOutput) -> String {
     }
 }
 
+fn check_tlmgr_self_update(tlmgr: &str, output: &TexUtilityOutput) -> Result<(), String> {
+    let detail = format!("{}\n{}", output.stdout.trim(), output.stderr.trim());
+    if detail
+        .to_ascii_lowercase()
+        .contains("tlmgr itself needs to be updated")
+    {
+        return Err(format!(
+            "{}\nRun `tlmgr update --self` using this TeX distribution's package manager ({tlmgr}), then retry the package operation.",
+            detail.trim()
+        ));
+    }
+    Ok(())
+}
+
 /// Search `root` for `bin/<platform>/<name>` (TeX distributions nest binaries
 /// under a per-platform directory). Bounded, non-recursive beyond that shape.
 fn find_in_texdir(root: &Path, name: &str) -> Option<PathBuf> {
@@ -1721,6 +1735,7 @@ async fn tlmgr_usermode_run_at(
     let mut args = vec!["--usermode".to_string(), action.to_string(), "--".into()];
     args.extend(packages);
     let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    check_tlmgr_self_update(tlmgr, &output)?;
     if !output.success {
         return Err(packages::package_command_error(
             &output,
@@ -1743,6 +1758,7 @@ async fn tlmgr_run_with_user_tree(
     let mut args = vec![action.to_string(), "--".into()];
     args.extend(packages.clone());
     let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    check_tlmgr_self_update(tlmgr, &output)?;
     if output.success {
         return Ok(format!("{}{}", output.stdout, output.stderr));
     }
@@ -2808,6 +2824,36 @@ mod tests {
     }
 
     #[test]
+    fn self_update_refusals_are_detected_in_either_stream_regardless_of_exit_status() {
+        for success in [true, false] {
+            for stdout in [true, false] {
+                for diagnostic in [
+                    "tlmgr: tlmgr itself needs to be updated.",
+                    "Installed pgf",
+                    "tlmgr: package pgf not present in repository",
+                    "Run tlmgr update --self to check for updates",
+                ] {
+                    let output = TexUtilityOutput {
+                        success,
+                        stdout: if stdout { diagnostic } else { "other output" }.into(),
+                        stderr: if stdout { "other output" } else { diagnostic }.into(),
+                    };
+                    let result = check_tlmgr_self_update("/tex/bin/tlmgr", &output);
+                    if diagnostic.contains("itself needs to be updated") {
+                        let error = result.unwrap_err();
+                        assert!(error.contains(diagnostic), "{error}");
+                        assert!(error.contains("other output"), "{error}");
+                        assert!(error.contains("tlmgr update --self"), "{error}");
+                        assert!(error.contains("/tex/bin/tlmgr"), "{error}");
+                    } else {
+                        result.unwrap();
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn only_a_write_refusal_sends_packages_to_the_personal_tree() {
         let refused = |stderr: &str| TexUtilityOutput {
             success: false,
@@ -2861,6 +2907,44 @@ mod tests {
         );
         let path = script.to_string_lossy().into_owned();
         (root, path, calls)
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn self_update_refusals_stop_package_mutations_without_retrying() {
+        for stream in ["", ">&2"] {
+            for status in [0, 1] {
+                for usermode in [false, true] {
+                    let (root, manager, calls) = recording_manager(&format!(
+                        "echo 'tlmgr itself needs to be updated' {stream}\necho 'cannot write until updated' >&2\nexit {status}"
+                    ));
+                    let error = if usermode {
+                        tlmgr_usermode_run_at(&manager, "install", vec!["pgf".into()]).await
+                    } else {
+                        tlmgr_run_with_user_tree(
+                            &manager,
+                            "install",
+                            vec!["pgf".into()],
+                            Some(root.path().join("texmf")),
+                        )
+                        .await
+                    }
+                    .unwrap_err();
+                    assert!(
+                        error.contains("tlmgr itself needs to be updated"),
+                        "{error}"
+                    );
+                    assert!(error.contains("tlmgr update --self"), "{error}");
+                    assert!(error.contains(&manager), "{error}");
+                    let expected = if usermode {
+                        "--usermode\ninstall\n--\npgf\n"
+                    } else {
+                        "install\n--\npgf\n"
+                    };
+                    assert_eq!(std::fs::read_to_string(calls).unwrap(), expected);
+                }
+            }
+        }
     }
 
     #[cfg(unix)]
