@@ -15,6 +15,7 @@
     "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/latex": "workspace:*",
     "@tiptap/core": "*",
+    "@tiptap/extension-code-block": "*",
     "@tiptap/extension-image": "*",
     "@tiptap/extension-link": "*",
     "@tiptap/extension-table": "*",
