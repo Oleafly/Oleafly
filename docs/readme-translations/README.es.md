@@ -329,7 +329,7 @@ El paquete `research-core` incluido contiene 39 skills. Los nombres siguientes s
 | Linux · x86_64 | AppImage, DEB o RPM | [![Descargar para Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage, DEB o RPM | [![Descargar para Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-En x86_64, los paquetes de Linux necesitan glibc 2.35 o una versión posterior (Ubuntu 22.04 o posterior). Los paquetes ARM64 se compilan en Ubuntu 24.04. Las versiones incluyen artefactos de actualización firmados, y el actualizador integrado comprueba la firma antes de instalar nada.
+Los paquetes de Linux necesitan glibc 2.35 o una versión posterior (Ubuntu 22.04, Debian 12 o posterior). Las versiones incluyen artefactos de actualización firmados, y el actualizador integrado comprueba la firma antes de instalar nada.
 
 ## Preguntas frecuentes
 
@@ -400,7 +400,7 @@ Si usas Oleafly, una [estrella en GitHub](https://github.com/Oleafly/Oleafly) ay
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.10},
+  version = {0.4.11},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

@@ -282,6 +282,45 @@ fn successful_builds_preserve_human_and_json_output_contracts() {
         .is_some_and(|id| id.starts_with("pdf-sha256:")));
 }
 
+#[test]
+fn tectonic_starts_outside_the_project_it_builds() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg("build")
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("FIXTURE_RECORD", "1")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let calls = std::fs::read_to_string(compiler.with_extension("calls")).unwrap();
+    let started_in = calls
+        .lines()
+        .last()
+        .and_then(|call| {
+            call.split('\u{1f}')
+                .find_map(|field| field.strip_prefix("cwd="))
+        })
+        .map(std::path::Path::new)
+        .unwrap();
+    let project_root = project.path().canonicalize().unwrap();
+    assert!(
+        !started_in.starts_with(&project_root),
+        "{} is inside {}",
+        started_in.display(),
+        project_root.display()
+    );
+}
+
 const BUILD_FLAGS: [&str; 3] = ["--offline", "--fast", "--halt-on-error"];
 const TYPST_IGNORED_FLAGS: [&str; 2] = ["--fast", "--halt-on-error"];
 

@@ -7,13 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.11] - 2026-11-04
+
 ### Added
 
 - Each provider's model list has Enable all and Disable all buttons. Turn off
   a long list in one click, then switch back on the few models you use (#385).
 
+### Security
+
+- Compiling with the bundled Tectonic engine could run code from the project,
+  even with shell-escape off. Tectonic ran any `tectonic-biber` file it found in
+  the project folder, and a document could reach Perl inside Biber through its
+  bibliography settings. Tectonic now starts outside the project, and the Biber
+  that Oleafly ships treats those settings as plain text. Biber also stops
+  reading `biber.conf` during a compile.
+
 ### Fixed
 
+- biblatex projects compile on ARM64 Linux. ARM builds shipped a placeholder that
+  always failed in place of Biber, so any biblatex project on the default engine
+  stopped with no PDF. They now include a working Biber 2.17.
+- The ARM64 Linux app and command line tool start on Debian 12 and Ubuntu 22.04.
+  They used to install there and then stop at launch with `GLIBC_2.39 not found`.
+- The Linux `.deb` and `.rpm` install next to your distribution's Pandoc. They
+  used to refuse to install, or stop Pandoc from installing, because both claimed
+  `/usr/bin/pandoc`. Oleafly's Tectonic, Pandoc and Typst now live in
+  `/usr/libexec/oleafly`.
+- Typst compiles in the x86_64 AppImage. Packaging damaged the bundled Typst, so
+  it crashed as soon as it started.
+- When Biber fails, the compile log says why. It used to show a general failure
+  with the reason buried in the raw output. It now names a missing system library
+  and suggests `\usepackage[backend=bibtex]{biblatex}` as a way to build without
+  Biber. The `.rpm` also recommends the two libraries Biber needs on Fedora.
 - Accessible export no longer breaks the build on the bundled engine. The
   `\DocumentMetadata` line it adds now sits inside a version check, so LaTeX
   older than November 2025 skips it and builds the document untagged. Before,
@@ -4412,7 +4438,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.10...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.11...HEAD
+[0.4.11]: https://github.com/Oleafly/Oleafly/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...v0.4.8

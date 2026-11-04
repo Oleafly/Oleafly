@@ -82,6 +82,7 @@ struct Patterns {
     biblatex_rerun_biber: Regex,
     oleafly_biber_mode_a: Regex,
     oleafly_biber_mode_b: Regex,
+    oleafly_biber_no_start: Regex,
     oleafly_biber_gap: Regex,
     oleafly_prefix: Regex,
     undefined_reference: Regex,
@@ -159,6 +160,7 @@ fn patterns() -> &'static Patterns {
             r"^Package biblatex Warning: Please \(re\)run Biber on the file:".into(),
         ),
         oleafly_biber_mode_a: compile(r"^\[Oleafly\] Biber was not found \(mode A\)".into()),
+        oleafly_biber_no_start: compile(r"^\[Oleafly\] Biber could not start".into()),
         oleafly_biber_mode_b: compile(
             r"^\[Oleafly\] Biber/biblatex version mismatch \(mode B\)".into(),
         ),
@@ -819,6 +821,7 @@ fn oleafly_note(p: &Patterns, line: &str) -> Option<Entry> {
     let category = if line.starts_with("[Oleafly]")
         && (p.oleafly_biber_mode_a.is_match(line)
             || p.oleafly_biber_mode_b.is_match(line)
+            || p.oleafly_biber_no_start.is_match(line)
             || p.oleafly_biber_gap.is_match(line))
     {
         LogCategory::Biber

@@ -225,6 +225,19 @@ describe("parseLatexLog", () => {
     expect(parseLatexLog(garbage)).toEqual([]);
   });
 
+  it("shows what to install when Biber could not start", () => {
+    const log = [
+      "[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.",
+      "[Oleafly] Biber could not start because this computer does not have libnsl.so.1. On Fedora, run: sudo dnf install libnsl libxcrypt-compat.",
+    ].join("\n");
+    const diags = parseLatexLog(log);
+    expect(
+      diags.some(
+        (d) => d.category === "biber" && d.severity === "error" && d.message.includes("sudo dnf install libnsl"),
+      ),
+    ).toBe(true);
+  });
+
   it("surfaces Oleafly Biber mode diagnostics and biblatex rerun warnings", () => {
     const log = [
       "Package biblatex Warning: Please (re)run Biber on the file:",
