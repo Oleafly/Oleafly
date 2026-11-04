@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Fetch a Biber binary pinned to match Tectonic 0.16.x's bundled biblatex (3.17).
+# Fetch a Biber binary pinned to match Tectonic's bundled biblatex (3.17), then
+# harden the Perl inside it (see scripts/biber/harden-biber.mjs).
 #   ./scripts/fetch-biber.sh aarch64-apple-darwin
 #   ./scripts/fetch-biber.sh all
 #
@@ -45,10 +46,10 @@ asset_for() {
       echo "Windows/biber-MSWIN64.zip:zip:c103bffc5ae0a7f513e7c26b6d394e9be6cf41952959c5d604ee2e6581b5dea2"
       ;;
     aarch64-unknown-linux-gnu)
-      # Upstream did not publish a native 2.17 aarch64 Linux binary.
-      # Marker: handled specially with a clear-error stub so externalBin packaging
-      # still has a file for this triple.
-      echo "STUB"
+      # Upstream never published a 2.17 aarch64 Linux binary, and every newer
+      # Biber rejects Tectonic's biblatex. This one comes from
+      # scripts/biber/build-linux.sh and is hosted by Oleafly.
+      echo "Linux/biber-linux_aarch64.tar.gz:tar:8ad499d94ee2f0883497811f9c0d8db022d305afe94723788698818e3c494c53"
       ;;
     *)
       echo ""
@@ -67,28 +68,10 @@ checksum() {
   fi
 }
 
-write_stub() {
-  local target="$1"
-  local out="$BIN_DIR/tectonic-biber-$target"
-  rm -f "$out"
-  cat > "$out" <<'STUB'
-#!/bin/sh
-echo "Oleafly: pinned Biber 2.17 is not available for this platform (no upstream aarch64 Linux binary)." >&2
-echo "Install a matching Biber yourself or compile on x86_64 / macOS / Windows." >&2
-exit 1
-STUB
-  chmod +x "$out"
-  echo "✓ $out (stub — no upstream Biber $VERSION binary for $target)"
-}
-
 fetch() {
   local target="$1"
   local entry
   entry="$(asset_for "$target")"
-  if [[ "$entry" == "STUB" ]]; then
-    write_stub "$target"
-    return 0
-  fi
   if [[ -z "$entry" ]]; then
     echo "unknown target: $target" >&2
     exit 1
@@ -110,6 +93,9 @@ fetch() {
   local base="https://downloads.sourceforge.net/project/biblatex-biber/biblatex-biber/$VERSION/binaries"
   local mirror_url="https://mirrors.oleafly.com/binaries/biber/$VERSION/$asset"
   local url="$base/$asset"
+  if [[ "$target" == "aarch64-unknown-linux-gnu" ]]; then
+    url="https://github.com/Oleafly/Oleafly/releases/download/biber-$VERSION-aarch64/$(basename "$asset")"
+  fi
   local cache_name="biber-$VERSION-$(basename "$asset")"
   local archive="$CACHE_DIR/$cache_name"
 
@@ -182,6 +168,18 @@ fetch() {
       ;;
   esac
 
+  node "$ROOT/scripts/biber/harden-biber.mjs" <"$bin" >"$bin.hardened"
+  if cmp -s "$bin" "$bin.hardened"; then
+    echo "hardening left $target's Biber unchanged" >&2
+    exit 1
+  fi
+  mv "$bin.hardened" "$bin"
+  chmod +x "$bin"
+  # Hardening changes signed bytes, and Apple Silicon refuses a stale signature.
+  if [[ "$target" == *apple-darwin && "$(uname)" == "Darwin" ]]; then
+    codesign --force --sign - "$bin"
+  fi
+
   if [[ -f "$out" && ! -L "$out" ]] && cmp -s "$bin" "$out"; then
     chmod +x "$out" 2>/dev/null || true
     if [[ "$(uname)" == "Darwin" ]]; then
@@ -204,7 +202,7 @@ fetch() {
 if [[ "$#" -eq 0 ]]; then
   echo "usage: $0 <target-triple> | all"
   echo "targets: $ALL_TARGETS"
-  echo "pinned Biber version: $VERSION (matches Tectonic 0.16.x / biblatex 3.17)"
+  echo "pinned Biber version: $VERSION (matches Tectonic's biblatex 3.17)"
   exit 0
 fi
 

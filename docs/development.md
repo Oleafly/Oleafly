@@ -247,6 +247,14 @@ Tectonic beside the application executable, matching Tauri's desktop bundle
 layout. Unit tests cover macOS app-bundle and Cargo debug/release candidates,
 while the release workflow checks every staged sidecar on every target.
 
+Linux is the exception. `src-tauri/build.rs` stages Tectonic, Pandoc and Typst
+for `/usr/libexec/oleafly` in all three package types, and looks there first at
+runtime. In `/usr/bin` they would collide with distribution packages, and
+linuxdeploy would rewrite them for the AppImage, which crashes a static-pie
+binary. Biber stays in `/usr/bin` because linuxdeploy has to see it to bundle
+the libraries it needs. `scripts/check-linux-packages.sh` checks the finished
+packages.
+
 Tectonic 0.17.0 release archives are checksum-pinned from the official GitHub
 Releases API `digest` fields. `scripts/fetch-tectonic.sh` verifies SHA256 before
 extracting exactly the root `tectonic`/`tectonic.exe` regular-file member. The
@@ -419,8 +427,9 @@ Packaging targets macOS Apple Silicon, macOS Intel, Windows x64, Linux x64, and
 Linux ARM64. The Intel Mac build is cross-compiled on the Apple Silicon runner,
 and Rosetta runs its x86_64 sidecars for the smoke tests.
 Each target gets matching Tectonic, Biber, Pandoc, Typst, and language-server
-resources that are fetched and smoke-tested in CI. Linux ARM64 gets a stub in
-place of Biber, because upstream publishes no 2.17 build for it. A tag produces
+resources that are fetched and smoke-tested in CI. Upstream publishes no Biber
+2.17 for Linux ARM64, so `scripts/biber/build-linux.sh` builds one, which the
+Build Biber workflow can repeat. A tag produces
 a complete draft. Publishing is a separate manual workflow run, and it refuses
 to publish unless every platform's artifacts are present. See
 [Auto-updates](updates.md) for required secrets, signing, and publication.

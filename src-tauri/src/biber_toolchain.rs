@@ -633,6 +633,10 @@ fn strip_biber_log_prefix(line: &str) -> &str {
     }
 }
 
+const WITHOUT_BIBER: &str =
+    "[Oleafly] To build without Biber, use \\usepackage[backend=bibtex]{biblatex}. \
+Biber-only features such as source maps stop working.\n";
+
 pub fn diagnose_biber_gap(log: &str, biber: Option<&Path>) -> String {
     let mut message = String::from(
         "\n[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.\n",
@@ -642,10 +646,18 @@ pub fn diagnose_biber_gap(log: &str, biber: Option<&Path>) -> String {
             "[Oleafly] Biber could not find the bibliography file {file} (mode C). Check the name \
 in \\addbibresource or \\bibliography; Oleafly resolves it from the project root.\n"
         ));
-    } else if log.contains("versions are incompatible") || log.contains("control file version") {
+        return message;
+    }
+    if let Some(library) = missing_shared_library(log) {
+        message.push_str(&format!(
+            "[Oleafly] Biber could not start because this computer does not have {library}. \
+On Fedora, run: sudo dnf install libnsl libxcrypt-compat. On Arch, install libxcrypt-compat. \
+The AppImage already includes these libraries.\n"
+        ));
+    } else if biber_version_mismatch(log) {
         message.push_str(
             "[Oleafly] Biber/biblatex version mismatch (mode B): the Biber on PATH does not match \
-Tectonic's bundled biblatex. Prefer the packaged tectonic-biber (Biber 2.17 for Tectonic 0.16).\n",
+Tectonic's bundled biblatex, which needs Biber 2.17.\n",
         );
     } else if biber.is_none()
         || log.contains("No such file or directory (os error 2)")
@@ -653,8 +665,8 @@ Tectonic's bundled biblatex. Prefer the packaged tectonic-biber (Biber 2.17 for 
     {
         message.push_str(
             "[Oleafly] Biber was not found (mode A): GUI launches often have a minimal PATH, and \
-Oleafly could not locate the packaged tectonic-biber sidecar. Reinstall Oleafly or run \
-scripts/fetch-biber.sh for your platform, then compile again.\n",
+Oleafly could not locate the packaged tectonic-biber sidecar. Reinstall Oleafly, then compile \
+again.\n",
         );
     } else {
         message.push_str(
@@ -665,7 +677,27 @@ messages above, then recompile.\n",
             message.push_str(&format!("[Oleafly] Using Biber at: {}\n", path.display()));
         }
     }
+    message.push_str(WITHOUT_BIBER);
     message
+}
+
+fn missing_shared_library(log: &str) -> Option<&str> {
+    let (_, rest) = log.split_once("error while loading shared libraries: ")?;
+    rest.split(':').next()
+}
+
+/// Tectonic writes only logs after the Biber it started fails, so its own
+/// report is the one sign left: no control file remains to check. A Biber that
+/// started and then rejected the bibliography is working, and its messages say
+/// what to fix, so only a tool that could not do its job counts here.
+pub fn tectonic_biber_step_failed(log: &str) -> bool {
+    log.contains("Running external tool")
+        && log.contains("the external tool exited with")
+        && (!log.contains("This is Biber") || biber_version_mismatch(log))
+}
+
+fn biber_version_mismatch(log: &str) -> bool {
+    log.contains("versions are incompatible") || log.contains("control file version")
 }
 
 fn missing_data_source(log: &str) -> Option<&str> {
@@ -677,6 +709,7 @@ fn missing_data_source(log: &str) -> Option<&str> {
 
 pub fn biber_cli_args(out_dir: &Path, entry_stem: &str) -> Vec<String> {
     vec![
+        "--noconf".into(),
         "--output-directory".into(),
         out_dir.to_string_lossy().into_owned(),
         "--input-directory".into(),
@@ -734,6 +767,75 @@ fn tex_bin_search_dirs() -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const TECTONIC_BIBER_FAILURE: &str =
+        "note: Running external tool /usr/bin/tectonic-biber ...\n\
+error: the external tool exited with an error code; its stdout was:\n\n\
+===============\n\
+error: its stderr was:\n\n\
+===============\n\
+error: the external tool exited with error code 1\n";
+
+    #[test]
+    fn a_biber_that_fails_under_tectonic_is_recognised_from_its_output() {
+        assert!(tectonic_biber_step_failed(TECTONIC_BIBER_FAILURE));
+        assert!(!tectonic_biber_step_failed(
+            "note: Running external tool biber ...\nnote: Rerunning TeX\n"
+        ));
+        assert!(!tectonic_biber_step_failed(
+            "error: the external tool exited with error code 1\n"
+        ));
+    }
+
+    #[test]
+    fn a_mistake_in_the_bibliography_is_not_a_failure_of_the_tool() {
+        let log = format!(
+            "{TECTONIC_BIBER_FAILURE}INFO - This is Biber 2.17\n\
+             ERROR - BibTeX subsystem: refs.bib_1234.utf8, line 2, syntax error\n"
+        );
+        assert!(!tectonic_biber_step_failed(&log));
+    }
+
+    #[test]
+    fn a_biber_that_rejects_the_control_file_is_a_tool_failure() {
+        let log = format!(
+            "{TECTONIC_BIBER_FAILURE}INFO - This is Biber 2.22\n\
+             ERROR - Found biblatex control file version 3.8, expected version 3.11.\n"
+        );
+        assert!(tectonic_biber_step_failed(&log));
+    }
+
+    #[test]
+    fn a_missing_system_library_is_named_with_what_to_install() {
+        let log = format!(
+            "{TECTONIC_BIBER_FAILURE}tectonic-biber: error while loading shared libraries: \
+             libnsl.so.1: cannot open shared object file: No such file or directory\n"
+        );
+        let message = diagnose_biber_gap(&log, Some(Path::new("/usr/bin/tectonic-biber")));
+        assert!(message.contains("libnsl.so.1"), "{message}");
+        assert!(message.contains("libxcrypt-compat"), "{message}");
+        assert!(message.contains("backend=bibtex"), "{message}");
+    }
+
+    #[test]
+    fn the_diagnosis_never_sends_a_user_to_a_repository_script() {
+        for log in [
+            "",
+            "versions are incompatible",
+            "os error 2 No such file or directory (os error 2)",
+        ] {
+            let message = diagnose_biber_gap(log, None);
+            assert!(!message.contains("scripts/"), "{message}");
+            assert!(!message.contains("Tectonic 0.16"), "{message}");
+        }
+    }
+
+    #[test]
+    fn oleafly_starts_biber_without_reading_a_project_config() {
+        let args = biber_cli_args(Path::new("/build"), "_oleafly_entry");
+        assert_eq!(args[0], "--noconf");
+        assert_eq!(args.last().map(String::as_str), Some("_oleafly_entry"));
+    }
 
     #[test]
     fn biber_unpacks_under_the_data_root_assets() {
@@ -1857,6 +1959,7 @@ This means that your biber (2.20) and biblatex (3.17) versions are incompatible.
         assert_eq!(
             args,
             [
+                "--noconf",
                 "--output-directory",
                 "/build",
                 "--input-directory",

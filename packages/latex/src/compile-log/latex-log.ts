@@ -34,6 +34,7 @@ const biblatexRerunBiber = "Package biblatex Warning: Please (re)run Biber on th
 const oleaflyBiberModeA = "[Oleafly] Biber was not found (mode A)";
 const oleaflyBiberModeB = "[Oleafly] Biber/biblatex version mismatch (mode B)";
 const oleaflyBiberGap = "[Oleafly] Bibliography needs Biber";
+const oleaflyBiberNoStart = "[Oleafly] Biber could not start";
 const engineOutputMarker = "[Oleafly] Engine output:";
 const tectonicSummaryLine = /^(?:error|warning): .+:\d+: /;
 const errorHelpLine = /^(?:See the .+ for explanation\.|Type {2}H <return> {2}for immediate help\.?)$/;
@@ -265,6 +266,7 @@ function parseOleaflyAnnotation(line: string, state: ParserState): boolean {
   if (
     !line.startsWith(oleaflyBiberModeA) &&
     !line.startsWith(oleaflyBiberModeB) &&
+    !line.startsWith(oleaflyBiberNoStart) &&
     !line.startsWith(oleaflyBiberGap)
   ) {
     return false;

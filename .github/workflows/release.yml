@@ -72,8 +72,10 @@ jobs:
             os: ubuntu-22.04
             rust_target: x86_64-unknown-linux-gnu
             args: ""
+          # The oldest ARM image, because the build host's glibc is the oldest
+          # the app can start on. 24.04 would rule out Debian 12 and Ubuntu 22.04.
           - name: Linux (ARM64)
-            os: ubuntu-24.04-arm
+            os: ubuntu-22.04-arm
             rust_target: aarch64-unknown-linux-gnu
             args: "--target aarch64-unknown-linux-gnu"
           - name: Windows (x86_64)
@@ -87,8 +89,7 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
       # xdg-utils: with a deep-link scheme in tauri.conf.json the AppImage
-      # bundler runs /usr/bin/xdg-mime. ubuntu-22.04 ships it, the
-      # ubuntu-24.04-arm image does not.
+      # bundler runs /usr/bin/xdg-mime, which the ARM images do not ship.
       - name: Install Linux system dependencies (Tauri)
         if: startsWith(matrix.os, 'ubuntu-')
         run: |
@@ -100,6 +101,7 @@ jobs:
             patchelf \
             libxdo-dev \
             xdg-utils \
+            rpm2cpio cpio \
             build-essential \
             curl wget file
 
@@ -266,6 +268,10 @@ jobs:
       - name: Smoke-test managed Pandoc with packaged Tectonic input
         shell: bash
         run: bash scripts/smoke-markdown.sh ${{ matrix.rust_target }}
+
+      - name: Smoke-test biblatex with packaged Tectonic and Biber
+        shell: bash
+        run: bash scripts/smoke-biblatex.sh ${{ matrix.rust_target }}
 
       # macOS code signing + notarization. Every APPLE_* value is exported only
       # when its secret exists: an empty env var would make the bundler attempt
@@ -540,6 +546,11 @@ jobs:
             test -f "$RUNTIME_DIR/pandoc"
             test -f "$RUNTIME_DIR/typst"
           fi
+
+      - name: Check the tools inside the Linux packages
+        if: startsWith(matrix.os, 'ubuntu-')
+        shell: bash
+        run: bash scripts/check-linux-packages.sh ${{ matrix.rust_target }}
 
       - name: Describe the Linux desktop entries (diagnostic only)
         if: startsWith(matrix.os, 'ubuntu-')

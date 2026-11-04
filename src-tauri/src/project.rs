@@ -6469,8 +6469,8 @@ fn pandoc_version_supported(version_stdout: &[u8]) -> bool {
 pub(crate) fn find_pandoc() -> Option<String> {
     let search = oleafly_core::pandoc::PandocSearch {
         bundled_dirs: oleafly_core::sidecar::executable_dir()
-            .into_iter()
-            .collect(),
+            .map(|dir| oleafly_core::sidecar::bundled_tool_dirs(&dir))
+            .unwrap_or_default(),
         data_root: paths::oleafly_root().ok(),
         home: paths::home_dir().ok(),
         path: std::env::var_os("PATH"),

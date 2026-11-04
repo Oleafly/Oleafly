@@ -329,7 +329,7 @@ Skills는 Agent Skills 형식을 따르는 일반 `SKILL.md` 폴더입니다. �
 | Linux · x86_64 | AppImage, DEB 또는 RPM | [![Linux(x86_64)용 다운로드](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage, DEB 또는 RPM | [![Linux(ARM64)용 다운로드](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-x86_64에서 Linux 패키지에는 glibc 2.35 이상(Ubuntu 22.04 이상)이 필요합니다. ARM64 패키지는 Ubuntu 24.04에서 빌드됩니다. 릴리스에는 서명된 업데이트 산출물이 포함되며, 앱 내 업데이터는 무엇이든 설치하기 전에 서명을 확인합니다.
+Linux 패키지에는 glibc 2.35 이상(Ubuntu 22.04, Debian 12 이상)이 필요합니다. 릴리스에는 서명된 업데이트 산출물이 포함되며, 앱 내 업데이터는 무엇이든 설치하기 전에 서명을 확인합니다.
 
 ## 자주 묻는 질문
 
@@ -400,7 +400,7 @@ Oleafly를 사용한다면 [GitHub에서 별을 눌러](https://github.com/Oleaf
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.10},
+  version = {0.4.11},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }
