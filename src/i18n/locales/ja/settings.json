@@ -303,7 +303,10 @@
         "title": "モデルを削除"
       },
       "deleteTooltip": "モデルを削除",
+      "disableAll": "すべて無効にする",
       "empty": "モデルがまだありません。下から追加してください。",
+      "enableAll": "すべて有効にする",
+      "enabledCount": "{{total}} 件中 {{enabled}} 件が有効",
       "invalidKey": "API キーが正しくありません。",
       "metadata": {
         "refreshFailed": "モデルの情報を更新できませんでした。",

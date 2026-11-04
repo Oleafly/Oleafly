@@ -304,7 +304,10 @@
         "title": "Slett modellen"
       },
       "deleteTooltip": "Slett modellen",
+      "disableAll": "Slå av alle",
       "empty": "Ingen modeller ennå. Legg til en nedenfor.",
+      "enableAll": "Slå på alle",
+      "enabledCount": "{{enabled}} av {{total}} er på",
       "invalidKey": "Ugyldig API-nøkkel.",
       "metadata": {
         "refreshFailed": "Kunne ikke oppdatere modelldataene.",

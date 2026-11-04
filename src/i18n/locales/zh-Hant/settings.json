@@ -303,7 +303,10 @@
         "title": "刪除模型"
       },
       "deleteTooltip": "刪除模型",
+      "disableAll": "全部停用",
       "empty": "還沒有模型。請在下方新增一個。",
+      "enableAll": "全部啟用",
+      "enabledCount": "已啟用 {{enabled}}/{{total}}",
       "invalidKey": "API 金鑰無效。",
       "metadata": {
         "refreshFailed": "無法重新整理模型資料。",

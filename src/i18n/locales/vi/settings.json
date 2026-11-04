@@ -303,7 +303,10 @@
         "title": "Xóa mô hình"
       },
       "deleteTooltip": "Xóa mô hình",
+      "disableAll": "Tắt tất cả",
       "empty": "Chưa có mô hình nào. Hãy thêm một mô hình bên dưới.",
+      "enableAll": "Bật tất cả",
+      "enabledCount": "Đã bật {{enabled}} trên {{total}}",
       "invalidKey": "Khoá API không hợp lệ.",
       "metadata": {
         "refreshFailed": "Không thể làm mới dữ liệu mô hình.",

@@ -304,7 +304,10 @@
         "title": "Poista malli"
       },
       "deleteTooltip": "Poista malli",
+      "disableAll": "Poista kaikki käytöstä",
       "empty": "Ei vielä malleja. Lisää yksi alta.",
+      "enableAll": "Ota kaikki käyttöön",
+      "enabledCount": "{{enabled}}/{{total}} käytössä",
       "invalidKey": "Virheellinen API-avain.",
       "metadata": {
         "refreshFailed": "Mallien tietoja ei voitu päivittää.",

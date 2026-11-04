@@ -306,7 +306,10 @@
         "title": "Usuń model"
       },
       "deleteTooltip": "Usuń model",
+      "disableAll": "Wyłącz wszystkie",
       "empty": "Nie ma jeszcze modeli. Dodaj jeden poniżej.",
+      "enableAll": "Włącz wszystkie",
+      "enabledCount": "włączono {{enabled}} z {{total}}",
       "invalidKey": "Nieprawidłowy klucz API.",
       "metadata": {
         "refreshFailed": "Nie udało się odświeżyć danych modeli.",

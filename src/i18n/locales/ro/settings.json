@@ -305,7 +305,10 @@
         "title": "Șterge modelul"
       },
       "deleteTooltip": "Șterge modelul",
+      "disableAll": "Dezactivează tot",
       "empty": "Încă nu există modele. Adaugă unul mai jos.",
+      "enableAll": "Activează tot",
+      "enabledCount": "{{enabled}} din {{total}} activate",
       "invalidKey": "Cheie API nevalidă.",
       "metadata": {
         "refreshFailed": "Datele despre modele nu au putut fi reîmprospătate.",

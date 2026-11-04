@@ -304,7 +304,10 @@
         "title": "Model verwijderen"
       },
       "deleteTooltip": "Model verwijderen",
+      "disableAll": "Alles uitschakelen",
       "empty": "Nog geen modellen. Voeg er hieronder een toe.",
+      "enableAll": "Alles inschakelen",
+      "enabledCount": "{{enabled}} van {{total}} aan",
       "invalidKey": "Ongeldige API-sleutel.",
       "metadata": {
         "refreshFailed": "Kon de modelgegevens niet vernieuwen.",

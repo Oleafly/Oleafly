@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Each provider's model list has Enable all and Disable all buttons. Turn off
+  a long list in one click, then switch back on the few models you use (#385).
+
 ### Fixed
 
 - Accessible export no longer breaks the build on the bundled engine. The
