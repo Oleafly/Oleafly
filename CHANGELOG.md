@@ -14,11 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fenced code in Markdown stays a code block in the visual editor. Typing in
-  a block, or saving a file the editor had to rewrite, turned the fence into
-  lines of inline code, which dropped the language and broke Mermaid diagrams.
-  Blocks now open as code blocks, keep their whole info string and blank lines,
-  and start from ``` as you type. Tab indents inside a block.
 - Accessible export no longer breaks the build on the bundled engine. The
   `\DocumentMetadata` line it adds now sits inside a version check, so LaTeX
   older than November 2025 skips it and builds the document untagged. Before,
