@@ -43,6 +43,9 @@ where
     F: FnMut(AgentEvent) + Send,
 {
     let mut request = request;
+    request
+        .session_id
+        .get_or_insert_with(crate::complete::new_session_id);
     drop_unsent_reasoning(resolved, &mut request.messages);
     drop_unreadable_images(resolved, &mut request.messages);
     let mut result = RunOutcome::default();

@@ -21,7 +21,7 @@ pub enum Wire {
 }
 
 impl Wire {
-    fn base_url(&self) -> &str {
+    pub fn base_url(&self) -> &str {
         match self {
             Self::OpenAiResponses { base_url }
             | Self::OpenAiChat { base_url, .. }

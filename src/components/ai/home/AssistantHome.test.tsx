@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { SkillEntry } from "@/lib/skills";
 import type { StoredChat } from "@/store/chats";
@@ -334,6 +334,46 @@ describe("AgentPickerRow", () => {
     expect(screen.getByTestId("agent-picker-pi")).toHaveAttribute("data-available", "false");
     fireEvent.click(screen.getByTestId("agent-picker-pi"));
     expect(onSelect).toHaveBeenCalledWith("pi");
+  });
+
+  it("scrolls sideways with a mouse wheel so agents past the edge can be reached", () => {
+    render(
+      <AgentPickerRow
+        agents={[
+          { id: "claude", name: "Claude Code", available: true },
+          { id: "omp", name: "Oh My Pi", available: true },
+        ]}
+        selectedId="claude"
+        onSelect={vi.fn()}
+      />,
+    );
+    const row = screen.getByTestId("agent-picker-row");
+    Object.defineProperties(row, {
+      clientWidth: { configurable: true, value: 465 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+      scrollWidth: { configurable: true, value: 641 },
+    });
+    const wheel = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
+    fireEvent(row, wheel);
+    expect(row.scrollLeft).toBe(100);
+    expect(wheel.defaultPrevented).toBe(true);
+  });
+
+  it("brings a newly selected agent into view", async () => {
+    const agents = [
+      { id: "claude", name: "Claude Code", available: true },
+      { id: "omp", name: "Oh My Pi", available: true },
+    ];
+    const { rerender } = render(
+      <AgentPickerRow agents={agents} selectedId="claude" onSelect={vi.fn()} />,
+    );
+    const omp = screen.getByTestId("agent-picker-omp");
+    const scrollIntoView = vi.fn();
+    omp.scrollIntoView = scrollIntoView;
+    rerender(<AgentPickerRow agents={agents} selectedId="omp" onSelect={vi.fn()} />);
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" }),
+    );
   });
 });
 

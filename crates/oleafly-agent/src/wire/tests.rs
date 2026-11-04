@@ -643,11 +643,79 @@ fn custom_endpoints_get_reasoning_back_only_on_hosts_that_expect_it() {
     for base in [
         "https://api.moonshot.cn/v1",
         "https://open.bigmodel.cn/api/paas/v4",
+        "https://opencode.ai/zen/go/v1",
+        "https://opencode.ai/zen/v1",
     ] {
         let body = openai_body(&custom(base), &request).unwrap();
         assert_eq!(
             body["messages"][2]["reasoning_content"], "main.tex holds the preamble.",
             "{base}"
+        );
+    }
+}
+
+fn opencode(base: &str) -> Resolved {
+    Resolved {
+        provider_id: "opencode".into(),
+        model_id: "deepseek-v4.1-flash".into(),
+        ..resolved(Wire::OpenAiChat {
+            base_url: base.into(),
+            reasoning_content: true,
+        })
+    }
+}
+
+fn session_header(resolved: &Resolved, session_id: Option<&str>) -> Option<String> {
+    let client = reqwest::Client::new();
+    let request = body_request(&client, resolved, true, &json!({}), session_id)
+        .build()
+        .unwrap();
+    request
+        .headers()
+        .get("x-opencode-session")
+        .map(|value| value.to_str().unwrap().to_string())
+}
+
+#[test]
+fn opencode_requests_carry_the_conversation_they_belong_to() {
+    for base in [
+        "https://opencode.ai/zen/go/v1",
+        "https://opencode.ai/zen/v1",
+    ] {
+        assert_eq!(
+            session_header(&opencode(base), Some("chat-7")).as_deref(),
+            Some("chat-7"),
+            "{base}"
+        );
+    }
+}
+
+#[test]
+fn an_opencode_request_outside_a_conversation_still_names_one() {
+    let go = opencode("https://opencode.ai/zen/go/v1");
+    for missing in [None, Some(""), Some("bad\nid")] {
+        let id = session_header(&go, missing).unwrap();
+        assert!(
+            !id.is_empty() && !id.contains('\n'),
+            "{missing:?} -> {id:?}"
+        );
+    }
+    assert_ne!(session_header(&go, None), session_header(&go, None));
+}
+
+#[test]
+fn no_other_provider_sees_the_session_header() {
+    for resolved in [
+        openai(),
+        openai_responses(),
+        google(),
+        opencode("https://llm.example.com/v1"),
+        opencode("https://opencode.ai.example.com/v1"),
+    ] {
+        assert_eq!(
+            session_header(&resolved, Some("chat-7")),
+            None,
+            "{resolved:?}"
         );
     }
 }
