@@ -329,7 +329,7 @@ Skills представляют собой обычные папки `SKILL.md` 
 | Linux · x86_64 | AppImage, DEB или RPM | [![Скачать для Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage, DEB или RPM | [![Скачать для Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-На x86_64 пакетам Linux нужен glibc 2.35 или новее (Ubuntu 22.04 или новее). Пакеты ARM64 собраны на Ubuntu 24.04. В релизах есть подписанные артефакты обновления, а встроенный механизм обновления проверяет подпись, прежде чем что-либо установить.
+Пакетам Linux нужен glibc 2.35 или новее (Ubuntu 22.04, Debian 12 или новее). В релизах есть подписанные артефакты обновления, а встроенный механизм обновления проверяет подпись, прежде чем что-либо установить.
 
 ## Частые вопросы
 
@@ -400,7 +400,7 @@ Oleafly создают [Prajwal Murthy](https://github.com/prajwal-svm) и уч�
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.10},
+  version = {0.4.11},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

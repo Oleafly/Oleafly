@@ -329,7 +329,7 @@ The bundled `research-core` pack ships 39 skills. The names below are the IDs us
 | Linux · x86_64 | AppImage, DEB, or RPM | [![Download for Linux (x86_64)](docs/assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage, DEB, or RPM | [![Download for Linux (ARM64)](docs/assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-On x86_64, the Linux packages need glibc 2.35 or newer (Ubuntu 22.04 or later). ARM64 packages are built on Ubuntu 24.04. Releases include signed update artifacts, and the in-app updater checks the signature before it installs anything.
+The Linux packages need glibc 2.35 or newer (Ubuntu 22.04, Debian 12 or later). Releases include signed update artifacts, and the in-app updater checks the signature before it installs anything.
 
 ## Questions people ask
 
@@ -400,7 +400,7 @@ Oleafly is built by [Prajwal Murthy](https://github.com/prajwal-svm) and contrib
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.10},
+  version = {0.4.11},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }
