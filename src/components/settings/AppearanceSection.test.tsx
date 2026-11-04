@@ -277,12 +277,14 @@ describe("Appearance settings tabs", () => {
     await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
     expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeEnabled();
     expect(screen.getByRole("combobox", { name: appearance.editor.font.label })).toBeEnabled();
+    expect(screen.getByRole("combobox", { name: appearance.editor.cjkFont.label })).toBeEnabled();
 
     await user.click(screen.getByRole("switch", { name: appearance.editor.useAppFont.label }));
     expect(useSettingsStore.getState().editorUsesAppFont).toBe(true);
     expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeDisabled();
     const font = screen.getByRole("combobox", { name: appearance.editor.font.label });
     expect(font).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: appearance.editor.cjkFont.label })).toBeDisabled();
     await user.hover(font.parentElement as HTMLElement);
     expect(await screen.findAllByText(appearance.editor.useAppFont.disabledHint)).not.toHaveLength(0);
 

@@ -768,6 +768,10 @@
         "label": "Redigerarens typsnitt",
         "monospace": "Fast bredd"
       },
+      "cjkFont": {
+        "description": "Används för kinesiska, japanska och koreanska tecken som Redigerarens typsnitt saknar.",
+        "label": "CJK-typsnitt"
+      },
       "useAppFont": {
         "description": "Redigeraren följer appens teckensnitt och teckenstorlek.",
         "disabledHint": "Stäng av Använd appens teckensnitt för att ändra detta.",
@@ -1200,10 +1204,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Lägg till i projektet",
       "allDownloaded": "Allt är nedladdat",
       "download": "Ladda ner",
       "downloadAll": "Ladda ner allt"
     },
+    "fontAddedToProject": "{{family}} har lagts till i det här projektet. Använd typsnittet genom att ange namnet, till exempel {{example}}.",
+    "fontAlreadyInProject": "{{family}} finns redan i det här projektet.",
     "yourTemplates": {
       "toggle": "Hantera dina mallar",
       "import": "Importera mall",
@@ -1253,7 +1260,7 @@
       "empty": "Inga typsnitt att ladda ner.",
       "engineNote": "LuaLaTeX-motorn (för taggade, tillgängliga PDF-filer) hanteras i avsnittet LaTeX-motor.",
       "heading": "Typsnitt",
-      "tooltip": "Vissa mallar använder öppna premiumtypsnitt. För att hålla Oleafly litet laddas de typsnitten ner vid behov: när du skapar en sådan mall hämtas typsnitten och kopieras in i projektet, så att det förblir fristående och kompilerar offline. Du kan också ladda ner dem i förväg här, eller ta bort dem för att frigöra utrymme."
+      "tooltip": "Vissa mallar använder de här typsnitten med öppen källkod. De laddas bara ner när de behövs, så att Oleafly förblir litet. När du skapar en sådan mall kopieras typsnitten in i projektet, så att det kompilerar offline. Typst-projekt kan använda ett nedladdat typsnitt genom att ange namnet, om inte projektet stänger av systemtypsnitt. För LaTeX öppnar du ett projekt och klickar på ”Lägg till i projektet” för att kopiera in typsnittet där."
     },
     "packProgress": "{{index}} av {{total}}",
     "progress": "{{label}} ({{index}} av {{total}})",
@@ -1281,6 +1288,7 @@
       "fontDownloadFailed": "Det gick inte att ladda ner typsnittet.",
       "fontsDownloadFailed": "Det gick inte att ladda ner typsnitten.",
       "fontRemoveFailed": "Det gick inte att ta bort typsnittet.",
+      "fontAddFailed": "Det gick inte att lägga till typsnittet i det här projektet.",
       "packDownloadFailed": "Det gick inte att ladda ner mallpaketet.",
       "packsDownloadFailed": "Det gick inte att ladda ner mallpaketen.",
       "packRemoveFailed": "Det gick inte att ta bort mallpaketet.",

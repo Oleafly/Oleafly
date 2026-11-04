@@ -762,6 +762,10 @@
         "label": "편집기 글꼴",
         "monospace": "고정폭"
       },
+      "cjkFont": {
+        "description": "편집기 글꼴에 없는 중국어, 일본어, 한국어 문자에 쓰입니다.",
+        "label": "CJK 글꼴"
+      },
       "useAppFont": {
         "description": "편집기가 앱 글꼴과 앱 글꼴 크기를 따릅니다.",
         "disabledHint": "바꾸려면 앱 글꼴 사용을 끄세요.",
@@ -1193,10 +1197,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "프로젝트에 추가",
       "allDownloaded": "모두 내려받음",
       "download": "다운로드",
       "downloadAll": "모두 다운로드"
     },
+    "fontAddedToProject": "이 프로젝트에 {{family}} 글꼴을 추가했습니다. {{example}}처럼 이름으로 지정해 쓸 수 있습니다.",
+    "fontAlreadyInProject": "{{family}} 글꼴은 이미 이 프로젝트에 있습니다.",
     "yourTemplates": {
       "toggle": "내 템플릿 관리",
       "import": "템플릿 가져오기",
@@ -1246,7 +1253,7 @@
       "empty": "내려받을 수 있는 글꼴이 없습니다.",
       "engineNote": "태그된 접근 가능한 PDF를 만드는 LuaLaTeX 엔진은 LaTeX 엔진 항목에서 관리합니다.",
       "heading": "글꼴",
-      "tooltip": "일부 템플릿은 프리미엄 오픈소스 글꼴을 씁니다. Oleafly를 가볍게 유지하기 위해 이런 글꼴은 필요할 때 내려받습니다. 해당 템플릿으로 프로젝트를 만들면 글꼴을 가져와 프로젝트에 복사하므로 프로젝트가 자체 완결되고 오프라인에서도 컴파일됩니다. 여기에서 미리 내려받거나, 공간을 확보하려면 제거할 수 있습니다."
+      "tooltip": "일부 템플릿은 이 오픈소스 글꼴을 씁니다. Oleafly를 가볍게 유지하기 위해 글꼴은 필요할 때만 내려받습니다. 해당 템플릿으로 프로젝트를 만들면 글꼴이 프로젝트에 복사되므로 오프라인에서도 컴파일됩니다. Typst 프로젝트는 시스템 글꼴을 끄지 않았다면 내려받은 글꼴을 이름으로 지정해 쓸 수 있습니다. LaTeX에서는 프로젝트를 연 다음 “프로젝트에 추가”를 눌러 글꼴을 프로젝트에 복사하세요."
     },
     "packProgress": "{{total}}개 중 {{index}}번째",
     "progress": "{{label}}({{total}}개 중 {{index}}번째)",
@@ -1274,6 +1281,7 @@
       "fontDownloadFailed": "글꼴을 내려받지 못했습니다.",
       "fontsDownloadFailed": "글꼴을 내려받지 못했습니다.",
       "fontRemoveFailed": "글꼴을 제거하지 못했습니다.",
+      "fontAddFailed": "글꼴을 이 프로젝트에 추가하지 못했습니다.",
       "packDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
       "packsDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
       "packRemoveFailed": "템플릿 팩을 제거하지 못했습니다.",

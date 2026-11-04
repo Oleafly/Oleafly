@@ -397,13 +397,19 @@ editor and the compiler find the same fonts.
 
 Typst font packs from Settings > Downloads (`typst: true` in
 `resources/font-packs.json`) are stored under
-`<data root>/assets/typst-fonts/<pack>/`. Every installed pack folder is added
-to `--font-path` for compiles, exports, queries, the font picker and Tinymist,
+`<data root>/assets/typst-fonts/<pack>/`. The Lato, PT Sans and PT Serif packs
+made for LaTeX templates are stored under `<data root>/assets/fonts/<pack>/`.
+Every installed pack folder in either place is added to `--font-path` for
+compiles, exports, queries, the font picker and Tinymist, Typst packs first,
 but only while system fonts are allowed: a project with `system_fonts: false`
-or `reproducible: true` never sees them. Each file in the catalog carries its
-SHA-256, and a download that does not match is deleted. When a compile warns
-`unknown font family: X` and an uninstalled pack lists X in `families`, the
-compile log offers to download that pack and compile again. The font picker in Document
+or `reproducible: true` never sees them. Each file in a Typst pack carries its
+SHA-256 in the catalog, and a download that does not match is deleted. The
+three LaTeX packs have no checksums yet. When a compile warns
+`unknown font family: X` and a pack lists X in `families`, the compile log
+offers to download that pack and compile again, unless another installed pack
+already has X. Add to project in Settings > Downloads copies a LaTeX pack into
+the project's `fonts/` folder, which Typst always reads, so a sealed project
+can use that font too. The font picker in Document
 settings runs `typst fonts` with the same folders. On Typst 0.15 and later it
 adds `--variants`, which also reports where each font comes from.
 
@@ -465,8 +471,8 @@ The shared package folders under the data root go to `--package-path` and
 the project is the package path instead. `TYPST_PACKAGE_PATH` and
 `TYPST_PACKAGE_CACHE_PATH` are always set to the same folders. The project's
 `fonts/` folder and each `typst.font_paths` folder go to `--font-path`, followed
-by the installed Typst font packs under the data root while system fonts are
-allowed, and `system_fonts: false` adds `--ignore-system-fonts`. Each entry in
+by the installed font packs under the data root (Typst packs, then the LaTeX
+template packs) while system fonts are allowed, and `system_fonts: false` adds `--ignore-system-fonts`. Each entry in
 `typst.inputs` becomes `--input key=value`.
 
 `--variant <name>` picks a set from `typst.variants`. Its inputs replace the
