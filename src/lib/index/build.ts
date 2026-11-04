@@ -314,6 +314,7 @@ export function indexFromSymbols(
   return {
     defs,
     uses,
+    compilationUnits: units,
     symbolAt,
     definitionFor,
     references,

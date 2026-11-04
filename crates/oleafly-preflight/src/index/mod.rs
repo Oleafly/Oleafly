@@ -2,6 +2,7 @@ mod bibtex;
 mod latex;
 mod markdown;
 mod typst;
+mod units;
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -12,6 +13,7 @@ use crate::text::SourceText;
 
 pub use self::bibtex::bibtex_keys;
 pub use self::typst::mask_typst_source;
+pub use self::units::{compilation_units, share_compilation_unit, CompilationUnits};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IndexEngine {

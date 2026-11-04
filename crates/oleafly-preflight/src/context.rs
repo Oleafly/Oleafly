@@ -5,7 +5,10 @@ use crate::bib::{
     bibliography_declarations, bibliography_engine_for_command, legacy_bib_keys, parse_entry,
     resolve_bibliography_path, split_bib_entries, BibliographyEngine, ParsedBib,
 };
-use crate::index::{engine_for_path, label_scope, name_target_label, ProjectIndex, Sym, SymKind};
+use crate::index::{
+    compilation_units, engine_for_path, label_scope, name_target_label, share_compilation_unit,
+    CompilationUnits, ProjectIndex, Sym, SymKind,
+};
 use crate::jsre::JsRegex;
 use crate::mask::mask_comments;
 use crate::refs_rules::{
@@ -217,12 +220,23 @@ fn reference_key(scope: &str, file: Option<&str>, name: &str) -> String {
 
 fn collect_label_facts(
     index: Option<&ProjectIndex>,
+    units: &CompilationUnits,
+    main_doc: &str,
 ) -> (Vec<DuplicateLabel>, Vec<UnreferencedLabel>) {
-    let defs: &[Sym] = index.map(|index| index.defs.as_slice()).unwrap_or(&[]);
+    // Preflight checks the main document, so only its compilation unit counts.
+    let in_main_document = |file: &str| share_compilation_unit(units, main_doc, file);
+    let defs: Vec<&Sym> = index
+        .map(|index| index.defs.as_slice())
+        .unwrap_or(&[])
+        .iter()
+        .filter(|definition| {
+            definition.kind == SymKind::Label && in_main_document(&definition.file)
+        })
+        .collect();
     let uses: &[Sym] = index.map(|index| index.uses.as_slice()).unwrap_or(&[]);
     let referenced: HashSet<String> = uses
         .iter()
-        .filter(|use_| use_.kind == SymKind::Ref)
+        .filter(|use_| use_.kind == SymKind::Ref && in_main_document(&use_.file))
         .map(|use_| {
             let (scope, file) = name_target_label(use_);
             reference_key(&scope, file.as_deref(), &use_.name)
@@ -239,10 +253,7 @@ fn collect_label_facts(
     };
     let mut order: Vec<String> = Vec::new();
     let mut label_files: HashMap<String, (String, Vec<String>)> = HashMap::new();
-    for definition in defs
-        .iter()
-        .filter(|definition| definition.kind == SymKind::Label)
-    {
+    for definition in &defs {
         let (scope, _) = name_target_label(definition);
         let key = format!("{scope}\0{}", definition.name);
         let entry = label_files.entry(key.clone()).or_insert_with(|| {
@@ -264,11 +275,7 @@ fn collect_label_facts(
         .collect();
     let unreferenced = defs
         .iter()
-        .filter(|definition| {
-            definition.kind == SymKind::Label
-                && FLOAT_LABEL.is_match(&definition.name)
-                && !is_referenced(definition)
-        })
+        .filter(|definition| FLOAT_LABEL.is_match(&definition.name) && !is_referenced(definition))
         .map(|definition| UnreferencedLabel {
             label: definition.name.clone(),
             file: definition.file.clone(),
@@ -330,7 +337,9 @@ pub fn build_refs_context(input: &ContextInput) -> RefsContext {
             .into_iter()
             .chain(bib_entries.iter().map(|entry| entry.key.clone())),
     );
-    let (duplicate_labels, unreferenced_labels) = collect_label_facts(input.index);
+    let units = compilation_units(input.main_doc, &texts, &known_paths);
+    let (duplicate_labels, unreferenced_labels) =
+        collect_label_facts(input.index, &units, input.main_doc);
     let bib_key_definitions = collect_bib_key_definitions(&bib_texts);
     let dialect = if declared
         .iter()
@@ -481,5 +490,39 @@ mod tests {
             ]
         );
         assert_eq!(refs.defined_labels, vec!["fig:a", "fig:b"]);
+    }
+
+    #[test]
+    fn reports_label_facts_for_the_main_documents_compilation_unit() {
+        let project = texts(&[
+            (
+                "main.tex",
+                "\\documentclass{article}\n\\input{shared}\n\\label{sec:shared}",
+            ),
+            (
+                "main_v1.tex",
+                "\\documentclass{article}\n\\input{shared}\n\\label{sec:shared}\n\\label{fig:old}\n\\ref{fig:x}",
+            ),
+            ("shared.tex", "\\label{sec:shared}\\label{fig:x}"),
+        ]);
+        let refs = refs_for(
+            &["main.tex", "main_v1.tex", "shared.tex"],
+            &project,
+            &BTreeMap::new(),
+        );
+        assert_eq!(
+            refs.duplicate_labels,
+            Some(vec![DuplicateLabel {
+                label: "sec:shared".to_string(),
+                files: vec!["main.tex".to_string(), "shared.tex".to_string()],
+            }])
+        );
+        assert_eq!(
+            refs.unreferenced_labels,
+            Some(vec![UnreferencedLabel {
+                label: "fig:x".to_string(),
+                file: "shared.tex".to_string(),
+            }])
+        );
     }
 }

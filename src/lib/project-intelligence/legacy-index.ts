@@ -151,6 +151,7 @@ export function lazyLegacyIndex(
     get uses() {
       return build().uses;
     },
+    compilationUnits: snapshot.compilationUnits,
     symbolAt: (file, offset) => build().symbolAt(file, offset),
     definitionFor: (symbol) => build().definitionFor(symbol),
     references: (name, kind) => build().references(name, kind),

@@ -1,3 +1,5 @@
+import type { CompilationUnits } from "@/lib/project-intelligence/types";
+
 export type DefKind = "label" | "macro" | "bibentry" | "theorem" | "glossary" | "environment" | "section" | "file";
 export type UseKind = "ref" | "cite" | "atuse" | "macrouse" | "envuse" | "glossaryuse" | "inputedge";
 export type SymKind = DefKind | UseKind;
@@ -37,6 +39,7 @@ export interface RenamePlan {
 export interface ProjectIndex {
   defs: Sym[];
   uses: Sym[];
+  compilationUnits: CompilationUnits;
   symbolAt: (file: string, offset: number) => Sym | null;
   definitionFor: (sym: Sym) => Sym | null;
   references: (name: string, kind: UseKind) => Sym[];

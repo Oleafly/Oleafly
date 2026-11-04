@@ -10,7 +10,11 @@ import { parseEntry } from "@/lib/citation/bibtex";
 import { nameTarget } from "@/lib/index/build";
 import { parseFile } from "@/lib/index/parse-file";
 import type { ProjectIndex, Sym } from "@/lib/index/types";
-import { labelScope } from "@/lib/project-intelligence/resolution";
+import {
+  labelScope,
+  NO_COMPILATION_UNITS,
+  shareCompilationUnit,
+} from "@/lib/project-intelligence/resolution";
 import { engineForPath } from "@/lib/project-intelligence/source";
 
 export interface PreflightContextInput {
@@ -126,10 +130,16 @@ function collectCitedKeys(texts: Readonly<Record<string, string>>): string[] {
   return allCitedKeys;
 }
 
-function collectLabelFacts(index: ProjectIndex | null): {
+function collectLabelFacts(
+  index: ProjectIndex | null,
+  mainDoc: string,
+): {
   duplicateLabels: { label: string; files: string[] }[];
   unreferencedLabels: { label: string; file: string }[];
 } {
+  // Preflight checks the main document, so only its compilation unit counts.
+  const units = index?.compilationUnits ?? NO_COMPILATION_UNITS;
+  const inMainDocument = (file: string) => shareCompilationUnit(units, mainDoc, file);
   const labelFiles = new Map<string, { label: string; files: Set<string> }>();
   const referenceKey = (scope: string, file: string | null, name: string) => {
     const target = file === null ? "*" : `=${file}`;
@@ -137,7 +147,7 @@ function collectLabelFacts(index: ProjectIndex | null): {
   };
   const referencedLabels = new Set<string>();
   for (const use of index?.uses ?? []) {
-    if (use.kind !== "ref") continue;
+    if (use.kind !== "ref" || !inMainDocument(use.file)) continue;
     const { scope, file } = nameTarget("label", use);
     referencedLabels.add(referenceKey(scope, file, use.name));
   }
@@ -148,8 +158,10 @@ function collectLabelFacts(index: ProjectIndex | null): {
       referencedLabels.has(referenceKey(scope, definition.file, definition.name))
     );
   };
-  for (const definition of index?.defs ?? []) {
-    if (definition.kind !== "label") continue;
+  const definitions = (index?.defs ?? []).filter(
+    (definition) => definition.kind === "label" && inMainDocument(definition.file),
+  );
+  for (const definition of definitions) {
     const key = `${nameTarget("label", definition).scope}\0${definition.name}`;
     const entry = labelFiles.get(key) ?? { label: definition.name, files: new Set<string>() };
     entry.files.add(definition.file);
@@ -158,10 +170,9 @@ function collectLabelFacts(index: ProjectIndex | null): {
   const duplicateLabels = [...labelFiles.values()]
     .filter((entry) => entry.files.size > 1)
     .map((entry) => ({ label: entry.label, files: [...entry.files] }));
-  const unreferencedLabels = (index?.defs ?? [])
+  const unreferencedLabels = definitions
     .filter(
       (definition) =>
-        definition.kind === "label" &&
         /^(?:fig|figure|tab|table|eq|equation)[:._-]/i.test(definition.name) &&
         !isReferenced(definition),
     )
@@ -196,7 +207,7 @@ export function buildRefsContext(input: PreflightContextInput): RefsContext {
   const { bibEntries, duplicateDois } = collectBibEntries(bibTexts);
   const allCitedKeys = collectCitedKeys(texts);
   const currentBibKeys = [...new Set([...bibKeys, ...bibEntries.map((entry) => entry.key)])];
-  const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index);
+  const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index, input.mainDoc);
   const bibKeyDefinitions = collectBibKeyDefinitions(bibTexts);
   return {
     bibKeys: currentBibKeys,

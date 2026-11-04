@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   too narrow for every agent, the ones past the edge, like a custom agent at
   the end, could only be reached with a trackpad. The selected agent now
   scrolls into view too (#385).
+- Separate LaTeX files under the same project folder no longer clash (#389).
+  Each LaTeX file with `\documentclass`, and the main document, now counts as
+  its own document together with the files it includes, and labels are matched
+  only within a document.
 
 ## [0.4.10] - 2026-11-02
 

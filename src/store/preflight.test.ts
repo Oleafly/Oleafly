@@ -125,6 +125,7 @@ function seedProject() {
         symbol("bibentry", "indexed", "refs.bib"),
       ],
       uses: [symbol("ref", "fig:used", "chapter.tex")],
+      compilationUnits: { rootsByFile: {}, externalDocuments: {} },
       symbolAt: vi.fn(),
       definitionFor: vi.fn(),
       references: vi.fn(() => []),
