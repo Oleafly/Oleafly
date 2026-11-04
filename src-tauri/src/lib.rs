@@ -333,6 +333,8 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     crate::deep_link::start(app.handle());
     #[cfg(windows)]
     crate::system_integration::repair_at_launch();
+    #[cfg(target_os = "linux")]
+    crate::system_integration::install_launcher_at_launch();
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
     tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);

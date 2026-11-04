@@ -39,7 +39,7 @@ pub(crate) fn desktop_locale(locale: &str) -> String {
     }
 }
 
-fn desktop_value(text: &str) -> String {
+pub(crate) fn desktop_value(text: &str) -> String {
     text.replace('\\', "\\\\")
         .replace('\n', "\\n")
         .replace('\t', "\\t")
@@ -266,7 +266,7 @@ pub(crate) fn status(layout: &Layout) -> Vec<Item> {
     .collect()
 }
 
-fn write_file(path: &Path, text: &str, executable: bool) -> Result<(), String> {
+pub(crate) fn write_file(path: &Path, text: &str, executable: bool) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
@@ -283,7 +283,7 @@ fn write_file(path: &Path, text: &str, executable: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn remove_file(path: &Path) -> Result<(), String> {
+pub(crate) fn remove_file(path: &Path) -> Result<(), String> {
     match std::fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),

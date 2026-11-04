@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reviewed release", although the downloaded archive was complete and
   correct. The check now reads member names exactly as the archive stores
   them.
+- On Linux, the AppImage shows the Oleafly icon in the taskbar, dock and window
+  list. On X11 desktops such as Cinnamon, the window icon was too large, so GTK
+  dropped it. Wayland desktops such as GNOME only take an app's icon from the
+  applications menu, so the AppImage now adds itself to that menu when it
+  starts, unless an installed package or another tool already has. If you
+  delete that entry, it stays deleted. The icon you pick under App icon in
+  Settings > Appearance now changes the taskbar and menu icon on Linux too.
+- On Linux, text in the PDF preview no longer gets orange and blue edges when
+  the desktop uses subpixel font smoothing, such as Rgba antialiasing in
+  Cinnamon. It made the text look as if it had no antialiasing. The preview now
+  draws PDF text in grayscale whatever the desktop setting.
 
 ## [0.4.10] - 2026-11-02
 
