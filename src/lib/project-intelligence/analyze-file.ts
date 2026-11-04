@@ -1835,6 +1835,26 @@ function latexSearchPathsIn(file: string, masked: string): LatexSearchPaths {
     : NO_SEARCH_PATHS;
 }
 
+const EXTERNAL_DOCUMENT = /\\externaldocument\s*(?:\[([^\]]*)\]\s*)?\{([^}]*)\}/g;
+
+type LatexExternalDocuments = NonNullable<FileAnalysis["latexExternalDocuments"]>;
+
+function latexExternalDocumentsIn(masked: string): LatexExternalDocuments {
+  return [...masked.matchAll(EXTERNAL_DOCUMENT)]
+    .map((match) => ({ document: match[2].trim(), prefix: (match[1] ?? "").trim() }))
+    .filter((external) => external.document.length > 0);
+}
+
+// The legacy parser masks only comments, and an \input in verbatim text
+// includes nothing.
+function withoutIgnoredIncludes(source: string, symbols: readonly Sym[]): readonly Sym[] {
+  if (!symbols.some((symbol) => symbol.kind === "inputedge")) return symbols;
+  const masked = maskLatexIgnoredRegions(source);
+  return symbols.filter(
+    (symbol) => symbol.kind !== "inputedge" || masked.startsWith("\\", symbol.from),
+  );
+}
+
 const ASSET_SEARCH_PATHS: Readonly<Record<string, "graphics" | "svg">> = {
   includegraphics: "graphics",
   includepdf: "graphics",
@@ -3133,7 +3153,12 @@ function addLegacyUses(
 function analyzeLatexBody(
   context: LegacyContext,
   diagnostics: ProjectDiagnostic[],
-): { partial: boolean; packageRefs: PackageReference[]; searchPaths: LatexSearchPaths } {
+): {
+  partial: boolean;
+  packageRefs: PackageReference[];
+  searchPaths: LatexSearchPaths;
+  externalDocuments: LatexExternalDocuments;
+} {
   const { engine, file, source, starts, definitions, uses, edges } = context;
   const ignored = latexIgnoredRanges(source);
   const masked = maskLatexIgnoredRegions(source, ignored);
@@ -3156,8 +3181,11 @@ function analyzeLatexBody(
   const ast = astAugmentLatexFile(file, source, starts);
   if (ast) definitions.push(...ast.definitions);
   const searchPaths = latexSearchPathsIn(file, masked);
+  const externalDocuments = latexExternalDocumentsIn(masked);
   const novalidate = scanLatexNovalidate(source, ignored);
-  if (novalidate.fileDisabled) return { partial: false, packageRefs, searchPaths };
+  if (novalidate.fileDisabled) {
+    return { partial: false, packageRefs, searchPaths, externalDocuments };
+  }
   const checked = maskNovalidateRegions(masked, novalidate.regions);
   const delimiterPartial = addDelimiterDiagnostics(
     file,
@@ -3177,6 +3205,7 @@ function analyzeLatexBody(
     partial: delimiterPartial || environmentPartial,
     packageRefs,
     searchPaths,
+    externalDocuments,
   };
 }
 
@@ -3274,16 +3303,21 @@ export function analyzeProjectFile(
   };
 
   addLegacyDefinitions(context, legacy.defs);
-  addLegacyUses(context, legacy.uses);
+  addLegacyUses(
+    context,
+    engine === "latex" ? withoutIgnoredIncludes(source, legacy.uses) : legacy.uses,
+  );
 
   let partial = false;
   let packageRefs: PackageReference[] = [];
   let searchPaths = NO_SEARCH_PATHS;
+  let externalDocuments: LatexExternalDocuments = [];
   if (engine === "latex") {
     const latex = analyzeLatexBody(context, diagnostics);
     partial = latex.partial;
     packageRefs = latex.packageRefs;
     searchPaths = latex.searchPaths;
+    externalDocuments = latex.externalDocuments;
   } else if (engine === "markdown") {
     partial = markdownAdditionalSyntax(
       file,
@@ -3331,5 +3365,6 @@ export function analyzeProjectFile(
     ...(searchPaths.graphics.length || searchPaths.svg.length
       ? { latexSearchPaths: searchPaths }
       : {}),
+    ...(externalDocuments.length ? { latexExternalDocuments: externalDocuments } : {}),
   };
 }

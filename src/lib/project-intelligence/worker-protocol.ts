@@ -284,6 +284,7 @@ function isSnapshotShell(
         "diagnostics",
         "outlines",
         "hierarchy",
+        "compilationUnits",
         "bibliography",
         "stats",
         "detectedPackages",
@@ -300,6 +301,7 @@ function isSnapshotShell(
     Array.isArray(value.diagnostics) &&
     isRecord(value.outlines) &&
     isRecord(value.hierarchy) &&
+    isRecord(value.compilationUnits) &&
     isRecord(value.bibliography) &&
     isRecord(value.stats) &&
     Array.isArray(value.detectedPackages) &&

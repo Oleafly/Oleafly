@@ -76,6 +76,7 @@ const SNAPSHOT = {
     definition("def:dup-b", "dup"),
   ],
   uses: [],
+  compilationUnits: { rootsByFile: {}, externalDocuments: {} },
 } as unknown as ProjectIntelligenceSnapshot;
 
 const PARAGRAPH = "See @knuth and @missing and @dup";
@@ -313,6 +314,7 @@ describe("visual project intelligence in richer documents", () => {
       use("use:ghost", "reference", "intro", "resolved", ["def:gone", "def:intro"], 30),
       use("use:phantom", "citation", "phantom", "unresolved", ["def:gone"], 50),
     ],
+    compilationUnits: { rootsByFile: {}, externalDocuments: {} },
   } as unknown as ProjectIntelligenceSnapshot;
 
   const CONTENT = {

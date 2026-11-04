@@ -9,14 +9,17 @@ import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { latexCommandKeyTokens } from "@/lib/project-intelligence/analyze-file";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import {
-  definitionCandidatesForUse,
+  definitionGroupsForUse,
   definitionsByKey,
+  resolutionForGroups,
+  uniqueDefinitions,
 } from "@/lib/project-intelligence/resolution";
 import {
   referencesFor,
 } from "@/lib/project-intelligence/selectors";
 import { engineForPath } from "@/lib/project-intelligence/source";
 import type {
+  CompilationUnits,
   ProjectDefinition,
   ProjectIntelligenceSnapshot,
   ProjectUse,
@@ -48,6 +51,7 @@ interface VisualPluginState {
 }
 
 interface VisualLookup {
+  compilationUnits: CompilationUnits;
   definitionsById: ReadonlyMap<string, ProjectDefinition>;
   definitionsByKey: ReadonlyMap<string, readonly ProjectDefinition[]>;
   usesById: ReadonlyMap<string, ProjectUse>;
@@ -83,6 +87,7 @@ function lookupFor(snapshot: ProjectIntelligenceSnapshot): VisualLookup {
     usesByFileAndName.set(key, sameName);
   }
   const lookup: VisualLookup = {
+    compilationUnits: snapshot.compilationUnits,
     definitionsById,
     definitionsByKey: definitionsByKey(snapshot.definitions),
     usesById,
@@ -156,15 +161,15 @@ function tokenUseKinds(
   return ["citation", "reference"];
 }
 
-function candidateDefinitions(
+// One group per document the file is part of, as in `definitionGroupsForUse`.
+function candidateGroups(
   lookup: VisualLookup,
   path: string,
   token: VisualToken,
-): readonly ProjectDefinition[] {
+): ProjectDefinition[][] {
   const engine = engineForPath(path);
   if (!engine) return [];
-  const seen = new Set<string>();
-  const candidates: ProjectDefinition[] = [];
+  const groups: ProjectDefinition[][] = [];
   for (const kind of tokenUseKinds(token.kind)) {
     const use: ProjectUse = {
       id: "",
@@ -176,16 +181,61 @@ function candidateDefinitions(
       resolution: "unresolved",
       definitionIds: [],
     };
-    for (const definition of definitionCandidatesForUse(
+    definitionGroupsForUse(
       use,
       lookup.definitionsByKey,
-    )) {
-      if (seen.has(definition.id)) continue;
-      seen.add(definition.id);
-      candidates.push(definition);
-    }
+      lookup.compilationUnits,
+    ).forEach((group, index) => {
+      groups[index] = uniqueDefinitions([groups[index] ?? [], group]);
+    });
   }
-  return candidates;
+  return groups;
+}
+
+interface TokenDefinitions {
+  readonly definitions: readonly ProjectDefinition[];
+  readonly resolution: "resolved" | "unresolved" | "duplicate";
+}
+
+function definitionsOfUse(lookup: VisualLookup, use: ProjectUse): TokenDefinitions {
+  const definitions = use.definitionIds.flatMap((id) => {
+    const definition = lookup.definitionsById.get(id);
+    return definition ? [definition] : [];
+  });
+  if (definitions.length === 0) return { definitions, resolution: "unresolved" };
+  return {
+    definitions,
+    resolution:
+      definitions.length > 1 && use.resolution === "duplicate"
+        ? "duplicate"
+        : "resolved",
+  };
+}
+
+function tokenDefinitions(
+  snapshot: ProjectIntelligenceSnapshot,
+  path: string,
+  token: VisualToken,
+): TokenDefinitions {
+  const lookup = lookupFor(snapshot);
+  const use = token.useId ? lookup.usesById.get(token.useId) : undefined;
+  if (use) {
+    const found = definitionsOfUse(lookup, use);
+    if (found.definitions.length > 0) return found;
+  }
+  const groups = candidateGroups(lookup, path, token);
+  const candidates = uniqueDefinitions(groups);
+  if (candidates.length > 0) {
+    return {
+      definitions: candidates,
+      resolution: resolutionForGroups(groups),
+    };
+  }
+
+  const fallbackUse = usesForToken(snapshot, path, token)[0];
+  return fallbackUse
+    ? definitionsOfUse(lookup, fallbackUse)
+    : { definitions: [], resolution: "unresolved" };
 }
 
 function definitionsForToken(
@@ -193,26 +243,7 @@ function definitionsForToken(
   path: string,
   token: VisualToken,
 ): readonly ProjectDefinition[] {
-  const lookup = lookupFor(snapshot);
-  if (token.useId) {
-    const use = lookup.usesById.get(token.useId);
-    const definitions =
-      use?.definitionIds.flatMap((id) => {
-        const definition = lookup.definitionsById.get(id);
-        return definition ? [definition] : [];
-      }) ?? [];
-    if (definitions.length > 0) return definitions;
-  }
-  const candidates = candidateDefinitions(lookup, path, token);
-  if (candidates.length > 0) return candidates;
-
-  const fallbackUse = usesForToken(snapshot, path, token)[0];
-  return fallbackUse
-    ? fallbackUse.definitionIds.flatMap((id) => {
-        const definition = lookup.definitionsById.get(id);
-        return definition ? [definition] : [];
-      })
-    : [];
+  return tokenDefinitions(snapshot, path, token).definitions;
 }
 
 function resolutionFor(
@@ -220,10 +251,7 @@ function resolutionFor(
   path: string,
   token: VisualToken,
 ): "resolved" | "unresolved" | "duplicate" {
-  const definitions = definitionsForToken(snapshot, path, token);
-  if (definitions.length === 0) return "unresolved";
-  if (definitions.length > 1) return "duplicate";
-  return "resolved";
+  return tokenDefinitions(snapshot, path, token).resolution;
 }
 
 function tokenNoun(kind: VisualToken["kind"]): string {

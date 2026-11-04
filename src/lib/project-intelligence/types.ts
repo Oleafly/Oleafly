@@ -205,6 +205,23 @@ export interface ProjectHierarchy {
   readonly edges: readonly ProjectEdge[];
 }
 
+export interface ExternalDocument {
+  readonly root: string;
+  readonly prefix: string;
+}
+
+/**
+ * The LaTeX documents of a project. A root is a LaTeX file with
+ * `\documentclass`, or the main document; its compilation unit is the root
+ * and every file it reaches through include and import edges.
+ */
+export interface CompilationUnits {
+  /** For each file, the roots whose units contain it. Files that no root reaches are absent. */
+  readonly rootsByFile: Readonly<Record<string, readonly string[]>>;
+  /** For each root, the documents whose labels it reads with xr's `\externaldocument`, and the prefix it gives them. */
+  readonly externalDocuments: Readonly<Record<string, readonly ExternalDocument[]>>;
+}
+
 export interface ProjectRelatedLocation {
   readonly message: ProjectDiagnosticMessage;
   readonly location: SourceLocation;
@@ -291,6 +308,8 @@ export interface ProjectFileState {
   readonly statusReason?: string;
   readonly packageRefs?: readonly PackageReference[];
   readonly latexSearchPaths?: LatexSearchPaths;
+  /** `\externaldocument[prefix]{document}` declarations, as written. */
+  readonly latexExternalDocuments?: readonly { readonly document: string; readonly prefix: string }[];
 }
 
 export interface FileIntelligence extends ProjectFileState {
@@ -354,6 +373,7 @@ export interface ProjectIntelligenceSnapshot {
   readonly diagnostics: readonly ProjectDiagnostic[];
   readonly outlines: Readonly<Record<string, readonly OutlineNode[]>>;
   readonly hierarchy: ProjectHierarchy;
+  readonly compilationUnits: CompilationUnits;
   readonly bibliography: BibliographyCatalog;
   readonly stats: ProjectIntelligenceStats;
   readonly detectedPackages: readonly string[];

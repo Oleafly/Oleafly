@@ -340,6 +340,27 @@ describe("Markdown and BibTeX completion", () => {
     expect(details[1]).toContain(en.completion.duplicateIndex.replace("{{index}}", "2").replace("{{total}}", "2"));
   });
 
+  it("offers the labels the current document sees, with xr imports under their prefix", () => {
+    const main = String.raw`\documentclass{article}
+\usepackage{xr}
+\externaldocument[M-]{old}
+\label{sec:x}
+\ref{sec:`;
+    install(
+      {
+        "main.tex": main,
+        "old.tex": String.raw`\documentclass{article}\label{sec:x}\label{sec:old}`,
+        "other.tex": String.raw`\documentclass{article}\label{sec:other}`,
+      },
+      "main.tex",
+    );
+    const result = complete(main);
+    expect(labels(result).sort()).toEqual(["M-sec:old", "M-sec:x", "sec:x"]);
+    expect(option(result, "sec:x").detail).not.toContain(
+      completion.duplicateCount.replace("{{count}}", "2"),
+    );
+  });
+
   it("has nothing to offer without analysis for a Markdown file or an unsupported path", () => {
     useFilesStore.setState({ projectId: PROJECT, activePath: "notes.md", files: {} });
     expect(complete("[see](#in")).toBeNull();

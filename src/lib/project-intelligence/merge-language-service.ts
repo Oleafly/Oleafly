@@ -1,9 +1,12 @@
 import {
-  definitionCandidatesForUse,
+  definitionGroupsForUse,
   definitionsByKey,
+  resolutionForGroups,
+  uniqueDefinitions,
 } from "./resolution";
 import { stableId } from "./source";
 import type {
+  CompilationUnits,
   ExternalProjectIntelligence,
   OutlineNode,
   ProjectDefinition,
@@ -91,6 +94,7 @@ function deduplicateDefinitions(
 function resolveAgainstMergedDefinitions(
   use: ProjectUse,
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  units: CompilationUnits,
 ): ProjectUse {
   if (
     use.kind !== "reference" &&
@@ -100,12 +104,12 @@ function resolveAgainstMergedDefinitions(
   ) {
     return use;
   }
-  const candidates = definitionCandidatesForUse(use, byKey);
+  const groups = definitionGroupsForUse(use, byKey, units);
+  const candidates = uniqueDefinitions(groups);
   if (candidates.length === 0) return use;
   return {
     ...use,
-    resolution:
-      candidates.length === 1 ? "resolved" : "duplicate",
+    resolution: resolutionForGroups(groups),
     definitionIds: candidates.map((definition) => definition.id),
   };
 }
@@ -114,6 +118,7 @@ function deduplicateUses(
   local: readonly ProjectUse[],
   external: readonly ProjectUse[],
   definitions: readonly ProjectDefinition[],
+  units: CompilationUnits,
 ): ProjectUse[] {
   const signatures = new Set(local.map(useSignature));
   const byKey = definitionsByKey(definitions);
@@ -127,7 +132,7 @@ function deduplicateUses(
     }),
   ]
     .map((use) =>
-      resolveAgainstMergedDefinitions(use, byKey),
+      resolveAgainstMergedDefinitions(use, byKey, units),
     )
     .sort(
       (left, right) =>
@@ -220,6 +225,7 @@ export function mergeLanguageServiceIntelligence(
     snapshot.uses,
     acceptedUses,
     definitions,
+    snapshot.compilationUnits,
   );
   const unresolvedLocations = new Set(
     uses

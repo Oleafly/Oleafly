@@ -64,8 +64,12 @@ import {
 } from "@/lib/latex-corpus";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import {
-  definitionCandidatesForUse,
+  definitionGroupsForUse,
   definitionsByKey,
+  definitionsVisibleFrom,
+  NO_COMPILATION_UNITS,
+  resolutionForGroups,
+  uniqueDefinitions,
 } from "@/lib/project-intelligence/resolution";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import { engineForPath } from "@/lib/project-intelligence/source";
@@ -74,6 +78,7 @@ import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { projectDiagnosticText } from "@/lib/project-intelligence/reason";
 import type {
   CitationCompletion,
+  CompilationUnits,
   ProjectDefinition,
   ProjectDiagnostic,
   ProjectIntelligenceSnapshot,
@@ -251,7 +256,8 @@ const ENGINE_SCOPED_KINDS: ReadonlySet<ProjectDefinition["kind"]> = new Set([
 ]);
 
 function definitionOptions(
-  snapshot: Pick<ProjectIntelligenceSnapshot, "definitions">,
+  snapshot: Pick<ProjectIntelligenceSnapshot, "definitions"> &
+    Partial<Pick<ProjectIntelligenceSnapshot, "compilationUnits">>,
   guard: CompletionGuard,
   kinds: ReadonlySet<ProjectDefinition["kind"]>,
   query: string,
@@ -259,17 +265,38 @@ function definitionOptions(
 ): Completion[] {
   const normalizedQuery = completionKey(query);
   const engine = engineForPath(guard.path);
-  const candidates = snapshot.definitions.filter(
-    (definition) =>
-      kinds.has(definition.kind) &&
-      (!ENGINE_SCOPED_KINDS.has(definition.kind) ||
-        definition.engine === engine) &&
-      (!normalizedQuery ||
-        completionKey(definition.name).includes(normalizedQuery)),
+  // Offer what resolution accepts from this file, and count a name as
+  // duplicate only when one document sees it more than once.
+  const groups = definitionsVisibleFrom(
+    snapshot.compilationUnits ?? NO_COMPILATION_UNITS,
+    guard.path,
+    snapshot.definitions.filter(
+      (definition) =>
+        kinds.has(definition.kind) &&
+        (!ENGINE_SCOPED_KINDS.has(definition.kind) ||
+          definition.engine === engine),
+    ),
+  ).map((group) =>
+    group.filter(
+      (definition) =>
+        !normalizedQuery ||
+        completionKey(definition.name).includes(normalizedQuery),
+    ),
   );
+  const candidates = [
+    ...new Map(
+      groups.flat().map((definition) => [`${definition.id}\0${definition.name}`, definition]),
+    ).values(),
+  ];
   const counts = new Map<string, number>();
-  for (const candidate of candidates) {
-    counts.set(candidate.name, (counts.get(candidate.name) ?? 0) + 1);
+  for (const group of groups) {
+    const inGroup = new Map<string, number>();
+    for (const definition of group) {
+      inGroup.set(definition.name, (inGroup.get(definition.name) ?? 0) + 1);
+    }
+    for (const [name, count] of inGroup) {
+      counts.set(name, Math.max(counts.get(name) ?? 0, count));
+    }
   }
 
   return [...candidates]
@@ -1685,16 +1712,20 @@ function fallbackLookup(
   return lookup;
 }
 
-function candidateCount(
+// The current file's own definitions come from its fresh analysis, the rest
+// from the project snapshot.
+function candidateGroups(
   use: ProjectUse,
   path: string,
   current: DefinitionsByKey,
   project: DefinitionsByKey,
-): number {
-  const elsewhere = definitionCandidatesForUse(use, project).filter(
-    (definition) => definition.location.file !== path,
-  ).length;
-  return definitionCandidatesForUse(use, current).length + elsewhere;
+  units: CompilationUnits,
+): ProjectDefinition[][] {
+  const elsewhere = definitionGroupsForUse(use, project, units);
+  return definitionGroupsForUse(use, current, units).map((group, index) => [
+    ...group,
+    ...elsewhere[index].filter((definition) => definition.location.file !== path),
+  ]);
 }
 
 function referenceNoun(use: ProjectUse): string {
@@ -1712,10 +1743,12 @@ function referenceDiagnosticFor(
   path: string,
   current: DefinitionsByKey,
   project: DefinitionsByKey,
+  units: CompilationUnits,
 ): Diagnostic | null {
   if (use.kind !== "reference" && use.kind !== "citation") return null;
-  const candidates = candidateCount(use, path, current, project);
-  if (candidates === 1) return null;
+  const groups = candidateGroups(use, path, current, project, units);
+  const resolution = resolutionForGroups(groups);
+  if (resolution === "resolved") return null;
   const noun = referenceNoun(use);
   return {
     from: use.location.range.from,
@@ -1725,7 +1758,7 @@ function referenceDiagnosticFor(
     ),
     severity: "warning",
     message:
-      candidates === 0
+      resolution === "unresolved"
         ? i18n.t(($) => $.intelligence.diagnostics.unresolved, {
             noun: noun.toLocaleLowerCase("en-US"),
             name: use.name,
@@ -1733,7 +1766,7 @@ function referenceDiagnosticFor(
         : i18n.t(($) => $.intelligence.diagnostics.ambiguous, {
             noun,
             name: use.name,
-            count: candidates,
+            count: uniqueDefinitions(groups).length,
           }),
     source: "live references · current file",
   };
@@ -1787,6 +1820,7 @@ export function currentFileReferenceDiagnostics(
       path,
       current,
       project,
+      snapshot.compilationUnits,
     );
     if (diagnostic) diagnostics.push(diagnostic);
   }

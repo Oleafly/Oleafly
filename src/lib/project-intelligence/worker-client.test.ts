@@ -22,6 +22,7 @@ function snapshotShell(id = identity) {
     diagnostics: [],
     outlines: {},
     hierarchy: { roots: [], nodes: [], edges: [] },
+    compilationUnits: { rootsByFile: {}, externalDocuments: {} },
     bibliography: { entries: [], duplicates: [], declarationUseIds: [] },
     stats: { fileCount: 0, characterCount: 0, parsedFileCount: 0, reusedFileCount: 0, durationMs: 0 },
     detectedPackages: [],

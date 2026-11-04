@@ -1755,3 +1755,177 @@ describe("LaTeX includes searched from the main document's folder", () => {
     });
   });
 });
+
+describe("LaTeX compilation units", () => {
+  function duplicates(value: ProjectIntelligenceSnapshot) {
+    return value.diagnostics
+      .filter((diagnostic) => diagnostic.code === "duplicate-definition")
+      .map((diagnostic) => diagnostic.location.file);
+  }
+
+  function referenceTargets(value: ProjectIntelligenceSnapshot) {
+    const byId = new Map(value.definitions.map((definition) => [definition.id, definition]));
+    return uses(value, "reference").map((use) => [
+      use.location.file,
+      use.resolution,
+      use.definitionIds.map((id) => byId.get(id)?.location.file),
+    ]);
+  }
+
+  const REVISION = String.raw`\documentclass{article}
+\begin{document}
+\section{Introduction}\label{sec:intro}
+See \ref{sec:intro}.
+\end{document}`;
+
+  it("keeps the labels of separate documents in one folder apart", () => {
+    const value = snapshot({
+      "manuscript.tex": REVISION,
+      "manuscript_v1.tex": REVISION,
+      "manuscript_v2.tex": REVISION,
+    });
+
+    expect(value.compilationUnits.rootsByFile).toEqual({
+      "manuscript.tex": ["manuscript.tex"],
+      "manuscript_v1.tex": ["manuscript_v1.tex"],
+      "manuscript_v2.tex": ["manuscript_v2.tex"],
+    });
+    expect(value.diagnostics).toEqual([]);
+    const expected = [
+      ["manuscript_v1.tex", "resolved", ["manuscript_v1.tex"]],
+      ["manuscript_v2.tex", "resolved", ["manuscript_v2.tex"]],
+      ["manuscript.tex", "resolved", ["manuscript.tex"]],
+    ];
+    expect(referenceTargets(value)).toEqual(expected);
+    expect(
+      referenceTargets(
+        mergeLanguageServiceIntelligence(value, {
+          identity: value.identity,
+          definitions: [],
+          uses: [],
+        }),
+      ),
+    ).toEqual(expected);
+  });
+
+  it("counts a file that several documents include once in each", () => {
+    const value = snapshot({
+      "a.tex": String.raw`\documentclass{article}
+\input{shared}
+\label{dup}
+\ref{fig:shared}`,
+      "b.tex": String.raw`\documentclass{article}
+\input{shared}
+\ref{fig:shared}`,
+      "shared.tex": String.raw`\label{fig:shared}\label{dup}`,
+    });
+
+    expect(value.compilationUnits.rootsByFile["shared.tex"]).toEqual(["a.tex", "b.tex"]);
+    expect(duplicates(value)).toEqual(["a.tex", "shared.tex"]);
+    expect(referenceTargets(value)).toEqual([
+      ["a.tex", "resolved", ["shared.tex"]],
+      ["b.tex", "resolved", ["shared.tex"]],
+    ]);
+  });
+
+  it("resolves a subfile's references to the document that includes it", () => {
+    const value = snapshot({
+      "main.tex": String.raw`\documentclass{article}
+\label{sec:main}
+\subfile{chapter}`,
+      "chapter.tex": String.raw`\documentclass[main]{subfiles}
+\ref{sec:main}`,
+    });
+
+    expect(value.compilationUnits.rootsByFile["chapter.tex"]).toEqual(["chapter.tex", "main.tex"]);
+    expect(referenceTargets(value)).toEqual([["chapter.tex", "resolved", ["main.tex"]]]);
+  });
+
+  it("treats the main document as a root without \\documentclass", () => {
+    const value = snapshot({
+      "main.tex": String.raw`\input{body}`,
+      "body.tex": String.raw`\label{sec:intro}`,
+      "draft.tex": String.raw`\documentclass{article}
+\label{sec:intro}`,
+    });
+
+    expect(value.compilationUnits.rootsByFile["body.tex"]).toEqual(["main.tex"]);
+    expect(duplicates(value)).toEqual([]);
+  });
+
+  it("resolves a reference in a shared file to each document's own label", () => {
+    const value = snapshot({
+      "a.tex": String.raw`\documentclass{article}
+\label{x}
+\input{shared}`,
+      "b.tex": String.raw`\documentclass{article}
+\label{x}
+\input{shared}`,
+      "shared.tex": String.raw`\ref{x}`,
+    });
+
+    expect(value.diagnostics).toEqual([]);
+    expect(referenceTargets(value)).toEqual([["shared.tex", "resolved", ["a.tex", "b.tex"]]]);
+  });
+
+  it("ignores an \\input in verbatim text", () => {
+    const value = snapshot({
+      "a.tex": String.raw`\documentclass{article}
+\label{x}
+\begin{verbatim}
+\input{b}
+\end{verbatim}`,
+      "b.tex": String.raw`\documentclass{article}
+\label{x}`,
+    });
+
+    expect(value.compilationUnits.rootsByFile["b.tex"]).toEqual(["b.tex"]);
+    expect(value.diagnostics).toEqual([]);
+  });
+
+  it("resolves references to another document's labels through xr", () => {
+    const value = snapshot({
+      "manuscript.tex": String.raw`\documentclass{article}
+\section{Introduction}\label{sec:intro}`,
+      "response.tex": String.raw`\documentclass{article}
+\usepackage{xr}
+\externaldocument[M-]{manuscript}
+\section{Reply}\label{sec:intro}
+We revised \ref{M-sec:intro}, as \ref{sec:intro} explains.`,
+    });
+
+    expect(value.compilationUnits.externalDocuments).toEqual({
+      "response.tex": [{ root: "manuscript.tex", prefix: "M-" }],
+    });
+    expect(value.diagnostics).toEqual([]);
+    expect(referenceTargets(value)).toEqual([
+      ["response.tex", "resolved", ["manuscript.tex"]],
+      ["response.tex", "resolved", ["response.tex"]],
+    ]);
+  });
+
+  it("reports a label that clashes with one its document imports through xr", () => {
+    const value = snapshot({
+      "a.tex": String.raw`\documentclass{article}
+\usepackage{xr}
+\externaldocument{b}
+\label{x}
+\ref{x}`,
+      "b.tex": String.raw`\documentclass{article}
+\label{x}`,
+    });
+
+    expect(duplicates(value)).toEqual(["a.tex", "a.tex"]);
+  });
+
+  it("lets a fragment no document includes see every label", () => {
+    const value = snapshot({
+      "main.tex": String.raw`\documentclass{article}
+\label{sec:main}`,
+      "notes.tex": String.raw`\ref{sec:main}`,
+    });
+
+    expect(value.compilationUnits.rootsByFile["notes.tex"]).toBeUndefined();
+    expect(referenceTargets(value)).toEqual([["notes.tex", "resolved", ["main.tex"]]]);
+  });
+});

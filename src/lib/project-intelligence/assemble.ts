@@ -5,8 +5,11 @@ import {
 } from "@oleafly/latex";
 import { summarizeBibliographyEntry } from "./bibliography-summary";
 import {
-  definitionCandidatesForUse,
+  definitionGroupsForUse,
+  definitionsByDocument,
   definitionsByKey,
+  resolutionForGroups,
+  uniqueDefinitions,
 } from "./resolution";
 import type { LatexSearchPaths } from "@oleafly/editor/file-references";
 import { dirname } from "@/lib/path-utils";
@@ -22,6 +25,8 @@ import {
   type BibliographyCatalog,
   type BibliographyDuplicate,
   type BibliographyEntryDetail,
+  type CompilationUnits,
+  type ExternalDocument,
   type FileAnalysis,
   type OutlineNode,
   type ProjectDefinition,
@@ -316,50 +321,146 @@ interface AssetSearch {
 
 const NO_SEARCH_PATHS: LatexSearchPaths = { graphics: [], svg: [] };
 
-function searchesFromMainDirectory(edge: ProjectEdge): boolean {
+function searchesFromRootDirectory(edge: ProjectEdge): boolean {
   return edge.kind === "include" && engineForPath(edge.fromFile) === "latex";
 }
 
-function includeSearchDirectories(edge: ProjectEdge, mainDirectory: string): string[] {
-  return [...new Set([mainDirectory, "", dirname(edge.fromFile)])];
+function includeSearchDirectories(edge: ProjectEdge, rootDirectory: string): string[] {
+  return [...new Set([rootDirectory, "", dirname(edge.fromFile)])];
+}
+
+const LATEX_DOCUMENT = /\.(?:tex|ltx|latex)$/i;
+
+function latexRoots(files: readonly FileAnalysis[], mainDocument: string | undefined): string[] {
+  const roots = new Set(
+    files
+      .filter(
+        (file) =>
+          LATEX_DOCUMENT.test(file.file) &&
+          file.packageRefs?.some((ref) => ref.kind === "class"),
+      )
+      .map((file) => file.file),
+  );
+  if (mainDocument && LATEX_DOCUMENT.test(mainDocument)) roots.add(mainDocument);
+  return [...roots].sort((left, right) => left.localeCompare(right));
+}
+
+interface DocumentWalk {
+  readonly files: Set<string>;
+  readonly resolved: Map<number, ProjectEdge>;
+}
+
+/**
+ * Follows include and import edges from a root. LaTeX includes are searched
+ * from the root's folder, where LaTeX runs; `resolved` holds those edges as
+ * resolved for this root.
+ */
+function walkDocument(
+  root: string,
+  edges: readonly ProjectEdge[],
+  linked: readonly ProjectEdge[],
+  edgesByFile: ReadonlyMap<string, readonly number[]>,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): DocumentWalk {
+  const rootDirectory = dirname(root);
+  const files = new Set<string>();
+  const resolved = new Map<number, ProjectEdge>();
+  const pending = [root];
+  for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
+    if (files.has(file)) continue;
+    files.add(file);
+    for (const index of edgesByFile.get(file) ?? []) {
+      const original = edges[index];
+      let edge = linked[index];
+      if (searchesFromRootDirectory(original)) {
+        edge = resolveEdgeIn(
+          original,
+          includeSearchDirectories(original, rootDirectory),
+          known,
+          knownByLower,
+        );
+        resolved.set(index, edge);
+      }
+      if (edge.resolution === "resolved" && edge.targetFile) pending.push(edge.targetFile);
+    }
+  }
+  return { files, resolved };
+}
+
+const LATEX_DOCUMENT_EXTENSIONS = [".tex", ".ltx", ".latex"];
+
+/**
+ * The root that xr's `\externaldocument{name}` reads: `name.aux`, which LaTeX
+ * writes when it compiles `name.tex` in the root's folder.
+ */
+function externalRoot(
+  name: string,
+  root: string,
+  roots: ReadonlySet<string>,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): string | null {
+  const path = resolveProjectPathFrom(dirname(root), name);
+  if (!path) return null;
+  const matches = LATEX_DOCUMENT_EXTENSIONS.flatMap((extension) =>
+    matchingProjectFiles(`${path}${extension}`, known, knownByLower),
+  ).filter((file) => roots.has(file) && file !== root);
+  return matches.length === 1 ? matches[0] : null;
 }
 
 function linkDocuments(
   edges: readonly ProjectEdge[],
+  files: Readonly<Record<string, FileAnalysis>>,
   mainDocument: string | undefined,
+  roots: readonly string[],
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
-): { linked: ProjectEdge[]; mainDocumentFiles: ReadonlySet<string> } {
+): {
+  linked: ProjectEdge[];
+  mainDocumentFiles: ReadonlySet<string>;
+  compilationUnits: CompilationUnits;
+} {
   const linked = edges.map((edge) => (edge.searchPath ? edge : resolveEdge(edge, known, knownByLower)));
-  const reachable = new Set<string>();
-  if (!mainDocument) return { linked, mainDocumentFiles: reachable };
-  const mainDirectory = dirname(mainDocument);
-  const byFile = new Map<string, number[]>();
+  const edgesByFile = new Map<string, number[]>();
   linked.forEach((edge, index) => {
     if (edge.kind !== "include" && edge.kind !== "import") return;
-    const indices = byFile.get(edge.fromFile) ?? [];
+    const indices = edgesByFile.get(edge.fromFile) ?? [];
     indices.push(index);
-    byFile.set(edge.fromFile, indices);
+    edgesByFile.set(edge.fromFile, indices);
   });
-  const pending = [mainDocument];
-  for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
-    if (reachable.has(file)) continue;
-    reachable.add(file);
-    for (const index of byFile.get(file) ?? []) {
-      const original = edges[index];
-      if (searchesFromMainDirectory(original)) {
-        linked[index] = resolveEdgeIn(
-          original,
-          includeSearchDirectories(original, mainDirectory),
-          known,
-          knownByLower,
-        );
-      }
-      const edge = linked[index];
-      if (edge.resolution === "resolved" && edge.targetFile) pending.push(edge.targetFile);
+  const walk = (root: string) =>
+    walkDocument(root, edges, linked, edgesByFile, known, knownByLower);
+  const main = mainDocument ? walk(mainDocument) : null;
+  for (const [index, edge] of main?.resolved ?? []) linked[index] = edge;
+  const rootsByFile = new Map<string, string[]>();
+  const externalDocuments: Record<string, ExternalDocument[]> = {};
+  const rootSet = new Set(roots);
+  for (const root of roots) {
+    const unit = root === mainDocument && main ? main.files : walk(root).files;
+    for (const file of unit) {
+      const fileRoots = rootsByFile.get(file) ?? [];
+      fileRoots.push(root);
+      rootsByFile.set(file, fileRoots);
     }
+    const imports = [...unit].flatMap((file) =>
+      (files[file]?.latexExternalDocuments ?? []).flatMap(({ document, prefix }) => {
+        const external = externalRoot(document, root, rootSet, known, knownByLower);
+        return external ? [{ root: external, prefix }] : [];
+      }),
+    );
+    if (imports.length > 0) externalDocuments[root] = imports;
   }
-  return { linked, mainDocumentFiles: reachable };
+  return {
+    linked,
+    mainDocumentFiles: main?.files ?? new Set(),
+    compilationUnits: {
+      rootsByFile: Object.fromEntries(
+        [...rootsByFile].sort(([left], [right]) => left.localeCompare(right)),
+      ),
+      externalDocuments,
+    },
+  };
 }
 
 function projectSearchPaths(files: readonly FileAnalysis[]): LatexSearchPaths {
@@ -505,6 +606,7 @@ function withCandidates(edge: ProjectEdge, candidates: readonly string[]): Proje
 function resolvedUse(
   original: ProjectUse,
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  units: CompilationUnits,
   edge?: ProjectEdge,
 ): ProjectUse | null {
   if (
@@ -521,7 +623,8 @@ function resolvedUse(
       definitionIds: [],
     };
   }
-  const candidates = definitionCandidatesForUse(original, byKey);
+  const groups = definitionGroupsForUse(original, byKey, units);
+  const candidates = uniqueDefinitions(groups);
   if (
     (original.kind === "macro" ||
       original.kind === "environment" ||
@@ -543,7 +646,7 @@ function resolvedUse(
   return {
     ...original,
     kind,
-    resolution: resolutionForCandidateCount(candidates.length),
+    resolution: resolutionForGroups(groups),
     definitionIds: candidates.map((definition) => definition.id),
   };
 }
@@ -678,6 +781,7 @@ function knownFileIndex(knownFiles: readonly string[]): {
 function resolveUses(
   files: readonly FileAnalysis[],
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  units: CompilationUnits,
   edgeByLocation: ReadonlyMap<string, ProjectEdge>,
 ): ProjectUse[] {
   const uses: ProjectUse[] = [];
@@ -685,7 +789,7 @@ function resolveUses(
     const edge = edgeByLocation.get(
       `${original.location.file}:${original.location.range.from}:${original.kind}`,
     );
-    const resolved = resolvedUse(original, byKey, edge);
+    const resolved = resolvedUse(original, byKey, units, edge);
     if (resolved) uses.push(resolved);
   }
   uses.sort(
@@ -699,11 +803,14 @@ function resolveUses(
 
 function duplicateDefinitionDiagnostics(
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  units: CompilationUnits,
 ): ProjectDiagnostic[] {
   const out: ProjectDiagnostic[] = [];
+  // A single label can still clash with one a document imports through xr.
+  const imports = Object.keys(units.externalDocuments).length > 0;
   for (const candidates of byKey.values()) {
     if (
-      candidates.length < 2 ||
+      (candidates.length < 2 && !imports) ||
       !candidates.every((definition) =>
         TARGET_DEFINITION_KINDS.has(definition.kind),
       )
@@ -715,11 +822,24 @@ function duplicateDefinitionDiagnostics(
     if (candidates.every((definition) => definition.kind === "macro")) {
       continue;
     }
-    out.push(
-      ...candidates.map((definition) =>
-        diagnosticForDefinitionDuplicate(definition, candidates),
-      ),
-    );
+    for (const definition of candidates) {
+      const latexLabel =
+        definition.kind === "label" && definition.engine === "latex";
+      const clashing = definitionsByDocument(
+        units,
+        definition.location.file,
+        candidates,
+        latexLabel ? { name: definition.name, byKey } : undefined,
+      ).filter((group) => group.length > 1);
+      if (clashing.length > 0) {
+        out.push(
+          diagnosticForDefinitionDuplicate(
+            definition,
+            uniqueDefinitions(clashing),
+          ),
+        );
+      }
+    }
   }
   return out;
 }
@@ -815,9 +935,11 @@ export function assembleProjectIntelligenceResult(
   const byKey = definitionsByKey(definitions);
 
   const { known, knownByLower } = knownFileIndex(input.knownFiles);
-  const { linked, mainDocumentFiles } = linkDocuments(
+  const { linked, mainDocumentFiles, compilationUnits } = linkDocuments(
     fileList.flatMap((file) => file.edges),
+    orderedFiles,
     input.mainDocument,
+    latexRoots(fileList, input.mainDocument),
     known,
     knownByLower,
   );
@@ -843,13 +965,18 @@ export function assembleProjectIntelligenceResult(
     ]),
   );
 
-  const uses = resolveUses(fileList, byKey, edgeByLocation);
+  const uses = resolveUses(
+    fileList,
+    byKey,
+    compilationUnits,
+    edgeByLocation,
+  );
 
   const diagnostics: ProjectDiagnostic[] = fileList.flatMap(
     (file) => file.diagnostics,
   );
   diagnostics.push(
-    ...duplicateDefinitionDiagnostics(byKey),
+    ...duplicateDefinitionDiagnostics(byKey, compilationUnits),
     ...unresolvedUseDiagnostics(uses, definitionsById),
     ...edgeDiagnostics(edges),
   );
@@ -902,6 +1029,7 @@ export function assembleProjectIntelligenceResult(
     diagnostics,
     outlines,
     hierarchy,
+    compilationUnits,
     bibliography,
     stats: { ...input.stats },
     detectedPackages,

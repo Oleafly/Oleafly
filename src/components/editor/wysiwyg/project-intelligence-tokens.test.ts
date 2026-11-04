@@ -54,7 +54,11 @@ function snapshotWith(
   definitions: ProjectDefinition[],
   uses: ProjectUse[],
 ): ProjectIntelligenceSnapshot {
-  return { definitions, uses } as unknown as ProjectIntelligenceSnapshot;
+  return {
+    definitions,
+    uses,
+    compilationUnits: { rootsByFile: {}, externalDocuments: {} },
+  } as unknown as ProjectIntelligenceSnapshot;
 }
 
 const attributes = (snapshot: ProjectIntelligenceSnapshot, source: string) =>
