@@ -168,13 +168,13 @@ fetch() {
       ;;
   esac
 
-  local unpatched_sha
-  unpatched_sha="$(checksum "$bin")"
-  node "$ROOT/scripts/biber/harden-biber.mjs" "$bin"
-  if [[ "$(checksum "$bin")" == "$unpatched_sha" ]]; then
+  node "$ROOT/scripts/biber/harden-biber.mjs" <"$bin" >"$bin.hardened"
+  if cmp -s "$bin" "$bin.hardened"; then
     echo "hardening left $target's Biber unchanged" >&2
     exit 1
   fi
+  mv "$bin.hardened" "$bin"
+  chmod +x "$bin"
   # Hardening changes signed bytes, and Apple Silicon refuses a stale signature.
   if [[ "$target" == *apple-darwin && "$(uname)" == "Darwin" ]]; then
     codesign --force --sign - "$bin"

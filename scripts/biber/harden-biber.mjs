@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 //
 // Patches the Perl inside a packed Biber 2.17 in place.
-//   node scripts/biber/harden-biber.mjs <biber-binary>
+//   node scripts/biber/harden-biber.mjs < biber > hardened-biber
 //
 // Tectonic starts Biber with arguments taken from the document's .run.xml, and
 // Biber evaluates text from the control file as Perl. So a document could run
@@ -15,9 +15,6 @@
 // its length and its layout, which is what keeps a Mach-O file valid.
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
-import { chmod, lstat, readFile, realpath, rename, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
 
@@ -30,7 +27,6 @@ const DIRECTORY_ENTRY = 0x02014b50;
 const LOCAL_HEADER = 0x04034b50;
 const DEFLATE = 8;
 const HARDENING_REVISION = "oleafly-biber-hardening-1";
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 export const BIBER_PATCHES = [
   {
@@ -313,40 +309,19 @@ export function hardenBiber(binary, patches = BIBER_PATCHES) {
   return file;
 }
 
-/**
- * The fetch step writes the binary to a temporary folder, and a developer may
- * point at one in the checkout. Nothing else is ever patched in place.
- */
-export async function confinedBinary(argument) {
-  const candidate = await realpath(resolve(argument));
-  const roots = await Promise.all([realpath(tmpdir()), realpath(REPO_ROOT)]);
-  if (!roots.some((root) => candidate.startsWith(`${root}${sep}`))) {
-    throw new Error(`refusing ${argument}: it is outside the checkout and the temporary folder`);
+async function main() {
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
   }
-  if (!(await lstat(candidate)).isFile()) {
-    throw new Error(`refusing ${argument}: not a regular file`);
-  }
-  return candidate;
-}
-
-async function main(argument) {
-  if (!argument) {
-    throw new Error("usage: harden-biber.mjs <biber-binary>");
-  }
-  const path = await confinedBinary(argument);
-  const hardened = hardenBiber(await readFile(path));
-  const { mode } = await stat(path);
-  const staged = join(dirname(path), `.${basename(path)}.hardened`);
-  await writeFile(staged, hardened, { mode });
-  await chmod(staged, mode);
-  await rename(staged, path);
+  process.stdout.write(hardenBiber(Buffer.concat(chunks)));
 }
 
 // Compared as real paths: a script reached through a symlink would otherwise
 // exit 0 having done nothing, and an unpatched Biber would ship.
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    await main(process.argv[2]);
+    await main();
   } catch (error) {
     console.error(`harden-biber: ${error.message}`);
     process.exit(1);
