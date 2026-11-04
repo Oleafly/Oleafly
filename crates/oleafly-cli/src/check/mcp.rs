@@ -102,6 +102,7 @@ async fn preflight_check(args: &Value, ctx: &ToolContext) -> Result<Value, ToolE
     let input = CheckInput {
         root: workspace.root().to_path_buf(),
         main_document: manifest.main_doc.clone(),
+        compile_folder: manifest.compile_dir.clone(),
         engine: manifest.engine().map_err(crate::contract::CliError::from)?,
         tex_flavor: manifest.normalized_tex_flavor().ok().flatten(),
         typst_version: manifest.typst_version_pin().map(str::to_string),
@@ -261,6 +262,7 @@ mod tests {
         let input = CheckInput {
             root: project.path().to_path_buf(),
             main_document: "main.tex".into(),
+            compile_folder: None,
             engine: oleafly_core::Engine::Tectonic,
             tex_flavor: None,
             typst_version: None,

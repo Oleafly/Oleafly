@@ -225,6 +225,17 @@ function latexLogicalGroupTokens(
   return result;
 }
 
+const REFERENCE_COMMAND_NAMES = [
+  "crefrange", "Crefrange", "cpagerefrange", "Cpagerefrange", "vpagerefrange", "vrefrange",
+  "vpageref", "fullref", "hyperlink", "ref", "eqref", "pageref", "autoref", "cref", "Cref",
+  "cpageref", "Cpageref", "vref", "Vref", "labelcref", "nameref", "namecref", "fref", "sref",
+  "labelref",
+];
+const REFERENCE_COMMAND = new RegExp(
+  String.raw`\\(${REFERENCE_COMMAND_NAMES.join("|")})\*?(?![A-Za-z@])`,
+  "g",
+);
+
 const LATEX_CITATION_COMMANDS = new Set([
   "cite",
   "cites",
@@ -307,9 +318,7 @@ function collectReferenceKeyTokens(
   closingByOpening: CommandGroupIndex,
   tokens: LatexCommandKeyToken[],
 ): void {
-  const referenceCommands =
-    /\\(crefrange|Crefrange|cpagerefrange|Cpagerefrange|vpagerefrange|vrefrange|vpageref|fullref|hyperlink|ref|eqref|pageref|autoref|cref|Cref|cpageref|Cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?(?![A-Za-z@])/g;
-  for (const match of masked.matchAll(referenceCommands)) {
+  for (const match of masked.matchAll(REFERENCE_COMMAND)) {
     const braced = commandGroups(
       masked,
       match.index + match[0].length,

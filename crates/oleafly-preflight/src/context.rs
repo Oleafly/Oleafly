@@ -23,6 +23,8 @@ use crate::types::{ProjectContext, ProjectFile};
 
 pub struct ContextInput<'a> {
     pub main_doc: &'a str,
+    /// The folder TeX runs in when it is not the project root.
+    pub compile_folder: &'a str,
     pub tree_paths: &'a [String],
     pub index_texts: &'a BTreeMap<String, String>,
     pub open_texts: &'a BTreeMap<String, String>,
@@ -444,12 +446,13 @@ pub fn build_refs_context(input: &ContextInput) -> RefsContext {
             .into_iter()
             .chain(bib_entries.iter().map(|entry| entry.key.clone())),
     );
-    let units = LatexUnits::build(
+    let units = LatexUnits::build_in(
         texts
             .iter()
             .map(|(path, text)| (path.as_str(), text.as_str())),
         &known_paths,
         input.main_doc,
+        input.compile_folder,
     );
     let pools = units
         .as_ref()
@@ -572,6 +575,7 @@ mod tests {
         let index = build_index(index_texts);
         build_refs_context(&ContextInput {
             main_doc: "main.tex",
+            compile_folder: "",
             tree_paths: &tree,
             index_texts,
             open_texts: open,

@@ -104,10 +104,19 @@ comment or a subfile's parent only counts for a file no include reaches.
 Scanning stops at `\end{document}` or `\endinput`, unless it sits inside braces
 or a conditional could skip it.
 
-The walk stops short of TeX in a few places. It starts a root from the root's
-own folder, as the editor's include links do, though the app compiles a main
-document in a subfolder of a managed project from the project root. Where the
-engines disagree it picks one: with `x` and `x.tex` both present it takes
+Every LaTeX surface searches in one order, the way the compile does: the
+compile folder, then the project root. The compile folder is the project root
+unless the project records another one, or a linked folder's main document
+reads its files from its own folder, and `compile_search_dir` is the one place
+that decides. After those two come the main document's folder and the including
+file's folder, for a project TeX cannot compile yet, so a link still opens the
+file the author meant. `latex_search_folders` in
+`crates/oleafly-core/src/context/mod.rs` and `latexSearchFolders` in
+`src/lib/project-intelligence/latex-units.ts` hold that order. A document
+outside the compile folder is walked from the project root.
+
+The walk stops short of TeX in a few places. Where the engines disagree it
+picks one: with `x` and `x.tex` both present it takes
 `x.tex` as pdflatex does and Tectonic does not, while `..` and capitals in a
 suffix follow Tectonic. `\import` also clears the path a later `\subimport`
 extends, which the walk does not model, and a file TeX reads twice under

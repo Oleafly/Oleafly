@@ -110,11 +110,11 @@ function headingBefore(headings: readonly { from: number; title: string }[], off
   return owner;
 }
 
-export function headingTitlesByLabel(
+function headingsByFile(
   index: ProjectIndex,
+  labels: readonly Sym[],
   extraSections?: (file: string) => readonly ExtraOutlineSection[],
-  viewer?: string,
-): ReadonlyMap<string, string> {
+): Map<string, { from: number; title: string }[]> {
   const headings = new Map<string, { from: number; title: string }[]>();
   const add = (file: string, from: number, title: string) => {
     if (title.trim() === "") return;
@@ -125,11 +125,20 @@ export function headingTitlesByLabel(
   for (const section of index.defs) {
     if (section.kind === "section") add(section.file, section.from, section.name);
   }
-  const labels = index.defs.filter((definition) => definition.kind === "label");
   for (const file of new Set(labels.map((label) => label.file))) {
     for (const section of extraSections?.(file) ?? []) add(file, section.from, section.title);
   }
   for (const list of headings.values()) list.sort((left, right) => left.from - right.from);
+  return headings;
+}
+
+export function headingTitlesByLabel(
+  index: ProjectIndex,
+  extraSections?: (file: string) => readonly ExtraOutlineSection[],
+  viewer?: string,
+): ReadonlyMap<string, string> {
+  const labels = index.defs.filter((definition) => definition.kind === "label");
+  const headings = headingsByFile(index, labels, extraSections);
   const sameName = new Map<string, Sym[]>();
   for (const label of labels) {
     const named = sameName.get(label.name);

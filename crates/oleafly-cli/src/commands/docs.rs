@@ -379,6 +379,7 @@ async fn run_stats(ctx: &Context, args: StatsArgs) -> Result<Outcome, CliError> 
     let request = DocumentStatsRequest {
         main_document: main.clone(),
         overrides: Default::default(),
+        compile_folder: opened.workspace.manifest().compile_dir.clone(),
     };
     let result = tokio::task::spawn_blocking(move || {
         let known = KnownFiles::from_paths(collect_project_files(&root));

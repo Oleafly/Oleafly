@@ -4541,6 +4541,21 @@ fn settings_write_failure(
     )
 }
 
+/// The folder a LaTeX compile of `main_doc` runs in, when it is not the
+/// project root, so the editor can search includes in the same order.
+#[tauri::command]
+pub async fn project_compile_folder(
+    project_id: String,
+    main_doc: String,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let location = crate::project_location::locate(&project_id)?;
+        Ok(location.compile_search_relative(&main_doc))
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 #[tauri::command]
 pub async fn get_project<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,

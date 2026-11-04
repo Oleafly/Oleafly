@@ -407,6 +407,9 @@ export function createProjectIntelligenceWorker(
       ...(request.mainDocument
         ? { mainDocument: request.mainDocument }
         : {}),
+      ...(request.compileFolder
+        ? { compileFolder: request.compileFolder }
+        : {}),
       stats: {
         fileCount: sourceFiles.length,
         characterCount,

@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use oleafly_core::context::{
-    bounded_view, role_counts, scan_project, ContextLimits, VIEW_MAX_BYTES,
+    bounded_view, role_counts, scan_project_in, ContextLimits, VIEW_MAX_BYTES,
 };
 use serde_json::{json, Value};
 
@@ -32,7 +32,8 @@ pub(crate) fn context_of(root: &Path) -> Result<Value, String> {
     if main.is_empty() {
         return Err(NO_MAIN_DOCUMENT.into());
     }
-    let scan = scan_project(root, &main, &ContextLimits::default())
+    let compile_folder = opened.workspace.manifest().compile_dir.as_deref();
+    let scan = scan_project_in(root, &main, compile_folder, &ContextLimits::default())
         .map_err(|error| error.message().to_string())?;
     let value = json!({
         "mainDocument": main,

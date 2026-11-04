@@ -4077,7 +4077,8 @@
    ],
    "orphans": [
     "paper/b.tex"
-   ]
+   ],
+   "compileFolder": "paper"
   },
   {
    "name": "an end in a skipped branch keeps reading past text before the close",
@@ -5250,6 +5251,274 @@
    "orphans": [
     "y.tex"
    ]
+  },
+  {
+   "name": "a main in a subfolder compiles from the project root",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "intro.tex": "",
+    "papers/a/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "papers/a/intro.tex"
+   ]
+  },
+  {
+   "name": "the compile folder comes before the project root",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "intro.tex": "",
+    "papers/a/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "compileFolder": "papers/a",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "intro.tex"
+   ]
+  },
+  {
+   "name": "the project root still answers under a compile folder",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "compileFolder": "papers/a",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a compile folder can sit above the main document",
+   "files": {
+    "paper/sub/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/intro.tex": "",
+    "paper/sub/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "paper/sub/main.tex",
+   "compileFolder": "paper",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/sub/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/sub/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "paper/sub/intro.tex"
+   ]
+  },
+  {
+   "name": "a local file still joins when the project root has no copy",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "papers/a/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a nested file still finds a path written from the main document",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{sections/one}\n",
+    "papers/a/sections/one.tex": "\\input{sections/two}\n",
+    "papers/a/sections/two.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/main.tex",
+      "papers/a/sections/one.tex",
+      "papers/a/sections/two.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a document outside the compile folder keeps its own files",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "papers/a/intro.tex": "",
+    "papers/b/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "papers/b/intro.tex": ""
+   },
+   "main": "papers/a/main.tex",
+   "compileFolder": "papers/a",
+   "units": [
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/b/main.tex",
+     "files": [
+      "papers/b/intro.tex",
+      "papers/b/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a document inside the compile folder compiles from it",
+   "files": {
+    "paper/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/v1/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/intro.tex": "",
+    "paper/v1/intro.tex": ""
+   },
+   "main": "paper/main.tex",
+   "compileFolder": "paper",
+   "units": [
+    {
+     "root": "paper/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/v1/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/v1/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "paper/v1/intro.tex"
+   ]
+  },
+  {
+   "name": "a compile folder is a folder, not a prefix of a name",
+   "files": {
+    "paper/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper-v1/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/intro.tex": "",
+    "paper-v1/intro.tex": ""
+   },
+   "main": "paper/main.tex",
+   "compileFolder": "paper",
+   "units": [
+    {
+     "root": "paper-v1/main.tex",
+     "files": [
+      "paper-v1/intro.tex",
+      "paper-v1/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
   }
  ]
 }

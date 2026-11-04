@@ -27,7 +27,7 @@ import type {
 
 const LATEX_SOURCE = /\.(?:tex|ltx|latex)$/i;
 const LATEXDIFF_BANNER = "%DIF LATEXDIFF DIFFERENCE FILE";
-const CONDITIONAL_BRANCH_ENDS = ["\\fi", "\\else", "\\or"];
+const CONDITIONAL_BRANCH_ENDS = [String.raw`\fi`, String.raw`\else`, String.raw`\or`];
 const ARGUMENT_WINDOW = 1024;
 // Below this many owners per viewer unit, testing every owner beats walking
 // one unit's owners.
@@ -77,18 +77,13 @@ const PACKAGE_EXTENSIONS: ReadonlyMap<string, string> = new Map([
   ["LoadClassWithOptions", ".cls"],
 ]);
 
-function codePointRank(unit: number): number {
-  if (unit < 0xd800) return unit;
-  return unit < 0xe000 ? unit + 0x2000 : unit - 0x800;
-}
-
 /** Code point order, which is how Rust sorts the same strings. */
 export function byCodePoint(left: string, right: string): number {
   const shared = Math.min(left.length, right.length);
   for (let at = 0; at < shared; at += 1) {
-    const a = left.charCodeAt(at);
-    const b = right.charCodeAt(at);
-    if (a !== b) return codePointRank(a) - codePointRank(b);
+    const a = left.codePointAt(at) as number;
+    const b = right.codePointAt(at) as number;
+    if (a !== b) return a - b;
   }
   return left.length - right.length;
 }
@@ -753,12 +748,13 @@ class IncludeResolver {
   }
 
   /**
-   * The file an include opens under a root in `rootFolder`, then, for a project
-   * TeX cannot compile yet, the project root and the including file's folder.
+   * The file an include opens when TeX compiles from `folders.compile`, then,
+   * for a project TeX cannot compile yet, the project root, the root's own
+   * folder and the including file's folder.
    */
   resolve(
     include: LatexUnitInclude,
-    rootFolder: string,
+    folders: RootFolders,
     fromFolder: string,
     imports: ImportFrame | null,
   ): string | null {
@@ -766,10 +762,12 @@ class IncludeResolver {
     if (!target) return null;
     const start = include.local ? (imports?.path ?? HERE) : HERE;
     const inside = this.importsInside(include, imports);
-    const found = this.onSearchPath(rootFolder, start, target, inside);
+    const found = this.onSearchPath(folders.compile, start, target, inside);
     if (found !== null) return found;
-    const folders = include.local ? [fromFolder, rootFolder, ""] : ["", fromFolder];
-    for (const folder of folders) {
+    const fallbacks = include.local
+      ? [fromFolder, folders.compile, "", folders.own]
+      : ["", folders.own, fromFolder];
+    for (const folder of fallbacks) {
       const fallback = this.lookup(folder, target);
       if (fallback !== null) return fallback;
     }
@@ -805,6 +803,8 @@ export interface LatexUnitsInput {
   /** Every path in the project, read or not. */
   readonly known: Iterable<string>;
   readonly mainDocument?: string;
+  /** The folder TeX runs in when it is not the project root. */
+  readonly compileFolder?: string;
   readonly maxSteps?: number;
 }
 
@@ -880,6 +880,35 @@ function rootCandidates(input: LatexUnitsInput): RootCandidates | null {
   return candidates.size < 2 ? null : { candidates, children, resolver };
 }
 
+/** Where TeX compiles a root, and the root's own folder. */
+interface RootFolders {
+  readonly compile: string;
+  readonly own: string;
+}
+
+/**
+ * The project's compile folder holds only the documents inside it. Any other
+ * document compiles from the project root.
+ */
+function rootFolders(root: string, compileFolder: string): RootFolders {
+  const inside = compileFolder !== "" && root.startsWith(`${compileFolder}/`);
+  return { compile: inside ? compileFolder : "", own: dirname(root) };
+}
+
+/**
+ * Where an `\\input` or a figure in `file` is looked for, in order. TeX searches
+ * the folder it compiles in and then the project root. The main document's
+ * folder and the including file's folder are for a project TeX cannot compile
+ * yet, so a link still opens the file the author meant.
+ */
+export function latexSearchFolders(
+  compileFolder: string,
+  mainDocument: string,
+  file: string,
+): string[] {
+  return [...new Set([compileFolder, "", dirname(mainDocument), dirname(file)])];
+}
+
 interface WalkStep {
   readonly file: string;
   readonly imports: ImportFrame | null;
@@ -899,6 +928,7 @@ class UnitWalker {
   /** Null once the project has used up the step budget. */
   walk(root: string): Walked | null {
     this.walkId += 1;
+    const folders = rootFolders(root, this.input.compileFolder ?? "");
     const files: string[] = [];
     const stack: WalkStep[] = [];
     const declared: WalkStep[] = [];
@@ -910,7 +940,7 @@ class UnitWalker {
       step = this.next(stack, declared)
     ) {
       files.push(step.file);
-      if (this.visit(step, dirname(root), stack, declared)) open = true;
+      if (this.visit(step, folders, stack, declared)) open = true;
       this.steps += 1;
       if (this.exhausted()) return null;
     }
@@ -943,27 +973,36 @@ class UnitWalker {
     stack.push({ file, imports });
   }
 
+  private declareChildren(
+    file: string,
+    imports: ImportFrame | null,
+    folders: RootFolders,
+    declared: WalkStep[],
+  ): void {
+    for (const child of this.graph.children.get(file) ?? []) {
+      const subfile = this.input.facts.get(child)?.subfilesParent !== undefined;
+      const frame = { path: pathWithin(folders.compile, dirname(child)), outer: imports };
+      declared.push({ file: child, imports: subfile ? frame : imports });
+    }
+  }
+
   /** Queues what a file pulls in, and says whether it opens the unit. */
   private visit(
     { file, imports }: WalkStep,
-    rootFolder: string,
+    folders: RootFolders,
     stack: WalkStep[],
     declared: WalkStep[],
   ): boolean {
     const { read } = this.input;
-    const { resolver, children } = this.graph;
+    const { resolver } = this.graph;
     const facts = this.input.facts.get(file);
     const fromFolder = dirname(file);
     let open = facts?.open === true;
-    for (const child of children.get(file) ?? []) {
-      const subfile = this.input.facts.get(child)?.subfilesParent !== undefined;
-      const frame = { path: pathWithin(rootFolder, dirname(child)), outer: imports };
-      declared.push({ file: child, imports: subfile ? frame : imports });
-    }
+    this.declareChildren(file, imports, folders, declared);
     for (const include of facts?.includes ?? []) {
       this.steps += 1;
       if (this.exhausted()) return open;
-      const target = resolver.resolve(include, rootFolder, fromFolder, imports);
+      const target = resolver.resolve(include, folders, fromFolder, imports);
       if (target === null) {
         open = resolver.existsElsewhere(include.raw) || open;
       } else if (read.has(target)) {
@@ -975,7 +1014,7 @@ class UnitWalker {
     for (const raw of facts?.packages ?? []) {
       this.steps += 1;
       if (this.exhausted()) return open;
-      const target = resolver.resolve({ raw }, rootFolder, fromFolder, imports);
+      const target = resolver.resolve({ raw }, folders, fromFolder, imports);
       if (target !== null && read.has(target)) this.enter(target, imports, stack);
     }
     return open;
@@ -1209,6 +1248,23 @@ class RenameSpread<D> {
   }
 }
 
+/** Another definition sitting in a holder renames with it, or its uses dangle. */
+function selectInHolders<D, U>(
+  { pool, definitionFile, fileOfUse, definitionAt, together }: LatexRenameInput<D, U>,
+  loose: readonly U[],
+  holders: ReadonlySet<string>,
+  selected: Set<D>,
+): void {
+  for (const use of loose) {
+    const site = holders.has(fileOfUse(use)) ? definitionAt?.(use) : undefined;
+    if (site !== undefined) selected.add(site);
+  }
+  if (!together) return;
+  for (const item of pool) {
+    if (holders.has(definitionFile(item))) selected.add(item);
+  }
+}
+
 class UnitScope implements LatexUnitScope {
   private readonly groupOf: ReadonlyMap<string, number>;
   private readonly groups: readonly (readonly number[])[];
@@ -1425,7 +1481,8 @@ class UnitScope implements LatexUnitScope {
       if (seen.has(key)) continue;
       seen.add(key);
       const row = members.flatMap((group) => ordinals.get(group) ?? []);
-      if (row.length > 1) rows.push(row.sort((a, b) => a - b).map((at) => files[at]));
+      row.sort((a, b) => a - b);
+      if (row.length > 1) rows.push(row.map((at) => files[at]));
     }
     if (orphans.length > 1) rows.push(orphans);
     return rows;
@@ -1439,24 +1496,9 @@ class UnitScope implements LatexUnitScope {
    * fragment cannot chain two revisions together.
    */
   renameClosure<D, U>(input: LatexRenameInput<D, U>): LatexRenameClosure<D, U> {
-    const { definition, pool, uses, definitionFile, fileOfUse, citation, definitionAt, together } = input;
+    const { definition, pool, definitionFile, definitionAt, together } = input;
     const selected = new Set<D>([definition]);
-    const rooted = new Map<number, U[]>();
-    const loose: U[] = [];
-    for (const use of uses) {
-      const file = fileOfUse(use);
-      const group = this.groupOf.get(file);
-      if (
-        group === undefined ||
-        this.select(file, pool, definitionFile, citation).tier !== "unit"
-      ) {
-        loose.push(use);
-        continue;
-      }
-      const list = rooted.get(group);
-      if (list) list.push(use);
-      else rooted.set(group, [use]);
-    }
+    const { rooted, loose } = this.sortRenameUses(input);
 
     const taken = this.spreadRename(selected, [...rooted.keys()], pool, definitionFile, together === true);
     const edited = taken.flatMap((group) => rooted.get(group) ?? []);
@@ -1467,16 +1509,40 @@ class UnitScope implements LatexUnitScope {
     const holders = new Set(
       [...selected].map(definitionFile).filter((file) => !this.groupOf.has(file)),
     );
-    // Another definition sitting in a holder renames with it, or its uses dangle.
-    for (const use of loose) {
-      const site = holders.has(fileOfUse(use)) ? definitionAt?.(use) : undefined;
-      if (site !== undefined) selected.add(site);
-    }
-    if (together) {
-      for (const item of pool) {
-        if (holders.has(definitionFile(item))) selected.add(item);
+    selectInHolders(input, loose, holders, selected);
+    return { defs: [...selected], uses: [...edited, ...this.looseFollowers(input, loose, holders, selected)] };
+  }
+
+  /** Uses a unit answers, by file group, apart from orphan and fallback uses. */
+  private sortRenameUses<D, U>(input: LatexRenameInput<D, U>): {
+    rooted: Map<number, U[]>;
+    loose: U[];
+  } {
+    const { pool, uses, definitionFile, fileOfUse, citation } = input;
+    const rooted = new Map<number, U[]>();
+    const loose: U[] = [];
+    for (const use of uses) {
+      const file = fileOfUse(use);
+      const group = this.groupOf.get(file);
+      if (
+        group === undefined ||
+        this.select(file, pool, definitionFile, citation).tier !== "unit"
+      ) {
+        loose.push(use);
+      } else {
+        addTo(rooted, group, use);
       }
     }
+    return { rooted, loose };
+  }
+
+  private looseFollowers<D, U>(
+    input: LatexRenameInput<D, U>,
+    loose: readonly U[],
+    holders: ReadonlySet<string>,
+    selected: ReadonlySet<D>,
+  ): U[] {
+    const { pool, definitionFile, fileOfUse, citation } = input;
     const allSelected = new Map<readonly D[], boolean>();
     const followsRename = (items: readonly D[]): boolean => {
       let answer = allSelected.get(items);
@@ -1486,12 +1552,11 @@ class UnitScope implements LatexUnitScope {
       }
       return answer;
     };
-    for (const use of loose) {
+    return loose.filter((use) => {
       const file = fileOfUse(use);
       const { items } = this.select(file, pool, definitionFile, citation);
-      if (holders.has(file) || followsRename(items)) edited.push(use);
-    }
-    return { defs: [...selected], uses: edited };
+      return holders.has(file) || followsRename(items);
+    });
   }
 
   /** Adds to `selected`, and returns the use groups that follow the rename. */

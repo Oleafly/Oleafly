@@ -6,6 +6,7 @@ import {
 import { summarizeBibliographyEntry } from "./bibliography-summary";
 import {
   buildLatexUnits,
+  latexSearchFolders,
   latexUnitScope,
   type LatexUnitScope,
 } from "./latex-units";
@@ -54,6 +55,8 @@ export interface AssembleProjectIntelligenceInput {
   readonly files: Readonly<Record<string, FileAnalysis>>;
   readonly knownFiles: readonly string[];
   readonly mainDocument?: string;
+  /** The folder TeX runs in when it is not the project root. */
+  readonly compileFolder?: string;
   readonly stats: ProjectIntelligenceStats;
 }
 
@@ -323,7 +326,7 @@ function addExtensionCandidates(
 }
 
 interface AssetSearch {
-  readonly mainDirectory: string;
+  readonly folders: (file: string) => readonly string[];
   readonly mainDocumentFiles: ReadonlySet<string>;
   readonly mainDocumentPaths: LatexSearchPaths;
   readonly files: Readonly<Record<string, FileAnalysis>>;
@@ -335,20 +338,16 @@ function searchesFromMainDirectory(edge: ProjectEdge): boolean {
   return edge.kind === "include" && engineForPath(edge.fromFile) === "latex";
 }
 
-function includeSearchDirectories(edge: ProjectEdge, mainDirectory: string): string[] {
-  return [...new Set([mainDirectory, "", dirname(edge.fromFile)])];
-}
-
 function linkDocuments(
   edges: readonly ProjectEdge[],
   mainDocument: string | undefined,
+  compileFolder: string,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
 ): { linked: ProjectEdge[]; mainDocumentFiles: ReadonlySet<string> } {
   const linked = edges.map((edge) => (edge.searchPath ? edge : resolveEdge(edge, known, knownByLower)));
   const reachable = new Set<string>();
   if (!mainDocument) return { linked, mainDocumentFiles: reachable };
-  const mainDirectory = dirname(mainDocument);
   const byFile = new Map<string, number[]>();
   linked.forEach((edge, index) => {
     if (edge.kind !== "include" && edge.kind !== "import") return;
@@ -365,7 +364,7 @@ function linkDocuments(
       if (searchesFromMainDirectory(original)) {
         linked[index] = resolveEdgeIn(
           original,
-          includeSearchDirectories(original, mainDirectory),
+          latexSearchFolders(compileFolder, mainDocument, original.fromFile),
           known,
           knownByLower,
         );
@@ -398,7 +397,7 @@ function assetSearchDirectories(edge: ProjectEdge, search: AssetSearch): string[
     : search.files[edge.fromFile]?.latexSearchPaths ?? NO_SEARCH_PATHS;
   const paths = edge.searchPath === "svg" ? [...declared.svg, ...declared.graphics] : declared.graphics;
   const bases = inMainDocument
-    ? [search.mainDirectory, "", dirname(edge.fromFile)]
+    ? search.folders(edge.fromFile)
     : [dirname(edge.fromFile)];
   const directories: string[] = [];
   for (const base of bases) {
@@ -853,6 +852,7 @@ function projectLatexUnits(
   files: readonly FileAnalysis[],
   known: ReadonlySet<string>,
   mainDocument: string | undefined,
+  compileFolder: string,
 ): LatexUnits | undefined {
   const facts = new Map<string, LatexUnitFacts>();
   const read = new Set<string>();
@@ -865,6 +865,7 @@ function projectLatexUnits(
     facts,
     read,
     known,
+    compileFolder,
     ...(mainDocument ? { mainDocument } : {}),
   });
 }
@@ -892,16 +893,18 @@ export function assembleProjectIntelligenceResult(
   const byKey = definitionsByKey(definitions);
 
   const { known, knownByLower } = knownFileIndex(input.knownFiles);
-  const latexUnits = projectLatexUnits(fileList, known, input.mainDocument);
+  const compileFolder = input.compileFolder ?? "";
+  const latexUnits = projectLatexUnits(fileList, known, input.mainDocument, compileFolder);
   const scope = latexUnitScope(latexUnits);
   const { linked, mainDocumentFiles } = linkDocuments(
     fileList.flatMap((file) => file.edges),
     input.mainDocument,
+    compileFolder,
     known,
     knownByLower,
   );
   const search: AssetSearch = {
-    mainDirectory: input.mainDocument ? dirname(input.mainDocument) : "",
+    folders: (file) => latexSearchFolders(compileFolder, input.mainDocument ?? "", file),
     mainDocumentFiles,
     mainDocumentPaths: projectSearchPaths(fileList.filter((file) => mainDocumentFiles.has(file.file))),
     files: orderedFiles,

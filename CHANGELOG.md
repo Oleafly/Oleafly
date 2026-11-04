@@ -60,6 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `\lstinline*code*`.
 - The outline now shows headings with the macros of the open document, not those
   of another revision in the folder.
+- Include links, figures, the word count, the project map and `oleaflyc` now look
+  for a file in the same order as the compile: the folder LaTeX runs in, then the
+  project root. Before, a file of the same name next to the main document could
+  open or count in place of the one that was compiled.
+- The word count now includes a file named from the project root inside a
+  subfolder, such as `\input{chapters/two}` in `chapters/one.tex`. Before, those
+  words were left out.
 - Accessible export no longer breaks the build on the bundled engine. The
   `\DocumentMetadata` line it adds now sits inside a version check, so LaTeX
   older than November 2025 skips it and builds the document untagged. Before,

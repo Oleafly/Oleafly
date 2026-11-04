@@ -893,11 +893,36 @@ describe("a rename that keeps the compile whole", () => {
     expect(value.renamePlan(end, "lem").edits).toHaveLength(3);
   });
 
-  it("takes a \\renewenvironment along", () => {
-    const source = paper("\\newenvironment{e}{}{}\\renewenvironment{e}{}{}\\begin{e}\\end{e}");
+  it.each([
+    [
+      "takes a \\renewenvironment along",
+      "\\newenvironment{e}{}{}\\renewenvironment{e}{}{}\\begin{e}\\end{e}",
+      "e",
+      "\\newenvironment{z}{}{}\\renewenvironment{z}{}{}\\begin{z}\\end{z}",
+    ],
+    [
+      "leaves a counter alone when only an environment shares its name",
+      "\\newcounter{e}\\newenvironment{e}{}{}\\newtheorem{side}[e]{S}\\begin{e}\\end{e}",
+      "e",
+      "\\newcounter{e}\\newenvironment{z}{}{}\\newtheorem{side}[e]{S}\\begin{z}\\end{z}",
+    ],
+    [
+      "reads a theorem's counter past a brace in its title",
+      "\\newtheorem{thm}{T}\\newtheorem{sub}{{\\bfseries S}}[thm]",
+      "thm",
+      "\\newtheorem{z}{T}\\newtheorem{sub}{{\\bfseries S}}[z]",
+    ],
+    [
+      "keeps a comment inside an environment's braces",
+      "\\newenvironment{e}{}{}\\begin{e%why\n}x\\end{ e% note\n}",
+      "e",
+      "\\newenvironment{z}{}{}\\begin{z%why\n}x\\end{ z% note\n}",
+    ],
+  ])("%s", (_title, body, name, expected) => {
+    const source = paper(body);
     const value = legacyIndexFromProjectIntelligence(project({ "a.tex": source }));
-    const renamed = applied(source, "a.tex", value, symbol(value, "a.tex", "environment", "e"), "f");
-    expect(renamed).toContain("\\newenvironment{f}{}{}\\renewenvironment{f}{}{}\\begin{f}\\end{f}");
+    const renamed = applied(source, "a.tex", value, symbol(value, "a.tex", "environment", name), "z");
+    expect(renamed).toContain(expected);
   });
 
   it("plans the same rename from every site of a redefined environment", () => {
@@ -971,27 +996,6 @@ describe("a rename that keeps the compile whole", () => {
   it("does not count \\renewenvironment as a use of itself", () => {
     const snapshot = project({ "a.tex": paper("\\renewenvironment{abstract}{}{}") });
     expect(snapshot.uses.filter((use) => use.name === "abstract")).toEqual([]);
-  });
-
-  it("leaves a counter alone when only an environment shares its name", () => {
-    const source = paper("\\newcounter{e}\\newenvironment{e}{}{}\\newtheorem{side}[e]{S}\\begin{e}\\end{e}");
-    const value = legacyIndexFromProjectIntelligence(project({ "a.tex": source }));
-    const renamed = applied(source, "a.tex", value, symbol(value, "a.tex", "environment", "e"), "f");
-    expect(renamed).toContain("\\newcounter{e}\\newenvironment{f}{}{}\\newtheorem{side}[e]{S}\\begin{f}\\end{f}");
-  });
-
-  it("reads a theorem's counter past a brace in its title", () => {
-    const source = paper("\\newtheorem{thm}{T}\\newtheorem{sub}{{\\bfseries S}}[thm]");
-    const value = legacyIndexFromProjectIntelligence(project({ "a.tex": source }));
-    const renamed = applied(source, "a.tex", value, symbol(value, "a.tex", "environment", "thm"), "zz");
-    expect(renamed).toContain("\\newtheorem{sub}{{\\bfseries S}}[zz]");
-  });
-
-  it("keeps a comment inside an environment's braces", () => {
-    const source = paper("\\newenvironment{e}{}{}\\begin{e%why\n}x\\end{ e% note\n}");
-    const value = legacyIndexFromProjectIntelligence(project({ "a.tex": source }));
-    const renamed = applied(source, "a.tex", value, symbol(value, "a.tex", "environment", "e"), "f");
-    expect(renamed).toContain("\\begin{f%why\n}x\\end{ f% note\n}");
   });
 
   it("takes a shared theorem counter along, in either place", () => {
@@ -1104,6 +1108,49 @@ describe("other reference commands", () => {
       expect(value.renamePlan(symbol(value, "a.tex", "label", "a"), "z").edits).toHaveLength(2);
     },
   );
+});
+
+describe("the folder a compile runs in", () => {
+  const sources = {
+    "papers/a/main.tex": paper("\\input{intro}\\includegraphics{plot}"),
+    "intro.tex": "Root\n",
+    "papers/a/intro.tex": "Local\n",
+    "plot.png": "",
+    "papers/a/plot.png": "",
+  };
+  const compiled = (compileFolder?: string) =>
+    assembleProjectIntelligence({
+      identity: { projectId: "project", projectRevision: 1, requestGeneration: 1 },
+      files: Object.fromEntries(
+        Object.entries(sources)
+          .filter(([file]) => file.endsWith(".tex"))
+          .map(([file, source]) => [file, analyzeProjectFile(file, source, 1)]),
+      ),
+      knownFiles: Object.keys(sources),
+      mainDocument: "papers/a/main.tex",
+      ...(compileFolder ? { compileFolder } : {}),
+      stats: { fileCount: 0, characterCount: 0, parsedFileCount: 0, reusedFileCount: 0, durationMs: 0 },
+    });
+  const target = (snapshot: ProjectIntelligenceSnapshot, kind: string) =>
+    snapshot.hierarchy.edges.find((edge) => edge.kind === kind && edge.fromFile === "papers/a/main.tex")?.targetFile;
+
+  it("opens an input from the project root by default", () => {
+    expect(target(compiled(), "include")).toBe("intro.tex");
+  });
+
+  it("opens an input from the compile folder first", () => {
+    expect(target(compiled("papers/a"), "include")).toBe("papers/a/intro.tex");
+  });
+
+  it("finds a figure in the same order", () => {
+    expect(target(compiled(), "asset")).toBe("plot.png");
+    expect(target(compiled("papers/a"), "asset")).toBe("papers/a/plot.png");
+  });
+
+  it("still opens a file only the main document's folder has", () => {
+    const local = project({ "papers/a/main.tex": paper("\\input{note}"), "papers/a/note.tex": "x\n" }, "papers/a/main.tex");
+    expect(target(local, "include")).toBe("papers/a/note.tex");
+  });
 });
 
 describe("the outline's macros", () => {

@@ -21,6 +21,7 @@ interface FixtureCase {
   readonly name: string;
   readonly files: Readonly<Record<string, string>>;
   readonly main?: string;
+  readonly compileFolder?: string;
   readonly known?: readonly string[];
   readonly units: readonly { root: string; files: string[]; open: boolean }[] | null;
   readonly orphans?: readonly string[];
@@ -47,6 +48,7 @@ function unitsOf(
   files: Readonly<Record<string, string>>,
   main?: string,
   known: readonly string[] = [],
+  compileFolder?: string,
 ): LatexUnits | undefined {
   const facts = new Map<string, LatexUnitFacts>();
   for (const [file, text] of Object.entries(files)) {
@@ -59,6 +61,7 @@ function unitsOf(
     read: new Set(Object.keys(files)),
     known: [...Object.keys(files), ...known],
     ...(main ? { mainDocument: main } : {}),
+    ...(compileFolder ? { compileFolder } : {}),
   });
 }
 
@@ -83,7 +86,7 @@ describe("compilation units against the shared fixture", () => {
   it.each(fixture.cases.map((testCase) => [testCase.name, testCase] as const))(
     "%s",
     (_name, testCase) => {
-      const units = unitsOf(testCase.files, testCase.main, testCase.known);
+      const units = unitsOf(testCase.files, testCase.main, testCase.known, testCase.compileFolder);
       if (testCase.units === null) {
         expect(units).toBeUndefined();
         return;

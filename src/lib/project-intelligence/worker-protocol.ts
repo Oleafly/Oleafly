@@ -35,6 +35,7 @@ export interface AnalyzeProjectIntelligenceRequest {
   readonly identity: ProjectIntelligenceIdentity;
   readonly reset: boolean;
   readonly mainDocument?: string;
+  readonly compileFolder?: string;
   readonly knownFiles: readonly string[];
   readonly upserts: readonly ProjectFileUpsert[];
   readonly removals: readonly string[];
@@ -233,13 +234,14 @@ export function isProjectIntelligenceWorkerRequest(
         "removals",
         "unreadable",
       ],
-      ["mainDocument"],
+      ["mainDocument", "compileFolder"],
     ) &&
     Number.isSafeInteger(value.requestId) &&
     (value.requestId as number) > 0 &&
     isProjectIntelligenceIdentity(value.identity) &&
     typeof value.reset === "boolean" &&
     (value.mainDocument === undefined || validPath(value.mainDocument)) &&
+    (value.compileFolder === undefined || validPath(value.compileFolder)) &&
     Array.isArray(value.knownFiles) &&
     value.knownFiles.every(validPath) &&
     Array.isArray(value.upserts) &&

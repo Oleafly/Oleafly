@@ -1117,13 +1117,20 @@ function structuralArgumentCompletions(
   return null;
 }
 
+const REFERENCE_COMPLETION_COMMANDS = [
+  "ref", "eqref", "pageref", "vpageref", "fullref", "autoref", "cref", "Cref", "cpageref",
+  "Cpageref", "vref", "Vref", "labelcref", "nameref", "namecref", "fref", "sref", "labelref",
+];
+const REFERENCE_ARGUMENT = new RegExp(
+  String.raw`\\(?:${REFERENCE_COMPLETION_COMMANDS.join("|")})\*?\s*\{[^}]{0,500}$`,
+  "u",
+);
+
 function referenceCitationCompletions(
   context: CompletionContext,
   guard: CompletionRequestGuard,
 ): CompletionResult | null {
-  const refMatch = context.matchBefore(
-    /\\(?:ref|eqref|pageref|vpageref|fullref|autoref|cref|Cref|cpageref|Cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^}]{0,500}$/u
-  );
+  const refMatch = context.matchBefore(REFERENCE_ARGUMENT);
   if (refMatch) {
     const labels = labelsInDocument(context.state);
     const query = currentArgumentQuery(refMatch.text);

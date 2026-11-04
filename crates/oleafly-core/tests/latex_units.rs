@@ -44,6 +44,8 @@ struct Case {
     files: BTreeMap<String, String>,
     #[serde(default)]
     main: String,
+    #[serde(default, rename = "compileFolder")]
+    compile_folder: String,
     #[serde(default)]
     known: Vec<String>,
     units: Option<Vec<Unit>>,
@@ -70,12 +72,13 @@ fn tier_name(tier: UnitTier) -> &'static str {
 fn build(case: &Case) -> Option<LatexUnits> {
     let mut known: Vec<String> = case.files.keys().cloned().collect();
     known.extend(case.known.iter().cloned());
-    LatexUnits::build(
+    LatexUnits::build_in(
         case.files
             .iter()
             .map(|(path, text)| (path.as_str(), text.as_str())),
         &known,
         &case.main,
+        &case.compile_folder,
     )
 }
 
@@ -217,6 +220,7 @@ fn the_cost_of_finding_a_path_counts_against_the_budget() {
             [("a.tex", text), ("b.tex", text)].into_iter(),
             &known,
             "",
+            "",
             max_steps,
         )
     };
@@ -233,6 +237,7 @@ fn a_project_past_the_step_budget_keeps_the_pool() {
             .iter()
             .map(|(path, text)| (path.as_str(), text.as_str())),
         &known,
+        "",
         "",
         1000,
     );

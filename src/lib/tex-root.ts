@@ -1,14 +1,10 @@
 import { isLibraryProject } from "@/lib/project-location";
 import { resolveProjectPath } from "@/lib/project-intelligence/source";
-import {
-  parseTexMagicComments,
-  type TexMagicCommentRule,
-  type TexMagicComments,
-} from "@/lib/tex-magic-comments";
+import { parseTexMagicComments } from "@/lib/tex-magic-comments";
 import { useFilesStore } from "@/store/files";
 
 export { parseTexMagicComments };
-export type { TexMagicCommentRule, TexMagicComments };
+export type { TexMagicCommentRule, TexMagicComments } from "@/lib/tex-magic-comments";
 
 /**
  * `% !TEX root = <path>` magic-comment support, following the convention

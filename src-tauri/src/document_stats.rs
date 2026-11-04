@@ -54,9 +54,12 @@ impl SourceReader for ProjectReader<'_> {
 
 pub(crate) fn document_stats_with_limits(
     project_id: &str,
-    request: DocumentStatsRequest,
+    mut request: DocumentStatsRequest,
     limits: SourceLimits,
 ) -> Result<DocumentStatsResult, String> {
+    request.compile_folder = crate::project_location::locate(project_id)
+        .ok()
+        .and_then(|location| location.compile_search_relative(&request.main_document));
     let known = known_files(project_id)?;
     document_stats_with(&known, request, &ProjectReader { project_id, limits })
         .map_err(|error| error.message)
@@ -119,6 +122,7 @@ mod tests {
 
     fn request(main: &str, overrides: &[(&str, &str)]) -> DocumentStatsRequest {
         DocumentStatsRequest {
+            compile_folder: None,
             main_document: main.to_string(),
             overrides: overrides
                 .iter()

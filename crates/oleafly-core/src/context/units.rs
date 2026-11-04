@@ -385,26 +385,43 @@ fn scan_command(
         return;
     }
     if ONE_ARGUMENT_INCLUDES.contains(&name) {
-        if let Some(argument) = braced_argument(masked, after) {
-            *include_end = Some(argument.end);
-            let kind = if is_subfile_include(name) {
-                subfile_kind(argument.value.as_deref())
-            } else {
-                IncludeKind::default()
-            };
-            add_target(facts, argument.value, kind);
-        } else if starts_with_dynamic_token(masked, after) {
-            facts.dynamic = true;
-        } else if name == "input" {
-            if let Some(bare) = bare_argument(masked, after) {
-                add_target(facts, Some(bare), IncludeKind::default());
-            }
-        }
-        return;
+        scan_one_argument_include(facts, masked, name, after, include_end);
+    } else if let Some(local) = two_argument_include(name) {
+        scan_two_argument_include(facts, masked, after, local, include_end);
     }
-    let Some(local) = two_argument_include(name) else {
-        return;
-    };
+}
+
+fn scan_one_argument_include(
+    facts: &mut Facts,
+    masked: &[char],
+    name: &str,
+    after: usize,
+    include_end: &mut Option<usize>,
+) {
+    if let Some(argument) = braced_argument(masked, after) {
+        *include_end = Some(argument.end);
+        let kind = if is_subfile_include(name) {
+            subfile_kind(argument.value.as_deref())
+        } else {
+            IncludeKind::default()
+        };
+        add_target(facts, argument.value, kind);
+    } else if starts_with_dynamic_token(masked, after) {
+        facts.dynamic = true;
+    } else if name == "input" {
+        if let Some(bare) = bare_argument(masked, after) {
+            add_target(facts, Some(bare), IncludeKind::default());
+        }
+    }
+}
+
+fn scan_two_argument_include(
+    facts: &mut Facts,
+    masked: &[char],
+    after: usize,
+    local: bool,
+    include_end: &mut Option<usize>,
+) {
     let directory = braced_argument(masked, after);
     let target = directory
         .as_ref()
@@ -480,6 +497,21 @@ fn masked_units(chars: &[char]) -> Vec<char> {
     units
 }
 
+/// Brace depth at `from`, counted only when a stop asks.
+#[derive(Default)]
+struct BraceScan {
+    depth: i64,
+    from: usize,
+}
+
+impl BraceScan {
+    fn outside(&mut self, masked: &[char], at: usize) -> bool {
+        self.depth = brace_depth(masked, self.from, at, self.depth);
+        self.from = at;
+        self.depth <= 0
+    }
+}
+
 fn file_facts(file: &str, text: &str) -> Facts {
     let chars: Vec<char> = text.chars().collect();
     let masked = masked_units(&chars);
@@ -489,8 +521,7 @@ fn file_facts(file: &str, text: &str) -> Facts {
     };
     let mut class: Option<DocumentClass> = None;
     let mut begins_document = false;
-    let mut depth = 0;
-    let mut depth_from = 0;
+    let mut braces = BraceScan::default();
     let mut conditionals = 0usize;
     let mut include_end = None;
     let mut cursor = 0;
@@ -521,12 +552,9 @@ fn file_facts(file: &str, text: &str) -> Facts {
             if conditionals == 0
                 && starts_statement(&masked, backslash, include_end)
                 && ends_line(&masked, end)
+                && braces.outside(&masked, backslash)
             {
-                depth = brace_depth(&masked, depth_from, backslash, depth);
-                depth_from = backslash;
-                if depth <= 0 {
-                    break;
-                }
+                break;
             }
         } else if name == "begin" {
             begins_document = begins_document || names_document(&masked, end);
@@ -539,15 +567,25 @@ fn file_facts(file: &str, text: &str) -> Facts {
                 &mut class,
                 &mut include_end,
             );
-        } else if ends_document(&masked, end, conditionals > 0) {
-            depth = brace_depth(&masked, depth_from, backslash, depth);
-            depth_from = backslash;
-            if depth <= 0 {
-                break;
-            }
+        } else if ends_document(&masked, end, conditionals > 0)
+            && braces.outside(&masked, backslash)
+        {
+            break;
         }
     }
+    settle_document(&mut facts, file, text, class, begins_document);
+    facts
+}
 
+/// A class settles what a file is. A bare `\\begin{document}` can be a mention
+/// in prose, so a file that names its root keeps the fact and the walk decides.
+fn settle_document(
+    facts: &mut Facts,
+    file: &str,
+    text: &str,
+    class: Option<DocumentClass>,
+    begins_document: bool,
+) {
     let subfiles = class.as_ref().is_some_and(|class| class.name == "subfiles");
     let latex_source = is_latex_source(file);
     facts.document = latex_source
@@ -559,12 +597,8 @@ fn file_facts(file: &str, text: &str) -> Facts {
     if subfiles {
         facts.subfiles_parent = Some(class.map(|class| class.option).unwrap_or_default());
     } else if !(latex_source && class.is_some()) {
-        // A class settles it. A bare `\\begin{document}` can be a mention in
-        // prose, so a file that names its root keeps the fact and the walk
-        // decides.
         facts.magic_root = tex_magic_comments(text).root;
     }
-    facts
 }
 
 /// A relative path. `rest` is empty when it names a folder above.
@@ -927,29 +961,29 @@ impl Resolver {
         Some(found)
     }
 
-    /// The file an include opens under a root in `root_folder`, then, for a
-    /// project TeX cannot compile yet, the project root and the including
-    /// file's folder.
+    /// The file an include opens when TeX compiles from `folders.compile`, then,
+    /// for a project TeX cannot compile yet, the project root, the root's own
+    /// folder and the including file's folder.
     fn resolve(
         &mut self,
         raw: &str,
         kind: &IncludeKind,
-        root_folder: &str,
+        folders: &RootFolders,
         from_folder: &str,
         imports: &Imports,
     ) -> Option<String> {
         let target = self.target(raw)?;
         let start = include_start(kind, imports);
         let inside = Self::imports_inside(kind, imports);
-        if let Some(found) = self.on_search_path(root_folder, &start, &target, &inside) {
+        if let Some(found) = self.on_search_path(&folders.compile, &start, &target, &inside) {
             return Some(found);
         }
-        let folders = if kind.local {
-            vec![from_folder, root_folder, ""]
+        let fallbacks = if kind.local {
+            vec![from_folder, &folders.compile, "", &folders.own]
         } else {
-            vec!["", from_folder]
+            vec!["", &folders.own, from_folder]
         };
-        folders
+        fallbacks
             .into_iter()
             .find_map(|folder| self.lookup(folder, &target))
     }
@@ -1021,10 +1055,32 @@ struct WalkStep {
     imports: Imports,
 }
 
+/// Where TeX compiles a root, and the root's own folder.
+struct RootFolders {
+    compile: String,
+    own: String,
+}
+
+impl RootFolders {
+    /// The project's compile folder holds only the documents inside it. Any
+    /// other document compiles from the project root.
+    fn of(root: &str, compile_folder: &str) -> Self {
+        let inside = !compile_folder.is_empty()
+            && root
+                .strip_prefix(compile_folder)
+                .is_some_and(|rest| rest.starts_with('/'));
+        RootFolders {
+            compile: if inside { compile_folder } else { "" }.to_string(),
+            own: dirname(root).to_string(),
+        }
+    }
+}
+
 struct Walker<'a> {
     facts: &'a HashMap<String, Facts>,
     read: &'a HashSet<String>,
     children: &'a HashMap<String, Vec<String>>,
+    compile_folder: &'a str,
     resolver: Resolver,
     last_walk: HashMap<String, usize>,
     walk_id: usize,
@@ -1042,14 +1098,14 @@ impl Walker<'_> {
 
     fn walk(&mut self, root: &str) -> Option<Walked> {
         self.walk_id += 1;
-        let root_folder = dirname(root).to_string();
+        let folders = RootFolders::of(root, self.compile_folder);
         let mut files = Vec::new();
         let mut stack = Vec::new();
         let mut declared = Vec::new();
         let mut open = false;
         self.enter(root.to_string(), None, &mut stack);
         while let Some(WalkStep { file, imports }) = self.next(&mut stack, &mut declared) {
-            open |= self.visit(&file, &imports, &root_folder, &mut stack, &mut declared);
+            open |= self.visit(&file, &imports, &folders, &mut stack, &mut declared);
             files.push(file);
             self.steps += 1;
             if self.exhausted() {
@@ -1082,7 +1138,7 @@ impl Walker<'_> {
         &mut self,
         file: &str,
         imports: &Imports,
-        root_folder: &str,
+        folders: &RootFolders,
         stack: &mut Vec<WalkStep>,
         declared: &mut Vec<WalkStep>,
     ) -> bool {
@@ -1096,7 +1152,7 @@ impl Walker<'_> {
                     .is_some_and(|facts| facts.subfiles_parent.is_some());
                 let frame = if subfile {
                     Some(Rc::new(ImportFrame {
-                        path: path_within(root_folder, dirname(child)),
+                        path: path_within(&folders.compile, dirname(child)),
                         outer: imports.clone(),
                     }))
                 } else {
@@ -1117,13 +1173,9 @@ impl Walker<'_> {
             if self.exhausted() {
                 return open;
             }
-            let target = self.resolver.resolve(
-                &include.raw,
-                &include.kind,
-                root_folder,
-                &from_folder,
-                imports,
-            );
+            let target =
+                self.resolver
+                    .resolve(&include.raw, &include.kind, folders, &from_folder, imports);
             match target {
                 Some(target) if self.read.contains(&target) => {
                     let inside = Resolver::imports_inside(&include.kind, imports);
@@ -1138,13 +1190,10 @@ impl Walker<'_> {
             if self.exhausted() {
                 return open;
             }
-            if let Some(target) = self.resolver.resolve(
-                raw,
-                &IncludeKind::default(),
-                root_folder,
-                &from_folder,
-                imports,
-            ) {
+            if let Some(target) =
+                self.resolver
+                    .resolve(raw, &IncludeKind::default(), folders, &from_folder, imports)
+            {
                 if self.read.contains(&target) {
                     self.enter(target, imports.clone(), stack);
                 }
@@ -1166,13 +1215,24 @@ impl LatexUnits {
         known: &[String],
         main_document: &str,
     ) -> Option<LatexUnits> {
-        Self::build_within(sources, known, main_document, MAX_STEPS)
+        Self::build_within(sources, known, main_document, "", MAX_STEPS)
+    }
+
+    /// `compile_folder` is where TeX runs when that is not the project root.
+    pub fn build_in<'a>(
+        sources: impl Iterator<Item = (&'a str, &'a str)>,
+        known: &[String],
+        main_document: &str,
+        compile_folder: &str,
+    ) -> Option<LatexUnits> {
+        Self::build_within(sources, known, main_document, compile_folder, MAX_STEPS)
     }
 
     pub fn build_within<'a>(
         sources: impl Iterator<Item = (&'a str, &'a str)>,
         known: &[String],
         main_document: &str,
+        compile_folder: &str,
         max_steps: usize,
     ) -> Option<LatexUnits> {
         let mut read: HashSet<String> = HashSet::new();
@@ -1237,6 +1297,7 @@ impl LatexUnits {
         let mut walker = Walker {
             facts: &facts,
             read: &read,
+            compile_folder,
             children: &children,
             resolver,
             last_walk: HashMap::new(),
