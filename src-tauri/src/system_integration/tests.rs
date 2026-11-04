@@ -1208,7 +1208,8 @@ fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
             "linux/oleafly-url-handler.desktop",
             "{format}"
         );
-        assert_eq!(files.as_object().unwrap().len(), 5, "{format}");
+        assert_eq!(files["/usr/libexec/oleafly"], "binaries/linux", "{format}");
+        assert_eq!(files.as_object().unwrap().len(), 6, "{format}");
     }
 }
 

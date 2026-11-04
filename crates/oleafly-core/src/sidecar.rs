@@ -29,17 +29,56 @@ pub fn executable_dir() -> Option<PathBuf> {
     executable_dir_of(&std::env::current_exe().ok()?)
 }
 
+/// The folders that can hold a bundled tool, given the folder of the running
+/// program. On Linux that folder is `/usr/bin`, which also holds the
+/// distribution's own tools, so the packages' `libexec` folder comes first.
+pub fn bundled_tool_dirs(dir: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::with_capacity(2);
+    if cfg!(target_os = "linux") {
+        dirs.extend(dir.parent().map(|prefix| prefix.join("libexec/oleafly")));
+    }
+    dirs.push(dir.to_path_buf());
+    dirs
+}
+
 pub fn sidecar_in(dir: &Path, name: &str) -> Option<PathBuf> {
     if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\']) {
         return None;
     }
-    let path = dir.join(exe_name(name));
-    path.is_file().then_some(path)
+    bundled_tool_dirs(dir)
+        .into_iter()
+        .map(|folder| folder.join(exe_name(name)))
+        .find(|path| path.is_file())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn an_installed_tool_in_libexec_wins_over_a_distro_tool_beside_the_app() {
+        let dir = tempfile::tempdir().unwrap();
+        let bin = dir.path().join("usr/bin");
+        let libexec = dir.path().join("usr/libexec/oleafly");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::create_dir_all(&libexec).unwrap();
+        std::fs::write(bin.join("pandoc"), b"").unwrap();
+        std::fs::write(libexec.join("pandoc"), b"").unwrap();
+
+        assert_eq!(sidecar_in(&bin, "pandoc"), Some(libexec.join("pandoc")));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_tool_that_is_not_in_libexec_is_found_beside_the_app() {
+        let dir = tempfile::tempdir().unwrap();
+        let bin = dir.path().join("target/debug");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::write(bin.join("typst"), b"").unwrap();
+
+        assert_eq!(sidecar_in(&bin, "typst"), Some(bin.join("typst")));
+    }
 
     #[test]
     fn sidecar_lookup_strips_deps_and_adds_exe_on_windows() {

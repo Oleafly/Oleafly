@@ -16,7 +16,9 @@ const QUARTO_PROJECT_FILES: [&str; 2] = ["_quarto.yml", "_quarto.yaml"];
 const OPTION_PREFIXES: [&str; 4] = ["#|", "//|", "--|", "%%|"];
 
 const ALLOWED_FILTERS: &[&str] = &["quarto", "citeproc"];
-const ALLOWED_PDF_ENGINES: &[&str] = &["pdflatex", "xelatex", "lualatex", "tectonic", "typst"];
+// Not Tectonic: Quarto would start it in the project, where it looks for a
+// program named tectonic-biber before it reads PATH.
+const ALLOWED_PDF_ENGINES: &[&str] = &["pdflatex", "xelatex", "lualatex", "typst"];
 const ALLOWED_ENGINE_FLAGS: &[&str] = &[
     "-halt-on-error",
     "--halt-on-error",
@@ -1012,6 +1014,7 @@ mod tests {
             "---\npdf-engine-opt: -cnf-line=shell_escape=t\n---\n"
         ));
         assert!(refused("---\npdf-engine: ./bin/xelatex\n---\n"));
+        assert!(refused("---\npdf-engine: tectonic\n---\n"));
         assert!(refused("---\npdf-engine: latexmk\n---\n"));
         assert!(refused("---\nlatex-makeindex: ./evil\n---\n"));
         assert!(refused(
