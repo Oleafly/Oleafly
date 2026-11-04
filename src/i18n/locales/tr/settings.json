@@ -304,7 +304,10 @@
         "title": "Modeli sil"
       },
       "deleteTooltip": "Modeli sil",
+      "disableAll": "Tümünü kapat",
       "empty": "Henüz model yok. Aşağıdan bir tane ekleyin.",
+      "enableAll": "Tümünü aç",
+      "enabledCount": "{{total}} modelden {{enabled}} tanesi açık",
       "invalidKey": "Geçersiz API anahtarı.",
       "metadata": {
         "refreshFailed": "Model verileri yenilenemedi.",

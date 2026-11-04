@@ -304,7 +304,10 @@
         "title": "Modell löschen"
       },
       "deleteTooltip": "Modell löschen",
+      "disableAll": "Alle deaktivieren",
       "empty": "Noch keine Modelle. Fügen Sie unten eines hinzu.",
+      "enableAll": "Alle aktivieren",
+      "enabledCount": "{{enabled}} von {{total}} aktiv",
       "invalidKey": "Ungültiger API-Schlüssel.",
       "metadata": {
         "refreshFailed": "Die Modelldaten konnten nicht aufgefrischt werden.",

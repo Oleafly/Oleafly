@@ -763,6 +763,7 @@ pub async fn agent_run(
     let run_registration_id = request_id.clone();
     run_registered(agent_state, &request_id, |generation| async move {
         let mut request = request;
+        request.session_id = thread_id.clone();
         let seed_text = initiating_user_text(&request);
         let wants_tools = !request.tools.is_empty() || request.web.is_some_and(|web| web.any());
         let resolved = resolve_for_run_off_thread(provider_override, wants_tools).await?;
@@ -1624,6 +1625,7 @@ fn probe_request(timeout: Duration) -> CompletionRequest {
                 "additionalProperties": false
             }),
         }],
+        session_id: Some(oleafly_agent::complete::new_session_id()),
         ..CompletionRequest::default()
     }
 }
@@ -1641,7 +1643,10 @@ pub(crate) async fn probe_model(
     .await
     .map_err(|_| oleafly_agent::AgentError::Timeout)?;
     let (verdict, reason) = match outcome {
-        Err(error) => (ProbeVerdict::Blocked, blocking_probe_reason(error)?),
+        Err(error) => (
+            ProbeVerdict::Blocked,
+            model_verdict_reason(resolved, error)?,
+        ),
         Ok(outcome) => {
             let judged = judge_probe_outcome(&outcome.tool_calls, outcome.stop_reason.as_deref());
             if judged.0 == ProbeVerdict::Verified && replays_reasoning(resolved, &outcome) {
@@ -1716,7 +1721,7 @@ async fn probe_follow_up(
     .await;
     match next {
         Err(_) => Err(oleafly_agent::AgentError::Timeout),
-        Ok(Err(error)) => blocking_probe_reason(error).map(Some),
+        Ok(Err(error)) => model_verdict_reason(resolved, error).map(Some),
         Ok(Ok(next)) => {
             let dropped = next.input_transformations.iter().any(|entry| {
                 entry.get("reason").and_then(serde_json::Value::as_str)
@@ -1773,6 +1778,32 @@ fn blocking_probe_reason(
     } else {
         Ok(probe_error_reason(&error))
     }
+}
+
+/// OpenCode answers HTTP 400 when its gateway turns a request away, as it did
+/// every request without a session id, so a 400 from it says nothing about
+/// whether the model can use tools.
+fn gateway_refused(resolved: &oleafly_agent::Resolved, error: &oleafly_agent::AgentError) -> bool {
+    error.status() == Some(400)
+        && oleafly_agent::wire::is_opencode_endpoint(resolved.wire.base_url())
+}
+
+fn model_verdict_reason(
+    resolved: &oleafly_agent::Resolved,
+    error: oleafly_agent::AgentError,
+) -> Result<String, oleafly_agent::AgentError> {
+    if gateway_refused(resolved, &error) {
+        Err(error)
+    } else {
+        blocking_probe_reason(error)
+    }
+}
+
+/// The reason a check recorded when the provider answered HTTP 400.
+pub(crate) fn is_bad_request_probe_reason(reason: &str) -> bool {
+    reason
+        .strip_prefix(PROBE_STATUS_PREFIX)
+        .is_some_and(|rest| rest == "400.")
 }
 
 pub(crate) fn is_transient_probe_reason(reason: &str) -> bool {
@@ -2577,6 +2608,37 @@ mod probe_tests {
             probe_error_reason(&oleafly_agent::AgentError::Decode("bad".into())),
             "The provider sent a response the assistant could not read."
         );
+    }
+
+    #[test]
+    fn opencode_turning_a_request_away_is_a_failed_check_not_a_verdict() {
+        use oleafly_agent::AgentError;
+        let resolved = |base_url: &str| oleafly_agent::Resolved {
+            provider_id: "opencode".into(),
+            model_id: "deepseek-v4.1-flash".into(),
+            credential: SECRET.into(),
+            auth: Some(SECRET.into()),
+            wire: oleafly_agent::Wire::OpenAiChat {
+                base_url: base_url.into(),
+                reasoning_content: true,
+            },
+            caps: oleafly_agent::ModelCaps::default(),
+        };
+        let go = resolved("https://opencode.ai/zen/go/v1");
+        let missing_session = AgentError::provider(400, "Request is missing x-opencode-session");
+        assert_eq!(
+            model_verdict_reason(&go, missing_session.clone()),
+            Err(missing_session.clone())
+        );
+
+        let other = resolved("https://llm.example.com/v1");
+        let reason = model_verdict_reason(&other, missing_session).unwrap();
+        assert_eq!(reason, "The provider answered the probe with HTTP 400.");
+        assert!(is_bad_request_probe_reason(&reason));
+
+        let reason = model_verdict_reason(&go, AgentError::provider(422, "no tools")).unwrap();
+        assert_eq!(reason, "The provider answered the probe with HTTP 422.");
+        assert!(!is_bad_request_probe_reason(&reason));
     }
 
     #[test]

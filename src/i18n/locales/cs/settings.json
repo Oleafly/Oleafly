@@ -306,7 +306,10 @@
         "title": "Smazat model"
       },
       "deleteTooltip": "Smazat model",
+      "disableAll": "Vypnout vše",
       "empty": "Zatím žádné modely. Přidejte jeden níže.",
+      "enableAll": "Zapnout vše",
+      "enabledCount": "Zapnuto {{enabled}} z {{total}}",
       "invalidKey": "Neplatný klíč API.",
       "metadata": {
         "refreshFailed": "Data o modelech se nepodařilo obnovit.",

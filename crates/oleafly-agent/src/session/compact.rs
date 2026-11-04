@@ -322,7 +322,8 @@ pub(crate) async fn compact_history(
     budget: usize,
     token: &CancellationToken,
 ) -> Result<CompletionResponse> {
-    let summary_request = summary_request_within(&request.messages, &resolved.caps, budget);
+    let mut summary_request = summary_request_within(&request.messages, &resolved.caps, budget);
+    summary_request.session_id = request.session_id.clone();
     let call = crate::complete(client, resolved, &summary_request);
     tokio::select! {
         response = call => response,

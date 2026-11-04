@@ -1,7 +1,14 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
+import { useSidewaysScroll, type SidewaysScrollActive } from "@/hooks/use-sideways-scroll";
 import { cn } from "@/lib/utils";
+
+const SELECTED_AGENT: SidewaysScrollActive = {
+  selector: '[aria-pressed="true"]',
+  attribute: "aria-pressed",
+};
 
 export interface AgentPickerEntry {
   id: string;
@@ -22,9 +29,12 @@ export function AgentPickerRow({
   onSelect: (id: string) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
+  const [row, setRow] = useState<HTMLFieldSetElement | null>(null);
+  useSidewaysScroll(row, SELECTED_AGENT);
   if (agents.length === 0) return null;
   return (
     <fieldset
+      ref={setRow}
       aria-label={t(($) => $.ai.agents.pickerAriaLabel)}
       data-testid="agent-picker-row"
       className="no-scrollbar mx-auto flex w-fit min-w-0 max-w-full items-center gap-0.5 overflow-x-auto rounded-full border bg-muted/60 p-1"

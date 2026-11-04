@@ -304,7 +304,10 @@
         "title": "Radera modell"
       },
       "deleteTooltip": "Radera modellen",
+      "disableAll": "Stäng av alla",
       "empty": "Inga modeller än. Lägg till en nedan.",
+      "enableAll": "Aktivera alla",
+      "enabledCount": "{{enabled}} av {{total}} aktiverade",
       "invalidKey": "Ogiltig API-nyckel.",
       "metadata": {
         "refreshFailed": "Det gick inte att uppdatera modelldata.",

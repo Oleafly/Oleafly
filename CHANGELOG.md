@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Each provider's model list has Enable all and Disable all buttons. Turn off
+  a long list in one click, then switch back on the few models you use (#385).
+
 ### Fixed
 
 - Accessible export no longer breaks the build on the bundled engine. The
@@ -31,6 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the desktop uses subpixel font smoothing, such as Rgba antialiasing in
   Cinnamon. It made the text look as if it had no antialiasing. The preview now
   draws PDF text in grayscale whatever the desktop setting.
+- OpenCode Go works as a custom provider. OpenCode Go refuses any request
+  that has no session ID, so the tool check failed for every model on it and
+  marked the model Blocked, even with a valid key. Oleafly now sends each
+  chat's ID to OpenCode Zen and Go, and to no other provider. OpenCode models
+  that need their reasoning sent back, like DeepSeek, Kimi and GLM, now get
+  it, and models blocked this way get checked again (#385).
+- The agent picker scrolls with a mouse wheel. When the assistant panel was
+  too narrow for every agent, the ones past the edge, like a custom agent at
+  the end, could only be reached with a trackpad. The selected agent now
+  scrolls into view too (#385).
 
 ## [0.4.10] - 2026-11-02
 

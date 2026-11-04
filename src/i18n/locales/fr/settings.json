@@ -305,7 +305,10 @@
         "title": "Supprimer le modèle"
       },
       "deleteTooltip": "Supprimer le modèle",
+      "disableAll": "Tout désactiver",
       "empty": "Aucun modèle pour l'instant. Ajoutez-en un ci-dessous.",
+      "enableAll": "Tout activer",
+      "enabledCount": "{{enabled}} activés sur {{total}}",
       "invalidKey": "Clé API invalide.",
       "metadata": {
         "refreshFailed": "Impossible d'actualiser les données des modèles.",

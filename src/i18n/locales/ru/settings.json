@@ -306,7 +306,10 @@
         "title": "Удалить модель"
       },
       "deleteTooltip": "Удалить модель",
+      "disableAll": "Выключить все",
       "empty": "Моделей пока нет. Добавьте одну ниже.",
+      "enableAll": "Включить все",
+      "enabledCount": "включено {{enabled}} из {{total}}",
       "invalidKey": "Неверный ключ API.",
       "metadata": {
         "refreshFailed": "Не удалось обновить данные о моделях.",

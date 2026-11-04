@@ -1086,7 +1086,8 @@ mod tests {
         )
         .unwrap();
         let mut change = None;
-        for attempt in 0..20 {
+        // macOS can take close to 10 s to deliver a file event on a busy machine.
+        for attempt in 0..200 {
             std::fs::write(root.join("notes.md"), format!("notes {attempt}")).unwrap();
             change = receiver.recv_timeout(Duration::from_millis(500)).ok();
             if change.is_some() {

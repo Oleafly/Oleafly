@@ -131,22 +131,45 @@ fn openai_visible_content(rest: &[&ContentPart], images: &[&str], files: bool) -
     })
 }
 
-fn expects_reasoning_back(base_url: &str) -> bool {
+fn host_is_in(base_url: &str, domains: &[&str]) -> bool {
     let Some(host) = reqwest::Url::parse(base_url)
         .ok()
         .and_then(|url| url.host_str().map(str::to_ascii_lowercase))
     else {
         return false;
     };
-    [
-        "deepseek.com",
-        "moonshot.cn",
-        "moonshot.ai",
-        "bigmodel.cn",
-        "z.ai",
-    ]
-    .iter()
-    .any(|domain| host == *domain || host.ends_with(&format!(".{domain}")))
+    domains
+        .iter()
+        .any(|domain| host == *domain || host.ends_with(&format!(".{domain}")))
+}
+
+fn expects_reasoning_back(base_url: &str) -> bool {
+    host_is_in(
+        base_url,
+        &[
+            "deepseek.com",
+            "moonshot.cn",
+            "moonshot.ai",
+            "bigmodel.cn",
+            "z.ai",
+            "opencode.ai",
+        ],
+    )
+}
+
+/// OpenCode Zen and Go, which route requests by conversation.
+pub fn is_opencode_endpoint(base_url: &str) -> bool {
+    host_is_in(base_url, &["opencode.ai"])
+}
+
+/// OpenCode Go turns away a request without this header with HTTP 400
+/// `MissingSessionID` before it reads the key, and routes and caches by it.
+const OPENCODE_SESSION_HEADER: &str = "x-opencode-session";
+
+fn opencode_session(session_id: Option<&str>) -> String {
+    session_id
+        .filter(|id| !id.trim().is_empty() && reqwest::header::HeaderValue::from_str(id).is_ok())
+        .map_or_else(crate::complete::new_session_id, str::to_string)
 }
 
 pub fn replays_reasoning(resolved: &Resolved) -> bool {
@@ -621,8 +644,12 @@ pub(crate) fn body_request(
     resolved: &Resolved,
     streaming: bool,
     body: &Value,
+    session_id: Option<&str>,
 ) -> reqwest::RequestBuilder {
-    let builder = request_builder(client, resolved, streaming).json(body);
+    let mut builder = request_builder(client, resolved, streaming).json(body);
+    if is_opencode_endpoint(resolved.wire.base_url()) {
+        builder = builder.header(OPENCODE_SESSION_HEADER, opencode_session(session_id));
+    }
     match anthropic_beta_header(body) {
         Some(beta) if matches!(resolved.wire, Wire::Anthropic { .. }) => {
             builder.header("anthropic-beta", beta)

@@ -304,7 +304,10 @@
         "title": "Delete model"
       },
       "deleteTooltip": "Delete model",
+      "disableAll": "Disable all",
       "empty": "No models yet. Add one below.",
+      "enableAll": "Enable all",
+      "enabledCount": "{{enabled}} of {{total}} enabled",
       "invalidKey": "Invalid API key.",
       "metadata": {
         "refreshFailed": "Could not refresh model data.",

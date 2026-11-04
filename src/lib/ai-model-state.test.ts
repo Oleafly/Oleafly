@@ -25,6 +25,7 @@ import {
   resolveModelTrust,
   restoreSeedModels,
   seedProviderModels,
+  setAllModelsEnabled,
   setModelEnabled,
   shouldAutoRefreshModels,
   throttleModelListRefresh,
@@ -271,6 +272,18 @@ describe("model list edits", () => {
   it("setModelEnabled toggles only the matching id", () => {
     const next = setModelEnabled([stored("a"), stored("b")], "a", false);
     expect(next).toEqual([stored("a", false), stored("b")]);
+  });
+
+  it("setAllModelsEnabled switches every model and leaves the rest of each entry alone", () => {
+    const custom: StoredModel = { ...stored("c", false, "custom"), trust: "untested" };
+    expect(setAllModelsEnabled([stored("a"), custom], false)).toEqual([
+      stored("a", false),
+      custom,
+    ]);
+    expect(setAllModelsEnabled([stored("a"), custom], true)).toEqual([
+      stored("a"),
+      { ...custom, enabled: true },
+    ]);
   });
 
   it("deleteModel removes the matching id", () => {

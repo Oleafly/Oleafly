@@ -305,7 +305,10 @@
         "title": "Excluir modelo"
       },
       "deleteTooltip": "Excluir modelo",
+      "disableAll": "Desativar todos",
       "empty": "Ainda não há modelos. Adicione um abaixo.",
+      "enableAll": "Ativar todos",
+      "enabledCount": "{{enabled}} de {{total}} ativados",
       "invalidKey": "Chave de API inválida.",
       "metadata": {
         "refreshFailed": "Não foi possível atualizar os dados dos modelos.",
