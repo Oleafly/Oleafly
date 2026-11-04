@@ -37,7 +37,7 @@ MULTIARCH="$(gcc -dumpmachine)"
 ARCH="$(uname -m)"
 
 mkdir -p /src
-curl -fsSL --retry 3 -o /tmp/biber.tar.gz "$BIBER_COMMIT_ARCHIVE"
+curl -fsSL --proto '=https' --proto-redir '=https' --retry 3 -o /tmp/biber.tar.gz "$BIBER_COMMIT_ARCHIVE"
 echo "$BIBER_ARCHIVE_SHA256  /tmp/biber.tar.gz" | sha256sum -c -
 tar -xzf /tmp/biber.tar.gz -C /src --strip-components=1
 cd /src

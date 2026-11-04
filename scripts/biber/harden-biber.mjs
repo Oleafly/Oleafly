@@ -15,8 +15,9 @@
 // its length and its layout, which is what keeps a Mach-O file valid.
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
-import { chmod, readFile, rename, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { chmod, lstat, readFile, realpath, rename, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
 
@@ -29,6 +30,7 @@ const DIRECTORY_ENTRY = 0x02014b50;
 const LOCAL_HEADER = 0x04034b50;
 const DEFLATE = 8;
 const HARDENING_REVISION = "oleafly-biber-hardening-1";
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 export const BIBER_PATCHES = [
   {
@@ -38,7 +40,7 @@ export const BIBER_PATCHES = [
     sha256: "40ca0e53b99d290e4fa3f8595ad5d849a9aae9e3bec1b87ff941bc3286c3ef44",
     edits: [
       [
-        String.raw`use Getopt::Long qw/:config no_ignore_case/;
+        `use Getopt::Long qw/:config no_ignore_case/;
 my $opts = {};
 `,
         String.raw`unless ($ENV{OLEAFLY_BIBER_DIRECT}) {
@@ -49,18 +51,18 @@ my $opts = {};
 `,
       ],
       [
-        String.raw`          ) or pod2usage(-verbose => 0,
+        `          ) or pod2usage(-verbose => 0,
                          -exitval => EXIT_ERROR);
 
 # verbose > 1 uses external perldoc`,
-        String.raw`          ) or pod2usage(-verbose => 0,
+        `          ) or pod2usage(-verbose => 0,
                          -exitval => EXIT_ERROR);
 $opts->{noconf} = 1;
 
 # verbose > 1 uses external perldoc`,
       ],
       [
-        String.raw`my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
+        `my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
 `,
         String.raw`biber_error('Unknown output format') unless Biber::Config->getoption('output_format') =~ /\A\w+\z/;
 my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
@@ -75,7 +77,7 @@ my $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
     sha256: "1180ef3fe4f0b49c14c2095d0d120133aaea836a0a8bbeb14fd287bf822dd152",
     edits: [
       [
-        String.raw`  # Tricky quoting because of later evals
+        `  # Tricky quoting because of later evals
   $val_replace = '"' . $val_replace . '"';
   $value =~ s/$val_match/$val_replace/eegxms;
   return $value;
@@ -136,13 +138,13 @@ sub _expand_replacement {
     sha256: "148a6653ce2991d614e4b972b88f785ccb6e3d6419595681f61848754ec538a9",
     edits: [
       [
-        String.raw`    unless(eval "require $package") {
+        `    unless(eval "require $package") {
 `,
         String.raw`    unless($type eq 'file' and $datatype =~ /\A(?:bibtex|biblatexml)\z/ and eval "require $package") {
 `,
       ],
       [
-        String.raw`        eval "require $package" or
+        `        eval "require $package" or
           biber_error("Error loading data source package '$package': $@");
         $missing->@* =`,
         String.raw`        ($type eq 'file' and $datatype =~ /\A(?:bibtex|biblatexml)\z/ and eval "require $package") or
@@ -150,20 +152,20 @@ sub _expand_replacement {
         $missing->@* =`,
       ],
       [
-        String.raw`    if (defined($sl) and $sl ne $thislocale) {
+        `    if (defined($sl) and $sl ne $thislocale) {
 `,
         String.raw`    if (defined($sl) and $sl =~ /\A[\w-]+\z/ and $sl ne $thislocale) {
 `,
       ],
       [
-        String.raw`  $collopts->{upper_before_lower} = Biber::Config->getoption('sortupper');
+        `  $collopts->{upper_before_lower} = Biber::Config->getoption('sortupper');
 `,
-        String.raw`  $collopts->{upper_before_lower} = Biber::Config->getoption('sortupper');
+        `  $collopts->{upper_before_lower} = Biber::Config->getoption('sortupper');
   $collopts->{upper_before_lower} = $collopts->{upper_before_lower} ? 1 : 0 if defined($collopts->{upper_before_lower});
 `,
       ],
       [
-        String.raw`        my $a = $collateobjs[$i] . "->getSortKey(q{$sortfield})";
+        `        my $a = $collateobjs[$i] . "->getSortKey(q{$sortfield})";
 `,
         String.raw`        (my $quoted = $sortfield) =~ s/([\\{}])/\\$1/g;
         my $a = $collateobjs[$i] . "->getSortKey(q{$quoted})";
@@ -177,7 +179,7 @@ sub _expand_replacement {
     sha256: "2a75358e49489deeb709792ee363b9f7e530c25abbb56933f9d34c07511d02de",
     edits: [
       [
-        String.raw`      my $copt_h = eval "{ $opts->{$copt} }" or croak('Bad command-line collation options');
+        `      my $copt_h = eval "{ $opts->{$copt} }" or croak('Bad command-line collation options');
 `,
         String.raw`      my $copt_h = {};
       foreach my $pair (split(/\s*,\s*/, $opts->{$copt})) {
@@ -302,15 +304,36 @@ export function hardenBiber(binary, patches = BIBER_PATCHES) {
     patchMember(file, found[0], payload.base, patch);
   }
   const previous = file.toString("latin1", payload.idStart, payload.idStart + CACHE_ID_LENGTH);
-  const id = createHash("sha1").update(`${previous}${HARDENING_REVISION}`).digest("hex");
+  // Only a new folder name for PAR's unpack cache, so any 40 hex digits do.
+  const id = createHash("sha256")
+    .update(`${previous}${HARDENING_REVISION}`)
+    .digest("hex")
+    .slice(0, CACHE_ID_LENGTH);
   file.write(id, payload.idStart, "latin1");
   return file;
 }
 
-async function main(path) {
-  if (!path) {
+/**
+ * The fetch step writes the binary to a temporary folder, and a developer may
+ * point at one in the checkout. Nothing else is ever patched in place.
+ */
+export async function confinedBinary(argument) {
+  const candidate = await realpath(resolve(argument));
+  const roots = await Promise.all([realpath(tmpdir()), realpath(REPO_ROOT)]);
+  if (!roots.some((root) => candidate.startsWith(`${root}${sep}`))) {
+    throw new Error(`refusing ${argument}: it is outside the checkout and the temporary folder`);
+  }
+  if (!(await lstat(candidate)).isFile()) {
+    throw new Error(`refusing ${argument}: not a regular file`);
+  }
+  return candidate;
+}
+
+async function main(argument) {
+  if (!argument) {
     throw new Error("usage: harden-biber.mjs <biber-binary>");
   }
+  const path = await confinedBinary(argument);
   const hardened = hardenBiber(await readFile(path));
   const { mode } = await stat(path);
   const staged = join(dirname(path), `.${basename(path)}.hardened`);
@@ -322,8 +345,10 @@ async function main(path) {
 // Compared as real paths: a script reached through a symlink would otherwise
 // exit 0 having done nothing, and an unpatched Biber would ship.
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main(process.argv[2]).catch((error) => {
+  try {
+    await main(process.argv[2]);
+  } catch (error) {
     console.error(`harden-biber: ${error.message}`);
     process.exit(1);
-  });
+  }
 }

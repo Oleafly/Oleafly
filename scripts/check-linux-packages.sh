@@ -15,7 +15,8 @@ BUNDLE="${OLEAFLY_BUNDLE_DIR:-$ROOT/src-tauri/target/$TARGET/release/bundle}"
 [[ -d "$BUNDLE" ]] || BUNDLE="$ROOT/src-tauri/target/release/bundle"
 
 sha() {
-  sha256sum "$1" | awk '{print $1}'
+  local file="$1"
+  sha256sum "$file" | awk '{print $1}'
 }
 
 check_tree() {

@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
+import { mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   BIBER_PATCHES,
   applyEdits,
+  confinedBinary,
   hardenBiber,
   stripPod,
 } from "./harden-biber.mjs";
@@ -216,4 +220,19 @@ test("the edits reach the module as written, with no JavaScript interpolation", 
   assert.ok(text.includes("map {$$_} 1 .. $#+"));
   assert.ok(text.includes("\\$\\{?(\\d+)\\}?"));
   assert.ok(text.includes("\\\\x([0-9A-Fa-f]{1,2})"));
+});
+
+test("the binary to patch must be a file in the temporary folder or the checkout", async () => {
+  const folder = await mkdtemp(join(await realpath(tmpdir()), "oleafly-harden-"));
+  try {
+    const binary = join(folder, "biber");
+    await writeFile(binary, "x");
+    assert.equal(await confinedBinary(binary), binary);
+    await assert.rejects(confinedBinary("/etc/hosts"), /outside/u);
+    await assert.rejects(confinedBinary(folder), /not a regular file/u);
+    await symlink("/etc/hosts", join(folder, "link"));
+    await assert.rejects(confinedBinary(join(folder, "link")), /outside/u);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
 });

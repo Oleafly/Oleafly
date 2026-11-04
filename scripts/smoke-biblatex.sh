@@ -80,7 +80,7 @@ if ! compile real; then
   echo "a biblatex document failed to compile" >&2
   exit 1
 fi
-test -s "$TMP/real/out/main.pdf"
+[[ -s "$TMP/real/out/main.pdf" ]]
 grep -F "Knuth" "$TMP/real/out/main.bbl" >/dev/null
 # The replacement above proves source maps still expand their groups.
 grep -F "TeXbook, the! THE" "$TMP/real/out/main.bbl" >/dev/null
