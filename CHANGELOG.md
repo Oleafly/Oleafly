@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- TeX Live package operations now report when tlmgr refuses to continue until
+  it updates itself, even when it exits with a success code. The error keeps
+  tlmgr's diagnostic and tells you to run `tlmgr update --self` for the affected
+  distribution, then retry (#397).
 - Accessible export no longer breaks the build on the bundled engine. The
   `\DocumentMetadata` line it adds now sits inside a version check, so LaTeX
   older than November 2025 skips it and builds the document untagged. Before,
