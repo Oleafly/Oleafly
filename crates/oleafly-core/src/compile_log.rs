@@ -19,6 +19,7 @@ macro_rules! js_space {
 const SPACE: &str = concat!("[", js_space!(), "]");
 const SPACE_CHARS: &str = js_space!();
 const ENGINE_OUTPUT_MARKER: &str = "[Oleafly] Engine output:";
+const MAX_MISSING_CHAR_TAIL: u8 = 3;
 const NON_SPACE: &str = concat!("[^", js_space!(), "]");
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -138,7 +139,7 @@ fn patterns() -> &'static Patterns {
         package_warning_extra_lines: compile(format!(
             r"^\(({ANY}*)\){SPACE}+({ANY}*?)(?: +on input line ([0-9]+))?(\.)?$"
         )),
-        missing_char: compile(format!(r"^{SPACE}*(Missing character:{ANY}*?!)")),
+        missing_char: compile(format!(r"^{SPACE}*(Missing character:{ANY}*)")),
         bib_empty: compile(r"^Empty `thebibliography' environment".into()),
         biber_warn: compile(format!(
             r"^Biber warning:{ANY}*WARN - I didn't find a database entry for '([^']+)'"
@@ -253,6 +254,7 @@ impl Entry {
 
 struct Parser<'a> {
     search_empty_line: bool,
+    missing_char_tail: u8,
     inside_box_warn: bool,
     inside_error: bool,
     awaiting_error_line: bool,
@@ -310,6 +312,7 @@ pub(crate) fn head(log: &str) -> &str {
 pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic> {
     let mut parser = Parser {
         search_empty_line: false,
+        missing_char_tail: 0,
         inside_box_warn: false,
         inside_error: false,
         awaiting_error_line: false,
@@ -462,6 +465,22 @@ impl Parser<'_> {
         }
     }
 
+    // TeX wraps its log at 79 columns, so a font name such as
+    // `[lmroman12-bold]:mapping=tex-text;` pushes the closing `!` onto the next line.
+    fn continue_missing_character(&mut self, line: &str) {
+        self.missing_char_tail -= 1;
+        let end = line.find('!');
+        if let Some(current) = self.current.as_mut() {
+            current.text.push_str(match end {
+                Some(end) => &line[..=end],
+                None => line.trim_end(),
+            });
+        }
+        if end.is_some() || line.trim().is_empty() {
+            self.missing_char_tail = 0;
+        }
+    }
+
     fn parse_line_once(&mut self, line: &str) -> Step {
         let p = patterns();
         let filename = self.current_file();
@@ -470,6 +489,10 @@ impl Parser<'_> {
             return Step::Stop;
         }
         if self.skip_engine_output(p, line) {
+            return Step::Stop;
+        }
+        if self.missing_char_tail > 0 {
+            self.continue_missing_character(line);
             return Step::Stop;
         }
         if let Some(entry) = oleafly_note(p, line) {
@@ -508,15 +531,20 @@ impl Parser<'_> {
             .then(|| p.missing_char.captures(line))
             .flatten()
         {
+            let (text, wrapped) = match caps[1].find('!') {
+                Some(end) => (&caps[1][..=end], false),
+                None => (caps[1].trim_end(), true),
+            };
             self.start(Entry {
                 severity: LogSeverity::Warning,
                 category: LogCategory::MissingCharacter,
                 file: filename,
                 line: None,
-                text: caps[1].to_string(),
+                text: text.to_string(),
                 context: None,
             });
             self.search_empty_line = false;
+            self.missing_char_tail = if wrapped { MAX_MISSING_CHAR_TAIL } else { 0 };
             return Step::Stop;
         }
         if let Some(caps) = line

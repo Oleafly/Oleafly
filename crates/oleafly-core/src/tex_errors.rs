@@ -207,15 +207,165 @@ fn float_warning(line: &str) -> Option<&'static str> {
     None
 }
 
+const LOST_CHARACTER: &str = "Missing character: There is no ";
+const MAX_LOST_SAMPLE: usize = 3;
+const BANNER_LINES: usize = 64;
+
+const TRADITIONAL_CHINESE_SETUP: &str =
+    "% Traditional Chinese\n\\usepackage{xeCJK}\n\\setCJKmainfont[AutoFakeBold]{bsmi00lp.ttf}";
+const SIMPLIFIED_CHINESE_SETUP: &str =
+    "% Simplified Chinese\n\\usepackage{xeCJK}\n\\setCJKmainfont[AutoFakeBold]{gbsn00lp.ttf}";
+const JAPANESE_SETUP: &str =
+    "% Japanese\n\\usepackage{xeCJK}\n\\setCJKmainfont{ipaexm.ttf}[BoldFont=ipaexg.ttf]";
+// Plain xeCJK drops the spaces between Hangul words.
+const KOREAN_SETUP: &str =
+    "% Korean\n\\usepackage[space]{xeCJK}\n\\setCJKmainfont[AutoFakeBold]{UnBatang.ttf}";
+
+fn code_point(glyph: &str) -> Option<char> {
+    let (_, code) = glyph.split_once("(U+")?;
+    u32::from_str_radix(code.split(')').next()?, 16)
+        .ok()
+        .and_then(char::from_u32)
+}
+
+fn only_char(token: &str) -> Option<char> {
+    let mut characters = token.chars();
+    let first = characters.next()?;
+    characters.next().is_none().then_some(first)
+}
+
+// TeX leaves out a character its font has no glyph for and still reports
+// success, so a whole script can vanish from the PDF. The log repeats this for
+// every character, and one warning covers them all. In `nullfont` it is stray
+// text inside a TikZ picture, which is a different problem.
+#[derive(Default)]
+struct LostCharacters {
+    count: usize,
+    sample: Vec<String>,
+    han: bool,
+    kana: bool,
+    hangul: bool,
+}
+
+impl LostCharacters {
+    fn observe(&mut self, line: &str) {
+        let Some(rest) = line.trim_start().strip_prefix(LOST_CHARACTER) else {
+            return;
+        };
+        if rest.contains("in font nullfont") {
+            return;
+        }
+        self.count += 1;
+        let token = rest.split_whitespace().next().unwrap_or_default();
+        let Some(character) = code_point(rest).or_else(|| only_char(token)) else {
+            self.remember(token);
+            return;
+        };
+        match character as u32 {
+            0x1100..=0x11FF | 0x3130..=0x318F | 0xA960..=0xA97F | 0xAC00..=0xD7FF => {
+                self.hangul = true;
+            }
+            0x3040..=0x30FF | 0x31F0..=0x31FF | 0xFF65..=0xFF9F => self.kana = true,
+            0x3000..=0x303F
+            | 0x3400..=0x4DBF
+            | 0x4E00..=0x9FFF
+            | 0xF900..=0xFAFF
+            | 0xFF00..=0xFF64
+            | 0x20000..=0x3FFFF => self.han = true,
+            _ => {}
+        }
+        if !character.is_whitespace() && character != char::REPLACEMENT_CHARACTER {
+            self.remember(&character.to_string());
+        }
+    }
+
+    fn remember(&mut self, glyph: &str) {
+        let known = self.sample.iter().any(|seen| seen == glyph);
+        if self.sample.len() < MAX_LOST_SAMPLE && !known && !glyph.is_empty() {
+            self.sample.push(glyph.chars().take(8).collect());
+        }
+    }
+
+    fn setups(&self) -> Vec<String> {
+        let mut setups = Vec::new();
+        if self.kana {
+            setups.push(JAPANESE_SETUP);
+        } else if self.han {
+            setups.extend([TRADITIONAL_CHINESE_SETUP, SIMPLIFIED_CHINESE_SETUP]);
+        }
+        if self.hangul {
+            setups.push(KOREAN_SETUP);
+        }
+        setups.into_iter().map(str::to_owned).collect()
+    }
+
+    fn warning(&self, lines: &[&str]) -> Option<CompileError> {
+        if self.count == 0 {
+            return None;
+        }
+        let sample = match self.sample.as_slice() {
+            [] => "?".to_owned(),
+            glyphs => glyphs.join(" "),
+        };
+        let hints = if log_runs_xetex(lines) {
+            self.setups()
+        } else {
+            Vec::new()
+        };
+        let (code, explanation) = if hints.is_empty() {
+            (
+                "tex.missing_characters",
+                format!("Some characters, such as {sample}, are missing from the PDF because the font has no glyphs for them. Switch to a font that covers them."),
+            )
+        } else if lines
+            .iter()
+            .any(|line| line.starts_with("Package: CJKutf8 ") || line.starts_with("Package: CJK "))
+        {
+            (
+                "tex.missing_characters_cjk_package",
+                format!("Text such as {sample} is missing from the PDF because CJKutf8 and CJK only work on pdfLaTeX. Switch this project to pdfLaTeX, or remove the package and its CJK environment and add one of the setups listed in the compile log."),
+            )
+        } else {
+            (
+                "tex.missing_characters_cjk",
+                format!("Some characters, such as {sample}, are missing from the PDF because the font has no Chinese, Japanese or Korean glyphs. Add one of the setups listed in the compile log."),
+            )
+        };
+        let message = match self.count {
+            1 => "1 character is missing from the PDF".to_owned(),
+            count => format!("{count} characters are missing from the PDF"),
+        };
+        Some(CompileError {
+            message,
+            kind: "warning".into(),
+            explanation: Some(explanation),
+            hints,
+            code: Some(code.into()),
+            params: BTreeMap::from([("sample".to_owned(), sample)]),
+            ..Default::default()
+        })
+    }
+}
+
+/// Tectonic always runs XeTeX and writes no banner to its log.
+fn log_runs_xetex(lines: &[&str]) -> bool {
+    lines
+        .iter()
+        .take(BANNER_LINES)
+        .find(|line| line.starts_with("This is "))
+        .is_none_or(|line| line.starts_with("This is XeTeX"))
+}
+
 pub const ENGINE_OUTPUT_MARKER: &str = "[Oleafly] Engine output:";
 
-/// Errors (`! ...` with their `l.NN` line) and float warnings in a TeX log,
-/// attributed to the innermost open input file.
+/// Errors (`! ...` with their `l.NN` line), float warnings and lost characters
+/// in a TeX log, attributed to the innermost open input file.
 pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
     let mut out = Vec::new();
     let lines: Vec<&str> = log.lines().collect();
     let mut stack: Vec<String> = Vec::new();
     let mut in_engine_output = false;
+    let mut lost_characters = LostCharacters::default();
     for i in 0..lines.len() {
         if lines[i].trim_end() == ENGINE_OUTPUT_MARKER {
             in_engine_output = true;
@@ -228,6 +378,7 @@ pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
             in_engine_output = false;
         }
         update_tex_file_stack(lines[i], &mut stack);
+        lost_characters.observe(lines[i]);
         if let Some(explanation) = float_warning(lines[i]) {
             out.push(CompileError {
                 line: None,
@@ -267,6 +418,7 @@ pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
             });
         }
     }
+    out.extend(lost_characters.warning(&lines));
     out.extend(compiler_crash_error(&lines));
     out
 }
@@ -732,6 +884,115 @@ mod tests {
         let log = FONT_CRASH.replace("error: the compiler crashed", "the compiler crashed");
         assert!(parse_tex_log_errors(&log).is_empty());
         assert!(parse_tex_log_errors("Requested font \"X\" at 10pt\n").is_empty());
+    }
+
+    const TECTONIC_LOST_HAN: &str = "**\n(main.tex\nMissing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-\ntext;!\nMissing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-\ntext;!\n";
+
+    fn lost(glyphs: &[(&str, &str)]) -> String {
+        glyphs
+            .iter()
+            .map(|(glyph, code)| {
+                format!("Missing character: There is no {glyph} (U+{code}) in font [lmroman12-regular]:mapping=tex-\ntext;!\n")
+            })
+            .collect()
+    }
+
+    #[test]
+    fn lost_han_text_gets_one_warning_with_traditional_and_simplified_setups() {
+        let errors = parse_tex_log_errors(TECTONIC_LOST_HAN);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        let warning = &errors[0];
+        assert_eq!(warning.kind, "warning");
+        assert_eq!(warning.message, "2 characters are missing from the PDF");
+        assert_eq!(warning.code.as_deref(), Some("tex.missing_characters_cjk"));
+        assert_eq!(warning.params["sample"], "大 綱");
+        assert_eq!(warning.hints.len(), 2);
+        assert!(warning.hints[0].contains("bsmi00lp.ttf"));
+        assert!(warning.hints[1].contains("gbsn00lp.ttf"));
+        assert!(warning.explanation.as_deref().unwrap().contains("大 綱"));
+    }
+
+    #[test]
+    fn the_cjk_package_on_xetex_names_pdflatex_as_the_way_out() {
+        let log = format!("Package: CJKutf8 2021/10/16 4.8.5\n{TECTONIC_LOST_HAN}");
+        let warning = parse_tex_log_errors(&log).remove(0);
+        assert_eq!(
+            warning.code.as_deref(),
+            Some("tex.missing_characters_cjk_package")
+        );
+        assert!(warning.explanation.as_deref().unwrap().contains("pdfLaTeX"));
+        assert_eq!(warning.hints.len(), 2);
+        let log = format!("Package: CJK 2021/10/16 4.8.5\n{TECTONIC_LOST_HAN}");
+        assert_eq!(
+            parse_tex_log_errors(&log)[0].code.as_deref(),
+            Some("tex.missing_characters_cjk_package")
+        );
+    }
+
+    #[test]
+    fn each_script_gets_a_setup_that_keeps_its_text() {
+        let japanese = parse_tex_log_errors(&lost(&[("漢", "6F22"), ("か", "304B")]));
+        assert_eq!(japanese[0].hints.len(), 1);
+        assert!(japanese[0].hints[0].contains("ipaexm.ttf"));
+        let korean = parse_tex_log_errors(&lost(&[("한", "D55C")]));
+        assert_eq!(korean[0].message, "1 character is missing from the PDF");
+        assert_eq!(korean[0].hints.len(), 1);
+        assert!(korean[0].hints[0].contains("[space]{xeCJK}"));
+        assert!(korean[0].hints[0].contains("UnBatang.ttf"));
+        let mixed = parse_tex_log_errors(&lost(&[("中", "4E2D"), ("한", "D55C")]));
+        assert_eq!(mixed[0].hints.len(), 3);
+    }
+
+    #[test]
+    fn characters_outside_cjk_have_no_setup_to_offer() {
+        let errors = parse_tex_log_errors(&lost(&[("😀", "1F600")]));
+        assert_eq!(errors[0].code.as_deref(), Some("tex.missing_characters"));
+        assert!(errors[0].hints.is_empty());
+        assert_eq!(errors[0].params["sample"], "😀");
+    }
+
+    #[test]
+    fn the_xecjk_setups_are_only_offered_on_xetex() {
+        let pdftex = format!(
+            "This is pdfTeX, Version 3.141592653-2.6-1.40.29\nPackage: CJKutf8 2021/10/16 4.8.5\n{}",
+            lost(&[("大", "5927")])
+        );
+        let errors = parse_tex_log_errors(&pdftex);
+        assert_eq!(errors[0].code.as_deref(), Some("tex.missing_characters"));
+        assert!(errors[0].hints.is_empty());
+        let xetex = format!(
+            "This is XeTeX, Version 3.141592653-2.6-0.999995\n{}",
+            lost(&[("大", "5927")])
+        );
+        assert_eq!(
+            parse_tex_log_errors(&xetex)[0].code.as_deref(),
+            Some("tex.missing_characters_cjk")
+        );
+    }
+
+    #[test]
+    fn stray_tikz_text_in_nullfont_is_not_lost_text() {
+        let log = "Missing character: There is no x in font nullfont!\n";
+        assert!(parse_tex_log_errors(log).is_empty());
+    }
+
+    #[test]
+    fn engine_output_does_not_count_the_same_characters_twice() {
+        let log = format!(
+            "{TECTONIC_LOST_HAN}{ENGINE_OUTPUT_MARKER}\nwarning: main.tex:6: Missing character: There is no 大 (U+5927) in font x!\n"
+        );
+        assert_eq!(
+            parse_tex_log_errors(&log)[0].message,
+            "2 characters are missing from the PDF"
+        );
+    }
+
+    #[test]
+    fn eight_bit_glyph_names_stay_readable_in_the_sample() {
+        let log = "Missing character: There is no ^^e5 in font ecrm1000!\n";
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors[0].params["sample"], "^^e5");
+        assert_eq!(errors[0].code.as_deref(), Some("tex.missing_characters"));
     }
 
     #[test]

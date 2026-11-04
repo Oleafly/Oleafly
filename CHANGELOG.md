@@ -14,10 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- TeX Live package operations now report when tlmgr refuses to continue until
-  it updates itself, even when it exits with a success code. The error keeps
-  tlmgr's diagnostic and tells you to run `tlmgr update --self` for the affected
-  distribution, then retry (#397).
+- Package installs work again on the TinyTeX that Oleafly manages. Its tlmgr
+  falls behind the live repository within weeks of each release and then refuses
+  every install, so Oleafly now updates tlmgr and repeats the install. On a
+  system TeX Live or your own TinyTeX, the error keeps tlmgr's message and tells
+  you to run `tlmgr update --self`, even when tlmgr exits with a success code
+  (#397).
+- A compile that loses text now tells you. TeX skips characters its font can't
+  show and still reports success, so a Chinese, Japanese or Korean document
+  could come out with its text gone. You now get a notice, the compile log lists
+  the missing characters, and it gives a setup for each script using fonts
+  already in the built-in engine. A project using CJKutf8 or CJK, which only
+  work on pdfLaTeX, is offered that switch. `oleaflyc build` prints the same
+  warning.
 - Accessible export no longer breaks the build on the bundled engine. The
   `\DocumentMetadata` line it adds now sits inside a version check, so LaTeX
   older than November 2025 skips it and builds the document untagged. Before,

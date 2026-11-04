@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
-import type { CompileResult, LogDiagnostic } from "@oleafly/backend-port";
+import type { CompileError, CompileResult, LogDiagnostic } from "@oleafly/backend-port";
 
 const mocks = vi.hoisted(() => ({
   latexEngineInfo: vi.fn(),
@@ -1799,7 +1799,7 @@ function failedCompile(log: string): CompileResult {
   };
 }
 
-function succeedNextCompile(revision: number): void {
+function succeedNextCompile(revision: number, errors: CompileError[] = []): void {
   const bytes = new Uint8Array([revision, 1, 2]);
   mocks.compileProject.mockResolvedValue({
     ok: true,
@@ -1807,13 +1807,82 @@ function succeedNextCompile(revision: number): void {
     output_id: fingerprintCompileOutput(bytes),
     output_revision: revision,
     log: "Output written on main.pdf.",
-    errors: [],
+    errors,
     synctex_path: null,
     out_dir: "/build",
     compile_time_ms: 1,
   });
   mocks.readCompiledPdf.mockResolvedValue(bytes.buffer.slice(0));
 }
+
+describe("text lost from a successful compile", () => {
+  let project = 0;
+  let revision = 200;
+  const lostText = (code: string): CompileError => ({
+    line: null,
+    file: null,
+    message: "2 characters are missing from the PDF",
+    kind: "warning",
+    explanation: "Fallback explanation",
+    code,
+    params: { sample: "大 綱" },
+  });
+  const notices = () =>
+    mocks.infoUnique.mock.calls.filter((call) => String(call[0]).startsWith("lost-text:"));
+  const compile = (errors: CompileError[]) => {
+    succeedNextCompile(++revision, errors);
+    return useCompileStore.getState().recompile();
+  };
+
+  beforeEach(() => {
+    mocks.files.projectId = `lost-text-${++project}`;
+    mocks.files.engine = LATEX_ENGINE;
+    useEnginePickerStore.setState({ open: false, source: "manual", findings: [] });
+  });
+
+  it("tells the user once, however many compiles keep losing text", async () => {
+    await compile([lostText("tex.missing_characters_cjk")]);
+    await compile([lostText("tex.missing_characters_cjk")]);
+    expect(notices()).toHaveLength(1);
+    const [key, message, action, sticky] = notices()[0];
+    expect(key).toBe(`lost-text:${mocks.files.projectId}`);
+    expect(message).toContain("大 綱");
+    expect(message).not.toBe("Fallback explanation");
+    expect(action).toBeUndefined();
+    expect(sticky).toBe(true);
+    expect(useCompileStore.getState().status).toBe("success");
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("offers pdfLaTeX when CJKutf8 lost the text on the built-in engine", async () => {
+    await compile([lostText("tex.missing_characters_cjk_package")]);
+    const offer = useCompileStore.getState().offer;
+    expect(offer).toMatchObject({ kind: "engine-gap", projectId: mocks.files.projectId });
+    const action = notices()[0][2] as ToastActionMock;
+    action.onClick();
+    const picker = useEnginePickerStore.getState();
+    expect(picker.open).toBe(true);
+    expect(picker.source).toBe("compile-failure");
+    expect(picker.findings.map((finding) => finding.id)).toEqual(["cjk-pdftex-package"]);
+  });
+
+  it("offers no engine switch on system TeX, where the picker doesn't apply", async () => {
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
+    await compile([lostText("tex.missing_characters_cjk_package")]);
+    expect(notices()).toHaveLength(1);
+    expect(notices()[0][2]).toBeUndefined();
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("clears the notice once a compile is clean, and warns again if text goes missing later", async () => {
+    await compile([lostText("tex.missing_characters")]);
+    const id = mocks.infoUnique.mock.results.at(-1)?.value;
+    await compile([]);
+    expect(mocks.dismiss).toHaveBeenCalledWith(id);
+    await compile([lostText("tex.missing_characters")]);
+    expect(notices()).toHaveLength(2);
+  });
+});
 
 describe("missing TeX file installation", () => {
   let project = 0;

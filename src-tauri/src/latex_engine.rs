@@ -323,18 +323,53 @@ fn utility_error(output: &TexUtilityOutput) -> String {
     }
 }
 
-fn check_tlmgr_self_update(tlmgr: &str, output: &TexUtilityOutput) -> Result<(), String> {
-    let detail = format!("{}\n{}", output.stdout.trim(), output.stderr.trim());
-    if detail
+fn tlmgr_wants_self_update(output: &TexUtilityOutput) -> bool {
+    format!("{}\n{}", output.stdout, output.stderr)
         .to_ascii_lowercase()
         .contains("tlmgr itself needs to be updated")
-    {
+}
+
+fn check_tlmgr_self_update(tlmgr: &str, output: &TexUtilityOutput) -> Result<(), String> {
+    if tlmgr_wants_self_update(output) {
+        let detail = format!("{}\n{}", output.stdout.trim(), output.stderr.trim());
         return Err(format!(
             "{}\nRun `tlmgr update --self` using this TeX distribution's package manager ({tlmgr}), then retry the package operation.",
             detail.trim()
         ));
     }
     Ok(())
+}
+
+/// Oleafly pins its TinyTeX to a monthly release, so its tlmgr falls behind the
+/// live repository within weeks and then refuses every install. That install
+/// is Oleafly's to maintain. A system TeX Live or the user's own TinyTeX is not.
+fn tlmgr_is_managed(tlmgr: &str) -> bool {
+    crate::tex_distro::distribution_kind_for_tool(Path::new(tlmgr)) == "oleafly-tinytex"
+}
+
+async fn update_managed_tlmgr(tlmgr: &str) -> Result<(), String> {
+    let args = ["update".to_string(), "--self".to_string()];
+    let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    if output.success {
+        return Ok(());
+    }
+    Err(packages::package_command_error(
+        &output,
+        "Oleafly could not update TinyTeX's package manager.",
+    ))
+}
+
+async fn run_tlmgr_mutation(
+    tlmgr: &str,
+    args: &[String],
+    may_update_itself: bool,
+) -> Result<TexUtilityOutput, String> {
+    let output = run_tex_utility(Path::new(tlmgr), args, TLMGR_MUTATION_TIMEOUT).await?;
+    if !may_update_itself || !tlmgr_wants_self_update(&output) {
+        return Ok(output);
+    }
+    update_managed_tlmgr(tlmgr).await?;
+    run_tex_utility(Path::new(tlmgr), args, TLMGR_MUTATION_TIMEOUT).await
 }
 
 /// Search `root` for `bin/<platform>/<name>` (TeX distributions nest binaries
@@ -1734,7 +1769,7 @@ async fn tlmgr_usermode_run_at(
     validate_package_names(&packages)?;
     let mut args = vec!["--usermode".to_string(), action.to_string(), "--".into()];
     args.extend(packages);
-    let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    let output = run_tlmgr_mutation(tlmgr, &args, tlmgr_is_managed(tlmgr)).await?;
     check_tlmgr_self_update(tlmgr, &output)?;
     if !output.success {
         return Err(packages::package_command_error(
@@ -1757,7 +1792,7 @@ async fn tlmgr_run_with_user_tree(
     validate_package_names(&packages)?;
     let mut args = vec![action.to_string(), "--".into()];
     args.extend(packages.clone());
-    let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    let output = run_tlmgr_mutation(tlmgr, &args, tlmgr_is_managed(tlmgr)).await?;
     check_tlmgr_self_update(tlmgr, &output)?;
     if output.success {
         return Ok(format!("{}{}", output.stdout, output.stderr));
@@ -2944,6 +2979,92 @@ mod tests {
                     assert_eq!(std::fs::read_to_string(calls).unwrap(), expected);
                 }
             }
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_managed_tlmgr_updates_itself_once_and_repeats_the_command() {
+        for status in [0, 1] {
+            let (root, manager, calls) = recording_manager(&format!(
+                "if [ \"$1\" = update ]; then touch \"$(dirname \"$0\")/updated\"; exit 0; fi\n\
+                 if [ -e \"$(dirname \"$0\")/updated\" ]; then echo installed; exit 0; fi\n\
+                 echo 'tlmgr itself needs to be updated.' >&2\nexit {status}"
+            ));
+            let args = ["install".to_string(), "--".into(), "cjk".into()];
+            let output = run_tlmgr_mutation(&manager, &args, true).await.unwrap();
+            assert!(output.success);
+            assert_eq!(output.stdout.trim(), "installed");
+            assert_eq!(
+                std::fs::read_to_string(calls).unwrap(),
+                "install\n--\ncjk\nupdate\n--self\ninstall\n--\ncjk\n"
+            );
+            drop(root);
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_managed_tlmgr_still_refusing_after_its_update_stops_at_one_retry() {
+        let (_root, manager, calls) = recording_manager(
+            "if [ \"$1\" = update ]; then exit 0; fi\n\
+             echo 'tlmgr itself needs to be updated.' >&2\nexit 0",
+        );
+        let args = ["install".to_string(), "--".into(), "cjk".into()];
+        let output = run_tlmgr_mutation(&manager, &args, true).await.unwrap();
+        let error = check_tlmgr_self_update(&manager, &output).unwrap_err();
+        assert!(error.contains("tlmgr update --self"), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(calls).unwrap(),
+            "install\n--\ncjk\nupdate\n--self\ninstall\n--\ncjk\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_failed_self_update_reports_why_and_skips_the_retry() {
+        let (_root, manager, calls) = recording_manager(
+            "if [ \"$1\" = update ]; then echo 'cannot reach the repository' >&2; exit 1; fi\n\
+             echo 'tlmgr itself needs to be updated.' >&2\nexit 1",
+        );
+        let args = ["install".to_string(), "--".into(), "cjk".into()];
+        let error = run_tlmgr_mutation(&manager, &args, true)
+            .await
+            .err()
+            .unwrap();
+        assert!(error.contains("cannot reach the repository"), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(calls).unwrap(),
+            "install\n--\ncjk\nupdate\n--self\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_tlmgr_oleafly_does_not_own_is_never_updated() {
+        let (_root, manager, calls) =
+            recording_manager("echo 'tlmgr itself needs to be updated.' >&2\nexit 1");
+        assert!(!tlmgr_is_managed(&manager));
+        let error = tlmgr_run_with_user_tree(&manager, "install", vec!["cjk".into()], None)
+            .await
+            .unwrap_err();
+        assert!(error.contains("tlmgr update --self"), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(calls).unwrap(),
+            "install\n--\ncjk\n"
+        );
+    }
+
+    #[test]
+    fn only_the_tinytex_oleafly_installed_counts_as_managed() {
+        let root = paths::oleafly_root().unwrap();
+        let managed = root.join("tinytex/TinyTeX/bin/universal-darwin/tlmgr");
+        assert!(tlmgr_is_managed(&managed.to_string_lossy()));
+        for other in [
+            "/usr/local/texlive/2026/bin/universal-darwin/tlmgr",
+            "/Library/TeX/texbin/tlmgr",
+        ] {
+            assert!(!tlmgr_is_managed(other), "{other}");
         }
     }
 

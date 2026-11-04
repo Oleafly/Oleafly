@@ -26,7 +26,8 @@ const latexInfo =
 const latexWarn =
   /^((?:(?:Class|Package|Module) \S*)|LaTeX(?: \S*)?|LaTeX3) (Warning):\s+(.*?)(?: on(?: input)? line (\d+))?([.?]?)$/;
 const latexPackageWarningExtraLines = /^\((.*)\)\s+(.*?)(?: +on input line (\d+))?(\.)?$/;
-const latexMissChar = /^\s*(Missing character:.*?!)/;
+const latexMissChar = /^\s*(Missing character:.*)/;
+const MAX_MISSING_CHAR_TAIL = 3;
 const latexNoPageOutput = /^No pages of output\.$/;
 const biberWarn = /^Biber warning:.*WARN - I didn't find a database entry for '([^']+)'/;
 const bibEmptyPrefix = "Empty `thebibliography' environment";
@@ -79,6 +80,7 @@ interface MutableEntry {
 
 interface ParserState {
   searchEmptyLine: boolean;
+  missingCharTail: number;
   insideBoxWarn: boolean;
   insideError: boolean;
   awaitingErrorLine: boolean;
@@ -143,6 +145,7 @@ function currentFile(state: ParserState): string | null {
 export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
   const state: ParserState = {
     searchEmptyLine: false,
+    missingCharTail: 0,
     insideBoxWarn: false,
     insideError: false,
     awaitingErrorLine: false,
@@ -176,6 +179,10 @@ function parseLine(line: string, state: ParserState) {
     return;
   }
   if (skipEngineOutput(line, state)) {
+    return;
+  }
+  if (state.missingCharTail > 0) {
+    continueMissingCharacter(line, state);
     return;
   }
   if (parseOleaflyAnnotation(line, state)) {
@@ -389,16 +396,31 @@ function parseMissingCharacter(line: string, filename: string | null, state: Par
   if (result === null) {
     return false;
   }
+  const end = result[1].indexOf("!");
   pushCurrent(state);
   state.current = {
     severity: "warning",
     category: "missing-character",
     file: filename,
     line: null,
-    text: result[1],
+    text: end === -1 ? result[1].trimEnd() : result[1].slice(0, end + 1),
   };
   state.searchEmptyLine = false;
+  state.missingCharTail = end === -1 ? MAX_MISSING_CHAR_TAIL : 0;
   return true;
+}
+
+// TeX wraps its log at 79 columns, so a font name such as
+// `[lmroman12-bold]:mapping=tex-text;` pushes the closing `!` onto the next line.
+function continueMissingCharacter(line: string, state: ParserState) {
+  state.missingCharTail -= 1;
+  const end = line.indexOf("!");
+  if (state.current !== null) {
+    state.current.text += end === -1 ? line.trimEnd() : line.slice(0, end + 1);
+  }
+  if (end !== -1 || line.trim() === "") {
+    state.missingCharTail = 0;
+  }
 }
 
 function parseLatexInfo(line: string, filename: string | null, state: ParserState): boolean {

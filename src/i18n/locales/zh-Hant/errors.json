@@ -77,6 +77,9 @@
     "shell_escape_denied_pythontex": "PythonTeX 需要執行 Python，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
     "shell_escape_denied_command": "此文件會執行 shell 命令，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
     "japanese_compiler_missing": "你的 TeX 發行版沒有安裝 {{compiler}}。在 TeX Live 或 TinyTeX 中執行 tlmgr install collection-langjapanese 即可加入，也可以改用其他編譯器。",
+    "missing_characters": "{{sample}} 等字元未出現在 PDF 中，因為字型沒有對應的字符。請改用包含這些字元的字型。",
+    "missing_characters_cjk": "{{sample}} 等字元未出現在 PDF 中，因為字型沒有中文、日文或韓文字符。請新增編譯記錄檔中列出的任一設定。",
+    "missing_characters_cjk_package": "{{sample}} 等文字未出現在 PDF 中，因為 CJKutf8 和 CJK 只能在 pdfLaTeX 下使用。請將此專案切換到 pdfLaTeX，或移除該套件及其 CJK 環境，並新增編譯記錄檔中列出的任一設定。",
     "compiler_crashed": "編譯器在完成前崩潰了，所以記錄檔停在它中斷的位置。請再編譯一次。如果每次都崩潰，請在編譯選單中選擇其他編譯器。",
     "compiler_crashed_font": "Tectonic 在尋找字型「{{font}}」時崩潰了，這台電腦上可能沒有安裝這個字型。請安裝該字型，或在編譯選單中選擇 XeLaTeX 或 LuaLaTeX。它們會回報缺少字型，而不會崩潰。"
   },

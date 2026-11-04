@@ -2,10 +2,10 @@
 use super::remove_links;
 use super::{
     append_bounded, detect_latexmk_flavor, dotted, executable_name, fingerprint_file,
-    ignored_flags, image_check_applies, pandoc_engine_path, parse_errors, read_stream, relative_to,
-    run_command, seed_staging, with_engine_output_on_failure, BuildCommand, BuildError,
-    BuildOptions, BuildTools, CompilerLog, Discovery, InPlaceOutputs, Launch, NativeCompiler,
-    LOG_TRUNCATION_MARKER, MAX_LOG_BYTES,
+    ignored_flags, image_check_applies, lost_text_warning, pandoc_engine_path, parse_errors,
+    read_stream, relative_to, run_command, seed_staging, with_engine_output_on_failure,
+    BuildCommand, BuildError, BuildOptions, BuildTools, CompilerLog, Discovery, InPlaceOutputs,
+    Launch, NativeCompiler, LOG_TRUNCATION_MARKER, MAX_LOG_BYTES,
 };
 use crate::app_paths::InstalledApp;
 use crate::contract::ErrorKind as CliErrorKind;
@@ -1439,6 +1439,19 @@ fn compiler_commands_reject_unsafe_or_incomplete_toolchains() {
 }
 
 #[test]
+fn a_build_that_loses_text_warns_with_the_fix_after_it_succeeds() {
+    let log = "Package: CJKutf8 2021/10/16 4.8.5\nMissing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-\ntext;!\n";
+    let errors = parse_errors(Engine::Tectonic, log);
+    let warning = lost_text_warning(&errors).unwrap();
+    assert_eq!(warning.code, "build.missing_characters");
+    assert!(warning
+        .message
+        .starts_with("1 character is missing from the PDF. Text such as 大"));
+    assert!(warning.message.contains("bsmi00lp.ttf"));
+    assert!(lost_text_warning(&parse_errors(Engine::Tectonic, "(main.tex)\n")).is_none());
+}
+
+#[test]
 fn tex_errors_include_line_numbers_and_explanations() {
     let errors = parse_errors(
         Engine::Tectonic,
@@ -1550,6 +1563,7 @@ fn typst_human_diagnostics_keep_hints_columns_and_the_calling_line() {
                     "or quote it: `\"foo\"`".into()
                 ],
                 explanation: None,
+                code: None,
             },
             BuildError {
                 line: Some(1),
@@ -1559,6 +1573,7 @@ fn typst_human_diagnostics_keep_hints_columns_and_the_calling_line() {
                 column: Some(17),
                 hints: Vec::new(),
                 explanation: None,
+                code: None,
             },
         ]
     );

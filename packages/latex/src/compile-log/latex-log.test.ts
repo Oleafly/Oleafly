@@ -174,6 +174,39 @@ describe("parseLatexLog", () => {
     expect(d.line).toBeNull();
   });
 
+  it("joins missing character warnings that TeX wrapped at 79 columns", () => {
+    const log = [
+      "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+      "text;!",
+      "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-",
+      "text;!",
+      "Package hyperref Warning: Something else on input line 3.",
+      "",
+    ].join("\n");
+
+    const diags = parseLatexLog(log);
+    expect(
+      diags.filter((d) => d.category === "missing-character").map((d) => d.message),
+    ).toEqual([
+      "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-text;!",
+      "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-text;!",
+    ]);
+    expect(diags.some((d) => d.message.includes("Something else"))).toBe(true);
+  });
+
+  it("stops a wrapped missing character warning at a blank line", () => {
+    const log = [
+      "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+      "",
+      "LaTeX Warning: Something else on input line 3.",
+      "",
+    ].join("\n");
+
+    const diags = parseLatexLog(log);
+    expect(diags).toHaveLength(2);
+    expect(diags[1].message).toContain("Something else");
+  });
+
   it("accumulates multi-line error text until the l.<n> excerpt", () => {
     const log = [
       "! Package amsmath Error: \\begin{split} won't work here.",
