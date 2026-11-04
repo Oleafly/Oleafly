@@ -187,7 +187,10 @@ const limits = {
   // macOS.
   // +60 KB for the brand logos of the common custom AI providers, Brave Search,
   // Tavily and Mathpix in Settings: 21,044,294 bytes on macOS and Linux.
-  totalJavaScript: 21_080_000,
+  // +30 KB for LaTeX compilation units (#389), which ship twice because the
+  // editor and the project-intelligence worker both run them: 21,092,330 bytes
+  // on macOS.
+  totalJavaScript: 21_110_000,
   largestLocaleChunk: 950_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,

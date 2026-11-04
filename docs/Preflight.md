@@ -25,7 +25,12 @@ guarantee of acceptance or a formal accessibility certificate.
   selectable text, bookmarks where appropriate, and very small text.
 - **References and assets:** missing project files, undefined citations and
   cross-references, duplicate labels and DOIs, incomplete bibliography fields,
-  and uncited entries when the whole project is available.
+  and uncited entries when the whole project is available. Duplicate labels are
+  checked per document. In a folder with several documents side by side, a
+  label only clashes with labels compiled in the same document. A `\ref` counts
+  as defined if its own document defines the label, if a file no document
+  includes yet defines it, or if its document may pull in files Preflight can't
+  see, such as through `\externaldocument`.
 - **Privacy and blind review:** credentials, private keys, sensitive files,
   draft markup, internal comments, author fields, acknowledgements, and PDF
   identity metadata.

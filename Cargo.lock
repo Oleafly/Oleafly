@@ -6447,6 +6447,7 @@ dependencies = [
  "flate2",
  "icu_properties",
  "lopdf",
+ "oleafly-core",
  "pretty_assertions",
  "regex",
  "serde",

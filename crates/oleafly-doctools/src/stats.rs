@@ -219,6 +219,9 @@ const REF_ARG_CMDS: &[&str] = &[
     "Crefrange",
     "cpagerefrange",
     "Cpagerefrange",
+    "fullref",
+    "vrefrange",
+    "vpagerefrange",
 ];
 
 const FIRST_ARG_OPAQUE_CMDS: &[&str] = &[
@@ -932,7 +935,7 @@ fn env_name(text: &[u16], open: usize, end: usize) -> &[u16] {
 
 fn verbatim_span_end(chars: &[u16], n: usize, name: &str, j: usize) -> usize {
     let mut k = j;
-    if chars.get(k) == Some(&STAR) {
+    if name != "lstinline" && chars.get(k) == Some(&STAR) {
         k += 1;
     }
     k = skip_inline_space(chars, k);
@@ -3491,13 +3494,20 @@ fn latex_legacy_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) {
 }
 
 fn delimited_body_end(text: &[u16], start: usize) -> Option<(usize, bool)> {
-    let delimiter = *text.get(start)?;
-    if is_js_space(delimiter) {
+    let first = *text.get(start)?;
+    if is_js_space(first) {
         return None;
     }
-    let end_of_line = index_of_unit(text, NEWLINE, start + 1).unwrap_or(text.len());
-    match index_of_unit(text, delimiter, start + 1) {
-        Some(closing) if closing <= end_of_line => Some((closing + 1, true)),
+    let (_, length) = code_point_at(text, start);
+    let body = start + length;
+    let delimiter = &text[start..body];
+    let end_of_line = index_of_unit(text, NEWLINE, body).unwrap_or(text.len());
+    let closing = text[body..]
+        .windows(length)
+        .position(|window| window == delimiter)
+        .map(|offset| body + offset);
+    match closing {
+        Some(closing) if closing <= end_of_line => Some((closing + length, true)),
         _ => Some((end_of_line, false)),
     }
 }
@@ -3543,7 +3553,8 @@ fn inline_verbatim_end(text: &[u16], start: usize) -> Option<usize> {
         return None;
     }
     let mut cursor = command_end;
-    if text.get(cursor) == Some(&STAR) {
+    // listings takes a star as its delimiter.
+    if command != "lstinline" && text.get(cursor) == Some(&STAR) {
         cursor += 1;
     }
     if command == "verb" {
@@ -3559,12 +3570,22 @@ fn inline_verbatim_end(text: &[u16], start: usize) -> Option<usize> {
     if command == "mintinline" {
         let language_end = balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)?;
         cursor = skip_inline_space(text, language_end);
-        if text.get(cursor) == Some(&OPEN_BRACE) {
+    }
+    if text.get(cursor) == Some(&OPEN_BRACE) {
+        if command == "lstinline" {
+            // listings ends a braced body at the first `}`, or fails at the end
+            // of the line.
+            let end = line_end(text, cursor + 1);
             return Some(
-                balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)
-                    .unwrap_or_else(|| line_end(text, cursor + 1)),
+                (cursor + 1..end)
+                    .find(|index| text[*index] == CLOSE_BRACE)
+                    .map_or(end, |close| close + 1),
             );
         }
+        return Some(
+            balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)
+                .unwrap_or_else(|| line_end(text, cursor + 1)),
+        );
     }
     delimited_body_end(text, cursor).map(|(to, _)| to)
 }
@@ -3596,7 +3617,7 @@ fn mask_latex_ignored_regions(text: &[u16]) -> Vec<u16> {
         if starts_with_ascii(text, cursor + 1, "begin") && command_end == cursor + 6 {
             let opening = skip_inline_space(text, command_end);
             if let Some(end) = balanced_group_end(text, opening, OPEN_BRACE, CLOSE_BRACE) {
-                let environment = String::from_utf16_lossy(env_name(text, opening, end));
+                let environment = String::from_utf16_lossy(&text[opening + 1..end - 1]);
                 if IGNORED_ENVIRONMENTS.contains(&environment.as_str()) {
                     let close = format!("\\end{{{environment}}}");
                     let to =
@@ -4610,6 +4631,7 @@ mod tests {
             words("\\section*{Title} body \\verb|code words| tail"),
             vec!["Title", "body", "tail"]
         );
+        assert_eq!(words("\\lstinline*code words* tail"), vec!["tail"]);
         assert_eq!(
             words("\\begin{equation}\nx = y\n\\end{equation}\nafter"),
             vec!["after"]
@@ -4637,6 +4659,10 @@ mod tests {
         assert_eq!(
             words("viz \\labelcref{obr:udoli} a \\cpageref{obr:hora} and \\Crefrange{a}{b}."),
             vec!["viz", "a", "and"]
+        );
+        assert_eq!(
+            words("at \\fullref{a} and \\vrefrange{a}{b} or \\vpagerefrange{a}{b} plain"),
+            vec!["at", "and", "or", "plain"]
         );
         assert_eq!(
             words("\\setcounter{secnumdepth}{3} Text \\usefont{T1}{cmr}{m}{n} more"),

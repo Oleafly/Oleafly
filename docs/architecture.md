@@ -70,6 +70,57 @@ after one edit returns a list of paths rather than the whole project. The cache
 of those hashes lives in `src/lib/project-sources.ts`, which reverts to
 per-file reads when the batch command is missing.
 
+### Compilation units
+
+A folder can hold several LaTeX documents side by side. A unit is one
+independent root plus every file it reaches through includes and local `.sty`
+and `.cls` files. A root is a file with `\documentclass`, `\documentstyle` or a
+bare `\begin{document}`, the configured main document, or the parent named by a
+subfiles class option or a `% !TeX root` comment. A file that names another root
+joins it even if it mentions `\begin{document}`; only a class overrides that
+comment. A root that another root reaches does not count, so a thesis, a shared
+preamble or a standalone figure stays one document. A subfile is never a root.
+With fewer than two independent roots there are no units:
+`snapshot.latexUnits` is absent and every caller uses the project-wide pool.
+
+Pools are still keyed by name, and `LatexUnitScope.select` decides what a use
+can see. It tries definitions in a unit the use shares, then files no root
+reaches, then the whole pool if the unit is open, and after that nothing. A unit
+is open when it uses `\externaldocument`, reads an `.aux` file, computes a path,
+includes a file that was not read (a `.tbl` table, or one past the size limit),
+is `latexdiff` output, or has an include that only exists under another folder.
+A computed path inside a `.cls` or `.sty` does not count, because classes such
+as `elsarticle` use one for their own files. A file no root reaches sees the
+whole pool.
+Two definitions collide only if they share a unit or neither has one.
+
+Includes resolve the way pdflatex opens them. `import.sty` keeps every enclosing
+`\import` or `\subfile` path on the search path, and the search runs twice: it
+finds the name from the root's folder or one of those paths, then searches them
+again for the name it found. `\import` starts a new path, while `\subimport` and
+`\subfile` extend the current one, which is the root's folder when nothing was
+imported. A file takes the search path of the include that reaches it. A magic
+comment or a subfile's parent only counts for a file no include reaches.
+Scanning stops at `\end{document}` or `\endinput`, unless it sits inside braces
+or a conditional could skip it.
+
+The walk stops short of TeX in a few places. It starts a root from the root's
+own folder, as the editor's include links do, though the app compiles a main
+document in a subfolder of a managed project from the project root. Where the
+engines disagree it picks one: with `x` and `x.tex` both present it takes
+`x.tex` as pdflatex does and Tectonic does not, while `..` and capitals in a
+suffix follow Tectonic. `\import` also clears the path a later `\subimport`
+extends, which the walk does not model, and a file TeX reads twice under
+different search paths counts by its first visit. The scan does not follow
+`\let` aliases of `\fi` or `\endinput`, and it treats an `\endinput` alone on
+its line as a stop even when the command on the line before takes it as an
+argument.
+
+`src/lib/project-intelligence/latex-units.ts` and
+`crates/oleafly-core/src/context/units.rs` implement this twice, and
+`crates/oleafly-core/tests/fixtures/latex-units.json` holds them to the same
+answers. Citation keys in `.bib` files stay project-wide.
+
 Document statistics go through the same reader. The `document_stats` command
 walks the include closure from the main document and reads every file in one
 batch call. Masking and counting happen in Rust, and unsaved buffers travel in

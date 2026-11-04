@@ -1,8 +1,9 @@
 mod bib;
 mod latex;
 mod markdown;
-mod text;
+pub(crate) mod text;
 mod typst;
+pub mod units;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
@@ -12,6 +13,7 @@ use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 
 use self::text::{dirname, has_extension, normalize_project_path, resolve_project_path_from};
+use self::units::{LatexUnits, UnitPool};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ContextLimits {
@@ -599,6 +601,38 @@ fn scan_sources_with(
         .filter(|def| def.kind == DefKind::Label)
         .map(|def| (label_scope(&def.file), def.name.clone()))
         .collect();
+    let units = LatexUnits::build(
+        sources
+            .iter()
+            .map(|(path, text)| (path.as_str(), text.as_str())),
+        all_files,
+        main_document,
+    );
+    let label_pools: HashMap<&str, UnitPool<'_>> = units
+        .as_ref()
+        .map(|units| {
+            let mut files: HashMap<&str, Vec<&str>> = HashMap::new();
+            for def in defs.iter().filter(|def| {
+                def.kind == DefKind::Label && engine_for(&def.file) == Some(Engine::Latex)
+            }) {
+                files
+                    .entry(def.name.as_str())
+                    .or_default()
+                    .push(def.file.as_str());
+            }
+            files
+                .into_iter()
+                .map(|(name, files)| (name, units.pool(files)))
+                .collect()
+        })
+        .unwrap_or_default();
+    // A LaTeX \\ref sees a label only if a document it is compiled with does.
+    let label_visible = |file: &str, name: &str| match (&units, label_pools.get(name)) {
+        (Some(units), Some(pool)) if engine_for(file) == Some(Engine::Latex) => {
+            !units.select(file, pool, false).0.is_empty()
+        }
+        _ => true,
+    };
     let bib_keys: BTreeSet<&str> = defs
         .iter()
         .filter(|def| def.kind == DefKind::Bibentry)
@@ -615,7 +649,7 @@ fn scan_sources_with(
         match use_.kind {
             UseKind::Ref => {
                 let key = (label_scope(&use_.file), use_.name.clone());
-                if labels_by_scope.contains(&key) {
+                if labels_by_scope.contains(&key) && label_visible(&use_.file, &use_.name) {
                     referenced.insert(key);
                 } else if use_.typst_at && bib_keys.contains(use_.name.as_str()) {
                     cited.insert(use_.name.clone());

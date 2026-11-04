@@ -289,7 +289,7 @@ function isSnapshotShell(
         "detectedPackages",
         "documentClasses",
       ],
-      ["reason"],
+      ["reason", "latexUnits"],
     ) &&
     value.protocolVersion === PROJECT_INTELLIGENCE_PROTOCOL_VERSION &&
     isProjectIntelligenceIdentity(value.identity) &&
@@ -303,7 +303,8 @@ function isSnapshotShell(
     isRecord(value.bibliography) &&
     isRecord(value.stats) &&
     Array.isArray(value.detectedPackages) &&
-    Array.isArray(value.documentClasses)
+    Array.isArray(value.documentClasses) &&
+    (value.latexUnits === undefined || isRecord(value.latexUnits))
   );
 }
 

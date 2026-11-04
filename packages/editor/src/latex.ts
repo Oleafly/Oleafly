@@ -1122,7 +1122,7 @@ function referenceCitationCompletions(
   guard: CompletionRequestGuard,
 ): CompletionResult | null {
   const refMatch = context.matchBefore(
-    /\\(?:ref|eqref|pageref|autoref|cref|Cref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^}]{0,500}$/u
+    /\\(?:ref|eqref|pageref|vpageref|fullref|autoref|cref|Cref|cpageref|Cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^}]{0,500}$/u
   );
   if (refMatch) {
     const labels = labelsInDocument(context.state);

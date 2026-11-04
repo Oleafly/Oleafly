@@ -10,6 +10,7 @@ import { parseEntry } from "@/lib/citation/bibtex";
 import { nameTarget } from "@/lib/index/build";
 import { parseFile } from "@/lib/index/parse-file";
 import type { ProjectIndex, Sym } from "@/lib/index/types";
+import { byCodePoint, type LatexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { labelScope } from "@/lib/project-intelligence/resolution";
 import { engineForPath } from "@/lib/project-intelligence/source";
 
@@ -126,11 +127,83 @@ function collectCitedKeys(texts: Readonly<Record<string, string>>): string[] {
   return allCitedKeys;
 }
 
-function collectLabelFacts(index: ProjectIndex | null): {
+function symbolFile(symbol: Sym): string {
+  return symbol.file;
+}
+
+function latexPools(index: ProjectIndex | null): Map<string, Sym[]> {
+  const pools = new Map<string, Sym[]>();
+  for (const definition of index?.defs ?? []) {
+    if (definition.kind !== "label" || engineForPath(definition.file) !== "latex") continue;
+    const pool = pools.get(definition.name);
+    if (pool) pool.push(definition);
+    else pools.set(definition.name, [definition]);
+  }
+  return pools;
+}
+
+type LatexPools = ReadonlyMap<string, readonly Sym[]>;
+
+/** Which labels each file's own document cannot see, by file. */
+function collectUnreachableLabels(
+  index: ProjectIndex | null,
+  pools: LatexPools,
+): { file: string; labels: string[] }[] {
+  const scope = index?.unitScope;
+  if (!scope) return [];
+  const byFile = new Map<string, Set<string>>();
+  for (const use of index?.uses ?? []) {
+    if (use.kind !== "ref" || engineForPath(use.file) !== "latex") continue;
+    if (nameTarget("label", use).file !== null) continue;
+    const pool = pools.get(use.name);
+    if (!pool || scope.select(use.file, pool, symbolFile).items.length > 0) continue;
+    const labels = byFile.get(use.file);
+    if (labels) labels.add(use.name);
+    else byFile.set(use.file, new Set([use.name]));
+  }
+  return [...byFile.keys()].sort(byCodePoint).map((file) => ({
+    file,
+    labels: [...(byFile.get(file) ?? [])].sort(byCodePoint),
+  }));
+}
+
+/** The definitions a reference lands on: the file it names, or its selection. */
+function definitionsOfRef(
+  use: Sym,
+  pool: readonly Sym[],
+  scope: LatexUnitScope,
+): readonly Sym[] {
+  const { file } = nameTarget("label", use);
+  if (file !== null) return pool.filter((definition) => definition.file === file);
+  return engineForPath(use.file) === "latex" ? scope.select(use.file, pool, symbolFile).items : [];
+}
+
+function selectedDefinitions(
+  index: ProjectIndex | null,
+  pools: LatexPools,
+): ReadonlySet<Sym> | null {
+  const scope = index?.unitScope;
+  if (!scope) return null;
+  const selected = new Set<Sym>();
+  const seen = new Set<readonly Sym[]>();
+  for (const use of index?.uses ?? []) {
+    const pool = use.kind === "ref" ? pools.get(use.name) : undefined;
+    const items = pool ? definitionsOfRef(use, pool, scope) : [];
+    if (seen.has(items)) continue;
+    seen.add(items);
+    for (const definition of items) selected.add(definition);
+  }
+  return selected;
+}
+
+function collectLabelFacts(
+  index: ProjectIndex | null,
+  pools: LatexPools,
+): {
   duplicateLabels: { label: string; files: string[] }[];
   unreferencedLabels: { label: string; file: string }[];
 } {
-  const labelFiles = new Map<string, { label: string; files: Set<string> }>();
+  const labelFiles = new Map<string, { label: string; files: Set<string>; latex: boolean }>();
   const referenceKey = (scope: string, file: string | null, name: string) => {
     const target = file === null ? "*" : `=${file}`;
     return `${scope}\0${target}\0${name}`;
@@ -141,7 +214,9 @@ function collectLabelFacts(index: ProjectIndex | null): {
     const { scope, file } = nameTarget("label", use);
     referencedLabels.add(referenceKey(scope, file, use.name));
   }
+  const selected = selectedDefinitions(index, pools);
   const isReferenced = (definition: Sym) => {
+    if (selected && engineForPath(definition.file) === "latex") return selected.has(definition);
     const { scope } = nameTarget("label", definition);
     return (
       referencedLabels.has(referenceKey(scope, null, definition.name)) ||
@@ -151,13 +226,19 @@ function collectLabelFacts(index: ProjectIndex | null): {
   for (const definition of index?.defs ?? []) {
     if (definition.kind !== "label") continue;
     const key = `${nameTarget("label", definition).scope}\0${definition.name}`;
-    const entry = labelFiles.get(key) ?? { label: definition.name, files: new Set<string>() };
+    const latex = engineForPath(definition.file) === "latex";
+    const entry = labelFiles.get(key) ?? { label: definition.name, files: new Set<string>(), latex };
     entry.files.add(definition.file);
     labelFiles.set(key, entry);
   }
+  const unitScope = index?.unitScope;
   const duplicateLabels = [...labelFiles.values()]
     .filter((entry) => entry.files.size > 1)
-    .map((entry) => ({ label: entry.label, files: [...entry.files] }));
+    .flatMap((entry) =>
+      (unitScope && entry.latex ? unitScope.duplicateRows([...entry.files]) : [[...entry.files]]).map(
+        (files) => ({ label: entry.label, files }),
+      ),
+    );
   const unreferencedLabels = (index?.defs ?? [])
     .filter(
       (definition) =>
@@ -196,7 +277,9 @@ export function buildRefsContext(input: PreflightContextInput): RefsContext {
   const { bibEntries, duplicateDois } = collectBibEntries(bibTexts);
   const allCitedKeys = collectCitedKeys(texts);
   const currentBibKeys = [...new Set([...bibKeys, ...bibEntries.map((entry) => entry.key)])];
-  const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index);
+  const pools = latexPools(index);
+  const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index, pools);
+  const unreachableLabels = collectUnreachableLabels(index, pools);
   const bibKeyDefinitions = collectBibKeyDefinitions(bibTexts);
   return {
     bibKeys: currentBibKeys,
@@ -209,6 +292,7 @@ export function buildRefsContext(input: PreflightContextInput): RefsContext {
     allCitedKeys,
     duplicateLabels,
     unreferencedLabels,
+    ...(unreachableLabels.length > 0 ? { unreachableLabels } : {}),
     bibKeyDefinitions,
     bibKeyDialect: declared.some((declaration) => declaration.engine === "biblatex") ? "biber" : "bibtex",
   };

@@ -46,7 +46,9 @@ import {
   buildSymbolNodes,
   projectIssueCount,
 } from "@/components/layout/project-intelligence-view";
+import { latexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
+import { definitionFile } from "@/lib/project-intelligence/resolution";
 import { acceptedProjectSnapshot } from "@/lib/project-intelligence/current";
 import {
   definitionsForUse,
@@ -105,6 +107,7 @@ function resolveQuery(
 ): {
   definitions: readonly ProjectDefinition[];
   uses: readonly ProjectUse[];
+  isDuplicate?: (definition: ProjectDefinition) => boolean;
 } {
   if (query.mode === "references") {
     const definition = snapshot.definitions.find(
@@ -116,9 +119,19 @@ function resolveQuery(
     };
   }
 
+  const definitions = definitionsForUse(snapshot, query.targetId);
+  const use = snapshot.uses.find((candidate) => candidate.id === query.targetId);
+  const scope = latexUnitScope(snapshot.latexUnits);
   return {
-    definitions: definitionsForUse(snapshot, query.targetId),
+    definitions,
     uses: [],
+    ...(scope
+      ? {
+          isDuplicate: (definition: ProjectDefinition) =>
+            use?.resolution === "duplicate" &&
+            scope.peers(definition.location.file, definitions, definitionFile).length > 1,
+        }
+      : {}),
   };
 }
 
@@ -236,7 +249,9 @@ function QueryContent({
     [current, query, snapshot],
   );
   const nodes = useMemo(() => {
-    if (!query?.locations) return buildReferenceResultNodes(result.definitions, result.uses);
+    if (!query?.locations) {
+      return buildReferenceResultNodes(result.definitions, result.uses, result.isDuplicate);
+    }
     return buildLocationResultNodes(current ? query.locations : []);
   }, [current, query, result]);
 

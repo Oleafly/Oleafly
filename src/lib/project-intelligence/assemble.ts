@@ -5,8 +5,15 @@ import {
 } from "@oleafly/latex";
 import { summarizeBibliographyEntry } from "./bibliography-summary";
 import {
+  buildLatexUnits,
+  latexUnitScope,
+  type LatexUnitScope,
+} from "./latex-units";
+import {
   definitionCandidatesForUse,
+  definitionFile,
   definitionsByKey,
+  resolutionForUse,
 } from "./resolution";
 import type { LatexSearchPaths } from "@oleafly/editor/file-references";
 import { dirname } from "@/lib/path-utils";
@@ -14,6 +21,7 @@ import {
   engineForPath,
   isInUnlistedFolder,
   normalizeProjectPath,
+  pathFoldKey,
   resolveProjectPathFrom,
   stableId,
 } from "./source";
@@ -23,6 +31,8 @@ import {
   type BibliographyDuplicate,
   type BibliographyEntryDetail,
   type FileAnalysis,
+  type LatexUnitFacts,
+  type LatexUnits,
   type OutlineNode,
   type ProjectDefinition,
   type ProjectDiagnostic,
@@ -61,19 +71,28 @@ const TARGET_DEFINITION_KINDS: ReadonlySet<string> = new Set([
   "environment",
 ]);
 
+// One name defined N times gives N diagnostics. Listing every other place in
+// each would send N squared locations through the worker boundary, and the
+// count in the message stays exact either way.
+const MAX_RELATED_DEFINITIONS = 20;
+
 function relatedDefinitions(
   definitions: readonly ProjectDefinition[],
   currentId?: string,
 ): ProjectRelatedLocation[] {
-  return definitions
-    .filter((definition) => definition.id !== currentId)
-    .map((definition) => ({
+  const related: ProjectRelatedLocation[] = [];
+  for (const definition of definitions) {
+    if (definition.id === currentId) continue;
+    related.push({
       message: {
-        key: "definedHere" as const,
+        key: "definedHere",
         params: { kind: definition.kind, name: definition.name },
       },
       location: definition.location,
-    }));
+    });
+    if (related.length === MAX_RELATED_DEFINITIONS) break;
+  }
+  return related;
 }
 
 function diagnosticForDefinitionDuplicate(
@@ -231,10 +250,6 @@ function bibliographyEngineFor(edge: ProjectEdge): BibliographyEngine {
   const engine = engineForPath(edge.fromFile);
   if (engine === "markdown" || engine === "typst") return engine;
   return "latex";
-}
-
-function pathFoldKey(path: string): string {
-  return path.normalize("NFC").toLowerCase();
 }
 
 function matchingProjectFiles(
@@ -451,20 +466,56 @@ function candidateTargetFiles(
   return candidatesForPath(normalized, edge, known, knownByLower);
 }
 
+const HAS_EXTENSION = /\.[a-z0-9]+$/i;
+
+/**
+ * What TeX opens for `\\input{name}`: `name.tex` first, then `name` itself,
+ * then the other source extensions when the name has none. So `intro.v2` finds
+ * `intro.v2.tex`, and `intro` finds `intro.tex` even beside an `intro.md`.
+ * `Known::latex_input_candidates` in `oleafly-core` is the same rule.
+ */
+function latexInputCandidates(
+  normalized: string,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
+  const tex = matchingProjectFiles(`${normalized}.tex`, known, knownByLower);
+  if (tex.length > 0) return tex;
+  const own = matchingProjectFiles(normalized, known, knownByLower);
+  if (own.length > 0 || HAS_EXTENSION.test(normalized)) return own;
+  const found = new Set<string>();
+  for (const extension of INCLUDE_EXTENSIONS) {
+    if (extension === ".tex") continue;
+    for (const match of matchingProjectFiles(
+      `${normalized}${extension}`,
+      known,
+      knownByLower,
+    )) {
+      found.add(match);
+    }
+  }
+  return [...found].sort((a, b) => Number(a > b) - Number(a < b));
+}
+
 function candidatesForPath(
   normalized: string,
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
 ): readonly string[] {
+  if (
+    (edge.kind === "include" || edge.kind === "import") &&
+    engineForPath(edge.fromFile) === "latex"
+  ) {
+    return latexInputCandidates(normalized, known, knownByLower);
+  }
   const candidates = new Set<string>();
   if (known.has(normalized)) candidates.add(normalized);
   for (const candidate of knownByLower.get(pathFoldKey(normalized)) ?? []) {
     candidates.add(candidate);
   }
 
-  const hasExtension = /\.[a-z0-9]+$/i.test(normalized);
-  if (!hasExtension) {
+  if (!HAS_EXTENSION.test(normalized)) {
     addExtensionCandidates(normalized, edge, known, knownByLower, candidates);
   }
   return [...candidates].sort((a, b) => Number(a > b) - Number(a < b));
@@ -505,6 +556,7 @@ function withCandidates(edge: ProjectEdge, candidates: readonly string[]): Proje
 function resolvedUse(
   original: ProjectUse,
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  scope: LatexUnitScope | undefined,
   edge?: ProjectEdge,
 ): ProjectUse | null {
   if (
@@ -521,7 +573,7 @@ function resolvedUse(
       definitionIds: [],
     };
   }
-  const candidates = definitionCandidatesForUse(original, byKey);
+  const candidates = definitionCandidatesForUse(original, byKey, scope);
   if (
     (original.kind === "macro" ||
       original.kind === "environment" ||
@@ -543,7 +595,7 @@ function resolvedUse(
   return {
     ...original,
     kind,
-    resolution: resolutionForCandidateCount(candidates.length),
+    resolution: resolutionForUse(original, candidates, scope),
     definitionIds: candidates.map((definition) => definition.id),
   };
 }
@@ -678,6 +730,7 @@ function knownFileIndex(knownFiles: readonly string[]): {
 function resolveUses(
   files: readonly FileAnalysis[],
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  scope: LatexUnitScope | undefined,
   edgeByLocation: ReadonlyMap<string, ProjectEdge>,
 ): ProjectUse[] {
   const uses: ProjectUse[] = [];
@@ -685,7 +738,7 @@ function resolveUses(
     const edge = edgeByLocation.get(
       `${original.location.file}:${original.location.range.from}:${original.kind}`,
     );
-    const resolved = resolvedUse(original, byKey, edge);
+    const resolved = resolvedUse(original, byKey, scope, edge);
     if (resolved) uses.push(resolved);
   }
   uses.sort(
@@ -699,6 +752,7 @@ function resolveUses(
 
 function duplicateDefinitionDiagnostics(
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  scope: LatexUnitScope | undefined,
 ): ProjectDiagnostic[] {
   const out: ProjectDiagnostic[] = [];
   for (const candidates of byKey.values()) {
@@ -715,11 +769,14 @@ function duplicateDefinitionDiagnostics(
     if (candidates.every((definition) => definition.kind === "macro")) {
       continue;
     }
-    out.push(
-      ...candidates.map((definition) =>
-        diagnosticForDefinitionDuplicate(definition, candidates),
-      ),
-    );
+    for (const definition of candidates) {
+      const peers = scope
+        ? scope.peers(definition.location.file, candidates, definitionFile)
+        : candidates;
+      if (peers.length > 1) {
+        out.push(diagnosticForDefinitionDuplicate(definition, peers));
+      }
+    }
   }
   return out;
 }
@@ -792,6 +849,26 @@ function packageRefNames(
   ].sort((a, b) => Number(a > b) - Number(a < b));
 }
 
+function projectLatexUnits(
+  files: readonly FileAnalysis[],
+  known: ReadonlySet<string>,
+  mainDocument: string | undefined,
+): LatexUnits | undefined {
+  const facts = new Map<string, LatexUnitFacts>();
+  const read = new Set<string>();
+  for (const file of files) {
+    if (file.status === "error") continue;
+    read.add(file.file);
+    if (file.latexUnit) facts.set(file.file, file.latexUnit);
+  }
+  return buildLatexUnits({
+    facts,
+    read,
+    known,
+    ...(mainDocument ? { mainDocument } : {}),
+  });
+}
+
 export function assembleProjectIntelligenceResult(
   input: AssembleProjectIntelligenceInput,
 ): AssembledProjectIntelligence {
@@ -815,6 +892,8 @@ export function assembleProjectIntelligenceResult(
   const byKey = definitionsByKey(definitions);
 
   const { known, knownByLower } = knownFileIndex(input.knownFiles);
+  const latexUnits = projectLatexUnits(fileList, known, input.mainDocument);
+  const scope = latexUnitScope(latexUnits);
   const { linked, mainDocumentFiles } = linkDocuments(
     fileList.flatMap((file) => file.edges),
     input.mainDocument,
@@ -843,13 +922,13 @@ export function assembleProjectIntelligenceResult(
     ]),
   );
 
-  const uses = resolveUses(fileList, byKey, edgeByLocation);
+  const uses = resolveUses(fileList, byKey, scope, edgeByLocation);
 
   const diagnostics: ProjectDiagnostic[] = fileList.flatMap(
     (file) => file.diagnostics,
   );
   diagnostics.push(
-    ...duplicateDefinitionDiagnostics(byKey),
+    ...duplicateDefinitionDiagnostics(byKey, scope),
     ...unresolvedUseDiagnostics(uses, definitionsById),
     ...edgeDiagnostics(edges),
   );
@@ -906,6 +985,7 @@ export function assembleProjectIntelligenceResult(
     stats: { ...input.stats },
     detectedPackages,
     documentClasses,
+    ...(latexUnits ? { latexUnits } : {}),
   };
   return {
     snapshot,

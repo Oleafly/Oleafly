@@ -178,12 +178,14 @@ function collectLabels(sink: SymSink): void {
   const label = /\\label\s*\{([^}]*)\}/g;
   for (const m of sink.text.matchAll(label)) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
+    const name = m[1].trim();
+    const lead = m[1].length - m[1].trimStart().length;
     pushSym(
       sink,
       sink.defs,
       "label",
-      m[1].trim(),
-      spanFromMatch(m.index, m[0], start, m[1].length),
+      name,
+      spanFromMatch(m.index, m[0], start + lead, name.length),
     );
   }
 }
@@ -221,12 +223,14 @@ function collectBraceDefinitions(sink: SymSink): void {
   for (const [re, kind] of BRACE_DEFINITIONS) {
     for (const m of sink.text.matchAll(re)) {
       const start = m.index + m[0].lastIndexOf("{") + 1;
+      const name = m[1].trim();
+      const lead = m[1].length - m[1].trimStart().length;
       pushSym(
         sink,
         sink.defs,
         kind,
-        m[1].trim(),
-        spanFromMatch(m.index, m[0], start, m[1].length),
+        name,
+        spanFromMatch(m.index, m[0], start + lead, name.length),
       );
     }
   }
@@ -281,22 +285,39 @@ const BRACE_USE_PATTERNS: readonly [RegExp, SymKind][] = [
     /\\(?:gls|Gls|GLS|glspl|Glspl|acrshort|acrlong|acrfull|acs|acl|ac)\s*\{([^}]*)\}/g,
     "glossaryuse",
   ],
-  [/\\begin\s*\{([^}]*)\}/g, "envuse"],
+  [/\\(?:begin|end)\s*\{([^}]*)\}/g, "envuse"],
 ];
+
+// A theorem numbered with another names its counter: \\newtheorem{lem}[thm]{L},
+// or \\newtheorem{lem}{L}[thm] for one that resets with it.
+const THEOREM_COUNTER_PATTERNS: readonly RegExp[] = [
+  /\\newtheorem\s*\{[^}\\]*\}\s*\[([^\]\\]*)\]/g,
+  /\\newtheorem\s*\{[^}\\]*\}\s*\{(?:[^{}]|\{[^{}]*\})*\}\s*\[([^\]\\]*)\]/g,
+];
+
+function collectTheoremCounters(sink: SymSink): void {
+  for (const re of THEOREM_COUNTER_PATTERNS) {
+    for (const m of sink.text.matchAll(re)) {
+      const name = m[1].trim();
+      const lead = m[1].length - m[1].trimStart().length;
+      const start = m.index + m[0].lastIndexOf("[") + 1 + lead;
+      pushSym(sink, sink.uses, "envuse", name, spanFromMatch(m.index, m[0], start, name.length), {
+        counter: true,
+      });
+    }
+  }
+}
 
 function collectBraceUses(sink: SymSink): void {
   for (const [re, kind] of BRACE_USE_PATTERNS) {
     for (const m of sink.text.matchAll(re)) {
-      const start = m.index + m[0].lastIndexOf("{") + 1;
-      pushSym(
-        sink,
-        sink.uses,
-        kind,
-        m[1].trim(),
-        spanFromMatch(m.index, m[0], start, m[1].length),
-      );
+      const name = m[1].trim();
+      const lead = m[1].length - m[1].trimStart().length;
+      const start = m.index + m[0].lastIndexOf("{") + 1 + lead;
+      pushSym(sink, sink.uses, kind, name, spanFromMatch(m.index, m[0], start, name.length));
     }
   }
+  collectTheoremCounters(sink);
 }
 
 function collectInputEdges(sink: SymSink, dir: string): void {

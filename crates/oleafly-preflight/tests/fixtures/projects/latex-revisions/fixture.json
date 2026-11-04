@@ -1,0 +1,12 @@
+{
+  "mainDocument": "manuscript.tex",
+  "cases": [
+    {
+      "name": "generic-detected",
+      "sourceProfile": "latex",
+      "engine": "bundled",
+      "profile": null,
+      "anonymousReview": false
+    }
+  ]
+}

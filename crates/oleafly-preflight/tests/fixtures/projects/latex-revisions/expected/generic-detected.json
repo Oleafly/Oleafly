@@ -1,0 +1,559 @@
+{
+  "profile": "generic",
+  "project": {
+    "files": [
+      {
+        "hasContent": true,
+        "path": "manuscript.tex"
+      },
+      {
+        "hasContent": true,
+        "path": "manuscript_v1.tex"
+      },
+      {
+        "hasContent": true,
+        "path": "notes.tex"
+      },
+      {
+        "hasContent": true,
+        "path": "old/chapter.tex"
+      },
+      {
+        "hasContent": true,
+        "path": "old/main.tex"
+      },
+      {
+        "hasContent": true,
+        "path": "readme.md"
+      },
+      {
+        "hasContent": true,
+        "path": "shared.tex"
+      }
+    ],
+    "mainFile": "manuscript.tex"
+  },
+  "refs": {
+    "allCitedKeys": [],
+    "bibEntries": [],
+    "bibKeyDefinitions": [],
+    "bibKeyDialect": "bibtex",
+    "bibKeys": [],
+    "bibLoaded": false,
+    "definedLabels": [
+      "sec:intro",
+      "fig:plot",
+      "fig:dropped",
+      "sec:intro",
+      "fig:plot",
+      "sec:notes",
+      "sec:old",
+      "fig:only-old",
+      "fig:twice",
+      "fig:twice"
+    ],
+    "duplicateDois": [],
+    "duplicateLabels": [],
+    "projectFiles": [
+      "manuscript.tex",
+      "manuscript_v1.tex",
+      "notes.tex",
+      "old/chapter.tex",
+      "old/main.tex",
+      "readme.md",
+      "shared.tex"
+    ],
+    "unreachableLabels": [
+      {
+        "file": "manuscript.tex",
+        "labels": [
+          "fig:only-old"
+        ]
+      }
+    ],
+    "unreferencedLabels": [
+      {
+        "file": "old/chapter.tex",
+        "label": "fig:only-old"
+      },
+      {
+        "file": "old/chapter.tex",
+        "label": "fig:twice"
+      },
+      {
+        "file": "old/chapter.tex",
+        "label": "fig:twice"
+      }
+    ],
+    "unresolvedBibliographies": []
+  },
+  "report": {
+    "a11yScore": null,
+    "atsScore": null,
+    "compileScore": null,
+    "coverage": {
+      "a11y": "not_run",
+      "ats": "not_run",
+      "compile": "not_run",
+      "privacy": "evaluated",
+      "refs": "evaluated",
+      "submission": "partial"
+    },
+    "findings": [
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.no-glyphtounicode.detailEngineNeedsMap"
+        },
+        "file": "manuscript.tex",
+        "id": "no-glyphtounicode",
+        "lens": "both",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.21.7",
+            "label": "Character encoding",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/"
+          },
+          {
+            "clause": "8.4.5.8",
+            "label": "Character encoding",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "10-001",
+            "label": "Character encoding",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.4.5",
+            "label": "Images of Text",
+            "standard": "WCAG-2.2",
+            "technique": "PDF7",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF7"
+          }
+        ],
+        "title": {
+          "key": "rules.no-glyphtounicode.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-lang.detail"
+        },
+        "file": "manuscript.tex",
+        "id": "no-lang",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.2",
+            "label": "Text",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.2-29"
+          },
+          {
+            "clause": "8.4.4",
+            "label": "Natural language",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "11-001",
+            "label": "Natural language",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "3.1.1",
+            "label": "Language of Page",
+            "standard": "WCAG-2.2",
+            "technique": "PDF16",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF16"
+          }
+        ],
+        "title": {
+          "key": "rules.no-lang.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-title.detail"
+        },
+        "file": "manuscript.tex",
+        "id": "no-title",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "7.1",
+            "label": "Document title",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.1-9"
+          },
+          {
+            "clause": "8.11.1",
+            "label": "Metadata",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "06-003",
+            "label": "Metadata",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "2.4.2",
+            "label": "Page Titled",
+            "standard": "WCAG-2.2",
+            "technique": "PDF18",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+          }
+        ],
+        "title": {
+          "key": "rules.no-title.title"
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.no-glyphtounicode.detailEngineNeedsMap"
+        },
+        "file": "manuscript_v1.tex",
+        "id": "no-glyphtounicode",
+        "lens": "both",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.21.7",
+            "label": "Character encoding",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/"
+          },
+          {
+            "clause": "8.4.5.8",
+            "label": "Character encoding",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "10-001",
+            "label": "Character encoding",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.4.5",
+            "label": "Images of Text",
+            "standard": "WCAG-2.2",
+            "technique": "PDF7",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF7"
+          }
+        ],
+        "title": {
+          "key": "rules.no-glyphtounicode.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-lang.detail"
+        },
+        "file": "manuscript_v1.tex",
+        "id": "no-lang",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.2",
+            "label": "Text",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.2-29"
+          },
+          {
+            "clause": "8.4.4",
+            "label": "Natural language",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "11-001",
+            "label": "Natural language",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "3.1.1",
+            "label": "Language of Page",
+            "standard": "WCAG-2.2",
+            "technique": "PDF16",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF16"
+          }
+        ],
+        "title": {
+          "key": "rules.no-lang.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-title.detail"
+        },
+        "file": "manuscript_v1.tex",
+        "id": "no-title",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "7.1",
+            "label": "Document title",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.1-9"
+          },
+          {
+            "clause": "8.11.1",
+            "label": "Metadata",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "06-003",
+            "label": "Metadata",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "2.4.2",
+            "label": "Page Titled",
+            "standard": "WCAG-2.2",
+            "technique": "PDF18",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+          }
+        ],
+        "title": {
+          "key": "rules.no-title.title"
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.no-glyphtounicode.detailEngineNeedsMap"
+        },
+        "file": "old/main.tex",
+        "id": "no-glyphtounicode",
+        "lens": "both",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.21.7",
+            "label": "Character encoding",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/"
+          },
+          {
+            "clause": "8.4.5.8",
+            "label": "Character encoding",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "10-001",
+            "label": "Character encoding",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.4.5",
+            "label": "Images of Text",
+            "standard": "WCAG-2.2",
+            "technique": "PDF7",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF7"
+          }
+        ],
+        "title": {
+          "key": "rules.no-glyphtounicode.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-lang.detail"
+        },
+        "file": "old/main.tex",
+        "id": "no-lang",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.2",
+            "label": "Text",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.2-29"
+          },
+          {
+            "clause": "8.4.4",
+            "label": "Natural language",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "11-001",
+            "label": "Natural language",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "3.1.1",
+            "label": "Language of Page",
+            "standard": "WCAG-2.2",
+            "technique": "PDF16",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF16"
+          }
+        ],
+        "title": {
+          "key": "rules.no-lang.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-title.detail"
+        },
+        "file": "old/main.tex",
+        "id": "no-title",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "7.1",
+            "label": "Document title",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.1-9"
+          },
+          {
+            "clause": "8.11.1",
+            "label": "Metadata",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "06-003",
+            "label": "Metadata",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "2.4.2",
+            "label": "Page Titled",
+            "standard": "WCAG-2.2",
+            "technique": "PDF18",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+          }
+        ],
+        "title": {
+          "key": "rules.no-title.title"
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.refs-unreferenced-floats.detail",
+          "params": {
+            "labels": "fig:only-old, fig:twice, fig:twice"
+          }
+        },
+        "id": "refs-unreferenced-floats",
+        "lens": "refs",
+        "severity": "info",
+        "title": {
+          "key": "rules.refs-unreferenced-floats.title",
+          "params": {
+            "count": 3
+          }
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.refs-undefined-ref.detail"
+        },
+        "file": "manuscript.tex",
+        "from": 210,
+        "id": "refs-undefined-ref",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-undefined-ref.title",
+          "params": {
+            "label": "fig:only-old"
+          }
+        },
+        "to": 228
+      },
+      {
+        "detail": {
+          "key": "rules.refs-duplicate-label.detail"
+        },
+        "file": "old/chapter.tex",
+        "from": 177,
+        "id": "refs-duplicate-label",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-duplicate-label.title",
+          "params": {
+            "label": "fig:twice"
+          }
+        },
+        "to": 194
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-no-abstract.detail"
+        },
+        "id": "submission-no-abstract",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-no-abstract.title"
+        }
+      }
+    ],
+    "hasPdf": false,
+    "privacyScore": 100,
+    "refsScore": 77,
+    "scores": {
+      "a11y": 58,
+      "ats": 82,
+      "compile": 100,
+      "privacy": 100,
+      "refs": 77,
+      "submission": 94
+    },
+    "submissionScore": 94
+  }
+}

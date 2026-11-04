@@ -9,7 +9,9 @@ import type {
   ProjectUse,
   SourceLocation,
 } from "@/lib/project-intelligence/types";
+import { latexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { projectDiagnosticText } from "@/lib/project-intelligence/reason";
+import { definitionFile } from "@/lib/project-intelligence/resolution";
 import { basename } from "@/lib/path-utils";
 import type {
   IntelligenceNodeKind,
@@ -638,15 +640,22 @@ export function buildSymbolNodes(
     });
   }
 
-  const duplicateDefinitionKeys = new Set<string>();
-  const definitionCounts = new Map<string, number>();
+  const sameName = new Map<string, ProjectDefinition[]>();
   for (const definition of snapshot.definitions) {
     const key = `${definition.kind}\0${definition.name}`;
-    definitionCounts.set(key, (definitionCounts.get(key) ?? 0) + 1);
+    const named = sameName.get(key);
+    if (named) named.push(definition);
+    else sameName.set(key, [definition]);
   }
-  for (const [key, count] of definitionCounts) {
-    if (count > 1) duplicateDefinitionKeys.add(key);
-  }
+  const scope = latexUnitScope(snapshot.latexUnits);
+  const isDuplicate = (definition: ProjectDefinition): boolean => {
+    const named = sameName.get(`${definition.kind}\0${definition.name}`) ?? [];
+    if (named.length < 2) return false;
+    return (
+      !scope ||
+      scope.peers(definition.location.file, named, definitionFile).length > 1
+    );
+  };
 
   const groups: readonly {
     id: string;
@@ -699,9 +708,7 @@ export function buildSymbolNodes(
         presentDefinition(
           definition,
           `symbols:${group.id}`,
-          duplicateDefinitionKeys.has(
-            `${definition.kind}\0${definition.name}`,
-          ),
+          isDuplicate(definition),
         ),
       ),
     });
@@ -713,6 +720,8 @@ export function buildSymbolNodes(
 export function buildReferenceResultNodes(
   definitions: readonly ProjectDefinition[],
   uses: readonly ProjectUse[],
+  isDuplicate: (definition: ProjectDefinition) => boolean = () =>
+    definitions.length > 1,
 ): readonly IntelligenceTreeNode[] {
   const nodes: IntelligenceTreeNode[] = [];
   if (definitions.length) {
@@ -725,11 +734,7 @@ export function buildReferenceResultNodes(
       badge: String(definitions.length),
       defaultExpanded: true,
       children: definitions.map((definition) =>
-        presentDefinition(
-          definition,
-          "query:definitions",
-          definitions.length > 1,
-        ),
+        presentDefinition(definition, "query:definitions", isDuplicate(definition)),
       ),
     });
   }
