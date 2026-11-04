@@ -682,16 +682,16 @@ fn legacy_brace_definitions(facts: &mut Facts<'_>, legacy: &[char]) {
     }
 }
 
-fn legacy_inputs(facts: &mut Facts<'_>, legacy: &[char], raw_source: &[char]) {
-    for (name, start, _) in commands(legacy) {
+fn legacy_inputs(facts: &mut Facts<'_>, masked: &[char], raw_source: &[char]) {
+    for (name, start, _) in commands(masked) {
         if name != "input" && name != "include" {
             continue;
         }
         let end = start + 1 + name.chars().count();
-        let Some((from, to)) = simple_group_after(legacy, end) else {
+        let Some((from, to)) = simple_group_after(masked, end) else {
             continue;
         };
-        let raw = trim_js(&string_of(&legacy[from..to])).to_string();
+        let raw = trim_js(&string_of(&masked[from..to])).to_string();
         let whole = string_of(&raw_source[start..(to + 1).min(raw_source.len())]);
         let kind = if whole.contains("import") {
             UseKind::Import
@@ -1078,7 +1078,7 @@ pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
     };
     sections(&mut facts, &legacy);
     legacy_brace_definitions(&mut facts, &legacy);
-    legacy_inputs(&mut facts, &legacy, &chars);
+    legacy_inputs(&mut facts, &masked, &chars);
     add_macro_definitions(&mut facts, &masked);
     key_uses(&mut facts, &chars, &masked, &closing);
     edge_uses(&mut facts, &chars, &masked, &closing);

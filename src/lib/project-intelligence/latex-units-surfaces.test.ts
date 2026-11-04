@@ -1110,6 +1110,28 @@ describe("other reference commands", () => {
   );
 });
 
+describe("text a document only shows", () => {
+  it("does not link an \\input in verbatim text", () => {
+    const snapshot = project({
+      "a.tex": paper("\\label{x}\n\\begin{verbatim}\n\\input{b}\n\\end{verbatim}\n"),
+      "b.tex": paper("\\label{x}"),
+    });
+    expect(snapshot.hierarchy.edges.filter((edge) => edge.kind === "include")).toEqual([]);
+    expect(codes(snapshot)).toEqual([]);
+  });
+
+  it("still links the \\input next to it", () => {
+    const snapshot = project({
+      "a.tex": paper("\\input{real}\n\\verb|\\input{shown}|\n"),
+      "real.tex": "\n",
+      "shown.tex": "\n",
+    });
+    expect(
+      snapshot.hierarchy.edges.filter((edge) => edge.kind === "include").map((edge) => edge.targetFile),
+    ).toEqual(["real.tex"]);
+  });
+});
+
 describe("the folder a compile runs in", () => {
   const sources = {
     "papers/a/main.tex": paper("\\input{intro}\\includegraphics{plot}"),
@@ -1205,6 +1227,35 @@ describe("Preflight", () => {
     expect(value.definedLabels).toEqual(["a", "a"]);
   });
 
+  describe("reports on the document it checks", () => {
+    const sources = {
+      "main.tex": "\\documentclass{article}\n\\input{shared}\n\\label{sec:shared}\n",
+      "main_v1.tex":
+        "\\documentclass{article}\n\\input{shared}\n\\label{sec:shared}\n\\label{fig:old}\n\\ref{fig:x}\n",
+      "shared.tex": "\\label{sec:shared}\\label{fig:x}\n",
+    };
+
+    it("for the main document", () => {
+      const value = refs(sources, "main.tex");
+      expect(value.duplicateLabels).toEqual([{ label: "sec:shared", files: ["main.tex", "shared.tex"] }]);
+      expect(value.unreferencedLabels).toEqual([{ label: "fig:x", file: "shared.tex" }]);
+    });
+
+    it("for another revision when that one is checked", () => {
+      const value = refs(sources, "main_v1.tex");
+      expect(value.duplicateLabels).toEqual([{ label: "sec:shared", files: ["main_v1.tex", "shared.tex"] }]);
+      expect(value.unreferencedLabels).toEqual([{ label: "fig:old", file: "main_v1.tex" }]);
+    });
+
+    it("keeps a file a Markdown link names as referenced", () => {
+      const value = refs({
+        ...sources,
+        "notes.md": "See [the figure](shared.tex#fig:x).\n",
+      });
+      expect(value.unreferencedLabels).toEqual([]);
+    });
+  });
+
   it("reports one row per document that really clashes", () => {
     const value = refs({
       "a.tex": paper("\\input{chapter}\\label{x}"),
@@ -1250,7 +1301,7 @@ describe("Preflight", () => {
     expect(value.unreferencedLabels).toEqual([{ label: "fig:one", file: "a.tex" }]);
   });
 
-  it("counts labels, not rows, in the title of the duplicate finding", () => {
+  it("counts the checked document's labels in the title of the duplicate finding", () => {
     const sources = {
       "a.tex": paper("\\input{a_ch}\\label{x}"),
       "a_ch.tex": "\\label{x}\n",
@@ -1258,7 +1309,7 @@ describe("Preflight", () => {
       "b_ch.tex": "\\label{x}\n",
     };
     const context = refs(sources);
-    expect(context.duplicateLabels).toHaveLength(2);
+    expect(context.duplicateLabels).toHaveLength(1);
     const finding = runRefsRules(sources["a.tex"], context, { file: "a.tex" } as never).find(
       (item) => item.id === "refs-project-duplicate-label",
     );

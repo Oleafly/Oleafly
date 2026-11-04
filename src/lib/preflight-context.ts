@@ -178,9 +178,20 @@ function definitionsOfRef(
   return engineForPath(use.file) === "latex" ? scope.select(use.file, pool, symbolFile).items : [];
 }
 
+/**
+ * Preflight reports on the document it checks. Another document's labels, and
+ * what its references reach, are that document's findings.
+ */
+function checkedDocument(index: ProjectIndex | null, mainDoc: string): (file: string) => boolean {
+  const scope = index?.unitScope;
+  if (!scope || scope.isOrphan(mainDoc)) return () => true;
+  return (file) => engineForPath(file) !== "latex" || scope.sharesScope(mainDoc, file);
+}
+
 function selectedDefinitions(
   index: ProjectIndex | null,
   pools: LatexPools,
+  isChecked: (file: string) => boolean,
 ): ReadonlySet<Sym> | null {
   const scope = index?.unitScope;
   if (!scope) return null;
@@ -188,7 +199,8 @@ function selectedDefinitions(
   const seen = new Set<readonly Sym[]>();
   for (const use of index?.uses ?? []) {
     const pool = use.kind === "ref" ? pools.get(use.name) : undefined;
-    const items = pool ? definitionsOfRef(use, pool, scope) : [];
+    const counts = isChecked(use.file) || nameTarget("label", use).file !== null;
+    const items = pool && counts ? definitionsOfRef(use, pool, scope) : [];
     if (seen.has(items)) continue;
     seen.add(items);
     for (const definition of items) selected.add(definition);
@@ -199,6 +211,7 @@ function selectedDefinitions(
 function collectLabelFacts(
   index: ProjectIndex | null,
   pools: LatexPools,
+  mainDoc: string,
 ): {
   duplicateLabels: { label: string; files: string[] }[];
   unreferencedLabels: { label: string; file: string }[];
@@ -214,7 +227,8 @@ function collectLabelFacts(
     const { scope, file } = nameTarget("label", use);
     referencedLabels.add(referenceKey(scope, file, use.name));
   }
-  const selected = selectedDefinitions(index, pools);
+  const isChecked = checkedDocument(index, mainDoc);
+  const selected = selectedDefinitions(index, pools, isChecked);
   const isReferenced = (definition: Sym) => {
     if (selected && engineForPath(definition.file) === "latex") return selected.has(definition);
     const { scope } = nameTarget("label", definition);
@@ -235,15 +249,17 @@ function collectLabelFacts(
   const duplicateLabels = [...labelFiles.values()]
     .filter((entry) => entry.files.size > 1)
     .flatMap((entry) =>
-      (unitScope && entry.latex ? unitScope.duplicateRows([...entry.files]) : [[...entry.files]]).map(
-        (files) => ({ label: entry.label, files }),
-      ),
+      (unitScope && entry.latex
+        ? unitScope.duplicateRows([...entry.files]).filter((row) => row.every(isChecked))
+        : [[...entry.files]]
+      ).map((files) => ({ label: entry.label, files })),
     );
   const unreferencedLabels = (index?.defs ?? [])
     .filter(
       (definition) =>
         definition.kind === "label" &&
         /^(?:fig|figure|tab|table|eq|equation)[:._-]/i.test(definition.name) &&
+        isChecked(definition.file) &&
         !isReferenced(definition),
     )
     .map((definition) => ({ label: definition.name, file: definition.file }));
@@ -278,7 +294,7 @@ export function buildRefsContext(input: PreflightContextInput): RefsContext {
   const allCitedKeys = collectCitedKeys(texts);
   const currentBibKeys = [...new Set([...bibKeys, ...bibEntries.map((entry) => entry.key)])];
   const pools = latexPools(index);
-  const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index, pools);
+  const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index, pools, input.mainDoc);
   const unreachableLabels = collectUnreachableLabels(index, pools);
   const bibKeyDefinitions = collectBibKeyDefinitions(bibTexts);
   return {

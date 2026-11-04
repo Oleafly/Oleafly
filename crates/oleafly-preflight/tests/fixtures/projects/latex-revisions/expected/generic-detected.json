@@ -71,20 +71,7 @@
         ]
       }
     ],
-    "unreferencedLabels": [
-      {
-        "file": "old/chapter.tex",
-        "label": "fig:only-old"
-      },
-      {
-        "file": "old/chapter.tex",
-        "label": "fig:twice"
-      },
-      {
-        "file": "old/chapter.tex",
-        "label": "fig:twice"
-      }
-    ],
+    "unreferencedLabels": [],
     "unresolvedBibliographies": []
   },
   "report": {
@@ -479,24 +466,6 @@
         }
       },
       {
-        "certainty": "advisory",
-        "detail": {
-          "key": "rules.refs-unreferenced-floats.detail",
-          "params": {
-            "labels": "fig:only-old, fig:twice, fig:twice"
-          }
-        },
-        "id": "refs-unreferenced-floats",
-        "lens": "refs",
-        "severity": "info",
-        "title": {
-          "key": "rules.refs-unreferenced-floats.title",
-          "params": {
-            "count": 3
-          }
-        }
-      },
-      {
         "detail": {
           "key": "rules.refs-undefined-ref.detail"
         },
@@ -545,13 +514,13 @@
     ],
     "hasPdf": false,
     "privacyScore": 100,
-    "refsScore": 77,
+    "refsScore": 79,
     "scores": {
       "a11y": 58,
       "ats": 82,
       "compile": 100,
       "privacy": 100,
-      "refs": 77,
+      "refs": 79,
       "submission": 94
     },
     "submissionScore": 94

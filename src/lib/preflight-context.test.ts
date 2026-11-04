@@ -64,17 +64,17 @@ describe("buildRefsContext", () => {
     expect(refs.duplicateDois).toEqual([{ doi: "10.1/x", keys: ["a", "b"] }]);
   });
 
-  it("compares labels only within a compilation unit", () => {
+  it("reports label facts for the main document's compilation unit", () => {
     const texts = {
       "main.tex": String.raw`\documentclass{article}
 \input{shared}
-\label{sec:shared}
-\label{fig:a}
-\ref{fig:a}`,
+\label{sec:shared}`,
       "main_v1.tex": String.raw`\documentclass{article}
-\label{fig:a}
-\label{fig:old}`,
-      "shared.tex": String.raw`\label{sec:shared}`,
+\input{shared}
+\label{sec:shared}
+\label{fig:old}
+\ref{fig:x}`,
+      "shared.tex": String.raw`\label{sec:shared}\label{fig:x}`,
     };
     const files = Object.fromEntries(
       Object.entries(texts).map(([file, text]) => [file, analyzeProjectFile(file, text, 1)]),
@@ -89,10 +89,7 @@ describe("buildRefsContext", () => {
     const refs = buildRefsContext(input(texts, { index: legacyIndexFromProjectIntelligence(snapshot) }));
 
     expect(refs.duplicateLabels).toEqual([{ label: "sec:shared", files: ["main.tex", "shared.tex"] }]);
-    expect(refs.unreferencedLabels).toEqual([
-      { label: "fig:a", file: "main_v1.tex" },
-      { label: "fig:old", file: "main_v1.tex" },
-    ]);
+    expect(refs.unreferencedLabels).toEqual([{ label: "fig:x", file: "shared.tex" }]);
   });
 });
 

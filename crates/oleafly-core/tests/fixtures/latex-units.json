@@ -5519,6 +5519,57 @@
     }
    ],
    "orphans": []
+  },
+  {
+   "name": "an input in verbatim text joins nothing",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\label{x}\n\\begin{verbatim}\n\\input{b}\n\\end{verbatim}\n",
+    "b.tex": "\\documentclass{article}\n\\label{x}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an input finds a file stored in the other Unicode form",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{café}\n",
+    "café.tex": "\\label{x}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "café.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
   }
  ]
 }

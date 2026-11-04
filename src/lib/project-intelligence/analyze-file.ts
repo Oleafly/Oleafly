@@ -3112,6 +3112,13 @@ function legacyUseTarget(
   return symbol.target;
 }
 
+/** An `\\input` shown in verbatim text opens nothing. */
+function withoutShownInputs(uses: readonly Sym[], source: string): readonly Sym[] {
+  if (!uses.some((use) => use.kind === "inputedge")) return uses;
+  const masked = maskLatexIgnoredRegions(source);
+  return uses.filter((use) => use.kind !== "inputedge" || masked[use.from] === "\\");
+}
+
 function legacyUseSyntax(
   engine: ProjectIntelligenceEngine,
   symbol: Sym,
@@ -3301,7 +3308,7 @@ export function analyzeProjectFile(
   };
 
   addLegacyDefinitions(context, legacy.defs);
-  addLegacyUses(context, legacy.uses);
+  addLegacyUses(context, engine === "latex" ? withoutShownInputs(legacy.uses, source) : legacy.uses);
 
   let partial = false;
   let packageRefs: PackageReference[] = [];

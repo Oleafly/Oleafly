@@ -64,6 +64,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for a file in the same order as the compile: the folder LaTeX runs in, then the
   project root. Before, a file of the same name next to the main document could
   open or count in place of the one that was compiled.
+- `\input` shown in verbatim text no longer counts as an include, so the word
+  count, the project map and file links leave that file out.
+- `\input{café}` now finds a file whose name is stored in the other Unicode form,
+  which macOS can do. Preflight no longer says it is missing, and the word count
+  includes it.
 - The word count now includes a file named from the project root inside a
   subfolder, such as `\input{chapters/two}` in `chapters/one.tex`. Before, those
   words were left out.

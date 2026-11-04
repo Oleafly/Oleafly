@@ -233,7 +233,8 @@ fn label_scope(file: &str) -> String {
 const INCLUDE_EXTENSIONS: [&str; 6] = [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"];
 const FIGURE_EXTENSIONS: [&str; 6] = [".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
 
-fn fold(path: &str) -> String {
+/// Case and Unicode normalisation folded, as a case-insensitive disk sees it.
+pub fn path_fold_key(path: &str) -> String {
     path.nfc().collect::<String>().to_lowercase()
 }
 
@@ -250,7 +251,10 @@ impl Known {
             .collect();
         let mut folded: HashMap<String, Vec<String>> = HashMap::new();
         for file in &exact {
-            folded.entry(fold(file)).or_default().push(file.clone());
+            folded
+                .entry(path_fold_key(file))
+                .or_default()
+                .push(file.clone());
         }
         Known { exact, folded }
     }
@@ -260,7 +264,7 @@ impl Known {
         if self.exact.contains(path) {
             found.insert(path.to_string());
         }
-        for file in self.folded.get(&fold(path)).into_iter().flatten() {
+        for file in self.folded.get(&path_fold_key(path)).into_iter().flatten() {
             found.insert(file.clone());
         }
         found
@@ -1410,6 +1414,26 @@ mod tests {
             .iter()
             .map(|edge| (edge.from.clone(), edge.to.clone()))
             .collect()
+    }
+
+    #[test]
+    fn an_input_in_verbatim_text_is_not_an_edge() {
+        let scan = scan(
+            &[
+                (
+                    "main.tex",
+                    "\\input{real}\n\\begin{verbatim}\n\\input{shown}\n\\end{verbatim}\n",
+                ),
+                ("real.tex", "\n"),
+                ("shown.tex", "\n"),
+            ],
+            &[],
+            "main.tex",
+        );
+        assert_eq!(
+            input_edges(&scan),
+            vec![("main.tex".to_string(), Some("real.tex".to_string()))]
+        );
     }
 
     #[test]

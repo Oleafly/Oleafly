@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 use super::latex::mask_ignored;
 use super::text::{dirname, has_extension, is_js_space, starts_with_at, trim_js};
-use super::{engine_for, fold, Engine};
+use super::{engine_for, path_fold_key, Engine};
 use crate::detect::tex_magic_comments;
 
 const LATEXDIFF_BANNER: &str = "%DIF LATEXDIFF DIFFERENCE FILE";
@@ -839,7 +839,7 @@ impl Resolver {
         if let Some(folded) = self.folded.get(path) {
             return folded.clone();
         }
-        let folded = fold(path);
+        let folded = path_fold_key(path);
         if self.folded.len() < MAX_FOLDED_PATHS {
             self.folded.insert(path.to_string(), folded.clone());
         }
@@ -1427,6 +1427,15 @@ impl LatexUnits {
     /// Whether a file belongs to no unit.
     pub fn is_orphan(&self, file: &str) -> bool {
         !self.file_groups.contains_key(file)
+    }
+
+    /// Same unit, or both files outside every unit.
+    pub fn shares_scope(&self, left: &str, right: &str) -> bool {
+        match (self.group_of(left), self.group_of(right)) {
+            (Some(left), Some(right)) => self.overlap(left, right),
+            (None, None) => true,
+            _ => false,
+        }
     }
 
     /// Same unit, or either file outside every unit.

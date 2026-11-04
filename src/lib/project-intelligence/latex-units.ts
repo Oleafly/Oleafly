@@ -268,6 +268,12 @@ function unquoted(value: string): string {
   return value.trim().replaceAll('"', "");
 }
 
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+
 function scanTwoArgumentInclude(
   scan: FactScan,
   masked: string,
@@ -282,7 +288,7 @@ function scanTwoArgumentInclude(
   } else if (directory.value === null || target.value === null) {
     scan.dynamic = true;
   } else {
-    const folder = unquoted(directory.value).replace(/\/+$/, "");
+    const folder = withoutTrailingSlashes(unquoted(directory.value));
     const file = unquoted(target.value);
     addTarget(
       scan,
@@ -1118,6 +1124,8 @@ export interface LatexRenameInput<D, U> {
 export interface LatexUnitScope {
   /** Same unit, or both outside every unit. */
   sharesScope(left: string, right: string): boolean;
+  /** Outside every unit. */
+  isOrphan(file: string): boolean;
   /** Same unit, or either file outside every unit. */
   connected(left: string, right: string): boolean;
   /** Whether a completion or link from `viewer` may name `file`. */
@@ -1369,6 +1377,10 @@ class UnitScope implements LatexUnitScope {
     const items = ordinals.map((ordinal) => pool[ordinal]);
     index.inGroup.set(group, items);
     return items;
+  }
+
+  isOrphan(file: string): boolean {
+    return !this.groupOf.has(file);
   }
 
   sharesScope(left: string, right: string): boolean {

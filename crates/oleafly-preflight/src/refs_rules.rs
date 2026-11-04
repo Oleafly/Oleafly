@@ -1,7 +1,9 @@
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
+use unicode_normalization::UnicodeNormalization;
 
 use crate::bib::{
     bibliography_candidate_paths, bibliography_declarations, bibliography_display_name,
@@ -132,19 +134,30 @@ static DOI_PREFIX: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"(?i)^https?://(?:dx\.)?doi\.org/"));
 static DOI_SHAPE: LazyLock<JsRegex> = LazyLock::new(|| JsRegex::std(r"(?i)^10\.[0-9]{4,9}/\S+$"));
 
+/// macOS can keep a name in the other Unicode form than the source spells it.
+fn nfc(value: &str) -> Cow<'_, str> {
+    if value.is_ascii() {
+        Cow::Borrowed(value)
+    } else {
+        Cow::Owned(value.nfc().collect())
+    }
+}
+
 fn resolves(reference: &str, files: &[String], extensions: &[&str]) -> bool {
     let trimmed = js_trim(reference);
-    let target = trimmed.strip_prefix("./").unwrap_or(trimmed);
+    let target = nfc(trimmed.strip_prefix("./").unwrap_or(trimmed));
+    let target = target.as_ref();
     let base = target.rsplit('/').next().unwrap_or(target);
+    let names: Vec<Cow<'_, str>> = files.iter().map(|file| nfc(file)).collect();
     extensions.iter().any(|ext| {
         let with_ext = format!("{target}{ext}");
         let base_with_ext = format!("{base}{ext}");
         let nested = format!("/{with_ext}");
         let nested_base = format!("/{base_with_ext}");
-        files.iter().any(|file| {
-            *file == with_ext
+        names.iter().any(|file| {
+            *file == with_ext.as_str()
                 || file.ends_with(&nested)
-                || *file == base_with_ext
+                || *file == base_with_ext.as_str()
                 || file.ends_with(&nested_base)
         })
     })
@@ -783,6 +796,12 @@ mod tests {
     #[test]
     fn plain_titles_lose_markup_and_case() {
         assert_eq!(plain("{The} \\emph{Big}  Book!"), "the emph big book");
+    }
+
+    #[test]
+    fn missing_assets_resolve_in_either_unicode_form() {
+        let files = vec!["cafe\u{301}.tex".to_string()];
+        assert!(resolves("caf\u{e9}", &files, INPUT_EXT));
     }
 
     #[test]

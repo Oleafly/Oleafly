@@ -46,13 +46,15 @@ const GRAPHICS = /\\includegraphics\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
 const INPUT = /\\(?:input|include)\s*\{([^}]*)\}/g;
 
 function resolves(ref: string, files: string[], exts: string[]): boolean {
-  const target = ref.trim().replace(/^\.\//, "");
+  // macOS can keep a name in the other Unicode form than the source spells it.
+  const target = ref.trim().replace(/^\.\//, "").normalize("NFC");
   const base = target.split("/").pop() ?? target;
+  const names = files.map((file) => file.normalize("NFC"));
   for (const ext of exts) {
     const withExt = target + ext;
     const baseWithExt = base + ext;
     if (
-      files.some(
+      names.some(
         (f) => f === withExt || f.endsWith("/" + withExt) || f === baseWithExt || f.endsWith("/" + baseWithExt),
       )
     ) {

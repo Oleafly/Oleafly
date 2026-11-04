@@ -3427,34 +3427,6 @@ struct RawEdge {
     searched: bool,
 }
 
-fn mask_comments(text: &[u16]) -> Vec<u16> {
-    let mut masked = text.to_vec();
-    let mut line_start = 0;
-    while line_start <= text.len() {
-        let line_end = index_of_unit(text, NEWLINE, line_start).unwrap_or(text.len());
-        let mut i = line_start;
-        while i < line_end {
-            if text[i] == PERCENT {
-                let mut backslashes = 0;
-                let mut j = i;
-                while j > line_start && text[j - 1] == BACKSLASH {
-                    backslashes += 1;
-                    j -= 1;
-                }
-                if backslashes % 2 == 0 {
-                    for unit in masked[i..line_end].iter_mut() {
-                        *unit = SPACE;
-                    }
-                    break;
-                }
-            }
-            i += 1;
-        }
-        line_start = line_end + 1;
-    }
-    masked
-}
-
 fn braced_content(text: &[u16], brace: usize) -> Option<(usize, usize)> {
     if text.get(brace) != Some(&OPEN_BRACE) {
         return None;
@@ -3471,7 +3443,7 @@ fn last_open_brace(text: &[u16], from: usize, to: usize) -> usize {
 }
 
 fn latex_legacy_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) {
-    let text = mask_comments(source);
+    let text = mask_latex_ignored_regions(source);
     let mut at = 0;
     while at < text.len() {
         if text[at] != BACKSLASH {
@@ -3987,7 +3959,7 @@ impl KnownFiles {
         let mut by_lower: HashMap<String, Vec<String>> = HashMap::new();
         for path in &exact {
             by_lower
-                .entry(path.to_lowercase())
+                .entry(oleafly_core::context::path_fold_key(path))
                 .or_default()
                 .push(path.clone());
         }
@@ -4001,7 +3973,10 @@ impl KnownFiles {
         if self.exact.contains(candidate) {
             into.insert(candidate.to_string());
         }
-        if let Some(matches) = self.by_lower.get(&candidate.to_lowercase()) {
+        if let Some(matches) = self
+            .by_lower
+            .get(&oleafly_core::context::path_fold_key(candidate))
+        {
             into.extend(matches.iter().cloned());
         }
     }
@@ -4898,6 +4873,26 @@ mod tests {
         assert_eq!(known.resolve("lib"), Some("lib.typ".to_string()));
         assert_eq!(known.resolve("lib.typ"), Some("lib.typ".to_string()));
         assert_eq!(known.resolve("missing"), None);
+    }
+
+    #[test]
+    fn an_input_in_verbatim_text_opens_nothing() {
+        let project = project("stats-verbatim");
+        write(
+            &project,
+            "main.tex",
+            b"Main.\n\\begin{verbatim}\n\\input{other}\n\\end{verbatim}\n",
+        );
+        write(&project, "other.tex", b"Other words.\n");
+        assert_eq!(collect(&project, "main.tex").file_count, 1);
+    }
+
+    #[test]
+    fn an_input_opens_a_file_in_either_unicode_form() {
+        let project = project("stats-unicode");
+        write(&project, "main.tex", "\\input{caf\u{e9}}\n".as_bytes());
+        write(&project, "cafe\u{301}.tex", b"Words.\n");
+        assert_eq!(collect(&project, "main.tex").file_count, 2);
     }
 
     #[test]
