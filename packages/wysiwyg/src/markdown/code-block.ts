@@ -26,7 +26,7 @@ export const MarkdownCodeBlock = CodeBlock.extend({
       language: {
         ...parent.language,
         parseHTML: (element) =>
-          element.getAttribute("data-info") ?? parent.language?.parseHTML?.(element) ?? null,
+          element.dataset.info ?? parent.language?.parseHTML?.(element) ?? null,
         rendered: true,
         renderHTML: (attributes) =>
           attributes.language ? { "data-info": attributes.language } : {},
@@ -77,7 +77,7 @@ export const MarkdownCodeBlock = CodeBlock.extend({
           };
         },
         updateDOM(element) {
-          element.innerHTML = element.innerHTML.replace(/\n<\/code><\/pre>/gu, "</code></pre>");
+          element.innerHTML = element.innerHTML.replaceAll("\n</code></pre>", "</code></pre>");
         },
       },
     };

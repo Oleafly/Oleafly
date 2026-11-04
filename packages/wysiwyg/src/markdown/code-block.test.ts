@@ -42,6 +42,81 @@ function typeAtEndOf(editor: Editor, needle: string, text: string): void {
 const MERMAID = "```mermaid\nflowchart TD\n  A --> B\n```";
 const PAGE = `# Report\n\nBefore.\n\n${MERMAID}\n\nAfter.\n`;
 
+const CODE_BODY = "<!-- c --> [^1] $x$ @cite **bold** <b>tag</b> & \\\\ ~~s~~";
+
+const EDITS: [name: string, source: string, needle: string, typed: string, saved: string][] = [
+  [
+    "keeps the fence and every line when typing inside it",
+    PAGE,
+    "A --> B",
+    "\n  B --> C",
+    "# Report\n\nBefore.\n\n```mermaid\nflowchart TD\n  A --> B\n  B --> C\n```\n\nAfter.\n",
+  ],
+  [
+    "keeps a whole info string, not only its first word",
+    "```{.python .numberLines startFrom=\"3\"}\nx = 1\n```\n",
+    "x = 1",
+    "0",
+    "```{.python .numberLines startFrom=\"3\"}\nx = 10\n```\n",
+  ],
+  [
+    "uses a longer fence when the code holds one",
+    "````md\n```js\nx\n```\n````\n",
+    "x",
+    "y",
+    "````md\n```js\nxy\n```\n````\n",
+  ],
+  [
+    "switches to tildes when the info string holds a backtick",
+    "~~~a`b\none\n~~~\n",
+    "one",
+    " two",
+    "~~~a`b\none two\n~~~\n",
+  ],
+  [
+    "turns an edited indented block into a fence without losing text",
+    "Text.\n\n    one\n      two\n",
+    "two",
+    "!",
+    "Text.\n\n```\none\n  two!\n```\n",
+  ],
+  [
+    "does not read Markdown syntax or preserved tokens inside code",
+    `\`\`\`text\n${CODE_BODY}\n\`\`\`\n`,
+    "~~s~~",
+    "!",
+    `\`\`\`text\n${CODE_BODY}!\n\`\`\`\n`,
+  ],
+  [
+    "keeps blank lines and trailing spaces inside code",
+    "```\none  \n\n\ntwo\n```\n",
+    "two",
+    "!",
+    "```\none  \n\n\ntwo!\n```\n",
+  ],
+  [
+    "keeps CRLF line endings when a fence is edited",
+    "A.\r\n\r\n```js\r\none\r\ntwo\r\n```\r\n",
+    "two",
+    "!",
+    "A.\r\n\r\n```js\r\none\r\ntwo!\r\n```\r\n",
+  ],
+  [
+    "survives an unclosed fence at the end of a file",
+    "Text.\n\n```js\none\n",
+    "one",
+    "!",
+    "Text.\n\n```js\none!\n```\n",
+  ],
+  [
+    "keeps a blank last line of code",
+    "```\none\n\n```\n",
+    "one",
+    "!",
+    "```\none!\n\n```\n",
+  ],
+];
+
 function codeBlocks(doc: JSONContent): JSONContent[] {
   return (doc.content ?? []).flatMap((node) =>
     node.type === "codeBlock" ? [node] : codeBlocks(node),
@@ -63,66 +138,15 @@ describe("fenced code in the Markdown visual editor", () => {
     expect(save()).toBe(source.replace("Before.", "Before now."));
   });
 
-  it("keeps the fence and every line when typing inside it", () => {
-    const { editor, save } = open(PAGE);
-    typeAtEndOf(editor, "A --> B", "\n  B --> C");
-    expect(save()).toBe(
-      "# Report\n\nBefore.\n\n```mermaid\nflowchart TD\n  A --> B\n  B --> C\n```\n\nAfter.\n",
-    );
+  it.each(EDITS)("%s", (_name, source, needle, typed, saved) => {
+    const { editor, save } = open(source);
+    typeAtEndOf(editor, needle, typed);
+    expect(save()).toBe(saved);
   });
 
   it("keeps fences when there is no source snapshot to fall back on", () => {
     const { doc } = parseMarkdownBody(PAGE);
     expect(serializeMarkdownBody(doc)).toBe(PAGE.trimEnd());
-  });
-
-  it("keeps a whole info string, not only its first word", () => {
-    const source = "```{.python .numberLines startFrom=\"3\"}\nx = 1\n```\n";
-    const { editor, save } = open(source);
-    typeAtEndOf(editor, "x = 1", "0");
-    expect(save()).toBe("```{.python .numberLines startFrom=\"3\"}\nx = 10\n```\n");
-  });
-
-  it("uses a longer fence when the code holds one", () => {
-    const source = "````md\n```js\nx\n```\n````\n";
-    const { editor, save } = open(source);
-    typeAtEndOf(editor, "x", "y");
-    expect(save()).toBe("````md\n```js\nxy\n```\n````\n");
-  });
-
-  it("switches to tildes when the info string holds a backtick", () => {
-    const source = "~~~a`b\none\n~~~\n";
-    const { editor, save } = open(source);
-    typeAtEndOf(editor, "one", " two");
-    expect(save()).toBe("~~~a`b\none two\n~~~\n");
-  });
-
-  it("turns an edited indented block into a fence without losing text", () => {
-    const { editor, save } = open("Text.\n\n    one\n      two\n");
-    typeAtEndOf(editor, "two", "!");
-    expect(save()).toBe("Text.\n\n```\none\n  two!\n```\n");
-  });
-
-  it("does not read Markdown syntax or preserved tokens inside code", () => {
-    const body = "<!-- c --> [^1] $x$ @cite **bold** <b>tag</b> & \\\\ ~~s~~";
-    const source = `\`\`\`text\n${body}\n\`\`\`\n`;
-    const { editor, save } = open(source);
-    typeAtEndOf(editor, "~~s~~", "!");
-    expect(save()).toBe(`\`\`\`text\n${body}!\n\`\`\`\n`);
-  });
-
-  it("keeps blank lines and trailing spaces inside code", () => {
-    const source = "```\none  \n\n\ntwo\n```\n";
-    const { editor, save } = open(source);
-    typeAtEndOf(editor, "two", "!");
-    expect(save()).toBe("```\none  \n\n\ntwo!\n```\n");
-  });
-
-  it("keeps CRLF line endings when a fence is edited", () => {
-    const source = "A.\r\n\r\n```js\r\none\r\ntwo\r\n```\r\n";
-    const { editor, save } = open(source);
-    typeAtEndOf(editor, "two", "!");
-    expect(save()).toBe("A.\r\n\r\n```js\r\none\r\ntwo!\r\n```\r\n");
   });
 
   it("keeps a fence inside a list and a quote when it is edited", () => {
@@ -140,12 +164,6 @@ describe("fenced code in the Markdown visual editor", () => {
   it("keeps an empty fence and its language", () => {
     const { doc } = parseMarkdownBody("```js\n```\n");
     expect(serializeMarkdownBody(doc)).toBe("```js\n```");
-  });
-
-  it("survives an unclosed fence at the end of a file", () => {
-    const { editor, save } = open("Text.\n\n```js\none\n");
-    typeAtEndOf(editor, "one", "!");
-    expect(save()).toBe("Text.\n\n```js\none!\n```\n");
   });
 
   it("starts a block from ``` with the language typed after it", () => {
@@ -167,13 +185,6 @@ describe("fenced code in the Markdown visual editor", () => {
     editor.commands.setTextSelection(1);
     expect(editor.commands.keyboardShortcut("Tab")).toBe(true);
     expect(save()).toBe("```js\n    one\n```\n");
-  });
-
-  it("keeps a blank last line of code", () => {
-    const source = "```\none\n\n```\n";
-    const { editor, save } = open(source);
-    typeAtEndOf(editor, "one", "!");
-    expect(save()).toBe("```\none!\n\n```\n");
   });
 
   it("keeps a block and its info string when it moves", () => {
