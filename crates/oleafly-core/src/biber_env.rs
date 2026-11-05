@@ -483,6 +483,7 @@ mod tests {
         for folder in ["a\"b", "a\\b", "a$b", "a`b", "a{b", "a}b", "a%b", "a\nb"] {
             assert_eq!(latexmk_biber_rc(Path::new(folder)), None, "{folder}");
         }
+        #[cfg(not(windows))]
         assert!(latexmk_biber_rc(Path::new("Application Support")).is_some());
     }
 

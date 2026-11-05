@@ -8141,7 +8141,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         std::fs::write(&latexmk, b"tool").unwrap();
         assert!(require_dvi_toolchain(LatexmkFlavor::Xelatex, &latexmk).is_ok());
         let missing = require_dvi_toolchain(LatexmkFlavor::Uplatex, &latexmk).unwrap_err();
-        assert!(missing.contains("\"code\":\"tex.japanese_compiler_missing\""));
+        assert!(missing.contains("\"code\":\"tex.japanese_compiler_missing"));
         assert!(missing.contains("upLaTeX"));
         for tool in ["uplatex", "dvipdfmx"] {
             std::fs::write(dir.path().join(crate::tex_distro::exe(tool)), b"tool").unwrap();

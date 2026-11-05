@@ -1205,8 +1205,9 @@ mod tests {
 
     #[test]
     fn the_filter_splits_frames_only_for_powerpoint() {
+        let filter = FILTER.replace("\r\n", "\n");
         assert!(
-            FILTER.contains("if FORMAT == \"pptx\" then\n    doc = drop_outline_headers(doc:walk({ RawBlock = parsed_frame })):walk({ Div = flatten_frame })"),
+            filter.contains("if FORMAT == \"pptx\" then\n    doc = drop_outline_headers(doc:walk({ RawBlock = parsed_frame })):walk({ Div = flatten_frame })"),
             "{FILTER}"
         );
     }
@@ -1490,8 +1491,9 @@ mod tests {
             "{FILTER}"
         );
         assert!(FILTER.contains("Div = drop_cjk_arguments"), "{FILTER}");
-        let cleanup = FILTER.find("doc:walk({ Div = drop_cjk_arguments })");
-        let source_exit = FILTER.find("if SOURCE_FORMATS[FORMAT] then\n    return doc");
+        let filter = FILTER.replace("\r\n", "\n");
+        let cleanup = filter.find("doc:walk({ Div = drop_cjk_arguments })");
+        let source_exit = filter.find("if SOURCE_FORMATS[FORMAT] then\n    return doc");
         assert!(cleanup.is_some() && cleanup < source_exit, "{FILTER}");
     }
 

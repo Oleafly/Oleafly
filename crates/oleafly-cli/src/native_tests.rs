@@ -524,9 +524,15 @@ fn a_nested_latexmk_build_keeps_root_relative_paths_working() {
         .command(&build, BuildOptions::default(), true)
         .unwrap();
     let variables = environment(&command);
-    let root = build.project_root().to_string_lossy().replace('\\', "/");
-    assert!(variables["TEXINPUTS"].contains(&root), "{variables:?}");
-    assert!(variables["BIBINPUTS"].contains(&root), "{variables:?}");
+    let root = build.project_root().file_name().unwrap().to_string_lossy();
+    assert!(
+        variables["TEXINPUTS"].contains(root.as_ref()),
+        "{variables:?}"
+    );
+    assert!(
+        variables["BIBINPUTS"].contains(root.as_ref()),
+        "{variables:?}"
+    );
 
     let project = TempDir::new().unwrap();
     let flat = tex_project(project.path(), "main.tex", Engine::Latexmk, None);
