@@ -421,15 +421,28 @@
       "to": 6
     }
   ],
-  "lstinline-optional-and-braces": [
+  "lstinline-body-ends-at-the-first-brace": [],
+  "lstinline-brace-left-open-on-its-line": [
     {
-      "from": 0,
+      "from": 2,
       "key": "latex.lint.unclosedCommand",
       "params": {
         "command": "lstinline"
       },
       "severity": "error",
-      "to": 11
+      "to": 13
+    }
+  ],
+  "lstinline-optional-and-braces": [
+    {
+      "from": 21,
+      "key": "latex.lint.unclosedMathDelimiter",
+      "params": {
+        "delimiter": "$",
+        "expected": "$"
+      },
+      "severity": "error",
+      "to": 22
     }
   ],
   "malformed-definition-name": [
@@ -640,6 +653,7 @@
     }
   ],
   "package-options-with-braces": [],
+  "range-and-full-reference-keys": [],
   "replacement-body-missing": [
     {
       "from": 12,

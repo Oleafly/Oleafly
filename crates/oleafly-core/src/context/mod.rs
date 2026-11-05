@@ -1,8 +1,9 @@
 mod bib;
 mod latex;
 mod markdown;
-mod text;
+pub(crate) mod text;
 mod typst;
+pub mod units;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
@@ -12,6 +13,7 @@ use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 
 use self::text::{dirname, has_extension, normalize_project_path, resolve_project_path_from};
+use self::units::{LatexUnits, UnitPool};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ContextLimits {
@@ -231,7 +233,8 @@ fn label_scope(file: &str) -> String {
 const INCLUDE_EXTENSIONS: [&str; 6] = [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"];
 const FIGURE_EXTENSIONS: [&str; 6] = [".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
 
-fn fold(path: &str) -> String {
+/// Case and Unicode normalisation folded, as a case-insensitive disk sees it.
+pub fn path_fold_key(path: &str) -> String {
     path.nfc().collect::<String>().to_lowercase()
 }
 
@@ -248,7 +251,10 @@ impl Known {
             .collect();
         let mut folded: HashMap<String, Vec<String>> = HashMap::new();
         for file in &exact {
-            folded.entry(fold(file)).or_default().push(file.clone());
+            folded
+                .entry(path_fold_key(file))
+                .or_default()
+                .push(file.clone());
         }
         Known { exact, folded }
     }
@@ -258,7 +264,7 @@ impl Known {
         if self.exact.contains(path) {
             found.insert(path.to_string());
         }
-        for file in self.folded.get(&fold(path)).into_iter().flatten() {
+        for file in self.folded.get(&path_fold_key(path)).into_iter().flatten() {
             found.insert(file.clone());
         }
         found
@@ -324,7 +330,7 @@ impl Known {
     }
 }
 
-fn unique_directories(directories: [&str; 3]) -> Vec<String> {
+fn unique_directories<const N: usize>(directories: [&str; N]) -> Vec<String> {
     let mut unique: Vec<String> = Vec::new();
     for directory in directories {
         if !unique.iter().any(|existing| existing == directory) {
@@ -334,7 +340,20 @@ fn unique_directories(directories: [&str; 3]) -> Vec<String> {
     unique
 }
 
-fn resolve_inputs(uses: &mut [Use], known: &Known, main_document: &str) -> Vec<bool> {
+/// Where an `\\input` or a figure in `file` is looked for, in order. TeX searches
+/// the folder it compiles in and then the project root. The main document's
+/// folder and the including file's folder are for a project TeX cannot compile
+/// yet, so a link still opens the file the author meant.
+pub fn latex_search_folders(compile_folder: &str, main_document: &str, file: &str) -> Vec<String> {
+    unique_directories([compile_folder, "", dirname(main_document), dirname(file)])
+}
+
+fn resolve_inputs(
+    uses: &mut [Use],
+    known: &Known,
+    main_document: &str,
+    compile_folder: &str,
+) -> Vec<bool> {
     let mut resolved = vec![false; uses.len()];
     for (index, use_) in uses.iter_mut().enumerate() {
         if !matches!(use_.kind, UseKind::Include | UseKind::Import) {
@@ -352,7 +371,6 @@ fn resolve_inputs(uses: &mut [Use], known: &Known, main_document: &str) -> Vec<b
     if main_document.is_empty() {
         return resolved;
     }
-    let main_directory = dirname(main_document).to_string();
     let original: Vec<Option<String>> = uses.iter().map(|use_| use_.target.clone()).collect();
     let mut inputs_by_file: HashMap<String, Vec<usize>> = HashMap::new();
     for (index, use_) in uses.iter().enumerate() {
@@ -372,10 +390,9 @@ fn resolve_inputs(uses: &mut [Use], known: &Known, main_document: &str) -> Vec<b
         for &index in inputs_by_file.get(&file).map_or(&[][..], Vec::as_slice) {
             let use_ = &uses[index];
             // `\input` and `\import` both open files from the folder TeX runs
-            // in, the main document's, before the referring file's.
+            // in before the referring file's.
             if engine_for(&use_.file) == Some(Engine::Latex) && original[index].is_some() {
-                let directories =
-                    unique_directories([main_directory.as_str(), "", dirname(&use_.file)]);
+                let directories = latex_search_folders(compile_folder, main_document, &use_.file);
                 let found = known.in_directories(&directories, &use_.name, |target| {
                     known.latex_input_candidates(target)
                 });
@@ -521,7 +538,23 @@ pub fn scan_sources(
     all_files: &[String],
     main_document: &str,
 ) -> ContextScan {
-    scan_sources_with(sources, all_files, main_document, &|_| false)
+    scan_sources_with(sources, all_files, main_document, "", &|_| false)
+}
+
+fn latex_label_pools<'a>(units: &LatexUnits, defs: &'a [Def]) -> HashMap<&'a str, UnitPool<'a>> {
+    let mut files: HashMap<&str, Vec<&str>> = HashMap::new();
+    for def in defs {
+        if def.kind == DefKind::Label && engine_for(&def.file) == Some(Engine::Latex) {
+            files
+                .entry(def.name.as_str())
+                .or_default()
+                .push(def.file.as_str());
+        }
+    }
+    files
+        .into_iter()
+        .map(|(name, files)| (name, units.pool(files)))
+        .collect()
 }
 
 /// `unlisted_file` says whether a project-relative path is a file on disk.
@@ -531,6 +564,7 @@ fn scan_sources_with(
     sources: &BTreeMap<String, String>,
     all_files: &[String],
     main_document: &str,
+    compile_folder: &str,
     unlisted_file: &dyn Fn(&str) -> bool,
 ) -> ContextScan {
     let main_document = normalize_project_path(main_document).unwrap_or_default();
@@ -592,13 +626,32 @@ fn scan_sources_with(
         .collect();
 
     let known = Known::new(&read);
-    let resolved = resolve_inputs(&mut uses, &known, main_document);
+    let resolved = resolve_inputs(&mut uses, &known, main_document, compile_folder);
 
     let labels_by_scope: BTreeSet<(String, String)> = defs
         .iter()
         .filter(|def| def.kind == DefKind::Label)
         .map(|def| (label_scope(&def.file), def.name.clone()))
         .collect();
+    let units = LatexUnits::build_in(
+        sources
+            .iter()
+            .map(|(path, text)| (path.as_str(), text.as_str())),
+        all_files,
+        main_document,
+        compile_folder,
+    );
+    let label_pools: HashMap<&str, UnitPool<'_>> = units
+        .as_ref()
+        .map(|units| latex_label_pools(units, &defs))
+        .unwrap_or_default();
+    // A LaTeX \\ref sees a label only if a document it is compiled with does.
+    let label_visible = |file: &str, name: &str| match (&units, label_pools.get(name)) {
+        (Some(units), Some(pool)) if engine_for(file) == Some(Engine::Latex) => {
+            !units.select(file, pool, false).0.is_empty()
+        }
+        _ => true,
+    };
     let bib_keys: BTreeSet<&str> = defs
         .iter()
         .filter(|def| def.kind == DefKind::Bibentry)
@@ -615,7 +668,7 @@ fn scan_sources_with(
         match use_.kind {
             UseKind::Ref => {
                 let key = (label_scope(&use_.file), use_.name.clone());
-                if labels_by_scope.contains(&key) {
+                if labels_by_scope.contains(&key) && label_visible(&use_.file, &use_.name) {
                     referenced.insert(key);
                 } else if use_.typst_at && bib_keys.contains(use_.name.as_str()) {
                     cited.insert(use_.name.clone());
@@ -691,6 +744,7 @@ fn scan_sources_with(
         &resolved,
         all_files,
         main_document,
+        compile_folder,
         &search_paths,
         unlisted_file,
     );
@@ -747,14 +801,14 @@ fn missing_files(
     resolved: &[bool],
     all_files: &[String],
     main_document: &str,
+    compile_folder: &str,
     search_paths: &[String],
     unlisted_file: &dyn Fn(&str) -> bool,
 ) -> Vec<MissingFile> {
     let all_known = Known::new(all_files);
-    let main_directory = dirname(main_document).to_string();
     let mut missing: Vec<MissingFile> = Vec::new();
     for (index, use_) in uses.iter().enumerate() {
-        let directories = unique_directories([main_directory.as_str(), "", dirname(&use_.file)]);
+        let directories = latex_search_folders(compile_folder, main_document, &use_.file);
         let (kind, found) = match use_.kind {
             UseKind::Include | UseKind::Import => (
                 "input",
@@ -845,6 +899,17 @@ pub fn scan_project(
     main_document: &str,
     limits: &ContextLimits,
 ) -> crate::Result<ContextScan> {
+    scan_project_in(root, main_document, None, limits)
+}
+
+/// `compile_folder` is the manifest's: the folder TeX runs in when it is not
+/// the project root.
+pub fn scan_project_in(
+    root: &Path,
+    main_document: &str,
+    compile_folder: Option<&str>,
+    limits: &ContextLimits,
+) -> crate::Result<ContextScan> {
     let mut all_files: Vec<String> = Vec::new();
     let mut candidates: Vec<(String, std::path::PathBuf)> = Vec::new();
     let mut skipped: Vec<String> = Vec::new();
@@ -930,7 +995,13 @@ pub fn scan_project(
                 .canonicalize()
                 .is_ok_and(|real| real.starts_with(real_root))
     };
-    let mut scan = scan_sources_with(&sources, &all_files, main_document, &unlisted_file);
+    let mut scan = scan_sources_with(
+        &sources,
+        &all_files,
+        main_document,
+        compile_folder.unwrap_or_default(),
+        &unlisted_file,
+    );
     scan.truncated = truncated;
     scan.skipped = skipped;
     Ok(scan)
@@ -1335,6 +1406,52 @@ mod tests {
             "{edges:?}"
         );
         assert!(scan.missing_files.is_empty(), "{:?}", scan.missing_files);
+    }
+
+    fn input_edges(scan: &ContextScan) -> Vec<(String, Option<String>)> {
+        scan.map
+            .input_graph
+            .iter()
+            .map(|edge| (edge.from.clone(), edge.to.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn an_input_in_verbatim_text_is_not_an_edge() {
+        let scan = scan(
+            &[
+                (
+                    "main.tex",
+                    "\\input{real}\n\\begin{verbatim}\n\\input{shown}\n\\end{verbatim}\n",
+                ),
+                ("real.tex", "\n"),
+                ("shown.tex", "\n"),
+            ],
+            &[],
+            "main.tex",
+        );
+        assert_eq!(
+            input_edges(&scan),
+            vec![("main.tex".to_string(), Some("real.tex".to_string()))]
+        );
+    }
+
+    #[test]
+    fn an_input_opens_what_the_compile_opens() {
+        let main = "papers/a/main.tex";
+        let sources = BTreeMap::from([
+            (main.to_string(), "\\input{intro}\n".to_string()),
+            ("intro.tex".to_string(), "Root\n".to_string()),
+            ("papers/a/intro.tex".to_string(), "Local\n".to_string()),
+        ]);
+        let all: Vec<String> = sources.keys().cloned().collect();
+        for (compile_folder, target) in [("", "intro.tex"), ("papers/a", "papers/a/intro.tex")] {
+            let scan = scan_sources_with(&sources, &all, main, compile_folder, &|_| false);
+            assert_eq!(
+                input_edges(&scan),
+                vec![(main.to_string(), Some(target.to_string()))]
+            );
+        }
     }
 
     #[test]

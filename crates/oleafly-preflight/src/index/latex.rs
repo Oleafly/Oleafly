@@ -179,8 +179,9 @@ static KEYED_DEFINITION: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::fancy(r"\\(label|hypertarget)\*?(?![A-Za-z@])"));
 static REFERENCE_COMMAND: LazyLock<JsRegex> = LazyLock::new(|| {
     JsRegex::fancy(concat!(
-        r"\\(crefrange|Crefrange|cpagerefrange|vpagerefrange|hyperlink|ref|eqref|pageref|autoref",
-        r"|cref|Cref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?(?![A-Za-z@])",
+        r"\\(crefrange|Crefrange|cpagerefrange|Cpagerefrange|vpagerefrange|vrefrange|vpageref|fullref",
+        r"|hyperlink|ref|eqref|pageref|autoref|cref|Cref|cpageref|Cpageref|vref|Vref",
+        r"|labelcref|nameref|namecref|fref|sref|labelref)\*?(?![A-Za-z@])",
     ))
 });
 static HYPERREF: LazyLock<JsRegex> =
@@ -205,11 +206,14 @@ fn legacy_definitions(text: &str, out: &mut Vec<Definition>) {
             let brace = whole.rfind('{').unwrap_or(0);
             let name_from = masked.utf16_at(found.bytes.start + brace + 1);
             let raw = found.text(&masked, 1).unwrap_or("");
+            let name = js_trim(raw);
+            let lead = raw.find(name).unwrap_or(0);
+            let from = name_from + crate::text::utf16_len(&raw[..lead]);
             out.push(Definition {
                 kind,
-                name: js_trim(raw).to_string(),
-                from: name_from,
-                to: name_from + crate::text::utf16_len(raw),
+                name: name.to_string(),
+                from,
+                to: from + crate::text::utf16_len(name),
             });
         }
     }
@@ -300,6 +304,21 @@ mod tests {
         let symbols = analyze("\\crefrange{a}{b} \\hyperref[sec:x]{text} \\ref*{c}");
         let names: Vec<_> = symbols.uses.iter().map(|u| u.name.as_str()).collect();
         assert_eq!(names, vec!["a", "b", "sec:x", "c"]);
+    }
+
+    #[test]
+    fn a_spaced_key_spans_its_name() {
+        let symbols = analyze("\\bibitem{ key }");
+        let definition = &symbols.defs[0];
+        assert_eq!(definition.name, "key");
+        assert_eq!((definition.from, definition.to), (10, 13));
+    }
+
+    #[test]
+    fn other_varioref_and_cleveref_commands_are_references() {
+        let symbols = analyze("\\vrefrange{a}{b}\\fullref{c}\\Cpageref{d}");
+        let names: Vec<&str> = symbols.uses.iter().map(|used| used.name.as_str()).collect();
+        assert_eq!(names, ["a", "b", "c", "d"]);
     }
 
     #[test]

@@ -1,22 +1,30 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::rc::Rc;
 use std::sync::LazyLock;
+
+use oleafly_core::context::units::{LatexUnits, UnitPool};
 
 use crate::bib::{
     bibliography_declarations, bibliography_engine_for_command, legacy_bib_keys, parse_entry,
     resolve_bibliography_path, split_bib_entries, BibliographyEngine, ParsedBib,
 };
-use crate::index::{engine_for_path, label_scope, name_target_label, ProjectIndex, Sym, SymKind};
+use crate::index::{
+    engine_for_path, label_scope, name_target_label, reference_target_file, IndexEngine,
+    ProjectIndex, Sym, SymKind,
+};
 use crate::jsre::JsRegex;
 use crate::mask::mask_comments;
 use crate::refs_rules::{
-    BibKeyDefinition, BibKeyDialect, DuplicateDoi, DuplicateLabel, RefsContext, UnreferencedLabel,
-    UnresolvedBibliography,
+    BibKeyDefinition, BibKeyDialect, DuplicateDoi, DuplicateLabel, RefsContext, UnreachableLabels,
+    UnreferencedLabel, UnresolvedBibliography,
 };
 use crate::text::js_trim;
 use crate::types::{ProjectContext, ProjectFile};
 
 pub struct ContextInput<'a> {
     pub main_doc: &'a str,
+    /// The folder TeX runs in when it is not the project root.
+    pub compile_folder: &'a str,
     pub tree_paths: &'a [String],
     pub index_texts: &'a BTreeMap<String, String>,
     pub open_texts: &'a BTreeMap<String, String>,
@@ -215,11 +223,117 @@ fn reference_key(scope: &str, file: Option<&str>, name: &str) -> String {
     format!("{scope}\0{target}\0{name}")
 }
 
-fn collect_label_facts(
-    index: Option<&ProjectIndex>,
+fn is_latex_file(file: &str) -> bool {
+    engine_for_path(file) == Some(IndexEngine::Latex)
+}
+
+fn latex_pools<'a>(units: &LatexUnits, defs: &'a [Sym]) -> HashMap<&'a str, UnitPool<'a>> {
+    let mut files: HashMap<&str, Vec<&str>> = HashMap::new();
+    for definition in defs
+        .iter()
+        .filter(|definition| definition.kind == SymKind::Label && is_latex_file(&definition.file))
+    {
+        files
+            .entry(definition.name.as_str())
+            .or_default()
+            .push(definition.file.as_str());
+    }
+    files
+        .into_iter()
+        .map(|(name, files)| (name, units.pool(files)))
+        .collect()
+}
+
+type LatexPools<'a> = HashMap<&'a str, UnitPool<'a>>;
+
+/// A use that names its file, such as `[text](a.tex#label)`, is already bound.
+fn free_latex_refs(uses: &[Sym]) -> impl Iterator<Item = &Sym> {
+    uses.iter().filter(|use_| {
+        use_.kind == SymKind::Ref
+            && is_latex_file(&use_.file)
+            && name_target_label(use_).1.is_none()
+    })
+}
+
+/// Which labels each file's own document cannot see, by file.
+fn collect_unreachable_labels(
+    units: &LatexUnits,
+    pools: &LatexPools<'_>,
+    index: &ProjectIndex,
+) -> Option<Vec<UnreachableLabels>> {
+    let mut by_file: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for use_ in free_latex_refs(&index.uses) {
+        let Some(pool) = pools.get(use_.name.as_str()) else {
+            continue;
+        };
+        if units.select(&use_.file, pool, false).0.is_empty() {
+            by_file
+                .entry(use_.file.as_str())
+                .or_default()
+                .insert(use_.name.as_str());
+        }
+    }
+    (!by_file.is_empty()).then(|| {
+        by_file
+            .into_iter()
+            .map(|(file, labels)| UnreachableLabels {
+                file: file.to_string(),
+                labels: labels.into_iter().map(str::to_string).collect(),
+            })
+            .collect()
+    })
+}
+
+/// Preflight reports on the document it checks. Another document's labels, and
+/// what its references reach, are that document's findings.
+fn in_checked_document(units: Option<&LatexUnits>, main_doc: &str, file: &str) -> bool {
+    units.is_none_or(|units| {
+        units.is_orphan(main_doc) || !is_latex_file(file) || units.shares_scope(main_doc, file)
+    })
+}
+
+/// The (label, file) pairs some reference really reaches.
+fn selected_definitions<'a>(
+    units: &LatexUnits,
+    pools: &LatexPools<'a>,
+    index: &'a ProjectIndex,
+    main_doc: &str,
+) -> HashSet<(&'a str, &'a str)> {
+    let mut selected = HashSet::new();
+    let mut seen: HashSet<*const Vec<&str>> = HashSet::new();
+    for use_ in index.uses.iter().filter(|use_| use_.kind == SymKind::Ref) {
+        if let Some(file) = reference_target_file(use_.target.as_deref()) {
+            selected.insert((use_.name.as_str(), file));
+            continue;
+        }
+        let Some(pool) = pools.get(use_.name.as_str()) else {
+            continue;
+        };
+        if !is_latex_file(&use_.file) || !in_checked_document(Some(units), main_doc, &use_.file) {
+            continue;
+        }
+        let items = units.select(&use_.file, pool, false).0;
+        // An empty selection is a fresh Rc whose address the next one can reuse.
+        if !items.is_empty() && seen.insert(Rc::as_ptr(&items)) {
+            for file in items.iter() {
+                selected.insert((use_.name.as_str(), *file));
+            }
+        }
+    }
+    selected
+}
+
+fn collect_label_facts<'a>(
+    index: Option<&'a ProjectIndex>,
+    latex: Option<(&LatexUnits, &LatexPools<'a>)>,
+    main_doc: &str,
 ) -> (Vec<DuplicateLabel>, Vec<UnreferencedLabel>) {
     let defs: &[Sym] = index.map(|index| index.defs.as_slice()).unwrap_or(&[]);
     let uses: &[Sym] = index.map(|index| index.uses.as_slice()).unwrap_or(&[]);
+    let units = latex.map(|(units, _)| units);
+    let selected = latex
+        .zip(index)
+        .map(|((units, pools), index)| selected_definitions(units, pools, index, main_doc));
     let referenced: HashSet<String> = uses
         .iter()
         .filter(|use_| use_.kind == SymKind::Ref)
@@ -229,6 +343,12 @@ fn collect_label_facts(
         })
         .collect();
     let is_referenced = |definition: &Sym| {
+        if let Some(selected) = selected
+            .as_ref()
+            .filter(|_| is_latex_file(&definition.file))
+        {
+            return selected.contains(&(definition.name.as_str(), definition.file.as_str()));
+        }
         let (scope, _) = name_target_label(definition);
         referenced.contains(&reference_key(&scope, None, &definition.name))
             || referenced.contains(&reference_key(
@@ -257,9 +377,22 @@ fn collect_label_facts(
         .iter()
         .filter_map(|key| label_files.get(key))
         .filter(|(_, files)| files.len() > 1)
-        .map(|(label, files)| DuplicateLabel {
-            label: label.clone(),
-            files: files.clone(),
+        .flat_map(|(label, files)| {
+            let rows = match units.filter(|_| is_latex_file(&files[0])) {
+                Some(units) => {
+                    let mut rows = units.duplicate_rows(files);
+                    rows.retain(|row| {
+                        row.iter()
+                            .all(|file| in_checked_document(Some(units), main_doc, file))
+                    });
+                    rows
+                }
+                None => vec![files.clone()],
+            };
+            rows.into_iter().map(|files| DuplicateLabel {
+                label: label.clone(),
+                files,
+            })
         })
         .collect();
     let unreferenced = defs
@@ -267,6 +400,7 @@ fn collect_label_facts(
         .filter(|definition| {
             definition.kind == SymKind::Label
                 && FLOAT_LABEL.is_match(&definition.name)
+                && in_checked_document(units, main_doc, &definition.file)
                 && !is_referenced(definition)
         })
         .map(|definition| UnreferencedLabel {
@@ -330,7 +464,24 @@ pub fn build_refs_context(input: &ContextInput) -> RefsContext {
             .into_iter()
             .chain(bib_entries.iter().map(|entry| entry.key.clone())),
     );
-    let (duplicate_labels, unreferenced_labels) = collect_label_facts(input.index);
+    let units = LatexUnits::build_in(
+        texts
+            .iter()
+            .map(|(path, text)| (path.as_str(), text.as_str())),
+        &known_paths,
+        input.main_doc,
+        input.compile_folder,
+    );
+    let pools = units
+        .as_ref()
+        .zip(input.index)
+        .map(|(units, index)| latex_pools(units, &index.defs));
+    let latex = units.as_ref().zip(pools.as_ref());
+    let (duplicate_labels, unreferenced_labels) =
+        collect_label_facts(input.index, latex, input.main_doc);
+    let unreachable_labels = latex
+        .zip(input.index)
+        .and_then(|((units, pools), index)| collect_unreachable_labels(units, pools, index));
     let bib_key_definitions = collect_bib_key_definitions(&bib_texts);
     let dialect = if declared
         .iter()
@@ -346,6 +497,7 @@ pub fn build_refs_context(input: &ContextInput) -> RefsContext {
         bib_loaded,
         project_files,
         unresolved_bibliographies: Some(unresolved),
+        unreachable_labels,
         duplicate_dois,
         bib_entries: Some(bib_entries),
         all_cited_keys: Some(all_cited_keys),
@@ -394,6 +546,72 @@ mod tests {
             .collect()
     }
 
+    #[test]
+    fn an_unreachable_reference_does_not_hide_the_next_one() {
+        let project = texts(&[
+            (
+                "a.tex",
+                "\\documentclass{article}\n\\ref{only:b}\n\\begin{figure}\\label{fig:one}\\end{figure}\n\\ref{fig:one}",
+            ),
+            ("b.tex", "\\documentclass{article}\n\\label{only:b}"),
+        ]);
+        let refs = refs_for(&["a.tex", "b.tex"], &project, &BTreeMap::new());
+        assert!(!refs
+            .unreferenced_labels
+            .unwrap()
+            .iter()
+            .any(|label| label.label == "fig:one"));
+    }
+
+    #[test]
+    fn reports_label_facts_for_the_main_documents_unit() {
+        let project = texts(&[
+            (
+                "main.tex",
+                "\\documentclass{article}\n\\input{shared}\n\\label{sec:shared}",
+            ),
+            (
+                "main_v1.tex",
+                "\\documentclass{article}\n\\input{shared}\n\\label{sec:shared}\n\\label{fig:old}\n\\ref{fig:x}",
+            ),
+            ("shared.tex", "\\label{sec:shared}\\label{fig:x}"),
+        ]);
+        let refs = refs_for(
+            &["main.tex", "main_v1.tex", "shared.tex"],
+            &project,
+            &BTreeMap::new(),
+        );
+        let duplicates = refs.duplicate_labels.unwrap();
+        assert_eq!(duplicates.len(), 1);
+        assert_eq!(duplicates[0].files, ["main.tex", "shared.tex"]);
+        let unreferenced = refs.unreferenced_labels.unwrap();
+        assert_eq!(unreferenced.len(), 1);
+        assert_eq!(unreferenced[0].label, "fig:x");
+        assert_eq!(unreferenced[0].file, "shared.tex");
+    }
+
+    #[test]
+    fn counts_labels_not_rows_in_the_duplicate_title() {
+        let project = texts(&[
+            (
+                "a.tex",
+                "\\documentclass{article}\n\\input{a_ch}\n\\label{x}",
+            ),
+            ("a_ch.tex", "\\label{x}"),
+            (
+                "b.tex",
+                "\\documentclass{article}\n\\input{b_ch}\n\\label{x}",
+            ),
+            ("b_ch.tex", "\\label{x}"),
+        ]);
+        let refs = refs_for(
+            &["a.tex", "a_ch.tex", "b.tex", "b_ch.tex"],
+            &project,
+            &BTreeMap::new(),
+        );
+        assert_eq!(refs.duplicate_labels.unwrap().len(), 2);
+    }
+
     fn refs_for(
         tree: &[&str],
         index_texts: &BTreeMap<String, String>,
@@ -403,6 +621,7 @@ mod tests {
         let index = build_index(index_texts);
         build_refs_context(&ContextInput {
             main_doc: "main.tex",
+            compile_folder: "",
             tree_paths: &tree,
             index_texts,
             open_texts: open,

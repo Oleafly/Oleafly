@@ -333,6 +333,16 @@ describe("reference results for every kind", () => {
       definitionIds: [],
     }) as never;
 
+  it("badges each definition by its own answer", () => {
+    const definitions = PROJECT.definitions.slice(0, 2);
+    const [first, second] = definitions;
+    const nodes = buildReferenceResultNodes(definitions, [], (item) => item === first);
+    const [firstNode, secondNode] = nodes[0].children ?? [];
+    expect(firstNode.badge).toBe(intelligence.badges.duplicate);
+    expect(secondNode.badge).not.toBe(intelligence.badges.duplicate);
+    expect(second).toBeDefined();
+  });
+
   it("names definitions and uses by their kind and marks external targets", () => {
     const nodes = buildReferenceResultNodes(
       [

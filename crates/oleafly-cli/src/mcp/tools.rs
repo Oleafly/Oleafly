@@ -315,10 +315,12 @@ async fn project_map(ctx: &ToolContext) -> Result<Value, ToolError> {
     let opened = crate::engine::open_project(&ctx.root, None, None)?;
     let root = opened.workspace.root().to_path_buf();
     let main = opened.workspace.manifest().main_doc.clone();
+    let compile_folder = opened.workspace.manifest().compile_dir.clone();
     let scan = tokio::task::spawn_blocking(move || {
-        oleafly_core::context::scan_project(
+        oleafly_core::context::scan_project_in(
             &root,
             &main,
+            compile_folder.as_deref(),
             &oleafly_core::context::ContextLimits::default(),
         )
     })

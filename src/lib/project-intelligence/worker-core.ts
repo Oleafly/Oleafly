@@ -135,12 +135,21 @@ function validateAnalyzeRequest(
 function resultItemCount(
   files: Readonly<Record<string, FileAnalysis>>,
 ): number {
+  const environments = new Set<string>();
+  for (const file of Object.values(files)) {
+    for (const definition of file.definitions) {
+      if (definition.kind === "environment") environments.add(definition.name);
+    }
+  }
   let count = 0;
   for (const file of Object.values(files)) {
+    // Assembly drops a use of an environment nothing defines, such as `figure`.
+    for (const use of file.uses) {
+      if (use.kind !== "environment" || environments.has(use.name)) count += 1;
+    }
     count +=
       file.outline.length +
       file.definitions.length +
-      file.uses.length +
       file.edges.length +
       file.diagnostics.length +
       file.bibliographyEntries.length;
@@ -397,6 +406,9 @@ export function createProjectIntelligenceWorker(
       knownFiles: request.knownFiles,
       ...(request.mainDocument
         ? { mainDocument: request.mainDocument }
+        : {}),
+      ...(request.compileFolder
+        ? { compileFolder: request.compileFolder }
         : {}),
       stats: {
         fileCount: sourceFiles.length,

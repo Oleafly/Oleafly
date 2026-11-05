@@ -9,9 +9,13 @@ const indexActions = vi.hoisted(() => ({
   dispose: vi.fn(),
   invalidateFilesystem: vi.fn(),
   rebuildFromDisk: vi.fn(() => Promise.resolve()),
+  setCompileFolder: vi.fn(),
   updateFile: vi.fn(),
 }));
 const sourceCache = vi.hoisted(() => ({ resetProjectSourcesCache: vi.fn() }));
+const tauri = vi.hoisted(() => ({
+  projectCompileFolder: vi.fn((): Promise<string | null> => Promise.resolve("paper")),
+}));
 
 vi.mock("@/store/project-index", () => ({
   useIndexStore: {
@@ -19,6 +23,10 @@ vi.mock("@/store/project-index", () => ({
   },
 }));
 vi.mock("@/lib/project-sources", () => sourceCache);
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...tauri,
+}));
 
 import { IndexKeeper } from "./IndexKeeper";
 
@@ -48,6 +56,27 @@ afterEach(() => {
     files: {},
     openTabs: [],
     activePath: null,
+  });
+});
+
+describe("IndexKeeper compile folder", () => {
+  it("tells the index where a compile of the main document runs", async () => {
+    render(<IndexKeeper />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(tauri.projectCompileFolder).toHaveBeenCalledWith("project", "main.tex");
+    expect(indexActions.setCompileFolder).toHaveBeenCalledWith("paper");
+  });
+
+  it("falls back to the project root when the folder cannot be read", async () => {
+    tauri.projectCompileFolder.mockRejectedValueOnce(new Error("gone"));
+    render(<IndexKeeper />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(indexActions.setCompileFolder).toHaveBeenCalledWith(null);
   });
 });
 

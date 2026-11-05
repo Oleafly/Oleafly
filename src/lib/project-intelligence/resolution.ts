@@ -1,9 +1,13 @@
+import type { LatexUnitScope } from "./latex-units";
 import { engineForPath } from "./source";
 import type {
   ProjectDefinition,
   ProjectIntelligenceEngine,
   ProjectUse,
+  ResolutionStatus,
 } from "./types";
+
+export const THEOREM_ENVIRONMENT_DETAIL = "theorem environment";
 
 /**
  * The pool a label or anchor name lives in. LaTeX `\label`, Typst `<label>`
@@ -11,8 +15,9 @@ import type {
  * engine never satisfies, or duplicates, the same name in another. Markdown
  * anchors belong to the file that declares them.
  *
- * Two LaTeX roots in one project still share a pool; scoping by compilation
- * unit (the `\input`/`#include` closure of each root) is a later step.
+ * Two LaTeX documents in one project still share a pool here. What a use can
+ * see inside it is decided per compilation unit, by the `LatexUnitScope`
+ * passed to `definitionCandidatesForUse`.
  *
  * The legacy rename index (`@/lib/index/build`) scopes labels through this
  * too, so rename and resolution agree.
@@ -73,21 +78,46 @@ export function definitionsByKey(
   return byKey;
 }
 
+export function definitionFile(definition: ProjectDefinition): string {
+  return definition.location.file;
+}
+
+export type DefinitionLookup = Pick<
+  ReadonlyMap<string, readonly ProjectDefinition[]>,
+  "get"
+>;
+
+function visibleFrom(
+  use: ProjectUse,
+  pool: readonly ProjectDefinition[],
+  scope: LatexUnitScope | undefined,
+  citation = false,
+): readonly ProjectDefinition[] {
+  if (!scope) return pool;
+  return scope.select(use.location.file, pool, definitionFile, citation).items;
+}
+
 function referenceCandidates(
   use: ProjectUse,
-  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  byKey: DefinitionLookup,
+  scope: LatexUnitScope | undefined,
 ): readonly ProjectDefinition[] {
-  let candidates =
-    byKey.get(
-      referenceKey(labelScope(use.engine, use.location.file), use.name),
-    ) ?? [];
   const file = referenceTargetFile(use.target);
+  let candidates: readonly ProjectDefinition[];
   if (file !== null) {
     const name = use.target?.slice(file.length + 1) || use.name;
     candidates = (
       byKey.get(referenceKey(labelScope(engineForPath(file), file), name)) ??
       []
     ).filter((definition) => definition.location.file === file);
+  } else {
+    candidates = visibleFrom(
+      use,
+      byKey.get(
+        referenceKey(labelScope(use.engine, use.location.file), use.name),
+      ) ?? [],
+      scope,
+    );
   }
   if (use.syntax === "typst-at") {
     const citations = byKey.get(`citation:${use.name}`) ?? [];
@@ -97,11 +127,42 @@ function referenceCandidates(
   return candidates;
 }
 
+/** A language server knows this definition by its whole extent, not its name. */
+export function isWholeExtent(definition: ProjectDefinition): boolean {
+  const { from, to } = definition.location.range;
+  // A heading's range holds its text, which need not match its anchor or slug.
+  return (
+    definition.source === "texlab" &&
+    definition.kind !== "section" &&
+    to - from !== definition.name.length
+  );
+}
+
+/**
+ * texlab lists each `\\begin{thm}` by its whole extent as well as the
+ * `\\newtheorem`, so an instance only stands in when nothing names the
+ * environment. A counter belongs to a theorem, not to an environment that
+ * happens to share its name.
+ */
+function environmentCandidates(
+  use: ProjectUse,
+  byKey: DefinitionLookup,
+  scope: LatexUnitScope | undefined,
+): readonly ProjectDefinition[] {
+  const seen = visibleFrom(use, byKey.get(`environment:${use.name}`) ?? [], scope);
+  if (use.syntax === "counter") {
+    return seen.filter((definition) => definition.detail === THEOREM_ENVIRONMENT_DETAIL);
+  }
+  const named = seen.filter((definition) => !isWholeExtent(definition));
+  return named.length > 0 ? named : seen;
+}
+
 function macroCandidates(
   use: ProjectUse,
-  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  byKey: DefinitionLookup,
+  scope: LatexUnitScope | undefined,
 ): readonly ProjectDefinition[] {
-  const candidates = byKey.get(`macro:${use.name}`) ?? [];
+  const candidates = visibleFrom(use, byKey.get(`macro:${use.name}`) ?? [], scope);
   if (use.syntax !== "candidate") return candidates;
   return candidates.filter(
     (definition) =>
@@ -113,16 +174,37 @@ function macroCandidates(
 
 export function definitionCandidatesForUse(
   use: ProjectUse,
-  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  byKey: DefinitionLookup,
+  scope: LatexUnitScope | undefined,
 ): readonly ProjectDefinition[] {
-  if (use.kind === "reference") return referenceCandidates(use, byKey);
-  if (use.kind === "macro") return macroCandidates(use, byKey);
-  if (
-    use.kind === "citation" ||
-    use.kind === "environment" ||
-    use.kind === "glossary"
-  ) {
-    return byKey.get(`${use.kind}:${use.name}`) ?? [];
+  if (use.kind === "reference") return referenceCandidates(use, byKey, scope);
+  if (use.kind === "macro") return macroCandidates(use, byKey, scope);
+  if (use.kind === "environment") return environmentCandidates(use, byKey, scope);
+  if (use.kind === "citation" || use.kind === "glossary") {
+    return visibleFrom(
+      use,
+      byKey.get(`${use.kind}:${use.name}`) ?? [],
+      scope,
+      use.kind === "citation",
+    );
   }
   return [];
+}
+
+/**
+ * Several candidates are only a problem when two of them collide. A `\\ref`
+ * in a file shared by two documents, with one matching label in each, is
+ * resolved in both and keeps both as navigation targets.
+ */
+export function resolutionForUse(
+  use: ProjectUse,
+  candidates: readonly ProjectDefinition[],
+  scope: LatexUnitScope | undefined,
+): ResolutionStatus {
+  if (candidates.length === 0) return "unresolved";
+  if (candidates.length === 1) return "resolved";
+  if (!scope) return "duplicate";
+  return scope.isAmbiguous(use.location.file, candidates, definitionFile)
+    ? "duplicate"
+    : "resolved";
 }

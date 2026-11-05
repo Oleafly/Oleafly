@@ -10,6 +10,7 @@
 // project/main-document stores, and every failure keeps the old cache silently.
 // ---------------------------------------------------------------------------
 
+import type { LatexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { readBuildArtifact } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useCompileStore } from "@/store/compile";
@@ -210,6 +211,20 @@ export function auxNumberFor(label: string): LabelNumber | null {
   if (cache.projectId !== useFilesStore.getState().projectId) return null;
   if (cache.mainDocument !== resolveEffectiveMainDoc().mainDoc) return null;
   return cache.map.get(label) ?? null;
+}
+
+/**
+ * The number of the label as `file` defines it. The aux data comes from the
+ * compiled main document, so another document's copy of the name gets none.
+ */
+export function auxNumberForDefinition(
+  label: string,
+  file: string,
+  scope: LatexUnitScope | undefined,
+): LabelNumber | null {
+  if (cache === null) return null;
+  if (scope && !scope.sharesScope(cache.mainDocument, file)) return null;
+  return auxNumberFor(label);
 }
 
 export function installAuxNumbers(): void {
