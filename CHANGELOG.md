@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fenced code in Markdown stays a code block in the visual editor. Typing in
+  a block, or saving a file the editor had to rewrite, turned the fence into
+  lines of inline code, which dropped the language and broke Mermaid diagrams.
+  Blocks now open as code blocks, keep their whole info string and blank lines,
+  and start from ``` as you type. Tab indents inside a block.
 - Package installs work again on the TinyTeX that Oleafly manages. Its tlmgr
   falls behind the live repository within weeks of each release and then refuses
   every install, so Oleafly now updates tlmgr and repeats the install. On a

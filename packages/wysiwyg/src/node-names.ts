@@ -8,6 +8,7 @@ export const WYSIWYG_NODE_NAMES = {
   orderedList: "orderedList",
   listItem: "listItem",
   hardBreak: "hardBreak",
+  codeBlock: "codeBlock",
   image: "image",
   rawBlock: "rawBlock",
   rawInline: "rawInline",
