@@ -207,7 +207,7 @@ test("the shell scripts read the bundled Typst pin from the catalog", async () =
   assert.ok(powershell.includes(String.raw`src-tauri\resources\typst-toolchain.json`));
   assert.ok(powershell.includes("ConvertFrom-Json"));
   assert.ok(powershell.includes("$typstCatalog.typst.bundled"));
-  assert.match(powershell, /Install-Sidecar "typst" \$typstVersion \$typstTarget\.asset \$typstTarget\.archiveSha256 \$typstTarget\.archiveMember \$typstTarget\.githubUrl/u);
+  assert.match(powershell, /Install-Sidecar "typst" \$typstVersion \$typstTarget\.asset \$typstTarget\.archiveSha256 \$typstTarget\.archiveMember @\(\$typstTarget\.mirrorUrl, \$typstTarget\.githubUrl\)/u);
   for (const version of TYPST_VERSIONS) assert.equal(powershell.includes(version), false, `ps1 hard-codes ${version}`);
   for (const hash of typstHashes) assert.equal(powershell.includes(hash), false, "ps1 hard-codes a Typst hash");
 });

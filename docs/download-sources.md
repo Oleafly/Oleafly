@@ -80,7 +80,9 @@ node scripts/check-mirror-files.mjs --list > mirror-files.txt
 wget --force-directories --no-host-directories --directory-prefix=oleafly-mirror --input-file=mirror-files.txt
 ```
 
-That is about 5.5 GB, half of it the 2.9 GB Tectonic bundle. Serve the
+That is about 6 GB, half of it the 2.9 GB Tectonic bundle. The list also has
+the Tectonic, Pandoc and Biber archives that building Oleafly from source
+downloads, so the same copy serves those builds. Serve the
 `oleafly-mirror` folder over HTTPS and enter its address, for example
 `https://mirror.example.edu/oleafly`, as your own mirror.
 
@@ -106,7 +108,10 @@ services such as AI providers and literature search.
 ## Checking the Oleafly mirror
 
 CI runs `pnpm mirror:check`, which sends a HEAD request for every listed file
-and fails when one is missing or has the wrong size. A refusal or outage only
+and fails when one is missing or has the wrong size. For a file the bucket has,
+it then reads one byte through the edge cache and fails when the edge still
+answers 404 from before the upload. Purge that address in the Cloudflare
+dashboard to clear it. A refusal or outage only
 produces a warning. The check uses HEAD because the mirror's edge cache keeps
 the answer to a GET for a missing file for days, even after the file is
 uploaded.

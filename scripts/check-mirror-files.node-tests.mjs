@@ -9,6 +9,7 @@ import {
   classify,
   classifyEdge,
   collectMirrorFiles,
+  fetchScriptFiles,
   formatReport,
   mirrorFilesInManifest,
   parseArgs,
@@ -74,6 +75,36 @@ test("the Tectonic bundle brings its index along", () => {
   );
 });
 
+test("a fetch script's archives map to its mirror address, and its messages are skipped", () => {
+  const script = `
+VERSION="2.0"
+asset_for() {
+  case "$1" in
+    a) echo "tool-$VERSION-a.tar.gz:tar:abc" ;;
+    b) echo "tool-$VERSION-b.zip|zip|def|tool-$VERSION/tool.exe" ;;
+    c) echo "Linux/tool-c.tar.xz:tar:123:arm64" ;;
+    d) echo "tool-$VERSION-d.tgz:tar:456" ;;
+    *) echo "" ;;
+  esac
+}
+fetch() {
+  local mirror_url="https://mirrors.oleafly.com/binaries/tool/$VERSION/$asset"
+  echo "download failed from https://example.org; trying next origin" >&2
+  echo "checksum mismatch for $asset: expected x" >&2
+}`;
+  assert.deepEqual(
+    fetchScriptFiles(script, "fetch-tool.sh").map((file) => file.url),
+    [
+      `${MIRROR}binaries/tool/2.0/tool-2.0-a.tar.gz`,
+      `${MIRROR}binaries/tool/2.0/tool-2.0-b.zip`,
+      `${MIRROR}binaries/tool/2.0/Linux/tool-c.tar.xz`,
+      `${MIRROR}binaries/tool/2.0/tool-2.0-d.tgz`,
+    ],
+  );
+  assert.throws(() => fetchScriptFiles(script.replace('VERSION="2.0"', ""), "fetch-tool.sh"), /no longer declares VERSION/u);
+  assert.throws(() => fetchScriptFiles(script.replaceAll(".tgz", ".bin"), "fetch-tool.sh"), /lists 3 archives/u);
+});
+
 test("manifest entries carry their pinned size and skip other hosts", () => {
   const manifest = {
     allowedDownloadHosts: ["mirrors.oleafly.com"],
@@ -109,6 +140,12 @@ test("the repository's own manifests and sources all resolve to mirror files", a
   assert.ok(urls.some((url) => url.includes("/fonts/")));
   assert.ok(urls.some((url) => url.includes("/language-servers/")));
   assert.ok(urls.some((url) => url.includes("/binaries/typst/")));
+  for (const tool of ["tectonic", "pandoc", "biber"]) {
+    assert.ok(
+      urls.filter((url) => url.includes(`/binaries/${tool}/`)).length >= 4,
+      `the ${tool} sidecar archives are checked`,
+    );
+  }
 });
 
 test("a missing file and a wrong size fail, anything inconclusive is only unverified", () => {

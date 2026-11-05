@@ -14,6 +14,12 @@ const MANIFESTS = [
 ];
 const TINYTEX_SOURCE = "src-tauri/src/latex_engine.rs";
 const BUNDLE_SOURCE = "crates/oleafly-core/src/engine_spec.rs";
+const FETCH_SCRIPTS = ["scripts/fetch-tectonic.sh", "scripts/fetch-pandoc.sh", "scripts/fetch-biber.sh"];
+const SCRIPT_VERSION = /^VERSION="([^"]+)"$/mu;
+const SCRIPT_MIRROR = /mirror_url="(https:\/\/mirrors\.oleafly\.com\/[^"]+)"/u;
+const SCRIPT_ENTRY = /echo "([^":|]+)[:|]/gu;
+const ARCHIVE_EXTENSIONS = [".tar.gz", ".tar.xz", ".tgz", ".zip"];
+const MIN_SCRIPT_ASSETS = 4;
 const TINYTEX_TAG = /const TINYTEX_TAG: &str = "([^"]+)";/u;
 const TINYTEX_BASE = /const TINYTEX_MIRROR_BASE: &str = "([^"]+)";/u;
 const TINYTEX_ASSET = /\(\s*"(TinyTeX[^"]*)",\s*"([a-z.]+)",\s*ArchiveFormat::\w+,\s*([\d_]+),/gu;
@@ -26,9 +32,11 @@ function usage() {
   return `Usage:
   node scripts/check-mirror-files.mjs [--root <dir>]
 
-Lists every file the app downloads from ${MIRROR} (the manifests in
-${MANIFESTS.join(", ")}, the TinyTeX archives in ${TINYTEX_SOURCE} and the
-Tectonic bundle in ${BUNDLE_SOURCE}) and sends a HEAD request for each.
+Lists every file the app and its build scripts download from ${MIRROR}
+(the manifests in ${MANIFESTS.join(", ")}, the TinyTeX archives in
+${TINYTEX_SOURCE}, the Tectonic bundle in ${BUNDLE_SOURCE} and the
+sidecar archives in ${FETCH_SCRIPTS.join(", ")}) and sends a HEAD request
+for each.
 A file the bucket has is then read one byte at a time through the edge cache.
 A missing file, a wrong size, or an edge that still answers 404 for an
 uploaded file fails the check. A refusal, rate limit, server error or network
@@ -110,17 +118,39 @@ export function bundleFiles(source, origin = BUNDLE_SOURCE) {
   ];
 }
 
+export function fetchScriptFiles(source, origin) {
+  const version = SCRIPT_VERSION.exec(source)?.[1];
+  const template = SCRIPT_MIRROR.exec(source)?.[1];
+  if (!version || !template?.includes("$VERSION") || !template.includes("$asset")) {
+    throw new Error(`${origin} no longer declares VERSION and a mirror_url built from $VERSION and $asset`);
+  }
+  const files = [...source.matchAll(SCRIPT_ENTRY)]
+    .map(([, asset]) => asset.replaceAll("$VERSION", version))
+    .filter((asset) => ARCHIVE_EXTENSIONS.some((extension) => asset.endsWith(extension)))
+    .map((asset) => ({
+      url: template.replaceAll("$VERSION", version).replaceAll("$asset", asset),
+      size: null,
+      origin,
+    }));
+  if (files.length < MIN_SCRIPT_ASSETS) {
+    throw new Error(`${origin} lists ${files.length} archives, expected at least ${MIN_SCRIPT_ASSETS}`);
+  }
+  return files;
+}
+
 export async function collectMirrorFiles(root) {
   const read = (path) => readFile(join(root, path), "utf8");
-  const [manifests, tinytex, bundle] = await Promise.all([
+  const [manifests, tinytex, bundle, scripts] = await Promise.all([
     Promise.all(MANIFESTS.map(read)),
     read(TINYTEX_SOURCE),
     read(BUNDLE_SOURCE),
+    Promise.all(FETCH_SCRIPTS.map(read)),
   ]);
   const files = [
     ...manifests.flatMap((text, index) => mirrorFilesInManifest(JSON.parse(text), MANIFESTS[index])),
     ...tinytexFiles(tinytex),
     ...bundleFiles(bundle),
+    ...scripts.flatMap((text, index) => fetchScriptFiles(text, FETCH_SCRIPTS[index])),
   ];
   const byUrl = new Map();
   for (const file of files) {
