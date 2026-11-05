@@ -11,7 +11,7 @@ fn none() -> HashSet<String> {
 }
 
 fn failed(hosts: &[&str]) -> HashSet<String> {
-    hosts.iter().map(|host| host.to_string()).collect()
+    hosts.iter().map(ToString::to_string).collect()
 }
 
 fn environment(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {

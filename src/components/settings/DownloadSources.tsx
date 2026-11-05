@@ -27,6 +27,14 @@ const SOURCE_ICONS: Record<DownloadSourceChoice, LucideIcon> = {
 const SOURCES: DownloadSourceChoice[] = ["automatic", "original", "custom"];
 const REPOSITORIES: RepositoryChoice[] = ["automatic", "custom"];
 
+function addressHost(address: string): string {
+  try {
+    return new URL(address).host;
+  } catch {
+    return address;
+  }
+}
+
 function ChoiceCard({
   selected,
   saved,
@@ -218,8 +226,8 @@ export function DownloadSources() {
 
   const sourceLocked = settings.environmentSource !== null;
   const repositoryLocked = settings.environmentTexRepository !== null;
-  const mirrorHost = settings.oleaflyMirror.replace(/^https:\/\//, "");
-  const automaticRepositoryHost = settings.automaticTexRepository.replace(/^https:\/\/([^/]+).*$/, "$1");
+  const mirrorHost = addressHost(settings.oleaflyMirror);
+  const automaticRepositoryHost = addressHost(settings.automaticTexRepository);
 
   return (
     <div className="flex flex-col gap-6" data-testid="download-sources">

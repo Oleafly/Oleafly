@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::sync::{Mutex, RwLock};
+use std::sync::{Mutex, PoisonError, RwLock};
 use std::time::{Duration, Instant};
 
 #[cfg(test)]
@@ -113,17 +113,17 @@ impl DownloadSettings {
             DownloadSource::Automatic => mirrored
                 .iter()
                 .chain(&others)
-                .map(|url| url.to_string())
+                .map(ToString::to_string)
                 .collect(),
             DownloadSource::Original if others.is_empty() => {
-                mirrored.iter().map(|url| url.to_string()).collect()
+                mirrored.iter().map(ToString::to_string).collect()
             }
-            DownloadSource::Original => others.iter().map(|url| url.to_string()).collect(),
+            DownloadSource::Original => others.iter().map(ToString::to_string).collect(),
             DownloadSource::Mirror(base) => mirrored
                 .iter()
                 .filter_map(|url| oleafly_mirror_path(url))
                 .map(|path| format!("{base}{path}"))
-                .chain(mirrored.iter().chain(&others).map(|url| url.to_string()))
+                .chain(mirrored.iter().chain(&others).map(ToString::to_string))
                 .collect(),
         };
         let mut seen = HashSet::new();
@@ -186,9 +186,7 @@ pub fn note_failure(url: &str) {
     let Some(host) = host_of(url) else {
         return;
     };
-    let mut failures = FAILURES
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut failures = FAILURES.lock().unwrap_or_else(PoisonError::into_inner);
     failures.retain(|(known, _)| *known != host);
     failures.push((host, Instant::now()));
 }
@@ -199,14 +197,12 @@ pub fn note_success(url: &str) {
     };
     FAILURES
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(PoisonError::into_inner)
         .retain(|(known, _)| *known != host);
 }
 
 pub fn recently_failed_hosts() -> HashSet<String> {
-    let mut failures = FAILURES
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut failures = FAILURES.lock().unwrap_or_else(PoisonError::into_inner);
     failures.retain(|(_, at)| at.elapsed() < FAILURE_MEMORY);
     failures.iter().map(|(host, _)| host.clone()).collect()
 }

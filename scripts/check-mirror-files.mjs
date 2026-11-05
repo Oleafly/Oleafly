@@ -111,13 +111,17 @@ export function bundleFiles(source, origin = BUNDLE_SOURCE) {
 }
 
 export async function collectMirrorFiles(root) {
-  const files = [];
-  for (const manifest of MANIFESTS) {
-    const text = await readFile(join(root, manifest), "utf8");
-    files.push(...mirrorFilesInManifest(JSON.parse(text), manifest));
-  }
-  files.push(...tinytexFiles(await readFile(join(root, TINYTEX_SOURCE), "utf8")));
-  files.push(...bundleFiles(await readFile(join(root, BUNDLE_SOURCE), "utf8")));
+  const read = (path) => readFile(join(root, path), "utf8");
+  const [manifests, tinytex, bundle] = await Promise.all([
+    Promise.all(MANIFESTS.map(read)),
+    read(TINYTEX_SOURCE),
+    read(BUNDLE_SOURCE),
+  ]);
+  const files = [
+    ...manifests.flatMap((text, index) => mirrorFilesInManifest(JSON.parse(text), MANIFESTS[index])),
+    ...tinytexFiles(tinytex),
+    ...bundleFiles(bundle),
+  ];
   const byUrl = new Map();
   for (const file of files) {
     if (!byUrl.has(file.url)) byUrl.set(file.url, file);
@@ -140,9 +144,10 @@ export function classifyEdge(file, outcome) {
   if (outcome.error) return { verdict: "unverified", reason: `edge read failed: ${outcome.error}` };
   const { status, total, cache } = outcome;
   if (status === 404 || status === 410) {
+    const cacheStatus = cache ? ` (${cache})` : "";
     return {
       verdict: "stale-edge",
-      reason: `the bucket has it, but the edge cache answers HTTP ${status}${cache ? ` (${cache})` : ""}. Purge this address in the Cloudflare dashboard`,
+      reason: `the bucket has it, but the edge cache answers HTTP ${status}${cacheStatus}. Purge this address in the Cloudflare dashboard`,
     };
   }
   if (status !== 200 && status !== 206) return { verdict: "unverified", reason: `edge read HTTP ${status}` };
@@ -199,12 +204,12 @@ export async function checkFiles(files, fetchImpl = fetch, concurrency = CONCURR
   const results = new Array(files.length);
   let next = 0;
   const worker = async () => {
-    while (next < files.length) {
-      const index = next;
-      next += 1;
-      const file = files[index];
-      results[index] = { ...file, ...(await checkFile(file, fetchImpl)) };
-    }
+    const index = next;
+    if (index >= files.length) return;
+    next += 1;
+    const file = files[index];
+    results[index] = { ...file, ...(await checkFile(file, fetchImpl)) };
+    await worker();
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, files.length) }, worker));
   return results;
