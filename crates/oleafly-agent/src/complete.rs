@@ -51,6 +51,15 @@ pub struct CompletionRequest {
     #[doc(hidden)]
     #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub anthropic_container: Option<String>,
+    /// The conversation this request belongs to, sent only to providers that
+    /// route by it. Every step of one chat carries the same id.
+    #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+}
+
+/// A fresh conversation id for a request that has none.
+pub fn new_session_id() -> String {
+    uuid::Uuid::now_v7().to_string()
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -544,7 +553,8 @@ pub async fn complete(
     let req = with_blocking_ceiling(resolved, req);
 
     let body = wire_body(resolved, &req)?;
-    let builder = crate::wire::body_request(client, resolved, false, &body);
+    let builder =
+        crate::wire::body_request(client, resolved, false, &body, req.session_id.as_deref());
 
     let response = builder
         .timeout(timeout)

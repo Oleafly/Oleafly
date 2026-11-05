@@ -381,11 +381,12 @@ async fn open_stream(
     req: &CompletionRequest,
 ) -> Result<reqwest::Response> {
     let body = stream_body(resolved, req)?;
-    let response = crate::wire::body_request(client, resolved, true, &body)
-        .header("accept", "text/event-stream")
-        .send()
-        .await
-        .map_err(request_error)?;
+    let response =
+        crate::wire::body_request(client, resolved, true, &body, req.session_id.as_deref())
+            .header("accept", "text/event-stream")
+            .send()
+            .await
+            .map_err(request_error)?;
 
     let status = response.status().as_u16();
     if !(200..300).contains(&status) {

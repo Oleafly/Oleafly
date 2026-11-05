@@ -306,7 +306,10 @@
         "title": "Usuń model"
       },
       "deleteTooltip": "Usuń model",
+      "disableAll": "Wyłącz wszystkie",
       "empty": "Nie ma jeszcze modeli. Dodaj jeden poniżej.",
+      "enableAll": "Włącz wszystkie",
+      "enabledCount": "włączono {{enabled}} z {{total}}",
       "invalidKey": "Nieprawidłowy klucz API.",
       "metadata": {
         "refreshFailed": "Nie udało się odświeżyć danych modeli.",
@@ -788,6 +791,10 @@
         "label": "Krój pisma edytora",
         "monospace": "Stała szerokość"
       },
+      "cjkFont": {
+        "description": "Używany do znaków chińskich, japońskich i koreańskich, których brakuje w kroju pisma edytora.",
+        "label": "Krój pisma CJK"
+      },
       "useAppFont": {
         "description": "Edytor używa czcionki i rozmiaru pisma aplikacji.",
         "disabledHint": "Wyłącz Użyj czcionki aplikacji, aby to zmienić.",
@@ -1222,10 +1229,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Dodaj do projektu",
       "allDownloaded": "Wszystko pobrane",
       "download": "Pobierz",
       "downloadAll": "Pobierz wszystko"
     },
+    "fontAddedToProject": "Dodano krój {{family}} do tego projektu. Używaj go po nazwie, na przykład {{example}}.",
+    "fontAlreadyInProject": "Krój {{family}} jest już w tym projekcie.",
     "yourTemplates": {
       "toggle": "Zarządzaj swoimi szablonami",
       "import": "Importuj szablon",
@@ -1275,7 +1285,7 @@
       "empty": "Brak krojów do pobrania.",
       "engineNote": "Silnikiem LuaLaTeX (do tagowanych, dostępnych plików PDF) zarządza się w sekcji Silnik LaTeX.",
       "heading": "Kroje pisma",
-      "tooltip": "Część szablonów korzysta z wyróżniających się krojów otwartoźródłowych. Aby Oleafly pozostał mały, te kroje pobierane są na żądanie: gdy tworzysz taki szablon, kroje zostają pobrane i skopiowane do projektu, dzięki czemu jest samowystarczalny i kompiluje się bez internetu. Można je też pobrać tutaj z wyprzedzeniem albo usunąć, aby zwolnić miejsce."
+      "tooltip": "Część szablonów korzysta z tych otwartoźródłowych krojów pisma. Są pobierane tylko wtedy, gdy są potrzebne, aby Oleafly pozostał mały. Gdy tworzysz taki szablon, kroje są kopiowane do projektu, więc kompiluje się on bez internetu. Projekty Typst mogą używać pobranego kroju po nazwie, chyba że projekt wyłącza kroje systemowe. W przypadku LaTeX otwórz projekt i kliknij „Dodaj do projektu”, aby skopiować do niego krój."
     },
     "packProgress": "{{index}} z {{total}}",
     "progress": "{{label}} ({{index}} z {{total}})",
@@ -1303,6 +1313,7 @@
       "fontDownloadFailed": "Nie udało się pobrać kroju pisma.",
       "fontsDownloadFailed": "Nie udało się pobrać krojów pisma.",
       "fontRemoveFailed": "Nie udało się usunąć kroju pisma.",
+      "fontAddFailed": "Nie udało się dodać kroju pisma do tego projektu.",
       "packDownloadFailed": "Nie udało się pobrać pakietu szablonów.",
       "packsDownloadFailed": "Nie udało się pobrać pakietów szablonów.",
       "packRemoveFailed": "Nie udało się usunąć pakietu szablonów.",

@@ -329,7 +329,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 | Linux · x86_64 | AppImage أو DEB أو RPM | [![تنزيل لـ Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage أو DEB أو RPM | [![تنزيل لـ Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-على x86_64، تحتاج حزم Linux إلى glibc 2.35 أو أحدث (Ubuntu 22.04 أو أحدث). وتُبنى حزم ARM64 على Ubuntu 24.04. وتتضمن الإصدارات عناصر تحديث موقّعة، ويتحقق مُحدّث التطبيق من التوقيع قبل تثبيت أي شيء.
+تحتاج حزم Linux إلى glibc 2.35 أو أحدث (Ubuntu 22.04 أو Debian 12 أو أحدث). وتتضمن الإصدارات عناصر تحديث موقّعة، ويتحقق مُحدّث التطبيق من التوقيع قبل تثبيت أي شيء.
 
 ## أسئلة شائعة
 
@@ -400,7 +400,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.9},
+  version = {0.4.11},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fenced code in Markdown stays a code block in the visual editor. Typing in
+  a block, or saving a file the editor had to rewrite, turned the fence into
+  lines of inline code, which dropped the language and broke Mermaid diagrams.
+  Blocks now open as code blocks, keep their whole info string and blank lines,
+  and start from ``` as you type. Tab indents inside a block.
+
+## [0.4.11] - 2026-11-04
+
+### Added
+
+- Each provider's model list has Enable all and Disable all buttons. Turn off
+  a long list in one click, then switch back on the few models you use (#385).
+- A CJK font setting in Settings > Appearance > Editor sets the font for
+  Chinese, Japanese and Korean characters. Latin text stays in the Editor font,
+  so a coding font and PingFang SC or Microsoft YaHei work side by side. On
+  macOS, PingFang now shows in the font lists (#392).
+- Downloaded Lato, PT Sans and PT Serif now work by name. Typst projects find
+  them the way they find the Typst font packs. For LaTeX, Add to project in
+  Settings > Downloads copies a font into the project's fonts folder with a
+  small .fontspec file, so `\setmainfont{PT Serif}` works without options, and
+  the project still compiles on other computers (#393).
+
+### Security
+
+- Compiling with the bundled Tectonic engine could run code from the project,
+  even with shell-escape off. Tectonic ran any `tectonic-biber` file it found in
+  the project folder, and a document could reach Perl inside Biber through its
+  bibliography settings. Tectonic now starts outside the project, and the Biber
+  that Oleafly ships treats those settings as plain text. Biber also stops
+  reading `biber.conf` during a compile.
+
+### Fixed
+
+- biblatex projects compile on ARM64 Linux. ARM builds shipped a placeholder that
+  always failed in place of Biber, so any biblatex project on the default engine
+  stopped with no PDF. They now include a working Biber 2.17.
+- The ARM64 Linux app and command line tool start on Debian 12 and Ubuntu 22.04.
+  They used to install there and then stop at launch with `GLIBC_2.39 not found`.
+- The Linux `.deb` and `.rpm` install next to your distribution's Pandoc. They
+  used to refuse to install, or stop Pandoc from installing, because both claimed
+  `/usr/bin/pandoc`. Oleafly's Tectonic, Pandoc and Typst now live in
+  `/usr/libexec/oleafly`.
+- Typst compiles in the x86_64 AppImage. Packaging damaged the bundled Typst, so
+  it crashed as soon as it started.
+- When Biber fails, the compile log says why. It used to show a general failure
+  with the reason buried in the raw output. It now names a missing system library
+  and suggests `\usepackage[backend=bibtex]{biblatex}` as a way to build without
+  Biber. The `.rpm` also recommends the two libraries Biber needs on Fedora.
+- Accessible export no longer breaks the build on the bundled engine. The
+  `\DocumentMetadata` line it adds now sits inside a version check, so LaTeX
+  older than November 2025 skips it and builds the document untagged. Before,
+  the bundled engine stopped with an error, and TeX Live 2025 as first
+  released wrote a PDF that claimed PDF/UA-2 with no tags. Preflight now says
+  when a build skipped tagging and which LaTeX it ran.
+- The managed TinyTeX install works on Windows again. Since 0.4.9 it stopped
+  after the download with "TinyTeX archive member manifest does not match the
+  reviewed release", although the downloaded archive was complete and
+  correct. The check now reads member names exactly as the archive stores
+  them.
+- On Linux, the AppImage shows the Oleafly icon in the taskbar, dock and window
+  list. On X11 desktops such as Cinnamon, the window icon was too large, so GTK
+  dropped it. Wayland desktops such as GNOME only take an app's icon from the
+  applications menu, so the AppImage now adds itself to that menu when it
+  starts, unless an installed package or another tool already has. If you
+  delete that entry, it stays deleted. The icon you pick under App icon in
+  Settings > Appearance now changes the taskbar and menu icon on Linux too.
+- On Linux, text in the PDF preview no longer gets orange and blue edges when
+  the desktop uses subpixel font smoothing, such as Rgba antialiasing in
+  Cinnamon. It made the text look as if it had no antialiasing. The preview now
+  draws PDF text in grayscale whatever the desktop setting.
+- OpenCode Go works as a custom provider. OpenCode Go refuses any request
+  that has no session ID, so the tool check failed for every model on it and
+  marked the model Blocked, even with a valid key. Oleafly now sends each
+  chat's ID to OpenCode Zen and Go, and to no other provider. OpenCode models
+  that need their reasoning sent back, like DeepSeek, Kimi and GLM, now get
+  it, and models blocked this way get checked again (#385).
+- The agent picker scrolls with a mouse wheel. When the assistant panel was
+  too narrow for every agent, the ones past the edge, like a custom agent at
+  the end, could only be reached with a trackpad. The selected agent now
+  scrolls into view too (#385).
+
+## [0.4.10] - 2026-11-02
+
 ### Added
 
 - Oleafly has a build for Intel Macs. Download the `x64` DMG from the release
@@ -59,9 +144,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   image.
 - When Retry on a crashed panel crashes again, the panel offers to reload
   Oleafly.
-
-### Fixed
-
 - Oleafly no longer reports an image in a hidden folder, such as
   `#image(".typ-img/example.png")`, as missing when the file is there (#374).
   The file list still leaves hidden and generated folders out, but when a
@@ -4373,7 +4455,9 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.11...HEAD
+[0.4.11]: https://github.com/Oleafly/Oleafly/compare/v0.4.10...v0.4.11
+[0.4.10]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...v0.4.7

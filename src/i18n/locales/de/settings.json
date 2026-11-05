@@ -304,7 +304,10 @@
         "title": "Modell löschen"
       },
       "deleteTooltip": "Modell löschen",
+      "disableAll": "Alle deaktivieren",
       "empty": "Noch keine Modelle. Fügen Sie unten eines hinzu.",
+      "enableAll": "Alle aktivieren",
+      "enabledCount": "{{enabled}} von {{total}} aktiv",
       "invalidKey": "Ungültiger API-Schlüssel.",
       "metadata": {
         "refreshFailed": "Die Modelldaten konnten nicht aufgefrischt werden.",
@@ -776,6 +779,10 @@
         "label": "Schrift des Editors",
         "monospace": "Monospace"
       },
+      "cjkFont": {
+        "description": "Wird für chinesische, japanische und koreanische Zeichen verwendet, die der Schrift des Editors fehlen.",
+        "label": "CJK-Schrift"
+      },
       "useAppFont": {
         "description": "Der Editor übernimmt Schrift und Schriftgröße der App.",
         "disabledHint": "Schalten Sie Schrift der App verwenden aus, um dies zu ändern.",
@@ -1208,10 +1215,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Zum Projekt hinzufügen",
       "allDownloaded": "Alles geladen",
       "download": "Herunterladen",
       "downloadAll": "Alle herunterladen"
     },
+    "fontAddedToProject": "{{family}} wurde zu diesem Projekt hinzugefügt. Verwenden Sie die Schrift über ihren Namen, zum Beispiel {{example}}.",
+    "fontAlreadyInProject": "{{family}} ist bereits in diesem Projekt vorhanden.",
     "yourTemplates": {
       "toggle": "Ihre Vorlagen verwalten",
       "import": "Vorlage importieren",
@@ -1261,7 +1271,7 @@
       "empty": "Keine Schriften zum Herunterladen.",
       "engineNote": "Die LuaLaTeX-Engine (für getaggte, barrierefreie PDFs) wird im Bereich LaTeX-Engine verwaltet.",
       "heading": "Schriften",
-      "tooltip": "Manche Vorlagen nutzen hochwertige quelloffene Schriften. Damit Oleafly klein bleibt, werden diese Schriften bei Bedarf geladen: Wenn Sie eine solche Vorlage anlegen, werden die Schriften geholt und ins Projekt kopiert, damit es eigenständig bleibt und offline kompiliert. Sie können sie auch hier vorab laden oder entfernen, um Platz zu schaffen."
+      "tooltip": "Manche Vorlagen nutzen diese quelloffenen Schriften. Damit Oleafly klein bleibt, werden sie nur bei Bedarf heruntergeladen. Wenn Sie eine solche Vorlage anlegen, werden die Schriften ins Projekt kopiert, damit es offline kompiliert. Typst-Projekte können eine heruntergeladene Schrift über ihren Namen verwenden, es sei denn, das Projekt schaltet Systemschriften ab. Für LaTeX öffnen Sie ein Projekt und klicken auf „Zum Projekt hinzufügen“, um die Schrift hineinzukopieren."
     },
     "packProgress": "{{index}} von {{total}}",
     "progress": "{{label}} ({{index}} von {{total}})",
@@ -1289,6 +1299,7 @@
       "fontDownloadFailed": "Die Schrift konnte nicht heruntergeladen werden.",
       "fontsDownloadFailed": "Die Schriften konnten nicht heruntergeladen werden.",
       "fontRemoveFailed": "Die Schrift konnte nicht entfernt werden.",
+      "fontAddFailed": "Die Schrift konnte nicht zu diesem Projekt hinzugefügt werden.",
       "packDownloadFailed": "Das Vorlagenpaket konnte nicht heruntergeladen werden.",
       "packsDownloadFailed": "Die Vorlagenpakete konnten nicht heruntergeladen werden.",
       "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden.",

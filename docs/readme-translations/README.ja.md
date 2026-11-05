@@ -329,7 +329,7 @@ skillはAgent Skillsの形式に従う通常の`SKILL.md`フォルダーです�
 | Linux · x86_64 | AppImage、DEB、またはRPM | [![Linux（x86_64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage、DEB、またはRPM | [![Linux（ARM64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-x86_64のLinuxパッケージにはglibc 2.35以降（Ubuntu 22.04以降）が必要です。ARM64パッケージはUbuntu 24.04でビルドされています。リリースには署名付き更新アーティファクトが含まれ、アプリ内アップデーターはインストール前に署名を確認します。
+Linuxパッケージにはglibc 2.35以降（Ubuntu 22.04、Debian 12以降）が必要です。リリースには署名付き更新アーティファクトが含まれ、アプリ内アップデーターはインストール前に署名を確認します。
 
 ## よくある質問
 
@@ -400,7 +400,7 @@ Oleaflyを使っているなら、[GitHubでスターを付ける](https://githu
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.9},
+  version = {0.4.11},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

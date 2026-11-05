@@ -695,6 +695,8 @@ function EditorAppearanceTab() {
   const setEditorCustomLineHeight = useSettingsStore((state) => state.setEditorCustomLineHeight);
   const editorFontFamily = useSettingsStore((state) => state.editorFontFamily);
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
+  const editorCjkFontFamily = useSettingsStore((state) => state.editorCjkFontFamily);
+  const setEditorCjkFontFamily = useSettingsStore((state) => state.setEditorCjkFontFamily);
   const editorCursorWidth = useSettingsStore((state) => state.editorCursorWidth);
   const setEditorCursorWidth = useSettingsStore((state) => state.setEditorCursorWidth);
   const editorCursorHeight = useSettingsStore((state) => state.editorCursorHeight);
@@ -742,6 +744,18 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.font.description)}
         value={editorFontFamily}
         onChange={setEditorFontFamily}
+        disabled={editorUsesAppFont}
+        disabledHint={followsAppFont}
+      />
+
+      <SystemFontSettingsRow
+        testId="settings-row-editor-cjk-font"
+        id="settings-editor-cjk-font"
+        use="app"
+        label={t(($) => $.settings.appearance.editor.cjkFont.label)}
+        description={t(($) => $.settings.appearance.editor.cjkFont.description)}
+        value={editorCjkFontFamily}
+        onChange={setEditorCjkFontFamily}
         disabled={editorUsesAppFont}
         disabledHint={followsAppFont}
       />

@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Mukana tuleva moottori ei voi tuottaa määriteltyä PDF/UA-tulostetta",
-      "detail": "Tämä dokumentti määrittelee pdfstandard=ua, mutta mukana tuleva moottori ei osaa kirjoittaa rakennepuuta, joten PDF kantaisi PDF/UA-väitettä, jota se ei täytä. Käännä pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta, tai poista pdfstandard-avain."
+      "detail": "Tämä dokumentti määrittelee pdfstandard=ua, mutta mukana tuleva moottori ei osaa kirjoittaa rakennepuuta, joten PDF kantaisi PDF/UA-väitettä, jota se ei täytä. Käännä pdfLaTeXilla tai LuaLaTeXilla TeX Live 2026:sta (tai marraskuusta 2025 lähtien päivitetystä TeX Livestä), tai poista pdfstandard-avain."
     },
     "table-header-rows": {
       "title": "Taulukon otsikkoriviä ei ole merkitty otsikoksi",
@@ -145,6 +145,11 @@
       "title": "Tarvitaan vielä yksi käännöskierros",
       "detail": "Viimeisin loki kertoo, että nimikkeet, viittaukset tai sisällysluettelo eivät ole vielä vakiintuneet. Käännä uudelleen, kunnes uudelleenajovaroitus katoaa, ennen vientiä."
     },
+    "compile-tagging-skipped": {
+      "title": "Merkitseminen ohitettiin, koska tämä LaTeX on liian vanha",
+      "detail": "Tässä käännöksessä oli käytössä LaTeX-versio {{date}}. Merkityt PDF:t vaativat LaTeX-version {{required}} tai uudemman, joten \\DocumentMetadata-komennon ympärillä oleva tarkistus kytki merkitsemisen pois eikä PDF esitä PDF/UA-väitettä. Saat merkityn PDF:n valitsemalla \"Käännä merkittynä ja varmista\" TeX Live 2026:lla tai päivittämällä TeX Liven ja kääntämällä uudelleen.",
+      "detailUndated": "Merkityt PDF:t vaativat LaTeX-version {{required}} tai uudemman, ja tässä käännöksessä oli käytössä vanhempi, joten \\DocumentMetadata-komennon ympärillä oleva tarkistus kytki merkitsemisen pois eikä PDF esitä PDF/UA-väitettä. Saat merkityn PDF:n valitsemalla \"Käännä merkittynä ja varmista\" TeX Live 2026:lla tai päivittämällä TeX Liven ja kääntämällä uudelleen."
+    },
     "compile-duplicate-destination": {
       "title": "PDF-kohteita on kahteen kertaan",
       "detail": "Kaksi ankkuria jakaa saman kohteen, joten linkit tai kirjanmerkit voivat hypätä väärään paikkaan. Tämä johtuu usein kahteen kertaan olevista nimikkeistä tai sivunumeroinnin nollauksista."
@@ -209,7 +214,7 @@
     },
     "pdf-untagged-output": {
       "title": "Tätä PDF:ää ei ole merkitty",
-      "detail": "Käännetyssä PDF:ssä ei ole rakennepuuta, joten ruudunlukija ei saa otsikoita, luetteloita, taulukoita eikä lukujärjestystä, eikä tiedosto voi täyttää PDF/UA-1-standardin kohtaa 7.1. Merkitty tuloste vaatii pdfLaTeXin tai LuaLaTeXin TeX Live 2025:stä tai uudemmasta ja asetuksen \\DocumentMetadata{tagging=on}. Mukana tuleva moottori ei osaa tuottaa merkintöjä. Yllä olevat lähdekoodi- ja tulostetarkistukset pätevät silti sillä välin."
+      "detail": "Käännetyssä PDF:ssä ei ole rakennepuuta, joten ruudunlukija ei saa otsikoita, luetteloita, taulukoita eikä lukujärjestystä, eikä tiedosto voi täyttää PDF/UA-1-standardin kohtaa 7.1. Merkitty tuloste vaatii pdfLaTeXin tai LuaLaTeXin TeX Live 2026:sta (tai marraskuusta 2025 lähtien päivitetystä TeX Livestä) ja asetuksen \\DocumentMetadata{tagging=on}. Mukana tuleva moottori ei osaa tuottaa merkintöjä. Yllä olevat lähdekoodi- ja tulostetarkistukset pätevät silti sillä välin."
     },
     "pdf-structure-missing": {
       "title": "Merkityssä PDF:ssä ei ole luettavaa rakennepuuta",
@@ -584,7 +589,7 @@
   },
   "prep": {
     "metadataUpdated": "Vaaditut merkintäavaimet lisättiin \\DocumentMetadata-komentoon.",
-    "metadataAdded": "\\DocumentMetadata lisättiin ensimmäiseksi riviksi (pakollinen, ja sen on oltava ennen \\documentclass-komentoa).",
+    "metadataAdded": "\\DocumentMetadata lisättiin ensimmäiseksi riviksi (pakollinen, ja sen on oltava ennen \\documentclass-komentoa). Se on versiotarkistuksen sisällä: versiota {{date}} vanhempi LaTeX, mukana tuleva moottori mukaan lukien, ohittaa sen ja kääntää dokumentin ilman merkintöjä epäonnistumisen sijaan.",
     "headerRows": "table/header-rows asetettiin arvoon 1, jotta jokaisen taulukon ensimmäinen rivi merkitään otsikkosoluiksi. Muuta lukua, jos jonkin taulukon otsikko on eri syvyinen.",
     "unicodeMath": "Lisättiin \\usepackage{unicode-math}, jota tämä moottori tarvitsee merkittyyn matematiikkaan.",
     "altPlaceholders_one": "Vaihtoehtoisen tekstin paikanvaraajat lisättiin {{count}} kuvaan. Korvaa TODO-teksti oikealla kuvauksella.",
@@ -593,8 +598,8 @@
     "incompatiblePackages_one": "Tämä paketti ei ole yhteensopiva merkinnän kanssa: {{packages}}. Sen sisältö voi päätyä PDF:ään merkitsemättömänä. Korvaa se, jos voit.",
     "incompatiblePackages_other": "Nämä paketit eivät ole yhteensopivia merkinnän kanssa: {{packages}}. Niiden sisältö voi päätyä PDF:ään merkitsemättömänä. Korvaa ne, jos voit.",
     "cautionPackages": "Nämä paketit merkitsevät vain osittain tai niille ei ole kirjattua merkinnän tulosta: {{packages}}. Käännä ja tarkista rakennepuun aukot.",
-    "compileLua": "Käännä valmisteltu lähdekoodi LuaLaTeXilla TeX Live 2025:stä tai uudemmasta ja tarkista tuloste sitten uudelleen.",
-    "compileAny": "Käännä valmisteltu lähdekoodi pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta ja tarkista tuloste sitten uudelleen. Saavutettava matematiikka vaatii LuaLaTeXin. Mukana tuleva moottori ei osaa tuottaa merkintöjä."
+    "compileLua": "Käännä valmisteltu lähdekoodi LuaLaTeXilla TeX Live 2026:sta (tai marraskuusta 2025 lähtien päivitetystä TeX Livestä) ja tarkista tuloste sitten uudelleen.",
+    "compileAny": "Käännä valmisteltu lähdekoodi pdfLaTeXilla tai LuaLaTeXilla TeX Live 2026:sta (tai marraskuusta 2025 lähtien päivitetystä TeX Livestä) ja tarkista tuloste sitten uudelleen. Saavutettava matematiikka vaatii LuaLaTeXin. Mukana tuleva moottori ei osaa tuottaa merkintöjä."
   },
   "gate": {
     "incompatiblePackages_one": "Tämä paketti ei ole yhteensopiva merkinnän kanssa: {{packages}}. Sen sisältö voi päätyä PDF:ään merkitsemättömänä.",
@@ -683,7 +688,7 @@
   },
   "prepExport": {
     "title": "Saavutettava vienti",
-    "intro": "Valmistele tämä dokumentti merkitylle tulosteelle, joka tähtää PDF/UA-2-standardiin. Oleafly lisää \\DocumentMetadata-komennon arvoilla pdfstandard=ua-2 ja tagging=on sekä ne vaihtoehtoisen tekstin ja taulukoiden asetukset, jotka se osaa täyttää. Käännä tulos pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta ja tarkista sitten uudelleen. Saavutettava matematiikka vaatii LuaLaTeXin. Mukana tuleva moottori ei osaa tuottaa merkintöjä.",
+    "intro": "Valmistele tämä dokumentti merkitylle tulosteelle, joka tähtää PDF/UA-2-standardiin. Oleafly lisää \\DocumentMetadata-komennon arvoilla pdfstandard=ua-2 ja tagging=on sekä ne vaihtoehtoisen tekstin ja taulukoiden asetukset, jotka se osaa täyttää. Käännä tulos pdfLaTeXilla tai LuaLaTeXilla TeX Live 2026:sta (tai marraskuusta 2025 lähtien päivitetystä TeX Livestä) ja tarkista sitten uudelleen. Saavutettava matematiikka vaatii LuaLaTeXin. Mukana tuleva moottori ei osaa tuottaa merkintöjä.",
     "activeFileFallback": "Oleafly ei voinut ladata päädokumenttia, joten se tarkisti muokattavana olevan tiedoston. Avaa päädokumentti, niin näkyviin tulevat luokka ja paketit, jotka käännös todella lataa.",
     "prepare": "Valmistele saavutettavaa vientiä varten",
     "unavailable": "Valmistelu ei ole käytettävissä tälle dokumenttiluokalle. Vaihda luokkaan, jota merkintäkoodi tukee, ja aja tarkistus sitten uudelleen. Yhteensopivuustiedot LaTeX Projectilta, noudettu {{retrieved}}.",
@@ -694,7 +699,7 @@
     "copy": "Kopioi lähdekoodi",
     "compileTagged": "Käännä merkittynä ja varmista",
     "compileTaggedWarning": "Järjestelmän LuaLaTeX voi lukea paikallisia tiedostoja. Aja se vain projektille, johon luotat.",
-    "noEngine": "Jotta merkityn PDF:n voi tuottaa sovelluksessa, ota moottori käyttöön kohdassa Asetukset, LaTeX-moottori. Vaihtoehtoisesti käännä valmisteltu lähdekoodi omalla pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta."
+    "noEngine": "Jotta merkityn PDF:n voi tuottaa sovelluksessa, ota moottori käyttöön kohdassa Asetukset, LaTeX-moottori. Vaihtoehtoisesti käännä valmisteltu lähdekoodi omalla pdfLaTeXilla tai LuaLaTeXilla TeX Live 2026:sta (tai marraskuusta 2025 lähtien päivitetystä TeX Livestä)."
   },
   "typstStandards": {
     "title": "PDF-standardit",

@@ -153,11 +153,23 @@ pub struct EngineCompileSpec {
     pub environment: EngineEnvironment,
 }
 
+impl EngineCompileSpec {
+    /// Where the engine process starts. `working_dir` stays the folder that
+    /// paths in its log and its helper tools resolve against.
+    fn launch_dir(&self) -> &Path {
+        self.environment
+            .launch_dir
+            .as_deref()
+            .unwrap_or(&self.working_dir)
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EngineEnvironment {
     variables: Vec<(String, String)>,
     scratch: Option<std::sync::Arc<oleafly_core::EngineScratch>>,
     project_root: Option<PathBuf>,
+    launch_dir: Option<PathBuf>,
 }
 
 impl EngineEnvironment {
@@ -181,6 +193,15 @@ impl EngineEnvironment {
         for name in oleafly_core::TEMP_DIRECTORY_VARIABLES {
             self.variables.push((name.to_owned(), value.clone()));
         }
+        self.scratch = Some(std::sync::Arc::new(scratch));
+        self.project_root = Some(project_root.to_owned());
+        self
+    }
+
+    /// Tectonic looks for `./tectonic-biber` in its working directory before it
+    /// reads PATH, so it must not start inside the project it compiles.
+    fn launched_from(mut self, scratch: oleafly_core::EngineScratch, project_root: &Path) -> Self {
+        self.launch_dir = Some(scratch.path().to_owned());
         self.scratch = Some(std::sync::Arc::new(scratch));
         self.project_root = Some(project_root.to_owned());
         self
@@ -358,7 +379,11 @@ impl DocumentEngine for LatexEngine {
             }
         };
         let artifacts = self.artifacts(out_dir, target);
-        let environment = EngineEnvironment::inherited(options.source_date_epoch);
+        let scratch = oleafly_core::EngineScratch::create(&engine_scratch_bases(out_dir)).map_err(
+            |error| format!("Oleafly could not create a temporary folder for Tectonic: {error}"),
+        )?;
+        let environment = EngineEnvironment::inherited(options.source_date_epoch)
+            .launched_from(scratch, project_dir);
         let args = oleafly_core::engine_spec::tectonic_args(
             out_dir,
             &[project_dir],
@@ -1124,7 +1149,7 @@ impl DocumentEngine for MarkdownEngine {
         let tools = MarkdownTools {
             pandoc: PathBuf::from(pandoc),
             tectonic,
-            scratch: pandoc_scratch(&pandoc_scratch_bases(out_dir))?,
+            scratch: pandoc_scratch(&engine_scratch_bases(out_dir))?,
         };
         markdown_compile_spec(self, out_dir, project_dir, main_document, tools, options)
     }
@@ -1187,14 +1212,18 @@ fn tectonic_sidecar_candidates(
 ) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Some(parent) = current_exe.and_then(Path::parent) {
-        candidates.push(parent.join(executable));
+        candidates.extend(
+            oleafly_core::sidecar::bundled_tool_dirs(parent)
+                .into_iter()
+                .map(|folder| folder.join(executable)),
+        );
     }
     candidates.push(manifest_dir.join("target/debug").join(executable));
     candidates.push(manifest_dir.join("target/release").join(executable));
     candidates
 }
 
-fn pandoc_scratch_bases(out_dir: &Path) -> oleafly_core::EngineScratchBases {
+fn engine_scratch_bases(out_dir: &Path) -> oleafly_core::EngineScratchBases {
     let owned = crate::paths::oleafly_root()
         .ok()
         .map(|root| root.join(oleafly_core::ENGINE_TEMP_DIR));
@@ -1812,6 +1841,17 @@ async fn recover_bibliography(
     Ok((notes, Some(biber)))
 }
 
+fn biber_diagnosis_needed(
+    log: &str,
+    output_dir: &Path,
+    stem: &str,
+    bbl_before: Option<crate::biber_toolchain::BblStamp>,
+) -> bool {
+    !log.contains("[Oleafly] Bibliography needs Biber")
+        && (crate::biber_toolchain::tectonic_biber_step_failed(log)
+            || bibliography_recovery_needed(output_dir, stem, bbl_before))
+}
+
 fn bibliography_recovery_needed(
     output_dir: &Path,
     stem: &str,
@@ -1882,13 +1922,15 @@ async fn run_biber_recovery(
         biber.display()
     );
     let biber_args = crate::biber_toolchain::biber_cli_args(&spec.artifacts.output_dir, stem);
-    let outcome = run_supervised_process(
+    let outcome = run_supervised_process_with_environment(
         biber,
         &biber_args,
         &spec.working_dir,
         Some((request.app.clone(), request.log_event.to_owned())),
         COMPILE_TIMEOUT,
         request.cancel,
+        &EngineEnvironment::default()
+            .with_variable(oleafly_core::biber_env::DIRECT_ENV, "1".to_owned()),
     )
     .await;
     match outcome {
@@ -1927,24 +1969,26 @@ async fn rerun_after_biber(
     );
     let (retry_out, retry_code) = match &spec.executable {
         EngineExecutable::BundledSidecar(name) => {
-            run_bundled(
+            run_bundled_with_environment(
                 request.app,
                 name,
                 &spec.args,
-                &spec.working_dir,
+                spec.launch_dir(),
                 request.log_event,
                 request.cancel,
+                &spec.environment,
             )
             .await?
         }
         EngineExecutable::ExternalPath(path) => {
-            run_external(
+            run_external_with_environment(
                 request.app,
                 path,
                 &spec.args,
-                &spec.working_dir,
+                spec.launch_dir(),
                 request.log_event,
                 request.cancel,
+                &spec.environment,
             )
             .await?
         }
@@ -2229,12 +2273,12 @@ fn append_missing_biber_diagnosis(
 ) {
     let needs_diagnosis = request.engine.id() == DocumentEngineId::Latex
         && matches!(request.target, CompileTarget::Main { .. })
-        && bibliography_recovery_needed(
+        && biber_diagnosis_needed(
+            log,
             &spec.artifacts.output_dir,
             crate::paths::ENTRY_STEM,
             bbl_before,
-        )
-        && !log.contains("[Oleafly] Bibliography needs Biber");
+        );
     if !needs_diagnosis {
         return;
     }
@@ -2430,7 +2474,7 @@ async fn execute_compile_spec(
                 request.app,
                 name,
                 &spec.args,
-                &spec.working_dir,
+                spec.launch_dir(),
                 request.log_event,
                 request.cancel,
                 &spec.environment,
@@ -2446,7 +2490,7 @@ async fn execute_compile_spec(
                     request.app,
                     name,
                     &fallback_args,
-                    &spec.working_dir,
+                    spec.launch_dir(),
                     request.log_event,
                     request.cancel,
                     &spec.environment,
@@ -2467,7 +2511,7 @@ async fn execute_compile_spec(
                 request.app,
                 path,
                 &spec.args,
-                &spec.working_dir,
+                spec.launch_dir(),
                 request.log_event,
                 request.cancel,
                 &spec.environment,
@@ -2486,7 +2530,7 @@ async fn execute_compile_spec(
                     request.app,
                     path,
                     &fallback_args,
-                    &spec.working_dir,
+                    spec.launch_dir(),
                     request.log_event,
                     request.cancel,
                     &spec.environment,
@@ -2742,26 +2786,6 @@ fn read_log_bounded(path: &Path) -> std::io::Result<String> {
     let mut output = String::new();
     append_bounded(&mut output, &oleafly_core::rejoin_split_utf8_lines(&bytes));
     Ok(output)
-}
-
-async fn run_bundled(
-    app: &tauri::AppHandle,
-    name: &str,
-    args: &[String],
-    working_dir: &Path,
-    log_event: &str,
-    cancel: Option<&crate::state::CompileCancel>,
-) -> Result<(String, Option<i32>), String> {
-    run_bundled_with_environment(
-        app,
-        name,
-        args,
-        working_dir,
-        log_event,
-        cancel,
-        &EngineEnvironment::default(),
-    )
-    .await
 }
 
 async fn run_bundled_with_environment(
@@ -4283,6 +4307,53 @@ mod tests {
     }
 
     #[test]
+    fn tectonic_starts_outside_the_project_it_compiles() {
+        let project = tempfile::tempdir().unwrap();
+        let build = tempfile::tempdir().unwrap();
+        std::fs::write(project.path().join("tectonic-biber"), "").unwrap();
+        let spec = engine_for("xetex", "main.tex")
+            .unwrap()
+            .compile_spec(
+                build.path(),
+                project.path(),
+                CompileTarget::Main {
+                    main_document: "main.tex",
+                },
+                CompileOptions::default(),
+            )
+            .unwrap();
+
+        let launch = spec.launch_dir();
+        assert!(!launch.starts_with(project.path()));
+        assert_eq!(std::fs::read_dir(launch).unwrap().count(), 0);
+        // Log paths and the Biber recovery step still resolve in the project,
+        // and the project stays off the compile's PATH.
+        assert_eq!(spec.working_dir, project.path());
+        assert_eq!(spec.environment.path_excluded_root(launch), project.path());
+    }
+
+    #[test]
+    fn a_biber_failure_is_diagnosed_though_tectonic_left_no_control_file() {
+        let build = tempfile::tempdir().unwrap();
+        let log = "note: Running external tool /usr/bin/tectonic-biber ...\n\
+                   error: the external tool exited with error code 1\n";
+
+        assert!(biber_diagnosis_needed(log, build.path(), "main", None));
+        assert!(!biber_diagnosis_needed(
+            "[Oleafly] Bibliography needs Biber\n",
+            build.path(),
+            "main",
+            None
+        ));
+        assert!(!biber_diagnosis_needed(
+            "all fine",
+            build.path(),
+            "main",
+            None
+        ));
+    }
+
+    #[test]
     fn latex_contract_preserves_wrapper_args_outputs_and_capabilities() {
         let engine = engine_for("xetex", "main.tex").unwrap();
         let spec = engine
@@ -5464,7 +5535,7 @@ mod tests {
             .join("linked")
             .join("linked-0123456789abcdef0123456789abcdef")
             .join("build");
-        let production = pandoc_scratch_bases(&out);
+        let production = engine_scratch_bases(&out);
         assert_eq!(production.build, out);
         assert_eq!(production.system, std::env::temp_dir());
         assert!(production
@@ -6197,18 +6268,34 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             Path::new("/src/src-tauri"),
             "tectonic",
         );
+        let first = usize::from(cfg!(target_os = "linux"));
         assert_eq!(
-            candidates[0],
+            candidates[first],
             PathBuf::from("/Applications/Oleafly.app/Contents/MacOS/tectonic")
         );
         assert_eq!(
-            candidates[1],
+            candidates[first + 1],
             PathBuf::from("/src/src-tauri/target/debug/tectonic")
         );
         assert_eq!(
-            candidates[2],
+            candidates[first + 2],
             PathBuf::from("/src/src-tauri/target/release/tectonic")
         );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_packages_are_searched_before_the_folder_beside_the_app() {
+        let candidates = tectonic_sidecar_candidates(
+            Some(Path::new("/usr/bin/oleafly-desktop")),
+            Path::new("/src/src-tauri"),
+            "tectonic",
+        );
+        assert_eq!(
+            candidates[0],
+            PathBuf::from("/usr/libexec/oleafly/tectonic")
+        );
+        assert_eq!(candidates[1], PathBuf::from("/usr/bin/tectonic"));
     }
 
     #[test]
@@ -7760,6 +7847,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert!(bibliography_recovery_needed(&build, stem, stale));
         let recovery = std::process::Command::new(&biber)
             .args(crate::biber_toolchain::biber_cli_args(&build, stem))
+            .env(oleafly_core::biber_env::DIRECT_ENV, "1")
             .current_dir(root)
             .output()
             .unwrap();

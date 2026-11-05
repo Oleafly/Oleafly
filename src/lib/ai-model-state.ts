@@ -137,6 +137,10 @@ export function setModelEnabled(list: StoredModel[], id: string, enabled: boolea
   return list.map((m) => (m.id === id ? { ...m, enabled } : m));
 }
 
+export function setAllModelsEnabled(list: StoredModel[], enabled: boolean): StoredModel[] {
+  return list.map((m) => ({ ...m, enabled }));
+}
+
 export function deleteModel(list: StoredModel[], id: string): StoredModel[] {
   return list.filter((m) => m.id !== id);
 }

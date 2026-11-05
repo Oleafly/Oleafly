@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useSidewaysScroll, type SidewaysScrollActive } from "@/hooks/use-sideways-scroll";
 import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
@@ -40,33 +41,10 @@ const FILL_TABS_LIST_CLASS = "flex h-auto gap-1 [&>*]:min-w-0 [&>*]:flex-1";
 const SCROLLABLE_TABS_LIST_CLASS =
   "flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar [&>*]:shrink-0";
 
-function useScrollableTabsList(
-  list: HTMLDivElement | null,
-  scrollable: boolean,
-) {
-  React.useEffect(() => {
-    if (!scrollable || !list) return;
-    const onWheel = (event: WheelEvent) => {
-      if (list.scrollWidth <= list.clientWidth) return;
-      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
-      event.preventDefault();
-      list.scrollLeft += event.deltaY;
-    };
-    const revealActiveTab = () => {
-      list
-        .querySelector<HTMLElement>('[role="tab"][data-state="active"]')
-        ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-    };
-    revealActiveTab();
-    const observer = new MutationObserver(revealActiveTab);
-    observer.observe(list, { subtree: true, attributeFilter: ["data-state"] });
-    list.addEventListener("wheel", onWheel, { passive: false });
-    return () => {
-      observer.disconnect();
-      list.removeEventListener("wheel", onWheel);
-    };
-  }, [list, scrollable]);
-}
+const ACTIVE_TAB: SidewaysScrollActive = {
+  selector: '[role="tab"][data-state="active"]',
+  attribute: "data-state",
+};
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
@@ -82,7 +60,7 @@ const TabsList = React.forwardRef<
     },
     [ref],
   );
-  useScrollableTabsList(list, scrollable);
+  useSidewaysScroll(list, ACTIVE_TAB, scrollable);
   return (
     <TabsSizeContext.Provider value={size ?? "default"}>
       <TabsPrimitive.List

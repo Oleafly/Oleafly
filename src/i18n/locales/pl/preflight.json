@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Wbudowany silnik nie potrafi wyprodukować zadeklarowanego wyniku PDF/UA",
-      "detail": "Ten dokument deklaruje pdfstandard=ua, ale wbudowany silnik nie potrafi zapisać drzewa tagów, więc PDF nosiłby deklarację PDF/UA, której nie spełnia. Skompiluj przez pdfLaTeX albo LuaLaTeX z TeX Live 2025 lub nowszego, albo usuń klucz pdfstandard."
+      "detail": "Ten dokument deklaruje pdfstandard=ua, ale wbudowany silnik nie potrafi zapisać drzewa tagów, więc PDF nosiłby deklarację PDF/UA, której nie spełnia. Skompiluj przez pdfLaTeX albo LuaLaTeX z TeX Live 2026 (lub z TeX Live zaktualizowanego od listopada 2025), albo usuń klucz pdfstandard."
     },
     "table-header-rows": {
       "title": "Wiersz nagłówkowy tabeli nie jest oznaczony jako nagłówek",
@@ -150,6 +150,11 @@
     "compile-rerun-required": {
       "title": "Wymagany jest kolejny przebieg kompilacji",
       "detail": "Ostatni dziennik mówi, że etykiety, cytowania albo spis treści nie są jeszcze ustalone. Kompiluj ponownie, aż ostrzeżenie o powtórnym przebiegu zniknie, i dopiero potem eksportuj."
+    },
+    "compile-tagging-skipped": {
+      "title": "Tagowanie pominięto, bo ten LaTeX jest za stary",
+      "detail": "Ta kompilacja korzystała z wersji LaTeX z {{date}}. Tagowane pliki PDF wymagają wersji LaTeX z {{required}} lub nowszej, więc sprawdzenie wokół \\DocumentMetadata wyłączyło tagowanie, a PDF nie zawiera deklaracji PDF/UA. Aby uzyskać tagowany PDF, użyj przycisku Skompiluj z tagowaniem i zweryfikuj z TeX Live 2026 albo zaktualizuj TeX Live i skompiluj ponownie.",
+      "detailUndated": "Tagowane pliki PDF wymagają wersji LaTeX z {{required}} lub nowszej, a ta kompilacja użyła starszej, więc sprawdzenie wokół \\DocumentMetadata wyłączyło tagowanie, a PDF nie zawiera deklaracji PDF/UA. Aby uzyskać tagowany PDF, użyj przycisku Skompiluj z tagowaniem i zweryfikuj z TeX Live 2026 albo zaktualizuj TeX Live i skompiluj ponownie."
     },
     "compile-duplicate-destination": {
       "title": "Zduplikowane cele w PDF",
@@ -225,7 +230,7 @@
     },
     "pdf-untagged-output": {
       "title": "Ten PDF nie jest tagowany",
-      "detail": "Skompilowany PDF nie zawiera drzewa struktury, więc czytnik ekranu nie dostaje nagłówków, list, tabel ani kolejności czytania, a plik nie może spełnić klauzuli 7.1 normy PDF/UA-1. Tagowany wynik wymaga pdfLaTeX albo LuaLaTeX z TeX Live 2025 lub nowszego z \\DocumentMetadata{tagging=on}. Wbudowany silnik nie potrafi tworzyć tagów. Powyższe kontrole źródła i wyniku nadal obowiązują."
+      "detail": "Skompilowany PDF nie zawiera drzewa struktury, więc czytnik ekranu nie dostaje nagłówków, list, tabel ani kolejności czytania, a plik nie może spełnić klauzuli 7.1 normy PDF/UA-1. Tagowany wynik wymaga pdfLaTeX albo LuaLaTeX z TeX Live 2026 (lub z TeX Live zaktualizowanego od listopada 2025) z \\DocumentMetadata{tagging=on}. Wbudowany silnik nie potrafi tworzyć tagów. Powyższe kontrole źródła i wyniku nadal obowiązują."
     },
     "pdf-structure-missing": {
       "title": "Tagowany PDF nie ma czytelnego drzewa struktury",
@@ -616,7 +621,7 @@
   },
   "prep": {
     "metadataUpdated": "Dodano wymagane klucze tagowania do Twojego \\DocumentMetadata.",
-    "metadataAdded": "Dodano \\DocumentMetadata jako pierwszy wiersz (wymagane, musi poprzedzać \\documentclass).",
+    "metadataAdded": "Dodano \\DocumentMetadata jako pierwszy wiersz (wymagane, musi poprzedzać \\documentclass). Znajduje się w sprawdzeniu wersji: LaTeX starszy niż {{date}}, w tym wbudowany silnik, pomija go i kompiluje dokument bez tagów zamiast zgłosić błąd.",
     "headerRows": "Ustawiono table/header-rows na 1, aby pierwszy wiersz każdej tabeli był tagowany jako komórki nagłówkowe. Zmień tę liczbę, jeśli tabela ma nagłówek innej głębokości.",
     "unicodeMath": "Dodano \\usepackage{unicode-math}, którego ten silnik potrzebuje do tagowanych wzorów.",
     "altPlaceholders_one": "Dodano zastępczy tekst alternatywny do {{count}} obrazu. Zastąp tekst TODO prawdziwym opisem.",
@@ -629,8 +634,8 @@
     "incompatiblePackages_many": "Te pakiety nie są zgodne z tagowaniem: {{packages}}. Treść z nich może trafić do pliku PDF bez tagów. Zastąp je tam, gdzie się da.",
     "incompatiblePackages_other": "Te pakiety nie są zgodne z tagowaniem: {{packages}}. Treść z nich może trafić do pliku PDF bez tagów. Zastąp je tam, gdzie się da.",
     "cautionPackages": "Te pakiety tagują tylko częściowo albo nie mają zapisanego werdyktu o tagowaniu: {{packages}}. Skompiluj i sprawdź drzewo struktury pod kątem luk.",
-    "compileLua": "Skompiluj przygotowane źródło przez LuaLaTeX z TeX Live 2025 lub nowszego, a potem sprawdź wynik ponownie.",
-    "compileAny": "Skompiluj przygotowane źródło przez pdfLaTeX albo LuaLaTeX z TeX Live 2025 lub nowszego, a potem sprawdź wynik ponownie. Dostępne wzory wymagają LuaLaTeX. Wbudowany silnik nie potrafi tworzyć tagów."
+    "compileLua": "Skompiluj przygotowane źródło przez LuaLaTeX z TeX Live 2026 (lub z TeX Live zaktualizowanego od listopada 2025), a potem sprawdź wynik ponownie.",
+    "compileAny": "Skompiluj przygotowane źródło przez pdfLaTeX albo LuaLaTeX z TeX Live 2026 (lub z TeX Live zaktualizowanego od listopada 2025), a potem sprawdź wynik ponownie. Dostępne wzory wymagają LuaLaTeX. Wbudowany silnik nie potrafi tworzyć tagów."
   },
   "gate": {
     "incompatiblePackages_one": "Ten pakiet nie jest zgodny z tagowaniem: {{packages}}. Treść z niego może trafić do pliku PDF bez tagów.",
@@ -729,7 +734,7 @@
   },
   "prepExport": {
     "title": "Eksport dostępny",
-    "intro": "Przygotuj ten dokument do tagowanego wyniku zgodnego z PDF/UA-2. Oleafly doda \\DocumentMetadata z pdfstandard=ua-2 i tagging=on oraz konfigurację tekstu alternatywnego i tabel, którą potrafi uzupełnić. Skompiluj wynik przez pdfLaTeX albo LuaLaTeX z TeX Live 2025 lub nowszego, a potem sprawdź go ponownie. Dostępne wzory wymagają LuaLaTeX. Wbudowany silnik nie potrafi tworzyć tagów.",
+    "intro": "Przygotuj ten dokument do tagowanego wyniku zgodnego z PDF/UA-2. Oleafly doda \\DocumentMetadata z pdfstandard=ua-2 i tagging=on oraz konfigurację tekstu alternatywnego i tabel, którą potrafi uzupełnić. Skompiluj wynik przez pdfLaTeX albo LuaLaTeX z TeX Live 2026 (lub z TeX Live zaktualizowanego od listopada 2025), a potem sprawdź go ponownie. Dostępne wzory wymagają LuaLaTeX. Wbudowany silnik nie potrafi tworzyć tagów.",
     "activeFileFallback": "Oleafly nie mógł wczytać dokumentu głównego, więc sprawdził edytowany plik. Otwórz dokument główny, aby zobaczyć klasę i pakiety, które rzeczywiście wczytuje kompilacja.",
     "prepare": "Przygotuj do eksportu dostępnego",
     "unavailable": "Przygotowanie jest wyłączone dla tej klasy dokumentu. Przełącz się na klasę obsługiwaną przez kod tagujący i uruchom kontrolę ponownie. Dane o zgodności pochodzą od Projektu LaTeX, pobrane {{retrieved}}.",
@@ -740,7 +745,7 @@
     "copy": "Kopiuj źródło",
     "compileTagged": "Skompiluj z tagowaniem i zweryfikuj",
     "compileTaggedWarning": "Systemowy LuaLaTeX może czytać pliki lokalne. Uruchamiaj go tylko dla zaufanego projektu.",
-    "noEngine": "Aby wyprodukować tagowany PDF w aplikacji, włącz silnik w Ustawieniach, w sekcji Silnik LaTeX. Albo skompiluj przygotowane źródło własnym pdfLaTeX lub LuaLaTeX z TeX Live 2025 lub nowszego."
+    "noEngine": "Aby wyprodukować tagowany PDF w aplikacji, włącz silnik w Ustawieniach, w sekcji Silnik LaTeX. Albo skompiluj przygotowane źródło własnym pdfLaTeX lub LuaLaTeX z TeX Live 2026 (lub z TeX Live zaktualizowanego od listopada 2025)."
   },
   "typstStandards": {
     "title": "Standardy PDF",

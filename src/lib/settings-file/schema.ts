@@ -422,6 +422,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
     decimal(EDITOR_FONT_SIZE_RANGE.min, EDITOR_FONT_SIZE_RANGE.max, clampEditorFontSize),
   ),
   pref("appearance.editor.fontFamily", "editorFontFamily", fontFamily),
+  pref("appearance.editor.cjkFontFamily", "editorCjkFontFamily", fontFamily),
   pref("appearance.editor.useAppFont", "editorUsesAppFont", bool),
   pref("appearance.editor.keymap", "editorKeymap", oneOf(EDITOR_KEYMAP_MODES)),
   pref("appearance.editor.tabSize", "editorTabSize", numberOf(EDITOR_TAB_SIZES)),

@@ -304,7 +304,10 @@
         "title": "Slet modellen"
       },
       "deleteTooltip": "Slet modellen",
+      "disableAll": "Slå alle fra",
       "empty": "Ingen modeller endnu. Tilføj en nedenfor.",
+      "enableAll": "Slå alle til",
+      "enabledCount": "{{enabled}} af {{total}} slået til",
       "invalidKey": "Ugyldig API-nøgle.",
       "metadata": {
         "refreshFailed": "Modeldataene kunne ikke opdateres.",
@@ -776,6 +779,10 @@
         "label": "Editorens skrifttype",
         "monospace": "Monospace"
       },
+      "cjkFont": {
+        "description": "Bruges til kinesiske, japanske og koreanske tegn, der mangler i Editorens skrifttype.",
+        "label": "CJK-skrifttype"
+      },
       "useAppFont": {
         "description": "Editoren følger appens skrifttype og skriftstørrelse.",
         "disabledHint": "Slå Brug appens skrifttype fra for at ændre dette.",
@@ -1208,10 +1215,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Føj til projektet",
       "allDownloaded": "Alt er hentet",
       "download": "Hent",
       "downloadAll": "Hent alle"
     },
+    "fontAddedToProject": "{{family}} er føjet til dette projekt. Brug skrifttypen ved at angive navnet, for eksempel {{example}}.",
+    "fontAlreadyInProject": "{{family}} findes allerede i dette projekt.",
     "yourTemplates": {
       "toggle": "Administrer dine skabeloner",
       "import": "Importer skabelon",
@@ -1261,7 +1271,7 @@
       "empty": "Der er ingen skrifttyper at hente.",
       "engineNote": "LuaLaTeX-motoren (til taggede, tilgængelige PDF-filer) styres i afsnittet om LaTeX-motoren.",
       "heading": "Skrifttyper",
-      "tooltip": "Nogle skabeloner bruger open source-skrifttyper af høj kvalitet. For at holde Oleafly lille hentes de skrifttyper først, når der er brug for dem: når du opretter sådan en skabelon, hentes skrifttyperne og kopieres ind i projektet, så det er selvstændigt og kan kompileres offline. Du kan også hente dem på forhånd her eller fjerne dem for at frigøre plads."
+      "tooltip": "Nogle skabeloner bruger disse open source-skrifttyper. De hentes kun, når der er brug for dem, så Oleafly holdes lille. Når du opretter sådan en skabelon, kopieres skrifttyperne ind i projektet, så det kan kompileres offline. Typst-projekter kan bruge en hentet skrifttype ved at angive navnet, medmindre projektet slår systemets skrifttyper fra. Til LaTeX skal du åbne et projekt og klikke på »Føj til projektet« for at kopiere skrifttypen ind i det."
     },
     "packProgress": "{{index}} af {{total}}",
     "progress": "{{label}} ({{index}} af {{total}})",
@@ -1289,6 +1299,7 @@
       "fontDownloadFailed": "Kunne ikke hente skrifttypen.",
       "fontsDownloadFailed": "Kunne ikke hente skrifttyperne.",
       "fontRemoveFailed": "Kunne ikke fjerne skrifttypen.",
+      "fontAddFailed": "Kunne ikke føje skrifttypen til dette projekt.",
       "packDownloadFailed": "Kunne ikke hente skabelonpakken.",
       "packsDownloadFailed": "Kunne ikke hente skabelonpakkerne.",
       "packRemoveFailed": "Kunne ikke fjerne skabelonpakken.",

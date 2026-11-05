@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "同梱のエンジンでは、宣言された PDF/UA の出力を作れません",
-      "detail": "この文書は pdfstandard=ua を宣言していますが、同梱のエンジンはタグツリーを書き出せないため、PDF は満たしていない PDF/UA を名乗ることになります。TeX Live 2025 以降の pdfLaTeX か LuaLaTeX でコンパイルするか、pdfstandard のキーを外してください。"
+      "detail": "この文書は pdfstandard=ua を宣言していますが、同梱のエンジンはタグツリーを書き出せないため、PDF は満たしていない PDF/UA を名乗ることになります。TeX Live 2026（または 2025 年 11 月以降に更新した TeX Live）の pdfLaTeX か LuaLaTeX でコンパイルするか、pdfstandard のキーを外してください。"
     },
     "table-header-rows": {
       "title": "表の見出し行が見出しとして指定されていません",
@@ -142,6 +142,11 @@
       "title": "もう一度コンパイルする必要があります",
       "detail": "直近のログによると、ラベル、引用、目次が確定していません。書き出す前に、再コンパイルの警告が消えるまでコンパイルしてください。"
     },
+    "compile-tagging-skipped": {
+      "title": "この LaTeX は古すぎるため、タグ付けをスキップしました",
+      "detail": "このビルドでは {{date}} 版の LaTeX が実行されました。タグ付き PDF には {{required}} 以降の LaTeX が必要なため、\\DocumentMetadata まわりのチェックがタグ付けをオフにし、PDF は PDF/UA への適合を主張していません。タグ付き PDF が必要な場合は、TeX Live 2026 で「タグ付きでコンパイルして確認」を使うか、TeX Live を更新してもう一度コンパイルしてください。",
+      "detailUndated": "タグ付き PDF には {{required}} 以降の LaTeX が必要ですが、このビルドではそれより古いものが実行されたため、\\DocumentMetadata まわりのチェックがタグ付けをオフにし、PDF は PDF/UA への適合を主張していません。タグ付き PDF が必要な場合は、TeX Live 2026 で「タグ付きでコンパイルして確認」を使うか、TeX Live を更新してもう一度コンパイルしてください。"
+    },
     "compile-duplicate-destination": {
       "title": "PDF の移動先が重複しています",
       "detail": "2 つのアンカーが同じ移動先を共有しているため、リンクやしおりが誤った場所へ飛ぶことがあります。多くはラベルの重複やページ番号のリセットが原因です。"
@@ -201,7 +206,7 @@
     },
     "pdf-untagged-output": {
       "title": "この PDF はタグ付けされていません",
-      "detail": "コンパイルされた PDF に構造ツリーがないため、スクリーンリーダーは見出し、リスト、表、読み上げ順を得られず、PDF/UA-1 の 7.1 項も満たせません。タグ付きの出力には、TeX Live 2025 以降の pdfLaTeX か LuaLaTeX と \\DocumentMetadata{tagging=on} が必要です。同梱のエンジンはタグを作れません。それまでの間も、上のソースと出力のチェックは有効です。"
+      "detail": "コンパイルされた PDF に構造ツリーがないため、スクリーンリーダーは見出し、リスト、表、読み上げ順を得られず、PDF/UA-1 の 7.1 項も満たせません。タグ付きの出力には、TeX Live 2026（または 2025 年 11 月以降に更新した TeX Live）の pdfLaTeX か LuaLaTeX と \\DocumentMetadata{tagging=on} が必要です。同梱のエンジンはタグを作れません。それまでの間も、上のソースと出力のチェックは有効です。"
     },
     "pdf-structure-missing": {
       "title": "タグ付き PDF に読み取れる構造ツリーがありません",
@@ -568,15 +573,15 @@
   },
   "prep": {
     "metadataUpdated": "\\DocumentMetadata に、タグ付けに必要なキーを追加しました。",
-    "metadataAdded": "\\DocumentMetadata を先頭行に追加しました（必須で、\\documentclass より前に置く必要があります）。",
+    "metadataAdded": "\\DocumentMetadata を先頭行に追加しました（必須で、\\documentclass より前に置く必要があります）。この行はバージョンチェックの中に置かれ、{{date}} より古い LaTeX（同梱のエンジンを含む）では読み飛ばされて、失敗せずにタグなしでコンパイルされます。",
     "headerRows": "各表の 1 行目が見出しセルとしてタグ付けされるよう、table/header-rows を 1 に設定しました。見出しの行数が違う表がある場合は、数値を変えてください。",
     "unicodeMath": "このエンジンでタグ付き数式に必要な \\usepackage{unicode-math} を追加しました。",
     "altPlaceholders_other": "{{count}} 件の画像に代替テキストの仮の記述を追加しました。TODO の文言を実際の説明に置き換えてください。",
     "titleRequired": "PDF/UA には、リーダーが表示する文書のタイトルが必要です。hyperref を読み込み、\\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} を設定してください。",
     "incompatiblePackages_other": "次のパッケージはタグ付けに対応していません: {{packages}}。これらからの内容はタグなしで PDF に入ることがあります。置き換えられるものは置き換えてください。",
     "cautionPackages": "次のパッケージは一部しかタグ付けしないか、タグ付けの判定が記録されていません: {{packages}}。コンパイルして、構造ツリーに抜けがないか確認してください。",
-    "compileLua": "準備したソースを TeX Live 2025 以降の LuaLaTeX でコンパイルしてから、出力を確認し直してください。",
-    "compileAny": "準備したソースを TeX Live 2025 以降の pdfLaTeX か LuaLaTeX でコンパイルしてから、出力を確認し直してください。アクセシブルな数式には LuaLaTeX が必要です。同梱のエンジンはタグを作れません。"
+    "compileLua": "準備したソースを TeX Live 2026（または 2025 年 11 月以降に更新した TeX Live）の LuaLaTeX でコンパイルしてから、出力を確認し直してください。",
+    "compileAny": "準備したソースを TeX Live 2026（または 2025 年 11 月以降に更新した TeX Live）の pdfLaTeX か LuaLaTeX でコンパイルしてから、出力を確認し直してください。アクセシブルな数式には LuaLaTeX が必要です。同梱のエンジンはタグを作れません。"
   },
   "gate": {
     "incompatiblePackages_other": "次のパッケージはタグ付けに対応していません: {{packages}}。これらからの内容はタグなしで PDF に入ることがあります。",
@@ -660,7 +665,7 @@
   },
   "prepExport": {
     "title": "アクセシブルな書き出し",
-    "intro": "この文書を、PDF/UA-2 を目指すタグ付きの出力向けに準備します。Oleafly は pdfstandard=ua-2 と tagging=on を指定した \\DocumentMetadata に加え、埋められる範囲の代替テキストと表の設定を追加します。結果を TeX Live 2025 以降の pdfLaTeX か LuaLaTeX でコンパイルしてから、確認し直してください。アクセシブルな数式には LuaLaTeX が必要です。同梱のエンジンはタグを作れません。",
+    "intro": "この文書を、PDF/UA-2 を目指すタグ付きの出力向けに準備します。Oleafly は pdfstandard=ua-2 と tagging=on を指定した \\DocumentMetadata に加え、埋められる範囲の代替テキストと表の設定を追加します。結果を TeX Live 2026（または 2025 年 11 月以降に更新した TeX Live）の pdfLaTeX か LuaLaTeX でコンパイルしてから、確認し直してください。アクセシブルな数式には LuaLaTeX が必要です。同梱のエンジンはタグを作れません。",
     "activeFileFallback": "Oleafly はメイン文書を読み込めなかったため、編集中のファイルを確認しました。実際のビルドで読み込まれるクラスとパッケージを見るには、メイン文書を開いてください。",
     "prepare": "アクセシブルな書き出しの準備",
     "unavailable": "このドキュメントクラスでは準備を利用できません。タグ付けのコードが対応しているクラスに変えてから、チェックをやり直してください。対応状況のデータは LaTeX Project によるもので、取得日は {{retrieved}} です。",
@@ -671,7 +676,7 @@
     "copy": "ソースをコピー",
     "compileTagged": "タグ付きでコンパイルして確認",
     "compileTaggedWarning": "システムの LuaLaTeX はローカルのファイルを読めます。信頼できるプロジェクトでのみ実行してください。",
-    "noEngine": "アプリ内でタグ付き PDF を作るには、設定の「LaTeX エンジン」でエンジンを有効にしてください。または、準備したソースを、TeX Live 2025 以降の自分の pdfLaTeX か LuaLaTeX でコンパイルしてください。"
+    "noEngine": "アプリ内でタグ付き PDF を作るには、設定の「LaTeX エンジン」でエンジンを有効にしてください。または、準備したソースを、TeX Live 2026（または 2025 年 11 月以降に更新した TeX Live）の自分の pdfLaTeX か LuaLaTeX でコンパイルしてください。"
   },
   "typstStandards": {
     "title": "PDF 規格",

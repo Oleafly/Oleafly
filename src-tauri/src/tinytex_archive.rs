@@ -309,14 +309,19 @@ fn inspect_zip(file: std::fs::File, policy: ArchiveMemberPolicy<'_>) -> Result<(
     let mut manifest = ArchiveManifest::new(policy);
     for index in 0..zip.len() {
         let entry = zip.by_index(index).map_err(|e| e.to_string())?;
-        let path = entry
-            .enclosed_name()
-            .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?;
+        if entry.enclosed_name().is_none() {
+            return Err("TinyTeX archive contains an unsafe member path.".into());
+        }
+        // The reviewed manifest hashes each name as the archive stores it.
+        // `enclosed_name()` rebuilds the path on the host, which drops a
+        // directory's trailing slash and joins components with `\` on Windows.
+        let name = entry.name().map_err(|e| e.to_string())?;
+        let path = Path::new(name.as_ref());
         let kind = if entry.is_dir() { "directory" } else { "file" };
         if let Some(mode) = zip_member_mode(&entry) {
-            validate_zip_member_mode(&path, mode, entry.is_dir())?;
+            validate_zip_member_mode(path, mode, entry.is_dir())?;
         }
-        manifest.record(kind, &path, entry.size(), None)?;
+        manifest.record(kind, path, entry.size(), None)?;
     }
     manifest.finish()
 }
@@ -564,5 +569,31 @@ mod tests {
             let error = inspect_zip(std::fs::File::open(&archive).unwrap(), policy()).unwrap_err();
             assert!(error.contains("unsafe permissions"), "{mode:o}: {error}");
         }
+    }
+
+    #[test]
+    fn zip_manifest_hashes_the_stored_member_names() {
+        let directory = tempfile::tempdir().unwrap();
+        let archive = directory.path().join("reviewed.zip");
+        let file = std::fs::File::create(&archive).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        writer.add_directory("TinyTeX/bin/", options).unwrap();
+        writer
+            .start_file("TinyTeX/bin/windows/tlmgr.bat", options)
+            .unwrap();
+        writer.write_all(b"x").unwrap();
+        writer.finish().unwrap();
+        let digest = manifest_digest(&[
+            ("directory", "TinyTeX/bin/", 0, None),
+            ("file", "TinyTeX/bin/windows/tlmgr.bat", 1, None),
+        ]);
+        let policy = ArchiveMemberPolicy {
+            members: 2,
+            expanded_bytes: 1,
+            manifest_sha256: &digest,
+        };
+
+        inspect_zip(std::fs::File::open(&archive).unwrap(), policy).unwrap();
     }
 }

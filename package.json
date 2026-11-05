@@ -1,7 +1,7 @@
 {
   "name": "oleafly",
   "private": true,
-  "version": "0.4.9",
+  "version": "0.4.11",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "engines": {
@@ -118,6 +118,7 @@
     "@tauri-apps/plugin-shell": "^2.3.6",
     "@tauri-apps/plugin-updater": "~2.14.0",
     "@tiptap/core": "^3.30.4",
+    "@tiptap/extension-code-block": "^3.29.2",
     "@tiptap/extension-image": "^3.31.2",
     "@tiptap/extension-link": "^3.29.2",
     "@tiptap/extension-table": "^3.31.2",

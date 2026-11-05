@@ -230,3 +230,30 @@ describe("tagging log channel", () => {
     expect(findings.every((finding) => finding.method === "compile-log")).toBe(true);
   });
 });
+
+describe("compile-tagging-skipped", () => {
+  const NOTICE = "Tagging is off: tagged PDF needs LaTeX 2025-11-01 or newer.";
+
+  it("names the old LaTeX the build ran when the guard skipped tagging", () => {
+    const log = ["LaTeX2e <2024-11-01> patch level 2", NOTICE, "Output written on main.pdf"].join("\n");
+    const finding = runCompileRules({ status: "success", log }).find((f) => f.id === "compile-tagging-skipped");
+    expect(finding?.severity).toBe("warning");
+    expect(finding?.lens).toBe("a11y");
+    expect(finding?.detail).toEqual({
+      key: "rules.compile-tagging-skipped.detail",
+      params: { date: "2024-11-01", required: "2025-11-01" },
+    });
+  });
+
+  it("falls back to the undated wording when the log has no kernel banner", () => {
+    const finding = runCompileRules({ status: "success", log: NOTICE }).find(
+      (f) => f.id === "compile-tagging-skipped",
+    );
+    expect(finding?.detail.key).toBe("rules.compile-tagging-skipped.detailUndated");
+  });
+
+  it("stays quiet when tagging ran", () => {
+    const log = "LaTeX2e <2026-11-01>\nOutput written on main.pdf";
+    expect(runCompileRules({ status: "success", log }).some((f) => f.id === "compile-tagging-skipped")).toBe(false);
+  });
+});

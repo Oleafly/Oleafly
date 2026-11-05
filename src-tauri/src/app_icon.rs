@@ -134,6 +134,8 @@ fn apply<R: Runtime>(app: &AppHandle<R>, variant: AppIconVariant) {
     mac::set_application_icon(app, variant);
     #[cfg(not(target_os = "macos"))]
     windowed::set_every_window_icon(app, variant);
+    #[cfg(target_os = "linux")]
+    crate::system_integration::refresh_launcher_icon();
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -160,7 +162,12 @@ pub(crate) fn decode_png(bytes: &[u8]) -> Option<Rgba> {
     })
 }
 
-#[cfg(any(windows, test))]
+/// GTK on X11 silently drops a window icon of 512 pixels or more. Without one, an AppImage
+/// that is not in the applications menu gets the generic icon in the taskbar.
+#[cfg(any(all(not(windows), not(target_os = "macos")), test))]
+pub(crate) const GTK_WINDOW_ICON_EDGE: u32 = 256;
+
+#[cfg(any(not(target_os = "macos"), test))]
 pub(crate) fn shrink(image: &Rgba, edge: u32) -> Option<Rgba> {
     if edge == 0 || image.width != image.height || !image.width.is_multiple_of(edge) {
         return None;
@@ -377,12 +384,15 @@ mod windowed {
 
     #[cfg(windows)]
     const WINDOW_ICON_EDGE: u32 = 64;
+    #[cfg(not(windows))]
+    const WINDOW_ICON_EDGE: u32 = super::GTK_WINDOW_ICON_EDGE;
 
     pub(crate) fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
         tauri::plugin::Builder::new("oleafly-app-icon")
             .on_window_ready(|window| {
                 let variant = current();
-                if variant != AppIconVariant::default() {
+                // Off Windows, Tauri's own default is the 512 pixel icon.png, which GTK drops.
+                if cfg!(not(windows)) || variant != AppIconVariant::default() {
                     set_window_icon(&window, variant);
                 }
             })
@@ -396,7 +406,7 @@ mod windowed {
     }
 
     fn set_window_icon<R: Runtime>(window: &Window<R>, variant: AppIconVariant) {
-        let default_icon = if variant == AppIconVariant::default() {
+        let default_icon = if cfg!(windows) && variant == AppIconVariant::default() {
             window.app_handle().default_window_icon().cloned()
         } else {
             None
@@ -415,14 +425,8 @@ mod windowed {
         Some(Image::new(&rgba.pixels, rgba.width, rgba.height))
     }
 
-    #[cfg(windows)]
     fn window_sized(image: Rgba) -> Rgba {
         super::shrink(&image, WINDOW_ICON_EDGE).unwrap_or(image)
-    }
-
-    #[cfg(not(windows))]
-    fn window_sized(image: Rgba) -> Rgba {
-        image
     }
 }
 
@@ -601,6 +605,19 @@ mod tests {
             assert_eq!(small.pixels.len(), 64 * 64 * 4);
             assert_eq!(pixel(&small, 0, 0)[3], 0);
             assert_eq!(pixel(&small, 32, 32)[3], 255);
+        }
+    }
+
+    #[test]
+    fn shrinks_the_icons_to_a_window_icon_gtk_keeps() {
+        // GDK drops an icon whose pixels and 2-value header do not fit in 262,144 values.
+        for variant in AppIconVariant::ALL {
+            let image = decode_png(variant.png()).unwrap();
+            assert!(image.width * image.height + 2 > 262_144, "{variant:?}");
+            let small = shrink(&image, GTK_WINDOW_ICON_EDGE).unwrap();
+            assert_eq!((small.width, small.height), (256, 256));
+            assert!(small.width * small.height + 2 <= 262_144);
+            assert_eq!(pixel(&small, 128, 128)[3], 255);
         }
     }
 

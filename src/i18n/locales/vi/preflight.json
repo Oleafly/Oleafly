@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Engine đi kèm không thể tạo đầu ra PDF/UA đã khai báo",
-      "detail": "Tài liệu này khai báo pdfstandard=ua, nhưng engine đi kèm không ghi được cây thẻ, nên PDF sẽ mang tuyên bố PDF/UA mà nó không đạt. Hãy biên dịch bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên, hoặc gỡ khoá pdfstandard."
+      "detail": "Tài liệu này khai báo pdfstandard=ua, nhưng engine đi kèm không ghi được cây thẻ, nên PDF sẽ mang tuyên bố PDF/UA mà nó không đạt. Hãy biên dịch bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2026 (hoặc TeX Live đã cập nhật từ tháng 11 năm 2025), hoặc gỡ khoá pdfstandard."
     },
     "table-header-rows": {
       "title": "Hàng tiêu đề bảng chưa được đánh dấu là tiêu đề",
@@ -142,6 +142,11 @@
       "title": "Cần thêm một lượt biên dịch",
       "detail": "Log mới nhất nói nhãn, trích dẫn hoặc mục lục chưa ổn định. Hãy biên dịch lại cho tới khi cảnh báo chạy lại biến mất trước khi xuất."
     },
+    "compile-tagging-skipped": {
+      "title": "Đã bỏ qua gắn thẻ vì LaTeX này quá cũ",
+      "detail": "Lần biên dịch này chạy LaTeX phát hành ngày {{date}}. PDF có thẻ cần LaTeX từ {{required}} trở lên, nên bước kiểm tra quanh \\DocumentMetadata đã tắt việc gắn thẻ và PDF không đưa ra tuyên bố PDF/UA nào. Để có PDF có thẻ, hãy dùng \"Biên dịch có thẻ và xác minh\" với TeX Live 2026, hoặc cập nhật TeX Live của bạn rồi biên dịch lại.",
+      "detailUndated": "PDF có thẻ cần LaTeX từ {{required}} trở lên, mà lần biên dịch này chạy bản cũ hơn, nên bước kiểm tra quanh \\DocumentMetadata đã tắt việc gắn thẻ và PDF không đưa ra tuyên bố PDF/UA nào. Để có PDF có thẻ, hãy dùng \"Biên dịch có thẻ và xác minh\" với TeX Live 2026, hoặc cập nhật TeX Live của bạn rồi biên dịch lại."
+    },
     "compile-duplicate-destination": {
       "title": "Đích PDF trùng nhau",
       "detail": "Hai neo chia sẻ cùng đích, nên liên kết hoặc dấu trang có thể nhảy sai chỗ. Điều này thường do nhãn trùng hoặc đặt lại số trang."
@@ -201,7 +206,7 @@
     },
     "pdf-untagged-output": {
       "title": "PDF này không được gắn thẻ",
-      "detail": "PDF đã biên dịch không có cây cấu trúc, nên trình đọc màn hình không nhận được tiêu đề, danh sách, bảng hoặc thứ tự đọc, và tệp không thể đáp ứng điều 7.1 của PDF/UA-1. Đầu ra có thẻ cần pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên với \\DocumentMetadata{tagging=on}. Engine đi kèm không tạo được thẻ. Các kiểm tra nguồn và đầu ra ở trên vẫn áp dụng trong lúc chờ."
+      "detail": "PDF đã biên dịch không có cây cấu trúc, nên trình đọc màn hình không nhận được tiêu đề, danh sách, bảng hoặc thứ tự đọc, và tệp không thể đáp ứng điều 7.1 của PDF/UA-1. Đầu ra có thẻ cần pdfLaTeX hoặc LuaLaTeX từ TeX Live 2026 (hoặc TeX Live đã cập nhật từ tháng 11 năm 2025) với \\DocumentMetadata{tagging=on}. Engine đi kèm không tạo được thẻ. Các kiểm tra nguồn và đầu ra ở trên vẫn áp dụng trong lúc chờ."
     },
     "pdf-structure-missing": {
       "title": "PDF có thẻ nhưng không có cây cấu trúc đọc được",
@@ -568,15 +573,15 @@
   },
   "prep": {
     "metadataUpdated": "Đã thêm các khoá gắn thẻ cần thiết vào \\DocumentMetadata của bạn.",
-    "metadataAdded": "Đã thêm \\DocumentMetadata làm dòng đầu (bắt buộc, phải đứng trước \\documentclass).",
+    "metadataAdded": "Đã thêm \\DocumentMetadata làm dòng đầu (bắt buộc, phải đứng trước \\documentclass). Dòng này nằm trong một bước kiểm tra phiên bản: LaTeX cũ hơn {{date}}, kể cả engine đi kèm, sẽ bỏ qua nó và biên dịch tài liệu không có thẻ thay vì báo lỗi.",
     "headerRows": "Đã đặt table/header-rows thành 1 để hàng đầu của mỗi bảng được gắn thẻ là ô tiêu đề. Hãy đổi số nếu bảng có độ sâu tiêu đề khác.",
     "unicodeMath": "Đã thêm \\usepackage{unicode-math}, thứ engine này cần cho toán có thẻ.",
     "altPlaceholders_other": "Đã thêm chỗ giữ chỗ văn bản thay thế cho {{count}} hình. Hãy thay văn bản TODO bằng mô tả thật.",
     "titleRequired": "PDF/UA cần tiêu đề tài liệu mà trình đọc hiển thị. Hãy nạp hyperref và đặt \\hypersetup{pdftitle={Tiêu đề của bạn}, pdfdisplaydoctitle=true}.",
     "incompatiblePackages_other": "Các gói này không tương thích với gắn thẻ: {{packages}}. Nội dung từ chúng có thể vào PDF mà không có thẻ. Hãy thay thế những gì có thể.",
     "cautionPackages": "Các gói này chỉ gắn thẻ một phần, hoặc chưa có kết luận gắn thẻ: {{packages}}. Hãy biên dịch và kiểm tra cây cấu trúc để tìm lỗ hổng.",
-    "compileLua": "Hãy biên dịch nguồn đã chuẩn bị bằng LuaLaTeX từ TeX Live 2025 trở lên, rồi kiểm tra lại đầu ra.",
-    "compileAny": "Hãy biên dịch nguồn đã chuẩn bị bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên, rồi kiểm tra lại đầu ra. Toán tiếp cận được cần LuaLaTeX. Engine đi kèm không tạo được thẻ."
+    "compileLua": "Hãy biên dịch nguồn đã chuẩn bị bằng LuaLaTeX từ TeX Live 2026 (hoặc TeX Live đã cập nhật từ tháng 11 năm 2025), rồi kiểm tra lại đầu ra.",
+    "compileAny": "Hãy biên dịch nguồn đã chuẩn bị bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2026 (hoặc TeX Live đã cập nhật từ tháng 11 năm 2025), rồi kiểm tra lại đầu ra. Toán tiếp cận được cần LuaLaTeX. Engine đi kèm không tạo được thẻ."
   },
   "gate": {
     "incompatiblePackages_other": "Các gói này không tương thích với gắn thẻ: {{packages}}. Nội dung từ chúng có thể vào PDF mà không có thẻ.",
@@ -660,7 +665,7 @@
   },
   "prepExport": {
     "title": "Xuất trợ năng",
-    "intro": "Chuẩn bị tài liệu này cho đầu ra có thẻ nhắm PDF/UA-2. Oleafly thêm \\DocumentMetadata với pdfstandard=ua-2 và tagging=on, cùng thiết lập văn bản thay thế và bảng mà nó điền được. Hãy biên dịch kết quả bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên, rồi kiểm tra lại. Toán tiếp cận được cần LuaLaTeX. Engine đi kèm không tạo được thẻ.",
+    "intro": "Chuẩn bị tài liệu này cho đầu ra có thẻ nhắm PDF/UA-2. Oleafly thêm \\DocumentMetadata với pdfstandard=ua-2 và tagging=on, cùng thiết lập văn bản thay thế và bảng mà nó điền được. Hãy biên dịch kết quả bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2026 (hoặc TeX Live đã cập nhật từ tháng 11 năm 2025), rồi kiểm tra lại. Toán tiếp cận được cần LuaLaTeX. Engine đi kèm không tạo được thẻ.",
     "activeFileFallback": "Oleafly không tải được tài liệu chính, nên đã kiểm tra tệp bạn đang sửa. Hãy mở tài liệu chính để thấy lớp và gói mà bản dựng thực sự nạp.",
     "prepare": "Chuẩn bị xuất trợ năng",
     "unavailable": "Chuẩn bị bị tắt cho lớp tài liệu này. Hãy chuyển sang lớp mà mã gắn thẻ hỗ trợ, rồi chạy kiểm tra lại. Dữ liệu tương thích từ LaTeX Project, truy xuất {{retrieved}}.",
@@ -671,7 +676,7 @@
     "copy": "Sao chép nguồn",
     "compileTagged": "Biên dịch có thẻ và xác minh",
     "compileTaggedWarning": "LuaLaTeX hệ thống có thể đọc tệp cục bộ. Chỉ chạy với dự án bạn tin tưởng.",
-    "noEngine": "Để tạo PDF có thẻ trong ứng dụng, hãy bật engine trong Cài đặt, LaTeX Engine. Hoặc biên dịch nguồn đã chuẩn bị bằng pdfLaTeX hoặc LuaLaTeX từ TeX Live 2025 trở lên của bạn."
+    "noEngine": "Để tạo PDF có thẻ trong ứng dụng, hãy bật engine trong Cài đặt, LaTeX Engine. Hoặc biên dịch nguồn đã chuẩn bị bằng pdfLaTeX hoặc LuaLaTeX của bạn từ TeX Live 2026 (hoặc TeX Live đã cập nhật từ tháng 11 năm 2025)."
   },
   "typstStandards": {
     "title": "Chuẩn PDF",

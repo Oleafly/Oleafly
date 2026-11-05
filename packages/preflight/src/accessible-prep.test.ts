@@ -6,10 +6,27 @@ const DOC = "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}
 describe("prepareAccessibleSource: DocumentMetadata", () => {
   it("adds \\DocumentMetadata as the very first line when missing", () => {
     const { output } = prepareAccessibleSource(DOC);
-    expect(output.startsWith("\\DocumentMetadata{")).toBe(true);
+    expect(output.startsWith("\\IfFormatAtLeastTF{2025-11-01}{\\DocumentMetadata{")).toBe(true);
     expect(output).toMatch(/tagging\s*=\s*on/);
     expect(output).toMatch(/pdfstandard\s*=\s*ua-2/);
     expect(output).toMatch(/lang\s*=/);
+  });
+
+  it("guards the line so older LaTeX skips it and says why", () => {
+    const { output } = prepareAccessibleSource(DOC);
+    const firstLine = output.split("\n")[0];
+    expect(firstLine).toBe(
+      "\\IfFormatAtLeastTF{2025-11-01}{\\DocumentMetadata{lang=en-US,pdfstandard=ua-2,tagging=on}}" +
+        "{\\typeout{Tagging is off: tagged PDF needs LaTeX 2025-11-01 or newer.}}",
+    );
+  });
+
+  it("updates the guarded line in place when run again", () => {
+    const once = prepareAccessibleSource(DOC).output;
+    const twice = prepareAccessibleSource(once).output;
+    expect(twice).toBe(once);
+    expect(twice.match(/\\DocumentMetadata/g) ?? []).toHaveLength(1);
+    expect(twice.match(/\\IfFormatAtLeastTF/g) ?? []).toHaveLength(1);
   });
 
   it("uses the requested language", () => {
@@ -24,9 +41,10 @@ describe("prepareAccessibleSource: DocumentMetadata", () => {
     expect(output).toMatch(/tagging\s*=\s*on/);
   });
 
-  it("records the change", () => {
+  it("records the change with the LaTeX date the guard checks", () => {
     const { changes } = prepareAccessibleSource(DOC);
-    expect(changes.some((c) => c.summary.key === "prep.metadataAdded")).toBe(true);
+    const added = changes.find((c) => c.summary.key === "prep.metadataAdded");
+    expect(added?.summary.params).toEqual({ date: "2025-11-01" });
   });
 });
 

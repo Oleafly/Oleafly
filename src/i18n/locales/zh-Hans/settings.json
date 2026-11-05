@@ -303,7 +303,10 @@
         "title": "删除模型"
       },
       "deleteTooltip": "删除模型",
+      "disableAll": "全部禁用",
       "empty": "还没有模型。请在下方添加一个。",
+      "enableAll": "全部启用",
+      "enabledCount": "已启用 {{enabled}}/{{total}} 个",
       "invalidKey": "API 密钥无效。",
       "metadata": {
         "refreshFailed": "无法刷新模型数据。",
@@ -770,6 +773,10 @@
         "label": "编辑器字体",
         "monospace": "等宽"
       },
+      "cjkFont": {
+        "description": "用于“编辑器字体”中没有的中文、日文和韩文字符。",
+        "label": "中日韩字体"
+      },
       "useAppFont": {
         "description": "编辑器使用应用的字体和字号。",
         "disabledHint": "关闭“使用应用字体”后才能更改此项。",
@@ -1201,10 +1208,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "添加到项目",
       "allDownloaded": "已全部下载",
       "download": "下载",
       "downloadAll": "全部下载"
     },
+    "fontAddedToProject": "已将 {{family}} 添加到此项目。可以按名称使用，例如 {{example}}。",
+    "fontAlreadyInProject": "{{family}} 已在此项目中。",
     "yourTemplates": {
       "toggle": "管理你的模板",
       "import": "导入模板",
@@ -1254,7 +1264,7 @@
       "empty": "暂无可下载的字体",
       "engineNote": "LuaLaTeX 引擎（用于生成带标签的无障碍 PDF）在“LaTeX 引擎”部分中管理。",
       "heading": "字体",
-      "tooltip": "部分模板使用优质的开源字体。为了让 Oleafly 保持小巧，这些字体按需下载：当你基于此类模板创建项目时，字体会被获取并复制到项目中，让项目保持独立自包含，可离线编译。你也可以在此预先下载这些字体，或将其移除以释放空间。"
+      "tooltip": "部分模板使用这些开源字体。为了让 Oleafly 保持小巧，这些字体仅在需要时下载。基于此类模板创建项目时，字体会复制到项目中，因此可以离线编译。Typst 项目可以按名称使用已下载的字体，除非项目关闭了系统字体。如需在 LaTeX 中使用，请打开项目并点击“添加到项目”，将字体复制到项目中。"
     },
     "packProgress": "{{index}} / {{total}}",
     "progress": "{{label}}（{{index}} / {{total}}）",
@@ -1282,6 +1292,7 @@
       "fontDownloadFailed": "无法下载字体。",
       "fontsDownloadFailed": "无法下载这些字体。",
       "fontRemoveFailed": "无法移除字体。",
+      "fontAddFailed": "无法将字体添加到此项目。",
       "packDownloadFailed": "无法下载模板包。",
       "packsDownloadFailed": "无法下载这些模板包。",
       "packRemoveFailed": "无法移除模板包。",

@@ -329,7 +329,7 @@ Tectonic、Typst 和 Pandoc 随应用提供，因此新项目无需安装任何�
 | Linux · x86_64 | AppImage、DEB 或 RPM | [![下载 Linux 版（x86_64）](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage、DEB 或 RPM | [![下载 Linux 版（ARM64）](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-在 x86_64 上，Linux 软件包需要 glibc 2.35 或更高版本（Ubuntu 22.04 或更高版本）。ARM64 软件包在 Ubuntu 24.04 上构建。发行版包含签名的更新产物，应用内更新器会在安装任何内容之前验证签名。
+Linux 软件包需要 glibc 2.35 或更高版本（Ubuntu 22.04、Debian 12 或更高版本）。发行版包含签名的更新产物，应用内更新器会在安装任何内容之前验证签名。
 
 ## 常见问题
 
@@ -400,7 +400,7 @@ Oleafly 由 [Prajwal Murthy](https://github.com/prajwal-svm) 和贡献者共同�
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.9},
+  version = {0.4.11},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

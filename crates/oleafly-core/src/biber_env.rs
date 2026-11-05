@@ -6,6 +6,10 @@ use std::path::{Path, PathBuf};
 
 pub const UNPACK_ENV: &str = "PAR_GLOBAL_TMPDIR";
 pub const LAST_USED_MARKER: &str = ".last-used";
+/// Set when Oleafly starts Biber itself. Tectonic builds Biber's command line
+/// from what the document writes, so the patched Biber ignores options without
+/// this (see `scripts/biber/harden-biber.mjs`).
+pub const DIRECT_ENV: &str = "OLEAFLY_BIBER_DIRECT";
 pub const FINGERPRINT_SAMPLE_BYTES: u64 = 1024 * 1024;
 
 pub fn unpack_root(data_root: &Path) -> PathBuf {

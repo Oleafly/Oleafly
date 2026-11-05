@@ -305,7 +305,10 @@
         "title": "Șterge modelul"
       },
       "deleteTooltip": "Șterge modelul",
+      "disableAll": "Dezactivează tot",
       "empty": "Încă nu există modele. Adaugă unul mai jos.",
+      "enableAll": "Activează tot",
+      "enabledCount": "{{enabled}} din {{total}} activate",
       "invalidKey": "Cheie API nevalidă.",
       "metadata": {
         "refreshFailed": "Datele despre modele nu au putut fi reîmprospătate.",
@@ -782,6 +785,10 @@
         "label": "Fontul editorului",
         "monospace": "Monospațiat"
       },
+      "cjkFont": {
+        "description": "Se folosește pentru caracterele chinezești, japoneze și coreene care lipsesc din Fontul editorului.",
+        "label": "Font CJK"
+      },
       "useAppFont": {
         "description": "Editorul urmează fontul și dimensiunea fontului aplicației.",
         "disabledHint": "Dezactivează Folosește fontul aplicației ca să schimbi asta.",
@@ -1215,10 +1222,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Adaugă în proiect",
       "allDownloaded": "Toate sunt descărcate",
       "download": "Descarcă",
       "downloadAll": "Descarcă tot"
     },
+    "fontAddedToProject": "Fontul {{family}} a fost adăugat în acest proiect. Folosește-l după nume, de exemplu {{example}}.",
+    "fontAlreadyInProject": "Fontul {{family}} este deja în acest proiect.",
     "yourTemplates": {
       "toggle": "Gestionează șabloanele tale",
       "import": "Importă un șablon",
@@ -1268,7 +1278,7 @@
       "empty": "Nu există fonturi de descărcat.",
       "engineNote": "Motorul LuaLaTeX (pentru fișiere PDF etichetate și accesibile) se gestionează în secțiunea Motor LaTeX.",
       "heading": "Fonturi",
-      "tooltip": "Unele șabloane folosesc fonturi open-source de calitate. Ca Oleafly să rămână mic, acele fonturi se descarcă la cerere: când creezi un astfel de șablon, fonturile sunt aduse și copiate în proiect, ca el să rămână de sine stătător și să se compileze offline. Le poți descărca și dinainte de aici sau le poți elimina ca să eliberezi spațiu."
+      "tooltip": "Unele șabloane folosesc aceste fonturi open-source. Se descarcă doar când e nevoie, ca Oleafly să rămână mic. Când creezi un astfel de șablon, fonturile sunt copiate în proiect, așa că se compilează offline. Proiectele Typst pot folosi un font descărcat după nume, dacă proiectul nu dezactivează fonturile sistemului. Pentru LaTeX, deschide un proiect și fă clic pe „Adaugă în proiect” ca să copiezi fontul în el."
     },
     "packProgress": "{{index}} din {{total}}",
     "progress": "{{label}} ({{index}} din {{total}})",
@@ -1296,6 +1306,7 @@
       "fontDownloadFailed": "Fontul nu a putut fi descărcat.",
       "fontsDownloadFailed": "Fonturile nu au putut fi descărcate.",
       "fontRemoveFailed": "Fontul nu a putut fi eliminat.",
+      "fontAddFailed": "Fontul nu a putut fi adăugat în acest proiect.",
       "packDownloadFailed": "Pachetul de șabloane nu a putut fi descărcat.",
       "packsDownloadFailed": "Pachetele de șabloane nu au putut fi descărcate.",
       "packRemoveFailed": "Pachetul de șabloane nu a putut fi eliminat.",

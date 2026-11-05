@@ -78,7 +78,7 @@
     },
     "ua-standard-on-tectonic": {
       "title": "Motoren som følger med, kan ikke lage det PDF/UA-resultatet som er oppgitt",
-      "detail": "Dokumentet oppgir pdfstandard=ua, men motoren som følger med, kan ikke skrive et tagg-tre, så PDF-en ville hevdet PDF/UA uten å oppfylle det. Kompiler med pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere, eller fjern nøkkelen pdfstandard."
+      "detail": "Dokumentet oppgir pdfstandard=ua, men motoren som følger med, kan ikke skrive et tagg-tre, så PDF-en ville hevdet PDF/UA uten å oppfylle det. Kompiler med pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live oppdatert siden november 2025), eller fjern nøkkelen pdfstandard."
     },
     "table-header-rows": {
       "title": "Overskriftsraden i tabellen er ikke merket som overskrift",
@@ -145,6 +145,11 @@
       "title": "Det trengs en kompilering til",
       "detail": "Den siste loggen sier at etiketter, siteringer eller innholdsfortegnelsen ikke har satt seg. Kompiler på nytt til advarselen om ny kjøring forsvinner, før du eksporterer."
     },
+    "compile-tagging-skipped": {
+      "title": "Taggingen ble hoppet over fordi LaTeX-versjonen er for gammel",
+      "detail": "Dette bygget kjørte LaTeX fra {{date}}. Taggede PDF-er krever LaTeX fra {{required}} eller nyere, så sjekken rundt \\DocumentMetadata slo av tagging, og PDF-en hevder ikke å oppfylle PDF/UA. For en tagget PDF bruker du knappen Kompiler med tagger og verifiser med TeX Live 2026, eller du oppdaterer TeX Live og kompilerer på nytt.",
+      "detailUndated": "Taggede PDF-er krever LaTeX fra {{required}} eller nyere, og dette bygget kjørte en eldre versjon, så sjekken rundt \\DocumentMetadata slo av tagging, og PDF-en hevder ikke å oppfylle PDF/UA. For en tagget PDF bruker du knappen Kompiler med tagger og verifiser med TeX Live 2026, eller du oppdaterer TeX Live og kompilerer på nytt."
+    },
     "compile-duplicate-destination": {
       "title": "Dupliserte PDF-destinasjoner",
       "detail": "To ankere deler samme destinasjon, så lenker eller bokmerker kan hoppe til feil sted. Dette kommer ofte av dupliserte etiketter eller at sidenummereringen nullstilles."
@@ -209,7 +214,7 @@
     },
     "pdf-untagged-output": {
       "title": "Denne PDF-en er ikke tagget",
-      "detail": "Den kompilerte PDF-en har ikke noe strukturtre, så en skjermleser får verken overskrifter, lister, tabeller eller leserekkefølge, og filen kan ikke oppfylle punkt 7.1 i PDF/UA-1. Tagget resultat krever pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere med \\DocumentMetadata{tagging=on}. Motoren som følger med, kan ikke lage tagger. Sjekkene av kilde og resultat ovenfor gjelder fortsatt i mellomtiden."
+      "detail": "Den kompilerte PDF-en har ikke noe strukturtre, så en skjermleser får verken overskrifter, lister, tabeller eller leserekkefølge, og filen kan ikke oppfylle punkt 7.1 i PDF/UA-1. Tagget resultat krever pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live oppdatert siden november 2025) med \\DocumentMetadata{tagging=on}. Motoren som følger med, kan ikke lage tagger. Sjekkene av kilde og resultat ovenfor gjelder fortsatt i mellomtiden."
     },
     "pdf-structure-missing": {
       "title": "Tagget PDF uten lesbart strukturtre",
@@ -584,7 +589,7 @@
   },
   "prep": {
     "metadataUpdated": "La de nødvendige taggenøklene inn i \\DocumentMetadata.",
-    "metadataAdded": "La inn \\DocumentMetadata som første linje (påkrevd, må stå foran \\documentclass).",
+    "metadataAdded": "La inn \\DocumentMetadata som første linje (påkrevd, må stå foran \\documentclass). Den ligger inne i en versjonssjekk: LaTeX eldre enn {{date}}, også motoren som følger med, hopper over den og kompilerer dokumentet uten tagger i stedet for å feile.",
     "headerRows": "Satte table/header-rows til 1, slik at den første raden i hver tabell tagges som overskriftsceller. Endre tallet hvis en tabell har en annen overskriftsdybde.",
     "unicodeMath": "La inn \\usepackage{unicode-math}, som denne motoren trenger for tagget matematikk.",
     "altPlaceholders_one": "La inn plassholdere for alternativ tekst i {{count}} bilde. Bytt ut TODO-teksten med en ekte beskrivelse.",
@@ -593,8 +598,8 @@
     "incompatiblePackages_one": "Denne pakken er ikke forenlig med tagging: {{packages}}. Innhold fra den kan havne utagget i PDF-en. Bytt den ut der du kan.",
     "incompatiblePackages_other": "Disse pakkene er ikke forenlige med tagging: {{packages}}. Innhold fra dem kan havne utagget i PDF-en. Bytt dem ut der du kan.",
     "cautionPackages": "Disse pakkene tagger bare delvis, eller har ingen registrert dom om tagging: {{packages}}. Kompiler og se etter hull i strukturtreet.",
-    "compileLua": "Kompiler den klargjorte kilden med LuaLaTeX fra TeX Live 2025 eller nyere, og sjekk resultatet på nytt.",
-    "compileAny": "Kompiler den klargjorte kilden med pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere, og sjekk resultatet på nytt. Tilgjengelig matematikk krever LuaLaTeX. Motoren som følger med, kan ikke lage tagger."
+    "compileLua": "Kompiler den klargjorte kilden med LuaLaTeX fra TeX Live 2026 (eller en TeX Live oppdatert siden november 2025), og sjekk resultatet på nytt.",
+    "compileAny": "Kompiler den klargjorte kilden med pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live oppdatert siden november 2025), og sjekk resultatet på nytt. Tilgjengelig matematikk krever LuaLaTeX. Motoren som følger med, kan ikke lage tagger."
   },
   "gate": {
     "incompatiblePackages_one": "Denne pakken er ikke forenlig med tagging: {{packages}}. Innhold fra den kan havne utagget i PDF-en.",
@@ -683,7 +688,7 @@
   },
   "prepExport": {
     "title": "Tilgjengelig eksport",
-    "intro": "Klargjør dette dokumentet for tagget resultat som sikter mot PDF/UA-2. Oleafly legger inn \\DocumentMetadata med pdfstandard=ua-2 og tagging=on, pluss det oppsettet for alternativ tekst og tabeller som den kan fylle ut. Kompiler resultatet med pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere, og sjekk på nytt. Tilgjengelig matematikk krever LuaLaTeX. Motoren som følger med, kan ikke lage tagger.",
+    "intro": "Klargjør dette dokumentet for tagget resultat som sikter mot PDF/UA-2. Oleafly legger inn \\DocumentMetadata med pdfstandard=ua-2 og tagging=on, pluss det oppsettet for alternativ tekst og tabeller som den kan fylle ut. Kompiler resultatet med pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live oppdatert siden november 2025), og sjekk på nytt. Tilgjengelig matematikk krever LuaLaTeX. Motoren som følger med, kan ikke lage tagger.",
     "activeFileFallback": "Oleafly kunne ikke laste hoveddokumentet og sjekket derfor filen du redigerer. Åpne hoveddokumentet for å se klassen og pakkene bygget ditt faktisk laster.",
     "prepare": "Klargjør for tilgjengelig eksport",
     "unavailable": "Klargjøring er av for denne dokumentklassen. Bytt til en klasse som taggekoden støtter, og kjør sjekken igjen. Kompatibilitetsdata fra LaTeX-prosjektet, hentet {{retrieved}}.",
@@ -694,7 +699,7 @@
     "copy": "Kopier kildekoden",
     "compileTagged": "Kompiler med tagger og verifiser",
     "compileTaggedWarning": "LuaLaTeX fra systemet kan lese lokale filer. Kjør den bare for et prosjekt du stoler på.",
-    "noEngine": "For å lage den taggede PDF-en i appen slår du på en motor under Innstillinger, LaTeX-motor. Eller du kompilerer den klargjorte kilden med din egen pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere."
+    "noEngine": "For å lage den taggede PDF-en i appen slår du på en motor under Innstillinger, LaTeX-motor. Eller du kompilerer den klargjorte kilden med din egen pdfLaTeX eller LuaLaTeX fra TeX Live 2026 (eller en TeX Live oppdatert siden november 2025)."
   },
   "typstStandards": {
     "title": "PDF-standarder",

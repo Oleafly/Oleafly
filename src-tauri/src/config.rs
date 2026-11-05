@@ -352,6 +352,7 @@ fn read_config_unlocked() -> Result<AppConfig, String> {
     let mut hydrated = hydrate_secrets(cfg)?;
     mark_keyless_custom_providers_optional(&mut hydrated, &unflagged);
     drop_transient_probe_verdicts(&mut hydrated);
+    drop_opencode_refusal_verdicts(&mut hydrated);
     if needs_migrate {
         let _ = persist_without_plaintext_secrets_unlocked(&hydrated);
     }
@@ -1104,6 +1105,28 @@ fn drop_transient_probe_verdicts(config: &mut AppConfig) {
     });
 }
 
+fn is_opencode_provider(custom: &[CustomProvider], provider_id: &str) -> bool {
+    custom
+        .iter()
+        .find(|provider| provider.id == provider_id)
+        .is_some_and(|provider| oleafly_agent::wire::is_opencode_endpoint(&provider.base_url))
+}
+
+/// Oleafly used to send OpenCode no session id, so OpenCode Go turned every
+/// check away with HTTP 400 and its models were marked as unable to use tools.
+/// A 400 from OpenCode is no longer recorded as a verdict, so those models get
+/// checked again.
+fn drop_opencode_refusal_verdicts(config: &mut AppConfig) {
+    let custom = &config.ai_custom_providers;
+    config.ai_model_probes.retain(|key, probe| {
+        probe.verdict != ProbeVerdict::Blocked
+            || !crate::agent::is_bad_request_probe_reason(&probe.reason)
+            || !key
+                .split_once('/')
+                .is_some_and(|(provider_id, _)| is_opencode_provider(custom, provider_id))
+    });
+}
+
 fn is_known_provider(custom: &[CustomProvider], id: &str) -> bool {
     oleafly_agent::provider::catalog_entry(id).is_some() || custom.iter().any(|c| c.id == id)
 }
@@ -1357,6 +1380,43 @@ mod tests {
         );
         assert_eq!(incoming.ai_model_lists_refreshed_at["openai"], 20);
         assert_eq!(incoming.ai_model_lists_refreshed_at["groq"], 10);
+    }
+
+    #[test]
+    fn opencode_models_turned_away_for_a_missing_session_id_get_checked_again() {
+        let refused = |probed_at| ModelProbe {
+            verdict: ProbeVerdict::Blocked,
+            reason: "The provider answered the probe with HTTP 400.".into(),
+            probed_at,
+        };
+        let no_tools = ModelProbe {
+            verdict: ProbeVerdict::Blocked,
+            reason: "The model answered without calling the tool.".into(),
+            probed_at: 9,
+        };
+        let mut config = AppConfig {
+            ai_custom_providers: vec![
+                custom("opencode", "https://opencode.ai/zen/go/v1"),
+                custom("zen", "https://opencode.ai/zen/v1"),
+                custom("mycorp", "https://llm.example.com/v1"),
+            ],
+            ai_model_probes: BTreeMap::from([
+                ("opencode/deepseek-v4.1-flash".to_string(), refused(7)),
+                ("zen/glm-5.3".to_string(), refused(8)),
+                ("opencode/kimi-k3".to_string(), no_tools.clone()),
+                ("mycorp/m".to_string(), refused(7)),
+                ("openai/gpt-4o".to_string(), refused(7)),
+            ]),
+            ..AppConfig::default()
+        };
+
+        drop_opencode_refusal_verdicts(&mut config);
+
+        assert_eq!(
+            config.ai_model_probes.keys().collect::<Vec<_>>(),
+            ["mycorp/m", "openai/gpt-4o", "opencode/kimi-k3"]
+        );
+        assert_eq!(config.ai_model_probes["opencode/kimi-k3"], no_tools);
     }
 
     fn probes_for(ids: &[&str]) -> BTreeMap<String, ModelProbe> {

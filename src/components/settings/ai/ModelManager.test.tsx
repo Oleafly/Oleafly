@@ -671,6 +671,62 @@ describe("ModelManager list editing", () => {
     ).toBe(false);
   });
 
+  it("turns every model off or on in a single change", () => {
+    const models: StoredModel[] = [
+      { id: "gpt-alpha", name: "Alpha", enabled: true, source: "builtin" },
+      { id: "gpt-beta", name: "Beta", enabled: false, source: "fetched" },
+      { id: "my-model", name: "Mine", enabled: true, source: "custom" },
+    ];
+    const onChange = renderManager({ models });
+
+    fireEvent.click(screen.getByRole("button", { name: modelsCopy.disableAll }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.lastCall?.[0].map((m: StoredModel) => m.enabled)).toEqual([
+      false,
+      false,
+      false,
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: modelsCopy.enableAll }));
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange.mock.lastCall?.[0].map((m: StoredModel) => m.enabled)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it.each([
+    ["all on", [true, true], "2 of 2 enabled", { enableAll: true, disableAll: false }],
+    ["all off", [false, false], "0 of 2 enabled", { enableAll: false, disableAll: true }],
+    ["mixed", [true, false], "1 of 2 enabled", { enableAll: false, disableAll: false }],
+  ] as const)("counts a list that is %s and offers only the switch that would change it", (_, states, count, off) => {
+    renderManager({
+      models: states.map((enabled, index) => ({
+        id: `model-${index}`,
+        name: `Model ${index}`,
+        enabled,
+        source: "fetched",
+      })),
+    });
+
+    expect(screen.getByText(count)).toBeInTheDocument();
+    const enableAll = screen.getByRole("button", { name: modelsCopy.enableAll });
+    const disableAll = screen.getByRole("button", { name: modelsCopy.disableAll });
+    expect((enableAll as HTMLButtonElement).disabled).toBe(off.enableAll);
+    expect((disableAll as HTMLButtonElement).disabled).toBe(off.disableAll);
+  });
+
+  it.each([
+    ["empty", []],
+    ["a single model", MODELS],
+  ])("leaves the bulk row off a list that is %s", (_, models) => {
+    renderManager({ models });
+
+    expect(screen.queryByRole("button", { name: modelsCopy.enableAll })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: modelsCopy.disableAll })).not.toBeInTheDocument();
+  });
+
   it("asks before deleting a model and honours both answers", async () => {
     const onChange = renderManager();
 

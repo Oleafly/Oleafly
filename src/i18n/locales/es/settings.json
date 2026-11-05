@@ -305,7 +305,10 @@
         "title": "Eliminar el modelo"
       },
       "deleteTooltip": "Eliminar el modelo",
+      "disableAll": "Desactivar todos",
       "empty": "Todavía no hay modelos. Añade uno abajo.",
+      "enableAll": "Activar todos",
+      "enabledCount": "{{enabled}} de {{total}} activados",
       "invalidKey": "Clave de API no válida.",
       "metadata": {
         "refreshFailed": "No se pudieron actualizar los datos de los modelos.",
@@ -782,6 +785,10 @@
         "label": "Tipografía del editor",
         "monospace": "Monoespaciada"
       },
+      "cjkFont": {
+        "description": "Se usa para los caracteres chinos, japoneses y coreanos que no tiene la Tipografía del editor.",
+        "label": "Tipografía CJK"
+      },
       "useAppFont": {
         "description": "El editor sigue la fuente y el tamaño de letra de la aplicación.",
         "disabledHint": "Desactiva Usar la fuente de la aplicación para cambiar esto.",
@@ -1215,10 +1222,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Añadir al proyecto",
       "allDownloaded": "Todo descargado",
       "download": "Descargar",
       "downloadAll": "Descargar todo"
     },
+    "fontAddedToProject": "Se añadió {{family}} a este proyecto. Usa la tipografía indicando su nombre, por ejemplo {{example}}.",
+    "fontAlreadyInProject": "{{family}} ya está en este proyecto.",
     "yourTemplates": {
       "toggle": "Gestionar tus plantillas",
       "import": "Importar una plantilla",
@@ -1268,7 +1278,7 @@
       "empty": "No hay tipografías descargables.",
       "engineNote": "El motor LuaLaTeX (para PDF etiquetados y accesibles) se gestiona en la sección Motor de LaTeX.",
       "heading": "Tipografías",
-      "tooltip": "Algunas plantillas usan tipografías libres de calidad. Para que Oleafly siga siendo ligero, esas tipografías se descargan cuando hacen falta: al crear una plantilla de ese tipo se traen y se copian en el proyecto para que sea autónomo y compile sin conexión. También puedes descargarlas aquí por adelantado, o quitarlas para liberar espacio."
+      "tooltip": "Algunas plantillas usan estas tipografías libres. Solo se descargan cuando hacen falta, para que Oleafly siga siendo ligero. Al crear una plantilla de ese tipo, las tipografías se copian en el proyecto para que compile sin conexión. Los proyectos de Typst pueden usar una tipografía descargada indicando su nombre, salvo que el proyecto desactive las fuentes del sistema. En LaTeX, abre un proyecto y haz clic en \"Añadir al proyecto\" para copiar la tipografía en él."
     },
     "packProgress": "{{index}} de {{total}}",
     "progress": "{{label}} ({{index}} de {{total}})",
@@ -1296,6 +1306,7 @@
       "fontDownloadFailed": "No se pudo descargar la tipografía.",
       "fontsDownloadFailed": "No se pudieron descargar las tipografías.",
       "fontRemoveFailed": "No se pudo quitar la tipografía.",
+      "fontAddFailed": "No se pudo añadir la tipografía a este proyecto.",
       "packDownloadFailed": "No se pudo descargar el pack de plantillas.",
       "packsDownloadFailed": "No se pudieron descargar los packs de plantillas.",
       "packRemoveFailed": "No se pudo quitar el pack de plantillas.",

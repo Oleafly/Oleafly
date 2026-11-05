@@ -2337,6 +2337,41 @@ pub(crate) fn write_project_bytes(
     Ok(true)
 }
 
+/// Writes each file that is not in the project yet, under one mutation.
+/// Anything already at a path, a dangling link or a case variant included,
+/// stays as it is. Returns the paths it wrote.
+pub(crate) fn add_missing_project_files(
+    project_id: &str,
+    files: &[(String, Vec<u8>)],
+) -> Result<Vec<String>, String> {
+    let paths: Vec<&str> = files.iter().map(|(path, _)| path.as_str()).collect();
+    crate::collab::suggesting::tree_change_refused(project_id, &paths)?;
+    let mut scopes = Vec::new();
+    for path in &paths {
+        let relative = mutation_relative_path(project_id, path, false)?;
+        let scope = MutationScope::subtree(mutation_parent_path(&relative));
+        if !scopes.contains(&scope) {
+            scopes.push(scope);
+        }
+    }
+    let admission = admit_mutation(project_id, scopes, None)?;
+    let (written, _generation) = admission.run_with_change_status(|| {
+        let mut written = Vec::new();
+        for (path, bytes) in files {
+            let target = resolve(project_id, path)?;
+            if std::fs::symlink_metadata(&target).is_ok() || portable_collision(&target)?.is_some()
+            {
+                continue;
+            }
+            write_project_bytes(project_id, &target, path, bytes)?;
+            written.push(path.clone());
+        }
+        let changed = !written.is_empty();
+        Ok((written, changed))
+    })?;
+    Ok(written)
+}
+
 fn disk_bytes_match(target: &Path, bytes: &[u8]) -> bool {
     let Ok(metadata) = std::fs::symlink_metadata(target) else {
         return false;
@@ -6469,8 +6504,8 @@ fn pandoc_version_supported(version_stdout: &[u8]) -> bool {
 pub(crate) fn find_pandoc() -> Option<String> {
     let search = oleafly_core::pandoc::PandocSearch {
         bundled_dirs: oleafly_core::sidecar::executable_dir()
-            .into_iter()
-            .collect(),
+            .map(|dir| oleafly_core::sidecar::bundled_tool_dirs(&dir))
+            .unwrap_or_default(),
         data_root: paths::oleafly_root().ok(),
         home: paths::home_dir().ok(),
         path: std::env::var_os("PATH"),
@@ -12957,6 +12992,72 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn adding_missing_files_writes_new_ones_and_keeps_what_is_there() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("add-missing-files");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_blank_project("Add Missing".into()).unwrap();
+        let dir = crate::paths::project_dir(&project_id).unwrap();
+        std::fs::create_dir_all(dir.join("fonts")).unwrap();
+        std::fs::write(dir.join("fonts/Kept.ttf"), b"mine").unwrap();
+        std::fs::write(dir.join("fonts/case.TTF"), b"mine").unwrap();
+        let files = vec![
+            ("fonts/Kept.ttf".to_string(), b"pack".to_vec()),
+            ("fonts/Case.ttf".to_string(), b"pack".to_vec()),
+            ("fonts/New.ttf".to_string(), b"pack".to_vec()),
+            ("New.fontspec".to_string(), b"shim".to_vec()),
+        ];
+
+        let written = super::add_missing_project_files(&project_id, &files).unwrap();
+        assert_eq!(written, ["fonts/New.ttf", "New.fontspec"]);
+        assert_eq!(std::fs::read(dir.join("fonts/Kept.ttf")).unwrap(), b"mine");
+        assert_eq!(std::fs::read(dir.join("fonts/New.ttf")).unwrap(), b"pack");
+        assert_eq!(std::fs::read(dir.join("New.fontspec")).unwrap(), b"shim");
+        assert!(super::add_missing_project_files(&project_id, &files)
+            .unwrap()
+            .is_empty());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn adding_missing_files_never_writes_through_a_link() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("add-missing-links");
+        let outside = test_dir("add-missing-outside");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_blank_project("Add Links".into()).unwrap();
+        let dir = crate::paths::project_dir(&project_id).unwrap();
+        std::os::unix::fs::symlink(
+            outside.join("planted.fontspec"),
+            dir.join("Planted.fontspec"),
+        )
+        .unwrap();
+
+        let written = super::add_missing_project_files(
+            &project_id,
+            &[("Planted.fontspec".to_string(), b"shim".to_vec())],
+        )
+        .unwrap();
+        assert!(written.is_empty());
+        assert!(!outside.join("planted.fontspec").exists());
+
+        std::os::unix::fs::symlink(&outside, dir.join("fonts")).unwrap();
+        assert!(super::add_missing_project_files(
+            &project_id,
+            &[("fonts/Escape.ttf".to_string(), b"pack".to_vec())],
+        )
+        .is_err());
+        assert!(!outside.join("Escape.ttf").exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_dir_all(outside).unwrap();
     }
 
     #[test]

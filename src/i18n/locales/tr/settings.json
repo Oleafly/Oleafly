@@ -304,7 +304,10 @@
         "title": "Modeli sil"
       },
       "deleteTooltip": "Modeli sil",
+      "disableAll": "Tümünü kapat",
       "empty": "Henüz model yok. Aşağıdan bir tane ekleyin.",
+      "enableAll": "Tümünü aç",
+      "enabledCount": "{{total}} modelden {{enabled}} tanesi açık",
       "invalidKey": "Geçersiz API anahtarı.",
       "metadata": {
         "refreshFailed": "Model verileri yenilenemedi.",
@@ -776,6 +779,10 @@
         "label": "Düzenleyici yazı tipi",
         "monospace": "Eş aralıklı"
       },
+      "cjkFont": {
+        "description": "Düzenleyici yazı tipinde bulunmayan Çince, Japonca ve Korece karakterler için kullanılır.",
+        "label": "CJK yazı tipi"
+      },
       "useAppFont": {
         "description": "Düzenleyici, uygulamanın yazı tipini ve boyutunu kullanır.",
         "disabledHint": "Bunu değiştirmek için Uygulama yazı tipini kullan'ı kapatın.",
@@ -1208,10 +1215,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Projeye ekle",
       "allDownloaded": "Tümü indirildi",
       "download": "İndir",
       "downloadAll": "Tümünü indir"
     },
+    "fontAddedToProject": "{{family}} yazı tipi bu projeye eklendi. Adıyla kullanın, örneğin {{example}}.",
+    "fontAlreadyInProject": "{{family}} yazı tipi bu projede zaten var.",
     "yourTemplates": {
       "toggle": "Şablonlarınızı yönet",
       "import": "Şablon içe aktar",
@@ -1261,7 +1271,7 @@
       "empty": "İndirilebilir yazı tipi yok.",
       "engineNote": "LuaLaTeX motoru (etiketli, erişilebilir PDF'ler için) LaTeX Motoru bölümünden yönetilir.",
       "heading": "Yazı tipleri",
-      "tooltip": "Bazı şablonlar premium açık kaynaklı yazı tipleri kullanır. Oleafly küçük kalsın diye bu yazı tipleri istendiğinde indirilir: böyle bir şablon oluşturduğunuzda yazı tipleri getirilir ve projeye kopyalanır, böylece proje kendi kendine yeter ve çevrimdışı derlenir. Onları buradan önceden de indirebilir ya da yer açmak için kaldırabilirsiniz."
+      "tooltip": "Bazı şablonlar bu açık kaynaklı yazı tiplerini kullanır. Oleafly küçük kalsın diye yalnızca gerektiğinde indirilirler. Böyle bir şablon oluşturduğunuzda yazı tipleri projeye kopyalanır, böylece proje çevrimdışı derlenir. Typst projeleri, sistem yazı tiplerini kapatmadıkları sürece indirilen bir yazı tipini adıyla kullanabilir. LaTeX için bir proje açın ve yazı tipini projeye kopyalamak için “Projeye ekle” düğmesine tıklayın."
     },
     "packProgress": "{{total}} içinden {{index}}",
     "progress": "{{label}} ({{total}} içinden {{index}})",
@@ -1289,6 +1299,7 @@
       "fontDownloadFailed": "Yazı tipi indirilemedi.",
       "fontsDownloadFailed": "Yazı tipleri indirilemedi.",
       "fontRemoveFailed": "Yazı tipi kaldırılamadı.",
+      "fontAddFailed": "Yazı tipi bu projeye eklenemedi.",
       "packDownloadFailed": "Şablon paketi indirilemedi.",
       "packsDownloadFailed": "Şablon paketleri indirilemedi.",
       "packRemoveFailed": "Şablon paketi kaldırılamadı.",

@@ -305,7 +305,10 @@
         "title": "Supprimer le modèle"
       },
       "deleteTooltip": "Supprimer le modèle",
+      "disableAll": "Tout désactiver",
       "empty": "Aucun modèle pour l'instant. Ajoutez-en un ci-dessous.",
+      "enableAll": "Tout activer",
+      "enabledCount": "{{enabled}} activés sur {{total}}",
       "invalidKey": "Clé API invalide.",
       "metadata": {
         "refreshFailed": "Impossible d'actualiser les données des modèles.",
@@ -782,6 +785,10 @@
         "label": "Police de l'éditeur",
         "monospace": "Chasse fixe"
       },
+      "cjkFont": {
+        "description": "Utilisée pour les caractères chinois, japonais et coréens absents de la Police de l'éditeur.",
+        "label": "Police CJK"
+      },
       "useAppFont": {
         "description": "L'éditeur suit la police et la taille de police de l'application.",
         "disabledHint": "Désactivez Utiliser la police de l'application pour modifier ce réglage.",
@@ -1215,10 +1222,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Ajouter au projet",
       "allDownloaded": "Tout est téléchargé",
       "download": "Télécharger",
       "downloadAll": "Tout télécharger"
     },
+    "fontAddedToProject": "La police {{family}} a été ajoutée à ce projet. Utilisez-la par son nom, par exemple {{example}}.",
+    "fontAlreadyInProject": "La police {{family}} est déjà dans ce projet.",
     "yourTemplates": {
       "toggle": "Gérer vos modèles",
       "import": "Importer un modèle",
@@ -1268,7 +1278,7 @@
       "empty": "Aucune police téléchargeable.",
       "engineNote": "Le moteur LuaLaTeX (pour des PDF balisés et accessibles) se gère dans la section Moteur LaTeX.",
       "heading": "Polices",
-      "tooltip": "Certains modèles utilisent des polices open source haut de gamme. Pour garder Oleafly léger, ces polices sont téléchargées à la demande : quand vous créez un tel modèle, elles sont récupérées et copiées dans le projet, qui reste autonome et compile hors ligne. Vous pouvez aussi les pré-télécharger ici, ou les retirer pour libérer de la place."
+      "tooltip": "Certains modèles utilisent ces polices open source. Elles ne sont téléchargées qu'en cas de besoin, pour garder Oleafly léger. Quand vous créez un tel modèle, les polices sont copiées dans le projet, qui compile ainsi hors ligne. Dans les projets Typst, une police téléchargée s'utilise par son nom, sauf si le projet désactive les polices système. Pour LaTeX, ouvrez un projet et cliquez sur « Ajouter au projet » pour y copier la police."
     },
     "packProgress": "{{index}} sur {{total}}",
     "progress": "{{label}} ({{index}} sur {{total}})",
@@ -1296,6 +1306,7 @@
       "fontDownloadFailed": "Impossible de télécharger la police.",
       "fontsDownloadFailed": "Impossible de télécharger les polices.",
       "fontRemoveFailed": "Impossible de supprimer la police.",
+      "fontAddFailed": "Impossible d'ajouter la police à ce projet.",
       "packDownloadFailed": "Impossible de télécharger le pack de modèles.",
       "packsDownloadFailed": "Impossible de télécharger les packs de modèles.",
       "packRemoveFailed": "Impossible de supprimer le pack de modèles.",

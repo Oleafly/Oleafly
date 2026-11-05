@@ -304,7 +304,10 @@
         "title": "Slett modellen"
       },
       "deleteTooltip": "Slett modellen",
+      "disableAll": "Slå av alle",
       "empty": "Ingen modeller ennå. Legg til en nedenfor.",
+      "enableAll": "Slå på alle",
+      "enabledCount": "{{enabled}} av {{total}} er på",
       "invalidKey": "Ugyldig API-nøkkel.",
       "metadata": {
         "refreshFailed": "Kunne ikke oppdatere modelldataene.",
@@ -776,6 +779,10 @@
         "label": "Editorskrift",
         "monospace": "Fast bredde"
       },
+      "cjkFont": {
+        "description": "Brukes til kinesiske, japanske og koreanske tegn som Editorskrift mangler.",
+        "label": "CJK-skrift"
+      },
       "useAppFont": {
         "description": "Editoren følger appens skrift og skriftstørrelse.",
         "disabledHint": "Slå av Bruk appens skrift for å endre dette.",
@@ -1208,10 +1215,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Legg til i prosjektet",
       "allDownloaded": "Alt er lastet ned",
       "download": "Last ned",
       "downloadAll": "Last ned alt"
     },
+    "fontAddedToProject": "La til {{family}} i dette prosjektet. Bruk skriften ved å oppgi navnet, for eksempel {{example}}.",
+    "fontAlreadyInProject": "{{family}} ligger allerede i dette prosjektet.",
     "yourTemplates": {
       "toggle": "Administrer malene dine",
       "import": "Importer mal",
@@ -1261,7 +1271,7 @@
       "empty": "Ingen skrifter å laste ned.",
       "engineNote": "LuaLaTeX-motoren (for taggede, tilgjengelige PDF-er) administreres under LaTeX-motor.",
       "heading": "Skrifter",
-      "tooltip": "Enkelte maler bruker åpne premiumskrifter. For å holde Oleafly liten lastes de skriftene ned ved behov: når du lager en slik mal, hentes skriftene og kopieres inn i prosjektet, slik at det står på egne bein og kompilerer uten nett. Du kan også laste dem ned på forhånd her, eller fjerne dem for å frigjøre plass."
+      "tooltip": "Enkelte maler bruker disse skriftene med åpen kildekode. De lastes bare ned ved behov, slik at Oleafly holder seg liten. Når du lager en slik mal, kopieres skriftene inn i prosjektet, slik at det kompilerer uten nett. Typst-prosjekter kan bruke en nedlastet skrift ved å oppgi navnet, med mindre prosjektet slår av systemskrifter. For LaTeX åpner du et prosjekt og klikker på «Legg til i prosjektet» for å kopiere skriften inn i det."
     },
     "packProgress": "{{index}} av {{total}}",
     "progress": "{{label}} ({{index}} av {{total}})",
@@ -1289,6 +1299,7 @@
       "fontDownloadFailed": "Kunne ikke laste ned skriften.",
       "fontsDownloadFailed": "Kunne ikke laste ned skriftene.",
       "fontRemoveFailed": "Kunne ikke fjerne skriften.",
+      "fontAddFailed": "Kunne ikke legge til skriften i dette prosjektet.",
       "packDownloadFailed": "Kunne ikke laste ned malpakken.",
       "packsDownloadFailed": "Kunne ikke laste ned malpakkene.",
       "packRemoveFailed": "Kunne ikke fjerne malpakken.",

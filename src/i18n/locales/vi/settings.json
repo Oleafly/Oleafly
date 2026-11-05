@@ -303,7 +303,10 @@
         "title": "Xóa mô hình"
       },
       "deleteTooltip": "Xóa mô hình",
+      "disableAll": "Tắt tất cả",
       "empty": "Chưa có mô hình nào. Hãy thêm một mô hình bên dưới.",
+      "enableAll": "Bật tất cả",
+      "enabledCount": "Đã bật {{enabled}} trên {{total}}",
       "invalidKey": "Khoá API không hợp lệ.",
       "metadata": {
         "refreshFailed": "Không thể làm mới dữ liệu mô hình.",
@@ -770,6 +773,10 @@
         "label": "Phông chữ trình biên tập",
         "monospace": "Đơn cách"
       },
+      "cjkFont": {
+        "description": "Dùng cho các ký tự tiếng Trung, tiếng Nhật và tiếng Hàn mà Phông chữ trình biên tập không có.",
+        "label": "Phông chữ CJK"
+      },
       "useAppFont": {
         "description": "Trình biên tập dùng phông chữ và cỡ chữ của ứng dụng.",
         "disabledHint": "Hãy tắt Dùng phông chữ ứng dụng để thay đổi mục này.",
@@ -1201,10 +1208,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Thêm vào dự án",
       "allDownloaded": "Đã tải tất cả",
       "download": "Tải xuống",
       "downloadAll": "Tải tất cả"
     },
+    "fontAddedToProject": "Đã thêm {{family}} vào dự án này. Hãy dùng phông chữ theo tên, ví dụ {{example}}.",
+    "fontAlreadyInProject": "{{family}} đã có trong dự án này.",
     "yourTemplates": {
       "toggle": "Quản lý mẫu của bạn",
       "import": "Nhập mẫu",
@@ -1254,7 +1264,7 @@
       "empty": "Không có phông chữ nào có thể tải xuống.",
       "engineNote": "Công cụ LuaLaTeX (cho PDF có gắn thẻ, dễ tiếp cận) được quản lý trong phần Công cụ LaTeX.",
       "heading": "Phông chữ",
-      "tooltip": "Một số mẫu dùng phông chữ mã nguồn mở cao cấp. Để giữ Oleafly nhỏ gọn, những phông này được tải khi cần: khi bạn tạo một mẫu như vậy, phông chữ được tải và sao chép vào dự án để dự án tự chứa và biên dịch được ngoại tuyến. Bạn cũng có thể tải trước ở đây, hoặc gỡ chúng để giải phóng dung lượng."
+      "tooltip": "Một số mẫu dùng các phông chữ mã nguồn mở này. Chúng chỉ được tải khi cần để Oleafly nhỏ gọn. Khi bạn tạo một mẫu như vậy, phông chữ được sao chép vào dự án để dự án biên dịch được ngoại tuyến. Dự án Typst có thể dùng phông chữ đã tải bằng cách ghi tên phông, trừ khi dự án tắt phông chữ hệ thống. Với LaTeX, hãy mở một dự án và nhấp vào \"Thêm vào dự án\" để sao chép phông chữ vào dự án đó."
     },
     "packProgress": "{{index}} trên {{total}}",
     "progress": "{{label}} ({{index}} trên {{total}})",
@@ -1282,6 +1292,7 @@
       "fontDownloadFailed": "Không thể tải phông chữ.",
       "fontsDownloadFailed": "Không thể tải các phông chữ.",
       "fontRemoveFailed": "Không thể gỡ phông chữ.",
+      "fontAddFailed": "Không thể thêm phông chữ vào dự án này.",
       "packDownloadFailed": "Không thể tải gói mẫu.",
       "packsDownloadFailed": "Không thể tải các gói mẫu.",
       "packRemoveFailed": "Không thể gỡ gói mẫu.",

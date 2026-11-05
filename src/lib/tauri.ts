@@ -898,6 +898,15 @@ export const removeFontComponent = (id: string) =>
 
 export const downloadAllFonts = () => invoke<void>("download_all_fonts");
 
+export interface AddedFontPack {
+  family: string;
+  copied: string[];
+  fontspec: string | null;
+}
+
+export const addFontPackToProject = (projectId: string, id: string) =>
+  invoke<AddedFontPack>("add_font_pack_to_project", { projectId, id });
+
 export const listDictionaries = () =>
   invoke<DictionaryInfo[]>("list_dictionaries");
 

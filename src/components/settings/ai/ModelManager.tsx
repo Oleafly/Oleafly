@@ -16,6 +16,7 @@ import {
   clearModelListThrottle,
   deleteModel,
   diffModelLists,
+  enabledModels,
   mergeFetchedModels,
   modelListThrottledUntil,
   probeKey,
@@ -23,6 +24,7 @@ import {
   resolveModelTrust,
   restoreSeedModels,
   seedProviderModels,
+  setAllModelsEnabled,
   setModelEnabled,
   shouldAutoRefreshModels,
   throttleModelListRefresh,
@@ -112,6 +114,7 @@ export function ModelManager({
   const missingSeeds = seedProviderModels(providerId).filter(
     (s) => !models.some((m) => m.id === s.id)
   );
+  const enabledCount = enabledModels(models).length;
 
   const runRefresh = useCallback(
     async (trigger: "manual" | "auto") => {
@@ -325,6 +328,42 @@ export function ModelManager({
         >
           {noticeLabel(notice)}
         </p>
+      )}
+
+      {models.length > 1 && (
+        <div className="flex items-center justify-between gap-2">
+          <p
+            aria-live="polite"
+            className="min-w-0 truncate text-[0.6875rem] text-muted-foreground"
+          >
+            {t(($) => $.settings.ai.models.enabledCount, {
+              enabled: enabledCount,
+              total: models.length,
+            })}
+          </p>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-1.5 text-[0.6875rem]"
+              data-testid={`ai-enable-all-models-${providerId}`}
+              disabled={enabledCount === models.length}
+              onClick={() => onChange(setAllModelsEnabled(models, true))}
+            >
+              {t(($) => $.settings.ai.models.enableAll)}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-1.5 text-[0.6875rem]"
+              data-testid={`ai-disable-all-models-${providerId}`}
+              disabled={enabledCount === 0}
+              onClick={() => onChange(setAllModelsEnabled(models, false))}
+            >
+              {t(($) => $.settings.ai.models.disableAll)}
+            </Button>
+          </div>
+        </div>
       )}
 
       <div className="space-y-1">
