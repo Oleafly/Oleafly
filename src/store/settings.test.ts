@@ -490,6 +490,16 @@ describe("useSettingsStore reset", () => {
     expect(useSettingsStore.getState().editorFontFamily).toBe("");
   });
 
+  it("stores the CJK editor font on its own key", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorCjkFontFamily("PingFang\u0007 SC");
+    expect(useSettingsStore.getState().editorCjkFontFamily).toBe("PingFang SC");
+    expect(localStorage.getItem("oleafly.editor.cjkFont")).toBe("PingFang SC");
+    expect(useSettingsStore.getState().editorFontFamily).toBe("");
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorCjkFontFamily).toBe("");
+  });
+
   it("persists what happens to references when a file moves", () => {
     const settings = useSettingsStore.getState();
     expect(settings.fileMoveReferences).toBe("ask");

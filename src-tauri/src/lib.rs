@@ -1027,6 +1027,7 @@ pub fn run() {
             assets::list_font_components,
             assets::install_font_component,
             assets::remove_font_component,
+            assets::add_font_pack_to_project,
             assets::download_all_fonts,
             assets::template_prerequisites,
             assets::ensure_template_assets,

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   refreshPackCatalog: vi.fn(),
   installFontComponent: vi.fn(),
   removeFontComponent: vi.fn(),
+  addFontPackToProject: vi.fn(),
   downloadAllFonts: vi.fn(),
   installTemplatePack: vi.fn(),
   installPackTemplate: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   refreshPackCatalog: mocks.refreshPackCatalog,
   installFontComponent: mocks.installFontComponent,
   removeFontComponent: mocks.removeFontComponent,
+  addFontPackToProject: mocks.addFontPackToProject,
   downloadAllFonts: mocks.downloadAllFonts,
   installTemplatePack: mocks.installTemplatePack,
   installPackTemplate: mocks.installPackTemplate,
@@ -76,6 +78,7 @@ vi.mock("@/components/library/TemplateImportDialog", () => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { i18n } from "@/i18n";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { resetTemplatePacks } from "@/store/template-packs";
 import { DownloadsSection } from "./DownloadsSection";
@@ -336,6 +339,84 @@ describe("DownloadsSection fonts tab", () => {
         errors.fontDownload(),
       ),
     );
+  });
+
+  it("adds an installed template font to the open project and says how to use it", async () => {
+    const user = userEvent.setup();
+    const refreshTree = vi.fn().mockResolvedValue(true);
+    const refreshEngine = vi.fn().mockResolvedValue(undefined);
+    const initial = useFilesStore.getState();
+    useFilesStore.setState({
+      projectId: "paper",
+      engine: { ...initial.engine, source_format: "latex" },
+      refreshTree,
+      refreshEngine,
+    });
+    mocks.addFontPackToProject.mockResolvedValueOnce({
+      family: "PT Serif",
+      copied: ["fonts/PTSerif-Regular.ttf"],
+      fontspec: "PTSerif.fontspec",
+    });
+    mocks.addFontPackToProject.mockResolvedValueOnce({ family: "PT Serif", copied: [], fontspec: null });
+    mocks.listFontComponents.mockResolvedValue([
+      component({ id: "ptserif", installed: true }),
+      component({ id: "lato" }),
+      component({ id: "typst-cjk", kind: "typst-font", installed: true }),
+    ]);
+    try {
+      render(<DownloadsSection />);
+      const add = await screen.findByRole("button", { name: downloads.actions.addToProject });
+      expect(screen.getAllByRole("button", { name: downloads.actions.addToProject })).toHaveLength(1);
+      await user.click(add);
+      await waitFor(() => expect(refreshTree).toHaveBeenCalledWith({ keepUnchanged: true }));
+      expect(mocks.addFontPackToProject).toHaveBeenCalledWith("paper", "ptserif");
+      expect(refreshEngine).toHaveBeenCalled();
+      expect(mocks.success).toHaveBeenCalledWith(
+        i18n.t(($) => $.settings.downloads.fontAddedToProject, {
+          family: "PT Serif",
+          example: String.raw`\setmainfont{PT Serif}`,
+        }),
+      );
+      await user.click(screen.getByRole("button", { name: downloads.actions.addToProject }));
+      await waitFor(() =>
+        expect(mocks.success).toHaveBeenLastCalledWith(
+          i18n.t(($) => $.settings.downloads.fontAlreadyInProject, { family: "PT Serif" }),
+        ),
+      );
+    } finally {
+      useFilesStore.setState({
+        projectId: initial.projectId,
+        engine: initial.engine,
+        refreshTree: initial.refreshTree,
+        refreshEngine: initial.refreshEngine,
+      });
+    }
+  });
+
+  it("offers no Add to project where the fonts cannot be used", async () => {
+    const initial = useFilesStore.getState();
+    mocks.listFontComponents.mockResolvedValue([component({ id: "ptserif", installed: true })]);
+    try {
+      for (const engine of [
+        { ...initial.engine, source_format: "latex" as const, tex_flavor: "pdflatex" as const },
+        { ...initial.engine, source_format: "markdown" as const },
+      ]) {
+        useFilesStore.setState({ projectId: "paper", engine });
+        const { unmount } = render(<DownloadsSection />);
+        expect(await screen.findByRole("button", { name: enCommon.actions.remove })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: downloads.actions.addToProject })).not.toBeInTheDocument();
+        unmount();
+      }
+    } finally {
+      useFilesStore.setState({ projectId: initial.projectId, engine: initial.engine });
+    }
+  });
+
+  it("offers no Add to project without an open project", async () => {
+    mocks.listFontComponents.mockResolvedValue([component({ id: "ptserif", installed: true })]);
+    render(<DownloadsSection />);
+    expect(await screen.findByRole("button", { name: enCommon.actions.remove })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: downloads.actions.addToProject })).not.toBeInTheDocument();
   });
 
   it("removes an installed font and reports a failure", async () => {

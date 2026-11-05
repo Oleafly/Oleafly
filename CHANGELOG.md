@@ -42,6 +42,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Each provider's model list has Enable all and Disable all buttons. Turn off
   a long list in one click, then switch back on the few models you use (#385).
+- A CJK font setting in Settings > Appearance > Editor sets the font for
+  Chinese, Japanese and Korean characters. Latin text stays in the Editor font,
+  so a coding font and PingFang SC or Microsoft YaHei work side by side. On
+  macOS, PingFang now shows in the font lists (#392).
+- Downloaded Lato, PT Sans and PT Serif now work by name. Typst projects find
+  them the way they find the Typst font packs. For LaTeX, Add to project in
+  Settings > Downloads copies a font into the project's fonts folder with a
+  small .fontspec file, so `\setmainfont{PT Serif}` works without options, and
+  the project still compiles on other computers (#393).
 
 ### Security
 

@@ -1387,6 +1387,32 @@ fn shared_font_dirs_list_installed_packs_in_a_stable_order() {
     assert_eq!(names, ["typst-cjk", "typst-text"]);
 }
 
+#[test]
+fn shared_font_dirs_include_latex_template_packs_after_typst_packs() {
+    let assets = TempDir::new().unwrap();
+    std::fs::create_dir_all(assets.path().join(LATEX_FONT_PACKS_DIR).join("ptserif")).unwrap();
+    std::fs::create_dir_all(assets.path().join(TYPST_FONT_PACKS_DIR).join("typst-sans")).unwrap();
+    let dirs = typst_shared_font_dirs(assets.path());
+    let named: Vec<(String, String)> = dirs
+        .iter()
+        .map(|dir| {
+            let parent = dir.parent().unwrap().file_name().unwrap();
+            let pack = dir.file_name().unwrap();
+            (
+                parent.to_string_lossy().into_owned(),
+                pack.to_string_lossy().into_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        named,
+        [
+            (TYPST_FONT_PACKS_DIR.to_owned(), "typst-sans".to_owned()),
+            (LATEX_FONT_PACKS_DIR.to_owned(), "ptserif".to_owned()),
+        ]
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn shared_font_dirs_skip_links_that_leave_the_cache() {

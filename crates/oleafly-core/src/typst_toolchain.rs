@@ -1067,8 +1067,20 @@ pub fn typst_project_font_dirs(spec: Option<&crate::TypstSpec>, root: &Path) -> 
 
 pub const TYPST_FONT_PACKS_DIR: &str = "typst-fonts";
 
+pub const LATEX_FONT_PACKS_DIR: &str = "fonts";
+
+/// Typst reads every downloaded pack, including the ones made for LaTeX templates.
+pub const FONT_PACK_DIRS: [&str; 2] = [TYPST_FONT_PACKS_DIR, LATEX_FONT_PACKS_DIR];
+
 pub fn typst_shared_font_dirs(assets_root: &Path) -> Vec<PathBuf> {
-    let Ok(base) = assets_root.join(TYPST_FONT_PACKS_DIR).canonicalize() else {
+    FONT_PACK_DIRS
+        .iter()
+        .flat_map(|name| pack_folders(&assets_root.join(name)))
+        .collect()
+}
+
+fn pack_folders(base: &Path) -> Vec<PathBuf> {
+    let Ok(base) = base.canonicalize() else {
         return Vec::new();
     };
     let Ok(entries) = std::fs::read_dir(&base) else {

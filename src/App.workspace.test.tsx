@@ -574,6 +574,28 @@ describe("project workspace", () => {
     act(() => useSettingsStore.setState({ editorFontFamily: "" }));
   });
 
+  it("draws Chinese, Japanese and Korean text in the CJK font and Latin text in the editor font", async () => {
+    const latin =
+      '"Geist Mono", "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", "Ubuntu Mono"';
+    useSettingsStore.setState({ editorFontFamily: "", editorCjkFontFamily: "PingFang SC" });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe(`${latin}, "PingFang SC", var(--font-mono)`);
+    expect(root.style.getPropertyValue("--cm-cjk-font")).toBe('"PingFang SC"');
+    act(() => useSettingsStore.setState({ editorFontFamily: "Fira Code" }));
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe(
+      `"Fira Code", ${latin}, "PingFang SC", var(--font-mono)`,
+    );
+    act(() => useSettingsStore.setState({ editorUsesAppFont: true }));
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe("var(--font-sans)");
+    expect(root.style.getPropertyValue("--cm-cjk-font")).toBe("");
+    act(() => useSettingsStore.setState({ editorUsesAppFont: false, editorCjkFontFamily: "" }));
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe('"Fira Code", var(--font-mono)');
+    expect(root.style.getPropertyValue("--cm-cjk-font")).toBe("");
+    act(() => useSettingsStore.setState({ editorFontFamily: "" }));
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe("");
+  });
+
   it("applies the editor letter spacing to the document root", async () => {
     useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 2.5 });
     await renderApp();
