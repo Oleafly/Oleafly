@@ -75,6 +75,23 @@ describe("scanImportCompatibility", () => {
     );
   });
 
+  it("flags the pdfTeX-only CJK packages and offers pdfLaTeX", () => {
+    for (const line of [
+      String.raw`\usepackage{CJKutf8}`,
+      String.raw`\usepackage[encapsulated]{CJK}`,
+    ]) {
+      const findings = scanImportCompatibility({ texFiles: [{ path: "main.tex", content: line }] });
+      expect(findings.map((f) => f.id)).toContain("cjk-pdftex-package");
+    }
+    expect(importCompatAction("cjk-pdftex-package")).toBe("switch-to-pdflatex");
+    expect(needsPdflatexFinding("cjk-pdftex-package")).toBe(true);
+    expect(latexmkFixesFinding("cjk-pdftex-package")).toBe(true);
+    const others = scanImportCompatibility({
+      texFiles: [{ path: "main.tex", content: String.raw`\usepackage{xeCJK}` }],
+    });
+    expect(others.map((f) => f.id)).not.toContain("cjk-pdftex-package");
+  });
+
   it("ignores commented-out usepackage lines", () => {
     const findings = scanImportCompatibility({
       texFiles: [
@@ -283,6 +300,7 @@ describe("taxonomy catalog", () => {
     for (const id of [
       "minted",
       "pdftex-only",
+      "cjk-pdftex-package",
       "class-compat",
       "hyperref-pdftex-driver",
       "eps-image",

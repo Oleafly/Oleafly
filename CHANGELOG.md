@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Thanks
 
+- Matt Van Horn ([@mvanhorn](https://github.com/mvanhorn)): catching that tlmgr
+  can refuse an install and still exit with a success code (#401).
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)): reported the clash
   between documents in one folder (#389) and wrote the first fix and its tests
   (#395).
@@ -20,6 +22,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lines of inline code, which dropped the language and broke Mermaid diagrams.
   Blocks now open as code blocks, keep their whole info string and blank lines,
   and start from ``` as you type. Tab indents inside a block.
+- Package installs work again on the TinyTeX that Oleafly manages. Its tlmgr
+  falls behind the live repository within weeks of each release and then refuses
+  every install, so Oleafly now updates tlmgr and repeats the install. On a
+  system TeX Live or your own TinyTeX, the error keeps tlmgr's message and tells
+  you to run `tlmgr update --self`, even when tlmgr exits with a success code
+  (#397).
+- A compile that loses text now tells you. TeX skips characters its font can't
+  show and still reports success, so a Chinese, Japanese or Korean document
+  could come out with its text gone. You now get a notice, the compile log lists
+  the missing characters, and it gives a setup for each script using fonts
+  already in the built-in engine. A project using CJKutf8 or CJK, which only
+  work on pdfLaTeX, is offered that switch. `oleaflyc build` prints the same
+  warning.
+- A remote research run that had only just started could show as lost. The
+  status check read the run's process file twice, and the file could appear
+  between the two reads. It now reads the file once.
 - Papers kept side by side in one folder no longer clash (#389). A LaTeX file
   with its own `\documentclass` now counts as a separate document, along with
   the files it pulls in through `\input`, `\include` or `\subfile`. If

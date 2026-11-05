@@ -138,6 +138,43 @@ fn parses_missing_character_warnings() {
 }
 
 #[test]
+fn joins_missing_character_warnings_that_tex_wrapped_at_79_columns() {
+    let diags = parse(&[
+        "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+        "text;!",
+        "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-",
+        "text;!",
+        "Package hyperref Warning: Something else on input line 3.",
+        "",
+    ]);
+    let characters: Vec<_> = diags
+        .iter()
+        .filter(|d| d.category == LogCategory::MissingCharacter)
+        .map(|d| d.message.as_str())
+        .collect();
+    assert_eq!(
+        characters,
+        [
+            "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-text;!",
+            "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-text;!",
+        ]
+    );
+    assert!(diags.iter().any(|d| d.message.contains("Something else")));
+}
+
+#[test]
+fn a_wrapped_missing_character_warning_stops_at_a_blank_line() {
+    let diags = parse(&[
+        "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+        "",
+        "LaTeX Warning: Something else on input line 3.",
+        "",
+    ]);
+    assert_eq!(diags.len(), 2, "{diags:?}");
+    assert!(diags[1].message.contains("Something else"));
+}
+
+#[test]
 fn accumulates_multi_line_error_text_until_the_line_excerpt() {
     let diags = parse(&[
         "! Package amsmath Error: \\begin{split} won't work here.",

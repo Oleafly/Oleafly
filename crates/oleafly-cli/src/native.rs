@@ -95,6 +95,8 @@ pub struct BuildError {
     pub hints: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub explanation: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
 }
 
 impl From<CompileError> for BuildError {
@@ -107,6 +109,7 @@ impl From<CompileError> for BuildError {
             column: error.column,
             hints: error.hints,
             explanation: error.explanation,
+            code: error.code,
         }
     }
 }
@@ -121,6 +124,7 @@ impl BuildError {
             explanation: self.explanation.clone(),
             column: self.column,
             hints: self.hints.clone(),
+            code: self.code.clone(),
             ..CompileError::default()
         }
     }
@@ -134,8 +138,31 @@ impl BuildError {
             column: None,
             hints: Vec::new(),
             explanation: None,
+            code: None,
         }
     }
+}
+
+// The engine's own lines scroll past during a build that still succeeds, so a
+// document that lost its text says so again at the end, with the fix.
+fn lost_text_warning(errors: &[BuildError]) -> Option<crate::contract::Warning> {
+    let lost = errors.iter().find(|error| {
+        error
+            .code
+            .as_deref()
+            .is_some_and(|code| code.starts_with("tex.missing_characters"))
+    })?;
+    let mut message = lost.message.clone();
+    if let Some(explanation) = &lost.explanation {
+        message = format!("{message}. {explanation}");
+    }
+    for hint in &lost.hints {
+        message = format!("{message}\n\n{hint}");
+    }
+    Some(crate::contract::Warning::new(
+        "build.missing_characters",
+        message,
+    ))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -734,6 +761,14 @@ impl NativeCompiler {
         let output_path = (fresh && pdf.is_file()).then(|| pdf.clone());
         let previous_output = (!fresh && pdf.is_file()).then(|| pdf.clone());
         let output_id = output_path.as_deref().map(fingerprint_file).transpose()?;
+        let mut warnings = Vec::new();
+        if unlocked {
+            warnings.push(crate::contract::Warning::new(
+                "build.unlocked",
+                "This folder doesn't support file locks, so builds took turns through a lock folder instead. Older Oleafly versions don't use it, so don't run them on this project at the same time.",
+            ));
+        }
+        warnings.extend(lost_text_warning(&errors));
         Ok(BuildResult {
             ok,
             engine: build.engine(),
@@ -750,14 +785,7 @@ impl NativeCompiler {
             diagnostics,
             compile_time_ms: started.elapsed().as_millis() as u64,
             waited_ms,
-            warnings: if unlocked {
-                vec![crate::contract::Warning::new(
-                    "build.unlocked",
-                    "This folder doesn't support file locks, so builds took turns through a lock folder instead. Older Oleafly versions don't use it, so don't run them on this project at the same time.",
-                )]
-            } else {
-                Vec::new()
-            },
+            warnings,
         })
     }
 
@@ -1958,6 +1986,7 @@ fn parse_typst_errors(log: &str) -> Vec<BuildError> {
                 message: diagnostic.message,
                 hints: diagnostic.hints,
                 explanation: None,
+                code: None,
             }
         })
         .collect()

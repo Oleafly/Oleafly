@@ -70,6 +70,14 @@ export const IMPORT_COMPAT_CATALOG = {
       "Oleafly’s default engine is Tectonic (XeTeX-class), and this project relies on pdfTeX-only packages or primitives. The latexmk engine compiles with real pdfLaTeX, the same way Overleaf does.",
     latexmkFixes: true,
   },
+  "cjk-pdftex-package": {
+    action: "switch-to-pdflatex",
+    level: "blocker",
+    title: "CJKutf8 needs pdfLaTeX",
+    detail:
+      "CJKutf8 and CJK only work on pdfLaTeX. On the built-in engine (XeTeX) the document still compiles, but its Chinese, Japanese or Korean text is missing from the PDF. Switch to pdfLaTeX on system TeX, or replace the package with xeCJK.",
+    latexmkFixes: true,
+  },
   "class-compat": {
     action: "switch-to-latexmk",
     level: "warning",
@@ -286,6 +294,10 @@ export function scanImportCompatibility(sources: {
 
   if (loadsPackage(tex, "fontspec") || includesLiteral(tex, String.raw`\setmainfont{`)) {
     findings.push(findingFor("fontspec"));
+  }
+
+  if (loadsPackage(tex, "CJKutf8") || loadsPackage(tex, "CJK")) {
+    findings.push(findingFor("cjk-pdftex-package"));
   }
 
   if (

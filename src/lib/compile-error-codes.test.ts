@@ -27,6 +27,15 @@ describe("explainCodedCompileErrors", () => {
     expect(skipped.message).toBe("From the engine");
   });
 
+  it("names a lost character in a translatable explanation", () => {
+    for (const code of ["missing_characters", "missing_characters_cjk", "missing_characters_cjk_package"] as const) {
+      const [explained] = explainCodedCompileErrors([
+        { ...warning(`tex.${code}`), params: { sample: "大 綱" } },
+      ]);
+      expect(explained.explanation).toBe(enErrors.tex[code].replace("{{sample}}", "大 綱"));
+    }
+  });
+
   it("gives Quarto's setup problems a translatable explanation", () => {
     const codes = ["quarto_needs_tex", "r_package_missing", "jupyter_missing", "quarto_no_input"] as const;
     const explained = explainCodedCompileErrors(codes.map((code) => warning(`notebook.${code}`)));

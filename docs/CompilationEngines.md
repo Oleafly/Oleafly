@@ -35,6 +35,17 @@ and [Calepin](#calepin) for documents that run R, Python or Julia code.
 - Compile logs are normalized into editor diagnostics. Incomplete bibliography
   steps surface as `[Oleafly]` notes distinguishing “Biber not found” from
   “Biber/biblatex version mismatch”.
+- TeX leaves out a character its font has no glyph for and still reports
+  success, so a document can compile with its text gone. The log parser turns
+  those lines into one warning, and a successful compile with that warning
+  shows a notice once per project. Stray text in `nullfont`, which comes from
+  TikZ pictures, doesn't count. On XeTeX the warning lists an `xeCJK` setup for
+  the scripts it found, using fonts in the Tectonic bundle: `bsmi00lp.ttf` for
+  Traditional Chinese, `gbsn00lp.ttf` for Simplified, `ipaexm.ttf` for Japanese
+  and `UnBatang.ttf` for Korean. Fandol is not offered because it lacks common
+  Traditional characters such as 裡. `CJKutf8` and `CJK` only work on pdfLaTeX,
+  so a project that loads them on the built-in engine is also offered that
+  switch.
 - Optional LuaLaTeX support can prepare and verify tagged PDF output for
   accessibility-oriented workflows. It is separate from the default Tectonic
   path.
@@ -93,6 +104,13 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   compiler or `dvipdfmx` is missing next to latexmk, the compile stops with
   `tex.japanese_compiler_missing`, which names `tlmgr install
   collection-langjapanese`.
+- Oleafly pins its managed TinyTeX to a monthly release, but tlmgr talks to the
+  live repository. Once the repository's infrastructure moves on, tlmgr refuses
+  every install until it updates itself, and on Windows it can still exit with
+  code 0. Oleafly looks for that message in tlmgr's output, runs `tlmgr update
+  --self` for the TinyTeX it manages, and repeats the install once. A system TeX
+  Live or a TinyTeX you installed yourself is yours to update, so there the
+  error names the command to run.
 - Arbitrary TeX shell commands are blocked by default. A user can explicitly
   allow them for one trusted project on one computer. The setting is never
   inferred from source, imported, exported, committed to Git, or stored in

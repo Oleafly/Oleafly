@@ -21,6 +21,12 @@ const EXPLANATIONS: Readonly<Record<string, Explain>> = {
   "notebook.r_package_missing": () => i18n.t(($) => $.errors.notebook.r_package_missing),
   "notebook.jupyter_missing": () => i18n.t(($) => $.errors.notebook.jupyter_missing),
   "notebook.quarto_no_input": () => i18n.t(($) => $.errors.notebook.quarto_no_input),
+  "tex.missing_characters": (params) =>
+    i18n.t(($) => $.errors.tex.missing_characters, { sample: params.sample ?? "" }),
+  "tex.missing_characters_cjk": (params) =>
+    i18n.t(($) => $.errors.tex.missing_characters_cjk, { sample: params.sample ?? "" }),
+  "tex.missing_characters_cjk_package": (params) =>
+    i18n.t(($) => $.errors.tex.missing_characters_cjk_package, { sample: params.sample ?? "" }),
   "tex.compiler_crashed": () => i18n.t(($) => $.errors.tex.compiler_crashed),
   "tex.compiler_crashed_font": (params) =>
     i18n.t(($) => $.errors.tex.compiler_crashed_font, { font: params.font ?? "" }),

@@ -539,11 +539,15 @@ const NOTEBOOK_TOOL_MISSING: ReadonlyMap<string, NotebookTool> = new Map([
 const offeredPackageSets = new Map<string, Set<string>>();
 const packageInstallsRunning = new Set<string>();
 const missingPackageToasts = new Map<string, number>();
+const lostTextToasts = new Map<string, number>();
 const bundleRetryToasts = new Map<string, number>();
 let onlineRetry: { readonly projectId: string; readonly listener: () => void } | null = null;
 let engineLoadWait: (() => void) | null = null;
 
 const MUTATION_CONFLICT = "mutation conflict at generation";
+const LOST_TEXT_CODE = "tex.missing_characters";
+const LOST_TEXT_CJK_PACKAGE_CODE = "tex.missing_characters_cjk_package";
+const LOST_TEXT_SIGNATURE = "lost-text";
 const USER_TREE_NOTICE =
   /^The system TeX tree is not writable, so the packages went into your personal tree at (.+?)\.?$/;
 
@@ -583,6 +587,10 @@ function missingPackagesToastKey(projectId: string): string {
   return `missing-packages:${projectId}`;
 }
 
+function lostTextToastKey(projectId: string): string {
+  return `lost-text:${projectId}`;
+}
+
 function userTreeNotice(outcome: string): string | null {
   let path: string | null = null;
   for (const notice of installerNotices(outcome)) {
@@ -599,11 +607,15 @@ function clearOffer(projectId: string): void {
   );
 }
 
-function offerForAttempt(ctx: CompileApplyContext, offer: CompileOffer): boolean {
+function offerForAttempt(
+  ctx: CompileApplyContext,
+  offer: CompileOffer,
+  status: "error" | "success" = "error",
+): boolean {
   let recorded = false;
   ctx.set((state) => {
     if (
-      state.status !== "error" ||
+      state.status !== status ||
       state.lastAttemptIdentity?.requestGeneration !== ctx.requestIdentity.requestGeneration
     ) {
       return state;
@@ -791,6 +803,43 @@ function maybeOfferEngineChoice(
   if (ctx.origin === "explicit" || opening) {
     useEnginePickerStore.getState().openPicker("compile-failure", findings);
   }
+}
+
+function pdflatexOfferForLostText(
+  ctx: CompileApplyContext,
+  code: string | null | undefined,
+): CompileOffer | null {
+  const files = useFilesStore.getState();
+  if (code !== LOST_TEXT_CJK_PACKAGE_CODE) return null;
+  if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return null;
+  const findings = [importCompatFinding("cjk-pdftex-package")];
+  return engineHintDismissed(ctx.projectId, findings)
+    ? null
+    : { kind: "engine-gap", projectId: ctx.projectId, findings };
+}
+
+// A successful compile can still drop text the fonts can't show, and the PDF
+// gives no sign of it, so the warning has to come to the user once.
+function reportLostText(ctx: CompileApplyContext, errors: CompileError[]): void {
+  const warning = errors.find((error) => error.code?.startsWith(LOST_TEXT_CODE));
+  if (!warning?.explanation) {
+    dismissOwnedToast(lostTextToasts, ctx.projectId);
+    forgetOffer(ctx.projectId, LOST_TEXT_SIGNATURE);
+    return;
+  }
+  const offer = pdflatexOfferForLostText(ctx, warning.code);
+  const offered = offer !== null && offerForAttempt(ctx, offer, "success");
+  if (!rememberOffer(ctx.projectId, LOST_TEXT_SIGNATURE)) return;
+  const action = offered
+    ? {
+        label: i18n.t(($) => $.preview.actions.chooseEngine),
+        onClick: () => acceptCompileOffer(offer),
+      }
+    : undefined;
+  lostTextToasts.set(
+    ctx.projectId,
+    toast.infoUnique(lostTextToastKey(ctx.projectId), warning.explanation, action, true),
+  );
 }
 
 export function acceptCompileOffer(offer: CompileOffer): void {
@@ -1669,6 +1718,7 @@ async function applyCompileResult(
   const opening = takeEngineChoiceOnOpen(ctx.projectId);
   if (checkpoint) {
     settleCompileNotices(ctx.projectId);
+    reportLostText(ctx, errors);
   } else {
     maybeOfferEngineChoice(ctx, result.log, result.errors, opening);
     maybeSuggestMissingPackages(ctx, result.log);
