@@ -35,6 +35,7 @@ const biblatexRerunBiber = "Package biblatex Warning: Please (re)run Biber on th
 const oleaflyBiberModeA = "[Oleafly] Biber was not found (mode A)";
 const oleaflyBiberModeB = "[Oleafly] Biber/biblatex version mismatch (mode B)";
 const oleaflyBiberGap = "[Oleafly] Bibliography needs Biber";
+const oleaflyBiberNoStart = "[Oleafly] Biber could not start";
 const engineOutputMarker = "[Oleafly] Engine output:";
 const tectonicSummaryLine = /^(?:error|warning): .+:\d+: /;
 const errorHelpLine = /^(?:See the .+ for explanation\.|Type {2}H <return> {2}for immediate help\.?)$/;
@@ -178,14 +179,11 @@ function parseLine(line: string, state: ParserState) {
     state.insideBoxWarn = false;
     return;
   }
-  if (skipEngineOutput(line, state)) {
-    return;
-  }
-  if (state.missingCharTail > 0) {
-    continueMissingCharacter(line, state);
-    return;
-  }
-  if (parseOleaflyAnnotation(line, state)) {
+  if (
+    skipEngineOutput(line, state) ||
+    continueMissingCharacter(line, state) ||
+    parseOleaflyAnnotation(line, state)
+  ) {
     return;
   }
   if (state.searchEmptyLine) {
@@ -272,6 +270,7 @@ function parseOleaflyAnnotation(line: string, state: ParserState): boolean {
   if (
     !line.startsWith(oleaflyBiberModeA) &&
     !line.startsWith(oleaflyBiberModeB) &&
+    !line.startsWith(oleaflyBiberNoStart) &&
     !line.startsWith(oleaflyBiberGap)
   ) {
     return false;
@@ -412,7 +411,10 @@ function parseMissingCharacter(line: string, filename: string | null, state: Par
 
 // TeX wraps its log at 79 columns, so a font name such as
 // `[lmroman12-bold]:mapping=tex-text;` pushes the closing `!` onto the next line.
-function continueMissingCharacter(line: string, state: ParserState) {
+function continueMissingCharacter(line: string, state: ParserState): boolean {
+  if (state.missingCharTail === 0) {
+    return false;
+  }
   state.missingCharTail -= 1;
   const end = line.indexOf("!");
   if (state.current !== null) {
@@ -421,6 +423,7 @@ function continueMissingCharacter(line: string, state: ParserState) {
   if (end !== -1 || line.trim() === "") {
     state.missingCharTail = 0;
   }
+  return true;
 }
 
 function parseLatexInfo(line: string, filename: string | null, state: ParserState): boolean {

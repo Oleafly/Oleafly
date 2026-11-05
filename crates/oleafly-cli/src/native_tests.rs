@@ -762,6 +762,34 @@ fn the_tectonic_biber_beside_tectonic_is_recorded() {
     assert_eq!(found.sources.get("tectonic"), Some(&"bundled"));
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn a_package_keeps_biber_beside_the_command_and_tectonic_in_libexec() {
+    use std::os::unix::fs::PermissionsExt;
+    let prefix = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let bin = prefix.path().join("bin");
+    let libexec = prefix.path().join("libexec/oleafly");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::create_dir_all(&libexec).unwrap();
+    for path in [libexec.join("tectonic"), bin.join("tectonic-biber")] {
+        std::fs::write(&path, "tool").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let discovery = Discovery {
+        workspace_root: project.path().canonicalize().unwrap(),
+        cli_dir: Some(bin.clone()),
+        ..Discovery::default()
+    };
+
+    let found = BuildTools::discover_with(&discovery);
+
+    assert!(found
+        .tectonic
+        .is_some_and(|tool| tool.ends_with("libexec/oleafly/tectonic")));
+    assert_eq!(found.tectonic_biber, Some(bin.join("tectonic-biber")));
+}
+
 fn snapshot(root: &Path) -> Vec<(PathBuf, u64, Option<std::time::SystemTime>)> {
     fn visit(
         root: &Path,

@@ -242,6 +242,17 @@ fn surfaces_oleafly_biber_mode_diagnostics_and_biblatex_rerun_warnings() {
 }
 
 #[test]
+fn shows_what_to_install_when_biber_could_not_start() {
+    let diags = parse(&[
+        "[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.",
+        "[Oleafly] Biber could not start because this computer does not have libnsl.so.1. On Fedora, run: sudo dnf install libnsl libxcrypt-compat.",
+    ]);
+    assert!(diags.iter().any(|d| d.category == LogCategory::Biber
+        && d.severity == LogSeverity::Error
+        && d.message.contains("sudo dnf install libnsl")));
+}
+
+#[test]
 fn surfaces_oleafly_image_notes_as_errors_even_after_an_open_warning() {
     let named = "The image figures/plot (1).png is damaged and cannot be read. Export the image again or replace the file.";
     let unnamed = "One of the PNG images in this document is damaged and stopped the compile. Oleafly could not tell which one. Export the document's PNG images again, or replace the damaged one.";

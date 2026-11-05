@@ -20,10 +20,14 @@ and [Calepin](#calepin) for documents that run R, Python or Julia code.
 - Default engine: bundled Tectonic sidecar.
 - Supports multi-file projects, images, bibliography files, SyncTeX, and
   cached/offline compilation when packages are available.
-- **biblatex / Biber:** Tectonic 0.16 ships biblatex 3.17, which requires Biber
-  2.17. Oleafly packages a pinned `tectonic-biber` sidecar (see
+- **biblatex / Biber:** Tectonic's bundle ships biblatex 3.17, which requires
+  Biber 2.17. Oleafly packages a pinned `tectonic-biber` sidecar (see
   `scripts/fetch-biber.sh`) and puts its directory on `PATH` for the compile
-  child. **Primary path:** Tectonic discovers `tectonic-biber` mid-build and
+  child. Tectonic starts in a scratch folder rather than the project, because it
+  looks for `./tectonic-biber` in its working directory before it reads `PATH`.
+  The fetch step also patches the Perl inside Biber
+  (`scripts/biber/harden-biber.mjs`), because Biber takes options and code-like
+  text from what the document writes. **Primary path:** Tectonic discovers `tectonic-biber` mid-build and
   runs it itself. **Recovery path:** if a `.bcf` is left without a usable
   `.bbl` (PATH miss, mid-build tool failure), Oleafly runs the same sidecar via
   the supervised process helper (timeout + cancel) and re-typesets once. This
@@ -216,8 +220,8 @@ records.
   tooling that goes through the same helper) gets TeX-related directories and the
   sidecar directory prepended to `PATH`. Non-LaTeX engines simply ignore unused
   entries. Directories are only added when they exist on disk.
-- **Linux aarch64:** upstream has no Biber 2.17 binary. Packaging ships a stub
-  that exits with a clear error so the bundler still has an `externalBin` file.
+- **Linux aarch64:** upstream has no Biber 2.17 binary, so
+  `scripts/biber/build-linux.sh` builds the one Oleafly ships.
 
 ## Typst
 

@@ -83,6 +83,7 @@ struct Patterns {
     biblatex_rerun_biber: Regex,
     oleafly_biber_mode_a: Regex,
     oleafly_biber_mode_b: Regex,
+    oleafly_biber_no_start: Regex,
     oleafly_biber_gap: Regex,
     oleafly_prefix: Regex,
     undefined_reference: Regex,
@@ -160,6 +161,7 @@ fn patterns() -> &'static Patterns {
             r"^Package biblatex Warning: Please \(re\)run Biber on the file:".into(),
         ),
         oleafly_biber_mode_a: compile(r"^\[Oleafly\] Biber was not found \(mode A\)".into()),
+        oleafly_biber_no_start: compile(r"^\[Oleafly\] Biber could not start".into()),
         oleafly_biber_mode_b: compile(
             r"^\[Oleafly\] Biber/biblatex version mismatch \(mode B\)".into(),
         ),
@@ -467,7 +469,10 @@ impl Parser<'_> {
 
     // TeX wraps its log at 79 columns, so a font name such as
     // `[lmroman12-bold]:mapping=tex-text;` pushes the closing `!` onto the next line.
-    fn continue_missing_character(&mut self, line: &str) {
+    fn continue_missing_character(&mut self, line: &str) -> bool {
+        if self.missing_char_tail == 0 {
+            return false;
+        }
         self.missing_char_tail -= 1;
         let end = line.find('!');
         if let Some(current) = self.current.as_mut() {
@@ -479,6 +484,71 @@ impl Parser<'_> {
         if end.is_some() || line.trim().is_empty() {
             self.missing_char_tail = 0;
         }
+        true
+    }
+
+    fn parse_missing_character(&mut self, p: &Patterns, line: &str, file: Option<String>) -> bool {
+        let Some(caps) = line
+            .contains("Missing character:")
+            .then(|| p.missing_char.captures(line))
+            .flatten()
+        else {
+            return false;
+        };
+        let end = caps[1].find('!');
+        let text = end.map_or(caps[1].trim_end(), |end| &caps[1][..=end]);
+        self.start(Entry {
+            severity: LogSeverity::Warning,
+            category: LogCategory::MissingCharacter,
+            file,
+            line: None,
+            text: text.to_string(),
+            context: None,
+        });
+        self.search_empty_line = false;
+        self.missing_char_tail = if end.is_none() {
+            MAX_MISSING_CHAR_TAIL
+        } else {
+            0
+        };
+        true
+    }
+
+    fn parse_latex_warning(&mut self, p: &Patterns, line: &str, file: Option<String>) -> bool {
+        let Some(caps) = line
+            .contains(" Warning:")
+            .then(|| p.latex_warn.captures(line))
+            .flatten()
+        else {
+            return false;
+        };
+        if p.biblatex_rerun_biber.is_match(line) {
+            self.start(Entry {
+                severity: LogSeverity::Warning,
+                category: LogCategory::Biber,
+                file: None,
+                line: None,
+                text: BIBER_RERUN_MESSAGE.to_string(),
+                context: None,
+            });
+            self.search_empty_line = false;
+            return true;
+        }
+        self.start(Entry {
+            severity: LogSeverity::Warning,
+            category: LogCategory::PackageWarning,
+            file,
+            line: parse_number(caps.get(4)),
+            text: format!(
+                "{}: {}{}",
+                &caps[1],
+                &caps[3],
+                caps.get(5).map_or("", |m| m.as_str())
+            ),
+            context: None,
+        });
+        self.search_empty_line = true;
+        true
     }
 
     fn parse_line_once(&mut self, line: &str) -> Step {
@@ -488,11 +558,7 @@ impl Parser<'_> {
             self.inside_box_warn = false;
             return Step::Stop;
         }
-        if self.skip_engine_output(p, line) {
-            return Step::Stop;
-        }
-        if self.missing_char_tail > 0 {
-            self.continue_missing_character(line);
+        if self.skip_engine_output(p, line) || self.continue_missing_character(line) {
             return Step::Stop;
         }
         if let Some(entry) = oleafly_note(p, line) {
@@ -526,25 +592,7 @@ impl Parser<'_> {
             self.inside_error = true;
             return Step::Stop;
         }
-        if let Some(caps) = line
-            .contains("Missing character:")
-            .then(|| p.missing_char.captures(line))
-            .flatten()
-        {
-            let (text, wrapped) = match caps[1].find('!') {
-                Some(end) => (&caps[1][..=end], false),
-                None => (caps[1].trim_end(), true),
-            };
-            self.start(Entry {
-                severity: LogSeverity::Warning,
-                category: LogCategory::MissingCharacter,
-                file: filename,
-                line: None,
-                text: text.to_string(),
-                context: None,
-            });
-            self.search_empty_line = false;
-            self.missing_char_tail = if wrapped { MAX_MISSING_CHAR_TAIL } else { 0 };
+        if self.parse_missing_character(p, line, filename.clone()) {
             return Step::Stop;
         }
         if let Some(caps) = line
@@ -568,37 +616,7 @@ impl Parser<'_> {
             self.search_empty_line = true;
             return Step::Stop;
         }
-        if let Some(caps) = line
-            .contains(" Warning:")
-            .then(|| p.latex_warn.captures(line))
-            .flatten()
-        {
-            if p.biblatex_rerun_biber.is_match(line) {
-                self.start(Entry {
-                    severity: LogSeverity::Warning,
-                    category: LogCategory::Biber,
-                    file: None,
-                    line: None,
-                    text: BIBER_RERUN_MESSAGE.to_string(),
-                    context: None,
-                });
-                self.search_empty_line = false;
-                return Step::Stop;
-            }
-            self.start(Entry {
-                severity: LogSeverity::Warning,
-                category: LogCategory::PackageWarning,
-                file: filename,
-                line: parse_number(caps.get(4)),
-                text: format!(
-                    "{}: {}{}",
-                    &caps[1],
-                    &caps[3],
-                    caps.get(5).map_or("", |m| m.as_str())
-                ),
-                context: None,
-            });
-            self.search_empty_line = true;
+        if self.parse_latex_warning(p, line, filename.clone()) {
             return Step::Stop;
         }
         if let Some(caps) = line
@@ -847,6 +865,7 @@ fn oleafly_note(p: &Patterns, line: &str) -> Option<Entry> {
     let category = if line.starts_with("[Oleafly]")
         && (p.oleafly_biber_mode_a.is_match(line)
             || p.oleafly_biber_mode_b.is_match(line)
+            || p.oleafly_biber_no_start.is_match(line)
             || p.oleafly_biber_gap.is_match(line))
     {
         LogCategory::Biber

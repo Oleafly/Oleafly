@@ -247,7 +247,7 @@ impl Discovery {
             bundled_dirs: cli_dir
                 .iter()
                 .chain(app.as_ref().map(|app| &app.bin_dir))
-                .cloned()
+                .flat_map(|dir| oleafly_core::sidecar::bundled_tool_dirs(dir))
                 .collect(),
             data_root: data_root.clone(),
             home,
@@ -276,6 +276,7 @@ impl Discovery {
             .cli_dir
             .iter()
             .chain(self.app.as_ref().map(|app| &app.bin_dir))
+            .flat_map(|dir| oleafly_core::sidecar::bundled_tool_dirs(dir))
         {
             candidates.push(folder.join(executable_name(name)));
         }
@@ -357,7 +358,13 @@ impl BuildTools {
             .executable
             .as_deref()
             .and_then(Path::parent)
-            .and_then(tectonic_biber_in);
+            .and_then(tectonic_biber_in)
+            .or_else(|| {
+                discovery
+                    .bundled_candidates("tectonic-biber")
+                    .into_iter()
+                    .find(|candidate| candidate.is_file())
+            });
         tools.tectonic = tectonic.executable;
         tools.latexmk = latexmk.executable;
         tools.typst = typst.executable;
@@ -908,7 +915,12 @@ impl NativeCompiler {
                 let produced = staged.path().join(format!("{ENTRY_STEM}.pdf"));
                 environment.extend(self.tex_environment(&executable, build.project_root()));
                 staging = Some(staged);
-                (arguments, produced, build.project_root().to_path_buf())
+                // Tectonic looks for ./tectonic-biber in its working directory
+                // before PATH, so it must not start in the project it builds.
+                let created = EngineScratch::create(scratch_bases)?;
+                let working = created.path().to_path_buf();
+                scratch = Some(created);
+                (arguments, produced, working)
             }
             Engine::Latexmk => {
                 let (arguments, texmf_output) =

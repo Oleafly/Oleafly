@@ -24,7 +24,8 @@ cargo install cargo-about && cargo about generate about.hbs   # Rust / backend
 | Component | Purpose | License |
 |---|---|---|
 | [Tectonic](https://tectonic-typesetting.github.io/) | LaTeX compiler (sidecar) | MIT |
-| [Biber 2.17](https://sourceforge.net/projects/biblatex-biber/) | Bibliography backend for biblatex (`tectonic-biber` sidecar, version-pinned to Tectonic’s biblatex) | Artistic-2.0 / GPL-1.0-or-later |
+| [Biber 2.17](https://sourceforge.net/projects/biblatex-biber/) | Bibliography backend for biblatex (`tectonic-biber` sidecar, version-pinned to Tectonic’s biblatex). Modified: `scripts/biber/harden-biber.mjs` lists every change, and the Linux ARM64 build also carries upstream commit d9e96171. | Artistic-2.0 / GPL-1.0-or-later |
+| Libraries packed into the Linux ARM64 Biber by `scripts/biber/build-linux.sh` | Perl 5.32 and the CPAN modules in `scripts/biber/cpan-lock.txt`, btparse, libxml2, libxslt, ICU 67, OpenSSL 1.1, libgcrypt, libgpg-error, zlib, bzip2, liblzma, Berkeley DB 5.3, GDBM, libcrypt, libstdc++ | Each under its own license; see the Debian 11 package copyright files |
 | [Pandoc 3.9.0.2](https://github.com/jgm/pandoc/releases/tag/3.9.0.2) | Document converter (separate sidecar process) | GPL-2.0-or-later |
 | [Typst](https://github.com/typst/typst) | Typst compiler 0.15.1 (sidecar) | Apache-2.0 |
 | [Tinymist 0.15.8](https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.8) | Typst language server (checksum-pinned upstream archive resource), © 2023–2025 Myriad Dreamin and Nathan Varner | Apache-2.0 |

@@ -1,0 +1,35 @@
+name: Build Biber
+
+# Biber 2.17 has no upstream aarch64 Linux binary. Run this only to replace the
+# pinned one: upload the tarball to the mirror and to a GitHub prerelease tagged
+# biber-2.17-aarch64, then update the checksum in scripts/fetch-biber.sh. It must
+# be a prerelease: a normal release could take the Latest label from the app
+# release, and installed apps look for updates at releases/latest.
+# Nothing here runs during a release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Biber 2.17 (aarch64 Linux)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build in Debian 11
+        run: |
+          mkdir out
+          docker run --rm -v "$PWD":/repo -v "$PWD/out":/out debian:11 \
+            bash /repo/scripts/biber/build-linux.sh
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: biber-2.17-linux-aarch64
+          path: |
+            out/biber-linux_aarch64.tar.gz
+            out/cpan-lock.txt
+          if-no-files-found: error

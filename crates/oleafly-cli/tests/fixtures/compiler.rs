@@ -30,8 +30,20 @@ fn source() -> Option<PathBuf> {
     Some(last)
 }
 
+/// `name` under the first `-Z search-path=` folder that has it, the way
+/// Tectonic finds project files without relying on its working directory.
+fn on_search_path(name: PathBuf) -> PathBuf {
+    arguments()
+        .iter()
+        .filter_map(|argument| argument.to_str()?.strip_prefix("search-path="))
+        .map(|folder| PathBuf::from(folder).join(&name))
+        .find(|candidate| candidate.is_file())
+        .unwrap_or(name)
+}
+
 fn source_contains(marker: &str) -> bool {
     source()
+        .map(on_search_path)
         .and_then(|source| std::fs::read_to_string(source).ok())
         .is_some_and(|text| text.contains(marker))
 }
@@ -68,6 +80,9 @@ fn record() {
     let mut fields: Vec<String> = arguments().iter().map(|argument| argument.to_string_lossy().into_owned()).collect();
     for name in ["PAR_GLOBAL_TMPDIR", "TEXMFOUTPUT", "openin_any"] {
         fields.push(format!("{name}={}", std::env::var(name).unwrap_or_default()));
+    }
+    if let Ok(directory) = std::env::current_dir() {
+        fields.push(format!("cwd={}", directory.display()));
     }
     let calls = exe.with_extension("calls");
     if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(calls) {
