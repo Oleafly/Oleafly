@@ -3145,7 +3145,7 @@ fn install_fake_typst(data: &Path, version: &ToolchainVersion) -> Option<PathBuf
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
     }
     let metadata = std::fs::metadata(&binary).unwrap();
     let modified = metadata

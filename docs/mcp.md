@@ -105,7 +105,7 @@ window.
 
 | Tool | What it does |
 |---|---|
-| `get_status` | Oleafly version, open project, its document engine (LaTeX, Typst or Markdown), main document, last compile status |
+| `get_status` | Oleafly version, open project, its document engine (LaTeX, Typst or Markdown), main document, last compile status, and `failure_reason` when that compile failed or couldn't run |
 | `list_projects` | Projects in your library (id and name) |
 | `open_project` | Open a project by id so other tools target it |
 | `list_files` | Project file tree |
@@ -119,6 +119,9 @@ window.
 | `read_file` | Read a project file |
 | `get_log` | Last compile log |
 | `get_pdf_text` | Text extracted from the compiled PDF |
+| `verify_pdf_pages` | Check rendered PDF pages for layout problems, using page images or page text |
+
+`get_pdf_text` and `verify_pdf_pages` read the last PDF Oleafly has. If the last compile failed or couldn't run, the result adds `stale: true` and a `stale_reason`, because that PDF is from an earlier compile or is a partial PDF from the failed one. `get_log` adds the same two fields when the last compile couldn't run, because its log is then from an earlier compile.
 
 ### Editing
 
@@ -139,6 +142,15 @@ window.
 | `preview_figure` | Render a figure on its own and return a PNG image |
 | `insert_figure` | Insert the last previewed figure into the document |
 | `load_image` | Load an image from the project for figure work |
+
+`compile` returns `success`, `errors`, `has_pdf` and `log_tail`. It adds these fields when they apply:
+
+| Field | What it means |
+|---|---|
+| `diagnostics` | The build's warnings and other diagnostics, without info messages |
+| `reason` | The build couldn't run, didn't finish, or needs something outside the source. Tell the user and leave the source alone. |
+| `offer` | The kind of fix Oleafly is offering the user, such as `tex-missing` or `typst-version-missing` |
+| `stopped` | The compile was stopped on request |
 
 `preview_figure` and `insert_figure` work in LaTeX and Typst projects. A LaTeX figure is TikZ code that compiles in a small standalone document, and `insert_figure` wraps it in a `figure` environment. A Typst figure is Typst markup, such as a CeTZ canvas or a fletcher diagram, rendered with the project's Typst version. Packages from `@preview` load the same way they do in a normal Typst compile. `insert_figure` wraps the code in `#figure`, puts the label after it, and moves the figure's `#import` lines above it. In a Markdown project both tools return an error and change nothing. `load_image` works in every project.
 
@@ -204,7 +216,7 @@ A cloud chat service cannot reach `127.0.0.1` on your machine. Use **Claude Desk
 | Port changed from `5323` | The preferred port was unavailable, so Oleafly selected a free one. Copy the live URL from Settings. |
 | HTTP 401 | Token mismatch (e.g. after Regenerate). Copy the new token into the client. |
 | HTTP 403 | Client sent an `Origin` header or a non-loopback `Host`. Use a native MCP client, not a browser tab. |
-| Call timed out | Each tool call waits up to **5 minutes** (300 s) for compiles or for you to click Approve. Approve or reject pending cards, or retry. |
+| Call timed out | Each tool call waits up to **5 minutes** (300 s) for compiles or for you to click Approve. Approve or reject pending cards, or retry. A compile can take longer, up to an hour for a Quarto or Calepin notebook. It keeps running in Oleafly after the call times out, and tools that need the Oleafly window wait behind it, so let it finish before you retry. |
 | Tool requires an active window | The tool mutates state or needs UI context. Open an Oleafly window and retry. Only bounded read-only file tools remain available without the renderer. |
 | Cannot connect | The Oleafly application process must be running with MCP enabled. The server does not run after the application quits. |
 

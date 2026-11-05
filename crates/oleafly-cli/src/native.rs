@@ -775,17 +775,8 @@ impl NativeCompiler {
 
         let tex_engine = matches!(build.engine(), Engine::Tectonic | Engine::Latexmk);
         let produced_pdf = command.produced_output.is_file();
-        let file_log_path = match &command.staging {
-            Some(staging) => staging.path().join(format!("{ENTRY_STEM}.log")),
-            None => engine_log.clone(),
-        };
-        let file_log_fresh = match &in_place {
-            None => file_log_path.is_file(),
-            Some(outputs) => outputs.is_fresh(&engine_log),
-        };
-        let file_log = (tex_engine && file_log_fresh)
-            .then(|| read_log_bounded(&file_log_path).ok())
-            .flatten();
+        let (file_log_path, file_log) =
+            engine_file_log(&command, in_place.as_ref(), &engine_log, tex_engine);
         let missing_tool = (build.engine() == Engine::Latexmk && !status.success())
             .then(|| command.environment.iter().find(|(name, _)| *name == "PATH"))
             .flatten()
@@ -816,10 +807,7 @@ impl NativeCompiler {
                 .map_or(build_dir.as_path(), OutputStaging::path);
             apply_tex_output_notes(build, out_dir, status.success(), &mut log, &mut errors);
         }
-        let wrote_pdf = match &in_place {
-            None => produced_pdf,
-            Some(outputs) => pdf.is_file() && (outputs.is_fresh(&pdf) || status.success()),
-        };
+        let wrote_pdf = pdf_was_written(in_place.as_ref(), &pdf, produced_pdf, status.success());
         let ok = status.success() && wrote_pdf && !errors.iter().any(|error| error.kind == "error");
 
         if let Some(staging) = command.staging.take() {
@@ -833,21 +821,9 @@ impl NativeCompiler {
                 engine_spec::record_latexmk_binary(&build_dir, latexmk);
             }
         }
-        let fresh = match build.engine() {
-            Engine::Latexmk => ok && wrote_pdf,
-            _ => ok && produced_pdf,
-        };
-        if image_check_applies(ok, build.engine()) {
-            self.explain_image_failures(build, &mut log, &mut errors)
-                .await;
-        }
-        if !ok && build.engine() == Engine::Latexmk {
-            self.explain_blocked_shell_escape(build, &mut log, &mut errors);
-            self.add_tlmgr_hints(&mut errors);
-        }
-        if !ok && tex_engine && !errors.iter().any(|error| error.kind == "error") {
-            errors.extend(tex_failure_reason(&log).map(BuildError::from));
-        }
+        let fresh = output_is_fresh(build.engine(), ok, wrote_pdf, produced_pdf);
+        self.explain_build_failure(build, ok, tex_engine, &mut log, &mut errors)
+            .await;
         let diagnostics = diagnostics_for(build, file_log.as_deref(), &mut errors);
         let output_path = (fresh && pdf.is_file()).then(|| pdf.clone());
         let previous_output = (!fresh && pdf.is_file()).then(|| pdf.clone());
@@ -948,6 +924,26 @@ impl NativeCompiler {
         let retry = self.command(build, flags, false)?;
         let (output, status) = run_command(&retry.launch(), self.timeout, &self.log).await?;
         Ok((retry, output, status))
+    }
+
+    async fn explain_build_failure(
+        &self,
+        build: &PreparedBuild,
+        ok: bool,
+        tex_engine: bool,
+        log: &mut String,
+        errors: &mut Vec<BuildError>,
+    ) {
+        if image_check_applies(ok, build.engine()) {
+            self.explain_image_failures(build, log, errors).await;
+        }
+        if !ok && build.engine() == Engine::Latexmk {
+            self.explain_blocked_shell_escape(build, log, errors);
+            self.add_tlmgr_hints(errors);
+        }
+        if !ok && tex_engine && !errors.iter().any(|error| error.kind == "error") {
+            errors.extend(tex_failure_reason(log).map(BuildError::from));
+        }
     }
 
     async fn explain_image_failures(
@@ -1918,7 +1914,7 @@ fn shell_escape_message(denied: DeniedShellEscape) -> String {
         DeniedShellEscape::Command => "This document runs a shell command",
     };
     format!(
-        "{need}, and `oleafly build` always blocks that. Open the project in Oleafly and click \"Allow external commands\", or run latexmk yourself with -shell-escape. Only do this if you trust every file in the project."
+        "{need}, and `oleafly build` always blocks that. Open the project in Oleafly, click \"Allow external commands\" and build it there, or run latexmk yourself with -shell-escape. Only do this if you trust every file in the project."
     )
 }
 
@@ -2422,6 +2418,45 @@ pub(crate) fn fingerprint_file(path: &Path) -> Result<String> {
 
 fn image_check_applies(ok: bool, engine: Engine) -> bool {
     !ok && matches!(engine, Engine::Tectonic | Engine::Latexmk)
+}
+
+fn engine_file_log(
+    command: &BuildCommand,
+    in_place: Option<&InPlaceOutputs>,
+    engine_log: &Path,
+    tex_engine: bool,
+) -> (PathBuf, Option<String>) {
+    let file_log_path = match &command.staging {
+        Some(staging) => staging.path().join(format!("{ENTRY_STEM}.log")),
+        None => engine_log.to_path_buf(),
+    };
+    let file_log_fresh = match in_place {
+        None => file_log_path.is_file(),
+        Some(outputs) => outputs.is_fresh(engine_log),
+    };
+    let file_log = (tex_engine && file_log_fresh)
+        .then(|| read_log_bounded(&file_log_path).ok())
+        .flatten();
+    (file_log_path, file_log)
+}
+
+fn pdf_was_written(
+    in_place: Option<&InPlaceOutputs>,
+    pdf: &Path,
+    produced_pdf: bool,
+    success: bool,
+) -> bool {
+    match in_place {
+        None => produced_pdf,
+        Some(outputs) => pdf.is_file() && (outputs.is_fresh(pdf) || success),
+    }
+}
+
+fn output_is_fresh(engine: Engine, ok: bool, wrote_pdf: bool, produced_pdf: bool) -> bool {
+    match engine {
+        Engine::Latexmk => ok && wrote_pdf,
+        _ => ok && produced_pdf,
+    }
 }
 
 fn parse_errors(engine: Engine, log: &str) -> Vec<BuildError> {

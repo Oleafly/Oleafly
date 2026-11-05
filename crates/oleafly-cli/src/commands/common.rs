@@ -181,7 +181,7 @@ pub fn tectonic_fallback(origin: &ProjectOrigin, compiler_flag: bool) -> &'stati
             "To use the built-in engine instead, leave out --compiler."
         }
         ProjectOrigin::Detected => {
-            "To use the built-in engine instead, run `oleafly config set latex.default_engine tectonic`."
+            "To use the built-in engine instead, run `oleafly config set latex.default_engine tectonic --global`."
         }
         _ => "To use the built-in engine instead, run `oleafly config set engine tectonic`.",
     }
@@ -474,7 +474,7 @@ mod tests {
             .contains("`oleafly config set engine tectonic`"));
         assert!(tectonic_fallback(&ProjectOrigin::Detected, true).contains("--compiler"));
         assert!(tectonic_fallback(&ProjectOrigin::Detected, false)
-            .contains("`oleafly config set latex.default_engine tectonic`"));
+            .contains("`oleafly config set latex.default_engine tectonic --global`"));
     }
 
     #[test]

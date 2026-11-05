@@ -208,6 +208,22 @@ fn missing_glyphs_warning(codes: &[u32]) -> CompileError {
     }
 }
 
+fn note_missing_character(line: &str, seen: &mut BTreeSet<u32>, missing: &mut Vec<u32>) -> bool {
+    if let Some(found) = missing_character(line) {
+        if let Some(code) = found.filter(|code| seen.insert(*code)) {
+            missing.push(code);
+        }
+        return true;
+    }
+    let Some(code) = unrepresentable_character(line) else {
+        return false;
+    };
+    if seen.insert(code) {
+        missing.push(code);
+    }
+    true
+}
+
 pub fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
     let attempt = log
         .rsplit_once(BUNDLE_FALLBACK_NOTE.trim_end())
@@ -231,16 +247,7 @@ pub fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
         if in_transcript {
             continue;
         }
-        if let Some(found) = missing_character(trimmed) {
-            if let Some(code) = found.filter(|code| seen.insert(*code)) {
-                missing.push(code);
-            }
-            continue;
-        }
-        if let Some(code) = unrepresentable_character(trimmed) {
-            if seen.insert(code) {
-                missing.push(code);
-            }
+        if note_missing_character(trimmed, &mut seen, &mut missing) {
             continue;
         }
         if let Some(error) = image_marker(trimmed) {

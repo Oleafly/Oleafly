@@ -231,7 +231,7 @@ fn windows_terminal_word(word: &str) -> OsString {
 fn runs_through_cmd(program: &str) -> bool {
     Path::new(program)
         .extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|extension| {
             extension.eq_ignore_ascii_case("cmd") || extension.eq_ignore_ascii_case("bat")
         })

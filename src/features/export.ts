@@ -10,6 +10,7 @@ import {
   withEventListener,
   type ExportOutcome,
 } from "@/lib/tauri";
+import type { DocumentEngineDescriptor } from "@oleafly/backend-port";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { formatList } from "@/lib/intl";
 import { isNotebookEngine } from "@/lib/notebook-engines";
@@ -66,6 +67,51 @@ function assertProjectOpen(projectId: string): void {
   }
 }
 
+type ExportResult = {
+  notice: ExportNotice | undefined;
+  warnings: string[];
+};
+
+type ConvertedExport = {
+  projectId: string;
+  mainDoc: string;
+  format: DocumentExportFormat;
+  destination: string;
+  engine: Pick<DocumentEngineDescriptor, "id" | "typst_options">;
+  showStep: (step: string) => void;
+};
+
+async function exportProjectArchive(projectId: string, destination: string): Promise<ExportResult> {
+  const { skippedLinks } = await downloadProjectZip(projectId, destination);
+  const notice: ExportNotice | undefined =
+    skippedLinks > 0
+      ? (names) => i18n.t(($) => $.core.export.savedWithoutLinks, { ...names, count: skippedLinks })
+      : undefined;
+  return { notice, warnings: [] };
+}
+
+async function exportConvertedDocument({
+  projectId,
+  mainDoc,
+  format,
+  destination,
+  engine,
+  showStep,
+}: ConvertedExport): Promise<ExportResult> {
+  const variant = activeTypstVariant(projectId, engine);
+  const outcome = await withEventListener(EXPORT_LOG_EVENT, exportStepReader(showStep), () =>
+    useSettingsStore.getState().offline
+      ? exportDocument(projectId, mainDoc, format, destination, variant, true)
+      : exportDocument(projectId, mainDoc, format, destination, variant),
+  );
+  const warnings = (outcome?.warnings ?? []).map(describeError);
+  const sourceNotice: ExportNotice | undefined =
+    SOURCE_FORMATS.has(format) && engine.id !== "typst"
+      ? (names) => i18n.t(($) => $.core.export.savedSource, names)
+      : undefined;
+  return { notice: typstContentNotice(outcome) ?? sourceNotice, warnings };
+}
+
 export async function exportCurrentDocument(format: DocumentExportFormat | "zip"): Promise<void> {
   if (documentExportInFlight) return;
   const { projectId, projectName, engine } = useFilesStore.getState();
@@ -95,28 +141,12 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
       true,
     );
     progress = toastId;
-    let notice: ExportNotice | undefined;
-    let warnings: string[] = [];
-    if (format === "zip") {
-      const { skippedLinks } = await downloadProjectZip(projectId, destination);
-      if (skippedLinks > 0) {
-        notice = (names) => i18n.t(($) => $.core.export.savedWithoutLinks, { ...names, count: skippedLinks });
-      }
-    } else {
-      const showStep = (step: string) =>
-        toast.update(toastId, i18n.t(($) => $.shell.toolbar.exportingStep, { format: extension, step }));
-      const variant = activeTypstVariant(projectId, engine);
-      const outcome = await withEventListener(EXPORT_LOG_EVENT, exportStepReader(showStep), () =>
-        useSettingsStore.getState().offline
-          ? exportDocument(projectId, mainDoc, format, destination, variant, true)
-          : exportDocument(projectId, mainDoc, format, destination, variant),
-      );
-      warnings = (outcome?.warnings ?? []).map(describeError);
-      if (SOURCE_FORMATS.has(format) && engine.id !== "typst") {
-        notice = (names) => i18n.t(($) => $.core.export.savedSource, names);
-      }
-      notice = typstContentNotice(outcome) ?? notice;
-    }
+    const showStep = (step: string) =>
+      toast.update(toastId, i18n.t(($) => $.shell.toolbar.exportingStep, { format: extension, step }));
+    const { notice, warnings } =
+      format === "zip"
+        ? await exportProjectArchive(projectId, destination)
+        : await exportConvertedDocument({ projectId, mainDoc, format, destination, engine, showStep });
     exportResultToast(extension.toUpperCase(), destination, notice, warnings);
     progress = undefined;
   } catch (error) {

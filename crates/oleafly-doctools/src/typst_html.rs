@@ -106,6 +106,10 @@ fn image_entry_source(folder: &str, name: &str) -> String {
     format!("#set page(width: auto, height: auto, margin: 0pt)\n#image(\"/{folder}/{name}\")\n")
 }
 
+async fn joined<T>(task: tokio::task::JoinHandle<std::io::Result<T>>) -> std::io::Result<T> {
+    task.await.map_err(std::io::Error::other)?
+}
+
 async fn image_to_pdf(
     runner: &dyn ToolRunner,
     job: &LatexMedia<'_>,
@@ -114,7 +118,13 @@ async fn image_to_pdf(
     let name = image.file_name()?.to_str()?;
     let stem = image.file_stem()?.to_str()?;
     let entry = job.staging.join(format!("{stem}.typ"));
-    std::fs::write(&entry, image_entry_source(job.folder, name)).ok()?;
+    let entry_path = entry.clone();
+    let entry_source = image_entry_source(job.folder, name);
+    joined(tokio::task::spawn_blocking(move || {
+        std::fs::write(entry_path, entry_source)
+    }))
+    .await
+    .ok()?;
     let args: Vec<String> = typst_compile_args(
         job.capabilities,
         &entry,
@@ -131,7 +141,12 @@ async fn image_to_pdf(
     if code != Some(0) {
         return None;
     }
-    std::fs::remove_file(image).ok()?;
+    let converted_image = image.to_path_buf();
+    joined(tokio::task::spawn_blocking(move || {
+        std::fs::remove_file(converted_image)
+    }))
+    .await
+    .ok()?;
     Some(name.to_owned())
 }
 
@@ -184,10 +199,19 @@ pub async fn finish_latex_media(
     if converted.is_empty() {
         return Ok(());
     }
-    let tex = std::fs::read_to_string(job.tex)
-        .map_err(|error| format!("Could not read the exported LaTeX: {error}"))?;
-    std::fs::write(job.tex, tex_with_pdf_images(&tex, job.folder, &converted))
-        .map_err(|error| format!("Could not update the exported LaTeX: {error}"))
+    let tex_path = job.tex.to_path_buf();
+    let tex = joined(tokio::task::spawn_blocking(move || {
+        std::fs::read_to_string(tex_path)
+    }))
+    .await
+    .map_err(|error| format!("Could not read the exported LaTeX: {error}"))?;
+    let tex_path = job.tex.to_path_buf();
+    let updated = tex_with_pdf_images(&tex, job.folder, &converted);
+    joined(tokio::task::spawn_blocking(move || {
+        std::fs::write(tex_path, updated)
+    }))
+    .await
+    .map_err(|error| format!("Could not update the exported LaTeX: {error}"))
 }
 
 #[cfg(test)]

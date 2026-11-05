@@ -776,21 +776,23 @@ function derivedMissingFiles(log: string): string[] {
   ];
 }
 
+function collectFilesAfterMarker(log: string, marker: string, found: Set<string>): void {
+  let from = 0;
+  while (from < log.length && found.size < MAX_MISSING_FILES) {
+    const idx = log.indexOf(marker, from);
+    if (idx === -1) break;
+    const read = missingFileAt(log, marker, idx);
+    if (read.file !== null) found.add(read.file);
+    from = read.next;
+  }
+}
+
 export function missingLatexFiles(logRaw: string): string[] {
   const log =
     logRaw.length > MAX_CLASSIFY_CHARS ? logRaw.slice(0, MAX_CLASSIFY_CHARS) : logRaw;
   const found = new Set<string>();
   const markers = ["LaTeX Error: File `", "I can't find file `", "LaTeX Error: File '", 'LaTeX Error: File "'];
-  for (const marker of markers) {
-    let from = 0;
-    while (from < log.length && found.size < MAX_MISSING_FILES) {
-      const idx = log.indexOf(marker, from);
-      if (idx === -1) break;
-      const read = missingFileAt(log, marker, idx);
-      if (read.file !== null) found.add(read.file);
-      from = read.next;
-    }
-  }
+  for (const marker of markers) collectFilesAfterMarker(log, marker, found);
   for (const file of derivedMissingFiles(log)) {
     if (found.size >= MAX_MISSING_FILES) break;
     if (isMissingStyleFile(file)) found.add(file);

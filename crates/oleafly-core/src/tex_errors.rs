@@ -423,6 +423,25 @@ fn push_bib_syntax_error(out: &mut Vec<CompileError>, line: &str, source: Option
     });
 }
 
+fn reported_line_number(lines: &[&str], index: usize) -> Option<u32> {
+    for following in lines
+        .iter()
+        .skip(index + 1)
+        .take(20.min(lines.len().saturating_sub(index + 1)))
+    {
+        if following.starts_with('!') {
+            break;
+        }
+        if let Some(rest) = following.strip_prefix("l.") {
+            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            if let Ok(number) = digits.parse::<u32>() {
+                return Some(number);
+            }
+        }
+    }
+    None
+}
+
 /// Errors (`! ...` with their `l.NN` line), float warnings and lost characters
 /// in a TeX log, attributed to the innermost open input file.
 pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
@@ -460,23 +479,7 @@ pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
             continue;
         }
         if let Some(message) = lines[i].strip_prefix("! ") {
-            let mut line_no = None;
-            for following in lines
-                .iter()
-                .skip(i + 1)
-                .take(20.min(lines.len().saturating_sub(i + 1)))
-            {
-                if following.starts_with('!') {
-                    break;
-                }
-                if let Some(rest) = following.strip_prefix("l.") {
-                    let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
-                    if let Ok(number) = digits.parse::<u32>() {
-                        line_no = Some(number);
-                        break;
-                    }
-                }
-            }
+            let line_no = reported_line_number(&lines, i);
             let explained = humanize_tex_error(message);
             let mut error = CompileError {
                 line: line_no,

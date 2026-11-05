@@ -1276,6 +1276,34 @@ fn pdf_failure(lines: &[String], index: &mut usize) -> CompileError {
     }
 }
 
+fn record_error_line(
+    message: &str,
+    lines: &[String],
+    index: &mut usize,
+    errors: &mut Vec<CompileError>,
+    yaml_file: &mut Option<String>,
+) {
+    let message = message.trim();
+    if message.is_empty() {
+        errors.push(pdf_failure(lines, index));
+        return;
+    }
+    match message.strip_prefix("In file ") {
+        Some(file) => *yaml_file = Some(file.trim().to_owned()),
+        None => errors.push(located_error(message)),
+    }
+}
+
+fn with_jupyter_install_line(found: CompileError, lines: &[String], index: usize) -> CompileError {
+    let command = (found.code.as_deref() == Some(JUPYTER_CODE))
+        .then(|| jupyter_install_line(lines, index))
+        .flatten();
+    match command {
+        Some(command) => with_jupyter_command(found, &command),
+        None => found,
+    }
+}
+
 pub(crate) fn parse_quarto_log(log: &str) -> Vec<CompileError> {
     let lines: Vec<String> = log.lines().map(strip_ansi).collect();
     let mut errors: Vec<CompileError> = Vec::new();
@@ -1298,15 +1326,7 @@ pub(crate) fn parse_quarto_log(log: &str) -> Vec<CompileError> {
             continue;
         }
         if let Some(message) = line.strip_prefix("ERROR:") {
-            let message = message.trim();
-            if message.is_empty() {
-                errors.push(pdf_failure(&lines, &mut index));
-                continue;
-            }
-            match message.strip_prefix("In file ") {
-                Some(file) => yaml_file = Some(file.trim().to_owned()),
-                None => errors.push(located_error(message)),
-            }
+            record_error_line(message, &lines, &mut index, &mut errors, &mut yaml_file);
             continue;
         }
         if let Some(rest) = line.strip_prefix("(line ") {
@@ -1325,15 +1345,9 @@ pub(crate) fn parse_quarto_log(log: &str) -> Vec<CompileError> {
             errors.push(cell_error(&lines, &mut index));
             continue;
         }
-        errors.extend(failure_line(line).map(|found| {
-            let command = (found.code.as_deref() == Some(JUPYTER_CODE))
-                .then(|| jupyter_install_line(&lines, index))
-                .flatten();
-            match command {
-                Some(command) => with_jupyter_command(found, &command),
-                None => found,
-            }
-        }));
+        errors.extend(
+            failure_line(line).map(|found| with_jupyter_install_line(found, &lines, index)),
+        );
     }
     if !missing.is_empty() {
         errors.push(missing_glyph_warning(&missing));

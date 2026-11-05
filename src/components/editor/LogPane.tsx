@@ -575,6 +575,46 @@ function reportedAsCard(diagnostic: LogDiagnostic, errors: readonly ReportedErro
   );
 }
 
+type DiagnosticBucket = "errs" | "refs" | "warns" | "boxes" | "infos" | "missing";
+
+const CARD_BUCKETS: ReadonlySet<DiagnosticBucket> = new Set<DiagnosticBucket>(["errs", "refs", "warns"]);
+
+function isUndefinedReference(diagnostic: LogDiagnostic): boolean {
+  return diagnostic.category === "undefined-reference" || diagnostic.category === "undefined-citation";
+}
+
+function diagnosticBucket(diagnostic: LogDiagnostic): DiagnosticBucket {
+  if (diagnostic.severity === "error") return "errs";
+  if (isUndefinedReference(diagnostic)) return "refs";
+  if (diagnostic.category === "missing-character") {
+    return isNullfontMissingCharacter(diagnostic.message) ? "infos" : "missing";
+  }
+  if (diagnostic.severity === "typesetting") return "boxes";
+  if (diagnostic.severity === "info") return "infos";
+  return "warns";
+}
+
+function groupDiagnostics(structured: readonly LogDiagnostic[], errors: readonly CompileError[]) {
+  const reported = errors.map((error) => ({
+    text: errorText(error.message),
+    warning: error.kind === "warning",
+    line: error.line,
+  }));
+  const buckets: Record<DiagnosticBucket, LogDiagnostic[]> = {
+    errs: [],
+    refs: [],
+    warns: [],
+    boxes: [],
+    infos: [],
+    missing: [],
+  };
+  for (const d of structured) {
+    const bucket = diagnosticBucket(d);
+    if (!CARD_BUCKETS.has(bucket) || !reportedAsCard(d, reported)) buckets[bucket].push(d);
+  }
+  return { cards: [...buckets.errs, ...buckets.refs, ...buckets.warns], ...buckets };
+}
+
 function coversElement(range: Range, element: Element): boolean {
   const own = element.ownerDocument.createRange();
   own.selectNode(element);
@@ -624,43 +664,13 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine, onClea
     if (!log || status === "compiling" || /\.typ$/i.test(mainDoc)) return NO_DIAGNOSTICS;
     return parseLatexLog(log, mainDoc);
   }, [diagnostics, log, mainDoc, status]);
-  const groups = useMemo(() => {
-    const reported = errors.map((error) => ({
-      text: errorText(error.message),
-      warning: error.kind === "warning",
-      line: error.line,
-    }));
-    const errs: LogDiagnostic[] = [];
-    const refs: LogDiagnostic[] = [];
-    const warns: LogDiagnostic[] = [];
-    const boxes: LogDiagnostic[] = [];
-    const infos: LogDiagnostic[] = [];
-    const missing: LogDiagnostic[] = [];
-    for (const d of structured) {
-      if (d.severity === "error") {
-        if (!reportedAsCard(d, reported)) errs.push(d);
-      } else if (d.category === "undefined-reference" || d.category === "undefined-citation") {
-        if (!reportedAsCard(d, reported)) refs.push(d);
-      } else if (d.category === "missing-character") {
-        (isNullfontMissingCharacter(d.message) ? infos : missing).push(d);
-      } else if (d.severity === "typesetting") {
-        boxes.push(d);
-      } else if (d.severity === "info") {
-        infos.push(d);
-      } else if (!reportedAsCard(d, reported)) {
-        warns.push(d);
-      }
-    }
-    return { cards: [...errs, ...refs, ...warns], errs, refs, warns, boxes, infos, missing };
-  }, [structured, errors]);
+  const groups = useMemo(() => groupDiagnostics(structured, errors), [structured, errors]);
   const summary = useMemo(() => {
     const errorCards = errors.filter((error) => error.kind === "error").length;
     return {
       errors: errorCards + groups.errs.length,
       warnings: errors.length - errorCards + groups.refs.length + groups.warns.length,
-      references: structured.filter(
-        (d) => d.category === "undefined-reference" || d.category === "undefined-citation",
-      ).length,
+      references: structured.filter(isUndefinedReference).length,
     };
   }, [errors, groups, structured]);
 

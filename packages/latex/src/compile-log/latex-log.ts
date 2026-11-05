@@ -548,7 +548,7 @@ function biberFailureEntry(line: string, state: ParserState): MutableEntry | nul
   if (missing !== null) {
     return {
       ...biber,
-      text: `Biber could not find ${missing[1]}. Check the file name in \\addbibresource and that the file is in the project.`,
+      text: String.raw`Biber could not find ${missing[1]}. Check the file name in \addbibresource and that the file is in the project.`,
     };
   }
   const other = biberOtherError.exec(line);

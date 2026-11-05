@@ -205,10 +205,13 @@ package a TexLab binary.
 The fetcher:
 
 1. accepts only a closed server and target allowlist;
-2. starts from exact `https://mirrors.oleafly.com/language-servers/...` URLs;
+2. starts from exact `https://mirrors.oleafly.com/language-servers/...` URLs,
+   then falls back to the target's pinned `githubUrl` release asset, with three
+   attempts at each source and 30 seconds of silence failing an attempt;
 3. follows at most five HTTPS redirects, and only to hosts in the manifest's
    `allowedDownloadHosts` (the Oleafly mirror and GitHub's download hosts);
-4. enforces the release asset's exact byte length and SHA-256 before parsing;
+4. enforces the release asset's exact byte length and SHA-256 before parsing,
+   whichever source served it;
 5. rejects absolute paths, parent traversal, backslashes, duplicate entries,
    links, unsupported entry types, encrypted ZIPs, and unexpected archive
    formats;
@@ -225,6 +228,11 @@ The fetcher:
     device/inode identities immediately before and after the final rename; and
 12. checks the reported version when the selected target is executable on the
     current host.
+
+The app's own TexLab download uses the same two sources in the same order, with
+one attempt at each and the same size and SHA-256 checks. A bad file or a
+refused request on the mirror moves on to GitHub. An attempt has 15 seconds to
+connect, fails after 30 seconds without data, and can't run past 30 minutes.
 
 At runtime, Rust resolves Tinymist only through Tauri v2's documented
 `BaseDirectory::Resource` API. It accepts no caller-provided path or environment
@@ -244,6 +252,25 @@ Archive checksums come from the official GitHub Releases API `digest` fields.
 Tinymist also publishes matching `.sha256` release assets. Extracted-binary
 hashes were derived only after the corresponding official archive digest was
 verified.
+
+## Font pack downloads
+
+Font packs aren't part of this manifest, but they download mirror first too.
+`src-tauri/resources/font-packs.json` points every file at
+`mirrors.oleafly.com` and carries its SHA-256.
+`src-tauri/resources/font-pack-fallbacks.json` adds an upstream URL for most
+files, by pack and file name, and the rest have only the mirror. Both sources
+get the same checksum.
+
+The app tries the mirror and then the fallback, waits one second, and tries both
+once more. A request has 20 seconds to connect and fails after 30 seconds
+without data. There's no overall cap, so a slow download can finish.
+
+One pack downloads at a time. Files land in
+`assets/.font-pack-staging/<pack>` under the data root, and files that already
+verify, there or in the installed pack, aren't fetched again. The pack folder
+changes only after every file is verified, so a failed download leaves the
+installed pack as it was, and an empty file doesn't count as installed.
 
 ## License and distribution status
 
@@ -327,8 +354,8 @@ staged.
 Do not edit only the version string. A pin update requires:
 
 1. selecting a stable release from the official repository;
-2. recording every allowlisted target's exact release asset, archive member,
-   size, and SHA-256;
+2. recording every allowlisted target's exact release asset, mirror and GitHub
+   URLs, archive member, size, and SHA-256;
 3. deriving the extracted binary size and SHA-256 from the verified archive;
 4. revalidating the exact `lsp` runtime profile against pinned upstream source;
 5. checking `--version`, CLI help, EOF behavior, and rapid-change final

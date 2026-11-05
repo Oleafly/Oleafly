@@ -769,7 +769,7 @@ export function createOleaflyTools(
 
     get_pdf_text: {
       description:
-        "Extract and return the text content of the last compiled PDF, page by page. Use to verify the rendered output (e.g. confirm a section, name, or link appears correctly). `stale` means the last compile failed, so this PDF is from an earlier successful one.",
+        "Extract and return the text content of the last compiled PDF, page by page. Use to verify the rendered output (e.g. confirm a section, name, or link appears correctly). `stale` means the last compile failed, so this PDF is from an earlier compile or is a partial one from the failed compile.",
       inputSchema: {
         type: "object",
         properties: {},

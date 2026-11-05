@@ -126,13 +126,11 @@ const COMPILE_DID_NOT_FINISH =
   "The compile did not finish because it was stopped or replaced. Run compile again.";
 const COMPILE_STILL_RUNNING = "Another compile is still running. Run compile again once it finishes.";
 
-async function compileSettled(): Promise<boolean> {
-  const deadline = Date.now() + COMPILE_SETTLE_TIMEOUT_MS;
-  while (compileIsBusy()) {
-    if (Date.now() >= deadline) return false;
-    await new Promise((resolve) => setTimeout(resolve, COMPILE_SETTLE_POLL_MS));
-  }
-  return true;
+async function compileSettled(deadline = Date.now() + COMPILE_SETTLE_TIMEOUT_MS): Promise<boolean> {
+  if (!compileIsBusy()) return true;
+  if (Date.now() >= deadline) return false;
+  await new Promise((resolve) => setTimeout(resolve, COMPILE_SETTLE_POLL_MS));
+  return compileSettled(deadline);
 }
 
 type CompileMarks = Pick<ReturnType<typeof useCompileStore.getState>, "lastCompiledAt" | "htmlOutput">;
@@ -145,13 +143,14 @@ function settledCompileOutcome(before: CompileMarks, settled: boolean): CompileT
     (state.lastCompiledAt !== before.lastCompiledAt || state.htmlOutput !== before.htmlOutput);
   const failedInSource = settled && state.status === "error";
   const missing = settled ? COMPILE_DID_NOT_FINISH : COMPILE_STILL_RUNNING;
+  const unfinished = failedInSource ? null : missing;
   return {
     ok: compiled,
     errors: state.errors,
     diagnostics: state.diagnostics,
     has_pdf: compiled && state.pdfBytes !== null,
     log: state.log,
-    reason: compiled ? null : (failureOutsideSource() ?? (failedInSource ? null : missing)),
+    reason: compiled ? null : (failureOutsideSource() ?? unfinished),
     offer: state.offer?.kind ?? null,
   };
 }
