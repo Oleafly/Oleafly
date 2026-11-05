@@ -184,7 +184,8 @@ async function fill(label: string, value: string) {
   const user = userEvent.setup({ document });
   const input = page().getByLabelText(label);
   await user.clear(input);
-  await user.type(input, value);
+  await user.click(input);
+  await user.paste(value);
 }
 
 function choose(label: string, option: string | RegExp) {
