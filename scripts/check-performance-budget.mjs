@@ -187,7 +187,11 @@ const limits = {
   // macOS.
   // +60 KB for the brand logos of the common custom AI providers, Brave Search,
   // Tavily and Mathpix in Settings: 21,044,294 bytes on macOS and Linux.
-  totalJavaScript: 21_080_000,
+  // +30 KB for icon packs: a pack wrapper for each app icon, most of it in the
+  // entry, the Icon pack card in Appearance with the Color pack's download and
+  // checks, and the 8-icon preview. Merged with main at e5d783a58 it measures
+  // 21,083,264 bytes on macOS and Windows, 24.6 KB above main's 21,058,632.
+  totalJavaScript: 21_110_000,
   largestLocaleChunk: 950_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
