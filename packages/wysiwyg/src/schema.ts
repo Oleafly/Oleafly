@@ -6,6 +6,7 @@ import { ColorBox, TextColor } from "./color";
 import { Figure, FigureCaption } from "./figure";
 import { Footnote } from "./footnote";
 import { LatexHeadingAttributes } from "./heading";
+import { MarkdownCodeBlock } from "./markdown/code-block";
 import { MarkdownImage } from "./markdown/image";
 import { MarkdownLink } from "./markdown/link";
 import { MarkdownText } from "./markdown/text";
@@ -26,6 +27,7 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
       link: false,
       text: false,
     }),
+    MarkdownCodeBlock.configure({ enableTabIndentation: true }),
     MarkdownText,
     MarkdownLink.configure({
       localizeHref,

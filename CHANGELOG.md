@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fenced code in Markdown stays a code block in the visual editor. Typing in
+  a block, or saving a file the editor had to rewrite, turned the fence into
+  lines of inline code, which dropped the language and broke Mermaid diagrams.
+  Blocks now open as code blocks, keep their whole info string and blank lines,
+  and start from ``` as you type. Tab indents inside a block.
 - Papers kept side by side in one folder no longer clash (#389). A LaTeX file
   with its own `\documentclass` now counts as a separate document, along with
   the files it pulls in through `\input`, `\include` or `\subfile`. If

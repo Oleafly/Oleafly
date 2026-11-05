@@ -3,7 +3,7 @@ import { headingCommandForLevel, headingLevelForCommand, isSectioningCommand } f
 import { figureToLatex } from "./serialize-figure";
 import { hasInlineLatexSerialization, hasMarkLatexSerialization, inlineToLatex } from "./serialize-inline";
 import { bareTableToLatex, tableFloatToLatex } from "./serialize-table";
-import { unknownNodeToLatex } from "./serialize-unknown";
+import { textContentOf, unknownNodeToLatex } from "./serialize-unknown";
 
 function indentLines(text: string, indent: string): string {
   return text
@@ -53,6 +53,10 @@ function theoremToLatex(node: JSONContent): string {
   return `\\begin{${environment}}${title}\n${body}\n\\end{${environment}}`;
 }
 
+function codeBlockToLatex(node: JSONContent): string {
+  return `\\begin{verbatim}\n${textContentOf(node)}\n\\end{verbatim}`;
+}
+
 function sourceOf(node: JSONContent): string {
   return String(node.attrs?.source ?? "");
 }
@@ -64,6 +68,7 @@ const BLOCK_HANDLERS: Record<string, (node: JSONContent) => string> = {
   bulletList: (node) => listToLatex(node, "itemize"),
   orderedList: (node) => listToLatex(node, "enumerate"),
   listItem: listItemToLatex,
+  codeBlock: codeBlockToLatex,
   rawBlock: sourceOf,
   mathDisplay: sourceOf,
   theorem: theoremToLatex,

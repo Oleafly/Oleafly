@@ -209,6 +209,9 @@ importers:
       '@tiptap/core':
         specifier: 3.30.5
         version: 3.30.5(@tiptap/pm@3.29.2)
+      '@tiptap/extension-code-block':
+        specifier: ^3.29.2
+        version: 3.29.2(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)
       '@tiptap/extension-image':
         specifier: ^3.31.2
         version: 3.31.2(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))
@@ -649,6 +652,9 @@ importers:
       '@tiptap/core':
         specifier: 3.30.5
         version: 3.30.5(@tiptap/pm@3.29.2)
+      '@tiptap/extension-code-block':
+        specifier: '*'
+        version: 3.29.2(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)
       '@tiptap/extension-image':
         specifier: '*'
         version: 3.31.2(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))
