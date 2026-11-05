@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
-import { ChevronDown, ChevronRight, Download, FileText, FileUp, Info, LayoutTemplate, Trash2, Type } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileText, FileUp, FolderPlus, Info, LayoutTemplate, Trash2, Type } from "lucide-react";
 import { PackList } from "@/components/settings/template-packs/PackList";
 import { PackView } from "@/components/settings/template-packs/PackView";
 import { announceSavedTemplate } from "@/features/custom-templates";
@@ -16,6 +16,7 @@ import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import {
+  addFontPackToProject,
   deleteCustomTemplate,
   downloadAllFonts,
   installFontComponent,
@@ -25,30 +26,38 @@ import {
   templatePreview,
   withAssetProgress,
   type ComponentInfo,
+  type DocumentEngineDescriptor,
   type TemplateInfo,
 } from "@/lib/tauri";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { CheckBadge } from "@/components/ui/check-badge";
-import { isTypstFontPackId, type TypstFontPackId } from "@/lib/typst-font-packs";
+import { isFontPackId, isTemplateFontPackId, type FontPackId } from "@/lib/typst-font-packs";
 import { useFilesStore } from "@/store/files";
 import { useFontPacksStore } from "@/store/font-packs";
 import { loadPacks, refreshPackCatalogInBackground } from "@/store/template-packs";
 import { takeTemplateLink, useTemplateLinkStore, type PendingTemplateLink } from "@/store/template-link";
 
-function afterTypstPackChange(id: string) {
-  if (!isTypstFontPackId(id)) return;
+function refreshFontUsers() {
   void useFontPacksStore.getState().load();
   void useFilesStore.getState().refreshEngine();
 }
 
+function afterFontPackChange(id: string) {
+  if (isFontPackId(id)) refreshFontUsers();
+}
+
 const ALL = "__all__";
 
-const FONT_PACK_IDS = ["lato", "ptsans", "ptserif"] as const;
-type FontPackId = (typeof FONT_PACK_IDS)[number];
+// fontspec needs XeLaTeX or LuaLaTeX, so a pdfLaTeX-family project has no use for these fonts.
+const NO_FONTSPEC_FLAVORS: ReadonlySet<string> = new Set(["pdflatex", "uplatex", "platex"]);
 
-function isFontPackId(id: string): id is FontPackId {
-  return (FONT_PACK_IDS as readonly string[]).includes(id);
+function fontUseExample(engine: DocumentEngineDescriptor, family: string): string | null {
+  if (engine.source_format === "latex" && !NO_FONTSPEC_FLAVORS.has(engine.tex_flavor ?? "")) {
+    return String.raw`\setmainfont{${family}}`;
+  }
+  if (engine.source_format === "typst") return `#set text(font: "${family}")`;
+  return null;
 }
 
 interface DownloadActivity {
@@ -191,11 +200,11 @@ export function DownloadsSection() {
   );
 
   const install = (id: string) =>
-    withProgress(id, () => installFontComponent(id).then(() => afterTypstPackChange(id)), "download the font", () =>
+    withProgress(id, () => installFontComponent(id).then(() => afterFontPackChange(id)), "download the font", () =>
       t(($) => $.settings.downloads.errors.fontDownloadFailed),
     );
   const downloadAll = () =>
-    withProgress(ALL, () => downloadAllFonts(), "download the fonts", () =>
+    withProgress(ALL, () => downloadAllFonts().then(refreshFontUsers), "download the fonts", () =>
       t(($) => $.settings.downloads.errors.fontsDownloadFailed),
     );
   const remove = async (id: string) => {
@@ -204,7 +213,7 @@ export function DownloadsSection() {
     try {
       await removeFontComponent(id);
       await refresh();
-      afterTypstPackChange(id);
+      afterFontPackChange(id);
     } catch (e) {
       notifyError("remove the font", e, t(($) => $.settings.downloads.errors.fontRemoveFailed));
     } finally {
@@ -212,10 +221,42 @@ export function DownloadsSection() {
     }
   };
 
+  const projectId = useFilesStore((s) => s.projectId);
+  const engine = useFilesStore((s) => s.engine);
+  const canAddToProject = projectId !== null && fontUseExample(engine, "") !== null;
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const addToProject = async (c: ComponentInfo) => {
+    if (!projectId || useDownloadActivity.getState().fontBusyId !== null) return;
+    setBusyId(c.id);
+    setAddingId(c.id);
+    try {
+      const added = await addFontPackToProject(projectId, c.id);
+      if (added.copied.length === 0 && added.fontspec === null) {
+        toast.success(t(($) => $.settings.downloads.fontAlreadyInProject, { family: added.family }));
+      } else {
+        toast.success(
+          t(($) => $.settings.downloads.fontAddedToProject, {
+            family: added.family,
+            example: fontUseExample(engine, added.family) ?? added.family,
+          }),
+        );
+        refreshFontUsers();
+        void useFilesStore
+          .getState()
+          .refreshTree({ keepUnchanged: true })
+          .catch((e) => logError("refresh the file tree after adding a font", e));
+      }
+    } catch (e) {
+      notifyError("add the font to the project", e, t(($) => $.settings.downloads.errors.fontAddFailed));
+    } finally {
+      setBusyId(null);
+      setAddingId(null);
+    }
+  };
+
   const anyBusy = busyId !== null;
   const packText = (c: ComponentInfo, field: "label" | "description") => {
     if (isFontPackId(c.id)) return t(($) => $.settings.downloads.fontPacks[c.id as FontPackId][field]);
-    if (isTypstFontPackId(c.id)) return t(($) => $.settings.downloads.fontPacks[c.id as TypstFontPackId][field]);
     return field === "label" ? c.label : c.description;
   };
   const fontRow = (c: ComponentInfo) => {
@@ -240,6 +281,17 @@ export function DownloadsSection() {
             {!busy && c.license?.spdx ? ` · ${c.license.spdx}` : ""}
           </p>
         </div>
+        {c.installed && canAddToProject && isTemplateFontPackId(c.id) && (
+          <button type="button"
+            onClick={() => void addToProject(c)}
+            disabled={anyBusy}
+            data-testid={`font-pack-add-to-project-${c.id}`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+          >
+            {addingId === c.id ? <Spinner size="sm" /> : <FolderPlus className="size-3.5" />}
+            {t(($) => $.settings.downloads.actions.addToProject)}
+          </button>
+        )}
         {c.installed ? (
           <button type="button"
             onClick={() => void remove(c.id)}

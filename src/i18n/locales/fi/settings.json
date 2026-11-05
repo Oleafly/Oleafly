@@ -768,6 +768,10 @@
         "label": "Editorin fontti",
         "monospace": "Tasalevyinen"
       },
+      "cjkFont": {
+        "description": "Käytetään kiinan, japanin ja korean merkeille, joita Editorin fontissa ei ole.",
+        "label": "CJK-fontti"
+      },
       "useAppFont": {
         "description": "Editori käyttää sovelluksen fonttia ja fonttikokoa.",
         "disabledHint": "Muuta tätä poistamalla Käytä sovelluksen fonttia käytöstä.",
@@ -1200,10 +1204,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Lisää projektiin",
       "allDownloaded": "Kaikki ladattu",
       "download": "Lataa",
       "downloadAll": "Lataa kaikki"
     },
+    "fontAddedToProject": "Fontti {{family}} lisättiin tähän projektiin. Viittaa siihen nimellä, esimerkiksi {{example}}.",
+    "fontAlreadyInProject": "Fontti {{family}} on jo tässä projektissa.",
     "yourTemplates": {
       "toggle": "Hallitse mallipohjiasi",
       "import": "Tuo mallipohja",
@@ -1253,7 +1260,7 @@
       "empty": "Ei ladattavia fontteja.",
       "engineNote": "LuaLaTeX-moottoria (merkittyihin, saavutettaviin PDF-tiedostoihin) hallitaan LaTeX-moottorin osiossa.",
       "heading": "Fontit",
-      "tooltip": "Osa mallipohjista käyttää laadukkaita avoimen lähdekoodin fontteja. Jotta Oleafly pysyy pienenä, nämä fontit ladataan tarvittaessa: kun luot tällaisen mallipohjan, fontit haetaan ja kopioidaan projektiin, jolloin se pysyy itsenäisenä ja kääntyy ilman verkkoa. Ne voi myös ladata etukäteen täällä tai poistaa tilan vapauttamiseksi."
+      "tooltip": "Osa mallipohjista käyttää näitä avoimen lähdekoodin fontteja. Ne ladataan vain tarvittaessa, jotta Oleafly pysyy pienenä. Kun luot tällaisen mallipohjan, fontit kopioidaan projektiin, jolloin projekti kääntyy ilman verkkoa. Typst-projektit voivat viitata ladattuun fonttiin nimellä, ellei projekti ota järjestelmän fontteja pois käytöstä. Jos käytät LaTeXia, avaa projekti ja kopioi fontti siihen napsauttamalla ”Lisää projektiin”."
     },
     "packProgress": "{{index}}/{{total}}",
     "progress": "{{label}} ({{index}}/{{total}})",
@@ -1281,6 +1288,7 @@
       "fontDownloadFailed": "Fonttia ei voitu ladata.",
       "fontsDownloadFailed": "Fontteja ei voitu ladata.",
       "fontRemoveFailed": "Fonttia ei voitu poistaa.",
+      "fontAddFailed": "Fonttia ei voitu lisätä tähän projektiin.",
       "packDownloadFailed": "Mallipohjapakettia ei voitu ladata.",
       "packsDownloadFailed": "Mallipohjapaketteja ei voitu ladata.",
       "packRemoveFailed": "Mallipohjapakettia ei voitu poistaa.",

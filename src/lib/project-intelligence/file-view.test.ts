@@ -23,7 +23,7 @@ const GOLDEN_FILE_DIGESTS: Readonly<Record<string, string>> = {
   "chapters/results.tex":
     "a978cd2edd071925b1954a7f3a33c02ecd2bb673b9fe860a33c6695c5b6fae41",
   "chapters/theory.tex":
-    "1d91a86054926cfc1cbbf6bedfb0d46fedcc412a3b04543fd635baf2bf1790a1",
+    "81253d4405c2f58e8d857bc6149bf4cb8dadee53ce8d20f8a67d90a1a66ea3ea",
   "chapters/validation.tex":
     "d4fcada11848a84be6758953a191f57a8814001d89bf5e85fd480899286a8fdf",
   "frontmatter/abstract.tex":
@@ -38,7 +38,7 @@ const GOLDEN_FILE_DIGESTS: Readonly<Record<string, string>> = {
     "83349285f7ee030e7f59fe47213264a25027ced57ae21b70bbd8bef234fcfc95",
 };
 const GOLDEN_ALL_DIGEST =
-  "cfe94af00496e822eaa024d138445906a3d8f7f284ba512d872ed43e84a051e9";
+  "8c155442235ebeb819e448cd0f5254c50772d6aabbe3fcfd5e2d819821dbc80e";
 
 function byPosition(
   left: { readonly id: string; readonly range?: { readonly from: number }; readonly location?: { readonly range: { readonly from: number } } },

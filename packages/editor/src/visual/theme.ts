@@ -20,7 +20,7 @@ const SANS = "var(--ofl-visual-sans)";
 
 export const visualTheme: Extension = EditorView.theme({
   "&.cm-editor": {
-    "--ofl-visual-font": '"Noto Serif", "Palatino Linotype", "Book Antiqua", Palatino, serif',
+    "--ofl-visual-font": '"Noto Serif", "Palatino Linotype", "Book Antiqua", Palatino, var(--cm-cjk-font, serif), serif',
     "--ofl-visual-font-size": "calc(var(--cm-font-size, 13px) * 1.15)",
     "--ofl-visual-mono": "var(--cm-font-family, var(--font-mono, ui-monospace, monospace))",
     "--ofl-visual-sans": "var(--font-sans, system-ui, sans-serif)",

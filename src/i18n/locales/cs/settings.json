@@ -780,6 +780,10 @@
         "label": "Písmo editoru",
         "monospace": "Neproporcionální"
       },
+      "cjkFont": {
+        "description": "Používá se pro čínské, japonské a korejské znaky, které Písmo editoru nemá.",
+        "label": "Písmo CJK"
+      },
       "useAppFont": {
         "description": "Editor používá písmo a velikost písma aplikace.",
         "disabledHint": "Pro změnu vypněte Použít písmo aplikace.",
@@ -1214,10 +1218,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Přidat do projektu",
       "allDownloaded": "Vše staženo",
       "download": "Stáhnout",
       "downloadAll": "Stáhnout vše"
     },
+    "fontAddedToProject": "Písmo {{family}} bylo přidáno do tohoto projektu. Odkazujte na něj názvem, například {{example}}.",
+    "fontAlreadyInProject": "Písmo {{family}} už v tomto projektu je.",
     "yourTemplates": {
       "toggle": "Spravovat své šablony",
       "import": "Importovat šablonu",
@@ -1267,7 +1274,7 @@
       "empty": "Žádná písma ke stažení.",
       "engineNote": "Engine LuaLaTeX (pro tagovaná, přístupná PDF) se spravuje v sekci Engine LaTeX.",
       "heading": "Písma",
-      "tooltip": "Některé šablony používají prémiová písma s otevřenou licencí. Aby Oleafly zůstal malý, stahují se tato písma na vyžádání: když takovou šablonu použijete, písma se stáhnou a zkopírují do projektu, aby byl soběstačný a šel zkompilovat offline. Můžete si je také stáhnout předem tady, nebo je odebrat a uvolnit místo."
+      "tooltip": "Některé šablony používají tato písma s otevřenou licencí. Stahují se, jen když jsou potřeba, aby Oleafly zůstal malý. Když takovou šablonu vytvoříte, písma se zkopírují do projektu, takže se dá zkompilovat offline. Projekty Typst mohou stažené písmo používat podle názvu, pokud projekt nevypíná systémová písma. Pro LaTeX otevřete projekt a klikněte na „Přidat do projektu“, tím do něj písmo zkopírujete."
     },
     "packProgress": "{{index}} z {{total}}",
     "progress": "{{label}} ({{index}} z {{total}})",
@@ -1295,6 +1302,7 @@
       "fontDownloadFailed": "Písmo se nepodařilo stáhnout.",
       "fontsDownloadFailed": "Písma se nepodařilo stáhnout.",
       "fontRemoveFailed": "Písmo se nepodařilo odebrat.",
+      "fontAddFailed": "Písmo se nepodařilo přidat do tohoto projektu.",
       "packDownloadFailed": "Balíček šablon se nepodařilo stáhnout.",
       "packsDownloadFailed": "Balíčky šablon se nepodařilo stáhnout.",
       "packRemoveFailed": "Balíček šablon se nepodařilo odebrat.",

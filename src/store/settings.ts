@@ -1037,6 +1037,8 @@ interface SettingsState {
   setAppFontFamily: (v: string) => void;
   editorFontFamily: string;
   setEditorFontFamily: (v: string) => void;
+  editorCjkFontFamily: string;
+  setEditorCjkFontFamily: (v: string) => void;
   editorUsesAppFont: boolean;
   setEditorUsesAppFont: (v: boolean) => void;
   editorThemeLight: EditorThemeId;
@@ -1209,6 +1211,7 @@ const PREF_DEFAULTS = {
   appZoom: 100,
   appFontFamily: "",
   editorFontFamily: "",
+  editorCjkFontFamily: "",
   editorUsesAppFont: false,
   editorThemeLight: "system" as EditorThemeId,
   editorThemeDark: "system" as EditorThemeId,
@@ -1319,6 +1322,7 @@ export const SECTION_SETTINGS = {
     appZoom: "oleafly.appZoom",
     appFontFamily: "oleafly.appFont",
     editorFontFamily: "oleafly.editorFont",
+    editorCjkFontFamily: "oleafly.editor.cjkFont",
     editorUsesAppFont: "oleafly.editor.useAppFont",
     editorThemeLight: "oleafly.editorTheme.light",
     editorThemeDark: "oleafly.editorTheme.dark",
@@ -1935,6 +1939,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const family = withoutControlCharacters(v);
     saveLs("oleafly.editorFont", family);
     set({ editorFontFamily: family });
+  },
+  editorCjkFontFamily: readFontFamilySetting("oleafly.editor.cjkFont"),
+  setEditorCjkFontFamily: (v) => {
+    const family = withoutControlCharacters(v);
+    saveLs("oleafly.editor.cjkFont", family);
+    set({ editorCjkFontFamily: family });
   },
   editorThemeLight: readEditorTheme(ls("oleafly.editorTheme.light", ls("oleafly.editorTheme", "system"))),
   editorThemeDark: readEditorTheme(ls("oleafly.editorTheme.dark", ls("oleafly.editorTheme", "system"))),

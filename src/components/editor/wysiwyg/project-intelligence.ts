@@ -7,9 +7,14 @@ import {
 } from "@tiptap/pm/view";
 import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { latexCommandKeyTokens } from "@/lib/project-intelligence/analyze-file";
+import {
+  latexUnitScope,
+  type LatexUnitScope,
+} from "@/lib/project-intelligence/latex-units";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import {
   definitionCandidatesForUse,
+  definitionFile,
   definitionsByKey,
 } from "@/lib/project-intelligence/resolution";
 import {
@@ -50,6 +55,7 @@ interface VisualPluginState {
 interface VisualLookup {
   definitionsById: ReadonlyMap<string, ProjectDefinition>;
   definitionsByKey: ReadonlyMap<string, readonly ProjectDefinition[]>;
+  scope: LatexUnitScope | undefined;
   usesById: ReadonlyMap<string, ProjectUse>;
   usesByFileAndName: ReadonlyMap<string, readonly ProjectUse[]>;
 }
@@ -85,6 +91,7 @@ function lookupFor(snapshot: ProjectIntelligenceSnapshot): VisualLookup {
   const lookup: VisualLookup = {
     definitionsById,
     definitionsByKey: definitionsByKey(snapshot.definitions),
+    scope: latexUnitScope(snapshot.latexUnits),
     usesById,
     usesByFileAndName,
   };
@@ -179,6 +186,7 @@ function candidateDefinitions(
     for (const definition of definitionCandidatesForUse(
       use,
       lookup.definitionsByKey,
+      lookup.scope,
     )) {
       if (seen.has(definition.id)) continue;
       seen.add(definition.id);
@@ -222,8 +230,11 @@ function resolutionFor(
 ): "resolved" | "unresolved" | "duplicate" {
   const definitions = definitionsForToken(snapshot, path, token);
   if (definitions.length === 0) return "unresolved";
-  if (definitions.length > 1) return "duplicate";
-  return "resolved";
+  if (definitions.length === 1) return "resolved";
+  const { scope } = lookupFor(snapshot);
+  return !scope || scope.isAmbiguous(path, definitions, definitionFile)
+    ? "duplicate"
+    : "resolved";
 }
 
 function tokenNoun(kind: VisualToken["kind"]): string {

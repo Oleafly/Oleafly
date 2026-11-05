@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ComponentInfo } from "@/lib/tauri";
-import { cjkCharacters, isTypstFontPackId, missingTypstFont, packForFamily } from "./typst-font-packs";
+import {
+  cjkCharacters,
+  isFontPackId,
+  isTypstFontPackId,
+  missingTypstFont,
+  packForFamily,
+} from "./typst-font-packs";
 
 const pack = (over: Partial<ComponentInfo>): ComponentInfo => ({
   id: "typst-text",
@@ -36,9 +42,24 @@ describe("typst font packs", () => {
     expect(packForFamily([pack({ id: "typst-unknown" })], "Liberation Sans")).toBeUndefined();
   });
 
+  it("offers a template font pack too, since Typst reads those as well", () => {
+    const ptSerif = pack({ id: "ptserif", kind: "font", families: ["PT Serif"] });
+    expect(packForFamily([pack({}), ptSerif], "pt serif")?.id).toBe("ptserif");
+  });
+
+  it("prefers an installed pack when two carry the family", () => {
+    const lato = pack({ id: "lato", kind: "font", families: ["Lato"] });
+    const sans = pack({ id: "typst-sans", families: ["Inter", "Lato"], installed: true });
+    expect(packForFamily([lato, sans], "Lato")?.id).toBe("typst-sans");
+    expect(packForFamily([lato, { ...sans, installed: false }], "Lato")?.id).toBe("lato");
+  });
+
   it("knows the shipped pack ids", () => {
     expect(isTypstFontPackId("typst-icons")).toBe(true);
     expect(isTypstFontPackId("lato")).toBe(false);
+    expect(isFontPackId("lato")).toBe(true);
+    expect(isFontPackId("typst-mono")).toBe(true);
+    expect(isFontPackId("fandol")).toBe(false);
   });
 });
 

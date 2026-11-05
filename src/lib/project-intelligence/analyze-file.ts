@@ -18,9 +18,11 @@ import {
 import { type BibliographyEngine, bibliographyCandidatePaths } from "@oleafly/latex";
 import { type LatexSearchPaths, latexSearchPaths } from "@oleafly/editor/file-references";
 import { astAugmentLatexFile } from "./latex-ast";
+import { latexUnitFacts } from "./latex-units";
 import { bibliographyEntrySummary } from "./bibliography-summary";
 import { parseBibtexIntelligence } from "./parse-bibtex";
 import { parseHayagrivaIntelligence } from "./parse-hayagriva";
+import { THEOREM_ENVIRONMENT_DETAIL } from "./resolution";
 import { isHayagrivaPath } from "@/lib/citation/hayagriva";
 import { typstBibliographyCalls } from "@/lib/citation/typst-bibliography";
 import {
@@ -43,6 +45,7 @@ import type {
   ProjectUse,
   ProjectUseKind,
   LatexDefinitionArguments,
+  LatexUnitFacts,
   PackageReference,
   SourceRange,
 } from "./types";
@@ -222,6 +225,17 @@ function latexLogicalGroupTokens(
   return result;
 }
 
+const REFERENCE_COMMAND_NAMES = [
+  "crefrange", "Crefrange", "cpagerefrange", "Cpagerefrange", "vpagerefrange", "vrefrange",
+  "vpageref", "fullref", "hyperlink", "ref", "eqref", "pageref", "autoref", "cref", "Cref",
+  "cpageref", "Cpageref", "vref", "Vref", "labelcref", "nameref", "namecref", "fref", "sref",
+  "labelref",
+];
+const REFERENCE_COMMAND = new RegExp(
+  String.raw`\\(${REFERENCE_COMMAND_NAMES.join("|")})\*?(?![A-Za-z@])`,
+  "g",
+);
+
 const LATEX_CITATION_COMMANDS = new Set([
   "cite",
   "cites",
@@ -304,9 +318,7 @@ function collectReferenceKeyTokens(
   closingByOpening: CommandGroupIndex,
   tokens: LatexCommandKeyToken[],
 ): void {
-  const referenceCommands =
-    /\\(crefrange|Crefrange|cpagerefrange|vpagerefrange|hyperlink|ref|eqref|pageref|autoref|cref|Cref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?(?![A-Za-z@])/g;
-  for (const match of masked.matchAll(referenceCommands)) {
+  for (const match of masked.matchAll(REFERENCE_COMMAND)) {
     const braced = commandGroups(
       masked,
       match.index + match[0].length,
@@ -1386,7 +1398,7 @@ function addTexDefDefinitions(
     for (let index = 1; index <= argumentCount; index += 1) {
       completionSnippet += `{${snippetPlaceholder(index)}}`;
     }
-    const nameFrom = match.index + match[0].indexOf(match[1]) + 1;
+    const nameFrom = match.index + match[0].lastIndexOf(match[1]) + 1;
     addDefinition(
       definitions,
       "latex",
@@ -1553,7 +1565,7 @@ function addTheoremDefinitions(
     /\\newtheorem\*?\s*\{\s*([^{}\s]+)\s*\}\s*\{/gu,
   )) {
     const nameFrom =
-      match.index + match[0].indexOf(match[1]);
+      match.index + match[0].lastIndexOf(match[1]);
     addDefinition(
       definitions,
       "latex",
@@ -1563,7 +1575,7 @@ function addTheoremDefinitions(
       match[1],
       nameFrom,
       nameFrom + match[1].length,
-      "theorem environment",
+      THEOREM_ENVIRONMENT_DETAIL,
       undefined,
       {
         syntax: "classic",
@@ -3100,6 +3112,21 @@ function legacyUseTarget(
   return symbol.target;
 }
 
+/** An `\\input` shown in verbatim text opens nothing. */
+function withoutShownInputs(uses: readonly Sym[], source: string): readonly Sym[] {
+  if (!uses.some((use) => use.kind === "inputedge")) return uses;
+  const masked = maskLatexIgnoredRegions(source);
+  return uses.filter((use) => use.kind !== "inputedge" || masked[use.from] === "\\");
+}
+
+function legacyUseSyntax(
+  engine: ProjectIntelligenceEngine,
+  symbol: Sym,
+): ProjectUse["syntax"] {
+  if (symbol.kind === "atuse" && engine === "typst") return "typst-at";
+  return symbol.counter ? "counter" : "explicit";
+}
+
 function addLegacyUses(
   context: LegacyContext,
   symbols: readonly Sym[],
@@ -3120,9 +3147,7 @@ function addLegacyUses(
       symbol.nameFrom,
       symbol.nameTo,
       target,
-      symbol.kind === "atuse" && engine === "typst"
-        ? "typst-at"
-        : "explicit",
+      legacyUseSyntax(engine, symbol),
     );
     if (EDGE_USE_KINDS.has(kind)) {
       edges.push(edgeForUse(use, target ?? null));
@@ -3133,10 +3158,16 @@ function addLegacyUses(
 function analyzeLatexBody(
   context: LegacyContext,
   diagnostics: ProjectDiagnostic[],
-): { partial: boolean; packageRefs: PackageReference[]; searchPaths: LatexSearchPaths } {
+): {
+  partial: boolean;
+  packageRefs: PackageReference[];
+  searchPaths: LatexSearchPaths;
+  unitFacts: LatexUnitFacts | undefined;
+} {
   const { engine, file, source, starts, definitions, uses, edges } = context;
   const ignored = latexIgnoredRanges(source);
   const masked = maskLatexIgnoredRegions(source, ignored);
+  const unitFacts = latexUnitFacts(file, source, masked);
   latexAdditionalSyntax(
     file,
     source,
@@ -3157,7 +3188,9 @@ function analyzeLatexBody(
   if (ast) definitions.push(...ast.definitions);
   const searchPaths = latexSearchPathsIn(file, masked);
   const novalidate = scanLatexNovalidate(source, ignored);
-  if (novalidate.fileDisabled) return { partial: false, packageRefs, searchPaths };
+  if (novalidate.fileDisabled) {
+    return { partial: false, packageRefs, searchPaths, unitFacts };
+  }
   const checked = maskNovalidateRegions(masked, novalidate.regions);
   const delimiterPartial = addDelimiterDiagnostics(
     file,
@@ -3177,6 +3210,7 @@ function analyzeLatexBody(
     partial: delimiterPartial || environmentPartial,
     packageRefs,
     searchPaths,
+    unitFacts,
   };
 }
 
@@ -3274,16 +3308,18 @@ export function analyzeProjectFile(
   };
 
   addLegacyDefinitions(context, legacy.defs);
-  addLegacyUses(context, legacy.uses);
+  addLegacyUses(context, engine === "latex" ? withoutShownInputs(legacy.uses, source) : legacy.uses);
 
   let partial = false;
   let packageRefs: PackageReference[] = [];
   let searchPaths = NO_SEARCH_PATHS;
+  let unitFacts: LatexUnitFacts | undefined;
   if (engine === "latex") {
     const latex = analyzeLatexBody(context, diagnostics);
     partial = latex.partial;
     packageRefs = latex.packageRefs;
     searchPaths = latex.searchPaths;
+    unitFacts = latex.unitFacts;
   } else if (engine === "markdown") {
     partial = markdownAdditionalSyntax(
       file,
@@ -3331,5 +3367,6 @@ export function analyzeProjectFile(
     ...(searchPaths.graphics.length || searchPaths.svg.length
       ? { latexSearchPaths: searchPaths }
       : {}),
+    ...(unitFacts ? { latexUnit: unitFacts } : {}),
   };
 }

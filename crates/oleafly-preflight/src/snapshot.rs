@@ -41,6 +41,8 @@ pub struct SnapshotIssue {
 pub struct ProjectSnapshot {
     pub root: PathBuf,
     pub main_document: String,
+    /// The folder TeX runs in when it is not the project root.
+    pub compile_folder: String,
     pub tree_paths: Vec<String>,
     pub texts: BTreeMap<String, String>,
     pub oversized: Vec<String>,
@@ -215,6 +217,7 @@ impl ProjectSnapshot {
         Ok(Self {
             root: root.to_path_buf(),
             main_document: main_document.to_string(),
+            compile_folder: String::new(),
             tree_paths,
             texts,
             oversized,
@@ -230,6 +233,7 @@ impl ProjectSnapshot {
         Self {
             root: PathBuf::new(),
             main_document: main_document.to_string(),
+            compile_folder: String::new(),
             tree_paths,
             texts,
             oversized: Vec::new(),

@@ -105,11 +105,17 @@ pub(crate) fn for_compile(
     })
 }
 
-fn shared_font_pack_root() -> Option<PathBuf> {
-    crate::paths::assets_root().ok().map(|root| {
-        let base = root.join(oleafly_core::typst_toolchain::TYPST_FONT_PACKS_DIR);
-        base.canonicalize().unwrap_or(base)
-    })
+fn shared_font_pack_roots() -> Vec<PathBuf> {
+    let Ok(root) = crate::paths::assets_root() else {
+        return Vec::new();
+    };
+    oleafly_core::typst_toolchain::FONT_PACK_DIRS
+        .iter()
+        .map(|name| {
+            let base = root.join(name);
+            base.canonicalize().unwrap_or(base)
+        })
+        .collect()
 }
 
 pub(crate) fn shared_font_dirs() -> Vec<PathBuf> {
@@ -430,7 +436,7 @@ fn classify_source(
     source: &str,
     root: &Path,
     font_dirs: &[PathBuf],
-    pack_root: Option<&Path>,
+    pack_roots: &[PathBuf],
 ) -> TypstFontSource {
     if source == EMBEDDED_FONT {
         return TypstFontSource {
@@ -442,8 +448,9 @@ fn classify_source(
     let canonical = path
         .canonicalize()
         .map_or_else(|_| comparable(path), |path| comparable(&path));
-    if let Some(pack) = pack_root
-        .and_then(|pack_root| canonical.strip_prefix(comparable(pack_root)).ok())
+    if let Some(pack) = pack_roots
+        .iter()
+        .find_map(|pack_root| canonical.strip_prefix(comparable(pack_root)).ok())
         .and_then(|relative| relative.components().next())
     {
         return TypstFontSource {
@@ -475,7 +482,7 @@ pub(crate) fn font_entries(
     families: Vec<TypstFontFamily>,
     root: &Path,
     font_dirs: &[PathBuf],
-    pack_root: Option<&Path>,
+    pack_roots: &[PathBuf],
 ) -> Vec<TypstFontEntry> {
     families
         .into_iter()
@@ -483,7 +490,7 @@ pub(crate) fn font_entries(
             sources: family
                 .sources
                 .iter()
-                .map(|source| classify_source(source, root, font_dirs, pack_root))
+                .map(|source| classify_source(source, root, font_dirs, pack_roots))
                 .collect(),
             name: family.name,
         })
@@ -553,7 +560,7 @@ fn list_fonts_blocking(project_id: &str) -> Result<TypstFontList, String> {
             families,
             &root,
             &settings.font_dirs,
-            shared_font_pack_root().as_deref(),
+            &shared_font_pack_roots(),
         ),
     })
 }

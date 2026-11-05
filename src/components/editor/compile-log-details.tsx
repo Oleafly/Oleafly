@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { CompileError, ComponentInfo } from "@/lib/tauri";
 import { compileErrorExcerpt } from "@/lib/compile-error-excerpt";
-import { missingTypstFont, packForFamily, type TypstFontPackId } from "@/lib/typst-font-packs";
+import { missingTypstFont, packForFamily, type FontPackId } from "@/lib/typst-font-packs";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useCompileStore } from "@/store/compile";
@@ -25,7 +25,7 @@ function MissingFontPackHint({ family, pack }: Readonly<{ family: string; pack: 
   const { t } = useTranslation(["editor", "settings"]);
   const installing = useFontPacksStore((state) => state.installing);
   const install = useFontPacksStore((state) => state.install);
-  const label = t(($) => $.settings.downloads.fontPacks[pack.id as TypstFontPackId].label);
+  const label = t(($) => $.settings.downloads.fontPacks[pack.id as FontPackId].label);
   const downloadAndCompile = async () => {
     if (await install(pack.id)) {
       await useFilesStore.getState().refreshEngine();
