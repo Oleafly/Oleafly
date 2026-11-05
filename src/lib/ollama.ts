@@ -12,11 +12,13 @@ export function listOllamaModels(host: string): Promise<string[]> {
 
 /** A pulled model and what it can do ("vision", "tools", ...); null when
  * Ollama did not say. `remote` marks an Ollama Cloud model: the local Ollama
- * lists it, but its requests go to another computer. */
+ * lists it, but its requests go to another computer. `stopsThinking` marks a
+ * thinking model that Ollama can tell not to think. */
 export interface OllamaModelInfo {
   name: string;
   capabilities: string[] | null;
   remote?: boolean;
+  stopsThinking?: boolean;
 }
 
 // Like listOllamaModels, with each model's capabilities. Older Ollama
@@ -25,6 +27,12 @@ export function listOllamaModelDetails(host: string): Promise<OllamaModelInfo[]>
   return invoke<OllamaModelInfo[]>("ollama_list_model_details", {
     host: host.trim() || DEFAULT_OLLAMA_HOST,
   });
+}
+
+/** The models whose thinking Ollama turns off for `reasoning_effort: "none"`.
+ * A think-only model is left out: it would think anyway, into its answer. */
+export function switchableThinkingModels(models: readonly OllamaModelInfo[]): Set<string> {
+  return new Set(models.filter((model) => model.stopsThinking === true).map((model) => model.name));
 }
 
 export function ollamaInstalled(): Promise<boolean> {

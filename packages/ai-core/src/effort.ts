@@ -1,3 +1,5 @@
+import { PROVIDER_BY_ID } from "./providers";
+
 export type EffortLevel = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
 export const EFFORT_LEVELS: readonly EffortLevel[] = [
@@ -207,6 +209,13 @@ function deepSeekChoices(id: string, caps: ReasoningCaps): ProviderChoices {
   return { wire, base: [] };
 }
 
+/** A custom provider gets no levels, since Oleafly cannot know what its
+ * server accepts. The one exception is a model the server itself lists as
+ * able to switch thinking off, like Lemonade's `reasoning` models. */
+function customChoices(caps: ReasoningCaps): ProviderChoices {
+  return { wire: ["none"], base: caps.toggle ? ["none"] : [] };
+}
+
 function providerChoices(providerId: string, id: string, caps: ReasoningCaps): ProviderChoices {
   switch (providerId) {
     case "anthropic":
@@ -226,7 +235,7 @@ function providerChoices(providerId: string, id: string, caps: ReasoningCaps): P
     case "deepseek":
       return deepSeekChoices(id, caps);
     default:
-      return { wire: [], base: [] };
+      return Object.hasOwn(PROVIDER_BY_ID, providerId) ? { wire: [], base: [] } : customChoices(caps);
   }
 }
 

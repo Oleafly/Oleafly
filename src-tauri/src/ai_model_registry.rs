@@ -154,6 +154,34 @@ pub(crate) fn classify(
         .collect()
 }
 
+/// The listed models a custom provider's server labels `reasoning`, as
+/// Lemonade does. Lemonade turns their thinking off for
+/// `enable_thinking: false`.
+pub(crate) fn labelled_thinking(
+    provider_id: &str,
+    available: &[oleafly_agent::ModelInfo],
+) -> BTreeSet<String> {
+    if oleafly_agent::provider::catalog_entry(provider_id).is_some() {
+        return BTreeSet::new();
+    }
+    available
+        .iter()
+        .filter(|model| model.labels.iter().any(|label| label == "reasoning"))
+        .map(|model| model.id.clone())
+        .collect()
+}
+
+/// Lets the effort menu offer None for the models a custom provider's server
+/// says can stop thinking. The metadata snapshot does not cover such servers,
+/// so a model it does describe keeps that.
+pub(crate) fn mark_switchable_thinking(models: &mut [ProviderModel], thinking: &BTreeSet<String>) {
+    for model in models.iter_mut() {
+        if model.metadata.is_none() && thinking.contains(&model.id) {
+            model.metadata = Some(ModelMetadata::switchable_thinking(&model.name));
+        }
+    }
+}
+
 pub(crate) fn run_refusal(
     registry: &ModelRegistry,
     provider_id: &str,
@@ -173,7 +201,7 @@ pub(crate) fn run_refusal(
         ModelTrust::Verified => None,
         ModelTrust::Untested if has_tools => snapshot
             .lookup(provider_id, model_id)
-            .filter(|metadata| !metadata.tool_call)
+            .filter(|metadata| metadata.tool_call == Some(false))
             .map(|_| NO_TOOLS_RUN_REFUSAL.to_string()),
         ModelTrust::Untested => None,
     }
@@ -387,6 +415,7 @@ mod tests {
         oleafly_agent::ModelInfo {
             id: id.into(),
             name: format!("Name for {id}"),
+            labels: Vec::new(),
         }
     }
 
@@ -710,6 +739,48 @@ mod tests {
     }
 
     #[test]
+    fn local_models_that_can_stop_thinking_get_a_toggle() {
+        let labelled = |id: &str, labels: &[&str]| oleafly_agent::ModelInfo {
+            labels: labels.iter().map(|label| label.to_string()).collect(),
+            ..model(id)
+        };
+        let available = vec![
+            labelled("Qwen3-8B-GGUF", &["chat", "reasoning", "tool-calling"]),
+            labelled("Llama-3.2-1B-Instruct-GGUF", &["chat"]),
+        ];
+        let thinking = labelled_thinking("lemonade", &available);
+        assert_eq!(thinking, BTreeSet::from(["Qwen3-8B-GGUF".to_string()]));
+        assert!(labelled_thinking("openrouter", &available).is_empty());
+
+        let mut models = classify(
+            &ModelRegistry::default(),
+            "lemonade",
+            available,
+            &no_probes(),
+            &crate::ai_model_metadata::MetadataSnapshot::default(),
+        );
+        mark_switchable_thinking(&mut models, &thinking);
+        let json = serde_json::to_value(&models).unwrap();
+        assert_eq!(json[0]["metadata"]["reasoning"], true);
+        assert_eq!(
+            json[0]["metadata"]["reasoningOptions"],
+            serde_json::json!([{"type": "toggle"}])
+        );
+        assert!(json[0]["metadata"].get("toolCall").is_none());
+        assert!(json[1].get("metadata").is_none());
+
+        let mut described = classify(
+            &ModelRegistry::default(),
+            "openai",
+            vec![model("gpt-4o")],
+            &no_probes(),
+            &crate::ai_model_metadata::bundled_snapshot(),
+        );
+        mark_switchable_thinking(&mut described, &BTreeSet::from(["gpt-4o".to_string()]));
+        assert!(!described[0].metadata.as_ref().unwrap().reasoning);
+    }
+
+    #[test]
     fn listings_attach_metadata_and_apply_persisted_probes_by_provider_and_model() {
         let registry =
             parse_registry(r#"{"schemaVersion":2,"providers":{"openai":{"verified":["gpt-4o"]}}}"#)
@@ -861,7 +932,10 @@ mod tests {
     fn a_run_that_declares_no_tools_is_not_refused_for_a_chat_only_model() {
         let registry = parse_registry(BUNDLED_REGISTRY).unwrap();
         let snapshot = crate::ai_model_metadata::bundled_snapshot();
-        assert!(!snapshot.lookup("openai", "gpt-image-2").unwrap().tool_call);
+        assert_eq!(
+            snapshot.lookup("openai", "gpt-image-2").unwrap().tool_call,
+            Some(false)
+        );
 
         assert_eq!(
             run_refusal(
