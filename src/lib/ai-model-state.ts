@@ -2,6 +2,7 @@ import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import type { ModelMetadata, ModelProbe, ModelTrust, StoredModel } from "@/lib/tauri";
 import { getProvider, type AIModel } from "@/lib/ai-providers";
+import type { ModelReasoningMetadata } from "@oleafly/ai-core";
 
 export interface FetchedModel extends AIModel {
   trust?: ModelTrust;
@@ -194,6 +195,23 @@ export function mergeModelProbes(
 
 export function modelIsChatOnly(model: Pick<StoredModel, "metadata"> | undefined): boolean {
   return model?.metadata?.toolCall === false;
+}
+
+const SWITCHABLE_THINKING: ModelReasoningMetadata = {
+  reasoning: true,
+  reasoningOptions: [{ type: "toggle" }],
+};
+
+/** What the effort menu reads for a model: its saved metadata, or for Ollama,
+ * whose model list Settings doesn't keep, whether Ollama says it thinks. */
+export function effortMetadata(
+  stored: Pick<StoredModel, "metadata"> | undefined,
+  providerId: string,
+  modelId: string,
+  ollamaThinking: ReadonlySet<string>,
+): ModelReasoningMetadata | undefined {
+  if (stored?.metadata) return stored.metadata;
+  return providerId === "ollama" && ollamaThinking.has(modelId) ? SWITCHABLE_THINKING : undefined;
 }
 
 export function formatContextWindow(tokens: number): string {

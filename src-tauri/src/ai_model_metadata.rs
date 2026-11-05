@@ -90,8 +90,9 @@ pub struct ModelMetadata {
     pub input_modalities: Vec<String>,
     #[serde(default)]
     pub output_modalities: Vec<String>,
-    #[serde(default)]
-    pub tool_call: bool,
+    /// `None` when the source did not say, as for models a local server lists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call: Option<bool>,
     #[serde(default)]
     pub reasoning: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -112,6 +113,29 @@ pub struct ModelMetadata {
 
 fn default_status() -> String {
     "active".into()
+}
+
+impl ModelMetadata {
+    /// A model whose server says it thinks and can be told not to. Nothing
+    /// else about it is known.
+    pub(crate) fn switchable_thinking(name: &str) -> Self {
+        ModelMetadata {
+            name: name.to_string(),
+            context_window: None,
+            output_limit: None,
+            input_modalities: Vec::new(),
+            output_modalities: Vec::new(),
+            tool_call: None,
+            reasoning: true,
+            reasoning_options: Some(vec![serde_json::json!({ "type": "toggle" })]),
+            attachment: false,
+            structured_output: false,
+            status: default_status(),
+            release_date: None,
+            last_updated: None,
+            cost: None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -542,7 +566,7 @@ mod tests {
         let snapshot = parse_snapshot(BUNDLED_METADATA).unwrap();
         let gpt4o = snapshot.lookup("openai", "gpt-4o").unwrap();
         assert_eq!(gpt4o.name, "GPT-4o");
-        assert!(gpt4o.tool_call);
+        assert_eq!(gpt4o.tool_call, Some(true));
         assert_eq!(gpt4o.context_window, Some(128_000));
         assert_eq!(gpt4o.cost.as_ref().unwrap().cache_read, Some(1.25));
         assert!(snapshot.lookup("ollama", "llama3.2").is_none());
@@ -571,7 +595,7 @@ mod tests {
     fn the_bundled_snapshot_prices_claude_opus_5_5() {
         let snapshot = parse_snapshot(BUNDLED_METADATA).unwrap();
         let opus = snapshot.lookup("anthropic", "claude-opus-5-5").unwrap();
-        assert!(opus.tool_call);
+        assert_eq!(opus.tool_call, Some(true));
         let cost = opus.cost.as_ref().unwrap();
         assert_eq!(
             (cost.input, cost.output, cost.cache_read),
@@ -802,7 +826,10 @@ mod tests {
         assert!(status.refreshed_at.is_some());
         assert!(!service.needs_refresh(now_ms()));
         let fetched = service.snapshot();
-        assert!(!fetched.lookup("groq", "fresh-model").unwrap().tool_call);
+        assert_eq!(
+            fetched.lookup("groq", "fresh-model").unwrap().tool_call,
+            Some(false)
+        );
         assert!(fetched.lookup("openai", "gpt-4o").is_none());
 
         let reopened = MetadataService::open(Some(cache));

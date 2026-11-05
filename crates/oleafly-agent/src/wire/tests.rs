@@ -1430,6 +1430,44 @@ fn chat_providers_get_their_own_reasoning_field() {
 }
 
 #[test]
+fn a_local_model_that_can_stop_thinking_is_told_to() {
+    let switchable = ModelCaps::from_metadata_json(&json!({
+        "reasoning": true,
+        "reasoningOptions": [{"type": "toggle"}]
+    }));
+    let off = openai_body(
+        &chat("lemonade", "Qwen3-8B-GGUF", switchable.clone()),
+        &with_effort(Effort::Off),
+    )
+    .unwrap();
+    assert_eq!(
+        (&off["reasoning_effort"], &off["enable_thinking"]),
+        (&json!("none"), &json!(false))
+    );
+    let auto = openai_body(
+        &chat("lemonade", "Qwen3-8B-GGUF", switchable),
+        &CompletionRequest::prompt("s", "u"),
+    )
+    .unwrap();
+    assert!(auto.get("reasoning_effort").is_none() && auto.get("enable_thinking").is_none());
+    let unmarked = openai_body(
+        &chat("lemonade", "Qwen3-8B-GGUF", ModelCaps::default()),
+        &with_effort(Effort::Off),
+    )
+    .unwrap();
+    assert!(
+        unmarked.get("reasoning_effort").is_none() && unmarked.get("enable_thinking").is_none()
+    );
+    let ollama = openai_body(
+        &chat("ollama", "qwen3:8b", ModelCaps::default()),
+        &with_effort(Effort::Off),
+    )
+    .unwrap();
+    assert_eq!(ollama["reasoning_effort"], "none");
+    assert!(ollama.get("enable_thinking").is_none());
+}
+
+#[test]
 fn openrouter_without_summaries_excludes_reasoning() {
     let body = openai_body(
         &chat("openrouter", "x/y", ModelCaps::default()),
