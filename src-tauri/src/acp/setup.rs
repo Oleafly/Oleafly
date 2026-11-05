@@ -234,6 +234,64 @@ pub(crate) async fn check_agent_within(
     check_plan(root, definition, program, plan, limits).await
 }
 
+async fn vendor_cli_version(
+    root: &Path,
+    vendor: Option<&VendorCli>,
+    plan: &Plan,
+    env: &[(String, std::ffi::OsString)],
+    limits: CheckLimits,
+    shown: Option<&Path>,
+) -> Result<Option<String>, Box<AgentCheck>> {
+    let fail = |code: &str, detail: Option<String>| Box::new(failed(code, detail, shown));
+    let Some(vendor) = vendor else {
+        return Ok(None);
+    };
+    let Some(cli) = &plan.cli else {
+        if !vendor.bridge_needs_cli {
+            return Ok(None);
+        }
+        let detail = plan
+            .cli_rejected
+            .iter()
+            .map(|entry| entry.path.to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("\n");
+        return Err(fail("cli_missing", (!detail.is_empty()).then_some(detail)));
+    };
+    // A CLI that runs on Node.js fails its own `--version` when
+    // Node.js is missing or too old, so Node.js is checked first.
+    if vendor.bridge_needs_cli && runs_on_node(&cli.located) {
+        let Some(node) = plan.node.as_deref() else {
+            return Err(fail("node_missing", None));
+        };
+        match catalog::node_version(root, node).await {
+            Some(found) if found >= PI_NODE => {}
+            Some(found) => {
+                return Err(fail(
+                    "node_too_old",
+                    Some(format!(
+                        "{} needs Node.js {} or newer. This computer has {}.",
+                        vendor.display_name,
+                        node_text(PI_NODE),
+                        node_text(found)
+                    )),
+                ))
+            }
+            None => return Err(fail("node_missing", None)),
+        }
+    }
+    match catalog::program_version(root, &cli.located, vendor.version_args, env, limits.version)
+        .await
+    {
+        Ok(found) => match catalog::cli_outdated(vendor, &found) {
+            Some(outdated) => Err(fail("start_failed", Some(outdated))),
+            None => Ok(Some(found)),
+        },
+        Err(detail) if vendor.bridge_needs_cli => Err(fail("cli_missing", Some(detail))),
+        Err(_) => Ok(None),
+    }
+}
+
 pub(crate) async fn check_plan(
     root: &Path,
     definition: &AgentDefinition,
@@ -255,66 +313,11 @@ pub(crate) async fn check_plan(
         ),
     };
 
-    let mut version = None;
-    if let Some(vendor) = &vendor {
-        match &plan.cli {
-            Some(cli) => {
-                // A CLI that runs on Node.js fails its own `--version` when
-                // Node.js is missing or too old, so Node.js is checked first.
-                if vendor.bridge_needs_cli && runs_on_node(&cli.located) {
-                    let Some(node) = plan.node.as_deref() else {
-                        return failed("node_missing", None, shown);
-                    };
-                    match catalog::node_version(root, node).await {
-                        Some(found) if found >= PI_NODE => {}
-                        Some(found) => {
-                            return failed(
-                                "node_too_old",
-                                Some(format!(
-                                    "{} needs Node.js {} or newer. This computer has {}.",
-                                    vendor.display_name,
-                                    node_text(PI_NODE),
-                                    node_text(found)
-                                )),
-                                shown,
-                            )
-                        }
-                        None => return failed("node_missing", None, shown),
-                    }
-                }
-                match catalog::program_version(
-                    root,
-                    &cli.located,
-                    vendor.version_args,
-                    &env,
-                    limits.version,
-                )
-                .await
-                {
-                    Ok(found) => {
-                        if let Some(outdated) = catalog::cli_outdated(vendor, &found) {
-                            return failed("start_failed", Some(outdated), shown);
-                        }
-                        version = Some(found);
-                    }
-                    Err(detail) if vendor.bridge_needs_cli => {
-                        return failed("cli_missing", Some(detail), shown)
-                    }
-                    Err(_) => {}
-                }
-            }
-            None if vendor.bridge_needs_cli => {
-                let detail = plan
-                    .cli_rejected
-                    .iter()
-                    .map(|entry| entry.path.to_string_lossy().into_owned())
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                return failed("cli_missing", (!detail.is_empty()).then_some(detail), shown);
-            }
-            None => {}
-        }
-    }
+    let version = match vendor_cli_version(root, vendor.as_ref(), &plan, &env, limits, shown).await
+    {
+        Ok(version) => version,
+        Err(check) => return *check,
+    };
 
     let launch = match plan.launch {
         Ok(launch) => launch,
