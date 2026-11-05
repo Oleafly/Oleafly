@@ -17,6 +17,22 @@ function Test-Version($path, $version) {
   return $LASTEXITCODE -eq 0 -and "$reported".ToLowerInvariant().Contains($version.ToLowerInvariant())
 }
 
+function Save-Download($urls, $download) {
+  foreach ($url in $urls) {
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+      try {
+        Invoke-WebRequest -Uri $url -OutFile $download
+        return
+      } catch {
+        Write-Warning "Download from $url failed (attempt $attempt of 3): $($_.Exception.Message)"
+        Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
+        if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+      }
+    }
+  }
+  throw "failed to download from every origin: $($urls -join ', ')"
+}
+
 function Install-Sidecar($name, $version, $asset, $sha256, $member, $urls) {
   $out = Join-Path $binDir "$name-$hostTriple.exe"
   $temp = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-sidecar-$([System.Guid]::NewGuid().ToString('N'))"
@@ -27,18 +43,7 @@ function Install-Sidecar($name, $version, $asset, $sha256, $member, $urls) {
     if ($actual -ne $sha256) {
       Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue
       $download = Join-Path $temp "download"
-      $fetched = $false
-      foreach ($url in $urls) {
-        try {
-          Invoke-WebRequest -Uri $url -OutFile $download
-          $fetched = $true
-          break
-        } catch {
-          Write-Host "download failed from ${url}: $($_.Exception.Message); trying next origin"
-          Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
-        }
-      }
-      if (-not $fetched) { throw "failed to download $asset from every origin" }
+      Save-Download $urls $download
       $actual = (Get-FileHash -Algorithm SHA256 -Path $download).Hash.ToLowerInvariant()
       if ($actual -eq $sha256) { Move-Item -LiteralPath $download -Destination $archive }
     }
