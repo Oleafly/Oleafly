@@ -3437,18 +3437,18 @@ async fn download_progress_extends_the_compiler_deadline() {
     let arguments = [
         OsString::from("-e"),
         OsString::from(
-            "let n=0;const t=setInterval(()=>{console.log('note: downloading f'+n+'.sty');if(++n===4){clearInterval(t)}},150)",
+            "console.log('note: downloading f0.sty');let n=1;const t=setInterval(()=>{console.log('note: downloading f'+n+'.sty');if(++n===6){clearInterval(t)}},1000)",
         ),
     ];
     let (output, status) = run_command(
         &launch(Path::new("node"), &arguments, directory.path(), &[]),
-        Duration::from_millis(400),
+        Duration::from_secs(3),
         &CompilerLog::default(),
     )
     .await
     .unwrap();
     assert!(status.success());
-    assert!(output.contains("f3.sty"), "{output}");
+    assert!(output.contains("f5.sty"), "{output}");
 }
 
 #[tokio::test]
