@@ -139,3 +139,16 @@ describe("scan estimates", () => {
     expect(needed.sizes).toHaveLength(6);
   });
 });
+
+describe("a CLI agent", () => {
+  it("runs on the user's plan, whatever its model is called", () => {
+    const summary: ToolsChoiceSummary = {
+      engine: "llm",
+      providerId: "acp:claude",
+      modelId: "opus",
+      label: "Claude Code (opus)",
+      destination: { kind: "provider", providerId: "acp:claude", name: "Claude Code" },
+    };
+    expect(estimateScan(sizes(3), summary)).toEqual({ kind: "plan", pages: 3, provider: "Claude Code" });
+  });
+});

@@ -615,7 +615,7 @@
       "tabLabel": "Tools",
       "loading": "Tools-Einstellungen werden geladen…",
       "modelTitle": "Modell für Tools",
-      "modelDescription": "Bild zu LaTeX, Formelbilder und gescannte PDFs verwenden dieses Modell. Die automatische Auswahl verwendet Ollama, damit Bilder auf diesem Computer bleiben. Wenn Ollama nicht läuft oder kein Modell hat, das Bilder liest, senden Bild zu LaTeX und Bild zu Typst im Editor das Bild stattdessen an das Modell des Assistenten.",
+      "modelDescription": "Bild zu LaTeX, Formelbilder und gescannte PDFs verwenden dieses Modell. Die automatische Auswahl verwendet Ollama, damit Bilder auf diesem Computer bleiben. Wenn Ollama nicht läuft oder kein Modell hat, das Bilder liest, senden Bild zu LaTeX und Bild zu Typst im Editor das Bild stattdessen an das Modell des Assistenten. Sie können auch einen verbundenen Kommandozeilenagenten wie Claude Code wählen. Er verwendet Ihre eigene Anmeldung und braucht daher keinen API-Schlüssel.",
       "ocrHint": "Für die besten lokalen Ergebnisse laden Sie in Ollama ein OCR-Modell herunter:",
       "mathpix": {
         "title": "Mathpix",

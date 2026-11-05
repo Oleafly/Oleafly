@@ -1174,6 +1174,7 @@
     "automatic": "Automatisk (beste lokale modell)",
     "localGroup": "Lokal (Ollama)",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "Agentens standardmodell",
     "sentTo": "Bilder sendes til {{provider}}",
     "sentToHost": "Bilder sendes til Ollama på {{host}}",
     "scansSentTo": "Skannede sider sendes til {{provider}}",
@@ -1204,6 +1205,7 @@
     "sentBadge": "Sendt til {{provider}}",
     "openToolsSettings": "Innstillinger for Verktøy",
     "openProviderSettings": "Leverandørinnstillinger",
+    "openAgentSettings": "Agentinnstillinger",
     "errors": {
       "offline": "Oleafly er i frakoblet modus. Velg en lokal modell, eller slå av frakoblet modus.",
       "providerNotConfigured": "{{provider}} har ingen API-nøkkel. Legg til en i Innstillinger, eller velg en annen modell.",
@@ -1213,6 +1215,10 @@
       "localModelGone": "{{model}} finnes ikke lenger i Ollama. Hent den på nytt, eller velg en annen modell.",
       "imagesOnly": "{{model}} leser bare bilder. Velg en språkmodell for å konvertere skrevne ligninger.",
       "mathpixNotSetUp": "Legg til nøklene dine for Mathpix i Innstillinger, AI-assistent, Verktøy, eller velg en annen modell.",
+      "agentNotReady": "{{agent}} er ikke klar. Sett den opp i Innstillinger, eller velg en annen modell.",
+      "agentSignIn": "{{agent}} er ikke logget inn. Logg inn, og prøv igjen.",
+      "agentUsedTool": "{{agent}} prøvde å bruke et verktøy i stedet for å lese bildet, så Oleafly stoppet den. Prøv igjen, eller velg en annen modell.",
+      "agentNeedsReadOnly": "{{agent}} kan ikke begrenses til bare å lese, så Oleafly sender ikke bildet ditt til den. Velg en annen modell.",
       "imageTooLarge": "Bildet er fortsatt for stort etter at det er gjort mindre. Beskjær det, og prøv igjen."
     }
   },

@@ -7,7 +7,7 @@ use super::{
 };
 use crate::app_error::AppError;
 use crate::program_locator::{self as locator, Located, ProgramKind, RejectReason};
-use oleafly_acp::{AcpClient, ErrorKind, InitializeError, NullHost};
+use oleafly_acp::{AcpClient, ClientHost, ErrorKind, IncomingRequest, InitializeError, NullHost};
 use serde_json::Value;
 use std::{
     collections::HashSet,
@@ -15,6 +15,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+use tokio::sync::watch;
 
 /// How long `<cli> --version` may take (a first start of a large native CLI
 /// can be slow while antivirus scans it).
@@ -28,6 +29,7 @@ const NAME_CHARS: usize = 80;
 pub(crate) struct CheckLimits {
     pub version: Duration,
     pub initialize: Duration,
+    pub auth_status: Duration,
 }
 
 impl Default for CheckLimits {
@@ -35,6 +37,7 @@ impl Default for CheckLimits {
         Self {
             version: VERSION_LIMIT,
             initialize: INITIALIZE_LIMIT,
+            auth_status: AUTH_STATUS_LIMIT,
         }
     }
 }
@@ -150,6 +153,8 @@ fn failed(code: &str, detail: Option<String>, program: Option<&Path>) -> AgentCh
 }
 
 const SESSION_CHECK_LIMIT: Duration = Duration::from_secs(20);
+/// Claude Code's own limit on the `claude auth status` behind its first push is 5 seconds.
+const AUTH_STATUS_LIMIT: Duration = Duration::from_secs(6);
 
 fn plain_text(value: &Value) -> Option<String> {
     let text: String = value
@@ -352,7 +357,7 @@ pub(crate) async fn check_plan(
             None => return failed("node_missing", None, shown),
         }
     }
-    start_and_initialize(root, &launch, shown, version, limits.initialize).await
+    start_and_initialize(root, definition, &launch, shown, version, limits).await
 }
 
 fn shown_program(role: ProgramRole, program: Option<&Path>, plan: &Plan) -> Option<PathBuf> {
@@ -372,28 +377,75 @@ fn shown_program(role: ProgramRole, program: Option<&Path>, plan: &Plan) -> Opti
     })
 }
 
+pub(super) fn probe_command(
+    launch: &catalog::Launch,
+    folder: &Path,
+) -> Result<tokio::process::Command, String> {
+    if launch.batch {
+        locator::script_launch_check(&launch.executable, folder)?;
+    }
+    let mut command = tokio::process::Command::new(&launch.executable);
+    command
+        .args(&launch.args)
+        .current_dir(folder)
+        .envs(launch.env.iter().map(|(name, value)| (name, value)));
+    Ok(command)
+}
+
+/// Hears the login an agent pushes after `initialize`.
+struct CheckHost {
+    auth_kind: watch::Sender<Option<String>>,
+}
+
+impl ClientHost for CheckHost {
+    fn on_update(&self, _params: Value) {}
+
+    fn on_request(&self, request: IncomingRequest) {
+        NullHost.on_request(request);
+    }
+
+    fn on_notification(&self, method: &str, params: Value) {
+        if method == "_auth/status_update" {
+            self.auth_kind
+                .send_replace(super::host::auth_status_kind(&params).map(str::to_owned));
+        }
+    }
+
+    fn on_dropped_update(&self, _bytes: usize) {}
+    fn on_disconnected(&self) {}
+}
+
+/// Claude Code opens a session while signed out and refuses only at the first
+/// prompt, so an open session proves nothing for an agent that reports its login.
+async fn reported_login(
+    auth_kind: &mut watch::Receiver<Option<String>>,
+    limit: Duration,
+) -> Option<String> {
+    let reported = tokio::time::timeout(limit, auth_kind.wait_for(Option::is_some)).await;
+    reported.ok()?.ok()?.clone()
+}
+
 async fn start_and_initialize(
     root: &Path,
+    definition: &AgentDefinition,
     launch: &catalog::Launch,
     shown: Option<&Path>,
     cli_version: Option<String>,
-    limit: Duration,
+    limits: CheckLimits,
 ) -> AgentCheck {
     let probe = match catalog::probe_folder(root) {
         Ok(probe) => probe,
         Err(error) => return failed("start_failed", Some(error), shown),
     };
-    if launch.batch {
-        if let Err(error) = locator::script_launch_check(&launch.executable, probe.path()) {
-            return failed("start_failed", Some(error), shown);
-        }
-    }
-    let mut command = tokio::process::Command::new(&launch.executable);
-    command
-        .args(&launch.args)
-        .current_dir(probe.path())
-        .envs(launch.env.iter().map(|(name, value)| (name, value)));
-    let client = match AcpClient::spawn(command, Arc::new(NullHost)).await {
+    let command = match probe_command(launch, probe.path()) {
+        Ok(command) => command,
+        Err(error) => return failed("start_failed", Some(error), shown),
+    };
+    let (auth_sender, mut auth_kind) = watch::channel(None);
+    let host = Arc::new(CheckHost {
+        auth_kind: auth_sender,
+    });
+    let client = match AcpClient::spawn(command, host).await {
         Ok(client) => client,
         Err(error) => {
             return failed(
@@ -404,7 +456,7 @@ async fn start_and_initialize(
         }
     };
     let options = super::runtime::client_options(false, false);
-    let reply = tokio::time::timeout(limit, client.initialize(&options)).await;
+    let reply = tokio::time::timeout(limits.initialize, client.initialize(&options)).await;
     let result = match reply {
         Err(_) => failed("timeout", None, shown),
         Ok(Err(InitializeError::Rpc(error))) => {
@@ -442,6 +494,7 @@ async fn start_and_initialize(
                 agent_name: plain_text(&value["agentInfo"]["title"])
                     .or_else(|| plain_text(&value["agentInfo"]["name"])),
                 auth_methods: Vec::new(),
+                signed_in: false,
                 runtime: Some(super::preferences::AgentRuntimeInfo::from_negotiated(
                     &negotiated,
                     auth_methods.clone(),
@@ -451,9 +504,31 @@ async fn start_and_initialize(
             let cwd = probe.path().to_string_lossy().into_owned();
             match tokio::time::timeout(SESSION_CHECK_LIMIT, client.new_session(&cwd, &[])).await {
                 Ok(Ok(session)) => {
+                    let mut controls = oleafly_acp::controls::SessionControls::default();
+                    controls.merge(&session);
+                    if let Some(runtime) = &mut check.runtime {
+                        let read_only = super::one_shot::holds_to_reading(definition, &controls);
+                        runtime.remember_session(&controls, read_only);
+                    }
                     if negotiated.capabilities.close {
                         if let Some(id) = session["sessionId"].as_str() {
                             let _ = client.close_session(id).await;
+                        }
+                    }
+                    if negotiated.capabilities.auth_status
+                        && !catalog::claude_login_unreported(definition)
+                    {
+                        match reported_login(&mut auth_kind, limits.auth_status)
+                            .await
+                            .as_deref()
+                        {
+                            Some("none") => {
+                                check.ok = false;
+                                check.code = "needs_sign_in".into();
+                                check.auth_methods = auth_methods;
+                            }
+                            Some(_) => check.signed_in = true,
+                            None => {}
                         }
                     }
                 }

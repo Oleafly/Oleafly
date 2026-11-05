@@ -615,7 +615,7 @@
       "tabLabel": "Verktøy",
       "loading": "Laster innstillinger for Verktøy…",
       "modelTitle": "Modell for Verktøy",
-      "modelDescription": "Bilde til LaTeX, bilder av ligninger og skannede PDF-er bruker denne modellen. Det automatiske valget bruker Ollama, så bildene blir værende på denne maskinen. Hvis Ollama ikke kjører eller ikke har noen modell som kan lese bilder, sender Bilde til LaTeX og Bilde til Typst i redigeringsprogrammet bildet til assistentens modell i stedet.",
+      "modelDescription": "Bilde til LaTeX, bilder av ligninger og skannede PDF-er bruker denne modellen. Det automatiske valget bruker Ollama, så bildene blir værende på denne maskinen. Hvis Ollama ikke kjører eller ikke har noen modell som kan lese bilder, sender Bilde til LaTeX og Bilde til Typst i redigeringsprogrammet bildet til assistentens modell i stedet. Du kan også velge en tilkoblet kommandolinjeagent som Claude Code. Den bruker din egen innlogging, så den trenger ingen API-nøkkel.",
       "ocrHint": "For de beste lokale resultatene kan du hente en OCR-modell i Ollama:",
       "mathpix": {
         "title": "Mathpix",

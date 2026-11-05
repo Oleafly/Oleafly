@@ -611,7 +611,7 @@
       "tabLabel": "工具",
       "loading": "正在加载工具设置…",
       "modelTitle": "工具所用模型",
-      "modelDescription": "图片转 LaTeX、公式图片和扫描 PDF 会使用此模型。自动选择会使用 Ollama，因此图片会留在这台计算机上。如果 Ollama 未运行，或没有能读取图片的模型，编辑器中的图片转 LaTeX 和图片转 Typst 会改为把图片发送给助手的模型。",
+      "modelDescription": "图片转 LaTeX、公式图片和扫描 PDF 会使用此模型。自动选择会使用 Ollama，因此图片会留在这台计算机上。如果 Ollama 未运行，或没有能读取图片的模型，编辑器中的图片转 LaTeX 和图片转 Typst 会改为把图片发送给助手的模型。还可以选择已连接的命令行代理，例如 Claude Code。它使用现有的登录信息，无需 API 密钥。",
       "ocrHint": "要获得最佳本地效果，请在 Ollama 中拉取 OCR 模型：",
       "mathpix": {
         "title": "Mathpix",

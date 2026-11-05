@@ -611,7 +611,7 @@
       "tabLabel": "Công cụ",
       "loading": "Đang tải cài đặt Công cụ…",
       "modelTitle": "Mô hình cho Công cụ",
-      "modelDescription": "Ảnh sang LaTeX, ảnh phương trình và PDF quét dùng mô hình này. Lựa chọn tự động dùng Ollama để ảnh ở lại trên máy tính này. Nếu Ollama không chạy hoặc không có mô hình đọc được hình ảnh, tính năng Ảnh sang LaTeX và Ảnh sang Typst của trình biên tập sẽ gửi ảnh đến mô hình của trợ lý thay thế.",
+      "modelDescription": "Ảnh sang LaTeX, ảnh phương trình và PDF quét dùng mô hình này. Lựa chọn tự động dùng Ollama để ảnh ở lại trên máy tính này. Nếu Ollama không chạy hoặc không có mô hình đọc được hình ảnh, tính năng Ảnh sang LaTeX và Ảnh sang Typst của trình biên tập sẽ gửi ảnh đến mô hình của trợ lý thay thế. Bạn cũng có thể chọn một CLI agent đã kết nối, như Claude Code. Agent dùng thông tin đăng nhập của chính bạn nên không cần khoá API.",
       "ocrHint": "Để có kết quả cục bộ tốt nhất, hãy tải một mô hình OCR trong Ollama:",
       "mathpix": {
         "title": "Mathpix",

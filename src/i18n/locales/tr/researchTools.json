@@ -1174,6 +1174,7 @@
     "automatic": "Otomatik (en iyi yerel model)",
     "localGroup": "Yerel (Ollama)",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "Ajanın varsayılan modeli",
     "sentTo": "Görseller {{provider}} hizmetine gönderilir",
     "sentToHost": "Görseller {{host}} üzerindeki Ollama'ya gönderilir",
     "scansSentTo": "Taranmış sayfalar {{provider}} hizmetine gönderilir",
@@ -1204,6 +1205,7 @@
     "sentBadge": "{{provider}} hizmetine gönderildi",
     "openToolsSettings": "Araçlar ayarları",
     "openProviderSettings": "Sağlayıcı ayarları",
+    "openAgentSettings": "Ajan ayarları",
     "errors": {
       "offline": "Oleafly çevrimdışı modda. Yerel bir model seçin veya çevrimdışı modu kapatın.",
       "providerNotConfigured": "{{provider}} için API anahtarı yok. Ayarlar'dan bir anahtar ekleyin veya başka bir model seçin.",
@@ -1213,6 +1215,10 @@
       "localModelGone": "{{model}} artık Ollama'da yok. Yeniden indirin veya başka bir model seçin.",
       "imagesOnly": "{{model}} yalnızca görselleri okur. Yazılmış denklemleri dönüştürmek için bir dil modeli seçin.",
       "mathpixNotSetUp": "Mathpix anahtarlarınızı Ayarlar, Yapay zeka asistanı, Araçlar bölümünden ekleyin ya da başka bir model seçin.",
+      "agentNotReady": "{{agent}} hazır değil. Ayarlar'dan kurun veya başka bir model seçin.",
+      "agentSignIn": "{{agent}} için oturum açılmamış. Oturum açıp yeniden deneyin.",
+      "agentUsedTool": "{{agent}} görüntüyü okumak yerine bir araç kullanmaya çalıştı, bu yüzden Oleafly onu durdurdu. Yeniden deneyin veya başka bir model seçin.",
+      "agentNeedsReadOnly": "{{agent}} yalnızca okumayla sınırlanamıyor, bu yüzden Oleafly görüntünüzü ona göndermeyecek. Başka bir model seçin.",
       "imageTooLarge": "Bu görsel küçültüldükten sonra bile çok büyük. Kırpıp yeniden deneyin."
     }
   },

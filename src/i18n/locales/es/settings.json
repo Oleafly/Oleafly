@@ -619,7 +619,7 @@
       "tabLabel": "Herramientas",
       "loading": "Cargando los ajustes de Herramientas…",
       "modelTitle": "Modelo para Herramientas",
-      "modelDescription": "Imagen a LaTeX, las imágenes de ecuaciones y los PDF escaneados usan este modelo. La opción automática usa Ollama, así que las imágenes no salen de este equipo. Si Ollama no está en marcha o no tiene ningún modelo que lea imágenes, Imagen a LaTeX e Imagen a Typst del editor envían la imagen al modelo del asistente.",
+      "modelDescription": "Imagen a LaTeX, las imágenes de ecuaciones y los PDF escaneados usan este modelo. La opción automática usa Ollama, así que las imágenes no salen de este equipo. Si Ollama no está en marcha o no tiene ningún modelo que lea imágenes, Imagen a LaTeX e Imagen a Typst del editor envían la imagen al modelo del asistente. También puedes elegir un agente de línea de comandos conectado, como Claude Code. Usa tu propio inicio de sesión, así que no necesita clave de API.",
       "ocrHint": "Para obtener los mejores resultados en local, descarga un modelo de OCR en Ollama:",
       "mathpix": {
         "title": "Mathpix",

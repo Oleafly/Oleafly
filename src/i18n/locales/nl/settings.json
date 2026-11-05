@@ -615,7 +615,7 @@
       "tabLabel": "Hulpmiddelen",
       "loading": "Instellingen voor Hulpmiddelen laden…",
       "modelTitle": "Model voor Hulpmiddelen",
-      "modelDescription": "Afbeelding naar LaTeX, afbeeldingen van vergelijkingen en gescande PDF's gebruiken dit model. De automatische keuze gebruikt Ollama, dus afbeeldingen blijven op deze computer. Als Ollama niet draait of geen model heeft dat afbeeldingen kan lezen, sturen Afbeelding naar LaTeX en Afbeelding naar Typst in de editor de afbeelding naar het model van de assistent.",
+      "modelDescription": "Afbeelding naar LaTeX, afbeeldingen van vergelijkingen en gescande PDF's gebruiken dit model. De automatische keuze gebruikt Ollama, dus afbeeldingen blijven op deze computer. Als Ollama niet draait of geen model heeft dat afbeeldingen kan lezen, sturen Afbeelding naar LaTeX en Afbeelding naar Typst in de editor de afbeelding naar het model van de assistent. Je kunt ook een verbonden CLI-agent kiezen, zoals Claude Code. Die gebruikt je eigen aanmelding en heeft dus geen API-sleutel nodig.",
       "ocrHint": "Voor de beste lokale resultaten haal je een OCR-model op in Ollama:",
       "mathpix": {
         "title": "Mathpix",

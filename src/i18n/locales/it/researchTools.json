@@ -1186,6 +1186,7 @@
     "automatic": "Automatico (miglior modello locale)",
     "localGroup": "Locale (Ollama)",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "Modello predefinito dell'agente",
     "sentTo": "Le immagini vengono inviate a {{provider}}",
     "sentToHost": "Le immagini vengono inviate a Ollama su {{host}}",
     "scansSentTo": "Le pagine scansionate vengono inviate a {{provider}}",
@@ -1223,6 +1224,7 @@
     "sentBadge": "Inviato a {{provider}}",
     "openToolsSettings": "Impostazioni degli Strumenti",
     "openProviderSettings": "Impostazioni del provider",
+    "openAgentSettings": "Impostazioni dell'agente",
     "errors": {
       "offline": "Oleafly è in modalità offline. Scegli un modello locale, oppure disattiva la modalità offline.",
       "providerNotConfigured": "{{provider}} non ha una chiave API. Aggiungine una nelle Impostazioni, oppure scegli un altro modello.",
@@ -1232,6 +1234,10 @@
       "localModelGone": "{{model}} non è più in Ollama. Scaricalo di nuovo, oppure scegli un altro modello.",
       "imagesOnly": "{{model}} legge solo immagini. Scegli un modello linguistico per convertire le equazioni scritte.",
       "mathpixNotSetUp": "Aggiungi le tue chiavi Mathpix in Impostazioni, Assistente AI, Strumenti, oppure scegli un altro modello.",
+      "agentNotReady": "{{agent}} non è pronto. Configuralo nelle Impostazioni, oppure scegli un altro modello.",
+      "agentSignIn": "{{agent}} non ha effettuato l'accesso. Accedi e riprova.",
+      "agentUsedTool": "{{agent}} ha provato a usare uno strumento invece di leggere l'immagine, quindi Oleafly l'ha fermato. Riprova, oppure scegli un altro modello.",
+      "agentNeedsReadOnly": "{{agent}} non può essere limitato alla sola lettura, quindi Oleafly non gli invierà la tua immagine. Scegli un altro modello.",
       "imageTooLarge": "Questa immagine è ancora troppo grande anche dopo averla ridotta. Ritagliala e riprova."
     }
   },

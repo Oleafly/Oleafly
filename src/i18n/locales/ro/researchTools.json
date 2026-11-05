@@ -1186,6 +1186,7 @@
     "automatic": "Automat (cel mai bun model local)",
     "localGroup": "Local (Ollama)",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "Modelul implicit al agentului",
     "sentTo": "Imaginile sunt trimise la {{provider}}",
     "sentToHost": "Imaginile sunt trimise la Ollama, pe {{host}}",
     "scansSentTo": "Paginile scanate sunt trimise la {{provider}}",
@@ -1223,6 +1224,7 @@
     "sentBadge": "Trimis la {{provider}}",
     "openToolsSettings": "Setările Instrumentelor",
     "openProviderSettings": "Setările furnizorului",
+    "openAgentSettings": "Setările agentului",
     "errors": {
       "offline": "Oleafly este în modul offline. Alege un model local sau dezactivează modul offline.",
       "providerNotConfigured": "{{provider}} nu are cheie API. Adaugă una în Setări sau alege alt model.",
@@ -1232,6 +1234,10 @@
       "localModelGone": "{{model}} nu mai este în Ollama. Descarcă-l din nou sau alege alt model.",
       "imagesOnly": "{{model}} citește doar imagini. Alege un model de limbaj ca să convertești ecuații tastate.",
       "mathpixNotSetUp": "Adaugă cheile Mathpix în Setări, Asistentul AI, Instrumente sau alege alt model.",
+      "agentNotReady": "{{agent}} nu este gata. Configurează-l în Setări sau alege alt model.",
+      "agentSignIn": "{{agent}} nu este autentificat. Autentifică-te, apoi încearcă din nou.",
+      "agentUsedTool": "{{agent}} a încercat să folosească un instrument în loc să citească imaginea, așa că Oleafly l-a oprit. Încearcă din nou sau alege alt model.",
+      "agentNeedsReadOnly": "{{agent}} nu poate fi limitat la citire, așa că Oleafly nu îi va trimite imaginea ta. Alege alt model.",
       "imageTooLarge": "Această imagine este încă prea mare după micșorare. Decupeaz-o și încearcă din nou."
     }
   },

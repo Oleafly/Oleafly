@@ -95,10 +95,14 @@ impl From<RawCustomProvider> for CustomProvider {
 pub struct ToolsModelChoice {
     pub provider: String,
     pub model: String,
+    /// The name to show for a CLI agent, which no provider list can supply.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
 }
 
 const MAX_TOOLS_PROVIDER_CHARS: usize = 128;
 const MAX_TOOLS_MODEL_CHARS: usize = 512;
+const MAX_TOOLS_LABEL_CHARS: usize = 120;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Persona {
@@ -543,9 +547,22 @@ pub(crate) fn normalize_tools_choice(
             Err("Pick a model for Tools.".into())
         };
     }
+    let label = choice
+        .label
+        .as_deref()
+        .map(|label| {
+            label
+                .chars()
+                .filter(|character| !character.is_control())
+                .take(MAX_TOOLS_LABEL_CHARS)
+                .collect::<String>()
+        })
+        .map(|label| label.trim().to_owned())
+        .filter(|label| !label.is_empty());
     Ok(Some(ToolsModelChoice {
         provider: provider.to_owned(),
         model: model.to_owned(),
+        label,
     }))
 }
 
@@ -3388,6 +3405,7 @@ mod tests {
             Some(ToolsModelChoice {
                 provider: provider.into(),
                 model: model.into(),
+                label: None,
             })
         };
         assert_eq!(normalize_tools_choice(None).unwrap(), None);
@@ -3430,6 +3448,7 @@ mod tests {
         set_ai_tools_model_blocking(Some(ToolsModelChoice {
             provider: " anthropic ".into(),
             model: "claude-opus-5-5".into(),
+            label: None,
         }))
         .unwrap();
         let mut incoming = get_config_blocking().unwrap();
@@ -3438,6 +3457,7 @@ mod tests {
             &ToolsModelChoice {
                 provider: "anthropic".into(),
                 model: "claude-opus-5-5".into(),
+                label: None,
             }
         );
 
@@ -3450,6 +3470,7 @@ mod tests {
         incoming.ai_tools_model = Some(ToolsModelChoice {
             provider: "openai".into(),
             model: "gpt-6-luna".into(),
+            label: None,
         });
         tauri::async_runtime::block_on(set_config(incoming)).unwrap();
         assert_eq!(
@@ -3460,6 +3481,7 @@ mod tests {
         assert!(set_ai_tools_model_blocking(Some(ToolsModelChoice {
             provider: "openai\r\n".into(),
             model: "x".into(),
+            label: None,
         }))
         .is_err());
         assert_eq!(

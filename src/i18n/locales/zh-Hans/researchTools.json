@@ -1162,6 +1162,7 @@
     "automatic": "自动（最佳本地模型）",
     "localGroup": "本地（Ollama）",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "代理的默认模型",
     "sentTo": "图片会发送到 {{provider}}",
     "sentToHost": "图片会发送到 {{host}} 上的 Ollama",
     "scansSentTo": "扫描页会发送到 {{provider}}",
@@ -1185,6 +1186,7 @@
     "sentBadge": "已发送到 {{provider}}",
     "openToolsSettings": "工具设置",
     "openProviderSettings": "提供商设置",
+    "openAgentSettings": "代理设置",
     "errors": {
       "offline": "Oleafly 处于离线模式。请选择本地模型，或关闭离线模式。",
       "providerNotConfigured": "{{provider}} 没有 API 密钥。请在设置中添加，或选择其他模型。",
@@ -1194,6 +1196,10 @@
       "localModelGone": "{{model}} 已不在 Ollama 中。请重新拉取，或选择其他模型。",
       "imagesOnly": "{{model}} 只能读取图片。请选择语言模型来转换输入的公式。",
       "mathpixNotSetUp": "请在“设置 → AI 助手 → 工具”中添加 Mathpix 密钥，或选择其他模型。",
+      "agentNotReady": "{{agent}} 尚未就绪。请在设置中配置，或选择其他模型。",
+      "agentSignIn": "{{agent}} 尚未登录。请登录后重试。",
+      "agentUsedTool": "{{agent}} 试图使用工具而不是读取图片，因此 Oleafly 已将其停止。请重试，或选择其他模型。",
+      "agentNeedsReadOnly": "{{agent}} 无法限制为只读，因此 Oleafly 不会向其发送图片。请选择其他模型。",
       "imageTooLarge": "缩小后图片仍然太大。请裁剪后重试。"
     }
   },

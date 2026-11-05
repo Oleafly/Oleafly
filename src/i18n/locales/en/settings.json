@@ -615,7 +615,7 @@
       "tabLabel": "Tools",
       "loading": "Loading Tools settings…",
       "modelTitle": "Model for Tools",
-      "modelDescription": "Image to LaTeX, equation images and scanned PDFs use this model. The automatic choice uses Ollama, so images stay on this computer. If Ollama isn't running or has no model that reads images, the editor's Image to LaTeX and Image to Typst send the image to the assistant's model instead.",
+      "modelDescription": "Image to LaTeX, equation images and scanned PDFs use this model. The automatic choice uses Ollama, so images stay on this computer. If Ollama isn't running or has no model that reads images, the editor's Image to LaTeX and Image to Typst send the image to the assistant's model instead. You can also pick a connected CLI agent such as Claude Code. It uses your own sign-in, so it needs no API key.",
       "ocrHint": "For the best local results, pull an OCR model in Ollama:",
       "mathpix": {
         "title": "Mathpix",

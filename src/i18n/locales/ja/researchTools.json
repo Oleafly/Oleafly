@@ -1162,6 +1162,7 @@
     "automatic": "自動（最適なローカルモデル）",
     "localGroup": "ローカル（Ollama）",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "エージェントの既定のモデル",
     "sentTo": "画像は {{provider}} に送信されます",
     "sentToHost": "画像は {{host}} の Ollama に送信されます",
     "scansSentTo": "スキャンしたページは {{provider}} に送信されます",
@@ -1185,6 +1186,7 @@
     "sentBadge": "{{provider}} に送信済み",
     "openToolsSettings": "ツールの設定",
     "openProviderSettings": "プロバイダの設定",
+    "openAgentSettings": "エージェントの設定",
     "errors": {
       "offline": "Oleafly はオフラインモードです。ローカルモデルを選ぶか、オフラインモードをオフにしてください。",
       "providerNotConfigured": "{{provider}} の API キーがありません。設定で追加するか、別のモデルを選んでください。",
@@ -1194,6 +1196,10 @@
       "localModelGone": "{{model}} は Ollama にもうありません。もう一度取得するか、別のモデルを選んでください。",
       "imagesOnly": "{{model}} は画像しか読み取れません。入力した数式を変換するには、言語モデルを選んでください。",
       "mathpixNotSetUp": "「設定 → AI → ツール」で Mathpix のキーを追加するか、別のモデルを選んでください。",
+      "agentNotReady": "{{agent}} の準備ができていません。設定で準備するか、別のモデルを選んでください。",
+      "agentSignIn": "{{agent}} にサインインしていません。サインインしてから、もう一度お試しください。",
+      "agentUsedTool": "{{agent}} が画像を読まずにツールを使おうとしたため、Oleafly が停止しました。もう一度試すか、別のモデルを選んでください。",
+      "agentNeedsReadOnly": "{{agent}} を読み取り専用に制限できないため、Oleafly は画像を送信しません。別のモデルを選んでください。",
       "imageTooLarge": "縮小しても画像が大きすぎます。トリミングしてから、もう一度お試しください。"
     }
   },

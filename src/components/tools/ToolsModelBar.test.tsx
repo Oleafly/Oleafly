@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   listOllamaModelDetails: vi.fn(),
   mathpixKeyStatus: vi.fn(),
   notifyError: vi.fn(),
+  acpCatalog: vi.fn(),
+  acpCheckAgent: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -24,6 +26,11 @@ vi.mock("@/lib/ollama", () => ({
   listOllamaModelDetails: mocks.listOllamaModelDetails,
 }));
 vi.mock("@/lib/mathpix", () => ({ mathpixKeyStatus: mocks.mathpixKeyStatus }));
+vi.mock("@/lib/acp", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/acp")>()),
+  acpCatalog: mocks.acpCatalog,
+  acpCheckAgent: mocks.acpCheckAgent,
+}));
 vi.mock("@/lib/toast", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/toast")>()),
   notifyError: mocks.notifyError,
@@ -67,6 +74,84 @@ beforeEach(() => {
   mocks.setAiToolsModel.mockResolvedValue(undefined);
   mocks.listOllamaModelDetails.mockResolvedValue([]);
   mocks.mathpixKeyStatus.mockResolvedValue({ configured: false, appId: null });
+  mocks.acpCatalog.mockResolvedValue([]);
+  mocks.acpCheckAgent.mockResolvedValue({ ok: true, code: "ready" });
+});
+
+function cliAgent(id: string, models: { modelId: string; name: string }[] | null) {
+  return {
+    definition: { id, name: `${id} CLI` },
+    installed: true,
+    canInstall: true,
+    cli: null,
+    runtime: { image: true, models },
+  };
+}
+
+describe("CLI agents in the Tools model picker", () => {
+  it("lists a connected agent's models and saves the agent's name with the choice", async () => {
+    mocks.acpCatalog.mockResolvedValue([cliAgent("picked", [{ modelId: "opus", name: "Opus" }])]);
+    renderWithQuery(<ToolsModelPicker />);
+    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalled());
+    openPicker();
+    fireEvent.click(await screen.findByRole("option", { name: /Opus/ }));
+    await waitFor(() =>
+      expect(mocks.setAiToolsModel).toHaveBeenCalledWith({
+        provider: "acp:picked",
+        model: "opus",
+        label: "picked CLI",
+      }),
+    );
+    expect(mocks.acpCheckAgent).not.toHaveBeenCalled();
+  });
+
+  it("asks an agent that has never opened a session for its models, once", async () => {
+    mocks.acpCatalog.mockResolvedValueOnce([cliAgent("new-agent", null)]);
+    mocks.acpCatalog.mockResolvedValue([cliAgent("new-agent", [{ modelId: "fast", name: "Fast" }])]);
+    renderWithQuery(<ToolsModelPicker />);
+    await waitFor(() => expect(mocks.acpCheckAgent).toHaveBeenCalledWith("new-agent"));
+    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalledTimes(2));
+    openPicker();
+    expect(await screen.findByRole("option", { name: /Fast/ })).toBeInTheDocument();
+    expect(mocks.acpCheckAgent).toHaveBeenCalledTimes(1);
+  });
+
+  it("still lists the agent when that check fails, and asks again next time", async () => {
+    mocks.acpCatalog.mockResolvedValue([cliAgent("failing-agent", null)]);
+    mocks.acpCheckAgent.mockRejectedValue(new Error("busy"));
+    const first = renderWithQuery(<ToolsModelPicker />);
+    await waitFor(() => expect(mocks.acpCheckAgent).toHaveBeenCalledWith("failing-agent"));
+    openPicker();
+    expect(
+      await screen.findByRole("option", { name: new RegExp(researchTools.converterModel.agentDefaultModel) }),
+    ).toBeInTheDocument();
+    expect(mocks.acpCheckAgent).toHaveBeenCalledTimes(1);
+    first.unmount();
+    renderWithQuery(<ToolsModelPicker />);
+    await waitFor(() => expect(mocks.acpCheckAgent).toHaveBeenCalledTimes(2));
+  });
+
+  it("checks new agents one at a time", async () => {
+    mocks.acpCatalog.mockResolvedValue([cliAgent("queued-one", null), cliAgent("queued-two", null)]);
+    let finish: (() => void) | undefined;
+    mocks.acpCheckAgent.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderWithQuery(<ToolsModelPicker />);
+    await waitFor(() => expect(mocks.acpCheckAgent).toHaveBeenCalledWith("queued-one"));
+    expect(mocks.acpCheckAgent).toHaveBeenCalledTimes(1);
+    finish?.();
+    await waitFor(() => expect(mocks.acpCheckAgent).toHaveBeenCalledWith("queued-two"));
+  });
+
+  it("sees an agent installed in Settings straight away", async () => {
+    mocks.acpCatalog.mockResolvedValueOnce([]);
+    mocks.acpCatalog.mockResolvedValue([cliAgent("just-installed", [{ modelId: "fast", name: "Fast" }])]);
+    renderWithQuery(<ToolsModelPicker />);
+    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalledTimes(1));
+    window.dispatchEvent(new CustomEvent("oleafly:acp-catalog-changed"));
+    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalledTimes(2));
+    openPicker();
+    expect(await screen.findByRole("option", { name: /Fast/ })).toBeInTheDocument();
+  });
 });
 
 describe("Tools model picker", () => {
@@ -367,6 +452,8 @@ describe("Tools settings link", () => {
     });
     openToolsSettings("ai-tools");
     expect(useSettingsStore.getState().settingsScrollTarget).toBe("ai-tools");
+    openToolsSettings("ai-agents");
+    expect(useSettingsStore.getState().settingsScrollTarget).toBe("ai-agents");
   });
 
   it("opens Providers and keys, where keys and model switches live, for a key or model problem", () => {

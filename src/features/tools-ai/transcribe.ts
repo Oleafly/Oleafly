@@ -2,11 +2,13 @@ import { isOutputLimitStop, isRefusalStop } from "@oleafly/ai-core";
 import type { ConverterProgressReporter } from "@/features/ad-hoc-converters";
 import { i18n } from "@/i18n";
 import {
+  agentErrorKind,
   completeViaBackend,
   type AgentCompletionRequest,
   type AgentCompletionResponse,
   type AgentContentPart,
 } from "@/lib/agent-backend";
+import { acpError } from "@/lib/acp";
 import { mathpixPdf, mathpixText } from "@/lib/mathpix";
 import {
   dataUrlToImageInput,
@@ -92,12 +94,46 @@ function llmRequest(model: ResolvedLlm, system: string | null, content: AgentCon
   };
 }
 
+/** What a CLI agent's failure means for the Tools. Its own message reads
+ * `[kind] text`, and the text of any other failure is the agent's. */
+function agentFailure(agent: string, model: string, error: unknown): unknown {
+  switch (agentErrorKind(error)) {
+    case "auth":
+      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentSignIn, { agent }), "ai-agents");
+    case "agent_unavailable":
+      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentNotReady, { agent }), "ai-agents");
+    case "agent_images":
+      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.cannotSeeImages, { model: agent }));
+    case "agent_model":
+      return new ToolsModelError(
+        i18n.t(($) => $.researchTools.converterModel.errors.modelUnavailable, { model, provider: agent }),
+      );
+    case "agent_tool":
+      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentUsedTool, { agent }));
+    case "agent_read_only":
+      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentNeedsReadOnly, { agent }));
+    case "agent":
+      return new ToolsModelError(acpError(String((error as Error).message).replace(/^\[agent\]\s*/, "")), "ai-agents");
+    default:
+      return error;
+  }
+}
+
+async function completeWith(
+  model: ResolvedLlm,
+  request: AgentCompletionRequest,
+  signal?: AbortSignal,
+): Promise<AgentCompletionResponse> {
+  const route = { provider_id: model.providerId, model_id: model.modelId };
+  if (!model.agentName) return completeViaBackend(request, signal, route);
+  const agent = model.agentName;
+  return completeViaBackend(request, signal, route).catch((error: unknown) => {
+    throw agentFailure(agent, model.modelId, error);
+  });
+}
+
 async function complete(model: ResolvedLlm, request: AgentCompletionRequest, signal?: AbortSignal): Promise<string> {
-  const response: AgentCompletionResponse = await completeViaBackend(
-    request,
-    signal,
-    { provider_id: model.providerId, model_id: model.modelId },
-  );
+  const response = await completeWith(model, request, signal);
   if (isOutputLimitStop(response.stop_reason)) {
     throw new ToolsModelError(i18n.t(($) => $.researchTools.converterErrors.outputLimit));
   }
@@ -175,6 +211,11 @@ async function mathpixImage(image: ImageInput, options: TranscribeOptions): Prom
   );
 }
 
+function llmImageBudget(model: ResolvedLlm): ImageBudget {
+  if (model.agentName) return IMAGE_BUDGETS.agent;
+  return model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
+}
+
 export async function transcribeImage(
   model: ResolvedToolsModel,
   image: ImageInput,
@@ -182,8 +223,7 @@ export async function transcribeImage(
 ): Promise<string> {
   throwIfAborted(options.signal);
   if (model.engine === "mathpix") return mathpixImage(image, options);
-  const budget = model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
-  const reply = await readImage(model, image, options.target, options.mode, budget, options.signal);
+  const reply = await readImage(model, image, options.target, options.mode, llmImageBudget(model), options.signal);
   if (options.mode === "equation") return nonEmpty(extractSingleMath(reply));
   if (!model.profile) return nonEmpty(reply);
   if (!reply) throw emptyTranscription();
@@ -289,7 +329,7 @@ export async function transcribePdfPages(
   }
 
   const { renderPages } = await import("@/lib/pdf-image");
-  const budget = model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
+  const budget = llmImageBudget(model);
   const transcribed: string[] = [];
   const rendered = renderPages(bytes, pages, SCAN_RENDER_SCALE, "#ffffff");
   try {

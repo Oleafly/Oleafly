@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The Tools can use a connected CLI agent. Image to LaTeX, Image to Typst, the
+  equation tools and scanned PDFs now list Claude Code, Codex and other
+  connected agents, so they run on your own sign-in with no API key. Claude Code
+  runs with its tools off and other agents in a read-only mode, and an agent
+  with no such mode isn't listed (#306).
 - The compile log has a Clear button, in the main window and the preview
   window (#372).
 - Settings > Terminal can open folders in an external terminal: Terminal or
@@ -37,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A ready CLI agent no longer shows "Run claude auth login in your terminal,
+  then reconnect" under Next step. That line was fixed text, so signing in could
+  never clear it (#306).
+- The agent check now spots a signed-out Claude Code, which it used to call
+  ready because Claude Code opens a session before it checks the login (#306).
 - Fenced code in Markdown stays a code block in the visual editor. Typing in
   a block, or saving a file the editor had to rewrite, turned the fence into
   lines of inline code, which dropped the language and broke Mermaid diagrams.

@@ -149,7 +149,7 @@ function nextStepText(
   if (readiness === "cli-missing" && agent.cli) {
     return i18n.t(($) => $.ai.acp.setup.cliMissingNextStep, { cli: agent.cli.displayName });
   }
-  return agent.reason ?? agent.signInHint;
+  return agent.reason;
 }
 
 function AgentCard({
@@ -194,6 +194,7 @@ function AgentCard({
     t(($) => $.settings.ai.agents.installBridgeNextStep),
     t(($) => $.ai.acp.setup.installUnavailable),
   );
+  const hasNextStep = Boolean(nextStep || bridgeActionAvailable || agent.taskUnavailableReason);
   const cliTitleId = `acp-agent-${id}-cli-title`;
   const nextStepTitleId = `acp-agent-${id}-next-step-title`;
   const installReasonId = `acp-agent-${id}-install-reason`;
@@ -382,15 +383,17 @@ function AgentCard({
           </CollapsibleSection>
           {(nextStep || bridgeActionAvailable || (projectId && cli) || agent.taskUnavailableReason) && (
             <section
-              aria-labelledby={nextStepTitleId}
+              aria-labelledby={hasNextStep ? nextStepTitleId : undefined}
               className="space-y-2.5 border-t border-border/70 pt-4"
             >
-              <h5
-                id={nextStepTitleId}
-                className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {t(($) => $.settings.ai.agents.nextStepTitle)}
-              </h5>
+              {hasNextStep && (
+                <h5
+                  id={nextStepTitleId}
+                  className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  {t(($) => $.settings.ai.agents.nextStepTitle)}
+                </h5>
+              )}
               {nextStep && (
                 <p
                   id={nextStep === installBlocked ? installReasonId : undefined}

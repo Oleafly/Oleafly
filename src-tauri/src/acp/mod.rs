@@ -8,6 +8,7 @@ mod export;
 pub(crate) mod failures;
 pub(crate) mod hermes;
 mod host;
+mod one_shot;
 mod options;
 mod permission_view;
 mod pi_turn;
@@ -29,6 +30,7 @@ pub mod types;
 mod updates;
 mod usage_probe;
 
+pub(crate) use one_shot::OneShot;
 pub use options::ModelChoice;
 pub use runtime::{AcpRuntime, PermissionDelegate, PromptFailure};
 pub use types::*;

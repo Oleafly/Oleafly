@@ -176,6 +176,7 @@
   },
   "converterModel": {
     "automatic": "Model menu entry that lets Oleafly choose the best installed Ollama model",
+    "agentDefaultModel": "Model menu entry: the CLI agent, such as Claude Code, uses whichever model it picks for itself",
     "mathpixModel": "Product name; keep Mathpix untranslated",
     "sentTo": "Privacy notice: the images go to this AI provider's servers",
     "scansSentTo": "Privacy notice: the images go to this AI provider's servers",

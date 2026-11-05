@@ -436,6 +436,14 @@ describe("0.4.8 program checks", () => {
     expect(ui.queryByRole("button", { name: copy.signIn })).toBeNull();
   });
 
+  it("doesn't ask an agent that named its login to sign in", async () => {
+    vi.mocked(acpCheckAgent).mockResolvedValueOnce(check("ready", { signedIn: true }));
+    const ui = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.test }));
+    const result = await ui.findByTestId("acp-agent-program-result-pi");
+    expect(result).not.toHaveTextContent("then reconnect");
+  });
+
   it("leaves out a sign-in command it could not build, and falls back to the hint", async () => {
     vi.mocked(acpSignInCommand).mockRejectedValue(new Error("unknown method"));
     vi.mocked(acpCheckAgent).mockResolvedValueOnce(check("needs_sign_in", { authMethods: [login] }));

@@ -615,7 +615,7 @@
       "tabLabel": "Araçlar",
       "loading": "Araçlar ayarları yükleniyor…",
       "modelTitle": "Araçlar için model",
-      "modelDescription": "Görselden LaTeX'e, denklem görselleri ve taranmış PDF'ler bu modeli kullanır. Otomatik seçim Ollama'yı kullanır, bu yüzden görseller bu bilgisayarda kalır. Ollama çalışmıyorsa veya görselleri okuyabilen bir modeli yoksa, düzenleyicideki Görselden LaTeX'e ve Görselden Typst'e görseli bunun yerine asistanın modeline gönderir.",
+      "modelDescription": "Görselden LaTeX'e, denklem görselleri ve taranmış PDF'ler bu modeli kullanır. Otomatik seçim Ollama'yı kullanır, bu yüzden görseller bu bilgisayarda kalır. Ollama çalışmıyorsa veya görselleri okuyabilen bir modeli yoksa, düzenleyicideki Görselden LaTeX'e ve Görselden Typst'e görseli bunun yerine asistanın modeline gönderir. Claude Code gibi bağlı bir CLI ajanını da seçebilirsiniz. Kendi oturumunuzu kullandığı için API anahtarı gerekmez.",
       "ocrHint": "En iyi yerel sonuçlar için Ollama'ya bir OCR modeli indirin:",
       "mathpix": {
         "title": "Mathpix",

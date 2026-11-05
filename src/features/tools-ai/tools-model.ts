@@ -1,5 +1,6 @@
 import { pickActiveProvider } from "@oleafly/ai-core";
 import { i18n } from "@/i18n";
+import { acpCatalog, acpUsable } from "@/lib/acp";
 import { mergeFetchedModels } from "@/lib/ai-model-state";
 import { mathpixKeyStatus } from "@/lib/mathpix";
 import { listOllamaModelDetails, type OllamaModelInfo } from "@/lib/ollama";
@@ -7,12 +8,14 @@ import { getConfig, setConfig, type AppConfig, type ModelMetadata, type ToolsMod
 import { useSettingsStore } from "@/store/settings";
 import { ocrProfileFor, type OcrProfile, type OcrProfileId } from "./ocr-profiles";
 import {
+  agentModelLabel,
   disabledModels,
   LOCAL_TOOLS_PROVIDER,
   MATHPIX_TOOLS_PROVIDER,
   ollamaCloudDestination,
   ollamaModelIsRemote,
   ollamaModelSeesImages,
+  toolsAgentId,
   toolsChoice,
   toolsDestination,
   toolsOllamaHost,
@@ -36,6 +39,8 @@ export interface ResolvedLlm {
   metadata?: ModelMetadata;
   profile: OcrProfile | null;
   assistantFallback?: boolean;
+  /** Set when a CLI agent answers, by the agent's own name. */
+  agentName?: string;
 }
 
 export interface ResolvedMathpix {
@@ -47,7 +52,7 @@ export interface ResolvedMathpix {
 
 export type ResolvedToolsModel = ResolvedLlm | ResolvedMathpix;
 
-export type ToolsSettingsTarget = "ai" | "ai-tools" | "ai-providers";
+export type ToolsSettingsTarget = "ai" | "ai-tools" | "ai-providers" | "ai-agents";
 
 export class ToolsModelError extends Error {
   readonly settings: ToolsSettingsTarget;
@@ -272,6 +277,37 @@ function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice
   };
 }
 
+async function resolveAgent(
+  task: ToolsTask,
+  cfg: AppConfig,
+  choice: ToolsModelChoice,
+  agentId: string,
+): Promise<ResolvedLlm> {
+  if (useSettingsStore.getState().offline) throw offlineError();
+  const name = toolsProviderName(cfg, choice.provider);
+  const catalog = await acpCatalog().catch(() => []);
+  const agent = catalog.find((entry) => entry.definition.id === agentId);
+  if (!agent || !acpUsable(agent)) {
+    throw new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentNotReady, { agent: name }), "ai-agents");
+  }
+  if (agent.runtime?.readOnly === false) {
+    throw new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentNeedsReadOnly, { agent: name }));
+  }
+  if (task === "image" && agent.runtime?.image === false) {
+    throw new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.cannotSeeImages, { model: name }));
+  }
+  return {
+    engine: "llm",
+    providerId: choice.provider,
+    modelId: choice.model,
+    label: agentModelLabel(name, choice.model),
+    hosted: true,
+    destination: toolsDestination(cfg, choice.provider),
+    profile: null,
+    agentName: name,
+  };
+}
+
 function assistantFallbackModel(task: ToolsTask, cfg: AppConfig): ResolvedLlm | null {
   const { providerId, modelId } = pickActiveProvider(cfg);
   if (providerId === LOCAL_TOOLS_PROVIDER || !modelId) return null;
@@ -306,6 +342,8 @@ export async function resolveToolsModel(
   const cfg = await getConfig();
   const choice = toolsChoice(cfg);
   if (choice?.provider === MATHPIX_TOOLS_PROVIDER) return resolveMathpix(task, cfg);
+  const agentId = choice ? toolsAgentId(choice.provider) : null;
+  if (choice && agentId) return resolveAgent(task, cfg, choice, agentId);
   if (choice && choice.provider !== LOCAL_TOOLS_PROVIDER) return resolveHosted(task, cfg, choice);
   try {
     return await resolveLocal(task, cfg, choice?.model ?? "");

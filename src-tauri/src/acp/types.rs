@@ -118,6 +118,9 @@ pub struct AgentCheck {
     pub agent_name: Option<String>,
     #[serde(default)]
     pub auth_methods: Vec<AuthMethod>,
+    /// The agent named the login it runs under. False when it can't say.
+    #[serde(default)]
+    pub signed_in: bool,
     #[serde(skip)]
     pub runtime: Option<AgentRuntimeInfo>,
 }

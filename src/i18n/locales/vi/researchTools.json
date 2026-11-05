@@ -1162,6 +1162,7 @@
     "automatic": "Tự động (mô hình cục bộ tốt nhất)",
     "localGroup": "Cục bộ (Ollama)",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "Mô hình mặc định của agent",
     "sentTo": "Hình ảnh được gửi đến {{provider}}",
     "sentToHost": "Hình ảnh được gửi đến Ollama tại {{host}}",
     "scansSentTo": "Các trang quét được gửi đến {{provider}}",
@@ -1185,6 +1186,7 @@
     "sentBadge": "Đã gửi đến {{provider}}",
     "openToolsSettings": "Cài đặt Công cụ",
     "openProviderSettings": "Cài đặt nhà cung cấp",
+    "openAgentSettings": "Cài đặt agent",
     "errors": {
       "offline": "Oleafly đang ở chế độ ngoại tuyến. Hãy chọn một mô hình cục bộ hoặc tắt chế độ ngoại tuyến.",
       "providerNotConfigured": "{{provider}} chưa có khoá API. Hãy thêm khoá trong Cài đặt hoặc chọn mô hình khác.",
@@ -1194,6 +1196,10 @@
       "localModelGone": "{{model}} không còn trong Ollama. Hãy tải lại hoặc chọn mô hình khác.",
       "imagesOnly": "{{model}} chỉ đọc hình ảnh. Hãy chọn một mô hình ngôn ngữ để chuyển phương trình đã nhập.",
       "mathpixNotSetUp": "Hãy thêm khoá Mathpix trong Cài đặt, Trợ lý AI, Công cụ hoặc chọn mô hình khác.",
+      "agentNotReady": "{{agent}} chưa sẵn sàng. Hãy thiết lập trong Cài đặt hoặc chọn mô hình khác.",
+      "agentSignIn": "{{agent}} chưa đăng nhập. Hãy đăng nhập rồi thử lại.",
+      "agentUsedTool": "{{agent}} đã cố dùng công cụ thay vì đọc ảnh, nên Oleafly đã dừng nó. Hãy thử lại hoặc chọn mô hình khác.",
+      "agentNeedsReadOnly": "Không thể giới hạn {{agent}} ở chế độ chỉ đọc, nên Oleafly sẽ không gửi ảnh của bạn. Hãy chọn mô hình khác.",
       "imageTooLarge": "Hình ảnh này vẫn quá lớn sau khi thu nhỏ. Hãy cắt bớt và thử lại."
     }
   },

@@ -619,7 +619,7 @@
       "tabLabel": "Outils",
       "loading": "Chargement des paramètres des Outils…",
       "modelTitle": "Modèle pour les Outils",
-      "modelDescription": "Image vers LaTeX, les images d'équations et les PDF numérisés utilisent ce modèle. Le choix automatique utilise Ollama, donc les images restent sur cet ordinateur. Si Ollama ne tourne pas ou n'a aucun modèle capable de lire les images, Image vers LaTeX et Image vers Typst dans l'éditeur envoient l'image au modèle de l'assistant.",
+      "modelDescription": "Image vers LaTeX, les images d'équations et les PDF numérisés utilisent ce modèle. Le choix automatique utilise Ollama, donc les images restent sur cet ordinateur. Si Ollama ne tourne pas ou n'a aucun modèle capable de lire les images, Image vers LaTeX et Image vers Typst dans l'éditeur envoient l'image au modèle de l'assistant. Vous pouvez aussi choisir un agent en ligne de commande connecté, comme Claude Code. Il utilise votre propre connexion et n'a donc pas besoin de clé API.",
       "ocrHint": "Pour de meilleurs résultats en local, récupérez un modèle OCR dans Ollama :",
       "mathpix": {
         "title": "Mathpix",

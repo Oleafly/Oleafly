@@ -1,6 +1,6 @@
 import { lookupPrice, peakRateMultiplier } from "@/lib/ai-pricing";
 import { fitWithin } from "./image-downscale-core";
-import { destinationName, type ToolsChoiceSummary } from "./tools-choice";
+import { destinationName, toolsAgentId, type ToolsChoiceSummary } from "./tools-choice";
 
 export const LONG_SCAN_PAGES = 5;
 export const SCAN_PAGE_LIMIT = 50;
@@ -59,6 +59,7 @@ export function estimateScan(sizes: readonly PageSize[], summary: ToolsChoiceSum
     return { kind: "cost", pages, usd: Math.round(pages * MATHPIX_USD_PER_PDF_PAGE * 1e6) / 1e6 };
   }
   const provider = destinationName(summary.destination);
+  if (toolsAgentId(summary.providerId)) return { kind: "plan", pages, provider: provider ?? summary.providerId };
   if (summary.providerId === "ollama") {
     // An Ollama Cloud model runs on ollama.com under the user's plan.
     return provider && summary.destination.kind === "provider"

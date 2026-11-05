@@ -14,6 +14,14 @@ export const LOCAL_TOOLS_PROVIDER = "ollama";
 export const MATHPIX_TOOLS_PROVIDER = "mathpix";
 export const MATHPIX_TOOLS_MODEL = "mathpix";
 const MATHPIX_NAME = "Mathpix";
+/** A CLI agent as a Tools provider, such as `acp:claude`. */
+export const AGENT_TOOLS_PREFIX = "acp:";
+export const AGENT_DEFAULT_MODEL = "default";
+
+export function toolsAgentId(providerId: string): string | null {
+  if (!providerId.startsWith(AGENT_TOOLS_PREFIX)) return null;
+  return providerId.slice(AGENT_TOOLS_PREFIX.length) || null;
+}
 
 export function toolsChoice(cfg: Pick<AppConfig, "ai_tools_model">): ToolsModelChoice | null {
   const saved = cfg.ai_tools_model;
@@ -21,11 +29,11 @@ export function toolsChoice(cfg: Pick<AppConfig, "ai_tools_model">): ToolsModelC
   const model = saved?.model?.trim() ?? "";
   if (!provider) return null;
   if (provider === LOCAL_TOOLS_PROVIDER && !model) return null;
-  return { provider, model };
+  return saved?.label ? { provider, model, label: saved.label } : { provider, model };
 }
 
-export function choiceFromSelection(providerId: string, modelId: string): ToolsModelChoice | null {
-  return toolsChoice({ ai_tools_model: { provider: providerId, model: modelId } });
+export function choiceFromSelection(providerId: string, modelId: string, label?: string): ToolsModelChoice | null {
+  return toolsChoice({ ai_tools_model: { provider: providerId, model: modelId, label } });
 }
 
 export function visionCapable(providerId: string, modelId: string, metadata?: ModelMetadata): boolean {
@@ -98,8 +106,13 @@ export function toolsOllamaHost(cfg: Pick<AppConfig, "ai_keys">): string {
   return cfg.ai_keys?.ollama?.trim() || DEFAULT_OLLAMA_HOST;
 }
 
-export function toolsProviderName(cfg: Pick<AppConfig, "ai_custom_providers">, providerId: string): string {
+export function toolsProviderName(
+  cfg: Pick<AppConfig, "ai_custom_providers" | "ai_tools_model">,
+  providerId: string,
+): string {
   if (providerId === MATHPIX_TOOLS_PROVIDER) return MATHPIX_NAME;
+  const agentId = toolsAgentId(providerId);
+  if (agentId) return cfg.ai_tools_model?.label || agentId;
   const catalog = getProvider(providerId);
   if (catalog) return catalog.name;
   return cfg.ai_custom_providers?.find((custom) => custom.id === providerId)?.name || providerId;
@@ -129,6 +142,10 @@ export function toolsDestination(
 
 export function ollamaCloudDestination(): ToolsDestination {
   return { kind: "provider", providerId: LOCAL_TOOLS_PROVIDER, name: OLLAMA_CLOUD_NAME };
+}
+
+export function agentModelLabel(name: string, modelId: string): string {
+  return modelId && modelId !== AGENT_DEFAULT_MODEL ? `${name} (${modelId})` : name;
 }
 
 export function destinationName(destination: ToolsDestination): string | null {
@@ -180,6 +197,15 @@ export function describeToolsChoice(
       destination,
     };
   }
+  if (toolsAgentId(choice.provider)) {
+    return {
+      engine: "llm",
+      providerId: choice.provider,
+      modelId: choice.model,
+      label: agentModelLabel(toolsProviderName(cfg, choice.provider), choice.model),
+      destination,
+    };
+  }
   const stored = cfg.ai_provider_models?.[choice.provider]?.find((model) => model.id === choice.model);
   return {
     engine: "llm",
@@ -195,6 +221,7 @@ export function toolsImageReady(cfg: AppConfig): boolean {
   const choice = toolsChoice(cfg);
   if (!choice) return Boolean(cfg.ai_keys?.ollama?.trim()) || hasConfiguredProvider(cfg);
   if (choice.provider === LOCAL_TOOLS_PROVIDER || choice.provider === MATHPIX_TOOLS_PROVIDER) return true;
+  if (toolsAgentId(choice.provider)) return true;
   if (!toolsProviderConfigured(cfg, choice.provider)) return false;
   const stored = cfg.ai_provider_models?.[choice.provider];
   const entry = stored?.find((model) => model.id === choice.model);

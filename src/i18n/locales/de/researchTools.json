@@ -1174,6 +1174,7 @@
     "automatic": "Automatisch (bestes lokales Modell)",
     "localGroup": "Lokal (Ollama)",
     "mathpixModel": "Mathpix OCR",
+    "agentDefaultModel": "Standardmodell des Agenten",
     "sentTo": "Bilder werden an {{provider}} gesendet",
     "sentToHost": "Bilder werden an Ollama auf {{host}} gesendet",
     "scansSentTo": "Gescannte Seiten werden an {{provider}} gesendet",
@@ -1204,6 +1205,7 @@
     "sentBadge": "An {{provider}} gesendet",
     "openToolsSettings": "Tools-Einstellungen",
     "openProviderSettings": "Anbietereinstellungen",
+    "openAgentSettings": "Agenteneinstellungen",
     "errors": {
       "offline": "Oleafly ist im Offlinemodus. Wählen Sie ein lokales Modell, oder schalten Sie den Offlinemodus aus.",
       "providerNotConfigured": "{{provider}} hat keinen API-Schlüssel. Fügen Sie in den Einstellungen einen hinzu, oder wählen Sie ein anderes Modell.",
@@ -1213,6 +1215,10 @@
       "localModelGone": "{{model}} ist nicht mehr in Ollama. Laden Sie es erneut herunter, oder wählen Sie ein anderes Modell.",
       "imagesOnly": "{{model}} liest nur Bilder. Wählen Sie ein Sprachmodell, um getippte Formeln umzuwandeln.",
       "mathpixNotSetUp": "Fügen Sie Ihre Mathpix-Schlüssel unter Einstellungen, KI, Tools hinzu, oder wählen Sie ein anderes Modell.",
+      "agentNotReady": "{{agent}} ist nicht bereit. Richten Sie ihn in den Einstellungen ein, oder wählen Sie ein anderes Modell.",
+      "agentSignIn": "{{agent}} ist nicht angemeldet. Melden Sie sich an, und versuchen Sie es erneut.",
+      "agentUsedTool": "{{agent}} wollte ein Werkzeug verwenden, statt das Bild zu lesen, daher hat Oleafly ihn gestoppt. Versuchen Sie es erneut, oder wählen Sie ein anderes Modell.",
+      "agentNeedsReadOnly": "{{agent}} lässt sich nicht auf das Lesen beschränken, daher sendet Oleafly ihm Ihr Bild nicht. Wählen Sie ein anderes Modell.",
       "imageTooLarge": "Dieses Bild ist auch nach dem Verkleinern noch zu groß. Schneiden Sie es zu und versuchen Sie es erneut."
     }
   },

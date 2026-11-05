@@ -531,13 +531,31 @@ describe("ACP agent setup acceptance", () => {
       within(card).queryByTestId("acp-agent-install-shared-cli"),
     ).not.toBeInTheDocument();
     expect(
-      within(card).getByRole("region", { name: copy.nextStepTitle }),
-    ).toHaveTextContent(
+      within(card).queryByRole("region", { name: copy.nextStepTitle }),
+    ).not.toBeInTheDocument();
+    expect(card).not.toHaveTextContent(
       "Sign in through Shared CLI before starting a conversation.",
     );
     expect(
       within(card).getByRole("button", { name: copy.openTerminal }),
     ).toBeInTheDocument();
+  });
+
+  it("never tells a ready agent to sign in, because it can't know that it needs to", async () => {
+    catalog = [
+      agent("claude", {
+        definition: { ...agent().definition, id: "claude", name: "Claude Code", version: "0.95.0", builtin: true },
+        installed: true,
+        executable: "/Users/researcher/.oleafly/acp/agents/claude/claude-agent-acp",
+        managed: true,
+        signInHint: "Run claude auth login in your terminal, then reconnect.",
+        cli: { command: "claude", displayName: "Claude Code", path: "/Users/researcher/.local/bin/claude", version: "2.1.309", signInCommand: "claude auth login" },
+      }),
+    ];
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await expandAgent(ui, "claude");
+    expect(card).not.toHaveTextContent("then reconnect");
+    expect(within(card).getByTestId("acp-agent-sign-in-command-claude")).toHaveTextContent("claude auth login");
   });
 });
 
