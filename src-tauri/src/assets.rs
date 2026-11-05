@@ -352,7 +352,7 @@ const FONTSPEC_STYLES: [(&str, &str); 4] = [
 fn is_font_file(name: &str) -> bool {
     Path::new(name)
         .extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|extension| {
             ["ttf", "otf", "ttc"]
                 .iter()
