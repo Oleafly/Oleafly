@@ -28,7 +28,7 @@ function Save-Download($urls, $download) {
     } catch {
       $attempt++
       if ($attempt -ge 5) { throw }
-      Write-Host "Download from $url failed: $($_.Exception.Message). Retrying."
+      Write-Warning "Download from $url failed: $($_.Exception.Message). Retrying."
       Start-Sleep -Seconds (10 * $attempt)
     }
   }
