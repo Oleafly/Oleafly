@@ -291,7 +291,12 @@ pub(crate) async fn check_plan(
                 )
                 .await
                 {
-                    Ok(found) => version = Some(found),
+                    Ok(found) => {
+                        if let Some(outdated) = catalog::cli_outdated(vendor, &found) {
+                            return failed("start_failed", Some(outdated), shown);
+                        }
+                        version = Some(found);
+                    }
                     Err(detail) if vendor.bridge_needs_cli => {
                         return failed("cli_missing", Some(detail), shown)
                     }

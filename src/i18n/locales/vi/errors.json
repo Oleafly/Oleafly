@@ -216,6 +216,7 @@
       "node_missing": "Hãy cài Node.js {{required}} trở lên để chạy agent này.",
       "node_outdated": "Agent này cần Node.js {{required}} trở lên. Phiên bản phát hiện là {{major}}.",
       "bridge_outdated": "{{package}} {{found}} trên máy tính này quá cũ. Oleafly cần {{pinned}} trở lên. Hãy cài bridge trong Cài đặt.",
+      "cli_outdated": "{{name}} {{found}} trên máy tính này quá cũ. Oleafly cần {{minimum}} trở lên. Hãy chạy {{command}} trong terminal rồi thử lại.",
       "spawn_failed": "Không thể khởi chạy agent. Hãy kiểm tra cài đặt và quyền thực thi của nó. ({{kind}}: {{path}})",
       "remote_not_set_up": "Hãy thiết lập máy từ xa cho Hermes trong cài đặt của nó trước.",
       "ssh_missing": "Oleafly không tìm thấy ssh trên máy tính này. Hãy cài OpenSSH rồi thử lại.",

@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)): reported the clash
   between documents in one folder (#389) and wrote the first fix and its tests
   (#395).
+- Jack Wu ([@a-green-hand-jack](https://github.com/a-green-hand-jack)): asked
+  for Antigravity CLI as a built-in agent and worked out the catalog entry it
+  needs (#402).
+
+### Added
+
+- Antigravity CLI is now a built-in agent. Oleafly runs `agy acp` from your own
+  install, and you sign in with your Google account through `agy acp --login`.
+  Pick its Gemini model, thinking level and mode in the assistant. It needs agy
+  1.5.0 or newer. With an older agy, Oleafly tells you to run `agy update`
+  instead of failing to start. Research tasks stay off for it until a test run
+  passes (#402).
 
 ### Fixed
 

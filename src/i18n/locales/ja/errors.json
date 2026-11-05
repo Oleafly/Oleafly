@@ -216,6 +216,7 @@
       "node_missing": "このエージェントを実行するには、Node.js {{required}} 以降をインストールしてください。",
       "node_outdated": "このエージェントには Node.js {{required}} 以降が必要です。検出されたバージョンは {{major}} です。",
       "bridge_outdated": "このコンピュータにある {{package}} {{found}} は古すぎます。Oleafly には {{pinned}} 以降が必要です。設定でブリッジをインストールしてください。",
+      "cli_outdated": "このコンピュータにある {{name}} {{found}} は古すぎます。Oleafly には {{minimum}} 以降が必要です。ターミナルで {{command}} を実行してから、もう一度お試しください。",
       "spawn_failed": "エージェントを起動できませんでした。インストール状態と実行権限を確認してください。（{{kind}}: {{path}}）",
       "remote_not_set_up": "先に Hermes の設定でリモートマシンをセットアップしてください。",
       "ssh_missing": "Oleafly はこのコンピュータで ssh を見つけられませんでした。OpenSSH をインストールしてから、もう一度お試しください。",

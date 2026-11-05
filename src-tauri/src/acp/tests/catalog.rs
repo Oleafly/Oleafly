@@ -2405,6 +2405,152 @@ fn node_versions_parse_with_their_minor_release() {
     assert!(parse_node_version("v22.18.9").unwrap() < (22, 19, 0));
 }
 
+fn antigravity() -> AgentDefinition {
+    builtins()
+        .into_iter()
+        .find(|agent| agent.id == "antigravity")
+        .unwrap()
+}
+
+fn agy_plan(located: Located, version: Option<&str>) -> Plan {
+    Plan {
+        launch: Err("fixture: only the CLI is checked".into()),
+        cli: Some(CliProgram {
+            located,
+            overridden: false,
+            version: version.map(str::to_owned),
+        }),
+        cli_rejected: Vec::new(),
+        node: None,
+    }
+}
+
+#[test]
+fn antigravity_serves_acp_from_agy_and_signs_in_through_it() {
+    let antigravity = antigravity();
+    let command = antigravity.distribution.command.as_ref().unwrap();
+    assert_eq!(command.executable, "agy");
+    assert_eq!(command.args, ["acp"]);
+    let vendor = vendor_cli(&antigravity).unwrap();
+    assert_eq!(vendor.display_name, "Antigravity CLI");
+    assert_eq!(vendor.sign_in_command, "agy acp --login");
+    assert_eq!(
+        vendor
+            .minimum
+            .map(|minimum| (minimum.version, minimum.update_command)),
+        Some(("1.5.0", "agy update"))
+    );
+}
+
+#[test]
+fn only_an_agy_older_than_the_first_acp_release_is_outdated() {
+    let vendor = vendor_cli(&antigravity()).unwrap();
+    let outdated = cli_outdated(&vendor, "1.4.12").unwrap();
+    assert!(crate::acp::failures::is_code(
+        &outdated,
+        "acp.start.cli_outdated"
+    ));
+    let english = crate::app_error::english_error(&outdated);
+    assert!(english.contains("Antigravity CLI 1.4.12"), "{english}");
+    assert!(english.contains("1.5.0"), "{english}");
+    assert!(english.contains("agy update"), "{english}");
+    assert!(cli_outdated(&vendor, "1.5.0-rc.1").is_some());
+    for current in ["1.5.0", "1.5.1", "1.10.0", "2.0.0"] {
+        assert_eq!(cli_outdated(&vendor, current), None, "{current}");
+    }
+    assert_eq!(cli_outdated(&vendor, "unknown"), None);
+    let opencode = builtins()
+        .into_iter()
+        .find(|agent| agent.id == "opencode")
+        .unwrap();
+    assert_eq!(cli_outdated(&vendor_cli(&opencode).unwrap(), "0.0.1"), None);
+}
+
+#[tokio::test]
+async fn a_known_old_agy_stops_the_start_and_a_current_one_does_not() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("acp");
+    let located = Located {
+        path: temp.path().join("agy"),
+        kind: ProgramKind::Native,
+    };
+    let refused = check_cli_minimum(
+        &root,
+        &antigravity(),
+        &agy_plan(located.clone(), Some("1.4.12")),
+    )
+    .await
+    .unwrap_err();
+    assert!(crate::acp::failures::is_code(
+        &refused,
+        "acp.start.cli_outdated"
+    ));
+    check_cli_minimum(
+        &root,
+        &antigravity(),
+        &agy_plan(located.clone(), Some("1.5.0")),
+    )
+    .await
+    .unwrap();
+    let mut no_cli = agy_plan(located.clone(), None);
+    no_cli.cli = None;
+    check_cli_minimum(&root, &antigravity(), &no_cli)
+        .await
+        .unwrap();
+    let opencode = builtins()
+        .into_iter()
+        .find(|agent| agent.id == "opencode")
+        .unwrap();
+    check_cli_minimum(&root, &opencode, &agy_plan(located, Some("0.0.1")))
+        .await
+        .unwrap();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn an_agy_with_no_known_version_is_asked_for_it() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("acp");
+    let fake = |name: &str, version: &str| {
+        let path = temp.path().join(name).join("agy");
+        std::fs::create_dir(path.parent().unwrap()).unwrap();
+        test_wait::write_executable(
+            &path,
+            &format!("#!/bin/sh\n[ \"$1\" = --warm-up ] && exit 0\necho {version}\n"),
+        );
+        assert!(std::process::Command::new(&path)
+            .arg("--warm-up")
+            .status()
+            .unwrap()
+            .success());
+        Located {
+            path,
+            kind: ProgramKind::Native,
+        }
+    };
+    let old = check_cli_minimum(
+        &root,
+        &antigravity(),
+        &agy_plan(fake("old", "1.4.12"), None),
+    )
+    .await
+    .unwrap_err();
+    assert!(crate::acp::failures::is_code(
+        &old,
+        "acp.start.cli_outdated"
+    ));
+    check_cli_minimum(
+        &root,
+        &antigravity(),
+        &agy_plan(fake("current", "1.5.0"), None),
+    )
+    .await
+    .unwrap();
+    check_cli_minimum(&root, &antigravity(), &agy_plan(fake("silent", ""), None))
+        .await
+        .unwrap();
+}
+
 #[test]
 fn registry_agents_that_ship_as_built_ins_are_linked_to_them() {
     for (registry, builtin) in [
@@ -2416,6 +2562,7 @@ fn registry_agents_that_ship_as_built_ins_are_linked_to_them() {
         ("cline", "cline"),
         ("kimi", "kimi"),
         ("qoder", "qoder"),
+        ("antigravity-acp", "antigravity"),
         ("cursor", "cursor"),
         ("codebuddy-code", "codebuddy"),
         ("grok-build", "grok"),

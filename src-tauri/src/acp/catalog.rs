@@ -257,6 +257,17 @@ const BUILTINS: &[Builtin] = &[
             alt_cmds: &[],
         },
     },
+    Builtin {
+        id: "antigravity",
+        name: "Antigravity CLI",
+        description: "Serves ACP from the installed CLI.",
+        version: "1.5.0",
+        dist: BuiltinDist::Native {
+            cmd: "agy",
+            args: &["acp"],
+            alt_cmds: &[],
+        },
+    },
 ];
 
 pub fn builtins() -> Vec<AgentDefinition> {
@@ -1365,6 +1376,7 @@ pub(crate) fn runs_on_node(definition: &AgentDefinition) -> bool {
 
 const CODEX_TASKS_VERIFIED_ON: &[&str] = &["linux"];
 const PI_TASKS_VERIFIED_ON: &[&str] = &[];
+const ANTIGRAVITY_TASKS_VERIFIED_ON: &[&str] = &[];
 
 pub(crate) fn is_codex(definition: &AgentDefinition) -> bool {
     definition.id == "codex"
@@ -1415,6 +1427,9 @@ pub(super) fn task_unavailable_reason_for(
                 .into(),
         );
     }
+    if definition.id == "antigravity" && !ANTIGRAVITY_TASKS_VERIFIED_ON.contains(&os) {
+        return Some("Antigravity CLI tasks stay off until a test run passes on this system. Use Antigravity CLI in the assistant.".into());
+    }
     None
 }
 
@@ -1431,6 +1446,13 @@ pub(crate) struct VendorCli {
     pub(crate) bridge_needs_cli: bool,
     pub(crate) version_args: &'static [&'static str],
     pub(crate) bundled_cli: Option<&'static str>,
+    pub(crate) minimum: Option<CliMinimum>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct CliMinimum {
+    pub(crate) version: &'static str,
+    pub(crate) update_command: &'static str,
 }
 
 impl VendorCli {
@@ -1451,6 +1473,7 @@ impl VendorCli {
             bridge_needs_cli: false,
             version_args: &["--version"],
             bundled_cli: None,
+            minimum: None,
         }
     }
 }
@@ -1470,6 +1493,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             bridge_needs_cli: false,
             version_args: &["--version"],
             bundled_cli: None,
+            minimum: None,
         },
     ),
     (
@@ -1486,6 +1510,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             bridge_needs_cli: false,
             version_args: &["--version"],
             bundled_cli: Some(CODEX_BUNDLED_CLI),
+            minimum: None,
         },
     ),
     (
@@ -1506,6 +1531,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             bridge_needs_cli: true,
             version_args: &["--version"],
             bundled_cli: None,
+            minimum: None,
         },
     ),
     (
@@ -1548,6 +1574,16 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
         "qoder",
         VendorCli::shared("qodercli", "Qoder CLI", "qodercli login"),
     ),
+    (
+        "antigravity",
+        VendorCli {
+            minimum: Some(CliMinimum {
+                version: "1.5.0",
+                update_command: "agy update",
+            }),
+            ..VendorCli::shared("agy", "Antigravity CLI", "agy acp --login")
+        },
+    ),
 ];
 
 pub(crate) fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
@@ -1555,6 +1591,54 @@ pub(crate) fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
         .iter()
         .find(|(id, _)| *id == definition.id)
         .map(|(_, cli)| cli.clone())
+}
+
+pub(crate) fn cli_outdated(vendor: &VendorCli, found: &str) -> Option<String> {
+    let minimum = vendor.minimum?;
+    older_npm_version(found, minimum.version).then(|| {
+        super::failures::cli_outdated(
+            vendor.display_name,
+            found,
+            minimum.version,
+            minimum.update_command,
+        )
+    })
+}
+
+pub(crate) async fn check_cli_minimum(
+    root: &Path,
+    definition: &AgentDefinition,
+    plan: &Plan,
+) -> Result<(), String> {
+    let Some(vendor) = vendor_cli(definition).filter(|vendor| vendor.minimum.is_some()) else {
+        return Ok(());
+    };
+    let Some(cli) = &plan.cli else {
+        return Ok(());
+    };
+    let found = match &cli.version {
+        Some(version) => Some(version.clone()),
+        None => {
+            let env = plan
+                .launch
+                .as_ref()
+                .map(|launch| launch.env.clone())
+                .unwrap_or_else(|_| locator::child_env(&[], &[]));
+            program_version(
+                root,
+                &cli.located,
+                vendor.version_args,
+                &env,
+                STATUS_VERSION_LIMIT,
+            )
+            .await
+            .ok()
+        }
+    };
+    match found.and_then(|found| cli_outdated(&vendor, &found)) {
+        Some(message) => Err(message),
+        None => Ok(()),
+    }
 }
 
 pub(crate) fn parse_cli_version(output: &str) -> Option<String> {
@@ -1975,6 +2059,18 @@ pub async fn status_with(
         }
         _ => None,
     };
+    if let Some(outdated) = vendor.as_ref().and_then(|vendor| {
+        let seen = version.as_deref().or_else(|| {
+            facts
+                .plan
+                .cli
+                .as_ref()
+                .and_then(|cli| cli.version.as_deref())
+        })?;
+        cli_outdated(vendor, seen)
+    }) {
+        reason = Some(outdated);
+    }
     let cli = vendor
         .as_ref()
         .map(|vendor| cli_status(vendor, &facts.plan, facts.reachable, version));
@@ -3045,6 +3141,7 @@ const REGISTRY_BUILTINS: &[(&str, &str)] = &[
     ("cline", "cline"),
     ("kimi", "kimi"),
     ("qoder", "qoder"),
+    ("antigravity-acp", "antigravity"),
     ("cursor", "cursor"),
     ("codebuddy-code", "codebuddy"),
     ("grok-build", "grok"),

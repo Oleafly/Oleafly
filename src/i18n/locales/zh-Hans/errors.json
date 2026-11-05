@@ -216,6 +216,7 @@
       "node_missing": "请安装 Node.js {{required}} 或更高版本以运行该代理。",
       "node_outdated": "该代理需要 Node.js {{required}} 或更高版本。检测到的版本为 {{major}}。",
       "bridge_outdated": "这台电脑上的 {{package}} {{found}} 版本过旧。Oleafly 需要 {{pinned}} 或更高版本。请在设置中安装桥接程序。",
+      "cli_outdated": "这台电脑上的 {{name}} {{found}} 版本过旧。Oleafly 需要 {{minimum}} 或更高版本。请在终端中运行 {{command}}，然后重试。",
       "spawn_failed": "无法启动该代理。请检查它的安装和可执行权限。（{{kind}}：{{path}}）",
       "remote_not_set_up": "请先在 Hermes 的设置中配置远程机器。",
       "ssh_missing": "Oleafly 在这台电脑上找不到 ssh。请安装 OpenSSH，然后重试。",

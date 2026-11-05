@@ -216,6 +216,7 @@
       "node_missing": "Installer Node.js {{required}} eller nyere for å kjøre denne agenten.",
       "node_outdated": "Denne agenten trenger Node.js {{required}} eller nyere. Versjonen som ble funnet, er {{major}}.",
       "bridge_outdated": "{{package}} {{found}} på denne maskinen er for gammel. Oleafly trenger {{pinned}} eller nyere. Installer broen i Innstillinger.",
+      "cli_outdated": "{{name}} {{found}} på denne maskinen er for gammel. Oleafly trenger {{minimum}} eller nyere. Kjør {{command}} i en terminal, og prøv igjen.",
       "spawn_failed": "Agenten kunne ikke startes. Sjekk installasjonen og kjøretillatelsene. ({{kind}}: {{path}})",
       "remote_not_set_up": "Sett først opp den eksterne maskinen i innstillingene for Hermes.",
       "ssh_missing": "Oleafly fant ikke ssh på denne maskinen. Installer OpenSSH, og prøv igjen.",
