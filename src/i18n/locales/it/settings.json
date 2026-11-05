@@ -774,6 +774,10 @@
         "label": "Font dell'editor",
         "monospace": "Monospaziato"
       },
+      "cjkFont": {
+        "description": "Usato per i caratteri cinesi, giapponesi e coreani che mancano nel Font dell'editor.",
+        "label": "Font CJK"
+      },
       "useAppFont": {
         "description": "L'editor segue il font e la dimensione del font dell'app.",
         "disabledHint": "Disattiva Usa il font dell'app per cambiare questa impostazione.",
@@ -1207,10 +1211,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Aggiungi al progetto",
       "allDownloaded": "Tutto scaricato",
       "download": "Scarica",
       "downloadAll": "Scarica tutto"
     },
+    "fontAddedToProject": "Il font {{family}} è stato aggiunto a questo progetto. Usalo indicandone il nome, ad esempio {{example}}.",
+    "fontAlreadyInProject": "Il font {{family}} è già in questo progetto.",
     "yourTemplates": {
       "toggle": "Gestisci i tuoi modelli",
       "import": "Importa un modello",
@@ -1260,7 +1267,7 @@
       "empty": "Nessun font scaricabile.",
       "engineNote": "Il motore LuaLaTeX (per PDF taggati e accessibili) si gestisce nella sezione Motore LaTeX.",
       "heading": "Font",
-      "tooltip": "Alcuni modelli usano font open source di pregio. Per mantenere Oleafly leggero, quei font vengono scaricati su richiesta: quando crei un modello di quel tipo, i font vengono recuperati e copiati nel progetto, così resta autonomo e si compila offline. Puoi anche scaricarli qui in anticipo, oppure rimuoverli per liberare spazio."
+      "tooltip": "Alcuni modelli usano questi font open source. Vengono scaricati solo quando servono, per mantenere Oleafly leggero. Quando crei un modello di quel tipo, i font vengono copiati nel progetto, così si compila offline. I progetti Typst possono usare un font scaricato indicandone il nome, a meno che il progetto non disattivi i font di sistema. Per LaTeX, apri un progetto e fai clic su \"Aggiungi al progetto\" per copiarvi il font."
     },
     "packProgress": "{{index}} di {{total}}",
     "progress": "{{label}} ({{index}} di {{total}})",
@@ -1288,6 +1295,7 @@
       "fontDownloadFailed": "Impossibile scaricare il font.",
       "fontsDownloadFailed": "Impossibile scaricare i font.",
       "fontRemoveFailed": "Impossibile rimuovere il font.",
+      "fontAddFailed": "Impossibile aggiungere il font a questo progetto.",
       "packDownloadFailed": "Impossibile scaricare il pacchetto di modelli.",
       "packsDownloadFailed": "Impossibile scaricare i pacchetti di modelli.",
       "packRemoveFailed": "Impossibile rimuovere il pacchetto di modelli.",

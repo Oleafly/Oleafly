@@ -10,7 +10,8 @@ test("a font component downloads, installs, and removes", async ({ tauriPage }) 
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "downloads");
 
-  const packButton = tauriPage.locator('[data-e2e-font-pack="ptserif"] button');
+  // The last button is Download or Remove; an installed pack also shows Add to project.
+  const packButton = tauriPage.locator('[data-e2e-font-pack="ptserif"] > button:last-child');
   await expect(packButton).toBeVisible();
   await expect(packButton).toContainText("Download");
 

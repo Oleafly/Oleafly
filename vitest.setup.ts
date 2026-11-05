@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { afterEach, vi } from "vitest";
+import { afterAll, afterEach, vi } from "vitest";
 import { getQueriesForElement, queries, screen } from "@testing-library/dom";
 import { resetSidebarViewState } from "./src/store/sidebar-view-state";
 import { provideTestCatalogs } from "@oleafly/i18n-contract/testing";
@@ -83,6 +83,17 @@ afterEach(async () => {
   if (!testingLibrary && typeof document !== "undefined") testingLibrary = await import("@testing-library/react");
   testingLibrary?.cleanup();
   resetSidebarViewState();
+});
+
+// Radix queues a zero-delay timer when a dialog unmounts, and the cleanup above
+// also runs after a file's last test. Give that timer a turn while the file's
+// DOM exists: on a busy machine it can fire after jsdom is gone, and vitest then
+// fails the run with every test passing. This is the real setTimeout, so a file
+// that leaves fake timers on can't hang here.
+const realSetTimeout = globalThis.setTimeout;
+
+afterAll(async () => {
+  if (typeof document !== "undefined") await new Promise((resolve) => realSetTimeout(resolve, 0));
 });
 
 if (typeof localStorage === "undefined") {

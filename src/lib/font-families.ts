@@ -75,3 +75,24 @@ export function fontFamilyStack(name: string, fallback: string): string {
   const alias = SYSTEM_FONT_ALIASES[family.toLowerCase()];
   return [quotedFontFamily(family), alias, fallback].filter(Boolean).join(", ");
 }
+
+// Named monospace fonts without Han glyphs. A CJK font only takes over for
+// characters these lack, and it has to come before ui-monospace or any generic,
+// which would otherwise draw Han themselves. The system SF Mono has no usable CSS
+// name, so macOS falls to Menlo here unless SF Mono is installed as a font.
+const CJK_LATIN_MONO_FAMILIES = [
+  "Geist Mono",
+  "JetBrains Mono",
+  "Menlo",
+  "Consolas",
+  "DejaVu Sans Mono",
+  "Liberation Mono",
+  "Noto Sans Mono",
+  "Ubuntu Mono",
+] as const;
+
+export function editorCjkFontStack(latin: string, cjk: string, fallback: string): string {
+  const latinFamily = fontFamilyName(latin);
+  const families = [...(latinFamily ? [latinFamily] : []), ...CJK_LATIN_MONO_FAMILIES].map(quotedFontFamily);
+  return [...families, quotedFontFamily(cjk), fallback].join(", ");
+}

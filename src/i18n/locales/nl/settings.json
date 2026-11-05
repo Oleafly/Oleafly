@@ -768,6 +768,10 @@
         "label": "Lettertype van de editor",
         "monospace": "Vaste breedte"
       },
+      "cjkFont": {
+        "description": "Gebruikt voor Chinese, Japanse en Koreaanse tekens die ontbreken in het Lettertype van de editor.",
+        "label": "CJK-lettertype"
+      },
       "useAppFont": {
         "description": "De editor volgt het lettertype en de tekstgrootte van de app.",
         "disabledHint": "Zet Lettertype van de app gebruiken uit om dit te wijzigen.",
@@ -1200,10 +1204,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Aan project toevoegen",
       "allDownloaded": "Alles gedownload",
       "download": "Downloaden",
       "downloadAll": "Alles downloaden"
     },
+    "fontAddedToProject": "{{family}} is aan dit project toegevoegd. Gebruik het lettertype via de naam, bijvoorbeeld {{example}}.",
+    "fontAlreadyInProject": "{{family}} staat al in dit project.",
     "yourTemplates": {
       "toggle": "Je sjablonen beheren",
       "import": "Sjabloon importeren",
@@ -1253,7 +1260,7 @@
       "empty": "Geen lettertypen om te downloaden.",
       "engineNote": "De LuaLaTeX-engine (voor getagde, toegankelijke PDF's) beheer je in de sectie LaTeX-engine.",
       "heading": "Lettertypen",
-      "tooltip": "Sommige sjablonen gebruiken premium opensource-lettertypen. Om Oleafly klein te houden worden die op verzoek gedownload: maak je zo'n sjabloon, dan worden de lettertypen opgehaald en in het project gekopieerd, zodat het op zichzelf staat en offline compileert. Je kunt ze hier ook vooraf downloaden, of weghalen om ruimte vrij te maken."
+      "tooltip": "Sommige sjablonen gebruiken deze opensource-lettertypen. Ze worden alleen gedownload als dat nodig is, zodat Oleafly klein blijft. Maak je zo'n sjabloon, dan worden de lettertypen in het project gekopieerd, zodat het offline compileert. Typst-projecten kunnen een gedownload lettertype via de naam gebruiken, tenzij het project systeemlettertypen uitzet. Voor LaTeX open je een project en klik je op “Aan project toevoegen” om het lettertype erin te kopiëren."
     },
     "packProgress": "{{index}} van {{total}}",
     "progress": "{{label}} ({{index}} van {{total}})",
@@ -1281,6 +1288,7 @@
       "fontDownloadFailed": "Kon het lettertype niet downloaden.",
       "fontsDownloadFailed": "Kon de lettertypen niet downloaden.",
       "fontRemoveFailed": "Kon het lettertype niet verwijderen.",
+      "fontAddFailed": "Kon het lettertype niet aan dit project toevoegen.",
       "packDownloadFailed": "Kon het sjabloonpakket niet downloaden.",
       "packsDownloadFailed": "Kon de sjabloonpakketten niet downloaden.",
       "packRemoveFailed": "Kon het sjabloonpakket niet verwijderen.",

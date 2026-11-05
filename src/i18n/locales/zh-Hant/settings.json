@@ -762,6 +762,10 @@
         "label": "編輯器字型",
         "monospace": "等寬"
       },
+      "cjkFont": {
+        "description": "用於「編輯器字型」中沒有的中文、日文和韓文字元。",
+        "label": "中日韓字型"
+      },
       "useAppFont": {
         "description": "編輯器使用應用程式的字型和字型大小。",
         "disabledHint": "關閉「使用應用程式字型」後才能變更此項。",
@@ -1193,10 +1197,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "加入專案",
       "allDownloaded": "全部已下載",
       "download": "下載",
       "downloadAll": "全部下載"
     },
+    "fontAddedToProject": "已將 {{family}} 加入此專案。可以依名稱使用，例如 {{example}}。",
+    "fontAlreadyInProject": "{{family}} 已在此專案中。",
     "yourTemplates": {
       "toggle": "管理你的範本",
       "import": "匯入範本",
@@ -1246,7 +1253,7 @@
       "empty": "沒有可下載的字型。",
       "engineNote": "LuaLaTeX 引擎（用於標記式無障礙 PDF）在「LaTeX 引擎」區段中管理。",
       "heading": "字型",
-      "tooltip": "有些範本會使用高品質的開源字型。為了讓 Oleafly 保持輕巧，這些字型會在需要時才下載：當你建立這類範本時，字型會被取得並複製到專案中，讓專案自成一體，也能離線編譯。你也可以在這裡預先下載，或移除它們以釋出空間。"
+      "tooltip": "有些範本會使用這些開源字型。為了讓 Oleafly 保持輕巧，這些字型只在需要時才下載。建立這類範本時，字型會複製到專案中，因此能離線編譯。Typst 專案可以依名稱使用已下載的字型，除非專案關閉了系統字型。若要在 LaTeX 中使用，請開啟專案並按「加入專案」，將字型複製到專案中。"
     },
     "packProgress": "第 {{index}} 個，共 {{total}} 個",
     "progress": "{{label}}（第 {{index}} 個，共 {{total}} 個）",
@@ -1274,6 +1281,7 @@
       "fontDownloadFailed": "無法下載字型。",
       "fontsDownloadFailed": "無法下載這些字型。",
       "fontRemoveFailed": "無法移除字型。",
+      "fontAddFailed": "無法將字型加入此專案。",
       "packDownloadFailed": "無法下載範本包。",
       "packsDownloadFailed": "無法下載這些範本包。",
       "packRemoveFailed": "無法移除範本包。",
