@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::caps::{ModelCaps, ReasoningCaps};
-use crate::provider::Resolved;
+use crate::provider::{catalog_entry, Resolved};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -136,6 +136,7 @@ pub fn effort_choices(provider_id: &str, model_id: &str, caps: &ModelCaps) -> Ve
         "openrouter" => (all, reasoning.efforts.clone().unwrap_or_default()),
         "ollama" => (all, ollama_base(&id, reasoning)),
         "deepseek" => deepseek_levels(&id, reasoning),
+        custom if catalog_entry(custom).is_none() => (vec![Off], custom_base(reasoning)),
         _ => (Vec::new(), Vec::new()),
     };
     let mut choices: Vec<Effort> = base
@@ -262,6 +263,17 @@ fn ollama_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
     }
 }
 
+/// A custom provider gets no levels, since Oleafly cannot know what its
+/// server accepts. The one exception is a model the server itself lists as
+/// able to switch thinking off, like Lemonade's `reasoning` models.
+fn custom_base(reasoning: &ReasoningCaps) -> Vec<Effort> {
+    if reasoning.toggle {
+        vec![Off]
+    } else {
+        Vec::new()
+    }
+}
+
 pub fn clamp_effort(requested: Effort, choices: &[Effort]) -> Option<Effort> {
     if choices.contains(&requested) {
         return Some(requested);
@@ -273,6 +285,12 @@ pub fn clamp_effort(requested: Effort, choices: &[Effort]) -> Option<Effort> {
 }
 
 pub fn effective_effort(resolved: &Resolved, requested: Option<Effort>) -> Option<Effort> {
+    // Settings doesn't keep Ollama's model list, so the caps rarely say that an
+    // Ollama model thinks. The composer offers None only for the models Ollama
+    // says can stop thinking, and Ollama accepts `none` on any model.
+    if resolved.provider_id == "ollama" && requested == Some(Off) {
+        return Some(Off);
+    }
     requested.and_then(|effort| {
         clamp_effort(
             effort,
@@ -373,6 +391,16 @@ mod tests {
             },
         );
         assert_eq!(effective_effort(&opus, None), None);
+        let ollama = resolved(
+            "ollama",
+            "qwen3:latest",
+            Wire::OpenAiChat {
+                base_url: "http://127.0.0.1:11434/v1".into(),
+                reasoning_content: false,
+            },
+        );
+        assert_eq!(effective_effort(&ollama, Some(Effort::Off)), Some(Off));
+        assert_eq!(effective_effort(&ollama, Some(Effort::High)), None);
         assert_eq!(
             effective_effort(&opus, Some(Effort::Off)),
             Some(Effort::Low)

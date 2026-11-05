@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   second source when GitHub fails. Settings > Engines shows which TeX
   distribution compiles, with an Update button when the managed TinyTeX is older
   than the one this version expects.
+- Local models can skip thinking. For an Ollama or Lemonade model that thinks
+  before it answers, the effort menu next to the model picker now has None. Pick
+  it and the model answers without the thinking step, which is much faster on
+  simple requests. Ollama models that always think, such as Qwen3 Thinking,
+  don't offer None, since they would think anyway. A Lemonade provider added
+  before this version needs one press of Refresh on its model list in
+  Settings > AI (#381).
 
 ### Fixed
 

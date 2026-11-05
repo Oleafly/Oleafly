@@ -789,7 +789,7 @@ export interface ModelMetadata {
     outputLimit?: number;
     inputModalities: string[];
     outputModalities: string[];
-    toolCall: boolean;
+    toolCall?: boolean;
     reasoning: boolean;
     reasoningOptions?: ReasoningOption[];
     attachment: boolean;

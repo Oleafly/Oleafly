@@ -10,6 +10,7 @@ import {
   deleteModel,
   describeModelListChange,
   diffModelLists,
+  effortMetadata,
   enabledModels,
   formatContextWindow,
   formatRelativeTime,
@@ -229,8 +230,26 @@ describe("model trust resolution", () => {
   it("treats only an explicit toolCall false as chat only", () => {
     expect(modelIsChatOnly({ metadata: metadata({ toolCall: false }) })).toBe(true);
     expect(modelIsChatOnly({ metadata: metadata() })).toBe(false);
+    expect(modelIsChatOnly({ metadata: metadata({ toolCall: undefined }) })).toBe(false);
     expect(modelIsChatOnly({})).toBe(false);
     expect(modelIsChatOnly(undefined)).toBe(false);
+  });
+});
+
+describe("effort metadata", () => {
+  it("lets an Ollama model that thinks switch it off", () => {
+    const thinking = new Set(["qwen3:latest"]);
+    expect(effortMetadata(undefined, "ollama", "qwen3:latest", thinking)).toEqual({
+      reasoning: true,
+      reasoningOptions: [{ type: "toggle" }],
+    });
+    expect(effortMetadata(undefined, "ollama", "llama3.2:latest", thinking)).toBeUndefined();
+    expect(effortMetadata(undefined, "lemonade", "qwen3:latest", thinking)).toBeUndefined();
+  });
+
+  it("prefers the saved metadata", () => {
+    const saved = metadata({ reasoning: false });
+    expect(effortMetadata({ metadata: saved }, "ollama", "qwen3:latest", new Set(["qwen3:latest"]))).toBe(saved);
   });
 });
 

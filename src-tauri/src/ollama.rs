@@ -122,25 +122,74 @@ impl TagModel {
 struct ShowResponse {
     #[serde(default)]
     capabilities: Option<Vec<String>>,
+    /// The thinking values the model accepts, from newer Ollama versions.
+    #[serde(default)]
+    thinking: Option<ThinkingValues>,
+    #[serde(default)]
+    template: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ThinkingValues {
+    #[serde(default)]
+    values: Vec<serde_json::Value>,
+}
+
+impl ShowResponse {
+    /// Whether the model stops thinking when asked to. Newer Ollama lists
+    /// `false` among its thinking values. Older versions only show the prompt
+    /// template, and a template that never reads the requested `.Think` value
+    /// sends the same prompt either way: a think-only model such as Qwen3
+    /// Thinking 2507 then thinks anyway, into its answer.
+    fn stops_thinking(&self) -> bool {
+        let thinks = self
+            .capabilities
+            .as_ref()
+            .is_some_and(|capabilities| capabilities.iter().any(|c| c == "thinking"));
+        if !thinks {
+            return false;
+        }
+        match &self.thinking {
+            Some(thinking) => thinking.values.contains(&serde_json::Value::Bool(false)),
+            None => self.template.as_deref().is_some_and(reads_think_value),
+        }
+    }
+}
+
+/// `.Think` itself, not `.Thinking`, `.ThinkLevel` or `.IsThinkSet`.
+fn reads_think_value(template: &str) -> bool {
+    template.match_indices(".Think").any(|(at, found)| {
+        !template[at + found.len()..]
+            .starts_with(|next: char| next.is_ascii_alphanumeric() || next == '_')
+    })
 }
 
 /// A pulled model and what it can do (`"vision"`, `"tools"`, ...). `None`
 /// means Ollama did not say. `remote` marks an Ollama Cloud model, which
 /// runs on another computer even though the local Ollama lists it.
+/// `stops_thinking` marks a thinking model that Ollama can tell not to think.
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct OllamaModelInfo {
     pub name: String,
     pub capabilities: Option<Vec<String>>,
     pub remote: bool,
+    pub stops_thinking: bool,
+}
+
+/// What `/api/show` said about a model.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct Described {
+    capabilities: Option<Vec<String>>,
+    stops_thinking: bool,
 }
 
 /// `/api/show` answers by `"{base}|{digest or name}"`. A model Ollama cannot
-/// describe (it answered, with no capabilities or a 4xx) is cached as `None`
+/// describe (it answered, with no capabilities or a 4xx) is cached with none
 /// so it is not asked again on every listing. A lookup that did not get an
 /// answer (a timeout, a connection error, a 5xx while Ollama loads a model)
 /// and one the deadline cut short are not cached: the next listing asks again.
-type ShowCache = HashMap<String, Option<Vec<String>>>;
+type ShowCache = HashMap<String, Described>;
 
 static SHOW_CACHE: LazyLock<Mutex<ShowCache>> = LazyLock::new(Default::default);
 
@@ -153,7 +202,7 @@ fn cache_key(base: &str, tag: &TagModel) -> String {
     format!("{base}|{identity}")
 }
 
-fn cached_capabilities(key: &str) -> Option<Option<Vec<String>>> {
+fn cached_description(key: &str) -> Option<Described> {
     SHOW_CACHE
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
@@ -161,12 +210,12 @@ fn cached_capabilities(key: &str) -> Option<Option<Vec<String>>> {
         .cloned()
 }
 
-fn remember_capabilities(key: String, capabilities: Option<Vec<String>>) {
+fn remember_description(key: String, described: Described) {
     let mut cache = SHOW_CACHE.lock().unwrap_or_else(PoisonError::into_inner);
     if cache.len() >= MAX_SHOW_CACHE {
         cache.clear();
     }
-    cache.insert(key, capabilities);
+    cache.insert(key, described);
 }
 
 /// Normalize a user-entered host into a base URL for the Ollama REST API,
@@ -212,13 +261,13 @@ async fn fetch_tags(client: &reqwest::Client, base: &str) -> Result<Vec<TagModel
 }
 
 enum Show {
-    /// Ollama answered: what it said the model can do, or `None` when it
-    /// said nothing (an older Ollama, or a model it does not know).
-    Answer(Option<Vec<String>>),
+    /// Ollama answered: what it said the model can do, with no capabilities
+    /// when it said nothing (an older Ollama, or a model it does not know).
+    Answer(Described),
     Unanswered,
 }
 
-async fn show_capabilities(client: &reqwest::Client, base: &str, name: &str) -> Show {
+async fn show_model(client: &reqwest::Client, base: &str, name: &str) -> Show {
     let Ok(response) = client
         .post(format!("{base}/api/show"))
         .timeout(SHOW_TIMEOUT)
@@ -230,13 +279,16 @@ async fn show_capabilities(client: &reqwest::Client, base: &str, name: &str) -> 
     };
     let status = response.status();
     if status.is_client_error() {
-        return Show::Answer(None);
+        return Show::Answer(Described::default());
     }
     if !status.is_success() {
         return Show::Unanswered;
     }
     match response.json::<ShowResponse>().await {
-        Ok(body) => Show::Answer(body.capabilities),
+        Ok(body) => Show::Answer(Described {
+            stops_thinking: body.stops_thinking(),
+            capabilities: body.capabilities,
+        }),
         Err(_) => Show::Unanswered,
     }
 }
@@ -253,20 +305,27 @@ async fn list_model_details_at(
     for tag in tags {
         let index = models.len();
         let remote = tag.is_remote();
-        if tag.capabilities.is_some() {
+        // Only `/api/show` says whether a thinking model can stop thinking.
+        let thinks = tag
+            .capabilities
+            .as_ref()
+            .is_some_and(|capabilities| capabilities.iter().any(|c| c == "thinking"));
+        if tag.capabilities.is_some() && !thinks {
             models.push(OllamaModelInfo {
                 name: tag.name,
                 capabilities: tag.capabilities,
                 remote,
+                stops_thinking: false,
             });
             continue;
         }
         let key = cache_key(base, &tag);
-        if let Some(capabilities) = cached_capabilities(&key) {
+        if let Some(described) = cached_description(&key) {
             models.push(OllamaModelInfo {
                 name: tag.name,
-                capabilities,
+                capabilities: described.capabilities.or(tag.capabilities),
                 remote,
+                stops_thinking: described.stops_thinking,
             });
             continue;
         }
@@ -275,8 +334,9 @@ async fn list_model_details_at(
         }
         models.push(OllamaModelInfo {
             name: tag.name,
-            capabilities: None,
+            capabilities: tag.capabilities,
             remote,
+            stops_thinking: false,
         });
     }
 
@@ -284,16 +344,20 @@ async fn list_model_details_at(
         let client = &client;
         let mut answers =
             futures_util::stream::iter(lookups.into_iter().map(|(index, key, name)| async move {
-                let shown = show_capabilities(client, base, &name).await;
+                let shown = show_model(client, base, &name).await;
                 (index, key, shown)
             }))
             .buffer_unordered(SHOW_CONCURRENCY);
         while let Ok(Some((index, key, shown))) =
             tokio::time::timeout_at(deadline, answers.next()).await
         {
-            if let Show::Answer(capabilities) = shown {
-                remember_capabilities(key, capabilities.clone());
-                models[index].capabilities = capabilities;
+            if let Show::Answer(described) = shown {
+                remember_description(key, described.clone());
+                let model = &mut models[index];
+                if described.capabilities.is_some() {
+                    model.capabilities = described.capabilities;
+                }
+                model.stops_thinking = described.stops_thinking;
             }
         }
     }
@@ -485,15 +549,85 @@ mod tests {
                     name: "glm-ocr:latest".into(),
                     capabilities: Some(vec!["completion".into(), "vision".into()]),
                     remote: false,
+                    stops_thinking: false,
                 },
                 OllamaModelInfo {
                     name: "llama3.2".into(),
                     capabilities: Some(vec!["completion".into(), "tools".into()]),
                     remote: false,
+                    stops_thinking: false,
                 },
             ]
         );
         assert_eq!(fixture.count("/api/show"), 0);
+    }
+
+    #[tokio::test]
+    async fn only_thinking_models_ollama_can_switch_off_stop_thinking() {
+        let fixture = serve(|method, path, body| match (method, path) {
+            ("GET", "/api/tags") => Some((
+                200,
+                r#"{"models":[
+                    {"name":"qwen3:0.6b","digest":"h1"},
+                    {"name":"qwen3:4b","digest":"t1"},
+                    {"name":"r1:new","digest":"n1","capabilities":["completion","thinking"]},
+                    {"name":"magistral:new","digest":"n2","capabilities":["completion","thinking"]},
+                    {"name":"llama3.2:latest","digest":"l1","capabilities":["completion","tools"]}
+                ]}"#
+                .to_string(),
+            )),
+            ("POST", "/api/show") => Some((
+                200,
+                match requested_model(body).as_str() {
+                    "qwen3:0.6b" => {
+                        r#"{"capabilities":["completion","tools","thinking"],
+                        "template":"{{ if and $.IsThinkSet (not $.Think) }} /no_think{{ end }}"}"#
+                    }
+                    "qwen3:4b" => {
+                        r#"{"capabilities":["completion","tools","thinking"],
+                        "template":"{{ if $.IsThinkSet }}{{ .Thinking }}{{ end }}"}"#
+                    }
+                    "r1:new" => {
+                        r#"{"capabilities":["completion","thinking"],
+                        "thinking":{"values":[false,true],"default":true}}"#
+                    }
+                    _ => {
+                        r#"{"capabilities":["completion","thinking"],
+                        "thinking":{"values":[true],"default":true},"template":"{{ $.Think }}"}"#
+                    }
+                }
+                .to_string(),
+            )),
+            _ => Some((404, String::new())),
+        })
+        .await;
+        let models = list_model_details_at(&fixture.base, Duration::from_secs(2))
+            .await
+            .unwrap();
+        let stops: Vec<(&str, bool)> = models
+            .iter()
+            .map(|model| (model.name.as_str(), model.stops_thinking))
+            .collect();
+        assert_eq!(
+            stops,
+            [
+                ("llama3.2:latest", false),
+                ("magistral:new", false),
+                ("qwen3:0.6b", true),
+                ("qwen3:4b", false),
+                ("r1:new", true),
+            ]
+        );
+        assert_eq!(fixture.count("/api/show"), 4);
+    }
+
+    #[test]
+    fn only_the_think_value_itself_counts_as_read() {
+        assert!(reads_think_value("{{ if $.Think }}"));
+        assert!(reads_think_value("{{- if not .Think -}}"));
+        assert!(!reads_think_value(
+            "{{ if $.IsThinkSet }}{{ .Thinking }}{{ $.ThinkLevel }}{{ end }}"
+        ));
     }
 
     #[tokio::test]

@@ -1474,18 +1474,21 @@ pub async fn agent_list_models(
     let available = oleafly_agent::list_models(&client, &resolved)
         .await
         .map_err(tagged)?;
+    let thinking = crate::ai_model_registry::labelled_thinking(&resolved.provider_id, &available);
     let registry = crate::ai_model_registry::load_registry(&client).await;
     let snapshot = tauri::async_runtime::spawn_blocking(crate::ai_model_metadata::snapshot)
         .await
         .map_err(|e| e.to_string())?;
     crate::ai_model_metadata::schedule_background_refresh(client);
-    Ok(crate::ai_model_registry::classify(
+    let mut models = crate::ai_model_registry::classify(
         &registry,
         &resolved.provider_id,
         available,
         &probes,
         &snapshot,
-    ))
+    );
+    crate::ai_model_registry::mark_switchable_thinking(&mut models, &thinking);
+    Ok(models)
 }
 
 async fn projected_provider_config(
