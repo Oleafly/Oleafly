@@ -1035,7 +1035,7 @@
         "collaboration": "servers, sign in, devices, members, maintainers, sharing, teams, labs, live editing, real time, security log",
         "data": "backup, library folder, projects folder, storage, disk space, trash, recycle bin, delete projects, checkpoints",
         "dictionary": "spelling, custom words, ignored words, proofreading, grammar rules",
-        "downloads": "packages, fonts, dictionaries, offline files",
+        "downloads": "packages, fonts, dictionaries, offline files, mirror, CTAN, repository, tlmgr",
         "engine": "compiler, LaTeX, TeX, Typst, Markdown, pandoc, build, PDF",
         "experimentation": "labs, beta, early features",
         "general": "preferences, locale, spell check, spelling, typos, offline, tours, terminal command",

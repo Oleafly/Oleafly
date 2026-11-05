@@ -412,11 +412,18 @@ async fn install_pack_files(
                 file_total,
             });
         };
+        let sources = match file.sha256 {
+            Some(_) => oleafly_core::download_sources::arrange(&file_sources(&pack.id, file)),
+            None => file_sources(&pack.id, file)
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+        };
         fetch_pack_file(
             client,
             &file.name,
             file.sha256.as_deref(),
-            &file_sources(&pack.id, file),
+            &sources.iter().map(String::as_str).collect::<Vec<_>>(),
             &staged,
             &mut progress,
         )

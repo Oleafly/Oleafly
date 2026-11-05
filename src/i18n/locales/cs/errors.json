@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici.",
-    "app_icon_unsupported": "Ikona aplikace {{icon}} není k dispozici."
+    "app_icon_unsupported": "Ikona aplikace {{icon}} není k dispozici.",
+    "download_url_empty": "Zadejte adresu, která začíná na https://.",
+    "download_url_too_long": "Tato adresa je příliš dlouhá.",
+    "download_url_not_https": "Adresa musí začínat na https://.",
+    "download_url_no_host": "Za https:// musí v adrese následovat název hostitele.",
+    "download_url_credentials": "Vynechte z adresy uživatelské jméno a heslo.",
+    "download_url_query": "Adresa nesmí obsahovat ? ani #.",
+    "download_url_spaces": "Adresa nesmí obsahovat mezery.",
+    "download_source_unknown": "Oleafly nezná zdroj stahování {{source}}."
   },
   "literature": {
     "query_empty": "Vyhledávací dotaz nesmí být prázdný.",
@@ -177,7 +185,9 @@
     "compiler_crashed_font": "Tectonic spadl při hledání písma „{{font}}“, které na tomto počítači nejspíš není nainstalované. Nainstalujte písmo, nebo v nabídce kompilace vyberte XeLaTeX či LuaLaTeX. Ty chybějící písmo nahlásí a nespadnou.",
     "t1_fontenc_unicode_engine": "Tento dokument načítá \\usepackage[T1]{fontenc}, což tento překladač pro akcenty a symboly zapsané přímo v textu použít nemůže. ß se může vytisknout jako SS, § a « se mohou změnit na jiná písmena a typografické uvozovky, pomlčky i € mohou zmizet. Odstraňte tento řádek, nebo jej obalte podmínkou, jak je ukázáno níže. Správně se zkompiluje také s pdfLaTeXem.",
     "font_in_bundle": "{{font}} je součástí vestavěné sady TeXu, která hledá písma podle názvu souboru. Napište místo toho {{file}}.",
-    "font_download_prompt": "Kompilace se zastavila, zatímco macOS žádal o stažení písma. Odpovězte v tomto dialogu a spusťte kompilaci znovu. Chcete-li tomu předejít, přidejte fontset=fandol do voleb \\documentclass, nebo vyberte písmo, které je součástí TeXu."
+    "font_download_prompt": "Kompilace se zastavila, zatímco macOS žádal o stažení písma. Odpovězte v tomto dialogu a spusťte kompilaci znovu. Chcete-li tomu předejít, přidejte fontset=fandol do voleb \\documentclass, nebo vyberte písmo, které je součástí TeXu.",
+    "repository_timed_out": "Repozitář balíčků TeXu na adrese {{host}} neodpověděl včas. Vyberte bližší repozitář v Nastavení > Stahování > Zdroje a pak hledejte znovu.",
+    "repository_timed_out_default": "Váš repozitář balíčků TeXu neodpověděl včas. Vyberte bližší repozitář v Nastavení > Stahování > Zdroje a pak hledejte znovu."
   },
   "compile": {
     "no_diagnostic": "Překladač se zastavil, aniž by pojmenoval problém. Jeho poslední řádek byl: {{line}}",

@@ -1294,7 +1294,8 @@
     "tabs": {
       "fonts": "Tipografías",
       "templates": "Plantillas",
-      "dictionaries": "Diccionarios"
+      "dictionaries": "Diccionarios",
+      "sources": "Orígenes"
     },
     "templates": {
       "empty": "No hay packs de plantillas descargables.",
@@ -1365,6 +1366,47 @@
         "getTemplate": "Obtener esta plantilla",
         "useTemplate": "Usar esta plantilla",
         "getAndCreate": "Obtener y crear proyecto"
+      }
+    },
+    "sources": {
+      "save": "Guardar",
+      "environment": "{{variable}} fija este ajuste en {{value}} en este equipo. Quita la variable para elegir aquí.",
+      "files": {
+        "heading": "De dónde vienen las descargas",
+        "intro": "Oleafly comprueba cada descarga con una suma de comprobación SHA-256 que trae incluida, así que un servidor espejo no puede darte un archivo distinto.",
+        "addressLabel": "Dirección del servidor espejo",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Primero el espejo de Oleafly",
+            "detail": "Las descargas vienen de {{host}}. Si no se puede conectar con él, Oleafly usa el servidor original."
+          },
+          "original": {
+            "name": "Servidores originales",
+            "detail": "Las descargas vienen directamente de GitHub y de los servidores propios de los demás proyectos. Los archivos que solo aloja Oleafly siguen viniendo de su servidor espejo."
+          },
+          "custom": {
+            "name": "Tu propio espejo",
+            "detail": "Una copia de {{host}} en tu propio servidor, como el espejo de una universidad o un laboratorio. Oleafly lo prueba primero, luego el espejo de Oleafly y después los servidores originales."
+          }
+        }
+      },
+      "repository": {
+        "heading": "Repositorio de paquetes de TeX",
+        "intro": "tlmgr descarga de aquí los paquetes de TeX Live cuando añades uno. El TinyTeX que instala Oleafly siempre lo usa. Tu propio TeX Live solo lo usa si escribes una dirección.",
+        "addressLabel": "Dirección del repositorio",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Espejo de CTAN más cercano",
+            "detail": "{{host}} envía cada solicitud a un espejo de CTAN cercano a ti."
+          },
+          "custom": {
+            "name": "Un repositorio concreto",
+            "detail": "Un espejo de CTAN o el repositorio de TeX Live de tu institución. La dirección termina en /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX tiene su propio gestor de paquetes, así que este ajuste no lo cambia."
       }
     }
   },

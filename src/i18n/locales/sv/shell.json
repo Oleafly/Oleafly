@@ -1035,7 +1035,7 @@
         "collaboration": "servrar, logga in, enheter, medlemmar, underhållare, delning, team, labb, liveredigering, realtid, säkerhetslogg",
         "data": "säkerhetskopia, biblioteksmapp, projektmapp, lagring, diskutrymme, papperskorg, radera projekt, kontrollpunkter",
         "dictionary": "stavning, egna ord, ignorerade ord, korrekturläsning, grammatikregler",
-        "downloads": "paket, typsnitt, ordlistor, offlinefiler",
+        "downloads": "paket, typsnitt, ordlistor, offlinefiler, spegel, CTAN, förråd, tlmgr",
         "engine": "kompilator, LaTeX, TeX, Typst, Markdown, pandoc, bygga, kompilera, PDF",
         "experimentation": "labb, beta, tidiga funktioner",
         "general": "inställningar, språk, region, stavningskontroll, stavning, stavfel, offline, rundturer, terminalkommando",

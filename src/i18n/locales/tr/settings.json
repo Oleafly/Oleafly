@@ -1287,7 +1287,8 @@
     "tabs": {
       "fonts": "Yazı tipleri",
       "templates": "Şablonlar",
-      "dictionaries": "Sözlükler"
+      "dictionaries": "Sözlükler",
+      "sources": "Kaynaklar"
     },
     "templates": {
       "empty": "İndirilebilir şablon paketi yok.",
@@ -1357,6 +1358,47 @@
         "getTemplate": "Bu şablonu al",
         "useTemplate": "Bu şablonu kullan",
         "getAndCreate": "Al ve proje oluştur"
+      }
+    },
+    "sources": {
+      "save": "Kaydet",
+      "environment": "Bu bilgisayarda {{variable}} değişkeni bu ayarı {{value}} olarak belirliyor. Buradan seçmek için değişkeni kaldırın.",
+      "files": {
+        "heading": "İndirmeler nereden gelir",
+        "intro": "Oleafly her indirmeyi kendisiyle birlikte gelen bir SHA-256 sağlama toplamıyla karşılaştırır, böylece bir yansı size farklı bir dosya veremez.",
+        "addressLabel": "Yansı adresi",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Önce Oleafly yansısı",
+            "detail": "İndirmeler {{host}} adresinden gelir. Bu adrese ulaşılamazsa Oleafly asıl sunucuyu kullanır."
+          },
+          "original": {
+            "name": "Asıl sunucular",
+            "detail": "İndirmeler doğrudan GitHub'dan ve diğer projelerin kendi sunucularından gelir. Yalnızca Oleafly'nin barındırdığı dosyalar yine onun yansısından gelir."
+          },
+          "custom": {
+            "name": "Kendi yansınız",
+            "detail": "{{host}} adresinin kendi sunucunuzdaki bir kopyası, örneğin bir üniversite veya laboratuvar yansısı. Oleafly önce bunu, sonra Oleafly yansısını, en son da asıl sunucuları dener."
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX paket deposu",
+        "intro": "Bir paket eklediğinizde tlmgr TeX Live paketlerini buradan indirir. Oleafly'nin kurduğu TinyTeX bu depoyu her zaman kullanır. Kendi TeX Live kurulumunuz bu depoyu yalnızca bir adres girerseniz kullanır.",
+        "addressLabel": "Depo adresi",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "En yakın CTAN yansısı",
+            "detail": "{{host}} her isteği size yakın bir CTAN yansısına yönlendirir."
+          },
+          "custom": {
+            "name": "Belirli bir depo",
+            "detail": "Bir CTAN yansısı ya da kurumunuzun kendi TeX Live deposu. Adres /systems/texlive/tlnet ile biter."
+          }
+        },
+        "miktex": "MiKTeX'in kendi paket yöneticisi var, bu yüzden bu ayar onu etkilemez."
       }
     }
   },

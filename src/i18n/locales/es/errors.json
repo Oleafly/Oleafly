@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible.",
-    "app_icon_unsupported": "El icono de la aplicación {{icon}} no está disponible."
+    "app_icon_unsupported": "El icono de la aplicación {{icon}} no está disponible.",
+    "download_url_empty": "Escribe una dirección que empiece por https://.",
+    "download_url_too_long": "Esa dirección es demasiado larga.",
+    "download_url_not_https": "La dirección debe empezar por https://.",
+    "download_url_no_host": "La dirección necesita un nombre de host después de https://.",
+    "download_url_credentials": "Quita el nombre de usuario y la contraseña de la dirección.",
+    "download_url_query": "La dirección no puede contener ? ni #.",
+    "download_url_spaces": "La dirección no puede contener espacios.",
+    "download_source_unknown": "Oleafly no conoce el origen de descarga {{source}}."
   },
   "literature": {
     "query_empty": "La consulta de búsqueda no puede estar vacía.",
@@ -176,7 +184,9 @@
     "compiler_crashed_font": "Tectonic se cerró inesperadamente al buscar la fuente \"{{font}}\", que probablemente no está instalada en este equipo. Instala la fuente o elige XeLaTeX o LuaLaTeX en el menú de compilación. Esos avisan de que falta una fuente en lugar de cerrarse.",
     "t1_fontenc_unicode_engine": "Este documento carga \\usepackage[T1]{fontenc}, que este compilador no puede usar para los acentos y símbolos escritos. La ß puede salir como SS, § y « pueden convertirse en otras letras, y las comillas tipográficas, los guiones y € pueden desaparecer. Quita esa línea o envuélvela como se muestra abajo. pdfLaTeX también lo compila correctamente.",
     "font_in_bundle": "{{font}} viene con el conjunto de TeX incluido, que encuentra las fuentes por el nombre de archivo. Escribe {{file}} en su lugar.",
-    "font_download_prompt": "La compilación se detuvo mientras macOS pedía descargar una fuente. Responde a ese diálogo y vuelve a compilar. Para evitarlo, añade fontset=fandol a las opciones de \\documentclass o elige una fuente que venga con TeX."
+    "font_download_prompt": "La compilación se detuvo mientras macOS pedía descargar una fuente. Responde a ese diálogo y vuelve a compilar. Para evitarlo, añade fontset=fandol a las opciones de \\documentclass o elige una fuente que venga con TeX.",
+    "repository_timed_out": "El repositorio de paquetes de TeX en {{host}} tardó demasiado en responder. Elige un repositorio más cercano en Ajustes > Descargas > Orígenes y vuelve a buscar.",
+    "repository_timed_out_default": "Tu repositorio de paquetes de TeX tardó demasiado en responder. Elige un repositorio más cercano en Ajustes > Descargas > Orígenes y vuelve a buscar."
   },
   "compile": {
     "no_diagnostic": "El compilador se detuvo sin indicar ningún problema. Su última línea fue: {{line}}",

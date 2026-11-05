@@ -1280,7 +1280,8 @@
     "tabs": {
       "fonts": "Phông chữ",
       "templates": "Mẫu",
-      "dictionaries": "Từ điển"
+      "dictionaries": "Từ điển",
+      "sources": "Nguồn tải"
     },
     "templates": {
       "empty": "Không có gói mẫu nào có thể tải xuống.",
@@ -1349,6 +1350,47 @@
         "getTemplate": "Tải mẫu này",
         "useTemplate": "Dùng mẫu này",
         "getAndCreate": "Tải và tạo dự án"
+      }
+    },
+    "sources": {
+      "save": "Lưu",
+      "environment": "{{variable}} đặt mục này thành {{value}} trên máy tính này. Hãy xoá biến đó để chọn tại đây.",
+      "files": {
+        "heading": "Nguồn tải xuống",
+        "intro": "Oleafly kiểm tra mỗi tệp tải xuống bằng mã băm SHA-256 đi kèm ứng dụng, nên máy chủ mirror không thể đưa cho bạn một tệp khác.",
+        "addressLabel": "Địa chỉ mirror",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Ưu tiên mirror của Oleafly",
+            "detail": "Tệp được tải từ {{host}}. Nếu không kết nối được, Oleafly dùng máy chủ gốc."
+          },
+          "original": {
+            "name": "Máy chủ gốc",
+            "detail": "Tệp được tải thẳng từ GitHub và máy chủ riêng của các dự án khác. Tệp chỉ Oleafly lưu trữ vẫn được tải từ mirror của Oleafly."
+          },
+          "custom": {
+            "name": "Mirror của riêng bạn",
+            "detail": "Một bản sao của {{host}} trên máy chủ của bạn, như mirror của trường đại học hoặc phòng thí nghiệm. Oleafly thử nó trước, rồi đến mirror của Oleafly, sau cùng là máy chủ gốc."
+          }
+        }
+      },
+      "repository": {
+        "heading": "Kho gói TeX",
+        "intro": "tlmgr tải các gói TeX Live từ đây khi bạn thêm gói. TinyTeX do Oleafly cài luôn dùng kho này. TeX Live của riêng bạn chỉ dùng nó nếu bạn nhập địa chỉ.",
+        "addressLabel": "Địa chỉ kho gói",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Mirror CTAN gần nhất",
+            "detail": "{{host}} chuyển mỗi yêu cầu đến một mirror CTAN gần bạn."
+          },
+          "custom": {
+            "name": "Một kho gói cụ thể",
+            "detail": "Một mirror CTAN hoặc kho TeX Live riêng của cơ quan bạn. Địa chỉ kết thúc bằng /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX có trình quản lý gói riêng, nên cài đặt này không ảnh hưởng đến nó."
       }
     }
   },

@@ -1035,7 +1035,7 @@
         "collaboration": "palvelimet, kirjautuminen, kirjaudu sisään, laitteet, jäsenet, valvojat, jakaminen, tiimit, laboratoriot, reaaliaikainen muokkaus, reaaliaika, tietoturvaloki",
         "data": "varmuuskopio, kirjastokansio, projektikansio, tallennustila, levytila, roskakori, poista projekteja, tarkistuspisteet",
         "dictionary": "oikeinkirjoitus, omat sanat, ohitetut sanat, oikoluku, kielioppisäännöt",
-        "downloads": "paketit, fontit, sanakirjat, offline-tiedostot",
+        "downloads": "paketit, fontit, sanakirjat, offline-tiedostot, peilipalvelin, CTAN, pakettivarasto, tlmgr",
         "engine": "kääntäjä, kääntäminen, LaTeX, TeX, Typst, Markdown, pandoc, koonti, PDF",
         "experimentation": "kokeilut, kokeelliset ominaisuudet, beta, varhaiset ominaisuudet",
         "general": "asetukset, kieli, alue, kielialue, oikoluku, oikeinkirjoitus, kirjoitusvirheet, offline, esittelyt, päätekomento",

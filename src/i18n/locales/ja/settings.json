@@ -1280,7 +1280,8 @@
     "tabs": {
       "fonts": "フォント",
       "templates": "テンプレート",
-      "dictionaries": "辞書"
+      "dictionaries": "辞書",
+      "sources": "ダウンロード元"
     },
     "templates": {
       "empty": "ダウンロードできるテンプレートパックはありません。",
@@ -1349,6 +1350,47 @@
         "getTemplate": "このテンプレートを入手",
         "useTemplate": "このテンプレートを使う",
         "getAndCreate": "入手してプロジェクトを作成"
+      }
+    },
+    "sources": {
+      "save": "保存",
+      "environment": "{{variable}} により、このコンピューターでは {{value}} に設定されています。ここで選ぶには、この変数を削除してください。",
+      "files": {
+        "heading": "ダウンロードの取得元",
+        "intro": "Oleafly は、同梱の SHA-256 チェックサムで各ダウンロードを検証するため、ミラーが別のファイルを渡すことはできません。",
+        "addressLabel": "ミラーのアドレス",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Oleafly ミラーを優先",
+            "detail": "{{host}} からダウンロードします。接続できない場合、Oleafly は元のホストを使います。"
+          },
+          "original": {
+            "name": "元のホスト",
+            "detail": "GitHub やその他のプロジェクト自身のホストから直接ダウンロードします。Oleafly だけがホストしているファイルは、引き続き Oleafly のミラーから取得します。"
+          },
+          "custom": {
+            "name": "独自のミラー",
+            "detail": "大学や研究室のミラーなど、独自のサーバーに置いた {{host}} のコピーです。Oleafly はまずこれを試し、次に Oleafly のミラー、最後に元のホストを使います。"
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX パッケージリポジトリ",
+        "intro": "パッケージを追加すると、tlmgr はここから TeX Live のパッケージをダウンロードします。Oleafly がインストールした TinyTeX は常にここを使います。お使いの TeX Live では、アドレスを入力した場合にのみ使われます。",
+        "addressLabel": "リポジトリのアドレス",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "最寄りの CTAN ミラー",
+            "detail": "{{host}} が各リクエストを近くの CTAN ミラーに振り分けます。"
+          },
+          "custom": {
+            "name": "特定のリポジトリ",
+            "detail": "CTAN ミラー、または所属機関独自の TeX Live リポジトリです。アドレスの末尾は /systems/texlive/tlnet です。"
+          }
+        },
+        "miktex": "MiKTeX には独自のパッケージマネージャーがあるため、この設定は MiKTeX には影響しません。"
       }
     }
   },

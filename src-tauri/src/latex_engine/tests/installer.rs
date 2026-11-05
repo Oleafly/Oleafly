@@ -362,7 +362,7 @@ async fn a_finished_download_is_not_fetched_again() {
 }
 
 #[test]
-fn every_asset_lists_github_first_and_then_the_oleafly_mirror() {
+fn every_asset_lists_the_oleafly_mirror_first_and_then_github() {
     for (os, arch) in [
         ("windows", "x86_64"),
         ("macos", "aarch64"),
@@ -372,9 +372,14 @@ fn every_asset_lists_github_first_and_then_the_oleafly_mirror() {
     ] {
         let asset = tinytex_asset_for(os, arch).unwrap();
         let [first, second] = asset.download_urls();
-        assert!(first.starts_with("https://github.com/rstudio/tinytex-releases/"));
-        assert!(second.starts_with("https://mirrors.oleafly.com/binaries/tinytex/"));
-        assert!(second.contains(TINYTEX_TAG));
+        assert!(first.starts_with("https://mirrors.oleafly.com/binaries/tinytex/"));
+        assert!(first.contains(TINYTEX_TAG));
+        assert!(second.starts_with("https://github.com/rstudio/tinytex-releases/"));
+        assert_eq!(
+            oleafly_core::download_sources::DownloadSettings::default()
+                .arrange(&[&second, &first], &std::collections::HashSet::new()),
+            [first.clone(), second.clone()]
+        );
         assert_eq!(
             first.rsplit('/').next().unwrap(),
             second.rsplit('/').next().unwrap()

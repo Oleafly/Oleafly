@@ -59,6 +59,7 @@ const TEX_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10
 const TINYTEX_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
 const TINYTEX_STALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 const TLMGR_INFO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
+const TLMGR_REPOSITORY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10 * 60);
 const TLMGR_MUTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 const TLMGR_FLOW_BUDGET: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 const UTILITY_PIPE_DRAIN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
@@ -863,8 +864,8 @@ impl TinytexAsset {
     fn download_urls(&self) -> [String; 2] {
         let file = self.url.rsplit('/').next().unwrap_or_default();
         [
-            self.url.clone(),
             format!("{TINYTEX_MIRROR_BASE}/{TINYTEX_TAG}/{file}"),
+            self.url.clone(),
         ]
     }
 }
@@ -1559,7 +1560,9 @@ impl<P: Fn(u64)> TinytexDownload<'_, P> {
     async fn run(&self, urls: &[&str]) -> Result<(), String> {
         let mut first_failure = None;
         for url in urls {
-            match self.fetch(url).await {
+            let outcome = self.fetch(url).await;
+            remember_tinytex_source(url, &outcome);
+            match outcome {
                 Ok(()) => return Ok(()),
                 Err(DownloadStop::Fatal(error)) => return Err(error),
                 Err(DownloadStop::NextSource(error)) => {
@@ -1690,6 +1693,19 @@ impl<P: Fn(u64)> TinytexDownload<'_, P> {
     }
 }
 
+fn remember_tinytex_source(url: &str, outcome: &Result<(), DownloadStop>) {
+    if cfg!(test) {
+        return;
+    }
+    match outcome {
+        Ok(()) => oleafly_core::download_sources::note_success(url),
+        Err(DownloadStop::NextSource(_) | DownloadStop::Oversized) => {
+            oleafly_core::download_sources::note_failure(url)
+        }
+        Err(DownloadStop::Fatal(_)) => {}
+    }
+}
+
 async fn open_download_file(path: &Path, resuming: bool) -> Result<tokio::fs::File, String> {
     if resuming {
         tokio::fs::OpenOptions::new()
@@ -1719,7 +1735,7 @@ async fn download_tinytex(
     use tauri::Emitter as _;
 
     let total = asset.expected_bytes;
-    let urls = asset.download_urls();
+    let urls = oleafly_core::download_sources::arrange(&asset.download_urls());
     TinytexDownload {
         path,
         asset,
@@ -2376,7 +2392,8 @@ async fn tlmgr_run_with_archive(
     args: &[String],
     managed: bool,
 ) -> Result<TexUtilityOutput, String> {
-    let output = tlmgr_attempt(tlmgr, args, None, managed).await?;
+    let configured = packages::configured_repository(tlmgr);
+    let output = tlmgr_attempt(tlmgr, args, configured.as_deref(), managed).await?;
     let Some(refusal) = packages::cross_release_refusal(&output, managed) else {
         check_tlmgr_self_update(tlmgr, &output)?;
         return Ok(output);

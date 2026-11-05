@@ -1067,7 +1067,7 @@
         "collaboration": "servery, přihlášení, zařízení, členové, správci, sdílení, týmy, laboratoře, živé úpravy, reálný čas, protokol zabezpečení",
         "data": "záloha, zálohování, složka knihovny, složka projektů, úložiště, místo na disku, koš, smazat projekty, záchytné body",
         "dictionary": "pravopis, vlastní slova, ignorovaná slova, korektura, gramatická pravidla",
-        "downloads": "balíčky, písma, slovníky, soubory offline",
+        "downloads": "balíčky, písma, slovníky, soubory offline, zrcadlo, CTAN, repozitář, tlmgr",
         "engine": "kompilátor, kompilace, LaTeX, TeX, Typst, Markdown, pandoc, sestavení, PDF",
         "experimentation": "experimenty, laboratoř, beta, experimentální funkce, nové funkce",
         "general": "předvolby, jazyk, národní prostředí, kontrola pravopisu, pravopis, překlepy, offline, prohlídky, příkaz terminálu",

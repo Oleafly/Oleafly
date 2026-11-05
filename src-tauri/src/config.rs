@@ -206,6 +206,12 @@ pub struct AppConfig {
     pub latex_default_engine: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_distribution: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub download_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub download_mirror_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tex_package_repository: Option<String>,
     #[serde(default = "default_true")]
     pub research_keep_awake: bool,
     #[serde(default = "default_true")]
@@ -281,6 +287,9 @@ impl Default for AppConfig {
             typst_default_version: None,
             latex_default_engine: None,
             tex_distribution: None,
+            download_source: None,
+            download_mirror_url: None,
+            tex_package_repository: None,
             research_keep_awake: true,
             research_notifications: true,
             research_command_network: false,
@@ -1189,6 +1198,9 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.ai_tools_model = stored.ai_tools_model;
     config.latex_default_engine = stored.latex_default_engine;
     config.tex_distribution = stored.tex_distribution;
+    config.download_source = stored.download_source;
+    config.download_mirror_url = stored.download_mirror_url;
+    config.tex_package_repository = stored.tex_package_repository;
     config.cua_driver = stored.cua_driver;
     config.research_tasks_enabled = stored.research_tasks_enabled;
     config.research_background_enabled = stored.research_background_enabled;

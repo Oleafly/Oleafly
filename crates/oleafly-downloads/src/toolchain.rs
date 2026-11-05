@@ -407,7 +407,7 @@ impl InstallPlan {
         if request.urls.is_empty() {
             return Err(invalid("No download address was given."));
         }
-        let allowed_hosts: HashSet<String> = request
+        let mut allowed_hosts: HashSet<String> = request
             .allowed_hosts
             .iter()
             .map(|host| host.trim().to_ascii_lowercase())
@@ -416,6 +416,9 @@ impl InstallPlan {
         if allowed_hosts.is_empty() {
             return Err(invalid("No download host is allowed."));
         }
+        let sources = oleafly_core::download_sources::current();
+        let urls = sources.arrange(&request.urls, &recently_failed_hosts());
+        allowed_hosts.extend(sources.mirror_host());
         if !(1..=MAX_ARCHIVE_BYTES).contains(&request.archive_size) {
             return Err(invalid("The pinned archive size is out of range."));
         }
@@ -456,7 +459,7 @@ impl InstallPlan {
             return Err(invalid("The binary file name is not a safe file name."));
         }
         Ok(Self {
-            urls: request.urls,
+            urls,
             allowed_hosts: Arc::new(allowed_hosts),
             kind: request.archive_kind,
             archive_size: request.archive_size,
@@ -1096,6 +1099,7 @@ async fn download_archive(
         if result.is_err() {
             let _ = tokio::fs::remove_file(archive).await;
         }
+        remember_outcome(url, &result);
         match result {
             Ok(()) => return Ok(()),
             Err(SourceFailure::Cancelled) => return Err(cancelled()),
@@ -1115,6 +1119,26 @@ async fn download_archive(
     );
     error.digest_mismatch = mismatches > 0 && mismatches == plan.urls.len();
     Err(error)
+}
+
+fn recently_failed_hosts() -> HashSet<String> {
+    if cfg!(any(test, feature = "test-support")) {
+        return HashSet::new();
+    }
+    oleafly_core::download_sources::recently_failed_hosts()
+}
+
+fn remember_outcome(url: &str, result: &Result<(), SourceFailure>) {
+    if cfg!(any(test, feature = "test-support")) {
+        return;
+    }
+    match result {
+        Ok(()) => oleafly_core::download_sources::note_success(url),
+        Err(SourceFailure::Failed(_) | SourceFailure::DigestMismatch(_)) => {
+            oleafly_core::download_sources::note_failure(url)
+        }
+        Err(SourceFailure::Cancelled | SourceFailure::Local(_)) => {}
+    }
 }
 
 fn stalled(plan: &InstallPlan) -> SourceFailure {

@@ -1280,7 +1280,8 @@
     "tabs": {
       "fonts": "字体",
       "templates": "模板",
-      "dictionaries": "词典"
+      "dictionaries": "词典",
+      "sources": "下载源"
     },
     "templates": {
       "empty": "暂无可下载的模板包。",
@@ -1349,6 +1350,47 @@
         "getTemplate": "获取此模板",
         "useTemplate": "使用此模板",
         "getAndCreate": "获取并创建项目"
+      }
+    },
+    "sources": {
+      "save": "保存",
+      "environment": "这台电脑上的 {{variable}} 将此项设为 {{value}}。移除该变量后即可在这里选择。",
+      "files": {
+        "heading": "下载来源",
+        "intro": "Oleafly 会用内置的 SHA-256 校验和核对每个下载，因此镜像无法给你换成别的文件。",
+        "addressLabel": "镜像地址",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "优先使用 Oleafly 镜像",
+            "detail": "从 {{host}} 下载。如果无法连接，Oleafly 会改用原始站点。"
+          },
+          "original": {
+            "name": "原始站点",
+            "detail": "直接从 GitHub 及其他项目自己的站点下载。只有 Oleafly 提供的文件仍从其镜像下载。"
+          },
+          "custom": {
+            "name": "自定义镜像",
+            "detail": "你自己服务器上的 {{host}} 副本，例如高校或实验室镜像。Oleafly 会先尝试它，然后是 Oleafly 镜像，最后是原始站点。"
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX 宏包仓库",
+        "intro": "添加宏包时，tlmgr 会从这里下载 TeX Live 宏包。Oleafly 安装的 TinyTeX 始终使用它。你自己的 TeX Live 只有在你填写地址后才会使用它。",
+        "addressLabel": "仓库地址",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "最近的 CTAN 镜像",
+            "detail": "{{host}} 会把每个请求转到离你较近的 CTAN 镜像。"
+          },
+          "custom": {
+            "name": "指定仓库",
+            "detail": "CTAN 镜像，或你所在机构自己的 TeX Live 仓库。地址以 /systems/texlive/tlnet 结尾。"
+          }
+        },
+        "miktex": "MiKTeX 有自己的包管理器，因此此设置不会影响它。"
       }
     }
   },

@@ -831,6 +831,8 @@ ends them with 0.
 | `OLEAFLY_TECTONIC`, `OLEAFLY_LATEXMK`, `OLEAFLY_TYPST`, `OLEAFLY_PANDOC` | The compiler to use instead of the one Oleafly finds. |
 | `OLEAFLY_APP` | The Oleafly app to open folders in. An Oleafly AppImage sets it in the terminals it opens. |
 | `OLEAFLY_TEX_BUNDLE_URL` | The TeX bundle Tectonic downloads packages from. |
+| `OLEAFLY_DOWNLOAD_MIRROR` | Where pinned downloads come from: `automatic`, `original`, or your own mirror's HTTPS address. See [Download sources](download-sources.md). |
+| `OLEAFLY_TEX_REPOSITORY` | The TeX Live repository tlmgr installs packages from. |
 | `OLEAFLY_PACKS_BASE_URL` | Where template packs are downloaded from. |
 | `OLEAFLY_WATCH_POLL` | Set it to make `oleafly watch` poll for changes. |
 | `OLEAFLY_CLI` | Set for programs Oleafly starts: this command's path. |

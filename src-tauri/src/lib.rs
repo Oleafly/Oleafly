@@ -45,6 +45,7 @@ mod deep_link;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
+mod download_settings;
 mod folder_listing;
 mod folder_status;
 mod folder_watch;
@@ -215,6 +216,7 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
 }
 
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    download_settings::load();
     {
         use tauri::Emitter;
         let handle = app.handle().clone();
@@ -908,6 +910,8 @@ pub fn run() {
             quit_gate::cancel_quit_flush,
             tex_distro::tex_distributions,
             tex_distro::set_tex_distribution,
+            download_settings::get_download_settings,
+            download_settings::set_download_settings,
             latex_engine::has_tagging_engine,
             latex_engine::install_tinytex,
             latex_engine::cancel_tinytex_install,

@@ -115,7 +115,9 @@ pub fn tex_bundle_url() -> String {
     std::env::var(TEX_BUNDLE_URL_VARIABLE)
         .ok()
         .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| TEX_BUNDLE_MIRROR_URL.into())
+        .unwrap_or_else(|| {
+            crate::download_sources::preferred(TEX_BUNDLE_MIRROR_URL, TEX_BUNDLE_UPSTREAM_URL)
+        })
 }
 
 pub fn validate_latex_main_document(path: &str) -> crate::Result<()> {

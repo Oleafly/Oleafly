@@ -21,6 +21,8 @@
     "language-servers:fetch": "node scripts/fetch-language-servers.mjs",
     "language-servers:smoke": "node scripts/smoke-language-servers.mjs",
     "language-servers:test": "node --test scripts/fetch-language-servers.node-tests.mjs",
+    "mirror:check": "node scripts/check-mirror-files.mjs",
+    "mirror:test": "node --test scripts/check-mirror-files.node-tests.mjs",
     "proofreading:node-test": "node --test scripts/hunspell.node-tests.mjs",
     "seed:research:sync": "node scripts/sync-research-seeds.mjs",
     "seed:research:validate": "node scripts/validate-research-seeds.mjs",

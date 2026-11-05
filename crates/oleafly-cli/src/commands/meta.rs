@@ -35,6 +35,10 @@ Environment
   OLEAFLY_PANDOC          The pandoc to build Markdown with (2.19 or newer).
   OLEAFLY_APP             The Oleafly app to open folders in.
   OLEAFLY_TEX_BUNDLE_URL  The TeX bundle Tectonic downloads packages from.
+  OLEAFLY_DOWNLOAD_MIRROR
+                          Where pinned downloads come from: automatic,
+                          original, or your own mirror's https address.
+  OLEAFLY_TEX_REPOSITORY  The TeX Live repository tlmgr installs packages from.
   OLEAFLY_PACKS_BASE_URL  Where template packs are downloaded from.
   OLEAFLY_WATCH_POLL      Set it to make `oleafly watch` poll for changes.
   OLEAFLY_CLI             Set for programs Oleafly starts: this command's path.

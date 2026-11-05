@@ -1035,7 +1035,7 @@
         "collaboration": "servere, log ind, login, enheder, medlemmer, vedligeholdere, deling, teams, forskergrupper, laboratorier, redigering i realtid, realtid, sikkerhedslog",
         "data": "backup, sikkerhedskopi, biblioteksmappe, projektmappe, lagerplads, diskplads, papirkurv, slet projekter, kontrolpunkter",
         "dictionary": "stavning, egne ord, ignorerede ord, korrektur, grammatikregler",
-        "downloads": "pakker, skrifttyper, ordbøger, offlinefiler",
+        "downloads": "pakker, skrifttyper, ordbøger, offlinefiler, spejl, CTAN, repository, tlmgr",
         "engine": "compiler, kompilering, LaTeX, TeX, Typst, Markdown, pandoc, byg, PDF",
         "experimentation": "eksperimenter, laboratorium, beta, tidlige funktioner",
         "general": "præferencer, sprog, landestandard, stavekontrol, stavning, tastefejl, offline, rundvisninger, terminalkommando",

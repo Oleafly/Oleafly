@@ -1287,7 +1287,8 @@
     "tabs": {
       "fonts": "Fonts",
       "templates": "Templates",
-      "dictionaries": "Dictionaries"
+      "dictionaries": "Dictionaries",
+      "sources": "Sources"
     },
     "templates": {
       "empty": "No downloadable template packs.",
@@ -1357,6 +1358,47 @@
         "getTemplate": "Get this template",
         "useTemplate": "Use this template",
         "getAndCreate": "Get and create project"
+      }
+    },
+    "sources": {
+      "save": "Save",
+      "environment": "{{variable}} sets this to {{value}} on this computer. Remove it to choose here.",
+      "files": {
+        "heading": "Where downloads come from",
+        "intro": "Oleafly checks each download against a SHA-256 checksum it ships with, so a mirror can't hand you a different file.",
+        "addressLabel": "Mirror address",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Oleafly mirror first",
+            "detail": "Downloads come from {{host}}. If it can't be reached, Oleafly uses the original host."
+          },
+          "original": {
+            "name": "Original hosts",
+            "detail": "Downloads come straight from GitHub and the other projects' own hosts. Files only Oleafly hosts still come from its mirror."
+          },
+          "custom": {
+            "name": "Your own mirror",
+            "detail": "A copy of {{host}} on your own server, such as a university or lab mirror. Oleafly tries it first, then the Oleafly mirror, then the original hosts."
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX package repository",
+        "intro": "tlmgr downloads TeX Live packages from here when you add one. The TinyTeX that Oleafly installs always uses it. Your own TeX Live uses it only if you enter an address.",
+        "addressLabel": "Repository address",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Nearest CTAN mirror",
+            "detail": "{{host}} sends each request to a CTAN mirror near you."
+          },
+          "custom": {
+            "name": "A specific repository",
+            "detail": "A CTAN mirror or your institution's own TeX Live repository. The address ends in /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX has its own package manager, so this setting doesn't change it."
       }
     }
   },

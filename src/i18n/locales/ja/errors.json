@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。",
-    "app_icon_unsupported": "アプリアイコン {{icon}} は利用できません。"
+    "app_icon_unsupported": "アプリアイコン {{icon}} は利用できません。",
+    "download_url_empty": "https:// で始まるアドレスを入力してください。",
+    "download_url_too_long": "アドレスが長すぎます。",
+    "download_url_not_https": "アドレスは https:// で始まる必要があります。",
+    "download_url_no_host": "アドレスには https:// の後にホスト名が必要です。",
+    "download_url_credentials": "アドレスにユーザー名とパスワードを含めないでください。",
+    "download_url_query": "アドレスに ? や # は使えません。",
+    "download_url_spaces": "アドレスにスペースは使えません。",
+    "download_source_unknown": "Oleafly はダウンロード元 {{source}} を認識できません。"
   },
   "literature": {
     "query_empty": "検索キーワードは空にできません。",
@@ -174,7 +182,9 @@
     "compiler_crashed_font": "Tectonic がフォント「{{font}}」を探している途中でクラッシュしました。このフォントはこのコンピュータにインストールされていない可能性があります。フォントをインストールするか、コンパイルメニューで XeLaTeX か LuaLaTeX を選んでください。これらはクラッシュせず、フォントが見つからないことを報告します。",
     "t1_fontenc_unicode_engine": "この文書は \\usepackage[T1]{fontenc} を読み込んでいますが、このコンパイラでは、入力したアクセント付き文字や記号に使えません。ß が SS と出力されたり、§ や « が別の文字に変わったり、引用符、ダッシュ、€ が消えたりすることがあります。その行を削除するか、下に示すように囲んでください。pdfLaTeX でも正しくコンパイルできます。",
     "font_in_bundle": "{{font}} は組み込みの TeX バンドルに含まれており、フォントはファイル名で探されます。代わりに {{file}} と書いてください。",
-    "font_download_prompt": "macOS がフォントのダウンロードを確認している間にコンパイルが停止しました。そのダイアログに応答してから、もう一度コンパイルしてください。確認を避けるには、\\documentclass のオプションに fontset=fandol を追加するか、TeX に付属のフォントを選んでください。"
+    "font_download_prompt": "macOS がフォントのダウンロードを確認している間にコンパイルが停止しました。そのダイアログに応答してから、もう一度コンパイルしてください。確認を避けるには、\\documentclass のオプションに fontset=fandol を追加するか、TeX に付属のフォントを選んでください。",
+    "repository_timed_out": "{{host}} の TeX パッケージリポジトリの応答に時間がかかりすぎました。設定 > ダウンロード > ダウンロード元 で近いリポジトリを選んでから、もう一度検索してください。",
+    "repository_timed_out_default": "お使いの TeX パッケージリポジトリの応答に時間がかかりすぎました。設定 > ダウンロード > ダウンロード元 で近いリポジトリを選んでから、もう一度検索してください。"
   },
   "compile": {
     "no_diagnostic": "コンパイラは問題を示さずに停止しました。最後の行: {{line}}",

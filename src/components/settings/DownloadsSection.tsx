@@ -7,6 +7,7 @@ import { PackView } from "@/components/settings/template-packs/PackView";
 import { announceSavedTemplate } from "@/features/custom-templates";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
+import { DownloadSources } from "@/components/settings/DownloadSources";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -88,7 +89,7 @@ export function DownloadsSection() {
   const progress = useDownloadActivity((s) => s.fontProgress);
 
   const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
-  const [tab, setTab] = useState<"fonts" | "templates" | "dictionaries">(
+  const [tab, setTab] = useState<"fonts" | "templates" | "dictionaries" | "sources">(
     "fonts",
   );
   const [openPackId, setOpenPackId] = useState<string | null>(null);
@@ -325,11 +326,11 @@ export function DownloadsSection() {
     <Tabs
       value={tab}
       onValueChange={(v) =>
-        setTab(v as "fonts" | "templates" | "dictionaries")
+        setTab(v as "fonts" | "templates" | "dictionaries" | "sources")
       }
       className="flex flex-col gap-5"
     >
-      <TabsList className="w-fit">
+      <TabsList scrollable>
         <TabsTrigger value="fonts" data-testid="downloads-tab-fonts">
           {t(($) => $.settings.downloads.tabs.fonts)}
         </TabsTrigger>
@@ -342,9 +343,15 @@ export function DownloadsSection() {
         >
           {t(($) => $.settings.downloads.tabs.dictionaries)}
         </TabsTrigger>
+        <TabsTrigger value="sources" data-testid="downloads-tab-sources">
+          {t(($) => $.settings.downloads.tabs.sources)}
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="dictionaries">
         <DictionaryDownloads />
+      </TabsContent>
+      <TabsContent value="sources">
+        <DownloadSources />
       </TabsContent>
       <TabsContent value="fonts" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">

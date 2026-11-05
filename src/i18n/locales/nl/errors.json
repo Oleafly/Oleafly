@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar.",
-    "app_icon_unsupported": "Het app-pictogram {{icon}} is niet beschikbaar."
+    "app_icon_unsupported": "Het app-pictogram {{icon}} is niet beschikbaar.",
+    "download_url_empty": "Vul een adres in dat begint met https://.",
+    "download_url_too_long": "Dat adres is te lang.",
+    "download_url_not_https": "Het adres moet beginnen met https://.",
+    "download_url_no_host": "Het adres heeft een hostnaam nodig na https://.",
+    "download_url_credentials": "Laat de gebruikersnaam en het wachtwoord weg uit het adres.",
+    "download_url_query": "Het adres mag geen ? of # bevatten.",
+    "download_url_spaces": "Het adres mag geen spaties bevatten.",
+    "download_source_unknown": "Oleafly kent de downloadbron {{source}} niet."
   },
   "literature": {
     "query_empty": "De zoekopdracht mag niet leeg zijn.",
@@ -175,7 +183,9 @@
     "compiler_crashed_font": "Tectonic is gecrasht bij het zoeken naar het lettertype \"{{font}}\", dat waarschijnlijk niet op deze computer is geïnstalleerd. Installeer het lettertype, of kies XeLaTeX of LuaLaTeX in het compileermenu. Die melden een ontbrekend lettertype in plaats van te crashen.",
     "t1_fontenc_unicode_engine": "Dit document laadt \\usepackage[T1]{fontenc}, en dat kan deze compiler niet gebruiken voor getypte accenten en symbolen. ß kan als SS worden afgedrukt, § en « kunnen in andere letters veranderen, en gekrulde aanhalingstekens, streepjes en € kunnen verdwijnen. Haal die regel weg of pak hem in zoals hieronder staat. pdfLaTeX compileert het ook correct.",
     "font_in_bundle": "{{font}} wordt meegeleverd met de ingebouwde TeX-bundel, die lettertypen op bestandsnaam zoekt. Schrijf in plaats daarvan {{file}}.",
-    "font_download_prompt": "Het compileren stopte terwijl macOS vroeg om een lettertype te downloaden. Beantwoord dat venster en compileer opnieuw. Om dit te voorkomen, voeg je fontset=fandol toe aan de opties van \\documentclass, of kies je een lettertype dat met TeX wordt meegeleverd."
+    "font_download_prompt": "Het compileren stopte terwijl macOS vroeg om een lettertype te downloaden. Beantwoord dat venster en compileer opnieuw. Om dit te voorkomen, voeg je fontset=fandol toe aan de opties van \\documentclass, of kies je een lettertype dat met TeX wordt meegeleverd.",
+    "repository_timed_out": "De TeX-pakketrepository op {{host}} deed er te lang over om te reageren. Kies een repository dichterbij via Instellingen > Downloads > Bronnen en zoek daarna opnieuw.",
+    "repository_timed_out_default": "Je TeX-pakketrepository deed er te lang over om te reageren. Kies een repository dichterbij via Instellingen > Downloads > Bronnen en zoek daarna opnieuw."
   },
   "compile": {
     "no_diagnostic": "De compiler stopte zonder een probleem te noemen. De laatste regel was: {{line}}",
