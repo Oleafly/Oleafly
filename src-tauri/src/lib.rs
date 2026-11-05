@@ -1003,6 +1003,7 @@ pub fn run() {
             project::rename_project,
             project::open_devtools,
             project::get_project,
+            project::project_compile_folder,
             project::project_manifest_home,
             project::save_project_settings_to_folder,
             project::list_projects,

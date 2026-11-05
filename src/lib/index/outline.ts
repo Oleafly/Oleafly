@@ -19,6 +19,25 @@ export interface ExtraOutlineSection {
   readonly to: number;
 }
 
+/**
+ * The files whose macros reach a viewer's headings. Two revisions can define
+ * the same macro differently, and one must not render with the other's.
+ */
+export function outlineSources(
+  texts: Readonly<Record<string, string>>,
+  index: ProjectIndex,
+  viewer: string | null | undefined,
+): Readonly<Record<string, string>> {
+  const scope = index.unitScope;
+  if (!scope || !viewer) return texts;
+  const entries = Object.entries(texts).filter(([file]) => scope.reaches(viewer, file));
+  // The last definition wins, so the viewer's own document goes last.
+  return Object.fromEntries([
+    ...entries.filter(([file]) => !scope.sharesScope(viewer, file)),
+    ...entries.filter(([file]) => scope.sharesScope(viewer, file)),
+  ]);
+}
+
 export function outlineFromIndex(
   index: ProjectIndex,
   activeFile: string,
@@ -91,10 +110,11 @@ function headingBefore(headings: readonly { from: number; title: string }[], off
   return owner;
 }
 
-export function headingTitlesByLabel(
+function headingsByFile(
   index: ProjectIndex,
+  labels: readonly Sym[],
   extraSections?: (file: string) => readonly ExtraOutlineSection[],
-): ReadonlyMap<string, string> {
+): Map<string, { from: number; title: string }[]> {
   const headings = new Map<string, { from: number; title: string }[]>();
   const add = (file: string, from: number, title: string) => {
     if (title.trim() === "") return;
@@ -105,15 +125,47 @@ export function headingTitlesByLabel(
   for (const section of index.defs) {
     if (section.kind === "section") add(section.file, section.from, section.name);
   }
-  const labels = index.defs.filter((definition) => definition.kind === "label");
   for (const file of new Set(labels.map((label) => label.file))) {
     for (const section of extraSections?.(file) ?? []) add(file, section.from, section.title);
   }
   for (const list of headings.values()) list.sort((left, right) => left.from - right.from);
-  const titles = new Map<string, string>();
+  return headings;
+}
+
+export function headingTitlesByLabel(
+  index: ProjectIndex,
+  extraSections?: (file: string) => readonly ExtraOutlineSection[],
+  viewer?: string,
+): ReadonlyMap<string, string> {
+  const labels = index.defs.filter((definition) => definition.kind === "label");
+  const headings = headingsByFile(index, labels, extraSections);
+  const sameName = new Map<string, Sym[]>();
   for (const label of labels) {
-    const owner = headingBefore(headings.get(label.file) ?? [], label.from);
-    if (owner !== undefined && !titles.has(label.name)) titles.set(label.name, owner);
+    const named = sameName.get(label.name);
+    if (named) named.push(label);
+    else sameName.set(label.name, [label]);
+  }
+  const titles = new Map<string, string>();
+  const { unitScope } = index;
+  for (const [name, named] of sameName) {
+    // Another document's copy of the label sits under another heading.
+    const visible =
+      unitScope && viewer !== undefined
+        ? unitScope.select(viewer, named, (label) => label.file).items
+        : named;
+    const title = firstHeadingTitle(visible, headings);
+    if (title !== undefined) titles.set(name, title);
   }
   return titles;
+}
+
+function firstHeadingTitle(
+  labels: readonly Sym[],
+  headings: ReadonlyMap<string, readonly { from: number; title: string }[]>,
+): string | undefined {
+  for (const label of labels) {
+    const owner = headingBefore(headings.get(label.file) ?? [], label.from);
+    if (owner !== undefined) return owner;
+  }
+  return undefined;
 }

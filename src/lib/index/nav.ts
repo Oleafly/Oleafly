@@ -623,8 +623,11 @@ function startLocalRename(view: EditorView): boolean {
     return true;
   }
   const index = useIndexStore.getState().index;
-  const def = (index?.definitionFor(sym) ?? sym) as Sym;
-  if (!RENAMABLE.has(def.kind as DefKind)) {
+  const known = index?.definitionFor(sym) ?? null;
+  const target = index?.renameTarget ? index.renameTarget(sym) : known;
+  const def = (target ?? sym) as Sym;
+  // A known name with no target is one only a whole extent marks.
+  if (!RENAMABLE.has(def.kind as DefKind) || (known && !target) || index?.renameIsAmbiguous?.(sym)) {
     showLookupResult(i18n.t(($) => $.core.navigation.notRenamable));
     return true;
   }

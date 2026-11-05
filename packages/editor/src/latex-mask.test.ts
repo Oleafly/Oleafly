@@ -666,6 +666,7 @@ describe("maskLatex inline verbatim and math forms", () => {
     [String.raw`Use \verb|qqword| here`, "qqword"],
     [String.raw`Use \verb*+qqword+ here`, "qqword"],
     [String.raw`Use \lstinline[language=C]{qqword} here`, "qqword"],
+    [String.raw`Use \lstinline*qqword* here`, "qqword"],
     [String.raw`Use \mintinline{python}{qqword} here`, "qqword"],
     [String.raw`Use \mintinline{python}|qqword| here`, "qqword"],
     [String.raw`Use \verb|a\|qqword| here`, "qqword"],

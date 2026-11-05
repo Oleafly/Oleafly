@@ -23,7 +23,7 @@ const REF_ARG_CMDS = [
   "cpageref", "Cpageref", "labelcref", "labelcpageref", "Vref", "vpageref",
   "Vpageref", "namecref", "nameCref", "lcnamecref", "namecrefs", "nameCrefs",
   "fref", "Fref", "sref", "labelref", "crefrange", "Crefrange",
-  "cpagerefrange", "Cpagerefrange",
+  "cpagerefrange", "Cpagerefrange", "fullref", "vrefrange", "vpagerefrange",
 ];
 
 const OPAQUE_ARG_CMDS = new Set([
@@ -433,7 +433,8 @@ function collectLatexRegions(
 
   const endOfVerbatim = (j: number, name: string): number => {
     let k = j;
-    if (chars[k] === "*") k++;
+    // listings takes a star as its delimiter.
+    if (name !== "lstinline" && chars[k] === "*") k++;
     k = skipInlineSpace(k);
     if (chars[k] === "[") k = matchGroup(k);
     k = skipInlineSpace(k);

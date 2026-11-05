@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildProjectContext, buildRefsContext, type PreflightContextInput } from "./preflight-context";
+import { analyzeProjectFile } from "./project-intelligence/analyze-file";
+import { assembleProjectIntelligence } from "./project-intelligence/assemble";
+import { legacyIndexFromProjectIntelligence } from "./project-intelligence/legacy-index";
 
 function input(
   indexTexts: Record<string, string>,
@@ -59,6 +62,34 @@ describe("buildRefsContext", () => {
     );
     expect(refs.allCitedKeys).toEqual(["a", "b"]);
     expect(refs.duplicateDois).toEqual([{ doi: "10.1/x", keys: ["a", "b"] }]);
+  });
+
+  it("reports label facts for the main document's compilation unit", () => {
+    const texts = {
+      "main.tex": String.raw`\documentclass{article}
+\input{shared}
+\label{sec:shared}`,
+      "main_v1.tex": String.raw`\documentclass{article}
+\input{shared}
+\label{sec:shared}
+\label{fig:old}
+\ref{fig:x}`,
+      "shared.tex": String.raw`\label{sec:shared}\label{fig:x}`,
+    };
+    const files = Object.fromEntries(
+      Object.entries(texts).map(([file, text]) => [file, analyzeProjectFile(file, text, 1)]),
+    );
+    const snapshot = assembleProjectIntelligence({
+      identity: { projectId: "refs", projectRevision: 1, requestGeneration: 1 },
+      files,
+      knownFiles: Object.keys(texts),
+      mainDocument: "main.tex",
+      stats: { fileCount: 3, characterCount: 0, parsedFileCount: 3, reusedFileCount: 0, durationMs: 0 },
+    });
+    const refs = buildRefsContext(input(texts, { index: legacyIndexFromProjectIntelligence(snapshot) }));
+
+    expect(refs.duplicateLabels).toEqual([{ label: "sec:shared", files: ["main.tex", "shared.tex"] }]);
+    expect(refs.unreferencedLabels).toEqual([{ label: "fig:x", file: "shared.tex" }]);
   });
 });
 

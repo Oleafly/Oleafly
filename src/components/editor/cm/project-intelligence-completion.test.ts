@@ -615,3 +615,62 @@ See \eqref{eq:`;
     }
   });
 });
+
+describe("project label completion across documents", () => {
+  const paper = (body: string) => `\\documentclass{article}\n\\begin{document}\n${body}`;
+
+  function completeIn(
+    active: string,
+    sources: Readonly<Record<string, string>>,
+  ): CompletionResult | null {
+    installProject(sources);
+    useFilesStore.setState({ activePath: active });
+    setEditorDocumentPath(active);
+    const doc = sources[active];
+    return synchronousProjectCompletion(
+      new CompletionContext(EditorState.create({ doc }), doc.length, false),
+    );
+  }
+
+  it("leaves out another document's labels and keeps fragments", () => {
+    const result = completeIn("main.tex", {
+      "main.tex": paper("\\label{sec:main}\n\\ref{sec:"),
+      "other.tex": paper("\\label{sec:other}"),
+      "frag.tex": "\\label{sec:frag}\n",
+    });
+    expect(result?.options.map((candidate) => candidate.label)).toEqual(["sec:frag", "sec:main"]);
+  });
+
+  it("leaves out another document's anchor", () => {
+    const result = completeIn("main.tex", {
+      "main.tex": paper("\\ref{sec:"),
+      "other.tex": paper("\\hypertarget{sec:anchor}{here}\\label{sec:label}"),
+    });
+    expect(result?.options ?? []).toEqual([]);
+  });
+
+  it("counts only the copies that really collide", () => {
+    const result = completeIn("main.tex", {
+      "main.tex": paper("\\input{part}\n\\label{sec:x}\n\\ref{sec:"),
+      "part.tex": "\\label{sec:x}\n",
+      "other.tex": paper(""),
+      "frag.tex": "\\label{sec:x}\n",
+    });
+    const offered = result?.options.filter((candidate) => candidate.label === "sec:x") ?? [];
+    expect(offered).toHaveLength(3);
+    const details = offered.map((candidate) => candidate.detail ?? "");
+    expect(details.filter((detail) => detail.includes("duplicate (2)"))).toHaveLength(2);
+    expect(details.filter((detail) => detail.includes("(3)"))).toHaveLength(0);
+  });
+
+  it("does not call one label per document a duplicate", () => {
+    const result = completeIn("shared.tex", {
+      "main.tex": paper("\\input{shared}\n\\label{sec:x}"),
+      "other.tex": paper("\\input{shared}\n\\label{sec:x}"),
+      "shared.tex": "\\ref{sec:",
+    });
+    const offered = result?.options.filter((candidate) => candidate.label === "sec:x") ?? [];
+    expect(offered).toHaveLength(2);
+    for (const candidate of offered) expect(candidate.detail).not.toContain("duplicate");
+  });
+});

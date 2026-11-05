@@ -232,6 +232,33 @@ describe("incremental analysis", () => {
     expect(errorOf(response).code).toBe("invalid_request");
   });
 
+  it("searches from the compile folder it is given", () => {
+    const { send } = worker();
+    const snapshot = snapshotOf(
+      send(
+        request({
+          knownFiles: ["paper/main.tex", "intro.tex", "paper/intro.tex"],
+          mainDocument: "paper/main.tex",
+          compileFolder: "paper",
+          upserts: [
+            upsert("paper/main.tex", "\\input{intro}"),
+            upsert("intro.tex", "root"),
+            upsert("paper/intro.tex", "local"),
+          ],
+        }),
+      ),
+    );
+    expect(snapshot.hierarchy.edges.find((edge) => edge.kind === "include")?.targetFile).toBe("paper/intro.tex");
+  });
+
+  it("does not count a use of an environment nothing defines against the result limit", () => {
+    const { send } = worker();
+    const lines = Math.ceil(PROJECT_INTELLIGENCE_LIMITS.maxResultItems / 4);
+    const source = "\\begin{figure}\\end{figure}\n".repeat(lines);
+    const snapshot = snapshotOf(send(request({ knownFiles: ["a.tex"], upserts: [upsert("a.tex", source)] })));
+    expect(snapshot.uses).toEqual([]);
+  });
+
   it("refuses a project that exceeds the source file limit after loading known files", () => {
     const { send } = worker();
     const knownFiles = Array.from({ length: PROJECT_INTELLIGENCE_LIMITS.maxSourceFiles + 1 }, (_, i) => `f${i}.tex`);

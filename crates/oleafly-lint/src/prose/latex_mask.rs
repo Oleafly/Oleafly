@@ -81,6 +81,9 @@ const REF_ARG_CMDS: &[&str] = &[
     "Crefrange",
     "cpagerefrange",
     "Cpagerefrange",
+    "fullref",
+    "vrefrange",
+    "vpagerefrange",
 ];
 
 const OPAQUE_ARG_CMDS: &[&str] = &[
@@ -779,7 +782,8 @@ impl<'a> Collector<'a> {
 
     fn end_of_verbatim(&self, j: usize, name: &str) -> usize {
         let mut k = j;
-        if self.at(k) == Some(STAR) {
+        // listings takes a star as its delimiter.
+        if name != "lstinline" && self.at(k) == Some(STAR) {
             k += 1;
         }
         k = self.skip_inline_space(k);
@@ -1468,6 +1472,12 @@ mod tests {
             prose("See \\cite{knuth} now."),
             format!("See Dummy{} now.", " ".repeat(7))
         );
+    }
+
+    #[test]
+    fn a_star_is_the_delimiter_of_lstinline() {
+        assert!(prose("Use \\lstinline*code* here.").ends_with(" here."));
+        assert!(!prose("Use \\lstinline*code* here.").contains("code"));
     }
 
     #[test]

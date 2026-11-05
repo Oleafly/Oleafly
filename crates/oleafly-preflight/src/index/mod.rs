@@ -86,7 +86,7 @@ pub fn label_scope(file: &str) -> String {
     }
 }
 
-fn reference_target_file(target: Option<&str>) -> Option<&str> {
+pub(crate) fn reference_target_file(target: Option<&str>) -> Option<&str> {
     let target = target?;
     let hash = target.find('#')?;
     Some(&target[..hash])

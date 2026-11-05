@@ -23,11 +23,15 @@ const OPAQUE_ENVIRONMENTS: [&str; 7] = [
     "comment",
 ];
 
-const REFERENCE_COMMANDS: [&str; 22] = [
+const REFERENCE_COMMANDS: [&str; 27] = [
     "crefrange",
     "Crefrange",
     "cpagerefrange",
+    "Cpagerefrange",
     "vpagerefrange",
+    "vrefrange",
+    "vpageref",
+    "fullref",
     "hyperlink",
     "ref",
     "eqref",
@@ -36,6 +40,7 @@ const REFERENCE_COMMANDS: [&str; 22] = [
     "cref",
     "Cref",
     "cpageref",
+    "Cpageref",
     "vref",
     "Vref",
     "labelcref",
@@ -123,8 +128,14 @@ fn mask_comments_by_line(chars: &[char]) -> Vec<char> {
     out
 }
 
-fn is_command_character(character: Option<&char>) -> bool {
+fn is_name_letter(character: Option<&char>) -> bool {
     character.is_some_and(|character| is_letter_mark(*character) || *character == '@')
+}
+
+/// The lexer tests one UTF-16 unit at a time, so in the app a character past
+/// the Basic Multilingual Plane never continues a command name there.
+fn is_command_character(character: Option<&char>) -> bool {
+    is_name_letter(character.filter(|character| character.len_utf16() == 1))
 }
 
 fn simple_braced_value(chars: &[char], at: usize) -> Option<(String, usize)> {
@@ -156,7 +167,7 @@ fn verb_span_end(chars: &[char], command_end: usize) -> Option<usize> {
         delimiter_at += 1;
     }
     let &delimiter = chars.get(delimiter_at)?;
-    if delimiter.is_alphabetic() || is_js_space(delimiter) {
+    if is_js_space(delimiter) {
         return None;
     }
     Some(
@@ -208,7 +219,8 @@ fn listing_span_end(chars: &[char], command_end: usize, minted: bool) -> Option<
             .unwrap_or(chars.len())
     };
     let mut cursor = command_end;
-    if chars.get(cursor) == Some(&'*') {
+    // listings takes a star as its delimiter.
+    if minted && chars.get(cursor) == Some(&'*') {
         cursor += 1;
     }
     cursor = skip_inline_spaces(chars, cursor);
@@ -222,6 +234,16 @@ fn listing_span_end(chars: &[char], command_end: usize, minted: bool) -> Option<
         cursor = skip_inline_spaces(chars, balanced_group_end(chars, cursor, '{', '}')?);
     }
     if chars.get(cursor) == Some(&'{') {
+        if !minted {
+            // listings ends a braced body at the first `}`: it does not nest or
+            // read escapes, and it stops with an error at the end of the line.
+            let end = line_end(cursor + 1);
+            return Some(
+                (cursor + 1..end)
+                    .find(|index| chars[*index] == '}')
+                    .map_or(end, |index| index + 1),
+            );
+        }
         return Some(
             balanced_group_end(chars, cursor, '{', '}').unwrap_or_else(|| line_end(cursor + 1)),
         );
@@ -439,7 +461,7 @@ fn command_at(chars: &[char], at: usize) -> Option<(String, usize)> {
         return None;
     }
     let mut end = at + 1;
-    while is_command_character(chars.get(end)) {
+    while is_name_letter(chars.get(end)) {
         end += 1;
     }
     (end > at + 1).then(|| (string_of(&chars[at + 1..end]), end))
@@ -660,16 +682,16 @@ fn legacy_brace_definitions(facts: &mut Facts<'_>, legacy: &[char]) {
     }
 }
 
-fn legacy_inputs(facts: &mut Facts<'_>, legacy: &[char], raw_source: &[char]) {
-    for (name, start, _) in commands(legacy) {
+fn legacy_inputs(facts: &mut Facts<'_>, masked: &[char], raw_source: &[char]) {
+    for (name, start, _) in commands(masked) {
         if name != "input" && name != "include" {
             continue;
         }
         let end = start + 1 + name.chars().count();
-        let Some((from, to)) = simple_group_after(legacy, end) else {
+        let Some((from, to)) = simple_group_after(masked, end) else {
             continue;
         };
-        let raw = trim_js(&string_of(&legacy[from..to])).to_string();
+        let raw = trim_js(&string_of(&masked[from..to])).to_string();
         let whole = string_of(&raw_source[start..(to + 1).min(raw_source.len())]);
         let kind = if whole.contains("import") {
             UseKind::Import
@@ -1056,7 +1078,7 @@ pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
     };
     sections(&mut facts, &legacy);
     legacy_brace_definitions(&mut facts, &legacy);
-    legacy_inputs(&mut facts, &legacy, &chars);
+    legacy_inputs(&mut facts, &masked, &chars);
     add_macro_definitions(&mut facts, &masked);
     key_uses(&mut facts, &chars, &masked, &closing);
     edge_uses(&mut facts, &chars, &masked, &closing);
@@ -1066,6 +1088,13 @@ pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_macro_name_keeps_an_astral_letter_the_lexer_would_stop_at() {
+        let chars: Vec<char> = "\\foo\u{1D431}{".chars().collect();
+        assert_eq!(command_at(&chars, 0), Some(("foo\u{1D431}".to_string(), 5)));
+        assert!(!is_command_character(Some(&'\u{1D431}')));
+    }
 
     fn names(facts: &FileFacts, kind: DefKind) -> Vec<String> {
         facts

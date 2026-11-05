@@ -390,9 +390,10 @@ pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
         Err(error) => return Err(error.message().to_string()),
     };
     let main = workspace.manifest().main_doc.clone();
-    let scan = oleafly_core::context::scan_project(
+    let scan = oleafly_core::context::scan_project_in(
         workspace.root(),
         &main,
+        workspace.manifest().compile_dir.as_deref(),
         &oleafly_core::context::ContextLimits::default(),
     )
     .map_err(|error| error.message().to_string())?;

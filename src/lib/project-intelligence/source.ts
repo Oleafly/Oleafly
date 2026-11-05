@@ -70,6 +70,11 @@ export function normalizeProjectPath(path: string): string | null {
   return parts.length > 0 ? parts.join("/") : null;
 }
 
+/** Case and Unicode normalisation folded, as a case-insensitive disk sees it. */
+export function pathFoldKey(path: string): string {
+  return path.normalize("NFC").toLowerCase();
+}
+
 const UNLISTED_FOLDERS = new Set(["node_modules", "target", "build", "out", "__MACOSX", "svg-inkscape"]);
 
 /**

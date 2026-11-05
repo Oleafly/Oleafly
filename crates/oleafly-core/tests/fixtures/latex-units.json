@@ -1,0 +1,5575 @@
+{
+ "cases": [
+  {
+   "name": "three side-by-side revisions",
+   "files": {
+    "manuscript.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "manuscript_v1.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "manuscript_v2.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "manuscript.tex",
+   "units": [
+    {
+     "root": "manuscript.tex",
+     "files": [
+      "manuscript.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "manuscript_v1.tex",
+     "files": [
+      "manuscript_v1.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "manuscript_v2.tex",
+     "files": [
+      "manuscript_v2.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "manuscript.tex",
+     "pool": [
+      "manuscript.tex",
+      "manuscript_v1.tex",
+      "manuscript_v2.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "manuscript.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "manuscript_v1.tex",
+     "pool": [
+      "manuscript.tex",
+      "manuscript_v1.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "manuscript_v1.tex"
+     ],
+     "ambiguous": false
+    }
+   ],
+   "rows": [
+    {
+     "files": [
+      "manuscript.tex",
+      "manuscript_v1.tex",
+      "manuscript_v2.tex"
+     ],
+     "rows": []
+    }
+   ],
+   "reaches": [
+    {
+     "from": "manuscript.tex",
+     "to": "manuscript_v1.tex",
+     "value": false
+    }
+   ]
+  },
+  {
+   "name": "a shared macros file belongs to each unit",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{macros}\n",
+    "b.tex": "\\documentclass{article}\n\\input{macros}\n",
+    "macros.tex": "\\newcommand{\\x}{y}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "macros.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex",
+      "macros.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "macros.tex",
+     "pool": [
+      "a.tex",
+      "b.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "a.tex",
+      "b.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "a.tex",
+     "pool": [
+      "a.tex",
+      "b.tex",
+      "macros.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "a.tex",
+      "macros.tex"
+     ],
+     "ambiguous": true
+    },
+    {
+     "from": "macros.tex",
+     "pool": [
+      "macros.tex",
+      "macros.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "macros.tex",
+      "macros.tex"
+     ],
+     "ambiguous": true
+    }
+   ],
+   "rows": [
+    {
+     "files": [
+      "macros.tex",
+      "a.tex",
+      "b.tex"
+     ],
+     "rows": [
+      [
+       "macros.tex",
+       "a.tex"
+      ],
+      [
+       "macros.tex",
+       "b.tex"
+      ]
+     ]
+    },
+    {
+     "files": [
+      "a.tex",
+      "b.tex"
+     ],
+     "rows": []
+    }
+   ],
+   "reaches": [
+    {
+     "from": "macros.tex",
+     "to": "b.tex",
+     "value": true
+    },
+    {
+     "from": "a.tex",
+     "to": "b.tex",
+     "value": false
+    }
+   ]
+  },
+  {
+   "name": "one document with a stale fragment keeps the pool",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{chapter}\n",
+    "chapter.tex": "\\section{a}\n",
+    "stale.tex": "\\section{b}\n"
+   },
+   "main": "main.tex",
+   "units": null
+  },
+  {
+   "name": "no document marker anywhere keeps the pool",
+   "files": {
+    "a.tex": "\\section{a}\n",
+    "b.tex": "\\section{b}\n"
+   },
+   "units": null
+  },
+  {
+   "name": "a thesis of subfiles is one document",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subfile{chapters/one}\n\\subfile{chapters/two}\n",
+    "chapters/one.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\end{document}\n",
+    "chapters/two.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": null
+  },
+  {
+   "name": "a subfile left out of the parent stays in the parent's unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n% \\subfile{chapters/three}\n\\subfile{chapters/one}\n",
+    "chapters/one.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\end{document}\n",
+    "chapters/three.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/one.tex",
+      "chapters/three.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "chapters/three.tex",
+     "pool": [
+      "chapters/one.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "chapters/one.tex"
+     ],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a subfile with a missing parent is an orphan",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "chapters/lost.tex": "\\documentclass[../gone.tex]{subfiles}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "chapters/lost.tex"
+   ],
+   "select": [
+    {
+     "from": "chapters/lost.tex",
+     "pool": [
+      "a.tex",
+      "b.tex"
+     ],
+     "tier": "all",
+     "items": [
+      "a.tex",
+      "b.tex"
+     ],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a shared preamble with the class in it joins both papers",
+   "files": {
+    "preamble.tex": "\\documentclass{article}\n\\usepackage{amsmath}\n",
+    "a.tex": "\\input{preamble}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\input{preamble}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "preamble.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex",
+      "preamble.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a preamble sorted first is dropped once a paper reaches it",
+   "files": {
+    "a-preamble.tex": "\\documentclass{article}\n\n",
+    "b.tex": "\\input{a-preamble}\n\\begin{document}\n\\end{document}\n",
+    "c.tex": "\\input{a-preamble}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "b.tex",
+     "files": [
+      "a-preamble.tex",
+      "b.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "c.tex",
+     "files": [
+      "a-preamble.tex",
+      "c.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a wrapper around the main document is one document",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "wrapper.tex": "\\documentclass{article}\n\\input{main}\n"
+   },
+   "main": "main.tex",
+   "units": null
+  },
+  {
+   "name": "a volume holding two revisions is one unit",
+   "files": {
+    "all.tex": "\\documentclass{article}\n\\input{v1}\n\\input{v2}\n",
+    "v1.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "v2.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "third.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "all.tex",
+     "files": [
+      "all.tex",
+      "v1.tex",
+      "v2.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "third.tex",
+     "files": [
+      "third.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "rows": [
+    {
+     "files": [
+      "v1.tex",
+      "v2.tex"
+     ],
+     "rows": [
+      [
+       "v1.tex",
+       "v2.tex"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a magic root puts a fragment in that unit",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "frag.tex": "% !TeX root = a.tex\n\\section{x}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "frag.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a magic root on a real document does not merge it",
+   "files": {
+    "main.tex": "% !TeX root = main.tex\n\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "main_v1.tex": "% !TeX root = main.tex\n\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "main_v1.tex",
+     "files": [
+      "main_v1.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a cycle of declared parents leaves both files orphaned",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "x.tex": "% !TeX root = y.tex\n",
+    "y.tex": "% !TeX root = x.tex\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x.tex",
+    "y.tex"
+   ]
+  },
+  {
+   "name": "package and class files are never roots",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "thesis.cls": "\\LoadClass{article}\n\\documentclass{article}\n",
+    "style.sty": "\\PackageError{x}{\\documentclass}{}\n"
+   },
+   "main": "main.tex",
+   "units": null
+  },
+  {
+   "name": "local style files join the unit that loads them",
+   "files": {
+    "v1/main.tex": "\\documentclass{article}\n\\usepackage{neurips,amsmath}\n",
+    "v2/main.tex": "\\documentclass{article}\n\\usepackage[final]{neurips}\n",
+    "v1/neurips.sty": "\\newtheorem{t}{T}\n",
+    "v2/neurips.sty": "\\newtheorem{t}{T}\n"
+   },
+   "units": [
+    {
+     "root": "v1/main.tex",
+     "files": [
+      "v1/main.tex",
+      "v1/neurips.sty"
+     ],
+     "open": false
+    },
+    {
+     "root": "v2/main.tex",
+     "files": [
+      "v2/main.tex",
+      "v2/neurips.sty"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "rows": [
+    {
+     "files": [
+      "v1/neurips.sty",
+      "v2/neurips.sty"
+     ],
+     "rows": []
+    }
+   ]
+  },
+  {
+   "name": "a local class file joins its unit",
+   "files": {
+    "a.tex": "\\documentclass{mine}\n",
+    "b.tex": "\\documentclass{mine}\n",
+    "mine.cls": "\\LoadClass{base}\n",
+    "base.cls": "\\newcommand{\\x}{y}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "base.cls",
+      "mine.cls"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex",
+      "base.cls",
+      "mine.cls"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a Typst main does not add a LaTeX root",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "paper.typ": "= Title\n"
+   },
+   "main": "paper.typ",
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "paper.typ"
+   ]
+  },
+  {
+   "name": "a missing main adds no root",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "gone.tex",
+   "units": null
+  },
+  {
+   "name": "a main that is not loaded yet adds no root",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "known": [
+    "main.tex"
+   ],
+   "units": null
+  },
+  {
+   "name": "every include spelling reaches the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input chapter1\n\\input{intro.v2}\n\\includestandalone[mode=tex]{fig}\n\\subfileinclude{sub}\n\\include{inc}\n\\InputIfFileExists{maybe}{}{}\n\\loadglsentries[main]{terms}\n\\includeonly{skipped}\n",
+    "chapter1.tex": "",
+    "intro.v2.tex": "",
+    "fig.tex": "",
+    "sub.tex": "",
+    "inc.tex": "",
+    "maybe.tex": "",
+    "terms.tex": "",
+    "skipped.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapter1.tex",
+      "fig.tex",
+      "inc.tex",
+      "intro.v2.tex",
+      "main.tex",
+      "maybe.tex",
+      "sub.tex",
+      "terms.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "skipped.tex"
+   ]
+  },
+  {
+   "name": "tex wins over a same-named markdown file",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "intro.tex": "",
+    "intro.md": "# x\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "intro.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "intro.md"
+   ]
+  },
+  {
+   "name": "other source extensions are tried when the name has none",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{a}\n\\input{b}\n",
+    "a.ltx": "",
+    "b.latex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a.ltx",
+      "b.latex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "masked regions give no includes",
+   "files": {
+    "main.tex": "\\documentclass{article}\n% \\input{c1}\n\\begin{verbatim}\n\\input{c2}\n\\end{verbatim}\n\\verb|\\input{c3}|\n\\begin{comment}\n\\input{c4}\n\\end{comment}\n",
+    "c1.tex": "",
+    "c2.tex": "",
+    "c3.tex": "",
+    "c4.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "c1.tex",
+    "c2.tex",
+    "c3.tex",
+    "c4.tex"
+   ]
+  },
+  {
+   "name": "a document marker in a comment is not a root",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "frag.tex": "% \\documentclass{article}\n\\section{x}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "frag.tex"
+   ]
+  },
+  {
+   "name": "old markers and bare document bodies are roots",
+   "files": {
+    "a.tex": "\\documentstyle{article}\n",
+    "b.tex": "\\begin {document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a macro path opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{\\dir/x}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a macro argument opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{chapters/#1}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a nested group opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{a{b}c}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a bare macro opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input\\chapter\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a spaced macro opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input \\chapter\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a two-argument macro opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{\\dir}{x}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a cross-document file opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\externaldocument[S-]{other}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "an aux input opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{other.aux}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "other.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "other.tex",
+     "pool": [
+      "main.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a latexdiff banner opens the unit",
+   "files": {
+    "diff.tex": "%DIF LATEXDIFF DIFFERENCE FILE\n\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "diff.tex",
+     "files": [
+      "diff.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a system file does not open the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{glyphtounicode}\n\\usepackage{amsmath}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "other.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "an include that misses here but exists elsewhere opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\makeatletter\n\\def\\input@path{{chapters/}}\n\\makeatother\n\\input{ch1}\n",
+    "other.tex": "\\documentclass{article}\n\\input{chapters/ch1}\n",
+    "chapters/ch1.tex": "\\label{a}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "main.tex",
+     "pool": [
+      "chapters/ch1.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "chapters/ch1.tex"
+     ],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "nested imports follow the file they sit in",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{sec/}{a}\n",
+    "sec/a.tex": "\\subimport{sub/}{b}\n",
+    "sec/sub/b.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "sec/a.tex",
+      "sec/sub/b.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an import with an empty folder is the file itself",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{}{a}\n",
+    "a.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a path that leaves the project is a plain miss",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{../../outside}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a nested file's include starts from its root's folder",
+   "files": {
+    "revisions/v1/main.tex": "\\documentclass{article}\n\\input{sections/a}\n",
+    "revisions/v1/sections/a.tex": "\\input{sections/b}\n",
+    "revisions/v1/sections/b.tex": "",
+    "revisions/v2/main.tex": "\\documentclass{article}\n\\input{sections/a}\n",
+    "revisions/v2/sections/a.tex": ""
+   },
+   "units": [
+    {
+     "root": "revisions/v1/main.tex",
+     "files": [
+      "revisions/v1/main.tex",
+      "revisions/v1/sections/a.tex",
+      "revisions/v1/sections/b.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "revisions/v2/main.tex",
+     "files": [
+      "revisions/v2/main.tex",
+      "revisions/v2/sections/a.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "one include can open a different file per root folder",
+   "files": {
+    "v1/main.tex": "\\documentclass{article}\n\\input{../shared/common}\n",
+    "v2/main.tex": "\\documentclass{article}\n\\input{../shared/common}\n",
+    "shared/common.tex": "\\input{local}\n",
+    "v1/local.tex": "",
+    "v2/local.tex": ""
+   },
+   "units": [
+    {
+     "root": "v1/main.tex",
+     "files": [
+      "shared/common.tex",
+      "v1/local.tex",
+      "v1/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "v2/main.tex",
+     "files": [
+      "shared/common.tex",
+      "v2/local.tex",
+      "v2/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "the exact spelling wins over a case-only twin",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{chapter}\n",
+    "Chapter.tex": "",
+    "chapter.tex": "",
+    "other.tex": "\\documentclass{article}\n\\input{CHAPTER}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapter.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "Chapter.tex",
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "composed and decomposed spellings match",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{café}\n",
+    "café.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "café.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "cycles and self includes end",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{a}\n\\input{b}\n",
+    "b.tex": "\\input{a}\n",
+    "c.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "b.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "c.tex",
+     "files": [
+      "c.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "documents that include each other keep the first",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{b}\n",
+    "b.tex": "\\documentclass{article}\n\\input{a}\n",
+    "c.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "b.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "c.tex",
+     "files": [
+      "c.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a file that is listed but not read opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{unread}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "known": [
+    "unread.tex"
+   ],
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "every lookup tier",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\externaldocument{a}\n",
+    "frag.tex": "\\section{x}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": true
+    }
+   ],
+   "orphans": [
+    "frag.tex"
+   ],
+   "select": [
+    {
+     "from": "a.tex",
+     "pool": [
+      "a.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "a.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "a.tex",
+     "pool": [
+      "b.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    },
+    {
+     "from": "a.tex",
+     "pool": [
+      "frag.tex"
+     ],
+     "tier": "orphans",
+     "items": [
+      "frag.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "a.tex",
+     "pool": [
+      "b.tex",
+      "frag.tex"
+     ],
+     "tier": "orphans",
+     "items": [
+      "frag.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "a.tex",
+     "pool": [
+      "frag.tex",
+      "frag.tex"
+     ],
+     "tier": "orphans",
+     "items": [
+      "frag.tex",
+      "frag.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "a.tex",
+     "pool": [
+      "a.tex",
+      "a.tex"
+     ],
+     "tier": "unit",
+     "items": [
+      "a.tex",
+      "a.tex"
+     ],
+     "ambiguous": true
+    },
+    {
+     "from": "b.tex",
+     "pool": [
+      "a.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "a.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "b.tex",
+     "pool": [
+      "a.tex",
+      "a.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "a.tex",
+      "a.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "frag.tex",
+     "pool": [
+      "a.tex",
+      "b.tex"
+     ],
+     "tier": "all",
+     "items": [
+      "a.tex",
+      "b.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "frag.tex",
+     "pool": [
+      "a.tex",
+      "frag.tex"
+     ],
+     "tier": "all",
+     "items": [
+      "a.tex",
+      "frag.tex"
+     ],
+     "ambiguous": false
+    },
+    {
+     "from": "frag.tex",
+     "pool": [
+      "frag.tex",
+      "frag.tex"
+     ],
+     "tier": "all",
+     "items": [
+      "frag.tex",
+      "frag.tex"
+     ],
+     "ambiguous": true
+    },
+    {
+     "from": "frag.tex",
+     "pool": [
+      "a.tex",
+      "a.tex"
+     ],
+     "tier": "all",
+     "items": [
+      "a.tex",
+      "a.tex"
+     ],
+     "ambiguous": true
+    },
+    {
+     "from": "a.tex",
+     "pool": [
+      "b.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "b.tex"
+     ],
+     "ambiguous": false,
+     "citation": true
+    },
+    {
+     "from": "a.tex",
+     "pool": [],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false,
+     "citation": true
+    }
+   ],
+   "rows": [
+    {
+     "files": [
+      "a.tex",
+      "frag.tex"
+     ],
+     "rows": []
+    },
+    {
+     "files": [
+      "frag.tex",
+      "a.tex",
+      "frag2.tex"
+     ],
+     "rows": [
+      [
+       "frag.tex",
+       "frag2.tex"
+      ]
+     ]
+    }
+   ],
+   "reaches": [
+    {
+     "from": "a.tex",
+     "to": "b.tex",
+     "value": false
+    },
+    {
+     "from": "a.tex",
+     "to": "frag.tex",
+     "value": true
+    },
+    {
+     "from": "b.tex",
+     "to": "a.tex",
+     "value": true
+    },
+    {
+     "from": "frag.tex",
+     "to": "a.tex",
+     "value": true
+    }
+   ]
+  },
+  {
+   "name": "a subfile inside a subfile starts from its own folder",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subfile{chapters/ch1}\n",
+    "chapters/ch1.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\subfile{sections/s1}\n\\end{document}\n",
+    "chapters/sections/s1.tex": "\\documentclass[../ch1.tex]{subfiles}\n\\begin{document}\n\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\input{sections/s1}\n",
+    "sections/s1.tex": "\\label{sec:a}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "chapters/sections/s1.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex",
+      "sections/s1.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a plain input inside an imported file searches the import folder first",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{chapters/}{ch1}\n",
+    "chapters/ch1.tex": "\\input{fig}\n",
+    "chapters/fig.tex": "",
+    "fig.tex": "",
+    "other.tex": "\\documentclass{article}\n\\input{fig}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "chapters/fig.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "fig.tex",
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a plain input inside a subfile searches the subfile's folder first",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subfile{ch/one}\n",
+    "ch/one.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\input{sec}\n\\end{document}\n",
+    "ch/sec.tex": "",
+    "sec.tex": "",
+    "other.tex": "\\documentclass{article}\n\\input{sec}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch/one.tex",
+      "ch/sec.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex",
+      "sec.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "the import folder reaches a plain input two files down",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{chapters/}{ch1}\n",
+    "chapters/ch1.tex": "\\input{a}\n",
+    "chapters/a.tex": "\\input{b}\n",
+    "chapters/b.tex": "",
+    "b.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/a.tex",
+      "chapters/b.tex",
+      "chapters/ch1.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "b.tex"
+   ]
+  },
+  {
+   "name": "an import inside an imported file searches the outer folder first",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{chapters/}{ch1}\n",
+    "chapters/ch1.tex": "\\import{parts/}{p}\n",
+    "parts/p.tex": "",
+    "chapters/parts/p.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "chapters/parts/p.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "parts/p.tex"
+   ]
+  },
+  {
+   "name": "an import inside an imported file falls back to the root",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{chapters/}{ch1}\n",
+    "chapters/ch1.tex": "\\import{parts/}{p}\n",
+    "parts/p.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "main.tex",
+      "parts/p.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a subimport under a plain input starts at the root's folder",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{chapters/ch1}\n",
+    "chapters/ch1.tex": "\\subimport{figs/}{f}\n",
+    "figs/f.tex": "",
+    "chapters/figs/f.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "figs/f.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "chapters/figs/f.tex"
+   ]
+  },
+  {
+   "name": "a subfile under a plain input starts at the root's folder",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{chapters/ch1}\n",
+    "chapters/ch1.tex": "\\subfile{figs/f}\n",
+    "figs/f.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\n\\end{document}\n",
+    "chapters/figs/f.tex": "\\documentclass[../../main.tex]{subfiles}\n\\begin{document}\n\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "chapters/figs/f.tex",
+      "figs/f.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a subimport still finds a file only its own folder holds",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{chapters/ch1}\n",
+    "chapters/ch1.tex": "\\subimport{figs/}{f}\n",
+    "chapters/figs/f.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "chapters/figs/f.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a plain input from a style file keeps the import folder",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{chapters/}{ch1}\n",
+    "chapters/ch1.tex": "\\usepackage{local}\n",
+    "chapters/local.sty": "\\input{x}\n",
+    "chapters/x.tex": "",
+    "x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "chapters/local.sty",
+      "chapters/x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x.tex"
+   ]
+  },
+  {
+   "name": "a package inside an imported file is found in the import folder",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{chapters/}{ch1}\n",
+    "chapters/ch1.tex": "\\usepackage{local}\n",
+    "chapters/local.sty": "",
+    "local.sty": "",
+    "other.tex": "\\documentclass{article}\n\\usepackage{local}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "chapters/ch1.tex",
+      "chapters/local.sty",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "local.sty",
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "the kernel's quiet input of an aux file opens the unit",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\makeatletter\\@input{b.aux}\\makeatother\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "a.tex",
+     "pool": [
+      "b.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "b.tex"
+     ],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "the kernel's quiet input of a source file includes it",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\makeatletter\\@input{part.tex}\\makeatother\n",
+    "part.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "part.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a listing group masks only itself",
+   "files": {
+    "main.tex": "\\documentclass{article}\nSee \\lstinline{foo} and \\input{ch}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a class after an empty listing group still counts",
+   "files": {
+    "x.tex": "\\lstinline{}\\documentclass{article}\n",
+    "y.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "x.tex",
+     "files": [
+      "x.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "y.tex",
+     "files": [
+      "y.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a byte order mark before a magic comment changes nothing",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "frag.tex": "﻿% !TEX root = main.tex\n\\label{a}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "frag.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a vendored class keeps its own dynamic input to itself",
+   "files": {
+    "a.tex": "\\documentclass{mine}\n",
+    "b.tex": "\\documentclass{mine}\n",
+    "mine.cls": "\\InputIfFileExists{\\jobname.spl}{}{}\n\\input{\\@ptsize.clo}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "mine.cls"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex",
+      "mine.cls"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "a.tex",
+     "pool": [
+      "b.tex"
+     ],
+     "tier": "none",
+     "items": [],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a package that reads another document still opens the unit",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\usepackage{common}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "common.sty": "\\externaldocument{b}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "common.sty"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "folders that differ only by case keep their own files",
+   "files": {
+    "Paper/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "Paper/intro.tex": "",
+    "paper/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/intro.tex": ""
+   },
+   "units": [
+    {
+     "root": "Paper/main.tex",
+     "files": [
+      "Paper/intro.tex",
+      "Paper/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a folder spelled in another case still finds the file",
+   "files": {
+    "Paper/main.tex": "\\documentclass{article}\n\\input{../paper/intro}\n",
+    "Paper/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "Paper/main.tex",
+     "files": [
+      "Paper/intro.tex",
+      "Paper/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a subfile set as main document is not a root",
+   "files": {
+    "ch1.tex": "\\documentclass[missing.tex]{subfiles}\n\\begin{document}\n\n\\end{document}\n",
+    "old.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "new.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "ch1.tex",
+   "units": [
+    {
+     "root": "new.tex",
+     "files": [
+      "new.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "old.tex",
+     "files": [
+      "old.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch1.tex"
+   ]
+  },
+  {
+   "name": "a subfile with no parent option is not a root when something names it",
+   "files": {
+    "sub.tex": "\\documentclass{subfiles}\n\\begin{document}\n\\end{document}\n",
+    "frag.tex": "% !TEX root = sub.tex\n",
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "frag.tex",
+    "sub.tex"
+   ]
+  },
+  {
+   "name": "a bare input on the next line is followed",
+   "files": {
+    "v1/main.tex": "\\documentclass{article}\n\\input\n  ch\n",
+    "v1/ch.tex": "",
+    "v2/main.tex": "\\documentclass{article}\n\\input\n  ch\n",
+    "v2/ch.tex": ""
+   },
+   "units": [
+    {
+     "root": "v1/main.tex",
+     "files": [
+      "v1/ch.tex",
+      "v1/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "v2/main.tex",
+     "files": [
+      "v2/ch.tex",
+      "v2/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a quoted bare input keeps its spaces",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input \"chapter one\"\n",
+    "chapter one.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "chapter one.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a quoted bare input needs no space",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input\"chapter one\"\n",
+    "chapter one.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "chapter one.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a colon in a file name is not a scheme",
+   "files": {
+    "v1/main.tex": "\\documentclass{article}\n\\input{sec:intro}\n",
+    "v1/sec:intro.tex": "",
+    "v2/main.tex": "\\documentclass{article}\n\\input{sec:intro}\n",
+    "v2/sec:intro.tex": ""
+   },
+   "units": [
+    {
+     "root": "v1/main.tex",
+     "files": [
+      "v1/main.tex",
+      "v1/sec:intro.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "v2/main.tex",
+     "files": [
+      "v2/main.tex",
+      "v2/sec:intro.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a url and a drive path are not project files",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{http://x/a}\n\\input{C:/x/a}\n",
+    "x/a.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x/a.tex"
+   ]
+  },
+  {
+   "name": "nothing after the end of the document is read",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n\\input{old}\n",
+    "old.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "old.tex"
+   ]
+  },
+  {
+   "name": "an end inside a conditional keeps reading",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifshort\\end{document}\\fi\n\\input{rest}\n\\end{document}\n",
+    "rest.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "rest.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end before a command that only starts like a conditional stops",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n\\figure\n\\input{old}\n",
+    "old.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "old.tex"
+   ]
+  },
+  {
+   "name": "an end with no begin in the file is not the end",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{close}\n\\input{more}\n",
+    "close.tex": "\\end{document}\n\\input{tail}\n",
+    "more.tex": "",
+    "tail.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "close.tex",
+      "more.tex",
+      "tail.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a line break before a command name is not that command",
+   "files": {
+    "a.tex": "\\documentclass{article}\none\\\\input{ch}\n",
+    "ch.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch.tex"
+   ]
+  },
+  {
+   "name": "an escaped backslash then a command is that command",
+   "files": {
+    "a.tex": "\\documentclass{article}\none\\\\\\input{ch}\n",
+    "ch.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "ch.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a line break before begin document does not make a root",
+   "files": {
+    "a.tex": "\\\\begin{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "c.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "c.tex",
+     "files": [
+      "c.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "a.tex"
+   ]
+  },
+  {
+   "name": "a piped input is computed at compile time",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{|\"python gen.py\"}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "a.tex",
+     "pool": [
+      "b.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "b.tex"
+     ],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "a bare piped input is computed at compile time",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input|\"python gen.py\"\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a byte order mark inside a class name is white space",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "sub.tex": "\\documentclass[main.tex]{subfiles﻿}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "sub.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a next line control inside a class name is not white space",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "sub.tex": "\\documentclass[main.tex]{subfiles}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "sub.tex",
+     "files": [
+      "sub.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an environment name with spaces is not verbatim",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{ verbatim }\n\\input{ch}\n\\end{verbatim}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a starred verb takes a letter as its delimiter",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verb*q\\input{ch}q\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch.tex"
+   ]
+  },
+  {
+   "name": "a letter number is a verb delimiter",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verbⅧ\\input{ch}Ⅷ\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch.tex"
+   ]
+  },
+  {
+   "name": "a combining mark continues a command name",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verb็\\input{ch}็\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an astral letter is a verb delimiter",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verb𝐀\\input{ch}𝐀\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch.tex"
+   ]
+  },
+  {
+   "name": "a circled letter is a verb delimiter",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verbⒶ\\input{ch}Ⓐ\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch.tex"
+   ]
+  },
+  {
+   "name": "two different emoji do not close a verb",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verb😀a😁 \\input{ch}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch.tex"
+   ]
+  },
+  {
+   "name": "the same emoji closes a verb",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verb😀a😀 \\input{ch}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "the argument window counts UTF-16 units",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\includestandalone[caption=😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀]{ch}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch.tex"
+   ]
+  },
+  {
+   "name": "a long class option list falls back to begin document",
+   "files": {
+    "a.tex": "\\documentclass[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "roots sort by code point",
+   "files": {
+    "￠x.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "𝐀x.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "￠x.tex",
+     "files": [
+      "￠x.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "𝐀x.tex",
+     "files": [
+      "𝐀x.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "the kept root of a cycle is the first by code point",
+   "files": {
+    "￠x.tex": "\\documentclass{article}\n\\input{𝐀x}\n",
+    "𝐀x.tex": "\\documentclass{article}\n\\input{￠x}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "￠x.tex",
+     "files": [
+      "￠x.tex",
+      "𝐀x.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a style option of a LaTeX 2.09 document is loaded",
+   "files": {
+    "v1/main.tex": "\\documentstyle[mine]{article}\n\\begin{document}\n\\end{document}\n",
+    "v1/mine.sty": "",
+    "v2/main.tex": "\\documentstyle[mine]{article}\n\\begin{document}\n\\end{document}\n",
+    "v2/mine.sty": ""
+   },
+   "units": [
+    {
+     "root": "v1/main.tex",
+     "files": [
+      "v1/main.tex",
+      "v1/mine.sty"
+     ],
+     "open": false
+    },
+    {
+     "root": "v2/main.tex",
+     "files": [
+      "v2/main.tex",
+      "v2/mine.sty"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "the class of a LaTeX 2.09 document is a style file",
+   "files": {
+    "a.tex": "\\documentstyle{local}\n",
+    "local.sty": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "local.sty"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "the class of a LaTeX 2.09 document can be a class file",
+   "files": {
+    "a.tex": "\\documentstyle{local}\n",
+    "local.cls": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "local.cls"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a declared root wins over a bare mention of begin document",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "% !TeX root = main.tex\nThe text at \\begin{document} starts it.\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "b.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a file naming itself as its root stays a root",
+   "files": {
+    "a.tex": "% !TeX root = a.tex\n\\input{pre}\n\\begin{document}\n\\end{document}\n",
+    "pre.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "pre.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a file naming a missing root stays a root",
+   "files": {
+    "a.tex": "% !TeX root = gone.tex\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a class outranks a magic comment",
+   "files": {
+    "a.tex": "% !TeX root = b.tex\n\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a quoted piped input is computed at compile time",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{\"|python gen.py\"}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end before an else keeps reading",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifshort\\end{document}\\else\\input{rest}\\fi\n\\end{document}\n",
+    "rest.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "rest.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end inside a macro body keeps reading",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\newcommand{\\stop}{\\end{document}}\n\\input{ch1}\n\\end{document}\n",
+    "ch1.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "ch1.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a file with a name LaTeX does not parse opens the unit",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{table.tbl}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "known": [
+    "table.tbl"
+   ],
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [],
+   "select": [
+    {
+     "from": "a.tex",
+     "pool": [
+      "b.tex"
+     ],
+     "tier": "open",
+     "items": [
+      "b.tex"
+     ],
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "name": "an aux file in capitals opens the unit",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{b.AUX}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "subfiles walk in code point order",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+    "a/sub.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\input{../shared}\n\\end{document}\n",
+    "B/sub.tex": "\\documentclass[../main.tex]{subfiles}\n\\begin{document}\n\\input{../shared}\n\\end{document}\n",
+    "shared.tex": "\\input{part}\n",
+    "a/part.tex": "",
+    "B/part.tex": ""
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "B/sub.tex",
+      "a/part.tex",
+      "a/sub.tex",
+      "main.tex",
+      "shared.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "B/part.tex"
+   ]
+  },
+  {
+   "name": "a blanked astral character counts as two units",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\include[%😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n]{c}\n",
+    "c.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "c.tex"
+   ]
+  },
+  {
+   "name": "the window cannot end inside a surrogate pair",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n./Chapters/𝕏.tex\n",
+    "Chapters/𝕏.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "Chapters/𝕏.tex"
+   ]
+  },
+  {
+   "name": "the window takes a surrogate pair that fits",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n./Chapters/𝕏.tex\n",
+    "Chapters/𝕏.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "Chapters/𝕏.tex",
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a listing body ends at the first brace, with no nesting",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\lstinline{a{b}c} \\input{ch}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a listing body reads no escapes",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\lstinline{C:\\} \\input{ch}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a listing body can hold an open brace",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\lstinline{{} \\input{ch}\n",
+    "ch.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an open listing body stops at the end of its line",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\lstinline{open \\input{gone}\n\\input{ch}\n}\n",
+    "ch.tex": "",
+    "gone.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "gone.tex"
+   ]
+  },
+  {
+   "name": "a minted body stays balanced across lines",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\mintinline{py}{a\n\\input{gone}\n}\n\\input{ch}\n",
+    "ch.tex": "",
+    "gone.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "gone.tex"
+   ]
+  },
+  {
+   "name": "an input under nested imports searches every enclosing path",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{a/}{one}\n",
+    "a/one.tex": "\\subimport{b/}{two}\n",
+    "a/b/two.tex": "\\input{x}\n",
+    "a/x.tex": "",
+    "x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/two.tex",
+      "a/one.tex",
+      "a/x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x.tex"
+   ]
+  },
+  {
+   "name": "an outer import path alone answers an input",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{a/}{one}\n",
+    "a/one.tex": "\\subimport{b/}{two}\n",
+    "a/b/two.tex": "\\input{x}\n",
+    "a/x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/two.tex",
+      "a/one.tex",
+      "a/x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a subfile chain searches every enclosing path",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subfile{a/one}\n",
+    "a/one.tex": "\\documentclass{subfiles}\n\\begin{document}\n\\subfile{b/two}\n\\end{document}\n",
+    "a/b/two.tex": "\\documentclass{subfiles}\n\\begin{document}\n\\input{x}\n\\end{document}\n",
+    "a/x.tex": "",
+    "x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/two.tex",
+      "a/one.tex",
+      "a/x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x.tex"
+   ]
+  },
+  {
+   "name": "an import with an empty folder starts at the root under an import",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{c/}{three}\n",
+    "c/three.tex": "\\import{}{leaf}\n",
+    "leaf.tex": "",
+    "c/leaf.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "c/three.tex",
+      "leaf.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "c/leaf.tex"
+   ]
+  },
+  {
+   "name": "an import looks under its own folder twice",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{b/}{two}\n",
+    "b/two.tex": "",
+    "b/b/two.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "b/b/two.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "b/two.tex"
+   ]
+  },
+  {
+   "name": "a subfile looks under its own folder twice",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subfile{ch/one}\n",
+    "ch/one.tex": "\\documentclass{subfiles}\n\\begin{document}\n\n\\end{document}\n",
+    "ch/ch/one.tex": "\\documentclass{subfiles}\n\\begin{document}\n\n\\end{document}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch/ch/one.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "ch/one.tex"
+   ]
+  },
+  {
+   "name": "an import path stays as written when an outer path found the file",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{a/}{one}\n",
+    "a/one.tex": "\\import{b/}{two}\n",
+    "a/b/two.tex": "\\input{c/three}\n",
+    "b/c/three.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/two.tex",
+      "a/one.tex",
+      "b/c/three.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an import folder keeps the name's own folder out",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{a/}{b/c}\n",
+    "a/b/c.tex": "\\input{x}\n",
+    "a/x.tex": "",
+    "a/b/x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/c.tex",
+      "a/x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "a/b/x.tex"
+   ]
+  },
+  {
+   "name": "an import above the root's folder stays in the project",
+   "files": {
+    "paper/main.tex": "\\documentclass{article}\n\\import{../shared/}{a}\n",
+    "shared/a.tex": "\\input{b}\n",
+    "shared/b.tex": "",
+    "paper/b.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "paper/main.tex",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/main.tex",
+     "files": [
+      "paper/main.tex",
+      "shared/a.tex",
+      "shared/b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "paper/b.tex"
+   ],
+   "compileFolder": "paper"
+  },
+  {
+   "name": "an end in a skipped branch keeps reading past text before the close",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifnum1=2 \\end{document} stop here\\fi\n\\input{late}\n\\end{document}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "late.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end in a skipped branch keeps reading past another command before the close",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifx ab\\end{document}\\relax\\fi\n\\input{late}\n\\end{document}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "late.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end in a skipped branch keeps reading past an or in a case",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifcase 1 \\end{document}\\or \\input{late}\\fi\n\\input{late}\n\\end{document}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "late.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end with no close on its line stops the scan",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document} done\n\\input{late}\n\\fi\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "a doubled backslash does not read as a close",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\\\\fi\n\\input{late}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "a bare input needs no blank before a name",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input./x\n\\input_y\n",
+    "x.tex": "",
+    "_y.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "_y.tex",
+      "main.tex",
+      "x.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a name can start with an at sign",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{@x}\n",
+    "@x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "@x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a star after lstinline is its delimiter",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\lstinline*\\input{m1}*\\input{r1}\n",
+    "m1.tex": "",
+    "r1.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "r1.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "m1.tex"
+   ]
+  },
+  {
+   "name": "a star after verb is not its delimiter",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\verb*|\\input{m1}|\\input{r1}\n",
+    "m1.tex": "",
+    "r1.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "r1.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "m1.tex"
+   ]
+  },
+  {
+   "name": "a quoted aux file opens the unit",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\input{\"x.aux\"}\n",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a name with a TeX suffix is read as written",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{x.tex}\n\\usepackage{p}\n",
+    "x.tex": "",
+    "x.tex.tex": "",
+    "p.sty": "",
+    "p.sty.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "p.sty",
+      "x.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "p.sty.tex",
+    "x.tex.tex"
+   ]
+  },
+  {
+   "name": "a name with any other extension still prefers the doubled spelling",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{x.txt}\n",
+    "x.txt": "",
+    "x.txt.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "x.txt.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x.txt"
+   ]
+  },
+  {
+   "name": "a file a root comment names keeps the search path of its include",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subimport{ch/}{intro}\n",
+    "ch/intro.tex": "% !TEX root = ../main.tex\n\\input{sec1}\n",
+    "ch/sec1.tex": "",
+    "sec1.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "ch/intro.tex",
+      "ch/sec1.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "sec1.tex"
+   ]
+  },
+  {
+   "name": "two levels of root comments keep their search paths",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{a/}{one}\n",
+    "a/one.tex": "% !TEX root = ../main.tex\n\\subimport{b/}{two}\n",
+    "a/b/two.tex": "% !TEX root = ../../main.tex\n\\input{x}\n",
+    "a/x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/two.tex",
+      "a/one.tex",
+      "a/x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a subfile naming the top document keeps the search path of its include",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subfile{a/one}\n",
+    "a/one.tex": "\\documentclass[../main]{subfiles}\n\\begin{document}\n\\subfile{b/two}\n\\end{document}\n",
+    "a/b/two.tex": "\\documentclass[../../main]{subfiles}\n\\begin{document}\n\\input{x}\n\\end{document}\n",
+    "a/x.tex": "",
+    "x.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/two.tex",
+      "a/one.tex",
+      "a/x.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x.tex"
+   ]
+  },
+  {
+   "name": "quoted arguments of the import family",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{\"a b/\"}{x}\n\\subimport{\"c d\"}{y}\n\\import{e/}{\"f g\"}\n\\import{\"./h/\"}{z}\n",
+    "a b/x.tex": "",
+    "c d/y.tex": "",
+    "e/f g.tex": "",
+    "h/z.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a b/x.tex",
+      "c d/y.tex",
+      "e/f g.tex",
+      "h/z.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end in a skipped branch with text after it keeps reading",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifnum1=2\n\\end{document} stop\n\\fi\n\\input{late}\n\\end{document}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "late.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end in a skipped branch with a command after it keeps reading",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifnum1=2\n\\end{document}\n\\relax\n\\fi\n\\input{late}\n\\end{document}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "late.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an end in a nested branch keeps reading",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifnum1=2\n\\ifcase0\n\\end{document} done\n\\or x\n\\fi\n\\fi\n\\input{late}\n\\end{document}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex",
+      "late.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a closed conditional does not hold the scan open",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\begin{document}\n\\ifnum1=2 x\\fi\n\\end{document}\n\\relax\n\\fi\n\\input{late}\n",
+    "late.tex": "",
+    "b.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "endinput stops the file",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{a}\n",
+    "a.tex": "\\endinput\n\\input{late}\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "endinput after an include stops the file",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{b}\\endinput\n\\input{late}\n",
+    "b.tex": "",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "b.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "an input after endinput on its line takes the stop with it",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\endinput\\input{same}\n\\input{late}\n",
+    "same.tex": "",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "late.tex",
+      "main.tex",
+      "same.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a guarded endinput keeps reading",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\ifx\\foo\\undefined\\else\\endinput\\fi\n\\input{late}\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "late.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a named or braced endinput keeps reading",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\let\\stop\\endinput\n\\newcommand{\\halt}{\\endinput}\n\\input{late}\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "late.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "two dots follow Tectonic, the default engine",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{r/}{../n1}\n",
+    "n1.tex": "",
+    "r/n1.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "r/n1.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "n1.tex"
+   ]
+  },
+  {
+   "name": "two dots inside an import follow Tectonic too",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subimport{a/}{one}\n",
+    "a/one.tex": "\\input{../b/two}\n",
+    "b/two.tex": "",
+    "a/b/two.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b/two.tex",
+      "a/one.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "b/two.tex"
+   ]
+  },
+  {
+   "name": "a suffix in capitals follows Tectonic",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{x.TEX}\n",
+    "x.TEX": "",
+    "x.TEX.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "x.TEX"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "x.TEX.tex"
+   ]
+  },
+  {
+   "name": "a bare input stops before a pair that does not fit",
+   "files": {
+    "r1.tex": "\\documentclass{article}\n\\input aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n",
+    "r2.tex": "\\documentclass{article}\n",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tex": "\\label{x}\n"
+   },
+   "units": [
+    {
+     "root": "r1.tex",
+     "files": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tex",
+      "r1.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "r2.tex",
+     "files": [
+      "r2.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a conditional with an at sign holds a stop",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\usepackage{pk}\n",
+    "pk.sty": "\\if@twoside\n\\endinput\n\\fi\n\\RequirePackage{more}\n",
+    "more.sty": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "more.sty",
+      "pk.sty"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a package's own conditional with an at sign holds a stop",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\usepackage{pk}\n",
+    "pk.sty": "\\newif\\ifmy@flag\n\\ifmy@flag\n\\endinput\n\\fi\n\\RequirePackage{more}\n",
+    "more.sty": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex",
+      "more.sty",
+      "pk.sty"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a closed conditional with an at sign leaves the outer one open",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\makeatletter\n\\begin{document}\n\\ifnum1=2\n\\if@twoside a\\fi\n\\end{document}\ntext\n\\fi\n\\input{late}\n\\end{document}\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "late.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a stop taken as an argument keeps reading",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\newcommand{\\stopx}\\endinput\n\\input{late}\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "late.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a stop after a test's braces keeps reading",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\IfFileExists{main.tex}{}\\endinput\n\\input{late}\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "late.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a stop after a two-argument include stops the file",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{a/}{b}\\endinput\n\\input{late}\n",
+    "a/b.tex": "",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "quotes anywhere in a path are dropped",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{\"a b\"/x}\n\\import{\"c d\"/}{y}\n\\input{u/\"e f\"}\n\\input \"g h\"/z \n\n",
+    "a b/x.tex": "",
+    "c d/y.tex": "",
+    "u/e f.tex": "",
+    "g h/z.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a b/x.tex",
+      "c d/y.tex",
+      "g h/z.tex",
+      "main.tex",
+      "u/e f.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "blanks around a stop still stop the file",
+   "files": {
+    "main.tex": "\\documentclass{article}\n  \\endinput  % done\n\\input{late}\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "a Windows line ending does not hide a stop",
+   "files": {
+    "main.tex": "\\documentclass{article}\r\n\\endinput\r\n\\input{late}\r\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "late.tex"
+   ]
+  },
+  {
+   "name": "a Windows line ending does not hide a close after the end of the document",
+   "files": {
+    "main.tex": "\\documentclass{article}\r\n\\begin{document}\r\n\\ifnum1=2\r\n\\end{document}\r\n\\fi\r\n\\input{late}\r\n\\end{document}\r\n",
+    "late.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "late.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a star on an import is part of the command",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\subimport*{a/}{b}\n",
+    "a/b.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "a/b.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a computed folder in an import opens the unit",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\import{\\x}{y}\n",
+    "y.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "main.tex"
+     ],
+     "open": true
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "y.tex"
+   ]
+  },
+  {
+   "name": "a main in a subfolder compiles from the project root",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "intro.tex": "",
+    "papers/a/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "papers/a/intro.tex"
+   ]
+  },
+  {
+   "name": "the compile folder comes before the project root",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "intro.tex": "",
+    "papers/a/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "compileFolder": "papers/a",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "intro.tex"
+   ]
+  },
+  {
+   "name": "the project root still answers under a compile folder",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "compileFolder": "papers/a",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a compile folder can sit above the main document",
+   "files": {
+    "paper/sub/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/intro.tex": "",
+    "paper/sub/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "paper/sub/main.tex",
+   "compileFolder": "paper",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/sub/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/sub/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "paper/sub/intro.tex"
+   ]
+  },
+  {
+   "name": "a local file still joins when the project root has no copy",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "papers/a/intro.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a nested file still finds a path written from the main document",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{sections/one}\n",
+    "papers/a/sections/one.tex": "\\input{sections/two}\n",
+    "papers/a/sections/two.tex": "",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "papers/a/main.tex",
+   "units": [
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/main.tex",
+      "papers/a/sections/one.tex",
+      "papers/a/sections/two.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a document outside the compile folder keeps its own files",
+   "files": {
+    "papers/a/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "papers/a/intro.tex": "",
+    "papers/b/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "papers/b/intro.tex": ""
+   },
+   "main": "papers/a/main.tex",
+   "compileFolder": "papers/a",
+   "units": [
+    {
+     "root": "papers/a/main.tex",
+     "files": [
+      "papers/a/intro.tex",
+      "papers/a/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "papers/b/main.tex",
+     "files": [
+      "papers/b/intro.tex",
+      "papers/b/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "a document inside the compile folder compiles from it",
+   "files": {
+    "paper/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/v1/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/intro.tex": "",
+    "paper/v1/intro.tex": ""
+   },
+   "main": "paper/main.tex",
+   "compileFolder": "paper",
+   "units": [
+    {
+     "root": "paper/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/v1/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/v1/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": [
+    "paper/v1/intro.tex"
+   ]
+  },
+  {
+   "name": "a compile folder is a folder, not a prefix of a name",
+   "files": {
+    "paper/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper-v1/main.tex": "\\documentclass{article}\n\\input{intro}\n",
+    "paper/intro.tex": "",
+    "paper-v1/intro.tex": ""
+   },
+   "main": "paper/main.tex",
+   "compileFolder": "paper",
+   "units": [
+    {
+     "root": "paper-v1/main.tex",
+     "files": [
+      "paper-v1/intro.tex",
+      "paper-v1/main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "paper/main.tex",
+     "files": [
+      "paper/intro.tex",
+      "paper/main.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an input in verbatim text joins nothing",
+   "files": {
+    "a.tex": "\\documentclass{article}\n\\label{x}\n\\begin{verbatim}\n\\input{b}\n\\end{verbatim}\n",
+    "b.tex": "\\documentclass{article}\n\\label{x}\n"
+   },
+   "units": [
+    {
+     "root": "a.tex",
+     "files": [
+      "a.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "b.tex",
+     "files": [
+      "b.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  },
+  {
+   "name": "an input finds a file stored in the other Unicode form",
+   "files": {
+    "main.tex": "\\documentclass{article}\n\\input{café}\n",
+    "café.tex": "\\label{x}\n",
+    "other.tex": "\\documentclass{article}\n\\begin{document}\n\\end{document}\n"
+   },
+   "main": "main.tex",
+   "units": [
+    {
+     "root": "main.tex",
+     "files": [
+      "café.tex",
+      "main.tex"
+     ],
+     "open": false
+    },
+    {
+     "root": "other.tex",
+     "files": [
+      "other.tex"
+     ],
+     "open": false
+    }
+   ],
+   "orphans": []
+  }
+ ]
+}

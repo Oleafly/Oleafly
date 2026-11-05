@@ -283,6 +283,11 @@ describe("bibliography quality", () => {
 });
 
 describe("missing assets", () => {
+  it("finds a file stored in the other Unicode form", () => {
+    const ctxFiles = ctx({ projectFiles: ["cafe\u0301.tex"] });
+    expect(has("\\input{caf\u00e9}", ctxFiles, "refs-missing-asset")).toBe(false);
+  });
+
   it("flags an \\includegraphics whose file is not in the project", () => {
     expect(has("\\includegraphics{fig.png}", ctx({ projectFiles: [] }), "refs-missing-asset")).toBe(true);
   });

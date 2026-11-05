@@ -10,10 +10,11 @@ import {
   loadMathRender,
   type MathRenderModule,
 } from "@oleafly/editor/math-render-loader";
-import { auxNumberFor, type LabelNumber } from "@/lib/aux-numbers";
+import { auxNumberForDefinition, type LabelNumber } from "@/lib/aux-numbers";
 import { basename } from "@/lib/path-utils";
 import { isImagePath } from "@/lib/image-mime";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
+import { latexUnitScope } from "@/lib/project-intelligence/latex-units";
 import {
   definitionsForUse,
   referencesFor,
@@ -247,7 +248,10 @@ function describeUse(
       detail: i18n.t(($) => $.intelligence.hover.unresolvedDetail),
     };
   }
-  if (definitions.length > 1) {
+  const duplicate = snapshot.latexUnits
+    ? symbol.resolution === "duplicate"
+    : definitions.length > 1;
+  if (duplicate) {
     return {
       title: i18n.t(($) => $.intelligence.hover.duplicate, { kind: noun, name: symbol.name }),
       detail: i18n.t(($) => $.intelligence.hover.duplicateDetail, {
@@ -257,6 +261,10 @@ function describeUse(
   }
   const texts = useIndexStore.getState().texts;
   const definition = definitions[0];
+  const scope = latexUnitScope(snapshot.latexUnits);
+  const auxNumbers = definitions.map((candidate) =>
+    auxNumberForDefinition(candidate.name, candidate.location.file, scope),
+  );
   return {
     title: i18n.t(($) => $.intelligence.hover.definition, {
       kind: kindNoun(definition.kind),
@@ -265,7 +273,7 @@ function describeUse(
     detail: definitionDetail(definition, texts),
     extras: {
       math: mathSourceForDefinition(definition),
-      aux: auxNumberFor(definition.name) ?? undefined,
+      aux: auxNumbers.find((number) => number !== null) ?? undefined,
     },
   };
 }
@@ -289,7 +297,14 @@ function describe(
     detail: i18n.t(($) => $.intelligence.hover.referenceCount, { count }),
     extras:
       symbol.kind === "label" || symbol.kind === "anchor"
-        ? { aux: auxNumberFor(symbol.name) ?? undefined }
+        ? {
+            aux:
+              auxNumberForDefinition(
+                symbol.name,
+                symbol.location.file,
+                latexUnitScope(snapshot.latexUnits),
+              ) ?? undefined,
+          }
         : undefined,
   };
 }

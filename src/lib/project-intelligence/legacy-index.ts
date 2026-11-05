@@ -4,7 +4,8 @@ import type {
   Sym,
   SymKind,
 } from "@/lib/index/types";
-import { referenceTargetFile } from "./resolution";
+import { latexUnitScope } from "./latex-units";
+import { isWholeExtent, referenceTargetFile } from "./resolution";
 import type {
   OutlineNode,
   ProjectDefinition,
@@ -84,6 +85,7 @@ function definitionSymbol(
     ...(definition.level === undefined
       ? {}
       : { level: definition.level }),
+    ...(isWholeExtent(definition) ? { wholeExtent: true as const } : {}),
   };
 }
 
@@ -129,7 +131,7 @@ export function legacyIndexFromProjectIntelligence(
   const uses = snapshot.uses
     .map(useSymbol)
     .filter((symbol): symbol is Sym => symbol !== null);
-  return indexFromSymbols(definitions, uses);
+  return indexFromSymbols(definitions, uses, latexUnitScope(snapshot.latexUnits));
 }
 
 const lazyIndexes = new WeakMap<ProjectIntelligenceSnapshot, ProjectIndex>();
@@ -144,7 +146,9 @@ export function lazyLegacyIndex(
     built ??= legacyIndexFromProjectIntelligence(snapshot);
     return built;
   };
+  const unitScope = latexUnitScope(snapshot.latexUnits);
   const index: ProjectIndex = {
+    ...(unitScope ? { unitScope } : {}),
     get defs() {
       return build().defs;
     },
@@ -156,6 +160,9 @@ export function lazyLegacyIndex(
     references: (name, kind) => build().references(name, kind),
     allReferences: (symbol) => build().allReferences(symbol),
     renamePlan: (symbol, newName) => build().renamePlan(symbol, newName),
+    renameTarget: (symbol) => build().renameTarget?.(symbol) ?? null,
+    renameIsAmbiguous: (symbol) =>
+      build().renameIsAmbiguous?.(symbol) ?? false,
   };
   lazyIndexes.set(snapshot, index);
   return index;

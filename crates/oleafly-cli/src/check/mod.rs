@@ -113,6 +113,8 @@ impl CommandModule for Commands {
 pub struct CheckInput {
     pub root: PathBuf,
     pub main_document: String,
+    /// The folder TeX runs in when it is not the project root.
+    pub compile_folder: Option<String>,
     pub engine: Engine,
     pub tex_flavor: Option<String>,
     pub typst_version: Option<String>,
@@ -362,7 +364,7 @@ pub fn execute_until(
     // project's: `oleafly lint` and a linked folder's checkpoints skip them
     // too (a repository's `node_modules` holds thousands of Markdown files).
     // Their files stay in the tree, for figures a document includes from there.
-    let snapshot = ProjectSnapshot::load_with(
+    let mut snapshot = ProjectSnapshot::load_with(
         &input.root,
         &input.main_document,
         SnapshotLimits {
@@ -373,6 +375,7 @@ pub fn execute_until(
         &oleafly_core::exclude::is_linked_skipped_directory,
     )
     .map_err(CliError::from)?;
+    snapshot.compile_folder = input.compile_folder.clone().unwrap_or_default();
     stopped()?;
     let mut warnings = Vec::new();
     let (log, pdf) = if input.no_build_output {
@@ -544,6 +547,7 @@ async fn run(ctx: &Context, args: CheckArgs) -> Result<Outcome, CliError> {
     let input = CheckInput {
         root: workspace.root().to_path_buf(),
         main_document: manifest.main_doc.clone(),
+        compile_folder: manifest.compile_dir.clone(),
         engine,
         tex_flavor: manifest.normalized_tex_flavor().ok().flatten(),
         typst_version: manifest.typst_version_pin().map(str::to_string),
@@ -645,6 +649,7 @@ mod tests {
         execute(CheckInput {
             root: project.to_path_buf(),
             main_document: "main.tex".into(),
+            compile_folder: None,
             engine: Engine::Tectonic,
             tex_flavor: None,
             typst_version: None,
@@ -709,6 +714,7 @@ mod tests {
         let run = execute(CheckInput {
             root: project.path().to_path_buf(),
             main_document: "main.tex".into(),
+            compile_folder: None,
             engine: Engine::Tectonic,
             tex_flavor: None,
             typst_version: None,
@@ -753,6 +759,7 @@ mod tests {
         let run = execute(CheckInput {
             root: project.path().to_path_buf(),
             main_document: "main.tex".into(),
+            compile_folder: None,
             engine: Engine::Tectonic,
             tex_flavor: None,
             typst_version: None,
@@ -790,6 +797,7 @@ mod tests {
         let run = execute(CheckInput {
             root: project.path().to_path_buf(),
             main_document: "main.tex".into(),
+            compile_folder: None,
             engine: Engine::Tectonic,
             tex_flavor: None,
             typst_version: None,

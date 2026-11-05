@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   latexIgnoredRanges,
   latexIgnoredRangesField,
+  latexInlineVerbatimSpan,
+  mathContextAt,
   type LatexIgnoredRange,
 } from "./latex-lexical";
 
@@ -244,5 +246,82 @@ describe("latexIgnoredRangesField incremental rescans", () => {
       }
       expectMatchesFullScan(state);
     }
+  });
+});
+
+describe("a star after an inline verbatim command", () => {
+  const spans = (text: string) => {
+    const span = latexInlineVerbatimSpan(text, 0);
+    return span ? text.slice(span.from, span.to) : null;
+  };
+
+  it("is the delimiter for \\lstinline", () => {
+    expect(spans("\\lstinline*a*b")).toBe("\\lstinline*a*");
+  });
+
+  it("is part of \\verb*", () => {
+    expect(spans("\\verb*|a|b")).toBe("\\verb*|a|");
+  });
+
+  it("is skipped for \\mintinline", () => {
+    expect(spans("\\mintinline*{py}|a|b")).toBe("\\mintinline*{py}|a|");
+  });
+});
+
+describe("a braced \\lstinline body", () => {
+  const spans = (doc: string) =>
+    latexIgnoredRanges(doc).map((range) => doc.slice(range.from, range.to));
+
+  it("ends at the first closing brace, as listings does", () => {
+    expect(spans("\\lstinline{a{b}c} x")).toEqual(["\\lstinline{a{b}"]);
+    expect(spans("\\lstinline{C:\\} x")).toEqual(["\\lstinline{C:\\}"]);
+    expect(spans("\\lstinline{{} x")).toEqual(["\\lstinline{{}"]);
+    expect(spans("\\lstinline[x]{y} z")).toEqual(["\\lstinline[x]{y}"]);
+  });
+
+  it("stops at the end of its line and says it is unfinished", () => {
+    const doc = "\\lstinline{a\n\\label{x} }";
+    expect(latexIgnoredRanges(doc)).toEqual([
+      { from: 0, to: 12, kind: "inline-verbatim", complete: false },
+    ]);
+  });
+
+  it("leaves \\mintinline balanced across lines", () => {
+    expect(spans("\\mintinline{py}{a{b}\nc} x")).toEqual(["\\mintinline{py}{a{b}\nc}"]);
+  });
+
+  it("stays right when a later line gains a brace", () => {
+    const doc = "Use \\lstinline{a\n\nb \\label{x} c\n";
+    const state = stateWith(doc);
+    expectMatchesFullScan(apply(state, { from: doc.length - 1, insert: "}" }));
+  });
+});
+
+describe("\\verb delimiters", () => {
+  it("compares a whole character, so two emoji with one high surrogate differ", () => {
+    const doc = "\\verb\u{1F600}a\u{1F601} b";
+    expect(latexIgnoredRanges(doc)).toEqual([
+      { from: 0, to: doc.length, kind: "inline-verbatim", complete: false },
+    ]);
+  });
+
+  it("takes both halves of the closing character", () => {
+    const doc = "\\verb\u{1F600}a\u{1F600} b";
+    expect(doc.slice(latexIgnoredRanges(doc)[0].to)).toBe(" b");
+  });
+});
+
+describe("opaque environment names", () => {
+  it("are read exactly", () => {
+    expect(latexIgnoredRanges("\\begin{ verbatim }x")).toEqual([]);
+  });
+});
+
+describe("math environment names", () => {
+  const contextAtEnd = (doc: string) => mathContextAt(stateWith(doc), doc.length);
+
+  it("still tolerate spaces inside the braces", () => {
+    expect(contextAtEnd("\\begin{ equation } x").inMath).toBe(true);
+    expect(contextAtEnd("\\begin{equation} x \\end{ equation } y").inMath).toBe(false);
   });
 });

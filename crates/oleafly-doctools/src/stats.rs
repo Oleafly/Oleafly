@@ -219,6 +219,9 @@ const REF_ARG_CMDS: &[&str] = &[
     "Crefrange",
     "cpagerefrange",
     "Cpagerefrange",
+    "fullref",
+    "vrefrange",
+    "vpagerefrange",
 ];
 
 const FIRST_ARG_OPAQUE_CMDS: &[&str] = &[
@@ -330,6 +333,9 @@ pub struct DocumentStatsRequest {
     pub main_document: String,
     #[serde(default)]
     pub overrides: BTreeMap<String, String>,
+    /// The folder TeX runs in when it is not the project root.
+    #[serde(default)]
+    pub compile_folder: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
@@ -932,7 +938,7 @@ fn env_name(text: &[u16], open: usize, end: usize) -> &[u16] {
 
 fn verbatim_span_end(chars: &[u16], n: usize, name: &str, j: usize) -> usize {
     let mut k = j;
-    if chars.get(k) == Some(&STAR) {
+    if name != "lstinline" && chars.get(k) == Some(&STAR) {
         k += 1;
     }
     k = skip_inline_space(chars, k);
@@ -3357,6 +3363,10 @@ fn has_extension_suffix(path: &str) -> bool {
 }
 
 pub(crate) fn resolve_project_path(from_file: &str, raw_target: &str) -> Option<String> {
+    resolve_project_path_in(dirname(from_file), raw_target)
+}
+
+fn resolve_project_path_in(directory: &str, raw_target: &str) -> Option<String> {
     let mut raw = js_trim_str(raw_target);
     if let Some(stripped) = raw.strip_prefix(['"', '\'']) {
         raw = stripped;
@@ -3368,7 +3378,6 @@ pub(crate) fn resolve_project_path(from_file: &str, raw_target: &str) -> Option<
         return None;
     }
     let relative = raw.strip_prefix("./").unwrap_or(raw);
-    let directory = dirname(from_file);
     let joined = if directory.is_empty() {
         relative.to_string()
     } else {
@@ -3414,34 +3423,8 @@ struct RawEdge {
     from: usize,
     name: String,
     target: Option<String>,
-}
-
-fn mask_comments(text: &[u16]) -> Vec<u16> {
-    let mut masked = text.to_vec();
-    let mut line_start = 0;
-    while line_start <= text.len() {
-        let line_end = index_of_unit(text, NEWLINE, line_start).unwrap_or(text.len());
-        let mut i = line_start;
-        while i < line_end {
-            if text[i] == PERCENT {
-                let mut backslashes = 0;
-                let mut j = i;
-                while j > line_start && text[j - 1] == BACKSLASH {
-                    backslashes += 1;
-                    j -= 1;
-                }
-                if backslashes % 2 == 0 {
-                    for unit in masked[i..line_end].iter_mut() {
-                        *unit = SPACE;
-                    }
-                    break;
-                }
-            }
-            i += 1;
-        }
-        line_start = line_end + 1;
-    }
-    masked
+    /// `\\input` and `\\include` open their name from TeX's search path.
+    searched: bool,
 }
 
 fn braced_content(text: &[u16], brace: usize) -> Option<(usize, usize)> {
@@ -3460,7 +3443,7 @@ fn last_open_brace(text: &[u16], from: usize, to: usize) -> usize {
 }
 
 fn latex_legacy_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) {
-    let text = mask_comments(source);
+    let text = mask_latex_ignored_regions(source);
     let mut at = 0;
     while at < text.len() {
         if text[at] != BACKSLASH {
@@ -3485,19 +3468,27 @@ fn latex_legacy_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) {
             from: content_from,
             target: resolve_project_path(file, &raw),
             name: raw,
+            searched: true,
         });
         at = content_to + 1;
     }
 }
 
 fn delimited_body_end(text: &[u16], start: usize) -> Option<(usize, bool)> {
-    let delimiter = *text.get(start)?;
-    if is_js_space(delimiter) {
+    let first = *text.get(start)?;
+    if is_js_space(first) {
         return None;
     }
-    let end_of_line = index_of_unit(text, NEWLINE, start + 1).unwrap_or(text.len());
-    match index_of_unit(text, delimiter, start + 1) {
-        Some(closing) if closing <= end_of_line => Some((closing + 1, true)),
+    let (_, length) = code_point_at(text, start);
+    let body = start + length;
+    let delimiter = &text[start..body];
+    let end_of_line = index_of_unit(text, NEWLINE, body).unwrap_or(text.len());
+    let closing = text[body..]
+        .windows(length)
+        .position(|window| window == delimiter)
+        .map(|offset| body + offset);
+    match closing {
+        Some(closing) if closing <= end_of_line => Some((closing + length, true)),
         _ => Some((end_of_line, false)),
     }
 }
@@ -3543,7 +3534,8 @@ fn inline_verbatim_end(text: &[u16], start: usize) -> Option<usize> {
         return None;
     }
     let mut cursor = command_end;
-    if text.get(cursor) == Some(&STAR) {
+    // listings takes a star as its delimiter.
+    if command != "lstinline" && text.get(cursor) == Some(&STAR) {
         cursor += 1;
     }
     if command == "verb" {
@@ -3559,12 +3551,22 @@ fn inline_verbatim_end(text: &[u16], start: usize) -> Option<usize> {
     if command == "mintinline" {
         let language_end = balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)?;
         cursor = skip_inline_space(text, language_end);
-        if text.get(cursor) == Some(&OPEN_BRACE) {
+    }
+    if text.get(cursor) == Some(&OPEN_BRACE) {
+        if command == "lstinline" {
+            // listings ends a braced body at the first `}`, or fails at the end
+            // of the line.
+            let end = line_end(text, cursor + 1);
             return Some(
-                balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)
-                    .unwrap_or_else(|| line_end(text, cursor + 1)),
+                (cursor + 1..end)
+                    .find(|index| text[*index] == CLOSE_BRACE)
+                    .map_or(end, |close| close + 1),
             );
         }
+        return Some(
+            balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)
+                .unwrap_or_else(|| line_end(text, cursor + 1)),
+        );
     }
     delimited_body_end(text, cursor).map(|(to, _)| to)
 }
@@ -3596,7 +3598,7 @@ fn mask_latex_ignored_regions(text: &[u16]) -> Vec<u16> {
         if starts_with_ascii(text, cursor + 1, "begin") && command_end == cursor + 6 {
             let opening = skip_inline_space(text, command_end);
             if let Some(end) = balanced_group_end(text, opening, OPEN_BRACE, CLOSE_BRACE) {
-                let environment = String::from_utf16_lossy(env_name(text, opening, end));
+                let environment = String::from_utf16_lossy(&text[opening + 1..end - 1]);
                 if IGNORED_ENVIRONMENTS.contains(&environment.as_str()) {
                     let close = format!("\\end{{{environment}}}");
                     let to =
@@ -3636,6 +3638,7 @@ fn latex_additional_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) 
                         from: last_open_brace(&masked, at, content_to),
                         target: resolve_project_path(file, &raw),
                         name: raw,
+                        searched: false,
                     });
                 }
                 at = content_to + 1;
@@ -3662,6 +3665,7 @@ fn latex_additional_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) 
                         from: last_open_brace(&masked, at, file_to),
                         target: resolve_project_path(file, &raw),
                         name: raw,
+                        searched: false,
                     });
                     at = file_to + 1;
                     continue;
@@ -3744,6 +3748,7 @@ fn typst_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) {
                 from: content_from,
                 name: raw,
                 target: Some(target),
+                searched: false,
             });
         }
         at = content_to + 1;
@@ -3928,6 +3933,7 @@ fn markdown_edges(file: &str, source: &[u16], edges: &mut Vec<RawEdge>) {
                     from: raw_from,
                     target: resolve_project_path(file, &raw),
                     name: raw,
+                    searched: false,
                 });
                 at = match_end.max(at + 1);
                 continue;
@@ -3953,7 +3959,7 @@ impl KnownFiles {
         let mut by_lower: HashMap<String, Vec<String>> = HashMap::new();
         for path in &exact {
             by_lower
-                .entry(path.to_lowercase())
+                .entry(oleafly_core::context::path_fold_key(path))
                 .or_default()
                 .push(path.clone());
         }
@@ -3967,7 +3973,10 @@ impl KnownFiles {
         if self.exact.contains(candidate) {
             into.insert(candidate.to_string());
         }
-        if let Some(matches) = self.by_lower.get(&candidate.to_lowercase()) {
+        if let Some(matches) = self
+            .by_lower
+            .get(&oleafly_core::context::path_fold_key(candidate))
+        {
             into.extend(matches.iter().cloned());
         }
     }
@@ -4037,7 +4046,20 @@ pub fn collect_project_files(root: &Path) -> Vec<String> {
     out
 }
 
-fn parse_edges(path: &str, text: &str, known: &KnownFiles) -> Vec<String> {
+fn searched_target(known: &KnownFiles, folders: &[String], raw: &str) -> Option<String> {
+    folders.iter().find_map(|folder| {
+        let target = resolve_project_path_in(folder, raw)?;
+        known.resolve(&target)
+    })
+}
+
+fn parse_edges(
+    path: &str,
+    text: &str,
+    known: &KnownFiles,
+    main_document: &str,
+    compile_folder: &str,
+) -> Vec<String> {
     let Some(engine) = engine_for_path(path) else {
         return Vec::new();
     };
@@ -4055,11 +4077,18 @@ fn parse_edges(path: &str, text: &str, known: &KnownFiles) -> Vec<String> {
         Engine::Markdown => markdown_edges(path, &units, &mut raw_edges),
     }
     raw_edges.sort_by_key(|edge| edge.from);
+    let folders = oleafly_core::context::latex_search_folders(compile_folder, main_document, path);
     raw_edges
         .into_iter()
-        .map(|edge| match edge.target {
-            Some(target) => known.resolve(&target).unwrap_or(target),
-            None => edge.name,
+        .map(|edge| {
+            let searched = (edge.searched && matches!(engine, Engine::Latex))
+                .then(|| searched_target(known, &folders, &edge.name))
+                .flatten();
+            match (searched, edge.target) {
+                (Some(found), _) => found,
+                (None, Some(target)) => known.resolve(&target).unwrap_or(target),
+                (None, None) => edge.name,
+            }
         })
         .collect()
 }
@@ -4162,6 +4191,7 @@ pub fn document_stats_with(
     reader: &dyn SourceReader,
 ) -> Result<DocumentStatsResult, DocError> {
     let root = request.main_document;
+    let compile_folder = request.compile_folder.unwrap_or_default();
     let mut texts: HashMap<String, String> = HashMap::new();
     let mut unreadable: HashSet<String> = HashSet::new();
     let mut edges: HashMap<String, Vec<String>> = HashMap::new();
@@ -4183,7 +4213,7 @@ pub fn document_stats_with(
             let Some(text) = texts.get(path) else {
                 continue;
             };
-            let targets: Vec<String> = parse_edges(path, text, known)
+            let targets: Vec<String> = parse_edges(path, text, known, &root, &compile_folder)
                 .into_iter()
                 .filter(|target| !is_vendored_typst_package(target))
                 .collect();
@@ -4267,6 +4297,7 @@ mod tests {
 
     fn request(main: &str, overrides: &[(&str, &str)]) -> DocumentStatsRequest {
         DocumentStatsRequest {
+            compile_folder: None,
             main_document: main.to_string(),
             overrides: overrides
                 .iter()
@@ -4610,6 +4641,7 @@ mod tests {
             words("\\section*{Title} body \\verb|code words| tail"),
             vec!["Title", "body", "tail"]
         );
+        assert_eq!(words("\\lstinline*code words* tail"), vec!["tail"]);
         assert_eq!(
             words("\\begin{equation}\nx = y\n\\end{equation}\nafter"),
             vec!["after"]
@@ -4637,6 +4669,10 @@ mod tests {
         assert_eq!(
             words("viz \\labelcref{obr:udoli} a \\cpageref{obr:hora} and \\Crefrange{a}{b}."),
             vec!["viz", "a", "and"]
+        );
+        assert_eq!(
+            words("at \\fullref{a} and \\vrefrange{a}{b} or \\vpagerefrange{a}{b} plain"),
+            vec!["at", "and", "or", "plain"]
         );
         assert_eq!(
             words("\\setcounter{secnumdepth}{3} Text \\usefont{T1}{cmr}{m}{n} more"),
@@ -4837,6 +4873,75 @@ mod tests {
         assert_eq!(known.resolve("lib"), Some("lib.typ".to_string()));
         assert_eq!(known.resolve("lib.typ"), Some("lib.typ".to_string()));
         assert_eq!(known.resolve("missing"), None);
+    }
+
+    #[test]
+    fn an_input_in_verbatim_text_opens_nothing() {
+        let project = project("stats-verbatim");
+        write(
+            &project,
+            "main.tex",
+            b"Main.\n\\begin{verbatim}\n\\input{other}\n\\end{verbatim}\n",
+        );
+        write(&project, "other.tex", b"Other words.\n");
+        assert_eq!(collect(&project, "main.tex").file_count, 1);
+    }
+
+    #[test]
+    fn an_input_opens_a_file_in_either_unicode_form() {
+        let project = project("stats-unicode");
+        write(&project, "main.tex", "\\input{caf\u{e9}}\n".as_bytes());
+        write(&project, "cafe\u{301}.tex", b"Words.\n");
+        assert_eq!(collect(&project, "main.tex").file_count, 2);
+    }
+
+    #[test]
+    fn a_nested_input_opens_from_the_project_root() {
+        let project = project("stats-root-relative");
+        write(
+            &project,
+            "main.tex",
+            b"Main words.\n\\input{chapters/one}\n",
+        );
+        write(
+            &project,
+            "chapters/one.tex",
+            b"One words.\n\\input{chapters/two}\n",
+        );
+        write(&project, "chapters/two.tex", b"Two words.\n");
+        let result = collect(&project, "main.tex");
+        assert_eq!(result.file_count, 3);
+        assert!(result.unreadable.is_empty(), "{:?}", result.unreadable);
+    }
+
+    #[test]
+    fn an_input_counts_the_file_the_compile_opens() {
+        let project = project("stats-compile-folder");
+        write(&project, "papers/a/main.tex", b"\\input{intro}\n");
+        write(&project, "intro.tex", b"One.\n");
+        write(&project, "papers/a/intro.tex", b"Two words here.\n");
+        for (compile_folder, words) in [(None, 1), (Some("papers/a"), 3)] {
+            let result = stats_for(
+                &project,
+                DocumentStatsRequest {
+                    main_document: "papers/a/main.tex".to_string(),
+                    overrides: BTreeMap::new(),
+                    compile_folder: compile_folder.map(str::to_string),
+                },
+            )
+            .unwrap();
+            assert_eq!(result.stats.words, words);
+        }
+    }
+
+    #[test]
+    fn a_subfile_still_opens_from_its_own_folder() {
+        let project = project("stats-subfile");
+        write(&project, "main.tex", b"\\input{chapters/one}\n");
+        write(&project, "chapters/one.tex", b"\\subfile{two}\n");
+        write(&project, "two.tex", b"Wrong.\n");
+        write(&project, "chapters/two.tex", b"Right words.\n");
+        assert_eq!(collect(&project, "main.tex").stats.words, 2);
     }
 
     #[test]
