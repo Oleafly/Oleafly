@@ -147,7 +147,7 @@ export interface ProjectUse {
   readonly name: string;
   readonly location: SourceLocation;
   readonly target?: string;
-  readonly syntax?: "typst-at" | "explicit" | "candidate";
+  readonly syntax?: "typst-at" | "explicit" | "candidate" | "counter";
   readonly resolution: ResolutionStatus;
   readonly definitionIds: readonly string[];
 }
@@ -302,8 +302,41 @@ export interface FileIntelligence extends ProjectFileState {
   readonly bibliographyEntries: readonly BibliographyEntry[];
 }
 
+export interface LatexUnitInclude {
+  readonly raw: string;
+  /** Starts from the enclosing import path: `\\subimport` and friends. */
+  readonly local?: true;
+  /** The folder of an `\\import` or `\\subfile`, which joins TeX's search path. */
+  readonly folder?: string;
+}
+
+/** What one LaTeX file adds to the compilation-unit graph. */
+export interface LatexUnitFacts {
+  readonly document?: true;
+  /** Set on every subfile. Empty when the class names no parent. */
+  readonly subfilesParent?: string;
+  readonly magicRoot?: string;
+  readonly includes?: readonly LatexUnitInclude[];
+  readonly packages?: readonly string[];
+  /** The file may pull in sources the graph cannot see. */
+  readonly open?: true;
+}
+
 export interface FileAnalysis extends FileIntelligence {
   readonly bibliographyEntries: readonly BibliographyEntryDetail[];
+  readonly latexUnit?: LatexUnitFacts;
+}
+
+/**
+ * The compilation units of a project with two or more independent LaTeX
+ * documents. A unit id is an index into `roots`. Files reached by the same
+ * roots share a group, and a file with no group belongs to no unit.
+ */
+export interface LatexUnits {
+  readonly roots: readonly string[];
+  readonly groups: readonly (readonly number[])[];
+  readonly fileGroups: Readonly<Record<string, number>>;
+  readonly openUnits: readonly number[];
 }
 
 export interface ProjectIntelligenceStats {
@@ -358,6 +391,7 @@ export interface ProjectIntelligenceSnapshot {
   readonly stats: ProjectIntelligenceStats;
   readonly detectedPackages: readonly string[];
   readonly documentClasses: readonly string[];
+  readonly latexUnits?: LatexUnits;
 }
 
 export interface ProjectIntelligenceFailure {

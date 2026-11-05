@@ -16,7 +16,12 @@ import { readSidebarView } from "@/store/sidebar-view-state";
 import { Button } from "@/components/ui/button";
 import { PanelState } from "@/components/layout/IntelligenceTree";
 import { SidebarSection } from "@/components/layout/SidebarSection";
-import { headingTitlesByLabel, outlineFromIndex, type OutlineItem } from "@/lib/index/outline";
+import {
+  headingTitlesByLabel,
+  outlineFromIndex,
+  outlineSources,
+  type OutlineItem,
+} from "@/lib/index/outline";
 import { activeOutlineIndex } from "@/lib/outline-active";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
@@ -153,10 +158,14 @@ export function DocumentOutline({
     onCollapsedChange?.(next);
   };
 
+  const macroSources = useMemo(
+    () => (index ? outlineSources(useIndexStore.getState().texts, index, activePath) : null),
+    [index, activePath],
+  );
   const [collectWrapperSections] = useState(createLatexWrapperSectionCollector);
   const wrapperSections = useMemo(
-    () => (index ? collectWrapperSections(useIndexStore.getState().texts) : NO_WRAPPER_SECTIONS),
-    [collectWrapperSections, index],
+    () => (macroSources ? collectWrapperSections(macroSources) : NO_WRAPPER_SECTIONS),
+    [collectWrapperSections, macroSources],
   );
   const items = useMemo(
     () =>
@@ -170,9 +179,13 @@ export function DocumentOutline({
   const headingsByLabel = useMemo(
     () =>
       index
-        ? headingTitlesByLabel(index, (file) => wrapperSections.get(file) ?? [])
+        ? headingTitlesByLabel(
+            index,
+            (file) => wrapperSections.get(file) ?? [],
+            activePath ?? undefined,
+          )
         : new Map<string, string>(),
-    [index, wrapperSections],
+    [index, activePath, wrapperSections],
   );
   const itemIds = useMemo(() => headingIds(items), [items]);
   const collapsibleHeadingIds = useMemo(() => {
@@ -254,8 +267,8 @@ export function DocumentOutline({
   }, [activeIndex, headings, itemIds]);
   const [collectMacros] = useState(createLatexOutlineMacroCollector);
   const latexMacros = useMemo(
-    () => (index ? collectMacros(useIndexStore.getState().texts) : NO_LATEX_MACROS),
-    [collectMacros, index],
+    () => (macroSources ? collectMacros(macroSources) : NO_LATEX_MACROS),
+    [collectMacros, macroSources],
   );
   const typstTitles = useTypstTitles(items);
 

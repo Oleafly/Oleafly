@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::{Args, ValueEnum};
-use oleafly_core::context::{scan_project, ContextLimits, ContextScan};
+use oleafly_core::context::{scan_project_in, ContextLimits, ContextScan};
 use oleafly_core::tex_errors::{rebase_log_files, resolve_extensionless_inputs};
 use oleafly_core::{parse_latex_log, LogDiagnostic, LogSeverity, Workspace, MAX_COMPILE_LOG_BYTES};
 use serde_json::{json, Value};
@@ -262,8 +262,14 @@ pub(crate) async fn context_value(
     let opened = open_project(root, None, None)?;
     let scan_root = opened.workspace.root().to_path_buf();
     let main = opened.workspace.manifest().main_doc.clone();
+    let compile_folder = opened.workspace.manifest().compile_dir.clone();
     let scan = tokio::task::spawn_blocking(move || {
-        scan_project(&scan_root, &main, &ContextLimits::default())
+        scan_project_in(
+            &scan_root,
+            &main,
+            compile_folder.as_deref(),
+            &ContextLimits::default(),
+        )
     })
     .await
     .map_err(|error| CliError::internal(format!("The project scan stopped: {error}")))??;

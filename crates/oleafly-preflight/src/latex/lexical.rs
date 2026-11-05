@@ -1,6 +1,6 @@
 use crate::text::{
-    index_of_units, is_js_space_unit, is_letter_unit, is_mark_unit, js_trim, units_eq_str,
-    BACKSLASH, CLOSE_BRACE, NEWLINE, OPEN_BRACE, PERCENT, SPACE, TAB,
+    index_of_units, is_js_space_unit, is_letter_unit, is_mark_unit, units_eq_str, BACKSLASH,
+    CLOSE_BRACE, NEWLINE, OPEN_BRACE, PERCENT, SPACE, TAB,
 };
 
 const AT: u16 = b'@' as u16;
@@ -99,13 +99,19 @@ pub fn line_end(text: &[u16], start: usize) -> usize {
 }
 
 fn delimited_body_end(text: &[u16], start: usize) -> Option<(usize, bool)> {
-    let delimiter = *text.get(start)?;
-    if is_js_space_unit(delimiter) {
+    let first = *text.get(start)?;
+    if is_js_space_unit(first) {
         return None;
     }
-    let end_of_line = line_end(text, start + 1);
-    match index_of_units(text, &[delimiter], start + 1) {
-        Some(closing) if closing <= end_of_line => Some((closing + 1, true)),
+    let surrogate_pair = (0xd800..=0xdbff).contains(&first)
+        && text
+            .get(start + 1)
+            .is_some_and(|second| (0xdc00..=0xdfff).contains(second));
+    let body = start + if surrogate_pair { 2 } else { 1 };
+    let delimiter = &text[start..body];
+    let end_of_line = line_end(text, body);
+    match index_of_units(text, delimiter, body) {
+        Some(closing) if closing <= end_of_line => Some((closing + delimiter.len(), true)),
         _ => Some((end_of_line, false)),
     }
 }
@@ -125,12 +131,17 @@ fn inline_verbatim_head(text: &[u16], start: usize) -> Option<(InlineVerbatimCom
         "mintinline" => InlineVerbatimCommand::Mintinline,
         _ => return None,
     };
-    let cursor = if text.get(command_end) == Some(&STAR) {
-        command_end + 1
-    } else {
-        command_end
-    };
-    Some((command, cursor))
+    // listings takes a star as its delimiter.
+    let star = command != InlineVerbatimCommand::Lstinline && text.get(command_end) == Some(&STAR);
+    Some((command, if star { command_end + 1 } else { command_end }))
+}
+
+/// listings ends a braced body at the first `}`: it does not nest or read
+/// escapes, and it stops with an error at the end of the line.
+fn lstinline_body_end(text: &[u16], opening: usize) -> Option<usize> {
+    (opening + 1..line_end(text, opening + 1))
+        .find(|index| text[*index] == CLOSE_BRACE)
+        .map(|close| close + 1)
 }
 
 fn listings_verbatim_span(
@@ -156,15 +167,19 @@ fn listings_verbatim_span(
     if command == InlineVerbatimCommand::Mintinline {
         let language_end = latex_balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)?;
         cursor = skip_inline_whitespace(text, language_end);
-        if text.get(cursor) == Some(&OPEN_BRACE) {
-            let body_end = latex_balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE);
-            return Some(InlineVerbatimSpan {
-                from: start,
-                to: body_end.unwrap_or_else(|| line_end(text, cursor + 1)),
-                command,
-                complete: body_end.is_some(),
-            });
-        }
+    }
+    if text.get(cursor) == Some(&OPEN_BRACE) {
+        let body_end = if command == InlineVerbatimCommand::Lstinline {
+            lstinline_body_end(text, cursor)
+        } else {
+            latex_balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)
+        };
+        return Some(InlineVerbatimSpan {
+            from: start,
+            to: body_end.unwrap_or_else(|| line_end(text, cursor + 1)),
+            command,
+            complete: body_end.is_some(),
+        });
     }
     let (to, complete) = delimited_body_end(text, cursor)?;
     Some(InlineVerbatimSpan {
@@ -192,8 +207,7 @@ pub fn latex_inline_verbatim_span(text: &[u16], start: usize) -> Option<InlineVe
 fn simple_braced_value(text: &[u16], start: usize) -> Option<(String, usize)> {
     let opening = skip_inline_whitespace(text, start);
     let end = latex_balanced_group_end(text, opening, OPEN_BRACE, CLOSE_BRACE)?;
-    let value = String::from_utf16_lossy(&text[opening + 1..end - 1]);
-    Some((js_trim(&value).to_string(), end))
+    Some((String::from_utf16_lossy(&text[opening + 1..end - 1]), end))
 }
 
 fn opaque_environment_range(
@@ -313,6 +327,17 @@ mod tests {
         );
         assert_eq!((ranges[0].from, ranges[0].to), (0, 8));
         assert!(ranges[2].complete);
+    }
+
+    #[test]
+    fn a_star_is_the_delimiter_of_lstinline_only() {
+        let span = |source: &str| {
+            let text = to_units(source);
+            let range = latex_ignored_ranges(&text)[0];
+            (range.from, range.to)
+        };
+        assert_eq!(span("\\lstinline*a*b"), (0, 13));
+        assert_eq!(span("\\verb*|a|b"), (0, 9));
     }
 
     #[test]

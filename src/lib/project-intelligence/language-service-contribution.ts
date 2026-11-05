@@ -5,6 +5,7 @@ import {
   type Position,
   type PositionEncoding,
 } from "@/lib/language-service";
+import { maskLatexIgnoredRegions } from "@oleafly/editor/latex-analysis";
 import { TYPST_IDENTIFIER_PATTERN } from "@oleafly/editor/typst-syntax";
 import { insideLatexDefinition, latexDefinitionStartsAt, scanLatexDefinitions } from "@oleafly/latex";
 import { maskComments } from "@/lib/index/parse-file";
@@ -219,15 +220,19 @@ function latexDefinition(
       level: section ? levels[section[1]] : 1,
     };
   }
-  const label = inDefinition || definitionHead ? null : /\\label\s*\{([^}]+)\}/u.exec(excerpt);
+  const code = maskLatexIgnoredRegions(excerpt);
+  const label =
+    inDefinition || definitionHead
+      ? null
+      : /\\label\s*\{([^}]+)\}/u.exec(code);
   if (label) {
     return { kind: "label", name: label[1].trim() };
   }
   const macro =
     /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?\s*\{?\\([\p{L}\p{M}@]+)\}?/u.exec(
-      excerpt,
+      code,
     ) ??
-    /\\(?:def|gdef|edef|xdef)\s*\\([\p{L}\p{M}@]+)/u.exec(excerpt);
+    /\\(?:def|gdef|edef|xdef)\s*\\([\p{L}\p{M}@]+)/u.exec(code);
   if (macro) {
     return { kind: "macro", name: macro[1] };
   }
@@ -235,7 +240,7 @@ function latexDefinition(
   if (namedMacro) {
     return { kind: "macro", name: namedMacro[1] };
   }
-  const environment = /\\begin\s*\{([^}]+)\}/u.exec(excerpt);
+  const environment = /\\begin\s*\{([^}]+)\}/u.exec(code);
   if (environment) {
     return {
       kind: "environment",

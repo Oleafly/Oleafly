@@ -1,8 +1,17 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { resetProjectSourcesCache } from "@/lib/project-sources";
+import { projectCompileFolder } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useActiveContent, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+
+async function compileFolderOf(projectId: string, mainDocument: string): Promise<string | null> {
+  try {
+    return (await projectCompileFolder(projectId, mainDocument)) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function IndexKeeper() {
   const projectId = useFilesStore((s) => s.projectId);
@@ -23,6 +32,17 @@ export function IndexKeeper() {
     }
     useIndexStore.getState().reset();
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || !mainDocument) return;
+    let current = true;
+    void compileFolderOf(projectId, mainDocument).then((folder) => {
+      if (current) useIndexStore.getState().setCompileFolder(folder);
+    });
+    return () => {
+      current = false;
+    };
+  }, [mainDocument, projectId]);
 
   useLayoutEffect(() => {
     if (!projectId) return;

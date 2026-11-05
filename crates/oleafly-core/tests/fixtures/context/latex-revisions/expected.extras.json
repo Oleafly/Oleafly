@@ -1,0 +1,20 @@
+{
+  "missing_files": [],
+  "packages": [],
+  "roles": {
+    "manuscript.tex": "main",
+    "manuscript_v1.tex": "source",
+    "notes.tex": "source",
+    "old/chapter.tex": "source",
+    "old/main.tex": "source",
+    "readme.md": "source",
+    "shared.tex": "source"
+  },
+  "unused_cites": [],
+  "unused_labels": [
+    "fig:dropped",
+    "fig:only-old",
+    "fig:twice",
+    "sec:notes"
+  ]
+}

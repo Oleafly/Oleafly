@@ -24,7 +24,7 @@ const selectors = vi.hoisted(() => ({
   safeLinePreview: vi.fn(() => "\\label{fig:one}"),
 }));
 
-const aux = vi.hoisted(() => ({ auxNumberFor: vi.fn(() => null as unknown) }));
+const aux = vi.hoisted(() => ({ auxNumberForDefinition: vi.fn(() => null as unknown) }));
 const asset = vi.hoisted(() => ({
   loadAssetThumbnail: vi.fn(async () => "data:image/png;base64,AA"),
 }));
@@ -94,16 +94,16 @@ function use(overrides: Partial<ProjectUse> = {}): ProjectUse {
 
 const view = { state: { doc: { toString: () => "\\ref{fig:one}" } } } as unknown as EditorView;
 
-function card(symbol: ProjectDefinition | ProjectUse | null) {
+function card(symbol: ProjectDefinition | ProjectUse | null, snapshot = SNAPSHOT) {
   intelligence.currentSourceProjectIntelligence.mockReturnValue(
-    symbol ? { path: "main.tex", snapshot: SNAPSHOT } : null,
+    symbol ? { path: "main.tex", snapshot } : null,
   );
   selectors.symbolAt.mockReturnValue(symbol);
   return projectHoverCard(view, 12);
 }
 
-function dom(symbol: ProjectDefinition | ProjectUse) {
-  const tooltip = card(symbol);
+function dom(symbol: ProjectDefinition | ProjectUse, snapshot = SNAPSHOT) {
+  const tooltip = card(symbol, snapshot);
   if (!tooltip) throw new Error("no tooltip");
   return tooltip.create().dom;
 }
@@ -123,7 +123,7 @@ describe("projectHoverCard", () => {
     selectors.definitionsForUse.mockReturnValue([]);
     selectors.referencesFor.mockReturnValue([]);
     selectors.safeLinePreview.mockReturnValue("\\label{fig:one}");
-    aux.auxNumberFor.mockReturnValue(null);
+    aux.auxNumberForDefinition.mockReturnValue(null);
     asset.loadAssetThumbnail.mockResolvedValue("data:image/png;base64,AA");
     useIndexStore.setState({ texts: { "chapters/intro.tex": "\\label{fig:one}" } });
     useFilesStore.setState({ projectId: "project" });
@@ -161,9 +161,33 @@ describe("projectHoverCard", () => {
     expect(node.textContent).toContain(hover.duplicateDetail_other.replace("{{count}}", "2"));
   });
 
+  it("takes the aux number from whichever copy the compiled document holds", () => {
+    selectors.definitionsForUse.mockReturnValue([
+      definition(),
+      definition({ id: "def:2", location: { ...definition().location, file: "b.tex" } }),
+    ]);
+    aux.auxNumberForDefinition.mockImplementation((...args: unknown[]) =>
+      args[1] === "b.tex" ? { number: "7", page: "2" } : null,
+    );
+
+    const node = dom(use(), {
+      ...SNAPSHOT,
+      latexUnits: {
+        roots: ["a.tex", "b.tex"],
+        groups: [[0], [1]],
+        fileGroups: { "a.tex": 0, "b.tex": 1 },
+        openUnits: [],
+      },
+    });
+
+    expect(node.querySelector(".cm-code-hover-aux")?.textContent).toBe(
+      hover.auxNumber.replace("{{number}}", "7").replace("{{page}}", "2"),
+    );
+  });
+
   it("shows the definition, its rendered math and its aux number", () => {
     selectors.definitionsForUse.mockReturnValue([definition({ detail: "Figure one" })]);
-    aux.auxNumberFor.mockReturnValue({ number: "1.2", page: "7" });
+    aux.auxNumberForDefinition.mockReturnValue({ number: "1.2", page: "7" });
 
     const node = dom(use());
 
@@ -276,7 +300,7 @@ describe("projectHoverCard edge cases", () => {
     selectors.definitionsForUse.mockReturnValue([]);
     selectors.referencesFor.mockReturnValue([]);
     math.renderMathSource.mockReturnValue({ status: "ready", html: "<span>x</span>" });
-    aux.auxNumberFor.mockReturnValue(null);
+    aux.auxNumberForDefinition.mockReturnValue(null);
     useIndexStore.setState({ texts: { "chapters/intro.tex": "\\label{fig:one}" } });
     useFilesStore.setState({ projectId: "project" });
   });
@@ -295,7 +319,7 @@ describe("projectHoverCard edge cases", () => {
 
   it("shows the compiled number of a referenced label definition", () => {
     selectors.referencesFor.mockReturnValue([use()]);
-    aux.auxNumberFor.mockReturnValue({ number: "3", page: "2" });
+    aux.auxNumberForDefinition.mockReturnValue({ number: "3", page: "2" });
     const node = dom(definition());
     expect(node.querySelector(".cm-code-hover-aux")?.textContent).toBe(
       hover.auxNumber.replace("{{number}}", "3").replace("{{page}}", "2"),

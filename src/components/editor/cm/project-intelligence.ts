@@ -27,7 +27,7 @@ import {
   ViewPlugin,
   type ViewUpdate,
 } from "@codemirror/view";
-import { auxNumberFor } from "@/lib/aux-numbers";
+import { auxNumberForDefinition } from "@/lib/aux-numbers";
 import {
   escapeLatexText,
   escapeLatexUrl,
@@ -64,8 +64,15 @@ import {
 } from "@/lib/latex-corpus";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import {
+  latexUnitScope,
+  type LatexUnitScope,
+} from "@/lib/project-intelligence/latex-units";
+import {
   definitionCandidatesForUse,
+  type DefinitionLookup,
+  definitionFile,
   definitionsByKey,
+  resolutionForUse,
 } from "@/lib/project-intelligence/resolution";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import { engineForPath } from "@/lib/project-intelligence/source";
@@ -250,8 +257,18 @@ const ENGINE_SCOPED_KINDS: ReadonlySet<ProjectDefinition["kind"]> = new Set([
   "section",
 ]);
 
+// Names that resolve per compilation unit. A label from another document in
+// the folder would compile to an undefined reference, so it is not offered.
+const UNIT_SCOPED_KINDS: ReadonlySet<ProjectDefinition["kind"]> = new Set([
+  "label",
+  "anchor",
+  "macro",
+  "environment",
+  "glossary",
+]);
+
 function definitionOptions(
-  snapshot: Pick<ProjectIntelligenceSnapshot, "definitions">,
+  snapshot: Pick<ProjectIntelligenceSnapshot, "definitions" | "latexUnits">,
   guard: CompletionGuard,
   kinds: ReadonlySet<ProjectDefinition["kind"]>,
   query: string,
@@ -259,17 +276,23 @@ function definitionOptions(
 ): Completion[] {
   const normalizedQuery = completionKey(query);
   const engine = engineForPath(guard.path);
+  const scope = latexUnitScope(snapshot.latexUnits);
   const candidates = snapshot.definitions.filter(
     (definition) =>
       kinds.has(definition.kind) &&
       (!ENGINE_SCOPED_KINDS.has(definition.kind) ||
         definition.engine === engine) &&
+      (!scope ||
+        !UNIT_SCOPED_KINDS.has(definition.kind) ||
+        scope.reaches(guard.path, definition.location.file)) &&
       (!normalizedQuery ||
         completionKey(definition.name).includes(normalizedQuery)),
   );
-  const counts = new Map<string, number>();
+  const sameName = new Map<string, ProjectDefinition[]>();
   for (const candidate of candidates) {
-    counts.set(candidate.name, (counts.get(candidate.name) ?? 0) + 1);
+    const named = sameName.get(candidate.name);
+    if (named) named.push(candidate);
+    else sameName.set(candidate.name, [candidate]);
   }
 
   return [...candidates]
@@ -283,10 +306,18 @@ function definitionOptions(
     })
     .slice(0, FILTERED_COMPLETION_LIMIT)
     .map((definition) => {
-      const duplicateCount = counts.get(definition.name) ?? 1;
+      const named = sameName.get(definition.name) ?? [];
+      const seen = scope
+        ? scope.select(guard.path, named, definitionFile).items
+        : named;
+      const duplicateCount =
+        seen.includes(definition) &&
+        (!scope || scope.isAmbiguous(guard.path, seen, definitionFile))
+          ? seen.length
+          : 1;
       const auxNumber =
         definition.kind === "label" || definition.kind === "anchor"
-          ? auxNumberFor(definition.name)
+          ? auxNumberForDefinition(definition.name, definition.location.file, scope)
           : null;
       const auxDetail = auxNumber ? ` · №${auxNumber.number}` : "";
       const duplicateDetail = `${auxDetail}${
@@ -440,10 +471,13 @@ const REFERENCE_COMMANDS: ReadonlySet<string> = new Set([
   "ref",
   "eqref",
   "pageref",
+  "vpageref",
+  "fullref",
   "autoref",
   "cref",
   "Cref",
   "cpageref",
+  "Cpageref",
   "vref",
   "Vref",
   "labelcref",
@@ -1685,16 +1719,43 @@ function fallbackLookup(
   return lookup;
 }
 
-function candidateCount(
-  use: ProjectUse,
+// The file being typed in has newer definitions than the snapshot, so its
+// old ones leave the pool before anything looks at it. Left in, a label just
+// deleted would still hide the copy a fragment holds.
+function withoutFile(
+  lookup: DefinitionsByKey,
   path: string,
+): DefinitionLookup {
+  const kept = new Map<string, readonly ProjectDefinition[]>();
+  return {
+    get(key) {
+      let others = kept.get(key);
+      if (!others) {
+        others = (lookup.get(key) ?? []).filter(
+          (definition) => definition.location.file !== path,
+        );
+        kept.set(key, others);
+      }
+      return others;
+    },
+  };
+}
+
+function liveLookup(
   current: DefinitionsByKey,
-  project: DefinitionsByKey,
-): number {
-  const elsewhere = definitionCandidatesForUse(use, project).filter(
-    (definition) => definition.location.file !== path,
-  ).length;
-  return definitionCandidatesForUse(use, current).length + elsewhere;
+  elsewhere: DefinitionLookup,
+): DefinitionLookup {
+  const merged = new Map<string, readonly ProjectDefinition[]>();
+  return {
+    get(key) {
+      let pool = merged.get(key);
+      if (!pool) {
+        pool = [...(current.get(key) ?? []), ...(elsewhere.get(key) ?? [])];
+        merged.set(key, pool);
+      }
+      return pool;
+    },
+  };
 }
 
 function referenceNoun(use: ProjectUse): string {
@@ -1709,13 +1770,12 @@ function referenceNoun(use: ProjectUse): string {
 
 function referenceDiagnosticFor(
   use: ProjectUse,
-  path: string,
-  current: DefinitionsByKey,
-  project: DefinitionsByKey,
+  lookup: DefinitionLookup,
+  scope: LatexUnitScope | undefined,
 ): Diagnostic | null {
   if (use.kind !== "reference" && use.kind !== "citation") return null;
-  const candidates = candidateCount(use, path, current, project);
-  if (candidates === 1) return null;
+  const candidates = definitionCandidatesForUse(use, lookup, scope);
+  if (resolutionForUse(use, candidates, scope) === "resolved") return null;
   const noun = referenceNoun(use);
   return {
     from: use.location.range.from,
@@ -1725,7 +1785,7 @@ function referenceDiagnosticFor(
     ),
     severity: "warning",
     message:
-      candidates === 0
+      candidates.length === 0
         ? i18n.t(($) => $.intelligence.diagnostics.unresolved, {
             noun: noun.toLocaleLowerCase("en-US"),
             name: use.name,
@@ -1733,7 +1793,7 @@ function referenceDiagnosticFor(
         : i18n.t(($) => $.intelligence.diagnostics.ambiguous, {
             noun,
             name: use.name,
-            count: candidates,
+            count: candidates.length,
           }),
     source: "live references · current file",
   };
@@ -1778,15 +1838,17 @@ export function currentFileReferenceDiagnostics(
   } catch {
     return [];
   }
-  const project = fallbackLookup(snapshot);
-  const current = definitionsByKey(currentFile.definitions);
+  const lookup = liveLookup(
+    definitionsByKey(currentFile.definitions),
+    withoutFile(fallbackLookup(snapshot), path),
+  );
+  const scope = latexUnitScope(snapshot.latexUnits);
   const diagnostics: Diagnostic[] = [];
   for (const use of currentFile.uses) {
     const diagnostic = referenceDiagnosticFor(
       use,
-      path,
-      current,
-      project,
+      lookup,
+      scope,
     );
     if (diagnostic) diagnostics.push(diagnostic);
   }

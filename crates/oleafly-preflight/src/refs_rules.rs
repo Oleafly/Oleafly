@@ -1,7 +1,9 @@
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
+use unicode_normalization::UnicodeNormalization;
 
 use crate::bib::{
     bibliography_candidate_paths, bibliography_declarations, bibliography_display_name,
@@ -58,6 +60,12 @@ pub enum BibKeyDialect {
     Typst,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnreachableLabels {
+    pub file: String,
+    pub labels: Vec<String>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RefsContext {
@@ -71,6 +79,9 @@ pub struct RefsContext {
     pub project_files: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unresolved_bibliographies: Option<Vec<UnresolvedBibliography>>,
+    /// Labels another document defines, which a file's compilation cannot see.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unreachable_labels: Option<Vec<UnreachableLabels>>,
     #[serde(default)]
     pub duplicate_dois: Vec<DuplicateDoi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -123,19 +134,30 @@ static DOI_PREFIX: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"(?i)^https?://(?:dx\.)?doi\.org/"));
 static DOI_SHAPE: LazyLock<JsRegex> = LazyLock::new(|| JsRegex::std(r"(?i)^10\.[0-9]{4,9}/\S+$"));
 
+/// macOS can keep a name in the other Unicode form than the source spells it.
+fn nfc(value: &str) -> Cow<'_, str> {
+    if value.is_ascii() {
+        Cow::Borrowed(value)
+    } else {
+        Cow::Owned(value.nfc().collect())
+    }
+}
+
 fn resolves(reference: &str, files: &[String], extensions: &[&str]) -> bool {
     let trimmed = js_trim(reference);
-    let target = trimmed.strip_prefix("./").unwrap_or(trimmed);
+    let target = nfc(trimmed.strip_prefix("./").unwrap_or(trimmed));
+    let target = target.as_ref();
     let base = target.rsplit('/').next().unwrap_or(target);
+    let names: Vec<Cow<'_, str>> = files.iter().map(|file| nfc(file)).collect();
     extensions.iter().any(|ext| {
         let with_ext = format!("{target}{ext}");
         let base_with_ext = format!("{base}{ext}");
         let nested = format!("/{with_ext}");
         let nested_base = format!("/{base_with_ext}");
-        files.iter().any(|file| {
-            *file == with_ext
+        names.iter().any(|file| {
+            *file == with_ext.as_str()
                 || file.ends_with(&nested)
-                || *file == base_with_ext
+                || *file == base_with_ext.as_str()
                 || file.ends_with(&nested_base)
         })
     })
@@ -364,6 +386,11 @@ pub fn project_label_quality(ctx: &RefsContext) -> Vec<Finding> {
     let mut out = Vec::new();
     let duplicates = ctx.duplicate_labels.as_deref().unwrap_or(&[]);
     if !duplicates.is_empty() {
+        let label_count = duplicates
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<HashSet<_>>()
+            .len();
         let labels = duplicates
             .iter()
             .take(6)
@@ -375,7 +402,7 @@ pub fn project_label_quality(ctx: &RefsContext) -> Vec<Finding> {
                 "refs-project-duplicate-label",
                 Lens::Refs,
                 Severity::Error,
-                msg!("rules.refs-project-duplicate-label.title", "count" => duplicates.len()),
+                msg!("rules.refs-project-duplicate-label.title", "count" => label_count),
                 msg!("rules.refs-project-duplicate-label.detail", "labels" => labels),
             )
             .with_certainty(Certainty::Verified),
@@ -449,11 +476,18 @@ fn missing_bibliography(
     resolve_bibliography_path(raw, from_file.unwrap_or(""), &ctx.project_files, engine).is_none()
 }
 
-fn collect_labels(source: &SourceText, defined: &[String]) -> HashSet<String> {
+fn collect_labels(
+    source: &SourceText,
+    defined: &[String],
+    unreachable: &[String],
+) -> HashSet<String> {
     let mut labels: HashSet<String> = defined
         .iter()
         .map(|label| js_trim(label).to_string())
         .collect();
+    for label in unreachable {
+        labels.remove(js_trim(label));
+    }
     for found in LABEL.find_all(source).matches {
         labels.insert(js_trim(found.text(source, 1).unwrap_or("")).to_string());
     }
@@ -690,7 +724,17 @@ pub fn duplicate_bib_key_findings(ctx: &RefsContext, dialect: BibKeyDialect) -> 
 
 pub fn run_refs_rules(raw_source: &str, ctx: &RefsContext, options: &RefsOptions) -> Vec<Finding> {
     let source = SourceText::new(mask_comments(raw_source));
-    let labels = collect_labels(&source, &ctx.defined_labels);
+    let unreachable = ctx.unreachable_labels.iter().flatten().find(|entry| {
+        options
+            .file
+            .as_deref()
+            .is_some_and(|file| file == entry.file)
+    });
+    let labels = collect_labels(
+        &source,
+        &ctx.defined_labels,
+        unreachable.map_or(&[], |entry| entry.labels.as_slice()),
+    );
     let bib_keys: HashSet<String> = ctx
         .bib_keys
         .iter()
@@ -752,6 +796,12 @@ mod tests {
     #[test]
     fn plain_titles_lose_markup_and_case() {
         assert_eq!(plain("{The} \\emph{Big}  Book!"), "the emph big book");
+    }
+
+    #[test]
+    fn missing_assets_resolve_in_either_unicode_form() {
+        let files = vec!["cafe\u{301}.tex".to_string()];
+        assert!(resolves("caf\u{e9}", &files, INPUT_EXT));
     }
 
     #[test]

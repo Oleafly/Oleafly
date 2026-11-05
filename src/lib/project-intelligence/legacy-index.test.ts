@@ -129,6 +129,39 @@ See \eqref{eq:mae}.`,
     expect(index.definitionFor(typstUse)?.file).toBe("paper.typ");
   });
 
+  it("keeps separate LaTeX documents apart for lookup and rename", () => {
+    const revision = String.raw`\documentclass{article}
+\section{Intro}\label{sec:intro}
+See \ref{sec:intro}.`;
+    const index = lazyLegacyIndex(
+      snapshot({
+        "main.tex": revision,
+        "main_v1.tex": String.raw`${revision}
+\label{sec:old}`,
+      }),
+    );
+    const label = (file: string) =>
+      index.defs.find(
+        (symbol) => symbol.kind === "label" && symbol.name === "sec:intro" && symbol.file === file,
+      ) as NonNullable<(typeof index.defs)[number]>;
+
+    const current = label("main.tex");
+    expect(index.renamePlan(current, "sec:start").edits.map((edit) => edit.file)).toEqual([
+      "main.tex",
+      "main.tex",
+    ]);
+    expect(index.renamePlan(current, "sec:old").collision).toBe(false);
+    expect(index.allReferences(current).map((symbol) => symbol.file)).toEqual([
+      "main.tex",
+      "main.tex",
+    ]);
+
+    const oldReference = index.uses.find(
+      (symbol) => symbol.kind === "ref" && symbol.file === "main_v1.tex",
+    ) as NonNullable<(typeof index.uses)[number]>;
+    expect(index.definitionFor(oldReference)).toBe(label("main_v1.tex"));
+  });
+
   it("follows a Markdown file#anchor link into a LaTeX or Typst label", () => {
     const index = lazyLegacyIndex(
       snapshot({

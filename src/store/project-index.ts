@@ -51,6 +51,7 @@ export interface IndexStore {
   intelligenceState: ProjectIntelligenceState;
   rebuildFromDisk: () => Promise<void>;
   invalidateFilesystem: () => void;
+  setCompileFolder: (folder: string | null) => void;
   updateFile: (path: string, text: string) => void;
   deleteFile: (path: string) => void;
   renameFile: (from: string, to: string) => void;
@@ -83,6 +84,7 @@ let unreadableFiles = new Set<string>();
 let sourceRevisions = new Map<string, number>();
 let analysisTimer: ReturnType<typeof setTimeout> | null = null;
 let scheduledAnalysis: ScheduledAnalysis | null = null;
+let compileFolder: string | undefined;
 let workerClient: ProjectIntelligenceWorkerClient | null = null;
 let externalContribution: ExternalProjectIntelligence | null = null;
 // Assets a source names inside hidden or generated folders, which the file
@@ -128,6 +130,7 @@ function resetRuntimeState(): void {
   unreadableFiles = new Set();
   sourceRevisions = new Map();
   externalContribution = null;
+  compileFolder = undefined;
   unlistedAssets = new Set();
   unlistedAssetGeneration++;
 }
@@ -689,6 +692,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         ...(options.mainDocument
           ? { mainDocument: options.mainDocument }
           : {}),
+        ...(compileFolder ? { compileFolder } : {}),
         knownFiles: [...withUnlistedAssets(options.knownFiles)],
         upserts: [...combinedUpserts.values()],
         removals: reset ? [] : [...combinedRemovals],
@@ -787,6 +791,18 @@ export const useIndexStore = create<IndexStore>((set, get) => {
     projectRevision: 0,
     requestGeneration: 0,
     intelligenceState: initialIntelligenceState(),
+
+    setCompileFolder: (folder) => {
+      const next = folder ?? undefined;
+      if (next === compileFolder) return;
+      compileFolder = next;
+      // Nothing on disk changed, so a rebuild would stop short. Before the first
+      // analysis there is nothing to redo, and that analysis reads the folder.
+      const { projectId } = useFilesStore.getState();
+      if (projectId && workerProjectId === projectId) {
+        scheduleCurrentTexts(projectId, [], { immediate: true });
+      }
+    },
 
     invalidateFilesystem: () => {
       const projectId = useFilesStore.getState().projectId;
