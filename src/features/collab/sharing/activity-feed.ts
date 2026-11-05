@@ -4,13 +4,17 @@ import type {
   CollabChangeSkipped,
   CollabLiveRenamed,
   CollabLiveSettings,
+  CollabOutputNotShared,
   CollabProjectMember,
 } from "@/lib/tauri";
 import {
   onCollabChangeSkipped,
   onCollabLiveRenamed,
   onCollabLiveSettings,
+  onCollabOutputNotShared,
 } from "@/lib/tauri-collab";
+import { useEngineStore } from "@/store/engine";
+import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
 import { useCollabActivity, type NewActivity } from "./activity-store";
 
@@ -230,6 +234,28 @@ function skippedEntry(payload: CollabChangeSkipped): NewActivity | null {
   return { kind: "skipped", at: Date.now(), deviceId: payload.deviceId, name };
 }
 
+function outputEntry(payload: CollabOutputNotShared): NewActivity | null {
+  if (payload.projectId !== useCollabLiveStore.getState().projectId) return null;
+  return { kind: "outputNotShared", at: Date.now(), reason: payload.reason };
+}
+
+function compilesWithoutTex(projectId: string): boolean {
+  const files = useFilesStore.getState();
+  return (
+    files.projectId === projectId &&
+    files.engineLoaded &&
+    files.engine.capabilities.compiler_prerequisite === "system_tex" &&
+    Boolean(useEngineStore.getState().info?.latexmk_blocker)
+  );
+}
+
+async function noteMissingTex(projectId: string): Promise<void> {
+  await useEngineStore.getState().ensureLoaded();
+  if (useCollabLiveStore.getState().projectId === projectId && compilesWithoutTex(projectId)) {
+    useCollabActivity.getState().add({ kind: "texNeeded", at: Date.now() });
+  }
+}
+
 function syncRail() {
   const live = useCollabLiveStore.getState();
   const visible = live.projectId !== null && (live.share !== null || live.status?.state === "ended");
@@ -255,7 +281,12 @@ export function startCollabActivity(): () => void {
       memory.offline = state.status?.state === "offline";
     }
     const greeting = sharingChanged(state, previous) ? welcome(state, at) : null;
-    if (greeting) useCollabActivity.getState().add(greeting);
+    if (greeting) {
+      useCollabActivity.getState().add(greeting);
+      if (state.projectId) {
+        void noteMissingTex(state.projectId).catch((error: unknown) => logError("collab tex note", error));
+      }
+    }
     syncRail();
   };
   const stopLive = useCollabLiveStore.subscribe((state, previous) => sync(state, previous));
@@ -280,6 +311,13 @@ export function startCollabActivity(): () => void {
     void logError("collab skipped listen", error);
     return () => undefined;
   });
+  const stopOutput = onCollabOutputNotShared((payload) => {
+    const entry = outputEntry(payload);
+    if (entry) useCollabActivity.getState().add(entry, { quiet: true });
+  }).catch((error: unknown) => {
+    void logError("collab output listen", error);
+    return () => undefined;
+  });
   sync(useCollabLiveStore.getState(), null);
   return () => {
     stopLive();
@@ -287,6 +325,7 @@ export function startCollabActivity(): () => void {
     void stopRenamed.then((unlisten) => unlisten());
     void stopSettings.then((unlisten) => unlisten());
     void stopSkipped.then((unlisten) => unlisten());
+    void stopOutput.then((unlisten) => unlisten());
     useCollabRail.setState({ visible: false, unread: false });
   };
 }

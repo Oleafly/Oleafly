@@ -2,7 +2,9 @@ import { create } from "zustand";
 
 export interface ConfirmRequest {
   message: string;
+  title?: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   destructive?: boolean;
 }
 

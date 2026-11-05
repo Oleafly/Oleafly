@@ -1,10 +1,12 @@
 import { i18n } from "@/i18n";
+import { decodeAppError, describeError } from "@/lib/app-error";
+import { openExternalTerminal } from "@/lib/terminal-ipc";
 import { requestTerminalPrompt, waitForTerminalPromptHost } from "@/lib/terminal-lifecycle";
 import { hasControlCharacters, shellCommandLine, type TerminalCommand } from "@/lib/terminal-quote";
 import { toast } from "@/lib/toast";
 import { isWindows } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
+import { useSettingsStore, type ExternalTerminalId } from "@/store/settings";
 import { TERMINAL_LIMIT, terminalLimitMessage, useTerminalsStore } from "@/store/terminals";
 
 export interface TerminalLaunch {
@@ -96,15 +98,33 @@ function refuseAtLimit(): never {
 }
 
 const PROMPT_HOST_WAIT_MS = 2000;
+const EXTERNAL_FALLBACK = "terminal.external_fallback";
 
-export async function openTerminalWith(launch: TerminalLaunch): Promise<{ terminalId: string }> {
+async function openedExternally(
+  terminal: ExternalTerminalId,
+  projectId: string,
+  launch: TerminalLaunch,
+  command: TerminalCommand | undefined,
+): Promise<boolean> {
+  try {
+    await openExternalTerminal({ projectId, terminal, cwd: launch.cwd, command, env: launch.env });
+    return true;
+  } catch (error) {
+    if (decodeAppError(error)?.code !== EXTERNAL_FALLBACK) throw error;
+    toast.info(describeError(error));
+    return false;
+  }
+}
+
+export async function openTerminalWith(launch: TerminalLaunch): Promise<{ terminalId: string | null }> {
   validate(launch);
   const projectId = currentProjectId();
   if (!projectId) throw new TerminalLaunchError("no-project");
   if (useTerminalsStore.getState().projectId !== projectId) {
     useTerminalsStore.getState().setProject(projectId);
   }
-  if (useTerminalsStore.getState().tabs.length >= TERMINAL_LIMIT) refuseAtLimit();
+  const { terminalOpenWith } = useSettingsStore.getState();
+  if (terminalOpenWith === "builtin" && useTerminalsStore.getState().tabs.length >= TERMINAL_LIMIT) refuseAtLimit();
   const command: TerminalCommand | undefined = launch.command
     ? { command: launch.command, args: [...(launch.args ?? [])] }
     : undefined;
@@ -120,6 +140,9 @@ export async function openTerminalWith(launch: TerminalLaunch): Promise<{ termin
     if (!agreed || useTerminalsStore.getState().projectId !== projectId) {
       throw new TerminalLaunchError("cancelled");
     }
+  }
+  if (terminalOpenWith !== "builtin" && (await openedExternally(terminalOpenWith, projectId, launch, command))) {
+    return { terminalId: null };
   }
   const tab = useTerminalsStore.getState().addTerminal({
     title: launch.title,

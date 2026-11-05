@@ -7,7 +7,7 @@ import {
   dismissEngineHint,
   useEnginePickerStore,
 } from "@/store/engine-picker";
-import { installPhaseLabel, TINYTEX_INSTALL_TOAST_KEY, useEngineStore } from "@/store/engine";
+import { TINYTEX_INSTALL_TOAST_KEY, useEngineStore } from "@/store/engine";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import {
   latexmkFixesFinding,
@@ -18,8 +18,11 @@ import {
 import { toast } from "@/lib/toast";
 import { useDisplayPath } from "@/lib/display-path";
 import { decodeAppError, describeError } from "@/lib/app-error";
+import { describeTexBlocker } from "@/lib/compile-error-codes";
+import { engineFindingDetail, engineFindingTitle } from "@/lib/engine-finding-text";
 import { applyShellEscape, shellEscapeDeclined } from "@/lib/latex-compile-actions";
 import { recompileWithPreview } from "@/lib/compile-preview";
+import { tinytexActionLabel } from "@/lib/tinytex-label";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { logError } from "@/lib/log";
@@ -69,7 +72,8 @@ export function EnginePickerModal() {
 
   if (!open) return null;
 
-  const hasSystemTex = !!info?.latexmk;
+  const texBlocker = info?.latexmk_blocker ?? null;
+  const hasSystemTex = !!info?.latexmk && !texBlocker;
   const alreadyLatexmk = engineId === "latexmk";
   const fixable = findings.filter((finding) => latexmkFixesFinding(finding.id));
   const needsShellEscape = findings.some((finding) => needsShellEscapeFinding(finding.id));
@@ -115,7 +119,7 @@ export function EnginePickerModal() {
         toast.success(t(($) => $.shell.enginePicker.switched, { engine: engineName }));
       }
       close();
-      if (source === "compile-failure" && allowed) void recompileWithPreview();
+      if (source !== "manual" && allowed) void recompileWithPreview();
     } catch (error) {
       if (engineSwitched) {
         reportSwitchFailure(
@@ -135,14 +139,16 @@ export function EnginePickerModal() {
     }
   };
 
+  const shellEscapeReady = async () => {
+    if (!needsShellEscape || useFilesStore.getState().engine.allow_shell_escape) return true;
+    setSwitching(true);
+    const allowed = await applyShellEscape(true);
+    setSwitching(false);
+    return allowed;
+  };
+
   const recompileHere = async () => {
-    const blocked = needsShellEscape && !useFilesStore.getState().engine.allow_shell_escape;
-    if (blocked) {
-      setSwitching(true);
-      const allowed = await applyShellEscape(true);
-      setSwitching(false);
-      if (!allowed) return;
-    }
+    if (!(await shellEscapeReady())) return;
     close();
     void recompileWithPreview();
   };
@@ -150,9 +156,25 @@ export function EnginePickerModal() {
   const chooseSystemTex = () =>
     useFilesStore.getState().engine.id === "latexmk" ? recompileHere() : pinLatexmk(false);
 
-  const installThenPin = async () => {
+  const latexmkReady = () => {
+    const installed = useEngineStore.getState().info;
+    return !!installed?.latexmk && !installed.latexmk_blocker;
+  };
+
+  const installForLatexmkProject = async () => {
+    if (!(await shellEscapeReady())) return;
+    useEngineStore.getState().queueCompileAfterInstall("explicit");
     await install();
-    if (useEngineStore.getState().info?.latexmk) {
+    if (latexmkReady()) close();
+  };
+
+  const installThenPin = async () => {
+    if (useFilesStore.getState().engine.id === "latexmk") {
+      await installForLatexmkProject();
+      return;
+    }
+    await install();
+    if (latexmkReady()) {
       await pinLatexmk(true);
     }
   };
@@ -177,16 +199,31 @@ export function EnginePickerModal() {
     close();
   };
 
-  const tinytexActionLabel = () => {
-    if (installing) {
-      return installPhaseLabel(installPhase, progress);
+  const systemTexStatus = () => {
+    if (hasSystemTex) return t(($) => $.shell.enginePicker.systemTex.found);
+    if (texBlocker && texBlocker.code !== "tex.latexmk_missing") {
+      return describeTexBlocker(texBlocker);
     }
-    if (partialDownloadBytes > 0) {
-      return t(($) => $.shell.enginePicker.tinytex.resume, {
-        megabytes: Math.round(partialDownloadBytes / 1_000_000),
-      });
+    return t(($) => $.shell.enginePicker.systemTex.missing);
+  };
+
+  const heading = () => {
+    if (source === "tex-missing") {
+      return {
+        title: t(($) => $.shell.enginePicker.titleTexMissing),
+        description: t(($) => $.shell.enginePicker.descriptionTexMissing),
+      };
     }
-    return t(($) => $.shell.enginePicker.tinytex.download);
+    if (source === "compile-failure") {
+      return {
+        title: t(($) => $.shell.enginePicker.titleCompileFailure),
+        description: t(($) => $.shell.enginePicker.descriptionCompileFailure),
+      };
+    }
+    return {
+      title: t(($) => $.shell.enginePicker.titleImportScan),
+      description: t(($) => $.shell.enginePicker.descriptionImportScan),
+    };
   };
 
   const systemTexActionLabel = () => {
@@ -220,9 +257,7 @@ export function EnginePickerModal() {
         )}
       </div>
       <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
-        {hasSystemTex
-          ? t(($) => $.shell.enginePicker.systemTex.found)
-          : t(($) => $.shell.enginePicker.systemTex.missing)}
+        {systemTexStatus()}
       </p>
       <TrustRequiredNotice
         projectId={projectId}
@@ -268,14 +303,10 @@ export function EnginePickerModal() {
     >
       <div>
         <h2 id={titleId} className="text-sm font-semibold">
-          {source === "compile-failure"
-            ? t(($) => $.shell.enginePicker.titleCompileFailure)
-            : t(($) => $.shell.enginePicker.titleImportScan)}
+          {heading().title}
         </h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {source === "compile-failure"
-            ? t(($) => $.shell.enginePicker.descriptionCompileFailure)
-            : t(($) => $.shell.enginePicker.descriptionImportScan)}
+          {heading().description}
         </p>
       </div>
 
@@ -290,9 +321,9 @@ export function EnginePickerModal() {
                 )}
               />
               <div className="min-w-0">
-                <span className="font-medium">{finding.title}</span>
+                <span className="font-medium">{engineFindingTitle(finding)}</span>
                 <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
-                  {finding.detail}
+                  {engineFindingDetail(finding)}
                 </p>
               </div>
             </li>
@@ -322,7 +353,7 @@ export function EnginePickerModal() {
                 onClick={() => void installThenPin()}
               >
                 {installing ? <Spinner size="sm" /> : null}
-                {tinytexActionLabel()}
+                {tinytexActionLabel({ installing, installPhase, progress, partialDownloadBytes })}
               </Button>
             </div>
           </div>
@@ -339,7 +370,7 @@ export function EnginePickerModal() {
             {fixable.length > 0
               ? t(($) => $.shell.enginePicker.tectonic.withFailures, {
                   count: fixable.length,
-                  features: formatList(fixable.map((f) => f.title)),
+                  features: formatList(fixable.map(engineFindingTitle)),
                 })
               : t(($) => $.shell.enginePicker.tectonic.description)}
           </p>

@@ -447,6 +447,7 @@
     "previewUnsupported": "這個引擎還無法即時預覽",
     "badge": "AI 生成",
     "compileWarning": "這份草稿沒有順利編譯完成。可以重新生成以取得更好的起點，或先建立專案，再到編輯器中修正原始碼。",
+    "compileLog": "編譯記錄檔",
     "noDescription": "尚無說明。",
     "includes": "包含",
     "category": "分類",

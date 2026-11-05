@@ -1066,6 +1066,22 @@
         "label": "Bộ đệm cuộn",
         "lines_other": "{{value}} dòng"
       },
+      "openWith": {
+        "ariaLabel": "Terminal để mở thư mục và lệnh",
+        "builtin": "Terminal tích hợp sẵn",
+        "cmd": "Command Prompt",
+        "description": "Nơi Oleafly mở một thư mục hoặc chạy một lệnh khi bạn chọn Mở trong terminal.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Mở trong",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (không tìm thấy)",
+        "powershell": "PowerShell",
+        "systemDefault": "Mặc định của hệ thống ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Terminal mặc định của hệ thống"
+      },
       "shell": {
         "ariaLabel": "shell của terminal",
         "description": "Terminal mới khởi động shell này. Terminal đang mở giữ nguyên shell hiện có.",
@@ -1363,13 +1379,20 @@
       "tooltip": "Áp dụng cho dự án mới. Mỗi dự án ghim công cụ riêng trong project.json, nên cộng tác viên mở cùng dự án sẽ biên dịch giống nhau bất kể thiết lập này."
     },
     "distributions": {
+      "automatic": "Tự động",
+      "automaticTooltip": "Quay lại để Oleafly tự chọn: TeX hệ thống đầy đủ trước, rồi đến TinyTeX.",
       "empty": "Không phát hiện bản phân phối TeX nào trên máy này.",
       "heading": "Quản lý bản phân phối TeX",
+      "inUse": "Đang dùng",
+      "inUseTooltip": "Các lần biên dịch latexmk chạy từ bản phân phối này.",
       "rowTooltip": "Đi kèm với {{tools}}. Oleafly chạy các công cụ TeX của nó từ {{binDir}}.",
       "rowTooltipNoTools": "Không tìm thấy latexmk hay tlmgr trong bản cài này. Oleafly chạy các công cụ TeX của nó từ {{binDir}}.",
-      "tooltip": "Mọi thứ mà công cụ latexmk có thể dùng trên máy này. TinyTeX cài vào thư mục home của bạn mà không cần quyền quản trị. Các bản cài hệ thống (MacTeX, TeX Live, MiKTeX) được phát hiện tự động."
+      "tinytexChooseHint": "Các lần biên dịch vẫn dùng bản phân phối được đánh dấu Đang dùng. Để chuyển sau khi cài, hãy nhấp Dùng để biên dịch trên TinyTeX.",
+      "tooltip": "Mọi thứ mà công cụ latexmk có thể dùng trên máy này. TinyTeX cài mà không cần quyền quản trị. Các bản cài hệ thống (MacTeX, TeX Live, MiKTeX) được phát hiện tự động.",
+      "use": "Dùng để biên dịch"
     },
     "latexmkMissing": "không tìm thấy latexmk",
+    "latexmkNeedsPerl": "latexmk cần Perl",
     "markdown": {
       "downloading": "Đang tải…",
       "heading": "Trình biên dịch Markdown",
@@ -1405,6 +1428,8 @@
       "includedIn": "Nằm trong {{package}}. Gỡ gói này cũng gỡ các tệp khác trong gói đó.",
       "intro": {
         "available": "Các gói này dành cho dự án dùng latexmk (TeX hệ thống). Tectonic dùng bộ gói riêng.",
+        "systemManaged": "Bản TeX Live này đi kèm bản phân phối Linux của bạn, nên hãy thêm gói bằng {{manager}}. Oleafly không thể thay đổi nó.",
+        "systemManagedTinytex": "Bản TeX Live này đi kèm bản phân phối Linux của bạn, nên hãy thêm gói bằng {{manager}}. Để Oleafly quản lý gói, hãy tải TinyTeX ở trên.",
         "unavailable": "Quản lý gói cần TeX Live hoặc TinyTeX. Với MiKTeX, hãy dùng MiKTeX Console."
       },
       "refreshInstalled": "Làm mới gói đã cài",
@@ -1435,9 +1460,10 @@
       "tooltip": "Công cụ mặc định (Tectonic) nhanh và ngoại tuyến nhưng không tạo được PDF có gắn thẻ, đạt Section 508 / PDF-UA. Việc đó cần LuaLaTeX hệ thống, công cụ có thể đọc tệp cục bộ mà tài khoản của bạn truy cập được và chỉ nên dùng với dự án tin cậy. Oleafly có thể dùng bản phân phối sẵn có hoặc TinyTeX được quản lý."
     },
     "tinytex": {
-      "detail": "Một bản TeX Live gọn nhẹ trong thư mục home của bạn. Bản tải lõi khoảng 250 MB. Mẫu tạp chí có thể thêm gói sau này, tổng cộng tối đa khoảng 1 GB. Cài trước giúp LaTeX hệ thống sẵn sàng khi bạn chủ động chọn.",
+      "detail": "Một bản TeX Live gọn nhẹ, không cần quyền quản trị. Bản tải lõi khoảng 250 MB. Mẫu tạp chí có thể thêm gói sau này, tổng cộng tối đa khoảng 1 GB. Cài trước giúp LaTeX hệ thống sẵn sàng khi bạn chủ động chọn.",
       "download": "Tải TinyTeX (~250 MB)",
-      "resume": "Tiếp tục tải (đã xong {{size}} MB)"
+      "resume": "Tiếp tục tải (đã xong {{size}} MB)",
+      "update": "Cập nhật"
     },
     "typst": {
       "detail": "Đi kèm Oleafly nên không cần thiết lập. Chỉ cần kết nối mạng ở lần đầu tài liệu import một gói @preview.",
@@ -1500,7 +1526,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Không tìm thấy trên máy tính này."
+        "missing": "Không tìm thấy trên máy tính này.",
+        "outdated": "{{tool}} {{version}} trên máy tính này đã quá cũ. Oleafly cần {{minimum}} trở lên, nên dùng bản nó tải về."
       },
       "managedIdle": "Không được dùng. Oleafly ưu tiên bản sao tìm thấy trên máy tính này.",
       "superseded": "Không được dùng. Oleafly hiện dùng {{tool}} {{version}}.",

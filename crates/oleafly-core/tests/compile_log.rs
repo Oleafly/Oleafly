@@ -1,5 +1,6 @@
 use oleafly_core::{
-    parse_latex_log, LogCategory, LogDiagnostic, LogSeverity, MAX_COMPILE_LOG_BYTES,
+    is_nullfont_missing_character, parse_latex_log, LogCategory, LogDiagnostic, LogSeverity,
+    MAX_COMPILE_LOG_BYTES,
 };
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -135,6 +136,115 @@ fn parses_missing_character_warnings() {
         "Missing character: There is no ő in font nullfont!"
     );
     assert_eq!(d.line, None);
+}
+
+#[test]
+fn joins_missing_character_warnings_that_tex_wrapped_at_79_columns() {
+    let diags = parse(&[
+        "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+        "text;!",
+        "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-",
+        "text;!",
+        "Package hyperref Warning: Something else on input line 3.",
+        "",
+    ]);
+    let characters: Vec<_> = diags
+        .iter()
+        .filter(|d| d.category == LogCategory::MissingCharacter)
+        .map(|d| d.message.as_str())
+        .collect();
+    assert_eq!(
+        characters,
+        [
+            "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-text;!",
+            "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-text;!",
+        ]
+    );
+    assert!(diags.iter().any(|d| d.message.contains("Something else")));
+}
+
+#[test]
+fn a_wrapped_missing_character_warning_stops_at_a_blank_line() {
+    let diags = parse(&[
+        "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+        "",
+        "LaTeX Warning: Something else on input line 3.",
+        "",
+    ]);
+    assert_eq!(diags.len(), 2, "{diags:?}");
+    assert!(diags[1].message.contains("Something else"));
+}
+
+#[test]
+fn joins_a_missing_character_line_wrapped_twice() {
+    let diags = parse(&[
+        "Missing character: There is no 한 (U+D55C) in font [FandolSong-Regular.otf]/OT:s",
+        "cript=hani;language=dflt;mapping=tex-text;fallback=somethingverylongthatrunspast",
+        "the-line;!",
+        "",
+    ]);
+    assert_eq!(diags.len(), 1, "{diags:?}");
+    assert!(diags[0]
+        .message
+        .ends_with("somethingverylongthatrunspastthe-line;!"));
+}
+
+#[test]
+fn keeps_the_tfm_and_luatex_forms_of_missing_characters() {
+    let diags = parse(&[
+        "Missing character: There is no “ (\"201C) in font ec-lmr10!",
+        "Missing character: There is no ㄱ (U+3131) in font [lmroman12-regular]:+tlig;!",
+        "{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}",
+        "Missing character: There is no ㅊ (U+314A) in font [lmroman12-regular]:+tlig;!",
+        "",
+    ]);
+    let messages: Vec<&str> = diags
+        .iter()
+        .filter(|d| d.category == LogCategory::MissingCharacter)
+        .map(|d| d.message.as_str())
+        .collect();
+    assert_eq!(
+        messages,
+        [
+            "Missing character: There is no “ (\"201C) in font ec-lmr10!",
+            "Missing character: There is no ㄱ (U+3131) in font [lmroman12-regular]:+tlig;!",
+            "Missing character: There is no ㅊ (U+314A) in font [lmroman12-regular]:+tlig;!",
+        ]
+    );
+}
+
+#[test]
+fn repeated_missing_characters_collapse_and_stay_bounded() {
+    let wrapped: Vec<String> = (0..300)
+        .flat_map(|index| {
+            [
+                format!(
+                    "Missing character: There is no x (U+{:04X}) in font [lmroman10-regular]:mapping=t",
+                    0x4E00 + index % 120
+                ),
+                "ex-text;!".to_string(),
+            ]
+        })
+        .collect();
+    let lines: Vec<&str> = wrapped.iter().map(String::as_str).collect();
+    let diags = parse(&lines);
+    assert_eq!(diags.len(), 50);
+    assert!(diags
+        .iter()
+        .all(|d| d.category == LogCategory::MissingCharacter));
+}
+
+#[test]
+fn nullfont_lines_do_not_use_up_the_missing_character_budget() {
+    let noise: Vec<String> = (0..60)
+        .map(|index| format!("Missing character: There is no x{index} in font nullfont!"))
+        .collect();
+    let mut lines: Vec<&str> = noise.iter().map(String::as_str).collect();
+    lines.push("Missing character: There is no ㄱ (U+3131) in font [x]:y;!");
+    let diags = parse(&lines);
+    assert_eq!(diags.len(), 61);
+    assert!(is_nullfont_missing_character(&diags[0].message));
+    assert!(!is_nullfont_missing_character(&diags[60].message));
 }
 
 #[test]
@@ -537,6 +647,58 @@ fn surfaces_biber_bibtex_syntax_errors_with_file_and_line() {
     assert_eq!(diags[0].file.as_deref(), Some("/tmp/p/references.bib"));
     assert_eq!(diags[0].line, Some(12));
     assert!(diags[0].message.starts_with("syntax error"));
+}
+
+const BAD_BIB_ENGINE_OUTPUT: [&str; 9] = [
+    "Package biblatex Warning: Please (re)run Biber on the file:",
+    "(biblatex)                _oleafly_entry",
+    "(biblatex)                and rerun LaTeX afterwards.",
+    "",
+    "[Oleafly] Engine output:",
+    "INFO - Looking for bibtex file 'sources/refs.bib' for section 0",
+    "INFO - Found BibTeX data source 'sources/refs.bib'",
+    "ERROR - BibTeX subsystem: /var/folders/hs/T/biber_tmp_c19Q/8fe4c98_63188.utf8, line 9, syntax error: at end of input, expected one of: number, name",
+    "error: the external tool exited with error code 2",
+];
+
+#[test]
+fn a_fatal_biber_syntax_error_in_engine_output_names_the_real_bib_file() {
+    let diags = parse(&BAD_BIB_ENGINE_OUTPUT);
+    let error = diags
+        .iter()
+        .find(|diagnostic| diagnostic.severity == LogSeverity::Error)
+        .unwrap();
+    assert_eq!(error.category, LogCategory::Biber);
+    assert_eq!(error.file.as_deref(), Some("sources/refs.bib"));
+    assert_eq!(error.line, Some(9));
+    assert!(error.message.starts_with("syntax error: at end of input"));
+    assert!(diags
+        .iter()
+        .all(|diagnostic| !diagnostic.message.contains("biber_tmp")));
+}
+
+#[test]
+fn a_fatal_biber_error_drops_the_note_that_biber_should_rerun() {
+    let diags = parse(&BAD_BIB_ENGINE_OUTPUT);
+    assert!(diags
+        .iter()
+        .all(|diagnostic| !diagnostic.message.contains("needs Biber")));
+    let rerun_only = parse(&BAD_BIB_ENGINE_OUTPUT[..4]);
+    assert!(rerun_only
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("needs Biber")));
+}
+
+#[test]
+fn other_fatal_biber_errors_are_shown_too() {
+    let diags = parse(&[
+        "[Oleafly] Engine output:",
+        "ERROR - Cannot sort without a schema",
+    ]);
+    assert_eq!(diags.len(), 1);
+    assert_eq!(diags[0].severity, LogSeverity::Error);
+    assert_eq!(diags[0].category, LogCategory::Biber);
+    assert_eq!(diags[0].message, "Cannot sort without a schema");
 }
 
 #[test]

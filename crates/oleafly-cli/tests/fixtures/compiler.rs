@@ -10,6 +10,10 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 const IMAGE_FAILURE_MARKER: &str = "fixture-libpng-error";
+#[cfg(fixture_failure)]
+const SILENT_FAILURE_MARKER: &str = "fixture-silent-failure";
+#[cfg(fixture_failure)]
+const SHELL_REFUSAL_MARKER: &str = "fixture-shell-refusal";
 const PARTIAL_PDF_MARKER: &str = "fixture-partial-pdf";
 const ENTRY_PREFIX: &str = "\\ifdefined\\pdfglyphtounicode";
 
@@ -53,6 +57,9 @@ fn reports_an_image_failure() -> bool {
 }
 
 fn print_version() -> bool {
+    if arguments().get(1).is_some_and(|argument| argument == "show") {
+        return true;
+    }
     let first = arguments().into_iter().next();
     if !matches!(first.as_deref().and_then(|value| value.to_str()), Some("--version" | "-v")) {
         return false;
@@ -104,6 +111,16 @@ fn common() {
         eprintln!("error: this bundle isn't cached, and we couldn't get it from the internet");
         std::process::exit(1);
     }
+    if std::env::var_os("FIXTURE_BUNDLE_FAIL_WARM").is_some() && arguments().iter().any(|argument| argument == "--bundle") {
+        eprintln!("warning: failure fetching \"biblatex.sty\" from network (1/3)");
+        eprintln!("caused by: unexpected HTTP response code 403 Forbidden for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar");
+        eprintln!("warning: open of input biblatex.sty failed");
+        eprintln!("caused by: failed to download \"biblatex.sty\"; please check your network connection.");
+    }
+    if std::env::var_os("FIXTURE_RETRY_FAILS").is_some() && !arguments().iter().any(|argument| argument == "--bundle") {
+        eprintln!("thread 'main' panicked at the upstream relay");
+        std::process::exit(101);
+    }
 }
 
 #[cfg(fixture_failure)]
@@ -115,6 +132,14 @@ fn main() {
     if reports_an_image_failure() {
         eprintln!("(ts1cmr.fd)libpng error: IHDR: CRC error");
         std::process::exit(1);
+    }
+    if source_contains(SILENT_FAILURE_MARKER) {
+        eprintln!("error: can't open path `refs.bib`");
+        std::process::exit(1);
+    }
+    if source_contains(SHELL_REFUSAL_MARKER) {
+        eprintln!("runsystem(echo generated > gen.tex)...disabled (restricted).");
+        std::process::exit(12);
     }
     eprintln!("! Fixture failure");
     std::process::exit(7);

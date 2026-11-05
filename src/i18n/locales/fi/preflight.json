@@ -588,6 +588,7 @@
     "unrecorded": "LaTeX Project ei ole kirjannut luokalle {{name}} merkinnän tilaa, joten tulos on todentamaton. Käännä ja tarkista tuloste."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata kuuluu päädokumentin alkuun, joten tämä tiedosto ei saa sitä.",
     "metadataUpdated": "Vaaditut merkintäavaimet lisättiin \\DocumentMetadata-komentoon.",
     "metadataAdded": "\\DocumentMetadata lisättiin ensimmäiseksi riviksi (pakollinen, ja sen on oltava ennen \\documentclass-komentoa). Se on versiotarkistuksen sisällä: versiota {{date}} vanhempi LaTeX, mukana tuleva moottori mukaan lukien, ohittaa sen ja kääntää dokumentin ilman merkintöjä epäonnistumisen sijaan.",
     "headerRows": "table/header-rows asetettiin arvoon 1, jotta jokaisen taulukon ensimmäinen rivi merkitään otsikkosoluiksi. Muuta lukua, jos jonkin taulukon otsikko on eri syvyinen.",

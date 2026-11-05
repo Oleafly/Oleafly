@@ -495,6 +495,7 @@
     "previewUnsupported": "Podgląd na żywo nie jest jeszcze dostępny dla tego silnika",
     "badge": "Wygenerowane przez AI",
     "compileWarning": "Ten szkic nie skompilował się czysto. Wygeneruj go ponownie, aby uzyskać lepszy punkt wyjścia, albo utwórz projekt i popraw kod źródłowy w edytorze.",
+    "compileLog": "Dziennik kompilacji",
     "noDescription": "Nie ma jeszcze opisu.",
     "includes": "Zawiera",
     "category": "Kategoria",

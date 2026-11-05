@@ -817,12 +817,27 @@ fn settings_blocking(project_id: &str) -> Result<TypstPackageSettings, String> {
     })
 }
 
+fn require_vendor_support(
+    capabilities: &TypstCapabilities,
+    version: &ToolchainVersion,
+) -> Result<(), String> {
+    if capabilities.supports_flag("--package-path") {
+        return Ok(());
+    }
+    Err(AppError::new("typst_packages.vendor_unsupported")
+        .param("version", version)
+        .to_string())
+}
+
 fn vendor_blocking(project_id: &str, offline: bool) -> Result<TypstVendorReport, String> {
     let meta = typst_meta(project_id)?;
     let root = crate::project_location::locate(project_id)?.root;
     let app = TypstPackageDirs::app(&crate::paths::oleafly_root()?);
     let deps = match crate::typst_toolchain::resolve_for_compile(&meta)? {
-        Some(typst) => run_deps_compile(&typst, &root, &meta.main_doc, &app, offline)?,
+        Some(typst) => {
+            require_vendor_support(&typst.capabilities, &typst.version)?;
+            run_deps_compile(&typst, &root, &meta.main_doc, &app, offline)?
+        }
         None => None,
     };
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;

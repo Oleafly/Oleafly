@@ -30,15 +30,17 @@ The New Project gallery includes engine-tagged templates and an engine filter. A
 ## Quarto and Calepin
 
 Quarto and Calepin compile documents that contain code. You install the tool
-yourself or let Oleafly download it. The code runs in your own R, Python or
-Julia, which Oleafly never installs.
+yourself or let Oleafly download it. Outside a `_quarto.yml` project, Quarto
+needs to be 1.5 or newer. The code runs in your own R, Python or Julia, which
+Oleafly never installs.
 
 | Capability | Quarto | Calepin |
 |---|---|---|
 | Main source | `.qmd`, `.Rmd` | `.typ` that imports `/.calepin/calepin.typ` |
 | Output | The first format the document declares that Oleafly can show: PDF for `pdf`, `typst` and `beamer`, HTML for `html`, `revealjs` and `dashboard`, extension formats such as `acm-pdf` included. Other formats, such as `docx`, are skipped. With none of these, HTML | PDF |
 | Code runs | Only after "Allow code in this project" | Same |
-| With code off | Renders with `--no-execute`: chunks show their code, no output. A project with filters, shortcodes, `_extensions`, render scripts or inline R code doesn't compile until code is allowed | Shows the results Calepin stored on its last run, through plain Typst. With none stored, compile asks for code to be allowed |
+| With code off | Renders with `--no-execute`: chunks show their code, no output. A project with filters, shortcodes, `_extensions`, render scripts or inline R code doesn't compile until code is allowed. With no R installed, a `.qmd` with front matter falls back to a plain preview, and a `.Rmd` still needs R | Shows the results Calepin stored on its last run, through plain Typst. With none stored, compile asks for code to be allowed |
+| Time limit | One hour | One hour, or 5 minutes for stored results shown through plain Typst |
 | Formatting profile | Pandoc Markdown | Typst |
 | Project index and citations | Yes | Yes |
 | Source and PDF sync | No | No |

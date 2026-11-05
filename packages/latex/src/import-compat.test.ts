@@ -8,6 +8,7 @@ import {
   missingLatexFiles,
   needsPdflatexFinding,
   needsShellEscapeFinding,
+  offlineCacheMiss,
   scanImportCompatibility,
   stripLineComments,
 } from "./import-compat";
@@ -73,6 +74,23 @@ describe("scanImportCompatibility", () => {
     expect(ids).toEqual(
       expect.arrayContaining(["pythontex", "shell-escape", "fontspec", "pdftex-only"]),
     );
+  });
+
+  it("flags the pdfTeX-only CJK packages and offers pdfLaTeX", () => {
+    for (const line of [
+      String.raw`\usepackage{CJKutf8}`,
+      String.raw`\usepackage[encapsulated]{CJK}`,
+    ]) {
+      const findings = scanImportCompatibility({ texFiles: [{ path: "main.tex", content: line }] });
+      expect(findings.map((f) => f.id)).toContain("cjk-pdftex-package");
+    }
+    expect(importCompatAction("cjk-pdftex-package")).toBe("switch-to-pdflatex");
+    expect(needsPdflatexFinding("cjk-pdftex-package")).toBe(true);
+    expect(latexmkFixesFinding("cjk-pdftex-package")).toBe(true);
+    const others = scanImportCompatibility({
+      texFiles: [{ path: "main.tex", content: String.raw`\usepackage{xeCJK}` }],
+    });
+    expect(others.map((f) => f.id)).not.toContain("cjk-pdftex-package");
   });
 
   it("ignores commented-out usepackage lines", () => {
@@ -158,6 +176,41 @@ describe("classifyCompileFailure", () => {
     expect(classifyCompileFailure(log).map((f) => f.id)).toContain("pdftex-only");
   });
 
+  it("no longer sends a document to pdfLaTeX just for setting pdfoutput", () => {
+    const scanned = scanImportCompatibility({
+      texFiles: [{ path: "main.tex", content: "\\pdfoutput=1\n\\documentclass{article}\n" }],
+    });
+    expect(scanned.map((f) => f.id)).not.toContain("pdftex-only");
+    const log = ["! Undefined control sequence.", String.raw`l.3 \pdfoutput=2\foo`].join("\n");
+    expect(classifyCompileFailure(log).map((f) => f.id)).not.toContain("pdftex-only");
+  });
+
+  it("explains any other pdfTeX primitive the log stopped on", () => {
+    const setting = ["! Undefined control sequence.", String.raw`l.1 \pdfgamma`, "             =1000"];
+    expect(classifyCompileFailure(setting.join("\n")).map((f) => f.id)).toContain("pdftex-only");
+    expect(classifyCompileFailure(setting.join("\r\n")).map((f) => f.id)).toContain("pdftex-only");
+    const midLine = ["! Undefined control sequence.", String.raw`l.2 Text then \pdfdraftmode`, "  =1"].join("\n");
+    expect(classifyCompileFailure(midLine).map((f) => f.id)).toContain("pdftex-only");
+  });
+
+  it("leaves a pdf-named line alone when no undefined command stopped on it", () => {
+    const quoted = ["! Undefined control sequence.", String.raw`l.4 \oops`, String.raw`l.9 \pdfgamma`].join("\n");
+    expect(classifyCompileFailure(quoted)).toEqual([]);
+    const inMacro = ["! Undefined control sequence.", String.raw`\foo ->\pdfgamma`, String.raw`l.9 \foo`].join("\n");
+    expect(classifyCompileFailure(inMacro)).toEqual([]);
+    const capitalized = ["! Undefined control sequence.", String.raw`l.7 \pdfFigure`].join("\n");
+    expect(classifyCompileFailure(capitalized)).toEqual([]);
+  });
+
+  it("ignores the info lines pdftexcmds prints on every compile", () => {
+    const log = [
+      String.raw`Package pdftexcmds Info: \pdf@primitive is available.`,
+      "! Undefined control sequence.",
+      String.raw`l.42 \foo`,
+    ].join("\n");
+    expect(classifyCompileFailure(log)).toEqual([]);
+  });
+
   it("stays silent on ordinary user errors", () => {
     const log = [
       "! Undefined control sequence.",
@@ -215,6 +268,53 @@ describe("classifyCompileFailure", () => {
     expect(
       classifyCompileFailure(log, { bundledEngine: false }).map((f) => f.id),
     ).not.toContain("missing-sty-on-bundled-engine");
+  });
+
+  it("treats a warm-cache download failure as a download failure, with its status", () => {
+    const forbidden = [
+      'warning: failure fetching "biblatex.sty" from network (1/3)',
+      "caused by: unexpected HTTP response code 403 Forbidden for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
+      "warning: open of input biblatex.sty failed",
+      'caused by: failed to download "biblatex.sty"; please check your network connection.',
+      "! LaTeX Error: File `biblatex.sty' not found.",
+    ].join("\n");
+    const [finding, ...rest] = classifyCompileFailure(forbidden);
+    expect(rest).toEqual([]);
+    expect(finding.id).toBe("bundle-fetch-failed");
+    expect(finding.params?.status).toBe(403);
+    const refused = [
+      'warning: failure fetching "biblatex.sty" from network (1/3)',
+      "caused by: error sending request for url (https://mirrors.oleafly.com/x.tar)",
+      'caused by: failed to download "biblatex.sty"; please check your network connection.',
+      "! LaTeX Error: File `biblatex.sty' not found.",
+    ].join("\n");
+    expect(classifyCompileFailure(refused).map((f) => f.id)).toEqual(["bundle-fetch-failed"]);
+  });
+
+  it("calls a package offline mode has not downloaded a cache miss", () => {
+    const missing = "! LaTeX Error: File `tikz.sty' not found.\n";
+    expect(offlineCacheMiss(missing, classifyCompileFailure(missing))).toBe(true);
+    const format = 'error: failed to open input file "tectonic-format-latex.tex"\n';
+    expect(offlineCacheMiss(format, classifyCompileFailure(format))).toBe(true);
+    const library = "! Package tikz Error: I did not find the tikz library 'calc'.\n";
+    expect(offlineCacheMiss(library, classifyCompileFailure(library))).toBe(true);
+    const font = "! Package fontspec Error: The font \"Fira Sans\" cannot be found.\n";
+    expect(offlineCacheMiss(font, classifyCompileFailure(font))).toBe(true);
+    const minted = "! Package minted Error: You must invoke LaTeX with -shell-escape\n";
+    expect(offlineCacheMiss(minted, classifyCompileFailure(minted))).toBe(false);
+    expect(offlineCacheMiss("! Undefined control sequence.\n", [])).toBe(false);
+  });
+
+  it("never calls a project's own missing file a cache miss", () => {
+    for (const log of [
+      "! LaTeX Error: File `figures/plot.png' not found.\n",
+      "! LaTeX Error: File `chapters/intro.tex' not found.\n",
+      "! LaTeX Error: File `intro.tex' not found.\n",
+      "! I can't find file `chapter1'.\n",
+      "! I can't find file `chapters/intro.tex'.\n",
+    ]) {
+      expect(offlineCacheMiss(log, classifyCompileFailure(log, { bundledEngine: true }))).toBe(false);
+    }
   });
 
   it("reports a failed bundle download on its own and never as a missing package", () => {
@@ -283,6 +383,7 @@ describe("taxonomy catalog", () => {
     for (const id of [
       "minted",
       "pdftex-only",
+      "cjk-pdftex-package",
       "class-compat",
       "hyperref-pdftex-driver",
       "eps-image",
@@ -466,6 +567,151 @@ describe("missingLatexFiles odd names", () => {
   it("stops after eight distinct files", () => {
     const log = Array.from({ length: 10 }, (_, index) => `! LaTeX Error: File \`pkg${index}.sty' not found.`).join("\n");
     expect(missingLatexFiles(log)).toHaveLength(8);
+  });
+});
+
+describe("missingLatexFiles beyond packages and classes", () => {
+  it("keeps every kind of TeX support file that a package provides", () => {
+    const log = [
+      "! LaTeX Error: File `t1foo.fd' not found.",
+      "! LaTeX Error: File `size13.clo' not found.",
+      "! LaTeX Error: File `lucida.def' not found.",
+      "! LaTeX Error: File `chapters/one.def' not found.",
+      "! LaTeX Error: File `notes.tex' not found.",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual(["t1foo.fd", "size13.clo", "lucida.def"]);
+  });
+
+  it("reads a missing BibTeX style from bibtex and from latexmk", () => {
+    expect(missingLatexFiles("I couldn't open style file IEEEtran.bst\n---line 3 of file main.aux")).toEqual([
+      "IEEEtran.bst",
+    ]);
+    const latexmk = [
+      "Latexmk: Bst file not found in search path:",
+      "  IEEEtran.bst",
+      "  plain-old",
+      "Latexmk: Summary of warnings from last run of *latex:",
+    ].join("\n");
+    expect(missingLatexFiles(latexmk)).toEqual(["IEEEtran.bst", "plain-old.bst"]);
+  });
+
+  it("reads biblatex styles only when biblatex reports the style as missing", () => {
+    const log = [
+      "Package biblatex Info: ... file 'ieee.dbx' not found.",
+      "Package biblatex Info: ... file 'biblatex-dm.cfg' not found.",
+      "Package biblatex Info: ... file 'ieee.bbx' not found.",
+      "Package biblatex Info: ... file 'numeric.bbx' found.",
+      "! Package biblatex Error: Style 'ieee' not found.",
+      "Package biblatex Info: ... file 'ieee.cbx' not found.",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual(["ieee.bbx", "ieee.cbx"]);
+    expect(missingLatexFiles("Package biblatex Info: ... file 'numeric.dbx' not found.")).toEqual([]);
+    expect(missingLatexFiles("Package biblatex Info: ... file 'custom.bbx' not found.")).toEqual([]);
+  });
+
+  it("maps an unknown babel language to its definition file", () => {
+    expect(missingLatexFiles("! Package babel Error: Unknown option 'ngerman'.\n(babel) Suggested actions:")).toEqual(
+      ["ngerman.ldf"],
+    );
+    expect(missingLatexFiles("(babel) or the language definition file french.ldf was not found.")).toEqual([
+      "french.ldf",
+    ]);
+  });
+
+  it("maps a missing tikz library to its code file", () => {
+    const log = "! Package tikz Error: I did not find the tikz library 'quantikz2'. I looked for files named";
+    expect(missingLatexFiles(log)).toEqual(["tikzlibraryquantikz2.code.tex"]);
+  });
+
+  it("reads missing font metrics from both wrapped and full log lines", () => {
+    const wrapped = "! Font C70/mj/m/n/10/31=uwmj31 at 10.0pt not loadable: Metric (TFM) file not fo\nund.\n";
+    expect(missingLatexFiles(wrapped)).toEqual(["uwmj31.tfm"]);
+    const openType =
+      "! Font TU/FandolSong-Regular.otf(0)/m/n/10=[FandolSong-Regular.otf]/OT at 10.0pt not loadable: Metric (TFM) file or installed font not found.";
+    expect(missingLatexFiles(openType)).toEqual(["FandolSong-Regular.otf"]);
+    expect(missingLatexFiles('! Font \\x="TeX Gyre Termes" at 10.0pt not loadable: Metric (TFM) file not found.')).toEqual(
+      [],
+    );
+    expect(missingLatexFiles("(see ! Font x=cmr10 at 10.0pt not loadable: Metric (TFM) file not found.)")).toEqual([]);
+  });
+
+  it("names the font definition file only when a font really failed to load", () => {
+    const undefinedShape = "LaTeX Font Warning: Font shape `C70/nanummj/m/n' undefined\n(Font) using `C70/song/m/n' instead";
+    expect(missingLatexFiles(undefinedShape)).toEqual([]);
+    const failed = `${undefinedShape}\n! Font C70/song/m/n/10/31=cyberb31 at 10.0pt not loadable: Metric (TFM) file not found.`;
+    expect(missingLatexFiles(failed)).toEqual(["c70nanummj.fd", "cyberb31.tfm"]);
+    expect(
+      missingLatexFiles("LaTeX Font Warning: Font shape `OT1/cmr/m/n' in size <8.5> not available\n"),
+    ).toEqual([]);
+  });
+
+  it("ignores the nullfont follow-up to a missing metric file", () => {
+    const log = [
+      "! Font OT1/pbk/m/n/10=pbkl7t at 10.0pt not loadable: Metric (TFM) file not found.",
+      "<to be read again> ",
+      "                   relax ",
+      "! Font \\OT1/pbk/l/n/10=nullfont not loadable: Metric (TFM) file not found.",
+      "<to be read again> ",
+      "                   \\relax ",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual(["pbkl7t.tfm"]);
+  });
+
+  it("leaves out a font definition file the log shows as loaded", () => {
+    const log = [
+      "File: t1put.fd 2001/06/04 font definitions for T1/put.",
+      ")",
+      "! Font T1/put/m/n/10=putr8t at 10.0pt not loadable: Metric (TFM) file not found.",
+      "LaTeX Font Warning: Font shape `T1/put/m/scit' undefined",
+      "(Font)              using `T1/put/m/sc' instead on input line 5.",
+      "! Font T1/put/m/sc/10=putrc8t at 10.0pt not loadable: Metric (TFM) file not found.",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual(["putr8t.tfm", "putrc8t.tfm"]);
+  });
+
+  it("does not turn a system font family into a metric file", () => {
+    const wrapped =
+      "! Font TU/UnBatang(0)/m/n/10=UnBatang at 10.0pt not loadable: Metric (TFM) file\n or installed font not found.\n";
+    expect(missingLatexFiles(wrapped)).toEqual([]);
+    expect(classifyCompileFailure(wrapped).map((f) => f.id)).not.toContain("missing-sty-on-bundled-engine");
+    expect(
+      missingLatexFiles("! Font TU/Roboto(0)/m/n/10=Roboto at 10.0pt not loadable: Metric (TFM) file or installed font not found."),
+    ).toEqual([]);
+    expect(
+      missingLatexFiles("! Font \\x=Roboto at 10.0pt not loadable: Metric (TFM) file or installed font not found."),
+    ).toEqual([]);
+  });
+
+  it("keeps a metric file that XeTeX reports for a legacy encoded font", () => {
+    const log = [
+      "! Font OT1/pbk/m/n/10=pbkl7t at 10.0pt not loadable: Metric (TFM) file or installed font not found.",
+      "! Font \\OT1/pbk/l/n/10=nullfont not loadable: Metric (TFM) file or installed font not found.",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual(["pbkl7t.tfm"]);
+  });
+
+  it("reads an unreadable font file from pdfTeX", () => {
+    const log = "!pdfTeX error: pdflatex (file ./ptmr8a.pfb): cannot open Type 1 font file for reading";
+    expect(missingLatexFiles(log)).toEqual(["ptmr8a.pfb"]);
+  });
+
+  it("keeps the eight-file cap across every source", () => {
+    const fonts = Array.from({ length: 12 }, (_, index) => `! Font x=font${index} at 10.0pt not loadable: Metric (TFM) file not found.`);
+    const log = ["! LaTeX Error: File `first.sty' not found.", ...fonts].join("\n");
+    const files = missingLatexFiles(log);
+    expect(files).toHaveLength(8);
+    expect(files[0]).toBe("first.sty");
+  });
+});
+
+describe("finding params", () => {
+  it("carry what the appended sentences name", () => {
+    const eps = classifyCompileFailure('error: pdf: image inclusion failed for "plots/curve.eps"')[0];
+    expect(eps.params).toEqual({ file: "plots/curve.eps" });
+    const missing = classifyCompileFailure("! LaTeX Error: File `siunitx.sty' not found.")[0];
+    expect(missing.params).toEqual({ missing: ["siunitx.sty"] });
+    const blank = classifyCompileFailure("Package epstopdf Warning: Shell escape feature is not enabled.\nfigure.eps")[0];
+    expect(blank.params).toBeUndefined();
   });
 });
 

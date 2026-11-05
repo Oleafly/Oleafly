@@ -509,6 +509,32 @@ mod tests {
     }
 
     #[test]
+    fn a_shim_outside_the_appimage_finds_the_sidecars_beside_the_mounted_app() {
+        let mount = PathBuf::from("/tmp/.mount_OleaflyAb/usr/bin");
+        let search = AppSearch {
+            platform: Platform::Linux,
+            own_dir: Some(PathBuf::from("/home/ada/.oleafly/cli/bin")),
+            override_app: Some(mount.join("oleafly-desktop")),
+            home: None,
+            install_dirs: Vec::new(),
+        };
+        let candidates = app_bin_candidates(&search);
+        assert_eq!(
+            candidates[1],
+            (mount.join("oleafly-desktop"), mount.clone())
+        );
+        assert_eq!(
+            candidates.last().map(|(_, folder)| folder.as_path()),
+            Some(Path::new("/usr/bin"))
+        );
+        assert!(
+            resources_candidates(&mount, Platform::Linux).contains(&PathBuf::from(
+                "/tmp/.mount_OleaflyAb/usr/lib/Oleafly/resources"
+            ))
+        );
+    }
+
+    #[test]
     fn library_projects_are_identified_by_their_folder_name() {
         let data = tempfile::tempdir().unwrap();
         let project = data.path().join("projects").join("p1");

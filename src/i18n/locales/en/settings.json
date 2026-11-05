@@ -1073,6 +1073,22 @@
         "lines_one": "{{value}} line",
         "lines_other": "{{value}} lines"
       },
+      "openWith": {
+        "ariaLabel": "Terminal for opening folders and commands",
+        "builtin": "Built-in terminal",
+        "cmd": "Command Prompt",
+        "description": "Where Oleafly opens a folder or runs a command when you choose Open in terminal.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Open in",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (not found)",
+        "powershell": "PowerShell",
+        "systemDefault": "System default ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "System default terminal"
+      },
       "shell": {
         "ariaLabel": "Terminal shell",
         "description": "New terminals start this shell. Open terminals keep theirs.",
@@ -1371,13 +1387,20 @@
       "tooltip": "Applies to new projects. Each project pins its own engine in project.json, so collaborators opening the same project compile it the same way regardless of this setting."
     },
     "distributions": {
+      "automatic": "Automatic",
+      "automaticTooltip": "Go back to letting Oleafly pick: a full system TeX first, then TinyTeX.",
       "empty": "No TeX distribution detected on this machine.",
       "heading": "Manage TeX distributions",
+      "inUse": "In use",
+      "inUseTooltip": "latexmk compiles run from this distribution.",
       "rowTooltip": "Bundled with {{tools}}. Oleafly runs its TeX tools from {{binDir}}.",
       "rowTooltipNoTools": "No latexmk or tlmgr was found in this install. Oleafly runs its TeX tools from {{binDir}}.",
-      "tooltip": "Everything the latexmk engine can use on this machine. TinyTeX installs into your home folder with no admin rights. System installs (MacTeX, TeX Live, MiKTeX) are detected automatically."
+      "tinytexChooseHint": "Compiles keep using the distribution marked In use. To switch after the install, click Use for compiles on TinyTeX.",
+      "tooltip": "Everything the latexmk engine can use on this machine. TinyTeX installs with no admin rights. System installs (MacTeX, TeX Live, MiKTeX) are detected automatically.",
+      "use": "Use for compiles"
     },
     "latexmkMissing": "no latexmk found",
+    "latexmkNeedsPerl": "latexmk needs Perl",
     "markdown": {
       "downloading": "Downloading…",
       "heading": "Markdown compiler",
@@ -1413,6 +1436,8 @@
       "includedIn": "Included in {{package}}. Removing it also removes the other files in that package.",
       "intro": {
         "available": "These packages are for projects using latexmk (system TeX). Tectonic uses its own package bundle.",
+        "systemManaged": "This TeX Live came with your Linux distribution, so add packages with {{manager}}. Oleafly can't change it.",
+        "systemManagedTinytex": "This TeX Live came with your Linux distribution, so add packages with {{manager}}. To let Oleafly manage packages, download TinyTeX above.",
         "unavailable": "Package management requires TeX Live or TinyTeX. For MiKTeX, use MiKTeX Console."
       },
       "refreshInstalled": "Refresh installed packages",
@@ -1444,9 +1469,10 @@
       "tooltip": "The default engine (Tectonic) is fast and offline but cannot produce tagged, Section 508 / PDF-UA PDFs. That needs system LuaLaTeX, which can read local files available to your account and should be used only with trusted projects. Oleafly can use an existing distribution or managed TinyTeX."
     },
     "tinytex": {
-      "detail": "A compact TeX Live in your home folder. The core download is about 250 MB. Journal templates can add packages later, up to about 1 GB in total. Installing ahead of time makes system LaTeX available when you explicitly choose it.",
+      "detail": "A compact TeX Live that needs no admin rights. The core download is about 250 MB. Journal templates can add packages later, up to about 1 GB in total. Installing ahead of time makes system LaTeX available when you explicitly choose it.",
       "download": "Download TinyTeX (~250 MB)",
-      "resume": "Resume download ({{size}} MB done)"
+      "resume": "Resume download ({{size}} MB done)",
+      "update": "Update"
     },
     "typst": {
       "detail": "Ships with Oleafly, so there is nothing to set up. It needs a network connection only the first time a document imports an @preview package.",
@@ -1511,7 +1537,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Not found on this computer."
+        "missing": "Not found on this computer.",
+        "outdated": "{{tool}} {{version}} on this computer is too old. Oleafly needs {{minimum}} or newer, so it uses the copy it downloads."
       },
       "managedIdle": "Not in use. Oleafly uses the copy found on this computer first.",
       "superseded": "Not in use. Oleafly now uses {{tool}} {{version}}.",

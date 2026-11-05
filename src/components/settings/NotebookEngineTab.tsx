@@ -116,6 +116,15 @@ function ActiveToolCard({ tool, status }: Readonly<{ tool: NotebookTool; status:
           <SettingsPath path={active.path} />
         </p>
       )}
+      {status.outdatedSystem && (
+        <p className="mt-1 text-[0.6875rem] text-muted-foreground" data-testid={`${tool}-engine-outdated`}>
+          {t(($) => $.settings.engine.notebook.active.outdated, {
+            tool: NOTEBOOK_TOOL_LABELS[tool],
+            version: status.outdatedSystem,
+            minimum: status.minimumVersion ?? "",
+          })}
+        </p>
+      )}
     </div>
   );
 }
@@ -178,7 +187,7 @@ function DownloadToolCard({ tool, status }: Readonly<{ tool: NotebookTool; statu
   const size = status.downloadBytes ? formatDownloadSize(status.downloadBytes) : "";
   const detail = status.offered
     ? [
-        status.active ? t(($) => $.settings.engine.notebook.download.optional) : null,
+        status.active && !status.outdatedSystem ? t(($) => $.settings.engine.notebook.download.optional) : null,
         t(($) => $.settings.engine[tool].downloadDetail),
         t(($) => $.settings.engine.notebook.download.license, { license: status.license }),
       ]

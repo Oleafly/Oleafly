@@ -620,6 +620,7 @@
     "unrecorded": "Projekt LaTeX nie zapisał stanu tagowania dla klasy {{name}}, więc wynik jest niepotwierdzony. Skompiluj i sprawdź rezultat."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata trafia na początek dokumentu głównego, więc ten plik go nie dostaje.",
     "metadataUpdated": "Dodano wymagane klucze tagowania do Twojego \\DocumentMetadata.",
     "metadataAdded": "Dodano \\DocumentMetadata jako pierwszy wiersz (wymagane, musi poprzedzać \\documentclass). Znajduje się w sprawdzeniu wersji: LaTeX starszy niż {{date}}, w tym wbudowany silnik, pomija go i kompiluje dokument bez tagów zamiast zgłosić błąd.",
     "headerRows": "Ustawiono table/header-rows na 1, aby pierwszy wiersz każdej tabeli był tagowany jako komórki nagłówkowe. Zmień tę liczbę, jeśli tabela ma nagłówek innej głębokości.",

@@ -74,6 +74,20 @@ describe("confirmAction", () => {
     expect(screen.queryByText(QUESTION)).toBeNull();
   });
 
+  it("shows a request's own title and cancel label", async () => {
+    installPluginConfirm();
+    render(<ConfirmHost />);
+    const answer = ask({
+      title: "Export warnings",
+      message: QUESTION,
+      confirmLabel: "Show in folder",
+      cancelLabel: "Close",
+    });
+    expect(await screen.findByRole("heading", { name: "Export warnings" })).toBeTruthy();
+    fireEvent.click(dialogButton("Close"));
+    await expect(answer).resolves.toBe(false);
+  });
+
   it("treats backing out of the app's dialog as no", async () => {
     installPluginConfirm();
     render(<ConfirmHost />);

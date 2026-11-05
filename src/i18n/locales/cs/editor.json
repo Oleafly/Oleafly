@@ -369,7 +369,12 @@
     "rawLogs": "Nezpracované protokoly",
     "copyLog": "Kopírovat protokol",
     "typesetting": "Sazba",
+    "missingCharacters": "Chybějící znaky",
     "info": "Informace",
+    "clear": "Vymazat",
+    "clearAria": "Vymazat protokol kompilace",
+    "clearHint": "Skryje tento protokol a jeho chyby do další kompilace. Soubory sestavení zůstanou.",
+    "cleared": "Protokol byl vymazán. Další kompilace zapíše nový.",
     "empty": "Tady se objeví výstup kompilace.",
     "scrollToTop": "Přejít nahoru",
     "scrollToBottom": "Přejít dolů",
@@ -390,6 +395,8 @@
     "summaryReferences_many": "{{count}} nevyřešeného odkazu",
     "summaryReferences_other": "{{count}} nevyřešených odkazů",
     "fontPack": "{{family}} je v bezplatném balíčku písem {{pack}}.",
+    "fontPackGlyphs": "Bezplatný balíček písem {{pack}} tyto znaky obsahuje.",
+    "fontPackSealed": "{{family}} je v bezplatném balíčku písem {{pack}}, ale balíčky písem se tady neuplatní, protože tento projekt používá jen písma projektu. Přidejte soubor písma do složky písem projektu.",
     "fontPackAction": "Stáhnout a přeložit",
     "fontPackDownloading": "Stahování…",
     "fontPackFailed": "Balíček písem se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu."
@@ -1499,7 +1506,8 @@
       "count_few": "{{count}} balíčky v tomto projektu",
       "count_many": "{{count}} balíčku v tomto projektu",
       "count_other": "{{count}} balíčků v tomto projektu",
-      "none": "V tomto projektu zatím nejsou žádné balíčky."
+      "none": "V tomto projektu zatím nejsou žádné balíčky.",
+      "unsupported": "Typst {{version}} neumí číst balíčky ze složky projektu. Chcete-li tuto možnost použít, přepněte projekt na Typst 0.12 nebo novější."
     },
     "hints": {
       "updateAvailable": "Je k dispozici {{name}} {{latest}}. Tento import používá {{version}}.",
@@ -1540,6 +1548,7 @@
     "classNote": "Toto je třída dokumentu. Nastavte ji raději pomocí \\documentclass.",
     "onDemand": "Tectonic stahuje balíčky, když je dokument poprvé použije. Není co instalovat.",
     "checking": "Zjišťuje se, které balíčky jsou nainstalované",
+    "systemManaged": "Tento TeX Live pochází z vaší distribuce Linuxu, takže balíčky instalujte pomocí {{manager}}.",
     "unknownInstall": "Oleafly nedokáže zjistit, které balíčky vaše instalace TeX obsahuje.",
     "noProject": "Chcete-li přidávat balíčky, otevřete projekt LaTeX.",
     "added": "Balíček {{name}} byl přidán do {{file}}.",

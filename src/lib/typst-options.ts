@@ -46,10 +46,14 @@ export interface TypstExportRequest {
   pages?: string | null;
   pdfStandard?: string | null;
   variant?: string | null;
+  offline?: boolean;
 }
 
 export interface TypstExportResult {
   files: string[];
+  skipped: string[];
+  outdatedTypst: string | null;
+  readFromSource: string | null;
 }
 
 export const typstProjectOptions = (projectId: string) =>
@@ -78,6 +82,7 @@ export const exportTypstDocument = (
 
 const HTML_EXPORT = "html";
 const TAGGED_BY_DEFAULT = /^0\.(?:1[4-9]|[2-9]\d)\.|^[1-9]\d*\./u;
+const HTML_MATH = /^0\.(?:1[5-9]|[2-9]\d)\.|^[1-9]\d*\./u;
 
 export function typstSupports(options: TypstOptionsDescriptor | null | undefined, flag: string): boolean {
   return options?.flags.includes(flag) ?? false;
@@ -89,6 +94,10 @@ export function typstHtmlExport(options: TypstOptionsDescriptor | null | undefin
 
 export function typstTagsPdfByDefault(version: string | null | undefined): boolean {
   return Boolean(version && TAGGED_BY_DEFAULT.test(version.trim()));
+}
+
+export function typstHtmlDropsMath(version: string | null | undefined): boolean {
+  return Boolean(version && !HTML_MATH.test(version.trim()));
 }
 
 const PDF_STANDARD_ORDER = ["a-2b", "a-3b", "a-1b", "a-1a", "a-2u", "a-2a", "a-3u", "a-3a", "a-4", "a-4f", "a-4e", "ua-1"];

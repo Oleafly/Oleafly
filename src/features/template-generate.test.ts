@@ -22,6 +22,7 @@ vi.mock("@/lib/ai-providers", () => ({
 }));
 
 import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { useSettingsStore } from "@/store/settings";
 import {
   compileGeneratedTemplate,
   deleteGeneratedTemplate,
@@ -155,6 +156,23 @@ describe("compileGeneratedTemplate", () => {
     expect(result).toEqual({ png: "data:image/png;base64,TEX", log: "Output written" });
     expect(tauri.compileIsolated).toHaveBeenCalledWith("scratch", "\\documentclass{article}");
     expect(tauri.renderTypstSnippet).not.toHaveBeenCalled();
+  });
+
+  it("keeps a draft compile offline when the app is offline", async () => {
+    useSettingsStore.setState({ offline: true });
+    tauri.getOrCreateScratchProject.mockResolvedValue("scratch");
+    tauri.compileIsolated.mockResolvedValue({ has_pdf: false, log: "failed" });
+    tauri.renderTypstSnippet.mockResolvedValue({ status: "failed", diagnostics: [] });
+    try {
+      await compileGeneratedTemplate(
+        template({ engine: "xetex", mainDoc: "main.tex", source: "\\documentclass{article}" }),
+      );
+      await compileGeneratedTemplate(template({}));
+    } finally {
+      useSettingsStore.setState({ offline: false });
+    }
+    expect(tauri.compileIsolated).toHaveBeenCalledWith("scratch", "\\documentclass{article}", true);
+    expect(tauri.renderTypstSnippet).toHaveBeenCalledWith(expect.objectContaining({ offline: true }));
   });
 
   it("does not try to preview Markdown drafts", async () => {

@@ -13,6 +13,7 @@ import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import {
   canApplyLocalCompileOutcome,
@@ -114,7 +115,7 @@ async function applyTaggedPdfOutcome(
       lastAttemptIdentity: requestIdentity,
       failureReason: checkpoint
         ? null
-        : "The tagged PDF changed before it could be verified.",
+        : i18n.t(($) => $.core.compile.taggedPdfChanged),
       log: verified
         ? res.log
         : `${res.log}\nTagged PDF changed before it could be verified. Keeping the prior preview.`,
@@ -136,6 +137,7 @@ async function applyTaggedPdfOutcome(
 
 function applyTaggedMissingPdfOutcome(args: TaggedOutcomeArgs): boolean {
   const { res, requestIdentity, matchesAttemptIdentity } = args;
+  const invalidPdf = i18n.t(($) => $.core.compile.taggedPdfInvalid);
   let outcomeApplied = false;
   useCompileStore.setState((state) => {
     if (
@@ -153,8 +155,7 @@ function applyTaggedMissingPdfOutcome(args: TaggedOutcomeArgs): boolean {
       status: "error",
       phase: "idle",
       lastAttemptIdentity: requestIdentity,
-      failureReason:
-        "The tagged compile did not produce a valid PDF.",
+      failureReason: invalidPdf,
       log: res.log,
     };
   });
@@ -163,16 +164,20 @@ function applyTaggedMissingPdfOutcome(args: TaggedOutcomeArgs): boolean {
       identity: requestIdentity,
       status: "error",
       checkpoint: null,
-      message: "The tagged compile did not produce a valid PDF.",
+      message: invalidPdf,
     });
   }
   return outcomeApplied;
 }
 
+function taggedFailureMessage(e: unknown): string {
+  return decodeAppError(e) ? describeError(e) : String(e);
+}
+
 function markTaggedCompileFailed(
   requestIdentity: TaggedCompileIdentity,
   e: unknown,
-  reason = `Tagged compile failed: ${String(e)}`,
+  reason = i18n.t(($) => $.core.compile.taggedFailed, { message: taggedFailureMessage(e) }),
 ): boolean {
   if (!isCompileOutputStillWanted(requestIdentity)) return false;
   useCompileStore.setState({
@@ -199,7 +204,7 @@ function reportTaggedCompileException(
   if (!wanted) return;
   toast.errorUnique(
     taggedCompileToastKey(requestIdentity.projectId),
-    i18n.t(($) => $.core.tagged.compileFailed),
+    decodeAppError(e) ? describeError(e) : i18n.t(($) => $.core.tagged.compileFailed),
   );
 }
 
@@ -260,6 +265,8 @@ export async function compileTaggedAndVerify(): Promise<void> {
       status: "compiling",
       phase: "building",
       errors: [],
+      diagnostics: null,
+      clearedLog: null,
       failureReason: null,
       lastAttemptIdentity: requestIdentity,
     });

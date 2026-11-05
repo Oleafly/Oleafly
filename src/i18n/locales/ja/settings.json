@@ -1066,6 +1066,22 @@
         "label": "スクロールバック",
         "lines_other": "{{value}} 行"
       },
+      "openWith": {
+        "ariaLabel": "フォルダやコマンドを開くターミナル",
+        "builtin": "組み込みターミナル",
+        "cmd": "コマンド プロンプト",
+        "description": "「ターミナルで開く」を選んだときに、Oleafly がフォルダを開いたりコマンドを実行したりする場所です。",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "開く場所",
+        "mac-terminal": "ターミナル",
+        "notFound": "{{name}}（見つかりません）",
+        "powershell": "PowerShell",
+        "systemDefault": "システムの既定（{{name}}）",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "システムの既定のターミナル"
+      },
       "shell": {
         "ariaLabel": "ターミナルの shell",
         "description": "新しいターミナルではこの shell を起動します。開いているターミナルはそのままです。",
@@ -1363,13 +1379,20 @@
       "tooltip": "新しいプロジェクトに適用されます。各プロジェクトは project.json に自分のエンジンを固定するため、同じプロジェクトを開いた共同作業者は、この設定にかかわらず同じ方法でコンパイルします。"
     },
     "distributions": {
+      "automatic": "自動",
+      "automaticTooltip": "Oleafly に選ばせる設定に戻します。完全なシステムの TeX を優先し、次に TinyTeX を使います。",
       "empty": "このマシンに TeX ディストリビューションは検出されませんでした。",
       "heading": "TeX ディストリビューションの管理",
+      "inUse": "使用中",
+      "inUseTooltip": "latexmk のコンパイルは、このディストリビューションから実行されます。",
       "rowTooltip": "{{tools}} が同梱されています。Oleafly は {{binDir}} から TeX のツールを実行します。",
       "rowTooltipNoTools": "このインストールには latexmk も tlmgr も見つかりませんでした。Oleafly は {{binDir}} から TeX のツールを実行します。",
-      "tooltip": "このマシンで latexmk エンジンが使えるものの一覧です。TinyTeX は管理者権限なしでホームフォルダにインストールされます。システムへのインストール（MacTeX、TeX Live、MiKTeX）は自動的に検出されます。"
+      "tinytexChooseHint": "コンパイルには、引き続き「使用中」と表示されたディストリビューションが使われます。インストール後に切り替えるには、TinyTeX の「コンパイルに使う」をクリックしてください。",
+      "tooltip": "このマシンで latexmk エンジンが使えるものの一覧です。TinyTeX は管理者権限なしでインストールできます。システムへのインストール（MacTeX、TeX Live、MiKTeX）は自動的に検出されます。",
+      "use": "コンパイルに使う"
     },
     "latexmkMissing": "latexmk が見つかりません",
+    "latexmkNeedsPerl": "latexmk には Perl が必要です",
     "markdown": {
       "downloading": "ダウンロード中…",
       "heading": "Markdown のコンパイラ",
@@ -1405,6 +1428,8 @@
       "includedIn": "{{package}} に含まれています。削除すると、そのパッケージのほかのファイルも削除されます。",
       "intro": {
         "available": "これらのパッケージは、latexmk（システム TeX）を使うプロジェクト向けです。Tectonic は独自のパッケージ群を使います。",
+        "systemManaged": "この TeX Live は Linux ディストリビューションに付属のものなので、パッケージは {{manager}} で追加してください。Oleafly からは変更できません。",
+        "systemManagedTinytex": "この TeX Live は Linux ディストリビューションに付属のものなので、パッケージは {{manager}} で追加してください。Oleafly にパッケージを管理させるには、上で TinyTeX をダウンロードしてください。",
         "unavailable": "パッケージの管理には TeX Live か TinyTeX が必要です。MiKTeX の場合は MiKTeX Console を使ってください。"
       },
       "refreshInstalled": "インストール済みのパッケージを更新",
@@ -1435,9 +1460,10 @@
       "tooltip": "既定のエンジン（Tectonic）は高速でオフラインでも動きますが、Section 508 / PDF-UA に対応したタグ付き PDF は作れません。それにはシステムの LuaLaTeX が必要です。LuaLaTeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。Oleafly は既存のディストリビューションでも、管理された TinyTeX でも利用できます。"
     },
     "tinytex": {
-      "detail": "ホームフォルダに置くコンパクトな TeX Live です。最初のダウンロードは約 250 MB です。論文誌のテンプレートがあとからパッケージを追加し、合計でおよそ 1 GB になることがあります。先にインストールしておくと、明示的に選んだときにシステムの LaTeX を使えます。",
+      "detail": "管理者権限が不要なコンパクトな TeX Live です。最初のダウンロードは約 250 MB です。論文誌のテンプレートがあとからパッケージを追加し、合計でおよそ 1 GB になることがあります。先にインストールしておくと、明示的に選んだときにシステムの LaTeX を使えます。",
       "download": "TinyTeX をダウンロード（約 250 MB）",
-      "resume": "ダウンロードを再開（{{size}} MB 完了）"
+      "resume": "ダウンロードを再開（{{size}} MB 完了）",
+      "update": "更新"
     },
     "typst": {
       "detail": "Oleafly に同梱されているため、設定は不要です。ネットワーク接続が必要になるのは、文書が @preview パッケージを初めて読み込むときだけです。",
@@ -1500,7 +1526,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "このコンピュータに見つかりません。"
+        "missing": "このコンピュータに見つかりません。",
+        "outdated": "このコンピュータの {{tool}} {{version}} は古すぎます。Oleafly には {{minimum}} 以降が必要なため、ダウンロードしたコピーを使います。"
       },
       "managedIdle": "使用していません。Oleafly は、このコンピュータで見つかったコピーを優先して使います。",
       "superseded": "使用していません。Oleafly は現在 {{tool}} {{version}} を使っています。",

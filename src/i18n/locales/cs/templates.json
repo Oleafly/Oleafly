@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Připravuje se vaše šablona...",
-      "downloading": "Stahuje se {{label}} ({{index}} z {{total}})"
+      "downloading": "Stahuje se {{label}} ({{index}} z {{total}})",
+      "failed": "Písma pro tuto šablonu se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu."
     },
     "category": {
       "all": "Vše",

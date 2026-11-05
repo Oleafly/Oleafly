@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { basename, dirname, isSeparator, relativeFilePath } from "./path-utils";
+import { basename, dirname, exportFileStem, isSeparator, relativeFilePath } from "./path-utils";
+
+describe("exportFileStem", () => {
+  it("keeps letters and numbers from every script", () => {
+    expect(exportFileStem("论文 初稿", "document")).toBe("论文_初稿");
+    expect(exportFileStem("Überblick 2026", "document")).toBe("Überblick_2026");
+    expect(exportFileStem("研究ノート", "document")).toBe("研究ノート");
+    expect(exportFileStem("한국어 논문", "document")).toBe("한국어_논문");
+    expect(exportFileStem("शोध पत्र", "document")).toBe("शोध_पत्र");
+  });
+
+  it("replaces path and shell characters and trims the edges", () => {
+    expect(exportFileStem("My paper", "document")).toBe("My_paper");
+    expect(exportFileStem("a/b\\c:d", "document")).toBe("a_b_c_d");
+    expect(exportFileStem("  paper.  ", "document")).toBe("paper");
+    expect(exportFileStem("v1.2-final", "document")).toBe("v1.2-final");
+  });
+
+  it("falls back when no usable name is left", () => {
+    expect(exportFileStem("", "figure")).toBe("figure");
+    expect(exportFileStem(null, "figure")).toBe("figure");
+    expect(exportFileStem("...", "document")).toBe("document");
+    expect(exportFileStem("!!!", "document")).toBe("document");
+  });
+});
 
 describe("isSeparator", () => {
   it("accepts either slash and nothing else", () => {

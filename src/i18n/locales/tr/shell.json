@@ -475,9 +475,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Bu başarısızlık, paketlenmiş Tectonic motorunun bilinen bir eksiğiyle örtüşüyor. Bu projenin nasıl derleneceğini seçin. Seçim projede kaydedilir, böylece iş arkadaşlarınız da aynı kurulumu alır.",
     "descriptionImportScan": "İçe aktarma taraması, paketlenmiş Tectonic motorunun yönetemediği özellikler buldu. Bu projenin nasıl derleneceğini seçin. Seçim projede kaydedilir, böylece iş arkadaşlarınız da aynı kurulumu alır.",
+    "descriptionTexMissing": "Bu proje artık latexmk ile derleniyor ve bu bilgisayar onu henüz çalıştıramıyor. Oleafly sizin için TinyTeX'i kurabilir ya da yerleşik Tectonic motoruna geri dönebilirsiniz.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "latexmk üzerinden pdfLaTeX"
+    },
+    "findingNotes": {
+      "epsFile": "Derleme {{file}} dosyasında durdu.",
+      "missingFiles": "Derleme şu dosyaları bulamadı: {{files}}.",
+      "mirrorStatus": "Yansı sunucusu HTTP {{status}} döndürdü."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Kaynakça biblatex ve Biber kullanıyor",
+        "detail": "Bu proje kaynak listesini oluşturmak için Biber'e ihtiyaç duyuyor. Oleafly, yerleşik motoruyla uyumlu bir Biber ile birlikte gelir. Derlemeden sonra atıflar “?” olarak kalıyorsa günlükte Biber notuna bakın."
+      },
+      "bundle-fetch-failed": {
+        "title": "TeX paketi indirmesi başarısız oldu",
+        "detail": "Oleafly TeX paketlerini yansısından indiremedi, bu yüzden derleme belgenize hiç ulaşmadı. Bağlantınızı denetleyip yeniden derleyin. İndirme kaldığı yerden devam eder."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8, pdfLaTeX gerektirir",
+        "detail": "CJKutf8 ve CJK yalnızca pdfLaTeX üzerinde çalışır. Yerleşik motorda (XeTeX) belge yine de derlenir, ancak Çince, Japonca veya Korece metni PDF'te yer almaz. Sistem TeX üzerinde pdfLaTeX'e geçin ya da paketi xeCJK ile değiştirin."
+      },
+      "class-compat": {
+        "title": "Belge sınıfı motor sınırlarına takılıyor",
+        "detail": "Derleme hataları belgenizden değil, bir sınıf veya stil dosyasından geliyor. Yayıncı sınıfları çoğunlukla yerleşik motorda bulunmayan araçlara veya pdfTeX davranışına dayanır. latexmk tam bir TeX dağıtımıyla derler."
+      },
+      "eps-image": {
+        "title": "EPS görselleri bir dönüştürücü gerektirir",
+        "detail": "Yerleşik motor EPS görsellerini yerleştiremez. Bunları epstopdf veya Inkscape ile PDF'e dönüştürün ya da EPS'yi Ghostscript üzerinden dönüştüren sistem TeX üzerindeki pdfLaTeX'e geçin."
+      },
+      "fontspec": {
+        "title": "Özel yazı tipleri (fontspec)",
+        "detail": "fontspec, adı verilen yazı tiplerinin bu bilgisayarda bulunmasını gerektirir. Çevrimiçi bir düzenleyiciyle gelen yazı tipleri burada eksik olabilir."
+      },
+      "glossaries-index": {
+        "title": "Terimler sözlüğü veya dizin aracı",
+        "detail": "glossaries ve makeindex, yerleşik motorun yapmadığı ek bir makeindex veya xindy çalıştırması gerektirir."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref pdfTeX sürücüsüne ayarlı",
+        "detail": "Bu sınıf veya ön bölüm hyperref'in pdftex sürücüsünü zorluyor, yerleşik motor bunu kullanamaz. Sistem TeX üzerinde pdfLaTeX'e geçin ya da hyperref sürücüyü kendisi seçsin diye pdftex seçeneğini kaldırın."
+      },
+      "minted": {
+        "title": "minted için shell escape ve Pygments gerekir",
+        "detail": "minted ile kod listeleri bir sistem TeX dağıtımı ve pygmentize gerektirir. Sistem LaTeX'ine geçin, ardından dış komutlara bu bilgisayarda yalnızca her proje dosyasına güveniyorsanız izin verin."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Yerleşik paket kümesinde bir paket eksik",
+        "detail": "Bu projenin yüklediği bir şey yerleşik TeX paket kümesinde yok. Dosya şablonunuzla geldiyse projeye ekleyin ya da sistem TeX'e geçip paketi TeX Live'dan kurun."
+      },
+      "pdftex-only": {
+        "title": "pdfTeX paketleri",
+        "detail": "Yerleşik motor XeTeX tabanlıdır ve bu proje yalnızca pdfTeX ile çalışan paketlere veya komutlara dayanıyor. latexmk gerçek pdfLaTeX ile derler."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX, yardımcı programını etkin sistem TeX dağıtımından alır. Sistem LaTeX'ine geçin, ardından dış komutlara bu bilgisayarda yalnızca her proje dosyasına güveniyorsanız izin verin."
+      },
+      "shell-escape": {
+        "title": "Shell escape komutları",
+        "detail": "Kaynak \\write18 veya başka bir shell escape kullanıyor. Sistem LaTeX'ine geçin, ardından dış komutlara bu bilgisayarda yalnızca her proje dosyasına ve gereken araçların kurulu olmasına güveniyorsanız izin verin."
+      }
     },
     "recommended": "Önerilen",
     "shellEscape": {
@@ -504,13 +564,14 @@
       "withFailures_other": "Kurulum gerektirmez, çevrimdışı çalışır. {{features}} için başarısızlığın süreceği bekleniyor."
     },
     "tinytex": {
-      "description": "Ana klasörünüze derli toplu bir TeX Live kurar, yönetici izni gerekmez. Temel indirme yaklaşık 250 MB'tır. Dergi şablonları sonradan daha fazla paket çekebilir, toplamda kabaca 1 GB'a kadar.",
+      "description": "Yönetici izni gerektirmeyen kompakt bir TeX Live kurar. Temel indirme yaklaşık 250 MB'tır. Dergi şablonları sonradan daha fazla paket çekebilir, toplamda kabaca 1 GB'a kadar.",
       "download": "TinyTeX'i indir ve kullan",
       "resume": "İndirmeyi sürdür ({{megabytes}} MB tamam)",
       "title": "TinyTeX'i indir"
     },
     "titleCompileFailure": "Bu derleme yerleşik motordan fazlasını gerektiriyor",
-    "titleImportScan": "Bu proje yerleşik motordan fazlasını gerektiriyor"
+    "titleImportScan": "Bu proje yerleşik motordan fazlasını gerektiriyor",
+    "titleTexMissing": "Bu derleyici çalışan bir TeX dağıtımı gerektiriyor"
   },
   "shellCommands": {
     "allow": "Dış komutlara izin ver",
@@ -1152,11 +1213,16 @@
     },
     "wait": {
       "description": "{{phase}} Derlemeniz sıraya alındı ve motor hazır olur olmaz kendiliğinden başlar.",
+      "stop": "Kurulumu durdur",
       "title": "TinyTeX hâlâ indiriliyor"
     },
     "typstQuit": {
       "title": "Typst hâlâ kuruluyor",
       "description": "Typst {{version}} indiriliyor. Şimdi çıkarsanız indirme durur ve Ayarlar'dan yeniden başlatmanız gerekir."
+    },
+    "packageQuit": {
+      "title": "Oleafly hâlâ TeX paketlerini değiştiriyor",
+      "description": "Şimdi çıkarsanız kurulum veya kaldırma işlemi yarıda kalır ve TeX paket yöneticiniz bozulabilir."
     }
   },
   "toolbar": {
@@ -1322,7 +1388,7 @@
       "compiling": "Typst ile derleniyor"
     },
     "errors": {
-      "pandoc": "Pandoc hazır değil. Araçlar'dan kurun, sonra yeniden deneyin.",
+      "pandoc": "Pandoc hazır değil. Ayarlar > Motorlar > Markdown bölümünden onarın, sonra yeniden deneyin.",
       "noMain": "Ana LaTeX dosyası okunamadı.",
       "emptyOutput": "Pandoc boş bir belge döndürdü.",
       "failed": "Dönüştürme durdu: {{detail}}"
@@ -1379,7 +1445,8 @@
     "svg": "SVG görselleri",
     "html": "HTML",
     "experimental": "Deneysel",
-    "htmlNote": "Typst HTML dışa aktarması hâlâ deneysel. Sayfa düzenini ve yerleştirilmiş öğeleri dışarıda bırakır.",
+    "htmlNote": "Typst HTML dışa aktarması hâlâ deneysel. Metni ve görselleri korur, ancak sayfa düzenini ve çizimleri korumaz.",
+    "htmlNoteOldTypst": "Typst {{version}} denklemleri HTML'in dışında bırakır. Typst 0.15 veya daha yenisi bunları korur.",
     "ppi": "Çözünürlük",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Sayfalar",

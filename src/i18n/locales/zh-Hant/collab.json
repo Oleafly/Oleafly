@@ -729,6 +729,13 @@
     "renamedPortable": "為了在每台電腦上都能使用，{{before}} 已重新命名為 {{theirs}}。",
     "skipped": "無法讀取來自 {{name}} 的一項變更，已略過。",
     "skippedUnknown": "無法讀取來自某人的一項變更，已略過。",
+    "outputNotShared": {
+      "tooLarge": "編譯出的 PDF 超過這個伺服器允許的大小，因此其他人看到的仍是先前的版本。",
+      "quota": "已達到這個伺服器的上傳上限，因此其他人看到的仍是先前的 PDF。Oleafly 會在 15 分鐘後再試一次。",
+      "privateSources": "編譯出的 PDF 只會留在這台電腦上，因為專案中有未分享的檔案。",
+      "serverError": "伺服器沒有接受編譯出的 PDF，因此其他人看到的仍是先前的版本。"
+    },
+    "texNeeded": "這個專案使用 TeX 發行版編譯，而這台電腦沒有。請從設定 > 引擎 > LaTeX 安裝 TinyTeX，才能在這裡編譯它。",
     "mentioned": "{{name}} 在 {{path}} 的評論中提及了你",
     "mentionedHere": "{{name}} 在評論中提及了你",
     "showComment": "查看評論",

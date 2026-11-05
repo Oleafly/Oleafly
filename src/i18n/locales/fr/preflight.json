@@ -604,6 +604,7 @@
     "unrecorded": "Le LaTeX Project n'a enregistré aucun état de balisage pour la classe {{name}}, le résultat est donc incertain. Compilez et vérifiez la sortie."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata se place en haut du document principal, ce fichier n'en reçoit donc pas.",
     "metadataUpdated": "Les clés de balisage nécessaires ont été ajoutées à votre \\DocumentMetadata.",
     "metadataAdded": "\\DocumentMetadata a été ajouté en première ligne (obligatoire, doit précéder \\documentclass). Il est placé dans une vérification de version : un LaTeX antérieur à {{date}}, y compris le moteur fourni, l'ignore et compile le document sans balisage au lieu d'échouer.",
     "headerRows": "table/header-rows a été mis à 1 pour que la première ligne de chaque tableau soit balisée en cellules d'en-tête. Changez le nombre si un tableau a une profondeur d'en-tête différente.",

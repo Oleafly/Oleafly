@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Đang thiết lập mẫu của bạn...",
-      "downloading": "Đang tải {{label}} ({{index}}/{{total}})"
+      "downloading": "Đang tải {{label}} ({{index}}/{{total}})",
+      "failed": "Không tải được phông chữ cho mẫu này. Hãy kiểm tra kết nối và thử lại."
     },
     "category": {
       "all": "Tất cả",

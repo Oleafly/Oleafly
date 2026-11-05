@@ -38,6 +38,7 @@
       "compile": "Compileren",
       "recompile": "Opnieuw compileren",
       "compiling": "Compileren…",
+      "stop": "Stoppen",
       "saveTooltip": "Dit diagram opslaan",
       "save": "Opslaan",
       "saveToProject": "Opslaan in project",

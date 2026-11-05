@@ -102,6 +102,8 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   mentioned: AtSign,
   setting: SlidersHorizontal,
   skipped: TriangleAlert,
+  outputNotShared: TriangleAlert,
+  texNeeded: TriangleAlert,
 };
 
 const TICK_MS = 60_000;
@@ -326,6 +328,26 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return entry.name
         ? t(($) => $.collab.activity.skipped, { name: entry.name })
         : t(($) => $.collab.activity.skippedUnknown);
+    case "outputNotShared":
+      return outputNotSharedText(entry, t);
+    case "texNeeded":
+      return t(($) => $.collab.activity.texNeeded);
+  }
+}
+
+function outputNotSharedText(
+  entry: Extract<ActivityEntry, { kind: "outputNotShared" }>,
+  t: ReturnType<typeof useTranslation<["collab"]>>["t"],
+) {
+  switch (entry.reason) {
+    case "tooLarge":
+      return t(($) => $.collab.activity.outputNotShared.tooLarge);
+    case "quota":
+      return t(($) => $.collab.activity.outputNotShared.quota);
+    case "privateSources":
+      return t(($) => $.collab.activity.outputNotShared.privateSources);
+    case "serverError":
+      return t(($) => $.collab.activity.outputNotShared.serverError);
   }
 }
 

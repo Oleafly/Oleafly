@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   stopRunningCompileQuietly: vi.fn(() => false),
   recompile: vi.fn(async () => undefined),
   openUrl: vi.fn(),
+  endTinytexWait: vi.fn(),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
@@ -34,6 +35,7 @@ vi.mock("@/store/compile", () => ({
       .filter((line) => line.startsWith("[Oleafly] "))
       .map((line) => line.slice("[Oleafly] ".length)),
   stopRunningCompileQuietly: mocks.stopRunningCompileQuietly,
+  endTinytexWait: mocks.endTinytexWait,
   useCompileStore: { getState: () => ({ recompile: mocks.recompile }) },
 }));
 
@@ -219,6 +221,108 @@ describe("TinyTeX install and removal notices", () => {
     expectNoPlainToasts();
   });
 
+  function failInstallWith(code: string, params: Record<string, string> = {}, detail: string | null = null) {
+    const envelope = `@oleafly/error:${JSON.stringify({ code, params, detail })}`;
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "install_tinytex") throw envelope;
+      if (command === "tinytex_install_state") return { installing: false, partial_download_bytes: 7 };
+      return null;
+    });
+  }
+
+  it("keeps the headline on a coded failure and offers a retry", async () => {
+    failInstallWith("tex.tinytex_disk_space", { needed: "2.0", free: "0.5" });
+    await useEngineStore.getState().install();
+    const [key, text, action] = mocks.errorUnique.mock.calls[0];
+    expect(key).toBe(TINYTEX_INSTALL_TOAST_KEY);
+    expect(text).toMatch(new RegExp(`^${enCore.tinytex.installFailed} `));
+    expect(text).toContain("0.5 GB");
+    expect(text).not.toContain("@oleafly/error");
+    expect(action).toMatchObject({ label: enCore.tinytex.tryAgain });
+    expectNoPlainToasts();
+
+    mocks.invoke.mockClear();
+    mocks.invoke.mockImplementation(async () => null);
+    (action as { onClick: () => void }).onClick();
+    await vi.waitFor(() =>
+      expect(mocks.invoke.mock.calls.some(([command]) => command === "install_tinytex")).toBe(true),
+    );
+  });
+
+  it("shows a coded detail without any envelope text", async () => {
+    failInstallWith("tex.tinytex_validation_failed", {}, "latexmk validation failed");
+    await useEngineStore.getState().install();
+    const text = mocks.errorUnique.mock.calls[0][1] as string;
+    expect(text).toContain("latexmk validation failed");
+    expect(text).not.toContain("@oleafly/error");
+  });
+
+  it("points to the guide when another try cannot help", async () => {
+    failInstallWith("tex.tinytex_path_not_ascii", { path: "C:\\Users\\x" });
+    await useEngineStore.getState().install();
+    expect(mocks.errorUnique.mock.calls[0][2]).toMatchObject({
+      label: enCore.tinytex.installGuide,
+    });
+  });
+
+  it("drops a queued compile when the install fails and tells the preview why", async () => {
+    failInstallWith("tex.tinytex_download_failed");
+    useEngineStore.setState({
+      compileQueuedDuringInstall: true,
+      compileQueuedExplicitly: true,
+      installWaitNoticeOpen: true,
+    });
+    const started = useEngineStore.getState().install();
+    await started;
+    expect(useEngineStore.getState()).toMatchObject({
+      compileQueuedDuringInstall: false,
+      compileQueuedExplicitly: false,
+      installWaitNoticeOpen: false,
+      partialDownloadBytes: 7,
+    });
+    expect(mocks.recompile).not.toHaveBeenCalled();
+    expect(mocks.endTinytexWait).toHaveBeenCalledExactlyOnceWith(
+      mocks.errorUnique.mock.calls[0][1],
+    );
+  });
+
+  it("treats a stopped install as a stop, not a failure", async () => {
+    failInstallWith("tex.tinytex_install_cancelled");
+    await useEngineStore.getState().install();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.logError).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).toHaveBeenCalledOnce();
+    expect(mocks.infoUnique.mock.calls[0][0]).toBe(TINYTEX_INSTALL_TOAST_KEY);
+    expect(mocks.endTinytexWait).toHaveBeenCalledOnce();
+    expect(useEngineStore.getState().partialDownloadBytes).toBe(7);
+  });
+
+  it("asks the backend to stop a running install once", async () => {
+    mocks.invoke.mockImplementation(async () => null);
+    useEngineStore.setState({ installing: true, cancellingInstall: false });
+    await useEngineStore.getState().cancelInstall();
+    await useEngineStore.getState().cancelInstall();
+    expect(
+      mocks.invoke.mock.calls.filter(([command]) => command === "cancel_tinytex_install"),
+    ).toHaveLength(1);
+    useEngineStore.setState({ installing: false, cancellingInstall: false });
+    await useEngineStore.getState().cancelInstall();
+    expect(
+      mocks.invoke.mock.calls.filter(([command]) => command === "cancel_tinytex_install"),
+    ).toHaveLength(1);
+  });
+
+  it("allows another stop request when the first one could not be sent", async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "cancel_tinytex_install") throw new Error("gone");
+      return null;
+    });
+    useEngineStore.setState({ installing: true, cancellingInstall: false });
+    await useEngineStore.getState().cancelInstall();
+    expect(useEngineStore.getState().cancellingInstall).toBe(false);
+    useEngineStore.setState({ installing: false });
+  });
+
   it("pauses a running compile quietly and runs it once the install lands", async () => {
     mocks.stopRunningCompileQuietly.mockReturnValue(true);
     mocks.invoke.mockImplementation(async (command: string) => {
@@ -399,6 +503,24 @@ describe("package error messages", () => {
     );
     expect(packageErrorMessage({ kind: "read", name: "", detail: "" })).toBe(errors.read);
   });
+
+  it("decodes a coded tlmgr failure instead of showing its raw envelope", async () => {
+    const coded = `@oleafly/error:${JSON.stringify({
+      code: "tex.packages_use_system_manager",
+      params: { manager: "apt" },
+    })}`;
+    trees([], []);
+    useEngineStore.setState({ info: engine, busyPkg: null, packageError: null });
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "tlmgr_install") throw coded;
+      return [];
+    });
+    await useEngineStore.getState().addPackage("pgf");
+    const message = packageErrorMessage(useEngineStore.getState().packageError!);
+    expect(message).toContain("came with your Linux distribution");
+    expect(message).toContain("apt");
+    expect(message).not.toContain("@oleafly/error");
+  });
 });
 
 describe("engine info loading", () => {
@@ -429,6 +551,16 @@ describe("engine info loading", () => {
 
     expect(mocks.invoke.mock.calls.filter(([command]) => command === "latex_engine_info")).toHaveLength(1);
     expect(useEngineStore.getState()).toMatchObject({ info: engine, loaded: true, partialDownloadBytes: 1024 });
+  });
+
+  it.each(["login_probe", "full"] as const)("asks the backend for a %s rescan", async (rescan) => {
+    mocks.invoke.mockImplementation(async (command: string) =>
+      command === "latex_engine_info" ? engine : null,
+    );
+
+    await useEngineStore.getState().refresh({ rescan });
+
+    expect(mocks.invoke).toHaveBeenCalledWith("latex_engine_info", { rescan });
   });
 
   it("logs a failed engine probe and stays unloaded", async () => {

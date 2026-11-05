@@ -361,7 +361,12 @@
     "rawLogs": "Rohprotokolle",
     "copyLog": "Protokoll kopieren",
     "typesetting": "Satz",
+    "missingCharacters": "Fehlende Zeichen",
     "info": "Hinweise",
+    "clear": "Leeren",
+    "clearAria": "Kompilierprotokoll leeren",
+    "clearHint": "Dieses Protokoll und seine Fehler bis zum nächsten Kompilieren ausblenden. Die Ausgabedateien bleiben erhalten.",
+    "cleared": "Protokoll geleert. Das nächste Kompilieren schreibt ein neues.",
     "empty": "Hier erscheint die Ausgabe des Kompilierens.",
     "scrollToTop": "Nach oben scrollen",
     "scrollToBottom": "Nach unten scrollen",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} nicht aufgelöster Verweis",
     "summaryReferences_other": "{{count}} nicht aufgelöste Verweise",
     "fontPack": "{{family}} ist im kostenlosen Schriftpaket {{pack}} enthalten.",
+    "fontPackGlyphs": "Das kostenlose Schriftpaket {{pack}} enthält diese Zeichen.",
+    "fontPackSealed": "{{family}} ist im kostenlosen Schriftpaket {{pack}} enthalten, aber Schriftpakete gelten hier nicht, weil dieses Projekt nur Projektschriften verwendet. Legen Sie die Datei der Schrift in den Ordner fonts des Projekts.",
     "fontPackAction": "Herunterladen und kompilieren",
     "fontPackDownloading": "Wird heruntergeladen…",
     "fontPackFailed": "Das Schriftpaket konnte nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
@@ -1461,7 +1468,8 @@
       "missing": "Diese Pakete liegen nicht im Paket-Zwischenspeicher: {{names}}. Kompilieren Sie einmal online und kopieren Sie die Pakete dann erneut.",
       "count_one": "{{count}} Paket in diesem Projekt",
       "count_other": "{{count}} Pakete in diesem Projekt",
-      "none": "Noch keine Pakete in diesem Projekt."
+      "none": "Noch keine Pakete in diesem Projekt.",
+      "unsupported": "Typst {{version}} kann keine Pakete aus dem Projektordner lesen. Stellen Sie das Projekt auf Typst 0.12 oder neuer um, um das zu nutzen."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} ist verfügbar. Dieser Import nutzt {{version}}.",
@@ -1500,6 +1508,7 @@
     "classNote": "Das ist eine Dokumentklasse. Setzen Sie sie stattdessen mit \\documentclass.",
     "onDemand": "Tectonic lädt Pakete herunter, wenn Ihr Dokument sie zum ersten Mal nutzt. Es gibt nichts zu installieren.",
     "checking": "Installierte Pakete werden geprüft",
+    "systemManaged": "Dieses TeX Live stammt aus Ihrer Linux-Distribution, installieren Sie Pakete also mit {{manager}}.",
     "unknownInstall": "Oleafly kann nicht feststellen, welche Pakete Ihre TeX-Installation hat.",
     "noProject": "Öffnen Sie ein LaTeX-Projekt, um Pakete hinzuzufügen.",
     "added": "{{name}} zu {{file}} hinzugefügt.",

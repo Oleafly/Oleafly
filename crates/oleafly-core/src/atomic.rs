@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use tempfile::NamedTempFile;
 
 const WINDOWS_RETRY_FOR: Duration = Duration::from_secs(8);
+const WINDOWS_TREE_RETRY_FOR: Duration = Duration::from_secs(30);
 const FIRST_RETRY_DELAY: Duration = Duration::from_millis(10);
 const MAX_RETRY_DELAY: Duration = Duration::from_millis(250);
 
@@ -44,6 +45,19 @@ pub fn persist_with_retry(attempt: impl FnMut() -> io::Result<()>) -> io::Result
         Duration::ZERO
     };
     retry_policy(attempt, retry_for)
+}
+
+pub fn retry_tree_operation(attempt: impl FnMut() -> io::Result<()>) -> io::Result<()> {
+    let retry_for = if cfg!(windows) {
+        WINDOWS_TREE_RETRY_FOR
+    } else {
+        Duration::ZERO
+    };
+    retry_policy(attempt, retry_for)
+}
+
+pub fn rename_tree_with_retry(from: &Path, to: &Path) -> io::Result<()> {
+    retry_tree_operation(|| std::fs::rename(from, to))
 }
 
 /// A staging file beside `destination`, named `.{name}.oleafly-….tmp` so
@@ -332,6 +346,46 @@ mod tests {
         )
         .is_err());
         assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn a_tree_rename_moves_the_folder_with_its_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let from = dir.path().join("staging");
+        std::fs::create_dir(&from).unwrap();
+        std::fs::write(from.join("child"), b"x").unwrap();
+        let to = dir.path().join("published");
+        rename_tree_with_retry(&from, &to).unwrap();
+        assert_eq!(std::fs::read(to.join("child")).unwrap(), b"x");
+        assert!(!from.exists());
+    }
+
+    #[test]
+    fn a_tree_rename_stops_at_once_on_an_error_retrying_cannot_fix() {
+        let dir = tempfile::tempdir().unwrap();
+        let started = Instant::now();
+        let error =
+            rename_tree_with_retry(&dir.path().join("missing"), &dir.path().join("published"))
+                .unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::NotFound);
+        assert!(started.elapsed() < WINDOWS_RETRY_FOR);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_tree_rename_waits_for_an_open_file_inside_the_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let from = dir.path().join("staging");
+        std::fs::create_dir(&from).unwrap();
+        let held = std::fs::File::create(from.join("child")).unwrap();
+        let release = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(300));
+            drop(held);
+        });
+        let to = dir.path().join("published");
+        rename_tree_with_retry(&from, &to).unwrap();
+        release.join().unwrap();
+        assert!(to.join("child").is_file());
     }
 
     #[test]

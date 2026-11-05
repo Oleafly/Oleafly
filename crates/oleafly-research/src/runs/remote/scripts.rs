@@ -325,8 +325,9 @@ d={dir}
 if [ ! -d "$d" ]; then echo 'OLEAFLY_STATE missing'; exit 0; fi
 cd "$d"
 alive=0
-if [ -s pid ] && kill -0 "$(cat pid)" 2>/dev/null; then
-  now=$(LC_ALL=C ps -o lstart= -p "$(cat pid)" 2>/dev/null)
+supervisor=$(cat pid 2>/dev/null)
+if [ -n "$supervisor" ] && kill -0 "$supervisor" 2>/dev/null; then
+  now=$(LC_ALL=C ps -o lstart= -p "$supervisor" 2>/dev/null)
   was=$(cat pid.start 2>/dev/null)
   if [ -z "$was" ] || [ "$now" = "$was" ]; then alive=1; fi
 fi
@@ -336,7 +337,7 @@ if [ -e exit_code ]; then
   else state="exited $(cat exit_code)"; fi
 elif [ "$alive" = 1 ]; then state=running
 elif [ ! -e started ]; then state=missing
-elif [ ! -s pid ] && [ $(( $(date +%s) - $(cat started) )) -lt 60 ]; then state=running
+elif [ -z "$supervisor" ] && [ $(( $(date +%s) - $(cat started) )) -lt 60 ]; then state=running
 elif [ -e cancelled ]; then state=cancelled
 elif [ -e timed_out ]; then state=timed_out
 else state=lost; fi
@@ -659,6 +660,25 @@ mod tests {
                 report.state != RemoteState::Running
             });
             assert_eq!(report.state, RemoteState::TimedOut);
+        }
+
+        // The poll must judge one reading of the pid file. When it read the file
+        // twice, a pid written between the reads turned a starting run into a lost one.
+        #[test]
+        fn a_run_that_has_not_written_its_pid_yet_is_running_for_the_whole_poll() {
+            let script = poll_script("run", 0, 16);
+            assert_eq!(script.matches("cat pid ").count(), 1, "{script}");
+            assert!(!script.contains("-s pid"), "{script}");
+            let home = tempfile::tempdir().unwrap();
+            let run = home.path().join("run");
+            std::fs::create_dir_all(&run).unwrap();
+            let started = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            std::fs::write(run.join("started"), format!("{started}\n")).unwrap();
+            let report = parse_poll(&sh(&script, home.path())).unwrap();
+            assert_eq!(report.state, RemoteState::Running);
         }
 
         #[test]

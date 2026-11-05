@@ -128,6 +128,16 @@ pub(crate) fn apply_session_env(
             EnvEdit::Set(name, value) => cmd.env(name, value),
         }
     }
+    #[cfg(target_os = "macos")]
+    for edit in latexmk_biber_edits(
+        runnable_biber_folder(cli.dir.as_deref()).as_deref(),
+        &|name| std::env::var_os(name),
+    ) {
+        match edit {
+            EnvEdit::Remove(name) => cmd.env_remove(name),
+            EnvEdit::Set(name, value) => cmd.env(name, value),
+        }
+    }
     for (name, value) in &spec.env {
         cmd.env(name, value);
     }
@@ -136,9 +146,22 @@ pub(crate) fn apply_session_env(
     }
 }
 
-fn session_search_path(cli_dir: Option<&Path>) -> OsString {
+fn runnable_biber_folder(cli_dir: Option<&Path>) -> Option<PathBuf> {
     let prepend: Vec<PathBuf> = cli_dir.map(Path::to_path_buf).into_iter().collect();
-    let path = crate::program_locator::child_search_path(&prepend, &[]);
+    crate::biber_toolchain::runnable_biber_on(&crate::program_locator::child_search_path(
+        &prepend,
+        &[],
+    ))
+}
+
+pub(crate) fn shell_search_path(cli_dir: Option<&Path>) -> OsString {
+    let mut prepend: Vec<PathBuf> = cli_dir.map(Path::to_path_buf).into_iter().collect();
+    prepend.extend(runnable_biber_folder(cli_dir));
+    crate::program_locator::child_search_path(&prepend, &[])
+}
+
+pub(super) fn session_search_path(cli_dir: Option<&Path>) -> OsString {
+    let path = shell_search_path(cli_dir);
     #[cfg(target_os = "linux")]
     if let Some(appdir) = std::env::var_os("APPDIR")
         .map(PathBuf::from)
@@ -162,10 +185,42 @@ pub(crate) enum EnvEdit {
     Set(String, OsString),
 }
 
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+const LATEXMK_SYSTEM_RC: &str = "LATEXMKRCSYS";
+
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub(crate) fn latexmk_biber_edits(
+    thin_dir: Option<&Path>,
+    lookup: &dyn Fn(&str) -> Option<OsString>,
+) -> Vec<EnvEdit> {
+    if lookup(LATEXMK_SYSTEM_RC).is_some() {
+        return Vec::new();
+    }
+    thin_dir
+        .and_then(|dir| {
+            oleafly_core::biber_env::write_latexmk_biber_rc(dir)
+                .ok()
+                .flatten()
+        })
+        .map(|rc| EnvEdit::Set(LATEXMK_SYSTEM_RC.to_string(), rc.into_os_string()))
+        .into_iter()
+        .collect()
+}
+
 /// Variables the AppImage runtime sets for Oleafly itself.
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 const APPIMAGE_MARKERS: &[&str] = &["APPDIR", "APPIMAGE", "ARGV0", "OWD"];
+
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+const APP_OVERRIDE_VARIABLE: &str = "OLEAFLY_APP";
+
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+const APPIMAGE_APP_BINARY: &str = "usr/bin/oleafly-desktop";
 
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
@@ -209,6 +264,12 @@ pub(crate) fn appimage_env_edits(lookup: &dyn Fn(&str) -> Option<OsString>) -> V
         .iter()
         .map(|name| EnvEdit::Remove((*name).to_string()))
         .collect();
+    if lookup(APP_OVERRIDE_VARIABLE).is_none() {
+        edits.push(EnvEdit::Set(
+            APP_OVERRIDE_VARIABLE.to_string(),
+            appdir.join(APPIMAGE_APP_BINARY).into_os_string(),
+        ));
+    }
     for name in APPIMAGE_HOOK_VARIABLES {
         if lookup(name).is_some_and(|value| Path::new(&value).starts_with(&appdir)) {
             edits.push(EnvEdit::Remove((*name).to_string()));
@@ -312,6 +373,97 @@ mod tests {
         assert!(appimage_env_edits(&lookup).is_empty());
         let relative = |name: &str| (name == "APPDIR").then(|| OsString::from("squashfs-root"));
         assert!(appimage_env_edits(&relative).is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_appimage_session_tells_the_cli_where_the_sidecars_are() {
+        let lookup = |name: &str| (name == "APPDIR").then(|| OsString::from("/tmp/.mount_Oleafly"));
+        assert!(appimage_env_edits(&lookup).contains(&EnvEdit::Set(
+            "OLEAFLY_APP".into(),
+            "/tmp/.mount_Oleafly/usr/bin/oleafly-desktop".into()
+        )));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_appimage_session_keeps_an_app_the_user_chose() {
+        let lookup = |name: &str| match name {
+            "APPDIR" => Some(OsString::from("/tmp/.mount_Oleafly")),
+            "OLEAFLY_APP" => Some(OsString::from("/opt/oleafly/oleafly-desktop")),
+            _ => None,
+        };
+        assert!(!appimage_env_edits(&lookup)
+            .iter()
+            .any(|edit| matches!(edit, EnvEdit::Set(name, _) if name == "OLEAFLY_APP")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_runnable_biber_reaches_latexmk_through_its_system_rc_file() {
+        let thin = tempfile::tempdir().unwrap();
+        let rc = thin.path().join("latexmkrc");
+        assert_eq!(
+            latexmk_biber_edits(Some(thin.path()), &|_| None),
+            [EnvEdit::Set(
+                "LATEXMKRCSYS".into(),
+                rc.clone().into_os_string()
+            )]
+        );
+        assert!(std::fs::read_to_string(rc)
+            .unwrap()
+            .starts_with("$biber = q{"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_system_rc_file_the_user_chose_stays_and_a_thin_biber_needs_no_rc() {
+        let thin = tempfile::tempdir().unwrap();
+        let chosen = |name: &str| (name == "LATEXMKRCSYS").then(|| OsString::from("/etc/mine"));
+        assert!(latexmk_biber_edits(Some(thin.path()), &chosen).is_empty());
+        assert!(!thin.path().join("latexmkrc").exists());
+        assert!(latexmk_biber_edits(None, &|_| None).is_empty());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_universal_biber_on_the_session_path_gets_its_thin_folder_and_rc_file() {
+        let tools = tempfile::tempdir().unwrap();
+        let cli = CliEnv {
+            dir: Some(tools.path().to_path_buf()),
+            exe: None,
+        };
+        let slice = vec![7u8; 4096];
+        let mut universal = Vec::new();
+        universal.extend_from_slice(&oleafly_core::biber_env::FAT_MAGIC.to_be_bytes());
+        universal.extend_from_slice(&1u32.to_be_bytes());
+        for field in [
+            oleafly_core::biber_env::host_cpu_type().unwrap(),
+            0,
+            4096,
+            slice.len() as u32,
+            12,
+        ] {
+            universal.extend_from_slice(&field.to_be_bytes());
+        }
+        universal.resize(4096, 0);
+        universal.extend_from_slice(&slice);
+        std::fs::write(tools.path().join("biber"), universal).unwrap();
+
+        let folder = runnable_biber_folder(cli.dir.as_deref()).expect("a thin copy");
+        assert_eq!(std::fs::read(folder.join("biber")).unwrap(), slice);
+        let entries: Vec<PathBuf> =
+            std::env::split_paths(&shell_search_path(cli.dir.as_deref())).collect();
+        assert_eq!(&entries[..2], [tools.path().to_path_buf(), folder.clone()]);
+
+        let mut cmd = CommandBuilder::new("sh");
+        apply_session_env(&mut cmd, &spec(&[]), &cli, &[]);
+        if std::env::var_os("LATEXMKRCSYS").is_none() {
+            assert_eq!(
+                env_of(&cmd, "LATEXMKRCSYS"),
+                Some(folder.join("latexmkrc").to_string_lossy().into_owned())
+            );
+        }
     }
 
     #[test]

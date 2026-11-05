@@ -729,6 +729,13 @@
     "renamedPortable": "{{before}} dosyası her bilgisayarda çalışsın diye {{theirs}} olarak yeniden adlandırıldı.",
     "skipped": "{{name}} tarafından yapılan bir değişiklik okunamadığı için atlandı.",
     "skippedUnknown": "Birinin yaptığı bir değişiklik okunamadığı için atlandı.",
+    "outputNotShared": {
+      "tooLarge": "Derlenen PDF bu sunucunun izin verdiğinden büyük olduğu için diğerleri hâlâ önceki PDF'i görüyor.",
+      "quota": "Bu sunucunun yükleme sınırına ulaşıldığı için diğerleri hâlâ önceki PDF'i görüyor. Oleafly 15 dakika sonra yeniden dener.",
+      "privateSources": "Projede paylaşılmayan dosyalar olduğu için derlenen PDF bu bilgisayarda kalıyor.",
+      "serverError": "Sunucu derlenen PDF'i kabul etmediği için diğerleri hâlâ önceki PDF'i görüyor."
+    },
+    "texNeeded": "Bu proje bir TeX dağıtımıyla derleniyor ve bu bilgisayarda yok. Burada derlemek için TinyTeX'i Ayarlar > Motorlar > LaTeX bölümünden kurun.",
     "mentioned": "{{name}}, {{path}} dosyasındaki bir yorumda sizden bahsetti",
     "mentionedHere": "{{name}} bir yorumda sizden bahsetti",
     "showComment": "Yorumu göster",

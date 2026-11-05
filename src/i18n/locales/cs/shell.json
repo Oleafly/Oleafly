@@ -477,9 +477,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Toto selhání odpovídá známé mezeře vestavěného enginu Tectonic. Zvolte, jak se má tento projekt kompilovat. Volba se uloží do projektu, takže spolupracovníci dostanou stejné nastavení.",
     "descriptionImportScan": "Kontrola importu našla funkce, které vestavěný engine Tectonic neřídí. Zvolte, jak se má tento projekt kompilovat. Volba se uloží do projektu, takže spolupracovníci dostanou stejné nastavení.",
+    "descriptionTexMissing": "Tento projekt se teď kompiluje pomocí latexmk a tento počítač ho zatím spustit neumí. Oleafly může TinyTeX nainstalovat za vás, nebo se můžete vrátit k vestavěnému enginu Tectonic.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX přes latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "Kompilace se zastavila u {{file}}.",
+      "missingFiles": "Kompilace nenašla {{files}}.",
+      "mirrorStatus": "Zrcadlo vrátilo HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Bibliografie používá biblatex a Biber",
+        "detail": "Tento projekt potřebuje Biber k sestavení seznamu literatury. Oleafly dodává Biber, který odpovídá jeho vestavěnému enginu. Pokud po kompilaci citace zůstanou jako „?“, zkontrolujte v protokolu poznámku o Biberu."
+      },
+      "bundle-fetch-failed": {
+        "title": "Stažení balíčků TeXu selhalo",
+        "detail": "Oleafly nedokázal stáhnout balíčky TeXu ze svého zrcadla, takže kompilace se k vašemu dokumentu vůbec nedostala. Zkontrolujte připojení a spusťte kompilaci znovu. Stahování naváže tam, kde skončilo."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 potřebuje pdfLaTeX",
+        "detail": "CJKutf8 a CJK fungují jen s pdfLaTeXem. S vestavěným enginem (XeTeX) se dokument sice zkompiluje, ale jeho čínský, japonský nebo korejský text v PDF chybí. Přepněte na pdfLaTeX v systémovém TeXu, nebo balíček nahraďte balíčkem xeCJK."
+      },
+      "class-compat": {
+        "title": "Třída dokumentu naráží na limity enginu",
+        "detail": "Chyby kompilace pocházejí z třídy nebo souboru stylu, ne z vašeho dokumentu. Třídy nakladatelů často závisejí na nástrojích nebo chování pdfTeXu, které vestavěný engine nemá. latexmk kompiluje s úplnou distribucí TeXu."
+      },
+      "eps-image": {
+        "title": "Obrázky EPS potřebují převodník",
+        "detail": "Vestavěný engine neumí umístit obrázky EPS. Převeďte je do PDF pomocí epstopdf nebo Inkscapu, nebo přepněte na pdfLaTeX v systémovém TeXu, který EPS převádí přes Ghostscript."
+      },
+      "fontspec": {
+        "title": "Vlastní písma (fontspec)",
+        "detail": "fontspec potřebuje pojmenovaná písma nainstalovaná v tomto počítači. Písma, která byla součástí online editoru, tady mohou chybět."
+      },
+      "glossaries-index": {
+        "title": "Nástroj pro glosář nebo rejstřík",
+        "detail": "glossaries a makeindex potřebují další běh makeindexu nebo xindy, což vestavěný engine neumí."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref je nastaven na ovladač pdfTeX",
+        "detail": "Tato třída nebo preambule vynucuje ovladač pdftex balíčku hyperref, který vestavěný engine použít nemůže. Přepněte na pdfLaTeX v systémovém TeXu, nebo odstraňte volbu pdftex, aby si hyperref vybral ovladač sám."
+      },
+      "minted": {
+        "title": "minted potřebuje shell escape a Pygments",
+        "detail": "Výpisy kódu s minted potřebují systémovou distribuci TeXu a pygmentize. Přepněte na systémový LaTeX a pak v tomto počítači povolte externí příkazy, jen pokud důvěřujete každému souboru projektu."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Ve vestavěné sadě chybí balíček",
+        "detail": "Něco, co tento projekt načítá, není ve vestavěné sadě TeXu. Pokud soubor patřil k vaší šabloně, přidejte jej do projektu, nebo přepněte na systémový TeX a nainstalujte balíček z TeX Live."
+      },
+      "pdftex-only": {
+        "title": "Balíčky pro pdfTeX",
+        "detail": "Vestavěný engine vychází z XeTeXu a tento projekt spoléhá na balíčky či příkazy, které fungují jen s pdfTeXem. latexmk kompiluje skutečným pdfLaTeXem."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX potřebuje svého pomocníka z aktivní systémové distribuce TeXu. Přepněte na systémový LaTeX a pak v tomto počítači povolte externí příkazy, jen pokud důvěřujete každému souboru projektu."
+      },
+      "shell-escape": {
+        "title": "Příkazy shell escape",
+        "detail": "Zdroj používá \\write18 nebo jiný shell escape. Přepněte na systémový LaTeX a pak v tomto počítači povolte externí příkazy, jen pokud důvěřujete každému souboru projektu a jsou nainstalované nástroje, které potřebuje."
+      }
     },
     "recommended": "Doporučeno",
     "shellEscape": {
@@ -508,13 +568,14 @@
       "withFailures_other": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že budou selhávat dál."
     },
     "tinytex": {
-      "description": "Nainstaluje kompaktní TeX Live do vaší domovské složky, bez práv správce. Základní stažení má asi 250 MB. Šablony časopisů mohou později dotáhnout další balíčky, dohromady zhruba do 1 GB.",
+      "description": "Nainstaluje kompaktní TeX Live bez nutnosti práv správce. Základní stažení má asi 250 MB. Šablony časopisů mohou později dotáhnout další balíčky, dohromady zhruba do 1 GB.",
       "download": "Stáhnout a používat TinyTeX",
       "resume": "Pokračovat ve stahování (hotovo {{megabytes}} MB)",
       "title": "Stáhnout TinyTeX"
     },
     "titleCompileFailure": "Tato kompilace potřebuje víc než vestavěný engine",
-    "titleImportScan": "Tento projekt potřebuje víc než vestavěný engine"
+    "titleImportScan": "Tento projekt potřebuje víc než vestavěný engine",
+    "titleTexMissing": "Tento překladač potřebuje funkční distribuci TeXu"
   },
   "shellCommands": {
     "allow": "Povolit externí příkazy",
@@ -1192,11 +1253,16 @@
     },
     "wait": {
       "description": "{{phase}} Vaše kompilace je ve frontě a spustí se automaticky, jakmile bude engine připraven.",
+      "stop": "Zastavit instalaci",
       "title": "TinyTeX se stále stahuje"
     },
     "typstQuit": {
       "title": "Typst se stále instaluje",
       "description": "Typst {{version}} se stahuje. Pokud aplikaci teď ukončíte, stahování se zastaví a budete ho muset spustit znovu z Nastavení."
+    },
+    "packageQuit": {
+      "title": "Oleafly stále mění balíčky TeXu",
+      "description": "Pokud aplikaci teď ukončíte, instalace nebo odebrání se zastaví v půli a správce balíčků TeXu může zůstat poškozený."
     }
   },
   "toolbar": {
@@ -1362,7 +1428,7 @@
       "compiling": "Kompiluje se nástrojem Typst"
     },
     "errors": {
-      "pandoc": "Pandoc není připraven. Nainstalujte jej v Nástrojích a zkuste to znovu.",
+      "pandoc": "Pandoc není připraven. Opravte jej v Nastavení > Enginy > Markdown a zkuste to znovu.",
       "noMain": "Hlavní soubor LaTeX se nepodařilo přečíst.",
       "emptyOutput": "Pandoc vrátil prázdný dokument.",
       "failed": "Převod se zastavil: {{detail}}"
@@ -1435,7 +1501,8 @@
     "svg": "Obrázky SVG",
     "html": "HTML",
     "experimental": "Experimentální",
-    "htmlNote": "Export HTML v nástroji Typst je stále experimentální. Vynechává nastavení stránky a umístěné prvky.",
+    "htmlNote": "Export HTML v nástroji Typst je stále experimentální. Zachovává text a obrázky, ale ne nastavení stránky ani kresby.",
+    "htmlNoteOldTypst": "Typst {{version}} vynechává z HTML rovnice. Typst 0.15 nebo novější je zachovává.",
     "ppi": "Rozlišení",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Stránky",

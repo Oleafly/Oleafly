@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { parseLatexLog } from "./latex-log";
+import { isNullfontMissingCharacter, parseLatexLog } from "./latex-log";
 import { MAX_COMPILE_LOG_BYTES } from "./types";
 
 const GOLDEN_DIR = fileURLToPath(
@@ -172,6 +172,87 @@ describe("parseLatexLog", () => {
     expect(d.category).toBe("missing-character");
     expect(d.message).toBe("Missing character: There is no ő in font nullfont!");
     expect(d.line).toBeNull();
+  });
+
+  it("joins missing character warnings that TeX wrapped at 79 columns", () => {
+    const log = [
+      "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+      "text;!",
+      "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-",
+      "text;!",
+      "Package hyperref Warning: Something else on input line 3.",
+      "",
+    ].join("\n");
+
+    const diags = parseLatexLog(log);
+    expect(
+      diags.filter((d) => d.category === "missing-character").map((d) => d.message),
+    ).toEqual([
+      "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-text;!",
+      "Missing character: There is no 綱 (U+7DB1) in font [lmroman12-bold]:mapping=tex-text;!",
+    ]);
+    expect(diags.some((d) => d.message.includes("Something else"))).toBe(true);
+  });
+
+  it("stops a wrapped missing character warning at a blank line", () => {
+    const log = [
+      "Missing character: There is no 大 (U+5927) in font [lmroman12-bold]:mapping=tex-",
+      "",
+      "LaTeX Warning: Something else on input line 3.",
+      "",
+    ].join("\n");
+
+    const diags = parseLatexLog(log);
+    expect(diags).toHaveLength(2);
+    expect(diags[1].message).toContain("Something else");
+  });
+
+  it("joins a missing character line wrapped twice", () => {
+    const diags = parseLatexLog(
+      [
+        "Missing character: There is no 한 (U+D55C) in font [FandolSong-Regular.otf]/OT:s",
+        "cript=hani;language=dflt;mapping=tex-text;fallback=somethingverylongthatrunspast",
+        "the-line;!",
+        "",
+      ].join("\n"),
+    );
+    expect(diags).toHaveLength(1);
+    expect(diags[0].message.endsWith("somethingverylongthatrunspastthe-line;!")).toBe(true);
+  });
+
+  it("keeps the TFM and LuaTeX forms of missing characters", () => {
+    const diags = parseLatexLog(
+      [
+        'Missing character: There is no “ ("201C) in font ec-lmr10!',
+        "Missing character: There is no ㄱ (U+3131) in font [lmroman12-regular]:+tlig;!",
+        "{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}",
+        "Missing character: There is no ㅊ (U+314A) in font [lmroman12-regular]:+tlig;!",
+        "",
+      ].join("\n"),
+    );
+    expect(diags.filter((d) => d.category === "missing-character").map((d) => d.message)).toEqual([
+      'Missing character: There is no “ ("201C) in font ec-lmr10!',
+      "Missing character: There is no ㄱ (U+3131) in font [lmroman12-regular]:+tlig;!",
+      "Missing character: There is no ㅊ (U+314A) in font [lmroman12-regular]:+tlig;!",
+    ]);
+  });
+
+  it("collapses repeated missing characters and bounds the rest", () => {
+    const lines = Array.from({ length: 300 }, (_, index) => [
+      `Missing character: There is no x (U+${(0x4e00 + (index % 120)).toString(16).toUpperCase()}) in font [lmroman10-regular]:mapping=t`,
+      "ex-text;!",
+    ]).flat();
+    const diags = parseLatexLog(lines.join("\n"));
+    expect(diags).toHaveLength(50);
+    expect(diags.every((d) => d.category === "missing-character")).toBe(true);
+  });
+
+  it("does not spend the missing character budget on nullfont lines", () => {
+    const noise = Array.from({ length: 60 }, (_, index) => `Missing character: There is no x${index} in font nullfont!`);
+    const diags = parseLatexLog([...noise, "Missing character: There is no ㄱ (U+3131) in font [x]:y;!"].join("\n"));
+    expect(diags).toHaveLength(61);
+    expect(isNullfontMissingCharacter(diags[0].message)).toBe(true);
+    expect(isNullfontMissingCharacter(diags[60].message)).toBe(false);
   });
 
   it("accumulates multi-line error text until the l.<n> excerpt", () => {
@@ -429,6 +510,48 @@ describe("parseLatexLog", () => {
       ["error", null],
       ["undefined-reference", 5],
     ]);
+  });
+
+  it("reads a fatal Biber error in engine output and names the real .bib file", () => {
+    const diagnostics = parseLatexLog(
+      [
+        "Package biblatex Warning: Please (re)run Biber on the file:",
+        "(biblatex)                _oleafly_entry",
+        "(biblatex)                and rerun LaTeX afterwards.",
+        "",
+        "[Oleafly] Engine output:",
+        "INFO - Found BibTeX data source 'sources/refs.bib'",
+        "ERROR - BibTeX subsystem: /var/folders/T/biber_tmp_c19Q/8fe4c98_63188.utf8, line 9, syntax error: at end of input",
+        "error: the external tool exited with error code 2",
+      ].join("\n"),
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      severity: "error",
+      category: "biber",
+      file: "sources/refs.bib",
+      line: 9,
+      message: "syntax error: at end of input",
+    });
+  });
+
+  it("keeps a raw Biber path that names a .bib file and shows other fatal Biber errors", () => {
+    const [bibtex] = parseLatexLog(
+      "ERROR - BibTeX subsystem: /tmp/p/references.bib, line 12, syntax error: found \"@\"",
+    );
+    expect(bibtex).toMatchObject({ file: "/tmp/p/references.bib", line: 12 });
+    const [other] = parseLatexLog("[Oleafly] Engine output:\nERROR - Cannot sort without a schema");
+    expect(other).toMatchObject({
+      severity: "error",
+      category: "biber",
+      message: "Cannot sort without a schema",
+    });
+    const [missing] = parseLatexLog("[Oleafly] Engine output:\nerror: can't open path `missing.bib`");
+    expect(missing).toMatchObject({
+      severity: "error",
+      message:
+        "The compile could not open missing.bib. Check the file name and that the file is in the project.",
+    });
   });
 
   it("ignores the engine output appended after a failed Tectonic compile", () => {

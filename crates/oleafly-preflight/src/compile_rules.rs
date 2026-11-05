@@ -313,7 +313,9 @@ pub fn run_compile_rules(context: Option<&CompileContext>, pdf: Option<&PdfFacts
         .iter()
         .filter(|line| {
             let lower = line.to_lowercase();
-            lower.contains("missing character:") && lower.contains("there is no ")
+            lower.contains("missing character:")
+                && lower.contains("there is no ")
+                && !lower.contains(" in font nullfont")
         })
         .count();
     if missing_glyphs > 0 {
@@ -431,6 +433,34 @@ mod tests {
             infer_compile_status("[]\\OT1/cmr/m/n/10 An error: here\nwarning: a hint\n"),
             CompileStatus::Success
         );
+    }
+
+    #[test]
+    fn missing_glyphs_count_wrapped_lines_once_and_skip_nullfont_noise() {
+        let findings = run_compile_rules(
+            Some(&log(concat!(
+                "Missing character: There is no r (\"72) in font nullfont!\n",
+                "Missing character: There is no ㄱ (U+3131) in font [lmroman12-regular]:mapping=t\n",
+                "ex-text;!\n",
+                "Missing character: There is no ㅊ (U+314A) in font [lmroman12-regular]:mapping=t\n",
+                "ex-text;!\n",
+            ))),
+            None,
+        );
+        let glyphs = findings
+            .iter()
+            .find(|finding| finding.id == "compile-missing-glyph")
+            .unwrap();
+        assert_eq!(glyphs.title.params["count"], ParamValue::Int(2));
+        let noise = run_compile_rules(
+            Some(&log(
+                "Missing character: There is no r (\"72) in font nullfont!\n",
+            )),
+            None,
+        );
+        assert!(!noise
+            .iter()
+            .any(|finding| finding.id == "compile-missing-glyph"));
     }
 
     #[test]

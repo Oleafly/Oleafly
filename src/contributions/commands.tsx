@@ -616,6 +616,7 @@ export function registerPaletteCommands() {
     label: () => i18n.t(($) => $.shell.commands.exportPdf.label),
     icon: () => <Download className="size-4" />,
     order: 230,
+    when: (ctx) => !!ctx.projectId && engineLoaded() && engine().capabilities.produces_pdf,
     run: () => void exportCurrentPdf(),
   });
   palette({

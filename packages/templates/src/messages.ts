@@ -36,6 +36,7 @@ export const TEMPLATES_MESSAGE_KEYS = [
   "compiler.unknown",
   "setup.preparing",
   "setup.downloading",
+  "setup.failed",
   "category.all",
   "category.aiGenerated",
   "category.custom",

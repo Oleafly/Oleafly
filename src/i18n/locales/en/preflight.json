@@ -588,6 +588,7 @@
     "unrecorded": "The LaTeX Project has not recorded a tagging status for the {{name}} class, so the result is unproven. Compile and check the output."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata goes at the top of the main document, so this file doesn't get it.",
     "metadataUpdated": "Added the required tagging keys to your \\DocumentMetadata.",
     "metadataAdded": "Added \\DocumentMetadata as the first line (required, must precede \\documentclass). It sits inside a version check: LaTeX older than {{date}}, including the bundled engine, skips it and compiles the document untagged instead of failing.",
     "headerRows": "Set table/header-rows to 1 so the first row of each table is tagged as header cells. Change the number if a table has a different header depth.",

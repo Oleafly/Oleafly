@@ -2,6 +2,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { hasPandoc, downloadPandoc, withEventListener } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
+import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { randomFraction } from "@/lib/random";
@@ -88,7 +89,7 @@ async function download(state: PandocAttempt): Promise<boolean> {
   } catch (error) {
     void logError("download pandoc", error);
     recordFailure();
-    if (state.notify) showFailure();
+    if (state.notify) showFailure(error);
     return false;
   }
 }
@@ -102,10 +103,17 @@ function showProgress(state: PandocAttempt): void {
   state.toastId = toast.infoUnique(PANDOC_TOAST_KEY, state.label, undefined, true);
 }
 
-function showFailure(): void {
+function failureMessage(error: unknown): string {
+  if (typeof error === "string" && error) {
+    return i18n.t(($) => $.core.pandoc.downloadFailedDetail, { detail: describeError(error) });
+  }
+  return i18n.t(($) => $.core.pandoc.downloadFailed);
+}
+
+function showFailure(error: unknown): void {
   toast.errorUnique(
     PANDOC_TOAST_KEY,
-    i18n.t(($) => $.core.pandoc.downloadFailed),
+    failureMessage(error),
     {
       label: i18n.t(($) => $.core.pandoc.installGuide),
       onClick: () => void open(INSTALL_DOCS),

@@ -622,6 +622,28 @@ describe("CollabPane", () => {
     expect(rows[1]).toHaveTextContent(activity.skippedUnknown);
   });
 
+  it("says why a compiled PDF stayed on this computer", () => {
+    feed([
+      { kind: "outputNotShared", at: NOW, reason: "tooLarge", count: 1 },
+      { kind: "outputNotShared", at: NOW - 1000, reason: "quota", count: 1 },
+      { kind: "outputNotShared", at: NOW - 2000, reason: "privateSources", count: 1 },
+      { kind: "outputNotShared", at: NOW - 3000, reason: "serverError", count: 1 },
+    ]);
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(activity.outputNotShared.tooLarge);
+    expect(rows[1]).toHaveTextContent(activity.outputNotShared.quota);
+    expect(rows[2]).toHaveTextContent(activity.outputNotShared.privateSources);
+    expect(rows[3]).toHaveTextContent(activity.outputNotShared.serverError);
+  });
+
+  it("says this computer needs TeX for the project's compiler", () => {
+    feed([{ kind: "texNeeded", at: NOW, count: 1 }]);
+    render(<CollabPane />);
+    const [row] = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(row).toHaveTextContent(activity.texNeeded);
+  });
+
   it("says the main document followed its file to a new name, without a someone", () => {
     feed([
       {

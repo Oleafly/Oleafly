@@ -495,6 +495,7 @@
     "previewUnsupported": "Živý náhled pro tento engine zatím není k dispozici",
     "badge": "Vytvořeno pomocí AI",
     "compileWarning": "Tento koncept se nezkompiloval čistě. Vytvořte jej znovu pro lepší výchozí bod, nebo projekt založte a zdroj opravte v editoru.",
+    "compileLog": "Protokol kompilace",
     "noDescription": "Zatím bez popisu.",
     "includes": "Obsahuje",
     "category": "Kategorie",

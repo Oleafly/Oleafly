@@ -5,7 +5,9 @@ use oleafly_core::process_probe::{probe_output, PROBE_TIMEOUT};
 use oleafly_core::{DoctorCheck, DoctorReport, DoctorStatus, Engine};
 use serde_json::{json, Value};
 
-use super::common::{assignments, install_hint, listed, on_off};
+use super::common::{
+    appimage_engines_note, assignments, engine_install_hint, listed, on_off, tectonic_fallback,
+};
 use super::CommandModule;
 use crate::contract::{CliError, Context, Exit, Outcome};
 use crate::engine::{
@@ -231,7 +233,11 @@ fn project_checks(
             (None, None) => check(
                 &format!("compiler_{name}"),
                 DoctorStatus::Fail,
-                match install_hint(name) {
+                match engine_install_hint(
+                    name,
+                    tools,
+                    Some(tectonic_fallback(&opened.origin, false)),
+                ) {
                     Some(hint) => format!("{name} was not found. {hint}"),
                     None => format!("{name} was not found"),
                 },
@@ -307,7 +313,12 @@ fn engine_check(
             return check(&check_name, status, message);
         }
     }
-    let message = match install_hint(name) {
+    if name == "typst" {
+        if let Some(message) = tools.typst_pin_error() {
+            return check(&check_name, DoctorStatus::Warning, message);
+        }
+    }
+    let message = match engine_install_hint(name, tools, None) {
         Some(hint) => format!("{name} wasn't found. {hint}"),
         None => format!("{name} wasn't found."),
     };
@@ -452,6 +463,26 @@ fn mcp_clients_check(root: &Path) -> DoctorCheck {
     )
 }
 
+fn tinytex_check(tinytex: Option<&Path>, latexmk_found: bool) -> DoctorCheck {
+    match (tinytex, latexmk_found) {
+        (Some(folder), _) => check(
+            "tinytex",
+            DoctorStatus::Pass,
+            format!("Oleafly's TinyTeX is at {}", folder.display()),
+        ),
+        (None, true) => check(
+            "tinytex",
+            DoctorStatus::Pass,
+            "Oleafly's TinyTeX isn't installed; latexmk projects use your TeX distribution.",
+        ),
+        (None, false) => check(
+            "tinytex",
+            DoctorStatus::Warning,
+            "Oleafly's TinyTeX isn't installed, and no other TeX distribution was found, so latexmk projects can't build.",
+        ),
+    }
+}
+
 async fn global_checks(
     ctx: &Context,
     discovery: &Discovery,
@@ -483,21 +514,14 @@ async fn global_checks(
             engine,
         ));
     }
-    let tinytex = data_root
-        .map(|root| root.join("tinytex"))
-        .filter(|folder| folder.is_dir());
-    checks.push(match tinytex {
-        Some(folder) => check(
-            "tinytex",
-            DoctorStatus::Pass,
-            format!("Oleafly's TinyTeX is at {}", folder.display()),
-        ),
-        None => check(
-            "tinytex",
-            DoctorStatus::Pass,
-            "Oleafly's TinyTeX isn't installed; latexmk projects use your TeX distribution.",
-        ),
-    });
+    let tinytex = oleafly_core::tex_distro::TexSearch {
+        data_root: data_root.map(Path::to_path_buf),
+        ..oleafly_core::tex_distro::TexSearch::from_env()
+    }
+    .refusing_foreign_parent(oleafly_secrets::fsperm::owned_by_current_user)
+    .managed_tinytex_root()
+    .filter(|folder| folder.is_dir());
+    checks.push(tinytex_check(tinytex.as_deref(), tools.latexmk.is_some()));
     checks.push(
         tokio::task::spawn_blocking(git_check)
             .await
@@ -511,10 +535,7 @@ async fn global_checks(
                 checks.push(check(
                     "appimage",
                     DoctorStatus::Warning,
-                    format!(
-                        "Your Oleafly AppImage ({}) keeps its engines inside the image. Install tectonic, typst and pandoc, or use the .deb or .rpm package.",
-                        appimage.display()
-                    ),
+                    appimage_engines_note(&appimage),
                 ));
             }
         }
@@ -706,6 +727,31 @@ mod tests {
             );
         }
         assert!(lines.iter().any(|line| line.ends_with(" used")));
+    }
+
+    #[test]
+    fn the_tinytex_row_warns_only_when_no_tex_was_found() {
+        let found = tinytex_check(None, true);
+        assert_eq!(found.status, DoctorStatus::Pass);
+        assert!(found.message.contains("use your TeX distribution"));
+        let none = tinytex_check(None, false);
+        assert_eq!(none.status, DoctorStatus::Warning);
+        assert!(none.message.contains("no other TeX distribution"));
+        let installed = tinytex_check(Some(Path::new("/data/tinytex")), false);
+        assert_eq!(installed.status, DoctorStatus::Pass);
+    }
+
+    #[test]
+    fn a_missing_latexmk_row_points_at_a_tex_install() {
+        let tools = BuildTools::default();
+        let missing = engine_check("latexmk", None, &tools, None);
+        assert_eq!(missing.status, DoctorStatus::Warning);
+        assert!(missing.message.contains("https://www.tug.org/texlive/"));
+        assert!(
+            !missing.message.contains("config set"),
+            "{}",
+            missing.message
+        );
     }
 
     #[test]

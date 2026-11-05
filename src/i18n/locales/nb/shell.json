@@ -475,9 +475,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Feilen stemmer med et kjent hull i Tectonic-motoren som følger med. Velg hvordan dette prosjektet skal kompileres. Valget lagres i prosjektet, så samarbeidspartnerne dine får samme oppsett.",
     "descriptionImportScan": "Importgjennomgangen fant funksjoner som Tectonic-motoren som følger med, ikke styrer. Velg hvordan dette prosjektet skal kompileres. Valget lagres i prosjektet, så samarbeidspartnerne dine får samme oppsett.",
+    "descriptionTexMissing": "Dette prosjektet kompileres nå med latexmk, og denne datamaskinen kan ikke kjøre det ennå. Oleafly kan installere TinyTeX for deg, eller du kan gå tilbake til den innebygde Tectonic-motoren.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX via latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "Kompileringen stoppet ved {{file}}.",
+      "missingFiles": "Kompileringen fant ikke {{files}}.",
+      "mirrorStatus": "Speilet svarte med HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Litteraturlisten bruker biblatex og Biber",
+        "detail": "Dette prosjektet trenger Biber for å bygge referanselisten. Oleafly leverer en Biber som passer til den innebygde motoren. Hvis siteringer fortsatt vises som «?» etter kompilering, sjekk loggen for en melding fra Biber."
+      },
+      "bundle-fetch-failed": {
+        "title": "Nedlastingen av TeX-pakker mislyktes",
+        "detail": "Oleafly kunne ikke laste ned TeX-pakker fra speilet sitt, så kompileringen kom aldri fram til dokumentet ditt. Sjekk tilkoblingen og kompiler på nytt. Nedlastingen fortsetter der den stoppet."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 trenger pdfLaTeX",
+        "detail": "CJKutf8 og CJK virker bare med pdfLaTeX. På den innebygde motoren (XeTeX) kompileres dokumentet fortsatt, men kinesisk, japansk eller koreansk tekst mangler i PDF-en. Bytt til pdfLaTeX på system-TeX, eller bytt ut pakken med xeCJK."
+      },
+      "class-compat": {
+        "title": "Dokumentklassen støter på grenser i motoren",
+        "detail": "Kompileringsfeilene kommer fra en klasse- eller stilfil, ikke fra dokumentet ditt. Klasser fra forlag er ofte avhengige av verktøy eller pdfTeX-oppførsel som den innebygde motoren ikke har. latexmk kompilerer med en full TeX-distribusjon."
+      },
+      "eps-image": {
+        "title": "EPS-bilder trenger en konverterer",
+        "detail": "Den innebygde motoren kan ikke plassere EPS-bilder. Konverter dem til PDF med epstopdf eller Inkscape, eller bytt til pdfLaTeX på system-TeX, som konverterer EPS via Ghostscript."
+      },
+      "fontspec": {
+        "title": "Egne skrifter (fontspec)",
+        "detail": "fontspec trenger de navngitte skriftene på denne datamaskinen. Skrifter som fulgte med en nettbasert editor, kan mangle her."
+      },
+      "glossaries-index": {
+        "title": "Verktøy for ordliste eller stikkordregister",
+        "detail": "glossaries og makeindex trenger en ekstra kjøring av makeindex eller xindy, og det gjør ikke den innebygde motoren."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref er satt til pdfTeX-driveren",
+        "detail": "Denne klassen eller preamblen tvinger hyperrefs pdftex-driver, som den innebygde motoren ikke kan bruke. Bytt til pdfLaTeX på system-TeX, eller fjern pdftex-valget, så velger hyperref driver selv."
+      },
+      "minted": {
+        "title": "minted trenger shell escape og Pygments",
+        "detail": "Kodelistinger med minted trenger en TeX-distribusjon på systemet og pygmentize. Bytt til system-LaTeX, og tillat først da eksterne kommandoer på denne datamaskinen, men bare hvis du stoler på alle filene i prosjektet."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "En pakke mangler i den innebygde samlingen",
+        "detail": "Noe dette prosjektet laster, finnes ikke i den innebygde TeX-samlingen. Legg filen til i prosjektet hvis den fulgte med malen din, eller bytt til system-TeX og installer pakken fra TeX Live."
+      },
+      "pdftex-only": {
+        "title": "pdfTeX-pakker",
+        "detail": "Den innebygde motoren er basert på XeTeX, og dette prosjektet bruker pakker eller kommandoer som bare virker med pdfTeX. latexmk kompilerer med ekte pdfLaTeX."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX trenger hjelpeprogrammet sitt fra den aktive TeX-distribusjonen på systemet. Bytt til system-LaTeX, og tillat først da eksterne kommandoer på denne datamaskinen, men bare hvis du stoler på alle filene i prosjektet."
+      },
+      "shell-escape": {
+        "title": "Kommandoer med shell escape",
+        "detail": "Kilden bruker \\write18 eller en annen shell escape. Bytt til system-LaTeX, og tillat først da eksterne kommandoer på denne datamaskinen, men bare hvis du stoler på alle filene i prosjektet og verktøyene den trenger, er installert."
+      }
     },
     "recommended": "Anbefalt",
     "shellEscape": {
@@ -504,13 +564,14 @@
       "withFailures_other": "Null oppsett, virker uten nett. {{features}} kommer trolig til å fortsette å feile."
     },
     "tinytex": {
-      "description": "Installerer en kompakt TeX Live i hjemmemappen din, uten administratorrettigheter. Kjernenedlastingen er på rundt 250 MB. Tidsskriftmaler kan hente flere pakker senere, opptil omtrent 1 GB til sammen.",
+      "description": "Installerer en kompakt TeX Live uten behov for administratorrettigheter. Kjernenedlastingen er på rundt 250 MB. Tidsskriftmaler kan hente flere pakker senere, opptil omtrent 1 GB til sammen.",
       "download": "Last ned og bruk TinyTeX",
       "resume": "Fortsett nedlastingen ({{megabytes}} MB ferdig)",
       "title": "Last ned TinyTeX"
     },
     "titleCompileFailure": "Denne kompileringen trenger mer enn den innebygde motoren",
-    "titleImportScan": "Dette prosjektet trenger mer enn den innebygde motoren"
+    "titleImportScan": "Dette prosjektet trenger mer enn den innebygde motoren",
+    "titleTexMissing": "Denne kompilatoren trenger en fungerende TeX-distribusjon"
   },
   "shellCommands": {
     "allow": "Tillat eksterne kommandoer",
@@ -1152,11 +1213,16 @@
     },
     "wait": {
       "description": "{{phase}} Kompileringen din står i kø og starter automatisk så snart motoren er klar.",
+      "stop": "Stopp installasjonen",
       "title": "TinyTeX lastes fortsatt ned"
     },
     "typstQuit": {
       "title": "Typst installeres fortsatt",
       "description": "Typst {{version}} lastes ned. Avslutter du nå, stopper nedlastingen, og du må starte den på nytt fra Innstillinger."
+    },
+    "packageQuit": {
+      "title": "Oleafly endrer fortsatt TeX-pakker",
+      "description": "Avslutter du nå, stopper installasjonen eller fjerningen halvveis, og TeX-pakkebehandleren din kan bli ødelagt."
     }
   },
   "toolbar": {
@@ -1322,7 +1388,7 @@
       "compiling": "Kompilerer med Typst"
     },
     "errors": {
-      "pandoc": "Pandoc er ikke klar. Installer det fra Verktøy, og prøv igjen.",
+      "pandoc": "Pandoc er ikke klar. Reparer det under Innstillinger > Motorer > Markdown, og prøv igjen.",
       "noMain": "LaTeX-hovedfilen kunne ikke leses.",
       "emptyOutput": "Pandoc returnerte et tomt dokument.",
       "failed": "Konverteringen stoppet: {{detail}}"
@@ -1379,7 +1445,8 @@
     "svg": "SVG-bilder",
     "html": "HTML",
     "experimental": "Eksperimentell",
-    "htmlNote": "HTML-eksporten i Typst er fortsatt eksperimentell. Den utelater sideoppsett og plasserte elementer.",
+    "htmlNote": "HTML-eksporten i Typst er fortsatt eksperimentell. Den beholder tekst og bilder, men ikke sideoppsett eller tegninger.",
+    "htmlNoteOldTypst": "Typst {{version}} utelater ligninger fra HTML. Typst 0.15 eller nyere beholder dem.",
     "ppi": "Oppløsning",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Sider",

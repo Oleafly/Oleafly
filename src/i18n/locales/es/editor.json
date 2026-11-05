@@ -365,7 +365,12 @@
     "rawLogs": "Registros en bruto",
     "copyLog": "Copiar el registro",
     "typesetting": "Composición",
+    "missingCharacters": "Caracteres que faltan",
     "info": "Información",
+    "clear": "Borrar",
+    "clearAria": "Borrar el registro de compilación",
+    "clearHint": "Oculta este registro y sus errores hasta la próxima compilación. Los archivos de compilación se conservan.",
+    "cleared": "Registro borrado. La próxima compilación escribe uno nuevo.",
     "empty": "Aquí aparecerá la salida de la compilación.",
     "scrollToTop": "Ir arriba",
     "scrollToBottom": "Ir abajo",
@@ -383,6 +388,8 @@
     "summaryReferences_many": "{{count}} referencias sin resolver",
     "summaryReferences_other": "{{count}} referencias sin resolver",
     "fontPack": "{{family}} está en el paquete de fuentes gratuito {{pack}}.",
+    "fontPackGlyphs": "El paquete de fuentes gratuito {{pack}} tiene estos caracteres.",
+    "fontPackSealed": "{{family}} está en el paquete de fuentes gratuito {{pack}}, pero los paquetes de fuentes no se aplican aquí porque este proyecto usa solo las fuentes del proyecto. Añade el archivo de la fuente a la carpeta fonts del proyecto.",
     "fontPackAction": "Descargar y compilar",
     "fontPackDownloading": "Descargando…",
     "fontPackFailed": "No se pudo descargar el paquete de fuentes. Revisa tu conexión y vuelve a intentarlo."
@@ -1480,7 +1487,8 @@
       "count_one": "{{count}} paquete en este proyecto",
       "count_many": "{{count}} paquetes en este proyecto",
       "count_other": "{{count}} paquetes en este proyecto",
-      "none": "Aún no hay paquetes en este proyecto."
+      "none": "Aún no hay paquetes en este proyecto.",
+      "unsupported": "Typst {{version}} no puede leer paquetes de la carpeta del proyecto. Cambia el proyecto a Typst 0.12 o posterior para usar esto."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} está disponible. Esta importación usa {{version}}.",
@@ -1520,6 +1528,7 @@
     "classNote": "Esto es una clase de documento. Defínela con \\documentclass.",
     "onDemand": "Tectonic descarga los paquetes la primera vez que tu documento los usa. No hay nada que instalar.",
     "checking": "Comprobando qué paquetes están instalados",
+    "systemManaged": "Este TeX Live viene con tu distribución de Linux, así que instala los paquetes con {{manager}}.",
     "unknownInstall": "Oleafly no puede saber qué paquetes tiene tu instalación de TeX.",
     "noProject": "Abre un proyecto de LaTeX para añadir paquetes.",
     "added": "Se añadió {{name}} a {{file}}.",

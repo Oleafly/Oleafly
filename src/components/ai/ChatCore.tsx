@@ -78,7 +78,7 @@ import { presetPrompt, RESEARCH_PRESET_PROMPTS } from "@/lib/research-presets";
 import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
 import { agentProbeModel, agentWebSearchReady, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
-import { listOllamaModels } from "@/lib/ollama";
+import { listOllamaModelDetails, listOllamaModels, switchableThinkingModels } from "@/lib/ollama";
 import type { AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import {
@@ -189,6 +189,7 @@ import {
   configuredProviders as listConfiguredProviders,
 } from "@/lib/ai-model-groups";
 import {
+  effortMetadata,
   mergeModelProbes,
   modelIsChatOnly,
   probeKey,
@@ -1079,6 +1080,7 @@ export function ChatCore() {
   );
   const providerReady = isProviderConfigured(provider, keysMap, customProviders);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [ollamaThinking, setOllamaThinking] = useState<ReadonlySet<string>>(() => new Set());
   const [modelProbes, setModelProbes] = useState<Record<string, ModelProbe>>(() =>
     mergeModelProbes({}, initialProvider?.cfg.ai_model_probes),
   );
@@ -1387,11 +1389,15 @@ export function ChatCore() {
     const host = keysMap.ollama;
     if (!host) {
       setOllamaModels([]);
+      setOllamaThinking(new Set());
       return;
     }
     listOllamaModels(host)
       .then(setOllamaModels)
       .catch(() => setOllamaModels([]));
+    listOllamaModelDetails(host)
+      .then((models) => setOllamaThinking(switchableThinkingModels(models)))
+      .catch(() => setOllamaThinking(new Set()));
   }, [keysMap.ollama]);
 
   const selectModel = useCallback(
@@ -1919,8 +1925,8 @@ export function ChatCore() {
     [queueStreamDrain],
   );
 
-  const pickedModelRef = useRef({ provider, model, providerModelsMap, providerReady, activeProviderName });
-  pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName };
+  const pickedModelRef = useRef({ provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking });
+  pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking };
 
   const send = useCallback(async (
     text: string,
@@ -1931,7 +1937,7 @@ export function ChatCore() {
       web?: boolean;
     },
   ) => {
-    const { provider, model, providerModelsMap, providerReady, activeProviderName } = pickedModelRef.current;
+    const { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking } = pickedModelRef.current;
     const sendComposerId = composerIdRef.current;
     const draft = draftAttachments(sendComposerId);
     if (!options?.replay && !queued && draft.some((item) => item.status === "processing")) return;
@@ -2594,7 +2600,7 @@ ${sandboxedCustom}`;
     const runChat = runChatId ? useChatsStore.getState().byId(runChatId) : undefined;
     const runEffort = resolveRunEffort(
       runChat ? runChat.effort : newChatSettingsRef.current.effort,
-      effortChoicesFor(provider, model, runMetadata),
+      effortChoicesFor(provider, model, effortMetadata(runStoredModel, provider, model, ollamaThinking)),
     );
     const runWeb = runWebTools(runChat ? runChat.web : newChatSettingsRef.current.web);
     let queuedAccepted = false;
@@ -3689,7 +3695,11 @@ ${sandboxedCustom}`;
       : `${usageSummary}. ${t(($) => $.ai.usage.contextShare, {
           percent: formatNumber(usageShare, { style: "percent", maximumFractionDigits: 0 }),
         })}`;
-  const effortChoices = effortChoicesFor(provider, model, activeStoredModel?.metadata);
+  const effortChoices = effortChoicesFor(
+    provider,
+    model,
+    effortMetadata(activeStoredModel, provider, model, ollamaThinking),
+  );
   const selectedEffort = activeChat ? activeChat.effort : newChatSettings.effort;
   const selectedWeb = activeChat ? activeChat.web : newChatSettings.web;
   const changeEffort = (next: EffortLevel | undefined) => {

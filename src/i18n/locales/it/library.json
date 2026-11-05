@@ -479,6 +479,7 @@
     "previewUnsupported": "L'anteprima dal vivo non è ancora disponibile per questo motore",
     "badge": "Generato con l'AI",
     "compileWarning": "Questa bozza non si è compilata senza errori. Rigenerala per avere un punto di partenza migliore, oppure crea il progetto e correggi il sorgente nell'editor.",
+    "compileLog": "Log di compilazione",
     "noDescription": "Ancora nessuna descrizione.",
     "includes": "Include",
     "category": "Categoria",

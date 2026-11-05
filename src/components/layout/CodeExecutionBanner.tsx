@@ -19,8 +19,10 @@ const NEED_BY_CODE: ReadonlyMap<string, CodeExecutionNeed> = new Map([
 ]);
 
 const NEED_ORDER: readonly CodeExecutionNeed[] = ["needed", "skipped", "storedResults"];
+const R_MISSING = "notebook.r_missing";
 
 export function codeExecutionNeed(errors: readonly CompileError[]): CodeExecutionNeed | null {
+  if (errors.some((error) => error.code === R_MISSING)) return null;
   const needs = new Set<CodeExecutionNeed>();
   for (const error of errors) {
     const need = error.code ? NEED_BY_CODE.get(error.code) : undefined;

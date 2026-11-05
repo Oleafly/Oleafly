@@ -94,13 +94,17 @@
     "exitFullscreen": "Exit fullscreen",
     "retryCompile": "Retry compile",
     "chooseEngine": "Choose engine",
+    "installJapanese": "Install Japanese support (about 450 MB)",
+    "useCompiler": "Use {{compiler}}",
     "installPackages_one": "Find and install {{name}}",
     "installPackages_other": "Find and install {{count}} files",
     "downloadTypst": "Download Typst {{version}}",
     "useTypst": "Use Typst {{version}}",
     "installTool": "Install {{tool}} {{version}}",
     "installToolSize": "Install {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Open engine settings"
+    "engineSettings": "Open engine settings",
+    "useTectonic": "Use Tectonic",
+    "useTectonicForEveryone": "Use Tectonic for everyone"
   },
   "html": {
     "builtTitle": "Built as a web page",

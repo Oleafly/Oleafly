@@ -4,21 +4,30 @@ use std::time::Duration;
 
 use clap::{Args, Subcommand, ValueEnum};
 use oleafly_core::engine_spec::ENTRY_STEM;
+use oleafly_core::typst_html::{
+    html_entry_source, html_export_notes, html_lost_content, notes_for_source_read,
+    skipped_html_elements, TypstHtmlNotes,
+};
 use oleafly_core::typst_log::{parse_typst_diagnostics, TypstSeverity};
 use oleafly_core::typst_toolchain::{
-    typst_compile_args, TypstCapabilities, TypstCompileFlag, TypstDiagnosticFormat,
+    typst_compile_args, ToolchainVersion, TypstCapabilities, TypstCompileFlag,
+    TypstDiagnosticFormat,
 };
 use oleafly_core::{Engine, Workspace};
 use oleafly_doctools::conversion::{
     ad_hoc_plan, export_args, export_writer, fixup_typst_source, AdHocPlan, ExportSource,
 };
 use oleafly_doctools::export::{
-    export_formats, export_would_write_inside_project, run_export_pandoc, ExportJob,
+    export_formats, export_would_write_inside_project, run_export_with_media, ExportJob,
 };
 use oleafly_doctools::pandoc_citations::{self, BibliographySource};
 use oleafly_doctools::stats::{
     collect_project_files, document_stats_with, DocumentStats, DocumentStatsRequest, FsReader,
     KnownFiles,
+};
+use oleafly_doctools::typst_html::{
+    add_media_args, finish_latex_media, media_files, media_folder_name, prepare_html,
+    stage_images_filter, LatexMedia, SourceMedia,
 };
 use oleafly_doctools::{synctex, DocError, ToolRunner};
 use serde_json::{json, Map, Value};
@@ -30,7 +39,8 @@ use crate::engine::{
     build_tools, open_project, typst_settings, typst_variant, OpenedProject, ProjectOrigin,
 };
 use crate::native::{
-    output_locked_or, run_command, BuildTools, CliToolRunner, CompilerLog, Discovery, Launch,
+    output_locked_or, run_command_with_stdin, BuildTools, CliToolRunner, CompilerLog, Discovery,
+    Launch,
 };
 use crate::typst_settings::TypstSettings;
 
@@ -606,8 +616,13 @@ fn export_destination(
         }
         requested.to_path_buf()
     };
+    refuse_project_destination(workspace, &destination)?;
+    Ok(destination)
+}
+
+fn refuse_project_destination(workspace: &Workspace, destination: &Path) -> Result<(), CliError> {
     let in_build_folder = match (
-        canonical_parent(&destination),
+        canonical_parent(destination),
         workspace.build_dir_path().canonicalize(),
     ) {
         (Some(parent), Ok(build)) => parent.starts_with(build),
@@ -623,7 +638,7 @@ fn export_destination(
         )
         .hint("Pass a path outside the project, or leave out -o to write into the build folder."));
     }
-    Ok(destination)
+    Ok(())
 }
 
 fn publish(source: &Path, destination: &Path) -> Result<(), CliError> {
@@ -676,7 +691,7 @@ async fn run_export(ctx: &Context, args: ExportArgs) -> Result<Outcome, CliError
         (
             Engine::Typst,
             ExportFormat::Pdf | ExportFormat::Png | ExportFormat::Svg | ExportFormat::Html,
-        ) => export_typst(&opened, &args, &stem).await?,
+        ) => export_typst(ctx, &opened, &args, &stem).await?,
         (_, ExportFormat::Pdf) => copy_last_pdf(ctx, &opened, &args, &stem)?,
         (_, ExportFormat::Png | ExportFormat::Svg) => {
             return Err(CliError::new(
@@ -689,7 +704,7 @@ async fn run_export(ctx: &Context, args: ExportArgs) -> Result<Outcome, CliError
                 ),
             ));
         }
-        (_, format) => vec![export_with_pandoc(&opened, &args, format, &stem).await?],
+        (_, format) => vec![export_with_pandoc(ctx, &opened, &args, format, &stem).await?],
     };
     if !ctx.json() {
         for file in &files {
@@ -774,6 +789,7 @@ fn filter_staging_dir(opened: &OpenedProject) -> Option<PathBuf> {
 }
 
 async fn export_with_pandoc(
+    ctx: &Context,
     opened: &OpenedProject,
     args: &ExportArgs,
     format: ExportFormat,
@@ -818,14 +834,25 @@ async fn export_with_pandoc(
     let staged_text = staged.to_string_lossy().into_owned();
     let main = workspace.manifest().main_doc.clone();
 
+    let conversion = HtmlConversion {
+        workspace,
+        pandoc: &pandoc,
+        format: id,
+        output: &staged_text,
+        staging: staging.path(),
+        destination: &destination,
+    };
     let mut html_error = None;
+    let mut lossy_html = None;
     if engine == Engine::Typst && id != "typst" {
-        match typst_through_html(opened, args, &pandoc, id, &staged_text, staging.path()).await {
-            Ok(true) => {
+        match typst_through_html(opened, args, &conversion).await {
+            Ok(HtmlRoute::Converted(notes)) => {
+                warn_html_notes(ctx, &notes);
                 publish(&staged, &destination)?;
                 return Ok(destination);
             }
-            Ok(false) => {}
+            Ok(HtmlRoute::Unused) => {}
+            Ok(HtmlRoute::Lossy(html)) => lossy_html = Some(*html),
             Err(error) => html_error = Some(error),
         }
     }
@@ -838,9 +865,32 @@ async fn export_with_pandoc(
         output: &staged_text,
         staging_dir: filter_staging_dir(opened),
         temp_dir: Some(staging.path()),
+        typst: build_tools(workspace, &discovery, None).typst,
     };
-    if let Err(error) = run_export_pandoc(&CliToolRunner, &pandoc, job).await {
-        return Err(html_error.unwrap_or_else(|| doc_error(error)));
+    let reader_media =
+        (engine == Engine::Typst && id == "tex").then(|| media_folder_name(&destination));
+    let media = reader_media.as_deref().map(|folder| SourceMedia {
+        staging: staging.path(),
+        folder,
+    });
+    match run_export_with_media(&CliToolRunner, &pandoc, job, media).await {
+        Ok(warnings) => {
+            for warning in warnings {
+                ctx.warn(warning.code, warning.message);
+            }
+            warn_html_notes(ctx, &notes_after_reader(lossy_html.as_ref()));
+            if let Some(folder) = &reader_media {
+                let run = typst_run(opened, args.variant.as_deref()).await.ok();
+                publish_latex_media(run.as_ref(), folder, &conversion).await?;
+            }
+        }
+        Err(error) => {
+            let Some(html) = lossy_html else {
+                return Err(html_error.unwrap_or_else(|| doc_error(error)));
+            };
+            let notes = convert_staged_html(html, &conversion).await?;
+            warn_html_notes(ctx, &notes);
+        }
     }
     publish(&staged, &destination)?;
     Ok(destination)
@@ -849,6 +899,7 @@ async fn export_with_pandoc(
 struct TypstRun {
     typst: PathBuf,
     capabilities: TypstCapabilities,
+    version: Option<ToolchainVersion>,
     root: PathBuf,
     main: String,
     settings: TypstSettings,
@@ -875,6 +926,7 @@ async fn typst_run(opened: &OpenedProject, variant: Option<&str>) -> Result<Typs
     Ok(TypstRun {
         typst,
         capabilities: tools.typst_capabilities().clone(),
+        version: tools.typst_version().cloned(),
         root: workspace.root().to_path_buf(),
         main: workspace.manifest().main_doc.clone(),
         settings,
@@ -911,16 +963,18 @@ fn typst_failure_detail(log: &str) -> String {
     detail
 }
 
-async fn run_typst(
+async fn run_typst_on(
     run: &TypstRun,
+    input: &Path,
+    stdin: Option<&str>,
     output: &Path,
     extra: &[TypstCompileFlag],
-) -> Result<(), CliError> {
+) -> Result<String, CliError> {
     let mut flags = run.settings.compile_flags(&run.capabilities);
     flags.extend_from_slice(extra);
     let arguments: Vec<OsString> = typst_compile_args(
         &run.capabilities,
-        &run.root.join(&run.main),
+        input,
         output,
         &run.root,
         TypstDiagnosticFormat::Human,
@@ -942,7 +996,8 @@ async fn run_typst(
         unset: &[],
         variables: &[],
     };
-    let (log, status) = run_command(&launch, EXPORT_TIMEOUT, &CompilerLog::default()).await?;
+    let (log, status) =
+        run_command_with_stdin(&launch, EXPORT_TIMEOUT, &CompilerLog::default(), stdin).await?;
     if !status.success() {
         return Err(CliError::new(
             ErrorKind::Build,
@@ -950,52 +1005,201 @@ async fn run_typst(
             typst_failure_detail(&log),
         ));
     }
-    Ok(())
+    Ok(log)
+}
+
+async fn run_typst(
+    run: &TypstRun,
+    output: &Path,
+    extra: &[TypstCompileFlag],
+) -> Result<String, CliError> {
+    run_typst_on(run, &run.root.join(&run.main), None, output, extra).await
 }
 
 fn supports_html(capabilities: &TypstCapabilities) -> bool {
     capabilities.supports_output_format("html") && capabilities.supports_flag("--features")
 }
 
-async fn typst_through_html(
-    opened: &OpenedProject,
-    args: &ExportArgs,
-    pandoc: &Path,
-    format: &str,
-    output: &str,
-    staging: &Path,
-) -> Result<bool, CliError> {
-    let run = typst_run(opened, args.variant.as_deref()).await?;
-    if !supports_html(&run.capabilities) {
-        return Ok(false);
+async fn render_html(run: &TypstRun, output: &Path) -> Result<String, CliError> {
+    let flags = [
+        TypstCompileFlag::Features("html".into()),
+        TypstCompileFlag::Format("html".into()),
+    ];
+    let entry = html_entry_source(&run.main);
+    match run_typst_on(run, Path::new("-"), Some(&entry), output, &flags).await {
+        Ok(log) => Ok(log),
+        Err(_) => run_typst(run, output, &flags).await,
     }
-    let html = staging.join("document.html");
-    run_typst(
-        &run,
-        &html,
-        &[
-            TypstCompileFlag::Features("html".into()),
-            TypstCompileFlag::Format("html".into()),
-        ],
+}
+
+fn html_notes(run: &TypstRun, log: &str) -> TypstHtmlNotes {
+    match &run.version {
+        Some(version) => html_export_notes(version, log),
+        None => TypstHtmlNotes {
+            skipped: skipped_html_elements(log),
+            ..TypstHtmlNotes::default()
+        },
+    }
+}
+
+fn read_from_source_warning(version: &str) -> String {
+    format!(
+        "Typst {version} can't write all of this document to this format, so this file was built from the source. Rotated, scaled, moved or skewed text may be missing. Switch the project to Typst 0.15 or newer to keep that text."
     )
-    .await?;
+}
+
+fn outdated_typst_warning(version: &str) -> String {
+    format!(
+        "Equations, images, footnotes or references may be missing from this file because Typst {version} can't write them to this format. Switch the project to Typst 0.15 or newer."
+    )
+}
+
+fn warn_html_notes(ctx: &Context, notes: &TypstHtmlNotes) {
+    if let Some(version) = &notes.read_from_source {
+        ctx.warn(
+            "export.typst_read_from_source",
+            read_from_source_warning(version),
+        );
+    } else if let Some(version) = &notes.outdated_typst {
+        ctx.warn(
+            "export.typst_html_outdated",
+            outdated_typst_warning(version),
+        );
+    } else if !notes.skipped.is_empty() {
+        ctx.warn(
+            "export.typst_content_skipped",
+            format!(
+                "Some content is missing from this file because Typst can't write it to this format: {}.",
+                notes.skipped.join(", ")
+            ),
+        );
+    }
+}
+
+struct HtmlConversion<'a> {
+    workspace: &'a Workspace,
+    pandoc: &'a Path,
+    format: &'a str,
+    output: &'a str,
+    staging: &'a Path,
+    destination: &'a Path,
+}
+
+struct StagedHtml {
+    run: TypstRun,
+    html: PathBuf,
+    notes: TypstHtmlNotes,
+}
+
+enum HtmlRoute {
+    Unused,
+    Converted(TypstHtmlNotes),
+    Lossy(Box<StagedHtml>),
+}
+
+fn notes_after_reader(html: Option<&StagedHtml>) -> TypstHtmlNotes {
+    html.and_then(|staged| staged.run.version.as_ref())
+        .map_or_else(TypstHtmlNotes::default, notes_for_source_read)
+}
+
+fn export_tool_error(message: String) -> CliError {
+    CliError::new(ErrorKind::Build, "export.failed", message)
+}
+
+fn publish_media(workspace: &Workspace, staged: &Path, destination: &Path) -> Result<(), CliError> {
+    let produced = media_files(staged);
+    let Some(name) = staged.file_name().filter(|_| !produced.is_empty()) else {
+        return Ok(());
+    };
+    let folder = destination.parent().unwrap_or(destination).join(name);
+    refuse_project_destination(workspace, &folder)?;
+    std::fs::create_dir_all(&folder).map_err(CliError::from)?;
+    for image in &produced {
+        if let Some(name) = image.file_name() {
+            publish(image, &folder.join(name))?;
+        }
+    }
+    Ok(())
+}
+
+async fn publish_latex_media(
+    run: Option<&TypstRun>,
+    folder: &str,
+    job: &HtmlConversion<'_>,
+) -> Result<(), CliError> {
+    if let Some(run) = run {
+        let media = LatexMedia {
+            typst: &run.typst,
+            capabilities: &run.capabilities,
+            staging: job.staging,
+            folder,
+            tex: Path::new(job.output),
+        };
+        finish_latex_media(&CliToolRunner, &media)
+            .await
+            .map_err(export_tool_error)?;
+    }
+    publish_media(job.workspace, &job.staging.join(folder), job.destination)
+}
+
+async fn convert_staged_html(
+    staged: StagedHtml,
+    job: &HtmlConversion<'_>,
+) -> Result<TypstHtmlNotes, CliError> {
     let source = ExportSource {
-        file_name: html.to_string_lossy().into_owned(),
-        resource_path: oleafly_core::plain_path(&run.root)
+        file_name: staged.html.to_string_lossy().into_owned(),
+        resource_path: oleafly_core::plain_path(&staged.run.root)
             .to_string_lossy()
             .into_owned(),
     };
-    let mut pandoc_args = export_args(format, &source, output, None)
-        .ok_or_else(|| CliError::internal(format!("{format} has no Pandoc writer.")))?;
+    let mut pandoc_args = export_args(job.format, &source, job.output, None)
+        .ok_or_else(|| CliError::internal(format!("{} has no Pandoc writer.", job.format)))?;
     pandoc_args.insert(0, HTML_READER.to_string());
-    let (log, code) = CliToolRunner
-        .run(pandoc, &pandoc_args, staging, &[])
-        .await
-        .map_err(|message| CliError::new(ErrorKind::Build, "export.failed", message))?;
-    if code != Some(0) {
-        return Err(doc_error(pandoc_citations::export_failure(&log, &run.root)));
+    let media_folder = (job.format == "tex").then(|| media_folder_name(job.destination));
+    if let Some(folder) = &media_folder {
+        stage_images_filter(job.staging).map_err(export_tool_error)?;
+        add_media_args(&mut pandoc_args, folder);
     }
-    Ok(true)
+    prepare_html(&staged.html).map_err(export_tool_error)?;
+    let (log, code) = CliToolRunner
+        .run(job.pandoc, &pandoc_args, job.staging, &[])
+        .await
+        .map_err(export_tool_error)?;
+    if code != Some(0) {
+        return Err(doc_error(pandoc_citations::export_failure(
+            &log,
+            &staged.run.root,
+        )));
+    }
+    if let Some(folder) = media_folder {
+        publish_latex_media(Some(&staged.run), &folder, job).await?;
+    }
+    Ok(staged.notes)
+}
+
+async fn typst_through_html(
+    opened: &OpenedProject,
+    args: &ExportArgs,
+    job: &HtmlConversion<'_>,
+) -> Result<HtmlRoute, CliError> {
+    let run = typst_run(opened, args.variant.as_deref()).await?;
+    if !supports_html(&run.capabilities) {
+        return Ok(HtmlRoute::Unused);
+    }
+    let html = job.staging.join("document.html");
+    let log = render_html(&run, &html).await?;
+    let notes = html_notes(&run, &log);
+    let lossy = run
+        .version
+        .as_ref()
+        .is_some_and(|version| html_lost_content(version, &notes));
+    let staged = StagedHtml { run, html, notes };
+    if lossy {
+        return Ok(HtmlRoute::Lossy(Box::new(staged)));
+    }
+    convert_staged_html(staged, job)
+        .await
+        .map(HtmlRoute::Converted)
 }
 
 fn staged_pages(staging: &Path, extension: &str) -> Vec<PathBuf> {
@@ -1050,6 +1254,7 @@ fn page_destinations(destination: &Path, produced: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 async fn export_typst(
+    ctx: &Context,
     opened: &OpenedProject,
     args: &ExportArgs,
     stem: &str,
@@ -1107,13 +1312,19 @@ async fn export_typst(
         .tempdir()
         .map_err(CliError::from)?;
     let output = if paged {
-        staging
-            .path()
-            .join(format!("{STAGED_STEM}-{{0p}}.{extension}"))
+        staging.path().join(format!(
+            "{STAGED_STEM}-{}.{extension}",
+            run.capabilities.page_template()
+        ))
     } else {
         staging.path().join(format!("{STAGED_STEM}.{extension}"))
     };
-    run_typst(&run, &output, &flags).await?;
+    if args.format == ExportFormat::Html {
+        let log = render_html(&run, &output).await?;
+        warn_html_notes(ctx, &html_notes(&run, &log));
+    } else {
+        run_typst(&run, &output, &flags).await?;
+    }
     let produced = if paged {
         staged_pages(staging.path(), extension)
     } else {
@@ -1445,6 +1656,39 @@ fn say_converted(ctx: &Context, input: &Path, destination: &Path, images: usize,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_lossy_html_route_reports_the_source_read() {
+        let staged = StagedHtml {
+            run: TypstRun {
+                typst: PathBuf::from("typst"),
+                capabilities: oleafly_core::typst_toolchain::capabilities_for("0.14.2").clone(),
+                version: ToolchainVersion::parse("0.14.2"),
+                root: PathBuf::from("root"),
+                main: "main.typ".to_string(),
+                settings: TypstSettings::default(),
+            },
+            html: PathBuf::from("document.html"),
+            notes: TypstHtmlNotes::default(),
+        };
+        assert_eq!(
+            notes_after_reader(Some(&staged))
+                .read_from_source
+                .as_deref(),
+            Some("0.14.2")
+        );
+        assert_eq!(notes_after_reader(None), TypstHtmlNotes::default());
+    }
+
+    #[test]
+    fn typst_version_warnings_name_what_may_be_missing() {
+        let outdated = outdated_typst_warning("0.13.1");
+        assert!(outdated.contains("images"), "{outdated}");
+        assert!(outdated.contains("Typst 0.13.1"), "{outdated}");
+        let source = read_from_source_warning("0.14.2");
+        assert!(source.contains("built from the source"), "{source}");
+        assert!(source.contains("Typst 0.14.2"), "{source}");
+    }
 
     #[test]
     fn numbers_are_grouped_by_thousands() {

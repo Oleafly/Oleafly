@@ -361,7 +361,12 @@
     "rawLogs": "Raakalokit",
     "copyLog": "Kopioi loki",
     "typesetting": "Ladonta",
+    "missingCharacters": "Puuttuvat merkit",
     "info": "Tiedot",
+    "clear": "Tyhjennä",
+    "clearAria": "Tyhjennä käännösloki",
+    "clearHint": "Piilota tämä loki ja sen virheet seuraavaan käännökseen asti. Käännöstiedostot säilyvät.",
+    "cleared": "Loki tyhjennetty. Seuraava käännös kirjoittaa uuden.",
     "empty": "Käännöksen tuloste näkyy tässä.",
     "scrollToTop": "Vieritä ylös",
     "scrollToBottom": "Vieritä alas",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} ratkaisematon viittaus",
     "summaryReferences_other": "{{count}} ratkaisematonta viittausta",
     "fontPack": "{{family}} kuuluu ilmaiseen fonttipakettiin {{pack}}.",
+    "fontPackGlyphs": "Ilmainen fonttipaketti {{pack}} sisältää nämä merkit.",
+    "fontPackSealed": "{{family}} kuuluu ilmaiseen fonttipakettiin {{pack}}, mutta fonttipaketit eivät toimi täällä, koska tämä projekti käyttää vain projektin fontteja. Lisää fontin tiedosto projektin fonts-kansioon.",
     "fontPackAction": "Lataa ja käännä",
     "fontPackDownloading": "Ladataan…",
     "fontPackFailed": "Fonttipakettia ei voitu ladata. Tarkista yhteys ja yritä uudelleen."
@@ -1461,7 +1468,8 @@
       "missing": "Nämä paketit puuttuvat pakettivälimuistista: {{names}}. Käännä kerran verkkoyhteyden ollessa päällä ja kopioi sitten uudelleen.",
       "count_one": "{{count}} paketti tässä projektissa",
       "count_other": "{{count}} pakettia tässä projektissa",
-      "none": "Tässä projektissa ei ole vielä paketteja."
+      "none": "Tässä projektissa ei ole vielä paketteja.",
+      "unsupported": "Typst {{version}} ei voi lukea paketteja projektikansiosta. Vaihda projektin versioksi Typst 0.12 tai uudempi, niin voit käyttää tätä."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} on saatavilla. Tämä tuonti käyttää versiota {{version}}.",
@@ -1500,6 +1508,7 @@
     "classNote": "Tämä on dokumenttiluokka. Aseta se sen sijaan komennolla \\documentclass.",
     "onDemand": "Tectonic lataa paketit, kun dokumenttisi käyttää niitä ensimmäistä kertaa. Mitään ei tarvitse asentaa.",
     "checking": "Tarkistetaan, mitkä paketit on asennettu",
+    "systemManaged": "Tämä TeX Live tuli Linux-jakelusi mukana, joten asenna paketit työkalulla {{manager}}.",
     "unknownInstall": "Oleafly ei pysty selvittämään, mitä paketteja TeX-asennuksessasi on.",
     "noProject": "Avaa LaTeX-projekti, niin voit lisätä paketteja.",
     "added": "{{name}} lisättiin tiedostoon {{file}}.",

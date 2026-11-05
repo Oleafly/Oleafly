@@ -1080,6 +1080,22 @@
         "lines_few": "{{value}} rânduri",
         "lines_other": "{{value}} de rânduri"
       },
+      "openWith": {
+        "ariaLabel": "Terminalul în care se deschid folderele și comenzile",
+        "builtin": "Terminal încorporat",
+        "cmd": "Linie de comandă",
+        "description": "Unde deschide Oleafly un folder sau rulează o comandă când alegi „Deschide în terminal”.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Deschide în",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (nu a fost găsit)",
+        "powershell": "PowerShell",
+        "systemDefault": "Implicit de la sistem ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Terminalul implicit al sistemului"
+      },
       "shell": {
         "ariaLabel": "Programul shell al terminalului",
         "description": "Terminalele noi pornesc acest shell. Terminalele deschise îl păstrează pe al lor.",
@@ -1379,13 +1395,20 @@
       "tooltip": "Se aplică proiectelor noi. Fiecare proiect își fixează propriul motor în project.json, așa că cine deschide același proiect îl compilează la fel, indiferent de această setare."
     },
     "distributions": {
+      "automatic": "Automat",
+      "automaticTooltip": "Lasă din nou Oleafly să aleagă: întâi un TeX complet din sistem, apoi TinyTeX.",
       "empty": "Nu s-a detectat nicio distribuție TeX pe această mașină.",
       "heading": "Gestionează distribuțiile TeX",
+      "inUse": "În uz",
+      "inUseTooltip": "Compilările latexmk rulează din această distribuție.",
       "rowTooltip": "Inclusă cu {{tools}}. Oleafly își rulează instrumentele TeX din {{binDir}}.",
       "rowTooltipNoTools": "În această instalare nu s-a găsit niciun latexmk sau tlmgr. Oleafly își rulează instrumentele TeX din {{binDir}}.",
-      "tooltip": "Tot ce poate folosi motorul latexmk pe această mașină. TinyTeX se instalează în folderul tău personal, fără drepturi de administrator. Instalările de sistem (MacTeX, TeX Live, MiKTeX) sunt detectate automat."
+      "tinytexChooseHint": "Compilările folosesc în continuare distribuția marcată „În uz”. Ca să comuți după instalare, dă clic pe „Folosește pentru compilări” la TinyTeX.",
+      "tooltip": "Tot ce poate folosi motorul latexmk pe această mașină. TinyTeX se instalează fără drepturi de administrator. Instalările de sistem (MacTeX, TeX Live, MiKTeX) sunt detectate automat.",
+      "use": "Folosește pentru compilări"
     },
     "latexmkMissing": "nu s-a găsit latexmk",
+    "latexmkNeedsPerl": "latexmk are nevoie de Perl",
     "markdown": {
       "downloading": "Se descarcă…",
       "heading": "Compilator Markdown",
@@ -1421,6 +1444,8 @@
       "includedIn": "Inclus în {{package}}. Eliminarea lui elimină și celelalte fișiere din acel pachet.",
       "intro": {
         "available": "Aceste pachete sunt pentru proiectele care folosesc latexmk (TeX din sistem). Tectonic își folosește propriul set de pachete.",
+        "systemManaged": "Acest TeX Live vine cu distribuția ta Linux, așa că adaugă pachetele cu {{manager}}. Oleafly nu îl poate modifica.",
+        "systemManagedTinytex": "Acest TeX Live vine cu distribuția ta Linux, așa că adaugă pachetele cu {{manager}}. Ca să lași Oleafly să gestioneze pachetele, descarcă TinyTeX mai sus.",
         "unavailable": "Gestionarea pachetelor are nevoie de TeX Live sau TinyTeX. Pentru MiKTeX, folosește MiKTeX Console."
       },
       "refreshInstalled": "Reîmprospătează pachetele instalate",
@@ -1453,9 +1478,10 @@
       "tooltip": "Motorul implicit (Tectonic) este rapid și funcționează offline, dar nu poate produce fișiere PDF etichetate, conforme Section 508 / PDF-UA. Pentru asta este nevoie de LuaLaTeX din sistem, care poate citi fișierele locale accesibile contului tău și ar trebui folosit doar cu proiecte în care ai încredere. Oleafly poate folosi o distribuție existentă sau TinyTeX-ul gestionat de el."
     },
     "tinytex": {
-      "detail": "O distribuție TeX Live compactă în folderul tău personal. Descărcarea de bază este de circa 250 MB. Șabloanele de reviste pot adăuga pachete mai târziu, până la circa 1 GB în total. Instalarea din timp face LaTeX-ul din sistem disponibil atunci când îl alegi explicit.",
+      "detail": "O distribuție TeX Live compactă, care nu are nevoie de drepturi de administrator. Descărcarea de bază este de circa 250 MB. Șabloanele de reviste pot adăuga pachete mai târziu, până la circa 1 GB în total. Instalarea din timp face LaTeX-ul din sistem disponibil atunci când îl alegi explicit.",
       "download": "Descarcă TinyTeX (~250 MB)",
-      "resume": "Reia descărcarea ({{size}} MB descărcați)"
+      "resume": "Reia descărcarea ({{size}} MB descărcați)",
+      "update": "Actualizează"
     },
     "typst": {
       "detail": "Vine cu Oleafly, deci nu ai nimic de configurat. Are nevoie de conexiune la rețea doar prima dată când un document importă un pachet @preview.",
@@ -1522,7 +1548,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Nu a fost găsit pe acest computer."
+        "missing": "Nu a fost găsit pe acest computer.",
+        "outdated": "{{tool}} {{version}} de pe acest computer este prea vechi. Oleafly are nevoie de {{minimum}} sau mai nou, așa că folosește copia pe care o descarcă."
       },
       "managedIdle": "Nu este în uz. Oleafly folosește mai întâi copia găsită pe acest computer.",
       "superseded": "Nu este în uz. Oleafly folosește acum {{tool}} {{version}}.",

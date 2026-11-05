@@ -20,6 +20,21 @@ and [Calepin](#calepin) for documents that run R, Python or Julia code.
 - Default engine: bundled Tectonic sidecar.
 - Supports multi-file projects, images, bibliography files, SyncTeX, and
   cached/offline compilation when packages are available.
+- **First compile:** Tectonic downloads files from its TeX package bundle as a
+  document asks for them, and it fetches the names on a `.prefetch` list in its
+  cache in bulk. Before the first online compile, Oleafly writes that list from
+  `crates/oleafly-core/resources/tectonic-prefetch.txt`, unless the cache
+  already has one. To regenerate that file, cold-compile the templates with a
+  fresh `TECTONIC_CACHE_DIR` for each template, then run
+  `node scripts/tectonic-prefetch-list.mjs <cache dirs> > crates/oleafly-core/resources/tectonic-prefetch.txt`.
+- The bundle comes from Oleafly's mirror. If the mirror fails, even on a warm
+  cache, Oleafly compiles again against the upstream bundle and says so in the
+  log. In offline mode, a file that isn't cached yet gets its own message, which
+  names the file when the log does.
+- For a main document in a subfolder, Tectonic searches that folder first and
+  latexmk runs from it when more of the document's references exist only there
+  than from the project root. Library projects and linked folders work the same
+  way, and `../` references count as long as they stay inside the project.
 - **biblatex / Biber:** Tectonic's bundle ships biblatex 3.17, which requires
   Biber 2.17. Oleafly packages a pinned `tectonic-biber` sidecar (see
   `scripts/fetch-biber.sh`) and puts its directory on `PATH` for the compile
@@ -35,6 +50,35 @@ and [Calepin](#calepin) for documents that run R, Python or Julia code.
 - Compile logs are normalized into editor diagnostics. Incomplete bibliography
   steps surface as `[Oleafly]` notes distinguishing “Biber not found” from
   “Biber/biblatex version mismatch”.
+- On Tectonic and latexmk, a shipped `<main>.bbl` is used only when the project
+  has no `.bib` file and the preamble doesn't use biblatex, and the log says so.
+  The job name is `_oleafly_entry`, so a bibliography named with `\jobname` isn't
+  found and the compile warns.
+- TeX leaves out a character its font has no glyph for and still reports
+  success, so a document can compile with its text gone. The log parser turns
+  those lines into one warning, and a successful compile with that warning
+  shows a notice once per project. Stray text in `nullfont`, which comes from
+  TikZ pictures, doesn't count. On XeTeX the warning lists an `xeCJK` setup for
+  the scripts it found, using fonts in the Tectonic bundle: `bsmi00lp.ttf` for
+  Traditional Chinese, `gbsn00lp.ttf` for Simplified, `ipaexm.ttf` for Japanese
+  and `UnBatang.ttf` for Korean. Fandol is not offered because it lacks common
+  Traditional characters such as 裡. `CJKutf8` and `CJK` only work on pdfLaTeX,
+  so a project that loads them on the built-in engine is also offered that
+  switch.
+- **Font defaults:** Tectonic compiles write `<build>/tex-defaults` and search
+  it after the project, so project files win. It holds `TU` font definitions for
+  Times, Helvetica, Courier, Palatino, Bookman, New Century Schoolbook and Avant
+  Garde that point to TeX Gyre, which would otherwise fall back to Latin Modern.
+  It also holds a `ctexopts.cfg` that makes Fandol the `ctex` default, so a
+  document that sets no `fontset` gets Fandol on every system. A document that
+  wants Apple fonts sets `fontset=mac`.
+- **T1 encoding:** `\usepackage[T1]{fontenc}` breaks typed accents and symbols
+  on a Unicode engine, so the generated entry file carries a hook that keeps
+  such a document on `TU`. If the default roman, sans or mono family has a T1
+  definition and no `TU` one, the document goes back to T1, the log gets
+  `[Oleafly] T1 font encoding kept`, and the compile warns with a guarded
+  `fontenc` line to paste in. A later `\fontfamily` switch to a T1-only family
+  uses T1 for that family. Offline compiles skip this hook and `tex-defaults`.
 - Optional LuaLaTeX support can prepare and verify tagged PDF output for
   accessibility-oriented workflows. It is separate from the default Tectonic
   path.
@@ -60,13 +104,34 @@ Projects that need tools Tectonic does not orchestrate, including `minted`
 engine instead. It drives a **system TeX distribution** (MacTeX, TeX Live,
 MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
 
-- Detection is shared (`src-tauri/src/tex_distro.rs`). Full system
-  distributions from standard locations and inherited `PATH` entries are
-  ordered first only when the same binary directory contains `latexmk`,
-  pdfLaTeX, XeLaTeX, LuaLaTeX, `kpsewhich`, and Biber. Managed TinyTeX under
-  `~/.oleafly/tinytex` and user TinyTeX installations follow. Symlinks into
-  TinyTeX remain in the TinyTeX tier. The same ordered list feeds tool lookup,
-  Settings, and the compile child's `PATH`.
+- Detection is shared by the app and `oleaflyc`
+  (`crates/oleafly-core/src/tex_distro.rs`). A folder from a standard location
+  such as `~/texlive/<year>`, from `PATH`, or from a generic location such as
+  Homebrew's is ordered first only when it contains `latexmk`, pdfLaTeX,
+  XeLaTeX, LuaLaTeX, `kpsewhich`, and Biber. Managed TinyTeX under
+  `~/.oleafly/tinytex` and user TinyTeX installations follow. On a Windows
+  profile whose path isn't plain ASCII, managed TinyTeX and the Biber unpack
+  folder live in `%ProgramData%\Oleafly-<hash>` instead. Symlinks into TinyTeX
+  remain in the TinyTeX tier. The same ordered list feeds tool lookup, Settings,
+  and the compile child's `PATH`. The app also reads the login shell's `PATH`
+  and, on Windows, the `Path` values in the registry.
+- Settings > Engines > LaTeX marks the distribution `latexmk` runs from as
+  **In use**. **Use for compiles** saves another distribution's folder as
+  `tex_distribution` in `config.json`, which `oleaflyc` also reads, and that
+  folder goes first while it still holds TeX tools. **Automatic** clears the
+  choice.
+- MiKTeX needs a Perl on `PATH` to run `latexmk`. Without one, MiKTeX moves
+  behind every other distribution, so TinyTeX takes over if it is there. With
+  nothing else to use, the compile stops with `tex.latexmk_needs_perl`, and
+  Settings shows "latexmk needs Perl".
+- The app checks the setup before it starts `latexmk`. With no TeX, or a TeX
+  that has no `latexmk`, the compile stops with a setup error. Choosing a
+  latexmk compiler in that state opens the engine picker with the TinyTeX offer,
+  and a compile shows **Download and use TinyTeX** next to **Use Tectonic**. The
+  compile runs again once TinyTeX is installed. A missing compiler or Biber gets
+  its own error. These errors name the install command when Oleafly knows the
+  distribution: `tlmgr install`, `sudo tlmgr install` on MacTeX, and `apt`, `dnf`
+  or `pacman` for TeX from Linux packages.
 - On macOS, TeX Live's Biber and the one in managed TinyTeX are universal
   binaries. Their PAR::Packer loader calls `lipo -extract_family` every time
   Biber starts. Recent Xcode's lipo rejects that flag, and a Mac without
@@ -75,24 +140,55 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   the universal file into `~/.oleafly/assets/biber/<fingerprint>/bin` (the same
   bytes `lipo -thin` would write) and puts that folder first on the child's
   `PATH`. The copy sits in that Biber's unpack folder, so pruning deletes it
-  once TeX Live replaces the Biber. The `oleaflyc` CLI and `latexmk` runs from
-  the in-app terminal don't get this yet.
+  once TeX Live replaces the Biber. `oleaflyc` does the same for its `latexmk`
+  runs. The in-app terminal puts the folder first on `PATH` and, unless you set
+  `LATEXMKRCSYS` yourself, points it at a small rc file that names the copy.
 - The TeX engine is set by "Compiler (this project)" in the compile menu,
   which saves the choice as `tex_flavor` in `project.json`. With Auto, the
   source decides: a `% !TeX program = xelatex|lualatex|pdflatex|uplatex|platex`
-  magic comment wins. Japanese classes come next: `jsarticle`, `jsbook` and
+  magic comment wins, and `% !TeX TS-program` and `% !TeX engine` count the same
+  way. Japanese classes come next: `jsarticle`, `jsbook` and
   `jsreport` use pLaTeX, or upLaTeX with the `uplatex` option, the `uj*`
   classes and `jlreq` use upLaTeX, and the `ltj*` classes or `luatexja` use
-  LuaLaTeX. The `ctex` classes and package and `xeCJK` use XeLaTeX.
-  fontspec / polyglossia / unicode-math / `\setmainfont` force XeLaTeX.
-  Everything else uses pdfLaTeX. The rules live in `oleafly-core`
-  (`source_tex_flavor`), so `oleaflyc` picks the same compiler.
+  LuaLaTeX. The `ctex` classes and package and `xeCJK` use XeLaTeX. For Korean,
+  `luatexko` uses LuaLaTeX, while `xetexko` and the Hangul and Hanja font
+  commands such as `\setmainhangulfont` use XeLaTeX. `kotex` alone stays on
+  pdfLaTeX. fontspec / polyglossia / unicode-math / `\setmainfont` force
+  XeLaTeX. If the main file doesn't settle it, a `latexmkrc` or `.latexmkrc` in
+  the document's folder or the project root can: Oleafly reads `$pdf_mode`,
+  `$latex` and `$pdflatex` as text and never runs the file. After that it
+  follows the preamble into `\input` files and local classes and packages, two
+  levels deep, and leaves alone any file that branches on the engine. Everything
+  else uses pdfLaTeX. The rules live in `oleafly-core` (`project_tex_flavor`), so
+  `oleaflyc` picks the same compiler.
 - upLaTeX and pLaTeX run through latexmk's DVI route (`-pdfdvi`) with
   `dvipdfmx`, `upbibtex` or `pbibtex`, and `upmendex` or `mendex`. These are
   passed on the command line because latexmk runs with `-norc`. If the
-  compiler or `dvipdfmx` is missing next to latexmk, the compile stops with
-  `tex.japanese_compiler_missing`, which names `tlmgr install
-  collection-langjapanese`.
+  compiler or `dvipdfmx` is missing next to latexmk, the compile stops. When
+  Oleafly can write to that distribution, as with managed TinyTeX or a TeX Live
+  whose `tlpkg` folder is writable, the failed compile offers
+  **Install Japanese support (about 450 MB)**. That installs
+  `collection-langjapanese`, plus `upmendex` for upLaTeX, and compiles again.
+  Elsewhere the error is `tex.japanese_compiler_missing_command`, which names
+  the install command for that distribution, or
+  `tex.japanese_compiler_missing` when Oleafly doesn't know one.
+- `-norc` also means index runs come from the command line. Fixed rules build
+  the `makeindex` route of `glossaries`, including `order=letter`, and `nomencl`
+  lists. `xindy` and lists added with `\newglossary` are not built, and the
+  compile warns when one is missing from the PDF.
+- Oleafly pins its managed TinyTeX to a monthly release, but tlmgr talks to the
+  live repository. Once the repository's infrastructure moves on, tlmgr refuses
+  every install until it updates itself, and on Windows it can still exit with
+  code 0. Oleafly looks for that message in tlmgr's output, runs `tlmgr update
+  --self` for the TinyTeX it manages, and repeats the install once. A system TeX
+  Live or a TinyTeX you installed yourself is yours to update, so there the
+  error names the command to run.
+- The TeX Live that Debian, Ubuntu and Fedora package is managed with `apt` or
+  `dnf`, so Oleafly doesn't add packages to it. It spots that `tlmgr` by reading
+  the script. Settings says which manager to use, and a missing package gets a
+  notice with an `apt-file` or `dnf` hint, plus a TinyTeX offer when the TeX is
+  incomplete. Once `tlmgr init-usertree` has given Debian or Ubuntu a package
+  database in `~/texmf`, Oleafly uses `tlmgr` in user mode there.
 - Arbitrary TeX shell commands are blocked by default. A user can explicitly
   allow them for one trusted project on one computer. The setting is never
   inferred from source, imported, exported, committed to Git, or stored in
@@ -104,8 +200,11 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   then permits only the programs on its own allow list in `texmf.cnf`, such as
   `repstopdf`, `extractbb`, `kpsewhich`, and `makeindex`. That is what lets an
   ordinary imported project with EPS figures build on pdfLaTeX, because
-  `epstopdf` can convert them during the run. MiKTeX does not accept that flag,
-  so it keeps `-no-shell-escape`.
+  `epstopdf` can convert them during the run. MiKTeX stays at
+  `-no-shell-escape`, so EPS figures don't convert during a MiKTeX run. Every
+  run without consent also sets `MIKTEX_MIKTEX_CORE_ALLOWEDSHELLCOMMANDS` to
+  MiKTeX's default allow list minus `findtexmf`, which covers a MiKTeX install
+  Oleafly doesn't recognize.
 - System TeX is not a filesystem sandbox and may read files available to the
   user's account even while shell commands are blocked. A project runs system
   TeX only when someone chose it: the default compile engine in Settings >
@@ -129,15 +228,24 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   distributions, or the engine-picker modal). The installer checks free disk
   space first, reports phased progress (download / unpack / packages), resumes
   interrupted downloads across launches, and intercepts app quit while
-  running. Before extraction it verifies the pinned archive byte length and
-  SHA-256, then validates the exact reviewed member count, expanded size,
+  running. A download can be cancelled. It tries the pinned GitHub asset, then
+  Oleafly's mirror, and a source that stalls for 60 seconds counts as failed. On
+  Linux, TinyTeX runs on the system Perl, so the installer checks for Perl and
+  the modules TinyTeX loads before it downloads anything, and a partial Perl
+  gets a message to install the full `perl` package. Settings shows **Update**
+  when the managed TinyTeX doesn't match the release this version of Oleafly
+  pins. Before extraction the installer verifies the pinned archive byte length
+  and SHA-256, then validates the exact reviewed member count, expanded size,
   member type and path manifest, duplicate-path policy, and confined symlink
   topology for the current platform. No member is written before that
   preflight succeeds.
 - Package lookups ask the local TeX Live database first and only fall back to
   the remote repository when the local answer is empty. A local release older
-  than the remote one makes `tlmgr` refuse a remote query outright, and Oleafly
-  names both years in the error instead of showing an empty result.
+  than the remote one makes `tlmgr` refuse a remote query or an install
+  outright. Oleafly then repeats the operation against that release's final
+  snapshot in the TeX Live historic archive (`<year>/tlnet-final`). If that
+  fails too, the error names both years instead of showing an empty result, and
+  on managed TinyTeX it points to the update in Settings.
 - A remote lookup that fails, or answers with something that is not JSON, is
   reported as a repository failure. It is never reported as a package TeX Live
   does not carry: that wording sends people back to their template for a file
@@ -202,6 +310,10 @@ records.
   tooling that goes through the same helper) gets TeX-related directories and the
   sidecar directory prepended to `PATH`. Non-LaTeX engines simply ignore unused
   entries. Directories are only added when they exist on disk.
+- **Time limits:** a compile gets 5 minutes, Markdown to PDF gets 15, and Quarto
+  and Calepin get an hour. With code off, Calepin's stored results go through
+  plain Typst and get 5 minutes. Each download line from Tectonic starts the
+  count again, up to 30 minutes in all, or the limit itself when that is longer.
 - **Linux aarch64:** upstream has no Biber 2.17 binary, so
   `scripts/biber/build-linux.sh` builds the one Oleafly ships.
 
@@ -237,6 +349,9 @@ records.
 - Compiles `.qmd` and `.Rmd` documents with Quarto 1.10.19 or the Quarto on
   your computer. Oleafly looks for `quarto` on `PATH` and in the usual install
   folders first, then for the copy it downloaded.
+- The minimum is Quarto 1.5. An older copy on your computer gives way to
+  Oleafly's download. With no download, the compile stops and offers one, while
+  a document in a `_quarto.yml` project keeps using the older Quarto.
 - Settings > Engines > Quarto can download Quarto into
   `~/.oleafly/toolchains/quarto/1.10.19` after you click the download button.
   The download exists for Macs (Apple silicon and Intel), Linux on x86-64 and
@@ -254,14 +369,36 @@ records.
   Oleafly can show, the document builds HTML.
 - Quarto runs R through knitr and Python or Julia through Jupyter with your own
   installs. Oleafly passes the R and Python it found as `QUARTO_R` and
-  `QUARTO_PYTHON` unless you set them yourself.
+  `QUARTO_PYTHON` unless you set them yourself, and on macOS and Linux it does
+  the same for Julia with `QUARTO_JULIA`. With code on, a project `.venv`,
+  `venv` or `env` that has Jupyter supplies the Python, and an `_environment`
+  file in the project root that names `QUARTO_PYTHON` wins over both. If
+  `{julia}` chunks never started, the compile warns.
+- A PDF format that needs LaTeX, with no TeX installed, shows the TinyTeX offer
+  without the Tectonic button. Switching the document to `format: typst` needs
+  no TeX install. Adding `pdf-engine: tectonic` doesn't either, but it works
+  only once code is allowed for the project.
 - Code is off until you allow it for the project. The consent is the one
   latexmk uses for shell escape: per project and per computer. With code off,
   Quarto renders with `--no-execute`. R starts without the project's
   `.Rprofile` and `.Renviron`, and Python does not import from the current
   folder. Filters, shortcodes, `_extensions`, pre and post render scripts and
   inline R code still run code under `--no-execute`, so a project that has any
-  of them does not compile until you allow code.
+  of them does not compile until you allow code. With code off and no R
+  installed, a `.qmd` with front matter falls back to a plain preview through
+  Quarto's `markdown` engine, unless the front matter has a `knitr:` key. A
+  `.Rmd` still needs R.
+- Quarto writes a working file named after the document beside it: `.tex` for
+  PDF and Beamer, `.typ` for Typst. If a file with that name is already there
+  and Quarto didn't write it, the compile stops and names the file, unless the
+  document sets `keep-tex` or `keep-typ`. A `.pdf`, `.log` or other output file
+  with the same name is set aside during the run and put back afterwards.
+- Quarto refuses `--output-dir` for a file it doesn't treat as a project input:
+  a name starting with `_`, a file left out of `project: render`, or anything in
+  a `_quarto.yml` project under the Oleafly library, because Quarto skips paths
+  inside dot folders such as `~/.oleafly`. Oleafly then renders the file as a
+  plain document and moves the output into the build folder, so a book or
+  website in the library produces only that one document.
 - Errors and warnings from Quarto, the YAML validator, knitr (with the chunk's
   file and first line), Jupyter (with the exception and the cell's code) and
   the LaTeX step appear in the log pane.
@@ -307,6 +444,9 @@ records.
 ## Engineering anchors
 
 - `src-tauri/src/document_engine.rs`: descriptors and dispatch.
+- `crates/oleafly-core/src/tex_distro.rs`, `tex_flavor.rs`, `detect.rs` and
+  `compile_limit.rs`: TeX detection, setup errors, the Auto compiler rules and
+  compile time limits.
 - `src-tauri/src/document_engine/quarto.rs` and `calepin.rs`: the two code
   engines, their trust rules and log parsers.
 - `src-tauri/src/notebook_toolchain.rs` and

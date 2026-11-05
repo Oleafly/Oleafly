@@ -14,6 +14,10 @@ const MAX_MODEL_BODY_BYTES: usize = 8 * 1024 * 1024;
 pub struct ModelInfo {
     pub id: String,
     pub name: String,
+    /// Tags the server lists with the model, such as Lemonade's `reasoning`
+    /// and `tool-calling`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<String>,
 }
 
 pub(crate) fn models_url(resolved: &Resolved) -> String {
@@ -42,7 +46,11 @@ pub(crate) fn parse_models(wire: &Wire, body: &Value) -> Result<Vec<ModelInfo>> 
                             .and_then(|d| d.as_str())
                             .unwrap_or(&id)
                             .to_string();
-                        Some(ModelInfo { id, name })
+                        Some(ModelInfo {
+                            id,
+                            name,
+                            labels: Vec::new(),
+                        })
                     })
                     .collect::<Vec<_>>()
             }),
@@ -56,7 +64,18 @@ pub(crate) fn parse_models(wire: &Wire, body: &Value) -> Result<Vec<ModelInfo>> 
                         .and_then(|n| n.as_str())
                         .unwrap_or(&id)
                         .to_string();
-                    Some(ModelInfo { id, name })
+                    let labels = entry
+                        .get("labels")
+                        .and_then(Value::as_array)
+                        .map(|labels| {
+                            labels
+                                .iter()
+                                .filter_map(Value::as_str)
+                                .map(str::to_string)
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    Some(ModelInfo { id, name, labels })
                 })
                 .collect::<Vec<_>>()
         }),
@@ -161,13 +180,35 @@ mod tests {
             vec![
                 ModelInfo {
                     id: "gpt-4o".into(),
-                    name: "gpt-4o".into()
+                    name: "gpt-4o".into(),
+                    labels: Vec::new(),
                 },
                 ModelInfo {
                     id: "glm-5.2".into(),
-                    name: "GLM-5.2".into()
+                    name: "GLM-5.2".into(),
+                    labels: Vec::new(),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn a_lemonade_listing_keeps_its_labels() {
+        let wire = Wire::OpenAiChat {
+            base_url: "http://localhost:13305/v1".into(),
+            reasoning_content: true,
+        };
+        let body = json!({
+            "object": "list",
+            "data": [{
+                "id": "Qwen3-8B-GGUF",
+                "recipe": "llamacpp",
+                "labels": ["chat", "reasoning", "tool-calling", 7]
+            }]
+        });
+        assert_eq!(
+            parse_models(&wire, &body).unwrap()[0].labels,
+            ["chat", "reasoning", "tool-calling"]
         );
     }
 
@@ -187,11 +228,13 @@ mod tests {
             vec![
                 ModelInfo {
                     id: "gemini-3.5-flash-lite".into(),
-                    name: "Gemini 3.5 Flash-Lite".into()
+                    name: "Gemini 3.5 Flash-Lite".into(),
+                    labels: Vec::new(),
                 },
                 ModelInfo {
                     id: "gemini-3.6-flash".into(),
-                    name: "gemini-3.6-flash".into()
+                    name: "gemini-3.6-flash".into(),
+                    labels: Vec::new(),
                 },
             ]
         );

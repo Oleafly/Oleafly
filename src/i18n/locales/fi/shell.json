@@ -475,9 +475,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Virhe vastaa tunnettua puutetta mukana tulevassa Tectonic-moottorissa. Valitse, miten tämä projekti käännetään. Valinta tallennetaan projektiin, joten yhteistyökumppanit saavat saman asetuksen.",
     "descriptionImportScan": "Tuontitarkistus löysi ominaisuuksia, joita mukana tuleva Tectonic-moottori ei hallitse. Valitse, miten tämä projekti käännetään. Valinta tallennetaan projektiin, joten yhteistyökumppanit saavat saman asetuksen.",
+    "descriptionTexMissing": "Tämä projekti kääntyy nyt latexmkillä, eikä tämä kone voi vielä ajaa sitä. Oleafly voi asentaa TinyTeXin puolestasi tai voit palata sisäänrakennettuun Tectonic-moottoriin.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX latexmkin kautta"
+    },
+    "findingNotes": {
+      "epsFile": "Käännös pysähtyi tiedoston {{file}} kohdalla.",
+      "missingFiles": "Käännös ei löytänyt seuraavia tiedostoja: {{files}}.",
+      "mirrorStatus": "Peilipalvelin vastasi HTTP-tilakoodilla {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Lähdeluettelo käyttää biblatexia ja Biberiä",
+        "detail": "Tämä projekti tarvitsee Biberin lähdeluettelon muodostamiseen. Oleaflyn mukana tulee sen sisäänrakennettua moottoria vastaava Biber. Jos lähdeviitteet näkyvät käännöksen jälkeen yhä kysymysmerkkeinä (”?”), tarkista lokista Biberin ilmoitus."
+      },
+      "bundle-fetch-failed": {
+        "title": "TeX-pakettien lataus epäonnistui",
+        "detail": "Oleafly ei voinut ladata TeX-paketteja peilipalvelimeltaan, joten käännös ei edennyt dokumenttiisi asti. Tarkista yhteys ja käännä uudelleen. Lataus jatkuu siitä, mihin se jäi."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 tarvitsee pdfLaTeXin",
+        "detail": "CJKutf8 ja CJK toimivat vain pdfLaTeXilla. Sisäänrakennetulla moottorilla (XeTeX) dokumentti kyllä kääntyy, mutta sen kiinalainen, japanilainen tai korealainen teksti puuttuu PDF:stä. Vaihda järjestelmän TeXin pdfLaTeXiin tai korvaa paketti paketilla xeCJK."
+      },
+      "class-compat": {
+        "title": "Dokumenttiluokka törmää moottorin rajoituksiin",
+        "detail": "Käännösvirheet tulevat luokka- tai tyylitiedostosta, eivät dokumentistasi. Kustantajien luokat nojaavat usein työkaluihin tai pdfTeXin toimintaan, joita sisäänrakennetussa moottorissa ei ole. latexmk kääntää täydellä TeX-jakelulla."
+      },
+      "eps-image": {
+        "title": "EPS-kuvat tarvitsevat muunnintyökalun",
+        "detail": "Sisäänrakennettu moottori ei voi sijoittaa EPS-kuvia. Muunna ne PDF:ksi epstopdf-työkalulla tai Inkscapella tai vaihda järjestelmän TeXin pdfLaTeXiin, joka muuntaa EPS-kuvat Ghostscriptin kautta."
+      },
+      "fontspec": {
+        "title": "Mukautetut fontit (fontspec)",
+        "detail": "fontspec tarvitsee nimetyt fontit tälle tietokoneelle. Verkkoeditorin mukana tulleet fontit voivat puuttua täältä."
+      },
+      "glossaries-index": {
+        "title": "Sanasto- tai hakemistotyökalu",
+        "detail": "glossaries ja makeindex tarvitsevat ylimääräisen makeindex- tai xindy-ajon, jota sisäänrakennettu moottori ei tee."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref on asetettu käyttämään pdfTeX-ajuria",
+        "detail": "Tämä luokka tai esittelyosa pakottaa hyperrefin pdftex-ajurin, jota sisäänrakennettu moottori ei voi käyttää. Vaihda järjestelmän TeXin pdfLaTeXiin tai poista pdftex-asetus, jotta hyperref valitsee ajurin itse."
+      },
+      "minted": {
+        "title": "minted tarvitsee shell escapen ja Pygmentsin",
+        "detail": "minted-koodilistaukset tarvitsevat järjestelmän TeX-jakelun ja pygmentizen. Vaihda järjestelmän LaTeXiin ja salli ulkoiset komennot tällä koneella vain, jos luotat jokaiseen projektin tiedostoon."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Paketti puuttuu sisäänrakennetusta TeX-kokoelmasta",
+        "detail": "Jokin, minkä tämä projekti lataa, ei ole sisäänrakennetussa TeX-kokoelmassa. Lisää tiedosto projektiin, jos se tuli mallipohjasi mukana, tai vaihda järjestelmän TeXiin ja asenna paketti TeX Livestä."
+      },
+      "pdftex-only": {
+        "title": "pdfTeX-paketit",
+        "detail": "Sisäänrakennettu moottori perustuu XeTeXiin, ja tämä projekti nojaa paketteihin tai komentoihin, jotka toimivat vain pdfTeXillä. latexmk kääntää oikealla pdfLaTeXilla."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX tarvitsee apuohjelmansa käytössä olevasta järjestelmän TeX-jakelusta. Vaihda järjestelmän LaTeXiin ja salli ulkoiset komennot tällä koneella vain, jos luotat jokaiseen projektin tiedostoon."
+      },
+      "shell-escape": {
+        "title": "Shell escape -komennot",
+        "detail": "Lähdekoodi käyttää komentoa \\write18 tai muuta shell escape -toimintoa. Vaihda järjestelmän LaTeXiin ja salli ulkoiset komennot tällä koneella vain, jos luotat jokaiseen projektin tiedostoon ja tarvittavat työkalut on asennettu."
+      }
     },
     "recommended": "Suositus",
     "shellEscape": {
@@ -504,13 +564,14 @@
       "withFailures_other": "Ei asennusta, toimii ilman verkkoa. {{features}} todennäköisesti epäonnistuvat jatkossakin."
     },
     "tinytex": {
-      "description": "Asentaa kompaktin TeX Live -jakelun kotikansioosi ilman pääkäyttäjän oikeuksia. Ydinlataus on noin 250 MB. Lehtien mallipohjat voivat hakea lisää paketteja myöhemmin, yhteensä noin 1 GB asti.",
+      "description": "Asentaa kompaktin TeX Live -jakelun ilman pääkäyttäjän oikeuksia. Ydinlataus on noin 250 MB. Lehtien mallipohjat voivat hakea lisää paketteja myöhemmin, yhteensä noin 1 GB asti.",
       "download": "Lataa ja ota TinyTeX käyttöön",
       "resume": "Jatka latausta ({{megabytes}} MB valmiina)",
       "title": "Lataa TinyTeX"
     },
     "titleCompileFailure": "Tämä käännös vaatii enemmän kuin sisäänrakennettu moottori",
-    "titleImportScan": "Tämä projekti vaatii enemmän kuin sisäänrakennettu moottori"
+    "titleImportScan": "Tämä projekti vaatii enemmän kuin sisäänrakennettu moottori",
+    "titleTexMissing": "Tämä kääntäjä tarvitsee toimivan TeX-jakelun"
   },
   "shellCommands": {
     "allow": "Salli ulkoiset komennot",
@@ -1152,11 +1213,16 @@
     },
     "wait": {
       "description": "{{phase}} Käännös on jonossa ja alkaa automaattisesti heti, kun moottori on valmis.",
+      "stop": "Pysäytä asennus",
       "title": "TinyTeX latautuu yhä"
     },
     "typstQuit": {
       "title": "Typst asentuu yhä",
       "description": "Typst {{version}} latautuu. Jos lopetat nyt, lataus pysähtyy ja sinun on aloitettava se uudelleen asetuksista."
+    },
+    "packageQuit": {
+      "title": "Oleafly muuttaa yhä TeX-paketteja",
+      "description": "Jos lopetat nyt, asennus tai poisto pysähtyy kesken ja TeX-paketinhallinta voi jäädä rikki."
     }
   },
   "toolbar": {
@@ -1322,7 +1388,7 @@
       "compiling": "Käännetään Typst-kääntäjällä"
     },
     "errors": {
-      "pandoc": "Pandoc ei ole valmis. Asenna se Työkalut-näkymästä ja yritä sitten uudelleen.",
+      "pandoc": "Pandoc ei ole valmis. Korjaa se kohdassa Asetukset > Moottorit > Markdown ja yritä sitten uudelleen.",
       "noMain": "LaTeX-päätiedostoa ei voitu lukea.",
       "emptyOutput": "Pandoc palautti tyhjän dokumentin.",
       "failed": "Muunnos pysähtyi: {{detail}}"
@@ -1379,7 +1445,8 @@
     "svg": "SVG-kuvat",
     "html": "HTML",
     "experimental": "Kokeellinen",
-    "htmlNote": "Typst-kääntäjän HTML-vienti on yhä kokeellinen. Se jättää pois sivun asettelun ja sijoitetut elementit.",
+    "htmlNote": "Typst-kääntäjän HTML-vienti on yhä kokeellinen. Se säilyttää tekstin ja kuvat mutta ei sivun asettelua eikä piirroksia.",
+    "htmlNoteOldTypst": "Typst {{version}} jättää kaavat pois HTML:stä. Typst 0.15 ja uudemmat säilyttävät ne.",
     "ppi": "Tarkkuus",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Sivut",

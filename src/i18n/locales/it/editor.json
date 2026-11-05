@@ -365,7 +365,12 @@
     "rawLogs": "Log grezzi",
     "copyLog": "Copia il log",
     "typesetting": "Composizione",
+    "missingCharacters": "Caratteri mancanti",
     "info": "Informazioni",
+    "clear": "Cancella",
+    "clearAria": "Cancella il log di compilazione",
+    "clearHint": "Nasconde questo log e i suoi errori fino alla prossima compilazione. I file di compilazione restano.",
+    "cleared": "Log cancellato. La prossima compilazione ne scrive uno nuovo.",
     "empty": "L'output della compilazione comparirà qui.",
     "scrollToTop": "Scorri in cima",
     "scrollToBottom": "Scorri in fondo",
@@ -383,6 +388,8 @@
     "summaryReferences_many": "{{count}} riferimenti non risolti",
     "summaryReferences_other": "{{count}} riferimenti non risolti",
     "fontPack": "{{family}} è nel pacchetto di font gratuito {{pack}}.",
+    "fontPackGlyphs": "Il pacchetto di font gratuito {{pack}} contiene questi caratteri.",
+    "fontPackSealed": "{{family}} è nel pacchetto di font gratuito {{pack}}, ma qui i pacchetti di font non si applicano perché questo progetto usa solo i font del progetto. Aggiungi il file del font alla cartella dei font del progetto.",
     "fontPackAction": "Scarica e compila",
     "fontPackDownloading": "Download in corso…",
     "fontPackFailed": "Non è stato possibile scaricare il pacchetto di font. Controlla la connessione e riprova."
@@ -1480,7 +1487,8 @@
       "count_one": "{{count}} pacchetto in questo progetto",
       "count_many": "{{count}} pacchetti in questo progetto",
       "count_other": "{{count}} pacchetti in questo progetto",
-      "none": "Ancora nessun pacchetto in questo progetto."
+      "none": "Ancora nessun pacchetto in questo progetto.",
+      "unsupported": "Typst {{version}} non può leggere i pacchetti dalla cartella del progetto. Passa il progetto a Typst 0.12 o successivo per usare questa funzione."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} è disponibile. Questo import usa {{version}}.",
@@ -1520,6 +1528,7 @@
     "classNote": "Questa è una classe di documento. Impostala invece con \\documentclass.",
     "onDemand": "Tectonic scarica i pacchetti la prima volta che il documento li usa. Non c'è nulla da installare.",
     "checking": "Verifica dei pacchetti installati",
+    "systemManaged": "Questo TeX Live viene dalla tua distribuzione Linux, quindi installa i pacchetti con {{manager}}.",
     "unknownInstall": "Oleafly non riesce a capire quali pacchetti ha la tua installazione TeX.",
     "noProject": "Apri un progetto LaTeX per aggiungere pacchetti.",
     "added": "{{name}} aggiunto a {{file}}.",

@@ -1,6 +1,7 @@
 import { i18n } from "@/i18n";
 import type { CompileError } from "@/lib/tauri";
 
+const TYPST_PACKAGE_CODE = "typst.package";
 const DOWNLOAD_FAILED = /^failed to download package\b/;
 const DOWNLOAD_URL = /\/([a-z0-9][a-z0-9_-]*)\/([a-z0-9][a-z0-9_-]*)-(\d+\.\d+\.\d+)\.tar\.gz/;
 const NOT_FOUND = /^package not found \(searched for (@([a-z0-9][a-z0-9_-]*)\/[a-z0-9][a-z0-9_-]*:\d+\.\d+\.\d+)\)/;
@@ -45,7 +46,7 @@ export function explainTypstPackageErrors(
   offline: boolean,
 ): CompileError[] {
   return errors.map((error) => {
-    if (error.explanation) return error;
+    if (error.explanation && error.code !== TYPST_PACKAGE_CODE) return error;
     const explanation = explanationFor(error.message, offline);
     return explanation ? { ...error, explanation } : error;
   });

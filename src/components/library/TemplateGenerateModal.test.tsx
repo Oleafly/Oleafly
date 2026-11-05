@@ -10,9 +10,11 @@ const saveGeneratedTemplate = vi.fn(async () => {});
 const deleteGeneratedTemplate = vi.fn(async () => {});
 const toastSuccess = vi.fn();
 const notifyError = vi.fn();
+const cancelIsolatedCompile = vi.fn(async () => true);
 
 vi.mock("@/lib/tauri", () => ({
   getConfig: () => getConfig(),
+  cancelIsolatedCompile: () => cancelIsolatedCompile(),
 }));
 
 vi.mock("@/features/template-generate", () => ({
@@ -63,6 +65,23 @@ function renderModal(open = true) {
   );
 }
 
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
+function startDraft() {
+  generateTemplateSource.mockResolvedValue(TEMPLATE);
+  renderModal();
+  fireEvent.change(screen.getByTestId("template-generate-input"), {
+    target: { value: "a workshop paper" },
+  });
+  fireEvent.click(screen.getByTestId("template-generate-run"));
+}
+
 async function runGeneration(overrides: Partial<ParsedTemplate> = {}) {
   generateTemplateSource.mockResolvedValue({ ...TEMPLATE, ...overrides });
   renderModal();
@@ -91,6 +110,8 @@ beforeEach(() => {
   deleteGeneratedTemplate.mockReset();
   toastSuccess.mockReset();
   notifyError.mockReset();
+  cancelIsolatedCompile.mockReset();
+  cancelIsolatedCompile.mockResolvedValue(true);
   onClose.mockReset();
   onSaved.mockReset();
 });
@@ -130,6 +151,44 @@ describe("TemplateGenerateModal prompt phase", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.mouseDown(screen.getByTestId("template-generate-modal"));
     expect(onClose).toHaveBeenCalledTimes(2);
+    expect(cancelIsolatedCompile).not.toHaveBeenCalled();
+  });
+
+  it("stops the draft compile when closed from the header button", async () => {
+    const compile = deferred<{ png: string | null; log: string }>();
+    compileGeneratedTemplate.mockReturnValue(compile.promise);
+    startDraft();
+    await waitFor(() => expect(compileGeneratedTemplate).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.close }));
+    expect(cancelIsolatedCompile).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    await act(async () => compile.resolve({ png: null, log: "stopped" }));
+    expect(screen.queryByTestId("template-generate-save")).not.toBeInTheDocument();
+  });
+
+  it("stops the draft compile when closed from the backdrop", async () => {
+    compileGeneratedTemplate.mockReturnValue(new Promise(() => {}));
+    startDraft();
+    await waitFor(() => expect(compileGeneratedTemplate).toHaveBeenCalledOnce());
+    fireEvent.mouseDown(screen.getByTestId("template-generate-modal"));
+    expect(cancelIsolatedCompile).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("drops a draft closed before it reached the compiler, and stops nothing else", async () => {
+    const draft = deferred<ParsedTemplate>();
+    generateTemplateSource.mockReturnValue(draft.promise);
+    renderModal();
+    fireEvent.change(screen.getByTestId("template-generate-input"), {
+      target: { value: "a workshop paper" },
+    });
+    fireEvent.click(screen.getByTestId("template-generate-run"));
+    await waitFor(() => expect(generateTemplateSource).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.close }));
+    expect(cancelIsolatedCompile).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+    await act(async () => draft.resolve(TEMPLATE));
+    expect(compileGeneratedTemplate).not.toHaveBeenCalled();
   });
 
   it("asks for a provider when none is configured", async () => {
@@ -330,6 +389,22 @@ describe("TemplateGenerateModal result phase", () => {
     expect(
       screen.queryByText(enLibrary.generate.previewUnsupported),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the compile log of a draft that failed", async () => {
+    compileGeneratedTemplate.mockResolvedValue({
+      png: null,
+      log: "main.typ:2:9: error: unclosed delimiter",
+    });
+    await runGeneration({ engine: "typst", mainDoc: "main.typ", source: "= Title" });
+    expect(screen.getByText(enLibrary.generate.compileLog)).toBeInTheDocument();
+    expect(screen.getByText("main.typ:2:9: error: unclosed delimiter")).toBeInTheDocument();
+  });
+
+  it("shows the reason when the draft compile threw", async () => {
+    compileGeneratedTemplate.mockRejectedValue(new Error("missing package"));
+    await runGeneration();
+    expect(screen.getByText("missing package")).toBeInTheDocument();
   });
 
   it("explains that a Markdown draft has no preview", async () => {

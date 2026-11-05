@@ -65,6 +65,7 @@ import type {
   DocumentStatsRequest,
   DocumentStatsResult,
   EngineInfo,
+  EngineRescan,
   FigureCacheResult,
   FileConflictStrategy,
   FileEntry,
@@ -300,6 +301,8 @@ export const clearBuildDir = (projectId: string) =>
 
 export const compileIsolated = (projectId: string, source: string, offline = false) =>
   invoke<CompileResult>("compile_isolated", { projectId, source, offline });
+
+export const cancelIsolatedCompile = () => invoke<boolean>("cancel_isolated_compile", {});
 
 export const readIsolatedPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_isolated_pdf", { projectId });
@@ -1119,8 +1122,8 @@ export const gitLog = (projectId: string) =>
 export const gitRestore = (projectId: string, oid: string, expectedGeneration: number) =>
   invoke<ProjectStateChanged>("git_restore", { projectId, oid, expectedGeneration });
 
-export const exportPdf = (projectId: string, dest: string) =>
-  invoke<void>("export_pdf", { projectId, dest });
+export const exportPdf = (projectId: string, dest: string, dataBase64?: string) =>
+  invoke<void>("export_pdf", { projectId, dest, dataBase64 });
 
 export const revealInDir = (path: string) =>
   invoke<void>("reveal_in_dir", { path });
@@ -1246,23 +1249,30 @@ export const setRecentProjects = (projects: RecentProjectEntry[]) =>
 
 export const EXPORT_LOG_EVENT = "export:log";
 
+export type ExportOutcome = import("@oleafly/backend-port").ExportOutcome;
+
 export const exportDocument = (
   projectId: string,
   mainDoc: string,
   format: string,
   dest: string,
   typstVariant: string | null = null,
-) => invoke<void>("export_document", { projectId, mainDoc, format, dest, typstVariant });
+  offline?: boolean,
+) => invoke<ExportOutcome>("export_document", { projectId, mainDoc, format, dest, typstVariant, offline });
 
 export const hasPandoc = () => invoke<boolean>("has_pandoc");
 
 export const downloadPandoc = () => invoke<string>("download_pandoc");
 
 export const texDistributions = () => invoke<TexDistribution[]>("tex_distributions");
+export const setTexDistribution = (binDir: string | null) =>
+  invoke<void>("set_tex_distribution", { binDir });
 
-export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
+export const latexEngineInfo = (rescan?: EngineRescan) =>
+  invoke<EngineInfo>("latex_engine_info", { rescan });
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
 export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
+export const cancelTinytexInstall = () => invoke<void>("cancel_tinytex_install");
 export const tinytexInstallState = () =>
   invoke<TinytexInstallState>("tinytex_install_state");
 export const confirmQuitDuringInstall = () =>
@@ -1769,7 +1779,7 @@ export const gitShow = (projectId: string, rev: string, path: string) =>
   invoke<string>("git_show", { projectId, rev, path });
 
 export const downloadProjectZip = (projectId: string, dest: string) =>
-  invoke<void>("download_project_zip", { projectId, dest });
+  invoke<{ skippedLinks: number }>("download_project_zip", { projectId, dest });
 
 export const duplicateProject = (projectId: string, newName: string) =>
   invoke<string>("duplicate_project", { projectId, newName });

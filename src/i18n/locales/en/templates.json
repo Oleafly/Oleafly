@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Setting up your template...",
-      "downloading": "Downloading {{label}} ({{index}} of {{total}})"
+      "downloading": "Downloading {{label}} ({{index}} of {{total}})",
+      "failed": "The fonts for this template couldn't be downloaded. Check your connection and try again."
     },
     "category": {
       "all": "All",

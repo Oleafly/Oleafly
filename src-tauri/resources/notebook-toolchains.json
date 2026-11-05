@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "generatedAt": "2026-10-24",
   "allowedDownloadHosts": [
+    "mirrors.oleafly.com",
     "github.com",
     "release-assets.githubusercontent.com",
     "objects.githubusercontent.com"
@@ -9,6 +10,7 @@
   "tools": {
     "quarto": {
       "version": "1.10.19",
+      "minimumVersion": "1.5",
       "license": "MIT",
       "repository": "https://github.com/quarto-dev/quarto-cli",
       "targets": {

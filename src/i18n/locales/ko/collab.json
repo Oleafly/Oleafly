@@ -729,6 +729,13 @@
     "renamedPortable": "모든 컴퓨터에서 쓸 수 있도록 {{before}}의 이름을 {{theirs}}(으)로 바꿨습니다.",
     "skipped": "{{name}} 님의 변경 내용을 읽을 수 없어 건너뛰었습니다.",
     "skippedUnknown": "다른 사람의 변경 내용을 읽을 수 없어 건너뛰었습니다.",
+    "outputNotShared": {
+      "tooLarge": "컴파일된 PDF가 이 서버가 허용하는 크기보다 커서 다른 사람에게는 이전 PDF가 계속 표시됩니다.",
+      "quota": "이 서버의 업로드 한도에 도달해 다른 사람에게는 이전 PDF가 계속 표시됩니다. Oleafly가 15분 뒤에 다시 시도합니다.",
+      "privateSources": "프로젝트에 공유되지 않는 파일이 있어 컴파일된 PDF는 이 컴퓨터에만 남습니다.",
+      "serverError": "서버가 컴파일된 PDF를 받아들이지 않아 다른 사람에게는 이전 PDF가 계속 표시됩니다."
+    },
+    "texNeeded": "이 프로젝트는 TeX 배포판으로 컴파일하는데, 이 컴퓨터에는 없습니다. 여기서 컴파일하려면 설정 > 엔진 > LaTeX에서 TinyTeX를 설치하세요.",
     "mentioned": "{{name}} 님이 {{path}}의 댓글에서 회원님을 멘션했습니다",
     "mentionedHere": "{{name}} 님이 댓글에서 회원님을 멘션했습니다",
     "showComment": "댓글 보기",

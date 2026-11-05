@@ -1412,7 +1412,10 @@ fn the_compile_directory_follows_where_the_includes_resolve() {
         Some("paper")
     );
     assert_eq!(compile_dir_for(root, "paper/rooted.tex"), None);
-    assert_eq!(compile_dir_for(root, "paper/upward.tex"), None);
+    assert_eq!(
+        compile_dir_for(root, "paper/upward.tex").as_deref(),
+        Some("paper")
+    );
     assert_eq!(
         compile_dir_for(root, "paper/figures.tex").as_deref(),
         Some("paper")
@@ -1420,6 +1423,301 @@ fn the_compile_directory_follows_where_the_includes_resolve() {
     assert_eq!(compile_dir_for(root, "top.tex"), None);
     assert_eq!(compile_dir_for(root, "notes.md"), None);
     assert_eq!(compile_dir_for(root, "missing/main.tex"), None);
+}
+
+#[test]
+fn a_parent_reference_counts_only_when_it_stays_in_the_project() {
+    let directory = tree(&[
+        (
+            "paper/inside.tex",
+            "\\documentclass{article}\n\\begin{document}\n\\input{../shared/macros}\n\\end{document}\n",
+        ),
+        (
+            "paper/outside.tex",
+            "\\documentclass{article}\n\\begin{document}\n\\input{../../outside/macros}\n\\end{document}\n",
+        ),
+        (
+            "paper/missing.tex",
+            "\\documentclass{article}\n\\begin{document}\n\\input{../shared/nothing}\n\\end{document}\n",
+        ),
+        ("shared/macros.tex", ""),
+    ]);
+    let root = directory.path();
+    assert_eq!(
+        compile_dir_for(root, "paper/inside.tex").as_deref(),
+        Some("paper")
+    );
+    assert_eq!(compile_dir_for(root, "paper/outside.tex"), None);
+    assert_eq!(compile_dir_for(root, "paper/missing.tex"), None);
+}
+
+#[test]
+fn local_classes_and_packages_vote_for_the_compile_directory() {
+    let directory = tree(&[
+        (
+            "paper/class.tex",
+            "\\documentclass[a4paper]{thesis}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("paper/thesis.cls", ""),
+        (
+            "paper/package.tex",
+            "\\documentclass{article}\n\\usepackage{amsmath, mymacros}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("paper/mymacros.sty", ""),
+        (
+            "paper/shipped.tex",
+            "\\documentclass{article}\n\\usepackage{graphicx}\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "paper/rooted.tex",
+            "\\documentclass{sharedclass}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("sharedclass.cls", ""),
+    ]);
+    let root = directory.path();
+    assert_eq!(
+        compile_dir_for(root, "paper/class.tex").as_deref(),
+        Some("paper")
+    );
+    assert_eq!(
+        compile_dir_for(root, "paper/package.tex").as_deref(),
+        Some("paper")
+    );
+    assert_eq!(compile_dir_for(root, "paper/shipped.tex"), None);
+    assert_eq!(compile_dir_for(root, "paper/rooted.tex"), None);
+}
+
+#[test]
+fn auto_compiler_follows_the_preamble_into_project_files() {
+    let directory = tree(&[
+        (
+            "input.tex",
+            "\\documentclass{article}\n\\input{preamble}\n\\begin{document}\nx\n\\end{document}\n",
+        ),
+        ("preamble.tex", "\\usepackage{fontspec}\n"),
+        (
+            "nested.tex",
+            "\\documentclass{article}\n\\input{setup/one}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("setup/one.tex", "\\input{setup/two}\n"),
+        ("setup/two.tex", "\\usepackage{luatexja}\n"),
+        (
+            "tooDeep.tex",
+            "\\documentclass{article}\n\\input{deep/a}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("deep/a.tex", "\\input{deep/b}\n"),
+        ("deep/b.tex", "\\input{deep/c}\n"),
+        ("deep/c.tex", "\\usepackage{fontspec}\n"),
+        (
+            "class.tex",
+            "\\documentclass{mythesis}\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "mythesis.cls",
+            "\\LoadClass{article}\n\\RequirePackage{unicode-math}\n",
+        ),
+        (
+            "guarded.tex",
+            "\\documentclass{article}\n\\usepackage{either}\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "either.sty",
+            "\\ifxetex\\RequirePackage{fontspec}\\else\\RequirePackage[T1]{fontenc}\\fi\n",
+        ),
+        (
+            "body.tex",
+            "\\documentclass{article}\n\\begin{document}\n\\input{chapter}\n\\end{document}\n",
+        ),
+        ("chapter.tex", "\\usepackage{fontspec}\n"),
+        (
+            "cycle.tex",
+            "\\documentclass{article}\n\\input{loop}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("loop.tex", "\\input{loop}\n"),
+        (
+            "paper/main.tex",
+            "\\documentclass{article}\n\\usepackage{localstyle}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("paper/localstyle.sty", "\\usepackage{xeCJK}\n"),
+    ]);
+    let root = directory.path();
+    for (main, expected) in [
+        ("input.tex", TexFlavor::Xelatex),
+        ("nested.tex", TexFlavor::Lualatex),
+        ("tooDeep.tex", TexFlavor::Pdflatex),
+        ("class.tex", TexFlavor::Xelatex),
+        ("guarded.tex", TexFlavor::Pdflatex),
+        ("body.tex", TexFlavor::Pdflatex),
+        ("cycle.tex", TexFlavor::Pdflatex),
+        ("paper/main.tex", TexFlavor::Xelatex),
+    ] {
+        assert_eq!(
+            project_tex_flavor(root, &root.join(main)),
+            expected,
+            "{main}"
+        );
+    }
+}
+
+#[test]
+fn a_preamble_that_branches_on_the_engine_is_not_followed() {
+    let directory = tree(&[
+        (
+            "dual.tex",
+            "\\documentclass{article}\n\\ifxetex\n\\input{fonts-xe}\n\\else\n\\usepackage[T1]{fontenc}\n\\fi\n\\begin{document}\nHello.\n\\end{document}\n",
+        ),
+        (
+            "revision.tex",
+            "\\documentclass{article}\n\\ifdefined\\XeTeXrevision\\input{fonts-xe}\\fi\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "chained.tex",
+            "\\documentclass{article}\n\\input{switch}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("switch.tex", "\\ifpdf\n\\else\n\\input{fonts-xe}\n\\fi\n"),
+        ("fonts-xe.tex", "\\usepackage{fontspec}\n"),
+        (
+            "comment.tex",
+            "\\documentclass{article}\n% \\ifxetex\n\\input{fonts-xe}\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "body.tex",
+            "\\documentclass{article}\n\\input{fonts-xe}\n\\begin{document}\n\\ifxetex x\\fi\n\\end{document}\n",
+        ),
+    ]);
+    let root = directory.path();
+    for (main, expected) in [
+        ("dual.tex", TexFlavor::Pdflatex),
+        ("revision.tex", TexFlavor::Pdflatex),
+        ("chained.tex", TexFlavor::Pdflatex),
+        ("comment.tex", TexFlavor::Xelatex),
+        ("body.tex", TexFlavor::Xelatex),
+    ] {
+        assert_eq!(
+            project_tex_flavor(root, &root.join(main)),
+            expected,
+            "{main}"
+        );
+    }
+}
+
+#[test]
+fn the_main_file_outranks_followed_files() {
+    let directory = tree(&[
+        (
+            "magic.tex",
+            "% !TEX TS-program = pdflatex\n\\documentclass{article}\n\\input{preamble}\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "source.tex",
+            "\\documentclass{article}\n\\usepackage{luatexja}\n\\input{preamble}\n\\begin{document}\n\\end{document}\n",
+        ),
+        ("preamble.tex", "\\usepackage{fontspec}\n"),
+    ]);
+    let root = directory.path();
+    assert_eq!(
+        project_tex_flavor(root, &root.join("magic.tex")),
+        TexFlavor::Pdflatex
+    );
+    assert_eq!(
+        project_tex_flavor(root, &root.join("source.tex")),
+        TexFlavor::Lualatex
+    );
+}
+
+#[test]
+fn a_file_outside_the_project_is_judged_on_its_own_text() {
+    let project = tree(&[
+        ("preamble.tex", "\\usepackage{fontspec}\n"),
+        ("latexmkrc", "$pdf_mode = 4;\n"),
+    ]);
+    let elsewhere = tree(&[(
+        "figure.tex",
+        "\\documentclass{standalone}\n\\input{preamble}\n\\begin{document}\n\\end{document}\n",
+    )]);
+    assert_eq!(
+        project_tex_flavor(project.path(), &elsewhere.path().join("figure.tex")),
+        TexFlavor::Pdflatex
+    );
+}
+
+#[test]
+fn latexmkrc_names_the_compiler_without_running_perl() {
+    for (rc, expected) in [
+        ("$pdf_mode = 5;\n", TexFlavor::Xelatex),
+        ("$pdf_mode=4; $dvi_mode = 0;\n", TexFlavor::Lualatex),
+        ("$pdf_mode = 1;\n", TexFlavor::Pdflatex),
+        ("# $pdf_mode = 5;\n", TexFlavor::Pdflatex),
+        ("$pdf_mode = 5;\n$pdf_mode = 1;\n", TexFlavor::Pdflatex),
+        (
+            "$latex = 'uplatex %O -synctex=1 %S';\n$pdf_mode = 3;\n",
+            TexFlavor::Uplatex,
+        ),
+        (
+            "$latex = \"platex %O %S\";\n$dvipdf = 'dvipdfmx %O -o %D %S';\n$pdf_mode = 3;\n",
+            TexFlavor::Platex,
+        ),
+        (
+            "$latex = 'latex %O %S';\n$pdf_mode = 3;\n",
+            TexFlavor::Pdflatex,
+        ),
+        (
+            "$pdf_mode = 1;\n$pdflatex = 'xelatex -shell-escape %O %S';\n",
+            TexFlavor::Xelatex,
+        ),
+        ("$pdflatex = 'lualatex %O %S';\n", TexFlavor::Lualatex),
+        ("$pdflatex = 'pdflatex %O %S';\n", TexFlavor::Pdflatex),
+        ("$latex_silent_switch = '5';\n", TexFlavor::Pdflatex),
+        ("if ($pdf_mode == 5) { print 'x'; }\n", TexFlavor::Pdflatex),
+        ("system('rm -rf /');\n", TexFlavor::Pdflatex),
+    ] {
+        let directory = tree(&[
+            ("latexmkrc", rc),
+            (
+                "main.tex",
+                "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+            ),
+        ]);
+        let root = directory.path();
+        assert_eq!(
+            project_tex_flavor(root, &root.join("main.tex")),
+            expected,
+            "{rc}"
+        );
+    }
+}
+
+#[test]
+fn a_nested_latexmkrc_wins_over_the_project_one_and_a_dotted_name_works() {
+    let directory = tree(&[
+        ("paper/.latexmkrc", "$pdf_mode = 5;\n"),
+        ("latexmkrc", "$pdf_mode = 4;\n"),
+        (
+            "paper/main.tex",
+            "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "main.tex",
+            "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+        ),
+        (
+            "source.tex",
+            "\\documentclass{article}\n\\usepackage{fontspec}\n\\begin{document}\n\\end{document}\n",
+        ),
+    ]);
+    let root = directory.path();
+    assert_eq!(
+        project_tex_flavor(root, &root.join("paper/main.tex")),
+        TexFlavor::Xelatex
+    );
+    assert_eq!(
+        project_tex_flavor(root, &root.join("main.tex")),
+        TexFlavor::Lualatex
+    );
+    assert_eq!(
+        project_tex_flavor(root, &root.join("source.tex")),
+        TexFlavor::Xelatex
+    );
 }
 
 #[test]

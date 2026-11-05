@@ -254,6 +254,20 @@ pub fn fallback_bibliographies(root: &Path, main_doc: &str) -> Vec<PathBuf> {
     found
 }
 
+fn export_bibliographies(root: &Path, main_doc: &str) -> Vec<PathBuf> {
+    let mut found = fallback_bibliographies(root, main_doc);
+    if !crate::export::is_markdown_document(main_doc) {
+        return found;
+    }
+    for relative in oleafly_core::engine_spec::discover_bibliographies(root).unwrap_or_default() {
+        let path = root.join(relative);
+        if !found.contains(&path) {
+            found.push(path);
+        }
+    }
+    found
+}
+
 fn data_field(value: &str) -> String {
     value.replace(['\t', '\r', '\n'], " ")
 }
@@ -499,7 +513,7 @@ pub fn prepare_export_filter(
     let aux = build_dir
         .map(|build| read_aux_records(build, main_doc))
         .unwrap_or_default();
-    let data = filter_data(root, &fallback_bibliographies(root, main_doc), &aux);
+    let data = filter_data(root, &export_bibliographies(root, main_doc), &aux);
     if let Some(filter) = staging.and_then(|staging| stage_in_project(root, staging)) {
         // A link or junction on the way can make the relative path lead
         // elsewhere; pandoc must find the filter where it was written.
@@ -523,14 +537,78 @@ fn write_staged(filter: &ExportFilter, data: &str) -> Result<(), String> {
         .ok_or("Could not prepare the citation filter")?
         .path();
     stage_filter(dir)?;
+    for (name, filter) in [
+        (
+            oleafly_core::engine_spec::MERMAID_FIGURES_FILTER_NAME,
+            oleafly_core::engine_spec::MERMAID_FIGURES_FILTER,
+        ),
+        (
+            oleafly_core::engine_spec::DEFAULT_FONTS_FILTER_NAME,
+            oleafly_core::engine_spec::DEFAULT_FONTS_FILTER,
+        ),
+    ] {
+        std::fs::write(dir.join(name), filter)
+            .map_err(|error| format!("Could not prepare the citation filter: {error}"))?;
+    }
     std::fs::write(dir.join(DATA_NAME), data)
         .map_err(|error| format!("Could not prepare the citation filter: {error}"))
+}
+
+pub fn failure_detail(log: &str) -> String {
+    const MAX_DETAIL: usize = 600;
+    let mut kept: Vec<&str> = Vec::new();
+    let mut in_notice = false;
+    for line in log.lines() {
+        if line.starts_with("[WARNING]") || line.starts_with("[INFO]") {
+            in_notice = true;
+            continue;
+        }
+        if in_notice && line.starts_with(char::is_whitespace) {
+            continue;
+        }
+        in_notice = false;
+        if !line.trim().is_empty() {
+            kept.push(line.trim());
+        }
+    }
+    let detail = kept.join(" ");
+    if detail.chars().count() <= MAX_DETAIL {
+        return detail;
+    }
+    let short: String = detail.chars().take(MAX_DETAIL).collect();
+    format!("{short}…")
+}
+
+fn missing_image(log: &str) -> Option<&str> {
+    log.lines().map(str::trim).find_map(|line| {
+        line.strip_prefix("Could not fetch ")
+            .filter(|_| !line.contains(": "))
+            .or_else(|| {
+                line.strip_prefix("File ")?
+                    .strip_suffix(" not found in resource path")
+            })
+    })
 }
 
 pub fn export_failure(log: &str, root: &Path) -> crate::DocError {
     const MARKER: &str = "Error reading bibliography file ";
     let Some(at) = log.find(MARKER) else {
-        return crate::DocError::new("export.failed", format!("pandoc failed: {}", log.trim()));
+        if let Some(name) = missing_image(log) {
+            return crate::DocError::new(
+                "export.image_missing",
+                format!(
+                    "Oleafly couldn't find the image {name}. Check its name, then export again."
+                ),
+            )
+            .param("name", name);
+        }
+        let error = crate::DocError::new("export.failed", format!("pandoc failed: {}", log.trim()));
+        let detail = failure_detail(log);
+        return if detail.is_empty() {
+            error
+        } else {
+            error.param("detail", detail)
+        };
     };
     let rest = &log[at + MARKER.len()..];
     let (first, remainder) = rest.split_once('\n').unwrap_or((rest, ""));
@@ -910,6 +988,44 @@ mod tests {
     use super::*;
 
     #[test]
+    fn markdown_exports_look_through_the_whole_project_for_a_cited_bibliography() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::create_dir_all(root.join("sources/deep")).unwrap();
+        for file in ["refs.bib", "sources/deep/more.bib"] {
+            std::fs::write(root.join(file), "@misc{a,}").unwrap();
+        }
+        assert_eq!(
+            export_bibliographies(root, "main.md"),
+            [root.join("refs.bib"), root.join("sources/deep/more.bib")]
+        );
+        assert_eq!(
+            export_bibliographies(root, "main.tex"),
+            [root.join("refs.bib")]
+        );
+    }
+
+    #[test]
+    fn the_export_filter_reads_a_fallback_file_only_when_it_defines_a_cited_key() {
+        assert!(FILTER.contains("is_file(full) and defines_a_key(full, keys)"));
+    }
+
+    #[test]
+    fn staged_export_filters_include_the_saved_figure_swap() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let filter =
+            prepare_export_filter(project.path(), "main.md", None, None, temp.path()).unwrap();
+        let staged = filter
+            .argument()
+            .with_file_name(oleafly_core::engine_spec::MERMAID_FIGURES_FILTER_NAME);
+        assert_eq!(
+            std::fs::read_to_string(staged).unwrap(),
+            oleafly_core::engine_spec::MERMAID_FIGURES_FILTER
+        );
+    }
+
+    #[test]
     fn aux_records_carry_numbers_kinds_and_bibcites() {
         let mut records = AuxRecords::default();
         let children = parse_aux(
@@ -1023,6 +1139,82 @@ mod tests {
             export_failure("boom\n", root).message,
             "pandoc failed: boom"
         );
+    }
+
+    #[test]
+    fn a_missing_image_fails_with_its_own_code() {
+        let root = Path::new("/home/ada/project");
+        let error = export_failure(
+            "[WARNING] Citeproc: citation a not found\nFile figures/raster not found in resource path\n",
+            root,
+        );
+        assert_eq!(error.code, "export.image_missing");
+        assert_eq!(error.params, [("name", "figures/raster".to_string())]);
+        let remote = export_failure(
+            "Could not fetch https://example.invalid/x.png\nHttpExceptionRequest Request {\n",
+            root,
+        );
+        assert_eq!(remote.code, "export.image_missing");
+        assert_eq!(
+            remote.params,
+            [("name", "https://example.invalid/x.png".to_string())]
+        );
+    }
+
+    #[test]
+    fn export_failures_keep_the_error_and_drop_the_warnings_before_it() {
+        let root = Path::new("/home/ada/project");
+        let log = "[WARNING] Could not fetch resource a.png\n  replacing it\n[INFO] Skipped x\nError at \"main.tex\" (line 8, column 12):\nexpecting \\end{document}\n";
+        let error = export_failure(log, root);
+        assert_eq!(error.code, "export.failed");
+        assert_eq!(
+            error.params,
+            [(
+                "detail",
+                "Error at \"main.tex\" (line 8, column 12): expecting \\end{document}".to_string()
+            )]
+        );
+        assert_eq!(export_failure("\n", root).params, []);
+    }
+
+    #[test]
+    fn long_failure_details_are_cut_after_the_location() {
+        let log = format!("Error at \"main.tex\" (line 1):\n{}", "x".repeat(2000));
+        let detail = failure_detail(&log);
+        assert!(
+            detail.starts_with("Error at \"main.tex\" (line 1):"),
+            "{detail}"
+        );
+        assert!(detail.ends_with('…'), "{detail}");
+        assert!(detail.chars().count() <= 601, "{detail}");
+    }
+
+    #[test]
+    fn the_filter_reads_typst_from_the_shared_variable() {
+        assert!(FILTER.contains(oleafly_core::engine_spec::MARKDOWN_TYPST_VARIABLE));
+    }
+
+    #[test]
+    fn only_project_exports_let_the_filter_read_image_files() {
+        assert!(
+            FILTER.contains("if exports_project_images() then"),
+            "{FILTER}"
+        );
+        assert!(FILTER.contains("OLEAFLY_EXPORT_PROJECT_IMAGES"), "{FILTER}");
+    }
+
+    #[test]
+    fn the_filter_splits_frames_only_for_powerpoint() {
+        let filter = FILTER.replace("\r\n", "\n");
+        assert!(
+            filter.contains("if FORMAT == \"pptx\" then\n    doc = drop_outline_headers(doc:walk({ RawBlock = parsed_frame })):walk({ Div = flatten_frame })"),
+            "{FILTER}"
+        );
+    }
+
+    #[test]
+    fn the_filter_moves_the_abstract_into_plain_text_only() {
+        assert!(FILTER.contains("if FORMAT ~= \"plain\" or abstract == nil then"));
     }
 
     #[test]
@@ -1289,6 +1481,66 @@ mod tests {
         // file functions take UTF-8 paths on every platform.
         assert!(!FILTER.contains("io.open"), "{FILTER}");
         assert!(!FILTER.contains("io.lines"), "{FILTER}");
+    }
+
+    #[test]
+    fn export_filter_keeps_cjk_environment_arguments_out_of_the_text() {
+        assert!(FILTER.contains("div.classes:includes(\"CJK\")"), "{FILTER}");
+        assert!(
+            FILTER.contains("div.classes:includes(\"CJK*\")"),
+            "{FILTER}"
+        );
+        assert!(FILTER.contains("Div = drop_cjk_arguments"), "{FILTER}");
+        let filter = FILTER.replace("\r\n", "\n");
+        let cleanup = filter.find("doc:walk({ Div = drop_cjk_arguments })");
+        let source_exit = filter.find("if SOURCE_FORMATS[FORMAT] then\n    return doc");
+        assert!(cleanup.is_some() && cleanup < source_exit, "{FILTER}");
+    }
+
+    fn bundled_pandoc() -> Option<PathBuf> {
+        let binaries = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src-tauri/binaries");
+        std::fs::read_dir(binaries)
+            .ok()?
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("pandoc-"))
+            })
+            .find(|path| {
+                std::process::Command::new(path)
+                    .arg("--version")
+                    .output()
+                    .is_ok_and(|output| output.status.success())
+            })
+    }
+
+    #[test]
+    fn every_export_format_loses_the_cjk_environment_arguments() {
+        let Some(pandoc) = bundled_pandoc() else {
+            return;
+        };
+        let folder = tempfile::tempdir().unwrap();
+        std::fs::write(folder.path().join(FILTER_NAME), FILTER).unwrap();
+        std::fs::write(
+            folder.path().join("main.tex"),
+            "\\begin{CJK}{UTF8}{mj}\n한국어 문장\n\\end{CJK}\n",
+        )
+        .unwrap();
+        for format in ["markdown", "typst", "plain", "html"] {
+            let output = std::process::Command::new(&pandoc)
+                .current_dir(folder.path())
+                .args(["--from=latex", "--to", format])
+                .arg(format!("--lua-filter={FILTER_NAME}"))
+                .arg("main.tex")
+                .output()
+                .unwrap();
+            let text = String::from_utf8_lossy(&output.stdout);
+            assert!(output.status.success(), "{format}: {output:?}");
+            assert!(text.contains("한국어"), "{format}: {text}");
+            assert!(!text.contains("UTF8"), "{format}: {text}");
+        }
     }
 
     #[test]

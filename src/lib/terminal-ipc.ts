@@ -1,6 +1,6 @@
 import { type Channel, invoke } from "@tauri-apps/api/core";
-import type { TerminalShellId } from "@/store/settings";
-import type { TerminalShellKind } from "./terminal-quote";
+import type { ExternalTerminalId, TerminalShellId } from "@/store/settings";
+import type { TerminalCommand, TerminalShellKind } from "./terminal-quote";
 
 export type TerminalChannelMessage =
   | { event: "output"; data: string; bytes: number }
@@ -28,6 +28,33 @@ export interface TerminalShellOption {
   name: string | null;
   path: string | null;
   available: boolean;
+}
+
+export interface ExternalTerminalOption {
+  id: ExternalTerminalId;
+  name: string;
+  detail: string | null;
+  available: boolean;
+}
+
+export function externalTerminals(): Promise<ExternalTerminalOption[]> {
+  return invoke<ExternalTerminalOption[]>("external_terminals");
+}
+
+export function openExternalTerminal(args: {
+  projectId: string;
+  terminal: ExternalTerminalId;
+  cwd?: string;
+  command?: TerminalCommand;
+  env?: Record<string, string>;
+}): Promise<void> {
+  return invoke<void>("open_external_terminal", {
+    projectId: args.projectId,
+    terminal: args.terminal,
+    cwd: args.cwd ?? null,
+    command: args.command ?? null,
+    env: args.env ?? null,
+  });
 }
 
 export interface TerminalJob {

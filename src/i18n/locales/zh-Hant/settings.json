@@ -1066,6 +1066,22 @@
         "label": "回捲行數",
         "lines_other": "{{value}} 行"
       },
+      "openWith": {
+        "ariaLabel": "用來開啟資料夾與命令的終端機",
+        "builtin": "內建終端機",
+        "cmd": "命令提示字元",
+        "description": "選擇「在終端機中開啟」時，Oleafly 用哪個終端機開啟資料夾或執行命令。",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "開啟位置",
+        "mac-terminal": "終端機",
+        "notFound": "{{name}}（找不到）",
+        "powershell": "PowerShell",
+        "systemDefault": "系統預設（{{name}}）",
+        "windows-terminal": "Windows 終端機",
+        "x-terminal-emulator": "系統預設終端機"
+      },
       "shell": {
         "ariaLabel": "終端機 shell",
         "description": "新的終端機會啟動這個 shell。已開啟的終端機保留各自的 shell。",
@@ -1363,13 +1379,20 @@
       "tooltip": "套用於新專案。每個專案都會在 project.json 中鎖定自己的引擎，因此不論這項設定為何，開啟同一專案的協作者都會以相同方式編譯。"
     },
     "distributions": {
+      "automatic": "自動",
+      "automaticTooltip": "改回讓 Oleafly 自行挑選：先用完整的系統 TeX，再用 TinyTeX。",
       "empty": "這台電腦上沒有偵測到 TeX 發行版。",
       "heading": "管理 TeX 發行版",
+      "inUse": "使用中",
+      "inUseTooltip": "latexmk 編譯會從這個發行版執行。",
       "rowTooltip": "隨附 {{tools}}。Oleafly 會從 {{binDir}} 執行它的 TeX 工具。",
       "rowTooltipNoTools": "這個安裝中找不到 latexmk 或 tlmgr。Oleafly 會從 {{binDir}} 執行它的 TeX 工具。",
-      "tooltip": "latexmk 引擎在這台電腦上可以使用的所有項目。TinyTeX 會安裝到你的家目錄，不需要管理員權限。系統安裝（MacTeX、TeX Live、MiKTeX）會自動偵測。"
+      "tinytexChooseHint": "編譯會繼續使用標示為「使用中」的發行版。安裝完成後若要切換，請按一下 TinyTeX 上的「用於編譯」。",
+      "tooltip": "latexmk 引擎在這台電腦上可以使用的所有項目。TinyTeX 安裝時不需要管理員權限。系統安裝（MacTeX、TeX Live、MiKTeX）會自動偵測。",
+      "use": "用於編譯"
     },
     "latexmkMissing": "找不到 latexmk",
+    "latexmkNeedsPerl": "latexmk 需要 Perl",
     "markdown": {
       "downloading": "下載中…",
       "heading": "Markdown 編譯器",
@@ -1405,6 +1428,8 @@
       "includedIn": "包含在 {{package}} 中。移除它也會移除該套件中的其他檔案。",
       "intro": {
         "available": "這些套件適用於使用 latexmk（系統 TeX）的專案。Tectonic 會使用自己的套件組合。",
+        "systemManaged": "這個 TeX Live 來自你的 Linux 發行版，因此請用 {{manager}} 新增套件。Oleafly 無法變更它。",
+        "systemManagedTinytex": "這個 TeX Live 來自你的 Linux 發行版，因此請用 {{manager}} 新增套件。若要讓 Oleafly 管理套件，請在上方下載 TinyTeX。",
         "unavailable": "套件管理需要 TeX Live 或 TinyTeX。若使用 MiKTeX，請改用 MiKTeX Console。"
       },
       "refreshInstalled": "重新整理已安裝的套件",
@@ -1435,9 +1460,10 @@
       "tooltip": "預設引擎（Tectonic）快速且可離線，但無法產生符合 Section 508 或 PDF-UA 的標記式 PDF。那需要系統 LuaLaTeX，它可以讀取你帳戶能存取的本機檔案，因此只應該用在信任的專案上。Oleafly 可以使用既有的發行版，或由它管理的 TinyTeX。"
     },
     "tinytex": {
-      "detail": "放在你家目錄中的精簡版 TeX Live。核心下載約 250 MB。期刊範本之後可能再加入套件，總計最多約 1 GB。事先安裝好，就能在你明確選擇時使用系統 LaTeX。",
+      "detail": "精簡版的 TeX Live，不需要管理員權限。核心下載約 250 MB。期刊範本之後可能再加入套件，總計最多約 1 GB。事先安裝好，就能在你明確選擇時使用系統 LaTeX。",
       "download": "下載 TinyTeX（約 250 MB）",
-      "resume": "繼續下載（已完成 {{size}} MB）"
+      "resume": "繼續下載（已完成 {{size}} MB）",
+      "update": "更新"
     },
     "typst": {
       "detail": "隨 Oleafly 提供，無需任何設定。只有在文件首次匯入 @preview 套件時才需要連網。",
@@ -1500,7 +1526,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "在這台電腦上找不到。"
+        "missing": "在這台電腦上找不到。",
+        "outdated": "這台電腦上的 {{tool}} {{version}} 太舊了。Oleafly 需要 {{minimum}} 或更新的版本，所以改用它自己下載的副本。"
       },
       "managedIdle": "未使用。Oleafly 會優先使用在這台電腦上找到的副本。",
       "superseded": "未使用。Oleafly 現在使用的是 {{tool}} {{version}}。",

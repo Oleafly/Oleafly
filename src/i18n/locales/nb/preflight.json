@@ -588,6 +588,7 @@
     "unrecorded": "LaTeX-prosjektet har ikke registrert noen taggestatus for klassen {{name}}, så resultatet er uavklart. Kompiler og sjekk resultatet."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata hører hjemme øverst i hoveddokumentet, så denne filen får den ikke.",
     "metadataUpdated": "La de nødvendige taggenøklene inn i \\DocumentMetadata.",
     "metadataAdded": "La inn \\DocumentMetadata som første linje (påkrevd, må stå foran \\documentclass). Den ligger inne i en versjonssjekk: LaTeX eldre enn {{date}}, også motoren som følger med, hopper over den og kompilerer dokumentet uten tagger i stedet for å feile.",
     "headerRows": "Satte table/header-rows til 1, slik at den første raden i hver tabell tagges som overskriftsceller. Endre tallet hvis en tabell har en annen overskriftsdybde.",

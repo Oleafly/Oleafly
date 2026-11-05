@@ -14,6 +14,7 @@ import { getEditorView } from "@/components/editor/cm/controller";
 import { PackagesDialog, showPackagesDialog, type PackagesProvider } from "@/components/packages/PackagesDialog";
 import { describeError } from "@/lib/app-error";
 import { formatList } from "@/lib/intl";
+import { typstSupports } from "@/lib/typst-options";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -156,6 +157,9 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
 
   const count = settings?.vendored.length ?? 0;
   const sharedViewer = useCollabSettingsLocked(projectId);
+  const typstOptions = useFilesStore((state) => state.engine.typst_options ?? null);
+  const typstVersion = useFilesStore((state) => state.engine.typst_resolved?.version ?? "");
+  const unsupported = typstOptions !== null && !typstSupports(typstOptions, "--package-path");
   return (
     <section aria-labelledby="typst-packages-vendor" className="flex flex-col gap-2 border-t p-3">
       <SectionHeading id="typst-packages-vendor">{t(($) => $.editor.typstPackages.vendor.heading)}</SectionHeading>
@@ -163,7 +167,9 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
         <Switch
           id="typst-packages-vendor-toggle"
           checked={settings?.vendorPackages ?? false}
-          disabled={settings === null || busy !== null || sharedViewer}
+          disabled={
+            settings === null || busy !== null || sharedViewer || (unsupported && !settings.vendorPackages)
+          }
           onCheckedChange={(checked) => void toggle(checked)}
           aria-label={t(($) => $.editor.typstPackages.vendor.toggle)}
         />
@@ -175,10 +181,21 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
           {sharedViewer && (
             <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.editor.sharedSettingsViewer)}</p>
           )}
+          {unsupported && (
+            <p className="text-[0.6875rem] text-muted-foreground">
+              {t(($) => $.editor.typstPackages.vendor.unsupported, { version: typstVersion })}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" variant="outline" disabled={busy !== null || sharedViewer} onClick={() => void vendor()}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={busy !== null || sharedViewer || unsupported}
+          onClick={() => void vendor()}
+        >
           {busy === "vendor" && <Spinner size="sm" />}
           {t(($) => $.editor.typstPackages.vendor.action)}
         </Button>

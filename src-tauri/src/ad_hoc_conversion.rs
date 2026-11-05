@@ -351,6 +351,16 @@ fn stage_conversion_workspace(
     Ok((temporary, root))
 }
 
+fn conversion_failure(log: &str) -> String {
+    let error = crate::app_error::AppError::new("tools.conversion_failed");
+    let detail = crate::pandoc_citations::failure_detail(log);
+    if detail.is_empty() {
+        error.into()
+    } else {
+        error.detail(detail).into()
+    }
+}
+
 /// Points the output's bibliography at local names: the converter has only
 /// the text, and a path from this machine must not end up in the result.
 /// The entry is pinned even when Rust reads no bibliography in the source:
@@ -456,9 +466,7 @@ pub async fn convert_ad_hoc(
     let pandoc = tauri::async_runtime::spawn_blocking(crate::project::find_pandoc)
         .await
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| {
-            "Pandoc is not installed. Install it from Tools, then try again.".to_string()
-        })?;
+        .ok_or_else(|| String::from(crate::app_error::AppError::new("tools.pandoc_missing")))?;
 
     let source_name = plan.source_name;
     let references_filter = plan.references_filter;
@@ -480,14 +488,8 @@ pub async fn convert_ad_hoc(
         }
     };
     if code != Some(0) {
-        let detail = log.trim();
-        let error = if detail.is_empty() {
-            "Pandoc could not convert this document.".into()
-        } else {
-            format!("Pandoc could not convert this document: {detail}")
-        };
         discard_conversion_workspace(temporary).await;
-        return Err(error);
+        return Err(conversion_failure(&log));
     }
     let report = if report {
         crate::conversion::pandoc_report(&log)

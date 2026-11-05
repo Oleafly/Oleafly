@@ -729,7 +729,14 @@
     "renamedPortable": "{{before}} is hernoemd naar {{theirs}}, zodat het op elke computer werkt.",
     "skipped": "Een wijziging van {{name}} kon niet worden gelezen en is overgeslagen.",
     "skippedUnknown": "Een wijziging van iemand kon niet worden gelezen en is overgeslagen.",
-    "mentioned": "{{name}} heeft je genoemd in een opmerking in {{path}}",
+    "outputNotShared": {
+      "tooLarge": "De gecompileerde PDF is groter dan deze server toestaat, dus anderen zien nog de vorige.",
+      "quota": "De uploadlimiet van deze server is bereikt, dus anderen zien nog de vorige PDF. Oleafly probeert het over 15 minuten opnieuw.",
+      "privateSources": "De gecompileerde PDF blijft op deze computer omdat het project bestanden bevat die niet worden gedeeld.",
+      "serverError": "De server heeft de gecompileerde PDF niet geaccepteerd, dus anderen zien nog de vorige."
+    },
+    "texNeeded": "Dit project wordt met een TeX-distributie gecompileerd en deze computer heeft er geen. Installeer TinyTeX via Instellingen > Engines > LaTeX om het hier te compileren.",
+    "mentioned":"{{name}} heeft je genoemd in een opmerking in {{path}}",
     "mentionedHere": "{{name}} heeft je genoemd in een opmerking",
     "showComment": "Opmerking tonen",
     "settings": {

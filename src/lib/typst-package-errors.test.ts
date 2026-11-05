@@ -63,4 +63,24 @@ describe("explainTypstPackageErrors", () => {
     ];
     expect(explainTypstPackageErrors(untouched, false)).toEqual(untouched);
   });
+
+  it("replaces the English sentence from Rust on errors coded as Typst packages", () => {
+    const coded = (message: string): CompileError => ({
+      ...error(message, "English from the compiler."),
+      code: "typst.package",
+    });
+    const [offline, local, latest, unknown] = explainTypstPackageErrors(
+      [
+        coded(DOWNLOAD),
+        coded("package not found (searched for @local/mine:0.2.0)"),
+        coded("package found, but version 99.0.0 does not exist (latest is 0.5.2)"),
+        coded("package store is in an unknown state"),
+      ],
+      true,
+    );
+    expect(offline.explanation).toBe(fill(text.offlineNotCached, { spec: "@preview/cetz:0.4.2" }));
+    expect(local.explanation).toBe(fill(text.localNotFound, { spec: "@local/mine:0.2.0" }));
+    expect(latest.explanation).toBe(fill(text.versionMissing, { version: "99.0.0", latest: "0.5.2" }));
+    expect(unknown.explanation).toBe("English from the compiler.");
+  });
 });

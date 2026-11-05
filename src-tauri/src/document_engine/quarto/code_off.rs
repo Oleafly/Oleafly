@@ -161,15 +161,23 @@ pub(super) fn code_needed(project_dir: &Path, input: &Path) -> bool {
     refusal(project_dir, input).is_err()
 }
 
+pub(super) fn uses_knitr(project_dir: &Path, input: &Path) -> bool {
+    review(project_dir, input).1
+}
+
 fn refusal(project_dir: &Path, input: &Path) -> Verdict {
+    review(project_dir, input).0
+}
+
+fn review(project_dir: &Path, input: &Path) -> (Verdict, bool) {
     let root = project_dir
         .canonicalize()
         .unwrap_or_else(|_| project_dir.to_path_buf());
     let Ok(main) = input.canonicalize() else {
-        return Ok(());
+        return (Ok(()), false);
     };
     if !main.starts_with(&root) {
-        return Err("the document is outside the project");
+        return (Err("the document is outside the project"), false);
     }
     let main_dir = main
         .parent()
@@ -189,12 +197,14 @@ fn refusal(project_dir: &Path, input: &Path) -> Verdict {
         documents: Vec::new(),
         knitr,
     };
-    scan.project_files(&main)?;
-    scan.document(&main, 0)?;
-    scan.cells()
+    let verdict = scan
+        .project_files(&main)
+        .and_then(|()| scan.document(&main, 0))
+        .and_then(|()| scan.cells());
+    (verdict, scan.knitr)
 }
 
-fn quarto_project_dir(start: &Path) -> Option<PathBuf> {
+pub(super) fn quarto_project_dir(start: &Path) -> Option<PathBuf> {
     start.ancestors().find_map(|directory| {
         QUARTO_PROJECT_FILES
             .iter()

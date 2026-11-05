@@ -365,7 +365,12 @@
     "rawLogs": "Journaux bruts",
     "copyLog": "Copier le journal",
     "typesetting": "Composition",
+    "missingCharacters": "Caractères manquants",
     "info": "Informations",
+    "clear": "Effacer",
+    "clearAria": "Effacer le journal de compilation",
+    "clearHint": "Masquer ce journal et ses erreurs jusqu'à la prochaine compilation. Les fichiers de compilation sont conservés.",
+    "cleared": "Journal effacé. La prochaine compilation en écrit un nouveau.",
     "empty": "La sortie de compilation apparaîtra ici.",
     "scrollToTop": "Aller en haut",
     "scrollToBottom": "Aller en bas",
@@ -383,6 +388,8 @@
     "summaryReferences_many": "{{count}} références non résolues",
     "summaryReferences_other": "{{count}} références non résolues",
     "fontPack": "{{family}} fait partie du pack de polices gratuit {{pack}}.",
+    "fontPackGlyphs": "Le pack de polices gratuit {{pack}} contient ces caractères.",
+    "fontPackSealed": "{{family}} fait partie du pack de polices gratuit {{pack}}, mais les packs de polices ne s'appliquent pas ici, car ce projet n'utilise que les polices du projet. Ajoutez le fichier de la police au dossier fonts du projet.",
     "fontPackAction": "Télécharger et compiler",
     "fontPackDownloading": "Téléchargement…",
     "fontPackFailed": "Le pack de polices n'a pas pu être téléchargé. Vérifiez votre connexion et réessayez."
@@ -1480,7 +1487,8 @@
       "count_one": "{{count}} paquet dans ce projet",
       "count_many": "{{count}} paquets dans ce projet",
       "count_other": "{{count}} paquets dans ce projet",
-      "none": "Aucun paquet dans ce projet pour l'instant."
+      "none": "Aucun paquet dans ce projet pour l'instant.",
+      "unsupported": "Typst {{version}} ne peut pas lire les paquets du dossier du projet. Passez le projet à Typst 0.12 ou plus récent pour l'utiliser."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} est disponible. Cet import utilise {{version}}.",
@@ -1520,6 +1528,7 @@
     "classNote": "Ceci est une classe de document. Définissez-la plutôt avec \\documentclass.",
     "onDemand": "Tectonic télécharge les paquets la première fois que votre document les utilise. Il n'y a rien à installer.",
     "checking": "Vérification des paquets installés",
+    "systemManaged": "Ce TeX Live est fourni par votre distribution Linux, installez donc les paquets avec {{manager}}.",
     "unknownInstall": "Oleafly ne peut pas savoir quels paquets contient votre installation TeX.",
     "noProject": "Ouvrez un projet LaTeX pour ajouter des paquets.",
     "added": "{{name}} ajouté à {{file}}.",

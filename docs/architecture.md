@@ -8,7 +8,7 @@ making document engines, filesystem policy, and external integrations explicit.
 
 | Area | Responsibility |
 | --- | --- |
-| `crates/oleafly-core/` | Shared project manifest, path safety, and build-directory policy |
+| `crates/oleafly-core/` | Shared project manifest, path safety, build-directory policy, TeX discovery, compile time limits and compiler log reading |
 | `crates/oleafly-cli/` | The `oleafly` command (built as `oleaflyc`): its commands, native compiler adapter, JSON contract and MCP server |
 | `crates/oleafly-agent/` | Provider-neutral agent runtime |
 | `crates/oleafly-history/` | Content-addressed compile checkpoints |
@@ -187,10 +187,13 @@ tests runnable without a desktop runtime and prevents dependency cycles.
 
 `oleafly-core` owns the portable project manifest, project-relative resolution
 of the main document, and `.oleafly/build` preparation. Both adapters use it.
-The desktop keeps its wider application sandbox for stored projects, figures,
-and exports. Compiler execution and diagnostics stay with each adapter: the
-desktop runs engines inside that sandbox, and `oleaflyc` runs them directly
-against the project directory it was pointed at.
+It also holds what the two runtimes have to agree on about a compile: the search
+for TeX (`tex_distro`), time limits (`compile_limit`), and reading compiler logs
+(`tex_errors`, `tex_failure`, `tex_outputs` and `pandoc_log`). The desktop keeps
+its wider application sandbox for stored projects, figures, and exports.
+Compiler execution stays with each adapter: the desktop runs engines inside that
+sandbox, and `oleaflyc` runs them directly against the project directory it was
+pointed at.
 
 Within the desktop adapter, `DocumentEngine` is the capability contract for
 LaTeX, Typst, and Markdown. It declares source extensions, formatting profile,
@@ -203,6 +206,12 @@ returns the grouped result in `CompileResult.diagnostics`, so the log pane no
 longer reparses the whole log on every streamed chunk. The TypeScript parser in
 `@oleafly/latex` remains the fallback for a backend that does not send the
 field.
+
+Markdown PDF compiles run Pandoc with a fixed chain: the `mermaid-figures`,
+`image-compat` and `markdown-bibliography` filters, then `--citeproc`, then
+`default-fonts`. `markdown_pdf_args` in `oleafly-core` builds it for both
+runtimes. `OLEAFLY_PANDOC_TYPST` gives the image filter the path to Typst, and
+`parse_pandoc_diagnostics` in `pandoc_log.rs` reads the log.
 
 The browser app in `web/` compiles through `@oleafly/compile-port` too. A
 compile reads every text file from the server in one request, with the

@@ -24,9 +24,10 @@ function OldestRequest() {
     <ConfirmationDialog
       key={request.id}
       open
-      title={label}
+      title={request.title ?? label}
       description={request.message}
       confirmLabel={label}
+      cancelLabel={request.cancelLabel}
       destructive={request.destructive}
       onConfirm={() => request.settle(true)}
       onCancel={() => request.settle(false)}

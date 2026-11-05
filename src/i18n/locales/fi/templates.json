@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Valmistellaan mallipohjaa...",
-      "downloading": "Ladataan {{label}} ({{index}}/{{total}})"
+      "downloading": "Ladataan {{label}} ({{index}}/{{total}})",
+      "failed": "Tämän mallipohjan fontteja ei voitu ladata. Tarkista yhteys ja yritä uudelleen."
     },
     "category": {
       "all": "Kaikki",

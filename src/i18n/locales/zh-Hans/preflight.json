@@ -572,7 +572,8 @@
     "unrecorded": "LaTeX Project 尚未记录 {{name}} 文档类的标签支持状态，因此结果未经证实。请编译并检查输出。"
   },
   "prep": {
-    "metadataUpdated": "已将所需的标签键添加到你的 \\DocumentMetadata 中。",
+    "metadataInMain": "\\DocumentMetadata 要放在主文档的开头，因此这个文件不会添加它。",
+    "metadataUpdated":"已将所需的标签键添加到你的 \\DocumentMetadata 中。",
     "metadataAdded": "已将 \\DocumentMetadata 添加为第一行（必需，必须位于 \\documentclass 之前）。它位于一个版本检查之内：早于 {{date}} 的 LaTeX（包括内置引擎）会跳过它，并以无标签方式编译文档，而不是报错失败。",
     "headerRows": "已将 table/header-rows 设置为 1，使每个表格的第一行被标记为表头单元格。如果表格的表头深度不同，请更改此数字。",
     "unicodeMath": "已添加 \\usepackage{unicode-math}，此引擎的数学公式标签功能需要它。",

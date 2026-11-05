@@ -475,9 +475,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "The failure matches a known gap in the bundled Tectonic engine. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup.",
     "descriptionImportScan": "The import scan found features the bundled Tectonic engine does not orchestrate. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup.",
+    "descriptionTexMissing": "This project now compiles with latexmk, and this computer can't run it yet. Oleafly can install TinyTeX for you, or you can go back to the built-in Tectonic engine.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX through latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "The compile stopped on {{file}}.",
+      "missingFiles": "The compile couldn't find {{files}}.",
+      "mirrorStatus": "The mirror returned HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Bibliography uses biblatex and Biber",
+        "detail": "This project needs Biber to build the reference list. Oleafly ships a Biber that matches its built-in engine. If citations stay as “?” after compiling, check the log for a Biber note."
+      },
+      "bundle-fetch-failed": {
+        "title": "The TeX package download failed",
+        "detail": "Oleafly couldn't download TeX packages from its mirror, so the compile never reached your document. Check your connection and compile again. The download picks up where it stopped."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 needs pdfLaTeX",
+        "detail": "CJKutf8 and CJK only work on pdfLaTeX. On the built-in engine (XeTeX) the document still compiles, but its Chinese, Japanese or Korean text is missing from the PDF. Switch to pdfLaTeX on system TeX, or replace the package with xeCJK."
+      },
+      "class-compat": {
+        "title": "The document class hits engine limits",
+        "detail": "The compile errors come from a class or style file, not from your document. Publisher classes often depend on tools or pdfTeX behavior the built-in engine doesn't have. latexmk compiles with a full TeX distribution."
+      },
+      "eps-image": {
+        "title": "EPS images need a converter",
+        "detail": "The built-in engine can't place EPS images. Convert them to PDF with epstopdf or Inkscape, or switch to pdfLaTeX on system TeX, which converts EPS through Ghostscript."
+      },
+      "fontspec": {
+        "title": "Custom fonts (fontspec)",
+        "detail": "fontspec needs the named fonts on this computer. Fonts that came with an online editor may be missing here."
+      },
+      "glossaries-index": {
+        "title": "Glossary or index tool",
+        "detail": "glossaries and makeindex need an extra run of makeindex or xindy, which the built-in engine doesn't do."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref is set to the pdfTeX driver",
+        "detail": "This class or preamble forces hyperref's pdftex driver, which the built-in engine can't use. Switch to pdfLaTeX on system TeX, or remove the pdftex option so hyperref picks the driver itself."
+      },
+      "minted": {
+        "title": "minted needs shell escape and Pygments",
+        "detail": "Code listings with minted need a system TeX distribution and pygmentize. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "A package is missing from the built-in bundle",
+        "detail": "Something this project loads isn't in the built-in TeX bundle. Add the file to the project if it came with your template, or switch to system TeX and install the package from TeX Live."
+      },
+      "pdftex-only": {
+        "title": "pdfTeX packages",
+        "detail": "The built-in engine is based on XeTeX, and this project relies on packages or commands that only work with pdfTeX. latexmk compiles with real pdfLaTeX."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX needs its helper from the active system TeX distribution. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file."
+      },
+      "shell-escape": {
+        "title": "Shell escape commands",
+        "detail": "The source uses \\write18 or another shell escape. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file and the tools it needs are installed."
+      }
     },
     "recommended": "Recommended",
     "shellEscape": {
@@ -504,13 +564,14 @@
       "withFailures_other": "Zero setup, works offline. {{features}} are expected to keep failing."
     },
     "tinytex": {
-      "description": "Installs a compact TeX Live into your home folder, no admin rights needed. The core download is about 250 MB. Journal templates can pull more packages later, up to roughly 1 GB in total.",
+      "description": "Installs a compact TeX Live, no admin rights needed. The core download is about 250 MB. Journal templates can pull more packages later, up to roughly 1 GB in total.",
       "download": "Download and use TinyTeX",
       "resume": "Resume download ({{megabytes}} MB done)",
       "title": "Download TinyTeX"
     },
     "titleCompileFailure": "This compile needs more than the built-in engine",
-    "titleImportScan": "This project needs more than the built-in engine"
+    "titleImportScan": "This project needs more than the built-in engine",
+    "titleTexMissing": "This compiler needs a working TeX distribution"
   },
   "shellCommands": {
     "allow": "Allow external commands",
@@ -1152,11 +1213,16 @@
     },
     "wait": {
       "description": "{{phase}} Your compile is queued and starts automatically as soon as the engine is ready.",
+      "stop": "Stop the install",
       "title": "TinyTeX is still downloading"
     },
     "typstQuit": {
       "title": "Typst is still installing",
       "description": "Typst {{version}} is downloading. If you quit now, the download stops and you'll need to start it again from Settings."
+    },
+    "packageQuit": {
+      "title": "Oleafly is still changing TeX packages",
+      "description": "If you quit now, the install or removal stops partway and can leave your TeX package manager broken."
     }
   },
   "toolbar": {
@@ -1322,7 +1388,7 @@
       "compiling": "Compiling with Typst"
     },
     "errors": {
-      "pandoc": "Pandoc is not ready. Install it from Tools, then try again.",
+      "pandoc": "Pandoc isn't ready. Repair it in Settings > Engines > Markdown, then try again.",
       "noMain": "The main LaTeX file could not be read.",
       "emptyOutput": "Pandoc returned an empty document.",
       "failed": "The conversion stopped: {{detail}}"
@@ -1379,7 +1445,8 @@
     "svg": "SVG images",
     "html": "HTML",
     "experimental": "Experimental",
-    "htmlNote": "Typst HTML export is still experimental. It leaves out page setup and placed elements.",
+    "htmlNote": "Typst HTML export is still experimental. It keeps text and images, but not page setup or drawings.",
+    "htmlNoteOldTypst": "Typst {{version}} leaves equations out of HTML. Typst 0.15 or newer keeps them.",
     "ppi": "Resolution",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Pages",

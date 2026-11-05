@@ -588,6 +588,7 @@
     "unrecorded": "LaTeX Projesi {{name}} sınıfı için bir etiketleme durumu kaydetmemiş, bu yüzden sonuç kanıtlanmamıştır. Derleyip çıktıyı denetleyin."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata ana belgenin en üstüne konur, bu yüzden bu dosyaya eklenmedi.",
     "metadataUpdated": "Gerekli etiketleme anahtarları \\DocumentMetadata içinize eklendi.",
     "metadataAdded": "\\DocumentMetadata ilk satır olarak eklendi (zorunludur, \\documentclass öncesinde olmalıdır). Bir sürüm denetiminin içinde yer alır: {{date}} tarihinden eski LaTeX, paketlenmiş motor dahil, bunu atlar ve belgeyi hata vermek yerine etiketsiz derler.",
     "headerRows": "Her tablonun ilk satırı başlık hücresi olarak etiketlensin diye table/header-rows 1 yapıldı. Bir tablonun başlık derinliği farklıysa sayıyı değiştirin.",

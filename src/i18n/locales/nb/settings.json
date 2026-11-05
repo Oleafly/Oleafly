@@ -1073,6 +1073,22 @@
         "lines_one": "{{value}} linje",
         "lines_other": "{{value}} linjer"
       },
+      "openWith": {
+        "ariaLabel": "Terminal for å åpne mapper og kommandoer",
+        "builtin": "Innebygd terminal",
+        "cmd": "Ledetekst",
+        "description": "Hvor Oleafly åpner en mappe eller kjører en kommando når du velger Åpne i terminalen.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Åpne i",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (finnes ikke)",
+        "powershell": "PowerShell",
+        "systemDefault": "Systemstandard ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Standardterminal i systemet"
+      },
       "shell": {
         "ariaLabel": "Terminalens shell",
         "description": "Nye terminaler starter dette shellet. Åpne terminaler beholder sitt.",
@@ -1371,13 +1387,20 @@
       "tooltip": "Gjelder nye prosjekter. Hvert prosjekt låser sin egen motor i project.json, så samarbeidspartnere som åpner det samme prosjektet, kompilerer det likt uansett hva denne innstillingen er."
     },
     "distributions": {
+      "automatic": "Automatisk",
+      "automaticTooltip": "Gå tilbake til at Oleafly velger selv: først en full TeX på systemet, deretter TinyTeX.",
       "empty": "Fant ingen TeX-distribusjon på denne maskinen.",
       "heading": "Administrer TeX-distribusjoner",
+      "inUse": "I bruk",
+      "inUseTooltip": "latexmk-kompileringer kjøres fra denne distribusjonen.",
       "rowTooltip": "Følger med {{tools}}. Oleafly kjører TeX-verktøyene sine fra {{binDir}}.",
       "rowTooltipNoTools": "Fant verken latexmk eller tlmgr i denne installasjonen. Oleafly kjører TeX-verktøyene sine fra {{binDir}}.",
-      "tooltip": "Alt latexmk-motoren kan bruke på denne maskinen. TinyTeX installeres i hjemmemappen din uten administratorrettigheter. Systeminstallasjoner (MacTeX, TeX Live, MiKTeX) finnes automatisk."
+      "tinytexChooseHint": "Kompileringer bruker fortsatt distribusjonen som er merket «I bruk». Hvis du vil bytte etter installasjonen, klikker du «Bruk til kompilering» på TinyTeX.",
+      "tooltip": "Alt latexmk-motoren kan bruke på denne maskinen. TinyTeX installeres uten administratorrettigheter. Systeminstallasjoner (MacTeX, TeX Live, MiKTeX) oppdages automatisk.",
+      "use": "Bruk til kompilering"
     },
     "latexmkMissing": "fant ingen latexmk",
+    "latexmkNeedsPerl": "latexmk trenger Perl",
     "markdown": {
       "downloading": "Laster ned…",
       "heading": "Markdown-kompilator",
@@ -1413,6 +1436,8 @@
       "includedIn": "Inngår i {{package}}. Fjerner du den, fjernes også de andre filene i den pakken.",
       "intro": {
         "available": "Disse pakkene er for prosjekter som bruker latexmk (system-TeX). Tectonic bruker sin egen pakkesamling.",
+        "systemManaged": "Denne TeX Live-installasjonen fulgte med Linux-distribusjonen din, så legg til pakker med {{manager}}. Oleafly kan ikke endre den.",
+        "systemManagedTinytex": "Denne TeX Live-installasjonen fulgte med Linux-distribusjonen din, så legg til pakker med {{manager}}. Last ned TinyTeX ovenfor hvis du vil at Oleafly skal styre pakkene.",
         "unavailable": "Pakkehåndtering krever TeX Live eller TinyTeX. For MiKTeX bruker du MiKTeX Console."
       },
       "refreshInstalled": "Oppdater installerte pakker",
@@ -1444,9 +1469,10 @@
       "tooltip": "Standardmotoren (Tectonic) er rask og virker uten nett, men kan ikke lage taggede PDF-er etter Section 508 / PDF-UA. Det krever LuaLaTeX fra systemet, som kan lese lokale filer kontoen din har tilgang til, og bør bare brukes med prosjekter du stoler på. Oleafly kan bruke en distribusjon du har fra før, eller TinyTeX som den administrerer selv."
     },
     "tinytex": {
-      "detail": "En kompakt TeX Live i hjemmemappen din. Kjernenedlastingen er på rundt 250 MB. Tidsskriftmaler kan legge til pakker senere, opptil omtrent 1 GB til sammen. Installerer du på forhånd, er system-LaTeX klart når du uttrykkelig velger det.",
+      "detail": "En kompakt TeX Live som ikke krever administratorrettigheter. Kjernenedlastingen er på rundt 250 MB. Tidsskriftmaler kan legge til pakker senere, opptil omtrent 1 GB til sammen. Installerer du på forhånd, er system-LaTeX klart når du uttrykkelig velger det.",
       "download": "Last ned TinyTeX (~250 MB)",
-      "resume": "Fortsett nedlastingen ({{size}} MB ferdig)"
+      "resume": "Fortsett nedlastingen ({{size}} MB ferdig)",
+      "update": "Oppdater"
     },
     "typst": {
       "detail": "Følger med Oleafly, så det er ingenting å sette opp. Den trenger bare nettverkstilkobling første gang et dokument importerer en @preview-pakke.",
@@ -1511,7 +1537,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Ikke funnet på denne maskinen."
+        "missing": "Ikke funnet på denne maskinen.",
+        "outdated": "{{tool}} {{version}} på denne maskinen er for gammel. Oleafly trenger {{minimum}} eller nyere, så den bruker kopien den laster ned."
       },
       "managedIdle": "Ikke i bruk. Oleafly bruker først kopien som ble funnet på denne maskinen.",
       "superseded": "Ikke i bruk. Oleafly bruker nå {{tool}} {{version}}.",

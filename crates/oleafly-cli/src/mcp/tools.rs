@@ -46,10 +46,7 @@ pub struct ToolError(pub String);
 
 impl From<crate::contract::CliError> for ToolError {
     fn from(error: crate::contract::CliError) -> Self {
-        match error.hint {
-            Some(hint) => ToolError(format!("{} {hint}", error.message)),
-            None => ToolError(error.message),
-        }
+        ToolError(error.with_hint_text())
     }
 }
 

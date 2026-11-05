@@ -32,6 +32,16 @@ impl TexFlavor {
         }
     }
 
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Pdflatex => "pdfLaTeX",
+            Self::Xelatex => "XeLaTeX",
+            Self::Lualatex => "LuaLaTeX",
+            Self::Uplatex => "upLaTeX",
+            Self::Platex => "pLaTeX",
+        }
+    }
+
     pub const fn goes_through_dvi(self) -> bool {
         matches!(self, Self::Uplatex | Self::Platex)
     }
@@ -71,29 +81,89 @@ fn dvi_route(latex: &str, bibtex: &str, makeindex: &str) -> Vec<String> {
     ]
 }
 
-const UNICODE_ENGINE_MARKERS: [&str; 4] =
-    ["fontspec", "polyglossia", "unicode-math", "\\setmainfont"];
+const UNICODE_ENGINE_MARKERS: [&str; 10] = [
+    "fontspec",
+    "polyglossia",
+    "unicode-math",
+    "\\setmainfont",
+    "\\setmainhangulfont",
+    "\\sethangulfont",
+    "\\setsanshangulfont",
+    "\\setmonohangulfont",
+    "\\setmainhanjafont",
+    "\\sethanjafont",
+];
+const ENGINE_CONDITIONALS: [&str; 13] = [
+    "\\ifxetex",
+    "\\ifXeTeX",
+    "\\ifluatex",
+    "\\ifLuaTeX",
+    "\\ifPDFTeX",
+    "\\ifpdftex",
+    "\\iftutex",
+    "\\XeTeXversion",
+    "\\luatexversion",
+    "\\XeTeXrevision",
+    "\\directlua",
+    "\\ifpdf",
+    "\\sys_if_engine_",
+];
+
+pub fn tex_program_flavor(source: &str) -> Option<TexFlavor> {
+    crate::detect::tex_program_magic(source).and_then(TexFlavor::from_magic_program)
+}
+
+pub fn detect_tex_flavor(source: &str) -> TexFlavor {
+    tex_program_flavor(source)
+        .or_else(|| source_tex_flavor(source))
+        .unwrap_or(TexFlavor::Pdflatex)
+}
 
 pub fn source_tex_flavor(source: &str) -> Option<TexFlavor> {
     let preamble = uncommented_preamble(source);
-    let packages = used_packages(&preamble);
-    if packages.iter().any(|name| name.starts_with("luatexja")) {
+    loaded_flavor(&preamble).or_else(|| {
+        UNICODE_ENGINE_MARKERS
+            .iter()
+            .any(|marker| preamble.contains(marker))
+            .then_some(TexFlavor::Xelatex)
+    })
+}
+
+pub(crate) fn branches_on_engine(source: &str) -> bool {
+    ENGINE_CONDITIONALS
+        .iter()
+        .any(|conditional| source.contains(conditional))
+}
+
+pub(crate) fn followed_file_flavor(source: &str) -> Option<TexFlavor> {
+    if branches_on_engine(source) {
+        return None;
+    }
+    let preamble = uncommented_preamble(source);
+    loaded_flavor(&preamble).or_else(|| {
+        used_packages(&preamble)
+            .iter()
+            .any(|name| matches!(name.as_str(), "fontspec" | "polyglossia" | "unicode-math"))
+            .then_some(TexFlavor::Xelatex)
+    })
+}
+
+fn loaded_flavor(preamble: &str) -> Option<TexFlavor> {
+    let packages = used_packages(preamble);
+    if packages
+        .iter()
+        .any(|name| name.starts_with("luatexja") || name == "luatexko")
+    {
         return Some(TexFlavor::Lualatex);
     }
     if let Some(flavor) =
-        document_class(&preamble).and_then(|(class, options)| class_flavor(&class, &options))
+        document_class(preamble).and_then(|(class, options)| class_flavor(&class, &options))
     {
         return Some(flavor);
     }
-    if packages
+    packages
         .iter()
-        .any(|name| matches!(name.as_str(), "ctex" | "xeCJK" | "zxjatype"))
-    {
-        return Some(TexFlavor::Xelatex);
-    }
-    UNICODE_ENGINE_MARKERS
-        .iter()
-        .any(|marker| source.contains(marker))
+        .any(|name| matches!(name.as_str(), "ctex" | "xeCJK" | "zxjatype" | "xetexko"))
         .then_some(TexFlavor::Xelatex)
 }
 
@@ -137,7 +207,7 @@ fn class_flavor(class: &str, options: &[String]) -> Option<TexFlavor> {
     }
 }
 
-fn uncommented_preamble(source: &str) -> String {
+pub(crate) fn uncommented_preamble(source: &str) -> String {
     let mut preamble = String::new();
     for line in source.lines() {
         let code = strip_comment(line);
@@ -151,7 +221,7 @@ fn uncommented_preamble(source: &str) -> String {
     preamble
 }
 
-fn strip_comment(line: &str) -> &str {
+pub(crate) fn strip_comment(line: &str) -> &str {
     let bytes = line.as_bytes();
     let mut backslashes = 0;
     for (index, byte) in bytes.iter().enumerate() {
@@ -165,7 +235,9 @@ fn strip_comment(line: &str) -> &str {
 }
 
 fn document_class(preamble: &str) -> Option<(String, Vec<String>)> {
-    let start = preamble.find("\\documentclass")? + "\\documentclass".len();
+    let start = ["\\documentclass", "\\LoadClass"]
+        .iter()
+        .find_map(|command| Some(preamble.find(command)? + command.len()))?;
     let (options, rest) = optional_argument(&preamble[start..]);
     let (class, _) = required_argument(rest)?;
     Some((
@@ -176,16 +248,18 @@ fn document_class(preamble: &str) -> Option<(String, Vec<String>)> {
 
 fn used_packages(preamble: &str) -> Vec<String> {
     let mut packages = Vec::new();
-    let mut rest = preamble;
-    while let Some(index) = rest.find("\\usepackage") {
-        rest = &rest[index + "\\usepackage".len()..];
-        if rest.starts_with(|character: char| character.is_ascii_alphabetic()) {
-            continue;
-        }
-        let (_, after_options) = optional_argument(rest);
-        if let Some((list, after)) = required_argument(after_options) {
-            packages.extend(split_list(list));
-            rest = after;
+    for command in ["\\usepackage", "\\RequirePackage"] {
+        let mut rest = preamble;
+        while let Some(index) = rest.find(command) {
+            rest = &rest[index + command.len()..];
+            if rest.starts_with(|character: char| character.is_ascii_alphabetic()) {
+                continue;
+            }
+            let (_, after_options) = optional_argument(rest);
+            if let Some((list, after)) = required_argument(after_options) {
+                packages.extend(split_list(list));
+                rest = after;
+            }
         }
     }
     packages
@@ -335,6 +409,123 @@ mod tests {
                 "{source}"
             );
         }
+    }
+
+    #[test]
+    fn korean_documents_pick_the_engine_their_package_needs() {
+        for (source, expected) in [
+            (
+                "\\documentclass{article}\n\\usepackage{kotex}\n\\setmainhangulfont{UnBatang.ttf}",
+                Some(TexFlavor::Xelatex),
+            ),
+            (
+                "\\documentclass{article}\n\\usepackage{kotex}\n\\setsanshangulfont{UnDotum.ttf}",
+                Some(TexFlavor::Xelatex),
+            ),
+            (
+                "\\documentclass{article}\n\\usepackage{kotex}\n\\setmainhanjafont{UnBatang.ttf}",
+                Some(TexFlavor::Xelatex),
+            ),
+            (
+                "\\documentclass{article}\n\\usepackage{xetexko}",
+                Some(TexFlavor::Xelatex),
+            ),
+            (
+                "\\documentclass{article}\n\\usepackage{luatexko}",
+                Some(TexFlavor::Lualatex),
+            ),
+            ("\\documentclass{article}\n\\usepackage{kotex}", None),
+        ] {
+            assert_eq!(source_tex_flavor(source), expected, "{source}");
+        }
+    }
+
+    #[test]
+    fn engine_markers_only_count_in_live_preamble_text() {
+        assert_eq!(
+            source_tex_flavor(
+                "\\documentclass{article}\n% \\usepackage{fontspec}\n\\usepackage{CJKutf8}\n\\begin{document}\nx\n\\end{document}\n"
+            ),
+            None
+        );
+        assert_eq!(
+            source_tex_flavor(
+                "\\documentclass{article}\n\\begin{document}\nThe fontspec package.\n\\end{document}\n"
+            ),
+            None
+        );
+        assert_eq!(
+            detect_tex_flavor("\\documentclass{article}\n% \\setmainfont{Georgia}\n"),
+            TexFlavor::Pdflatex
+        );
+        assert_eq!(
+            source_tex_flavor("\\RequirePackage{fontspec}\n\\documentclass{article}\n"),
+            Some(TexFlavor::Xelatex)
+        );
+    }
+
+    #[test]
+    fn every_program_comment_spelling_names_the_compiler() {
+        for (source, expected) in [
+            ("% !TEX TS-program = xelatex\n", Some(TexFlavor::Xelatex)),
+            ("% !TeX ts-program = LuaLaTeX\n", Some(TexFlavor::Lualatex)),
+            ("%!TEX TS-program=pdflatex\n", Some(TexFlavor::Pdflatex)),
+            ("% !TEX engine = lualatex\n", Some(TexFlavor::Lualatex)),
+            ("% !TeX program = uplatex\n", Some(TexFlavor::Uplatex)),
+            ("% !TEX TS-program = /bin/sh\n", None),
+            ("% !TEX engine = lualatex --shell-escape\n", None),
+            ("\\documentclass{article}\n", None),
+        ] {
+            assert_eq!(tex_program_flavor(source), expected, "{source}");
+        }
+        let far_down = format!("{}% !TEX TS-program = xelatex\n", "%\n".repeat(99));
+        assert_eq!(tex_program_flavor(&far_down), Some(TexFlavor::Xelatex));
+        let too_far = format!("{}% !TEX TS-program = xelatex\n", "%\n".repeat(100));
+        assert_eq!(tex_program_flavor(&too_far), None);
+    }
+
+    #[test]
+    fn a_followed_file_counts_only_when_it_needs_the_engine() {
+        assert_eq!(
+            followed_file_flavor("\\RequirePackage{fontspec}\n\\setmainfont{Georgia}\n"),
+            Some(TexFlavor::Xelatex)
+        );
+        assert_eq!(
+            followed_file_flavor("\\LoadClass[UTF8]{ctexart}\n"),
+            Some(TexFlavor::Xelatex)
+        );
+        assert_eq!(
+            followed_file_flavor("\\usepackage{luatexja}\n"),
+            Some(TexFlavor::Lualatex)
+        );
+        assert_eq!(
+            followed_file_flavor(
+                "\\RequirePackage{iftex}\n\\ifxetex\n\\RequirePackage{fontspec}\n\\else\n\\RequirePackage[T1]{fontenc}\n\\fi\n"
+            ),
+            None
+        );
+        assert_eq!(
+            followed_file_flavor("\\@ifpackageloaded{fontspec}{\\setmainfont{Georgia}}{}\n"),
+            None
+        );
+    }
+
+    #[test]
+    fn every_engine_test_spelling_counts_as_a_branch() {
+        for source in [
+            "\\ifdefined\\XeTeXrevision\\fi\n",
+            "\\ifdefined\\directlua\\fi\n",
+            "\\ifpdf\\fi\n",
+            "\\sys_if_engine_xetex:TF{}{}\n",
+            "\\ifxetex\\fi\n",
+        ] {
+            assert!(branches_on_engine(source), "{source}");
+            assert_eq!(
+                followed_file_flavor(&format!("{source}\\RequirePackage{{fontspec}}\n")),
+                None
+            );
+        }
+        assert!(!branches_on_engine("\\RequirePackage{fontspec}\n"));
     }
 
     #[test]

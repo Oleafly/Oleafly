@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Setter opp malen...",
-      "downloading": "Laster ned {{label}} ({{index}} av {{total}})"
+      "downloading": "Laster ned {{label}} ({{index}} av {{total}})",
+      "failed": "Skriftene til denne malen kunne ikke lastes ned. Sjekk tilkoblingen og prøv igjen."
     },
     "category": {
       "all": "Alle",

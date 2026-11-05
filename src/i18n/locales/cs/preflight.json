@@ -620,6 +620,7 @@
     "unrecorded": "Projekt LaTeX pro třídu {{name}} nezaznamenal stav tagování, takže je výsledek neprokázaný. Zkompilujte a zkontrolujte výstup."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata patří na začátek hlavního dokumentu, takže tento soubor ho nedostane.",
     "metadataUpdated": "Do vašeho \\DocumentMetadata byly přidány potřebné klíče pro tagování.",
     "metadataAdded": "\\DocumentMetadata bylo přidáno jako první řádek (je povinné a musí předcházet \\documentclass). Řádek je uzavřen do kontroly verze: LaTeX starší než {{date}}, včetně vestavěného enginu, jej přeskočí a dokument zkompiluje bez tagů, místo aby selhal.",
     "headerRows": "Nastaveno table/header-rows na 1, takže se první řádek každé tabulky taguje jako buňky záhlaví. Pokud má tabulka jinou hloubku záhlaví, číslo změňte.",

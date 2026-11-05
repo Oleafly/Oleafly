@@ -26,11 +26,19 @@ const latexInfo =
 const latexWarn =
   /^((?:(?:Class|Package|Module) \S*)|LaTeX(?: \S*)?|LaTeX3) (Warning):\s+(.*?)(?: on(?: input)? line (\d+))?([.?]?)$/;
 const latexPackageWarningExtraLines = /^\((.*)\)\s+(.*?)(?: +on input line (\d+))?(\.)?$/;
-const latexMissChar = /^\s*(Missing character:.*?!)/;
+const latexMissChar = /^\s*(Missing character:.*)/;
+const MAX_MISSING_CHAR_TAIL = 3;
 const latexNoPageOutput = /^No pages of output\.$/;
 const biberWarn = /^Biber warning:.*WARN - I didn't find a database entry for '([^']+)'/;
+const biberDataSource = /^INFO - Found BibTeX data source '(.+)'$/;
+const biberBibtexLine = /^ERROR - BibTeX subsystem: (.+?), line (\d+), (.*)$/;
+const biberCannotFind = /^ERROR - Cannot find '([^']+)'/;
+const biberOtherError = /^ERROR - (.+)$/;
+const tectonicCannotOpen = /^error: can't open path `([^`]+)`/;
 const bibEmptyPrefix = "Empty `thebibliography' environment";
 const biblatexRerunBiber = "Package biblatex Warning: Please (re)run Biber on the file:";
+const biberRerunMessage =
+  "Bibliography needs Biber (biblatex). If citations stay undefined, check the Biber messages in this log.";
 const oleaflyBiberModeA = "[Oleafly] Biber was not found (mode A)";
 const oleaflyBiberModeB = "[Oleafly] Biber/biblatex version mismatch (mode B)";
 const oleaflyBiberGap = "[Oleafly] Bibliography needs Biber";
@@ -68,6 +76,8 @@ const UNDEFINED_REFERENCE =
 const messageLine = /^l\.(\d+)\s(\.\.\.)?(.*)$/;
 
 const MAX_ERROR_CONTEXT_LINES = 12;
+const MAX_MISSING_CHARACTER_DIAGNOSTICS = 50;
+const NULLFONT_SUFFIX = " in font nullfont!";
 
 interface MutableEntry {
   severity: LogSeverity;
@@ -80,11 +90,14 @@ interface MutableEntry {
 
 interface ParserState {
   searchEmptyLine: boolean;
+  missingCharTail: number;
   insideBoxWarn: boolean;
   insideError: boolean;
   awaitingErrorLine: boolean;
   awaitedLines: number;
   inEngineOutput: boolean;
+  biberSource: string | null;
+  bibFileFailed: boolean;
   current: MutableEntry | null;
   nested: number;
   rootFile: string | null;
@@ -141,14 +154,40 @@ function currentFile(state: ParserState): string | null {
   return state.fileStack.at(-1) ?? state.rootFile ?? null;
 }
 
+export function isNullfontMissingCharacter(message: string): boolean {
+  return message.trimEnd().endsWith(NULLFONT_SUFFIX);
+}
+
+function collapseMissingCharacters(diagnostics: LogDiagnostic[]): LogDiagnostic[] {
+  const seen = new Set<string>();
+  let kept = 0;
+  return diagnostics.filter((diagnostic) => {
+    if (diagnostic.category !== "missing-character") {
+      return true;
+    }
+    if (seen.has(diagnostic.message)) {
+      return false;
+    }
+    seen.add(diagnostic.message);
+    if (isNullfontMissingCharacter(diagnostic.message)) {
+      return true;
+    }
+    kept += 1;
+    return kept <= MAX_MISSING_CHARACTER_DIAGNOSTICS;
+  });
+}
+
 export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
   const state: ParserState = {
     searchEmptyLine: false,
+    missingCharTail: 0,
     insideBoxWarn: false,
     insideError: false,
     awaitingErrorLine: false,
     awaitedLines: 0,
     inEngineOutput: false,
+    biberSource: null,
+    bibFileFailed: false,
     current: null,
     nested: 0,
     rootFile: rootFile ?? null,
@@ -167,19 +206,24 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
   } catch {
     // A pathological log line must never break the caller; return what we have.
   }
-  return state.out;
+  const diagnostics = collapseMissingCharacters(state.out);
+  return state.bibFileFailed
+    ? diagnostics.filter((diagnostic) => diagnostic.message !== biberRerunMessage)
+    : diagnostics;
 }
 
 function parseLine(line: string, state: ParserState) {
   const filename = currentFile(state);
+  state.biberSource = biberDataSource.exec(line)?.[1] ?? state.biberSource;
   if (state.insideBoxWarn) {
     state.insideBoxWarn = false;
     return;
   }
-  if (skipEngineOutput(line, state)) {
-    return;
-  }
-  if (parseOleaflyAnnotation(line, state)) {
+  if (
+    skipEngineOutput(line, state) ||
+    continueMissingCharacter(line, state) ||
+    parseOleaflyAnnotation(line, state)
+  ) {
     return;
   }
   if (state.searchEmptyLine) {
@@ -208,6 +252,9 @@ function parseLine(line: string, state: ParserState) {
     return;
   }
   if (parseBiberWarning(line, state)) {
+    return;
+  }
+  if (parseEngineFailure(line, state)) {
     return;
   }
   if (parseLatexError(line, filename, state)) {
@@ -241,7 +288,7 @@ function skipEngineOutput(line: string, state: ParserState): boolean {
     state.inEngineOutput = false;
     return false;
   }
-  return true;
+  return !tectonicCannotOpen.test(line) && !line.startsWith("ERROR - ");
 }
 
 function startsNewEntry(line: string, insideError: boolean): boolean {
@@ -391,15 +438,34 @@ function parseMissingCharacter(line: string, filename: string | null, state: Par
   if (result === null) {
     return false;
   }
+  const end = result[1].indexOf("!");
   pushCurrent(state);
   state.current = {
     severity: "warning",
     category: "missing-character",
     file: filename,
     line: null,
-    text: result[1],
+    text: end === -1 ? result[1].trimEnd() : result[1].slice(0, end + 1),
   };
   state.searchEmptyLine = false;
+  state.missingCharTail = end === -1 ? MAX_MISSING_CHAR_TAIL : 0;
+  return true;
+}
+
+// TeX wraps its log at 79 columns, so a font name such as
+// `[lmroman12-bold]:mapping=tex-text;` pushes the closing `!` onto the next line.
+function continueMissingCharacter(line: string, state: ParserState): boolean {
+  if (state.missingCharTail === 0) {
+    return false;
+  }
+  state.missingCharTail -= 1;
+  const end = line.indexOf("!");
+  if (state.current !== null) {
+    state.current.text += end === -1 ? line.trimEnd() : line.slice(0, end + 1);
+  }
+  if (end !== -1 || line.trim() === "") {
+    state.missingCharTail = 0;
+  }
   return true;
 }
 
@@ -432,7 +498,7 @@ function parseLatexWarning(line: string, filename: string | null, state: ParserS
       category: "biber",
       file: null,
       line: null,
-      text: "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically. If citations stay undefined, see [Oleafly] notes in this log.",
+      text: biberRerunMessage,
     };
     state.searchEmptyLine = false;
     return true;
@@ -463,6 +529,51 @@ function parseBiberWarning(line: string, state: ParserState): boolean {
   };
   state.searchEmptyLine = false;
   parseLine(line.substring(result[0].length), state);
+  return true;
+}
+
+function biberFailureEntry(line: string, state: ParserState): MutableEntry | null {
+  const biber = { severity: "error", category: "biber", file: null, line: null } as const;
+  const bibtex = biberBibtexLine.exec(line);
+  if (bibtex !== null) {
+    state.bibFileFailed = true;
+    return {
+      ...biber,
+      file: state.biberSource ?? (bibtex[1].endsWith(".bib") ? bibtex[1] : null),
+      line: Number.parseInt(bibtex[2], 10),
+      text: bibtex[3],
+    };
+  }
+  const missing = biberCannotFind.exec(line);
+  if (missing !== null) {
+    return {
+      ...biber,
+      text: String.raw`Biber could not find ${missing[1]}. Check the file name in \addbibresource and that the file is in the project.`,
+    };
+  }
+  const other = biberOtherError.exec(line);
+  return other === null ? null : { ...biber, text: other[1] };
+}
+
+function parseEngineFailure(line: string, state: ParserState): boolean {
+  const opened = tectonicCannotOpen.exec(line);
+  const entry: MutableEntry | null =
+    opened === null
+      ? biberFailureEntry(line, state)
+      : {
+          severity: "error",
+          category: "error",
+          file: null,
+          line: null,
+          text: `The compile could not open ${opened[1]}. Check the file name and that the file is in the project.`,
+        };
+  if (entry === null) {
+    return false;
+  }
+  pushCurrent(state);
+  state.current = entry;
+  state.searchEmptyLine = false;
+  state.insideError = false;
   return true;
 }
 

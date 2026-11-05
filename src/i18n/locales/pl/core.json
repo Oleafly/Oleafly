@@ -56,9 +56,24 @@
     "undo": "Cofnij"
   },
   "compile": {
+    "failedWithReason": "Kompilacja nie powiodła się: {{message}}",
     "noOfflineMode": "{{engine}} nie udostępnia trybu kompilacji offline. Trwa zwykła kompilacja.",
+    "pandocRequired": "Pandoc jest niedostępny. Napraw go w sekcji Ustawienia > Silniki > Markdown, a potem skompiluj ponownie.",
+    "pandocSetupFailed": "Konfiguracja Pandoc nie powiodła się: {{message}}",
+    "pdfChanged": "Skompilowany plik PDF zmienił się, gdy Oleafly go odczytywał, więc poprzedni podgląd zostaje. Skompiluj ponownie, aby go zaktualizować.",
     "retry": "Kompiluj ponownie",
+    "superseded": "Nowsza kompilacja zastąpiła tę.",
+    "syntaxCheckFailed": "Sprawdzanie składni wykryło błędy. Popraw je albo wyłącz „{{setting}}”.",
+    "taggedFailed": "Kompilacja z tagowaniem nie powiodła się: {{message}}",
+    "taggedPdfChanged": "Tagowany plik PDF zmienił się, gdy Oleafly go odczytywał, więc poprzedni podgląd zostaje. Skompiluj ponownie, aby go zaktualizować.",
+    "taggedPdfInvalid": "Kompilacja z tagowaniem nie wytworzyła prawidłowego pliku PDF.",
+    "tinytexDownloading": "TinyTeX wciąż się pobiera. Ta kompilacja ruszy automatycznie po zakończeniu pobierania.",
+    "sharedTexEditor": "Ten projekt jest udostępniony, więc przełączenie na Tectonic zmieni go dla wszystkich. Instalacja TinyTeX zmienia tylko ten komputer.",
+    "sharedTexViewer": "Nie możesz zmienić kompilatora tego udostępnionego projektu, więc zainstaluj TinyTeX, aby skompilować go tutaj.",
     "bundleFetchFailed": "Oleafly nie mógł pobrać pakietów TeX potrzebnych temu dokumentowi. Sprawdź połączenie i skompiluj ponownie.",
+    "offlineNotCached": "Tryb offline jest włączony, a pliki {{files}} mogą jeszcze nie być pobrane. Wyłącz tryb offline i skompiluj ponownie.",
+    "offlineNotCachedUnnamed": "Tryb offline jest włączony, a pakiet TeX potrzebny temu dokumentowi może jeszcze nie być pobrany. Wyłącz tryb offline i skompiluj ponownie.",
+    "goOnlineAndCompile": "Wyłącz i skompiluj",
     "typstMissing": "Typst {{version}} nie jest zainstalowany. Pobierz go albo przełącz ten projekt na inną wersję.",
     "typstPackage": {
       "downloadFailed": "Typst nie mógł pobrać {{spec}}. Sprawdź połączenie z internetem i skompiluj ponownie.",
@@ -173,9 +188,26 @@
     "pdfFailedDetail": "Nie udało się zapisać pliku PDF: {{detail}}",
     "pngFailed": "Nie udało się zapisać pliku PNG",
     "pngFailedDetail": "Nie udało się zapisać pliku PNG: {{detail}}",
+    "projectChanged": "Otwarty projekt się zmienił. Rozpocznij eksport ponownie z projektu, który chcesz zapisać.",
     "revealFailed": "Plik został zapisany, ale nie udało się otworzyć jego folderu.",
     "saved": "Zapisano {{kind}} · {{fileName}}",
-    "showInFolder": "Pokaż w folderze"
+    "savedAfterFailedCompile": "Zapisano {{kind}} · {{fileName}}. Ostatnia kompilacja nie powiodła się, więc ten plik może być niekompletny.",
+    "savedSource": "Zapisano {{kind}} · {{fileName}}. Jeśli używa obrazów lub bibliografii z Twojego projektu, skopiuj je obok niego, zanim go skompilujesz.",
+    "savedStale": "Zapisano {{kind}} · {{fileName}}. Pochodzi z ostatniej kompilacji i nie zawiera Twoich najnowszych zmian.",
+    "savedWithoutContent": "Zapisano {{kind}} · {{fileName}}. Brakuje części treści, ponieważ Typst nie potrafi zapisać jej w tym formacie: {{elements}}.",
+    "savedFromSource": "Zapisano {{kind}} · {{fileName}}. Typst {{version}} nie potrafi zapisać całego dokumentu w tym formacie, więc plik zbudowano ze źródła. Może brakować obróconego, przeskalowanego, przesuniętego lub pochylonego tekstu. Przełącz projekt na Typst 0.15 lub nowszy, aby zachować ten tekst.",
+    "savedWithoutEquations": "Zapisano {{kind}} · {{fileName}}. Może brakować wzorów, obrazów, przypisów lub odwołań, ponieważ Typst {{version}} nie potrafi zapisać ich w tym formacie. Przełącz projekt na Typst 0.15 lub nowszy.",
+    "savedWithWarnings_one": "Zapisano {{kind}} · {{fileName}}, z {{count}} ostrzeżeniem.",
+    "savedWithWarnings_few": "Zapisano {{kind}} · {{fileName}}, z {{count}} ostrzeżeniami.",
+    "savedWithWarnings_many": "Zapisano {{kind}} · {{fileName}}, z {{count}} ostrzeżeniami.",
+    "savedWithWarnings_other": "Zapisano {{kind}} · {{fileName}}, z {{count}} ostrzeżenia.",
+    "savedWithoutLinks_one": "Zapisano {{kind}} · {{fileName}}. W archiwum pominięto {{count}} dowiązanie symboliczne.",
+    "savedWithoutLinks_few": "Zapisano {{kind}} · {{fileName}}. W archiwum pominięto {{count}} dowiązania symboliczne.",
+    "savedWithoutLinks_many": "Zapisano {{kind}} · {{fileName}}. W archiwum pominięto {{count}} dowiązań symbolicznych.",
+    "savedWithoutLinks_other": "Zapisano {{kind}} · {{fileName}}. W archiwum pominięto {{count}} dowiązania symbolicznego.",
+    "showInFolder": "Pokaż w folderze",
+    "showWarnings": "Pokaż ostrzeżenia",
+    "warningsTitle": "Ostrzeżenia eksportu"
   },
   "externalChange": {
     "reloadFailed": "Ustawienia projektu zostały zaktualizowane, ale części zmienionych plików nie udało się wczytać ponownie."
@@ -333,6 +365,14 @@
     "summary_few": "Kompilacja nie znalazła: {{names}}. Poszukaj w TeX Live pakietów, które je dostarczają.",
     "summary_many": "Kompilacja nie znalazła: {{names}}. Poszukaj w TeX Live pakietów, które je dostarczają.",
     "summary_other": "Kompilacja nie znalazła: {{names}}. Poszukaj w TeX Live pakietów, które je dostarczają.",
+    "systemHint": {
+      "apt": "Znajdź pakiet, który go zawiera, poleceniem apt-file search {{name}}, albo zainstaluj wszystko poleceniem sudo apt install texlive-full.",
+      "dnf": "Uruchom {{command}}."
+    },
+    "systemManaged_one": "Kompilacja nie znalazła \"{{name}}\". Ten TeX Live pochodzi z Twojej dystrybucji Linuksa, więc Oleafly nie może dodawać do niego pakietów. {{hint}}",
+    "systemManaged_few": "Kompilacja nie znalazła: {{names}}. Ten TeX Live pochodzi z Twojej dystrybucji Linuksa, więc Oleafly nie może dodawać do niego pakietów. {{hint}}",
+    "systemManaged_many": "Kompilacja nie znalazła: {{names}}. Ten TeX Live pochodzi z Twojej dystrybucji Linuksa, więc Oleafly nie może dodawać do niego pakietów. {{hint}}",
+    "systemManaged_other": "Kompilacja nie znalazła: {{names}}. Ten TeX Live pochodzi z Twojej dystrybucji Linuksa, więc Oleafly nie może dodawać do niego pakietów. {{hint}}",
     "userTree": "Systemowe drzewo TeX jest tylko do odczytu, więc pakiety trafiły do Twojego drzewa osobistego w {{path}}."
   },
   "models": {
@@ -385,6 +425,7 @@
   },
   "pandoc": {
     "downloadFailed": "Nie udało się pobrać pandoc. Zainstaluj go ręcznie, a potem spróbuj ponownie.",
+    "downloadFailedDetail": "Nie udało się pobrać pandoc ({{detail}}). Zainstaluj go ręcznie, a potem spróbuj ponownie.",
     "downloadingPercent": "Pobieranie pandoc… {{progress}}%",
     "downloadingSize": "Pobieranie pandoc… {{megabytes}} MB",
     "installGuide": "Przewodnik instalacji"
@@ -509,7 +550,7 @@
     "compileFailed": "Kompilacja z tagowaniem nie powiodła się. Sprawdź silnik i spróbuj ponownie.",
     "compiled": "Skompilowano tagowany PDF. Werdykt dostępności znajduje się poniżej.",
     "compiledWithErrors": "Kompilacja z tagowaniem zakończyła się błędami. Sprawdź dziennik.",
-    "engineRequired": "Najpierw włącz silnik obsługujący tagowanie w Ustawieniach, w sekcji Silnik LaTeX."
+    "engineRequired": "Zainstaluj TinyTeX w sekcji Ustawienia > Silniki > LaTeX, aby tworzyć tagowane pliki PDF."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -556,6 +597,7 @@
   "tinytex": {
     "installFailed": "Nie udało się zainstalować TinyTeX.",
     "installGuide": "Przewodnik instalacji",
+    "tryAgain": "Spróbuj ponownie",
     "installed": "Zainstalowano TinyTeX.",
     "phase": {
       "addingPackages": "Dodawanie pakietów…",

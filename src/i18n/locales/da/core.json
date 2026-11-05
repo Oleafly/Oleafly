@@ -56,9 +56,24 @@
     "undo": "Fortryd"
   },
   "compile": {
+    "failedWithReason": "Kompileringen mislykkedes: {{message}}",
     "noOfflineMode": "{{engine}} har ingen offlinetilstand for kompilatoren. Kompilerer på normal vis.",
+    "pandocRequired": "Pandoc er ikke tilgængelig. Reparer den under Indstillinger > Motorer > Markdown, og kompiler så igen.",
+    "pandocSetupFailed": "Opsætningen af Pandoc mislykkedes: {{message}}",
+    "pdfChanged": "Den kompilerede PDF blev ændret, mens Oleafly læste den, så den tidligere forhåndsvisning bliver stående. Kompiler igen for at opdatere den.",
     "retry": "Kompiler igen",
+    "superseded": "En nyere kompilering har erstattet denne.",
+    "syntaxCheckFailed": "Syntakskontrollen fandt fejl. Ret dem, eller slå »{{setting}}« fra.",
+    "taggedFailed": "Den taggede kompilering mislykkedes: {{message}}",
+    "taggedPdfChanged": "Den taggede PDF blev ændret, mens Oleafly læste den, så den tidligere forhåndsvisning bliver stående. Kompiler igen for at opdatere den.",
+    "taggedPdfInvalid": "Den taggede kompilering gav ikke en gyldig PDF.",
+    "tinytexDownloading": "TinyTeX downloader stadig. Kompileringen starter automatisk, når den er færdig.",
+    "sharedTexEditor": "Dette projekt er delt, så et skift til Tectonic ændrer det for alle. Installation af TinyTeX ændrer kun denne computer.",
+    "sharedTexViewer": "Du kan ikke ændre kompilatoren i dette delte projekt, så installer TinyTeX for at kompilere det her.",
     "bundleFetchFailed": "Oleafly kunne ikke downloade de TeX-pakker, som dette dokument skal bruge. Tjek din forbindelse, og kompiler igen.",
+    "offlineNotCached": "Offlinetilstand er slået til, og {{files}} er måske ikke downloadet endnu. Slå offlinetilstand fra, og kompiler igen.",
+    "offlineNotCachedUnnamed": "Offlinetilstand er slået til, og en TeX-pakke, som dette dokument skal bruge, er måske ikke downloadet endnu. Slå offlinetilstand fra, og kompiler igen.",
+    "goOnlineAndCompile": "Slå fra, og kompiler",
     "typstMissing": "Typst {{version}} er ikke installeret. Download det, eller skift dette projekt til en anden version.",
     "typstPackage": {
       "downloadFailed": "Typst kunne ikke downloade {{spec}}. Tjek din internetforbindelse, og kompiler igen.",
@@ -169,9 +184,22 @@
     "pdfFailedDetail": "Kunne ikke gemme PDF'en: {{detail}}",
     "pngFailed": "Kunne ikke gemme PNG-filen",
     "pngFailedDetail": "Kunne ikke gemme PNG-filen: {{detail}}",
+    "projectChanged": "Det åbne projekt er skiftet. Start eksporten igen fra det projekt, du vil gemme.",
     "revealFailed": "Filen blev gemt, men dens mappe kunne ikke åbnes.",
     "saved": "{{kind}} gemt · {{fileName}}",
-    "showInFolder": "Vis i mappen"
+    "savedAfterFailedCompile": "{{kind}} gemt · {{fileName}}. Den seneste kompilering mislykkedes, så filen kan være ufuldstændig.",
+    "savedSource": "{{kind}} gemt · {{fileName}}. Bruger den billeder eller litteraturlister fra dit projekt, skal du kopiere dem ind ved siden af den, før du kompilerer.",
+    "savedStale": "{{kind}} gemt · {{fileName}}. Den stammer fra den seneste kompilering og indeholder ikke dine nyeste ændringer.",
+    "savedWithoutContent": "{{kind}} gemt · {{fileName}}. Noget indhold mangler, fordi Typst ikke kan skrive det til dette format: {{elements}}.",
+    "savedFromSource": "{{kind}} gemt · {{fileName}}. Typst {{version}} kan ikke skrive hele dette dokument til dette format, så filen blev bygget ud fra kildekoden. Roteret, skaleret, flyttet eller skråtstillet tekst kan mangle. Skift projektet til Typst 0.15 eller nyere for at beholde den tekst.",
+    "savedWithoutEquations": "{{kind}} gemt · {{fileName}}. Ligninger, billeder, fodnoter eller referencer kan mangle, fordi Typst {{version}} ikke kan skrive dem til dette format. Skift projektet til Typst 0.15 eller nyere.",
+    "savedWithWarnings_one": "{{kind}} gemt · {{fileName}} med {{count}} advarsel.",
+    "savedWithWarnings_other": "{{kind}} gemt · {{fileName}} med {{count}} advarsler.",
+    "savedWithoutLinks_one": "{{kind}} gemt · {{fileName}}. {{count}} symbolsk link blev udeladt fra arkivet.",
+    "savedWithoutLinks_other": "{{kind}} gemt · {{fileName}}. {{count}} symbolske links blev udeladt fra arkivet.",
+    "showInFolder": "Vis i mappen",
+    "showWarnings": "Vis advarsler",
+    "warningsTitle": "Eksportadvarsler"
   },
   "externalChange": {
     "reloadFailed": "Projektindstillingerne blev opdateret, men nogle ændrede filer kunne ikke genindlæses."
@@ -321,6 +349,12 @@
     "installing_other": "Installerer {{count}} pakker. Kompileringen starter forfra, når de er færdige.",
     "summary_one": "Kompileringen kunne ikke finde \"{{name}}\". Led efter den pakke i TeX Live, der indeholder den.",
     "summary_other": "Kompileringen kunne ikke finde {{names}}. Led efter deres pakker i TeX Live.",
+    "systemHint": {
+      "apt": "Find dens pakke med apt-file search {{name}}, eller installer det hele med sudo apt install texlive-full.",
+      "dnf": "Kør {{command}}."
+    },
+    "systemManaged_one": "Kompileringen kunne ikke finde \"{{name}}\". Denne TeX Live fulgte med din Linux-distribution, så Oleafly kan ikke tilføje pakker til den. {{hint}}",
+    "systemManaged_other": "Kompileringen kunne ikke finde {{names}}. Denne TeX Live fulgte med din Linux-distribution, så Oleafly kan ikke tilføje pakker til den. {{hint}}",
     "userTree": "Systemets TeX-træ er skrivebeskyttet, så pakkerne blev lagt i dit personlige træ i {{path}}."
   },
   "models": {
@@ -369,6 +403,7 @@
   },
   "pandoc": {
     "downloadFailed": "Kunne ikke downloade pandoc. Installer den manuelt, og prøv igen.",
+    "downloadFailedDetail": "Kunne ikke downloade pandoc ({{detail}}). Installer den manuelt, og prøv igen.",
     "downloadingPercent": "Downloader pandoc… {{progress}} %",
     "downloadingSize": "Downloader pandoc… {{megabytes}} MB",
     "installGuide": "Installationsvejledning"
@@ -481,7 +516,7 @@
     "compileFailed": "Den taggede kompilering mislykkedes. Tjek motoren, og prøv igen.",
     "compiled": "Den taggede PDF er kompileret. Se vurderingen af tilgængeligheden nedenfor.",
     "compiledWithErrors": "Den taggede kompilering sluttede med fejl. Se loggen.",
-    "engineRequired": "Slå først en motor med tagging til under Indstillinger, LaTeX-motor."
+    "engineRequired": "Installer TinyTeX under Indstillinger > Motorer > LaTeX for at lave taggede PDF'er."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -528,6 +563,7 @@
   "tinytex": {
     "installFailed": "Kunne ikke installere TinyTeX.",
     "installGuide": "Installationsvejledning",
+    "tryAgain": "Prøv igen",
     "installed": "TinyTeX er installeret.",
     "phase": {
       "addingPackages": "Tilføjer pakker…",

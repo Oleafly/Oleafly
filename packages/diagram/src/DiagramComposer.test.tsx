@@ -294,6 +294,39 @@ describe("DiagramComposer", () => {
     expect(kit.toast.error).not.toHaveBeenCalled();
   });
 
+  it("shows the log as it arrives and can stop a TikZ compile", async () => {
+    let finish: (result: { log: string; has_pdf: boolean; stopped: boolean }) => void = () => undefined;
+    const stopCompile = vi.fn(async () => {
+      finish({ log: "stopped on request", has_pdf: false, stopped: true });
+    });
+    const host = makeHost({
+      stopCompile,
+      compileIsolated: vi.fn(
+        (_id: string, _source: string, onLog?: (chunk: string) => void) =>
+          new Promise<{ log: string; has_pdf: boolean; stopped: boolean }>((resolve) => {
+            finish = resolve;
+            onLog?.("downloading tikz.sty\n");
+          }),
+      ),
+    });
+    open(host);
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await screen.findByText("downloading tikz.sty");
+    fireEvent.click(screen.getByTestId("diagram-stop"));
+    await screen.findByText("stopped on request");
+    expect(stopCompile).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId("diagram-stop")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("diagram-compile-failure")).not.toBeInTheDocument();
+  });
+
+  it("offers no stop when the host cannot stop a compile", async () => {
+    const host = makeHost({ compileIsolated: vi.fn(() => new Promise<never>(() => undefined)) });
+    open(host);
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await screen.findAllByText("composer.compiling");
+    expect(screen.queryByTestId("diagram-stop")).not.toBeInTheDocument();
+  });
+
   it("shows a compile that threw in the preview pane without offering an AI fix", async () => {
     const host = makeHost({
       compileIsolated: vi.fn(async () => {

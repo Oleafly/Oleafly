@@ -4,7 +4,7 @@ use crate::caps::{BudgetRange, ModelCaps};
 use crate::complete::CompletionRequest;
 use crate::effort::{google_budget_model, openai_reasoning_id, Effort};
 use crate::message::{ContentPart, Message, Role};
-use crate::provider::Resolved;
+use crate::provider::{catalog_entry, Resolved};
 
 pub(crate) const STREAMING_MAX_TOKENS_CAP: u32 = 64_000;
 pub(crate) const BLOCKING_MAX_TOKENS_CAP: u32 = 16_000;
@@ -167,8 +167,21 @@ pub(crate) fn chat_reasoning_fields(
             }
         }
         "deepseek" => deepseek_thinking(req, effort),
+        custom if catalog_entry(custom).is_none() && effort == Some(Effort::Off) => {
+            custom_thinking_off()
+        }
         _ => Vec::new(),
     }
+}
+
+/// Turns thinking off on a self-hosted server: Lemonade reads
+/// `enable_thinking`, and llama.cpp reads `reasoning_effort`. A server that
+/// knows only one of the two ignores the other.
+fn custom_thinking_off() -> Vec<(&'static str, Value)> {
+    vec![
+        ("reasoning_effort", json!("none")),
+        ("enable_thinking", json!(false)),
+    ]
 }
 
 pub(crate) fn message_reasoning(message: &Message) -> String {

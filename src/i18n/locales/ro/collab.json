@@ -729,6 +729,13 @@
     "renamedPortable": "{{before}} a fost redenumit în {{theirs}} ca să funcționeze pe orice computer.",
     "skipped": "O modificare de la {{name}} nu a putut fi citită și a fost omisă.",
     "skippedUnknown": "O modificare de la cineva nu a putut fi citită și a fost omisă.",
+    "outputNotShared": {
+      "tooLarge": "PDF-ul compilat este mai mare decât permite acest server, așa că ceilalți îl văd în continuare pe cel anterior.",
+      "quota": "S-a atins limita de încărcare a acestui server, așa că ceilalți văd în continuare PDF-ul anterior. Oleafly încearcă din nou după 15 minute.",
+      "privateSources": "PDF-ul compilat rămâne pe acest computer, deoarece proiectul are fișiere care nu sunt partajate.",
+      "serverError": "Serverul nu a acceptat PDF-ul compilat, așa că ceilalți îl văd în continuare pe cel anterior."
+    },
+    "texNeeded": "Acest proiect se compilează cu o distribuție TeX, iar acest computer nu are una. Instalează TinyTeX din Setări > Motoare > LaTeX ca să-l compilezi aici.",
     "mentioned": "{{name}} te-a menționat într-un comentariu din {{path}}",
     "mentionedHere": "{{name}} te-a menționat într-un comentariu",
     "showComment": "Arată comentariul",

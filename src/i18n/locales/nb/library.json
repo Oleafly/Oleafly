@@ -463,6 +463,7 @@
     "previewUnsupported": "Levende forhåndsvisning er ikke klar for denne motoren ennå",
     "badge": "AI-generert",
     "compileWarning": "Dette utkastet kompilerte ikke feilfritt. Generer på nytt for et bedre utgangspunkt, eller opprett prosjektet og rett opp kildekoden i editoren.",
+    "compileLog": "Kompileringslogg",
     "noDescription": "Ingen beskrivelse ennå.",
     "includes": "Inneholder",
     "category": "Kategori",

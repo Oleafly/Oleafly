@@ -12,13 +12,14 @@ import { TexPackagesSection } from "./TexPackagesSection";
 import {
   hasPandoc,
   removeUnusedTinymistDownloads,
+  setTexDistribution,
   texDistributions,
   type TexDistribution,
   type TypstSource,
   type TypstToolchainStatus,
   type TypstVersionEntry,
 } from "@/lib/tauri";
-import { toast } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { describeError } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
 import { SettingsPath } from "@/components/settings/SettingsPath";
@@ -454,8 +455,9 @@ function TypstEngineTab() {
 export function EngineSection() {
   const { t } = useTranslation(["common", "settings"]);
   const displayPath = useDisplayPath();
-  const { info, installing, progress, refresh, refreshPackages, install, remove } =
+  const { info, installing, progress, refresh, refreshPackages, install, cancelInstall, remove } =
     useEngineStore();
+  const cancellingInstall = useEngineStore((s) => s.cancellingInstall);
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
   const setDefaultLatexEngine = useSettingsStore((s) => s.setDefaultLatexEngine);
   const resetEnginePreferences = useSettingsStore((s) => s.resetEnginePreferences);
@@ -484,6 +486,29 @@ export function EngineSection() {
   }, [installing, info]);
 
   const kind = info?.kind ?? "none";
+  const canCancelInstall = installing && installPhase !== "packages";
+
+  const chooseDistribution = async (binDir: string | null) => {
+    try {
+      await setTexDistribution(binDir);
+      await refresh();
+      await refreshPackages();
+      setDistros(await texDistributions());
+    } catch (error) {
+      notifyError("choose tex distribution", error);
+    }
+  };
+
+  const cancelInstallButton = () => (
+    <button
+      type="button"
+      onClick={() => void cancelInstall()}
+      disabled={cancellingInstall}
+      className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent disabled:opacity-60"
+    >
+      {t(($) => $.common.actions.cancel)}
+    </button>
+  );
 
   const tinytexActionLabel = () => {
     if (installing) return installPhaseLabel(installPhase, progress);
@@ -543,6 +568,8 @@ export function EngineSection() {
         {ENGINE_CHOICES.map((choiceId) => {
           const selected = defaultLatexEngine === choiceId;
           const missing = choiceId === "latexmk" && !info?.latexmk;
+          const needsPerl =
+            choiceId === "latexmk" && info?.latexmk_blocker?.code === "tex.latexmk_needs_perl";
           return (
             <button
               key={choiceId}
@@ -557,9 +584,12 @@ export function EngineSection() {
                 <Cpu className="size-4 text-muted-foreground" />
                 <span className="text-sm">{t(($) => $.settings.engine.choices[choiceId].name)}</span>
                 {selected && <CheckBadge />}
-                {missing && (
+                {(missing || needsPerl) && (
                   <Badge variant="warning" size="sm" className="ml-auto gap-1">
-                    <AlertTriangle className="size-2.5" /> {t(($) => $.settings.engine.latexmkMissing)}
+                    <AlertTriangle className="size-2.5" />{" "}
+                    {needsPerl
+                      ? t(($) => $.settings.engine.latexmkNeedsPerl)
+                      : t(($) => $.settings.engine.latexmkMissing)}
                   </Badge>
                 )}
               </div>
@@ -602,8 +632,8 @@ export function EngineSection() {
                 <Info className="size-3.5 shrink-0 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
               </Tooltip>
               {distro.latexmk && (
-                <Badge variant="success" size="sm">
-                  {"latexmk"}
+                <Badge variant={distro.needs_perl ? "warning" : "success"} size="sm">
+                  {distro.needs_perl ? t(($) => $.settings.engine.latexmkNeedsPerl) : "latexmk"}
                 </Badge>
               )}
               {distro.tlmgr && (
@@ -611,15 +641,55 @@ export function EngineSection() {
                   {"tlmgr"}
                 </Badge>
               )}
-              {distro.kind === "oleafly-tinytex" && (
-                <button
-                  type="button"
-                  onClick={() => void remove()}
-                  className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent"
-                >
-                  <Trash2 className="size-3" /> {t(($) => $.common.actions.remove)}
-                </button>
+              {distro.active && (
+                <Tooltip side="right" label={t(($) => $.settings.engine.distributions.inUseTooltip)}>
+                  <Badge variant="default" size="sm">
+                    {t(($) => $.settings.engine.distributions.inUse)}
+                  </Badge>
+                </Tooltip>
               )}
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                {distro.preferred && (
+                  <Tooltip side="left" label={t(($) => $.settings.engine.distributions.automaticTooltip)}>
+                    <button
+                      type="button"
+                      onClick={() => void chooseDistribution(null)}
+                      className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent"
+                    >
+                      {t(($) => $.settings.engine.distributions.automatic)}
+                    </button>
+                  </Tooltip>
+                )}
+                {!distro.active && distro.latexmk && !distro.needs_perl && (
+                  <button
+                    type="button"
+                    onClick={() => void chooseDistribution(distro.bin_dir)}
+                    className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent"
+                  >
+                    {t(($) => $.settings.engine.distributions.use)}
+                  </button>
+                )}
+                {distro.kind === "oleafly-tinytex" && info?.tinytex_outdated && (
+                  <button
+                    type="button"
+                    onClick={() => void install()}
+                    disabled={installing}
+                    className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent disabled:opacity-60"
+                  >
+                    <Download className="size-3" /> {t(($) => $.settings.engine.tinytex.update)}
+                  </button>
+                )}
+                {distro.kind === "oleafly-tinytex" && canCancelInstall && cancelInstallButton()}
+                {distro.kind === "oleafly-tinytex" && (
+                  <button
+                    type="button"
+                    onClick={() => void remove()}
+                    className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent"
+                  >
+                    <Trash2 className="size-3" /> {t(($) => $.common.actions.remove)}
+                  </button>
+                )}
+              </div>
             </div>
             <p className="mt-1 truncate font-mono text-[0.625rem] text-muted-foreground/70"><SettingsPath path={distro.bin_dir} /></p>
           </div>
@@ -633,7 +703,12 @@ export function EngineSection() {
             <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
               {t(($) => $.settings.engine.tinytex.detail)}
             </p>
-            <div className="mt-2">
+            {distros.some((distro) => distro.active && distro.complete) && (
+              <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
+                {t(($) => $.settings.engine.distributions.tinytexChooseHint)}
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => void install()}
@@ -643,6 +718,7 @@ export function EngineSection() {
                 {installing ? <Spinner size="sm" /> : <Download className="size-3.5" />}
                 {tinytexActionLabel()}
               </button>
+              {canCancelInstall && cancelInstallButton()}
             </div>
           </div>
         )}

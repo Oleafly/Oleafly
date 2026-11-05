@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Förbereder din mall...",
-      "downloading": "Laddar ner {{label}} ({{index}} av {{total}})"
+      "downloading": "Laddar ner {{label}} ({{index}} av {{total}})",
+      "failed": "Typsnitten för den här mallen kunde inte laddas ner. Kontrollera anslutningen och försök igen."
     },
     "category": {
       "all": "Alla",

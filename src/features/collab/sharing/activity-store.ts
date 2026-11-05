@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CollabProjectRole, CollabSettingNotice } from "@/lib/tauri";
+import type { CollabOutputNotSharedReason, CollabProjectRole, CollabSettingNotice } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 
 export const ACTIVITY_CAP = 200;
@@ -38,6 +38,8 @@ export type NewActivity =
     }
   | { kind: "setting"; at: number; accountId: string | null; name: string; change: CollabSettingNotice }
   | { kind: "skipped"; at: number; deviceId: string | null; name: string }
+  | { kind: "outputNotShared"; at: number; reason: CollabOutputNotSharedReason }
+  | { kind: "texNeeded"; at: number }
   | { kind: "role"; at: number; role: CollabProjectRole }
   | { kind: "removed"; at: number; by?: string }
   | { kind: "archived"; at: number }

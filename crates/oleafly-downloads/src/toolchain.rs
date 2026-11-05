@@ -159,6 +159,7 @@ pub enum ToolchainInstallErrorKind {
 pub struct ToolchainInstallError {
     kind: ToolchainInstallErrorKind,
     message: String,
+    digest_mismatch: bool,
 }
 
 impl ToolchainInstallError {
@@ -166,11 +167,16 @@ impl ToolchainInstallError {
         Self {
             kind,
             message: message.into(),
+            digest_mismatch: false,
         }
     }
 
     pub fn kind(&self) -> ToolchainInstallErrorKind {
         self.kind
+    }
+
+    pub fn digest_mismatch(&self) -> bool {
+        self.digest_mismatch
     }
 
     pub fn message(&self) -> &str {
@@ -235,7 +241,7 @@ impl CancelToken {
         *self.0.borrow()
     }
 
-    async fn cancelled(&self) {
+    pub async fn cancelled(&self) {
         let mut receiver = self.0.subscribe();
         let _ = receiver.wait_for(|cancelled| *cancelled).await;
     }
@@ -824,7 +830,7 @@ where
     if stop.stopped() {
         return Err(cancelled());
     }
-    publish(&staging, &layout)?;
+    publish_off_the_runtime(&staging, &layout).await?;
     drop(staging);
     drop(lock);
     drop(active);
@@ -902,7 +908,7 @@ where
     if stop.stopped() {
         return Err(cancelled());
     }
-    publish(&staging, &layout)?;
+    publish_off_the_runtime(&staging, &layout).await?;
     drop(staging);
     drop(lock);
     drop(active);
@@ -971,6 +977,7 @@ fn tree_target(root: &Path, parts: &[String]) -> PathBuf {
 enum SourceFailure {
     Cancelled,
     Failed(String),
+    DigestMismatch(String),
     Local(ToolchainInstallError),
 }
 
@@ -1080,6 +1087,7 @@ async fn download_archive(
 ) -> Result<(), ToolchainInstallError> {
     let client = http_client(plan)?;
     let mut failures = Vec::new();
+    let mut mismatches = 0;
     for url in &plan.urls {
         if cancel.is_cancelled() {
             return Err(cancelled());
@@ -1095,12 +1103,18 @@ async fn download_archive(
             Err(SourceFailure::Failed(reason)) => {
                 failures.push(format!("{} {reason}.", source_label(url)));
             }
+            Err(SourceFailure::DigestMismatch(reason)) => {
+                mismatches += 1;
+                failures.push(format!("{} {reason}.", source_label(url)));
+            }
         }
     }
-    Err(ToolchainInstallError::new(
+    let mut error = ToolchainInstallError::new(
         ToolchainInstallErrorKind::DownloadFailed,
         format!("Every download source failed. {}", failures.join(" ")),
-    ))
+    );
+    error.digest_mismatch = mismatches > 0 && mismatches == plan.urls.len();
+    Err(error)
 }
 
 fn stalled(plan: &InstallPlan) -> SourceFailure {
@@ -1216,7 +1230,7 @@ async fn download_source(
         plan.archive_size,
     ));
     if format!("{:x}", hasher.finalize()) != plan.archive_sha256 {
-        return Err(SourceFailure::Failed(
+        return Err(SourceFailure::DigestMismatch(
             "sent an archive whose SHA-256 does not match the pinned digest".into(),
         ));
     }
@@ -1233,8 +1247,10 @@ fn extract_binary(
     let target = payload.join(&plan.binary_name);
     let open = || File::open(archive).map_err(|error| filesystem_error("open", archive, error));
     match (plan.kind, plan.member.as_deref()) {
-        (ArchiveKind::Binary, None) => std::fs::rename(archive, &target)
-            .map_err(|error| filesystem_error("stage", &target, error))?,
+        (ArchiveKind::Binary, None) => {
+            oleafly_core::atomic::persist_with_retry(|| std::fs::rename(archive, &target))
+                .map_err(|error| filesystem_error("stage", &target, error))?
+        }
         (ArchiveKind::TarGz, Some(member)) => extract_from_tar(
             flate2::read::GzDecoder::new(open()?),
             member,
@@ -1656,20 +1672,29 @@ fn write_tree_file(
     Ok(())
 }
 
-fn publish(staging: &Staging, layout: &Layout) -> Result<(), ToolchainInstallError> {
+async fn publish_off_the_runtime(
+    staging: &Staging,
+    layout: &Layout,
+) -> Result<(), ToolchainInstallError> {
     let payload = staging.payload();
+    let previous = staging.previous();
+    let layout = layout.clone();
+    run_blocking(move || publish(&payload, &previous, &layout)).await
+}
+
+fn publish(payload: &Path, previous: &Path, layout: &Layout) -> Result<(), ToolchainInstallError> {
+    use oleafly_core::atomic::rename_tree_with_retry;
     let destination = &layout.destination;
     let failed = |error| filesystem_error("move the new version into", destination, error);
     match std::fs::symlink_metadata(destination) {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            std::fs::rename(&payload, destination).map_err(failed)?;
+            rename_tree_with_retry(payload, destination).map_err(failed)?;
         }
         Err(error) => return Err(failed(error)),
         Ok(_) => {
-            let previous = staging.previous();
-            std::fs::rename(destination, &previous).map_err(failed)?;
-            if let Err(error) = std::fs::rename(&payload, destination) {
-                let _ = std::fs::rename(&previous, destination);
+            rename_tree_with_retry(destination, previous).map_err(failed)?;
+            if let Err(error) = rename_tree_with_retry(payload, destination) {
+                let _ = rename_tree_with_retry(previous, destination);
                 return Err(failed(error));
             }
         }
@@ -1950,6 +1975,74 @@ mod tests {
         let failed = lock_error(path, fs4::TryLockError::Error(unsupported));
         assert_eq!(failed.kind(), ToolchainInstallErrorKind::InstallFailed);
         assert!(failed.message().contains("no locks here"));
+    }
+
+    fn publish_layout(root: &Path) -> Layout {
+        Layout {
+            parent: root.to_path_buf(),
+            name: "tool".into(),
+            destination: root.join("tool"),
+            staging_root: root.join("staging"),
+        }
+    }
+
+    #[test]
+    fn publish_moves_the_payload_in_and_keeps_the_old_version_aside() {
+        let root = tempfile::tempdir().unwrap();
+        let layout = publish_layout(root.path());
+        let payload = root.path().join("payload");
+        let previous = root.path().join("previous");
+        std::fs::create_dir(&payload).unwrap();
+        std::fs::write(payload.join("binary"), b"first").unwrap();
+        publish(&payload, &previous, &layout).unwrap();
+        assert_eq!(
+            std::fs::read(layout.destination.join("binary")).unwrap(),
+            b"first"
+        );
+
+        std::fs::create_dir(&payload).unwrap();
+        std::fs::write(payload.join("binary"), b"second").unwrap();
+        publish(&payload, &previous, &layout).unwrap();
+        assert_eq!(
+            std::fs::read(layout.destination.join("binary")).unwrap(),
+            b"second"
+        );
+        assert_eq!(std::fs::read(previous.join("binary")).unwrap(), b"first");
+    }
+
+    #[test]
+    fn a_failed_publish_puts_the_old_version_back() {
+        let root = tempfile::tempdir().unwrap();
+        let layout = publish_layout(root.path());
+        std::fs::create_dir(&layout.destination).unwrap();
+        std::fs::write(layout.destination.join("binary"), b"old").unwrap();
+        let error = publish(
+            &root.path().join("missing"),
+            &root.path().join("previous"),
+            &layout,
+        );
+        assert!(error.is_err());
+        assert_eq!(
+            std::fs::read(layout.destination.join("binary")).unwrap(),
+            b"old"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn publish_waits_for_a_scanner_holding_a_file_in_the_payload() {
+        let root = tempfile::tempdir().unwrap();
+        let layout = publish_layout(root.path());
+        let payload = root.path().join("payload");
+        std::fs::create_dir(&payload).unwrap();
+        let held = File::create(payload.join("binary")).unwrap();
+        let release = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(300));
+            drop(held);
+        });
+        publish(&payload, &root.path().join("previous"), &layout).unwrap();
+        release.join().unwrap();
+        assert!(layout.destination.join("binary").is_file());
     }
 
     #[test]
@@ -2263,6 +2356,30 @@ mod tests {
         assert_eq!(error.kind(), ToolchainInstallErrorKind::DownloadFailed);
         assert!(error.message().contains("SHA-256"), "{error}");
         assert_nothing_installed(&request);
+    }
+
+    #[tokio::test]
+    async fn only_a_wrong_hash_from_every_source_counts_as_a_digest_mismatch() {
+        let fixture = tar_gz_fixture();
+        let server = TestServer::start().await;
+        let first = server.route("/first", Route::Bytes(fixture.archive.clone()));
+        let second = server.route("/second", Route::Bytes(fixture.archive.clone()));
+        let root = tempfile::tempdir().unwrap();
+        let mut request = request_for(root.path(), &fixture, vec![first.clone(), second]);
+        request.archive_sha256 = sha256_hex(b"something else");
+
+        let (result, _) = install(request).await;
+        assert!(result.unwrap_err().digest_mismatch());
+
+        let missing = server.route("/missing", Route::Status(404));
+        let root = tempfile::tempdir().unwrap();
+        let mut request = request_for(root.path(), &fixture, vec![first, missing]);
+        request.archive_sha256 = sha256_hex(b"something else");
+
+        let (result, _) = install(request).await;
+        let error = result.unwrap_err();
+        assert_eq!(error.kind(), ToolchainInstallErrorKind::DownloadFailed);
+        assert!(!error.digest_mismatch());
     }
 
     #[tokio::test]

@@ -82,9 +82,9 @@ import {
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
-import { decodeAppError } from "@/lib/app-error";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn, shortcut } from "@/lib/utils";
-import { basename } from "@/lib/path-utils";
+import { basename, exportFileStem, UNSAFE_FILE_NAME_CHARACTERS } from "@/lib/path-utils";
 import {
   attachPreviewZoom,
   MAX_PREVIEW_SCALE,
@@ -690,6 +690,8 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
   const recompile = useCompileStore((s) => s.recompile);
   const errors = useCompileStore((s) => s.errors);
+  const offer = useCompileStore((s) => s.offer);
+  const logCleared = useCompileStore((s) => s.clearedLog !== null && s.clearedLog === s.log);
   const compileTimeMs = useCompileStore((s) => s.compileTimeMs);
   const compileCheckpoint = useCompileStore(
     (state) => state.lastCompileCheckpoint,
@@ -1072,7 +1074,8 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
 
   const reportExportFailure = (error: unknown) => {
     const nonErrorDetail = typeof error === "string" ? error : "";
-    const detail = error instanceof Error ? error.message : nonErrorDetail;
+    const plainDetail = error instanceof Error ? error.message : nonErrorDetail;
+    const detail = decodeAppError(error) ? describeError(error) : plainDetail;
     const withDetail = isImage
       ? t(($) => $.preview.download.imageFailedDetail, { detail })
       : t(($) => $.preview.download.pdfFailedDetail, { detail });
@@ -1082,12 +1085,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     notifyError("download preview", error, detail ? withDetail : withoutDetail);
   };
 
-  const exportBaseName = () => {
-    const fallback = isImage ? "figure" : "document";
-    return (
-      trimEdgeCharacter((projectName || fallback).replace(/[^\w.-]+/g, "_"), "_") || fallback
-    );
-  };
+  const exportBaseName = () => exportFileStem(projectName, isImage ? "figure" : "document");
 
   const showDownloadSaved = (destination: string, fileName: string) => {
     toast.successUnique(
@@ -1267,15 +1265,17 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     >
       {viewMode === "pdf" && <SidebarCollapseToggle />}
       <CompileLogControls active={tab === "logs"} onToggle={() => setTab(tab === "logs" ? "pdf" : "logs")}
-        status={status} errors={errors} compileTimeMs={compileTimeMs} />
+        status={status} errors={logCleared ? [] : errors} compileTimeMs={compileTimeMs} />
 
-      {tab === "logs" && hasError && (
+      {tab === "logs" && (hasError || offer !== null) && (
         <div className="ml-auto flex items-center gap-1">
           <CompileOfferButton placement="log" />
-          <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
-            <Sparkles data-icon="inline-start" />
-            {t(($) => $.preview.toolbar.askAi)}
-          </Button>
+          {hasError && (
+            <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
+              <Sparkles data-icon="inline-start" />
+              {t(($) => $.preview.toolbar.askAi)}
+            </Button>
+          )}
         </div>
       )}
 
@@ -1292,7 +1292,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           exportDisplayedPreview={exportDisplayedPreview} downloadActionLabel={downloadActionLabel}
           onSave={() => {
             const base = isImage
-              ? trimEdgeCharacter((projectName || "figure").replace(/[^\w.-]+/g, "-"), "-") || "figure"
+              ? trimEdgeCharacter((projectName || "figure").replace(UNSAFE_FILE_NAME_CHARACTERS, "-"), "-") || "figure"
               : mainDoc.replace(/\.(?:tex|typ|md|markdown|qmd|rmd)$/i, "") || "document";
             setSaveName(`${base}.${isImage ? "png" : "pdf"}`);
             setSaveOpen(true);

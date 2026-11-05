@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "템플릿을 설정하는 중...",
-      "downloading": "{{label}} 다운로드 중({{total}}개 중 {{index}}번째)"
+      "downloading": "{{label}} 다운로드 중({{total}}개 중 {{index}}번째)",
+      "failed": "이 템플릿의 글꼴을 내려받지 못했습니다. 연결을 확인하고 다시 시도하세요."
     },
     "category": {
       "all": "전체",

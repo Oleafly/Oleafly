@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Preparando seu modelo...",
-      "downloading": "Baixando {{label}} ({{index}} de {{total}})"
+      "downloading": "Baixando {{label}} ({{index}} de {{total}})",
+      "failed": "Não foi possível baixar as fontes deste modelo. Confira sua conexão e tente de novo."
     },
     "category": {
       "all": "Todos",

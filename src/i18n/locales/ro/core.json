@@ -56,9 +56,24 @@
     "undo": "Anulează"
   },
   "compile": {
+    "failedWithReason": "Compilarea a eșuat: {{message}}",
     "noOfflineMode": "{{engine}} nu oferă un mod de compilare offline. Se compilează normal.",
+    "pandocRequired": "Pandoc nu este disponibil. Repară-l din Setări > Motoare > Markdown, apoi compilează din nou.",
+    "pandocSetupFailed": "Configurarea Pandoc a eșuat: {{message}}",
+    "pdfChanged": "PDF-ul compilat s-a schimbat cât timp îl citea Oleafly, așa că rămâne previzualizarea anterioară. Compilează din nou ca s-o actualizezi.",
     "retry": "Compilează din nou",
+    "superseded": "O compilare mai nouă a înlocuit-o pe aceasta.",
+    "syntaxCheckFailed": "Verificarea sintaxei a găsit erori. Corectează-le sau dezactivează „{{setting}}”.",
+    "taggedFailed": "Compilarea cu etichetare a eșuat: {{message}}",
+    "taggedPdfChanged": "PDF-ul etichetat s-a schimbat cât timp îl citea Oleafly, așa că rămâne previzualizarea anterioară. Compilează din nou ca s-o actualizezi.",
+    "taggedPdfInvalid": "Compilarea cu etichetare nu a produs un PDF valid.",
+    "tinytexDownloading": "TinyTeX se mai descarcă. Această compilare pornește automat când se termină.",
+    "sharedTexEditor": "Acest proiect este partajat, așa că trecerea la Tectonic îl schimbă pentru toți. Instalarea TinyTeX schimbă doar acest computer.",
+    "sharedTexViewer": "Nu poți schimba compilatorul acestui proiect partajat, așa că instalează TinyTeX ca să-l compilezi aici.",
     "bundleFetchFailed": "Oleafly nu a putut descărca pachetele TeX de care are nevoie acest document. Verifică conexiunea și compilează din nou.",
+    "offlineNotCached": "Modul offline este pornit, iar {{files}} ar putea să nu fie încă descărcate. Oprește modul offline și compilează din nou.",
+    "offlineNotCachedUnnamed": "Modul offline este pornit, iar un pachet TeX de care are nevoie documentul ar putea să nu fie încă descărcat. Oprește modul offline și compilează din nou.",
+    "goOnlineAndCompile": "Oprește și compilează",
     "typstMissing": "Typst {{version}} nu este instalat. Descarcă-l sau comută acest proiect pe altă versiune.",
     "typstPackage": {
       "downloadFailed": "Typst nu a putut descărca {{spec}}. Verifică conexiunea la internet și compilează din nou.",
@@ -171,9 +186,24 @@
     "pdfFailedDetail": "PDF-ul nu a putut fi salvat: {{detail}}",
     "pngFailed": "Fișierul PNG nu a putut fi salvat",
     "pngFailedDetail": "Fișierul PNG nu a putut fi salvat: {{detail}}",
+    "projectChanged": "Proiectul deschis s-a schimbat. Pornește din nou exportul din proiectul pe care vrei să-l salvezi.",
     "revealFailed": "Fișierul a fost salvat, dar folderul lui nu a putut fi deschis.",
     "saved": "{{kind}} salvat · {{fileName}}",
-    "showInFolder": "Arată în folder"
+    "savedAfterFailedCompile": "{{kind}} salvat · {{fileName}}. Ultima compilare a eșuat, așa că este posibil ca acest fișier să fie incomplet.",
+    "savedSource": "{{kind}} salvat · {{fileName}}. Dacă folosește imagini sau bibliografii din proiectul tău, copiază-le lângă el înainte să compilezi.",
+    "savedStale": "{{kind}} salvat · {{fileName}}. Provine din ultima compilare și nu include cele mai recente modificări ale tale.",
+    "savedWithoutContent": "{{kind}} salvat · {{fileName}}. Lipsește o parte din conținut, deoarece Typst nu îl poate scrie în acest format: {{elements}}.",
+    "savedFromSource": "{{kind}} salvat · {{fileName}}. Typst {{version}} nu poate scrie tot documentul în acest format, așa că fișierul a fost construit din sursă. Este posibil să lipsească textul rotit, scalat, mutat sau înclinat. Treci proiectul la Typst 0.15 sau mai nou ca să păstrezi acel text.",
+    "savedWithoutEquations": "{{kind}} salvat · {{fileName}}. Este posibil să lipsească ecuațiile, imaginile, notele de subsol sau referințele, deoarece Typst {{version}} nu le poate scrie în acest format. Treci proiectul la Typst 0.15 sau mai nou.",
+    "savedWithWarnings_one": "{{kind}} salvat · {{fileName}}, cu {{count}} avertisment.",
+    "savedWithWarnings_few": "{{kind}} salvat · {{fileName}}, cu {{count}} avertismente.",
+    "savedWithWarnings_other": "{{kind}} salvat · {{fileName}}, cu {{count}} de avertismente.",
+    "savedWithoutLinks_one": "{{kind}} salvat · {{fileName}}. {{count}} legătură simbolică a fost lăsată în afara arhivei.",
+    "savedWithoutLinks_few": "{{kind}} salvat · {{fileName}}. {{count}} legături simbolice au fost lăsate în afara arhivei.",
+    "savedWithoutLinks_other": "{{kind}} salvat · {{fileName}}. {{count}} de legături simbolice au fost lăsate în afara arhivei.",
+    "showInFolder": "Arată în folder",
+    "showWarnings": "Arată avertismentele",
+    "warningsTitle": "Avertismente la export"
   },
   "externalChange": {
     "reloadFailed": "Setările proiectului au fost actualizate, dar unele fișiere modificate nu au putut fi reîncărcate."
@@ -327,6 +357,13 @@
     "summary_one": "Compilarea nu a găsit „{{name}}”. Caută în TeX Live pachetul care îl oferă.",
     "summary_few": "Compilarea nu a găsit {{names}}. Caută în TeX Live pachetele lor.",
     "summary_other": "Compilarea nu a găsit {{names}}. Caută în TeX Live pachetele lor.",
+    "systemHint": {
+      "apt": "Găsește pachetul cu apt-file search {{name}} sau instalează tot cu sudo apt install texlive-full.",
+      "dnf": "Rulează {{command}}."
+    },
+    "systemManaged_one": "Compilarea nu a găsit „{{name}}”. Acest TeX Live vine cu distribuția ta Linux, așa că Oleafly nu poate adăuga pachete în el. {{hint}}",
+    "systemManaged_few": "Compilarea nu a găsit {{names}}. Acest TeX Live vine cu distribuția ta Linux, așa că Oleafly nu poate adăuga pachete în el. {{hint}}",
+    "systemManaged_other": "Compilarea nu a găsit {{names}}. Acest TeX Live vine cu distribuția ta Linux, așa că Oleafly nu poate adăuga pachete în el. {{hint}}",
     "userTree": "Arborele TeX de sistem este doar pentru citire, așa că pachetele au ajuns în arborele tău personal din {{path}}."
   },
   "models": {
@@ -377,6 +414,7 @@
   },
   "pandoc": {
     "downloadFailed": "Pandoc nu a putut fi descărcat. Instalează-l manual, apoi încearcă din nou.",
+    "downloadFailedDetail": "Pandoc nu a putut fi descărcat ({{detail}}). Instalează-l manual, apoi încearcă din nou.",
     "downloadingPercent": "Se descarcă pandoc… {{progress}}%",
     "downloadingSize": "Se descarcă pandoc… {{megabytes}} MB",
     "installGuide": "Ghid de instalare"
@@ -495,7 +533,7 @@
     "compileFailed": "Compilarea cu etichetare a eșuat. Verifică motorul și încearcă din nou.",
     "compiled": "PDF etichetat compilat. Vezi verdictul de accesibilitate mai jos.",
     "compiledWithErrors": "Compilarea cu etichetare s-a încheiat cu erori. Verifică jurnalul.",
-    "engineRequired": "Activează întâi un motor cu etichetare din Setări, Motor LaTeX."
+    "engineRequired": "Instalează TinyTeX din Setări > Motoare > LaTeX ca să creezi PDF-uri etichetate."
   },
   "terminal": {
     "defaultTitle": "Terminalul {{index}}"
@@ -542,6 +580,7 @@
   "tinytex": {
     "installFailed": "TinyTeX nu a putut fi instalat.",
     "installGuide": "Ghid de instalare",
+    "tryAgain": "Încearcă din nou",
     "installed": "TinyTeX a fost instalat.",
     "phase": {
       "addingPackages": "Se adaugă pachete…",

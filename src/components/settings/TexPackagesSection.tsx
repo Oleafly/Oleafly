@@ -91,16 +91,21 @@ export function TexPackagesSection() {
   const toggleLabel = (on: boolean): string =>
     on ? t(($) => $.common.actions.remove) : t(($) => $.common.actions.add);
 
+  const intro = (): string => {
+    if (available) return t(($) => $.settings.engine.packages.intro.available);
+    const manager = info?.system_package_manager;
+    if (!manager) return t(($) => $.settings.engine.packages.intro.unavailable);
+    return info?.tex_complete
+      ? t(($) => $.settings.engine.packages.intro.systemManaged, { manager })
+      : t(($) => $.settings.engine.packages.intro.systemManagedTinytex, { manager });
+  };
+
   return (
     <section aria-label={t(($) => $.settings.engine.packages.ariaLabel)}>
       <SectionHeading className="mb-2">
         {t(($) => $.settings.engine.packages.heading)}
       </SectionHeading>
-      <p className="mb-2 text-xs text-muted-foreground">
-        {available
-          ? t(($) => $.settings.engine.packages.intro.available)
-          : t(($) => $.settings.engine.packages.intro.unavailable)}
-      </p>
+      <p className="mb-2 text-xs text-muted-foreground">{intro()}</p>
       <form
         className="mb-2 flex gap-2"
         onSubmit={(event) => {

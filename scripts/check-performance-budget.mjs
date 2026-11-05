@@ -193,10 +193,10 @@ const limits = {
   // +30 KB for icon packs: a pack wrapper for each app icon, most of it in the
   // entry, the Icon pack card in Appearance with the Color pack's download and
   // checks, and the 8-icon preview. It measured 24.6 KB above main at
-  // e5d783a58; merged with main at 3d676a487 the total is 21,125,806 bytes on
+  // e5d783a58; merged with main at f7fd35189 the total is 21,204,626 bytes on
   // macOS.
-  totalJavaScript: 21_140_000,
-  largestLocaleChunk: 950_000,
+  totalJavaScript: 21_230_000,
+  largestLocaleChunk: 980_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

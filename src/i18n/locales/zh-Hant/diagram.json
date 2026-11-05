@@ -38,6 +38,7 @@
       "compile": "編譯",
       "recompile": "重新編譯",
       "compiling": "編譯中…",
+      "stop": "停止",
       "saveTooltip": "儲存這個圖表",
       "save": "儲存",
       "saveToProject": "儲存到專案",

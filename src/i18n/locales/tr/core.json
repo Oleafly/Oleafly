@@ -56,9 +56,24 @@
     "undo": "Geri al"
   },
   "compile": {
+    "failedWithReason": "Derleme başarısız oldu: {{message}}",
     "noOfflineMode": "{{engine}} çevrimdışı derleyici kipi sunmuyor. Normal biçimde derleniyor.",
+    "pandocRequired": "Pandoc kullanılamıyor. Ayarlar > Motorlar > Markdown bölümünden onarın, sonra yeniden derleyin.",
+    "pandocSetupFailed": "Pandoc kurulumu başarısız oldu: {{message}}",
+    "pdfChanged": "Derlenen PDF, Oleafly onu okurken değişti, bu yüzden önceki önizleme kalıyor. Güncellemek için yeniden derleyin.",
     "retry": "Yeniden derle",
+    "superseded": "Daha yeni bir derleme bunun yerini aldı.",
+    "syntaxCheckFailed": "Söz dizimi denetimi hatalar buldu. Bunları düzeltin ya da “{{setting}}” seçeneğini kapatın.",
+    "taggedFailed": "Etiketli derleme başarısız oldu: {{message}}",
+    "taggedPdfChanged": "Etiketli PDF, Oleafly onu okurken değişti, bu yüzden önceki önizleme kalıyor. Güncellemek için yeniden derleyin.",
+    "taggedPdfInvalid": "Etiketli derleme geçerli bir PDF üretmedi.",
+    "tinytexDownloading": "TinyTeX hâlâ indiriliyor. Bu derleme, indirme bitince otomatik olarak başlar.",
+    "sharedTexEditor": "Bu proje paylaşılıyor, bu yüzden Tectonic'e geçmek projeyi herkes için değiştirir. TinyTeX'i kurmak yalnızca bu bilgisayarı etkiler.",
+    "sharedTexViewer": "Bu paylaşılan projenin derleyicisini değiştiremezsiniz, bu yüzden burada derlemek için TinyTeX'i kurun.",
     "bundleFetchFailed": "Oleafly, bu belgenin ihtiyaç duyduğu TeX paketlerini indiremedi. Bağlantınızı denetleyip yeniden derleyin.",
+    "offlineNotCached": "Çevrimdışı kip açık ve {{files}} henüz indirilmemiş olabilir. Çevrimdışı kipi kapatıp yeniden derleyin.",
+    "offlineNotCachedUnnamed": "Çevrimdışı kip açık ve bu belgenin ihtiyaç duyduğu bir TeX paketi henüz indirilmemiş olabilir. Çevrimdışı kipi kapatıp yeniden derleyin.",
+    "goOnlineAndCompile": "Kapat ve derle",
     "typstMissing": "Typst {{version}} kurulu değil. İndirin veya bu projeyi başka bir sürüme geçirin.",
     "typstPackage": {
       "downloadFailed": "Typst {{spec}} paketini indiremedi. İnternet bağlantınızı denetleyip yeniden derleyin.",
@@ -169,9 +184,22 @@
     "pdfFailedDetail": "PDF kaydedilemedi: {{detail}}",
     "pngFailed": "PNG kaydedilemedi",
     "pngFailedDetail": "PNG kaydedilemedi: {{detail}}",
+    "projectChanged": "Açık proje değişti. Dışa aktarmayı, kaydetmek istediğiniz projeden yeniden başlatın.",
     "revealFailed": "Dosya kaydedildi, ancak klasörü açılamadı.",
     "saved": "{{kind}} kaydedildi · {{fileName}}",
-    "showInFolder": "Klasörde göster"
+    "savedAfterFailedCompile": "{{kind}} kaydedildi · {{fileName}}. Son derleme başarısız olduğu için bu dosya eksik olabilir.",
+    "savedSource": "{{kind}} kaydedildi · {{fileName}}. Projenizdeki görselleri veya kaynakçaları kullanıyorsa, derlemeden önce bunları dosyanın yanına kopyalayın.",
+    "savedStale": "{{kind}} kaydedildi · {{fileName}}. Son derlemeden geliyor ve en son düzenlemelerinizi içermiyor.",
+    "savedWithoutContent": "{{kind}} kaydedildi · {{fileName}}. Typst bu biçime yazamadığı için bazı içerik eksik: {{elements}}.",
+    "savedFromSource": "{{kind}} kaydedildi · {{fileName}}. Typst {{version}} bu belgenin tamamını bu biçime yazamadığı için dosya kaynaktan oluşturuldu. Döndürülmüş, ölçeklenmiş, taşınmış veya eğilmiş metin eksik olabilir. Bu metni korumak için projeyi Typst 0.15 veya daha yeni bir sürüme geçirin.",
+    "savedWithoutEquations": "{{kind}} kaydedildi · {{fileName}}. Typst {{version}} bunları bu biçime yazamadığı için denklemler, görseller, dipnotlar veya başvurular eksik olabilir. Projeyi Typst 0.15 veya daha yeni bir sürüme geçirin.",
+    "savedWithWarnings_one": "{{kind}} kaydedildi · {{fileName}}, {{count}} uyarıyla.",
+    "savedWithWarnings_other": "{{kind}} kaydedildi · {{fileName}}, {{count}} uyarıyla.",
+    "savedWithoutLinks_one": "{{kind}} kaydedildi · {{fileName}}. {{count}} sembolik bağlantı arşive eklenmedi.",
+    "savedWithoutLinks_other": "{{kind}} kaydedildi · {{fileName}}. {{count}} sembolik bağlantı arşive eklenmedi.",
+    "showInFolder": "Klasörde göster",
+    "showWarnings": "Uyarıları göster",
+    "warningsTitle": "Dışa aktarma uyarıları"
   },
   "externalChange": {
     "reloadFailed": "Proje ayarları güncellendi, ancak değişen bazı dosyalar yeniden yüklenemedi."
@@ -321,6 +349,12 @@
     "installing_other": "{{count}} paket kuruluyor. Bittiklerinde derleme yeniden başlar.",
     "summary_one": "Derleme \"{{name}}\" dosyasını bulamadı. TeX Live içinde onu sağlayan paketi arayın.",
     "summary_other": "Derleme {{names}} dosyalarını bulamadı. TeX Live içinde paketlerini arayın.",
+    "systemHint": {
+      "apt": "Paketini apt-file search {{name}} ile bulun ya da her şeyi sudo apt install texlive-full ile kurun.",
+      "dnf": "{{command}} komutunu çalıştırın."
+    },
+    "systemManaged_one": "Derleme \"{{name}}\" dosyasını bulamadı. Bu TeX Live, Linux dağıtımınızla birlikte geldiği için Oleafly ona paket ekleyemez. {{hint}}",
+    "systemManaged_other": "Derleme {{names}} dosyalarını bulamadı. Bu TeX Live, Linux dağıtımınızla birlikte geldiği için Oleafly ona paket ekleyemez. {{hint}}",
     "userTree": "Sistem TeX ağacı salt okunur olduğundan paketler {{path}} konumundaki kişisel ağacınıza kuruldu."
   },
   "models": {
@@ -369,6 +403,7 @@
   },
   "pandoc": {
     "downloadFailed": "pandoc indirilemedi. Elle kurup yeniden deneyin.",
+    "downloadFailedDetail": "pandoc indirilemedi ({{detail}}). Elle kurup yeniden deneyin.",
     "downloadingPercent": "pandoc indiriliyor… %{{progress}}",
     "downloadingSize": "pandoc indiriliyor… {{megabytes}} MB",
     "installGuide": "Kurulum kılavuzu"
@@ -481,7 +516,7 @@
     "compileFailed": "Etiketli derleme başarısız oldu. Motoru denetleyip yeniden deneyin.",
     "compiled": "Etiketli PDF derlendi. Erişilebilirlik sonucunu aşağıda görebilirsiniz.",
     "compiledWithErrors": "Etiketli derleme hatalarla bitti. Günlüğe bakın.",
-    "engineRequired": "Önce Ayarlar'daki LaTeX Motoru bölümünden bir etiketleme motoru etkinleştirin."
+    "engineRequired": "Etiketli PDF oluşturmak için TinyTeX'i Ayarlar > Motorlar > LaTeX bölümünden kurun."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -528,6 +563,7 @@
   "tinytex": {
     "installFailed": "TinyTeX kurulamadı.",
     "installGuide": "Kurulum kılavuzu",
+    "tryAgain": "Yeniden dene",
     "installed": "TinyTeX kuruldu.",
     "phase": {
       "addingPackages": "Paketler ekleniyor…",

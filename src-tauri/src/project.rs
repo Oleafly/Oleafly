@@ -6442,14 +6442,21 @@ fn checkpoint_project_ids() -> Result<HashSet<String>, String> {
 pub async fn export_pdf(
     project_id: String,
     dest: String,
+    data_base64: Option<String>,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
     crate::path_grants::require_save(&dest)?;
+    let bytes = data_base64
+        .as_deref()
+        .map(crate::commands::decode_b64)
+        .transpose()?;
     let staged_project = project_id.clone();
     let staged_dest = dest.clone();
-    tauri::async_runtime::spawn_blocking(move || stage_exported_pdf(&staged_project, &staged_dest))
-        .await
-        .map_err(|error| format!("failed to export PDF: {error}"))??;
+    tauri::async_runtime::spawn_blocking(move || {
+        stage_exported_pdf(&staged_project, &staged_dest, bytes.as_deref())
+    })
+    .await
+    .map_err(|error| format!("failed to export PDF: {error}"))??;
 
     if let Ok(canon) = std::path::Path::new(&dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
@@ -6463,21 +6470,29 @@ pub async fn export_pdf(
     Ok(())
 }
 
-fn stage_exported_pdf(project_id: &str, dest: &str) -> Result<(), String> {
+fn stage_exported_pdf(project_id: &str, dest: &str, bytes: Option<&[u8]>) -> Result<(), String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     let root = paths::project_dir(project_id)?;
     require_export_destination_outside_project(&root, dest)?;
     let transaction = AtomicFile::for_export(dest)?;
-    let meta = read_meta(project_id)?;
-    let pdf = crate::document_engine::existing_compiled_pdf_path(
-        project_id,
-        &meta.engine,
-        &meta.main_doc,
-    )?
-    .filter(|pdf| pdf.exists())
-    .ok_or_else(|| "No compiled PDF found - recompile first.".to_string())?;
-    std::fs::copy(&pdf, transaction.staging_path())
-        .map_err(|e| format!("failed to stage PDF: {e}"))?;
+    let staged = match bytes {
+        Some(bytes) => std::fs::write(transaction.staging_path(), bytes),
+        None => {
+            let meta = read_meta(project_id)?;
+            crate::document_engine::existing_compiled_pdf_path(
+                project_id,
+                &meta.engine,
+                &meta.main_doc,
+            )?
+            .filter(|pdf| pdf.is_file())
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))
+            .and_then(|pdf| std::fs::copy(pdf, transaction.staging_path()))
+            .map(|_| ())
+        }
+    };
+    staged.map_err(|error| {
+        String::from(crate::app_error::AppError::new("export.stage_failed").detail(error))
+    })?;
     transaction.commit()
 }
 
@@ -6547,6 +6562,7 @@ async fn notebook_export_lane<'a>(
 /// a self-contained HTML file, a table of contents for EPUB). Errors clearly if
 /// pandoc isn't installed.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn export_document(
     app: tauri::AppHandle,
     project_id: String,
@@ -6555,15 +6571,18 @@ pub async fn export_document(
     dest: String,
     state: tauri::State<'_, crate::state::AppState>,
     typst_variant: Option<String>,
-) -> Result<(), String> {
+    offline: Option<bool>,
+) -> Result<ExportOutcome, String> {
     let reveal_dest = dest.clone();
+    let mut notes = oleafly_core::typst_html::TypstHtmlNotes::default();
+    let mut warnings = Vec::new();
     crate::path_grants::require_save(&dest)?;
     guard_export_dest(&dest)?;
     let compile_lane = notebook_export_lane(state.inner(), &project_id).await?;
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = read_meta(&project_id)?;
     if meta.main_doc != main_doc && !is_tex_root_override(&project_id, &meta, &main_doc) {
-        return Err("The main document changed. Reopen the export menu and try again.".into());
+        return Err(crate::app_error::AppError::new("export.main_document_changed").into());
     }
     validate_conversion_export(&meta, &format, &dest)?;
     let location = crate::project_location::locate(&project_id).map_err(String::from)?;
@@ -6572,7 +6591,7 @@ pub async fn export_document(
     require_export_destination_outside_project(&root, &dest)?;
     if crate::document_engine::exports_through_engine(&meta.engine, &meta.main_doc) {
         if compile_lane.is_none() {
-            return Err("The main document changed. Reopen the export menu and try again.".into());
+            return Err(crate::app_error::AppError::new("export.main_document_changed").into());
         }
         crate::document_engine::require_notebook_trust(&project_id, &meta.engine, &meta.main_doc)?;
         let effective = crate::trust::restrict_compile_meta(&project_id, meta.clone())?;
@@ -6600,34 +6619,53 @@ pub async fn export_document(
         let transaction = AtomicFile::for_export(&dest)?;
         let staged_dest = transaction.staging_path().to_string_lossy().into_owned();
         let build_dir = crate::paths::existing_build_dir(&project_id).ok().flatten();
-        let staging_dir = crate::conversion::export_renders_citations(&format)
-            .then(|| export_staging_dir(&location))
-            .flatten();
-        let through_html = crate::typst_export::convert_through_html(
-            &project_id,
-            &root,
-            &main_doc,
-            &format,
-            Path::new(&pandoc),
-            &staged_dest,
-            typst_variant,
-        )
-        .await;
-        if !matches!(through_html, Ok(true)) {
-            run_export_pandoc(
-                Path::new(&pandoc),
-                ExportJob {
-                    root: &root,
-                    build_dir,
-                    main_doc: &main_doc,
-                    format: &format,
-                    output: &staged_dest,
-                    staging_dir,
-                    temp_dir: None,
-                },
-            )
-            .await
-            .map_err(|error| through_html.err().unwrap_or(error))?;
+        let staging_dir = export_staging_dir(&location);
+        let html_export = crate::typst_export::HtmlExport {
+            project_id: &project_id,
+            root: &root,
+            main_doc: &main_doc,
+            format: &format,
+            pandoc: Path::new(&pandoc),
+            output: &staged_dest,
+            destination: Path::new(&dest),
+            variant: typst_variant,
+            offline: offline.unwrap_or(false),
+        };
+        match crate::typst_export::convert_through_html(&html_export).await {
+            Ok(crate::typst_export::HtmlRoute::Converted(html_notes)) => notes = html_notes,
+            through_html => {
+                let reader_media =
+                    crate::typst_export::ReaderMedia::for_export(&html_export, &meta).await?;
+                let reader = run_export_with_media(
+                    Path::new(&pandoc),
+                    ExportJob {
+                        root: &root,
+                        build_dir,
+                        main_doc: &main_doc,
+                        format: &format,
+                        output: &staged_dest,
+                        staging_dir,
+                        temp_dir: None,
+                    },
+                    reader_media
+                        .as_ref()
+                        .map(crate::typst_export::ReaderMedia::source_media),
+                )
+                .await;
+                match (reader, through_html) {
+                    (Ok(found), through_html) => {
+                        warnings = found;
+                        notes = crate::typst_export::notes_after_reader(&through_html);
+                        if let Some(media) = &reader_media {
+                            media.publish(&html_export).await?;
+                        }
+                    }
+                    (Err(_), Ok(crate::typst_export::HtmlRoute::Lossy(staged))) => {
+                        notes = staged.convert(&html_export).await?;
+                    }
+                    (Err(error), through_html) => return Err(through_html.err().unwrap_or(error)),
+                }
+            }
         }
         transaction.commit()?;
     }
@@ -6661,7 +6699,15 @@ pub async fn export_document(
         }
         write_meta(&project_id, &meta)
     });
-    Ok(())
+    Ok(ExportOutcome { notes, warnings })
+}
+
+#[derive(Serialize, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportOutcome {
+    #[serde(flatten)]
+    pub notes: oleafly_core::typst_html::TypstHtmlNotes,
+    pub warnings: Vec<String>,
 }
 
 struct ExportJob<'a> {
@@ -6704,7 +6750,20 @@ fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
     oleafly_doctools::export::export_search_path(root, main_doc)
 }
 
-async fn run_export_pandoc(pandoc: &Path, job: ExportJob<'_>) -> Result<(), String> {
+fn export_typst() -> Option<PathBuf> {
+    crate::document_engine::resolve_bundled_sidecar("typst").ok()
+}
+
+#[cfg(test)]
+async fn run_export_pandoc(pandoc: &Path, job: ExportJob<'_>) -> Result<Vec<String>, String> {
+    run_export_with_media(pandoc, job, None).await
+}
+
+async fn run_export_with_media(
+    pandoc: &Path,
+    job: ExportJob<'_>,
+    media: Option<oleafly_doctools::typst_html::SourceMedia<'_>>,
+) -> Result<Vec<String>, String> {
     let shared = oleafly_doctools::export::ExportJob {
         root: job.root,
         build_dir: job.build_dir,
@@ -6713,24 +6772,17 @@ async fn run_export_pandoc(pandoc: &Path, job: ExportJob<'_>) -> Result<(), Stri
         output: job.output,
         staging_dir: job.staging_dir,
         temp_dir: job.temp_dir,
+        typst: export_typst(),
     };
-    oleafly_doctools::export::run_export_pandoc(&AppToolRunner, pandoc, shared)
+    oleafly_doctools::export::run_export_with_media(&AppToolRunner, pandoc, shared, media)
         .await
-        .map_err(|error| {
-            if error.code == "export.bibliography_unreadable" {
-                let mut app = crate::app_error::AppError::new(error.code);
-                for (key, value) in &error.params {
-                    app = if *key == "detail" {
-                        app.detail(value)
-                    } else {
-                        app.param(key, value)
-                    };
-                }
-                app.into()
-            } else {
-                error.message
-            }
+        .map(|warnings| {
+            warnings
+                .iter()
+                .map(crate::pandoc_citations::coded_export_error)
+                .collect()
         })
+        .map_err(|error| crate::pandoc_citations::coded_export_error(&error))
 }
 
 fn export_would_write_inside_project(project_root: &Path, destination: &str) -> bool {
@@ -6758,7 +6810,7 @@ pub(crate) fn require_export_destination_outside_project(
     destination: &str,
 ) -> Result<(), String> {
     if export_would_write_inside_project(project_root, destination) {
-        return Err("Choose an export destination outside this project.".into());
+        return Err(crate::app_error::AppError::new("export.inside_project").into());
     }
     Ok(())
 }
@@ -6769,7 +6821,9 @@ fn validate_conversion_export(
     dest: &str,
 ) -> Result<&'static str, String> {
     let Some((writer, extension)) = crate::conversion::export_writer(format) else {
-        return Err(format!("unsupported export format: {format}"));
+        return Err(crate::app_error::AppError::new("export.unsupported_format")
+            .param("format", format)
+            .into());
     };
     if !Path::new(dest)
         .extension()
@@ -6777,7 +6831,11 @@ fn validate_conversion_export(
         .map(|value| value.eq_ignore_ascii_case(extension))
         .unwrap_or(false)
     {
-        return Err(format!("export destination must end in .{extension}"));
+        return Err(
+            crate::app_error::AppError::new("export.destination_extension")
+                .param("extension", extension)
+                .into(),
+        );
     }
     let descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     if !descriptor
@@ -6786,7 +6844,10 @@ fn validate_conversion_export(
         .iter()
         .any(|candidate| candidate.as_str() == format)
     {
-        return Err(format!("{} cannot export {format}", descriptor.label));
+        return Err(crate::app_error::AppError::new("export.format_not_offered")
+            .param("engine", &descriptor.label)
+            .param("format", format)
+            .into());
     }
     Ok(writer)
 }
@@ -6841,9 +6902,7 @@ async fn create_project_from_pandoc_source(
     let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| {
-            "pandoc is not installed. Install pandoc to import this document.".to_string()
-        })?;
+        .ok_or_else(|| String::from(crate::app_error::AppError::new("tools.pandoc_missing")))?;
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let staging = create_unique_temporary_directory(&root, ".oleafly-document-import")?;
@@ -6854,13 +6913,19 @@ async fn create_project_from_pandoc_source(
             atomic_write(&staging.join(file_name), contents)
                 .map_err(|e| format!("failed to write {file_name}: {e}"))?;
         }
+        crate::conversion::stage_import_filter(&staging)?;
         let (log, code) =
             crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &staging)
                 .await?;
         if code != Some(0) {
-            return Err(format!("pandoc failed: {}", log.trim()));
+            return Err(crate::app_error::AppError::new("project.import_failed")
+                .detail(crate::pandoc_citations::failure_detail(&log))
+                .into());
         }
         let _ = std::fs::remove_file(staging.join(&source_name));
+        let _ = std::fs::remove_file(
+            staging.join(oleafly_core::engine_spec::DEFAULT_FONTS_FILTER_NAME),
+        );
         if main_doc.ends_with(".typ") {
             apply_typst_fixup(&staging.join(&main_doc))?;
         }
@@ -7256,9 +7321,11 @@ async fn download_pandoc_impl(
     drop(staging_file);
     let mut command = std::process::Command::new(&staging);
     command.arg("--version");
-    let version =
-        crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
-            .map_err(|e| format!("Downloaded Pandoc failed to run: {e}"))?;
+    let version = crate::proc::output_contained_with_timeout(
+        command,
+        oleafly_core::pandoc::SHIPPED_PANDOC_TIMEOUT,
+    )
+    .map_err(|e| format!("Downloaded Pandoc failed to run: {e}"))?;
     if !version.status.success()
         || !String::from_utf8_lossy(&version.stdout).starts_with("pandoc 3.9.0.2")
     {
@@ -7823,10 +7890,35 @@ pub(crate) async fn search_project_bounded(
     result
 }
 
+#[derive(Serialize, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectZipReport {
+    pub skipped_links: usize,
+}
+
+fn archived_project_meta(path: &Path) -> Option<Vec<u8>> {
+    let raw = std::fs::read(path).ok()?;
+    let mut meta: serde_json::Value = serde_json::from_slice(&raw).ok()?;
+    let fields = meta.as_object_mut()?;
+    fields.insert("exports".into(), serde_json::Value::Array(Vec::new()));
+    fields.remove("forked_from");
+    serde_json::to_vec_pretty(&meta).ok()
+}
+
 #[tauri::command]
-pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
+pub async fn download_project_zip(
+    project_id: String,
+    dest: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<ProjectZipReport, String> {
+    let report = write_project_zip(project_id, dest.clone()).await?;
+    crate::commands::allow_reveal_export(&dest, &state).await;
+    Ok(report)
+}
+
+async fn write_project_zip(project_id: String, dest: String) -> Result<ProjectZipReport, String> {
     crate::path_grants::require_save(&dest)?;
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<ProjectZipReport, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let root = paths::project_dir(&project_id)?;
         require_export_destination_outside_project(&root, &dest)?;
@@ -7836,10 +7928,16 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
         let opts = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated);
 
+        struct ZipWalk<'a> {
+            base: &'a Path,
+            library: bool,
+            report: ProjectZipReport,
+        }
+
         fn add_dir(
             writer: &mut zip::ZipWriter<std::fs::File>,
             opts: zip::write::SimpleFileOptions,
-            base: &Path,
+            walk: &mut ZipWalk<'_>,
             dir: &Path,
             depth: usize,
         ) -> Result<(), String> {
@@ -7860,30 +7958,45 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
                     Err(_) => continue,
                 };
                 if ft.is_symlink() {
+                    walk.report.skipped_links += 1;
                     continue;
                 }
                 let path = entry.path();
-                let rel = path.strip_prefix(base).unwrap_or(&path);
+                let rel = path.strip_prefix(walk.base).unwrap_or(&path);
                 let zip_name = rel.to_string_lossy().replace('\\', "/");
                 if ft.is_dir() {
                     writer
                         .add_directory(&zip_name, opts)
                         .map_err(|e| e.to_string())?;
-                    add_dir(writer, opts, base, &path, depth + 1)?;
+                    add_dir(writer, opts, walk, &path, depth + 1)?;
                 } else {
                     writer
                         .start_file(&zip_name, opts)
                         .map_err(|e| e.to_string())?;
-                    let mut f = std::fs::File::open(&path).map_err(|e| e.to_string())?;
-                    std::io::copy(&mut f, writer).map_err(|e| e.to_string())?;
+                    let manifest = name_str == crate::project_location::MANIFEST_FILE;
+                    let archived = (walk.library && depth == 0 && manifest)
+                        .then(|| archived_project_meta(&path))
+                        .flatten();
+                    if let Some(meta) = archived {
+                        std::io::Write::write_all(writer, &meta).map_err(|e| e.to_string())?;
+                    } else {
+                        let mut f = std::fs::File::open(&path).map_err(|e| e.to_string())?;
+                        std::io::copy(&mut f, writer).map_err(|e| e.to_string())?;
+                    }
                 }
             }
             Ok(())
         }
 
-        add_dir(&mut writer, opts, &root, &root, 0)?;
+        let mut walk = ZipWalk {
+            base: &root,
+            library: crate::project_location::kind_of(&project_id)? == ProjectKind::Library,
+            report: ProjectZipReport::default(),
+        };
+        add_dir(&mut writer, opts, &mut walk, &root, 0)?;
         writer.finish().map_err(|e| e.to_string())?;
-        transaction.commit()
+        transaction.commit()?;
+        Ok(walk.report)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -8363,20 +8476,19 @@ mod tests {
         create_image_project_in, create_markdown_project_in, create_path_in_project,
         create_project_from_ad_hoc_blocking, create_project_from_pdf_conversion_blocking,
         create_project_transaction, create_typst_project_in, declared_template_engine,
-        download_project_zip, duplicate_project, engine_for_main_document,
-        engine_for_untrusted_project, engine_runs_notebook_code, engine_runs_project_code,
-        export_would_write_inside_project, extract_pandoc, flatten_single_root_folder,
-        get_or_create_scratch_project_blocking, import_paths_transactional,
-        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, is_table_import_extension, normalize_loaded_tex_flavor,
-        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta,
-        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
-        safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
-        try_reserve_project_directory, try_reserve_project_directory_adopting,
-        validate_conversion_export, validate_tex_flavor, write_meta_at, AdHocProjectFile,
-        CreateAdHocProjectRequest, CreateFileResult, FileConflictStrategy, MutationScope,
-        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
-        TABLE_IMPORT_ALLOWLIST_LIMIT,
+        duplicate_project, engine_for_main_document, engine_for_untrusted_project,
+        engine_runs_notebook_code, engine_runs_project_code, export_would_write_inside_project,
+        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
+        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
+        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
+        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
+        rename_path_in_project, safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized,
+        set_main_doc_unlocked, try_reserve_project_directory,
+        try_reserve_project_directory_adopting, validate_conversion_export, validate_tex_flavor,
+        write_meta_at, write_project_zip, AdHocProjectFile, CreateAdHocProjectRequest,
+        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -12962,7 +13074,7 @@ mod tests {
         std::fs::write(&destination, b"previous archive").unwrap();
         crate::path_grants::grant(crate::path_grants::Access::Save, &destination);
 
-        let error = download_project_zip(
+        let error = write_project_zip(
             project_id.into(),
             destination.to_string_lossy().into_owned(),
         )
@@ -12996,14 +13108,120 @@ mod tests {
         std::fs::write(&destination, "source").unwrap();
         crate::path_grants::grant(crate::path_grants::Access::Save, &destination);
 
-        let error = download_project_zip(
+        let error = write_project_zip(
             project_id.into(),
             destination.to_string_lossy().into_owned(),
         )
         .await
         .unwrap_err();
-        assert_eq!(error, "Choose an export destination outside this project.");
+        assert_eq!(
+            crate::app_error::english(&error).as_deref(),
+            Some("Choose an export destination outside this project.")
+        );
         assert_eq!(std::fs::read_to_string(&destination).unwrap(), "source");
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    fn zip_entries(path: &std::path::Path) -> std::collections::BTreeMap<String, String> {
+        let file = std::fs::File::open(path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut entries = std::collections::BTreeMap::new();
+        for index in 0..archive.len() {
+            let mut entry = archive.by_index(index).unwrap();
+            if entry.is_dir() {
+                continue;
+            }
+            let mut text = String::new();
+            std::io::Read::read_to_string(&mut entry, &mut text).unwrap();
+            entries.insert(entry.name().unwrap().into_owned(), text);
+        }
+        entries
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn zip_export_leaves_past_export_paths_out_of_the_library_manifest() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("zip-export-manifest");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "zip-manifest";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(project.join("chapters")).unwrap();
+        std::fs::write(project.join("main.tex"), "source").unwrap();
+        std::fs::write(project.join("chapters").join("project.json"), "{\"own\":1}").unwrap();
+        std::fs::write(
+            project.join("project.json"),
+            serde_json::json!({
+                "name": "Paper",
+                "main_doc": "main.tex",
+                "engine": "typst",
+                "forked_from": "Earlier paper",
+                "exports": [{ "date": 1.0, "filename": "a.pdf", "path": "/Users/ada/Desktop/a.pdf" }],
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let destination = outside.path().join("paper.zip");
+        crate::path_grants::grant(crate::path_grants::Access::Save, &destination);
+
+        let report = write_project_zip(
+            project_id.into(),
+            destination.to_string_lossy().into_owned(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(report.skipped_links, 0);
+        let entries = zip_entries(&destination);
+        let manifest: serde_json::Value = serde_json::from_str(&entries["project.json"]).unwrap();
+        assert_eq!(manifest["exports"], serde_json::json!([]));
+        assert!(manifest.get("forked_from").is_none());
+        assert_eq!(manifest["engine"], "typst");
+        assert_eq!(manifest["main_doc"], "main.tex");
+        assert_eq!(entries["chapters/project.json"], "{\"own\":1}");
+        assert_eq!(entries["main.tex"], "source");
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn zip_export_counts_the_links_it_leaves_out() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("zip-export-links");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "zip-links";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::write(project.join("main.tex"), "source").unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("figure.png"), "figure").unwrap();
+        std::os::unix::fs::symlink(
+            outside.path().join("figure.png"),
+            project.join("figure.png"),
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(outside.path(), project.join("figures")).unwrap();
+        let destination = outside.path().join("paper.zip");
+        crate::path_grants::grant(crate::path_grants::Access::Save, &destination);
+
+        let report = write_project_zip(
+            project_id.into(),
+            destination.to_string_lossy().into_owned(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(report.skipped_links, 2);
+        assert_eq!(
+            zip_entries(&destination).keys().collect::<Vec<_>>(),
+            vec!["main.tex"]
+        );
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
@@ -14322,12 +14540,95 @@ mod tests {
         std::fs::write(&destination, "source").unwrap();
 
         let error =
-            super::stage_exported_pdf(project_id, &destination.to_string_lossy()).unwrap_err();
-        assert_eq!(error, "Choose an export destination outside this project.");
+            super::stage_exported_pdf(project_id, &destination.to_string_lossy(), Some(b"%PDF"))
+                .unwrap_err();
+        assert_eq!(
+            crate::app_error::english(&error).as_deref(),
+            Some("Choose an export destination outside this project.")
+        );
         assert_eq!(std::fs::read_to_string(&destination).unwrap(), "source");
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn pdf_export_saves_the_bytes_it_was_given_whatever_the_build_folder_holds() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("pdf-export-bytes");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "pdf-export-bytes";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(project.join(".oleafly").join("build")).unwrap();
+        std::fs::write(
+            project
+                .join(".oleafly")
+                .join("build")
+                .join("_oleafly_entry.pdf"),
+            b"%PDF-truncated",
+        )
+        .unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let destination = outside.path().join("paper.pdf");
+
+        super::stage_exported_pdf(
+            project_id,
+            &destination.to_string_lossy(),
+            Some(b"%PDF-shown-in-preview"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            std::fs::read(&destination).unwrap(),
+            b"%PDF-shown-in-preview"
+        );
+
+        let meta = ProjectMeta {
+            engine: super::default_engine(),
+            main_doc: "main.tex".into(),
+            ..ProjectMeta::default()
+        };
+        super::write_meta(project_id, &meta).unwrap();
+        let copied = outside.path().join("copied.pdf");
+        super::stage_exported_pdf(project_id, &copied.to_string_lossy(), None).unwrap();
+        assert_eq!(std::fs::read(&copied).unwrap(), b"%PDF-truncated");
+
+        std::fs::remove_file(
+            project
+                .join(".oleafly")
+                .join("build")
+                .join("_oleafly_entry.pdf"),
+        )
+        .unwrap();
+        let missing = outside.path().join("missing.pdf");
+        let error =
+            super::stage_exported_pdf(project_id, &missing.to_string_lossy(), None).unwrap_err();
+        assert!(
+            error.contains("\"code\":\"export.stage_failed\""),
+            "{error}"
+        );
+        assert!(!missing.exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn conversion_exports_explain_a_destination_with_the_wrong_extension() {
+        let error = validate_conversion_export(
+            &ProjectMeta {
+                engine: "typst".into(),
+                main_doc: "main.typ".into(),
+                ..Default::default()
+            },
+            "docx",
+            "/tmp/paper",
+        )
+        .unwrap_err();
+        assert_eq!(
+            crate::app_error::english(&error).as_deref(),
+            Some("Name the file with a .docx extension, then export again.")
+        );
     }
 
     #[test]
@@ -14589,6 +14890,130 @@ mod tests {
     }
 
     #[test]
+    fn docx_export_keeps_the_bibliography_a_markdown_document_declares() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.md"),
+            "---\nbibliography: refs.json\n---\n\nCite [@csl1].\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.path().join("refs.json"),
+            r#"[{"id":"csl1","type":"book","title":"T","author":[{"family":"Doe"}],"issued":{"date-parts":[[2020]]}}]"#,
+        )
+        .unwrap();
+        std::fs::write(project.path().join("other.bib"), SMITH_BIB).unwrap();
+
+        let text = export_docx(&pandoc, project.path(), None, "main.md").unwrap();
+
+        assert!(text.contains("Cite (Doe 2020)"), "{text}");
+    }
+
+    #[test]
+    fn docx_export_of_markdown_ignores_a_broken_bibliography_it_does_not_cite() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("archive")).unwrap();
+        std::fs::write(
+            project.path().join("main.md"),
+            "We follow prior work [@smith2020].\n",
+        )
+        .unwrap();
+        std::fs::write(project.path().join("refs.bib"), SMITH_BIB).unwrap();
+        std::fs::write(
+            project.path().join("archive/old.bib"),
+            "@article{broken, title={A\n",
+        )
+        .unwrap();
+
+        let text = export_docx(&pandoc, project.path(), None, "main.md").unwrap();
+
+        assert!(text.contains("We follow prior work (Smith 2020)"), "{text}");
+    }
+
+    #[test]
+    fn docx_export_of_markdown_ignores_a_broken_bibliography_that_only_names_a_cited_key_in_a_field(
+    ) {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("archive")).unwrap();
+        std::fs::write(
+            project.path().join("main.md"),
+            "We follow prior work [@smith].\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.path().join("refs.bib"),
+            SMITH_BIB.replace("smith2020", "smith"),
+        )
+        .unwrap();
+        std::fs::write(
+            project.path().join("archive/old.bib"),
+            "@article{broken, author = {Smith, John}, title={A\n",
+        )
+        .unwrap();
+
+        let text = export_docx(&pandoc, project.path(), None, "main.md").unwrap();
+
+        assert!(text.contains("We follow prior work (Smith 2020)"), "{text}");
+    }
+
+    #[test]
+    fn docx_export_shows_a_saved_mermaid_figure_instead_of_its_source() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::create_dir_all(root.join("notes/figures")).unwrap();
+        std::fs::write(
+            root.join("notes/main.md"),
+            "```mermaid\nflowchart TD\n    A --> B\n```\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("notes/figures/mermaid-a8a349062462ae46.png"),
+            base64::Engine::decode(
+                &base64::engine::general_purpose::STANDARD,
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+        tauri::async_runtime::block_on(super::run_export_pandoc(
+            &pandoc,
+            super::ExportJob {
+                root,
+                build_dir: None,
+                main_doc: "notes/main.md",
+                format: "docx",
+                output: &staged.to_string_lossy(),
+                staging_dir: None,
+                temp_dir: None,
+            },
+        ))
+        .unwrap();
+
+        let archive = zip::ZipArchive::new(std::fs::File::open(&staged).unwrap()).unwrap();
+        assert!(
+            archive
+                .file_names()
+                .any(|name| name.is_ok_and(|name| name.starts_with("word/media/"))),
+            "no embedded figure"
+        );
+        assert!(!docx_text(&staged).contains("flowchart"));
+    }
+
+    #[test]
     fn tex_export_of_a_markdown_project_writes_natbib_citations() {
         let Some(pandoc) = pandoc_for_tests() else {
             return;
@@ -14679,6 +15104,656 @@ mod tests {
             let (resource_path, _) = super::export_search_path(&root, "main.tex");
             assert_eq!(resource_path, plain.to_string_lossy(), "{root:?}");
         }
+    }
+
+    const ONE_PIXEL_PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+    fn tagged_png(tag: &str) -> Vec<u8> {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        let mut bytes = STANDARD.decode(ONE_PIXEL_PNG).unwrap();
+        bytes.extend_from_slice(tag.as_bytes());
+        bytes
+    }
+
+    fn bundled_tool(name: &str) -> Option<std::path::PathBuf> {
+        let triple = crate::biber_toolchain::host_triple_guess()?;
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(format!("{name}-{triple}{}", std::env::consts::EXE_SUFFIX));
+        path.is_file().then_some(path)
+    }
+
+    fn write_project(root: &Path, files: &[(&str, &[u8])]) {
+        for (name, contents) in files {
+            let path = root.join(name);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, contents).unwrap();
+        }
+    }
+
+    struct RealExport {
+        _output: tempfile::TempDir,
+        file: std::path::PathBuf,
+        warnings: Vec<oleafly_doctools::DocError>,
+    }
+
+    fn real_export(
+        root: &Path,
+        main_doc: &str,
+        format: &str,
+    ) -> Option<Result<RealExport, oleafly_doctools::DocError>> {
+        let pandoc = bundled_tool("pandoc")?;
+        let typst = bundled_tool("typst")?;
+        let output = tempfile::tempdir().unwrap();
+        let file = output.path().join(format!("out.{format}"));
+        let staged = file.to_string_lossy().into_owned();
+        let job = oleafly_doctools::export::ExportJob {
+            root,
+            build_dir: None,
+            main_doc,
+            format,
+            output: &staged,
+            staging_dir: None,
+            temp_dir: None,
+            typst: Some(typst),
+        };
+        let exported = tauri::async_runtime::block_on(oleafly_doctools::export::run_export_pandoc(
+            &super::AppToolRunner,
+            &pandoc,
+            job,
+        ));
+        Some(exported.map(|warnings| RealExport {
+            _output: output,
+            file,
+            warnings,
+        }))
+    }
+
+    fn archive_names(path: &Path) -> Vec<String> {
+        zip::ZipArchive::new(std::fs::File::open(path).unwrap())
+            .unwrap()
+            .file_names()
+            .filter_map(|name| name.ok().map(|name| name.to_string()))
+            .collect()
+    }
+
+    fn archive_entry(path: &Path, name: &str) -> Vec<u8> {
+        use std::io::Read as _;
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+        let mut bytes = Vec::new();
+        archive
+            .by_name(name)
+            .unwrap()
+            .read_to_end(&mut bytes)
+            .unwrap();
+        bytes
+    }
+
+    fn media_with_extension(path: &Path, folder: &str, extension: &str) -> Vec<String> {
+        archive_names(path)
+            .into_iter()
+            .filter(|name| name.contains(folder) && name.ends_with(extension))
+            .collect()
+    }
+
+    fn slides(path: &Path) -> Vec<String> {
+        let mut names: Vec<(u32, String)> = archive_names(path)
+            .into_iter()
+            .filter_map(|name| {
+                let number = name
+                    .strip_prefix("ppt/slides/slide")?
+                    .strip_suffix(".xml")?
+                    .parse()
+                    .ok()?;
+                Some((number, name))
+            })
+            .collect();
+        names.sort();
+        names
+            .into_iter()
+            .map(|(_, name)| String::from_utf8(archive_entry(path, &name)).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn exports_find_bare_image_names_through_graphicspath() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[
+                (
+                    "main.tex",
+                    b"\\documentclass{article}\n\\usepackage{graphicx}\n\\graphicspath{{figures/}}\n\\begin{document}\n\\includegraphics{raster}\n\\end{document}\n",
+                ),
+                ("figures/raster.png", &tagged_png("raster")),
+            ],
+        );
+        let Some(docx) = real_export(root, "main.tex", "docx") else {
+            return;
+        };
+        let docx = docx.unwrap();
+        assert!(docx.warnings.is_empty(), "{:?}", docx.warnings);
+        assert_eq!(
+            media_with_extension(&docx.file, "word/media/", ".png").len(),
+            1
+        );
+
+        let pptx = real_export(root, "main.tex", "pptx").unwrap().unwrap();
+        assert_eq!(
+            media_with_extension(&pptx.file, "ppt/media/", ".png").len(),
+            1
+        );
+
+        let html = real_export(root, "main.tex", "html").unwrap().unwrap();
+        let page = std::fs::read_to_string(&html.file).unwrap();
+        assert!(page.contains("data:image/png"), "{page}");
+
+        for (format, wanted) in [
+            ("md", "(figures/raster.png)"),
+            ("typst", "figures/raster.png"),
+        ] {
+            let exported = real_export(root, "main.tex", format).unwrap().unwrap();
+            let text = std::fs::read_to_string(&exported.file).unwrap();
+            assert!(text.contains(wanted), "{format}: {text}");
+        }
+    }
+
+    #[test]
+    fn exports_read_images_from_the_main_files_folder_first() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        let main_copy = tagged_png("main folder");
+        write_project(
+            root,
+            &[
+                (
+                    "paper/main.tex",
+                    b"\\documentclass{article}\n\\usepackage{graphicx}\n\\graphicspath{{../shared/}}\n\\begin{document}\n\\includegraphics{figures/plot}\n\n\\includegraphics{up}\n\\end{document}\n",
+                ),
+                ("paper/figures/plot.png", &main_copy),
+                ("figures/plot.png", &tagged_png("project root")),
+                ("shared/up.png", &tagged_png("shared")),
+            ],
+        );
+        let Some(docx) = real_export(root, "paper/main.tex", "docx") else {
+            return;
+        };
+        let docx = docx.unwrap();
+        assert!(docx.warnings.is_empty(), "{:?}", docx.warnings);
+        let media = media_with_extension(&docx.file, "word/media/", ".png");
+        assert_eq!(media.len(), 2, "{media:?}");
+        assert!(media
+            .iter()
+            .any(|name| archive_entry(&docx.file, name) == main_copy));
+        assert!(!media
+            .iter()
+            .any(|name| archive_entry(&docx.file, name) == tagged_png("project root")));
+    }
+
+    #[test]
+    fn pdf_figures_become_pictures_of_the_same_size() {
+        let Some(typst) = bundled_tool("typst") else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[
+                (
+                    "main.tex",
+                    b"\\documentclass{book}\n\\usepackage{graphicx}\n\\begin{document}\n\\chapter{One}\n\\includegraphics{figure}\n\n\\includegraphics[width=1in]{figure}\n\\end{document}\n",
+                ),
+                (
+                    "figure.typ",
+                    b"#set page(width: 3in, height: 2in)\n#rect(width: 100%, height: 100%, fill: blue)\n",
+                ),
+            ],
+        );
+        let drawn = std::process::Command::new(typst)
+            .arg("compile")
+            .arg(root.join("figure.typ"))
+            .arg(root.join("figure.pdf"))
+            .status()
+            .unwrap();
+        assert!(drawn.success());
+        let Some(docx) = real_export(root, "main.tex", "docx") else {
+            return;
+        };
+        let docx = docx.unwrap();
+        assert!(docx.warnings.is_empty(), "{:?}", docx.warnings);
+        assert!(media_with_extension(&docx.file, "word/media/", ".pdf").is_empty());
+        assert_eq!(
+            media_with_extension(&docx.file, "word/media/", ".png").len(),
+            1
+        );
+        let document = String::from_utf8(archive_entry(&docx.file, "word/document.xml")).unwrap();
+        assert!(
+            document.contains("cx=\"2743200\" cy=\"1828800\""),
+            "{document}"
+        );
+        assert!(
+            document.contains("cx=\"914400\" cy=\"609600\""),
+            "{document}"
+        );
+
+        let epub = real_export(root, "main.tex", "epub").unwrap().unwrap();
+        assert!(media_with_extension(&epub.file, "EPUB/media/", ".pdf").is_empty());
+        assert_eq!(
+            media_with_extension(&epub.file, "EPUB/media/", ".png").len(),
+            1
+        );
+
+        let html = real_export(root, "main.tex", "html").unwrap().unwrap();
+        let page = std::fs::read_to_string(&html.file).unwrap();
+        assert!(!page.contains("application/pdf"), "{page}");
+        assert!(page.contains("data:image/png"), "{page}");
+    }
+
+    #[test]
+    fn beamer_frames_become_one_slide_each() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[
+                (
+                    "main.tex",
+                    b"\\documentclass{beamer}\n\\title{Deck}\n\\begin{document}\n\\frame{\\titlepage}\n\\begin{frame}\n\\titlepage\n\\end{frame}\n\\begin{frame}{First}\nBody one\n\\end{frame}\n\\begin{frame}\n\\frametitle{Second}\nBody two\n\\includegraphics[width=0.5\\textwidth]{figs/raster}\n\\end{frame}\n\\begin{frame}<1->[t]{Third}{Sub}\n\\begin{columns}\n\\begin{column}{0.5\\textwidth}Left\\end{column}\n\\begin{column}{0.5\\textwidth}Right\\end{column}\n\\end{columns}\n\\end{frame}\n\\section{Part}\n\\subsection{Outline only}\n\\subsubsection{Outline detail}\n\\begin{frame}{Fourth}\n\\begin{block}{Note}Inside\\end{block}\n\\end{frame}\n\\begin{frame}\nNo title\n\\end{frame}\n\\end{document}\n",
+                ),
+                ("figs/raster.png", &tagged_png("frame")),
+            ],
+        );
+        let Some(pptx) = real_export(root, "main.tex", "pptx") else {
+            return;
+        };
+        let pptx = pptx.unwrap();
+        let slides = slides(&pptx.file);
+        let text = |slide: &str| {
+            let mut words = String::new();
+            for part in slide.split("<a:t>").skip(1) {
+                words.push_str(part.split("</a:t>").next().unwrap_or_default());
+                words.push(' ');
+            }
+            words.trim().to_owned()
+        };
+        let shown: Vec<String> = slides.iter().map(|slide| text(slide)).collect();
+        assert_eq!(
+            shown,
+            [
+                "Deck",
+                "First Body one",
+                "Second Body two",
+                "Third Sub Left Right",
+                "Part",
+                "Fourth Note Inside",
+                "No title",
+            ],
+            "{slides:?}"
+        );
+        assert!(slides[2].contains("<p:pic>"), "{}", slides[2]);
+        assert!(!pptx
+            .warnings
+            .iter()
+            .any(|warning| warning.code.contains("skipped")));
+    }
+
+    #[test]
+    fn pictures_inside_frame_environments_stay_on_their_slides() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[
+                (
+                    "main.tex",
+                    b"\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{Centered}\n\\begin{center}\n\\includegraphics[width=2cm]{a}\n\\end{center}\n\\end{frame}\n\\begin{frame}{Block}\n\\begin{block}{T}\n\\includegraphics[width=2cm]{a}\n\\end{block}\n\\end{frame}\n\\begin{frame}{Boxed}\n\\begin{minipage}{.5\\textwidth}\n\\includegraphics[width=2cm]{a}\n\\end{minipage}\n\\end{frame}\n\\begin{frame}{In a column}\n\\begin{columns}\n\\begin{column}{.5\\textwidth}\n\\begin{center}\n\\includegraphics[width=2cm]{a}\n\\end{center}\n\\end{column}\n\\begin{column}{.5\\textwidth}\nBeside\n\\end{column}\n\\end{columns}\n\\end{frame}\n\\end{document}\n",
+                ),
+                ("a.png", &tagged_png("frame")),
+            ],
+        );
+        let Some(pptx) = real_export(root, "main.tex", "pptx") else {
+            return;
+        };
+        let slides = slides(&pptx.unwrap().file);
+        assert_eq!(slides.len(), 4, "{slides:?}");
+        for slide in &slides {
+            assert!(slide.contains("<p:pic>"), "{slide}");
+        }
+        assert!(slides[3].contains("Beside"), "{}", slides[3]);
+    }
+
+    #[test]
+    fn frames_keep_columns_powerpoint_cannot_lay_out() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[
+                (
+                    "main.tex",
+                    b"\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{Trio}\n\\begin{columns}\n\\begin{column}{.3\\textwidth}\nAlpha\n\\end{column}\n\\begin{column}{.3\\textwidth}\nBeta\n\\end{column}\n\\begin{column}{.3\\textwidth}\nGamma\n\\end{column}\n\\end{columns}\n\\end{frame}\n\\begin{frame}{Commands}\n\\begin{columns}\n\\column{.5\\textwidth}\n\\begin{itemize}\n\\item Listed\n\\end{itemize}\n\\column{.5\\textwidth}\n\\includegraphics{a}\n\\end{columns}\n\\end{frame}\n\\end{document}\n",
+                ),
+                ("a.png", &tagged_png("frame")),
+            ],
+        );
+        let Some(pptx) = real_export(root, "main.tex", "pptx") else {
+            return;
+        };
+        let pptx = pptx.unwrap();
+        let slides = slides(&pptx.file);
+        assert_eq!(slides.len(), 2, "{slides:?}");
+        for word in ["Alpha", "Beta", "Gamma"] {
+            assert!(slides[0].contains(word), "{word}: {}", slides[0]);
+        }
+        assert!(slides[1].contains("Listed"), "{}", slides[1]);
+        assert!(slides[1].contains("<p:pic>"), "{}", slides[1]);
+        assert!(pptx.warnings.is_empty(), "{:?}", pptx.warnings);
+    }
+
+    #[test]
+    fn a_bibliography_inside_a_frame_still_numbers_its_citations() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.tex",
+                b"\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{Refs}\nSee \\cite{a}.\n\\begin{thebibliography}{9}\n\\bibitem{a} Author. Title.\n\\end{thebibliography}\n\\end{frame}\n\\end{document}\n",
+            )],
+        );
+        let Some(pptx) = real_export(root, "main.tex", "pptx") else {
+            return;
+        };
+        let slides = slides(&pptx.unwrap().file);
+        assert_eq!(slides.len(), 1, "{slides:?}");
+        assert!(slides[0].contains("See [1]."), "{}", slides[0]);
+        assert!(slides[0].contains("Author. Title."), "{}", slides[0]);
+    }
+
+    #[test]
+    fn overlay_text_a_slide_loses_is_reported() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.tex",
+                b"\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{Steps}\nFirst\\pause\n\\uncover<2>{Second}\n\\only<3>{Third}\n\\end{frame}\n\\end{document}\n",
+            )],
+        );
+        let Some(pptx) = real_export(root, "main.tex", "pptx") else {
+            return;
+        };
+        let warnings = pptx.unwrap().warnings;
+        for name in ["uncover", "only"] {
+            assert!(
+                warnings.iter().any(|warning| {
+                    warning.code == "export.warning_content_skipped_at"
+                        && warning.params.contains(&("name", name.to_string()))
+                }),
+                "{name}: {warnings:?}"
+            );
+        }
+        assert_eq!(warnings.len(), 2, "{warnings:?}");
+    }
+
+    #[test]
+    fn a_block_powerpoint_refuses_is_reported() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.md",
+                b"---\ntitle: Deck\n---\n\n## One\n\n::: columns\n::: column\nLeft\n:::\n::: column\nMiddle\n:::\n::: column\nRight\n:::\n:::\n",
+            )],
+        );
+        let Some(pptx) = real_export(root, "main.md", "pptx") else {
+            return;
+        };
+        let warnings = pptx.unwrap().warnings;
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert_eq!(warnings[0].code, "export.warning_block_dropped");
+        assert_eq!(
+            crate::app_error::english(&crate::pandoc_citations::coded_export_error(&warnings[0]))
+                .as_deref(),
+            Some("Part of the document couldn't be written to this format, so it was left out.")
+        );
+    }
+
+    #[test]
+    fn raw_commands_a_format_ignores_are_not_reported() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.md",
+                b"---\ntitle: Deck\n---\n\n# One\n\nBefore\n\n\\newpage\n\nAfter\n",
+            )],
+        );
+        for format in ["docx", "html"] {
+            let Some(exported) = real_export(root, "main.md", format) else {
+                return;
+            };
+            let exported = exported.unwrap();
+            assert!(exported.warnings.is_empty(), "{:?}", exported.warnings);
+        }
+    }
+
+    #[test]
+    fn the_beamer_frame_shorthand_keeps_its_slides() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.tex",
+                b"\\documentclass{beamer}\n\\newcommand{\\hl}[1]{\\textbf{#1}}\n\\begin{document}\n\\frame{\\frametitle{Short}Short \\hl{text}.}\n\\begin{frame}{Long}\nLong text\n\\end{frame}\n\\frame[plain]{Plain text}\n\\end{document}\n",
+            )],
+        );
+        let Some(pptx) = real_export(root, "main.tex", "pptx") else {
+            return;
+        };
+        let slides = slides(&pptx.unwrap().file);
+        assert_eq!(slides.len(), 3, "{slides:?}");
+        assert!(slides[0].contains("Short"), "{}", slides[0]);
+        assert!(slides[0].contains("text"), "{}", slides[0]);
+        assert!(slides[1].contains("Long"), "{}", slides[1]);
+        assert!(slides[2].contains("Plain text"), "{}", slides[2]);
+    }
+
+    #[test]
+    fn markdown_slides_keep_their_own_structure() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.md",
+                b"---\ntitle: Deck\n---\n\n## One\n\n::: columns\n::: column\nLeft\n:::\n::: column\nRight\n:::\n:::\n\n## Two\n\nBody\n",
+            )],
+        );
+        let Some(pptx) = real_export(root, "main.md", "pptx") else {
+            return;
+        };
+        let slides = slides(&pptx.unwrap().file);
+        assert_eq!(slides.len(), 3, "{slides:?}");
+        assert!(slides[1].contains("Left") && slides[1].contains("Right"));
+    }
+
+    #[test]
+    fn exports_name_what_they_could_not_carry_over() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.tex",
+                b"\\documentclass{article}\n\\usepackage{tikz}\n\\usepackage{graphicx}\n\\begin{document}\nSee \\cite{nowhere} and Eq.~\\eqref{eq:one}.\n\\begin{equation}\\label{eq:one}\nx\n\\end{equation}\n\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}\n\n\\includegraphics{gone.png}\n\\end{document}\n",
+            )],
+        );
+        let Some(docx) = real_export(root, "main.tex", "docx") else {
+            return;
+        };
+        let docx = docx.unwrap();
+        let codes: Vec<&str> = docx.warnings.iter().map(|warning| warning.code).collect();
+        for code in [
+            "export.warning_content_skipped_at",
+            "export.warning_citation_missing",
+            "export.warning_image_missing",
+            "export.warning_references_unnumbered",
+        ] {
+            assert!(codes.contains(&code), "{code}: {codes:?}");
+        }
+        for warning in &docx.warnings {
+            let english =
+                crate::app_error::english(&crate::pandoc_citations::coded_export_error(warning));
+            assert!(english.is_some(), "{warning:?}");
+            assert!(!english.unwrap().contains("{{"), "{warning:?}");
+        }
+    }
+
+    #[test]
+    fn a_powerpoint_export_with_a_missing_image_names_it() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.tex",
+                b"\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{A}\n\\includegraphics{gone.png}\n\\end{frame}\n\\end{document}\n",
+            )],
+        );
+        let Some(pptx) = real_export(root, "main.tex", "pptx") else {
+            return;
+        };
+        let error = pptx.err().unwrap();
+        assert_eq!(error.code, "export.image_missing");
+        assert_eq!(
+            crate::app_error::english(&crate::pandoc_citations::coded_export_error(&error))
+                .as_deref(),
+            Some("Oleafly couldn't find the image gone.png. Check its name, then export again.")
+        );
+    }
+
+    #[test]
+    fn text_exports_keep_the_title_author_and_abstract() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.tex",
+                b"\\documentclass{article}\n\\title{Paper Title}\n\\author{Ann Author}\n\\begin{document}\n\\maketitle\n\\begin{abstract}\nAbstract text.\n\\end{abstract}\n\\section{Intro}\nBody.\n\\end{document}\n",
+            )],
+        );
+        for format in ["md", "txt"] {
+            let Some(exported) = real_export(root, "main.tex", format) else {
+                return;
+            };
+            let text = std::fs::read_to_string(exported.unwrap().file).unwrap();
+            for wanted in ["Paper Title", "Ann Author", "Abstract text."] {
+                assert!(text.contains(wanted), "{format}: {text}");
+            }
+        }
+    }
+
+    #[test]
+    fn epub_math_is_mathml() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.md",
+                b"---\ntitle: Book\n---\n\n# One\n\n$$\\int_0^1 x^2 dx = \\frac{1}{3}$$\n",
+            )],
+        );
+        let Some(epub) = real_export(root, "main.md", "epub") else {
+            return;
+        };
+        let epub = epub.unwrap();
+        let chapter = archive_names(&epub.file)
+            .into_iter()
+            .find(|name| name.ends_with("ch001.xhtml"))
+            .unwrap();
+        let text = String::from_utf8(archive_entry(&epub.file, &chapter)).unwrap();
+        assert!(text.contains("<math"), "{text}");
+        assert!(!text.contains("$$"), "{text}");
+    }
+
+    #[test]
+    fn markdown_to_typst_keeps_a_discovered_bibliography_and_compiles() {
+        let Some(typst) = bundled_tool("typst") else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[
+                ("paper/main.md", b"# Method\n\nWe follow [@smith2020].\n"),
+                ("paper/refs.bib", SMITH_BIB.as_bytes()),
+            ],
+        );
+        let Some(exported) = real_export(root, "paper/main.md", "typst") else {
+            return;
+        };
+        let exported = exported.unwrap();
+        let source = std::fs::read_to_string(&exported.file).unwrap();
+        assert!(source.contains("#bibliography((\"refs.bib\"))"), "{source}");
+        let folder = exported.file.parent().unwrap();
+        std::fs::copy(root.join("paper/refs.bib"), folder.join("refs.bib")).unwrap();
+        let compiled = std::process::Command::new(typst)
+            .arg("compile")
+            .arg(&exported.file)
+            .arg(folder.join("out.pdf"))
+            .output()
+            .unwrap();
+        assert!(
+            compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+    }
+
+    #[test]
+    fn a_source_export_names_an_image_it_could_not_find() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write_project(
+            root,
+            &[(
+                "main.tex",
+                b"\\documentclass{article}\n\\usepackage{graphicx}\n\\begin{document}\n\\includegraphics{gone}\n\\end{document}\n",
+            )],
+        );
+        let Some(exported) = real_export(root, "main.tex", "typst") else {
+            return;
+        };
+        let codes: Vec<&str> = exported
+            .unwrap()
+            .warnings
+            .iter()
+            .map(|warning| warning.code)
+            .collect();
+        assert_eq!(codes, ["export.warning_image_missing"]);
+    }
+
+    #[test]
+    fn the_export_outcome_keeps_typst_notes_beside_the_warnings() {
+        let outcome = super::ExportOutcome {
+            warnings: vec!["first".into()],
+            ..super::ExportOutcome::default()
+        };
+        let json = serde_json::to_value(&outcome).unwrap();
+        assert_eq!(json["warnings"][0], "first");
+        assert_eq!(json["skipped"], serde_json::json!([]));
+        assert!(json["outdatedTypst"].is_null());
+        assert!(json["readFromSource"].is_null());
     }
 
     #[test]

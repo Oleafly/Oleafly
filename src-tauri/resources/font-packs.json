@@ -8,11 +8,11 @@
     "approx_bytes": 2680000,
     "license": { "spdx": "OFL-1.1", "author": "Łukasz Dziedzic", "url": "https://fonts.google.com/specimen/Lato" },
     "files": [
-      { "name": "Lato-Regular.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-Regular.ttf" },
-      { "name": "Lato-Bold.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-Bold.ttf" },
-      { "name": "Lato-Italic.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-Italic.ttf" },
-      { "name": "Lato-BoldItalic.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-BoldItalic.ttf" },
-      { "name": "OFL.txt", "url": "https://mirrors.oleafly.com/fonts/lato/OFL.txt" }
+      { "name": "Lato-Regular.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-Regular.ttf", "sha256": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251" },
+      { "name": "Lato-Bold.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-Bold.ttf", "sha256": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1" },
+      { "name": "Lato-Italic.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-Italic.ttf", "sha256": "e399c44efe1387100531d26c7e4800c5d12251b890d6654a3098c7c679cb1786" },
+      { "name": "Lato-BoldItalic.ttf", "url": "https://mirrors.oleafly.com/fonts/lato/Lato-BoldItalic.ttf", "sha256": "62c1b7f0d2e74b45960154c3520efc337b553db0961bfdc950d5618334596cc8" },
+      { "name": "OFL.txt", "url": "https://mirrors.oleafly.com/fonts/lato/OFL.txt", "sha256": "74ba064d03f1f1c4a952da936c3eb71866c34404916734de3cae73b34357e59e" }
     ]
   },
   {
@@ -24,11 +24,11 @@
     "approx_bytes": 800000,
     "license": { "spdx": "OFL-1.1", "author": "ParaType", "url": "https://fonts.google.com/specimen/PT+Sans" },
     "files": [
-      { "name": "PTSans-Regular.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-Regular.ttf" },
-      { "name": "PTSans-Bold.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-Bold.ttf" },
-      { "name": "PTSans-Italic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-Italic.ttf" },
-      { "name": "PTSans-BoldItalic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-BoldItalic.ttf" },
-      { "name": "OFL.txt", "url": "https://mirrors.oleafly.com/fonts/ptsans/OFL.txt" }
+      { "name": "PTSans-Regular.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-Regular.ttf", "sha256": "9cc831490532009bae2b3ce0d39c62adfc889060beb421593bfd9d2396d0f10a" },
+      { "name": "PTSans-Bold.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-Bold.ttf", "sha256": "3128bd5ecf01816e59a23d54c57a7a6b14615b07db53ff277c77376010265b05" },
+      { "name": "PTSans-Italic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-Italic.ttf", "sha256": "5a90fe2d0cd798700935240580bdcc12c0ffc9102c0c7163b3418e13bc21debd" },
+      { "name": "PTSans-BoldItalic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptsans/PT_Sans-Web-BoldItalic.ttf", "sha256": "81ac221cdd02bccfa679c74adb122478e9d092e65a722e31ca11469961483785" },
+      { "name": "OFL.txt", "url": "https://mirrors.oleafly.com/fonts/ptsans/OFL.txt", "sha256": "2758cf7a872827f39661cf8cc24188113c030447aefb5ca7145993650076ca8c" }
     ]
   },
   {
@@ -40,11 +40,11 @@
     "approx_bytes": 900000,
     "license": { "spdx": "OFL-1.1", "author": "ParaType", "url": "https://fonts.google.com/specimen/PT+Serif" },
     "files": [
-      { "name": "PTSerif-Regular.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-Regular.ttf" },
-      { "name": "PTSerif-Bold.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-Bold.ttf" },
-      { "name": "PTSerif-Italic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-Italic.ttf" },
-      { "name": "PTSerif-BoldItalic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-BoldItalic.ttf" },
-      { "name": "OFL.txt", "url": "https://mirrors.oleafly.com/fonts/ptserif/OFL.txt" }
+      { "name": "PTSerif-Regular.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-Regular.ttf", "sha256": "a4951fade06ff8f09b7673aa81ffb65a8cd409e24d3289a6dc670bc4dda2557a" },
+      { "name": "PTSerif-Bold.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-Bold.ttf", "sha256": "038ba7336bd7ea14f12ad155bed51a4345cac5153275d521dec3ba04021c526e" },
+      { "name": "PTSerif-Italic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-Italic.ttf", "sha256": "f57e95ff9dc85691a3b2e193f2028db36f6663939a46c0fc4f286d618b80b7ce" },
+      { "name": "PTSerif-BoldItalic.ttf", "url": "https://mirrors.oleafly.com/fonts/ptserif/PT_Serif-Web-BoldItalic.ttf", "sha256": "f003788ba08981eb0988b3557a6f224a53dab49c20e283e8b74d5af3c466f8be" },
+      { "name": "OFL.txt", "url": "https://mirrors.oleafly.com/fonts/ptserif/OFL.txt", "sha256": "ddf311c28ddf5a5ad9747649837346b67bed9d356789c3072bb27dbce49e514d" }
     ]
   },
   {

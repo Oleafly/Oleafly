@@ -361,7 +361,12 @@
     "rawLogs": "Ham günlükler",
     "copyLog": "Günlüğü kopyala",
     "typesetting": "Dizgi",
+    "missingCharacters": "Eksik karakterler",
     "info": "Bilgi",
+    "clear": "Temizle",
+    "clearAria": "Derleme günlüğünü temizle",
+    "clearHint": "Bu günlüğü ve içindeki hataları sonraki derlemeye kadar gizler. Derleme dosyaları kalır.",
+    "cleared": "Günlük temizlendi. Sonraki derleme yeni bir günlük yazar.",
     "empty": "Derleme çıktısı burada görünecek.",
     "scrollToTop": "En üste kaydır",
     "scrollToBottom": "En alta kaydır",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} çözümlenmemiş başvuru",
     "summaryReferences_other": "{{count}} çözümlenmemiş başvuru",
     "fontPack": "{{family}}, ücretsiz {{pack}} yazı tipi paketinde var.",
+    "fontPackGlyphs": "Ücretsiz {{pack}} yazı tipi paketinde bu karakterler var.",
+    "fontPackSealed": "{{family}}, ücretsiz {{pack}} yazı tipi paketinde var, ancak bu proje yalnızca proje yazı tiplerini kullandığı için yazı tipi paketleri burada geçerli değil. Yazı tipinin dosyasını projenin fonts klasörüne ekleyin.",
     "fontPackAction": "İndir ve derle",
     "fontPackDownloading": "İndiriliyor…",
     "fontPackFailed": "Yazı tipi paketi indirilemedi. Bağlantını kontrol edip yeniden dene."
@@ -1461,7 +1468,8 @@
       "missing": "Şu paketler paket önbelleğinde yok: {{names}}. Çevrimiçiyken bir kez derleyin, sonra paketleri yeniden kopyalayın.",
       "count_one": "Bu projede {{count}} paket",
       "count_other": "Bu projede {{count}} paket",
-      "none": "Bu projede henüz paket yok."
+      "none": "Bu projede henüz paket yok.",
+      "unsupported": "Typst {{version}} projenin klasöründeki paketleri okuyamaz. Bunu kullanmak için projeyi Typst 0.12 veya daha yeni bir sürüme geçirin."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} kullanılabilir. Bu içe aktarma {{version}} sürümünü kullanıyor.",
@@ -1500,6 +1508,7 @@
     "classNote": "Bu bir belge sınıfı. Bunun yerine \\documentclass ile ayarlayın.",
     "onDemand": "Tectonic, paketleri belgeniz onları ilk kez kullandığında indirir. Kurulacak bir şey yok.",
     "checking": "Hangi paketlerin kurulu olduğu denetleniyor",
+    "systemManaged": "Bu TeX Live, Linux dağıtımınızla birlikte geldi, bu yüzden paketleri {{manager}} ile kurun.",
     "unknownInstall": "Oleafly, TeX kurulumunuzda hangi paketlerin olduğunu belirleyemiyor.",
     "noProject": "Paket eklemek için bir LaTeX projesi açın.",
     "added": "{{name}} paketi {{file}} dosyasına eklendi.",

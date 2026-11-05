@@ -38,6 +38,7 @@
       "compile": "컴파일",
       "recompile": "다시 컴파일",
       "compiling": "컴파일하는 중…",
+      "stop": "중지",
       "saveTooltip": "이 다이어그램을 저장합니다",
       "save": "저장",
       "saveToProject": "프로젝트에 저장",

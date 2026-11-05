@@ -43,7 +43,12 @@
     "code_needed": "{{engine}} is Quarto or Calepin. Code is the per-project setting in the Compile menu that lets the R, Python or Julia code in the document run. Its Off choice is what \"code is off\" means.",
     "quarto_missing": "Settings > Engines > Quarto is the path to the Quarto tab. Use the same words as the Settings window title and the Engines section name, joined with >.",
     "calepin_missing": "Settings > Engines > Calepin is the path to the Calepin tab. Use the same words as the Settings window title and the Engines section name, joined with >.",
-    "install_unverified": "{{tool}} is Quarto or Calepin. The downloaded archive did not match its checksum."
+    "install_unverified": "{{tool}} is Quarto or Calepin. The downloaded archive did not match its checksum.",
+    "quarto_outdated": "Settings > Engines > Quarto is the path to the Quarto tab. Use the same words as the Settings window title and the Engines section name, joined with >.",
+    "would_overwrite": "{{file}} is a path inside the project. Quarto's working file is the intermediate .tex or .typ it writes next to the document.",
+    "missing_glyphs_cjk_one": "CJKmainfont, pdf-engine: tectonic and {{font}} are literal YAML the person types. Keep them unchanged.",
+    "missing_glyphs_cjk_other": "CJKmainfont, pdf-engine: tectonic and {{font}} are literal YAML the person types. Keep them unchanged.",
+    "not_project_input": "project: render and _quarto.yml are literal Quarto YAML. Keep them unchanged."
   },
   "provider_credit": {
     "failed": "{{provider}} is an AI provider name such as OpenRouter or DeepSeek. Keep it unchanged."
@@ -63,5 +68,31 @@
   "shell_command": {
     "path_failed": "Windows only. PATH is the environment variable name. Keep it verbatim. {{directory}} is a folder path.",
     "in_use": "Windows only. {{path}} is the oleafly.exe file. oleafly is the command name."
+  },
+  "tex": {
+    "explain": {
+      "missing_dollar": "_, ^ and $...$ are LaTeX syntax the writer types. Keep them exactly as written.",
+      "unbalanced_braces": "{ and } are LaTeX syntax the writer types. Keep them exactly as written.",
+      "runaway_argument": "} and \\end{...} are LaTeX syntax the writer types. Keep them exactly as written.",
+      "double_superscript": "^ and the examples x^{a}^{b} and x^{ab} are LaTeX syntax. Keep them exactly as written.",
+      "double_subscript": "_ and the examples x_{a}_{b} and x_{ab} are LaTeX syntax. Keep them exactly as written.",
+      "extra_alignment_tab": "& is the LaTeX character that separates table columns. Keep it exactly as written.",
+      "misplaced_alignment_tab": "& and \\& are LaTeX syntax the writer types. Keep them exactly as written.",
+      "no_line_to_end": "The \\\\ at the start is the LaTeX line break command. Keep it exactly as written.",
+      "too_many_floats": "A float is a figure or table LaTeX can move to fit the page. \\clearpage and [htbp] are LaTeX syntax. Keep them exactly as written.",
+      "file_not_found_tectonic": "Tectonic and latexmk are compiler names. Keep them exactly as written.",
+      "environment_mismatch": "\\begin{...}, \\end{...}, \\begin and \\end are LaTeX syntax. Keep them exactly as written.",
+      "missing_item": "itemize, enumerate, description and \\item are LaTeX names. Keep them exactly as written.",
+      "float_moved": "A float is a figure or table LaTeX can move to fit the page. [htbp] is LaTeX syntax. Keep it exactly as written.",
+      "float_too_large": "A float is a figure or table LaTeX can move to fit the page. width=\\linewidth is LaTeX syntax. Keep it exactly as written.",
+      "pythontex_failed": "PythonTeX and latexmk are program names. Keep them exactly as written. Allow external commands is the button in the banner above the editor, so use the same words as that button.",
+      "biber_no_entry": "{{entry}} is a citation key from the document's bibliography. Biber is a program name.",
+      "biber_file_missing": "{{file}} is a file name. Biber is a program name, and \\addbibresource is a LaTeX command. Keep them exactly as written.",
+      "biber_version_mismatch": "{{found}} and {{expected}} are version numbers. Biber and biblatex are program names.",
+      "biber_needs_run": "Biber and biblatex are program names. Keep them exactly as written.",
+      "file_not_opened": "{{file}} is a file name.",
+      "citation_missing": "{{name}} is a citation key from the document. Keep the backticks around it.",
+      "reference_missing": "{{name}} is a label from the document. Keep the backticks around it."
+    }
   }
 }

@@ -15,6 +15,7 @@ import {
   useTypstToolchainStore,
 } from "@/store/typst-toolchain";
 import { notebookEngineId } from "@/lib/notebook-engines";
+import { TexMissingOffer } from "./TexMissingOffer";
 
 const NotebookToolMissingOffer = lazy(() =>
   import("./NotebookToolMissingOffer").then((module) => ({ default: module.NotebookToolMissingOffer })),
@@ -120,21 +121,41 @@ export function CompileOfferButton({ placement }: Readonly<{ placement: CompileO
     );
   }
   if (
+    projectId &&
+    offer?.kind === "tex-missing" &&
+    offer.projectId === projectId &&
+    (engineId === "latexmk" || engineId === "quarto")
+  ) {
+    return (
+      <TexMissingOffer
+        compact={placement !== "preview"}
+        testId={TEST_IDS[placement]}
+        projectId={projectId}
+        offerTectonic={engineId === "latexmk"}
+      />
+    );
+  }
+  if (
     !offer ||
     offer.kind === "typst-version-missing" ||
     offer.kind === "notebook-tool-missing" ||
+    offer.kind === "tex-missing" ||
     offer.projectId !== projectId ||
     !offerMatchesEngine(offer, engineId)
   ) {
     return null;
   }
-  const label =
-    offer.kind === "engine-gap"
-      ? t(($) => $.preview.actions.chooseEngine)
-      : t(($) => $.preview.actions.installPackages, {
-          count: offer.packages.length,
-          name: offer.packages[0],
-        });
+  let label: string = t(($) => $.preview.actions.chooseEngine);
+  if (offer.kind === "missing-packages") {
+    label = t(($) => $.preview.actions.installPackages, {
+      count: offer.packages.length,
+      name: offer.packages[0],
+    });
+  } else if (offer.kind === "tex-packages") {
+    label = t(($) => $.preview.actions.installJapanese);
+  } else if (offer.kind === "switch-compiler") {
+    label = t(($) => $.preview.actions.useCompiler, { compiler: offer.label });
+  }
   const compact = placement !== "preview";
   return (
     <Button

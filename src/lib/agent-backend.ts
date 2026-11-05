@@ -117,7 +117,7 @@ async function invokeRun<T>(command: string, options: InvokeRunOptions): Promise
   if (signal?.aborted) throw abortError();
 
   const onAbort = () => {
-    void invoke("agent_cancel", { requestId }).catch(() => {});
+    void invoke("agent_cancel", { requestId, stopFigure: command === "agent_run" }).catch(() => {});
   };
   signal?.addEventListener("abort", onAbort, { once: true });
 

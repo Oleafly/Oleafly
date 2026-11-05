@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 
 /// Pinned rstudio/tinytex-releases tag. A fixed monthly release, never the
 const TINYTEX_TAG: &str = "v2026.08";
+const TINYTEX_MIRROR_BASE: &str = "https://mirrors.oleafly.com/binaries/tinytex";
 
 #[derive(Clone, serde::Serialize)]
 pub struct EngineInfo {
@@ -28,6 +29,10 @@ pub struct EngineInfo {
     /// A usable `latexmk` from any detected distribution. Present even when
     /// `kind` is "none" (a distro can lack lualatex yet still drive latexmk).
     pub latexmk: Option<String>,
+    pub system_package_manager: Option<String>,
+    pub tex_complete: bool,
+    pub tinytex_outdated: bool,
+    pub latexmk_blocker: Option<crate::tex_distro::TexBlocker>,
 }
 
 impl EngineInfo {
@@ -38,6 +43,10 @@ impl EngineInfo {
             tlmgr: None,
             version: None,
             latexmk: find_latexmk(),
+            system_package_manager: None,
+            tex_complete: false,
+            tinytex_outdated: false,
+            latexmk_blocker: crate::tex_distro::latexmk_blocker(),
         }
     }
 }
@@ -47,6 +56,8 @@ fn find_latexmk() -> Option<String> {
 }
 
 const TEX_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+const TINYTEX_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+const TINYTEX_STALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 const TLMGR_INFO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
 const TLMGR_MUTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 const TLMGR_FLOW_BUDGET: std::time::Duration = std::time::Duration::from_secs(15 * 60);
@@ -239,6 +250,7 @@ fn tex_utility_command(program: &Path, args: &[String]) -> Result<tokio::process
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    crate::proc::clear_appimage_env(command.as_std_mut());
     crate::proc::isolate_process_tree(&mut command);
     Ok(command)
 }
@@ -323,6 +335,57 @@ fn utility_error(output: &TexUtilityOutput) -> String {
     }
 }
 
+fn tlmgr_wants_self_update(output: &TexUtilityOutput) -> bool {
+    format!("{}\n{}", output.stdout, output.stderr)
+        .to_ascii_lowercase()
+        .contains("tlmgr itself needs to be updated")
+}
+
+fn check_tlmgr_self_update(tlmgr: &str, output: &TexUtilityOutput) -> Result<(), String> {
+    if tlmgr_wants_self_update(output) {
+        let detail = format!("{}\n{}", output.stdout.trim(), output.stderr.trim());
+        return Err(format!(
+            "{}\nRun `tlmgr update --self` using this TeX distribution's package manager ({tlmgr}), then retry the package operation.",
+            detail.trim()
+        ));
+    }
+    Ok(())
+}
+
+/// Oleafly pins its TinyTeX to a monthly release, so its tlmgr falls behind the
+/// live repository within weeks and then refuses every install. That install
+/// is Oleafly's to maintain. A system TeX Live or the user's own TinyTeX is not.
+fn tlmgr_is_managed(tlmgr: &str) -> bool {
+    crate::tex_distro::distribution_kind_for_tool(Path::new(tlmgr)) == "oleafly-tinytex"
+}
+
+async fn update_managed_tlmgr(tlmgr: &str, repository: Option<&str>) -> Result<(), String> {
+    let args = packages::with_repository(&["update".to_string(), "--self".to_string()], repository);
+    let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    if output.success {
+        return Ok(());
+    }
+    Err(packages::package_command_error(
+        &output,
+        "Oleafly could not update TinyTeX's package manager.",
+    ))
+}
+
+async fn run_tlmgr_mutation(
+    tlmgr: &str,
+    args: &[String],
+    repository: Option<&str>,
+    may_update_itself: bool,
+) -> Result<TexUtilityOutput, String> {
+    let command = packages::with_repository(args, repository);
+    let output = run_tex_utility(Path::new(tlmgr), &command, TLMGR_MUTATION_TIMEOUT).await?;
+    if !may_update_itself || !tlmgr_wants_self_update(&output) {
+        return Ok(output);
+    }
+    update_managed_tlmgr(tlmgr, repository).await?;
+    run_tex_utility(Path::new(tlmgr), &command, TLMGR_MUTATION_TIMEOUT).await
+}
+
 /// Search `root` for `bin/<platform>/<name>` (TeX distributions nest binaries
 /// under a per-platform directory). Bounded, non-recursive beyond that shape.
 fn find_in_texdir(root: &Path, name: &str) -> Option<PathBuf> {
@@ -331,24 +394,56 @@ fn find_in_texdir(root: &Path, name: &str) -> Option<PathBuf> {
         .find_map(|bin| crate::tex_distro::find_tool_in_dir(&bin, name))
 }
 
+pub(crate) fn tinytex_parent() -> Result<PathBuf, String> {
+    let data_root = paths::oleafly_root()?;
+    crate::tex_distro::managed_tex_search(Some(data_root.clone()))
+        .managed_tinytex_parent()
+        .ok_or_else(|| tinytex_path_error(&data_root))
+}
+
+fn tinytex_path_error(path: &Path) -> String {
+    crate::app_error::AppError::new("tex.tinytex_path_not_ascii")
+        .param("path", path.display())
+        .into()
+}
+
 fn tinytex_root() -> Result<PathBuf, String> {
-    Ok(paths::oleafly_root()?.join("tinytex"))
+    Ok(tinytex_parent()?.join("tinytex"))
 }
 
 fn tinytex_staging_root() -> Result<PathBuf, String> {
-    Ok(paths::oleafly_root()?.join("tinytex.installing"))
+    Ok(tinytex_parent()?.join("tinytex.installing"))
 }
 
 fn tinytex_backup_root() -> Result<PathBuf, String> {
-    Ok(paths::oleafly_root()?.join("tinytex.previous"))
+    Ok(tinytex_parent()?.join("tinytex.previous"))
 }
 
 fn tinytex_download_path() -> Result<PathBuf, String> {
-    Ok(paths::oleafly_root()?.join(DOWNLOAD_TMP))
+    Ok(tinytex_parent()?.join(DOWNLOAD_TMP))
 }
 
 fn legacy_tinytex_download_path() -> Result<PathBuf, String> {
     Ok(tinytex_root()?.join(DOWNLOAD_TMP))
+}
+
+fn tinytex_paths_in(parent: &Path) -> [PathBuf; 4] {
+    [
+        parent.join("tinytex"),
+        parent.join("tinytex.installing"),
+        parent.join("tinytex.previous"),
+        parent.join(DOWNLOAD_TMP),
+    ]
+}
+
+fn profile_tinytex_paths() -> Vec<PathBuf> {
+    let Ok(data_root) = paths::oleafly_root() else {
+        return Vec::new();
+    };
+    if tinytex_parent().is_ok_and(|parent| parent == data_root) {
+        return Vec::new();
+    }
+    tinytex_paths_in(&data_root).to_vec()
 }
 
 fn sibling_tool(tool: &Path, name: &str) -> Option<PathBuf> {
@@ -363,11 +458,23 @@ fn engine_kind_for_path(lualatex: &Path, managed_root: Option<&Path>) -> &'stati
     }
 }
 
+fn probe_timeout_for_kind(kind: &str) -> std::time::Duration {
+    if kind == "tinytex" {
+        TINYTEX_START_TIMEOUT
+    } else {
+        TEX_PROBE_TIMEOUT
+    }
+}
+
 async fn engine_info_for_lualatex_unlocked(lualatex: PathBuf, kind: &str) -> Option<EngineInfo> {
     let path = lualatex.to_string_lossy().into_owned();
-    let output = run_tex_utility(&lualatex, &["--version".to_string()], TEX_PROBE_TIMEOUT)
-        .await
-        .ok()?;
+    let output = run_tex_utility(
+        &lualatex,
+        &["--version".to_string()],
+        probe_timeout_for_kind(kind),
+    )
+    .await
+    .ok()?;
     if !output.success {
         return None;
     }
@@ -383,6 +490,10 @@ async fn engine_info_for_lualatex_unlocked(lualatex: PathBuf, kind: &str) -> Opt
             .map(|p| p.to_string_lossy().into_owned())
             .or_else(find_latexmk),
         lualatex: Some(path),
+        system_package_manager: None,
+        tex_complete: false,
+        tinytex_outdated: false,
+        latexmk_blocker: crate::tex_distro::latexmk_blocker(),
     })
 }
 
@@ -394,7 +505,16 @@ async fn engine_info_for_lualatex(lualatex: PathBuf, kind: &str) -> Option<Engin
 async fn find_engine() -> EngineInfo {
     if let Ok(_recovery) = TinytexMutationGuard::acquire_maintenance() {
         if let Ok(_runtime) = acquire_tex_runtime_write() {
-            let _ = recover_interrupted_publish();
+            let _ = tauri::async_runtime::spawn_blocking(|| {
+                let recovered = recover_interrupted_publish();
+                if cfg!(windows) {
+                    if let Ok(root) = tinytex_root() {
+                        let _ = relative_fonts_conf(&root);
+                    }
+                }
+                recovered
+            })
+            .await;
         }
     }
     let managed_root = tinytex_root().ok();
@@ -411,12 +531,51 @@ async fn find_engine() -> EngineInfo {
 // or more. They are `async` and use `spawn_blocking` so they run OFF the main
 // thread; a synchronous Tauri command would block the whole webview UI.
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EngineRescan {
+    LoginProbe,
+    Full,
+}
+
+fn settle_program_search(rescan: EngineRescan, refresh: impl FnOnce(), wait: impl FnOnce()) {
+    if rescan == EngineRescan::Full {
+        refresh();
+    }
+    wait();
+}
+
 #[tauri::command]
-pub async fn latex_engine_info() -> EngineInfo {
+pub async fn latex_engine_info(rescan: Option<EngineRescan>) -> EngineInfo {
+    if let Some(rescan) = rescan {
+        let _ = tauri::async_runtime::spawn_blocking(move || {
+            settle_program_search(
+                rescan,
+                crate::program_locator::refresh,
+                crate::program_locator::wait_for_login_probe,
+            );
+        })
+        .await;
+    }
     let mut info = find_engine().await;
-    info.tlmgr = crate::tex_distro::active_latexmk_distribution()
-        .and_then(|distribution| distribution.tlmgr);
+    let active = crate::tex_distro::active_latexmk_distribution();
+    info.tex_complete = active
+        .as_ref()
+        .is_some_and(|distribution| distribution.complete);
+    info.system_package_manager = active
+        .as_ref()
+        .and_then(|distribution| distribution.system_package_manager.clone());
+    info.tlmgr = active.and_then(|distribution| distribution.tlmgr);
+    info.tinytex_outdated = match (tinytex_root(), tinytex_asset()) {
+        (Ok(root), Ok(asset)) => tinytex_is_outdated(&root, &asset),
+        _ => false,
+    };
     info
+}
+
+fn tinytex_is_outdated(root: &Path, asset: &TinytexAsset) -> bool {
+    !crate::tex_distro::texdir_bin_dirs(root).is_empty()
+        && validate_install_marker(root, asset).is_err()
 }
 
 #[tauri::command]
@@ -424,14 +583,32 @@ pub async fn has_tagging_engine() -> bool {
     find_engine().await.lualatex.is_some()
 }
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 static TINYTEX_MUTATION_ACTIVE: AtomicBool = AtomicBool::new(false);
 static INSTALL_ACTIVE: AtomicBool = AtomicBool::new(false);
+static PACKAGE_MUTATIONS: AtomicUsize = AtomicUsize::new(0);
 static QUIT_CONFIRMED: AtomicBool = AtomicBool::new(false);
 
 pub fn install_in_progress() -> bool {
-    INSTALL_ACTIVE.load(Ordering::SeqCst) || crate::toolchain_download::install_in_progress()
+    INSTALL_ACTIVE.load(Ordering::SeqCst)
+        || PACKAGE_MUTATIONS.load(Ordering::SeqCst) > 0
+        || crate::toolchain_download::install_in_progress()
+}
+
+struct PackageMutation;
+
+impl PackageMutation {
+    fn start() -> Self {
+        PACKAGE_MUTATIONS.fetch_add(1, Ordering::SeqCst);
+        PackageMutation
+    }
+}
+
+impl Drop for PackageMutation {
+    fn drop(&mut self) {
+        PACKAGE_MUTATIONS.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 pub fn quit_confirmed() -> bool {
@@ -646,6 +823,7 @@ pub async fn tinytex_install_state() -> TinytexInstallState {
         [tinytex_download_path(), legacy_tinytex_download_path()]
             .into_iter()
             .filter_map(Result::ok)
+            .chain(profile_tinytex_paths().pop())
             .filter_map(|path| std::fs::metadata(path).ok().map(|meta| meta.len()))
             .max()
             .unwrap_or(0)
@@ -680,6 +858,14 @@ impl TinytexAsset {
             expanded_bytes: self.expected_expanded_bytes,
             manifest_sha256: self.expected_manifest_sha256,
         }
+    }
+
+    fn download_urls(&self) -> [String; 2] {
+        let file = self.url.rsplit('/').next().unwrap_or_default();
+        [
+            self.url.clone(),
+            format!("{TINYTEX_MIRROR_BASE}/{TINYTEX_TAG}/{file}"),
+        ]
     }
 }
 
@@ -721,7 +907,7 @@ fn remove_install_path(path: &Path) -> Result<(), String> {
     if metadata.file_type().is_symlink() || metadata.is_file() {
         std::fs::remove_file(path).map_err(|e| format!("failed to remove {}: {e}", path.display()))
     } else {
-        std::fs::remove_dir_all(path)
+        oleafly_core::atomic::retry_tree_operation(|| std::fs::remove_dir_all(path))
             .map_err(|e| format!("failed to remove {}: {e}", path.display()))
     }
 }
@@ -739,7 +925,8 @@ fn write_install_marker(root: &Path, asset: &TinytexAsset) -> Result<(), String>
     file.write_all(&body)
         .and_then(|_| file.sync_all())
         .map_err(|e| format!("failed to write TinyTeX install marker: {e}"))?;
-    std::fs::rename(&staging, &path)
+    drop(file);
+    oleafly_core::atomic::persist_with_retry(|| std::fs::rename(&staging, &path))
         .map_err(|e| format!("failed to publish TinyTeX install marker: {e}"))
 }
 
@@ -775,6 +962,7 @@ async fn validate_tinytex_executables(root: &Path) -> Result<EngineInfo, String>
         .ok_or_else(|| "TinyTeX lualatex did not pass its version probe.".to_string())?;
     info.tlmgr = Some(validate_tinytex_tool(&lualatex, "tlmgr").await?);
     info.latexmk = Some(validate_tinytex_tool(&lualatex, "latexmk").await?);
+    validate_tinytex_kpathsea(&lualatex).await?;
     Ok(info)
 }
 
@@ -784,14 +972,169 @@ async fn validate_tinytex_tool(lualatex: &Path, name: &str) -> Result<String, St
             .param("name", name)
             .to_string()
     })?;
-    let output = run_tex_utility(&tool, &["--version".into()], TEX_PROBE_TIMEOUT).await?;
+    let output = run_tex_utility(&tool, &["--version".into()], TINYTEX_START_TIMEOUT).await?;
     if !output.success {
-        return Err(format!(
-            "TinyTeX {name} validation failed: {}",
-            utility_error(&output)
-        ));
+        let failure = utility_error(&output);
+        if let Some(error) = perl_gap_for(std::env::consts::OS, &failure) {
+            return Err(error.into());
+        }
+        return Err(format!("TinyTeX {name} validation failed: {failure}"));
     }
     Ok(tool.to_string_lossy().into_owned())
+}
+
+async fn validate_tinytex_kpathsea(lualatex: &Path) -> Result<(), String> {
+    let Some(kpsewhich) = sibling_tool(lualatex, "kpsewhich") else {
+        return Ok(());
+    };
+    for args in [
+        vec!["--var-value=TEXMFROOT".to_string()],
+        vec!["--engine=luahbtex".to_string(), "lualatex.fmt".to_string()],
+    ] {
+        let output = run_tex_utility(&kpsewhich, &args, TINYTEX_START_TIMEOUT).await?;
+        if !output.success || output.stdout.trim().is_empty() {
+            return Err(format!(
+                "TinyTeX kpsewhich {} found nothing: {}",
+                args.join(" "),
+                utility_error(&output)
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn perl_gap_error(failure: &str) -> Option<crate::app_error::AppError> {
+    if let Some((_, rest)) = failure.split_once("Can't locate ") {
+        if failure.contains(" in @INC") {
+            let module = rest.split(".pm").next().unwrap_or(rest).replace('/', "::");
+            return Some(
+                crate::app_error::AppError::new("tex.perl_module_missing").param("module", module),
+            );
+        }
+    }
+    let interpreter_gap = failure.contains("perl")
+        && (failure.contains("No such file or directory") || failure.contains("bad interpreter"));
+    interpreter_gap.then(|| crate::app_error::AppError::new("tex.perl_missing"))
+}
+
+fn perl_gap_for(os: &str, failure: &str) -> Option<crate::app_error::AppError> {
+    (os == "linux").then(|| perl_gap_error(failure)).flatten()
+}
+
+#[cfg(any(target_os = "linux", test))]
+const TINYTEX_PERL_MODULES: [&str; 19] = [
+    "Config",
+    "Cwd",
+    "Data::Dumper",
+    "Digest::MD5",
+    "Digest::SHA",
+    "Encode",
+    "File::Basename",
+    "File::Copy",
+    "File::Find",
+    "File::Glob",
+    "File::Path",
+    "File::Spec",
+    "File::Temp",
+    "FileHandle",
+    "Getopt::Long",
+    "List::Util",
+    "Pod::Usage",
+    "Time::HiRes",
+    "Unicode::Normalize",
+];
+
+#[cfg(any(target_os = "linux", test))]
+async fn check_tinytex_perl(perl: Option<&Path>) -> Result<(), String> {
+    let Some(perl) = perl else {
+        return Err(crate::app_error::AppError::new("tex.perl_missing").into());
+    };
+    let script = TINYTEX_PERL_MODULES
+        .iter()
+        .map(|module| format!("use {module};"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let Ok(output) =
+        run_tex_utility(perl, &["-e".to_string(), script], TINYTEX_START_TIMEOUT).await
+    else {
+        return Ok(());
+    };
+    if output.success {
+        return Ok(());
+    }
+    match perl_gap_error(&utility_error(&output)) {
+        Some(error) => Err(error.into()),
+        None => Ok(()),
+    }
+}
+
+async fn ensure_tinytex_perl() -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        let perl = oleafly_core::tex_distro::find_perl(&crate::tex_distro::search());
+        check_tinytex_perl(perl.as_deref()).await
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Ok(())
+    }
+}
+
+fn line_position(line: &[u8], needle: &[u8]) -> Option<usize> {
+    line.windows(needle.len())
+        .position(|window| window == needle)
+}
+
+fn relative_font_dir_line(line: &[u8]) -> Option<Vec<u8>> {
+    let open = line_position(line, b"<dir>")?;
+    let close = line_position(line, b"</dir>")?;
+    let folder = line.get(open + b"<dir>".len()..close)?;
+    let folder = folder
+        .iter()
+        .map(|byte| if *byte == b'\\' { b'/' } else { *byte })
+        .collect::<Vec<_>>();
+    let leaf = ["opentype", "truetype"]
+        .into_iter()
+        .find(|leaf| folder.ends_with(format!("/texmf-dist/fonts/{leaf}").as_bytes()))?;
+    let mut rewritten = line[..open].to_vec();
+    rewritten.extend_from_slice(
+        format!("<dir prefix=\"relative\">../../../texmf-dist/fonts/{leaf}").as_bytes(),
+    );
+    rewritten.extend_from_slice(&line[close..]);
+    Some(rewritten)
+}
+
+fn relative_tinytex_font_dirs(text: &[u8]) -> Option<Vec<u8>> {
+    let mut changed = false;
+    let mut rewritten = Vec::with_capacity(text.len());
+    for line in text.split_inclusive(|byte| *byte == b'\n') {
+        match relative_font_dir_line(line) {
+            Some(line) => {
+                changed = true;
+                rewritten.extend_from_slice(&line);
+            }
+            None => rewritten.extend_from_slice(line),
+        }
+    }
+    changed.then_some(rewritten)
+}
+
+fn relative_fonts_conf(root: &Path) -> Result<(), String> {
+    let Some(tree) = crate::tex_distro::texdir_bin_dirs(root)
+        .into_iter()
+        .find_map(|bin| bin.ancestors().nth(2).map(Path::to_path_buf))
+    else {
+        return Ok(());
+    };
+    let path = tree.join("texmf-var/fonts/conf/fonts.conf");
+    let Ok(text) = std::fs::read(&path) else {
+        return Ok(());
+    };
+    let Some(rewritten) = relative_tinytex_font_dirs(&text) else {
+        return Ok(());
+    };
+    oleafly_core::atomic::write_atomic(&path, &rewritten)
+        .map_err(|error| format!("failed to update TinyTeX's font configuration: {error}"))
 }
 
 async fn validate_tinytex_root(root: &Path, asset: &TinytexAsset) -> Result<EngineInfo, String> {
@@ -818,17 +1161,33 @@ async fn prepare_staged_tinytex(root: &Path) -> Result<EngineInfo, String> {
             .ok_or_else(|| "Downloaded TinyTeX has no tlmgr binary.".to_string())?;
         tlmgr_run_at(&tlmgr.to_string_lossy(), "install", vec!["latexmk".into()]).await?;
     }
+    if cfg!(windows) {
+        let staged = root.to_path_buf();
+        tauri::async_runtime::spawn_blocking(move || relative_fonts_conf(&staged))
+            .await
+            .map_err(|error| error.to_string())??;
+    }
     validate_tinytex_executables(root).await
 }
 
+fn publish_error(error: &std::io::Error) -> crate::app_error::AppError {
+    let locked = error.kind() == std::io::ErrorKind::PermissionDenied
+        || matches!(error.raw_os_error(), Some(5 | 32 | 33));
+    if locked {
+        crate::app_error::AppError::new("tex.tinytex_publish_locked")
+    } else {
+        crate::app_error::AppError::new("tex.tinytex_publish_failed").detail(error)
+    }
+}
+
 fn publish_staged_tinytex(staging: &Path, destination: &Path) -> Result<(), String> {
+    use oleafly_core::atomic::rename_tree_with_retry;
     validate_publish_paths(staging, destination)?;
     let backup = tinytex_previous_sibling(destination)?;
     remove_install_path(&backup)?;
     let had_destination = std::fs::symlink_metadata(destination).is_ok();
     if had_destination {
-        std::fs::rename(destination, &backup)
-            .map_err(|error| format!("failed to stage the previous TinyTeX install: {error}"))?;
+        rename_tree_with_retry(destination, &backup).map_err(|error| publish_error(&error))?;
     }
     publish_or_restore(staging, destination, &backup, had_destination)?;
     if let Some(parent) = destination.parent() {
@@ -870,15 +1229,18 @@ fn publish_or_restore(
     backup: &Path,
     had_destination: bool,
 ) -> Result<(), String> {
-    if let Err(error) = std::fs::rename(staging, destination) {
+    use oleafly_core::atomic::rename_tree_with_retry;
+    if let Err(error) = rename_tree_with_retry(staging, destination) {
         if had_destination {
-            if let Err(rollback_error) = std::fs::rename(backup, destination) {
-                return Err(format!(
-                    "failed to publish TinyTeX installation: {error}. Restoring the previous installation also failed: {rollback_error}"
-                ));
+            if let Err(rollback_error) = rename_tree_with_retry(backup, destination) {
+                return Err(
+                    crate::app_error::AppError::new("tex.tinytex_rollback_failed")
+                        .detail(format!("{error}; {rollback_error}"))
+                        .into(),
+                );
             }
         }
-        return Err(format!("failed to publish TinyTeX installation: {error}"));
+        return Err(publish_error(&error).into());
     }
     Ok(())
 }
@@ -902,7 +1264,7 @@ fn rollback_published_tinytex(destination: &Path) -> Result<(), String> {
     let had_backup = std::fs::symlink_metadata(&backup).is_ok();
     remove_install_path(destination)?;
     if had_backup {
-        std::fs::rename(&backup, destination)
+        oleafly_core::atomic::rename_tree_with_retry(&backup, destination)
             .map_err(|e| format!("failed to restore the previous TinyTeX install: {e}"))?;
     }
     Ok(())
@@ -914,7 +1276,7 @@ fn recover_interrupted_publish() -> Result<(), String> {
     let destination_exists = std::fs::symlink_metadata(&destination).is_ok();
     let backup_exists = std::fs::symlink_metadata(&backup).is_ok();
     match (destination_exists, backup_exists) {
-        (false, true) => std::fs::rename(&backup, &destination)
+        (false, true) => oleafly_core::atomic::rename_tree_with_retry(&backup, &destination)
             .map_err(|e| format!("failed to recover the previous TinyTeX install: {e}")),
         (true, true) => {
             match tinytex_asset().and_then(|asset| validate_install_marker(&destination, &asset)) {
@@ -926,44 +1288,72 @@ fn recover_interrupted_publish() -> Result<(), String> {
     }
 }
 
+fn tinytex_platform_error(os: &str, arch: &str) -> String {
+    crate::app_error::AppError::new("tex.tinytex_unsupported_platform")
+        .param("os", os)
+        .param("arch", arch)
+        .into()
+}
+
 fn tinytex_asset_for(os: &str, arch: &str) -> Result<TinytexAsset, String> {
     let base =
         format!("https://github.com/rstudio/tinytex-releases/releases/download/{TINYTEX_TAG}");
     match (os, arch) {
         ("windows", "x86_64") => Ok(tinytex_asset_metadata(
-            &base, ("TinyTeX", "zip", ArchiveFormat::Zip, 246_862_169,
-            "313314cdf15ad94e78931f6eff9bfc978f233ece7e5877f26467afe0b40f377b",
-            22_948, 535_736_875,
-            "cdc4ee187e1445c7157ca5387414d3e9539511df654ac353ccf67592ab652f37",
-        ))),
-        ("windows", unsupported_arch) => Err(format!(
-            "Automatic TinyTeX install is not available for Windows {unsupported_arch}. Install a compatible TeX Live toolchain manually."
+            &base,
+            (
+                "TinyTeX",
+                "zip",
+                ArchiveFormat::Zip,
+                246_862_169,
+                "313314cdf15ad94e78931f6eff9bfc978f233ece7e5877f26467afe0b40f377b",
+                22_948,
+                535_736_875,
+                "cdc4ee187e1445c7157ca5387414d3e9539511df654ac353ccf67592ab652f37",
+            ),
         )),
         ("macos", "x86_64" | "aarch64") => Ok(tinytex_asset_metadata(
-            &base, ("TinyTeX", "tgz", ArchiveFormat::TarGz, 265_813_745,
-            "c1e6ee0474300c72395647aa93aca0ea4bb600192e9a22bf539d57a583acb5c5",
-            19_994, 517_999_787,
-            "5018a2635526cc1d3a27b4eaa2bff8239c181afc6da01a063d1ff33809a3abd1",
-        ))),
-        ("macos", unsupported_arch) => Err(format!(
-            "Automatic TinyTeX install is not available for macOS {unsupported_arch}. Install a compatible TeX Live toolchain manually."
+            &base,
+            (
+                "TinyTeX",
+                "tgz",
+                ArchiveFormat::TarGz,
+                265_813_745,
+                "c1e6ee0474300c72395647aa93aca0ea4bb600192e9a22bf539d57a583acb5c5",
+                19_994,
+                517_999_787,
+                "5018a2635526cc1d3a27b4eaa2bff8239c181afc6da01a063d1ff33809a3abd1",
+            ),
         )),
         ("linux", "x86_64") => Ok(tinytex_asset_metadata(
-            &base, ("TinyTeX", "tar.gz", ArchiveFormat::TarGz, 200_145_836,
-            "6f39005ce5c60863698793481352df75c051980b68a47726d49be9a00a377767",
-            19_994, 415_152_635,
-            "a69e2c1225af6911235e2a2ca40bf4a7968df6a64dc70ac5a43448683b53c938",
-        ))),
-        ("linux", "aarch64") => Ok(tinytex_asset_metadata(
-            &base, ("TinyTeX-linux-arm64", "tar.xz", ArchiveFormat::TarXz, 155_871_496,
-            "c6713bf6c44048a4902040a08763c611deac3644b844f03d7244ae49a54a2a08",
-            19_992, 422_289_956,
-            "87da0e4715f7d96e6aeb8a62532b036e1a47267be5f86aa4de962b2539868ce4",
-        ))),
-        ("linux", unsupported_arch) => Err(format!(
-            "Automatic TinyTeX install is not available for Linux {unsupported_arch}. Install a LuaLaTeX / TeX Live 2025 toolchain from your package manager."
+            &base,
+            (
+                "TinyTeX",
+                "tar.gz",
+                ArchiveFormat::TarGz,
+                200_145_836,
+                "6f39005ce5c60863698793481352df75c051980b68a47726d49be9a00a377767",
+                19_994,
+                415_152_635,
+                "a69e2c1225af6911235e2a2ca40bf4a7968df6a64dc70ac5a43448683b53c938",
+            ),
         )),
-        _ => Err("Automatic TinyTeX install is not supported on this platform. Install a LuaLaTeX / TeX Live 2025 toolchain manually.".to_string()),
+        ("linux", "aarch64") => Ok(tinytex_asset_metadata(
+            &base,
+            (
+                "TinyTeX-linux-arm64",
+                "tar.xz",
+                ArchiveFormat::TarXz,
+                155_871_496,
+                "c6713bf6c44048a4902040a08763c611deac3644b844f03d7244ae49a54a2a08",
+                19_992,
+                422_289_956,
+                "87da0e4715f7d96e6aeb8a62532b036e1a47267be5f86aa4de962b2539868ce4",
+            ),
+        )),
+        (unsupported_os, unsupported_arch) => {
+            Err(tinytex_platform_error(unsupported_os, unsupported_arch))
+        }
     }
 }
 
@@ -1044,21 +1434,34 @@ struct TinytexInstallPaths {
     download: PathBuf,
 }
 
+fn prepare_install_parent(parent: &Path) -> Result<(), String> {
+    let data_root = paths::oleafly_root()?;
+    if parent == data_root {
+        return std::fs::create_dir_all(parent).map_err(|error| error.to_string());
+    }
+    crate::fsperm::create_private_dir(parent).map_err(|_| tinytex_path_error(&data_root))
+}
+
 fn prepare_install_paths() -> Result<TinytexInstallPaths, String> {
-    let app_root = paths::oleafly_root()?;
-    std::fs::create_dir_all(&app_root).map_err(|error| error.to_string())?;
+    let parent = tinytex_parent()?;
+    prepare_install_parent(&parent)?;
     let paths = TinytexInstallPaths {
         root: tinytex_root()?,
         staging: tinytex_staging_root()?,
         download: tinytex_download_path()?,
     };
     migrate_legacy_download(&paths.download)?;
-    ensure_install_space(&app_root)?;
+    ensure_install_space(&parent)?;
     Ok(paths)
 }
 
 fn migrate_legacy_download(download: &Path) -> Result<(), String> {
     let legacy = legacy_tinytex_download_path()?;
+    if let Some(profile_download) = profile_tinytex_paths().pop() {
+        if !download.exists() && profile_download.is_file() {
+            let _ = std::fs::rename(&profile_download, download);
+        }
+    }
     if download.exists() || !legacy.is_file() {
         return Ok(());
     }
@@ -1073,11 +1476,10 @@ fn ensure_install_space(app_root: &Path) -> Result<(), String> {
     if free >= MIN_FREE_BYTES {
         return Ok(());
     }
-    Err(format!(
-        "Not enough free disk space to install TinyTeX. It needs about {:.1} GB (download plus extraction, with room for LaTeX packages). This disk has {:.1} GB free. Free up space, then try again.",
-        gigabytes(MIN_FREE_BYTES),
-        gigabytes(free)
-    ))
+    Err(crate::app_error::AppError::new("tex.tinytex_disk_space")
+        .param("needed", format!("{:.1}", gigabytes(MIN_FREE_BYTES)))
+        .param("free", format!("{:.1}", gigabytes(free)))
+        .into())
 }
 
 async fn clean_redundant_install_files() -> Result<(), String> {
@@ -1096,87 +1498,195 @@ async fn clean_redundant_install_files() -> Result<(), String> {
     .map_err(|error| error.to_string())
 }
 
-async fn open_tinytex_download(
-    asset: &TinytexAsset,
-    already: u64,
-) -> Result<(reqwest::Response, bool), String> {
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(30))
-        .timeout(std::time::Duration::from_secs(2 * 60 * 60))
-        .build()
-        .map_err(|error| format!("could not initialize TinyTeX downloader: {error}"))?;
-    let mut request = client.get(&asset.url);
-    if already > 0 {
-        request = request.header(reqwest::header::RANGE, format!("bytes={already}-"));
-    }
-    let response = request
-        .send()
-        .await
-        .map_err(|error| format!("download failed: {error}"))?
-        .error_for_status()
-        .map_err(|error| format!("download failed: {error}"))?;
-    let resuming = response.status() == reqwest::StatusCode::PARTIAL_CONTENT && already > 0;
-    if let Some(response_bytes) = response.content_length() {
-        let claimed_total = if resuming {
-            already.checked_add(response_bytes)
-        } else {
-            Some(response_bytes)
-        };
-        if claimed_total != Some(asset.expected_bytes) {
-            return Err(format!(
-                "TinyTeX server reported an unexpected download size. Expected {} bytes.",
-                asset.expected_bytes
-            ));
-        }
-    }
-    Ok((response, resuming))
+enum DownloadStop {
+    NextSource(String),
+    Oversized,
+    Fatal(String),
 }
 
-async fn write_tinytex_download(
-    app: &tauri::AppHandle,
-    path: &Path,
-    asset: &TinytexAsset,
-    response: reqwest::Response,
-    already: u64,
-    resuming: bool,
-) -> Result<(), String> {
-    use futures_util::StreamExt as _;
-    use tauri::Emitter as _;
-    use tokio::io::AsyncWriteExt as _;
+fn install_cancelled_error() -> String {
+    crate::app_error::AppError::new("tex.tinytex_install_cancelled").into()
+}
 
-    let mut file = open_download_file(path, resuming).await?;
-    let mut received = if resuming { already } else { 0 };
-    let mut stream = response.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|error| {
-            format!("download interrupted: {error}. Your progress is saved. Retry to resume.")
-        })?;
-        received = checked_received_bytes(received, chunk.len())?;
-        if received > asset.expected_bytes {
-            drop(file);
-            let _ = tokio::fs::remove_file(path).await;
-            return Err("TinyTeX download exceeded its pinned size and was discarded.".into());
+fn verification_failed_error() -> String {
+    crate::app_error::AppError::new("tex.tinytex_verification_failed").into()
+}
+
+fn download_network_error(error: &reqwest::Error) -> DownloadStop {
+    let _ = crate::project::append_app_log(format!("TinyTeX download failed: {error}"));
+    DownloadStop::NextSource(match error.status() {
+        Some(status) => crate::app_error::AppError::new("tex.tinytex_download_refused")
+            .param("status", status.as_u16())
+            .into(),
+        None => crate::app_error::AppError::new("tex.tinytex_download_failed").into(),
+    })
+}
+
+fn download_stalled_error(stall: std::time::Duration) -> DownloadStop {
+    DownloadStop::NextSource(
+        crate::app_error::AppError::new("tex.tinytex_download_stalled")
+            .param("seconds", stall.as_secs())
+            .into(),
+    )
+}
+
+fn download_interrupted_error(received: u64, total: u64) -> DownloadStop {
+    DownloadStop::NextSource(
+        crate::app_error::AppError::new("tex.tinytex_download_interrupted")
+            .param("received", received / 1_000_000)
+            .param("total", total / 1_000_000)
+            .into(),
+    )
+}
+
+fn local_download_error(error: impl ToString) -> DownloadStop {
+    DownloadStop::Fatal(
+        crate::app_error::AppError::new("tex.tinytex_download_write_failed")
+            .detail(error.to_string())
+            .into(),
+    )
+}
+
+struct TinytexDownload<'a, P> {
+    path: &'a Path,
+    asset: &'a TinytexAsset,
+    stall: std::time::Duration,
+    cancel: &'a crate::toolchain_download::CancelToken,
+    progress: P,
+}
+
+impl<P: Fn(u64)> TinytexDownload<'_, P> {
+    async fn run(&self, urls: &[&str]) -> Result<(), String> {
+        let mut first_failure = None;
+        for url in urls {
+            match self.fetch(url).await {
+                Ok(()) => return Ok(()),
+                Err(DownloadStop::Fatal(error)) => return Err(error),
+                Err(DownloadStop::NextSource(error)) => {
+                    first_failure.get_or_insert(error);
+                }
+                Err(DownloadStop::Oversized) => {
+                    first_failure.get_or_insert_with(verification_failed_error);
+                }
+            }
         }
-        file.write_all(&chunk)
-            .await
-            .map_err(|error| error.to_string())?;
-        let _ = app.emit(
-            "tinytex-install-progress",
-            EngineProgress {
-                phase: "download",
-                received,
-                total: Some(asset.expected_bytes),
-            },
-        );
+        Err(first_failure.unwrap_or_else(|| {
+            crate::app_error::AppError::new("tex.tinytex_download_failed").into()
+        }))
     }
-    file.flush().await.map_err(|error| error.to_string())?;
-    if received == asset.expected_bytes {
-        Ok(())
-    } else {
-        Err(format!(
-            "download interrupted after {received} of {} bytes. Your progress is saved. Retry to resume.",
-            asset.expected_bytes
-        ))
+
+    async fn fetch(&self, url: &str) -> Result<(), DownloadStop> {
+        let mut already = tokio::fs::metadata(self.path)
+            .await
+            .map(|metadata| metadata.len())
+            .unwrap_or(0);
+        if already > self.asset.expected_bytes {
+            let _ = tokio::fs::remove_file(self.path).await;
+            already = 0;
+        }
+        if already == self.asset.expected_bytes {
+            return Ok(());
+        }
+        let (response, resuming) = tokio::select! {
+            biased;
+            () = self.cancel.cancelled() => {
+                return Err(DownloadStop::Fatal(install_cancelled_error()));
+            }
+            opened = self.open(url, already) => opened?,
+        };
+        let mut file = open_download_file(self.path, resuming)
+            .await
+            .map_err(local_download_error)?;
+        let received = if resuming { already } else { 0 };
+        let copied = self.copy(&mut file, response, received).await;
+        let flushed = tokio::io::AsyncWriteExt::flush(&mut file).await;
+        drop(file);
+        match copied {
+            Err(DownloadStop::Oversized) => {
+                let _ = tokio::fs::remove_file(self.path).await;
+                Err(DownloadStop::Oversized)
+            }
+            Err(stop) => Err(stop),
+            Ok(()) => flushed.map_err(local_download_error),
+        }
+    }
+
+    async fn open(
+        &self,
+        url: &str,
+        already: u64,
+    ) -> Result<(reqwest::Response, bool), DownloadStop> {
+        let client = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(30))
+            .timeout(std::time::Duration::from_secs(2 * 60 * 60))
+            .build()
+            .map_err(|error| {
+                DownloadStop::Fatal(format!("could not initialize TinyTeX downloader: {error}"))
+            })?;
+        let mut request = client.get(url);
+        if already > 0 {
+            request = request.header(reqwest::header::RANGE, format!("bytes={already}-"));
+        }
+        let response = tokio::time::timeout(self.stall, request.send())
+            .await
+            .map_err(|_| download_stalled_error(self.stall))?
+            .and_then(reqwest::Response::error_for_status)
+            .map_err(|error| download_network_error(&error))?;
+        let resuming = response.status() == reqwest::StatusCode::PARTIAL_CONTENT && already > 0;
+        if let Some(response_bytes) = response.content_length() {
+            let claimed_total = if resuming {
+                already.checked_add(response_bytes)
+            } else {
+                Some(response_bytes)
+            };
+            if claimed_total != Some(self.asset.expected_bytes) {
+                return Err(DownloadStop::NextSource(verification_failed_error()));
+            }
+        }
+        Ok((response, resuming))
+    }
+
+    async fn copy(
+        &self,
+        file: &mut tokio::fs::File,
+        response: reqwest::Response,
+        mut received: u64,
+    ) -> Result<(), DownloadStop> {
+        use futures_util::StreamExt as _;
+        use tokio::io::AsyncWriteExt as _;
+
+        let total = self.asset.expected_bytes;
+        let mut stream = response.bytes_stream();
+        loop {
+            let next = tokio::select! {
+                biased;
+                () = self.cancel.cancelled() => {
+                    return Err(DownloadStop::Fatal(install_cancelled_error()));
+                }
+                next = tokio::time::timeout(self.stall, stream.next()) => next,
+            };
+            let Some(chunk) = next.map_err(|_| download_stalled_error(self.stall))? else {
+                break;
+            };
+            let chunk = chunk.map_err(|error| {
+                let _ = crate::project::append_app_log(format!(
+                    "TinyTeX download interrupted: {error}"
+                ));
+                download_interrupted_error(received, total)
+            })?;
+            received =
+                checked_received_bytes(received, chunk.len()).map_err(DownloadStop::Fatal)?;
+            if received > total {
+                return Err(DownloadStop::Oversized);
+            }
+            file.write_all(&chunk).await.map_err(local_download_error)?;
+            (self.progress)(received);
+        }
+        if received == total {
+            Ok(())
+        } else {
+            Err(download_interrupted_error(received, total))
+        }
     }
 }
 
@@ -1204,20 +1714,30 @@ async fn download_tinytex(
     app: &tauri::AppHandle,
     path: &Path,
     asset: &TinytexAsset,
+    cancel: &crate::toolchain_download::CancelToken,
 ) -> Result<(), String> {
-    let mut already = tokio::fs::metadata(path)
-        .await
-        .map(|metadata| metadata.len())
-        .unwrap_or(0);
-    if already > asset.expected_bytes {
-        let _ = tokio::fs::remove_file(path).await;
-        already = 0;
+    use tauri::Emitter as _;
+
+    let total = asset.expected_bytes;
+    let urls = asset.download_urls();
+    TinytexDownload {
+        path,
+        asset,
+        stall: TINYTEX_STALL_TIMEOUT,
+        cancel,
+        progress: |received| {
+            let _ = app.emit(
+                "tinytex-install-progress",
+                EngineProgress {
+                    phase: "download",
+                    received,
+                    total: Some(total),
+                },
+            );
+        },
     }
-    if already == asset.expected_bytes {
-        return Ok(());
-    }
-    let (response, resuming) = open_tinytex_download(asset, already).await?;
-    write_tinytex_download(app, path, asset, response, already, resuming).await
+    .run(&urls.iter().map(String::as_str).collect::<Vec<_>>())
+    .await
 }
 
 async fn verify_download(path: &Path, asset: &TinytexAsset) -> Result<(), String> {
@@ -1229,18 +1749,30 @@ async fn verify_download(path: &Path, asset: &TinytexAsset) -> Result<(), String
     .await
     .map_err(|error| error.to_string())?;
     if let Err(error) = result {
+        let _ = crate::project::append_app_log(format!("TinyTeX verification failed: {error}"));
         let _ = tokio::fs::remove_file(path).await;
-        return Err(format!(
-            "{error} The download was discarded. Retry to download a clean copy."
-        ));
+        return Err(verification_failed_error());
     }
     Ok(())
+}
+
+fn unpack_error(error: String) -> String {
+    if error.starts_with(crate::app_error::PREFIX) {
+        return error;
+    }
+    let code = if error.contains("TinyTeX archive") || error.contains("TinyTeX ZIP") {
+        "tex.tinytex_integrity_failed"
+    } else {
+        "tex.tinytex_unpack_failed"
+    };
+    crate::app_error::AppError::new(code).detail(error).into()
 }
 
 async fn extract_tinytex(
     app: &tauri::AppHandle,
     paths: &TinytexInstallPaths,
     asset: &TinytexAsset,
+    cancel: &crate::toolchain_download::CancelToken,
 ) -> Result<(), String> {
     use tauri::Emitter as _;
 
@@ -1256,23 +1788,42 @@ async fn extract_tinytex(
     let staging = paths.staging.clone();
     let extract_staging = staging.clone();
     let extract_asset = asset.clone();
+    let stop = cancel.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         remove_install_path(&extract_staging)?;
         std::fs::create_dir_all(&extract_staging)
             .map_err(|error| format!("failed to create TinyTeX staging directory: {error}"))?;
-        crate::tinytex_archive::extract_all(
+        crate::tinytex_archive::extract_all_until(
             &download,
             extract_asset.format,
             extract_asset.member_policy(),
             &extract_staging,
+            &|| stop.is_cancelled(),
         )
+        .map_err(|error| {
+            if stop.is_cancelled() {
+                install_cancelled_error()
+            } else {
+                error
+            }
+        })
     })
     .await
     .map_err(|error| error.to_string())?;
     if result.is_err() {
         let _ = tauri::async_runtime::spawn_blocking(move || remove_install_path(&staging)).await;
     }
-    result
+    result.map_err(unpack_error)
+}
+
+fn staged_validation_error(error: String) -> String {
+    let code = crate::app_error::code(&error);
+    if code.is_some_and(|code| code.starts_with("tex.perl_")) {
+        return error;
+    }
+    crate::app_error::AppError::new("tex.tinytex_validation_failed")
+        .detail(crate::app_error::english_error(&error))
+        .into()
 }
 
 async fn validate_staged_tinytex(
@@ -1299,9 +1850,7 @@ async fn validate_staged_tinytex(
         let failed_staging = staging.to_path_buf();
         let _ = tauri::async_runtime::spawn_blocking(move || remove_install_path(&failed_staging))
             .await;
-        return Err(format!(
-            "TinyTeX validation failed before installation: {error}"
-        ));
+        return Err(staged_validation_error(error));
     }
     write_install_marker(staging, asset)
 }
@@ -1340,12 +1889,15 @@ async fn rollback_failed_publish(
             .await
             .map_err(|error| error.to_string())?;
     match rollback {
-        Ok(()) => Err(format!(
-            "TinyTeX final validation failed and the previous installation was restored: {validation_error}"
-        )),
-        Err(rollback_error) => Err(format!(
-            "TinyTeX final validation failed: {validation_error}. Restoring the previous installation also failed: {rollback_error}"
-        )),
+        Ok(()) => Err(staged_validation_error(validation_error)),
+        Err(rollback_error) => Err(
+            crate::app_error::AppError::new("tex.tinytex_rollback_failed")
+                .detail(format!(
+                    "{}; {rollback_error}",
+                    crate::app_error::english_error(&validation_error)
+                ))
+                .into(),
+        ),
     }
 }
 
@@ -1358,16 +1910,32 @@ async fn reuse_existing_tinytex(asset: &TinytexAsset) -> Result<Option<EngineInf
     Ok(Some(existing))
 }
 
+fn stop_if_cancelled(cancel: &crate::toolchain_download::CancelToken) -> Result<(), String> {
+    if cancel.is_cancelled() {
+        return Err(install_cancelled_error());
+    }
+    Ok(())
+}
+
 async fn install_prepared_tinytex(
     app: &tauri::AppHandle,
     state: &AppState,
     asset: &TinytexAsset,
+    cancel: &crate::toolchain_download::CancelToken,
 ) -> Result<EngineInfo, String> {
+    ensure_tinytex_perl().await?;
     let paths = prepare_install_paths()?;
-    download_tinytex(app, &paths.download, asset).await?;
+    download_tinytex(app, &paths.download, asset, cancel).await?;
     verify_download(&paths.download, asset).await?;
-    extract_tinytex(app, &paths, asset).await?;
+    stop_if_cancelled(cancel)?;
+    extract_tinytex(app, &paths, asset, cancel).await?;
+    stop_if_cancelled(cancel)?;
     validate_staged_tinytex(app, &paths.staging, asset).await?;
+    if let Err(error) = stop_if_cancelled(cancel) {
+        let staged = paths.staging.clone();
+        let _ = tauri::async_runtime::spawn_blocking(move || remove_install_path(&staged)).await;
+        return Err(error);
+    }
     let installed = publish_tinytex(state, &paths, asset).await;
     if installed.is_ok() {
         let _ = tokio::fs::remove_file(&paths.download).await;
@@ -1375,21 +1943,77 @@ async fn install_prepared_tinytex(
     installed
 }
 
+fn coded_install_error(error: String) -> String {
+    if error.starts_with(crate::app_error::PREFIX) {
+        return error;
+    }
+    crate::app_error::AppError::new("tex.tinytex_install_failed")
+        .detail(error)
+        .into()
+}
+
+static INSTALL_CANCEL: std::sync::Mutex<Option<crate::toolchain_download::CancelToken>> =
+    std::sync::Mutex::new(None);
+
+struct InstallCancelSlot(crate::toolchain_download::CancelToken);
+
+impl InstallCancelSlot {
+    fn open() -> Self {
+        let token = crate::toolchain_download::CancelToken::new();
+        *INSTALL_CANCEL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(token.clone());
+        Self(token)
+    }
+}
+
+impl Drop for InstallCancelSlot {
+    fn drop(&mut self) {
+        *INSTALL_CANCEL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+    }
+}
+
 #[tauri::command]
-pub async fn install_tinytex(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
+pub fn cancel_tinytex_install() {
+    if let Some(token) = INSTALL_CANCEL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+    {
+        token.cancel();
+    }
+}
+
+async fn run_tinytex_install(
+    app: &tauri::AppHandle,
+    state: &AppState,
 ) -> Result<EngineInfo, String> {
-    let _install = TinytexMutationGuard::acquire_install()?;
+    let _install = TinytexMutationGuard::acquire_install()
+        .map_err(|_| String::from(crate::app_error::AppError::new("tex.tinytex_install_busy")))?;
     {
         let _runtime = acquire_tex_runtime_write()?;
-        recover_interrupted_publish()?;
+        tauri::async_runtime::spawn_blocking(recover_interrupted_publish)
+            .await
+            .map_err(|error| error.to_string())??;
     }
     let asset = tinytex_asset()?;
     if let Some(existing) = reuse_existing_tinytex(&asset).await? {
         return Ok(existing);
     }
-    install_prepared_tinytex(&app, &state, &asset).await
+    let cancel = InstallCancelSlot::open();
+    install_prepared_tinytex(app, state, &asset, &cancel.0).await
+}
+
+#[tauri::command]
+pub async fn install_tinytex(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<EngineInfo, String> {
+    run_tinytex_install(&app, state.inner())
+        .await
+        .map_err(coded_install_error)
 }
 
 #[tauri::command]
@@ -1407,26 +2031,56 @@ async fn delete_tinytex_synchronized(state: &AppState) -> Result<(), String> {
         .map_err(|e| e.to_string())?
 }
 
+fn tinytex_paths_to_delete(
+    parent: Result<PathBuf, String>,
+    profile: Vec<PathBuf>,
+) -> Result<Vec<PathBuf>, String> {
+    let managed = match parent {
+        Ok(parent) => tinytex_paths_in(&parent).to_vec(),
+        Err(_) if !profile.is_empty() => Vec::new(),
+        Err(error) => return Err(error),
+    };
+    Ok(managed.into_iter().chain(profile).collect())
+}
+
 fn delete_tinytex_paths() -> Result<(), String> {
-    let paths = [
-        tinytex_root()?,
-        tinytex_staging_root()?,
-        tinytex_backup_root()?,
-        tinytex_download_path()?,
-    ];
-    for path in paths {
+    let parent = tinytex_parent();
+    for path in tinytex_paths_to_delete(parent.clone(), profile_tinytex_paths())? {
         remove_install_path(&path)?;
+    }
+    if let (Ok(parent), Ok(data_root)) = (parent, paths::oleafly_root()) {
+        if parent != data_root {
+            let _ = std::fs::remove_dir(parent);
+        }
     }
     Ok(())
 }
 
 fn tlmgr_path() -> Result<String, String> {
-    crate::tex_distro::active_latexmk_distribution()
+    let active = crate::tex_distro::active_latexmk_distribution();
+    let manager = active
+        .as_ref()
+        .and_then(|distribution| distribution.system_package_manager.clone());
+    active
         .and_then(|distribution| distribution.tlmgr)
-        .ok_or_else(|| {
-            "The active TeX distribution has no tlmgr. Package management is unavailable."
-                .to_string()
+        .ok_or_else(|| match manager {
+            Some(manager) => packages::system_manager_error(&manager),
+            None => crate::app_error::AppError::new("tex.no_package_manager").into(),
         })
+}
+
+pub(crate) fn tlmgr_can_add_binaries(tlmgr: &str) -> bool {
+    if tlmgr_is_managed(tlmgr) {
+        return true;
+    }
+    let Ok(resolved) = std::fs::canonicalize(tlmgr) else {
+        return false;
+    };
+    resolved
+        .ancestors()
+        .map(|dir| dir.join("tlpkg"))
+        .find(|dir| dir.is_dir())
+        .is_some_and(|tlpkg| tempfile::tempfile_in(tlpkg).is_ok())
 }
 
 #[tauri::command]
@@ -1498,6 +2152,9 @@ async fn tlmgr_installed_at(tlmgr: &str) -> Result<Vec<String>, String> {
         TLMGR_INFO_TIMEOUT,
     )
     .await?;
+    if let Some(error) = packages::system_manager_refusal(&output) {
+        return Err(error);
+    }
     if !output.success {
         return Err(utility_error(&output));
     }
@@ -1626,6 +2283,7 @@ async fn tlmgr_mutate_synchronized(
     }
     validate_package_names(&packages)?;
     let _mutation = TinytexMutationGuard::acquire_maintenance()?;
+    let _quit_gate = PackageMutation::start();
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
     let _runtime = acquire_tex_runtime_write()?;
@@ -1700,6 +2358,41 @@ fn is_permission_failure(output: &TexUtilityOutput) -> bool {
         .any(|marker| text.contains(marker))
 }
 
+async fn tlmgr_attempt(
+    tlmgr: &str,
+    args: &[String],
+    repository: Option<&str>,
+    managed: bool,
+) -> Result<TexUtilityOutput, String> {
+    let output = run_tlmgr_mutation(tlmgr, args, repository, managed).await?;
+    match packages::system_manager_refusal(&output) {
+        Some(error) => Err(error),
+        None => Ok(output),
+    }
+}
+
+async fn tlmgr_run_with_archive(
+    tlmgr: &str,
+    args: &[String],
+    managed: bool,
+) -> Result<TexUtilityOutput, String> {
+    let output = tlmgr_attempt(tlmgr, args, None, managed).await?;
+    let Some(refusal) = packages::cross_release_refusal(&output, managed) else {
+        check_tlmgr_self_update(tlmgr, &output)?;
+        return Ok(output);
+    };
+    if let Some(repository) = packages::archived_repository(&output) {
+        let archived = tlmgr_attempt(tlmgr, args, Some(&repository), managed).await?;
+        if packages::cross_release_refusal(&archived, managed).is_none()
+            && !tlmgr_wants_self_update(&archived)
+            && (archived.success || is_permission_failure(&archived))
+        {
+            return Ok(archived);
+        }
+    }
+    Err(refusal)
+}
+
 async fn tlmgr_run_at(tlmgr: &str, action: &str, packages: Vec<String>) -> Result<String, String> {
     let user_tree = if action == "install" {
         tlmgr_user_tree(tlmgr).await
@@ -1720,7 +2413,7 @@ async fn tlmgr_usermode_run_at(
     validate_package_names(&packages)?;
     let mut args = vec!["--usermode".to_string(), action.to_string(), "--".into()];
     args.extend(packages);
-    let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    let output = tlmgr_run_with_archive(tlmgr, &args, tlmgr_is_managed(tlmgr)).await?;
     if !output.success {
         return Err(packages::package_command_error(
             &output,
@@ -1736,13 +2429,23 @@ async fn tlmgr_run_with_user_tree(
     packages: Vec<String>,
     user_tree: Option<PathBuf>,
 ) -> Result<String, String> {
+    tlmgr_run_recovering(tlmgr, action, packages, user_tree, tlmgr_is_managed(tlmgr)).await
+}
+
+async fn tlmgr_run_recovering(
+    tlmgr: &str,
+    action: &str,
+    packages: Vec<String>,
+    user_tree: Option<PathBuf>,
+    managed: bool,
+) -> Result<String, String> {
     if packages.is_empty() {
         return Ok(String::new());
     }
     validate_package_names(&packages)?;
     let mut args = vec![action.to_string(), "--".into()];
     args.extend(packages.clone());
-    let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    let output = tlmgr_run_with_archive(tlmgr, &args, managed).await?;
     if output.success {
         return Ok(format!("{}{}", output.stdout, output.stderr));
     }
@@ -1871,10 +2574,11 @@ async fn prepare_tagged_compile(
 ) -> Result<TaggedCompilePlan, String> {
     crate::trust::require_trusted(&project_id, crate::trust::Capability::SystemTex)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
-    let lualatex = find_engine()
-        .await
-        .lualatex
-        .ok_or_else(|| "No LuaLaTeX engine available. Install TinyTeX first.".to_string())?;
+    let lualatex = find_engine().await.lualatex.ok_or_else(|| {
+        String::from(crate::app_error::AppError::new(
+            "tex.tagging_engine_missing",
+        ))
+    })?;
     let location = crate::project_location::locate(&project_id)?;
     let build_dir = paths::build_dir(&project_id)?;
     let tex_path = crate::project::resolve_in_project(&project_id, &main_doc)?;
@@ -1910,6 +2614,13 @@ fn remove_stale_tagged_pdf(pdf: &Path) -> Result<(), String> {
     }
 }
 
+fn lualatex_run_failure(error: String) -> String {
+    if crate::app_error::code(&error).is_some() {
+        return error;
+    }
+    format!("failed to run lualatex: {error}")
+}
+
 async fn run_tagged_compile(
     plan: &TaggedCompilePlan,
     cancel: &crate::state::CompileCancel,
@@ -1925,7 +2636,7 @@ async fn run_tagged_compile(
             cancel,
         )
         .await
-        .map_err(|error| format!("failed to run lualatex: {error}"))?;
+        .map_err(lualatex_run_failure)?;
         log = pass_log;
         success = exit_code == Some(0);
         if !success && pass == 0 {
@@ -2009,8 +2720,49 @@ pub async fn compile_tagged(
 mod release_archive_tests;
 
 #[cfg(test)]
+#[path = "latex_engine/tests/installer.rs"]
+mod installer_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_package_change_holds_the_quit_gate_until_it_ends() {
+        let first = PackageMutation::start();
+        let second = PackageMutation::start();
+        assert!(install_in_progress());
+        drop(first);
+        assert!(install_in_progress());
+        drop(second);
+        assert!(PACKAGE_MUTATIONS.load(Ordering::SeqCst) < 2);
+    }
+
+    #[test]
+    fn only_a_full_rescan_starts_a_new_program_search() {
+        let calls = std::cell::RefCell::new(Vec::new());
+        let settle = |rescan| {
+            settle_program_search(
+                rescan,
+                || calls.borrow_mut().push("refresh"),
+                || calls.borrow_mut().push("wait"),
+            );
+        };
+
+        settle(EngineRescan::LoginProbe);
+        assert_eq!(calls.borrow().as_slice(), ["wait"]);
+
+        calls.borrow_mut().clear();
+        settle(EngineRescan::Full);
+        assert_eq!(calls.borrow().as_slice(), ["refresh", "wait"]);
+    }
+
+    #[test]
+    fn engine_rescan_reads_the_names_the_frontend_sends() {
+        let parse = |name: &str| serde_json::from_value::<EngineRescan>(name.into()).unwrap();
+        assert_eq!(parse("login_probe"), EngineRescan::LoginProbe);
+        assert_eq!(parse("full"), EngineRescan::Full);
+    }
 
     #[test]
     fn tagged_pdf_builds_need_a_trusted_folder() {
@@ -2362,7 +3114,7 @@ mod tests {
         let library = crate::project_location::ProjectLocation::library_at("paper", root.clone());
         assert_eq!(
             tagged_entry(&library, "paper/main.tex"),
-            (root.clone(), "paper/main.tex".to_string())
+            (root.join("paper"), "main.tex".to_string())
         );
     }
 
@@ -2401,6 +3153,20 @@ mod tests {
                 .unwrap();
         assert_eq!(code, Some(0), "{log}");
         assert!(out.join(format!("{}.pdf", paths::ENTRY_STEM)).is_file());
+    }
+
+    #[test]
+    fn a_lualatex_that_cannot_start_keeps_its_coded_error() {
+        let coded = String::from(
+            crate::app_error::AppError::new("compile.tool_blocked")
+                .param("tool", "lualatex")
+                .detail("Access is denied. (os error 5)"),
+        );
+        assert_eq!(lualatex_run_failure(coded.clone()), coded);
+        assert_eq!(
+            lualatex_run_failure("timed out".to_string()),
+            "failed to run lualatex: timed out"
+        );
     }
 
     #[test]
@@ -2808,6 +3574,36 @@ mod tests {
     }
 
     #[test]
+    fn self_update_refusals_are_detected_in_either_stream_regardless_of_exit_status() {
+        for success in [true, false] {
+            for stdout in [true, false] {
+                for diagnostic in [
+                    "tlmgr: tlmgr itself needs to be updated.",
+                    "Installed pgf",
+                    "tlmgr: package pgf not present in repository",
+                    "Run tlmgr update --self to check for updates",
+                ] {
+                    let output = TexUtilityOutput {
+                        success,
+                        stdout: if stdout { diagnostic } else { "other output" }.into(),
+                        stderr: if stdout { "other output" } else { diagnostic }.into(),
+                    };
+                    let result = check_tlmgr_self_update("/tex/bin/tlmgr", &output);
+                    if diagnostic.contains("itself needs to be updated") {
+                        let error = result.unwrap_err();
+                        assert!(error.contains(diagnostic), "{error}");
+                        assert!(error.contains("other output"), "{error}");
+                        assert!(error.contains("tlmgr update --self"), "{error}");
+                        assert!(error.contains("/tex/bin/tlmgr"), "{error}");
+                    } else {
+                        result.unwrap();
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn only_a_write_refusal_sends_packages_to_the_personal_tree() {
         let refused = |stderr: &str| TexUtilityOutput {
             success: false,
@@ -2861,6 +3657,134 @@ mod tests {
         );
         let path = script.to_string_lossy().into_owned();
         (root, path, calls)
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn self_update_refusals_stop_package_mutations_without_retrying() {
+        for stream in ["", ">&2"] {
+            for status in [0, 1] {
+                for usermode in [false, true] {
+                    let (root, manager, calls) = recording_manager(&format!(
+                        "echo 'tlmgr itself needs to be updated' {stream}\necho 'cannot write until updated' >&2\nexit {status}"
+                    ));
+                    let error = if usermode {
+                        tlmgr_usermode_run_at(&manager, "install", vec!["pgf".into()]).await
+                    } else {
+                        tlmgr_run_with_user_tree(
+                            &manager,
+                            "install",
+                            vec!["pgf".into()],
+                            Some(root.path().join("texmf")),
+                        )
+                        .await
+                    }
+                    .unwrap_err();
+                    assert!(
+                        error.contains("tlmgr itself needs to be updated"),
+                        "{error}"
+                    );
+                    assert!(error.contains("tlmgr update --self"), "{error}");
+                    assert!(error.contains(&manager), "{error}");
+                    let expected = if usermode {
+                        "--usermode\ninstall\n--\npgf\n"
+                    } else {
+                        "install\n--\npgf\n"
+                    };
+                    assert_eq!(std::fs::read_to_string(calls).unwrap(), expected);
+                }
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_managed_tlmgr_updates_itself_once_and_repeats_the_command() {
+        for status in [0, 1] {
+            let (root, manager, calls) = recording_manager(&format!(
+                "if [ \"$1\" = update ]; then touch \"$(dirname \"$0\")/updated\"; exit 0; fi\n\
+                 if [ -e \"$(dirname \"$0\")/updated\" ]; then echo installed; exit 0; fi\n\
+                 echo 'tlmgr itself needs to be updated.' >&2\nexit {status}"
+            ));
+            let args = ["install".to_string(), "--".into(), "cjk".into()];
+            let output = run_tlmgr_mutation(&manager, &args, None, true)
+                .await
+                .unwrap();
+            assert!(output.success);
+            assert_eq!(output.stdout.trim(), "installed");
+            assert_eq!(
+                std::fs::read_to_string(calls).unwrap(),
+                "install\n--\ncjk\nupdate\n--self\ninstall\n--\ncjk\n"
+            );
+            drop(root);
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_managed_tlmgr_still_refusing_after_its_update_stops_at_one_retry() {
+        let (_root, manager, calls) = recording_manager(
+            "if [ \"$1\" = update ]; then exit 0; fi\n\
+             echo 'tlmgr itself needs to be updated.' >&2\nexit 0",
+        );
+        let args = ["install".to_string(), "--".into(), "cjk".into()];
+        let output = run_tlmgr_mutation(&manager, &args, None, true)
+            .await
+            .unwrap();
+        let error = check_tlmgr_self_update(&manager, &output).unwrap_err();
+        assert!(error.contains("tlmgr update --self"), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(calls).unwrap(),
+            "install\n--\ncjk\nupdate\n--self\ninstall\n--\ncjk\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_failed_self_update_reports_why_and_skips_the_retry() {
+        let (_root, manager, calls) = recording_manager(
+            "if [ \"$1\" = update ]; then echo 'cannot reach the repository' >&2; exit 1; fi\n\
+             echo 'tlmgr itself needs to be updated.' >&2\nexit 1",
+        );
+        let args = ["install".to_string(), "--".into(), "cjk".into()];
+        let error = run_tlmgr_mutation(&manager, &args, None, true)
+            .await
+            .err()
+            .unwrap();
+        assert!(error.contains("cannot reach the repository"), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(calls).unwrap(),
+            "install\n--\ncjk\nupdate\n--self\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_tlmgr_oleafly_does_not_own_is_never_updated() {
+        let (_root, manager, calls) =
+            recording_manager("echo 'tlmgr itself needs to be updated.' >&2\nexit 1");
+        assert!(!tlmgr_is_managed(&manager));
+        let error = tlmgr_run_with_user_tree(&manager, "install", vec!["cjk".into()], None)
+            .await
+            .unwrap_err();
+        assert!(error.contains("tlmgr update --self"), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(calls).unwrap(),
+            "install\n--\ncjk\n"
+        );
+    }
+
+    #[test]
+    fn only_the_tinytex_oleafly_installed_counts_as_managed() {
+        let root = paths::oleafly_root().unwrap();
+        let managed = root.join("tinytex/TinyTeX/bin/universal-darwin/tlmgr");
+        assert!(tlmgr_is_managed(&managed.to_string_lossy()));
+        for other in [
+            "/usr/local/texlive/2026/bin/universal-darwin/tlmgr",
+            "/Library/TeX/texbin/tlmgr",
+        ] {
+            assert!(!tlmgr_is_managed(other), "{other}");
+        }
     }
 
     #[cfg(unix)]
@@ -3108,6 +4032,266 @@ mod tests {
                 ["span"],
             "1 seconds"
         );
+    }
+
+    #[cfg(unix)]
+    const SELF_UPDATE_REFUSAL: &str = "===\ntlmgr itself needs to be updated.\nPlease do this via either\n  tlmgr update --self\n===\ntlmgr: Terminating; please see warning above!";
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn managed_tinytex_updates_tlmgr_and_retries_the_install_once() {
+        let marker = tempfile::tempdir().unwrap();
+        let flag = marker.path().join("updated");
+        let (_root, manager, calls) = recording_manager(&format!(
+            "if [ \"$1\" = update ]; then\ntouch '{flag}'\nprintf 'update: texlive.infra\\n'\nexit 0\nfi\nif [ -e '{flag}' ]; then\nprintf 'Installed\\n'\nexit 0\nfi\necho '{SELF_UPDATE_REFUSAL}' >&2\nexit 255",
+            flag = flag.display()
+        ));
+        let message = tlmgr_run_recovering(&manager, "install", vec!["cjk".into()], None, true)
+            .await
+            .unwrap();
+        assert!(message.contains("Installed"), "{message}");
+        assert_eq!(
+            std::fs::read_to_string(&calls).unwrap(),
+            "install\n--\ncjk\nupdate\n--self\ninstall\n--\ncjk\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_refusal_is_recognised_on_stdout_and_with_a_clean_exit() {
+        let marker = tempfile::tempdir().unwrap();
+        let flag = marker.path().join("updated");
+        let (_root, manager, calls) = recording_manager(&format!(
+            "if [ \"$1\" = update ]; then\ntouch '{flag}'\nexit 0\nfi\nif [ -e '{flag}' ]; then\nprintf 'Installed\\n'\nexit 0\nfi\necho '{SELF_UPDATE_REFUSAL}'\nexit 0",
+            flag = flag.display()
+        ));
+        tlmgr_run_recovering(&manager, "install", vec!["cjk".into()], None, true)
+            .await
+            .unwrap();
+        assert!(std::fs::read_to_string(&calls)
+            .unwrap()
+            .contains("update\n--self\n"));
+    }
+
+    #[cfg(unix)]
+    const CROSS_RELEASE_REFUSAL: &str =
+        "tlmgr: Local TeX Live (2026) is older than remote repository (2027).";
+    #[cfg(unix)]
+    const ARCHIVE_2026: &str =
+        "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2026/tlnet-final";
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_frozen_release_installs_and_updates_tlmgr_from_its_archive() {
+        let marker = tempfile::tempdir().unwrap();
+        let flag = marker.path().join("updated");
+        let (_root, manager, calls) = recording_manager(&format!(
+            "case \"$*\" in\n*--repository*) ;;\n*) echo '{CROSS_RELEASE_REFUSAL}' >&2\nexit 1 ;;\nesac\nif [ \"$1\" = update ]; then\ntouch '{flag}'\nexit 0\nfi\nif [ -e '{flag}' ]; then\nprintf 'Installed\\n'\nexit 0\nfi\necho '{SELF_UPDATE_REFUSAL}' >&2\nexit 255",
+            flag = flag.display()
+        ));
+        let message = tlmgr_run_recovering(&manager, "install", vec!["cjk".into()], None, true)
+            .await
+            .unwrap();
+        assert!(message.contains("Installed"), "{message}");
+        let archived = format!("--repository\n{ARCHIVE_2026}\n");
+        assert_eq!(
+            std::fs::read_to_string(&calls).unwrap(),
+            format!(
+                "install\n--\ncjk\ninstall\n{archived}--\ncjk\nupdate\n--self\n{archived}install\n{archived}--\ncjk\n"
+            )
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_personal_tree_also_falls_back_to_the_archive() {
+        let (root, manager, calls) = recording_manager(&format!(
+            "if [ \"$1\" = install ]; then\necho 'tlmgr: Permission denied at /Library/TeX' >&2\nexit 1\nfi\ncase \"$*\" in\n*--repository*) printf 'Installed\\n' ;;\n*init-usertree*) ;;\n*) echo '{CROSS_RELEASE_REFUSAL}' >&2\nexit 1 ;;\nesac"
+        ));
+        let tree = root.path().join("texmf");
+        tlmgr_run_with_user_tree(&manager, "install", vec!["cjk".into()], Some(tree))
+            .await
+            .unwrap();
+        assert!(std::fs::read_to_string(&calls).unwrap().ends_with(&format!(
+            "--usermode\ninstall\n--repository\n{ARCHIVE_2026}\n--\ncjk\n"
+        )));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_unreachable_archive_names_the_release_gap_in_a_coded_error() {
+        let (_root, manager, _calls) =
+            recording_manager(&format!("echo '{CROSS_RELEASE_REFUSAL}' >&2\nexit 1"));
+        let managed = tlmgr_run_recovering(&manager, "install", vec!["cjk".into()], None, true)
+            .await
+            .unwrap_err();
+        let json = error_envelope(&managed);
+        assert_eq!(json["code"], "tex.managed_tinytex_outdated");
+        assert_eq!(json["params"]["local"], "2026");
+        assert_eq!(json["params"]["remote"], "2027");
+
+        let system = tlmgr_run_recovering(&manager, "install", vec!["cjk".into()], None, false)
+            .await
+            .unwrap_err();
+        let json = error_envelope(&system);
+        assert_eq!(json["code"], "tex.texlive_older_than_repository");
+        assert_eq!(json["params"]["remote"], "2027");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_tree_oleafly_does_not_own_gets_the_release_gap_when_the_archive_refuses_too() {
+        for exit in [255, 0] {
+            let (_root, manager, calls) = recording_manager(&format!(
+                "case \"$*\" in\n*--repository*) echo '{SELF_UPDATE_REFUSAL}' >&2\nexit {exit} ;;\nesac\necho '{CROSS_RELEASE_REFUSAL}' >&2\nexit 1"
+            ));
+            let error = tlmgr_run_recovering(&manager, "install", vec!["cjk".into()], None, false)
+                .await
+                .unwrap_err();
+            assert_eq!(
+                error_envelope(&error)["code"],
+                "tex.texlive_older_than_repository"
+            );
+            assert!(!std::fs::read_to_string(&calls)
+                .unwrap()
+                .contains("update\n--self\n"));
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_archive_without_the_package_is_not_reported_as_a_success() {
+        let (_root, manager, _calls) = recording_manager(&format!(
+            "case \"$*\" in\n*--repository*) echo 'tlmgr: package cjk not present' >&2\nexit 1 ;;\nesac\necho '{CROSS_RELEASE_REFUSAL}' >&2\nexit 1"
+        ));
+        let error = tlmgr_run_recovering(&manager, "install", vec!["cjk".into()], None, false)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error_envelope(&error)["code"],
+            "tex.texlive_older_than_repository"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn distro_tlmgr_refusals_become_a_system_package_manager_error() {
+        let (_root, debian, _calls) = recording_manager(
+            "echo '(running on Debian, switching to user mode!)'\necho 'tlmgr: user mode not initialized, please read the documentation!' >&2\nexit 2",
+        );
+        let error = tlmgr_run_with_user_tree(&debian, "install", vec!["cjk".into()], None)
+            .await
+            .unwrap_err();
+        let json = error_envelope(&error);
+        assert_eq!(json["code"], "tex.packages_use_system_manager");
+        assert_eq!(json["params"]["manager"], "apt");
+
+        let (_root, fedora, _calls) = recording_manager(
+            "echo '*** WARNING ***: Performing this action will likely destroy the Fedora TeXLive install on your system.'\nexit 0",
+        );
+        let error = tlmgr_run_with_user_tree(&fedora, "install", vec!["cjk".into()], None)
+            .await
+            .unwrap_err();
+        assert_eq!(error_envelope(&error)["params"]["manager"], "dnf");
+        assert_eq!(
+            tlmgr_installed_at(&debian).await.unwrap_err(),
+            String::from(
+                crate::app_error::AppError::new("tex.packages_use_system_manager")
+                    .param("manager", "apt")
+            )
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_initialised_debian_user_tree_is_not_treated_as_a_refusal() {
+        let (_root, manager, _calls) = recording_manager(
+            "echo '(running on Debian, switching to user mode!)'\nprintf 'Installed\\n'",
+        );
+        let message = tlmgr_run_with_user_tree(&manager, "install", vec!["cjk".into()], None)
+            .await
+            .unwrap();
+        assert!(message.contains("Installed"), "{message}");
+    }
+
+    #[test]
+    fn a_tinytex_from_another_release_is_reported_as_outdated() {
+        let root = tempfile::tempdir().unwrap();
+        let asset = tinytex_asset().unwrap();
+        assert!(!tinytex_is_outdated(root.path(), &asset));
+
+        let bin = root
+            .path()
+            .join("bin")
+            .join(oleafly_core::tex_distro::host_platform_dirs()[0]);
+        std::fs::create_dir_all(&bin).unwrap();
+        assert!(tinytex_is_outdated(root.path(), &asset));
+
+        write_install_marker(root.path(), &asset).unwrap();
+        assert!(!tinytex_is_outdated(root.path(), &asset));
+
+        let mut older: TinytexInstallMarker = install_marker(&asset);
+        older.release = "v2025.01".into();
+        std::fs::write(
+            root.path().join(INSTALL_MARKER),
+            serde_json::to_vec(&older).unwrap(),
+        )
+        .unwrap();
+        assert!(tinytex_is_outdated(root.path(), &asset));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_tlmgr_is_judged_by_the_tree_it_points_into() {
+        let root = tempfile::tempdir().unwrap();
+        let tree = root.path().join("texlive").join("2026");
+        let scripts = tree.join("texmf-dist").join("scripts");
+        std::fs::create_dir_all(tree.join("tlpkg")).unwrap();
+        std::fs::create_dir_all(&scripts).unwrap();
+        let script = scripts.join("tlmgr.pl");
+        std::fs::write(&script, b"perl").unwrap();
+        let links = root.path().join("texbin");
+        std::fs::create_dir(&links).unwrap();
+        let linked = links.join("tlmgr");
+        std::os::unix::fs::symlink(&script, &linked).unwrap();
+
+        assert!(tlmgr_can_add_binaries(&linked.to_string_lossy()));
+        std::fs::remove_dir(tree.join("tlpkg")).unwrap();
+        assert!(!tlmgr_can_add_binaries(&linked.to_string_lossy()));
+        assert!(!tlmgr_can_add_binaries(
+            &links.join("absent").to_string_lossy()
+        ));
+    }
+
+    #[test]
+    fn package_errors_have_english_messages() {
+        for error in [
+            crate::app_error::AppError::new("tex.managed_tinytex_outdated")
+                .param("local", "2026")
+                .param("remote", "2027"),
+            crate::app_error::AppError::new("tex.texlive_older_than_repository")
+                .param("local", "2025")
+                .param("remote", "2026"),
+            crate::app_error::AppError::new("tex.texlive_release_mismatch"),
+            crate::app_error::AppError::new("tex.packages_use_system_manager")
+                .param("manager", "apt"),
+            crate::app_error::AppError::new("tex.no_package_manager"),
+            crate::app_error::AppError::new("tex.missing_files_count"),
+            crate::app_error::AppError::new("tex.invalid_package_file").param("file", "a.tex"),
+            crate::app_error::AppError::new("tex.package_no_provider").param("file", "a.sty"),
+            crate::app_error::AppError::new("tex.package_several_providers")
+                .param("file", "a.sty")
+                .param("packages", "b, c"),
+            crate::app_error::AppError::new("tex.package_install_had_no_effect")
+                .param("files", "a.sty"),
+            crate::app_error::AppError::new("tex.japanese_compiler_installable")
+                .param("compiler", "upLaTeX"),
+        ] {
+            let text = String::from(error);
+            let english = crate::app_error::english(&text).unwrap_or_default();
+            assert!(!english.is_empty(), "{text}");
+            assert!(!english.contains("{{"), "{english}");
+        }
     }
 
     #[cfg(unix)]

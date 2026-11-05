@@ -220,7 +220,11 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
 
   const missingGlyphs = logLines.filter((line) => {
     const lower = line.toLowerCase();
-    return lower.includes("missing character:") && lower.includes("there is no ");
+    return (
+      lower.includes("missing character:") &&
+      lower.includes("there is no ") &&
+      !lower.includes(" in font nullfont")
+    );
   });
   if (missingGlyphs.length > 0) {
     out.push(

@@ -479,6 +479,7 @@
     "previewUnsupported": "A prévia ao vivo ainda não está disponível para este motor",
     "badge": "Gerado por IA",
     "compileWarning": "Este rascunho não compilou sem problemas. Gere de novo para ter um ponto de partida melhor ou crie o projeto e conserte o código no editor.",
+    "compileLog": "Log de compilação",
     "noDescription": "Ainda não há descrição.",
     "includes": "Inclui",
     "category": "Categoria",

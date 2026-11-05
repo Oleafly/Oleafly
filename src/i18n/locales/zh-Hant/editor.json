@@ -357,7 +357,12 @@
     "rawLogs": "原始記錄檔",
     "copyLog": "複製記錄檔",
     "typesetting": "排版",
+    "missingCharacters": "缺少的字元",
     "info": "資訊",
+    "clear": "清除",
+    "clearAria": "清除編譯記錄檔",
+    "clearHint": "隱藏這份記錄檔與其中的錯誤，直到下次編譯。建置檔案會保留。",
+    "cleared": "記錄檔已清除。下次編譯會寫入新的記錄檔。",
     "empty": "編譯輸出會顯示在這裡。",
     "scrollToTop": "捲動至頂端",
     "scrollToBottom": "捲動至底端",
@@ -369,6 +374,8 @@
     "summaryWarnings_other": "{{count}} 個警告",
     "summaryReferences_other": "{{count}} 個未解析的參照",
     "fontPack": "{{family}} 在免費字型套件「{{pack}}」中。",
+    "fontPackGlyphs": "免費字型套件「{{pack}}」有這些字元。",
+    "fontPackSealed": "{{family}} 在免費字型套件「{{pack}}」中，但這個專案只使用專案字型，因此字型套件在這裡不適用。請將該字型的檔案加入專案的字型資料夾。",
     "fontPackAction": "下載並編譯",
     "fontPackDownloading": "正在下載…",
     "fontPackFailed": "無法下載字型套件。請檢查網路連線後再試一次。"
@@ -1442,7 +1449,8 @@
       "upToDate": "此專案匯入的所有套件都已在 typst-packages 中。",
       "missing": "這些套件不在套件快取中：{{names}}。請在連網時編譯一次，然後再複製一次。",
       "count_other": "此專案中有 {{count}} 個套件",
-      "none": "這個專案還沒有套件。"
+      "none": "這個專案還沒有套件。",
+      "unsupported": "Typst {{version}} 無法從專案資料夾讀取套件。請將專案切換到 Typst 0.12 或更新的版本才能使用。"
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} 已推出。這個 import 使用的是 {{version}}。",
@@ -1480,6 +1488,7 @@
     "classNote": "這是文件類別。請改用 \\documentclass 設定。",
     "onDemand": "Tectonic 會在文件第一次用到套件時下載它們。不需要安裝任何東西。",
     "checking": "正在檢查已安裝的套件",
+    "systemManaged": "這個 TeX Live 來自你的 Linux 發行版，因此請用 {{manager}} 安裝套件。",
     "unknownInstall": "Oleafly 無法判斷你的 TeX 環境中有哪些套件。",
     "noProject": "請開啟 LaTeX 專案以加入套件。",
     "added": "已將 {{name}} 加入 {{file}}。",

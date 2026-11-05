@@ -38,6 +38,7 @@
       "compile": "Kompilera",
       "recompile": "Kompilera om",
       "compiling": "Kompilerar…",
+      "stop": "Stoppa",
       "saveTooltip": "Spara det här diagrammet",
       "save": "Spara",
       "saveToProject": "Spara i projektet",

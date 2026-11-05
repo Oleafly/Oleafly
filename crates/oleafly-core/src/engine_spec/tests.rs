@@ -61,6 +61,163 @@ fn bundle_fetch_failures_are_distinguished_from_tex_errors() {
     }
 }
 
+const WARM_CACHE_FAILURE: &str = concat!(
+    "warning: failure fetching \"biblatex.sty\" from network (1/3)\n",
+    "caused by: unexpected HTTP response code 403 Forbidden for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar\n",
+    "warning: open of input biblatex.sty failed\n",
+    "caused by: failed to download \"biblatex.sty\"; please check your network connection.\n",
+);
+
+#[test]
+fn a_warm_cache_fetch_failure_retries_even_when_the_compile_exits_zero() {
+    let transcript = format!("note: Running TeX ...\n{WARM_CACHE_FAILURE}! LaTeX Error: File `biblatex.sty' not found.\n");
+    assert!(bundle_retry_needed(true, &transcript));
+    assert!(bundle_retry_needed(false, &transcript));
+}
+
+#[test]
+fn a_plain_tex_error_never_retries_and_a_cold_failure_retries_only_on_failure() {
+    let tex_error = "! LaTeX Error: File `nothere.sty' not found.\n";
+    assert!(!bundle_retry_needed(true, tex_error));
+    assert!(!bundle_retry_needed(false, tex_error));
+    let cold = "error: this bundle isn't cached, and we couldn't get it from the internet";
+    assert!(!bundle_retry_needed(true, cold));
+    assert!(bundle_retry_needed(false, cold));
+}
+
+#[test]
+fn a_failed_retry_never_replaces_a_first_run_that_built() {
+    assert!(bundle_retry_replaces_first_run(true, true));
+    assert!(!bundle_retry_replaces_first_run(true, false));
+    assert!(bundle_retry_replaces_first_run(false, true));
+    assert!(bundle_retry_replaces_first_run(false, false));
+}
+
+#[test]
+fn the_excerpt_keeps_the_fetch_lines_and_stays_small() {
+    let transcript = format!("noise\n{}more noise\n", WARM_CACHE_FAILURE.repeat(200));
+    let excerpt = bundle_fetch_excerpt(&transcript).unwrap();
+    assert!(excerpt.starts_with("warning: failure fetching"));
+    assert!(excerpt.contains("unexpected HTTP response code 403"));
+    assert!(excerpt.contains("please check your network connection"));
+    assert!(!excerpt.contains("noise"));
+    assert!(excerpt.len() <= 4 * 1024);
+    assert_eq!(
+        bundle_fetch_excerpt("! Undefined control sequence.\n"),
+        None
+    );
+}
+
+#[test]
+fn prefetch_file_names_match_what_tectonic_writes() {
+    assert_eq!(
+        tectonic_prefetch_file(TEX_BUNDLE_MIRROR_URL),
+        "https,58,,47,,47,mirrors.oleafly.com,47,tex-bundles,47,tlextras-2022.0r0.tar.prefetch"
+    );
+    assert_eq!(
+        tectonic_prefetch_file(TEX_BUNDLE_UPSTREAM_URL),
+        "https,58,,47,,47,relay.fullyjustified.net,47,default_bundle_v33.tar.prefetch"
+    );
+}
+
+#[test]
+fn the_prefetch_list_fits_what_tectonic_reads_and_starts_with_the_format() {
+    let names: Vec<&str> = TECTONIC_PREFETCH_LIST.lines().collect();
+    assert!(names.len() <= 512, "{}", names.len());
+    assert_eq!(names[0], "tectonic-format-latex.tex");
+    assert!(names
+        .iter()
+        .all(|name| !name.is_empty() && !name.contains('/')));
+}
+
+#[test]
+fn the_prefetch_list_carries_what_a_markdown_symbol_needs_offline() {
+    let names: Vec<&str> = TECTONIC_PREFETCH_LIST.lines().collect();
+    for name in [
+        "newunicodechar.sty",
+        "FreeSerif.otf",
+        "FreeSerifBold.otf",
+        "FreeSerifItalic.otf",
+        "FreeSerifBoldItalic.otf",
+        "DejaVuSans.ttf",
+        "cmunrm.otf",
+        "cmunbx.otf",
+        "cmunti.otf",
+        "cmunbi.otf",
+        "cmunss.otf",
+        "cmunsx.otf",
+        "cmunsi.otf",
+        "cmunso.otf",
+        "cmuntt.otf",
+        "cmuntb.otf",
+        "cmunit.otf",
+        "cmuntx.otf",
+    ] {
+        assert!(names.contains(&name), "{name}");
+    }
+}
+
+#[test]
+fn seeding_writes_a_list_once_and_leaves_tectonics_own_list_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    let bundles = dir.path().join("bundles");
+    std::fs::create_dir_all(bundles.join("data")).unwrap();
+    let own = bundles
+        .join("data")
+        .join(tectonic_prefetch_file("https://own.example/b.tar"));
+    std::fs::write(&own, "amsmath.sty\n").unwrap();
+    write_tectonic_prefetch(
+        &bundles,
+        &["https://own.example/b.tar", TEX_BUNDLE_UPSTREAM_URL],
+    );
+    assert_eq!(std::fs::read_to_string(&own).unwrap(), "amsmath.sty\n");
+    let seeded = std::fs::read_to_string(
+        bundles
+            .join("data")
+            .join(tectonic_prefetch_file(TEX_BUNDLE_UPSTREAM_URL)),
+    )
+    .unwrap();
+    assert!(seeded.starts_with("tectonic-format-latex.tex\n"));
+    assert!(!seeded.contains('\r'));
+}
+
+#[test]
+fn seeding_a_fresh_install_creates_the_cache_folder_tectonic_named() {
+    let dir = tempfile::tempdir().unwrap();
+    let bundles = dir.path().join("Tectonic").join("bundles");
+    write_tectonic_prefetch(&bundles, &[TEX_BUNDLE_MIRROR_URL, TEX_BUNDLE_UPSTREAM_URL]);
+    for url in [TEX_BUNDLE_MIRROR_URL, TEX_BUNDLE_UPSTREAM_URL] {
+        let seeded =
+            std::fs::read_to_string(bundles.join("data").join(tectonic_prefetch_file(url)))
+                .unwrap();
+        assert!(seeded.starts_with("tectonic-format-latex.tex\n"));
+    }
+}
+
+#[test]
+fn seeding_gives_up_quietly_when_the_cache_folder_cant_be_created() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("not-a-folder");
+    std::fs::write(&file, "").unwrap();
+    write_tectonic_prefetch(&file.join("bundles"), &[TEX_BUNDLE_UPSTREAM_URL]);
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), "");
+}
+
+#[test]
+fn the_cache_folder_is_the_last_absolute_line() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = format!(
+        "{}\n\nnote: \"version 2\" Tectonic command-line interface activated\n",
+        dir.path().display()
+    );
+    assert_eq!(
+        tectonic_bundle_cache_dir(&output).as_deref(),
+        Some(dir.path())
+    );
+    assert_eq!(tectonic_bundle_cache_dir("relative/bundles\n"), None);
+    assert_eq!(tectonic_bundle_cache_dir(""), None);
+}
+
 #[test]
 fn stripping_the_bundle_flag_removes_the_flag_and_its_url() {
     let args: Vec<String> = [
@@ -154,9 +311,139 @@ fn latexmk_absolute_paths_refuse_what_latexmk_would_hand_to_a_shell() {
 fn the_entry_shim_neutralizes_pdftex_primitives_and_inputs_the_main_document() {
     assert_eq!(
         latex_entry_source("chapters/my paper.tex").unwrap(),
-        "\\ifdefined\\pdfglyphtounicode\\else\\def\\pdfglyphtounicode#1#2{}\\fi\n\\ifdefined\\pdfgentounicode\\else\\newcount\\pdfgentounicode\\fi\n\\input{\\detokenize{chapters/my paper.tex}}\n"
+        [
+            "\\ifdefined\\pdfglyphtounicode\\else\\def\\pdfglyphtounicode#1#2{}\\fi\n\\ifdefined\\pdfgentounicode\\else\\newcount\\pdfgentounicode\\fi\n\\ifdefined\\pdfminorversion\\else\\newcount\\pdfminorversion\\fi\n\\ifdefined\\pdfmajorversion\\else\\newcount\\pdfmajorversion\\fi\n\\ifdefined\\pdfcompresslevel\\else\\newcount\\pdfcompresslevel\\fi\n\\ifdefined\\pdfobjcompresslevel\\else\\newcount\\pdfobjcompresslevel\\fi\n\\ifdefined\\pdfsuppressptexinfo\\else\\newcount\\pdfsuppressptexinfo\\fi\n\\ifdefined\\pdfsuppresswarningpagegroup\\else\\newcount\\pdfsuppresswarningpagegroup\\fi\n\\ifdefined\\pdfinclusioncopyfonts\\else\\newcount\\pdfinclusioncopyfonts\\fi\n\\ifdefined\\pdfinclusionerrorlevel\\else\\newcount\\pdfinclusionerrorlevel\\fi\n\\ifdefined\\pdfimageresolution\\else\\newcount\\pdfimageresolution\\fi\n\\ifdefined\\pdfpkresolution\\else\\newcount\\pdfpkresolution\\fi\n\\ifdefined\\pdfdecimaldigits\\else\\newcount\\pdfdecimaldigits\\fi\n\\ifdefined\\pdfmapfile\\else\\def\\pdfmapfile#1{}\\fi\n\\ifdefined\\pdfmapline\\else\\def\\pdfmapline#1{}\\fi\n\\ifdefined\\pdftrailerid\\else\\def\\pdftrailerid#1{}\\fi\n\\ifdefined\\pdfinfo\\else\\def\\pdfinfo#1{}\\fi\n\\ifdefined\\DocumentMetadata\\else\\def\\DocumentMetadata#1{\\typeout{Tagging is off: tagged PDF needs LaTeX 2025-11-01 or newer.}}\\fi\n\\ifdefined\\pdfoutput\\AddToHook{package/iftex/before}{\\global\\pdfoutput=0 }\\fi\n",
+            T1_ENCODING_SHIM,
+            "\\input{\\detokenize{chapters/my paper.tex}}\n"
+        ]
+        .concat()
     );
     assert!(latex_entry_source("a}b.tex").is_err());
+}
+
+#[test]
+fn the_entry_neutralizes_pdfoutput_before_iftex_reads_it() {
+    let entry = latex_entry_source("main.tex").unwrap();
+    let hook = entry.find("\\AddToHook{package/iftex/before}").unwrap();
+    assert!(hook < entry.find("\\input{").unwrap());
+    assert!(entry.starts_with("\\ifdefined\\pdfglyphtounicode"));
+    assert!(entry.contains("\\ifdefined\\pdfoutput\\AddToHook"));
+    assert!(!entry.contains("\\def\\pdfoutput"));
+    assert!(!entry.contains("\\newcount\\pdfoutput"));
+}
+
+#[test]
+fn the_entry_prints_the_notice_the_tagging_check_reads() {
+    let entry = latex_entry_source("main.tex").unwrap();
+    assert!(entry.contains(&format!(
+        "\\def\\DocumentMetadata#1{{\\typeout{{{TAGGING_SKIPPED_NOTICE}}}}}"
+    )));
+    assert_eq!(
+        TAGGING_SKIPPED_NOTICE,
+        "Tagging is off: tagged PDF needs LaTeX 2025-11-01 or newer."
+    );
+}
+
+#[test]
+fn the_t1_hook_runs_before_the_main_document_and_only_touches_t1() {
+    let entry = latex_entry_source("main.tex").unwrap();
+    let hook = entry.find("\\AddToHook{package/fontenc/after}").unwrap();
+    let input = entry.find("\\input{").unwrap();
+    assert!(hook < input);
+    assert!(entry.contains("\\def\\OleaflyEightBitEncoding{T1}"));
+    assert!(entry.contains("\\ifx\\OleaflyRequestedEncoding\\OleaflyEightBitEncoding"));
+    assert!(entry.contains(&format!("\\wlog{{{T1_KEPT_NOTE}}}")));
+    let family_hook = "\\AddToHook{begindocument/end}{\\ifx\\OleaflyRequestedEncoding\\OleaflyEightBitEncoding\\ifdefined\\OleaflyRevert\\else\\DeclareRobustCommand\\fontfamily[1]{\\expandafter\\edef\\csname f@family\\endcsname{#1}\\OleaflyIfEncodingFamily{TU}{#1}{}{\\OleaflyIfEncodingFamily{T1}{#1}{\\fontencoding{T1}}{}}}\\fi\\fi}\n";
+    let at = entry.find(family_hook).unwrap();
+    assert!(entry.find("\\AddToHook{begindocument/before}").unwrap() < at);
+    assert!(at < input);
+}
+
+#[test]
+fn an_offline_entry_leaves_t1_documents_on_their_own_fonts() {
+    let offline = latex_entry_source_with("main.tex", None, false).unwrap();
+    assert!(!offline.contains("\\OleaflyEightBitEncoding"));
+    assert!(!offline.contains("\\AddToHook{package/fontenc/after}"));
+    assert_eq!(
+        offline,
+        latex_entry_source("main.tex")
+            .unwrap()
+            .replace(T1_ENCODING_SHIM, "")
+    );
+    assert!(offline.ends_with("\\input{\\detokenize{main.tex}}\n"));
+}
+
+#[test]
+fn tex_default_file_names_are_lowercase_for_case_sensitive_systems() {
+    let files = tex_default_files();
+    assert!(files.iter().any(|(name, _)| name == "ctexopts.cfg"));
+    assert!(files.iter().any(|(name, _)| name == "tuptm.fd"));
+    for (name, _) in &files {
+        assert_eq!(*name, name.to_lowercase());
+    }
+}
+
+#[test]
+fn the_ctex_default_sets_only_the_fontset() {
+    let files = tex_default_files();
+    let (_, cfg) = files
+        .iter()
+        .find(|(name, _)| name == "ctexopts.cfg")
+        .unwrap();
+    assert!(cfg.starts_with("\\ProvidesExplFile{ctexopts.cfg}"));
+    assert!(cfg.contains("\\ctex_set:nn { option } { fontset = fandol }"));
+}
+
+#[test]
+fn tu_font_definitions_follow_the_stock_form() {
+    let files = tex_default_files();
+    let definition = |name: &str| {
+        files
+            .iter()
+            .find(|(file, _)| file == name)
+            .map(|(_, contents)| contents.as_str())
+            .unwrap()
+    };
+    let times = definition("tuptm.fd");
+    assert!(times.starts_with("\\ProvidesFile{tuptm.fd}\n\\DeclareFontFamily{TU}{ptm}{}\n"));
+    assert!(times.contains(
+        "\\DeclareFontShape{TU}{ptm}{m}{n}{<->\\UnicodeFontFile{texgyretermes-regular}{\\UnicodeFontTeXLigatures}}{}"
+    ));
+    assert!(times.contains(
+        "\\DeclareFontShape{TU}{ptm}{m}{sl}{<->\\UnicodeFontFile{texgyretermes-regular}{\\UnicodeFontTeXLigatures;slant=0.167}}{}"
+    ));
+    assert!(times.contains(
+        "\\DeclareFontShape{TU}{ptm}{b}{it}{<->\\UnicodeFontFile{texgyretermes-bolditalic}{\\UnicodeFontTeXLigatures}}{}"
+    ));
+    assert!(times.contains("\\DeclareFontShape{TU}{ptm}{bx}{n}{<->ssub * ptm/b/n}{}"));
+    let courier = definition("tupcr.fd");
+    assert!(courier.contains("\\DeclareFontFamily{TU}{pcr}{\\hyphenchar\\font=-1}"));
+    assert!(courier.contains(
+        "\\DeclareFontShape{TU}{pcr}{m}{n}{<->\\UnicodeFontFile{texgyrecursor-regular}{}}{}"
+    ));
+    assert!(courier.contains(
+        "\\DeclareFontShape{TU}{pcr}{m}{sc}{<->\\UnicodeFontFile{texgyrecursor-regular}{+smcp}}{}"
+    ));
+}
+
+#[test]
+fn writing_tex_defaults_is_repeatable_and_keeps_unrelated_files() {
+    let directory = tempfile::tempdir().unwrap();
+    let defaults = directory.path().join(TEX_DEFAULTS_DIR);
+    write_tex_defaults(&defaults).unwrap();
+    let cfg = defaults.join("ctexopts.cfg");
+    let first = std::fs::metadata(&cfg).unwrap().modified().unwrap();
+    std::fs::write(defaults.join("unrelated.txt"), "kept").unwrap();
+    write_tex_defaults(&defaults).unwrap();
+    assert_eq!(std::fs::metadata(&cfg).unwrap().modified().unwrap(), first);
+    assert!(defaults.join("unrelated.txt").is_file());
+    assert_eq!(
+        std::fs::read_dir(&defaults).unwrap().count(),
+        tex_default_files().len() + 1
+    );
+    std::fs::write(&cfg, "stale").unwrap();
+    write_tex_defaults(&defaults).unwrap();
+    assert_ne!(std::fs::read_to_string(&cfg).unwrap(), "stale");
 }
 
 #[test]
@@ -181,7 +468,7 @@ fn tectonic_args_put_the_compile_directory_before_the_project_on_the_search_path
 }
 
 #[test]
-fn shell_escape_is_restricted_except_on_miktex_or_when_trusted() {
+fn shell_escape_is_restricted_unless_trusted() {
     assert_eq!(shell_escape_arg(false, "texlive"), "-shell-restricted");
     assert_eq!(
         shell_escape_arg(false, "oleafly-tinytex"),
@@ -189,6 +476,87 @@ fn shell_escape_is_restricted_except_on_miktex_or_when_trusted() {
     );
     assert_eq!(shell_escape_arg(false, "miktex"), "-no-shell-escape");
     assert_eq!(shell_escape_arg(true, "miktex"), "-shell-escape");
+    assert_eq!(shell_escape_arg(true, "texlive"), "-shell-escape");
+}
+
+#[test]
+fn restricted_miktex_runs_drop_findtexmf_from_the_allow_list() {
+    assert_eq!(
+        MIKTEX_SHELL_COMMANDS_VARIABLE,
+        "MIKTEX_MIKTEX_CORE_ALLOWEDSHELLCOMMANDS"
+    );
+    let separator = if cfg!(windows) { ';' } else { ':' };
+    let commands = restricted_miktex_shell_commands();
+    let commands: Vec<&str> = commands.split(separator).collect();
+    assert!(commands.contains(&"miktex-epstopdf"));
+    assert!(commands.contains(&"makeindex"));
+    assert!(commands.contains(&"kpsewhich"));
+    assert!(!commands.iter().any(|command| command.contains("findtexmf")));
+}
+
+#[test]
+fn a_failed_latexmk_run_forgets_only_its_database() {
+    let dir = tempfile::tempdir().unwrap();
+    let names = [
+        "_oleafly_entry.fdb_latexmk",
+        "_oleafly_entry.aux",
+        "_oleafly_entry.log",
+        "fig.v2.fdb_latexmk",
+        LATEXMK_BINARY_MARKER,
+    ];
+    for name in names {
+        std::fs::write(dir.path().join(name), b"state").unwrap();
+    }
+    forget_latexmk_run(&dir.path().join("_oleafly_entry.log"));
+    assert!(!dir.path().join("_oleafly_entry.fdb_latexmk").exists());
+    for name in &names[1..] {
+        assert!(dir.path().join(name).is_file(), "{name}");
+    }
+    forget_latexmk_run(&dir.path().join("fig.v2.log"));
+    assert!(!dir.path().join("fig.v2.fdb_latexmk").exists());
+    forget_latexmk_run(&dir.path().join("_oleafly_entry.log"));
+}
+
+#[cfg(unix)]
+#[test]
+fn forgetting_a_latexmk_run_unlinks_a_planted_link_without_following_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let victim = dir.path().join("victim");
+    std::fs::write(&victim, b"keep").unwrap();
+    let database = dir.path().join("_oleafly_entry.fdb_latexmk");
+    std::os::unix::fs::symlink(&victim, &database).unwrap();
+    forget_latexmk_run(&dir.path().join("_oleafly_entry.log"));
+    assert!(std::fs::symlink_metadata(&database).is_err());
+    assert_eq!(std::fs::read(&victim).unwrap(), b"keep");
+}
+
+#[test]
+fn latexmk_paths_accept_an_apostrophe_and_name_what_they_refuse() {
+    assert_eq!(
+        latexmk_relative_path_arg(Path::new("l'article.tex")).unwrap(),
+        "./l'article.tex"
+    );
+    assert_eq!(
+        latexmk_relative_path_arg(Path::new("Bob's thesis/main.tex")).unwrap(),
+        "./Bob's thesis/main.tex"
+    );
+    for refused in [
+        "paper`touch marker`.tex",
+        "paper\";touch marker;\".tex",
+        "paper';touch marker;'.tex",
+        "paper|touch marker.tex",
+    ] {
+        let error = latexmk_relative_path_arg(Path::new(refused)).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidInput);
+        assert!(error.to_string().contains(refused), "{error}");
+    }
+}
+
+#[test]
+fn the_wrapper_refusal_names_the_main_document() {
+    let error = validate_latex_main_document("notes & drafts.tex").unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::InvalidInput);
+    assert!(error.to_string().contains("notes & drafts.tex"), "{error}");
 }
 
 #[test]
@@ -221,18 +589,97 @@ fn latexmk_args_match_the_app_contract() {
 }
 
 #[test]
+fn every_flavor_gets_the_glossary_and_nomenclature_rules_after_its_own_arguments() {
+    for flavor in TexFlavor::ALL {
+        let args = latexmk_args(
+            "./.oleafly/build",
+            "./main.tex",
+            ENTRY_STEM,
+            flavor,
+            EngineFlags::default(),
+            false,
+            "texlive",
+        );
+        let flavor_args = flavor.latexmk_args();
+        assert_eq!(&args[2..2 + flavor_args.len()], &flavor_args[..]);
+        for dependency in [
+            "add_cus_dep(q/glo/, q/gls/",
+            "add_cus_dep(q/acn/, q/acr/",
+            "add_cus_dep(q/nlo/, q/nls/",
+        ] {
+            let at = args
+                .iter()
+                .position(|arg| arg.contains(dependency))
+                .unwrap_or_else(|| panic!("{dependency} is missing for {flavor:?}"));
+            assert_eq!(args[at - 1], "-e");
+        }
+        assert_eq!(args.last().unwrap(), "./main.tex");
+    }
+}
+
+#[test]
+fn the_symbols_list_and_its_makeindex_step_reach_every_flavor() {
+    for flavor in TexFlavor::ALL {
+        let args = latexmk_args(
+            "./.oleafly/build",
+            "./main.tex",
+            ENTRY_STEM,
+            flavor,
+            EngineFlags::default(),
+            false,
+            "texlive",
+        );
+        let at = args
+            .iter()
+            .position(|arg| arg.contains("add_cus_dep(q/slo/, q/sls/"))
+            .unwrap_or_else(|| panic!("the symbols rule is missing for {flavor:?}"));
+        assert_eq!(args[at - 1], "-e");
+        assert!(args[at].contains("oleafly_mi($_[0], undef, q/slg/, q/sls/, q/slo/)"));
+    }
+}
+
+#[test]
+fn glossary_rules_read_the_style_file_the_document_named() {
+    let rules = crate::tex_outputs::LATEXMK_INDEX_RULES;
+    assert!(rules[0].contains(r"\\\@istfilename\{([^}]+\.ist)\}"));
+    let numbers = rules
+        .iter()
+        .find(|rule| rule.contains("add_cus_dep(q/nlo/"))
+        .unwrap();
+    assert!(numbers.contains(r"/^\\glossaryentry/"));
+    assert!(numbers.contains("$glossary ? undef : q/nomencl.ist/"));
+}
+
+#[test]
+fn a_shipped_bibliography_changes_only_the_entry_line_that_reads_it() {
+    let plain = latex_entry_source("paper/main.tex").unwrap();
+    assert_eq!(
+        latex_entry_source_with("paper/main.tex", None, true).unwrap(),
+        plain
+    );
+    let shipped = latex_entry_source_with("paper/main.tex", Some("paper/main.bbl"), true).unwrap();
+    let hook = "\\AddToHook{begindocument/end}{\\renewcommand{\\bibliography}[1]{\\renewcommand{\\bibliography}[1]{}\\input{\\detokenize{paper/main.bbl}}}}\n";
+    assert_eq!(shipped.replace(hook, ""), plain);
+    assert!(shipped.ends_with(&format!(
+        "{hook}\\input{{\\detokenize{{paper/main.tex}}}}\n"
+    )));
+    assert!(latex_entry_source_with("paper/main}.tex", Some("x.bbl"), true).is_err());
+}
+
+#[test]
 fn markdown_pdf_args_sandbox_filter_citeproc_and_bundle_pin() {
     let args = strings(markdown_pdf_args(&MarkdownPdfArgs {
         resource_argument: OsStr::new("--resource-path=/p"),
         tectonic: Path::new("/t/tectonic"),
         project: Path::new("/p"),
+        search_folders: &[PathBuf::from("/p")],
         output: Path::new("/b/out.pdf"),
         main: Path::new("/p/main.md"),
         bibliographies: &[PathBuf::from("sources/refs.bib")],
         bundle_url: Some("https://m/x.tar"),
     }));
     let bibliography = format!(
-        "--bibliography={}",
+        "--metadata=oleafly-fallback-bibliography={}",
         Path::new("/p").join("sources").join("refs.bib").display()
     );
     assert_eq!(
@@ -248,12 +695,85 @@ fn markdown_pdf_args_sandbox_filter_citeproc_and_bundle_pin() {
             "--output=/b/out.pdf",
             "--sandbox",
             "--lua-filter=oleafly-mermaid-figures.lua",
-            "--citeproc",
+            "--lua-filter=oleafly-image-compat.lua",
+            "--lua-filter=oleafly-markdown-bibliography.lua",
             bibliography.as_str(),
+            "--citeproc",
+            "--lua-filter=oleafly-default-fonts.lua",
             "--",
             "/p/main.md"
         ]
     );
+}
+
+#[test]
+fn markdown_pdf_args_search_the_main_folder_before_the_project() {
+    let args = strings(markdown_pdf_args(&MarkdownPdfArgs {
+        resource_argument: OsStr::new("--resource-path=/p/notes:/p"),
+        tectonic: Path::new("/t/tectonic"),
+        project: Path::new("/p"),
+        search_folders: &[PathBuf::from("/p/notes"), PathBuf::from("/p")],
+        output: Path::new("/b/out.pdf"),
+        main: Path::new("/p/notes/main.md"),
+        bibliographies: &[],
+        bundle_url: None,
+    }));
+    let position = |wanted: &str| args.iter().position(|arg| arg == wanted).unwrap();
+    assert!(
+        position("--pdf-engine-opt=-Zsearch-path=/p/notes")
+            < position("--pdf-engine-opt=-Zsearch-path=/p")
+    );
+    assert!(!args.iter().any(|arg| arg.starts_with("--bibliography")));
+}
+
+#[test]
+fn the_bibliography_filter_runs_before_citeproc_and_fonts_after_it() {
+    let args = strings(markdown_pdf_args(&MarkdownPdfArgs {
+        resource_argument: OsStr::new("--resource-path=/p"),
+        tectonic: Path::new("/t/tectonic"),
+        project: Path::new("/p"),
+        search_folders: &[PathBuf::from("/p")],
+        output: Path::new("/b/out.pdf"),
+        main: Path::new("/p/main.md"),
+        bibliographies: &[],
+        bundle_url: None,
+    }));
+    let position = |wanted: String| args.iter().position(|arg| *arg == wanted).unwrap();
+    let citeproc = position("--citeproc".to_owned());
+    assert!(position(format!("--lua-filter={MARKDOWN_BIBLIOGRAPHY_FILTER_NAME}")) < citeproc);
+    assert!(position(format!("--lua-filter={DEFAULT_FONTS_FILTER_NAME}")) > citeproc);
+}
+
+#[test]
+fn every_markdown_filter_is_written_into_the_scratch_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    write_markdown_filters(dir.path()).unwrap();
+    for (name, filter) in MARKDOWN_FILTERS {
+        assert!(!filter.is_empty());
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join(name)).unwrap(),
+            filter
+        );
+    }
+}
+
+#[test]
+fn markdown_filters_stay_free_of_lua_comments() {
+    for (name, filter) in [
+        (IMAGE_COMPAT_FILTER_NAME, IMAGE_COMPAT_FILTER),
+        (
+            MARKDOWN_BIBLIOGRAPHY_FILTER_NAME,
+            MARKDOWN_BIBLIOGRAPHY_FILTER,
+        ),
+        (DEFAULT_FONTS_FILTER_NAME, DEFAULT_FONTS_FILTER),
+    ] {
+        assert!(
+            !filter
+                .lines()
+                .any(|line| line.trim_start().starts_with("--")),
+            "{name}"
+        );
+    }
 }
 
 #[test]
@@ -352,6 +872,28 @@ fn dvi_compilers_need_their_engine_and_dvipdfmx_beside_latexmk() {
     tool("dvipdfmx");
     assert_eq!(dvi_toolchain_missing(TexFlavor::Uplatex, &latexmk), None);
     assert_eq!(dvi_toolchain_missing(TexFlavor::Pdflatex, &latexmk), None);
+}
+
+#[test]
+fn every_direct_compiler_is_looked_up_on_the_child_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = std::env::join_paths([dir.path()]).unwrap();
+    assert_eq!(
+        latex_compiler_missing(TexFlavor::Xelatex, &path),
+        Some("XeLaTeX")
+    );
+    assert_eq!(
+        latex_compiler_missing(TexFlavor::Lualatex, &path),
+        Some("LuaLaTeX")
+    );
+    assert_eq!(
+        latex_compiler_missing(TexFlavor::Pdflatex, &path),
+        Some("pdfLaTeX")
+    );
+    std::fs::write(dir.path().join(crate::tex_distro::exe("xelatex")), b"tool").unwrap();
+    assert_eq!(latex_compiler_missing(TexFlavor::Xelatex, &path), None);
+    assert_eq!(latex_compiler_missing(TexFlavor::Uplatex, &path), None);
+    assert_eq!(latex_compiler_missing(TexFlavor::Platex, &path), None);
 }
 
 #[test]

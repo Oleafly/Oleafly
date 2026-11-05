@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Preparazione del modello in corso...",
-      "downloading": "Download di {{label}} ({{index}} di {{total}})"
+      "downloading": "Download di {{label}} ({{index}} di {{total}})",
+      "failed": "Non è stato possibile scaricare i font di questo modello. Controlla la connessione e riprova."
     },
     "category": {
       "all": "Tutti",

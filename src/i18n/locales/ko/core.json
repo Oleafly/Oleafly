@@ -56,9 +56,24 @@
     "undo": "실행 취소"
   },
   "compile": {
+    "failedWithReason": "컴파일에 실패했습니다: {{message}}",
     "noOfflineMode": "{{engine}}에는 오프라인 컴파일러 모드가 없습니다. 일반 방식으로 컴파일합니다.",
+    "pandocRequired": "Pandoc을 사용할 수 없습니다. 설정 > 엔진 > Markdown에서 복구한 다음 다시 컴파일하세요.",
+    "pandocSetupFailed": "Pandoc 설정에 실패했습니다: {{message}}",
+    "pdfChanged": "Oleafly가 읽는 동안 컴파일된 PDF가 바뀌어 이전 미리보기를 그대로 둡니다. 업데이트하려면 다시 컴파일하세요.",
     "retry": "다시 컴파일",
+    "superseded": "더 새로운 컴파일이 이 컴파일을 대체했습니다.",
+    "syntaxCheckFailed": "구문 검사에서 오류가 발견되었습니다. 오류를 고치거나 “{{setting}}”을(를) 끄세요.",
+    "taggedFailed": "태그 컴파일에 실패했습니다: {{message}}",
+    "taggedPdfChanged": "Oleafly가 읽는 동안 태그된 PDF가 바뀌어 이전 미리보기를 그대로 둡니다. 업데이트하려면 다시 컴파일하세요.",
+    "taggedPdfInvalid": "태그 컴파일에서 올바른 PDF가 만들어지지 않았습니다.",
+    "tinytexDownloading": "TinyTeX를 아직 내려받는 중입니다. 끝나면 이 컴파일이 자동으로 시작됩니다.",
+    "sharedTexEditor": "이 프로젝트는 공유 중이라 Tectonic으로 바꾸면 모든 사람에게 적용됩니다. TinyTeX를 설치하면 이 컴퓨터에만 적용됩니다.",
+    "sharedTexViewer": "이 공유 프로젝트의 컴파일러는 바꿀 수 없으므로, 여기서 컴파일하려면 TinyTeX를 설치하세요.",
     "bundleFetchFailed": "Oleafly가 이 문서에 필요한 TeX 패키지를 내려받지 못했습니다. 연결을 확인하고 다시 컴파일하세요.",
+    "offlineNotCached": "오프라인 모드가 켜져 있고 {{files}}이(가) 아직 내려받아지지 않았을 수 있습니다. 오프라인 모드를 끄고 다시 컴파일하세요.",
+    "offlineNotCachedUnnamed": "오프라인 모드가 켜져 있고 이 문서에 필요한 TeX 패키지가 아직 내려받아지지 않았을 수 있습니다. 오프라인 모드를 끄고 다시 컴파일하세요.",
+    "goOnlineAndCompile": "끄고 컴파일",
     "typstMissing": "Typst {{version}}이(가) 설치되어 있지 않습니다. 내려받거나 이 프로젝트를 다른 버전으로 바꾸세요.",
     "typstPackage": {
       "downloadFailed": "Typst가 {{spec}}을(를) 내려받지 못했습니다. 인터넷 연결을 확인하고 다시 컴파일하세요.",
@@ -167,9 +182,20 @@
     "pdfFailedDetail": "PDF를 저장하지 못했습니다: {{detail}}",
     "pngFailed": "PNG를 저장하지 못했습니다",
     "pngFailedDetail": "PNG를 저장하지 못했습니다: {{detail}}",
+    "projectChanged": "열려 있는 프로젝트가 바뀌었습니다. 저장하려는 프로젝트에서 내보내기를 다시 시작하세요.",
     "revealFailed": "파일은 저장했지만 해당 폴더를 열지 못했습니다.",
     "saved": "{{kind}} 저장됨 · {{fileName}}",
-    "showInFolder": "폴더에서 보기"
+    "savedAfterFailedCompile": "{{kind}} 저장됨 · {{fileName}}. 마지막 컴파일이 실패해 이 파일이 불완전할 수 있습니다.",
+    "savedSource": "{{kind}} 저장됨 · {{fileName}}. 프로젝트의 이미지나 참고문헌을 사용한다면 컴파일하기 전에 이 파일 옆으로 복사하세요.",
+    "savedStale": "{{kind}} 저장됨 · {{fileName}}. 마지막 컴파일에서 나온 파일이라 최근 편집 내용이 들어 있지 않습니다.",
+    "savedWithoutContent": "{{kind}} 저장됨 · {{fileName}}. Typst가 이 형식으로 쓸 수 없는 일부 내용이 빠졌습니다: {{elements}}.",
+    "savedFromSource": "{{kind}} 저장됨 · {{fileName}}. Typst {{version}}은(는) 이 문서 전체를 이 형식으로 쓸 수 없어 소스로 파일을 만들었습니다. 회전, 확대·축소, 이동 또는 기울인 텍스트가 빠질 수 있습니다. 그 텍스트를 유지하려면 프로젝트를 Typst 0.15 이상으로 바꾸세요.",
+    "savedWithoutEquations": "{{kind}} 저장됨 · {{fileName}}. Typst {{version}}은(는) 수식, 이미지, 각주, 참조를 이 형식으로 쓸 수 없어 빠졌을 수 있습니다. 프로젝트를 Typst 0.15 이상으로 바꾸세요.",
+    "savedWithWarnings_other": "{{kind}} 저장됨 · {{fileName}}, 경고 {{count}}개.",
+    "savedWithoutLinks_other": "{{kind}} 저장됨 · {{fileName}}. 심볼릭 링크 {{count}}개는 압축 파일에서 제외되었습니다.",
+    "showInFolder": "폴더에서 보기",
+    "showWarnings": "경고 보기",
+    "warningsTitle": "내보내기 경고"
   },
   "externalChange": {
     "reloadFailed": "프로젝트 설정은 업데이트했지만 바뀐 파일 일부를 다시 불러오지 못했습니다."
@@ -315,6 +341,11 @@
     "action_other": "파일 {{count}}개 찾아서 설치",
     "installing_other": "패키지 {{count}}개를 설치하는 중입니다. 설치가 끝나면 컴파일을 다시 시작합니다.",
     "summary_other": "컴파일이 {{names}}을(를) 찾지 못했습니다. TeX Live에서 해당 패키지를 찾아보세요.",
+    "systemHint": {
+      "apt": "apt-file search {{name}} 명령으로 해당 패키지를 찾거나, sudo apt install texlive-full 명령으로 전부 설치하세요.",
+      "dnf": "{{command}} 명령을 실행하세요."
+    },
+    "systemManaged_other": "컴파일이 {{names}}을(를) 찾지 못했습니다. 이 TeX Live는 Linux 배포판에 포함된 것이라 Oleafly가 패키지를 추가할 수 없습니다. {{hint}}",
     "userTree": "시스템 TeX 트리가 읽기 전용이라 패키지를 {{path}}의 개인 트리에 설치했습니다."
   },
   "models": {
@@ -361,6 +392,7 @@
   },
   "pandoc": {
     "downloadFailed": "pandoc을 내려받지 못했습니다. 직접 설치한 뒤 다시 시도하세요.",
+    "downloadFailedDetail": "pandoc을 내려받지 못했습니다({{detail}}). 직접 설치한 뒤 다시 시도하세요.",
     "downloadingPercent": "pandoc을 내려받는 중… {{progress}}%",
     "downloadingSize": "pandoc을 내려받는 중… {{megabytes}} MB",
     "installGuide": "설치 안내"
@@ -467,7 +499,7 @@
     "compileFailed": "태그 컴파일에 실패했습니다. 엔진을 확인하고 다시 시도하세요.",
     "compiled": "태그된 PDF를 컴파일했습니다. 아래에서 접근성 판정을 확인하세요.",
     "compiledWithErrors": "태그 컴파일이 오류와 함께 끝났습니다. 로그를 확인하세요.",
-    "engineRequired": "먼저 설정의 LaTeX 엔진에서 태그 지원 엔진을 켜세요."
+    "engineRequired": "태그된 PDF를 만들려면 설정 > 엔진 > LaTeX에서 TinyTeX를 설치하세요."
   },
   "terminal": {
     "defaultTitle": "터미널 {{index}}"
@@ -514,6 +546,7 @@
   "tinytex": {
     "installFailed": "TinyTeX를 설치하지 못했습니다.",
     "installGuide": "설치 안내",
+    "tryAgain": "다시 시도",
     "installed": "TinyTeX를 설치했습니다.",
     "phase": {
       "addingPackages": "패키지를 추가하는 중…",
