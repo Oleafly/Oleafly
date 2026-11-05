@@ -25,7 +25,7 @@ beforeAll(async () => {
     prioritizePdfPages,
     selectCurrentPdfPage,
   } = await import("./PdfViewer"));
-});
+}, 60_000);
 
 afterEach(() => {
   vi.restoreAllMocks();

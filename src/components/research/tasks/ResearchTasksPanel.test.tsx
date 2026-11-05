@@ -392,8 +392,10 @@ describe("ResearchTasksPanel lifecycle", () => {
     await user.click(page().getByRole("button", { name: enCommon.actions.cancel }));
     if (operation === "edit") closeDetail();
     await user.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
-    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), "A separate draft");
-    await user.type(page().getByLabelText(enResearchTools.tasks.composer.promptLabel), "Keep this new work");
+    await user.click(page().getByLabelText(enResearchTools.tasks.composer.titleLabel));
+    await user.paste("A separate draft");
+    await user.click(page().getByLabelText(enResearchTools.tasks.composer.promptLabel));
+    await user.paste("Keep this new work");
 
     await act(async () => pending.resolve(operation === "create"
       ? { ...existing, id: "created", title: "Created task" }
