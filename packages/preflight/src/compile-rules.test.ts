@@ -105,6 +105,25 @@ describe("compile preflight rules", () => {
     ]));
   });
 
+  it("counts each wrapped missing character once and ignores nullfont noise", () => {
+    const glyphs = runCompileRules({
+      status: "success",
+      log: [
+        'Missing character: There is no r ("72) in font nullfont!',
+        "Missing character: There is no ㄱ (U+3131) in font [lmroman12-regular]:mapping=t",
+        "ex-text;!",
+        "Missing character: There is no ㅊ (U+314A) in font [lmroman12-regular]:mapping=t",
+        "ex-text;!",
+      ].join("\n"),
+    }).find((finding) => finding.id === "compile-missing-glyph");
+    expect(glyphs?.title).toEqual(expect.objectContaining({ params: { count: 2 } }));
+    const noise = runCompileRules({
+      status: "success",
+      log: 'Missing character: There is no r ("72) in font nullfont!',
+    }).map((finding) => finding.id);
+    expect(noise).not.toContain("compile-missing-glyph");
+  });
+
   it("reports mixed PDF media sizes", () => {
     const findings = runCompileRules(undefined, pdf({
       pageCount: 2,

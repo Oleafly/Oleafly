@@ -476,9 +476,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "El fallo coincide con una carencia conocida del motor Tectonic incluido. Elige cómo debe compilar este proyecto. La elección se guarda en el proyecto, así que quien colabore tendrá la misma configuración.",
     "descriptionImportScan": "El análisis de la importación encontró funciones que el motor Tectonic incluido no orquesta. Elige cómo debe compilar este proyecto. La elección se guarda en el proyecto, así que quien colabore tendrá la misma configuración.",
+    "descriptionTexMissing": "Este proyecto ahora compila con latexmk y este equipo todavía no puede ejecutarlo. Oleafly puede instalar TinyTeX por ti, o puedes volver al motor Tectonic incluido.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX a través de latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "La compilación se detuvo en {{file}}.",
+      "missingFiles": "La compilación no encontró {{files}}.",
+      "mirrorStatus": "El servidor espejo devolvió HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "La bibliografía usa biblatex y Biber",
+        "detail": "Este proyecto necesita Biber para generar la lista de referencias. Oleafly viene con un Biber que coincide con su motor incluido. Si las citas siguen como “?” después de compilar, busca una nota de Biber en el registro."
+      },
+      "bundle-fetch-failed": {
+        "title": "Falló la descarga de los paquetes de TeX",
+        "detail": "Oleafly no pudo descargar paquetes de TeX de su servidor espejo, así que la compilación nunca llegó a tu documento. Revisa tu conexión y vuelve a compilar. La descarga continúa donde se detuvo."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 necesita pdfLaTeX",
+        "detail": "CJKutf8 y CJK solo funcionan con pdfLaTeX. Con el motor incluido (XeTeX) el documento sigue compilando, pero el texto en chino, japonés o coreano no aparece en el PDF. Cambia a pdfLaTeX con el TeX del sistema, o sustituye el paquete por xeCJK."
+      },
+      "class-compat": {
+        "title": "La clase de documento choca con los límites del motor",
+        "detail": "Los errores de compilación vienen de un archivo de clase o de estilo, no de tu documento. Las clases de las editoriales suelen depender de herramientas o de un comportamiento de pdfTeX que el motor incluido no tiene. latexmk compila con una distribución de TeX completa."
+      },
+      "eps-image": {
+        "title": "Las imágenes EPS necesitan un conversor",
+        "detail": "El motor incluido no puede colocar imágenes EPS. Conviértelas a PDF con epstopdf o Inkscape, o cambia a pdfLaTeX con el TeX del sistema, que convierte el EPS mediante Ghostscript."
+      },
+      "fontspec": {
+        "title": "Fuentes personalizadas (fontspec)",
+        "detail": "fontspec necesita en este equipo las fuentes que nombra. Las fuentes que venían con un editor en línea pueden faltar aquí."
+      },
+      "glossaries-index": {
+        "title": "Herramienta de glosario o de índice",
+        "detail": "glossaries y makeindex necesitan una ejecución adicional de makeindex o xindy, que el motor incluido no hace."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref está configurado con el controlador de pdfTeX",
+        "detail": "Esta clase o este preámbulo fuerza el controlador pdftex de hyperref, que el motor incluido no puede usar. Cambia a pdfLaTeX con el TeX del sistema, o quita la opción pdftex para que hyperref elija el controlador por sí mismo."
+      },
+      "minted": {
+        "title": "minted necesita shell escape y Pygments",
+        "detail": "Los listados de código con minted necesitan una distribución de TeX del sistema y pygmentize. Cambia al LaTeX del sistema y permite los comandos externos en este equipo solo si confías en todos los archivos del proyecto."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Falta un paquete en el conjunto incluido",
+        "detail": "Algo que carga este proyecto no está en el conjunto de TeX incluido. Añade el archivo al proyecto si venía con tu plantilla, o cambia al TeX del sistema e instala el paquete desde TeX Live."
+      },
+      "pdftex-only": {
+        "title": "Paquetes de pdfTeX",
+        "detail": "El motor incluido se basa en XeTeX, y este proyecto depende de paquetes o comandos que solo funcionan con pdfTeX. latexmk compila con pdfLaTeX de verdad."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX necesita su auxiliar de la distribución de TeX del sistema que esté activa. Cambia al LaTeX del sistema y permite los comandos externos en este equipo solo si confías en todos los archivos del proyecto."
+      },
+      "shell-escape": {
+        "title": "Comandos de shell escape",
+        "detail": "El código usa \\write18 u otro shell escape. Cambia al LaTeX del sistema y permite los comandos externos en este equipo solo si confías en todos los archivos del proyecto y las herramientas que necesita están instaladas."
+      }
     },
     "recommended": "Recomendado",
     "shellEscape": {
@@ -506,13 +566,14 @@
       "withFailures_other": "Sin configuración y funciona sin conexión. Se espera que {{features}} sigan fallando."
     },
     "tinytex": {
-      "description": "Instala un TeX Live compacto en tu carpeta personal, sin permisos de administrador. La descarga básica ocupa unos 250 MB. Las plantillas de revista pueden traer más paquetes después, hasta alrededor de 1 GB en total.",
+      "description": "Instala un TeX Live compacto, sin permisos de administrador. La descarga básica ocupa unos 250 MB. Las plantillas de revista pueden traer más paquetes después, hasta alrededor de 1 GB en total.",
       "download": "Descargar y usar TinyTeX",
       "resume": "Reanudar la descarga ({{megabytes}} MB hechos)",
       "title": "Descargar TinyTeX"
     },
     "titleCompileFailure": "Esta compilación necesita más que el motor incluido",
-    "titleImportScan": "Este proyecto necesita más que el motor incluido"
+    "titleImportScan": "Este proyecto necesita más que el motor incluido",
+    "titleTexMissing": "Este compilador necesita una distribución de TeX que funcione"
   },
   "shellCommands": {
     "allow": "Permitir comandos externos",
@@ -1172,11 +1233,16 @@
     },
     "wait": {
       "description": "{{phase}} Tu compilación está en cola y empieza sola en cuanto el motor esté listo.",
+      "stop": "Detener la instalación",
       "title": "TinyTeX se está descargando"
     },
     "typstQuit": {
       "title": "Typst todavía se está instalando",
       "description": "Typst {{version}} se está descargando. Si sales ahora, la descarga se detiene y tendrás que volver a empezarla desde Ajustes."
+    },
+    "packageQuit": {
+      "title": "Oleafly sigue modificando paquetes de TeX",
+      "description": "Si sales ahora, la instalación o la eliminación se detiene a medias y puede dejar roto tu gestor de paquetes de TeX."
     }
   },
   "toolbar": {
@@ -1342,7 +1408,7 @@
       "compiling": "Compilando con Typst"
     },
     "errors": {
-      "pandoc": "Pandoc no está listo. Instálalo desde Herramientas y vuelve a intentarlo.",
+      "pandoc": "Pandoc no está listo. Repáralo en Ajustes > Motores > Markdown y vuelve a intentarlo.",
       "noMain": "No se pudo leer el archivo LaTeX principal.",
       "emptyOutput": "Pandoc devolvió un documento vacío.",
       "failed": "La conversión se detuvo: {{detail}}"
@@ -1407,7 +1473,8 @@
     "svg": "Imágenes SVG",
     "html": "HTML",
     "experimental": "Experimental",
-    "htmlNote": "La exportación HTML de Typst todavía es experimental. Omite la configuración de página y los elementos posicionados.",
+    "htmlNote": "La exportación HTML de Typst todavía es experimental. Conserva el texto y las imágenes, pero no la configuración de página ni los dibujos.",
+    "htmlNoteOldTypst": "Typst {{version}} deja las ecuaciones fuera del HTML. Typst 0.15 o posterior las conserva.",
     "ppi": "Resolución",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Páginas",

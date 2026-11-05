@@ -588,7 +588,8 @@
     "unrecorded": "Het LaTeX Project heeft voor de class {{name}} geen tagstatus vastgelegd, dus de uitkomst staat niet vast. Compileer en controleer de uitvoer."
   },
   "prep": {
-    "metadataUpdated": "De vereiste tagsleutels zijn aan je \\DocumentMetadata toegevoegd.",
+    "metadataInMain": "\\DocumentMetadata hoort bovenaan het hoofddocument, dus dit bestand krijgt het niet.",
+    "metadataUpdated":"De vereiste tagsleutels zijn aan je \\DocumentMetadata toegevoegd.",
     "metadataAdded": "\\DocumentMetadata is als eerste regel toegevoegd (verplicht, moet vóór \\documentclass staan). Het staat in een versiecontrole: LaTeX ouder dan {{date}}, inclusief de meegeleverde engine, slaat het over en compileert het document ongetagd in plaats van te falen.",
     "headerRows": "table/header-rows is op 1 gezet, zodat de eerste rij van elke tabel als kopcellen wordt getagd. Wijzig het getal als een tabel een andere kopdiepte heeft.",
     "unicodeMath": "\\usepackage{unicode-math} is toegevoegd, dat deze engine nodig heeft voor getagde wiskunde.",

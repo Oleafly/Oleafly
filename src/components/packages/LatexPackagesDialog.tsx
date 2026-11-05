@@ -38,6 +38,7 @@ const NO_NAMES: ReadonlySet<string> = new Set();
 interface LatexRowContext {
   readonly mode: LatexInstallMode;
   readonly engineReady: boolean;
+  readonly systemManager: string | null;
   readonly installed: ReadonlySet<string>;
   readonly checked: boolean;
   readonly busyPackage: string | null;
@@ -55,6 +56,7 @@ interface LatexRowContext {
 function useLatexRowContext(open: boolean, onClose: () => void): LatexRowContext {
   const engineId = useFilesStore((state) => (state.engineLoaded ? state.engine.id : "unknown"));
   const tlmgr = useEngineStore((state) => state.info?.tlmgr ?? null);
+  const systemManager = useEngineStore((state) => state.info?.system_package_manager ?? null);
   const engineReady = useEngineStore((state) => state.loaded);
   const installedNames = useEngineStore((state) => state.installed);
   const busyPackage = useEngineStore((state) => state.busyPkg);
@@ -144,6 +146,7 @@ function useLatexRowContext(open: boolean, onClose: () => void): LatexRowContext
   return {
     mode,
     engineReady,
+    systemManager,
     installed,
     checked: checked && packageError?.kind !== "read",
     busyPackage,
@@ -269,6 +272,9 @@ function installNote(context: LatexRowContext): string | null {
   if (context.mode === "on-demand") return i18n.t(($) => $.editor.latexPackages.onDemand);
   if (context.mode === "tlmgr") return context.checked ? null : i18n.t(($) => $.editor.latexPackages.checking);
   if (!context.engineReady) return null;
+  if (context.systemManager) {
+    return i18n.t(($) => $.editor.latexPackages.systemManaged, { manager: context.systemManager });
+  }
   return i18n.t(($) => $.editor.latexPackages.unknownInstall);
 }
 

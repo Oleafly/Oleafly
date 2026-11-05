@@ -1076,6 +1076,22 @@
         "lines_many": "{{value}} wierszy",
         "lines_other": "{{value}} wiersza"
       },
+      "openWith": {
+        "ariaLabel": "Terminal do otwierania folderów i poleceń",
+        "builtin": "Wbudowany terminal",
+        "cmd": "Wiersz polecenia",
+        "description": "Gdzie Oleafly otwiera folder lub uruchamia polecenie po wybraniu opcji Otwórz w terminalu.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Otwieraj w",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (nie znaleziono)",
+        "powershell": "PowerShell",
+        "systemDefault": "Domyślny systemowy ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Domyślny terminal systemowy"
+      },
       "shell": {
         "ariaLabel": "Powłoka terminala (shell)",
         "description": "Nowe terminale uruchamiają ten shell. Otwarte terminale zachowują swój.",
@@ -1376,13 +1392,20 @@
       "tooltip": "Dotyczy nowych projektów. Każdy projekt przypina własny silnik w project.json, więc współpracownicy otwierający ten sam projekt kompilują go tak samo, niezależnie od tego ustawienia."
     },
     "distributions": {
+      "automatic": "Automatycznie",
+      "automaticTooltip": "Wróć do wyboru przez Oleafly: najpierw pełny systemowy TeX, potem TinyTeX.",
       "empty": "Na tym komputerze nie wykryto dystrybucji TeX.",
       "heading": "Zarządzaj dystrybucjami TeX",
+      "inUse": "W użyciu",
+      "inUseTooltip": "Kompilacje latexmk korzystają z tej dystrybucji.",
       "rowTooltip": "Dołączone: {{tools}}. Oleafly uruchamia narzędzia TeX z {{binDir}}.",
       "rowTooltipNoTools": "W tej instalacji nie znaleziono latexmk ani tlmgr. Oleafly uruchamia narzędzia TeX z {{binDir}}.",
-      "tooltip": "Wszystko, z czego silnik latexmk może korzystać na tym komputerze. TinyTeX instaluje się w folderze domowym bez uprawnień administratora. Instalacje systemowe (MacTeX, TeX Live, MiKTeX) są wykrywane automatycznie."
+      "tinytexChooseHint": "Kompilacje nadal korzystają z dystrybucji oznaczonej jako W użyciu. Aby przełączyć się po instalacji, kliknij Używaj do kompilacji przy TinyTeX.",
+      "tooltip": "Wszystko, z czego silnik latexmk może korzystać na tym komputerze. TinyTeX instaluje się bez uprawnień administratora. Instalacje systemowe (MacTeX, TeX Live, MiKTeX) są wykrywane automatycznie.",
+      "use": "Używaj do kompilacji"
     },
     "latexmkMissing": "nie znaleziono latexmk",
+    "latexmkNeedsPerl": "latexmk wymaga Perl",
     "markdown": {
       "downloading": "Pobieranie…",
       "heading": "Kompilator Markdown",
@@ -1418,6 +1441,8 @@
       "includedIn": "Zawarty w {{package}}. Usunięcie go usuwa też pozostałe pliki z tego pakietu.",
       "intro": {
         "available": "Te pakiety dotyczą projektów korzystających z latexmk (systemowy TeX). Tectonic używa własnego zestawu pakietów.",
+        "systemManaged": "Ten TeX Live pochodzi z Twojej dystrybucji Linuksa, więc pakiety dodawaj przez {{manager}}. Oleafly nie może tego zmienić.",
+        "systemManagedTinytex": "Ten TeX Live pochodzi z Twojej dystrybucji Linuksa, więc pakiety dodawaj przez {{manager}}. Aby Oleafly zarządzał pakietami, pobierz TinyTeX powyżej.",
         "unavailable": "Zarządzanie pakietami wymaga TeX Live albo TinyTeX. W przypadku MiKTeX skorzystaj z MiKTeX Console."
       },
       "refreshInstalled": "Odśwież zainstalowane pakiety",
@@ -1451,9 +1476,10 @@
       "tooltip": "Domyślny silnik (Tectonic) jest szybki i działa bez internetu, ale nie potrafi tworzyć tagowanych plików PDF zgodnych z Section 508 / PDF-UA. Do tego potrzebny jest systemowy LuaLaTeX, który może czytać pliki lokalne dostępne dla Twojego konta, więc używaj go tylko przy zaufanych projektach. Oleafly może skorzystać z istniejącej dystrybucji albo z zarządzanego TinyTeX."
     },
     "tinytex": {
-      "detail": "Kompaktowa dystrybucja TeX Live w folderze domowym. Podstawowe pobieranie to około 250 MB. Szablony czasopism mogą później dodać pakiety, łącznie do mniej więcej 1 GB. Wcześniejsza instalacja sprawia, że systemowy LaTeX jest dostępny, gdy świadomie go wybierzesz.",
+      "detail": "Kompaktowa dystrybucja TeX Live, która nie wymaga uprawnień administratora. Podstawowe pobieranie to około 250 MB. Szablony czasopism mogą później dodać pakiety, łącznie do mniej więcej 1 GB. Wcześniejsza instalacja sprawia, że systemowy LaTeX jest dostępny, gdy świadomie go wybierzesz.",
       "download": "Pobierz TinyTeX (~250 MB)",
-      "resume": "Wznów pobieranie (pobrano {{size}} MB)"
+      "resume": "Wznów pobieranie (pobrano {{size}} MB)",
+      "update": "Zaktualizuj"
     },
     "typst": {
       "detail": "Dołączony do Oleafly, więc nie trzeba niczego konfigurować. Połączenie z siecią jest potrzebne tylko wtedy, gdy dokument po raz pierwszy importuje pakiet @preview.",
@@ -1522,7 +1548,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Nie znaleziono na tym komputerze."
+        "missing": "Nie znaleziono na tym komputerze.",
+        "outdated": "Wersja {{tool}} {{version}} na tym komputerze jest za stara. Oleafly potrzebuje wersji {{minimum}} lub nowszej, więc używa pobranej przez siebie kopii."
       },
       "managedIdle": "Nieużywane. Oleafly najpierw korzysta z kopii znalezionej na tym komputerze.",
       "superseded": "Nieużywane. Oleafly korzysta teraz z narzędzia {{tool}} {{version}}.",

@@ -361,7 +361,12 @@
     "rawLogs": "Raw logs",
     "copyLog": "Copy log",
     "typesetting": "Typesetting",
+    "missingCharacters": "Missing characters",
     "info": "Info",
+    "clear": "Clear",
+    "clearAria": "Clear compile log",
+    "clearHint": "Hide this log and its errors until the next compile. Build files stay.",
+    "cleared": "Log cleared. The next compile writes a new one.",
     "empty": "Compile output will appear here.",
     "scrollToTop": "Scroll to top",
     "scrollToBottom": "Scroll to bottom",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} unresolved reference",
     "summaryReferences_other": "{{count}} unresolved references",
     "fontPack": "{{family}} is in the free {{pack}} font pack.",
+    "fontPackGlyphs": "The free {{pack}} font pack has these characters.",
+    "fontPackSealed": "{{family}} is in the free {{pack}} font pack, but font packs don't apply here because this project uses project fonts only. Add the font's file to the project's fonts folder.",
     "fontPackAction": "Download and compile",
     "fontPackDownloading": "Downloading…",
     "fontPackFailed": "The font pack couldn't be downloaded. Check your connection and try again."
@@ -1461,7 +1468,8 @@
       "missing": "These packages aren't in the package cache: {{names}}. Compile once while online, then vendor again.",
       "count_one": "{{count}} package in this project",
       "count_other": "{{count}} packages in this project",
-      "none": "No packages in this project yet."
+      "none": "No packages in this project yet.",
+      "unsupported": "Typst {{version}} can't read packages from the project folder. Switch the project to Typst 0.12 or newer to use this."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} is available. This import uses {{version}}.",
@@ -1500,6 +1508,7 @@
     "classNote": "This is a document class. Set it with \\documentclass instead.",
     "onDemand": "Tectonic downloads packages the first time your document uses them. There's nothing to install.",
     "checking": "Checking which packages are installed",
+    "systemManaged": "This TeX Live came with your Linux distribution, so install packages with {{manager}}.",
     "unknownInstall": "Oleafly can't tell which packages your TeX setup has.",
     "noProject": "Open a LaTeX project to add packages.",
     "added": "Added {{name}} to {{file}}.",

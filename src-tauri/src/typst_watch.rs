@@ -287,6 +287,7 @@ pub(crate) struct WatchTarget {
     pub(crate) build_deps: Option<PathBuf>,
     pub(crate) engine_name: String,
     pub(crate) toolchain_identity: String,
+    pub(crate) glyph_check: Option<crate::typst_options::GlyphCheck>,
 }
 
 type TargetKey = (
@@ -468,6 +469,7 @@ pub(crate) trait WatchHost: Send + Sync + 'static {
     fn emit_result(&self, payload: &ResultPayload);
     fn publish(&self, target: Arc<WatchTarget>) -> BoxFuture<Result<Published, String>>;
     fn diagnose(&self, target: Arc<WatchTarget>, log: String) -> BoxFuture<DiagnosedLog>;
+    fn compiled(&self, _target: &WatchTarget, _result: &LiveCompileResult) {}
 }
 
 #[derive(Debug)]
@@ -926,7 +928,7 @@ impl Supervisor {
                 ProcessEnd::Exited(_) | ProcessEnd::CycleTimeout => {
                     let message = match end {
                         ProcessEnd::Exited(text) => text,
-                        _ => "Typst did not finish compiling in time".to_owned(),
+                        _ => crate::app_error::AppError::new("typst.live_preview_timeout").into(),
                     };
                     if started_at.elapsed() >= self.config.stable_after {
                         failures = 0;
@@ -1041,6 +1043,9 @@ impl Supervisor {
                 let result = self
                     .cycle_result(outcome, log, duration_ms.or(elapsed))
                     .await;
+                if result.ok {
+                    self.host.compiled(&self.target, &result);
+                }
                 let id = self.next_cycle;
                 self.next_cycle += 1;
                 self.host.emit_result(&ResultPayload {
@@ -1113,7 +1118,7 @@ impl Supervisor {
 fn exit_message(stray: String) -> String {
     let stray = stray.trim();
     if stray.is_empty() {
-        "Typst stopped watching the project".to_owned()
+        crate::app_error::AppError::new("typst.live_preview_stopped").into()
     } else {
         stray.to_owned()
     }
@@ -1167,6 +1172,17 @@ async fn prepare_target(
             crate::typst_options::dependency_file(&main.build_dir),
         )
     });
+    let build_pdf = build.pdf.ok_or("the Typst build has no PDF output")?;
+    let glyph_check =
+        main.options
+            .typst_settings
+            .clone()
+            .map(|settings| crate::typst_options::GlyphCheck {
+                pdf: build_pdf.clone(),
+                project_dir: main.project_dir.clone(),
+                main_document: main_doc.to_owned(),
+                settings,
+            });
     Ok(WatchTarget {
         project_id: project_id.to_owned(),
         main_document: main_doc.to_owned(),
@@ -1183,11 +1199,12 @@ async fn prepare_target(
             .pdf
             .clone()
             .ok_or("the Typst live preview has no PDF output")?,
-        build_pdf: build.pdf.ok_or("the Typst build has no PDF output")?,
+        build_pdf,
         staged_deps: deps.as_ref().map(|(staged, _)| staged.clone()),
         build_deps: deps.map(|(_, build)| build),
         engine_name: main.meta.engine.clone(),
         toolchain_identity: main.toolchain_identity(),
+        glyph_check,
     })
 }
 
@@ -1226,16 +1243,36 @@ impl WatchHost for AppHost {
 
     fn diagnose(&self, target: Arc<WatchTarget>, log: String) -> BoxFuture<DiagnosedLog> {
         Box::pin(async move {
-            crate::document_engine::typst_log_errors(
+            crate::document_engine::typst_checked_log_errors(
                 log.clone(),
                 &target.main_document,
                 target.project_dir.clone(),
                 target.command.working_dir.clone(),
+                target.glyph_check.clone(),
             )
             .await
             .unwrap_or((log, Vec::new(), Vec::new()))
         })
     }
+
+    fn compiled(&self, target: &WatchTarget, result: &LiveCompileResult) {
+        if let Some(compiled) = shared_output(target, result) {
+            crate::collab::output::upload_after_compile(&self.app, compiled);
+        }
+    }
+}
+
+fn shared_output(
+    target: &WatchTarget,
+    result: &LiveCompileResult,
+) -> Option<crate::collab::output::CompiledOutput> {
+    Some(crate::collab::output::CompiledOutput {
+        project_id: target.project_id.clone(),
+        engine: target.engine_name.clone(),
+        main_file: target.main_document.clone(),
+        output_id: result.output_id.clone().filter(|_| result.has_pdf)?,
+        synctex: None,
+    })
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1287,6 +1324,15 @@ pub async fn typst_watch_compile(
         ensure_session(app.clone(), &project_id, &main_doc, offline, typst_variant).await?;
     let record = session.compile(fresh.unwrap_or(false), started).await?;
     if record.result.ok {
+        crate::commands::record_compile_output(crate::commands::CompiledRecord {
+            project_id: project_id.clone(),
+            main_doc: target.main_document.clone(),
+            engine: target.engine_name.clone(),
+            output_id: record.result.output_id.clone(),
+            output_revision: record.result.output_revision,
+            compile_time_ms: record.result.compile_time_ms,
+            log: record.result.log.clone(),
+        });
         crate::checkpoint_publication::schedule_after_successful_compile(
             &app,
             &project_id,

@@ -16,6 +16,8 @@ export interface NotebookToolStatus {
   active: NotebookToolInstall | null;
   system: NotebookToolInstall | null;
   managed: NotebookToolInstall | null;
+  outdatedSystem?: string | null;
+  minimumVersion?: string | null;
   offered: boolean;
   downloadBytes: number | null;
   license: string;

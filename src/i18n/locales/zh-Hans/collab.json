@@ -729,7 +729,14 @@
     "renamedPortable": "为了在每台电脑上都能使用，{{before}} 已重命名为 {{theirs}}。",
     "skipped": "无法读取来自 {{name}} 的一项更改，已跳过。",
     "skippedUnknown": "无法读取来自某人的一项更改，已跳过。",
-    "mentioned": "{{name}} 在 {{path}} 的评论中提及了你",
+    "outputNotShared": {
+      "tooLarge": "编译出的 PDF 超出了此服务器允许的大小，因此其他人看到的仍是之前的版本。",
+      "quota": "已达到此服务器的上传上限，因此其他人看到的仍是之前的 PDF。Oleafly 会在 15 分钟后重试。",
+      "privateSources": "项目中有未共享的文件，因此编译出的 PDF 只保留在这台电脑上。",
+      "serverError": "服务器没有接受编译出的 PDF，因此其他人看到的仍是之前的版本。"
+    },
+    "texNeeded": "此项目需要用 TeX 发行版编译，而这台电脑上没有。请在设置 > 引擎 > LaTeX 中安装 TinyTeX，以便在这里编译。",
+    "mentioned":"{{name}} 在 {{path}} 的评论中提及了你",
     "mentionedHere": "{{name}} 在评论中提及了你",
     "showComment": "查看评论",
     "settings": {

@@ -1,12 +1,15 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::sync::OnceLock;
 
 pub const MAX_COMPILE_LOG_BYTES: usize = 4 * 1024 * 1024;
 
 const MAX_ERROR_CONTEXT_LINES: usize = 12;
+const MAX_MISSING_CHARACTER_DIAGNOSTICS: usize = 50;
+const NULLFONT_SUFFIX: &str = " in font nullfont!";
 
-const BIBER_RERUN_MESSAGE: &str = "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically. If citations stay undefined, see [Oleafly] notes in this log.";
+const BIBER_RERUN_MESSAGE: &str = "Bibliography needs Biber (biblatex). If citations stay undefined, check the Biber messages in this log.";
 
 const ANY: &str = r"[^\r\n\u{2028}\u{2029}]";
 
@@ -79,6 +82,8 @@ struct Patterns {
     biber_cannot_find: Regex,
     biber_version_mismatch: Regex,
     biber_bibtex_line: Regex,
+    biber_data_source: Regex,
+    biber_other_error: Regex,
     tectonic_cannot_open: Regex,
     biblatex_rerun_biber: Regex,
     oleafly_biber_mode_a: Regex,
@@ -156,6 +161,8 @@ fn patterns() -> &'static Patterns {
         biber_bibtex_line: compile(
             r"^ERROR - BibTeX subsystem: (.+?), line ([0-9]+), (.*)$".into(),
         ),
+        biber_data_source: compile(r"^INFO - Found BibTeX data source '(.+)'$".into()),
+        biber_other_error: compile(r"^ERROR - (.+)$".into()),
         tectonic_cannot_open: compile(r"^error: can't open path `([^`]+)`".into()),
         biblatex_rerun_biber: compile(
             r"^Package biblatex Warning: Please \(re\)run Biber on the file:".into(),
@@ -262,6 +269,8 @@ struct Parser<'a> {
     awaiting_error_line: bool,
     awaited_lines: usize,
     in_engine_output: bool,
+    biber_source: Option<String>,
+    bib_file_failed: bool,
     current: Option<Entry>,
     nested: usize,
     root_file: Option<&'a str>,
@@ -311,6 +320,28 @@ pub(crate) fn head(log: &str) -> &str {
     &log[..end]
 }
 
+pub fn is_nullfont_missing_character(message: &str) -> bool {
+    trim_end_js(message).ends_with(NULLFONT_SUFFIX)
+}
+
+fn collapse_missing_characters(diagnostics: &mut Vec<LogDiagnostic>) {
+    let mut seen = HashSet::new();
+    let mut kept = 0;
+    diagnostics.retain(|diagnostic| {
+        if diagnostic.category != LogCategory::MissingCharacter {
+            return true;
+        }
+        if !seen.insert(diagnostic.message.clone()) {
+            return false;
+        }
+        if is_nullfont_missing_character(&diagnostic.message) {
+            return true;
+        }
+        kept += 1;
+        kept <= MAX_MISSING_CHARACTER_DIAGNOSTICS
+    });
+}
+
 pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic> {
     let mut parser = Parser {
         search_empty_line: false,
@@ -320,6 +351,8 @@ pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic>
         awaiting_error_line: false,
         awaited_lines: 0,
         in_engine_output: false,
+        biber_source: None,
+        bib_file_failed: false,
         current: None,
         nested: 0,
         root_file,
@@ -338,7 +371,43 @@ pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic>
             parser.out.push(current.finalize());
         }
     }
+    collapse_missing_characters(&mut parser.out);
+    if parser.bib_file_failed {
+        parser
+            .out
+            .retain(|diagnostic| diagnostic.message != BIBER_RERUN_MESSAGE);
+    }
     parser.out
+}
+
+pub(crate) struct BiberBibError {
+    pub file: Option<String>,
+    pub line: Option<u32>,
+    pub message: String,
+}
+
+pub(crate) fn note_biber_source(line: &str, source: &mut Option<String>) {
+    if !line.starts_with("INFO - Found BibTeX data source") {
+        return;
+    }
+    if let Some(caps) = patterns().biber_data_source.captures(line) {
+        *source = Some(caps[1].to_string());
+    }
+}
+
+pub(crate) fn biber_bib_error(line: &str, source: Option<&str>) -> Option<BiberBibError> {
+    if !line.starts_with("ERROR - BibTeX subsystem:") {
+        return None;
+    }
+    let caps = patterns().biber_bibtex_line.captures(line)?;
+    let file = source
+        .map(str::to_string)
+        .or_else(|| caps[1].ends_with(".bib").then(|| caps[1].to_string()));
+    Some(BiberBibError {
+        file,
+        line: caps[2].parse().ok(),
+        message: caps[3].to_string(),
+    })
 }
 
 impl Parser<'_> {
@@ -376,7 +445,7 @@ impl Parser<'_> {
             self.in_engine_output = false;
             return false;
         }
-        !p.tectonic_cannot_open.is_match(line)
+        !p.tectonic_cannot_open.is_match(line) && !line.starts_with("ERROR - ")
     }
 
     fn starts_new_entry(p: &Patterns, line: &str, inside_error: bool) -> bool {
@@ -449,13 +518,16 @@ impl Parser<'_> {
                 ),
             ));
         }
-        if let Some(caps) = p.biber_bibtex_line.captures(line) {
+        if let Some(found) = biber_bib_error(line, self.biber_source.as_deref()) {
             return Some(biber(
                 LogSeverity::Error,
-                Some(caps[1].to_string()),
-                caps[2].parse().ok(),
-                caps[3].to_string(),
+                found.file,
+                found.line,
+                found.message,
             ));
+        }
+        if let Some(caps) = p.biber_other_error.captures(line) {
+            return Some(biber(LogSeverity::Error, None, None, caps[1].to_string()));
         }
         None
     }
@@ -554,6 +626,7 @@ impl Parser<'_> {
     fn parse_line_once(&mut self, line: &str) -> Step {
         let p = patterns();
         let filename = self.current_file();
+        note_biber_source(line, &mut self.biber_source);
         if self.inside_box_warn {
             self.inside_box_warn = false;
             return Step::Stop;
@@ -654,6 +727,7 @@ impl Parser<'_> {
         }
         if line.starts_with("ERROR - ") || line.starts_with("WARN - ") {
             if let Some(entry) = self.biber_entry(p, line) {
+                self.bib_file_failed |= line.starts_with("ERROR - BibTeX subsystem:");
                 self.start(entry);
                 self.search_empty_line = false;
                 self.inside_error = false;

@@ -94,6 +94,8 @@
     "exitFullscreen": "Вийти з повноекранного режиму",
     "retryCompile": "Скомпілювати ще раз",
     "chooseEngine": "Вибрати рушій",
+    "installJapanese": "Встановити підтримку японської мови (близько 450 МБ)",
+    "useCompiler": "Використати {{compiler}}",
     "installPackages_one": "Знайти і встановити {{name}}",
     "installPackages_few": "Знайти і встановити {{count}} файли",
     "installPackages_many": "Знайти і встановити {{count}} файлів",
@@ -102,7 +104,9 @@
     "useTypst": "Використати Typst {{version}}",
     "installTool": "Встановити {{tool}} {{version}}",
     "installToolSize": "Встановити {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Відкрити налаштування рушія"
+    "engineSettings": "Відкрити налаштування рушія",
+    "useTectonic": "Використати Tectonic",
+    "useTectonicForEveryone": "Використати Tectonic для всіх"
   },
   "html": {
     "builtTitle": "Зібрано як вебсторінку",

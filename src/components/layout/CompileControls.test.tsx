@@ -106,6 +106,15 @@ describe("compile offer while the preview is hidden", () => {
     expect(screen.queryByTestId(OFFER_ID)).toBeNull();
   });
 
+  it("keeps an engine choice from a compile that worked next to Compile while the PDF is on screen", () => {
+    failWithOffer("latex", engineGap);
+    useCompileStore.setState({ status: "success" });
+    useSettingsStore.setState({ viewMode: "split" });
+    render(<CompileControls />);
+
+    expect(screen.getByTestId(OFFER_ID)).toHaveTextContent(enPreview.actions.chooseEngine);
+  });
+
   it("keeps the offer in the main window while the preview is in its own window", () => {
     failWithOffer("latex", engineGap);
     usePreviewDetachedStore.setState({ projectId: "p1" });

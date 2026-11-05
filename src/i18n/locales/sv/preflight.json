@@ -588,6 +588,7 @@
     "unrecorded": "LaTeX-projektet har inte noterat någon taggningsstatus för klassen {{name}}, så resultatet är obekräftat. Kompilera och kontrollera utdatan."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata hör hemma överst i huvuddokumentet, så den här filen får den inte.",
     "metadataUpdated": "Lade till de taggningsnycklar som krävs i din \\DocumentMetadata.",
     "metadataAdded": "Lade till \\DocumentMetadata som första rad (krävs, måste stå före \\documentclass). Raden ligger inuti en versionskontroll: LaTeX äldre än {{date}}, inklusive den medföljande motorn, hoppar över den och kompilerar dokumentet utan taggning i stället för att misslyckas.",
     "headerRows": "Satte table/header-rows till 1 så att första raden i varje tabell taggas som rubrikceller. Ändra siffran om en tabell har ett annat rubrikdjup.",

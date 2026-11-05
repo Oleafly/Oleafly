@@ -1062,6 +1062,22 @@
         "lines_one": "{{value}} rivi",
         "lines_other": "{{value}} riviä"
       },
+      "openWith": {
+        "ariaLabel": "Pääte kansioiden ja komentojen avaamiseen",
+        "builtin": "Sisäänrakennettu pääte",
+        "cmd": "Komentokehote",
+        "description": "Missä Oleafly avaa kansion tai suorittaa komennon, kun valitset Avaa päätteessä.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Avaa ohjelmassa",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (ei löytynyt)",
+        "powershell": "PowerShell",
+        "systemDefault": "Järjestelmän oletus ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Järjestelmän oletuspääte"
+      },
       "shell": {
         "ariaLabel": "Päätteen shell",
         "description": "Uudet päätteet käynnistävät tämän shellin. Avoimet päätteet pitävät omansa.",
@@ -1360,13 +1376,20 @@
       "tooltip": "Koskee uusia projekteja. Jokainen projekti kiinnittää oman moottorinsa tiedostoon project.json, joten saman projektin avaavat yhteistyökumppanit kääntävät sen samalla tavalla tästä asetuksesta riippumatta."
     },
     "distributions": {
+      "automatic": "Automaattinen",
+      "automaticTooltip": "Palaa siihen, että Oleafly valitsee itse: ensin täysi järjestelmän TeX, sitten TinyTeX.",
       "empty": "Tältä koneelta ei havaittu TeX-jakelua.",
       "heading": "Hallitse TeX-jakeluita",
+      "inUse": "Käytössä",
+      "inUseTooltip": "latexmk-käännökset ajetaan tästä jakelusta.",
       "rowTooltip": "Mukana tulevat {{tools}}. Oleafly ajaa TeX-työkalunsa hakemistosta {{binDir}}.",
       "rowTooltipNoTools": "Tästä asennuksesta ei löytynyt latexmkiä eikä tlmgriä. Oleafly ajaa TeX-työkalunsa hakemistosta {{binDir}}.",
-      "tooltip": "Kaikki, mitä latexmk-moottori voi käyttää tällä koneella. TinyTeX asentuu kotikansioosi ilman pääkäyttäjän oikeuksia. Järjestelmäasennukset (MacTeX, TeX Live, MiKTeX) havaitaan automaattisesti."
+      "tinytexChooseHint": "Käännökset käyttävät edelleen jakelua, jossa on merkintä Käytössä. Jos haluat vaihtaa asennuksen jälkeen, napsauta TinyTeXin kohdalla Käytä käännöksiin.",
+      "tooltip": "Kaikki, mitä latexmk-moottori voi käyttää tällä koneella. TinyTeX asentuu ilman pääkäyttäjän oikeuksia. Järjestelmäasennukset (MacTeX, TeX Live, MiKTeX) havaitaan automaattisesti.",
+      "use": "Käytä käännöksiin"
     },
     "latexmkMissing": "latexmkiä ei löytynyt",
+    "latexmkNeedsPerl": "latexmk tarvitsee Perlin",
     "markdown": {
       "downloading": "Ladataan…",
       "heading": "Markdown-kääntäjä",
@@ -1402,6 +1425,8 @@
       "includedIn": "Sisältyy pakettiin {{package}}. Sen poistaminen poistaa myös paketin muut tiedostot.",
       "intro": {
         "available": "Nämä paketit ovat projekteille, jotka käyttävät latexmkiä (järjestelmän TeX). Tectonic käyttää omaa pakettikokoelmaansa.",
+        "systemManaged": "Tämä TeX Live tuli Linux-jakelusi mukana, joten lisää paketit työkalulla {{manager}}. Oleafly ei voi muuttaa sitä.",
+        "systemManagedTinytex": "Tämä TeX Live tuli Linux-jakelusi mukana, joten lisää paketit työkalulla {{manager}}. Jos haluat, että Oleafly hallitsee paketteja, lataa TinyTeX yltä.",
         "unavailable": "Pakettien hallinta vaatii TeX Liven tai TinyTeXin. MiKTeXissä käytä MiKTeX Consolea."
       },
       "refreshInstalled": "Päivitä asennetut paketit",
@@ -1433,9 +1458,10 @@
       "tooltip": "Oletusmoottori (Tectonic) on nopea ja toimii ilman verkkoa, mutta se ei osaa tuottaa merkittyjä, Section 508- tai PDF/UA-yhteensopivia PDF-tiedostoja. Siihen tarvitaan järjestelmän LuaLaTeX, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja ja jota tulisi käyttää vain luotettujen projektien kanssa. Oleafly voi käyttää olemassa olevaa jakelua tai hallittua TinyTeXiä."
     },
     "tinytex": {
-      "detail": "Kompakti TeX Live kotikansiossasi. Ydinlataus on noin 250 MB. Lehtien mallipohjat voivat lisätä paketteja myöhemmin, yhteensä noin 1 GB asti. Etukäteen asentaminen tekee järjestelmän LaTeXista käytettävän, kun valitset sen erikseen.",
+      "detail": "Kompakti TeX Live, joka ei tarvitse pääkäyttäjän oikeuksia. Ydinlataus on noin 250 MB. Lehtien mallipohjat voivat lisätä paketteja myöhemmin, yhteensä noin 1 GB asti. Etukäteen asentaminen tekee järjestelmän LaTeXista käytettävän, kun valitset sen erikseen.",
       "download": "Lataa TinyTeX (~250 MB)",
-      "resume": "Jatka latausta ({{size}} MB valmiina)"
+      "resume": "Jatka latausta ({{size}} MB valmiina)",
+      "update": "Päivitä"
     },
     "typst": {
       "detail": "Tulee Oleaflyn mukana, joten mitään ei tarvitse asentaa. Verkkoyhteyttä tarvitaan vain, kun dokumentti tuo @preview-paketin ensimmäistä kertaa.",
@@ -1500,7 +1526,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Ei löytynyt tältä koneelta."
+        "missing": "Ei löytynyt tältä koneelta.",
+        "outdated": "Tämän koneen {{tool}} {{version}} on liian vanha. Oleafly tarvitsee version {{minimum}} tai uudemman, joten se käyttää lataamaansa kopiota."
       },
       "managedIdle": "Ei käytössä. Oleafly käyttää ensisijaisesti tältä koneelta löytynyttä kopiota.",
       "superseded": "Ei käytössä. Oleafly käyttää nyt työkalua {{tool}} {{version}}.",

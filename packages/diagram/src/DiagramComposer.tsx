@@ -528,8 +528,11 @@ export function DiagramComposer({
       libraries: DIAGRAM_LIBS,
       background: nextBackground,
     });
-    const result = await host.compileIsolated(projectId, source);
+    const result = await host.compileIsolated(projectId, source, (chunk) => {
+      setLog((current) => `${current}${chunk}`.slice(-4000));
+    });
     setLog((result.log ?? "").slice(-4000));
+    if (result.stopped) return;
     if (result.has_pdf) {
       const bytes = new Uint8Array(await host.readIsolatedPdf(projectId));
       setPng(
@@ -1105,6 +1108,12 @@ export function DiagramComposer({
           {compileLabel(t, busy, hasCompiled)}
         </span>
       </Button>
+      {busy && language === "tikz" && host.stopCompile && (
+        <Button data-testid="diagram-stop" variant="ghost" size="sm" onClick={() => void host.stopCompile?.()}>
+          <Square className="size-3.5" />
+          {t("composer.stop")}
+        </Button>
+      )}
       <div className="relative" ref={savePickerRef}>
         <Tooltip label={t("composer.saveTooltip")}>
           <Button

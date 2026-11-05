@@ -463,6 +463,7 @@
     "previewUnsupported": "Für diese Engine gibt es noch keine Live-Vorschau",
     "badge": "KI-generiert",
     "compileWarning": "Dieser Entwurf kompilierte nicht sauber. Erzeugen Sie ihn neu für einen besseren Startpunkt oder legen Sie das Projekt an und korrigieren Sie den Quelltext im Editor.",
+    "compileLog": "Kompilierprotokoll",
     "noDescription": "Noch keine Beschreibung.",
     "includes": "Enthält",
     "category": "Kategorie",

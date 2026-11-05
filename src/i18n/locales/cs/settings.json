@@ -1076,6 +1076,22 @@
         "lines_many": "{{value}} řádku",
         "lines_other": "{{value}} řádků"
       },
+      "openWith": {
+        "ariaLabel": "Terminál pro otevírání složek a příkazů",
+        "builtin": "Vestavěný terminál",
+        "cmd": "Příkazový řádek",
+        "description": "Kde Oleafly otevře složku nebo spustí příkaz, když zvolíte Otevřít v terminálu.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Otevírat v",
+        "mac-terminal": "Terminál",
+        "notFound": "{{name}} (nenalezeno)",
+        "powershell": "PowerShell",
+        "systemDefault": "Výchozí systémový ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Výchozí systémový terminál"
+      },
       "shell": {
         "ariaLabel": "Shell terminálu (shell)",
         "description": "Nové terminály spouštějí tento shell. Otevřené terminály si ponechají ten svůj.",
@@ -1376,13 +1392,20 @@
       "tooltip": "Platí pro nové projekty. Každý projekt si svůj engine připíná v project.json, takže spolupracovníci, kteří otevřou stejný projekt, jej zkompilují stejně bez ohledu na toto nastavení."
     },
     "distributions": {
+      "automatic": "Automaticky",
+      "automaticTooltip": "Vrátit se k tomu, že vybírá Oleafly: nejdřív úplný systémový TeX, potom TinyTeX.",
       "empty": "V tomto počítači nebyla nalezena žádná distribuce TeXu.",
       "heading": "Správa distribucí TeXu",
+      "inUse": "Používá se",
+      "inUseTooltip": "Kompilace pomocí latexmk běží z této distribuce.",
       "rowTooltip": "Dodáváno s {{tools}}. Oleafly spouští své nástroje TeXu z {{binDir}}.",
       "rowTooltipNoTools": "V této instalaci nebyl nalezen latexmk ani tlmgr. Oleafly spouští své nástroje TeXu z {{binDir}}.",
-      "tooltip": "Vše, co může engine latexmk v tomto počítači využít. TinyTeX se instaluje do vaší domovské složky bez práv správce. Systémové instalace (MacTeX, TeX Live, MiKTeX) se rozpoznají automaticky."
+      "tinytexChooseHint": "Kompilace dál používají distribuci označenou jako Používá se. Chcete-li po instalaci přepnout, klikněte u TinyTeX na Použít pro kompilace.",
+      "tooltip": "Vše, co může engine latexmk v tomto počítači využít. TinyTeX se instaluje bez práv správce. Systémové instalace (MacTeX, TeX Live, MiKTeX) se rozpoznají automaticky.",
+      "use": "Použít pro kompilace"
     },
     "latexmkMissing": "latexmk nenalezen",
+    "latexmkNeedsPerl": "latexmk potřebuje Perl",
     "markdown": {
       "downloading": "Stahuje se…",
       "heading": "Překladač Markdownu",
@@ -1418,6 +1441,8 @@
       "includedIn": "Součást balíčku {{package}}. Jeho odebráním se odeberou i ostatní soubory z tohoto balíčku.",
       "intro": {
         "available": "Tyto balíčky jsou pro projekty používající latexmk (systémový TeX). Tectonic používá vlastní sadu balíčků.",
+        "systemManaged": "Tento TeX Live pochází z vaší distribuce Linuxu, takže balíčky přidávejte pomocí {{manager}}. Oleafly to změnit nemůže.",
+        "systemManagedTinytex": "Tento TeX Live pochází z vaší distribuce Linuxu, takže balíčky přidávejte pomocí {{manager}}. Aby balíčky mohl spravovat Oleafly, stáhněte výše TinyTeX.",
         "unavailable": "Správa balíčků vyžaduje TeX Live nebo TinyTeX. U MiKTeXu použijte MiKTeX Console."
       },
       "refreshInstalled": "Obnovit nainstalované balíčky",
@@ -1451,9 +1476,10 @@
       "tooltip": "Výchozí engine (Tectonic) je rychlý a funguje offline, ale neumí vytvořit tagovaná PDF podle Section 508 / PDF-UA. K tomu je potřeba systémový LuaLaTeX, který umí číst místní soubory dostupné vašemu účtu, a měl by se proto používat jen u důvěryhodných projektů. Oleafly umí využít stávající distribuci nebo spravovaný TinyTeX."
     },
     "tinytex": {
-      "detail": "Kompaktní TeX Live ve vaší domovské složce. Základní stažení má asi 250 MB. Šablony časopisů mohou později přidat balíčky, dohromady zhruba do 1 GB. Předchozí instalace zpřístupní systémový LaTeX ve chvíli, kdy jej sami zvolíte.",
+      "detail": "Kompaktní TeX Live, který nepotřebuje práva správce. Základní stažení má asi 250 MB. Šablony časopisů mohou později přidat balíčky, dohromady zhruba do 1 GB. Předchozí instalace zpřístupní systémový LaTeX ve chvíli, kdy jej sami zvolíte.",
       "download": "Stáhnout TinyTeX (~250 MB)",
-      "resume": "Pokračovat ve stahování (hotovo {{size}} MB)"
+      "resume": "Pokračovat ve stahování (hotovo {{size}} MB)",
+      "update": "Aktualizovat"
     },
     "typst": {
       "detail": "Dodává se s Oleafly, takže není co nastavovat. Připojení k internetu potřebuje jen poprvé, když dokument importuje balíček @preview.",
@@ -1522,7 +1548,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "V tomto počítači nenalezeno."
+        "missing": "V tomto počítači nenalezeno.",
+        "outdated": "Verze {{version}} nástroje {{tool}} v tomto počítači je příliš stará. Oleafly potřebuje verzi {{minimum}} nebo novější, proto používá kopii, kterou stáhne."
       },
       "managedIdle": "Nepoužívá se. Oleafly přednostně používá kopii nalezenou v tomto počítači.",
       "superseded": "Nepoužívá se. Oleafly nyní používá {{tool}} {{version}}.",

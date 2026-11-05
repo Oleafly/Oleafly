@@ -321,6 +321,84 @@ fn tectonic_starts_outside_the_project_it_builds() {
     );
 }
 
+#[test]
+fn a_mirror_failure_on_a_warm_cache_retries_without_the_mirror() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("FIXTURE_BUNDLE_FAIL_WARM", "1")
+        .env("FIXTURE_RECORD", "1")
+        .output()
+        .unwrap();
+    assert!(build.status.success());
+    let calls = std::fs::read_to_string(compiler.with_extension("calls")).unwrap();
+    let calls: Vec<&str> = calls.lines().collect();
+    assert_eq!(calls.len(), 2, "{calls:?}");
+    assert!(calls[0].contains("--bundle"));
+    assert!(!calls[1].contains("--bundle"));
+    let value = json(&build);
+    assert!(value["build"]["log"]
+        .as_str()
+        .is_some_and(|log| log.contains("retried with the upstream bundle")));
+}
+
+#[test]
+fn a_failed_retry_keeps_the_first_run_that_built() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("FIXTURE_BUNDLE_FAIL_WARM", "1")
+        .env("FIXTURE_RETRY_FAILS", "1")
+        .env("FIXTURE_RECORD", "1")
+        .output()
+        .unwrap();
+    assert!(
+        build.status.success(),
+        "{}",
+        String::from_utf8_lossy(&build.stdout)
+    );
+    let calls = std::fs::read_to_string(compiler.with_extension("calls")).unwrap();
+    assert_eq!(calls.lines().count(), 2, "{calls}");
+    let value = json(&build);
+    assert_eq!(value["ok"], true);
+    assert!(value["build"]["output_id"]
+        .as_str()
+        .is_some_and(|id| id.starts_with("pdf-sha256:")));
+    let log = value["build"]["log"].as_str().unwrap();
+    assert!(log.contains("please check your network connection"));
+    assert!(log.contains("response code 403"));
+    assert!(!log.contains("panicked"));
+}
+
+#[test]
+fn a_failed_retry_after_a_failed_first_run_still_fails() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("FIXTURE_BUNDLE_FAIL", "1")
+        .env("FIXTURE_RETRY_FAILS", "1")
+        .output()
+        .unwrap();
+    assert!(!build.status.success());
+    let log = json(&build)["build"]["log"].as_str().unwrap().to_owned();
+    assert!(log.contains("panicked"), "{log}");
+}
+
 const BUILD_FLAGS: [&str; 3] = ["--offline", "--fast", "--halt-on-error"];
 const TYPST_IGNORED_FLAGS: [&str; 2] = ["--fast", "--halt-on-error"];
 
@@ -1329,6 +1407,274 @@ fn a_pinned_typst_project_builds_with_the_installed_version() {
         .is_file());
 }
 
+fn real_sidecar(name: &str) -> Option<PathBuf> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../src-tauri/binaries")
+        .join(format!(
+            "{name}-{}{}",
+            option_env!("OLEAFLY_BUILD_TARGET")?,
+            std::env::consts::EXE_SUFFIX
+        ));
+    path.is_file().then_some(path)
+}
+
+fn export_with_real_tools(
+    project: &std::path::Path,
+    data: &std::path::Path,
+    typst: &std::path::Path,
+    pandoc: &std::path::Path,
+    format: &str,
+    output: &std::path::Path,
+) -> Value {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_oleaflyc"));
+    command
+        .args(["--json", "export", "--to", format, "-o"])
+        .arg(output)
+        .current_dir(project)
+        .env("OLEAFLY_DATA_DIR", data)
+        .env("OLEAFLY_TYPST", typst)
+        .env("OLEAFLY_PANDOC", pandoc);
+    for variable in INHERITED_VARIABLES {
+        command.env_remove(variable);
+    }
+    json(&command.output().unwrap())
+}
+
+#[test]
+fn typst_exports_keep_layout_text_footnotes_and_latex_images() {
+    let (Some(typst), Some(pandoc)) = (real_sidecar("typst"), real_sidecar("pandoc")) else {
+        return;
+    };
+    let project = typst_project(None);
+    let data = TempDir::new().unwrap();
+    let out = TempDir::new().unwrap();
+    std::fs::write(
+        project.path().join("shape.svg"),
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"50\"><rect width=\"100\" height=\"50\" fill=\"blue\"/></svg>",
+    )
+    .unwrap();
+    std::fs::write(
+        project.path().join("main.typ"),
+        "Body#footnote[tokennote].\n#align(center)[tokenalign]\n#grid(columns: 2, [tokengrid], [tokencell])\n#rect[tokenrect]\n#image(\"shape.svg\", width: 5cm)\n",
+    )
+    .unwrap();
+
+    let markdown = out.path().join("paper.md");
+    let report = export_with_real_tools(
+        project.path(),
+        data.path(),
+        &typst,
+        &pandoc,
+        "md",
+        &markdown,
+    );
+    assert_eq!(report["ok"], true, "{report}");
+    assert_eq!(report["warnings"], serde_json::json!([]), "{report}");
+    let text = std::fs::read_to_string(&markdown).unwrap();
+    for token in [
+        "tokennote",
+        "tokenalign",
+        "tokengrid",
+        "tokencell",
+        "tokenrect",
+    ] {
+        assert!(text.contains(token), "{token}: {text}");
+    }
+
+    let tex = out.path().join("paper.tex");
+    let report = export_with_real_tools(project.path(), data.path(), &typst, &pandoc, "tex", &tex);
+    assert_eq!(report["ok"], true, "{report}");
+    let text = std::fs::read_to_string(&tex).unwrap();
+    assert!(text.contains("\\includegraphics"), "{text}");
+    assert!(!text.contains("\\includesvg"), "{text}");
+    assert!(text.contains("{paper-media/"), "{text}");
+    let images: Vec<_> = std::fs::read_dir(out.path().join("paper-media"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(images.len(), 1, "{images:?}");
+    assert!(images[0].ends_with(".pdf"), "{images:?}");
+
+    std::fs::write(
+        project.path().join("main.typ"),
+        "#layout(size => [tokenlayout])\n",
+    )
+    .unwrap();
+    let report = export_with_real_tools(
+        project.path(),
+        data.path(),
+        &typst,
+        &pandoc,
+        "txt",
+        &out.path().join("paper.txt"),
+    );
+    assert_eq!(report["ok"], true, "{report}");
+    assert_eq!(
+        report["warnings"][0]["code"], "export.typst_content_skipped",
+        "{report}"
+    );
+    assert!(
+        report["warnings"][0]["message"]
+            .as_str()
+            .unwrap()
+            .ends_with(": layout."),
+        "{report}"
+    );
+}
+
+const TINY_PNG: [u8; 70] = [
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+    0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0xfc, 0xcf, 0xc0, 0x50,
+    0x0f, 0x00, 0x04, 0x85, 0x01, 0x80, 0x84, 0xa9, 0x8c, 0x21, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
+    0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+];
+
+#[test]
+fn typst_source_exports_to_latex_copy_images_beside_the_file() {
+    let Some(pandoc) = real_sidecar("pandoc") else {
+        return;
+    };
+    let tools = TempDir::new().unwrap();
+    let typst = typst_fixture(tools.path(), "0.12.0");
+    let project = typst_project(None);
+    let data = TempDir::new().unwrap();
+    let out = TempDir::new().unwrap();
+    std::fs::write(project.path().join("dot.png"), TINY_PNG).unwrap();
+    std::fs::write(
+        project.path().join("main.typ"),
+        "Equation $x^2$.\n#image(\"dot.png\")\n",
+    )
+    .unwrap();
+    let tex = out.path().join("paper.tex");
+    let report = export_with_real_tools(project.path(), data.path(), &typst, &pandoc, "tex", &tex);
+    assert_eq!(report["ok"], true, "{report}");
+    assert_eq!(report["warnings"], serde_json::json!([]), "{report}");
+    let text = std::fs::read_to_string(&tex).unwrap();
+    assert!(text.contains("x^{2}"), "{text}");
+    assert!(text.contains("{paper-media/"), "{text}");
+    let images: Vec<_> = std::fs::read_dir(out.path().join("paper-media"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    assert_eq!(images.len(), 1, "{images:?}");
+    let names: Vec<_> = std::fs::read_dir(project.path())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(!names.iter().any(|name| name == "paper-media"), "{names:?}");
+}
+
+fn pinned_typst(version: &str) -> Option<PathBuf> {
+    let path =
+        PathBuf::from(std::env::var_os("OLEAFLY_TEST_TYPST_DIR")?).join(format!("typst-{version}"));
+    path.is_file().then_some(path)
+}
+
+fn first_warning_code(report: &Value) -> &str {
+    report["warnings"][0]["code"].as_str().unwrap_or_default()
+}
+
+#[test]
+fn older_typst_exports_read_the_source_and_say_so() {
+    let Some(pandoc) = real_sidecar("pandoc") else {
+        return;
+    };
+    for version in ["0.13.1", "0.14.2"] {
+        let Some(typst) = pinned_typst(version) else {
+            continue;
+        };
+        let project = typst_project(None);
+        let data = TempDir::new().unwrap();
+        let out = TempDir::new().unwrap();
+        std::fs::write(project.path().join("dot.png"), TINY_PNG).unwrap();
+        std::fs::write(
+            project.path().join("main.typ"),
+            "Equation $x^2$.\n#image(\"dot.png\")\n#rotate(10deg)[rotatedtoken]\n",
+        )
+        .unwrap();
+
+        let markdown = out.path().join("paper.md");
+        let report = export_with_real_tools(
+            project.path(),
+            data.path(),
+            &typst,
+            &pandoc,
+            "md",
+            &markdown,
+        );
+        assert_eq!(report["ok"], true, "{version}: {report}");
+        assert_eq!(
+            first_warning_code(&report),
+            "export.typst_read_from_source",
+            "{version}: {report}"
+        );
+
+        let tex = out.path().join("paper.tex");
+        let report =
+            export_with_real_tools(project.path(), data.path(), &typst, &pandoc, "tex", &tex);
+        assert_eq!(report["ok"], true, "{version}: {report}");
+        let text = std::fs::read_to_string(&tex).unwrap();
+        assert!(text.contains("x^{2}"), "{version}: {text}");
+        assert!(text.contains("{paper-media/"), "{version}: {text}");
+        assert_eq!(
+            std::fs::read_dir(out.path().join("paper-media"))
+                .unwrap()
+                .count(),
+            1,
+            "{version}"
+        );
+    }
+}
+
+#[test]
+fn older_typst_html_warnings_name_the_real_loss() {
+    let Some(pandoc) = real_sidecar("pandoc") else {
+        return;
+    };
+    let cases = [
+        (
+            "0.13.1",
+            "#image(\"dot.png\")\n",
+            "export.typst_html_outdated",
+            "images",
+        ),
+        (
+            "0.13.1",
+            "Text#footnote[tokennote].\n",
+            "export.typst_html_outdated",
+            "footnotes",
+        ),
+        (
+            "0.14.2",
+            "#layout(size => [text])\n",
+            "export.typst_content_skipped",
+            ": layout",
+        ),
+    ];
+    for (version, source, code, named) in cases {
+        let Some(typst) = pinned_typst(version) else {
+            continue;
+        };
+        let project = typst_project(None);
+        let data = TempDir::new().unwrap();
+        let out = TempDir::new().unwrap();
+        std::fs::write(project.path().join("dot.png"), TINY_PNG).unwrap();
+        std::fs::write(project.path().join("main.typ"), source).unwrap();
+        let report = export_with_real_tools(
+            project.path(),
+            data.path(),
+            &typst,
+            &pandoc,
+            "html",
+            &out.path().join("paper.html"),
+        );
+        assert_eq!(first_warning_code(&report), code, "{version}: {report}");
+        let message = report["warnings"][0]["message"].as_str().unwrap();
+        assert!(message.contains(named), "{version}: {message}");
+    }
+}
+
 #[test]
 fn a_missing_typst_pin_stops_the_build_with_an_install_hint() {
     let tools = TempDir::new().unwrap();
@@ -1350,6 +1696,10 @@ fn a_missing_typst_pin_stops_the_build_with_an_install_hint() {
     let message = value["error"]["message"].as_str().unwrap();
     assert!(message.contains("Typst 0.12.0"), "{message}");
     assert!(message.contains("Settings > Engines > Typst"), "{message}");
+    assert!(
+        message.contains("oleafly typst install 0.12.0"),
+        "{message}"
+    );
 
     let human = oleafly_typst(
         project.path(),
@@ -1579,6 +1929,10 @@ fn doctor_reports_the_pin_and_every_typst_it_can_see() {
         .as_str()
         .unwrap()
         .contains("Settings > Engines > Typst"));
+    assert!(compiler["message"]
+        .as_str()
+        .unwrap()
+        .contains("oleafly typst install 0.12.0"));
     assert_eq!(doctor_check(&report, "typst_version")["status"], "fail");
 
     let unpinned = typst_project(None);
@@ -1691,7 +2045,19 @@ fn typst_builds_pass_package_folders_fonts_inputs_and_the_chosen_variant() {
     ] {
         assert!(call.contains(&expected), "{expected}: {call}");
     }
-    assert!(!call.contains("--ignore-system-fonts"), "{call}");
+    let mirror = format!(
+        "--font-path {}",
+        data.path()
+            .join("assets")
+            .join("typst-system-fonts")
+            .display()
+    );
+    if cfg!(target_os = "macos") {
+        assert!(call.contains(&mirror), "{call}");
+        assert!(call.contains("--ignore-system-fonts"), "{call}");
+    } else {
+        assert!(!call.contains("--ignore-system-fonts"), "{call}");
+    }
     assert!(!call.contains("--creation-timestamp"), "{call}");
     let environment = fixture_environment(&typst);
     assert_eq!(

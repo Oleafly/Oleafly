@@ -13,11 +13,20 @@ pub fn find_tectonic_biber() -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
-pub(crate) use oleafly_core::biber_env::unpack_dir_for;
 #[cfg(test)]
-use oleafly_core::biber_env::{binary_fingerprint, stamp_last_use, FINGERPRINT_SAMPLE_BYTES};
-use oleafly_core::biber_env::{fingerprint, push_unique, LAST_USED_MARKER};
-pub use oleafly_core::biber_env::{prepare_unpack_dir, unpack_root, UNPACK_ENV};
+pub(crate) use oleafly_core::biber_env::unpack_dir_for;
+pub use oleafly_core::biber_env::{
+    biber_message_excerpt, prepare_unpack_dir, unpack_root, UNPACK_ENV,
+};
+#[cfg(test)]
+use oleafly_core::biber_env::{
+    binary_fingerprint, extract_host_slice, fat_slice_for, host_cpu_type, stamp_last_use, FatSlice,
+    CPU_SUBTYPE_ARM64E, CPU_SUBTYPE_X86_64_H, CPU_TYPE_ARM64, CPU_TYPE_X86_64, FAT_MAGIC,
+    FAT_MAGIC_64, FINGERPRINT_SAMPLE_BYTES,
+};
+use oleafly_core::biber_env::{
+    fingerprint, first_biber_on, push_unique, strip_biber_log_prefix, LAST_USED_MARKER,
+};
 
 const UNUSED_GRACE: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
 
@@ -39,9 +48,7 @@ impl ChildBiber {
         let Some(thin_dir) = &self.thin_dir else {
             return path_env.to_os_string();
         };
-        let rest = std::env::split_paths(path_env).filter(|dir| dir != thin_dir);
-        std::env::join_paths(std::iter::once(thin_dir.clone()).chain(rest))
-            .unwrap_or_else(|_| path_env.to_os_string())
+        oleafly_core::biber_env::path_with_first(thin_dir, path_env)
     }
 }
 
@@ -55,6 +62,10 @@ pub fn prepare_child_biber(
 }
 
 fn prepare_biber_for(data_root: &Path, program: &Path, biber: &Path) -> Option<ChildBiber> {
+    let base = oleafly_core::biber_env::unpack_base(data_root);
+    if base != data_root {
+        crate::fsperm::create_private_dir(&base).ok()?;
+    }
     let unpack_dir = prepare_unpack_dir(data_root, biber)?;
     // Only latexmk runs the system Biber it finds on PATH. Every other child
     // runs the thin, packaged tectonic-biber, and putting a TeX Live Biber in
@@ -96,64 +107,8 @@ fn choose_child_biber(
     bundled().or_else(|| first_biber_on(path_env))
 }
 
-const THIN_BIBER_DIR: &str = "bin";
-
-const THIN_BIBER_NAME: &str = "biber";
-
-const FAT_MAGIC: u32 = 0xcafe_babe;
-
-const FAT_MAGIC_64: u32 = 0xcafe_babf;
-
-const FAT_ARCH_LEN: usize = 20;
-
-const FAT_ARCH_64_LEN: usize = 32;
-
-const MAX_FAT_SLICES: u32 = 16;
-
-const FAT_HEADER_MAX: u64 = 8 + MAX_FAT_SLICES as u64 * FAT_ARCH_64_LEN as u64;
-
-const CPU_TYPE_X86_64: u32 = 0x0100_0007;
-
-const CPU_TYPE_ARM64: u32 = 0x0100_000c;
-
-const CPU_SUBTYPE_MASK: u32 = 0xff00_0000;
-
-const CPU_SUBTYPE_ARM64E: u32 = 2;
-
-const CPU_SUBTYPE_X86_64_H: u32 = 8;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct FatSlice {
-    offset: u64,
-    size: u64,
-}
-
-fn host_cpu_type() -> Option<u32> {
-    match std::env::consts::ARCH {
-        "aarch64" => Some(CPU_TYPE_ARM64),
-        "x86_64" => Some(CPU_TYPE_X86_64),
-        _ => None,
-    }
-}
-
-/// A universal (fat) Biber does not start on current macOS. Biber is packed
-/// with PAR::Packer, and the loader of a universal build runs
-/// `/usr/bin/lipo <self> -extract_family <arch>` at every start. The lipo in
-/// recent Xcode rejects that flag, and a Mac without developer tools has no
-/// lipo to run at all. TeX Live's Biber and the one in Oleafly's managed
-/// TinyTeX are both universal.
-///
-/// This copies the host's slice out of the universal file byte for byte (the
-/// same bytes `lipo -thin` writes) into the Biber's own unpack folder, so
-/// pruning keeps it while that Biber is in use and removes it after an update.
-/// It returns the folder holding the copy, or None for a thin Biber and on
-/// other systems.
 fn runnable_biber_dir(data_root: &Path, biber: &Path) -> Option<PathBuf> {
-    if !cfg!(target_os = "macos") {
-        return None;
-    }
-    let cpu_type = host_cpu_type()?;
-    match extract_host_slice(data_root, biber, cpu_type) {
+    match oleafly_core::biber_env::runnable_biber_dir(data_root, biber) {
         Ok(dir) => dir,
         Err(error) => {
             let message = format!(
@@ -168,114 +123,12 @@ fn runnable_biber_dir(data_root: &Path, biber: &Path) -> Option<PathBuf> {
     }
 }
 
-fn extract_host_slice(
-    data_root: &Path,
-    biber: &Path,
-    cpu_type: u32,
-) -> std::io::Result<Option<PathBuf>> {
-    use std::io::{Read, Seek};
-    let mut source = std::fs::File::open(biber)?;
-    let file_len = source.metadata()?.len();
-    let mut header = Vec::new();
-    source
-        .by_ref()
-        .take(FAT_HEADER_MAX)
-        .read_to_end(&mut header)?;
-    let Some(slice) = fat_slice_for(&header, file_len, cpu_type) else {
-        return Ok(None);
-    };
-    let Some(unpack_dir) = unpack_dir_for(data_root, biber) else {
-        return Ok(None);
-    };
-    let dir = unpack_dir.join(THIN_BIBER_DIR);
-    let thin = dir.join(THIN_BIBER_NAME);
-    if std::fs::metadata(&thin).is_ok_and(|meta| meta.is_file() && meta.len() == slice.size) {
-        return Ok(Some(dir));
-    }
-    std::fs::create_dir_all(&dir)?;
-    let mut staged = tempfile::Builder::new()
-        .prefix(".biber-")
-        .tempfile_in(&dir)?;
-    source.seek(std::io::SeekFrom::Start(slice.offset))?;
-    let copied = std::io::copy(&mut source.take(slice.size), staged.as_file_mut())?;
-    if copied != slice.size {
-        return Err(std::io::ErrorKind::UnexpectedEof.into());
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        staged
-            .as_file()
-            .set_permissions(std::fs::Permissions::from_mode(0o700))?;
-    }
-    staged.persist(&thin).map_err(|error| error.error)?;
-    Ok(Some(dir))
-}
-
-fn fat_slice_for(header: &[u8], file_len: u64, cpu_type: u32) -> Option<FatSlice> {
-    let entry_len = match be_u32(header, 0)? {
-        FAT_MAGIC => FAT_ARCH_LEN,
-        FAT_MAGIC_64 => FAT_ARCH_64_LEN,
-        _ => return None,
-    };
-    let count = be_u32(header, 4)?;
-    if count == 0 || count > MAX_FAT_SLICES {
+pub(crate) fn runnable_biber_on(path_env: &std::ffi::OsStr) -> Option<PathBuf> {
+    if !cfg!(target_os = "macos") {
         return None;
     }
-    let table_end = 8 + count as usize * entry_len;
-    if header.len() < table_end {
-        return None;
-    }
-    let mut specialised = None;
-    for entry in (8..table_end).step_by(entry_len) {
-        if be_u32(header, entry)? != cpu_type {
-            continue;
-        }
-        let (offset, size) = if entry_len == FAT_ARCH_64_LEN {
-            (be_u64(header, entry + 8)?, be_u64(header, entry + 16)?)
-        } else {
-            (
-                u64::from(be_u32(header, entry + 8)?),
-                u64::from(be_u32(header, entry + 12)?),
-            )
-        };
-        if size == 0 || offset < table_end as u64 || offset.checked_add(size)? > file_len {
-            return None;
-        }
-        let slice = FatSlice { offset, size };
-        let subtype = be_u32(header, entry + 4)? & !CPU_SUBTYPE_MASK;
-        if is_specialised_subtype(cpu_type, subtype) {
-            specialised.get_or_insert(slice);
-        } else {
-            return Some(slice);
-        }
-    }
-    specialised
-}
-
-/// arm64e and x86_64h slices only run on some Macs (arm64e not at all outside
-/// Apple's own binaries), so the plain slice wins when both are present.
-fn is_specialised_subtype(cpu_type: u32, subtype: u32) -> bool {
-    matches!(
-        (cpu_type, subtype),
-        (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64E) | (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H)
-    )
-}
-
-fn be_u32(bytes: &[u8], at: usize) -> Option<u32> {
-    let word = bytes.get(at..at.checked_add(4)?)?;
-    Some(u32::from_be_bytes(word.try_into().ok()?))
-}
-
-fn be_u64(bytes: &[u8], at: usize) -> Option<u64> {
-    let word = bytes.get(at..at.checked_add(8)?)?;
-    Some(u64::from_be_bytes(word.try_into().ok()?))
-}
-
-fn first_biber_on(path_env: &std::ffi::OsStr) -> Option<PathBuf> {
-    std::env::split_paths(path_env)
-        .filter(|dir| dir.is_absolute())
-        .find_map(|dir| crate::tex_distro::find_tool_in_dir(&dir, "biber"))
+    let data_root = crate::paths::oleafly_root().ok()?;
+    runnable_biber_dir(&data_root, &first_biber_on(path_env)?)
 }
 
 fn bibers_in_use() -> Vec<PathBuf> {
@@ -537,7 +390,7 @@ pub fn compile_path_env() -> std::ffi::OsString {
 
 pub fn tool_path_env(preferred_executable: &Path) -> std::ffi::OsString {
     compile_path_env_with_inherited(
-        std::env::var_os("PATH").as_deref(),
+        crate::tex_distro::search_path(std::env::var_os("PATH").as_deref()).as_deref(),
         preferred_executable.parent(),
         None,
     )
@@ -548,7 +401,7 @@ pub fn compile_path_env_for(
     excluded_project_root: &Path,
 ) -> std::ffi::OsString {
     compile_path_env_with_inherited(
-        std::env::var_os("PATH").as_deref(),
+        crate::tex_distro::search_path(std::env::var_os("PATH").as_deref()).as_deref(),
         preferred_executable.parent(),
         Some(excluded_project_root),
     )
@@ -599,38 +452,6 @@ fn biber_wrote_bbl(out_dir: &Path, entry_stem: &str) -> bool {
     log.lines()
         .map(strip_biber_log_prefix)
         .any(|line| line.trim_end_matches('\r') == marker)
-}
-
-pub fn biber_message_excerpt(log: &str) -> String {
-    let mut excerpt = String::new();
-    for line in log
-        .lines()
-        .map(strip_biber_log_prefix)
-        .filter(|line| line.starts_with("WARN - ") || line.starts_with("ERROR - "))
-        .take(40)
-    {
-        excerpt.push_str(line.trim_end_matches('\r'));
-        excerpt.push('\n');
-    }
-    excerpt
-}
-
-fn strip_biber_log_prefix(line: &str) -> &str {
-    let rest = line.strip_prefix('[').unwrap_or(line);
-    if rest.len() == line.len() {
-        return line;
-    }
-    let Some(close) = rest.find("] ") else {
-        return line;
-    };
-    if !rest[..close].bytes().all(|byte| byte.is_ascii_digit()) {
-        return line;
-    }
-    let after = &rest[close + 2..];
-    match after.find("> ") {
-        Some(marker) if !after[..marker].contains(' ') => &after[marker + 2..],
-        _ => line,
-    }
 }
 
 const WITHOUT_BIBER: &str =

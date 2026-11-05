@@ -729,6 +729,13 @@
     "renamedPortable": "{{before}} a été renommé en {{theirs}} pour fonctionner sur tous les ordinateurs.",
     "skipped": "Une modification de {{name}} n'a pas pu être lue et a été ignorée.",
     "skippedUnknown": "Une modification d'une autre personne n'a pas pu être lue et a été ignorée.",
+    "outputNotShared": {
+      "tooLarge": "Le PDF compilé dépasse la taille que ce serveur accepte, les autres voient donc encore le précédent.",
+      "quota": "La limite d'envoi de ce serveur est atteinte, les autres voient donc encore le PDF précédent. Oleafly réessaie au bout de 15 minutes.",
+      "privateSources": "Le PDF compilé reste sur cet ordinateur, car le projet contient des fichiers qui ne sont pas partagés.",
+      "serverError": "Le serveur n'a pas accepté le PDF compilé, les autres voient donc encore le précédent."
+    },
+    "texNeeded": "Ce projet se compile avec une distribution TeX, et cet ordinateur n'en a pas. Installez TinyTeX depuis Paramètres > Moteurs > LaTeX pour le compiler ici.",
     "mentioned": "{{name}} vous a mentionné dans un commentaire sur {{path}}",
     "mentionedHere": "{{name}} vous a mentionné dans un commentaire",
     "showComment": "Voir le commentaire",

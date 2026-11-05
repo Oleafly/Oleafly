@@ -110,6 +110,12 @@ export type CheckpointPublicationOutcome =
         message: string;
         suggestion: string;
     };
+export interface ExportOutcome {
+    warnings: string[];
+    skipped: string[];
+    outdatedTypst: string | null;
+    readFromSource: string | null;
+}
 export interface CompileResult {
     ok: boolean;
     has_pdf: boolean;
@@ -625,13 +631,27 @@ export interface EngineInfo {
     tlmgr: string | null;
     version: string | null;
     latexmk: string | null;
+    latexmk_blocker?: TexBlocker | null;
+    system_package_manager?: string | null;
+    tex_complete?: boolean;
+    tinytex_outdated?: boolean;
 }
+export interface TexBlocker {
+    code: string;
+    params: Record<string, string>;
+}
+export type EngineRescan = "login_probe" | "full";
 export interface TexDistribution {
     kind: "oleafly-tinytex" | "mactex" | "texlive" | "miktex" | "tinytex" | "other";
     label: string;
     bin_dir: string;
     latexmk: string | null;
     tlmgr: string | null;
+    needs_perl?: boolean;
+    system_package_manager?: string | null;
+    complete?: boolean;
+    active?: boolean;
+    preferred?: boolean;
 }
 export interface TaggedCompileResult {
     success: boolean;
@@ -1523,14 +1543,21 @@ export interface BackendPort {
   gitPublishPreflight: (projectId: string) => Promise<GitPublishPreflight>;
   gitLog: (projectId: string) => Promise<GitCommit[]>;
   gitRestore: (projectId: string, oid: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
-  exportPdf: (projectId: string, dest: string) => Promise<void>;
+  exportPdf: (projectId: string, dest: string, dataBase64: string) => Promise<void>;
   revealInDir: (path: string) => Promise<void>;
   revealProject: (projectId: string, path?: string | null) => Promise<void>;
-  exportDocument: (projectId: string, mainDoc: string, format: string, dest: string) => Promise<void>;
+  exportDocument: (
+    projectId: string,
+    mainDoc: string,
+    format: string,
+    dest: string,
+    typstVariant?: string | null,
+    offline?: boolean,
+  ) => Promise<ExportOutcome>;
   hasPandoc: () => Promise<boolean>;
   downloadPandoc: () => Promise<string>;
   texDistributions: () => Promise<TexDistribution[]>;
-  latexEngineInfo: () => Promise<EngineInfo>;
+  latexEngineInfo: (rescan?: EngineRescan) => Promise<EngineInfo>;
   hasTaggingEngine: () => Promise<boolean>;
   installTinytex: () => Promise<EngineInfo>;
   tinytexInstallState: () => Promise<TinytexInstallState>;
@@ -1735,7 +1762,7 @@ export interface BackendPort {
   gitContinueMerge: (projectId: string, expectedGeneration: number) => Promise<GitWorktreeOperationResult>;
   gitAbortMerge: (projectId: string, expectedGeneration: number) => Promise<GitWorktreeOperationResult>;
   gitShow: (projectId: string, rev: "HEAD" | "INDEX", path: string) => Promise<string>;
-  downloadProjectZip: (projectId: string, dest: string) => Promise<void>;
+  downloadProjectZip: (projectId: string, dest: string) => Promise<{ skippedLinks: number }>;
   duplicateProject: (projectId: string, newName: string) => Promise<string>;
   clearBuildCache: (projectId: string) => Promise<void>;
   recycleProject: (projectId: string) => Promise<void>;
@@ -1783,6 +1810,11 @@ export interface CollabChangeSkipped {
   projectId: string;
   seq: number;
   deviceId: string | null;
+}
+export type CollabOutputNotSharedReason = "tooLarge" | "quota" | "privateSources" | "serverError";
+export interface CollabOutputNotShared {
+  projectId: string;
+  reason: CollabOutputNotSharedReason;
 }
 export type CollabUnwrittenReason = "locked" | "read_only" | "no_space" | "not_downloaded" | "other";
 export interface CollabLiveUnwritten {

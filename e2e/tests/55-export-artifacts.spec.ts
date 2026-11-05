@@ -192,6 +192,9 @@ Standalone resource evidence.
 \begin{frame}{Slide artifact}
 PowerPoint semantic marker ${run}
 \end{frame}
+\begin{frame}{Second slide}
+Second frame marker ${run}
+\end{frame}
 \end{document}
 `;
   await persistSource(tauriPage, beamer);
@@ -199,11 +202,14 @@ PowerPoint semantic marker ${run}
   await exportThroughMenu(tauriPage, "Export as PowerPoint (.pptx)", pptxPath);
   const pptx = unzipSync(readFileSync(pptxPath));
   expect(Object.keys(pptx)).toContain("[Content_Types].xml");
-  const slideXml = Object.keys(pptx)
+  const slides = Object.keys(pptx)
     .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
-    .map((name) => archiveText(pptx, name))
-    .join("\n");
+    .map((name) => archiveText(pptx, name));
+  const slideXml = slides.join("\n");
   expect(slideXml).toContain(`PowerPoint semantic marker ${run}`);
+  expect(slides).toHaveLength(3);
+  expect(slides.filter((slide) => slide.includes(`Second frame marker ${run}`))).toHaveLength(1);
+  expect(slides.filter((slide) => slide.includes(`PowerPoint semantic marker ${run}`))).toHaveLength(1);
 
   const book = String.raw`\documentclass{book}
 \title{${marker} EPUB}

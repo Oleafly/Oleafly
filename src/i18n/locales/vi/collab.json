@@ -729,6 +729,13 @@
     "renamedPortable": "{{before}} được đổi tên thành {{theirs}} để dùng được trên mọi máy tính.",
     "skipped": "Một thay đổi từ {{name}} không đọc được và đã bị bỏ qua.",
     "skippedUnknown": "Một thay đổi từ ai đó không đọc được và đã bị bỏ qua.",
+    "outputNotShared": {
+      "tooLarge": "PDF đã biên dịch lớn hơn mức máy chủ này cho phép, nên những người khác vẫn thấy bản PDF trước đó.",
+      "quota": "Đã đạt giới hạn tải lên của máy chủ này, nên những người khác vẫn thấy bản PDF trước đó. Oleafly sẽ thử lại sau 15 phút.",
+      "privateSources": "PDF đã biên dịch chỉ nằm trên máy tính này vì dự án có các tệp không được chia sẻ.",
+      "serverError": "Máy chủ không chấp nhận PDF đã biên dịch, nên những người khác vẫn thấy bản trước đó."
+    },
+    "texNeeded": "Dự án này biên dịch bằng một bản phân phối TeX, và máy tính này chưa có. Hãy cài TinyTeX từ Cài đặt > Engine > LaTeX để biên dịch tại đây.",
     "mentioned": "{{name}} đã nhắc đến bạn trong bình luận trên {{path}}",
     "mentionedHere": "{{name}} đã nhắc đến bạn trong một bình luận",
     "showComment": "Hiện bình luận",

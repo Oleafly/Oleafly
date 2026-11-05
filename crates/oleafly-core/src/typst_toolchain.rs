@@ -215,6 +215,14 @@ impl TypstCapabilities {
         self.output_formats.iter().any(|known| known == format)
     }
 
+    pub fn page_template(&self) -> &'static str {
+        if self.supports_flag("--pages") {
+            "{0p}"
+        } else {
+            "{n}"
+        }
+    }
+
     pub fn supports_pdf_standard(&self, standard: &str) -> bool {
         self.pdf_standards.iter().any(|known| known == standard)
     }
@@ -1063,6 +1071,119 @@ pub fn typst_project_font_dirs(spec: Option<&crate::TypstSpec>, root: &Path) -> 
         }
     }
     directories
+}
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+const TYPST_SYSTEM_FONTS_DIR: &str = "typst-system-fonts";
+#[cfg(any(target_os = "macos", all(test, unix)))]
+const PLACEHOLDER_FONT_STEM: &str = "LastResort";
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SystemFontRoots {
+    fonts: PathBuf,
+    folders: Vec<(&'static str, PathBuf)>,
+    downloaded: PathBuf,
+}
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+fn system_font_links(roots: &SystemFontRoots) -> BTreeMap<OsString, PathBuf> {
+    let mut links = BTreeMap::new();
+    for entry in std::fs::read_dir(&roots.fonts)
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        let path = entry.path();
+        let placeholder = path
+            .file_stem()
+            .is_some_and(|stem| stem.eq_ignore_ascii_case(PLACEHOLDER_FONT_STEM));
+        if !placeholder {
+            links.insert(entry.file_name(), path);
+        }
+    }
+    for (name, folder) in &roots.folders {
+        if folder.is_dir() {
+            links.insert(OsString::from(name), folder.clone());
+        }
+    }
+    for entry in std::fs::read_dir(&roots.downloaded)
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        if entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with("com_apple_MobileAsset_Font")
+        {
+            links.insert(entry.file_name(), entry.path());
+        }
+    }
+    links
+}
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+fn current_font_links(mirror: &Path) -> BTreeMap<OsString, PathBuf> {
+    std::fs::read_dir(mirror)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| Some((entry.file_name(), std::fs::read_link(entry.path()).ok()?)))
+        .collect()
+}
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+fn refresh_font_mirror(mirror: &Path, links: &BTreeMap<OsString, PathBuf>) -> std::io::Result<()> {
+    if current_font_links(mirror) == *links {
+        return Ok(());
+    }
+    let parent = mirror.parent().unwrap_or(mirror);
+    std::fs::create_dir_all(parent)?;
+    let staged = tempfile::Builder::new()
+        .prefix(".typst-system-fonts-")
+        .tempdir_in(parent)?;
+    for (name, target) in links {
+        std::os::unix::fs::symlink(target, staged.path().join(name))?;
+    }
+    match std::fs::remove_dir_all(mirror) {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(error),
+        _ => {}
+    }
+    let staged = staged.keep();
+    std::fs::rename(&staged, mirror).inspect_err(|_| {
+        let _ = std::fs::remove_dir_all(&staged);
+    })
+}
+
+#[cfg(target_os = "macos")]
+pub fn typst_system_font_mirror(assets_root: &Path) -> Option<PathBuf> {
+    let mut folders = vec![
+        ("library-fonts", PathBuf::from("/Library/Fonts")),
+        ("network-fonts", PathBuf::from("/Network/Library/Fonts")),
+    ];
+    if let Some(home) = std::env::var_os("HOME") {
+        folders.push(("user-fonts", PathBuf::from(home).join("Library/Fonts")));
+    }
+    let roots = SystemFontRoots {
+        fonts: PathBuf::from("/System/Library/Fonts"),
+        folders,
+        downloaded: PathBuf::from("/System/Library/AssetsV2"),
+    };
+    let links = system_font_links(&roots);
+    if links.is_empty() {
+        return None;
+    }
+    static REFRESH: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _one_refresh_at_a_time = REFRESH.lock().ok()?;
+    let mirror = assets_root.join(TYPST_SYSTEM_FONTS_DIR);
+    refresh_font_mirror(&mirror, &links).ok()?;
+    Some(mirror)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn typst_system_font_mirror(_assets_root: &Path) -> Option<PathBuf> {
+    None
 }
 
 pub const TYPST_FONT_PACKS_DIR: &str = "typst-fonts";

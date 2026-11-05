@@ -447,6 +447,7 @@
     "previewUnsupported": "Bản xem trước trực tiếp chưa khả dụng cho engine này",
     "badge": "Tạo bởi AI",
     "compileWarning": "Bản nháp này không biên dịch sạch. Hãy tạo lại để có điểm khởi đầu tốt hơn, hoặc tạo dự án và sửa mã nguồn trong trình soạn thảo.",
+    "compileLog": "Nhật ký biên dịch",
     "noDescription": "Chưa có mô tả.",
     "includes": "Tệp include",
     "category": "Danh mục",

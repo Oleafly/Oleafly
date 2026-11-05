@@ -572,7 +572,8 @@
     "unrecorded": "LaTeX Project は {{name}} クラスのタグ付け状況を記録していないため、結果は未確認です。コンパイルして出力を確認してください。"
   },
   "prep": {
-    "metadataUpdated": "\\DocumentMetadata に、タグ付けに必要なキーを追加しました。",
+    "metadataInMain": "\\DocumentMetadata はメイン文書の先頭に置くため、このファイルには追加されません。",
+    "metadataUpdated":"\\DocumentMetadata に、タグ付けに必要なキーを追加しました。",
     "metadataAdded": "\\DocumentMetadata を先頭行に追加しました（必須で、\\documentclass より前に置く必要があります）。この行はバージョンチェックの中に置かれ、{{date}} より古い LaTeX（同梱のエンジンを含む）では読み飛ばされて、失敗せずにタグなしでコンパイルされます。",
     "headerRows": "各表の 1 行目が見出しセルとしてタグ付けされるよう、table/header-rows を 1 に設定しました。見出しの行数が違う表がある場合は、数値を変えてください。",
     "unicodeMath": "このエンジンでタグ付き数式に必要な \\usepackage{unicode-math} を追加しました。",

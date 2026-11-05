@@ -24,6 +24,7 @@ vi.mock("@oleafly/latex", async (importOriginal) => {
 });
 
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
+import editorCopy from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { LogPane } from "./LogPane";
 
 if (!Element.prototype.scrollIntoView) {
@@ -294,6 +295,57 @@ describe("LogPane", () => {
     }
   });
 
+  it("clears the shown log and cards while the store keeps them for Preflight", () => {
+    const log = ERROR_LOG;
+    setCompileState({
+      status: "error",
+      log,
+      clearedLog: null,
+      errors: [{ line: 42, file: "main.tex", message: "Undefined control sequence.", kind: "error", explanation: null }],
+      diagnostics: [REFERENCE_WARNING],
+    });
+    render(<LogPane />);
+    expect(screen.getByText("Undefined control sequence.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: editorCopy.log.clearAria }));
+
+    expect(screen.getByText(editorCopy.log.cleared)).toBeInTheDocument();
+    expect(screen.queryByText("Undefined control sequence.")).not.toBeInTheDocument();
+    expect(screen.queryByText(REFERENCE_WARNING.message)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("compile-log-clear")).not.toBeInTheDocument();
+    expect(useCompileStore.getState().log).toBe(log);
+    expect(useCompileStore.getState().errors).toHaveLength(1);
+  });
+
+  it("shows a new log after Clear", () => {
+    setCompileState({ status: "success", log: SUCCESS_LOG, clearedLog: SUCCESS_LOG });
+    render(<LogPane />);
+    expect(screen.getByText(editorCopy.log.cleared)).toBeInTheDocument();
+
+    act(() => useCompileStore.setState({ log: `${SUCCESS_LOG}\nnext run` }));
+
+    expect(screen.queryByText(editorCopy.log.cleared)).not.toBeInTheDocument();
+    expect(screen.getByTestId("compile-log-clear")).toBeInTheDocument();
+  });
+
+  it("offers no Clear while a compile is running", () => {
+    setCompileState({ status: "compiling", log: "running", clearedLog: null });
+    render(<LogPane />);
+    expect(screen.getByRole("button", { name: editorCopy.log.clearAria })).toBeDisabled();
+  });
+
+  it("sends Clear to the main window from a snapshot and honours its answer", () => {
+    const onClearLog = vi.fn();
+    const snapshot = { log: SUCCESS_LOG, errors: [], status: "success", diagnostics: null, mainDoc: "main.tex" } as const;
+    const { rerender } = render(<LogPane snapshot={{ ...snapshot, errors: [] }} onClearLog={onClearLog} />);
+
+    fireEvent.click(screen.getByRole("button", { name: editorCopy.log.clearAria }));
+    expect(onClearLog).toHaveBeenCalledOnce();
+
+    rerender(<LogPane snapshot={{ ...snapshot, errors: [], logCleared: true }} onClearLog={onClearLog} />);
+    expect(screen.getByText(editorCopy.log.cleared)).toBeInTheDocument();
+  });
+
   it("still shows Copy log (on the raw logs section) for a failed compile", () => {
     setCompileState({
       status: "error",
@@ -477,6 +529,47 @@ describe("LogPane with Typst diagnostics", () => {
     expect(copied).toContain("3 | Hello #foo world.");
     expect(copied).toContain("  |        ^^^");
     expect(copied).toContain("Hint: if you meant to display multiple letters as is");
+  });
+
+  it("folds missing characters into one group behind the warning card", async () => {
+    const glyph = (message: string): LatexLogDiagnostic => ({
+      severity: "warning",
+      category: "missing-character",
+      file: "./main.tex",
+      line: null,
+      message,
+    });
+    setCompileState({
+      status: "success",
+      log: "(./main.tex\n)",
+      errors: [
+        {
+          line: null,
+          file: "main.tex",
+          message: "2 characters are missing from the PDF",
+          kind: "warning",
+          explanation: "2 Hangul characters are missing from the PDF.",
+          hints: ["\\usepackage{kotex}"],
+          code: "tex.missing_characters_cjk",
+        },
+      ],
+      diagnostics: [
+        glyph("Missing character: There is no ㄱ (U+3131) in font [lmroman10-regular]:mapping=tex-text;!"),
+        glyph("Missing character: There is no ㅊ (U+314A) in font [lmroman10-regular]:mapping=tex-text;!"),
+        glyph('Missing character: There is no r ("72) in font nullfont!'),
+      ],
+    });
+    render(<LogPane />);
+    const summary = await screen.findByTestId("compile-log-summary");
+    expect(summary.textContent).toContain("1 warning");
+    expect(screen.getByText("2 Hangul characters are missing from the PDF.")).toBeInTheDocument();
+    expect(screen.queryByText(/There is no ㄱ/)).not.toBeInTheDocument();
+    const group = screen.getByRole("button", { name: /Missing characters/ });
+    expect(group).toHaveTextContent("2");
+    expect(screen.getByRole("button", { name: /Info/ })).toHaveTextContent("1");
+    fireEvent.click(group);
+    expect(await screen.findByText(/There is no ㄱ/)).toBeInTheDocument();
+    expect(screen.queryByText(/nullfont/)).not.toBeInTheDocument();
   });
 
   it("does not run the LaTeX log parser over a Typst log", () => {

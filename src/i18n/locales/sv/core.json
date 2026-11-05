@@ -56,9 +56,24 @@
     "undo": "Ångra"
   },
   "compile": {
+    "failedWithReason": "Kompileringen misslyckades: {{message}}",
     "noOfflineMode": "{{engine}} har inget offlineläge för kompilering. Kompilerar som vanligt.",
+    "pandocRequired": "Pandoc är inte tillgängligt. Reparera det under Inställningar > Motorer > Markdown och kompilera sedan igen.",
+    "pandocSetupFailed": "Det gick inte att konfigurera Pandoc: {{message}}",
+    "pdfChanged": "Den kompilerade PDF-filen ändrades medan Oleafly läste den, så den tidigare förhandsvisningen står kvar. Kompilera igen för att uppdatera den.",
     "retry": "Kompilera igen",
+    "superseded": "En nyare kompilering ersatte den här.",
+    "syntaxCheckFailed": "Syntaxkontrollen hittade fel. Åtgärda dem, eller stäng av ”{{setting}}”.",
+    "taggedFailed": "Den taggade kompileringen misslyckades: {{message}}",
+    "taggedPdfChanged": "Den taggade PDF-filen ändrades medan Oleafly läste den, så den tidigare förhandsvisningen står kvar. Kompilera igen för att uppdatera den.",
+    "taggedPdfInvalid": "Den taggade kompileringen skapade ingen giltig PDF.",
+    "tinytexDownloading": "TinyTeX laddas fortfarande ner. Den här kompileringen startar automatiskt när nedladdningen är klar.",
+    "sharedTexEditor": "Det här projektet är delat, så om du byter till Tectonic ändras det för alla. Att installera TinyTeX ändrar bara den här datorn.",
+    "sharedTexViewer": "Du kan inte ändra kompilatorn för det här delade projektet, så installera TinyTeX för att kompilera det här.",
     "bundleFetchFailed": "Oleafly kunde inte ladda ner de TeX-paket som dokumentet behöver. Kontrollera anslutningen och kompilera igen.",
+    "offlineNotCached": "Offlineläget är på, och {{files}} har kanske inte laddats ner än. Stäng av offlineläget och kompilera igen.",
+    "offlineNotCachedUnnamed": "Offlineläget är på, och ett TeX-paket som det här dokumentet behöver har kanske inte laddats ner än. Stäng av offlineläget och kompilera igen.",
+    "goOnlineAndCompile": "Stäng av och kompilera",
     "typstMissing": "Typst {{version}} är inte installerat. Ladda ner det eller byt det här projektet till en annan version.",
     "typstPackage": {
       "downloadFailed": "Typst kunde inte ladda ner {{spec}}. Kontrollera internetanslutningen och kompilera igen.",
@@ -169,9 +184,22 @@
     "pdfFailedDetail": "Det gick inte att spara PDF:en: {{detail}}",
     "pngFailed": "Det gick inte att spara PNG-filen",
     "pngFailedDetail": "Det gick inte att spara PNG-filen: {{detail}}",
+    "projectChanged": "Det öppna projektet ändrades. Starta exporten igen från det projekt du vill spara.",
     "revealFailed": "Filen sparades, men dess mapp kunde inte öppnas.",
     "saved": "{{kind}} sparad · {{fileName}}",
-    "showInFolder": "Visa i mappen"
+    "savedAfterFailedCompile": "{{kind}} sparad · {{fileName}}. Den senaste kompileringen misslyckades, så filen kan vara ofullständig.",
+    "savedSource": "{{kind}} sparad · {{fileName}}. Om den använder bilder eller bibliografier från ditt projekt, kopiera dem bredvid den innan du kompilerar.",
+    "savedStale": "{{kind}} sparad · {{fileName}}. Den kommer från den senaste kompileringen och innehåller inte dina senaste ändringar.",
+    "savedWithoutContent": "{{kind}} sparad · {{fileName}}. En del innehåll saknas eftersom Typst inte kan skriva det i det här formatet: {{elements}}.",
+    "savedFromSource": "{{kind}} sparad · {{fileName}}. Typst {{version}} kan inte skriva hela dokumentet i det här formatet, så filen byggdes från källkoden. Roterad, skalad, flyttad eller lutad text kan saknas. Byt projektet till Typst 0.15 eller senare för att behålla den texten.",
+    "savedWithoutEquations": "{{kind}} sparad · {{fileName}}. Ekvationer, bilder, fotnoter eller referenser kan saknas eftersom Typst {{version}} inte kan skriva dem i det här formatet. Byt projektet till Typst 0.15 eller senare.",
+    "savedWithWarnings_one": "{{kind}} sparad · {{fileName}}, med {{count}} varning.",
+    "savedWithWarnings_other": "{{kind}} sparad · {{fileName}}, med {{count}} varningar.",
+    "savedWithoutLinks_one": "{{kind}} sparad · {{fileName}}. {{count}} symbolisk länk lämnades utanför arkivet.",
+    "savedWithoutLinks_other": "{{kind}} sparad · {{fileName}}. {{count}} symboliska länkar lämnades utanför arkivet.",
+    "showInFolder": "Visa i mappen",
+    "showWarnings": "Visa varningar",
+    "warningsTitle": "Exportvarningar"
   },
   "externalChange": {
     "reloadFailed": "Projektinställningarna uppdaterades, men några ändrade filer kunde inte läsas in på nytt."
@@ -321,6 +349,12 @@
     "installing_other": "Installerar {{count}} paket. Kompileringen startar om när de är klara.",
     "summary_one": "Kompileringen hittade inte \"{{name}}\". Leta efter paketet som innehåller den i TeX Live.",
     "summary_other": "Kompileringen hittade inte {{names}}. Leta efter deras paket i TeX Live.",
+    "systemHint": {
+      "apt": "Hitta paketet med apt-file search {{name}}, eller installera allt med sudo apt install texlive-full.",
+      "dnf": "Kör {{command}}."
+    },
+    "systemManaged_one": "Kompileringen hittade inte \"{{name}}\". Den här TeX Live följde med din Linux-distribution, så Oleafly kan inte lägga till paket i den. {{hint}}",
+    "systemManaged_other": "Kompileringen hittade inte {{names}}. Den här TeX Live följde med din Linux-distribution, så Oleafly kan inte lägga till paket i den. {{hint}}",
     "userTree": "TeX-systemträdet är skrivskyddat, så paketen hamnade i ditt personliga träd i {{path}}."
   },
   "models": {
@@ -369,6 +403,7 @@
   },
   "pandoc": {
     "downloadFailed": "Det gick inte att ladda ner pandoc. Installera det manuellt och försök igen.",
+    "downloadFailedDetail": "Det gick inte att ladda ner pandoc ({{detail}}). Installera det manuellt och försök igen.",
     "downloadingPercent": "Laddar ner pandoc… {{progress}} %",
     "downloadingSize": "Laddar ner pandoc… {{megabytes}} MB",
     "installGuide": "Installationsguide"
@@ -481,7 +516,7 @@
     "compileFailed": "Den taggade kompileringen misslyckades. Kontrollera motorn och försök igen.",
     "compiled": "Taggad PDF kompilerad. Se tillgänglighetsomdömet nedan.",
     "compiledWithErrors": "Den taggade kompileringen avslutades med fel. Kontrollera loggen.",
-    "engineRequired": "Aktivera en taggande motor under Inställningar, LaTeX-motor, först."
+    "engineRequired": "Installera TinyTeX under Inställningar > Motorer > LaTeX för att skapa taggade PDF-filer."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -528,6 +563,7 @@
   "tinytex": {
     "installFailed": "Det gick inte att installera TinyTeX.",
     "installGuide": "Installationsguide",
+    "tryAgain": "Försök igen",
     "installed": "TinyTeX är installerat.",
     "phase": {
       "addingPackages": "Lägger till paket…",

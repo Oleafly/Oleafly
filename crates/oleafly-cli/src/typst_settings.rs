@@ -1,6 +1,7 @@
 use crate::native::{resolve_executable, run_command, CandidateResolution, Discovery, Launch};
 use oleafly_core::typst_toolchain::{
-    typst_project_font_dirs, typst_shared_font_dirs, TypstCapabilities, TypstCompileFlag,
+    typst_project_font_dirs, typst_shared_font_dirs, typst_system_font_mirror, TypstCapabilities,
+    TypstCompileFlag,
 };
 use oleafly_core::{Error, ErrorKind, TypstSpec};
 use serde::Serialize;
@@ -60,6 +61,7 @@ pub(crate) struct TypstSettings {
     pub inputs: Vec<(String, String)>,
     pub creation_timestamp: Option<u64>,
     pub offline: bool,
+    pub system_font_mirror: Option<PathBuf>,
 }
 
 pub(crate) struct SettingsRequest<'a> {
@@ -101,7 +103,16 @@ impl TypstSettings {
                 .unwrap_or_default(),
             creation_timestamp: reproducible.then(|| request.commit_time.unwrap_or(0)),
             offline: request.offline,
+            system_font_mirror: None,
         }
+    }
+
+    pub(crate) fn with_system_font_mirror(mut self, data_root: Option<&Path>) -> Self {
+        if !self.ignore_system_fonts {
+            self.system_font_mirror =
+                data_root.and_then(|root| typst_system_font_mirror(&root.join("assets")));
+        }
+        self
     }
 
     pub(crate) fn compile_flags(&self, capabilities: &TypstCapabilities) -> Vec<TypstCompileFlag> {
@@ -118,7 +129,13 @@ impl TypstSettings {
                 .cloned()
                 .map(TypstCompileFlag::FontPath),
         );
-        if self.ignore_system_fonts {
+        let mirror = self
+            .system_font_mirror
+            .clone()
+            .filter(|_| capabilities.supports_flag("--ignore-system-fonts"));
+        let use_mirror = mirror.is_some();
+        flags.extend(mirror.map(TypstCompileFlag::FontPath));
+        if self.ignore_system_fonts || use_mirror {
             flags.push(TypstCompileFlag::IgnoreSystemFonts);
         }
         flags.extend(
@@ -396,6 +413,37 @@ mod tests {
             "inputs": {"draft": "true", "anonymous": "false"},
             "variants": {"review": {"inputs": {"anonymous": "true"}}}
         }))
+    }
+
+    #[test]
+    fn the_system_font_mirror_replaces_the_system_scan_when_typst_can_take_the_flag() {
+        let mirror = PathBuf::from("/data/assets/typst-system-fonts");
+        let settings = TypstSettings {
+            system_font_mirror: Some(mirror.clone()),
+            ..TypstSettings::default()
+        };
+        assert_eq!(
+            settings.compile_flags(capabilities_for("0.15.1")),
+            [
+                TypstCompileFlag::FontPath(mirror),
+                TypstCompileFlag::IgnoreSystemFonts,
+            ]
+        );
+        assert!(settings
+            .compile_flags(capabilities_for("0.11.1"))
+            .is_empty());
+    }
+
+    #[test]
+    fn a_sealed_project_never_takes_the_system_font_mirror() {
+        let data = tempfile::tempdir().unwrap();
+        let sealed = TypstSettings {
+            ignore_system_fonts: true,
+            ..TypstSettings::default()
+        }
+        .with_system_font_mirror(Some(data.path()));
+        assert_eq!(sealed.system_font_mirror, None);
+        assert!(!data.path().join("assets").exists());
     }
 
     #[test]

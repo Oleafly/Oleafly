@@ -95,7 +95,7 @@ pub(super) async fn compile(ctx: &Arc<ToolContext>) -> Result<Value, String> {
             .map_err(|error| error.message)?
     };
     let result = tokio::select! {
-        result = build_opened(&opened, &request) => result.map_err(|error| error.message)?,
+        result = build_opened(&opened, &request) => result.map_err(|error| error.with_hint_text())?,
         _ = ctx.cancel.cancelled() => return Err("The run was stopped.".into()),
     };
     *lock(&ctx.last_build) = Some(LastBuild {
@@ -199,10 +199,10 @@ fn summary_of(built: Result<BuildResult, CliError>) -> Result<CompileSummary, St
         }),
         Err(error) if error.kind == ErrorKind::MissingTool => Ok(CompileSummary {
             ok: false,
-            skipped: Some(error.message),
+            skipped: Some(error.with_hint_text()),
             ..CompileSummary::default()
         }),
-        Err(error) => Err(error.message),
+        Err(error) => Err(error.with_hint_text()),
     }
 }
 

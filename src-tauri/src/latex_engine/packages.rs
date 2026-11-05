@@ -1,9 +1,19 @@
 use super::{
     acquire_tex_runtime_read, acquire_tex_runtime_write, check_tlmgr_self_update, run_tex_utility,
-    tlmgr_path, tlmgr_run_at, validate_package_names, within_flow_budget, AppState, Path,
-    TexUtilityOutput, TinytexMutationGuard, TLMGR_FLOW_BUDGET, TLMGR_INFO_TIMEOUT,
+    tlmgr_is_managed, tlmgr_path, tlmgr_run_at, tlmgr_wants_self_update, validate_package_names,
+    within_flow_budget, AppState, PackageMutation, Path, TexUtilityOutput, TinytexMutationGuard,
+    TLMGR_FLOW_BUDGET, TLMGR_INFO_TIMEOUT,
 };
+use crate::app_error::AppError;
 use std::collections::{BTreeMap, BTreeSet};
+
+const ARCHIVED_REPOSITORY_ROOT: &str = "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive";
+const INSTALLABLE_EXTENSIONS: [&str; 16] = [
+    "sty", "cls", "clo", "def", "fd", "ldf", "bbx", "cbx", "lbx", "bst", "tfm", "vf", "pfb", "otf",
+    "ttf", "ttc",
+];
+const TIKZ_LIBRARY_SUFFIX: &str = ".code.tex";
+const PROVIDER_ROOTS: [&str; 3] = ["texmf-dist/tex/", "texmf-dist/bibtex/", "texmf-dist/fonts/"];
 
 #[derive(Debug, serde::Serialize)]
 pub struct TexPackage {
@@ -28,9 +38,18 @@ fn literal_pattern(value: &str) -> String {
     pattern
 }
 
+fn is_installable_file(file: &str) -> bool {
+    file.to_ascii_lowercase().ends_with(TIKZ_LIBRARY_SUFFIX)
+        || file.rsplit_once('.').is_some_and(|(_, extension)| {
+            INSTALLABLE_EXTENSIONS
+                .iter()
+                .any(|known| extension.eq_ignore_ascii_case(known))
+        })
+}
+
 fn validate_files(files: &[String]) -> Result<(), String> {
     if files.is_empty() || files.len() > 8 {
-        return Err("Choose between one and eight missing LaTeX files.".into());
+        return Err(AppError::new("tex.missing_files_count").into());
     }
     for file in files {
         if file.len() > 128
@@ -41,11 +60,11 @@ fn validate_files(files: &[String]) -> Result<(), String> {
             || !file
                 .bytes()
                 .all(|ch| ch.is_ascii_alphanumeric() || b"._-".contains(&ch))
-            || !file.rsplit_once('.').is_some_and(|(_, extension)| {
-                extension.eq_ignore_ascii_case("sty") || extension.eq_ignore_ascii_case("cls")
-            })
+            || !is_installable_file(file)
         {
-            return Err(format!("Invalid LaTeX package filename: {file}"));
+            return Err(AppError::new("tex.invalid_package_file")
+                .param("file", file)
+                .into());
         }
     }
     Ok(())
@@ -57,11 +76,24 @@ impl SearchResult {
     }
 }
 
+pub(super) fn with_repository(args: &[String], repository: Option<&str>) -> Vec<String> {
+    let mut command = args.to_vec();
+    if let Some(repository) = repository {
+        let at = command
+            .iter()
+            .position(|arg| arg == "--")
+            .unwrap_or(command.len());
+        command.splice(at..at, ["--repository".to_string(), repository.to_string()]);
+    }
+    command
+}
+
 async fn run_search(
     tlmgr: &str,
     pattern: &str,
     files: bool,
     global: bool,
+    repository: Option<&str>,
 ) -> Result<TexUtilityOutput, String> {
     let mut args = vec!["search".to_string()];
     if global {
@@ -72,50 +104,114 @@ async fn run_search(
         args.push("--file".into());
     }
     args.extend(["--".into(), pattern.to_string()]);
-    run_tex_utility(Path::new(tlmgr), &args, TLMGR_INFO_TIMEOUT).await
+    run_tex_utility(
+        Path::new(tlmgr),
+        &with_repository(&args, repository),
+        TLMGR_INFO_TIMEOUT,
+    )
+    .await
 }
 
-fn cross_release_error(output: &TexUtilityOutput) -> Option<String> {
+fn cross_release_years(output: &TexUtilityOutput) -> Option<Vec<String>> {
     let text = format!("{}\n{}", output.stdout, output.stderr);
     let start = text.find("Local TeX Live (")?;
     let rest = &text[start..];
     if !rest.contains("is older than remote repository") {
         return None;
     }
-    let years: Vec<&str> = rest
-        .split('(')
-        .skip(1)
-        .filter_map(|chunk| chunk.split_once(')'))
-        .map(|(year, _)| year.trim())
-        .filter(|year| year.len() == 4 && year.chars().all(|c| c.is_ascii_digit()))
-        .take(2)
-        .collect();
-    Some(match years.as_slice() {
-        [local, remote] => format!(
-            "Your TeX Live ({local}) is older than the package repository ({remote}). Update TeX Live, or install the packages with tlmgr yourself."
-        ),
-        _ => "Your TeX Live is older than the package repository, so tlmgr refuses the remote lookup. Update TeX Live, or install the packages with tlmgr yourself.".to_string(),
+    Some(
+        rest.split('(')
+            .skip(1)
+            .filter_map(|chunk| chunk.split_once(')'))
+            .map(|(year, _)| year.trim().to_string())
+            .filter(|year| year.len() == 4 && year.chars().all(|c| c.is_ascii_digit()))
+            .take(2)
+            .collect(),
+    )
+}
+
+fn is_cross_release_refusal(output: &TexUtilityOutput) -> bool {
+    cross_release_years(output).is_some()
+}
+
+pub(super) fn cross_release_refusal(output: &TexUtilityOutput, managed: bool) -> Option<String> {
+    let years = cross_release_years(output)?;
+    Some(match (managed, years.as_slice()) {
+        (true, [local, remote]) => AppError::new("tex.managed_tinytex_outdated")
+            .param("local", local)
+            .param("remote", remote)
+            .into(),
+        (false, [local, remote]) => AppError::new("tex.texlive_older_than_repository")
+            .param("local", local)
+            .param("remote", remote)
+            .into(),
+        _ => AppError::new("tex.texlive_release_mismatch").into(),
     })
 }
 
-async fn search_at(tlmgr: &str, pattern: String, files: bool) -> Result<SearchResult, String> {
-    let local = run_search(tlmgr, &pattern, files, false).await?;
-    check_tlmgr_self_update(tlmgr, &local)?;
-    if let Some(error) = cross_release_error(&local) {
+pub(super) fn archived_repository(output: &TexUtilityOutput) -> Option<String> {
+    let years = cross_release_years(output)?;
+    let local = years.first()?;
+    Some(format!("{ARCHIVED_REPOSITORY_ROOT}/{local}/tlnet-final"))
+}
+
+pub(super) fn system_manager_error(manager: &str) -> String {
+    AppError::new("tex.packages_use_system_manager")
+        .param("manager", manager)
+        .into()
+}
+
+pub(super) fn system_manager_refusal(output: &TexUtilityOutput) -> Option<String> {
+    let text = format!("{}\n{}", output.stdout, output.stderr);
+    if text.contains("destroy the Fedora TeXLive install") {
+        return Some(system_manager_error("dnf"));
+    }
+    (text.contains("running on Debian, switching to user mode")
+        && text.contains("user mode not initialized"))
+    .then(|| system_manager_error("apt"))
+}
+
+async fn search_with_archive(
+    tlmgr: &str,
+    pattern: &str,
+    files: bool,
+    global: bool,
+) -> Result<TexUtilityOutput, String> {
+    let output = run_search(tlmgr, pattern, files, global, None).await?;
+    check_tlmgr_self_update(tlmgr, &output)?;
+    if let Some(error) = system_manager_refusal(&output) {
         return Err(error);
     }
+    let Some(refusal) = cross_release_refusal(&output, tlmgr_is_managed(tlmgr)) else {
+        return Ok(output);
+    };
+    if let Some(repository) = archived_repository(&output) {
+        let archived = run_search(tlmgr, pattern, files, global, Some(&repository)).await?;
+        if archived.success
+            && !is_cross_release_refusal(&archived)
+            && !tlmgr_wants_self_update(&archived)
+        {
+            return Ok(archived);
+        }
+    }
+    Err(refusal)
+}
+
+async fn search_at(
+    tlmgr: &str,
+    pattern: String,
+    files: bool,
+    complete: impl Fn(&SearchResult) -> bool,
+) -> Result<SearchResult, String> {
+    let local = search_with_archive(tlmgr, &pattern, files, false).await?;
     if !local.success {
         return Err(package_command_error(&local, "Could not search TeX Live."));
     }
     let result = parse_search_result(&local.stdout)?;
-    if !result.is_empty() {
+    if complete(&result) {
         return Ok(result);
     }
-    let global = run_search(tlmgr, &pattern, files, true).await?;
-    check_tlmgr_self_update(tlmgr, &global)?;
-    if let Some(error) = cross_release_error(&global) {
-        return Err(error);
-    }
+    let global = search_with_archive(tlmgr, &pattern, files, true).await?;
     if !global.success {
         return Err(package_command_error(
             &global,
@@ -125,12 +221,39 @@ async fn search_at(tlmgr: &str, pattern: String, files: bool) -> Result<SearchRe
     parse_search_result(&global.stdout)
 }
 
+fn parse_plain_file_search(stdout: &str) -> Option<SearchResult> {
+    let mut files: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut owner: Option<String> = None;
+    for line in stdout.lines() {
+        if let Some(path) = line.strip_prefix('\t') {
+            files
+                .get_mut(owner.as_ref()?)?
+                .push(path.trim().to_string());
+        } else if let Some(name) = line.trim_end().strip_suffix(':') {
+            files.entry(name.to_string()).or_default();
+            owner = Some(name.to_string());
+        } else if !(line.trim().is_empty()
+            || line.starts_with('(')
+            || line.starts_with("tlmgr: package repository"))
+        {
+            return None;
+        }
+    }
+    Some(SearchResult {
+        packages: BTreeMap::new(),
+        files,
+    })
+}
+
 fn parse_search_result(stdout: &str) -> Result<SearchResult, String> {
-    let json = stdout
-        .find('{')
-        .map(|start| &stdout[start..])
-        .unwrap_or(stdout);
-    serde_json::from_str(json)
+    let Some(start) = stdout.find('{') else {
+        if let Some(result) = parse_plain_file_search(stdout) {
+            return Ok(result);
+        }
+        return serde_json::from_str(stdout)
+            .map_err(|error| format!("Could not read the TeX Live search results: {error}"));
+    };
+    serde_json::from_str(&stdout[start..])
         .map_err(|error| format!("Could not read the TeX Live search results: {error}"))
 }
 
@@ -151,7 +274,10 @@ pub async fn tlmgr_search(query: String) -> Result<Vec<TexPackage>, String> {
     }
     let _runtime = acquire_tex_runtime_read()?;
     let tlmgr = tlmgr_path()?;
-    let result = search_at(&tlmgr, literal_pattern(query), false).await?;
+    let result = search_at(&tlmgr, literal_pattern(query), false, |result| {
+        !result.is_empty()
+    })
+    .await?;
     Ok(search_packages(result, query))
 }
 
@@ -171,29 +297,71 @@ fn search_packages(result: SearchResult, query: &str) -> Vec<TexPackage> {
     packages
 }
 
+fn file_providers(result: &SearchResult, file: &str) -> Vec<String> {
+    result
+        .files
+        .iter()
+        .filter(|(name, paths)| {
+            validate_package_names(std::slice::from_ref(name)).is_ok()
+                && paths.iter().any(|path| {
+                    PROVIDER_ROOTS.iter().any(|root| path.starts_with(root))
+                        && !path.starts_with("texmf-dist/tex/latex-dev/")
+                        && path.rsplit('/').next() == Some(file)
+                })
+        })
+        .map(|(name, _)| name.clone())
+        .collect()
+}
+
 fn resolve_providers(result: SearchResult, files: &[String]) -> Result<Vec<String>, String> {
     let mut packages = BTreeSet::new();
     for file in files {
-        let providers: Vec<_> = result
-            .files
-            .iter()
-            .filter(|(name, paths)| {
-                validate_package_names(std::slice::from_ref(name)).is_ok()
-                    && paths.iter().any(|path| {
-                        path.starts_with("texmf-dist/tex/")
-                            && !path.starts_with("texmf-dist/tex/latex-dev/")
-                            && path.rsplit('/').next() == Some(file.as_str())
-                    })
-            })
-            .map(|(name, _)| name.clone())
-            .collect();
+        let providers = file_providers(&result, file);
         match providers.as_slice() {
-            [name] => { packages.insert(name.clone()); }
-            [] => return Err(format!("TeX Live has no package that provides {file}. If this file belongs to your university or publisher template, add it to the project from the original template.")),
-            _ => return Err(format!("Several TeX Live packages provide {file}: {}. Search for these packages in Settings and choose the one required by your template.", providers.join(", "))),
+            [name] => {
+                packages.insert(name.clone());
+            }
+            [] => {
+                return Err(AppError::new("tex.package_no_provider")
+                    .param("file", file)
+                    .into())
+            }
+            _ => {
+                return Err(AppError::new("tex.package_several_providers")
+                    .param("file", file)
+                    .param("packages", providers.join(", "))
+                    .into())
+            }
         }
     }
     Ok(packages.into_iter().collect())
+}
+
+async fn file_is_visible(kpsewhich: &Path, file: &str) -> bool {
+    run_tex_utility(kpsewhich, &[file.to_string()], TLMGR_INFO_TIMEOUT)
+        .await
+        .map_or(true, |output| !output.stdout.trim().is_empty())
+}
+
+async fn confirm_files_arrived(tlmgr: &str, files: &[String]) -> Result<(), String> {
+    let Some(kpsewhich) = Path::new(tlmgr)
+        .parent()
+        .and_then(|dir| crate::tex_distro::find_tool_in_dir(dir, "kpsewhich"))
+    else {
+        return Ok(());
+    };
+    let mut absent = Vec::new();
+    for file in files {
+        if !file_is_visible(&kpsewhich, file).await {
+            absent.push(file.as_str());
+        }
+    }
+    if absent.is_empty() {
+        return Ok(());
+    }
+    Err(AppError::new("tex.package_install_had_no_effect")
+        .param("files", absent.join(", "))
+        .into())
 }
 
 async fn install_missing_at(tlmgr: &str, files: Vec<String>) -> Result<String, String> {
@@ -206,9 +374,16 @@ async fn install_missing_at(tlmgr: &str, files: Vec<String>) -> Result<String, S
             .collect::<Vec<_>>()
             .join("|")
     );
-    let result = search_at(tlmgr, pattern, true).await?;
+    let result = search_at(tlmgr, pattern, true, |result| {
+        files
+            .iter()
+            .all(|file| !file_providers(result, file).is_empty())
+    })
+    .await?;
     let packages = resolve_providers(result, &files)?;
-    tlmgr_run_at(tlmgr, "install", packages).await
+    let outcome = tlmgr_run_at(tlmgr, "install", packages).await?;
+    confirm_files_arrived(tlmgr, &files).await?;
+    Ok(outcome)
 }
 
 #[tauri::command]
@@ -218,6 +393,7 @@ pub async fn tlmgr_install_missing(
 ) -> Result<String, String> {
     validate_files(&files)?;
     let _mutation = TinytexMutationGuard::acquire_maintenance()?;
+    let _quit_gate = PackageMutation::start();
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
     let _runtime = acquire_tex_runtime_write()?;
@@ -228,8 +404,9 @@ pub async fn tlmgr_install_missing(
 #[cfg(test)]
 mod tests {
     use super::{
-        cross_release_error, literal_pattern, package_command_error, parse_search_result,
-        resolve_providers, search_packages, validate_files, SearchResult, TexUtilityOutput,
+        archived_repository, cross_release_refusal, cross_release_years, is_cross_release_refusal,
+        literal_pattern, package_command_error, parse_search_result, resolve_providers,
+        search_packages, validate_files, with_repository, SearchResult, TexUtilityOutput,
     };
     #[cfg(unix)]
     use super::{install_missing_at, within_flow_budget, TLMGR_FLOW_BUDGET};
@@ -259,15 +436,15 @@ mod tests {
     #[test]
     fn does_not_install_an_arbitrary_provider_or_an_incomplete_set() {
         let files = ["thesis.cls".into()];
-        assert!(resolve_providers(results(serde_json::json!({})), &files)
-            .unwrap_err()
-            .contains("original template"));
+        let shown = |error: String| crate::app_error::english(&error).unwrap_or(error);
+        assert!(
+            shown(resolve_providers(results(serde_json::json!({})), &files).unwrap_err())
+                .contains("original template")
+        );
         let result = results(
             serde_json::json!({"a": ["texmf-dist/tex/latex/a/thesis.cls"], "b": ["texmf-dist/tex/latex/b/thesis.cls"]}),
         );
-        assert!(resolve_providers(result, &files)
-            .unwrap_err()
-            .contains("Several"));
+        assert!(shown(resolve_providers(result, &files).unwrap_err()).contains("Several"));
         let result = results(serde_json::json!({"a": ["texmf-dist/doc/latex/a/thesis.cls"]}));
         assert!(resolve_providers(result, &files).is_err());
     }
@@ -393,9 +570,10 @@ mod tests {
         let error = install_missing_at(&manager, vec!["tikz.sty".into()])
             .await
             .unwrap_err();
-        assert!(error.contains("(2025)"), "{error}");
-        assert!(error.contains("(2026)"), "{error}");
-        assert!(error.contains("Update TeX Live"), "{error}");
+        let shown = crate::app_error::english(&error).unwrap_or_default();
+        assert!(shown.contains("TeX Live 2025"), "{error}");
+        assert!(shown.contains("2026 repository"), "{error}");
+        assert!(shown.contains("Update TeX Live"), "{error}");
         assert!(!std::fs::read_to_string(root.path().join("calls"))
             .unwrap()
             .contains("install\n"));
@@ -408,7 +586,10 @@ mod tests {
         let error = install_missing_at(&manager, vec!["tikz.sty".into()])
             .await
             .unwrap_err();
-        assert!(error.contains("Update TeX Live"), "{error}");
+        assert!(
+            crate::app_error::english(&error).is_some_and(|text| text.contains("Update TeX Live")),
+            "{error}"
+        );
         assert!(!std::fs::read_to_string(root.path().join("calls"))
             .unwrap()
             .contains("--global"));
@@ -467,23 +648,27 @@ mod tests {
             stdout: String::new(),
             stderr: CROSS_RELEASE_FIXTURE.into(),
         };
-        assert!(cross_release_error(&mismatch)
-            .unwrap()
-            .contains("Your TeX Live (2025) is older than the package repository (2026)."));
+        assert!(is_cross_release_refusal(&mismatch));
+        assert_eq!(
+            cross_release_years(&mismatch).unwrap(),
+            vec!["2025".to_string(), "2026".to_string()]
+        );
         let unrelated = TexUtilityOutput {
             success: false,
             stdout: "Local TeX Live (2025) is fine".into(),
             stderr: String::new(),
         };
-        assert!(cross_release_error(&unrelated).is_none());
+        assert!(!is_cross_release_refusal(&unrelated));
         let unparsed = TexUtilityOutput {
             success: false,
             stdout: "Local TeX Live (rolling) is older than remote repository (next)".into(),
             stderr: String::new(),
         };
-        assert!(cross_release_error(&unparsed)
-            .unwrap()
-            .starts_with("Your TeX Live is older than the package repository"));
+        assert!(is_cross_release_refusal(&unparsed));
+        assert_eq!(
+            cross_release_years(&unparsed).unwrap(),
+            Vec::<String>::new()
+        );
     }
 
     const CROSS_RELEASE_FIXTURE: &str = "tlmgr: Local TeX Live (2025) is older than remote repository (2026). Cross release updates are only supported with update-tlmgr-latest(.sh/.exe) --update";
@@ -502,6 +687,269 @@ mod tests {
         assert!(!calls.contains("--global"));
         assert!(calls.contains(r"(^|/)(tikz\.sty|subcaption\.sty)$"));
         assert!(calls.ends_with("install\n--\ncaption\npgf\n"));
+    }
+
+    #[test]
+    fn the_installable_extensions_cover_every_kind_of_missing_tex_file() {
+        for file in [
+            "t1foo.fd",
+            "uwmj31.tfm",
+            "pdftex.def",
+            "ngerman.ldf",
+            "size14.clo",
+            "apa.bbx",
+            "apa.cbx",
+            "IEEEtran.bst",
+            "fandol.otf",
+            "FontName-Regular.TTF",
+            "tikzlibraryquantikz2.code.tex",
+        ] {
+            assert!(validate_files(&[file.into()]).is_ok(), "{file}");
+        }
+        for file in [
+            "main.tex",
+            "refs.bib",
+            "figure.pdf",
+            "notes.code",
+            "code.tex",
+        ] {
+            assert!(validate_files(&[file.into()]).is_err(), "{file}");
+        }
+    }
+
+    #[test]
+    fn older_tlmgr_plain_file_results_are_read_like_json() {
+        let stdout = "(running on Debian, switching to user mode!)\n(see /usr/share/doc/texlive-base/README.tlmgr-on-Debian.md)\ntlmgr: package repository https://example.test (not verified)\ncjk:\n\ttexmf-dist/tex/latex/cjk/texinput/CJKutf8.sty\n";
+        let result = parse_search_result(stdout).unwrap();
+        assert_eq!(
+            resolve_providers(result, &["CJKutf8.sty".to_string()]).unwrap(),
+            ["cjk"]
+        );
+        let empty = parse_search_result("(running on Debian, switching to user mode!)\n").unwrap();
+        assert!(empty.is_empty());
+        assert!(parse_search_result("").unwrap().is_empty());
+        for unreadable in ["\ttexmf-dist/orphan.sty\n", "tlmgr: mirror failed\n"] {
+            assert!(parse_search_result(unreadable).is_err(), "{unreadable}");
+        }
+    }
+
+    #[test]
+    fn invalid_file_lists_are_coded_for_translation() {
+        let none = validate_files(&[]).unwrap_err();
+        assert!(none.contains("tex.missing_files_count"), "{none}");
+        let bad = validate_files(&["main.tex".into()]).unwrap_err();
+        assert!(bad.contains("tex.invalid_package_file"), "{bad}");
+        assert!(bad.contains("main.tex"), "{bad}");
+    }
+
+    #[test]
+    fn providers_are_found_outside_tex_but_documentation_copies_never_count() {
+        let result = results(serde_json::json!({
+            "ieeetran": ["texmf-dist/bibtex/bst/ieeetran/IEEEtran.bst"],
+            "confproc": ["texmf-dist/doc/latex/confproc/example/IEEEtran.bst"],
+            "uhc": ["texmf-dist/fonts/tfm/uhc/umj/uwmj31.tfm"],
+            "biblatex-apa": ["texmf-dist/tex/latex/biblatex-apa/apa.bbx"],
+            "fandol": ["texmf-dist/fonts/opentype/public/fandol/FandolSong-Regular.otf"]
+        }));
+        let files = [
+            "IEEEtran.bst",
+            "uwmj31.tfm",
+            "apa.bbx",
+            "FandolSong-Regular.otf",
+        ]
+        .map(String::from);
+        assert_eq!(
+            resolve_providers(result, &files).unwrap(),
+            ["biblatex-apa", "fandol", "ieeetran", "uhc"]
+        );
+    }
+
+    #[test]
+    fn provider_failures_are_coded_and_keep_the_file_name() {
+        let files = ["thesis.cls".into()];
+        let none = resolve_providers(results(serde_json::json!({})), &files).unwrap_err();
+        assert!(
+            none.contains("\"code\":\"tex.package_no_provider\""),
+            "{none}"
+        );
+        assert!(none.contains("\"file\":\"thesis.cls\""), "{none}");
+        let result = results(serde_json::json!({
+            "a": ["texmf-dist/tex/latex/a/thesis.cls"],
+            "b": ["texmf-dist/tex/latex/b/thesis.cls"]
+        }));
+        let several = resolve_providers(result, &files).unwrap_err();
+        assert!(
+            several.contains("\"code\":\"tex.package_several_providers\""),
+            "{several}"
+        );
+        assert!(several.contains("\"packages\":\"a, b\""), "{several}");
+    }
+
+    #[test]
+    fn repository_arguments_stay_ahead_of_the_operands() {
+        let args = ["install", "--", "cjk"].map(String::from);
+        assert_eq!(with_repository(&args, None), args);
+        assert_eq!(
+            with_repository(&args, Some("https://example.test")),
+            [
+                "install",
+                "--repository",
+                "https://example.test",
+                "--",
+                "cjk"
+            ]
+        );
+        let update = ["update", "--self"].map(String::from);
+        assert_eq!(
+            with_repository(&update, Some("https://example.test")),
+            ["update", "--self", "--repository", "https://example.test"]
+        );
+    }
+
+    #[test]
+    fn the_release_gap_is_coded_for_each_kind_of_tree() {
+        let refused = TexUtilityOutput {
+            success: false,
+            stdout: String::new(),
+            stderr: CROSS_RELEASE_FIXTURE.into(),
+        };
+        let managed = cross_release_refusal(&refused, true).unwrap();
+        assert!(
+            managed.contains("tex.managed_tinytex_outdated"),
+            "{managed}"
+        );
+        assert!(managed.contains("\"local\":\"2025\""), "{managed}");
+        let system = cross_release_refusal(&refused, false).unwrap();
+        assert!(
+            system.contains("tex.texlive_older_than_repository"),
+            "{system}"
+        );
+        assert!(system.contains("\"remote\":\"2026\""), "{system}");
+        assert_eq!(
+            archived_repository(&refused).as_deref(),
+            Some("https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/tlnet-final")
+        );
+        let unparsed = TexUtilityOutput {
+            success: false,
+            stdout: "Local TeX Live (rolling) is older than remote repository (next)".into(),
+            stderr: String::new(),
+        };
+        assert!(cross_release_refusal(&unparsed, true)
+            .unwrap()
+            .contains("tex.texlive_release_mismatch"));
+        assert_eq!(archived_repository(&unparsed), None);
+        let unrelated = TexUtilityOutput {
+            success: false,
+            stdout: "tlmgr: package not present".into(),
+            stderr: String::new(),
+        };
+        assert_eq!(cross_release_refusal(&unrelated, true), None);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_refused_global_search_is_retried_against_the_frozen_repository() {
+        let (root, manager) = scripted_manager(&format!(
+            "case \"$*\" in\n*--global*--repository*) printf '%s\\n' '{{\"packages\":{{}},\"files\":{{\"pgf\":[\"texmf-dist/tex/latex/pgf/tikz.sty\"]}}}}'\nexit 0 ;;\n*--global*) echo '{CROSS_RELEASE}' >&2\nexit 1 ;;\nsearch*) printf '%s\\n' '{{\"packages\":{{}},\"files\":{{}}}}'\nexit 0 ;;\nesac\ncase \"$*\" in\n*--repository*) printf 'Installed\\n' ;;\n*) echo '{CROSS_RELEASE}' >&2\nexit 1 ;;\nesac"
+        ));
+        install_missing_at(&manager, vec!["tikz.sty".into()])
+            .await
+            .unwrap();
+        let calls = std::fs::read_to_string(root.path().join("calls")).unwrap();
+        let archive =
+            "--repository\nhttps://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/tlnet-final\n";
+        assert!(
+            calls.contains(&format!("search\n--global\n--json\n--file\n{archive}--\n")),
+            "{calls}"
+        );
+        assert!(
+            calls.ends_with(&format!("install\n{archive}--\npgf\n")),
+            "{calls}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_debian_search_refusal_points_at_the_system_package_manager() {
+        let (root, manager) = scripted_manager(
+            "echo '(running on Debian, switching to user mode!)'\necho 'tlmgr: user mode not initialized, please read the documentation!' >&2\nexit 2",
+        );
+        let error = install_missing_at(&manager, vec!["tikz.sty".into()])
+            .await
+            .unwrap_err();
+        assert!(error.contains("tex.packages_use_system_manager"), "{error}");
+        assert!(error.contains("\"manager\":\"apt\""), "{error}");
+        assert!(!std::fs::read_to_string(root.path().join("calls"))
+            .unwrap()
+            .contains("install\n"));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_local_result_for_some_files_still_searches_the_repository_for_the_rest() {
+        let (root, manager) = scripted_manager(
+            "if [ \"$1\" = search ]; then\nif [ \"$2\" = --global ]; then\nprintf '%s\\n' '{\"packages\":{},\"files\":{\"psnfss\":[\"texmf-dist/tex/latex/psnfss/t1put.fd\"],\"utopia\":[\"texmf-dist/fonts/tfm/adobe/utopia/putr8t.tfm\"]}}'\nelse\nprintf '%s\\n' '{\"packages\":{},\"files\":{\"psnfss\":[\"texmf-dist/tex/latex/psnfss/t1put.fd\"]}}'\nfi\nelse\nprintf 'Installed\\n'\nfi",
+        );
+        install_missing_at(&manager, vec!["t1put.fd".into(), "putr8t.tfm".into()])
+            .await
+            .unwrap();
+        let calls = std::fs::read_to_string(root.path().join("calls")).unwrap();
+        assert!(
+            calls.contains("search\n--global\n--json\n--file\n--\n"),
+            "{calls}"
+        );
+        assert!(calls.ends_with("install\n--\npsnfss\nutopia\n"), "{calls}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_local_result_for_every_file_never_reaches_the_repository() {
+        let (root, manager) = fake_manager(
+            r#"{"packages":{},"files":{"pgf":["texmf-dist/tex/latex/pgf/tikz.sty"]}}"#,
+        );
+        install_missing_at(&manager, vec!["tikz.sty".into()])
+            .await
+            .unwrap();
+        let calls = std::fs::read_to_string(root.path().join("calls")).unwrap();
+        assert!(!calls.contains("--global"), "{calls}");
+    }
+
+    #[cfg(unix)]
+    fn manager_with_kpsewhich(answer: &str) -> (tempfile::TempDir, String) {
+        let (root, manager) = fake_manager(
+            r#"{"packages":{},"files":{"pgf":["texmf-dist/tex/latex/pgf/tikz.sty"]}}"#,
+        );
+        crate::latex_engine::tests::write_test_script(
+            &root.path().join("kpsewhich"),
+            &format!("#!/bin/sh\n{answer}\n"),
+        );
+        (root, manager)
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_install_that_leaves_the_file_missing_is_reported() {
+        let (_root, manager) = manager_with_kpsewhich("exit 1");
+        let error = install_missing_at(&manager, vec!["tikz.sty".into()])
+            .await
+            .unwrap_err();
+        assert!(
+            error.contains("tex.package_install_had_no_effect"),
+            "{error}"
+        );
+        assert!(error.contains("tikz.sty"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_install_is_confirmed_by_the_distribution_it_changed() {
+        let (root, manager) = manager_with_kpsewhich("printf '%s\\n' \"/tex/$1\"");
+        install_missing_at(&manager, vec!["tikz.sty".into()])
+            .await
+            .unwrap();
+        assert!(std::fs::read_to_string(root.path().join("calls"))
+            .unwrap()
+            .ends_with("install\n--\npgf\n"));
     }
 
     #[cfg(unix)]

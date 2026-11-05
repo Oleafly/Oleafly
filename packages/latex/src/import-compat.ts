@@ -6,11 +6,18 @@ export type ImportCompatAction =
   | "install-after-switch"
   | "retry-compile";
 
+type ImportCompatFindingParams = {
+  file?: string;
+  missing?: string[];
+  status?: number;
+};
+
 export type ImportCompatFinding = {
   id: string;
   level: ImportCompatLevel;
   title: string;
   detail: string;
+  params?: ImportCompatFindingParams;
 };
 
 export const IMPORT_COMPAT_CATALOG = {
@@ -35,7 +42,7 @@ export const IMPORT_COMPAT_CATALOG = {
     level: "blocker",
     title: "Glossary / index external tool",
     detail:
-      "glossaries or makeindex need an external index run (makeindex/xindy), which is not yet orchestrated by Oleafly.",
+      "glossaries and makeindex need an external index run. The built-in engine can't do that, and system LaTeX can.",
     latexmkFixes: true,
   },
   pythontex: {
@@ -303,7 +310,6 @@ export function scanImportCompatibility(sources: {
   if (
     loadsPackage(tex, "cmap") ||
     loadsPackage(tex, "inputenc") ||
-    includesLiteral(tex, String.raw`\pdfoutput`) ||
     includesLiteral(tex, String.raw`\pdfliteral`)
   ) {
     findings.push(findingFor("pdftex-only"));
@@ -347,15 +353,27 @@ function matchesFontspec(log: string): boolean {
   );
 }
 
+const PDF_PRIMITIVE_LOG_LINE = /^l\.\d+ .*\\pdf[a-z]+$/;
+
+function stoppedOnPdfPrimitive(line: string, previous: string | undefined): boolean {
+  return (
+    previous?.trimEnd().endsWith("Undefined control sequence.") === true &&
+    PDF_PRIMITIVE_LOG_LINE.test(line.trimEnd())
+  );
+}
+
 // Journal classes (e.g. Springer's sn-jnl) hit pdfTeX-only internals under
 // XeTeX: "Undefined control sequence" pointing at \pdf@... primitives.
 // Real pdfLaTeX via latexmk is the fix, exactly like Overleaf.
 function matchesPdftexOnly(log: string): boolean {
-  return (
-    log.includes("Undefined control sequence") &&
-    [String.raw`\pdf@`, String.raw`\pdfoutput`, String.raw`\pdfliteral`, String.raw`\pdftexversion`, String.raw`\pdfpageattr`].some(
-      (primitive) => log.includes(primitive),
-    )
+  if (!log.includes("Undefined control sequence")) return false;
+  const primitives = [String.raw`\pdf@`, String.raw`\pdfliteral`, String.raw`\pdftexversion`, String.raw`\pdfpageattr`];
+  const lines = log.split("\n");
+  return lines.some(
+    (line, index) =>
+      (!line.startsWith("Package pdftexcmds Info:") &&
+        primitives.some((primitive) => line.includes(primitive))) ||
+      stoppedOnPdfPrimitive(line, lines[index - 1]),
   );
 }
 
@@ -395,6 +413,7 @@ function collectEngineFindings(log: string, findings: ImportCompatFinding[]): vo
       withDetail(
         findingFor("eps-image"),
         eps ? `The compile stopped on ${eps}.` : "",
+        { file: eps },
       ),
     );
   }
@@ -407,6 +426,7 @@ function collectMissingFileFindings(log: string, findings: ImportCompatFinding[]
     withDetail(
       findingFor("missing-sty-on-bundled-engine"),
       `The compile could not find ${missing.join(", ")}.`,
+      { missing },
     ),
   );
 }
@@ -424,6 +444,7 @@ export function classifyCompileFailure(
       withDetail(
         findingFor("bundle-fetch-failed"),
         bundleStatus > 0 ? `The mirror returned HTTP ${bundleStatus}.` : "",
+        { status: bundleStatus },
       ),
     ];
   }
@@ -436,8 +457,33 @@ export function classifyCompileFailure(
   return findings;
 }
 
-function withDetail(finding: ImportCompatFinding, sentence: string): ImportCompatFinding {
-  return sentence ? { ...finding, detail: `${finding.detail} ${sentence}` } : finding;
+const OFFLINE_MISS_FINDINGS: ReadonlySet<string> = new Set([
+  "missing-sty-on-bundled-engine",
+  "bundle-fetch-failed",
+  "fontspec",
+]);
+
+const OFFLINE_MISS_MARKERS = [
+  'failed to open input file "tectonic-format-',
+  "I did not find the tikz library",
+];
+
+export function offlineCacheMiss(
+  log: string,
+  findings: readonly ImportCompatFinding[],
+): boolean {
+  if (findings.length > 0) {
+    return findings.every((finding) => OFFLINE_MISS_FINDINGS.has(finding.id));
+  }
+  return OFFLINE_MISS_MARKERS.some((marker) => log.includes(marker));
+}
+
+function withDetail(
+  finding: ImportCompatFinding,
+  sentence: string,
+  params: ImportCompatFindingParams,
+): ImportCompatFinding {
+  return sentence ? { ...finding, detail: `${finding.detail} ${sentence}`, params } : finding;
 }
 
 const BUNDLE_FETCH_MARKERS = [
@@ -450,6 +496,8 @@ const BUNDLE_FETCH_MARKERS = [
 ];
 
 const BUNDLE_CONTEXT_MARKERS = ["tex-bundles", "bundle"];
+const NETWORK_FAILURE_MARKER = "please check your network connection";
+const NETWORK_STATUS_LOOKBACK_LINES = 8;
 
 function httpStatusIn(text: string): number {
   const marker = "unexpected http response code ";
@@ -459,10 +507,20 @@ function httpStatusIn(text: string): number {
   return Number.isInteger(status) && status >= 100 && status <= 599 ? status : 0;
 }
 
+function networkFailureStatus(lines: readonly string[], index: number): number {
+  const from = Math.max(0, index - NETWORK_STATUS_LOOKBACK_LINES);
+  for (let at = index; at >= from; at -= 1) {
+    const status = httpStatusIn(lines[at]);
+    if (status > 0) return status;
+  }
+  return 0;
+}
+
 function bundleFetchStatus(log: string): number | null {
   const lines = log.split("\n");
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index].toLowerCase();
+    if (line.includes(NETWORK_FAILURE_MARKER)) return networkFailureStatus(lines, index);
     if (!BUNDLE_FETCH_MARKERS.some((marker) => line.includes(marker))) continue;
     const context = `${(lines[index - 1] ?? "").toLowerCase()}\n${line}`;
     if (!BUNDLE_CONTEXT_MARKERS.some((marker) => context.includes(marker))) continue;
@@ -534,10 +592,36 @@ function epsImageFile(log: string): string | null {
   return null;
 }
 
+const MISSING_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
+  "sty",
+  "cls",
+  "clo",
+  "def",
+  "fd",
+  "ldf",
+  "bbx",
+  "cbx",
+  "lbx",
+  "bst",
+  "tfm",
+  "vf",
+  "pfb",
+  "otf",
+  "ttf",
+  "ttc",
+]);
+const TIKZ_LIBRARY_SUFFIX = ".code.tex";
+const MAX_MISSING_FILES = 8;
+const MAX_MARKED_LINES = 64;
+const TEX_LOG_LINE_WIDTH = 79;
+const LEGACY_ENCODED_FONT = /^! Font \\?(?!TU\/)[^/=\s]+\//;
+
 function isMissingStyleFile(file: string): boolean {
   const dot = file.lastIndexOf(".");
   const ext = dot === -1 ? "" : file.slice(dot + 1).toLowerCase();
-  if (ext !== "sty" && ext !== "cls") return false;
+  if (!MISSING_FILE_EXTENSIONS.has(ext) && !file.toLowerCase().endsWith(TIKZ_LIBRARY_SUFFIX)) {
+    return false;
+  }
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(file);
 }
 
@@ -553,6 +637,145 @@ function missingFileAt(
   return { file: isMissingStyleFile(file) ? file : null, next: quote + 1 };
 }
 
+function textAfterMarker(log: string, marker: string): string[] {
+  const lines: string[] = [];
+  let from = 0;
+  while (lines.length < MAX_MARKED_LINES) {
+    const idx = log.indexOf(marker, from);
+    if (idx === -1) break;
+    const eol = log.indexOf("\n", idx);
+    const end = eol === -1 ? log.length : eol;
+    lines.push(log.slice(idx + marker.length, end).trimEnd());
+    from = end;
+  }
+  return lines;
+}
+
+function firstWord(text: string): string {
+  return text.split(/\s/, 1)[0] ?? "";
+}
+
+function quotedName(text: string): string {
+  const end = text.search(/['`"]/);
+  return end > 0 && end <= MAX_QUOTED_NAME ? text.slice(0, end) : "";
+}
+
+function latexmkBstFiles(log: string): string[] {
+  const marker = "Latexmk: Bst file not found in search path:";
+  const idx = log.indexOf(marker);
+  if (idx === -1) return [];
+  const files: string[] = [];
+  const block = log.slice(idx + marker.length, idx + marker.length + MAX_QUOTED_NAME * 4);
+  for (const line of block.split("\n").slice(1)) {
+    if (!line.startsWith(" ")) break;
+    const name = line.trim();
+    files.push(name.endsWith(".bst") ? name : `${name}.bst`);
+  }
+  return files;
+}
+
+function bibliographyStyleFiles(log: string): string[] {
+  const opened = textAfterMarker(log, "I couldn't open style file ").map(firstWord);
+  return [...opened, ...latexmkBstFiles(log)];
+}
+
+function biblatexStyleFiles(log: string): string[] {
+  if (!log.includes("Package biblatex Error: Style '")) return [];
+  return textAfterMarker(log, "Package biblatex Info: ... file '")
+    .filter((rest) => rest.endsWith("' not found."))
+    .map(quotedName)
+    .filter((name) => /\.[bc]bx$/.test(name));
+}
+
+function babelLanguageFiles(log: string): string[] {
+  const options = ["Package babel Error: Unknown option '", "Package babel Error: Unknown option `"]
+    .flatMap((marker) => textAfterMarker(log, marker))
+    .map(quotedName)
+    .filter((name) => name.length > 0)
+    .map((name) => `${name}.ldf`);
+  return [...options, ...textAfterMarker(log, "language definition file ").map(firstWord)];
+}
+
+function tikzLibraryFiles(log: string): string[] {
+  return textAfterMarker(log, "I did not find the tikz library '")
+    .map(quotedName)
+    .filter((name) => name.length > 0)
+    .map((name) => `tikzlibrary${name}${TIKZ_LIBRARY_SUFFIX}`);
+}
+
+function unwrappedLogLine(log: string, start: number): string {
+  let text = "";
+  let from = start;
+  for (let piece = 0; piece < 4; piece += 1) {
+    const eol = log.indexOf("\n", from);
+    const line = log.slice(from, eol === -1 ? log.length : eol).replace(/\r$/, "");
+    text += line;
+    if (eol === -1 || line.length !== TEX_LOG_LINE_WIDTH) break;
+    from = eol + 1;
+  }
+  return text;
+}
+
+function metricFontFile(line: string): string {
+  const loadable = line.indexOf(" not loadable: Metric (TFM)");
+  const equals = line.indexOf("=");
+  if (loadable === -1 || equals === -1 || equals > loadable) return "";
+  const spec = line.slice(equals + 1, loadable).split(/ (?:at|scaled) /, 1)[0] ?? "";
+  if (spec.startsWith('"') || spec === "nullfont") return "";
+  if (spec.startsWith("[")) return spec.slice(1, spec.indexOf("]"));
+  const systemFontName = line.includes("or installed font") && !LEGACY_ENCODED_FONT.test(line);
+  return systemFontName ? "" : `${spec}.tfm`;
+}
+
+function fontMetricFiles(log: string): string[] {
+  const marker = "! Font ";
+  const files: string[] = [];
+  let from = 0;
+  while (files.length < MAX_MISSING_FILES) {
+    const idx = log.indexOf(marker, from);
+    if (idx === -1) break;
+    from = idx + marker.length;
+    if (idx > 0 && log[idx - 1] !== "\n") continue;
+    const file = metricFontFile(unwrappedLogLine(log, idx));
+    if (file && !files.includes(file)) files.push(file);
+  }
+  return files;
+}
+
+function fontShapeFiles(log: string): string[] {
+  return textAfterMarker(log, "Font shape `")
+    .flatMap((rest) => {
+      const close = rest.indexOf("'");
+      if (close === -1 || !rest.slice(close).startsWith("' undefined")) return [];
+      const [encoding, family] = rest.slice(0, close).split("/");
+      return encoding && family ? [`${encoding}${family}.fd`.toLowerCase()] : [];
+    })
+    .filter((name) => !log.includes(`File: ${name} `));
+}
+
+function unreadableFontFiles(log: string): string[] {
+  return textAfterMarker(log, "!pdfTeX error: ")
+    .filter((rest) => rest.endsWith("font file for reading"))
+    .flatMap((rest) => {
+      const open = rest.indexOf("(file ");
+      const close = rest.indexOf(")", open);
+      return open === -1 || close === -1 ? [] : [rest.slice(open + 6, close).replace(/^\.\//, "")];
+    });
+}
+
+function derivedMissingFiles(log: string): string[] {
+  const fonts = fontMetricFiles(log);
+  return [
+    ...bibliographyStyleFiles(log),
+    ...biblatexStyleFiles(log),
+    ...babelLanguageFiles(log),
+    ...tikzLibraryFiles(log),
+    ...(fonts.length > 0 ? fontShapeFiles(log) : []),
+    ...fonts,
+    ...unreadableFontFiles(log),
+  ];
+}
+
 export function missingLatexFiles(logRaw: string): string[] {
   const log =
     logRaw.length > MAX_CLASSIFY_CHARS ? logRaw.slice(0, MAX_CLASSIFY_CHARS) : logRaw;
@@ -560,13 +783,17 @@ export function missingLatexFiles(logRaw: string): string[] {
   const markers = ["LaTeX Error: File `", "I can't find file `", "LaTeX Error: File '", 'LaTeX Error: File "'];
   for (const marker of markers) {
     let from = 0;
-    while (from < log.length && found.size < 8) {
+    while (from < log.length && found.size < MAX_MISSING_FILES) {
       const idx = log.indexOf(marker, from);
       if (idx === -1) break;
       const read = missingFileAt(log, marker, idx);
       if (read.file !== null) found.add(read.file);
       from = read.next;
     }
+  }
+  for (const file of derivedMissingFiles(log)) {
+    if (found.size >= MAX_MISSING_FILES) break;
+    if (isMissingStyleFile(file)) found.add(file);
   }
   return [...found];
 }

@@ -56,9 +56,24 @@
     "undo": "Kumoa"
   },
   "compile": {
+    "failedWithReason": "Käännös epäonnistui: {{message}}",
     "noOfflineMode": "{{engine}} ei tarjoa offline-käännöstilaa. Käännetään normaalisti.",
+    "pandocRequired": "Pandoc ei ole käytettävissä. Korjaa se kohdassa Asetukset > Moottorit > Markdown ja käännä sitten uudelleen.",
+    "pandocSetupFailed": "Pandocin käyttöönotto epäonnistui: {{message}}",
+    "pdfChanged": "Käännetty PDF muuttui, kun Oleafly luki sitä, joten aiempi esikatselu säilyy. Käännä uudelleen, niin se päivittyy.",
     "retry": "Käännä uudelleen",
+    "superseded": "Uudempi käännös korvasi tämän.",
+    "syntaxCheckFailed": "Syntaksitarkistus löysi virheitä. Korjaa ne tai poista ”{{setting}}” käytöstä.",
+    "taggedFailed": "Merkitty käännös epäonnistui: {{message}}",
+    "taggedPdfChanged": "Merkitty PDF muuttui, kun Oleafly luki sitä, joten aiempi esikatselu säilyy. Käännä uudelleen, niin se päivittyy.",
+    "taggedPdfInvalid": "Merkitty käännös ei tuottanut kelvollista PDF:ää.",
+    "tinytexDownloading": "TinyTeX latautuu yhä. Tämä käännös alkaa automaattisesti, kun lataus on valmis.",
+    "sharedTexEditor": "Tämä projekti on jaettu, joten Tectonicin valitseminen vaihtaa kääntäjän kaikille. TinyTeXin asentaminen muuttaa vain tätä konetta.",
+    "sharedTexViewer": "Et voi vaihtaa tämän jaetun projektin kääntäjää, joten asenna TinyTeX, jotta voit kääntää sen täällä.",
     "bundleFetchFailed": "Oleafly ei voinut ladata TeX-paketteja, joita tämä dokumentti tarvitsee. Tarkista yhteys ja käännä uudelleen.",
+    "offlineNotCached": "Offline-tila on päällä, eikä seuraavia ole ehkä vielä ladattu: {{files}}. Poista offline-tila käytöstä ja käännä uudelleen.",
+    "offlineNotCachedUnnamed": "Offline-tila on päällä, eikä jokin tämän dokumentin tarvitsema TeX-paketti ole ehkä vielä ladattu. Poista offline-tila käytöstä ja käännä uudelleen.",
+    "goOnlineAndCompile": "Poista käytöstä ja käännä",
     "typstMissing": "Typst {{version}} ei ole asennettu. Lataa se tai vaihda tämän projektin versio toiseen.",
     "typstPackage": {
       "downloadFailed": "Typst ei voinut ladata pakettia {{spec}}. Tarkista internetyhteys ja käännä uudelleen.",
@@ -169,9 +184,22 @@
     "pdfFailedDetail": "PDF:n tallennus ei onnistunut: {{detail}}",
     "pngFailed": "PNG:n tallennus ei onnistunut",
     "pngFailedDetail": "PNG:n tallennus ei onnistunut: {{detail}}",
+    "projectChanged": "Avoin projekti vaihtui. Aloita vienti uudelleen projektista, jonka haluat tallentaa.",
     "revealFailed": "Tiedosto tallennettiin, mutta sen kansiota ei voitu avata.",
     "saved": "{{kind}} tallennettu · {{fileName}}",
-    "showInFolder": "Näytä kansiossa"
+    "savedAfterFailedCompile": "{{kind}} tallennettu · {{fileName}}. Viimeisin käännös epäonnistui, joten tämä tiedosto voi olla puutteellinen.",
+    "savedSource": "{{kind}} tallennettu · {{fileName}}. Jos se käyttää projektisi kuvia tai lähdeluetteloita, kopioi ne sen viereen ennen kääntämistä.",
+    "savedStale": "{{kind}} tallennettu · {{fileName}}. Se perustuu viimeisimpään käännökseen eikä sisällä uusimpia muokkauksiasi.",
+    "savedWithoutContent": "{{kind}} tallennettu · {{fileName}}. Osa sisällöstä puuttuu, koska Typst ei voi kirjoittaa sitä tähän muotoon: {{elements}}.",
+    "savedFromSource": "{{kind}} tallennettu · {{fileName}}. Typst {{version}} ei voi kirjoittaa koko dokumenttia tähän muotoon, joten tiedosto muodostettiin lähdekoodista. Kierrettyä, skaalattua, siirrettyä tai vinoutettua tekstiä voi puuttua. Vaihda projektin versioksi Typst 0.15 tai uudempi, niin teksti säilyy.",
+    "savedWithoutEquations": "{{kind}} tallennettu · {{fileName}}. Kaavoja, kuvia, alaviitteitä tai viittauksia voi puuttua, koska Typst {{version}} ei voi kirjoittaa niitä tähän muotoon. Vaihda projektin versioksi Typst 0.15 tai uudempi.",
+    "savedWithWarnings_one": "{{kind}} tallennettu · {{fileName}}. {{count}} varoitus.",
+    "savedWithWarnings_other": "{{kind}} tallennettu · {{fileName}}. {{count}} varoitusta.",
+    "savedWithoutLinks_one": "{{kind}} tallennettu · {{fileName}}. {{count}} symbolinen linkki jätettiin pois arkistosta.",
+    "savedWithoutLinks_other": "{{kind}} tallennettu · {{fileName}}. {{count}} symbolista linkkiä jätettiin pois arkistosta.",
+    "showInFolder": "Näytä kansiossa",
+    "showWarnings": "Näytä varoitukset",
+    "warningsTitle": "Viennin varoitukset"
   },
   "externalChange": {
     "reloadFailed": "Projektin asetukset päivitettiin, mutta joitakin muuttuneita tiedostoja ei voitu ladata uudelleen."
@@ -321,6 +349,12 @@
     "installing_other": "Asennetaan {{count}} pakettia. Kääntäminen käynnistyy uudelleen, kun asennus on valmis.",
     "summary_one": "Kääntäminen ei löytänyt kohdetta \"{{name}}\". Etsi TeX Livestä paketti, joka sisältää sen.",
     "summary_other": "Kääntäminen ei löytänyt kohteita {{names}}. Etsi niiden paketit TeX Livestä.",
+    "systemHint": {
+      "apt": "Etsi sen paketti komennolla apt-file search {{name}} tai asenna kaikki komennolla sudo apt install texlive-full.",
+      "dnf": "Suorita {{command}}."
+    },
+    "systemManaged_one": "Kääntäminen ei löytänyt kohdetta \"{{name}}\". Tämä TeX Live tuli Linux-jakelusi mukana, joten Oleafly ei voi lisätä siihen paketteja. {{hint}}",
+    "systemManaged_other": "Kääntäminen ei löytänyt kohteita {{names}}. Tämä TeX Live tuli Linux-jakelusi mukana, joten Oleafly ei voi lisätä siihen paketteja. {{hint}}",
     "userTree": "Järjestelmän TeX-puu on vain luku -tilassa, joten paketit asennettiin omaan puuhusi sijaintiin {{path}}."
   },
   "models": {
@@ -369,6 +403,7 @@
   },
   "pandoc": {
     "downloadFailed": "Pandocin lataus ei onnistunut. Asenna se käsin ja yritä sitten uudelleen.",
+    "downloadFailedDetail": "Pandocin lataus ei onnistunut ({{detail}}). Asenna se käsin ja yritä sitten uudelleen.",
     "downloadingPercent": "Ladataan pandocia… {{progress}} %",
     "downloadingSize": "Ladataan pandocia… {{megabytes}} MB",
     "installGuide": "Asennusohje"
@@ -481,7 +516,7 @@
     "compileFailed": "Merkitty käännös epäonnistui. Tarkista moottori ja yritä uudelleen.",
     "compiled": "Merkitty PDF käännettiin. Katso saavutettavuustulos alta.",
     "compiledWithErrors": "Merkitty käännös valmistui virheiden kanssa. Tarkista loki.",
-    "engineRequired": "Ota ensin käyttöön merkintöjä tukeva moottori kohdassa Asetukset, LaTeX-moottori."
+    "engineRequired": "Asenna TinyTeX kohdassa Asetukset > Moottorit > LaTeX, niin voit tuottaa merkittyjä PDF-tiedostoja."
   },
   "terminal": {
     "defaultTitle": "Pääte {{index}}"
@@ -528,6 +563,7 @@
   "tinytex": {
     "installFailed": "TinyTeXiä ei voitu asentaa.",
     "installGuide": "Asennusohje",
+    "tryAgain": "Yritä uudelleen",
     "installed": "TinyTeX asennettiin.",
     "phase": {
       "addingPackages": "Lisätään paketteja…",

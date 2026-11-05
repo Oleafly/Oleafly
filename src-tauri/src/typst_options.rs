@@ -12,6 +12,10 @@ use crate::document_engine::{DocumentEngineId, EngineDescriptor};
 use crate::proc::NoConsole;
 use crate::project::ProjectMeta;
 
+mod glyphs;
+
+pub(crate) use glyphs::GlyphCheck;
+
 const FONT_LIST_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_VARIANT_NAME_CHARS: usize = 64;
 const MAX_INPUT_CHARS: usize = 4096;
@@ -25,6 +29,7 @@ pub struct TypstCompileSettings {
     pub ignore_system_fonts: bool,
     pub inputs: Vec<(String, String)>,
     pub creation_timestamp: Option<u64>,
+    pub system_font_mirror: Option<PathBuf>,
 }
 
 impl TypstCompileSettings {
@@ -42,6 +47,7 @@ impl TypstCompileSettings {
                 .map(|spec| spec.inputs_for(variant))
                 .unwrap_or_default(),
             creation_timestamp: reproducible.then(|| commit_time(project_root).unwrap_or(0)),
+            system_font_mirror: None,
         }
     }
 
@@ -52,7 +58,13 @@ impl TypstCompileSettings {
             .cloned()
             .map(TypstCompileFlag::FontPath)
             .collect();
-        if self.ignore_system_fonts {
+        let mirror = self
+            .system_font_mirror
+            .clone()
+            .filter(|_| capabilities.supports_flag("--ignore-system-fonts"));
+        let use_mirror = mirror.is_some();
+        flags.extend(mirror.map(TypstCompileFlag::FontPath));
+        if self.ignore_system_fonts || use_mirror {
             flags.push(TypstCompileFlag::IgnoreSystemFonts);
         }
         flags.extend(
@@ -84,6 +96,11 @@ impl TypstCompileSettings {
         self
     }
 
+    pub(crate) fn with_system_font_mirror(mut self, mirror: Option<PathBuf>) -> Self {
+        self.system_font_mirror = mirror.filter(|_| !self.ignore_system_fonts);
+        self
+    }
+
     pub(crate) fn source_date_epoch(&self, fallback: Option<u64>) -> Option<u64> {
         self.creation_timestamp.or(fallback)
     }
@@ -102,7 +119,14 @@ pub(crate) fn for_compile(
             crate::git::head_commit_time,
         )
         .with_shared_font_dirs(shared_font_dirs())
+        .with_system_font_mirror(system_font_mirror())
     })
+}
+
+fn system_font_mirror() -> Option<PathBuf> {
+    crate::paths::assets_root()
+        .ok()
+        .and_then(|root| oleafly_core::typst_toolchain::typst_system_font_mirror(&root))
 }
 
 fn shared_font_pack_roots() -> Vec<PathBuf> {

@@ -5,7 +5,7 @@ license: MIT
 compatibility: A deck or a poster is an ordinary project file, not a separate project type. Beamer and beamerposter build with the bundled LaTeX engine. Typst decks need touying or polylux, which the Typst engine fetches when online. PowerPoint export is available from the Export menu for Beamer LaTeX projects only.
 allowed-tools: read_file list_files search_project project_map create_file write_file replace_in_file compile get_log get_pdf_text verify_pdf_pages set_main_doc load_skill read_skill_file show_location update_todos
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   skill-author: "Oleafly"
   oleafly:
     tier: native

@@ -327,11 +327,11 @@ describe("detached preview viewer recovery", () => {
 });
 
 describe("detached preview actions", () => {
-  async function showDocument() {
+  async function showDocument(next = state("alpha", 1, 1)) {
     mocks.readCompiledPdf.mockResolvedValue(buffer(1));
     render(<PreviewWindow />);
     await waitFor(() => expect(mocks.listeners.has("preview:refresh")).toBe(true));
-    refresh(state("alpha", 1, 1));
+    refresh(next);
     await screen.findByText("1");
     loadState("ready");
   }
@@ -345,6 +345,18 @@ describe("detached preview actions", () => {
       expect(mocks.downloadBytes).toHaveBeenCalledWith(expect.any(Uint8Array), "application/pdf", "chapters_main.pdf"),
     );
     expect(await screen.findByText(win.downloadStarted)).toBeInTheDocument();
+  });
+
+  it("keeps a non-ASCII main document name in the download", async () => {
+    const base = state("alpha", 1, 1);
+    const identity = { ...base.identity, mainDocument: "chapters/논문.tex" };
+    await showDocument({ ...base, identity, checkpoint: { ...base.checkpoint!, ...identity } });
+
+    fireEvent.click(screen.getByRole("button", { name: enPreview.actions.downloadPdf }));
+
+    await waitFor(() =>
+      expect(mocks.downloadBytes).toHaveBeenCalledWith(expect.any(Uint8Array), "application/pdf", "chapters_논문.pdf"),
+    );
   });
 
   it("saves the download where the user picks and does nothing when cancelled", async () => {

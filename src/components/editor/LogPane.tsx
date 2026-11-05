@@ -14,13 +14,14 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Eraser } from "lucide-react";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { parseLatexLog, type LogDiagnostic } from "@oleafly/latex";
-import { useCompileStore, type CompileState } from "@/store/compile";
+import { isNullfontMissingCharacter, parseLatexLog, type LogDiagnostic } from "@oleafly/latex";
+import { compileLogCleared, useCompileStore, type CompileState } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import type { CompileError } from "@/lib/tauri";
+import { translatedLogNote } from "@/lib/compile-error-codes";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
@@ -380,7 +381,7 @@ const DiagnosticCard = memo(function DiagnosticCard({ d }: Readonly<{ d: LogDiag
         />
         <span className="min-w-0 flex-1">
           <span className="block whitespace-pre-wrap break-words text-[0.8125rem] font-medium leading-snug text-foreground">
-            {displayText(d.message)}
+            {displayText(translatedLogNote(d.message))}
           </span>
           {hasLocation ? (
             <span className="inline-flex">
@@ -494,7 +495,12 @@ function DiagnosticGroup({
   );
 }
 
-function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen: boolean }>) {
+function RawLogSection({
+  log,
+  defaultOpen,
+  clearDisabled,
+  onClear,
+}: Readonly<{ log: string; defaultOpen: boolean; clearDisabled: boolean; onClear: () => void }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [open, setOpen] = useState(defaultOpen);
   const { copied, copy } = useCopyStatus();
@@ -522,6 +528,19 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
           )}
           {copied ? t(($) => $.common.actions.copied) : t(($) => $.editor.log.copyLog)}
         </button>
+        <Tooltip label={t(($) => $.editor.log.clearHint)} side="top">
+          <button
+            type="button"
+            data-testid="compile-log-clear"
+            aria-label={t(($) => $.editor.log.clearAria)}
+            disabled={clearDisabled}
+            onClick={onClear}
+            className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground disabled:cursor-default disabled:opacity-50"
+          >
+            <Eraser className="size-3" />
+            {t(($) => $.editor.log.clear)}
+          </button>
+        </Tooltip>
       </div>
       {open && <RawLogViewer log={log} />}
     </div>
@@ -529,6 +548,7 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
 }
 
 const NO_DIAGNOSTICS: readonly LogDiagnostic[] = [];
+const NO_ERRORS: readonly CompileError[] = [];
 
 function errorText(message: string): string {
   return (message.split("\n")[0] ?? "")
@@ -564,9 +584,10 @@ function coversElement(range: Range, element: Element): boolean {
   );
 }
 
-export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Readonly<{
-  snapshot?: Pick<CompileState, "log" | "errors" | "status" | "diagnostics"> & { mainDoc: string };
+export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine, onClearLog }: Readonly<{
+  snapshot?: Pick<CompileState, "log" | "errors" | "status" | "diagnostics"> & { mainDoc: string; logCleared?: boolean };
   onOpenLocation?: typeof openFileAndGotoLine;
+  onClearLog?: () => void;
 }> = {}) {
   const { t } = useTranslation(["common", "editor"]);
   const displayText = useDisplayText();
@@ -574,10 +595,18 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
   const storedErrors = useCompileStore((s) => s.errors);
   const storedStatus = useCompileStore((s) => s.status);
   const storedDiagnostics = useCompileStore((s) => s.diagnostics);
+  const storedLogCleared = useCompileStore(compileLogCleared);
+  const clearStoredLog = useCompileStore((s) => s.clearLog);
   const storedMainDoc = useFilesStore((s) => s.mainDoc);
-  const { log, errors, status, diagnostics, mainDoc } = snapshot ?? {
+  const source = snapshot ?? {
     log: storedLog, errors: storedErrors, status: storedStatus, diagnostics: storedDiagnostics, mainDoc: storedMainDoc,
+    logCleared: storedLogCleared,
   };
+  const { status, mainDoc } = source;
+  const logCleared = source.logCleared === true;
+  const log = logCleared ? "" : source.log;
+  const errors = logCleared ? NO_ERRORS : source.errors;
+  const diagnostics = logCleared ? null : source.diagnostics;
   const scrollBoxRef = useRef<HTMLDivElement>(null);
   const followTailRef = useRef(true);
   const tailFrameRef = useRef<number | null>(null);
@@ -606,11 +635,14 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     const warns: LogDiagnostic[] = [];
     const boxes: LogDiagnostic[] = [];
     const infos: LogDiagnostic[] = [];
+    const missing: LogDiagnostic[] = [];
     for (const d of structured) {
       if (d.severity === "error") {
         if (!reportedAsCard(d, reported)) errs.push(d);
       } else if (d.category === "undefined-reference" || d.category === "undefined-citation") {
         if (!reportedAsCard(d, reported)) refs.push(d);
+      } else if (d.category === "missing-character") {
+        (isNullfontMissingCharacter(d.message) ? infos : missing).push(d);
       } else if (d.severity === "typesetting") {
         boxes.push(d);
       } else if (d.severity === "info") {
@@ -619,7 +651,7 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
         warns.push(d);
       }
     }
-    return { cards: [...errs, ...refs, ...warns], errs, refs, warns, boxes, infos };
+    return { cards: [...errs, ...refs, ...warns], errs, refs, warns, boxes, infos, missing };
   }, [structured, errors]);
   const summary = useMemo(() => {
     const errorCards = errors.filter((error) => error.kind === "error").length;
@@ -717,16 +749,21 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
           {groups.cards.length > 0 && (
             <DiagnosticList items={groups.cards} scrollRef={scrollBoxRef} gap="cards" />
           )}
+          <DiagnosticGroup label={t(($) => $.editor.log.missingCharacters)} items={groups.missing} scrollRef={scrollBoxRef} />
           <DiagnosticGroup label={t(($) => $.editor.log.typesetting)} items={groups.boxes} scrollRef={scrollBoxRef} />
           <DiagnosticGroup label={t(($) => $.editor.log.info)} items={groups.infos} scrollRef={scrollBoxRef} />
           {!log && errors.length === 0 && (
-            <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.editor.log.empty)}</p>
+            <p className="text-[0.6875rem] text-muted-foreground">
+              {logCleared ? t(($) => $.editor.log.cleared) : t(($) => $.editor.log.empty)}
+            </p>
           )}
           {log && (
             <RawLogSection
               key={errors.length === 0 ? "clean" : "errors"}
               log={log}
               defaultOpen={errors.length === 0}
+              clearDisabled={status === "compiling"}
+              onClear={onClearLog ?? clearStoredLog}
             />
           )}
         </div>

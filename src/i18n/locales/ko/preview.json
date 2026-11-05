@@ -94,12 +94,16 @@
     "exitFullscreen": "전체 화면 종료",
     "retryCompile": "컴파일 다시 시도",
     "chooseEngine": "엔진 선택",
+    "installJapanese": "일본어 지원 설치(약 450 MB)",
+    "useCompiler": "{{compiler}} 사용",
     "installPackages_other": "파일 {{count}}개 찾아서 설치",
     "downloadTypst": "Typst {{version}} 다운로드",
     "useTypst": "Typst {{version}} 사용",
     "installTool": "{{tool}} {{version}} 설치",
     "installToolSize": "{{tool}} {{version}} 설치({{size}})",
-    "engineSettings": "엔진 설정 열기"
+    "engineSettings": "엔진 설정 열기",
+    "useTectonic": "Tectonic 사용",
+    "useTectonicForEveryone": "모두에게 Tectonic 사용"
   },
   "html": {
     "builtTitle": "웹 페이지로 빌드됨",

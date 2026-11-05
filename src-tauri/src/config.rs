@@ -204,6 +204,8 @@ pub struct AppConfig {
     pub typst_default_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latex_default_engine: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tex_distribution: Option<String>,
     #[serde(default = "default_true")]
     pub research_keep_awake: bool,
     #[serde(default = "default_true")]
@@ -278,6 +280,7 @@ impl Default for AppConfig {
             cli_settings_revision: 0,
             typst_default_version: None,
             latex_default_engine: None,
+            tex_distribution: None,
             research_keep_awake: true,
             research_notifications: true,
             research_command_network: false,
@@ -584,6 +587,27 @@ pub(crate) fn set_latex_default_engine_choice(engine: &str) -> Result<(), String
     }
     update_config(|config| {
         config.latex_default_engine = choice;
+        Ok(())
+    })
+}
+
+pub(crate) fn tex_distribution_choice() -> Option<String> {
+    let text = std::fs::read_to_string(config_path().ok()?).ok()?;
+    serde_json::from_str::<serde_json::Value>(&text)
+        .ok()?
+        .get("tex_distribution")?
+        .as_str()
+        .map(str::trim)
+        .filter(|bin_dir| !bin_dir.is_empty())
+        .map(str::to_owned)
+}
+
+pub(crate) fn set_tex_distribution_choice(bin_dir: Option<String>) -> Result<(), String> {
+    if tex_distribution_choice() == bin_dir {
+        return Ok(());
+    }
+    update_config(|config| {
+        config.tex_distribution = bin_dir;
         Ok(())
     })
 }
@@ -1164,6 +1188,7 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.typst_default_version = stored.typst_default_version;
     config.ai_tools_model = stored.ai_tools_model;
     config.latex_default_engine = stored.latex_default_engine;
+    config.tex_distribution = stored.tex_distribution;
     config.cua_driver = stored.cua_driver;
     config.research_tasks_enabled = stored.research_tasks_enabled;
     config.research_background_enabled = stored.research_background_enabled;
@@ -2581,6 +2606,32 @@ mod tests {
         set_latex_default_engine_choice("tectonic").unwrap();
         assert_eq!(latex_default_engine_choice(), None);
         assert_eq!(read_config().unwrap().latex_default_engine, None);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn the_chosen_tex_distribution_persists_and_settings_writes_keep_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        assert_eq!(tex_distribution_choice(), None);
+        write_config(&AppConfig::default()).unwrap();
+        assert!(!std::fs::read_to_string(config_path().unwrap())
+            .unwrap()
+            .contains("tex_distribution"));
+
+        set_tex_distribution_choice(Some("/opt/tex/bin".into())).unwrap();
+        assert_eq!(tex_distribution_choice().as_deref(), Some("/opt/tex/bin"));
+
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.tex_distribution = None;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert_eq!(tex_distribution_choice().as_deref(), Some("/opt/tex/bin"));
+
+        set_tex_distribution_choice(None).unwrap();
+        assert_eq!(tex_distribution_choice(), None);
+        assert_eq!(read_config().unwrap().tex_distribution, None);
         std::fs::remove_dir_all(dir).ok();
     }
 

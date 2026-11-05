@@ -34,7 +34,7 @@ vi.mock("@/store/settings", () => ({
 
 const engine = vi.hoisted(() => {
   const state = {
-    info: { tlmgr: "/tex/bin/tlmgr" } as { tlmgr: string | null } | null,
+    info: { tlmgr: "/tex/bin/tlmgr" } as { tlmgr: string | null; system_package_manager?: string } | null,
     loaded: true,
     installed: ["booktabs"] as string[],
     busyPkg: null as string | null,
@@ -172,6 +172,14 @@ describe("LatexPackagesDialog", () => {
     expect(screen.getByText(text.unknownInstall)).toBeInTheDocument();
     expect(screen.queryByText(text.installed)).not.toBeInTheDocument();
     expect(engine.state.refreshPackages).not.toHaveBeenCalled();
+  });
+
+  it("names the system package manager for a distro TeX", async () => {
+    filesState.engine = { id: "latexmk" };
+    engine.state.info = { tlmgr: null, system_package_manager: "apt" };
+    await openDialog();
+    expect(screen.getByText(fill(text.systemManaged, { manager: "apt" }))).toBeInTheDocument();
+    expect(screen.queryByText(text.unknownInstall)).not.toBeInTheDocument();
   });
 
   it("adds the package with its options through the editor and closes", async () => {

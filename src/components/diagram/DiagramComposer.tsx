@@ -22,8 +22,10 @@ import { useTourStore } from "@/store/tours";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { tourRegistry } from "@/lib/tours/registry";
 import {
+  cancelIsolatedCompile,
   compileIsolated,
   readIsolatedPdf,
+  withEventListener,
   writeProjectBytes,
   writeFileContent,
   writeBytesFile,
@@ -44,6 +46,7 @@ import { insertAtCursor } from "@/components/editor/cm/controller";
 import { diagramCodeExtensions, diagramLanguageExtensions } from "@/components/diagram/code-extensions";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
+import { logError } from "@/lib/log";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { sharedWriteRefusal, writeSharedText } from "@/lib/shared-document-writes";
@@ -130,9 +133,20 @@ function assertSharedWritable(projectId: string): void {
   if (refusal) throw refusal;
 }
 
+const FIGURE_LOG_EVENT = "figure:log";
+
 const HOST: DiagramHost = {
-  compileIsolated: (projectId, source) =>
-    compileIsolated(projectId, source, useSettingsStore.getState().offline),
+  compileIsolated: async (projectId, source, onLog) => {
+    const run = () => compileIsolated(projectId, source, useSettingsStore.getState().offline);
+    try {
+      return await (onLog ? withEventListener(FIGURE_LOG_EVENT, onLog, run) : run());
+    } catch (error) {
+      throw describedWriteFailure(error);
+    }
+  },
+  stopCompile: async () => {
+    await cancelIsolatedCompile().catch((error: unknown) => logError("stop figure compile", error));
+  },
   readIsolatedPdf,
   pdfToPng: async (...args) => {
     const { pdfPageToPng } = await import("@/lib/pdf-image");

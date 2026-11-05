@@ -274,8 +274,24 @@ fn tail(text: &str, max: usize) -> String {
     text[start..].to_owned()
 }
 
+fn refusal_of(report: &Value) -> Option<String> {
+    let error = &report["error"];
+    let message = error["message"].as_str().filter(|text| !text.is_empty())?;
+    match error["hint"].as_str().filter(|text| !text.is_empty()) {
+        Some(hint) => Some(format!("{message}\n{hint}")),
+        None => Some(message.to_owned()),
+    }
+}
+
 pub(crate) fn compile_summary(report: &Value) -> CompileSummary {
     let build = &report["build"];
+    if let Some(reason) = refusal_of(report).filter(|_| build.is_null()) {
+        return CompileSummary {
+            log_tail: tail(&reason, MAX_LOG_TAIL),
+            skipped: Some(reason),
+            ..CompileSummary::default()
+        };
+    }
     let (mut errors, mut warnings) = (0u32, 0u32);
     for entry in build["errors"].as_array().into_iter().flatten() {
         let kind = entry["kind"]
@@ -323,6 +339,7 @@ async fn compile_with_cli(root: PathBuf) -> Result<CompileSummary, String> {
         .stderr(std::process::Stdio::piped())
         .kill_on_drop(true)
         .no_console();
+    crate::proc::clear_appimage_env(command.as_std_mut());
     let output = tokio::time::timeout(
         Duration::from_secs(BUILD_TIMEOUT_SECONDS + 30),
         command.output(),
@@ -444,6 +461,57 @@ mod tests {
             (false, 1, 1)
         );
         assert_eq!(summary.log_tail, "! Undefined control sequence.");
+        assert_eq!(summary.skipped, None);
+    }
+
+    #[test]
+    fn a_build_the_cli_could_not_start_is_skipped_with_its_reason() {
+        let report = json!({
+            "ok": false,
+            "command": "build",
+            "error": {
+                "kind": "missing_tool",
+                "code": "environment.missing_tool",
+                "message": "Tectonic was not found.",
+                "hint": "Install it or set OLEAFLY_TECTONIC."
+            },
+            "warnings": []
+        });
+        let summary = compile_summary(&report);
+        let reason = "Tectonic was not found.\nInstall it or set OLEAFLY_TECTONIC.";
+        assert_eq!(summary.skipped.as_deref(), Some(reason));
+        assert_eq!(summary.log_tail, reason);
+        assert!(!summary.ok);
+    }
+
+    #[test]
+    fn a_refusal_without_a_hint_keeps_its_message() {
+        let report = json!({
+            "ok": false,
+            "error": { "code": "build.failed", "message": "Quarto projects can't be built." }
+        });
+        assert_eq!(
+            compile_summary(&report).skipped.as_deref(),
+            Some("Quarto projects can't be built.")
+        );
+    }
+
+    #[test]
+    fn a_failure_with_a_build_stays_a_failed_build() {
+        let report = json!({
+            "ok": false,
+            "build": { "ok": false, "log": "x", "errors": [] },
+            "error": { "code": "build.failed", "message": "The build failed." }
+        });
+        let summary = compile_summary(&report);
+        assert_eq!(summary.skipped, None);
+        assert_eq!((summary.errors, summary.log_tail.as_str()), (1, "x"));
+    }
+
+    #[test]
+    fn a_report_with_no_reason_counts_as_one_error() {
+        let summary = compile_summary(&json!({ "ok": false }));
+        assert_eq!((summary.ok, summary.errors), (false, 1));
         assert_eq!(summary.skipped, None);
     }
 

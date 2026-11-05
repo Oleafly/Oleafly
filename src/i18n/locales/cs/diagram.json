@@ -38,6 +38,7 @@
       "compile": "Kompilovat",
       "recompile": "Kompilovat znovu",
       "compiling": "Kompilace…",
+      "stop": "Zastavit",
       "saveTooltip": "Uložit tento diagram",
       "save": "Uložit",
       "saveToProject": "Uložit do projektu",

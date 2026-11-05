@@ -1,4 +1,4 @@
-import type { ComponentInfo } from "@/lib/tauri";
+import type { CompileError, ComponentInfo, TypstOptionsDescriptor } from "@/lib/tauri";
 
 export const TYPST_FONT_PACK_IDS = ["typst-cjk", "typst-text", "typst-sans", "typst-mono", "typst-icons"] as const;
 export type TypstFontPackId = (typeof TYPST_FONT_PACK_IDS)[number];
@@ -10,6 +10,23 @@ export type TemplateFontPackId = (typeof TEMPLATE_FONT_PACK_IDS)[number];
 export type FontPackId = TypstFontPackId | TemplateFontPackId;
 
 const CJK_CHARACTER = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu;
+
+const GLYPH_WARNING_CODES: ReadonlySet<string> = new Set([
+  "typst.placeholder_glyphs",
+  "typst.missing_glyphs",
+  "typst.missing_glyphs_pack",
+  "typst.missing_glyphs_sealed",
+]);
+
+export function isTypstGlyphWarning(error: Pick<CompileError, "code">): boolean {
+  return Boolean(error.code && GLYPH_WARNING_CODES.has(error.code));
+}
+
+export function typstPacksApply(
+  options: Pick<TypstOptionsDescriptor, "system_fonts" | "reproducible"> | null | undefined,
+): boolean {
+  return !options || (options.system_fonts && !options.reproducible);
+}
 
 export function cjkCharacters(texts: Iterable<string>, limit = 32): string {
   const found = new Set<string>();

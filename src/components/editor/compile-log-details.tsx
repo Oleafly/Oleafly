@@ -2,30 +2,53 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { CompileError, ComponentInfo } from "@/lib/tauri";
 import { compileErrorExcerpt } from "@/lib/compile-error-excerpt";
-import { missingTypstFont, packForFamily, type FontPackId } from "@/lib/typst-font-packs";
+import {
+  missingTypstFont,
+  packForFamily,
+  type FontPackId,
+  typstPacksApply,
+} from "@/lib/typst-font-packs";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useFontPacksStore } from "@/store/font-packs";
 
-function useMissingFontPack(message: string): { family: string; pack: ComponentInfo } | null {
-  const family = missingTypstFont(message);
+const GLYPH_PACK_CODE = "typst.missing_glyphs_pack";
+
+interface MissingFontPack {
+  readonly family: string | null;
+  readonly pack: ComponentInfo;
+  readonly packsApply: boolean;
+}
+
+function useMissingFontPack(error: CompileError): MissingFontPack | null {
+  const family = missingTypstFont(error.message);
+  const wanted = error.code === GLYPH_PACK_CODE ? error.params?.pack : undefined;
   const packs = useFontPacksStore((state) => state.packs);
   const status = useFontPacksStore((state) => state.status);
   const load = useFontPacksStore((state) => state.load);
+  const packsApply = useFilesStore((state) => typstPacksApply(state.engine.typst_options));
+  const lookingForPack = Boolean(family || wanted);
   useEffect(() => {
-    if (family && status === "idle") void load();
-  }, [family, status, load]);
-  const pack = family ? packForFamily(packs, family) : undefined;
-  return family && pack && !pack.installed ? { family, pack } : null;
+    if (lookingForPack && status === "idle") void load();
+  }, [lookingForPack, status, load]);
+  const named = wanted ? packs.find((entry) => entry.id === wanted) : undefined;
+  const pack = named ?? (family ? packForFamily(packs, family) : undefined);
+  return pack && !pack.installed ? { family, pack, packsApply } : null;
 }
 
-function MissingFontPackHint({ family, pack }: Readonly<{ family: string; pack: ComponentInfo }>) {
+function MissingFontPackHint({ missing }: Readonly<{ missing: MissingFontPack }>) {
   const { t } = useTranslation(["editor", "settings"]);
+  const { family, pack, packsApply } = missing;
   const installing = useFontPacksStore((state) => state.installing);
   const install = useFontPacksStore((state) => state.install);
   const label = t(($) => $.settings.downloads.fontPacks[pack.id as FontPackId].label);
+  const hint = () => {
+    if (!family) return t(($) => $.editor.log.fontPackGlyphs, { pack: label });
+    if (!packsApply) return t(($) => $.editor.log.fontPackSealed, { family, pack: label });
+    return t(($) => $.editor.log.fontPack, { family, pack: label });
+  };
   const downloadAndCompile = async () => {
     if (await install(pack.id)) {
       await useFilesStore.getState().refreshEngine();
@@ -39,15 +62,17 @@ function MissingFontPackHint({ family, pack }: Readonly<{ family: string; pack: 
       data-testid="font-pack-hint"
       className="flex flex-wrap items-center gap-x-2 gap-y-1 px-0.5 text-[0.71875rem] leading-snug text-muted-foreground"
     >
-      <span>{t(($) => $.editor.log.fontPack, { family, pack: label })}</span>
-      <button
-        type="button"
-        onClick={() => void downloadAndCompile()}
-        disabled={installing !== null}
-        className="rounded-md border border-input px-2 py-0.5 text-[0.71875rem] text-foreground hover:bg-accent disabled:opacity-50"
-      >
-        {installing === pack.id ? t(($) => $.editor.log.fontPackDownloading) : t(($) => $.editor.log.fontPackAction)}
-      </button>
+      <span>{hint()}</span>
+      {packsApply && (
+        <button
+          type="button"
+          onClick={() => void downloadAndCompile()}
+          disabled={installing !== null}
+          className="rounded-md border border-input px-2 py-0.5 text-[0.71875rem] text-foreground hover:bg-accent disabled:opacity-50"
+        >
+          {installing === pack.id ? t(($) => $.editor.log.fontPackDownloading) : t(($) => $.editor.log.fontPackAction)}
+        </button>
+      )}
     </div>
   );
 }
@@ -56,7 +81,7 @@ export function CompileErrorDetails({ err }: Readonly<{ err: CompileError }>) {
   const { t } = useTranslation(["editor"]);
   const excerpt = compileErrorExcerpt(err);
   const hints = err.hints ?? [];
-  const missingFont = useMissingFontPack(err.message);
+  const missingFont = useMissingFontPack(err);
   if (!excerpt && hints.length === 0 && !missingFont) return null;
   const tone = err.kind === "error" ? "text-red-500" : "text-amber-500";
   return (
@@ -87,7 +112,7 @@ export function CompileErrorDetails({ err }: Readonly<{ err: CompileError }>) {
           </pre>
         </figure>
       )}
-      {missingFont && <MissingFontPackHint family={missingFont.family} pack={missingFont.pack} />}
+      {missingFont && <MissingFontPackHint missing={missingFont} />}
       {hints.length > 0 && (
         <ul className="space-y-1 px-0.5">
           {hints.map((hint) => (

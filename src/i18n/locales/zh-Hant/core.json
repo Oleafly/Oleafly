@@ -56,9 +56,24 @@
     "undo": "復原"
   },
   "compile": {
+    "failedWithReason": "編譯失敗：{{message}}",
     "noOfflineMode": "{{engine}} 未提供離線編譯模式，將以一般方式編譯。",
+    "pandocRequired": "Pandoc 無法使用。請在設定 > 引擎 > Markdown 中修復，然後重新編譯。",
+    "pandocSetupFailed": "Pandoc 設定失敗：{{message}}",
+    "pdfChanged": "Oleafly 讀取編譯出的 PDF 時它發生了變化，因此保留先前的預覽。請重新編譯以更新。",
+    "superseded": "較新的編譯已取代這一次。",
     "retry": "重新編譯",
+    "syntaxCheckFailed": "語法檢查發現錯誤。請修正它們，或關閉「{{setting}}」。",
+    "taggedFailed": "標記式編譯失敗：{{message}}",
+    "taggedPdfChanged": "Oleafly 讀取標記式 PDF 時它發生了變化，因此保留先前的預覽。請重新編譯以更新。",
+    "taggedPdfInvalid": "標記式編譯沒有產生有效的 PDF。",
+    "tinytexDownloading": "TinyTeX 仍在下載。下載完成後會自動開始這次編譯。",
+    "sharedTexEditor": "這個專案是共享的，因此改用 Tectonic 會影響所有人。安裝 TinyTeX 則只會改變這台電腦。",
+    "sharedTexViewer": "你無法變更這個共享專案的編譯器，因此請安裝 TinyTeX，以便在這裡編譯它。",
     "bundleFetchFailed": "Oleafly 無法下載此文件所需的 TeX 套件。請檢查網路連線，然後重新編譯。",
+    "offlineNotCached": "離線模式已開啟，而且 {{files}} 可能還沒有下載。請關閉離線模式後重新編譯。",
+    "offlineNotCachedUnnamed": "離線模式已開啟，而且這份文件需要的某個 TeX 套件可能還沒有下載。請關閉離線模式後重新編譯。",
+    "goOnlineAndCompile": "關閉並編譯",
     "typstMissing": "未安裝 Typst {{version}}。請下載這個版本，或將此專案切換到其他版本。",
     "typstPackage": {
       "downloadFailed": "Typst 無法下載 {{spec}}。請檢查網路連線，然後重新編譯。",
@@ -167,9 +182,20 @@
     "pdfFailedDetail": "無法儲存 PDF：{{detail}}",
     "pngFailed": "無法儲存 PNG",
     "pngFailedDetail": "無法儲存 PNG：{{detail}}",
+    "projectChanged": "開啟的專案已變更。請從你要儲存的專案重新開始匯出。",
     "revealFailed": "檔案已儲存，但無法開啟它所在的資料夾。",
     "saved": "{{kind}} 已儲存 · {{fileName}}",
-    "showInFolder": "在資料夾中顯示"
+    "savedAfterFailedCompile": "{{kind}} 已儲存 · {{fileName}}。上一次編譯失敗，因此這個檔案可能不完整。",
+    "savedSource": "{{kind}} 已儲存 · {{fileName}}。如果它使用專案中的圖片或參考文獻，請在編譯前將它們複製到它旁邊。",
+    "savedStale": "{{kind}} 已儲存 · {{fileName}}。它來自上一次編譯，不包含你最新的編輯。",
+    "savedWithoutContent": "{{kind}} 已儲存 · {{fileName}}。部分內容缺失，因為 Typst 無法將它們寫入這種格式：{{elements}}。",
+    "savedFromSource": "{{kind}} 已儲存 · {{fileName}}。Typst {{version}} 無法將這份文件完整寫入這種格式，因此檔案是從原始碼建立的。旋轉、縮放、移動或傾斜的文字可能會缺失。請將專案切換到 Typst 0.15 或更新的版本，以保留這些文字。",
+    "savedWithoutEquations": "{{kind}} 已儲存 · {{fileName}}。方程式、圖片、註腳或參照可能缺失，因為 Typst {{version}} 無法將它們寫入這種格式。請將專案切換到 Typst 0.15 或更新的版本。",
+    "savedWithWarnings_other": "{{kind}} 已儲存 · {{fileName}}，有 {{count}} 則警告。",
+    "savedWithoutLinks_other": "{{kind}} 已儲存 · {{fileName}}。有 {{count}} 個符號連結未放入封存檔。",
+    "showInFolder": "在資料夾中顯示",
+    "showWarnings": "顯示警告",
+    "warningsTitle": "匯出警告"
   },
   "externalChange": {
     "reloadFailed": "專案設定已更新，但部分變更過的檔案無法重新載入。"
@@ -315,6 +341,11 @@
     "action_other": "尋找並安裝 {{count}} 個檔案",
     "installing_other": "正在安裝 {{count}} 個套件。安裝完成後會重新開始編譯。",
     "summary_other": "編譯時找不到 {{names}}。請在 TeX Live 中尋找對應的套件。",
+    "systemHint": {
+      "apt": "用 apt-file search {{name}} 找出它的套件，或用 sudo apt install texlive-full 安裝全部。",
+      "dnf": "請執行 {{command}}。"
+    },
+    "systemManaged_other": "編譯時找不到 {{names}}。這個 TeX Live 來自你的 Linux 發行版，因此 Oleafly 無法替它新增套件。{{hint}}",
     "userTree": "系統 TeX 樹為唯讀，因此套件已安裝到你位於 {{path}} 的個人樹中。"
   },
   "models": {
@@ -361,6 +392,7 @@
   },
   "pandoc": {
     "downloadFailed": "無法下載 pandoc。請手動安裝後再試一次。",
+    "downloadFailedDetail": "無法下載 pandoc（{{detail}}）。請手動安裝後再試一次。",
     "downloadingPercent": "正在下載 pandoc… {{progress}}%",
     "downloadingSize": "正在下載 pandoc… {{megabytes}} MB",
     "installGuide": "安裝指南"
@@ -467,7 +499,7 @@
     "compileFailed": "標記式編譯失敗。請檢查引擎後再試一次。",
     "compiled": "已編譯標記式 PDF。請查看下方的無障礙評估結果。",
     "compiledWithErrors": "標記式編譯已完成，但有錯誤。請查看記錄檔。",
-    "engineRequired": "請先在設定的「LaTeX 引擎」中啟用標記引擎。"
+    "engineRequired": "請在設定 > 引擎 > LaTeX 中安裝 TinyTeX，才能製作標記式 PDF。"
   },
   "terminal": {
     "defaultTitle": "終端機 {{index}}"
@@ -523,7 +555,8 @@
       "unpacking": "正在解壓縮…"
     },
     "removeFailed": "無法移除 TinyTeX。",
-    "removed": "已移除 TinyTeX。"
+    "removed": "已移除 TinyTeX。",
+    "tryAgain": "再試一次"
   },
   "toolActivity": {
     "labels": {

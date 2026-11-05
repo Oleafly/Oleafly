@@ -94,3 +94,11 @@ export function collabSettingsLocked(projectId: string | null): boolean {
 export function useCollabSettingsLocked(projectId: string | null): boolean {
   return useCollabEditorGate((gate) => settingsLocked(gate, projectId));
 }
+
+export function collabProjectShared(projectId: string | null): boolean {
+  return collabVisualReadOnly(projectId);
+}
+
+export function useCollabProjectShared(projectId: string | null): boolean {
+  return useCollabVisualReadOnly(projectId);
+}

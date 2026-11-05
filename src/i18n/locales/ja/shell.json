@@ -474,9 +474,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "この失敗は、同梱の Tectonic エンジンで知られている制約に当てはまります。このプロジェクトのコンパイル方法を選んでください。選択はプロジェクトに保存されるため、共同作業者にも同じ設定が適用されます。",
     "descriptionImportScan": "読み込み時のスキャンで、同梱の Tectonic エンジンでは扱えない機能が見つかりました。このプロジェクトのコンパイル方法を選んでください。選択はプロジェクトに保存されるため、共同作業者にも同じ設定が適用されます。",
+    "descriptionTexMissing": "このプロジェクトは latexmk でコンパイルするようになりましたが、このコンピュータではまだ実行できません。Oleafly が TinyTeX をインストールすることも、組み込みの Tectonic エンジンに戻すこともできます。",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "latexmk 経由の pdfLaTeX"
+    },
+    "findingNotes": {
+      "epsFile": "コンパイルは {{file}} で停止しました。",
+      "missingFiles": "コンパイルで {{files}} が見つかりませんでした。",
+      "mirrorStatus": "ミラーが HTTP {{status}} を返しました。"
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "参考文献に biblatex と Biber を使っています",
+        "detail": "このプロジェクトは、参考文献リストの作成に Biber が必要です。Oleafly には、組み込みエンジンに合わせた Biber が同梱されています。コンパイル後も引用が「?」のままの場合は、ログで Biber に関するメモを確認してください。"
+      },
+      "bundle-fetch-failed": {
+        "title": "TeX パッケージのダウンロードに失敗しました",
+        "detail": "Oleafly がミラーから TeX パッケージをダウンロードできなかったため、コンパイルが文書に到達しませんでした。接続を確認して、もう一度コンパイルしてください。ダウンロードは中断したところから再開します。"
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 には pdfLaTeX が必要です",
+        "detail": "CJKutf8 と CJK は pdfLaTeX でしか動作しません。組み込みエンジン（XeTeX）でも文書はコンパイルされますが、中国語、日本語、韓国語のテキストが PDF に含まれません。システム TeX の pdfLaTeX に切り替えるか、パッケージを xeCJK に置き換えてください。"
+      },
+      "class-compat": {
+        "title": "ドキュメントクラスがエンジンの制約に当たっています",
+        "detail": "コンパイルエラーの原因は文書ではなく、クラスまたはスタイルファイルにあります。出版社のクラスは、組み込みエンジンにないツールや pdfTeX の動作に依存していることがよくあります。latexmk は完全な TeX ディストリビューションでコンパイルします。"
+      },
+      "eps-image": {
+        "title": "EPS 画像には変換が必要です",
+        "detail": "組み込みエンジンは EPS 画像を配置できません。epstopdf か Inkscape で PDF に変換するか、システム TeX の pdfLaTeX に切り替えてください。pdfLaTeX は Ghostscript 経由で EPS を変換します。"
+      },
+      "fontspec": {
+        "title": "カスタムフォント（fontspec）",
+        "detail": "fontspec には、指定したフォントがこのコンピュータにある必要があります。オンラインエディタに付属していたフォントは、ここにはない可能性があります。"
+      },
+      "glossaries-index": {
+        "title": "用語集または索引のツール",
+        "detail": "glossaries と makeindex には makeindex または xindy の追加実行が必要ですが、組み込みエンジンでは行われません。"
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref が pdfTeX ドライバに設定されています",
+        "detail": "このクラスまたはプリアンブルが hyperref の pdftex ドライバを強制しており、組み込みエンジンでは使えません。システム TeX の pdfLaTeX に切り替えるか、pdftex オプションを削除して hyperref にドライバを選ばせてください。"
+      },
+      "minted": {
+        "title": "minted には shell escape と Pygments が必要です",
+        "detail": "minted によるコードリストには、システムの TeX ディストリビューションと pygmentize が必要です。システムの LaTeX に切り替えてから、すべてのプロジェクトファイルを信頼できる場合にのみ、このコンピュータで外部コマンドを許可してください。"
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "組み込みの TeX バンドルにパッケージがありません",
+        "detail": "このプロジェクトが読み込むものの 1 つが、組み込みの TeX バンドルに入っていません。テンプレートに付属していたファイルであればプロジェクトに追加し、そうでなければシステム TeX に切り替えて TeX Live からパッケージをインストールしてください。"
+      },
+      "pdftex-only": {
+        "title": "pdfTeX 専用のパッケージ",
+        "detail": "組み込みエンジンは XeTeX をベースにしており、このプロジェクトは pdfTeX でしか動作しないパッケージやコマンドに依存しています。latexmk は本物の pdfLaTeX でコンパイルします。"
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX には、使用中のシステム TeX ディストリビューションに付属するヘルパーが必要です。システムの LaTeX に切り替えてから、すべてのプロジェクトファイルを信頼できる場合にのみ、このコンピュータで外部コマンドを許可してください。"
+      },
+      "shell-escape": {
+        "title": "shell escape コマンド",
+        "detail": "ソースが \\write18 などの shell escape を使っています。システムの LaTeX に切り替えてから、すべてのプロジェクトファイルを信頼でき、必要なツールがインストールされている場合にのみ、このコンピュータで外部コマンドを許可してください。"
+      }
     },
     "recommended": "おすすめ",
     "shellEscape": {
@@ -502,13 +562,14 @@
       "withFailures_other": "設定不要で、オフラインでも動きます。{{features}} は引き続き失敗する見込みです。"
     },
     "tinytex": {
-      "description": "コンパクトな TeX Live をホームフォルダにインストールします。管理者権限は不要です。最初のダウンロードは約 250 MB です。論文誌のテンプレートがあとからパッケージを追加で取得し、合計でおよそ 1 GB になることがあります。",
+      "description": "コンパクトな TeX Live をインストールします。管理者権限は不要です。最初のダウンロードは約 250 MB です。論文誌のテンプレートがあとからパッケージを追加で取得し、合計でおよそ 1 GB になることがあります。",
       "download": "TinyTeX をダウンロードして使う",
       "resume": "ダウンロードを再開（{{megabytes}} MB 完了）",
       "title": "TinyTeX をダウンロード"
     },
     "titleCompileFailure": "このコンパイルには組み込みエンジン以上の機能が必要です",
-    "titleImportScan": "このプロジェクトには組み込みエンジン以上の機能が必要です"
+    "titleImportScan": "このプロジェクトには組み込みエンジン以上の機能が必要です",
+    "titleTexMissing": "このコンパイラには動作する TeX ディストリビューションが必要です"
   },
   "shellCommands": {
     "allow": "外部コマンドを許可",
@@ -1132,11 +1193,16 @@
     },
     "wait": {
       "description": "{{phase}} コンパイルは順番待ちに入っており、エンジンの準備ができ次第、自動的に始まります。",
+      "stop": "インストールを停止",
       "title": "TinyTeX をダウンロード中です"
     },
     "typstQuit": {
       "title": "Typst はまだインストール中です",
       "description": "Typst {{version}} をダウンロードしています。今終了するとダウンロードが止まり、設定からやり直す必要があります。"
+    },
+    "packageQuit": {
+      "title": "Oleafly はまだ TeX パッケージを変更中です",
+      "description": "今終了するとインストールまたは削除が途中で止まり、TeX のパッケージマネージャーが壊れる可能性があります。"
     }
   },
   "toolbar": {
@@ -1302,7 +1368,7 @@
       "compiling": "Typst でコンパイルしています"
     },
     "errors": {
-      "pandoc": "Pandoc の準備ができていません。ツールからインストールしてから、もう一度お試しください。",
+      "pandoc": "Pandoc の準備ができていません。設定 > エンジン > Markdown で修復してから、もう一度お試しください。",
       "noMain": "メインの LaTeX ファイルを読み込めませんでした。",
       "emptyOutput": "Pandoc が空の文書を返しました。",
       "failed": "変換が止まりました: {{detail}}"
@@ -1351,7 +1417,8 @@
     "svg": "SVG 画像",
     "html": "HTML",
     "experimental": "試験的",
-    "htmlNote": "Typst の HTML 書き出しはまだ試験的です。ページ設定と配置された要素は含まれません。",
+    "htmlNote": "Typst の HTML 書き出しはまだ試験的です。テキストと画像は保持されますが、ページ設定や図形は含まれません。",
+    "htmlNoteOldTypst": "Typst {{version}} の HTML 書き出しでは数式が含まれません。Typst 0.15 以降では保持されます。",
     "ppi": "解像度",
     "ppiValue": "{{ppi}} PPI",
     "pages": "ページ",

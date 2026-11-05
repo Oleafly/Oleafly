@@ -4,6 +4,7 @@ import type {
   MigrationReport,
   MigrationStep,
 } from "@/features/latex-to-typst-migration";
+import { errorText } from "@/lib/app-error";
 import { useFilesStore } from "@/store/files";
 
 export type TypstMigrationPhase =
@@ -82,7 +83,7 @@ export const useTypstMigrationStore = create<TypstMigrationStore>((set, get) => 
         phase: {
           kind: "failed",
           code,
-          message: error instanceof Error ? error.message : String(error),
+          message: errorText(error instanceof Error ? error.message : String(error)),
         },
       });
     }

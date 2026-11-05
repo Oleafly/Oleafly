@@ -99,6 +99,29 @@ fn spawn_reaped(command: &mut Command) -> std::io::Result<u32> {
     Ok(pid)
 }
 
+fn utf8_locale_for(
+    present: impl Fn(&str) -> bool,
+    windows: bool,
+    macos: bool,
+) -> Option<&'static str> {
+    if windows
+        || ["LC_ALL", "LC_CTYPE", "LANG"]
+            .iter()
+            .any(|name| present(name))
+    {
+        return None;
+    }
+    Some(if macos { "en_US.UTF-8" } else { "C.UTF-8" })
+}
+
+pub(crate) fn fallback_utf8_locale() -> Option<&'static str> {
+    utf8_locale_for(
+        |name| std::env::var_os(name).is_some_and(|value| !value.is_empty()),
+        cfg!(windows),
+        cfg!(target_os = "macos"),
+    )
+}
+
 #[cfg(windows)]
 pub use oleafly_sandbox::process::process_image_name;
 pub use oleafly_sandbox::process::{contain_process_tree, isolate_process_tree, ProcessTreeGuard};
@@ -121,6 +144,21 @@ pub async fn terminate_process_tree(pid: u32) {
             .stderr(std::process::Stdio::null())
             .kill_on_drop(true);
         let _ = tokio::time::timeout(std::time::Duration::from_secs(2), command.status()).await;
+    }
+}
+
+#[cfg(test)]
+mod locale_tests {
+    use super::utf8_locale_for;
+
+    #[test]
+    fn a_launch_without_a_locale_gets_a_utf8_one_and_a_set_locale_stays() {
+        assert_eq!(utf8_locale_for(|_| false, false, true), Some("en_US.UTF-8"));
+        assert_eq!(utf8_locale_for(|_| false, false, false), Some("C.UTF-8"));
+        assert_eq!(utf8_locale_for(|_| false, true, false), None);
+        for set in ["LC_ALL", "LC_CTYPE", "LANG"] {
+            assert_eq!(utf8_locale_for(|name| name == set, false, true), None);
+        }
     }
 }
 

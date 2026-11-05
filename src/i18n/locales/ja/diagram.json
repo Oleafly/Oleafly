@@ -38,6 +38,7 @@
       "compile": "コンパイル",
       "recompile": "再コンパイル",
       "compiling": "コンパイル中…",
+      "stop": "停止",
       "saveTooltip": "この図を保存します",
       "save": "保存",
       "saveToProject": "プロジェクトに保存",

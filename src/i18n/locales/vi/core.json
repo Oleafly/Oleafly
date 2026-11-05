@@ -56,9 +56,24 @@
     "undo": "Hoàn tác"
   },
   "compile": {
+    "failedWithReason": "Biên dịch thất bại: {{message}}",
     "noOfflineMode": "{{engine}} không cung cấp chế độ biên dịch ngoại tuyến. Biên dịch bình thường.",
+    "pandocRequired": "Pandoc không khả dụng. Hãy sửa nó trong Cài đặt > Engine > Markdown, rồi biên dịch lại.",
+    "pandocSetupFailed": "Thiết lập Pandoc thất bại: {{message}}",
+    "pdfChanged": "PDF đã biên dịch thay đổi trong lúc Oleafly đang đọc, nên bản xem trước trước đó được giữ nguyên. Hãy biên dịch lại để cập nhật.",
     "retry": "Biên dịch lại",
+    "superseded": "Một lần biên dịch mới hơn đã thay thế lần này.",
+    "syntaxCheckFailed": "Kiểm tra cú pháp phát hiện lỗi. Hãy sửa chúng, hoặc tắt “{{setting}}”.",
+    "taggedFailed": "Biên dịch có gắn thẻ thất bại: {{message}}",
+    "taggedPdfChanged": "PDF có gắn thẻ thay đổi trong lúc Oleafly đang đọc, nên bản xem trước trước đó được giữ nguyên. Hãy biên dịch lại để cập nhật.",
+    "taggedPdfInvalid": "Lần biên dịch có gắn thẻ không tạo ra PDF hợp lệ.",
+    "tinytexDownloading": "TinyTeX vẫn đang tải. Lần biên dịch này sẽ tự bắt đầu khi tải xong.",
+    "sharedTexEditor": "Dự án này được chia sẻ, nên chuyển sang Tectonic sẽ thay đổi cho tất cả mọi người. Cài TinyTeX chỉ thay đổi trên máy tính này.",
+    "sharedTexViewer": "Bạn không thể đổi trình biên dịch của dự án chia sẻ này, nên hãy cài TinyTeX để biên dịch tại đây.",
     "bundleFetchFailed": "Oleafly không tải được các gói TeX mà tài liệu này cần. Hãy kiểm tra kết nối và biên dịch lại.",
+    "offlineNotCached": "Chế độ ngoại tuyến đang bật, và {{files}} có thể chưa được tải xuống. Hãy tắt chế độ ngoại tuyến rồi biên dịch lại.",
+    "offlineNotCachedUnnamed": "Chế độ ngoại tuyến đang bật, và một gói TeX mà tài liệu này cần có thể chưa được tải xuống. Hãy tắt chế độ ngoại tuyến rồi biên dịch lại.",
+    "goOnlineAndCompile": "Tắt và biên dịch",
     "typstMissing": "Typst {{version}} chưa được cài. Hãy tải xuống, hoặc chuyển dự án này sang phiên bản khác.",
     "typstPackage": {
       "downloadFailed": "Typst không tải được {{spec}}. Hãy kiểm tra kết nối mạng và biên dịch lại.",
@@ -167,9 +182,20 @@
     "pdfFailedDetail": "Không lưu được PDF: {{detail}}",
     "pngFailed": "Không lưu được PNG",
     "pngFailedDetail": "Không lưu được PNG: {{detail}}",
+    "projectChanged": "Dự án đang mở đã thay đổi. Hãy xuất lại từ dự án bạn muốn lưu.",
     "revealFailed": "Tệp đã được lưu, nhưng không mở được thư mục của nó.",
     "saved": "Đã lưu {{kind}} · {{fileName}}",
-    "showInFolder": "Hiện trong thư mục"
+    "savedAfterFailedCompile": "Đã lưu {{kind}} · {{fileName}}. Lần biên dịch cuối thất bại, nên tệp này có thể chưa đầy đủ.",
+    "savedSource": "Đã lưu {{kind}} · {{fileName}}. Nếu nó dùng hình ảnh hoặc tệp tài liệu tham khảo từ dự án của bạn, hãy sao chép chúng vào cạnh nó trước khi biên dịch.",
+    "savedStale": "Đã lưu {{kind}} · {{fileName}}. Tệp này lấy từ lần biên dịch cuối và không có các chỉnh sửa mới nhất của bạn.",
+    "savedWithoutContent": "Đã lưu {{kind}} · {{fileName}}. Một số nội dung bị thiếu vì Typst không thể ghi chúng sang định dạng này: {{elements}}.",
+    "savedFromSource": "Đã lưu {{kind}} · {{fileName}}. Typst {{version}} không thể ghi toàn bộ tài liệu này sang định dạng này, nên tệp được dựng từ mã nguồn. Văn bản bị xoay, co giãn, dịch chuyển hoặc nghiêng có thể bị thiếu. Hãy chuyển dự án sang Typst 0.15 trở lên để giữ phần văn bản đó.",
+    "savedWithoutEquations": "Đã lưu {{kind}} · {{fileName}}. Công thức, hình ảnh, chú thích cuối trang hoặc tham chiếu có thể bị thiếu vì Typst {{version}} không thể ghi chúng sang định dạng này. Hãy chuyển dự án sang Typst 0.15 trở lên.",
+    "savedWithWarnings_other": "Đã lưu {{kind}} · {{fileName}}, kèm {{count}} cảnh báo.",
+    "savedWithoutLinks_other": "Đã lưu {{kind}} · {{fileName}}. {{count}} liên kết tượng trưng đã bị bỏ khỏi tệp lưu trữ.",
+    "showInFolder": "Hiện trong thư mục",
+    "showWarnings": "Hiện cảnh báo",
+    "warningsTitle": "Cảnh báo khi xuất"
   },
   "externalChange": {
     "reloadFailed": "Cài đặt dự án đã được cập nhật, nhưng không tải lại được một số tệp đã thay đổi."
@@ -315,6 +341,11 @@
     "action_other": "Tìm và cài {{count}} tệp",
     "installing_other": "Đang cài {{count}} gói. Lần biên dịch sẽ khởi động lại khi xong.",
     "summary_other": "Lần biên dịch không tìm thấy {{names}}. Hãy tìm gói cung cấp chúng trong TeX Live.",
+    "systemHint": {
+      "apt": "Hãy tìm gói của nó bằng apt-file search {{name}}, hoặc cài mọi thứ bằng sudo apt install texlive-full.",
+      "dnf": "Hãy chạy {{command}}."
+    },
+    "systemManaged_other": "Lần biên dịch không tìm thấy {{names}}. Bản TeX Live này đi kèm bản phân phối Linux của bạn, nên Oleafly không thể thêm gói vào đó. {{hint}}",
     "userTree": "Cây TeX hệ thống chỉ đọc, nên các gói được đưa vào cây cá nhân của bạn tại {{path}}."
   },
   "models": {
@@ -361,6 +392,7 @@
   },
   "pandoc": {
     "downloadFailed": "Không tải được pandoc. Hãy cài thủ công rồi thử lại.",
+    "downloadFailedDetail": "Không tải được pandoc ({{detail}}). Hãy cài thủ công rồi thử lại.",
     "downloadingPercent": "Đang tải pandoc… {{progress}}%",
     "downloadingSize": "Đang tải pandoc… {{megabytes}} MB",
     "installGuide": "Hướng dẫn cài đặt"
@@ -467,7 +499,7 @@
     "compileFailed": "Biên dịch có gắn thẻ thất bại. Hãy kiểm tra engine và thử lại.",
     "compiled": "Đã biên dịch PDF có gắn thẻ. Xem kết luận trợ năng bên dưới.",
     "compiledWithErrors": "Biên dịch có gắn thẻ xong với lỗi. Hãy kiểm tra nhật ký.",
-    "engineRequired": "Hãy bật engine gắn thẻ trong Cài đặt, LaTeX Engine, trước."
+    "engineRequired": "Hãy cài TinyTeX trong Cài đặt > Engine > LaTeX để tạo PDF có gắn thẻ."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -514,6 +546,7 @@
   "tinytex": {
     "installFailed": "Không cài được TinyTeX.",
     "installGuide": "Hướng dẫn cài đặt",
+    "tryAgain": "Thử lại",
     "installed": "Đã cài TinyTeX.",
     "phase": {
       "addingPackages": "Đang thêm gói…",

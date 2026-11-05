@@ -24,9 +24,11 @@
     "invert": "Inverts the rendered colors of the PDF, a dark mode for the document",
     "retryCompile": "Starts a new compile after a failed one",
     "chooseEngine": "Button in the failed-compile panel that opens the compile engine picker",
+    "installJapanese": "Button in the failed-compile panel that installs the TeX Live packages pLaTeX and upLaTeX need. Keep the size in the sentence",
     "installPackages_other": "Button in the failed-compile panel that looks up and installs the missing LaTeX packages",
     "installTool": "Button. {{tool}} is Quarto or Calepin, {{version}} a version number.",
-    "installToolSize": "Button. {{tool}} is Quarto or Calepin, {{version}} a version number, {{size}} a download size such as 120 MB."
+    "installToolSize": "Button. {{tool}} is Quarto or Calepin, {{version}} a version number, {{size}} a download size such as 120 MB.",
+    "useTectonic": "Button in the failed-compile panel that switches this project back to the bundled Tectonic engine. Keep Tectonic verbatim."
   },
   "stale": {
     "badge": "Short badge over the document meaning the PDF is older than the editor content",

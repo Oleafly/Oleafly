@@ -4,37 +4,48 @@ use crate::process;
 use crate::typst::PinnedTypst;
 use crate::typst_settings::TypstSettings;
 use oleafly_core::biber_env::{
-    compile_path_env, prepare_unpack_dir, tectonic_biber_in, UNPACK_ENV,
+    biber_message_excerpt, compile_path_env, first_biber_on, path_with_first, prepare_unpack_dir,
+    runnable_biber_dir, tectonic_biber_in, UNPACK_ENV,
 };
 use oleafly_core::build_output::{
-    locks_unsupported, sweep_stale_staging, ArtifactSnapshot, BuildLock, DirLock, OutputStaging,
+    clear_biber_source_copies, locks_unsupported, sweep_stale_staging, ArtifactSnapshot, BuildLock,
+    DirLock, OutputStaging,
 };
+use oleafly_core::compile_limit::{extended_limit, CompileClock};
 use oleafly_core::engine_spec::{
-    self, compiler_crash_note, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url,
+    self, bundle_fetch_excerpt, bundle_retry_needed, bundle_retry_replaces_first_run,
+    compiler_crash_note, latex_entry_source_with, tex_bundle_url, write_markdown_filters,
     EngineFlags, MarkdownPdfArgs, BUNDLE_FALLBACK_NOTE, ENTRY_STEM, ENTRY_TEX,
-    MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME,
+    MARKDOWN_TYPST_VARIABLE, TECTONIC_CACHE_DIR_ARGS,
 };
 use oleafly_core::pandoc::{
     pandoc_candidates, pandoc_version_supported, parse_pandoc_version, PandocSearch,
     MIN_PANDOC_VERSION,
 };
 use oleafly_core::process_probe::{probe_output, PROBE_TIMEOUT};
-use oleafly_core::tex_distro::TexSearch;
+use oleafly_core::tex_distro::{distribution_for_tool, find_tool_in_dir, TexSearch};
 use oleafly_core::tex_errors::{
-    parse_pandoc_diagnostics, parse_tex_log_errors, rebase_log_files, resolve_extensionless_inputs,
-    CompileError, ENGINE_OUTPUT_MARKER,
+    latexmk_tool_error, parse_pandoc_diagnostics, parse_tectonic_log_errors, parse_tex_log_errors,
+    rebase_log_files, resolve_extensionless_inputs, CompileError, ENGINE_OUTPUT_MARKER,
+};
+use oleafly_core::tex_failure::{blocked_shell_escape, tex_failure_reason, DeniedShellEscape};
+use oleafly_core::tex_outputs::{
+    bibliography_above_main_error, jobname_bibliography_warning, latexmk_biber_mismatch_error,
+    nested_input_error, seed_shipped_bibliography, shipped_bibliography, shipped_bibliography_note,
+    source_head, unbuilt_index_warnings, unicode_engine_error,
 };
 use oleafly_core::typst_log::{parse_typst_diagnostics, typst_path_relative_to};
 use oleafly_core::typst_toolchain::{
-    bundled_typst_version, capabilities_for, system_typst_candidates, typst_compile_args,
-    ToolchainVersion, TypstCapabilities, TypstDiagnosticFormat,
+    bundled_typst_version, capabilities_for, host_target, installed_typst_versions,
+    system_typst_candidates, typst_compile_args, ToolchainVersion, TypstCapabilities,
+    TypstDiagnosticFormat,
 };
 use oleafly_core::{
     bibtex_search_entry, bibtex_search_environment, image_failure_evidence, image_failure_notes,
-    parse_latex_log, place_image_findings, plain_path, slash_path, source_tex_flavor, Engine,
-    EngineScratch, EngineScratchBases, Error, ErrorKind, ImageFinding, LogCategory, LogDiagnostic,
-    LogSeverity, PreparedBuild, Result, TexFlavor, Utf8StreamDecoder, Workspace, ENGINE_TEMP_DIR,
-    TEMP_DIRECTORY_VARIABLES,
+    parse_latex_log, place_image_findings, plain_path, project_search_environment,
+    project_tex_flavor, slash_path, Engine, EngineScratch, EngineScratchBases, Error, ErrorKind,
+    ImageFinding, LogCategory, LogDiagnostic, LogSeverity, PreparedBuild, Result, TexFlavor,
+    Utf8StreamDecoder, Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -43,7 +54,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Stdio};
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
     Arc,
 };
 use std::time::{Duration, Instant};
@@ -51,8 +62,10 @@ use tokio::io::AsyncReadExt;
 
 const MAX_LOG_BYTES: usize = 1024 * 1024;
 const LOG_TRUNCATION_MARKER: &str = "\n[Oleafly: compiler output truncated]\n";
+const LOST_TEXT_CODE: &str = "tex.missing_characters";
 const ENGINE_OUTPUT_TAIL_BYTES: usize = 8 * 1024;
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
+const DEFAULT_TIMEOUT: Duration = oleafly_core::compile_limit::COMPILE_TIME_LIMIT;
+const TECTONIC_CACHE_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 const STALE_STAGING: Duration = Duration::from_secs(60 * 60);
 const LOCK_POLL: Duration = Duration::from_millis(100);
 /// Intermediate files a staged Tectonic build starts from, so reference
@@ -64,6 +77,7 @@ const SEEDED_EXTENSIONS: [&str; 14] = [
 const MAX_SEEDED_BYTES: u64 = 16 * 1024 * 1024;
 type LogCallback = dyn Fn(&str) + Send + Sync;
 static ALIAS_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+static TECTONIC_PREFETCH_SEEDED: AtomicBool = AtomicBool::new(false);
 
 #[cfg(test)]
 pub type BuildOptions = EngineFlags;
@@ -141,6 +155,26 @@ impl BuildError {
             code: None,
         }
     }
+
+    pub fn tex_warning(&self) -> Option<crate::contract::Warning> {
+        let code = self.code.as_deref()?;
+        if self.kind != "warning"
+            || !code.starts_with("tex.")
+            || code.starts_with("tex.explain.")
+            || code.starts_with(LOST_TEXT_CODE)
+        {
+            return None;
+        }
+        let mut message = self
+            .explanation
+            .clone()
+            .unwrap_or_else(|| self.message.clone());
+        for hint in &self.hints {
+            message.push('\n');
+            message.push_str(hint);
+        }
+        Some(crate::contract::Warning::new(code.to_owned(), message))
+    }
 }
 
 // The engine's own lines scroll past during a build that still succeeds, so a
@@ -150,7 +184,7 @@ fn lost_text_warning(errors: &[BuildError]) -> Option<crate::contract::Warning> 
         error
             .code
             .as_deref()
-            .is_some_and(|code| code.starts_with("tex.missing_characters"))
+            .is_some_and(|code| code.starts_with(LOST_TEXT_CODE))
     })?;
     let mut message = lost.message.clone();
     if let Some(explanation) = &lost.explanation {
@@ -241,8 +275,13 @@ impl Discovery {
         let path = var("PATH");
         let tex = TexSearch {
             data_root: data_root.clone(),
+            preferred_bin_dir: data_root
+                .as_deref()
+                .and_then(crate::app_config::tex_distribution)
+                .map(PathBuf::from),
             ..TexSearch::from_env()
-        };
+        }
+        .refusing_foreign_parent(oleafly_secrets::fsperm::owned_by_current_user);
         let pandoc = PandocSearch {
             bundled_dirs: cli_dir
                 .iter()
@@ -310,8 +349,8 @@ pub struct BuildTools {
     pub pandoc_version: Option<String>,
     pub pandoc_too_old: Vec<(PathBuf, String)>,
     pub data_root: Option<PathBuf>,
-    pub tex: TexSearch,
     pub sources: BTreeMap<&'static str, &'static str>,
+    app_found: bool,
     pandoc_probed: bool,
     rejected_overrides: BTreeMap<&'static str, ToolRejection>,
     typst_capabilities: Option<TypstCapabilities>,
@@ -324,7 +363,6 @@ impl BuildTools {
         let root = &discovery.workspace_root;
         let mut tools = BuildTools {
             data_root: discovery.data_root.clone(),
-            tex: discovery.tex.clone(),
             tex_dirs: oleafly_core::tex_distro::tex_bin_dirs(&discovery.tex),
             ..BuildTools::default()
         };
@@ -341,7 +379,13 @@ impl BuildTools {
         let mut typst_candidates = labelled(discovery.bundled_candidates("typst"), "bundled");
         typst_candidates.extend(labelled(system_typst_candidates(), "system"));
         typst_candidates.extend(labelled(discovery.path_candidates("typst"), "path"));
-        let typst = discover_from_candidates("OLEAFLY_TYPST", discovery, typst_candidates, root);
+        let mut typst =
+            discover_from_candidates("OLEAFLY_TYPST", discovery, typst_candidates, root);
+        if typst.executable.is_none() {
+            let downloaded = labelled(downloaded_typst_candidates(discovery), "downloaded");
+            typst = discover_from_candidates("OLEAFLY_TYPST", discovery, downloaded, root);
+        }
+        tools.app_found = discovery.app.is_some();
         for (name, resolution) in [
             ("tectonic", &tectonic),
             ("latexmk", &latexmk),
@@ -366,7 +410,7 @@ impl BuildTools {
                     .find(|candidate| candidate.is_file())
             });
         tools.tectonic = tectonic.executable;
-        tools.latexmk = latexmk.executable;
+        tools.latexmk = latexmk.discovered;
         tools.typst = typst.executable;
         tools
     }
@@ -473,6 +517,10 @@ impl BuildTools {
         self.typst_pin_error.as_deref()
     }
 
+    pub(crate) fn app_found(&self) -> bool {
+        self.app_found
+    }
+
     pub(crate) fn typst_capabilities(&self) -> &TypstCapabilities {
         self.typst_capabilities
             .as_ref()
@@ -538,6 +586,15 @@ impl BuildTools {
     }
 }
 
+fn downloaded_typst_candidates(discovery: &Discovery) -> Vec<PathBuf> {
+    let (Some(data_root), Some(target)) = (discovery.data_root.as_deref(), host_target()) else {
+        return Vec::new();
+    };
+    let mut installed = installed_typst_versions(data_root, target);
+    installed.sort_by_key(|typst| typst.version != *bundled_typst_version());
+    installed.into_iter().map(|typst| typst.path).collect()
+}
+
 fn probe_pandoc(path: &Path) -> Option<(Option<String>, bool)> {
     let output = probe_output(path, &["--version"], PROBE_TIMEOUT, 64 * 1024)?;
     if !output.success {
@@ -564,6 +621,7 @@ struct ToolRejection {
 
 struct ToolResolution {
     executable: Option<PathBuf>,
+    discovered: Option<PathBuf>,
     source: Option<&'static str>,
     rejected_override: Option<ToolRejection>,
 }
@@ -659,7 +717,7 @@ impl NativeCompiler {
                     Err(error) => return Err(lock_failed(build_dir, &error)),
                 }
             } else {
-                DirLock::try_acquire(build_dir, self.timeout + DIR_LOCK_SLACK)
+                DirLock::try_acquire(build_dir, extended_limit(self.timeout) + DIR_LOCK_SLACK)
                     .map_err(|error| lock_failed(build_dir, &error))?
                     .map(BuildHold::folder)
             };
@@ -697,16 +755,22 @@ impl NativeCompiler {
             None => Some(InPlaceOutputs::prepare(&build_dir)?),
             Some(_) => None,
         };
+        if command.bundle_pinned && !flags.offline {
+            self.seed_tectonic_prefetch(&build_dir).await;
+        }
         let (mut output, mut status) =
             run_command(&command.launch(), self.timeout, &self.log).await?;
         if let Some(note) = compiler_crash_note(&status) {
             self.log.emit(&note);
             append_bounded(&mut output, note.as_bytes());
         }
-        if !status.success() && command.bundle_pinned && is_bundle_fetch_failure(&output) {
-            (status, command) = self
-                .retry_without_pinned_bundle(build, flags, &mut output)
+        if command.bundle_pinned && bundle_retry_needed(status.success(), &output) {
+            let retried = self
+                .retry_without_pinned_bundle(build, flags, status.success(), &mut output)
                 .await?;
+            if let Some(retried) = retried {
+                (status, command) = retried;
+            }
         }
 
         let tex_engine = matches!(build.engine(), Engine::Tectonic | Engine::Latexmk);
@@ -722,15 +786,35 @@ impl NativeCompiler {
         let file_log = (tex_engine && file_log_fresh)
             .then(|| read_log_bounded(&file_log_path).ok())
             .flatten();
+        let missing_tool = (build.engine() == Engine::Latexmk && !status.success())
+            .then(|| command.environment.iter().find(|(name, _)| *name == "PATH"))
+            .flatten()
+            .and_then(|(_, path)| latexmk_tool_error(&output, path));
         let mut log = match &file_log {
             Some(file_log) => {
-                with_engine_output_on_failure(file_log.clone(), &output, status.success())
+                let log =
+                    with_engine_output_on_failure(file_log.clone(), &output, status.success());
+                with_bundle_fetch_notes(log, &output, status.success())
             }
             None => output,
         };
+        if build.engine() == Engine::Latexmk && !status.success() {
+            append_bounded(
+                &mut log,
+                biber_log_notes(&file_log_path.with_extension("blg")).as_bytes(),
+            );
+        }
         let mut errors = parse_errors(build.engine(), &log);
+        errors.extend(missing_tool.map(BuildError::from));
         if build.engine() == Engine::Typst {
             relativize_typst_errors(&mut errors, &command.working_directory).await;
+        }
+        if tex_engine {
+            let out_dir = command
+                .staging
+                .as_ref()
+                .map_or(build_dir.as_path(), OutputStaging::path);
+            apply_tex_output_notes(build, out_dir, status.success(), &mut log, &mut errors);
         }
         let wrote_pdf = match &in_place {
             None => produced_pdf,
@@ -756,6 +840,13 @@ impl NativeCompiler {
         if image_check_applies(ok, build.engine()) {
             self.explain_image_failures(build, &mut log, &mut errors)
                 .await;
+        }
+        if !ok && build.engine() == Engine::Latexmk {
+            self.explain_blocked_shell_escape(build, &mut log, &mut errors);
+            self.add_tlmgr_hints(&mut errors);
+        }
+        if !ok && tex_engine && !errors.iter().any(|error| error.kind == "error") {
+            errors.extend(tex_failure_reason(&log).map(BuildError::from));
         }
         let diagnostics = diagnostics_for(build, file_log.as_deref(), &mut errors);
         let output_path = (fresh && pdf.is_file()).then(|| pdf.clone());
@@ -789,18 +880,55 @@ impl NativeCompiler {
         })
     }
 
+    async fn seed_tectonic_prefetch(&self, working_directory: &Path) {
+        let Some(tectonic) = self.tools.tectonic.as_deref() else {
+            return;
+        };
+        if TECTONIC_PREFETCH_SEEDED.swap(true, Ordering::Relaxed) {
+            return;
+        }
+        let arguments: Vec<OsString> = TECTONIC_CACHE_DIR_ARGS.iter().map(OsString::from).collect();
+        let launch = Launch {
+            executable: tectonic,
+            arguments: &arguments,
+            working_directory,
+            environment: &[],
+            unset: &[],
+            variables: &[],
+        };
+        if let Ok((output, status)) = run_command(
+            &launch,
+            TECTONIC_CACHE_PROBE_TIMEOUT,
+            &CompilerLog::default(),
+        )
+        .await
+        {
+            if status.success() {
+                engine_spec::seed_tectonic_prefetch(&output);
+            }
+        }
+    }
+
     async fn retry_without_pinned_bundle(
         &self,
         build: &PreparedBuild,
         flags: EngineFlags,
+        first_succeeded: bool,
         output: &mut String,
-    ) -> std::result::Result<(ExitStatus, BuildCommand), CliError> {
-        let first = std::mem::take(output);
+    ) -> std::result::Result<Option<(ExitStatus, BuildCommand)>, CliError> {
         let note = format!("\n{BUNDLE_FALLBACK_NOTE}\n");
         self.log.emit(&note);
-        let retry = self.command(build, flags, false)?;
-        let (retry_output, retry_status) =
-            run_command(&retry.launch(), self.timeout, &self.log).await?;
+        let attempt = self.run_without_pinned_bundle(build, flags).await;
+        let (retry, retry_output, retry_status) = match attempt {
+            Ok(attempt)
+                if bundle_retry_replaces_first_run(first_succeeded, attempt.2.success()) =>
+            {
+                attempt
+            }
+            Err(error) if !first_succeeded => return Err(error),
+            _ => return Ok(None),
+        };
+        let first = std::mem::take(output);
         if build.engine() == Engine::Markdown {
             append_bounded(output, first.as_bytes());
         }
@@ -809,7 +937,17 @@ impl NativeCompiler {
         if let Some(crash) = compiler_crash_note(&retry_status) {
             append_bounded(output, crash.as_bytes());
         }
-        Ok((retry_status, retry))
+        Ok(Some((retry_status, retry)))
+    }
+
+    async fn run_without_pinned_bundle(
+        &self,
+        build: &PreparedBuild,
+        flags: EngineFlags,
+    ) -> std::result::Result<(BuildCommand, String, ExitStatus), CliError> {
+        let retry = self.command(build, flags, false)?;
+        let (output, status) = run_command(&retry.launch(), self.timeout, &self.log).await?;
+        Ok((retry, output, status))
     }
 
     async fn explain_image_failures(
@@ -831,6 +969,68 @@ impl NativeCompiler {
             return;
         };
         self.apply_image_findings(&findings, log, errors);
+    }
+
+    fn explain_blocked_shell_escape(
+        &self,
+        build: &PreparedBuild,
+        log: &mut String,
+        errors: &mut Vec<BuildError>,
+    ) {
+        let source = source_head(build.source_path()).unwrap_or_default();
+        let Some(denied) = blocked_shell_escape(&source, log) else {
+            return;
+        };
+        let message = shell_escape_message(denied);
+        let note = format!("\n[Oleafly] {message}\n");
+        self.log.emit(&note);
+        append_bounded(log, note.as_bytes());
+        let mut error = BuildError::plain(message);
+        error.code = Some(denied.code().to_string());
+        let first = errors.iter().find(|error| error.kind == "error");
+        if first.is_none_or(follows_from_blocked_command) {
+            errors.insert(0, error);
+        } else {
+            errors.push(error);
+        }
+    }
+
+    fn tex_search(&self) -> TexSearch {
+        TexSearch {
+            data_root: self.tools.data_root.clone(),
+            ..TexSearch::from_env()
+        }
+        .refusing_foreign_parent(oleafly_secrets::fsperm::owned_by_current_user)
+    }
+
+    fn add_tlmgr_hints(&self, errors: &mut [BuildError]) {
+        let Some(latexmk) = self.tools.latexmk.as_deref() else {
+            return;
+        };
+        if !errors
+            .iter()
+            .any(|error| missing_package_file(error).is_some())
+        {
+            return;
+        }
+        let search = self.tex_search();
+        let Some(distribution) = distribution_for_tool(&search, latexmk) else {
+            return;
+        };
+        if distribution.system_package_manager.is_some() {
+            return;
+        }
+        let Some(tlmgr) = distribution.tlmgr.as_deref() else {
+            return;
+        };
+        let program = tlmgr_program(tlmgr, search.path.as_deref());
+        for error in errors {
+            if let Some(file) = missing_package_file(error).map(str::to_owned) {
+                error
+                    .hints
+                    .push(tlmgr_hint(&program, &distribution.kind, &file));
+            }
+        }
     }
 
     fn apply_image_findings(
@@ -894,10 +1094,17 @@ impl NativeCompiler {
         let (arguments, produced_output, working_directory) = match build.engine() {
             Engine::Tectonic => {
                 let entry = build_dir.join(ENTRY_TEX);
+                let shipped = shipped_bibliography(build.project_root(), build.main_document());
                 oleafly_core::atomic::write_atomic(
                     &entry,
-                    latex_entry_source(build.main_document())?.as_bytes(),
+                    latex_entry_source_with(
+                        build.main_document(),
+                        shipped.as_deref(),
+                        !flags.offline,
+                    )?
+                    .as_bytes(),
                 )?;
+                clear_biber_source_copies(build_dir, ENTRY_STEM);
                 let staged = OutputStaging::create(build_dir)?;
                 seed_staging(build_dir, staged.path());
                 let mut search: Vec<&Path> = Vec::new();
@@ -905,6 +1112,11 @@ impl NativeCompiler {
                     search.push(build.compile_directory());
                 }
                 search.push(build.project_root());
+                let tex_defaults = build_dir.join(engine_spec::TEX_DEFAULTS_DIR);
+                if !flags.offline {
+                    engine_spec::write_tex_defaults(&tex_defaults)?;
+                    search.push(&tex_defaults);
+                }
                 let arguments = engine_spec::tectonic_args(
                     staged.path(),
                     &search,
@@ -925,14 +1137,16 @@ impl NativeCompiler {
             Engine::Latexmk => {
                 let (arguments, texmf_output) =
                     self.latexmk_arguments(build, flags, &executable)?;
+                if let Some(bbl) = shipped_bibliography(build.project_root(), build.main_document())
+                {
+                    seed_shipped_bibliography(build.project_root(), &bbl, build_dir)?;
+                }
                 environment.extend(latexmk_environment(build));
-                environment.extend(self.tex_environment(&executable, build.project_root()));
+                environment.extend(self.latexmk_tex_environment(&executable, build.project_root()));
                 if let Some(output) = texmf_output {
                     environment.push(("TEXMFOUTPUT", output.into()));
                 }
-                if arguments.iter().any(|argument| argument == "-lualatex") {
-                    unset.push("openin_any");
-                }
+                unset.push("openin_any");
                 (
                     arguments,
                     build_dir.join(format!("{ENTRY_STEM}.pdf")),
@@ -964,11 +1178,12 @@ impl NativeCompiler {
                 compiler_alias = alias;
                 let created = EngineScratch::create(scratch_bases)?;
                 let project = plain_path(build.project_root());
-                let resources = created.pandoc_resource_path(&project)?;
-                oleafly_core::atomic::write_atomic(
-                    &created.path().join(MERMAID_FIGURES_FILTER_NAME),
-                    MERMAID_FIGURES_FILTER.as_bytes(),
-                )?;
+                let search_folders = oleafly_core::document_search_folders(
+                    &project,
+                    Path::new(build.main_document()),
+                );
+                let resources = created.pandoc_search_path(&project, &search_folders)?;
+                write_markdown_filters(created.path())?;
                 let staged = OutputStaging::create(build_dir)?;
                 let produced = staged.path().join(format!("{ENTRY_STEM}.pdf"));
                 let bibliographies: Vec<PathBuf> =
@@ -982,6 +1197,7 @@ impl NativeCompiler {
                     resource_argument: &resources.argument,
                     tectonic: &engine_path,
                     project: &project,
+                    search_folders: &search_folders,
                     output: &output,
                     main: &main,
                     bibliographies: &bibliographies,
@@ -993,6 +1209,15 @@ impl NativeCompiler {
                         .map(|name| (*name, created.path().as_os_str().to_owned())),
                 );
                 environment.extend(resources.variable);
+                environment.extend(
+                    self.tools
+                        .typst
+                        .as_deref()
+                        .filter(|typst| {
+                            reject_project_local_tool(typst, build.project_root()).is_ok()
+                        })
+                        .map(|typst| (MARKDOWN_TYPST_VARIABLE, typst.as_os_str().to_owned())),
+                );
                 environment.extend(self.tex_environment(tectonic, build.project_root()));
                 let working = created.path().to_path_buf();
                 scratch = Some(created);
@@ -1032,9 +1257,44 @@ impl NativeCompiler {
         let mut environment = vec![("PATH", path)];
         if let (Some(data_root), Some(biber)) = (&self.tools.data_root, &self.tools.tectonic_biber)
         {
-            if let Some(unpack) = prepare_unpack_dir(data_root, biber) {
+            if let Some(unpack) = biber_unpack_dir(data_root, biber) {
                 environment.push((UNPACK_ENV, unpack.into_os_string()));
             }
+        }
+        environment
+    }
+
+    fn latexmk_tex_environment(
+        &self,
+        latexmk: &Path,
+        project_root: &Path,
+    ) -> Vec<(&'static str, OsString)> {
+        let mut environment = self.tex_environment(latexmk, project_root);
+        let path = environment
+            .iter()
+            .find(|(name, _)| *name == "PATH")
+            .map(|(_, value)| value.clone());
+        let (Some(data_root), Some(path)) = (&self.tools.data_root, path) else {
+            return environment;
+        };
+        let Some(biber) = first_biber_on(&path) else {
+            return environment;
+        };
+        environment.retain(|(name, _)| *name != UNPACK_ENV);
+        if let Some(unpack) = biber_unpack_dir(data_root, &biber) {
+            environment.push((UNPACK_ENV, unpack.into_os_string()));
+        }
+        let thin = runnable_biber_dir(data_root, &biber).unwrap_or_else(|error| {
+            eprintln!(
+                "Could not copy the {} part out of the universal Biber at {}: {error}",
+                std::env::consts::ARCH,
+                biber.display()
+            );
+            None
+        });
+        if let Some(thin) = thin {
+            environment.retain(|(name, _)| *name != "PATH");
+            environment.push(("PATH", path_with_first(&thin, &path)));
         }
         environment
     }
@@ -1047,7 +1307,12 @@ impl NativeCompiler {
     ) -> Result<(Vec<OsString>, Option<String>)> {
         engine_spec::validate_latex_main_document(build.main_document())?;
         let flavor = build.tex_flavor().map_or_else(
-            || detect_latexmk_flavor(build.source_path()),
+            || {
+                Ok(project_tex_flavor(
+                    build.project_root(),
+                    build.source_path(),
+                ))
+            },
             |value| {
                 TexFlavor::parse(value).ok_or_else(|| {
                     Error::new(
@@ -1087,7 +1352,7 @@ impl NativeCompiler {
             (absolute.clone(), Some(absolute))
         };
         let distribution =
-            oleafly_core::tex_distro::distribution_kind_for_tool(&self.tools.tex, latexmk);
+            oleafly_core::tex_distro::distribution_kind_for_tool(&self.tex_search(), latexmk);
         let mut arguments: Vec<OsString> = engine_spec::latexmk_args(
             &out_dir,
             &entry,
@@ -1313,8 +1578,15 @@ impl InPlaceOutputs {
     fn finish(&mut self, ok: bool) {
         if !ok {
             self.keep_last_good();
+            self.forget_run();
         }
         self.finished = true;
+    }
+
+    fn forget_run(&self) {
+        let log = self.build_dir.join(format!("{ENTRY_STEM}.log"));
+        engine_spec::forget_latexmk_run(&log);
+        let _ = std::fs::remove_file(log);
     }
 
     fn keep_last_good(&self) {
@@ -1430,6 +1702,33 @@ fn with_engine_output_on_failure(mut log: String, output: &str, success: bool) -
         .unwrap_or(output.len());
     append_bounded(&mut log, format!("\n{ENGINE_OUTPUT_MARKER}\n").as_bytes());
     append_bounded(&mut log, &output.as_bytes()[start..]);
+    log
+}
+
+fn biber_log_notes(blg: &Path) -> String {
+    let Ok(log) = read_log_bounded(blg) else {
+        return String::new();
+    };
+    let excerpt = biber_message_excerpt(&log);
+    if excerpt.is_empty() {
+        return String::new();
+    }
+    format!("\n[Oleafly] Biber messages ({ENTRY_STEM}.blg):\n{excerpt}")
+}
+
+fn with_bundle_fetch_notes(mut log: String, output: &str, success: bool) -> String {
+    if !success {
+        return log;
+    }
+    if output.contains(BUNDLE_FALLBACK_NOTE) {
+        append_bounded(&mut log, format!("\n{BUNDLE_FALLBACK_NOTE}").as_bytes());
+    }
+    if let Some(excerpt) = bundle_fetch_excerpt(output) {
+        append_bounded(
+            &mut log,
+            format!("\n{ENGINE_OUTPUT_MARKER}\n{excerpt}").as_bytes(),
+        );
+    }
     log
 }
 
@@ -1549,13 +1848,77 @@ fn not_in_command_line(engine: Engine) -> Error {
 }
 
 fn missing_tool(engine: Engine) -> Error {
+    let name = engine.tool_name();
+    let variable = tool_env(name);
     Error::new(
         ErrorKind::MissingTool,
-        format!(
-            "{} was not found. Install it or set {}",
-            engine.tool_name(),
-            tool_env(engine.tool_name())
-        ),
+        match engine {
+            Engine::Latexmk => format!(
+                "{name} was not found. The latexmk engine needs a TeX distribution. Install one or set {variable}"
+            ),
+            _ => format!("{name} was not found. Install it or set {variable}"),
+        },
+    )
+}
+
+fn missing_package_file(error: &BuildError) -> Option<&str> {
+    if error.kind != "error" {
+        return None;
+    }
+    let (_, rest) = error.message.split_once("File `")?;
+    let (file, _) = rest.split_once("' not found")?;
+    let plain = file
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-' | b'+'));
+    (plain && (file.ends_with(".sty") || file.ends_with(".cls"))).then_some(file)
+}
+
+fn tlmgr_program(tlmgr: &str, path: Option<&OsStr>) -> String {
+    let first_on_path = path.and_then(|path| {
+        std::env::split_paths(path)
+            .filter(|folder| folder.is_absolute())
+            .find_map(|folder| find_tool_in_dir(&folder, "tlmgr"))
+    });
+    if first_on_path.as_deref() == Some(Path::new(tlmgr)) {
+        return "tlmgr".to_string();
+    }
+    let plain = tlmgr
+        .chars()
+        .all(|character| character.is_alphanumeric() || "/\\:._-+".contains(character));
+    if plain {
+        tlmgr.to_string()
+    } else {
+        format!("\"{tlmgr}\"")
+    }
+}
+
+fn tlmgr_hint(program: &str, distribution: &str, file: &str) -> String {
+    let sudo = if distribution == "mactex" {
+        "sudo "
+    } else {
+        ""
+    };
+    format!(
+        "Find the package that has it with `{program} search --global --file /{file}`, then run `{sudo}{program} install <package>`."
+    )
+}
+
+fn follows_from_blocked_command(error: &BuildError) -> bool {
+    let message = error.message.to_ascii_lowercase();
+    error.code.as_deref() == Some("tex.explain.file_not_found")
+        || ["shell", "can't find file", "minted", "pythontex"]
+            .iter()
+            .any(|text| message.contains(text))
+}
+
+fn shell_escape_message(denied: DeniedShellEscape) -> String {
+    let need = match denied {
+        DeniedShellEscape::Minted => "minted needs to run another program to highlight code",
+        DeniedShellEscape::PythonTex => "PythonTeX needs to run Python",
+        DeniedShellEscape::Command => "This document runs a shell command",
+    };
+    format!(
+        "{need}, and `oleafly build` always blocks that. Open the project in Oleafly and click \"Allow external commands\", or run latexmk yourself with -shell-escape. Only do this if you trust every file in the project."
     )
 }
 
@@ -1596,6 +1959,7 @@ fn discover_from_candidates(
         match resolve_executable(value.clone(), workspace_root) {
             CandidateResolution::Safe(path) => {
                 return ToolResolution {
+                    discovered: Some(discovered_spelling(value, &path, workspace_root)),
                     executable: Some(path),
                     source: Some("override"),
                     rejected_override: None,
@@ -1608,15 +1972,27 @@ fn discover_from_candidates(
         }
     }
     let found = candidates.into_iter().find_map(|(candidate, source)| {
-        match resolve_executable(candidate, workspace_root) {
-            CandidateResolution::Safe(path) => Some((path, source)),
+        match resolve_executable(candidate.clone(), workspace_root) {
+            CandidateResolution::Safe(path) => {
+                let discovered = discovered_spelling(&candidate, &path, workspace_root);
+                Some((path, discovered, source))
+            }
             CandidateResolution::Missing | CandidateResolution::ProjectLocal(_) => None,
         }
     });
     ToolResolution {
-        source: found.as_ref().map(|(_, source)| *source),
-        executable: found.map(|(path, _)| path),
+        source: found.as_ref().map(|(_, _, source)| *source),
+        discovered: found.as_ref().map(|(_, discovered, _)| discovered.clone()),
+        executable: found.map(|(path, _, _)| path),
         rejected_override,
+    }
+}
+
+fn discovered_spelling(candidate: &Path, resolved: &Path, workspace_root: &Path) -> PathBuf {
+    if candidate.is_absolute() && !candidate.starts_with(workspace_root) {
+        candidate.to_path_buf()
+    } else {
+        resolved.to_path_buf()
     }
 }
 
@@ -1692,14 +2068,19 @@ fn reject_project_local_tool(tool: &Path, root: &Path) -> Result<()> {
 }
 
 fn latexmk_environment(build: &PreparedBuild) -> Vec<(&'static str, OsString)> {
-    bibtex_search_entry(build.compile_directory(), build.build_directory())
-        .map(|entry| {
-            bibtex_search_environment(&entry)
-                .into_iter()
-                .map(|(name, value)| (name, value.into()))
-                .collect()
-        })
-        .unwrap_or_default()
+    let nested = build.compile_directory() != build.project_root();
+    let mut environment: Vec<(&'static str, String)> = if nested {
+        project_search_environment(build.project_root())
+    } else {
+        Vec::new()
+    };
+    if let Some(entry) = bibtex_search_entry(build.compile_directory(), build.build_directory()) {
+        environment.extend(bibtex_search_environment(&entry));
+    }
+    environment
+        .into_iter()
+        .map(|(name, value)| (name, value.into()))
+        .collect()
 }
 
 fn relative_to(base: &Path, target: &Path) -> Option<PathBuf> {
@@ -1732,30 +2113,63 @@ fn dotted(path: &Path) -> String {
     }
 }
 
+#[cfg(test)]
 fn detect_latexmk_flavor(source: &Path) -> Result<TexFlavor> {
-    use std::io::Read;
-    let mut file = std::fs::File::open(source)?;
-    let mut bytes = Vec::new();
-    file.by_ref().take(512 * 1024).read_to_end(&mut bytes)?;
-    let source = String::from_utf8_lossy(&bytes);
-    for line in source.lines().take(100) {
-        let lower = line.trim().to_ascii_lowercase();
-        if lower.contains("!tex program") || lower.contains("!tex engine") {
-            let named = [
-                TexFlavor::Xelatex,
-                TexFlavor::Lualatex,
-                TexFlavor::Uplatex,
-                TexFlavor::Platex,
-                TexFlavor::Pdflatex,
-            ]
-            .into_iter()
-            .find(|flavor| lower.contains(flavor.as_str()));
-            if let Some(flavor) = named {
-                return Ok(flavor);
-            }
-        }
+    Ok(project_tex_flavor(
+        source.parent().unwrap_or(source),
+        source,
+    ))
+}
+
+fn biber_unpack_dir(data_root: &Path, biber: &Path) -> Option<PathBuf> {
+    let base = oleafly_core::biber_env::unpack_base(data_root);
+    let base_ready =
+        base == *data_root || oleafly_secrets::fsperm::create_private_dir(&base).is_ok();
+    base_ready
+        .then(|| prepare_unpack_dir(data_root, biber))
+        .flatten()
+}
+
+fn apply_tex_output_notes(
+    build: &PreparedBuild,
+    out_dir: &Path,
+    succeeded: bool,
+    log: &mut String,
+    errors: &mut Vec<BuildError>,
+) {
+    if let Some(bbl) = shipped_bibliography(build.project_root(), build.main_document()) {
+        append_bounded(log, shipped_bibliography_note(&bbl).as_bytes());
     }
-    Ok(source_tex_flavor(&source).unwrap_or(TexFlavor::Pdflatex))
+    let source = source_head(build.source_path()).unwrap_or_default();
+    errors.extend(jobname_bibliography_warning(&source).map(BuildError::from));
+    let bundled = build.engine() == Engine::Tectonic;
+    errors.extend(
+        unbuilt_index_warnings(log, out_dir, ENTRY_STEM, bundled)
+            .into_iter()
+            .map(BuildError::from),
+    );
+    if succeeded {
+        return;
+    }
+    let mut causes: Vec<BuildError> = Vec::new();
+    if !bundled {
+        causes.extend(latexmk_biber_mismatch_error(log).map(BuildError::from));
+        causes.extend(bibliography_above_main_error(out_dir, ENTRY_STEM).map(BuildError::from));
+    }
+    if !bundled && build.tex_flavor().is_none() {
+        causes.extend(unicode_engine_error(log).map(|error| {
+            let compiler = error.params.get("compiler").cloned().unwrap_or_default();
+            let mut error = BuildError::from(error);
+            error
+                .hints
+                .push(format!("oleafly build --compiler {compiler}"));
+            error
+        }));
+    }
+    causes.extend(
+        nested_input_error(build.project_root(), build.main_document(), log).map(BuildError::from),
+    );
+    errors.splice(0..0, causes);
 }
 
 fn typst_arguments(
@@ -1780,6 +2194,15 @@ pub(crate) async fn run_command(
     timeout: Duration,
     sink: &CompilerLog,
 ) -> Result<(String, ExitStatus)> {
+    run_command_with_stdin(launch, timeout, sink, None).await
+}
+
+pub(crate) async fn run_command_with_stdin(
+    launch: &Launch<'_>,
+    timeout: Duration,
+    sink: &CompilerLog,
+    stdin: Option<&str>,
+) -> Result<(String, ExitStatus)> {
     let executable = launch.executable;
     let mut command = tokio::process::Command::new(executable);
     command
@@ -1789,7 +2212,15 @@ pub(crate) async fn run_command(
         .env("openout_any", "p")
         .env("openin_any", "p")
         .env("shell_escape", "f")
-        .stdin(Stdio::null())
+        .env(
+            engine_spec::MIKTEX_SHELL_COMMANDS_VARIABLE,
+            engine_spec::restricted_miktex_shell_commands(),
+        )
+        .stdin(if stdin.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
@@ -1826,6 +2257,12 @@ pub(crate) async fn run_command(
             ));
         }
     };
+    if let (Some(text), Some(mut pipe)) = (stdin.map(str::to_owned), child.stdin.take()) {
+        tokio::spawn(async move {
+            use tokio::io::AsyncWriteExt;
+            let _ = pipe.write_all(text.as_bytes()).await;
+        });
+    }
     let stdout = child
         .stdout
         .take()
@@ -1834,20 +2271,39 @@ pub(crate) async fn run_command(
         .stderr
         .take()
         .ok_or_else(|| Error::new(ErrorKind::Build, "compiler stderr was not captured"))?;
+    let clock = Arc::new(CompileClock::start(timeout));
+    let tracked = {
+        let clock = clock.clone();
+        let sink = sink.clone();
+        CompilerLog::new(move |text| {
+            clock.observe(text);
+            sink.emit(text);
+        })
+    };
     let mut containment = Some(containment);
-    let result = tokio::time::timeout(timeout, async {
-        let wait = async {
-            let status = child.wait().await?;
-            drop(containment.take());
-            Ok::<_, std::io::Error>(status)
+    let result = {
+        let run = async {
+            let wait = async {
+                let status = child.wait().await?;
+                drop(containment.take());
+                Ok::<_, std::io::Error>(status)
+            };
+            tokio::try_join!(
+                wait,
+                read_stream(stdout, tracked.clone()),
+                read_stream(stderr, tracked.clone())
+            )
         };
-        tokio::try_join!(
-            wait,
-            read_stream(stdout, sink.clone()),
-            read_stream(stderr, sink.clone())
-        )
-    })
-    .await;
+        tokio::pin!(run);
+        loop {
+            let deadline = tokio::time::Instant::from_std(clock.deadline());
+            match tokio::time::timeout_at(deadline, run.as_mut()).await {
+                Ok(output) => break Ok(output),
+                Err(elapsed) if clock.expired(Instant::now()) => break Err(elapsed),
+                Err(_) => {}
+            }
+        }
+    };
     drop(containment);
     let (status, mut log, stderr) = match result {
         Ok(Ok(output)) => output,
@@ -1856,7 +2312,7 @@ pub(crate) async fn run_command(
             let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
             let message = match error {
                 Ok(Err(error)) => error.to_string(),
-                Err(_) => format!("compiler timed out after {} seconds", timeout.as_secs()),
+                Err(_) => timed_out_message(timeout, &clock),
                 Ok(Ok(_)) => unreachable!(),
             };
             return Err(Error::new(ErrorKind::Build, message));
@@ -1864,6 +2320,15 @@ pub(crate) async fn run_command(
     };
     append_bounded(&mut log, stderr.as_bytes());
     Ok((log, status))
+}
+
+fn timed_out_message(timeout: Duration, clock: &CompileClock) -> String {
+    let message = format!("compiler timed out after {} seconds", timeout.as_secs());
+    if clock.was_downloading(Instant::now()) {
+        format!("{message}, while TeX packages were downloading. Build again, and the download picks up where it stopped")
+    } else {
+        message
+    }
 }
 
 fn compiler_path(executable: &Path) -> Result<Option<OsString>> {
@@ -1966,7 +2431,11 @@ fn parse_errors(engine: Engine, log: &str) -> Vec<BuildError> {
             .into_iter()
             .map(BuildError::from)
             .collect(),
-        Engine::Tectonic | Engine::Latexmk => parse_tex_log_errors(log)
+        Engine::Tectonic => parse_tectonic_log_errors(log)
+            .into_iter()
+            .map(BuildError::from)
+            .collect(),
+        Engine::Latexmk => parse_tex_log_errors(log)
             .into_iter()
             .map(BuildError::from)
             .collect(),

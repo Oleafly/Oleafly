@@ -479,6 +479,7 @@
     "previewUnsupported": "La vista previa en vivo todavía no está disponible para este motor",
     "badge": "Generada con IA",
     "compileWarning": "Este borrador no compiló del todo bien. Vuelve a generarlo para partir de una base mejor o crea el proyecto y arregla el código en el editor.",
+    "compileLog": "Registro de compilación",
     "noDescription": "Todavía no hay descripción.",
     "includes": "Incluye",
     "category": "Categoría",

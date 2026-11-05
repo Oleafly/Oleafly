@@ -100,6 +100,22 @@ describe("cancellation", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("agent_cancel", expect.anything());
   });
 
+  it("leaves running figure compiles alone when a one-off request is dropped", async () => {
+    const controller = new AbortController();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "agent_cancel" ? Promise.resolve() : new Promise(() => {}),
+    );
+
+    const pending = completeText({ user: "hi", signal: controller.signal });
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "agent_cancel",
+      expect.objectContaining({ stopFigure: false }),
+    );
+  });
+
   it("removes abort listeners after normally settled requests", async () => {
     mocks.invoke.mockResolvedValue(reply("done"));
     const controller = new AbortController();
@@ -280,6 +296,18 @@ describe("streaming", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("agent_cancel", expect.anything());
   });
 
+  it("leaves running figure compiles alone when a text stream is dropped", async () => {
+    playStream([{ kind: "textDelta", text: "partial" }], true);
+    const controller = new AbortController();
+    const pending = streamText({ user: "hi", signal: controller.signal });
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "agent_cancel",
+      expect.objectContaining({ stopFigure: false }),
+    );
+  });
+
   it("ignores channel events that arrive after cancellation", async () => {
     const captured: {
       channel?: { onmessage: ((event: AgentEvent) => void) | null };
@@ -404,6 +432,25 @@ describe("events that land after the command result", () => {
 
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
     expect(mocks.invoke).toHaveBeenCalledWith("agent_cancel", expect.anything());
+  });
+
+  it("stops a figure compile with the agent run that may have started it", async () => {
+    const controller = new AbortController();
+    resultBeforeEvents("agent_run", runOutcome);
+    const pending = runViaBackend(
+      { messages: [] },
+      { onEvent: () => {}, ...noTools },
+      controller.signal,
+    );
+    await settledResult();
+
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "agent_cancel",
+      expect.objectContaining({ stopFigure: true }),
+    );
   });
 
   it("gives up waiting after the grace period and says so", async () => {

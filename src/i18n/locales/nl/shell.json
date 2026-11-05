@@ -475,9 +475,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "De fout past bij een bekend gat in de meegeleverde Tectonic-engine. Kies hoe dit project moet compileren. De keuze wordt in het project bewaard, dus medewerkers krijgen dezelfde instelling.",
     "descriptionImportScan": "De importscan vond functies die de meegeleverde Tectonic-engine niet aanstuurt. Kies hoe dit project moet compileren. De keuze wordt in het project bewaard, dus medewerkers krijgen dezelfde instelling.",
+    "descriptionTexMissing": "Dit project compileert nu met latexmk, en deze computer kan dat nog niet uitvoeren. Oleafly kan TinyTeX voor je installeren, of je kunt teruggaan naar de ingebouwde Tectonic-engine.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX via latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "Het compileren stopte bij {{file}}.",
+      "missingFiles": "Het compileren kon {{files}} niet vinden.",
+      "mirrorStatus": "De mirror gaf HTTP {{status}} terug."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Bibliografie gebruikt biblatex en Biber",
+        "detail": "Dit project heeft Biber nodig om de bibliografie op te bouwen. Oleafly levert een Biber mee die bij de ingebouwde engine past. Blijven citaties na het compileren als “?” staan, kijk dan in het logboek voor een Biber-melding."
+      },
+      "bundle-fetch-failed": {
+        "title": "Het downloaden van de TeX-pakketten is mislukt",
+        "detail": "Oleafly kon geen TeX-pakketten van zijn mirror downloaden, dus het compileren kwam nooit bij je document. Controleer je verbinding en compileer opnieuw. De download gaat verder waar hij was gebleven."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 heeft pdfLaTeX nodig",
+        "detail": "CJKutf8 en CJK werken alleen met pdfLaTeX. Op de ingebouwde engine (XeTeX) compileert het document nog wel, maar ontbreekt de Chinese, Japanse of Koreaanse tekst in de PDF. Schakel over op pdfLaTeX met systeem-TeX, of vervang het pakket door xeCJK."
+      },
+      "class-compat": {
+        "title": "De documentklasse loopt tegen de grenzen van de engine aan",
+        "detail": "De compileerfouten komen uit een klasse- of stijlbestand, niet uit je document. Klassen van uitgevers hangen vaak af van tools of pdfTeX-gedrag die de ingebouwde engine niet heeft. latexmk compileert met een volledige TeX-distributie."
+      },
+      "eps-image": {
+        "title": "EPS-afbeeldingen hebben een converter nodig",
+        "detail": "De ingebouwde engine kan geen EPS-afbeeldingen plaatsen. Zet ze met epstopdf of Inkscape om naar PDF, of schakel over op pdfLaTeX met systeem-TeX, dat EPS via Ghostscript omzet."
+      },
+      "fontspec": {
+        "title": "Eigen lettertypen (fontspec)",
+        "detail": "fontspec heeft de genoemde lettertypen nodig op deze computer. Lettertypen die bij een online editor zaten, ontbreken hier mogelijk."
+      },
+      "glossaries-index": {
+        "title": "Tool voor woordenlijst of index",
+        "detail": "glossaries en makeindex hebben een extra run van makeindex of xindy nodig, wat de ingebouwde engine niet doet."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref is ingesteld op de pdfTeX-driver",
+        "detail": "Deze klasse of preambule dwingt de pdftex-driver van hyperref af, en die kan de ingebouwde engine niet gebruiken. Schakel over op pdfLaTeX met systeem-TeX, of haal de optie pdftex weg zodat hyperref zelf de driver kiest."
+      },
+      "minted": {
+        "title": "minted heeft shell escape en Pygments nodig",
+        "detail": "Codelistings met minted hebben een TeX-distributie van het systeem en pygmentize nodig. Schakel over op systeem-LaTeX en sta externe opdrachten op deze computer alleen toe als je elk projectbestand vertrouwt."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Een pakket ontbreekt in de ingebouwde bundel",
+        "detail": "Iets wat dit project laadt, zit niet in de ingebouwde TeX-bundel. Voeg het bestand toe aan het project als het bij je sjabloon hoorde, of schakel over op systeem-TeX en installeer het pakket uit TeX Live."
+      },
+      "pdftex-only": {
+        "title": "pdfTeX-pakketten",
+        "detail": "De ingebouwde engine is gebaseerd op XeTeX, en dit project vertrouwt op pakketten of opdrachten die alleen met pdfTeX werken. latexmk compileert met echte pdfLaTeX."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX heeft zijn hulpprogramma nodig uit de actieve TeX-distributie van het systeem. Schakel over op systeem-LaTeX en sta externe opdrachten op deze computer alleen toe als je elk projectbestand vertrouwt."
+      },
+      "shell-escape": {
+        "title": "Opdrachten via shell escape",
+        "detail": "De broncode gebruikt \\write18 of een andere shell escape. Schakel over op systeem-LaTeX en sta externe opdrachten op deze computer alleen toe als je elk projectbestand vertrouwt en de benodigde tools zijn geïnstalleerd."
+      }
     },
     "recommended": "Aanbevolen",
     "shellEscape": {
@@ -504,13 +564,14 @@
       "withFailures_other": "Geen installatie nodig, werkt offline. {{features}} zullen naar verwachting blijven mislukken."
     },
     "tinytex": {
-      "description": "Installeert een compacte TeX Live in je thuismap, zonder beheerdersrechten. De kerndownload is ongeveer 250 MB. Tijdschriftsjablonen kunnen later meer pakketten ophalen, tot ruwweg 1 GB in totaal.",
+      "description": "Installeert een compacte TeX Live, zonder beheerdersrechten. De kerndownload is ongeveer 250 MB. Tijdschriftsjablonen kunnen later meer pakketten ophalen, tot ruwweg 1 GB in totaal.",
       "download": "TinyTeX downloaden en gebruiken",
       "resume": "Download hervatten ({{megabytes}} MB klaar)",
       "title": "TinyTeX downloaden"
     },
     "titleCompileFailure": "Dit compileren vraagt meer dan de ingebouwde engine",
-    "titleImportScan": "Dit project vraagt meer dan de ingebouwde engine"
+    "titleImportScan": "Dit project vraagt meer dan de ingebouwde engine",
+    "titleTexMissing": "Voor deze compiler is een werkende TeX-distributie nodig"
   },
   "shellCommands": {
     "allow": "Externe opdrachten toestaan",
@@ -1152,11 +1213,16 @@
     },
     "wait": {
       "description": "{{phase}} Je compilatie staat in de wachtrij en start automatisch zodra de engine klaar is.",
+      "stop": "De installatie stoppen",
       "title": "TinyTeX wordt nog gedownload"
     },
     "typstQuit": {
       "title": "Typst wordt nog geïnstalleerd",
       "description": "Typst {{version}} wordt gedownload. Als je nu afsluit, stopt de download en moet je hem opnieuw starten bij Instellingen."
+    },
+    "packageQuit": {
+      "title": "Oleafly past nog TeX-pakketten aan",
+      "description": "Als je nu afsluit, stopt de installatie of verwijdering halverwege en kan je TeX-pakketbeheerder beschadigd raken."
     }
   },
   "toolbar": {
@@ -1322,7 +1388,7 @@
       "compiling": "Compileren met Typst"
     },
     "errors": {
-      "pandoc": "Pandoc is niet klaar. Installeer het bij Tools en probeer het opnieuw.",
+      "pandoc": "Pandoc is niet klaar. Repareer het via Instellingen > Engines > Markdown en probeer het opnieuw.",
       "noMain": "Het LaTeX-hoofdbestand kon niet worden gelezen.",
       "emptyOutput": "Pandoc gaf een leeg document terug.",
       "failed": "De conversie is gestopt: {{detail}}"
@@ -1379,7 +1445,8 @@
     "svg": "SVG-afbeeldingen",
     "html": "HTML",
     "experimental": "Experimenteel",
-    "htmlNote": "De HTML-export van Typst is nog experimenteel. Pagina-instellingen en geplaatste elementen vallen weg.",
+    "htmlNote": "De HTML-export van Typst is nog experimenteel. Tekst en afbeeldingen blijven behouden, maar pagina-instellingen en tekeningen niet.",
+    "htmlNoteOldTypst": "Typst {{version}} laat vergelijkingen weg uit HTML. Typst 0.15 of nieuwer behoudt ze.",
     "ppi": "Resolutie",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Pagina's",

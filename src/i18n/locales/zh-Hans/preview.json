@@ -94,12 +94,16 @@
     "exitFullscreen": "退出全屏",
     "retryCompile": "重试编译",
     "chooseEngine": "选择引擎",
+    "installJapanese": "安装日文支持（约 450 MB）",
+    "useCompiler": "使用 {{compiler}}",
     "installPackages_other": "查找并安装 {{count}} 个文件",
     "downloadTypst": "下载 Typst {{version}}",
     "useTypst": "使用 Typst {{version}}",
     "installTool": "安装 {{tool}} {{version}}",
     "installToolSize": "安装 {{tool}} {{version}}（{{size}}）",
-    "engineSettings": "打开引擎设置"
+    "engineSettings": "打开引擎设置",
+    "useTectonic": "使用 Tectonic",
+    "useTectonicForEveryone": "为所有人使用 Tectonic"
   },
   "html": {
     "builtTitle": "已构建为网页",

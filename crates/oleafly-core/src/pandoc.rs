@@ -1,7 +1,7 @@
 //! Finding a Pandoc new enough for Oleafly (2.19 or later, which has
 //! `--embed-resources`), in the same order the app and the CLI use.
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::process_probe::probe_output;
@@ -114,6 +114,18 @@ pub struct PandocFound {
     pub too_old: Vec<(PathBuf, String)>,
 }
 
+pub const SHIPPED_PANDOC_TIMEOUT: Duration = Duration::from_secs(60);
+
+fn shipped_with_oleafly(search: &PandocSearch, candidate: &Path) -> bool {
+    candidate.parent().is_some_and(|folder| {
+        search.bundled_dirs.iter().any(|dir| dir == folder)
+            || search
+                .data_root
+                .as_ref()
+                .is_some_and(|root| root.join("bin") == folder)
+    })
+}
+
 pub fn find_pandoc(search: &PandocSearch, timeout: Duration) -> PandocFound {
     let mut found = PandocFound::default();
     let mut probed: Vec<PathBuf> = Vec::new();
@@ -125,8 +137,12 @@ pub fn find_pandoc(search: &PandocSearch, timeout: Duration) -> PandocFound {
             continue;
         }
         probed.push(real.clone());
-        let Some(output) = probe_output(&real, &["--version"], timeout, VERSION_OUTPUT_BYTES)
-        else {
+        let budget = if shipped_with_oleafly(search, &candidate) {
+            SHIPPED_PANDOC_TIMEOUT.max(timeout)
+        } else {
+            timeout
+        };
+        let Some(output) = probe_output(&real, &["--version"], budget, VERSION_OUTPUT_BYTES) else {
             continue;
         };
         if !output.success {
@@ -148,6 +164,39 @@ pub fn find_pandoc(search: &PandocSearch, timeout: Duration) -> PandocFound {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_copies_oleafly_ships_get_the_long_first_launch_budget() {
+        let search = PandocSearch {
+            bundled_dirs: vec![PathBuf::from("/app/bin")],
+            data_root: Some(PathBuf::from("/home/ada/.oleafly")),
+            ..PandocSearch::default()
+        };
+        assert!(shipped_with_oleafly(&search, Path::new("/app/bin/pandoc")));
+        assert!(shipped_with_oleafly(
+            &search,
+            Path::new("/home/ada/.oleafly/bin/pandoc")
+        ));
+        assert!(!shipped_with_oleafly(&search, Path::new("/usr/bin/pandoc")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_shipped_pandoc_that_starts_slowly_is_still_found() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let dir = tempfile::tempdir().unwrap();
+        let tool = dir.path().join("pandoc");
+        let staged = dir.path().join("pandoc.staged");
+        std::fs::write(&staged, "#!/bin/sh\nsleep 1\necho 'pandoc 3.9.0.2'\n").unwrap();
+        std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::rename(&staged, &tool).unwrap();
+        let search = PandocSearch {
+            bundled_dirs: vec![dir.path().to_path_buf()],
+            ..PandocSearch::default()
+        };
+        let found = find_pandoc(&search, Duration::from_millis(100));
+        assert_eq!(found.version.as_deref(), Some("3.9.0.2"));
+    }
 
     #[test]
     fn pandoc_version_gate_accepts_2_19_plus_rejects_older() {

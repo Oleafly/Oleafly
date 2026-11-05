@@ -89,6 +89,18 @@ describe("LaTeX to Typst migration store", () => {
     expect(useTypstMigrationStore.getState().phase).toEqual({ kind: "failed", code: "noMain", message: "noMain" });
   });
 
+  it("spells out a coded backend failure", async () => {
+    mocks.runLatexToTypstMigration.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "tex.no_package_manager", params: {}, detail: null })}`,
+    );
+
+    await useTypstMigrationStore.getState().start("Copy");
+
+    const phase = useTypstMigrationStore.getState().phase;
+    expect(phase).toMatchObject({ kind: "failed", code: null });
+    expect(JSON.stringify(phase)).not.toContain("@oleafly/error");
+  });
+
   it("reports an uncoded failure with its text", async () => {
     mocks.runLatexToTypstMigration.mockRejectedValue("pandoc crashed");
 

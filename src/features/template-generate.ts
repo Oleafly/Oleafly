@@ -10,6 +10,7 @@ import {
   saveCustomTemplate,
   type TypstSnippetDiagnostic,
 } from "@/lib/tauri";
+import { useSettingsStore } from "@/store/settings";
 
 const GENERATE_TIMEOUT_MS = 45_000;
 const PREVIEW_PPI = 108;
@@ -125,11 +126,13 @@ function typstLogLine(file: string, diagnostic: TypstSnippetDiagnostic): string 
 async function compileGeneratedTypst(
   parsed: ParsedTemplate,
 ): Promise<{ png: string | null; log: string }> {
+  const { offline } = useSettingsStore.getState();
   const result = await renderTypstSnippet({
     source: parsed.source,
     format: "png",
     ppi: PREVIEW_PPI,
     document: true,
+    ...(offline ? { offline } : {}),
   });
   const log = result.diagnostics
     .map((diagnostic) => typstLogLine(parsed.mainDoc, diagnostic))
@@ -149,7 +152,10 @@ export async function compileGeneratedTemplate(
     return { png: null, log: "" };
   }
   const scratchId = await getOrCreateScratchProject();
-  const res = await compileIsolated(scratchId, parsed.source);
+  const { offline } = useSettingsStore.getState();
+  const res = await (offline
+    ? compileIsolated(scratchId, parsed.source, offline)
+    : compileIsolated(scratchId, parsed.source));
   const log = (res.log ?? "").slice(-LOG_TAIL_CHARS);
   if (!res.has_pdf) return { png: null, log };
   const bytes = new Uint8Array(await readIsolatedPdf(scratchId));

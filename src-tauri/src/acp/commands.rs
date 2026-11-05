@@ -260,13 +260,16 @@ pub async fn acp_prompt(
 pub async fn acp_cancel(
     webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
+    app_state: State<'_, crate::state::AppState>,
     project_id: String,
     session_id: String,
 ) -> Result<(), String> {
     let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, owner.as_str()).await?;
-    runtime.cancel(&session_id).await
+    let cancelled = runtime.cancel(&session_id).await;
+    crate::commands::stop_figure_compile(app_state.inner()).await;
+    cancelled
 }
 
 #[tauri::command]

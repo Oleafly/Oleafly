@@ -23,7 +23,10 @@
   },
   "compile": {
     "retry": "Toast button that starts the compile again after a failure",
-    "bundleFetchFailed": "Compile error when the bundled TeX engine could not download packages from the internet"
+    "bundleFetchFailed": "Compile error when the bundled TeX engine could not download packages from the internet",
+    "offlineNotCached": "Compile error when offline mode is on and named TeX package files have not been downloaded yet",
+    "offlineNotCachedUnnamed": "Compile error when offline mode is on and a TeX package has not been downloaded yet",
+    "goOnlineAndCompile": "Toast button that turns offline mode off and starts the compile again"
   },
   "developer": {
     "nav": "Settings sidebar entry for the debug-build-only developer panel"
@@ -36,7 +39,10 @@
   },
   "export": {
     "saved": "{{kind}} is a format name such as PDF or PNG and is never translated",
-    "showInFolder": "Toast button that reveals the exported file in Finder or File Explorer"
+    "savedSource": "Toast after exporting a source file (.tex, .typ, .md). {{kind}} is a format name and is never translated",
+    "showInFolder": "Toast button that reveals the exported file in Finder or File Explorer",
+    "showWarnings": "Toast button that opens the list of things an export could not carry over",
+    "warningsTitle": "Title of the dialog listing what an export could not carry over"
   },
   "fonts": {
     "systemDefault": "Font picker option meaning the operating system's own font is used",
@@ -130,6 +136,12 @@
     "incompleteCapture": "Shown after several compiles in a row could not record a version checkpoint because some files were unreadable"
   },
   "missingPackages": {
+    "systemHint": {
+      "apt": "Next step for Debian and Ubuntu users. Keep apt-file search, sudo apt install and texlive-full verbatim. {{name}} is a TeX file name",
+      "dnf": "Next step for Fedora users. {{command}} is a full shell command"
+    },
+    "systemManaged_one": "{{name}} is a TeX file name. {{hint}} is a translated next step that ends the message",
+    "systemManaged_other": "{{names}} is a list of TeX file names. {{hint}} is a translated next step that ends the message",
     "userTree": "{{path}} is a folder path. The personal TeX tree is the per-user package folder, as opposed to the machine-wide one"
   },
   "citation": {

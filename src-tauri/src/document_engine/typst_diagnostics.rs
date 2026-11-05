@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 use oleafly_core::typst_log::{self, TypstDiagnostic, TypstSeverity};
@@ -9,6 +9,7 @@ use super::CompileError;
 const MAX_SOURCE_FILE_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_SOURCE_LINE_CHARS: usize = 4096;
 const MAX_LOCATED_ERRORS: usize = 200;
+const TYPST_WRONG_TYPE: &str = "typst.wrong_type";
 
 pub(super) fn parse_typst_errors(log: &str) -> Vec<CompileError> {
     let mut errors: Vec<CompileError> = typst_log::parse_typst_diagnostics(log)
@@ -21,6 +22,11 @@ pub(super) fn parse_typst_errors(log: &str) -> Vec<CompileError> {
 
 fn compile_error(diagnostic: TypstDiagnostic) -> CompileError {
     let span = diagnostic.user_span().cloned();
+    let code = typst_error_code(&diagnostic.message);
+    let params = match code {
+        Some(TYPST_WRONG_TYPE) => type_mismatch_params(&diagnostic.message),
+        _ => Default::default(),
+    };
     CompileError {
         line: span.as_ref().map(|span| span.line),
         file: span.as_ref().map(|span| span.file.clone()),
@@ -33,9 +39,64 @@ fn compile_error(diagnostic: TypstDiagnostic) -> CompileError {
         message: diagnostic.message,
         hints: diagnostic.hints,
         source_line: None,
-        code: None,
-        params: Default::default(),
+        code: code.map(str::to_owned),
+        params,
     }
+}
+
+fn typst_error_code(message: &str) -> Option<&'static str> {
+    let m = message.trim();
+    if m.starts_with("unknown variable: ") {
+        return Some("typst.unknown_variable");
+    }
+    if m.starts_with("unknown font family: ") {
+        return Some("typst.unknown_font");
+    }
+    if m.starts_with("file not found") {
+        return Some("typst.file_not_found");
+    }
+    if m.starts_with("package not found")
+        || m.starts_with("package found, but version")
+        || m.starts_with("failed to download package")
+    {
+        return Some("typst.package");
+    }
+    if m.starts_with("expected ") && m.contains(", found ") {
+        return Some(TYPST_WRONG_TYPE);
+    }
+    if typst_log::is_unresolved_typst_label(m) {
+        return Some("typst.label_missing");
+    }
+    if typst_log::is_unresolved_typst_citation(m) {
+        return Some("typst.citation_missing");
+    }
+    if m.starts_with("cyclic import") {
+        return Some("typst.cyclic_import");
+    }
+    if m.starts_with("maximum show rule depth exceeded") {
+        return Some("typst.show_rule_depth");
+    }
+    if m.starts_with("unclosed ") {
+        return Some("typst.unclosed");
+    }
+    if m.contains("did not converge") {
+        return Some("typst.not_converged");
+    }
+    None
+}
+
+fn type_mismatch_params(message: &str) -> BTreeMap<String, String> {
+    message
+        .trim()
+        .strip_prefix("expected ")
+        .and_then(|rest| rest.rsplit_once(", found "))
+        .map(|(expected, found)| {
+            BTreeMap::from([
+                ("expected".to_owned(), expected.to_owned()),
+                ("found".to_owned(), found.to_owned()),
+            ])
+        })
+        .unwrap_or_default()
 }
 
 pub(super) fn humanize_typst_error(message: &str) -> Option<&'static str> {
@@ -331,6 +392,83 @@ mod tests {
             humanize_typst_error("unknown font family: nope").is_some_and(|text| text
                 .contains("Document settings")
                 && text.contains("fonts folder"))
+        );
+    }
+
+    #[test]
+    fn every_explained_typst_error_carries_a_code_the_interface_can_translate() {
+        for (version, log) in VERSION_LOGS {
+            for (name, code) in [
+                ("unknown_variable", "typst.unknown_variable"),
+                ("unknown_font", "typst.unknown_font"),
+                ("file_not_found", "typst.file_not_found"),
+                ("package_not_found", "typst.package"),
+                ("package_version", "typst.package"),
+                ("package_offline", "typst.package"),
+                ("expected_found", "typst.wrong_type"),
+                ("cyclic_import", "typst.cyclic_import"),
+                ("show_rule_depth", "typst.show_rule_depth"),
+                ("unclosed_delimiter", "typst.unclosed"),
+                ("layout_convergence", "typst.not_converged"),
+            ] {
+                let errors = parse_typst_errors(&case(log, name));
+                let warns_nothing = version == "0.11.1" && name == "unknown_font";
+                assert!(
+                    warns_nothing
+                        || errors
+                            .iter()
+                            .any(|error| error.code.as_deref() == Some(code)),
+                    "{version} {name}: {errors:?}"
+                );
+            }
+            for name in ["function_trace", "multiline_span"] {
+                for error in parse_typst_errors(&case(log, name)) {
+                    assert_eq!(error.code, None, "{version} {name}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_type_mismatch_names_both_types() {
+        let params = type_mismatch_params("expected length, string or none, found integer");
+        assert_eq!(params["expected"], "length, string or none");
+        assert_eq!(params["found"], "integer");
+        assert!(type_mismatch_params("expected expression").is_empty());
+    }
+
+    #[test]
+    fn the_catalog_keeps_the_english_explanations_word_for_word() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../../src/i18n/locales/en/errors.json")).unwrap();
+        for (message, key) in [
+            ("unknown variable: x", "unknown_variable"),
+            ("file not found", "file_not_found"),
+            ("cyclic import", "cyclic_import"),
+            ("maximum show rule depth exceeded", "show_rule_depth"),
+            ("unclosed string", "unclosed"),
+            ("layout did not converge", "not_converged"),
+        ] {
+            assert_eq!(
+                catalog["typst"][key].as_str(),
+                humanize_typst_error(message),
+                "{key}"
+            );
+            assert_eq!(
+                typst_error_code(message),
+                Some(format!("typst.{key}").as_str())
+            );
+        }
+        let font = catalog["typst"]["unknown_font"]
+            .as_str()
+            .unwrap()
+            .replace("{{availableFonts}}", "Available fonts")
+            .replace("{{bodyFont}}", "Body font")
+            .replace("{{documentSettings}}", "Document settings")
+            .replace("{{systemFonts}}", "Use system fonts");
+        assert_eq!(
+            Some(font.as_str()),
+            humanize_typst_error("unknown font family: nope")
         );
     }
 

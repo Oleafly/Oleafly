@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useSettingsStore } from "@/store/settings";
 import { useToastStore } from "@/store/toast";
-import type { CollabChangeSkipped, CollabLiveRenamed, CollabLiveSettings } from "@/lib/tauri";
+import type {
+  CollabChangeSkipped,
+  CollabLiveRenamed,
+  CollabLiveSettings,
+  CollabOutputNotShared,
+} from "@/lib/tauri";
 import { useCollabLiveStore, type LivePeer } from "../live/live-store";
 import { ALICE_ID, BOB, BOB_ID, CAROL_ID, person, projectMember, shareInfo } from "../tests/fixtures";
 const renamed = vi.hoisted(() => ({
@@ -20,6 +25,11 @@ const skipped = vi.hoisted(() => ({
   unlisten: vi.fn(),
 }));
 
+const output = vi.hoisted(() => ({
+  handler: null as ((payload: CollabOutputNotShared) => void) | null,
+  unlisten: vi.fn(),
+}));
+
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   onCollabLiveRenamed: vi.fn(async (handler: (payload: CollabLiveRenamed) => void) => {
@@ -34,8 +44,15 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
     skipped.handler = handler;
     return skipped.unlisten;
   }),
+  onCollabOutputNotShared: vi.fn(async (handler: (payload: CollabOutputNotShared) => void) => {
+    output.handler = handler;
+    return output.unlisten;
+  }),
 }));
 
+import { LATEX_ENGINE } from "@/lib/document-engine";
+import { useEngineStore } from "@/store/engine";
+import { useFilesStore } from "@/store/files";
 import { startCollabActivity, WELCOMED_KEY } from "./activity-feed";
 import { useCollabActivity } from "./activity-store";
 
@@ -210,6 +227,57 @@ describe("startCollabActivity", () => {
     expect(useCollabRail.getState().unread).toBe(false);
     stop();
     expect(skipped.unlisten).toHaveBeenCalled();
+  });
+
+  it("notes quietly why a compiled PDF was not shared, for the open project only", async () => {
+    joined();
+    stop = startCollabActivity();
+    await vi.waitFor(() => expect(output.handler).not.toBeNull());
+    useCollabActivity.getState().markRead();
+
+    output.handler?.({ projectId: "thesis", reason: "tooLarge" });
+    expect(kinds()).not.toContain("outputNotShared");
+
+    output.handler?.({ projectId: "grant", reason: "privateSources" });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({
+      kind: "outputNotShared",
+      reason: "privateSources",
+    });
+    expect(useCollabActivity.getState().unread).toBe(false);
+    stop();
+    expect(output.unlisten).toHaveBeenCalled();
+  });
+
+  it("notes once on joining when this computer has no TeX for the project's compiler", async () => {
+    useEngineStore.setState({
+      loaded: true,
+      info: { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } } as never,
+    });
+    useFilesStore.setState({
+      projectId: "grant",
+      engineLoaded: true,
+      engine: { ...LATEX_ENGINE, capabilities: { ...LATEX_ENGINE.capabilities, compiler_prerequisite: "system_tex" } },
+    });
+    joined();
+    stop = startCollabActivity();
+    await vi.waitFor(() => expect(kinds()).toEqual(["texNeeded", "welcome"]));
+    useEngineStore.setState({ info: null });
+    useFilesStore.setState({ projectId: null, engine: LATEX_ENGINE });
+  });
+
+  it("says nothing about TeX when the project's compiler needs none", async () => {
+    useEngineStore.setState({
+      loaded: true,
+      info: { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } } as never,
+    });
+    useFilesStore.setState({ projectId: "grant", engineLoaded: true, engine: LATEX_ENGINE });
+    joined();
+    stop = startCollabActivity();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(kinds()).toEqual(["welcome"]);
+    useEngineStore.setState({ info: null });
+    useFilesStore.setState({ projectId: null });
   });
 
   it("notes quietly, with a rail dot, when someone else's name for a file wins over yours", async () => {

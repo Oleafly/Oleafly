@@ -56,9 +56,24 @@
     "undo": "Vrátit zpět"
   },
   "compile": {
+    "failedWithReason": "Kompilace selhala: {{message}}",
     "noOfflineMode": "{{engine}} nenabízí offline režim překladače. Kompiluje se běžným způsobem.",
+    "pandocRequired": "Pandoc není k dispozici. Opravte jej v Nastavení > Enginy > Markdown a spusťte kompilaci znovu.",
+    "pandocSetupFailed": "Nastavení Pandocu selhalo: {{message}}",
+    "pdfChanged": "Zkompilované PDF se změnilo, zatímco ho Oleafly četl, proto zůstává dřívější náhled. Chcete-li ho aktualizovat, spusťte kompilaci znovu.",
     "retry": "Kompilovat znovu",
+    "superseded": "Tuto kompilaci nahradila novější.",
+    "syntaxCheckFailed": "Kontrola syntaxe našla chyby. Opravte je, nebo vypněte „{{setting}}“.",
+    "taggedFailed": "Tagovaná kompilace selhala: {{message}}",
+    "taggedPdfChanged": "Tagované PDF se změnilo, zatímco ho Oleafly četl, proto zůstává dřívější náhled. Chcete-li ho aktualizovat, spusťte kompilaci znovu.",
+    "taggedPdfInvalid": "Tagovaná kompilace nevytvořila platné PDF.",
+    "tinytexDownloading": "TinyTeX se stále stahuje. Tato kompilace se po dokončení spustí automaticky.",
+    "sharedTexEditor": "Tento projekt je sdílený, takže přepnutím na Tectonic ho změníte pro všechny. Instalace TinyTeX změní jen tento počítač.",
+    "sharedTexViewer": "Překladač tohoto sdíleného projektu změnit nemůžete, proto tady pro jeho kompilaci nainstalujte TinyTeX.",
     "bundleFetchFailed": "Oleafly nedokázal stáhnout balíčky TeXu, které tento dokument potřebuje. Zkontrolujte připojení a spusťte kompilaci znovu.",
+    "offlineNotCached": "Režim offline je zapnutý a stahování {{files}} možná ještě neproběhlo. Vypněte režim offline a spusťte kompilaci znovu.",
+    "offlineNotCachedUnnamed": "Režim offline je zapnutý a balíček TeXu, který tento dokument potřebuje, se možná ještě nestáhl. Vypněte režim offline a spusťte kompilaci znovu.",
+    "goOnlineAndCompile": "Vypnout a kompilovat",
     "typstMissing": "Typst {{version}} není nainstalován. Stáhněte jej, nebo v tomto projektu přepněte na jinou verzi.",
     "typstPackage": {
       "downloadFailed": "Typst nedokázal stáhnout {{spec}}. Zkontrolujte připojení k internetu a spusťte kompilaci znovu.",
@@ -173,9 +188,26 @@
     "pdfFailedDetail": "PDF se nepodařilo uložit: {{detail}}",
     "pngFailed": "PNG se nepodařilo uložit",
     "pngFailedDetail": "PNG se nepodařilo uložit: {{detail}}",
+    "projectChanged": "Otevřený projekt se změnil. Spusťte export znovu z projektu, který chcete uložit.",
     "revealFailed": "Soubor byl uložen, ale jeho složku se nepodařilo otevřít.",
     "saved": "{{kind}} uloženo · {{fileName}}",
-    "showInFolder": "Zobrazit ve složce"
+    "savedAfterFailedCompile": "{{kind}} uloženo · {{fileName}}. Poslední kompilace selhala, takže tento soubor může být neúplný.",
+    "savedSource": "{{kind}} uloženo · {{fileName}}. Pokud používá obrázky nebo bibliografie z vašeho projektu, zkopírujte je vedle něj dřív, než ho zkompilujete.",
+    "savedStale": "{{kind}} uloženo · {{fileName}}. Vychází z poslední kompilace a neobsahuje vaše nejnovější úpravy.",
+    "savedWithoutContent": "{{kind}} uloženo · {{fileName}}. Část obsahu chybí, protože ji Typst do tohoto formátu zapsat neumí: {{elements}}.",
+    "savedFromSource": "{{kind}} uloženo · {{fileName}}. Typst {{version}} neumí do tohoto formátu zapsat celý dokument, proto byl soubor sestaven ze zdroje. Otočený, zvětšený či zmenšený, posunutý nebo zkosený text může chybět. Chcete-li ho zachovat, přepněte projekt na Typst 0.15 nebo novější.",
+    "savedWithoutEquations": "{{kind}} uloženo · {{fileName}}. Rovnice, obrázky, poznámky pod čarou nebo odkazy mohou chybět, protože je Typst {{version}} do tohoto formátu zapsat neumí. Přepněte projekt na Typst 0.15 nebo novější.",
+    "savedWithWarnings_one": "{{kind}} uloženo · {{fileName}}, s {{count}} varováním.",
+    "savedWithWarnings_few": "{{kind}} uloženo · {{fileName}}, se {{count}} varováními.",
+    "savedWithWarnings_many": "{{kind}} uloženo · {{fileName}}, s {{count}} varování.",
+    "savedWithWarnings_other": "{{kind}} uloženo · {{fileName}}, s {{count}} varováními.",
+    "savedWithoutLinks_one": "{{kind}} uloženo · {{fileName}}. {{count}} symbolický odkaz byl z archivu vynechán.",
+    "savedWithoutLinks_few": "{{kind}} uloženo · {{fileName}}. {{count}} symbolické odkazy byly z archivu vynechány.",
+    "savedWithoutLinks_many": "{{kind}} uloženo · {{fileName}}. {{count}} symbolického odkazu bylo z archivu vynecháno.",
+    "savedWithoutLinks_other": "{{kind}} uloženo · {{fileName}}. {{count}} symbolických odkazů bylo z archivu vynecháno.",
+    "showInFolder": "Zobrazit ve složce",
+    "showWarnings": "Zobrazit varování",
+    "warningsTitle": "Varování exportu"
   },
   "externalChange": {
     "reloadFailed": "Nastavení projektu bylo aktualizováno, ale některé změněné soubory se nepodařilo znovu načíst."
@@ -333,6 +365,14 @@
     "summary_few": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
     "summary_many": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
     "summary_other": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
+    "systemHint": {
+      "apt": "Balíček, který jej obsahuje, najdete příkazem apt-file search {{name}}, nebo nainstalujte všechno příkazem sudo apt install texlive-full.",
+      "dnf": "Spusťte {{command}}."
+    },
+    "systemManaged_one": "Kompilace nenašla „{{name}}“. Tento TeX Live pochází z vaší distribuce Linuxu, takže do něj Oleafly nemůže přidávat balíčky. {{hint}}",
+    "systemManaged_few": "Kompilace nenašla {{names}}. Tento TeX Live pochází z vaší distribuce Linuxu, takže do něj Oleafly nemůže přidávat balíčky. {{hint}}",
+    "systemManaged_many": "Kompilace nenašla {{names}}. Tento TeX Live pochází z vaší distribuce Linuxu, takže do něj Oleafly nemůže přidávat balíčky. {{hint}}",
+    "systemManaged_other": "Kompilace nenašla {{names}}. Tento TeX Live pochází z vaší distribuce Linuxu, takže do něj Oleafly nemůže přidávat balíčky. {{hint}}",
     "userTree": "Systémový strom TeXu je jen pro čtení, takže balíčky se nainstalovaly do vašeho osobního stromu v {{path}}."
   },
   "models": {
@@ -385,6 +425,7 @@
   },
   "pandoc": {
     "downloadFailed": "Pandoc se nepodařilo stáhnout. Nainstalujte jej ručně a zkuste to znovu.",
+    "downloadFailedDetail": "Pandoc se nepodařilo stáhnout ({{detail}}). Nainstalujte jej ručně a zkuste to znovu.",
     "downloadingPercent": "Stahuje se pandoc… {{progress}} %",
     "downloadingSize": "Stahuje se pandoc… {{megabytes}} MB",
     "installGuide": "Návod k instalaci"
@@ -509,7 +550,7 @@
     "compileFailed": "Tagovaná kompilace selhala. Zkontrolujte engine a zkuste to znovu.",
     "compiled": "Tagované PDF bylo zkompilováno. Verdikt přístupnosti najdete níže.",
     "compiledWithErrors": "Tagovaná kompilace skončila s chybami. Zkontrolujte protokol.",
-    "engineRequired": "Nejprve povolte tagovací engine v Nastavení, Engine LaTeX."
+    "engineRequired": "Chcete-li vytvářet tagovaná PDF, nainstalujte TinyTeX v Nastavení > Enginy > LaTeX."
   },
   "terminal": {
     "defaultTitle": "Terminál {{index}}"
@@ -556,6 +597,7 @@
   "tinytex": {
     "installFailed": "TinyTeX se nepodařilo nainstalovat.",
     "installGuide": "Návod k instalaci",
+    "tryAgain": "Zkusit znovu",
     "installed": "TinyTeX nainstalován.",
     "phase": {
       "addingPackages": "Přidávají se balíčky…",

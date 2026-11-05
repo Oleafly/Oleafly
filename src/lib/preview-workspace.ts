@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import {
+  compileLogCleared,
   useCompileStore,
   type CompiledHtmlOutput,
   type CompileState,
@@ -20,10 +21,11 @@ import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
 import { mainDocumentMissing } from "@/lib/main-document";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
+import { usePdfViewStore } from "@/store/pdf-view";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
 import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
 import type { TypstOptionsUpdate } from "@/lib/typst-options";
-import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { applyShellEscape, offerTexSetupAfterSwitch } from "@/lib/latex-compile-actions";
 import { isCalepinEngine, isNotebookEngine } from "@/lib/notebook-engines";
 
 type FileState = ReturnType<typeof useFilesStore.getState>;
@@ -35,6 +37,7 @@ export interface PreviewWorkspaceSnapshot extends
   compileRevision: number;
   noMainDocument: boolean;
   systemTexLocked: boolean;
+  logCleared?: boolean;
   typstVariant?: string | null;
   livePreview?: LivePreviewState;
   previewState?: PreviewWindowState;
@@ -43,7 +46,8 @@ export interface PreviewWorkspaceSnapshot extends
 
 export type PreviewWorkspaceCommand =
   | { action: "compile"; fromScratch?: boolean }
-  | { action: "stop" | "ready" | "pdf-settings" | "settings" | "refresh-files" | "ask-ai" | "trust-folder" }
+  | { action: "stop" | "ready" | "pdf-settings" | "settings" | "refresh-files" | "ask-ai" | "trust-folder" | "clear-log" }
+  | { action: "preview-page"; page: number }
   | { action: "auto-compile" | "syntax-check" | "stop-on-error" | "code-execution"; value: boolean }
   | { action: "compile-mode"; value: "normal" | "fast" }
   | { action: "engine"; engine: string; flavor?: TexFlavor | null }
@@ -80,6 +84,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       systemTexLocked: folderIsRestricted(useFolderAccessStore.getState(), projectId),
       typstVariant: activeTypstVariant(projectId, files.engine),
       livePreview: compile.livePreview,
+      ...(compileLogCleared(compile) ? { logCleared: true } : {}),
       ...(compile.htmlOutput?.projectId === projectId ? { htmlOutput: compile.htmlOutput } : {}),
       previewState: previewState?.identity.projectId === projectId
         ? { ...previewState, projectStateRevision: currentProjectStateRevision() } : undefined,
@@ -98,6 +103,10 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           break;
         case "stop": await compile.stopCompile(); break;
         case "ready": publish(); break;
+        case "clear-log": compile.clearLog(); break;
+        case "preview-page":
+          if (Number.isInteger(payload.page) && payload.page >= 1) usePdfViewStore.getState().setPage(payload.page);
+          break;
         case "auto-compile":
           if (typeof payload.value === "boolean") compile.setAutoCompile(payload.value);
           break;
@@ -114,6 +123,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           if (payload.engine === "xetex" || (payload.engine === "latexmk" &&
             [null, undefined, "pdflatex", "xelatex", "lualatex", "uplatex", "platex"].includes(payload.flavor))) {
             await files.setEngine(payload.engine, payload.flavor);
+            if (payload.engine === "latexmk") await offerTexSetupAfterSwitch();
           } else if ((payload.engine === "typst" || payload.engine === "calepin") &&
             (files.engine.id === "typst" || isCalepinEngine(files.engine))) {
             await files.setEngine(payload.engine);

@@ -66,6 +66,12 @@ function backend(overrides: Record<string, unknown> = {}) {
   });
 }
 
+function packagesReadAfterChoosing() {
+  const commands = mocks.invoke.mock.calls.map(([command]) => command);
+  const chosen = commands.lastIndexOf("set_tex_distribution");
+  return commands.slice(chosen + 1).filter((command) => command === "tlmgr_installed").length;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   resetDisplayHomes();
@@ -180,6 +186,64 @@ describe("EngineSection LaTeX tab", () => {
     expect(document.body.textContent).not.toContain("/Users/ada");
   });
 
+  it("marks the distribution compiles run from and lets another one take over", async () => {
+    const user = userEvent.setup();
+    const system = distro({ label: "TeX Live 2025", bin_dir: "/usr/local/texlive/2025/bin", active: true, complete: true });
+    const managed = distro({
+      kind: "oleafly-tinytex",
+      label: "TinyTeX (managed)",
+      bin_dir: "/Users/ada/.oleafly/tinytex/bin",
+      latexmk: "/Users/ada/.oleafly/tinytex/bin/latexmk",
+    });
+    backend({ tex_distributions: [system, managed] });
+    render(<EngineSection />);
+
+    await screen.findByText("TeX Live 2025");
+    expect(screen.getAllByText(engineCopy.distributions.inUse)).toHaveLength(1);
+    const use = screen.getAllByRole("button", { name: engineCopy.distributions.use });
+    expect(use).toHaveLength(1);
+
+    await user.click(use[0]);
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("set_tex_distribution", {
+        binDir: "/Users/ada/.oleafly/tinytex/bin",
+      }),
+    );
+    await waitFor(() => expect(packagesReadAfterChoosing()).toBeGreaterThan(0));
+  });
+
+  it("offers the automatic choice only while a distribution is pinned", async () => {
+    const user = userEvent.setup();
+    backend({
+      tex_distributions: [distro({ label: "TeX Live 2025", active: true, preferred: true })],
+    });
+    render(<EngineSection />);
+
+    await user.click(await screen.findByRole("button", { name: engineCopy.distributions.automatic }));
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("set_tex_distribution", { binDir: null }),
+    );
+    await waitFor(() => expect(packagesReadAfterChoosing()).toBeGreaterThan(0));
+  });
+
+  it("explains that TinyTeX will not take over from a full system TeX by itself", async () => {
+    backend({ tex_distributions: [distro({ label: "TeX Live 2025", active: true, complete: true })] });
+    render(<EngineSection />);
+    expect(await screen.findByText(engineCopy.distributions.tinytexChooseHint)).toBeInTheDocument();
+  });
+
+  it("offers a cancel button while TinyTeX downloads", async () => {
+    const user = userEvent.setup();
+    useEngineStore.setState({ installing: true, installPhase: "download", cancellingInstall: false });
+    render(<EngineSection />);
+
+    await user.click(await screen.findByRole("button", { name: enCommon.actions.cancel }));
+    await waitFor(() =>
+      expect(mocks.invoke.mock.calls.some(([cmd]) => cmd === "cancel_tinytex_install")).toBe(true),
+    );
+    useEngineStore.setState({ installing: false, cancellingInstall: false });
+  });
+
   it("removes a managed TinyTeX install", async () => {
     const user = userEvent.setup();
     backend({
@@ -192,6 +256,34 @@ describe("EngineSection LaTeX tab", () => {
     await waitFor(() =>
       expect(mocks.invoke.mock.calls.some(([cmd]) => cmd === "delete_tinytex")).toBe(true),
     );
+  });
+
+  it("offers to update a managed TinyTeX from another release", async () => {
+    const user = userEvent.setup();
+    const outdated = { ...systemEngine, tinytex_outdated: true };
+    backend({
+      latex_engine_info: outdated,
+      tex_distributions: [distro({ kind: "oleafly-tinytex", label: "TinyTeX (managed)" })],
+    });
+    const original = useEngineStore.getState().install;
+    const install = vi.fn(async () => {});
+    useEngineStore.setState({ info: outdated, install });
+    render(<EngineSection />);
+
+    await screen.findByText("TinyTeX (managed)");
+    await user.click(screen.getByRole("button", { name: engineCopy.tinytex.update }));
+    expect(install).toHaveBeenCalledTimes(1);
+    useEngineStore.setState({ install: original });
+  });
+
+  it("offers no TinyTeX update when the install matches this release", async () => {
+    backend({
+      tex_distributions: [distro({ kind: "oleafly-tinytex", label: "TinyTeX (managed)" })],
+    });
+    render(<EngineSection />);
+
+    await screen.findByText("TinyTeX (managed)");
+    expect(screen.queryByRole("button", { name: engineCopy.tinytex.update })).not.toBeInTheDocument();
   });
 
   it("offers to resume a partial download", async () => {

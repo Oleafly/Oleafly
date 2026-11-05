@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { CompileResult } from "@oleafly/backend-port";
-import { describeError } from "@/lib/app-error";
+import { describeError, errorText } from "@/lib/app-error";
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { logError } from "@/lib/log";
 import { mainDocumentMissing } from "@/lib/main-document";
@@ -202,7 +202,8 @@ function onStatus(payload: StatusPayload): void {
     session.alive = false;
   }
   const status = STATUS_FOR[payload.state];
-  if (status) setStatus(payload.projectId, status, payload.state === "failed" ? payload.message : null);
+  const failure = payload.state === "failed" && payload.message ? errorText(payload.message) : null;
+  if (status) setStatus(payload.projectId, status, failure);
 }
 
 function onResult(payload: ResultPayload): void {

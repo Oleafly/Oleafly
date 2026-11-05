@@ -604,6 +604,7 @@
     "unrecorded": "El Proyecto LaTeX no ha registrado un estado de etiquetado para la clase {{name}}, así que el resultado no está probado. Compila y revisa la salida."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata va al principio del documento principal, así que este archivo no lo recibe.",
     "metadataUpdated": "Se añadieron las claves de etiquetado necesarias a tu \\DocumentMetadata.",
     "metadataAdded": "Se añadió \\DocumentMetadata como primera línea (obligatorio, tiene que ir antes de \\documentclass). La línea va dentro de una comprobación de versión: un LaTeX anterior al {{date}}, como el del motor incluido, la omite y compila el documento sin etiquetar en lugar de fallar.",
     "headerRows": "Se puso table/header-rows en 1 para que la primera fila de cada tabla se etiquete como celdas de encabezado. Cambia el número si alguna tabla tiene otra profundidad de encabezado.",

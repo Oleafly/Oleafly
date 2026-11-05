@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { create, type StoreApi } from "zustand";
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 
 interface FileEntry {
   content: string;
@@ -269,6 +270,13 @@ describe("Typst live preview", () => {
     await syncLivePreview();
     emit("typst-watch:status", { projectId: "project", mainDocument: "main.typ", sessionId: 7, state: "failed", message: "Typst crashed" });
     expect(mocks.setStatus).toHaveBeenLastCalledWith("project", "failed", "Typst crashed");
+  });
+
+  it("explains a coded watcher failure in the app's language", async () => {
+    await syncLivePreview();
+    const message = '@oleafly/error:{"code":"typst.live_preview_stopped","params":{}}';
+    emit("typst-watch:status", { projectId: "project", mainDocument: "main.typ", sessionId: 7, state: "failed", message });
+    expect(mocks.setStatus).toHaveBeenLastCalledWith("project", "failed", enErrors.typst.live_preview_stopped);
   });
 
   it("stops the session when the project closes or stops being Typst", async () => {

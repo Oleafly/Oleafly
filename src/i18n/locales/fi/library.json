@@ -463,6 +463,7 @@
     "previewUnsupported": "Elävä esikatselu ei ole vielä saatavilla tälle moottorille",
     "badge": "Tekoälyn luoma",
     "compileWarning": "Tämä luonnos ei kääntynyt puhtaasti. Luo se uudelleen parempaa aloitusta varten tai luo projekti ja korjaa lähdekoodi editorissa.",
+    "compileLog": "Käännösloki",
     "noDescription": "Ei vielä kuvausta.",
     "includes": "Sisältää",
     "category": "Kategoria",

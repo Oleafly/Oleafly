@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
+import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useTypstToolchainStore } from "@/store/typst-toolchain";
@@ -17,8 +18,11 @@ export function TinytexGuards() {
   const progress = useEngineStore((s) => s.progress);
   const waitNoticeOpen = useEngineStore((s) => s.installWaitNoticeOpen);
   const closeWaitNotice = useEngineStore((s) => s.closeInstallWaitNotice);
+  const cancelInstall = useEngineStore((s) => s.cancelInstall);
+  const cancellingInstall = useEngineStore((s) => s.cancellingInstall);
   const typstVersion = useTypstToolchainStore((s) => s.install?.version ?? s.status?.installing ?? null);
-  const anyInstalling = installing || typstVersion !== null;
+  const packageOperation = useEngineStore((s) => s.packageOperations > 0);
+  const anyInstalling = installing || typstVersion !== null || packageOperation;
 
   const native = isTauri();
   useEffect(() => (native ? claimInstallQuitRequests() : undefined), [native]);
@@ -26,12 +30,16 @@ export function TinytexGuards() {
     INSTALL_QUIT_BLOCKED,
     () => {
       setQuitAsked(true);
-      if (useEngineStore.getState().installing || useTypstToolchainStore.getState().install) return;
+      const texBusy = () => {
+        const engine = useEngineStore.getState();
+        return engine.installing || engine.packageOperations > 0;
+      };
+      if (texBusy() || useTypstToolchainStore.getState().install) return;
       void useTypstToolchainStore
         .getState()
         .refresh()
         .then((status) => {
-          if (status?.installing || useEngineStore.getState().installing) return;
+          if (status?.installing || texBusy()) return;
           if (useTypstToolchainStore.getState().install) return;
           setQuitAsked(false);
           return cancelQuitFlush();
@@ -80,6 +88,15 @@ export function TinytexGuards() {
         onCancel={stay}
       />
       <ConfirmationDialog
+        open={quitAsked && !installing && typstVersion === null && packageOperation}
+        title={t(($) => $.shell.tinytexGuards.packageQuit.title)}
+        description={t(($) => $.shell.tinytexGuards.packageQuit.description)}
+        confirmLabel={t(($) => $.shell.tinytexGuards.quit.confirm)}
+        destructive
+        onConfirm={confirmQuit}
+        onCancel={stay}
+      />
+      <ConfirmationDialog
         open={waitNoticeOpen && installing}
         title={t(($) => $.shell.tinytexGuards.wait.title)}
         description={t(($) => $.shell.tinytexGuards.wait.description, {
@@ -88,7 +105,19 @@ export function TinytexGuards() {
         confirmLabel={t(($) => $.common.actions.ok)}
         onConfirm={closeWaitNotice}
         onCancel={closeWaitNotice}
-      />
+      >
+        {installPhase !== "packages" && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            disabled={cancellingInstall}
+            onClick={() => void cancelInstall()}
+          >
+            {t(($) => $.shell.tinytexGuards.wait.stop)}
+          </Button>
+        )}
+      </ConfirmationDialog>
     </>
   );
 }

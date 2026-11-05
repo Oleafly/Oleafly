@@ -94,13 +94,17 @@
     "exitFullscreen": "Volledig scherm verlaten",
     "retryCompile": "Opnieuw compileren",
     "chooseEngine": "Engine kiezen",
+    "installJapanese": "Japanse ondersteuning installeren (ongeveer 450 MB)",
+    "useCompiler": "{{compiler}} gebruiken",
     "installPackages_one": "{{name}} zoeken en installeren",
     "installPackages_other": "{{count}} bestanden zoeken en installeren",
     "downloadTypst": "Typst {{version}} downloaden",
     "useTypst": "Typst {{version}} gebruiken",
     "installTool": "{{tool}} {{version}} installeren",
     "installToolSize": "{{tool}} {{version}} installeren ({{size}})",
-    "engineSettings": "Engine-instellingen openen"
+    "engineSettings": "Engine-instellingen openen",
+    "useTectonic": "Tectonic gebruiken",
+    "useTectonicForEveryone": "Tectonic gebruiken voor iedereen"
   },
   "html": {
     "builtTitle": "Gebouwd als webpagina",

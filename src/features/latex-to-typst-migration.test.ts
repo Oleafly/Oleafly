@@ -727,6 +727,16 @@ describe("runLatexToTypstMigration", () => {
     expect(report.compileFailure).toBe("typst crashed");
   });
 
+  it("spells out a coded compile failure in the report", async () => {
+    const envelope = `@oleafly/error:${JSON.stringify({ code: "tex.no_package_manager", params: {}, detail: null })}`;
+    const { deps: fake } = deps({ compile: vi.fn(() => Promise.reject(envelope)) });
+
+    const report = await runLatexToTypstMigration(request, fake);
+
+    expect(report.compileFailure).toBeTruthy();
+    expect(report.compileFailure).not.toContain("@oleafly/error");
+  });
+
   it("copies extra files the converter produced next to the Typst sources", async () => {
     const { deps: fake, created } = deps();
     const convert = fake.convert;

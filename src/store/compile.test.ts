@@ -4,6 +4,7 @@ import type { CompileError, CompileResult, LogDiagnostic } from "@oleafly/backen
 
 const mocks = vi.hoisted(() => ({
   latexEngineInfo: vi.fn(),
+  tlmgrInstall: vi.fn(),
   tlmgrInstallMissing: vi.fn(),
   toastInfo: vi.fn(),
   toastError: vi.fn(),
@@ -18,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   fileListeners: new Set<(state: unknown) => void>(),
   refreshPackages: vi.fn(),
   engineInstalling: false,
+  engineInfo: null as { latexmk_blocker?: { code: string; params: Record<string, string> } | null } | null,
+  engineRefresh: vi.fn(async () => {}),
+  engineInstall: vi.fn(async () => {}),
   queueCompileAfterInstall: vi.fn(),
   events: new Map<string, (event: { payload: string }) => void>(),
   listen: vi.fn(
@@ -69,6 +73,7 @@ const mocks = vi.hoisted(() => ({
     } as Record<string, { content: string; dirty: boolean }>,
     saveAllDirty: vi.fn(),
     setTypstVersion: vi.fn(),
+    setEngine: vi.fn(),
     refreshEngine: vi.fn(),
   },
 }));
@@ -76,6 +81,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   withEventListener: (await importOriginal<typeof import("@/lib/tauri")>()).withEventListener,
   latexEngineInfo: mocks.latexEngineInfo,
+  tlmgrInstall: mocks.tlmgrInstall,
   tlmgrInstallMissing: mocks.tlmgrInstallMissing,
   compileProject: mocks.compileProject,
   readCompiledPdf: mocks.readCompiledPdf,
@@ -130,10 +136,14 @@ vi.mock("@/store/typst-toolchain", () => ({
   useTypstToolchainStore: { getState: () => ({ installVersion: mocks.installTypstVersion }) },
 }));
 vi.mock("@/store/engine", () => ({
+  duringPackageOperation: (run: () => Promise<unknown>) => run(),
   useEngineStore: {
     getState: () => ({
       refreshPackages: mocks.refreshPackages,
       installing: mocks.engineInstalling,
+      info: mocks.engineInfo,
+      refresh: mocks.engineRefresh,
+      install: mocks.engineInstall,
       queueCompileAfterInstall: mocks.queueCompileAfterInstall,
     }),
   },
@@ -151,18 +161,27 @@ vi.mock("@/components/editor/cm/language-service-format", () => formatting);
 
 import { importCompatFinding } from "@oleafly/latex";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
+import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { SaveFlushError } from "@/store/save-flush-error";
-import { installCollabEditorPort } from "@/lib/collab-live-bridge";
+import { installCollabEditorPort, useCollabEditorGate } from "@/lib/collab-live-bridge";
 import {
   acceptCompileOffer,
   beginCompileRequestIdentity,
   clearFolderPause,
+  compileLogCleared,
+  compileIsBusy,
   compileSaveFailureReason,
   downloadMissingTypst,
+  endTinytexWait,
+  failureOutsideSource,
+  installMissingTex,
   switchToDefaultTypst,
+  switchToTectonic,
   installerNotices,
   isCompileCheckpointCurrent,
   reportCompileSaveFailure,
@@ -170,8 +189,13 @@ import {
   stopOutdatedAutomaticCompile,
   stopRunningCompileQuietly,
   useCompileStore,
+  type CompileOffer,
 } from "./compile";
-import { expectEngineChoiceOnOpen, useEnginePickerStore } from "@/store/engine-picker";
+import {
+  dismissEngineHint,
+  expectEngineChoiceOnOpen,
+  useEnginePickerStore,
+} from "@/store/engine-picker";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import {
   createCompileSuccessCheckpoint,
@@ -583,6 +607,39 @@ describe("compile output lifecycle", () => {
       enCore.compile.typstPackage.offlineNotCached.replace("{{spec}}", "@preview/cetz:0.4.2"),
     );
   });
+
+  it.each(["typst", "calepin"])(
+    "replaces the compiler's English package message on %s projects",
+    async (engineId) => {
+      mocks.files.mainDoc = "main.typ";
+      mocks.files.engine = {
+        ...LATEX_ENGINE,
+        id: engineId,
+        label: "Typst",
+        source_format: "typst",
+        main_document: "main.typ",
+        source_extensions: ["typ"],
+      };
+      const message =
+        "failed to download package (https://packages.typst.org/preview/cetz-0.4.2.tar.gz: Connection refused)";
+      mocks.compileProject.mockResolvedValue({
+        ok: false, has_pdf: false, log: "", synctex_path: null, out_dir: null, compile_time_ms: 1,
+        errors: [{
+          line: 1,
+          file: "main.typ",
+          message,
+          kind: "error",
+          explanation: "English explanation from the compiler",
+          code: "typst.package",
+        }],
+      });
+      await useCompileStore.getState().recompile();
+      const [explained] = useCompileStore.getState().errors;
+      expect(explained.explanation).toBe(
+        enCore.compile.typstPackage.downloadFailed.replace("{{spec}}", "@preview/cetz:0.4.2"),
+      );
+    },
+  );
 
   it("names the real switch when system TeX refuses a shell command", async () => {
     mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
@@ -1340,6 +1397,27 @@ describe("saving before a compile", () => {
   });
 });
 
+describe("a compile waiting for a TinyTeX install", () => {
+  afterEach(() => {
+    useCompileStore.setState({ status: "idle", failureReason: null });
+  });
+
+  it("shows why the install ended instead of promising it will start", () => {
+    useCompileStore.setState({ status: "unavailable", failureReason: enCore.compile.tinytexDownloading });
+    endTinytexWait("Could not install TinyTeX.");
+    expect(useCompileStore.getState().failureReason).toBe("Could not install TinyTeX.");
+  });
+
+  it("leaves any other message alone", () => {
+    useCompileStore.setState({ status: "unavailable", failureReason: "No latexmk." });
+    endTinytexWait("Could not install TinyTeX.");
+    expect(useCompileStore.getState().failureReason).toBe("No latexmk.");
+    useCompileStore.setState({ status: "error", failureReason: enCore.compile.tinytexDownloading });
+    endTinytexWait("Could not install TinyTeX.");
+    expect(useCompileStore.getState().failureReason).toBe(enCore.compile.tinytexDownloading);
+  });
+});
+
 describe("the reason a compile shows when a save fails", () => {
   it("names the file that couldn't be saved, or the first of several", () => {
     expect(compileSaveFailureReason(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]))).toBe(
@@ -1707,6 +1785,25 @@ describe("compile options", () => {
     expect(mocks.cancelCompile).toHaveBeenCalledTimes(1);
   });
 
+  it("stops the running compile when the project closes", async () => {
+    const compile = deferred<typeof failedResult>();
+    mocks.compileProject.mockReturnValue(compile.promise);
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalled());
+    expect(compileIsBusy()).toBe(true);
+    useCompileStore.getState().reset();
+    expect(mocks.cancelCompile).toHaveBeenCalledOnce();
+    expect(compileIsBusy()).toBe(false);
+    compile.resolve(failedResult);
+    await compiling;
+  });
+
+  it("leaves the compiler alone when nothing is running at a reset", () => {
+    useCompileStore.getState().reset();
+    expect(mocks.cancelCompile).not.toHaveBeenCalled();
+    expect(compileIsBusy()).toBe(false);
+  });
+
   it("reports a stop the user asked for when the backend refuses it", async () => {
     const error = new Error("no compiler");
     mocks.cancelCompile.mockRejectedValue(error);
@@ -1755,6 +1852,66 @@ describe("compile log diagnostics", () => {
     out_dir: null,
     compile_time_ms: 1,
   };
+
+  it("hides the log on Clear without touching what Preflight and the AI read", () => {
+    useCompileStore.setState({ status: "error", log: "failed", errors: [{ kind: "error", message: "bad", line: 1, file: null, explanation: null }], diagnostics: [diagnostic] });
+
+    useCompileStore.getState().clearLog();
+
+    const state = useCompileStore.getState();
+    expect(compileLogCleared(state)).toBe(true);
+    expect(state.log).toBe("failed");
+    expect(state.errors).toHaveLength(1);
+    expect(state.diagnostics).toEqual([diagnostic]);
+    expect(state.status).toBe("error");
+  });
+
+  it("does not clear a log that is still being written", () => {
+    useCompileStore.setState({ status: "compiling", log: "running" });
+    useCompileStore.getState().clearLog();
+    expect(useCompileStore.getState().clearedLog).toBeNull();
+    useCompileStore.setState({ status: "idle", log: "" });
+    useCompileStore.getState().clearLog();
+    expect(useCompileStore.getState().clearedLog).toBeNull();
+  });
+
+  it("shows the log again as soon as a new compile starts, even when the text repeats", async () => {
+    useCompileStore.setState({ status: "error", log: "failed" });
+    useCompileStore.getState().clearLog();
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState().log).toBe("failed");
+    expect(compileLogCleared(useCompileStore.getState())).toBe(false);
+  });
+
+  it("forgets a cleared log when the project resets", () => {
+    useCompileStore.setState({ status: "error", log: "failed" });
+    useCompileStore.getState().clearLog();
+    useCompileStore.getState().reset();
+    expect(useCompileStore.getState().clearedLog).toBeNull();
+  });
+
+  it("points at the Logs tab when a compile ends with no PDF and no reason", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState().failureReason).toBe(enPreview.empty.compileFailed);
+  });
+
+  it("replaces the old log when saving stops the compile, so old errors do not reappear", async () => {
+    useCompileStore.setState({ status: "success", log: "! Old error.\n" });
+    mocks.saveAllDirty.mockRejectedValue(new Error("disk full"));
+
+    await useCompileStore.getState().recompile();
+
+    const { log, failureReason, status } = useCompileStore.getState();
+    expect(status).toBe("error");
+    expect(log).toBe(failureReason);
+    expect(log).not.toContain("Old error");
+  });
 
   it("resets diagnostics when a compile starts and stores the backend diagnostics from the result", async () => {
     useCompileStore.setState({ diagnostics: [diagnostic] });
@@ -1905,6 +2062,73 @@ describe("missing TeX file installation", () => {
     await vi.waitFor(() => expect(offers()).toHaveLength(1));
     return offers()[0][2] as ToastActionMock;
   }
+
+  it("sends a distro TeX to its own package manager and offers TinyTeX while it would take over", async () => {
+    mocks.latexEngineInfo.mockResolvedValue({
+      tlmgr: null,
+      system_package_manager: "apt",
+      tex_complete: false,
+    });
+    const action = await offer();
+    expect(offers()[0][0]).toBe(key());
+    expect(offers()[0][1]).toContain("came with your Linux distribution");
+    expect(offers()[0][1]).toContain("apt-file search tikz.sty");
+    expect(action.label).toBe(enSettings.engine.tinytex.download);
+    expect(useCompileStore.getState().offer).toBeNull();
+    expect(mocks.tlmgrInstallMissing).not.toHaveBeenCalled();
+  });
+
+  it("leaves TinyTeX out when a complete distro TeX would still win", async () => {
+    mocks.latexEngineInfo.mockResolvedValue({
+      tlmgr: null,
+      system_package_manager: "dnf",
+      tex_complete: true,
+    });
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() =>
+      expect(mocks.infoUnique).toHaveBeenCalledWith(
+        key(),
+        expect.stringContaining("sudo dnf install 'tex(tikz.sty)'"),
+        undefined,
+        true,
+      ),
+    );
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("stays quiet for a distribution that manages its own packages on the fly", async () => {
+    mocks.latexEngineInfo.mockResolvedValue({ tlmgr: null });
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.latexEngineInfo).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("offers Japanese support by package name and recompiles after the install", async () => {
+    mocks.tlmgrInstall.mockReset().mockResolvedValue("installed");
+    mocks.compileProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({
+        code: "tex.japanese_compiler_installable",
+        params: { compiler: "upLaTeX", packages: "collection-langjapanese,upmendex" },
+      })}`,
+    );
+    await useCompileStore.getState().recompile();
+    const offered = useCompileStore.getState().offer;
+    expect(offered).toEqual({
+      kind: "tex-packages",
+      projectId: mocks.files.projectId,
+      packages: ["collection-langjapanese", "upmendex"],
+    });
+    expect(useCompileStore.getState().failureReason).toContain("Install Japanese support");
+    succeedNextCompile(7);
+    acceptCompileOffer(offered as CompileOffer);
+    await vi.waitFor(() =>
+      expect(mocks.tlmgrInstall).toHaveBeenCalledExactlyOnceWith(["collection-langjapanese", "upmendex"]),
+    );
+    expect(mocks.tlmgrInstallMissing).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
 
   it("sends filenames to the resolver and recompiles only after installation", async () => {
     const action = await offer();
@@ -2183,6 +2407,201 @@ describe("bundled-engine compile failures", () => {
     expect(picker.findings.map((f) => f.id)).toEqual(["minted"]);
   });
 
+  function succeedWith(fields: Partial<CompileResult>) {
+    const bytes = new Uint8Array([7, 1, 2]);
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: 7,
+      log: "Output written on main.pdf.",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 1,
+      ...fields,
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer.slice(0));
+  }
+
+  const lostText = (code: string): CompileResult["errors"] => [
+    {
+      kind: "warning",
+      code,
+      params: { sample: "한 글" },
+      message: "5 characters are missing from the PDF",
+      line: null,
+      file: "main.tex",
+      explanation: "Fallback explanation",
+    },
+  ];
+
+  it("clears the lost text notice when the same PDF comes back clean", async () => {
+    succeedWith({ errors: lostText("tex.missing_characters_cjk") });
+    await useCompileStore.getState().recompile();
+    const id = mocks.infoUnique.mock.results[0].value;
+    succeedWith({});
+    await useCompileStore.getState().recompile();
+    expect(mocks.dismiss).toHaveBeenCalledWith(id);
+  });
+
+  it("offers latexmk after a compile that left out its index, without opening the picker", async () => {
+    succeedWith({
+      errors: [
+        {
+          kind: "warning",
+          code: "tex.index_needs_latexmk",
+          message: "The index wasn't built",
+          line: null,
+          file: null,
+          explanation: null,
+        },
+      ],
+    });
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("success");
+    expect(useEnginePickerStore.getState().open).toBe(false);
+    const offered = useCompileStore.getState().offer;
+    expect(offered).toMatchObject({
+      kind: "engine-gap",
+      projectId: mocks.files.projectId,
+      findings: [{ id: "glossaries-index" }],
+    });
+    acceptCompileOffer(offered as CompileOffer);
+    expect(useEnginePickerStore.getState().source).toBe("compile-failure");
+    useEnginePickerStore.setState({ open: false, source: "manual", findings: [] });
+  });
+
+  it("makes no index offer for a compile with no gap", async () => {
+    succeedWith({});
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("offers no switch after the user chose to keep the built-in engine", async () => {
+    const projectId = mocks.files.projectId;
+    if (!projectId) throw new Error("expected an open project");
+    const stored = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+    });
+    try {
+      dismissEngineHint(projectId, [importCompatFinding("cjk-pdftex-package")]);
+      succeedWith({ errors: lostText("tex.missing_characters_cjk_package") });
+      await useCompileStore.getState().recompile();
+      expect(useEnginePickerStore.getState().open).toBe(false);
+      expect(useCompileStore.getState().offer).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not send a bundled font named by family to the engine picker", async () => {
+    mocks.compileProject.mockResolvedValue({
+      ...failedCompile('! Package fontspec Error: The font "UnBatang" cannot be found.'),
+      errors: [
+        {
+          line: 4,
+          file: "main.tex",
+          message: 'Package fontspec Error: The font "UnBatang" cannot be found.',
+          kind: "error",
+          explanation: null,
+          code: "tex.font_in_bundle",
+          params: { font: "UnBatang", file: "UnBatang.ttf" },
+        },
+      ],
+    });
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().open).toBe(false);
+    expect(useCompileStore.getState().errors[0].explanation).toContain("UnBatang.ttf");
+  });
+
+  it("still offers the engine for a font that isn't in the bundle", async () => {
+    mocks.compileProject.mockResolvedValue({
+      ...failedCompile('! Package fontspec Error: The font "Comic Sans" cannot be found.'),
+      errors: [
+        {
+          line: 4,
+          file: "main.tex",
+          message: 'Package fontspec Error: The font "Comic Sans" cannot be found.',
+          kind: "error",
+          explanation: null,
+        },
+      ],
+    });
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().findings.map((f) => f.id)).toEqual(["fontspec"]);
+  });
+
+  it("drops the T1 warning when every source is plain ASCII", async () => {
+    const warning = {
+      line: null,
+      file: null,
+      message: "T1",
+      kind: "warning",
+      explanation: "English fallback",
+      code: "tex.t1_fontenc_unicode_engine",
+    };
+    mocks.files.files = {
+      [mocks.files.mainDoc]: { content: "\\documentclass{article}" },
+    } as unknown as typeof mocks.files.files;
+    succeedWith({ errors: [warning] });
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().errors).toEqual([]);
+    mocks.files.files = {
+      [mocks.files.mainDoc]: { content: "Straße" },
+    } as unknown as typeof mocks.files.files;
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().errors.map((error) => error.code)).toEqual([
+      "tex.t1_fontenc_unicode_engine",
+    ]);
+  });
+
+  it("shows the coded message when a recompile produces the output already on screen", async () => {
+    succeedWith({});
+    await useCompileStore.getState().recompile();
+    mocks.readCompiledPdf.mockClear();
+    succeedWith({
+      errors: [
+        {
+          line: null,
+          file: "main.tex",
+          message: "LaTeX Warning: `h' float specifier changed to `ht'.",
+          kind: "warning",
+          explanation: "English fallback",
+          code: "tex.explain.float_moved",
+        },
+      ],
+    });
+    await useCompileStore.getState().recompile();
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().status).toBe("success");
+    expect(useCompileStore.getState().errors.map((error) => error.explanation)).toEqual([
+      enErrors.tex.explain.float_moved,
+    ]);
+  });
+
+  it("keeps the T1 warning away when a recompile of plain ASCII produces the same output", async () => {
+    const warning = {
+      line: null,
+      file: null,
+      message: "T1",
+      kind: "warning",
+      explanation: "English fallback",
+      code: "tex.t1_fontenc_unicode_engine",
+    };
+    mocks.files.files = {
+      [mocks.files.mainDoc]: { content: "\\documentclass{article}" },
+    } as unknown as typeof mocks.files.files;
+    succeedWith({ errors: [warning] });
+    await useCompileStore.getState().recompile();
+    mocks.readCompiledPdf.mockClear();
+    await useCompileStore.getState().recompile();
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().errors).toEqual([]);
+  });
+
   it("clears the offer when the next compile starts", async () => {
     failWith("! LaTeX Error: File `thesisMDU.cls' not found.");
     await useCompileStore.getState().recompile({ origin: "automatic" });
@@ -2191,6 +2610,44 @@ describe("bundled-engine compile failures", () => {
     await useCompileStore.getState().recompile({ origin: "automatic" });
     expect(useCompileStore.getState().status).toBe("success");
     expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("says a package offline mode has not downloaded needs a download, and offers to turn offline mode off", async () => {
+    const setOffline = vi.fn();
+    const settings = mocks.settings as typeof mocks.settings & { setOffline?: typeof setOffline };
+    settings.setOffline = setOffline;
+    mocks.settings.offline = true;
+    failWith("! LaTeX Error: File `tikz.sty' not found.");
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject.mock.calls[0][2]).toBe(true);
+    expect(useEnginePickerStore.getState().open).toBe(false);
+    expect(useCompileStore.getState().offer).toBeNull();
+    expect(mocks.errorUnique).toHaveBeenCalledOnce();
+    const [key, message, action] = mocks.errorUnique.mock.calls[0];
+    expect(key).toBe(`compile-retry:${mocks.files.projectId}`);
+    expect(message).toContain("Offline mode is on");
+    expect(message).toContain("tikz.sty");
+    expect(useCompileStore.getState().failureReason).toBe(message);
+    expect((action as ToastActionMock).label).toBe("Turn off and compile");
+    (action as ToastActionMock).onClick();
+    expect(setOffline).toHaveBeenCalledWith(false);
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+    delete settings.setOffline;
+  });
+
+  it("keeps the engine picker for the same missing file when offline mode is off", async () => {
+    failWith("! LaTeX Error: File `tikz.sty' not found.");
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().open).toBe(true);
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+  });
+
+  it("keeps real gaps on the engine picker while offline", async () => {
+    mocks.settings.offline = true;
+    failWith("! Package minted Error: You must invoke LaTeX with -shell-escape");
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().open).toBe(true);
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 
   it("answers a failed bundle download the user compiled, and stays quiet for automatic compiles", async () => {
@@ -2874,6 +3331,226 @@ const compileFailure = {
   compile_time_ms: 1,
 };
 
+describe("missing TeX", () => {
+  const systemTexEngine = {
+    ...LATEX_ENGINE,
+    id: "latexmk",
+    capabilities: { ...LATEX_ENGINE.capabilities, compiler_prerequisite: "system_tex" as const },
+  };
+  const coded = (code: string, params: Record<string, string> = {}) =>
+    `${APP_ERROR_PREFIX}${JSON.stringify({ code, params, detail: null })}`;
+
+  beforeEach(() => {
+    mocks.files.engine = systemTexEngine;
+    mocks.engineInfo = null;
+    mocks.engineRefresh.mockReset().mockResolvedValue(undefined);
+    mocks.engineInstall.mockReset().mockResolvedValue(undefined);
+    mocks.queueCompileAfterInstall.mockReset();
+    mocks.compileProject.mockReset();
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false, offer: null });
+  });
+
+  afterEach(() => {
+    mocks.engineInfo = null;
+  });
+
+  it("offers TinyTeX without saving or compiling when the engine info says latexmk can't run", async () => {
+    mocks.engineInfo = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.engineRefresh).toHaveBeenCalledOnce();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enErrors.tex.latexmk_missing,
+      offer: { kind: "tex-missing", projectId: mocks.files.projectId },
+    });
+  });
+
+  it.each([
+    [false, enCore.compile.sharedTexEditor],
+    [true, enCore.compile.sharedTexViewer],
+  ])("says what a shared project's missing TeX means here (viewer: %s)", async (viewer, note) => {
+    mocks.engineInfo = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
+    useCollabEditorGate.setState({ projectId: mocks.files.projectId, viewer, locked: false, connecting: false });
+
+    await useCompileStore.getState().recompile();
+    useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
+
+    expect(useCompileStore.getState().failureReason).toBe(`${enErrors.tex.latexmk_missing} ${note}`);
+  });
+
+  it("compiles when a refresh finds the TeX that was missing", async () => {
+    mocks.engineInfo = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
+    mocks.engineRefresh.mockImplementation(async () => {
+      mocks.engineInfo = { latexmk_blocker: null };
+    });
+    mocks.compileProject.mockResolvedValue(compileFailure);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.compileProject).toHaveBeenCalled();
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it.each([
+    ["explicit", "full"],
+    ["automatic", "login_probe"],
+    ["agent", "login_probe"],
+  ] as const)("rechecks a blocked %s compile with a %s rescan", async (origin, rescan) => {
+    mocks.engineInfo = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
+
+    await useCompileStore.getState().recompile({ origin });
+
+    expect(mocks.engineRefresh).toHaveBeenCalledExactlyOnceWith({ rescan });
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("does not probe again when nothing says TeX is missing", async () => {
+    mocks.engineInfo = { latexmk_blocker: null };
+    mocks.compileProject.mockResolvedValue(compileFailure);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.engineRefresh).not.toHaveBeenCalled();
+    expect(mocks.compileProject).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["tex.latexmk_missing", {}, enErrors.tex.latexmk_missing],
+    ["tex.latexmk_needs_perl", {}, enErrors.tex.latexmk_needs_perl],
+    [
+      "tex.latexmk_not_in_distribution_command",
+      { binDir: "/usr/bin", command: "sudo apt install latexmk" },
+      enErrors.tex.latexmk_not_in_distribution_command
+        .replace("{{binDir}}", "/usr/bin")
+        .replace("{{command}}", "sudo apt install latexmk"),
+    ],
+    [
+      "tex.compiler_missing_command",
+      { compiler: "XeLaTeX", command: "sudo apt install texlive-xetex" },
+      enErrors.tex.compiler_missing_command
+        .replace("{{compiler}}", "XeLaTeX")
+        .replace("{{command}}", "sudo apt install texlive-xetex"),
+    ],
+  ])("turns a %s refusal into the offer, with no English prefix", async (code, params, message) => {
+    mocks.compileProject.mockRejectedValue(coded(code, params));
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: message,
+      log: expect.stringContaining(message),
+      offer: { kind: "tex-missing", projectId: mocks.files.projectId },
+    });
+    expect(mocks.engineRefresh).toHaveBeenCalled();
+  });
+
+  it("keeps the generic failure for other coded refusals", async () => {
+    mocks.compileProject.mockRejectedValue(coded("tex.latexmk_network_folder"));
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState()).toMatchObject({ status: "error", offer: null });
+  });
+
+  it("puts the offer and the coded reason on a run that stopped on a missing tool", async () => {
+    mocks.compileProject.mockResolvedValue({
+      ...compileFailure,
+      errors: [
+        {
+          line: null,
+          file: null,
+          message: "latexmk could not find biber",
+          kind: "error",
+          explanation: "fallback",
+          code: "tex.biber_missing_command",
+          params: { command: "sudo apt install biber" },
+        },
+      ],
+    });
+
+    await useCompileStore.getState().recompile();
+
+    const state = useCompileStore.getState();
+    expect(state.offer).toEqual({ kind: "tex-missing", projectId: mocks.files.projectId });
+    expect(state.failureReason).toBe(
+      enErrors.tex.biber_missing_command.replace("{{command}}", "sudo apt install biber"),
+    );
+  });
+
+  it("leaves a run with ordinary errors alone", async () => {
+    mocks.compileProject.mockResolvedValue({
+      ...compileFailure,
+      errors: [{ line: 3, file: "main.tex", message: "Oops", kind: "error", explanation: null }],
+    });
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("queues the compile before the install so it runs once, when TinyTeX is ready", async () => {
+    const order: string[] = [];
+    mocks.queueCompileAfterInstall.mockImplementation(() => order.push("queue"));
+    mocks.engineInstall.mockImplementation(async () => {
+      order.push("install");
+    });
+
+    acceptCompileOffer({ kind: "tex-missing", projectId: "project" });
+    await vi.waitFor(() => expect(order).toEqual(["queue", "install"]));
+
+    expect(mocks.queueCompileAfterInstall).toHaveBeenCalledExactlyOnceWith("explicit");
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("ignores an install offer left over from another project", async () => {
+    await installMissingTex("another-project");
+    expect(mocks.engineInstall).not.toHaveBeenCalled();
+  });
+
+  it("switches an Auto build to the compiler the document needs and compiles", async () => {
+    mocks.files.setEngine.mockReset().mockResolvedValue(undefined);
+    mocks.compileProject.mockResolvedValue(compileFailure);
+    acceptCompileOffer({
+      kind: "switch-compiler",
+      projectId: "project",
+      compiler: "xelatex",
+      label: "XeLaTeX",
+    });
+    await vi.waitFor(() =>
+      expect(mocks.files.setEngine).toHaveBeenCalledExactlyOnceWith("latexmk", "xelatex"),
+    );
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalled());
+  });
+
+  it("goes back to Tectonic and compiles", async () => {
+    mocks.files.setEngine.mockReset().mockResolvedValue(undefined);
+    mocks.compileProject.mockResolvedValue(compileFailure);
+    useCompileStore.setState({ offer: { kind: "tex-missing", projectId: "project" } });
+
+    await switchToTectonic("project");
+
+    expect(mocks.files.setEngine).toHaveBeenCalledExactlyOnceWith("xetex");
+    expect(useCompileStore.getState().offer).toBeNull();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalled());
+  });
+
+  it("reports a failed switch back to Tectonic", async () => {
+    mocks.files.setEngine.mockReset().mockRejectedValue(new Error("disk full"));
+
+    await switchToTectonic("project");
+
+    expect(mocks.errorUnique).toHaveBeenCalledWith(
+      "engine-switch:project",
+      enShell.enginePicker.switchFailed,
+    );
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+});
+
 describe("compile gates", () => {
   afterEach(() => {
     mocks.engineInstalling = false;
@@ -2948,5 +3625,45 @@ describe("compile gates", () => {
     const state = useCompileStore.getState();
     expect(state.errors.length).toBeGreaterThan(1);
     expect(state.log).toContain(`Syntax check found ${state.errors.length} errors in main.tex`);
+  });
+});
+
+describe("telling source failures from the rest", () => {
+  it("finds nothing outside the source after an error in the document", async () => {
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+    mocks.compileProject.mockResolvedValue({
+      ok: false,
+      has_pdf: false,
+      log: "! Undefined control sequence.",
+      errors: [{ line: 3, file: "main.tex", message: "Undefined control sequence", kind: "error", explanation: null }],
+      synctex_path: null,
+      out_dir: null,
+      compile_time_ms: 1,
+    });
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState().failureReason).toBe(enPreview.empty.compileFailed);
+    expect(failureOutsideSource()).toBeNull();
+  });
+
+  it("finds nothing outside the source after a failed syntax check", async () => {
+    mocks.readFileContent.mockResolvedValue("\\begin{document}\nunclosed\n");
+
+    await useCompileStore.getState().recompile();
+
+    const { status, failureReason } = useCompileStore.getState();
+    expect(status).toBe("error");
+    expect(failureReason).toBeTruthy();
+    expect(failureOutsideSource()).toBeNull();
+  });
+
+  it("keeps a reason that editing the source cannot fix", () => {
+    useCompileStore.setState({ failureReason: enCore.compile.tinytexDownloading });
+    expect(failureOutsideSource()).toBe(enCore.compile.tinytexDownloading);
+  });
+
+  it("has nothing to say when nothing failed", () => {
+    expect(failureOutsideSource()).toBeNull();
   });
 });

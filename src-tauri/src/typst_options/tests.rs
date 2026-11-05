@@ -71,6 +71,7 @@ fn compile_flags_skip_what_the_version_cannot_take() {
         ignore_system_fonts: true,
         inputs: vec![("draft".into(), "true".into())],
         creation_timestamp: Some(0),
+        system_font_mirror: None,
     };
     assert_eq!(
         settings.compile_flags(capabilities_for("0.11.1")),
@@ -92,6 +93,46 @@ fn compile_flags_skip_what_the_version_cannot_take() {
                 value: "true".into()
             },
             TypstCompileFlag::CreationTimestamp(0),
+        ]
+    );
+}
+
+#[test]
+fn the_system_font_mirror_replaces_the_system_scan_when_typst_can_take_the_flag() {
+    let mirror = PathBuf::from("/data/assets/typst-system-fonts");
+    let settings = TypstCompileSettings {
+        font_dirs: vec![PathBuf::from("/p/fonts")],
+        ..TypstCompileSettings::default()
+    }
+    .with_system_font_mirror(Some(mirror.clone()));
+    assert_eq!(
+        settings.compile_flags(capabilities_for("0.15.1")),
+        [
+            TypstCompileFlag::FontPath(PathBuf::from("/p/fonts")),
+            TypstCompileFlag::FontPath(mirror.clone()),
+            TypstCompileFlag::IgnoreSystemFonts,
+        ]
+    );
+    assert_eq!(
+        settings.compile_flags(capabilities_for("0.11.1")),
+        [TypstCompileFlag::FontPath(PathBuf::from("/p/fonts"))]
+    );
+}
+
+#[test]
+fn a_sealed_project_never_takes_the_system_font_mirror() {
+    let settings = TypstCompileSettings {
+        font_dirs: vec![PathBuf::from("/p/fonts")],
+        ignore_system_fonts: true,
+        ..TypstCompileSettings::default()
+    }
+    .with_system_font_mirror(Some(PathBuf::from("/data/assets/typst-system-fonts")));
+    assert_eq!(settings.system_font_mirror, None);
+    assert_eq!(
+        settings.compile_flags(capabilities_for("0.15.1")),
+        [
+            TypstCompileFlag::FontPath(PathBuf::from("/p/fonts")),
+            TypstCompileFlag::IgnoreSystemFonts,
         ]
     );
 }

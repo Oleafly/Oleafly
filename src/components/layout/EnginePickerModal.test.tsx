@@ -83,6 +83,7 @@ vi.mock("@/store/engine", () => ({
   ),
 }));
 vi.mock("@oleafly/latex", () => ({
+  IMPORT_COMPAT_CATALOG: {},
   latexmkFixesFinding: () => false,
   needsPdflatexFinding: (id: string) =>
     ["hyperref-pdftex-driver", "eps-image", "pdftex-only"].includes(id),

@@ -725,26 +725,28 @@ function fetchHttpsBuffer(url, expectedSize, allowedHosts, redirects = 0) {
   });
 }
 
-async function downloadWithRetry(targetEntry, allowedHosts) {
+export function downloadSources(targetEntry) {
+  return [targetEntry.url, targetEntry.githubUrl].filter(Boolean);
+}
+
+export async function downloadWithRetry(targetEntry, allowedHosts, fetchBuffer = fetchHttpsBuffer) {
   let lastError;
-  for (let attempt = 1; attempt <= DOWNLOAD_RETRIES; attempt += 1) {
-    try {
-      const buffer = await fetchHttpsBuffer(
-        targetEntry.url,
-        targetEntry.archiveSize,
-        allowedHosts,
-      );
-      const actualSha = sha256(buffer);
-      if (actualSha !== targetEntry.archiveSha256) {
-        throw new Error(
-          `archive checksum mismatch: expected ${targetEntry.archiveSha256}, got ${actualSha}`,
-        );
-      }
-      return buffer;
-    } catch (error) {
-      lastError = error;
-      if (attempt < DOWNLOAD_RETRIES) {
-        await new Promise((resolvePromise) => setTimeout(resolvePromise, 500 * attempt));
+  for (const source of downloadSources(targetEntry)) {
+    for (let attempt = 1; attempt <= DOWNLOAD_RETRIES; attempt += 1) {
+      try {
+        const buffer = await fetchBuffer(source, targetEntry.archiveSize, allowedHosts);
+        const actualSha = sha256(buffer);
+        if (actualSha !== targetEntry.archiveSha256) {
+          throw new Error(
+            `archive checksum mismatch: expected ${targetEntry.archiveSha256}, got ${actualSha}`,
+          );
+        }
+        return buffer;
+      } catch (error) {
+        lastError = error;
+        if (attempt < DOWNLOAD_RETRIES) {
+          await new Promise((resolvePromise) => setTimeout(resolvePromise, 500 * attempt));
+        }
       }
     }
   }

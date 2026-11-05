@@ -38,6 +38,7 @@
       "compile": "Kompiler",
       "recompile": "Kompiler på nytt",
       "compiling": "Kompilerer…",
+      "stop": "Stopp",
       "saveTooltip": "Lagre dette diagrammet",
       "save": "Lagre",
       "saveToProject": "Lagre i prosjektet",

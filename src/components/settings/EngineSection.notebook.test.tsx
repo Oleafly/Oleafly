@@ -203,6 +203,30 @@ describe("Quarto tab", () => {
     expect(screen.queryByTestId("quarto-engine-download")).not.toBeInTheDocument();
   });
 
+  it("says an old system Quarto is too old and stops calling the download optional", async () => {
+    const oldQuarto = { ...systemQuarto, version: "1.4.557" };
+    backend({
+      notebook_toolchain_status: () =>
+        status({ system: oldQuarto, active: oldQuarto, outdatedSystem: "1.4.557", minimumVersion: "1.5" }),
+    });
+    await openTab("quarto");
+    const outdated = await screen.findByTestId("quarto-engine-outdated");
+    expect(outdated).toHaveTextContent(
+      fill(copy.active.outdated, { tool: "Quarto", version: "1.4.557", minimum: "1.5" }),
+    );
+    const download = screen.getByTestId("quarto-engine-download");
+    expect(download).not.toHaveTextContent(copy.download.optional);
+  });
+
+  it("keeps the idle copy wording when the system Quarto is new enough", async () => {
+    backend({
+      notebook_toolchain_status: () => status({ system: systemQuarto, active: systemQuarto, managed: managedQuarto }),
+    });
+    await openTab("quarto");
+    expect(await screen.findByTestId("quarto-engine-managed")).toHaveTextContent(copy.managedIdle);
+    expect(screen.queryByTestId("quarto-engine-outdated")).toBeNull();
+  });
+
   it("says when Oleafly cannot download Quarto for this computer", async () => {
     backend({ notebook_toolchain_status: () => status({ offered: false }) });
     await openTab("quarto");

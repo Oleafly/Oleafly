@@ -419,6 +419,27 @@ describe("NewProjectDialog", () => {
 
     await waitFor(() => expect(host.logError).toHaveBeenCalledOnce());
     expect(onCreate).not.toHaveBeenCalled();
+    expect(await screen.findByTestId("template-setup-failed")).toHaveTextContent("setup.failed");
+  });
+
+  it("clears the download failure when the person tries again", async () => {
+    const host = makeHost({
+      ensureAssets: vi
+        .fn(async () => undefined)
+        .mockRejectedValueOnce(new Error("offline")),
+    });
+    const { onCreate } = open({}, host);
+
+    fireEvent.click(screen.getByTestId("template-card-poster"));
+    fireEvent.change(screen.getByLabelText("dialog.projectName"), {
+      target: { value: "Poster" },
+    });
+    fireEvent.click(screen.getByTestId("create-project"));
+    await screen.findByTestId("template-setup-failed");
+
+    fireEvent.click(screen.getByTestId("create-project"));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(screen.queryByTestId("template-setup-failed")).toBeNull();
   });
 
   it("says it is working while the host creates the project", () => {

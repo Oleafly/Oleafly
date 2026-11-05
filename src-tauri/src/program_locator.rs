@@ -1134,15 +1134,30 @@ pub(crate) fn child_path(path: &Path) -> PathBuf {
     oleafly_core::plain_path(path)
 }
 
-pub(crate) fn child_search_path(prepend: &[PathBuf], append: &[PathBuf]) -> OsString {
-    let dirs = normalize_dirs(
+fn child_search_dirs(
+    prepend: &[PathBuf],
+    located: Vec<PathBuf>,
+    append: &[PathBuf],
+    managed_tex: Vec<PathBuf>,
+) -> Vec<PathBuf> {
+    normalize_dirs(
         prepend
             .iter()
             .cloned()
-            .chain(search_dirs())
-            .chain(append.iter().cloned()),
+            .chain(located)
+            .chain(append.iter().cloned())
+            .chain(managed_tex),
         cfg!(windows),
         Path::is_dir,
+    )
+}
+
+pub(crate) fn child_search_path(prepend: &[PathBuf], append: &[PathBuf]) -> OsString {
+    let dirs = child_search_dirs(
+        prepend,
+        search_dirs(),
+        append,
+        crate::tex_distro::managed_tex_bin_dirs(),
     );
     std::env::join_paths(&dirs).unwrap_or_else(|_| std::env::var_os("PATH").unwrap_or_default())
 }

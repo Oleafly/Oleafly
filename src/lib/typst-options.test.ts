@@ -10,6 +10,7 @@ import {
   setTypstProjectOptions,
   typstArchivalStandards,
   typstGlyphCoverage,
+  typstHtmlDropsMath,
   typstHtmlExport,
   typstProjectFonts,
   typstProjectOptions,
@@ -73,6 +74,11 @@ describe("Typst capabilities", () => {
     expect(typstTagsPdfByDefault("1.0.0")).toBe(true);
     expect(typstTagsPdfByDefault("0.13.1")).toBe(false);
     expect(typstTagsPdfByDefault(null)).toBe(false);
+    expect(typstHtmlDropsMath("0.13.1")).toBe(true);
+    expect(typstHtmlDropsMath("0.14.2")).toBe(true);
+    expect(typstHtmlDropsMath("0.15.0")).toBe(false);
+    expect(typstHtmlDropsMath("1.0.0")).toBe(false);
+    expect(typstHtmlDropsMath(null)).toBe(false);
   });
 });
 

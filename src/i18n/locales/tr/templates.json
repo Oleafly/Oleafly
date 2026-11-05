@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Şablonunuz hazırlanıyor...",
-      "downloading": "{{label}} indiriliyor ({{total}} içinden {{index}})"
+      "downloading": "{{label}} indiriliyor ({{total}} içinden {{index}})",
+      "failed": "Bu şablonun yazı tipleri indirilemedi. Bağlantınızı denetleyip yeniden deneyin."
     },
     "category": {
       "all": "Tümü",

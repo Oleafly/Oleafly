@@ -91,6 +91,9 @@ vi.mock("@/lib/preview-window", () => ({
 }));
 
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
+import { i18n } from "@/i18n";
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import {
   createCompileSuccessCheckpoint,
   fingerprintCompileOutput,
@@ -242,6 +245,45 @@ describe("tagged compile checkpoints", () => {
       "Tagged compile failed. Check the engine and try again.",
     );
     expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("explains a coded tagged failure instead of pasting its JSON", async () => {
+    const coded = `${APP_ERROR_PREFIX}${JSON.stringify({ code: "trust.system_tex", params: {}, detail: null })}`;
+    mocks.compileTagged.mockRejectedValue(coded);
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileState.failureReason).toBe(
+      i18n.t(($) => $.core.compile.taggedFailed, { message: enErrors.trust.system_tex }),
+    );
+    expect(mocks.toast.errorUnique).toHaveBeenCalledExactlyOnceWith(
+      "tagged-compile:project",
+      enErrors.trust.system_tex,
+    );
+  });
+
+  it.each([
+    ["a failed", false],
+    ["a successful", true],
+  ])("drops the previous compile's diagnostics for %s tagged compile", async (_label, success) => {
+    const bytes = new Uint8Array([4, 5, 6]);
+    Object.assign(mocks.compileState, {
+      diagnostics: [{ severity: "warning", category: "other", file: null, line: null, message: "old warning" }],
+      clearedLog: "prior success",
+    });
+    mocks.compileTagged.mockResolvedValue({
+      success,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: success ? 2 : null,
+      log: "! File `tagpdf-missing.sty' not found.\n",
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileState.diagnostics).toBeNull();
+    expect(mocks.compileState.clearedLog).toBeNull();
   });
 
   it("only logs an exception from a tagged attempt that was superseded", async () => {

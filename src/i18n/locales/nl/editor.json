@@ -361,7 +361,12 @@
     "rawLogs": "Ruwe logboeken",
     "copyLog": "Logboek kopiëren",
     "typesetting": "Zetwerk",
+    "missingCharacters": "Ontbrekende tekens",
     "info": "Info",
+    "clear": "Wissen",
+    "clearAria": "Compileerlogboek wissen",
+    "clearHint": "Dit logboek en de fouten erin verbergen tot het volgende compileren. Buildbestanden blijven bewaard.",
+    "cleared": "Logboek gewist. Bij het volgende compileren wordt een nieuw logboek geschreven.",
     "empty": "Hier verschijnt de uitvoer van het compileren.",
     "scrollToTop": "Naar boven scrollen",
     "scrollToBottom": "Naar beneden scrollen",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} onopgeloste verwijzing",
     "summaryReferences_other": "{{count}} onopgeloste verwijzingen",
     "fontPack": "{{family}} zit in het gratis lettertypepakket {{pack}}.",
+    "fontPackGlyphs": "Het gratis lettertypepakket {{pack}} bevat deze tekens.",
+    "fontPackSealed": "{{family}} zit in het gratis lettertypepakket {{pack}}, maar lettertypepakketten werken hier niet omdat dit project alleen projectlettertypen gebruikt. Zet het bestand van het lettertype in de map fonts van het project.",
     "fontPackAction": "Downloaden en compileren",
     "fontPackDownloading": "Downloaden…",
     "fontPackFailed": "Het lettertypepakket kon niet worden gedownload. Controleer je verbinding en probeer het opnieuw."
@@ -1461,7 +1468,8 @@
       "missing": "Deze pakketten staan niet in de pakketcache: {{names}}. Compileer één keer terwijl je online bent en kopieer ze daarna opnieuw.",
       "count_one": "{{count}} pakket in dit project",
       "count_other": "{{count}} pakketten in dit project",
-      "none": "Nog geen pakketten in dit project."
+      "none": "Nog geen pakketten in dit project.",
+      "unsupported": "Typst {{version}} kan geen pakketten uit de projectmap lezen. Zet het project over op Typst 0.12 of nieuwer om dit te gebruiken."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} is beschikbaar. Deze import gebruikt {{version}}.",
@@ -1500,6 +1508,7 @@
     "classNote": "Dit is een documentklasse. Stel die in met \\documentclass.",
     "onDemand": "Tectonic downloadt pakketten zodra je document ze voor het eerst gebruikt. Je hoeft niets te installeren.",
     "checking": "Controleren welke pakketten geïnstalleerd zijn",
+    "systemManaged": "Deze TeX Live is met je Linux-distributie meegekomen, dus installeer pakketten met {{manager}}.",
     "unknownInstall": "Oleafly kan niet zien welke pakketten je TeX-installatie heeft.",
     "noProject": "Open een LaTeX-project om pakketten toe te voegen.",
     "added": "{{name}} toegevoegd aan {{file}}.",

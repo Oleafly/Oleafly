@@ -49,6 +49,13 @@ fn take_latest_compile_ticket(
     true
 }
 
+fn stopped_while_waiting(
+    latest: &std::collections::HashMap<String, u64>,
+    project_id: &str,
+) -> bool {
+    !latest.contains_key(project_id)
+}
+
 #[tauri::command]
 pub fn library_root() -> Result<std::path::PathBuf, String> {
     paths::projects_root()
@@ -201,15 +208,32 @@ pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), S
     Ok(())
 }
 
-#[tauri::command]
-pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> {
-    match state.compile_cancel.request() {
+async fn stop_running(cancel: &crate::state::CompileCancel) -> bool {
+    match cancel.request() {
         Some(pid) => {
             crate::proc::terminate_process_tree(pid).await;
-            Ok(true)
+            true
         }
-        None => Ok(false),
+        None => false,
     }
+}
+
+#[tauri::command]
+pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> {
+    if stop_running(&state.compile_cancel).await {
+        return Ok(true);
+    }
+    state.latest_compile.lock().await.clear();
+    Ok(false)
+}
+
+pub(crate) async fn stop_figure_compile(state: &AppState) -> bool {
+    stop_running(&state.figure_cancel).await
+}
+
+#[tauri::command]
+pub async fn cancel_isolated_compile(state: State<'_, AppState>) -> Result<bool, String> {
+    Ok(stop_figure_compile(state.inner()).await)
 }
 
 #[tauri::command]
@@ -233,6 +257,68 @@ pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
     })
     .await
     .map_err(|error| format!("failed to clear build directory: {error}"))?
+}
+
+pub(crate) struct CompiledRecord {
+    pub(crate) project_id: String,
+    pub(crate) main_doc: String,
+    pub(crate) engine: String,
+    pub(crate) output_id: Option<String>,
+    pub(crate) output_revision: Option<u64>,
+    pub(crate) compile_time_ms: u64,
+    pub(crate) log: String,
+}
+
+pub(crate) fn record_compile_output(record: CompiledRecord) {
+    let CompiledRecord {
+        project_id,
+        main_doc,
+        engine,
+        output_id,
+        output_revision,
+        compile_time_ms,
+        log,
+    } = record;
+    let record_project = project_id.clone();
+    let record_engine = engine.clone();
+    let record_output = output_id.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::project::write_build_metadata(
+            &record_project,
+            output_revision.unwrap_or(0),
+            &record_engine,
+            record_output.as_deref(),
+            compile_time_ms,
+        );
+    });
+    if let (true, Some(output_id), Some(output_revision)) = (
+        crate::compile_fingerprint::PERSIST_ENABLED,
+        output_id,
+        output_revision,
+    ) {
+        tauri::async_runtime::spawn_blocking(move || {
+            let Ok(_worktree) = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)
+            else {
+                return;
+            };
+            let Ok(Some(root)) = compile_fingerprint_root(&project_id) else {
+                return;
+            };
+            let compiled_at_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|elapsed| elapsed.as_millis() as u64)
+                .unwrap_or(0);
+            let _ = crate::compile_fingerprint::persist_after_compile(
+                &root,
+                &main_doc,
+                &engine,
+                &output_id,
+                output_revision,
+                compiled_at_ms,
+                &log,
+            );
+        });
+    }
 }
 
 #[tauri::command]
@@ -261,7 +347,17 @@ pub async fn compile_project(
     #[cfg(debug_assertions)]
     let req_at = std::time::Instant::now();
 
-    let _guard = state.compile_lock.lock().await;
+    let _guard = match state.compile_lock.try_lock() {
+        Ok(guard) => guard,
+        Err(_) => {
+            let _ = tauri::Emitter::emit(
+                &app,
+                "compile:log",
+                "[Oleafly] Waiting for another compile to finish…\n",
+            );
+            state.compile_lock.lock().await
+        }
+    };
     let _build = crate::build_hygiene::BuildInUse::claim(&project_id);
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
 
@@ -273,6 +369,7 @@ pub async fn compile_project(
 
     {
         let mut latest = state.latest_compile.lock().await;
+        let stopped = stopped_while_waiting(&latest, &project_id);
         if !take_latest_compile_ticket(&mut latest, &project_id, ticket) {
             #[cfg(debug_assertions)]
             eprintln!("compile: t{ticket} {project_id} superseded, skipping");
@@ -287,7 +384,7 @@ pub async fn compile_project(
                 synctex_path: None,
                 out_dir: None,
                 compile_time_ms: 0,
-                stopped: false,
+                stopped,
                 html_output: None,
             });
         }
@@ -356,52 +453,15 @@ pub async fn compile_project(
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
                 + 1,
         );
-        let record_project = project_id.clone();
-        let record_engine = meta.engine.clone();
-        let record_output = result.output_id.clone();
-        let record_revision = result.output_revision.unwrap_or(0);
-        let record_time = result.compile_time_ms;
-        tauri::async_runtime::spawn_blocking(move || {
-            crate::project::write_build_metadata(
-                &record_project,
-                record_revision,
-                &record_engine,
-                record_output.as_deref(),
-                record_time,
-            );
+        record_compile_output(CompiledRecord {
+            project_id: project_id.clone(),
+            main_doc: main_doc.clone(),
+            engine: meta.engine.clone(),
+            output_id: result.output_id.clone(),
+            output_revision: result.output_revision,
+            compile_time_ms: result.compile_time_ms,
+            log: result.log.clone(),
         });
-        if let (true, Some(output_id), Some(output_revision)) = (
-            crate::compile_fingerprint::PERSIST_ENABLED,
-            result.output_id.clone(),
-            result.output_revision,
-        ) {
-            let fp_project = project_id.clone();
-            let fp_main = main_doc.clone();
-            let fp_engine = meta.engine.clone();
-            let fp_log = result.log.clone();
-            tauri::async_runtime::spawn_blocking(move || {
-                let Ok(_worktree) = crate::worktree_lock::ProjectWorktreeLock::shared(&fp_project)
-                else {
-                    return;
-                };
-                let Ok(Some(root)) = compile_fingerprint_root(&fp_project) else {
-                    return;
-                };
-                let compiled_at_ms = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|elapsed| elapsed.as_millis() as u64)
-                    .unwrap_or(0);
-                let _ = crate::compile_fingerprint::persist_after_compile(
-                    &root,
-                    &fp_main,
-                    &fp_engine,
-                    &output_id,
-                    output_revision,
-                    compiled_at_ms,
-                    &fp_log,
-                );
-            });
-        }
         crate::checkpoint_publication::schedule_after_successful_compile(
             &app,
             &project_id,
@@ -694,7 +754,7 @@ pub(crate) async fn allow_reveal_export(dest: &str, state: &AppState) {
     }
 }
 
-fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
     use base64::{engine::general_purpose::STANDARD, Engine};
     STANDARD
         .decode(data_base64.as_bytes())
@@ -774,6 +834,39 @@ fn publish_figure_outputs(
     Ok(())
 }
 
+struct FigureBuild {
+    location: crate::project_location::ProjectLocation,
+    meta: crate::project::ProjectMeta,
+    engine: &'static dyn crate::document_engine::DocumentEngine,
+    figure_dir: std::path::PathBuf,
+    scratch: Option<tempfile::TempDir>,
+    fig_dir: std::path::PathBuf,
+    entry_path: std::path::PathBuf,
+}
+
+async fn prepare_figure_build(project_id: &str, source: String) -> Result<FigureBuild, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let (location, meta, engine) = isolated_compile_setup(project_id)?;
+    let figure_dir = paths::figure_build_dir(project_id)?;
+    let scratch = figure_scratch(&location, engine)?;
+    let fig_dir = scratch
+        .as_ref()
+        .map_or_else(|| figure_dir.clone(), |dir| dir.path().to_path_buf());
+    let entry_path = fig_dir.join("_figure.tex");
+    tokio::fs::write(&entry_path, source)
+        .await
+        .map_err(|e| format!("failed to write figure source: {e}"))?;
+    Ok(FigureBuild {
+        location,
+        meta,
+        engine,
+        figure_dir,
+        scratch,
+        fig_dir,
+        entry_path,
+    })
+}
+
 /// Compile a standalone figure document in isolation, so figure iteration is
 /// fast and never touches the main preview PDF. The `source` is a full
 /// `\documentclass{standalone}` document; it is written to
@@ -792,22 +885,22 @@ pub async fn compile_isolated(
     #[cfg(debug_assertions)]
     let req_at = std::time::Instant::now();
     let _guard = state.figure_compile_lock.lock().await;
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    let _build = crate::build_hygiene::BuildInUse::claim(&project_id);
+    let _cancel_scope = crate::document_engine::CompileCancelScope::new(Some(&state.figure_cancel));
     #[cfg(debug_assertions)]
     eprintln!(
         "figure: {project_id} lock after {}ms",
         req_at.elapsed().as_millis()
     );
-    let (location, meta, engine) = isolated_compile_setup(&project_id)?;
-    let figure_dir = paths::figure_build_dir(&project_id)?;
-    let scratch = figure_scratch(&location, engine)?;
-    let fig_dir = scratch
-        .as_ref()
-        .map_or_else(|| figure_dir.clone(), |dir| dir.path().to_path_buf());
-    let entry_path = fig_dir.join("_figure.tex");
-    tokio::fs::write(&entry_path, source)
-        .await
-        .map_err(|e| format!("failed to write figure source: {e}"))?;
+    let FigureBuild {
+        location,
+        meta,
+        engine,
+        figure_dir,
+        scratch,
+        fig_dir,
+        entry_path,
+    } = prepare_figure_build(&project_id, source).await?;
     let result = crate::document_engine::compile(CompileRequest {
         app: &app,
         engine,
@@ -827,12 +920,13 @@ pub async fn compile_isolated(
             external_build: location.kind == crate::project_location::ProjectKind::Linked,
             ..Default::default()
         },
-        cancel: None,
+        cancel: Some(&state.figure_cancel),
         prepared_spec: None,
     })
     .await;
     if let Some(scratch) = scratch {
-        let published = publish_figure_outputs(scratch.path(), &figure_dir);
+        let published = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)
+            .and_then(|_worktree| publish_figure_outputs(scratch.path(), &figure_dir));
         drop(scratch);
         published?;
     }
@@ -1321,6 +1415,80 @@ mod tests {
         assert_eq!(latest.get("project"), Some(&2));
         assert!(take_latest_compile_ticket(&mut latest, "project", 2));
         assert!(latest.is_empty());
+    }
+
+    #[test]
+    fn stop_reaches_a_compile_still_waiting_for_its_turn() {
+        let mut latest = std::collections::HashMap::new();
+        register_compile_ticket(&mut latest, "project", 1).unwrap();
+        assert!(!stopped_while_waiting(&latest, "project"));
+        latest.clear();
+        assert!(stopped_while_waiting(&latest, "project"));
+        assert!(!take_latest_compile_ticket(&mut latest, "project", 1));
+    }
+
+    #[test]
+    fn a_newer_request_is_not_a_stop() {
+        let mut latest = std::collections::HashMap::new();
+        register_compile_ticket(&mut latest, "project", 1).unwrap();
+        register_compile_ticket(&mut latest, "project", 2).unwrap();
+        assert!(!stopped_while_waiting(&latest, "project"));
+        assert!(!take_latest_compile_ticket(&mut latest, "project", 1));
+    }
+
+    #[test]
+    fn a_figure_compile_leaves_the_project_open_for_saves() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project = crate::paths::create_project_dir("figure-lock").unwrap();
+        std::fs::write(project.join("main.tex"), "\\documentclass{article}\n").unwrap();
+        crate::project::write_meta(
+            "figure-lock",
+            &crate::project::ProjectMeta {
+                name: "Figure".into(),
+                main_doc: "main.tex".into(),
+                engine: "latex".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let build = tauri::async_runtime::block_on(prepare_figure_build(
+            "figure-lock",
+            "\\documentclass{standalone}".into(),
+        ))
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&build.entry_path).unwrap(),
+            "\\documentclass{standalone}"
+        );
+        let writer =
+            crate::worktree_lock::ProjectWorktreeLock::try_exclusive("figure-lock").unwrap();
+        assert!(writer.is_some());
+        drop(writer);
+        drop(build);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[tokio::test]
+    async fn stopping_with_nothing_running_reports_false() {
+        assert!(!stop_running(&crate::state::CompileCancel::default()).await);
+    }
+
+    #[tokio::test]
+    async fn a_stop_before_the_figure_process_starts_is_kept_for_it() {
+        let cancel = crate::state::CompileCancel::default();
+        let _scope = crate::document_engine::CompileCancelScope::new(Some(&cancel));
+        assert!(!stop_running(&cancel).await);
+        assert!(cancel.is_requested());
+    }
+
+    #[test]
+    fn the_figure_and_main_compiles_stop_separately() {
+        let state = AppState::default();
+        let _figure = crate::document_engine::CompileCancelScope::new(Some(&state.figure_cancel));
+        assert_eq!(state.compile_cancel.request(), None);
+        assert!(!state.figure_cancel.is_requested());
     }
 
     #[test]

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -19,7 +20,91 @@ const lifecycle = vi.hoisted(() => ({
 
 vi.mock("@/lib/terminal-lifecycle", () => lifecycle);
 
+const ipc = vi.hoisted(() => ({ openExternalTerminal: vi.fn(async () => {}) }));
+vi.mock("@/lib/terminal-ipc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/terminal-ipc")>()),
+  openExternalTerminal: ipc.openExternalTerminal,
+}));
+
 const launchText = enWorkspace.terminal.launch;
+const FALLBACK = `${APP_ERROR_PREFIX}${JSON.stringify({ code: "terminal.external_fallback", params: {}, detail: null })}`;
+
+describe("opening an external terminal", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    ipc.openExternalTerminal.mockReset();
+    ipc.openExternalTerminal.mockResolvedValue(undefined);
+    lifecycle.requestTerminalPrompt.mockReset();
+    lifecycle.requestTerminalPrompt.mockResolvedValue(true);
+    lifecycle.waitForTerminalPromptHost.mockReset();
+    lifecycle.waitForTerminalPromptHost.mockResolvedValue(true);
+    useTerminalsStore.setState({ projectId: "project", tabs: [], activeId: null, counters: {} });
+    useFilesStore.setState({ projectId: "project" } as never);
+    useSettingsStore.setState({ terminalOpen: false, terminalOpenWith: "iterm" });
+  });
+
+  afterEach(() => {
+    useSettingsStore.setState({ terminalOpenWith: "builtin" });
+  });
+
+  it("sends a folder to the chosen terminal and adds no tab", async () => {
+    await expect(openTerminalWith({ title: "figures", cwd: "figures" })).resolves.toEqual({ terminalId: null });
+
+    expect(ipc.openExternalTerminal).toHaveBeenCalledExactlyOnceWith({
+      projectId: "project",
+      terminal: "iterm",
+      cwd: "figures",
+      command: undefined,
+      env: undefined,
+    });
+    expect(useTerminalsStore.getState().tabs).toEqual([]);
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
+  });
+
+  it("sends a command with its words and environment kept apart", async () => {
+    await openTerminalWith({ title: "x", command: "agent", args: ["log in"], env: { TOKEN: "a b" } });
+
+    expect(ipc.openExternalTerminal).toHaveBeenCalledExactlyOnceWith({
+      projectId: "project",
+      terminal: "iterm",
+      cwd: undefined,
+      command: { command: "agent", args: ["log in"] },
+      env: { TOKEN: "a b" },
+    });
+  });
+
+  it("still asks before running a confirmed command", async () => {
+    lifecycle.requestTerminalPrompt.mockResolvedValue(false);
+
+    await expect(openTerminalWith({ title: "x", command: "agent", confirmText: "Sure?" })).rejects.toBeInstanceOf(
+      TerminalLaunchError,
+    );
+
+    expect(ipc.openExternalTerminal).not.toHaveBeenCalled();
+  });
+
+  it("uses the built-in terminal when the folder can't open outside the app", async () => {
+    ipc.openExternalTerminal.mockRejectedValue(FALLBACK);
+
+    const opened = await openTerminalWith({ title: "x", cwd: "figures" });
+
+    expect(opened.terminalId).toBe(useTerminalsStore.getState().tabs[0].id);
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+  });
+
+  it("reports any other failure to the caller", async () => {
+    ipc.openExternalTerminal.mockRejectedValue(new Error("boom"));
+
+    await expect(openTerminalWith({ title: "x", cwd: "figures" })).rejects.toThrow("boom");
+    expect(useTerminalsStore.getState().tabs).toEqual([]);
+  });
+
+  it("ignores the built-in tab limit", async () => {
+    useTerminalsStore.setState({ tabs: Array.from({ length: TERMINAL_LIMIT }, (_, id) => ({ id: String(id) })) as never });
+
+    await expect(openTerminalWith({ title: "x", cwd: "figures" })).resolves.toEqual({ terminalId: null });
+  });
+});
 
 describe("terminal launches", () => {
   beforeEach(() => {

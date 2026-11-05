@@ -604,6 +604,7 @@
     "unrecorded": "O LaTeX Project não registrou um status de marcação para a classe {{name}}, então o resultado é indefinido. Compile e confira a saída."
   },
   "prep": {
+    "metadataInMain": "O \\DocumentMetadata fica no início do documento principal, então este arquivo não o recebe.",
     "metadataUpdated": "Acrescentamos as chaves de marcação necessárias ao seu \\DocumentMetadata.",
     "metadataAdded": "Acrescentamos \\DocumentMetadata como primeira linha (obrigatório, precisa vir antes de \\documentclass). A linha fica dentro de uma verificação de versão: um LaTeX anterior a {{date}}, incluindo o motor embutido, pula essa linha e compila o documento sem marcação em vez de falhar.",
     "headerRows": "Definimos table/header-rows como 1, para a primeira linha de cada tabela ser marcada como células de cabeçalho. Mude o número se alguma tabela tiver outra profundidade de cabeçalho.",

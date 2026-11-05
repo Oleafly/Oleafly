@@ -176,6 +176,57 @@ describe("accessible export preparation", () => {
     expect(screen.getByRole("button", { name: copy.prepare })).toBeEnabled();
   });
 
+  it("prepares the main document when a chapter is open", () => {
+    const chapter = "\\section{Results}\n\\includegraphics{plot.pdf}\n";
+    openLatex({ "main.tex": article, "chapter.tex": chapter }, "chapter.tex", "main.tex");
+    render(<PrepExport />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.prepare }));
+    fireEvent.click(screen.getByRole("button", { name: copy.apply }));
+
+    const { files } = useFilesStore.getState();
+    expect(files["main.tex"].content).toContain("\\DocumentMetadata");
+    expect(files["chapter.tex"].content).not.toContain("\\DocumentMetadata");
+    expect(files["chapter.tex"].content).toContain("alt={TODO: describe plot.pdf}");
+  });
+
+  it("does not put \\DocumentMetadata in a chapter when the main document is not loaded", () => {
+    openLatex({ "chapter.tex": article }, "chapter.tex", "main.tex");
+    render(<PrepExport />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.prepare }));
+
+    expect(screen.getByText(enPreflight.prep.metadataInMain)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.apply })).toBeDisabled();
+    expect(useFilesStore.getState().files["chapter.tex"].content).toBe(article);
+  });
+
+  it("applies to the prepared files even after the open file changes", () => {
+    const chapter = "\\section{Results}\n";
+    const other = "\\section{Other}\n";
+    openLatex({ "main.tex": article, "chapter.tex": chapter, "other.tex": other }, "chapter.tex", "main.tex");
+    render(<PrepExport />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.prepare }));
+    act(() => useFilesStore.setState({ activePath: "other.tex" }));
+    fireEvent.click(screen.getByRole("button", { name: copy.apply }));
+
+    const { files } = useFilesStore.getState();
+    expect(files["other.tex"].content).toBe(other);
+    expect(files["main.tex"].content).toContain("\\DocumentMetadata");
+  });
+
+  it("tags header rows when a loaded chapter holds the table", () => {
+    const tables = "\\begin{tabular}{ll}a & b\\end{tabular}\n";
+    openLatex({ "main.tex": article, "chapter.tex": tables }, "main.tex", "main.tex");
+    render(<PrepExport />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.prepare }));
+    fireEvent.click(screen.getByRole("button", { name: copy.apply }));
+
+    expect(useFilesStore.getState().files["main.tex"].content).toContain("table/header-rows");
+  });
+
   it("shows the Typst PDF standards for a Typst project and nothing for other engines", () => {
     const typstOptions: TypstOptionsDescriptor = {
       system_fonts: true,

@@ -1539,10 +1539,37 @@ pub async fn library_storage_summary() -> Result<LibraryStorageSummary, String> 
     let root = crate::paths::oleafly_root()?;
     tauri::async_runtime::spawn_blocking(move || {
         let _ = retry_pending_checkpoint_cleanup();
-        scan_storage(&root)
+        let mut summary = scan_storage(&root);
+        if let Ok(parent) = crate::latex_engine::tinytex_parent() {
+            if parent != root {
+                add_relocated_tex_tree(&mut summary, &parent);
+            }
+        }
+        summary
     })
     .await
     .map_err(|error| format!("failed to inspect Oleafly storage: {error}"))
+}
+
+fn add_relocated_tex_tree(summary: &mut LibraryStorageSummary, parent: &Path) {
+    let mut pending = vec![parent.to_path_buf()];
+    while let Some(directory) = pending.pop() {
+        let Ok(entries) = std::fs::read_dir(&directory) else {
+            continue;
+        };
+        for path in entries.flatten().map(|entry| entry.path()) {
+            let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+                summary.unreadable_entries += 1;
+                continue;
+            };
+            if metadata.is_dir() {
+                summary.directory_count += 1;
+                pending.push(path);
+            } else if metadata.is_file() {
+                record_file(summary, Path::new("tinytex"), metadata.len());
+            }
+        }
+    }
 }
 
 #[tauri::command]
@@ -1623,6 +1650,20 @@ mod tests {
                 + summary.linked_folders_bytes,
             summary.total_bytes
         );
+    }
+
+    #[test]
+    fn a_tex_tree_outside_the_data_folder_still_counts_as_the_tex_distribution() {
+        let directory = tempfile::tempdir().unwrap();
+        let bin = directory.path().join("Oleafly-abcd/tinytex/bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::write(bin.join("latexmk.exe"), [0_u8; 32]).unwrap();
+        let mut summary = LibraryStorageSummary::default();
+        add_relocated_tex_tree(&mut summary, &directory.path().join("Oleafly-abcd"));
+        assert_eq!(summary.tex_distribution_bytes, 32);
+        assert_eq!(summary.total_bytes, 32);
+        assert_eq!(summary.file_count, 1);
+        assert_eq!(summary.projects_bytes, 0);
     }
 
     #[test]

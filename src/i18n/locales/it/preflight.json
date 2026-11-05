@@ -604,6 +604,7 @@
     "unrecorded": "Il LaTeX Project non ha registrato uno stato di tagging per la classe {{name}}, quindi il risultato non è dimostrato. Compila e controlla l'output."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata va in cima al documento principale, quindi questo file non lo riceve.",
     "metadataUpdated": "Aggiunte le chiavi di tagging necessarie al tuo \\DocumentMetadata.",
     "metadataAdded": "Aggiunto \\DocumentMetadata come prima riga (obbligatorio, deve precedere \\documentclass). È racchiuso in un controllo di versione: un LaTeX precedente a {{date}}, compreso il motore incluso, lo salta e compila il documento senza tag invece di fallire.",
     "headerRows": "Impostato table/header-rows a 1, così la prima riga di ogni tabella viene taggata come celle di intestazione. Cambia il numero se una tabella ha un'intestazione di profondità diversa.",

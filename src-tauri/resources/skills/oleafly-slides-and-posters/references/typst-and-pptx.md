@@ -77,13 +77,13 @@ Check the slide count afterwards. If the whole deck arrives as one slide, the co
 
 ### From a Markdown project
 
-A Markdown project's engine declares pptx as a conversion format, but the Export menu decides which formats to show by reading the LaTeX `\documentclass` line, so a Markdown project never sees the PowerPoint item. The route that works is Pandoc through `run_command`, which needs approval:
+A Markdown project's engine declares pptx as a conversion format, but the Export menu decides which formats to show by reading the LaTeX `\documentclass` line, so a Markdown project never sees the PowerPoint item. The route that works is the `oleafly` command through `run_command`, which needs approval. It uses the Pandoc that ships with the app, which may not be on PATH under that name:
 
 ```
-pandoc --slide-level 2 -o slides.pptx -- slides.md
+oleafly export --to pptx --main slides.md
 ```
 
-`--slide-level 2` is what makes each level-2 heading a slide. Without it a deck can collapse into one slide.
+The file lands in the build folder's exports. The command passes Pandoc `--slide-level 2`, which is what makes each level-2 heading a slide. Without it a deck can collapse into one slide.
 
 The Markdown slide structure Pandoc expects:
 

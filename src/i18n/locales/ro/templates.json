@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Se configurează șablonul...",
-      "downloading": "Se descarcă {{label}} ({{index}} din {{total}})"
+      "downloading": "Se descarcă {{label}} ({{index}} din {{total}})",
+      "failed": "Fonturile pentru acest șablon nu au putut fi descărcate. Verifică conexiunea și încearcă din nou."
     },
     "category": {
       "all": "Toate",

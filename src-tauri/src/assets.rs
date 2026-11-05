@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
+use crate::app_error::AppError;
 use crate::paths;
 use crate::templates::TemplateManifest;
 
@@ -146,7 +150,11 @@ fn pack_installed(pack: &FontPack) -> bool {
         Ok(d) => d,
         Err(_) => return false,
     };
-    !pack.files.is_empty() && pack.files.iter().all(|f| dir.join(&f.name).is_file())
+    !pack.files.is_empty() && pack.files.iter().all(|f| holds_bytes(&dir.join(&f.name)))
+}
+
+fn holds_bytes(path: &Path) -> bool {
+    std::fs::metadata(path).is_ok_and(|meta| meta.is_file() && meta.len() > 0)
 }
 
 pub fn fonts_ready(app: &AppHandle, font_ids: &[String]) -> bool {
@@ -165,66 +173,284 @@ pub fn fonts_ready(app: &AppHandle, font_ids: &[String]) -> bool {
     })
 }
 
-async fn download_pack(app: &AppHandle, pack: &FontPack) -> Result<(), String> {
-    use futures_util::StreamExt;
-    use tauri::Emitter;
-    use tokio::io::AsyncWriteExt as _;
+const FONT_PACK_STAGING_DIR: &str = ".font-pack-staging";
+const FONT_FALLBACKS: &str = include_str!("../resources/font-pack-fallbacks.json");
+const FONT_CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
+const FONT_STALL_TIMEOUT: Duration = Duration::from_secs(30);
+const FONT_SOURCE_ROUNDS: u32 = 2;
+const FONT_RETRY_DELAY: Duration = Duration::from_secs(1);
 
-    let dir = pack_dir(pack)?;
-    tokio::fs::create_dir_all(&dir)
+static PACK_DOWNLOADS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+type FontFallbacks = HashMap<String, HashMap<String, String>>;
+
+enum FontFetchFailure {
+    Source(String),
+    Local(String),
+}
+
+fn font_fallbacks() -> &'static FontFallbacks {
+    static FALLBACKS: OnceLock<FontFallbacks> = OnceLock::new();
+    FALLBACKS.get_or_init(|| serde_json::from_str(FONT_FALLBACKS).unwrap_or_default())
+}
+
+fn file_sources<'a>(pack_id: &str, file: &'a AssetFile) -> Vec<&'a str> {
+    let mut sources = vec![file.url.as_str()];
+    if let Some(fallback) = font_fallbacks()
+        .get(pack_id)
+        .and_then(|files| files.get(&file.name))
+    {
+        sources.push(fallback.as_str());
+    }
+    sources
+}
+
+fn font_client() -> Result<reqwest::Client, reqwest::Error> {
+    reqwest::Client::builder()
+        .connect_timeout(FONT_CONNECT_TIMEOUT)
+        .read_timeout(FONT_STALL_TIMEOUT)
+        .user_agent("Oleafly-fonts")
+        .build()
+}
+
+fn verified_file(path: &Path, expected: Option<&str>) -> bool {
+    if !holds_bytes(path) {
+        return false;
+    }
+    let Some(expected) = expected else {
+        return true;
+    };
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut digest = Sha256::new();
+    std::io::copy(&mut file, &mut digest).is_ok()
+        && checksum_matches(Some(expected), &digest.finalize())
+}
+
+async fn file_is_complete(path: PathBuf, expected: Option<String>) -> bool {
+    tokio::task::spawn_blocking(move || verified_file(&path, expected.as_deref()))
         .await
-        .map_err(|e| e.to_string())?;
-    let total = pack.files.len();
-    for (i, f) in pack.files.iter().enumerate() {
-        if !is_simple_filename(&f.name) {
-            return Err(format!("illegal asset filename: {}", f.name));
+        .unwrap_or(false)
+}
+
+async fn pack_is_whole(pack: &FontPack, dir: &Path) -> bool {
+    for file in &pack.files {
+        if !file_is_complete(dir.join(&file.name), file.sha256.clone()).await {
+            return false;
         }
-        let dest = dir.join(&f.name);
-        if dest.is_file() {
-            continue;
+    }
+    !pack.files.is_empty()
+}
+
+fn prepare_staging(staging: &Path, names: &[String]) -> std::io::Result<()> {
+    std::fs::create_dir_all(staging)?;
+    for entry in std::fs::read_dir(staging)? {
+        let entry = entry?;
+        let listed = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| names.iter().any(|listed| listed == name));
+        if !listed {
+            let _ = std::fs::remove_file(entry.path());
         }
-        let tmp = dir.join(format!("{}.part", f.name));
-        let resp = reqwest::get(&f.url)
-            .await
-            .map_err(|e| format!("download failed: {e}"))?
-            .error_for_status()
-            .map_err(|e| format!("download failed: {e}"))?;
-        let file_total = resp.content_length();
-        let mut out = tokio::fs::File::create(&tmp)
-            .await
-            .map_err(|e| e.to_string())?;
-        let mut stream = resp.bytes_stream();
-        let mut received: u64 = 0;
-        let mut digest = Sha256::new();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|e| format!("download interrupted: {e}"))?;
-            received += chunk.len() as u64;
-            digest.update(&chunk);
-            out.write_all(&chunk).await.map_err(|e| e.to_string())?;
-            let _ = app.emit(
-                "asset-progress",
-                AssetProgress {
-                    component: pack.id.clone(),
-                    label: pack.label.clone(),
-                    file: f.name.clone(),
-                    index: i + 1,
-                    total,
-                    received,
-                    file_total,
-                },
-            );
-        }
-        out.flush().await.map_err(|e| e.to_string())?;
-        drop(out);
-        if !checksum_matches(f.sha256.as_deref(), &digest.finalize()) {
-            let _ = tokio::fs::remove_file(&tmp).await;
-            return Err(format!("download of {} did not match its checksum", f.name));
-        }
-        tokio::fs::rename(&tmp, &dest)
-            .await
-            .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+async fn reuse_installed_file(installed: PathBuf, staged: PathBuf, file: &AssetFile) -> bool {
+    if !file_is_complete(installed.clone(), file.sha256.clone()).await {
+        return false;
+    }
+    tokio::task::spawn_blocking(move || {
+        let _ = std::fs::remove_file(&staged);
+        std::fs::hard_link(&installed, &staged).is_ok()
+            || std::fs::copy(&installed, &staged).is_ok()
+    })
+    .await
+    .unwrap_or(false)
+}
+
+async fn fetch_source(
+    client: &reqwest::Client,
+    url: &str,
+    expected: Option<&str>,
+    part: &Path,
+    progress: &mut impl FnMut(u64, Option<u64>),
+) -> Result<(), FontFetchFailure> {
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt as _;
+
+    let source = |error: reqwest::Error| FontFetchFailure::Source(error.to_string());
+    let local = |error: std::io::Error| FontFetchFailure::Local(error.to_string());
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(source)?
+        .error_for_status()
+        .map_err(source)?;
+    let file_total = response.content_length();
+    let mut out = tokio::fs::File::create(part).await.map_err(local)?;
+    let mut stream = response.bytes_stream();
+    let mut received: u64 = 0;
+    let mut digest = Sha256::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(source)?;
+        received += chunk.len() as u64;
+        digest.update(&chunk);
+        out.write_all(&chunk).await.map_err(local)?;
+        progress(received, file_total);
+    }
+    out.flush().await.map_err(local)?;
+    if let Some(total) = file_total.filter(|total| *total != received) {
+        return Err(FontFetchFailure::Source(format!(
+            "received {received} of {total} bytes"
+        )));
+    }
+    if !checksum_matches(expected, &digest.finalize()) {
+        return Err(FontFetchFailure::Source(
+            "the file did not match its checksum".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn font_save_error(name: &str, detail: impl ToString) -> String {
+    AppError::new("font_pack.save_failed")
+        .param("file", name)
+        .detail(detail)
+        .into()
+}
+
+async fn fetch_pack_file(
+    client: &reqwest::Client,
+    name: &str,
+    expected: Option<&str>,
+    sources: &[&str],
+    dest: &Path,
+    progress: &mut impl FnMut(u64, Option<u64>),
+) -> Result<(), String> {
+    let part = dest.with_file_name(format!("{name}.part"));
+    let mut last_failure = String::new();
+    for round in 0..FONT_SOURCE_ROUNDS {
+        if round > 0 {
+            tokio::time::sleep(FONT_RETRY_DELAY).await;
+        }
+        for source in sources {
+            match fetch_source(client, source, expected, &part, progress).await {
+                Ok(()) => {
+                    let (from, to) = (part, dest.to_owned());
+                    return tokio::task::spawn_blocking(move || {
+                        oleafly_core::atomic::persist_with_retry(|| std::fs::rename(&from, &to))
+                    })
+                    .await
+                    .map_err(|error| font_save_error(name, error))?
+                    .map_err(|error| font_save_error(name, error));
+                }
+                Err(failure) => {
+                    let _ = tokio::fs::remove_file(&part).await;
+                    match failure {
+                        FontFetchFailure::Local(detail) => {
+                            return Err(font_save_error(name, detail));
+                        }
+                        FontFetchFailure::Source(detail) => last_failure = detail,
+                    }
+                }
+            }
+        }
+    }
+    Err(AppError::new("font_pack.download_failed")
+        .param("file", name)
+        .detail(last_failure)
+        .into())
+}
+
+fn publish_pack(staging: &Path, dir: &Path) -> std::io::Result<()> {
+    if let Some(parent) = dir.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    oleafly_core::atomic::retry_tree_operation(|| match std::fs::remove_dir_all(dir) {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(error),
+        _ => Ok(()),
+    })?;
+    oleafly_core::atomic::rename_tree_with_retry(staging, dir)
+}
+
+async fn install_pack_files(
+    client: &reqwest::Client,
+    pack: &FontPack,
+    dir: &Path,
+    staging: &Path,
+    mut report: impl FnMut(AssetProgress),
+) -> Result<(), String> {
+    if pack_is_whole(pack, dir).await {
+        return Ok(());
+    }
+    let names: Vec<String> = pack.files.iter().map(|file| file.name.clone()).collect();
+    let prepared = staging.to_owned();
+    tokio::task::spawn_blocking(move || prepare_staging(&prepared, &names))
+        .await
+        .map_err(|error| font_save_error(&pack.label, error))?
+        .map_err(|error| font_save_error(&pack.label, error))?;
+    let total = pack.files.len();
+    for (position, file) in pack.files.iter().enumerate() {
+        let staged = staging.join(&file.name);
+        if file_is_complete(staged.clone(), file.sha256.clone()).await
+            || reuse_installed_file(dir.join(&file.name), staged.clone(), file).await
+        {
+            continue;
+        }
+        let mut progress = |received, file_total| {
+            report(AssetProgress {
+                component: pack.id.clone(),
+                label: pack.label.clone(),
+                file: file.name.clone(),
+                index: position + 1,
+                total,
+                received,
+                file_total,
+            });
+        };
+        fetch_pack_file(
+            client,
+            &file.name,
+            file.sha256.as_deref(),
+            &file_sources(&pack.id, file),
+            &staged,
+            &mut progress,
+        )
+        .await?;
+    }
+    let (from, to) = (staging.to_owned(), dir.to_owned());
+    tokio::task::spawn_blocking(move || publish_pack(&from, &to))
+        .await
+        .map_err(|error| font_save_error(&pack.label, error))?
+        .map_err(|error| font_save_error(&pack.label, error))
+}
+
+async fn download_pack(app: &AppHandle, pack: &FontPack) -> Result<(), String> {
+    use tauri::Emitter;
+
+    if let Some(file) = pack.files.iter().find(|f| !is_simple_filename(&f.name)) {
+        return Err(format!("illegal asset filename: {}", file.name));
+    }
+    let _one_pack_at_a_time = PACK_DOWNLOADS.lock().await;
+    let dir = pack_dir(pack)?;
+    let staging = paths::assets_root()?
+        .join(FONT_PACK_STAGING_DIR)
+        .join(&pack.id);
+    let client = font_client().map_err(|error| {
+        String::from(
+            AppError::new("font_pack.download_failed")
+                .param("file", &pack.label)
+                .detail(error),
+        )
+    })?;
+    install_pack_files(&client, pack, &dir, &staging, |progress| {
+        let _ = app.emit("asset-progress", progress);
+    })
+    .await
 }
 
 pub(crate) use oleafly_downloads::template_packs::checksum_matches;
@@ -710,6 +936,306 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn every_pack_file_carries_a_checksum() {
+        for p in &repo_catalog() {
+            for f in &p.files {
+                let sum = f.sha256.as_deref().unwrap_or_default();
+                assert!(
+                    sum.len() == 64 && sum.chars().all(|c| c.is_ascii_hexdigit()),
+                    "sha256 for {}/{}",
+                    p.id,
+                    f.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn fallbacks_name_real_pack_files_on_a_second_host() {
+        let packs = repo_catalog();
+        let fallbacks = font_fallbacks();
+        assert!(!fallbacks.is_empty());
+        for (pack_id, files) in fallbacks {
+            let pack = packs.iter().find(|p| &p.id == pack_id).unwrap();
+            for (name, url) in files {
+                let file = pack.files.iter().find(|f| &f.name == name).unwrap();
+                assert!(url.starts_with("https://"), "https fallback: {url}");
+                assert!(!url.contains("mirrors.oleafly.com"), "second host: {url}");
+                assert_eq!(file_sources(pack_id, file), vec![file.url.as_str(), url]);
+            }
+        }
+        for p in packs.iter().filter(|p| !p.typst) {
+            for f in &p.files {
+                assert_eq!(file_sources(&p.id, f).len(), 2, "fallback for {}", f.name);
+            }
+        }
+    }
+
+    fn test_client() -> reqwest::Client {
+        reqwest::Client::builder().no_proxy().build().unwrap()
+    }
+
+    async fn serve(files: HashMap<String, Vec<u8>>) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut request = [0_u8; 1024];
+                let read = socket.read(&mut request).await.unwrap_or(0);
+                let request = String::from_utf8_lossy(&request[..read]);
+                let path = request.split_whitespace().nth(1).unwrap_or("/").to_owned();
+                let response = match files.get(&path) {
+                    Some(body) => {
+                        let mut response = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            body.len()
+                        )
+                        .into_bytes();
+                        response.extend_from_slice(body);
+                        response
+                    }
+                    None => {
+                        b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                            .to_vec()
+                    }
+                };
+                let _ = socket.write_all(&response).await;
+                let _ = socket.shutdown().await;
+            }
+        });
+        base
+    }
+
+    fn sha(bytes: &[u8]) -> String {
+        Sha256::digest(bytes)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
+    }
+
+    fn pack_of(id: &str, base: &str, files: &[(&str, &[u8])]) -> FontPack {
+        FontPack {
+            id: id.into(),
+            label: id.into(),
+            description: String::new(),
+            approx_bytes: 0,
+            license: None,
+            files: files
+                .iter()
+                .map(|(name, bytes)| AssetFile {
+                    name: (*name).into(),
+                    url: format!("{base}/{name}"),
+                    sha256: Some(sha(bytes)),
+                })
+                .collect(),
+            typst: true,
+            families: vec![],
+        }
+    }
+
+    fn tree_names(dir: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[tokio::test]
+    async fn a_finished_pack_appears_in_one_step_and_leaves_nothing_behind() {
+        let root = tempfile::tempdir().unwrap();
+        let (dir, staging) = (root.path().join("typst-text"), root.path().join("staging"));
+        let base = serve(HashMap::from([
+            ("/a.otf".to_owned(), b"first font".to_vec()),
+            ("/b.otf".to_owned(), b"second font".to_vec()),
+        ]))
+        .await;
+        let pack = pack_of(
+            "fixture",
+            &base,
+            &[("a.otf", b"first font"), ("b.otf", b"second font")],
+        );
+        let mut seen = Vec::new();
+        install_pack_files(&test_client(), &pack, &dir, &staging, |progress| {
+            seen.push((progress.index, progress.total, progress.received));
+        })
+        .await
+        .unwrap();
+        assert_eq!(tree_names(&dir), ["a.otf", "b.otf"]);
+        assert!(!staging.exists());
+        assert_eq!(seen.first(), Some(&(1, 2, 10)));
+        assert_eq!(seen.last(), Some(&(2, 2, 11)));
+    }
+
+    #[tokio::test]
+    async fn a_stopped_download_never_touches_the_pack_folder() {
+        let root = tempfile::tempdir().unwrap();
+        let (dir, staging) = (root.path().join("typst-text"), root.path().join("staging"));
+        let base = serve(HashMap::from([(
+            "/a.otf".to_owned(),
+            b"first font".to_vec(),
+        )]))
+        .await;
+        let pack = pack_of(
+            "fixture",
+            &base,
+            &[("a.otf", b"first font"), ("b.otf", b"second font")],
+        );
+        let failure = install_pack_files(&test_client(), &pack, &dir, &staging, |_| {})
+            .await
+            .unwrap_err();
+        assert!(failure.contains("font_pack.download_failed"), "{failure}");
+        assert!(failure.contains("b.otf"), "{failure}");
+        assert!(
+            !dir.exists(),
+            "a half pack must stay out of the font folder"
+        );
+        assert_eq!(tree_names(&staging), ["a.otf"]);
+    }
+
+    #[tokio::test]
+    async fn a_retry_keeps_finished_files_and_clears_stale_parts() {
+        let root = tempfile::tempdir().unwrap();
+        let (dir, staging) = (root.path().join("typst-text"), root.path().join("staging"));
+        std::fs::create_dir_all(&staging).unwrap();
+        std::fs::write(staging.join("a.otf"), b"first font").unwrap();
+        std::fs::write(staging.join("b.otf.part"), b"half").unwrap();
+        let base = serve(HashMap::from([(
+            "/b.otf".to_owned(),
+            b"second font".to_vec(),
+        )]))
+        .await;
+        let pack = pack_of(
+            "fixture",
+            &base,
+            &[("a.otf", b"first font"), ("b.otf", b"second font")],
+        );
+        install_pack_files(&test_client(), &pack, &dir, &staging, |_| {})
+            .await
+            .unwrap();
+        assert_eq!(tree_names(&dir), ["a.otf", "b.otf"]);
+    }
+
+    #[tokio::test]
+    async fn a_truncated_file_is_fetched_again_instead_of_being_skipped() {
+        let root = tempfile::tempdir().unwrap();
+        let (dir, staging) = (root.path().join("typst-text"), root.path().join("staging"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("a.otf"), b"first font").unwrap();
+        std::fs::write(dir.join("b.otf"), b"sec").unwrap();
+        std::fs::write(dir.join("b.otf.part"), b"leftover").unwrap();
+        let base = serve(HashMap::from([(
+            "/b.otf".to_owned(),
+            b"second font".to_vec(),
+        )]))
+        .await;
+        let pack = pack_of(
+            "fixture",
+            &base,
+            &[("a.otf", b"first font"), ("b.otf", b"second font")],
+        );
+        install_pack_files(&test_client(), &pack, &dir, &staging, |_| {})
+            .await
+            .unwrap();
+        assert_eq!(tree_names(&dir), ["a.otf", "b.otf"]);
+        assert_eq!(std::fs::read(dir.join("b.otf")).unwrap(), b"second font");
+        assert_eq!(std::fs::read(dir.join("a.otf")).unwrap(), b"first font");
+    }
+
+    #[tokio::test]
+    async fn a_whole_pack_makes_no_requests() {
+        let root = tempfile::tempdir().unwrap();
+        let (dir, staging) = (root.path().join("typst-text"), root.path().join("staging"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("a.otf"), b"first font").unwrap();
+        let pack = pack_of("fixture", "http://127.0.0.1:9", &[("a.otf", b"first font")]);
+        install_pack_files(&test_client(), &pack, &dir, &staging, |_| {})
+            .await
+            .unwrap();
+        assert!(!staging.exists());
+    }
+
+    #[tokio::test]
+    async fn a_refused_or_corrupt_mirror_falls_back_to_the_next_source() {
+        let root = tempfile::tempdir().unwrap();
+        let dest = root.path().join("a.otf");
+        let base = serve(HashMap::from([
+            ("/corrupt".to_owned(), b"tampered".to_vec()),
+            ("/good".to_owned(), b"first font".to_vec()),
+        ]))
+        .await;
+        let expected = sha(b"first font");
+        for mirror in ["missing", "corrupt"] {
+            let sources = [format!("{base}/{mirror}"), format!("{base}/good")];
+            let sources: Vec<&str> = sources.iter().map(String::as_str).collect();
+            fetch_pack_file(
+                &test_client(),
+                "a.otf",
+                Some(&expected),
+                &sources,
+                &dest,
+                &mut |_, _| {},
+            )
+            .await
+            .unwrap();
+            assert_eq!(std::fs::read(&dest).unwrap(), b"first font");
+            assert!(!root.path().join("a.otf.part").exists());
+            std::fs::remove_file(&dest).unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn a_silent_server_fails_at_the_stall_limit_and_clears_its_part_file() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let root = tempfile::tempdir().unwrap();
+        let dest = root.path().join("a.otf");
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/a.otf", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut request = [0_u8; 1024];
+                let _ = socket.read(&mut request).await;
+                let head = "HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\npartial";
+                let _ = socket.write_all(head.as_bytes()).await;
+                held.push(socket);
+            }
+        });
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .read_timeout(Duration::from_millis(200))
+            .build()
+            .unwrap();
+        let failure = fetch_pack_file(
+            &client,
+            "a.otf",
+            None,
+            &[url.as_str()],
+            &dest,
+            &mut |_, _| {},
+        )
+        .await
+        .unwrap_err();
+        server.abort();
+        assert!(failure.contains("font_pack.download_failed"), "{failure}");
+        assert!(tree_names(root.path()).is_empty());
+    }
+
+    #[test]
+    fn an_empty_file_does_not_count_as_installed() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("a.otf");
+        std::fs::write(&path, b"").unwrap();
+        assert!(!holds_bytes(&path));
+        assert!(!verified_file(&path, None));
+        std::fs::write(&path, b"first font").unwrap();
+        assert!(verified_file(&path, Some(&sha(b"first font"))));
+        assert!(!verified_file(&path, Some(&sha(b"other"))));
     }
 
     #[test]

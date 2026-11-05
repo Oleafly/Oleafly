@@ -5,7 +5,7 @@ license: MIT
 compatibility: Needs an open Oleafly project on any of the four engines (Tectonic, latexmk, Typst, Markdown). No external tools are required.
 allowed-tools: read_file replace_in_file write_file create_file list_files search_project project_map compile get_log get_pdf_text verify_pdf_pages set_main_doc run_command update_todos load_skill read_skill_file
 metadata:
-  version: "1.1.1"
+  version: "1.1.2"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -72,7 +72,7 @@ Rules that keep the loop honest:
 
 ## 5. Recompile until it is actually clean
 
-Clean means `success: true` and `errors: []`. A build that produces a PDF while errors remain is not done.
+Clean means `success: true` and `errors: []`. A build that produces a PDF while errors remain is not done. That includes warnings: a `tex.missing_characters*` entry in `errors` means text is gone from the PDF, even though the compile succeeded.
 
 Then check what came out:
 
@@ -98,7 +98,7 @@ Then check what came out:
 | A package is missing from Tectonic's bundle | Say which package and offer the closest bundled alternative. Installing packages needs system TeX, which is the user's engine switch to make, not yours. |
 | A Typst error points into a package, or a feature the project uses needs a newer Typst | Read `typst.version` in `project.json`. The fix is usually a package version that matches the pinned Typst. Changing the pin changes the output, so suggest it and let the user switch it from the Compile menu. |
 | Overfull box warnings | Not errors. Triage rather than chase: reword first, keep `microtype` loaded, hyphenate one stubborn word, and only then consider local `sloppypar`. Never `\sloppy` globally. |
-| The user asks to run latexmk or tectonic by hand | `run_command` can, with approval, but the app's own `compile` uses the project's engine and artifact layout. Prefer `compile`; reach for `run_command` only for something `compile` cannot do, such as inspecting a produced file. |
+| The user asks to run latexmk or tectonic by hand | Prefer `compile`, which uses the project's engine and artifact layout. If it must go through `run_command` (with approval), use `oleafly build`: it finds the app's Tectonic, Typst and TeX, while a bare `tectonic` or `typst` may not be on PATH. Reach for `run_command` only for something `compile` cannot do, such as inspecting a produced file. |
 | Nothing works and the error is opaque | Bisect. See the end of `references/error-catalog.md`. |
 
 ## Failure handling

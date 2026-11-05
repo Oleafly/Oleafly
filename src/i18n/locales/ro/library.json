@@ -479,6 +479,7 @@
     "previewUnsupported": "Previzualizarea în timp real nu este încă disponibilă pentru acest motor",
     "badge": "Generat cu AI",
     "compileWarning": "Ciorna aceasta nu s-a compilat curat. Generează din nou pentru un punct de plecare mai bun sau creează proiectul și repară sursa în editor.",
+    "compileLog": "Jurnal de compilare",
     "noDescription": "Încă nu există o descriere.",
     "includes": "Include",
     "category": "Categorie",

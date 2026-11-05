@@ -19,6 +19,36 @@ const engineInfo: EngineInfo = {
   latexmk: "/test/tinytex/bin/latexmk",
 };
 
+describe("Engines latexmk badge", () => {
+  it("says MiKTeX needs Perl instead of calling latexmk missing or ready", () => {
+    useEngineStore.setState({
+      info: {
+        ...engineInfo,
+        kind: "system",
+        latexmk_blocker: { code: "tex.latexmk_needs_perl", params: {} },
+      },
+      loaded: true,
+    });
+    render(<EngineSection />);
+    expect(screen.getByText(enSettings.engine.latexmkNeedsPerl)).toBeInTheDocument();
+    expect(screen.queryByText(enSettings.engine.latexmkMissing)).toBeNull();
+  });
+
+  it("keeps the missing badge when there is no latexmk at all", () => {
+    useEngineStore.setState({
+      info: {
+        ...engineInfo,
+        latexmk: null,
+        latexmk_blocker: { code: "tex.latexmk_missing", params: {} },
+      },
+      loaded: true,
+    });
+    render(<EngineSection />);
+    expect(screen.getByText(enSettings.engine.latexmkMissing)).toBeInTheDocument();
+    expect(screen.queryByText(enSettings.engine.latexmkNeedsPerl)).toBeNull();
+  });
+});
+
 describe("Engines reset", () => {
   beforeEach(() => {
     localStorage.clear();

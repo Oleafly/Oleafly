@@ -303,10 +303,20 @@ pub async fn agent_complete(
 pub async fn agent_cancel_all(
     state: State<'_, AgentState>,
     exec_state: State<'_, crate::agent_exec::AgentExecState>,
+    app_state: State<'_, crate::state::AppState>,
     session_id: String,
 ) -> Result<(), String> {
-    cancel_all_work(state.inner(), exec_state.inner(), Some(&session_id)).await;
+    cancel_session_work(state.inner(), exec_state.inner(), &session_id).await;
+    crate::commands::stop_figure_compile(app_state.inner()).await;
     Ok(())
+}
+
+pub(crate) async fn cancel_session_work(
+    state: &AgentState,
+    exec_state: &crate::agent_exec::AgentExecState,
+    session_id: &str,
+) {
+    cancel_all_work(state, exec_state, Some(session_id)).await;
 }
 
 pub(crate) fn pause_for_update(state: &AgentState) {
@@ -365,13 +375,18 @@ async fn cancel_all_work(
 pub async fn agent_cancel(
     state: State<'_, AgentState>,
     exec_state: State<'_, crate::agent_exec::AgentExecState>,
+    app_state: State<'_, crate::state::AppState>,
     request_id: String,
+    stop_figure: bool,
 ) -> Result<(), String> {
     let manager = lock_or_recover(&state.subagent_managers)
         .get(&request_id)
         .map(|resource| resource.value.clone());
     crate::agent_exec::cancel_run(exec_state.inner(), &request_id);
     cancel_run(state.inner(), &request_id);
+    if stop_figure {
+        crate::commands::stop_figure_compile(app_state.inner()).await;
+    }
     if let Some(manager) = manager {
         manager.cancel_descendants("/root").await;
     }

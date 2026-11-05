@@ -283,6 +283,47 @@ describe("a missing Quarto or Calepin", () => {
     await vi.waitFor(() => expect(mocks.notebookToolchainStatus).toHaveBeenCalled());
   });
 
+  it("offers the download when the Quarto on this computer is too old", async () => {
+    const refusal = appError("notebook.quarto_outdated", { version: "1.4.557", minimum: "1.5" });
+    mocks.compileProject.mockRejectedValue(refusal);
+    await useCompileStore.getState().recompile();
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("unavailable");
+    expect(state.failureReason).toBe(
+      enErrors.notebook.quarto_outdated.replace("{{version}}", "1.4.557").replace("{{minimum}}", "1.5"),
+    );
+    expect(state.offer).toEqual({ kind: "notebook-tool-missing", projectId: "project", tool: "quarto" });
+  });
+
+  it("says which file stopped the compile when Quarto would replace it", async () => {
+    mocks.compileProject.mockRejectedValue(appError("notebook.would_overwrite", { file: "report.tex" }));
+    await useCompileStore.getState().recompile();
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("error");
+    expect(state.failureReason).toContain("Compiling would replace report.tex");
+    expect(state.offer).toBeNull();
+  });
+
+  it("offers TinyTeX when Quarto reports no TeX", async () => {
+    mocks.compileProject.mockResolvedValue({
+      ...htmlResult(),
+      ok: false,
+      html_output: null,
+      errors: [
+        {
+          line: null,
+          file: null,
+          message: "No TeX installation was detected.",
+          kind: "error",
+          explanation: null,
+          code: "notebook.quarto_needs_tex",
+        },
+      ],
+    });
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().offer).toEqual({ kind: "tex-missing", projectId: "project" });
+  });
+
   it("stops before compiling when the tool is not installed", async () => {
     mocks.files.engine = notebookEngine("calepin");
     mocks.files.mainDoc = "report.typ";

@@ -94,12 +94,16 @@
     "exitFullscreen": "Thoát toàn màn hình",
     "retryCompile": "Thử biên dịch lại",
     "chooseEngine": "Chọn engine",
+    "installJapanese": "Cài hỗ trợ tiếng Nhật (khoảng 450 MB)",
+    "useCompiler": "Dùng {{compiler}}",
     "installPackages_other": "Tìm và cài đặt {{count}} tệp",
     "downloadTypst": "Tải Typst {{version}}",
     "useTypst": "Dùng Typst {{version}}",
     "installTool": "Cài đặt {{tool}} {{version}}",
     "installToolSize": "Cài đặt {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Mở cài đặt engine"
+    "engineSettings": "Mở cài đặt engine",
+    "useTectonic": "Dùng Tectonic",
+    "useTectonicForEveryone": "Dùng Tectonic cho tất cả mọi người"
   },
   "html": {
     "builtTitle": "Đã dựng thành trang web",

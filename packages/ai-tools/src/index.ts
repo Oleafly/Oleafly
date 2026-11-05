@@ -2,6 +2,7 @@ export {
   createOleaflyTools,
   createFigureTools,
   type AiToolsHost,
+  type CompileToolOutcome,
   type ProjectIndexView,
   type IndexDefView,
   type IndexUseView,

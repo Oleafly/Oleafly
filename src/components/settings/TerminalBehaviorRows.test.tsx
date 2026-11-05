@@ -48,6 +48,40 @@ describe("terminal behavior settings", () => {
     });
   });
 
+  describe("the terminal Oleafly opens", () => {
+    const terminals = [
+      { id: "mac-terminal", name: "Terminal", detail: null, available: true },
+      { id: "iterm", name: "iTerm", detail: null, available: false },
+      { id: "x-terminal-emulator", name: "x-terminal-emulator", detail: "kitty", available: true },
+    ];
+    const answer = (command: string) => Promise.resolve(command === "external_terminals" ? terminals : WINDOWS_SHELLS);
+
+    it("starts on the built-in terminal and lists what is installed", async () => {
+      invoke.mockImplementation(answer);
+      const user = userEvent.setup();
+      render(<TerminalBehaviorRows />);
+      await waitFor(() => expect(invoke).toHaveBeenCalledWith("external_terminals"));
+
+      await user.click(screen.getByLabelText(labels.openWith.ariaLabel));
+      expect(await screen.findByRole("option", { name: labels.openWith.builtin })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: labels.openWith["mac-terminal"] })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "System default (kitty)" })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: labels.openWith.iterm })).toBeNull();
+
+      await user.click(screen.getByRole("option", { name: labels.openWith["mac-terminal"] }));
+      expect(useSettingsStore.getState().terminalOpenWith).toBe("mac-terminal");
+    });
+
+    it("marks a chosen terminal that is no longer installed", async () => {
+      useSettingsStore.setState({ terminalOpenWith: "iterm" });
+      invoke.mockImplementation(answer);
+      render(<TerminalBehaviorRows />);
+
+      expect(await screen.findByText("iTerm (not found)")).toBeInTheDocument();
+      useSettingsStore.setState({ terminalOpenWith: "builtin" });
+    });
+  });
+
   it("lists only installed shells and shows the path field for a custom shell", async () => {
     invoke.mockResolvedValue(WINDOWS_SHELLS);
     const user = userEvent.setup();

@@ -70,7 +70,7 @@ async fn shutdown_work<R: tauri::Runtime>(app: &tauri::AppHandle<R>, updating: b
         if updating {
             crate::agent::cancel_for_update(agent.inner(), exec.inner()).await;
         } else {
-            let _ = crate::agent::agent_cancel_all(agent, exec, "app-shutdown".into()).await;
+            crate::agent::cancel_session_work(agent.inner(), exec.inner(), "app-shutdown").await;
         }
     }
     if let Some(runtime) = app.try_state::<Arc<crate::acp::AcpRuntime>>() {

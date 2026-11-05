@@ -7,6 +7,7 @@ pub mod pandoc_citations;
 pub mod runner;
 pub mod stats;
 pub mod synctex;
+pub mod typst_html;
 
 pub use error::DocError;
 pub use runner::{RunFuture, ToolRunner};

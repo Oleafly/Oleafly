@@ -572,6 +572,7 @@
     "unrecorded": "LaTeX Project 沒有記錄 {{name}} 類別的標記狀態，因此結果尚無定論。請編譯後檢查輸出。"
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata 要放在主要文件的最上方，所以這個檔案不會加入它。",
     "metadataUpdated": "已在你的 \\DocumentMetadata 中加入必要的標記鍵。",
     "metadataAdded": "已把 \\DocumentMetadata 加為第一行（必要，且必須在 \\documentclass 之前）。它位於版本檢查之內：早於 {{date}} 的 LaTeX（包括內建引擎）會略過它，並以無標記方式編譯文件，而不是失敗。",
     "headerRows": "已將 table/header-rows 設為 1，讓每個表格的第一列標記為標頭儲存格。若某個表格的標頭深度不同，請自行調整數字。",

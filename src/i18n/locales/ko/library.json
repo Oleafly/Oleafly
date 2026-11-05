@@ -447,6 +447,7 @@
     "previewUnsupported": "이 엔진에서는 아직 실시간 미리보기를 쓸 수 없습니다",
     "badge": "AI 생성",
     "compileWarning": "이 초안은 깔끔하게 컴파일되지 않았습니다. 다시 생성해 더 나은 시작점을 얻거나, 프로젝트를 만든 뒤 편집기에서 소스를 고치세요.",
+    "compileLog": "컴파일 로그",
     "noDescription": "아직 설명이 없습니다.",
     "includes": "포함 항목",
     "category": "분류",

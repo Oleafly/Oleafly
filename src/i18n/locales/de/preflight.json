@@ -588,6 +588,7 @@
     "unrecorded": "Das LaTeX Project hat für die Klasse {{name}} keinen Tagging-Status erfasst, das Ergebnis ist also unbelegt. Kompilieren Sie und prüfen Sie die Ausgabe."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata gehört an den Anfang des Hauptdokuments, deshalb bekommt diese Datei es nicht.",
     "metadataUpdated": "Die nötigen Tagging-Schlüssel wurden zu Ihrem \\DocumentMetadata hinzugefügt.",
     "metadataAdded": "\\DocumentMetadata wurde als erste Zeile ergänzt (erforderlich, muss vor \\documentclass stehen). Die Zeile steht in einer Versionsprüfung: Ein LaTeX, das älter als {{date}} ist, überspringt sie, die mitgelieferte Engine eingeschlossen, und kompiliert das Dokument ohne Tags, statt zu scheitern.",
     "headerRows": "table/header-rows wurde auf 1 gesetzt, damit die erste Zeile jeder Tabelle als Kopfzellen getaggt wird. Ändern Sie die Zahl, wenn eine Tabelle eine andere Kopftiefe hat.",

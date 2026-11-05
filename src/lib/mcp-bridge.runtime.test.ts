@@ -389,6 +389,21 @@ describe("MCP-only and skill tools", () => {
     });
   });
 
+  it("gives the reason the last compile failed", async () => {
+    const compile = mocks.compile as { status: string; failureReason?: string };
+    compile.status = "unavailable";
+    compile.failureReason = "TinyTeX is still downloading.";
+    try {
+      await expect(registry.get_status.execute({})).resolves.toMatchObject({
+        compile_status: "unavailable",
+        failure_reason: "TinyTeX is still downloading.",
+      });
+    } finally {
+      compile.status = "success";
+      delete compile.failureReason;
+    }
+  });
+
   it("lists projects and reports listing failures", async () => {
     mocks.api.listProjects.mockResolvedValueOnce([{ id: "p", name: "Paper" }]);
     await expect(registry.list_projects.execute({})).resolves.toEqual({ projects: [{ id: "p", name: "Paper" }] });

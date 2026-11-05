@@ -38,6 +38,7 @@
       "compile": "Kompiler",
       "recompile": "Kompiler igen",
       "compiling": "Kompilerer…",
+      "stop": "Stop",
       "saveTooltip": "Gem dette diagram",
       "save": "Gem",
       "saveToProject": "Gem i projektet",

@@ -465,6 +465,25 @@ fn child_search_path_puts_prepended_folders_first_and_appends_only_new_ones() {
 }
 
 #[test]
+fn managed_tex_comes_after_every_folder_the_user_chose() {
+    let temp = tempfile::tempdir().unwrap();
+    let [cli, system_tex, append, tinytex] =
+        ["cli", "texbin", "node", "tinytex/bin/x86_64-linux"].map(|name| temp.path().join(name));
+    for folder in [&cli, &system_tex, &append, &tinytex] {
+        std::fs::create_dir_all(folder).unwrap();
+    }
+    assert_eq!(
+        child_search_dirs(
+            std::slice::from_ref(&cli),
+            vec![system_tex.clone()],
+            std::slice::from_ref(&append),
+            vec![tinytex.clone(), system_tex.clone()],
+        ),
+        vec![cli, system_tex, append, tinytex]
+    );
+}
+
+#[test]
 fn child_env_carries_the_search_path() {
     let env = child_env(&[], &[]);
     assert_eq!(env[0].0, "PATH");

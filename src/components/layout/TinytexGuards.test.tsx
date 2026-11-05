@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   cancelQuitFlush: vi.fn(async () => {}),
   typstToolchainStatus: vi.fn(async () => null as unknown),
   notifyError: vi.fn(),
+  cancelTinytexInstall: vi.fn(async () => {}),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
@@ -21,6 +22,7 @@ vi.mock("@/lib/tauri", () => ({
   confirmQuitDuringInstall: mocks.confirmQuitDuringInstall,
   cancelQuitFlush: mocks.cancelQuitFlush,
   typstToolchainStatus: mocks.typstToolchainStatus,
+  cancelTinytexInstall: mocks.cancelTinytexInstall,
 }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 
@@ -40,9 +42,32 @@ beforeEach(() => {
   useTypstToolchainStore.setState({ status: null, install: null, loading: false, loadFailed: false });
   useEngineStore.setState({
     installing: true,
+    packageOperations: 0,
     installWaitNoticeOpen: false,
     installWaitNoticeShown: false,
     compileQueuedDuringInstall: false,
+  });
+});
+
+describe("TinytexGuards wait notice", () => {
+  it("lets the user stop the install from the notice", async () => {
+    mocks.cancelTinytexInstall.mockClear();
+    useEngineStore.setState({
+      installWaitNoticeOpen: true,
+      installPhase: "download",
+      cancellingInstall: false,
+    });
+    render(<TinytexGuards />);
+    fireEvent.click(await screen.findByRole("button", { name: enShell.tinytexGuards.wait.stop }));
+    await waitFor(() => expect(mocks.cancelTinytexInstall).toHaveBeenCalledOnce());
+    useEngineStore.setState({ cancellingInstall: false });
+  });
+
+  it("hides the stop button once TinyTeX is already in place", async () => {
+    useEngineStore.setState({ installWaitNoticeOpen: true, installPhase: "packages" });
+    render(<TinytexGuards />);
+    await screen.findByText(enShell.tinytexGuards.wait.title);
+    expect(screen.queryByRole("button", { name: enShell.tinytexGuards.wait.stop })).toBeNull();
   });
 });
 
@@ -75,6 +100,39 @@ describe("TinytexGuards quit interception", () => {
     fireEvent.click(cancelButtons[cancelButtons.length - 1]);
 
     await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("TinytexGuards quit during a package change", () => {
+  it("asks before quitting while TeX packages are being installed", async () => {
+    useEngineStore.setState({ installing: false, packageOperations: 1 });
+    render(<TinytexGuards />);
+    await waitFor(() => expect(mocks.events.has("tinytex-quit-blocked")).toBe(true));
+    act(() => {
+      mocks.events.get("tinytex-quit-blocked")?.({ payload: undefined });
+    });
+    await screen.findByText(enShell.tinytexGuards.packageQuit.title);
+    expect(mocks.cancelQuitFlush).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: enShell.tinytexGuards.quit.confirm }));
+    await waitFor(() => expect(mocks.confirmQuitDuringInstall).toHaveBeenCalledOnce());
+  });
+
+  it("re-arms the quit gate once the package change ends", async () => {
+    useEngineStore.setState({ installing: false, packageOperations: 1 });
+    render(<TinytexGuards />);
+    await waitFor(() => expect(mocks.events.has("tinytex-quit-blocked")).toBe(true));
+    act(() => {
+      mocks.events.get("tinytex-quit-blocked")?.({ payload: undefined });
+    });
+    await screen.findByText(enShell.tinytexGuards.packageQuit.title);
+
+    act(() => {
+      useEngineStore.setState({ packageOperations: 0 });
+    });
+
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(enShell.tinytexGuards.packageQuit.title)).toBeNull();
   });
 });
 

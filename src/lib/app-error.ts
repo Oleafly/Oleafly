@@ -78,6 +78,11 @@ function errorKey(code: string): string | null {
   return keys.find((key) => dynamic.exists(key)) ?? null;
 }
 
+export function codedErrorText(code: string, params: Record<string, string>): string | null {
+  const key = errorKey(code);
+  return key ? dynamic.t(key, paramsOf(new AppError(code, params, null))) : null;
+}
+
 function errorSentence(value: unknown): string {
   const app = decodeAppError(value);
   if (app) {

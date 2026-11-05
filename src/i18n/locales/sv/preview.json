@@ -94,13 +94,17 @@
     "exitFullscreen": "Lämna helskärm",
     "retryCompile": "Kompilera igen",
     "chooseEngine": "Välj motor",
+    "installJapanese": "Installera stöd för japanska (cirka 450 MB)",
+    "useCompiler": "Använd {{compiler}}",
     "installPackages_one": "Hitta och installera {{name}}",
     "installPackages_other": "Hitta och installera {{count}} filer",
     "downloadTypst": "Ladda ner Typst {{version}}",
     "useTypst": "Använd Typst {{version}}",
     "installTool": "Installera {{tool}} {{version}}",
     "installToolSize": "Installera {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Öppna motorinställningar"
+    "engineSettings": "Öppna motorinställningar",
+    "useTectonic": "Använd Tectonic",
+    "useTectonicForEveryone": "Använd Tectonic för alla"
   },
   "html": {
     "builtTitle": "Byggd som webbsida",

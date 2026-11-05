@@ -46,6 +46,7 @@ vi.mock("@/lib/toast", () => ({
 }));
 
 import { i18n } from "@/i18n";
+import { useSettingsStore } from "@/store/settings";
 import { useTypstVariantStore } from "@/store/typst-variant";
 import { exportCurrentDocument, exportCurrentTypst } from "./export";
 
@@ -83,6 +84,62 @@ describe("Typst native exports", () => {
     expect(mocks.dismiss).not.toHaveBeenCalled();
   });
 
+  it("names what Typst left out of an HTML export", async () => {
+    mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.html");
+    mocks.exportTypstDocument.mockResolvedValueOnce({
+      files: ["/out/My_paper.html"],
+      skipped: ["layout", "curve"],
+      outdatedTypst: null,
+    });
+    await exportCurrentTypst({ format: "html" });
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).toHaveBeenLastCalledWith(
+      "export-result",
+      i18n.t(($) => $.core.export.savedWithoutContent, {
+        kind: "HTML",
+        fileName: "My_paper.html",
+        elements: "layout and curve",
+      }),
+      expect.anything(),
+      true,
+    );
+  });
+
+  it("offers a newer Typst when an old one dropped the equations", async () => {
+    mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.html");
+    mocks.exportTypstDocument.mockResolvedValueOnce({
+      files: ["/out/My_paper.html"],
+      skipped: ["equation"],
+      outdatedTypst: "0.14.2",
+    });
+    await exportCurrentTypst({ format: "html" });
+    expect(mocks.infoUnique).toHaveBeenLastCalledWith(
+      "export-result",
+      i18n.t(($) => $.core.export.savedWithoutEquations, {
+        kind: "HTML",
+        fileName: "My_paper.html",
+        version: "0.14.2",
+      }),
+      expect.anything(),
+      true,
+    );
+  });
+
+  it("keeps Typst off the network while offline", async () => {
+    useSettingsStore.setState({ offline: true });
+    try {
+      await exportCurrentTypst({ format: "png", ppi: 144 });
+      expect(mocks.exportTypstDocument).toHaveBeenCalledWith(
+        "paper-a",
+        "main.typ",
+        { format: "png", ppi: 144, variant: "final", offline: true },
+        "/out/My_paper.png",
+      );
+    } finally {
+      useSettingsStore.setState({ offline: false });
+    }
+  });
+
   it("does nothing when the save dialog is cancelled", async () => {
     mocks.pickSavePath.mockResolvedValueOnce(null);
     await exportCurrentTypst({ format: "svg" });
@@ -118,5 +175,92 @@ describe("Typst conversion exports", () => {
     mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.md");
     await exportCurrentDocument("md");
     expect(mocks.exportDocument).toHaveBeenCalledWith("paper-a", "main.typ", "md", "/out/My_paper.md", null);
+  });
+
+  it("passes offline mode to the export", async () => {
+    useSettingsStore.setState({ offline: true });
+    try {
+      mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.docx");
+      await exportCurrentDocument("docx");
+      expect(mocks.exportDocument).toHaveBeenCalledWith("paper-a", "main.typ", "docx", "/out/My_paper.docx", "final", true);
+    } finally {
+      useSettingsStore.setState({ offline: false });
+    }
+  });
+
+  it("names what Typst could not convert", async () => {
+    mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.docx");
+    mocks.exportDocument.mockResolvedValueOnce({ warnings: [], skipped: ["layout"], outdatedTypst: null });
+    await exportCurrentDocument("docx");
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).toHaveBeenLastCalledWith(
+      "export-result",
+      i18n.t(($) => $.core.export.savedWithoutContent, {
+        kind: "DOCX",
+        fileName: "My_paper.docx",
+        elements: "layout",
+      }),
+      expect.anything(),
+      true,
+    );
+  });
+
+  it("says when an old Typst sent the export through the source reader", async () => {
+    mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.docx");
+    mocks.exportDocument.mockResolvedValueOnce({
+      warnings: [],
+      skipped: [],
+      outdatedTypst: null,
+      readFromSource: "0.14.2",
+    });
+    await exportCurrentDocument("docx");
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).toHaveBeenLastCalledWith(
+      "export-result",
+      i18n.t(($) => $.core.export.savedFromSource, {
+        kind: "DOCX",
+        fileName: "My_paper.docx",
+        version: "0.14.2",
+      }),
+      expect.anything(),
+      true,
+    );
+  });
+
+  it("names the lost elements when the Typst version is not the cause", async () => {
+    mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.html");
+    mocks.exportDocument.mockResolvedValueOnce({
+      warnings: [],
+      skipped: ["layout", "polygon"],
+      outdatedTypst: null,
+      readFromSource: null,
+    });
+    await exportCurrentDocument("html");
+    expect(mocks.infoUnique).toHaveBeenLastCalledWith(
+      "export-result",
+      i18n.t(($) => $.core.export.savedWithoutContent, {
+        kind: "HTML",
+        fileName: "My_paper.html",
+        elements: "layout and polygon",
+      }),
+      expect.anything(),
+      true,
+    );
+  });
+
+  it("says when an old Typst lost the equations", async () => {
+    mocks.pickSavePath.mockResolvedValueOnce("/out/My_paper.md");
+    mocks.exportDocument.mockResolvedValueOnce({ warnings: [], skipped: ["equation"], outdatedTypst: "0.13.1" });
+    await exportCurrentDocument("md");
+    expect(mocks.infoUnique).toHaveBeenLastCalledWith(
+      "export-result",
+      i18n.t(($) => $.core.export.savedWithoutEquations, {
+        kind: "MD",
+        fileName: "My_paper.md",
+        version: "0.13.1",
+      }),
+      expect.anything(),
+      true,
+    );
   });
 });

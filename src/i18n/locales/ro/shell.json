@@ -476,9 +476,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Eșecul corespunde unei limitări cunoscute a motorului Tectonic inclus. Alege cum ar trebui să se compileze acest proiect. Alegerea se salvează în proiect, așa că și colaboratorii primesc aceeași configurație.",
     "descriptionImportScan": "Scanarea de import a găsit funcții pe care motorul Tectonic inclus nu le orchestrează. Alege cum ar trebui să se compileze acest proiect. Alegerea se salvează în proiect, așa că și colaboratorii primesc aceeași configurație.",
+    "descriptionTexMissing": "Acest proiect se compilează acum cu latexmk, iar acest computer nu îl poate rula încă. Oleafly poate instala TinyTeX pentru tine sau poți reveni la motorul Tectonic inclus.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX prin latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "Compilarea s-a oprit la {{file}}.",
+      "missingFiles": "Compilarea nu a găsit {{files}}.",
+      "mirrorStatus": "Oglinda a returnat HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Bibliografia folosește biblatex și Biber",
+        "detail": "Acest proiect are nevoie de Biber pentru a construi lista de referințe. Oleafly vine cu un Biber potrivit motorului său inclus. Dacă citările rămân „?” după compilare, caută în jurnal o notă despre Biber."
+      },
+      "bundle-fetch-failed": {
+        "title": "Descărcarea pachetelor TeX a eșuat",
+        "detail": "Oleafly nu a putut descărca pachetele TeX de pe oglinda sa, așa că compilarea nu a ajuns la documentul tău. Verifică conexiunea și compilează din nou. Descărcarea continuă de unde s-a oprit."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 are nevoie de pdfLaTeX",
+        "detail": "CJKutf8 și CJK funcționează doar cu pdfLaTeX. Cu motorul inclus (XeTeX), documentul se compilează în continuare, dar textul lui chinezesc, japonez sau coreean lipsește din PDF. Treci la pdfLaTeX cu TeX-ul din sistem sau înlocuiește pachetul cu xeCJK."
+      },
+      "class-compat": {
+        "title": "Clasa de document atinge limitele motorului",
+        "detail": "Erorile de compilare vin dintr-un fișier de clasă sau de stil, nu din documentul tău. Clasele de la edituri depind adesea de instrumente sau de un comportament pdfTeX pe care motorul inclus nu îl are. latexmk compilează cu o distribuție TeX completă."
+      },
+      "eps-image": {
+        "title": "Imaginile EPS au nevoie de un convertor",
+        "detail": "Motorul inclus nu poate plasa imagini EPS. Convertește-le în PDF cu epstopdf sau Inkscape ori treci la pdfLaTeX cu TeX-ul din sistem, care convertește EPS prin Ghostscript."
+      },
+      "fontspec": {
+        "title": "Fonturi personalizate (fontspec)",
+        "detail": "fontspec are nevoie ca fonturile indicate să fie pe acest computer. Fonturile venite cu un editor online pot lipsi aici."
+      },
+      "glossaries-index": {
+        "title": "Instrument pentru glosar sau index",
+        "detail": "glossaries și makeindex au nevoie de o rulare suplimentară a makeindex sau xindy, pe care motorul inclus nu o face."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref este setat pe driverul pdfTeX",
+        "detail": "Această clasă sau acest preambul forțează driverul pdftex al hyperref, pe care motorul inclus nu îl poate folosi. Treci la pdfLaTeX cu TeX-ul din sistem sau elimină opțiunea pdftex, ca hyperref să-și aleagă singur driverul."
+      },
+      "minted": {
+        "title": "minted are nevoie de shell escape și Pygments",
+        "detail": "Listările de cod cu minted au nevoie de o distribuție TeX din sistem și de pygmentize. Treci la LaTeX-ul din sistem, apoi permite comenzile externe pe acest computer doar dacă ai încredere în fiecare fișier al proiectului."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Lipsește un pachet din setul inclus",
+        "detail": "Ceva ce încarcă acest proiect nu se află în setul TeX inclus. Adaugă fișierul în proiect dacă a venit cu șablonul tău sau treci la TeX-ul din sistem și instalează pachetul din TeX Live."
+      },
+      "pdftex-only": {
+        "title": "Pachete pdfTeX",
+        "detail": "Motorul inclus se bazează pe XeTeX, iar acest proiect depinde de pachete sau comenzi care funcționează doar cu pdfTeX. latexmk compilează cu pdfLaTeX adevărat."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX are nevoie de utilitarul său din distribuția TeX activă din sistem. Treci la LaTeX-ul din sistem, apoi permite comenzile externe pe acest computer doar dacă ai încredere în fiecare fișier al proiectului."
+      },
+      "shell-escape": {
+        "title": "Comenzi externe (shell escape)",
+        "detail": "Sursa folosește \\write18 sau altă comandă externă (shell escape). Treci la LaTeX-ul din sistem, apoi permite comenzile externe pe acest computer doar dacă ai încredere în fiecare fișier al proiectului și instrumentele de care are nevoie sunt instalate."
+      }
     },
     "recommended": "Recomandat",
     "shellEscape": {
@@ -506,13 +566,14 @@
       "withFailures_other": "Fără configurare, funcționează offline. {{features}} vor continua probabil să eșueze."
     },
     "tinytex": {
-      "description": "Instalează o distribuție TeX Live compactă în folderul tău personal, fără drepturi de administrator. Descărcarea de bază este de circa 250 MB. Șabloanele de reviste pot aduce mai târziu și alte pachete, până la circa 1 GB în total.",
+      "description": "Instalează o distribuție TeX Live compactă, fără drepturi de administrator. Descărcarea de bază este de circa 250 MB. Șabloanele de reviste pot aduce mai târziu și alte pachete, până la circa 1 GB în total.",
       "download": "Descarcă și folosește TinyTeX",
       "resume": "Reia descărcarea ({{megabytes}} MB descărcați)",
       "title": "Descarcă TinyTeX"
     },
     "titleCompileFailure": "Această compilare are nevoie de mai mult decât motorul inclus",
-    "titleImportScan": "Acest proiect are nevoie de mai mult decât motorul inclus"
+    "titleImportScan": "Acest proiect are nevoie de mai mult decât motorul inclus",
+    "titleTexMissing": "Acest compilator are nevoie de o distribuție TeX funcțională"
   },
   "shellCommands": {
     "allow": "Permite comenzi externe",
@@ -1172,11 +1233,16 @@
     },
     "wait": {
       "description": "{{phase}} Compilarea ta este la coadă și pornește automat de îndată ce motorul este pregătit.",
+      "stop": "Oprește instalarea",
       "title": "TinyTeX încă se descarcă"
     },
     "typstQuit": {
       "title": "Typst încă se instalează",
       "description": "Typst {{version}} se descarcă. Dacă ieși acum, descărcarea se oprește și va trebui să o pornești din nou din Setări."
+    },
+    "packageQuit": {
+      "title": "Oleafly încă modifică pachete TeX",
+      "description": "Dacă ieși acum, instalarea sau eliminarea se oprește la jumătate și poate lăsa defect managerul tău de pachete TeX."
     }
   },
   "toolbar": {
@@ -1342,7 +1408,7 @@
       "compiling": "Se compilează cu Typst"
     },
     "errors": {
-      "pandoc": "Pandoc nu este pregătit. Instalează-l din Instrumente, apoi încearcă din nou.",
+      "pandoc": "Pandoc nu este pregătit. Repară-l din Setări > Motoare > Markdown, apoi încearcă din nou.",
       "noMain": "Fișierul LaTeX principal nu a putut fi citit.",
       "emptyOutput": "Pandoc a returnat un document gol.",
       "failed": "Conversia s-a oprit: {{detail}}"
@@ -1407,7 +1473,8 @@
     "svg": "Imagini SVG",
     "html": "HTML",
     "experimental": "Experimental",
-    "htmlNote": "Exportul HTML din Typst este încă experimental. Omite configurarea paginii și elementele plasate.",
+    "htmlNote": "Exportul HTML din Typst este încă experimental. Păstrează textul și imaginile, dar nu configurarea paginii și nici desenele.",
+    "htmlNoteOldTypst": "Typst {{version}} omite ecuațiile din HTML. Typst 0.15 sau mai nou le păstrează.",
     "ppi": "Rezoluție",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Pagini",

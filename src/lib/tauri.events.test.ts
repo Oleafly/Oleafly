@@ -20,7 +20,9 @@ import {
 } from "./tauri";
 import {
   COLLAB_CHANGE_SKIPPED_EVENT,
+  COLLAB_OUTPUT_NOT_SHARED_EVENT,
   onCollabChangeSkipped,
+  onCollabOutputNotShared,
 } from "./tauri-collab";
 
 const component: AssetProgress = {
@@ -134,6 +136,17 @@ describe("skipped collaboration changes", () => {
     expect(COLLAB_CHANGE_SKIPPED_EVENT).toBe("collab-change-skipped");
     emit("collab-change-skipped", { projectId: "p", seq: 4, deviceId: null });
     expect(seen).toEqual([{ projectId: "p", seq: 4, deviceId: null }]);
+    expect(unlisten).toBe(mocks.unlisten);
+  });
+});
+
+describe("compiled PDFs that were not shared", () => {
+  it("hands each refusal to the handler", async () => {
+    const seen: unknown[] = [];
+    const unlisten = await onCollabOutputNotShared((payload) => seen.push(payload));
+    expect(COLLAB_OUTPUT_NOT_SHARED_EVENT).toBe("collab-output-not-shared");
+    emit("collab-output-not-shared", { projectId: "p", reason: "tooLarge" });
+    expect(seen).toEqual([{ projectId: "p", reason: "tooLarge" }]);
     expect(unlisten).toBe(mocks.unlisten);
   });
 });

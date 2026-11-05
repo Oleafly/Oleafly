@@ -1,11 +1,12 @@
 #[cfg(unix)]
 use super::remove_links;
 use super::{
-    append_bounded, detect_latexmk_flavor, dotted, executable_name, fingerprint_file,
-    ignored_flags, image_check_applies, lost_text_warning, pandoc_engine_path, parse_errors,
-    read_stream, relative_to, run_command, seed_staging, with_engine_output_on_failure,
+    append_bounded, apply_tex_output_notes, biber_log_notes, detect_latexmk_flavor, dotted,
+    executable_name, fingerprint_file, ignored_flags, image_check_applies, lost_text_warning,
+    pandoc_engine_path, parse_errors, read_stream, relative_to, run_command, seed_staging,
+    tlmgr_hint, tlmgr_program, with_bundle_fetch_notes, with_engine_output_on_failure,
     BuildCommand, BuildError, BuildOptions, BuildTools, CompilerLog, Discovery, InPlaceOutputs,
-    Launch, NativeCompiler, LOG_TRUNCATION_MARKER, MAX_LOG_BYTES,
+    Launch, NativeCompiler, BUNDLE_FALLBACK_NOTE, LOG_TRUNCATION_MARKER, MAX_LOG_BYTES,
 };
 use crate::app_paths::InstalledApp;
 use crate::contract::ErrorKind as CliErrorKind;
@@ -15,13 +16,17 @@ use oleafly_core::build_output::{BuildLock, OutputStaging};
 #[cfg(unix)]
 use oleafly_core::engine_spec::compiler_crash_note;
 use oleafly_core::engine_spec::{
-    self, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url, ENTRY_TEX,
+    self, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url, ENTRY_STEM, ENTRY_TEX,
     MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME,
 };
+use oleafly_core::tex_distro::find_tool_in_dir;
 #[cfg(unix)]
 use oleafly_core::tex_distro::TexSearch;
 use oleafly_core::tex_errors::ENGINE_OUTPUT_MARKER;
-use oleafly_core::typst_toolchain::{bundled_typst_version, capabilities_for, ToolchainVersion};
+use oleafly_core::typst_toolchain::{
+    bundled_typst_version, capabilities_for, host_target, typst_binary_path, ToolchainVersion,
+    TypstToolchainCatalog, INSTALLED_CACHE_FILE,
+};
 use oleafly_core::{
     plain_path, Engine, EngineScratchBases, ErrorKind, InitOptions, ProjectManifest, TexFlavor,
     Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
@@ -280,6 +285,290 @@ fn latexmk_finds_bibliographies_in_a_folder_named_with_a_colon() {
     assert!(search_paths("Thesis 2024-25").is_empty());
 }
 
+fn tex_project(
+    folder: &Path,
+    main_doc: &str,
+    engine: Engine,
+    compile_dir: Option<&str>,
+) -> Workspace {
+    let main = folder.join(main_doc);
+    std::fs::create_dir_all(main.parent().unwrap()).unwrap();
+    std::fs::write(
+        main,
+        "\\documentclass{article}\n\\begin{document}\n\\bibliography{refs}\n\\end{document}\n",
+    )
+    .unwrap();
+    Workspace::from_manifest(
+        folder,
+        ProjectManifest {
+            name: "paper".into(),
+            main_doc: main_doc.into(),
+            engine: engine.manifest_name().into(),
+            compile_dir: compile_dir.map(str::to_owned),
+            ..ProjectManifest::default()
+        },
+    )
+    .unwrap()
+}
+
+fn tool_in(folder: &Path, name: &str) -> PathBuf {
+    let tool = folder.join(executable_name(name));
+    std::fs::write(&tool, name).unwrap();
+    tool
+}
+
+#[cfg(target_os = "macos")]
+fn universal_biber() -> Vec<u8> {
+    use oleafly_core::biber_env::{CPU_TYPE_ARM64, CPU_TYPE_X86_64, FAT_MAGIC};
+    let mut file = Vec::new();
+    file.extend_from_slice(&FAT_MAGIC.to_be_bytes());
+    file.extend_from_slice(&2u32.to_be_bytes());
+    for (cpu_type, offset) in [(CPU_TYPE_X86_64, 4096u32), (CPU_TYPE_ARM64, 8192)] {
+        file.extend_from_slice(&cpu_type.to_be_bytes());
+        file.extend_from_slice(&0u32.to_be_bytes());
+        file.extend_from_slice(&offset.to_be_bytes());
+        file.extend_from_slice(&8u32.to_be_bytes());
+        file.extend_from_slice(&12u32.to_be_bytes());
+    }
+    file.resize(8200, 7);
+    file
+}
+
+#[test]
+fn latexmk_unpacks_for_the_biber_it_runs_and_tectonic_keeps_its_own() {
+    let tools_directory = TempDir::new().unwrap();
+    let data = TempDir::new().unwrap();
+    let app = TempDir::new().unwrap();
+    let latexmk = tool_in(tools_directory.path(), "latexmk");
+    let tectonic = tool_in(app.path(), "tectonic");
+    let system_biber = tool_in(tools_directory.path(), "biber");
+    let tectonic_biber = tool_in(app.path(), "tectonic-biber");
+    let compiler = NativeCompiler::new(BuildTools {
+        latexmk: Some(latexmk),
+        tectonic: Some(tectonic),
+        tectonic_biber: Some(tectonic_biber.clone()),
+        data_root: Some(data.path().to_path_buf()),
+        ..BuildTools::default()
+    });
+    let unpack_for = |biber: &Path| {
+        oleafly_core::biber_env::unpack_dir_for(data.path(), biber)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
+    };
+
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Latexmk, None);
+    let build = workspace.prepare_build().unwrap();
+    let command = compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    assert_eq!(
+        environment(&command)[oleafly_core::biber_env::UNPACK_ENV],
+        unpack_for(&system_biber)
+    );
+
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Tectonic, None);
+    let build = workspace.prepare_build().unwrap();
+    let command = compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    let variables = environment(&command);
+    assert_eq!(
+        variables[oleafly_core::biber_env::UNPACK_ENV],
+        unpack_for(&tectonic_biber)
+    );
+    let unpack_root = oleafly_core::biber_env::unpack_root(data.path());
+    assert!(!std::env::split_paths(&variables["PATH"]).any(|dir| dir.starts_with(&unpack_root)));
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn a_universal_biber_runs_from_its_thin_copy_under_latexmk() {
+    let tools_directory = TempDir::new().unwrap();
+    let data = TempDir::new().unwrap();
+    let latexmk = tool_in(tools_directory.path(), "latexmk");
+    let biber = tools_directory.path().join("biber");
+    std::fs::write(&biber, universal_biber()).unwrap();
+    let compiler = NativeCompiler::new(BuildTools {
+        latexmk: Some(latexmk),
+        data_root: Some(data.path().to_path_buf()),
+        ..BuildTools::default()
+    });
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Latexmk, None);
+    let build = workspace.prepare_build().unwrap();
+    let command = compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    let variables = environment(&command);
+    let unpack = oleafly_core::biber_env::unpack_dir_for(data.path(), &biber).unwrap();
+    assert_eq!(
+        variables[oleafly_core::biber_env::UNPACK_ENV],
+        unpack.to_string_lossy()
+    );
+    let first = std::env::split_paths(&variables["PATH"]).next().unwrap();
+    assert_eq!(first, unpack.join("bin"));
+    assert_eq!(std::fs::read(first.join("biber")).unwrap().len(), 8);
+}
+
+#[test]
+fn a_kept_bib_copy_goes_before_tectonic_runs() {
+    let tools_directory = TempDir::new().unwrap();
+    let tectonic = tool_in(tools_directory.path(), "tectonic");
+    let compiler = NativeCompiler::new(BuildTools {
+        tectonic: Some(tectonic),
+        ..BuildTools::default()
+    });
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Tectonic, None);
+    let build = workspace.prepare_build().unwrap();
+    let copy = build.build_directory().join("refs.bib");
+    let own = build
+        .build_directory()
+        .join(format!("{ENTRY_STEM}-blx.bib"));
+    std::fs::write(&copy, "stale").unwrap();
+    std::fs::write(&own, "keep").unwrap();
+    compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    assert!(!copy.exists());
+    assert!(own.exists());
+}
+
+#[test]
+fn a_shipped_bbl_reaches_tectonic_through_the_entry_and_latexmk_through_the_build_folder() {
+    let tools_directory = TempDir::new().unwrap();
+    let tectonic = tool_in(tools_directory.path(), "tectonic");
+    let latexmk = tool_in(tools_directory.path(), "latexmk");
+    let compiler = NativeCompiler::new(BuildTools {
+        tectonic: Some(tectonic),
+        latexmk: Some(latexmk),
+        ..BuildTools::default()
+    });
+
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Tectonic, None);
+    std::fs::write(project.path().join("main.bbl"), "shipped").unwrap();
+    let build = workspace.prepare_build().unwrap();
+    compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    let entry = std::fs::read_to_string(build.build_directory().join(ENTRY_TEX)).unwrap();
+    assert!(entry.contains("\\input{\\detokenize{main.bbl}}"), "{entry}");
+
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Latexmk, None);
+    std::fs::write(project.path().join("main.bbl"), "shipped").unwrap();
+    let build = workspace.prepare_build().unwrap();
+    compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    let seeded = build.build_directory().join(format!("{ENTRY_STEM}.bbl"));
+    assert_eq!(std::fs::read_to_string(&seeded).unwrap(), "shipped");
+
+    std::fs::remove_file(&seeded).unwrap();
+    std::fs::write(project.path().join("refs.bib"), "").unwrap();
+    compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    assert!(!seeded.exists());
+}
+
+#[test]
+fn only_a_failed_latexmk_build_blames_a_bibliography_path_bibtex_cannot_follow() {
+    for (engine, succeeded, expected) in [
+        (Engine::Latexmk, false, true),
+        (Engine::Latexmk, true, false),
+        (Engine::Tectonic, false, false),
+    ] {
+        let project = TempDir::new().unwrap();
+        let workspace = tex_project(project.path(), "paper/main.tex", engine, Some("paper"));
+        let build = workspace.prepare_build().unwrap();
+        let out = TempDir::new().unwrap();
+        std::fs::write(
+            out.path().join(format!("{ENTRY_STEM}.blg")),
+            "I couldn't open database file ../refs.bib\n",
+        )
+        .unwrap();
+        let (mut log, mut errors) = (String::new(), Vec::new());
+        apply_tex_output_notes(&build, out.path(), succeeded, &mut log, &mut errors);
+        assert_eq!(
+            errors
+                .iter()
+                .any(|error| error.code.as_deref() == Some("tex.bibliography_above_main")),
+            expected,
+            "{engine:?} succeeded={succeeded}"
+        );
+    }
+}
+
+#[test]
+fn a_nested_latexmk_build_keeps_root_relative_paths_working() {
+    let tools_directory = TempDir::new().unwrap();
+    let latexmk = tool_in(tools_directory.path(), "latexmk");
+    let compiler = NativeCompiler::new(BuildTools {
+        latexmk: Some(latexmk),
+        ..BuildTools::default()
+    });
+    let project = TempDir::new().unwrap();
+    let nested = tex_project(
+        project.path(),
+        "paper/main.tex",
+        Engine::Latexmk,
+        Some("paper"),
+    );
+    let build = nested.prepare_build().unwrap();
+    let command = compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    let variables = environment(&command);
+    let root = build.project_root().to_string_lossy().replace('\\', "/");
+    assert!(variables["TEXINPUTS"].contains(&root), "{variables:?}");
+    assert!(variables["BIBINPUTS"].contains(&root), "{variables:?}");
+
+    let project = TempDir::new().unwrap();
+    let flat = tex_project(project.path(), "main.tex", Engine::Latexmk, None);
+    let build = flat.prepare_build().unwrap();
+    let command = compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    assert!(!environment(&command).contains_key("TEXINPUTS"));
+}
+
+#[test]
+fn latexmk_flavor_follows_a_preamble_file_and_a_latexmkrc() {
+    let tools_directory = TempDir::new().unwrap();
+    let latexmk = tool_in(tools_directory.path(), "latexmk");
+    let compiler = NativeCompiler::new(BuildTools {
+        latexmk: Some(latexmk),
+        ..BuildTools::default()
+    });
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Latexmk, None);
+    std::fs::write(
+        project.path().join("main.tex"),
+        "\\documentclass{article}\n\\input{preamble}\n\\begin{document}\n\\end{document}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        project.path().join("preamble.tex"),
+        "\\usepackage{fontspec}\n",
+    )
+    .unwrap();
+    let build = workspace.prepare_build().unwrap();
+    let arguments = |compiler: &NativeCompiler| {
+        compiler
+            .command(&build, BuildOptions::default(), true)
+            .unwrap()
+            .arguments
+    };
+    assert!(arguments(&compiler).contains(&OsString::from("-xelatex")));
+    std::fs::write(project.path().join("latexmkrc"), "$pdf_mode = 4;\n").unwrap();
+    assert!(arguments(&compiler).contains(&OsString::from("-lualatex")));
+}
+
 #[test]
 fn compiler_commands_preserve_every_engine_contract() {
     let tools_directory = TempDir::new().unwrap();
@@ -393,9 +682,14 @@ fn compiler_commands_preserve_every_engine_contract() {
     let bibliography = plain_path(markdown_build.project_root())
         .join("references")
         .join("library.bib");
-    assert!(markdown_arguments
+    assert!(markdown_arguments.iter().any(|value| value
+        == &format!(
+            "--metadata=oleafly-fallback-bibliography={}",
+            bibliography.display()
+        )));
+    assert!(!markdown_arguments
         .iter()
-        .any(|value| value == &format!("--bibliography={}", bibliography.display())));
+        .any(|value| value.starts_with("--bibliography=")));
     assert!(!markdown_arguments
         .iter()
         .any(|value| value.contains("ignored.bib")));
@@ -478,6 +772,56 @@ fn tectonic_builds_write_the_entry_shim_and_pin_the_bundle() {
 }
 
 #[test]
+fn nested_markdown_mains_search_their_own_folder_first() {
+    let tools_directory = TempDir::new().unwrap();
+    let tectonic = tools_directory.path().join(executable_name("tectonic"));
+    let pandoc = tools_directory.path().join(executable_name("pandoc"));
+    let typst = tools_directory.path().join(executable_name("typst"));
+    for tool in [&tectonic, &pandoc, &typst] {
+        std::fs::write(tool, "tool").unwrap();
+    }
+    let compiler = NativeCompiler::new(BuildTools {
+        tectonic: Some(tectonic),
+        pandoc: Some(pandoc),
+        typst: Some(typst.clone()),
+        ..BuildTools::default()
+    });
+    let project = TempDir::new().unwrap();
+    std::fs::create_dir(project.path().join("notes")).unwrap();
+    std::fs::write(project.path().join("notes/main.md"), "# Notes\n").unwrap();
+    let workspace = Workspace::from_manifest(
+        project.path(),
+        ProjectManifest {
+            main_doc: "notes/main.md".into(),
+            engine: "markdown".into(),
+            ..ProjectManifest::default()
+        },
+    )
+    .unwrap();
+    let build = workspace.prepare_build().unwrap();
+    let command = compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    let arguments = arguments(&command);
+    let root = plain_path(build.project_root());
+    let nested = root.join("notes");
+    let joined = std::env::join_paths([&nested, &root]).unwrap();
+    assert_eq!(
+        arguments[0],
+        format!("--resource-path={}", joined.to_string_lossy())
+    );
+    let position = |folder: &Path| {
+        let wanted = format!("--pdf-engine-opt=-Zsearch-path={}", folder.display());
+        arguments.iter().position(|value| *value == wanted).unwrap()
+    };
+    assert!(position(&nested) < position(&root));
+    assert!(command.environment.contains(&(
+        engine_spec::MARKDOWN_TYPST_VARIABLE,
+        typst.as_os_str().to_owned()
+    )));
+}
+
+#[test]
 fn nested_mains_search_the_compile_directory_first() {
     let tools_directory = TempDir::new().unwrap();
     let tectonic = tools_directory.path().join(executable_name("tectonic"));
@@ -550,7 +894,10 @@ fn latexmk_uses_restricted_shell_escape_except_on_miktex() {
     );
     assert!(arguments
         .iter()
-        .any(|argument| argument == "-shell-restricted" || argument == "-no-shell-escape"));
+        .any(|argument| argument == "-shell-restricted"));
+    assert!(!arguments
+        .iter()
+        .any(|argument| argument == "-no-shell-escape"));
 }
 
 #[test]
@@ -589,7 +936,7 @@ fn latexmk_rebuilds_from_scratch_after_a_tex_distribution_switch() {
 }
 
 #[test]
-fn lualatex_runs_without_openin_paranoia() {
+fn latexmk_runs_without_openin_paranoia() {
     let tools_directory = TempDir::new().unwrap();
     let latexmk = tools_directory.path().join(executable_name("latexmk"));
     std::fs::write(&latexmk, "tool").unwrap();
@@ -597,7 +944,7 @@ fn lualatex_runs_without_openin_paranoia() {
         latexmk: Some(latexmk),
         ..BuildTools::default()
     });
-    for (flavor, unset) in [("lualatex", true), ("xelatex", false), ("pdflatex", false)] {
+    for flavor in ["lualatex", "xelatex", "pdflatex"] {
         let project = TempDir::new().unwrap();
         let build = workspace_for_engine(&project, Engine::Latexmk, Some(flavor))
             .prepare_build()
@@ -605,7 +952,7 @@ fn lualatex_runs_without_openin_paranoia() {
         let command = compiler
             .command(&build, BuildOptions::default(), true)
             .unwrap();
-        assert_eq!(command.unset.contains(&"openin_any"), unset, "{flavor}");
+        assert!(command.unset.contains(&"openin_any"), "{flavor}");
     }
 }
 
@@ -640,6 +987,18 @@ fn markdown_builds_sandbox_pandoc_and_add_the_mermaid_filter() {
             .unwrap(),
         MERMAID_FIGURES_FILTER
     );
+    for (name, filter) in engine_spec::MARKDOWN_FILTERS {
+        assert_eq!(
+            std::fs::read_to_string(command.working_directory.join(name)).unwrap(),
+            filter
+        );
+        assert!(
+            arguments
+                .iter()
+                .any(|argument| argument == &format!("--lua-filter={name}")),
+            "{name} {arguments:?}"
+        );
+    }
     assert!(command.bundle_pinned);
 }
 
@@ -712,6 +1071,7 @@ fn latexmk_comes_from_the_tex_search_not_beside_the_cli() {
         ..Discovery::default()
     };
     let system = BuildTools::discover_with(&discovery).latexmk;
+    assert_ne!(system, Some(cli.path().join("latexmk")));
     assert_ne!(
         system,
         Some(cli.path().join("latexmk").canonicalize().unwrap())
@@ -726,8 +1086,108 @@ fn latexmk_comes_from_the_tex_search_not_beside_the_cli() {
     make(&managed);
     let chosen = BuildTools::discover_with(&discovery).latexmk;
     assert!(
-        chosen == Some(managed.canonicalize().unwrap()) || (system.is_some() && chosen == system),
+        chosen == Some(managed.clone()) || (system.is_some() && chosen == system),
         "{chosen:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_latexmk_keeps_the_bin_folder_beside_its_tools() {
+    use std::os::unix::fs::PermissionsExt;
+    let tex = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let bin = tex.path().join("bin").join("universal-darwin");
+    let scripts = tex.path().join("texmf-dist/scripts/latexmk");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::create_dir_all(&scripts).unwrap();
+    let script = scripts.join("latexmk.pl");
+    std::fs::write(&script, "tool").unwrap();
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let latexmk = bin.join("latexmk");
+    std::os::unix::fs::symlink("../../texmf-dist/scripts/latexmk/latexmk.pl", &latexmk).unwrap();
+    for name in ["uplatex", "dvipdfmx"] {
+        let tool = bin.join(name);
+        std::fs::write(&tool, "tool").unwrap();
+        std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let discovery = Discovery {
+        workspace_root: project.path().canonicalize().unwrap(),
+        overrides: [("OLEAFLY_LATEXMK", latexmk.clone())].into_iter().collect(),
+        ..Discovery::default()
+    };
+
+    let tools = BuildTools::discover_with(&discovery);
+    assert_eq!(tools.latexmk.as_deref(), Some(latexmk.as_path()));
+    assert_eq!(
+        engine_spec::dvi_toolchain_missing(TexFlavor::Uplatex, &latexmk),
+        None
+    );
+
+    let compiler = NativeCompiler::new(tools);
+    let build = workspace_for_engine(&project, Engine::Latexmk, Some("uplatex"))
+        .prepare_build()
+        .unwrap();
+    let command = compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    let path = command
+        .environment
+        .iter()
+        .find(|(name, _)| *name == "PATH")
+        .map(|(_, value)| value.clone())
+        .unwrap();
+    assert_eq!(std::env::split_paths(&path).next(), Some(bin));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_latexmk_inside_the_project_is_never_taken_through_a_link() {
+    use std::os::unix::fs::PermissionsExt;
+    let tex = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let root = project.path().canonicalize().unwrap();
+    let local = root.join("latexmk");
+    std::fs::write(&local, "tool").unwrap();
+    std::fs::set_permissions(&local, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let link = tex.path().join("latexmk");
+    std::os::unix::fs::symlink(&local, &link).unwrap();
+    let discovery = Discovery {
+        workspace_root: root,
+        overrides: [("OLEAFLY_LATEXMK", link)].into_iter().collect(),
+        tex: TexSearch::default(),
+        ..Discovery::default()
+    };
+    let tools = BuildTools::discover_with(&discovery);
+    assert_ne!(tools.latexmk.as_deref(), Some(local.as_path()));
+    assert!(tools.rejected_overrides.contains_key("latexmk"));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_relative_latexmk_override_stays_usable_from_another_folder() {
+    use std::os::unix::fs::PermissionsExt;
+    let tools = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let absolute = tools.path().join("latexmk");
+    std::fs::write(&absolute, "tool").unwrap();
+    std::fs::set_permissions(&absolute, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let resolved = absolute.canonicalize().unwrap();
+    assert_eq!(
+        super::discovered_spelling(
+            Path::new("./bin/latexmk"),
+            &resolved,
+            &project.path().canonicalize().unwrap()
+        ),
+        resolved
+    );
+    assert_eq!(
+        super::discovered_spelling(
+            &absolute,
+            &resolved,
+            &project.path().canonicalize().unwrap()
+        ),
+        absolute
     );
 }
 
@@ -1008,7 +1468,7 @@ fn markdown_commands_run_pandoc_from_a_fresh_scratch_folder_with_project_paths()
     for expected in [
         format!("--pdf-engine-opt=-Zsearch-path={}", project_root.display()),
         format!(
-            "--bibliography={}",
+            "--metadata=oleafly-fallback-bibliography={}",
             project_root.join("sources").join("refs.bib").display()
         ),
         project_root.join("main.md").display().to_string(),
@@ -1134,7 +1594,7 @@ fn markdown_commands_hand_pandoc_project_paths_without_the_verbatim_prefix() {
         format!("--resource-path={}", plain.display()),
         format!("--pdf-engine-opt=-Zsearch-path={}", plain.display()),
         format!(
-            "--bibliography={}",
+            "--metadata=oleafly-fallback-bibliography={}",
             plain.join("sources").join("refs.bib").display()
         ),
         plain.join("main.md").display().to_string(),
@@ -1572,6 +2032,103 @@ fn typst_log_case(log: &str, name: &str) -> String {
 }
 
 #[test]
+fn a_float_warning_stays_out_of_the_build_warnings() {
+    let errors = parse_errors(
+        Engine::Latexmk,
+        "(./main.tex\nLaTeX Warning: `h' float specifier changed to `ht'.\n)\n",
+    );
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors[0].code.as_deref(), Some("tex.explain.float_moved"));
+    assert_eq!(errors[0].tex_warning(), None);
+}
+
+#[test]
+fn only_tectonic_says_it_cannot_install_a_missing_package() {
+    let log = "! LaTeX Error: File `x.sty' not found.\nl.1 \\usepackage{x}\n";
+    let explanation = |engine| parse_errors(engine, log)[0].explanation.clone().unwrap();
+    assert!(explanation(Engine::Tectonic).contains("Tectonic can't install packages"));
+    assert!(explanation(Engine::Latexmk).contains("install the missing package"));
+}
+
+#[test]
+fn lost_text_reaches_the_build_warnings_once() {
+    let errors = parse_errors(
+        Engine::Tectonic,
+        "(main.tex\nMissing character: There is no \u{d55c} (U+D55C) in font [lmroman10-regular]:mapping=t\nex-text;!\n)\n",
+    );
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors[0].kind, "warning");
+    assert_eq!(errors[0].tex_warning(), None);
+    assert_eq!(
+        lost_text_warning(&errors).unwrap().code,
+        "build.missing_characters"
+    );
+    assert_eq!(
+        parse_errors(
+            Engine::Tectonic,
+            "! Undefined control sequence.\nl.2 \\bad\n"
+        )[0]
+        .tex_warning(),
+        None
+    );
+}
+
+#[test]
+fn tectonic_builds_write_their_defaults_and_search_them_last() {
+    let tools_directory = TempDir::new().unwrap();
+    let tectonic = tools_directory.path().join(executable_name("tectonic"));
+    std::fs::write(&tectonic, "tool").unwrap();
+    let compiler = NativeCompiler::new(BuildTools {
+        tectonic: Some(tectonic),
+        ..BuildTools::default()
+    });
+    let project = TempDir::new().unwrap();
+    std::fs::write(project.path().join("main.tex"), "document").unwrap();
+    let workspace = Workspace::from_manifest(
+        project.path(),
+        ProjectManifest {
+            main_doc: "main.tex".into(),
+            engine: "tectonic".into(),
+            ..ProjectManifest::default()
+        },
+    )
+    .unwrap();
+    let build = workspace.prepare_build().unwrap();
+    let defaults = build
+        .build_directory()
+        .join(oleafly_core::engine_spec::TEX_DEFAULTS_DIR);
+    let online = arguments(
+        &compiler
+            .command(&build, BuildOptions::default(), true)
+            .unwrap(),
+    );
+    let root = format!("search-path={}", build.project_root().display());
+    let last = format!("search-path={}", defaults.display());
+    let at = |wanted: &str| {
+        online
+            .iter()
+            .position(|argument| argument == wanted)
+            .unwrap()
+    };
+    assert!(at(&root) < at(&last));
+    assert!(defaults.join("ctexopts.cfg").is_file());
+    assert!(defaults.join("tuptm.fd").is_file());
+    let offline = arguments(
+        &compiler
+            .command(
+                &build,
+                BuildOptions {
+                    offline: true,
+                    ..BuildOptions::default()
+                },
+                true,
+            )
+            .unwrap(),
+    );
+    assert!(!offline.contains(&last));
+}
+
+#[test]
 fn typst_human_diagnostics_keep_hints_columns_and_the_calling_line() {
     let errors = parse_errors(
         Engine::Typst,
@@ -1662,6 +2219,7 @@ fn typst_commands_carry_the_project_settings_the_version_supports() {
         inputs: vec![("draft".into(), "true".into())],
         creation_timestamp: Some(7),
         offline: true,
+        system_font_mirror: None,
     };
     let mut tools = BuildTools {
         typst: Some(typst),
@@ -1990,6 +2548,10 @@ async fn a_failed_latexmk_build_keeps_the_last_good_pdf() {
     assert_eq!(std::fs::read(&pdf).unwrap(), b"%PDF-1.7\nfixture\n");
     let synctex = pdf.with_file_name("_oleafly_entry.synctex.gz");
     std::fs::write(&synctex, b"good synctex").unwrap();
+    let database = pdf.with_file_name("_oleafly_entry.fdb_latexmk");
+    std::fs::write(&database, b"good run").unwrap();
+    let tex_log = pdf.with_file_name("_oleafly_entry.log");
+    std::fs::write(&tex_log, b"good log").unwrap();
 
     // latexmk -f writes a best-effort PDF over it, and fails.
     std::fs::write(project.path().join("main.tex"), "fixture-partial-pdf").unwrap();
@@ -2005,6 +2567,54 @@ async fn a_failed_latexmk_build_keeps_the_last_good_pdf() {
     assert_eq!(std::fs::read(&pdf).unwrap(), b"%PDF-1.7\nfixture\n");
     assert_eq!(std::fs::read(&synctex).unwrap(), b"good synctex");
     assert!(staging_leftovers(&workspace.build_dir_path()).is_empty());
+    assert!(!database.exists());
+    assert!(!tex_log.exists());
+}
+
+#[tokio::test]
+async fn a_good_latexmk_build_keeps_its_database_for_the_next_no_op() {
+    let tools_directory = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, Some("pdflatex"));
+    let compiler = latexmk_compiler(&tools_directory, false);
+    let first = compiler
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+    let database = first
+        .output
+        .unwrap()
+        .with_file_name("_oleafly_entry.fdb_latexmk");
+    std::fs::write(&database, b"good run").unwrap();
+    let second = compiler
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+    assert!(second.ok, "{}", second.log);
+    assert_eq!(std::fs::read(&database).unwrap(), b"good run");
+}
+
+#[test]
+fn a_rebuild_after_a_failure_trusts_a_log_with_the_same_bytes() {
+    let build = TempDir::new().unwrap();
+    let log = build.path().join("_oleafly_entry.log");
+    std::fs::write(&log, "! Undefined control sequence.").unwrap();
+    let mut failed = InPlaceOutputs::prepare(build.path()).unwrap();
+    failed.finish(false);
+    drop(failed);
+
+    let rebuild = InPlaceOutputs::prepare(build.path()).unwrap();
+    std::fs::write(&log, "! Undefined control sequence.").unwrap();
+    assert!(rebuild.is_fresh(&log));
+}
+
+#[test]
+fn an_interrupted_latexmk_build_keeps_the_earlier_database() {
+    let build = TempDir::new().unwrap();
+    let database = build.path().join("_oleafly_entry.fdb_latexmk");
+    std::fs::write(&database, b"good run").unwrap();
+    drop(InPlaceOutputs::prepare(build.path()).unwrap());
+    assert!(database.is_file());
 }
 
 #[tokio::test]
@@ -2134,6 +2744,505 @@ async fn failures_without_image_evidence_keep_their_log_and_errors() {
         assert_eq!(log, original);
         assert_eq!(errors, before);
     }
+}
+
+#[tokio::test]
+async fn failed_tex_builds_with_no_tex_error_still_name_a_reason() {
+    for engine in [Engine::Tectonic, Engine::Latexmk] {
+        let tools_directory = TempDir::new().unwrap();
+        let project = TempDir::new().unwrap();
+        let workspace = workspace_for_engine(&project, engine, None);
+        std::fs::write(
+            project.path().join(engine.default_main_document()),
+            "fixture-silent-failure",
+        )
+        .unwrap();
+        let fixture = compiler_fixture(&tools_directory, true);
+        let tools = match engine {
+            Engine::Tectonic => BuildTools {
+                tectonic: Some(fixture),
+                ..BuildTools::default()
+            },
+            _ => BuildTools {
+                latexmk: Some(fixture),
+                ..BuildTools::default()
+            },
+        };
+        let result = NativeCompiler::new(tools)
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(!result.ok, "{}", result.log);
+        let errors: Vec<&BuildError> = result
+            .errors
+            .iter()
+            .filter(|error| error.kind == "error")
+            .collect();
+        assert_eq!(errors.len(), 1, "{:?}", result.errors);
+        assert_eq!(errors[0].message, "Can't open `refs.bib`");
+    }
+}
+
+#[tokio::test]
+async fn a_refused_shell_command_is_explained_on_latexmk_only() {
+    let tools_directory = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, Some("pdflatex"));
+    std::fs::write(project.path().join("main.tex"), "fixture-shell-refusal").unwrap();
+    let streamed = Arc::new(Mutex::new(String::new()));
+    let sink = streamed.clone();
+    let compiler =
+        latexmk_compiler(&tools_directory, true).with_log(CompilerLog::new(move |text| {
+            sink.lock().unwrap().push_str(text)
+        }));
+    let result = compiler
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+    assert!(!result.ok, "{}", result.log);
+    let first = &result.errors[0];
+    assert_eq!(first.kind, "error");
+    assert_eq!(
+        first.code.as_deref(),
+        Some("tex.shell_escape_denied_command")
+    );
+    assert!(
+        first
+            .message
+            .starts_with("This document runs a shell command"),
+        "{}",
+        first.message
+    );
+    assert!(
+        first.message.contains("Allow external commands"),
+        "{}",
+        first.message
+    );
+    assert!(first.message.contains("-shell-escape"), "{}", first.message);
+    assert!(result
+        .log
+        .contains("[Oleafly] This document runs a shell command"));
+    assert!(streamed
+        .lock()
+        .unwrap()
+        .contains("[Oleafly] This document runs a shell command"));
+
+    let tectonic = NativeCompiler::new(BuildTools {
+        tectonic: Some(compiler_fixture(&tools_directory, true)),
+        ..BuildTools::default()
+    });
+    let workspace = workspace_for_engine(&project, Engine::Tectonic, None);
+    std::fs::write(project.path().join("main.tex"), "fixture-shell-refusal").unwrap();
+    let result = tectonic
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+    assert!(!result.ok, "{}", result.log);
+    assert!(result
+        .errors
+        .iter()
+        .all(|error| error.code.as_deref() != Some("tex.shell_escape_denied_command")));
+}
+
+#[test]
+fn shell_escape_notes_need_evidence_in_the_log() {
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, Some("pdflatex"));
+    std::fs::write(project.path().join("main.tex"), "\\usepackage{minted}").unwrap();
+    let build = workspace.prepare_build().unwrap();
+    let compiler = NativeCompiler::new(BuildTools::default());
+
+    let original = "! Undefined control sequence.\nl.4 \\foo\n";
+    let mut log = original.to_string();
+    let mut errors = parse_errors(Engine::Latexmk, &log);
+    let before = errors.clone();
+    compiler.explain_blocked_shell_escape(&build, &mut log, &mut errors);
+    assert_eq!(log, original);
+    assert_eq!(errors, before);
+
+    let mut log =
+        "! Package minted Error: You must invoke LaTeX with the -shell-escape flag.\n".to_string();
+    let mut errors = parse_errors(Engine::Latexmk, &log);
+    compiler.explain_blocked_shell_escape(&build, &mut log, &mut errors);
+    assert_eq!(
+        errors[0].code.as_deref(),
+        Some("tex.shell_escape_denied_minted")
+    );
+    assert!(errors[0]
+        .message
+        .starts_with("minted needs to run another program"));
+    assert!(errors.len() >= 2);
+}
+
+fn explained_errors(source: &str, log: &str) -> Vec<BuildError> {
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, Some("pdflatex"));
+    std::fs::write(project.path().join("main.tex"), source).unwrap();
+    let build = workspace.prepare_build().unwrap();
+    let compiler = NativeCompiler::new(BuildTools::default());
+    let mut log = log.to_string();
+    let mut errors = parse_errors(Engine::Latexmk, &log);
+    compiler.explain_blocked_shell_escape(&build, &mut log, &mut errors);
+    errors
+}
+
+#[test]
+fn a_blocked_command_comes_first_only_when_it_explains_the_failure() {
+    let refused = "runsystem(echo x > gen.tex)...disabled (restricted).\n";
+    for (source, failure, code) in [
+        (
+            "\\ShellEscape{echo x > gen.tex}\\input{gen.tex}",
+            "! LaTeX Error: File `gen.tex' not found.\n",
+            "tex.shell_escape_denied_command",
+        ),
+        (
+            "\\input{|\"echo hi\"}",
+            "! I can't find file `\"|echo hi\"'.\n",
+            "tex.shell_escape_denied_command",
+        ),
+        (
+            "\\usepackage{minted}",
+            "! Package minted Error: You must invoke LaTeX with the -shell-escape flag.\n",
+            "tex.shell_escape_denied_minted",
+        ),
+        (
+            "\\usepackage{minted}",
+            "! Package minted Error: minted v3+ executable is not installed.\n",
+            "tex.shell_escape_denied_minted",
+        ),
+    ] {
+        let errors = explained_errors(source, &format!("{refused}{failure}"));
+        assert_eq!(
+            errors[0].code.as_deref(),
+            Some(code),
+            "{failure}: {errors:?}"
+        );
+        assert!(errors.len() >= 2, "{errors:?}");
+    }
+
+    let errors = explained_errors(
+        "\\immediate\\write18{ls > /dev/null}\n\\undefinedmacro\n",
+        "runsystem(ls > /dev/null)...disabled (restricted).\n! Undefined control sequence.\nl.4 \\undefinedmacro\n",
+    );
+    assert_eq!(errors.len(), 2, "{errors:?}");
+    assert_eq!(errors[0].message, "Undefined control sequence.");
+    assert_eq!(
+        errors[1].code.as_deref(),
+        Some("tex.shell_escape_denied_command")
+    );
+}
+
+fn package_errors() -> Vec<BuildError> {
+    vec![
+        BuildError::plain("LaTeX Error: File `algorithm2e.sty' not found.".into()),
+        BuildError::plain("LaTeX Error: File `gen.tex' not found.".into()),
+        BuildError::plain("Emergency stop.".into()),
+    ]
+}
+
+#[test]
+fn a_missing_package_gets_a_tlmgr_hint_from_the_tex_beside_latexmk() {
+    let folder = TempDir::new().unwrap();
+    let bin = folder.path().join("texlive/2026/bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let latexmk = bin.join(executable_name("latexmk"));
+    std::fs::write(&latexmk, "latexmk").unwrap();
+    let compiler = |latexmk: Option<PathBuf>| {
+        let tools = BuildTools {
+            latexmk,
+            ..Default::default()
+        };
+        NativeCompiler::new(tools)
+    };
+
+    let mut errors = package_errors();
+    compiler(Some(latexmk.clone())).add_tlmgr_hints(&mut errors);
+    assert_eq!(errors, package_errors(), "no tlmgr beside this latexmk");
+
+    let mut tlmgr = executable_name("tlmgr");
+    if cfg!(windows) {
+        tlmgr = "tlmgr.bat".to_string();
+    }
+    std::fs::write(bin.join(tlmgr), "#!/usr/bin/env perl\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        for tool in ["latexmk", "tlmgr"] {
+            std::fs::set_permissions(bin.join(tool), std::fs::Permissions::from_mode(0o755))
+                .unwrap();
+        }
+    }
+    let mut errors = package_errors();
+    compiler(Some(latexmk)).add_tlmgr_hints(&mut errors);
+    let tlmgr = find_tool_in_dir(&bin, "tlmgr").unwrap();
+    let tlmgr = tlmgr.to_str().unwrap();
+    assert_eq!(errors[0].hints.len(), 1);
+    let hint = &errors[0].hints[0];
+    assert!(
+        hint.starts_with("Find the package that has it with `"),
+        "{hint}"
+    );
+    assert!(
+        hint.contains(tlmgr),
+        "not on PATH, so the hint names the full path: {hint}"
+    );
+    assert!(
+        hint.contains(" search --global --file /algorithm2e.sty`"),
+        "{hint}"
+    );
+    assert!(hint.ends_with(" install <package>`."), "{hint}");
+    assert_eq!(hint.matches(tlmgr).count(), 2, "{hint}");
+    assert!(errors[1].hints.is_empty());
+    assert!(errors[2].hints.is_empty());
+
+    let mut errors = package_errors();
+    compiler(None).add_tlmgr_hints(&mut errors);
+    assert_eq!(errors, package_errors());
+}
+
+#[test]
+fn the_tlmgr_command_is_bare_only_when_the_shell_finds_that_tlmgr() {
+    let folder = TempDir::new().unwrap();
+    let bin = folder.path().join("TinyTeX/bin");
+    let other = folder.path().join("other");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::create_dir_all(&other).unwrap();
+    let file = executable_name("tlmgr");
+    std::fs::write(bin.join(&file), "").unwrap();
+    std::fs::write(other.join(&file), "").unwrap();
+    let tlmgr = bin.join(&file);
+    let tlmgr = tlmgr.to_str().unwrap();
+    let on_path =
+        |folders: &[&Path]| tlmgr_program(tlmgr, Some(&std::env::join_paths(folders).unwrap()));
+
+    assert_eq!(on_path(&[&bin]), "tlmgr");
+    assert_eq!(on_path(&[&bin, &other]), "tlmgr");
+    assert!(
+        on_path(&[&other, &bin]).contains(tlmgr),
+        "a different tlmgr comes first"
+    );
+    assert!(on_path(&[&other]).contains(tlmgr));
+    assert!(tlmgr_program(tlmgr, None).contains(tlmgr));
+}
+
+#[test]
+fn the_tlmgr_command_quotes_a_path_only_when_it_has_to() {
+    assert_eq!(
+        tlmgr_program("/opt/tex/bin/tlmgr", None),
+        "/opt/tex/bin/tlmgr"
+    );
+    assert_eq!(
+        tlmgr_program("/home/josé/tex/bin/tlmgr", None),
+        "/home/josé/tex/bin/tlmgr"
+    );
+    assert_eq!(
+        tlmgr_program(r"C:\Users\a\TinyTeX\bin\windows\tlmgr.bat", None),
+        r"C:\Users\a\TinyTeX\bin\windows\tlmgr.bat"
+    );
+    assert_eq!(
+        tlmgr_program(r"C:\Users\Jo Smith\TinyTeX\tlmgr.bat", None),
+        r#""C:\Users\Jo Smith\TinyTeX\tlmgr.bat""#
+    );
+    assert_eq!(
+        tlmgr_program("/home/o'brien/bin/tlmgr", None),
+        "\"/home/o'brien/bin/tlmgr\""
+    );
+}
+
+#[test]
+fn only_a_mactex_tlmgr_install_needs_sudo() {
+    assert_eq!(
+        tlmgr_hint("tlmgr", "mactex", "a.sty"),
+        "Find the package that has it with `tlmgr search --global --file /a.sty`, then run `sudo tlmgr install <package>`."
+    );
+    assert_eq!(
+        tlmgr_hint("/opt/tlmgr", "tinytex", "a.sty"),
+        "Find the package that has it with `/opt/tlmgr search --global --file /a.sty`, then run `/opt/tlmgr install <package>`."
+    );
+}
+
+#[test]
+fn a_file_name_that_is_not_plain_never_reaches_a_command() {
+    let folder = TempDir::new().unwrap();
+    let bin = folder.path().join("texlive/2026/bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let latexmk = bin.join(executable_name("latexmk"));
+    for tool in [&latexmk, &bin.join(executable_name("tlmgr"))] {
+        std::fs::write(tool, "#!/usr/bin/env perl\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+    let tools = BuildTools {
+        latexmk: Some(latexmk),
+        ..Default::default()
+    };
+    let compiler = NativeCompiler::new(tools);
+    for name in [
+        "x$(id).sty",
+        "a;b.cls",
+        "`id`.sty",
+        "a b.sty",
+        "../a.sty",
+        "a|b.cls",
+        "a&b.sty",
+        "a\"b.sty",
+        "a\\b.sty",
+    ] {
+        let mut errors = vec![BuildError::plain(format!(
+            "LaTeX Error: File `{name}' not found."
+        ))];
+        compiler.add_tlmgr_hints(&mut errors);
+        assert!(errors[0].hints.is_empty(), "{name}: {:?}", errors[0].hints);
+    }
+    let mut errors = vec![BuildError::plain(
+        "LaTeX Error: File `tikz-cd_1.0+x.sty' not found.".into(),
+    )];
+    compiler.add_tlmgr_hints(&mut errors);
+    assert_eq!(errors[0].hints.len(), 1);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_distro_managed_tlmgr_gets_no_hint() {
+    use std::os::unix::fs::PermissionsExt;
+    let folder = TempDir::new().unwrap();
+    let bin = folder.path().join("texlive/bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::write(bin.join("latexmk"), "latexmk").unwrap();
+    std::fs::write(
+        bin.join("tlmgr"),
+        "#!/usr/bin/perl\n# would destroy the Fedora TeXLive install\n",
+    )
+    .unwrap();
+    for tool in ["latexmk", "tlmgr"] {
+        std::fs::set_permissions(bin.join(tool), std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let tools = BuildTools {
+        latexmk: Some(bin.join("latexmk")),
+        ..Default::default()
+    };
+    let mut errors = package_errors();
+    NativeCompiler::new(tools).add_tlmgr_hints(&mut errors);
+    assert_eq!(errors, package_errors());
+}
+
+fn install_fake_typst(data: &Path, version: &ToolchainVersion) -> Option<PathBuf> {
+    let target = host_target()?;
+    let artifact =
+        TypstToolchainCatalog::embedded().typst_artifact(&version.to_string(), target)?;
+    let binary = typst_binary_path(data, version, target);
+    std::fs::create_dir_all(binary.parent().unwrap()).unwrap();
+    std::fs::write(&binary, "typst").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let metadata = std::fs::metadata(&binary).unwrap();
+    let modified = metadata
+        .modified()
+        .unwrap()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    std::fs::write(
+        binary.with_file_name(INSTALLED_CACHE_FILE),
+        serde_json::json!({
+            "binary": binary.file_name().unwrap().to_str().unwrap(),
+            "binarySha256": artifact.binary_sha256,
+            "size": metadata.len(),
+            "modifiedSecs": modified.as_secs(),
+            "modifiedNanos": modified.subsec_nanos()
+        })
+        .to_string(),
+    )
+    .unwrap();
+    Some(binary)
+}
+
+#[test]
+fn a_downloaded_typst_is_the_last_resort_and_prefers_the_bundled_version() {
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let path_directory = TempDir::new().unwrap();
+    let catalog = TypstToolchainCatalog::embedded();
+    let bundled = bundled_typst_version().clone();
+    let Some(other) = catalog
+        .curated_typst_versions()
+        .into_iter()
+        .map(|release| release.version.clone())
+        .find(|version| *version != bundled)
+    else {
+        return;
+    };
+    let Some(older) = install_fake_typst(data.path(), &other) else {
+        return;
+    };
+    let chosen = install_fake_typst(data.path(), &bundled);
+    let discovery = Discovery {
+        workspace_root: project.path().canonicalize().unwrap(),
+        data_root: Some(data.path().to_path_buf()),
+        ..Discovery::default()
+    };
+    let expected: Vec<PathBuf> = chosen.clone().into_iter().chain(Some(older)).collect();
+    assert_eq!(super::downloaded_typst_candidates(&discovery), expected);
+    assert!(super::downloaded_typst_candidates(&Discovery::default()).is_empty());
+
+    if oleafly_core::typst_toolchain::system_typst_candidates()
+        .iter()
+        .any(|candidate| candidate.is_file())
+    {
+        return;
+    }
+    let tools = BuildTools::discover_with(&discovery);
+    assert_eq!(
+        tools.typst.as_deref().map(Path::file_name),
+        chosen.as_deref().map(Path::file_name)
+    );
+    assert_eq!(tools.sources.get("typst"), Some(&"downloaded"));
+
+    let on_path = path_directory.path().join(executable_name("typst"));
+    std::fs::write(&on_path, "typst").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&on_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let with_path = Discovery {
+        path: Some(path_directory.path().as_os_str().to_owned()),
+        ..discovery
+    };
+    let tools = BuildTools::discover_with(&with_path);
+    assert_eq!(tools.typst, Some(on_path.canonicalize().unwrap()));
+    assert_eq!(tools.sources.get("typst"), Some(&"path"));
+}
+
+#[test]
+fn a_missing_latexmk_names_the_tex_distribution_it_needs() {
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, None);
+    let build = workspace.prepare_build().unwrap();
+    let error = NativeCompiler::new(BuildTools::default())
+        .command(&build, BuildOptions::default(), true)
+        .err()
+        .expect("no latexmk");
+    assert_eq!(error.kind(), ErrorKind::MissingTool);
+    assert_eq!(
+        error.message(),
+        "latexmk was not found. The latexmk engine needs a TeX distribution. Install one or set OLEAFLY_LATEXMK"
+    );
+    let other = workspace_for_engine(&project, Engine::Tectonic, None);
+    let build = other.prepare_build().unwrap();
+    let error = NativeCompiler::new(BuildTools::default())
+        .command(&build, BuildOptions::default(), true)
+        .err()
+        .expect("no tectonic");
+    assert_eq!(
+        error.message(),
+        "tectonic was not found. Install it or set OLEAFLY_TECTONIC"
+    );
 }
 
 #[test]
@@ -2274,6 +3383,86 @@ fn contained_command_child() {
     print!("core-ok");
 }
 
+#[test]
+fn a_latexmk_biber_failure_keeps_the_bib_error_and_the_real_file_name() {
+    let directory = TempDir::new().unwrap();
+    let blg = directory.path().join("_oleafly_entry.blg");
+    std::fs::write(
+        &blg,
+        "[5] Biber.pm:1> INFO - Found BibTeX data source 'refs.bib'\n[6] Utils.pm:1> ERROR - BibTeX subsystem: /tmp/biber_tmp/a.utf8, line 3, syntax error: found \"}\"\n",
+    )
+    .unwrap();
+    let notes = biber_log_notes(&blg);
+    assert!(notes.starts_with("\n[Oleafly] Biber messages (_oleafly_entry.blg):\n"));
+    let errors = parse_errors(Engine::Latexmk, &notes);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].code.as_deref(), Some("tex.bib_syntax"));
+    assert_eq!(errors[0].file.as_deref(), Some("refs.bib"));
+    assert_eq!(errors[0].line, Some(3));
+    assert_eq!(biber_log_notes(&directory.path().join("missing.blg")), "");
+}
+
+#[test]
+fn the_file_log_keeps_warm_cache_fetch_lines_and_the_fallback_note_after_a_clean_exit() {
+    let fetch = "warning: failure fetching \"biblatex.sty\" from network (1/3)\ncaused by: failed to download \"biblatex.sty\"; please check your network connection.\n";
+    let kept = with_bundle_fetch_notes("file log".into(), fetch, true);
+    assert!(kept.starts_with("file log"));
+    assert!(kept.contains("please check your network connection"));
+    let retried = with_bundle_fetch_notes(
+        "file log".into(),
+        &format!("\n{BUNDLE_FALLBACK_NOTE}\nnote: Running TeX ...\n"),
+        true,
+    );
+    assert!(retried.contains(BUNDLE_FALLBACK_NOTE));
+    assert!(!retried.contains("Running TeX"));
+    assert_eq!(
+        with_bundle_fetch_notes("file log".into(), "note: fine\n", true),
+        "file log"
+    );
+    assert_eq!(
+        with_bundle_fetch_notes("file log".into(), fetch, false),
+        "file log"
+    );
+}
+
+#[tokio::test]
+async fn download_progress_extends_the_compiler_deadline() {
+    let directory = TempDir::new().unwrap();
+    let arguments = [
+        OsString::from("-e"),
+        OsString::from(
+            "let n=0;const t=setInterval(()=>{console.log('note: downloading f'+n+'.sty');if(++n===4){clearInterval(t)}},150)",
+        ),
+    ];
+    let (output, status) = run_command(
+        &launch(Path::new("node"), &arguments, directory.path(), &[]),
+        Duration::from_millis(400),
+        &CompilerLog::default(),
+    )
+    .await
+    .unwrap();
+    assert!(status.success());
+    assert!(output.contains("f3.sty"), "{output}");
+}
+
+#[tokio::test]
+async fn output_that_is_not_a_download_does_not_extend_the_compiler_deadline() {
+    let directory = TempDir::new().unwrap();
+    let arguments = [
+        OsString::from("-e"),
+        OsString::from("setInterval(()=>console.log('note: Running TeX ...'),50)"),
+    ];
+    let error = run_command(
+        &launch(Path::new("node"), &arguments, directory.path(), &[]),
+        Duration::from_millis(300),
+        &CompilerLog::default(),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.to_string().contains("timed out"));
+    assert!(!error.to_string().contains("downloading"));
+}
+
 #[tokio::test]
 async fn compiler_deadline_covers_a_process_with_closed_output_on_windows_too() {
     let directory = TempDir::new().unwrap();
@@ -2384,6 +3573,36 @@ fn print_openin_any() {
         Ok(value) => print!("openin_any={value}"),
         Err(_) => print!("openin_any=unset"),
     }
+}
+
+#[tokio::test]
+async fn compilers_run_with_findtexmf_off_the_miktex_allow_list() {
+    let executable = std::env::current_exe().unwrap();
+    let arguments = [
+        OsString::from("--exact"),
+        OsString::from("native::tests::print_miktex_shell_commands"),
+        OsString::from("--nocapture"),
+    ];
+    let directory = TempDir::new().unwrap();
+    let (output, _) = run_command(
+        &launch(&executable, &arguments, directory.path(), &[]),
+        Duration::from_secs(60),
+        &CompilerLog::default(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        output.contains(&engine_spec::restricted_miktex_shell_commands()),
+        "{output}"
+    );
+}
+
+#[test]
+fn print_miktex_shell_commands() {
+    print!(
+        "{}",
+        std::env::var(engine_spec::MIKTEX_SHELL_COMMANDS_VARIABLE).unwrap_or_default()
+    );
 }
 
 #[test]

@@ -25,6 +25,8 @@ export interface PrepResult {
 export interface PrepOptions {
   lang?: string;
   engine?: PreflightEngine;
+  scope?: "root" | "included";
+  hasTables?: boolean;
 }
 
 const REQUIRED_META: Record<string, string> = { pdfstandard: "ua-2", tagging: "on" };
@@ -150,27 +152,41 @@ function packageChanges(source: string): PrepChange[] {
   return changes;
 }
 
-export function prepareAccessibleSource(source: string, opts?: PrepOptions): PrepResult {
-  const lang = opts?.lang ?? "en-US";
-  const engine = opts?.engine ?? "unknown";
-  const changes: PrepChange[] = [];
+export function hasTableEnvironment(source: string): boolean {
+  return TABLE_ENVIRONMENT.test(maskComments(source));
+}
 
-  const needsHeaderRows = TABLE_ENVIRONMENT.test(maskComments(source));
-  const metadata = applyDocumentMetadata(source, lang, needsHeaderRows);
-  let out = metadata.out;
+function applyRootOnlyChanges(
+  source: string,
+  lang: string,
+  engine: PreflightEngine,
+  hasTables: boolean,
+): { out: string; changes: PrepChange[] } {
+  const changes: PrepChange[] = [];
+  const metadata = applyDocumentMetadata(source, lang, hasTables || hasTableEnvironment(source));
   changes.push(...metadata.changes);
   if (metadata.headerRowsSet) {
     changes.push({ kind: "info", summary: message("prep.headerRows") });
   }
-
-  const withUnicodeMath = applyUnicodeMath(out, engine);
+  const withUnicodeMath = applyUnicodeMath(metadata.out, engine);
   if (withUnicodeMath !== null) {
-    out = withUnicodeMath;
     changes.push({ kind: "add", summary: message("prep.unicodeMath") });
   }
+  return { out: withUnicodeMath ?? metadata.out, changes };
+}
 
-  const alt = applyAltPlaceholders(out);
-  out = alt.out;
+export function prepareAccessibleSource(source: string, opts?: PrepOptions): PrepResult {
+  const lang = opts?.lang ?? "en-US";
+  const engine = opts?.engine ?? "unknown";
+  const included = opts?.scope === "included";
+
+  const root = included
+    ? { out: source, changes: [{ kind: "warn", summary: message("prep.metadataInMain") } satisfies PrepChange] }
+    : applyRootOnlyChanges(source, lang, engine, opts?.hasTables === true);
+  const changes = [...root.changes];
+
+  const alt = applyAltPlaceholders(root.out);
+  const out = alt.out;
   if (alt.added > 0) {
     changes.push({
       kind: "modify",
@@ -180,7 +196,7 @@ export function prepareAccessibleSource(source: string, opts?: PrepOptions): Pre
 
   const hasTitle = /pdftitle\s*=/.test(maskComments(out));
   const showsTitle = /pdfdisplaydoctitle\s*=\s*true/i.test(maskComments(out));
-  if (!hasTitle || !showsTitle) {
+  if (!included && (!hasTitle || !showsTitle)) {
     changes.push({ kind: "warn", summary: message("prep.titleRequired") });
   }
 

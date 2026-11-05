@@ -43,6 +43,22 @@ export interface RevealLocationResult {
   note?: string;
 }
 
+export interface CompileToolOutcome {
+  ok?: boolean;
+  errors?: unknown[];
+  diagnostics?: readonly { readonly severity?: string }[] | null;
+  has_pdf?: boolean;
+  log?: string | null;
+  stopped?: boolean;
+  reason?: string | null;
+  offer?: string | null;
+}
+
+export interface LastCompileFailure {
+  readonly reason: string | null;
+  readonly ran: boolean;
+}
+
 export interface AiToolsHost {
   getProjectId(): string | null;
   readFileContent(projectId: string, path: string): Promise<string>;
@@ -81,9 +97,8 @@ export interface AiToolsHost {
   applyExternalDelete(projectId: string, path: string): boolean;
   refreshTree(projectId: string): Promise<void>;
   refreshOpenFiles?(projectId: string): void;
-  recompile(): Promise<
-    { ok?: boolean; errors?: unknown[]; has_pdf?: boolean; log?: string | null } | null | undefined
-  >;
+  recompile(): Promise<CompileToolOutcome | null | undefined>;
+  getLastCompileFailure?(): LastCompileFailure | null;
   getCompileLog(): string | null;
   getPdfBytes(): Uint8Array | null;
   extractPdfText(bytes: Uint8Array): Promise<{ pages: string[]; numPages: number }>;
@@ -92,7 +107,13 @@ export interface AiToolsHost {
   compileIsolated(
     projectId: string,
     source: string,
-  ): Promise<{ ok: boolean; errors: unknown[]; has_pdf: boolean; log?: string | null }>;
+  ): Promise<{
+    ok: boolean;
+    errors: unknown[];
+    has_pdf: boolean;
+    log?: string | null;
+    stopped?: boolean;
+  }>;
   readIsolatedPdf(projectId: string): Promise<ArrayBuffer | ArrayLike<number>>;
   pdfToPng(bytes: Uint8Array, page: number, scale: number): Promise<string>;
   setLastFigurePreview(v: FigurePreview | null): void;
@@ -183,6 +204,22 @@ const declined = (tool: string) => ({
   status: "declined" as const,
   tool,
 });
+
+function compileFindings(result: CompileToolOutcome | null | undefined): Record<string, unknown> {
+  const findings: Record<string, unknown> = {};
+  const diagnostics = (result?.diagnostics ?? []).filter((entry) => entry.severity !== "info");
+  if (diagnostics.length > 0) findings.diagnostics = diagnostics;
+  if (result?.stopped) findings.stopped = true;
+  if (result?.reason) findings.reason = result.reason;
+  if (result?.offer) findings.offer = result.offer;
+  return findings;
+}
+
+function stalePdfNote(failure: LastCompileFailure | null | undefined): Record<string, unknown> {
+  if (!failure) return {};
+  const stale_reason = failure.reason ?? "The last compile failed.";
+  return { stale: true, stale_reason };
+}
 
 function positiveInteger(
   value: unknown,
@@ -683,7 +720,7 @@ export function createOleaflyTools(
 
     compile: {
       description:
-        "Compile the current document project to PDF with its selected engine. Persists the active editor file first, runs the build, and returns the outcome. Always check `success` and `errors`. If errors remain, read them, fix the file, then compile again until success is true.",
+        "Compile the current document project to PDF with its selected engine. Persists the active editor file first, runs the build, and returns the outcome. Always check `success`, `errors` and `reason`. If errors remain, read them, fix the file, then compile again until success is true. If `reason` is set, the build could not run or needs something outside the source (`offer` names the fix the app offers): tell the user and do not edit the source for it. `diagnostics` lists warnings from a finished build. `stopped` means the compile was stopped on request.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -699,6 +736,7 @@ export function createOleaflyTools(
             errors: result?.errors ?? [],
             has_pdf: result?.has_pdf ?? false,
             log_tail: log.slice(-4000),
+            ...compileFindings(result),
           };
         } catch (e) {
           return { error: String(e) };
@@ -717,14 +755,21 @@ export function createOleaflyTools(
       },
       execute: async () => {
         const log = host.getCompileLog();
-        if (!log) return { error: "No compile log yet. Run compile first." };
-        return { log: log.slice(-20000) };
+        const failure = host.getLastCompileFailure?.();
+        const notRun = failure && !failure.ran ? failure : null;
+        if (!log) return { error: notRun?.reason ?? "No compile log yet. Run compile first." };
+        if (!notRun) return { log: log.slice(-20000) };
+        return {
+          log: log.slice(-20000),
+          stale: true,
+          stale_reason: notRun.reason ?? "The last compile did not run, so this log is from an earlier one.",
+        };
       },
     },
 
     get_pdf_text: {
       description:
-        "Extract and return the text content of the last compiled PDF, page by page. Use to verify the rendered output (e.g. confirm a section, name, or link appears correctly).",
+        "Extract and return the text content of the last compiled PDF, page by page. Use to verify the rendered output (e.g. confirm a section, name, or link appears correctly). `stale` means the last compile failed, so this PDF is from an earlier successful one.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -739,7 +784,11 @@ export function createOleaflyTools(
           const body = pages
             .map((t, i) => `--- Page ${i + 1}/${numPages} ---\n${t.slice(0, 2000)}`)
             .join("\n\n");
-          return { numPages, text: body.slice(0, 20000) };
+          return {
+            numPages,
+            text: body.slice(0, 20000),
+            ...stalePdfNote(host.getLastCompileFailure?.()),
+          };
         } catch (e) {
           return { error: String(e) };
         }
@@ -1106,6 +1155,7 @@ export function createOleaflyTools(
               images.length > 0
                 ? "Page images were attached for vision models. Inspect for overflow, cut-off text, and empty regions."
                 : "No images captured. Inspect text excerpts only.",
+            ...stalePdfNote(host.getLastCompileFailure?.()),
           };
         } catch (e) {
           return { error: String(e) };
@@ -1341,7 +1391,7 @@ export function createFigureTools(
   const tools: Record<string, RawToolDef> = {
     preview_figure: {
       description:
-        "Render a figure on its own and return the outcome. In a LaTeX project pass `code` as a TikZ picture or other figure body, plus optional `packages` and `libraries` it needs. Returns { success, errors, log_tail }. In a Typst project pass `code` as Typst markup, such as a CeTZ canvas, a fletcher diagram, or plain content, with any #import lines it needs at the top. `packages` and `libraries` are ignored there. Returns { success, errors, warnings }. The figure is rendered alone, so it cannot read other project files. Iterate: fix errors and call again until success is true.",
+        "Render a figure on its own and return the outcome. In a LaTeX project pass `code` as a TikZ picture or other figure body, plus optional `packages` and `libraries` it needs. Returns { success, errors, log_tail }. In a Typst project pass `code` as Typst markup, such as a CeTZ canvas, a fletcher diagram, or plain content, with any #import lines it needs at the top. `packages` and `libraries` are ignored there. Returns { success, errors, warnings }. The figure is rendered alone, so it cannot read other project files. Iterate: fix errors and call again until success is true. `stopped` means the compile was stopped on request, not that the code is wrong: do not change the code for it.",
       inputSchema: {
         type: "object",
         properties: {
@@ -1396,6 +1446,7 @@ export function createFigureTools(
             errors: result.errors,
             has_pdf: result.has_pdf,
             log_tail: (result.log ?? "").slice(-4000),
+            ...(result.stopped ? { stopped: true } : {}),
           };
         } catch (e) {
           return { error: String(e) };

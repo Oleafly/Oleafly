@@ -38,6 +38,7 @@
       "compile": "Biên dịch",
       "recompile": "Biên dịch lại",
       "compiling": "Đang biên dịch…",
+      "stop": "Dừng",
       "saveTooltip": "Lưu sơ đồ này",
       "save": "Lưu",
       "saveToProject": "Lưu vào dự án",

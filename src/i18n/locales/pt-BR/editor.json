@@ -365,8 +365,13 @@
     "rawLogs": "Logs brutos",
     "copyLog": "Copiar o log",
     "typesetting": "Composição",
+    "missingCharacters": "Caracteres ausentes",
     "info": "Informações",
-    "empty": "A saída da compilação vai aparecer aqui.",
+    "clear": "Limpar",
+    "clearAria": "Limpar o log de compilação",
+    "clearHint": "Oculta este log e os erros dele até a próxima compilação. Os arquivos da compilação ficam como estão.",
+    "cleared": "Log limpo. A próxima compilação grava um novo.",
+    "empty":"A saída da compilação vai aparecer aqui.",
     "scrollToTop": "Rolar para o topo",
     "scrollToBottom": "Rolar para o fim",
     "locationFileLineColumn": "{{file}} · linha {{line}}, coluna {{column}}",
@@ -383,6 +388,8 @@
     "summaryReferences_many": "{{count}} referências não resolvidas",
     "summaryReferences_other": "{{count}} referências não resolvidas",
     "fontPack": "{{family}} está no pacote de fontes gratuito {{pack}}.",
+    "fontPackGlyphs": "O pacote de fontes gratuito {{pack}} tem esses caracteres.",
+    "fontPackSealed": "{{family}} está no pacote de fontes gratuito {{pack}}, mas pacotes de fontes não valem aqui porque este projeto usa só as fontes do projeto. Adicione o arquivo da fonte à pasta de fontes do projeto.",
     "fontPackAction": "Baixar e compilar",
     "fontPackDownloading": "Baixando…",
     "fontPackFailed": "Não foi possível baixar o pacote de fontes. Verifique sua conexão e tente de novo."
@@ -1480,7 +1487,8 @@
       "count_one": "{{count}} pacote neste projeto",
       "count_many": "{{count}} pacotes neste projeto",
       "count_other": "{{count}} pacotes neste projeto",
-      "none": "Ainda não há pacotes neste projeto."
+      "none": "Ainda não há pacotes neste projeto.",
+      "unsupported": "O Typst {{version}} não consegue ler pacotes da pasta do projeto. Mude o projeto para o Typst 0.12 ou mais recente para usar isto."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} está disponível. Esta importação usa {{version}}.",
@@ -1520,6 +1528,7 @@
     "classNote": "Esta é uma classe de documento. Defina-a com \\documentclass.",
     "onDemand": "O Tectonic baixa os pacotes na primeira vez que o seu documento os usa. Não há nada para instalar.",
     "checking": "Verificando quais pacotes estão instalados",
+    "systemManaged": "Este TeX Live veio com a sua distribuição Linux, então instale os pacotes com {{manager}}.",
     "unknownInstall": "O Oleafly não consegue saber quais pacotes a sua instalação do TeX tem.",
     "noProject": "Abra um projeto LaTeX para adicionar pacotes.",
     "added": "{{name}} adicionado a {{file}}.",

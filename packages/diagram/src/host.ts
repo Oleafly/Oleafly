@@ -34,7 +34,12 @@ export interface DiagramProjectPick {
 }
 
 export interface DiagramHost {
-  compileIsolated(projectId: string, source: string): Promise<{ log?: string | null; has_pdf: boolean }>;
+  compileIsolated(
+    projectId: string,
+    source: string,
+    onLog?: (chunk: string) => void,
+  ): Promise<{ log?: string | null; has_pdf: boolean; stopped?: boolean }>;
+  stopCompile?(): Promise<void>;
   readIsolatedPdf(projectId: string): Promise<ArrayBuffer | number[]>;
   pdfToPng(
     bytes: Uint8Array,

@@ -39,6 +39,7 @@ describe("IPC command contract", () => {
     ],
     ["cancelCompile", () => tauri.cancelCompile(), "cancel_compile", {}],
     ["compileIsolated defaults to online", () => tauri.compileIsolated("p", "src"), "compile_isolated", { projectId: "p", source: "src", offline: false }],
+    ["cancelIsolatedCompile", () => tauri.cancelIsolatedCompile(), "cancel_isolated_compile", {}],
     ["readFileContent", () => tauri.readFileContent("p", "a.tex"), "read_file", { projectId: "p", path: "a.tex" }],
     ["readFileContent allowing a missing file", () => tauri.readFileContent("p", "a.tex", true), "read_file", { projectId: "p", path: "a.tex", allowMissing: true }],
     ["readProjectSourcesBatch", () => tauri.readProjectSourcesBatch("p", { paths: [] } as never), "read_project_sources", { projectId: "p", request: { paths: [] } }],

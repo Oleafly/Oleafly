@@ -1,0 +1,614 @@
+{
+ "rootFile": "main.tex",
+ "diagnostics": [
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./inputenc.sty",
+   "line": null,
+   "message": "Package inputenc: inputenc package ignored with utf8 based engines."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for OML/cmm/m/it."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for OMS/cmsy/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for OT1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for T1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for TS1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Trying to load font information for TS1+cmr\n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for TU/lmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for OMX/cmex/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for U/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C00/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C05/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C09/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C10/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C20/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C19/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C40/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C42/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C43/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C50/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C52/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C49/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C60/mj/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C61/mj/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C63/mj/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C64/mj/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C65/mj/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C70/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C31/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C32/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C33/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C34/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C35/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C36/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C37/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C80/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C81/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C01/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C11/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C21/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C41/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: Checking defaults for C62/song/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 4,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no ㄱ (U+3131) in font [lmroman10-regular]:mapping=tex-text;!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no ㅊ (U+314A) in font [lmroman10-regular]:mapping=tex-text;!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no ㅏ (U+314F) in font [lmroman10-regular]:mapping=tex-text;!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 한 (U+D55C) in font [lmroman10-regular]:mapping=tex-text;!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 글 (U+AE00) in font [lmroman10-regular]:mapping=tex-text;!"
+  }
+ ]
+}

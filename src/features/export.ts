@@ -6,27 +6,34 @@ import {
   exportPdf,
   revealInDir,
   exportProjectImage,
+  uint8ToBase64,
   withEventListener,
+  type ExportOutcome,
 } from "@/lib/tauri";
 import { decodeAppError, describeError } from "@/lib/app-error";
+import { formatList } from "@/lib/intl";
 import { isNotebookEngine } from "@/lib/notebook-engines";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
-import { useCompileStore } from "@/store/compile";
+import { isCompileCheckpointCurrent, useCompileStore } from "@/store/compile";
+import { usePdfViewStore } from "@/store/pdf-view";
+import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
 import { ensurePandoc } from "@/features/pandoc";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { i18n } from "@/i18n";
-import { basename } from "@/lib/path-utils";
+import { basename, exportFileStem } from "@/lib/path-utils";
 import type { TypstExportRequest } from "@/lib/typst-options";
 import { activeTypstVariant } from "@/store/typst-variant";
 import { noteUnreviewedSuggestions } from "@/lib/collab-live-bridge";
+import { askInApp } from "@/store/confirm-dialog";
 
 export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
 
 const EXPORT_TOAST_KEY = "export-result";
 const EXPORT_STOPPED = "notebook.export_stopped";
 const STEP_LENGTH = 120;
+const SOURCE_FORMATS: ReadonlySet<string> = new Set(["tex", "typst", "md"]);
 
 let documentExportInFlight = false;
 
@@ -53,6 +60,12 @@ function exportFailed(error: unknown): void {
   else notifyError("export document", error);
 }
 
+function assertProjectOpen(projectId: string): void {
+  if (useFilesStore.getState().projectId !== projectId) {
+    throw new Error(i18n.t(($) => $.core.export.projectChanged));
+  }
+}
+
 export async function exportCurrentDocument(format: DocumentExportFormat | "zip"): Promise<void> {
   if (documentExportInFlight) return;
   const { projectId, projectName, engine } = useFilesStore.getState();
@@ -60,7 +73,7 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
   noteUnreviewedSuggestions(projectId, "export");
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
   const extension = format === "typst" ? "typ" : format;
-  const name = (projectName || "document").replace(/[^\w.-]+/g, "_");
+  const name = exportFileStem(projectName, "document");
   documentExportInFlight = true;
   let progress: number | undefined;
   try {
@@ -69,16 +82,11 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
       filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
     });
     if (!destination) return;
-    const assertProject = () => {
-      if (useFilesStore.getState().projectId !== projectId) {
-        throw new Error("The open project changed. Start the export again from the project you want to save.");
-      }
-    };
-    assertProject();
+    assertProjectOpen(projectId);
     if (format !== "zip" && !(await ensurePandoc({ notify: true }))) return;
-    assertProject();
+    assertProjectOpen(projectId);
     await useFilesStore.getState().flushForQuit();
-    assertProject();
+    assertProjectOpen(projectId);
     const stoppable = format !== "zip" && isNotebookEngine(engine);
     const toastId = toast.infoUnique(
       EXPORT_TOAST_KEY,
@@ -87,15 +95,29 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
       true,
     );
     progress = toastId;
-    if (format === "zip") await downloadProjectZip(projectId, destination);
-    else {
+    let notice: ExportNotice | undefined;
+    let warnings: string[] = [];
+    if (format === "zip") {
+      const { skippedLinks } = await downloadProjectZip(projectId, destination);
+      if (skippedLinks > 0) {
+        notice = (names) => i18n.t(($) => $.core.export.savedWithoutLinks, { ...names, count: skippedLinks });
+      }
+    } else {
       const showStep = (step: string) =>
         toast.update(toastId, i18n.t(($) => $.shell.toolbar.exportingStep, { format: extension, step }));
-      await withEventListener(EXPORT_LOG_EVENT, exportStepReader(showStep), () =>
-        exportDocument(projectId, mainDoc, format, destination, activeTypstVariant(projectId, engine)),
+      const variant = activeTypstVariant(projectId, engine);
+      const outcome = await withEventListener(EXPORT_LOG_EVENT, exportStepReader(showStep), () =>
+        useSettingsStore.getState().offline
+          ? exportDocument(projectId, mainDoc, format, destination, variant, true)
+          : exportDocument(projectId, mainDoc, format, destination, variant),
       );
+      warnings = (outcome?.warnings ?? []).map(describeError);
+      if (SOURCE_FORMATS.has(format) && engine.id !== "typst") {
+        notice = (names) => i18n.t(($) => $.core.export.savedSource, names);
+      }
+      notice = typstContentNotice(outcome) ?? notice;
     }
-    exportSuccessToast(extension.toUpperCase(), destination);
+    exportResultToast(extension.toUpperCase(), destination, notice, warnings);
     progress = undefined;
   } catch (error) {
     exportFailed(error);
@@ -106,6 +128,7 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
 }
 
 function errorDetail(e: unknown): string {
+  if (decodeAppError(e)) return describeError(e);
   if (e instanceof Error) return e.message;
   return typeof e === "string" ? e : "";
 }
@@ -116,24 +139,85 @@ function revealExportedFile(dest: string): void {
   });
 }
 
-function exportSuccessToast(kind: string, dest: string): void {
-  const fileName = basename(dest) || kind.toLowerCase();
-  toast.successUnique(
-    EXPORT_TOAST_KEY,
-    i18n.t(($) => $.core.export.saved, { kind, fileName }),
-    {
-      label: i18n.t(($) => $.core.export.showInFolder),
-      onClick: () => revealExportedFile(dest),
-    },
-    true,
-  );
+type SavedNames = {
+  kind: string;
+  fileName: string;
+};
+
+type ExportNotice = (names: SavedNames) => string;
+
+async function showExportWarnings(warnings: readonly string[], dest: string): Promise<void> {
+  const reveal = await askInApp({
+    title: i18n.t(($) => $.core.export.warningsTitle),
+    message: warnings.join("\n"),
+    confirmLabel: i18n.t(($) => $.core.export.showInFolder),
+    cancelLabel: i18n.t(($) => $.common.actions.close),
+  });
+  if (reveal) revealExportedFile(dest);
+}
+
+function exportResultToast(
+  kind: string,
+  dest: string,
+  notice?: ExportNotice,
+  warnings: readonly string[] = [],
+): void {
+  const names = { kind, fileName: basename(dest) || kind.toLowerCase() };
+  const action = {
+    label: i18n.t(($) => $.core.export.showInFolder),
+    onClick: () => revealExportedFile(dest),
+  };
+  if (warnings.length > 0) {
+    toast.infoUnique(
+      EXPORT_TOAST_KEY,
+      i18n.t(($) => $.core.export.savedWithWarnings, { ...names, count: warnings.length }),
+      {
+        label: i18n.t(($) => $.core.export.showWarnings),
+        onClick: () => void showExportWarnings(warnings, dest),
+      },
+      true,
+    );
+  } else if (notice) toast.infoUnique(EXPORT_TOAST_KEY, notice(names), action, true);
+  else toast.successUnique(EXPORT_TOAST_KEY, i18n.t(($) => $.core.export.saved, names), action, true);
+}
+
+function typstContentNotice(notes: Partial<ExportOutcome> | undefined): ExportNotice | undefined {
+  const sourceVersion = notes?.readFromSource;
+  if (sourceVersion) {
+    return (names) => i18n.t(($) => $.core.export.savedFromSource, { ...names, version: sourceVersion });
+  }
+  const version = notes?.outdatedTypst;
+  if (version) return (names) => i18n.t(($) => $.core.export.savedWithoutEquations, { ...names, version });
+  const skipped = notes?.skipped ?? [];
+  if (skipped.length === 0) return undefined;
+  const elements = formatList(skipped);
+  return (names) => i18n.t(($) => $.core.export.savedWithoutContent, { ...names, elements });
+}
+
+function compiledOutputNotice(): ExportNotice | undefined {
+  const { status, lastCompileCheckpoint } = useCompileStore.getState();
+  if (status === "error" || status === "unavailable") {
+    return (names) => i18n.t(($) => $.core.export.savedAfterFailedCompile, names);
+  }
+  if (isCompileCheckpointCurrent(lastCompileCheckpoint)) return undefined;
+  return (names) => i18n.t(($) => $.core.export.savedStale, names);
+}
+
+function compiledPdfMatchesPreview(): boolean {
+  const { status, lastCompileCheckpoint: checkpoint } = useCompileStore.getState();
+  if (status !== "success" || checkpoint === null) return false;
+  const mainDoc = useFilesStore.getState().mainDoc || "main.tex";
+  return checkpoint.mainDocument === mainDoc && isCompileCheckpointCurrent(checkpoint);
 }
 
 export async function exportCurrentPdf(): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
-  const { pdfBytes } = useCompileStore.getState();
-  if (!projectId || !pdfBytes) return;
-  const name = (projectName || "document").replace(/[^\w.-]+/g, "_");
+  if (!projectId) return;
+  if (!useCompileStore.getState().pdfBytes) {
+    toast.info(i18n.t(($) => $.shell.toolbar.compilePdfFirst));
+    return;
+  }
+  const name = exportFileStem(projectName, "document");
   if (documentExportInFlight) return;
   noteUnreviewedSuggestions(projectId, "export");
   documentExportInFlight = true;
@@ -143,11 +227,12 @@ export async function exportCurrentPdf(): Promise<void> {
       filters: [{ name: "PDF", extensions: ["pdf"] }],
     });
     if (!dest) return;
-    if (useFilesStore.getState().projectId !== projectId) {
-      throw new Error("The open project changed. Start the export again from the project you want to save.");
-    }
-    await exportPdf(projectId, dest);
-    exportSuccessToast("PDF", dest);
+    assertProjectOpen(projectId);
+    const { pdfBytes } = useCompileStore.getState();
+    if (!pdfBytes) return;
+    const notice = compiledOutputNotice();
+    await exportPdf(projectId, dest, compiledPdfMatchesPreview() ? undefined : uint8ToBase64(pdfBytes));
+    exportResultToast("PDF", dest, notice);
   } catch (e) {
     const detail = errorDetail(e);
     notifyError(
@@ -162,12 +247,21 @@ export async function exportCurrentPdf(): Promise<void> {
   }
 }
 
+async function renderExportedPage(bytes: Uint8Array, page: number, scale: number): Promise<string> {
+  const { pdfPageToPng } = await import("@/lib/pdf-image");
+  try {
+    return await pdfPageToPng(bytes, page, scale);
+  } catch (error) {
+    if (page === 1) throw error;
+    return pdfPageToPng(bytes, 1, scale);
+  }
+}
+
 export async function exportCurrentImagePng(scale = 3): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
-  const { pdfBytes } = useCompileStore.getState();
-  if (!projectId || !pdfBytes || documentExportInFlight) return;
+  if (!projectId || !useCompileStore.getState().pdfBytes || documentExportInFlight) return;
   noteUnreviewedSuggestions(projectId, "export");
-  const name = (projectName || "figure").replace(/[^\w.-]+/g, "_");
+  const name = exportFileStem(projectName, "figure");
   documentExportInFlight = true;
   try {
     const dest = await pickSavePath({
@@ -177,17 +271,14 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
       ],
     });
     if (!dest) return;
-    const assertProject = () => {
-      if (useFilesStore.getState().projectId !== projectId) {
-        throw new Error("The open project changed. Start the export again from the project you want to save.");
-      }
-    };
-    assertProject();
-    const { pdfPageToPng } = await import("@/lib/pdf-image");
-    const dataUrl = await pdfPageToPng(pdfBytes, 1, scale);
-    assertProject();
+    assertProjectOpen(projectId);
+    const { pdfBytes } = useCompileStore.getState();
+    if (!pdfBytes) return;
+    const notice = compiledOutputNotice();
+    const dataUrl = await renderExportedPage(pdfBytes, usePdfViewStore.getState().page, scale);
+    assertProjectOpen(projectId);
     await exportProjectImage(projectId, dest, dataUrl.slice(dataUrl.indexOf(",") + 1));
-    exportSuccessToast("PNG", dest);
+    exportResultToast("PNG", dest, notice);
   } catch (e) {
     const detail = errorDetail(e);
     notifyError(
@@ -209,7 +300,7 @@ export async function exportCurrentTypst(request: TypstExportRequest): Promise<v
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
   const extension = request.format;
   const kind = extension.toUpperCase();
-  const name = (projectName || "document").replace(/[^\w.-]+/g, "_");
+  const name = exportFileStem(projectName, "document");
   documentExportInFlight = true;
   let progress: number | undefined;
   try {
@@ -218,9 +309,7 @@ export async function exportCurrentTypst(request: TypstExportRequest): Promise<v
       filters: [{ name: kind, extensions: [extension] }],
     });
     if (!destination) return;
-    if (useFilesStore.getState().projectId !== projectId) {
-      throw new Error("The open project changed. Start the export again from the project you want to save.");
-    }
+    assertProjectOpen(projectId);
     await useFilesStore.getState().flushForQuit();
     progress = toast.infoUnique(
       EXPORT_TOAST_KEY,
@@ -232,10 +321,14 @@ export async function exportCurrentTypst(request: TypstExportRequest): Promise<v
     const result = await exportTypstDocument(
       projectId,
       mainDoc,
-      { ...request, variant: activeTypstVariant(projectId, engine) },
+      {
+        ...request,
+        variant: activeTypstVariant(projectId, engine),
+        ...(useSettingsStore.getState().offline ? { offline: true } : {}),
+      },
       destination,
     );
-    exportSuccessToast(kind, result.files[0] ?? destination);
+    exportResultToast(kind, result.files[0] ?? destination, typstContentNotice(result));
     progress = undefined;
   } catch (error) {
     notifyError("export with Typst", error);

@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportCurrentTypst } from "@/features/export";
 import {
+  typstHtmlDropsMath,
   typstHtmlExport,
   typstSupports,
   validTypstPageRanges,
@@ -53,6 +54,7 @@ export function typstExportRequest(
 export function TypstExportDialog({ open, onClose }: Readonly<{ open: boolean; onClose: () => void }>) {
   const { t } = useTranslation(["shell"]);
   const options = useFilesStore((state) => state.engine.typst_options ?? null);
+  const version = useFilesStore((state) => state.engine.typst_resolved?.version ?? null);
   const formats = useMemo(() => typstExportFormats(options), [options]);
   const [format, setFormat] = useState<ImageFormat>("png");
   const [ppi, setPpi] = useState<number>(DEFAULT_PPI);
@@ -124,6 +126,11 @@ export function TypstExportDialog({ open, onClose }: Readonly<{ open: boolean; o
           </RadioGroup>
           {format === "html" && (
             <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.shell.typstExport.htmlNote)}</p>
+          )}
+          {format === "html" && typstHtmlDropsMath(version) && (
+            <p className="text-[0.6875rem] text-muted-foreground">
+              {t(($) => $.shell.typstExport.htmlNoteOldTypst, { version })}
+            </p>
           )}
         </fieldset>
         {format === "png" && (

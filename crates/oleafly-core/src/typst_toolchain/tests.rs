@@ -248,6 +248,15 @@ fn capabilities_follow_the_nearest_catalog_version_at_or_below() {
 }
 
 #[test]
+fn paged_exports_use_the_template_each_version_understands() {
+    assert_eq!(capabilities_for("0.11.1").page_template(), "{n}");
+    assert_eq!(capabilities_for("0.12.0-rc.1").page_template(), "{n}");
+    assert_eq!(capabilities_for("0.12.0").page_template(), "{0p}");
+    assert_eq!(capabilities_for("0.15.1").page_template(), "{0p}");
+    assert_eq!(TypstCapabilities::default().page_template(), "{n}");
+}
+
+#[test]
 fn versions_parse_and_order_like_semver() {
     let parsed = version("0.16.0-rc.1");
     assert_eq!((parsed.major, parsed.minor, parsed.patch), (0, 16, 0));
@@ -1424,4 +1433,99 @@ fn shared_font_dirs_skip_links_that_leave_the_cache() {
     let dirs = typst_shared_font_dirs(assets.path());
     assert_eq!(dirs.len(), 1);
     assert!(dirs[0].ends_with("typst-mono"));
+}
+
+#[cfg(unix)]
+fn fake_font_roots(root: &Path) -> SystemFontRoots {
+    let fonts = root.join("System/Library/Fonts");
+    let downloaded = root.join("System/Library/AssetsV2");
+    let library = root.join("Library/Fonts");
+    std::fs::create_dir_all(fonts.join("Supplemental")).unwrap();
+    std::fs::create_dir_all(&library).unwrap();
+    std::fs::create_dir_all(downloaded.join("com_apple_MobileAsset_Font8")).unwrap();
+    std::fs::create_dir_all(downloaded.join("com_apple_MobileAsset_Other")).unwrap();
+    std::fs::write(fonts.join("LastResort.otf"), b"placeholder").unwrap();
+    std::fs::write(fonts.join("lastresort.ttf"), b"placeholder").unwrap();
+    std::fs::write(fonts.join("AppleGothic.ttf"), b"font").unwrap();
+    SystemFontRoots {
+        fonts,
+        folders: vec![
+            ("library-fonts", library),
+            ("network-fonts", root.join("Network/Library/Fonts")),
+        ],
+        downloaded,
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn the_font_mirror_links_every_system_font_except_the_placeholder() {
+    let root = TempDir::new().unwrap();
+    let roots = fake_font_roots(root.path());
+    let links = system_font_links(&roots);
+    let names: Vec<String> = links
+        .keys()
+        .map(|name| name.to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "AppleGothic.ttf",
+            "Supplemental",
+            "com_apple_MobileAsset_Font8",
+            "library-fonts",
+        ]
+    );
+    assert_eq!(
+        links[std::ffi::OsStr::new("library-fonts")],
+        root.path().join("Library/Fonts")
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn the_font_mirror_rebuilds_only_when_the_links_change() {
+    let root = TempDir::new().unwrap();
+    let roots = fake_font_roots(root.path());
+    let mirror = root.path().join("assets").join(TYPST_SYSTEM_FONTS_DIR);
+    let links = system_font_links(&roots);
+    refresh_font_mirror(&mirror, &links).unwrap();
+    assert_eq!(current_font_links(&mirror), links);
+    assert!(mirror.join("AppleGothic.ttf").is_file());
+    assert!(!mirror.join("LastResort.otf").exists());
+    assert!(mirror.join("Supplemental").is_dir());
+
+    let marker = mirror.join("untouched");
+    std::fs::write(&marker, b"").unwrap();
+    std::fs::remove_file(&marker).unwrap();
+    let stamp = std::fs::metadata(&mirror).unwrap().modified().unwrap();
+    refresh_font_mirror(&mirror, &links).unwrap();
+    assert_eq!(
+        std::fs::metadata(&mirror).unwrap().modified().unwrap(),
+        stamp
+    );
+
+    std::fs::write(roots.fonts.join("NewFont.ttf"), b"font").unwrap();
+    let grown = system_font_links(&roots);
+    refresh_font_mirror(&mirror, &grown).unwrap();
+    assert!(mirror.join("NewFont.ttf").is_file());
+    assert_eq!(current_font_links(&mirror), grown);
+    assert!(roots.fonts.join("AppleGothic.ttf").is_file());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn this_mac_gets_a_mirror_without_the_placeholder_font() {
+    let assets = TempDir::new().unwrap();
+    let mirror = typst_system_font_mirror(assets.path()).expect("system fonts exist");
+    assert!(!mirror.join("LastResort.otf").exists());
+    assert!(std::fs::read_dir(&mirror).unwrap().count() > 10);
+    assert_eq!(typst_system_font_mirror(assets.path()), Some(mirror));
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn other_systems_keep_the_plain_system_font_scan() {
+    let assets = TempDir::new().unwrap();
+    assert_eq!(typst_system_font_mirror(assets.path()), None);
 }

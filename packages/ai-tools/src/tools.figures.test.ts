@@ -114,6 +114,25 @@ describe("preview_figure in a LaTeX project", () => {
     });
   });
 
+  it("says when the compile was stopped rather than broken", async () => {
+    const host = makeHost({
+      compileIsolated: vi.fn(async () => ({
+        ok: false,
+        errors: [],
+        has_pdf: false,
+        log: null,
+        stopped: true,
+      })),
+    });
+    expect(await createFigureTools(host).preview_figure.execute({ code: TIKZ })).toEqual({
+      success: false,
+      errors: [],
+      has_pdf: false,
+      log_tail: "",
+      stopped: true,
+    });
+  });
+
   it("keeps only the last 4,000 characters of the log", async () => {
     const host = makeHost({
       compileIsolated: vi.fn(async () => ({ ok: true, errors: [], has_pdf: false, log: `${"l".repeat(5000)}#` })),

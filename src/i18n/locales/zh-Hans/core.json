@@ -56,10 +56,25 @@
     "undo": "撤销"
   },
   "compile": {
+    "failedWithReason": "编译失败：{{message}}",
     "noOfflineMode": "{{engine}} 未提供离线编译模式，将正常编译。",
+    "pandocRequired": "Pandoc 不可用。请在设置 > 引擎 > Markdown 中修复它，然后重新编译。",
+    "pandocSetupFailed": "Pandoc 设置失败：{{message}}",
+    "pdfChanged": "Oleafly 读取编译出的 PDF 时它发生了变化，因此仍显示之前的预览。请重新编译以更新预览。",
     "retry": "重新编译",
+    "superseded": "更新的一次编译已取代这次编译。",
+    "syntaxCheckFailed": "语法检查发现了错误。请修复这些错误，或关闭“{{setting}}”。",
+    "taggedFailed": "标记编译失败：{{message}}",
+    "taggedPdfChanged": "Oleafly 读取标记 PDF 时它发生了变化，因此仍显示之前的预览。请重新编译以更新预览。",
+    "taggedPdfInvalid": "标记编译没有生成有效的 PDF。",
+    "tinytexDownloading": "TinyTeX 仍在下载中。下载完成后将自动开始这次编译。",
+    "sharedTexEditor": "此项目是共享的，因此切换到 Tectonic 会对所有人生效。安装 TinyTeX 只会影响这台电脑。",
+    "sharedTexViewer": "你无法更改这个共享项目的编译器，因此请安装 TinyTeX，以便在这里编译。",
     "bundleFetchFailed": "Oleafly 无法下载此文档所需的 TeX 宏包。请检查网络连接，然后重新编译。",
-    "typstMissing": "Typst {{version}} 未安装。请下载该版本，或将此项目切换到其他版本。",
+    "offlineNotCached": "离线模式已开启，{{files}} 可能还没有下载。请关闭离线模式后重新编译。",
+    "offlineNotCachedUnnamed": "离线模式已开启，此文档所需的某个 TeX 宏包可能还没有下载。请关闭离线模式后重新编译。",
+    "goOnlineAndCompile": "关闭并编译",
+    "typstMissing":"Typst {{version}} 未安装。请下载该版本，或将此项目切换到其他版本。",
     "typstPackage": {
       "downloadFailed": "Typst 无法下载 {{spec}}。请检查网络连接，然后重新编译。",
       "downloadFailedUnnamed": "Typst 无法下载此文档导入的某个包。请检查网络连接，然后重新编译。",
@@ -167,9 +182,20 @@
     "pdfFailedDetail": "无法保存 PDF：{{detail}}",
     "pngFailed": "无法保存 PNG。",
     "pngFailedDetail": "无法保存 PNG：{{detail}}",
+    "projectChanged": "打开的项目已更改。请从你要保存的项目重新开始导出。",
     "revealFailed": "文件已保存，但无法打开其所在文件夹。",
     "saved": "{{kind}} 已保存 · {{fileName}}",
-    "showInFolder": "在文件夹中显示"
+    "savedAfterFailedCompile": "{{kind}} 已保存 · {{fileName}}。上一次编译失败，因此此文件可能不完整。",
+    "savedSource": "{{kind}} 已保存 · {{fileName}}。如果它用到了项目中的图片或参考文献，请先把它们复制到该文件旁边，再编译。",
+    "savedStale": "{{kind}} 已保存 · {{fileName}}。它来自上一次编译，不包含你的最新编辑。",
+    "savedWithoutContent": "{{kind}} 已保存 · {{fileName}}。部分内容缺失，因为 Typst 无法将其写入此格式：{{elements}}。",
+    "savedFromSource": "{{kind}} 已保存 · {{fileName}}。Typst {{version}} 无法把整个文档写入此格式，因此该文件是根据源码生成的。旋转、缩放、移动或倾斜的文字可能会缺失。请将项目切换到 Typst 0.15 或更高版本，以保留这些文字。",
+    "savedWithoutEquations": "{{kind}} 已保存 · {{fileName}}。公式、图片、脚注或引用可能会缺失，因为 Typst {{version}} 无法将它们写入此格式。请将项目切换到 Typst 0.15 或更高版本。",
+    "savedWithWarnings_other": "{{kind}} 已保存 · {{fileName}}，有 {{count}} 个警告。",
+    "savedWithoutLinks_other": "{{kind}} 已保存 · {{fileName}}。有 {{count}} 个符号链接未放入压缩包。",
+    "showInFolder": "在文件夹中显示",
+    "showWarnings": "显示警告",
+    "warningsTitle": "导出警告"
   },
   "externalChange": {
     "reloadFailed": "项目设置已更新，但部分已更改的文件无法重新加载。"
@@ -315,7 +341,12 @@
     "action_other": "查找并安装 {{count}} 个文件",
     "installing_other": "正在安装 {{count}} 个宏包。安装完成后将重新编译。",
     "summary_other": "编译时找不到 {{names}}。请在 TeX Live 中查找对应的宏包。",
-    "userTree": "系统 TeX 目录树为只读，因此宏包已安装到你位于 {{path}} 的个人目录树。"
+    "systemHint": {
+      "apt": "用 apt-file search {{name}} 查找它所在的软件包，或用 sudo apt install texlive-full 一次安装全部。",
+      "dnf": "运行 {{command}}。"
+    },
+    "systemManaged_other": "编译时找不到 {{names}}。此 TeX Live 随你的 Linux 发行版一起安装，因此 Oleafly 无法向其中添加宏包。{{hint}}",
+    "userTree":"系统 TeX 目录树为只读，因此宏包已安装到你位于 {{path}} 的个人目录树。"
   },
   "models": {
     "chips": {
@@ -361,6 +392,7 @@
   },
   "pandoc": {
     "downloadFailed": "无法下载 pandoc。请手动安装后重试。",
+    "downloadFailedDetail": "无法下载 pandoc（{{detail}}）。请手动安装后重试。",
     "downloadingPercent": "正在下载 pandoc… {{progress}}%",
     "downloadingSize": "正在下载 pandoc… {{megabytes}} MB",
     "installGuide": "安装指南"
@@ -467,7 +499,7 @@
     "compileFailed": "标记编译失败。请检查引擎并重试。",
     "compiled": "标记 PDF 已编译。请在下方查看无障碍评估结果。",
     "compiledWithErrors": "标记编译完成，但存在错误。请查看日志。",
-    "engineRequired": "请先在设置的 LaTeX 引擎中启用标记引擎。"
+    "engineRequired": "请在设置 > 引擎 > LaTeX 中安装 TinyTeX，以生成标记 PDF。"
   },
   "terminal": {
     "defaultTitle": "终端 {{index}}"
@@ -514,6 +546,7 @@
   "tinytex": {
     "installFailed": "无法安装 TinyTeX。",
     "installGuide": "安装指南",
+    "tryAgain": "重试",
     "installed": "TinyTeX 已安装",
     "phase": {
       "addingPackages": "正在添加宏包…",
