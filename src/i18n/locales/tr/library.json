@@ -463,6 +463,7 @@
     "previewUnsupported": "Canlı önizleme bu motor için henüz kullanılamıyor",
     "badge": "Yapay zeka ile oluşturulan",
     "compileWarning": "Bu taslak sorunsuz derlenmedi. Daha iyi bir başlangıç için yeniden oluşturun ya da projeyi oluşturup kaynağı düzenleyicide düzeltin.",
+    "compileLog": "Derleme günlüğü",
     "noDescription": "Henüz açıklama yok.",
     "includes": "İçerdikleri",
     "category": "Kategori",

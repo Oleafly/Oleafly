@@ -361,7 +361,12 @@
     "rawLogs": "Rå logfiler",
     "copyLog": "Kopier loggen",
     "typesetting": "Ombrydning",
+    "missingCharacters": "Manglende tegn",
     "info": "Info",
+    "clear": "Ryd",
+    "clearAria": "Ryd kompileringsloggen",
+    "clearHint": "Skjul denne log og dens fejl, indtil næste kompilering. Buildfilerne bliver liggende.",
+    "cleared": "Loggen er ryddet. Næste kompilering skriver en ny.",
     "empty": "Resultatet af kompileringen dukker op her.",
     "scrollToTop": "Rul til toppen",
     "scrollToBottom": "Rul til bunden",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} uløst reference",
     "summaryReferences_other": "{{count}} uløste referencer",
     "fontPack": "{{family}} findes i den gratis skrifttypepakke {{pack}}.",
+    "fontPackGlyphs": "Den gratis skrifttypepakke {{pack}} har disse tegn.",
+    "fontPackSealed": "{{family}} findes i den gratis skrifttypepakke {{pack}}, men skrifttypepakker gælder ikke her, fordi dette projekt kun bruger projektets skrifttyper. Læg skrifttypens fil i projektets fonts-mappe.",
     "fontPackAction": "Hent og kompilér",
     "fontPackDownloading": "Henter…",
     "fontPackFailed": "Skrifttypepakken kunne ikke hentes. Tjek din forbindelse, og prøv igen."
@@ -1461,7 +1468,8 @@
       "missing": "Disse pakker er ikke i pakkecachen: {{names}}. Kompiler én gang, mens du er online, og kopier dem så igen.",
       "count_one": "{{count}} pakke i projektet",
       "count_other": "{{count}} pakker i projektet",
-      "none": "Ingen pakker i projektet endnu."
+      "none": "Ingen pakker i projektet endnu.",
+      "unsupported": "Typst {{version}} kan ikke læse pakker fra projektmappen. Skift projektet til Typst 0.12 eller nyere for at bruge det."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} er tilgængelig. Denne import bruger {{version}}.",
@@ -1500,6 +1508,7 @@
     "classNote": "Dette er en dokumentklasse. Angiv den med \\documentclass i stedet.",
     "onDemand": "Tectonic downloader pakker første gang, dit dokument bruger dem. Der er intet at installere.",
     "checking": "Tjekker, hvilke pakker der er installeret",
+    "systemManaged": "Denne TeX Live fulgte med din Linux-distribution, så installer pakker med {{manager}}.",
     "unknownInstall": "Oleafly kan ikke se, hvilke pakker din TeX-opsætning har.",
     "noProject": "Åbn et LaTeX-projekt for at tilføje pakker.",
     "added": "{{name}} er føjet til {{file}}.",

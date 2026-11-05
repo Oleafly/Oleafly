@@ -38,6 +38,7 @@
       "compile": "Compilar",
       "recompile": "Compilar de novo",
       "compiling": "Compilando…",
+      "stop": "Parar",
       "saveTooltip": "Salvar este diagrama",
       "save": "Salvar",
       "saveToProject": "Salvar no projeto",

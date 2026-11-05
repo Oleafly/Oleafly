@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Installation de votre modèle...",
-      "downloading": "Téléchargement de {{label}} ({{index}} sur {{total}})"
+      "downloading": "Téléchargement de {{label}} ({{index}} sur {{total}})",
+      "failed": "Les polices de ce modèle n'ont pas pu être téléchargées. Vérifiez votre connexion et réessayez."
     },
     "category": {
       "all": "Tous",

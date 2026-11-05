@@ -1,3 +1,4 @@
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { getConfigCached } from "@/lib/config-cache";
 import {
   agentExec,
@@ -23,6 +24,7 @@ import {
   createFigureTools as createFigureToolsCore,
   type AiToolsHost,
   type ProjectIndexView,
+  type CompileToolOutcome,
   type ConfirmFn,
   type TypstFigureRender,
 } from "@oleafly/ai-tools";
@@ -31,7 +33,7 @@ import { useFilesStore, type OpenFileOptions } from "@/store/files";
 import { codedSaveFailure } from "@/store/save-flush-error";
 import { projectFolderIsReadOnly, readOnlyFolderMessageInEnglish } from "@/store/folder-access";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
-import { useCompileStore } from "@/store/compile";
+import { compileIsBusy, failureOutsideSource, useCompileStore } from "@/store/compile";
 import { agentCompileAllowed } from "@/lib/open-compile";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
@@ -118,13 +120,64 @@ function insertTargetPathFor(files: ReturnType<typeof useFilesStore.getState>): 
 const ASSISTANT_OPENER: OpenFileOptions = { opener: "assistant" };
 
 const TYPST_FIGURE_PPI = 192;
+const COMPILE_SETTLE_POLL_MS = 100;
+const COMPILE_SETTLE_TIMEOUT_MS = 300_000;
+const COMPILE_DID_NOT_FINISH =
+  "The compile did not finish because it was stopped or replaced. Run compile again.";
+const COMPILE_STILL_RUNNING = "Another compile is still running. Run compile again once it finishes.";
+
+async function compileSettled(deadline = Date.now() + COMPILE_SETTLE_TIMEOUT_MS): Promise<boolean> {
+  if (!compileIsBusy()) return true;
+  if (Date.now() >= deadline) return false;
+  await new Promise((resolve) => setTimeout(resolve, COMPILE_SETTLE_POLL_MS));
+  return compileSettled(deadline);
+}
+
+type CompileMarks = Pick<ReturnType<typeof useCompileStore.getState>, "lastCompiledAt" | "htmlOutput">;
+
+function settledCompileOutcome(before: CompileMarks, settled: boolean): CompileToolOutcome {
+  const state = useCompileStore.getState();
+  const compiled =
+    settled &&
+    state.status === "success" &&
+    (state.lastCompiledAt !== before.lastCompiledAt || state.htmlOutput !== before.htmlOutput);
+  const failedInSource = settled && state.status === "error";
+  const missing = settled ? COMPILE_DID_NOT_FINISH : COMPILE_STILL_RUNNING;
+  const unfinished = failedInSource ? null : missing;
+  return {
+    ok: compiled,
+    errors: state.errors,
+    diagnostics: state.diagnostics,
+    has_pdf: compiled && state.pdfBytes !== null,
+    log: state.log,
+    reason: compiled ? null : (failureOutsideSource() ?? unfinished),
+    offer: state.offer?.kind ?? null,
+  };
+}
+
+async function runAgentCompile(): Promise<CompileToolOutcome> {
+  const compile = useCompileStore.getState();
+  const { lastCompiledAt, htmlOutput } = compile;
+  const result = await compile.recompile({ origin: "agent" });
+  if (!result) {
+    return settledCompileOutcome({ lastCompiledAt, htmlOutput }, await compileSettled());
+  }
+  const { offer } = useCompileStore.getState();
+  return {
+    ...result,
+    reason: result.ok ? null : failureOutsideSource(),
+    offer: offer?.kind ?? null,
+  };
+}
 
 async function renderTypstFigure(projectId: string, source: string): Promise<TypstFigureRender> {
+  const { offline } = useSettingsStore.getState();
   const render = await renderTypstSnippet({
     source,
     format: "png",
     ppi: TYPST_FIGURE_PPI,
     projectId,
+    ...(offline ? { offline } : {}),
   });
   if (render.status === "rendered" && render.image.format === "png") {
     return { ok: true, pngBase64: render.image.pngBase64, diagnostics: render.diagnostics };
@@ -400,7 +453,12 @@ const HOST: AiToolsHost = {
         "This folder has no main document yet, so compiling is off. Ask the user to pick a file and choose Set as main, then compile again.",
       );
     }
-    return useCompileStore.getState().recompile({ origin: "agent" });
+    return runAgentCompile();
+  },
+  getLastCompileFailure: () => {
+    const { status, failureReason } = useCompileStore.getState();
+    if (status !== "error" && status !== "unavailable") return null;
+    return { reason: failureReason, ran: status === "error" };
   },
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,
@@ -414,8 +472,13 @@ const HOST: AiToolsHost = {
     if (!idx.index) await idx.rebuildFromDisk();
     return (useIndexStore.getState().index ?? null) as unknown as ProjectIndexView | null;
   },
-  compileIsolated: (projectId, source) =>
-    compileIsolated(projectId, source, useSettingsStore.getState().offline),
+  compileIsolated: async (projectId, source) => {
+    try {
+      return await compileIsolated(projectId, source, useSettingsStore.getState().offline);
+    } catch (error) {
+      throw decodeAppError(error) ? new Error(describeError(error)) : error;
+    }
+  },
   readIsolatedPdf: (projectId) => readIsolatedPdf(projectId),
   pdfToPng: async (...args) => {
     const { pdfPageToPng } = await import("@/lib/pdf-image");

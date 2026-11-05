@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The compile log has a Clear button, in the main window and the preview
+  window (#372).
+- Settings > Terminal can open folders in an external terminal: Terminal or
+  iTerm on macOS, Windows Terminal, PowerShell or Command Prompt on Windows, and
+  your desktop's terminal on Linux. The built-in terminal stays the default
+  (#372).
+- TinyTeX downloads can be cancelled, pick up where they stopped, and try a
+  second source when GitHub fails. Settings > Engines shows which TeX
+  distribution compiles, with an Update button when the managed TinyTeX is older
+  than the one this version expects.
 - Local models can skip thinking. For an Ollama or Lemonade model that thinks
   before it answers, the effort menu next to the model picker now has None. Pick
   it and the model answers without the thinking step, which is much faster on
@@ -48,6 +58,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A remote research run that had only just started could show as lost. The
   status check read the run's process file twice, and the file could appear
   between the two reads. It now reads the file once.
+- Choosing pdfLaTeX, XeLaTeX or another latexmk compiler with no TeX installed
+  now offers to install TinyTeX right there, when you switch and when you
+  compile, instead of ending in an English-only error (#372).
+- MiKTeX without Perl, a TeX install without latexmk, and a missing compiler or
+  Biber are detected and named, with what to install. TeX and Perl are also found
+  on your login shell's PATH and, on Windows, through the registry.
+- Compiling again after a failed latexmk run really runs it again. It used to do
+  nothing and lose the PDF and log, and after a package install it showed the
+  old error.
+- Missing font metrics, .fd, .bst and babel language files and TikZ libraries
+  now get the install offer too. On Debian, Ubuntu and Fedora TeX Live, Oleafly
+  no longer offers installs that can't work and points to apt or dnf instead.
+  When the TeX Live repository moves to a new year, installs use the archive for
+  your release.
+- upLaTeX and pLaTeX on TinyTeX can install Japanese support from the error.
+- On the built-in engine, `[T1]{fontenc}` documents keep their text, Times,
+  Helvetica, Palatino and similar fonts use TeX Gyre instead of Latin Modern,
+  `\pdfoutput=1` works, and a bundled font asked for by family name gets its
+  file name in the error.
+- First compiles download packages in bulk, and the time limit follows download
+  progress instead of stopping at five minutes. A mirror failure falls back to
+  the upstream bundle even with a warm cache, and offline compiles say which
+  package needs a download.
+- minted, glossaries, nomencl and makeindex output, a shipped .bbl, and .bib
+  edits on the built-in engine now reach the PDF. A main file in a subfolder
+  finds the files beside it.
+- Markdown to PDF picks fonts for the scripts in your document, accepts SVG,
+  GIF, WebP and other images, uses the bibliography you declared, and no longer
+  fails a good compile because a log line contains "error".
+- LaTeX exports keep their figures, Beamer frames become separate PowerPoint
+  slides, EPUB shows math, and Markdown exports keep the title and author. When
+  pandoc drops content, the export says so. Typst exports keep text inside
+  layout elements and images in LaTeX, and PNG and SVG export works on Typst
+  0.11.
+- Export as PDF saves the PDF on screen and warns when it is stale. Export page
+  as PNG uses the current page.
+- Typst warns when characters show as placeholder boxes. Font pack downloads
+  have timeouts and a second source, and a half-finished pack never joins a
+  compile.
+- Quarto no longer deletes a hand-written .tex, .typ or .log beside a notebook,
+  and a notebook in a subfolder writes its output beside it. PDF output works on
+  older TeX Live, and a missing Python, R or Jupyter says what to install.
+- On Windows, TinyTeX installs on profiles with non-ASCII names, XeLaTeX finds
+  its fonts, and installs retry when antivirus holds a file. On Linux, TinyTeX
+  checks for Perl before the download, and TeX tools no longer inherit the
+  AppImage's libraries.
+- AI and MCP compiles return the reason when a compile is queued or fails, and a
+  stuck figure compile can be stopped.
+- Compile and export errors, including LaTeX error explanations, are
+  translated.
 - Papers kept side by side in one folder no longer clash (#389). A LaTeX file
   with its own `\documentclass` now counts as a separate document, along with
   the files it pulls in through `\input`, `\include` or `\subfile`. If

@@ -106,11 +106,13 @@ pub fn guard_export_dest(dest: &str) -> Result<(), String> {
         return Err("export destination must be an absolute path".into());
     }
     if p.is_dir() {
-        return Err("export destination is a directory, not a file".into());
+        return Err(crate::app_error::AppError::new("export.destination_is_folder").into());
     }
     if let Some(parent) = p.parent() {
         if !parent.as_os_str().is_empty() && !parent.is_dir() {
-            return Err("export destination folder does not exist".into());
+            return Err(
+                crate::app_error::AppError::new("export.destination_folder_missing").into(),
+            );
         }
     }
     Ok(())
@@ -127,6 +129,7 @@ pub struct AtomicFile {
     committed: bool,
     preserve_metadata: bool,
     keep_staging: bool,
+    export_destination: bool,
 }
 
 impl AtomicFile {
@@ -177,6 +180,7 @@ impl AtomicFile {
                         committed: false,
                         preserve_metadata: false,
                         keep_staging: false,
+                        export_destination: false,
                     });
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
@@ -190,7 +194,9 @@ impl AtomicFile {
 
     pub fn for_export(destination: &str) -> Result<Self, String> {
         guard_export_dest(destination)?;
-        Self::new(Path::new(destination))
+        let mut transaction = Self::new(Path::new(destination))?;
+        transaction.export_destination = true;
+        Ok(transaction)
     }
 
     pub fn staging_path(&self) -> &Path {
@@ -267,6 +273,13 @@ impl AtomicFile {
                 )
                 .into());
             }
+            if self.export_destination {
+                if let Some(busy) =
+                    export_destination_busy(&self.destination, cfg!(windows), &failure.error)
+                {
+                    return Err(busy.into());
+                }
+            }
             return Err(WriteFailure::io(
                 "failed to publish staged artifact",
                 failure.error,
@@ -276,6 +289,25 @@ impl AtomicFile {
         sync_parent(&self.destination);
         Ok(())
     }
+}
+
+fn export_destination_busy(
+    destination: &Path,
+    windows: bool,
+    error: &std::io::Error,
+) -> Option<String> {
+    (windows && oleafly_secrets::fs::is_retryable_replace_error_code(error.raw_os_error())).then(
+        || {
+            let name = destination
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            crate::app_error::AppError::new("export.destination_busy")
+                .param("name", name)
+                .detail(error)
+                .into()
+        },
+    )
 }
 
 impl Drop for AtomicFile {
@@ -1034,6 +1066,41 @@ mod tests {
             std::fs::metadata(&destination).unwrap().created().unwrap(),
             created
         );
+    }
+
+    #[test]
+    fn a_locked_export_destination_names_the_file_on_windows_only() {
+        let destination = Path::new("paper.pdf");
+        let locked = std::io::Error::from_raw_os_error(32);
+        let busy = export_destination_busy(destination, true, &locked).unwrap();
+        assert_eq!(
+            crate::app_error::english(&busy).map(|message| message
+                .starts_with("Oleafly couldn't replace paper.pdf. If it's open in another app")),
+            Some(true),
+            "{busy}"
+        );
+        assert_eq!(export_destination_busy(destination, false, &locked), None);
+        let missing = std::io::Error::from_raw_os_error(2);
+        assert_eq!(export_destination_busy(destination, true, &missing), None);
+    }
+
+    #[test]
+    fn export_destination_errors_are_coded_for_translation() {
+        let root = temp_root();
+        let folder = root.join("exports");
+        std::fs::create_dir(&folder).unwrap();
+        let is_folder = guard_export_dest(&folder.to_string_lossy()).unwrap_err();
+        assert!(
+            is_folder.contains("export.destination_is_folder"),
+            "{is_folder}"
+        );
+        let missing = root.join("gone").join("paper.pdf");
+        let missing = guard_export_dest(&missing.to_string_lossy()).unwrap_err();
+        assert!(
+            missing.contains("export.destination_folder_missing"),
+            "{missing}"
+        );
+        std::fs::remove_dir_all(&root).ok();
     }
 
     #[cfg(unix)]

@@ -72,6 +72,62 @@ describe("compile", () => {
     });
     expect(await createOleaflyTools(host).compile.execute({})).toEqual({ error: "Error: no main document" });
   });
+
+  it("passes on why a build could not run and what the app offers", async () => {
+    const host = makeHost({
+      recompile: vi.fn(async () => ({
+        ok: false,
+        errors: [],
+        has_pdf: false,
+        log: "",
+        reason: "latexmk is not installed",
+        offer: "tex-missing",
+      })),
+    });
+    expect(await createOleaflyTools(host).compile.execute({})).toEqual({
+      success: false,
+      errors: [],
+      has_pdf: false,
+      log_tail: "",
+      reason: "latexmk is not installed",
+      offer: "tex-missing",
+    });
+  });
+
+  it("reports warnings without info lines, and a stopped build", async () => {
+    const warning = { severity: "warning", message: "missing character" };
+    const host = makeHost({
+      recompile: vi.fn(async () => ({
+        ok: false,
+        has_pdf: false,
+        stopped: true,
+        diagnostics: [warning, { severity: "info", message: "noise" }],
+      })),
+    });
+    expect(await createOleaflyTools(host).compile.execute({})).toMatchObject({
+      stopped: true,
+      diagnostics: [warning],
+    });
+  });
+
+  it("leaves out empty findings", async () => {
+    const host = makeHost({
+      recompile: vi.fn(async () => ({
+        ok: true,
+        has_pdf: true,
+        log: "done",
+        diagnostics: [{ severity: "info", message: "noise" }],
+        reason: null,
+        offer: null,
+      })),
+    });
+    expect(await createOleaflyTools(host).compile.execute({})).toEqual({
+      success: true,
+      errors: [],
+      has_pdf: true,
+      log_tail: "done",
+    });
+  });
 });
 
 describe("get_log", () => {
@@ -87,9 +143,51 @@ describe("get_log", () => {
     expect(result.log).toHaveLength(20_000);
     expect(result.log.endsWith("!")).toBe(true);
   });
+
+  it("marks the log as old when the last compile never ran", async () => {
+    const host = makeHost({
+      getCompileLog: vi.fn(() => "old log"),
+      getLastCompileFailure: vi.fn(() => ({ reason: "TinyTeX is still installing", ran: false })),
+    });
+    expect(await createOleaflyTools(host).get_log.execute({})).toEqual({
+      log: "old log",
+      stale: true,
+      stale_reason: "TinyTeX is still installing",
+    });
+  });
+
+  it("gives the reason when a compile that never ran left no log", async () => {
+    const host = makeHost({
+      getLastCompileFailure: vi.fn(() => ({ reason: "TinyTeX is still installing", ran: false })),
+    });
+    expect(await createOleaflyTools(host).get_log.execute({})).toEqual({
+      error: "TinyTeX is still installing",
+    });
+  });
+
+  it("returns the log of a compile that ran and failed as it stands", async () => {
+    const host = makeHost({
+      getCompileLog: vi.fn(() => "new log"),
+      getLastCompileFailure: vi.fn(() => ({ reason: "Compile failed", ran: true })),
+    });
+    expect(await createOleaflyTools(host).get_log.execute({})).toEqual({ log: "new log" });
+  });
 });
 
 describe("get_pdf_text", () => {
+  it("marks the PDF as stale when the last compile failed", async () => {
+    const host = makeHost({
+      getPdfBytes: vi.fn(() => PDF),
+      extractPdfText: vi.fn(async () => ({ pages: ["Intro"], numPages: 1 })),
+      getLastCompileFailure: vi.fn(() => ({ reason: null, ran: true })),
+    });
+    expect(await createOleaflyTools(host).get_pdf_text.execute({})).toMatchObject({
+      numPages: 1,
+      stale: true,
+      stale_reason: "The last compile failed.",
+    });
+  });
+
   it("asks for a compile first when there is no PDF", async () => {
     expect(await createOleaflyTools(makeHost()).get_pdf_text.execute({})).toEqual({
       error: "No PDF available. Run compile first.",

@@ -604,6 +604,7 @@
     "unrecorded": "Proiectul LaTeX nu a înregistrat o stare a etichetării pentru clasa {{name}}, așa că rezultatul este nedovedit. Compilează și verifică rezultatul."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata se pune la începutul documentului principal, așa că acest fișier nu îl primește.",
     "metadataUpdated": "S-au adăugat cheile de etichetare necesare în \\DocumentMetadata.",
     "metadataAdded": "S-a adăugat \\DocumentMetadata ca primă linie (obligatoriu, trebuie să preceadă \\documentclass). Linia se află într-o verificare de versiune: un LaTeX mai vechi de {{date}}, inclusiv motorul inclus, o omite și compilează documentul fără etichetare, în loc să eșueze.",
     "headerRows": "S-a setat table/header-rows pe 1, ca primul rând al fiecărui tabel să fie etichetat drept celule de antet. Schimbă numărul dacă un tabel are un antet mai adânc.",

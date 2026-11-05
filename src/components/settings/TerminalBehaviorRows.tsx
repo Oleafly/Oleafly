@@ -6,11 +6,14 @@ import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { formatNumber } from "@/lib/intl";
-import { termShells, type TerminalShellOption } from "@/lib/terminal-ipc";
+import { externalTerminals, termShells, type ExternalTerminalOption, type TerminalShellOption } from "@/lib/terminal-ipc";
 import { terminalPlatform } from "@/lib/terminal-keys";
 import {
+  TERMINAL_OPEN_WITH_IDS,
   TERMINAL_SCROLLBACK_OPTIONS,
   TERMINAL_SHELL_PATH_MAX_LENGTH,
+  type ExternalTerminalId,
+  type TerminalOpenWith,
   type TerminalShellId,
   type TerminalShiftEnter,
   useSettingsStore,
@@ -66,6 +69,67 @@ function useShellOptions(selected: TerminalShellId): {
     options: [...byId.values()].sort((a, b) => rank(a.id) - rank(b.id)),
     known: (loaded ?? []).length > 0,
   };
+}
+
+function useExternalTerminals(selected: TerminalOpenWith): readonly ExternalTerminalOption[] {
+  const [loaded, setLoaded] = useState<readonly ExternalTerminalOption[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    externalTerminals()
+      .then((list) => {
+        if (!cancelled) setLoaded(list);
+      })
+      .catch(() => {
+        if (!cancelled) setLoaded([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const listed = loaded.filter(
+    (option) => TERMINAL_OPEN_WITH_IDS.includes(option.id) && (option.available || option.id === selected),
+  );
+  if (selected === "builtin" || listed.some((option) => option.id === selected)) return listed;
+  return [...listed, { id: selected, name: "", detail: null, available: false }];
+}
+
+function OpenWithRow() {
+  const { t } = useTranslation(["settings"]);
+  const terminalOpenWith = useSettingsStore((state) => state.terminalOpenWith);
+  const setTerminalOpenWith = useSettingsStore((state) => state.setTerminalOpenWith);
+  const terminals = useExternalTerminals(terminalOpenWith);
+  const baseName = (id: ExternalTerminalId): string => t(($) => $.settings.appearance.terminal.openWith[id]);
+  const label = (option: ExternalTerminalOption): string => {
+    const name =
+      option.id === "x-terminal-emulator" && option.detail
+        ? t(($) => $.settings.appearance.terminal.openWith.systemDefault, { name: option.detail })
+        : baseName(option.id);
+    return option.available ? name : t(($) => $.settings.appearance.terminal.openWith.notFound, { name });
+  };
+  return (
+    <SettingsRow
+      label={t(($) => $.settings.appearance.terminal.openWith.label)}
+      description={t(($) => $.settings.appearance.terminal.openWith.description)}
+      control={
+        <Select value={terminalOpenWith} onValueChange={(value) => setTerminalOpenWith(value as TerminalOpenWith)}>
+          <SelectTrigger
+            className="w-[200px]"
+            aria-label={t(($) => $.settings.appearance.terminal.openWith.ariaLabel)}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            <SelectItem value="builtin">{t(($) => $.settings.appearance.terminal.openWith.builtin)}</SelectItem>
+            {terminals.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {label(option)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      }
+    />
+  );
 }
 
 export function TerminalBehaviorRows() {
@@ -130,6 +194,8 @@ export function TerminalBehaviorRows() {
 
   return (
     <>
+      <OpenWithRow />
+
       <SettingsRow
         label={t(($) => $.settings.appearance.terminal.shell.label)}
         description={t(($) => $.settings.appearance.terminal.shell.description)}

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { toast } from "@/lib/toast";
+import type { ToastAction } from "@/store/toast";
 
 const mocks = vi.hoisted(() => ({
   state: {
@@ -9,14 +10,17 @@ const mocks = vi.hoisted(() => ({
     engine: { id: "latex", source_format: "latex", typst_options: null },
   },
   pdfBytes: new Uint8Array([1, 2]) as Uint8Array | null, exportPdf: vi.fn(), exportProjectImage: vi.fn(),
-  pdfPageToPng: vi.fn(),
+  compileStatus: "success" as string, checkpointCurrent: true, checkpoint: null as { mainDocument: string } | null, pdfPageToPng: vi.fn(),
   pickSavePath: vi.fn(), ensurePandoc: vi.fn(), exportDocument: vi.fn(), downloadProjectZip: vi.fn(),
   revealInDir: vi.fn(), cancelCompile: vi.fn(async () => true),
   exportLog: [] as ((chunk: string) => void)[],
   notifyError: vi.fn(), infoUnique: vi.fn<typeof toast.infoUnique>(() => 42), successUnique: vi.fn<typeof toast.successUnique>(() => 42), info: vi.fn(), dismiss: vi.fn(), update: vi.fn(),
 }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.state } }));
-vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({ pdfBytes: mocks.pdfBytes }) } }));
+vi.mock("@/store/compile", () => ({
+  isCompileCheckpointCurrent: () => mocks.checkpointCurrent,
+  useCompileStore: { getState: () => ({ pdfBytes: mocks.pdfBytes, status: mocks.compileStatus, lastCompileCheckpoint: mocks.checkpoint }) },
+}));
 vi.mock("@/lib/tex-root", () => ({ resolveEffectiveMainDoc: () => ({ mainDoc: "chapters/main.tex" }) }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
@@ -29,6 +33,7 @@ vi.mock("@/lib/tauri", () => ({
   exportDocument: mocks.exportDocument,
   downloadProjectZip: mocks.downloadProjectZip,
   revealInDir: mocks.revealInDir,
+  uint8ToBase64: (bytes: Uint8Array) => `base64:${[...bytes].join(",")}`,
   withEventListener: async (event: string, handler: (chunk: string) => void, run: () => Promise<unknown>) => {
     if (event === "export:log") mocks.exportLog.push(handler);
     try {
@@ -42,6 +47,8 @@ vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: { infoUni
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import { i18n } from "@/i18n";
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
+import { useConfirmDialogStore } from "@/store/confirm-dialog";
+import { usePdfViewStore } from "@/store/pdf-view";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng } from "./export";
 
 const EXPORT_KEY = "export-result";
@@ -61,7 +68,12 @@ beforeEach(() => {
   mocks.pickSavePath.mockResolvedValue("/tmp/paper.typ");
   mocks.ensurePandoc.mockResolvedValue(true);
   mocks.exportDocument.mockResolvedValue(undefined);
+  mocks.downloadProjectZip.mockResolvedValue({ skippedLinks: 0 });
   mocks.pdfPageToPng.mockResolvedValue("data:image/png;base64,AQ==");
+  mocks.compileStatus = "success";
+  mocks.checkpointCurrent = true;
+  mocks.checkpoint = null;
+  usePdfViewStore.setState({ page: 1 });
 });
 
 describe("document exports", () => {
@@ -305,5 +317,252 @@ describe("export edge cases", () => {
     await exportCurrentPdf();
 
     expect(mocks.successUnique.mock.calls[0][1]).toBe(savedMessage("PDF", "pdf"));
+  });
+
+  it("tells the palette user to compile first when there is no PDF", async () => {
+    mocks.pdfBytes = null;
+    await exportCurrentPdf();
+    mocks.pdfBytes = new Uint8Array([1, 2]);
+
+    expect(mocks.info).toHaveBeenCalledExactlyOnceWith(i18n.t(($) => $.shell.toolbar.compilePdfFirst));
+    expect(mocks.pickSavePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("the exported PDF is the one on screen", () => {
+  it("sends the preview's bytes as they are when the save dialog closes", async () => {
+    mocks.pickSavePath.mockImplementationOnce(async () => {
+      mocks.pdfBytes = new Uint8Array([9, 8]);
+      return "/tmp/out.pdf";
+    });
+    await exportCurrentPdf();
+    mocks.pdfBytes = new Uint8Array([1, 2]);
+
+    expect(mocks.exportPdf).toHaveBeenCalledExactlyOnceWith("paper-a", "/tmp/out.pdf", "base64:9,8");
+  });
+
+  it("still saves the shown PDF while a new compile is running", async () => {
+    mocks.compileStatus = "compiling";
+    await exportCurrentPdf();
+
+    expect(mocks.exportPdf).toHaveBeenCalledExactlyOnceWith("paper-a", "/tmp/paper.typ", "base64:1,2");
+    expect(mocks.successUnique).toHaveBeenCalledOnce();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+  });
+
+  it("copies the compiled PDF on disk instead of sending bytes when it is the one on screen", async () => {
+    mocks.checkpoint = { mainDocument: "main.tex" };
+    await exportCurrentPdf();
+
+    expect(mocks.exportPdf).toHaveBeenCalledExactlyOnceWith("paper-a", "/tmp/paper.typ", undefined);
+  });
+
+  it("sends the bytes when the build folder may hold another PDF than the preview", async () => {
+    for (const [status, current, mainDocument] of [
+      ["compiling", true, "main.tex"],
+      ["error", true, "main.tex"],
+      ["success", false, "main.tex"],
+      ["success", true, "chapters/main.tex"],
+    ] as const) {
+      mocks.exportPdf.mockClear();
+      mocks.compileStatus = status;
+      mocks.checkpointCurrent = current;
+      mocks.checkpoint = { mainDocument };
+      await exportCurrentPdf();
+
+      expect(mocks.exportPdf).toHaveBeenCalledExactlyOnceWith("paper-a", "/tmp/paper.typ", "base64:1,2");
+    }
+  });
+
+  it("stops quietly if the PDF went away while the dialog was open", async () => {
+    mocks.pickSavePath.mockImplementationOnce(async () => {
+      mocks.pdfBytes = null;
+      return "/tmp/out.pdf";
+    });
+    await exportCurrentPdf();
+    await exportCurrentImagePng();
+    mocks.pdfBytes = new Uint8Array([1, 2]);
+
+    expect(mocks.exportPdf).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+});
+
+describe("stale and failed compiles", () => {
+  const notices = () => mocks.infoUnique.mock.calls.map((call) => call[1]);
+
+  it.each([
+    ["PDF", exportCurrentPdf],
+    ["PNG", exportCurrentImagePng],
+  ] as const)("says a %s comes from the last compile when the source has moved on", async (kind, exportFile) => {
+    mocks.checkpointCurrent = false;
+    await exportFile();
+
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+    expect(notices()).toEqual([i18n.t(($) => $.core.export.savedStale, { kind, fileName: "paper.typ" })]);
+    expect(mocks.infoUnique.mock.calls[0][0]).toBe(EXPORT_KEY);
+    expect(mocks.infoUnique.mock.calls[0][2]?.label).toBe(i18n.t(($) => $.core.export.showInFolder));
+  });
+
+  it.each(["error", "unavailable"])("warns that a %s compile may have left an incomplete file", async (status) => {
+    mocks.compileStatus = status;
+    await exportCurrentPdf();
+
+    expect(notices()).toEqual([
+      i18n.t(($) => $.core.export.savedAfterFailedCompile, { kind: "PDF", fileName: "paper.typ" }),
+    ]);
+  });
+
+  it("checks the state when the dialog closes, not when it opened", async () => {
+    mocks.pickSavePath.mockImplementationOnce(async () => {
+      mocks.checkpointCurrent = false;
+      return "/tmp/out.pdf";
+    });
+    await exportCurrentPdf();
+
+    expect(notices()).toEqual([i18n.t(($) => $.core.export.savedStale, { kind: "PDF", fileName: "out.pdf" })]);
+  });
+});
+
+describe("coded export errors", () => {
+  const coded = (code: string, params: Record<string, string> = {}) =>
+    `${APP_ERROR_PREFIX}${JSON.stringify({ code, params, detail: null })}`;
+
+  it("explains a coded failure in words for PDF and PNG", async () => {
+    const missing = coded("project.linked_missing", { folder: "thesis" });
+    mocks.exportPdf.mockRejectedValueOnce(missing);
+    mocks.exportProjectImage.mockRejectedValueOnce(coded("export.inside_project"));
+    await exportCurrentPdf();
+    await exportCurrentImagePng();
+
+    const [pdf, png] = mocks.notifyError.mock.calls.map((call) => String(call[2]));
+    expect(pdf).not.toContain(APP_ERROR_PREFIX);
+    expect(pdf).toContain("thesis");
+    expect(png).toBe(i18n.t(($) => $.core.export.pngFailedDetail, { detail: enErrors.export.inside_project }));
+  });
+
+  it("translates the project-changed refusal", async () => {
+    mocks.pickSavePath.mockImplementationOnce(async () => { mocks.state.projectId = "paper-b"; return "/tmp/out.pdf"; });
+    await exportCurrentPdf();
+
+    expect(mocks.notifyError.mock.calls[0][2]).toBe(
+      i18n.t(($) => $.core.export.pdfFailedDetail, { detail: i18n.t(($$) => $$.core.export.projectChanged) }),
+    );
+  });
+});
+
+describe("page and archive exports", () => {
+  it("renders the page being viewed", async () => {
+    usePdfViewStore.setState({ page: 4 });
+    await exportCurrentImagePng(2);
+
+    expect(mocks.pdfPageToPng).toHaveBeenCalledExactlyOnceWith(mocks.pdfBytes, 4, 2);
+  });
+
+  it("falls back to the first page when the remembered page is gone", async () => {
+    usePdfViewStore.setState({ page: 9 });
+    mocks.pdfPageToPng.mockRejectedValueOnce(new Error("page 9 out of range (document has 2)"));
+    await exportCurrentImagePng();
+
+    expect(mocks.pdfPageToPng.mock.calls.map((call) => call[1])).toEqual([9, 1]);
+    expect(mocks.exportProjectImage).toHaveBeenCalledOnce();
+  });
+
+  it("keeps non-ASCII project names in the suggested file name", async () => {
+    mocks.state.projectName = "论文 初稿";
+    try {
+      await exportCurrentPdf();
+      await exportCurrentImagePng();
+      await exportCurrentDocument("docx");
+    } finally {
+      mocks.state.projectName = "My paper";
+    }
+
+    expect(mocks.pickSavePath.mock.calls.map(([options]) => options.defaultPath)).toEqual([
+      "论文_初稿.pdf",
+      "论文_初稿.png",
+      "论文_初稿.docx",
+    ]);
+  });
+
+  it("says how many links a source archive left out", async () => {
+    mocks.downloadProjectZip.mockResolvedValueOnce({ skippedLinks: 2 });
+    await exportCurrentDocument("zip");
+
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique.mock.calls.at(-1)?.[1]).toBe(
+      i18n.t(($) => $.core.export.savedWithoutLinks, { kind: "ZIP", fileName: "paper.typ", count: 2 }),
+    );
+  });
+});
+
+describe("export warnings", () => {
+  const warning = (name: string) =>
+    `${APP_ERROR_PREFIX}${JSON.stringify({ code: "export.warning_image_missing", params: { name } })}`;
+
+  afterEach(() => {
+    useConfirmDialogStore.setState({ queue: [] });
+  });
+
+  it("keeps the plain saved toast when nothing was lost", async () => {
+    mocks.exportDocument.mockResolvedValueOnce({ warnings: [], skipped: [], outdatedTypst: null });
+    await exportCurrentDocument("docx");
+    expect(mocks.successUnique).toHaveBeenCalledExactlyOnceWith(
+      EXPORT_KEY,
+      savedMessage("DOCX", "paper.typ"),
+      expect.objectContaining({ label: i18n.t(($) => $.core.export.showInFolder) }),
+      true,
+    );
+  });
+
+  it("says how many things went wrong and lists them in the user's language", async () => {
+    mocks.exportDocument.mockResolvedValueOnce({
+      warnings: [warning("a.png"), warning("b.png")],
+      skipped: [],
+      outdatedTypst: null,
+    });
+    await exportCurrentDocument("docx");
+
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+    const [key, message, action] = mocks.infoUnique.mock.calls.at(-1) as [string, string, ToastAction];
+    expect(key).toBe(EXPORT_KEY);
+    expect(message).toBe(
+      i18n.t(($) => $.core.export.savedWithWarnings, { kind: "DOCX", fileName: "paper.typ", count: 2 }),
+    );
+    expect(action.label).toBe(i18n.t(($) => $.core.export.showWarnings));
+
+    mocks.revealInDir.mockResolvedValueOnce(undefined);
+    action.onClick();
+    const pending = useConfirmDialogStore.getState().queue[0];
+    expect(pending.title).toBe(i18n.t(($) => $.core.export.warningsTitle));
+    expect(pending.message).toBe(
+      [
+        i18n.t(($) => $.errors.export.warning_image_missing, { name: "a.png" }),
+        i18n.t(($) => $.errors.export.warning_image_missing, { name: "b.png" }),
+      ].join("\n"),
+    );
+    pending.settle(true);
+    await vi.waitFor(() => expect(mocks.revealInDir).toHaveBeenCalledExactlyOnceWith("/tmp/paper.typ"));
+  });
+
+  it("leaves the folder closed when the warnings are dismissed", async () => {
+    mocks.exportDocument.mockResolvedValueOnce({ warnings: [warning("a.png")], skipped: [], outdatedTypst: null });
+    await exportCurrentDocument("docx");
+    const action = mocks.infoUnique.mock.calls.at(-1)?.[2] as ToastAction;
+    action.onClick();
+    useConfirmDialogStore.getState().queue[0].settle(false);
+    await Promise.resolve();
+    expect(mocks.revealInDir).not.toHaveBeenCalled();
+  });
+
+  it.each(["tex", "typst", "md"] as const)("reminds that a %s export needs its project files", async (format) => {
+    mocks.state.engine.id = "latex";
+    await exportCurrentDocument(format);
+
+    const kind = (format === "typst" ? "typ" : format).toUpperCase();
+    expect(mocks.successUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique.mock.calls.at(-1)?.[1]).toBe(
+      i18n.t(($) => $.core.export.savedSource, { kind, fileName: "paper.typ" }),
+    );
   });
 });

@@ -474,9 +474,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Lỗi khớp với một thiếu hụt đã biết của engine Tectonic đi kèm. Chọn cách dự án này nên biên dịch. Lựa chọn được lưu trong dự án, nên cộng tác viên dùng cùng thiết lập.",
     "descriptionImportScan": "Quá trình quét import phát hiện những tính năng mà engine Tectonic đi kèm không điều phối. Chọn cách dự án này nên biên dịch. Lựa chọn được lưu trong dự án, nên cộng tác viên dùng cùng thiết lập.",
+    "descriptionTexMissing": "Dự án này giờ biên dịch bằng latexmk, và máy tính này chưa chạy được nó. Oleafly có thể cài TinyTeX cho bạn, hoặc bạn có thể quay lại engine Tectonic tích hợp sẵn.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX qua latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "Lần biên dịch dừng ở {{file}}.",
+      "missingFiles": "Lần biên dịch không tìm thấy {{files}}.",
+      "mirrorStatus": "Máy chủ mirror trả về HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Tài liệu tham khảo dùng biblatex và Biber",
+        "detail": "Dự án này cần Biber để dựng danh sách tài liệu tham khảo. Oleafly đi kèm một bản Biber khớp với engine tích hợp sẵn của nó. Nếu trích dẫn vẫn hiện “?” sau khi biên dịch, hãy kiểm tra nhật ký để tìm ghi chú về Biber."
+      },
+      "bundle-fetch-failed": {
+        "title": "Tải gói TeX thất bại",
+        "detail": "Oleafly không tải được các gói TeX từ máy chủ mirror của nó, nên lần biên dịch chưa chạm tới tài liệu của bạn. Hãy kiểm tra kết nối và biên dịch lại. Quá trình tải sẽ tiếp tục từ chỗ đã dừng."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 cần pdfLaTeX",
+        "detail": "CJKutf8 và CJK chỉ hoạt động với pdfLaTeX. Trên engine tích hợp sẵn (XeTeX), tài liệu vẫn biên dịch được, nhưng văn bản tiếng Trung, tiếng Nhật hoặc tiếng Hàn sẽ bị thiếu trong PDF. Hãy chuyển sang pdfLaTeX trên TeX hệ thống, hoặc thay gói này bằng xeCJK."
+      },
+      "class-compat": {
+        "title": "Lớp tài liệu chạm giới hạn của engine",
+        "detail": "Các lỗi biên dịch đến từ một tệp class hoặc style, không phải từ tài liệu của bạn. Các lớp của nhà xuất bản thường phụ thuộc vào công cụ hoặc hành vi pdfTeX mà engine tích hợp sẵn không có. latexmk biên dịch với bản phân phối TeX đầy đủ."
+      },
+      "eps-image": {
+        "title": "Ảnh EPS cần bộ chuyển đổi",
+        "detail": "Engine tích hợp sẵn không thể đặt ảnh EPS. Hãy chuyển chúng sang PDF bằng epstopdf hoặc Inkscape, hoặc chuyển sang pdfLaTeX trên TeX hệ thống, nơi EPS được chuyển đổi qua Ghostscript."
+      },
+      "fontspec": {
+        "title": "Phông chữ tuỳ chỉnh (fontspec)",
+        "detail": "fontspec cần các phông chữ được nêu tên có trên máy tính này. Phông chữ đi kèm một trình soạn thảo trực tuyến có thể bị thiếu ở đây."
+      },
+      "glossaries-index": {
+        "title": "Công cụ thuật ngữ hoặc chỉ mục",
+        "detail": "glossaries và makeindex cần chạy thêm makeindex hoặc xindy, điều mà engine tích hợp sẵn không làm."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref được đặt sang driver pdfTeX",
+        "detail": "Lớp hoặc phần mở đầu này ép dùng driver pdftex của hyperref, mà engine tích hợp sẵn không dùng được. Hãy chuyển sang pdfLaTeX trên TeX hệ thống, hoặc xoá tuỳ chọn pdftex để hyperref tự chọn driver."
+      },
+      "minted": {
+        "title": "minted cần shell escape và Pygments",
+        "detail": "Danh sách mã dùng minted cần bản phân phối TeX hệ thống và pygmentize. Hãy chuyển sang LaTeX hệ thống, rồi chỉ cho phép lệnh bên ngoài trên máy tính này nếu bạn tin cậy mọi tệp trong dự án."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Thiếu một gói trong bộ tích hợp sẵn",
+        "detail": "Có thứ dự án này nạp không nằm trong bộ TeX tích hợp sẵn. Hãy thêm tệp đó vào dự án nếu nó đi kèm mẫu của bạn, hoặc chuyển sang TeX hệ thống và cài gói từ TeX Live."
+      },
+      "pdftex-only": {
+        "title": "Gói chỉ dành cho pdfTeX",
+        "detail": "Engine tích hợp sẵn dựa trên XeTeX, và dự án này dựa vào các gói hoặc lệnh chỉ hoạt động với pdfTeX. latexmk biên dịch bằng pdfLaTeX thật."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX cần trình hỗ trợ của nó từ bản phân phối TeX hệ thống đang hoạt động. Hãy chuyển sang LaTeX hệ thống, rồi chỉ cho phép lệnh bên ngoài trên máy tính này nếu bạn tin cậy mọi tệp trong dự án."
+      },
+      "shell-escape": {
+        "title": "Lệnh shell escape",
+        "detail": "Mã nguồn dùng \\write18 hoặc một shell escape khác. Hãy chuyển sang LaTeX hệ thống, rồi chỉ cho phép lệnh bên ngoài trên máy tính này nếu bạn tin cậy mọi tệp trong dự án và các công cụ nó cần đã được cài."
+      }
     },
     "recommended": "Khuyến nghị",
     "shellEscape": {
@@ -502,13 +562,14 @@
       "withFailures_other": "Không cần thiết lập, hoạt động ngoại tuyến. Dự kiến {{features}} vẫn tiếp tục lỗi."
     },
     "tinytex": {
-      "description": "Cài một bản TeX Live gọn vào thư mục cá nhân, không cần quyền quản trị. Bản tải lõi khoảng 250 MB. Mẫu tạp chí có thể kéo thêm gói sau này, tổng cộng tới khoảng 1 GB.",
+      "description": "Cài một bản TeX Live gọn, không cần quyền quản trị. Bản tải lõi khoảng 250 MB. Mẫu tạp chí có thể kéo thêm gói sau này, tổng cộng tới khoảng 1 GB.",
       "download": "Tải và dùng TinyTeX",
       "resume": "Tiếp tục tải (đã xong {{megabytes}} MB)",
       "title": "Tải TinyTeX"
     },
     "titleCompileFailure": "Lần biên dịch này cần nhiều hơn engine tích hợp sẵn",
-    "titleImportScan": "Dự án này cần nhiều hơn engine tích hợp sẵn"
+    "titleImportScan": "Dự án này cần nhiều hơn engine tích hợp sẵn",
+    "titleTexMissing": "Trình biên dịch này cần một bản phân phối TeX hoạt động được"
   },
   "shellCommands": {
     "allow": "Cho phép lệnh bên ngoài",
@@ -1132,11 +1193,16 @@
     },
     "wait": {
       "description": "{{phase}} Lần biên dịch của bạn đang xếp hàng và sẽ tự bắt đầu ngay khi engine sẵn sàng.",
+      "stop": "Dừng cài đặt",
       "title": "TinyTeX vẫn đang tải"
     },
     "typstQuit": {
       "title": "Typst vẫn đang cài đặt",
       "description": "Typst {{version}} đang tải. Nếu bạn thoát bây giờ, quá trình tải sẽ dừng và bạn cần bắt đầu lại từ Cài đặt."
+    },
+    "packageQuit": {
+      "title": "Oleafly vẫn đang thay đổi các gói TeX",
+      "description": "Nếu bạn thoát bây giờ, quá trình cài hoặc gỡ sẽ dừng giữa chừng và có thể làm hỏng trình quản lý gói TeX của bạn."
     }
   },
   "toolbar": {
@@ -1302,7 +1368,7 @@
       "compiling": "Đang biên dịch bằng Typst"
     },
     "errors": {
-      "pandoc": "Pandoc chưa sẵn sàng. Hãy cài trong Công cụ, rồi thử lại.",
+      "pandoc": "Pandoc chưa sẵn sàng. Hãy sửa nó trong Cài đặt > Engine > Markdown, rồi thử lại.",
       "noMain": "Không đọc được tệp LaTeX chính.",
       "emptyOutput": "Pandoc trả về một tài liệu rỗng.",
       "failed": "Quá trình chuyển đổi đã dừng: {{detail}}"
@@ -1351,7 +1417,8 @@
     "svg": "Ảnh SVG",
     "html": "HTML",
     "experimental": "Thử nghiệm",
-    "htmlNote": "Xuất HTML của Typst vẫn đang thử nghiệm. Nó bỏ qua thiết lập trang và các phần tử được đặt vị trí.",
+    "htmlNote": "Xuất HTML của Typst vẫn đang thử nghiệm. Nó giữ văn bản và hình ảnh, nhưng không giữ thiết lập trang hay hình vẽ.",
+    "htmlNoteOldTypst": "Typst {{version}} bỏ công thức khỏi HTML. Typst 0.15 trở lên giữ được chúng.",
     "ppi": "Độ phân giải",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Trang",

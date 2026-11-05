@@ -447,6 +447,7 @@
     "previewUnsupported": "此引擎暂不支持实时预览。",
     "badge": "AI 生成",
     "compileWarning": "此草稿未能顺利编译。可重新生成以获得更好的起点，或创建项目后在编辑器中修改源码。",
+    "compileLog": "编译日志",
     "noDescription": "暂无描述。",
     "includes": "包含内容",
     "category": "分类",

@@ -357,7 +357,12 @@
     "rawLogs": "生のログ",
     "copyLog": "ログをコピー",
     "typesetting": "組版",
+    "missingCharacters": "欠けている文字",
     "info": "情報",
+    "clear": "消去",
+    "clearAria": "コンパイルログを消去",
+    "clearHint": "次にコンパイルするまで、このログとエラーを非表示にします。ビルドファイルは残ります。",
+    "cleared": "ログを消去しました。次のコンパイルで新しいログが作成されます。",
     "empty": "コンパイルの出力がここに表示されます。",
     "scrollToTop": "いちばん上へ",
     "scrollToBottom": "いちばん下へ",
@@ -369,6 +374,8 @@
     "summaryWarnings_other": "{{count}} 件の警告",
     "summaryReferences_other": "{{count}} 件の未解決の参照",
     "fontPack": "{{family}} は無料のフォントパック「{{pack}}」に入っています。",
+    "fontPackGlyphs": "無料のフォントパック「{{pack}}」に、これらの文字が入っています。",
+    "fontPackSealed": "{{family}} は無料のフォントパック「{{pack}}」に入っていますが、このプロジェクトではプロジェクトのフォントだけを使うため、フォントパックは適用されません。フォントのファイルをプロジェクトの fonts フォルダに追加してください。",
     "fontPackAction": "ダウンロードしてコンパイル",
     "fontPackDownloading": "ダウンロード中…",
     "fontPackFailed": "フォントパックをダウンロードできませんでした。接続を確認して、もう一度お試しください。"
@@ -1442,7 +1449,8 @@
       "upToDate": "このプロジェクトが読み込むパッケージは、すべて typst-packages にあります。",
       "missing": "次のパッケージはパッケージキャッシュにありません: {{names}}。オンライン時に一度コンパイルしてから、もう一度取り込んでください。",
       "count_other": "このプロジェクトのパッケージ {{count}} 件",
-      "none": "このプロジェクトにはまだパッケージがありません。"
+      "none": "このプロジェクトにはまだパッケージがありません。",
+      "unsupported": "Typst {{version}} は、プロジェクトフォルダからパッケージを読み込めません。これを使うには、プロジェクトを Typst 0.12 以降に切り替えてください。"
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} が利用できます。この import は {{version}} を使っています。",
@@ -1480,6 +1488,7 @@
     "classNote": "これはドキュメントクラスです。代わりに \\documentclass で設定してください。",
     "onDemand": "Tectonic は、文書で初めて使われたときにパッケージをダウンロードします。インストールするものはありません。",
     "checking": "インストール済みのパッケージを確認しています",
+    "systemManaged": "この TeX Live は Linux ディストリビューションに付属のものなので、パッケージは {{manager}} でインストールしてください。",
     "unknownInstall": "Oleafly では、お使いの TeX 環境にどのパッケージがあるか判別できません。",
     "noProject": "パッケージを追加するには LaTeX のプロジェクトを開いてください。",
     "added": "{{name}} を {{file}} に追加しました。",

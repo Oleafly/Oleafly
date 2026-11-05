@@ -1,5 +1,10 @@
 import { create, type StoreApi } from "zustand";
-import { collabCompileBarrier, noteUnreviewedSuggestions } from "@/lib/collab-live-bridge";
+import {
+  collabCompileBarrier,
+  collabProjectShared,
+  collabSettingsLocked,
+  noteUnreviewedSuggestions,
+} from "@/lib/collab-live-bridge";
 import {
   cancelCompile,
   clearBuildDir,
@@ -7,14 +12,18 @@ import {
   latexEngineInfo,
   readCompiledPdf,
   readFileContent,
+  tlmgrInstall,
   tlmgrInstallMissing,
   validateCompileFingerprint,
   withEventListener,
   type CompileError,
   type CompileResult,
   type DocumentEngineDescriptor,
+  type EngineInfo,
   type LogDiagnostic,
   type MainDecision,
+  type TexBlocker,
+  type TexFlavor,
 } from "@/lib/tauri";
 import {
   engineErrorMessage,
@@ -34,17 +43,23 @@ import {
   importCompatAction,
   importCompatFinding,
   missingLatexFiles,
+  offlineCacheMiss,
   type ImportCompatFinding,
 } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
-import { useEngineStore } from "@/store/engine";
+import { duringPackageOperation, useEngineStore } from "@/store/engine";
 import { lintLatexText } from "@oleafly/editor";
 import { activeTypstVariant } from "@/store/typst-variant";
 import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { decodeAppError, describeError } from "@/lib/app-error";
-import { explainCodedCompileErrors } from "@/lib/compile-error-codes";
+import {
+  describeTexBlocker,
+  explainCodedCompileErrors,
+  TEX_SETUP_CODES,
+  texSetupReason,
+} from "@/lib/compile-error-codes";
 import {
   locationErrorAvailability,
   projectFolderAvailable,
@@ -301,6 +316,10 @@ export function isCompileCheckpointCurrent(
   );
 }
 
+export function compileLogCleared(state: Pick<CompileState, "clearedLog" | "log">): boolean {
+  return state.clearedLog !== null && state.clearedLog === state.log;
+}
+
 export interface CompiledHtmlOutput {
   readonly projectId: string;
   readonly path: string;
@@ -311,6 +330,8 @@ export interface CompileState {
   status: CompileStatus;
   phase: CompilePhase;
   log: string;
+  clearedLog: string | null;
+  clearLog: () => void;
   errors: CompileError[];
   diagnostics: LogDiagnostic[] | null;
   pdfBytes: Uint8Array | null;
@@ -527,14 +548,40 @@ export type CompileOffer =
       readonly kind: "notebook-tool-missing";
       readonly projectId: string;
       readonly tool: NotebookTool;
+    }
+  | {
+      readonly kind: "tex-missing";
+      readonly projectId: string;
+    }
+  | {
+      readonly kind: "tex-packages";
+      readonly projectId: string;
+      readonly packages: string[];
+    }
+  | {
+      readonly kind: "switch-compiler";
+      readonly projectId: string;
+      readonly compiler: TexFlavor;
+      readonly label: string;
     };
 
 const TYPST_VERSION_MISSING = "typst_version_missing";
+const UNICODE_ENGINE_CODE = "tex.needs_unicode_engine";
+const INDEX_GAP_CODES: ReadonlySet<string> = new Set([
+  "tex.index_needs_latexmk",
+  "tex.glossary_needs_latexmk",
+]);
+const JAPANESE_COMPILER_INSTALLABLE = "tex.japanese_compiler_installable";
+const T1_ENCODING_CODE = "tex.t1_fontenc_unicode_engine";
+const BUNDLED_FONT_CODE = "tex.font_in_bundle";
+const FONTSPEC_ERROR_PREFIX = "Package fontspec Error:";
 const NOTEBOOK_CODE_NEEDED = "notebook.code_needed";
 const NOTEBOOK_TOOL_MISSING: ReadonlyMap<string, NotebookTool> = new Map([
   ["notebook.quarto_missing", "quarto"],
+  ["notebook.quarto_outdated", "quarto"],
   ["notebook.calepin_missing", "calepin"],
 ]);
+const QUARTO_NEEDS_TEX = "notebook.quarto_needs_tex";
 
 const offeredPackageSets = new Map<string, Set<string>>();
 const packageInstallsRunning = new Set<string>();
@@ -626,7 +673,11 @@ function offerForAttempt(
   return recorded;
 }
 
-async function installMissingPackages(projectId: string, packages: string[]): Promise<void> {
+async function installMissingPackages(
+  projectId: string,
+  packages: string[],
+  install: (names: string[]) => Promise<string>,
+): Promise<void> {
   const key = missingPackagesToastKey(projectId);
   const id = toast.infoUnique(
     key,
@@ -639,7 +690,7 @@ async function installMissingPackages(projectId: string, packages: string[]): Pr
   );
   missingPackageToasts.set(projectId, id);
   try {
-    const outcome = await tlmgrInstallMissing(packages);
+    const outcome = await duringPackageOperation(() => install(packages));
     await useEngineStore.getState().refreshPackages();
     const path = userTreeNotice(outcome);
     missingPackageToasts.delete(projectId);
@@ -660,11 +711,15 @@ async function installMissingPackages(projectId: string, packages: string[]): Pr
   }
 }
 
-export function installOfferedPackages(projectId: string, packages: string[]): void {
+export function installOfferedPackages(
+  projectId: string,
+  packages: string[],
+  install: (names: string[]) => Promise<string> = tlmgrInstallMissing,
+): void {
   if (packageInstallsRunning.has(projectId) || !isLatexmkProject(projectId)) return;
   packageInstallsRunning.add(projectId);
   clearOffer(projectId);
-  void installMissingPackages(projectId, packages).finally(() => {
+  void installMissingPackages(projectId, packages, install).finally(() => {
     packageInstallsRunning.delete(projectId);
   });
 }
@@ -690,6 +745,30 @@ function showMissingPackagesOffer(projectId: string, packages: string[]): void {
   missingPackageToasts.set(projectId, id);
 }
 
+function systemPackagesHint(manager: string, packages: string[]): string {
+  if (manager === "dnf") {
+    const provides = packages.map((file) => `'tex(${file})'`).join(" ");
+    return i18n.t(($) => $.core.missingPackages.systemHint.dnf, { command: `sudo dnf install ${provides}` });
+  }
+  return i18n.t(($) => $.core.missingPackages.systemHint.apt, { name: packages[0] });
+}
+
+function showSystemPackagesNotice(projectId: string, packages: string[], info: EngineInfo): void {
+  const manager = info.system_package_manager;
+  if (!manager) return;
+  const message = i18n.t(($) => $.core.missingPackages.systemManaged, {
+    count: packages.length,
+    name: packages[0],
+    names: formatList(packages),
+    hint: systemPackagesHint(manager, packages),
+  });
+  const installTinytex = {
+    label: i18n.t(($) => $.settings.engine.tinytex.download),
+    onClick: () => void installMissingTex(projectId),
+  };
+  toast.infoUnique(missingPackagesToastKey(projectId), message, info.tex_complete ? undefined : installTinytex, true);
+}
+
 function maybeSuggestMissingPackages(ctx: CompileApplyContext, log: string): void {
   const { projectId } = ctx;
   if (!isLatexmkProject(projectId) || packageInstallsRunning.has(projectId)) return;
@@ -702,7 +781,11 @@ function maybeSuggestMissingPackages(ctx: CompileApplyContext, log: string): voi
   }
   void (async () => {
     const info = await latexEngineInfo().catch(() => null);
-    if (!info?.tlmgr || !isLatexmkProject(projectId)) return;
+    if (!info || !isLatexmkProject(projectId)) return;
+    if (!info.tlmgr) {
+      if (ctx.origin === "explicit") showSystemPackagesNotice(projectId, packages, info);
+      return;
+    }
     if (packageInstallsRunning.has(projectId)) return;
     if (!offerForAttempt(ctx, { kind: "missing-packages", projectId, packages })) return;
     if (ctx.origin === "explicit") showMissingPackagesOffer(projectId, packages);
@@ -765,6 +848,35 @@ function reportBundleFetchFailure(ctx: CompileApplyContext): void {
   bundleRetryToasts.set(projectId, id);
 }
 
+function reportOfflineCacheMiss(ctx: CompileApplyContext, missing: readonly string[]): void {
+  const { projectId } = ctx;
+  const message =
+    missing.length > 0
+      ? i18n.t(($) => $.core.compile.offlineNotCached, { files: formatList(missing) })
+      : i18n.t(($) => $.core.compile.offlineNotCachedUnnamed);
+  ctx.set((state) =>
+    state.status === "error" &&
+    state.lastAttemptIdentity?.requestGeneration === ctx.requestIdentity.requestGeneration
+      ? { failureReason: message }
+      : state,
+  );
+  if (ctx.origin !== "explicit") return;
+  const id = toast.errorUnique(
+    `compile-retry:${projectId}`,
+    message,
+    {
+      label: i18n.t(($) => $.core.compile.goOnlineAndCompile),
+      onClick: () => {
+        if (useFilesStore.getState().projectId !== projectId) return;
+        useSettingsStore.getState().setOffline(false);
+        void useCompileStore.getState().recompile();
+      },
+    },
+    true,
+  );
+  bundleRetryToasts.set(projectId, id);
+}
+
 function engineGapFindings(
   projectId: string,
   classified: ImportCompatFinding[],
@@ -780,6 +892,11 @@ function engineGapFindings(
   return classFileError ? [importCompatFinding("class-compat")] : [];
 }
 
+function onlyBundledFontErrors(errors: readonly CompileError[]): boolean {
+  const fontErrors = errors.filter((error) => error.message.startsWith(FONTSPEC_ERROR_PREFIX));
+  return fontErrors.length > 0 && fontErrors.every((error) => error.code === BUNDLED_FONT_CODE);
+}
+
 function maybeOfferEngineChoice(
   ctx: CompileApplyContext,
   log: string,
@@ -789,13 +906,20 @@ function maybeOfferEngineChoice(
   const files = useFilesStore.getState();
   if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
   const classified = classifyCompileFailure(log, { bundledEngine: true });
+  if (ctx.offline && offlineCacheMiss(log, classified)) {
+    reportOfflineCacheMiss(ctx, missingLatexFiles(log));
+    return;
+  }
   const fetchFailed = classified.some((finding) => importCompatAction(finding.id) === "retry-compile");
   if (fetchFailed && projectCompatibilityFindings(ctx.projectId).length === 0) {
     reportBundleFetchFailure(ctx);
     return;
   }
+  const bundledFontsOnly = onlyBundledFontErrors(errors);
   const engineFindings = classified.filter(
-    (finding) => importCompatAction(finding.id) !== "retry-compile",
+    (finding) =>
+      importCompatAction(finding.id) !== "retry-compile" &&
+      !(finding.id === "fontspec" && bundledFontsOnly),
   );
   const findings = engineGapFindings(ctx.projectId, engineFindings, errors);
   if (findings.length === 0 || engineHintDismissed(ctx.projectId, findings)) return;
@@ -803,6 +927,15 @@ function maybeOfferEngineChoice(
   if (ctx.origin === "explicit" || opening) {
     useEnginePickerStore.getState().openPicker("compile-failure", findings);
   }
+}
+
+function offerIndexGap(ctx: CompileApplyContext, errors: readonly CompileError[]): void {
+  const files = useFilesStore.getState();
+  if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
+  if (!errors.some((error) => error.code && INDEX_GAP_CODES.has(error.code))) return;
+  const findings = [importCompatFinding("glossaries-index")];
+  if (engineHintDismissed(ctx.projectId, findings)) return;
+  offerForAttempt(ctx, { kind: "engine-gap", projectId: ctx.projectId, findings }, "success");
 }
 
 function pdflatexOfferForLostText(
@@ -850,6 +983,12 @@ export function acceptCompileOffer(offer: CompileOffer): void {
     void downloadMissingTypst(offer.projectId, offer.version);
   } else if (offer.kind === "notebook-tool-missing") {
     void import("@/store/notebook-toolchain").then((module) => module.openNotebookToolSettings(offer.tool));
+  } else if (offer.kind === "tex-missing") {
+    void installMissingTex(offer.projectId);
+  } else if (offer.kind === "tex-packages") {
+    installOfferedPackages(offer.projectId, offer.packages, tlmgrInstall);
+  } else if (offer.kind === "switch-compiler") {
+    void switchEngineAndRecompile(offer.projectId, "latexmk", offer.compiler);
   } else {
     installOfferedPackages(offer.projectId, offer.packages);
   }
@@ -879,6 +1018,39 @@ export async function installMissingNotebookTool(projectId: string, tool: Notebo
   const { useNotebookToolchainStore } = await import("@/store/notebook-toolchain");
   const installed = await useNotebookToolchainStore.getState().install(tool);
   if (!installed || useFilesStore.getState().projectId !== projectId) return;
+  clearOffer(projectId);
+  void useCompileStore.getState().recompile();
+}
+
+export async function installMissingTex(projectId: string): Promise<void> {
+  if (useFilesStore.getState().projectId !== projectId) return;
+  const engine = useEngineStore.getState();
+  engine.queueCompileAfterInstall("explicit");
+  await engine.install();
+}
+
+export async function switchToTectonic(projectId: string): Promise<void> {
+  await switchEngineAndRecompile(projectId, "xetex");
+}
+
+async function switchEngineAndRecompile(
+  projectId: string,
+  ...selection: Parameters<ReturnType<typeof useFilesStore.getState>["setEngine"]>
+): Promise<void> {
+  const files = useFilesStore.getState();
+  if (files.projectId !== projectId) return;
+  try {
+    await files.setEngine(...selection);
+  } catch (error) {
+    void logError("switch compile engine", error);
+    if (useFilesStore.getState().projectId !== projectId) return;
+    toast.errorUnique(
+      engineSwitchToastKey(projectId),
+      decodeAppError(error) ? describeError(error) : i18n.t(($) => $.shell.enginePicker.switchFailed),
+    );
+    return;
+  }
+  if (useFilesStore.getState().projectId !== projectId) return;
   clearOffer(projectId);
   void useCompileStore.getState().recompile();
 }
@@ -1072,6 +1244,24 @@ export function stopOutdatedAutomaticCompile(editedAt: number, now = Date.now())
   return true;
 }
 
+export function endTinytexWait(reason: string): void {
+  const { status, failureReason } = useCompileStore.getState();
+  if (status === "unavailable" && failureReason === i18n.t(($) => $.core.compile.tinytexDownloading)) {
+    useCompileStore.setState({ failureReason: reason });
+  }
+}
+
+export function compileIsBusy(): boolean {
+  return activeCompileIntent !== null || rerunQueued || useCompileStore.getState().status === "compiling";
+}
+
+export function failureOutsideSource(): string | null {
+  const { failureReason } = useCompileStore.getState();
+  const inSource =
+    failureReason === compileFailureMessage("") || failureReason === syntaxCheckFailureMessage();
+  return inSource ? null : failureReason;
+}
+
 export function stopRunningCompileQuietly(): boolean {
   if (useCompileStore.getState().status !== "compiling") return false;
   clearQueuedRerun();
@@ -1195,17 +1385,15 @@ async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean>
   try {
     if (!(await ensurePandoc({ notify: ctx.origin === "explicit" }))) {
       if (!compileIdentityGate(ctx)) return false;
-      setCompileUnavailable(
-        ctx,
-        "Pandoc is required for this document engine and is not available.",
-      );
+      setCompileUnavailable(ctx, i18n.t(($) => $.core.compile.pandocRequired));
       ctx.abortIntent();
       return false;
     }
   } catch (e) {
     void logError("Pandoc setup", e);
     if (!compileIdentityGate(ctx)) return false;
-    setCompileUnavailable(ctx, `Pandoc setup failed: ${String(e)}`);
+    const message = decodeAppError(e) ? describeError(e) : String(e);
+    setCompileUnavailable(ctx, i18n.t(($) => $.core.compile.pandocSetupFailed, { message }));
     ctx.abortIntent();
     return false;
   }
@@ -1241,19 +1429,44 @@ async function notebookPrerequisiteGate(ctx: CompileGateContext, tool: NotebookT
   return false;
 }
 
-function systemTexPrerequisiteGate(ctx: CompileGateContext): boolean {
+async function currentTexBlocker(origin: CompileOrigin): Promise<TexBlocker | null> {
+  const engineStore = useEngineStore.getState();
+  if (!engineStore.info?.latexmk_blocker) return null;
+  await engineStore.refresh({ rescan: origin === "explicit" ? "full" : "login_probe" });
+  return useEngineStore.getState().info?.latexmk_blocker ?? null;
+}
+
+function withSharedTexNote(projectId: string | null, message: string): string {
+  if (collabSettingsLocked(projectId)) {
+    return `${message} ${i18n.t(($) => $.core.compile.sharedTexViewer)}`;
+  }
+  if (collabProjectShared(projectId)) {
+    return `${message} ${i18n.t(($) => $.core.compile.sharedTexEditor)}`;
+  }
+  return message;
+}
+
+async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
   if (ctx.files.engine.capabilities.compiler_prerequisite !== "system_tex") return true;
   const engineStore = useEngineStore.getState();
   if (engineStore.installing) {
     engineStore.queueCompileAfterInstall(ctx.origin);
-    setCompileUnavailable(
-      ctx,
-      "TinyTeX is still downloading. This compile starts automatically when it finishes.",
-    );
+    setCompileUnavailable(ctx, i18n.t(($) => $.core.compile.tinytexDownloading));
     ctx.abortIntent();
     return false;
   }
-  return compileIdentityGate(ctx);
+  const blocker = await currentTexBlocker(ctx.origin);
+  if (!compileIdentityGate(ctx)) return false;
+  if (!blocker || !ctx.capturedProjectId) return true;
+  ctx.set({
+    status: "unavailable",
+    phase: "idle",
+    failureReason: withSharedTexNote(ctx.capturedProjectId, describeTexBlocker(blocker)),
+    lastAttemptIdentity: gateAttemptIdentity(ctx),
+    offer: { kind: "tex-missing", projectId: ctx.capturedProjectId },
+  });
+  ctx.abortIntent();
+  return false;
 }
 
 const TYPST_SOURCE_PATH = /\.typ$/i;
@@ -1293,10 +1506,12 @@ async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> 
       ctx.abortIntent();
       return false;
     }
+    const reason = compileSaveFailureReason(e);
     ctx.set({
       status: "error",
       phase: "idle",
-      failureReason: compileSaveFailureReason(e),
+      failureReason: reason,
+      log: reason,
       lastAttemptIdentity: gateAttemptIdentity(ctx),
     });
     ctx.abortIntent();
@@ -1312,6 +1527,12 @@ function syntaxCheckLog(mainDoc: string, syntaxErrors: readonly CompileError[]):
   } in ${mainDoc}; the compiler was not run.\n${syntaxErrors
     .map((error) => `${mainDoc}:${error.line ?? 0}: ${error.message}`)
     .join("\n")}\n`;
+}
+
+function syntaxCheckFailureMessage(): string {
+  return i18n.t(($) => $.core.compile.syntaxCheckFailed, {
+    setting: i18n.t(($) => $.shell.compile.syntax.check),
+  });
 }
 
 async function syntaxCheckGate(ctx: CompileGateContext, projectId: string): Promise<boolean> {
@@ -1332,8 +1553,7 @@ async function syntaxCheckGate(ctx: CompileGateContext, projectId: string): Prom
     status: "error",
     phase: "idle",
     errors: syntaxErrors,
-    failureReason:
-      "Syntax check found errors. Fix them, or turn off “Check syntax before compile”.",
+    failureReason: syntaxCheckFailureMessage(),
     log: syntaxCheckLog(ctx.mainDoc, syntaxErrors),
     lastAttemptIdentity: identityForGeneration(projectId, ctx.mainDoc, ctx.intent),
   });
@@ -1369,7 +1589,7 @@ async function runCompileGates(
   if (!(await pandocPrerequisiteGate(ctx))) return null;
   const notebookTool = notebookPrerequisite(ctx.files.engine);
   if (notebookTool && !(await notebookPrerequisiteGate(ctx, notebookTool))) return null;
-  if (!systemTexPrerequisiteGate(ctx)) return null;
+  if (!(await systemTexPrerequisiteGate(ctx))) return null;
   if (!compileIdentityGate(ctx)) return null;
   const projectId = ctx.capturedProjectId;
   if (!projectId) {
@@ -1381,6 +1601,7 @@ async function runCompileGates(
     phase: "saving",
     errors: [],
     diagnostics: null,
+    clearedLog: null,
     failureReason: null,
     offer: null,
     lastAttemptIdentity: identityForGeneration(projectId, ctx.mainDoc, ctx.intent),
@@ -1516,6 +1737,7 @@ interface CompileApplyContext {
   readonly identityStale: () => boolean;
   readonly checkpointAdvanced: CheckpointAdvanced;
   readonly offlineNoticePrefix: string;
+  readonly offline: boolean;
   readonly compiledSourceSnapshot: CompileSourceSnapshot | null;
   readonly origin: CompileOrigin;
 }
@@ -1560,6 +1782,12 @@ function verifiedCompileOutput(
   return { verifiedBytes, verifiedOutputId, outputIdentityError };
 }
 
+function compileFailureMessage(outputIdentityError: string): string {
+  return outputIdentityError
+    ? i18n.t(($) => $.core.compile.pdfChanged)
+    : i18n.t(($) => $.preview.empty.compileFailed);
+}
+
 function compileSuccessCheckpointFor(
   ctx: CompileApplyContext,
   result: CompileResult,
@@ -1584,11 +1812,25 @@ function compileSuccessCheckpointFor(
 }
 
 const TYPST_PACKAGE_ERROR = /\bpackage\b/;
+const NON_ASCII_TEXT = /[^\p{ASCII}]/u;
 
-async function explainedErrors(result: CompileResult): Promise<CompileError[]> {
-  const errors = explainCodedCompileErrors(result.errors);
+function withoutUnneededT1Warning(
+  errors: CompileError[],
+  snapshot: CompileSourceSnapshot | null,
+): CompileError[] {
+  if (!snapshot || !errors.some((error) => error.code === T1_ENCODING_CODE)) return errors;
+  if (Object.values(snapshot.texts).some((text) => NON_ASCII_TEXT.test(text))) return errors;
+  return errors.filter((error) => error.code !== T1_ENCODING_CODE);
+}
+
+async function explainedErrors(
+  result: CompileResult,
+  snapshot: CompileSourceSnapshot | null,
+): Promise<CompileError[]> {
+  const errors = withoutUnneededT1Warning(explainCodedCompileErrors(result.errors), snapshot);
+  const engineId = useFilesStore.getState().engine.id;
   if (
-    useFilesStore.getState().engine.id !== "typst" ||
+    (engineId !== "typst" && engineId !== "calepin") ||
     !errors.some((error) => TYPST_PACKAGE_ERROR.test(error.message))
   ) {
     return errors;
@@ -1616,21 +1858,32 @@ function settleAlreadyShownOutput(
   ) {
     return false;
   }
-  ctx.set((state) =>
-    ctx.identityStale() ||
-    state.status !== "compiling" ||
-    state.lastAttemptIdentity?.requestGeneration !== ctx.requestIdentity.requestGeneration
-      ? state
-      : {
-          status: "success",
-          phase: "idle",
-          failureReason: null,
-          errors: result.errors,
-          diagnostics: result.diagnostics ?? null,
-          log: `${ctx.offlineNoticePrefix}${result.log}`,
-          htmlOutput: null,
-        },
+  const errors = withoutUnneededT1Warning(
+    explainCodedCompileErrors(result.errors),
+    ctx.compiledSourceSnapshot,
   );
+  let settled = false;
+  ctx.set((state) => {
+    if (
+      ctx.identityStale() ||
+      state.status !== "compiling" ||
+      state.lastAttemptIdentity?.requestGeneration !== ctx.requestIdentity.requestGeneration
+    ) {
+      return state;
+    }
+    settled = true;
+    return {
+      status: "success",
+      phase: "idle",
+      failureReason: null,
+      errors,
+      diagnostics: result.diagnostics ?? null,
+      log: `${ctx.offlineNoticePrefix}${result.log}`,
+      clearedLog: null,
+      htmlOutput: null,
+    };
+  });
+  if (settled) reportLostText(ctx, errors);
   return true;
 }
 
@@ -1639,7 +1892,7 @@ async function applyHtmlCompileResult(
   result: CompileResult,
   path: string,
 ): Promise<CompileResult> {
-  const errors = await explainedErrors(result);
+  const errors = await explainedErrors(result, ctx.compiledSourceSnapshot);
   if (ctx.identityStale()) return result;
   let applied = false;
   ctx.set((state) => {
@@ -1657,6 +1910,7 @@ async function applyHtmlCompileResult(
       errors,
       diagnostics: result.diagnostics ?? null,
       log: `${ctx.offlineNoticePrefix}${result.log}`,
+      clearedLog: null,
       compileTimeMs: result.compile_time_ms ?? 0,
       htmlOutput: { projectId: ctx.projectId, path, builtAt: Date.now() },
     };
@@ -1679,7 +1933,7 @@ async function applyCompileResult(
   // still produces a best-effort PDF, and we want to keep showing it.
   const buf = result.has_pdf ? await readCompiledPdf(ctx.projectId) : null;
   const bytes = buf ? new Uint8Array(buf) : null;
-  const errors = await explainedErrors(result);
+  const errors = await explainedErrors(result, ctx.compiledSourceSnapshot);
   if (ctx.identityStale()) return result;
   const verified = verifiedCompileOutput(result, bytes);
   const checkpoint = compileSuccessCheckpointFor(ctx, result, verified);
@@ -1702,11 +1956,11 @@ async function applyCompileResult(
       pdfBytes: verified.verifiedBytes ?? state.pdfBytes,
       failureReason: checkpoint
         ? null
-        : verified.outputIdentityError.trim() ||
-          "Compilation did not produce a valid current PDF.",
+        : (texSetupReason(errors) ?? compileFailureMessage(verified.outputIdentityError)),
       errors,
       diagnostics: result.diagnostics ?? null,
       log: `${ctx.offlineNoticePrefix}${result.log}${verified.outputIdentityError}`,
+      clearedLog: null,
       lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
       lastCompileCheckpoint: checkpoint ?? state.lastCompileCheckpoint,
       compiledSources: checkpoint ? ctx.compiledSourceSnapshot : state.compiledSources,
@@ -1718,9 +1972,12 @@ async function applyCompileResult(
   const opening = takeEngineChoiceOnOpen(ctx.projectId);
   if (checkpoint) {
     settleCompileNotices(ctx.projectId);
+    offerIndexGap(ctx, result.errors);
     reportLostText(ctx, errors);
   } else {
     maybeOfferEngineChoice(ctx, result.log, result.errors, opening);
+    maybeOfferTexSetup(ctx, result.errors);
+    maybeOfferCompilerSwitch(ctx, result.errors);
     maybeSuggestMissingPackages(ctx, result.log);
   }
   void import("@/lib/preview-window")
@@ -1729,9 +1986,7 @@ async function applyCompileResult(
         identity: ctx.requestIdentity,
         status: checkpoint ? "success" : "error",
         checkpoint,
-        message: checkpoint
-          ? undefined
-          : "Compilation did not produce a valid current PDF.",
+        message: checkpoint ? undefined : compileFailureMessage(verified.outputIdentityError),
       }),
     )
     .catch(() => {});
@@ -1777,6 +2032,7 @@ export async function applyTypstLiveResult(live: TypstLiveResult): Promise<boole
     checkpointAdvanced: (current = useCompileStore.getState().lastCompileCheckpoint) =>
       hasCompileCheckpointAdvanced(checkpointAtStart, current),
     offlineNoticePrefix: "",
+    offline: false,
     compiledSourceSnapshot: null,
     origin: "automatic",
   };
@@ -1790,9 +2046,17 @@ async function compileThroughLivePreview(
   offline: boolean,
   typstVariant: string | null,
   fresh: boolean,
+  stale: () => boolean,
+  oneShot: () => Promise<CompileResult>,
 ): Promise<CompileResult> {
   const module = await loadLivePreview();
-  return module.compileLive({ projectId, mainDoc, offline, typstVariant, fresh });
+  try {
+    return await module.compileLive({ projectId, mainDoc, offline, typstVariant, fresh });
+  } catch (error) {
+    void logError("live preview", error);
+    if (stale()) throw error;
+    return oneShot();
+  }
 }
 
 function pauseCompileForMissingFolder(ctx: CompileApplyContext, e: unknown): void {
@@ -1880,9 +2144,68 @@ function reportMissingNotebookTool(ctx: CompileApplyContext, tool: NotebookTool,
     .catch(() => {});
 }
 
+function reportMissingTex(ctx: CompileApplyContext, e: unknown): void {
+  const message = withSharedTexNote(ctx.projectId, describeError(e));
+  ctx.set((state) => {
+    if (
+      ctx.identityStale() ||
+      hasCompileCheckpointAdvanced(ctx.checkpointAtStart, state.lastCompileCheckpoint)
+    ) {
+      return state;
+    }
+    return {
+      status: "unavailable",
+      phase: "idle",
+      log: `${ctx.offlineNoticePrefix}${message}`,
+      failureReason: message,
+      offer: { kind: "tex-missing", projectId: ctx.projectId },
+    };
+  });
+  void import("@/lib/preview-window")
+    .then((module) =>
+      module.refreshPreviewWindow({
+        identity: ctx.requestIdentity,
+        status: "unavailable",
+        checkpoint: null,
+        message,
+      }),
+    )
+    .catch(() => {});
+  void logError("compile", e);
+  void useEngineStore.getState().refresh();
+}
+
+function maybeOfferTexSetup(ctx: CompileApplyContext, errors: readonly CompileError[]): void {
+  const needsTex = (code: string) => TEX_SETUP_CODES.has(code) || code === QUARTO_NEEDS_TEX;
+  if (errors.some((error) => error.code && needsTex(error.code))) {
+    offerForAttempt(ctx, { kind: "tex-missing", projectId: ctx.projectId });
+  }
+}
+
+function maybeOfferCompilerSwitch(ctx: CompileApplyContext, errors: readonly CompileError[]): void {
+  const params = errors.find((error) => error.code === UNICODE_ENGINE_CODE)?.params;
+  const compiler = params?.compiler;
+  if (compiler === "xelatex" || compiler === "lualatex") {
+    offerForAttempt(ctx, {
+      kind: "switch-compiler",
+      projectId: ctx.projectId,
+      compiler,
+      label: params?.label ?? compiler,
+    });
+  }
+}
+
 function codeNeededErrors(code: string | undefined, message: string): CompileError[] | null {
   if (code !== NOTEBOOK_CODE_NEEDED) return null;
   return [{ kind: "error", code, message, line: null, file: null, explanation: null }];
+}
+
+function maybeOfferJapaneseSupport(ctx: CompileApplyContext, code: string, names: string | undefined): void {
+  if (code !== JAPANESE_COMPILER_INSTALLABLE || !isLatexmkProject(ctx.projectId)) return;
+  const packages = (names ?? "").split(",").filter((name) => name.length > 0);
+  if (packages.length > 0) {
+    offerForAttempt(ctx, { kind: "tex-packages", projectId: ctx.projectId, packages });
+  }
 }
 
 function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
@@ -1897,8 +2220,13 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
     reportMissingNotebookTool(ctx, missingTool, e);
     return;
   }
+  if (appError && TEX_SETUP_CODES.has(appError.code)) {
+    reportMissingTex(ctx, e);
+    return;
+  }
   const message = appError ? describeError(e) : String(e);
   const codeNeeded = codeNeededErrors(appError?.code, message);
+  const failedWithReason = i18n.t(($) => $.core.compile.failedWithReason, { message });
   ctx.set((state) => {
     if (
       ctx.identityStale() ||
@@ -1910,17 +2238,18 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
       status: "error",
       phase: "idle",
       log: `${ctx.offlineNoticePrefix}Compile failed: ${message}`,
-      failureReason: codeNeeded ? message : `Compile failed: ${message}`,
+      failureReason: codeNeeded ? message : failedWithReason,
       ...(codeNeeded ? { errors: codeNeeded } : {}),
     };
   });
+  if (appError) maybeOfferJapaneseSupport(ctx, appError.code, appError.params.packages);
   void import("@/lib/preview-window")
     .then((module) =>
       module.refreshPreviewWindow({
         identity: ctx.requestIdentity,
         status: "error",
         checkpoint: null,
-        message: `Compile failed: ${message}`,
+        message: failedWithReason,
       }),
     )
     .catch(() => {});
@@ -1943,7 +2272,7 @@ function clearOrphanedCompilingState(
     return {
       status: "idle",
       phase: "idle",
-      failureReason: "The compile was superseded by a newer project revision.",
+      failureReason: i18n.t(($) => $.core.compile.superseded),
     };
   });
 }
@@ -1973,6 +2302,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   status: "idle",
   phase: "idle",
   log: "",
+  clearedLog: null,
+  clearLog: () =>
+    set((state) => (state.status === "compiling" || !state.log ? state : { clearedLog: state.log })),
   errors: [],
   diagnostics: null,
   pdfBytes: null,
@@ -2019,6 +2351,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     await interruptTypstLivePreview();
   },
   reset: () => {
+    if (activeCompileIntent !== null || get().status === "compiling") {
+      void cancelCompile().catch((error: unknown) => logError("stop compile", error));
+    }
     compileSeq++;
     clearQueuedRerun();
     forgetOutdatedStops();
@@ -2028,6 +2363,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       status: "idle",
       phase: "idle",
       log: "",
+      clearedLog: null,
       errors: [],
       diagnostics: null,
       pdfBytes: null,
@@ -2081,6 +2417,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       errors: [],
       diagnostics: null,
       log: validated.log,
+      clearedLog: null,
       lastCompiledAt: checkpoint.completedAt,
       lastCompileCheckpoint: checkpoint,
       htmlOutput: null,
@@ -2215,12 +2552,22 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       identityStale,
       checkpointAdvanced,
       offlineNoticePrefix,
+      offline: offlinePolicy.offline,
       compiledSourceSnapshot: captured.snapshot,
       origin,
     };
     try {
       return await withEventListener("compile:log", (chunk: string) => logPump.push(chunk), async () => {
         if (identityStale() || checkpointAdvanced()) return undefined;
+        const compileOnce = () =>
+          compileProject(
+            projectId,
+            mainDoc,
+            offlinePolicy.offline,
+            get().compileMode === "fast",
+            get().stopOnFirstError,
+            activeTypstVariant(projectId, files.engine),
+          );
         const result = livePreviewRoutes(get(), useFilesStore.getState(), projectId)
           ? await compileThroughLivePreview(
               projectId,
@@ -2228,15 +2575,10 @@ export const useCompileStore = create<CompileState>((set, get) => ({
               offlinePolicy.offline,
               activeTypstVariant(projectId, files.engine),
               origin !== "automatic" || options?.fromScratch === true,
+              identityStale,
+              compileOnce,
             )
-          : await compileProject(
-              projectId,
-              mainDoc,
-              offlinePolicy.offline,
-              get().compileMode === "fast",
-              get().stopOnFirstError,
-              activeTypstVariant(projectId, files.engine),
-            );
+          : await compileOnce();
         logPump.flush();
         if (result.stopped) {
           applyStoppedCompile(set, identityStale);

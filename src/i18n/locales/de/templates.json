@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Ihre Vorlage wird eingerichtet...",
-      "downloading": "{{label}} wird geladen ({{index}} von {{total}})"
+      "downloading": "{{label}} wird geladen ({{index}} von {{total}})",
+      "failed": "Die Schriften für diese Vorlage konnten nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
     },
     "category": {
       "all": "Alle",

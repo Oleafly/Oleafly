@@ -165,6 +165,38 @@ local function cites_anything(doc)
   return found
 end
 
+local function cited_keys(doc)
+  local keys = {}
+  local function take(cite)
+    for _, citation in ipairs(cite.citations) do
+      keys[citation.id:lower()] = true
+    end
+  end
+  doc:walk({ Cite = take })
+  if doc.meta.nocite ~= nil then
+    pandoc.Pandoc({}, { nocite = doc.meta.nocite }):walk({ Cite = take })
+  end
+  return keys
+end
+
+local function defines_a_key(path, keys)
+  if keys["*"] then
+    return true
+  end
+  local text = read_text(path)
+  if not text then
+    return false
+  end
+  text = text:lower()
+  for key in pairs(keys) do
+    local pattern = key:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
+    if text:find("@%a+%s*[{(]%s*" .. pattern .. "%s*,") then
+      return true
+    end
+  end
+  return false
+end
+
 local function choose_bibliography(doc, manual_list)
   local declared = meta_entries(doc.meta.bibliography)
   if not cites_anything(doc) then
@@ -190,9 +222,10 @@ local function choose_bibliography(doc, manual_list)
   end
   local declares_nothing = #declared == 0 and doc.meta.references == nil and not manual_list
   if missing > 0 or declares_nothing then
+    local keys = cited_keys(doc)
     for _, path in ipairs(data.fallback) do
       local full = from_project_root(path)
-      if is_file(full) then
+      if is_file(full) and defines_a_key(full, keys) then
         add(full)
       end
     end
@@ -381,6 +414,8 @@ end
 
 local REFERENCE_TYPES = { ref = true, eqref = true, ["ref+label"] = true, ["ref+Label"] = true }
 
+local references_unnumbered = false
+
 local function resolve_link(link, ids)
   local reference_type = link.attributes["reference-type"]
   local reference = link.attributes["reference"]
@@ -407,6 +442,7 @@ local function resolve_link(link, ids)
   elseif pandoc.utils.stringify(link.content) == "[" .. reference .. "]" then
     -- Pandoc could not resolve the label (equations, or no compile yet).
     content = pandoc.List({ pandoc.Str("(" .. reference .. ")") })
+    references_unnumbered = true
   else
     -- Pandoc numbered it itself (sections, figures, tables).
     return nil
@@ -499,10 +535,486 @@ local function mark_equation_labels(doc)
   })
 end
 
+local function is_plain_span(inline)
+  return inline ~= nil and inline.t == "Span" and inline.identifier == "" and #inline.classes == 0
+end
+
+local function drop_cjk_arguments(div)
+  if not (div.classes:includes("CJK") or div.classes:includes("CJK*")) then
+    return nil
+  end
+  local first = div.content[1]
+  if not first or first.t ~= "Para" then
+    return nil
+  end
+  for _ = 1, 2 do
+    if is_plain_span(first.content[1]) then
+      first.content:remove(1)
+    end
+  end
+  if first.content[1] and first.content[1].t == "SoftBreak" then
+    first.content:remove(1)
+  end
+  if #first.content == 0 then
+    div.content:remove(1)
+  end
+  return div
+end
+
+local SOURCE_FORMATS = { markdown = true, typst = true }
+
+local IMAGE_SUFFIXES = {
+  "",
+  ".pdf",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".PDF",
+  ".PNG",
+  ".JPG",
+  ".JPEG",
+  ".gif",
+  ".webp",
+  ".svg",
+  ".eps",
+}
+
+local SHOWS_NO_PDF = { pdf = true, eps = true }
+local SHOWS_NO_VECTOR = { pdf = true, eps = true, svg = true, webp = true }
+
+local IMAGE_LIMITS = {
+  docx = SHOWS_NO_VECTOR,
+  pptx = SHOWS_NO_VECTOR,
+  epub = SHOWS_NO_PDF,
+  epub2 = SHOWS_NO_PDF,
+  epub3 = SHOWS_NO_PDF,
+  html = SHOWS_NO_PDF,
+  html5 = SHOWS_NO_PDF,
+}
+
+local IMAGE_PPI = 220
+local IMAGE_PAGE = '#set page(width: auto, height: auto, margin: 0pt, fill: white)\n#image("%s")\n'
+
+local function warn_export(marker, detail)
+  local log = pandoc.log
+  if log and log.warn then
+    log.warn(detail and (marker .. " " .. detail) or marker)
+  end
+end
+
+local function is_remote(source)
+  return source:match("^%a[%w+.-]+:") ~= nil
+end
+
+local function main_folder()
+  local search = (PANDOC_STATE and PANDOC_STATE.resource_path) or {}
+  local main = search[1]
+  return (main and is_absolute(main)) and main or nil
+end
+
+local function image_folders()
+  local main = main_folder()
+  local folders = pandoc.List()
+  local function add(folder)
+    if not folders:includes(folder) then
+      folders:insert(folder)
+    end
+  end
+  for _, entry in ipairs((PANDOC_STATE and PANDOC_STATE.resource_path) or { "." }) do
+    if main and not is_absolute(entry) then
+      add(pandoc.path.join({ main, entry }))
+    end
+    add(entry)
+  end
+  return folders
+end
+
+local function image_candidates(source)
+  local names = { source }
+  local decoded = source:gsub("%%(%x%x)", function(hex)
+    return string.char(tonumber(hex, 16))
+  end)
+  if decoded ~= source then
+    names[2] = decoded
+  end
+  return names
+end
+
+local function image_on_disk(source)
+  if source == "" or is_remote(source) or pandoc.mediabag.lookup(source) then
+    return nil
+  end
+  for _, name in ipairs(image_candidates(source)) do
+    local folders = is_absolute(name) and { "" } or image_folders()
+    for _, folder in ipairs(folders) do
+      local base = folder == "" and name or pandoc.path.join({ folder, name })
+      for _, suffix in ipairs(IMAGE_SUFFIXES) do
+        if is_file(base .. suffix) then
+          return base .. suffix
+        end
+      end
+    end
+  end
+  return nil
+end
+
+local function extension_of(path)
+  local extension = path:match("%.(%w+)$")
+  return extension and extension:lower() or ""
+end
+
+local function picture_of(contents, extension, typst)
+  return pandoc.system.with_temporary_directory("oleafly-figure", function(directory)
+    return pandoc.system.with_working_directory(directory, function()
+      local input = "input." .. extension
+      pandoc.system.write_file(input, contents)
+      pandoc.system.write_file("page.typ", string.format(IMAGE_PAGE, input))
+      pandoc.pipe(typst, {
+        "compile",
+        "--root",
+        ".",
+        "--format",
+        "png",
+        "--ppi",
+        tostring(IMAGE_PPI),
+        "page.typ",
+        "page.png",
+      }, "")
+      return pandoc.system.read_file("page.png")
+    end)
+  end)
+end
+
+local function environment_value(name)
+  local ok, environment = pcall(pandoc.system.environment)
+  if not ok then
+    return nil
+  end
+  local value = environment[name]
+  return (value and value ~= "") and value or nil
+end
+
+local function exports_project_images()
+  return environment_value("OLEAFLY_EXPORT_PROJECT_IMAGES") ~= nil
+end
+
+local function typst_program()
+  return environment_value("OLEAFLY_PANDOC_TYPST")
+end
+
+local function has_size(value)
+  return value ~= nil and value:match("^[%d.]+%a*%%?$") ~= nil
+end
+
+local function natural_width(png)
+  return string.format("%.3fin", string.unpack(">I4", png, 17) / IMAGE_PPI)
+end
+
+local converted_pictures = {}
+
+local function converted_picture(path, extension)
+  if converted_pictures[path] ~= nil then
+    return converted_pictures[path]
+  end
+  local typst = typst_program()
+  local contents = read_text(path)
+  local picture = false
+  if typst and contents and extension ~= "eps" then
+    local ok, png = pcall(picture_of, contents, extension, typst)
+    if ok and png and png ~= "" then
+      local name = pandoc.utils.sha1(contents) .. ".png"
+      pandoc.mediabag.insert(name, "image/png", png)
+      picture = { name = name, width = natural_width(png) }
+    end
+  end
+  converted_pictures[path] = picture
+  return picture
+end
+
+local function embed_image(image, path)
+  local contents = read_text(path)
+  local extension = extension_of(path)
+  if contents and extension ~= "" then
+    local name = pandoc.utils.sha1(contents) .. "." .. extension
+    pandoc.mediabag.insert(name, nil, contents)
+    image.src = name
+  end
+  return image
+end
+
+local function project_link(path)
+  local main = main_folder()
+  if not main then
+    return path
+  end
+  local ok, relative = pcall(pandoc.path.make_relative, path, main, true)
+  return ((ok and relative) or path):gsub("\\", "/")
+end
+
+local function settle_image(image)
+  local source = image.src
+  local limits = IMAGE_LIMITS[FORMAT]
+  local writes_source = SOURCE_FORMATS[FORMAT]
+  if not limits and not writes_source then
+    return nil
+  end
+  local path = image_on_disk(source)
+  if not path then
+    if writes_source and not is_remote(source) then
+      warn_export("[oleafly:image-missing]", source)
+    end
+    return nil
+  end
+  if writes_source then
+    image.src = (project_link(path))
+    return image
+  end
+  local extension = extension_of(path)
+  if not limits[extension] then
+    return embed_image(image, path)
+  end
+  local picture = converted_picture(path, extension)
+  if not picture then
+    warn_export("[oleafly:image-unconverted]", source)
+    return embed_image(image, path)
+  end
+  image.src = picture.name
+  if not has_size(image.attributes.width) and not has_size(image.attributes.height) then
+    image.attributes.width = picture.width
+  end
+  return image
+end
+
+local function drop_overlay(blocks)
+  local first = blocks[1]
+  if not first or first.t ~= "Para" then
+    return
+  end
+  local leading = first.content[1]
+  if not leading or leading.t ~= "Str" or not leading.text:match("^<[^>]*>") then
+    return
+  end
+  first.content:remove(1)
+  if first.content[1] and first.content[1].t == "SoftBreak" then
+    first.content:remove(1)
+  end
+  if #first.content == 0 then
+    blocks:remove(1)
+  end
+end
+
+local function take_leading_span(blocks)
+  local first = blocks[1]
+  if not first or first.t ~= "Para" or not is_plain_span(first.content[1]) then
+    return nil
+  end
+  local title = first.content:remove(1).content
+  if first.content[1] and first.content[1].t == "SoftBreak" then
+    first.content:remove(1)
+  end
+  if #first.content == 0 then
+    blocks:remove(1)
+  end
+  return title
+end
+
+local function take_frame_heading(blocks)
+  for index, block in ipairs(blocks) do
+    if block.t == "Header" and block.level == 3 then
+      blocks:remove(index)
+      local following = blocks[index]
+      if following and following.t == "Header" and following.level == 4 then
+        blocks:remove(index)
+        return block.content, following.content
+      end
+      return block.content, nil
+    end
+  end
+  local title = take_leading_span(blocks)
+  return title, title and take_leading_span(blocks)
+end
+
+local function clean_frame_div(div)
+  if div.classes:includes("columns") or div.classes:includes("thebibliography") then
+    return nil
+  end
+  if div.classes:includes("column") then
+    take_leading_span(div.content)
+    return div
+  end
+  if div.classes:includes("block") or div.classes:includes("alertblock")
+    or div.classes:includes("exampleblock") then
+    local title = take_leading_span(div.content)
+    if title then
+      div.content:insert(1, pandoc.Para({ pandoc.Strong(title) }))
+    end
+  end
+  return div.content
+end
+
+local function is_blank_inline(inline)
+  return inline.t == "Space" or inline.t == "SoftBreak" or inline.t == "LineBreak"
+end
+
+local function separate_images(para)
+  local pieces, words, found = pandoc.List(), pandoc.List(), false
+  local function close_words()
+    while #words > 0 and is_blank_inline(words[#words]) do
+      words:remove(#words)
+    end
+    if #words > 0 then
+      pieces:insert(pandoc.Para(words))
+      words = pandoc.List()
+    end
+  end
+  for _, inline in ipairs(para.content) do
+    if inline.t == "Image" then
+      close_words()
+      if pandoc.utils.stringify(inline.caption) == "image" then
+        inline.caption = pandoc.Inlines({})
+      end
+      pieces:insert(pandoc.Para({ inline }))
+      found = true
+    elseif #words > 0 or not is_blank_inline(inline) then
+      words:insert(inline)
+    end
+  end
+  close_words()
+  return found and pieces or nil
+end
+
+local function is_columns(block)
+  return block.t == "Div" and block.classes:includes("columns")
+end
+
+local function two_columns(columns)
+  local count = 0
+  for _, child in ipairs(columns.content) do
+    if child.t ~= "Div" or not child.classes:includes("column") then
+      return false
+    end
+    count = count + 1
+  end
+  return count == 2
+end
+
+local function unwrapped_columns(columns)
+  local blocks = pandoc.List()
+  for _, column in ipairs(columns.content) do
+    if column.t == "Div" then
+      blocks:extend(column.content)
+    else
+      blocks:insert(column)
+    end
+  end
+  return blocks
+end
+
+local function frame_source(text)
+  if text:match("^\\begin%s*{frame}") then
+    return text
+  end
+  local options, body = text:match("^\\frame%s*([^{]*)(%b{})%s*$")
+  if not body then
+    return nil
+  end
+  return "\\begin{frame}" .. options .. body:sub(2, -2) .. "\\end{frame}"
+end
+
+local function parsed_frame(raw)
+  if raw.format ~= "latex" then
+    return nil
+  end
+  local source = frame_source(raw.text)
+  if not source then
+    return nil
+  end
+  local ok, parsed = pcall(pandoc.read, source, "latex")
+  return ok and parsed.blocks or nil
+end
+
+local function flatten_frame(div)
+  if not div.classes:includes("frame") then
+    return nil
+  end
+  local content = div:walk({ Para = separate_images }):walk({ Div = clean_frame_div }).content
+  drop_overlay(content)
+  local title, subtitle = take_frame_heading(content)
+  if not title and #content == 0 then
+    return {}
+  end
+  local blocks = pandoc.List()
+  blocks:insert(title and pandoc.Header(2, title) or pandoc.HorizontalRule())
+  if subtitle then
+    blocks:insert(pandoc.Para({ pandoc.Emph(subtitle) }))
+  end
+  local sole = #content == 1 and not subtitle
+  for _, block in ipairs(content) do
+    if is_columns(block) and not (sole and two_columns(block)) then
+      blocks:extend(unwrapped_columns(block))
+    else
+      blocks:insert(block)
+    end
+  end
+  return blocks
+end
+
+local function has_frames(doc)
+  local found = false
+  doc:walk({
+    Div = function(div)
+      found = found or div.classes:includes("frame")
+    end,
+  })
+  return found
+end
+
+local function drop_outline_headers(doc)
+  if not has_frames(doc) then
+    return doc
+  end
+  doc.blocks = doc.blocks:filter(function(block)
+    return block.t ~= "Header" or block.level < 2
+  end)
+  return doc:walk({
+    Header = function(header)
+      if header.level == 2 then
+        return {}
+      end
+    end,
+  })
+end
+
+local function abstract_into_body(doc)
+  local abstract = doc.meta.abstract
+  if FORMAT ~= "plain" or abstract == nil then
+    return
+  end
+  doc.meta.abstract = nil
+  if pandoc.utils.type(abstract) == "Inlines" then
+    abstract = pandoc.Blocks({ pandoc.Para(abstract) })
+  end
+  local blocks = pandoc.List()
+  blocks:extend(abstract)
+  blocks:extend(doc.blocks)
+  doc.blocks = blocks
+end
+
 -- Entry point ------------------------------------------------------------------
 
 function Pandoc(doc)
+  if FORMAT == "pptx" then
+    doc = drop_outline_headers(doc:walk({ RawBlock = parsed_frame })):walk({ Div = flatten_frame })
+  end
+  if exports_project_images() then
+    doc = doc:walk({ Image = settle_image })
+  end
+  doc = doc:walk({ Div = drop_cjk_arguments })
+  if SOURCE_FORMATS[FORMAT] then
+    return doc
+  end
   load_data()
+  abstract_into_body(doc)
   mark_equation_labels(doc)
   local manual_list = has_thebibliography(doc)
   local declared = choose_bibliography(doc, manual_list)
@@ -510,10 +1022,14 @@ function Pandoc(doc)
     doc = number_manual_citations(doc)
   end
   local ids = collect_identifiers(doc)
-  return doc:walk({
+  local settled = doc:walk({
     Math = rewrite_display_math,
     Link = function(link)
       return resolve_link(link, ids)
     end,
   })
+  if references_unnumbered then
+    warn_export("[oleafly:references-unnumbered]")
+  end
+  return settled
 end

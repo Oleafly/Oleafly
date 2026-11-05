@@ -59,6 +59,10 @@ pub fn latex_default_engine(data_root: &Path) -> Option<String> {
         .filter(|engine| engine == LATEXMK_ENGINE)
 }
 
+pub fn tex_distribution(data_root: &Path) -> Option<String> {
+    trimmed_text(&read_app_config(data_root)?, "tex_distribution")
+}
+
 pub(crate) struct ConfigLock {
     _file: std::fs::File,
 }
@@ -162,6 +166,16 @@ mod tests {
         .unwrap();
         assert_eq!(typst_default_choice(data.path()), None);
         assert_eq!(latex_default_engine(data.path()), None);
+        assert_eq!(tex_distribution(data.path()), None);
+        std::fs::write(
+            data.path().join(CONFIG_FILE),
+            r#"{"tex_distribution":" /opt/tex/bin "}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            tex_distribution(data.path()).as_deref(),
+            Some("/opt/tex/bin")
+        );
         std::fs::write(data.path().join(CONFIG_FILE), "{not json").unwrap();
         assert_eq!(read_app_config(data.path()), None);
     }

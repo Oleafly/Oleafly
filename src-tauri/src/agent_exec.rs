@@ -19,6 +19,12 @@ const EXEC_APPROVAL_TTL: Duration = Duration::from_secs(30);
 const MAX_EXEC_APPROVALS: usize = 256;
 const EXTERNAL_OWNER_TTL: Duration = Duration::from_secs(600);
 const MAX_EXTERNAL_OWNERS: usize = 256;
+#[cfg(not(windows))]
+const SHELL_CLI_VARIABLE: &str = "OLEAFLY_SHELL_CLI";
+#[cfg(not(windows))]
+const SHELL_PATH_VARIABLE: &str = "OLEAFLY_SHELL_PATH";
+#[cfg(not(windows))]
+const POSIX_LOGIN_SHELLS: [&str; 7] = ["sh", "bash", "zsh", "dash", "ksh", "mksh", "ash"];
 
 #[derive(Default)]
 pub struct AgentExecState {
@@ -687,7 +693,25 @@ async fn execute_command(
     .await
 }
 
+#[cfg(not(windows))]
+fn path_restoring_script(shell: &Path, command: &str) -> String {
+    let posix = shell
+        .file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|name| POSIX_LOGIN_SHELLS.contains(&name));
+    if !posix {
+        return command.to_owned();
+    }
+    format!(
+        "PATH=\"${SHELL_CLI_VARIABLE}:$PATH:${SHELL_PATH_VARIABLE}\"; export PATH; unset {SHELL_CLI_VARIABLE} {SHELL_PATH_VARIABLE}\n{command}"
+    )
+}
+
 fn shell_command(command: &str, cli: &crate::terminal::env::CliEnv) -> tokio::process::Command {
+    let tools = cli
+        .dir
+        .as_deref()
+        .map(|dir| (dir, crate::terminal::env::shell_search_path(None)));
     #[cfg(windows)]
     let mut c = {
         let mut c = tokio::process::Command::new("cmd");
@@ -696,15 +720,25 @@ fn shell_command(command: &str, cli: &crate::terminal::env::CliEnv) -> tokio::pr
     };
     #[cfg(not(windows))]
     let mut c = {
-        let mut c = tokio::process::Command::new(crate::program_locator::user_shell());
-        c.arg("-lc").arg(command);
+        let shell = crate::program_locator::user_shell();
+        let mut c = tokio::process::Command::new(&shell);
+        match &tools {
+            Some((dir, search_path)) => {
+                c.env(SHELL_CLI_VARIABLE, dir);
+                c.env(SHELL_PATH_VARIABLE, search_path);
+                c.arg("-lc").arg(path_restoring_script(&shell, command));
+            }
+            None => {
+                c.arg("-lc").arg(command);
+            }
+        }
         crate::proc::clear_appimage_env(c.as_std_mut());
         c
     };
-    if let Some(dir) = &cli.dir {
+    if let Some((dir, search_path)) = &tools {
         c.env(
             "PATH",
-            crate::terminal::env::prepend_path(std::env::var_os("PATH").as_deref(), dir),
+            crate::terminal::env::prepend_path(Some(search_path.as_os_str()), dir),
         );
     }
     if let Some(exe) = &cli.exe {
@@ -918,6 +952,70 @@ mod tests {
         let plain = shell_command(script, &crate::terminal::env::CliEnv::default());
         let envs: Vec<_> = plain.as_std().get_envs().collect();
         assert!(envs.is_empty(), "{envs:?}");
+    }
+
+    #[cfg(not(windows))]
+    #[tokio::test]
+    async fn a_login_profile_that_resets_path_keeps_the_tools_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        let profile_home = dir.path().join("home");
+        let tools = dir.path().join("My Tools");
+        let profile_tools = dir.path().join("Profile Tools");
+        let search_tools = dir.path().join("Search Tools");
+        std::fs::create_dir_all(&profile_home).unwrap();
+        std::fs::create_dir_all(&tools).unwrap();
+        std::fs::write(
+            profile_home.join(".profile"),
+            format!(
+                "PATH='{}':/usr/bin:/bin\nexport PATH\n",
+                profile_tools.display()
+            ),
+        )
+        .unwrap();
+        let script = path_restoring_script(Path::new("/bin/sh"), "printf '%s' \"$PATH\"");
+        let output = tokio::process::Command::new("/bin/sh")
+            .arg("-lc")
+            .arg(script)
+            .env("HOME", &profile_home)
+            .env("ENV", "/dev/null")
+            .env(SHELL_CLI_VARIABLE, &tools)
+            .env(SHELL_PATH_VARIABLE, &search_tools)
+            .env("PATH", "/usr/bin:/bin")
+            .output()
+            .await
+            .unwrap();
+        let path = String::from_utf8_lossy(&output.stdout).into_owned();
+        assert_eq!(
+            std::env::split_paths(&path).next().as_deref(),
+            Some(tools.as_path()),
+            "{path}"
+        );
+        assert_eq!(
+            std::env::split_paths(&path).nth(1).as_deref(),
+            Some(profile_tools.as_path()),
+            "{path}"
+        );
+        assert_eq!(
+            std::env::split_paths(&path).last().as_deref(),
+            Some(search_tools.as_path()),
+            "{path}"
+        );
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn only_posix_shells_get_the_path_prefix() {
+        for shell in ["/bin/bash", "/bin/zsh", "/bin/sh", "/usr/bin/dash"] {
+            let script = path_restoring_script(Path::new(shell), "latexmk main.tex");
+            assert!(script.ends_with("\nlatexmk main.tex"), "{script}");
+            assert!(script.starts_with("PATH=\"$OLEAFLY_SHELL_CLI:$PATH:$OLEAFLY_SHELL_PATH\""));
+        }
+        for shell in ["/usr/bin/fish", "/bin/tcsh", "/usr/bin/nu"] {
+            assert_eq!(
+                path_restoring_script(Path::new(shell), "latexmk main.tex"),
+                "latexmk main.tex"
+            );
+        }
     }
 
     #[tokio::test]

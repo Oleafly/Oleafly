@@ -476,9 +476,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "A falha corresponde a uma limitação conhecida do motor Tectonic embutido. Escolha como este projeto deve compilar. A escolha fica salva no projeto, então quem colabora recebe a mesma configuração.",
     "descriptionImportScan": "A varredura de importação encontrou recursos que o motor Tectonic embutido não orquestra. Escolha como este projeto deve compilar. A escolha fica salva no projeto, então quem colabora recebe a mesma configuração.",
+    "descriptionTexMissing": "Este projeto agora compila com o latexmk, e este computador ainda não consegue executá-lo. O Oleafly pode instalar o TinyTeX para você, ou você pode voltar ao motor Tectonic embutido.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX pelo latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "A compilação parou em {{file}}.",
+      "missingFiles": "A compilação não encontrou {{files}}.",
+      "mirrorStatus": "O espelho devolveu HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "A bibliografia usa biblatex e Biber",
+        "detail": "Este projeto precisa do Biber para montar a lista de referências. O Oleafly traz um Biber compatível com o motor embutido. Se as citações continuarem como “?” depois de compilar, procure uma nota do Biber no log."
+      },
+      "bundle-fetch-failed": {
+        "title": "O download dos pacotes TeX falhou",
+        "detail": "O Oleafly não conseguiu baixar os pacotes TeX do espelho dele, então a compilação nem chegou ao seu documento. Confira sua conexão e compile de novo. O download continua de onde parou."
+      },
+      "cjk-pdftex-package": {
+        "title": "O CJKutf8 precisa do pdfLaTeX",
+        "detail": "O CJKutf8 e o CJK só funcionam no pdfLaTeX. No motor embutido (XeTeX), o documento ainda compila, mas o texto em chinês, japonês ou coreano some do PDF. Mude para o pdfLaTeX no TeX do sistema ou troque o pacote pelo xeCJK."
+      },
+      "class-compat": {
+        "title": "A classe do documento esbarra nos limites do motor",
+        "detail": "Os erros de compilação vêm de uma classe ou de um arquivo de estilo, não do seu documento. Classes de editoras costumam depender de ferramentas ou de comportamentos do pdfTeX que o motor embutido não tem. O latexmk compila com uma distribuição TeX completa."
+      },
+      "eps-image": {
+        "title": "Imagens EPS precisam de um conversor",
+        "detail": "O motor embutido não consegue inserir imagens EPS. Converta-as para PDF com o epstopdf ou o Inkscape, ou mude para o pdfLaTeX no TeX do sistema, que converte EPS pelo Ghostscript."
+      },
+      "fontspec": {
+        "title": "Fontes personalizadas (fontspec)",
+        "detail": "O fontspec precisa que as fontes citadas estejam neste computador. As fontes que vinham com um editor online podem estar faltando aqui."
+      },
+      "glossaries-index": {
+        "title": "Ferramenta de glossário ou índice",
+        "detail": "O glossaries e o makeindex precisam de uma execução extra do makeindex ou do xindy, que o motor embutido não faz."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "O hyperref está configurado para o driver pdfTeX",
+        "detail": "Esta classe ou este preâmbulo força o driver pdftex do hyperref, que o motor embutido não consegue usar. Mude para o pdfLaTeX no TeX do sistema ou remova a opção pdftex para o hyperref escolher o driver sozinho."
+      },
+      "minted": {
+        "title": "O minted precisa de shell escape e do Pygments",
+        "detail": "Listagens de código com o minted precisam de uma distribuição TeX do sistema e do pygmentize. Mude para o LaTeX do sistema e só permita comandos externos neste computador se você confiar em todos os arquivos do projeto."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Falta um pacote no conjunto embutido",
+        "detail": "Algo que este projeto carrega não está no conjunto de pacotes TeX embutido. Adicione o arquivo ao projeto se ele veio com o seu modelo, ou mude para o TeX do sistema e instale o pacote pelo TeX Live."
+      },
+      "pdftex-only": {
+        "title": "Pacotes exclusivos do pdfTeX",
+        "detail": "O motor embutido é baseado no XeTeX, e este projeto depende de pacotes ou comandos que só funcionam com o pdfTeX. O latexmk compila com o pdfLaTeX de verdade."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "O PythonTeX precisa do auxiliar dele, que vem da distribuição TeX do sistema ativa. Mude para o LaTeX do sistema e só permita comandos externos neste computador se você confiar em todos os arquivos do projeto."
+      },
+      "shell-escape": {
+        "title": "Comandos de shell escape",
+        "detail": "O código usa \\write18 ou outro shell escape. Mude para o LaTeX do sistema e só permita comandos externos neste computador se você confiar em todos os arquivos do projeto e as ferramentas necessárias estiverem instaladas."
+      }
     },
     "recommended": "Recomendado",
     "shellEscape": {
@@ -506,13 +566,14 @@
       "withFailures_other": "Sem instalação, funciona offline. A expectativa é que {{features}} continuem falhando."
     },
     "tinytex": {
-      "description": "Instala um TeX Live compacto na sua pasta pessoal, sem precisar de permissões de administrador. O download principal tem cerca de 250 MB. Modelos de periódico podem baixar mais pacotes depois, chegando a cerca de 1 GB no total.",
+      "description": "Instala um TeX Live compacto, sem precisar de permissões de administrador. O download principal tem cerca de 250 MB. Modelos de periódico podem baixar mais pacotes depois, chegando a cerca de 1 GB no total.",
       "download": "Baixar e usar o TinyTeX",
       "resume": "Retomar o download ({{megabytes}} MB prontos)",
       "title": "Baixar o TinyTeX"
     },
     "titleCompileFailure": "Esta compilação precisa de mais do que o motor embutido",
-    "titleImportScan": "Este projeto precisa de mais do que o motor embutido"
+    "titleImportScan": "Este projeto precisa de mais do que o motor embutido",
+    "titleTexMissing": "Este compilador precisa de uma distribuição TeX que funcione"
   },
   "shellCommands": {
     "allow": "Permitir comandos externos",
@@ -1172,11 +1233,16 @@
     },
     "wait": {
       "description": "{{phase}} Sua compilação está na fila e começa sozinha assim que o motor estiver pronto.",
+      "stop": "Parar a instalação",
       "title": "O TinyTeX ainda está baixando"
     },
     "typstQuit": {
       "title": "O Typst ainda está sendo instalado",
       "description": "O Typst {{version}} está sendo baixado. Se você encerrar agora, o download para e você vai precisar recomeçá-lo em Configurações."
+    },
+    "packageQuit": {
+      "title": "O Oleafly ainda está alterando pacotes do TeX",
+      "description": "Se você encerrar agora, a instalação ou a remoção para no meio e pode deixar o gerenciador de pacotes do TeX quebrado."
     }
   },
   "toolbar": {
@@ -1342,7 +1408,7 @@
       "compiling": "Compilando com o Typst"
     },
     "errors": {
-      "pandoc": "O Pandoc não está pronto. Instale-o em Ferramentas e tente de novo.",
+      "pandoc": "O Pandoc não está pronto. Repare-o em Configurações > Motores > Markdown e tente de novo.",
       "noMain": "Não foi possível ler o arquivo LaTeX principal.",
       "emptyOutput": "O Pandoc devolveu um documento vazio.",
       "failed": "A conversão parou: {{detail}}"
@@ -1407,7 +1473,8 @@
     "svg": "Imagens SVG",
     "html": "HTML",
     "experimental": "Experimental",
-    "htmlNote": "A exportação HTML do Typst ainda é experimental. Ela deixa de fora a configuração de página e os elementos posicionados.",
+    "htmlNote": "A exportação HTML do Typst ainda é experimental. Ela mantém o texto e as imagens, mas não a configuração de página nem os desenhos.",
+    "htmlNoteOldTypst": "O Typst {{version}} deixa as equações de fora do HTML. O Typst 0.15 ou mais recente as mantém.",
     "ppi": "Resolução",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Páginas",

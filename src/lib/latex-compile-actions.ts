@@ -3,10 +3,24 @@ import { decodeAppError, describeError, SHELL_ESCAPE_DECLINED } from "@/lib/app-
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { recompileWithPreview } from "@/lib/compile-preview";
+import { useEngineStore } from "@/store/engine";
+import { useEnginePickerStore } from "@/store/engine-picker";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 
 export function shellEscapeDeclined(error: unknown): boolean {
   return decodeAppError(error)?.code === SHELL_ESCAPE_DECLINED;
+}
+
+export async function offerTexSetupAfterSwitch(): Promise<void> {
+  const { projectId } = useFilesStore.getState();
+  const engine = useEngineStore.getState();
+  if (engine.installing) return;
+  await engine.refresh({ rescan: "full" });
+  const blocked = Boolean(useEngineStore.getState().info?.latexmk_blocker);
+  const files = useFilesStore.getState();
+  if (blocked && files.projectId === projectId && files.engine.id === "latexmk") {
+    useEnginePickerStore.getState().openPicker("tex-missing", []);
+  }
 }
 
 export async function applyShellEscape(

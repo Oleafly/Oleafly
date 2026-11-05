@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   recompile: vi.fn(),
   refreshEngine: vi.fn(),
   error: vi.fn(),
+  engine: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -21,9 +22,11 @@ vi.mock("@/lib/toast", () => ({ toast: { error: mocks.error } }));
 vi.mock("@/store/compile", () => ({
   useCompileStore: { getState: () => ({ recompile: mocks.recompile }) },
 }));
-vi.mock("@/store/files", () => ({
-  useFilesStore: { getState: () => ({ refreshEngine: mocks.refreshEngine }) },
-}));
+vi.mock("@/store/files", () => {
+  const useFilesStore = (select: (state: unknown) => unknown) => select({ engine: mocks.engine() });
+  useFilesStore.getState = () => ({ refreshEngine: mocks.refreshEngine });
+  return { useFilesStore };
+});
 
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -55,6 +58,7 @@ beforeEach(() => {
   mocks.listFontComponents.mockResolvedValue([textPack(false)]);
   mocks.installFontComponent.mockResolvedValue(undefined);
   mocks.refreshEngine.mockResolvedValue(undefined);
+  mocks.engine.mockReturnValue({ typst_options: { system_fonts: true, reproducible: false } });
 });
 
 describe("missing Typst font hint", () => {
@@ -87,5 +91,39 @@ describe("missing Typst font hint", () => {
     await waitFor(() => expect(mocks.listFontComponents).toHaveBeenCalled());
     expect(screen.queryByTestId("font-pack-hint")).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it.each([
+    ["system fonts off", { system_fonts: false, reproducible: false }],
+    ["a reproducible build", { system_fonts: true, reproducible: true }],
+  ])("offers no download with %s, because packs cannot reach that compile", async (_name, options) => {
+    mocks.engine.mockReturnValue({ typst_options: options });
+    render(<CompileErrorDetails err={warning("unknown font family: liberation sans")} />);
+    const label = enSettings.downloads.fontPacks["typst-text"].label;
+    expect(
+      await screen.findByText(
+        enEditor.log.fontPackSealed.replace("{{family}}", "liberation sans").replace("{{pack}}", label),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enEditor.log.fontPackAction })).not.toBeInTheDocument();
+  });
+
+  it("offers the pack a missing-glyph warning names", async () => {
+    mocks.listFontComponents.mockResolvedValue([
+      { ...textPack(false), id: "typst-cjk", families: ["Noto Serif CJK SC"] },
+    ]);
+    render(
+      <CompileErrorDetails
+        err={{
+          ...warning("no font has these characters: 한 글"),
+          code: "typst.missing_glyphs_pack",
+          params: { sample: "한 글", pack: "typst-cjk" },
+        }}
+      />,
+    );
+    const label = enSettings.downloads.fontPacks["typst-cjk"].label;
+    expect(await screen.findByText(enEditor.log.fontPackGlyphs.replace("{{pack}}", label))).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: enEditor.log.fontPackAction }));
+    await waitFor(() => expect(mocks.installFontComponent).toHaveBeenCalledWith("typst-cjk"));
   });
 });

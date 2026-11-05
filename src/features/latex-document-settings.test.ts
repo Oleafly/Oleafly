@@ -595,6 +595,25 @@ describe("validateLatexSetting", () => {
   });
 });
 
+describe("latexSupportsSystemFonts on Auto", () => {
+  it("reads every program comment spelling the compiler reads", () => {
+    for (const comment of ["% !TEX TS-program = xelatex", "% !TEX engine = lualatex", "%!TeX program=xelatex"]) {
+      expect(latexSupportsSystemFonts("latexmk", undefined, `${comment}\n\\documentclass{article}`)).toBe(true);
+    }
+    expect(latexSupportsSystemFonts("latexmk", undefined, "% !TEX TS-program = pdflatex\n\\usepackage{fontspec}")).toBe(false);
+  });
+
+  it("counts only live preamble text, as the compiler choice does", () => {
+    expect(latexSupportsSystemFonts("latexmk", undefined, "% \\usepackage{fontspec}\n\\documentclass{article}")).toBe(false);
+    expect(
+      latexSupportsSystemFonts("latexmk", undefined, "\\documentclass{article}\n\\begin{document}\nfontspec\n\\end{document}"),
+    ).toBe(false);
+    expect(latexSupportsSystemFonts("latexmk", undefined, "\\usepackage{kotex}\n\\setmainhangulfont{UnBatang.ttf}")).toBe(true);
+    expect(latexSupportsSystemFonts("latexmk", undefined, "\\usepackage{kotex}")).toBe(false);
+    expect(latexSupportsSystemFonts("latexmk", undefined, "\\usepackage{luatexko}")).toBe(true);
+  });
+});
+
 describe("latexSupportsSystemFonts", () => {
   it("follows the project's compiler", () => {
     expect(latexSupportsSystemFonts("latex", undefined, "")).toBe(true);
@@ -621,7 +640,7 @@ describe("latexSupportsSystemFonts", () => {
     ["x\u00a0% !TeX program = xelatex", false],
     [String.raw`\documentclass{article} % !TeX program = xelatex`, false],
     ["%% !TeX program = xelatex", false],
-    ["% !TeX TS-program = xelatex", false],
+    ["% !TeX TS-program = xelatex", true],
     ["% !TeX program = pdflatex\n% !TeX program = xelatex", false],
     ["% !TeX program = \n% !TeX program = xelatex", true],
     ["% ! ! TeX program = xelatex", false],

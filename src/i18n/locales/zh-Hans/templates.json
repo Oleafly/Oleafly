@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "正在设置模板…",
-      "downloading": "正在下载 {{label}}（{{index}}/{{total}}）"
+      "downloading": "正在下载 {{label}}（{{index}}/{{total}}）",
+      "failed": "无法下载此模板所需的字体。请检查网络连接后重试。"
     },
     "category": {
       "all": "全部",

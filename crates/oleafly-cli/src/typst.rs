@@ -150,7 +150,7 @@ pub(crate) fn resolve_pinned(pin: &str, inventory: &TypstInventory) -> Result<Pi
             version: wanted,
         }),
         None if catalog.typst_release(pin).is_some() => Err(format!(
-            "this project pins Typst {wanted}, which is not installed. Install it in Oleafly under {SETTINGS_HINT}, or set {TYPST_OVERRIDE} to a Typst {wanted} binary"
+            "this project pins Typst {wanted}, which is not installed. Run `oleafly typst install {wanted}`, install it in Oleafly under {SETTINGS_HINT}, or set {TYPST_OVERRIDE} to a Typst {wanted} binary"
         )),
         None => Err(unknown_pin_message(&wanted.to_string())),
     }
@@ -243,10 +243,15 @@ mod tests {
         assert!(missing.contains(SETTINGS_HINT), "{missing}");
         assert!(missing.contains(TYPST_OVERRIDE), "{missing}");
         assert!(!missing.contains(';') && !missing.contains('\u{2014}'));
+        assert!(
+            missing.contains("Run `oleafly typst install 0.12.0`"),
+            "{missing}"
+        );
 
         let unknown = resolve_pinned("0.99.0", &inventory).unwrap_err();
         assert!(unknown.contains("Typst 0.99.0"), "{unknown}");
         assert!(!unknown.contains(SETTINGS_HINT), "{unknown}");
+        assert!(!unknown.contains("oleafly typst install"), "{unknown}");
 
         let garbage = resolve_pinned("latest", &inventory).unwrap_err();
         assert!(garbage.contains("Typst latest"), "{garbage}");

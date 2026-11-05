@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { prepareAccessibleSource } from "./accessible-prep";
+import { hasTableEnvironment, prepareAccessibleSource } from "./accessible-prep";
 
 const DOC = "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}";
 
@@ -45,6 +45,32 @@ describe("prepareAccessibleSource: DocumentMetadata", () => {
     const { changes } = prepareAccessibleSource(DOC);
     const added = changes.find((c) => c.summary.key === "prep.metadataAdded");
     expect(added?.summary.params).toEqual({ date: "2025-11-01" });
+  });
+});
+
+describe("prepareAccessibleSource: included files", () => {
+  const chapter = "\\section{Results}\n\\includegraphics{plot.pdf}\n";
+
+  it("keeps \\DocumentMetadata and unicode-math out of an included file", () => {
+    const result = prepareAccessibleSource(chapter, { engine: "lualatex", scope: "included" });
+    expect(result.output).not.toContain("DocumentMetadata");
+    expect(result.output).not.toContain("unicode-math");
+    expect(result.output).toContain("alt={TODO: describe plot.pdf}");
+    expect(result.changes.map((change) => change.summary.key)).toContain("prep.metadataInMain");
+    expect(result.changes.map((change) => change.summary.key)).not.toContain("prep.titleRequired");
+  });
+
+  it("tags header rows on a main file whose tables live in its chapters", () => {
+    const main = "\\documentclass{article}\n\\begin{document}\n\\input{tables}\n\\end{document}\n";
+    expect(prepareAccessibleSource(main).output).not.toContain("header-rows");
+    expect(prepareAccessibleSource(main, { hasTables: true }).output).toContain("table/header-rows");
+    expect(hasTableEnvironment("\\begin{tabular}{ll}\\end{tabular}")).toBe(true);
+    expect(hasTableEnvironment("% \\begin{tabular}{ll}\n")).toBe(false);
+  });
+
+  it("still prepares a main file that gets its class from an input", () => {
+    const main = "\\input{preamble}\n\\begin{document}\nHello\n\\end{document}\n";
+    expect(prepareAccessibleSource(main).output).toContain("DocumentMetadata");
   });
 });
 

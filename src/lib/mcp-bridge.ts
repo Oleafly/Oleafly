@@ -348,7 +348,7 @@ function createMcpOnlyTools(
   return {
     get_status: {
       description:
-        "Get the app status: Oleafly version, the currently open project, its main document, its document engine (latex, latexmk, typst or markdown), and the last compile outcome. Call this first to orient yourself.",
+        "Get the app status: Oleafly version, the currently open project, its main document, its document engine (latex, latexmk, typst or markdown), and the last compile outcome with the reason it failed, if any. Call this first to orient yourself.",
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       execute: async () => {
         const files = useFilesStore.getState();
@@ -359,6 +359,7 @@ function createMcpOnlyTools(
           main_doc: files.mainDoc ?? null,
           engine: files.engineLoaded ? files.engine.id : null,
           compile_status: compile.status,
+          ...(compile.failureReason ? { failure_reason: compile.failureReason } : {}),
         };
       },
     },

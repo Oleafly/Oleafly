@@ -1098,6 +1098,22 @@
       "startWithProject": {
         "description": "Starta shell när ett projekt öppnas i stället för första gången du visar terminalen.",
         "label": "Starta shell med projektet"
+      },
+      "openWith": {
+        "ariaLabel": "Terminal för att öppna mappar och kommandon",
+        "builtin": "Inbyggd terminal",
+        "cmd": "Kommandotolken",
+        "description": "Var Oleafly öppnar en mapp eller kör ett kommando när du väljer Öppna i terminalen.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Öppna i",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (hittades inte)",
+        "powershell": "PowerShell",
+        "systemDefault": "Systemstandard ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Systemets standardterminal"
       }
     },
     "zen": {
@@ -1360,11 +1376,17 @@
       "tooltip": "Gäller nya projekt. Varje projekt nålar fast sin egen motor i project.json, så medarbetare som öppnar samma projekt kompilerar det på samma sätt oavsett den här inställningen."
     },
     "distributions": {
+      "automatic": "Automatisk",
+      "automaticTooltip": "Låt Oleafly välja igen: först ett fullständigt system-TeX, sedan TinyTeX.",
       "empty": "Ingen TeX-distribution hittades på den här datorn.",
       "heading": "Hantera TeX-distributioner",
+      "inUse": "Används",
+      "inUseTooltip": "latexmk-kompileringar körs från den här distributionen.",
       "rowTooltip": "Följer med {{tools}}. Oleafly kör sina TeX-verktyg från {{binDir}}.",
       "rowTooltipNoTools": "Ingen latexmk eller tlmgr hittades i den här installationen. Oleafly kör sina TeX-verktyg från {{binDir}}.",
-      "tooltip": "Allt som latexmk-motorn kan använda på den här datorn. TinyTeX installeras i din hemmapp utan administratörsrättigheter. Systeminstallationer (MacTeX, TeX Live, MiKTeX) hittas automatiskt."
+      "tinytexChooseHint": "Kompileringar fortsätter att använda distributionen som är markerad Används. Om du vill byta efter installationen, klicka på Använd för kompileringar vid TinyTeX.",
+      "tooltip": "Allt som latexmk-motorn kan använda på den här datorn. TinyTeX installeras utan administratörsrättigheter. Systeminstallationer (MacTeX, TeX Live, MiKTeX) hittas automatiskt.",
+      "use": "Använd för kompileringar"
     },
     "latexmkMissing": "ingen latexmk hittades",
     "markdown": {
@@ -1382,6 +1404,7 @@
       "tectonicDetail": "Sätter den LaTeX som pandoc producerar. Följer med Oleafly, inget att konfigurera.",
       "tooltip": "Markdown-projekt konverteras med pandoc (Pandoc Markdown: tabeller, fotnoter, citeringar, matematik) till LaTeX och sätts sedan till PDF av den medföljande Tectonic. Pandoc följer med Oleafly."
     },
+    "latexmkNeedsPerl": "latexmk behöver Perl",
     "packages": {
       "ariaLabel": "LaTeX-paket",
       "badge": {
@@ -1402,6 +1425,8 @@
       "includedIn": "Ingår i {{package}}. Att ta bort det tar också bort de andra filerna i paketet.",
       "intro": {
         "available": "De här paketen gäller projekt som använder latexmk (systemets TeX). Tectonic använder sitt eget paketbunt.",
+        "systemManaged": "Den här TeX Live följde med din Linux-distribution, så lägg till paket med {{manager}}. Oleafly kan inte ändra den.",
+        "systemManagedTinytex": "Den här TeX Live följde med din Linux-distribution, så lägg till paket med {{manager}}. Om du vill att Oleafly ska hantera paketen, ladda ner TinyTeX ovan.",
         "unavailable": "Pakethantering kräver TeX Live eller TinyTeX. För MiKTeX använder du MiKTeX Console."
       },
       "refreshInstalled": "Uppdatera installerade paket",
@@ -1433,9 +1458,10 @@
       "tooltip": "Standardmotorn (Tectonic) är snabb och fungerar offline men kan inte skapa taggade PDF-filer enligt Section 508 eller PDF/UA. Det kräver systemets LuaLaTeX, som kan läsa lokala filer som ditt konto kommer åt och bara bör användas med projekt du litar på. Oleafly kan använda en befintlig distribution eller hanterad TinyTeX."
     },
     "tinytex": {
-      "detail": "Ett kompakt TeX Live i din hemmapp. Kärnnedladdningen är cirka 250 MB. Tidskriftsmallar kan lägga till paket senare, upp till ungefär 1 GB totalt. Att installera i förväg gör systemets LaTeX tillgänglig när du uttryckligen väljer den.",
+      "detail": "Ett kompakt TeX Live som inte kräver administratörsrättigheter. Kärnnedladdningen är cirka 250 MB. Tidskriftsmallar kan lägga till paket senare, upp till ungefär 1 GB totalt. Att installera i förväg gör systemets LaTeX tillgänglig när du uttryckligen väljer den.",
       "download": "Ladda ner TinyTeX (~250 MB)",
-      "resume": "Återuppta nedladdningen ({{size}} MB klart)"
+      "resume": "Återuppta nedladdningen ({{size}} MB klart)",
+      "update": "Uppdatera"
     },
     "typst": {
       "detail": "Följer med Oleafly, så det finns inget att konfigurera. Den behöver bara en nätverksanslutning första gången ett dokument importerar ett @preview-paket.",
@@ -1500,7 +1526,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Hittades inte på den här datorn."
+        "missing": "Hittades inte på den här datorn.",
+        "outdated": "{{tool}} {{version}} på den här datorn är för gammalt. Oleafly behöver {{minimum}} eller senare, så programmet använder kopian som det laddar ner."
       },
       "managedIdle": "Används inte. Oleafly använder först kopian som hittades på den här datorn.",
       "superseded": "Används inte. Oleafly använder nu {{tool}} {{version}}.",

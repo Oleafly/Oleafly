@@ -4,14 +4,17 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use oleafly_core::engine_spec::EngineFlags;
+use oleafly_core::tex_distro::{find_tool_in_dir, latexmk_needs_perl, TexSearch};
+use oleafly_core::tex_outputs::source_head;
 use oleafly_core::typst_toolchain::{
     bundled_typst_version, typst_version_of, TYPST_VERSION_TIMEOUT,
 };
 use oleafly_core::{
-    compile_dir_for, BuildLocation, Engine, ErrorKind as CoreKind, ProjectManifest, TexFlavor,
-    Workspace,
+    compile_dir_for, source_tex_flavor, tex_program_flavor, BuildLocation, Engine,
+    ErrorKind as CoreKind, ProjectManifest, TexFlavor, Workspace,
 };
 
+use crate::commands::common::{appimage_engines_note, engine_install_hint, tectonic_fallback};
 use crate::contract::{CliError, ErrorKind, Warning};
 use crate::desktop_link::{self, LinkInfo};
 use crate::native::{BuildTools, Discovery, NativeCompiler};
@@ -265,6 +268,67 @@ pub fn open_project(
     Ok(opened)
 }
 
+fn tex_engine_choice(
+    source: &str,
+    compiler: Option<TexFlavor>,
+    default_is_latexmk: bool,
+    latexmk_can_run: impl FnOnce(TexFlavor) -> bool,
+) -> (Engine, Option<Warning>) {
+    if compiler.is_some() || default_is_latexmk {
+        return (Engine::Latexmk, None);
+    }
+    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
+    let wanted = tex_program_flavor(source)
+        .or_else(|| source_tex_flavor(source).filter(|flavor| flavor.goes_through_dvi()));
+    match wanted {
+        None | Some(TexFlavor::Xelatex) => (Engine::Tectonic, None),
+        Some(flavor) if flavor.goes_through_dvi() || latexmk_can_run(flavor) => {
+            (Engine::Latexmk, None)
+        }
+        Some(flavor) => (
+            Engine::Tectonic,
+            Some(Warning::new(
+                "build.detected_engine",
+                format!(
+                    "This document asks for {}, which latexmk can't run on this machine, so Oleafly builds it with the built-in engine.",
+                    flavor.as_str()
+                ),
+            )),
+        ),
+    }
+}
+
+fn latexmk_runs_flavor(tools: &BuildTools, search: &TexSearch, flavor: TexFlavor) -> bool {
+    tools.latexmk.as_deref().is_some_and(|latexmk| {
+        !latexmk_needs_perl(search, latexmk)
+            && latexmk
+                .parent()
+                .into_iter()
+                .chain(tools.tex_dirs.iter().map(PathBuf::as_path))
+                .any(|dir| find_tool_in_dir(dir, flavor.as_str()).is_some())
+    })
+}
+
+fn bare_folder_engine(
+    root: &Path,
+    main: &str,
+    compiler: Option<TexFlavor>,
+) -> (Engine, Option<Warning>) {
+    let default_is_latexmk = crate::app_paths::data_root()
+        .as_deref()
+        .and_then(crate::app_config::latex_default_engine)
+        .is_some();
+    let source = source_head(&root.join(main)).unwrap_or_default();
+    tex_engine_choice(&source, compiler, default_is_latexmk, |flavor| {
+        let discovery = Discovery::from_env(root);
+        latexmk_runs_flavor(
+            &BuildTools::discover_with(&discovery),
+            &discovery.tex,
+            flavor,
+        )
+    })
+}
+
 fn open_project_unchecked(
     path: &Path,
     main: Option<&str>,
@@ -288,7 +352,8 @@ fn open_project_unchecked(
         }
     }
     let mut opened = opened_without_overrides(path, main)?;
-    if main.is_none() && compiler.is_none() {
+    let bare_folder = opened.origin == ProjectOrigin::Detected;
+    if main.is_none() && compiler.is_none() && !bare_folder {
         return Ok(opened);
     }
     let workspace = &opened.workspace;
@@ -319,6 +384,11 @@ fn open_project_unchecked(
         if engine != Engine::Latexmk {
             manifest.tex_flavor = None;
         }
+    }
+    if bare_folder && manifest.engine().ok() == Some(Engine::Tectonic) {
+        let (engine, warning) = bare_folder_engine(&root, &manifest.main_doc, compiler);
+        manifest.engine = engine.manifest_name().to_string();
+        opened.warnings.extend(warning);
     }
     if let Some(flavor) = compiler {
         if manifest.engine().ok() == Some(Engine::Latexmk) {
@@ -455,7 +525,8 @@ pub(crate) async fn typst_settings(
         variant: variant.as_deref(),
         offline,
         commit_time,
-    }))
+    })
+    .with_system_font_mirror(data_root))
 }
 
 pub(crate) fn output_destination(
@@ -492,6 +563,31 @@ pub(crate) fn output_destination(
     Ok(requested.to_path_buf())
 }
 
+fn missing_tool_hint(
+    opened: &OpenedProject,
+    tools: &BuildTools,
+    compiler_flag: bool,
+    appimage: Option<&Path>,
+) -> Option<String> {
+    let engine = opened.workspace.manifest().engine().ok()?;
+    let (name, _) = tools
+        .required_for_engine(engine)
+        .into_iter()
+        .find(|(_, path)| path.is_none())?;
+    let explained = tools.rejected_override(name).is_some()
+        || (name == "typst" && tools.typst_pin_error().is_some())
+        || (name == "pandoc" && tools.pandoc_too_old_message().is_some());
+    if explained {
+        return None;
+    }
+    let fallback = tectonic_fallback(&opened.origin, compiler_flag);
+    let hint = engine_install_hint(name, tools, Some(fallback))?;
+    Some(match appimage.filter(|_| name != "latexmk") {
+        Some(appimage) => format!("{} {hint}", appimage_engines_note(appimage)),
+        None => hint,
+    })
+}
+
 pub async fn build_project(path: &Path, request: &BuildRequest) -> Result<BuildResult, CliError> {
     let opened = open_project(path, request.main.as_deref(), request.compiler)?;
     build_opened(&opened, request).await
@@ -517,18 +613,36 @@ pub async fn build_opened(
         discovery.data_root.as_deref(),
     )
     .await?;
+    let missing_hint = missing_tool_hint(
+        opened,
+        &tools,
+        request.compiler.is_some(),
+        crate::app_paths::recorded_appimage().as_deref(),
+    );
     let compiler = NativeCompiler::new(tools)
         .with_typst_settings(settings)
         .with_log(request.log.clone())
         .with_timeout(request.timeout())
         .with_lock_wait(request.on_lock_wait.clone());
-    let mut result = compiler.build(workspace, request.flags).await?;
+    let mut result = compiler
+        .build(workspace, request.flags)
+        .await
+        .map_err(|error| match missing_hint {
+            Some(hint) if error.kind == ErrorKind::MissingTool => error.hint(hint),
+            _ => error,
+        })?;
     result.warnings.splice(
         0..0,
         unapplied
             .into_iter()
             .map(|message| Warning::new(TYPST_SETTING_UNSUPPORTED, message)),
     );
+    let tex_warnings: Vec<Warning> = result
+        .errors
+        .iter()
+        .filter_map(crate::native::BuildError::tex_warning)
+        .collect();
+    result.warnings.extend(tex_warnings);
     let record = crate::record::BuildRecord {
         schema_version: crate::record::RECORD_SCHEMA,
         version: crate::version::APP_VERSION.to_string(),
@@ -598,6 +712,339 @@ mod tests {
             _guard: guard,
             previous,
         }
+    }
+
+    fn config(data: &Path, text: &str) {
+        std::fs::write(crate::app_config::config_path(data), text).unwrap();
+    }
+
+    fn opened_engine(folder: &Path, compiler: Option<TexFlavor>) -> OpenedProject {
+        open_project(folder, None, compiler).unwrap()
+    }
+
+    fn flagged(opened: &OpenedProject) -> bool {
+        opened
+            .warnings
+            .iter()
+            .any(|warning| warning.code == "build.flag_ignored")
+    }
+
+    #[test]
+    fn a_compiler_flag_turns_a_bare_folder_into_a_latexmk_build() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let folder = tempfile::tempdir().unwrap();
+        std::fs::write(folder.path().join("main.tex"), "\\documentclass{article}").unwrap();
+        let opened = opened_engine(folder.path(), Some(TexFlavor::Pdflatex));
+        let manifest = opened.workspace.manifest();
+        assert_eq!(manifest.engine().unwrap(), Engine::Latexmk);
+        assert_eq!(manifest.tex_flavor.as_deref(), Some("pdflatex"));
+        assert_eq!(opened.origin, ProjectOrigin::Detected);
+        assert!(!flagged(&opened), "{:?}", opened.warnings);
+
+        let plain = opened_engine(folder.path(), None);
+        assert_eq!(
+            plain.workspace.manifest().engine().unwrap(),
+            Engine::Tectonic
+        );
+        assert!(plain
+            .warnings
+            .iter()
+            .any(|warning| warning.code == "build.detected_main"));
+    }
+
+    #[test]
+    fn a_compiler_flag_still_warns_where_it_cannot_apply() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let typst = tempfile::tempdir().unwrap();
+        std::fs::write(typst.path().join("main.typ"), "= Paper\n").unwrap();
+        let opened = opened_engine(typst.path(), Some(TexFlavor::Xelatex));
+        assert_eq!(opened.workspace.manifest().engine().unwrap(), Engine::Typst);
+        assert!(flagged(&opened), "{:?}", opened.warnings);
+
+        let tectonic = tempfile::tempdir().unwrap();
+        std::fs::write(tectonic.path().join("main.tex"), "\\documentclass{article}").unwrap();
+        Workspace::init(
+            tectonic.path(),
+            oleafly_core::InitOptions {
+                main_document: Some("main.tex".into()),
+                engine: Some(Engine::Tectonic),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let opened = opened_engine(tectonic.path(), Some(TexFlavor::Pdflatex));
+        assert_eq!(
+            opened.workspace.manifest().engine().unwrap(),
+            Engine::Tectonic
+        );
+        assert!(flagged(&opened), "{:?}", opened.warnings);
+    }
+
+    #[test]
+    fn a_bare_folder_follows_the_default_latex_engine() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let folder = tempfile::tempdir().unwrap();
+        std::fs::write(folder.path().join("main.tex"), "\\documentclass{article}").unwrap();
+        config(data.path(), r#"{"latex_default_engine":"latexmk"}"#);
+        assert_eq!(
+            opened_engine(folder.path(), None)
+                .workspace
+                .manifest()
+                .engine()
+                .unwrap(),
+            Engine::Latexmk
+        );
+        config(data.path(), r#"{"latex_default_engine":"tectonic"}"#);
+        assert_eq!(
+            opened_engine(folder.path(), None)
+                .workspace
+                .manifest()
+                .engine()
+                .unwrap(),
+            Engine::Tectonic
+        );
+    }
+
+    #[test]
+    fn a_bare_folder_follows_a_program_comment() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let folder = tempfile::tempdir().unwrap();
+        std::fs::write(
+            folder.path().join("main.tex"),
+            "\u{feff}% !TEX program = uplatex\n\\documentclass{ujarticle}\n",
+        )
+        .unwrap();
+        assert_eq!(
+            opened_engine(folder.path(), None)
+                .workspace
+                .manifest()
+                .engine()
+                .unwrap(),
+            Engine::Latexmk
+        );
+    }
+
+    #[test]
+    fn tex_engine_choices_for_bare_folders() {
+        let never = |_: TexFlavor| -> bool { panic!("latexmk should not be looked up here") };
+        let plain = "\\documentclass{article}\n\\begin{document}x\\end{document}\n";
+        let choose = |source, found| tex_engine_choice(source, None, false, |_| found);
+
+        assert_eq!(
+            tex_engine_choice(plain, None, false, never).0,
+            Engine::Tectonic
+        );
+        assert_eq!(
+            tex_engine_choice(plain, Some(TexFlavor::Lualatex), false, never).0,
+            Engine::Latexmk
+        );
+        assert_eq!(
+            tex_engine_choice(plain, None, true, never).0,
+            Engine::Latexmk
+        );
+        assert_eq!(
+            tex_engine_choice("% !TEX program = xelatex\n", None, false, never).0,
+            Engine::Tectonic
+        );
+        assert_eq!(
+            tex_engine_choice("% !TEX program = platex\n", None, false, never).0,
+            Engine::Latexmk
+        );
+        assert_eq!(
+            tex_engine_choice("\\documentclass{ujarticle}\n", None, false, never).0,
+            Engine::Latexmk
+        );
+
+        let (engine, warning) = choose("% !TEX program = lualatex\n", true);
+        assert_eq!(engine, Engine::Latexmk);
+        assert!(warning.is_none());
+        let (engine, warning) = choose("% !TEX program = pdflatex\n", false);
+        assert_eq!(engine, Engine::Tectonic);
+        let warning = warning.expect("a document whose compiler can't be honoured says so");
+        assert_eq!(warning.code, "build.detected_engine");
+        assert!(warning.message.contains("pdflatex"), "{}", warning.message);
+    }
+
+    #[test]
+    fn the_compiler_a_comment_names_decides_the_engine() {
+        let asked = std::cell::Cell::new(None);
+        let (engine, warning) =
+            tex_engine_choice("% !TEX program = lualatex\n", None, false, |flavor| {
+                asked.set(Some(flavor));
+                false
+            });
+        assert_eq!(asked.get(), Some(TexFlavor::Lualatex));
+        assert_eq!(engine, Engine::Tectonic);
+        assert!(warning.is_some());
+    }
+
+    fn tex_bin(folder: &Path, name: &str, tools: &[&str]) -> PathBuf {
+        let bin = folder.join(name);
+        std::fs::create_dir_all(&bin).unwrap();
+        for tool in tools {
+            let tool = bin.join(crate::native::executable_name(tool));
+            std::fs::write(&tool, "").unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+        }
+        bin
+    }
+
+    #[test]
+    fn latexmk_counts_only_when_it_can_reach_the_compiler() {
+        let folder = tempfile::tempdir().unwrap();
+        let bin = tex_bin(folder.path(), "bin", &["latexmk", "pdflatex"]);
+        let latexmk = bin.join(crate::native::executable_name("latexmk"));
+        let search = TexSearch::default();
+        let tools = |latexmk: Option<&Path>, tex_dirs: Vec<PathBuf>| {
+            let mut tools = BuildTools::default();
+            tools.latexmk = latexmk.map(Path::to_path_buf);
+            tools.tex_dirs = tex_dirs;
+            tools
+        };
+
+        let beside = tools(Some(&latexmk), Vec::new());
+        assert!(latexmk_runs_flavor(&beside, &search, TexFlavor::Pdflatex));
+        assert!(!latexmk_runs_flavor(&beside, &search, TexFlavor::Lualatex));
+        assert!(!latexmk_runs_flavor(
+            &tools(None, vec![bin.clone()]),
+            &search,
+            TexFlavor::Pdflatex
+        ));
+
+        let elsewhere = tex_bin(folder.path(), "other", &["lualatex"]);
+        assert!(latexmk_runs_flavor(
+            &tools(Some(&latexmk), vec![elsewhere]),
+            &search,
+            TexFlavor::Lualatex
+        ));
+    }
+
+    #[test]
+    fn a_miktex_latexmk_with_no_perl_does_not_count() {
+        let folder = tempfile::tempdir().unwrap();
+        let bin = tex_bin(folder.path(), "miktex/bin", &["latexmk", "pdflatex"]);
+        let latexmk = bin.join(crate::native::executable_name("latexmk"));
+        let mut tools = BuildTools::default();
+        tools.latexmk = Some(latexmk);
+        let no_perl = TexSearch::default();
+        assert!(!latexmk_runs_flavor(&tools, &no_perl, TexFlavor::Pdflatex));
+
+        let perl_dir = tex_bin(folder.path(), "perl", &["perl"]);
+        let with_perl = TexSearch {
+            path: Some(perl_dir.into_os_string()),
+            ..TexSearch::default()
+        };
+        assert!(latexmk_runs_flavor(&tools, &with_perl, TexFlavor::Pdflatex));
+    }
+
+    fn hint_for(opened: &OpenedProject, tools: &BuildTools) -> Option<String> {
+        missing_tool_hint(opened, tools, false, None)
+    }
+
+    fn latexmk_project(folder: &Path) -> OpenedProject {
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        Workspace::init(
+            folder,
+            oleafly_core::InitOptions {
+                main_document: Some("main.tex".into()),
+                engine: Some(Engine::Latexmk),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        open_project(folder, None, None).unwrap()
+    }
+
+    #[test]
+    fn a_missing_latexmk_gets_a_hint_that_fits_the_machine() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let folder = tempfile::tempdir().unwrap();
+        let opened = latexmk_project(folder.path());
+
+        let discovery = Discovery {
+            app: Some(crate::app_paths::InstalledApp {
+                executable: folder.path().join("oleafly"),
+                bin_dir: folder.path().to_path_buf(),
+                resources_dir: None,
+            }),
+            ..Discovery::default()
+        };
+        let mut tools = BuildTools::discover_with(&discovery);
+        let hint = hint_for(&opened, &tools).unwrap();
+        assert!(hint.contains("Manage TeX distributions"), "{hint}");
+        assert!(!hint.contains("config set engine"), "{hint}");
+
+        tools.tectonic = Some(folder.path().join("tectonic"));
+        let hint = hint_for(&opened, &tools).unwrap();
+        assert!(
+            hint.ends_with("`oleafly config set engine tectonic`."),
+            "{hint}"
+        );
+
+        let standalone = BuildTools::discover_with(&Discovery::default());
+        let hint = hint_for(&opened, &standalone).unwrap();
+        assert!(!hint.contains("Manage TeX distributions"), "{hint}");
+    }
+
+    #[test]
+    fn no_install_hint_when_the_tool_has_its_own_explanation_or_is_found() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let folder = tempfile::tempdir().unwrap();
+        let opened = latexmk_project(folder.path());
+        let mut found = BuildTools::default();
+        found.latexmk = Some(folder.path().join("latexmk"));
+        assert_eq!(hint_for(&opened, &found), None);
+
+        let typst = tempfile::tempdir().unwrap();
+        std::fs::write(typst.path().join("main.typ"), "= Paper\n").unwrap();
+        let opened = open_project(typst.path(), None, None).unwrap();
+        let mut tools = BuildTools::default();
+        tools.use_pinned_typst(Err("this project pins Typst 0.1".to_string()));
+        assert_eq!(hint_for(&opened, &tools), None);
+    }
+
+    #[test]
+    fn a_missing_typst_hint_names_the_oleafly_install() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let typst = tempfile::tempdir().unwrap();
+        std::fs::write(typst.path().join("main.typ"), "= Paper\n").unwrap();
+        let opened = open_project(typst.path(), None, None).unwrap();
+        let hint = hint_for(&opened, &BuildTools::default()).unwrap();
+        assert!(hint.starts_with("Run `oleafly typst install"), "{hint}");
+    }
+
+    #[test]
+    fn an_appimage_hint_comes_first_for_engines_inside_the_image() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let typst = tempfile::tempdir().unwrap();
+        std::fs::write(typst.path().join("main.typ"), "= Paper\n").unwrap();
+        let opened = open_project(typst.path(), None, None).unwrap();
+        let appimage = Path::new("/home/me/Oleafly.AppImage");
+        let hint =
+            missing_tool_hint(&opened, &BuildTools::default(), false, Some(appimage)).unwrap();
+        assert!(
+            hint.starts_with("Your Oleafly AppImage (/home/me/Oleafly.AppImage)"),
+            "{hint}"
+        );
+        assert!(hint.contains("`oleafly typst install"), "{hint}");
+
+        let folder = tempfile::tempdir().unwrap();
+        let opened = latexmk_project(folder.path());
+        let hint =
+            missing_tool_hint(&opened, &BuildTools::default(), false, Some(appimage)).unwrap();
+        assert!(!hint.contains("AppImage"), "{hint}");
     }
 
     #[test]

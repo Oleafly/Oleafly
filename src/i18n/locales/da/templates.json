@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Sætter din skabelon op...",
-      "downloading": "Downloader {{label}} ({{index}} af {{total}})"
+      "downloading": "Downloader {{label}} ({{index}} af {{total}})",
+      "failed": "Skrifttyperne til denne skabelon kunne ikke downloades. Tjek din forbindelse, og prøv igen."
     },
     "category": {
       "all": "Alle",

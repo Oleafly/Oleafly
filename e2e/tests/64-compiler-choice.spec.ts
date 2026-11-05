@@ -109,6 +109,33 @@ async function chooseCompiler(page: Page, testid: string) {
     `!document.querySelector('[data-testid="${testid}"]')`,
     10_000,
   );
+  if (testid !== "compiler-tectonic") await closeTexSetupOffer(page);
+}
+
+async function closeTexSetupOffer(page: Page) {
+  const blocked = await page.evaluate<boolean>(
+    `import("/src/store/engine.ts").then(async (m) => {
+      await m.useEngineStore.getState().refresh();
+      return !!m.useEngineStore.getState().info?.latexmk_blocker;
+    })`,
+  );
+  if (!blocked) return;
+  await waitLong(
+    page,
+    `!!document.querySelector('[data-testid="engine-picker-modal"]')`,
+    20_000,
+  );
+  await page.evaluate(
+    `import("/src/store/engine-picker.ts").then((m) => {
+      m.useEnginePickerStore.getState().close();
+      return 1;
+    })`,
+  );
+  await waitLong(
+    page,
+    `!document.querySelector('[data-testid="engine-picker-modal"]')`,
+    10_000,
+  );
 }
 
 async function engineState(page: Page) {

@@ -21,7 +21,9 @@ import { notifyError } from "@/lib/toast";
 import { friendlyHint } from "@/components/ai/chat-parts";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
-import { getConfig, type AppConfig } from "@/lib/tauri";
+import { errorText } from "@/lib/app-error";
+import { logError } from "@/lib/log";
+import { cancelIsolatedCompile, getConfig, type AppConfig } from "@/lib/tauri";
 import {
   compileGeneratedTemplate,
   deleteGeneratedTemplate,
@@ -97,7 +99,7 @@ export function TemplateGenerateModal({
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("preview");
   const [previewPng, setPreviewPng] = useState<string | null>(null);
-  const [_compileLog, setCompileLog] = useState("");
+  const [compileLog, setCompileLog] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [using, setUsing] = useState(false);
@@ -168,7 +170,7 @@ export function TemplateGenerateModal({
       const compiled = await compileGeneratedTemplate(result);
       return { png: compiled.png, log: compiled.log };
     } catch (e) {
-      return { png: null, log: e instanceof Error ? e.message : String(e) };
+      return { png: null, log: errorText(e instanceof Error ? e.message : String(e)) };
     }
   };
 
@@ -273,6 +275,16 @@ export function TemplateGenerateModal({
     }
   };
 
+  const close = () => {
+    runSeqRef.current += 1;
+    if (phase === "loading" && loadingStep >= 3) {
+      void cancelIsolatedCompile().catch((error: unknown) =>
+        logError("stop template compile", error),
+      );
+    }
+    onClose();
+  };
+
   const header = (
     <div className="flex items-center justify-between border-b px-5 py-3.5">
       <div className="flex items-center gap-3">
@@ -292,7 +304,7 @@ export function TemplateGenerateModal({
         variant="ghost"
         size="icon"
         className="size-7"
-        onClick={onClose}
+        onClick={close}
         aria-label={t(($) => $.common.actions.close)}
       >
         <X className="size-4" />
@@ -308,7 +320,7 @@ export function TemplateGenerateModal({
       data-testid="template-generate-modal"
       className={modalOverlayClassName()}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) close();
       }}
     >
       <div
@@ -533,6 +545,16 @@ export function TemplateGenerateModal({
                 {PREVIEW_ENGINES.has(parsed.engine) && !previewPng && (
                   <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
                     {t(($) => $.library.generate.compileWarning)}
+                    {compileLog && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs font-medium">
+                          {t(($) => $.library.generate.compileLog)}
+                        </summary>
+                        <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-background p-2 text-xs text-muted-foreground">
+                          {compileLog}
+                        </pre>
+                      </details>
+                    )}
                   </div>
                 )}
                 {editingDescription ? (

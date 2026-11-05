@@ -475,9 +475,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Der Fehler passt zu einer bekannten Lücke der mitgelieferten Tectonic-Engine. Wählen Sie, wie dieses Projekt kompilieren soll. Die Wahl wird im Projekt gespeichert, damit Mitarbeitende dieselbe Einrichtung bekommen.",
     "descriptionImportScan": "Die Importprüfung hat Funktionen gefunden, die die mitgelieferte Tectonic-Engine nicht steuert. Wählen Sie, wie dieses Projekt kompilieren soll. Die Wahl wird im Projekt gespeichert, damit Mitarbeitende dieselbe Einrichtung bekommen.",
+    "descriptionTexMissing": "Dieses Projekt wird jetzt mit latexmk kompiliert, und dieser Computer kann es noch nicht ausführen. Oleafly kann TinyTeX für Sie installieren, oder Sie wechseln zurück zur eingebauten Tectonic-Engine.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX über latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "Das Kompilieren ist bei {{file}} stehen geblieben.",
+      "missingFiles": "Das Kompilieren hat {{files}} nicht gefunden.",
+      "mirrorStatus": "Der Mirror hat HTTP {{status}} zurückgegeben."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Literaturverzeichnis nutzt biblatex und Biber",
+        "detail": "Dieses Projekt braucht Biber, um das Literaturverzeichnis zu erstellen. Oleafly liefert eine zur eingebauten Engine passende Biber-Version mit. Wenn Zitate nach dem Kompilieren als „?“ stehen bleiben, suchen Sie im Protokoll nach einem Biber-Hinweis."
+      },
+      "bundle-fetch-failed": {
+        "title": "Der Download der TeX-Pakete ist fehlgeschlagen",
+        "detail": "Oleafly konnte TeX-Pakete nicht von seinem Mirror herunterladen, deshalb hat das Kompilieren Ihr Dokument gar nicht erreicht. Prüfen Sie Ihre Verbindung und kompilieren Sie erneut. Der Download macht dort weiter, wo er angehalten hat."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 braucht pdfLaTeX",
+        "detail": "CJKutf8 und CJK funktionieren nur mit pdfLaTeX. Mit der eingebauten Engine (XeTeX) wird das Dokument zwar kompiliert, aber sein chinesischer, japanischer oder koreanischer Text fehlt im PDF. Wechseln Sie zu pdfLaTeX mit System-TeX oder ersetzen Sie das Paket durch xeCJK."
+      },
+      "class-compat": {
+        "title": "Die Dokumentklasse stößt an Grenzen der Engine",
+        "detail": "Die Kompilierfehler stammen aus einer Klassen- oder Stildatei, nicht aus Ihrem Dokument. Verlagsklassen hängen oft von Werkzeugen oder vom Verhalten von pdfTeX ab, die die eingebaute Engine nicht hat. latexmk kompiliert mit einer vollständigen TeX-Distribution."
+      },
+      "eps-image": {
+        "title": "EPS-Bilder brauchen einen Konverter",
+        "detail": "Die eingebaute Engine kann keine EPS-Bilder einbinden. Wandeln Sie sie mit epstopdf oder Inkscape in PDF um oder wechseln Sie zu pdfLaTeX mit System-TeX, das EPS über Ghostscript umwandelt."
+      },
+      "fontspec": {
+        "title": "Eigene Schriften (fontspec)",
+        "detail": "fontspec braucht die genannten Schriften auf diesem Computer. Schriften, die zu einem Online-Editor gehörten, fehlen hier möglicherweise."
+      },
+      "glossaries-index": {
+        "title": "Glossar- oder Indexwerkzeug",
+        "detail": "glossaries und makeindex brauchen einen zusätzlichen Lauf von makeindex oder xindy, den die eingebaute Engine nicht ausführt."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref ist auf den pdfTeX-Treiber eingestellt",
+        "detail": "Diese Klasse oder Präambel erzwingt den pdftex-Treiber von hyperref, den die eingebaute Engine nicht nutzen kann. Wechseln Sie zu pdfLaTeX mit System-TeX oder entfernen Sie die Option pdftex, damit hyperref den Treiber selbst wählt."
+      },
+      "minted": {
+        "title": "minted braucht shell escape und Pygments",
+        "detail": "Quelltextlistings mit minted brauchen eine System-TeX-Distribution und pygmentize. Wechseln Sie zu System-LaTeX und erlauben Sie externe Befehle auf diesem Computer nur, wenn Sie jeder Projektdatei vertrauen."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Ein Paket fehlt im eingebauten Bündel",
+        "detail": "Etwas, das dieses Projekt lädt, ist nicht im eingebauten TeX-Bündel enthalten. Fügen Sie die Datei dem Projekt hinzu, wenn sie zu Ihrer Vorlage gehörte, oder wechseln Sie zu System-TeX und installieren Sie das Paket aus TeX Live."
+      },
+      "pdftex-only": {
+        "title": "pdfTeX-Pakete",
+        "detail": "Die eingebaute Engine basiert auf XeTeX, und dieses Projekt setzt auf Pakete oder Befehle, die nur mit pdfTeX funktionieren. latexmk kompiliert mit echtem pdfLaTeX."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX braucht sein Hilfsprogramm aus der aktiven System-TeX-Distribution. Wechseln Sie zu System-LaTeX und erlauben Sie externe Befehle auf diesem Computer nur, wenn Sie jeder Projektdatei vertrauen."
+      },
+      "shell-escape": {
+        "title": "Externe Befehle (shell escape)",
+        "detail": "Der Quelltext verwendet \\write18 oder ein anderes shell escape. Wechseln Sie zu System-LaTeX und erlauben Sie externe Befehle auf diesem Computer nur, wenn Sie jeder Projektdatei vertrauen und die nötigen Werkzeuge installiert sind."
+      }
     },
     "recommended": "Empfohlen",
     "shellEscape": {
@@ -504,13 +564,14 @@
       "withFailures_other": "Keine Einrichtung nötig, funktioniert offline. {{features}} werden voraussichtlich weiter scheitern."
     },
     "tinytex": {
-      "description": "Installiert ein kompaktes TeX Live in Ihren Benutzerordner, ganz ohne Administratorrechte. Der Kern-Download ist rund 250 MB groß. Zeitschriftenvorlagen können später weitere Pakete nachziehen, insgesamt bis etwa 1 GB.",
+      "description": "Installiert ein kompaktes TeX Live, ganz ohne Administratorrechte. Der Kern-Download ist rund 250 MB groß. Zeitschriftenvorlagen können später weitere Pakete nachziehen, insgesamt bis etwa 1 GB.",
       "download": "TinyTeX laden und verwenden",
       "resume": "Download fortsetzen ({{megabytes}} MB erledigt)",
       "title": "TinyTeX herunterladen"
     },
     "titleCompileFailure": "Dieses Kompilieren braucht mehr als die eingebaute Engine",
-    "titleImportScan": "Dieses Projekt braucht mehr als die eingebaute Engine"
+    "titleImportScan": "Dieses Projekt braucht mehr als die eingebaute Engine",
+    "titleTexMissing": "Dieser Compiler braucht eine funktionierende TeX-Distribution"
   },
   "shellCommands": {
     "allow": "Externe Befehle erlauben",
@@ -1152,11 +1213,16 @@
     },
     "wait": {
       "description": "{{phase}} Ihr Kompilierlauf steht in der Warteschlange und startet automatisch, sobald die Engine bereit ist.",
+      "stop": "Installation stoppen",
       "title": "TinyTeX wird noch geladen"
     },
     "typstQuit": {
       "title": "Typst wird noch installiert",
       "description": "Typst {{version}} wird heruntergeladen. Wenn Sie jetzt beenden, stoppt der Download und Sie müssen ihn in den Einstellungen neu starten."
+    },
+    "packageQuit": {
+      "title": "Oleafly ändert noch TeX-Pakete",
+      "description": "Wenn Sie jetzt beenden, bricht die Installation oder Entfernung mittendrin ab und Ihre TeX-Paketverwaltung kann beschädigt zurückbleiben."
     }
   },
   "toolbar": {
@@ -1322,7 +1388,7 @@
       "compiling": "Kompilieren mit Typst"
     },
     "errors": {
-      "pandoc": "Pandoc ist nicht bereit. Installieren Sie es unter Tools und versuchen Sie es dann erneut.",
+      "pandoc": "Pandoc ist nicht bereit. Reparieren Sie es unter Einstellungen > Engines > Markdown und versuchen Sie es dann erneut.",
       "noMain": "Die LaTeX-Hauptdatei konnte nicht gelesen werden.",
       "emptyOutput": "Pandoc hat ein leeres Dokument geliefert.",
       "failed": "Die Umwandlung wurde abgebrochen: {{detail}}"
@@ -1379,7 +1445,8 @@
     "svg": "SVG-Bilder",
     "html": "HTML",
     "experimental": "Experimentell",
-    "htmlNote": "Der HTML-Export von Typst ist noch experimentell. Seiteneinrichtung und platzierte Elemente fehlen.",
+    "htmlNote": "Der HTML-Export von Typst ist noch experimentell. Er behält Text und Bilder bei, aber nicht die Seiteneinrichtung oder Zeichnungen.",
+    "htmlNoteOldTypst": "Typst {{version}} lässt Formeln im HTML weg. Ab Typst 0.15 bleiben sie erhalten.",
     "ppi": "Auflösung",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Seiten",

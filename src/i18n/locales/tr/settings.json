@@ -1062,6 +1062,22 @@
         "lines_one": "{{value}} satır",
         "lines_other": "{{value}} satır"
       },
+      "openWith": {
+        "ariaLabel": "Klasörleri ve komutları açmak için terminal",
+        "builtin": "Yerleşik terminal",
+        "cmd": "Komut İstemi",
+        "description": "“Terminalde aç” seçeneğini kullandığınızda Oleafly'nin bir klasörü açacağı veya bir komutu çalıştıracağı terminal.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Şurada aç",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (bulunamadı)",
+        "powershell": "PowerShell",
+        "systemDefault": "Sistem varsayılanı ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Sistem varsayılanı terminal"
+      },
       "shell": {
         "ariaLabel": "Terminal shell'i",
         "description": "Yeni terminaller bu shell'i başlatır. Açık terminaller kendi shell'lerini korur.",
@@ -1360,13 +1376,20 @@
       "tooltip": "Yeni projeler için geçerlidir. Her proje kendi motorunu project.json içinde sabitler, böylece aynı projeyi açan iş arkadaşlarınız bu ayardan bağımsız olarak onu aynı şekilde derler."
     },
     "distributions": {
+      "automatic": "Otomatik",
+      "automaticTooltip": "Seçimi yeniden Oleafly'ye bırak: önce tam bir sistem TeX'i, ardından TinyTeX.",
       "empty": "Bu makinede TeX dağıtımı algılanmadı.",
       "heading": "TeX dağıtımlarını yönet",
+      "inUse": "Kullanımda",
+      "inUseTooltip": "latexmk derlemeleri bu dağıtımdan çalışır.",
       "rowTooltip": "{{tools}} ile birlikte gelir. Oleafly TeX araçlarını {{binDir}} konumundan çalıştırır.",
       "rowTooltipNoTools": "Bu kurulumda latexmk veya tlmgr bulunamadı. Oleafly TeX araçlarını {{binDir}} konumundan çalıştırır.",
-      "tooltip": "latexmk motorunun bu makinede kullanabileceği her şey. TinyTeX, yönetici izni gerekmeden ana klasörünüze kurulur. Sistem kurulumları (MacTeX, TeX Live, MiKTeX) kendiliğinden algılanır."
+      "tinytexChooseHint": "Derlemeler “Kullanımda” işaretli dağıtımı kullanmayı sürdürür. Kurulumdan sonra geçmek için TinyTeX üzerinde “Derlemelerde kullan”a tıklayın.",
+      "tooltip": "latexmk motorunun bu makinede kullanabileceği her şey. TinyTeX yönetici izni gerekmeden kurulur. Sistem kurulumları (MacTeX, TeX Live, MiKTeX) kendiliğinden algılanır.",
+      "use": "Derlemelerde kullan"
     },
     "latexmkMissing": "latexmk bulunamadı",
+    "latexmkNeedsPerl": "latexmk için Perl gerekli",
     "markdown": {
       "downloading": "İndiriliyor…",
       "heading": "Markdown derleyicisi",
@@ -1402,6 +1425,8 @@
       "includedIn": "{{package}} içinde yer alır. Onu kaldırmak o paketteki diğer dosyaları da kaldırır.",
       "intro": {
         "available": "Bu paketler latexmk (sistem TeX) kullanan projeler içindir. Tectonic kendi paket kümesini kullanır.",
+        "systemManaged": "Bu TeX Live, Linux dağıtımınızla birlikte geldi, bu yüzden paketleri {{manager}} ile ekleyin. Oleafly bunu değiştiremez.",
+        "systemManagedTinytex": "Bu TeX Live, Linux dağıtımınızla birlikte geldi, bu yüzden paketleri {{manager}} ile ekleyin. Paketleri Oleafly'nin yönetmesini istiyorsanız yukarıdan TinyTeX'i indirin.",
         "unavailable": "Paket yönetimi TeX Live veya TinyTeX gerektirir. MiKTeX için MiKTeX Console'u kullanın."
       },
       "refreshInstalled": "Kurulu paketleri yenile",
@@ -1433,9 +1458,10 @@
       "tooltip": "Varsayılan motor (Tectonic) hızlı ve çevrimdışıdır ama etiketli, Section 508 / PDF-UA uyumlu PDF üretemez. Bunun için, hesabınızın erişebildiği yerel dosyaları okuyabilen ve yalnızca güvendiğiniz projelerde kullanılması gereken sistem LuaLaTeX'i gerekir. Oleafly var olan bir dağıtımı ya da yönetilen TinyTeX'i kullanabilir."
     },
     "tinytex": {
-      "detail": "Ana klasörünüzde derli toplu bir TeX Live. Temel indirme yaklaşık 250 MB'tır. Dergi şablonları sonradan paket ekleyebilir, toplamda yaklaşık 1 GB'a kadar. Önceden kurmak, açıkça seçtiğinizde sistem LaTeX'ini kullanılabilir kılar.",
+      "detail": "Yönetici izni gerektirmeyen kompakt bir TeX Live. Temel indirme yaklaşık 250 MB'tır. Dergi şablonları sonradan paket ekleyebilir, toplamda yaklaşık 1 GB'a kadar. Önceden kurmak, sistem LaTeX'ini açıkça seçtiğinizde kullanılabilir kılar.",
       "download": "TinyTeX'i indir (~250 MB)",
-      "resume": "İndirmeyi sürdür ({{size}} MB tamam)"
+      "resume": "İndirmeyi sürdür ({{size}} MB tamam)",
+      "update": "Güncelle"
     },
     "typst": {
       "detail": "Oleafly ile birlikte gelir, kurulacak bir şey yoktur. Ağ bağlantısı yalnızca bir belge bir @preview paketini ilk kez içe aktardığında gerekir.",
@@ -1500,7 +1526,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "Bu bilgisayarda bulunamadı."
+        "missing": "Bu bilgisayarda bulunamadı.",
+        "outdated": "Bu bilgisayardaki {{tool}} {{version}} çok eski. Oleafly {{minimum}} veya daha yenisini gerektirir, bu yüzden indirdiği kopyayı kullanır."
       },
       "managedIdle": "Kullanılmıyor. Oleafly önce bu bilgisayarda bulunan kopyayı kullanır.",
       "superseded": "Kullanılmıyor. Oleafly artık {{tool}} {{version}} sürümünü kullanıyor.",

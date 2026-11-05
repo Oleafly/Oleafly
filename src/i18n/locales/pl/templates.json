@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Konfigurowanie szablonu...",
-      "downloading": "Pobieranie {{label}} ({{index}} z {{total}})"
+      "downloading": "Pobieranie {{label}} ({{index}} z {{total}})",
+      "failed": "Nie udało się pobrać krojów pisma dla tego szablonu. Sprawdź połączenie i spróbuj ponownie."
     },
     "category": {
       "all": "Wszystkie",

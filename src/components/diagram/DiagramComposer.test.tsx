@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { createContext, useContext, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { DiagramHost } from "@oleafly/diagram";
 
@@ -58,7 +59,9 @@ vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: vi.fn() }));
 vi.mock("@/lib/agent-backend", () => ({ completeText: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({
+  cancelIsolatedCompile: vi.fn(async () => true),
   compileIsolated: vi.fn(),
+  withEventListener: vi.fn((_event: string, _handler: unknown, run: () => unknown) => run()),
   readIsolatedPdf: vi.fn(),
   writeProjectBytes: vi.fn(),
   writeFileContent: vi.fn(),
@@ -219,6 +222,34 @@ describe("the diagram host adapters", () => {
     await props.host.compileIsolated("scratch", "\\draw (0,0);");
 
     expect(tauriApi.compileIsolated).toHaveBeenCalledWith("scratch", "\\draw (0,0);", false);
+  });
+
+  it("streams the figure log while the compile runs", async () => {
+    const props = await openComposer();
+    vi.mocked(tauriApi.compileIsolated).mockResolvedValue({ ok: true } as never);
+    const onLog = vi.fn();
+
+    await props.host.compileIsolated("scratch", "x", onLog);
+
+    expect(tauriApi.withEventListener).toHaveBeenCalledWith("figure:log", onLog, expect.any(Function));
+    expect(tauriApi.compileIsolated).toHaveBeenCalledWith("scratch", "x", false);
+  });
+
+  it("stops the running figure compile", async () => {
+    const props = await openComposer();
+    await props.host.stopCompile?.();
+    expect(tauriApi.cancelIsolatedCompile).toHaveBeenCalledOnce();
+  });
+
+  it("turns a coded compile refusal into a readable error", async () => {
+    const props = await openComposer();
+    vi.mocked(tauriApi.compileIsolated).mockRejectedValueOnce(
+      `${APP_ERROR_PREFIX}${JSON.stringify({ code: "tex.latexmk_needs_perl", params: {} })}`,
+    );
+
+    await expect(props.host.compileIsolated("scratch", "x")).rejects.toThrow(
+      enErrors.tex.latexmk_needs_perl,
+    );
   });
 
   it("turns structured write failures into readable errors and passes others through", async () => {

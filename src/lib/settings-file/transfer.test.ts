@@ -301,6 +301,19 @@ describe("reading a settings file", () => {
     });
   });
 
+  it("reads the terminal Oleafly opens and refuses an unknown one", () => {
+    const read = readSettingsFile(fileWith({ appearance: { terminal: { openWith: "iterm" } } }), snapshot());
+    expect(read).toMatchObject({ ok: true, changed: ["appearance.terminal.openWith"] });
+
+    const refused = readSettingsFile(fileWith({ appearance: { terminal: { openWith: "fish" } } }), snapshot());
+    expect(refused.ok).toBe(false);
+
+    useSettingsStore.getState().setTerminalOpenWith("mystery" as never);
+    expect(useSettingsStore.getState().terminalOpenWith).toBe("builtin");
+    useSettingsStore.getState().setTerminalOpenWith("konsole");
+    expect(useSettingsStore.getState().terminalOpenWith).toBe("konsole");
+  });
+
   it("round-trips the terminal behavior settings", () => {
     const read = readSettingsFile(
       fileWith({

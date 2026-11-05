@@ -369,7 +369,12 @@
     "rawLogs": "Surowe dzienniki",
     "copyLog": "Kopiuj dziennik",
     "typesetting": "Skład",
+    "missingCharacters": "Brakujące znaki",
     "info": "Informacje",
+    "clear": "Wyczyść",
+    "clearAria": "Wyczyść dziennik kompilacji",
+    "clearHint": "Ukrywa ten dziennik i jego błędy do następnej kompilacji. Pliki kompilacji zostają.",
+    "cleared": "Dziennik wyczyszczony. Następna kompilacja zapisze nowy.",
     "empty": "Tutaj pojawi się wynik kompilacji.",
     "scrollToTop": "Przewiń na górę",
     "scrollToBottom": "Przewiń na dół",
@@ -390,6 +395,8 @@
     "summaryReferences_many": "{{count}} nierozwiązanych odwołań",
     "summaryReferences_other": "{{count}} nierozwiązanego odwołania",
     "fontPack": "{{family}} jest w bezpłatnym pakiecie czcionek {{pack}}.",
+    "fontPackGlyphs": "Bezpłatny pakiet czcionek {{pack}} zawiera te znaki.",
+    "fontPackSealed": "{{family}} jest w bezpłatnym pakiecie czcionek {{pack}}, ale pakiety czcionek nie działają tutaj, ponieważ ten projekt używa wyłącznie krojów projektu. Dodaj plik kroju do folderu fonts projektu.",
     "fontPackAction": "Pobierz i skompiluj",
     "fontPackDownloading": "Pobieranie…",
     "fontPackFailed": "Nie udało się pobrać pakietu czcionek. Sprawdź połączenie i spróbuj ponownie."
@@ -1499,7 +1506,8 @@
       "count_few": "{{count}} pakiety w tym projekcie",
       "count_many": "{{count}} pakietów w tym projekcie",
       "count_other": "{{count}} pakietu w tym projekcie",
-      "none": "W tym projekcie nie ma jeszcze pakietów."
+      "none": "W tym projekcie nie ma jeszcze pakietów.",
+      "unsupported": "Typst {{version}} nie potrafi odczytywać pakietów z folderu projektu. Przełącz projekt na Typst 0.12 lub nowszy, aby z tego korzystać."
     },
     "hints": {
       "updateAvailable": "Dostępny jest {{name}} {{latest}}. Ten import używa {{version}}.",
@@ -1540,6 +1548,7 @@
     "classNote": "To jest klasa dokumentu. Ustaw ją zamiast tego przez \\documentclass.",
     "onDemand": "Tectonic pobiera pakiety, gdy dokument użyje ich po raz pierwszy. Nie trzeba niczego instalować.",
     "checking": "Sprawdzanie, które pakiety są zainstalowane",
+    "systemManaged": "Ten TeX Live pochodzi z Twojej dystrybucji Linuksa, więc pakiety instaluj przez {{manager}}.",
     "unknownInstall": "Oleafly nie może ustalić, jakie pakiety ma Twoja instalacja TeX.",
     "noProject": "Otwórz projekt LaTeX, aby dodawać pakiety.",
     "added": "Dodano {{name}} do pliku {{file}}.",

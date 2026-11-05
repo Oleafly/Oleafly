@@ -1,4 +1,5 @@
 pub(crate) mod env;
+pub(crate) mod external;
 mod flow;
 mod jobs;
 mod shell;
@@ -483,19 +484,8 @@ fn apply_terminal_env(cmd: &mut CommandBuilder) {
     cmd.env("COLORTERM", "truecolor");
     cmd.env("TERM_PROGRAM", "Oleafly");
     cmd.env("TERM_PROGRAM_VERSION", env!("CARGO_PKG_VERSION"));
-    #[cfg(not(windows))]
-    {
-        let has_locale = ["LC_ALL", "LC_CTYPE", "LANG"]
-            .iter()
-            .any(|key| std::env::var_os(key).is_some_and(|v| !v.is_empty()));
-        if !has_locale {
-            let locale = if cfg!(target_os = "macos") {
-                "en_US.UTF-8"
-            } else {
-                "C.UTF-8"
-            };
-            cmd.env("LANG", locale);
-        }
+    if let Some(locale) = crate::proc::fallback_utf8_locale() {
+        cmd.env("LANG", locale);
     }
 }
 

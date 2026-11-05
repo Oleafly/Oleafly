@@ -2,19 +2,20 @@ mod parse;
 #[cfg(test)]
 mod tests;
 
+use crate::tex_flavor::{branches_on_engine, followed_file_flavor};
 use crate::{
-    is_cloud_placeholder, is_skipped_scan_directory, sniff_oleafly_manifest, ProjectManifest,
-    MAX_MANIFEST_BYTES,
+    is_cloud_placeholder, is_skipped_scan_directory, sniff_oleafly_manifest, source_tex_flavor,
+    tex_program_flavor, ProjectManifest, TexFlavor, MAX_MANIFEST_BYTES,
 };
 use crate::{Error, ErrorKind, Result};
 use parse::{
     arxiv_toplevel_sources, document_class, has_begin_document, has_bibliography, has_extension,
-    has_plain_tex_end, latex_references, latex_title, latexmk_default_files, markdown_references,
-    markdown_title, mask_latex_comments, mask_typst_comments, masked_typst_uses_calepin,
-    normalize_project_path, parent_of, resolve_in, resolve_project_path, typst_library_like,
-    typst_references, typst_template_entrypoint, typst_title,
+    has_plain_tex_end, latex_references, latex_title, latexmk_default_files, latexmkrc_flavor,
+    markdown_references, markdown_title, mask_latex_comments, mask_typst_comments,
+    masked_typst_uses_calepin, normalize_project_path, parent_of, resolve_in, resolve_project_path,
+    typst_library_like, typst_references, typst_template_entrypoint, typst_title,
 };
-pub use parse::{tex_magic_comments, typst_uses_calepin, TexMagicComments};
+pub use parse::{tex_magic_comments, tex_program_magic, typst_uses_calepin, TexMagicComments};
 use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, VecDeque};
@@ -32,6 +33,9 @@ pub const DETECT_MAX_SOURCES: usize = 3_000;
 pub const DETECT_DEADLINE: Duration = Duration::from_millis(1_500);
 const HEAD_BYTES: u64 = 64 * 1024;
 const TAIL_BYTES: u64 = 4 * 1024;
+const FLAVOR_READ_BYTES: u64 = 512 * 1024;
+const FLAVOR_FOLLOW_DEPTH: usize = 2;
+const FLAVOR_FOLLOW_FILES: usize = 32;
 const UTF8_BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
 const MANIFEST_FILE: &str = "project.json";
 const TYPST_VENDOR_DIRECTORY: &str = "typst-packages";
@@ -339,45 +343,137 @@ pub fn compile_dir_for(root: &Path, main: &str) -> Option<String> {
     let (directory, _) = main.rsplit_once('/')?;
     let head = read_head(&root.join(&main))?;
     let references = latex_references(&mask_latex_comments(&head));
-    let targets = references
-        .inputs
-        .iter()
-        .map(|raw| (raw, &LATEX_SUFFIXES[..]))
-        .chain(
-            references
-                .graphics
-                .iter()
-                .map(|raw| (raw, &GRAPHIC_SUFFIXES[..])),
-        )
-        .chain(references.bibliographies.iter().map(|raw| (raw, &[][..])))
-        .collect::<Vec<_>>();
-    if targets.iter().any(|(raw, _)| {
-        let raw = raw.trim().replace('\\', "/");
-        raw == ".." || raw.starts_with("../")
-    }) {
-        return None;
-    }
     let mut from_root = 0usize;
     let mut only_local = 0usize;
-    for (raw, suffixes) in targets {
-        if exists_under(root, "", raw, suffixes) {
+    for (raw, suffixes) in reference_targets(references) {
+        if exists_under(root, "", &raw, suffixes) {
             from_root += 1;
-        } else if exists_under(root, directory, raw, suffixes) {
+        } else if exists_under(root, directory, &raw, suffixes) {
             only_local += 1;
         }
     }
     (only_local > from_root).then(|| directory.to_owned())
 }
 
-fn exists_under(root: &Path, directory: &str, raw: &str, suffixes: &[&str]) -> bool {
-    let Some(path) = resolve_in(directory, raw) else {
-        return false;
+fn reference_targets(references: parse::LatexReferences) -> Vec<(String, &'static [&'static str])> {
+    let suffixed = |names: Vec<String>, suffix: &str| {
+        names
+            .into_iter()
+            .map(|name| format!("{name}{suffix}"))
+            .collect::<Vec<_>>()
     };
-    root.join(&path).is_file()
-        || (!has_extension(&path)
-            && suffixes
-                .iter()
-                .any(|suffix| root.join(format!("{path}{suffix}")).is_file()))
+    let inputs = references.inputs.into_iter();
+    let graphics = references.graphics.into_iter();
+    inputs
+        .map(|raw| (raw, &LATEX_SUFFIXES[..]))
+        .chain(graphics.map(|raw| (raw, &GRAPHIC_SUFFIXES[..])))
+        .chain(
+            references
+                .bibliographies
+                .into_iter()
+                .chain(suffixed(references.classes, ".cls"))
+                .chain(suffixed(references.packages, ".sty"))
+                .map(|raw| (raw, &[][..])),
+        )
+        .collect()
+}
+
+fn exists_under(root: &Path, directory: &str, raw: &str, suffixes: &[&str]) -> bool {
+    existing_reference(root, directory, raw, suffixes).is_some()
+}
+
+fn existing_reference(
+    root: &Path,
+    directory: &str,
+    raw: &str,
+    suffixes: &[&str],
+) -> Option<String> {
+    let path = resolve_in(directory, raw)?;
+    if root.join(&path).is_file() {
+        return Some(path);
+    }
+    if has_extension(&path) {
+        return None;
+    }
+    suffixes
+        .iter()
+        .map(|suffix| format!("{path}{suffix}"))
+        .find(|candidate| root.join(candidate).is_file())
+}
+
+pub fn project_tex_flavor(root: &Path, main: &Path) -> TexFlavor {
+    let head = flavor_source(main).unwrap_or_default();
+    if let Some(flavor) = tex_program_flavor(&head).or_else(|| source_tex_flavor(&head)) {
+        return flavor;
+    }
+    let Ok(relative) = main.strip_prefix(root) else {
+        return TexFlavor::Pdflatex;
+    };
+    let directory = crate::slash_path(relative.parent().unwrap_or(relative));
+    rc_tex_flavor(root, &directory)
+        .or_else(|| followed_tex_flavor(root, &directory, &head))
+        .unwrap_or(TexFlavor::Pdflatex)
+}
+
+fn flavor_source(path: &Path) -> Option<String> {
+    let mut bytes = Vec::new();
+    let file = std::fs::File::open(path).ok()?;
+    file.take(FLAVOR_READ_BYTES).read_to_end(&mut bytes).ok()?;
+    let text = bytes.strip_prefix(&UTF8_BOM).unwrap_or(&bytes);
+    Some(String::from_utf8_lossy(text).into_owned())
+}
+
+fn resident_project_source(root: &Path, relative: &str) -> Option<String> {
+    let path = root.join(relative);
+    let metadata = std::fs::metadata(&path).ok()?;
+    let inside = path
+        .canonicalize()
+        .ok()?
+        .starts_with(root.canonicalize().ok()?);
+    (metadata.is_file() && inside && !is_cloud_placeholder(&metadata))
+        .then(|| flavor_source(&path))
+        .flatten()
+}
+
+fn rc_tex_flavor(root: &Path, directory: &str) -> Option<TexFlavor> {
+    [directory, ""].iter().find_map(|folder| {
+        ["latexmkrc", ".latexmkrc"].iter().find_map(|name| {
+            let relative = resolve_in(folder, name)?;
+            latexmkrc_flavor(&resident_project_source(root, &relative)?)
+        })
+    })
+}
+
+fn followed_tex_flavor(root: &Path, directory: &str, head: &str) -> Option<TexFlavor> {
+    let mut seen = BTreeSet::new();
+    let mut queue = VecDeque::from([(head.to_owned(), 0usize)]);
+    while let Some((text, depth)) = queue.pop_front() {
+        let masked = mask_latex_comments(&text);
+        let preamble = masked.split("\\begin{document}").next().unwrap_or_default();
+        if branches_on_engine(preamble) {
+            continue;
+        }
+        for (raw, suffixes) in reference_targets(latex_references(preamble)) {
+            let found = existing_reference(root, directory, &raw, suffixes)
+                .or_else(|| existing_reference(root, "", &raw, suffixes));
+            let Some(relative) = found else {
+                continue;
+            };
+            if seen.len() >= FLAVOR_FOLLOW_FILES || !seen.insert(relative.clone()) {
+                continue;
+            }
+            let Some(source) = resident_project_source(root, &relative) else {
+                continue;
+            };
+            if let Some(flavor) = followed_file_flavor(&source) {
+                return Some(flavor);
+            }
+            if depth + 1 < FLAVOR_FOLLOW_DEPTH {
+                queue.push_back((source, depth + 1));
+            }
+        }
+    }
+    None
 }
 
 fn resident_compile_dir(root: &Path, main: &str, options: &DetectOptions<'_>) -> Option<String> {

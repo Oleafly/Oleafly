@@ -3,11 +3,14 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const actions = vi.hoisted(() => ({
   acceptCompileOffer: vi.fn(),
   downloadMissingTypst: vi.fn(async () => {}),
   switchToDefaultTypst: vi.fn(async () => {}),
+  installMissingTex: vi.fn(async () => {}),
+  switchToTectonic: vi.fn(async () => {}),
 }));
 
 vi.mock("@/store/compile", async (importOriginal) => ({
@@ -15,10 +18,13 @@ vi.mock("@/store/compile", async (importOriginal) => ({
   ...actions,
 }));
 
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { TypstToolchainStatus } from "@/lib/tauri";
 import { useCompileStore } from "@/store/compile";
+import { useEngineStore } from "@/store/engine";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { useTypstToolchainStore } from "@/store/typst-toolchain";
 import { CompileOfferButton } from "./CompileOfferButton";
 
@@ -77,6 +83,33 @@ describe("CompileOfferButton", () => {
 
     expect(screen.getByTestId("toolbar-compile-offer")).toHaveTextContent(copy.chooseEngine);
     expect(actions.acceptCompileOffer).toHaveBeenCalledWith(offer);
+  });
+
+  it("offers Japanese support on a TeX that can install it", () => {
+    useEngine("latexmk");
+    const offer = {
+      kind: "tex-packages",
+      projectId: "paper",
+      packages: ["collection-langjapanese"],
+    } as const;
+    useCompileStore.setState({ offer: { ...offer, packages: [...offer.packages] } });
+    render(<CompileOfferButton placement="preview" />);
+    fireEvent.click(screen.getByTestId("preview-compile-offer"));
+    expect(screen.getByTestId("preview-compile-offer")).toHaveTextContent(copy.installJapanese);
+    expect(actions.acceptCompileOffer).toHaveBeenCalled();
+  });
+
+  it("names the compiler an Auto build should switch to", () => {
+    useEngine("latexmk");
+    useCompileStore.setState({
+      offer: { kind: "switch-compiler", projectId: "paper", compiler: "lualatex", label: "LuaLaTeX" },
+    });
+    render(<CompileOfferButton placement="log" />);
+    fireEvent.click(screen.getByTestId("log-compile-offer"));
+    expect(screen.getByTestId("log-compile-offer")).toHaveTextContent(
+      copy.useCompiler.replace("{{compiler}}", "LuaLaTeX"),
+    );
+    expect(actions.acceptCompileOffer).toHaveBeenCalled();
   });
 
   it("offers to install the missing packages for a system TeX", () => {
@@ -141,5 +174,117 @@ describe("CompileOfferButton", () => {
 
     expect(screen.getByTestId("preview-compile-offer")).toBeEnabled();
     expect(screen.queryByTestId("preview-compile-offer-default")).toBeNull();
+  });
+
+  describe("missing TeX", () => {
+    const offer = { kind: "tex-missing" as const, projectId: "paper" };
+
+    beforeEach(() => {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
+      useEngine("latexmk");
+      useCompileStore.setState({ offer });
+      useEngineStore.setState({
+        info: null,
+        loaded: true,
+        installing: false,
+        installPhase: null,
+        progress: null,
+        partialDownloadBytes: 0,
+      });
+      useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
+    });
+
+    it("installs TinyTeX, goes back to Tectonic or opens the engine settings", () => {
+      render(<CompileOfferButton placement="preview" />);
+
+      const install = screen.getByTestId("preview-compile-offer");
+      expect(install).toHaveTextContent(enShell.enginePicker.tinytex.download);
+      fireEvent.click(install);
+      fireEvent.click(screen.getByTestId("preview-compile-offer-tectonic"));
+      fireEvent.click(screen.getByTestId("preview-compile-offer-settings"));
+
+      expect(actions.installMissingTex).toHaveBeenCalledWith("paper");
+      expect(actions.switchToTectonic).toHaveBeenCalledWith("paper");
+      expect(useSettingsStore.getState().settingsOpen).toBe(true);
+      expect(useSettingsStore.getState().settingsInitialSection).toBe("engine");
+    });
+
+    it("says a switch to Tectonic changes a shared project for everyone", () => {
+      useCollabEditorGate.setState({ projectId: "paper", viewer: false, locked: false, connecting: false });
+      render(<CompileOfferButton placement="preview" />);
+      expect(screen.getByTestId("preview-compile-offer-tectonic")).toHaveTextContent(copy.useTectonicForEveryone);
+      expect(screen.getByTestId("preview-compile-offer")).toBeInTheDocument();
+    });
+
+    it("keeps the switch to Tectonic from a viewer of a shared project", () => {
+      useCollabEditorGate.setState({ projectId: "paper", viewer: true, locked: false, connecting: false });
+      render(<CompileOfferButton placement="preview" />);
+      expect(screen.queryByTestId("preview-compile-offer-tectonic")).toBeNull();
+      expect(screen.getByTestId("preview-compile-offer")).toBeInTheDocument();
+    });
+
+    it("shows the download progress and resumes a partial download", () => {
+      useEngineStore.setState({ partialDownloadBytes: 42_000_000 });
+      const { rerender } = render(<CompileOfferButton placement="toolbar" />);
+      expect(screen.getByTestId("toolbar-compile-offer")).toHaveTextContent(
+        enShell.enginePicker.tinytex.resume.replace("{{megabytes}}", "42"),
+      );
+      expect(screen.queryByTestId("toolbar-compile-offer-tectonic")).toBeNull();
+
+      useEngineStore.setState({ installing: true, installPhase: "extract" });
+      rerender(<CompileOfferButton placement="toolbar" />);
+      expect(screen.getByTestId("toolbar-compile-offer")).toBeDisabled();
+    });
+
+    it("leaves only the settings when TinyTeX is already what's running", () => {
+      useEngineStore.setState({ info: { kind: "tinytex" } as never });
+      render(<CompileOfferButton placement="log" />);
+      expect(screen.queryByTestId("log-compile-offer")).toBeNull();
+      expect(screen.getByTestId("log-compile-offer-settings")).toBeInTheDocument();
+    });
+
+    it("hides the download when TinyTeX can't take over from a complete distribution", () => {
+      useEngineStore.setState({
+        info: { kind: "system", tex_complete: true, latexmk_blocker: null } as never,
+      });
+      render(<CompileOfferButton placement="preview" />);
+      expect(screen.queryByTestId("preview-compile-offer")).toBeNull();
+      expect(screen.getByTestId("preview-compile-offer-settings")).toBeInTheDocument();
+    });
+
+    it("keeps the download for a complete MiKTeX that can't run latexmk without Perl", () => {
+      useEngineStore.setState({
+        info: {
+          kind: "system",
+          tex_complete: true,
+          latexmk_blocker: { code: "tex.latexmk_needs_perl", params: {} },
+        } as never,
+      });
+      render(<CompileOfferButton placement="preview" />);
+      expect(screen.getByTestId("preview-compile-offer")).toHaveTextContent(enShell.enginePicker.tinytex.download);
+    });
+
+    it("keeps the download for a distribution that isn't complete", () => {
+      useEngineStore.setState({
+        info: { kind: "system", tex_complete: false, latexmk_blocker: null } as never,
+      });
+      render(<CompileOfferButton placement="preview" />);
+      expect(screen.getByTestId("preview-compile-offer")).toBeInTheDocument();
+    });
+
+    it("disappears once the project leaves latexmk", () => {
+      useEngine("latex");
+      const { container } = render(<CompileOfferButton placement="preview" />);
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it("offers TinyTeX to a Quarto project but not the switch to Tectonic", () => {
+      useEngine("quarto");
+      render(<CompileOfferButton placement="preview" />);
+      fireEvent.click(screen.getByTestId("preview-compile-offer"));
+      expect(actions.installMissingTex).toHaveBeenCalledWith("paper");
+      expect(screen.queryByTestId("preview-compile-offer-tectonic")).toBeNull();
+      expect(screen.getByTestId("preview-compile-offer-settings")).toBeInTheDocument();
+    });
   });
 });

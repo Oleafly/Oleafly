@@ -729,6 +729,13 @@
     "renamedPortable": "Nazwę {{before}} zmieniono na {{theirs}}, żeby plik działał na każdym komputerze.",
     "skipped": "Nie udało się odczytać zmiany od użytkownika {{name}}, więc została pominięta.",
     "skippedUnknown": "Nie udało się odczytać czyjejś zmiany, więc została pominięta.",
+    "outputNotShared": {
+      "tooLarge": "Skompilowany plik PDF jest większy, niż pozwala ten serwer, więc inni nadal widzą poprzedni.",
+      "quota": "Osiągnięto limit przesyłania na tym serwerze, więc inni nadal widzą poprzedni plik PDF. Oleafly spróbuje ponownie po 15 minutach.",
+      "privateSources": "Skompilowany plik PDF zostaje na tym komputerze, ponieważ projekt zawiera pliki, które nie są udostępnione.",
+      "serverError": "Serwer nie przyjął skompilowanego pliku PDF, więc inni nadal widzą poprzedni."
+    },
+    "texNeeded": "Ten projekt kompiluje się za pomocą dystrybucji TeX, a ten komputer jej nie ma. Zainstaluj TinyTeX w sekcji Ustawienia > Silniki > LaTeX, aby skompilować go tutaj.",
     "mentioned": "{{name}} oznacza Cię w komentarzu w pliku {{path}}",
     "mentionedHere": "{{name}} oznacza Cię w komentarzu",
     "showComment": "Pokaż komentarz",

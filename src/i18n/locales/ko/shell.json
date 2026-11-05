@@ -474,9 +474,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "이 실패는 내장 Tectonic 엔진에 알려진 한계와 일치합니다. 이 프로젝트를 어떻게 컴파일할지 고르세요. 선택은 프로젝트에 저장되어 공동 작업자도 같은 설정을 씁니다.",
     "descriptionImportScan": "가져오기 검사에서 내장 Tectonic 엔진이 처리하지 못하는 기능을 찾았습니다. 이 프로젝트를 어떻게 컴파일할지 고르세요. 선택은 프로젝트에 저장되어 공동 작업자도 같은 설정을 씁니다.",
+    "descriptionTexMissing": "이 프로젝트는 이제 latexmk로 컴파일하는데, 이 컴퓨터에서는 아직 실행할 수 없습니다. Oleafly가 TinyTeX를 대신 설치하거나, 내장 Tectonic 엔진으로 되돌릴 수 있습니다.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "latexmk를 통한 pdfLaTeX"
+    },
+    "findingNotes": {
+      "epsFile": "컴파일이 {{file}}에서 멈췄습니다.",
+      "missingFiles": "컴파일이 {{files}}을(를) 찾지 못했습니다.",
+      "mirrorStatus": "미러가 HTTP {{status}} 응답을 반환했습니다."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "참고문헌에 biblatex와 Biber 사용",
+        "detail": "이 프로젝트는 참고문헌 목록을 만들려면 Biber가 필요합니다. Oleafly에는 내장 엔진에 맞는 Biber가 포함되어 있습니다. 컴파일 후에도 인용이 “?”로 남으면 로그에서 Biber 메시지를 확인하세요."
+      },
+      "bundle-fetch-failed": {
+        "title": "TeX 패키지 다운로드 실패",
+        "detail": "Oleafly가 미러에서 TeX 패키지를 내려받지 못해 컴파일이 문서까지 가지도 못했습니다. 연결을 확인하고 다시 컴파일하세요. 다운로드는 중단된 곳부터 이어집니다."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8에는 pdfLaTeX 필요",
+        "detail": "CJKutf8와 CJK는 pdfLaTeX에서만 작동합니다. 내장 엔진(XeTeX)에서도 문서는 컴파일되지만 중국어, 일본어, 한국어 텍스트가 PDF에서 빠집니다. 시스템 TeX의 pdfLaTeX로 바꾸거나 패키지를 xeCJK로 교체하세요."
+      },
+      "class-compat": {
+        "title": "문서 클래스가 엔진 한계에 부딪힘",
+        "detail": "컴파일 오류는 문서가 아니라 클래스 또는 스타일 파일에서 발생합니다. 출판사 클래스는 내장 엔진에 없는 도구나 pdfTeX 동작에 의존하는 경우가 많습니다. latexmk는 전체 TeX 배포판으로 컴파일합니다."
+      },
+      "eps-image": {
+        "title": "EPS 이미지에는 변환기 필요",
+        "detail": "내장 엔진은 EPS 이미지를 배치할 수 없습니다. epstopdf나 Inkscape로 PDF로 변환하거나, 시스템 TeX의 pdfLaTeX로 바꾸세요. pdfLaTeX는 Ghostscript로 EPS를 변환합니다."
+      },
+      "fontspec": {
+        "title": "사용자 지정 글꼴(fontspec)",
+        "detail": "fontspec에는 지정한 글꼴이 이 컴퓨터에 있어야 합니다. 온라인 편집기에 포함되어 있던 글꼴은 여기에 없을 수 있습니다."
+      },
+      "glossaries-index": {
+        "title": "용어집 또는 색인 도구",
+        "detail": "glossaries와 makeindex에는 makeindex나 xindy를 한 번 더 실행해야 하는데, 내장 엔진은 이를 하지 않습니다."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref가 pdfTeX 드라이버로 설정됨",
+        "detail": "이 클래스 또는 프리앰블이 hyperref의 pdftex 드라이버를 강제하는데, 내장 엔진은 이를 사용할 수 없습니다. 시스템 TeX의 pdfLaTeX로 바꾸거나, pdftex 옵션을 제거해 hyperref가 드라이버를 스스로 고르게 하세요."
+      },
+      "minted": {
+        "title": "minted에는 shell escape와 Pygments 필요",
+        "detail": "minted로 만든 코드 목록에는 시스템 TeX 배포판과 pygmentize가 필요합니다. 시스템 LaTeX로 바꾼 다음, 프로젝트의 모든 파일을 신뢰할 때만 이 컴퓨터에서 외부 명령을 허용하세요."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "내장 번들에 패키지가 없음",
+        "detail": "이 프로젝트가 불러오는 항목이 내장 TeX 번들에 없습니다. 템플릿에 포함된 파일이라면 프로젝트에 추가하고, 아니라면 시스템 TeX로 바꾼 다음 TeX Live에서 패키지를 설치하세요."
+      },
+      "pdftex-only": {
+        "title": "pdfTeX 패키지",
+        "detail": "내장 엔진은 XeTeX 기반인데, 이 프로젝트는 pdfTeX에서만 작동하는 패키지나 명령에 의존합니다. latexmk는 실제 pdfLaTeX로 컴파일합니다."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX에는 사용 중인 시스템 TeX 배포판의 도우미 프로그램이 필요합니다. 시스템 LaTeX로 바꾼 다음, 프로젝트의 모든 파일을 신뢰할 때만 이 컴퓨터에서 외부 명령을 허용하세요."
+      },
+      "shell-escape": {
+        "title": "Shell escape 명령",
+        "detail": "소스가 \\write18이나 다른 shell escape를 사용합니다. 시스템 LaTeX로 바꾼 다음, 프로젝트의 모든 파일을 신뢰하고 필요한 도구가 설치되어 있을 때만 이 컴퓨터에서 외부 명령을 허용하세요."
+      }
     },
     "recommended": "권장",
     "shellEscape": {
@@ -502,13 +562,14 @@
       "withFailures_other": "설정이 필요 없고 오프라인에서도 동작합니다. {{features}}은(는) 계속 실패할 것으로 보입니다."
     },
     "tinytex": {
-      "description": "관리자 권한 없이 홈 폴더에 소형 TeX Live를 설치합니다. 기본 다운로드는 약 250 MB입니다. 저널 템플릿이 나중에 패키지를 더 받아 전체가 1 GB 정도까지 늘어날 수 있습니다.",
+      "description": "관리자 권한 없이 소형 TeX Live를 설치합니다. 기본 다운로드는 약 250 MB입니다. 저널 템플릿이 나중에 패키지를 더 받아 전체가 1 GB 정도까지 늘어날 수 있습니다.",
       "download": "TinyTeX 내려받아 사용",
       "resume": "다운로드 이어가기({{megabytes}} MB 완료)",
       "title": "TinyTeX 내려받기"
     },
     "titleCompileFailure": "이 컴파일에는 내장 엔진 이상의 기능이 필요합니다",
-    "titleImportScan": "이 프로젝트에는 내장 엔진 이상의 기능이 필요합니다"
+    "titleImportScan": "이 프로젝트에는 내장 엔진 이상의 기능이 필요합니다",
+    "titleTexMissing": "이 컴파일러에는 작동하는 TeX 배포판이 필요합니다"
   },
   "shellCommands": {
     "allow": "외부 명령 허용",
@@ -1132,11 +1193,16 @@
     },
     "wait": {
       "description": "{{phase}} 컴파일은 대기열에 있으며 엔진이 준비되는 대로 자동으로 시작됩니다.",
+      "stop": "설치 중지",
       "title": "TinyTeX를 아직 내려받는 중입니다"
     },
     "typstQuit": {
       "title": "Typst를 아직 설치하는 중입니다",
       "description": "Typst {{version}}을(를) 내려받는 중입니다. 지금 종료하면 다운로드가 멈추고 설정에서 다시 시작해야 합니다."
+    },
+    "packageQuit": {
+      "title": "Oleafly가 TeX 패키지를 아직 변경하는 중입니다",
+      "description": "지금 종료하면 설치 또는 제거가 중간에 멈추고 TeX 패키지 관리자가 손상될 수 있습니다."
     }
   },
   "toolbar": {
@@ -1302,7 +1368,7 @@
       "compiling": "Typst로 컴파일하는 중"
     },
     "errors": {
-      "pandoc": "Pandoc이 준비되지 않았습니다. 도구에서 설치한 다음 다시 시도하세요.",
+      "pandoc": "Pandoc이 준비되지 않았습니다. 설정 > 엔진 > Markdown에서 복구한 다음 다시 시도하세요.",
       "noMain": "주 LaTeX 파일을 읽지 못했습니다.",
       "emptyOutput": "Pandoc이 빈 문서를 반환했습니다.",
       "failed": "변환이 중단되었습니다: {{detail}}"
@@ -1351,7 +1417,8 @@
     "svg": "SVG 이미지",
     "html": "HTML",
     "experimental": "실험적",
-    "htmlNote": "Typst HTML 내보내기는 아직 실험적입니다. 페이지 설정과 배치된 요소는 빠집니다.",
+    "htmlNote": "Typst HTML 내보내기는 아직 실험적입니다. 텍스트와 이미지는 유지되지만 페이지 설정과 도형은 빠집니다.",
+    "htmlNoteOldTypst": "Typst {{version}}은(는) HTML에서 수식을 빠뜨립니다. Typst 0.15 이상에서는 수식이 유지됩니다.",
     "ppi": "해상도",
     "ppiValue": "{{ppi}} PPI",
     "pages": "페이지",

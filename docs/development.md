@@ -111,7 +111,9 @@ cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 has `watch`, `clean`, and `doctor`. Output is human-readable by default.
 `--json` switches to structured output, and watch mode prints newline-delimited
 JSON events. Build and watch kill a compiler after 300 seconds unless you pass
-`--timeout <seconds>`. The CLI never turns on TeX shell escape. Only the
+`--timeout <seconds>`. While TeX packages download, that time counts from the
+last download line, up to 30 minutes or the `--timeout` value if that's larger.
+The CLI never turns on TeX shell escape. Only the
 desktop can, and only through its device-local trust prompt for the system TeX
 engine.
 
@@ -137,8 +139,8 @@ a copy instead of a link, because its files vanish when it quits.
 
 The CLI does not bundle compilers. `doctor` lists the ones the project's
 engine needs, and when one is missing it prints an install command for the
-current platform. If you add an engine tool, give it a hint in
-`install_hint` next to the others. A test fails when a tool has none.
+current platform. If you add an engine tool, give it an entry in
+`install_source` next to the others. A test fails when a tool has no hint.
 
 `completions <shell>` prints a shell completion script and `man` prints a
 roff manual page. Both are generated from the clap parser, so new flags show
@@ -236,9 +238,10 @@ pnpm test:e2e:app                         # builds + launches the app, runs Play
    output path and `--pdf-engine=<absolute bundled Tectonic path>`. Pandoc's
    manual explicitly supports a full PDF-engine path. Do not replace this with
    an implicit system `pdflatex`, since packaged Oleafly must not depend on an
-   undeclared TeX installation. The process runs with the project root as its
-   working directory so relative images, bibliography files, and CSL files work
-   for both root and nested main documents.
+   undeclared TeX installation. The process runs in a scratch folder, with the
+   main document's folder and the project root on Pandoc's resource path, so
+   relative images, bibliography files, and CSL files work for both root and
+   nested main documents.
 
 Tauri's [sidecar documentation](https://v2.tauri.app/develop/sidecar/) defines
 `bundle.externalBin` inputs with target-triple suffixes and exposes the packaged
@@ -433,6 +436,38 @@ Build Biber workflow can repeat. A tag produces
 a complete draft. Publishing is a separate manual workflow run, and it refuses
 to publish unless every platform's artifacts are present. See
 [Auto-updates](updates.md) for required secrets, signing, and publication.
+
+### Moving the TinyTeX pin
+
+`TINYTEX_TAG` in `src-tauri/src/latex_engine.rs` pins the TinyTeX release the
+app installs. Move it after each TeX Live release. Once TeX Live moves to a new
+year, a TinyTeX from the old year can only install packages from that year's
+archive, and the error tells people to update.
+
+1. Pick a release from
+   [rstudio/tinytex-releases](https://github.com/rstudio/tinytex-releases/releases)
+   built on the new TeX Live, and set `TINYTEX_TAG` to its tag.
+2. Download its four archives into one folder: `TinyTeX-<tag>.zip` for Windows,
+   `TinyTeX-<tag>.tgz` for macOS, `TinyTeX-<tag>.tar.gz` for Linux x64, and
+   `TinyTeX-linux-arm64-<tag>.tar.xz` for Linux ARM64. Outside Linux the test
+   below can't read xz, so put the decompressed `.tar` next to that archive.
+3. Update all four assets in `tinytex_asset_for`: the byte count, SHA-256,
+   member count, expanded size and manifest hash. Set the member count and
+   expanded size above the real values first (`u64::MAX` works), because the
+   test below stops with no values at the first member over either limit. Then
+   run it to get the last three: a mismatch prints the values it found. It stops
+   at the first asset that fails, so run it once per asset.
+4. Copy the four archives to
+   `https://mirrors.oleafly.com/binaries/tinytex/<tag>/`. The app tries that
+   folder when GitHub fails.
+5. Run the test against the archives. It covers all four assets:
+
+   ```sh
+   TINYTEX_ARCHIVE_DIR=/path/to/archives cargo test -p oleafly pinned_release_archives_pass_reviewed_policies -- --ignored
+   ```
+
+After the update, a managed TinyTeX from an older tag shows an Update button in
+Settings > Engines > LaTeX.
 
 ### Releasing Oleafly Server
 

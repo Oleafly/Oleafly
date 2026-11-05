@@ -38,6 +38,7 @@
       "compile": "Compilează",
       "recompile": "Recompilează",
       "compiling": "Se compilează…",
+      "stop": "Oprește",
       "saveTooltip": "Salvează această diagramă",
       "save": "Salvează",
       "saveToProject": "Salvează în proiect",

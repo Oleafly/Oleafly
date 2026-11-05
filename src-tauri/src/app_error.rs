@@ -60,7 +60,6 @@ fn envelope(text: &str) -> Option<Envelope> {
     serde_json::from_str(text.strip_prefix(PREFIX)?).ok()
 }
 
-#[cfg(test)]
 pub(crate) fn code(text: &str) -> Option<String> {
     envelope(text).map(|envelope| envelope.code)
 }

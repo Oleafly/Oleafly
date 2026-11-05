@@ -94,6 +94,8 @@
     "exitFullscreen": "Salir de la pantalla completa",
     "retryCompile": "Volver a compilar",
     "chooseEngine": "Elegir motor",
+    "installJapanese": "Instalar compatibilidad con japonés (unos 450 MB)",
+    "useCompiler": "Usar {{compiler}}",
     "installPackages_one": "Buscar e instalar {{name}}",
     "installPackages_many": "Buscar e instalar {{count}} archivos",
     "installPackages_other": "Buscar e instalar {{count}} archivos",
@@ -101,7 +103,9 @@
     "useTypst": "Usar Typst {{version}}",
     "installTool": "Instalar {{tool}} {{version}}",
     "installToolSize": "Instalar {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Abrir los ajustes del motor"
+    "engineSettings": "Abrir los ajustes del motor",
+    "useTectonic": "Usar Tectonic",
+    "useTectonicForEveryone": "Usar Tectonic para todos"
   },
   "html": {
     "builtTitle": "Generado como página web",

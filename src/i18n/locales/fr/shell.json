@@ -476,9 +476,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "Cet échec correspond à une limite connue du moteur Tectonic fourni. Choisissez comment ce projet doit compiler. Le choix est enregistré dans le projet, vos collaborateurs auront donc la même configuration.",
     "descriptionImportScan": "L'analyse d'import a repéré des fonctions que le moteur Tectonic fourni n'orchestre pas. Choisissez comment ce projet doit compiler. Le choix est enregistré dans le projet, vos collaborateurs auront donc la même configuration.",
+    "descriptionTexMissing": "Ce projet compile désormais avec latexmk, et cet ordinateur ne peut pas encore l'exécuter. Oleafly peut installer TinyTeX pour vous, ou vous pouvez revenir au moteur Tectonic intégré.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX via latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "La compilation s'est arrêtée sur {{file}}.",
+      "missingFiles": "La compilation n'a pas trouvé {{files}}.",
+      "mirrorStatus": "Le miroir a renvoyé HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "La bibliographie utilise biblatex et Biber",
+        "detail": "Ce projet a besoin de Biber pour construire la liste de références. Oleafly fournit un Biber compatible avec son moteur intégré. Si les citations restent des « ? » après la compilation, cherchez une note de Biber dans le journal."
+      },
+      "bundle-fetch-failed": {
+        "title": "Le téléchargement des paquets TeX a échoué",
+        "detail": "Oleafly n'a pas pu télécharger les paquets TeX depuis son miroir, la compilation n'a donc jamais atteint votre document. Vérifiez votre connexion et compilez à nouveau. Le téléchargement reprend là où il s'était arrêté."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 a besoin de pdfLaTeX",
+        "detail": "CJKutf8 et CJK ne fonctionnent qu'avec pdfLaTeX. Avec le moteur intégré (XeTeX), le document compile quand même, mais son texte chinois, japonais ou coréen manque dans le PDF. Passez à pdfLaTeX avec le TeX du système, ou remplacez le paquet par xeCJK."
+      },
+      "class-compat": {
+        "title": "La classe de document atteint les limites du moteur",
+        "detail": "Les erreurs de compilation viennent d'une classe ou d'un fichier de style, pas de votre document. Les classes des éditeurs dépendent souvent d'outils ou d'un comportement de pdfTeX que le moteur intégré n'a pas. latexmk compile avec une distribution TeX complète."
+      },
+      "eps-image": {
+        "title": "Les images EPS demandent un convertisseur",
+        "detail": "Le moteur intégré ne peut pas placer d'images EPS. Convertissez-les en PDF avec epstopdf ou Inkscape, ou passez à pdfLaTeX avec le TeX du système, qui convertit l'EPS via Ghostscript."
+      },
+      "fontspec": {
+        "title": "Polices personnalisées (fontspec)",
+        "detail": "fontspec a besoin des polices nommées sur cet ordinateur. Les polices fournies avec un éditeur en ligne peuvent manquer ici."
+      },
+      "glossaries-index": {
+        "title": "Outil de glossaire ou d'index",
+        "detail": "glossaries et makeindex demandent une exécution supplémentaire de makeindex ou xindy, que le moteur intégré ne fait pas."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref est réglé sur le pilote pdfTeX",
+        "detail": "Cette classe ou ce préambule impose le pilote pdftex de hyperref, que le moteur intégré ne peut pas utiliser. Passez à pdfLaTeX avec le TeX du système, ou retirez l'option pdftex pour que hyperref choisisse lui-même le pilote."
+      },
+      "minted": {
+        "title": "minted a besoin du shell escape et de Pygments",
+        "detail": "Les listings de code avec minted demandent une distribution TeX du système et pygmentize. Passez au LaTeX du système, puis autorisez les commandes externes sur cet ordinateur uniquement si vous faites confiance à chaque fichier du projet."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Un paquet manque dans le lot intégré",
+        "detail": "Quelque chose que ce projet charge n'est pas dans le lot TeX intégré. Ajoutez le fichier au projet s'il venait avec votre modèle, ou passez au TeX du système et installez le paquet depuis TeX Live."
+      },
+      "pdftex-only": {
+        "title": "Paquets pdfTeX",
+        "detail": "Le moteur intégré est basé sur XeTeX, et ce projet s'appuie sur des paquets ou des commandes qui ne fonctionnent qu'avec pdfTeX. latexmk compile avec un vrai pdfLaTeX."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX a besoin de son programme auxiliaire, fourni par la distribution TeX du système active. Passez au LaTeX du système, puis autorisez les commandes externes sur cet ordinateur uniquement si vous faites confiance à chaque fichier du projet."
+      },
+      "shell-escape": {
+        "title": "Commandes shell escape",
+        "detail": "Le source utilise \\write18 ou un autre shell escape. Passez au LaTeX du système, puis autorisez les commandes externes sur cet ordinateur uniquement si vous faites confiance à chaque fichier du projet et que les outils nécessaires sont installés."
+      }
     },
     "recommended": "Recommandé",
     "shellEscape": {
@@ -506,13 +566,14 @@
       "withFailures_other": "Aucune installation, fonctionne hors ligne. {{features}} devraient continuer à échouer."
     },
     "tinytex": {
-      "description": "Installe un TeX Live compact dans votre dossier personnel, sans droits d'administrateur. Le téléchargement de base pèse environ 250 Mo. Les modèles de revues peuvent réclamer d'autres paquets plus tard, jusqu'à 1 Go environ au total.",
+      "description": "Installe un TeX Live compact, sans droits d'administrateur. Le téléchargement de base pèse environ 250 Mo. Les modèles de revues peuvent réclamer d'autres paquets plus tard, jusqu'à 1 Go environ au total.",
       "download": "Télécharger et utiliser TinyTeX",
       "resume": "Reprendre le téléchargement ({{megabytes}} Mo effectués)",
       "title": "Télécharger TinyTeX"
     },
     "titleCompileFailure": "Cette compilation demande plus que le moteur intégré",
-    "titleImportScan": "Ce projet demande plus que le moteur intégré"
+    "titleImportScan": "Ce projet demande plus que le moteur intégré",
+    "titleTexMissing": "Ce compilateur a besoin d'une distribution TeX qui fonctionne"
   },
   "shellCommands": {
     "allow": "Autoriser les commandes externes",
@@ -1172,11 +1233,16 @@
     },
     "wait": {
       "description": "{{phase}} Votre compilation est en file d'attente et démarre automatiquement dès que le moteur est prêt.",
+      "stop": "Arrêter l'installation",
       "title": "TinyTeX est encore en cours de téléchargement"
     },
     "typstQuit": {
       "title": "Typst est encore en cours d'installation",
       "description": "Typst {{version}} est en cours de téléchargement. Si vous quittez maintenant, le téléchargement s'arrête et vous devrez le relancer depuis les Paramètres."
+    },
+    "packageQuit": {
+      "title": "Oleafly modifie encore des paquets TeX",
+      "description": "Si vous quittez maintenant, l'installation ou la suppression s'arrête en cours de route et peut endommager votre gestionnaire de paquets TeX."
     }
   },
   "toolbar": {
@@ -1342,7 +1408,7 @@
       "compiling": "Compilation avec Typst"
     },
     "errors": {
-      "pandoc": "Pandoc n'est pas prêt. Installez-le depuis Oleafly Tools, puis réessayez.",
+      "pandoc": "Pandoc n'est pas prêt. Réparez-le dans Paramètres > Moteurs > Markdown, puis réessayez.",
       "noMain": "Le fichier LaTeX principal n'a pas pu être lu.",
       "emptyOutput": "Pandoc a renvoyé un document vide.",
       "failed": "La conversion s'est arrêtée : {{detail}}"
@@ -1407,7 +1473,8 @@
     "svg": "Images SVG",
     "html": "HTML",
     "experimental": "Expérimental",
-    "htmlNote": "L'export HTML de Typst est encore expérimental. Il omet la mise en page et les éléments placés.",
+    "htmlNote": "L'export HTML de Typst est encore expérimental. Il conserve le texte et les images, mais pas la mise en page ni les dessins.",
+    "htmlNoteOldTypst": "Typst {{version}} laisse les équations hors du HTML. Typst 0.15 ou plus récent les conserve.",
     "ppi": "Résolution",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Pages",

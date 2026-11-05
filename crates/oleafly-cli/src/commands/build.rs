@@ -283,7 +283,7 @@ async fn watch_build(
         Err(error) => {
             ctx.stream_event("build_error", json!({"ok": false, "error": error}))?;
             if !ctx.json() {
-                crate::human::error(&format!("{} Waiting for changes.", error.message));
+                crate::human::error(&watch_error_text(&error));
             }
             return Ok(true);
         }
@@ -388,10 +388,36 @@ fn notify_error(error: notify::Error) -> CliError {
     )
 }
 
+fn watch_error_text(error: &CliError) -> String {
+    format!("{}\nWaiting for changes.", error.with_hint_text())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use notify::event::{AccessKind, CreateKind, ModifyKind, RemoveKind};
+
+    #[test]
+    fn a_failed_watch_build_shows_the_hint_before_it_waits() {
+        let missing = |message: &str| {
+            CliError::new(
+                ErrorKind::MissingTool,
+                "environment.missing_tool",
+                message.to_owned(),
+            )
+        };
+        let error = missing("typst was not found. Install it or set OLEAFLY_TYPST").hint(
+            "Run `oleafly typst install 0.15.1`, or see https://github.com/typst/typst/releases",
+        );
+        assert_eq!(
+            watch_error_text(&error),
+            "typst was not found. Install it or set OLEAFLY_TYPST. Run `oleafly typst install 0.15.1`, or see https://github.com/typst/typst/releases\nWaiting for changes."
+        );
+        assert_eq!(
+            watch_error_text(&missing("pandoc was not found.")),
+            "pandoc was not found.\nWaiting for changes."
+        );
+    }
 
     #[test]
     fn a_watcher_failure_keeps_its_cause_and_a_stable_kind() {

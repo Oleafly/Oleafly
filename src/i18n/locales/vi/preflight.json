@@ -572,6 +572,7 @@
     "unrecorded": "LaTeX Project chưa ghi nhận trạng thái gắn thẻ cho lớp {{name}}, nên kết quả chưa được chứng minh. Hãy biên dịch và kiểm tra đầu ra."
   },
   "prep": {
+    "metadataInMain": "\\DocumentMetadata nằm ở đầu tài liệu chính, nên tệp này không có nó.",
     "metadataUpdated": "Đã thêm các khoá gắn thẻ cần thiết vào \\DocumentMetadata của bạn.",
     "metadataAdded": "Đã thêm \\DocumentMetadata làm dòng đầu (bắt buộc, phải đứng trước \\documentclass). Dòng này nằm trong một bước kiểm tra phiên bản: LaTeX cũ hơn {{date}}, kể cả engine đi kèm, sẽ bỏ qua nó và biên dịch tài liệu không có thẻ thay vì báo lỗi.",
     "headerRows": "Đã đặt table/header-rows thành 1 để hàng đầu của mỗi bảng được gắn thẻ là ô tiêu đề. Hãy đổi số nếu bảng có độ sâu tiêu đề khác.",

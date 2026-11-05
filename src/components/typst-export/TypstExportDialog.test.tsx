@@ -29,9 +29,15 @@ function options(over: Partial<TypstOptionsDescriptor> = {}): TypstOptionsDescri
   };
 }
 
-function useTypst(typstOptions: TypstOptionsDescriptor) {
+function useTypst(typstOptions: TypstOptionsDescriptor, version?: string) {
   useFilesStore.setState({
-    engine: { ...LATEX_ENGINE, id: "typst", source_format: "typst", typst_options: typstOptions },
+    engine: {
+      ...LATEX_ENGINE,
+      id: "typst",
+      source_format: "typst",
+      typst_options: typstOptions,
+      ...(version ? { typst_resolved: { version, source: "bundled" } } : {}),
+    },
   });
 }
 
@@ -94,6 +100,27 @@ describe("Typst export choices", () => {
     expect(screen.queryByTestId("typst-export-pages")).not.toBeInTheDocument();
     await user.click(screen.getByTestId("typst-export-submit"));
     expect(mocks.exportCurrentTypst).toHaveBeenCalledWith({ format: "html" });
+  });
+
+  it("warns that older Typst versions leave equations out of HTML", async () => {
+    useTypst(options(), "0.14.2");
+    const user = userEvent.setup();
+    render(<TypstExportDialog open onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("typst-export-png")).toHaveFocus());
+    const note = copy.htmlNoteOldTypst.replace("{{version}}", "0.14.2");
+    expect(screen.queryByText(note)).toBeNull();
+    await user.click(screen.getByTestId("typst-export-html"));
+    expect(screen.getByText(note)).toBeInTheDocument();
+  });
+
+  it("stays quiet about equations on versions that write them", async () => {
+    useTypst(options(), "0.15.1");
+    const user = userEvent.setup();
+    render(<TypstExportDialog open onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("typst-export-png")).toHaveFocus());
+    await user.click(screen.getByTestId("typst-export-html"));
+    expect(screen.getByText(copy.htmlNote)).toBeInTheDocument();
+    expect(screen.queryByText(copy.htmlNoteOldTypst.replace("{{version}}", "0.15.1"))).toBeNull();
   });
 
   it("says when the version cannot pick pages", () => {

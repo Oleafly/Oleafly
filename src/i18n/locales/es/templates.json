@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Preparando tu plantilla...",
-      "downloading": "Descargando {{label}} ({{index}} de {{total}})"
+      "downloading": "Descargando {{label}} ({{index}} de {{total}})",
+    "failed": "No se pudieron descargar las tipografías de esta plantilla. Revisa tu conexión y vuelve a intentarlo."
     },
     "category": {
       "all": "Todas",

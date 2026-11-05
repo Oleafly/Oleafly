@@ -357,7 +357,12 @@
     "rawLogs": "Log thô",
     "copyLog": "Sao chép log",
     "typesetting": "Sắp chữ",
+    "missingCharacters": "Ký tự bị thiếu",
     "info": "Thông tin",
+    "clear": "Xoá",
+    "clearAria": "Xoá nhật ký biên dịch",
+    "clearHint": "Ẩn nhật ký này và các lỗi của nó cho đến lần biên dịch tiếp theo. Các tệp dựng vẫn được giữ.",
+    "cleared": "Đã xoá nhật ký. Lần biên dịch tiếp theo sẽ ghi một nhật ký mới.",
     "empty": "Đầu ra biên dịch sẽ hiện ở đây.",
     "scrollToTop": "Cuộn lên đầu",
     "scrollToBottom": "Cuộn xuống cuối",
@@ -369,6 +374,8 @@
     "summaryWarnings_other": "{{count}} cảnh báo",
     "summaryReferences_other": "{{count}} tham chiếu chưa giải quyết",
     "fontPack": "{{family}} nằm trong bộ phông miễn phí {{pack}}.",
+    "fontPackGlyphs": "Bộ phông miễn phí {{pack}} có các ký tự này.",
+    "fontPackSealed": "{{family}} nằm trong bộ phông miễn phí {{pack}}, nhưng bộ phông không áp dụng ở đây vì dự án này chỉ dùng phông chữ của dự án. Hãy thêm tệp phông vào thư mục fonts của dự án.",
     "fontPackAction": "Tải xuống và biên dịch",
     "fontPackDownloading": "Đang tải xuống…",
     "fontPackFailed": "Không thể tải bộ phông. Hãy kiểm tra kết nối và thử lại."
@@ -1442,7 +1449,8 @@
       "upToDate": "Mọi gói dự án này import đều đã có trong typst-packages.",
       "missing": "Các gói này không có trong bộ nhớ đệm gói: {{names}}. Hãy biên dịch một lần khi có mạng, rồi vendor lại.",
       "count_other": "{{count}} gói trong dự án này",
-      "none": "Dự án này chưa có gói nào."
+      "none": "Dự án này chưa có gói nào.",
+      "unsupported": "Typst {{version}} không thể đọc gói từ thư mục dự án. Hãy chuyển dự án sang Typst 0.12 trở lên để dùng tính năng này."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} đã có. Import này dùng {{version}}.",
@@ -1480,6 +1488,7 @@
     "classNote": "Đây là lớp tài liệu. Hãy đặt bằng \\documentclass.",
     "onDemand": "Tectonic tải gói trong lần đầu tài liệu dùng chúng. Không cần cài gì.",
     "checking": "Đang kiểm tra gói đã cài",
+    "systemManaged": "Bản TeX Live này đi kèm bản phân phối Linux của bạn, nên hãy cài gói bằng {{manager}}.",
     "unknownInstall": "Oleafly không biết bản TeX của bạn có những gói nào.",
     "noProject": "Hãy mở dự án LaTeX để thêm gói.",
     "added": "Đã thêm {{name}} vào {{file}}.",

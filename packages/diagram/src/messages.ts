@@ -18,6 +18,7 @@ export const DIAGRAM_MESSAGE_KEYS = [
   "composer.compile",
   "composer.recompile",
   "composer.compiling",
+  "composer.stop",
   "composer.saveTooltip",
   "composer.save",
   "composer.saveToProject",

@@ -94,6 +94,8 @@
     "exitFullscreen": "Ukončit celou obrazovku",
     "retryCompile": "Zkusit kompilaci znovu",
     "chooseEngine": "Vybrat engine",
+    "installJapanese": "Nainstalovat podporu japonštiny (asi 450 MB)",
+    "useCompiler": "Použít {{compiler}}",
     "installPackages_one": "Najít a nainstalovat {{name}}",
     "installPackages_few": "Najít a nainstalovat {{count}} soubory",
     "installPackages_many": "Najít a nainstalovat {{count}} souboru",
@@ -102,7 +104,9 @@
     "useTypst": "Použít Typst {{version}}",
     "installTool": "Nainstalovat {{tool}} {{version}}",
     "installToolSize": "Nainstalovat {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Otevřít nastavení enginu"
+    "engineSettings": "Otevřít nastavení enginu",
+    "useTectonic": "Použít Tectonic",
+    "useTectonicForEveryone": "Použít Tectonic pro všechny"
   },
   "html": {
     "builtTitle": "Sestaveno jako webová stránka",

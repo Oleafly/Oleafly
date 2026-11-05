@@ -463,6 +463,7 @@
     "previewUnsupported": "Direkte forhåndsvisning findes endnu ikke til denne motor",
     "badge": "AI-genereret",
     "compileWarning": "Udkastet blev ikke kompileret rent. Generer det igen for at få et bedre udgangspunkt, eller opret projektet, og ret kilden i editoren.",
+    "compileLog": "Kompileringslog",
     "noDescription": "Ingen beskrivelse endnu.",
     "includes": "Indeholder",
     "category": "Kategori",

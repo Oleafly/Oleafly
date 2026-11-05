@@ -159,7 +159,7 @@
    "category": "biber",
    "file": null,
    "line": null,
-   "message": "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically. If citations stay undefined, see [Oleafly] notes in this log."
+   "message": "Bibliography needs Biber (biblatex). If citations stay undefined, check the Biber messages in this log."
   },
   {
    "severity": "warning",

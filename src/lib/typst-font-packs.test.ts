@@ -4,8 +4,10 @@ import {
   cjkCharacters,
   isFontPackId,
   isTypstFontPackId,
+  isTypstGlyphWarning,
   missingTypstFont,
   packForFamily,
+  typstPacksApply,
 } from "./typst-font-packs";
 
 const pack = (over: Partial<ComponentInfo>): ComponentInfo => ({
@@ -40,6 +42,22 @@ describe("typst font packs", () => {
     expect(packForFamily(packs, "NOTO SERIF CJK SC")?.id).toBe("typst-cjk");
     expect(packForFamily(packs, "SimSun")).toBeUndefined();
     expect(packForFamily([pack({ id: "typst-unknown" })], "Liberation Sans")).toBeUndefined();
+  });
+
+  it("treats sealed projects as closed to shared packs", () => {
+    expect(typstPacksApply({ system_fonts: true, reproducible: false })).toBe(true);
+    expect(typstPacksApply(undefined)).toBe(true);
+    expect(typstPacksApply(null)).toBe(true);
+    expect(typstPacksApply({ system_fonts: false, reproducible: false })).toBe(false);
+    expect(typstPacksApply({ system_fonts: true, reproducible: true })).toBe(false);
+  });
+
+  it("recognizes the glyph warnings", () => {
+    expect(isTypstGlyphWarning({ code: "typst.missing_glyphs_sealed" })).toBe(true);
+    expect(isTypstGlyphWarning({ code: "typst.placeholder_glyphs" })).toBe(true);
+    expect(isTypstGlyphWarning({ code: "typst.unknown_font" })).toBe(false);
+    expect(isTypstGlyphWarning({ code: null })).toBe(false);
+    expect(isTypstGlyphWarning({})).toBe(false);
   });
 
   it("offers a template font pack too, since Typst reads those as well", () => {

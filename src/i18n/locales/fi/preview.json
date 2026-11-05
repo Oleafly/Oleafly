@@ -94,13 +94,17 @@
     "exitFullscreen": "Poistu koko näytöstä",
     "retryCompile": "Käännä uudelleen",
     "chooseEngine": "Valitse moottori",
+    "installJapanese": "Asenna japanin tuki (noin 450 MB)",
+    "useCompiler": "Käytä kääntäjää {{compiler}}",
     "installPackages_one": "Etsi ja asenna {{name}}",
     "installPackages_other": "Etsi ja asenna {{count}} tiedostoa",
     "downloadTypst": "Lataa Typst {{version}}",
     "useTypst": "Käytä versiota Typst {{version}}",
     "installTool": "Asenna {{tool}} {{version}}",
     "installToolSize": "Asenna {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Avaa moottoriasetukset"
+    "engineSettings": "Avaa moottoriasetukset",
+    "useTectonic": "Käytä Tectonicia",
+    "useTectonicForEveryone": "Käytä Tectonicia kaikille"
   },
   "html": {
     "builtTitle": "Käännetty verkkosivuksi",

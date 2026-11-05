@@ -827,7 +827,7 @@ export function validateLatexSetting(key: LatexSettingKey, value: string): boole
   }
 }
 
-const TEX_PROGRAM_MAGIC = /%\s*(?:!+\s*)?tex\s+program\s*=\s*([a-z]+)/iuy;
+const TEX_PROGRAM_MAGIC = /%\s*(?:!+\s*)?tex\s+(?:program|ts-program|engine)\s*=\s*([a-z]+)/iuy;
 const LINE_BREAKS = new Set(["\n", "\r", "\u2028", "\u2029"]);
 
 function texProgramMagic(head: string): string | null {
@@ -854,7 +854,10 @@ export function latexSupportsSystemFonts(engine: string | undefined, flavor: str
   const head = text.split("\n").slice(0, 100).join("\n");
   const magic = texProgramMagic(head);
   if (magic !== null) return /^(?:xelatex|lualatex)$/iu.test(magic);
-  return /fontspec|polyglossia|unicode-math|\\setmainfont/u.test(text);
+  const preamble = maskComments(text).split(String.raw`\begin{document}`)[0];
+  return /fontspec|polyglossia|unicode-math|\\setmainfont|\\set(?:main|sans|mono)?han(?:gul|ja)font|xetexko|luatexko/u.test(
+    preamble,
+  );
 }
 
 function replaceItem(item: OptionItem, insert: string): DocumentSettingsEdit {

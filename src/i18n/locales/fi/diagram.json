@@ -38,6 +38,7 @@
       "compile": "Käännä",
       "recompile": "Käännä uudelleen",
       "compiling": "Käännetään…",
+      "stop": "Pysäytä",
       "saveTooltip": "Tallenna tämä kaavio",
       "save": "Tallenna",
       "saveToProject": "Tallenna projektiin",

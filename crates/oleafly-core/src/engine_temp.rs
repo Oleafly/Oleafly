@@ -99,13 +99,28 @@ impl EngineScratch {
     }
 
     pub fn pandoc_resource_path(&self, project: &Path) -> io::Result<PandocResourcePath> {
-        if !project
-            .as_os_str()
-            .as_encoded_bytes()
-            .contains(&SEARCH_PATH_SEPARATOR)
-        {
+        self.pandoc_search_path(project, &[project.to_path_buf()])
+    }
+
+    pub fn pandoc_search_path(
+        &self,
+        project: &Path,
+        folders: &[PathBuf],
+    ) -> io::Result<PandocResourcePath> {
+        let splits = |folder: &PathBuf| {
+            folder
+                .as_os_str()
+                .as_encoded_bytes()
+                .contains(&SEARCH_PATH_SEPARATOR)
+        };
+        if !folders.iter().any(splits) {
             let mut argument = OsString::from("--resource-path=");
-            argument.push(project);
+            for (index, folder) in folders.iter().enumerate() {
+                if index > 0 {
+                    argument.push(char::from(SEARCH_PATH_SEPARATOR).to_string());
+                }
+                argument.push(folder);
+            }
             return Ok(PandocResourcePath {
                 argument,
                 variable: None,
@@ -116,10 +131,26 @@ impl EngineScratch {
             || format!("${{{PANDOC_RESOURCE_PATH_VARIABLE}}}"),
             str::to_owned,
         );
+        let entries: Vec<String> = folders
+            .iter()
+            .filter_map(|folder| {
+                let relative = folder.strip_prefix(project).ok()?;
+                if relative.as_os_str().is_empty() {
+                    return Some(entry.clone());
+                }
+                let relative = relative.to_str().filter(|text| !text.contains("${"))?;
+                Some(
+                    Path::new(&entry)
+                        .join(relative)
+                        .to_string_lossy()
+                        .into_owned(),
+                )
+            })
+            .collect();
         let defaults = self.path().join(PANDOC_DEFAULTS_FILE);
         std::fs::write(
             &defaults,
-            serde_json::json!({ "resource-path": [entry] }).to_string(),
+            serde_json::json!({ "resource-path": entries }).to_string(),
         )?;
         let mut argument = OsString::from("--defaults=");
         argument.push(&defaults);
@@ -132,6 +163,19 @@ impl EngineScratch {
                 )
             }),
         })
+    }
+}
+
+pub fn document_search_folders(project: &Path, main_document: &Path) -> Vec<PathBuf> {
+    let project = plain_path(project);
+    let main_folder = project
+        .join(main_document)
+        .parent()
+        .map_or_else(|| project.clone(), Path::to_path_buf);
+    if main_folder == project {
+        vec![project]
+    } else {
+        vec![main_folder, project]
     }
 }
 
@@ -545,6 +589,83 @@ mod tests {
         drop(scratch);
         assert!(!defaults.exists());
         assert!(!path.exists());
+    }
+
+    #[test]
+    fn a_nested_main_document_searches_its_own_folder_before_the_project() {
+        let root = TempDir::new().unwrap();
+        let bases = EngineScratchBases {
+            system: root.path().join("system"),
+            owned: None,
+            build: root.path().join("build"),
+        };
+        std::fs::create_dir_all(&bases.system).unwrap();
+        let scratch = EngineScratch::create(&bases).unwrap();
+        let separator = char::from(SEARCH_PATH_SEPARATOR);
+        let defaults = scratch.path().join(PANDOC_DEFAULTS_FILE);
+        let read_defaults = || {
+            serde_json::from_str::<serde_json::Value>(&std::fs::read_to_string(&defaults).unwrap())
+                .unwrap()
+        };
+
+        let project = root.path().join("Plain notes");
+        let folders = document_search_folders(&project, Path::new("notes/main.md"));
+        assert_eq!(folders, [project.join("notes"), project.clone()]);
+        let mut argument = OsString::from("--resource-path=");
+        argument.push(project.join("notes"));
+        argument.push(separator.to_string());
+        argument.push(&project);
+        assert_eq!(
+            scratch.pandoc_search_path(&project, &folders).unwrap(),
+            PandocResourcePath {
+                argument,
+                variable: None
+            }
+        );
+        assert!(!defaults.exists());
+
+        for root_main in ["main.md", "./main.md"] {
+            assert_eq!(
+                document_search_folders(&project, Path::new(root_main)),
+                std::slice::from_ref(&project)
+            );
+        }
+
+        let mut defaults_argument = OsString::from("--defaults=");
+        defaults_argument.push(&defaults);
+        let separated = root.path().join(format!("Thesis 2024{separator}25"));
+        let folders = document_search_folders(&separated, Path::new("notes/main.md"));
+        assert_eq!(
+            scratch.pandoc_search_path(&separated, &folders).unwrap(),
+            PandocResourcePath {
+                argument: defaults_argument.clone(),
+                variable: None
+            }
+        );
+        assert_eq!(
+            read_defaults(),
+            serde_json::json!({ "resource-path": [
+                separated.join("notes").to_str().unwrap(),
+                separated.to_str().unwrap(),
+            ] })
+        );
+
+        let both = root.path().join(format!("Draft 1{separator}2 ${{HOME}}"));
+        let folders = document_search_folders(&both, Path::new("notes/main.md"));
+        assert_eq!(
+            scratch.pandoc_search_path(&both, &folders).unwrap(),
+            PandocResourcePath {
+                argument: defaults_argument,
+                variable: Some((PANDOC_RESOURCE_PATH_VARIABLE, both.as_os_str().to_owned()))
+            }
+        );
+        assert_eq!(
+            read_defaults(),
+            serde_json::json!({ "resource-path": [
+                Path::new("${OLEAFLY_PANDOC_RESOURCE_PATH}").join("notes").to_str().unwrap(),
+                "${OLEAFLY_PANDOC_RESOURCE_PATH}",
+            ] })
+        );
     }
 
     #[test]

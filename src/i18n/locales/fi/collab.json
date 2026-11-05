@@ -729,6 +729,13 @@
     "renamedPortable": "Tiedosto {{before}} nimettiin uudelleen nimelle {{theirs}}, jotta se toimii kaikilla koneilla.",
     "skipped": "Käyttäjän {{name}} muutosta ei voitu lukea, joten se ohitettiin.",
     "skippedUnknown": "Jonkun muutosta ei voitu lukea, joten se ohitettiin.",
+    "outputNotShared": {
+      "tooLarge": "Käännetty PDF on suurempi kuin tämä palvelin sallii, joten muut näkevät edelleen edellisen.",
+      "quota": "Tämän palvelimen lähetysraja täyttyi, joten muut näkevät edelleen edellisen PDF:n. Oleafly yrittää uudelleen 15 minuutin kuluttua.",
+      "privateSources": "Käännetty PDF jää tälle koneelle, koska projektissa on tiedostoja, joita ei jaeta.",
+      "serverError": "Palvelin ei hyväksynyt käännettyä PDF:ää, joten muut näkevät edelleen edellisen."
+    },
+    "texNeeded": "Tämä projekti kääntyy TeX-jakelulla, eikä tällä koneella ole sellaista. Asenna TinyTeX kohdasta Asetukset > Moottorit > LaTeX, niin voit kääntää sen täällä.",
     "mentioned": "{{name}} mainitsi sinut kommentissa tiedostossa {{path}}",
     "mentionedHere": "{{name}} mainitsi sinut kommentissa",
     "showComment": "Näytä kommentti",

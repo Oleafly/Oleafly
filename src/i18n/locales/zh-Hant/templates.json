@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "正在設定範本...",
-      "downloading": "正在下載 {{label}}（第 {{index}} 個，共 {{total}} 個）"
+      "downloading": "正在下載 {{label}}（第 {{index}} 個，共 {{total}} 個）",
+      "failed": "無法下載這個範本的字型。請檢查網路連線後再試一次。"
     },
     "category": {
       "all": "全部",

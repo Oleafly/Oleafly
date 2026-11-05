@@ -23,7 +23,8 @@ const MAX_ARCHIVE_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_BINARY_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_ARCHIVE_MEMBERS: usize = 256;
 const MAX_REDIRECTS: usize = 5;
-const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(120);
+const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+const DOWNLOAD_STALL_TIMEOUT: Duration = Duration::from_secs(30);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Debug, Deserialize)]
@@ -73,6 +74,7 @@ struct ManifestTarget {
     output_filename: String,
     resource_relative_path: Option<String>,
     url: String,
+    github_url: String,
 }
 
 #[derive(Debug, Clone)]
@@ -600,6 +602,8 @@ fn validate_target(
     }
     validate_download_url(&target.url, allowed_hosts)
         .map_err(|message| format!("{triple} download URL is invalid: {message}"))?;
+    validate_download_url(&target.github_url, allowed_hosts)
+        .map_err(|message| format!("{triple} fallback URL is invalid: {message}"))?;
     match kind {
         LanguageServiceKind::TexLab => {
             if target.resource_relative_path.is_some() {
@@ -640,6 +644,7 @@ async fn download_archive(profile: &ServerProfile) -> Result<Vec<u8>, LanguageSe
     });
     let client = Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
+        .read_timeout(DOWNLOAD_STALL_TIMEOUT)
         .timeout(DOWNLOAD_TIMEOUT)
         .redirect(policy)
         .build()
@@ -652,8 +657,38 @@ async fn download_archive(profile: &ServerProfile) -> Result<Vec<u8>, LanguageSe
                 ),
             )
         })?;
+    let sources = [
+        profile.target.url.as_str(),
+        profile.target.github_url.as_str(),
+    ];
+    download_from_sources(&client, &sources, &profile.target).await
+}
+
+async fn download_from_sources(
+    client: &Client,
+    sources: &[&str],
+    target: &ManifestTarget,
+) -> Result<Vec<u8>, LanguageServiceError> {
+    let mut last_error = LanguageServiceError::new(
+        LanguageServiceErrorCode::DownloadFailed,
+        "TexLab has no download source",
+    );
+    for source in sources {
+        match download_archive_from(client, source, target).await {
+            Ok(archive) => return Ok(archive),
+            Err(error) => last_error = error,
+        }
+    }
+    Err(last_error)
+}
+
+async fn download_archive_from(
+    client: &Client,
+    source: &str,
+    target: &ManifestTarget,
+) -> Result<Vec<u8>, LanguageServiceError> {
     let response = client
-        .get(&profile.target.url)
+        .get(source)
         .header("User-Agent", "Oleafly-language-server-installer")
         .send()
         .await
@@ -676,7 +711,7 @@ async fn download_archive(profile: &ServerProfile) -> Result<Vec<u8>, LanguageSe
         ));
     }
     if let Some(length) = response.content_length() {
-        if length != profile.target.archive_size {
+        if length != target.archive_size {
             return Err(LanguageServiceError::new(
                 LanguageServiceErrorCode::IntegrityFailure,
                 "TexLab archive Content-Length does not match the pinned size",
@@ -684,7 +719,7 @@ async fn download_archive(profile: &ServerProfile) -> Result<Vec<u8>, LanguageSe
         }
     }
 
-    let expected_size = usize::try_from(profile.target.archive_size).map_err(|_| {
+    let expected_size = usize::try_from(target.archive_size).map_err(|_| {
         LanguageServiceError::new(
             LanguageServiceErrorCode::ManifestInvalid,
             "TexLab archive size cannot be represented on this platform",
@@ -713,8 +748,8 @@ async fn download_archive(profile: &ServerProfile) -> Result<Vec<u8>, LanguageSe
     }
     verify_bytes(
         &archive,
-        profile.target.archive_size,
-        &profile.target.archive_sha256,
+        target.archive_size,
+        &target.archive_sha256,
         "TexLab archive",
     )?;
     Ok(archive)
@@ -1852,6 +1887,141 @@ mod tests {
             output_filename: "fixture".into(),
             resource_relative_path: None,
             url: "https://github.com/fixture".into(),
+            github_url: "https://github.com/fixture".into(),
+        }
+    }
+
+    fn direct_client() -> Client {
+        Client::builder().no_proxy().build().unwrap()
+    }
+
+    async fn answer_once(listener: &tokio::net::TcpListener, response: Vec<u8>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut request = [0_u8; 1024];
+        let _ = socket.read(&mut request).await.unwrap();
+        socket.write_all(&response).await.unwrap();
+        socket.shutdown().await.unwrap();
+    }
+
+    fn http_response(status: &str, body: &[u8]) -> Vec<u8> {
+        let mut response = format!(
+            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        )
+        .into_bytes();
+        response.extend_from_slice(body);
+        response
+    }
+
+    async fn source_answering(response: Vec<u8>) -> (String, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/archive", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { answer_once(&listener, response).await });
+        (url, server)
+    }
+
+    #[tokio::test]
+    async fn a_refused_mirror_falls_back_to_the_next_source() {
+        let archive = b"pinned archive".to_vec();
+        let target = target_for("tar.gz", "texlab", &archive, b"binary");
+        for status in ["404 Not Found", "403 Forbidden"] {
+            let (mirror, mirror_server) = source_answering(http_response(status, b"")).await;
+            let (github, github_server) = source_answering(http_response("200 OK", &archive)).await;
+            let downloaded = download_from_sources(
+                &direct_client(),
+                &[mirror.as_str(), github.as_str()],
+                &target,
+            )
+            .await
+            .unwrap();
+            assert_eq!(downloaded, archive);
+            mirror_server.await.unwrap();
+            github_server.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn a_corrupt_mirror_body_falls_back_and_the_last_error_survives() {
+        let archive = b"pinned archive".to_vec();
+        let target = target_for("tar.gz", "texlab", &archive, b"binary");
+        let corrupt = b"tampered bytes".to_vec();
+        let (mirror, mirror_server) = source_answering(http_response("200 OK", &corrupt)).await;
+        let (github, github_server) = source_answering(http_response("200 OK", &archive)).await;
+        let downloaded = download_from_sources(
+            &direct_client(),
+            &[mirror.as_str(), github.as_str()],
+            &target,
+        )
+        .await
+        .unwrap();
+        assert_eq!(downloaded, archive);
+        mirror_server.await.unwrap();
+        github_server.await.unwrap();
+
+        let (mirror, mirror_server) = source_answering(http_response("200 OK", &corrupt)).await;
+        let (github, github_server) = source_answering(http_response("404 Not Found", b"")).await;
+        let failure = download_from_sources(
+            &direct_client(),
+            &[mirror.as_str(), github.as_str()],
+            &target,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(
+            failure.code,
+            LanguageServiceErrorCode::DownloadFailed
+        ));
+        mirror_server.await.unwrap();
+        github_server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_slow_body_finishes_as_long_as_bytes_keep_arriving() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let archive = vec![7_u8; 32];
+        let target = target_for("tar.gz", "texlab", &archive, b"binary");
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/archive", listener.local_addr().unwrap());
+        let body = archive.clone();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 1024];
+            let _ = socket.read(&mut request).await.unwrap();
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            socket.write_all(head.as_bytes()).await.unwrap();
+            for chunk in body.chunks(8) {
+                socket.write_all(chunk).await.unwrap();
+                socket.flush().await.unwrap();
+                tokio::time::sleep(Duration::from_millis(150)).await;
+            }
+        });
+        let client = Client::builder()
+            .no_proxy()
+            .read_timeout(Duration::from_millis(400))
+            .build()
+            .unwrap();
+        let downloaded = download_from_sources(&client, &[url.as_str()], &target)
+            .await
+            .unwrap();
+        assert_eq!(downloaded, archive);
+        server.await.unwrap();
+    }
+
+    #[test]
+    fn every_pinned_target_names_a_github_fallback() {
+        let manifest = profile_manifest().unwrap();
+        assert!(!manifest.profiles.is_empty());
+        for profile in manifest.profiles.values() {
+            assert!(profile.target.github_url.starts_with("https://github.com/"));
+            assert!(profile
+                .target
+                .github_url
+                .ends_with(&format!("/{}", profile.target.asset)));
+            assert_ne!(profile.target.github_url, profile.target.url);
         }
     }
 

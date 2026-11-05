@@ -101,6 +101,27 @@ export function readDictionaryLocale(raw: string): string {
 }
 export type { EditorThemeId } from "@/lib/editor-themes";
 export type TerminalCursorStyle = "block" | "underline" | "bar";
+export type ExternalTerminalId =
+  | "mac-terminal"
+  | "iterm"
+  | "windows-terminal"
+  | "powershell"
+  | "cmd"
+  | "x-terminal-emulator"
+  | "gnome-terminal"
+  | "konsole";
+export type TerminalOpenWith = "builtin" | ExternalTerminalId;
+export const TERMINAL_OPEN_WITH_IDS: readonly TerminalOpenWith[] = [
+  "builtin",
+  "mac-terminal",
+  "iterm",
+  "windows-terminal",
+  "powershell",
+  "cmd",
+  "x-terminal-emulator",
+  "gnome-terminal",
+  "konsole",
+];
 export type TerminalShellId = "auto" | "pwsh" | "powershell" | "cmd" | "gitBash" | "wsl" | "custom";
 export const TERMINAL_SHELL_IDS: readonly TerminalShellId[] = [
   "auto",
@@ -497,6 +518,9 @@ function readTerminalShell(raw: string): TerminalShellId {
 }
 function readTerminalShellPath(raw: string): string {
   return raw.trim().slice(0, TERMINAL_SHELL_PATH_MAX_LENGTH);
+}
+function readTerminalOpenWith(raw: string): TerminalOpenWith {
+  return (TERMINAL_OPEN_WITH_IDS as readonly string[]).includes(raw) ? (raw as TerminalOpenWith) : "builtin";
 }
 function readTerminalShiftEnter(raw: string): TerminalShiftEnter {
   return raw === "enter" ? "enter" : "newline";
@@ -1016,6 +1040,8 @@ interface SettingsState {
   setTerminalShell: (v: TerminalShellId) => void;
   terminalShellPath: string;
   setTerminalShellPath: (v: string) => void;
+  terminalOpenWith: TerminalOpenWith;
+  setTerminalOpenWith: (v: TerminalOpenWith) => void;
   terminalShiftEnter: TerminalShiftEnter;
   setTerminalShiftEnter: (v: TerminalShiftEnter) => void;
   terminalCopyOnSelect: boolean;
@@ -1235,6 +1261,7 @@ const PREF_DEFAULTS = {
   terminalCursorColor: TERMINAL_COLOR_THEMES.dark.colors.cursor,
   terminalShell: "auto" as TerminalShellId,
   terminalShellPath: "",
+  terminalOpenWith: "builtin" as TerminalOpenWith,
   terminalShiftEnter: "newline" as TerminalShiftEnter,
   terminalCopyOnSelect: false,
   terminalOptionIsMeta: false,
@@ -1312,6 +1339,7 @@ export const SECTION_SETTINGS = {
     terminalCursorColor: "oleafly.terminal.cursorColor",
     terminalShell: "oleafly.terminal.shell",
     terminalShellPath: "oleafly.terminal.shellPath",
+    terminalOpenWith: "oleafly.terminal.openWith",
     terminalShiftEnter: "oleafly.terminal.shiftEnter",
     terminalCopyOnSelect: "oleafly.terminal.copyOnSelect",
     terminalOptionIsMeta: "oleafly.terminal.optionIsMeta",
@@ -1873,6 +1901,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const value = readTerminalShellPath(v);
     saveLs("oleafly.terminal.shellPath", value);
     set({ terminalShellPath: value });
+  },
+  terminalOpenWith: readTerminalOpenWith(ls("oleafly.terminal.openWith", "builtin")),
+  setTerminalOpenWith: (v) => {
+    const value = readTerminalOpenWith(v);
+    saveLs("oleafly.terminal.openWith", value);
+    set({ terminalOpenWith: value });
   },
   terminalShiftEnter: readTerminalShiftEnter(ls("oleafly.terminal.shiftEnter", "newline")),
   setTerminalShiftEnter: (v) => {

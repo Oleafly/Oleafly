@@ -146,6 +146,18 @@ impl CliError {
         self
     }
 
+    pub fn with_hint_text(&self) -> String {
+        let Some(hint) = &self.hint else {
+            return self.message.clone();
+        };
+        let stop = if self.message.ends_with(['.', '!', '?', ':']) {
+            ""
+        } else {
+            "."
+        };
+        format!("{}{stop} {hint}", self.message)
+    }
+
     pub fn exit(&self) -> Exit {
         self.kind.exit()
     }
@@ -692,6 +704,24 @@ mod tests {
             oleafly_core::Error::new(oleafly_core::ErrorKind::NotInitialized, "x").into();
         assert_eq!(error.code, "project.not_initialized");
         assert!(error.hint.unwrap().contains("oleafly init"));
+    }
+
+    #[test]
+    fn a_hint_reads_as_its_own_sentence() {
+        let error = |message: &str| CliError::new(ErrorKind::MissingTool, "x", message.to_owned());
+        assert_eq!(
+            error("tectonic was not found. Install it or set OLEAFLY_TECTONIC")
+                .hint("See the docs.")
+                .with_hint_text(),
+            "tectonic was not found. Install it or set OLEAFLY_TECTONIC. See the docs."
+        );
+        assert_eq!(
+            error("Build failed.")
+                .hint("See the docs.")
+                .with_hint_text(),
+            "Build failed. See the docs."
+        );
+        assert_eq!(error("No hint here").with_hint_text(), "No hint here");
     }
 
     #[test]

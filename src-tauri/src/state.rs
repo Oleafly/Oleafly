@@ -14,6 +14,7 @@ pub struct AppState {
     pub reveal_allowlist: Mutex<VecDeque<PathBuf>>,
     pub table_import_allowlist: Mutex<VecDeque<PathBuf>>,
     pub compile_cancel: CompileCancel,
+    pub figure_cancel: CompileCancel,
 }
 
 #[derive(Clone, Default)]
@@ -137,6 +138,7 @@ impl Default for AppState {
             reveal_allowlist: Mutex::new(VecDeque::new()),
             table_import_allowlist: Mutex::new(VecDeque::new()),
             compile_cancel: CompileCancel::default(),
+            figure_cancel: CompileCancel::default(),
         }
     }
 }

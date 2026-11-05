@@ -133,4 +133,8 @@ describe("codeExecutionNeed", () => {
     expect(codeExecutionNeed([{ ...coded("x"), code: null }])).toBeNull();
     expect(codeExecutionNeed([])).toBeNull();
   });
+
+  it("offers nothing when R itself is missing, because allowing code can't help", () => {
+    expect(codeExecutionNeed([coded("notebook.code_skipped"), coded("notebook.r_missing", "error")])).toBeNull();
+  });
 });

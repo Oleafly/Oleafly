@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "Je sjabloon wordt ingesteld...",
-      "downloading": "{{label}} downloaden ({{index}} van {{total}})"
+      "downloading": "{{label}} downloaden ({{index}} van {{total}})",
+      "failed": "De lettertypen voor dit sjabloon konden niet worden gedownload. Controleer je verbinding en probeer het opnieuw."
     },
     "category": {
       "all": "Alles",

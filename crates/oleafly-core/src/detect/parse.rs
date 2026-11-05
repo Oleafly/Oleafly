@@ -1,6 +1,7 @@
 use crate::context::text::{is_js_space, trim_js};
 
 const MAGIC_COMMENT_LINES: usize = 50;
+const PROGRAM_COMMENT_LINES: usize = 100;
 const TITLE_CHARACTERS: usize = 80;
 const ARGUMENT_WINDOW: usize = 1024;
 
@@ -32,21 +33,41 @@ pub fn tex_magic_comments(text: &str) -> TexMagicComments {
     found
 }
 
+pub fn tex_program_magic(text: &str) -> Option<&str> {
+    text.lines()
+        .take(PROGRAM_COMMENT_LINES)
+        .find_map(program_comment)
+}
+
+fn program_comment(line: &str) -> Option<&str> {
+    let body = magic_comment_body(line)?;
+    ["program", "ts-program", "engine"]
+        .iter()
+        .find_map(|name| strip_prefix_ignore_case(body, name))
+        .and_then(magic_value)
+}
+
 fn magic_comment(line: &str) -> Option<(MagicKey, &str)> {
-    let rest = trim_js_start(trim_js_start(line).strip_prefix('%')?);
-    let rest = trim_js_start(rest.strip_prefix('!').unwrap_or(rest));
-    let rest = strip_prefix_ignore_case(rest, "tex")?;
-    let spaced = trim_js_start(rest);
-    if spaced.len() == rest.len() {
-        return None;
-    }
+    let spaced = magic_comment_body(line)?;
     let (key, rest) = strip_prefix_ignore_case(spaced, "root")
         .map(|rest| (MagicKey::Root, rest))
         .or_else(|| {
             strip_prefix_ignore_case(spaced, "program").map(|rest| (MagicKey::Program, rest))
         })?;
+    Some((key, magic_value(rest)?))
+}
+
+fn magic_comment_body(line: &str) -> Option<&str> {
+    let rest = trim_js_start(trim_js_start(line).strip_prefix('%')?);
+    let rest = trim_js_start(rest.strip_prefix('!').unwrap_or(rest));
+    let rest = strip_prefix_ignore_case(rest, "tex")?;
+    let spaced = trim_js_start(rest);
+    (spaced.len() != rest.len()).then_some(spaced)
+}
+
+fn magic_value(rest: &str) -> Option<&str> {
     let value = trim_js(trim_js_start(rest).strip_prefix('=')?);
-    (!value.is_empty()).then_some((key, value))
+    (!value.is_empty()).then_some(value)
 }
 
 /// The app reads these comments with `\s`, which matches a byte order mark.
@@ -299,6 +320,8 @@ pub(super) struct LatexReferences {
     pub(super) inputs: Vec<String>,
     pub(super) graphics: Vec<String>,
     pub(super) bibliographies: Vec<String>,
+    pub(super) classes: Vec<String>,
+    pub(super) packages: Vec<String>,
 }
 
 pub(super) fn latex_references(masked: &str) -> LatexReferences {
@@ -361,6 +384,22 @@ impl LatexReferences {
             "addbibresource" => {
                 let (argument, end) = braced_argument(masked, name_end)?;
                 self.bibliographies.push(argument.to_owned());
+                Some(end)
+            }
+            "documentclass" | "LoadClass" => {
+                let (argument, end) = braced_argument(masked, name_end)?;
+                self.classes.push(argument.trim().to_owned());
+                Some(end)
+            }
+            "usepackage" | "RequirePackage" => {
+                let (argument, end) = braced_argument(masked, name_end)?;
+                self.packages.extend(
+                    argument
+                        .split(',')
+                        .map(str::trim)
+                        .filter(|name| !name.is_empty())
+                        .map(str::to_owned),
+                );
                 Some(end)
             }
             _ => None,
@@ -627,6 +666,43 @@ pub(super) fn latexmk_default_files(text: &str) -> Vec<String> {
         .into_iter()
         .filter(|file| !file.is_empty() && !file.contains(['*', '?']))
         .collect()
+}
+
+pub(super) fn latexmkrc_flavor(text: &str) -> Option<crate::TexFlavor> {
+    use crate::TexFlavor;
+    let code = text
+        .lines()
+        .map(strip_hash_comment)
+        .collect::<Vec<_>>()
+        .join("\n");
+    let program = |variable: &str| {
+        let value = rc_assignment(&code, variable)?;
+        let command = quoted_strings(value).into_iter().next()?;
+        TexFlavor::from_magic_program(command.split_whitespace().next()?)
+    };
+    let mode = rc_assignment(&code, "$pdf_mode").and_then(|value| {
+        value
+            .split(|character: char| !character.is_ascii_digit())
+            .next()
+    });
+    match mode {
+        Some("4") => Some(TexFlavor::Lualatex),
+        Some("5") => Some(TexFlavor::Xelatex),
+        Some("3") => program("$latex").filter(|flavor| flavor.goes_through_dvi()),
+        _ => program("$pdflatex")
+            .filter(|flavor| matches!(flavor, TexFlavor::Xelatex | TexFlavor::Lualatex)),
+    }
+}
+
+fn rc_assignment<'a>(code: &'a str, variable: &str) -> Option<&'a str> {
+    code.match_indices(variable)
+        .filter_map(|(at, _)| {
+            let rest = code[at + variable.len()..].trim_start();
+            let value = rest.strip_prefix('=')?;
+            let line = value.lines().next().unwrap_or_default().trim();
+            (!value.starts_with('=') && !value.starts_with('~')).then_some(line)
+        })
+        .last()
 }
 
 fn default_files_assignment(text: &str) -> Option<Vec<String>> {

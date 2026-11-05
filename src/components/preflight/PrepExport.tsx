@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Copy, FileCheck2, Info, Pencil, Plus, Wand2 } from "lucide-react";
 import { isTauri } from "@tauri-apps/api/core";
-import { prepareAccessibleSource, type PrepChange, type PrepResult } from "@oleafly/preflight";
+import { hasTableEnvironment, prepareAccessibleSource, type PrepChange } from "@oleafly/preflight";
 import { useFilesStore } from "@/store/files";
 import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
@@ -23,10 +23,32 @@ const KIND: Record<PrepChange["kind"], { icon: typeof Info; color: string }> = {
   info: { icon: Info, color: "text-muted-foreground" },
 };
 
+interface PreparedFile {
+  path: string;
+  source: string;
+  output: string;
+}
+
+interface PreparedExport {
+  edits: PreparedFile[];
+  copyText: string;
+  changes: PrepChange[];
+}
+
+function uniqueChanges(changes: readonly PrepChange[]): PrepChange[] {
+  const seen = new Set<string>();
+  return changes.filter((change) => {
+    const key = JSON.stringify(change.summary);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function PrepExport() {
   const { t } = useTranslation(["common", "preflight"]);
   const tp = t as unknown as PreflightTranslate;
-  const [result, setResult] = useState<PrepResult | null>(null);
+  const [result, setResult] = useState<PreparedExport | null>(null);
   const [applied, setApplied] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -58,28 +80,57 @@ export function PrepExport() {
   );
   const gate = useMemo(() => (latexSource ? prepGate(gated.source) : null), [latexSource, gated]);
 
+  const prepare = (): PreparedExport | null => {
+    if (!activePath) return null;
+    const preparationEngine = hasEngine ? "lualatex" : "bundled";
+    const rootPath = gated.origin === "main" || activePath === mainDocPath ? mainDocPath : null;
+    const rootSource = rootPath ? (projectFiles[rootPath]?.content ?? "") : "";
+    const root = rootPath
+      ? prepareAccessibleSource(rootSource, {
+          engine: preparationEngine,
+          hasTables: Object.entries(projectFiles).some(
+            ([path, file]) => path !== rootPath && /\.tex$/i.test(path) && hasTableEnvironment(file.content),
+          ),
+        })
+      : null;
+    const included =
+      rootPath === activePath
+        ? null
+        : prepareAccessibleSource(source, { engine: preparationEngine, scope: "included" });
+    const files: PreparedFile[] = [];
+    if (rootPath && root) files.push({ path: rootPath, source: rootSource, output: root.output });
+    if (included) files.push({ path: activePath, source, output: included.output });
+    return {
+      edits: files.filter((file) => file.output !== file.source),
+      copyText: (root ?? included)?.output ?? "",
+      changes: uniqueChanges([...(root?.changes ?? []), ...(included?.changes ?? [])]),
+    };
+  };
+
   const run = () => {
     if (!latexSource || !gate?.offer) return;
-    setResult(prepareAccessibleSource(source, { engine: hasEngine ? "lualatex" : "bundled" }));
+    setResult(prepare());
     setApplied(false);
     setCopied(false);
   };
 
   const apply = () => {
-    if (!latexSource || !result || !activePath) return;
-    const readOnly = readOnlyEditMessage(activePath);
+    if (!latexSource || !result) return;
+    const readOnly = result.edits.map((edit) => readOnlyEditMessage(edit.path)).find(Boolean);
     if (readOnly) {
       toast.error(readOnly);
       return;
     }
-    useFilesStore.getState().setContent(activePath, result.output, { bumpVersion: true });
+    for (const edit of result.edits) {
+      useFilesStore.getState().setContent(edit.path, edit.output, { bumpVersion: true });
+    }
     setApplied(true);
     void usePreflightStore.getState().run();
   };
 
   const copy = () => {
     if (!result) return;
-    void navigator.clipboard.writeText(result.output).then(() => setCopied(true));
+    void navigator.clipboard.writeText(result.copyText).then(() => setCopied(true));
   };
 
   if (!latexSource) {
@@ -153,7 +204,7 @@ export function PrepExport() {
           <div className="mt-2.5 flex gap-1.5">
             <button type="button"
               onClick={apply}
-              disabled={applied}
+              disabled={applied || result.edits.length === 0}
               className="inline-flex items-center gap-1.5 rounded bg-primary px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-60"
             >
               {applied ? <Check className="size-3" /> : null}

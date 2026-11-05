@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AiToolsHost } from "@oleafly/ai-tools";
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 
 const mocks = vi.hoisted(() => ({
   host: null as unknown,
@@ -40,7 +42,19 @@ const mocks = vi.hoisted(() => ({
     refreshTree: vi.fn(async () => {}),
     setMainDoc: vi.fn(async () => {}),
   },
-  compile: { log: "compile log", pdfBytes: null as Uint8Array | null, recompile: vi.fn() },
+  compile: {
+    log: "compile log",
+    pdfBytes: null as Uint8Array | null,
+    recompile: vi.fn(),
+    status: "idle" as string,
+    lastCompiledAt: null as number | null,
+    htmlOutput: null as { path: string } | null,
+    failureReason: null as string | null,
+    offer: null as { kind: string } | null,
+    errors: [] as unknown[],
+    diagnostics: null as unknown[] | null,
+  },
+  compileBusy: vi.fn(() => false),
   index: { index: null as unknown, rebuildFromDisk: vi.fn(async () => {}) },
   editorView: null as object | null,
   insertAtCursor: vi.fn(),
@@ -63,7 +77,12 @@ vi.mock("@oleafly/ai-tools", () => ({
 }));
 vi.mock("@/lib/tauri", () => mocks.api);
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
-vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => mocks.compile } }));
+vi.mock("@/store/compile", () => ({
+  compileIsBusy: () => mocks.compileBusy(),
+  failureOutsideSource: () =>
+    mocks.compile.failureReason === enPreview.empty.compileFailed ? null : mocks.compile.failureReason,
+  useCompileStore: { getState: () => mocks.compile },
+}));
 vi.mock("@/store/project-index", () => ({ useIndexStore: { getState: () => mocks.index } }));
 vi.mock("@/components/editor/cm/controller", () => ({
   getEditorView: () => mocks.editorView,
@@ -74,6 +93,7 @@ vi.mock("@/lib/cross-window", () => ({ notifyProjectFilesChanged: mocks.notifyPr
 vi.mock("@/lib/pdf-text", () => ({ extractPdfText: mocks.extractPdfText }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: mocks.pdfPageToPng }));
 
+import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import { createFigureTools, createOleaflyTools, initAiPdfCaptureFlag } from "./ai-tools";
 import { invalidateConfigCache } from "./config-cache";
 import { useAgentMemoryStore } from "@/store/agent-memory";
@@ -240,6 +260,12 @@ describe("compile and PDF access", () => {
     expect(h.getPdfCursorPage?.()).toBe(4);
     await h.compileIsolated("proj", "\\documentclass{standalone}");
     expect(mocks.api.compileIsolated).toHaveBeenCalledWith("proj", "\\documentclass{standalone}", true);
+    mocks.api.compileIsolated.mockRejectedValueOnce(
+      `${APP_ERROR_PREFIX}${JSON.stringify({ code: "tex.latexmk_missing", params: {} })}`,
+    );
+    await expect(h.compileIsolated("proj", "x")).rejects.toThrow(enErrors.tex.latexmk_missing);
+    mocks.api.compileIsolated.mockRejectedValueOnce("plain failure");
+    await expect(h.compileIsolated("proj", "x")).rejects.toBe("plain failure");
     await h.readIsolatedPdf("proj");
     expect(mocks.api.readIsolatedPdf).toHaveBeenCalledWith("proj");
     const pdfToPng = h.pdfToPng;
@@ -256,6 +282,122 @@ describe("compile and PDF access", () => {
     await expect(host().getProjectIndex()).resolves.toBe(index);
     await expect(host().getProjectIndex()).resolves.toBe(index);
     expect(mocks.index.rebuildFromDisk).toHaveBeenCalledOnce();
+  });
+});
+
+describe("the agent's compile", () => {
+  beforeEach(() => {
+    mocks.compile.recompile.mockReset();
+    mocks.compile.status = "idle";
+    mocks.compile.lastCompiledAt = null;
+    mocks.compile.htmlOutput = null;
+    mocks.compile.failureReason = null;
+    mocks.compile.offer = null;
+    mocks.compile.errors = [];
+    mocks.compile.diagnostics = null;
+    mocks.compile.pdfBytes = null;
+    mocks.compile.log = "compile log";
+    mocks.compileBusy.mockReset().mockReturnValue(false);
+  });
+
+  it("passes on what stopped a compile before it ran", async () => {
+    mocks.compile.recompile.mockImplementation(async () => {
+      mocks.compile.status = "unavailable";
+      mocks.compile.failureReason = "TinyTeX is still installing";
+      mocks.compile.offer = { kind: "tex-missing" };
+      return undefined;
+    });
+    await expect(host().recompile()).resolves.toMatchObject({
+      ok: false,
+      has_pdf: false,
+      reason: "TinyTeX is still installing",
+      offer: "tex-missing",
+    });
+  });
+
+  it("adds the store's reason to a build that returned a failure", async () => {
+    mocks.compile.recompile.mockImplementation(async () => {
+      mocks.compile.failureReason = "pdfLaTeX cannot read this document";
+      return { ok: false, has_pdf: false, errors: [], log: "x" };
+    });
+    await expect(host().recompile()).resolves.toMatchObject({
+      ok: false,
+      log: "x",
+      reason: "pdfLaTeX cannot read this document",
+    });
+  });
+
+  it("gives no reason for an error in the source, so the agent fixes it", async () => {
+    const errors = [{ message: "Undefined control sequence" }];
+    mocks.compile.recompile.mockImplementation(async () => {
+      mocks.compile.status = "error";
+      mocks.compile.failureReason = enPreview.empty.compileFailed;
+      return { ok: false, has_pdf: false, errors, log: "x" };
+    });
+    await expect(host().recompile()).resolves.toMatchObject({ ok: false, errors, reason: null });
+  });
+
+  it("gives no reason for a queued compile that failed in the source", async () => {
+    const errors = [{ message: "Undefined control sequence" }];
+    mocks.compile.status = "compiling";
+    mocks.compile.recompile.mockResolvedValue(undefined);
+    mocks.compileBusy.mockReturnValueOnce(true).mockImplementation(() => {
+      mocks.compile.status = "error";
+      mocks.compile.failureReason = enPreview.empty.compileFailed;
+      mocks.compile.errors = errors;
+      return false;
+    });
+    await expect(host().recompile()).resolves.toMatchObject({ ok: false, errors, reason: null });
+  });
+
+  it("counts a queued compile that built HTML as a success", async () => {
+    mocks.compile.status = "compiling";
+    mocks.compile.recompile.mockResolvedValue(undefined);
+    mocks.compileBusy.mockReturnValueOnce(true).mockImplementation(() => {
+      mocks.compile.status = "success";
+      mocks.compile.htmlOutput = { path: "main.html" };
+      return false;
+    });
+    await expect(host().recompile()).resolves.toMatchObject({ ok: true, has_pdf: false, reason: null });
+  });
+
+  it("leaves the reason out of a build that worked", async () => {
+    mocks.compile.failureReason = "an old failure";
+    mocks.compile.recompile.mockResolvedValue({ ok: true, has_pdf: true, errors: [], log: "x" });
+    await expect(host().recompile()).resolves.toMatchObject({ ok: true, reason: null });
+  });
+
+  it("waits for a queued compile and returns how it ended", async () => {
+    const pdf = new Uint8Array([1]);
+    mocks.compile.status = "compiling";
+    mocks.compile.recompile.mockResolvedValue(undefined);
+    mocks.compileBusy.mockReturnValueOnce(true).mockImplementation(() => {
+      mocks.compile.status = "success";
+      mocks.compile.lastCompiledAt = 9;
+      mocks.compile.pdfBytes = pdf;
+      return false;
+    });
+    await expect(host().recompile()).resolves.toMatchObject({ ok: true, has_pdf: true, reason: null });
+  });
+
+  it("does not report an earlier success as the agent's own", async () => {
+    mocks.compile.status = "success";
+    mocks.compile.lastCompiledAt = 9;
+    mocks.compile.pdfBytes = new Uint8Array([1]);
+    mocks.compile.recompile.mockResolvedValue(undefined);
+    const result = await host().recompile();
+    expect(result).toMatchObject({ ok: false, has_pdf: false });
+    expect(result?.reason).toContain("did not finish");
+  });
+
+  it("says which failures left the log and PDF behind", () => {
+    const h = host();
+    expect(h.getLastCompileFailure?.()).toBeNull();
+    mocks.compile.status = "error";
+    mocks.compile.failureReason = "Compile failed";
+    expect(h.getLastCompileFailure?.()).toEqual({ reason: "Compile failed", ran: true });
+    mocks.compile.status = "unavailable";
+    expect(h.getLastCompileFailure?.()).toEqual({ reason: "Compile failed", ran: false });
   });
 });
 

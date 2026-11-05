@@ -1,5 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use oleafly_core::engine_spec::{
+    DEFAULT_FONTS_FILTER, DEFAULT_FONTS_FILTER_NAME, MERMAID_FIGURES_FILTER_NAME,
+};
+
 pub struct ImportPlan {
     pub source_name: &'static str,
     pub args: Vec<String>,
@@ -380,6 +384,9 @@ pub fn import_plan(extension: &str, target: &str) -> Option<ImportPlan> {
     if writes_natbib(reader, writer) {
         args.push("--natbib".into());
     }
+    if writer == "latex" {
+        args.push(format!("--lua-filter={DEFAULT_FONTS_FILTER_NAME}"));
+    }
     args.extend(["-o".into(), main_doc.to_string()]);
     args.extend(["--".into(), source_name_for(extension).to_string()]);
     Some(ImportPlan {
@@ -394,6 +401,11 @@ impl ImportPlan {
     pub fn add_bibliographies(&mut self, names: &[String]) {
         add_bibliography_args(&mut self.args, names);
     }
+}
+
+pub fn stage_import_filter(dir: &Path) -> Result<(), String> {
+    std::fs::write(dir.join(DEFAULT_FONTS_FILTER_NAME), DEFAULT_FONTS_FILTER)
+        .map_err(|error| format!("Could not prepare the font filter: {error}"))
 }
 
 fn source_name_for(extension: &str) -> &'static str {
@@ -422,8 +434,12 @@ pub fn export_writer(format: &str) -> Option<(&'static str, &'static str)> {
 
 /// Whether an export format needs `--standalone` to produce a usable file.
 /// Typst and LaTeX writers emit fragments without it.
-pub fn export_needs_standalone(format: &str) -> bool {
-    matches!(format, "typst" | "tex")
+pub fn export_needs_standalone(format: &str, reader: &str) -> bool {
+    match format {
+        "typst" | "tex" => true,
+        "md" | "txt" => reader != "html",
+        _ => false,
+    }
 }
 
 /// Formats whose writers turn citations and cross-references into text.
@@ -452,6 +468,57 @@ fn export_reader(file_name: &str) -> &'static str {
     pandoc_reader(&extension).unwrap_or("latex")
 }
 
+fn shows_saved_figures(format: &str, file_name: &str) -> bool {
+    export_reader(file_name) == "markdown" && matches!(format, "docx" | "html" | "epub" | "pptx")
+}
+
+pub fn export_settles_source_images(format: &str, file_name: &str) -> bool {
+    export_reader(file_name) == "latex" && matches!(format, "md" | "typst")
+}
+
+pub fn export_uses_filter(format: &str, file_name: &str) -> bool {
+    export_renders_citations(format)
+        || export_settles_source_images(format, file_name)
+        || (format == "tex" && export_reader(file_name) == "markdown")
+}
+
+fn without_comment(line: &str) -> &str {
+    let mut escaped = false;
+    for (at, character) in line.char_indices() {
+        match character {
+            '%' if !escaped => return &line[..at],
+            '\\' => escaped = !escaped,
+            _ => escaped = false,
+        }
+    }
+    line
+}
+
+fn is_beamer_source(source: &str) -> bool {
+    source.lines().map(without_comment).any(|line| {
+        line.split_once("\\documentclass")
+            .and_then(|(_, rest)| rest.split_once('{'))
+            .and_then(|(_, rest)| rest.split_once('}'))
+            .is_some_and(|(class, _)| class.trim() == "beamer")
+    })
+}
+
+fn has_frame_shorthand(source: &str) -> bool {
+    source.lines().map(without_comment).any(|line| {
+        line.match_indices("\\frame").any(|(at, command)| {
+            let rest = line[at + command.len()..].trim_start();
+            rest.starts_with(['{', '[', '<']) && !rest.starts_with("{\\titlepage}")
+        })
+    })
+}
+
+pub fn export_reads_raw_frames(format: &str, file_name: &str, source: &str) -> bool {
+    format == "pptx"
+        && export_reader(file_name) == "latex"
+        && is_beamer_source(source)
+        && has_frame_shorthand(source)
+}
+
 pub fn export_args(
     format: &str,
     source: &ExportSource,
@@ -459,11 +526,12 @@ pub fn export_args(
     citations: Option<&ExportCitations<'_>>,
 ) -> Option<Vec<String>> {
     let (writer, _) = export_writer(format)?;
+    let reader = export_reader(&source.file_name);
     let mut args = vec![format!("--to={writer}"), "-o".into(), output.into()];
     if !source.resource_path.is_empty() {
         args.push(format!("--resource-path={}", source.resource_path));
     }
-    if export_needs_standalone(format) {
+    if export_needs_standalone(format, reader) {
         args.push("--standalone".into());
     }
     match format {
@@ -473,15 +541,16 @@ pub fn export_args(
             "--embed-resources".into(),
             "--mathml".into(),
         ]),
-        "epub" => args.push("--toc".into()),
+        "epub" => args.extend(["--toc".into(), "--mathml".into()]),
         _ => {}
     }
     let renders = export_renders_citations(format);
-    let natbib = writes_natbib(export_reader(&source.file_name), writer);
+    let natbib = writes_natbib(reader, writer);
     if natbib {
         args.push("--natbib".into());
     }
-    if let Some(citations) = citations.filter(|_| renders || natbib) {
+    let keeps_bibliography = natbib || writes_source_bibliography(reader, writer);
+    if let Some(citations) = citations.filter(|_| renders || keeps_bibliography) {
         args.extend(
             citations
                 .bibliographies
@@ -491,8 +560,19 @@ pub fn export_args(
         // Filters and citeproc run in command-line order: the filter settles
         // the bibliography first.
         if let Some(filter) = citations.filter.filter(|_| renders) {
+            if shows_saved_figures(format, &source.file_name) {
+                let figures = filter.with_file_name(MERMAID_FIGURES_FILTER_NAME);
+                args.push(format!("--lua-filter={}", figures.to_string_lossy()));
+            }
             args.push(format!("--lua-filter={}", filter.to_string_lossy()));
             args.push("--citeproc".into());
+        }
+        if let Some(filter) = citations
+            .filter
+            .filter(|_| format == "tex" && export_reader(&source.file_name) == "markdown")
+        {
+            let fonts = filter.with_file_name(DEFAULT_FONTS_FILTER_NAME);
+            args.push(format!("--lua-filter={}", fonts.to_string_lossy()));
         }
     }
     args.extend(["--".into(), source.file_name.clone()]);
@@ -631,6 +711,187 @@ mod tests {
         assert!(fixed.contains("font: (\"New Computer Modern\",),"));
         assert!(!fixed.contains("font: (),"));
         assert_eq!(fixed, fixup_typst_source(&fixed));
+    }
+
+    #[test]
+    fn latex_from_markdown_or_word_picks_fonts_for_the_scripts_it_finds() {
+        for (extension, target, fonts) in [
+            ("docx", "latex", true),
+            ("md", "latex", true),
+            ("html", "latex", true),
+            ("md", "typst", false),
+            ("docx", "markdown", false),
+        ] {
+            let plan = import_plan(extension, target).unwrap();
+            assert_eq!(
+                plan.args
+                    .contains(&format!("--lua-filter={DEFAULT_FONTS_FILTER_NAME}")),
+                fonts,
+                "{extension} -> {target}"
+            );
+        }
+        let directory = tempfile::tempdir().unwrap();
+        stage_import_filter(directory.path()).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join(DEFAULT_FONTS_FILTER_NAME)).unwrap(),
+            DEFAULT_FONTS_FILTER
+        );
+
+        let filter = Path::new("/tmp/stage/export-references.lua");
+        let citations = ExportCitations {
+            filter: Some(filter),
+            bibliographies: &[],
+        };
+        let args_for = |format: &str, file_name: &str| {
+            let source = ExportSource {
+                file_name: file_name.into(),
+                resource_path: ".".into(),
+            };
+            export_args(format, &source, "out", Some(&citations)).unwrap()
+        };
+        let fonts = format!(
+            "--lua-filter={}",
+            filter.with_file_name(DEFAULT_FONTS_FILTER_NAME).display()
+        );
+        assert!(args_for("tex", "main.md").contains(&fonts));
+        assert!(!args_for("tex", "main.typ").contains(&fonts));
+        assert!(!args_for("docx", "main.md").contains(&fonts));
+    }
+
+    #[test]
+    fn markdown_exports_swap_saved_diagrams_in_before_the_references_filter() {
+        let filter = Path::new("/tmp/stage/export-references.lua");
+        let figures = format!(
+            "--lua-filter={}",
+            filter
+                .with_file_name("oleafly-mermaid-figures.lua")
+                .display()
+        );
+        let citations = ExportCitations {
+            filter: Some(filter),
+            bibliographies: &[],
+        };
+        let args_for = |format: &str, file_name: &str| {
+            let source = ExportSource {
+                file_name: file_name.into(),
+                resource_path: ".".into(),
+            };
+            export_args(format, &source, "out", Some(&citations)).unwrap()
+        };
+        for format in ["docx", "html", "epub", "pptx"] {
+            let args = args_for(format, "notes/main.md");
+            let figures_at = args.iter().position(|arg| *arg == figures).unwrap();
+            let references_at = args
+                .iter()
+                .position(|arg| arg.ends_with("export-references.lua"))
+                .unwrap();
+            assert!(figures_at < references_at, "{format}");
+        }
+        assert!(!args_for("txt", "main.md").contains(&figures));
+        assert!(!args_for("docx", "main.tex").contains(&figures));
+    }
+
+    fn args_for(format: &str, file_name: &str, citations: Option<&ExportCitations>) -> Vec<String> {
+        let source = ExportSource {
+            file_name: file_name.into(),
+            resource_path: ".".into(),
+        };
+        export_args(format, &source, "out", citations).unwrap()
+    }
+
+    #[test]
+    fn html_and_epub_write_math_as_mathml() {
+        for format in ["html", "epub"] {
+            let args = args_for(format, "main.tex", None);
+            assert!(args.contains(&"--mathml".to_string()), "{format}: {args:?}");
+        }
+        assert!(args_for("epub", "main.tex", None).contains(&"--toc".to_string()));
+        assert!(!args_for("docx", "main.tex", None).contains(&"--mathml".to_string()));
+    }
+
+    #[test]
+    fn text_exports_keep_the_front_matter_unless_they_read_typst_html() {
+        let standalone = "--standalone".to_string();
+        for format in ["md", "txt"] {
+            for file_name in ["main.tex", "main.md", "main.typ"] {
+                assert!(
+                    args_for(format, file_name, None).contains(&standalone),
+                    "{format} {file_name}"
+                );
+            }
+            assert!(!args_for(format, "document.html", None).contains(&standalone));
+        }
+        for format in ["typst", "tex"] {
+            for file_name in ["main.tex", "main.md", "document.html"] {
+                assert!(
+                    args_for(format, file_name, None).contains(&standalone),
+                    "{format} {file_name}"
+                );
+            }
+        }
+        assert!(!args_for("docx", "main.tex", None).contains(&standalone));
+    }
+
+    #[test]
+    fn markdown_to_typst_keeps_the_discovered_bibliography() {
+        let bibliographies = [PathBuf::from("refs.bib")];
+        let citations = ExportCitations {
+            filter: None,
+            bibliographies: &bibliographies,
+        };
+        let listed = "--bibliography=refs.bib".to_string();
+        assert!(args_for("typst", "main.md", Some(&citations)).contains(&listed));
+        assert!(args_for("tex", "main.md", Some(&citations)).contains(&listed));
+    }
+
+    #[test]
+    fn source_exports_from_latex_settle_their_images() {
+        for format in ["md", "typst"] {
+            assert!(
+                export_settles_source_images(format, "paper/main.tex"),
+                "{format}"
+            );
+            assert!(export_uses_filter(format, "paper/main.tex"), "{format}");
+        }
+        assert!(!export_settles_source_images("docx", "main.tex"));
+        assert!(!export_settles_source_images("typst", "main.md"));
+        assert!(!export_uses_filter("typst", "main.md"));
+        assert!(export_uses_filter("tex", "main.md"));
+        assert!(export_uses_filter("docx", "main.tex"));
+    }
+
+    #[test]
+    fn only_beamer_decks_with_the_frame_shorthand_read_raw_frames() {
+        let deck = "\\documentclass[aspectratio=169]{beamer}\n\\frame{\\frametitle{A} body}\n";
+        assert!(export_reads_raw_frames("pptx", "main.tex", deck));
+        assert!(export_reads_raw_frames(
+            "pptx",
+            "main.tex",
+            "\\documentclass{beamer}\n\\frame<1->[plain]{body}\n"
+        ));
+        assert!(!export_reads_raw_frames("docx", "main.tex", deck));
+        assert!(!export_reads_raw_frames("pptx", "main.md", deck));
+        assert!(!export_reads_raw_frames(
+            "pptx",
+            "main.tex",
+            "\\documentclass{article}\n\\frame{body}\n"
+        ));
+        assert!(!export_reads_raw_frames(
+            "pptx",
+            "main.tex",
+            "%\\documentclass{beamer}\n\\documentclass{article}\n\\frame{body}\n"
+        ));
+        for body in [
+            "\\frame{\\titlepage}",
+            "\\begin{frame}\\frametitle{A} b\\end{frame}",
+            "% \\frame{body}",
+        ] {
+            let source = format!("\\documentclass{{beamer}}\n{body}\n");
+            assert!(
+                !export_reads_raw_frames("pptx", "main.tex", &source),
+                "{body}"
+            );
+        }
     }
 
     #[test]

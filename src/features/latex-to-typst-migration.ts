@@ -19,6 +19,7 @@ import {
   normalizePath,
   typstSupportFiles,
 } from "@/features/arxiv-typst";
+import { errorText } from "@/lib/app-error";
 import { base64ToBytes, textToBase64 } from "@/lib/base64";
 
 export interface LineOrigin {
@@ -1195,7 +1196,7 @@ export async function runLatexToTypstMigration(
     const result = await deps.compile(projectId, CONVERTED_MAIN_FILE);
     compile = { ok: result.ok, problems: compileProblems(result, created) };
   } catch (error) {
-    compileFailure = error instanceof Error ? error.message : String(error);
+    compileFailure = errorText(error instanceof Error ? error.message : String(error));
   }
 
   const texts = documents.map((document) => document.text);

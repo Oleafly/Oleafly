@@ -254,6 +254,51 @@ describe("Typst live preview in the compile store", () => {
     expect(mocks.compileProject).toHaveBeenCalled();
   });
 
+  it("falls back to the normal compiler when the watcher dies mid-compile", async () => {
+    autoCompileOn();
+    const bytes = new Uint8Array([7, 8, 9]);
+    mocks.compileLive.mockRejectedValue("the live preview stopped after repeated failures");
+    mocks.compileProject.mockResolvedValue(success(bytes, 12));
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).toHaveBeenCalledOnce();
+    expect(useCompileStore.getState()).toMatchObject({ status: "success", failureReason: null });
+    expect(mocks.logError).toHaveBeenCalledWith("live preview", "the live preview stopped after repeated failures");
+  });
+
+  it("starts no compile for a project that closed while the watcher was stopping", async () => {
+    autoCompileOn();
+    let watcherStopped: (reason: unknown) => void = () => {};
+    mocks.compileLive.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        watcherStopped = reject;
+      }),
+    );
+    const compile = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileLive).toHaveBeenCalledOnce());
+    useCompileStore.getState().reset();
+    watcherStopped("the live preview stopped");
+    await compile;
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState()).toMatchObject({ status: "idle", failureReason: null });
+  });
+
+  it("starts no compile for the old project after a switch away from it", async () => {
+    autoCompileOn();
+    let watcherStopped: (reason: unknown) => void = () => {};
+    mocks.compileLive.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        watcherStopped = reject;
+      }),
+    );
+    const compile = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileLive).toHaveBeenCalledOnce());
+    mocks.files.projectId = "another";
+    watcherStopped("the live preview stopped");
+    await compile;
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
   it("settles an attempt whose answer is the output already on screen", async () => {
     autoCompileOn();
     const bytes = new Uint8Array([4, 5, 6]);

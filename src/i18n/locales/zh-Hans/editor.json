@@ -357,7 +357,12 @@
     "rawLogs": "原始日志",
     "copyLog": "复制日志",
     "typesetting": "排版",
+    "missingCharacters": "缺失的字符",
     "info": "信息",
+    "clear": "清除",
+    "clearAria": "清除编译日志",
+    "clearHint": "在下次编译前隐藏此日志及其中的错误。构建文件会保留。",
+    "cleared": "日志已清除。下次编译会生成新的日志。",
     "empty": "编译输出将显示在这里。",
     "scrollToTop": "滚动到顶部",
     "scrollToBottom": "滚动到底部",
@@ -369,7 +374,9 @@
     "summaryWarnings_other": "{{count}} 个警告",
     "summaryReferences_other": "{{count}} 个未解析的引用",
     "fontPack": "{{family}} 在免费字体包“{{pack}}”中。",
-    "fontPackAction": "下载并编译",
+    "fontPackGlyphs": "免费字体包“{{pack}}”包含这些字符。",
+    "fontPackSealed": "{{family}} 在免费字体包“{{pack}}”中，但此项目只使用项目字体，因此字体包在这里不适用。请把该字体的文件添加到项目的字体文件夹。",
+    "fontPackAction":"下载并编译",
     "fontPackDownloading": "正在下载…",
     "fontPackFailed": "无法下载字体包。请检查网络连接后重试。"
   },
@@ -1442,7 +1449,8 @@
       "upToDate": "此项目导入的所有包都已在 typst-packages 中。",
       "missing": "这些包不在包缓存中：{{names}}。请在联网时编译一次，然后再次复制。",
       "count_other": "此项目中有 {{count}} 个包",
-      "none": "此项目中还没有包。"
+      "none": "此项目中还没有包。",
+      "unsupported": "Typst {{version}} 无法读取项目文件夹中的包。请将项目切换到 Typst 0.12 或更高版本后再使用此功能。"
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} 已发布。此 import 使用的是 {{version}}。",
@@ -1480,7 +1488,8 @@
     "classNote": "这是一个文档类。请改用 \\documentclass 设置。",
     "onDemand": "Tectonic 会在文档首次用到宏包时下载它们。无需安装任何内容。",
     "checking": "正在检查已安装的宏包",
-    "unknownInstall": "Oleafly 无法判断你的 TeX 环境中有哪些宏包。",
+    "systemManaged": "此 TeX Live 随你的 Linux 发行版一起安装，因此请用 {{manager}} 安装宏包。",
+    "unknownInstall":"Oleafly 无法判断你的 TeX 环境中有哪些宏包。",
     "noProject": "请打开一个 LaTeX 项目以添加宏包。",
     "added": "已将 {{name}} 添加到 {{file}}。",
     "noPreamble": "{{file}} 没有可添加宏包的导言区。",

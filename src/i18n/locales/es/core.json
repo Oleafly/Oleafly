@@ -56,9 +56,24 @@
     "undo": "Deshacer"
   },
   "compile": {
+    "failedWithReason": "La compilación falló: {{message}}",
     "noOfflineMode": "{{engine}} no ofrece un modo de compilación sin conexión. Se compila de forma normal.",
+    "pandocRequired": "Pandoc no está disponible. Repáralo en Ajustes > Motores > Markdown y vuelve a compilar.",
+    "pandocSetupFailed": "La configuración de Pandoc falló: {{message}}",
+    "pdfChanged": "El PDF compilado cambió mientras Oleafly lo leía, así que se mantiene la vista previa anterior. Vuelve a compilar para actualizarla.",
     "retry": "Compilar otra vez",
+    "superseded": "Una compilación más reciente sustituyó a esta.",
+    "syntaxCheckFailed": "La revisión de sintaxis encontró errores. Corrígelos o desactiva “{{setting}}”.",
+    "taggedFailed": "La compilación etiquetada falló: {{message}}",
+    "taggedPdfChanged": "El PDF etiquetado cambió mientras Oleafly lo leía, así que se mantiene la vista previa anterior. Vuelve a compilar para actualizarla.",
+    "taggedPdfInvalid": "La compilación etiquetada no produjo un PDF válido.",
+    "tinytexDownloading": "TinyTeX todavía se está descargando. Esta compilación empieza sola cuando termine.",
+    "sharedTexEditor": "Este proyecto es compartido, así que cambiar a Tectonic lo cambia para todos. Instalar TinyTeX solo lo cambia en este equipo.",
+    "sharedTexViewer": "No puedes cambiar el compilador de este proyecto compartido, así que instala TinyTeX para compilarlo aquí.",
     "bundleFetchFailed": "Oleafly no pudo descargar los paquetes de TeX que necesita este documento. Revisa tu conexión y vuelve a compilar.",
+    "offlineNotCached": "El modo sin conexión está activado y es posible que todavía no se haya descargado lo siguiente: {{files}}. Desactiva el modo sin conexión y vuelve a compilar.",
+    "offlineNotCachedUnnamed": "El modo sin conexión está activado y es posible que todavía no se haya descargado un paquete de TeX que necesita este documento. Desactiva el modo sin conexión y vuelve a compilar.",
+    "goOnlineAndCompile": "Desactivar y compilar",
     "typstMissing": "Typst {{version}} no está instalado. Descárgalo o cambia este proyecto a otra versión.",
     "typstPackage": {
       "downloadFailed": "Typst no pudo descargar {{spec}}. Revisa tu conexión a internet y vuelve a compilar.",
@@ -171,9 +186,24 @@
     "pdfFailedDetail": "No se pudo guardar el PDF: {{detail}}",
     "pngFailed": "No se pudo guardar el PNG",
     "pngFailedDetail": "No se pudo guardar el PNG: {{detail}}",
+    "projectChanged": "El proyecto abierto cambió. Vuelve a empezar la exportación desde el proyecto que quieres guardar.",
     "revealFailed": "El archivo se guardó, pero no se pudo abrir su carpeta.",
     "saved": "{{kind}} guardado · {{fileName}}",
-    "showInFolder": "Mostrar en la carpeta"
+    "savedAfterFailedCompile": "{{kind}} guardado · {{fileName}}. La última compilación falló, así que este archivo puede estar incompleto.",
+    "savedSource": "{{kind}} guardado · {{fileName}}. Si usa imágenes o bibliografías de tu proyecto, cópialas junto a él antes de compilar.",
+    "savedStale": "{{kind}} guardado · {{fileName}}. Viene de la última compilación y no incluye tus últimos cambios.",
+    "savedWithoutContent": "{{kind}} guardado · {{fileName}}. Falta parte del contenido porque Typst no puede escribirlo en este formato: {{elements}}.",
+    "savedFromSource": "{{kind}} guardado · {{fileName}}. Typst {{version}} no puede escribir todo este documento en este formato, así que el archivo se generó a partir del código. Puede que falte el texto girado, escalado, movido o sesgado. Cambia el proyecto a Typst 0.15 o posterior para conservar ese texto.",
+    "savedWithoutEquations": "{{kind}} guardado · {{fileName}}. Puede que falten ecuaciones, imágenes, notas al pie o referencias porque Typst {{version}} no puede escribirlas en este formato. Cambia el proyecto a Typst 0.15 o posterior.",
+    "savedWithWarnings_one": "{{kind}} guardado · {{fileName}}, con {{count}} advertencia.",
+    "savedWithWarnings_many": "{{kind}} guardado · {{fileName}}, con {{count}} advertencias.",
+    "savedWithWarnings_other": "{{kind}} guardado · {{fileName}}, con {{count}} advertencias.",
+    "savedWithoutLinks_one": "{{kind}} guardado · {{fileName}}. Se dejó fuera del archivo comprimido {{count}} enlace simbólico.",
+    "savedWithoutLinks_many": "{{kind}} guardado · {{fileName}}. Se dejaron fuera del archivo comprimido {{count}} enlaces simbólicos.",
+    "savedWithoutLinks_other": "{{kind}} guardado · {{fileName}}. Se dejaron fuera del archivo comprimido {{count}} enlaces simbólicos.",
+    "showInFolder": "Mostrar en la carpeta",
+    "showWarnings": "Mostrar advertencias",
+    "warningsTitle": "Advertencias de exportación"
   },
   "externalChange": {
     "reloadFailed": "Se actualizaron los ajustes del proyecto, pero algunos archivos modificados no se pudieron volver a cargar."
@@ -327,6 +357,13 @@
     "summary_one": "La compilación no encontró \"{{name}}\". Busca en TeX Live el paquete que lo incluye.",
     "summary_many": "La compilación no encontró {{names}}. Busca en TeX Live los paquetes que los incluyen.",
     "summary_other": "La compilación no encontró {{names}}. Busca en TeX Live los paquetes que los incluyen.",
+    "systemHint": {
+      "apt": "Busca su paquete con apt-file search {{name}}, o instala todo con sudo apt install texlive-full.",
+      "dnf": "Ejecuta {{command}}."
+    },
+    "systemManaged_one": "La compilación no encontró \"{{name}}\". Este TeX Live viene con tu distribución de Linux, así que Oleafly no puede añadirle paquetes. {{hint}}",
+    "systemManaged_many": "La compilación no encontró {{names}}. Este TeX Live viene con tu distribución de Linux, así que Oleafly no puede añadirle paquetes. {{hint}}",
+    "systemManaged_other": "La compilación no encontró {{names}}. Este TeX Live viene con tu distribución de Linux, así que Oleafly no puede añadirle paquetes. {{hint}}",
     "userTree": "El árbol de TeX del sistema es de solo lectura, así que los paquetes se instalaron en tu árbol personal en {{path}}."
   },
   "models": {
@@ -377,6 +414,7 @@
   },
   "pandoc": {
     "downloadFailed": "No se pudo descargar pandoc. Instálalo a mano y vuelve a intentarlo.",
+    "downloadFailedDetail": "No se pudo descargar pandoc ({{detail}}). Instálalo a mano y vuelve a intentarlo.",
     "downloadingPercent": "Descargando pandoc… {{progress}} %",
     "downloadingSize": "Descargando pandoc… {{megabytes}} MB",
     "installGuide": "Guía de instalación"
@@ -495,7 +533,7 @@
     "compileFailed": "La compilación etiquetada falló. Revisa el motor e inténtalo de nuevo.",
     "compiled": "PDF etiquetado compilado. Mira el veredicto de accesibilidad de abajo.",
     "compiledWithErrors": "La compilación etiquetada terminó con errores. Revisa el registro.",
-    "engineRequired": "Activa antes un motor con etiquetado en Ajustes, Motor de LaTeX."
+    "engineRequired": "Instala TinyTeX en Ajustes > Motores > LaTeX para crear PDF etiquetados."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -542,6 +580,7 @@
   "tinytex": {
     "installFailed": "No se pudo instalar TinyTeX.",
     "installGuide": "Guía de instalación",
+    "tryAgain": "Volver a intentarlo",
     "installed": "TinyTeX instalado.",
     "phase": {
       "addingPackages": "Añadiendo paquetes…",

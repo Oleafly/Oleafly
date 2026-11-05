@@ -248,6 +248,46 @@ impl OutputStaging {
     }
 }
 
+fn biber_source_names(build_dir: &Path, stem: &str) -> Vec<String> {
+    const OPEN: &str = "<requires type=\"editable\">";
+    let run_file = build_dir.join(format!("{stem}.run.xml"));
+    let text = std::fs::read_to_string(run_file).unwrap_or_default();
+    let mut names: Vec<String> = text
+        .split(OPEN)
+        .skip(1)
+        .filter_map(|block| block.split("</requires>").next())
+        .flat_map(|block| block.split("<file>").skip(1))
+        .filter_map(|entry| entry.split("</file>").next())
+        .map(|name| name.trim().to_owned())
+        .collect();
+    let copies = std::fs::read_dir(build_dir)
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| {
+            Path::new(name)
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("bib"))
+        });
+    names.extend(copies);
+    names
+}
+
+pub fn clear_biber_source_copies(build_dir: &Path, stem: &str) {
+    for name in biber_source_names(build_dir, stem) {
+        let mut parts = Path::new(&name).components();
+        let single_name = !name.contains(['/', '\\'])
+            && matches!(
+                (parts.next(), parts.next()),
+                (Some(std::path::Component::Normal(_)), None)
+            );
+        if single_name && !name.starts_with(stem) {
+            let _ = std::fs::remove_file(build_dir.join(name));
+        }
+    }
+}
+
 fn is_viewed_output(name: &std::ffi::OsStr) -> bool {
     let name = name.to_string_lossy().to_ascii_lowercase();
     name.ends_with(".pdf") || name.ends_with(".synctex.gz") || name.ends_with(".synctex")
@@ -556,6 +596,61 @@ mod tests {
         assert!(!snapshot.is_fresh(&new));
         std::fs::write(&new, b"x").unwrap();
         assert!(snapshot.is_fresh(&new));
+    }
+
+    #[test]
+    fn kept_biber_sources_go_and_build_files_stay() {
+        let dir = tempfile::tempdir().unwrap();
+        let build = dir.path().join("build");
+        std::fs::create_dir_all(build.join("refs")).unwrap();
+        std::fs::write(
+            build.join("job.run.xml"),
+            concat!(
+                "<requires type=\"dynamic\"><file>job.bcf</file></requires>\n",
+                "<requires type=\"editable\">\n",
+                "  <file>notes.ris</file>\n",
+                "  <file>../outside.bib</file>\n",
+                "  <file>refs/a.bib</file>\n",
+                "  <file>job.aux</file>\n",
+                "</requires>\n",
+            ),
+        )
+        .unwrap();
+        for name in [
+            "refs.bib",
+            "Upper.BIB",
+            "notes.ris",
+            "job-blx.bib",
+            "job.bbl",
+            "job.aux",
+            "job.bcf",
+            "refs/a.bib",
+        ] {
+            std::fs::write(build.join(name), b"x").unwrap();
+        }
+        let outside = dir.path().join("outside.bib");
+        std::fs::write(&outside, b"mine").unwrap();
+        clear_biber_source_copies(&build, "job");
+        for gone in ["refs.bib", "Upper.BIB", "notes.ris"] {
+            assert!(!build.join(gone).exists(), "{gone}");
+        }
+        for kept in [
+            "job-blx.bib",
+            "job.bbl",
+            "job.aux",
+            "job.bcf",
+            "job.run.xml",
+            "refs/a.bib",
+        ] {
+            assert!(build.join(kept).exists(), "{kept}");
+        }
+        assert!(outside.exists());
+    }
+
+    #[test]
+    fn clearing_a_missing_build_folder_does_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        clear_biber_source_copies(&dir.path().join("nothing"), "job");
     }
 
     #[cfg(unix)]

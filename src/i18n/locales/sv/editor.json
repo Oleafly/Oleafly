@@ -361,7 +361,12 @@
     "rawLogs": "Rådata i loggarna",
     "copyLog": "Kopiera loggen",
     "typesetting": "Sättning",
+    "missingCharacters": "Saknade tecken",
     "info": "Information",
+    "clear": "Rensa",
+    "clearAria": "Rensa kompileringsloggen",
+    "clearHint": "Dölj den här loggen och dess fel tills nästa kompilering. Byggfilerna finns kvar.",
+    "cleared": "Loggen rensades. Nästa kompilering skriver en ny.",
     "empty": "Utdata från kompileringen visas här.",
     "scrollToTop": "Rulla högst upp",
     "scrollToBottom": "Rulla längst ner",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} olöst referens",
     "summaryReferences_other": "{{count}} olösta referenser",
     "fontPack": "{{family}} finns i det kostnadsfria typsnittspaketet {{pack}}.",
+    "fontPackGlyphs": "Det kostnadsfria typsnittspaketet {{pack}} har de här tecknen.",
+    "fontPackSealed": "{{family}} finns i det kostnadsfria typsnittspaketet {{pack}}, men typsnittspaket gäller inte här eftersom det här projektet bara använder projekttypsnitt. Lägg till typsnittets fil i projektets typsnittsmapp.",
     "fontPackAction": "Ladda ned och kompilera",
     "fontPackDownloading": "Laddar ned…",
     "fontPackFailed": "Typsnittspaketet kunde inte laddas ned. Kontrollera anslutningen och försök igen."
@@ -1461,7 +1468,8 @@
       "missing": "De här paketen finns inte i paketcachen: {{names}}. Kompilera en gång när du är online och kopiera sedan in dem igen.",
       "count_one": "{{count}} paket i projektet",
       "count_other": "{{count}} paket i projektet",
-      "none": "Inga paket i projektet än."
+      "none": "Inga paket i projektet än.",
+      "unsupported": "Typst {{version}} kan inte läsa paket från projektmappen. Byt projektet till Typst 0.12 eller senare för att använda det här."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} finns. Den här importen använder {{version}}.",
@@ -1500,6 +1508,7 @@
     "classNote": "Det här är en dokumentklass. Ange den med \\documentclass i stället.",
     "onDemand": "Tectonic laddar ner paket första gången dokumentet använder dem. Det finns inget att installera.",
     "checking": "Kontrollerar vilka paket som är installerade",
+    "systemManaged": "Den här TeX Live följde med din Linux-distribution, så installera paket med {{manager}}.",
     "unknownInstall": "Oleafly kan inte avgöra vilka paket din TeX-installation har.",
     "noProject": "Öppna ett LaTeX-projekt för att lägga till paket.",
     "added": "{{name}} har lagts till i {{file}}.",

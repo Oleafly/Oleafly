@@ -240,11 +240,20 @@ fn tar_member_kind<R: std::io::Read>(
     Ok(("symlink", Some(target.into_owned())))
 }
 
-fn extract_tar<R: std::io::Read>(reader: R, destination: &Path) -> Result<(), String> {
+const EXTRACTION_STOPPED: &str = "TinyTeX extraction was stopped.";
+
+fn extract_tar<R: std::io::Read>(
+    reader: R,
+    destination: &Path,
+    stop: &dyn Fn() -> bool,
+) -> Result<(), String> {
     let mut archive = tar::Archive::new(reader);
     archive.set_preserve_permissions(false);
     archive.set_overwrite(true);
     for entry in archive.entries().map_err(|e| e.to_string())? {
+        if stop() {
+            return Err(EXTRACTION_STOPPED.into());
+        }
         let mut entry = entry.map_err(|e| e.to_string())?;
         let path = validate_tar_entry(&mut entry)?;
         if !entry.unpack_in(destination).map_err(|e| e.to_string())? {
@@ -336,41 +345,68 @@ fn zip_member_mode<R: std::io::Read>(entry: &zip::read::ZipFile<'_, R>) -> Optio
     entry.unix_mode()
 }
 
+#[cfg(test)]
 pub(crate) fn extract_all(
     archive: &Path,
     format: ArchiveFormat,
     policy: ArchiveMemberPolicy<'_>,
     destination: &Path,
 ) -> Result<(), String> {
+    extract_all_until(archive, format, policy, destination, &|| false)
+}
+
+pub(crate) fn extract_all_until(
+    archive: &Path,
+    format: ArchiveFormat,
+    policy: ArchiveMemberPolicy<'_>,
+    destination: &Path,
+    stop: &dyn Fn() -> bool,
+) -> Result<(), String> {
     inspect_archive(archive, format, policy)?;
     std::fs::create_dir_all(destination).map_err(|e| e.to_string())?;
     let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
     match format {
-        ArchiveFormat::TarGz => extract_tar(flate2::read::GzDecoder::new(file), destination),
-        ArchiveFormat::TarXz => extract_xz(file, destination),
-        ArchiveFormat::Zip => extract_zip(file, destination),
+        ArchiveFormat::TarGz => extract_tar(flate2::read::GzDecoder::new(file), destination, stop),
+        ArchiveFormat::TarXz => extract_xz(file, destination, stop),
+        ArchiveFormat::Zip => extract_zip(file, destination, stop),
     }
 }
 
 #[cfg(target_os = "linux")]
-fn extract_xz(file: std::fs::File, destination: &Path) -> Result<(), String> {
+fn extract_xz(
+    file: std::fs::File,
+    destination: &Path,
+    stop: &dyn Fn() -> bool,
+) -> Result<(), String> {
     const XZ_MEMORY_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
     let stream = liblzma::stream::Stream::new_stream_decoder(XZ_MEMORY_LIMIT_BYTES, 0)
         .map_err(|e| format!("failed to initialize XZ decoder: {e}"))?;
     extract_tar(
         liblzma::read::XzDecoder::new_stream(file, stream),
         destination,
+        stop,
     )
 }
 
 #[cfg(not(target_os = "linux"))]
-fn extract_xz(_file: std::fs::File, _destination: &Path) -> Result<(), String> {
+fn extract_xz(
+    _file: std::fs::File,
+    _destination: &Path,
+    _stop: &dyn Fn() -> bool,
+) -> Result<(), String> {
     Err("XZ TinyTeX archives are supported only on Linux.".into())
 }
 
-fn extract_zip(file: std::fs::File, destination: &Path) -> Result<(), String> {
+fn extract_zip(
+    file: std::fs::File,
+    destination: &Path,
+    stop: &dyn Fn() -> bool,
+) -> Result<(), String> {
     let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
     for index in 0..zip.len() {
+        if stop() {
+            return Err(EXTRACTION_STOPPED.into());
+        }
         let mut entry = zip.by_index(index).map_err(|e| e.to_string())?;
         extract_zip_entry(&mut entry, destination)?;
     }
@@ -503,7 +539,7 @@ mod tests {
         inspect_tar(std::io::Cursor::new(&tar), policy).unwrap();
 
         let destination = tempfile::tempdir().unwrap();
-        extract_tar(std::io::Cursor::new(&tar), destination.path()).unwrap();
+        extract_tar(std::io::Cursor::new(&tar), destination.path(), &|| false).unwrap();
         let extracted = destination.path().join(path);
         assert!(extracted.is_dir());
         #[cfg(unix)]
@@ -539,7 +575,7 @@ mod tests {
         inspect_tar(std::io::Cursor::new(&tar), policy).unwrap();
 
         let destination = tempfile::tempdir().unwrap();
-        extract_tar(std::io::Cursor::new(&tar), destination.path()).unwrap();
+        extract_tar(std::io::Cursor::new(&tar), destination.path(), &|| false).unwrap();
         assert!(destination
             .path()
             .join(link)

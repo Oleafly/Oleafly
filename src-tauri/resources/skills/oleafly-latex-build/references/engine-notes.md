@@ -76,6 +76,17 @@ Fandol ships inside Tectonic's bundle, so it resolves with no system install.
 
 The other bundled font sets (`ubuntu`, `windows`, `mac`) all name host fonts, which is exactly the problem. Fandol covers Simplified Chinese well; check glyph coverage before assuming it transfers to Japanese or Korean.
 
+These setups were tested on Tectonic. Name bundled fonts by file, because `UnBatang` or `FandolSong` as a family name fails.
+
+- Korean: `\usepackage{kotex}` then `\setmainhangulfont{UnBatang.ttf}`.
+- Chinese: `\documentclass[fontset=fandol,UTF8]{ctexart}`, or `\usepackage{xeCJK}` then `\setCJKmainfont{FandolSong-Regular.otf}`.
+- Traditional Chinese: `\usepackage{xeCJK}` then `\setCJKmainfont[AutoFakeBold]{bsmi00lp.ttf}`. Fandol drops some Traditional characters, such as 裡, with exit 0.
+- Japanese: `\usepackage{xeCJK}` then `\setCJKmainfont{ipaexm.ttf}[BoldFont=ipaexg.ttf]`. `\documentclass[xelatex,ja=standard]{bxjsarticle}` also works. `luatexja`, `ltjsarticle`, `jlreq`, `jsarticle` and `ujarticle` do not build here.
+- Cyrillic, Greek and other scripts: `\usepackage{fontspec}` then `\setmainfont{FreeSerif.otf}`.
+- Emoji: the bundle has no emoji font. Use an image or plain text.
+
+`CJK` and `CJKutf8` need pdfLaTeX. Under Tectonic they compile with exit 0 and the text is missing from the PDF. For Korean, add `\usepackage{kotex}` after `\usepackage{CJKutf8}` and keep the `CJK` environment. For Chinese or Japanese, remove the package and the environment together before using a setup above, because `xeCJK` refuses to load next to `CJKutf8`. To keep the package, ask the user to switch the project to pdfLaTeX.
+
 ## latexmk and system TeX
 
 Chosen by the user in Settings, never by the assistant. It drives a real TeX distribution while keeping Oleafly's artifact layout, so the preview, the log pane and SyncTeX keep working.

@@ -24,6 +24,25 @@ const SOURCE_EXTENSIONS: [&str; 27] = [
     "txt",
 ];
 const WALK_LIMIT: usize = 20_000;
+const ACCOUNT_STORAGE_FULL: &str = "account_storage_full";
+
+pub const OUTPUT_NOT_SHARED_EVENT: &str = "collab-output-not-shared";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NotSharedReason {
+    TooLarge,
+    Quota,
+    PrivateSources,
+    ServerError,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputNotShared {
+    pub project_id: String,
+    pub reason: NotSharedReason,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,6 +81,7 @@ struct Lane {
     next: Option<CompiledOutput>,
     last_started: Option<Instant>,
     quiet_until: Option<Instant>,
+    told: Option<NotSharedReason>,
 }
 
 impl Lane {
@@ -91,6 +111,14 @@ impl Lane {
 
     fn refused(&mut self, now: Instant) {
         self.quiet_until = Some(now + QUIET_AFTER_REFUSAL);
+    }
+
+    fn first_telling(&mut self, reason: NotSharedReason) -> bool {
+        self.told.replace(reason) != Some(reason)
+    }
+
+    fn delivered(&mut self) {
+        self.told = None;
     }
 }
 
@@ -124,12 +152,47 @@ async fn run_lane(app: tauri::AppHandle, project_id: String) {
         let Some(compiled) = with_lane(&project_id, |lane| lane.take(Instant::now())) else {
             return;
         };
-        if let Err(error) = upload(&app, &compiled).await {
-            if pauses(&error) {
-                with_lane(&project_id, |lane| lane.refused(Instant::now()));
+        match upload(&app, &compiled).await {
+            Ok(Upload::Sent) => with_lane(&project_id, Lane::delivered),
+            Ok(Upload::Skipped) => {}
+            Ok(Upload::PrivateSources) => {
+                tell_not_shared(&app, &project_id, NotSharedReason::PrivateSources);
             }
-            note_failure(&compiled, &error);
+            Err(error) => {
+                if pauses(&error) {
+                    with_lane(&project_id, |lane| lane.refused(Instant::now()));
+                }
+                note_failure(&compiled, &error);
+                if let Some(reason) = not_shared_reason(&error) {
+                    tell_not_shared(&app, &project_id, reason);
+                }
+            }
         }
+    }
+}
+
+fn tell_not_shared(app: &tauri::AppHandle, project_id: &str, reason: NotSharedReason) {
+    use tauri::Emitter;
+    if with_lane(project_id, |lane| lane.first_telling(reason)) {
+        let _ = app.emit(
+            OUTPUT_NOT_SHARED_EVENT,
+            OutputNotShared {
+                project_id: project_id.to_owned(),
+                reason,
+            },
+        );
+    }
+}
+
+fn not_shared_reason(error: &CollabError) -> Option<NotSharedReason> {
+    match error {
+        CollabError::Api { status: 429, .. } => Some(NotSharedReason::Quota),
+        CollabError::Api {
+            status: 413, code, ..
+        } if code == ACCOUNT_STORAGE_FULL => Some(NotSharedReason::Quota),
+        CollabError::Api { status: 413, .. } => Some(NotSharedReason::TooLarge),
+        CollabError::Api { .. } => Some(NotSharedReason::ServerError),
+        _ => None,
     }
 }
 
@@ -159,6 +222,19 @@ fn note_failure(compiled: &CompiledOutput, error: &CollabError) {
 struct OutputFiles {
     pdf: Vec<u8>,
     synctex: Option<Vec<u8>>,
+}
+
+enum OutputRead {
+    Ready(OutputFiles),
+    Outdated,
+    PrivateSources,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Upload {
+    Sent,
+    Skipped,
+    PrivateSources,
 }
 
 fn gzipped_synctex(path: &Path) -> bool {
@@ -293,12 +369,12 @@ fn shared_synctex(gz: &[u8], root: &Path) -> SharedSynctex {
     }
 }
 
-fn read_files_blocking(compiled: &CompiledOutput) -> Result<Option<OutputFiles>, CollabError> {
+fn read_files_blocking(compiled: &CompiledOutput) -> Result<OutputRead, CollabError> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&compiled.project_id)
         .map_err(CollabError::Io)?;
     let meta = crate::project::read_meta(&compiled.project_id).map_err(CollabError::Io)?;
     if !of_the_main_document(&meta.main_doc, compiled) {
-        return Ok(None);
+        return Ok(OutputRead::Outdated);
     }
     let root = crate::project_location::locate(&compiled.project_id)
         .map_err(|error| CollabError::Io(String::from(error)))?
@@ -310,15 +386,17 @@ fn read_files_blocking(compiled: &CompiledOutput) -> Result<Option<OutputFiles>,
     )
     .map_err(CollabError::Io)?
     else {
-        return Ok(None);
+        return Ok(OutputRead::Outdated);
     };
     let pdf = match std::fs::read(&pdf_path) {
         Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(OutputRead::Outdated)
+        }
         Err(error) => return Err(CollabError::Io(error.to_string())),
     };
     if crate::document_engine::fingerprint_compile_output(&pdf) != compiled.output_id {
-        return Ok(None);
+        return Ok(OutputRead::Outdated);
     }
     let read = compiled
         .synctex
@@ -326,15 +404,17 @@ fn read_files_blocking(compiled: &CompiledOutput) -> Result<Option<OutputFiles>,
         .filter(|path| gzipped_synctex(path))
         .and_then(|path| std::fs::read(path).ok());
     let synctex = match read.map(|gz| shared_synctex(&gz, &root)) {
-        Some(SharedSynctex::ReadsLocalFiles) => return Ok(None),
+        Some(SharedSynctex::ReadsLocalFiles) => return Ok(OutputRead::PrivateSources),
         Some(SharedSynctex::Ready(bytes)) => Some(bytes),
-        Some(SharedSynctex::Unreadable) | None if holds_private_sources(&root) => return Ok(None),
+        Some(SharedSynctex::Unreadable) | None if holds_private_sources(&root) => {
+            return Ok(OutputRead::PrivateSources)
+        }
         Some(SharedSynctex::Unreadable) | None => None,
     };
-    Ok(Some(OutputFiles { pdf, synctex }))
+    Ok(OutputRead::Ready(OutputFiles { pdf, synctex }))
 }
 
-async fn read_files(compiled: CompiledOutput) -> Result<Option<OutputFiles>, CollabError> {
+async fn read_files(compiled: CompiledOutput) -> Result<OutputRead, CollabError> {
     tauri::async_runtime::spawn_blocking(move || read_files_blocking(&compiled))
         .await
         .map_err(|error| CollabError::Io(error.to_string()))?
@@ -388,20 +468,22 @@ fn superseded(error: &CollabError) -> bool {
     matches!(error, CollabError::Api { status: 409, .. })
 }
 
-async fn upload(app: &tauri::AppHandle, compiled: &CompiledOutput) -> Result<(), CollabError> {
+async fn upload(app: &tauri::AppHandle, compiled: &CompiledOutput) -> Result<Upload, CollabError> {
     use tauri::Manager;
     if !may_upload(&compiled.project_id) {
-        return Ok(());
+        return Ok(Upload::Skipped);
     }
     let Some(state) = app.try_state::<CollabState>() else {
-        return Ok(());
+        return Ok(Upload::Skipped);
     };
     let state = state.inner();
     let Some(binding) = load_binding(state.paths()?, &compiled.project_id)? else {
-        return Ok(());
+        return Ok(Upload::Skipped);
     };
-    let Some(files) = read_files(compiled.clone()).await? else {
-        return Ok(());
+    let files = match read_files(compiled.clone()).await? {
+        OutputRead::Ready(files) => files,
+        OutputRead::Outdated => return Ok(Upload::Skipped),
+        OutputRead::PrivateSources => return Ok(Upload::PrivateSources),
     };
     let limit_mb = state
         .verified_manifest(binding.server_id)
@@ -428,7 +510,7 @@ async fn upload(app: &tauri::AppHandle, compiled: &CompiledOutput) -> Result<(),
         .as_deref()
         .filter(|&bytes| fits(bytes, limit_mb))
     else {
-        return Ok(());
+        return Ok(Upload::Sent);
     };
     let pdf = super::disk::sha256_hex(&files.pdf);
     match send(
@@ -443,8 +525,8 @@ async fn upload(app: &tauri::AppHandle, compiled: &CompiledOutput) -> Result<(),
     )
     .await
     {
-        Err(error) if superseded(&error) => Ok(()),
-        sent => sent.map(drop),
+        Err(error) if superseded(&error) => Ok(Upload::Sent),
+        sent => sent.map(|_| Upload::Sent),
     }
 }
 
@@ -548,6 +630,64 @@ mod tests {
         assert!(!pauses(&api(400, "bad_request")));
         assert!(!pauses(&api(503, "server_busy")));
         assert!(!pauses(&CollabError::Network("down".to_owned())));
+    }
+
+    #[test]
+    fn each_refusal_has_a_reason_the_person_can_read() {
+        let api = |status: u16, code: &str| CollabError::Api {
+            status,
+            code: code.to_owned(),
+            message: String::new(),
+        };
+        let reason = |error: &CollabError| not_shared_reason(error);
+        assert_eq!(
+            reason(&too_large(50)),
+            Some(NotSharedReason::TooLarge),
+            "the local size check"
+        );
+        assert_eq!(
+            reason(&api(413, "too_large")),
+            Some(NotSharedReason::TooLarge)
+        );
+        assert_eq!(
+            reason(&api(413, ACCOUNT_STORAGE_FULL)),
+            Some(NotSharedReason::Quota)
+        );
+        assert_eq!(
+            reason(&api(429, "too_many_uploads")),
+            Some(NotSharedReason::Quota)
+        );
+        assert_eq!(
+            reason(&api(404, "not_found")),
+            Some(NotSharedReason::ServerError)
+        );
+        assert_eq!(
+            reason(&api(503, "server_busy")),
+            Some(NotSharedReason::ServerError)
+        );
+        assert_eq!(reason(&CollabError::Network("down".to_owned())), None);
+    }
+
+    #[test]
+    fn the_same_reason_is_told_once_until_a_pdf_goes_up() {
+        let mut lane = Lane::default();
+        assert!(lane.first_telling(NotSharedReason::PrivateSources));
+        assert!(!lane.first_telling(NotSharedReason::PrivateSources));
+        assert!(lane.first_telling(NotSharedReason::TooLarge));
+        lane.delivered();
+        assert!(lane.first_telling(NotSharedReason::TooLarge));
+    }
+
+    #[test]
+    fn the_refusal_reaches_the_app_in_camel_case() {
+        assert_eq!(
+            serde_json::to_value(OutputNotShared {
+                project_id: "local-1".to_owned(),
+                reason: NotSharedReason::PrivateSources,
+            })
+            .unwrap(),
+            json!({ "projectId": "local-1", "reason": "privateSources" })
+        );
     }
 
     #[test]

@@ -111,9 +111,6 @@ impl ProjectLocation {
     }
 
     pub(crate) fn compile_search_dir(&self, main_doc: &str) -> Option<PathBuf> {
-        if self.kind != ProjectKind::Linked {
-            return None;
-        }
         let declared = match crate::project_manifest::inspect_folder_manifest(&self.root) {
             crate::project_manifest::FolderManifest::Oleafly(folder) => folder
                 .compile_dir
@@ -667,7 +664,7 @@ mod tests {
     }
 
     #[test]
-    fn only_linked_projects_search_a_nested_compile_directory() {
+    fn linked_and_library_projects_search_a_nested_compile_directory() {
         let fixture = Fixture::new();
         let folder = fixture.folder("repo");
         std::fs::create_dir_all(folder.join("paper/sections")).unwrap();
@@ -708,6 +705,11 @@ mod tests {
             locate("library")
                 .unwrap()
                 .compile_search_dir("paper/main.tex"),
+            Some(library.canonicalize().unwrap().join("paper"))
+        );
+        std::fs::write(library.join("top.tex"), "\\documentclass{article}\n").unwrap();
+        assert_eq!(
+            locate("library").unwrap().compile_search_dir("top.tex"),
             None
         );
     }

@@ -474,9 +474,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "這次失敗符合內建 Tectonic 引擎的已知限制。請選擇這個專案的編譯方式。選擇會儲存在專案中，協作者也會取得相同的設定。",
     "descriptionImportScan": "匯入掃描發現了一些內建 Tectonic 引擎無法調度的功能。請選擇這個專案的編譯方式。選擇會儲存在專案中，協作者也會取得相同的設定。",
+    "descriptionTexMissing": "這個專案現在使用 latexmk 編譯，而這台電腦還無法執行它。Oleafly 可以替你安裝 TinyTeX，你也可以改回內建的 Tectonic 引擎。",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "透過 latexmk 執行 pdfLaTeX"
+    },
+    "findingNotes": {
+      "epsFile": "編譯停在 {{file}}。",
+      "missingFiles": "編譯找不到 {{files}}。",
+      "mirrorStatus": "鏡像站回傳了 HTTP {{status}}。"
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "參考文獻使用 biblatex 與 Biber",
+        "detail": "這個專案需要 Biber 來建立參考文獻清單。Oleafly 隨附與其內建引擎相符的 Biber。如果編譯後引用仍顯示為「?」，請查看記錄檔中的 Biber 說明。"
+      },
+      "bundle-fetch-failed": {
+        "title": "TeX 套件下載失敗",
+        "detail": "Oleafly 無法從它的鏡像站下載 TeX 套件，因此編譯還沒進行到你的文件。請檢查網路連線後重新編譯。下載會從中斷的地方繼續。"
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 需要 pdfLaTeX",
+        "detail": "CJKutf8 與 CJK 只能在 pdfLaTeX 上運作。在內建引擎（XeTeX）上，文件仍可編譯，但其中的中文、日文或韓文會從 PDF 中消失。請在系統 TeX 上切換到 pdfLaTeX，或把這個套件換成 xeCJK。"
+      },
+      "class-compat": {
+        "title": "文件類別超出引擎限制",
+        "detail": "編譯錯誤來自類別檔或樣式檔，而不是你的文件。出版社的類別常依賴內建引擎沒有的工具或 pdfTeX 行為。latexmk 會用完整的 TeX 發行版編譯。"
+      },
+      "eps-image": {
+        "title": "EPS 影像需要轉換器",
+        "detail": "內建引擎無法放入 EPS 影像。請用 epstopdf 或 Inkscape 將它們轉成 PDF，或在系統 TeX 上切換到 pdfLaTeX，它會透過 Ghostscript 轉換 EPS。"
+      },
+      "fontspec": {
+        "title": "自訂字型（fontspec）",
+        "detail": "fontspec 需要這台電腦上有指定的字型。隨線上編輯器提供的字型在這裡可能找不到。"
+      },
+      "glossaries-index": {
+        "title": "詞彙表或索引工具",
+        "detail": "glossaries 與 makeindex 需要額外執行一次 makeindex 或 xindy，內建引擎不會這麼做。"
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref 設為 pdfTeX 驅動程式",
+        "detail": "這個類別或前言強制 hyperref 使用 pdftex 驅動程式，而內建引擎無法使用它。請在系統 TeX 上切換到 pdfLaTeX，或移除 pdftex 選項，讓 hyperref 自行挑選驅動程式。"
+      },
+      "minted": {
+        "title": "minted 需要 shell escape 與 Pygments",
+        "detail": "使用 minted 的程式碼清單需要系統 TeX 發行版與 pygmentize。請切換到系統 LaTeX，並且只有在你信任每個專案檔案時，才在這台電腦上允許外部命令。"
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "內建套件組合缺少某個套件",
+        "detail": "這個專案載入的某個項目不在內建的 TeX 套件組合中。如果它隨你的範本提供，請將該檔案加入專案，或切換到系統 TeX 並從 TeX Live 安裝該套件。"
+      },
+      "pdftex-only": {
+        "title": "pdfTeX 套件",
+        "detail": "內建引擎以 XeTeX 為基礎，而這個專案依賴只能在 pdfTeX 上運作的套件或指令。latexmk 會用真正的 pdfLaTeX 編譯。"
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX 需要目前使用的系統 TeX 發行版提供它的輔助程式。請切換到系統 LaTeX，並且只有在你信任每個專案檔案時，才在這台電腦上允許外部命令。"
+      },
+      "shell-escape": {
+        "title": "Shell escape 命令",
+        "detail": "原始碼使用了 \\write18 或其他 shell escape。請切換到系統 LaTeX，並且只有在你信任每個專案檔案，且所需工具都已安裝時，才在這台電腦上允許外部命令。"
+      }
     },
     "recommended": "推薦",
     "shellEscape": {
@@ -502,13 +562,14 @@
       "withFailures_other": "無需設定，可離線使用。{{features}} 預期仍會失敗。"
     },
     "tinytex": {
-      "description": "在你的家目錄安裝精簡版的 TeX Live，不需要管理員權限。核心下載約 250 MB。期刊範本之後可能會再取得更多套件，總計最多約 1 GB。",
+      "description": "安裝精簡版的 TeX Live，不需要管理員權限。核心下載約 250 MB。期刊範本之後可能會再取得更多套件，總計最多約 1 GB。",
       "download": "下載並使用 TinyTeX",
       "resume": "繼續下載（已完成 {{megabytes}} MB）",
       "title": "下載 TinyTeX"
     },
     "titleCompileFailure": "這次編譯需要的功能超出內建引擎",
-    "titleImportScan": "這個專案需要的功能超出內建引擎"
+    "titleImportScan": "這個專案需要的功能超出內建引擎",
+    "titleTexMissing": "這個編譯器需要可用的 TeX 發行版"
   },
   "shellCommands": {
     "allow": "允許外部命令",
@@ -1132,11 +1193,16 @@
     },
     "wait": {
       "description": "{{phase}}。你的編譯已排入佇列，引擎就緒後會自動開始。",
+      "stop": "停止安裝",
       "title": "TinyTeX 仍在下載中"
     },
     "typstQuit": {
       "title": "Typst 仍在安裝中",
       "description": "正在下載 Typst {{version}}。如果現在結束，下載會停止，你需要從設定重新開始。"
+    },
+    "packageQuit": {
+      "title": "Oleafly 仍在變更 TeX 套件",
+      "description": "如果你現在結束，安裝或移除會中途停止，可能讓你的 TeX 套件管理工具損壞。"
     }
   },
   "toolbar": {
@@ -1302,7 +1368,7 @@
       "compiling": "正在用 Typst 編譯"
     },
     "errors": {
-      "pandoc": "Pandoc 尚未就緒。請從工具安裝，然後再試一次。",
+      "pandoc": "Pandoc 尚未就緒。請在設定 > 引擎 > Markdown 中修復，然後再試一次。",
       "noMain": "無法讀取 LaTeX 主檔案。",
       "emptyOutput": "Pandoc 傳回了空白文件。",
       "failed": "轉換已停止：{{detail}}"
@@ -1351,7 +1417,8 @@
     "svg": "SVG 影像",
     "html": "HTML",
     "experimental": "實驗性",
-    "htmlNote": "Typst 的 HTML 匯出仍屬實驗性質。它不包含頁面設定與定位元素。",
+    "htmlNote": "Typst 的 HTML 匯出仍屬實驗性質。它會保留文字與影像，但不包含頁面設定與繪圖。",
+    "htmlNoteOldTypst": "Typst {{version}} 的 HTML 輸出不含方程式。Typst 0.15 或更新的版本會保留它們。",
     "ppi": "解析度",
     "ppiValue": "{{ppi}} PPI",
     "pages": "頁面",

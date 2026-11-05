@@ -12,6 +12,21 @@ fn write(path: &Path, text: &str) {
     fs::write(path, text).unwrap();
 }
 
+#[test]
+fn vendoring_needs_a_typst_that_reads_the_project_folder() {
+    let version = ToolchainVersion::parse("0.11.1").unwrap();
+    let error = require_vendor_support(&capabilities("0.11.1"), &version).unwrap_err();
+    assert!(
+        error.contains("typst_packages.vendor_unsupported"),
+        "{error}"
+    );
+    assert!(error.contains("0.11.1"), "{error}");
+    for supported in ["0.12.0", "0.13.1", "0.14.2", "0.15.1"] {
+        let version = ToolchainVersion::parse(supported).unwrap();
+        require_vendor_support(&capabilities(supported), &version).unwrap();
+    }
+}
+
 fn fake_package(root: &Path, namespace: &str, name: &str, version: &str, body: &str) -> PathBuf {
     let directory = root.join(namespace).join(name).join(version);
     write(

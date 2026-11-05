@@ -479,6 +479,7 @@
     "previewUnsupported": "L'aperçu en direct n'est pas encore disponible pour ce moteur",
     "badge": "Généré par IA",
     "compileWarning": "Ce brouillon n'a pas compilé proprement. Régénérez-le pour un meilleur point de départ, ou créez le projet et corrigez le source dans l'éditeur.",
+    "compileLog": "Journal de compilation",
     "noDescription": "Aucune description pour l'instant.",
     "includes": "Contient",
     "category": "Catégorie",

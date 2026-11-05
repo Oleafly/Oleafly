@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn(async () => {}),
   recompile: vi.fn(async () => {}),
   stopCompile: vi.fn(async () => {}),
+  clearLog: vi.fn(),
+  logCleared: false,
   unsubscribe: vi.fn(),
   unsubscribeFiles: vi.fn(),
   setAutoCompile: vi.fn(), setCompileMode: vi.fn(), setCheckSyntaxBeforeCompile: vi.fn(), setStopOnFirstError: vi.fn(),
@@ -19,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   applyTypstCompileOptions: vi.fn(async (_update: unknown) => {}),
   chooseTypstVariant: vi.fn(),
   applyShellEscape: vi.fn(async (_allow: boolean, _options?: unknown) => true),
+  offerTexSetupAfterSwitch: vi.fn(async () => {}),
   setFocus: vi.fn(async () => {}),
   off: vi.fn(),
   files: {} as Record<string, unknown>,
@@ -45,7 +48,10 @@ vi.mock("@/lib/typst-compile-actions", () => ({
   applyTypstCompileOptions: mocks.applyTypstCompileOptions,
   chooseTypstVariant: mocks.chooseTypstVariant,
 }));
-vi.mock("@/lib/latex-compile-actions", () => ({ applyShellEscape: mocks.applyShellEscape }));
+vi.mock("@/lib/latex-compile-actions", () => ({
+  applyShellEscape: mocks.applyShellEscape,
+  offerTexSetupAfterSwitch: mocks.offerTexSetupAfterSwitch,
+}));
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: mocks.emitTo,
   listen: vi.fn(async (name, handler) => { mocks.handlers.set(name, handler); return mocks.off; }),
@@ -55,8 +61,8 @@ vi.mock("@/store/files", () => ({ engineSwitchToastKey: (projectId: string) => `
   subscribe: (listener: (next: unknown, previous: unknown) => void) => { mocks.filesChanged = listener; return mocks.unsubscribeFiles; },
 } }));
 vi.mock("@/store/preview-detached", () => ({ usePreviewDetachedStore: { getState: () => ({ projectId: mocks.detachedProject }), subscribe: (listener: () => void) => { mocks.detachedChanged = listener; return mocks.unsubscribeDetached; } } }));
-vi.mock("@/store/compile", () => ({ useCompileStore: {
-  getState: () => ({ recompile: mocks.recompile, stopCompile: mocks.stopCompile, status: "success", log: "Build output", errors: [], diagnostics: [], compileTimeMs: 120,
+vi.mock("@/store/compile", () => ({ compileLogCleared: () => mocks.logCleared, useCompileStore: {
+  getState: () => ({ recompile: mocks.recompile, stopCompile: mocks.stopCompile, clearLog: mocks.clearLog, status: "success", log: "Build output", errors: [], diagnostics: [], compileTimeMs: 120,
     lastAttemptIdentity: null, lastCompileCheckpoint: mocks.checkpoint, failureReason: null, htmlOutput: mocks.htmlOutput,
     autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
     livePreview: { projectId: "current", enabled: false, status: "off", message: null },
@@ -66,6 +72,7 @@ vi.mock("@/store/compile", () => ({ useCompileStore: {
 } }));
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useFolderAccessStore } from "@/store/folder-access";
+import { usePdfViewStore } from "@/store/pdf-view";
 import { startPreviewWorkspaceBridge } from "./preview-workspace";
 
 const untrusted = { trusted: false, source: null, parent: null, repository: null };
@@ -73,8 +80,9 @@ const trusted = { trusted: true, source: "folder", parent: null, repository: nul
 
 beforeEach(() => {
   vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.htmlOutput = null; mocks.detachedChanged = () => {};
-  mocks.files = {}; mocks.filesChanged = () => {}; mocks.tauri = true; mocks.activeTourId = null;
+  mocks.files = {}; mocks.filesChanged = () => {}; mocks.tauri = true; mocks.activeTourId = null; mocks.logCleared = false;
   useFolderAccessStore.getState().reset(null);
+  usePdfViewStore.setState({ page: 1 });
 });
 
 describe("detached compile commands", () => {
@@ -91,6 +99,32 @@ describe("detached compile commands", () => {
     expect(mocks.off).toHaveBeenCalledOnce();
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
     expect(mocks.unsubscribeFiles).toHaveBeenCalledOnce();
+  });
+
+  it("clears the log for the detached window and tells it so", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = mocks.handlers.get("preview:command");
+    command?.({ payload: { projectId: "old", action: "clear-log" } });
+    expect(mocks.clearLog).not.toHaveBeenCalled();
+    command?.({ payload: { projectId: "current", action: "clear-log" } });
+    await vi.waitFor(() => expect(mocks.clearLog).toHaveBeenCalledOnce());
+
+    mocks.logCleared = true;
+    command?.({ payload: { projectId: "current", action: "ready" } });
+    await vi.waitFor(() => expect(mocks.emitTo).toHaveBeenCalledWith("preview", "preview:workspace", expect.objectContaining({ logCleared: true })));
+    cleanup();
+  });
+
+  it("remembers the page the detached preview shows", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = mocks.handlers.get("preview:command");
+    command?.({ payload: { projectId: "current", action: "preview-page", page: 7 } });
+    await vi.waitFor(() => expect(usePdfViewStore.getState().page).toBe(7));
+    command?.({ payload: { projectId: "current", action: "preview-page", page: 0 } });
+    command?.({ payload: { projectId: "current", action: "preview-page", page: "3" } });
+    await Promise.resolve();
+    expect(usePdfViewStore.getState().page).toBe(7);
+    cleanup();
   });
 
   it("sends the current log when the detached window is ready", async () => {
@@ -209,6 +243,17 @@ describe("detached compile commands", () => {
     expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", "xelatex");
     command({ projectId: "current", action: "engine", engine: "latexmk", flavor: "invalid" });
     expect(mocks.setEngine).toHaveBeenCalledOnce();
+    cleanup();
+  });
+
+  it("offers TeX setup after a detached switch to latexmk, not to Tectonic", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "engine", engine: "xetex" });
+    await vi.waitFor(() => expect(mocks.setEngine).toHaveBeenCalledWith("xetex", undefined));
+    expect(mocks.offerTexSetupAfterSwitch).not.toHaveBeenCalled();
+    command({ projectId: "current", action: "engine", engine: "latexmk", flavor: "pdflatex" });
+    await vi.waitFor(() => expect(mocks.offerTexSetupAfterSwitch).toHaveBeenCalledOnce());
     cleanup();
   });
 

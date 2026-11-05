@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::quarto::reject_project_local;
+use super::quarto::{reject_project_local, strip_ansi};
 use super::{
     CompileError, CompileOptions, CompileTarget, CompilerPrerequisite, ConversionExport,
     DocumentEngine, DocumentEngineId, EngineArtifacts, EngineCapabilities, EngineCompileSpec,
@@ -14,6 +14,11 @@ pub(super) struct CalepinEngine;
 pub(super) static CALEPIN_ENGINE: CalepinEngine = CalepinEngine;
 
 pub(crate) const STORED_RESULTS_CODE: &str = "notebook.stored_results";
+pub(super) const SETUP_CODES: [&str; 3] =
+    [NEEDS_TYPST_CODE, CHUNK_SKIPPED_CODE, NEEDS_JUPYTER_CODE];
+const NEEDS_TYPST_CODE: &str = "notebook.calepin_needs_typst";
+const CHUNK_SKIPPED_CODE: &str = "notebook.calepin_chunk_skipped";
+const NEEDS_JUPYTER_CODE: &str = "notebook.calepin_needs_jupyter";
 const RUNTIME_DIRECTORY: &str = ".calepin";
 const RUNTIME_FILE: &str = "calepin.typ";
 const MAX_ERRORS: usize = 200;
@@ -113,6 +118,7 @@ impl DocumentEngine for CalepinEngine {
         &self,
         spec: &EngineCompileSpec,
         options: &CompileOptions,
+        _log: &str,
     ) -> Vec<CompileError> {
         if options.allow_shell_escape
             || !matches!(spec.executable, EngineExecutable::BundledSidecar("typst"))
@@ -144,7 +150,9 @@ pub(super) fn calepin_spec(
     let rscript = crate::notebook_toolchain::rscript();
     let args = calepin_args(&input, output, format, typst.as_deref(), rscript.as_deref());
     let mut environment = EngineEnvironment::inherited(source_date_epoch)
-        .with_variable("CALEPIN_PROGRESS", "plain".to_owned());
+        .with_time_limit(oleafly_core::compile_limit::NOTEBOOK_TIME_LIMIT)
+        .with_variable("CALEPIN_PROGRESS", "plain".to_owned())
+        .with_variable("NO_COLOR", "1".to_owned());
     for (name, value) in crate::notebook_toolchain::calepin_runtime_variables(project_dir) {
         environment = environment.with_variable(name, value);
     }
@@ -211,43 +219,49 @@ pub(crate) fn calepin_args(
     args
 }
 
-fn strip_ansi(line: &str) -> String {
-    let mut plain = String::with_capacity(line.len());
-    let mut characters = line.chars().peekable();
-    while let Some(character) = characters.next() {
-        if character == '\u{1b}' {
-            if characters.peek() == Some(&'[') {
-                characters.next();
-                for next in characters.by_ref() {
-                    if next.is_ascii_alphabetic() {
-                        break;
-                    }
-                }
-            }
-            continue;
-        }
-        plain.push(character);
+fn jupyter_client_install() -> &'static str {
+    if cfg!(windows) {
+        "python -m pip install jupyter_client"
+    } else {
+        "python3 -m pip install jupyter_client"
     }
-    plain
 }
 
-fn calepin_explanation(message: &str) -> Option<&'static str> {
+fn calepin_explanation(message: &str) -> Option<(&'static str, String)> {
     let lower = message.to_ascii_lowercase();
     if lower.contains("requires typst") {
-        return Some("Calepin needs Typst 0.15 or newer. Oleafly passes its own Typst to Calepin, so update Oleafly or install a newer Typst.");
+        return Some((NEEDS_TYPST_CODE, "Calepin needs Typst 0.15 or newer. Oleafly passes its own Typst to Calepin, so update Oleafly or install a newer Typst.".to_owned()));
     }
     if lower.contains("did not run") {
-        return Some("The language for this chunk is not installed, or Calepin could not find it. Install R, Python or the Jupyter kernel the chunk names, then compile again.");
+        return Some((CHUNK_SKIPPED_CODE, "The language for this chunk is not installed, or Calepin could not find it. Install R, Python or the Jupyter kernel the chunk names, then compile again.".to_owned()));
     }
     if lower.contains("jupyter_client") {
-        return Some("Chunks in languages other than R and Python need Jupyter. Install it with python3 -m pip install jupyter_client.");
+        return Some((
+            NEEDS_JUPYTER_CODE,
+            format!(
+                "Chunks in languages other than R and Python need Jupyter. Install it with {}.",
+                jupyter_client_install()
+            ),
+        ));
     }
     None
 }
 
 fn chunk_error(message: String, kind: &str) -> CompileError {
+    let explained = calepin_explanation(&message);
+    let code = explained.as_ref().map(|(code, _)| (*code).to_owned());
+    let params = if code.as_deref() == Some(NEEDS_JUPYTER_CODE) {
+        std::collections::BTreeMap::from([(
+            "command".to_owned(),
+            jupyter_client_install().to_owned(),
+        )])
+    } else {
+        std::collections::BTreeMap::new()
+    };
     CompileError {
-        explanation: calepin_explanation(&message).map(str::to_owned),
+        explanation: explained.map(|(_, text)| text),
+        code,
+        params,
         message,
         kind: kind.to_owned(),
         ..CompileError::default()
@@ -357,6 +371,7 @@ mod tests {
             .unwrap();
         assert_eq!(skipped.kind, "warning");
         assert!(skipped.explanation.is_some());
+        assert_eq!(skipped.code.as_deref(), Some(CHUNK_SKIPPED_CODE));
         let typst = errors
             .iter()
             .find(|error| error.message == "unknown variable: totl")
@@ -364,5 +379,24 @@ mod tests {
         assert_eq!(typst.line, Some(12));
         assert!(!messages.contains(&"typst compile failed:"));
         assert_eq!(errors.last().unwrap().kind, "warning");
+    }
+
+    #[test]
+    fn setup_hints_carry_codes_and_the_install_command_for_this_system() {
+        let errors = parse_calepin_log(
+            "Error: this Calepin requires Typst 0.15\nError: jupyter_client is not installed\n",
+        );
+        let typst = &errors[0];
+        assert_eq!(typst.code.as_deref(), Some(NEEDS_TYPST_CODE));
+        assert!(typst.params.is_empty());
+        let jupyter = &errors[1];
+        assert_eq!(jupyter.code.as_deref(), Some(NEEDS_JUPYTER_CODE));
+        assert_eq!(jupyter.params["command"], jupyter_client_install());
+        assert!(jupyter
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains(jupyter_client_install()));
+        assert!(SETUP_CODES.contains(&NEEDS_JUPYTER_CODE));
     }
 }

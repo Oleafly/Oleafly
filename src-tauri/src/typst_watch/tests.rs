@@ -260,6 +260,7 @@ enum Seen {
 struct TestHost {
     seen: StdMutex<Vec<Seen>>,
     revision: AtomicU64,
+    compiled: StdMutex<Vec<Option<String>>>,
 }
 
 impl TestHost {
@@ -267,7 +268,13 @@ impl TestHost {
         Arc::new(Self {
             seen: StdMutex::new(Vec::new()),
             revision: AtomicU64::new(0),
+            compiled: StdMutex::new(Vec::new()),
         })
+    }
+
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
+    fn compiled_outputs(&self) -> Vec<Option<String>> {
+        self.compiled.lock().unwrap().clone()
     }
 
     #[cfg_attr(target_os = "windows", allow(dead_code))]
@@ -341,6 +348,67 @@ impl WatchHost for TestHost {
             .unwrap_or((log, Vec::new(), Vec::new()))
         })
     }
+
+    fn compiled(&self, _target: &WatchTarget, result: &LiveCompileResult) {
+        self.compiled.lock().unwrap().push(result.output_id.clone());
+    }
+}
+
+fn live_result(ok: bool, has_pdf: bool, output_id: Option<&str>) -> LiveCompileResult {
+    LiveCompileResult {
+        ok,
+        has_pdf,
+        output_id: output_id.map(str::to_owned),
+        output_revision: Some(1),
+        log: String::new(),
+        errors: Vec::new(),
+        diagnostics: Vec::new(),
+        synctex_path: None,
+        out_dir: None,
+        compile_time_ms: 4,
+        stopped: false,
+    }
+}
+
+#[test]
+fn a_live_pdf_goes_up_under_the_project_engine_and_main_document() {
+    let target = WatchTarget {
+        project_id: "paper".into(),
+        main_document: "main.typ".into(),
+        command: WatchCommand {
+            program: PathBuf::from("typst"),
+            args: Vec::new(),
+            working_dir: PathBuf::new(),
+            variables: Vec::new(),
+        },
+        project_dir: PathBuf::new(),
+        staging_dir: PathBuf::new(),
+        staged_pdf: PathBuf::new(),
+        build_pdf: PathBuf::new(),
+        staged_deps: None,
+        build_deps: None,
+        engine_name: "typst".into(),
+        toolchain_identity: "typst 0.15.1".into(),
+        glyph_check: None,
+    };
+    let shared = shared_output(&target, &live_result(true, true, Some("pdf-v1:1:aa"))).unwrap();
+    assert_eq!(shared.project_id, "paper");
+    assert_eq!(shared.engine, "typst");
+    assert_eq!(shared.main_file, "main.typ");
+    assert_eq!(shared.output_id, "pdf-v1:1:aa");
+    assert_eq!(shared.synctex, None);
+    assert!(shared_output(&target, &live_result(true, false, Some("x"))).is_none());
+    assert!(shared_output(&target, &live_result(true, true, None)).is_none());
+}
+
+#[test]
+fn a_silent_watcher_exit_has_a_coded_reason() {
+    let message = exit_message(String::new());
+    assert_eq!(
+        crate::app_error::code(&message).as_deref(),
+        Some("typst.live_preview_stopped")
+    );
+    assert_eq!(exit_message(" it broke \n".to_owned()), "it broke");
 }
 
 #[cfg_attr(target_os = "windows", allow(dead_code))]
@@ -433,6 +501,7 @@ done
                 build_deps: None,
                 engine_name: "typst".into(),
                 toolchain_identity: "typst 0.15.1".into(),
+                glyph_check: None,
             };
             Self { directory, target }
         }
@@ -513,6 +582,39 @@ done
             || host.log(),
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn only_a_cycle_that_published_a_pdf_is_offered_for_sharing() {
+        let fixture = Fixture::new("watch-share", "= Hello\n");
+        let host = TestHost::new();
+        let registry = Registry::new(fast_config());
+        let (session, started) = registry.ensure(host.clone(), fixture.target.clone()).await;
+        let first = session.compile(false, started).await.unwrap();
+        assert!(first.result.ok);
+        assert_eq!(
+            host.compiled_outputs(),
+            vec![first.result.output_id.clone()]
+        );
+
+        fixture.write("#BROKEN\n");
+        eventually(
+            "the #BROKEN result",
+            || host.results().len() == 2,
+            || host.log(),
+        )
+        .await;
+        assert_eq!(host.compiled_outputs().len(), 1);
+
+        fixture.write("= Fixed\n");
+        eventually(
+            "the = Fixed result",
+            || host.results().len() == 3,
+            || host.log(),
+        )
+        .await;
+        assert_eq!(host.compiled_outputs().len(), 2);
+        registry.stop("watch-share").await;
     }
 
     #[tokio::test]
@@ -733,6 +835,7 @@ async fn real_typst_watch_recompiles_a_research_seed_after_each_edit() {
         build_deps: None,
         engine_name: "typst".into(),
         toolchain_identity: format!("typst {version}"),
+        glyph_check: None,
     };
     let host = TestHost::new();
     let registry = Registry::new(WatchConfig::default());

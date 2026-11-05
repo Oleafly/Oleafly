@@ -209,6 +209,24 @@ it("disables package changes when the detected distribution has no tlmgr", async
   expect(screen.getByRole("button", { name: enSettings.engine.packages.search })).toBeDisabled();
 });
 
+it("points a distro TeX at its own package manager", async () => {
+  const distro = { ...engine, tlmgr: null, system_package_manager: "apt", tex_complete: false };
+  mocks.invoke.mockImplementation(async (command: string) =>
+    command === "latex_engine_info" ? distro : [],
+  );
+  useEngineStore.setState({ info: distro });
+  const { rerender } = render(<EngineSection />);
+  expect(
+    screen.getByText(enSettings.engine.packages.intro.systemManagedTinytex.replace("{{manager}}", "apt")),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(enSettings.engine.packages.intro.unavailable)).toBeNull();
+  useEngineStore.setState({ info: { ...distro, system_package_manager: "dnf", tex_complete: true } });
+  rerender(<EngineSection />);
+  expect(
+    screen.getByText(enSettings.engine.packages.intro.systemManaged.replace("{{manager}}", "dnf")),
+  ).toBeInTheDocument();
+});
+
 it("keeps installer details visible after the toast and supports retry", async () => {
   render(<EngineSection />);
   fireEvent.change(screen.getByPlaceholderText(enSettings.engine.packages.filterPlaceholder), { target: { value: "tikz" } });

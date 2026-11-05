@@ -461,6 +461,17 @@ describe("command contributions behaviour", () => {
     expect(mocks.exportCurrentPdf).toHaveBeenCalled();
   });
 
+  it("offers Export PDF only for an open project whose engine makes a PDF", () => {
+    const exportPdf = registry.commands.find((entry) => entry.id === "palette.export-pdf");
+    expect(exportPdf?.when?.(baseContext)).toBe(true);
+    expect(exportPdf?.when?.({ ...baseContext, projectId: null })).toBe(false);
+    mocks.files.engine = {
+      ...LATEX_ENGINE,
+      capabilities: { ...LATEX_ENGINE.capabilities, produces_pdf: false },
+    };
+    expect(exportPdf?.when?.(baseContext)).toBe(false);
+  });
+
   it("clears the build cache then recompiles, and recompiles anyway on failure", async () => {
     run("palette.clear-cache");
     await vi.waitFor(() => expect(mocks.compile.recompile).toHaveBeenCalled());

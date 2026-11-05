@@ -38,6 +38,7 @@
       "compile": "Derle",
       "recompile": "Yeniden derle",
       "compiling": "Derleniyor…",
+      "stop": "Durdur",
       "saveTooltip": "Bu diyagramı kaydet",
       "save": "Kaydet",
       "saveToProject": "Projeye kaydet",

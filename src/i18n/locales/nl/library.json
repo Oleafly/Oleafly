@@ -463,6 +463,7 @@
     "previewUnsupported": "Een live voorbeeld is voor deze engine nog niet beschikbaar",
     "badge": "Door AI gemaakt",
     "compileWarning": "Dit concept compileerde niet foutloos. Genereer het opnieuw voor een beter startpunt, of maak het project aan en herstel de broncode in de editor.",
+    "compileLog": "Compileerlogboek",
     "noDescription": "Nog geen beschrijving.",
     "includes": "Bevat",
     "category": "Categorie",

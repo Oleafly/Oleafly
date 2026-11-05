@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { ImportCompatFinding } from "@oleafly/latex";
 import { readString, writeString } from "@/lib/local-storage";
 
-export type EnginePickerSource = "compile-failure" | "manual";
+export type EnginePickerSource = "compile-failure" | "manual" | "tex-missing";
 
 interface EnginePickerStore {
   open: boolean;

@@ -173,6 +173,19 @@ describe("ensurePandoc", () => {
     expect(mocks.open).toHaveBeenCalledWith("https://pandoc.org/installing.html");
   });
 
+  it("keeps the reason the backend gave for a failed download", async () => {
+    mocks.downloadPandoc.mockRejectedValue("Pandoc download: HTTP 403");
+    const { ensurePandoc } = await loadPandoc();
+    await expect(ensurePandoc({ notify: true })).resolves.toBe(false);
+
+    expect(mocks.toast.errorUnique).toHaveBeenCalledExactlyOnceWith(
+      KEY,
+      i18n.t(($) => $.core.pandoc.downloadFailedDetail, { detail: "Pandoc download: HTTP 403" }),
+      expect.objectContaining({ label: i18n.t(($) => $.core.pandoc.installGuide) }),
+      true,
+    );
+  });
+
   it("updates the progress slot in place and dismisses it on success without an installed toast", async () => {
     const { ensurePandoc } = await loadPandoc();
     mocks.downloadPandoc.mockImplementation(async () => {

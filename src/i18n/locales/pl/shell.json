@@ -477,9 +477,69 @@
   "enginePicker": {
     "descriptionCompileFailure": "To niepowodzenie odpowiada znanej luce wbudowanego silnika Tectonic. Wybierz, jak ma się kompilować ten projekt. Wybór jest zapisywany w projekcie, więc współpracownicy dostaną tę samą konfigurację.",
     "descriptionImportScan": "Skanowanie importu wykryło funkcje, których wbudowany silnik Tectonic nie obsługuje. Wybierz, jak ma się kompilować ten projekt. Wybór jest zapisywany w projekcie, więc współpracownicy dostaną tę samą konfigurację.",
+    "descriptionTexMissing": "Ten projekt kompiluje się teraz przy użyciu latexmk, a ten komputer nie może go jeszcze uruchomić. Oleafly może zainstalować TinyTeX za Ciebie albo możesz wrócić do wbudowanego silnika Tectonic.",
     "engineNames": {
       "latexmk": "latexmk",
       "pdflatexViaLatexmk": "pdfLaTeX przez latexmk"
+    },
+    "findingNotes": {
+      "epsFile": "Kompilacja zatrzymała się na {{file}}.",
+      "missingFiles": "Kompilacja nie znalazła: {{files}}.",
+      "mirrorStatus": "Serwer lustrzany zwrócił HTTP {{status}}."
+    },
+    "findings": {
+      "biblatex-biber": {
+        "title": "Bibliografia używa biblatex i Biber",
+        "detail": "Ten projekt potrzebuje Biber do zbudowania bibliografii. Oleafly dołącza Biber zgodny z wbudowanym silnikiem. Jeśli po kompilacji cytowania nadal wyglądają jak „?”, sprawdź w dzienniku notatkę o Biber."
+      },
+      "bundle-fetch-failed": {
+        "title": "Nie udało się pobrać pakietów TeX",
+        "detail": "Oleafly nie mógł pobrać pakietów TeX z serwera lustrzanego, więc kompilacja nie dotarła do Twojego dokumentu. Sprawdź połączenie i skompiluj ponownie. Pobieranie wznowi się od miejsca, w którym się zatrzymało."
+      },
+      "cjk-pdftex-package": {
+        "title": "CJKutf8 wymaga pdfLaTeX",
+        "detail": "CJKutf8 i CJK działają tylko w pdfLaTeX. We wbudowanym silniku (XeTeX) dokument nadal się kompiluje, ale w pliku PDF brakuje jego tekstu chińskiego, japońskiego lub koreańskiego. Przełącz na pdfLaTeX w systemowym TeX albo zastąp pakiet pakietem xeCJK."
+      },
+      "class-compat": {
+        "title": "Klasa dokumentu trafia na ograniczenia silnika",
+        "detail": "Błędy kompilacji pochodzą z pliku klasy lub stylu, a nie z Twojego dokumentu. Klasy wydawców często zależą od narzędzi lub zachowania pdfTeX, których wbudowany silnik nie ma. latexmk kompiluje z pełną dystrybucją TeX."
+      },
+      "eps-image": {
+        "title": "Obrazy EPS wymagają konwertera",
+        "detail": "Wbudowany silnik nie umie umieszczać obrazów EPS. Przekonwertuj je na PDF za pomocą epstopdf lub Inkscape albo przełącz na pdfLaTeX w systemowym TeX, który konwertuje EPS przez Ghostscript."
+      },
+      "fontspec": {
+        "title": "Własne kroje pisma (fontspec)",
+        "detail": "fontspec wymaga wskazanych krojów na tym komputerze. Kroje dołączone do edytora online mogą tu nie być dostępne."
+      },
+      "glossaries-index": {
+        "title": "Narzędzie do glosariusza lub indeksu",
+        "detail": "glossaries i makeindex wymagają dodatkowego uruchomienia makeindex lub xindy, czego wbudowany silnik nie robi."
+      },
+      "hyperref-pdftex-driver": {
+        "title": "hyperref ma ustawiony sterownik pdfTeX",
+        "detail": "Ta klasa lub preambuła wymusza sterownik pdftex pakietu hyperref, którego wbudowany silnik nie może użyć. Przełącz na pdfLaTeX w systemowym TeX albo usuń opcję pdftex, aby hyperref sam wybrał sterownik."
+      },
+      "minted": {
+        "title": "minted wymaga shell escape i Pygments",
+        "detail": "Listingi kodu z minted wymagają systemowej dystrybucji TeX i pygmentize. Przełącz na systemowy LaTeX, a potem zezwól na polecenia zewnętrzne na tym komputerze tylko wtedy, gdy ufasz każdemu plikowi projektu."
+      },
+      "missing-sty-on-bundled-engine": {
+        "title": "Pakietu brakuje we wbudowanym zestawie",
+        "detail": "Coś, co ten projekt wczytuje, nie znajduje się we wbudowanym zestawie TeX. Dodaj plik do projektu, jeśli pochodzi z Twojego szablonu, albo przełącz na systemowy TeX i zainstaluj pakiet z TeX Live."
+      },
+      "pdftex-only": {
+        "title": "Pakiety pdfTeX",
+        "detail": "Wbudowany silnik jest oparty na XeTeX, a ten projekt korzysta z pakietów lub poleceń, które działają tylko z pdfTeX. latexmk kompiluje prawdziwym pdfLaTeX."
+      },
+      "pythontex": {
+        "title": "PythonTeX",
+        "detail": "PythonTeX wymaga swojego programu pomocniczego z aktywnej systemowej dystrybucji TeX. Przełącz na systemowy LaTeX, a potem zezwól na polecenia zewnętrzne na tym komputerze tylko wtedy, gdy ufasz każdemu plikowi projektu."
+      },
+      "shell-escape": {
+        "title": "Polecenia shell escape",
+        "detail": "Źródło używa \\write18 lub innego shell escape. Przełącz na systemowy LaTeX, a potem zezwól na polecenia zewnętrzne na tym komputerze tylko wtedy, gdy ufasz każdemu plikowi projektu i masz zainstalowane potrzebne narzędzia."
+      }
     },
     "recommended": "Zalecane",
     "shellEscape": {
@@ -508,13 +568,14 @@
       "withFailures_other": "Zero konfiguracji, działa offline. {{features}} zapewne nadal będą zawodzić."
     },
     "tinytex": {
-      "description": "Instaluje kompaktową dystrybucję TeX Live w folderze domowym, bez uprawnień administratora. Podstawowe pobieranie to około 250 MB. Szablony czasopism mogą później dociągnąć więcej pakietów, łącznie do mniej więcej 1 GB.",
+      "description": "Instaluje kompaktową dystrybucję TeX Live bez uprawnień administratora. Podstawowe pobieranie to około 250 MB. Szablony czasopism mogą później dociągnąć więcej pakietów, łącznie do mniej więcej 1 GB.",
       "download": "Pobierz i używaj TinyTeX",
       "resume": "Wznów pobieranie (pobrano {{megabytes}} MB)",
       "title": "Pobierz TinyTeX"
     },
     "titleCompileFailure": "Ta kompilacja wymaga czegoś więcej niż wbudowany silnik",
-    "titleImportScan": "Ten projekt wymaga czegoś więcej niż wbudowany silnik"
+    "titleImportScan": "Ten projekt wymaga czegoś więcej niż wbudowany silnik",
+    "titleTexMissing": "Ten kompilator wymaga działającej dystrybucji TeX"
   },
   "shellCommands": {
     "allow": "Zezwól na polecenia zewnętrzne",
@@ -1192,11 +1253,16 @@
     },
     "wait": {
       "description": "{{phase}} Twoja kompilacja czeka w kolejce i ruszy automatycznie, gdy silnik będzie gotowy.",
+      "stop": "Zatrzymaj instalację",
       "title": "TinyTeX wciąż się pobiera"
     },
     "typstQuit": {
       "title": "Typst wciąż się instaluje",
       "description": "Trwa pobieranie Typst {{version}}. Jeśli teraz zakończysz pracę, pobieranie się zatrzyma i trzeba będzie uruchomić je ponownie w Ustawieniach."
+    },
+    "packageQuit": {
+      "title": "Oleafly wciąż zmienia pakiety TeX",
+      "description": "Jeśli teraz zakończysz pracę, instalacja lub usuwanie zatrzyma się w połowie i menedżer pakietów TeX może przestać działać."
     }
   },
   "toolbar": {
@@ -1362,7 +1428,7 @@
       "compiling": "Kompilowanie w Typst"
     },
     "errors": {
-      "pandoc": "Pandoc nie jest gotowy. Zainstaluj go w Narzędziach i spróbuj ponownie.",
+      "pandoc": "Pandoc nie jest gotowy. Napraw go w sekcji Ustawienia > Silniki > Markdown, a potem spróbuj ponownie.",
       "noMain": "Nie udało się odczytać głównego pliku LaTeX.",
       "emptyOutput": "Pandoc zwrócił pusty dokument.",
       "failed": "Konwersja została przerwana: {{detail}}"
@@ -1435,7 +1501,8 @@
     "svg": "Obrazy SVG",
     "html": "HTML",
     "experimental": "Eksperymentalne",
-    "htmlNote": "Eksport HTML w Typst jest wciąż eksperymentalny. Pomija ustawienia strony i elementy pozycjonowane.",
+    "htmlNote": "Eksport HTML w Typst jest wciąż eksperymentalny. Zachowuje tekst i obrazy, ale nie ustawienia strony ani rysunki.",
+    "htmlNoteOldTypst": "Typst {{version}} pomija wzory w HTML. Typst 0.15 lub nowszy je zachowuje.",
     "ppi": "Rozdzielczość",
     "ppiValue": "{{ppi}} PPI",
     "pages": "Strony",

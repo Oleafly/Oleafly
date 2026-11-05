@@ -365,7 +365,12 @@
     "rawLogs": "Jurnale brute",
     "copyLog": "Copiază jurnalul",
     "typesetting": "Tehnoredactare",
+    "missingCharacters": "Caractere lipsă",
     "info": "Informații",
+    "clear": "Golește",
+    "clearAria": "Golește jurnalul de compilare",
+    "clearHint": "Ascunde acest jurnal și erorile lui până la următoarea compilare. Fișierele de compilare rămân.",
+    "cleared": "Jurnalul a fost golit. Următoarea compilare scrie unul nou.",
     "empty": "Rezultatul compilării va apărea aici.",
     "scrollToTop": "Derulează la început",
     "scrollToBottom": "Derulează la sfârșit",
@@ -383,6 +388,8 @@
     "summaryReferences_few": "{{count}} referințe nerezolvate",
     "summaryReferences_other": "{{count}} de referințe nerezolvate",
     "fontPack": "{{family}} se află în pachetul gratuit de fonturi {{pack}}.",
+    "fontPackGlyphs": "Pachetul gratuit de fonturi {{pack}} are aceste caractere.",
+    "fontPackSealed": "{{family}} se află în pachetul gratuit de fonturi {{pack}}, dar pachetele de fonturi nu se aplică aici, deoarece acest proiect folosește doar fonturile proiectului. Adaugă fișierul fontului în folderul fonts al proiectului.",
     "fontPackAction": "Descarcă și compilează",
     "fontPackDownloading": "Se descarcă…",
     "fontPackFailed": "Pachetul de fonturi nu a putut fi descărcat. Verifică conexiunea și încearcă din nou."
@@ -1480,7 +1487,8 @@
       "count_one": "{{count}} pachet în acest proiect",
       "count_few": "{{count}} pachete în acest proiect",
       "count_other": "{{count}} de pachete în acest proiect",
-      "none": "Acest proiect nu are încă pachete."
+      "none": "Acest proiect nu are încă pachete.",
+      "unsupported": "Typst {{version}} nu poate citi pachete din folderul proiectului. Treci proiectul la Typst 0.12 sau mai nou ca să folosești asta."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} este disponibil. Acest import folosește {{version}}.",
@@ -1520,6 +1528,7 @@
     "classNote": "Aceasta este o clasă de document. Seteaz-o cu \\documentclass.",
     "onDemand": "Tectonic descarcă pachetele prima dată când documentul tău le folosește. Nu ai nimic de instalat.",
     "checking": "Se verifică ce pachete sunt instalate",
+    "systemManaged": "Acest TeX Live vine cu distribuția ta Linux, așa că instalează pachetele cu {{manager}}.",
     "unknownInstall": "Oleafly nu poate afla ce pachete are instalarea ta TeX.",
     "noProject": "Deschide un proiect LaTeX ca să adaugi pachete.",
     "added": "{{name}} a fost adăugat în {{file}}.",

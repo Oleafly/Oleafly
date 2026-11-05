@@ -1,0 +1,229 @@
+{
+ "rootFile": "main.tex",
+ "diagnostics": [
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./fontenc.sty",
+   "line": 112,
+   "message": "LaTeX Font: Trying to load font information for T1+lmr."
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no n (\"6E) in font nullfont!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no o (\"6F) in font nullfont!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no i (\"69) in font nullfont!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no s (\"73) in font nullfont!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no e (\"65) in font nullfont!"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Trying to load font information for T1+bch."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for OML/cmm/m/it."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for OMS/cmsy/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for OT1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for T1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for TS1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Trying to load font information for TS1+cmr\n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for TU/lmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for OMX/cmex/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: Checking defaults for U/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 6,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no “ (\"201C) in font bchr8t!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no ” (\"201D) in font bchr8t!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 한 (\"D55C) in font bchr8t!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 글 (\"AE00) in font bchr8t!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 한 (\"D55C) in font bchb8t!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 글 (\"AE00) in font bchb8t!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 제 (\"C81C) in font bchb8t!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./main.tex",
+   "line": null,
+   "message": "Missing character: There is no 목 (\"BAA9) in font bchb8t!"
+  }
+ ]
+}

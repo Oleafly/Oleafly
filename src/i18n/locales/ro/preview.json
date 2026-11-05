@@ -94,6 +94,8 @@
     "exitFullscreen": "Ieși din ecranul complet",
     "retryCompile": "Reîncearcă compilarea",
     "chooseEngine": "Alege motorul",
+    "installJapanese": "Instalează suportul pentru japoneză (circa 450 MB)",
+    "useCompiler": "Folosește {{compiler}}",
     "installPackages_one": "Găsește și instalează {{name}}",
     "installPackages_few": "Găsește și instalează {{count}} fișiere",
     "installPackages_other": "Găsește și instalează {{count}} de fișiere",
@@ -101,7 +103,9 @@
     "useTypst": "Folosește Typst {{version}}",
     "installTool": "Instalează {{tool}} {{version}}",
     "installToolSize": "Instalează {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Deschide setările motorului"
+    "engineSettings": "Deschide setările motorului",
+    "useTectonic": "Folosește Tectonic",
+    "useTectonicForEveryone": "Folosește Tectonic pentru toți"
   },
   "html": {
     "builtTitle": "Compilat ca pagină web",

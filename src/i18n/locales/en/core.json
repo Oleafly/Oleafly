@@ -56,9 +56,24 @@
     "undo": "Undo"
   },
   "compile": {
+    "failedWithReason": "Compile failed: {{message}}",
     "noOfflineMode": "{{engine}} does not expose an offline compiler mode. Compiling normally.",
+    "pandocRequired": "Pandoc isn't available. Repair it in Settings > Engines > Markdown, then compile again.",
+    "pandocSetupFailed": "Pandoc setup failed: {{message}}",
+    "pdfChanged": "The compiled PDF changed while Oleafly was reading it, so the earlier preview stays. Compile again to update it.",
     "retry": "Compile again",
+    "superseded": "A newer compile replaced this one.",
+    "syntaxCheckFailed": "Syntax check found errors. Fix them, or turn off “{{setting}}”.",
+    "taggedFailed": "Tagged compile failed: {{message}}",
+    "taggedPdfChanged": "The tagged PDF changed while Oleafly was reading it, so the earlier preview stays. Compile again to update it.",
+    "taggedPdfInvalid": "The tagged compile did not produce a valid PDF.",
+    "tinytexDownloading": "TinyTeX is still downloading. This compile starts automatically when it finishes.",
+    "sharedTexEditor": "This project is shared, so switching to Tectonic changes it for everyone. Installing TinyTeX only changes this computer.",
+    "sharedTexViewer": "You can't change the compiler of this shared project, so install TinyTeX to compile it here.",
     "bundleFetchFailed": "Oleafly could not download the TeX packages this document needs. Check your connection and compile again.",
+    "offlineNotCached": "Offline mode is on, and {{files}} may not be downloaded yet. Turn offline mode off and compile again.",
+    "offlineNotCachedUnnamed": "Offline mode is on, and a TeX package this document needs may not be downloaded yet. Turn offline mode off and compile again.",
+    "goOnlineAndCompile": "Turn off and compile",
     "typstMissing": "Typst {{version}} is not installed. Download it, or switch this project to another version.",
     "typstPackage": {
       "downloadFailed": "Typst couldn't download {{spec}}. Check your internet connection and compile again.",
@@ -169,9 +184,22 @@
     "pdfFailedDetail": "Couldn't save the PDF: {{detail}}",
     "pngFailed": "Couldn't save the PNG",
     "pngFailedDetail": "Couldn't save the PNG: {{detail}}",
+    "projectChanged": "The open project changed. Start the export again from the project you want to save.",
     "revealFailed": "The file was saved, but its folder could not be opened.",
     "saved": "{{kind}} saved · {{fileName}}",
-    "showInFolder": "Show in folder"
+    "savedAfterFailedCompile": "{{kind}} saved · {{fileName}}. The last compile failed, so this file may be incomplete.",
+    "savedSource": "{{kind}} saved · {{fileName}}. If it uses images or bibliographies from your project, copy them next to it before you compile.",
+    "savedStale": "{{kind}} saved · {{fileName}}. It comes from the last compile and doesn't include your latest edits.",
+    "savedWithoutContent": "{{kind}} saved · {{fileName}}. Some content is missing because Typst can't write it to this format: {{elements}}.",
+    "savedFromSource": "{{kind}} saved · {{fileName}}. Typst {{version}} can't write all of this document to this format, so the file was built from the source. Rotated, scaled, moved or skewed text may be missing. Switch the project to Typst 0.15 or newer to keep that text.",
+    "savedWithoutEquations": "{{kind}} saved · {{fileName}}. Equations, images, footnotes or references may be missing because Typst {{version}} can't write them to this format. Switch the project to Typst 0.15 or newer.",
+    "savedWithWarnings_one": "{{kind}} saved · {{fileName}}, with {{count}} warning.",
+    "savedWithWarnings_other": "{{kind}} saved · {{fileName}}, with {{count}} warnings.",
+    "savedWithoutLinks_one": "{{kind}} saved · {{fileName}}. {{count}} symbolic link was left out of the archive.",
+    "savedWithoutLinks_other": "{{kind}} saved · {{fileName}}. {{count}} symbolic links were left out of the archive.",
+    "showInFolder": "Show in folder",
+    "showWarnings": "Show warnings",
+    "warningsTitle": "Export warnings"
   },
   "externalChange": {
     "reloadFailed": "Project settings were updated, but some changed files could not be reloaded."
@@ -321,6 +349,12 @@
     "installing_other": "Installing {{count}} packages. The compile restarts when they finish.",
     "summary_one": "The compile could not find \"{{name}}\". Look for the package that provides it in TeX Live.",
     "summary_other": "The compile could not find {{names}}. Look for their packages in TeX Live.",
+    "systemHint": {
+      "apt": "Find its package with apt-file search {{name}}, or install everything with sudo apt install texlive-full.",
+      "dnf": "Run {{command}}."
+    },
+    "systemManaged_one": "The compile could not find \"{{name}}\". This TeX Live came with your Linux distribution, so Oleafly can't add packages to it. {{hint}}",
+    "systemManaged_other": "The compile could not find {{names}}. This TeX Live came with your Linux distribution, so Oleafly can't add packages to it. {{hint}}",
     "userTree": "The system TeX tree is read-only, so the packages went into your personal tree at {{path}}."
   },
   "models": {
@@ -369,6 +403,7 @@
   },
   "pandoc": {
     "downloadFailed": "Couldn't download pandoc. Install it manually, then try again.",
+    "downloadFailedDetail": "Couldn't download pandoc ({{detail}}). Install it manually, then try again.",
     "downloadingPercent": "Downloading pandoc… {{progress}}%",
     "downloadingSize": "Downloading pandoc… {{megabytes}} MB",
     "installGuide": "Install guide"
@@ -481,7 +516,7 @@
     "compileFailed": "Tagged compile failed. Check the engine and try again.",
     "compiled": "Tagged PDF compiled. See the accessibility verdict below.",
     "compiledWithErrors": "Tagged compile finished with errors. Check the log.",
-    "engineRequired": "Enable a tagging engine in Settings, LaTeX Engine, first."
+    "engineRequired": "Install TinyTeX in Settings > Engines > LaTeX to make tagged PDFs."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -528,6 +563,7 @@
   "tinytex": {
     "installFailed": "Could not install TinyTeX.",
     "installGuide": "Install guide",
+    "tryAgain": "Try again",
     "installed": "TinyTeX installed.",
     "phase": {
       "addingPackages": "Adding packages…",

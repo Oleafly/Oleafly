@@ -395,6 +395,7 @@
       "rowTooltip": "{{tools}} is a list of TeX tool names such as \"latexmk and tlmgr\". {{binDir}} is a file system path. Keep both verbatim."
     },
     "latexmkMissing": "Warning badge shown when the latexmk binary is not present on the machine. Keep latexmk verbatim.",
+    "latexmkNeedsPerl": "Warning badge shown when MiKTeX has latexmk but no Perl to run it. Keep latexmk and Perl verbatim.",
     "packages": {
       "badge": {
         "breaks": "Badge on a package that prevents tagged accessible PDF output.",

@@ -550,6 +550,7 @@ export function NewProjectDialog({
     active: false,
     label: "",
   });
+  const [setupFailed, setSetupFailed] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -678,6 +679,7 @@ export function NewProjectDialog({
 
   const submit = async () => {
     if (!selected || setup.active) return;
+    setSetupFailed(false);
     if (!selected.assets_ready) {
       setSetup({ active: true, label: t("setup.preparing") });
       try {
@@ -687,6 +689,7 @@ export function NewProjectDialog({
       } catch (err) {
         host.logError("download template assets", err);
         setSetup({ active: false, label: "" });
+        setSetupFailed(true);
         return;
       }
       setSetup({ active: false, label: "" });
@@ -932,6 +935,12 @@ export function NewProjectDialog({
               <Sparkles className="mt-0.5 size-3.5 shrink-0" />
               <span>{t("dialog.setupNotice")}</span>
             </div>
+          )}
+
+          {setupFailed && (
+            <p role="alert" data-testid="template-setup-failed" className="mt-3 text-sm text-destructive">
+              {t("setup.failed")}
+            </p>
           )}
 
           <div className="mt-auto flex items-center justify-end gap-2 pt-6">

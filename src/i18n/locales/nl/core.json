@@ -56,10 +56,25 @@
     "undo": "Ongedaan maken"
   },
   "compile": {
+    "failedWithReason": "Compileren is mislukt: {{message}}",
     "noOfflineMode": "{{engine}} heeft geen offline compileermodus. Er wordt normaal gecompileerd.",
+    "pandocRequired": "Pandoc is niet beschikbaar. Repareer het via Instellingen > Engines > Markdown en compileer daarna opnieuw.",
+    "pandocSetupFailed": "Het instellen van Pandoc is mislukt: {{message}}",
+    "pdfChanged": "De gecompileerde PDF veranderde terwijl Oleafly hem las, dus het eerdere voorbeeld blijft staan. Compileer opnieuw om het bij te werken.",
     "retry": "Opnieuw compileren",
+    "superseded": "Een nieuwere compilatie heeft deze vervangen.",
+    "syntaxCheckFailed": "De syntaxiscontrole vond fouten. Los ze op of zet “{{setting}}” uit.",
+    "taggedFailed": "Getagd compileren is mislukt: {{message}}",
+    "taggedPdfChanged": "De getagde PDF veranderde terwijl Oleafly hem las, dus het eerdere voorbeeld blijft staan. Compileer opnieuw om het bij te werken.",
+    "taggedPdfInvalid": "Het getagde compileren heeft geen geldige PDF opgeleverd.",
+    "tinytexDownloading": "TinyTeX wordt nog gedownload. Dit compileren start automatisch zodra dat klaar is.",
+    "sharedTexEditor": "Dit project is gedeeld, dus overstappen op Tectonic geldt voor iedereen. TinyTeX installeren verandert alleen iets op deze computer.",
+    "sharedTexViewer": "Je kunt de compiler van dit gedeelde project niet wijzigen, dus installeer TinyTeX om het hier te compileren.",
     "bundleFetchFailed": "Oleafly kon de TeX-pakketten die dit document nodig heeft niet downloaden. Controleer je verbinding en compileer opnieuw.",
-    "typstMissing": "Typst {{version}} is niet geïnstalleerd. Download het, of zet dit project over op een andere versie.",
+    "offlineNotCached": "De offlinemodus staat aan en voor {{files}} is mogelijk nog niets gedownload. Zet de offlinemodus uit en compileer opnieuw.",
+    "offlineNotCachedUnnamed": "De offlinemodus staat aan en een TeX-pakket dat dit document nodig heeft, is mogelijk nog niet gedownload. Zet de offlinemodus uit en compileer opnieuw.",
+    "goOnlineAndCompile": "Uitzetten en compileren",
+    "typstMissing":"Typst {{version}} is niet geïnstalleerd. Download het, of zet dit project over op een andere versie.",
     "typstPackage": {
       "downloadFailed": "Typst kon {{spec}} niet downloaden. Controleer je internetverbinding en compileer opnieuw.",
       "downloadFailedUnnamed": "Typst kon een pakket dat dit document importeert niet downloaden. Controleer je internetverbinding en compileer opnieuw.",
@@ -169,9 +184,22 @@
     "pdfFailedDetail": "Opslaan van de PDF is niet gelukt: {{detail}}",
     "pngFailed": "Opslaan van de PNG is niet gelukt",
     "pngFailedDetail": "Opslaan van de PNG is niet gelukt: {{detail}}",
+    "projectChanged": "Het geopende project is gewijzigd. Start de export opnieuw vanuit het project dat je wilt opslaan.",
     "revealFailed": "Het bestand is opgeslagen, maar de map kon niet worden geopend.",
     "saved": "{{kind}} opgeslagen · {{fileName}}",
-    "showInFolder": "In map tonen"
+    "savedAfterFailedCompile": "{{kind}} opgeslagen · {{fileName}}. De laatste compilatie is mislukt, dus dit bestand kan onvolledig zijn.",
+    "savedSource": "{{kind}} opgeslagen · {{fileName}}. Gebruikt het afbeeldingen of bibliografieën uit je project, kopieer die dan naast het bestand voordat je compileert.",
+    "savedStale": "{{kind}} opgeslagen · {{fileName}}. Het komt uit de laatste compilatie en bevat je nieuwste wijzigingen niet.",
+    "savedWithoutContent": "{{kind}} opgeslagen · {{fileName}}. Een deel van de inhoud ontbreekt omdat Typst die niet naar dit formaat kan schrijven: {{elements}}.",
+    "savedFromSource": "{{kind}} opgeslagen · {{fileName}}. Typst {{version}} kan dit document niet helemaal naar dit formaat schrijven, dus het bestand is uit de broncode opgebouwd. Gedraaide, geschaalde, verplaatste of scheefgetrokken tekst kan ontbreken. Zet het project over op Typst 0.15 of nieuwer om die tekst te behouden.",
+    "savedWithoutEquations": "{{kind}} opgeslagen · {{fileName}}. Vergelijkingen, afbeeldingen, voetnoten of verwijzingen kunnen ontbreken omdat Typst {{version}} ze niet naar dit formaat kan schrijven. Zet het project over op Typst 0.15 of nieuwer.",
+    "savedWithWarnings_one": "{{kind}} opgeslagen · {{fileName}}, met {{count}} waarschuwing.",
+    "savedWithWarnings_other": "{{kind}} opgeslagen · {{fileName}}, met {{count}} waarschuwingen.",
+    "savedWithoutLinks_one": "{{kind}} opgeslagen · {{fileName}}. {{count}} symbolische koppeling is weggelaten uit het archief.",
+    "savedWithoutLinks_other": "{{kind}} opgeslagen · {{fileName}}. {{count}} symbolische koppelingen zijn weggelaten uit het archief.",
+    "showInFolder": "In map tonen",
+    "showWarnings": "Waarschuwingen tonen",
+    "warningsTitle": "Exportwaarschuwingen"
   },
   "externalChange": {
     "reloadFailed": "De projectinstellingen zijn bijgewerkt, maar sommige gewijzigde bestanden konden niet opnieuw worden geladen."
@@ -321,6 +349,12 @@
     "installing_other": "{{count}} pakketten installeren. Het compileren start opnieuw zodra ze klaar zijn.",
     "summary_one": "Het compileren kon \"{{name}}\" niet vinden. Zoek in TeX Live het pakket dat dit levert.",
     "summary_other": "Het compileren kon {{names}} niet vinden. Zoek in TeX Live de bijbehorende pakketten.",
+    "systemHint": {
+      "apt": "Zoek het bijbehorende pakket met apt-file search {{name}}, of installeer alles met sudo apt install texlive-full.",
+      "dnf": "Voer {{command}} uit."
+    },
+    "systemManaged_one": "Het compileren kon \"{{name}}\" niet vinden. Deze TeX Live is met je Linux-distributie meegekomen, dus Oleafly kan er geen pakketten aan toevoegen. {{hint}}",
+    "systemManaged_other": "Het compileren kon {{names}} niet vinden. Deze TeX Live is met je Linux-distributie meegekomen, dus Oleafly kan er geen pakketten aan toevoegen. {{hint}}",
     "userTree": "De TeX-systeemboom is alleen-lezen, dus de pakketten zijn in je persoonlijke boom in {{path}} gezet."
   },
   "models": {
@@ -369,6 +403,7 @@
   },
   "pandoc": {
     "downloadFailed": "Downloaden van pandoc is niet gelukt. Installeer het zelf en probeer het opnieuw.",
+    "downloadFailedDetail": "Downloaden van pandoc is niet gelukt ({{detail}}). Installeer het zelf en probeer het opnieuw.",
     "downloadingPercent": "pandoc downloaden… {{progress}}%",
     "downloadingSize": "pandoc downloaden… {{megabytes}} MB",
     "installGuide": "Installatiegids"
@@ -481,7 +516,7 @@
     "compileFailed": "Getagd compileren is mislukt. Controleer de engine en probeer het opnieuw.",
     "compiled": "Getagde PDF gecompileerd. Zie het toegankelijkheidsoordeel hieronder.",
     "compiledWithErrors": "Getagd compileren is met fouten afgerond. Bekijk het logboek.",
-    "engineRequired": "Schakel eerst een tagging-engine in bij Instellingen, LaTeX-engine."
+    "engineRequired": "Installeer TinyTeX via Instellingen > Engines > LaTeX om getagde PDF's te maken."
   },
   "terminal": {
     "defaultTitle": "Terminal {{index}}"
@@ -528,6 +563,7 @@
   "tinytex": {
     "installFailed": "Kon TinyTeX niet installeren.",
     "installGuide": "Installatiegids",
+    "tryAgain": "Opnieuw proberen",
     "installed": "TinyTeX geïnstalleerd.",
     "phase": {
       "addingPackages": "Pakketten toevoegen…",

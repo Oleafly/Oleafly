@@ -729,6 +729,13 @@
     "renamedPortable": "{{before}} was renamed to {{theirs}} so it works on every computer.",
     "skipped": "A change from {{name}} couldn't be read and was skipped.",
     "skippedUnknown": "A change from someone couldn't be read and was skipped.",
+    "outputNotShared": {
+      "tooLarge": "The compiled PDF is larger than this server allows, so others still see the previous one.",
+      "quota": "This server's upload limit was reached, so others still see the previous PDF. Oleafly tries again after 15 minutes.",
+      "privateSources": "The compiled PDF stays on this computer because the project has files that aren't shared.",
+      "serverError": "The server didn't accept the compiled PDF, so others still see the previous one."
+    },
+    "texNeeded": "This project compiles with a TeX distribution, and this computer doesn't have one. Install TinyTeX from Settings > Engines > LaTeX to compile it here.",
     "mentioned": "{{name}} mentioned you in a comment on {{path}}",
     "mentionedHere": "{{name}} mentioned you in a comment",
     "showComment": "Show comment",

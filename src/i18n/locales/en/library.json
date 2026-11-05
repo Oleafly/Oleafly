@@ -463,6 +463,7 @@
     "previewUnsupported": "Live preview isn't available for this engine yet",
     "badge": "AI Generated",
     "compileWarning": "This draft did not compile cleanly. Regenerate for a better starting point, or create the project and fix the source in the editor.",
+    "compileLog": "Compile log",
     "noDescription": "No description yet.",
     "includes": "Includes",
     "category": "Category",

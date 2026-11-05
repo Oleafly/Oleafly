@@ -57,6 +57,7 @@ import {
   type CompileSuccessCheckpoint,
 } from "@/lib/compile-checkpoint";
 import { pickSavePath } from "@/lib/native-file-dialog";
+import { exportFileStem } from "@/lib/path-utils";
 import {
   isPreviewWindowState,
   type PreviewWindowState,
@@ -846,11 +847,8 @@ export function PreviewWindow({
 
   const downloadDisplayedPdf = async () => {
     if (!previewDocument || exporting) return;
-    const rawName =
-      compileState?.identity.mainDocument
-        .replace(/\.[^.]+$/u, "")
-        .replace(/[^\w.-]+/gu, "_") || "document";
-    const filename = `${rawName}.pdf`;
+    const stem = compileState?.identity.mainDocument.replace(/\.[^.]+$/u, "");
+    const filename = `${exportFileStem(stem, "document")}.pdf`;
     setExporting(true);
     setExportMessage("");
     try {
@@ -985,6 +983,7 @@ export function PreviewWindow({
               pdfPosition.onPage(current);
               setPage(current);
               setNumPages(total);
+              if (!disableNativeBridge) void command({ action: "preview-page", page: current }).catch(() => {});
             }}
           />
         </ErrorBoundary>
@@ -1139,7 +1138,7 @@ export function PreviewWindow({
       </div>}
       <div className={cn("flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0", isFs && fsToolbarHidden && "hidden")}>
         {!disableNativeBridge && <CompileLogControls active={logsOpen} onToggle={() => setLogsOpen(!logsOpen)}
-          status={workspace?.status ?? "idle"} errors={workspace?.errors ?? []} compileTimeMs={workspace?.compileTimeMs ?? null} />}
+          status={workspace?.status ?? "idle"} errors={workspace?.logCleared ? [] : (workspace?.errors ?? [])} compileTimeMs={workspace?.compileTimeMs ?? null} />}
         {logsOpen && workspace?.errors.some((error) => error.kind === "error") &&
           <div className="ml-auto flex items-center">
             <Button variant="ghostPrimary" size="xs" onClick={() => void command({ action: "ask-ai" })}>
@@ -1176,7 +1175,11 @@ export function PreviewWindow({
         />}
       </div>
       {logsOpen && workspace && <div className="min-h-0 flex-1" data-testid="detached-compile-log">
-        <LogPane snapshot={workspace} onOpenLocation={(file, line, column) => command({ action: "source-location", file, line, column })} />
+        <LogPane
+          snapshot={workspace}
+          onOpenLocation={(file, line, column) => command({ action: "source-location", file, line, column })}
+          onClearLog={() => void command({ action: "clear-log" })}
+        />
       </div>}
 
       {renderStaleNotice()}

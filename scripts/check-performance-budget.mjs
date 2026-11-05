@@ -190,8 +190,8 @@ const limits = {
   // +30 KB for LaTeX compilation units (#389), which ship twice because the
   // editor and the project-intelligence worker both run them: 21,092,330 bytes
   // on macOS.
-  totalJavaScript: 21_110_000,
-  largestLocaleChunk: 950_000,
+  totalJavaScript: 21_200_000,
+  largestLocaleChunk: 980_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

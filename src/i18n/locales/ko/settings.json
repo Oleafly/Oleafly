@@ -1055,6 +1055,22 @@
         "label": "스크롤백",
         "lines_other": "{{value}}줄"
       },
+      "openWith": {
+        "ariaLabel": "폴더와 명령을 여는 터미널",
+        "builtin": "내장 터미널",
+        "cmd": "명령 프롬프트",
+        "description": "터미널에서 열기를 선택할 때 Oleafly가 폴더를 열거나 명령을 실행하는 위치입니다.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "열 위치",
+        "mac-terminal": "터미널",
+        "notFound": "{{name}} (찾을 수 없음)",
+        "powershell": "PowerShell",
+        "systemDefault": "시스템 기본값({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "시스템 기본 터미널"
+      },
       "shell": {
         "ariaLabel": "터미널 shell",
         "description": "새 터미널은 이 shell로 시작합니다. 열려 있는 터미널은 원래 shell을 유지합니다.",
@@ -1352,13 +1368,20 @@
       "tooltip": "새 프로젝트에 적용됩니다. 각 프로젝트는 project.json에 자체 엔진을 고정하므로, 같은 프로젝트를 여는 공동 작업자는 이 설정과 상관없이 같은 방식으로 컴파일합니다."
     },
     "distributions": {
+      "automatic": "자동",
+      "automaticTooltip": "Oleafly가 직접 고르도록 되돌립니다. 전체 시스템 TeX를 먼저, 그다음 TinyTeX를 선택합니다.",
       "empty": "이 컴퓨터에서 TeX 배포판을 찾지 못했습니다.",
       "heading": "TeX 배포판 관리",
+      "inUse": "사용 중",
+      "inUseTooltip": "latexmk 컴파일은 이 배포판에서 실행됩니다.",
       "rowTooltip": "{{tools}}이(가) 함께 들어 있습니다. Oleafly는 {{binDir}}에서 TeX 도구를 실행합니다.",
       "rowTooltipNoTools": "이 설치본에서 latexmk나 tlmgr을 찾지 못했습니다. Oleafly는 {{binDir}}에서 TeX 도구를 실행합니다.",
-      "tooltip": "이 컴퓨터에서 latexmk 엔진이 쓸 수 있는 모든 것입니다. TinyTeX는 관리자 권한 없이 홈 폴더에 설치됩니다. 시스템 설치본(MacTeX, TeX Live, MiKTeX)은 자동으로 찾아냅니다."
+      "tinytexChooseHint": "컴파일은 계속 \"사용 중\"으로 표시된 배포판을 사용합니다. 설치 후 전환하려면 TinyTeX에서 \"컴파일에 사용\"을 클릭하세요.",
+      "tooltip": "이 컴퓨터에서 latexmk 엔진이 쓸 수 있는 모든 것입니다. TinyTeX는 관리자 권한 없이 설치됩니다. 시스템 설치본(MacTeX, TeX Live, MiKTeX)은 자동으로 찾아냅니다.",
+      "use": "컴파일에 사용"
     },
     "latexmkMissing": "latexmk 없음",
+    "latexmkNeedsPerl": "latexmk에 Perl 필요",
     "markdown": {
       "downloading": "내려받는 중…",
       "heading": "Markdown 컴파일러",
@@ -1394,6 +1417,8 @@
       "includedIn": "{{package}}에 포함되어 있습니다. 제거하면 그 패키지의 다른 파일도 함께 사라집니다.",
       "intro": {
         "available": "이 패키지들은 latexmk(시스템 TeX)를 쓰는 프로젝트를 위한 것입니다. Tectonic은 자체 패키지 묶음을 씁니다.",
+        "systemManaged": "이 TeX Live는 Linux 배포판에 포함된 것이므로 {{manager}}(으)로 패키지를 추가하세요. Oleafly는 이를 바꿀 수 없습니다.",
+        "systemManagedTinytex": "이 TeX Live는 Linux 배포판에 포함된 것이므로 {{manager}}(으)로 패키지를 추가하세요. Oleafly가 패키지를 관리하게 하려면 위에서 TinyTeX를 내려받으세요.",
         "unavailable": "패키지 관리에는 TeX Live나 TinyTeX가 필요합니다. MiKTeX에서는 MiKTeX Console을 쓰세요."
       },
       "refreshInstalled": "설치된 패키지 새로 고침",
@@ -1424,9 +1449,10 @@
       "tooltip": "기본 엔진인 Tectonic은 빠르고 오프라인에서 동작하지만 Section 508 / PDF-UA를 만족하는 태그된 PDF를 만들지 못합니다. 그러려면 시스템 LuaLaTeX가 필요한데, 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. Oleafly는 기존 배포판이나 관리형 TinyTeX를 쓸 수 있습니다."
     },
     "tinytex": {
-      "detail": "홈 폴더에 설치하는 소형 TeX Live입니다. 기본 다운로드는 약 250 MB이고, 저널 템플릿이 나중에 패키지를 더해 전체가 1 GB 정도까지 늘어날 수 있습니다. 미리 설치해 두면 시스템 LaTeX를 직접 고를 때 바로 쓸 수 있습니다.",
+      "detail": "관리자 권한 없이 설치하는 소형 TeX Live입니다. 기본 다운로드는 약 250 MB이고, 저널 템플릿이 나중에 패키지를 더해 전체가 1 GB 정도까지 늘어날 수 있습니다. 미리 설치해 두면 시스템 LaTeX를 직접 고를 때 바로 쓸 수 있습니다.",
       "download": "TinyTeX 내려받기(약 250 MB)",
-      "resume": "다운로드 이어가기({{size}} MB 완료)"
+      "resume": "다운로드 이어가기({{size}} MB 완료)",
+      "update": "업데이트"
     },
     "typst": {
       "detail": "Oleafly에 기본 포함되어 따로 설정할 것이 없습니다. 문서가 @preview 패키지를 처음 가져올 때만 네트워크 연결이 필요합니다.",
@@ -1489,7 +1515,8 @@
       },
       "active": {
         "version": "{{tool}} {{version}}",
-        "missing": "이 컴퓨터에서 찾을 수 없습니다."
+        "missing": "이 컴퓨터에서 찾을 수 없습니다.",
+        "outdated": "이 컴퓨터의 {{tool}} {{version}}은(는) 너무 오래되었습니다. Oleafly에는 {{minimum}} 이상이 필요하므로 Oleafly가 내려받은 사본을 사용합니다."
       },
       "managedIdle": "사용 중이 아닙니다. Oleafly는 이 컴퓨터에서 찾은 사본을 먼저 사용합니다.",
       "superseded": "사용 중이 아닙니다. Oleafly는 이제 {{tool}} {{version}}을(를) 사용합니다.",

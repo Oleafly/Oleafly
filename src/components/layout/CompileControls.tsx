@@ -42,7 +42,7 @@ import type { DocumentEngineDescriptor, TexFlavor, TypstToolchainStatus } from "
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { typstSupports, type TypstOptionsUpdate } from "@/lib/typst-options";
 import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
-import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { applyShellEscape, offerTexSetupAfterSwitch } from "@/lib/latex-compile-actions";
 import { isCalepinEngine, isNotebookEngine } from "@/lib/notebook-engines";
 import { openNotebookToolSettings, useNotebookToolchainStore } from "@/store/notebook-toolchain";
 import { recompileWithPreview } from "@/lib/compile-preview";
@@ -163,10 +163,15 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const typstSelections = useTypstVariantStore((s) => s.selections);
   const refreshTypstToolchain = useTypstToolchainStore((s) => s.refresh);
   const livePreview = useCompileStore((s) => s.livePreview);
+  const successOffer = useCompileStore((s) => s.status === "success" && s.offer?.kind === "engine-gap");
+  const switchEngine: typeof setEngine = async (...selection) => {
+    await setEngine(...selection);
+    if (selection[0] === "latexmk") await offerTexSetupAfterSwitch();
+  };
   return <>
     <TexRootIndicator />
     <TypstLivePreviewKeeper />
-    {(viewMode === "editor" || detached) && <CompileOfferButton placement="toolbar" />}
+    {(viewMode === "editor" || detached || successOffer) && <CompileOfferButton placement="toolbar" />}
     <CompileControlsView
       iconOnly={iconOnly}
       blockedReason={noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
@@ -175,7 +180,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
       onTrustForSystemTex={() => void grantTrust("folder")}
       engine={engine}
       engineLoaded={engineLoaded}
-      setEngine={setEngine}
+      setEngine={switchEngine}
       stopCompile={stopCompile}
       autoCompile={autoCompile}
       setAutoCompile={setAutoCompile}

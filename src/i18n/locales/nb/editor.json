@@ -361,7 +361,12 @@
     "rawLogs": "Rå logger",
     "copyLog": "Kopier loggen",
     "typesetting": "Ombrekking",
+    "missingCharacters": "Manglende tegn",
     "info": "Info",
+    "clear": "Tøm",
+    "clearAria": "Tøm kompileringsloggen",
+    "clearHint": "Skjul denne loggen og feilene i den til neste kompilering. Byggefilene blir værende.",
+    "cleared": "Loggen er tømt. Neste kompilering skriver en ny.",
     "empty": "Resultatet av kompileringen dukker opp her.",
     "scrollToTop": "Rull til toppen",
     "scrollToBottom": "Rull til bunnen",
@@ -376,6 +381,8 @@
     "summaryReferences_one": "{{count}} uløst referanse",
     "summaryReferences_other": "{{count}} uløste referanser",
     "fontPack": "{{family}} finnes i den gratis skriftpakken {{pack}}.",
+    "fontPackGlyphs": "Den gratis skriftpakken {{pack}} har disse tegnene.",
+    "fontPackSealed": "{{family}} finnes i den gratis skriftpakken {{pack}}, men skriftpakker gjelder ikke her, fordi dette prosjektet bare bruker prosjektskrifter. Legg skriftfilen i fonts-mappen i prosjektet.",
     "fontPackAction": "Last ned og kompiler",
     "fontPackDownloading": "Laster ned…",
     "fontPackFailed": "Skriftpakken kunne ikke lastes ned. Sjekk tilkoblingen og prøv igjen."
@@ -1461,7 +1468,8 @@
       "missing": "Disse pakkene finnes ikke i pakkemellomlageret: {{names}}. Kompiler én gang mens du er tilkoblet, og kopier dem inn på nytt.",
       "count_one": "{{count}} pakke i dette prosjektet",
       "count_other": "{{count}} pakker i dette prosjektet",
-      "none": "Ingen pakker i dette prosjektet ennå."
+      "none": "Ingen pakker i dette prosjektet ennå.",
+      "unsupported": "Typst {{version}} kan ikke lese pakker fra prosjektmappen. Bytt prosjektet til Typst 0.12 eller nyere for å bruke dette."
     },
     "hints": {
       "updateAvailable": "{{name}} {{latest}} er tilgjengelig. Denne importen bruker {{version}}.",
@@ -1500,6 +1508,7 @@
     "classNote": "Dette er en dokumentklasse. Angi den med \\documentclass i stedet.",
     "onDemand": "Tectonic laster ned pakker første gang dokumentet bruker dem. Det er ingenting å installere.",
     "checking": "Sjekker hvilke pakker som er installert",
+    "systemManaged": "Denne TeX Live-installasjonen fulgte med Linux-distribusjonen din, så installer pakker med {{manager}}.",
     "unknownInstall": "Oleafly kan ikke se hvilke pakker TeX-oppsettet ditt har.",
     "noProject": "Åpne et LaTeX-prosjekt for å legge til pakker.",
     "added": "La til {{name}} i {{file}}.",

@@ -11,7 +11,8 @@ to use.
 
 ## Install
 
-`oleafly` comes with Oleafly. This page covers the commands in 0.4.8 and later.
+`oleafly` comes with Oleafly and has no separate download. This page covers
+the commands in 0.4.8 and later.
 
 - **macOS and Linux:** open Settings › General › Terminal command and choose
   Install. Oleafly links `oleafly` into a folder on your PATH (usually
@@ -23,8 +24,15 @@ to use.
 - **Programs Oleafly starts** (the built-in terminal, CLI agents, research
   commands) find `oleafly` on their PATH, and its full path in the
   `OLEAFLY_CLI` variable, once Oleafly has set it up on its first launch.
-- **Without the app:** each release also has standalone archives for
-  macOS, Linux and Windows. They build with the compilers on your PATH.
+  The built-in terminal, the agent's `run_command` and CLI agents also find
+  Oleafly's TinyTeX on their PATH, after any TeX of your own. The Tectonic,
+  Typst and Pandoc that ship with Oleafly aren't on PATH, so use
+  `oleafly build` and `oleafly export` from those programs.
+- **AppImage:** Oleafly copies `oleafly` instead of linking it. The engines
+  stay inside the AppImage, so the copy can use them from the built-in
+  terminal, but not from the agent's `run_command`, CLI agents or a terminal
+  you open yourself. For those, install Tectonic, Typst and Pandoc, or use
+  the `.deb` or `.rpm` package.
 
 Check the setup with:
 
@@ -58,8 +66,15 @@ arguments, the same `project.json` and the same build folder.
   into your folder.
 - The app and the CLI never build the same project at once. The second one
   waits for the first, up to the timeout.
+- latexmk projects use the TeX distribution you picked under Settings ›
+  Engines › LaTeX › Manage TeX distributions.
 - A failed build keeps the last good PDF.
 - `-o <file or folder>` copies the PDF somewhere else after a good build.
+- Unlike the app, `oleafly build` always blocks LaTeX shell commands, even for
+  a project you allowed in the app, so a document that needs shell escape
+  (minted, PythonTeX) fails here. To build such a document, click Allow
+  external commands and build it in the app, or run latexmk yourself with
+  `-shell-escape`. Only do this if you trust every file in the project.
 
 ## Commands
 
@@ -73,16 +88,34 @@ oleafly watch [the same options]
 
 `build` compiles the main document once. `watch` builds, then rebuilds on
 every change until you press Ctrl+C or close the terminal. A failed build
-keeps the last good PDF. With `-o` pointing inside the project, writing the
-copy doesn't start another build. `--main` builds another document of the
-project (on Windows, `\` works as well as `/`). `--compiler` picks the LaTeX
-compiler for latexmk projects (`pdflatex`, `xelatex`, `lualatex`, `uplatex`,
-`platex`). `--variant` picks a Typst variant from `project.json`.
+keeps the last good PDF and lists up to 20 errors with their explanations and
+hints (`-q` lists only the errors). With `-o` pointing inside the project,
+writing the copy doesn't start another build. `--main` builds another document
+of the project (on Windows, `\` works as well as `/`). `--compiler` picks the
+LaTeX compiler for latexmk projects (`pdflatex`, `xelatex`, `lualatex`,
+`uplatex`, `platex`). `--variant` picks a Typst variant from `project.json`.
 
 ```bash
 oleafly build -o ~/Desktop/paper.pdf
 oleafly --json build --log tail
 ```
+
+`--timeout` stops a compiler after that many seconds (300 by default). While
+Tectonic downloads packages, the time counts from the last download, up to 30
+minutes or the `--timeout` value if that's longer.
+
+A plain folder of LaTeX files, with no `project.json` and not opened in the
+app, builds with the built-in engine (Tectonic) unless something asks for
+latexmk: `--compiler`, `latex.default_engine` set to `latexmk`, a
+`% !TEX program` comment naming `pdflatex`, `lualatex`, `uplatex` or `platex`,
+or a class that needs upLaTeX or pLaTeX, such as `ujarticle`. When a
+`pdflatex` or `lualatex` comment can't run through latexmk on this computer,
+the build stays on the built-in engine and prints a warning, with the code
+`build.detected_engine` in `--json` output.
+
+When latexmk isn't found, the error's hint says how to get TeX: TinyTeX from
+the app if the app is installed, the install steps for this system, and how to
+go back to the built-in engine if Tectonic is available.
 
 ### `oleafly init`, `oleafly new`, `oleafly open`, `oleafly clean`, `oleafly project`
 
@@ -164,6 +197,11 @@ LaTeX or Markdown project's `pdf` export is its last good build. Without
 `-o`, files go to the build folder's `exports` folder. An `-o` path must be
 outside the project or inside its build folder.
 
+An export from a Typst project can finish with a warning. In `--json` output,
+the codes `export.typst_html_outdated` and `export.typst_read_from_source` mean
+content may be missing until the project uses Typst 0.15 or newer, and
+`export.typst_content_skipped` names content Typst can't write to that format.
+
 `convert` turns one file into `latex`, `markdown`, `typst`, `html` or `docx`.
 It never replaces an existing file unless you pass `--force`.
 
@@ -215,7 +253,8 @@ The Typst versions the app offers under Settings › Downloads. `install`
 downloads and checks a version. `default` sets the version projects without
 a pin use (`--unset` goes back to the one that ships with Oleafly). A
 project pins its own version in `project.json` (`oleafly config set
-typst.version 0.13.1`).
+typst.version 0.13.1`). `oleafly build` uses a downloaded version when it finds
+no other Typst.
 
 ### `oleafly checkpoint`
 
@@ -790,7 +829,7 @@ ends them with 0.
 |---|---|
 | `OLEAFLY_DATA_DIR` | Oleafly's data folder (default: `~/.oleafly`). |
 | `OLEAFLY_TECTONIC`, `OLEAFLY_LATEXMK`, `OLEAFLY_TYPST`, `OLEAFLY_PANDOC` | The compiler to use instead of the one Oleafly finds. |
-| `OLEAFLY_APP` | The Oleafly app to open folders in. |
+| `OLEAFLY_APP` | The Oleafly app to open folders in. An Oleafly AppImage sets it in the terminals it opens. |
 | `OLEAFLY_TEX_BUNDLE_URL` | The TeX bundle Tectonic downloads packages from. |
 | `OLEAFLY_PACKS_BASE_URL` | Where template packs are downloaded from. |
 | `OLEAFLY_WATCH_POLL` | Set it to make `oleafly watch` poll for changes. |
@@ -821,9 +860,10 @@ Always check `ok`, act on `error.code` and `error.hint`, and don't pass
 
 ## What stays in the app
 
-In 0.4.8 the app alone creates checkpoints, restores them over a project,
-shares a project on a collaboration server for the first time and reruns
-Biber for a stale bibliography during a build.
+The app alone creates checkpoints, restores them over a project, shares a
+project on a collaboration server for the first time, installs TinyTeX, runs
+external commands from LaTeX (shell escape, PythonTeX) and reruns Biber for a
+stale bibliography during a build.
 
 ## Developing the CLI
 

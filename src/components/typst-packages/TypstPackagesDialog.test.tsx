@@ -249,6 +249,57 @@ describe("TypstPackagesDialog", () => {
     }
   });
 
+  it("says when the project's Typst cannot read vendored packages", async () => {
+    const engine = filesState.engine;
+    filesState.engine = {
+      ...engine,
+      typst_resolved: { version: "0.11.1", source: "bundled" },
+      typst_options: { flags: ["--font-path", "--format", "--input", "--ppi"] },
+    } as typeof engine;
+    try {
+      await openDialog();
+      const toggle = await screen.findByRole("switch", { name: text.vendor.toggle });
+      expect(screen.getByText(fill(text.vendor.unsupported, { version: "0.11.1" }))).toBeInTheDocument();
+      await waitFor(() => expect(toggle).toBeDisabled());
+      expect(screen.getByRole("button", { name: text.vendor.action })).toBeDisabled();
+    } finally {
+      filesState.engine = engine;
+    }
+  });
+
+  it("lets a project on such a Typst turn vendoring off", async () => {
+    const engine = filesState.engine;
+    filesState.engine = {
+      ...engine,
+      typst_options: { flags: ["--format"] },
+    } as typeof engine;
+    backendWith({ typst_package_settings: () => ({ vendorPackages: true, vendored: [] }) });
+    try {
+      await openDialog();
+      const toggle = await screen.findByRole("switch", { name: text.vendor.toggle });
+      await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
+      expect(toggle).toBeEnabled();
+    } finally {
+      filesState.engine = engine;
+    }
+  });
+
+  it("offers vendoring on a Typst that reads project packages", async () => {
+    const engine = filesState.engine;
+    filesState.engine = {
+      ...engine,
+      typst_options: { flags: ["--format", "--package-path"] },
+    } as typeof engine;
+    try {
+      await openDialog();
+      await screen.findByRole("switch", { name: text.vendor.toggle });
+      expect(screen.getByRole("button", { name: text.vendor.action })).toBeEnabled();
+      expect(screen.queryByText(fill(text.vendor.unsupported, { version: "0.13.1" }))).toBeNull();
+    } finally {
+      filesState.engine = engine;
+    }
+  });
+
   it("names the packages that could not be vendored", async () => {
     backendWith({
       vendor_typst_packages: () => ({

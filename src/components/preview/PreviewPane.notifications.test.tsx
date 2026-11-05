@@ -335,4 +335,16 @@ describe("PreviewPane failed-compile panel", () => {
     await screen.findByTestId("mock-log-pane");
     expect(screen.queryByTestId("log-compile-offer")).toBeNull();
   });
+
+  it("keeps an engine choice from a compile that worked in the log view", async () => {
+    failWithOffer("latex");
+    useCompileStore.setState({ status: "success", errors: [] });
+    render(<PreviewPane />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: enPreview.toolbar.showLogs }));
+
+    expect(await screen.findByTestId("log-compile-offer")).toHaveTextContent(enPreview.actions.chooseEngine);
+    expect(screen.queryByRole("button", { name: enPreview.toolbar.askAi })).toBeNull();
+  });
 });

@@ -39,7 +39,8 @@
     },
     "setup": {
       "preparing": "テンプレートを準備しています...",
-      "downloading": "{{label}} をダウンロード中（{{total}} 件中 {{index}} 件目）"
+      "downloading": "{{label}} をダウンロード中（{{total}} 件中 {{index}} 件目）",
+      "failed": "このテンプレートのフォントをダウンロードできませんでした。接続を確認して、もう一度お試しください。"
     },
     "category": {
       "all": "すべて",

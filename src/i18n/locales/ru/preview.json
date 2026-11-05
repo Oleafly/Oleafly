@@ -94,6 +94,8 @@
     "exitFullscreen": "Выйти из полноэкранного режима",
     "retryCompile": "Скомпилировать заново",
     "chooseEngine": "Выбрать движок",
+    "installJapanese": "Установить поддержку японского (около 450 МБ)",
+    "useCompiler": "Использовать {{compiler}}",
     "installPackages_one": "Найти и установить {{name}}",
     "installPackages_few": "Найти и установить {{count}} файла",
     "installPackages_many": "Найти и установить {{count}} файлов",
@@ -102,7 +104,9 @@
     "useTypst": "Использовать Typst {{version}}",
     "installTool": "Установить {{tool}} {{version}}",
     "installToolSize": "Установить {{tool}} {{version}} ({{size}})",
-    "engineSettings": "Открыть настройки движка"
+    "engineSettings": "Открыть настройки движка",
+    "useTectonic": "Использовать Tectonic",
+    "useTectonicForEveryone": "Использовать Tectonic для всех"
   },
   "html": {
     "builtTitle": "Собрано в виде веб-страницы",

@@ -1,8 +1,15 @@
 use std::path::{Path, PathBuf};
 
+use oleafly_core::typst_html::{
+    html_entry_source, html_export_notes, html_lost_content, notes_for_source_read, TypstHtmlNotes,
+};
 use oleafly_core::typst_log::{self, TypstSeverity};
 use oleafly_core::typst_toolchain::{
-    typst_compile_args, TypstCapabilities, TypstCompileFlag, TypstDiagnosticFormat,
+    typst_compile_args, ResolvedTypst, TypstCapabilities, TypstCompileFlag, TypstDiagnosticFormat,
+};
+use oleafly_doctools::typst_html::{
+    add_media_args, finish_latex_media, media_files, media_folder_name, prepare_html,
+    stage_images_filter, LatexMedia, SourceMedia,
 };
 use serde::{Deserialize, Serialize};
 
@@ -50,12 +57,28 @@ pub struct TypstExportRequest {
     pub pdf_standard: Option<String>,
     #[serde(default)]
     pub variant: Option<String>,
+    #[serde(default)]
+    pub offline: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TypstExportResult {
     pub files: Vec<String>,
+    #[serde(flatten)]
+    pub notes: TypstHtmlNotes,
+}
+
+#[derive(Debug)]
+pub(crate) struct RenderedExport {
+    pub files: Vec<PathBuf>,
+    pub log: String,
+}
+
+#[derive(Debug)]
+pub(crate) struct RenderedHtml {
+    pub path: PathBuf,
+    pub log: String,
 }
 
 pub(crate) struct TypstRun<'a> {
@@ -142,16 +165,18 @@ pub(crate) fn failure_detail(log: &str) -> String {
     detail
 }
 
-pub(crate) async fn run_typst(
+async fn run_typst_on(
     run: &TypstRun<'_>,
+    input: &Path,
+    stdin: Option<&str>,
     output: &Path,
     extra: &[TypstCompileFlag],
-) -> Result<(), String> {
+) -> Result<String, String> {
     let mut flags = run.settings.compile_flags(run.capabilities);
     flags.extend_from_slice(extra);
     let args: Vec<String> = typst_compile_args(
         run.capabilities,
-        &run.root.join(run.main_doc),
+        input,
         output,
         run.root,
         TypstDiagnosticFormat::Human,
@@ -165,14 +190,32 @@ pub(crate) async fn run_typst(
     if let Some(epoch) = run.settings.source_date_epoch(None) {
         variables.push(("SOURCE_DATE_EPOCH".into(), epoch.to_string()));
     }
-    let (log, code) = crate::document_engine::run_supervised_external_with_variables(
-        run.typst, &args, run.root, &variables,
-    )
-    .await?;
+    let (log, code) = match stdin {
+        Some(text) => {
+            crate::document_engine::run_supervised_external_with_stdin(
+                run.typst, &args, run.root, &variables, text,
+            )
+            .await?
+        }
+        None => {
+            crate::document_engine::run_supervised_external_with_variables(
+                run.typst, &args, run.root, &variables,
+            )
+            .await?
+        }
+    };
     if code != Some(0) {
         return Err(export_error("typst_export.failed", failure_detail(&log)));
     }
-    Ok(())
+    Ok(log)
+}
+
+pub(crate) async fn run_typst(
+    run: &TypstRun<'_>,
+    output: &Path,
+    extra: &[TypstCompileFlag],
+) -> Result<String, String> {
+    run_typst_on(run, &run.root.join(run.main_doc), None, output, extra).await
 }
 
 fn staged_pages(staging: &Path, extension: &str) -> Vec<PathBuf> {
@@ -198,15 +241,22 @@ pub(crate) async fn render_export(
     run: &TypstRun<'_>,
     request: &TypstExportRequest,
     staging: &Path,
-) -> Result<Vec<PathBuf>, String> {
+) -> Result<RenderedExport, String> {
     let flags = export_flags(request)?;
     let extension = request.format.extension();
     let output = if request.format.paged_images() {
-        staging.join(format!("{STAGED_STEM}-{{0p}}.{extension}"))
+        staging.join(format!(
+            "{STAGED_STEM}-{}.{extension}",
+            run.capabilities.page_template()
+        ))
     } else {
         staging.join(format!("{STAGED_STEM}.{extension}"))
     };
-    run_typst(run, &output, &flags).await?;
+    let log = if request.format == TypstExportFormat::Html {
+        render_html_to(run, &output).await?
+    } else {
+        run_typst(run, &output, &flags).await?
+    };
     let produced = if request.format.paged_images() {
         staged_pages(staging, extension)
     } else {
@@ -221,7 +271,10 @@ pub(crate) async fn render_export(
             "Typst finished without writing a file.",
         ));
     }
-    Ok(produced)
+    Ok(RenderedExport {
+        files: produced,
+        log,
+    })
 }
 
 pub(crate) fn final_destinations(dest: &Path, produced: &[PathBuf]) -> Vec<PathBuf> {
@@ -264,18 +317,45 @@ fn publish(produced: &[PathBuf], destinations: &[PathBuf]) -> Result<(), String>
     Ok(())
 }
 
-pub(crate) async fn render_html(run: &TypstRun<'_>, staging: &Path) -> Result<PathBuf, String> {
-    let output = staging.join("document.html");
-    run_typst(
-        run,
-        &output,
-        &[
-            TypstCompileFlag::Features("html".into()),
-            TypstCompileFlag::Format("html".into()),
-        ],
-    )
-    .await?;
-    Ok(output)
+async fn publish_media(staged: &Path, destination: &Path, root: &Path) -> Result<(), String> {
+    let produced = media_files(staged);
+    let Some(name) = staged.file_name().filter(|_| !produced.is_empty()) else {
+        return Ok(());
+    };
+    let folder = destination.parent().unwrap_or(destination).join(name);
+    crate::project::require_export_destination_outside_project(root, &folder.to_string_lossy())?;
+    let destinations: Vec<PathBuf> = produced
+        .iter()
+        .filter_map(|image| image.file_name().map(|name| folder.join(name)))
+        .collect();
+    tauri::async_runtime::spawn_blocking(move || {
+        std::fs::create_dir_all(&folder)
+            .map_err(|error| export_error("typst_export.media_folder", error))?;
+        publish(&produced, &destinations)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+async fn render_html_to(run: &TypstRun<'_>, output: &Path) -> Result<String, String> {
+    let flags = [
+        TypstCompileFlag::Features("html".into()),
+        TypstCompileFlag::Format("html".into()),
+    ];
+    let entry = html_entry_source(run.main_doc);
+    match run_typst_on(run, Path::new("-"), Some(&entry), output, &flags).await {
+        Ok(log) => Ok(log),
+        Err(_) => run_typst(run, output, &flags).await,
+    }
+}
+
+pub(crate) async fn render_html(
+    run: &TypstRun<'_>,
+    staging: &Path,
+) -> Result<RenderedHtml, String> {
+    let path = staging.join("document.html");
+    let log = render_html_to(run, &path).await?;
+    Ok(RenderedHtml { path, log })
 }
 
 pub(crate) fn pandoc_html_args(
@@ -301,9 +381,14 @@ pub(crate) async fn pandoc_from_html(
     root: &Path,
     format: &str,
     output: &str,
+    media_folder: Option<&str>,
 ) -> Result<(), String> {
-    let args = pandoc_html_args(format, html, root, output)
+    let mut args = pandoc_html_args(format, html, root, output)
         .ok_or_else(|| format!("unsupported export format: {format}"))?;
+    if let Some(folder) = media_folder {
+        add_media_args(&mut args, folder);
+    }
+    prepare_html(html).map_err(|error| export_error("typst_export.failed", error))?;
     let working = html.parent().unwrap_or(root);
     let (log, code) =
         crate::document_engine::run_supervised_external_with_variables(pandoc, &args, working, &[])
@@ -320,9 +405,20 @@ fn html_route_supported(capabilities: &TypstCapabilities) -> bool {
 
 struct ResolvedProject {
     meta: crate::project::ProjectMeta,
-    typst: std::sync::Arc<oleafly_core::typst_toolchain::ResolvedTypst>,
+    typst: std::sync::Arc<ResolvedTypst>,
     settings: TypstCompileSettings,
     environment: Vec<(String, String)>,
+}
+
+fn offline_aware(mut environment: Vec<(String, String)>, offline: bool) -> Vec<(String, String)> {
+    if offline {
+        environment.extend(
+            crate::typst_packages::offline_environment()
+                .into_iter()
+                .map(|(name, value)| (name.to_owned(), value.to_owned())),
+        );
+    }
+    environment
 }
 
 fn resolve_project(
@@ -330,6 +426,7 @@ fn resolve_project(
     main_doc: &str,
     root: &Path,
     variant: Option<&str>,
+    offline: bool,
 ) -> Result<Option<ResolvedProject>, String> {
     let meta = crate::project::read_compile_meta(project_id, main_doc)?;
     let Some(typst) = crate::typst_toolchain::resolve_for_compile(&meta)? else {
@@ -349,7 +446,7 @@ fn resolve_project(
         meta,
         typst,
         settings,
-        environment,
+        environment: offline_aware(environment, offline),
     }))
 }
 
@@ -358,36 +455,168 @@ async fn resolve_project_async(
     main_doc: &str,
     root: &Path,
     variant: Option<String>,
+    offline: bool,
 ) -> Result<Option<ResolvedProject>, String> {
     let project_id = project_id.to_owned();
     let main_doc = main_doc.to_owned();
     let root = root.to_path_buf();
     tauri::async_runtime::spawn_blocking(move || {
-        resolve_project(&project_id, &main_doc, &root, variant.as_deref())
+        resolve_project(&project_id, &main_doc, &root, variant.as_deref(), offline)
     })
     .await
     .map_err(|error| error.to_string())?
 }
 
-pub(crate) async fn convert_through_html(
-    project_id: &str,
-    root: &Path,
-    main_doc: &str,
-    format: &str,
-    pandoc: &Path,
-    output: &str,
-    variant: Option<String>,
-) -> Result<bool, String> {
-    if format == "typst" {
-        return Ok(false);
+pub(crate) struct HtmlExport<'a> {
+    pub project_id: &'a str,
+    pub root: &'a Path,
+    pub main_doc: &'a str,
+    pub format: &'a str,
+    pub pandoc: &'a Path,
+    pub output: &'a str,
+    pub destination: &'a Path,
+    pub variant: Option<String>,
+    pub offline: bool,
+}
+
+pub(crate) struct StagedHtml {
+    staging: tempfile::TempDir,
+    html: PathBuf,
+    typst: std::sync::Arc<ResolvedTypst>,
+    notes: TypstHtmlNotes,
+}
+
+pub(crate) enum HtmlRoute {
+    Unused,
+    Converted(TypstHtmlNotes),
+    Lossy(StagedHtml),
+}
+
+pub(crate) struct ReaderMedia {
+    staging: tempfile::TempDir,
+    folder: String,
+    typst: Option<std::sync::Arc<ResolvedTypst>>,
+}
+
+impl ReaderMedia {
+    pub(crate) async fn for_export(
+        job: &HtmlExport<'_>,
+        meta: &crate::project::ProjectMeta,
+    ) -> Result<Option<Self>, String> {
+        if job.format != "tex" || !crate::typst_toolchain::is_typst_project(meta) {
+            return Ok(None);
+        }
+        let staging = tempfile::Builder::new()
+            .prefix("oleafly-typst-media-")
+            .tempdir()
+            .map_err(|error| format!("failed to create an export folder: {error}"))?;
+        let typst = resolve_project_async(
+            job.project_id,
+            job.main_doc,
+            job.root,
+            job.variant.clone(),
+            job.offline,
+        )
+        .await
+        .ok()
+        .flatten()
+        .map(|project| project.typst);
+        Ok(Some(Self {
+            staging,
+            folder: media_folder_name(job.destination),
+            typst,
+        }))
     }
-    let Some(project) = resolve_project_async(project_id, main_doc, root, variant).await? else {
-        return Ok(false);
+
+    pub(crate) fn source_media(&self) -> SourceMedia<'_> {
+        SourceMedia {
+            staging: self.staging.path(),
+            folder: &self.folder,
+        }
+    }
+
+    pub(crate) async fn publish(&self, job: &HtmlExport<'_>) -> Result<(), String> {
+        publish_latex_media(
+            self.staging.path(),
+            &self.folder,
+            self.typst.as_deref(),
+            job,
+        )
+        .await
+    }
+}
+
+async fn publish_latex_media(
+    staging: &Path,
+    folder: &str,
+    typst: Option<&ResolvedTypst>,
+    job: &HtmlExport<'_>,
+) -> Result<(), String> {
+    if let Some(typst) = typst {
+        let media = LatexMedia {
+            typst: &typst.path,
+            capabilities: &typst.capabilities,
+            staging,
+            folder,
+            tex: Path::new(job.output),
+        };
+        finish_latex_media(&crate::project::AppToolRunner, &media)
+            .await
+            .map_err(|error| export_error("typst_export.failed", error))?;
+    }
+    publish_media(&staging.join(folder), job.destination, job.root).await
+}
+
+pub(crate) fn notes_after_reader(route: &Result<HtmlRoute, String>) -> TypstHtmlNotes {
+    match route {
+        Ok(HtmlRoute::Lossy(staged)) => notes_for_source_read(&staged.typst.version),
+        _ => TypstHtmlNotes::default(),
+    }
+}
+
+impl StagedHtml {
+    pub(crate) async fn convert(self, job: &HtmlExport<'_>) -> Result<TypstHtmlNotes, String> {
+        let staging = self.staging.path();
+        let media_folder = (job.format == "tex").then(|| media_folder_name(job.destination));
+        if media_folder.is_some() {
+            stage_images_filter(staging)
+                .map_err(|error| export_error("typst_export.failed", error))?;
+        }
+        pandoc_from_html(
+            job.pandoc,
+            &self.html,
+            job.root,
+            job.format,
+            job.output,
+            media_folder.as_deref(),
+        )
+        .await?;
+        if let Some(folder) = media_folder {
+            publish_latex_media(staging, &folder, Some(&self.typst), job).await?;
+        }
+        Ok(self.notes)
+    }
+}
+
+pub(crate) async fn convert_through_html(job: &HtmlExport<'_>) -> Result<HtmlRoute, String> {
+    if job.format == "typst" {
+        return Ok(HtmlRoute::Unused);
+    }
+    let Some(project) = resolve_project_async(
+        job.project_id,
+        job.main_doc,
+        job.root,
+        job.variant.clone(),
+        job.offline,
+    )
+    .await?
+    else {
+        return Ok(HtmlRoute::Unused);
     };
     if !crate::typst_toolchain::is_typst_project(&project.meta)
         || !html_route_supported(&project.typst.capabilities)
     {
-        return Ok(false);
+        return Ok(HtmlRoute::Unused);
     }
     let staging = tempfile::Builder::new()
         .prefix("oleafly-typst-html-")
@@ -396,14 +625,24 @@ pub(crate) async fn convert_through_html(
     let run = TypstRun {
         typst: &project.typst.path,
         capabilities: &project.typst.capabilities,
-        root,
-        main_doc,
+        root: job.root,
+        main_doc: job.main_doc,
         settings: &project.settings,
         environment: project.environment.clone(),
     };
-    let html = render_html(&run, staging.path()).await?;
-    pandoc_from_html(pandoc, &html, root, format, output).await?;
-    Ok(true)
+    let rendered = render_html(&run, staging.path()).await?;
+    let notes = html_export_notes(&project.typst.version, &rendered.log);
+    let lossy = html_lost_content(&project.typst.version, &notes);
+    let staged = StagedHtml {
+        staging,
+        html: rendered.path,
+        typst: project.typst.clone(),
+        notes,
+    };
+    if lossy {
+        return Ok(HtmlRoute::Lossy(staged));
+    }
+    staged.convert(job).await.map(HtmlRoute::Converted)
 }
 
 #[tauri::command]
@@ -421,17 +660,22 @@ pub async fn export_typst_document(
         .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|extension| extension.eq_ignore_ascii_case(request.format.extension()))
     {
-        return Err(format!(
-            "export destination must end in .{}",
-            request.format.extension()
-        ));
+        return Err(AppError::new("export.destination_extension")
+            .param("extension", request.format.extension())
+            .into());
     }
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let root = crate::project_location::locate(&project_id)?.root;
     crate::project::require_export_destination_outside_project(&root, &dest)?;
-    let project = resolve_project_async(&project_id, &main_doc, &root, request.variant.clone())
-        .await?
-        .ok_or_else(|| String::from(AppError::new("typst_toolchain.not_typst_project")))?;
+    let project = resolve_project_async(
+        &project_id,
+        &main_doc,
+        &root,
+        request.variant.clone(),
+        request.offline,
+    )
+    .await?
+    .ok_or_else(|| String::from(AppError::new("typst_toolchain.not_typst_project")))?;
     let staging = tempfile::Builder::new()
         .prefix("oleafly-typst-export-")
         .tempdir()
@@ -444,7 +688,13 @@ pub async fn export_typst_document(
         settings: &project.settings,
         environment: project.environment.clone(),
     };
-    let produced = render_export(&run, &request, staging.path()).await?;
+    let rendered = render_export(&run, &request, staging.path()).await?;
+    let notes = if request.format == TypstExportFormat::Html {
+        html_export_notes(&project.typst.version, &rendered.log)
+    } else {
+        TypstHtmlNotes::default()
+    };
+    let produced = rendered.files;
     drop(worktree);
     let destinations = final_destinations(Path::new(&dest), &produced);
     {
@@ -475,7 +725,7 @@ pub async fn export_typst_document(
         })
         .await;
     }
-    Ok(TypstExportResult { files })
+    Ok(TypstExportResult { files, notes })
 }
 
 #[cfg(test)]

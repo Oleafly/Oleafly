@@ -278,6 +278,7 @@ where
     P: FnOnce(DialogSpec, PickKind) -> Fut,
     Fut: Future<Output = Result<Option<Vec<PathBuf>>, String>>,
 {
+    let default_extension = first_filter_extension(&options.filters);
     let spec = DialogSpec::new(
         options.title,
         options.filters,
@@ -290,8 +291,44 @@ where
     else {
         return Ok(None);
     };
+    let path = with_default_extension(path, default_extension.as_deref());
     grant(Access::Save, &path);
     Ok(Some(display(&path)))
+}
+
+fn first_filter_extension(filters: &[DialogFilter]) -> Option<String> {
+    filters
+        .first()?
+        .extensions
+        .first()
+        .filter(|extension| !extension.is_empty() && extension.as_str() != "*")
+        .cloned()
+}
+
+fn with_default_extension(path: PathBuf, extension: Option<&str>) -> PathBuf {
+    let Some(extension) = extension else {
+        return path;
+    };
+    let named = path
+        .extension()
+        .is_some_and(|existing| !existing.is_empty());
+    if named || path.file_name().is_none() {
+        return path;
+    }
+    let stem = path.file_stem().unwrap_or_default().to_os_string();
+    let with_suffix = |suffix: String| {
+        let mut name = stem.clone();
+        name.push(suffix);
+        path.with_file_name(name)
+    };
+    let extended = with_suffix(format!(".{extension}"));
+    if !extended.exists() {
+        return extended;
+    }
+    (1..1000)
+        .map(|copy| with_suffix(format!(" ({copy}).{extension}")))
+        .find(|candidate| !candidate.exists())
+        .unwrap_or(extended)
 }
 
 #[tauri::command]
@@ -547,6 +584,68 @@ mod tests {
     }
 
     #[test]
+    fn a_typed_name_without_an_extension_takes_the_first_filter_extension() {
+        let dir = tempfile::tempdir().unwrap();
+        let typed = dir.path().join("paper");
+        let options: SaveDialogOptions = serde_json::from_value(serde_json::json!({
+            "filters": [{ "name": "PDF", "extensions": ["pdf"] }],
+        }))
+        .unwrap();
+        let chosen = typed.clone();
+        let result = tauri::async_runtime::block_on(save_with(options, |_, _| async {
+            Ok(Some(vec![chosen]))
+        }))
+        .unwrap();
+        let saved = dir.path().join("paper.pdf");
+        assert_eq!(result, Some(display(&saved)));
+        assert!(granted(Access::Save, &saved));
+        assert!(!granted(Access::Save, &typed));
+    }
+
+    #[test]
+    fn default_extensions_keep_what_the_person_typed() {
+        let dir = tempfile::tempdir().unwrap();
+        let extended = |name: &str, extension: Option<&str>| {
+            with_default_extension(dir.path().join(name), extension)
+        };
+        assert_eq!(
+            extended("paper.docx", Some("pdf")),
+            dir.path().join("paper.docx")
+        );
+        assert_eq!(extended("paper", None), dir.path().join("paper"));
+        assert_eq!(
+            extended("paper.", Some("pdf")),
+            dir.path().join("paper.pdf")
+        );
+        assert_eq!(extended("论文", Some("pdf")), dir.path().join("论文.pdf"));
+    }
+
+    #[test]
+    fn a_default_extension_never_lands_on_a_file_the_dialog_did_not_ask_about() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("paper.pdf"), b"kept").unwrap();
+        assert_eq!(
+            with_default_extension(dir.path().join("paper"), Some("pdf")),
+            dir.path().join("paper (1).pdf")
+        );
+    }
+
+    #[test]
+    fn only_a_real_extension_from_the_first_filter_counts() {
+        let filter = |extensions: &[&str]| DialogFilter {
+            name: "Files".into(),
+            extensions: extensions.iter().map(|value| value.to_string()).collect(),
+        };
+        assert_eq!(
+            first_filter_extension(&[filter(&["png", "jpg"]), filter(&["pdf"])]).as_deref(),
+            Some("png")
+        );
+        assert_eq!(first_filter_extension(&[filter(&["*"])]), None);
+        assert_eq!(first_filter_extension(&[filter(&[])]), None);
+        assert_eq!(first_filter_extension(&[]), None);
+    }
+
+    #[test]
     fn a_cancelled_or_failed_dialog_hands_back_nothing() {
         let save = |answer: Result<Option<Vec<PathBuf>>, String>| {
             tauri::async_runtime::block_on(save_with(Default::default(), |_, _| async { answer }))
@@ -624,6 +723,7 @@ mod tests {
             block_on(crate::project::export_pdf(
                 project.clone(),
                 dest.clone(),
+                None,
                 state(),
             )),
             Access::Save,

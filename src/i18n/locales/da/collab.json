@@ -729,7 +729,14 @@
     "renamedPortable": "{{before}} blev omdøbt til {{theirs}}, så den virker på alle computere.",
     "skipped": "En ændring fra {{name}} kunne ikke læses og blev sprunget over.",
     "skippedUnknown": "En ændring fra en anden kunne ikke læses og blev sprunget over.",
-    "mentioned": "{{name}} nævnte dig i en kommentar i {{path}}",
+    "outputNotShared": {
+      "tooLarge": "Den kompilerede PDF er større, end serveren tillader, så andre ser stadig den forrige.",
+      "quota": "Serverens uploadgrænse er nået, så andre ser stadig den forrige PDF. Oleafly prøver igen om 15 minutter.",
+      "privateSources": "Den kompilerede PDF bliver på denne computer, fordi projektet har filer, der ikke er delt.",
+      "serverError": "Serveren tog ikke imod den kompilerede PDF, så andre ser stadig den forrige."
+    },
+    "texNeeded": "Dette projekt kompileres med en TeX-distribution, og denne computer har ingen. Installer TinyTeX under Indstillinger > Motorer > LaTeX for at kompilere det her.",
+    "mentioned":"{{name}} nævnte dig i en kommentar i {{path}}",
     "mentionedHere": "{{name}} nævnte dig i en kommentar",
     "showComment": "Vis kommentar",
     "settings": {

@@ -101,6 +101,7 @@ export const PREFLIGHT_MESSAGE_KEYS = [
   "prep.headerRows",
   "prep.incompatiblePackages",
   "prep.metadataAdded",
+  "prep.metadataInMain",
   "prep.metadataUpdated",
   "prep.titleRequired",
   "prep.unicodeMath",

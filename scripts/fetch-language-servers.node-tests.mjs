@@ -26,6 +26,8 @@ import {
   captureDirectorySnapshot,
   currentTarget,
   defaultAppDataDirectory,
+  downloadSources,
+  downloadWithRetry,
   extractPinnedBinary,
   isSafeArchivePath,
   openExclusiveNoFollow,
@@ -408,6 +410,17 @@ test("download URLs, assets, and archive members are safe and exact", () => {
           `${repository.pathname}/releases/download/${server.tag}/${entry.asset}.sha256`,
         );
       }
+      const repository = new URL(server.repository);
+      const githubUrl = new URL(entry.githubUrl);
+      assert.equal(githubUrl.protocol, "https:");
+      assert.equal(githubUrl.hostname, "github.com");
+      assert.equal(githubUrl.search, "");
+      assert.equal(githubUrl.hash, "");
+      assert.equal(
+        githubUrl.pathname,
+        `${repository.pathname}/releases/download/${server.tag}/${entry.asset}`,
+      );
+      assert.deepEqual(downloadSources(entry), [entry.url, entry.githubUrl]);
     }
   }
 
@@ -426,6 +439,25 @@ test("download URLs, assets, and archive members are safe and exact", () => {
   ]) {
     assert.equal(isSafeArchivePath(unsafe), false, unsafe);
   }
+});
+
+test("downloads fall back to the upstream release after the mirror keeps failing", async () => {
+  const payload = Buffer.from("archive bytes");
+  const entry = {
+    url: "https://mirrors.oleafly.com/archive",
+    githubUrl: "https://github.com/owner/repo/releases/download/v1/archive",
+    archiveSize: payload.length,
+    archiveSha256: createHash("sha256").update(payload).digest("hex"),
+  };
+  const attempts = [];
+  const downloaded = await downloadWithRetry(entry, new Set(), async (source) => {
+    attempts.push(source);
+    if (source === entry.url) throw new Error("mirror returned HTTP 404");
+    return payload;
+  });
+  assert.equal(downloaded.equals(payload), true);
+  assert.equal(attempts.filter((source) => source === entry.url).length, 3);
+  assert.equal(attempts.at(-1), entry.githubUrl);
 });
 
 test("extractor returns only the exact checksum-pinned tar and ZIP member", () => {

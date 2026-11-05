@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   dismissEngineHint: vi.fn(),
   ensureLoaded: vi.fn(async () => {}),
   install: vi.fn(async () => {}),
+  queueCompileAfterInstall: vi.fn(),
   recompile: vi.fn(async () => {}),
   setEngine: vi.fn(async (_engine: string, _flavor?: string | null) => {}),
   setShellEscape: vi.fn(async () => {}),
@@ -17,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   errorUnique: vi.fn(),
   picker: {
     open: true,
-    source: "manual" as "manual" | "compile-failure",
+    source: "manual" as "manual" | "compile-failure" | "tex-missing",
     findings: [] as { id: string; level: string; title: string; detail: string }[],
   },
   files: {
@@ -25,7 +26,10 @@ const mocks = vi.hoisted(() => ({
     engine: { id: "latex", allow_shell_escape: false },
   },
   engine: {
-    info: { latexmk: "/usr/bin/latexmk" } as { latexmk?: string } | null,
+    info: { latexmk: "/usr/bin/latexmk" } as {
+      latexmk?: string;
+      latexmk_blocker?: { code: string; params: Record<string, string> };
+    } | null,
     installing: false,
     installPhase: null,
     progress: null,
@@ -72,11 +76,13 @@ vi.mock("@/store/engine", () => ({
         ...mocks.engine,
         ensureLoaded: mocks.ensureLoaded,
         install: mocks.install,
+        queueCompileAfterInstall: mocks.queueCompileAfterInstall,
       }),
     },
   ),
 }));
 vi.mock("@oleafly/latex", () => ({
+  IMPORT_COMPAT_CATALOG: {},
   latexmkFixesFinding: () => mocks.fixes,
   needsPdflatexFinding: (id: string) =>
     ["hyperref-pdftex-driver", "eps-image", "pdftex-only"].includes(id),
@@ -95,6 +101,7 @@ vi.mock("@/store/compile", () => ({
   useCompileStore: { getState: () => ({ recompile: mocks.recompile }) },
 }));
 
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { EnginePickerModal } from "./EnginePickerModal";
@@ -369,5 +376,81 @@ describe("EnginePickerModal states", () => {
     );
     expect(mocks.logError).toHaveBeenCalledWith("switch compile engine", expect.any(Error));
     expect(mocks.close).toHaveBeenCalled();
+  });
+});
+
+describe("EnginePickerModal with TeX that can't run latexmk", () => {
+  const needsPerl = { code: "tex.latexmk_needs_perl", params: {} };
+
+  it("treats a blocked latexmk as missing and explains why", () => {
+    mocks.picker.source = "tex-missing";
+    mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
+    mocks.engine.info = { latexmk: "C:/MiKTeX/bin/latexmk.exe", latexmk_blocker: needsPerl };
+    render(<EnginePickerModal />);
+
+    expect(screen.getByText(copy.titleTexMissing)).toBeInTheDocument();
+    expect(screen.getByText(copy.descriptionTexMissing)).toBeInTheDocument();
+    expect(screen.getByText(enErrors.tex.latexmk_needs_perl)).toBeInTheDocument();
+    expect(screen.queryByText(copy.recommended)).not.toBeInTheDocument();
+    expect(screen.getByTestId("engine-picker-use-system")).toBeDisabled();
+    expect(screen.getByText(copy.tinytex.title)).toBeInTheDocument();
+  });
+
+  it("names the folder when TeX has no latexmk, and keeps the plain text when there is no TeX", () => {
+    mocks.engine.info = {
+      latexmk_blocker: {
+        code: "tex.latexmk_not_in_distribution_command",
+        params: { binDir: "/usr/bin", command: "sudo apt install latexmk" },
+      },
+    };
+    const { unmount } = render(<EnginePickerModal />);
+    expect(screen.getByText(/sudo apt install latexmk/)).toBeInTheDocument();
+    unmount();
+
+    mocks.engine.info = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
+    render(<EnginePickerModal />);
+    expect(screen.getByText(copy.systemTex.missing)).toBeInTheDocument();
+  });
+
+  it("keeps the chosen compiler and lets the install run the one recompile", async () => {
+    mocks.picker.source = "tex-missing";
+    mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
+    mocks.engine.info = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
+    mocks.install.mockImplementation(async () => {
+      mocks.engine.info = { latexmk: "/home/ada/.oleafly/tinytex/bin/latexmk" };
+    });
+    render(<EnginePickerModal />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.tinytex.download }));
+
+    await waitFor(() => expect(mocks.close).toHaveBeenCalled());
+    expect(mocks.queueCompileAfterInstall).toHaveBeenCalledExactlyOnceWith("explicit");
+    expect(mocks.setEngine).not.toHaveBeenCalled();
+    expect(mocks.recompile).not.toHaveBeenCalled();
+  });
+
+  it("stays open when the install didn't make latexmk usable", async () => {
+    mocks.picker.source = "tex-missing";
+    mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
+    mocks.engine.info = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
+    render(<EnginePickerModal />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.tinytex.download }));
+
+    await waitFor(() => expect(mocks.install).toHaveBeenCalled());
+    expect(mocks.close).not.toHaveBeenCalled();
+  });
+
+  it("does not pin a Tectonic project to a latexmk the install left blocked", async () => {
+    mocks.engine.info = null;
+    mocks.install.mockImplementation(async () => {
+      mocks.engine.info = { latexmk: "C:/MiKTeX/bin/latexmk.exe", latexmk_blocker: needsPerl };
+    });
+    render(<EnginePickerModal />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.tinytex.download }));
+
+    await waitFor(() => expect(mocks.install).toHaveBeenCalled());
+    expect(mocks.setEngine).not.toHaveBeenCalled();
   });
 });
