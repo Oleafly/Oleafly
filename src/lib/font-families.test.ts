@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TypstFontEntry } from "@/lib/typst-options";
 import {
+  editorCjkFontStack,
   fontFamilyName,
   matchingFamilies,
   primaryFontFamily,
@@ -48,5 +49,25 @@ describe("quotedFontFamily", () => {
   it("drops control characters and runs of whitespace", () => {
     expect(fontFamilyName("Fira\u0000\tCode\n")).toBe("Fira Code");
     expect(withoutControlCharacters("A\u0007 B ")).toBe("A B ");
+  });
+});
+
+describe("editorCjkFontStack", () => {
+  const LATIN =
+    '"Geist Mono", "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", "Ubuntu Mono"';
+
+  it("puts the CJK font after named Latin fonts and before the fallback", () => {
+    expect(editorCjkFontStack("", "PingFang SC", "var(--font-mono)")).toBe(
+      `${LATIN}, "PingFang SC", var(--font-mono)`,
+    );
+    expect(editorCjkFontStack("Fira Code", " Microsoft  YaHei ", "var(--font-mono)")).toBe(
+      `"Fira Code", ${LATIN}, "Microsoft YaHei", var(--font-mono)`,
+    );
+  });
+
+  it("never names a generic family before the CJK font", () => {
+    const stack = editorCjkFontStack("SF Mono", "Songti SC", "var(--font-mono)");
+    expect(stack).toBe(`"SF Mono", ${LATIN}, "Songti SC", var(--font-mono)`);
+    expect(stack).not.toContain("ui-monospace");
   });
 });

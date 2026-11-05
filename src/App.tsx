@@ -84,7 +84,7 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { editorLetterSpacingValue, editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
-import { fontFamilyName, fontFamilyStack } from "@/lib/font-families";
+import { editorCjkFontStack, fontFamilyName, fontFamilyStack, quotedFontFamily } from "@/lib/font-families";
 import { applyAppTypography } from "@/lib/app-typography";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
@@ -514,6 +514,7 @@ function AppContent() {
   const appFontSize = useSettingsStore((s) => s.appFontSize);
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
+  const editorCjkFontFamily = useSettingsStore((s) => s.editorCjkFontFamily);
   const editorUsesAppFont = useSettingsStore((s) => s.editorUsesAppFont);
   const editorLineHeight = useSettingsStore((s) => s.editorLineHeight);
   const editorCustomLineHeight = useSettingsStore((s) => s.editorCustomLineHeight);
@@ -703,8 +704,13 @@ function AppContent() {
     root.style.setProperty("--cm-font-size", `${editorUsesAppFont ? appFontSize : editorFontSize}px`);
     applyAppTypography(appFontFamily, appFontSize, root);
     const editorFont = fontFamilyName(editorFontFamily);
+    const cjkFont = editorUsesAppFont ? "" : fontFamilyName(editorCjkFontFamily);
+    if (cjkFont) root.style.setProperty("--cm-cjk-font", quotedFontFamily(cjkFont));
+    else root.style.removeProperty("--cm-cjk-font");
     if (editorUsesAppFont) {
       root.style.setProperty("--cm-font-family", "var(--font-sans)");
+    } else if (cjkFont) {
+      root.style.setProperty("--cm-font-family", editorCjkFontStack(editorFont, cjkFont, "var(--font-mono)"));
     } else if (editorFont) {
       root.style.setProperty("--cm-font-family", fontFamilyStack(editorFont, "var(--font-mono)"));
     } else {
@@ -732,6 +738,7 @@ function AppContent() {
     appFontSize,
     appFontFamily,
     editorFontFamily,
+    editorCjkFontFamily,
     editorUsesAppFont,
     editorLineHeight,
     editorCustomLineHeight,

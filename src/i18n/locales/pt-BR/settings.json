@@ -774,6 +774,10 @@
         "label": "Fonte do editor",
         "monospace": "Monoespaçada"
       },
+      "cjkFont": {
+        "description": "Usada para os caracteres chineses, japoneses e coreanos que a Fonte do editor não tem.",
+        "label": "Fonte CJK"
+      },
       "useAppFont": {
         "description": "O editor segue a fonte e o tamanho da fonte do app.",
         "disabledHint": "Desative Usar a fonte do app para mudar isto.",
@@ -1207,10 +1211,13 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Adicionar ao projeto",
       "allDownloaded": "Tudo baixado",
       "download": "Baixar",
       "downloadAll": "Baixar tudo"
     },
+    "fontAddedToProject": "A fonte {{family}} foi adicionada a este projeto. Use-a pelo nome, por exemplo {{example}}.",
+    "fontAlreadyInProject": "A fonte {{family}} já está neste projeto.",
     "yourTemplates": {
       "toggle": "Gerenciar seus modelos",
       "import": "Importar um modelo",
@@ -1260,7 +1267,7 @@
       "empty": "Nenhuma fonte para baixar.",
       "engineNote": "O motor LuaLaTeX (para PDFs marcados e acessíveis) é gerenciado na seção Motor LaTeX.",
       "heading": "Fontes",
-      "tooltip": "Alguns modelos usam fontes premium de código aberto. Para manter o Oleafly leve, essas fontes são baixadas sob demanda: quando você cria um modelo desses, elas são obtidas e copiadas para o projeto, que fica autocontido e compila offline. Você também pode baixá-las de antemão aqui ou removê-las para liberar espaço."
+      "tooltip": "Alguns modelos usam estas fontes de código aberto. Elas só são baixadas quando necessário, para manter o Oleafly leve. Ao criar um modelo desses, as fontes são copiadas para o projeto, que assim compila offline. Em projetos Typst, uma fonte baixada pode ser usada pelo nome, a menos que o projeto desative as fontes do sistema. Para LaTeX, abra um projeto e clique em \"Adicionar ao projeto\" para copiar a fonte para ele."
     },
     "packProgress": "{{index}} de {{total}}",
     "progress": "{{label}} ({{index}} de {{total}})",
@@ -1288,6 +1295,7 @@
       "fontDownloadFailed": "Não foi possível baixar a fonte.",
       "fontsDownloadFailed": "Não foi possível baixar as fontes.",
       "fontRemoveFailed": "Não foi possível remover a fonte.",
+      "fontAddFailed": "Não foi possível adicionar a fonte a este projeto.",
       "packDownloadFailed": "Não foi possível baixar o pacote de modelos.",
       "packsDownloadFailed": "Não foi possível baixar os pacotes de modelos.",
       "packRemoveFailed": "Não foi possível remover o pacote de modelos.",

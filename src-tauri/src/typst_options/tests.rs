@@ -236,7 +236,7 @@ fn font_sources_are_sorted_into_project_system_and_embedded() {
             sources: Vec::new(),
         },
     ];
-    let entries = font_entries(families, &root, &[root.join("fonts")], None);
+    let entries = font_entries(families, &root, &[root.join("fonts")], &[]);
     assert_eq!(
         entries[0].sources,
         [
@@ -300,13 +300,45 @@ fn fonts_from_installed_packs_are_listed_by_pack() {
         families,
         &root,
         &[root.join("fonts"), pack.clone()],
-        Some(&packs.path().canonicalize().unwrap()),
+        &[packs.path().canonicalize().unwrap()],
     );
     assert_eq!(
         entries[0].sources,
         [TypstFontSource {
             kind: "pack",
             path: Some("typst-text".into())
+        }]
+    );
+}
+
+#[test]
+fn fonts_from_latex_template_packs_are_listed_by_pack_too() {
+    let (_directory, root) = project_with_fonts();
+    let assets = tempfile::tempdir().unwrap();
+    let roots: Vec<PathBuf> = oleafly_core::typst_toolchain::FONT_PACK_DIRS
+        .iter()
+        .map(|name| {
+            let base = assets.path().join(name);
+            std::fs::create_dir_all(&base).unwrap();
+            base.canonicalize().unwrap()
+        })
+        .collect();
+    let pack = roots[1].join("ptserif");
+    std::fs::create_dir_all(&pack).unwrap();
+    std::fs::write(pack.join("PTSerif-Regular.ttf"), b"font").unwrap();
+    let families = vec![TypstFontFamily {
+        name: "PT Serif".into(),
+        sources: vec![pack
+            .join("PTSerif-Regular.ttf")
+            .to_string_lossy()
+            .into_owned()],
+    }];
+    let entries = font_entries(families, &root, &[root.join("fonts"), pack], &roots);
+    assert_eq!(
+        entries[0].sources,
+        [TypstFontSource {
+            kind: "pack",
+            path: Some("ptserif".into())
         }]
     );
 }

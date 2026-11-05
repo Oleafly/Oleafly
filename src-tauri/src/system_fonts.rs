@@ -133,9 +133,16 @@ fn database_families(database: &fontdb::Database) -> Vec<SystemFontFamily> {
     }))
 }
 
+// PingFang ships here, outside the folders fontdb scans on macOS.
+#[cfg(target_os = "macos")]
+const MACOS_RESERVED_FONTS: &str =
+    "/System/Library/PrivateFrameworks/FontServices.framework/Resources/Reserved";
+
 fn system_database() -> fontdb::Database {
     let mut database = fontdb::Database::new();
     database.load_system_fonts();
+    #[cfg(target_os = "macos")]
+    database.load_fonts_dir(MACOS_RESERVED_FONTS);
     database
 }
 
@@ -367,5 +374,18 @@ mod tests {
                 assert!(family.monospace, "{name} should be monospace");
             }
         }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn pingfang_is_listed_when_macos_ships_it() {
+        let reserved = std::path::Path::new(MACOS_RESERVED_FONTS).join("PingFangUI.ttc");
+        if !reserved.is_file() {
+            return;
+        }
+        let families = installed_font_families();
+        assert!(families
+            .iter()
+            .any(|family| family.name.eq_ignore_ascii_case("PingFang SC")));
     }
 }

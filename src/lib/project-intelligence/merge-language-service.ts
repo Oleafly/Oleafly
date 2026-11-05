@@ -1,6 +1,8 @@
+import { latexUnitScope, type LatexUnitScope } from "./latex-units";
 import {
   definitionCandidatesForUse,
   definitionsByKey,
+  resolutionForUse,
 } from "./resolution";
 import { stableId } from "./source";
 import type {
@@ -91,6 +93,7 @@ function deduplicateDefinitions(
 function resolveAgainstMergedDefinitions(
   use: ProjectUse,
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  scope: LatexUnitScope | undefined,
 ): ProjectUse {
   if (
     use.kind !== "reference" &&
@@ -100,12 +103,11 @@ function resolveAgainstMergedDefinitions(
   ) {
     return use;
   }
-  const candidates = definitionCandidatesForUse(use, byKey);
+  const candidates = definitionCandidatesForUse(use, byKey, scope);
   if (candidates.length === 0) return use;
   return {
     ...use,
-    resolution:
-      candidates.length === 1 ? "resolved" : "duplicate",
+    resolution: resolutionForUse(use, candidates, scope),
     definitionIds: candidates.map((definition) => definition.id),
   };
 }
@@ -114,6 +116,7 @@ function deduplicateUses(
   local: readonly ProjectUse[],
   external: readonly ProjectUse[],
   definitions: readonly ProjectDefinition[],
+  scope: LatexUnitScope | undefined,
 ): ProjectUse[] {
   const signatures = new Set(local.map(useSignature));
   const byKey = definitionsByKey(definitions);
@@ -127,7 +130,7 @@ function deduplicateUses(
     }),
   ]
     .map((use) =>
-      resolveAgainstMergedDefinitions(use, byKey),
+      resolveAgainstMergedDefinitions(use, byKey, scope),
     )
     .sort(
       (left, right) =>
@@ -220,6 +223,7 @@ export function mergeLanguageServiceIntelligence(
     snapshot.uses,
     acceptedUses,
     definitions,
+    latexUnitScope(snapshot.latexUnits),
   );
   const unresolvedLocations = new Set(
     uses

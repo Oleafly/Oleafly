@@ -1,0 +1,72 @@
+{
+  "files": [
+    "manuscript_v1.tex",
+    "manuscript.tex",
+    "notes.tex",
+    "old/chapter.tex",
+    "old/main.tex",
+    "readme.md",
+    "shared.tex"
+  ],
+  "sections": [
+    {
+      "title": "Intro",
+      "level": 2,
+      "file": "manuscript_v1.tex",
+      "line": 4
+    },
+    {
+      "title": "Intro",
+      "level": 2,
+      "file": "manuscript.tex",
+      "line": 4
+    },
+    {
+      "title": "Notes",
+      "level": 2,
+      "file": "notes.tex",
+      "line": 1
+    },
+    {
+      "title": "Old",
+      "level": 2,
+      "file": "old/chapter.tex",
+      "line": 1
+    }
+  ],
+  "labels": [
+    "sec:intro",
+    "fig:plot",
+    "fig:dropped",
+    "sec:intro",
+    "fig:plot",
+    "sec:notes",
+    "sec:old",
+    "fig:only-old",
+    "fig:twice",
+    "fig:twice"
+  ],
+  "bibKeys": [],
+  "macros": [],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [
+    {
+      "from": "manuscript_v1.tex",
+      "to": "shared.tex"
+    },
+    {
+      "from": "manuscript.tex",
+      "to": "shared.tex"
+    },
+    {
+      "from": "old/main.tex",
+      "to": "old/old/chapter"
+    }
+  ],
+  "unresolvedRefs": [
+    "fig:only-old"
+  ],
+  "unresolvedCites": [],
+  "ambiguousTypstAtUses": []
+}

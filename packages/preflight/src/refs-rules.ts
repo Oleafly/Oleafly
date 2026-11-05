@@ -17,6 +17,8 @@ export interface RefsContext {
   bibLoaded: boolean;
   projectFiles: string[];
   unresolvedBibliographies?: { file: string; name: string }[];
+  /** Labels another document defines, which this file's compilation cannot see. */
+  unreachableLabels?: { file: string; labels: string[] }[];
   duplicateDois: { doi: string; keys: string[] }[];
   bibEntries?: { key: string; type: string; fields: Record<string, string> }[];
   allCitedKeys?: string[];
@@ -44,13 +46,15 @@ const GRAPHICS = /\\includegraphics\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
 const INPUT = /\\(?:input|include)\s*\{([^}]*)\}/g;
 
 function resolves(ref: string, files: string[], exts: string[]): boolean {
-  const target = ref.trim().replace(/^\.\//, "");
+  // macOS can keep a name in the other Unicode form than the source spells it.
+  const target = ref.trim().replace(/^\.\//, "").normalize("NFC");
   const base = target.split("/").pop() ?? target;
+  const names = files.map((file) => file.normalize("NFC"));
   for (const ext of exts) {
     const withExt = target + ext;
     const baseWithExt = base + ext;
     if (
-      files.some(
+      names.some(
         (f) => f === withExt || f.endsWith("/" + withExt) || f === baseWithExt || f.endsWith("/" + baseWithExt),
       )
     ) {
@@ -187,7 +191,9 @@ export function projectLabelQuality(ctx: RefsContext): Finding[] {
       id: "refs-project-duplicate-label",
       lens: "refs",
       severity: "error",
-      title: message("rules.refs-project-duplicate-label.title", { count: duplicates.length }),
+      title: message("rules.refs-project-duplicate-label.title", {
+        count: new Set(duplicates.map((item) => item.label)).size,
+      }),
       detail: message("rules.refs-project-duplicate-label.detail", {
         labels: duplicates
           .slice(0, 6)
@@ -258,8 +264,13 @@ function missingBibliography(
   );
 }
 
-function collectLabels(source: string, defined: readonly string[]): Set<string> {
+function collectLabels(
+  source: string,
+  defined: readonly string[],
+  unreachable: readonly string[],
+): Set<string> {
   const labels = new Set(defined.map((l) => l.trim()));
+  for (const label of unreachable) labels.delete(label.trim());
   const labelRe = new RegExp(LABEL.source, "g");
   let m: RegExpExecArray | null;
   while ((m = labelRe.exec(source))) labels.add(m[1].trim());
@@ -485,7 +496,8 @@ export function runRefsRules(
 ): Finding[] {
   const source = maskComments(rawSource);
 
-  const labels = collectLabels(source, ctx.definedLabels);
+  const unreachable = ctx.unreachableLabels?.find((entry) => entry.file === options.file);
+  const labels = collectLabels(source, ctx.definedLabels, unreachable?.labels ?? []);
   const bibKeys = new Set(ctx.bibKeys.map((k) => k.trim()));
 
   const out: Finding[] = [

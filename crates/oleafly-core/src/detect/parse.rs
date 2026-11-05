@@ -1,3 +1,5 @@
+use crate::context::text::{is_js_space, trim_js};
+
 const MAGIC_COMMENT_LINES: usize = 50;
 const TITLE_CHARACTERS: usize = 80;
 const ARGUMENT_WINDOW: usize = 1024;
@@ -31,10 +33,10 @@ pub fn tex_magic_comments(text: &str) -> TexMagicComments {
 }
 
 fn magic_comment(line: &str) -> Option<(MagicKey, &str)> {
-    let rest = line.trim_start().strip_prefix('%')?.trim_start();
-    let rest = rest.strip_prefix('!').unwrap_or(rest).trim_start();
+    let rest = trim_js_start(trim_js_start(line).strip_prefix('%')?);
+    let rest = trim_js_start(rest.strip_prefix('!').unwrap_or(rest));
     let rest = strip_prefix_ignore_case(rest, "tex")?;
-    let spaced = rest.trim_start();
+    let spaced = trim_js_start(rest);
     if spaced.len() == rest.len() {
         return None;
     }
@@ -43,8 +45,13 @@ fn magic_comment(line: &str) -> Option<(MagicKey, &str)> {
         .or_else(|| {
             strip_prefix_ignore_case(spaced, "program").map(|rest| (MagicKey::Program, rest))
         })?;
-    let value = rest.trim_start().strip_prefix('=')?.trim();
+    let value = trim_js(trim_js_start(rest).strip_prefix('=')?);
     (!value.is_empty()).then_some((key, value))
+}
+
+/// The app reads these comments with `\s`, which matches a byte order mark.
+fn trim_js_start(text: &str) -> &str {
+    text.trim_start_matches(is_js_space)
 }
 
 fn strip_prefix_ignore_case<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {

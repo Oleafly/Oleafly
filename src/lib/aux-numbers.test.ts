@@ -17,12 +17,14 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 
 import {
   auxNumberFor,
+  auxNumberForDefinition,
   clearAuxNumbers,
   installAuxNumbers,
   parseAuxLabels,
   refreshAuxNumbers,
 } from "./aux-numbers";
 import { createCompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
+import type { LatexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 
@@ -112,6 +114,21 @@ describe("refreshAuxNumbers", () => {
     await refreshAuxNumbers("p1", "main.tex", "out-1");
     expect(readBuildArtifactMock).toHaveBeenCalledWith("p1", ENTRY_AUX);
     expect(auxNumberFor("sec:intro")).toEqual({ number: "1", page: "2" });
+  });
+
+  it("numbers a label only in the document that was compiled", async () => {
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{sec:a}{{1}{2}}\n" });
+    seedFilesStore("p1", "main.tex");
+    await refreshAuxNumbers("p1", "main.tex", "out-1");
+    const scope = {
+      sharesScope: (left: string, right: string) => left === right,
+    } as LatexUnitScope;
+    expect(auxNumberForDefinition("sec:a", "main.tex", scope)).toEqual({ number: "1", page: "2" });
+    expect(auxNumberForDefinition("sec:a", "manuscript_v1.tex", scope)).toBeNull();
+    expect(auxNumberForDefinition("sec:a", "manuscript_v1.tex", undefined)).toEqual({
+      number: "1",
+      page: "2",
+    });
   });
 
   it("is a no-op when the cached output identity matches", async () => {

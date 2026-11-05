@@ -135,6 +135,12 @@ describe("parseFile: uses", () => {
 });
 
 describe("parseFile: comments", () => {
+  it("stops looking for a theorem's counter at the next command", () => {
+    const uses = parseFile("a.tex", "\\newtheorem{a}[\n\\newtheorem{b}[thm]{B}").uses;
+    expect(uses.map((sym) => sym.name)).toEqual(["thm"]);
+    expect(parseFile("a.tex", "\\newtheorem{a}[\n".repeat(100_000)).uses).toEqual([]);
+  });
+
   it("ignores commands inside comments", () => {
     expect(def("% \\label{ignored}\n\\label{real}", "label", "ignored")).toBeUndefined();
     expect(def("% \\label{ignored}\n\\label{real}", "label", "real")).toBeDefined();

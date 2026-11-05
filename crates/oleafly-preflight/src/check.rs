@@ -92,6 +92,7 @@ pub fn check_project(request: &CheckRequest) -> CheckOutcome {
     let open_texts = BTreeMap::new();
     let input = ContextInput {
         main_doc: &snapshot.main_document,
+        compile_folder: &snapshot.compile_folder,
         tree_paths: &snapshot.tree_paths,
         index_texts: &snapshot.texts,
         open_texts: &open_texts,

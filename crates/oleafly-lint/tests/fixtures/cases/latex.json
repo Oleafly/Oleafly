@@ -358,5 +358,17 @@
   {
     "name": "xparse-environment-spec",
     "text": "\\NewDocumentEnvironment{e}{m q}{}{}"
+  },
+  {
+    "name": "lstinline-body-ends-at-the-first-brace",
+    "text": "A \\lstinline{C:\\} B \\lstinline{{} C"
+  },
+  {
+    "name": "lstinline-brace-left-open-on-its-line",
+    "text": "A \\lstinline{x\nB {}"
+  },
+  {
+    "name": "range-and-full-reference-keys",
+    "text": "Figure at \\fullref{fig:alphabeta} and \\vrefrange{fig:alphabeta}{fig:gammadelta} with \\vpagerefrange{fig:alphabeta}{fig:gammadelta} plain."
   }
 ]

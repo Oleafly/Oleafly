@@ -164,6 +164,36 @@ describe("LaTeX symbol recovery", () => {
     expect(kinds(String.raw`\label{a}`)).toEqual(["section"]);
   });
 
+  it("does not read a label out of a comment or verbatim text", () => {
+    const commented = [String.raw`\begin{thm} % \label{old}`, "text", String.raw`\end{thm}`].join("\n");
+    const verbatim = [
+      String.raw`\begin{thm}\begin{verbatim}\label{old}\end{verbatim}`,
+      "text",
+      String.raw`\end{thm}`,
+    ].join("\n");
+    for (const text of [commented, verbatim]) {
+      const result = contribute({ "main.tex": text }, [
+        { name: "thm", kind: 7, line: 0, from: 0, to: text.split("\n")[0].length },
+      ]);
+      expect(summary(result)).toEqual([["environment", "thm", null]]);
+    }
+  });
+
+  it("does not read a macro out of a comment or verbatim text", () => {
+    const commented = [String.raw`\begin{thm} % \newcommand{\old}{x}`, "text", String.raw`\end{thm}`].join("\n");
+    const verbatim = [
+      String.raw`\begin{thm}\begin{verbatim}\def\old{x}\end{verbatim}`,
+      "text",
+      String.raw`\end{thm}`,
+    ].join("\n");
+    for (const text of [commented, verbatim]) {
+      const result = contribute({ "main.tex": text }, [
+        { name: "thm", kind: 7, line: 0, from: 0, to: text.split("\n")[0].length },
+      ]);
+      expect(summary(result)).toEqual([["environment", "thm", null]]);
+    }
+  });
+
   it("clamps a range whose end precedes its start", () => {
     const result = contribute({ "main.tex": source }, [{ name: "fig:x", kind: 7, line: 2, from: 13, to: 0 }]);
     expect(result.definitions).toEqual([]);

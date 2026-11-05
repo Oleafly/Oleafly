@@ -319,6 +319,10 @@
         },
         "customLabel": "Accessible name of the number field where the user types an exact letter spacing in pixels."
       },
+      "cjkFont": {
+        "label": "Setting for a second editor font used only for Chinese, Japanese and Korean characters. CJK is the usual short name; keep it short or use the local term for these scripts.",
+        "description": "Explains that this font fills in Han, kana and Hangul characters that the main Editor font lacks; Latin text stays in the Editor font."
+      },
       "useAppFont": {
         "label": "Switch that makes the source editor use the App font and App font size instead of its own.",
         "disabledHint": "Tooltip on a disabled editor font control while the editor follows the app font."
@@ -348,6 +352,7 @@
   },
   "downloads": {
     "actions": {
+      "addToProject": "Button on a downloaded font that copies it into the open project's fonts folder.",
       "allDownloaded": "Disabled button state once every item is already downloaded.",
       "download": "Button that starts downloading one item.",
       "downloadAll": "Button that downloads every item in the list."
@@ -363,6 +368,8 @@
         "label": "Font family name. Keep verbatim in every language."
       }
     },
+    "fontAddedToProject": "Toast after Add to project. {{family}} is a font family name such as PT Serif. {{example}} is a line of LaTeX or Typst code such as \\setmainfont{PT Serif}; keep both verbatim.",
+    "fontAlreadyInProject": "Toast when Add to project found every file already in the project. {{family}} is a font family name.",
     "progress": "{{label}} is the name of the asset being fetched, supplied by the backend.",
     "size": {
       "kilobytes": "{{value}} is an already formatted number. KB is the unit symbol, keep it verbatim.",

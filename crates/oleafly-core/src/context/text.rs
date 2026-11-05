@@ -1,3 +1,6 @@
+use regex::Regex;
+use std::sync::LazyLock;
+
 pub(crate) struct Source {
     pub chars: Vec<char>,
     line_starts: Vec<usize>,
@@ -37,25 +40,28 @@ pub(crate) fn starts_with_at(chars: &[char], at: usize, prefix: &str) -> bool {
     true
 }
 
-/// JavaScript's `\s` (Unicode white space).
+/// JavaScript's `\s`: Unicode white space, with U+FEFF and without U+0085.
 pub(crate) fn is_js_space(character: char) -> bool {
-    character.is_whitespace() || character == '\u{feff}'
+    (character.is_whitespace() && character != '\u{85}') || character == '\u{feff}'
 }
 
 pub(crate) fn trim_js(text: &str) -> &str {
     text.trim_matches(is_js_space)
 }
 
+/// `[\p{L}\p{M}]`.
 pub(crate) fn is_letter_mark(character: char) -> bool {
-    character.is_alphabetic() || is_mark(character)
+    static LETTER_OR_MARK: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^[\p{L}\p{M}]$").expect("a valid pattern"));
+    if character.is_ascii() {
+        return character.is_ascii_alphabetic();
+    }
+    LETTER_OR_MARK.is_match(character.encode_utf8(&mut [0; 4]))
 }
 
-/// Unicode marks (`\p{M}`), approximated by the combining blocks.
+/// Unicode marks (`\p{M}`).
 pub(crate) fn is_mark(character: char) -> bool {
-    matches!(character as u32,
-        0x0300..=0x036F | 0x0483..=0x0489 | 0x0591..=0x05BD | 0x0610..=0x061A | 0x064B..=0x065F
-        | 0x0900..=0x0903 | 0x093A..=0x094F | 0x0E31 | 0x0E34..=0x0E3A | 0x1AB0..=0x1AFF
-        | 0x1DC0..=0x1DFF | 0x20D0..=0x20FF | 0x302A..=0x302F | 0x3099..=0x309A | 0xFE20..=0xFE2F)
+    unicode_normalization::char::is_combining_mark(character)
 }
 
 pub(crate) fn is_name_character(character: char) -> bool {

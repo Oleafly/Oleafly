@@ -461,6 +461,133 @@ Dvo\v{r}\'ak \výsledek \αβ`,
     }
   });
 
+  it("judges a reference while typing by the document it is compiled in", () => {
+    const paper = (body: string) =>
+      `\\documentclass{article}\n\\begin{document}\n${body}\n\\end{document}\n`;
+    const sources = {
+      "a.tex": paper(String.raw`\input{shared}\label{x}\ref{x}`),
+      "b.tex": paper(String.raw`\input{shared}\label{x}\label{only-b}`),
+      "shared.tex": String.raw`\ref{x}`,
+    };
+    const accepted = snapshot(sources);
+    try {
+      useFilesStore.setState({
+        projectId: "project",
+        activePath: "a.tex",
+        tree: Object.keys(sources).map((path) => ({ path, is_dir: false })),
+        files: {},
+      });
+      useIndexStore.setState({
+        texts: { ...sources },
+        intelligenceState: {
+          status: "running",
+          identity: { projectId: "project", projectRevision: 2, requestGeneration: 2 },
+          data: accepted,
+          stale: true,
+          currentFileFallbackAllowed: true,
+        },
+      });
+
+      expect(currentFileReferenceDiagnostics("a.tex", `${sources["a.tex"]}\n`)).toEqual([]);
+      expect(currentFileReferenceDiagnostics("shared.tex", `${sources["shared.tex"]}\n`)).toEqual([]);
+      const elsewhere = currentFileReferenceDiagnostics(
+        "a.tex",
+        paper(String.raw`\label{x}\ref{only-b}`),
+      );
+      expect(elsewhere).toHaveLength(1);
+      expect(elsewhere[0].message).toContain("only-b");
+    } finally {
+      useIndexStore.getState().reset();
+      useFilesStore.setState({
+        projectId: null,
+        activePath: null,
+        tree: [],
+        files: {},
+      });
+    }
+  });
+
+  it("lets a fragment answer a reference when the typed text just lost its own label", () => {
+    const paper = (body: string) =>
+      `\\documentclass{article}\n\\begin{document}\n${body}\n\\end{document}\n`;
+    const sources = {
+      "main.tex": paper(String.raw`\label{x}\ref{x}`),
+      "other.tex": paper(""),
+      "frag.tex": String.raw`\label{x}`,
+    };
+    const accepted = snapshot(sources);
+    try {
+      useFilesStore.setState({
+        projectId: "project",
+        activePath: "main.tex",
+        tree: Object.keys(sources).map((path) => ({ path, is_dir: false })),
+        files: {},
+      });
+      useIndexStore.setState({
+        texts: { ...sources },
+        intelligenceState: {
+          status: "running",
+          identity: { projectId: "project", projectRevision: 2, requestGeneration: 2 },
+          data: accepted,
+          stale: true,
+          currentFileFallbackAllowed: true,
+        },
+      });
+
+      expect(currentFileReferenceDiagnostics("main.tex", paper(String.raw`\ref{x}`))).toEqual([]);
+    } finally {
+      useIndexStore.getState().reset();
+      useFilesStore.setState({
+        projectId: null,
+        activePath: null,
+        tree: [],
+        files: {},
+      });
+    }
+  });
+
+  it("counts only what the viewer can see in the live ambiguous message", () => {
+    const paper = (body: string) =>
+      `\\documentclass{article}\n\\begin{document}\n${body}\n\\end{document}\n`;
+    const sources = {
+      "main.tex": paper(String.raw`\label{x}\label{x}\ref{x}`),
+      "other.tex": paper(""),
+      "frag.tex": String.raw`\label{x}`,
+    };
+    const accepted = snapshot(sources);
+    try {
+      useFilesStore.setState({
+        projectId: "project",
+        activePath: "main.tex",
+        tree: Object.keys(sources).map((path) => ({ path, is_dir: false })),
+        files: {},
+      });
+      useIndexStore.setState({
+        texts: { ...sources },
+        intelligenceState: {
+          status: "running",
+          identity: { projectId: "project", projectRevision: 2, requestGeneration: 2 },
+          data: accepted,
+          stale: true,
+          currentFileFallbackAllowed: true,
+        },
+      });
+
+      const diagnostics = currentFileReferenceDiagnostics("main.tex", `${sources["main.tex"]}\n`);
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].message).toContain("2");
+      expect(diagnostics[0].message).not.toContain("3");
+    } finally {
+      useIndexStore.getState().reset();
+      useFilesStore.setState({
+        projectId: null,
+        activePath: null,
+        tree: [],
+        files: {},
+      });
+    }
+  });
+
   it("resolves a bibliography the way the compiler does, from the project root", () => {
     const value = snapshot(
       {
@@ -1753,5 +1880,119 @@ describe("LaTeX includes searched from the main document's folder", () => {
       resolution: "resolved",
       targetFile: "chapters/parts/b.typ",
     });
+  });
+});
+
+describe("LaTeX compilation units", () => {
+  function rootsOf(value: ProjectIntelligenceSnapshot, file: string) {
+    const units = value.latexUnits;
+    const group = units?.fileGroups[file];
+    return group === undefined ? undefined : units?.groups[group].map((unit) => units.roots[unit]);
+  }
+
+  function duplicates(value: ProjectIntelligenceSnapshot) {
+    return value.diagnostics
+      .filter((diagnostic) => diagnostic.code === "duplicate-definition")
+      .map((diagnostic) => diagnostic.location.file);
+  }
+
+  function referenceTargets(value: ProjectIntelligenceSnapshot) {
+    const byId = new Map(value.definitions.map((definition) => [definition.id, definition]));
+    return uses(value, "reference").map((use) => [
+      use.location.file,
+      use.resolution,
+      use.definitionIds.map((id) => byId.get(id)?.location.file),
+    ]);
+  }
+
+  const REVISION = String.raw`\documentclass{article}
+\begin{document}
+\section{Introduction}\label{sec:intro}
+See \ref{sec:intro}.
+\end{document}`;
+
+  it("keeps the labels of separate documents in one folder apart", () => {
+    const value = snapshot({
+      "manuscript.tex": REVISION,
+      "manuscript_v1.tex": REVISION,
+      "manuscript_v2.tex": REVISION,
+    });
+
+    expect(value.latexUnits?.roots).toEqual([
+      "manuscript.tex",
+      "manuscript_v1.tex",
+      "manuscript_v2.tex",
+    ]);
+    expect(value.diagnostics).toEqual([]);
+    const expected = [
+      ["manuscript_v1.tex", "resolved", ["manuscript_v1.tex"]],
+      ["manuscript_v2.tex", "resolved", ["manuscript_v2.tex"]],
+      ["manuscript.tex", "resolved", ["manuscript.tex"]],
+    ];
+    expect(referenceTargets(value)).toEqual(expected);
+    expect(
+      referenceTargets(
+        mergeLanguageServiceIntelligence(value, {
+          identity: value.identity,
+          definitions: [],
+          uses: [],
+        }),
+      ),
+    ).toEqual(expected);
+  });
+
+  it("counts a file that several documents include once in each", () => {
+    const value = snapshot({
+      "a.tex": String.raw`\documentclass{article}
+\input{shared}
+\label{dup}
+\ref{fig:shared}`,
+      "b.tex": String.raw`\documentclass{article}
+\input{shared}
+\ref{fig:shared}`,
+      "shared.tex": String.raw`\label{fig:shared}\label{dup}`,
+    });
+
+    expect(rootsOf(value, "shared.tex")).toEqual(["a.tex", "b.tex"]);
+    expect(duplicates(value)).toEqual(["a.tex", "shared.tex"]);
+    expect(referenceTargets(value)).toEqual([
+      ["a.tex", "resolved", ["shared.tex"]],
+      ["b.tex", "resolved", ["shared.tex"]],
+    ]);
+  });
+
+  it("resolves a subfile's references to the document that includes it", () => {
+    const value = snapshot({
+      "main.tex": String.raw`\documentclass{article}
+\label{sec:main}
+\subfile{chapter}`,
+      "chapter.tex": String.raw`\documentclass[main]{subfiles}
+\ref{sec:main}`,
+    });
+
+    expect(referenceTargets(value)).toEqual([["chapter.tex", "resolved", ["main.tex"]]]);
+  });
+
+  it("treats the main document as a root without \\documentclass", () => {
+    const value = snapshot({
+      "main.tex": String.raw`\input{body}`,
+      "body.tex": String.raw`\label{sec:intro}`,
+      "draft.tex": String.raw`\documentclass{article}
+\label{sec:intro}`,
+    });
+
+    expect(rootsOf(value, "body.tex")).toEqual(["main.tex"]);
+    expect(duplicates(value)).toEqual([]);
+  });
+
+  it("lets a fragment no document includes see every label", () => {
+    const value = snapshot({
+      "main.tex": String.raw`\documentclass{article}
+\label{sec:main}`,
+      "notes.tex": String.raw`\ref{sec:main}`,
+    });
+
+    expect(rootsOf(value, "notes.tex")).toBeUndefined();
+    expect(referenceTargets(value)).toEqual([["notes.tex", "resolved", ["main.tex"]]]);
   });
 });

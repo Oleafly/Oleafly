@@ -79,14 +79,17 @@ function delimitedBodyEnd(
   text: string,
   start: number,
 ): { to: number; complete: boolean } | null {
-  const delimiter = text[start];
-  if (!delimiter || /\s/u.test(delimiter)) return null;
-  const endOfLine = lineEnd(text, start + 1);
-  const closing = text.indexOf(delimiter, start + 1);
+  const codePoint = text.codePointAt(start);
+  if (codePoint === undefined) return null;
+  const delimiter = String.fromCodePoint(codePoint);
+  if (/\s/u.test(delimiter)) return null;
+  const bodyStart = start + delimiter.length;
+  const endOfLine = lineEnd(text, bodyStart);
+  const closing = text.indexOf(delimiter, bodyStart);
   if (closing < 0 || closing > endOfLine) {
     return { to: endOfLine, complete: false };
   }
-  return { to: closing + 1, complete: true };
+  return { to: closing + delimiter.length, complete: true };
 }
 
 export function latexInlineVerbatimSpan(
@@ -122,8 +125,16 @@ function inlineVerbatimHead(
   ) {
     return null;
   }
-  const cursor = text[commandEnd] === "*" ? commandEnd + 1 : commandEnd;
-  return { command, cursor };
+  // listings takes a star as its delimiter.
+  const star = command !== "lstinline" && text[commandEnd] === "*";
+  return { command, cursor: star ? commandEnd + 1 : commandEnd };
+}
+
+// listings ends a braced body at the first `}`: it does not nest or read
+// escapes, and it stops with an error at the end of the line.
+function lstinlineBodyEnd(text: string, opening: number): number | null {
+  const close = text.slice(opening + 1, lineEnd(text, opening + 1)).indexOf("}");
+  return close < 0 ? null : opening + close + 2;
 }
 
 function listingsVerbatimSpan(
@@ -157,15 +168,19 @@ function listingsVerbatimSpan(
     );
     if (languageEnd === null) return null;
     cursor = skipInlineWhitespace(text, languageEnd);
-    if (text[cursor] === "{") {
-      const bodyEnd = latexBalancedGroupEnd(text, cursor, "{", "}", limits);
-      return {
-        from: start,
-        to: bodyEnd ?? lineEnd(text, cursor + 1),
-        command,
-        complete: bodyEnd !== null,
-      };
-    }
+  }
+
+  if (text[cursor] === "{") {
+    const bodyEnd =
+      command === "lstinline"
+        ? lstinlineBodyEnd(text, cursor)
+        : latexBalancedGroupEnd(text, cursor, "{", "}", limits);
+    return {
+      from: start,
+      to: bodyEnd ?? lineEnd(text, cursor + 1),
+      command,
+      complete: bodyEnd !== null,
+    };
   }
 
   const body = delimitedBodyEnd(text, cursor);
@@ -182,7 +197,7 @@ function simpleBracedValue(
   const end = latexBalancedGroupEnd(text, opening, "{", "}", limits);
   if (end === null) return null;
   return {
-    value: text.slice(opening + 1, end - 1).trim(),
+    value: text.slice(opening + 1, end - 1),
     to: end,
   };
 }
@@ -624,7 +639,7 @@ function mathEnvironmentStep(
   const command = text.slice(cursor + 1, commandEnd);
   if (command !== "begin" && command !== "end") return commandEnd;
   const environment = simpleBracedValue(text, commandEnd);
-  if (!environment || !MATH_ENVIRONMENTS.has(environment.value)) {
+  if (!environment || !MATH_ENVIRONMENTS.has(environment.value.trim())) {
     return commandEnd;
   }
   if (command === "begin") {

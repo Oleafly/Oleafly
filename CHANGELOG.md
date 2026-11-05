@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Thanks
+
+- Teng Qin ([@palmtenor](https://github.com/palmtenor)): reported the clash
+  between documents in one folder (#389) and wrote the first fix and its tests
+  (#395).
+
 ### Fixed
 
 - Fenced code in Markdown stays a code block in the visual editor. Typing in
@@ -14,6 +20,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lines of inline code, which dropped the language and broke Mermaid diagrams.
   Blocks now open as code blocks, keep their whole info string and blank lines,
   and start from ``` as you type. Tab indents inside a block.
+- Papers kept side by side in one folder no longer clash (#389). A LaTeX file
+  with its own `\documentclass` now counts as a separate document, along with
+  the files it pulls in through `\input`, `\include` or `\subfile`. If
+  `manuscript.tex` sits next to `manuscript_v1.tex` or a `latexdiff` output,
+  its labels stop showing "defined 3 times", and theorems, glossary entries and
+  macros behave the same way. Go to definition, find references, rename,
+  completion, Preflight and `oleafly check` now stay inside the document you are
+  working in, and the agent's project map judges each unresolved reference by
+  its own document. A `\ref` to a label that only another document defines shows
+  as undefined, which is what the compile says too.
+  Files no document includes yet can still see every label, and a project with
+  one document works as it did.
+- `\input{intro.v2}` finds `intro.v2.tex`, and `\input{intro}` no longer reports
+  two matches when `intro.md` sits beside `intro.tex`.
+- `\lstinline{code}` written with braces no longer shows an unclosed command
+  error, and labels or includes after it on the same line are read again.
+- Renaming a macro that is redefined no longer writes the new name twice into
+  the same spot.
+- Renaming `\newtheorem{theorem}` or `\def\d` now changes the name, not the
+  command around it, which used to turn `\newtheorem` into `\newlemma`.
+- A rename can no longer overwrite a whole theorem environment with the new
+  name while the language server is running.
+- Renaming an environment or theorem now changes `\end{...}`, every
+  `\renewenvironment` and `\RenewDocumentEnvironment` of that name, and a
+  shared counter such as `\newtheorem{lem}[thm]{L}` along with it, from
+  whichever of those places you start. Before, the rename left some of them
+  behind and the document stopped compiling.
+- `\vpageref`, `\vrefrange`, `\fullref`, `\Cpageref` and `\Cpagerefrange` now
+  count as references, so renaming the label updates them. Spell check and the
+  word count also skip the keys of `\fullref`, `\vrefrange` and
+  `\vpagerefrange`.
+- With the language server running, a theorem you use without a label no longer
+  shows as defined twice, and Go to definition jumps straight to its
+  `\newtheorem`.
+- A `\label` or macro definition inside a comment or verbatim text no longer
+  shows up as real when the language server is running.
+- Grammar and spell checks no longer skip the rest of a line after
+  `\lstinline*code*`.
+- The outline now shows headings with the macros of the open document, not those
+  of another revision in the folder.
+- Include links, figures, the word count, the project map and `oleaflyc` now look
+  for a file in the same order as the compile: the folder LaTeX runs in, then the
+  project root. Before, a file of the same name next to the main document could
+  open or count in place of the one that was compiled.
+- `\input` shown in verbatim text no longer counts as an include, so the word
+  count, the project map and file links leave that file out.
+- `\input{café}` now finds a file whose name is stored in the other Unicode form,
+  which macOS can do. Preflight no longer says it is missing, and the word count
+  includes it.
+- The word count now includes a file named from the project root inside a
+  subfolder, such as `\input{chapters/two}` in `chapters/one.tex`. Before, those
+  words were left out.
 
 ## [0.4.11] - 2026-11-04
 
@@ -21,6 +79,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Each provider's model list has Enable all and Disable all buttons. Turn off
   a long list in one click, then switch back on the few models you use (#385).
+- A CJK font setting in Settings > Appearance > Editor sets the font for
+  Chinese, Japanese and Korean characters. Latin text stays in the Editor font,
+  so a coding font and PingFang SC or Microsoft YaHei work side by side. On
+  macOS, PingFang now shows in the font lists (#392).
+- Downloaded Lato, PT Sans and PT Serif now work by name. Typst projects find
+  them the way they find the Typst font packs. For LaTeX, Add to project in
+  Settings > Downloads copies a font into the project's fonts folder with a
+  small .fontspec file, so `\setmainfont{PT Serif}` works without options, and
+  the project still compiles on other computers (#393).
 
 ### Security
 

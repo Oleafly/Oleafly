@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use oleafly_core::context::{scan_project, ContextLimits};
+use oleafly_core::context::{scan_project_in, ContextLimits};
 use oleafly_core::LogSeverity;
 use oleafly_research::host::{CompileSummary, WorkspaceTools};
 use oleafly_research::scheduler::TaskRuntimeFuture;
@@ -209,7 +209,8 @@ fn summary_of(built: Result<BuildResult, CliError>) -> Result<CompileSummary, St
 pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
     let opened = open_project(root, None, None).map_err(|error| error.message)?;
     let main = opened.workspace.manifest().main_doc.clone();
-    let scan = scan_project(root, &main, &ContextLimits::default())
+    let compile_folder = opened.workspace.manifest().compile_dir.as_deref();
+    let scan = scan_project_in(root, &main, compile_folder, &ContextLimits::default())
         .map_err(|error| error.message().to_string())?;
     Ok(oleafly_core::context::map_view(&scan.map))
 }

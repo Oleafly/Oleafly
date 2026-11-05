@@ -251,6 +251,20 @@ describe("project index editing", () => {
 });
 
 describe("project index refreshes", () => {
+  it("analyzes again when the compile folder changes, and only then", async () => {
+    await loadProject();
+    const analyze = vi.spyOn(ProjectIntelligenceWorkerClient.prototype, "analyze");
+
+    useIndexStore.getState().setCompileFolder("paper");
+    await vi.waitFor(() => expect(analyze).toHaveBeenCalledTimes(1));
+    await settled();
+    expect(JSON.stringify(analyze.mock.calls[0])).toContain('"compileFolder":"paper"');
+
+    useIndexStore.getState().setCompileFolder("paper");
+    await settled();
+    expect(analyze).toHaveBeenCalledTimes(1);
+  });
+
   it("marks the graph as refreshing as soon as the file tree changes", async () => {
     await loadProject();
     const epoch = projectFilesystemEpoch();

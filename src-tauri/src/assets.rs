@@ -335,6 +335,165 @@ pub fn stage_template_fonts(
     Ok(())
 }
 
+#[derive(Serialize, Debug, PartialEq, Eq)]
+pub struct AddedFontPack {
+    pub family: String,
+    pub copied: Vec<String>,
+    pub fontspec: Option<String>,
+}
+
+const FONTSPEC_STYLES: [(&str, &str); 4] = [
+    ("UprightFont", "-Regular"),
+    ("BoldFont", "-Bold"),
+    ("ItalicFont", "-Italic"),
+    ("BoldItalicFont", "-BoldItalic"),
+];
+
+fn is_font_file(name: &str) -> bool {
+    Path::new(name)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|extension| {
+            ["ttf", "otf", "ttc"]
+                .iter()
+                .any(|font| extension.eq_ignore_ascii_case(font))
+        })
+}
+
+// fontspec inputs `<family without spaces>.fontspec` when it exists, so this file
+// lets `\setmainfont{PT Serif}` find the copies in fonts/ with no options.
+fn fontspec_shim(family: &str, files: &[&str]) -> Option<String> {
+    let mut extension = None;
+    let mut styles = Vec::new();
+    for (key, suffix) in FONTSPEC_STYLES {
+        let (stem, found) = files.iter().find_map(|name| {
+            let path = Path::new(name);
+            let stem = path.file_stem()?.to_str()?;
+            let found = path.extension()?.to_str()?;
+            stem.ends_with(suffix).then_some((stem, found))
+        })?;
+        if extension.is_some_and(|known| known != found) {
+            return None;
+        }
+        extension = Some(found);
+        styles.push(format!("  {key}={stem}"));
+    }
+    Some(format!(
+        "% Added by Oleafly so \\setmainfont{{{family}}} finds the font files in fonts/.\n\
+         \\defaultfontfeatures[{family}]{{\n  Path=./fonts/,\n  Extension=.{},\n{}\n}}\n",
+        extension?,
+        styles.join(",\n")
+    ))
+}
+
+struct PackFiles {
+    family: String,
+    files: Vec<(String, Vec<u8>)>,
+}
+
+// The project files one pack becomes: its fonts under fonts/, its licence renamed
+// so packs don't clash, and for LaTeX the .fontspec file at the root.
+fn pack_project_files(pack: &FontPack, source: &Path, latex: bool) -> Result<PackFiles, String> {
+    let [family] = pack.families.as_slice() else {
+        return Err(format!("font pack '{}' does not name one family", pack.id));
+    };
+    if family
+        .chars()
+        .any(|c| matches!(c, '{' | '}' | '\\' | '%') || c.is_control())
+    {
+        return Err(format!("illegal font family name: {family}"));
+    }
+    let stem: String = family.chars().filter(|c| !c.is_whitespace()).collect();
+    let mut files = Vec::new();
+    let mut font_files = Vec::new();
+    for file in &pack.files {
+        if !is_simple_filename(&file.name) {
+            return Err(format!("illegal font file name: {}", file.name));
+        }
+        let name = if is_font_file(&file.name) {
+            font_files.push(file.name.as_str());
+            file.name.clone()
+        } else {
+            format!("{stem}-{}", file.name)
+        };
+        let bytes = std::fs::read(source.join(&file.name))
+            .map_err(|e| format!("failed to read {}: {e}", file.name))?;
+        files.push((format!("fonts/{name}"), bytes));
+    }
+    let shim_name = format!("{stem}.fontspec");
+    if latex && is_simple_filename(&shim_name) {
+        if let Some(text) = fontspec_shim(family, &font_files) {
+            files.push((shim_name, text.into_bytes()));
+        }
+    }
+    Ok(PackFiles {
+        family: family.clone(),
+        files,
+    })
+}
+
+// On a case-insensitive disk an existing Fonts/ would take the files while the
+// .fontspec file names fonts/, which breaks the project on Linux.
+fn fonts_folder_case_variant(root: &Path) -> Option<String> {
+    std::fs::read_dir(root)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .find(|name| name != "fonts" && name.eq_ignore_ascii_case("fonts"))
+}
+
+fn is_latex_project(project_id: &str) -> Result<bool, String> {
+    use crate::document_engine::DocumentEngineId;
+    let meta = crate::project::read_meta(project_id)?;
+    Ok(
+        crate::document_engine::engine_for(&meta.engine, &meta.main_doc).is_ok_and(|engine| {
+            matches!(
+                engine.id(),
+                DocumentEngineId::Latex | DocumentEngineId::Latexmk
+            )
+        }),
+    )
+}
+
+#[tauri::command]
+pub async fn add_font_pack_to_project(
+    app: AppHandle,
+    project_id: String,
+    id: String,
+) -> Result<AddedFontPack, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
+    let pack = find_pack(&app, &id)?;
+    if pack.typst {
+        return Err(format!("font pack '{id}' is for Typst"));
+    }
+    if !pack_installed(&pack) {
+        return Err(format!(
+            "Font pack '{id}' is not installed. Download it first."
+        ));
+    }
+    let source = pack_dir(&pack)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = crate::project_location::locate(&project_id)?.root;
+        if let Some(name) = fonts_folder_case_variant(&root) {
+            return Err(format!(
+                "This project has a folder named {name}. Rename it to fonts, then try again."
+            ));
+        }
+        let planned = pack_project_files(&pack, &source, is_latex_project(&project_id)?)?;
+        let written = crate::project::add_missing_project_files(&project_id, &planned.files)?;
+        let (fontspec, copied): (Vec<String>, Vec<String>) = written
+            .into_iter()
+            .partition(|path| path.ends_with(".fontspec"));
+        Ok(AddedFontPack {
+            family: planned.family,
+            copied,
+            fontspec: fontspec.into_iter().next(),
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -368,6 +527,146 @@ mod tests {
             assert!(!p.families.is_empty(), "families listed: {}", p.id);
             assert!(p.id.starts_with("typst-"), "typst pack id: {}", p.id);
         }
+    }
+
+    #[test]
+    fn template_packs_name_one_family_with_all_four_styles() {
+        for p in repo_catalog().iter().filter(|p| !p.typst) {
+            assert_eq!(p.families.len(), 1, "one family: {}", p.id);
+            let files: Vec<&str> = p
+                .files
+                .iter()
+                .map(|f| f.name.as_str())
+                .filter(|name| is_font_file(name))
+                .collect();
+            assert!(
+                fontspec_shim(&p.families[0], &files).is_some(),
+                "fontspec file for {}",
+                p.id
+            );
+        }
+    }
+
+    fn template_pack() -> FontPack {
+        let file = |name: &str| AssetFile {
+            name: name.into(),
+            url: format!("https://example.invalid/{name}"),
+            sha256: None,
+        };
+        FontPack {
+            id: "ptserif".into(),
+            label: "PT Serif".into(),
+            description: String::new(),
+            approx_bytes: 0,
+            license: None,
+            files: vec![
+                file("PTSerif-Regular.ttf"),
+                file("PTSerif-Bold.ttf"),
+                file("PTSerif-Italic.ttf"),
+                file("PTSerif-BoldItalic.ttf"),
+                file("OFL.txt"),
+            ],
+            typst: false,
+            families: vec!["PT Serif".into()],
+        }
+    }
+
+    fn installed(pack: &FontPack) -> tempfile::TempDir {
+        let source = tempfile::tempdir().unwrap();
+        for f in &pack.files {
+            std::fs::write(source.path().join(&f.name), f.name.as_bytes()).unwrap();
+        }
+        source
+    }
+
+    fn planned_paths(planned: &PackFiles) -> Vec<&str> {
+        planned
+            .files
+            .iter()
+            .map(|(path, _)| path.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn a_pack_becomes_its_fonts_a_renamed_licence_and_a_fontspec_file() {
+        let pack = template_pack();
+        let source = installed(&pack);
+        let planned = pack_project_files(&pack, source.path(), true).unwrap();
+        assert_eq!(planned.family, "PT Serif");
+        assert_eq!(
+            planned_paths(&planned),
+            [
+                "fonts/PTSerif-Regular.ttf",
+                "fonts/PTSerif-Bold.ttf",
+                "fonts/PTSerif-Italic.ttf",
+                "fonts/PTSerif-BoldItalic.ttf",
+                "fonts/PTSerif-OFL.txt",
+                "PTSerif.fontspec",
+            ]
+        );
+        assert_eq!(planned.files[4].1, b"OFL.txt");
+        let shim = String::from_utf8(planned.files[5].1.clone()).unwrap();
+        assert!(shim.contains("\\defaultfontfeatures[PT Serif]{"));
+        for line in [
+            "Path=./fonts/,",
+            "Extension=.ttf,",
+            "UprightFont=PTSerif-Regular,",
+            "BoldFont=PTSerif-Bold,",
+            "ItalicFont=PTSerif-Italic,",
+            "BoldItalicFont=PTSerif-BoldItalic\n}",
+        ] {
+            assert!(shim.contains(line), "{line} in {shim}");
+        }
+    }
+
+    #[test]
+    fn a_typst_project_gets_the_fonts_without_a_fontspec_file() {
+        let pack = template_pack();
+        let source = installed(&pack);
+        let planned = pack_project_files(&pack, source.path(), false).unwrap();
+        assert!(planned_paths(&planned)
+            .iter()
+            .all(|path| path.starts_with("fonts/")));
+    }
+
+    #[test]
+    fn a_pack_without_all_four_styles_gets_no_fontspec_file() {
+        let mut pack = template_pack();
+        pack.files.retain(|f| f.name != "PTSerif-BoldItalic.ttf");
+        let source = installed(&pack);
+        let planned = pack_project_files(&pack, source.path(), true).unwrap();
+        assert!(planned_paths(&planned).contains(&"fonts/PTSerif-Regular.ttf"));
+        assert!(!planned_paths(&planned).contains(&"PTSerif.fontspec"));
+    }
+
+    #[test]
+    fn family_names_that_would_break_the_fontspec_file_are_refused() {
+        let mut pack = template_pack();
+        pack.families = vec!["PT} Serif".into()];
+        let source = installed(&pack);
+        assert!(pack_project_files(&pack, source.path(), true).is_err());
+    }
+
+    #[test]
+    fn a_missing_pack_file_fails_before_anything_is_written() {
+        let pack = template_pack();
+        let source = installed(&pack);
+        std::fs::remove_file(source.path().join("PTSerif-Bold.ttf")).unwrap();
+        assert!(pack_project_files(&pack, source.path(), true).is_err());
+    }
+
+    #[test]
+    fn a_fonts_folder_in_another_case_is_reported() {
+        let project = tempfile::tempdir().unwrap();
+        assert_eq!(fonts_folder_case_variant(project.path()), None);
+        std::fs::create_dir(project.path().join("fonts")).unwrap();
+        assert_eq!(fonts_folder_case_variant(project.path()), None);
+        let other = tempfile::tempdir().unwrap();
+        std::fs::create_dir(other.path().join("Fonts")).unwrap();
+        assert_eq!(
+            fonts_folder_case_variant(other.path()).as_deref(),
+            Some("Fonts")
+        );
     }
 
     #[test]

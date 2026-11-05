@@ -689,6 +689,9 @@ export const readAppLogChunked = (maxBytes: number) =>
     invoke<void>("read_app_log_chunked", { maxBytes, channel }),
   );
 
+export const projectCompileFolder = (projectId: string, mainDoc: string) =>
+  invoke<string | null>("project_compile_folder", { projectId, mainDoc });
+
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
 
@@ -897,6 +900,15 @@ export const removeFontComponent = (id: string) =>
   invoke<void>("remove_font_component", { id });
 
 export const downloadAllFonts = () => invoke<void>("download_all_fonts");
+
+export interface AddedFontPack {
+  family: string;
+  copied: string[];
+  fontspec: string | null;
+}
+
+export const addFontPackToProject = (projectId: string, id: string) =>
+  invoke<AddedFontPack>("add_font_pack_to_project", { projectId, id });
 
 export const listDictionaries = () =>
   invoke<DictionaryInfo[]>("list_dictionaries");
