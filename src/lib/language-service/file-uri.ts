@@ -39,7 +39,7 @@ export function fileUriForProjectPath(workspaceRoot: string, path = ""): string 
   }
   const rooted = absolute.startsWith("/") ? absolute : `/${absolute}`;
   const encoded = encodePath(rooted.split("/"));
-  return `file://${/^\/[A-Za-z]:$/.test(rooted) ? `${encoded}/` : encoded}`;
+  return /^\/[A-Za-z]:$/.test(rooted) ? `file://${encoded}/` : `file://${encoded}`;
 }
 
 function pathForFileUri(uri: string): string | null {
