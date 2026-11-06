@@ -623,7 +623,7 @@
       "tabLabel": "Narzędzia",
       "loading": "Wczytywanie ustawień Narzędzi…",
       "modelTitle": "Model dla Narzędzi",
-      "modelDescription": "Konwersja obrazu na LaTeX, obrazy równań i zeskanowane pliki PDF używają tego modelu. Wybór automatyczny korzysta z Ollama, więc obrazy zostają na tym komputerze. Jeśli Ollama nie działa albo nie ma modelu, który czyta obrazy, konwersje obrazu na LaTeX i na Typst w edytorze wysyłają obraz do modelu asystenta.",
+      "modelDescription": "Konwersja obrazu na LaTeX, obrazy równań i zeskanowane pliki PDF używają tego modelu. Wybór automatyczny korzysta z Ollama, więc obrazy zostają na tym komputerze. Jeśli Ollama nie działa albo nie ma modelu, który czyta obrazy, konwersje obrazu na LaTeX i na Typst w edytorze wysyłają obraz do modelu asystenta. Możesz też wybrać podłączonego agenta wiersza poleceń, na przykład Claude Code. Używa Twojego własnego logowania, więc nie potrzebuje klucza API.",
       "ocrHint": "Aby uzyskać najlepsze wyniki lokalnie, pobierz w Ollama model OCR:",
       "mathpix": {
         "title": "Mathpix",

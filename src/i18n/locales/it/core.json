@@ -22,7 +22,8 @@
     "warned": "Questo progetto ha usato {{spent}} del suo budget AI di {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Per questa azione è stato usato l'assistente Oleafly."
+    "handoffRuntimeSwitch": "Per questa azione è stato usato l'assistente Oleafly.",
+    "handoffToCli": "L'assistente Oleafly non ha un provider AI, quindi la richiesta è andata al tuo agente da riga di comando."
   },
   "bibtex": {
     "duplicateDoi": "DOI duplicato, condiviso con: {{keys}}",

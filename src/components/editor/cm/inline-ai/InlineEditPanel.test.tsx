@@ -136,6 +136,16 @@ describe("InlineEditPanel", () => {
     expect(useSettingsStore.getState().settingsInitialSection).toBe("ai");
   });
 
+  it("edits with the CLI agent picked for Tools when no provider is set up", async () => {
+    tauri.getConfig.mockResolvedValue({
+      ai_tools_model: { provider: "acp:claude", model: "default", label: "Claude Code" },
+    });
+    openSession();
+    await renderPanel();
+    expect(screen.queryByText(inlineAi.setUpProvider)).toBeNull();
+    expect(promptBox()).toBeEnabled();
+  });
+
   it("keeps the prompt usable when the config cannot be read", async () => {
     tauri.getConfig.mockRejectedValue(new Error("no config"));
     openSession();

@@ -22,7 +22,8 @@
     "warned": "Tento projekt využil {{spent}} ze svého rozpočtu na AI ve výši {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Pro tuto akci se přepnulo na asistenta Oleafly."
+    "handoffRuntimeSwitch": "Pro tuto akci se přepnulo na asistenta Oleafly.",
+    "handoffToCli": "Asistent Oleafly nemá poskytovatele AI, proto to šlo vašemu agentovi CLI."
   },
   "bibtex": {
     "duplicateDoi": "Duplicitní DOI sdílené s: {{keys}}",

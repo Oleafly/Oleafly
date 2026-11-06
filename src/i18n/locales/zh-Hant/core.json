@@ -22,7 +22,8 @@
     "warned": "本專案的 AI 預算為 {{budget}}，已使用 {{spent}}。"
   },
   "assistant": {
-    "handoffRuntimeSwitch": "此動作已切換至 Oleafly 助理。"
+    "handoffRuntimeSwitch": "此動作已切換至 Oleafly 助理。",
+    "handoffToCli": "Oleafly 助理沒有 AI 供應商，因此已交給你的 CLI 代理程式。"
   },
   "bibtex": {
     "duplicateDoi": "DOI 與下列條目重複：{{keys}}",

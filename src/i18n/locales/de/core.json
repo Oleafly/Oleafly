@@ -22,7 +22,8 @@
     "warned": "Dieses Projekt hat {{spent}} seines KI-Budgets von {{budget}} verbraucht."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Für diese Aktion wurde zum Oleafly Assistenten gewechselt."
+    "handoffRuntimeSwitch": "Für diese Aktion wurde zum Oleafly Assistenten gewechselt.",
+    "handoffToCli": "Der Oleafly Assistent hat keinen KI-Anbieter, daher ging dies an Ihren Kommandozeilenagenten."
   },
   "bibtex": {
     "duplicateDoi": "Doppelte DOI, geteilt mit: {{keys}}",

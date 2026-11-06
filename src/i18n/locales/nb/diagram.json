@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Koble til en AI-leverandør i Innstillinger for å bruke Fiks med AI.",
+    "aiProviderRequired": "Koble til en AI-leverandør i Innstillinger, eller velg en kommandolinjeagent som modell for Verktøy, for å bruke Fiks med AI.",
     "fixFailed": "Fiksen mislyktes: {{detail}}"
   },
   "chooser": {

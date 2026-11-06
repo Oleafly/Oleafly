@@ -2906,3 +2906,23 @@ fn a_bridge_found_by_name_reports_the_version_of_its_package() {
     );
     assert_eq!(bridge_package_version("other-acp", &located), None);
 }
+
+#[test]
+fn settings_that_say_how_claude_logs_in_are_kept_for_a_reading_turn() {
+    for settings in [
+        json!({"env": {"ANTHROPIC_BASE_URL": "https://gateway.example"}}),
+        json!({"env": {"CLAUDE_CODE_USE_BEDROCK": "1"}}),
+        json!({"env": {"CLAUDE_CODE_USE_VERTEX": "1", "GOOGLE_CLOUD_PROJECT": "lab"}}),
+        json!({"apiKeyHelper": "/usr/local/bin/key"}),
+        json!({"awsAuthRefresh": "aws sso login"}),
+    ] {
+        assert!(settings_hold_claude_login(&settings), "{settings}");
+    }
+    for settings in [
+        json!({}),
+        json!({"env": {"EDITOR": "vim"}, "model": "opus"}),
+        json!({"apiKeyHelper": ""}),
+    ] {
+        assert!(!settings_hold_claude_login(&settings), "{settings}");
+    }
+}

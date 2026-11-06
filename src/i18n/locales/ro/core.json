@@ -22,7 +22,8 @@
     "warned": "Acest proiect a folosit {{spent}} din bugetul său AI de {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "S-a trecut la asistentul Oleafly pentru această acțiune."
+    "handoffRuntimeSwitch": "S-a trecut la asistentul Oleafly pentru această acțiune.",
+    "handoffToCli": "Asistentul Oleafly nu are un furnizor AI, așa că cererea a mers la agentul tău din linia de comandă."
   },
   "bibtex": {
     "duplicateDoi": "DOI duplicat, comun cu: {{keys}}",

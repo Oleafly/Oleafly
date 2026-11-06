@@ -22,7 +22,8 @@
     "warned": "Dự án này đã dùng {{spent}} trong hạn mức AI {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Đã chuyển sang trợ lý Oleafly cho thao tác này."
+    "handoffRuntimeSwitch": "Đã chuyển sang trợ lý Oleafly cho thao tác này.",
+    "handoffToCli": "Trợ lý Oleafly chưa có nhà cung cấp AI, nên yêu cầu này đã được gửi tới CLI agent của bạn."
   },
   "bibtex": {
     "duplicateDoi": "DOI trùng với: {{keys}}",

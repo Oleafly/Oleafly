@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Collega un provider AI nelle impostazioni per usare Correggi con l'AI.",
+    "aiProviderRequired": "Collega un provider AI nelle impostazioni, oppure scegli un agente da riga di comando come modello per gli Strumenti, per usare Correggi con l'AI.",
     "fixFailed": "Correzione non riuscita: {{detail}}"
   },
   "chooser": {

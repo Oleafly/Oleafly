@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Forbind en AI-udbyder under Indstillinger for at bruge Ret med AI.",
+    "aiProviderRequired": "Forbind en AI-udbyder under Indstillinger, eller vælg en kommandolinjeagent som model til Værktøjer, for at bruge Ret med AI.",
     "fixFailed": "Rettelsen mislykkedes: {{detail}}"
   },
   "chooser": {

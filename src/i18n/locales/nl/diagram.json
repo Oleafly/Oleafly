@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Verbind een AI-provider bij Instellingen om Repareren met AI te gebruiken.",
+    "aiProviderRequired": "Verbind een AI-provider bij Instellingen, of kies een CLI-agent als model voor Hulpmiddelen, om Repareren met AI te gebruiken.",
     "fixFailed": "Reparatie mislukt: {{detail}}"
   },
   "chooser": {

@@ -8,9 +8,14 @@ const mocks = vi.hoisted(() => ({
   setConfig: vi.fn(),
   listOllamaModelDetails: vi.fn(),
   mathpixKeyStatus: vi.fn(),
+  acpCatalog: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({ getConfig: mocks.getConfig, setConfig: mocks.setConfig }));
+vi.mock("@/lib/acp", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/acp")>()),
+  acpCatalog: mocks.acpCatalog,
+}));
 vi.mock("@/lib/ollama", () => ({
   DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
   listOllamaModelDetails: mocks.listOllamaModelDetails,
@@ -67,6 +72,7 @@ beforeEach(() => {
   mocks.setConfig.mockResolvedValue(undefined);
   mocks.listOllamaModelDetails.mockResolvedValue([vision("llava")]);
   mocks.mathpixKeyStatus.mockResolvedValue({ configured: true, appId: "APP" });
+  mocks.acpCatalog.mockResolvedValue([]);
 });
 
 describe("automatic local model", () => {
@@ -355,6 +361,75 @@ describe("explicit choices", () => {
 function listOllamaModelDetailsCalls(): number {
   return mocks.listOllamaModelDetails.mock.calls.length;
 }
+
+describe("a CLI agent as the Tools model", () => {
+  const choice = { ai_tools_model: { provider: "acp:claude", model: "opus", label: "Claude Code" } };
+  const agent = (overrides = {}) => ({
+    definition: { id: "claude", name: "Claude Code" },
+    installed: true,
+    canInstall: true,
+    cli: null,
+    ...overrides,
+  });
+
+  it("resolves with no API key, and counts as hosted", async () => {
+    mocks.getConfig.mockResolvedValue(config(choice));
+    mocks.acpCatalog.mockResolvedValue([agent()]);
+    await expect(resolveToolsModel("image")).resolves.toMatchObject({
+      engine: "llm",
+      providerId: "acp:claude",
+      modelId: "opus",
+      label: "Claude Code (opus)",
+      agentName: "Claude Code",
+      hosted: true,
+      profile: null,
+      destination: { kind: "provider", providerId: "acp:claude", name: "Claude Code" },
+    });
+  });
+
+  it("points at the agent's settings when it isn't set up", async () => {
+    mocks.getConfig.mockResolvedValue(config(choice));
+    const error = await resolveToolsModel("image").catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ToolsModelError);
+    expect((error as ToolsModelError).settings).toBe("ai-agents");
+    expect((error as ToolsModelError).message).toBe(
+      researchTools.converterModel.errors.agentNotReady.replace("{{agent}}", "Claude Code"),
+    );
+
+    mocks.acpCatalog.mockResolvedValue([agent({ installed: false, canInstall: false })]);
+    await expect(resolveToolsModel("image")).rejects.toMatchObject({ settings: "ai-agents" });
+  });
+
+  it("treats a catalog that can't be read like an agent that isn't set up", async () => {
+    mocks.getConfig.mockResolvedValue(config(choice));
+    mocks.acpCatalog.mockRejectedValue(new Error("no runtime"));
+    await expect(resolveToolsModel("image")).rejects.toMatchObject({ settings: "ai-agents" });
+  });
+
+  it("refuses an image for an agent known not to read them, but takes typed equations", async () => {
+    mocks.getConfig.mockResolvedValue(config(choice));
+    mocks.acpCatalog.mockResolvedValue([agent({ runtime: { image: false } })]);
+    await expect(resolveToolsModel("image")).rejects.toThrow(
+      researchTools.converterModel.errors.cannotSeeImages.replace("{{model}}", "Claude Code"),
+    );
+    await expect(resolveToolsModel("equation-text")).resolves.toMatchObject({ providerId: "acp:claude" });
+  });
+
+  it("refuses an agent that can't be held to reading, for typed equations too", async () => {
+    mocks.getConfig.mockResolvedValue(config(choice));
+    mocks.acpCatalog.mockResolvedValue([agent({ runtime: { readOnly: false } })]);
+    const refused = researchTools.converterModel.errors.agentNeedsReadOnly.replace("{{agent}}", "Claude Code");
+    await expect(resolveToolsModel("image")).rejects.toThrow(refused);
+    await expect(resolveToolsModel("equation-text")).rejects.toThrow(refused);
+  });
+
+  it("needs a connection, so offline mode refuses it", async () => {
+    mocks.getConfig.mockResolvedValue(config(choice));
+    mocks.acpCatalog.mockResolvedValue([agent()]);
+    useSettingsStore.setState({ offline: true });
+    await expect(resolveToolsModel("image")).rejects.toThrow(researchTools.converterModel.errors.offline);
+  });
+});
 
 describe("the editor's fallback to the assistant's model", () => {
   const anthropicAssistant = (overrides: Partial<AppConfig> = {}) =>

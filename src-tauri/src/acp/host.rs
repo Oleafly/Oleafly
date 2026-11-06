@@ -6,13 +6,17 @@ use serde_json::Value;
 
 use super::runtime::{AcpRuntime, LiveSession};
 
-fn shows_auth_status(params: &Value) -> bool {
+pub(super) fn auth_status_kind(params: &Value) -> Option<&str> {
     let status = if params["authStatus"].is_object() {
         &params["authStatus"]
     } else {
         params
     };
-    status["kind"] != "none"
+    status["kind"].as_str()
+}
+
+fn shows_auth_status(params: &Value) -> bool {
+    auth_status_kind(params) != Some("none")
 }
 
 pub(super) struct SessionHost {

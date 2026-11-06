@@ -630,7 +630,7 @@ function ProgramResult({
             <SettingsPathText text={displayText(message)} />
           </span>
         </output>
-        {agent.signInHint && (
+        {agent.signInHint && !check.signedIn && (
           <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">{agent.signInHint}</p>
         )}
       </div>

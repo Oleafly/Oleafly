@@ -62,6 +62,9 @@ export interface AcpAgentRuntimeInfo {
   logout: boolean;
   authMethods: AcpAuthMethod[];
   checkedAt: number;
+  image?: boolean | null;
+  models?: { modelId: string; name: string }[] | null;
+  readOnly?: boolean | null;
 }
 export type AcpRejectReason = "not_found" | "is_directory" | "not_executable" | "unsupported_script" | "gui_program" | "interpreter" | "network_path";
 export interface AcpRejectedCandidate { path: string; reason: AcpRejectReason }
@@ -86,6 +89,7 @@ export interface AcpAgentCheck {
   version: string | null;
   agentName: string | null;
   authMethods?: AcpAuthMethod[];
+  signedIn?: boolean;
 }
 export type AcpReadiness = "ready" | "bridge-missing" | "cli-missing" | "unavailable";
 export function acpReadiness(agent: AcpAgentStatus): AcpReadiness {

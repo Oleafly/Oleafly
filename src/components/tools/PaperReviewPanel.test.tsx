@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const getConfig = vi.fn(async () => ({}) as unknown);
 const hasConfiguredProvider = vi.fn((_config?: unknown) => true);
@@ -104,6 +104,17 @@ describe("PaperReviewPanel", () => {
       await screen.findByText(enResearchTools.review.needsProvider),
     ).toBeInTheDocument();
     expect(screen.getByTestId("paper-review-run")).toBeDisabled();
+  });
+
+  it("runs on the CLI agent picked for Tools when no AI provider is set up", async () => {
+    hasConfiguredProvider.mockReturnValue(false);
+    getConfig.mockResolvedValue({ ai_tools_model: { provider: "acp:claude", model: "default", label: "Claude Code" } });
+    render(<PaperReviewPanel />);
+    await waitFor(() => expect(getConfig).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.queryByText(enResearchTools.review.needsProvider)).toBeNull();
   });
 
   it("explains that there is no source text without a project", async () => {

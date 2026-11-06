@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "要使用 AI 修复，请先在设置中连接 AI 提供商。",
+    "aiProviderRequired": "要使用 AI 修复，请先在设置中连接 AI 提供商，或将命令行代理选为工具所用模型。",
     "fixFailed": "修复失败：{{detail}}"
   },
   "chooser": {

@@ -22,7 +22,8 @@
     "warned": "Ten projekt zużył {{spent}} z budżetu AI wynoszącego {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Przełączono na asystenta Oleafly na potrzeby tego działania."
+    "handoffRuntimeSwitch": "Przełączono na asystenta Oleafly na potrzeby tego działania.",
+    "handoffToCli": "Asystent Oleafly nie ma dostawcy AI, więc to trafiło do Twojego agenta wiersza poleceń."
   },
   "bibtex": {
     "duplicateDoi": "Zduplikowany DOI współdzielony z: {{keys}}",

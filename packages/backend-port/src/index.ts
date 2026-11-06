@@ -871,6 +871,7 @@ export interface AppConfig {
 export interface ToolsModelChoice {
     provider: string;
     model: string;
+    label?: string | null;
 }
 export type McpServerConfig = {
     name: string;

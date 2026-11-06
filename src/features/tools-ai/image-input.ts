@@ -1,8 +1,10 @@
 // Reading an image for the Tools and fitting it to where it goes. A local
 // Ollama model gets the original bytes, unless a PNG can be transparent: that
 // one is drawn onto white first, as for every model. Hosted models get at most 2,000 px
-// and 3.75 MB (base64 stays under the 5 MB every hosted API accepts), and
-// Mathpix gets PNG or JPEG under 1.45 MB (its base64 limit is 2 MB).
+// and 3.75 MB (base64 stays under the 5 MB every hosted API accepts), a CLI
+// agent gets at most 760 KB (one ACP message is capped at 1 MiB, and base64
+// grows the image by a third), and Mathpix gets PNG or JPEG under 1.45 MB (its
+// base64 limit is 2 MB).
 import { i18n } from "@/i18n";
 import { base64ToBytes, bytesToBase64 } from "@/lib/base64";
 import { downscaleImage, type Downscaler } from "./image-downscale";
@@ -28,10 +30,12 @@ const ANY_FORMAT: readonly ToolImageMime[] = ["image/png", "image/jpeg", "image/
 export const IMAGE_BUDGETS: {
   readonly local: ImageBudget;
   readonly hosted: ImageBudget;
+  readonly agent: ImageBudget;
   readonly mathpix: ImageBudget;
 } = {
   local: { maxEdge: null, maxBytes: MAX_TOOL_IMAGE_BYTES, accept: ANY_FORMAT },
   hosted: { maxEdge: 2_000, maxBytes: 3_750_000, accept: ANY_FORMAT },
+  agent: { maxEdge: 2_000, maxBytes: 760_000, accept: ANY_FORMAT },
   mathpix: { maxEdge: 2_000, maxBytes: 1_450_000, accept: ["image/png", "image/jpeg"] },
 };
 

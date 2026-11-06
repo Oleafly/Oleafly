@@ -621,7 +621,8 @@ impl AcpRuntime {
         let _startup = self.begin_startup()?;
         let saved = self.store.agent_program(id)?;
         let mut check = super::setup::check_agent(&self.root, &definition, candidate, saved).await;
-        if let Some(runtime) = check.runtime.take() {
+        if let Some(mut runtime) = check.runtime.take() {
+            runtime.keep_session_facts(self.store.agent_runtime(id).ok().flatten());
             let _ = self.store.set_agent_runtime(id, &runtime);
         }
         Ok(check)
@@ -1704,8 +1705,19 @@ impl AcpRuntime {
                 Err(error) => self.routing_notice(session, agent_prefs.provider.as_deref(), &error),
             }
         }
+        info.keep_session_facts(self.store.agent_runtime(&agent_id).ok().flatten());
         let _ = self.store.set_agent_runtime(&agent_id, &info);
-        self.establish(session).await.map_err(InitFailure::Failed)
+        self.establish(session).await.map_err(InitFailure::Failed)?;
+        if let Ok(record) = self.copy_record(session) {
+            if !record.controls.models.is_empty() {
+                let read_only = self.definition(&agent_id).is_ok_and(|definition| {
+                    super::one_shot::holds_to_reading(&definition, &record.controls)
+                });
+                info.remember_session(&record.controls, read_only);
+                let _ = self.store.set_agent_runtime(&agent_id, &info);
+            }
+        }
+        Ok(())
     }
 
     fn never_prompted(&self, record: &SessionRecord) -> bool {

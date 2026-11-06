@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Connectez un fournisseur d'IA dans les Paramètres pour utiliser Corriger avec l'IA.",
+    "aiProviderRequired": "Connectez un fournisseur d'IA dans les Paramètres, ou choisissez un agent en ligne de commande comme modèle pour les Outils, pour utiliser Corriger avec l'IA.",
     "fixFailed": "La correction a échoué : {{detail}}"
   },
   "chooser": {

@@ -22,7 +22,8 @@
     "warned": "Tämä projekti on käyttänyt {{spent}} tekoälybudjetistaan {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Tähän toimintoon vaihdettiin Oleafly-avustaja."
+    "handoffRuntimeSwitch": "Tähän toimintoon vaihdettiin Oleafly-avustaja.",
+    "handoffToCli": "Oleafly-avustajalla ei ole tekoälypalvelua, joten tämä lähti komentoriviagentillesi."
   },
   "bibtex": {
     "duplicateDoi": "Sama DOI myös viitteissä: {{keys}}",

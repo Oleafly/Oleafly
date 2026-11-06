@@ -1185,6 +1185,14 @@ const CODEX_TASKS_VERIFIED_ON: &[&str] = &["linux"];
 const PI_TASKS_VERIFIED_ON: &[&str] = &[];
 const ANTIGRAVITY_TASKS_VERIFIED_ON: &[&str] = &[];
 
+pub(crate) fn is_claude(definition: &AgentDefinition) -> bool {
+    definition.id == "claude"
+        || definition.distribution.npx.as_ref().is_some_and(|package| {
+            package_parts(&package.package, true)
+                .is_ok_and(|(name, _)| name == "@agentclientprotocol/claude-agent-acp")
+        })
+}
+
 pub(crate) fn is_codex(definition: &AgentDefinition) -> bool {
     definition.id == "codex"
         || definition.distribution.npx.as_ref().is_some_and(|package| {
@@ -1631,6 +1639,24 @@ fn cli_status(
 }
 
 const CLAUDE_GATEWAY_VARIABLES: [&str; 2] = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"];
+const CLAUDE_TOKEN_VARIABLES: [&str; 2] = [
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+];
+const CLAUDE_LOGIN_ENV_PREFIXES: [&str; 6] = [
+    "ANTHROPIC_",
+    "CLAUDE_CODE_USE_",
+    "CLAUDE_CODE_OAUTH_",
+    "AWS_",
+    "GOOGLE_",
+    "VERTEX_",
+];
+const CLAUDE_LOGIN_SETTINGS: [&str; 4] = [
+    "apiKeyHelper",
+    "awsAuthRefresh",
+    "awsCredentialExport",
+    "gcpAuthRefresh",
+];
 const CLAUDE_SETTINGS_LIMIT: u64 = 1024 * 1024;
 
 fn claude_settings(path: &Path) -> Option<Value> {
@@ -1647,24 +1673,78 @@ fn claude_settings(path: &Path) -> Option<Value> {
     serde_json::from_slice(&bytes).ok()
 }
 
+fn claude_user_settings(
+    env: &dyn Fn(&str) -> Option<OsString>,
+    home: Option<&Path>,
+) -> Option<Value> {
+    let folder = env("CLAUDE_CONFIG_DIR")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| home.map(|home| home.join(".claude")))?;
+    claude_settings(&folder.join("settings.json"))
+}
+
+fn setting_is_set(value: Option<&Value>) -> bool {
+    value.is_some_and(|value| !value.is_null() && value != "")
+}
+
 fn claude_uses_gateway(env: &dyn Fn(&str) -> Option<OsString>, home: Option<&Path>) -> bool {
     let present = |name: &str| env(name).is_some_and(|value| !value.is_empty());
     if CLAUDE_GATEWAY_VARIABLES.iter().any(|name| present(name)) {
         return true;
     }
-    let folder = env("CLAUDE_CONFIG_DIR")
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-        .or_else(|| home.map(|home| home.join(".claude")));
-    let Some(settings) = folder.and_then(|folder| claude_settings(&folder.join("settings.json")))
-    else {
+    let Some(settings) = claude_user_settings(env, home) else {
         return false;
     };
-    let set = |value: Option<&Value>| value.is_some_and(|value| !value.is_null() && value != "");
     CLAUDE_GATEWAY_VARIABLES
         .iter()
-        .any(|name| set(settings.get("env").and_then(|env| env.get(name))))
-        || set(settings.get("apiKeyHelper"))
+        .any(|name| setting_is_set(settings.get("env").and_then(|env| env.get(name))))
+        || setting_is_set(settings.get("apiKeyHelper"))
+}
+
+/// Whether settings.json says how Claude Code logs in: a gateway, an API key,
+/// or a cloud provider and its credentials.
+fn settings_hold_claude_login(settings: &Value) -> bool {
+    let env = settings.get("env").and_then(Value::as_object);
+    env.is_some_and(|env| {
+        env.keys().any(|name| {
+            CLAUDE_LOGIN_ENV_PREFIXES
+                .iter()
+                .any(|prefix| name.starts_with(prefix))
+        })
+    }) || CLAUDE_LOGIN_SETTINGS
+        .iter()
+        .any(|name| setting_is_set(settings.get(name)))
+}
+
+pub(crate) fn claude_gateway(definition: &AgentDefinition) -> bool {
+    definition.id == "claude"
+        && claude_uses_gateway(
+            &locator::host_env(),
+            crate::paths::home_dir().ok().as_deref(),
+        )
+}
+
+pub(crate) fn claude_login_in_settings(definition: &AgentDefinition) -> bool {
+    is_claude(definition)
+        && claude_user_settings(
+            &locator::host_env(),
+            crate::paths::home_dir().ok().as_deref(),
+        )
+        .is_some_and(|settings| settings_hold_claude_login(&settings))
+}
+
+/// Claude Code reports these logins as `kind: "none"` although they work: a
+/// gateway, and a token from `claude setup-token` in the environment.
+pub(crate) fn claude_login_unreported(definition: &AgentDefinition) -> bool {
+    if !is_claude(definition) {
+        return false;
+    }
+    let env = locator::host_env();
+    CLAUDE_TOKEN_VARIABLES
+        .iter()
+        .any(|name| env(name).is_some_and(|value| !value.is_empty()))
+        || claude_uses_gateway(&env, crate::paths::home_dir().ok().as_deref())
 }
 
 fn sign_in_hint(
@@ -1793,11 +1873,7 @@ impl StatusFacts {
             install_reason: install_reason(definition),
             reachable,
             plan,
-            claude_gateway: definition.id == "claude"
-                && claude_uses_gateway(
-                    &locator::host_env(),
-                    crate::paths::home_dir().ok().as_deref(),
-                ),
+            claude_gateway: claude_gateway(definition),
         }
     }
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import researchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import type { AppConfig, StoredModel } from "@/lib/tauri";
 import {
+  agentModelLabel,
   choiceFromSelection,
   describeToolsChoice,
   destinationName,
@@ -9,6 +10,7 @@ import {
   isLoopbackHost,
   ollamaModelIsRemote,
   ollamaModelSeesImages,
+  toolsAgentId,
   toolsChoice,
   toolsDestination,
   toolsImageReady,
@@ -273,5 +275,44 @@ describe("Tools model choice", () => {
       ai_custom_providers: [{ id: "corp", name: "Corp", baseURL: "https://models.example/v1", keyOptional: false }],
     });
     expect(toolsProviderConfigured(cfg, "corp")).toBe(false);
+  });
+});
+
+describe("a CLI agent as the Tools model", () => {
+  const claude = { ai_tools_model: { provider: "acp:claude", model: "opus", label: "Claude Code" } };
+
+  it("is known by its provider prefix", () => {
+    expect(toolsAgentId("acp:claude")).toBe("claude");
+    expect(toolsAgentId("acp:")).toBeNull();
+    expect(toolsAgentId("anthropic")).toBeNull();
+  });
+
+  it("keeps the agent's name with the choice", () => {
+    expect(choiceFromSelection("acp:claude", "opus", "Claude Code")).toEqual(claude.ai_tools_model);
+    expect(choiceFromSelection("anthropic", "claude-opus-5-5")).toEqual({
+      provider: "anthropic",
+      model: "claude-opus-5-5",
+    });
+  });
+
+  it("says the image goes to the agent, by name", () => {
+    const summary = describeToolsChoice(config(claude));
+    expect(summary.destination).toEqual({ kind: "provider", providerId: "acp:claude", name: "Claude Code" });
+    expect(summary.label).toBe("Claude Code (opus)");
+    expect(destinationName(summary.destination)).toBe("Claude Code");
+  });
+
+  it("names the agent alone for its default model", () => {
+    expect(agentModelLabel("Claude Code", "default")).toBe("Claude Code");
+    expect(agentModelLabel("Claude Code", "")).toBe("Claude Code");
+  });
+
+  it("falls back to the agent's id when no name was saved", () => {
+    const summary = describeToolsChoice(config({ ai_tools_model: { provider: "acp:claude", model: "default" } }));
+    expect(destinationName(summary.destination)).toBe("claude");
+  });
+
+  it("is ready without any API key, so the editor offers Image to LaTeX", () => {
+    expect(toolsImageReady(config(claude))).toBe(true);
   });
 });

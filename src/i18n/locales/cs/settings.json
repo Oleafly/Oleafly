@@ -623,7 +623,7 @@
       "tabLabel": "Nástroje",
       "loading": "Načítá se nastavení Nástrojů…",
       "modelTitle": "Model pro Nástroje",
-      "modelDescription": "Tento model používají převod obrázku do LaTeXu, obrázky rovnic a naskenovaná PDF. Automatická volba používá Ollama, takže obrázky zůstávají v tomto počítači. Pokud Ollama neběží nebo nemá žádný model, který čte obrázky, převod obrázku do LaTeXu a do Typstu v editoru pošle obrázek modelu asistenta.",
+      "modelDescription": "Tento model používají převod obrázku do LaTeXu, obrázky rovnic a naskenovaná PDF. Automatická volba používá Ollama, takže obrázky zůstávají v tomto počítači. Pokud Ollama neběží nebo nemá žádný model, který čte obrázky, převod obrázku do LaTeXu a do Typstu v editoru pošle obrázek modelu asistenta. Můžete také vybrat připojeného agenta CLI, například Claude Code. Používá vaše vlastní přihlášení, takže nepotřebuje klíč API.",
       "ocrHint": "Nejlepších místních výsledků dosáhnete, když si do Ollama stáhnete model OCR:",
       "mathpix": {
         "title": "Mathpix",

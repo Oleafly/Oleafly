@@ -22,7 +22,8 @@
     "warned": "Цей проєкт використав {{spent}} зі свого бюджету на ШІ ({{budget}})."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Для цієї дії перемкнулися на асистента Oleafly."
+    "handoffRuntimeSwitch": "Для цієї дії перемкнулися на асистента Oleafly.",
+    "handoffToCli": "Асистент Oleafly не має постачальника ШІ, тому запит пішов до вашого агента командного рядка."
   },
   "bibtex": {
     "duplicateDoi": "Дубльований DOI, спільний із: {{keys}}",

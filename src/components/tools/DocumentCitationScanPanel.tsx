@@ -46,7 +46,7 @@ import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useLiteratureLibraryStore } from "@/store/literature";
 import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
-import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { aiFeaturesReady } from "@/lib/ai-route";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
@@ -409,14 +409,14 @@ export function DocumentCitationScanPanel() {
       const detail = (event as CustomEvent | undefined)?.detail;
       if (detail && typeof detail === "object") {
         try {
-          apply(hasConfiguredProvider(detail as never));
+          apply(aiFeaturesReady(detail as never));
           return;
         } catch {
           // fall through to getConfig
         }
       }
       void getConfig()
-        .then((config) => apply(hasConfiguredProvider(config)))
+        .then((config) => apply(aiFeaturesReady(config)))
         .catch(() => apply(false));
     };
     check();

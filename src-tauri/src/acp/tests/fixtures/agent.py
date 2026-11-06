@@ -171,7 +171,14 @@ for line in sys.stdin:
         if "--record-git-env" in sys.argv:
             (declared_root / "git-env.json").write_text(json.dumps({key: value for key, value in os.environ.items() if key.startswith("GIT_CONFIG")}))
         mcp_capabilities = {} if "--no-http-mcp" in sys.argv else {"http": True}
-        result(request, {"protocolVersion": 1, "agentInfo": {"name": "fixture", "version": "1.2.3"}, "agentCapabilities": {"loadSession": True, "promptCapabilities": {"image": True}, "mcpCapabilities": mcp_capabilities}, "authMethods": [{"id": "fixture-login", "name": "Fixture sign-in"}]})
+        agent_capabilities = {"loadSession": True, "promptCapabilities": {"image": "--no-images" not in sys.argv}, "mcpCapabilities": mcp_capabilities}
+        if argument("--auth-status") or "--auth-status-silent" in sys.argv:
+            agent_capabilities["_meta"] = {"authStatus": {}}
+        if "--system-prompt" in sys.argv:
+            agent_capabilities["sessionCapabilities"] = {"systemPrompt": {"mode": {"override": {}}}}
+        result(request, {"protocolVersion": 1, "agentInfo": {"name": "fixture", "version": "1.2.3"}, "agentCapabilities": agent_capabilities, "authMethods": [{"id": "fixture-login", "name": "Fixture sign-in"}]})
+        if argument("--auth-status"):
+            send({"method": "_auth/status_update", "params": {"authStatus": {"kind": argument("--auth-status"), "label": "Fixture login"}}})
     elif method in ("authenticate", "auth/login"):
         key = ((params.get("_meta") or {}).get("api-key") or {}).get("apiKey")
         if key and "--echo-key-error" in sys.argv:
@@ -306,9 +313,34 @@ for line in sys.stdin:
         if text == "late-after-idle":
             update("agent_message", messageId="m2", content=[{"type": "text", "text": "Late after idle"}])
     elif method == "session/prompt":
-        prompt = params["prompt"][0]["text"]
+        prompt = next(block["text"] for block in params["prompt"] if block["type"] == "text")
         if "--record-prompt" in sys.argv:
             (declared_root / "prompt.json").write_text(json.dumps(params["prompt"]))
+        if prompt.endswith("warned"):
+            update("agent_message_chunk", content={"type": "text", "text": "Warning: too many skills.\n\n"})
+            update("agent_message_chunk", messageId="m1", content={"type": "text", "text": "E = mc^2"})
+            result(request, {"stopReason": "end_turn"})
+            continue
+        if prompt.endswith("use-a-tool"):
+            pending_prompt = request
+            update("tool_call", toolCallId="stop-me", title="Run ls", kind="execute", status="pending")
+            continue
+        if prompt.endswith("tool-then-done"):
+            update("tool_call", toolCallId="done-1", title="Run ls", kind="execute", status="completed")
+            update("agent_message_chunk", messageId="m1", content={"type": "text", "text": "Listed your files."})
+            result(request, {"stopReason": "end_turn"})
+            continue
+        if prompt.endswith("never-answers"):
+            pending_prompt = request
+            continue
+        if prompt.endswith("turn-fails"):
+            update("session_info_update", _meta={"codex": {"threadStatus": {"type": "systemError"}}})
+            update("agent_message_chunk", content={"type": "text", "text": "You have hit your usage limit."})
+            result(request, {"stopReason": "end_turn"})
+            continue
+        if prompt.endswith("signed-out"):
+            send({"id": request["id"], "error": {"code": -32000, "message": "Authentication required"}})
+            continue
         if prompt.startswith("read-file:") or prompt.startswith("read-abs:") or prompt.startswith("read-lines:"):
             pending_prompt = request
             target = prompt.split(":", 1)[1]

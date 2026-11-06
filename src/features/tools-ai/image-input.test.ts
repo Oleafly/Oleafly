@@ -135,3 +135,11 @@ describe("Tools image input", () => {
     expect(downscale).toHaveBeenCalledOnce();
   });
 });
+
+describe("the CLI agent budget", () => {
+  it("fits one ACP message once base64 grows it, with room for the prompt", () => {
+    const base64 = Math.ceil(IMAGE_BUDGETS.agent.maxBytes / 3) * 4;
+    const promptRoom = 4 * 1024;
+    expect(base64 + promptRoom).toBeLessThan(1_048_576 - 1024);
+  });
+});

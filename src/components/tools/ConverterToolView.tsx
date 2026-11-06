@@ -369,6 +369,8 @@ function settingsLabel(t: ReturnType<typeof useTranslation<["researchTools"]>>["
       return t(($) => $.researchTools.converterModel.openToolsSettings);
     case "ai-providers":
       return t(($) => $.researchTools.converterModel.openProviderSettings);
+    case "ai-agents":
+      return t(($) => $.researchTools.converterModel.openAgentSettings);
     case "ai":
       return t(($) => $.researchTools.converter.openAiSettings);
   }

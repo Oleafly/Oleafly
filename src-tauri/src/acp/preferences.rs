@@ -1,13 +1,18 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use oleafly_acp::{capabilities::AuthMethod, Negotiated, ProtocolVersion};
+use oleafly_acp::{
+    capabilities::AuthMethod,
+    controls::{ModelOption, SessionControls},
+    Negotiated, ProtocolVersion,
+};
 
 pub const PREFERENCES_KEY: &str = "acp";
 pub const MIN_INACTIVITY_MINUTES: u32 = 5;
 pub const MAX_INACTIVITY_MINUTES: u32 = 240;
 const MAX_CHOICE_NAME: usize = 120;
 const MAX_CHOICE_VALUE: usize = 256;
+const MAX_REMEMBERED_MODELS: usize = 256;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
@@ -115,6 +120,12 @@ pub struct AgentRuntimeInfo {
     pub logout: bool,
     pub auth_methods: Vec<AuthMethod>,
     pub checked_at: u64,
+    /// `None` until the agent has been asked, in records older than this field too.
+    pub image: Option<bool>,
+    /// The models the agent offered when it last opened a session.
+    pub models: Option<Vec<ModelOption>>,
+    /// Whether the Tools can hold the agent to reading, known once a session opened.
+    pub read_only: Option<bool>,
 }
 
 pub fn protocol_label(protocol: ProtocolVersion) -> String {
@@ -143,6 +154,29 @@ impl AgentRuntimeInfo {
             logout: caps.logout,
             auth_methods,
             checked_at,
+            image: Some(caps.image),
+            models: None,
+            read_only: None,
+        }
+    }
+
+    pub fn remember_session(&mut self, controls: &SessionControls, read_only: bool) {
+        self.read_only = Some(read_only);
+        self.models = Some(
+            controls
+                .models
+                .iter()
+                .take(MAX_REMEMBERED_MODELS)
+                .cloned()
+                .collect(),
+        );
+    }
+
+    /// A session that didn't open leaves what the last one learned.
+    pub fn keep_session_facts(&mut self, saved: Option<Self>) {
+        if let (None, Some(saved)) = (&self.models, saved) {
+            self.models = saved.models;
+            self.read_only = saved.read_only;
         }
     }
 }

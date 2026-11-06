@@ -22,7 +22,8 @@
     "warned": "이 프로젝트는 AI 예산 {{budget}} 중 {{spent}}을(를) 썼습니다."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "이 작업을 위해 Oleafly 어시스턴트로 전환했습니다."
+    "handoffRuntimeSwitch": "이 작업을 위해 Oleafly 어시스턴트로 전환했습니다.",
+    "handoffToCli": "Oleafly 어시스턴트에 AI 제공자가 없어서 명령줄 에이전트로 보냈습니다."
   },
   "bibtex": {
     "duplicateDoi": "다음 항목과 DOI가 중복됩니다: {{keys}}",

@@ -12,6 +12,7 @@ fn limits() -> CheckLimits {
     CheckLimits {
         version: Duration::from_secs(10),
         initialize: Duration::from_secs(5),
+        auth_status: Duration::from_secs(2),
     }
 }
 
@@ -165,6 +166,16 @@ async fn a_bridge_that_is_not_installed_is_still_reported_when_node_is_there() {
     .await;
     assert_eq!(check.code, "bridge_missing", "{check:?}");
     assert_eq!(check.detail.as_deref(), Some("The agent is not installed."));
+}
+
+#[test]
+fn only_builtin_or_packaged_claude_counts_as_claude() {
+    let mut definition = builtin("claude");
+    assert!(catalog::is_claude(&definition));
+    definition.id = "other".into();
+    definition.distribution.npx = None;
+    assert!(!catalog::is_claude(&definition));
+    assert!(!catalog::claude_login_unreported(&definition));
 }
 
 #[cfg(unix)]

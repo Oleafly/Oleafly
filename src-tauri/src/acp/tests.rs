@@ -1,3 +1,4 @@
+use super::preferences::AgentRuntimeInfo;
 use super::{
     catalog, protocol,
     redact::Redactor,
@@ -1769,6 +1770,121 @@ async fn the_agent_check_starts_the_agent_in_an_empty_folder_and_reads_its_answe
 }
 
 #[tokio::test]
+async fn an_agent_that_opens_a_session_signed_out_is_reported_as_signed_out() {
+    let (_temp, runtime) = check_runtime(&["--auth-status", "none"]);
+    let check = runtime.check_agent("fixture-agent", None).await.unwrap();
+    assert!(!check.ok, "{check:?}");
+    assert_eq!(check.code, "needs_sign_in");
+    assert_eq!(check.auth_methods[0].id, "fixture-login");
+}
+
+#[tokio::test]
+async fn a_reported_login_or_no_report_stays_ready() {
+    let (_temp, runtime) = check_runtime(&["--auth-status", "account"]);
+    let check = runtime.check_agent("fixture-agent", None).await.unwrap();
+    assert!(check.ok && check.signed_in, "{check:?}");
+
+    let (_temp, runtime) = check_runtime(&[]);
+    let check = runtime.check_agent("fixture-agent", None).await.unwrap();
+    assert!(check.ok && !check.signed_in, "{check:?}");
+
+    let temp = fixture_temp();
+    let definition = check_definition(temp.path(), &["--auth-status-silent"]);
+    let started = std::time::Instant::now();
+    let check = super::setup::check_agent_within(
+        &temp.path().join("acp"),
+        &definition,
+        None,
+        None,
+        super::setup::CheckLimits {
+            version: Duration::from_secs(5),
+            initialize: Duration::from_secs(5),
+            auth_status: Duration::from_millis(300),
+        },
+    )
+    .await;
+    assert!(check.ok && !check.signed_in, "{check:?}");
+    assert!(started.elapsed() >= Duration::from_millis(300));
+}
+
+#[tokio::test]
+async fn a_check_saves_what_the_agent_reads_and_a_session_keeps_its_models() {
+    let (temp, runtime) = check_runtime(&["--claude-options"]);
+    assert!(runtime.check_agent("fixture-agent", None).await.unwrap().ok);
+    let saved = runtime.agent_status("fixture-agent", false).await.unwrap();
+    let saved = saved.runtime.unwrap();
+    assert_eq!(saved.image, Some(true));
+    assert_eq!(saved.read_only, Some(true));
+    let models: Vec<_> = saved
+        .models
+        .unwrap()
+        .into_iter()
+        .map(|model| model.model_id)
+        .collect();
+    assert_eq!(models, ["opus", "sonnet"]);
+
+    let (_refused, runtime_without) = check_runtime(&["--no-images"]);
+    runtime_without
+        .check_agent("fixture-agent", None)
+        .await
+        .unwrap();
+    let saved = runtime_without
+        .agent_status("fixture-agent", false)
+        .await
+        .unwrap();
+    assert_eq!(saved.runtime.unwrap().image, Some(false));
+
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    runtime
+        .start(StartSession {
+            project_id: "test-project".into(),
+            project_path: project,
+            agent_id: "fixture-agent".into(),
+            owner: Some("fixture-window".into()),
+            ..StartSession::default()
+        })
+        .await
+        .unwrap();
+    let saved = runtime.agent_status("fixture-agent", false).await.unwrap();
+    assert_eq!(saved.runtime.unwrap().models.unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn a_check_records_an_agent_with_no_read_only_mode() {
+    let (_temp, runtime) = check_runtime(&[]);
+    assert!(runtime.check_agent("fixture-agent", None).await.unwrap().ok);
+    let saved = runtime.agent_status("fixture-agent", false).await.unwrap();
+    assert_eq!(saved.runtime.unwrap().read_only, Some(false));
+}
+
+#[tokio::test]
+async fn a_check_that_cannot_open_a_session_keeps_the_saved_models() {
+    let (_temp, runtime) = check_runtime(&["--require-login"]);
+    let mut saved = AgentRuntimeInfo {
+        read_only: Some(true),
+        models: Some(vec![oleafly_acp::controls::ModelOption {
+            model_id: "opus".into(),
+            name: "Opus".into(),
+        }]),
+        ..AgentRuntimeInfo::default()
+    };
+    saved.checked_at = 1;
+    runtime
+        .store
+        .set_agent_runtime("fixture-agent", &saved)
+        .unwrap();
+
+    let check = runtime.check_agent("fixture-agent", None).await.unwrap();
+    assert_eq!(check.code, "needs_sign_in");
+    let kept = runtime.agent_status("fixture-agent", false).await.unwrap();
+    let kept = kept.runtime.unwrap();
+    assert_eq!(kept.models.unwrap().len(), 1);
+    assert_eq!(kept.read_only, Some(true));
+    assert!(kept.checked_at > 1);
+}
+
+#[tokio::test]
 async fn the_agent_check_reports_why_a_program_cannot_be_used() {
     let (temp, runtime) = check_runtime(&[]);
     let missing = temp.path().join("missing-agent");
@@ -1814,6 +1930,7 @@ async fn the_agent_check_tells_a_crash_from_a_hang() {
         super::setup::CheckLimits {
             version: Duration::from_secs(5),
             initialize: Duration::from_secs(2),
+            auth_status: Duration::from_secs(2),
         },
     )
     .await;
@@ -2088,6 +2205,7 @@ fn sandboxed_task_launches_keep_the_sandbox_environment() {
 mod controls;
 mod lifecycle;
 mod live_turns;
+mod one_shot;
 mod review;
 mod sessions048;
 mod store;

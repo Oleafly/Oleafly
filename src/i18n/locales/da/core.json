@@ -22,7 +22,8 @@
     "warned": "Projektet har brugt {{spent}} af sit AI-budget på {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Skiftede til Oleafly-assistenten til denne handling."
+    "handoffRuntimeSwitch": "Skiftede til Oleafly-assistenten til denne handling.",
+    "handoffToCli": "Oleafly-assistenten har ingen AI-udbyder, så dette gik til din kommandolinjeagent."
   },
   "bibtex": {
     "duplicateDoi": "Samme DOI som: {{keys}}",

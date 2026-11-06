@@ -22,7 +22,8 @@
     "warned": "Bu proje {{budget}} tutarındaki yapay zeka bütçesinin {{spent}} kadarını kullandı."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Bu işlem için Oleafly asistanına geçildi."
+    "handoffRuntimeSwitch": "Bu işlem için Oleafly asistanına geçildi.",
+    "handoffToCli": "Oleafly asistanının yapay zeka sağlayıcısı yok, bu yüzden bu istek CLI ajanınıza gitti."
   },
   "bibtex": {
     "duplicateDoi": "Şunlarla paylaşılan yinelenen DOI: {{keys}}",

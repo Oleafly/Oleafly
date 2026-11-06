@@ -271,9 +271,19 @@ async fn resolve_off_thread(
         .map_err(|e| e.to_string())?
 }
 
+/// The provider id the Tools use for a CLI agent: `acp:claude`.
+const ACP_PROVIDER_PREFIX: &str = "acp:";
+
+fn acp_route(provider_override: Option<&ProviderOverride>) -> Option<(&str, &str)> {
+    let route = provider_override?;
+    let agent = route.provider_id.strip_prefix(ACP_PROVIDER_PREFIX)?;
+    Some((agent, route.model_id.as_str()))
+}
+
 #[tauri::command]
 pub async fn agent_complete(
     state: State<'_, AgentState>,
+    acp: State<'_, std::sync::Arc<crate::acp::AcpRuntime>>,
     request_id: String,
     request: CompletionRequest,
     provider_override: Option<ProviderOverride>,
@@ -282,6 +292,11 @@ pub async fn agent_complete(
     let usage_id = request_id.clone();
     run_registered(agent_state, &request_id, |_| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
+        if let Some((agent, model)) = acp_route(provider_override.as_ref()) {
+            return acp
+                .one_shot(crate::acp::OneShot::new(agent, model, &request)?)
+                .await;
+        }
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
         let usage = standalone_usage(&usage_id, &resolved)?;
@@ -672,6 +687,7 @@ fn turn_recorder_for_request(
 #[tauri::command]
 pub async fn agent_stream(
     state: State<'_, AgentState>,
+    acp: State<'_, std::sync::Arc<crate::acp::AcpRuntime>>,
     request_id: String,
     request: CompletionRequest,
     provider_override: Option<ProviderOverride>,
@@ -681,6 +697,18 @@ pub async fn agent_stream(
     let usage_id = request_id.clone();
     run_registered(agent_state, &request_id, |_| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
+        if let Some((agent, model)) = acp_route(provider_override.as_ref()) {
+            let events = on_event.clone();
+            let sink: crate::acp::TextSink = std::sync::Arc::new(move |text: &str| {
+                let _ = events.send(AgentEvent::TextDelta {
+                    text: text.to_owned(),
+                });
+            });
+            let shot = crate::acp::OneShot::new(agent, model, &request)?.streaming(sink);
+            let result = acp.one_shot(shot).await;
+            let _ = on_event.send(AgentEvent::RunEnd);
+            return result.map(|_| ());
+        }
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
         let usage = standalone_usage(&usage_id, &resolved)?;

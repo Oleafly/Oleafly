@@ -615,7 +615,7 @@
       "tabLabel": "Verktyg",
       "loading": "Läser in inställningar för Verktyg…",
       "modelTitle": "Modell för Verktyg",
-      "modelDescription": "Bild till LaTeX, ekvationsbilder och inskannade PDF-filer använder den här modellen. Det automatiska valet använder Ollama, så bilderna stannar på den här datorn. Om Ollama inte körs eller saknar en modell som kan läsa bilder skickar Bild till LaTeX och Bild till Typst i redigeraren bilden till assistentens modell i stället.",
+      "modelDescription": "Bild till LaTeX, ekvationsbilder och inskannade PDF-filer använder den här modellen. Det automatiska valet använder Ollama, så bilderna stannar på den här datorn. Om Ollama inte körs eller saknar en modell som kan läsa bilder skickar Bild till LaTeX och Bild till Typst i redigeraren bilden till assistentens modell i stället. Du kan också välja en ansluten CLI-agent som Claude Code. Den använder din egen inloggning, så den behöver ingen API-nyckel.",
       "ocrHint": "För bästa lokala resultat hämtar du en OCR-modell i Ollama:",
       "mathpix": {
         "title": "Mathpix",

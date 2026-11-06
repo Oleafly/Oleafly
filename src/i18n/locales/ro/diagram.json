@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Conectează un furnizor AI în Setări ca să folosești Repară cu AI.",
+    "aiProviderRequired": "Conectează un furnizor AI în Setări sau alege un agent din linia de comandă ca model pentru Instrumente ca să folosești Repară cu AI.",
     "fixFailed": "Repararea a eșuat: {{detail}}"
   },
   "chooser": {

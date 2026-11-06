@@ -14,7 +14,10 @@ const mocks = vi.hoisted(() => ({
   resolveToolsModel: vi.fn(),
 }));
 
-vi.mock("@/lib/agent-backend", () => ({ completeViaBackend: mocks.completeViaBackend }));
+vi.mock("@/lib/agent-backend", async (importOriginal) => ({
+  agentErrorKind: (await importOriginal<typeof import("@/lib/agent-backend")>()).agentErrorKind,
+  completeViaBackend: mocks.completeViaBackend,
+}));
 vi.mock("@/lib/tauri", () => ({
   convertAdHoc: mocks.convertAdHoc,
   getConfig: vi.fn(),
@@ -70,6 +73,14 @@ const claude = llm({
   hosted: true,
   destination: { kind: "provider", providerId: "anthropic", name: "Anthropic" },
 });
+const claudeCode = llm({
+  providerId: "acp:claude",
+  modelId: "opus",
+  label: "Claude Code (opus)",
+  hosted: true,
+  destination: { kind: "provider", providerId: "acp:claude", name: "Claude Code" },
+  agentName: "Claude Code",
+});
 const mathpix: ResolvedMathpix = {
   engine: "mathpix",
   label: "Mathpix",
@@ -109,6 +120,70 @@ beforeEach(() => {
     }
   });
   mocks.resolveToolsModel.mockResolvedValue(llm());
+});
+
+describe("a CLI agent reading an image", () => {
+  const options = { target: "LaTeX", mode: "image", fragment: true } as const;
+
+  it("goes through the same request as any other model, routed to the agent", async () => {
+    mocks.completeViaBackend.mockResolvedValue({ text: "```latex\nE = mc^2\n```", stop_reason: "end_turn" });
+    await expect(transcribeImage(claudeCode, PNG, options)).resolves.toBe("E = mc^2");
+    expect(mocks.completeViaBackend.mock.calls[0][2]).toEqual({ provider_id: "acp:claude", model_id: "opus" });
+    expect(sent().system).toContain("LaTeX source");
+    expect(sent().messages[0].content.map((part) => part.type)).toEqual(["image", "text"]);
+  });
+
+  it("uses the agent budget, which fits one ACP message", async () => {
+    const big = { bytes: new Uint8Array(IMAGE_BUDGETS.agent.maxBytes + 1).fill(0), mime: "image/jpeg" } as const;
+    await transcribeImage(claudeCode, big, options).catch(() => undefined);
+    expect(mocks.downscaleImage.mock.calls[0][1]).toMatchObject({ maxBytes: IMAGE_BUDGETS.agent.maxBytes });
+  });
+
+  it.each([
+    ["[auth] Authentication required", "agentSignIn", "ai-agents"],
+    ["[agent_unavailable] Not installed", "agentNotReady", "ai-agents"],
+    ["[agent_tool] Stopped", "agentUsedTool", "ai-tools"],
+    ["[agent_read_only] No read-only mode", "agentNeedsReadOnly", "ai-tools"],
+  ])("reads %s as a Tools error", async (failure, key, settings) => {
+    mocks.completeViaBackend.mockRejectedValue(new Error(failure));
+    const error = await transcribeImage(claudeCode, PNG, options).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ToolsModelError);
+    expect((error as ToolsModelError).settings).toBe(settings);
+    const copy = researchTools.converterModel.errors[key as "agentSignIn"];
+    expect((error as ToolsModelError).message).toBe(copy.replace("{{agent}}", "Claude Code"));
+  });
+
+  it("says a model the agent dropped, or images it can't read", async () => {
+    mocks.completeViaBackend.mockRejectedValue(new Error("[agent_model] opus"));
+    await expect(transcribeImage(claudeCode, PNG, options)).rejects.toThrow(
+      researchTools.converterModel.errors.modelUnavailable
+        .replace("{{model}}", "opus")
+        .replace("{{provider}}", "Claude Code"),
+    );
+    mocks.completeViaBackend.mockRejectedValue(new Error("[agent_images] This agent does not accept images."));
+    await expect(transcribeImage(claudeCode, PNG, options)).rejects.toThrow(
+      researchTools.converterModel.errors.cannotSeeImages.replace("{{model}}", "Claude Code"),
+    );
+  });
+
+  it("shows the agent's own words for anything else, without the tag", async () => {
+    mocks.completeViaBackend.mockRejectedValue(new Error("[agent] You have hit your usage limit."));
+    await expect(transcribeImage(claudeCode, PNG, options)).rejects.toMatchObject({
+      message: "You have hit your usage limit.",
+      settings: "ai-agents",
+    });
+  });
+
+  it("leaves a stop by the user alone", async () => {
+    const stopped = new DOMException("Aborted", "AbortError");
+    mocks.completeViaBackend.mockRejectedValue(stopped);
+    await expect(transcribeImage(claudeCode, PNG, options)).rejects.toBe(stopped);
+  });
+
+  it("keeps the failures of other models as they were", async () => {
+    mocks.completeViaBackend.mockRejectedValue(new Error("[auth] Bad key"));
+    await expect(transcribeImage(claude, PNG, options)).rejects.toThrow("[auth] Bad key");
+  });
 });
 
 describe("image transcription", () => {

@@ -83,9 +83,24 @@ sent to Anthropic" or "Images are sent to Ollama at 192.168.1.9:11434". Offline
 mode refuses hosted models and Mathpix. Ollama keeps working, also on another
 computer on your network.
 
+A CLI agent you have connected, such as Claude Code or Codex, is in the same
+menu and needs no API key, because it uses your own sign-in. Each image starts a
+fresh agent in an empty folder with no MCP servers, and the turn stops at the
+first tool call. Claude Code runs with its tools off and saves no conversation.
+Any other agent has to switch to a read-only mode first, so an agent with no such
+mode isn't listed. A read-only mode stops an agent changing files, not reading
+them. An agent's models appear once it has opened a session, and the menu checks
+a new agent for you.
+
+With no API provider set up, the same agent also answers Paper Review, the
+citation scan's ranking and Fix with AI. Each reply starts a fresh agent, so
+the first words take a few seconds longer than with an API key, and a citation
+scan, which asks about every paragraph, starts many of them.
+
 Before an image goes to a hosted model, Oleafly shrinks it to 2,000 pixels on
-its long edge and re-encodes photos, which drops their location data. Replies
-are capped at the model's output limit.
+its long edge and re-encodes photos, which drops their location data. A CLI
+agent gets at most 760 KB, the most that fits in one agent message. Replies are
+capped at the model's output limit.
 
 ### OCR models
 

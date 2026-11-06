@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Chcete-li použít Opravit pomocí AI, připojte v Nastavení poskytovatele AI.",
+    "aiProviderRequired": "Chcete-li použít Opravit pomocí AI, připojte v Nastavení poskytovatele AI, nebo vyberte agenta CLI jako model pro Nástroje.",
     "fixFailed": "Oprava se nezdařila: {{detail}}"
   },
   "chooser": {

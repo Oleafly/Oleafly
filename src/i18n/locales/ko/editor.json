@@ -487,7 +487,7 @@
     "dismiss": "닫기",
     "withdrawn": "다른 사람이 이 텍스트를 편집해서 이 제안을 적용할 수 없습니다.",
     "setUpProvider": "AI 제공자 설정",
-    "setUpProviderHint": "인라인 AI 편집을 쓰려면 API 키를 추가하거나 로컬 Ollama를 연결하세요.",
+    "setUpProviderHint": "인라인 AI 편집을 쓰려면 API 키를 추가하거나 로컬 Ollama를 연결하거나, 명령줄 에이전트를 도구에 쓸 모델로 고르세요.",
     "openAiSettings": "설정 → AI 열기"
   },
   "proofreading": {

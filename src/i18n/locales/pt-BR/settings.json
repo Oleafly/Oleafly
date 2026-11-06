@@ -619,7 +619,7 @@
       "tabLabel": "Ferramentas",
       "loading": "Carregando as configurações das Ferramentas…",
       "modelTitle": "Modelo para as Ferramentas",
-      "modelDescription": "Imagem para LaTeX, imagens de equações e PDFs digitalizados usam este modelo. A opção automática usa o Ollama, então as imagens ficam neste computador. Se o Ollama não estiver rodando ou não tiver nenhum modelo que leia imagens, Imagem para LaTeX e Imagem para Typst no editor enviam a imagem para o modelo do assistente.",
+      "modelDescription": "Imagem para LaTeX, imagens de equações e PDFs digitalizados usam este modelo. A opção automática usa o Ollama, então as imagens ficam neste computador. Se o Ollama não estiver rodando ou não tiver nenhum modelo que leia imagens, Imagem para LaTeX e Imagem para Typst no editor enviam a imagem para o modelo do assistente. Você também pode escolher um agente de CLI conectado, como o Claude Code. Ele usa seu próprio login, então não precisa de chave de API.",
       "ocrHint": "Para os melhores resultados locais, baixe um modelo de OCR no Ollama:",
       "mathpix": {
         "title": "Mathpix",

@@ -619,7 +619,7 @@
       "tabLabel": "Instrumente",
       "loading": "Se încarcă setările Instrumentelor…",
       "modelTitle": "Model pentru Instrumente",
-      "modelDescription": "Conversia din imagine în LaTeX, imaginile cu ecuații și fișierele PDF scanate folosesc acest model. Alegerea automată folosește Ollama, așa că imaginile rămân pe acest computer. Dacă Ollama nu rulează sau nu are niciun model care citește imagini, conversiile din imagine în LaTeX și în Typst din editor trimit imaginea la modelul asistentului.",
+      "modelDescription": "Conversia din imagine în LaTeX, imaginile cu ecuații și fișierele PDF scanate folosesc acest model. Alegerea automată folosește Ollama, așa că imaginile rămân pe acest computer. Dacă Ollama nu rulează sau nu are niciun model care citește imagini, conversiile din imagine în LaTeX și în Typst din editor trimit imaginea la modelul asistentului. Poți alege și un agent din linia de comandă conectat, cum ar fi Claude Code. Folosește propria ta autentificare, deci nu are nevoie de cheie API.",
       "ocrHint": "Pentru cele mai bune rezultate locale, descarcă un model OCR în Ollama:",
       "mathpix": {
         "title": "Mathpix",

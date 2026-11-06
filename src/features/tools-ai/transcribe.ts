@@ -7,6 +7,7 @@ import {
   type AgentCompletionResponse,
   type AgentContentPart,
 } from "@/lib/agent-backend";
+import { cliAgentFailure } from "@/lib/ai-route";
 import { mathpixPdf, mathpixText } from "@/lib/mathpix";
 import {
   dataUrlToImageInput,
@@ -92,12 +93,29 @@ function llmRequest(model: ResolvedLlm, system: string | null, content: AgentCon
   };
 }
 
+function agentFailure(agent: string, model: string, error: unknown): unknown {
+  const failure = cliAgentFailure(agent, model, error);
+  if (!failure) return error;
+  return failure.agentSettings
+    ? new ToolsModelError(failure.message, "ai-agents")
+    : new ToolsModelError(failure.message);
+}
+
+async function completeWith(
+  model: ResolvedLlm,
+  request: AgentCompletionRequest,
+  signal?: AbortSignal,
+): Promise<AgentCompletionResponse> {
+  const route = { provider_id: model.providerId, model_id: model.modelId };
+  if (!model.agentName) return completeViaBackend(request, signal, route);
+  const agent = model.agentName;
+  return completeViaBackend(request, signal, route).catch((error: unknown) => {
+    throw agentFailure(agent, model.modelId, error);
+  });
+}
+
 async function complete(model: ResolvedLlm, request: AgentCompletionRequest, signal?: AbortSignal): Promise<string> {
-  const response: AgentCompletionResponse = await completeViaBackend(
-    request,
-    signal,
-    { provider_id: model.providerId, model_id: model.modelId },
-  );
+  const response = await completeWith(model, request, signal);
   if (isOutputLimitStop(response.stop_reason)) {
     throw new ToolsModelError(i18n.t(($) => $.researchTools.converterErrors.outputLimit));
   }
@@ -175,6 +193,11 @@ async function mathpixImage(image: ImageInput, options: TranscribeOptions): Prom
   );
 }
 
+function llmImageBudget(model: ResolvedLlm): ImageBudget {
+  if (model.agentName) return IMAGE_BUDGETS.agent;
+  return model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
+}
+
 export async function transcribeImage(
   model: ResolvedToolsModel,
   image: ImageInput,
@@ -182,8 +205,7 @@ export async function transcribeImage(
 ): Promise<string> {
   throwIfAborted(options.signal);
   if (model.engine === "mathpix") return mathpixImage(image, options);
-  const budget = model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
-  const reply = await readImage(model, image, options.target, options.mode, budget, options.signal);
+  const reply = await readImage(model, image, options.target, options.mode, llmImageBudget(model), options.signal);
   if (options.mode === "equation") return nonEmpty(extractSingleMath(reply));
   if (!model.profile) return nonEmpty(reply);
   if (!reply) throw emptyTranscription();
@@ -289,7 +311,7 @@ export async function transcribePdfPages(
   }
 
   const { renderPages } = await import("@/lib/pdf-image");
-  const budget = model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
+  const budget = llmImageBudget(model);
   const transcribed: string[] = [];
   const rendered = renderPages(bytes, pages, SCAN_RENDER_SCALE, "#ffffff");
   try {

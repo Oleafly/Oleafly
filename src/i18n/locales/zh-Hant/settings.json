@@ -611,7 +611,7 @@
       "tabLabel": "工具",
       "loading": "正在載入工具設定…",
       "modelTitle": "工具所用的模型",
-      "modelDescription": "影像轉 LaTeX、方程式影像和掃描 PDF 會使用這個模型。自動選擇會使用 Ollama，因此影像會留在這台電腦上。如果 Ollama 未執行，或沒有能讀取影像的模型，編輯器中的影像轉 LaTeX 和影像轉 Typst 會改為將影像傳送給助理的模型。",
+      "modelDescription": "影像轉 LaTeX、方程式影像和掃描 PDF 會使用這個模型。自動選擇會使用 Ollama，因此影像會留在這台電腦上。如果 Ollama 未執行，或沒有能讀取影像的模型，編輯器中的影像轉 LaTeX 和影像轉 Typst 會改為將影像傳送給助理的模型。也可以選擇已連線的 CLI 代理程式，例如 Claude Code。它使用現有的登入資訊，不需要 API 金鑰。",
       "ocrHint": "想在本機取得最佳效果，請在 Ollama 中拉取 OCR 模型：",
       "mathpix": {
         "title": "Mathpix",

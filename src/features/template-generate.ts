@@ -1,5 +1,5 @@
 import { completeViaBackend } from "@/lib/agent-backend";
-import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { aiFeaturesReady, currentCliAgentRoute, routeOverride, withCliAgentErrors } from "@/lib/ai-route";
 import {
   compileIsolated,
   deleteCustomTemplate,
@@ -93,7 +93,7 @@ export function parseGeneratedTemplate(text: string): ParsedTemplate {
 
 export async function generateTemplateAvailable(): Promise<boolean> {
   try {
-    return hasConfiguredProvider(await getConfig());
+    return aiFeaturesReady(await getConfig());
   } catch {
     return false;
   }
@@ -105,14 +105,17 @@ export async function generateTemplateSource(
 ): Promise<ParsedTemplate> {
   const prompt = `Create a template for: ${description}`;
 
-  const { text } = await completeViaBackend(
-    {
-      system: SYSTEM,
-      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
-      timeout_ms: GENERATE_TIMEOUT_MS,
-    },
-    undefined,
-    override ? { provider_id: override.providerId, model_id: override.modelId } : undefined,
+  const picked = override ? null : await currentCliAgentRoute();
+  const { text } = await withCliAgentErrors(picked, () =>
+    completeViaBackend(
+      {
+        system: SYSTEM,
+        messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+        timeout_ms: GENERATE_TIMEOUT_MS,
+      },
+      undefined,
+      override ? { provider_id: override.providerId, model_id: override.modelId } : routeOverride(picked),
+    ),
   );
   return parseGeneratedTemplate(text);
 }

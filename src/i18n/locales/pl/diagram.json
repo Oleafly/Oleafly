@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Podłącz dostawcę AI w Ustawieniach, aby korzystać z opcji Popraw z pomocą AI.",
+    "aiProviderRequired": "Podłącz dostawcę AI w Ustawieniach albo wybierz agenta wiersza poleceń jako model dla Narzędzi, aby korzystać z opcji Popraw z pomocą AI.",
     "fixFailed": "Poprawka nie powiodła się: {{detail}}"
   },
   "chooser": {

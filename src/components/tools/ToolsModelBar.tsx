@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CloudUpload, ShieldCheck } from "lucide-react";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 import {
@@ -14,6 +14,7 @@ import {
   describeToolsChoice,
   destinationName,
   LOCAL_TOOLS_PROVIDER,
+  toolsAgentId,
   toolsChoice,
   toolsOllamaHost,
   type ToolsChoiceSummary,
@@ -21,6 +22,7 @@ import {
 } from "@/features/tools-ai/tools-choice";
 import { toolsModelGroups } from "@/features/tools-ai/tools-groups";
 import { editorImageFallback, type ToolsSettingsTarget } from "@/features/tools-ai/tools-model";
+import { acpCatalog, acpCheckAgent, acpUsable, type AcpAgentStatus } from "@/lib/acp";
 import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
 import { mathpixKeyStatus } from "@/lib/mathpix";
@@ -70,9 +72,60 @@ function useOllamaModels(config: AppConfig | null, enabled = true) {
   });
 }
 
+const AGENTS_QUERY_KEY = ["tools-cli-agents"] as const;
+const askedForModels = new Set<string>();
+
+function agentNeedsModels(agent: AcpAgentStatus): boolean {
+  return (
+    acpUsable(agent) && agent.runtime?.models == null && !askedForModels.has(agent.definition.id)
+  );
+}
+
+/** Checks each agent that has never opened a session, which opens a throwaway
+ * one and saves what the agent offers. One at a time: a check starts the
+ * agent, and a second check of the same agent is refused. */
+async function learnAgentModels(catalog: readonly AcpAgentStatus[], from = 0): Promise<boolean> {
+  const next = catalog.findIndex((agent, index) => index >= from && agentNeedsModels(agent));
+  if (next < 0) return false;
+  const id = catalog[next].definition.id;
+  askedForModels.add(id);
+  const learned = await acpCheckAgent(id).then(
+    () => true,
+    () => {
+      askedForModels.delete(id);
+      return false;
+    },
+  );
+  return (await learnAgentModels(catalog, next + 1)) || learned;
+}
+
+function useToolsAgents() {
+  const queryClient = useQueryClient();
+  const agents = useQuery({
+    queryKey: AGENTS_QUERY_KEY,
+    queryFn: () => acpCatalog(),
+    staleTime: 60_000,
+    retry: false,
+    meta: { silent: true },
+  });
+  const catalog = agents.data;
+  useEffect(() => {
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: AGENTS_QUERY_KEY });
+    window.addEventListener("oleafly:acp-catalog-changed", refresh);
+    return () => window.removeEventListener("oleafly:acp-catalog-changed", refresh);
+  }, [queryClient]);
+  useEffect(() => {
+    void learnAgentModels(catalog ?? []).then((learned) => {
+      if (learned) void queryClient.invalidateQueries({ queryKey: AGENTS_QUERY_KEY });
+    });
+  }, [catalog, queryClient]);
+  return catalog ?? null;
+}
+
 export function useToolsModel(): ToolsModelState {
   const config = useToolsConfig();
   const ollama = useOllamaModels(config);
+  const agents = useToolsAgents();
   const mathpix = useQuery({
     queryKey: ["mathpix-key-status"],
     queryFn: mathpixKeyStatus,
@@ -83,18 +136,21 @@ export function useToolsModel(): ToolsModelState {
   const ollamaModels = ollama.isError ? null : (ollama.data ?? null);
   const mathpixConfigured = mathpix.data?.configured === true;
   const groups = useMemo(
-    () => (config ? toolsModelGroups(config, ollamaModels, mathpixConfigured) : []),
-    [config, ollamaModels, mathpixConfigured],
+    () => (config ? toolsModelGroups(config, ollamaModels, mathpixConfigured, agents ?? []) : []),
+    [config, ollamaModels, mathpixConfigured, agents],
   );
   const select = useCallback(async (providerId: string, modelId: string) => {
     try {
-      await setAiToolsModel(choiceFromSelection(providerId, modelId));
+      const agentName = toolsAgentId(providerId)
+        ? groups.find((group) => group.id === providerId)?.name
+        : undefined;
+      await setAiToolsModel(choiceFromSelection(providerId, modelId, agentName));
       const fresh = await getConfig();
       window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: fresh }));
     } catch (error) {
       notifyError("save the Tools model", error, describeError(error));
     }
-  }, []);
+  }, [groups]);
   return {
     config,
     choice: config ? toolsChoice(config) : null,
@@ -252,6 +308,6 @@ export function ScanEstimateText({ sizes }: Readonly<{ sizes: readonly PageSize[
 export function openToolsSettings(target: ToolsSettingsTarget): void {
   const settings = useSettingsStore.getState();
   settings.setSettingsInitialSection("ai");
-  if (target === "ai-tools") settings.setSettingsScrollTarget("ai-tools");
+  if (target === "ai-tools" || target === "ai-agents") settings.setSettingsScrollTarget(target);
   settings.setSettingsOpen(true);
 }

@@ -487,7 +487,7 @@
     "dismiss": "閉じる",
     "withdrawn": "他の人がこのテキストを編集したため、この提案は適用できません。",
     "setUpProvider": "AI プロバイダを設定する",
-    "setUpProviderHint": "インラインの AI 編集を使うには、API キー（またはローカルの Ollama）を追加してください。",
+    "setUpProviderHint": "インラインの AI 編集を使うには、API キーかローカルの Ollama を追加するか、CLI エージェントをツール用のモデルに選んでください。",
     "openAiSettings": "設定 → AI を開く"
   },
   "proofreading": {

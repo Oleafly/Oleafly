@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "請先在「設定」中連接 AI 供應商，才能使用「用 AI 修正」。",
+    "aiProviderRequired": "請先在「設定」中連接 AI 供應商，或將 CLI 代理程式選為工具所用的模型，才能使用「用 AI 修正」。",
     "fixFailed": "修正失敗：{{detail}}"
   },
   "chooser": {

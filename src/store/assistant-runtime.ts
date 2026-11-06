@@ -8,6 +8,8 @@ interface AssistantRuntimeState {
   handoffRuntime: AssistantRuntime | null;
   setRuntime: (runtime: AssistantRuntime) => void;
   switchToBuiltInForHandoff: () => boolean;
+  /** Shows the CLI assistant for a hand-off without changing the saved choice. */
+  showCliForHandoff: () => void;
 }
 
 export const selectActiveRuntime = (
@@ -25,6 +27,7 @@ export const useAssistantRuntimeStore = create<AssistantRuntimeState>()(
         set({ handoffRuntime: "built-in" });
         return true;
       },
+      showCliForHandoff: () => set({ handoffRuntime: get().runtime === "acp" ? null : "acp" }),
     }),
     {
       name: "oleafly.assistant-runtime.v1",

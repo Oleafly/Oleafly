@@ -494,7 +494,7 @@
     "dismiss": "Kapat",
     "withdrawn": "Bu metni başka biri düzenledi, bu yüzden öneri artık uygulanamaz.",
     "setUpProvider": "Bir yapay zeka sağlayıcısı kur",
-    "setUpProviderHint": "Satır içi yapay zeka düzenlemelerini kullanmak için bir API anahtarı (veya yerel Ollama) ekleyin.",
+    "setUpProviderHint": "Satır içi yapay zeka düzenlemelerini kullanmak için bir API anahtarı veya yerel Ollama ekleyin ya da Araçlar için model olarak bir CLI ajanı seçin.",
     "openAiSettings": "Ayarlar → Yapay zeka bölümünü aç"
   },
   "proofreading": {

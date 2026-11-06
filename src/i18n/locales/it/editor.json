@@ -501,7 +501,7 @@
     "dismiss": "Ignora",
     "withdrawn": "Qualcun altro ha modificato questo testo, quindi il suggerimento non si può più applicare.",
     "setUpProvider": "Configura un provider AI",
-    "setUpProviderHint": "Aggiungi una chiave API (o Ollama in locale) per usare le modifiche AI in linea.",
+    "setUpProviderHint": "Aggiungi una chiave API o Ollama in locale, oppure scegli un agente da riga di comando come modello per gli Strumenti, per usare le modifiche AI in linea.",
     "openAiSettings": "Apri Impostazioni → AI"
   },
   "proofreading": {

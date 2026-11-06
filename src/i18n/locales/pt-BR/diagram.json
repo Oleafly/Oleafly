@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Conecte um provedor de IA em Configurações para usar Corrigir com IA.",
+    "aiProviderRequired": "Conecte um provedor de IA em Configurações, ou escolha um agente de CLI como modelo para as Ferramentas, para usar Corrigir com IA.",
     "fixFailed": "A correção falhou: {{detail}}"
   },
   "chooser": {

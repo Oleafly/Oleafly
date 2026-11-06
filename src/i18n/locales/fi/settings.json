@@ -615,7 +615,7 @@
       "tabLabel": "Työkalut",
       "loading": "Ladataan työkalujen asetuksia…",
       "modelTitle": "Työkalujen malli",
-      "modelDescription": "Kuvasta LaTeXiin -muunnos, kaavojen kuvat ja skannatut PDF-tiedostot käyttävät tätä mallia. Automaattinen valinta käyttää Ollamaa, joten kuvat pysyvät tällä koneella. Jos Ollama ei ole käynnissä tai siinä ei ole kuvia lukevaa mallia, editorin Kuvasta LaTeXiin- ja Kuvasta Typstiin -muunnokset lähettävät kuvan avustajan mallille.",
+      "modelDescription": "Kuvasta LaTeXiin -muunnos, kaavojen kuvat ja skannatut PDF-tiedostot käyttävät tätä mallia. Automaattinen valinta käyttää Ollamaa, joten kuvat pysyvät tällä koneella. Jos Ollama ei ole käynnissä tai siinä ei ole kuvia lukevaa mallia, editorin Kuvasta LaTeXiin- ja Kuvasta Typstiin -muunnokset lähettävät kuvan avustajan mallille. Voit myös valita yhdistetyn komentoriviagentin, kuten Claude Coden. Se käyttää omaa kirjautumistasi, joten API-avainta ei tarvita.",
       "ocrHint": "Parhaat paikalliset tulokset saat noutamalla Ollamaan OCR-mallin:",
       "mathpix": {
         "title": "Mathpix",

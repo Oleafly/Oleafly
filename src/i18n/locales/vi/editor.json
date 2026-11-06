@@ -487,7 +487,7 @@
     "dismiss": "Bỏ qua",
     "withdrawn": "Người khác đã sửa văn bản này, nên không áp dụng được gợi ý.",
     "setUpProvider": "Thiết lập nhà cung cấp AI",
-    "setUpProviderHint": "Thêm API key (hoặc Ollama cục bộ) để dùng sửa bằng AI trong dòng.",
+    "setUpProviderHint": "Thêm API key hoặc Ollama cục bộ, hoặc chọn một CLI agent làm mô hình cho Công cụ, để dùng sửa bằng AI trong dòng.",
     "openAiSettings": "Mở Cài đặt → AI"
   },
   "proofreading": {

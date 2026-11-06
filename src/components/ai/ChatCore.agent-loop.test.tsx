@@ -45,6 +45,7 @@ const mocks = vi.hoisted(() => ({
   agentThreadRead: vi.fn(),
   agentThreadArchive: vi.fn(),
   acpOpen: vi.fn(),
+  acpCatalog: [] as unknown[],
   agentThreadFork: vi.fn(),
   agentThreadRollback: vi.fn(),
   providerCredit: vi.fn(),
@@ -406,6 +407,10 @@ vi.mock("@/store/acp-sessions", () => {
   const state = {
     open: (...args: unknown[]) => mocks.acpOpen(...args),
     permissions: {} as Record<string, unknown[]>,
+    get catalog() {
+      return mocks.acpCatalog;
+    },
+    refreshCatalog: async () => true,
   };
   const useAcpSessionsStore = Object.assign(
     <T,>(selector: (value: typeof state) => T) => selector(state),
@@ -645,6 +650,7 @@ beforeEach(() => {
   mocks.agentThreadRead.mockReset().mockResolvedValue([]);
   mocks.acpOpen.mockReset().mockResolvedValue(undefined);
   useAssistantRuntimeStore.setState({ runtime: "built-in", handoffRuntime: null });
+  mocks.acpCatalog = [];
   useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [] });
   mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
   mocks.agentThreadFork.mockReset().mockResolvedValue("thread-forked");
@@ -4354,6 +4360,31 @@ describe("ChatCore provider readiness", () => {
     expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "false");
     expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-ready", "true");
     expect(rendered.queryByTestId("ai-provider-loading")).toBeNull();
+  });
+
+  it("sends a hand-off to a connected CLI agent when no provider is set up", async () => {
+    mocks.getConfig.mockResolvedValue({ ...keyedConfig, ai_api_key: "", ai_keys: {} });
+    mocks.acpCatalog = [{ definition: { id: "claude", name: "Claude Code" }, installed: true, canInstall: true, cli: null }];
+    const rendered = mount(createElement(ChatCore));
+    expect(await rendered.findByText(connectPrompt)).toBeTruthy();
+
+    act(() => useAgentHandoffStore.getState().handoff("Fix the compile errors", { autoSend: false }));
+
+    await waitFor(() => expect(useAgentHandoffStore.getState().target).toBe("acp"));
+    expect(useAgentHandoffStore.getState().pendingPrompt).toBe("Fix the compile errors");
+    expect(useAssistantRuntimeStore.getState().handoffRuntime).toBe("acp");
+    expect(useAssistantRuntimeStore.getState().runtime).toBe("built-in");
+  });
+
+  it("keeps a hand-off here when there is no CLI agent either", async () => {
+    mocks.getConfig.mockResolvedValue({ ...keyedConfig, ai_api_key: "", ai_keys: {} });
+    const rendered = mount(createElement(ChatCore));
+    expect(await rendered.findByText(connectPrompt)).toBeTruthy();
+
+    act(() => useAgentHandoffStore.getState().handoff("Fix the compile errors", { autoSend: false }));
+
+    await waitFor(() => expect(useAgentHandoffStore.getState().pendingPrompt).toBeNull());
+    expect(useAssistantRuntimeStore.getState().handoffRuntime).toBeNull();
   });
 
   it("remounts straight into the thread once the config is known", async () => {

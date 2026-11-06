@@ -17,7 +17,7 @@ import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
-import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { aiFeaturesReady } from "@/lib/ai-route";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -103,14 +103,14 @@ export function PaperReviewPanel() {
       const detail = (event as CustomEvent | undefined)?.detail;
       if (detail && typeof detail === "object") {
         try {
-          apply(hasConfiguredProvider(detail as never));
+          apply(aiFeaturesReady(detail as never));
           return;
         } catch {
           // fall through
         }
       }
       void getConfig()
-        .then((config) => apply(hasConfiguredProvider(config)))
+        .then((config) => apply(aiFeaturesReady(config)))
         .catch(() => apply(false));
     };
     check();

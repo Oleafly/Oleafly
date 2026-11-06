@@ -9,14 +9,42 @@ describe("agent handoff runtime switch", () => {
   beforeEach(() => {
     localStorage.clear();
     useAssistantRuntimeStore.setState({ runtime: "built-in", handoffRuntime: null });
-    useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [] });
+    useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [], target: "built-in" });
     useToastStore.setState({ toasts: [] });
   });
 
-  it("switches the active runtime to built-in when the CLI runtime is selected", () => {
+  it("keeps a hand-off on the CLI assistant when that is the one in use", () => {
     useAssistantRuntimeStore.getState().setRuntime("acp");
 
     useAgentHandoffStore.getState().handoff("Fix the compile error", { autoSend: true });
+
+    expect(selectActiveRuntime(useAssistantRuntimeStore.getState())).toBe("acp");
+    expect(useAgentHandoffStore.getState()).toMatchObject({ pendingPrompt: "Fix the compile error", target: "acp" });
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("sends Oleafly's assistant the hand-offs from its own runtime", () => {
+    useAgentHandoffStore.getState().handoff("Draw a figure of a pendulum");
+    expect(useAgentHandoffStore.getState().target).toBe("built-in");
+  });
+
+  it("can move a waiting hand-off to the CLI assistant without changing the saved choice", () => {
+    useAgentHandoffStore.getState().handoff("Fix the compile error", { autoSend: false });
+    useAgentHandoffStore.getState().redirectToCli();
+
+    const runtime = useAssistantRuntimeStore.getState();
+    expect(selectActiveRuntime(runtime)).toBe("acp");
+    expect(runtime.runtime).toBe("built-in");
+    expect(useAgentHandoffStore.getState().target).toBe("acp");
+    expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([enCore.assistant.handoffToCli]);
+    useAgentHandoffStore.getState().consume();
+    expect(useAgentHandoffStore.getState().target).toBe("built-in");
+  });
+
+  it("switches the active runtime to built-in for a hand-off with images, which the CLI composer can't take", () => {
+    useAssistantRuntimeStore.getState().setRuntime("acp");
+
+    useAgentHandoffStore.getState().handoff("Fix the compile error", { autoSend: true, images: ["data:image/png;base64,AA"] });
 
     const runtime = useAssistantRuntimeStore.getState();
     expect(selectActiveRuntime(runtime)).toBe("built-in");
@@ -38,10 +66,11 @@ describe("agent handoff runtime switch", () => {
 
   it("shows one toast for a burst of handoffs and restores the CLI choice on the next explicit pick", () => {
     useAssistantRuntimeStore.getState().setRuntime("acp");
+    const images = ["data:image/png;base64,AA"];
 
-    useAgentHandoffStore.getState().handoff("first");
+    useAgentHandoffStore.getState().handoff("first", { images });
     useAgentHandoffStore.getState().consume();
-    useAgentHandoffStore.getState().handoff("second");
+    useAgentHandoffStore.getState().handoff("second", { images });
 
     expect(useToastStore.getState().toasts).toHaveLength(1);
     expect(selectActiveRuntime(useAssistantRuntimeStore.getState())).toBe("built-in");

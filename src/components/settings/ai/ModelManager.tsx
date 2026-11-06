@@ -115,6 +115,14 @@ export function ModelManager({
   );
   const enabledCount = enabledModels(models).length;
 
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
   const runRefresh = useCallback(
     async (trigger: "manual" | "auto") => {
       const now = Date.now();
@@ -156,7 +164,8 @@ export function ModelManager({
         if (remaining > 0) {
           await new Promise((resolve) => window.setTimeout(resolve, remaining));
         }
-        setRefreshing(false);
+        // The wait can outlast the panel, and a state update then has no window.
+        if (mounted.current) setRefreshing(false);
       }
     },
     [apiKey, baseURL, providerId],

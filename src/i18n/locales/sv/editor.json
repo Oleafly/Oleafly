@@ -494,7 +494,7 @@
     "dismiss": "Stäng",
     "withdrawn": "Någon annan har redigerat texten, så förslaget kan inte längre användas.",
     "setUpProvider": "Konfigurera en AI-leverantör",
-    "setUpProviderHint": "Lägg till en API-nyckel (eller lokal Ollama) för att använda AI-ändringar i löptext.",
+    "setUpProviderHint": "Lägg till en API-nyckel eller lokal Ollama, eller välj en CLI-agent som modell för Verktyg, för att använda AI-ändringar i löptext.",
     "openAiSettings": "Öppna Inställningar → AI"
   },
   "proofreading": {

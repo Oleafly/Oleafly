@@ -3,12 +3,17 @@ import { getEventListeners } from "node:events";
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
+  cliAgentRoute: vi.fn(),
   Channel: class {
     onmessage: ((event: unknown) => void) | null = null;
   },
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Channel }));
+vi.mock("@/lib/ai-route", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/ai-route")>()),
+  currentCliAgentRoute: mocks.cliAgentRoute,
+}));
 
 import {
   AgentStreamError,
@@ -32,6 +37,45 @@ function reply(text: string) {
 
 beforeEach(() => {
   mocks.invoke.mockReset();
+  mocks.cliAgentRoute.mockReset();
+  mocks.cliAgentRoute.mockResolvedValue(null);
+});
+
+describe("plain text requests with only a CLI agent", () => {
+  const route = { provider_id: "acp:claude", model_id: "opus", agent: "Claude Code" };
+
+  it("go to the CLI agent picked for Tools", async () => {
+    mocks.cliAgentRoute.mockResolvedValue(route);
+    mocks.invoke.mockResolvedValue(reply("done"));
+    await expect(completeText({ user: "hi" })).resolves.toBe("done");
+    expect(mocks.invoke.mock.calls[0][1].providerOverride).toEqual({ provider_id: "acp:claude", model_id: "opus" });
+  });
+
+  it("stream from it too", async () => {
+    mocks.cliAgentRoute.mockResolvedValue(route);
+    mocks.invoke.mockImplementation(async (_command: string, args: { onEvent: { onmessage: (event: unknown) => void } }) => {
+      args.onEvent.onmessage({ kind: "textDelta", text: "Re" });
+      args.onEvent.onmessage({ kind: "textDelta", text: "view" });
+      args.onEvent.onmessage({ kind: "runEnd" });
+    });
+    const seen: string[] = [];
+    await expect(streamText({ user: "paper", onToken: (full) => seen.push(full) })).resolves.toBe("Review");
+    expect(seen).toEqual(["Re", "Review"]);
+    expect(mocks.invoke.mock.calls[0][0]).toBe("agent_stream");
+    expect(mocks.invoke.mock.calls[0][1].providerOverride).toEqual({ provider_id: "acp:claude", model_id: "opus" });
+  });
+
+  it("say what went wrong in the app's words", async () => {
+    mocks.cliAgentRoute.mockResolvedValue(route);
+    mocks.invoke.mockRejectedValue("[auth] Authentication required");
+    await expect(completeText({ user: "hi" })).rejects.toThrow("Claude Code isn't signed in. Sign in, then try again.");
+  });
+
+  it("keep the assistant's provider when there is no CLI agent route", async () => {
+    mocks.invoke.mockResolvedValue(reply(""));
+    await completeText({ user: "hi" });
+    expect(mocks.invoke.mock.calls[0][1].providerOverride).toBeNull();
+  });
 });
 
 describe("completion requests", () => {
@@ -93,6 +137,7 @@ describe("cancellation", () => {
     });
 
     const pending = completeText({ user: "hi", signal: controller.signal });
+    await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("agent_complete", expect.anything()));
     controller.abort();
     rejectCall("The request was cancelled.");
 
@@ -107,6 +152,7 @@ describe("cancellation", () => {
     );
 
     const pending = completeText({ user: "hi", signal: controller.signal });
+    await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("agent_complete", expect.anything()));
     controller.abort();
 
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
@@ -291,6 +337,7 @@ describe("streaming", () => {
     playStream([{ kind: "textDelta", text: "partial" }], true);
     const controller = new AbortController();
     const pending = streamText({ user: "hi", signal: controller.signal });
+    await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("agent_stream", expect.anything()));
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
     expect(mocks.invoke).toHaveBeenCalledWith("agent_cancel", expect.anything());
@@ -300,6 +347,7 @@ describe("streaming", () => {
     playStream([{ kind: "textDelta", text: "partial" }], true);
     const controller = new AbortController();
     const pending = streamText({ user: "hi", signal: controller.signal });
+    await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("agent_stream", expect.anything()));
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
     expect(mocks.invoke).toHaveBeenCalledWith(
