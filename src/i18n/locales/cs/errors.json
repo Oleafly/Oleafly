@@ -347,6 +347,7 @@
       "node_missing": "Ke spuštění tohoto agenta nainstalujte Node.js {{required}} nebo novější.",
       "node_outdated": "Tento agent potřebuje Node.js {{required}} nebo novější. Zjištěná verze je {{major}}.",
       "bridge_outdated": "Verze {{package}} {{found}} v tomto počítači je příliš stará. Oleafly potřebuje verzi {{pinned}} nebo novější. Nainstalujte most v Nastavení.",
+      "cli_outdated": "Verze {{name}} {{found}} v tomto počítači je příliš stará. Oleafly potřebuje verzi {{minimum}} nebo novější. Spusťte v terminálu {{command}} a zkuste to znovu.",
       "spawn_failed": "Agenta se nepodařilo spustit. Zkontrolujte jeho instalaci a oprávnění ke spuštění. ({{kind}}: {{path}})",
       "remote_not_set_up": "Nejdřív nastavte vzdálený počítač v nastavení Hermes.",
       "ssh_missing": "Oleafly v tomto počítači nemůže najít ssh. Nainstalujte OpenSSH a zkuste to znovu.",

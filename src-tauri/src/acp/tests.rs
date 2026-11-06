@@ -862,7 +862,7 @@ fn task_availability_distinguishes_platform_and_agent_family() {
             )
             .is_some());
         }
-        if !["codex", "hermes", "pi"].contains(&definition.id.as_str()) {
+        if !["codex", "hermes", "pi", "antigravity"].contains(&definition.id.as_str()) {
             assert!(catalog::task_unavailable_reason_for(
                 &definition,
                 "macos",
@@ -970,6 +970,23 @@ fn pi_tasks_wait_for_a_verified_run() {
         )
         .unwrap()
         .starts_with("Pi tasks stay off"));
+    }
+}
+
+#[test]
+fn antigravity_tasks_wait_for_a_verified_run() {
+    let antigravity = catalog::builtins()
+        .into_iter()
+        .find(|definition| definition.id == "antigravity")
+        .unwrap();
+    for os in ["linux", "macos"] {
+        assert!(catalog::task_unavailable_reason_for(
+            &antigravity,
+            os,
+            &catalog::WindowsTaskSupport::default()
+        )
+        .unwrap()
+        .starts_with("Antigravity CLI tasks stay off"));
     }
 }
 

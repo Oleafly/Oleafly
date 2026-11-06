@@ -345,6 +345,7 @@
       "node_missing": "Installez Node.js {{required}} ou une version plus récente pour exécuter cet agent.",
       "node_outdated": "Cet agent a besoin de Node.js {{required}} ou d'une version plus récente. La version détectée est la {{major}}.",
       "bridge_outdated": "{{package}} {{found}} sur cet ordinateur est trop ancien. Oleafly a besoin de la version {{pinned}} ou plus récente. Installez le pont dans les Paramètres.",
+      "cli_outdated": "{{name}} {{found}} sur cet ordinateur est trop ancien. Oleafly a besoin de la version {{minimum}} ou plus récente. Exécutez {{command}} dans un terminal, puis réessayez.",
       "spawn_failed": "L'agent n'a pas pu être démarré. Vérifiez son installation et ses autorisations d'exécution. ({{kind}} : {{path}})",
       "remote_not_set_up": "Configurez d'abord la machine distante pour Hermes dans ses paramètres.",
       "ssh_missing": "Oleafly n'a pas trouvé ssh sur cet ordinateur. Installez OpenSSH, puis réessayez.",

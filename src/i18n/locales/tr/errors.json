@@ -343,6 +343,7 @@
       "node_missing": "Bu ajanı çalıştırmak için Node.js {{required}} veya daha yeni bir sürümü kurun.",
       "node_outdated": "Bu ajan Node.js {{required}} veya daha yeni bir sürüm gerektiriyor. Algılanan sürüm {{major}}.",
       "bridge_outdated": "Bu bilgisayardaki {{package}} {{found}} sürümü çok eski. Oleafly {{pinned}} veya daha yeni bir sürüm gerektiriyor. Köprüyü Ayarlar'dan kurun.",
+      "cli_outdated": "Bu bilgisayardaki {{name}} {{found}} sürümü çok eski. Oleafly {{minimum}} veya daha yeni bir sürüm gerektiriyor. Bir terminalde {{command}} komutunu çalıştırıp yeniden deneyin.",
       "spawn_failed": "Ajan başlatılamadı. Kurulumunu ve çalıştırma izinlerini denetleyin. ({{kind}}: {{path}})",
       "remote_not_set_up": "Önce Hermes ayarlarında uzak makineyi yapılandırın.",
       "ssh_missing": "Oleafly bu bilgisayarda ssh bulamadı. OpenSSH kurun, sonra yeniden deneyin.",

@@ -341,6 +341,7 @@
       "node_missing": "請安裝 Node.js {{required}} 或以上版本以執行這個代理程式。",
       "node_outdated": "這個代理程式需要 Node.js {{required}} 或以上版本。偵測到的版本為 {{major}}。",
       "bridge_outdated": "這台電腦上的 {{package}} {{found}} 版本太舊。Oleafly 需要 {{pinned}} 或以上版本。請在設定中安裝橋接程式。",
+      "cli_outdated": "這台電腦上的 {{name}} {{found}} 版本太舊。Oleafly 需要 {{minimum}} 或以上版本。請在終端機中執行 {{command}}，然後再試一次。",
       "spawn_failed": "無法啟動代理程式。請檢查它的安裝狀態與執行權限。（{{kind}}：{{path}}）",
       "remote_not_set_up": "請先在 Hermes 的設定中完成遠端機器的設定。",
       "ssh_missing": "Oleafly 在這台電腦上找不到 ssh。請安裝 OpenSSH，然後再試一次。",

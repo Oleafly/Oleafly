@@ -345,6 +345,7 @@
       "node_missing": "Instalează Node.js {{required}} sau o versiune mai nouă ca să rulezi acest agent.",
       "node_outdated": "Acest agent are nevoie de Node.js {{required}} sau de o versiune mai nouă. Versiunea detectată este {{major}}.",
       "bridge_outdated": "{{package}} {{found}} de pe acest computer este prea vechi. Oleafly are nevoie de {{pinned}} sau de o versiune mai nouă. Instalează puntea din Setări.",
+      "cli_outdated": "{{name}} {{found}} de pe acest computer este prea vechi. Oleafly are nevoie de {{minimum}} sau de o versiune mai nouă. Rulează {{command}} într-un terminal, apoi încearcă din nou.",
       "spawn_failed": "Agentul nu a putut fi pornit. Verifică-i instalarea și permisiunile de executare. ({{kind}}: {{path}})",
       "remote_not_set_up": "Configurează mai întâi computerul de la distanță pentru Hermes, din setările lui.",
       "ssh_missing": "Oleafly nu a găsit ssh pe acest computer. Instalează OpenSSH, apoi încearcă din nou.",

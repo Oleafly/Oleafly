@@ -341,6 +341,7 @@
       "node_missing": "이 에이전트를 실행하려면 Node.js {{required}} 이상을 설치하세요.",
       "node_outdated": "이 에이전트에는 Node.js {{required}} 이상이 필요합니다. 감지된 버전은 {{major}}입니다.",
       "bridge_outdated": "이 컴퓨터에 있는 {{package}} {{found}}은(는) 너무 오래되었습니다. Oleafly에는 {{pinned}} 이상이 필요합니다. 설정에서 브리지를 설치하세요.",
+      "cli_outdated": "이 컴퓨터에 있는 {{name}} {{found}}은(는) 너무 오래되었습니다. Oleafly에는 {{minimum}} 이상이 필요합니다. 터미널에서 {{command}}을(를) 실행한 다음 다시 시도하세요.",
       "spawn_failed": "에이전트를 시작하지 못했습니다. 설치 상태와 실행 권한을 확인하세요. ({{kind}}: {{path}})",
       "remote_not_set_up": "먼저 Hermes 설정에서 원격 컴퓨터를 설정하세요.",
       "ssh_missing": "Oleafly가 이 컴퓨터에서 ssh를 찾지 못했습니다. OpenSSH를 설치한 다음 다시 시도하세요.",

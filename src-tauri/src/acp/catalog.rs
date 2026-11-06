@@ -71,193 +71,11 @@ impl Launch {
     }
 }
 
-struct Builtin {
-    id: &'static str,
-    name: &'static str,
-    description: &'static str,
-    version: &'static str,
-    dist: BuiltinDist,
-}
-
-enum BuiltinDist {
-    Native {
-        cmd: &'static str,
-        args: &'static [&'static str],
-        alt_cmds: &'static [&'static str],
-    },
-    Bridge {
-        package: &'static str,
-        cmd: &'static str,
-        args: &'static [&'static str],
-        node: u32,
-    },
-}
+#[path = "builtin_agents.rs"]
+mod builtin_agents;
+use builtin_agents::{BuiltinDist, BUILTINS};
 
 const CODEX_BUNDLED_CLI: &str = "0.160.1";
-
-const BUILTINS: &[Builtin] = &[
-    Builtin {
-        id: "claude",
-        name: "Claude Code",
-        description: "Uses the agent's own CLI account and permissions.",
-        version: "0.95.0",
-        dist: BuiltinDist::Bridge {
-            package: "@agentclientprotocol/claude-agent-acp@0.95.0",
-            cmd: "claude-agent-acp",
-            args: &[],
-            node: 22,
-        },
-    },
-    Builtin {
-        id: "codex",
-        name: "Codex CLI",
-        description: "Uses the agent's own CLI account and permissions.",
-        version: "2.2.2",
-        dist: BuiltinDist::Bridge {
-            package: "@agentclientprotocol/codex-acp@2.2.2",
-            cmd: "codex-acp",
-            args: &[],
-            node: 20,
-        },
-    },
-    Builtin {
-        id: "gemini",
-        name: "Gemini CLI",
-        description: "Uses the agent's own CLI account and permissions.",
-        version: "0.64.0",
-        dist: BuiltinDist::Bridge {
-            package: "@google/gemini-cli@0.64.0",
-            cmd: "gemini",
-            // Every Gemini CLI release takes this flag (still in 0.64.0, as a
-            // deprecated alias); `--acp` only exists from 0.33.0, and the same
-            // args reach a Gemini the user installed themselves.
-            args: &["--experimental-acp"],
-            node: 20,
-        },
-    },
-    Builtin {
-        id: "pi",
-        name: "Pi",
-        description: "Uses the agent's own CLI account and permissions.",
-        version: "0.0.34",
-        dist: BuiltinDist::Bridge {
-            package: "pi-acp@0.0.34",
-            cmd: "pi-acp",
-            args: &[],
-            node: 22,
-        },
-    },
-    Builtin {
-        id: "opencode",
-        name: "OpenCode",
-        description: "Serves ACP from the installed CLI.",
-        version: "1.19.3",
-        dist: BuiltinDist::Native {
-            cmd: "opencode",
-            args: &["acp"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "openclaw",
-        name: "OpenClaw",
-        description: "Serves ACP from the installed CLI.",
-        version: "2026.9.2",
-        dist: BuiltinDist::Native {
-            cmd: "openclaw",
-            args: &["acp"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "cline",
-        name: "Cline",
-        description: "Serves ACP from the installed CLI.",
-        version: "3.0.61",
-        dist: BuiltinDist::Native {
-            cmd: "cline",
-            args: &["--acp"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "hermes",
-        name: "Hermes Agent",
-        description: "Serves ACP from the installed CLI.",
-        version: "0.22.2",
-        dist: BuiltinDist::Native {
-            cmd: "hermes",
-            args: &["acp"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "codebuddy",
-        name: "CodeBuddy",
-        description: "Serves ACP from the installed CLI.",
-        version: "2.146.0",
-        dist: BuiltinDist::Native {
-            cmd: "codebuddy",
-            args: &["--acp"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "kimi",
-        name: "Kimi Code",
-        description: "Serves ACP from the installed CLI.",
-        version: "1.52.0",
-        dist: BuiltinDist::Native {
-            cmd: "kimi",
-            args: &["acp"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "grok",
-        name: "Grok Build",
-        description: "Serves ACP from the installed CLI.",
-        version: "1.0.63",
-        dist: BuiltinDist::Native {
-            cmd: "grok",
-            args: &["agent", "stdio"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "cursor",
-        name: "Cursor",
-        description: "Serves ACP from the installed CLI.",
-        version: "2026.10.16",
-        dist: BuiltinDist::Native {
-            cmd: "cursor-agent",
-            args: &["acp"],
-            alt_cmds: &["agent"],
-        },
-    },
-    Builtin {
-        id: "deepseek",
-        name: "DeepSeek Harness",
-        description: "Serves ACP from the installed CLI.",
-        version: "0.1.2-rc.1",
-        dist: BuiltinDist::Native {
-            cmd: "dsh",
-            args: &["--profile", "acp"],
-            alt_cmds: &[],
-        },
-    },
-    Builtin {
-        id: "qoder",
-        name: "Qoder",
-        description: "Serves ACP from the installed CLI.",
-        version: "1.1.45",
-        dist: BuiltinDist::Native {
-            cmd: "qodercli",
-            args: &["--acp"],
-            alt_cmds: &[],
-        },
-    },
-];
 
 pub fn builtins() -> Vec<AgentDefinition> {
     BUILTINS
@@ -1365,6 +1183,7 @@ pub(crate) fn runs_on_node(definition: &AgentDefinition) -> bool {
 
 const CODEX_TASKS_VERIFIED_ON: &[&str] = &["linux"];
 const PI_TASKS_VERIFIED_ON: &[&str] = &[];
+const ANTIGRAVITY_TASKS_VERIFIED_ON: &[&str] = &[];
 
 pub(crate) fn is_codex(definition: &AgentDefinition) -> bool {
     definition.id == "codex"
@@ -1415,6 +1234,9 @@ pub(super) fn task_unavailable_reason_for(
                 .into(),
         );
     }
+    if definition.id == "antigravity" && !ANTIGRAVITY_TASKS_VERIFIED_ON.contains(&os) {
+        return Some("Antigravity CLI tasks stay off until a test run passes on this system. Use Antigravity CLI in the assistant.".into());
+    }
     None
 }
 
@@ -1431,6 +1253,13 @@ pub(crate) struct VendorCli {
     pub(crate) bridge_needs_cli: bool,
     pub(crate) version_args: &'static [&'static str],
     pub(crate) bundled_cli: Option<&'static str>,
+    pub(crate) minimum: Option<CliMinimum>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct CliMinimum {
+    pub(crate) version: &'static str,
+    pub(crate) update_command: &'static str,
 }
 
 impl VendorCli {
@@ -1451,6 +1280,7 @@ impl VendorCli {
             bridge_needs_cli: false,
             version_args: &["--version"],
             bundled_cli: None,
+            minimum: None,
         }
     }
 }
@@ -1470,6 +1300,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             bridge_needs_cli: false,
             version_args: &["--version"],
             bundled_cli: None,
+            minimum: None,
         },
     ),
     (
@@ -1486,6 +1317,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             bridge_needs_cli: false,
             version_args: &["--version"],
             bundled_cli: Some(CODEX_BUNDLED_CLI),
+            minimum: None,
         },
     ),
     (
@@ -1506,6 +1338,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             bridge_needs_cli: true,
             version_args: &["--version"],
             bundled_cli: None,
+            minimum: None,
         },
     ),
     (
@@ -1548,6 +1381,16 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
         "qoder",
         VendorCli::shared("qodercli", "Qoder CLI", "qodercli login"),
     ),
+    (
+        "antigravity",
+        VendorCli {
+            minimum: Some(CliMinimum {
+                version: "1.5.0",
+                update_command: "agy update",
+            }),
+            ..VendorCli::shared("agy", "Antigravity CLI", "agy acp --login")
+        },
+    ),
 ];
 
 pub(crate) fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
@@ -1555,6 +1398,54 @@ pub(crate) fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
         .iter()
         .find(|(id, _)| *id == definition.id)
         .map(|(_, cli)| cli.clone())
+}
+
+pub(crate) fn cli_outdated(vendor: &VendorCli, found: &str) -> Option<String> {
+    let minimum = vendor.minimum?;
+    older_npm_version(found, minimum.version).then(|| {
+        super::failures::cli_outdated(
+            vendor.display_name,
+            found,
+            minimum.version,
+            minimum.update_command,
+        )
+    })
+}
+
+pub(crate) async fn check_cli_minimum(
+    root: &Path,
+    definition: &AgentDefinition,
+    plan: &Plan,
+) -> Result<(), String> {
+    let Some(vendor) = vendor_cli(definition).filter(|vendor| vendor.minimum.is_some()) else {
+        return Ok(());
+    };
+    let Some(cli) = &plan.cli else {
+        return Ok(());
+    };
+    let found = match &cli.version {
+        Some(version) => Some(version.clone()),
+        None => {
+            let env = plan
+                .launch
+                .as_ref()
+                .map(|launch| launch.env.clone())
+                .unwrap_or_else(|_| locator::child_env(&[], &[]));
+            program_version(
+                root,
+                &cli.located,
+                vendor.version_args,
+                &env,
+                STATUS_VERSION_LIMIT,
+            )
+            .await
+            .ok()
+        }
+    };
+    match found.and_then(|found| cli_outdated(&vendor, &found)) {
+        Some(message) => Err(message),
+        None => Ok(()),
+    }
 }
 
 pub(crate) fn parse_cli_version(output: &str) -> Option<String> {
@@ -1975,6 +1866,18 @@ pub async fn status_with(
         }
         _ => None,
     };
+    if let Some(outdated) = vendor.as_ref().and_then(|vendor| {
+        let seen = version.as_deref().or_else(|| {
+            facts
+                .plan
+                .cli
+                .as_ref()
+                .and_then(|cli| cli.version.as_deref())
+        })?;
+        cli_outdated(vendor, seen)
+    }) {
+        reason = Some(outdated);
+    }
     let cli = vendor
         .as_ref()
         .map(|vendor| cli_status(vendor, &facts.plan, facts.reachable, version));
@@ -3045,6 +2948,7 @@ const REGISTRY_BUILTINS: &[(&str, &str)] = &[
     ("cline", "cline"),
     ("kimi", "kimi"),
     ("qoder", "qoder"),
+    ("antigravity-acp", "antigravity"),
     ("cursor", "cursor"),
     ("codebuddy-code", "codebuddy"),
     ("grok-build", "grok"),

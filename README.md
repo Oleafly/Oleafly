@@ -126,17 +126,20 @@ Pick an agent from the catalog and it works in your project with the source, the
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/gemini-cli.svg" alt="" width="40" height="40" /><br />Gemini&nbsp;CLI</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/pi.svg" alt="" width="40" height="40" /><br />Pi</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/opencode.svg" alt="" width="40" height="40" /><br />OpenCode</td>
-    <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/openclaw.svg" alt="" width="40" height="40" /><br />OpenClaw</td>
-    <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/cline.svg" alt="" width="40" height="40" /><br />Cline</td>
   </tr>
   <tr>
+    <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/openclaw.svg" alt="" width="40" height="40" /><br />OpenClaw</td>
+    <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/cline.svg" alt="" width="40" height="40" /><br />Cline</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/hermes-agent.svg" alt="" width="40" height="40" /><br />Hermes&nbsp;Agent</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/codebuddy.svg" alt="" width="40" height="40" /><br />CodeBuddy</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/kimi-code.svg" alt="" width="40" height="40" /><br />Kimi&nbsp;Code</td>
+  </tr>
+  <tr>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/grok.svg" alt="" width="40" height="40" /><br />Grok&nbsp;Build</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/cursor.svg" alt="" width="40" height="40" /><br />Cursor</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/deepseek-harness.png" alt="" width="40" height="40" /><br />DeepSeek Harness</td>
     <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/qoder.svg" alt="" width="40" height="40" /><br />Qoder</td>
+    <td align="center" valign="top" width="135"><img src="docs/assets/readme/agents/antigravity.svg" alt="" width="40" height="40" /><br />Antigravity&nbsp;CLI</td>
   </tr>
 </table>
 </div>

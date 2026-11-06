@@ -343,6 +343,7 @@
       "node_missing": "Asenna Node.js {{required}} tai uudempi, jotta tämä agentti voi toimia.",
       "node_outdated": "Tämä agentti tarvitsee Node.js:n version {{required}} tai uudemman. Havaittu versio on {{major}}.",
       "bridge_outdated": "Tämän koneen {{package}} {{found}} on liian vanha. Oleafly tarvitsee version {{pinned}} tai uudemman. Asenna silta asetuksissa.",
+      "cli_outdated": "Tämän koneen {{name}} {{found}} on liian vanha. Oleafly tarvitsee version {{minimum}} tai uudemman. Suorita {{command}} päätteessä ja yritä sitten uudelleen.",
       "spawn_failed": "Agenttia ei voitu käynnistää. Tarkista sen asennus ja suoritusoikeudet. ({{kind}}: {{path}})",
       "remote_not_set_up": "Määritä ensin etäkone Hermes-asetuksissa.",
       "ssh_missing": "Oleafly ei löytänyt ssh:ta tältä koneelta. Asenna OpenSSH ja yritä uudelleen.",

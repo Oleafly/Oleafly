@@ -2,7 +2,7 @@
 
 import { forwardRef, useImperativeHandle, type ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramModel } from "@oleafly/latex";
 import type { DiagramHost } from "./host";
 
@@ -122,6 +122,7 @@ vi.mock("./CmCodeEditor", () => ({
 import { DiagramComposer, safeName } from "./DiagramComposer";
 import { modelToFletcher } from "./fletcher";
 import { figureHash } from "./languages/mermaid-figure";
+import { loadFletcherReader } from "./languages/typst";
 
 const PNG = "data:image/png;base64,AAAA";
 
@@ -987,6 +988,10 @@ function typstHost(overrides: Partial<DiagramHost> = {}): DiagramHost {
 }
 
 describe("DiagramComposer in Typst mode", () => {
+  beforeAll(async () => {
+    await loadFletcherReader();
+  }, 30_000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     canvas.props = {};
