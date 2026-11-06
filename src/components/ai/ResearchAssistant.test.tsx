@@ -109,13 +109,29 @@ describe("ResearchAssistant shell", () => {
     expect(hideIcon?.classList.contains("lucide-picture-in-picture-2")).toBe(false);
   });
 
-  it("switches to the built-in chat when a handoff arrives while CLI agents are selected", async () => {
+  it("keeps the CLI agent for a hand-off while CLI agents are selected", async () => {
     useAssistantRuntimeStore.getState().setRuntime("acp");
     render(<ResearchAssistant />);
     expect(await screen.findByTestId("acp-assistant")).toBeTruthy();
 
     act(() => {
       useAgentHandoffStore.getState().handoff("Explain this compile error", { autoSend: true });
+    });
+
+    expect(screen.getByTestId("acp-assistant")).toBeTruthy();
+    expect(screen.queryByTestId("chat-core")).toBeNull();
+    expect(useAgentHandoffStore.getState().target).toBe("acp");
+  });
+
+  it("switches to the built-in chat for a hand-off with images while CLI agents are selected", async () => {
+    useAssistantRuntimeStore.getState().setRuntime("acp");
+    render(<ResearchAssistant />);
+    expect(await screen.findByTestId("acp-assistant")).toBeTruthy();
+
+    act(() => {
+      useAgentHandoffStore
+        .getState()
+        .handoff("Explain this compile error", { autoSend: true, images: ["data:image/png;base64,AA"] });
     });
 
     expect(screen.getByTestId("chat-core")).toBeTruthy();

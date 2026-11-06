@@ -230,6 +230,18 @@ describe("generated template edge cases", () => {
     await expect(generateTemplateAvailable()).resolves.toBe(false);
   });
 
+  it("uses the CLI agent picked for Tools when no AI provider is set up", async () => {
+    vi.mocked(hasConfiguredProvider).mockReturnValue(false);
+    const cli = { ai_tools_model: { provider: "acp:claude", model: "default", label: "Claude Code" } };
+    tauri.getConfig.mockResolvedValue(cli);
+    await expect(generateTemplateAvailable()).resolves.toBe(true);
+
+    completeViaBackend.mockResolvedValue({ text: JSON.stringify({ slug: "a", engine: "typst", source: "= T" }) });
+    await generateTemplateSource("a short report");
+    expect(completeViaBackend.mock.calls[0][2]).toEqual({ provider_id: "acp:claude", model_id: "default" });
+    vi.mocked(hasConfiguredProvider).mockReset();
+  });
+
   it("asks a chosen model when one is given", async () => {
     completeViaBackend.mockResolvedValue({ text: JSON.stringify({ slug: "a", engine: "typst", source: "= T" }) });
 

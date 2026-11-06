@@ -508,7 +508,7 @@
     "dismiss": "Zavřít",
     "withdrawn": "Tento text mezitím upravil někdo jiný, takže návrh už nejde použít.",
     "setUpProvider": "Nastavit poskytovatele AI",
-    "setUpProviderHint": "Přidejte klíč API (nebo místní Ollama) a můžete používat úpravy AI přímo v textu.",
+    "setUpProviderHint": "Přidejte klíč API nebo místní Ollama, nebo vyberte agenta CLI jako model pro Nástroje, a můžete používat úpravy AI přímo v textu.",
     "openAiSettings": "Otevřít Nastavení → AI"
   },
   "proofreading": {

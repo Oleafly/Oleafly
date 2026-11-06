@@ -383,6 +383,14 @@ export const agentWebSupport = (providerId?: string, modelId?: string) =>
 export const agentThreadClaimPrewarmed = (projectId: string) =>
   invoke<string | null>("agent_thread_claim_prewarmed", { projectId });
 
+/** With no API provider set up, plain text requests go to the CLI agent
+ * picked as the model for Tools. Loaded on demand: this module sits on the
+ * app's start-up path. */
+async function cliAgentFallback() {
+  const route = await import("@/lib/ai-route");
+  return { route, picked: await route.currentCliAgentRoute() };
+}
+
 export async function streamText(args: {
   system?: string;
   user: string;
@@ -390,19 +398,23 @@ export async function streamText(args: {
   signal?: AbortSignal;
   onToken?: (full: string) => void;
 }): Promise<string> {
+  const { route, picked } = await cliAgentFallback();
   let full = "";
-  await streamViaBackend(
-    {
-      system: args.system,
-      messages: [{ role: "user", content: [{ type: "text", text: args.user }] }],
-      temperature: args.temperature,
-    },
-    (event) => {
-      if (event.kind !== "textDelta") return;
-      full += event.text;
-      args.onToken?.(full);
-    },
-    args.signal,
+  await route.withCliAgentErrors(picked, () =>
+    streamViaBackend(
+      {
+        system: args.system,
+        messages: [{ role: "user", content: [{ type: "text", text: args.user }] }],
+        temperature: args.temperature,
+      },
+      (event) => {
+        if (event.kind !== "textDelta") return;
+        full += event.text;
+        args.onToken?.(full);
+      },
+      args.signal,
+      route.routeOverride(picked),
+    ),
   );
   return full;
 }
@@ -414,14 +426,18 @@ export async function completeText(args: {
   timeoutMs?: number;
   signal?: AbortSignal;
 }): Promise<string> {
-  const response = await completeViaBackend(
-    {
-      system: args.system,
-      messages: [{ role: "user", content: [{ type: "text", text: args.user }] }],
-      temperature: args.temperature,
-      timeout_ms: args.timeoutMs,
-    },
-    args.signal,
+  const { route, picked } = await cliAgentFallback();
+  const response = await route.withCliAgentErrors(picked, () =>
+    completeViaBackend(
+      {
+        system: args.system,
+        messages: [{ role: "user", content: [{ type: "text", text: args.user }] }],
+        temperature: args.temperature,
+        timeout_ms: args.timeoutMs,
+      },
+      args.signal,
+      route.routeOverride(picked),
+    ),
   );
   return response.text;
 }

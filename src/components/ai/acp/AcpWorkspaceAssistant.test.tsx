@@ -56,6 +56,7 @@ import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { acpComposerId, useAcpSessionsStore } from "@/store/acp-sessions";
 import { useComposerDrafts } from "@/store/composer-drafts";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { useSettingsStore } from "@/store/settings";
 import { SaveFlushError, useFilesStore } from "@/store/files";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
@@ -643,5 +644,36 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(ui.getByText("Run research-fixture login")).toBeInTheDocument());
     expect(ui.getByRole("button", { name: "Reconnect after sign-in" })).toBeInTheDocument();
     expect(ui.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("hand-offs from elsewhere in the app", () => {
+  const drafted = () => Object.values(useComposerDrafts.getState().drafts).map((draft) => draft.text);
+
+  it("puts a hand-off for the CLI assistant in its composer", async () => {
+    useAgentHandoffStore.setState({ pendingPrompt: "Fix the compile error", autoSend: false, pendingImages: [], target: "acp" });
+    render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(useAgentHandoffStore.getState().pendingPrompt).toBeNull());
+    expect(drafted()).toContain("Fix the compile error");
+    expect(acpPrompt).not.toHaveBeenCalled();
+  });
+
+  it("sends an auto-send hand-off to the ready conversation", async () => {
+    vi.mocked(acpPrompt).mockResolvedValue({ session: session("saved", { status: "running" }), permissions: [] });
+    useAgentHandoffStore.setState({ pendingPrompt: "Generate the table", autoSend: true, pendingImages: [], target: "acp" });
+    render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalled());
+    expect(vi.mocked(acpPrompt).mock.calls[0][2]).toMatchObject({ text: "Generate the table" });
+  });
+
+  it("leaves a hand-off meant for Oleafly's assistant alone", async () => {
+    useAgentHandoffStore.setState({ pendingPrompt: "Draw a figure", autoSend: false, pendingImages: [], target: "built-in" });
+    render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(useAcpSessionsStore.getState().catalog.length).toBeGreaterThan(0));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(useAgentHandoffStore.getState().pendingPrompt).toBe("Draw a figure");
+    useAgentHandoffStore.setState({ pendingPrompt: null, target: "built-in" });
   });
 });

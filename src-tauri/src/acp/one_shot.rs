@@ -24,10 +24,15 @@ use super::types::AgentDefinition;
 const AGENT_DEFAULT_MODEL: &str = "default";
 const IDLE_LIMIT: Duration = Duration::from_secs(90);
 const TOTAL_LIMIT: Duration = Duration::from_secs(180);
+/// A streamed reply shows progress, so it may run as long as a paper review needs.
+const STREAM_TOTAL_LIMIT: Duration = Duration::from_secs(20 * 60);
 const INITIALIZE_LIMIT: Duration = Duration::from_secs(30);
 const MAX_REPLY: usize = 1 << 20;
 const READ_ONLY_MODES: [&str; 4] = ["read-only", "readonly", "read_only", "plan"];
 const LOW_EFFORTS: [&str; 4] = ["none", "off", "minimal", "low"];
+
+/// Receives a streamed reply as it is written.
+pub(crate) type TextSink = Arc<dyn Fn(&str) + Send + Sync>;
 
 /// One prompt to a CLI agent, outside any conversation, so the Tools can read
 /// an image with the subscription the user already has.
@@ -39,6 +44,8 @@ pub(crate) struct OneShot {
     images: Vec<ImagePrompt>,
     idle: Duration,
     total: Duration,
+    total_given: bool,
+    stream: Option<TextSink>,
 }
 
 fn tagged(kind: &str, message: impl AsRef<str>) -> String {
@@ -89,7 +96,22 @@ impl OneShot {
             total: request
                 .timeout_ms
                 .map_or(TOTAL_LIMIT, Duration::from_millis),
+            total_given: request.timeout_ms.is_some(),
+            stream: None,
         })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn total_limit(&self) -> Duration {
+        self.total
+    }
+
+    pub(crate) fn streaming(mut self, sink: TextSink) -> Self {
+        if !self.total_given {
+            self.total = STREAM_TOTAL_LIMIT;
+        }
+        self.stream = Some(sink);
+        self
     }
 }
 
@@ -101,17 +123,26 @@ pub(super) struct Reply {
 }
 
 impl Reply {
-    pub(super) fn push(&mut self, update: &Value, text: &str) {
+    /// Keeps `text` and says whether it can be shown yet: text with no message
+    /// id may still turn out to be a warning, so it waits for the end.
+    pub(super) fn push(&mut self, update: &Value, text: &str) -> bool {
         // Codex puts its own warnings ahead of the reply, as text with no
         // message id, and they must not end up in the user's document.
         if update["messageId"].is_string() && !self.marked {
             self.marked = true;
             self.text.clear();
         }
+        let shown = self.marked && self.system_error.is_none();
         let target = self.system_error.as_mut().unwrap_or(&mut self.text);
-        if target.len() + text.len() <= MAX_REPLY {
-            target.push_str(text);
+        if target.len() + text.len() > MAX_REPLY {
+            return false;
         }
+        target.push_str(text);
+        shown
+    }
+
+    pub(super) fn streamed(&self) -> bool {
+        self.marked
     }
 
     pub(super) fn text(self) -> String {
@@ -122,13 +153,15 @@ impl Reply {
 struct OneShotHost {
     reply: Mutex<Reply>,
     tool_started: watch::Sender<bool>,
+    stream: Option<TextSink>,
 }
 
 impl OneShotHost {
-    fn new() -> Arc<Self> {
+    fn new(stream: Option<TextSink>) -> Arc<Self> {
         Arc::new(Self {
             reply: Mutex::new(Reply::default()),
             tool_started: watch::channel(false).0,
+            stream,
         })
     }
 
@@ -145,10 +178,15 @@ impl ClientHost for OneShotHost {
         let update = &params["update"];
         match update["sessionUpdate"].as_str() {
             Some("agent_message_chunk") => {
-                if let (Some(text), Ok(mut reply)) =
-                    (super::coalesce::chunk_text(update), self.reply.lock())
-                {
-                    reply.push(update, text);
+                let Some(text) = super::coalesce::chunk_text(update) else {
+                    return;
+                };
+                let shown = self
+                    .reply
+                    .lock()
+                    .is_ok_and(|mut reply| reply.push(update, text));
+                if let Some(sink) = self.stream.as_ref().filter(|_| shown) {
+                    sink(text);
                 }
             }
             Some("tool_call") => {
@@ -382,7 +420,10 @@ async fn run_turn(
         },
         &negotiated.capabilities,
     )
-    .map_err(|error| tagged("agent", error.message()))?;
+    .map_err(|error| match error {
+        PromptError::TooLarge => tagged("agent_too_large", error.message()),
+        _ => tagged("agent", error.message()),
+    })?;
     // The image comes first, as in every other Tools request.
     blocks.rotate_left(1);
 
@@ -416,8 +457,19 @@ async fn run_turn(
         };
         return Err(tagged(kind, redactor.text(&message)));
     }
+    let streamed = reply.streamed();
+    let text = redactor.text(&reply.text());
+    // Text with no message id was held back in case it was a warning; with
+    // nothing else written, it is the reply.
+    if let Some(sink) = request
+        .stream
+        .as_ref()
+        .filter(|_| !streamed && !text.is_empty())
+    {
+        sink(&text);
+    }
     Ok(CompletionResponse {
-        text: redactor.text(&reply.text()),
+        text,
         usage: Usage::default(),
         provider_id: format!("acp:{}", request.agent_id),
         model_id: request.model.clone(),
@@ -486,7 +538,7 @@ impl AcpRuntime {
         let folder = catalog::probe_folder(&self.root).map_err(|error| tagged("agent", error))?;
         let command =
             probe_command(&launch, folder.path()).map_err(|error| tagged("agent", error))?;
-        let host = OneShotHost::new();
+        let host = OneShotHost::new(request.stream.clone());
         let client = AcpClient::spawn(command, host.clone())
             .await
             .map_err(|error| tagged("agent", rpc_message(&error)))?;

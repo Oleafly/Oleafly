@@ -1219,6 +1219,7 @@
       "agentSignIn": "{{agent}} er ikke logget ind. Log ind, og prøv igen.",
       "agentUsedTool": "{{agent}} forsøgte at bruge et værktøj i stedet for at læse billedet, så Oleafly stoppede den. Prøv igen, eller vælg en anden model.",
       "agentNeedsReadOnly": "{{agent}} kan ikke begrænses til kun at læse, så Oleafly sender ikke dit billede til den. Vælg en anden model.",
+      "agentTooLong": "Det her er for langt til at sende til {{agent}}. Gør det kortere, eller vælg en anden model.",
       "imageTooLarge": "Billedet er stadig for stort, efter at det er gjort mindre. Beskær det, og prøv igen."
     }
   },
@@ -1579,7 +1580,7 @@
     "reviewing": "Gennemgår…",
     "runReview": "Gennemgå artiklen",
     "offline": "Offlinetilstand er slået til. Gennemgang af artikler kræver en konfigureret AI-udbyder.",
-    "needsProvider": "Konfigurer en AI-udbyder under Indstillinger, før du gennemgår.",
+    "needsProvider": "Konfigurer en AI-udbyder under Indstillinger, eller vælg en kommandolinjeagent som model til Værktøjer, før du gennemgår.",
     "noSource": "Åbn et LaTeX-projekt (eller brug Find citationer i dokumentet fra editoren), så der er artikeltekst at gennemgå.",
     "friendlyHint": "Venlig tilstand er en konstruktiv mentor: styrker først, så konkrete forslag.",
     "fireHint": "Hård tilstand er bedømmer nummer 2: grundig, teknisk præcis og hård ved påstandene.",
@@ -1731,7 +1732,7 @@
     "offline": "Offlinetilstand er slået til. Skanning af dokumentet for citationer kræver netværksadgang.",
     "noProject": "Åbn et LaTeX-projekt for at skanne dokumentets afsnit for citationer, eller kør Find citationer i dokumentet fra editoren.",
     "emptySource": "Kildedokumentet er tomt eller ikke indlæst. Åbn en <ext>.tex</ext>-fil for at skanne.",
-    "heuristicRanking": "Rangeringen bruger kun antal citationer, indtil en AI-udbyder er konfigureret.",
+    "heuristicRanking": "Rangeringen bruger kun antal citationer, indtil en AI-udbyder er konfigureret, eller en kommandolinjeagent er valgt som model til Værktøjer.",
     "dismissError": "Luk fejlen",
     "progressProcessing": "Behandler {{completed}}/{{total}} afsnit…",
     "progressPreparing": "Forbereder skanningen…",

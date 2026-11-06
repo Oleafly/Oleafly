@@ -92,6 +92,11 @@ mode isn't listed. A read-only mode stops an agent changing files, not reading
 them. An agent's models appear once it has opened a session, and the menu checks
 a new agent for you.
 
+With no API provider set up, the same agent also answers Paper Review, the
+citation scan's ranking and Fix with AI. Each reply starts a fresh agent, so
+the first words take a few seconds longer than with an API key, and a citation
+scan, which asks about every paragraph, starts many of them.
+
 Before an image goes to a hosted model, Oleafly shrinks it to 2,000 pixels on
 its long edge and re-encodes photos, which drops their location data. A CLI
 agent gets at most 760 KB, the most that fits in one agent message. Replies are

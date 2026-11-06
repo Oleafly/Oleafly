@@ -1238,6 +1238,7 @@
       "agentSignIn": "{{agent}} nu este autentificat. Autentifică-te, apoi încearcă din nou.",
       "agentUsedTool": "{{agent}} a încercat să folosească un instrument în loc să citească imaginea, așa că Oleafly l-a oprit. Încearcă din nou sau alege alt model.",
       "agentNeedsReadOnly": "{{agent}} nu poate fi limitat la citire, așa că Oleafly nu îi va trimite imaginea ta. Alege alt model.",
+      "agentTooLong": "Este prea lung ca să fie trimis la {{agent}}. Scurtează-l sau alege alt model.",
       "imageTooLarge": "Această imagine este încă prea mare după micșorare. Decupeaz-o și încearcă din nou."
     }
   },
@@ -1604,7 +1605,7 @@
     "reviewing": "Se recenzează…",
     "runReview": "Recenzează lucrarea",
     "offline": "Modul offline este pornit. Recenzia lucrării are nevoie de un furnizor AI configurat.",
-    "needsProvider": "Configurează un furnizor AI în Setări înainte de recenzie.",
+    "needsProvider": "Configurează un furnizor AI în Setări sau alege un agent din linia de comandă ca model pentru Instrumente înainte de recenzie.",
     "noSource": "Deschide un proiect LaTeX (sau folosește Găsește citări în document din editor), ca să existe text de recenzat.",
     "friendlyHint": "Modul prietenos este un mentor constructiv: întâi punctele forte, apoi sugestii concrete.",
     "fireHint": "Modul dur este recenzentul numărul 2: riguros, care pune la încercare afirmațiile, precis din punct de vedere tehnic.",
@@ -1758,7 +1759,7 @@
     "offline": "Modul offline este activat. Scanarea de citări din document are nevoie de acces la rețea.",
     "noProject": "Deschide un proiect LaTeX ca să scanezi paragrafele documentului după citări sau rulează Găsește citări în document din editor.",
     "emptySource": "Documentul sursă este gol sau neîncărcat. Deschide un fișier <ext>.tex</ext> ca să îl scanezi.",
-    "heuristicRanking": "Clasificarea va folosi doar numărul de citări până când configurezi un furnizor AI.",
+    "heuristicRanking": "Clasificarea va folosi doar numărul de citări până când configurezi un furnizor AI sau alegi un agent din linia de comandă ca model pentru Instrumente.",
     "dismissError": "Închide eroarea",
     "progressProcessing": "Se procesează {{completed}}/{{total}} paragrafe…",
     "progressPreparing": "Se pregătește scanarea…",

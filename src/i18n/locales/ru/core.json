@@ -22,7 +22,8 @@
     "warned": "Проект израсходовал {{spent}} из бюджета на ИИ {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Для этого действия выполнен переход к ассистенту Oleafly."
+    "handoffRuntimeSwitch": "Для этого действия выполнен переход к ассистенту Oleafly.",
+    "handoffToCli": "У ассистента Oleafly нет поставщика ИИ, поэтому запрос ушёл вашему агенту командной строки."
   },
   "bibtex": {
     "duplicateDoi": "Повторяющийся DOI, общий с: {{keys}}",

@@ -247,6 +247,7 @@ import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { acpUsable } from "@/lib/acp";
 import { SessionTranscriptDialog } from "@/components/ai/activity/SessionTranscriptDialog";
 import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
 import { buildWorkspaceContext } from "@/lib/ai-context";
@@ -1155,6 +1156,9 @@ export function ChatCore() {
   const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
   const handoffAutoSend = useAgentHandoffStore((s) => s.autoSend);
+  const handoffTarget = useAgentHandoffStore((s) => s.target);
+  const cliAssistantUsable = useAcpSessionsStore((s) => (s.catalog ?? []).some(acpUsable));
+  const [handoffCatalogChecked, setHandoffCatalogChecked] = useState(false);
   const pendingImagesRef = useRef<string[]>([]);
   const lastPartAtRef = useRef<number>(0);
   const [customPrompt, setCustomPrompt] = useState(initialProvider?.state.customPrompt ?? "");
@@ -3539,7 +3543,25 @@ ${sandboxedCustom}`;
   );
 
   useEffect(() => {
+    if (!handoffPending || providerReady || !providerConfigReady || handoffCatalogChecked) return;
+    void useAcpSessionsStore
+      .getState()
+      .refreshCatalog()
+      .catch(() => false)
+      .finally(() => setHandoffCatalogChecked(true));
+  }, [handoffPending, providerReady, providerConfigReady, handoffCatalogChecked]);
+
+  useEffect(() => {
     if (!handoffPending || streaming || !providerConfigReady) return;
+    if (handoffTarget === "acp") return;
+    if (!providerReady && projectId) {
+      // With no provider here, a connected CLI agent takes it instead.
+      if (!handoffCatalogChecked) return;
+      if (cliAssistantUsable) {
+        useAgentHandoffStore.getState().redirectToCli();
+        return;
+      }
+    }
     if (handoffAutoSend && providerReady && !engineLoaded) return;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
@@ -3549,7 +3571,20 @@ ${sandboxedCustom}`;
       return;
     }
     setInput(appendHandoffPrompt(inputRef.current, h.prompt));
-  }, [handoffPending, handoffAutoSend, streaming, providerConfigReady, providerReady, engineLoaded, send, setInput]);
+  }, [
+    handoffPending,
+    handoffAutoSend,
+    handoffTarget,
+    handoffCatalogChecked,
+    cliAssistantUsable,
+    projectId,
+    streaming,
+    providerConfigReady,
+    providerReady,
+    engineLoaded,
+    send,
+    setInput,
+  ]);
 
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {

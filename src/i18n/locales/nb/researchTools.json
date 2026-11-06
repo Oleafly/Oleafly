@@ -1219,6 +1219,7 @@
       "agentSignIn": "{{agent}} er ikke logget inn. Logg inn, og prøv igjen.",
       "agentUsedTool": "{{agent}} prøvde å bruke et verktøy i stedet for å lese bildet, så Oleafly stoppet den. Prøv igjen, eller velg en annen modell.",
       "agentNeedsReadOnly": "{{agent}} kan ikke begrenses til bare å lese, så Oleafly sender ikke bildet ditt til den. Velg en annen modell.",
+      "agentTooLong": "Dette er for langt til å sende til {{agent}}. Gjør det kortere, eller velg en annen modell.",
       "imageTooLarge": "Bildet er fortsatt for stort etter at det er gjort mindre. Beskjær det, og prøv igjen."
     }
   },
@@ -1579,7 +1580,7 @@
     "reviewing": "Vurderer…",
     "runReview": "Vurder artikkelen",
     "offline": "Frakoblet modus er på. Vurdering av artikler krever en AI-leverandør som er satt opp.",
-    "needsProvider": "Sett opp en AI-leverandør i Innstillinger før du vurderer.",
+    "needsProvider": "Sett opp en AI-leverandør i Innstillinger, eller velg en kommandolinjeagent som modell for Verktøy, før du vurderer.",
     "noSource": "Åpne et LaTeX-prosjekt (eller bruk Finn siteringer i dokumentet fra editoren), slik at det finnes artikkeltekst å vurdere.",
     "friendlyHint": "Vennlig modus er en konstruktiv mentor: styrker først, deretter konkrete forslag.",
     "fireHint": "Hard modus er fagfelle nummer to: grundig, streng mot påstander og teknisk presis.",
@@ -1731,7 +1732,7 @@
     "offline": "Frakoblet modus er på. Gjennomgang av siteringer i dokumentet krever nettilgang.",
     "noProject": "Åpne et LaTeX-prosjekt for å gå gjennom avsnittene i dokumentet etter siteringer, eller kjør Finn siteringer i dokumentet fra editoren.",
     "emptySource": "Kildedokumentet er tomt eller ikke lastet. Åpne en <ext>.tex</ext>-fil for å gå gjennom det.",
-    "heuristicRanking": "Rangeringen bruker bare siteringstall til en AI-leverandør er satt opp.",
+    "heuristicRanking": "Rangeringen bruker bare siteringstall til en AI-leverandør er satt opp, eller en kommandolinjeagent er valgt som modell for Verktøy.",
     "dismissError": "Lukk feilmeldingen",
     "progressProcessing": "Behandler {{completed}}/{{total}} avsnitt…",
     "progressPreparing": "Forbereder gjennomgangen…",

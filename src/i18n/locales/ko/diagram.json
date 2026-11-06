@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "AI로 수정 기능을 쓰려면 설정에서 AI 제공자를 연결하세요.",
+    "aiProviderRequired": "AI로 수정 기능을 쓰려면 설정에서 AI 제공자를 연결하거나 명령줄 에이전트를 도구에 쓸 모델로 고르세요.",
     "fixFailed": "수정하지 못했습니다: {{detail}}"
   },
   "chooser": {

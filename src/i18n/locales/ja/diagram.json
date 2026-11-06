@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "AI で修正を使うには、設定で AI プロバイダに接続してください。",
+    "aiProviderRequired": "AI で修正を使うには、設定で AI プロバイダに接続するか、CLI エージェントをツール用のモデルに選んでください。",
     "fixFailed": "修正に失敗しました: {{detail}}"
   },
   "chooser": {

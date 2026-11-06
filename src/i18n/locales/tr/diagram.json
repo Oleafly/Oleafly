@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Yapay zeka ile düzelt özelliğini kullanmak için Ayarlar'dan bir yapay zeka sağlayıcısı bağlayın.",
+    "aiProviderRequired": "Yapay zeka ile düzelt özelliğini kullanmak için Ayarlar'dan bir yapay zeka sağlayıcısı bağlayın veya Araçlar için model olarak bir CLI ajanı seçin.",
     "fixFailed": "Düzeltme başarısız oldu: {{detail}}"
   },
   "chooser": {

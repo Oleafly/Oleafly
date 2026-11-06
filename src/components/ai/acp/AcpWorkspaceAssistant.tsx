@@ -24,6 +24,7 @@ import {
   type AcpPromptDraft,
 } from "@/store/acp-sessions";
 import { useComposerDrafts } from "@/store/composer-drafts";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
 import { isSkillAvailable, useSkills, type SkillEntry } from "@/lib/skills";
@@ -40,6 +41,7 @@ import { useAcpConversation, useAcpHasMessages, useAcpMessages, type AcpConversa
 import type { ResearchChatActions } from "@/lib/chat-activity";
 import { Spinner } from "@/components/ui/spinner";
 import { AcpComposer, acpDraftId, restoreDraft } from "./AcpComposer";
+import { promptMentions } from "./acp-attachments";
 import { AcpComposerChips } from "./AcpComposerChips";
 import { AcpControls } from "./AcpControls";
 import { AcpSessionHeader } from "./AcpSessionHeader";
@@ -247,6 +249,45 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       }
     });
   }, [agentId, perform, projectId]);
+
+  // A hand-off from elsewhere in the app (Generators, Ask AI, selection
+  // actions) lands here when this is the assistant in use.
+  const handoffPending = useAgentHandoffStore((state) => (state.target === "acp" ? state.pendingPrompt : null));
+  useEffect(() => {
+    if (!handoffPending || !agentId || !selectedAgent) return;
+    const handoff = useAgentHandoffStore.getState().consume();
+    if (!handoff) return;
+    const draftId = acpDraftId(projectId, agentId, session);
+    const typed = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
+    const text = typed.trim() ? `${typed.trimEnd()}\n\n${handoff.prompt}` : handoff.prompt;
+    const status = session?.status;
+    const busy = status === "connecting" || status === "running" || status === "cancelling";
+    const sendable = !session || status === "ready" || busy;
+    if (!handoff.autoSend || !acpUsable(selectedAgent) || !sendable) {
+      useComposerDrafts.getState().setText(draftId, text);
+      focusComposer();
+      return;
+    }
+    const draft: AcpPromptDraft = {
+      text,
+      attachments: [],
+      mentions: promptMentions(text, useFilesStore.getState().tree),
+      selections: [],
+      skill: null,
+    };
+    if (!session) {
+      startWithDraft(draft);
+    } else if (busy) {
+      useAcpSessionsStore.getState().enqueue(session.id, draft);
+    } else {
+      void useAcpSessionsStore.getState().sendPrompt(projectId, session.id, draft).then((sent) => {
+        if (!sent) restoreDraft(projectId, draftId, draft);
+      }).catch((error_: unknown) => {
+        restoreDraft(projectId, draftId, draft);
+        setError(acpError(error_));
+      });
+    }
+  }, [agentId, focusComposer, handoffPending, projectId, selectedAgent, session, setError, startWithDraft]);
 
   const pickPreset = (preset: ResearchPreset) => {
     if (preset.action === "clean-library") {

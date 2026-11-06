@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { getConfig, setConfig as saveConfig, type AppConfig } from "@/lib/tauri";
 import {
   effectiveProviderKeys,
-  hasConfiguredProvider,
   pickActiveProvider,
 } from "@/lib/ai-providers";
+import { aiFeaturesReady, cliAgentRoute } from "@/lib/ai-route";
+import { i18n } from "@/i18n";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
 import { runInlineCompletion } from "@/lib/ai-inline";
 import { logError } from "@/lib/log";
@@ -32,7 +33,7 @@ export function InlineEditPanel() {
   useEffect(() => {
     const apply = (c: AppConfig) => {
       setConfig(c);
-      setProviderReady(hasConfiguredProvider(c));
+      setProviderReady(aiFeaturesReady(c));
     };
     const check = (event?: Event) => {
       const detail = (event as CustomEvent<AppConfig> | undefined)?.detail;
@@ -197,8 +198,25 @@ export function InlineEditPanel() {
     window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
   };
 
-  const active = config ? pickActiveProvider(config) : null;
-  const modelGroups = config
+  // With no API provider, inline edits go to the CLI agent picked for Tools,
+  // which is chosen there rather than here.
+  const agentRoute = config ? cliAgentRoute(config) : null;
+  const agentGroup = agentRoute
+    ? {
+        id: agentRoute.provider_id,
+        name: agentRoute.agent,
+        models: [{
+          id: agentRoute.model_id,
+          name: agentRoute.model_id === "default"
+            ? i18n.t(($) => $.researchTools.converterModel.agentDefaultModel)
+            : agentRoute.model_id,
+        }],
+      }
+    : null;
+  const active = agentRoute
+    ? { providerId: agentRoute.provider_id, modelId: agentRoute.model_id }
+    : config ? pickActiveProvider(config) : null;
+  const modelGroups = agentGroup ? [agentGroup] : config
     ? configuredModelGroups(
         {
           keys: effectiveProviderKeys(config),
@@ -264,7 +282,9 @@ export function InlineEditPanel() {
         providerId={active?.providerId ?? ""}
         modelId={active?.modelId ?? ""}
         modelGroups={modelGroups}
-        onModelChange={(providerId, modelId) => void selectModel(providerId, modelId)}
+        onModelChange={(providerId, modelId) => {
+          if (!agentRoute) void selectModel(providerId, modelId);
+        }}
       />
     );
   };

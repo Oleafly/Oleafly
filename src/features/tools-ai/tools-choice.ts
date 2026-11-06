@@ -6,6 +6,7 @@ import {
   modelSupportsVision,
 } from "@oleafly/ai-core";
 import { i18n } from "@/i18n";
+import { CLI_AGENT_PREFIX } from "@/lib/ai-route";
 import { DEFAULT_OLLAMA_HOST, type OllamaModelInfo } from "@/lib/ollama";
 import type { AppConfig, ModelMetadata, ToolsModelChoice } from "@/lib/tauri";
 import { ocrProfileFor } from "./ocr-profiles";
@@ -14,8 +15,7 @@ export const LOCAL_TOOLS_PROVIDER = "ollama";
 export const MATHPIX_TOOLS_PROVIDER = "mathpix";
 export const MATHPIX_TOOLS_MODEL = "mathpix";
 const MATHPIX_NAME = "Mathpix";
-/** A CLI agent as a Tools provider, such as `acp:claude`. */
-export const AGENT_TOOLS_PREFIX = "acp:";
+export const AGENT_TOOLS_PREFIX = CLI_AGENT_PREFIX;
 export const AGENT_DEFAULT_MODEL = "default";
 
 export function toolsAgentId(providerId: string): string | null {

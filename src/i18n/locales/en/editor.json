@@ -494,7 +494,7 @@
     "dismiss": "Dismiss",
     "withdrawn": "Someone else edited this text, so this suggestion can't be applied.",
     "setUpProvider": "Set up an AI provider",
-    "setUpProviderHint": "Add an API key (or local Ollama) to use inline AI edits.",
+    "setUpProviderHint": "Add an API key or local Ollama, or pick a CLI agent as the model for Tools, to use inline AI edits.",
     "openAiSettings": "Open Settings → AI"
   },
   "proofreading": {

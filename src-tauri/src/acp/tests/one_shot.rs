@@ -293,19 +293,86 @@ fn a_request_needs_a_user_message_of_text_and_data_url_images() {
 #[test]
 fn only_text_ahead_of_the_first_message_id_is_dropped() {
     let mut reply = Reply::default();
-    reply.push(&json!({}), "Warning: skills. ");
-    reply.push(&json!({"messageId": "m1"}), "E = ");
-    reply.push(&json!({"messageId": "m1"}), "mc^2");
+    assert!(!reply.push(&json!({}), "Warning: skills. "));
+    assert!(reply.push(&json!({"messageId": "m1"}), "E = "));
+    assert!(reply.push(&json!({"messageId": "m1"}), "mc^2"));
+    assert!(reply.streamed());
     assert_eq!(reply.text(), "E = mc^2");
 
     let mut plain = Reply::default();
-    plain.push(&json!({}), "Plain reply");
+    assert!(!plain.push(&json!({}), "Plain reply"));
+    assert!(!plain.streamed());
     assert_eq!(plain.text(), "Plain reply");
 
     let mut mixed = Reply::default();
     mixed.push(&json!({"messageId": "m1"}), "Reading it. ");
-    mixed.push(&json!({}), "E = mc^2");
+    assert!(mixed.push(&json!({}), "E = mc^2"));
     assert_eq!(mixed.text(), "Reading it. E = mc^2");
+}
+
+async fn stream(
+    extra: &[&str],
+    request: CompletionRequest,
+) -> (Vec<String>, Result<CompletionResponse, String>) {
+    let temp = fixture_temp();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&check_definition(temp.path(), extra)).unwrap())
+        .unwrap();
+    let pieces = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink: crate::acp::TextSink = {
+        let pieces = pieces.clone();
+        Arc::new(move |text: &str| pieces.lock().unwrap().push(text.to_owned()))
+    };
+    let shot = OneShot::new("fixture-agent", "default", &request)
+        .unwrap()
+        .streaming(sink);
+    let answer = runtime.one_shot(shot).await;
+    let pieces = pieces.lock().unwrap().clone();
+    (pieces, answer)
+}
+
+#[tokio::test]
+async fn a_streamed_reply_shows_its_text_and_never_the_warning_ahead_of_it() {
+    let (pieces, answer) = stream(&[MODES], request("warned", false)).await;
+    assert_eq!(answer.unwrap().text, "E = mc^2");
+    assert_eq!(pieces, ["E = mc^2"]);
+}
+
+#[tokio::test]
+async fn a_reply_with_no_message_ids_arrives_whole_at_the_end() {
+    let (pieces, answer) = stream(&[MODES], request("turn-fails", false)).await;
+    assert!(answer.is_err());
+    assert!(pieces.is_empty(), "{pieces:?}");
+}
+
+#[test]
+fn a_streamed_turn_may_run_longer_unless_the_caller_set_a_limit() {
+    let plain = OneShot::new("agent", "default", &request("hi", false)).unwrap();
+    let sink: crate::acp::TextSink = Arc::new(|_: &str| {});
+    let streamed = OneShot::new("agent", "default", &request("hi", false))
+        .unwrap()
+        .streaming(sink.clone());
+    assert!(streamed.total_limit() > plain.total_limit());
+    let mut timed = request("hi", false);
+    timed.timeout_ms = Some(5_000);
+    let kept = OneShot::new("agent", "default", &timed)
+        .unwrap()
+        .streaming(sink);
+    assert_eq!(kept.total_limit(), Duration::from_secs(5));
+}
+
+#[tokio::test]
+async fn text_too_long_for_one_agent_message_is_its_own_failure() {
+    let long = "x".repeat(300 * 1024);
+    let (_temp, answer) = ask(&[MODES], "default", request(&long, false)).await;
+    assert!(
+        answer
+            .as_ref()
+            .unwrap_err()
+            .starts_with("[agent_too_large]"),
+        "{answer:?}"
+    );
 }
 
 #[test]

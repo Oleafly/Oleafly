@@ -501,7 +501,7 @@
     "dismiss": "Dispensar",
     "withdrawn": "Outra pessoa editou este texto, então a sugestão não pode mais ser aplicada.",
     "setUpProvider": "Configurar um provedor de IA",
-    "setUpProviderHint": "Adicione uma chave de API (ou o Ollama local) para usar as edições de IA em linha.",
+    "setUpProviderHint": "Adicione uma chave de API ou o Ollama local, ou escolha um agente de CLI como modelo para as Ferramentas, para usar as edições de IA em linha.",
     "openAiSettings": "Abrir Configurações → IA"
   },
   "proofreading": {

@@ -1219,6 +1219,7 @@
       "agentSignIn": "{{agent}} är inte inloggad. Logga in och försök igen.",
       "agentUsedTool": "{{agent}} försökte använda ett verktyg i stället för att läsa bilden, så Oleafly stoppade den. Försök igen, eller välj en annan modell.",
       "agentNeedsReadOnly": "{{agent}} kan inte begränsas till att bara läsa, så Oleafly skickar inte din bild till den. Välj en annan modell.",
+      "agentTooLong": "Det här är för långt för att skicka till {{agent}}. Korta ner det, eller välj en annan modell.",
       "imageTooLarge": "Bilden är fortfarande för stor efter förminskningen. Beskär den och försök igen."
     }
   },
@@ -1579,7 +1580,7 @@
     "reviewing": "Granskar…",
     "runReview": "Granska artikeln",
     "offline": "Offlineläget är på. Artikelgranskning kräver en konfigurerad AI-leverantör.",
-    "needsProvider": "Konfigurera en AI-leverantör i Inställningar innan du granskar.",
+    "needsProvider": "Konfigurera en AI-leverantör i Inställningar, eller välj en CLI-agent som modell för Verktyg, innan du granskar.",
     "noSource": "Öppna ett LaTeX-projekt (eller använd Hitta citeringar i dokumentet från redigeraren) så att det finns artikeltext att granska.",
     "friendlyHint": "Det vänliga läget är en konstruktiv mentor: styrkor först, sedan konkreta förslag.",
     "fireHint": "Det hårda läget är Granskare 2: strikt, ifrågasättande och tekniskt exakt.",
@@ -1731,7 +1732,7 @@
     "offline": "Offlineläget är aktiverat. Genomsökning av dokumentets citeringar kräver nätverksåtkomst.",
     "noProject": "Öppna ett LaTeX-projekt för att genomsöka dokumentets stycken efter citeringar, eller kör Hitta citeringar i dokumentet från redigeraren.",
     "emptySource": "Källdokumentet är tomt eller inte inläst. Öppna en <ext>.tex</ext>-fil för att genomsöka.",
-    "heuristicRanking": "Rangordningen använder bara antalet citeringar tills en AI-leverantör är konfigurerad.",
+    "heuristicRanking": "Rangordningen använder bara antalet citeringar tills en AI-leverantör är konfigurerad eller en CLI-agent är vald som modell för Verktyg.",
     "dismissError": "Stäng felet",
     "progressProcessing": "Bearbetar {{completed}}/{{total}} stycken…",
     "progressPreparing": "Förbereder genomsökningen…",

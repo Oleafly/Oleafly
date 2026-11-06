@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   connected agents, so they run on your own sign-in with no API key. Claude Code
   runs with its tools off and other agents in a read-only mode, and an agent
   with no such mode isn't listed (#306).
+- Without an API key, Paper Review, inline edits, Fix with AI, template
+  generation and the citation scan's ranking now use the CLI agent picked as
+  the model for Tools. Ask AI, Generators and the selection menu hand off to
+  the assistant you're using, and Oleafly's assistant passes them to a
+  connected CLI agent when it has no provider (#306).
 - The compile log has a Clear button, in the main window and the preview
   window (#372).
 - Settings > Terminal can open folders in an external terminal: Terminal or

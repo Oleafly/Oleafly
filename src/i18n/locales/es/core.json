@@ -22,7 +22,8 @@
     "warned": "Este proyecto ha gastado {{spent}} de su presupuesto de IA de {{budget}}."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Se cambió al asistente de Oleafly para esta acción."
+    "handoffRuntimeSwitch": "Se cambió al asistente de Oleafly para esta acción.",
+    "handoffToCli": "El asistente de Oleafly no tiene proveedor de IA, así que esto se envió a tu agente de línea de comandos."
   },
   "bibtex": {
     "duplicateDoi": "DOI duplicado, compartido con: {{keys}}",

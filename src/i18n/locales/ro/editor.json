@@ -501,7 +501,7 @@
     "dismiss": "Închide",
     "withdrawn": "Altcineva a editat acest text, așa că sugestia nu mai poate fi aplicată.",
     "setUpProvider": "Configurează un furnizor AI",
-    "setUpProviderHint": "Adaugă o cheie API (sau Ollama local) ca să folosești modificările AI din text.",
+    "setUpProviderHint": "Adaugă o cheie API sau Ollama local, ori alege un agent din linia de comandă ca model pentru Instrumente, ca să folosești modificările AI din text.",
     "openAiSettings": "Deschide Setări → AI"
   },
   "proofreading": {

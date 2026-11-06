@@ -1238,6 +1238,7 @@
       "agentSignIn": "{{agent}} non ha effettuato l'accesso. Accedi e riprova.",
       "agentUsedTool": "{{agent}} ha provato a usare uno strumento invece di leggere l'immagine, quindi Oleafly l'ha fermato. Riprova, oppure scegli un altro modello.",
       "agentNeedsReadOnly": "{{agent}} non può essere limitato alla sola lettura, quindi Oleafly non gli invierà la tua immagine. Scegli un altro modello.",
+      "agentTooLong": "È troppo lungo da inviare a {{agent}}. Accorcialo, oppure scegli un altro modello.",
       "imageTooLarge": "Questa immagine è ancora troppo grande anche dopo averla ridotta. Ritagliala e riprova."
     }
   },
@@ -1604,7 +1605,7 @@
     "reviewing": "Revisione…",
     "runReview": "Rivedi l'articolo",
     "offline": "La modalità offline è attiva. La revisione dell'articolo richiede un provider AI configurato.",
-    "needsProvider": "Configura un provider AI nelle impostazioni prima di avviare la revisione.",
+    "needsProvider": "Configura un provider AI nelle impostazioni, oppure scegli un agente da riga di comando come modello per gli Strumenti, prima di avviare la revisione.",
     "noSource": "Apri un progetto LaTeX (oppure usa Trova le citazioni nel documento dall'editor), così c'è del testo da rivedere.",
     "friendlyHint": "La modalità amichevole è un mentore costruttivo: prima i punti di forza, poi suggerimenti specifici.",
     "fireHint": "La modalità severa è Reviewer #2: rigorosa, mette alla prova ogni affermazione, tecnicamente precisa.",
@@ -1758,7 +1759,7 @@
     "offline": "La modalità offline è attiva. L'analisi delle citazioni del documento richiede l'accesso alla rete.",
     "noProject": "Apri un progetto LaTeX per analizzare i paragrafi del documento in cerca di citazioni, oppure esegui Trova le citazioni nel documento dall'editor.",
     "emptySource": "Il documento di partenza è vuoto o non è caricato. Apri un file <ext>.tex</ext> da analizzare.",
-    "heuristicRanking": "L'ordinamento userà solo il numero di citazioni finché non configuri un provider AI.",
+    "heuristicRanking": "L'ordinamento userà solo il numero di citazioni finché non configuri un provider AI o non scegli un agente da riga di comando come modello per gli Strumenti.",
     "dismissError": "Ignora l'errore",
     "progressProcessing": "Elaborazione di {{completed}}/{{total}} paragrafi…",
     "progressPreparing": "Preparazione dell'analisi…",

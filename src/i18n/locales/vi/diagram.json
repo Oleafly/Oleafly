@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Kết nối nhà cung cấp AI trong Cài đặt để dùng Sửa bằng AI.",
+    "aiProviderRequired": "Kết nối nhà cung cấp AI trong Cài đặt hoặc chọn một CLI agent làm mô hình cho Công cụ để dùng Sửa bằng AI.",
     "fixFailed": "Sửa thất bại: {{detail}}"
   },
   "chooser": {

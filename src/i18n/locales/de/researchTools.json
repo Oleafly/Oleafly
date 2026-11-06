@@ -1219,6 +1219,7 @@
       "agentSignIn": "{{agent}} ist nicht angemeldet. Melden Sie sich an, und versuchen Sie es erneut.",
       "agentUsedTool": "{{agent}} wollte ein Werkzeug verwenden, statt das Bild zu lesen, daher hat Oleafly ihn gestoppt. Versuchen Sie es erneut, oder wählen Sie ein anderes Modell.",
       "agentNeedsReadOnly": "{{agent}} lässt sich nicht auf das Lesen beschränken, daher sendet Oleafly ihm Ihr Bild nicht. Wählen Sie ein anderes Modell.",
+      "agentTooLong": "Das ist zu lang, um es an {{agent}} zu senden. Kürzen Sie es, oder wählen Sie ein anderes Modell.",
       "imageTooLarge": "Dieses Bild ist auch nach dem Verkleinern noch zu groß. Schneiden Sie es zu und versuchen Sie es erneut."
     }
   },
@@ -1579,7 +1580,7 @@
     "reviewing": "Wird begutachtet…",
     "runReview": "Aufsatz begutachten",
     "offline": "Der Offline-Modus ist an. Die Begutachtung braucht einen eingerichteten KI-Anbieter.",
-    "needsProvider": "Richten Sie vor der Begutachtung in den Einstellungen einen KI-Anbieter ein.",
+    "needsProvider": "Richten Sie vor der Begutachtung in den Einstellungen einen KI-Anbieter ein, oder wählen Sie einen Kommandozeilenagenten als Modell für Tools.",
     "noSource": "Öffnen Sie ein LaTeX-Projekt (oder nutzen Sie Zitationen im Dokument finden aus dem Editor), damit es Text zum Begutachten gibt.",
     "friendlyHint": "Der wohlwollende Modus ist eine aufbauende Mentorin: erst Stärken, dann konkrete Vorschläge.",
     "fireHint": "Der harte Modus ist Gutachter 2: streng, die Behauptungen belastend, fachlich genau.",
@@ -1731,7 +1732,7 @@
     "offline": "Der Offline-Modus ist aktiv. Die Zitationsprüfung im Dokument braucht Netzzugang.",
     "noProject": "Öffnen Sie ein LaTeX-Projekt, um Absätze des Dokuments auf Zitationen zu prüfen, oder führen Sie Zitationen im Dokument finden aus dem Editor aus.",
     "emptySource": "Das Quelldokument ist leer oder nicht geladen. Öffnen Sie eine <ext>.tex</ext>-Datei, um zu prüfen.",
-    "heuristicRanking": "Die Bewertung nutzt nur Zitationszahlen, bis ein KI-Anbieter eingerichtet ist.",
+    "heuristicRanking": "Die Bewertung nutzt nur Zitationszahlen, bis ein KI-Anbieter eingerichtet oder ein Kommandozeilenagent als Modell für Tools gewählt ist.",
     "dismissError": "Fehler schließen",
     "progressProcessing": "{{completed}}/{{total}} Absätze werden verarbeitet…",
     "progressPreparing": "Die Prüfung wird vorbereitet…",

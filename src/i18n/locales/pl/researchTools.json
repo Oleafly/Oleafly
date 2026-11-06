@@ -1257,6 +1257,7 @@
       "agentSignIn": "{{agent}} nie jest zalogowany. Zaloguj się i spróbuj ponownie.",
       "agentUsedTool": "{{agent}} próbował użyć narzędzia zamiast odczytać obraz, więc Oleafly go zatrzymał. Spróbuj ponownie albo wybierz inny model.",
       "agentNeedsReadOnly": "{{agent}} nie można ograniczyć do samego odczytu, więc Oleafly nie wyśle mu Twojego obrazu. Wybierz inny model.",
+      "agentTooLong": "To jest za długie, by wysłać do {{agent}}. Skróć to albo wybierz inny model.",
       "imageTooLarge": "Ten obraz jest nadal za duży po zmniejszeniu. Przytnij go i spróbuj ponownie."
     }
   },
@@ -1629,7 +1630,7 @@
     "reviewing": "Recenzowanie…",
     "runReview": "Zrecenzuj artykuł",
     "offline": "Tryb offline jest włączony. Recenzja artykułu wymaga skonfigurowanego dostawcy AI.",
-    "needsProvider": "Skonfiguruj dostawcę AI w Ustawieniach przed recenzowaniem.",
+    "needsProvider": "Przed recenzowaniem skonfiguruj dostawcę AI w Ustawieniach albo wybierz agenta wiersza poleceń jako model dla Narzędzi.",
     "noSource": "Otwórz projekt LaTeX (albo użyj opcji Znajdź cytowania w dokumencie z poziomu edytora), aby był tekst artykułu do zrecenzowania.",
     "friendlyHint": "Tryb życzliwy to konstruktywny mentor: najpierw mocne strony, potem konkretne sugestie.",
     "fireHint": "Tryb ostry to Recenzent nr 2: rygorystyczny, testujący twierdzenia, precyzyjny technicznie.",
@@ -1785,7 +1786,7 @@
     "offline": "Tryb offline jest włączony. Skanowanie dokumentu pod kątem cytowań wymaga dostępu do sieci.",
     "noProject": "Otwórz projekt LaTeX, aby przeskanować akapity dokumentu pod kątem cytowań, albo uruchom opcję Znajdź cytowania w dokumencie z poziomu edytora.",
     "emptySource": "Dokument źródłowy jest pusty albo niewczytany. Otwórz plik <ext>.tex</ext>, aby go przeskanować.",
-    "heuristicRanking": "Szeregowanie będzie korzystać tylko z liczby cytowań, dopóki nie skonfigurujesz dostawcy AI.",
+    "heuristicRanking": "Szeregowanie będzie korzystać tylko z liczby cytowań, dopóki nie skonfigurujesz dostawcy AI albo nie wybierzesz agenta wiersza poleceń jako modelu dla Narzędzi.",
     "dismissError": "Zamknij błąd",
     "progressProcessing": "Przetwarzanie {{completed}}/{{total}} akapitów…",
     "progressPreparing": "Przygotowywanie skanowania…",

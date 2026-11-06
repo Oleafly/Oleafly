@@ -1238,6 +1238,7 @@
       "agentSignIn": "{{agent}} no ha iniciado sesión. Inicia sesión y vuelve a intentarlo.",
       "agentUsedTool": "{{agent}} intentó usar una herramienta en lugar de leer la imagen, así que Oleafly lo detuvo. Vuelve a intentarlo o elige otro modelo.",
       "agentNeedsReadOnly": "{{agent}} no se puede limitar a solo lectura, así que Oleafly no le enviará tu imagen. Elige otro modelo.",
+      "agentTooLong": "Esto es demasiado largo para enviarlo a {{agent}}. Acórtalo o elige otro modelo.",
       "imageTooLarge": "La imagen sigue siendo demasiado grande después de reducirla. Recórtala e inténtalo de nuevo."
     }
   },
@@ -1604,7 +1605,7 @@
     "reviewing": "Revisando…",
     "runReview": "Revisar el artículo",
     "offline": "El modo sin conexión está activado. La revisión del artículo necesita un proveedor de IA configurado.",
-    "needsProvider": "Configura un proveedor de IA en Ajustes antes de revisar.",
+    "needsProvider": "Configura un proveedor de IA en Ajustes o elige un agente de línea de comandos como modelo para Herramientas antes de revisar.",
     "noSource": "Abre un proyecto de LaTeX (o usa Buscar citas en el documento desde el editor) para que haya texto que revisar.",
     "friendlyHint": "El modo amable es un mentor constructivo: primero los puntos fuertes y luego sugerencias concretas.",
     "fireHint": "El modo duro es el revisor 2: riguroso, exigente con las afirmaciones y preciso a nivel técnico.",
@@ -1758,7 +1759,7 @@
     "offline": "El modo sin conexión está activado. El análisis de citas del documento necesita acceso a la red.",
     "noProject": "Abre un proyecto de LaTeX para analizar los párrafos del documento en busca de citas, o ejecuta Buscar citas en el documento desde el editor.",
     "emptySource": "El documento de origen está vacío o no está cargado. Abre un archivo <ext>.tex</ext> para analizarlo.",
-    "heuristicRanking": "La ordenación solo usará el número de citas hasta que configures un proveedor de IA.",
+    "heuristicRanking": "La ordenación solo usará el número de citas hasta que configures un proveedor de IA o elijas un agente de línea de comandos como modelo para Herramientas.",
     "dismissError": "Descartar el error",
     "progressProcessing": "Procesando {{completed}}/{{total}} párrafos…",
     "progressPreparing": "Preparando el análisis…",

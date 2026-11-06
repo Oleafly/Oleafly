@@ -1219,6 +1219,7 @@
       "agentSignIn": "{{agent}} için oturum açılmamış. Oturum açıp yeniden deneyin.",
       "agentUsedTool": "{{agent}} görüntüyü okumak yerine bir araç kullanmaya çalıştı, bu yüzden Oleafly onu durdurdu. Yeniden deneyin veya başka bir model seçin.",
       "agentNeedsReadOnly": "{{agent}} yalnızca okumayla sınırlanamıyor, bu yüzden Oleafly görüntünüzü ona göndermeyecek. Başka bir model seçin.",
+      "agentTooLong": "Bu, {{agent}} ajanına göndermek için çok uzun. Kısaltın veya başka bir model seçin.",
       "imageTooLarge": "Bu görsel küçültüldükten sonra bile çok büyük. Kırpıp yeniden deneyin."
     }
   },
@@ -1579,7 +1580,7 @@
     "reviewing": "İnceleniyor…",
     "runReview": "Makaleyi incele",
     "offline": "Çevrimdışı kip açık. Makale incelemesi yapılandırılmış bir yapay zeka sağlayıcısı gerektirir.",
-    "needsProvider": "İncelemeden önce Ayarlar'dan bir yapay zeka sağlayıcısı yapılandırın.",
+    "needsProvider": "İncelemeden önce Ayarlar'dan bir yapay zeka sağlayıcısı yapılandırın veya Araçlar için model olarak bir CLI ajanı seçin.",
     "noSource": "İncelenecek makale metni olması için bir LaTeX projesi açın (veya düzenleyiciden Belgedeki atıfları bul komutunu kullanın).",
     "friendlyHint": "Dostane kip yapıcı bir mentordur: önce güçlü yanlar, sonra somut öneriler.",
     "fireHint": "Sert kip 2. Hakem'dir: titiz, iddiaları zorlayan, teknik olarak kesin.",
@@ -1731,7 +1732,7 @@
     "offline": "Çevrimdışı kip açık. Belge atıf taraması ağ erişimi gerektirir.",
     "noProject": "Belge paragraflarını atıflar için taramak üzere bir LaTeX projesi açın veya düzenleyiciden Belgedeki atıfları bul komutunu çalıştırın.",
     "emptySource": "Kaynak belge boş veya yüklü değil. Taramak için bir <ext>.tex</ext> dosyası açın.",
-    "heuristicRanking": "Bir yapay zeka sağlayıcısı yapılandırılana kadar sıralama yalnızca atıf sayılarını kullanır.",
+    "heuristicRanking": "Bir yapay zeka sağlayıcısı yapılandırılana veya Araçlar için model olarak bir CLI ajanı seçilene kadar sıralama yalnızca atıf sayılarını kullanır.",
     "dismissError": "Hatayı kapat",
     "progressProcessing": "{{completed}}/{{total}} paragraf işleniyor…",
     "progressPreparing": "Tarama hazırlanıyor…",

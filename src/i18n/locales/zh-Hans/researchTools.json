@@ -1200,6 +1200,7 @@
       "agentSignIn": "{{agent}} 尚未登录。请登录后重试。",
       "agentUsedTool": "{{agent}} 试图使用工具而不是读取图片，因此 Oleafly 已将其停止。请重试，或选择其他模型。",
       "agentNeedsReadOnly": "{{agent}} 无法限制为只读，因此 Oleafly 不会向其发送图片。请选择其他模型。",
+      "agentTooLong": "内容太长，无法发送给 {{agent}}。请缩短，或选择其他模型。",
       "imageTooLarge": "缩小后图片仍然太大。请裁剪后重试。"
     }
   },
@@ -1554,7 +1555,7 @@
     "reviewing": "正在评审…",
     "runReview": "评审论文",
     "offline": "离线模式已开启。论文评审需要已配置的 AI 提供商。",
-    "needsProvider": "评审前请先在设置中配置 AI 提供商。",
+    "needsProvider": "评审前请先在设置中配置 AI 提供商，或将命令行代理选为工具所用模型。",
     "noSource": "请打开 LaTeX 项目（或在编辑器中使用“文档内查找引用”），这样才有可评审的论文文本。",
     "friendlyHint": "友好模式像一位建设性的导师：先讲优点，再给出具体建议。",
     "fireHint": "犀利模式就像二号审稿人：严谨、紧扣论断、技术上精确。",
@@ -1704,7 +1705,7 @@
     "offline": "离线模式已启用。文档引用扫描需要网络连接。",
     "noProject": "打开一个 LaTeX 项目以扫描文档段落中的引用，或在编辑器中运行“在文档中查找引用”。",
     "emptySource": "源文档为空或未加载。请打开 <ext>.tex</ext> 文件进行扫描。",
-    "heuristicRanking": "在配置 AI 提供商之前，排名将仅使用引用次数。",
+    "heuristicRanking": "在配置 AI 提供商或将命令行代理选为工具所用模型之前，排名将仅使用引用次数。",
     "dismissError": "关闭错误",
     "progressProcessing": "正在处理 {{completed}}/{{total}} 个段落…",
     "progressPreparing": "正在准备扫描…",

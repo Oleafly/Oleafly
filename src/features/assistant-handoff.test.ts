@@ -1,18 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ getConfig: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getConfig: vi.fn(), acpCatalog: vi.fn() }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   getConfig: mocks.getConfig,
 }));
 
+vi.mock("@/lib/acp", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/acp")>()),
+  acpCatalog: mocks.acpCatalog,
+}));
+
 import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { ensureAiProviderOrOpenSettings, handoffToAssistant, revealAssistant } from "./assistant-handoff";
 
 beforeEach(() => {
   mocks.getConfig.mockReset();
+  mocks.acpCatalog.mockReset();
+  mocks.acpCatalog.mockResolvedValue([]);
+  useFilesStore.setState({ projectId: null });
   useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [] });
   useSettingsStore.setState({
     chatFloating: false,
@@ -65,5 +74,18 @@ describe("assistant handoff", () => {
     mocks.getConfig.mockRejectedValue(new Error("config unavailable"));
     await expect(ensureAiProviderOrOpenSettings()).resolves.toBe(false);
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "ai" });
+  });
+
+  it("continues for a CLI-only user once a connected agent can take it in an open project", async () => {
+    mocks.getConfig.mockResolvedValue({ ai_keys: {} });
+    mocks.acpCatalog.mockResolvedValue([{ definition: { id: "claude", name: "Claude Code" }, installed: true, canInstall: true, cli: null }]);
+    useFilesStore.setState({ projectId: "paper" });
+
+    await expect(ensureAiProviderOrOpenSettings()).resolves.toBe(true);
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+
+    useFilesStore.setState({ projectId: null });
+    await expect(ensureAiProviderOrOpenSettings()).resolves.toBe(false);
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 });

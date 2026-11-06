@@ -22,7 +22,8 @@
     "warned": "This project has used {{spent}} of its {{budget}} AI budget."
   },
   "assistant": {
-    "handoffRuntimeSwitch": "Switched to the Oleafly assistant for this action."
+    "handoffRuntimeSwitch": "Switched to the Oleafly assistant for this action.",
+    "handoffToCli": "Oleafly's assistant has no AI provider, so this went to your CLI agent."
   },
   "bibtex": {
     "duplicateDoi": "Duplicate DOI shared with: {{keys}}",

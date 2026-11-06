@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Connect an AI provider in Settings to use Fix with AI.",
+    "aiProviderRequired": "Connect an AI provider in Settings, or pick a CLI agent as the model for Tools, to use Fix with AI.",
     "fixFailed": "Fix failed: {{detail}}"
   },
   "chooser": {

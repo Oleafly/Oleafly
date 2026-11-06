@@ -1238,6 +1238,7 @@
       "agentSignIn": "{{agent}} não está conectado. Faça login e tente de novo.",
       "agentUsedTool": "{{agent}} tentou usar uma ferramenta em vez de ler a imagem, então o Oleafly o interrompeu. Tente de novo ou escolha outro modelo.",
       "agentNeedsReadOnly": "{{agent}} não pode ser limitado à leitura, então o Oleafly não enviará sua imagem para ele. Escolha outro modelo.",
+      "agentTooLong": "Isto é longo demais para enviar ao {{agent}}. Encurte, ou escolha outro modelo.",
       "imageTooLarge": "Esta imagem continua grande demais mesmo depois de reduzida. Recorte e tente de novo."
     }
   },
@@ -1604,7 +1605,7 @@
     "reviewing": "Revisando…",
     "runReview": "Revisar o artigo",
     "offline": "O modo offline está ligado. A revisão do artigo precisa de um provedor de IA configurado.",
-    "needsProvider": "Configure um provedor de IA em Configurações antes de revisar.",
+    "needsProvider": "Configure um provedor de IA em Configurações, ou escolha um agente de CLI como modelo para as Ferramentas, antes de revisar.",
     "noSource": "Abra um projeto LaTeX (ou use Localizar citações no documento pelo editor) para haver texto a revisar.",
     "friendlyHint": "O modo Amigável é um orientador construtivo: primeiro os pontos fortes, depois sugestões específicas.",
     "fireHint": "O modo Fogo é o Revisor #2: rigoroso, questionador das afirmações, tecnicamente preciso.",
@@ -1758,7 +1759,7 @@
     "offline": "O modo offline está ativado. A varredura de citações do documento precisa de acesso à rede.",
     "noProject": "Abra um projeto LaTeX para varrer os parágrafos do documento em busca de citações, ou use Localizar citações no documento pelo editor.",
     "emptySource": "O documento de origem está vazio ou não foi carregado. Abra um arquivo <ext>.tex</ext> para varrer.",
-    "heuristicRanking": "A classificação vai usar só as contagens de citação até um provedor de IA ser configurado.",
+    "heuristicRanking": "A classificação vai usar só as contagens de citação até um provedor de IA ser configurado ou um agente de CLI ser escolhido como modelo para as Ferramentas.",
     "dismissError": "Dispensar o erro",
     "progressProcessing": "Processando {{completed}}/{{total}} parágrafos…",
     "progressPreparing": "Preparando a varredura…",

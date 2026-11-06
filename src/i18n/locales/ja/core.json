@@ -22,7 +22,8 @@
     "warned": "このプロジェクトは AI 予算 {{budget}} のうち {{spent}} を使いました。"
   },
   "assistant": {
-    "handoffRuntimeSwitch": "この操作のため Oleafly アシスタントに切り替えました。"
+    "handoffRuntimeSwitch": "この操作のため Oleafly アシスタントに切り替えました。",
+    "handoffToCli": "Oleafly アシスタントに AI プロバイダがないため、CLI エージェントに送りました。"
   },
   "bibtex": {
     "duplicateDoi": "次のキーと DOI が重複しています: {{keys}}",

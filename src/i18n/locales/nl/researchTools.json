@@ -1219,6 +1219,7 @@
       "agentSignIn": "{{agent}} is niet aangemeld. Meld je aan en probeer het opnieuw.",
       "agentUsedTool": "{{agent}} probeerde een tool te gebruiken in plaats van de afbeelding te lezen, dus Oleafly heeft de agent gestopt. Probeer het opnieuw of kies een ander model.",
       "agentNeedsReadOnly": "{{agent}} kan niet tot alleen lezen worden beperkt, dus Oleafly stuurt je afbeelding er niet naartoe. Kies een ander model.",
+      "agentTooLong": "Dit is te lang om naar {{agent}} te sturen. Maak het korter of kies een ander model.",
       "imageTooLarge": "Deze afbeelding is na het verkleinen nog steeds te groot. Snijd hem bij en probeer het opnieuw."
     }
   },
@@ -1579,7 +1580,7 @@
     "reviewing": "Beoordelen…",
     "runReview": "Artikel beoordelen",
     "offline": "De offlinemodus staat aan. Een artikelbeoordeling vraagt een ingestelde AI-provider.",
-    "needsProvider": "Stel een AI-provider in bij Instellingen voordat je beoordeelt.",
+    "needsProvider": "Stel een AI-provider in bij Instellingen, of kies een CLI-agent als model voor Hulpmiddelen, voordat je beoordeelt.",
     "noSource": "Open een LaTeX-project (of gebruik Citaties in het document zoeken vanuit de editor) zodat er tekst is om te beoordelen.",
     "friendlyHint": "De vriendelijke modus is een opbouwende mentor: eerst de sterke punten, daarna concrete suggesties.",
     "fireHint": "De strenge modus is de tweede reviewer: streng, kritisch op beweringen en technisch precies.",
@@ -1731,7 +1732,7 @@
     "offline": "De offlinemodus staat aan. Een citatiescan van het document vraagt netwerktoegang.",
     "noProject": "Open een LaTeX-project om alinea's van het document op citaties te scannen, of voer Citaties in het document zoeken uit vanuit de editor.",
     "emptySource": "Het brondocument is leeg of niet geladen. Open een <ext>.tex</ext>-bestand om te scannen.",
-    "heuristicRanking": "De rangschikking gebruikt alleen citatieaantallen totdat er een AI-provider is ingesteld.",
+    "heuristicRanking": "De rangschikking gebruikt alleen citatieaantallen totdat er een AI-provider is ingesteld of een CLI-agent als model voor Hulpmiddelen is gekozen.",
     "dismissError": "Foutmelding sluiten",
     "progressProcessing": "{{completed}}/{{total}} alinea's verwerken…",
     "progressPreparing": "Scan voorbereiden…",

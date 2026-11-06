@@ -1257,6 +1257,7 @@
       "agentSignIn": "{{agent}} není přihlášený. Přihlaste se a zkuste to znovu.",
       "agentUsedTool": "{{agent}} se místo čtení obrázku pokusil použít nástroj, proto ho Oleafly zastavil. Zkuste to znovu, nebo vyberte jiný model.",
       "agentNeedsReadOnly": "{{agent}} nelze omezit jen na čtení, proto mu Oleafly obrázek nepošle. Vyberte jiný model.",
+      "agentTooLong": "Tohle je pro {{agent}} příliš dlouhé. Zkraťte to, nebo vyberte jiný model.",
       "imageTooLarge": "Tento obrázek je i po zmenšení příliš velký. Ořízněte jej a zkuste to znovu."
     }
   },
@@ -1629,7 +1630,7 @@
     "reviewing": "Recenzuje se…",
     "runReview": "Zrecenzovat článek",
     "offline": "Režim offline je zapnutý. Recenze článku vyžaduje nastaveného poskytovatele AI.",
-    "needsProvider": "Před recenzí nastavte v Nastavení poskytovatele AI.",
+    "needsProvider": "Před recenzí nastavte v Nastavení poskytovatele AI, nebo vyberte agenta CLI jako model pro Nástroje.",
     "noSource": "Otevřete projekt v LaTeXu (nebo použijte z editoru Najít citace v dokumentu), aby bylo co recenzovat.",
     "friendlyHint": "Přátelský režim je konstruktivní mentor: nejdřív silné stránky, pak konkrétní návrhy.",
     "fireHint": "Ostrý režim je recenzent č. 2: důsledný, prověřuje tvrzení, technicky přesný.",
@@ -1785,7 +1786,7 @@
     "offline": "Režim offline je zapnutý. Hledání citací v dokumentu vyžaduje přístup k síti.",
     "noProject": "Otevřete projekt v LaTeXu a můžete procházet odstavce dokumentu kvůli citacím, nebo z editoru spusťte Najít citace v dokumentu.",
     "emptySource": "Zdrojový dokument je prázdný nebo není načtený. Otevřete soubor <ext>.tex</ext> a můžete jej projít.",
-    "heuristicRanking": "Dokud nenastavíte poskytovatele AI, bude se řadit jen podle počtu citací.",
+    "heuristicRanking": "Dokud nenastavíte poskytovatele AI nebo nevyberete agenta CLI jako model pro Nástroje, bude se řadit jen podle počtu citací.",
     "dismissError": "Zavřít chybu",
     "progressProcessing": "Zpracovává se {{completed}}/{{total}} odstavců…",
     "progressPreparing": "Připravuje se průchod…",

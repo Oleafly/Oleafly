@@ -501,7 +501,7 @@
     "dismiss": "Fermer",
     "withdrawn": "Quelqu'un d'autre a modifié ce texte, la suggestion ne peut donc plus être appliquée.",
     "setUpProvider": "Configurer un fournisseur d'IA",
-    "setUpProviderHint": "Ajoutez une clé API (ou un Ollama local) pour utiliser les modifications IA en ligne.",
+    "setUpProviderHint": "Ajoutez une clé API ou un Ollama local, ou choisissez un agent en ligne de commande comme modèle pour les Outils, pour utiliser les modifications IA en ligne.",
     "openAiSettings": "Ouvrir Paramètres → IA"
   },
   "proofreading": {

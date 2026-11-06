@@ -687,6 +687,7 @@ fn turn_recorder_for_request(
 #[tauri::command]
 pub async fn agent_stream(
     state: State<'_, AgentState>,
+    acp: State<'_, std::sync::Arc<crate::acp::AcpRuntime>>,
     request_id: String,
     request: CompletionRequest,
     provider_override: Option<ProviderOverride>,
@@ -696,6 +697,18 @@ pub async fn agent_stream(
     let usage_id = request_id.clone();
     run_registered(agent_state, &request_id, |_| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
+        if let Some((agent, model)) = acp_route(provider_override.as_ref()) {
+            let events = on_event.clone();
+            let sink: crate::acp::TextSink = std::sync::Arc::new(move |text: &str| {
+                let _ = events.send(AgentEvent::TextDelta {
+                    text: text.to_owned(),
+                });
+            });
+            let shot = crate::acp::OneShot::new(agent, model, &request)?.streaming(sink);
+            let result = acp.one_shot(shot).await;
+            let _ = on_event.send(AgentEvent::RunEnd);
+            return result.map(|_| ());
+        }
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
         let usage = standalone_usage(&usage_id, &resolved)?;

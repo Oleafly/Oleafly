@@ -17,6 +17,14 @@ it is not a second document model.
 - Use a hosted provider, an OpenAI-compatible endpoint, or Ollama locally.
 - Use a CLI agent instead of a model. 14 are built in, **Find more agents** in
   Settings searches the ACP registry, and you can register your own.
+- Work without an API key. Pick a CLI agent as the model for Tools, and Paper
+  Review, inline edits, Fix with AI in the diagram composer, template
+  generation and the citation scan's ranking use it when no provider is set
+  up. Ask AI, Generators and the selection menu hand their prompt to the
+  assistant you're using, so the CLI assistant gets it while it's the one
+  open, and so does Oleafly's assistant when it has no provider and a CLI
+  agent is connected. A hand-off with images still goes to Oleafly's
+  assistant.
 - Chat prompt shortcuts for **Friendly** and **Fire** paper review (mentor-style
   feedback and strict Reviewer #2 critique of the current document).
 

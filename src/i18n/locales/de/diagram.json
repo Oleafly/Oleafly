@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Verbinden Sie in den Einstellungen einen KI-Anbieter, um Mit KI beheben zu nutzen.",
+    "aiProviderRequired": "Verbinden Sie in den Einstellungen einen KI-Anbieter, oder wählen Sie einen Kommandozeilenagenten als Modell für Tools, um Mit KI beheben zu nutzen.",
     "fixFailed": "Behebung fehlgeschlagen: {{detail}}"
   },
   "chooser": {

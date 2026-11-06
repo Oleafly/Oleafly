@@ -2,13 +2,12 @@ import { isOutputLimitStop, isRefusalStop } from "@oleafly/ai-core";
 import type { ConverterProgressReporter } from "@/features/ad-hoc-converters";
 import { i18n } from "@/i18n";
 import {
-  agentErrorKind,
   completeViaBackend,
   type AgentCompletionRequest,
   type AgentCompletionResponse,
   type AgentContentPart,
 } from "@/lib/agent-backend";
-import { acpError } from "@/lib/acp";
+import { cliAgentFailure } from "@/lib/ai-route";
 import { mathpixPdf, mathpixText } from "@/lib/mathpix";
 import {
   dataUrlToImageInput,
@@ -94,29 +93,12 @@ function llmRequest(model: ResolvedLlm, system: string | null, content: AgentCon
   };
 }
 
-/** What a CLI agent's failure means for the Tools. Its own message reads
- * `[kind] text`, and the text of any other failure is the agent's. */
 function agentFailure(agent: string, model: string, error: unknown): unknown {
-  switch (agentErrorKind(error)) {
-    case "auth":
-      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentSignIn, { agent }), "ai-agents");
-    case "agent_unavailable":
-      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentNotReady, { agent }), "ai-agents");
-    case "agent_images":
-      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.cannotSeeImages, { model: agent }));
-    case "agent_model":
-      return new ToolsModelError(
-        i18n.t(($) => $.researchTools.converterModel.errors.modelUnavailable, { model, provider: agent }),
-      );
-    case "agent_tool":
-      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentUsedTool, { agent }));
-    case "agent_read_only":
-      return new ToolsModelError(i18n.t(($) => $.researchTools.converterModel.errors.agentNeedsReadOnly, { agent }));
-    case "agent":
-      return new ToolsModelError(acpError(String((error as Error).message).replace(/^\[agent\]\s*/, "")), "ai-agents");
-    default:
-      return error;
-  }
+  const failure = cliAgentFailure(agent, model, error);
+  if (!failure) return error;
+  return failure.agentSettings
+    ? new ToolsModelError(failure.message, "ai-agents")
+    : new ToolsModelError(failure.message);
 }
 
 async function completeWith(

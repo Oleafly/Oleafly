@@ -494,7 +494,7 @@
     "dismiss": "Sulje",
     "withdrawn": "Joku muu muokkasi tätä tekstiä, joten ehdotusta ei voi enää käyttää.",
     "setUpProvider": "Ota tekoälypalvelu käyttöön",
-    "setUpProviderHint": "Lisää API-avain (tai paikallinen Ollama), niin tekstin sisäiset tekoälymuokkaukset toimivat.",
+    "setUpProviderHint": "Lisää API-avain tai paikallinen Ollama, tai valitse komentoriviagentti työkalujen malliksi, niin tekstin sisäiset tekoälymuokkaukset toimivat.",
     "openAiSettings": "Avaa Asetukset → Tekoäly"
   },
   "proofreading": {

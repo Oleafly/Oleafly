@@ -411,9 +411,23 @@ describe("the diagram host adapters", () => {
       const fixWithAi = await openFixWithAi();
 
       await expect(fixWithAi("code", "log")).rejects.toThrow(
-        "Connect an AI provider in Settings to use Fix with AI.",
+        "Connect an AI provider in Settings, or pick a CLI agent as the model for Tools, to use Fix with AI.",
       );
       expect(completeText).not.toHaveBeenCalled();
+    });
+
+    it("lets a CLI agent picked for Tools fix the figure when no provider is connected", async () => {
+      vi.mocked(tauriApi.getConfig).mockResolvedValue({
+        ...configured,
+        ai_api_key: "",
+        ai_keys: {},
+        ai_tools_model: { provider: "acp:claude", model: "default", label: "Claude Code" },
+      } as never);
+      vi.mocked(completeText).mockResolvedValue("\\begin{tikzpicture}\\end{tikzpicture}");
+      const fixWithAi = await openFixWithAi();
+
+      await expect(fixWithAi("code", "log")).resolves.toContain("tikzpicture");
+      expect(completeText).toHaveBeenCalledOnce();
     });
 
     it("returns the model's figure without code fences", async () => {

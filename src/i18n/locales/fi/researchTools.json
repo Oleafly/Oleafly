@@ -1219,6 +1219,7 @@
       "agentSignIn": "{{agent}} ei ole kirjautunut sisään. Kirjaudu sisään ja yritä uudelleen.",
       "agentUsedTool": "{{agent}} yritti käyttää työkalua kuvan lukemisen sijaan, joten Oleafly pysäytti sen. Yritä uudelleen tai valitse toinen malli.",
       "agentNeedsReadOnly": "Agenttia {{agent}} ei voi rajoittaa pelkkään lukemiseen, joten Oleafly ei lähetä sille kuvaasi. Valitse toinen malli.",
+      "agentTooLong": "Tämä on liian pitkä lähetettäväksi agentille {{agent}}. Lyhennä sitä tai valitse toinen malli.",
       "imageTooLarge": "Kuva on yhä liian suuri pienentämisen jälkeen. Rajaa kuvaa ja yritä uudelleen."
     }
   },
@@ -1579,7 +1580,7 @@
     "reviewing": "Arvioidaan…",
     "runReview": "Arvioi artikkeli",
     "offline": "Offline-tila on päällä. Artikkelin arviointi vaatii määritetyn tekoälypalvelun.",
-    "needsProvider": "Määritä tekoälypalvelu asetuksissa ennen arviointia.",
+    "needsProvider": "Määritä tekoälypalvelu asetuksissa tai valitse komentoriviagentti työkalujen malliksi ennen arviointia.",
     "noSource": "Avaa LaTeX-projekti (tai käytä editorin toimintoa Etsi viittaukset dokumentista), jotta arvioitavaa tekstiä on olemassa.",
     "friendlyHint": "Ystävällinen tila on rakentava mentori: ensin vahvuudet, sitten täsmälliset ehdotukset.",
     "fireHint": "Tiukka tila on ankara arvioija: perusteellinen, väitteitä koetteleva ja teknisesti täsmällinen.",
@@ -1731,7 +1732,7 @@
     "offline": "Offline-tila on käytössä. Dokumentin viittaushaku vaatii verkkoyhteyden.",
     "noProject": "Avaa LaTeX-projekti, niin dokumentin kappaleista voi etsiä viittauksia, tai käytä editorin toimintoa Etsi viittaukset dokumentista.",
     "emptySource": "Lähdedokumentti on tyhjä tai sitä ei ole ladattu. Avaa <ext>.tex</ext>-tiedosto käydäksesi sen läpi.",
-    "heuristicRanking": "Järjestys perustuu pelkkiin viittausmääriin, kunnes tekoälypalvelu on määritetty.",
+    "heuristicRanking": "Järjestys perustuu pelkkiin viittausmääriin, kunnes tekoälypalvelu on määritetty tai komentoriviagentti on valittu työkalujen malliksi.",
     "dismissError": "Sulje virhe",
     "progressProcessing": "Käsitellään {{completed}}/{{total}} kappaletta…",
     "progressPreparing": "Valmistellaan läpikäyntiä…",

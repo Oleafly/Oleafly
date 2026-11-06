@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Anslut en AI-leverantör i Inställningar för att kunna använda Åtgärda med AI.",
+    "aiProviderRequired": "Anslut en AI-leverantör i Inställningar, eller välj en CLI-agent som modell för Verktyg, för att kunna använda Åtgärda med AI.",
     "fixFailed": "Åtgärden misslyckades: {{detail}}"
   },
   "chooser": {

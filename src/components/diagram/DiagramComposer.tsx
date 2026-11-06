@@ -39,7 +39,7 @@ import {
 } from "@/lib/tauri";
 import { renderMermaidFigure } from "@/components/diagram/mermaid-render";
 import { completeText } from "@/lib/agent-backend";
-import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { aiFeaturesReady } from "@/lib/ai-route";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { insertAtCursor } from "@/components/editor/cm/controller";
@@ -95,7 +95,7 @@ function pickTikzFile(accept = ".tikz,.tex"): Promise<{ name: string; content: s
 
 async function fixWithAi(code: string, logTail: string, prompt?: DiagramFixPrompt): Promise<string> {
   const cfg = await getConfig();
-  if (!hasConfiguredProvider(cfg)) {
+  if (!aiFeaturesReady(cfg)) {
     throw new Error(i18n.t(($) => $.diagram.composer.aiProviderRequired));
   }
   let text: string;

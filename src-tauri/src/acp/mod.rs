@@ -30,7 +30,7 @@ pub mod types;
 mod updates;
 mod usage_probe;
 
-pub(crate) use one_shot::OneShot;
+pub(crate) use one_shot::{OneShot, TextSink};
 pub use options::ModelChoice;
 pub use runtime::{AcpRuntime, PermissionDelegate, PromptFailure};
 pub use types::*;

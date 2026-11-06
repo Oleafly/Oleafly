@@ -1,6 +1,6 @@
 {
   "composer": {
-    "aiProviderRequired": "Yhdistä tekoälypalvelu asetuksissa, jotta Korjaa tekoälyllä on käytettävissä.",
+    "aiProviderRequired": "Yhdistä tekoälypalvelu asetuksissa tai valitse komentoriviagentti työkalujen malliksi, jotta Korjaa tekoälyllä on käytettävissä.",
     "fixFailed": "Korjaus epäonnistui: {{detail}}"
   },
   "chooser": {
