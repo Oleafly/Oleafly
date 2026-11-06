@@ -1287,7 +1287,8 @@
     "tabs": {
       "fonts": "Schriften",
       "templates": "Vorlagen",
-      "dictionaries": "Wörterbücher"
+      "dictionaries": "Wörterbücher",
+      "sources": "Quellen"
     },
     "templates": {
       "empty": "Keine Vorlagenpakete zum Herunterladen.",
@@ -1357,6 +1358,47 @@
         "getTemplate": "Diese Vorlage holen",
         "useTemplate": "Diese Vorlage verwenden",
         "getAndCreate": "Holen und Projekt erstellen"
+      }
+    },
+    "sources": {
+      "save": "Speichern",
+      "environment": "{{variable}} setzt dies auf diesem Computer auf {{value}}. Entfernen Sie die Variable, um hier zu wählen.",
+      "files": {
+        "heading": "Woher Downloads kommen",
+        "intro": "Oleafly prüft jeden Download anhand einer mitgelieferten SHA-256-Prüfsumme, damit ein Mirror Ihnen keine andere Datei unterschieben kann.",
+        "addressLabel": "Mirror-Adresse",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Oleafly-Mirror zuerst",
+            "detail": "Downloads kommen von {{host}}. Ist er nicht erreichbar, nutzt Oleafly den ursprünglichen Host."
+          },
+          "original": {
+            "name": "Ursprüngliche Hosts",
+            "detail": "Downloads kommen direkt von GitHub und den eigenen Hosts der anderen Projekte. Dateien, die nur Oleafly bereitstellt, kommen weiterhin von seinem Mirror."
+          },
+          "custom": {
+            "name": "Eigener Mirror",
+            "detail": "Eine Kopie von {{host}} auf Ihrem eigenen Server, etwa ein Mirror Ihrer Universität oder Ihres Labors. Oleafly fragt zuerst diesen Mirror, dann den Oleafly-Mirror, dann die ursprünglichen Hosts."
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX-Paket-Repository",
+        "intro": "tlmgr lädt von hier Pakete für TeX Live, wenn Sie eines hinzufügen. Das TinyTeX, das Oleafly installiert, verwendet es immer. Ihr eigenes TeX Live verwendet es nur, wenn Sie eine Adresse eingeben.",
+        "addressLabel": "Adresse des Repositorys",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Nächstgelegener CTAN-Mirror",
+            "detail": "{{host}} leitet jede Anfrage an einen CTAN-Mirror in Ihrer Nähe weiter."
+          },
+          "custom": {
+            "name": "Ein bestimmtes Repository",
+            "detail": "Ein CTAN-Mirror oder das eigene TeX Live Repository Ihrer Einrichtung. Die Adresse endet auf /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX hat eine eigene Paketverwaltung, daher ändert diese Einstellung daran nichts."
       }
     }
   },

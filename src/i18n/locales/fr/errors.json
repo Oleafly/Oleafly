@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible.",
-    "app_icon_unsupported": "L'icône d'application {{icon}} n'est pas disponible."
+    "app_icon_unsupported": "L'icône d'application {{icon}} n'est pas disponible.",
+    "download_url_empty": "Saisissez une adresse qui commence par https://.",
+    "download_url_too_long": "Cette adresse est trop longue.",
+    "download_url_not_https": "L'adresse doit commencer par https://.",
+    "download_url_no_host": "L'adresse doit contenir un nom d'hôte après https://.",
+    "download_url_credentials": "Retirez le nom d'utilisateur et le mot de passe de l'adresse.",
+    "download_url_query": "L'adresse ne peut contenir ni ? ni #.",
+    "download_url_spaces": "L'adresse ne peut pas contenir d'espaces.",
+    "download_source_unknown": "Oleafly ne connaît pas la source de téléchargement {{source}}."
   },
   "literature": {
     "query_empty": "La requête de recherche ne peut pas être vide.",
@@ -176,7 +184,9 @@
     "compiler_crashed_font": "Tectonic a planté en cherchant la police « {{font}} », qui n'est probablement pas installée sur cet ordinateur. Installez la police, ou choisissez XeLaTeX ou LuaLaTeX dans le menu de compilation. Ils signalent une police manquante au lieu de planter.",
     "t1_fontenc_unicode_engine": "Ce document charge \\usepackage[T1]{fontenc}, que ce compilateur ne peut pas utiliser pour les accents et symboles saisis. ß peut s'imprimer sous la forme SS, § et « peuvent devenir d'autres lettres, et les guillemets typographiques, les tirets et € peuvent disparaître. Retirez cette ligne ou encadrez-la comme indiqué ci-dessous. pdfLaTeX la compile aussi correctement.",
     "font_in_bundle": "{{font}} est fourni avec le lot TeX intégré, qui trouve les polices par nom de fichier. Écrivez plutôt {{file}}.",
-    "font_download_prompt": "La compilation s'est arrêtée pendant que macOS demandait de télécharger une police. Répondez à cette boîte de dialogue et compilez à nouveau. Pour l'éviter, ajoutez fontset=fandol aux options de \\documentclass, ou choisissez une police fournie avec TeX."
+    "font_download_prompt": "La compilation s'est arrêtée pendant que macOS demandait de télécharger une police. Répondez à cette boîte de dialogue et compilez à nouveau. Pour l'éviter, ajoutez fontset=fandol aux options de \\documentclass, ou choisissez une police fournie avec TeX.",
+    "repository_timed_out": "Le dépôt de paquets TeX de {{host}} a mis trop de temps à répondre. Choisissez un dépôt plus proche dans Paramètres > Téléchargements > Sources, puis relancez la recherche.",
+    "repository_timed_out_default": "Votre dépôt de paquets TeX a mis trop de temps à répondre. Choisissez un dépôt plus proche dans Paramètres > Téléchargements > Sources, puis relancez la recherche."
   },
   "compile": {
     "no_diagnostic": "Le compilateur s'est arrêté sans nommer de problème. Sa dernière ligne était : {{line}}",
@@ -345,6 +355,7 @@
       "node_missing": "Installez Node.js {{required}} ou une version plus récente pour exécuter cet agent.",
       "node_outdated": "Cet agent a besoin de Node.js {{required}} ou d'une version plus récente. La version détectée est la {{major}}.",
       "bridge_outdated": "{{package}} {{found}} sur cet ordinateur est trop ancien. Oleafly a besoin de la version {{pinned}} ou plus récente. Installez le pont dans les Paramètres.",
+      "cli_outdated": "{{name}} {{found}} sur cet ordinateur est trop ancien. Oleafly a besoin de la version {{minimum}} ou plus récente. Exécutez {{command}} dans un terminal, puis réessayez.",
       "spawn_failed": "L'agent n'a pas pu être démarré. Vérifiez son installation et ses autorisations d'exécution. ({{kind}} : {{path}})",
       "remote_not_set_up": "Configurez d'abord la machine distante pour Hermes dans ses paramètres.",
       "ssh_missing": "Oleafly n'a pas trouvé ssh sur cet ordinateur. Installez OpenSSH, puis réessayez.",

@@ -1051,7 +1051,7 @@
         "collaboration": "servidores, login, entrar, dispositivos, membros, mantenedores, compartilhamento, equipes, laboratórios, edição ao vivo, tempo real, registro de segurança",
         "data": "backup, pasta da biblioteca, pasta de projetos, armazenamento, espaço em disco, lixeira, excluir projetos, pontos de verificação",
         "dictionary": "ortografia, palavras personalizadas, palavras ignoradas, revisão, regras gramaticais",
-        "downloads": "pacotes, fontes, dicionários, arquivos offline",
+        "downloads": "pacotes, fontes, dicionários, arquivos offline, espelho, CTAN, repositório, tlmgr",
         "engine": "compilador, LaTeX, TeX, Typst, Markdown, pandoc, compilação, compilar, PDF",
         "experimentation": "labs, laboratório, beta, recursos antecipados, experimental",
         "general": "preferências, idioma, região, verificação ortográfica, ortografia, erros de digitação, offline, tour, comando do terminal",

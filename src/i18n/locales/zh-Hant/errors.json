@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。",
-    "app_icon_unsupported": "應用程式圖示 {{icon}} 無法使用。"
+    "app_icon_unsupported": "應用程式圖示 {{icon}} 無法使用。",
+    "download_url_empty": "請輸入以 https:// 開頭的位址。",
+    "download_url_too_long": "這個位址太長。",
+    "download_url_not_https": "位址必須以 https:// 開頭。",
+    "download_url_no_host": "位址在 https:// 之後需要有主機名稱。",
+    "download_url_credentials": "請勿在位址中加入使用者名稱和密碼。",
+    "download_url_query": "位址不能包含 ? 或 #。",
+    "download_url_spaces": "位址不能包含空格。",
+    "download_source_unknown": "Oleafly 無法辨識下載來源 {{source}}。"
   },
   "literature": {
     "query_empty": "搜尋內容不可為空白。",
@@ -174,7 +182,9 @@
     "compiler_crashed_font": "Tectonic 在尋找字型「{{font}}」時崩潰了，這台電腦上可能沒有安裝這個字型。請安裝該字型，或在編譯選單中選擇 XeLaTeX 或 LuaLaTeX。它們會回報缺少字型，而不會崩潰。",
     "t1_fontenc_unicode_engine": "這份文件載入了 \\usepackage[T1]{fontenc}，但此編譯器無法用它處理直接輸入的重音與符號。ß 可能會印成 SS，§ 與 « 可能變成其他字母，彎引號、破折號與 € 可能消失。請移除該行，或照下方所示包裝它。pdfLaTeX 也能正確編譯。",
     "font_in_bundle": "{{font}} 隨內建的 TeX 套件組合提供，而它是以檔案名稱尋找字型。請改寫成 {{file}}。",
-    "font_download_prompt": "編譯在 macOS 詢問是否下載字型時停止了。請回應該對話框，然後重新編譯。若要避免這個情況，請在 \\documentclass 的選項中加入 fontset=fandol，或選擇隨 TeX 提供的字型。"
+    "font_download_prompt": "編譯在 macOS 詢問是否下載字型時停止了。請回應該對話框，然後重新編譯。若要避免這個情況，請在 \\documentclass 的選項中加入 fontset=fandol，或選擇隨 TeX 提供的字型。",
+    "repository_timed_out": "{{host}} 上的 TeX 套件庫回應時間過長。請在設定 > 下載 > 下載來源中選擇較近的套件庫，然後重新搜尋。",
+    "repository_timed_out_default": "你的 TeX 套件庫回應時間過長。請在設定 > 下載 > 下載來源中選擇較近的套件庫，然後重新搜尋。"
   },
   "compile": {
     "no_diagnostic": "編譯器停止了，但沒有指出問題。它的最後一行是：{{line}}",
@@ -341,6 +351,7 @@
       "node_missing": "請安裝 Node.js {{required}} 或以上版本以執行這個代理程式。",
       "node_outdated": "這個代理程式需要 Node.js {{required}} 或以上版本。偵測到的版本為 {{major}}。",
       "bridge_outdated": "這台電腦上的 {{package}} {{found}} 版本太舊。Oleafly 需要 {{pinned}} 或以上版本。請在設定中安裝橋接程式。",
+      "cli_outdated": "這台電腦上的 {{name}} {{found}} 版本太舊。Oleafly 需要 {{minimum}} 或以上版本。請在終端機中執行 {{command}}，然後再試一次。",
       "spawn_failed": "無法啟動代理程式。請檢查它的安裝狀態與執行權限。（{{kind}}：{{path}}）",
       "remote_not_set_up": "請先在 Hermes 的設定中完成遠端機器的設定。",
       "ssh_missing": "Oleafly 在這台電腦上找不到 ssh。請安裝 OpenSSH，然後再試一次。",

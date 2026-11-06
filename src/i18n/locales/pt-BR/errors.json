@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível.",
-    "app_icon_unsupported": "O ícone do aplicativo {{icon}} não está disponível."
+    "app_icon_unsupported": "O ícone do aplicativo {{icon}} não está disponível.",
+    "download_url_empty": "Digite um endereço que comece com https://.",
+    "download_url_too_long": "Esse endereço é longo demais.",
+    "download_url_not_https": "O endereço precisa começar com https://.",
+    "download_url_no_host": "O endereço precisa de um nome de host depois de https://.",
+    "download_url_credentials": "Tire o nome de usuário e a senha do endereço.",
+    "download_url_query": "O endereço não pode conter ? nem #.",
+    "download_url_spaces": "O endereço não pode conter espaços.",
+    "download_source_unknown": "O Oleafly não conhece a origem de download {{source}}."
   },
   "literature": {
     "query_empty": "O termo de busca não pode ficar vazio.",
@@ -176,7 +184,9 @@
     "compiler_crashed_font": "O Tectonic travou ao procurar a fonte \"{{font}}\", que provavelmente não está instalada neste computador. Instale a fonte ou escolha XeLaTeX ou LuaLaTeX no menu de compilação. Eles avisam que a fonte está faltando em vez de travar.",
     "t1_fontenc_unicode_engine": "Este documento carrega \\usepackage[T1]{fontenc}, que este compilador não consegue usar para acentos e símbolos digitados. O ß pode sair como SS, § e « podem virar outras letras, e aspas curvas, travessões e € podem sumir. Remova essa linha ou envolva-a como mostrado abaixo. O pdfLaTeX também a compila corretamente.",
     "font_in_bundle": "{{font}} vem com o conjunto TeX embutido, que encontra fontes pelo nome do arquivo. Escreva {{file}} no lugar.",
-    "font_download_prompt": "A compilação parou enquanto o macOS pedia para baixar uma fonte. Responda a essa caixa de diálogo e compile de novo. Para evitá-la, adicione fontset=fandol às opções do \\documentclass ou escolha uma fonte que vem com o TeX."
+    "font_download_prompt": "A compilação parou enquanto o macOS pedia para baixar uma fonte. Responda a essa caixa de diálogo e compile de novo. Para evitá-la, adicione fontset=fandol às opções do \\documentclass ou escolha uma fonte que vem com o TeX.",
+    "repository_timed_out": "O repositório de pacotes TeX em {{host}} demorou demais para responder. Escolha um repositório mais próximo em Configurações > Downloads > Origens e pesquise de novo.",
+    "repository_timed_out_default": "O seu repositório de pacotes TeX demorou demais para responder. Escolha um repositório mais próximo em Configurações > Downloads > Origens e pesquise de novo."
   },
   "compile": {
     "no_diagnostic": "O compilador parou sem indicar um problema. A última linha dele foi: {{line}}",
@@ -345,6 +355,7 @@
       "node_missing": "Instale o Node.js {{required}} ou mais recente para executar este agente.",
       "node_outdated": "Este agente precisa do Node.js {{required}} ou mais recente. A versão detectada é a {{major}}.",
       "bridge_outdated": "O {{package}} {{found}} deste computador é antigo demais. O Oleafly precisa da versão {{pinned}} ou mais recente. Instale a ponte em Configurações.",
+      "cli_outdated": "O {{name}} {{found}} deste computador é antigo demais. O Oleafly precisa da versão {{minimum}} ou mais recente. Execute {{command}} em um terminal e tente de novo.",
       "spawn_failed": "Não foi possível iniciar o agente. Verifique a instalação dele e as permissões de execução. ({{kind}}: {{path}})",
       "remote_not_set_up": "Primeiro configure a máquina remota do Hermes nas configurações dele.",
       "ssh_missing": "O Oleafly não encontrou o ssh neste computador. Instale o OpenSSH e tente de novo.",

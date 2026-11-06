@@ -155,16 +155,17 @@ impl AcpRuntime {
         }
         let definition = self.definition(agent_id)?;
         let root = root.to_path_buf();
-        let launch = {
+        let plan = {
             let acp_root = self.root.clone();
             let definition = definition.clone();
             let program = self.store.agent_program(agent_id)?;
             super::catalog::blocking(move || {
                 super::catalog::plan(&acp_root, &definition, program.as_deref().map(Path::new))
-                    .launch
             })
-            .await??
+            .await?
         };
+        super::catalog::check_cli_minimum(&self.root, &definition, &plan).await?;
+        let launch = plan.launch?;
         let record = SessionRecord {
             id: new_id(),
             project_id: project_id.to_owned(),

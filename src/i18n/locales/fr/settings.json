@@ -1294,7 +1294,8 @@
     "tabs": {
       "fonts": "Polices",
       "templates": "Modèles",
-      "dictionaries": "Dictionnaires"
+      "dictionaries": "Dictionnaires",
+      "sources": "Sources"
     },
     "templates": {
       "empty": "Aucun pack de modèles téléchargeable.",
@@ -1365,6 +1366,47 @@
         "getTemplate": "Obtenir ce modèle",
         "useTemplate": "Utiliser ce modèle",
         "getAndCreate": "Obtenir et créer le projet"
+      }
+    },
+    "sources": {
+      "save": "Enregistrer",
+      "environment": "{{variable}} fixe ce réglage à {{value}} sur cet ordinateur. Supprimez cette variable pour choisir ici.",
+      "files": {
+        "heading": "Provenance des téléchargements",
+        "intro": "Oleafly vérifie chaque téléchargement à l'aide d'une somme de contrôle SHA-256 intégrée, si bien qu'un miroir ne peut pas vous fournir un autre fichier.",
+        "addressLabel": "Adresse du miroir",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Miroir Oleafly en priorité",
+            "detail": "Les téléchargements viennent de {{host}}. S'il est injoignable, Oleafly utilise l'hôte d'origine."
+          },
+          "original": {
+            "name": "Hôtes d'origine",
+            "detail": "Les téléchargements viennent directement de GitHub et des hôtes propres aux autres projets. Les fichiers hébergés uniquement par Oleafly viennent toujours de son miroir."
+          },
+          "custom": {
+            "name": "Votre propre miroir",
+            "detail": "Une copie de {{host}} sur votre propre serveur, comme le miroir d'une université ou d'un laboratoire. Oleafly l'essaie en premier, puis le miroir Oleafly, puis les hôtes d'origine."
+          }
+        }
+      },
+      "repository": {
+        "heading": "Dépôt de paquets TeX",
+        "intro": "tlmgr télécharge les paquets TeX Live depuis ce dépôt quand vous en ajoutez un. Le TinyTeX installé par Oleafly l'utilise toujours. Votre propre TeX Live ne l'utilise que si vous saisissez une adresse.",
+        "addressLabel": "Adresse du dépôt",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Miroir CTAN le plus proche",
+            "detail": "{{host}} envoie chaque requête vers un miroir CTAN proche de vous."
+          },
+          "custom": {
+            "name": "Un dépôt précis",
+            "detail": "Un miroir CTAN ou le dépôt TeX Live de votre établissement. L'adresse se termine par /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX a son propre gestionnaire de paquets, ce réglage ne le modifie donc pas."
       }
     }
   },

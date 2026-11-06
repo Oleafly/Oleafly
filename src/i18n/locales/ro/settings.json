@@ -1294,7 +1294,8 @@
     "tabs": {
       "fonts": "Fonturi",
       "templates": "Șabloane",
-      "dictionaries": "Dicționare"
+      "dictionaries": "Dicționare",
+      "sources": "Surse"
     },
     "templates": {
       "empty": "Nu există pachete de șabloane de descărcat.",
@@ -1365,6 +1366,47 @@
         "getTemplate": "Obține acest șablon",
         "useTemplate": "Folosește acest șablon",
         "getAndCreate": "Obține și creează proiectul"
+      }
+    },
+    "sources": {
+      "save": "Salvează",
+      "environment": "Variabila {{variable}} setează această opțiune la {{value}} pe acest computer. Elimin-o ca să alegi aici.",
+      "files": {
+        "heading": "De unde vin descărcările",
+        "intro": "Oleafly verifică fiecare descărcare după o sumă de control SHA-256 inclusă în aplicație, așa că o oglindă nu îți poate da un alt fișier.",
+        "addressLabel": "Adresa oglinzii",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Mai întâi oglinda Oleafly",
+            "detail": "Descărcările vin de la {{host}}. Dacă nu poate fi accesat, Oleafly folosește gazda originală."
+          },
+          "original": {
+            "name": "Gazdele originale",
+            "detail": "Descărcările vin direct de pe GitHub și de pe gazdele proprii ale celorlalte proiecte. Fișierele găzduite doar de Oleafly vin în continuare de pe oglinda sa."
+          },
+          "custom": {
+            "name": "Propria ta oglindă",
+            "detail": "O copie a oglinzii {{host}} pe propriul tău server, cum ar fi oglinda unei universități sau a unui laborator. Oleafly încearcă mai întâi această oglindă, apoi oglinda Oleafly, apoi gazdele originale."
+          }
+        }
+      },
+      "repository": {
+        "heading": "Depozitul de pachete TeX",
+        "intro": "tlmgr descarcă de aici pachetele TeX Live când adaugi unul. TinyTeX instalat de Oleafly folosește mereu acest depozit. TeX Live-ul tău îl folosește doar dacă introduci o adresă.",
+        "addressLabel": "Adresa depozitului",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Cea mai apropiată oglindă CTAN",
+            "detail": "{{host}} trimite fiecare cerere la o oglindă CTAN din apropierea ta."
+          },
+          "custom": {
+            "name": "Un depozit anume",
+            "detail": "O oglindă CTAN sau depozitul TeX Live propriu al instituției tale. Adresa se termină cu /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX are propriul manager de pachete, așa că această setare nu îl afectează."
       }
     }
   },

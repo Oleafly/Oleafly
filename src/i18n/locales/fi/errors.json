@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla.",
-    "app_icon_unsupported": "Sovelluksen kuvake {{icon}} ei ole saatavilla."
+    "app_icon_unsupported": "Sovelluksen kuvake {{icon}} ei ole saatavilla.",
+    "download_url_empty": "Anna osoite, joka alkaa merkeillä https://.",
+    "download_url_too_long": "Osoite on liian pitkä.",
+    "download_url_not_https": "Osoitteen täytyy alkaa merkeillä https://.",
+    "download_url_no_host": "Osoitteessa tarvitaan palvelimen nimi merkkien https:// jälkeen.",
+    "download_url_credentials": "Jätä käyttäjänimi ja salasana pois osoitteesta.",
+    "download_url_query": "Osoitteessa ei voi olla merkkejä ? tai #.",
+    "download_url_spaces": "Osoitteessa ei voi olla välilyöntejä.",
+    "download_source_unknown": "Oleafly ei tunne latauslähdettä {{source}}."
   },
   "literature": {
     "query_empty": "Hakulauseke ei voi olla tyhjä.",
@@ -175,7 +183,9 @@
     "compiler_crashed_font": "Tectonic kaatui etsiessään fonttia \"{{font}}\", joka ei luultavasti ole asennettuna tähän tietokoneeseen. Asenna fontti tai valitse käännösvalikosta XeLaTeX tai LuaLaTeX. Ne ilmoittavat puuttuvasta fontista kaatumisen sijaan.",
     "t1_fontenc_unicode_engine": "Tämä dokumentti lataa komennon \\usepackage[T1]{fontenc}, jota tämä kääntäjä ei voi käyttää suoraan kirjoitetuille aksenteille ja symboleille. ß voi tulostua muodossa SS, § ja « voivat muuttua toisiksi kirjaimiksi, ja kaarevat lainausmerkit, ajatusviivat ja € voivat kadota. Poista kyseinen rivi tai kääri se alla näytetyllä tavalla. pdfLaTeX kääntää sen myös oikein.",
     "font_in_bundle": "{{font}} tulee sisäänrakennetun TeX-kokoelman mukana, ja kokoelma löytää fontit tiedostonimen perusteella. Kirjoita sen sijaan {{file}}.",
-    "font_download_prompt": "Käännös pysähtyi, kun macOS pyysi lataamaan fontin. Vastaa tuohon valintaikkunaan ja käännä uudelleen. Voit välttää tämän lisäämällä fontset=fandol komennon \\documentclass asetuksiin tai valitsemalla fontin, joka tulee TeXin mukana."
+    "font_download_prompt": "Käännös pysähtyi, kun macOS pyysi lataamaan fontin. Vastaa tuohon valintaikkunaan ja käännä uudelleen. Voit välttää tämän lisäämällä fontset=fandol komennon \\documentclass asetuksiin tai valitsemalla fontin, joka tulee TeXin mukana.",
+    "repository_timed_out": "Palvelimen {{host}} TeX-pakettivarasto vastasi liian hitaasti. Valitse lähempänä oleva pakettivarasto kohdassa Asetukset > Lataukset > Lähteet ja hae sitten uudelleen.",
+    "repository_timed_out_default": "TeX-pakettivarastosi vastasi liian hitaasti. Valitse lähempänä oleva pakettivarasto kohdassa Asetukset > Lataukset > Lähteet ja hae sitten uudelleen."
   },
   "compile": {
     "no_diagnostic": "Kääntäjä pysähtyi nimeämättä ongelmaa. Sen viimeinen rivi oli: {{line}}",
@@ -343,6 +353,7 @@
       "node_missing": "Asenna Node.js {{required}} tai uudempi, jotta tämä agentti voi toimia.",
       "node_outdated": "Tämä agentti tarvitsee Node.js:n version {{required}} tai uudemman. Havaittu versio on {{major}}.",
       "bridge_outdated": "Tämän koneen {{package}} {{found}} on liian vanha. Oleafly tarvitsee version {{pinned}} tai uudemman. Asenna silta asetuksissa.",
+      "cli_outdated": "Tämän koneen {{name}} {{found}} on liian vanha. Oleafly tarvitsee version {{minimum}} tai uudemman. Suorita {{command}} päätteessä ja yritä sitten uudelleen.",
       "spawn_failed": "Agenttia ei voitu käynnistää. Tarkista sen asennus ja suoritusoikeudet. ({{kind}}: {{path}})",
       "remote_not_set_up": "Määritä ensin etäkone Hermes-asetuksissa.",
       "ssh_missing": "Oleafly ei löytänyt ssh:ta tältä koneelta. Asenna OpenSSH ja yritä uudelleen.",

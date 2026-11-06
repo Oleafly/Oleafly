@@ -1164,14 +1164,16 @@ impl AcpRuntime {
         {
             catalog::check_node(&self.root, required).await?;
         }
-        let mut launch = {
+        let plan = {
             let root = self.root.clone();
             let definition = definition.clone();
             catalog::blocking(move || {
-                catalog::plan(&root, &definition, program.as_deref().map(Path::new)).launch
+                catalog::plan(&root, &definition, program.as_deref().map(Path::new))
             })
-            .await??
+            .await?
         };
+        catalog::check_cli_minimum(&self.root, definition, &plan).await?;
+        let mut launch = plan.launch?;
         if settings.mode == HermesMode::Project {
             let definition_args = definition
                 .distribution

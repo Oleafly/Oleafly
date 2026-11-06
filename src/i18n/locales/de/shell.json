@@ -1035,7 +1035,7 @@
         "collaboration": "Server, Anmelden, Anmeldung, Geräte, Mitglieder, Maintainer, Teilen, Teams, Labore, Arbeitsgruppen, Live-Bearbeitung, Echtzeit, Sicherheitsprotokoll, Zusammenarbeit, Kollaboration",
         "data": "Backup, Sicherung, Bibliotheksordner, Projektordner, Speicher, Speicherplatz, Papierkorb, Projekte löschen, Checkpoints",
         "dictionary": "Rechtschreibung, eigene Wörter, ignorierte Wörter, Korrektur, Korrekturlesen, Grammatikregeln",
-        "downloads": "Pakete, Schriftarten, Wörterbücher, Offline-Dateien",
+        "downloads": "Pakete, Schriftarten, Wörterbücher, Offline-Dateien, Mirror, Spiegelserver, CTAN, Repository, tlmgr",
         "engine": "Compiler, kompilieren, LaTeX, TeX, Typst, Markdown, pandoc, Build, PDF",
         "experimentation": "Experimente, Labs, Beta, experimentell, frühe Funktionen",
         "general": "Einstellungen, Sprache, Gebietsschema, Rechtschreibprüfung, Rechtschreibung, Tippfehler, offline, Touren, Terminalbefehl",

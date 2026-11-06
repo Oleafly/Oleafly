@@ -138,6 +138,15 @@ pub(super) fn bridge_outdated(package: &str, found: &str, pinned: &str) -> Strin
         .into()
 }
 
+pub(super) fn cli_outdated(name: &str, found: &str, minimum: &str, command: &str) -> String {
+    AppError::new("acp.start.cli_outdated")
+        .param("name", name)
+        .param("found", found)
+        .param("minimum", minimum)
+        .param("command", command)
+        .into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -373,6 +382,10 @@ mod tests {
         assert_eq!(
             english_of(bridge_outdated("@zed-industries/claude-code-acp", "0.1.0", "0.5.0")),
             "@zed-industries/claude-code-acp 0.1.0 on this computer is too old. Oleafly needs 0.5.0 or newer. Install the bridge in Settings."
+        );
+        assert_eq!(
+            english_of(cli_outdated("Antigravity CLI", "1.4.12", "1.5.0", "agy update")),
+            "Antigravity CLI 1.4.12 on this computer is too old. Oleafly needs 1.5.0 or newer. Run agy update in a terminal, then try again."
         );
     }
 

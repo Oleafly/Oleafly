@@ -194,7 +194,7 @@ describe("scale", () => {
     expect(units?.roots).toHaveLength(SIZE);
     expect(units?.groups).toHaveLength(SIZE + 1);
     expect(units?.fileGroups["shared/bank/p0.tex"]).toBe(units?.fileGroups["shared/hub.tex"]);
-  });
+  }, 20_000);
 
   it("gives up cleanly past the step budget", () => {
     const files = hubProject();

@@ -1301,7 +1301,8 @@
     "tabs": {
       "fonts": "Kroje pisma",
       "templates": "Szablony",
-      "dictionaries": "Słowniki"
+      "dictionaries": "Słowniki",
+      "sources": "Źródła"
     },
     "templates": {
       "empty": "Brak pakietów szablonów do pobrania.",
@@ -1373,6 +1374,47 @@
         "getTemplate": "Pobierz ten szablon",
         "useTemplate": "Użyj tego szablonu",
         "getAndCreate": "Pobierz i utwórz projekt"
+      }
+    },
+    "sources": {
+      "save": "Zapisz",
+      "environment": "Na tym komputerze zmienna {{variable}} ustawia tę opcję na {{value}}. Usuń ją, aby wybierać tutaj.",
+      "files": {
+        "heading": "Skąd pochodzą pobierane pliki",
+        "intro": "Oleafly porównuje każdy pobrany plik z sumą kontrolną SHA-256 dołączoną do aplikacji, więc serwer lustrzany nie podsunie Ci innego pliku.",
+        "addressLabel": "Adres serwera lustrzanego",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Najpierw serwer lustrzany Oleafly",
+            "detail": "Pliki są pobierane z serwera {{host}}. Gdy jest niedostępny, Oleafly korzysta z oryginalnego serwera."
+          },
+          "original": {
+            "name": "Oryginalne serwery",
+            "detail": "Pliki są pobierane bezpośrednio z GitHub i z własnych serwerów pozostałych projektów. Pliki udostępniane tylko przez Oleafly nadal pochodzą z jego serwera lustrzanego."
+          },
+          "custom": {
+            "name": "Własny serwer lustrzany",
+            "detail": "Kopia {{host}} na Twoim własnym serwerze, na przykład serwer lustrzany uczelni lub laboratorium. Oleafly najpierw próbuje tego serwera, potem serwera lustrzanego Oleafly, a na końcu oryginalnych serwerów."
+          }
+        }
+      },
+      "repository": {
+        "heading": "Repozytorium pakietów TeX",
+        "intro": "tlmgr pobiera stąd pakiety TeX Live, gdy dodajesz nowy pakiet. TinyTeX instalowany przez Oleafly zawsze korzysta z tego repozytorium. Twój własny TeX Live korzysta z niego tylko wtedy, gdy wpiszesz adres.",
+        "addressLabel": "Adres repozytorium",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Najbliższy serwer lustrzany CTAN",
+            "detail": "{{host}} kieruje każde żądanie do pobliskiego serwera lustrzanego CTAN."
+          },
+          "custom": {
+            "name": "Konkretne repozytorium",
+            "detail": "Serwer lustrzany CTAN albo własne repozytorium TeX Live Twojej instytucji. Adres kończy się na /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX ma własny menedżer pakietów, więc to ustawienie nie ma na niego wpływu."
       }
     }
   },

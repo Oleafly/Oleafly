@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt.",
-    "app_icon_unsupported": "Appikonet {{icon}} er ikke tilgængeligt."
+    "app_icon_unsupported": "Appikonet {{icon}} er ikke tilgængeligt.",
+    "download_url_empty": "Indtast en adresse, der starter med https://.",
+    "download_url_too_long": "Den adresse er for lang.",
+    "download_url_not_https": "Adressen skal starte med https://.",
+    "download_url_no_host": "Adressen skal have et værtsnavn efter https://.",
+    "download_url_credentials": "Udelad brugernavn og adgangskode i adressen.",
+    "download_url_query": "Adressen må ikke indeholde ? eller #.",
+    "download_url_spaces": "Adressen må ikke indeholde mellemrum.",
+    "download_source_unknown": "Oleafly kender ikke downloadkilden {{source}}."
   },
   "literature": {
     "query_empty": "Søgeteksten må ikke være tom.",
@@ -175,7 +183,9 @@
     "compiler_crashed_font": "Tectonic gik ned under søgningen efter skrifttypen \"{{font}}\", som sandsynligvis ikke er installeret på denne computer. Installer skrifttypen, eller vælg XeLaTeX eller LuaLaTeX i kompileringsmenuen. De melder en manglende skrifttype i stedet for at gå ned.",
     "t1_fontenc_unicode_engine": "Dette dokument indlæser \\usepackage[T1]{fontenc}, som denne kompilator ikke kan bruge til indtastede accenter og symboler. ß kan blive til SS, § og « kan blive til andre bogstaver, og krøllede anførselstegn, tankestreger og € kan forsvinde. Fjern den linje, eller omslut den som vist nedenfor. pdfLaTeX kompilerer det også korrekt.",
     "font_in_bundle": "{{font}} følger med den indbyggede TeX-pakkesamling, som finder skrifttyper ud fra filnavn. Skriv i stedet {{file}}.",
-    "font_download_prompt": "Kompileringen stoppede, mens macOS bad om at downloade en skrifttype. Besvar den dialog, og kompiler igen. For at undgå det kan du tilføje fontset=fandol til indstillingerne for \\documentclass eller vælge en skrifttype, der følger med TeX."
+    "font_download_prompt": "Kompileringen stoppede, mens macOS bad om at downloade en skrifttype. Besvar den dialog, og kompiler igen. For at undgå det kan du tilføje fontset=fandol til indstillingerne for \\documentclass eller vælge en skrifttype, der følger med TeX.",
+    "repository_timed_out": "TeX-pakke-repositoryet på {{host}} var for længe om at svare. Vælg et repository tættere på under Indstillinger > Downloads > Kilder, og søg så igen.",
+    "repository_timed_out_default": "Dit TeX-pakke-repository var for længe om at svare. Vælg et repository tættere på under Indstillinger > Downloads > Kilder, og søg så igen."
   },
   "compile": {
     "no_diagnostic": "Kompilatoren stoppede uden at nævne et problem. Dens sidste linje var: {{line}}",
@@ -343,6 +353,7 @@
       "node_missing": "Installer Node.js {{required}} eller nyere for at køre denne agent.",
       "node_outdated": "Denne agent kræver Node.js {{required}} eller nyere. Den fundne version er {{major}}.",
       "bridge_outdated": "{{package}} {{found}} på denne computer er for gammel. Oleafly kræver {{pinned}} eller nyere. Installer broen under Indstillinger.",
+      "cli_outdated": "{{name}} {{found}} på denne computer er for gammel. Oleafly kræver {{minimum}} eller nyere. Kør {{command}} i en terminal, og prøv igen.",
       "spawn_failed": "Agenten kunne ikke startes. Tjek dens installation og kørselsrettigheder. ({{kind}}: {{path}})",
       "remote_not_set_up": "Sæt først fjernmaskinen op i indstillingerne for Hermes.",
       "ssh_missing": "Oleafly kunne ikke finde ssh på denne computer. Installer OpenSSH, og prøv igen.",

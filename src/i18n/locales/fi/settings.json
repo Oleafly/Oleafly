@@ -1287,7 +1287,8 @@
     "tabs": {
       "fonts": "Fontit",
       "templates": "Mallipohjat",
-      "dictionaries": "Sanakirjat"
+      "dictionaries": "Sanakirjat",
+      "sources": "Lähteet"
     },
     "templates": {
       "empty": "Ei ladattavia mallipohjapaketteja.",
@@ -1357,6 +1358,47 @@
         "getTemplate": "Hae mallipohja",
         "useTemplate": "Käytä mallipohjaa",
         "getAndCreate": "Hae ja luo projekti"
+      }
+    },
+    "sources": {
+      "save": "Tallenna",
+      "environment": "{{variable}} asettaa tämän arvoksi {{value}} tällä koneella. Poista se, jos haluat valita tässä.",
+      "files": {
+        "heading": "Mistä lataukset tulevat",
+        "intro": "Oleafly vertaa jokaista latausta sovelluksen mukana tulevaan SHA-256-tarkistussummaan, joten peilipalvelin ei voi antaa sinulle eri tiedostoa.",
+        "addressLabel": "Peilipalvelimen osoite",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Ensin Oleaflyn peilipalvelin",
+            "detail": "Lataukset tulevat palvelimelta {{host}}. Jos siihen ei saada yhteyttä, Oleafly käyttää alkuperäistä palvelinta."
+          },
+          "original": {
+            "name": "Alkuperäiset palvelimet",
+            "detail": "Lataukset tulevat suoraan GitHubista ja muiden projektien omilta palvelimilta. Tiedostot, joita on vain Oleaflyllä, tulevat yhä sen peilipalvelimelta."
+          },
+          "custom": {
+            "name": "Oma peilipalvelin",
+            "detail": "Kopio palvelimesta {{host}} omalla palvelimellasi, esimerkiksi yliopiston tai laboratorion peilipalvelin. Oleafly kokeilee sitä ensin, sitten Oleaflyn peilipalvelinta ja lopuksi alkuperäisiä palvelimia."
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX-pakettivarasto",
+        "intro": "tlmgr lataa TeX Live -paketit täältä, kun lisäät paketin. Oleaflyn asentama TinyTeX käyttää tätä aina. Oma TeX Live -asennuksesi käyttää tätä vain, jos annat osoitteen.",
+        "addressLabel": "Pakettivaraston osoite",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Lähin CTAN-peilipalvelin",
+            "detail": "{{host}} ohjaa jokaisen pyynnön lähelläsi olevalle CTAN-peilipalvelimelle."
+          },
+          "custom": {
+            "name": "Tietty pakettivarasto",
+            "detail": "CTAN-peilipalvelin tai organisaatiosi oma TeX Live -pakettivarasto. Osoitteen lopussa on /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeXillä on oma pakettienhallintansa, joten tämä asetus ei vaikuta siihen."
       }
     }
   },

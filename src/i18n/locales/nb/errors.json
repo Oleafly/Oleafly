@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig.",
-    "app_icon_unsupported": "Appikonet {{icon}} er ikke tilgjengelig."
+    "app_icon_unsupported": "Appikonet {{icon}} er ikke tilgjengelig.",
+    "download_url_empty": "Skriv inn en adresse som starter med https://.",
+    "download_url_too_long": "Den adressen er for lang.",
+    "download_url_not_https": "Adressen må starte med https://.",
+    "download_url_no_host": "Adressen trenger et vertsnavn etter https://.",
+    "download_url_credentials": "Ikke ta med brukernavn og passord i adressen.",
+    "download_url_query": "Adressen kan ikke inneholde ? eller #.",
+    "download_url_spaces": "Adressen kan ikke inneholde mellomrom.",
+    "download_source_unknown": "Oleafly kjenner ikke nedlastingskilden {{source}}."
   },
   "literature": {
     "query_empty": "Søket kan ikke være tomt.",
@@ -175,7 +183,9 @@
     "compiler_crashed_font": "Tectonic krasjet under søket etter skriften \"{{font}}\", som sannsynligvis ikke er installert på denne datamaskinen. Installer skriften, eller velg XeLaTeX eller LuaLaTeX i kompileringsmenyen. De melder fra om en manglende skrift i stedet for å krasje.",
     "t1_fontenc_unicode_engine": "Dette dokumentet laster \\usepackage[T1]{fontenc}, som denne kompilatoren ikke kan bruke for aksenter og symboler som skrives direkte. ß kan bli til SS, § og « kan bli til andre bokstaver, og krøllete anførselstegn, tankestreker og € kan forsvinne. Fjern den linjen eller pakk den inn som vist nedenfor. pdfLaTeX kompilerer det riktig også.",
     "font_in_bundle": "{{font}} følger med i den innebygde TeX-samlingen, som finner skrifter etter filnavn. Skriv {{file}} i stedet.",
-    "font_download_prompt": "Kompileringen stoppet mens macOS spurte om å laste ned en skrift. Svar på den dialogen og kompiler på nytt. For å unngå det legger du fontset=fandol til i valgene for \\documentclass, eller velger en skrift som følger med TeX."
+    "font_download_prompt": "Kompileringen stoppet mens macOS spurte om å laste ned en skrift. Svar på den dialogen og kompiler på nytt. For å unngå det legger du fontset=fandol til i valgene for \\documentclass, eller velger en skrift som følger med TeX.",
+    "repository_timed_out": "TeX-pakkerepositoriet på {{host}} brukte for lang tid på å svare. Velg et repositorium nærmere deg under Innstillinger > Nedlastinger > Kilder, og søk på nytt.",
+    "repository_timed_out_default": "TeX-pakkerepositoriet ditt brukte for lang tid på å svare. Velg et repositorium nærmere deg under Innstillinger > Nedlastinger > Kilder, og søk på nytt."
   },
   "compile": {
     "no_diagnostic": "Kompilatoren stoppet uten å nevne noe problem. Siste linje var: {{line}}",
@@ -343,6 +353,7 @@
       "node_missing": "Installer Node.js {{required}} eller nyere for å kjøre denne agenten.",
       "node_outdated": "Denne agenten trenger Node.js {{required}} eller nyere. Versjonen som ble funnet, er {{major}}.",
       "bridge_outdated": "{{package}} {{found}} på denne maskinen er for gammel. Oleafly trenger {{pinned}} eller nyere. Installer broen i Innstillinger.",
+      "cli_outdated": "{{name}} {{found}} på denne maskinen er for gammel. Oleafly trenger {{minimum}} eller nyere. Kjør {{command}} i en terminal, og prøv igjen.",
       "spawn_failed": "Agenten kunne ikke startes. Sjekk installasjonen og kjøretillatelsene. ({{kind}}: {{path}})",
       "remote_not_set_up": "Sett først opp den eksterne maskinen i innstillingene for Hermes.",
       "ssh_missing": "Oleafly fant ikke ssh på denne maskinen. Installer OpenSSH, og prøv igjen.",

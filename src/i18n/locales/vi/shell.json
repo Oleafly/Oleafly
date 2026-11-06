@@ -1019,7 +1019,7 @@
         "collaboration": "máy chủ, đăng nhập, thiết bị, thành viên, người duy trì, chia sẻ, nhóm, phòng lab, chỉnh sửa trực tiếp, thời gian thực, nhật ký bảo mật",
         "data": "sao lưu, thư mục thư viện, thư mục dự án, lưu trữ, dung lượng đĩa, thùng rác, xoá dự án, điểm lưu",
         "dictionary": "chính tả, từ tuỳ chỉnh, từ bỏ qua, hiệu đính, quy tắc ngữ pháp",
-        "downloads": "gói, phông chữ, từ điển, tệp ngoại tuyến",
+        "downloads": "gói, phông chữ, từ điển, tệp ngoại tuyến, máy chủ mirror, CTAN, kho gói, tlmgr",
         "engine": "trình biên dịch, LaTeX, TeX, Typst, Markdown, pandoc, build, PDF",
         "experimentation": "phòng thí nghiệm, beta, tính năng sớm",
         "general": "tuỳ chọn, ngôn ngữ, kiểm tra chính tả, lỗi chính tả, ngoại tuyến, hướng dẫn, lệnh terminal",

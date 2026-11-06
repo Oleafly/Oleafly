@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile.",
-    "app_icon_unsupported": "L'icona dell'app {{icon}} non è disponibile."
+    "app_icon_unsupported": "L'icona dell'app {{icon}} non è disponibile.",
+    "download_url_empty": "Inserisci un indirizzo che inizi con https://.",
+    "download_url_too_long": "Questo indirizzo è troppo lungo.",
+    "download_url_not_https": "L'indirizzo deve iniziare con https://.",
+    "download_url_no_host": "L'indirizzo deve avere un nome host dopo https://.",
+    "download_url_credentials": "Togli nome utente e password dall'indirizzo.",
+    "download_url_query": "L'indirizzo non può contenere ? o #.",
+    "download_url_spaces": "L'indirizzo non può contenere spazi.",
+    "download_source_unknown": "Oleafly non conosce la sorgente di download {{source}}."
   },
   "literature": {
     "query_empty": "Il testo da cercare non può essere vuoto.",
@@ -176,7 +184,9 @@
     "compiler_crashed_font": "Tectonic si è chiuso in modo anomalo mentre cercava il font \"{{font}}\", che probabilmente non è installato su questo computer. Installa il font, oppure scegli XeLaTeX o LuaLaTeX dal menu di compilazione. Segnalano un font mancante invece di chiudersi in modo anomalo.",
     "t1_fontenc_unicode_engine": "Questo documento carica \\usepackage[T1]{fontenc}, che questo compilatore non può usare per gli accenti e i simboli digitati. La ß può essere stampata come SS, § e « possono trasformarsi in altre lettere, e le virgolette curve, i trattini e il € possono sparire. Rimuovi quella riga oppure racchiudila come mostrato sotto. Anche pdfLaTeX lo compila correttamente.",
     "font_in_bundle": "{{font}} è incluso nel bundle TeX integrato, che trova i font dal nome del file. Scrivi invece {{file}}.",
-    "font_download_prompt": "La compilazione si è fermata mentre macOS chiedeva di scaricare un font. Rispondi a quella finestra e compila di nuovo. Per evitarla, aggiungi fontset=fandol alle opzioni di \\documentclass, oppure scegli un font incluso in TeX."
+    "font_download_prompt": "La compilazione si è fermata mentre macOS chiedeva di scaricare un font. Rispondi a quella finestra e compila di nuovo. Per evitarla, aggiungi fontset=fandol alle opzioni di \\documentclass, oppure scegli un font incluso in TeX.",
+    "repository_timed_out": "Il repository dei pacchetti TeX su {{host}} ha impiegato troppo tempo a rispondere. Scegli un repository più vicino da Impostazioni > Download > Sorgenti, poi cerca di nuovo.",
+    "repository_timed_out_default": "Il tuo repository dei pacchetti TeX ha impiegato troppo tempo a rispondere. Scegli un repository più vicino da Impostazioni > Download > Sorgenti, poi cerca di nuovo."
   },
   "compile": {
     "no_diagnostic": "Il compilatore si è fermato senza indicare un problema. L'ultima riga era: {{line}}",
@@ -345,6 +355,7 @@
       "node_missing": "Installa Node.js {{required}} o successivo per eseguire questo agente.",
       "node_outdated": "Questo agente richiede Node.js {{required}} o successivo. La versione rilevata è la {{major}}.",
       "bridge_outdated": "{{package}} {{found}} su questo computer è troppo vecchio. Oleafly richiede la versione {{pinned}} o successiva. Installa il bridge nelle Impostazioni.",
+      "cli_outdated": "{{name}} {{found}} su questo computer è troppo vecchio. Oleafly richiede la versione {{minimum}} o successiva. Esegui {{command}} in un terminale, poi riprova.",
       "spawn_failed": "Non è stato possibile avviare l'agente. Controlla la sua installazione e i permessi di esecuzione. ({{kind}}: {{path}})",
       "remote_not_set_up": "Prima configura la macchina remota per Hermes nelle sue impostazioni.",
       "ssh_missing": "Oleafly non ha trovato ssh su questo computer. Installa OpenSSH, poi riprova.",

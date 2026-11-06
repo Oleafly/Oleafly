@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny.",
-    "app_icon_unsupported": "Ikona aplikacji {{icon}} nie jest dostępna."
+    "app_icon_unsupported": "Ikona aplikacji {{icon}} nie jest dostępna.",
+    "download_url_empty": "Podaj adres zaczynający się od https://.",
+    "download_url_too_long": "Ten adres jest za długi.",
+    "download_url_not_https": "Adres musi zaczynać się od https://.",
+    "download_url_no_host": "Po https:// adres musi zawierać nazwę hosta.",
+    "download_url_credentials": "Nie umieszczaj w adresie nazwy użytkownika ani hasła.",
+    "download_url_query": "Adres nie może zawierać ? ani #.",
+    "download_url_spaces": "Adres nie może zawierać spacji.",
+    "download_source_unknown": "Oleafly nie zna źródła pobierania {{source}}."
   },
   "literature": {
     "query_empty": "Zapytanie wyszukiwania nie może być puste.",
@@ -177,7 +185,9 @@
     "compiler_crashed_font": "Tectonic uległ awarii podczas wyszukiwania czcionki \"{{font}}\", która prawdopodobnie nie jest zainstalowana na tym komputerze. Zainstaluj czcionkę albo wybierz XeLaTeX lub LuaLaTeX w menu kompilacji. Zgłaszają one brak czcionki zamiast ulegać awarii.",
     "t1_fontenc_unicode_engine": "Ten dokument wczytuje \\usepackage[T1]{fontenc}, czego ten kompilator nie może użyć do wpisywanych akcentów i symboli. ß może być wypisane jako SS, § i « mogą zamienić się w inne litery, a cudzysłowy typograficzne, myślniki i € mogą zniknąć. Usuń ten wiersz albo opakuj go tak, jak pokazano poniżej. pdfLaTeX też kompiluje to poprawnie.",
     "font_in_bundle": "{{font}} jest dołączony do wbudowanego zestawu TeX, który wyszukuje czcionki po nazwie pliku. Zapisz zamiast tego {{file}}.",
-    "font_download_prompt": "Kompilacja zatrzymała się, gdy macOS pytał o pobranie czcionki. Odpowiedz w tym oknie i skompiluj ponownie. Aby tego uniknąć, dodaj fontset=fandol do opcji \\documentclass albo wybierz czcionkę dołączoną do TeX."
+    "font_download_prompt": "Kompilacja zatrzymała się, gdy macOS pytał o pobranie czcionki. Odpowiedz w tym oknie i skompiluj ponownie. Aby tego uniknąć, dodaj fontset=fandol do opcji \\documentclass albo wybierz czcionkę dołączoną do TeX.",
+    "repository_timed_out": "Repozytorium pakietów TeX pod adresem {{host}} nie odpowiedziało na czas. Wybierz bliższe repozytorium w sekcji Ustawienia > Pobrane > Źródła, a potem wyszukaj ponownie.",
+    "repository_timed_out_default": "Twoje repozytorium pakietów TeX nie odpowiedziało na czas. Wybierz bliższe repozytorium w sekcji Ustawienia > Pobrane > Źródła, a potem wyszukaj ponownie."
   },
   "compile": {
     "no_diagnostic": "Kompilator zatrzymał się bez wskazania problemu. Jego ostatni wiersz to: {{line}}",
@@ -347,6 +357,7 @@
       "node_missing": "Zainstaluj Node.js w wersji {{required}} lub nowszej, aby uruchomić tego agenta.",
       "node_outdated": "Ten agent wymaga Node.js w wersji {{required}} lub nowszej. Wykryta wersja to {{major}}.",
       "bridge_outdated": "Wersja {{package}} {{found}} na tym komputerze jest za stara. Oleafly potrzebuje wersji {{pinned}} lub nowszej. Zainstaluj mostek w Ustawieniach.",
+      "cli_outdated": "Wersja {{name}} {{found}} na tym komputerze jest za stara. Oleafly potrzebuje wersji {{minimum}} lub nowszej. Uruchom {{command}} w terminalu, a potem spróbuj ponownie.",
       "spawn_failed": "Nie udało się uruchomić agenta. Sprawdź jego instalację i uprawnienia do wykonywania. ({{kind}}: {{path}})",
       "remote_not_set_up": "Najpierw skonfiguruj zdalną maszynę w ustawieniach Hermes.",
       "ssh_missing": "Oleafly nie może znaleźć ssh na tym komputerze. Zainstaluj OpenSSH i spróbuj jeszcze raz.",

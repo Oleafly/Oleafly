@@ -147,6 +147,15 @@ jobs:
       - name: Test the Tauri version check
         run: pnpm tauri-versions:test
 
+      - name: Test the mirror file check
+        run: pnpm mirror:test
+
+      # Fails only when a pinned file is missing from mirrors.oleafly.com or
+      # has the wrong size. A refusal or outage is a warning, since it says
+      # nothing about whether the file was uploaded.
+      - name: Check every pinned download is on the mirror
+        run: pnpm mirror:check
+
       - name: Test the Linux app binary lookup
         run: bash scripts/ci/find-linux-app-binary.test.sh
 
@@ -753,11 +762,12 @@ jobs:
     name: E2E app build (Linux)
     needs: [frontend, rust]
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       # The vite build peaks near Node's default ~4GB heap and ran out of it
       # here (same setting as the frontend jobs and release.yml).
       NODE_OPTIONS: --max-old-space-size=6144
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     outputs:
       collab: ${{ steps.collab-changes.outputs.run }}
     steps:
@@ -797,11 +807,30 @@ jobs:
           path: oleafly-e2e-linux.deb
           key: ${{ steps.e2e-app-key.outputs.key }}
 
-      - name: Install Linux system dependencies (Tauri)
+      # ubuntu-24.04 runners differ in disk size: some had 84 GB free, others
+      # ran out of space linking this build. Only a short disk is cleaned,
+      # since the cleanup itself takes 3 to 6 minutes.
+      - name: Free disk space for the app build
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          df -h /
+          free_gb="$(df --output=avail -BG / | tail -n 1 | tr -dc '0-9')"
+          if [ "${free_gb:-0}" -ge 30 ]; then
+            echo "${free_gb} GB free, enough for the build"
+            exit 0
+          fi
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      # The noble mirror served 51 MB at 37 kB/s for hours on 2026-11-05, and
+      # three runs spent 24 to 29 minutes here. Retries cover dropped files,
+      # and the step limit keeps a dead mirror from using up the job.
+      - name: Install Linux system dependencies (Tauri)
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
@@ -884,6 +913,13 @@ jobs:
         env:
           VITE_E2E_HOOKS: "1"
         run: pnpm tauri build --debug --features e2e-testing --bundles deb --config src-tauri/tauri.e2e.conf.json
+
+      - name: Report disk use after the build
+        if: ${{ !cancelled() && steps.e2e-app-cache.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        run: |
+          df -h / || true
+          du -sh src-tauri/target src-tauri/target/debug/deps src-tauri/target/debug/bundle 2>/dev/null || true
 
       # The shards install this blind, so record the layout here where the log
       # is cheap to read. If a future Tauri release moves the binary or the

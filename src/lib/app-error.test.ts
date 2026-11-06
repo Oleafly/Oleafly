@@ -134,6 +134,7 @@ describe("app errors", () => {
       version: "2", required: "20", major: "18", package: "pi-acp", found: "0.0.1", pinned: "0.0.34",
       kind: "NotFound", path: "agent-bin", output: "panic-boom", minutes: "20", provider: "DeepSeek",
       env_key: "DEEPSEEK_API_KEY", host: "registry.npmjs.org", code: "ECONNREFUSED",
+      name: "Antigravity CLI", minimum: "1.5.0", command: "agy update",
     };
     const fallback = describeError(encoded({ code: "acp.nope", params: {}, detail: null }));
     for (const locale of SUPPORTED_LOCALES) {

@@ -177,3 +177,57 @@ fn only_builtin_or_packaged_claude_counts_as_claude() {
     assert!(!catalog::is_claude(&definition));
     assert!(!catalog::claude_login_unreported(&definition));
 }
+
+#[cfg(unix)]
+fn fake_agy(folder: &Path, version: &str) -> Located {
+    std::fs::create_dir_all(folder).unwrap();
+    let path = folder.join("agy");
+    crate::test_wait::write_executable(
+        &path,
+        &format!("#!/bin/sh\n[ \"$1\" = --warm-up ] && exit 0\necho {version}\n"),
+    );
+    let warmed = std::process::Command::new(&path)
+        .arg("--warm-up")
+        .status()
+        .unwrap();
+    assert!(warmed.success());
+    Located {
+        path,
+        kind: ProgramKind::Native,
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn an_agy_without_acp_fails_the_test_with_the_update_command() {
+    let temp = tempfile::tempdir().unwrap();
+    let old = fake_agy(&temp.path().join("old"), "1.4.12");
+    let check = check_plan(
+        &temp.path().join("acp"),
+        &builtin("antigravity"),
+        Some(old.path.clone()),
+        pi_plan(&old, None),
+        limits(),
+    )
+    .await;
+    assert_eq!(check.code, "start_failed", "{check:?}");
+    let detail = check.detail.unwrap_or_default();
+    assert!(
+        crate::acp::failures::is_code(&detail, "acp.start.cli_outdated"),
+        "{detail}"
+    );
+    let current = fake_agy(&temp.path().join("current"), "1.5.0");
+    let check = check_plan(
+        &temp.path().join("acp"),
+        &builtin("antigravity"),
+        Some(current.path.clone()),
+        pi_plan(&current, None),
+        limits(),
+    )
+    .await;
+    assert_eq!(check.code, "not_found", "{check:?}");
+    assert_eq!(
+        check.detail.as_deref(),
+        Some("fixture: the check stops before the launch")
+    );
+}

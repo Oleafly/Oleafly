@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} är inte tillgängligt.",
-    "app_icon_unsupported": "Appikonen {{icon}} är inte tillgänglig."
+    "app_icon_unsupported": "Appikonen {{icon}} är inte tillgänglig.",
+    "download_url_empty": "Ange en adress som börjar med https://.",
+    "download_url_too_long": "Adressen är för lång.",
+    "download_url_not_https": "Adressen måste börja med https://.",
+    "download_url_no_host": "Adressen behöver ett värdnamn efter https://.",
+    "download_url_credentials": "Ta inte med användarnamn och lösenord i adressen.",
+    "download_url_query": "Adressen får inte innehålla ? eller #.",
+    "download_url_spaces": "Adressen får inte innehålla mellanslag.",
+    "download_source_unknown": "Oleafly känner inte till nedladdningskällan {{source}}."
   },
   "literature": {
     "query_empty": "Sökfrågan får inte vara tom.",
@@ -175,7 +183,9 @@
     "compiler_crashed_font": "Tectonic kraschade när det letade efter teckensnittet \"{{font}}\", som troligen inte är installerat på den här datorn. Installera teckensnittet, eller välj XeLaTeX eller LuaLaTeX i kompileringsmenyn. De rapporterar ett saknat teckensnitt i stället för att krascha.",
     "t1_fontenc_unicode_engine": "Det här dokumentet laddar \\usepackage[T1]{fontenc}, som den här kompilatorn inte kan använda för inskrivna accenter och symboler. ß kan skrivas ut som SS, § och « kan bli andra bokstäver, och typografiska citattecken, tankstreck och € kan försvinna. Ta bort den raden eller omge den som visas nedan. pdfLaTeX kompilerar den också korrekt.",
     "font_in_bundle": "{{font}} ingår i den inbyggda TeX-paketbunten, som hittar typsnitt via filnamn. Skriv {{file}} i stället.",
-    "font_download_prompt": "Kompileringen stoppades medan macOS frågade om ett typsnitt skulle laddas ner. Svara på den dialogrutan och kompilera igen. För att undvika den, lägg till fontset=fandol i alternativen för \\documentclass, eller välj ett typsnitt som följer med TeX."
+    "font_download_prompt": "Kompileringen stoppades medan macOS frågade om ett typsnitt skulle laddas ner. Svara på den dialogrutan och kompilera igen. För att undvika den, lägg till fontset=fandol i alternativen för \\documentclass, eller välj ett typsnitt som följer med TeX.",
+    "repository_timed_out": "TeX-paketförrådet på {{host}} tog för lång tid på sig att svara. Välj ett förråd närmare dig under Inställningar > Nedladdningar > Källor och sök sedan igen.",
+    "repository_timed_out_default": "Ditt TeX-paketförråd tog för lång tid på sig att svara. Välj ett förråd närmare dig under Inställningar > Nedladdningar > Källor och sök sedan igen."
   },
   "compile": {
     "no_diagnostic": "Kompilatorn stoppade utan att peka ut något problem. Dess sista rad var: {{line}}",
@@ -339,6 +349,7 @@
       "node_missing": "Installera Node.js {{required}} eller senare för att köra den här agenten.",
       "node_outdated": "Den här agenten behöver Node.js {{required}} eller senare. Den hittade versionen är {{major}}.",
       "bridge_outdated": "{{package}} {{found}} på den här datorn är för gammal. Oleafly behöver {{pinned}} eller senare. Installera bryggan i Inställningar.",
+      "cli_outdated": "{{name}} {{found}} på den här datorn är för gammal. Oleafly behöver {{minimum}} eller senare. Kör {{command}} i en terminal och försök sedan igen.",
       "spawn_failed": "Agenten kunde inte startas. Kontrollera installationen och körbehörigheterna. ({{kind}}: {{path}})",
       "remote_not_set_up": "Konfigurera först fjärrdatorn i inställningarna för Hermes.",
       "ssh_missing": "Oleafly hittade inte ssh på den här datorn. Installera OpenSSH och försök igen.",

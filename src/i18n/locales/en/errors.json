@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available.",
-    "app_icon_unsupported": "The app icon {{icon}} is not available."
+    "app_icon_unsupported": "The app icon {{icon}} is not available.",
+    "download_url_empty": "Enter an address that starts with https://.",
+    "download_url_too_long": "That address is too long.",
+    "download_url_not_https": "The address must start with https://.",
+    "download_url_no_host": "The address needs a host name after https://.",
+    "download_url_credentials": "Leave the user name and password out of the address.",
+    "download_url_query": "The address can't contain ? or #.",
+    "download_url_spaces": "The address can't contain spaces.",
+    "download_source_unknown": "Oleafly doesn't know the download source {{source}}."
   },
   "literature": {
     "query_empty": "Search query cannot be empty.",
@@ -175,7 +183,9 @@
     "compiler_crashed_font": "Tectonic crashed while looking for the font \"{{font}}\", which probably isn't installed on this computer. Install the font, or pick XeLaTeX or LuaLaTeX in the compile menu. They report a missing font instead of crashing.",
     "t1_fontenc_unicode_engine": "This document loads \\usepackage[T1]{fontenc}, which this compiler can't use for typed accents and symbols. ß can print as SS, § and « can turn into other letters, and curly quotes, dashes and € can disappear. Remove that line or wrap it as shown below. pdfLaTeX compiles it correctly too.",
     "font_in_bundle": "{{font}} ships with the built-in TeX bundle, which finds fonts by file name. Write {{file}} instead.",
-    "font_download_prompt": "The compile stopped while macOS was asking to download a font. Answer that dialog and compile again. To avoid it, add fontset=fandol to the \\documentclass options, or pick a font that ships with TeX."
+    "font_download_prompt": "The compile stopped while macOS was asking to download a font. Answer that dialog and compile again. To avoid it, add fontset=fandol to the \\documentclass options, or pick a font that ships with TeX.",
+    "repository_timed_out": "The TeX package repository at {{host}} took too long to respond. Pick a closer repository in Settings > Downloads > Sources, then search again.",
+    "repository_timed_out_default": "Your TeX package repository took too long to respond. Pick a closer repository in Settings > Downloads > Sources, then search again."
   },
   "compile": {
     "no_diagnostic": "The compiler stopped without naming a problem. Its last line was: {{line}}",
@@ -342,6 +352,7 @@
       "node_missing": "Install Node.js {{required}} or newer to run this agent.",
       "node_outdated": "This agent needs Node.js {{required}} or newer. The detected version is {{major}}.",
       "bridge_outdated": "{{package}} {{found}} on this computer is too old. Oleafly needs {{pinned}} or newer. Install the bridge in Settings.",
+      "cli_outdated": "{{name}} {{found}} on this computer is too old. Oleafly needs {{minimum}} or newer. Run {{command}} in a terminal, then try again.",
       "spawn_failed": "The agent could not be started. Check its installation and executable permissions. ({{kind}}: {{path}})",
       "remote_not_set_up": "Set up the remote machine for Hermes in its settings first.",
       "ssh_missing": "Oleafly couldn't find ssh on this computer. Install OpenSSH, then try again.",

@@ -1051,7 +1051,7 @@
         "collaboration": "servere, autentificare, dispozitive, membri, coordonatori, partajare, echipe, laboratoare, editare în timp real, timp real, jurnal de securitate",
         "data": "backup, copie de rezervă, folderul bibliotecii, folderul proiectelor, stocare, spațiu pe disc, coș de gunoi, ștergere proiecte, puncte de control",
         "dictionary": "ortografie, cuvinte proprii, cuvinte ignorate, corectură, reguli gramaticale",
-        "downloads": "pachete, fonturi, dicționare, fișiere offline",
+        "downloads": "pachete, fonturi, dicționare, fișiere offline, oglindă, CTAN, depozit, tlmgr",
         "engine": "compilator, LaTeX, TeX, Typst, Markdown, pandoc, compilare, PDF",
         "experimentation": "laborator, beta, funcții timpurii, experimental",
         "general": "preferințe, limbă, regiune, verificare ortografică, ortografie, greșeli de scriere, offline, tururi, comandă terminal",

@@ -1280,7 +1280,8 @@
     "tabs": {
       "fonts": "글꼴",
       "templates": "템플릿",
-      "dictionaries": "사전"
+      "dictionaries": "사전",
+      "sources": "다운로드 소스"
     },
     "templates": {
       "empty": "내려받을 수 있는 템플릿 팩이 없습니다.",
@@ -1349,6 +1350,47 @@
         "getTemplate": "이 템플릿 받기",
         "useTemplate": "이 템플릿 사용",
         "getAndCreate": "받고 프로젝트 만들기"
+      }
+    },
+    "sources": {
+      "save": "저장",
+      "environment": "이 컴퓨터에서는 {{variable}}이(가) 이 설정을 {{value}}(으)로 지정합니다. 여기서 선택하려면 해당 변수를 제거하세요.",
+      "files": {
+        "heading": "다운로드를 받는 곳",
+        "intro": "Oleafly는 함께 제공되는 SHA-256 체크섬으로 모든 다운로드를 확인하므로, 미러가 다른 파일을 건넬 수 없습니다.",
+        "addressLabel": "미러 주소",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Oleafly 미러 우선",
+            "detail": "{{host}}에서 내려받습니다. 연결할 수 없으면 Oleafly가 원래 호스트를 사용합니다."
+          },
+          "original": {
+            "name": "원래 호스트",
+            "detail": "GitHub와 다른 프로젝트의 자체 호스트에서 바로 내려받습니다. Oleafly만 제공하는 파일은 계속 Oleafly 미러에서 받습니다."
+          },
+          "custom": {
+            "name": "자체 미러",
+            "detail": "대학이나 연구실 미러처럼 자체 서버에 둔 {{host}}의 사본입니다. Oleafly는 먼저 이 미러를 시도하고, 그다음 Oleafly 미러, 마지막으로 원래 호스트를 사용합니다."
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX 패키지 저장소",
+        "intro": "패키지를 추가하면 tlmgr이 여기에서 TeX Live 패키지를 내려받습니다. Oleafly가 설치한 TinyTeX는 항상 이 저장소를 사용합니다. 직접 설치한 TeX Live는 주소를 입력한 경우에만 사용합니다.",
+        "addressLabel": "저장소 주소",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "가장 가까운 CTAN 미러",
+            "detail": "{{host}}이(가) 각 요청을 가까운 CTAN 미러로 보냅니다."
+          },
+          "custom": {
+            "name": "특정 저장소",
+            "detail": "CTAN 미러 또는 소속 기관의 자체 TeX Live 저장소입니다. 주소는 /systems/texlive/tlnet으로 끝납니다."
+          }
+        },
+        "miktex": "MiKTeX에는 자체 패키지 관리자가 있으므로 이 설정은 MiKTeX에 영향을 주지 않습니다."
       }
     }
   },

@@ -1268,6 +1268,28 @@ export const texDistributions = () => invoke<TexDistribution[]>("tex_distributio
 export const setTexDistribution = (binDir: string | null) =>
   invoke<void>("set_tex_distribution", { binDir });
 
+export type DownloadSourceChoice = "automatic" | "original" | "custom";
+
+export interface DownloadSettings {
+  source: DownloadSourceChoice;
+  mirrorUrl: string | null;
+  texRepository: string | null;
+  oleaflyMirror: string;
+  automaticTexRepository: string;
+  environmentSource: string | null;
+  environmentTexRepository: string | null;
+}
+
+export interface DownloadSettingsInput {
+  source: DownloadSourceChoice;
+  mirrorUrl: string | null;
+  texRepository: string | null;
+}
+
+export const getDownloadSettings = () => invoke<DownloadSettings>("get_download_settings");
+export const setDownloadSettings = (settings: DownloadSettingsInput) =>
+  invoke<DownloadSettings>("set_download_settings", { settings });
+
 export const latexEngineInfo = (rescan?: EngineRescan) =>
   invoke<EngineInfo>("latex_engine_info", { rescan });
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
