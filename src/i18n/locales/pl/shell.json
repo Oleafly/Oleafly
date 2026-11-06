@@ -1067,7 +1067,7 @@
         "collaboration": "serwery, logowanie, urządzenia, członkowie, opiekunowie, udostępnianie, zespoły, laboratoria, edycja na żywo, czas rzeczywisty, dziennik bezpieczeństwa",
         "data": "kopia zapasowa, folder biblioteki, folder projektów, przechowywanie, miejsce na dysku, kosz, usuwanie projektów, punkty kontrolne",
         "dictionary": "pisownia, ortografia, własne słowa, ignorowane słowa, korekta, reguły gramatyczne",
-        "downloads": "pakiety, czcionki, słowniki, pliki offline",
+        "downloads": "pakiety, czcionki, słowniki, pliki offline, serwer lustrzany, CTAN, repozytorium, tlmgr",
         "engine": "kompilator, LaTeX, TeX, Typst, Markdown, pandoc, kompilacja, PDF",
         "experimentation": "laboratorium, beta, wczesne funkcje, eksperymentalne",
         "general": "preferencje, język, region, sprawdzanie pisowni, pisownia, literówki, offline, samouczki, polecenie terminala",

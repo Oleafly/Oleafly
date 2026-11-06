@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor.",
-    "app_icon_unsupported": "{{icon}} uygulama simgesi kullanılamıyor."
+    "app_icon_unsupported": "{{icon}} uygulama simgesi kullanılamıyor.",
+    "download_url_empty": "https:// ile başlayan bir adres girin.",
+    "download_url_too_long": "Bu adres çok uzun.",
+    "download_url_not_https": "Adres https:// ile başlamalıdır.",
+    "download_url_no_host": "Adreste https:// sonrasında bir ana bilgisayar adı bulunmalıdır.",
+    "download_url_credentials": "Kullanıcı adını ve parolayı adrese eklemeyin.",
+    "download_url_query": "Adres ? veya # içeremez.",
+    "download_url_spaces": "Adres boşluk içeremez.",
+    "download_source_unknown": "Oleafly {{source}} indirme kaynağını tanımıyor."
   },
   "literature": {
     "query_empty": "Arama sorgusu boş olamaz.",
@@ -175,7 +183,9 @@
     "compiler_crashed_font": "Tectonic, \"{{font}}\" yazı tipini ararken çöktü. Bu yazı tipi büyük olasılıkla bu bilgisayarda yüklü değil. Yazı tipini yükleyin ya da derleme menüsünden XeLaTeX veya LuaLaTeX'i seçin. Bunlar çökmek yerine eksik yazı tipini bildirir.",
     "t1_fontenc_unicode_engine": "Bu belge \\usepackage[T1]{fontenc} satırını yüklüyor. Bu derleyici onu yazılan aksanlar ve simgeler için kullanamaz. ß, SS olarak basılabilir, § ve « başka harflere dönüşebilir, kıvrık tırnaklar, tireler ve € kaybolabilir. Bu satırı kaldırın ya da aşağıda gösterildiği gibi sarmalayın. pdfLaTeX de bunu doğru derler.",
     "font_in_bundle": "{{font}}, yazı tiplerini dosya adıyla bulan yerleşik TeX paket kümesiyle birlikte gelir. Bunun yerine {{file}} yazın.",
-    "font_download_prompt": "macOS bir yazı tipi indirmeyi isterken derleme durdu. O iletişim kutusunu yanıtlayın ve yeniden derleyin. Bundan kaçınmak için \\documentclass seçeneklerine fontset=fandol ekleyin ya da TeX ile gelen bir yazı tipi seçin."
+    "font_download_prompt": "macOS bir yazı tipi indirmeyi isterken derleme durdu. O iletişim kutusunu yanıtlayın ve yeniden derleyin. Bundan kaçınmak için \\documentclass seçeneklerine fontset=fandol ekleyin ya da TeX ile gelen bir yazı tipi seçin.",
+    "repository_timed_out": "{{host}} adresindeki TeX paket deposunun yanıt vermesi çok uzun sürdü. Ayarlar > İndirilenler > Kaynaklar bölümünden daha yakın bir depo seçin, sonra yeniden arayın.",
+    "repository_timed_out_default": "TeX paket deponuzun yanıt vermesi çok uzun sürdü. Ayarlar > İndirilenler > Kaynaklar bölümünden daha yakın bir depo seçin, sonra yeniden arayın."
   },
   "compile": {
     "no_diagnostic": "Derleyici bir sorun belirtmeden durdu. Son satırı şuydu: {{line}}",

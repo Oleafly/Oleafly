@@ -1051,7 +1051,7 @@
         "collaboration": "servidores, iniciar sesión, dispositivos, miembros, mantenedores, compartir, equipos, laboratorios, edición en tiempo real, tiempo real, registro de seguridad",
         "data": "copia de seguridad, carpeta de la biblioteca, carpeta de proyectos, almacenamiento, espacio en disco, papelera, eliminar proyectos, puntos de control",
         "dictionary": "ortografía, palabras personalizadas, palabras ignoradas, corrección, reglas gramaticales",
-        "downloads": "paquetes, fuentes, diccionarios, archivos sin conexión",
+        "downloads": "paquetes, fuentes, diccionarios, archivos sin conexión, servidor espejo, CTAN, repositorio, tlmgr",
         "engine": "compilador, compilar, LaTeX, TeX, Typst, Markdown, pandoc, compilación, PDF",
         "experimentation": "experimentos, laboratorio, beta, funciones experimentales, funciones anticipadas",
         "general": "preferencias, idioma, configuración regional, revisión ortográfica, ortografía, erratas, sin conexión, tutoriales, comando de terminal",

@@ -1035,7 +1035,7 @@
         "collaboration": "servere, logge inn, innlogging, enheter, medlemmer, vedlikeholdere, deling, team, lab, redigering i sanntid, sanntid, sikkerhetslogg",
         "data": "sikkerhetskopi, bibliotekmappe, prosjektmappe, lagring, lagringsplass, diskplass, papirkurv, slette prosjekter, sjekkpunkter",
         "dictionary": "stavemåte, rettskriving, egne ord, ignorerte ord, korrektur, grammatikkregler",
-        "downloads": "pakker, skrifter, ordlister, ordbøker, frakoblede filer",
+        "downloads": "pakker, skrifter, ordlister, ordbøker, frakoblede filer, speil, CTAN, repositorium, tlmgr",
         "engine": "kompilator, LaTeX, TeX, Typst, Markdown, pandoc, bygg, bygging, PDF",
         "experimentation": "lab, beta, eksperimenter, tidlige funksjoner",
         "general": "innstillinger, språk, region, stavekontroll, stavemåte, skrivefeil, frakoblet, omvisninger, terminalkommando",

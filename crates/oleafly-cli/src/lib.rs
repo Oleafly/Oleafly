@@ -227,6 +227,11 @@ async fn guarded(
 pub async fn run(cli: Cli, project_explicit: bool) -> u8 {
     human::init_color(cli.global.color);
     let ctx = Context::from_global(&cli.global, project_explicit, cli.command.name());
+    if let Some(config) = ctx.data_root().and_then(app_config::read_app_config) {
+        oleafly_core::download_sources::configure(
+            oleafly_core::download_sources::DownloadSettings::from_config(&config),
+        );
+    }
     let result = guarded(async {
         if cli.command.handles_interrupt() {
             cli.command.run(&ctx).await

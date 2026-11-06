@@ -1287,7 +1287,8 @@
     "tabs": {
       "fonts": "Lettertypen",
       "templates": "Sjablonen",
-      "dictionaries": "Woordenboeken"
+      "dictionaries": "Woordenboeken",
+      "sources": "Bronnen"
     },
     "templates": {
       "empty": "Geen sjabloonpakketten om te downloaden.",
@@ -1357,6 +1358,47 @@
         "getTemplate": "Dit sjabloon ophalen",
         "useTemplate": "Dit sjabloon gebruiken",
         "getAndCreate": "Ophalen en project aanmaken"
+      }
+    },
+    "sources": {
+      "save": "Opslaan",
+      "environment": "{{variable}} stelt dit op deze computer in op {{value}}. Verwijder die om hier te kiezen.",
+      "files": {
+        "heading": "Waar downloads vandaan komen",
+        "intro": "Oleafly controleert elke download aan de hand van een meegeleverde SHA-256-controlesom, zodat een mirror je geen ander bestand kan geven.",
+        "addressLabel": "Adres van de mirror",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Eerst de Oleafly-mirror",
+            "detail": "Downloads komen van {{host}}. Is die niet bereikbaar, dan gebruikt Oleafly de oorspronkelijke server."
+          },
+          "original": {
+            "name": "Oorspronkelijke servers",
+            "detail": "Downloads komen rechtstreeks van GitHub en de eigen servers van de andere projecten. Bestanden die alleen bij Oleafly staan, komen nog steeds van zijn mirror."
+          },
+          "custom": {
+            "name": "Je eigen mirror",
+            "detail": "Een kopie van {{host}} op je eigen server, zoals een mirror van een universiteit of lab. Oleafly probeert die eerst, dan de Oleafly-mirror en daarna de oorspronkelijke servers."
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX-pakketrepository",
+        "intro": "tlmgr downloadt TeX Live-pakketten hiervandaan als je er een toevoegt. De TinyTeX die Oleafly installeert, gebruikt deze altijd. Je eigen TeX Live gebruikt deze alleen als je een adres invult.",
+        "addressLabel": "Adres van de repository",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Dichtstbijzijnde CTAN-mirror",
+            "detail": "{{host}} stuurt elk verzoek door naar een CTAN-mirror bij jou in de buurt."
+          },
+          "custom": {
+            "name": "Een specifieke repository",
+            "detail": "Een CTAN-mirror of de eigen TeX Live-repository van je instelling. Het adres eindigt op /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX heeft een eigen pakketbeheerder, dus deze instelling verandert daar niets aan."
       }
     }
   },

@@ -2,7 +2,7 @@ use super::{
     acquire_tex_runtime_read, acquire_tex_runtime_write, check_tlmgr_self_update, run_tex_utility,
     tlmgr_is_managed, tlmgr_path, tlmgr_run_at, tlmgr_wants_self_update, validate_package_names,
     within_flow_budget, AppState, PackageMutation, Path, TexUtilityOutput, TinytexMutationGuard,
-    TLMGR_FLOW_BUDGET, TLMGR_INFO_TIMEOUT,
+    TLMGR_FLOW_BUDGET, TLMGR_INFO_TIMEOUT, TLMGR_REPOSITORY_TIMEOUT,
 };
 use crate::app_error::AppError;
 use std::collections::{BTreeMap, BTreeSet};
@@ -104,12 +104,38 @@ async fn run_search(
         args.push("--file".into());
     }
     args.extend(["--".into(), pattern.to_string()]);
+    let timeout = if global {
+        TLMGR_REPOSITORY_TIMEOUT
+    } else {
+        TLMGR_INFO_TIMEOUT
+    };
     run_tex_utility(
         Path::new(tlmgr),
         &with_repository(&args, repository),
-        TLMGR_INFO_TIMEOUT,
+        timeout,
     )
     .await
+    .map_err(|error| match global && is_utility_timeout(&error) {
+        true => repository_timed_out(repository),
+        false => error,
+    })
+}
+
+pub(super) fn configured_repository(tlmgr: &str) -> Option<String> {
+    oleafly_core::download_sources::tex_repository(tlmgr_is_managed(tlmgr))
+}
+
+fn is_utility_timeout(error: &str) -> bool {
+    error.contains(" timed out after ") && error.ends_with(" and was stopped")
+}
+
+pub(super) fn repository_timed_out(repository: Option<&str>) -> String {
+    match repository.and_then(oleafly_core::download_sources::host_of) {
+        Some(host) => AppError::new("tex.repository_timed_out")
+            .param("host", host)
+            .into(),
+        None => AppError::new("tex.repository_timed_out_default").into(),
+    }
 }
 
 fn cross_release_years(output: &TexUtilityOutput) -> Option<Vec<String>> {
@@ -177,7 +203,8 @@ async fn search_with_archive(
     files: bool,
     global: bool,
 ) -> Result<TexUtilityOutput, String> {
-    let output = run_search(tlmgr, pattern, files, global, None).await?;
+    let configured = configured_repository(tlmgr);
+    let output = run_search(tlmgr, pattern, files, global, configured.as_deref()).await?;
     check_tlmgr_self_update(tlmgr, &output)?;
     if let Some(error) = system_manager_refusal(&output) {
         return Err(error);
@@ -405,8 +432,9 @@ pub async fn tlmgr_install_missing(
 mod tests {
     use super::{
         archived_repository, cross_release_refusal, cross_release_years, is_cross_release_refusal,
-        literal_pattern, package_command_error, parse_search_result, resolve_providers,
-        search_packages, validate_files, with_repository, SearchResult, TexUtilityOutput,
+        is_utility_timeout, literal_pattern, package_command_error, parse_search_result,
+        repository_timed_out, resolve_providers, search_packages, validate_files, with_repository,
+        SearchResult, TexUtilityOutput,
     };
     #[cfg(unix)]
     use super::{install_missing_at, within_flow_budget, TLMGR_FLOW_BUDGET};
@@ -783,6 +811,22 @@ mod tests {
             "{several}"
         );
         assert!(several.contains("\"packages\":\"a, b\""), "{several}");
+    }
+
+    #[test]
+    fn a_repository_search_that_runs_out_of_time_names_the_host() {
+        let named = repository_timed_out(Some("https://mirror.ctan.org/systems/texlive/tlnet"));
+        assert!(named.contains("\"tex.repository_timed_out\""), "{named}");
+        assert!(named.contains("mirror.ctan.org"), "{named}");
+        let unnamed = repository_timed_out(None);
+        assert!(
+            unnamed.contains("\"tex.repository_timed_out_default\""),
+            "{unnamed}"
+        );
+        assert!(is_utility_timeout(
+            "/opt/TinyTeX/bin/tlmgr timed out after 600 seconds and was stopped"
+        ));
+        assert!(!is_utility_timeout("tlmgr: cannot reach the repository"));
     }
 
     #[test]

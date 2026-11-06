@@ -1035,7 +1035,7 @@
         "collaboration": "sunucular, oturum açma, cihazlar, üyeler, sorumlular, paylaşım, ekipler, laboratuvarlar, canlı düzenleme, gerçek zamanlı, güvenlik günlüğü",
         "data": "yedekleme, kitaplık klasörü, projeler klasörü, depolama, disk alanı, çöp kutusu, geri dönüşüm kutusu, projeleri sil, kontrol noktaları",
         "dictionary": "yazım, özel sözcükler, yok sayılan sözcükler, redaksiyon, dil bilgisi kuralları",
-        "downloads": "paketler, yazı tipleri, sözlükler, çevrimdışı dosyalar",
+        "downloads": "paketler, yazı tipleri, sözlükler, çevrimdışı dosyalar, yansı, CTAN, depo, tlmgr",
         "engine": "derleyici, LaTeX, TeX, Typst, Markdown, pandoc, derleme, PDF",
         "experimentation": "laboratuvar, beta, deneysel, erken özellikler",
         "general": "tercihler, dil, bölge, yazım denetimi, yazım, yazım hataları, çevrimdışı, turlar, terminal komutu",

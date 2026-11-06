@@ -1301,7 +1301,8 @@
     "tabs": {
       "fonts": "Písma",
       "templates": "Šablony",
-      "dictionaries": "Slovníky"
+      "dictionaries": "Slovníky",
+      "sources": "Zdroje"
     },
     "templates": {
       "empty": "Žádné balíčky šablon ke stažení.",
@@ -1373,6 +1374,47 @@
         "getTemplate": "Získat šablonu",
         "useTemplate": "Použít šablonu",
         "getAndCreate": "Získat a vytvořit projekt"
+      }
+    },
+    "sources": {
+      "save": "Uložit",
+      "environment": "Proměnná {{variable}} to na tomto počítači nastavuje na {{value}}. Chcete-li vybírat tady, odeberte ji.",
+      "files": {
+        "heading": "Odkud se soubory stahují",
+        "intro": "Oleafly ověřuje každý stažený soubor podle kontrolního součtu SHA-256 dodaného s aplikací, takže vám zrcadlo nemůže podstrčit jiný soubor.",
+        "addressLabel": "Adresa zrcadla",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Nejdřív zrcadlo Oleafly",
+            "detail": "Soubory se stahují ze serveru {{host}}. Když není dostupný, Oleafly použije původní server."
+          },
+          "original": {
+            "name": "Původní servery",
+            "detail": "Soubory se stahují přímo z GitHubu a z vlastních serverů dalších projektů. Soubory, které hostuje jen Oleafly, se i tak stahují z jeho zrcadla."
+          },
+          "custom": {
+            "name": "Vlastní zrcadlo",
+            "detail": "Kopie {{host}} na vašem vlastním serveru, například zrcadlo univerzity nebo laboratoře. Oleafly nejdřív zkusí toto zrcadlo, potom zrcadlo Oleafly a nakonec původní servery."
+          }
+        }
+      },
+      "repository": {
+        "heading": "Repozitář balíčků TeXu",
+        "intro": "tlmgr odsud stahuje balíčky TeX Live, když nějaký přidáte. TinyTeX, který instaluje Oleafly, tento repozitář používá vždy. Váš vlastní TeX Live ho používá, jen pokud zadáte adresu.",
+        "addressLabel": "Adresa repozitáře",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Nejbližší zrcadlo CTAN",
+            "detail": "{{host}} posílá každý požadavek na zrcadlo CTAN ve vaší blízkosti."
+          },
+          "custom": {
+            "name": "Konkrétní repozitář",
+            "detail": "Zrcadlo CTAN nebo vlastní repozitář TeX Live vaší instituce. Adresa končí na /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX má vlastního správce balíčků, takže toto nastavení na něj nemá vliv."
       }
     }
   },

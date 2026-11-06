@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Ngôn ngữ {{locale}} không khả dụng.",
-    "app_icon_unsupported": "Biểu tượng ứng dụng {{icon}} không khả dụng."
+    "app_icon_unsupported": "Biểu tượng ứng dụng {{icon}} không khả dụng.",
+    "download_url_empty": "Hãy nhập một địa chỉ bắt đầu bằng https://.",
+    "download_url_too_long": "Địa chỉ đó quá dài.",
+    "download_url_not_https": "Địa chỉ phải bắt đầu bằng https://.",
+    "download_url_no_host": "Địa chỉ cần có tên máy chủ sau https://.",
+    "download_url_credentials": "Đừng đưa tên người dùng và mật khẩu vào địa chỉ.",
+    "download_url_query": "Địa chỉ không được chứa ? hoặc #.",
+    "download_url_spaces": "Địa chỉ không được chứa dấu cách.",
+    "download_source_unknown": "Oleafly không nhận ra nguồn tải {{source}}."
   },
   "literature": {
     "query_empty": "Truy vấn tìm kiếm không được để trống.",
@@ -174,7 +182,9 @@
     "compiler_crashed_font": "Tectonic gặp sự cố khi tìm phông chữ \"{{font}}\", có lẽ chưa được cài trên máy tính này. Hãy cài phông chữ, hoặc chọn XeLaTeX hay LuaLaTeX trong menu biên dịch. Chúng báo thiếu phông chữ thay vì gặp sự cố.",
     "t1_fontenc_unicode_engine": "Tài liệu này nạp \\usepackage[T1]{fontenc}, mà trình biên dịch này không dùng được cho dấu và ký hiệu gõ trực tiếp. ß có thể in thành SS, § và « có thể biến thành chữ khác, còn dấu nháy cong, dấu gạch ngang và € có thể biến mất. Hãy xoá dòng đó hoặc bao nó như hướng dẫn bên dưới. pdfLaTeX cũng biên dịch đúng được.",
     "font_in_bundle": "{{font}} đi kèm bộ TeX tích hợp sẵn, bộ này tìm phông chữ theo tên tệp. Hãy viết {{file}} thay vào.",
-    "font_download_prompt": "Lần biên dịch đã dừng khi macOS hỏi có tải một phông chữ hay không. Hãy trả lời hộp thoại đó rồi biên dịch lại. Để tránh điều này, hãy thêm fontset=fandol vào các tuỳ chọn \\documentclass, hoặc chọn phông chữ có sẵn trong TeX."
+    "font_download_prompt": "Lần biên dịch đã dừng khi macOS hỏi có tải một phông chữ hay không. Hãy trả lời hộp thoại đó rồi biên dịch lại. Để tránh điều này, hãy thêm fontset=fandol vào các tuỳ chọn \\documentclass, hoặc chọn phông chữ có sẵn trong TeX.",
+    "repository_timed_out": "Kho gói TeX tại {{host}} phản hồi quá lâu. Hãy chọn một kho gần hơn trong Cài đặt > Tải xuống > Nguồn tải, rồi tìm lại.",
+    "repository_timed_out_default": "Kho gói TeX của bạn phản hồi quá lâu. Hãy chọn một kho gần hơn trong Cài đặt > Tải xuống > Nguồn tải, rồi tìm lại."
   },
   "compile": {
     "no_diagnostic": "Trình biên dịch đã dừng mà không nêu vấn đề nào. Dòng cuối của nó là: {{line}}",

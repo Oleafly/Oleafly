@@ -9,6 +9,7 @@ mod compile_log;
 pub mod content;
 pub mod context;
 mod detect;
+pub mod download_sources;
 pub mod engine_spec;
 mod engine_temp;
 mod error;

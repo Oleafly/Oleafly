@@ -147,6 +147,15 @@ jobs:
       - name: Test the Tauri version check
         run: pnpm tauri-versions:test
 
+      - name: Test the mirror file check
+        run: pnpm mirror:test
+
+      # Fails only when a pinned file is missing from mirrors.oleafly.com or
+      # has the wrong size. A refusal or outage is a warning, since it says
+      # nothing about whether the file was uploaded.
+      - name: Check every pinned download is on the mirror
+        run: pnpm mirror:check
+
       - name: Test the Linux app binary lookup
         run: bash scripts/ci/find-linux-app-binary.test.sh
 

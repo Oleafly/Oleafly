@@ -1035,7 +1035,7 @@
         "collaboration": "servers, aanmelden, apparaten, leden, onderhouders, delen, teams, labs, groepen, live bewerken, realtime, samenwerken, beveiligingslogboek",
         "data": "back-up, backup, bibliotheekmap, projectenmap, opslag, schijfruimte, prullenbak, projecten verwijderen, checkpoints",
         "dictionary": "spelling, eigen woorden, genegeerde woorden, proeflezen, grammaticaregels",
-        "downloads": "pakketten, lettertypen, woordenboeken, offline bestanden",
+        "downloads": "pakketten, lettertypen, woordenboeken, offline bestanden, mirror, CTAN, repository, tlmgr",
         "engine": "compiler, LaTeX, TeX, Typst, Markdown, pandoc, build, compileren, PDF",
         "experimentation": "labs, bèta, beta, vroege functies, experimenteel",
         "general": "voorkeuren, taal, regio, spellingcontrole, spelling, typfouten, offline, rondleidingen, terminalopdracht",

@@ -1051,7 +1051,7 @@
         "collaboration": "serveurs, connexion, se connecter, appareils, membres, mainteneurs, partage, équipes, labos, laboratoires, édition en direct, temps réel, journal de sécurité",
         "data": "sauvegarde, dossier de la bibliothèque, dossier des projets, stockage, espace disque, corbeille, supprimer des projets, points de contrôle",
         "dictionary": "orthographe, mots personnalisés, mots ignorés, relecture, correction, règles de grammaire",
-        "downloads": "paquets, polices, dictionnaires, fichiers hors ligne",
+        "downloads": "paquets, polices, dictionnaires, fichiers hors ligne, miroir, CTAN, dépôt, tlmgr",
         "engine": "compilateur, LaTeX, TeX, Typst, Markdown, pandoc, compilation, PDF",
         "experimentation": "labo, laboratoire, bêta, fonctionnalités en avant-première",
         "general": "préférences, langue, région, vérification orthographique, orthographe, fautes de frappe, hors ligne, visites guidées, commande du terminal",

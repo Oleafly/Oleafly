@@ -46,7 +46,15 @@
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar.",
-    "app_icon_unsupported": "Das App-Symbol {{icon}} ist nicht verfügbar."
+    "app_icon_unsupported": "Das App-Symbol {{icon}} ist nicht verfügbar.",
+    "download_url_empty": "Geben Sie eine Adresse ein, die mit https:// beginnt.",
+    "download_url_too_long": "Diese Adresse ist zu lang.",
+    "download_url_not_https": "Die Adresse muss mit https:// beginnen.",
+    "download_url_no_host": "Die Adresse braucht nach https:// einen Hostnamen.",
+    "download_url_credentials": "Lassen Sie Benutzername und Passwort aus der Adresse weg.",
+    "download_url_query": "Die Adresse darf weder ? noch # enthalten.",
+    "download_url_spaces": "Die Adresse darf keine Leerzeichen enthalten.",
+    "download_source_unknown": "Oleafly kennt die Download-Quelle {{source}} nicht."
   },
   "literature": {
     "query_empty": "Die Suchanfrage darf nicht leer sein.",
@@ -175,7 +183,9 @@
     "missing_characters_cjk": "Einige Zeichen, zum Beispiel {{sample}}, fehlen im PDF, weil die Schrift keine chinesischen, japanischen oder koreanischen Glyphen hat. Fügen Sie eines der Setups aus dem Kompilierprotokoll hinzu.",
     "missing_characters_cjk_package": "Text wie {{sample}} fehlt im PDF, weil CJKutf8 und CJK nur mit pdfLaTeX funktionieren. Stellen Sie dieses Projekt auf pdfLaTeX um, oder entfernen Sie das Paket samt seiner CJK-Umgebung und fügen Sie eines der Setups aus dem Kompilierprotokoll hinzu.",
     "compiler_crashed": "Der Compiler ist abgestürzt, bevor er fertig war, deshalb endet das Protokoll an der Stelle, an der er stehen blieb. Kompilieren Sie erneut. Stürzt er jedes Mal ab, wählen Sie im Kompiliermenü einen anderen Compiler.",
-    "compiler_crashed_font": "Tectonic ist bei der Suche nach der Schrift „{{font}}“ abgestürzt. Sie ist auf diesem Computer wahrscheinlich nicht installiert. Installieren Sie die Schrift, oder wählen Sie im Kompiliermenü XeLaTeX oder LuaLaTeX. Diese melden eine fehlende Schrift, statt abzustürzen."
+    "compiler_crashed_font": "Tectonic ist bei der Suche nach der Schrift „{{font}}“ abgestürzt. Sie ist auf diesem Computer wahrscheinlich nicht installiert. Installieren Sie die Schrift, oder wählen Sie im Kompiliermenü XeLaTeX oder LuaLaTeX. Diese melden eine fehlende Schrift, statt abzustürzen.",
+    "repository_timed_out": "Das TeX-Paket-Repository unter {{host}} hat zu lange nicht geantwortet. Wählen Sie unter Einstellungen > Downloads > Quellen ein näher gelegenes Repository und suchen Sie dann erneut.",
+    "repository_timed_out_default": "Ihr TeX-Paket-Repository hat zu lange nicht geantwortet. Wählen Sie unter Einstellungen > Downloads > Quellen ein näher gelegenes Repository und suchen Sie dann erneut."
   },
   "compile": {
     "no_diagnostic": "Der Compiler wurde beendet, ohne ein Problem zu nennen. Seine letzte Zeile lautete: {{line}}",

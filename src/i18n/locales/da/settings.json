@@ -1287,7 +1287,8 @@
     "tabs": {
       "fonts": "Skrifttyper",
       "templates": "Skabeloner",
-      "dictionaries": "Ordbøger"
+      "dictionaries": "Ordbøger",
+      "sources": "Kilder"
     },
     "templates": {
       "empty": "Der er ingen skabelonpakker at hente.",
@@ -1357,6 +1358,47 @@
         "getTemplate": "Hent skabelonen",
         "useTemplate": "Brug skabelonen",
         "getAndCreate": "Hent og opret projekt"
+      }
+    },
+    "sources": {
+      "save": "Gem",
+      "environment": "{{variable}} sætter dette til {{value}} på denne computer. Fjern den for at vælge her.",
+      "files": {
+        "heading": "Hvor downloads kommer fra",
+        "intro": "Oleafly tjekker hver download mod en SHA-256-kontrolsum, der følger med appen, så et spejl ikke kan give dig en anden fil.",
+        "addressLabel": "Spejlets adresse",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "Oleafly-spejlet først",
+            "detail": "Downloads kommer fra {{host}}. Hvis den ikke kan nås, bruger Oleafly den oprindelige server."
+          },
+          "original": {
+            "name": "Oprindelige servere",
+            "detail": "Downloads kommer direkte fra GitHub og de andre projekters egne servere. Filer, der kun findes hos Oleafly, kommer stadig fra Oleafly-spejlet."
+          },
+          "custom": {
+            "name": "Dit eget spejl",
+            "detail": "En kopi af {{host}} på din egen server, for eksempel et spejl på et universitet eller et laboratorium. Oleafly prøver det først, derefter Oleafly-spejlet og til sidst de oprindelige servere."
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX-pakke-repository",
+        "intro": "tlmgr henter TeX Live-pakker herfra, når du tilføjer en. Den TinyTeX, Oleafly installerer, bruger det altid. Din egen TeX Live bruger det kun, hvis du indtaster en adresse.",
+        "addressLabel": "Repositoryets adresse",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "Nærmeste CTAN-spejl",
+            "detail": "{{host}} sender hver forespørgsel videre til et CTAN-spejl i nærheden af dig."
+          },
+          "custom": {
+            "name": "Et bestemt repository",
+            "detail": "Et CTAN-spejl eller din institutions eget TeX Live-repository. Adressen ender på /systems/texlive/tlnet."
+          }
+        },
+        "miktex": "MiKTeX har sin egen pakkehåndtering, så denne indstilling ændrer ikke på den."
       }
     }
   },

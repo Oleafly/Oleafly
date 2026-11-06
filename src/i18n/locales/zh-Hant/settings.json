@@ -1280,7 +1280,8 @@
     "tabs": {
       "fonts": "字型",
       "templates": "範本",
-      "dictionaries": "字典"
+      "dictionaries": "字典",
+      "sources": "下載來源"
     },
     "templates": {
       "empty": "沒有可下載的範本包。",
@@ -1349,6 +1350,47 @@
         "getTemplate": "取得此範本",
         "useTemplate": "使用此範本",
         "getAndCreate": "取得並建立專案"
+      }
+    },
+    "sources": {
+      "save": "儲存",
+      "environment": "這台電腦上的 {{variable}} 將此項設為 {{value}}。移除該變數後即可在這裡選擇。",
+      "files": {
+        "heading": "檔案下載來源",
+        "intro": "Oleafly 會用內建的 SHA-256 檢查碼核對每個下載，因此鏡像站無法給你不同的檔案。",
+        "addressLabel": "鏡像站位址",
+        "addressPlaceholder": "https://mirror.example.edu/oleafly",
+        "choices": {
+          "automatic": {
+            "name": "優先使用 Oleafly 鏡像站",
+            "detail": "從 {{host}} 下載。如果無法連線，Oleafly 會改用原始網站。"
+          },
+          "original": {
+            "name": "原始網站",
+            "detail": "直接從 GitHub 及其他專案自己的網站下載。只有 Oleafly 提供的檔案仍從它的鏡像站下載。"
+          },
+          "custom": {
+            "name": "自訂鏡像站",
+            "detail": "架設在你自己伺服器上的 {{host}} 副本，例如大學或實驗室的鏡像站。Oleafly 會先嘗試它，再來是 Oleafly 鏡像站，最後是原始網站。"
+          }
+        }
+      },
+      "repository": {
+        "heading": "TeX 套件庫",
+        "intro": "新增套件時，tlmgr 會從這裡下載 TeX Live 套件。Oleafly 安裝的 TinyTeX 一律使用它。你自己的 TeX Live 只有在你輸入位址後才會使用它。",
+        "addressLabel": "套件庫位址",
+        "addressPlaceholder": "https://mirror.example.edu/CTAN/systems/texlive/tlnet",
+        "choices": {
+          "automatic": {
+            "name": "最近的 CTAN 鏡像站",
+            "detail": "{{host}} 會把每個請求轉送到離你較近的 CTAN 鏡像站。"
+          },
+          "custom": {
+            "name": "指定套件庫",
+            "detail": "CTAN 鏡像站，或你所屬機構自己的 TeX Live 套件庫。位址以 /systems/texlive/tlnet 結尾。"
+          }
+        },
+        "miktex": "MiKTeX 有自己的套件管理工具，因此這項設定不會影響它。"
       }
     }
   },
