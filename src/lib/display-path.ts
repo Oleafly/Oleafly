@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { scanFences } from "@/lib/code-fences";
-import { isSeparator } from "@/lib/path-utils";
+import { isSeparator, withoutVerbatimPrefix } from "@/lib/path-utils";
 import { escapeRegExp } from "@/lib/regexp";
 import { createEmitter } from "@/lib/emitter";
 import { displayHomes } from "@/lib/tauri";
@@ -19,15 +19,6 @@ import { displayHomes } from "@/lib/tauri";
  * `homeRelativePath` mirrors `project_availability::abbreviated_display_path`
  * in src-tauri, which the backend uses for linked folders and the CLI row.
  */
-
-const VERBATIM_UNC = "\\\\?\\UNC\\";
-const VERBATIM = "\\\\?\\";
-
-function withoutVerbatimPrefix(path: string): string {
-  if (path.startsWith(VERBATIM_UNC)) return `\\\\${path.slice(VERBATIM_UNC.length)}`;
-  if (path.startsWith(VERBATIM)) return path.slice(VERBATIM.length);
-  return path;
-}
 
 function trimTrailingSeparators(path: string): string {
   let end = path.length;

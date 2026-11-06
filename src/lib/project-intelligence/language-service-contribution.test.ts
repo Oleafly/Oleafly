@@ -298,4 +298,18 @@ describe("symbol filtering and URIs", () => {
     ], { workspaceRoot: "C:\\Users\\ada\\" });
     expect(windows.definitions.map((definition) => definition.name)).toEqual(["intro"]);
   });
+
+  it.each([
+    ["\\\\?\\D:\\Users\\ada", "file:///D:/Users/ada/my%20chapters/intro.tex"],
+    ["\\\\server\\share\\ada", "file://server/share/ada/my%20chapters/intro.tex"],
+    ["\\\\?\\UNC\\SERVER\\share\\ada", "file://server/share/ada/my%20chapters/intro.tex"],
+  ])("matches the URIs a server sends for %s", (workspaceRoot, uri) => {
+    const texts = { "my chapters/intro.tex": String.raw`\label{intro}` };
+    const result = contribute(texts, [
+      { name: "intro", kind: 7, line: 0, from: 0, to: 13, uri },
+    ], { workspaceRoot });
+    expect(result.definitions.map((definition) => definition.location.file)).toEqual([
+      "my chapters/intro.tex",
+    ]);
+  });
 });

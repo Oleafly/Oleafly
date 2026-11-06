@@ -30,11 +30,11 @@ import {
 import {
   isRecord,
   offsetRange,
-  projectPathForUri,
   strictOffset,
   type OffsetRange,
 } from "@/lib/analysis/language-service-results";
 import {
+  projectPathForUri,
   TextPositionIndex,
   type JsonValue,
   type LanguageServiceFeature,

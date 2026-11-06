@@ -3,9 +3,9 @@ import {
   applyOffsetEdits,
   locationsFromValue,
   offsetEdits,
-  projectPathForUri,
   workspaceEditFromValue,
 } from "./language-service-results";
+import { projectPathForUri } from "@/lib/language-service";
 
 const range = (line: number, from: number, to: number) => ({
   start: { line, character: from },
@@ -72,6 +72,33 @@ describe("projectPathForUri", () => {
     expect(projectPathForUri("C:\\Papers", "file:///c:/Papers/main.typ")).toBe(
       "main.typ",
     );
+  });
+
+  it("maps server URIs back under a verbatim Windows root", () => {
+    expect(projectPathForUri("\\\\?\\D:\\paper", "file:///D:/paper/sub/a.typ")).toBe(
+      "sub/a.typ",
+    );
+    expect(projectPathForUri("\\\\?\\D:\\paper", "file:///d%3A/paper/a.typ")).toBe("a.typ");
+    expect(projectPathForUri("\\\\?\\D:\\", "file:///d:/a.typ")).toBe("a.typ");
+  });
+
+  it("maps server URIs back under a network share", () => {
+    const uri = "file://server/share/paper/sub/a.typ";
+    expect(projectPathForUri("\\\\server\\share\\paper", uri)).toBe("sub/a.typ");
+    expect(projectPathForUri("\\\\?\\UNC\\server\\share\\paper", uri)).toBe("sub/a.typ");
+    expect(projectPathForUri("\\\\?\\UNC\\SERVER\\share\\paper", uri)).toBe("sub/a.typ");
+    expect(projectPathForUri("\\\\?\\UNC\\server\\other\\paper", uri)).toBeNull();
+    expect(projectPathForUri("\\\\server2\\share\\paper", uri)).toBeNull();
+  });
+
+  it("treats localhost as no host at all", () => {
+    expect(projectPathForUri("/p", "file://localhost/p/a.typ")).toBe("a.typ");
+  });
+
+  it("refuses a Windows URI that climbs out of the project", () => {
+    expect(
+      projectPathForUri("\\\\?\\D:\\paper", "file:///D:/paper/..%5C..%5Csecret.typ"),
+    ).toBeNull();
   });
 
   it("refuses paths outside the project", () => {

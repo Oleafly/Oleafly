@@ -155,45 +155,6 @@ export function locationsFromValue(value: unknown): LanguageServiceLocation[] {
   return locations;
 }
 
-function decodedPath(uri: string): string | null {
-  if (!uri.startsWith("file://")) return null;
-  try {
-    const path = decodeURIComponent(uri.slice("file://".length));
-    return /^\/[A-Za-z]:\//.test(path) ? path.slice(1) : path;
-  } catch {
-    return null;
-  }
-}
-
-function trimTrailingSlashes(path: string): string {
-  let end = path.length;
-  while (end > 0 && path[end - 1] === "/") end -= 1;
-  return path.slice(0, end);
-}
-
-function comparablePath(path: string): string {
-  const normalized = trimTrailingSlashes(path.replaceAll("\\", "/"));
-  return /^[A-Za-z]:\//.test(normalized)
-    ? `${normalized[0].toLowerCase()}${normalized.slice(1)}`
-    : normalized;
-}
-
-export function projectPathForUri(
-  workspaceRoot: string,
-  uri: string,
-): string | null {
-  const absolute = decodedPath(uri);
-  if (absolute === null) return null;
-  const root = comparablePath(workspaceRoot);
-  const path = comparablePath(absolute);
-  if (!path.startsWith(`${root}/`)) return null;
-  const relative = path.slice(root.length + 1);
-  if (!relative || relative.split("/").includes("..")) {
-    return null;
-  }
-  return relative;
-}
-
 function editOperation(
   uri: string,
   value: unknown,

@@ -1,4 +1,5 @@
 export * from "./client";
+export * from "./file-uri";
 export * from "./json-rpc";
 export * from "./position";
 export * from "./protocol";

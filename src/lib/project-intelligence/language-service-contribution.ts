@@ -1,5 +1,6 @@
 import {
   DEFAULT_POSITION_ENCODING,
+  fileUriForProjectPath,
   TextPositionIndex,
   type JsonValue,
   type Position,
@@ -104,35 +105,13 @@ function symbolsFromValue(value: JsonValue): LanguageServiceSymbol[] {
   return symbols;
 }
 
-function uriForProjectPath(
-  workspaceRoot: string,
-  path: string,
-): string {
-  const root = workspaceRoot
-    .replaceAll("\\", "/")
-    .replace(/(?<!\/)\/+$/u, "");
-  const relative = path
-    .replaceAll("\\", "/")
-    .replace(/^\/+/u, "");
-  const absolute = `${root}/${relative}`;
-  const encoded = absolute
-    .split("/")
-    .map((segment, index) =>
-      index === 0 && /^[A-Za-z]:$/u.test(segment)
-        ? segment
-        : encodeURIComponent(segment),
-    )
-    .join("/");
-  return `file://${encoded.startsWith("/") ? "" : "/"}${encoded}`;
-}
-
 function pathByUri(
   workspaceRoot: string,
   texts: ReadonlyMap<string, string>,
 ): ReadonlyMap<string, string> {
   const result = new Map<string, string>();
   for (const path of texts.keys()) {
-    result.set(uriForProjectPath(workspaceRoot, path), path);
+    result.set(fileUriForProjectPath(workspaceRoot, path), path);
   }
   return result;
 }

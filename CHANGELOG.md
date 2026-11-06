@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Jack Wu ([@a-green-hand-jack](https://github.com/a-green-hand-jack)): asked
   for Antigravity CLI as a built-in agent and worked out the catalog entry it
   needs (#402).
+- zemelua ([@zemelua](https://github.com/zemelua)): traced the Typst failure on
+  Windows to the file address Oleafly sends Tinymist, and proved it with a
+  standalone run of the server (#414).
 
 ### Added
 
@@ -64,6 +67,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never clear it (#306).
 - The agent check now spots a signed-out Claude Code, which it used to call
   ready because Claude Code opens a session before it checks the login (#306).
+- Format document, go to definition, rename and the other Typst language
+  features work on Windows. Oleafly passed the project folder to Tinymist in
+  Windows' `\\?\` long-path form, which Tinymist can't read, so it crashed at
+  startup. The fix covers folders on network shares and mapped drives too, and
+  TexLab gets the same corrected addresses (#414).
+- Errors and warnings from Tinymist now show up when the project's folder path
+  has characters such as `&`, `+` or `@` in it. They reached Oleafly on every
+  platform and were dropped.
+- When a language server stops, the app log keeps the end of what it printed,
+  so a crash report shows the reason.
 - Fenced code in Markdown stays a code block in the visual editor. Typing in
   a block, or saving a file the editor had to rewrite, turned the fence into
   lines of inline code, which dropped the language and broke Mermaid diagrams.

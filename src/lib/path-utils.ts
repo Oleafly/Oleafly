@@ -2,6 +2,16 @@ export function isSeparator(char: string | undefined): boolean {
   return char === "/" || char === "\\";
 }
 
+const VERBATIM_UNC = "\\\\?\\UNC\\";
+const VERBATIM = "\\\\?\\";
+
+/** Windows' `\\?\` form, which `canonicalize` returns, in its everyday spelling. */
+export function withoutVerbatimPrefix(path: string): string {
+  if (path.startsWith(VERBATIM_UNC)) return `\\\\${path.slice(VERBATIM_UNC.length)}`;
+  if (path.startsWith(VERBATIM)) return path.slice(VERBATIM.length);
+  return path;
+}
+
 function lastSeparator(path: string): number {
   return Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 }

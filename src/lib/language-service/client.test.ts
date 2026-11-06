@@ -1206,6 +1206,21 @@ describe("LanguageServiceClient configuration and idle state", () => {
     expect(client.state).toBe("stopped");
   });
 
+  it.each([
+    ["\\\\?\\D:\\typst-project", "file:///D:/typst-project"],
+    ["\\\\?\\UNC\\server\\share\\typst-project", "file://server/share/typst-project"],
+  ])("initializes with a URI the server can read for %s", async (root, uri) => {
+    const transport = new FakeTransport();
+    transport.workspaceRoot = root;
+    const client = createClient(transport);
+    await startClient(client, transport);
+
+    expect(client.rootUri).toBe(uri);
+    expect(transport.requests("initialize")[0]?.message).toMatchObject({
+      params: { rootUri: uri, workspaceFolders: [{ uri }] },
+    });
+  });
+
   it("encodes a Windows workspace root and hands out capability copies", async () => {
     const transport = new FakeTransport();
     transport.workspaceRoot = "C:\\Papers\\My Paper";

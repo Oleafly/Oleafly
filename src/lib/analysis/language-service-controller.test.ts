@@ -29,6 +29,8 @@ import {
 import { createProjectAnalysisStore } from "@/store/project-analysis";
 import { useIndexStore } from "@/store/project-index";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fileUriForProjectPath } from "@/lib/language-service";
+import { logError } from "@/lib/log";
 import { LanguageServiceTimeoutError } from "@/lib/language-service/errors";
 import {
   DEFAULT_TYPST_LANGUAGE_SERVICE_SETTINGS,
@@ -37,7 +39,6 @@ import {
 } from "@/lib/analysis/tinymist-configuration";
 import {
   BIBTEX_LOCAL_ONLY_ANALYSIS_REASON,
-  fileUriForProjectPath,
   LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
   LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
   LanguageServiceController,
@@ -49,6 +50,8 @@ import {
   type LifecycleAnalysisCoordinator,
   type LifecycleLanguageServiceClient,
 } from "./language-service-controller";
+
+vi.mock("@/lib/log", () => ({ logError: vi.fn(() => Promise.resolve()) }));
 
 class FakeClient implements LifecycleLanguageServiceClient {
   state: LanguageServiceClientState = "stopped";
@@ -438,6 +441,36 @@ describe("language-service lifecycle routing", () => {
     );
     expect(fileUriForProjectPath("C:\\Papers", "main.typ")).toBe(
       "file:///C:/Papers/main.typ",
+    );
+  });
+
+  it("writes one URI per file however Windows spells the root", () => {
+    expect(fileUriForProjectPath("\\\\?\\D:\\Paper Two", "a b.typ")).toBe(
+      "file:///D:/Paper%20Two/a%20b.typ",
+    );
+    expect(fileUriForProjectPath("\\\\?\\D:\\Paper Two")).toBe(
+      "file:///D:/Paper%20Two",
+    );
+    expect(fileUriForProjectPath("\\\\?\\D:\\", "main.typ")).toBe("file:///D:/main.typ");
+    expect(fileUriForProjectPath("\\\\?\\D:\\")).toBe("file:///D:/");
+    expect(fileUriForProjectPath("D:\\")).toBe("file:///D:/");
+    expect(fileUriForProjectPath("\\\\server\\share\\paper", "main.typ")).toBe(
+      "file://server/share/paper/main.typ",
+    );
+    expect(fileUriForProjectPath("\\\\?\\UNC\\SERVER\\Share\\paper", "main.typ")).toBe(
+      "file://server/Share/paper/main.typ",
+    );
+    expect(fileUriForProjectPath("\\\\?\\UNC\\server\\share")).toBe(
+      "file://server/share",
+    );
+  });
+
+  it("spells a path the way the language servers echo it back", () => {
+    expect(fileUriForProjectPath("/R&D+a,b;c=d@e$f[g]h'i!j~k(l)m^n|o:p", "main.typ")).toBe(
+      "file:///R&D+a,b;c=d@e$f[g]h'i!j~k(l)m^n|o:p/main.typ",
+    );
+    expect(fileUriForProjectPath("/a b/100%/#1?/é", 'x"<y>{z}`.typ')).toBe(
+      "file:///a%20b/100%25/%231%3F/%C3%A9/x%22%3Cy%3E%7Bz%7D%60.typ",
     );
   });
 });
@@ -1951,6 +1984,64 @@ describe("LanguageServiceController setup status", () => {
         reason: { text: "Checksum mismatch" },
       },
     });
+  });
+});
+
+describe("LanguageServiceController failure logging", () => {
+  const stderr = (client: FakeClient, message: string) =>
+    client.emitRetained({
+      type: "log",
+      stream: "stderr",
+      message,
+      generation: client.generation,
+    });
+
+  it("logs the end of what a server printed before it crashed", async () => {
+    const scheduler = new FakeScheduler();
+    const { controller, clients } = harness({ scheduler });
+    controller.update(snapshot());
+    await controller.whenIdle();
+    vi.mocked(logError).mockClear();
+
+    stderr(clients[0], "x".repeat(5_000));
+    stderr(clients[0], "panicked at lsp_typst_boundary.rs:102:29");
+    clients[0].emitRetained({
+      type: "log",
+      stream: "stdout",
+      message: "not a failure",
+      generation: clients[0].generation,
+    });
+    clients[0].exitUnexpectedly("Language service exited with code -1073740791");
+
+    expect(logError).toHaveBeenCalledTimes(1);
+    const [scope, detail] = vi.mocked(logError).mock.calls[0];
+    expect(scope).toMatch(/^language service \w+ stopped$/);
+    expect(detail).toMatch(/^Language service exited with code -1073740791\n/);
+    expect(detail).toMatch(/panicked at lsp_typst_boundary\.rs:102:29$/);
+    expect(detail).not.toContain("not a failure");
+    expect(String(detail).length).toBeLessThan(2_100);
+  });
+
+  it("logs a server that dies while it starts", async () => {
+    vi.mocked(logError).mockClear();
+    const { controller, store } = harness({
+      configureClient: (client) => {
+        const start = client.start.bind(client);
+        client.start = async (options) => {
+          stderr(client, "panicked: could not convert URI to path");
+          return start(options);
+        };
+        client.startError = new Error("Language service exited with code -1073740791");
+      },
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+
+    expect(store.getState().snapshot.languageService.readiness).toBe("unavailable");
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringMatching(/stopped$/),
+      "Language service exited with code -1073740791\npanicked: could not convert URI to path",
+    );
   });
 });
 
