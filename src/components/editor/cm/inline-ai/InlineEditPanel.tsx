@@ -213,10 +213,11 @@ export function InlineEditPanel() {
         }],
       }
     : null;
+  const configuredActive = config && !agentRoute ? pickActiveProvider(config) : null;
   const active = agentRoute
     ? { providerId: agentRoute.provider_id, modelId: agentRoute.model_id }
-    : config ? pickActiveProvider(config) : null;
-  const modelGroups = agentGroup ? [agentGroup] : config
+    : configuredActive;
+  const configuredGroups = config && !agentRoute
     ? configuredModelGroups(
         {
           keys: effectiveProviderKeys(config),
@@ -229,6 +230,7 @@ export function InlineEditPanel() {
         },
       )
     : [];
+  const modelGroups = agentGroup ? [agentGroup] : configuredGroups;
 
   const renderPanel = () => {
     if (session.phase === "withdrawn") {
