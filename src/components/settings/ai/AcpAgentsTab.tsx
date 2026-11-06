@@ -139,6 +139,12 @@ function RegistryResult({
   );
 }
 
+function bridgeAction(agent: AcpAgentStatus, unavailable: string) {
+  const available = !agent.bridgeSharedWithCli && (!agent.installed || !agent.managed);
+  const blocked = available && !agent.canInstall ? agent.reason ?? unavailable : null;
+  return { available, blocked };
+}
+
 function nextStepText(
   agent: AcpAgentStatus,
   readiness: AcpReadiness,
@@ -183,11 +189,10 @@ function AgentCard({
   const id = agent.definition.id;
   const installing = busy === "install";
   const placement = programPlacement(agent);
-  const bridgeActionAvailable =
-    !agent.bridgeSharedWithCli && (!agent.installed || !agent.managed);
-  const installBlocked = bridgeActionAvailable && !agent.canInstall
-    ? agent.reason ?? t(($) => $.ai.acp.setup.installUnavailable)
-    : null;
+  const { available: bridgeActionAvailable, blocked: installBlocked } = bridgeAction(
+    agent,
+    t(($) => $.ai.acp.setup.installUnavailable),
+  );
   const nextStep = nextStepText(
     agent,
     readiness,

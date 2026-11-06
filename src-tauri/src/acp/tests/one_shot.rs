@@ -116,9 +116,7 @@ async fn nothing_is_left_in_the_session_list_or_the_probe_folder() {
     let shot = OneShot::new("fixture-agent", "default", &request("warned", false)).unwrap();
     runtime.one_shot(shot).await.unwrap();
     assert!(runtime.all_sessions(None, 10).unwrap().is_empty());
-    let left = std::fs::read_dir(temp.path().join("acp").join("probe"))
-        .map(|entries| entries.count())
-        .unwrap_or(0);
+    let left = std::fs::read_dir(temp.path().join("acp").join("probe")).map_or(0, Iterator::count);
     assert_eq!(left, 0);
 }
 
@@ -215,7 +213,7 @@ async fn cancelling_stops_the_agent_and_removes_its_folder() {
         .unwrap();
     let shot = OneShot::new("fixture-agent", "default", &request("never-answers", false)).unwrap();
     let probes = temp.path().join("acp").join("probe");
-    let count = || std::fs::read_dir(&probes).map_or(0, |entries| entries.count());
+    let count = || std::fs::read_dir(&probes).map_or(0, Iterator::count);
     let run = runtime.one_shot(shot);
     tokio::select! {
         answer = run => panic!("the turn ended: {answer:?}"),

@@ -75,25 +75,28 @@ function useOllamaModels(config: AppConfig | null, enabled = true) {
 const AGENTS_QUERY_KEY = ["tools-cli-agents"] as const;
 const askedForModels = new Set<string>();
 
+function agentNeedsModels(agent: AcpAgentStatus): boolean {
+  return (
+    acpUsable(agent) && agent.runtime?.models == null && !askedForModels.has(agent.definition.id)
+  );
+}
+
 /** Checks each agent that has never opened a session, which opens a throwaway
  * one and saves what the agent offers. One at a time: a check starts the
  * agent, and a second check of the same agent is refused. */
-async function learnAgentModels(catalog: readonly AcpAgentStatus[]): Promise<boolean> {
-  let learned = false;
-  for (const agent of catalog) {
-    const id = agent.definition.id;
-    if (!acpUsable(agent) || agent.runtime?.models != null || askedForModels.has(id)) continue;
-    askedForModels.add(id);
-    await acpCheckAgent(id).then(
-      () => {
-        learned = true;
-      },
-      () => {
-        askedForModels.delete(id);
-      },
-    );
-  }
-  return learned;
+async function learnAgentModels(catalog: readonly AcpAgentStatus[], from = 0): Promise<boolean> {
+  const next = catalog.findIndex((agent, index) => index >= from && agentNeedsModels(agent));
+  if (next < 0) return false;
+  const id = catalog[next].definition.id;
+  askedForModels.add(id);
+  const learned = await acpCheckAgent(id).then(
+    () => true,
+    () => {
+      askedForModels.delete(id);
+      return false;
+    },
+  );
+  return (await learnAgentModels(catalog, next + 1)) || learned;
 }
 
 function useToolsAgents() {
