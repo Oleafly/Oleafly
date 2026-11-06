@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
-import { ChevronRight, FileDiff, GitCommitHorizontal } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { FileDiff, GitCommitHorizontal } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";

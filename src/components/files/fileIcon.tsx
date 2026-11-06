@@ -10,6 +10,8 @@ import {
   Settings2,
   type LucideIcon,
 } from "lucide-react";
+import { useColorDrawing } from "@/components/icons/icon-pack";
+import { ColorIconSvg } from "@/components/icons/pack-icon";
 import { cn } from "@/lib/utils";
 
 const BY_EXT: Record<string, { Icon: LucideIcon; cls: string }> = {
@@ -59,6 +61,22 @@ const BY_NAME: Record<string, { Icon: LucideIcon; cls: string }> = {
   "makefile": { Icon: FileCode, cls: "text-green-500" },
 };
 
+// The colour pack's drawing for each extension; anything else gets the plain sheet.
+const COLOR_BY_EXT: Record<string, string> = {
+  tex: "file-latex", sty: "file-latex", cls: "file-latex", ltx: "file-latex",
+  typ: "file-typst", bib: "file-bib", pdf: "file-pdf", json: "file-json", txt: "file-text",
+  md: "file-markdown", markdown: "file-markdown", qmd: "file-markdown", rmd: "file-markdown",
+  css: "file-code", scss: "file-code", js: "file-code", mjs: "file-code", ts: "file-code", tsx: "file-code", xml: "file-code",
+  html: "file-html", yml: "file-config", yaml: "file-config", toml: "file-config",
+  png: "file-image", jpg: "file-image", jpeg: "file-image", gif: "file-image", webp: "file-image", svg: "file-image", eps: "file-image",
+  zip: "file-zip", gz: "file-zip", tar: "file-zip",
+};
+
+const COLOR_BY_NAME: Record<string, string> = {
+  ".gitignore": "file-git", "gitignore": "file-git", ".gitattributes": "file-git", ".env": "file-config",
+  "license": "file-text", "readme.md": "file-markdown", "dockerfile": "file-code", "makefile": "file-code",
+};
+
 export function FileIcon({ name, className }: Readonly<{ name: string; className?: string }>) {
   const lower = name.toLowerCase();
   const dot = lower.lastIndexOf(".");
@@ -67,6 +85,10 @@ export function FileIcon({ name, className }: Readonly<{ name: string; className
 
   const match =
     BY_NAME[base] ?? BY_NAME[lower] ?? (ext ? BY_EXT[ext] : undefined);
+
+  const drawingName = COLOR_BY_NAME[base] ?? COLOR_BY_NAME[lower] ?? (ext ? COLOR_BY_EXT[ext] : undefined) ?? "file";
+  const drawing = useColorDrawing(drawingName);
+  if (drawing) return <ColorIconSvg name={drawingName} drawing={drawing} className={className} />;
 
   const { Icon, cls } = match ?? { Icon: File, cls: "text-muted-foreground" };
   return <Icon className={cn(className, cls)} />;

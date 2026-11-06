@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { School } from "lucide-react";
+import { School } from "@/components/icons/pack";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import { LabSearchPanel } from "@/components/tools/LabSearchPanel";
 import { toolName } from "@/lib/tool-catalog";

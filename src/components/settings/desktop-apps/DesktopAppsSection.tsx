@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Plus } from "lucide-react";
+import { Trash2 } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { LoadingState } from "@/components/ui/empty";

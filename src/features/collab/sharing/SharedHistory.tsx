@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { History, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
+import { History } from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Badge } from "@/components/ui/badge";

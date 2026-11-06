@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { History } from "lucide-react";
+import { History } from "@/components/icons/pack";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 

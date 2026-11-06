@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Search } from "@/components/icons/pack";
 import type { PdfSearchState, PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, Download, ExternalLink, FolderOpen, KeyRound, Play, RotateCcw, Terminal } from "lucide-react";
+import { Check, ExternalLink, Play, RotateCcw } from "lucide-react";
+import { Copy, Download, FolderOpen, KeyRound, Terminal } from "@/components/icons/pack";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";

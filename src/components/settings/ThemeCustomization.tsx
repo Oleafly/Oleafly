@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Palette, RotateCcw, Upload } from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import { Download, Palette, Upload } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ColorPicker } from "@/components/ui/color-picker";

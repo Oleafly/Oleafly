@@ -1,4 +1,4 @@
-import { Globe } from "lucide-react";
+import { Globe } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";

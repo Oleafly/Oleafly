@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  DatabaseZap,
-  FolderPlus,
-  RotateCcw,
-  ShieldCheck,
-  Trash2,
-  Wrench,
-} from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import { DatabaseZap, FolderPlus, ShieldCheck, Trash2, Wrench } from "@/components/icons/pack";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

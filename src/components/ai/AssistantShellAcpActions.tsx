@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { BarChart3, Download, History, ListTree, Plus, Settings2 } from "lucide-react";
+import { Plus } from "lucide-react";
+import { BarChart3, Download, History, ListTree, Settings2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { AssistantFloatButton } from "@/components/ai/AssistantShellHeader";
 import { Button } from "@/components/ui/button";

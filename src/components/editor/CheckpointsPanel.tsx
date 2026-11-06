@@ -10,20 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ArchiveRestore,
-  Check,
-  ChevronRight,
-  Copy,
-  Download,
-  FileUp,
-  FolderOpen,
-  Pencil,
-  RotateCcw,
-  ShieldCheck,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, ChevronRight, RotateCcw, X } from "lucide-react";
+import { ArchiveRestore, Copy, Download, FileUp, FolderOpen, Pencil, ShieldCheck, Trash2 } from "@/components/icons/pack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";

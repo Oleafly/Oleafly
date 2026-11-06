@@ -32,12 +32,8 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen, emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  PanelTopOpen,
-  Sparkles,
-  FileText,
-} from "lucide-react";
+import { AlertTriangle, PanelTopOpen } from "lucide-react";
+import { FileText, Sparkles } from "@/components/icons/pack";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { i18n, onLocaleApplied } from "@/i18n";
 import {

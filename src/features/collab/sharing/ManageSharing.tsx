@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, DoorOpen, Link2, MessageSquare, ScrollText, Trash2, UserPlus } from "lucide-react";
+import { Check } from "lucide-react";
+import { Copy, DoorOpen, Link2, MessageSquare, ScrollText, Trash2, UserPlus } from "@/components/icons/pack";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { Avatar } from "@/components/ui/avatar";

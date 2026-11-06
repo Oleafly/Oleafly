@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CopyPlus, Eye, Plus, Share2, X } from "lucide-react";
+import { Eye, Plus, X } from "lucide-react";
+import { CopyPlus, Share2 } from "@/components/icons/pack";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";

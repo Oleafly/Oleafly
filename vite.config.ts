@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { VITE_CLIENT_WITHOUT_TRANSPORT } from "./e2e/vite-client-without-transport";
@@ -31,6 +31,27 @@ const staticE2eClient = (): Plugin => ({
       if (request.url?.split("?")[0] !== "/@vite/client") return next();
       response.setHeader("Content-Type", "application/javascript");
       response.end(VITE_CLIENT_WITHOUT_TRANSPORT);
+    });
+  },
+});
+
+// The colour icon pack is downloaded, never bundled. In development the app downloads the pack
+// built by scripts/build-icon-pack.mjs from this route; release builds use the CDN.
+const devIconPacks = (): Plugin => ({
+  name: "oleafly-dev-icon-packs",
+  apply: "serve",
+  configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      const match = request.url?.split("?")[0].match(/^\/__oleafly\/icon-packs\/([a-z0-9-]+\.json)$/);
+      if (!match) return next();
+      const file = path.join(__dirname, "icon-packs/oleafly-color/dist", match[1]);
+      if (!existsSync(file)) {
+        response.statusCode = 404;
+        response.end("Build the pack with node scripts/build-icon-pack.mjs");
+        return;
+      }
+      response.setHeader("Content-Type", "application/json");
+      response.end(readFileSync(file));
     });
   },
 });
@@ -188,6 +209,7 @@ export default defineConfig(async () => ({
     rejectProductionDevHooks(),
     requirePolyfillsFirst(),
     staticE2eClient(),
+    devIconPacks(),
     pdfjsAssets(),
   ],
   optimizeDeps: {

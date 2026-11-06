@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Monitor, Moon, Sun } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

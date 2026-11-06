@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Server } from "lucide-react";
+import { Plus } from "lucide-react";
+import { Server } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { useFilesStore } from "@/store/files";

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, Mail, MailX, Send } from "lucide-react";
+import { Check } from "lucide-react";
+import { Copy, Mail, MailX, Send } from "@/components/icons/pack";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { Button } from "@/components/ui/button";

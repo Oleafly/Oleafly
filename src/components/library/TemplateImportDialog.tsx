@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, FileText, Search, X } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
+import { FileText, Search } from "@/components/icons/pack";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
 import { CHOICE_ART } from "@/components/library/choice-art";
 import { Button } from "@/components/ui/button";

@@ -8,25 +8,21 @@ import {
   useState,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { ArrowLeft, Bold, Heading, Radical, X } from "lucide-react";
 import {
-  ArrowLeft,
-  Bold,
   Columns2,
   Copy,
   Download,
   FileArchive,
   FileInput,
   FolderPlus,
-  Heading,
   Image as ImageIcon,
-  Radical,
   ScanText,
   ScissorsLineDashed,
   Settings2,
   Sigma,
   Sparkles,
-  X,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

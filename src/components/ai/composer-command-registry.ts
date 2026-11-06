@@ -1,12 +1,4 @@
-import {
-  Archive,
-  Bot,
-  FolderOpen,
-  GitFork,
-  Lightbulb,
-  Sparkles,
-  Target,
-} from "lucide-react";
+import { Archive, Bot, FolderOpen, GitFork, Lightbulb, Sparkles, Target } from "@/components/icons/pack";
 import type { ComponentType } from "react";
 import { i18n } from "@/i18n";
 import { McpBrandIcon } from "./McpBrandIcon";

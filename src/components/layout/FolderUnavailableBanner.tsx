@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderX } from "lucide-react";
+import { FolderX } from "@/components/icons/pack";
 import { recheckProjectAvailability } from "./ProjectAvailabilityKeeper";
 import { adoptReplacedFolder, locateProjectFolder, revealInDir, saveOpenBuffersCopy } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Wand2 } from "lucide-react";
+import { Wand2 } from "@/components/icons/pack";
 import { cn } from "@/lib/utils";
 
 export const AI_GRADIENT = "from-[#4285F4] via-[#9B72CB] to-[#D96570]";

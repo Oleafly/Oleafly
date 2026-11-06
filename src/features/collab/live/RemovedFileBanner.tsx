@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { FileX2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { FileX2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { Spinner } from "@/components/ui/spinner";

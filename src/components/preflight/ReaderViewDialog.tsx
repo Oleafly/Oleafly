@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Eye, FileText } from "lucide-react";
+import { Eye } from "lucide-react";
+import { FileText } from "@/components/icons/pack";
 import {
   Dialog,
   DialogContent,

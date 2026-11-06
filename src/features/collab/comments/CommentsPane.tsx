@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCheck, FileText, MessageSquare, MessageSquareDiff, Unlink } from "lucide-react";
+import { CheckCheck, Unlink } from "lucide-react";
+import { FileText, MessageSquare, MessageSquareDiff } from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { getEditorView } from "@oleafly/editor";
 import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";

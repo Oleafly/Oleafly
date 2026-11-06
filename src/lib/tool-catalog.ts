@@ -1,10 +1,9 @@
 import type { ComponentType } from "react";
+import { ArrowLeftRight, Braces, Hash, TextCursorInput } from "lucide-react";
 import {
-  ArrowLeftRight,
   Bookmark,
   BookOpen,
   BookOpenText,
-  Braces,
   Calculator,
   ClipboardClock,
   FileCode2,
@@ -14,17 +13,15 @@ import {
   FileText,
   FileType2,
   Image as ImageIcon,
-  Hash,
-  ListChecks,
   Link2,
+  ListChecks,
   Network,
   School,
   ShieldCheck,
   Sigma,
   Sparkles,
   Table2,
-  TextCursorInput,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import { i18n } from "@/i18n";
 import type { ConverterToolId } from "@/lib/converter-types";

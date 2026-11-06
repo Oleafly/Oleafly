@@ -1,4 +1,4 @@
-import { HardDrive } from "lucide-react";
+import { HardDrive } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { useFilesStore } from "@/store/files";

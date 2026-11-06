@@ -2,20 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  Bookmark,
-  BookmarkCheck,
   Check,
   ChevronDown,
   ChevronRight,
-  Copy,
   ExternalLink,
   Info,
   Plus,
-  ScanSearch,
   Square,
-  Trash2,
   X,
 } from "lucide-react";
+import { Bookmark, BookmarkCheck, Copy, ScanSearch, Trash2 } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";

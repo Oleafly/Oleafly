@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, FlaskConical, Paperclip } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { FlaskConical, Paperclip } from "@/components/icons/pack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, X } from "lucide-react";
+import { X } from "lucide-react";
+import { FileText } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

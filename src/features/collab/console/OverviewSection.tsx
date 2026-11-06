@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { TriangleAlert, UserRoundPlus } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
+import { UserRoundPlus } from "@/components/icons/pack";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Badge } from "@/components/ui/badge";

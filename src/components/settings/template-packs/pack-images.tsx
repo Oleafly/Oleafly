@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from "react";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/icons/pack";
 import { cn } from "@/lib/utils";
 
 export const PAGE_ASPECT = "aspect-[1/1.294]";

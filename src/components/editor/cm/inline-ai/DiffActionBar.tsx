@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, MessageSquareShare, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, Check, RotateCcw, X } from "lucide-react";
+import { MessageSquareShare } from "@/components/icons/pack";
 import { AiChrome } from "@/components/ai/AiChrome";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";

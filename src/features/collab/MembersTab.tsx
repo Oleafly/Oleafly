@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Laptop, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
+import { Laptop, Trash2, UserCheck, UserPlus, UserX } from "@/components/icons/pack";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

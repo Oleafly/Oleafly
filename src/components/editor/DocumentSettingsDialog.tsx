@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { isolateHistory } from "@codemirror/commands";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

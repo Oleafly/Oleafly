@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, Download, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { BarChart3, Download } from "@/components/icons/pack";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, Download, ExternalLink, Plus } from "lucide-react";
+import { Check, ExternalLink, Plus } from "lucide-react";
+import { Copy, Download } from "@/components/icons/pack";
 import { i18n } from "@/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

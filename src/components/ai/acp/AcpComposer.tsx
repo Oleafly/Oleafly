@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, type ReactNode } from "react";
-import { Paperclip } from "lucide-react";
+import { Paperclip } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import {
   ChatComposer, type ChatComposerHandle, type MentionItem, type SlashItem,

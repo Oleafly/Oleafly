@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { CloudAlert, CloudUpload, Files, FileWarning, FolderInput, X } from "lucide-react";
+import { X } from "lucide-react";
+import { CloudAlert, CloudUpload, Files, FileWarning, FolderInput } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { Progress } from "@/components/ui/progress";

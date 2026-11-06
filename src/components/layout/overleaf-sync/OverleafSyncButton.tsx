@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ExternalLink, KeyRound, RefreshCw, Unlink } from "lucide-react";
+import { ExternalLink, RefreshCw, Unlink } from "lucide-react";
+import { KeyRound } from "@/components/icons/pack";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,13 +1,7 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  ChevronRight,
-  ExternalLink,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
+import { ChevronRight, ExternalLink, Plus, RefreshCw } from "lucide-react";
+import { Pencil, Trash2 } from "@/components/icons/pack";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

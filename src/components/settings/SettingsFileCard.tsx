@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { ChevronRight, Cloud, Download, HardDrive, Upload, X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
+import { Cloud, Download, HardDrive, Upload } from "@/components/icons/pack";
 import {
   DropdownMenu,
   DropdownMenuContent,

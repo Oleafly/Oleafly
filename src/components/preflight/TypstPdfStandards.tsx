@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileCheck2, Info } from "lucide-react";
+import { Info } from "lucide-react";
+import { FileCheck2 } from "@/components/icons/pack";
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportCurrentTypst } from "@/features/export";

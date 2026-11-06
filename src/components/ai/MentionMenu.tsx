@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Bot, File, Folder } from "lucide-react";
+import { Bot, File, Folder } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import type { DelegationTarget } from "@/lib/agent-mentions";

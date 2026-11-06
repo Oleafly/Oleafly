@@ -1,14 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ChevronRight,
-  Download,
-  Plus,
-  RefreshCw,
-  Search,
-  Terminal,
-  Trash2,
-} from "lucide-react";
+import { ChevronRight, Plus, RefreshCw } from "lucide-react";
+import { Download, Search, Terminal, Trash2 } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import {

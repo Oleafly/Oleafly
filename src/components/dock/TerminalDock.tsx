@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Palette, Pencil, Plus, Settings2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { Palette, Pencil, Settings2 } from "@/components/icons/pack";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";

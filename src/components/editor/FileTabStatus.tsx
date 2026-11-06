@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { FileWarning } from "lucide-react";
+import { FileWarning } from "@/components/icons/pack";
 import { useFilesStore } from "@/store/files";
 
 export function FileTabStatus({ path }: Readonly<{ path: string }>) {

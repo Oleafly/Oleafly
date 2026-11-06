@@ -2,7 +2,7 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { format, isValid, parseISO } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon } from "@/components/icons/pack";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";

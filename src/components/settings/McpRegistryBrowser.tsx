@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { Search } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

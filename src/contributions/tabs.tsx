@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { FlaskConical, Folder, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
+import { FlaskConical, Folder, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "@/components/icons/pack";
 import { registerRailTab } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";

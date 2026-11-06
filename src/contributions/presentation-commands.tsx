@@ -1,4 +1,4 @@
-import { FileCode2, ListChecks, MonitorPlay, Presentation } from "lucide-react";
+import { FileCode2, ListChecks, MonitorPlay, Presentation } from "@/components/icons/pack";
 import { registerCommand } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { present } from "@/features/presentation/launch";

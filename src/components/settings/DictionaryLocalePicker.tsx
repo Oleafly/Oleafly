@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download } from "lucide-react";
+import { Download } from "@/components/icons/pack";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import {
   Select,

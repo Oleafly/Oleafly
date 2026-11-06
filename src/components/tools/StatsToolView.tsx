@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Calculator, Copy } from "lucide-react";
+import { Calculator, Copy } from "@/components/icons/pack";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import {
   ToolPane,

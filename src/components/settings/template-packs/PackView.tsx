@@ -8,7 +8,8 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Download, Search, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { Download, Search, Trash2 } from "@/components/icons/pack";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { Input } from "@/components/ui/input";
 import {

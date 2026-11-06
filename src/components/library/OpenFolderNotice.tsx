@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderX, X } from "lucide-react";
+import { X } from "lucide-react";
+import { FolderX } from "@/components/icons/pack";
 import { openFolderWithPicker } from "@/features/open-folder";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";

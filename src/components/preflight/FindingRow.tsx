@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, Info, Sparkles } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, Info } from "lucide-react";
+import { Sparkles } from "@/components/icons/pack";
 import { standardChips, type Finding, type Severity } from "@oleafly/preflight";
 import { gotoRange } from "@/components/editor/cm/controller";
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";

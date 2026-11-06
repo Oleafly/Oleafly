@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldQuestion } from "lucide-react";
+import { ShieldQuestion } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { ErrorState } from "@/components/ui/empty";

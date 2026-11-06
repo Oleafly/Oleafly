@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookMarked } from "lucide-react";
+import { BookMarked } from "@/components/icons/pack";
 import { typstBibliographyStyles } from "@oleafly/editor";
 import {
   Select,

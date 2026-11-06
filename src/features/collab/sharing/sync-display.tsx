@@ -1,23 +1,18 @@
 import type { ComponentType, SVGProps } from "react";
 import { useTranslation } from "react-i18next";
+import { Ban, CircleAlert, CircleArrowUp, CirclePause, RefreshCw, RotateCcw } from "lucide-react";
 import {
   Archive,
-  Ban,
-  CircleAlert,
-  CircleArrowUp,
-  CirclePause,
   CloudCheck,
   CloudOff,
   CloudUpload,
   LogOut,
-  RefreshCw,
   Replace,
-  RotateCcw,
   ServerCog,
   ServerOff,
   UserLock,
   UserX,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import type { SyncState } from "./sync-state";

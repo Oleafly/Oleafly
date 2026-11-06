@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderDown, X } from "lucide-react";
+import { X } from "lucide-react";
+import { FolderDown } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import type { CollabProjectSummary, CollabServer } from "@/lib/tauri";

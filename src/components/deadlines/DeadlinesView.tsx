@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AlertTriangle, ExternalLink, RefreshCw, RotateCcw } from "lucide-react";
 import {
-  AlertTriangle,
   CalendarClock,
   CalendarDays,
   CalendarX2,
   Clock3,
-  ExternalLink,
   Globe2,
   HelpCircle,
   MapPin,
-  RefreshCw,
-  RotateCcw,
   Search,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import {

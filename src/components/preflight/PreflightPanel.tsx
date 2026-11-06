@@ -1,20 +1,16 @@
 import { memo, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronDown, Eye, Info, Play, RefreshCw } from "lucide-react";
 import {
   Accessibility,
-  ChevronDown,
-  Eye,
   FileCheck2,
   FileSearch,
-  Info,
   Link2,
-  Play,
-  RefreshCw,
   Send,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { askAiAboutFindings } from "@/features/ask-ai-preflight";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { usePreflightStore } from "@/store/preflight";

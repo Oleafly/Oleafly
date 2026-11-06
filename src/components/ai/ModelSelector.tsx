@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Command } from "cmdk";
-import { CheckCircle2, ChevronDown, Search } from "lucide-react";
+import { CheckCircle2, ChevronDown } from "lucide-react";
+import { Search } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 
 import { ProviderLogo } from "@/components/ai/ProviderLogo";

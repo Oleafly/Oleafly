@@ -1,5 +1,6 @@
 import { useId, useState, type KeyboardEvent } from "react";
-import { Check, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
+import { SlidersHorizontal } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { UsageMeter } from "@/components/ai/usage/UsageMeter";
 import {

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "@/components/icons/pack";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import { BibtexValidatorPanel } from "@/components/tools/BibtexValidatorPanel";
 import { toolName } from "@/lib/tool-catalog";

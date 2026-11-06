@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity, CheckCircle2, CircleAlert, Info, Radio, Trash2 } from "lucide-react";
+import { CheckCircle2, CircleAlert, Info } from "lucide-react";
+import { Activity, Radio, Trash2 } from "@/components/icons/pack";
 import {
   formatMcpArgs,
   useMcpActivityStore,

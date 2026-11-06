@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Copy, Minus, Square, X } from "lucide-react";
+import { Minus, Square, X } from "lucide-react";
+import { Copy } from "@/components/icons/pack";
 import { cn, isLinux, isWindows } from "@/lib/utils";
 
 const drawsWindowControls = isWindows || isLinux;

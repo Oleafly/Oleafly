@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { CopyMinus, CopyPlus, Info, ListTree } from "lucide-react";
+import { CopyMinus, Info } from "lucide-react";
+import { CopyPlus, ListTree } from "@/components/icons/pack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";

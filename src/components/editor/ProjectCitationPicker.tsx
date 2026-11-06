@@ -1,10 +1,5 @@
-import {
-  AtSign,
-  BookOpenText,
-  Plus,
-  Search,
-  TriangleAlert,
-} from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
+import { AtSign, BookOpenText, Search } from "@/components/icons/pack";
 import {
   useDeferredValue,
   useMemo,

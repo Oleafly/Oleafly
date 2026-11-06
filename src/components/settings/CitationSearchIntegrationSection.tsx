@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComponentType } from "react";
 import { Brave, Tavily, type IconType } from "@lobehub/icons";
-import { LibraryBig } from "lucide-react";
+import { LibraryBig } from "@/components/icons/pack";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import {
   CrossrefBrandIcon,

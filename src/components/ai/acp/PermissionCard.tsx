@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, ShieldQuestion, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
+import { ShieldQuestion } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AiChrome } from "@/components/ai/AiChrome";

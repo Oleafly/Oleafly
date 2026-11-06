@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { LayoutTemplate, X } from "lucide-react";
+import { X } from "lucide-react";
+import { LayoutTemplate } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";

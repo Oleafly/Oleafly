@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Wrench, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Search, Wrench } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";

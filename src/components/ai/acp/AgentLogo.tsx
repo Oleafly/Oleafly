@@ -1,4 +1,4 @@
-import { Bot } from "lucide-react";
+import { Bot } from "@/components/icons/pack";
 import { AGENT_MARKS } from "./agent-marks";
 
 export function AgentLogo({

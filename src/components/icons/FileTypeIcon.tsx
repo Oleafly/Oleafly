@@ -1,4 +1,6 @@
 import type { ReactNode, SVGProps } from "react";
+import { useColorDrawing } from "@/components/icons/icon-pack";
+import { ColorIconSvg } from "@/components/icons/pack-icon";
 
 export type FileTypeIconKind =
   | "zip"
@@ -66,11 +68,27 @@ const GLYPHS: Readonly<Record<FileTypeIconKind, ReactNode>> = {
   ),
 };
 
+const COLOR_DRAWINGS: Readonly<Record<FileTypeIconKind, string>> = {
+  zip: "file-zip",
+  pdf: "file-pdf",
+  png: "file-image",
+  docx: "file-word",
+  html: "file-html",
+  markdown: "file-markdown",
+  typst: "file-typst",
+  latex: "file-latex",
+  txt: "file-text",
+};
+
 export function FileTypeIcon({
   kind,
   className,
   ...props
 }: SVGProps<SVGSVGElement> & Readonly<{ kind: FileTypeIconKind }>) {
+  const drawing = useColorDrawing(COLOR_DRAWINGS[kind]);
+  if (drawing) {
+    return <ColorIconSvg name={COLOR_DRAWINGS[kind]} drawing={drawing} data-file-type={kind} className={className} />;
+  }
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

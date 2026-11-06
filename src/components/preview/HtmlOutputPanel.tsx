@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Globe } from "lucide-react";
+import { Globe } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";

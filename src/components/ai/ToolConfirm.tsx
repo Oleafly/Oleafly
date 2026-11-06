@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { CheckCircle2, FileText, Wrench, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
+import { FileText, Wrench } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";

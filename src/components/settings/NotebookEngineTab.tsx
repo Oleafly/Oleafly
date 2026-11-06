@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Cpu, Download, HardDrive, Info, Trash2 } from "lucide-react";
+import { Info } from "lucide-react";
+import { Cpu, Download, HardDrive, Trash2 } from "@/components/icons/pack";
 import type {
   LanguageRuntime,
   LanguageRuntimeName,

@@ -1,7 +1,7 @@
 import { BrandSvg, type BrandIconProps } from "@/components/settings/IntegrationBrandIcons";
 import type { CloudProviderKind } from "@/lib/cloud";
 import { cn } from "@/lib/utils";
-import { Cloud, Database } from "lucide-react";
+import { Cloud, Database } from "@/components/icons/pack";
 import type { ComponentType } from "react";
 
 function DropboxBrandIcon({ className }: BrandIconProps) {

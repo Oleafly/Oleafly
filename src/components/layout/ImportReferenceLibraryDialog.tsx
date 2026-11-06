@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Download, Settings2, Upload } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { Download, Settings2, Upload } from "@/components/icons/pack";
 import { ZoteroBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, AlertTriangle, CheckCircle2, FileCode2, FolderOpen } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { FileCode2, FolderOpen } from "@/components/icons/pack";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

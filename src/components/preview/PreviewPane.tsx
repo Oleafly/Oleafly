@@ -20,16 +20,8 @@ import {
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  Minus,
-  PanelTopOpen,
-  Play,
-  Sparkles,
-  XCircle,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Minus, PanelTopOpen, Play, XCircle } from "lucide-react";
+import { FileText, Sparkles } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import {

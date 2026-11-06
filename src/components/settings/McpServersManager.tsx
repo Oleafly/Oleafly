@@ -1,17 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Download,
-  Globe2,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Search,
-  Server,
-  Terminal,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Plus, RefreshCw, X } from "lucide-react";
+import { Download, Globe2, Pencil, Search, Server, Terminal, Trash2 } from "@/components/icons/pack";
 import {
   McpServerImportDialog,
   type McpServerImportSelection,

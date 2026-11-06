@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Files, MessageSquare, MessagesSquare, RadioTower } from "lucide-react";
+import { Files, MessageSquare, MessagesSquare, RadioTower } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import type { AnalyzedQuery, FacetState } from "@oleafly/search-query";
 import type { ProjectSearchExtension } from "@/components/library/project-search";

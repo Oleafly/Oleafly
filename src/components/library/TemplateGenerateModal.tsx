@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  ArrowRight,
-  Bookmark,
-  BookmarkX,
-  Check,
-  Pencil,
-  RefreshCw,
-  Sparkles,
-  Wand2,
-  X,
-} from "lucide-react";
+import { ArrowRight, Check, RefreshCw, X } from "lucide-react";
+import { Bookmark, BookmarkX, Pencil, Sparkles, Wand2 } from "@/components/icons/pack";
 import { modalCoordinator } from "@oleafly/templates";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";

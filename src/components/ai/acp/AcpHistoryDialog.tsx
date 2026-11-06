@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { Pencil, Search, Trash2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Pencil, Search, Trash2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";

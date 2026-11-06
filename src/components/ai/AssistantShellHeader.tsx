@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, type HTMLAttributes, type ReactNode } from "react";
-import { PanelRightClose, PictureInPicture2 } from "lucide-react";
+import { PanelRightClose } from "lucide-react";
+import { PictureInPicture2 } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";

@@ -1,8 +1,8 @@
 import { type ComponentProps, type DragEvent as ReactDragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { languageForPath } from "@oleafly/editor";
+import { Check, RotateCcw, X } from "lucide-react";
 import {
-  Check,
   CloudDownload,
   Copy,
   Download,
@@ -10,13 +10,11 @@ import {
   FileText,
   FolderPlus,
   Image as ImageIcon,
-  RotateCcw,
   ScanText,
   Settings,
   ShieldCheck,
   Upload,
-  X,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CodeField } from "@/components/tools/CodeField";

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, ExternalLink, Github, Star, X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
+import { BookOpen, Github, Star } from "@/components/icons/pack";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import {

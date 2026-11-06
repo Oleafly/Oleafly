@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, RefreshCw, ScanSearch } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Copy, ScanSearch } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

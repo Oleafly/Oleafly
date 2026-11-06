@@ -13,24 +13,27 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { ChevronRight, CopyMinus, CopyPlus as ExpandAll } from "lucide-react";
 import {
-  ChevronRight,
-  CopyMinus,
+  CopyLinkIcon,
   CopyPlus,
   FileLock,
   FilePlus,
   Folder,
+  FolderClosed,
   FolderLock,
   FolderOpen,
   FolderPlus,
-  FolderClosed,
   Import,
+  InsertLinkIcon,
   Link2,
+  MainDocumentIcon,
+  OpenFileIcon,
   Pencil,
   SquareTerminal,
   Star,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -994,7 +997,7 @@ export function FileTree({
         {expanded.size > 0 ? (
           <CopyMinus aria-hidden className="size-3.5" />
         ) : (
-          <CopyPlus aria-hidden className="size-3.5" />
+          <ExpandAll aria-hidden className="size-3.5" />
         )}
       </Button>
       <Button
@@ -1434,6 +1437,7 @@ function TreeRowKindMenuItems({
   return (
     <>
       <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>
+        <OpenFileIcon className="mr-2 size-4" />
         {t(($) => $.common.actions.open)}
       </ContextMenuItem>
       {!readOnlyLink && (
@@ -1443,6 +1447,7 @@ function TreeRowKindMenuItems({
           )}
           onClick={() => ctx.onSetMain(node.path)}
         >
+          <MainDocumentIcon className="mr-2 size-4" />
           {t(($) => $.workspace.files.setMain)}
         </ContextMenuItem>
       )}
@@ -1451,9 +1456,11 @@ function TreeRowKindMenuItems({
         disabled={linkLanguageFor(ctx.activePath) === null}
         onClick={() => void import("@/features/file-links").then((links) => links.insertFileLink(node.path))}
       >
+        <InsertLinkIcon className="mr-2 size-4" />
         {t(($) => $.workspace.files.insertLink)}
       </ContextMenuItem>
       <ContextMenuItem onClick={() => void copyFileLink(node.path, t)}>
+        <CopyLinkIcon className="mr-2 size-4" />
         {t(($) => $.workspace.files.copyLink)}
       </ContextMenuItem>
     </>

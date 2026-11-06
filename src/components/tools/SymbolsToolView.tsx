@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpenText, Copy, Search } from "lucide-react";
+import { BookOpenText, Copy, Search } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";

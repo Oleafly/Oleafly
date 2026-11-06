@@ -1,17 +1,6 @@
 import { useTranslation } from "react-i18next";
-import {
-  BookPlus,
-  BookOpenText,
-  Braces,
-  Info,
-  ListRestart,
-  Search,
-  SearchCode,
-  Upload,
-  X,
-  Quote,
-  Sparkles,
-} from "lucide-react";
+import { Braces, Info, ListRestart, Quote, X } from "lucide-react";
+import { BookOpenText, BookPlus, Search, SearchCode, Sparkles, Upload } from "@/components/icons/pack";
 import {
   useCallback,
   useEffect,

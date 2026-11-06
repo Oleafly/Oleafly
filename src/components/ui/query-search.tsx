@@ -9,15 +9,8 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  CircleMinus,
-  CirclePlus,
-  CircleSlash2,
-  ListFilter,
-  Search,
-  TriangleAlert,
-  X,
-} from "lucide-react";
+import { CircleMinus, CirclePlus, CircleSlash2, ListFilter, TriangleAlert, X } from "lucide-react";
+import { Search } from "@/components/icons/pack";
 import {
   acceptField,
   acceptValue,

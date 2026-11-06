@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Cpu, Download, ShieldAlert, Zap } from "lucide-react";
+import { Cpu, Download, ShieldAlert, Zap } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {

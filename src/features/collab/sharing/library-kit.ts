@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { Users } from "lucide-react";
+import { Users } from "@/components/icons/pack";
 import { readFacet, writeFacet, type Facet, type FacetState } from "@oleafly/search-query";
 import type { CollabLibraryKit, CollabTranslate, ProjectQuery } from "@/components/collab/CollabSlots";
 

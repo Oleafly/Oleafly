@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { History, X } from "lucide-react";
+import { X } from "lucide-react";
+import { History } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { CheckpointsPanel } from "@/components/editor/CheckpointsPanel";

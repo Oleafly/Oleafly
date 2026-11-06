@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Mail, MapPin, Minus, Phone, User, X } from "lucide-react";
+import { Check, Minus, X } from "lucide-react";
+import { Mail, MapPin, Phone, User } from "@/components/icons/pack";
 import type { AtsParse } from "@oleafly/preflight";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import type { PreflightTranslate } from "./message";

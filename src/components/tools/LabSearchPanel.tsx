@@ -6,16 +6,8 @@ import {
   type FormEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  Building2,
-  Check,
-  ExternalLink,
-  Globe2,
-  Landmark,
-  MapPin,
-  Search,
-} from "lucide-react";
+import { AlertTriangle, Check, ExternalLink } from "lucide-react";
+import { Building2, Globe2, Landmark, MapPin, Search } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

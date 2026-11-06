@@ -1,13 +1,5 @@
-import {
-  Check,
-  ChevronDown,
-  Settings2,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  SlidersHorizontal,
-  type LucideIcon,
-} from "lucide-react";
+import { Check, ChevronDown, type LucideIcon } from "lucide-react";
+import { Settings2, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import { Popover } from "@/components/ui/popover";

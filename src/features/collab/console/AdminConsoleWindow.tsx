@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LogIn, ServerOff, ShieldX } from "lucide-react";
+import { LogIn, ServerOff, ShieldX } from "@/components/icons/pack";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { useWindowGeometry } from "@/lib/preview-geometry";

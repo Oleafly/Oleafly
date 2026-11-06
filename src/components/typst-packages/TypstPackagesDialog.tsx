@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, Copy, Plus } from "lucide-react";
+import { AlertTriangle, Check, Plus } from "lucide-react";
+import { Copy } from "@/components/icons/pack";
 import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, CheckCircle2, MoreHorizontal, Pencil, RotateCcw, ShieldQuestion, Trash2 } from "lucide-react";
+import { Check, CheckCircle2, MoreHorizontal, RotateCcw } from "lucide-react";
+import { Pencil, ShieldQuestion, Trash2 } from "@/components/icons/pack";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

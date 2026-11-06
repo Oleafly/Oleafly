@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck } from "@/components/icons/pack";
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import {
   approvalStatusLabel,

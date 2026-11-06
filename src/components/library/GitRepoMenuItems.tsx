@@ -1,7 +1,7 @@
 import { Fragment, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueries, type UseQueryResult } from "@tanstack/react-query";
-import { GitBranch, Lock } from "lucide-react";
+import { GitBranch, Lock } from "@/components/icons/pack";
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ErrorState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Home } from "lucide-react";
+import { Home } from "@/components/icons/pack";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";

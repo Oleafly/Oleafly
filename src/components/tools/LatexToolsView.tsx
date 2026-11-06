@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, ToolCase } from "lucide-react";
+import { Search, ToolCase } from "@/components/icons/pack";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { openTool } from "@/features/open-tool";

@@ -1,0 +1,4 @@
+/* Interface glyphs stay Lucide line icons, drawn a little finer so they sit with the hairline
+   colour icons. Only the default width changes; icons that ask for another width keep it.
+   This file reaches every icon in the app, so it is part of the pack but never of the preview. */
+svg.lucide[stroke-width="2"] { stroke-width: 1.6; }

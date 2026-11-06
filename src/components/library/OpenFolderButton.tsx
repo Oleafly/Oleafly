@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen } from "@/components/icons/pack";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { MessageSquareDiff, PencilLine } from "lucide-react";
+import { MessageSquareDiff, PencilLine } from "@/components/icons/pack";
 import { useShallow } from "zustand/react/shallow";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { CollabEditMode } from "@/lib/tauri";

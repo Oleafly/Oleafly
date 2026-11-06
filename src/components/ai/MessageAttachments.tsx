@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { FileCode2, FileText } from "lucide-react";
+import { FileCode2, FileText } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import type { StoredAttachmentRef } from "@/components/ai/composer/types";
 import { useAttachmentUrl } from "@/components/ai/composer/use-attachment-url";

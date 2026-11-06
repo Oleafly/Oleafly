@@ -1,18 +1,6 @@
 import { useId, useState } from "react";
-import {
-  BookOpen,
-  CheckCircle2,
-  ChevronDown,
-  ChevronRight,
-  CircleStop,
-  ExternalLink,
-  FileSearch,
-  FileText,
-  ScrollText,
-  Terminal,
-  Wrench,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, CircleStop, ExternalLink, XCircle } from "lucide-react";
+import { BookOpen, FileSearch, FileText, ScrollText, Terminal, Wrench } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import type { ToolEntry } from "@/store/chats";
 import {

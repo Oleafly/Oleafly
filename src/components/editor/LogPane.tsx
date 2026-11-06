@@ -14,7 +14,8 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Eraser } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight } from "lucide-react";
+import { Copy, Eraser } from "@/components/icons/pack";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { isNullfontMissingCharacter, parseLatexLog, type LogDiagnostic } from "@oleafly/latex";

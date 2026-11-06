@@ -1,6 +1,7 @@
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeftRight, ArrowUp, BookMarked, Check, Maximize2, MessageSquarePlus, Sparkles } from "lucide-react";
+import { ArrowLeftRight, ArrowUp, Check, Maximize2 } from "lucide-react";
+import { BookMarked, MessageSquarePlus, Sparkles } from "@/components/icons/pack";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { requestComment, useCommentsRail } from "@/components/collab/comments-rail";
 import { useCollabReady } from "@/components/collab/CollabSlots";

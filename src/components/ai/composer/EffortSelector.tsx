@@ -1,4 +1,4 @@
-import { Gauge } from "lucide-react";
+import { Gauge } from "@/components/icons/pack";
 import { useTranslation } from "react-i18next";
 import type { EffortLevel } from "@oleafly/ai-core";
 import {
