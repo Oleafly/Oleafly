@@ -12,6 +12,7 @@
       "bridgeMissing": "Brygga krävs",
       "cliMissing": "CLI hittades inte",
       "ready": "Klar",
+      "signedOut": "Utloggad",
       "unavailable": "Inte tillgänglig"
     },
     "requestFailed": "ACP-begäran kunde inte slutföras."

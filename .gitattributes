@@ -55,3 +55,8 @@ crates/oleafly-synctex/tests/fixtures/synctex/*.gz binary
 test/fixtures/typst-forms/** text eol=lf
 test/fixtures/typst-forms/project/edge-cases-crlf.typ -text
 test/fixtures/typst-forms/bad/bom.toml -text
+
+# tauri-plugin's build script rewrites these on every build with LF. A CRLF
+# checkout (core.autocrlf=true on Windows) then shows them as modified after
+# each build, with no content change.
+vendor/tauri-plugin-playwright/permissions/** text eol=lf

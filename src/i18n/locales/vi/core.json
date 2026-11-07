@@ -12,6 +12,7 @@
       "bridgeMissing": "Cần bridge",
       "cliMissing": "Không tìm thấy CLI",
       "ready": "Sẵn sàng",
+      "signedOut": "Đã đăng xuất",
       "unavailable": "Không khả dụng"
     },
     "requestFailed": "Không hoàn tất được yêu cầu ACP."

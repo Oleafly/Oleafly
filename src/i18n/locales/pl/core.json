@@ -12,6 +12,7 @@
       "bridgeMissing": "Wymagany mostek",
       "cliMissing": "Nie znaleziono CLI",
       "ready": "Gotowy",
+      "signedOut": "Wylogowano",
       "unavailable": "Niedostępny"
     },
     "requestFailed": "Nie udało się zrealizować żądania ACP."

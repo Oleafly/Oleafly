@@ -13,8 +13,17 @@ import { useDisplayText } from "@/lib/display-path";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
 import { Spinner } from "@/components/ui/spinner";
+import { i18n } from "@/i18n";
 
-export function ReadinessBadge({ readiness }: Readonly<{ readiness: AcpReadiness }>) {
+/** `signedOut` comes from the agent's last check: an agent that starts can
+ * still need a sign-in, and calling it Ready sent people into a dead end. */
+export function ReadinessBadge({
+  readiness,
+  signedOut = false,
+}: Readonly<{ readiness: AcpReadiness; signedOut?: boolean }>) {
+  if (readiness === "ready" && signedOut) {
+    return <Badge variant="warning">{i18n.t(($) => $.core.acp.readiness.signedOut)}</Badge>;
+  }
   const label = acpReadinessLabel(readiness);
   if (readiness === "ready") {
     return (

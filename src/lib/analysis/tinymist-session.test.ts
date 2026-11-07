@@ -116,6 +116,30 @@ describe("Tinymist main document", () => {
     );
   });
 
+  it("pins the open document's own path when Windows reports a verbatim root", async () => {
+    const { controller, transport } = harness();
+    transport.workspaceRoot = "\\\\?\\C:\\Users\\me\\Typst Clean";
+    controller.update(typstSnapshot());
+    await controller.whenIdle();
+
+    await vi.waitFor(() => {
+      expect(transport.methods("workspace/executeCommand")).toHaveLength(1);
+    });
+    expect(transport.methods("workspace/executeCommand")[0]?.params).toEqual({
+      command: "tinymist.pinMain",
+      arguments: ["C:\\Users\\me\\Typst Clean\\main.typ"],
+    });
+    expect(
+      transport
+        .methods("textDocument/didOpen")
+        .map(
+          (message) =>
+            (message.params as { textDocument: { uri: string } })
+              .textDocument.uri,
+        ),
+    ).toContain("file:///C:/Users/me/Typst%20Clean/main.typ");
+  });
+
   it("re-pins when the main document changes and not on ordinary edits", async () => {
     const { controller, transport } = harness();
     controller.update(typstSnapshot());
@@ -425,5 +449,33 @@ describe("Tinymist diagnostics across project revisions", () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(visibleDiagnostics(store)).toEqual([]);
+  });
+
+  it("shows the first diagnostics when the project changes while the server starts", async () => {
+    const { controller, transport, store } = harness();
+    const start = transport.start.bind(transport);
+    let release = () => {};
+    const held = new Promise<void>((done) => {
+      release = done;
+    });
+    transport.start = async (options, sink) => {
+      await held;
+      return start(options, sink);
+    };
+    controller.update(project(OLD_BIB));
+    await vi.waitFor(() =>
+      expect(store.getState().snapshot.languageService.readiness).toBe(
+        "starting",
+      ),
+    );
+
+    controller.update(project(OLD_BIB, "Notes, edited\n"));
+    release();
+    await controller.whenIdle();
+    publish(transport, [MISSING_LABEL]);
+
+    await vi.waitFor(() =>
+      expect(visibleDiagnostics(store)).toEqual([MISSING_LABEL]),
+    );
   });
 });

@@ -105,8 +105,14 @@ import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { EnginePickerModal } from "./EnginePickerModal";
+import { texDistributionNames } from "@/lib/tex-distributions";
 
 const copy = enShell.enginePicker;
+const missingTex = () =>
+  copy.systemTex.missing.replace(
+    "{{names}}",
+    new Intl.ListFormat("en", { type: "disjunction" }).format(texDistributionNames()),
+  );
 const declined = `${APP_ERROR_PREFIX}${JSON.stringify({
   code: "project.shell_escape_declined",
   params: {},
@@ -153,7 +159,7 @@ describe("EnginePickerModal states", () => {
   it("offers the download when no system TeX is present", async () => {
     mocks.engine.info = null;
     render(<EnginePickerModal />);
-    expect(screen.getByText(copy.systemTex.missing)).toBeInTheDocument();
+    expect(screen.getByText(missingTex())).toBeInTheDocument();
     expect(screen.getByText(copy.tinytex.title)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: copy.tinytex.download }));
     await waitFor(() => expect(mocks.install).toHaveBeenCalled());
@@ -409,7 +415,7 @@ describe("EnginePickerModal with TeX that can't run latexmk", () => {
 
     mocks.engine.info = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
     render(<EnginePickerModal />);
-    expect(screen.getByText(copy.systemTex.missing)).toBeInTheDocument();
+    expect(screen.getByText(missingTex())).toBeInTheDocument();
   });
 
   it("keeps the chosen compiler and lets the install run the one recompile", async () => {

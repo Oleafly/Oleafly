@@ -12,6 +12,7 @@
       "bridgeMissing": "Bridge nodig",
       "cliMissing": "CLI niet gevonden",
       "ready": "Klaar",
+      "signedOut": "Afgemeld",
       "unavailable": "Niet beschikbaar"
     },
     "requestFailed": "Het ACP-verzoek kon niet worden voltooid."

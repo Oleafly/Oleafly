@@ -549,7 +549,7 @@
     "switchedAfterInstall": "TinyTeX kuruldu. Bu proje artık {{engine}} ile derleniyor.",
     "systemTex": {
       "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir, bu yüzden onu yalnızca güvendiğiniz projelerde kullanın. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
-      "missing": "Bu makinede bir TeX dağıtımı (MacTeX, TeX Live, MiKTeX, TinyTeX) bulunamadı.",
+      "missing": "Bu makinede bir TeX dağıtımı ({{names}}) bulunamadı.",
       "switchPdflatex": "pdfLaTeX'e geç ve yeniden derle",
       "title": "Sistemimdeki LaTeX'i kullan (latexmk)",
       "titlePdflatex": "Sistemimdeki LaTeX üzerinde pdfLaTeX kullan (latexmk)",
@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Oleafly hangi belgeyi derlesin?",
       "askDescription": "Bu klasörde birden fazla belge var. Ana belgeyi seçin. Daha sonra değiştirebilirsiniz.",
+      "askDescriptionOne": "Bu klasörde bir belge var. Ana belge olarak açın veya yalnızca dosyalara göz atın. Daha sonra değiştirebilirsiniz.",
       "listLabel": "Bu klasördeki belgeler",
       "open": "Aç",
       "browse": "Yalnızca dosyalara göz at",

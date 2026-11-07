@@ -59,6 +59,14 @@ describe("absoluteProjectPath", () => {
   it("splits the relative path on either separator", () => {
     expect(absoluteProjectPath("/a", "//src\\\\ch/one.typ")).toBe("/a/src/ch/one.typ");
   });
+
+  it("drops the verbatim prefix Windows puts on the workspace root", () => {
+    expect(absoluteProjectPath("\\\\?\\C:\\Papers\\One", "main.typ")).toBe("C:\\Papers\\One\\main.typ");
+    expect(absoluteProjectPath("\\\\?\\D:\\", "main.typ")).toBe("D:\\main.typ");
+    expect(absoluteProjectPath("\\\\?\\UNC\\server\\share\\paper", "main.typ")).toBe(
+      "\\\\server\\share\\paper\\main.typ",
+    );
+  });
 });
 
 describe("settingsStoreLanguageServiceSettings", () => {

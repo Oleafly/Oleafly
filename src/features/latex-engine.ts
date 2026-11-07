@@ -5,6 +5,7 @@ import {
   captureCompileSourceSnapshot,
   compileSaveFailureReason,
   isCompileOutputStillWanted,
+  offerPackagesForTaggedCompile,
   reportCompileSaveFailure,
   saveAllForCompile,
   useCompileStore,
@@ -166,6 +167,7 @@ function applyTaggedMissingPdfOutcome(args: TaggedOutcomeArgs): boolean {
       checkpoint: null,
       message: invalidPdf,
     });
+    offerPackagesForTaggedCompile(args.projectId, res.log, () => void compileTaggedAndVerify());
   }
   return outcomeApplied;
 }

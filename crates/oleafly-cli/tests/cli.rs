@@ -130,6 +130,24 @@ fn manages_an_arbitrary_project_directory() {
 }
 
 #[test]
+fn check_names_the_project_folder_without_the_windows_verbatim_prefix() {
+    let directory = TempDir::new().unwrap();
+    std::fs::write(
+        directory.path().join("main.tex"),
+        "\\documentclass{article}\n\\begin{document}\nHi.\n\\end{document}\n",
+    )
+    .unwrap();
+    let path = directory.path().to_str().unwrap();
+    let value = json(&run(&["check", "-C", path, "--json"], None));
+    let project = value["check"]["project"].as_str().unwrap();
+    assert!(!project.starts_with(r"\\?\"), "{project}");
+    assert_eq!(
+        std::path::Path::new(project).canonicalize().unwrap(),
+        directory.path().canonicalize().unwrap()
+    );
+}
+
+#[test]
 fn init_never_overwrites_an_existing_project() {
     let directory = TempDir::new().unwrap();
     let first = run(&["init"], Some(directory.path()));

@@ -12,6 +12,7 @@
       "bridgeMissing": "Serve il bridge",
       "cliMissing": "CLI non trovata",
       "ready": "Pronto",
+      "signedOut": "Disconnesso",
       "unavailable": "Non disponibile"
     },
     "requestFailed": "Non è stato possibile completare la richiesta ACP."

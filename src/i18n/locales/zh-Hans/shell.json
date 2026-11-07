@@ -548,7 +548,7 @@
     "switchedAfterInstall": "TinyTeX 已安装。此项目现在使用 {{engine}} 编译。",
     "systemTex": {
       "found": "在这台电脑上找到了 TeX 发行版。系统 TeX 可以读取你账户可访问的本地文件，因此请仅在信任的项目中使用。TeX Live 仍会运行其自带允许列表中的辅助工具，如 EPS 转换。",
-      "missing": "这台电脑上未找到 TeX 发行版（MacTeX、TeX Live、MiKTeX、TinyTeX）。",
+      "missing": "这台电脑上未找到 TeX 发行版（{{names}}）。",
       "switchPdflatex": "切换到 pdfLaTeX 并重新编译。",
       "title": "使用我的系统 LaTeX（latexmk）",
       "titlePdflatex": "在我的系统 LaTeX 中使用 pdfLaTeX（latexmk）。",
@@ -695,6 +695,7 @@
     "picker": {
       "askTitle": "Oleafly 应该编译哪个文档？",
       "askDescription": "此文件夹中有多个文档。请选择主文档，之后可以更改。",
+      "askDescriptionOne": "此文件夹中有一个文档。可以将它作为主文档打开，或仅浏览文件，之后可以更改。",
       "listLabel": "此文件夹中的文档",
       "open": "打开",
       "browse": "仅浏览文件",

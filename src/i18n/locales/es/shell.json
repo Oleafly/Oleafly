@@ -550,7 +550,7 @@
     "switchedAfterInstall": "TinyTeX instalado. Este proyecto ahora compila con {{engine}}.",
     "systemTex": {
       "found": "Se encontró una distribución de TeX en este equipo. El TeX del sistema puede leer los archivos locales a los que llega tu cuenta, así que úsalo solo con proyectos de confianza. TeX Live sigue ejecutando los auxiliares de su propia lista, como la conversión de EPS.",
-      "missing": "No se encontró ninguna distribución de TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) en este equipo.",
+      "missing": "No se encontró ninguna distribución de TeX ({{names}}) en este equipo.",
       "switchPdflatex": "Cambiar a pdfLaTeX y recompilar",
       "title": "Usar el LaTeX de mi sistema (latexmk)",
       "titlePdflatex": "Usar pdfLaTeX con el LaTeX de mi sistema (latexmk)",
@@ -699,6 +699,7 @@
     "picker": {
       "askTitle": "¿Qué documento debe compilar Oleafly?",
       "askDescription": "Esta carpeta tiene más de un documento. Elige el principal. Puedes cambiarlo más tarde.",
+      "askDescriptionOne": "Esta carpeta tiene un documento. Ábrelo como principal o solo explora los archivos. Puedes cambiarlo más tarde.",
       "listLabel": "Documentos de esta carpeta",
       "open": "Abrir",
       "browse": "Solo explorar archivos",

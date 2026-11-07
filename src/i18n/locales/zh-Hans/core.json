@@ -12,6 +12,7 @@
       "bridgeMissing": "需要安装 Bridge",
       "cliMissing": "未找到 CLI",
       "ready": "就绪",
+      "signedOut": "已退出登录",
       "unavailable": "不可用"
     },
     "requestFailed": "无法完成 ACP 请求。"

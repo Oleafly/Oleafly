@@ -502,7 +502,7 @@ pub fn execute_until(
         .collect();
     let profile_info = oleafly_preflight::submission_profile(outcome.submission_profile);
     let payload = json!({
-        "project": input.root,
+        "project": oleafly_core::plain_path(&input.root),
         "main_document": input.main_document,
         "source_profile": match profile { SourceProfile::Latex => "latex", SourceProfile::Typst => "typst", SourceProfile::None => "none" },
         "engine": engine.as_str(),

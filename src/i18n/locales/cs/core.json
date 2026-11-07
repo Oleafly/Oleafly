@@ -12,6 +12,7 @@
       "bridgeMissing": "Chybí most",
       "cliMissing": "CLI nenalezeno",
       "ready": "Připraveno",
+      "signedOut": "Odhlášeno",
       "unavailable": "Není k dispozici"
     },
     "requestFailed": "Požadavek ACP se nepodařilo dokončit."

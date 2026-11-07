@@ -29,6 +29,7 @@ import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { AcpAgentsTab } from "./AcpAgentsTab";
 
 await initializeI18n({
@@ -663,6 +664,24 @@ describe("CLI agent program setup", () => {
     expect(card).toHaveTextContent("Ready");
     expect(within(card).getByTestId("acp-agent-program-pi")).toHaveTextContent(program.source.override);
     expect(useAcpSessionsStore.getState().catalog[0]).toEqual(saved);
+  });
+
+  it("marks a ready agent Signed out after its test finds no sign-in, and Ready again once it signs in", async () => {
+    const found = { ...piCli, path: "/usr/local/bin/pi" };
+    catalog = [pi({ cli: found })];
+    vi.mocked(acpCheckAgent)
+      .mockResolvedValueOnce({ ok: false, code: "needs_sign_in", detail: null, program: found.path, version: "0.81.2", agentName: "pi-acp", authMethods: [], signedIn: false })
+      .mockResolvedValueOnce({ ok: true, code: "ready", detail: null, program: found.path, version: "0.81.2", agentName: "pi-acp", signedIn: true });
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await expandAgent(ui, "pi");
+    expect(card).toHaveTextContent("Ready");
+
+    fireEvent.click(within(card).getByRole("button", { name: program.test }));
+    expect(await within(card).findByText(enCore.acp.readiness.signedOut)).toBeInTheDocument();
+
+    fireEvent.click(within(card).getByRole("button", { name: program.test }));
+    await waitFor(() => expect(within(card).queryByText(enCore.acp.readiness.signedOut)).toBeNull());
+    expect(card).toHaveTextContent("Ready");
   });
 
   it("installs the bridge a failed test asked for and then tests the same file again", async () => {

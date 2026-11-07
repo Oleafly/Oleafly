@@ -79,6 +79,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Errors and warnings from Tinymist now show up when the project's folder path
   has characters such as `&`, `+` or `@` in it. They reached Oleafly on every
   platform and were dropped.
+- Typst errors and warnings follow your typing on Windows. Oleafly named the
+  main document to Tinymist in the `\\?\` path form, which Tinymist took for a
+  different file from the one open in the editor. It checked the saved copy
+  instead, so a new error showed up only after the file was saved, and
+  sometimes not at all.
+- Typst errors that are already in a file show up when you open the project.
+  If the project changed while Tinymist was still starting, Oleafly forgot it
+  had asked for them and stayed waiting until your next edit.
 - When a language server stops, the app log keeps the end of what it printed,
   so a crash report shows the reason.
 - Fenced code in Markdown stays a code block in the visual editor. Typing in
@@ -204,6 +212,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The word count now includes a file named from the project root inside a
   subfolder, such as `\input{chapters/two}` in `chapters/one.tex`. Before, those
   words were left out.
+- Compile tagged and verify works on Windows. LuaLaTeX got the build folder in
+  Windows' `\\?\` form, wrote the `.aux` through it and couldn't read it back,
+  so every tagged compile stopped at `\end{document}` and said the PDF changed
+  while Oleafly was reading it.
+- A tagged compile that stops on a missing file, such as `tagpdf-base.sty` on
+  TinyTeX, now offers to install it as a normal compile does, and runs the
+  tagged compile again afterwards. This works in Tectonic projects too, since a
+  tagged compile always uses the system LuaLaTeX.
+- pdfLaTeX, XeLaTeX and LuaLaTeX compile with TinyTeX when your Windows user
+  folder has a name such as `Jörg` or `张三`. latexmk got a garbled build folder
+  and stopped with "Problem making path". It now gets the folder's short name,
+  and a drive without short names gets a clear message instead.
+- A CLI agent whose check finds it signed out now shows Signed out instead of
+  Ready, and a CLI agent that starts no longer lists "Install it using the
+  agent's instructions" as its next step.
+- When no TeX distribution is found, the engine picker names only the ones for
+  your system, instead of MacTeX on Windows or MiKTeX on macOS.
+- Opening a folder with a single document Oleafly isn't sure about now says the
+  folder has one document, not more than one.
+- `oleafly check --json` names the project folder without Windows' `\\?\`
+  prefix.
 
 ## [0.4.11] - 2026-11-04
 

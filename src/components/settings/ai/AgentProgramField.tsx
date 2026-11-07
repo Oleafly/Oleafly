@@ -225,6 +225,7 @@ export interface AgentProgramFieldProps {
   disabled?: boolean;
   retestToken?: number;
   onStatus: (status: AcpAgentStatus) => void;
+  onCheck?: (check: AcpAgentCheck) => void;
   onInstallBridge?: (opener: HTMLButtonElement) => void;
   onOpenTerminal?: () => void;
 }
@@ -236,6 +237,7 @@ export function AgentProgramField({
   disabled = false,
   retestToken = 0,
   onStatus,
+  onCheck,
   onInstallBridge,
   onOpenTerminal,
 }: Readonly<AgentProgramFieldProps>) {
@@ -290,6 +292,7 @@ export function AgentProgramField({
     setPhase({ kind: "checking", candidate });
     try {
       const check = await acpCheckAgent(id, candidate);
+      onCheck?.(check);
       if ((check.ok || check.code === "needs_sign_in") && candidate) {
         await save(candidate, check);
         return;

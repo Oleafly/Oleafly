@@ -27,6 +27,7 @@ import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotic
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { logError } from "@/lib/log";
 import { formatList } from "@/lib/intl";
+import { texDistributionNames } from "@/lib/tex-distributions";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
@@ -204,7 +205,9 @@ export function EnginePickerModal() {
     if (texBlocker && texBlocker.code !== "tex.latexmk_missing") {
       return describeTexBlocker(texBlocker);
     }
-    return t(($) => $.shell.enginePicker.systemTex.missing);
+    return t(($) => $.shell.enginePicker.systemTex.missing, {
+      names: formatList(texDistributionNames(), { type: "disjunction" }),
+    });
   };
 
   const heading = () => {

@@ -182,6 +182,7 @@ function AgentCard({
   const { t } = useTranslation(["common", "settings", "ai"]);
   const displayText = useDisplayText();
   const [open, setOpen] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const readiness = acpReadiness(agent);
@@ -222,6 +223,7 @@ function AgentCard({
       disabled={!!busy}
       retestToken={retestToken}
       onStatus={onStatus}
+      onCheck={(check) => setSignedOut(check.code === "needs_sign_in")}
       onInstallBridge={
         bridgeActionAvailable ? (opener) => onInstall(agent.definition, opener) : undefined
       }
@@ -254,7 +256,7 @@ function AgentCard({
           </span>
         </button>
         <div className="mt-0.5 shrink-0">
-          <ReadinessBadge readiness={readiness} />
+          <ReadinessBadge readiness={readiness} signedOut={signedOut} />
         </div>
         <ChevronRight
           aria-hidden

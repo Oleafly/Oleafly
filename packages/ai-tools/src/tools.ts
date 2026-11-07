@@ -588,7 +588,7 @@ export function createOleaflyTools(
             return { error: `Replacement output exceeds the ${MAX_MUTATION_BYTES / (1024 * 1024)} MiB write limit.` };
           }
           if (count > MAX_REPLACEMENTS) {
-            return { error: `Replacement count exceeds the ${MAX_REPLACEMENTS.toLocaleString()} operation limit.` };
+            return { error: `Replacement count exceeds the ${MAX_REPLACEMENTS.toLocaleString("en-US")} operation limit.` };
           }
           const idx = original.indexOf(find);
           const updated = replace_all
@@ -1562,7 +1562,7 @@ export function createFigureTools(
             return { error: "Only valid PNG, JPEG, and GIF images are supported." };
           }
           if (image.width * image.height > MAX_IMAGE_PIXELS) {
-            return { error: `Image dimensions exceed the ${MAX_IMAGE_PIXELS.toLocaleString()} pixel limit.` };
+            return { error: `Image dimensions exceed the ${MAX_IMAGE_PIXELS.toLocaleString("en-US")} pixel limit.` };
           }
           const b64 = bytesToBase64(bytes);
           if (onImage) onImage(`data:${image.mime};base64,${b64}`);

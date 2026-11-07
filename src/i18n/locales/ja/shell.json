@@ -548,7 +548,7 @@
     "switchedAfterInstall": "TinyTeX をインストールしました。このプロジェクトは {{engine}} でコンパイルするようになりました。",
     "systemTex": {
       "found": "このマシンに TeX ディストリビューションが見つかりました。システム TeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。TeX Live は EPS 変換など自身の許可リストにある補助ツールを引き続き実行します。",
-      "missing": "このマシンに TeX ディストリビューション（MacTeX、TeX Live、MiKTeX、TinyTeX）が見つかりませんでした。",
+      "missing": "このマシンに TeX ディストリビューション（{{names}}）が見つかりませんでした。",
       "switchPdflatex": "pdfLaTeX に切り替えて再コンパイル",
       "title": "システムの LaTeX を使う（latexmk）",
       "titlePdflatex": "システムの LaTeX で pdfLaTeX を使う（latexmk）",
@@ -695,6 +695,7 @@
     "picker": {
       "askTitle": "Oleafly でどの文書をコンパイルしますか？",
       "askDescription": "このフォルダには複数の文書があります。メインの文書を選んでください。あとで変更できます。",
+      "askDescriptionOne": "このフォルダには文書が1つあります。メインの文書として開くか、ファイルを見るだけにできます。あとで変更できます。",
       "listLabel": "このフォルダ内の文書",
       "open": "開く",
       "browse": "ファイルを見るだけ",

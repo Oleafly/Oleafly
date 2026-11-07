@@ -549,7 +549,7 @@
     "switchedAfterInstall": "TinyTeX asennettiin. Tämä projekti kääntyy nyt moottorilla {{engine}}.",
     "systemTex": {
       "found": "Tältä koneelta löytyi TeX-jakelu. Järjestelmän TeX voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä sitä vain projekteissa, joihin luotat. TeX Live ajaa silti oman sallittujen listansa apuohjelmat, kuten EPS-muunnoksen.",
-      "missing": "Tältä koneelta ei löytynyt TeX-jakelua (MacTeX, TeX Live, MiKTeX, TinyTeX).",
+      "missing": "Tältä koneelta ei löytynyt TeX-jakelua ({{names}}).",
       "switchPdflatex": "Vaihda pdfLaTeXiin ja käännä uudelleen",
       "title": "Käytä järjestelmän LaTeXia (latexmk)",
       "titlePdflatex": "Käytä pdfLaTeXia järjestelmän LaTeXissa (latexmk)",
@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Minkä dokumentin Oleafly kääntää?",
       "askDescription": "Tässä kansiossa on useampi dokumentti. Valitse päädokumentti. Voit vaihtaa sen myöhemmin.",
+      "askDescriptionOne": "Tässä kansiossa on yksi dokumentti. Avaa se päädokumenttina tai selaa vain tiedostoja. Voit vaihtaa sen myöhemmin.",
       "listLabel": "Tämän kansion dokumentit",
       "open": "Avaa",
       "browse": "Selaa vain tiedostoja",

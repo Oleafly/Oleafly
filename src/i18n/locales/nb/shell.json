@@ -549,7 +549,7 @@
     "switchedAfterInstall": "TinyTeX er installert. Dette prosjektet kompileres nå med {{engine}}.",
     "systemTex": {
       "found": "Fant en TeX-distribusjon på denne maskinen. System-TeX kan lese lokale filer kontoen din har tilgang til, så bruk det bare med prosjekter du stoler på. TeX Live kjører fortsatt hjelpeprogrammene på sin egen tillatelsesliste, som EPS-konvertering.",
-      "missing": "Fant ingen TeX-distribusjon (MacTeX, TeX Live, MiKTeX, TinyTeX) på denne maskinen.",
+      "missing": "Fant ingen TeX-distribusjon ({{names}}) på denne maskinen.",
       "switchPdflatex": "Bytt til pdfLaTeX og kompiler på nytt",
       "title": "Bruk LaTeX fra systemet mitt (latexmk)",
       "titlePdflatex": "Bruk pdfLaTeX i LaTeX fra systemet mitt (latexmk)",
@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Hvilket dokument skal Oleafly kompilere?",
       "askDescription": "Denne mappen har mer enn ett dokument. Velg hoveddokumentet. Du kan endre det senere.",
+      "askDescriptionOne": "Denne mappen har ett dokument. Åpne det som hoveddokument, eller bare bla i filene. Du kan endre det senere.",
       "listLabel": "Dokumenter i denne mappen",
       "open": "Åpne",
       "browse": "Bare bla i filene",

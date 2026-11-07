@@ -12,6 +12,7 @@
       "bridgeMissing": "ブリッジが必要",
       "cliMissing": "CLI が見つかりません",
       "ready": "準備完了",
+      "signedOut": "サインアウト済み",
       "unavailable": "利用できません"
     },
     "requestFailed": "ACP のリクエストを完了できませんでした。"

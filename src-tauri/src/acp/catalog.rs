@@ -1911,7 +1911,12 @@ pub async fn status_with(
         },
     };
     let vendor = vendor_cli(&definition);
-    let mut reason = facts.install_reason.clone();
+    // An agent that already starts has nothing to install, so why Oleafly can't
+    // install it would only read as a next step on a ready agent.
+    let mut reason = facts
+        .install_reason
+        .clone()
+        .filter(|_| facts.plan.launch.is_err());
     let chosen = program.is_some() && program_role(&definition) == ProgramRole::Launch;
     if definition.distribution.command.is_some() || chosen {
         if let Err(error) = &facts.plan.launch {

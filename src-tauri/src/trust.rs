@@ -2262,7 +2262,11 @@ mod tests {
         );
         let home = crate::paths::home_dir().unwrap();
         assert!(is_broad_folder(&home));
-        assert!(is_broad_folder(&home.join("Downloads")));
+        // Windows lets Downloads move off the home folder (D:\Downloads), so
+        // ask for the real one rather than assume home\Downloads.
+        if let Some(downloads) = dirs::download_dir() {
+            assert!(is_broad_folder(&downloads));
+        }
         assert!(is_broad_folder(
             &crate::paths::oleafly_root()
                 .unwrap()
