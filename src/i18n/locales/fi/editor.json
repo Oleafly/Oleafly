@@ -560,7 +560,9 @@
       "hideFor": "Piilota version {{version}} tiedostot",
       "show": "Näytä tiedostot",
       "hide": "Piilota tiedostot",
-      "folderSettings": "Oleaflyn asetukset tälle kansiolle"
+      "folderSettings": "Oleaflyn asetukset tälle kansiolle",
+      "savePdf": "Tallenna PDF",
+      "savePdfFor": "Tallenna {{name}}"
     },
     "entry": {
       "labelInput": "Tarkistuspisteen nimi",
@@ -596,7 +598,9 @@
       "exported": "Tarkistuspistearkisto vietiin.",
       "exportFailed": "Tarkistuspistearkistoa ei voitu viedä.",
       "imported": "Tarkistuspistearkisto tuotiin.",
-      "importFailed": "Tarkistuspistearkistoa ei voitu tuoda."
+      "importFailed": "Tarkistuspistearkistoa ei voitu tuoda.",
+      "pdfSaved": "{{name}} tallennettu.",
+      "pdfSaveFailed": "Tätä PDF-tiedostoa ei voitu tallentaa."
     },
     "panel": {
       "summary": "Yksi versio jokaisesta onnistuneesta käännöksestä, joka muutti lähdekoodia.",

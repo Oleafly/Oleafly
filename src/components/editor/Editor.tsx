@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
@@ -24,6 +25,7 @@ import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { useZenStore } from "@/store/zen";
+import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { imageMime, isImagePath } from "@/lib/image-mime";
 import { basename } from "@/lib/path-utils";
@@ -67,16 +69,34 @@ function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: st
   const { t } = useTranslation(["common", "editor"]);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+
+  useTauriEvent<{ projectId?: string; path?: string }>(
+    "pdf-sync:written",
+    (payload) => {
+      if (payload?.projectId === projectId && payload.path === path) {
+        setRevision((current) => current + 1);
+      }
+    },
+    isTauri(),
+  );
+
+  const shownFile = useRef<string | null>(null);
 
   useEffect(() => {
+    void revision;
     let cancelled = false;
-    setBytes(null);
-    setErr(null);
+    const file = `${projectId}/${path}`;
+    if (shownFile.current !== file) {
+      shownFile.current = file;
+      setBytes(null);
+      setErr(null);
+    }
     readFileBase64(projectId, path)
       .then((b64) => { if (!cancelled) setBytes(base64ToUint8Array(b64)); })
       .catch((e) => { if (!cancelled) setErr(String(e)); });
     return () => { cancelled = true; };
-  }, [projectId, path]);
+  }, [projectId, path, revision]);
 
   if (err) {
     return (

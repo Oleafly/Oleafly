@@ -550,7 +550,9 @@
       "hideFor": "隱藏 {{version}} 的檔案",
       "show": "顯示檔案",
       "hide": "隱藏檔案",
-      "folderSettings": "此資料夾的 Oleafly 設定"
+      "folderSettings": "此資料夾的 Oleafly 設定",
+      "savePdf": "儲存 PDF",
+      "savePdfFor": "儲存 {{name}}"
     },
     "entry": {
       "labelInput": "檢查點標籤",
@@ -586,7 +588,9 @@
       "exported": "檢查點封存檔已匯出。",
       "exportFailed": "無法匯出檢查點封存檔。",
       "imported": "檢查點封存檔已匯入。",
-      "importFailed": "無法匯入檢查點封存檔。"
+      "importFailed": "無法匯入檢查點封存檔。",
+      "pdfSaved": "已儲存 {{name}}。",
+      "pdfSaveFailed": "無法儲存此 PDF。"
     },
     "panel": {
       "summary": "每次成功編譯且原始碼有變動，就會產生一個版本。",

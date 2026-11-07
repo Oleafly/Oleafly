@@ -570,7 +570,9 @@
       "hideFor": "Ocultar los archivos de {{version}}",
       "show": "Mostrar los archivos",
       "hide": "Ocultar los archivos",
-      "folderSettings": "Ajustes de Oleafly para esta carpeta"
+      "folderSettings": "Ajustes de Oleafly para esta carpeta",
+      "savePdf": "Guardar PDF",
+      "savePdfFor": "Guardar {{name}}"
     },
     "entry": {
       "labelInput": "Etiqueta del punto de control",
@@ -606,7 +608,9 @@
       "exported": "Archivo de puntos de control exportado.",
       "exportFailed": "No se pudo exportar el archivo de puntos de control.",
       "imported": "Archivo de puntos de control importado.",
-      "importFailed": "No se pudo importar el archivo de puntos de control."
+      "importFailed": "No se pudo importar el archivo de puntos de control.",
+      "pdfSaved": "{{name}} guardado.",
+      "pdfSaveFailed": "No se pudo guardar este PDF."
     },
     "panel": {
       "summary": "Una versión por cada compilación correcta que cambió el código.",

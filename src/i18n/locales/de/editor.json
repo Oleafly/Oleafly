@@ -560,7 +560,9 @@
       "hideFor": "Dateien für {{version}} ausblenden",
       "show": "Dateien anzeigen",
       "hide": "Dateien ausblenden",
-      "folderSettings": "Oleafly-Einstellungen für diesen Ordner"
+      "folderSettings": "Oleafly-Einstellungen für diesen Ordner",
+      "savePdf": "PDF speichern",
+      "savePdfFor": "{{name}} speichern"
     },
     "entry": {
       "labelInput": "Bezeichnung des Checkpoints",
@@ -596,7 +598,9 @@
       "exported": "Checkpoint-Archiv exportiert.",
       "exportFailed": "Das Checkpoint-Archiv konnte nicht exportiert werden.",
       "imported": "Checkpoint-Archiv importiert.",
-      "importFailed": "Das Checkpoint-Archiv konnte nicht importiert werden."
+      "importFailed": "Das Checkpoint-Archiv konnte nicht importiert werden.",
+      "pdfSaved": "{{name}} gespeichert.",
+      "pdfSaveFailed": "Dieses PDF konnte nicht gespeichert werden."
     },
     "panel": {
       "summary": "Eine Version je erfolgreichem Kompilieren, das den Quelltext verändert hat.",

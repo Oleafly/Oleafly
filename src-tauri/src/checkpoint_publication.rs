@@ -182,6 +182,7 @@ pub(crate) struct PublicationRequest {
     pub engine_name: String,
     pub main_document: String,
     pub toolchain_identity: String,
+    pub compiled_pdf: Option<crate::pdf_sync::CompiledPdf>,
 }
 
 pub(crate) const PUBLICATION_EVENT: &str = "checkpoint:publication";
@@ -356,6 +357,8 @@ async fn run_publication_lane<R: tauri::Runtime>(
     loop {
         if checkpoints_are_enabled().await {
             publish_once(&app, &request, &cancel).await;
+        } else if wait_for_lane_start(&cancel, PUBLICATION_START_DELAY).await {
+            sync_compiled_pdf(&app, &request).await;
         }
         match finish_publication(&request.project_id, &cancel) {
             Some((next_request, next_cancel)) => {
@@ -364,6 +367,21 @@ async fn run_publication_lane<R: tauri::Runtime>(
             }
             None => return,
         }
+    }
+}
+
+async fn sync_compiled_pdf<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    request: &PublicationRequest,
+) {
+    if let Some(compiled) = request.compiled_pdf.clone() {
+        crate::pdf_sync::sync_in_background(
+            app,
+            &request.project_id,
+            &request.main_document,
+            compiled,
+        )
+        .await;
     }
 }
 
@@ -376,6 +394,7 @@ async fn publish_once<R: tauri::Runtime>(
     trace_lane(&request.project_id, "lane started");
     let mut started = std::time::Instant::now();
     let result = if wait_for_lane_start(cancel, PUBLICATION_START_DELAY).await {
+        sync_compiled_pdf(app, request).await;
         started = std::time::Instant::now();
         attempt_publication(request, Some(cancel)).await
     } else {
@@ -450,6 +469,7 @@ fn publication_request(
         engine_name: engine_name.to_owned(),
         main_document: main_document.to_owned(),
         toolchain_identity: engine_name.to_owned(),
+        compiled_pdf: None,
     }
 }
 
@@ -460,9 +480,11 @@ pub(crate) fn schedule_after_successful_compile<R: tauri::Runtime>(
     engine_name: &str,
     main_document: &str,
     toolchain_identity: &str,
+    compiled_pdf: Option<crate::pdf_sync::CompiledPdf>,
 ) {
     let request = PublicationRequest {
         toolchain_identity: toolchain_identity.to_owned(),
+        compiled_pdf,
         ..publication_request(project_id, project_root, engine_name, main_document)
     };
     if let Some((request, cancel)) = admit_publication(request) {
@@ -749,6 +771,14 @@ fn linked_capture_policy(
     root: &Path,
 ) -> crate::checkpoint_capture::LinkedCapturePolicy {
     let mut forced = std::collections::BTreeSet::from([request.main_document.clone()]);
+    if let Ok(meta) = crate::project::read_meta(&request.project_id) {
+        forced.extend(
+            meta.pdf_sync
+                .as_ref()
+                .and_then(oleafly_core::pdf_sync::PdfSync::active_target)
+                .map(str::to_owned),
+        );
+    }
     if request.engine_name == "latexmk" {
         if let Ok(Some(build)) = crate::paths::existing_build_dir(&request.project_id) {
             let recorder = build.join(format!("{}.fls", crate::paths::ENTRY_STEM));
@@ -1186,7 +1216,35 @@ mod tests {
             engine_name: "typst".into(),
             main_document: format!("main-{generation}.typ"),
             toolchain_identity: "typst 0.15.1".into(),
+            compiled_pdf: None,
         }
+    }
+
+    #[test]
+    fn an_opened_folder_always_captures_the_synced_pdf_however_large() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+
+        let request = publication_request(&record.id, &folder, "latexmk", "main.tex");
+        assert!(!super::linked_capture_policy(&request, &folder)
+            .forced
+            .contains("Thesis.pdf"));
+
+        crate::project::update_pdf_sync(&record.id, |sync| {
+            sync.enabled = true;
+            sync.stem = "Thesis".into();
+            sync.path = "Thesis.pdf".into();
+        })
+        .unwrap();
+        assert!(super::linked_capture_policy(&request, &folder)
+            .forced
+            .contains("Thesis.pdf"));
     }
 
     #[test]
@@ -1237,7 +1295,7 @@ mod tests {
         let (_running, holder) = admit_publication(lane_request(project_id, 1)).unwrap();
 
         schedule_after_successful_compile(
-            &handle, project_id, &project, "latex", "main.tex", "latex",
+            &handle, project_id, &project, "latex", "main.tex", "latex", None,
         );
 
         assert_eq!(

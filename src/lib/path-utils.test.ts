@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { basename, dirname, exportFileStem, isSeparator, relativeFilePath } from "./path-utils";
 
 describe("exportFileStem", () => {
+  it("avoids names Windows reserves", () => {
+    expect(exportFileStem("Aux", "document")).toBe("document_Aux");
+    expect(exportFileStem("con.draft", "document")).toBe("document_con.draft");
+    expect(exportFileStem("Auxiliary notes", "document")).toBe("Auxiliary_notes");
+  });
+
   it("keeps letters and numbers from every script", () => {
     expect(exportFileStem("论文 初稿", "document")).toBe("论文_初稿");
     expect(exportFileStem("Überblick 2026", "document")).toBe("Überblick_2026");

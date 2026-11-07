@@ -137,6 +137,12 @@
     "pdfSaved": "PDF 已儲存到專案。",
     "failed": "無法儲存到專案。"
   },
+  "sync": {
+    "toggle": "編譯時同步 PDF",
+    "failed": "無法更新 {{name}}。Oleafly 會在下次編譯時重試。",
+    "fastMode": "快速編譯不會更新此 PDF。",
+    "localOnly": "此副本僅保存在這部電腦上。"
+  },
   "download": {
     "pngFilter": "PNG 圖片",
     "imageSaved": "圖片已儲存 · {{name}}",

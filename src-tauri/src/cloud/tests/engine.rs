@@ -1809,6 +1809,45 @@ async fn an_unreadable_tombstone_names_no_device() {
 }
 
 #[tokio::test]
+async fn the_synced_pdf_travels_like_a_file_and_never_splits_into_conflict_copies() {
+    const SYNCED: &str = r#"{"name":"main","main_doc":"main.tex","engine":"latexmk","pdf_sync":{"enabled":true,"stem":"main","path":"main.pdf"}}"#;
+    let (store, cloud, mut desk, mut laptop) = paired().await;
+    desk.write("project.json", SYNCED);
+    desk.write("main.pdf", "desk build");
+    desk.sync(&store, cloud).await;
+    assert_eq!(
+        store.read(&file_remote(cloud, "main.pdf")).as_deref(),
+        Some(&b"desk build"[..])
+    );
+
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    assert_eq!(laptop.read("main.pdf").as_deref(), Some("desk build"));
+
+    desk.write("main.pdf", "desk rebuild");
+    desk.sync(&store, cloud).await;
+    laptop.write("main.pdf", "laptop rebuild");
+    laptop.project.remote_dirty = true;
+    let settled = laptop.sync(&store, cloud).await;
+    assert_eq!(settled.outcome.conflicts, 0);
+    assert!(laptop.project.conflict_copies.is_empty());
+    assert_eq!(
+        store.read(&file_remote(cloud, "main.pdf")).as_deref(),
+        Some(&b"laptop rebuild"[..])
+    );
+}
+
+#[tokio::test]
+async fn a_pdf_beside_its_source_stays_home_while_nothing_syncs_it() {
+    let (store, cloud, mut desk, _laptop) = paired().await;
+    desk.write("main.pdf", "desk build");
+    desk.sync(&store, cloud).await;
+    assert!(store.read(&file_remote(cloud, "main.pdf")).is_none());
+}
+
+#[tokio::test]
 async fn conflict_copies_add_up_until_dismissed_and_name_what_changed() {
     let (store, cloud, mut desk, mut laptop) = paired().await;
     desk.write("main.tex", "desk version");

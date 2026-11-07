@@ -40,6 +40,8 @@ vi.mock("@/lib/tauri", () => ({
   saveFileBase64: mocks.saveFileBase64,
   writeBytesFile: mocks.writeBytesFile,
   uint8ToBase64: () => "AQ==",
+  pdfSyncStatus: async () => ({ enabled: false, path: null, failed: null, localOnly: false }),
+  pdfSyncNoteSaved: async () => {},
   appendAppLog: vi.fn(async () => {}),
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
@@ -379,7 +381,7 @@ describe("detached preview actions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: enPreview.actions.savePdf }));
     const name = screen.getByLabelText(enPreview.save.nameLabel);
-    expect(name).toHaveValue("chapters/main.pdf");
+    expect(name).toHaveValue("document.pdf");
     fireEvent.change(name, { target: { value: "  " } });
     fireEvent.keyDown(name, { key: "Enter" });
 
@@ -483,6 +485,26 @@ describe("detached preview actions", () => {
     fireEvent.click(screen.getByRole("button", { name: enPreview.toolbar.askAi }));
 
     expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "ask-ai" });
+  });
+
+  it("opens the save menu and names the PDF after the project title", async () => {
+    mocks.native = true;
+    await showDocument();
+    await waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() =>
+      mocks.listeners.get("preview:workspace")?.({
+        payload: { ...workspace, projectName: "Thesis: One" },
+      }),
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: enPreview.actions.savePdf }));
+    expect(
+      await screen.findByRole("menuitemcheckbox", { name: enPreview.sync.toggle }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: enPreview.actions.savePdf }));
+
+    expect(await screen.findByLabelText(enPreview.save.nameLabel)).toHaveValue("Thesis_One.pdf");
   });
 
   it("asks the main window to compile", async () => {
@@ -623,7 +645,9 @@ describe("detached preview zoom and settings", () => {
   it("closes the save dialog without saving", async () => {
     await showDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: enPreview.actions.savePdf }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: enPreview.actions.savePdf }));
+    await user.click(await screen.findByRole("menuitem", { name: enPreview.actions.savePdf }));
     fireEvent.click(screen.getAllByRole("button", { name: enPreview.save.close }).at(-1) as HTMLElement);
 
     expect(screen.queryByLabelText(enPreview.save.nameLabel)).toBeNull();

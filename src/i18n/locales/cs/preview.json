@@ -140,6 +140,12 @@
     "pdfSaved": "PDF bylo uloženo do projektu.",
     "failed": "Do projektu se nepodařilo uložit."
   },
+  "sync": {
+    "toggle": "Synchronizovat PDF při kompilaci",
+    "failed": "{{name}} se nepodařilo aktualizovat. Oleafly to zkusí znovu při další kompilaci.",
+    "fastMode": "Rychlé kompilace toto PDF neaktualizují.",
+    "localOnly": "Tato kopie zůstane v tomto počítači."
+  },
   "download": {
     "pngFilter": "Obrázek PNG",
     "imageSaved": "Obrázek uložen · {{name}}",

@@ -560,7 +560,9 @@
       "hideFor": "{{version}} için dosyaları gizle",
       "show": "Dosyaları göster",
       "hide": "Dosyaları gizle",
-      "folderSettings": "Bu klasör için Oleafly ayarları"
+      "folderSettings": "Bu klasör için Oleafly ayarları",
+      "savePdf": "PDF'yi kaydet",
+      "savePdfFor": "{{name}} dosyasını kaydet"
     },
     "entry": {
       "labelInput": "Kontrol noktası etiketi",
@@ -596,7 +598,9 @@
       "exported": "Kontrol noktası arşivi dışa aktarıldı.",
       "exportFailed": "Kontrol noktası arşivi dışa aktarılamadı.",
       "imported": "Kontrol noktası arşivi içe aktarıldı.",
-      "importFailed": "Kontrol noktası arşivi içe aktarılamadı."
+      "importFailed": "Kontrol noktası arşivi içe aktarılamadı.",
+      "pdfSaved": "{{name}} kaydedildi.",
+      "pdfSaveFailed": "Bu PDF kaydedilemedi."
     },
     "panel": {
       "summary": "Kaynağı değiştiren her başarılı derleme için bir sürüm.",

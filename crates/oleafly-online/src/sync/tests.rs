@@ -2015,6 +2015,28 @@ fn linking_with_the_online_version_saves_the_replaced_files_where_they_can_be_ex
 }
 
 #[test]
+fn the_synced_pdf_stays_out_of_the_online_project() {
+    let project = tempfile::tempdir().unwrap();
+    let root = project.path();
+    std::fs::write(
+        root.join("project.json"),
+        r#"{"pdf_sync":{"enabled":true,"stem":"Thesis","path":"Thesis.pdf"}}"#,
+    )
+    .unwrap();
+    for scope in [Scope::Folder, Scope::Library] {
+        assert!(scope.skips(root, "Thesis.pdf"));
+        assert!(!scope.skips(root, "figure.pdf"));
+        assert!(!scope.skips(root, "main.tex"));
+    }
+    std::fs::write(
+        root.join("project.json"),
+        r#"{"pdf_sync":{"enabled":false,"stem":"Thesis","path":"Thesis.pdf"}}"#,
+    )
+    .unwrap();
+    assert!(!Scope::Library.skips(root, "Thesis.pdf"));
+}
+
+#[test]
 fn a_folder_keeps_secrets_and_build_output_here() {
     let here = |rel: &str| {
         kept_local(rel, |sibling| {

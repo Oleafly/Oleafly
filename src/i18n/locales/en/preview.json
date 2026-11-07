@@ -138,6 +138,12 @@
     "pdfSaved": "PDF saved to the project.",
     "failed": "Couldn't save into the project."
   },
+  "sync": {
+    "toggle": "Sync PDF on compiles",
+    "failed": "Couldn't update {{name}}. Oleafly will try again on the next compile.",
+    "fastMode": "Fast compiles don't update this PDF.",
+    "localOnly": "This copy stays on this computer."
+  },
   "download": {
     "pngFilter": "PNG image",
     "imageSaved": "Image saved · {{name}}",

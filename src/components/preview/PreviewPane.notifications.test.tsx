@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => {
     writeBytesFile: vi.fn(),
     saveFileBase64: vi.fn(),
     revealInDir: vi.fn(),
+    pdfSyncStatus: vi.fn(),
+    pdfSyncNoteSaved: vi.fn(),
   };
 });
 
@@ -90,6 +92,8 @@ vi.mock("@tauri-apps/api/core", async (importOriginal) => ({
 }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  pdfSyncNoteSaved: mocks.pdfSyncNoteSaved,
+  pdfSyncStatus: mocks.pdfSyncStatus,
   revealInDir: mocks.revealInDir,
   saveFileBase64: mocks.saveFileBase64,
   writeBytesFile: mocks.writeBytesFile,
@@ -170,6 +174,7 @@ function savedToast(call: number) {
 
 async function saveToProject(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByLabelText(enPreview.actions.savePdf));
+  await user.click(await screen.findByRole("menuitem", { name: enPreview.actions.savePdf }));
   await screen.findByLabelText(enPreview.save.nameLabel);
   await user.click(screen.getByRole("button", { name: "Save" }));
 }
@@ -177,6 +182,8 @@ async function saveToProject(user: ReturnType<typeof userEvent.setup>) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.tauri.enabled = true;
+  mocks.pdfSyncStatus.mockResolvedValue({ enabled: false, path: null, failed: null, localOnly: false });
+  mocks.pdfSyncNoteSaved.mockResolvedValue(undefined);
   sessionZoomByProject.clear();
   useTourStore.setState({ activeTourId: null });
   mocks.pickSavePath.mockResolvedValue(DESTINATION);

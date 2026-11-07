@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   checkpointReset: vi.fn(),
   checkpointRestore: vi.fn(),
   checkpointRevealStore: vi.fn(),
+  checkpointSaveFile: vi.fn(),
   checkpointSetLabel: vi.fn(),
   checkpointStats: vi.fn(),
   pickOpenPath: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock("@/lib/checkpoints", () => ({
   checkpointReset: mocks.checkpointReset,
   checkpointRestore: mocks.checkpointRestore,
   checkpointRevealStore: mocks.checkpointRevealStore,
+  checkpointSaveFile: mocks.checkpointSaveFile,
   checkpointSetLabel: mocks.checkpointSetLabel,
   checkpointStats: mocks.checkpointStats,
 }));
@@ -464,6 +466,62 @@ describe("CheckpointsPanel files", () => {
     for (const row of rows) {
       expect(within(row).queryByRole("button")).toBeNull();
     }
+  });
+
+  it("saves one PDF from a checkpoint without restoring anything", async () => {
+    mocks.checkpointFiles.mockResolvedValue([
+      { path: "main.tex", bytes: 10, content_hash: "a", stored: true },
+      { path: "Thesis.pdf", bytes: 2048, content_hash: "b", stored: true },
+      { path: "scan.pdf", bytes: 2048, content_hash: "c", stored: false },
+    ]);
+    mocks.checkpointSaveFile.mockResolvedValue(undefined);
+    mocks.pickSavePath.mockResolvedValue("/tmp/Thesis.pdf");
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
+    const rows = await screen.findAllByTestId("checkpoint-file");
+    expect(within(rows[0]).queryByRole("button")).toBeNull();
+    expect(within(rows[2]).queryByRole("button")).toBeNull();
+
+    await user.click(within(rows[1]).getByRole("button", { name: "Save Thesis.pdf" }));
+    await waitFor(() =>
+      expect(mocks.checkpointSaveFile).toHaveBeenCalledWith(
+        "project",
+        checkpoints[0].snapshot_root,
+        "Thesis.pdf",
+        "/tmp/Thesis.pdf",
+      ),
+    );
+    expect(mocks.pickSavePath.mock.calls[0][0].defaultPath).toBe("Thesis.pdf");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Thesis.pdf saved.");
+    expect(mocks.checkpointRestore).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the save dialog is dismissed and reports a failed save", async () => {
+    mocks.checkpointFiles.mockResolvedValue([
+      { path: "Thesis.pdf", bytes: 2048, content_hash: "b", stored: true },
+    ]);
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
+    const save = await screen.findByRole("button", { name: "Save Thesis.pdf" });
+    await user.click(save);
+    await waitFor(() => expect(mocks.pickSavePath).toHaveBeenCalled());
+    expect(mocks.checkpointSaveFile).not.toHaveBeenCalled();
+
+    const failure = new Error("disk full");
+    mocks.pickSavePath.mockResolvedValue("/tmp/Thesis.pdf");
+    mocks.checkpointSaveFile.mockRejectedValue(failure);
+    await user.click(await screen.findByRole("button", { name: "Save Thesis.pdf" }));
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "save checkpoint PDF",
+        failure,
+        "Couldn't save this PDF.",
+      ),
+    );
   });
 });
 

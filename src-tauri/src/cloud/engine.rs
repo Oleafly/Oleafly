@@ -354,6 +354,8 @@ pub(crate) struct OwnedPolicy {
     main_doc: String,
     include: Vec<String>,
     exclude: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    synced_pdf: Option<String>,
 }
 
 impl OwnedPolicy {
@@ -371,12 +373,17 @@ pub(crate) fn read_meta_value(root: &Path) -> Option<serde_json::Value> {
 }
 
 fn policy_for(meta: Option<&serde_json::Value>) -> Option<OwnedPolicy> {
-    let bytes = serde_json::to_vec(meta?).ok()?;
+    let meta = meta?;
+    let bytes = serde_json::to_vec(meta).ok()?;
     let manifest = oleafly_core::sniff_oleafly_manifest(&bytes)?;
+    let synced_pdf = oleafly_core::pdf_sync::target_in_manifest(meta);
+    let mut include = manifest.sync_include;
+    include.extend(synced_pdf.clone());
     Some(OwnedPolicy {
         main_doc: manifest.main_doc,
-        include: manifest.sync_include,
+        include,
         exclude: manifest.sync_exclude,
+        synced_pdf,
     })
 }
 
@@ -1079,6 +1086,14 @@ struct PlanInput<'a> {
     now: u64,
 }
 
+fn generated_file_conflict(action: &Action, entry_key: &str, policy: &OwnedPolicy) -> bool {
+    *action == Action::Conflict
+        && policy
+            .synced_pdf
+            .as_deref()
+            .is_some_and(|path| key(path) == entry_key)
+}
+
 fn decide_action(
     local: Option<&LocalFile>,
     remote: Option<&FileRecord>,
@@ -1158,6 +1173,9 @@ fn plan(input: &PlanInput<'_>) -> Vec<Planned> {
                 input.options.restore_deleted,
             )
         };
+        if generated_file_conflict(&action, entry_key, &input.capture.policy) {
+            action = Action::Upload;
+        }
         if input.options.dirty.contains(entry_key)
             && matches!(
                 action,
@@ -3479,6 +3497,11 @@ pub(crate) async fn sync_project<S: CloudStore>(
     };
     let mut project = previous.clone();
     project.cloud = Some(cloud);
+    let policy_changed = captured.policy_read
+        && project
+            .policy
+            .as_ref()
+            .is_some_and(|known| *known != captured.policy);
     if captured.policy_read {
         project.policy = Some(captured.policy.clone());
     }
@@ -3499,7 +3522,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
         merged_base: None,
         author: context.device_name.clone(),
     };
-    if round.quiet(&captured).await? {
+    if !policy_changed && round.quiet(&captured).await? {
         round.outcome.unchanged = true;
         refresh_local_skips(&mut round.project, &captured);
         round.outcome.skipped = round.project.skipped;

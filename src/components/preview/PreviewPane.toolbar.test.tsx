@@ -337,12 +337,12 @@ describe("PreviewPane toolbar", () => {
     expect(screen.queryByText(enPreview.outline.loading)).toBeNull();
   });
 
-  it("opens the save dialog with a name derived from the main document", async () => {
+  it("opens the save dialog with a name derived from the project title", async () => {
     await renderWithPdf();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(enPreview.actions.savePdf));
     const name = await screen.findByLabelText(enPreview.save.nameLabel);
-    expect(name).toHaveValue("main.pdf");
+    expect(name).toHaveValue("Toolbar_fixture.pdf");
     expect(screen.getByText(enPreview.save.description)).toBeInTheDocument();
     await user.click(
       screen.getAllByRole("button", { name: enPreview.save.close })[0],

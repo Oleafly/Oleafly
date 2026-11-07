@@ -21,6 +21,23 @@ const tauri = vi.hoisted(() => ({
   base64ToUint8Array: vi.fn(() => new Uint8Array([1, 2, 3])),
 }));
 
+const native = vi.hoisted(() => ({
+  enabled: false,
+  fileChange: null as ((payload: { projectId?: string; path?: string }) => void) | null,
+}));
+
+vi.mock("@tauri-apps/api/core", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tauri-apps/api/core")>()),
+  isTauri: () => native.enabled,
+}));
+
+vi.mock("@/hooks/use-tauri-event", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/use-tauri-event")>()),
+  useTauriEvent: (event: string, handler: NonNullable<typeof native.fileChange>, enabled = true) => {
+    if (event === "pdf-sync:written" && enabled) native.fileChange = handler;
+  },
+}));
+
 const wrapSelection = vi.hoisted(() => vi.fn());
 const controller = vi.hoisted(() => ({
   getEditorView: vi.fn(() => null),
@@ -347,6 +364,29 @@ describe("Editor shell", () => {
         screen.getByText(shell.pdfLoadFailed.replace("{{detail}}", "Error: gone")),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("rereads an open PDF when sync rewrites that file and no other", async () => {
+    native.enabled = true;
+    try {
+      openFile("Thesis.pdf");
+      render(<Editor />);
+      expect(await screen.findByTestId("pdf-viewer")).toBeInTheDocument();
+      await waitFor(() => expect(native.fileChange).not.toBeNull());
+      const projectId = useFilesStore.getState().projectId ?? "";
+      tauri.readFileBase64.mockClear();
+
+      act(() => native.fileChange?.({ projectId, path: "other.pdf" }));
+      act(() => native.fileChange?.({ projectId: "elsewhere", path: "Thesis.pdf" }));
+      expect(tauri.readFileBase64).not.toHaveBeenCalled();
+
+      act(() => native.fileChange?.({ projectId, path: "Thesis.pdf" }));
+      await waitFor(() => expect(tauri.readFileBase64).toHaveBeenCalledWith(projectId, "Thesis.pdf"));
+      expect(screen.getByTestId("pdf-viewer")).toBeInTheDocument();
+    } finally {
+      native.enabled = false;
+      native.fileChange = null;
+    }
   });
 
   it("renders an image tab as a data url and reports a read failure", async () => {

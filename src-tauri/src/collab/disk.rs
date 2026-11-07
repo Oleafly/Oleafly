@@ -162,6 +162,7 @@ pub fn scratch_name(name: &str) -> bool {
 pub struct ShareRules {
     rules: Vec<IgnoreRule>,
     root: Option<PathBuf>,
+    synced_pdf: Option<String>,
 }
 
 impl ShareRules {
@@ -171,6 +172,7 @@ impl ShareRules {
                 .map(|text| parse_gitignore(&text))
                 .unwrap_or_default(),
             root: Some(root.to_path_buf()),
+            synced_pdf: oleafly_core::pdf_sync::target_in_folder(root),
         }
     }
 
@@ -183,7 +185,10 @@ impl ShareRules {
     }
 
     fn skips(&self, name: &str, relative: &str, is_dir: bool) -> bool {
-        scratch_name(name) || self.generated(relative) || ignored(&self.rules, relative, is_dir)
+        scratch_name(name)
+            || self.synced_pdf.as_deref() == Some(relative)
+            || self.generated(relative)
+            || ignored(&self.rules, relative, is_dir)
     }
 
     pub fn leaves_out(&self, relative: &str, is_dir: bool) -> bool {
@@ -886,6 +891,28 @@ mod tests {
         assert!(rules.leaves_out("backup~/main.tex", false));
         assert!(!rules.leaves_out("chapters/intro.tex", false));
         assert!(!rules.leaves_out("builder/main.tex", false));
+        write(
+            root,
+            "project.json",
+            r#"{"pdf_sync":{"enabled":true,"stem":"Thesis","path":"Thesis.pdf"}}"#,
+        );
+        write(root, "Thesis.pdf", "this computer's copy");
+        write(root, "figure.pdf", "a shared figure");
+        let rules = ShareRules::load(root);
+        assert!(rules.leaves_out("Thesis.pdf", false));
+        assert!(!rules.leaves_out("figure.pdf", false));
+        assert!(!rules.leaves_out("chapters/Thesis.pdf", false));
+        let files: Vec<String> = scan_folder(root)
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|(path, _)| path)
+            .collect();
+        assert!(!files.contains(&"Thesis.pdf".to_string()));
+        assert!(files.contains(&"figure.pdf".to_string()));
+        std::fs::remove_file(root.join("project.json")).unwrap();
+        std::fs::remove_file(root.join("Thesis.pdf")).unwrap();
+        std::fs::remove_file(root.join("figure.pdf")).unwrap();
         write(root, "backup~/main.tex", "an editor's backup folder");
         let files: Vec<String> = scan_folder(root)
             .unwrap()

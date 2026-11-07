@@ -91,6 +91,8 @@ pub struct ProjectMeta {
     pub forked_from: Option<String>,
     #[serde(default)]
     pub checkpoints: oleafly_core::CheckpointPolicy,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pdf_sync: Option<oleafly_core::pdf_sync::PdfSync>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -722,6 +724,7 @@ fn missing_project_meta(project_id: &str, location: &ProjectLocation) -> Project
         typst: None,
         allow_shell_escape: false,
         checkpoints: oleafly_core::CheckpointPolicy::default(),
+        pdf_sync: None,
         extra: HashMap::new(),
     }
 }
@@ -2299,6 +2302,31 @@ async fn write_project_file(
     })
     .await
     .map_err(|e| format!("file write task failed: {e}"))?
+}
+
+pub(crate) fn write_synced_pdf(project_id: &str, path: &str, bytes: &[u8]) -> Result<bool, String> {
+    let relative = mutation_relative_path(project_id, path, false)?;
+    let admission = admit_mutation(project_id, vec![MutationScope::file(relative)], None)?;
+    let (written, _) = admission.run_with_change_status(|| {
+        let target = resolve(project_id, path)?;
+        let written = write_project_bytes(project_id, &target, path, bytes)?;
+        Ok((written, written))
+    })?;
+    Ok(written)
+}
+
+pub(crate) fn update_pdf_sync(
+    project_id: &str,
+    change: impl FnOnce(&mut oleafly_core::pdf_sync::PdfSync),
+) -> Result<ProjectMeta, String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        let mut sync = meta.pdf_sync.take().unwrap_or_default();
+        change(&mut sync);
+        meta.pdf_sync = Some(sync);
+        write_meta(project_id, &meta)?;
+        Ok(meta)
+    })
 }
 
 pub(crate) fn write_project_bytes(
@@ -4428,6 +4456,7 @@ fn create_markdown_project_in(
                 typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )
@@ -5080,6 +5109,7 @@ pub(crate) fn create_blank_project(name: String) -> Result<String, String> {
                 typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )
@@ -5297,6 +5327,7 @@ fn create_project_from_ad_hoc_blocking(
                 tex_flavor: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )
@@ -5394,6 +5425,7 @@ fn create_project_from_pdf_conversion_blocking(
                 typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )?;
@@ -5443,6 +5475,7 @@ fn create_typst_project_in(
                 typst: crate::typst_toolchain::creation_pin("typst"),
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )
@@ -5945,6 +5978,7 @@ fn create_image_project_in(
                 typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )
@@ -6047,6 +6081,7 @@ pub(crate) fn create_diagram_project_from(
                 typst: document.typst,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )
@@ -6087,6 +6122,7 @@ pub(crate) fn get_or_create_scratch_project_blocking() -> Result<String, String>
                     typst: None,
                     allow_shell_escape: false,
                     checkpoints: oleafly_core::CheckpointPolicy::default(),
+                    pdf_sync: None,
                     extra: HashMap::new(),
                 },
             )?;
@@ -6954,6 +6990,7 @@ async fn create_project_from_pandoc_source(
                 tex_flavor: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )?;
@@ -7387,6 +7424,7 @@ pub fn create_project_from_template(
                 tex_flavor,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
                 extra: HashMap::new(),
             },
         )
@@ -14215,6 +14253,7 @@ mod tests {
             typst: None,
             allow_shell_escape: false,
             checkpoints: oleafly_core::CheckpointPolicy::default(),
+            pdf_sync: None,
             extra: HashMap::new(),
         };
         let json = serde_json::to_string(&meta).unwrap();
@@ -16727,6 +16766,7 @@ mod tests {
             typst: None,
             allow_shell_escape: false,
             checkpoints: oleafly_core::CheckpointPolicy::default(),
+            pdf_sync: None,
             extra: HashMap::new(),
         };
 
@@ -16777,6 +16817,7 @@ mod tests {
                         typst: None,
                         allow_shell_escape: false,
                         checkpoints: oleafly_core::CheckpointPolicy::default(),
+                        pdf_sync: None,
                         extra: HashMap::new(),
                     },
                 )

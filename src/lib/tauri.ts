@@ -50,6 +50,7 @@ import type {
   BackendProtocolInfo,
   ChatSearchHit,
   CheckpointFileSummary,
+  PdfSyncStatus,
   CheckpointIntegrity,
   CheckpointStoreInspection,
   CheckpointStoreStats,
@@ -255,6 +256,18 @@ export const checkpointSetLabel = (projectId: string, snapshotRoot: string, labe
 
 export const checkpointFiles = (projectId: string, snapshotRoot: string) =>
   invoke<CheckpointFileSummary[]>("checkpoint_files", { projectId, snapshotRoot });
+
+export const checkpointSaveFile = (projectId: string, snapshotRoot: string, path: string, dest: string) =>
+  invoke<void>("checkpoint_save_file", { projectId, snapshotRoot, path, dest });
+
+export const pdfSyncStatus = (projectId: string) =>
+  invoke<PdfSyncStatus>("pdf_sync_status", { projectId });
+
+export const pdfSyncSet = (projectId: string, enabled: boolean, outputId: string | null) =>
+  invoke<PdfSyncStatus>("pdf_sync_set", { projectId, enabled, outputId });
+
+export const pdfSyncNoteSaved = (projectId: string, path: string) =>
+  invoke<void>("pdf_sync_note_saved", { projectId, path });
 
 export const checkpointInspect = (projectId: string) =>
   invoke<CheckpointStoreInspection>("checkpoint_inspect", { projectId });

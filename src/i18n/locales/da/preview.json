@@ -138,6 +138,12 @@
     "pdfSaved": "PDF'en er gemt i projektet.",
     "failed": "Kunne ikke gemme i projektet."
   },
+  "sync": {
+    "toggle": "Synkroniser PDF ved kompilering",
+    "failed": "{{name}} kunne ikke opdateres. Oleafly prøver igen ved næste kompilering.",
+    "fastMode": "Hurtige kompileringer opdaterer ikke denne PDF.",
+    "localOnly": "Denne kopi bliver på denne computer."
+  },
   "download": {
     "pngFilter": "PNG-billede",
     "imageSaved": "Billedet er gemt · {{name}}",

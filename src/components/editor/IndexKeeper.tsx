@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { resetProjectSourcesCache } from "@/lib/project-sources";
 import { projectCompileFolder } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
-import { useActiveContent, useFilesStore } from "@/store/files";
+import { filesystemTree, useActiveContent, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
 async function compileFolderOf(projectId: string, mainDocument: string): Promise<string | null> {
@@ -16,7 +16,7 @@ async function compileFolderOf(projectId: string, mainDocument: string): Promise
 export function IndexKeeper() {
   const projectId = useFilesStore((s) => s.projectId);
   const activePath = useFilesStore((s) => s.activePath);
-  const tree = useFilesStore((s) => s.tree);
+  const tree = useFilesStore(filesystemTree);
   const mainDocument = useFilesStore(() => resolveEffectiveMainDoc().mainDoc);
   const projectLoading = useFilesStore((s) => s.loading);
   const content = useActiveContent();

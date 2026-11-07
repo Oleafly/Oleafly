@@ -570,7 +570,9 @@
       "hideFor": "Ocultar os arquivos de {{version}}",
       "show": "Mostrar arquivos",
       "hide": "Ocultar arquivos",
-      "folderSettings": "Configurações do Oleafly para esta pasta"
+      "folderSettings": "Configurações do Oleafly para esta pasta",
+      "savePdf": "Salvar PDF",
+      "savePdfFor": "Salvar {{name}}"
     },
     "entry": {
       "labelInput": "Rótulo do ponto de verificação",
@@ -606,7 +608,9 @@
       "exported": "Arquivo de pontos de verificação exportado.",
       "exportFailed": "Não foi possível exportar o arquivo de pontos de verificação.",
       "imported": "Arquivo de pontos de verificação importado.",
-      "importFailed": "Não foi possível importar o arquivo de pontos de verificação."
+      "importFailed": "Não foi possível importar o arquivo de pontos de verificação.",
+      "pdfSaved": "{{name}} salvo.",
+      "pdfSaveFailed": "Não foi possível salvar este PDF."
     },
     "panel": {
       "summary": "Uma versão por compilação bem-sucedida que mudou o código-fonte.",

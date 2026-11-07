@@ -1502,6 +1502,40 @@ impl Store {
         Ok(Some(files))
     }
 
+    pub fn write_file_to(
+        &self,
+        root: &SnapshotRoot,
+        relative_path: &str,
+        output: &mut impl Write,
+    ) -> Result<Option<u64>> {
+        let _store_locks = self.acquire_shared_locks()?;
+        let connection = self.connection()?;
+        if query_checkpoint(&connection, &root.as_hex())?.is_none() {
+            return Ok(None);
+        }
+        let manifest = load_visible_manifest(&connection, root)?;
+        verify_manifest_root(root, &manifest)?;
+        let Some(manifest_file) = manifest
+            .files
+            .iter()
+            .find(|file| file.stored && file.path == relative_path)
+        else {
+            return Ok(None);
+        };
+        let mut file_hasher = blake3::Hasher::new();
+        let mut file_bytes = 0_u64;
+        for manifest_chunk in &manifest_file.chunks {
+            let raw = self.read_verified_chunk(&connection, manifest_chunk)?;
+            output.write_all(&raw)?;
+            file_hasher.update(&raw);
+            file_bytes = file_bytes
+                .checked_add(raw.len() as u64)
+                .ok_or_else(|| HistoryError::Corrupt("file length overflow".into()))?;
+        }
+        verify_file_digest(manifest_file, file_bytes, &file_hasher)?;
+        Ok(Some(file_bytes))
+    }
+
     pub fn inspect(&self) -> Result<StoreInspection> {
         let _store_locks = self.acquire_shared_locks()?;
         let catalog_path = self.root.join("catalog.sqlite3");

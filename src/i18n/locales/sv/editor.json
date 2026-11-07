@@ -560,7 +560,9 @@
       "hideFor": "Dölj filer för {{version}}",
       "show": "Visa filer",
       "hide": "Dölj filer",
-      "folderSettings": "Oleafly-inställningar för den här mappen"
+      "folderSettings": "Oleafly-inställningar för den här mappen",
+      "savePdf": "Spara PDF",
+      "savePdfFor": "Spara {{name}}"
     },
     "entry": {
       "labelInput": "Etikett för kontrollpunkten",
@@ -596,7 +598,9 @@
       "exported": "Arkivet med kontrollpunkter är exporterat.",
       "exportFailed": "Det gick inte att exportera arkivet med kontrollpunkter.",
       "imported": "Arkivet med kontrollpunkter är importerat.",
-      "importFailed": "Det gick inte att importera arkivet med kontrollpunkter."
+      "importFailed": "Det gick inte att importera arkivet med kontrollpunkter.",
+      "pdfSaved": "{{name}} har sparats.",
+      "pdfSaveFailed": "Det gick inte att spara den här PDF-filen."
     },
     "panel": {
       "summary": "En version per lyckad kompilering som ändrade källkoden.",

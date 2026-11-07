@@ -550,7 +550,9 @@
       "hideFor": "隐藏 {{version}} 的文件",
       "show": "显示文件",
       "hide": "隐藏文件",
-      "folderSettings": "此文件夹的 Oleafly 设置"
+      "folderSettings": "此文件夹的 Oleafly 设置",
+      "savePdf": "保存 PDF",
+      "savePdfFor": "保存 {{name}}"
     },
     "entry": {
       "labelInput": "检查点标签",
@@ -586,7 +588,9 @@
       "exported": "检查点归档已导出",
       "exportFailed": "无法导出检查点归档。",
       "imported": "检查点归档已导入",
-      "importFailed": "无法导入检查点归档。"
+      "importFailed": "无法导入检查点归档。",
+      "pdfSaved": "已保存 {{name}}。",
+      "pdfSaveFailed": "无法保存此 PDF。"
     },
     "panel": {
       "summary": "每次源码有变化的成功编译都会生成一个版本。",

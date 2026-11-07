@@ -739,7 +739,13 @@ impl Scope {
     fn skips(self, project: &Path, rel: &str) -> bool {
         excluded(rel)
             || (self == Scope::Folder && kept_local(rel, |sibling| project.join(sibling).is_file()))
+            || is_synced_pdf(project, rel)
     }
+}
+
+fn is_synced_pdf(project: &Path, rel: &str) -> bool {
+    oleafly_core::pdf_sync::is_target_name(rel)
+        && oleafly_core::pdf_sync::target_in_folder(project).is_some_and(|target| target == rel)
 }
 
 fn private_name(name: &str) -> bool {

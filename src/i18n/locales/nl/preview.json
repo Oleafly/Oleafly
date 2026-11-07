@@ -138,6 +138,12 @@
     "pdfSaved": "PDF opgeslagen in het project.",
     "failed": "Opslaan in het project is niet gelukt."
   },
+  "sync": {
+    "toggle": "PDF synchroniseren bij compileren",
+    "failed": "{{name}} kon niet worden bijgewerkt. Oleafly probeert het opnieuw bij de volgende compilatie.",
+    "fastMode": "Snelle compilaties werken deze PDF niet bij.",
+    "localOnly": "Deze kopie blijft op deze computer."
+  },
   "download": {
     "pngFilter": "PNG-afbeelding",
     "imageSaved": "Afbeelding opgeslagen · {{name}}",

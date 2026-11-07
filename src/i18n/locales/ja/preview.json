@@ -137,6 +137,12 @@
     "pdfSaved": "PDF をプロジェクトに保存しました。",
     "failed": "プロジェクトに保存できませんでした。"
   },
+  "sync": {
+    "toggle": "コンパイル時に PDF を同期",
+    "failed": "{{name}} を更新できませんでした。Oleafly が次回のコンパイルで再試行します。",
+    "fastMode": "高速コンパイルではこの PDF は更新されません。",
+    "localOnly": "このコピーはこのコンピューターにのみ保存されます。"
+  },
   "download": {
     "pngFilter": "PNG 画像",
     "imageSaved": "画像を保存しました · {{name}}",

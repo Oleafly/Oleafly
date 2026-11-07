@@ -25,6 +25,8 @@ vi.mock("@/lib/tauri", () => ({
   appendAppLog: vi.fn(async () => {}),
   writeBytesFile: mocks.writeBytesFile,
   uint8ToBase64: () => "AQ==",
+  pdfSyncStatus: async () => ({ enabled: false, path: null, failed: null, localOnly: false }),
+  pdfSyncNoteSaved: async () => {},
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));

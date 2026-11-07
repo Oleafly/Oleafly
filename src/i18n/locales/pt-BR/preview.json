@@ -139,6 +139,12 @@
     "pdfSaved": "PDF salvo no projeto.",
     "failed": "Não foi possível salvar no projeto."
   },
+  "sync": {
+    "toggle": "Sincronizar PDF ao compilar",
+    "failed": "Não foi possível atualizar {{name}}. O Oleafly tentará novamente na próxima compilação.",
+    "fastMode": "Compilações rápidas não atualizam este PDF.",
+    "localOnly": "Esta cópia fica neste computador."
+  },
   "download": {
     "pngFilter": "Imagem PNG",
     "imageSaved": "Imagem salva · {{name}}",

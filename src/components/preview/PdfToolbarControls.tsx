@@ -15,6 +15,7 @@ import {
   PanelTopClose,
   Presentation,
   RectangleVertical,
+  RefreshCw,
   RotateCw,
   Save,
   Search,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
@@ -37,6 +39,7 @@ import type { PdfLayout, PdfRotation, PdfViewerHandle } from "@/components/pdf/P
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
+import type { PdfSyncToggle } from "./use-pdf-sync";
 import { Spinner } from "@/components/ui/spinner";
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
@@ -66,6 +69,7 @@ export interface PdfToolbarControlsProps {
   exportDisplayedPreview: () => void;
   downloadActionLabel: () => string;
   onSave: () => void;
+  pdfSync?: PdfSyncToggle | null;
   inverted: boolean;
   setInverted: (value: boolean) => void;
   screenReaderMode: boolean;
@@ -110,7 +114,7 @@ const PAGE_LAYOUTS: readonly {
 ];
 
 export function PdfToolbarControls({
-  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting, exportDisplayedPreview, downloadActionLabel, onSave, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent
+  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent
 }: Readonly<PdfToolbarControlsProps>) {
   const { t } = useTranslation(["preview", "ai"]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
@@ -162,6 +166,73 @@ export function PdfToolbarControls({
       </DropdownMenuItem>
     ),
   });
+
+  const saveLabel = isImage
+    ? t(($) => $.preview.actions.saveImage)
+    : t(($) => $.preview.actions.savePdf);
+
+  const saveMenuItems = (sync: PdfSyncToggle) => (
+    <>
+      <DropdownMenuItem disabled={!hasDocument} onSelect={onSave}>
+        <Save className="size-4" />
+        {saveLabel}
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        role="menuitemcheckbox"
+        aria-checked={sync.enabled}
+        disabled={sync.busy}
+        title={sync.path ?? undefined}
+        className="justify-between gap-4"
+        onSelect={(event) => {
+          event.preventDefault();
+          sync.setEnabled(!sync.enabled);
+        }}
+      >
+        <span className="flex items-center gap-2 whitespace-nowrap">
+          <RefreshCw className="size-4" />
+          {t(($) => $.preview.sync.toggle)}
+        </span>
+        <Switch
+          checked={sync.enabled}
+          tabIndex={-1}
+          aria-hidden
+          className="pointer-events-none"
+        />
+      </DropdownMenuItem>
+      {sync.note ? (
+        <p className="max-w-64 px-2 pb-1.5 text-xs text-muted-foreground">{sync.note}</p>
+      ) : null}
+    </>
+  );
+
+  const saveControl = (): ToolbarControl => {
+    if (!pdfSync || isImage) {
+      return iconControl("save", Save, saveLabel, onSave, { disabled: !hasDocument });
+    }
+    return {
+      id: "save",
+      width: ICON_BUTTON_WIDTH,
+      render: () => (
+        <DropdownMenu
+          onOpenChange={(open) => {
+            if (open) pdfSync.refresh();
+          }}
+        >
+          <Tooltip label={saveLabel}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-7" aria-label={saveLabel}>
+                <Save className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+          </Tooltip>
+          <DropdownMenuContent align="end" className="min-w-56">
+            {saveMenuItems(pdfSync)}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      renderMenu: () => <Fragment key="save">{saveMenuItems(pdfSync)}</Fragment>,
+    };
+  };
 
   const pdfDivider = (id: string): ToolbarControl => ({
     id,
@@ -492,15 +563,7 @@ export function PdfToolbarControls({
           </DropdownMenuItem>
         ),
       },
-      iconControl(
-        "save",
-        Save,
-        isImage
-          ? t(($) => $.preview.actions.saveImage)
-          : t(($) => $.preview.actions.savePdf),
-        onSave,
-        { disabled: !hasDocument },
-      ),
+      saveControl(),
     );
     inkGroup.push(
       iconControl(
@@ -669,7 +732,11 @@ export function PdfToolbarControls({
             <Fragment key={control.id}>{control.render()}</Fragment>
           ))}
           {pdfOverflowControls.length > 0 && (
-            <DropdownMenu>
+            <DropdownMenu
+              onOpenChange={(open) => {
+                if (open) pdfSync?.refresh();
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"

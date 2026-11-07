@@ -138,6 +138,12 @@
     "pdfSaved": "PDF tallennettiin projektiin.",
     "failed": "Tallennus projektiin ei onnistunut."
   },
+  "sync": {
+    "toggle": "Synkronoi PDF käännettäessä",
+    "failed": "Tiedostoa {{name}} ei voitu päivittää. Oleafly yrittää uudelleen seuraavassa käännöksessä.",
+    "fastMode": "Nopeat käännökset eivät päivitä tätä PDF-tiedostoa.",
+    "localOnly": "Tämä kopio pysyy tällä tietokoneella."
+  },
   "download": {
     "pngFilter": "PNG-kuva",
     "imageSaved": "Kuva tallennettu · {{name}}",

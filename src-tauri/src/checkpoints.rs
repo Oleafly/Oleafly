@@ -321,6 +321,35 @@ fn checkpoint_files_sync(
         .collect())
 }
 
+fn checkpoint_save_file_sync(
+    project_id: &str,
+    snapshot_root: &str,
+    path: &str,
+    dest: &str,
+) -> Result<(), String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    require_active_project(project_id)?;
+    let root = parse_snapshot_root(snapshot_root)?;
+    let store = require_existing_store(project_id)?;
+    crate::project::require_export_destination_outside_project(
+        &crate::paths::project_dir(project_id)?,
+        dest,
+    )?;
+    let transaction = crate::sandbox::AtomicFile::for_export(dest)?;
+    let mut staged = fs::File::create(transaction.staging_path()).map_err(|error| {
+        String::from(crate::app_error::AppError::new("export.stage_failed").detail(error))
+    })?;
+    store
+        .write_file_to(&root, path, &mut staged)
+        .map_err(|_| "Could not read that file from the selected Checkpoint.".to_string())?
+        .ok_or_else(|| "The selected Checkpoint does not hold that file.".to_string())?;
+    staged.sync_all().map_err(|error| {
+        String::from(crate::app_error::AppError::new("export.stage_failed").detail(error))
+    })?;
+    drop(staged);
+    transaction.commit()
+}
+
 fn checkpoint_inspect_sync(project_id: &str) -> Result<CheckpointStoreInspection, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     require_active_project(project_id)?;
@@ -341,6 +370,21 @@ pub async fn checkpoint_files(
     tauri::async_runtime::spawn_blocking(move || checkpoint_files_sync(&project_id, &snapshot_root))
         .await
         .map_err(|error| format!("Checkpoint files task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn checkpoint_save_file(
+    project_id: String,
+    snapshot_root: String,
+    path: String,
+    dest: String,
+) -> Result<(), String> {
+    crate::path_grants::require_save(&dest)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        checkpoint_save_file_sync(&project_id, &snapshot_root, &path, &dest)
+    })
+    .await
+    .map_err(|error| format!("Checkpoint file task failed: {error}"))?
 }
 
 #[tauri::command]
