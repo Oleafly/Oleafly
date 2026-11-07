@@ -1436,6 +1436,9 @@
     "distributions": {
       "automatic": "Автоматично",
       "automaticTooltip": "Повернутися до вибору Oleafly: спершу повний системний TeX, потім TinyTeX.",
+      "chooseFolder": "Вибрати теку TeX",
+      "chooseFolderHint": "Якщо TeX встановлено там, де Oleafly не шукає, виберіть його теку тут. Підійде тека, у якій є latexmk, або тека року TeX Live над нею, наприклад texlive/2026.",
+      "chooseFolderTitle": "Виберіть теку з установленим TeX",
       "empty": "На цій машині не виявлено жодного дистрибутива TeX.",
       "heading": "Керування дистрибутивами TeX",
       "inUse": "Використовується",

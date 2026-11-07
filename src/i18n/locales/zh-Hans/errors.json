@@ -105,6 +105,7 @@
     "perl_missing": "Linux 上的 TinyTeX 使用系统的 Perl 运行 latexmk 及其包管理器，而系统中没有安装 Perl。请用 sudo apt install perl、sudo dnf install perl 或 sudo pacman -S perl 安装，然后重试。已下载的部分会保留。",
     "perl_module_missing": "Linux 上的 TinyTeX 需要完整的 Perl，而其中缺少 {{module}} 模块。请用 sudo apt install perl、sudo dnf install perl 或 sudo pacman -S perl 安装，然后重试。已下载的部分会保留。",
     "distribution_unknown": "Oleafly 在 {{path}} 中找不到 TeX 发行版。请打开设置 > 引擎 > LaTeX，并从列表中选择一个。",
+    "custom_folder_without_latexmk": "{{path}} 中没有 latexmk。请选择包含 latexmk 的文件夹，或它上方的 TeX Live 年份文件夹，例如 texlive/2026。",
     "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。",
     "latexmk_build_path": "Oleafly 在这台电脑上的构建文件夹路径包含 latexmk 不接受的字符，因此 latexmk 无法使用它。请将此项目切换到 Tectonic 进行编译。",
     "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。",

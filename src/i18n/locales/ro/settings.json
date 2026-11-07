@@ -1428,6 +1428,9 @@
     "distributions": {
       "automatic": "Automat",
       "automaticTooltip": "Lasă din nou Oleafly să aleagă: întâi un TeX complet din sistem, apoi TinyTeX.",
+      "chooseFolder": "Alege un folder TeX",
+      "chooseFolderHint": "Dacă TeX e instalat într-un loc unde Oleafly nu caută, alege aici folderul lui. Merge folderul care conține latexmk, dar și folderul anului TeX Live de deasupra lui, de exemplu texlive/2026.",
+      "chooseFolderTitle": "Alege folderul instalării tale TeX",
       "empty": "Nu s-a detectat nicio distribuție TeX pe această mașină.",
       "heading": "Gestionează distribuțiile TeX",
       "inUse": "În uz",

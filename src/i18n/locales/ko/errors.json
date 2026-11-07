@@ -105,6 +105,7 @@
     "perl_missing": "Linux의 TinyTeX는 시스템의 Perl로 latexmk와 패키지 관리자를 실행하는데, Perl이 설치되어 있지 않습니다. sudo apt install perl, sudo dnf install perl 또는 sudo pacman -S perl로 설치한 다음 다시 시도하세요. 이미 내려받은 부분은 그대로 남아 있습니다.",
     "perl_module_missing": "Linux의 TinyTeX에는 전체 Perl이 필요한데, {{module}} 모듈이 없습니다. sudo apt install perl, sudo dnf install perl 또는 sudo pacman -S perl로 설치한 다음 다시 시도하세요. 이미 내려받은 부분은 그대로 남아 있습니다.",
     "distribution_unknown": "Oleafly가 {{path}}에서 TeX 배포판을 찾지 못했습니다. 설정 > 엔진 > LaTeX를 열고 목록에서 하나를 고르세요.",
+    "custom_folder_without_latexmk": "{{path}}에 latexmk가 없습니다. latexmk가 들어 있는 폴더나 그 위의 TeX Live 연도 폴더(예: texlive/2026)를 고르세요.",
     "package_operation_timeout": "패키지 작업이 {{span}} 제한을 넘겨 중단되었으므로 다시 컴파일할 수 있습니다. TeX Live 미러가 혼잡한 것으로 보입니다. 나중에 다시 시도하거나 tlmgr을 직접 실행하세요.",
     "latexmk_build_path": "이 컴퓨터에서는 Oleafly 빌드 폴더 경로에 latexmk가 허용하지 않는 문자가 있어 latexmk가 이 폴더를 사용할 수 없습니다. 컴파일하려면 이 프로젝트를 Tectonic으로 전환하세요.",
     "latexmk_network_folder": "latexmk는 네트워크 공유에 있는 폴더를 컴파일할 수 없습니다. 이 프로젝트를 Tectonic으로 전환하거나 폴더를 이 컴퓨터로 복사하세요.",

@@ -1420,6 +1420,9 @@
     "distributions": {
       "automatic": "Otomatik",
       "automaticTooltip": "Seçimi yeniden Oleafly'ye bırak: önce tam bir sistem TeX'i, ardından TinyTeX.",
+      "chooseFolder": "TeX klasörü seç",
+      "chooseFolderHint": "TeX, Oleafly'nin bakmadığı bir yere kuruluysa klasörünü buradan seçin. İçinde latexmk olan klasör de olur, onun üstündeki TeX Live yıl klasörü de (örneğin texlive/2026).",
+      "chooseFolderTitle": "TeX kurulumunuzun klasörünü seçin",
       "empty": "Bu makinede TeX dağıtımı algılanmadı.",
       "heading": "TeX dağıtımlarını yönet",
       "inUse": "Kullanımda",

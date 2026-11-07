@@ -1420,6 +1420,9 @@
     "distributions": {
       "automatic": "Automaattinen",
       "automaticTooltip": "Palaa siihen, että Oleafly valitsee itse: ensin täysi järjestelmän TeX, sitten TinyTeX.",
+      "chooseFolder": "Valitse TeX-kansio",
+      "chooseFolderHint": "Jos TeX on asennettu paikkaan, josta Oleafly ei etsi, valitse sen kansio tästä. Kelpaa kansio, jossa latexmk on, tai sen yläpuolella oleva TeX Liven vuosikansio, kuten texlive/2026.",
+      "chooseFolderTitle": "Valitse TeX-asennuksesi kansio",
       "empty": "Tältä koneelta ei havaittu TeX-jakelua.",
       "heading": "Hallitse TeX-jakeluita",
       "inUse": "Käytössä",

@@ -1420,6 +1420,9 @@
     "distributions": {
       "automatic": "Automatisch",
       "automaticTooltip": "Wieder Oleafly wählen lassen: zuerst ein vollständiges System-TeX, dann TinyTeX.",
+      "chooseFolder": "TeX-Ordner wählen",
+      "chooseFolderHint": "Wenn TeX an einem Ort installiert ist, an dem Oleafly nicht sucht, wählen Sie hier den Ordner. Der Ordner mit latexmk funktioniert, ebenso der Jahresordner von TeX Live darüber, etwa texlive/2026.",
+      "chooseFolderTitle": "Ordner mit Ihrer TeX-Installation wählen",
       "empty": "Auf diesem Rechner wurde keine TeX-Distribution gefunden.",
       "heading": "TeX-Distributionen verwalten",
       "inUse": "In Verwendung",

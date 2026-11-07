@@ -1412,6 +1412,9 @@
     "distributions": {
       "automatic": "自动",
       "automaticTooltip": "恢复由 Oleafly 自动选择：优先使用完整的系统 TeX，其次是 TinyTeX。",
+      "chooseFolder": "选择 TeX 文件夹",
+      "chooseFolderHint": "如果 TeX 装在 Oleafly 不会查找的位置，请在这里选择它的文件夹。可以选包含 latexmk 的文件夹，也可以选它上方的 TeX Live 年份文件夹，例如 texlive/2026。",
+      "chooseFolderTitle": "选择 TeX 的安装文件夹",
       "empty": "未在这台电脑上检测到 TeX 发行版。",
       "heading": "管理 TeX 发行版",
       "inUse": "使用中",

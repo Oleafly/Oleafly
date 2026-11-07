@@ -1420,6 +1420,9 @@
     "distributions": {
       "automatic": "Automatic",
       "automaticTooltip": "Go back to letting Oleafly pick: a full system TeX first, then TinyTeX.",
+      "chooseFolder": "Choose a TeX folder",
+      "chooseFolderHint": "If TeX is installed somewhere Oleafly doesn't look, choose its folder here. The folder with latexmk in it works, and so does the TeX Live year folder above it, such as texlive/2026.",
+      "chooseFolderTitle": "Choose the folder with your TeX install",
       "empty": "No TeX distribution detected on this machine.",
       "heading": "Manage TeX distributions",
       "inUse": "In use",

@@ -1436,6 +1436,9 @@
     "distributions": {
       "automatic": "Automatycznie",
       "automaticTooltip": "Wróć do wyboru przez Oleafly: najpierw pełny systemowy TeX, potem TinyTeX.",
+      "chooseFolder": "Wybierz folder TeX",
+      "chooseFolderHint": "Jeśli TeX jest zainstalowany w miejscu, w którym Oleafly nie szuka, wybierz tutaj jego folder. Pasuje folder z latexmk, a także folder roku TeX Live nad nim, na przykład texlive/2026.",
+      "chooseFolderTitle": "Wybierz folder z instalacją TeX",
       "empty": "Na tym komputerze nie wykryto dystrybucji TeX.",
       "heading": "Zarządzaj dystrybucjami TeX",
       "inUse": "W użyciu",

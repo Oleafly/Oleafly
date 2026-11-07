@@ -105,6 +105,7 @@
     "perl_missing": "TinyTeX trên Linux chạy latexmk và trình quản lý gói của nó bằng Perl của hệ thống, và Perl chưa được cài. Hãy cài bằng sudo apt install perl, sudo dnf install perl hoặc sudo pacman -S perl, rồi thử lại. Phần đã tải được giữ lại.",
     "perl_module_missing": "TinyTeX trên Linux cần Perl đầy đủ, và còn thiếu module {{module}}. Hãy cài bằng sudo apt install perl, sudo dnf install perl hoặc sudo pacman -S perl, rồi thử lại. Phần đã tải được giữ lại.",
     "distribution_unknown": "Oleafly không tìm thấy bản phân phối TeX nào trong {{path}}. Hãy mở Cài đặt > Engine > LaTeX và chọn một bản trong danh sách.",
+    "custom_folder_without_latexmk": "Không có latexmk trong {{path}}. Hãy chọn thư mục chứa latexmk, hoặc thư mục năm của TeX Live ngay phía trên nó, ví dụ texlive/2026.",
     "package_operation_timeout": "Thao tác gói đã vượt giới hạn {{span}} và bị dừng, nên bạn có thể biên dịch lại. Máy chủ TeX Live có lẽ đang bận. Hãy thử lại sau, hoặc tự chạy tlmgr.",
     "latexmk_build_path": "latexmk không thể dùng thư mục dựng của Oleafly trên máy tính này vì đường dẫn chứa ký tự latexmk không chấp nhận. Hãy chuyển dự án này sang Tectonic để biên dịch.",
     "latexmk_network_folder": "latexmk không thể biên dịch thư mục trên ổ chia sẻ mạng. Hãy chuyển dự án sang Tectonic, hoặc sao chép thư mục về máy tính này.",
