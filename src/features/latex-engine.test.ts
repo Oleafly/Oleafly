@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   isCompileRequestIdentityCurrent: vi.fn(() => true),
   isCompileOutputStillWanted: vi.fn(() => true),
   refreshPreviewWindow: vi.fn(),
+  offerPackagesForTaggedCompile: vi.fn(),
   compileState: {} as Record<string, unknown>,
   engineInfo: { kind: "system", lualatex: "/usr/bin/lualatex" } as { kind: string; lualatex?: string } | null,
   files: {
@@ -50,6 +51,7 @@ vi.mock("@/store/compile", () => ({
   captureCompileSourceSnapshot: mocks.captureCompileSourceSnapshot,
   isCompileRequestIdentityCurrent: mocks.isCompileRequestIdentityCurrent,
   isCompileOutputStillWanted: mocks.isCompileOutputStillWanted,
+  offerPackagesForTaggedCompile: mocks.offerPackagesForTaggedCompile,
   reportCompileSaveFailure: mocks.reportCompileSaveFailure,
   compileSaveFailureReason: (error: unknown) => mocks.compileSaveFailureReason(error),
   saveAllForCompile: () => mocks.files.saveAllDirty(),
@@ -138,6 +140,7 @@ beforeEach(() => {
   mocks.reportCompileSaveFailure.mockReset();
   mocks.isCompileOutputStillWanted.mockReset().mockReturnValue(true);
   mocks.refreshPreviewWindow.mockReset();
+  mocks.offerPackagesForTaggedCompile.mockReset();
   for (const fn of Object.values(mocks.toast)) fn.mockClear();
   Object.assign(mocks.compileState, {
     status: "success",
@@ -523,6 +526,25 @@ describe("tagged compile guards", () => {
     expect(mocks.toast.errorUnique).toHaveBeenCalledTimes(1);
   });
 
+  it("offers the packages a tagged compile missed and reruns the tagged compile after the install", async () => {
+    mocks.compileTagged.mockResolvedValue({
+      success: false,
+      has_pdf: false,
+      output_id: null,
+      output_revision: null,
+      log: "! LaTeX Error: File `tagpdf-base.sty' not found.",
+    });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.offerPackagesForTaggedCompile).toHaveBeenCalledTimes(1);
+    const [projectId, log, rerun] = mocks.offerPackagesForTaggedCompile.mock.calls[0];
+    expect(projectId).toBe("project");
+    expect(log).toContain("tagpdf-base.sty");
+    rerun();
+    await vi.waitFor(() => expect(mocks.compileTagged).toHaveBeenCalledTimes(2));
+  });
+
   it("does not report a missing PDF for a compile that another one replaced", async () => {
     mocks.compileTagged.mockImplementation(async () => {
       mocks.isCompileOutputStillWanted.mockReturnValue(false);
@@ -533,6 +555,7 @@ describe("tagged compile guards", () => {
 
     expect(mocks.compileState.status).not.toBe("error");
     expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.offerPackagesForTaggedCompile).not.toHaveBeenCalled();
   });
 
   it("does not start when the project changes while the sources are captured", async () => {

@@ -184,6 +184,7 @@ import {
   switchToTectonic,
   installerNotices,
   isCompileCheckpointCurrent,
+  offerPackagesForTaggedCompile,
   reportCompileSaveFailure,
   saveAllForCompile,
   stopOutdatedAutomaticCompile,
@@ -2128,6 +2129,32 @@ describe("missing TeX file installation", () => {
     );
     expect(mocks.tlmgrInstallMissing).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
+
+  it("offers a tagged compile's missing files in a Tectonic project and reruns the tagged compile", async () => {
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latex" };
+    const rerun = vi.fn();
+    offerPackagesForTaggedCompile(
+      mocks.files.projectId as string,
+      "! LaTeX Error: File `tagpdf-base.sty' not found.",
+      rerun,
+    );
+    await vi.waitFor(() => expect(offers()).toHaveLength(1));
+    expect(offers()[0][0]).toBe(key());
+    expect(offers()[0][1]).toContain("tagpdf-base.sty");
+    const action = offers()[0][2] as ToastActionMock;
+    action.onClick();
+    await vi.waitFor(() => expect(rerun).toHaveBeenCalledTimes(1));
+    expect(mocks.tlmgrInstallMissing).toHaveBeenCalledExactlyOnceWith(["tagpdf-base.sty"]);
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when a tagged compile's log names no missing file", async () => {
+    const rerun = vi.fn();
+    offerPackagesForTaggedCompile(mocks.files.projectId as string, "! Undefined control sequence.", rerun);
+    await Promise.resolve();
+    expect(mocks.latexEngineInfo).not.toHaveBeenCalled();
+    expect(offers()).toHaveLength(0);
   });
 
   it("sends filenames to the resolver and recompiles only after installation", async () => {

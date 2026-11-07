@@ -673,10 +673,15 @@ function offerForAttempt(
   return recorded;
 }
 
+function recompileLatexmkProject(projectId: string): void {
+  if (isLatexmkProject(projectId)) void useCompileStore.getState().recompile();
+}
+
 async function installMissingPackages(
   projectId: string,
   packages: string[],
   install: (names: string[]) => Promise<string>,
+  afterInstall: (projectId: string) => void = recompileLatexmkProject,
 ): Promise<void> {
   const key = missingPackagesToastKey(projectId);
   const id = toast.infoUnique(
@@ -696,7 +701,7 @@ async function installMissingPackages(
     missingPackageToasts.delete(projectId);
     if (path === null) toast.dismiss(id);
     else toast.infoUnique(key, i18n.t(($) => $.core.missingPackages.userTree, { path }));
-    if (isLatexmkProject(projectId)) void useCompileStore.getState().recompile();
+    afterInstall(projectId);
   } catch (error) {
     void logError("install missing packages", error);
     const message = i18n.t(($) => $.settings.engine.packages.error.withDetail, {
@@ -724,7 +729,40 @@ export function installOfferedPackages(
   });
 }
 
-function showMissingPackagesOffer(projectId: string, packages: string[]): void {
+/** A tagged compile always runs the system TeX's LuaLaTeX, whatever engine the
+ * project compiles with, so a missing package there is offered for install even
+ * in a Tectonic project, and the install reruns the tagged compile. */
+export function offerPackagesForTaggedCompile(
+  projectId: string,
+  log: string,
+  rerun: () => void,
+  install: (names: string[]) => Promise<string> = tlmgrInstallMissing,
+): void {
+  const packages = missingLatexFiles(log);
+  if (packages.length === 0 || packageInstallsRunning.has(projectId)) return;
+  void (async () => {
+    const info = await latexEngineInfo().catch(() => null);
+    if (!info) return;
+    if (!info.tlmgr) {
+      showSystemPackagesNotice(projectId, packages, info);
+      return;
+    }
+    if (packageInstallsRunning.has(projectId)) return;
+    showMissingPackagesOffer(projectId, packages, () => {
+      if (packageInstallsRunning.has(projectId)) return;
+      packageInstallsRunning.add(projectId);
+      void installMissingPackages(projectId, packages, install, rerun).finally(() => {
+        packageInstallsRunning.delete(projectId);
+      });
+    });
+  })();
+}
+
+function showMissingPackagesOffer(
+  projectId: string,
+  packages: string[],
+  onInstall: () => void = () => installOfferedPackages(projectId, packages),
+): void {
   if (!rememberOffer(projectId, packageSuggestionSignature(packages))) return;
   const id = toast.infoUnique(
     missingPackagesToastKey(projectId),
@@ -738,7 +776,7 @@ function showMissingPackagesOffer(projectId: string, packages: string[]): void {
         count: packages.length,
         name: packages[0],
       }),
-      onClick: () => installOfferedPackages(projectId, packages),
+      onClick: onInstall,
     },
     true,
   );
