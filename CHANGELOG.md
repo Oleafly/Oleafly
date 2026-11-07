@@ -80,6 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   different file from the one open in the editor. It checked the saved copy
   instead, so a new error showed up only after the file was saved, and
   sometimes not at all.
+- Typst errors that are already in a file show up when you open the project.
+  If the project changed while Tinymist was still starting, Oleafly forgot it
+  had asked for them and stayed waiting until your next edit.
 - When a language server stops, the app log keeps the end of what it printed,
   so a crash report shows the reason.
 - Fenced code in Markdown stays a code block in the visual editor. Typing in

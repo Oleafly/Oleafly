@@ -242,7 +242,14 @@ export class ProjectAnalysisCoordinator {
   }
 
   updateProjectRevision(revision: number): boolean {
-    this.pendingDiagnostics.clear();
+    // The controller also resyncs at an unchanged revision. Nothing invalidates
+    // those diagnostic rounds, and forgetting them leaves the documents pending
+    // until their next edit.
+    for (const [uri, pending] of this.pendingDiagnostics) {
+      if (pending.request.projectRevision !== revision) {
+        this.pendingDiagnostics.delete(uri);
+      }
+    }
     this.client.setProjectRevision(revision);
     return this.store.getState().setProjectRevision(revision);
   }

@@ -450,4 +450,32 @@ describe("Tinymist diagnostics across project revisions", () => {
 
     expect(visibleDiagnostics(store)).toEqual([]);
   });
+
+  it("shows the first diagnostics when the project changes while the server starts", async () => {
+    const { controller, transport, store } = harness();
+    const start = transport.start.bind(transport);
+    let release = () => {};
+    const held = new Promise<void>((done) => {
+      release = done;
+    });
+    transport.start = async (options, sink) => {
+      await held;
+      return start(options, sink);
+    };
+    controller.update(project(OLD_BIB));
+    await vi.waitFor(() =>
+      expect(store.getState().snapshot.languageService.readiness).toBe(
+        "starting",
+      ),
+    );
+
+    controller.update(project(OLD_BIB, "Notes, edited\n"));
+    release();
+    await controller.whenIdle();
+    publish(transport, [MISSING_LABEL]);
+
+    await vi.waitFor(() =>
+      expect(visibleDiagnostics(store)).toEqual([MISSING_LABEL]),
+    );
+  });
 });
