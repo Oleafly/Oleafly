@@ -12,6 +12,7 @@
       "bridgeMissing": "Este nevoie de punte",
       "cliMissing": "Instrumentul de linie de comandă nu a fost găsit",
       "ready": "Pregătit",
+      "signedOut": "Deconectat",
       "unavailable": "Indisponibil"
     },
     "requestFailed": "Cererea ACP nu a putut fi finalizată."

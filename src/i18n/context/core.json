@@ -12,6 +12,7 @@
       "bridgeMissing": "Status chip: the agent's ACP bridge package still has to be installed",
       "cliMissing": "Status chip: the agent's command line tool was not found on PATH",
       "ready": "Status chip: the external coding agent can be started",
+      "signedOut": "Status chip: the agent starts, but its last check found it signed out",
       "unavailable": "Status chip: this agent cannot run on this machine at all"
     }
   },

@@ -12,6 +12,7 @@
       "bridgeMissing": "Bro mangler",
       "cliMissing": "CLI blev ikke fundet",
       "ready": "Klar",
+      "signedOut": "Logget ud",
       "unavailable": "Ikke tilgængelig"
     },
     "requestFailed": "ACP-forespørgslen kunne ikke gennemføres."

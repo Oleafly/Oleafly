@@ -12,6 +12,7 @@
       "bridgeMissing": "Нужен мост",
       "cliMissing": "CLI не найден",
       "ready": "Готов",
+      "signedOut": "Выход выполнен",
       "unavailable": "Недоступен"
     },
     "requestFailed": "Не удалось выполнить запрос ACP."

@@ -12,6 +12,7 @@
       "bridgeMissing": "Потрібен міст",
       "cliMissing": "CLI не знайдено",
       "ready": "Готово",
+      "signedOut": "Ви вийшли",
       "unavailable": "Недоступно"
     },
     "requestFailed": "Не вдалося виконати запит ACP."

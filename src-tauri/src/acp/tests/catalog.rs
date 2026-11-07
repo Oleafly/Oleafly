@@ -2325,6 +2325,43 @@ async fn status_reports_the_chosen_program_its_source_and_whether_the_cli_is_req
     );
 }
 
+#[tokio::test]
+async fn a_cli_agent_that_starts_shows_no_install_reason_as_its_next_step() {
+    let temp = tempfile::tempdir().unwrap();
+    let qoder = builtins()
+        .into_iter()
+        .find(|agent| agent.id == "qoder")
+        .unwrap();
+    let chosen = temp
+        .path()
+        .join(format!("qodercli{}", std::env::consts::EXE_SUFFIX));
+    native_file(&chosen);
+    let found = status_with(
+        temp.path(),
+        qoder.clone(),
+        false,
+        Some(chosen.to_string_lossy().into_owned()),
+    )
+    .await;
+    assert!(found.installed);
+    assert!(!found.can_install);
+    assert_eq!(found.reason, None);
+    let missing = status_with(
+        temp.path(),
+        qoder,
+        false,
+        Some(
+            temp.path()
+                .join("missing-qoder")
+                .to_string_lossy()
+                .into_owned(),
+        ),
+    )
+    .await;
+    assert!(!missing.installed);
+    assert!(missing.reason.is_some());
+}
+
 #[test]
 fn sign_in_commands_quote_a_cli_a_terminal_cannot_find_by_name() {
     for windows in [false, true] {

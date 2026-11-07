@@ -12,6 +12,7 @@
       "bridgeMissing": "Silta tarvitaan",
       "cliMissing": "Komentorivityökalua ei löydy",
       "ready": "Valmis",
+      "signedOut": "Kirjautunut ulos",
       "unavailable": "Ei käytettävissä"
     },
     "requestFailed": "ACP-pyyntöä ei voitu viedä loppuun."

@@ -12,6 +12,7 @@
       "bridgeMissing": "Köprü gerekli",
       "cliMissing": "CLI bulunamadı",
       "ready": "Hazır",
+      "signedOut": "Oturum kapatıldı",
       "unavailable": "Kullanılamıyor"
     },
     "requestFailed": "ACP isteği tamamlanamadı."
