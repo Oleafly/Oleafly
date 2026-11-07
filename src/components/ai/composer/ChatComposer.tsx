@@ -88,7 +88,6 @@ export interface ChatComposerProps {
   accept?: string;
   labels?: { send?: string; stop?: string; stopTitle?: string; textarea?: string };
   controlsTestId?: string;
-  shellClassName?: string;
 }
 
 export interface ChatComposerHandle {
@@ -150,7 +149,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     accept,
     labels,
     controlsTestId = "ai-composer-controls",
-    shellClassName,
   },
   ref,
 ) {
@@ -439,10 +437,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       <AttachmentChips items={attachments} onRemove={onRemoveAttachment} />
       <div
         ref={shellRef}
-        className={cn(
-          "relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring",
-          shellClassName,
-        )}
+        className="relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring"
       >
         <ComposerResizeHandle
           height={resting}

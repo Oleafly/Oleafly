@@ -3,7 +3,6 @@
     "newProject": "Новий проєкт",
     "search": "Пошук документів ({{shortcut}})",
     "diagramComposer": "Редактор діаграм",
-    "notes": "Notes",
     "tools": "Інструменти Oleafly",
     "settings": "Налаштування"
   },
@@ -57,7 +56,6 @@
       "kindDocument": "Документ",
       "kindImage": "Зображення",
       "kindDiagram": "Діаграма",
-      "kindNote": "Note",
       "bookmark": "Закладка",
       "bookmarkAll": "Будь-який стан",
       "bookmarkYes": "Із закладкою",
@@ -141,7 +139,6 @@
       "document": "документ",
       "image": "зображення",
       "diagram": "діаграма",
-      "note": "note",
       "external": "зовнішній",
       "overleaf": "Overleaf"
     },

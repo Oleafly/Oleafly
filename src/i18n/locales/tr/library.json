@@ -3,7 +3,6 @@
     "newProject": "Yeni proje",
     "search": "Belgelerde ara ({{shortcut}})",
     "diagramComposer": "Diyagram Oluşturucu",
-    "notes": "Notes",
     "tools": "Oleafly Tools",
     "settings": "Ayarlar"
   },
@@ -55,7 +54,6 @@
       "kindDocument": "Belge",
       "kindImage": "Görsel",
       "kindDiagram": "Diyagram",
-      "kindNote": "Note",
       "bookmark": "Yer imi",
       "bookmarkAll": "Tüm durumlar",
       "bookmarkYes": "Yer imli",
@@ -139,7 +137,6 @@
       "document": "belge",
       "image": "görsel",
       "diagram": "diyagram",
-      "note": "note",
       "external": "harici",
       "overleaf": "Overleaf"
     },

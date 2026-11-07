@@ -661,24 +661,3 @@ describe("applying a settings file", () => {
     expect(localStorage.getItem("oleafly:ai_pdf_capture")).toBe("0");
   });
 });
-
-describe("Notes switch in a settings file", () => {
-  it("writes the Notes switch under Experimentation", () => {
-    useSettingsStore.getState().setNotes(true);
-    const document = buildSettingsDocument(snapshot());
-    expect(document.experimentation).toMatchObject({ notes: true });
-  });
-
-  it("reads the Notes switch and turns Notes on", async () => {
-    const read = readSettingsFile(fileWith({ experimentation: { notes: true } }), snapshot());
-    if (!read.ok) throw new Error("expected a valid file");
-    expect(read.changed).toEqual(["experimentation.notes"]);
-    await applySettingsPlan(read.plan, THEME);
-    expect(useSettingsStore.getState().notes).toBe(true);
-  });
-
-  it("refuses a Notes switch that is not on or off", () => {
-    const read = readSettingsFile(fileWith({ experimentation: { notes: "maybe" } }), snapshot());
-    expect(read.ok).toBe(false);
-  });
-});

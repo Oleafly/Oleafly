@@ -1028,8 +1028,6 @@ pub fn run() {
             project::create_markdown_project,
             project::create_image_project,
             project::create_diagram_project,
-            project::create_note_project,
-            project::note_heads,
             project::get_or_create_scratch_project,
             project::save_figure_to_cache,
             templates::list_templates,

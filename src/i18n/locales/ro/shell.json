@@ -950,10 +950,6 @@
         "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
         "label": "Instrumente LaTeX"
       },
-      "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
-      },
       "researchTasks": {
         "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
         "label": "Sarcini de cercetare",

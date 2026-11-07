@@ -922,10 +922,6 @@
         "description": "Hiện thư viện Công cụ Oleafly và từng công cụ (nhập PDF, công thức, bảng, BibTeX, tìm kiếm phòng thí nghiệm và tài liệu, hạn chót) cùng các lệnh slash của chúng. Mặc định tắt khi còn beta.",
         "label": "Công cụ LaTeX"
       },
-      "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
-      },
       "researchTasks": {
         "description": "Một agent làm việc tự động trong bản sao của dự án và để lại thay đổi cho bạn xem lại. Rất không ổn định: các lần chạy có thể kẹt, lỗi hoặc để lại thay đổi phải xử lý tay, và chúng dùng hạn mức của nhà cung cấp suốt thời gian đó. Thêm mục Nghiên cứu vào Cài đặt. Tắt sẽ dừng mọi tác vụ đang chạy. Mặc định tắt. Bật với rủi ro của bạn.",
         "label": "Tác vụ nghiên cứu",

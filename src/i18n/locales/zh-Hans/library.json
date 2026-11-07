@@ -3,7 +3,6 @@
     "newProject": "新建项目",
     "search": "搜索文档（{{shortcut}}）",
     "diagramComposer": "图表编排器",
-    "notes": "Notes",
     "tools": "Oleafly 工具",
     "settings": "设置"
   },
@@ -54,7 +53,6 @@
       "kindDocument": "文档",
       "kindImage": "图片",
       "kindDiagram": "图表",
-      "kindNote": "Note",
       "bookmark": "收藏",
       "bookmarkAll": "任意状态",
       "bookmarkYes": "已收藏",
@@ -138,7 +136,6 @@
       "document": "文档",
       "image": "图片",
       "diagram": "图表",
-      "note": "note",
       "external": "外部",
       "overleaf": "Overleaf"
     },

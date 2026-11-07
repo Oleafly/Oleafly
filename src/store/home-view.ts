@@ -15,7 +15,6 @@ export type HomePage =
   | "literature-search"
   | "deadlines"
   | "diagram-composer"
-  | "notes"
   | "stats"
   | "generators"
   | "symbols";

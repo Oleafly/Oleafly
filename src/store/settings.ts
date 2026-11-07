@@ -1099,8 +1099,6 @@ interface SettingsState {
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
-  notes: boolean;
-  setNotes: (v: boolean) => void;
   defaultLatexEngine: DefaultLatexEngine;
   setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
   resetGeneralPreferences: () => void;
@@ -1275,7 +1273,6 @@ const PREF_DEFAULTS = {
   appIcon: "classic" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
-  notes: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1371,7 +1368,6 @@ export const SECTION_SETTINGS = {
   },
   experimentation: {
     latexTools: "oleafly.latexTools",
-    notes: "oleafly.notes",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -2077,11 +2073,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLatexTools: (v) => {
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
-  },
-  notes: ls("oleafly.notes", "0") === "1",
-  setNotes: (v) => {
-    saveLs("oleafly.notes", v ? "1" : "0");
-    set({ notes: v });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

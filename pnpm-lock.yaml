@@ -281,9 +281,6 @@ importers:
       fflate:
         specifier: 0.8.3
         version: 0.8.3
-      frimousse:
-        specifier: 0.4.0
-        version: 0.4.0(react@19.3.0)(typescript@6.0.3)
       harper.js:
         specifier: ^2.10.0
         version: 2.10.0
@@ -405,9 +402,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 4.1.12
         version: 4.1.12(vitest@4.1.12)
-      emojibase-data:
-        specifier: 18.0.0
-        version: 18.0.0(emojibase@18.0.0)
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1
@@ -3864,15 +3858,6 @@ packages:
   emoji-regex@10.6.0:
     resolution: {integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==}
 
-  emojibase-data@18.0.0:
-    resolution: {integrity: sha512-TPPRRYv2zPd0jKI+pTpMquwWNZXYAsC3IVsCMeg2X8y8fEzKwOks4/5bz0YavF5r6d71aGPpb6oDnUEwSLLMoA==}
-    peerDependencies:
-      emojibase: '*'
-
-  emojibase@18.0.0:
-    resolution: {integrity: sha512-5PG+EEt5zQ9qvqdHZw61+T9iz96g+r621QS/w8jEzPg+3mjzAdjl8LPLc+e9ABv/yboNfMwEair7aK9qKnwAbQ==}
-    engines: {node: '>=20.0.0'}
-
   emscripten-wasm-loader@3.0.3:
     resolution: {integrity: sha512-fyq2maBt5LOou27LEBlL5H6G04BxgSamXkvmMsAuIT6rd8ioH4BxNQhuyl6jVPeODh6U8Wk1BoFZxzHpg3o8wA==}
     engines: {node: '>=10'}
@@ -4026,15 +4011,6 @@ packages:
       react:
         optional: true
       react-dom:
-        optional: true
-
-  frimousse@0.4.0:
-    resolution: {integrity: sha512-wA/1Xt9UTk51wYNpy+EvHKPUA4jdm4NuEFzSNNZxqT0Nxrj4RFwYByjRMuaq4qSLOco/ikDCpLKesB8W1w2q+Q==}
-    peerDependencies:
-      react: ^18 || ^19
-      typescript: '>=5.1.0'
-    peerDependenciesMeta:
-      typescript:
         optional: true
 
   fsevents@2.3.3:
@@ -9359,12 +9335,6 @@ snapshots:
 
   emoji-regex@10.6.0: {}
 
-  emojibase-data@18.0.0(emojibase@18.0.0):
-    dependencies:
-      emojibase: 18.0.0
-
-  emojibase@18.0.0: {}
-
   emscripten-wasm-loader@3.0.3(patch_hash=8eebb0ec457e29444d0f4c2ee9e4e45a8932e088e09b12a6a099daad3251fb65):
     dependencies:
       getroot: 1.0.0
@@ -9529,12 +9499,6 @@ snapshots:
       '@emotion/is-prop-valid': 1.4.0
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
-
-  frimousse@0.4.0(react@19.3.0)(typescript@6.0.3):
-    dependencies:
-      react: 19.3.0
-    optionalDependencies:
-      typescript: 6.0.3
 
   fsevents@2.3.3:
     optional: true

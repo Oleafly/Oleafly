@@ -936,10 +936,6 @@
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"
       },
-      "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
-      },
       "researchTasks": {
         "description": "En agent arbetar på egen hand i en kopia av projektet och lämnar sina ändringar åt dig att granska. Mycket instabilt: körningar kan hänga sig, misslyckas eller lämna ändringar att ordna upp för hand, och de använder din leverantörs kvot hela tiden. Lägger till avsnittet Forskning i Inställningar. Avstängning stoppar alla pågående uppgifter. Av som standard. Slå på det på egen risk.",
         "label": "Forskningsuppgifter",

@@ -15,7 +15,6 @@ import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
 } from "./scripts/production-hook-audit.mjs";
-import { emojibaseAssets } from "./src/build/emojibase-assets";
 import { tailwindPropertiesFallbackPlugin } from "./src/build/tailwind-properties-fallback";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
@@ -41,7 +40,7 @@ const staticE2eClient = (): Plugin => ({
 export const LEGAL_COMMENT_PATTERN =
   /^!|@preserve|@license|@cc_on/i;
 
-const LAZY_LOCALE_NAMESPACES = new Set(["cloud", "collab", "notes", "settingsFile"]);
+const LAZY_LOCALE_NAMESPACES = new Set(["cloud", "collab", "settingsFile"]);
 
 export function localeChunk(id: string): string | undefined {
   const match = /\/src\/i18n\/locales\/([^/]+)\/([^/?]*?)(?:\.json)?(?:\?|$)/.exec(id);
@@ -190,7 +189,6 @@ export default defineConfig(async () => ({
     requirePolyfillsFirst(),
     staticE2eClient(),
     pdfjsAssets(),
-    emojibaseAssets(),
   ],
   optimizeDeps: {
     exclude: ["harper.js"],

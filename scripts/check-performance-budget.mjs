@@ -190,7 +190,7 @@ const limits = {
   // +30 KB for LaTeX compilation units (#389), which ship twice because the
   // editor and the project-intelligence worker both run them: 21,092,330 bytes
   // on macOS.
-  totalJavaScript: 21_320_000,
+  totalJavaScript: 21_210_000,
   // Russian is the largest catalog. Main measures 979,405 bytes, and the strings
   // for CLI agents in the Tools and the other AI features add 1,939. This gate
   // is here to catch a catalog bundled twice, which adds hundreds of KB, so real

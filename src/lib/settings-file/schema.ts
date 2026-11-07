@@ -524,5 +524,4 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   ...EDITOR_KEY_DEFINITIONS.map(editorKeyField),
 
   pref("experimentation.latexTools", "latexTools", bool),
-  pref("experimentation.notes", "notes", bool),
 ];
