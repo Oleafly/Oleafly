@@ -3,6 +3,7 @@ import type {
   LanguageServiceKind,
   LanguageServiceRuntimeProfile,
 } from "@/lib/language-service";
+import { withoutVerbatimPrefix } from "@/lib/path-utils";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 
@@ -96,10 +97,14 @@ function trimTrailingSeparators(path: string): string {
   return path.slice(0, end);
 }
 
+// Tinymist knows an open document by the path in its URI, which never carries
+// Windows' `\\?\` prefix. Pinning the verbatim spelling makes it compile the
+// copy on disk, so edits only show up after a save.
 export function absoluteProjectPath(root: string, path: string): string {
-  const windows = /^[A-Za-z]:[\\/]/.test(root) || root.startsWith("\\\\");
+  const plainRoot = withoutVerbatimPrefix(root);
+  const windows = /^[A-Za-z]:[\\/]/.test(plainRoot) || plainRoot.startsWith("\\\\");
   const separator = windows ? "\\" : "/";
-  const trimmedRoot = trimTrailingSeparators(root);
+  const trimmedRoot = trimTrailingSeparators(plainRoot);
   const relative = path
     .replace(/^[\\/]+/, "")
     .split(/[\\/]/)

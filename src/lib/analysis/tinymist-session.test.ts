@@ -116,6 +116,30 @@ describe("Tinymist main document", () => {
     );
   });
 
+  it("pins the open document's own path when Windows reports a verbatim root", async () => {
+    const { controller, transport } = harness();
+    transport.workspaceRoot = "\\\\?\\C:\\Users\\me\\Typst Clean";
+    controller.update(typstSnapshot());
+    await controller.whenIdle();
+
+    await vi.waitFor(() => {
+      expect(transport.methods("workspace/executeCommand")).toHaveLength(1);
+    });
+    expect(transport.methods("workspace/executeCommand")[0]?.params).toEqual({
+      command: "tinymist.pinMain",
+      arguments: ["C:\\Users\\me\\Typst Clean\\main.typ"],
+    });
+    expect(
+      transport
+        .methods("textDocument/didOpen")
+        .map(
+          (message) =>
+            (message.params as { textDocument: { uri: string } })
+              .textDocument.uri,
+        ),
+    ).toContain("file:///C:/Users/me/Typst%20Clean/main.typ");
+  });
+
   it("re-pins when the main document changes and not on ordinary edits", async () => {
     const { controller, transport } = harness();
     controller.update(typstSnapshot());

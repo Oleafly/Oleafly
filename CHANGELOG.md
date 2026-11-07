@@ -75,6 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Errors and warnings from Tinymist now show up when the project's folder path
   has characters such as `&`, `+` or `@` in it. They reached Oleafly on every
   platform and were dropped.
+- Typst errors and warnings follow your typing on Windows. Oleafly named the
+  main document to Tinymist in the `\\?\` path form, which Tinymist took for a
+  different file from the one open in the editor. It checked the saved copy
+  instead, so a new error showed up only after the file was saved, and
+  sometimes not at all.
 - When a language server stops, the app log keeps the end of what it printed,
   so a crash report shows the reason.
 - Fenced code in Markdown stays a code block in the visual editor. Typing in
