@@ -1412,6 +1412,9 @@
     "distributions": {
       "automatic": "自動",
       "automaticTooltip": "改回讓 Oleafly 自行挑選：先用完整的系統 TeX，再用 TinyTeX。",
+      "chooseFolder": "選擇 TeX 資料夾",
+      "chooseFolderHint": "如果 TeX 安裝在 Oleafly 不會尋找的位置，請在這裡選擇它的資料夾。可以選含有 latexmk 的資料夾，也可以選它上層的 TeX Live 年份資料夾，例如 texlive/2026。",
+      "chooseFolderTitle": "選擇 TeX 的安裝資料夾",
       "empty": "這台電腦上沒有偵測到 TeX 發行版。",
       "heading": "管理 TeX 發行版",
       "inUse": "使用中",

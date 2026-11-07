@@ -107,6 +107,7 @@
     "perl_missing": "O TinyTeX no Linux roda o latexmk e o gerenciador de pacotes dele com o Perl do seu sistema, e o Perl não está instalado. Instale-o com sudo apt install perl, sudo dnf install perl ou sudo pacman -S perl e tente de novo. O que já foi baixado é mantido.",
     "perl_module_missing": "O TinyTeX no Linux precisa do Perl completo, e falta o módulo {{module}}. Instale-o com sudo apt install perl, sudo dnf install perl ou sudo pacman -S perl e tente de novo. O que já foi baixado é mantido.",
     "distribution_unknown": "O Oleafly não encontra uma distribuição TeX em {{path}}. Abra Configurações > Motores > LaTeX e escolha uma da lista.",
+    "custom_folder_without_latexmk": "Não há latexmk em {{path}}. Escolha a pasta que contém o latexmk, ou a pasta do ano do TeX Live acima dela, como texlive/2026.",
     "package_operation_timeout": "A operação com pacotes passou do limite de {{span}} e foi interrompida, para que você possa compilar de novo. O espelho do TeX Live provavelmente está sobrecarregado. Tente mais tarde ou execute o tlmgr você mesmo.",
     "latexmk_build_path": "O latexmk não consegue usar a pasta de compilação do Oleafly neste computador porque o caminho dela contém caracteres que o latexmk não aceita. Mude este projeto para o Tectonic para compilá-lo.",
     "latexmk_network_folder": "O latexmk não consegue compilar uma pasta em um compartilhamento de rede. Mude este projeto para o Tectonic ou copie a pasta para este computador.",

@@ -106,6 +106,7 @@
     "perl_missing": "Linuxissa TinyTeX ajaa latexmkin ja pakettienhallintansa järjestelmäsi Perlillä, eikä Perliä ole asennettu. Asenna se komennolla sudo apt install perl, sudo dnf install perl tai sudo pacman -S perl ja yritä sitten uudelleen. Jo ladattu osa säilyy.",
     "perl_module_missing": "Linuxissa TinyTeX tarvitsee täyden Perlin, ja moduuli {{module}} puuttuu. Asenna se komennolla sudo apt install perl, sudo dnf install perl tai sudo pacman -S perl ja yritä sitten uudelleen. Jo ladattu osa säilyy.",
     "distribution_unknown": "Oleafly ei löydä TeX-jakelua polusta {{path}}. Avaa Asetukset > Moottorit > LaTeX ja valitse jakelu luettelosta.",
+    "custom_folder_without_latexmk": "Polussa {{path}} ei ole latexmk:ta. Valitse kansio, jossa latexmk on, tai sen yläpuolella oleva TeX Liven vuosikansio, kuten texlive/2026.",
     "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse.",
     "latexmk_build_path": "latexmk ei voi käyttää Oleaflyn käännöskansiota tällä tietokoneella, koska sen polussa on merkkejä, joita latexmk ei hyväksy. Vaihda projektin kääntäjäksi Tectonic, niin voit kääntää sen.",
     "latexmk_network_folder": "latexmk ei voi kääntää verkkojaossa olevaa kansiota. Vaihda projektin kääntäjäksi Tectonic tai kopioi kansio tälle tietokoneelle.",

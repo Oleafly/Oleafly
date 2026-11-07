@@ -1420,6 +1420,9 @@
     "distributions": {
       "automatic": "Automatisk",
       "automaticTooltip": "Lad Oleafly vælge igen: først en komplet system-TeX, derefter TinyTeX.",
+      "chooseFolder": "Vælg en TeX-mappe",
+      "chooseFolderHint": "Hvis TeX er installeret et sted, hvor Oleafly ikke kigger, kan du vælge mappen her. Mappen med latexmk virker, og det gør TeX Live-årsmappen over den også, f.eks. texlive/2026.",
+      "chooseFolderTitle": "Vælg mappen med din TeX-installation",
       "empty": "Der blev ikke fundet nogen TeX-distribution på denne maskine.",
       "heading": "Administrer TeX-distributioner",
       "inUse": "I brug",

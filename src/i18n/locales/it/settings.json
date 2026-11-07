@@ -1428,6 +1428,9 @@
     "distributions": {
       "automatic": "Automatica",
       "automaticTooltip": "Torna a lasciare che sia Oleafly a scegliere: prima un TeX di sistema completo, poi TinyTeX.",
+      "chooseFolder": "Scegli una cartella TeX",
+      "chooseFolderHint": "Se TeX è installato in un punto dove Oleafly non cerca, scegli qui la sua cartella. Va bene la cartella che contiene latexmk, e anche la cartella dell'anno di TeX Live sopra di essa, come texlive/2026.",
+      "chooseFolderTitle": "Scegli la cartella della tua installazione TeX",
       "empty": "Nessuna distribuzione TeX rilevata su questa macchina.",
       "heading": "Gestisci le distribuzioni TeX",
       "inUse": "In uso",

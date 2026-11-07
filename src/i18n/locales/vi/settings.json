@@ -1412,6 +1412,9 @@
     "distributions": {
       "automatic": "Tự động",
       "automaticTooltip": "Quay lại để Oleafly tự chọn: TeX hệ thống đầy đủ trước, rồi đến TinyTeX.",
+      "chooseFolder": "Chọn thư mục TeX",
+      "chooseFolderHint": "Nếu TeX được cài ở nơi Oleafly không tìm tới, hãy chọn thư mục của nó tại đây. Thư mục chứa latexmk dùng được, thư mục năm của TeX Live ngay phía trên nó cũng vậy, ví dụ texlive/2026.",
+      "chooseFolderTitle": "Chọn thư mục cài đặt TeX của bạn",
       "empty": "Không phát hiện bản phân phối TeX nào trên máy này.",
       "heading": "Quản lý bản phân phối TeX",
       "inUse": "Đang dùng",

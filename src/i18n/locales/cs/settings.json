@@ -1436,6 +1436,9 @@
     "distributions": {
       "automatic": "Automaticky",
       "automaticTooltip": "Vrátit se k tomu, že vybírá Oleafly: nejdřív úplný systémový TeX, potom TinyTeX.",
+      "chooseFolder": "Vybrat složku s TeXem",
+      "chooseFolderHint": "Pokud je TeX nainstalovaný jinde, než kde ho Oleafly hledá, vyberte jeho složku zde. Funguje složka, ve které je latexmk, i složka s rokem TeX Live nad ní, například texlive/2026.",
+      "chooseFolderTitle": "Vyberte složku s instalací TeXu",
       "empty": "V tomto počítači nebyla nalezena žádná distribuce TeXu.",
       "heading": "Správa distribucí TeXu",
       "inUse": "Používá se",

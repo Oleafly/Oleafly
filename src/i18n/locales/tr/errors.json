@@ -106,6 +106,7 @@
     "perl_missing": "Linux'ta TinyTeX, latexmk'i ve paket yöneticisini sisteminizin Perl'üyle çalıştırır ve Perl kurulu değil. sudo apt install perl, sudo dnf install perl veya sudo pacman -S perl ile kurun, sonra yeniden deneyin. Şimdiye kadar indirilenler saklanır.",
     "perl_module_missing": "Linux'ta TinyTeX tam Perl'e ihtiyaç duyar ve {{module}} modülü eksik. sudo apt install perl, sudo dnf install perl veya sudo pacman -S perl ile kurun, sonra yeniden deneyin. Şimdiye kadar indirilenler saklanır.",
     "distribution_unknown": "Oleafly {{path}} içinde bir TeX dağıtımı bulamıyor. Ayarlar > Motorlar > LaTeX bölümünü açın ve listeden birini seçin.",
+    "custom_folder_without_latexmk": "{{path}} içinde latexmk yok. İçinde latexmk olan klasörü ya da onun üstündeki TeX Live yıl klasörünü (örneğin texlive/2026) seçin.",
     "package_operation_timeout": "Paket işlemi {{span}} sınırını aştığı için durduruldu, böylece yeniden derleyebilirsiniz. TeX Live yansısı büyük olasılıkla meşgul. Daha sonra yeniden deneyin veya tlmgr komutunu kendiniz çalıştırın.",
     "latexmk_build_path": "latexmk bu bilgisayarda Oleafly'nin derleme klasörünü kullanamıyor, çünkü klasörün yolunda latexmk'nin kabul etmediği karakterler var. Derlemek için bu projeyi Tectonic'e geçirin.",
     "latexmk_network_folder": "latexmk ağ paylaşımındaki bir klasörü derleyemez. Bu projeyi Tectonic'e geçirin veya klasörü bu bilgisayara kopyalayın.",

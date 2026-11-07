@@ -1420,6 +1420,9 @@
     "distributions": {
       "automatic": "Automatisch",
       "automaticTooltip": "Oleafly weer zelf laten kiezen: eerst een volledige systeem-TeX, daarna TinyTeX.",
+      "chooseFolder": "Een TeX-map kiezen",
+      "chooseFolderHint": "Staat TeX op een plek waar Oleafly niet zoekt, kies dan hier de map. De map met latexmk erin werkt, en de TeX Live-jaarmap daarboven ook, zoals texlive/2026.",
+      "chooseFolderTitle": "Kies de map met je TeX-installatie",
       "empty": "Geen TeX-distributie op deze computer gevonden.",
       "heading": "TeX-distributies beheren",
       "inUse": "In gebruik",

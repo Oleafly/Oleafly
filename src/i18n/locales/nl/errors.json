@@ -106,6 +106,7 @@
     "perl_missing": "TinyTeX op Linux draait latexmk en de pakketbeheerder ervan met de Perl van je systeem, en Perl is niet geïnstalleerd. Installeer het met sudo apt install perl, sudo dnf install perl of sudo pacman -S perl en probeer het daarna opnieuw. Wat al is gedownload, blijft bewaard.",
     "perl_module_missing": "TinyTeX op Linux heeft de volledige Perl nodig, en de module {{module}} ontbreekt. Installeer die met sudo apt install perl, sudo dnf install perl of sudo pacman -S perl en probeer het daarna opnieuw. Wat al is gedownload, blijft bewaard.",
     "distribution_unknown": "Oleafly kan in {{path}} geen TeX-distributie vinden. Open Instellingen > Engines > LaTeX en kies er een uit de lijst.",
+    "custom_folder_without_latexmk": "Er staat geen latexmk in {{path}}. Kies de map met latexmk erin, of de TeX Live-jaarmap daarboven, zoals texlive/2026.",
     "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit.",
     "latexmk_build_path": "latexmk kan de buildmap van Oleafly op deze computer niet gebruiken, omdat het pad tekens bevat die latexmk niet accepteert. Zet dit project om naar Tectonic om het te compileren.",
     "latexmk_network_folder": "latexmk kan geen map op een netwerkshare compileren. Zet dit project om naar Tectonic of kopieer de map naar deze computer.",
