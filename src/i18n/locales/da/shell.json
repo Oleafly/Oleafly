@@ -549,7 +549,7 @@
     "switchedAfterInstall": "TinyTeX er installeret. Projektet kompileres nu med {{engine}}.",
     "systemTex": {
       "found": "Der blev fundet en TeX-distribution på denne maskine. System-TeX kan læse de lokale filer, din konto har adgang til, så brug den kun til projekter, du har tillid til. TeX Live kører fortsat de hjælpeprogrammer, der står på dens egen liste, som konvertering af EPS.",
-      "missing": "Der blev ikke fundet nogen TeX-distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) på denne maskine.",
+      "missing": "Der blev ikke fundet nogen TeX-distribution ({{names}}) på denne maskine.",
       "switchPdflatex": "Skift til pdfLaTeX, og kompiler igen",
       "title": "Brug min systeminstallation af LaTeX (latexmk)",
       "titlePdflatex": "Brug pdfLaTeX i min systeminstallation af LaTeX (latexmk)",

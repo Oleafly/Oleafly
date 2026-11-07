@@ -550,7 +550,7 @@
     "switchedAfterInstall": "TinyTeX a fost instalat. Acest proiect se compilează acum cu {{engine}}.",
     "systemTex": {
       "found": "S-a găsit o distribuție TeX pe această mașină. TeX-ul din sistem poate citi fișierele locale accesibile contului tău, așa că folosește-l doar cu proiecte în care ai încredere. TeX Live rulează în continuare ajutoarele din lista lui proprie de permisiuni, precum conversia EPS.",
-      "missing": "Nu s-a găsit nicio distribuție TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) pe această mașină.",
+      "missing": "Nu s-a găsit nicio distribuție TeX ({{names}}) pe această mașină.",
       "switchPdflatex": "Treci la pdfLaTeX și recompilează",
       "title": "Folosește LaTeX-ul din sistemul meu (latexmk)",
       "titlePdflatex": "Folosește pdfLaTeX din LaTeX-ul sistemului meu (latexmk)",

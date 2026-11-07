@@ -548,7 +548,7 @@
     "switchedAfterInstall": "TinyTeX를 설치했습니다. 이제 이 프로젝트는 {{engine}}(으)로 컴파일합니다.",
     "systemTex": {
       "found": "이 컴퓨터에서 TeX 배포판을 찾았습니다. 시스템 TeX는 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. EPS 변환처럼 TeX Live가 자체 허용 목록에 둔 보조 도구는 그대로 실행됩니다.",
-      "missing": "이 컴퓨터에서 TeX 배포판(MacTeX, TeX Live, MiKTeX, TinyTeX)을 찾지 못했습니다.",
+      "missing": "이 컴퓨터에서 TeX 배포판({{names}})을 찾지 못했습니다.",
       "switchPdflatex": "pdfLaTeX로 바꾸고 다시 컴파일",
       "title": "내 시스템 LaTeX 사용(latexmk)",
       "titlePdflatex": "내 시스템 LaTeX에서 pdfLaTeX 사용(latexmk)",

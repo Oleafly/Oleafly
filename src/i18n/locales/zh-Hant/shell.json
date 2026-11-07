@@ -548,7 +548,7 @@
     "switchedAfterInstall": "TinyTeX 已安裝。這個專案現在改用 {{engine}} 編譯。",
     "systemTex": {
       "found": "這台電腦上找到了 TeX 發行版。系統 TeX 可以讀取你的帳戶可存取的本機檔案，因此請只用於你信任的專案。TeX Live 仍會執行自己允許清單中的輔助工具，例如 EPS 轉換。",
-      "missing": "這台電腦上找不到 TeX 發行版（MacTeX、TeX Live、MiKTeX、TinyTeX）。",
+      "missing": "這台電腦上找不到 TeX 發行版（{{names}}）。",
       "switchPdflatex": "切換至 pdfLaTeX 並重新編譯",
       "title": "使用我的系統 LaTeX（latexmk）",
       "titlePdflatex": "在我的系統 LaTeX 上使用 pdfLaTeX（latexmk）",

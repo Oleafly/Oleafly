@@ -548,7 +548,7 @@
     "switchedAfterInstall": "Đã cài TinyTeX. Dự án này giờ biên dịch bằng {{engine}}.",
     "systemTex": {
       "found": "Đã tìm thấy bản phân phối TeX trên máy này. TeX hệ thống có thể đọc những tệp cục bộ mà tài khoản của bạn truy cập được, nên chỉ dùng với dự án tin cậy. TeX Live vẫn chạy các trợ thủ trong danh sách cho phép của riêng nó, như chuyển đổi EPS.",
-      "missing": "Không tìm thấy bản phân phối TeX nào (MacTeX, TeX Live, MiKTeX, TinyTeX) trên máy này.",
+      "missing": "Không tìm thấy bản phân phối TeX nào ({{names}}) trên máy này.",
       "switchPdflatex": "Chuyển sang pdfLaTeX và biên dịch lại",
       "title": "Dùng LaTeX hệ thống của tôi (latexmk)",
       "titlePdflatex": "Dùng pdfLaTeX trên LaTeX hệ thống của tôi (latexmk)",

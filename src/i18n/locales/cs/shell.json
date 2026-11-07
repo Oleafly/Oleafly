@@ -551,7 +551,7 @@
     "switchedAfterInstall": "TinyTeX byl nainstalován. Tento projekt se teď kompiluje enginem {{engine}}.",
     "systemTex": {
       "found": "V tomto počítači byla nalezena distribuce TeX. Systémový TeX umí číst místní soubory dostupné vašemu účtu, proto jej používejte jen u projektů, kterým věříte. TeX Live dál spouští pomocníky ze svého vlastního seznamu, například převod EPS.",
-      "missing": "V tomto počítači nebyla nalezena žádná distribuce TeX (MacTeX, TeX Live, MiKTeX, TinyTeX).",
+      "missing": "V tomto počítači nebyla nalezena žádná distribuce TeX ({{names}}).",
       "switchPdflatex": "Přepnout na pdfLaTeX a kompilovat znovu",
       "title": "Použít můj systémový LaTeX (latexmk)",
       "titlePdflatex": "Použít pdfLaTeX z mého systémového LaTeXu (latexmk)",

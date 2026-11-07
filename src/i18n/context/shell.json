@@ -41,7 +41,10 @@
     "settings": "Toolbar button that opens the settings dialog"
   },
   "enginePicker": {
-    "recommended": "Badge on the option the app suggests"
+    "recommended": "Badge on the option the app suggests",
+    "systemTex": {
+      "missing": "{{names}} is the TeX distributions available on this platform, already joined with the locale's word for \"or\", for example \"TeX Live, MiKTeX, or TinyTeX\" on Windows"
+    }
   },
   "errorBoundary": {
     "specimen": {
