@@ -1412,6 +1412,9 @@
     "distributions": {
       "automatic": "自動",
       "automaticTooltip": "Oleafly に選ばせる設定に戻します。完全なシステムの TeX を優先し、次に TinyTeX を使います。",
+      "chooseFolder": "TeX のフォルダーを選ぶ",
+      "chooseFolderHint": "Oleafly が探さない場所に TeX をインストールしている場合は、ここでそのフォルダーを選んでください。latexmk があるフォルダーでも、その上にある TeX Live の年のフォルダー (texlive/2026 など) でもかまいません。",
+      "chooseFolderTitle": "TeX をインストールしたフォルダーを選んでください",
       "empty": "このマシンに TeX ディストリビューションは検出されませんでした。",
       "heading": "TeX ディストリビューションの管理",
       "inUse": "使用中",

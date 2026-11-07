@@ -977,6 +977,28 @@ pub fn texdir_bin_dirs(root: &Path) -> Vec<PathBuf> {
     dirs
 }
 
+/// The TeX binary folder for a folder the user picked by hand, which may be
+/// the binary folder itself, the `bin` folder above it, an install root
+/// (`/opt/texlive/2026`, a TinyTeX folder) or a folder of TeX Live years.
+/// Only a folder with latexmk counts, since compiles run latexmk.
+pub fn custom_tex_bin_dir(folder: &Path) -> Option<PathBuf> {
+    if !folder.is_dir() {
+        return None;
+    }
+    let mut candidates = vec![folder.to_owned()];
+    push_platform_bins_for(
+        &mut candidates,
+        folder,
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+    );
+    candidates.extend(texdir_bin_dirs(folder));
+    push_texlive_year_bins(&mut candidates, folder);
+    candidates
+        .into_iter()
+        .find(|dir| find_tool_in_dir(dir, "latexmk").is_some())
+}
+
 /// TeX Live installs under `<root>/<year>/bin/<platform>/`; probe years
 /// newest-first so a machine with several TeX Live releases prefers the latest.
 fn push_texlive_year_bins(dirs: &mut Vec<PathBuf>, root: &Path) {
@@ -1071,6 +1093,56 @@ mod tests {
         } else {
             assert_eq!(find_tool_in_dir(dir, "tlmgr"), None);
         }
+    }
+
+    #[test]
+    fn a_picked_folder_resolves_to_the_bin_folder_with_latexmk() {
+        let directory = tempfile::tempdir().unwrap();
+        let platform = host_platform_dirs()[0];
+        let year = directory.path().join("texlive/2026");
+        let bin = year.join("bin").join(platform);
+        create_tool(&bin, "latexmk");
+
+        for picked in [
+            bin.clone(),
+            year.join("bin"),
+            year.clone(),
+            directory.path().join("texlive"),
+        ] {
+            assert_eq!(custom_tex_bin_dir(&picked), Some(bin.clone()), "{picked:?}");
+        }
+
+        let no_latexmk = directory.path().join("other/bin").join(platform);
+        create_tool(&no_latexmk, "pdflatex");
+        assert_eq!(custom_tex_bin_dir(&directory.path().join("other")), None);
+        assert_eq!(custom_tex_bin_dir(&directory.path().join("missing")), None);
+    }
+
+    #[test]
+    fn a_chosen_folder_outside_the_search_is_listed_and_runs_compiles() {
+        let root = test_dir("custom-folder");
+        let custom = root.join("tools/mytex/bin/host");
+        create_complete_tex(&custom);
+        let search = inherited_search(&root, &[]);
+        let listed = |search: &TexSearch| {
+            list_distributions(search)
+                .into_iter()
+                .find(|row| row.bin_dir == custom.to_string_lossy())
+        };
+        assert_eq!(listed(&search), None);
+
+        let chosen = TexSearch {
+            preferred_bin_dir: Some(custom.clone()),
+            ..search
+        };
+        let row = listed(&chosen).unwrap();
+        assert!(row.active && row.preferred, "{row:?}");
+        assert_eq!(
+            find_tex_tool(&chosen, "latexmk"),
+            Some(custom.join(exe("latexmk")))
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

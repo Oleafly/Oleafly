@@ -136,6 +136,30 @@ pub async fn set_tex_distribution(bin_dir: Option<String>) -> Result<(), String>
     .map_err(|error| error.to_string())?
 }
 
+fn custom_folder_choice(folder: &str) -> Result<String, String> {
+    core::custom_tex_bin_dir(Path::new(folder))
+        .map(|dir| dir.to_string_lossy().into_owned())
+        .ok_or_else(|| {
+            crate::app_error::AppError::new("tex.custom_folder_without_latexmk")
+                .param("path", folder)
+                .into()
+        })
+}
+
+/// Use a TeX install the automatic search can't see, such as TeX Live in a
+/// folder of the user's own. The choice is saved like a listed one, and the
+/// TeX search puts it first from then on, so it shows in the list too.
+#[tauri::command]
+pub async fn set_custom_tex_folder(folder: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let bin_dir = custom_folder_choice(&folder)?;
+        crate::config::set_tex_distribution_choice(Some(bin_dir.clone()))?;
+        Ok(bin_dir)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 pub fn list_distributions() -> Vec<TexDistribution> {
     core::list_distributions(&search())
 }
@@ -209,6 +233,23 @@ mod tests {
             crate::app_error::code(&refused).as_deref(),
             Some("tex.distribution_unknown")
         );
+    }
+
+    #[test]
+    fn a_custom_folder_without_latexmk_is_refused_with_its_path() {
+        let directory = tempfile::tempdir().unwrap();
+        let folder = directory.path().to_string_lossy().into_owned();
+        let refused = custom_folder_choice(&folder).unwrap_err();
+        assert_eq!(
+            crate::app_error::code(&refused).as_deref(),
+            Some("tex.custom_folder_without_latexmk")
+        );
+        let envelope: serde_json::Value =
+            serde_json::from_str(refused.strip_prefix(crate::app_error::PREFIX).unwrap()).unwrap();
+        assert_eq!(envelope["params"]["path"], folder.as_str());
+
+        std::fs::write(directory.path().join(exe("latexmk")), b"tool").unwrap();
+        assert_eq!(custom_folder_choice(&folder), Ok(folder));
     }
 
     #[test]

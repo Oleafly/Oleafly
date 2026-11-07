@@ -1436,6 +1436,9 @@
     "distributions": {
       "automatic": "Автоматически",
       "automaticTooltip": "Вернуться к выбору Oleafly: сначала полный системный TeX, затем TinyTeX.",
+      "chooseFolder": "Выбрать папку TeX",
+      "chooseFolderHint": "Если TeX установлен там, где Oleafly не ищет, выберите его папку здесь. Подойдёт папка, в которой лежит latexmk, или папка года TeX Live над ней, например texlive/2026.",
+      "chooseFolderTitle": "Выберите папку с установленным TeX",
       "empty": "На этом компьютере не обнаружено ни одного дистрибутива TeX.",
       "heading": "Управление дистрибутивами TeX",
       "inUse": "Используется",

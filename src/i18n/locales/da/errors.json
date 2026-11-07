@@ -106,6 +106,7 @@
     "perl_missing": "TinyTeX på Linux kører latexmk og sin pakkehåndtering med systemets Perl, og Perl er ikke installeret. Installer det med sudo apt install perl, sudo dnf install perl eller sudo pacman -S perl, og prøv igen. Det, der allerede er downloadet, bliver gemt.",
     "perl_module_missing": "TinyTeX på Linux skal bruge den fulde Perl, og modulet {{module}} mangler. Installer det med sudo apt install perl, sudo dnf install perl eller sudo pacman -S perl, og prøv igen. Det, der allerede er downloadet, bliver gemt.",
     "distribution_unknown": "Oleafly kan ikke finde en TeX-distribution i {{path}}. Åbn Indstillinger > Motorer > LaTeX, og vælg en fra listen.",
+    "custom_folder_without_latexmk": "Der er ingen latexmk i {{path}}. Vælg mappen med latexmk, eller TeX Live-årsmappen over den, f.eks. texlive/2026.",
     "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv.",
     "latexmk_build_path": "latexmk kan ikke bruge Oleaflys byggemappe på denne computer, fordi stien indeholder tegn, som latexmk ikke accepterer. Skift projektet til Tectonic for at kompilere det.",
     "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på et netværksdrev. Skift projektet til Tectonic, eller kopiér mappen til denne computer.",

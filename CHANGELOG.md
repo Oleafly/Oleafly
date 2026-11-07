@@ -52,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   second source when GitHub fails. Settings > Engines shows which TeX
   distribution compiles, with an Update button when the managed TinyTeX is older
   than the one this version expects.
+- TeX installed in a folder Oleafly doesn't look in can be used for compiles.
+  In Settings > Engines > LaTeX, click Choose a TeX folder under Manage TeX
+  distributions and pick the folder with latexmk in it or the TeX Live year
+  folder above it (#416).
 - Local models can skip thinking. For an Ollama or Lemonade model that thinks
   before it answers, the effort menu next to the model picker now has None. Pick
   it and the model answers without the thinking step, which is much faster on

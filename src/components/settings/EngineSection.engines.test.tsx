@@ -66,9 +66,9 @@ function backend(overrides: Record<string, unknown> = {}) {
   });
 }
 
-function packagesReadAfterChoosing() {
+function packagesReadAfterChoosing(choice = "set_tex_distribution") {
   const commands = mocks.invoke.mock.calls.map(([command]) => command);
-  const chosen = commands.lastIndexOf("set_tex_distribution");
+  const chosen = commands.lastIndexOf(choice);
   return commands.slice(chosen + 1).filter((command) => command === "tlmgr_installed").length;
 }
 
@@ -224,6 +224,35 @@ describe("EngineSection LaTeX tab", () => {
       expect(mocks.invoke).toHaveBeenCalledWith("set_tex_distribution", { binDir: null }),
     );
     await waitFor(() => expect(packagesReadAfterChoosing()).toBeGreaterThan(0));
+  });
+
+  it("uses a TeX folder picked by hand", async () => {
+    const user = userEvent.setup();
+    backend({
+      pick_open_paths: ["/opt/mytex"],
+      set_custom_tex_folder: "/opt/mytex/bin/universal-darwin",
+    });
+    render(<EngineSection />);
+
+    await user.click(await screen.findByRole("button", { name: engineCopy.distributions.chooseFolder }));
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("set_custom_tex_folder", { folder: "/opt/mytex" }),
+    );
+    await waitFor(() =>
+      expect(packagesReadAfterChoosing("set_custom_tex_folder")).toBeGreaterThan(0),
+    );
+  });
+
+  it("leaves the TeX choice alone when the folder dialog is closed", async () => {
+    const user = userEvent.setup();
+    backend({ pick_open_paths: null });
+    render(<EngineSection />);
+
+    await user.click(await screen.findByRole("button", { name: engineCopy.distributions.chooseFolder }));
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("pick_open_paths", expect.anything()),
+    );
+    expect(mocks.invoke).not.toHaveBeenCalledWith("set_custom_tex_folder", expect.anything());
   });
 
   it("explains that TinyTeX will not take over from a full system TeX by itself", async () => {

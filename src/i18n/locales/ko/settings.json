@@ -1412,6 +1412,9 @@
     "distributions": {
       "automatic": "자동",
       "automaticTooltip": "Oleafly가 직접 고르도록 되돌립니다. 전체 시스템 TeX를 먼저, 그다음 TinyTeX를 선택합니다.",
+      "chooseFolder": "TeX 폴더 선택",
+      "chooseFolderHint": "Oleafly가 찾지 않는 곳에 TeX를 설치했다면 여기에서 그 폴더를 고르세요. latexmk가 들어 있는 폴더도 되고, 그 위의 TeX Live 연도 폴더(예: texlive/2026)도 됩니다.",
+      "chooseFolderTitle": "TeX를 설치한 폴더를 고르세요",
       "empty": "이 컴퓨터에서 TeX 배포판을 찾지 못했습니다.",
       "heading": "TeX 배포판 관리",
       "inUse": "사용 중",

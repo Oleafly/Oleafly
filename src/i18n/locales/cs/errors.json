@@ -108,6 +108,7 @@
     "perl_missing": "TinyTeX v Linuxu spouští latexmk a svého správce balíčků pomocí systémového Perlu a Perl není nainstalován. Nainstalujte jej příkazem sudo apt install perl, sudo dnf install perl nebo sudo pacman -S perl a zkuste to znovu. Co už se stáhlo, zůstane zachováno.",
     "perl_module_missing": "TinyTeX v Linuxu potřebuje úplný Perl a chybí modul {{module}}. Nainstalujte jej příkazem sudo apt install perl, sudo dnf install perl nebo sudo pacman -S perl a zkuste to znovu. Co už se stáhlo, zůstane zachováno.",
     "distribution_unknown": "Oleafly nemůže v {{path}} najít distribuci TeXu. Otevřete Nastavení > Enginy > LaTeX a vyberte některou ze seznamu.",
+    "custom_folder_without_latexmk": "V {{path}} není latexmk. Vyberte složku, ve které latexmk je, nebo složku s rokem TeX Live nad ní, například texlive/2026.",
     "package_operation_timeout": "Operace s balíčky překročila limit {{span}} a byla zastavena, abyste mohli znovu kompilovat. Zrcadlo TeX Live je nejspíš zaneprázdněné. Zkuste to později, nebo spusťte tlmgr sami.",
     "latexmk_build_path": "latexmk nemůže na tomto počítači použít složku sestavení Oleafly, protože její cesta obsahuje znaky, které latexmk nepřijímá. Chcete-li projekt zkompilovat, přepněte ho na Tectonic.",
     "latexmk_network_folder": "latexmk nemůže kompilovat složku ve sdíleném síťovém umístění. Přepněte tento projekt na Tectonic, nebo složku zkopírujte do tohoto počítače.",

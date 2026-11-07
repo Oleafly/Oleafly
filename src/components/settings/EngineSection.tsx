@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Cpu, Download, HardDrive, Info, Trash2 } from "lucide-react";
+import { AlertTriangle, Cpu, Download, FolderOpen, HardDrive, Info, Trash2 } from "lucide-react";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import {
   sectionDiffersFromDefaults,
@@ -11,6 +11,7 @@ import { TexPackagesSection } from "./TexPackagesSection";
 import {
   hasPandoc,
   removeUnusedTinymistDownloads,
+  setCustomTexFolder,
   setTexDistribution,
   texDistributions,
   type TexDistribution,
@@ -19,6 +20,7 @@ import {
   type TypstVersionEntry,
 } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
+import { pickOpenPath } from "@/lib/native-file-dialog";
 import { describeError } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
 import { SettingsPath } from "@/components/settings/SettingsPath";
@@ -487,15 +489,28 @@ export function EngineSection() {
   const kind = info?.kind ?? "none";
   const canCancelInstall = installing && installPhase !== "packages";
 
-  const chooseDistribution = async (binDir: string | null) => {
+  const applyTexChoice = async (save: () => Promise<unknown>, context: string) => {
     try {
-      await setTexDistribution(binDir);
+      await save();
       await refresh();
       await refreshPackages();
       setDistros(await texDistributions());
     } catch (error) {
-      notifyError("choose tex distribution", error);
+      notifyError(context, error);
     }
+  };
+
+  const chooseDistribution = (binDir: string | null) =>
+    applyTexChoice(() => setTexDistribution(binDir), "choose tex distribution");
+
+  const chooseTexFolder = async () => {
+    const folder = await pickOpenPath({
+      directory: true,
+      multiple: false,
+      title: t(($) => $.settings.engine.distributions.chooseFolderTitle),
+    });
+    if (!folder || Array.isArray(folder)) return;
+    await applyTexChoice(() => setCustomTexFolder(folder), "choose tex folder");
   };
 
   const cancelInstallButton = () => (
@@ -721,6 +736,18 @@ export function EngineSection() {
             </div>
           </div>
         )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void chooseTexFolder()}
+            className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent"
+          >
+            <FolderOpen className="size-3" /> {t(($) => $.settings.engine.distributions.chooseFolder)}
+          </button>
+          <p className="min-w-0 flex-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
+            {t(($) => $.settings.engine.distributions.chooseFolderHint)}
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center gap-1.5">

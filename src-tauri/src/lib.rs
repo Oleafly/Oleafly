@@ -910,6 +910,7 @@ pub fn run() {
             quit_gate::cancel_quit_flush,
             tex_distro::tex_distributions,
             tex_distro::set_tex_distribution,
+            tex_distro::set_custom_tex_folder,
             download_settings::get_download_settings,
             download_settings::set_download_settings,
             latex_engine::has_tagging_engine,

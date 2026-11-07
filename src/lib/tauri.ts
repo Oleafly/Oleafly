@@ -1267,6 +1267,8 @@ export const downloadPandoc = () => invoke<string>("download_pandoc");
 export const texDistributions = () => invoke<TexDistribution[]>("tex_distributions");
 export const setTexDistribution = (binDir: string | null) =>
   invoke<void>("set_tex_distribution", { binDir });
+export const setCustomTexFolder = (folder: string) =>
+  invoke<string>("set_custom_tex_folder", { folder });
 
 export type DownloadSourceChoice = "automatic" | "original" | "custom";
 
