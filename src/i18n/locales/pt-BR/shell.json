@@ -699,6 +699,7 @@
     "picker": {
       "askTitle": "Qual documento o Oleafly deve compilar?",
       "askDescription": "Esta pasta tem mais de um documento. Escolha o principal. Você pode mudar depois.",
+      "askDescriptionOne": "Esta pasta tem um documento. Abra-o como principal ou só navegue pelos arquivos. Você pode mudar depois.",
       "listLabel": "Documentos nesta pasta",
       "open": "Abrir",
       "browse": "Só navegar pelos arquivos",

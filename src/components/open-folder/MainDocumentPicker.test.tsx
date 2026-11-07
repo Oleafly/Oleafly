@@ -111,7 +111,9 @@ describe("MainDocumentPicker", () => {
     render(<MainDocumentPicker />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     present();
-    expect(screen.getByRole("dialog", { name: labels.picker.askTitle })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: labels.picker.askTitle })).toHaveTextContent(
+      labels.picker.askDescription,
+    );
     const choices = options();
     expect(choices).toHaveLength(3);
     expect(choices[0]).toBeChecked();
@@ -127,6 +129,15 @@ describe("MainDocumentPicker", () => {
     ).toBeInTheDocument();
     expect(within(rows[1]).getByText(labels.kind.presentation)).toBeInTheDocument();
     expect(within(rows[2]).getByText(labels.kind.markdown)).toBeInTheDocument();
+  });
+
+  it("says a folder with a single document has one, not several", () => {
+    render(<MainDocumentPicker />);
+    present({ ...ambiguous, candidates: [ambiguous.candidates[2]] });
+    const dialog = screen.getByRole("dialog", { name: labels.picker.askTitle });
+    expect(dialog).toHaveTextContent(labels.picker.askDescriptionOne);
+    expect(dialog).not.toHaveTextContent(labels.picker.askDescription);
+    expect(options()).toHaveLength(1);
   });
 
   it("shows the selection with a tint, never an outline or ring", () => {

@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Oleafly hangi belgeyi derlesin?",
       "askDescription": "Bu klasörde birden fazla belge var. Ana belgeyi seçin. Daha sonra değiştirebilirsiniz.",
+      "askDescriptionOne": "Bu klasörde bir belge var. Ana belge olarak açın veya yalnızca dosyalara göz atın. Daha sonra değiştirebilirsiniz.",
       "listLabel": "Bu klasördeki belgeler",
       "open": "Aç",
       "browse": "Yalnızca dosyalara göz at",

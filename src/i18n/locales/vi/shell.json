@@ -695,6 +695,7 @@
     "picker": {
       "askTitle": "Oleafly nên biên dịch tài liệu nào?",
       "askDescription": "Thư mục này có nhiều hơn một tài liệu. Hãy chọn tài liệu chính. Bạn có thể đổi sau.",
+      "askDescriptionOne": "Thư mục này có một tài liệu. Hãy mở nó làm tài liệu chính, hoặc chỉ duyệt tệp. Bạn có thể đổi sau.",
       "listLabel": "Tài liệu trong thư mục này",
       "open": "Mở",
       "browse": "Chỉ duyệt tệp",

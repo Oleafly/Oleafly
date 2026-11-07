@@ -701,6 +701,7 @@
     "picker": {
       "askTitle": "Který dokument má Oleafly kompilovat?",
       "askDescription": "Tato složka obsahuje více dokumentů. Vyberte hlavní. Později ho můžete změnit.",
+      "askDescriptionOne": "Tato složka obsahuje jeden dokument. Otevřete ho jako hlavní, nebo jen procházejte soubory. Později ho můžete změnit.",
       "listLabel": "Dokumenty v této složce",
       "open": "Otevřít",
       "browse": "Jen procházet soubory",

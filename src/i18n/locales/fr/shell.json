@@ -699,6 +699,7 @@
     "picker": {
       "askTitle": "Quel document Oleafly doit-il compiler ?",
       "askDescription": "Ce dossier contient plusieurs documents. Choisissez le document principal. Vous pourrez le changer plus tard.",
+      "askDescriptionOne": "Ce dossier contient un document. Ouvrez-le comme document principal ou parcourez simplement les fichiers. Vous pourrez le changer plus tard.",
       "listLabel": "Documents de ce dossier",
       "open": "Ouvrir",
       "browse": "Parcourir les fichiers",

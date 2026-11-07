@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Minkä dokumentin Oleafly kääntää?",
       "askDescription": "Tässä kansiossa on useampi dokumentti. Valitse päädokumentti. Voit vaihtaa sen myöhemmin.",
+      "askDescriptionOne": "Tässä kansiossa on yksi dokumentti. Avaa se päädokumenttina tai selaa vain tiedostoja. Voit vaihtaa sen myöhemmin.",
       "listLabel": "Tämän kansion dokumentit",
       "open": "Avaa",
       "browse": "Selaa vain tiedostoja",

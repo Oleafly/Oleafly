@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Welches Dokument soll Oleafly kompilieren?",
       "askDescription": "Dieser Ordner enthält mehr als ein Dokument. Wählen Sie das Hauptdokument. Sie können es später ändern.",
+      "askDescriptionOne": "Dieser Ordner enthält ein Dokument. Öffnen Sie es als Hauptdokument oder sehen Sie sich nur die Dateien an. Sie können es später ändern.",
       "listLabel": "Dokumente in diesem Ordner",
       "open": "Öffnen",
       "browse": "Nur Dateien ansehen",

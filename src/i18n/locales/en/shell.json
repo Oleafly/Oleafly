@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Which document should Oleafly compile?",
       "askDescription": "This folder has more than one document. Pick the main one. You can change it later.",
+      "askDescriptionOne": "This folder has one document. Open it as the main one, or just browse the files. You can change it later.",
       "listLabel": "Documents in this folder",
       "open": "Open",
       "browse": "Just browse files",

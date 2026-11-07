@@ -263,7 +263,9 @@ export function MainDocumentPicker() {
         <DialogHeader className="pr-6">
           <DialogTitle className="text-sm">{t(($) => $.shell.openedFolder.picker.askTitle)}</DialogTitle>
           <DialogDescription className="text-xs leading-relaxed">
-            {t(($) => $.shell.openedFolder.picker.askDescription)}
+            {candidates.length === 1
+              ? t(($) => $.shell.openedFolder.picker.askDescriptionOne)
+              : t(($) => $.shell.openedFolder.picker.askDescription)}
           </DialogDescription>
         </DialogHeader>
         {renderBody()}

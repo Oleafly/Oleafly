@@ -695,6 +695,7 @@
     "picker": {
       "askTitle": "Oleafly 应该编译哪个文档？",
       "askDescription": "此文件夹中有多个文档。请选择主文档，之后可以更改。",
+      "askDescriptionOne": "此文件夹中有一个文档。可以将它作为主文档打开，或仅浏览文件，之后可以更改。",
       "listLabel": "此文件夹中的文档",
       "open": "打开",
       "browse": "仅浏览文件",

@@ -699,6 +699,7 @@
     "picker": {
       "askTitle": "Ce document să compileze Oleafly?",
       "askDescription": "Acest folder are mai multe documente. Alege documentul principal. Îl poți schimba mai târziu.",
+      "askDescriptionOne": "Acest folder are un singur document. Deschide-l ca document principal sau doar răsfoiește fișierele. Îl poți schimba mai târziu.",
       "listLabel": "Documentele din acest folder",
       "open": "Deschide",
       "browse": "Doar răsfoiește fișierele",

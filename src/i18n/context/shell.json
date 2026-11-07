@@ -87,6 +87,7 @@
       "calepin": "Kind of project for a folder of Typst files that use Calepin to run code. Calepin is a product name. Translate only notebook."
     },
     "picker": {
+      "askDescriptionOne": "Shown instead of the usual description when the folder has exactly one document to pick",
       "bestMatch": "Badge on the document the app thinks is the main one",
       "browse": "Secondary button: close the chooser without picking a document and look at the files"
     },

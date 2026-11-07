@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Vilket dokument ska Oleafly kompilera?",
       "askDescription": "Den här mappen har mer än ett dokument. Välj huvuddokumentet. Du kan ändra det senare.",
+      "askDescriptionOne": "Den här mappen har ett dokument. Öppna det som huvuddokument eller bläddra bara bland filerna. Du kan ändra det senare.",
       "listLabel": "Dokument i den här mappen",
       "open": "Öppna",
       "browse": "Bläddra bara bland filerna",

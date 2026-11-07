@@ -699,6 +699,7 @@
     "picker": {
       "askTitle": "Quale documento deve compilare Oleafly?",
       "askDescription": "Questa cartella contiene più di un documento. Scegli quello principale. Puoi cambiarlo in seguito.",
+      "askDescriptionOne": "Questa cartella contiene un documento. Aprilo come principale o sfoglia solo i file. Puoi cambiarlo in seguito.",
       "listLabel": "Documenti in questa cartella",
       "open": "Apri",
       "browse": "Sfoglia solo i file",

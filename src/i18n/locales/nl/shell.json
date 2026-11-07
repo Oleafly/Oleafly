@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Welk document moet Oleafly compileren?",
       "askDescription": "Deze map bevat meer dan één document. Kies het hoofddocument. Je kunt het later wijzigen.",
+      "askDescriptionOne": "Deze map bevat één document. Open het als hoofddocument of bekijk alleen de bestanden. Je kunt het later wijzigen.",
       "listLabel": "Documenten in deze map",
       "open": "Openen",
       "browse": "Alleen bestanden bekijken",

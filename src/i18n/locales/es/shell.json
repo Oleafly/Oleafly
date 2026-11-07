@@ -699,6 +699,7 @@
     "picker": {
       "askTitle": "¿Qué documento debe compilar Oleafly?",
       "askDescription": "Esta carpeta tiene más de un documento. Elige el principal. Puedes cambiarlo más tarde.",
+      "askDescriptionOne": "Esta carpeta tiene un documento. Ábrelo como principal o solo explora los archivos. Puedes cambiarlo más tarde.",
       "listLabel": "Documentos de esta carpeta",
       "open": "Abrir",
       "browse": "Solo explorar archivos",

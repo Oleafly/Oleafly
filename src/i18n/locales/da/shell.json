@@ -697,6 +697,7 @@
     "picker": {
       "askTitle": "Hvilket dokument skal Oleafly kompilere?",
       "askDescription": "Denne mappe har mere end ét dokument. Vælg hoveddokumentet. Du kan ændre det senere.",
+      "askDescriptionOne": "Denne mappe har ét dokument. Åbn det som hoveddokument, eller gennemse bare filerne. Du kan ændre det senere.",
       "listLabel": "Dokumenter i denne mappe",
       "open": "Åbn",
       "browse": "Gennemse bare filerne",

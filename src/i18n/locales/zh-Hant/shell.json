@@ -695,6 +695,7 @@
     "picker": {
       "askTitle": "Oleafly 要編譯哪一份文件？",
       "askDescription": "這個資料夾有多份文件。請選擇主要文件，之後可以再變更。",
+      "askDescriptionOne": "這個資料夾有一份文件。可以將它作為主要文件開啟，或只瀏覽檔案，之後可以再變更。",
       "listLabel": "這個資料夾中的文件",
       "open": "開啟",
       "browse": "只瀏覽檔案",
