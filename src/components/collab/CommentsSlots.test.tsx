@@ -52,11 +52,13 @@ afterEach(() => {
 describe("comment slots", () => {
   it("start the comment keeper only for a shared project", async () => {
     render(<CollabActivitySlot />);
-    await vi.waitFor(() => expect(loaded.activity).toHaveBeenCalled());
+    // The keepers are lazy imports, and a cold transform on a busy machine can
+    // take longer than waitFor's one second default.
+    await vi.waitFor(() => expect(loaded.activity).toHaveBeenCalled(), { timeout: 10_000 });
     await settle();
     expect(loaded.keeper).not.toHaveBeenCalled();
     act(() => useCollabRail.setState({ visible: true }));
-    await vi.waitFor(() => expect(loaded.keeper).toHaveBeenCalled());
+    await vi.waitFor(() => expect(loaded.keeper).toHaveBeenCalled(), { timeout: 10_000 });
   });
 
   it("load the Comments tab on demand", async () => {
