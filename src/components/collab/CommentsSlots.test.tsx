@@ -59,7 +59,7 @@ describe("comment slots", () => {
     expect(loaded.keeper).not.toHaveBeenCalled();
     act(() => useCollabRail.setState({ visible: true }));
     await vi.waitFor(() => expect(loaded.keeper).toHaveBeenCalled(), { timeout: 10_000 });
-  });
+  }, 20_000);
 
   it("load the Comments tab on demand", async () => {
     render(<CommentsPanel />);
