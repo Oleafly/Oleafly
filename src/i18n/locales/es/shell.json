@@ -950,6 +950,10 @@
         "description": "Muestra la galería de Herramientas de Oleafly y las herramientas sueltas (importación de PDF, ecuaciones, tablas, BibTeX, búsqueda de laboratorios y de literatura, fechas límite) junto con sus comandos de barra. Desactivado por omisión mientras siga en beta.",
         "label": "Herramientas de LaTeX"
       },
+      "notes": {
+        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "label": "Notes"
+      },
       "researchTasks": {
         "description": "Un agente trabaja por su cuenta en una copia del proyecto y deja sus cambios para que los revises. Muy inestable: las ejecuciones pueden quedarse atascadas, fallar o dejar cambios que tendrás que arreglar a mano, y consumen la cuota de tu proveedor todo el tiempo. Añade una sección Investigación a los Ajustes. Al desactivarlo se detienen todas las tareas en curso. Desactivado por omisión. Actívalo por tu cuenta y riesgo.",
         "label": "Tareas de investigación",

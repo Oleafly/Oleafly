@@ -64,6 +64,8 @@ export function projectKindLabel(t: LibraryTranslate, kind: string | undefined):
       return t(($) => $.library.projects.kind.image);
     case "diagram":
       return t(($) => $.library.projects.kind.diagram);
+    case "note":
+      return t(($) => $.library.projects.kind.note);
     default:
       return kind ?? "";
   }

@@ -936,6 +936,10 @@
         "description": "Toon de galerij Oleafly Tools en de losse tools (PDF-import, vergelijkingen, tabellen, BibTeX, lab- en literatuurzoeken, deadlines) plus hun slash-opdrachten. Staat standaard uit zolang dit in bèta is.",
         "label": "LaTeX-tools"
       },
+      "notes": {
+        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "label": "Notes"
+      },
       "researchTasks": {
         "description": "Een agent werkt zelfstandig in een kopie van het project en laat de wijzigingen voor jou achter om te beoordelen. Zeer onstabiel: runs kunnen vastlopen, mislukken of wijzigingen achterlaten die je met de hand moet opruimen, en ze gebruiken de hele tijd het quotum van je provider. Voegt de sectie Onderzoek toe aan Instellingen. Als je het uitzet, stoppen alle lopende taken. Staat standaard uit. Zet het op eigen risico aan.",
         "label": "Onderzoekstaken",

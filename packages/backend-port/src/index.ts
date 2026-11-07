@@ -432,6 +432,7 @@ export interface ProjectInfo {
     last_opened_at?: number;
     shared?: ProjectSharing | null;
     imported_from?: string | null;
+    related_project?: string | null;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;

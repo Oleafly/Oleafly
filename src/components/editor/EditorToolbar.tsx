@@ -100,6 +100,7 @@ export function IconBtn({
   title,
   children,
   wide,
+  active,
   disabled,
   "data-tour": dataTour,
 }: Readonly<{
@@ -107,6 +108,7 @@ export function IconBtn({
   title: string;
   children: ReactNode;
   wide?: boolean;
+  active?: boolean;
   disabled?: boolean;
   "data-tour"?: string;
 }>) {
@@ -117,11 +119,13 @@ export function IconBtn({
         onMouseDown={(e) => e.preventDefault()}
         onClick={onClick}
         aria-label={title}
+        aria-pressed={active}
         disabled={disabled}
         data-tour={dataTour}
         className={cn(
           "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
-          wide ? "w-auto px-1.5" : "w-7"
+          wide ? "w-auto px-1.5" : "w-7",
+          active && "bg-primary/10 text-foreground",
         )}
       >
         {children}

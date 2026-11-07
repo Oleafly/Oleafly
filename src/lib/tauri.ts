@@ -855,6 +855,16 @@ export const createImageProject = (name: string, source: string, color?: string)
 export const createDiagramProject = (name: string, source: string, language?: "tikz" | "typst" | "mermaid") =>
   invoke<string>("create_diagram_project", { name, source, language: language ?? null });
 
+export const createNoteProject = (name: string, source: string, relatedProject?: string | null) =>
+  invoke<string>("create_note_project", { name, source, relatedProject: relatedProject ?? null });
+
+export interface NoteHead {
+  id: string;
+  head: string;
+}
+
+export const noteHeads = () => invoke<NoteHead[]>("note_heads");
+
 export const getOrCreateScratchProject = () =>
   invoke<string>("get_or_create_scratch_project");
 

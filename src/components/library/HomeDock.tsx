@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucide-react";
+import { NotebookPen, PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
@@ -10,7 +10,7 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useSettingsStore } from "@/store/settings";
-import { openDiagramComposerChooser, openToolsGallery } from "@/features/open-tool";
+import { openDiagramComposerChooser, openNotes, openToolsGallery } from "@/features/open-tool";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 
@@ -77,6 +77,7 @@ export function HomeDock() {
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
   const latexTools = useSettingsStore((s) => s.latexTools);
+  const notes = useSettingsStore((s) => s.notes);
   const hasProjects = useFilesStore((s) => s.projects.length > 0);
   const fullscreen = useFullscreen();
   const page = useHomeViewStore((s) => s.page);
@@ -112,6 +113,16 @@ export function HomeDock() {
         testId="open-diagram-composer"
         tooltipSide={tooltipSide}
       />
+      {notes && (
+        <DockButton
+          label={t(($) => $.library.dock.notes)}
+          icon={<NotebookPen className="size-4" />}
+          onClick={() => void openNotes()}
+          active={page === "notes"}
+          testId="open-notes"
+          tooltipSide={tooltipSide}
+        />
+      )}
       {latexTools && (
         <DockButton
           label={t(($) => $.library.dock.tools)}

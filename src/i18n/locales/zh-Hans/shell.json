@@ -922,6 +922,10 @@
         "description": "显示 Oleafly 工具库以及各个工具（PDF 导入、公式、表格、BibTeX、实验与文献检索、截止日期）及其斜杠命令。仍处于测试阶段，默认关闭。",
         "label": "LaTeX 工具"
       },
+      "notes": {
+        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "label": "Notes"
+      },
       "researchTasks": {
         "description": "代理会在项目的副本中自行工作，并把修改留给你审阅。极不稳定：运行可能卡住、失败，或留下需要手动处理的修改，而且全程都会占用你的提供商额度。会在设置中添加“研究”分区。关闭后会停止所有正在运行的任务。默认关闭，开启后风险自负。",
         "label": "研究任务",
