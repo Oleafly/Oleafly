@@ -18,7 +18,8 @@ const events = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => tauri);
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => files } }));
-vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
+const log = vi.hoisted(() => ({ logError: vi.fn() }));
+vi.mock("@/lib/log", () => log);
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn((_name: string, handler: (event: { payload: unknown }) => void) => {
     events.handler = handler;
@@ -175,5 +176,38 @@ describe("notes from the library", () => {
     expect(events.unlisten).toHaveBeenCalled();
     events.handler?.({ payload: { projectId: "note-1", paths: ["note.md"], rescan: false } });
     expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs a folder watch that fails to start and has nothing to stop later", async () => {
+    const failure = new Error("watch refused");
+    tauri.watchProjectFolder.mockRejectedValue(failure);
+    const { notes } = service();
+    const onChange = vi.fn();
+    const stop = notes.watchNote?.("note-1", onChange);
+    await vi.waitFor(() => expect(log.logError).toHaveBeenCalledWith("watch note folder", failure));
+    events.handler?.({ payload: { projectId: "note-1", paths: ["notes/note.md"], rescan: false } });
+    expect(onChange).toHaveBeenCalledOnce();
+    stop?.();
+    await vi.waitFor(() => expect(events.unlisten).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(tauri.unwatchProjectFolder).not.toHaveBeenCalled();
+  });
+
+  it("logs a folder watch that fails to stop", async () => {
+    const failure = new Error("unwatch refused");
+    tauri.watchProjectFolder.mockResolvedValue(3);
+    tauri.unwatchProjectFolder.mockRejectedValue(failure);
+    const { notes } = service();
+    const onChange = vi.fn();
+    const stop = notes.watchNote?.("note-1", onChange);
+    events.handler?.({ payload: { projectId: "note-1", paths: ["notes\\note.md"], rescan: false } });
+    expect(onChange).toHaveBeenCalledOnce();
+    stop?.();
+    await vi.waitFor(() => expect(log.logError).toHaveBeenCalledWith("stop watching note folder", failure));
+  });
+
+  it("proposes no agent edits until agents are connected", async () => {
+    const { notes } = service();
+    await expect(notes.proposeEdits({} as never, new AbortController().signal)).resolves.toEqual([]);
   });
 });

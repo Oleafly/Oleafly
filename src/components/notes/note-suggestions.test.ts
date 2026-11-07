@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
+import type { Transaction } from "@tiptap/pm/state";
 import { createWysiwygExtensions, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
 import { afterEach, describe, expect, it } from "vitest";
 import { diffNoteDocs } from "./note-diff";
@@ -9,6 +10,7 @@ import {
   acceptAll,
   docWithPending,
   hasPending,
+  isReviewTransaction,
   moveReview,
   NoteSuggestions,
   rejectActive,
@@ -154,6 +156,155 @@ describe("note changes", () => {
   });
 });
 
+function press(editor: Editor, init: KeyboardEventInit): boolean {
+  const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+  return editor.view.someProp("handleKeyDown", (handle) => handle(editor.view, event)) ?? false;
+}
+
+function transactions(editor: Editor): Transaction[] {
+  const seen: Transaction[] = [];
+  editor.on("transaction", ({ transaction }) => {
+    seen.push(transaction);
+  });
+  return seen;
+}
+
+function positionOf(editor: Editor, word: string): number {
+  let position = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (position < 0 && node.isText && node.text?.includes(word)) position = pos + node.text.indexOf(word);
+  });
+  return position;
+}
+
+describe("reviewing note changes", () => {
+  it("reports nothing to review on an editor without suggestions", () => {
+    const editor = new Editor({
+      element: document.createElement("div"),
+      extensions: createWysiwygExtensions(),
+      content: parseMarkdownBody(BODY).doc,
+    });
+    editors.push(editor);
+    expect(reviewSummary(editor)).toEqual({ count: 0, index: -1, activeId: null });
+    expect(hasPending(editor, "disk")).toBe(false);
+  });
+
+  it("does nothing when there is nothing to step through, accept or reject", () => {
+    const editor = build();
+    const before = markdown(editor);
+    const seen = transactions(editor);
+    moveReview(editor, 1);
+    acceptActive(editor);
+    rejectActive(editor);
+    expect(seen).toHaveLength(0);
+    expect(markdown(editor)).toBe(before);
+  });
+
+  it("tells review transactions apart from typing", () => {
+    const editor = build();
+    const seen = transactions(editor);
+    propose(editor, BODY.replace("per pixel", "per patch"));
+    editor.chain().insertContentAt(1, "Draft ").run();
+    expect(seen.map(isReviewTransaction)).toEqual([true, false]);
+  });
+
+  it("keeps the review as it is when the selection moves or nothing is pending", () => {
+    const editor = build();
+    editor.chain().insertContentAt(1, "Draft ").run();
+    expect(reviewSummary(editor).count).toBe(0);
+    propose(editor, BODY.replace("per pixel", "per patch"));
+    const before = reviewSummary(editor);
+    editor.commands.setTextSelection(3);
+    expect(reviewSummary(editor)).toEqual(before);
+  });
+
+  it("accepts the active change with Mod-Enter and rejects it with Escape", () => {
+    const editor = build();
+    propose(editor, BODY.replace("0.75 and", "0.60 and").replace("per pixel", "per patch"));
+    expect(press(editor, { key: "Enter", ctrlKey: true })).toBe(true);
+    expect(markdown(editor)).toContain("ratio of 0.60 and");
+    expect(reviewSummary(editor).count).toBe(1);
+    expect(press(editor, { key: "Escape" })).toBe(true);
+    expect(markdown(editor)).toContain("per pixel");
+    expect(reviewSummary(editor).count).toBe(0);
+  });
+
+  it("leaves Escape to others when no change is active", () => {
+    const editor = build();
+    const before = markdown(editor);
+    expect(press(editor, { key: "Escape" })).toBe(false);
+    expect(markdown(editor)).toBe(before);
+  });
+
+  it("orders changes at the same place by where they end", () => {
+    const editor = build();
+    const at = positionOf(editor, "pixel");
+    showSuggestions(
+      editor,
+      [
+        { kind: "text", from: at, to: at + 5, text: "patch" },
+        { kind: "text", from: at, to: at + 2, text: "po" },
+      ],
+      "agent",
+    );
+    expect(reviewSummary(editor)).toMatchObject({ count: 2, index: 1 });
+  });
+
+  it("marks only the active block change as active", () => {
+    const editor = build();
+    propose(editor, BODY.replace("## Results", "## Results\n\nFirst new.").replace("Masks are", "Second new.\n\nMasks are"));
+    const blocks = [...editor.view.dom.querySelectorAll(".note-diff-block")];
+    expect(blocks.map((block) => block.textContent)).toEqual(["First new.", "Second new."]);
+    expect(blocks.map((block) => block.classList.contains("note-diff-active"))).toEqual([true, false]);
+    expect(blocks.every((block) => (block as HTMLElement).contentEditable === "false")).toBe(true);
+  });
+
+  it("shows an inserted word without striking anything out", () => {
+    const editor = build();
+    propose(editor, BODY.replace("per pixel", "per single pixel"));
+    expect(editor.view.dom.querySelector(".note-diff-delete")).toBeNull();
+    expect(editor.view.dom.querySelector(".note-diff-insert")?.textContent).toBe("single ");
+  });
+
+  it("shows a removed word struck out with nothing inserted", () => {
+    const editor = build();
+    propose(editor, BODY.replace("sampled per pixel", "sampled pixel"));
+    expect(editor.view.dom.querySelector(".note-diff-delete")?.textContent).toBe("per ");
+    expect(editor.view.dom.querySelector(".note-diff-insert")).toBeNull();
+    acceptAll(editor);
+    expect(markdown(editor)).toContain("Masks are sampled pixel.");
+  });
+
+  it("strikes out only blocks that a block change fully covers", () => {
+    const editor = build();
+    showSuggestions(editor, [{ kind: "blocks", from: 1, to: 4, nodes: [] }], "agent");
+    expect(reviewSummary(editor).count).toBe(1);
+    expect(editor.view.dom.querySelector(".note-diff-delete-block")).toBeNull();
+  });
+
+  it("keeps a word change when the person types inside a changed paragraph's other words", () => {
+    const editor = build();
+    propose(editor, BODY.replace("per pixel", "per patch"));
+    const at = positionOf(editor, "Masks");
+    editor.chain().insertContentAt(at, "All ").run();
+    expect(reviewSummary(editor).count).toBe(1);
+    acceptAll(editor);
+    expect(markdown(editor)).toContain("All Masks are sampled per patch.");
+  });
+
+  it("moves to the next change when the active one is dropped by typing", () => {
+    const editor = build();
+    propose(editor, BODY.replace("0.75 and", "0.60 and").replace("per pixel", "per patch"));
+    const first = reviewSummary(editor).activeId;
+    const at = positionOf(editor, "0.75");
+    editor.chain().insertContentAt(at + 1, "9").run();
+    const summary = reviewSummary(editor);
+    expect(summary.count).toBe(1);
+    expect(summary.activeId).not.toBe(first);
+    expect(summary.index).toBe(0);
+  });
+});
+
 describe("agent edits", () => {
   it("applies each edit that matches the note once", () => {
     const result = applyNoteEdits(BODY, [
@@ -174,5 +325,13 @@ describe("agent edits", () => {
       { find: "", replace: "A new paragraph." },
     ]);
     expect(result).toEqual({ text: "1 2 three.\n\nA new paragraph.", applied: 2, skipped: 1 });
+  });
+  it.each([
+    ["an empty note", "", "Start."],
+    ["text that ends with a blank line", "One.\n\n", "One.\n\nStart."],
+    ["text that ends with a newline", "One.\n", "One.\n\nStart."],
+    ["text without a final newline", "One.", "One.\n\nStart."],
+  ])("appends a new paragraph to %s with one blank line before it", (_name, source, expected) => {
+    expect(applyNoteEdits(source, [{ find: "", replace: "Start." }])).toEqual({ text: expected, applied: 1, skipped: 0 });
   });
 });

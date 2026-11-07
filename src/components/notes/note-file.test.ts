@@ -35,6 +35,26 @@ describe("note files", () => {
     expect(noteSummary(body)).toBe("The real paragraph.");
   });
 
+  it("ends the summary at a code block or list that follows the first paragraph", () => {
+    expect(noteSummary("First line\nsecond line\n```js\nx = 1\n```\n")).toBe("First line second line");
+    expect(noteSummary("Opening words\n- a list item\n")).toBe("Opening words");
+  });
+
+  it("cuts a long summary without spaces at the limit", () => {
+    const summary = noteSummary("x".repeat(240));
+    expect(summary).toBe(`${"x".repeat(180)}…`);
+  });
+
+  it("cuts mid-word when the last space comes too early", () => {
+    const summary = noteSummary(`short ${"y".repeat(240)}`);
+    expect(summary).toBe(`${`short ${"y".repeat(240)}`.slice(0, 180)}…`);
+  });
+
+  it("reads an empty title as missing and keeps a note with no body as front matter only", () => {
+    expect(readNoteFacts("---\ntitle: \"  \"\nicon: x\n---\n").title).toBeNull();
+    expect(newNoteSource("Plain", "   ")).toBe("---\ntitle: Plain\n---\n\n");
+  });
+
   it("cuts a long summary on a word", () => {
     const summary = noteSummary(`${"word ".repeat(80)}end`);
     expect(summary.length).toBeLessThanOrEqual(181);

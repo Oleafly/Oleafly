@@ -86,7 +86,7 @@ function MenuButton({
 
 function TablePicker({ editor }: Readonly<{ editor: Editor }>) {
   const { t } = useTranslation(["notes", "editor"]);
-  const [size, setSize] = useState({ cols: 3, rows: 3 });
+  const [size, setSize] = useState({ cols: 1, rows: 1 });
   const cells: ReactNode[] = [];
   for (let row = 1; row <= TABLE_SIZE; row++) {
     for (let col = 1; col <= TABLE_SIZE; col++) {

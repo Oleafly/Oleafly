@@ -86,9 +86,8 @@ function settle(editor: Editor, ids: ReadonlySet<string>, accept: boolean): void
     .map((item) => ({ ...item, from: tr.mapping.map(item.from, 1), to: tr.mapping.map(item.to, -1) }))
     .map((item) => ({ ...item, to: Math.max(item.from, item.to) }));
   const removedIndex = items.findIndex((item) => item.id === activeId);
-  const stillActive = left.some((item) => item.id === activeId);
-  const fallback = (left[Math.min(removedIndex, left.length - 1)] ?? left[0])?.id ?? null;
-  editor.view.dispatch(tr.setMeta(reviewKey, { items: left, activeId: stillActive ? activeId : fallback }));
+  const next = (left[Math.min(removedIndex, left.length - 1)] ?? left[0])?.id ?? null;
+  editor.view.dispatch(tr.setMeta(reviewKey, { items: left, activeId: next }));
 }
 
 export function acceptActive(editor: Editor): void {

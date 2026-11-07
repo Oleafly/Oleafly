@@ -91,7 +91,9 @@ export function NotesHome({ iconFor, onOpenNote, onOpenArtifact, onStartNote }: 
                   <span className={cn("mt-1 line-clamp-2", META)}>{note.summary}</span>
                   <span className={cn("mt-2", META)}>
                     {[
-                      note.author === "agent" && note.agent ? note.agent : t(($) => $.notes.library.author.you),
+                      note.author === "agent"
+                        ? (note.agent ?? t(($) => $.notes.library.agentFallback))
+                        : t(($) => $.notes.library.author.you),
                       when(note.updatedAt),
                     ].join(" · ")}
                   </span>

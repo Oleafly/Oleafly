@@ -90,7 +90,9 @@ export function ArtifactPanel({ noteId, selectedId, onSelect, onClose, onInsert,
                 <p className="text-xs text-muted-foreground">
                   {[
                     t(($) => $.notes.artifacts.kind[selected.kind]),
-                    selected.agent ?? t(($) => $.notes.library.author.you),
+                    selected.author === "agent"
+                      ? (selected.agent ?? t(($) => $.notes.library.agentFallback))
+                      : t(($) => $.notes.library.author.you),
                     formatRelativeTimeFrom(selected.updatedAt, Date.now(), { dateAfterDays: 7 }),
                   ].join(" · ")}
                 </p>

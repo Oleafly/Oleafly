@@ -192,7 +192,11 @@ function NoteEditor({
         if (error instanceof NoteConflictError) {
           handleDisk(error.disk);
           statusRef.current?.("saving");
-          timerRef.current = window.setTimeout(() => void save(), SAVE_DELAY_MS);
+          if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+          timerRef.current = window.setTimeout(() => {
+            timerRef.current = null;
+            void save();
+          }, SAVE_DELAY_MS);
           return;
         }
         statusRef.current?.("failed");
