@@ -950,6 +950,10 @@
         "description": "Mostra a galeria de Ferramentas do Oleafly e as ferramentas individuais (importação de PDF, equações, tabelas, BibTeX, busca de laboratórios e de literatura, prazos), além dos comandos de barra delas. Desligado por padrão enquanto está em beta.",
         "label": "Ferramentas LaTeX"
       },
+      "notes": {
+        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "label": "Notes"
+      },
       "researchTasks": {
         "description": "Um agente trabalha sozinho em uma cópia do projeto e deixa as alterações para você revisar. Muito instável: as execuções podem travar, falhar ou deixar alterações para resolver à mão, e usam a cota do seu provedor o tempo todo. Adiciona uma seção Pesquisa às Configurações. Ao desligar, todas as tarefas em andamento são interrompidas. Desligado por padrão. Ligue por sua conta e risco.",
         "label": "Tarefas de pesquisa",

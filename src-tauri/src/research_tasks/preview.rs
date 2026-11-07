@@ -7,12 +7,15 @@ use cap_std::fs::{Dir, OpenOptions};
 use sha2::{Digest, Sha256};
 
 use super::isolation::normalized_relative;
-use super::model::{ResearchTask, TaskArtifactPreview, TaskFilePreview, TaskPreviewContent};
+use super::model::{
+    ResearchTask, TaskArtifact, TaskArtifactPreview, TaskFilePreview, TaskPreviewContent,
+};
 use super::store::TaskStore;
 use crate::collab::live::write::SharedDocument;
 
 const MAX_TEXT_BYTES: u64 = 400_000;
 const MAX_IMAGE_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_COPY_BYTES: u64 = 64 * 1024 * 1024;
 
 pub(crate) fn file_preview(
     store: &TaskStore,
@@ -69,11 +72,72 @@ pub(crate) fn artifact_preview(
     path: &str,
 ) -> Result<TaskArtifactPreview, String> {
     let task = store.require(task_id)?;
+    let target = artifact_target(&task, path)?;
+    let content = read_expected(&target.root, &target.relative, Some(&target.expected))?;
+    Ok(TaskArtifactPreview {
+        artifact: target.artifact,
+        content,
+    })
+}
+
+#[derive(Debug)]
+pub(crate) struct ArtifactFile {
+    pub task: ResearchTask,
+    pub artifact: TaskArtifact,
+    pub bytes: Vec<u8>,
+    pub sha256: String,
+}
+
+pub(crate) fn artifact_file(
+    store: &TaskStore,
+    task_id: &str,
+    path: &str,
+) -> Result<ArtifactFile, String> {
+    let task = store.require(task_id)?;
+    let target = artifact_target(&task, path)?;
+    let mut file = target
+        .root
+        .open_file(&target.relative)?
+        .ok_or_else(|| "The saved task file is missing.".to_string())?;
+    let size = file
+        .metadata()
+        .map_err(|error| format!("could not inspect the saved task file: {error}"))?
+        .len();
+    if size > MAX_COPY_BYTES {
+        return Err("The saved task file is larger than the 64 MiB limit.".into());
+    }
+    let mut bytes = Vec::with_capacity(size as usize);
+    file.by_ref()
+        .take(MAX_COPY_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("could not read the saved task file: {error}"))?;
+    let sha256 = format!("{:x}", Sha256::digest(&bytes));
+    if bytes.len() as u64 > MAX_COPY_BYTES || sha256 != target.expected {
+        return Err("The saved preview changed after the task finished.".into());
+    }
+    Ok(ArtifactFile {
+        task,
+        artifact: target.artifact,
+        bytes,
+        sha256,
+    })
+}
+
+struct ArtifactTarget {
+    artifact: TaskArtifact,
+    expected: String,
+    relative: PathBuf,
+    root: PreviewRoot,
+}
+
+fn artifact_target(task: &ResearchTask, path: &str) -> Result<ArtifactTarget, String> {
     let isolation = task
         .isolation
+        .as_ref()
         .ok_or_else(|| "This task has no saved workspace to preview.".to_string())?;
     let result = task
         .result
+        .as_ref()
         .ok_or_else(|| "This task has no saved result to preview.".to_string())?;
     let artifact = result
         .artifacts
@@ -85,12 +149,16 @@ pub(crate) fn artifact_preview(
         .changed_files
         .iter()
         .find(|change| change.path == path)
-        .and_then(|change| change.after_sha256.as_deref())
+        .and_then(|change| change.after_sha256.clone())
         .ok_or_else(|| "That artifact has no reviewed file hash.".to_string())?;
     let relative = normalized_relative(path)?;
-    let execution = PreviewRoot::open(Path::new(&isolation.execution_root))?;
-    let content = read_expected(&execution, &relative, Some(expected))?;
-    Ok(TaskArtifactPreview { artifact, content })
+    let root = PreviewRoot::open(Path::new(&isolation.execution_root))?;
+    Ok(ArtifactTarget {
+        artifact,
+        expected,
+        relative,
+        root,
+    })
 }
 
 fn read_expected(
@@ -399,6 +467,123 @@ mod tests {
         assert!(file_preview(&store, &task.id, "main.tex")
             .unwrap_err()
             .contains("changed after"));
+    }
+
+    #[test]
+    fn a_finished_artifact_is_copied_into_a_note_with_its_origin() {
+        let _library = crate::collab::testing::TempLibrary::new();
+        let temp = tempfile::tempdir().unwrap();
+        let baseline = temp.path().join("baseline");
+        let execution = temp.path().join("execution");
+        fs::create_dir_all(baseline.join("figures")).unwrap();
+        fs::create_dir_all(execution.join("figures")).unwrap();
+        fs::write(execution.join("figures/loss curve.png"), b"\x89PNG\0data").unwrap();
+        let (after_hash, after_size) =
+            hash_file(&execution.join("figures/loss curve.png")).unwrap();
+        let store = TaskStore::new(temp.path().join("store")).unwrap();
+        let task = store
+            .create(ResearchTaskDraft {
+                project_id: "paper".into(),
+                title: "Ablation".into(),
+                prompt: "Plot the loss".into(),
+                runtime_id: "acp".into(),
+                agent_id: "claude".into(),
+                model_id: "default".into(),
+                skill_ids: Vec::new(),
+                dependency_ids: Vec::new(),
+                ..Default::default()
+            })
+            .unwrap();
+        store.request_start(&task.id).unwrap();
+        let running = store.claim_next().unwrap().unwrap();
+        let isolation = TaskIsolation {
+            kind: TaskIsolationKind::StagedProject,
+            execution_root: execution.to_string_lossy().into_owned(),
+            baseline_root: baseline.to_string_lossy().into_owned(),
+            source_revision: "snapshot:base".into(),
+            baseline_hash: String::new(),
+            baseline: Vec::<ManifestEntry>::new(),
+            allowed_paths: vec!["figures/loss curve.png".into()],
+            created_at: now_ms(),
+            skipped: Vec::new(),
+        };
+        store
+            .set_isolation(&task.id, running.execution_generation, &isolation)
+            .unwrap();
+        store
+            .finish_success(
+                &task.id,
+                running.execution_generation,
+                &TaskResultMetadata {
+                    summary: "done".into(),
+                    changed_files: vec![TaskFileChange {
+                        path: "figures/loss curve.png".into(),
+                        kind: TaskFileChangeKind::Added,
+                        before_sha256: None,
+                        after_sha256: Some(after_hash.clone()),
+                        before_size: None,
+                        after_size: Some(after_size),
+                    }],
+                    artifacts: vec![TaskArtifact {
+                        path: "figures/loss curve.png".into(),
+                        label: "Loss curve".into(),
+                        media_type: Some("image/png".into()),
+                    }],
+                    native_session_id: None,
+                    input_tokens: None,
+                    output_tokens: None,
+                },
+            )
+            .unwrap();
+
+        let file = artifact_file(&store, &task.id, "figures/loss curve.png").unwrap();
+        assert_eq!(file.bytes, b"\x89PNG\0data");
+        assert_eq!(file.sha256, after_hash);
+        assert_eq!(file.artifact.label, "Loss curve");
+        assert!(artifact_file(&store, &task.id, "figures/other.png")
+            .unwrap_err()
+            .contains("not part of this task result"));
+
+        let note =
+            crate::project::create_note_project_from("Note".into(), String::new(), None).unwrap();
+        let copy = crate::research_tasks::copy_artifact_to_note(
+            &store,
+            &task.id,
+            "figures/loss curve.png",
+            &note,
+        )
+        .unwrap();
+        let expected = format!("assets/loss-curve-{}.png", &after_hash[..8]);
+        assert_eq!(copy.path, expected);
+        let note_dir = crate::paths::project_dir(&note).unwrap();
+        assert_eq!(
+            fs::read(note_dir.join(&expected)).unwrap(),
+            b"\x89PNG\0data"
+        );
+        let origin: serde_json::Value = serde_json::from_slice(
+            &fs::read(note_dir.join(crate::project::note_origin_path(&expected))).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(origin["asset"], expected.as_str());
+        assert_eq!(origin["taskId"], task.id.as_str());
+        assert_eq!(origin["taskTitle"], "Ablation");
+        assert_eq!(origin["sourcePath"], "figures/loss curve.png");
+        assert_eq!(origin["agentId"], "claude");
+        assert_eq!(origin["sha256"], after_hash.as_str());
+        assert!(fs::read(execution.join("figures/loss curve.png")).is_ok());
+
+        fs::write(execution.join("figures/loss curve.png"), b"changed").unwrap();
+        assert!(artifact_file(&store, &task.id, "figures/loss curve.png")
+            .unwrap_err()
+            .contains("changed after"));
+        assert!(crate::research_tasks::copy_artifact_to_note(
+            &store,
+            &task.id,
+            "figures/loss curve.png",
+            "../x"
+        )
+        .unwrap_err()
+        .contains("illegal project id"));
     }
 
     #[cfg(unix)]

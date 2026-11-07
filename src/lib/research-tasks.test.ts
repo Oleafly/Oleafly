@@ -18,6 +18,7 @@ import {
   approveResearchTaskPlan,
   cancelResearchTask,
   cancelResearchTaskRun,
+  copyResearchTaskArtifactToNote,
   createResearchTask,
   decideResearchTaskApproval,
   defaultBrief,
@@ -370,6 +371,21 @@ describe("research task commands", () => {
     expect(native.invoke).toHaveBeenNthCalledWith(2, "research_task_artifact_preview", {
       taskId: "t1",
       path: "figures/loss.png",
+    });
+  });
+
+  it("copies a task artifact into a note", async () => {
+    native.invoke.mockResolvedValueOnce({ path: "assets/loss.png", reused: false });
+
+    await expect(copyResearchTaskArtifactToNote("t1", "figures/loss.png", "note-1")).resolves.toEqual({
+      path: "assets/loss.png",
+      reused: false,
+    });
+
+    expect(native.invoke).toHaveBeenCalledWith("research_task_copy_artifact_to_note", {
+      taskId: "t1",
+      path: "figures/loss.png",
+      noteId: "note-1",
     });
   });
 

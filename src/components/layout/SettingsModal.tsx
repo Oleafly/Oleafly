@@ -333,6 +333,8 @@ export function SettingsModal() {
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
+  const notesEnabled = useSettingsStore((s) => s.notes);
+  const setNotesEnabled = useSettingsStore((s) => s.setNotes);
   const researchTasks = useResearchTasksEnabled();
   const [researchTasksBusy, setResearchTasksBusy] = useState(false);
   const [researchTasksFailed, setResearchTasksFailed] = useState(false);
@@ -790,6 +792,13 @@ export function SettingsModal() {
           description={t(($) => $.shell.settings.experimentation.latexTools.description)}
           checked={latexTools}
           onChange={setLatexTools}
+        />
+        <SettingsToggleRow
+          testId="settings-notes"
+          label={t(($) => $.shell.settings.experimentation.notes.label)}
+          description={t(($) => $.shell.settings.experimentation.notes.description)}
+          checked={notesEnabled}
+          onChange={setNotesEnabled}
         />
         <SettingsToggleRow
           testId="settings-research-tasks"

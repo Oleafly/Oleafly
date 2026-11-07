@@ -17,6 +17,7 @@ import {
   GitFork,
   Image,
   Library,
+  NotebookPen,
   Palette,
   Shapes,
   TextSearch,
@@ -49,7 +50,7 @@ type ProjectFlag = SearchFlag<ProjectInfo, QueryMeta>;
 type ProjectEngine = "latex" | "typst" | "markdown" | "quarto" | "calepin";
 
 export const PROJECT_ENGINES: readonly ProjectEngine[] = ["latex", "typst", "markdown", "quarto", "calepin"];
-export const PROJECT_KINDS = ["document", "image", "diagram"] as const;
+export const PROJECT_KINDS = ["document", "image", "diagram", "note"] as const;
 export const DEFAULT_PROJECT_SORT = "activity-desc";
 
 const ENGINE_LABELS: Readonly<Record<ProjectEngine, string>> = {
@@ -166,12 +167,14 @@ function hasFlags(t: Translate): ProjectFlag[] {
 function kindIcon(kind: (typeof PROJECT_KINDS)[number]): ReactNode {
   if (kind === "image") return icon(Image);
   if (kind === "diagram") return icon(Shapes);
+  if (kind === "note") return icon(NotebookPen);
   return icon(FileText);
 }
 
 function kindLabel(t: Translate, kind: (typeof PROJECT_KINDS)[number]): string {
   if (kind === "image") return t(($) => $.library.home.filters.kindImage);
   if (kind === "diagram") return t(($) => $.library.home.filters.kindDiagram);
+  if (kind === "note") return t(($) => $.library.home.filters.kindNote);
   return t(($) => $.library.home.filters.kindDocument);
 }
 

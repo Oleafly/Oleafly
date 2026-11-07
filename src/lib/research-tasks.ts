@@ -427,6 +427,14 @@ export const previewResearchTaskFile = (taskId: string, path: string) =>
 export const previewResearchTaskArtifact = (taskId: string, path: string) =>
   invoke<TaskArtifactPreview>("research_task_artifact_preview", { taskId, path });
 
+export interface NoteAssetCopy {
+  path: string;
+  reused: boolean;
+}
+
+export const copyResearchTaskArtifactToNote = (taskId: string, path: string, noteId: string) =>
+  invoke<NoteAssetCopy>("research_task_copy_artifact_to_note", { taskId, path, noteId });
+
 export const listenForResearchTaskChanges = (
   onTask: (task: ResearchTask) => void,
 ): Promise<UnlistenFn> =>

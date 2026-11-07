@@ -922,6 +922,10 @@
         "description": "Oleafly 도구 갤러리와 개별 도구(PDF 가져오기, 수식, 표, BibTeX, 연구실 및 문헌 검색, 마감일)와 슬래시 명령을 표시합니다. 아직 베타라서 기본은 꺼짐입니다.",
         "label": "LaTeX 도구"
       },
+      "notes": {
+        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "label": "Notes"
+      },
       "researchTasks": {
         "description": "에이전트가 프로젝트 사본에서 혼자 작업하고, 바뀐 내용은 검토할 수 있도록 남겨 둡니다. 매우 불안정합니다. 실행이 멈추거나 실패할 수 있고, 직접 정리해야 하는 변경이 남을 수도 있으며, 실행하는 동안 내내 제공자의 할당량을 사용합니다. 설정에 연구 섹션이 추가됩니다. 끄면 실행 중인 모든 작업이 중지됩니다. 기본은 꺼짐입니다. 위험을 감수하고 켜세요.",
         "label": "연구 작업",

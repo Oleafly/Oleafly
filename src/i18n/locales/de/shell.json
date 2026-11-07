@@ -936,6 +936,10 @@
         "description": "Zeigt die Galerie Oleafly Tools und die einzelnen Werkzeuge (PDF-Import, Formeln, Tabellen, BibTeX, Labor- und Literatursuche, Fristen) samt ihren Schrägstrich-Befehlen. Standardmäßig aus, solange es noch Beta ist.",
         "label": "LaTeX-Werkzeuge"
       },
+      "notes": {
+        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "label": "Notes"
+      },
       "researchTasks": {
         "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
         "label": "Forschungsaufgaben",

@@ -3,6 +3,7 @@
     "newProject": "Proyecto nuevo",
     "search": "Buscar documentos ({{shortcut}})",
     "diagramComposer": "Compositor de diagramas",
+    "notes": "Notes",
     "tools": "Herramientas de Oleafly",
     "settings": "Ajustes"
   },
@@ -55,6 +56,7 @@
       "kindDocument": "Documento",
       "kindImage": "Imagen",
       "kindDiagram": "Diagrama",
+      "kindNote": "Note",
       "bookmark": "Marcador",
       "bookmarkAll": "Cualquier estado",
       "bookmarkYes": "Con marcador",
@@ -138,6 +140,7 @@
       "document": "documento",
       "image": "imagen",
       "diagram": "diagrama",
+      "note": "note",
       "external": "externo",
       "overleaf": "Overleaf"
     },

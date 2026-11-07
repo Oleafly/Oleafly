@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useHomeViewStore } from "@/store/home-view";
+import { useNotesViewStore } from "@/store/notes-view";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
@@ -32,8 +33,9 @@ beforeEach(() => {
   themeMocks.preference = "system";
   themeMocks.setPreference.mockClear();
   useHomeViewStore.setState({ page: "library", activeConverter: null });
-  useSettingsStore.setState({ dockPlacement: "left", latexTools: true });
+  useSettingsStore.setState({ dockPlacement: "left", latexTools: true, notes: false });
   useDiagramComposerStore.setState({ chooserOpen: false, requestId: 0 });
+  useNotesViewStore.setState({ requestedNoteId: null });
 });
 
 function openThemeMenu(trigger: HTMLElement) {
@@ -156,5 +158,29 @@ describe("HomeDock", () => {
     expect(dock).toHaveAttribute("data-placement", "right");
     expect(dock.parentElement?.className).toContain("right-0");
   });
-});
 
+  it("hides Notes while the experimental setting is off", () => {
+    render(<HomeDock />);
+    expect(screen.queryByTestId("open-notes")).toBeNull();
+  });
+
+  it("shows Notes when the experimental setting is on and opens its home", async () => {
+    useSettingsStore.setState({ notes: true });
+    useNotesViewStore.setState({ requestedNoteId: "stale" });
+    render(<HomeDock />);
+    const button = screen.getByRole("button", { name: enLibrary.dock.notes });
+    expect(button).toHaveAttribute("data-testid", "open-notes");
+    expect(button).toHaveAttribute("data-active", "false");
+    fireEvent.click(button);
+    await waitFor(() => expect(useHomeViewStore.getState().page).toBe("notes"));
+    expect(useNotesViewStore.getState().requestedNoteId).toBeNull();
+    expect(screen.getByTestId("open-notes")).toHaveAttribute("data-active", "true");
+  });
+
+  it("marks Notes active while Notes is open", () => {
+    useSettingsStore.setState({ notes: true });
+    useHomeViewStore.setState({ page: "notes" });
+    render(<HomeDock />);
+    expect(screen.getByTestId("open-notes")).toHaveAttribute("data-active", "true");
+  });
+});

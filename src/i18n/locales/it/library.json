@@ -3,6 +3,7 @@
     "newProject": "Nuovo progetto",
     "search": "Cerca nei documenti ({{shortcut}})",
     "diagramComposer": "Compositore di diagrammi",
+    "notes": "Notes",
     "tools": "Oleafly Tools",
     "settings": "Impostazioni"
   },
@@ -55,6 +56,7 @@
       "kindDocument": "Documento",
       "kindImage": "Immagine",
       "kindDiagram": "Diagramma",
+      "kindNote": "Note",
       "bookmark": "Segnalibro",
       "bookmarkAll": "Qualsiasi stato",
       "bookmarkYes": "Con segnalibro",
@@ -138,6 +140,7 @@
       "document": "documento",
       "image": "immagine",
       "diagram": "diagramma",
+      "note": "note",
       "external": "esterno",
       "overleaf": "Overleaf"
     },

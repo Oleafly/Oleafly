@@ -1,4 +1,5 @@
 import {
+  applySettingEdits,
   composeSettingSteps,
   type DocumentSettingChanges,
   type DocumentSettingsEdit,
@@ -431,17 +432,28 @@ function entryIn(scan: Scan, key: string): Entry | undefined {
   return entryFor(scan.status === "present" ? scan.frontMatter : null, key);
 }
 
+function scalarEntryEdits(text: string, scan: Scan, yamlKey: string, value: string | null, typed: boolean): DocumentSettingsEdit[] {
+  const entry = entryIn(scan, yamlKey);
+  if (value === null) return entry ? [removeEntry(entry)] : [];
+  if (!entry) return addEntry(text, scan, `${yamlKey}: ${serialize(value, null, typed)}`);
+  if (entry.value.kind === "empty") return [{ from: entry.value.at, to: entry.value.at, insert: ` ${serialize(value, null, typed)}` }];
+  if (entry.value.kind !== "scalar") return [];
+  return [{ from: entry.value.from, to: entry.value.to, insert: serialize(value, entry.value.quote, typed) }];
+}
+
 function scalarStep(key: ScalarKey, value: string | null): SettingsStep {
-  const yamlKey = YAML_KEYS[key];
-  const typed = TYPED.has(key);
-  return scanned((text, scan) => {
-    const entry = entryIn(scan, yamlKey);
-    if (value === null) return entry ? [removeEntry(entry)] : [];
-    if (!entry) return addEntry(text, scan, `${yamlKey}: ${serialize(value, null, typed)}`);
-    if (entry.value.kind === "empty") return [{ from: entry.value.at, to: entry.value.at, insert: ` ${serialize(value, null, typed)}` }];
-    if (entry.value.kind !== "scalar") return [];
-    return [{ from: entry.value.from, to: entry.value.to, insert: serialize(value, entry.value.quote, typed) }];
-  });
+  return scanned((text, scan) => scalarEntryEdits(text, scan, YAML_KEYS[key], value, TYPED.has(key)));
+}
+
+export function readFrontMatterScalar(text: string, key: string): string | null {
+  const entry = entryIn(scanFrontMatter(text), key);
+  return entry?.value.kind === "scalar" ? entry.value.value : null;
+}
+
+export function setFrontMatterScalar(text: string, key: string, value: string | null): string {
+  const scan = scanFrontMatter(text);
+  if (scan.status === "unclosed") return text;
+  return applySettingEdits(text, scalarEntryEdits(text, scan, key, value, false));
 }
 
 type ScalarValue = Extract<YamlValue, { kind: "scalar" }>;

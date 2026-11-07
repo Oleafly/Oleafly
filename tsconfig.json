@@ -48,6 +48,7 @@
       "@oleafly/ai-tools/approval-risk": ["./packages/ai-tools/src/approval-risk.ts"],
       "@oleafly/preflight": ["./packages/preflight/src/index.ts"],
       "@oleafly/registry": ["./packages/registry/src/index.ts"],
+      "@oleafly/workspace": ["./packages/workspace/src/index.ts"],
       "@oleafly/i18n-contract": ["./packages/i18n-contract/src/index.ts"],
       "@oleafly/i18n-contract/testing": ["./packages/i18n-contract/src/testing.ts"],
       "@oleafly/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],

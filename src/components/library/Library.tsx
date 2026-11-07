@@ -86,6 +86,7 @@ import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
+import { openNotes } from "@/features/open-tool";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { appIconSource, useSettingsStore } from "@/store/settings";
@@ -330,6 +331,10 @@ export function Library() {
     const state = asUnavailable(availabilityOf(project));
     if (state) {
       window.setTimeout(() => setUnavailableTarget({ project, state }), 0);
+      return;
+    }
+    if (project.kind === "note") {
+      void openNotes(project.id);
       return;
     }
     void openProject(project.id);
@@ -1100,6 +1105,7 @@ export function Library() {
                 { value: "document", label: t(($) => $.library.home.filters.kindDocument) },
                 { value: "image", label: t(($) => $.library.home.filters.kindImage) },
                 { value: "diagram", label: t(($) => $.library.home.filters.kindDiagram) },
+                { value: "note", label: t(($) => $.library.home.filters.kindNote) },
               ]}
             />
             <FilterSelect

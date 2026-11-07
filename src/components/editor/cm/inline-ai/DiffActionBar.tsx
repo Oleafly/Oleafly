@@ -5,7 +5,7 @@ import { AiChrome } from "@/components/ai/AiChrome";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-function DiffAction({
+export function DiffAction({
   icon: Icon,
   label,
   keyShortcut,

@@ -67,6 +67,7 @@ import { TableToolView } from "@/components/tools/TableToolView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { LatexToolsView } from "@/components/tools/LatexToolsView";
 import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
+import { loadNamespace } from "@/i18n";
 import { useHomeViewStore } from "@/store/home-view";
 import {
   LanguageServiceRuntimeBoundary,
@@ -206,6 +207,15 @@ const DiagramComposer = mountOnFirstOpen(
     import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
   ),
   () => useHomeViewStore((s) => s.page === "diagram-composer"),
+  () => useHomeViewStore.getState().goTo("library"),
+);
+const NotesHost = mountOnFirstOpen(
+  lazy(() =>
+    Promise.all([import("@/components/notes/NotesHost"), loadNamespace("notes")]).then(([module]) => ({
+      default: module.NotesHost,
+    })),
+  ),
+  () => useHomeViewStore((s) => s.page === "notes"),
   () => useHomeViewStore.getState().goTo("library"),
 );
 const DiagramComposerChooserHost = mountOnFirstOpen(
@@ -545,7 +555,7 @@ function AppContent() {
     !detached && projectId !== null && (previewShown || previewKeptFor === projectId);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
-  const projectComposerOpen = homePage === "diagram-composer";
+  const projectComposerOpen = homePage === "diagram-composer" || homePage === "notes";
   const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
   const editorPanelRef = useRef<PanelImperativeHandle>(null);
   const pdfPanelRef = useRef<PanelImperativeHandle>(null);
@@ -1031,6 +1041,7 @@ function AppContent() {
         </Contained>
         <HotkeysModal />
         <DiagramComposer />
+        <NotesHost />
         <DiagramComposerChooserHost />
         <TourGuide />
       </ThemeProvider>
@@ -1363,6 +1374,7 @@ function AppContent() {
         </div>
         <SettingsModal />
         <DiagramComposer />
+        <NotesHost />
         <DiagramComposerChooserHost />
         {projectToolOpen && (
           <Contained resetKey={homePage} close={() => useHomeViewStore.getState().goTo("library")}>

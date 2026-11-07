@@ -680,6 +680,7 @@ pub struct ProjectInfo {
     pub last_opened_at: f64,
     pub shared: Option<crate::collab::share::ProjectSharing>,
     pub imported_from: Option<String>,
+    pub related_project: Option<String>,
 }
 
 fn imported_service(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
@@ -4778,6 +4779,7 @@ fn recovery_pending_project_info(
         last_opened_at: 0.0,
         shared: None,
         imported_from: None,
+        related_project: None,
         id: project_id,
     }
 }
@@ -4932,6 +4934,9 @@ fn linked_project_info(
         last_opened_at: record.last_opened_at as f64 / 1000.0,
         shared: None,
         imported_from: meta.as_ref().and_then(|meta| imported_service(&meta.extra)),
+        related_project: meta
+            .as_ref()
+            .and_then(|meta| related_project_of(&meta.extra)),
     })
 }
 
@@ -5022,6 +5027,14 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
                 .is_some_and(|path| path.is_file());
         let exports = project_export_infos(&meta.exports);
         let imported_from = imported_service(&meta.extra);
+        let related_project = related_project_of(&meta.extra);
+        let kind = if !meta.kind.is_empty() {
+            meta.kind.clone()
+        } else if declares_note(&id, &meta.main_doc) {
+            NOTE_KIND.to_string()
+        } else {
+            "document".to_string()
+        };
         out.push(ProjectInfo {
             name: if meta.name.is_empty() {
                 id.clone()
@@ -5034,11 +5047,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             } else {
                 meta.engine
             },
-            kind: if meta.kind.is_empty() {
-                "document".to_string()
-            } else {
-                meta.kind
-            },
+            kind,
             created_at,
             color: meta.color,
             has_preview,
@@ -5049,6 +5058,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             last_opened_at: opened.get(&id).map_or(0.0, |at| *at as f64 / 1000.0),
             shared: crate::collab::share::sharing_of(&id),
             imported_from,
+            related_project,
             id,
             updated_at,
         });
@@ -6088,6 +6098,354 @@ pub(crate) fn create_diagram_project_from(
     })?;
     initialize_git_for_new_project(&project_id);
     Ok(project_id)
+}
+
+pub const NOTE_KIND: &str = "note";
+pub const NOTE_FILE: &str = "note.md";
+const NOTE_HEAD_BYTES: usize = 8 * 1024;
+const RELATED_PROJECT_KEY: &str = "relatedProject";
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct NoteHead {
+    pub id: String,
+    pub head: String,
+}
+
+#[tauri::command(async)]
+pub fn create_note_project(
+    name: String,
+    source: String,
+    related_project: Option<String>,
+) -> Result<String, String> {
+    create_note_project_from(name, source, related_project)
+}
+
+pub(crate) fn create_note_project_from(
+    name: String,
+    source: String,
+    related_project: Option<String>,
+) -> Result<String, String> {
+    let mut extra = HashMap::new();
+    if let Some(related) = related_project.filter(|id| !id.is_empty()) {
+        paths::validate_project_id(&related)?;
+        extra.insert(
+            RELATED_PROJECT_KEY.to_string(),
+            serde_json::Value::String(related),
+        );
+    }
+    let root = paths::projects_root()?;
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let dir = reservation.path().to_path_buf();
+    let project_id = create_project_transaction(reservation, || {
+        std::fs::write(dir.join(NOTE_FILE), &source).map_err(|e| e.to_string())?;
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                dictionary_locale: None,
+                name,
+                main_doc: NOTE_FILE.into(),
+                engine: "markdown".into(),
+                color: String::new(),
+                kind: NOTE_KIND.into(),
+                exports: Vec::new(),
+                hidden: false,
+                forked_from: None,
+                tex: None,
+                tex_flavor: None,
+                typst: None,
+                allow_shell_escape: false,
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
+                pdf_sync: None,
+                extra,
+            },
+        )
+    })?;
+    initialize_git_for_new_project(&project_id);
+    Ok(project_id)
+}
+
+#[tauri::command]
+pub async fn set_note_related_project(
+    note_id: String,
+    related_project: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        set_note_related_project_blocking(&note_id, related_project)
+    })
+    .await
+    .map_err(|error| format!("failed to set the note's project: {error}"))?
+}
+
+pub(crate) fn set_note_related_project_blocking(
+    note_id: &str,
+    related_project: Option<String>,
+) -> Result<(), String> {
+    paths::validate_project_id(note_id)?;
+    let related = related_project.filter(|id| !id.is_empty());
+    if let Some(related) = &related {
+        paths::validate_project_id(related)?;
+        if related == note_id {
+            return Err("A note can't be its own project.".into());
+        }
+    }
+    with_project_metadata(note_id, || {
+        let mut meta = read_meta(note_id)?;
+        if !is_note(note_id, &meta) {
+            return Err("Only a note has a related project.".into());
+        }
+        meta.kind = NOTE_KIND.into();
+        match related {
+            Some(related) => meta.extra.insert(
+                RELATED_PROJECT_KEY.to_string(),
+                serde_json::Value::String(related),
+            ),
+            None => meta.extra.remove(RELATED_PROJECT_KEY),
+        };
+        write_meta(note_id, &meta)
+    })
+}
+
+fn related_project_of(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
+    let id = extra.get(RELATED_PROJECT_KEY)?.as_str()?;
+    paths::validate_project_id(id).ok()?;
+    Some(id.to_string())
+}
+
+fn text_head(bytes: &[u8]) -> String {
+    let mut end = bytes.len().min(NOTE_HEAD_BYTES);
+    while end > 0 && std::str::from_utf8(&bytes[..end]).is_err() {
+        end -= 1;
+    }
+    String::from_utf8_lossy(&bytes[..end]).into_owned()
+}
+
+fn note_head(project: &ProjectInfo) -> Result<NoteHead, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project.id)?;
+    let path = crate::sandbox::resolve_readable(&project.id, &project.main_doc)?;
+    let mut bytes = Vec::with_capacity(NOTE_HEAD_BYTES);
+    std::fs::File::open(&path)
+        .and_then(|file| {
+            use std::io::Read;
+            file.take(NOTE_HEAD_BYTES as u64).read_to_end(&mut bytes)
+        })
+        .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
+    Ok(NoteHead {
+        id: project.id.clone(),
+        head: text_head(&bytes),
+    })
+}
+
+#[tauri::command(async)]
+pub fn note_heads() -> Result<Vec<NoteHead>, String> {
+    Ok(list_projects_blocking()?
+        .iter()
+        .filter(|project| project.kind == NOTE_KIND && !project.recovery_pending)
+        .filter_map(|project| match note_head(project) {
+            Ok(head) => Some(head),
+            Err(error) => {
+                log_project_enumeration_skip(&project.id, &error);
+                None
+            }
+        })
+        .collect())
+}
+
+pub const NOTE_ASSETS: &str = "assets";
+pub const NOTE_ORIGINS: &str = "assets/origins";
+const NOTE_ORIGIN_VERSION: u32 = 1;
+const NOTE_ASSET_STEM_CHARS: usize = 60;
+const NOTE_ASSET_HASH_CHARS: usize = 8;
+const NOTE_DECLARATION_BYTES: usize = 4 * 1024;
+
+pub(crate) fn front_matter_declares_note(text: &str) -> bool {
+    let mut lines = text.strip_prefix('\u{feff}').unwrap_or(text).lines();
+    if lines.next().map(str::trim_end) != Some("---") {
+        return false;
+    }
+    let mut kind = None;
+    for line in lines {
+        let line = line.trim_end();
+        if line == "---" || line == "..." {
+            return kind == Some(NOTE_KIND);
+        }
+        if let Some(value) = line.strip_prefix("kind:") {
+            kind = Some(value.trim().trim_matches(|c| c == '"' || c == '\''));
+        }
+    }
+    false
+}
+
+fn declares_note(project_id: &str, main_doc: &str) -> bool {
+    if main_doc != NOTE_FILE {
+        return false;
+    }
+    let Ok(path) = crate::sandbox::resolve_readable(project_id, main_doc) else {
+        return false;
+    };
+    let mut bytes = Vec::with_capacity(NOTE_DECLARATION_BYTES);
+    let read = std::fs::File::open(&path).and_then(|file| {
+        use std::io::Read;
+        file.take(NOTE_DECLARATION_BYTES as u64)
+            .read_to_end(&mut bytes)
+    });
+    read.is_ok() && front_matter_declares_note(&text_head(&bytes))
+}
+
+pub(crate) fn is_note(project_id: &str, meta: &ProjectMeta) -> bool {
+    meta.kind == NOTE_KIND || (meta.kind.is_empty() && declares_note(project_id, &meta.main_doc))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteAssetOrigin {
+    pub sha256: String,
+    pub copied_at: i64,
+    pub project_id: String,
+    pub project_name: Option<String>,
+    pub task_id: String,
+    pub task_title: String,
+    pub source_path: String,
+    pub runtime_id: String,
+    pub agent_id: String,
+    pub model_id: String,
+    pub finished_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NoteOriginRecord {
+    version: u32,
+    asset: String,
+    #[serde(flatten)]
+    origin: NoteAssetOrigin,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteAssetCopy {
+    pub path: String,
+    pub reused: bool,
+}
+
+fn note_asset_name(source_path: &str) -> (String, String) {
+    let file = source_path.rsplit('/').next().unwrap_or(source_path);
+    let (stem, extension) = match file.rsplit_once('.') {
+        Some((stem, extension)) if !stem.is_empty() => (stem, extension),
+        _ => (file, ""),
+    };
+    let clean = |text: &str, limit: usize| -> String {
+        let mut out = String::new();
+        for character in text.chars() {
+            if out.chars().count() >= limit {
+                break;
+            }
+            if character.is_alphanumeric() || character == '-' || character == '_' {
+                out.push(character);
+            } else if !out.ends_with('-') {
+                out.push('-');
+            }
+        }
+        out.trim_matches('-').to_string()
+    };
+    let stem = clean(stem, NOTE_ASSET_STEM_CHARS);
+    let extension = clean(extension, 12).to_ascii_lowercase();
+    let stem = if stem.is_empty() {
+        "artifact".to_string()
+    } else {
+        stem
+    };
+    (stem, extension)
+}
+
+pub(crate) fn note_asset_path(source_path: &str, sha256: &str, attempt: usize) -> String {
+    let (stem, extension) = note_asset_name(source_path);
+    let hash: String = sha256.chars().take(NOTE_ASSET_HASH_CHARS).collect();
+    let name = if attempt <= 1 {
+        format!("{stem}-{hash}")
+    } else {
+        format!("{stem}-{hash}-{attempt}")
+    };
+    if extension.is_empty() {
+        format!("{NOTE_ASSETS}/{name}")
+    } else {
+        format!("{NOTE_ASSETS}/{name}.{extension}")
+    }
+}
+
+fn note_asset_slot(
+    note_id: &str,
+    source_path: &str,
+    sha256: &str,
+) -> Result<(String, bool), String> {
+    for attempt in 1..=99 {
+        let path = note_asset_path(source_path, sha256, attempt);
+        let target = resolve(note_id, &path)?;
+        if std::fs::symlink_metadata(&target).is_err() && portable_collision(&target)?.is_none() {
+            return Ok((path, false));
+        }
+        if file_sha256(&target).as_deref() == Some(sha256) {
+            return Ok((path, true));
+        }
+    }
+    Err("The note already has too many edited copies of this file.".into())
+}
+
+pub(crate) fn note_origin_path(asset_path: &str) -> String {
+    let name = asset_path.rsplit('/').next().unwrap_or(asset_path);
+    format!("{NOTE_ORIGINS}/{name}.json")
+}
+
+fn file_sha256(path: &Path) -> Option<String> {
+    use sha2::{Digest, Sha256};
+    let bytes = std::fs::read(path).ok()?;
+    Some(format!("{:x}", Sha256::digest(bytes)))
+}
+
+pub(crate) fn copy_into_note(
+    note_id: &str,
+    bytes: &[u8],
+    origin: NoteAssetOrigin,
+) -> Result<NoteAssetCopy, String> {
+    paths::validate_project_id(note_id)?;
+    if !is_note(note_id, &read_meta(note_id)?) {
+        return Err("Files can only be copied into a note.".into());
+    }
+    let admission = admit_mutation(
+        note_id,
+        vec![MutationScope::subtree(NOTE_ASSETS.to_string())],
+        None,
+    )?;
+    let (copy, _generation) = admission.run_with_change_status(|| {
+        let (path, present) = note_asset_slot(note_id, &origin.source_path, &origin.sha256)?;
+        let origin_path = note_origin_path(&path);
+        let target = resolve(note_id, &path)?;
+        let origin_target = resolve(note_id, &origin_path)?;
+        let mut changed = false;
+        if !present {
+            crate::collab::suggesting::tree_change_refused(note_id, &[path.as_str()])?;
+            write_project_bytes(note_id, &target, &path, bytes)?;
+            changed = true;
+        }
+        if std::fs::symlink_metadata(&origin_target).is_err() {
+            crate::collab::suggesting::tree_change_refused(note_id, &[origin_path.as_str()])?;
+            let record = NoteOriginRecord {
+                version: NOTE_ORIGIN_VERSION,
+                asset: path.clone(),
+                origin,
+            };
+            let json = serde_json::to_vec_pretty(&record).map_err(|error| error.to_string())?;
+            write_project_bytes(note_id, &origin_target, &origin_path, &json)?;
+            changed = true;
+        }
+        Ok((
+            NoteAssetCopy {
+                path: path.clone(),
+                reused: present,
+            },
+            changed,
+        ))
+    })?;
+    Ok(copy)
 }
 
 #[tauri::command]
@@ -8510,23 +8868,27 @@ pub(crate) async fn recycle_project_synchronized(
 mod tests {
     use super::{
         allow_table_import_path, assert_table_import_allowed, canonical_table_import_path,
-        copy_path_in_project, create_blank_project, create_diagram_project_from,
-        create_image_project_in, create_markdown_project_in, create_path_in_project,
-        create_project_from_ad_hoc_blocking, create_project_from_pdf_conversion_blocking,
-        create_project_transaction, create_typst_project_in, declared_template_engine,
-        duplicate_project, engine_for_main_document, engine_for_untrusted_project,
-        engine_runs_notebook_code, engine_runs_project_code, export_would_write_inside_project,
-        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
-        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
-        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
-        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
-        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
-        rename_path_in_project, safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized,
-        set_main_doc_unlocked, try_reserve_project_directory,
+        copy_into_note, copy_path_in_project, create_blank_project, create_diagram_project_from,
+        create_image_project_in, create_markdown_project_in, create_note_project_from,
+        create_path_in_project, create_project_from_ad_hoc_blocking,
+        create_project_from_pdf_conversion_blocking, create_project_transaction,
+        create_typst_project_in, declared_template_engine, duplicate_project,
+        engine_for_main_document, engine_for_untrusted_project, engine_runs_notebook_code,
+        engine_runs_project_code, export_would_write_inside_project, extract_pandoc,
+        flatten_single_root_folder, front_matter_declares_note,
+        get_or_create_scratch_project_blocking, import_paths_transactional,
+        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
+        import_skip, infer_main_document, is_table_import_extension, list_projects_blocking,
+        normalize_loaded_tex_flavor, normalize_relative, note_asset_name, note_asset_path,
+        note_heads, note_origin_path, pandoc_asset_for, pandoc_version_supported, read_meta,
+        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
+        safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        set_note_related_project_blocking, text_head, try_reserve_project_directory,
         try_reserve_project_directory_adopting, validate_conversion_export, validate_tex_flavor,
         write_meta_at, write_project_zip, AdHocProjectFile, CreateAdHocProjectRequest,
-        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
-        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
+        CreateFileResult, FileConflictStrategy, MutationScope, NoteAssetCopy, NoteAssetOrigin,
+        NoteHead, PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec,
+        NOTE_FILE, NOTE_HEAD_BYTES, NOTE_KIND, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -16861,6 +17223,309 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn note_project_is_a_visible_note_with_its_related_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("note-project");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let source = "---\ntitle: Masking\nicon: 🧪\n---\n\nRun 3 reached 64.1%.\n";
+        let id = create_note_project_from(
+            "Masking".to_string(),
+            source.to_string(),
+            Some("paper-1".to_string()),
+        )
+        .unwrap();
+        let meta = read_meta(&id).unwrap();
+        assert_eq!(meta.kind, NOTE_KIND);
+        assert_eq!(meta.main_doc, NOTE_FILE);
+        assert_eq!(meta.engine, "markdown");
+        assert!(!meta.hidden);
+        let dir = crate::paths::project_dir(&id).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join(NOTE_FILE)).unwrap(),
+            source
+        );
+        let listed = list_projects_blocking()
+            .unwrap()
+            .into_iter()
+            .find(|project| project.id == id)
+            .unwrap();
+        assert_eq!(listed.kind, NOTE_KIND);
+        assert_eq!(listed.related_project.as_deref(), Some("paper-1"));
+        assert_eq!(
+            note_heads().unwrap(),
+            vec![NoteHead {
+                id: id.clone(),
+                head: source.to_string()
+            }]
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn note_project_refuses_a_malformed_related_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("note-project-bad-related");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let error = create_note_project_from(
+            "Bad".to_string(),
+            String::new(),
+            Some("../escape".to_string()),
+        )
+        .unwrap_err();
+        assert!(error.contains("illegal project id"));
+        let without = create_note_project_from("Plain".to_string(), String::new(), None).unwrap();
+        let listed = list_projects_blocking()
+            .unwrap()
+            .into_iter()
+            .find(|project| project.id == without)
+            .unwrap();
+        assert_eq!(listed.related_project, None);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn note_asset_names_are_portable() {
+        assert_eq!(
+            note_asset_name("figures/Loss curve (v2).PNG"),
+            ("Loss-curve-v2".to_string(), "png".to_string())
+        );
+        assert_eq!(
+            note_asset_name("out/.hidden"),
+            ("hidden".to_string(), String::new())
+        );
+        assert_eq!(
+            note_asset_name("out/???.csv"),
+            ("artifact".to_string(), "csv".to_string())
+        );
+        assert_eq!(note_asset_name("Makefile").0, "Makefile");
+        assert_eq!(note_asset_name(&"a".repeat(200)).0.len(), 60);
+        assert_eq!(
+            note_asset_path("figs/loss.png", "1a2b3c4d5e6f", 1),
+            "assets/loss-1a2b3c4d.png"
+        );
+        assert_eq!(
+            note_asset_path("figs/loss.png", "1a2b3c4d5e6f", 2),
+            "assets/loss-1a2b3c4d-2.png"
+        );
+        assert_eq!(
+            note_asset_path("Makefile", "ff00ff00ff", 1),
+            "assets/Makefile-ff00ff00"
+        );
+        assert_eq!(
+            note_origin_path("assets/loss-1a2b3c4d.png"),
+            "assets/origins/loss-1a2b3c4d.png.json"
+        );
+    }
+
+    #[test]
+    fn a_note_is_recognised_from_its_own_front_matter() {
+        assert!(front_matter_declares_note(
+            "---\ntitle: A\nkind: note\n---\nBody"
+        ));
+        assert!(front_matter_declares_note("---\nkind: \"note\"\n---\n"));
+        assert!(!front_matter_declares_note("---\nkind: paper\n---\n"));
+        assert!(!front_matter_declares_note(
+            "---\ntitle: A\n---\nkind: note\n"
+        ));
+        assert!(!front_matter_declares_note("kind: note\n"));
+        assert!(front_matter_declares_note("\u{feff}---\nkind: note\n---\n"));
+        assert!(front_matter_declares_note(
+            "---\nkind: paper\nkind: note\n---\n"
+        ));
+        assert!(!front_matter_declares_note(
+            "---\nkind: note\nkind: paper\n---\n"
+        ));
+        assert!(!front_matter_declares_note("---\nkind: note\n"));
+        assert!(!front_matter_declares_note(
+            "---\ntitle: A\n...\nkind: note"
+        ));
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("note-declared");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let joined = crate::paths::create_project_dir("joined-note").unwrap();
+        std::fs::write(
+            joined.join(NOTE_FILE),
+            "---\ntitle: Shared\nkind: note\n---\nHi\n",
+        )
+        .unwrap();
+        write_meta_at(
+            &joined.join("project.json"),
+            &ProjectMeta {
+                name: "Shared".into(),
+                main_doc: NOTE_FILE.into(),
+                engine: "markdown".into(),
+                ..read_meta("joined-note").unwrap()
+            },
+        )
+        .unwrap();
+        let plain = crate::paths::create_project_dir("plain-md").unwrap();
+        std::fs::write(plain.join("main.md"), "---\nkind: note\n---\n").unwrap();
+        write_meta_at(
+            &plain.join("project.json"),
+            &ProjectMeta {
+                name: "Plain".into(),
+                main_doc: "main.md".into(),
+                engine: "markdown".into(),
+                ..read_meta("plain-md").unwrap()
+            },
+        )
+        .unwrap();
+        let listed = list_projects_blocking().unwrap();
+        let kind_of = |id: &str| {
+            listed
+                .iter()
+                .find(|project| project.id == id)
+                .unwrap()
+                .kind
+                .clone()
+        };
+        assert_eq!(kind_of("joined-note"), NOTE_KIND);
+        assert_eq!(kind_of("plain-md"), "document");
+        assert!(note_heads()
+            .unwrap()
+            .iter()
+            .any(|head| head.id == "joined-note"));
+        set_note_related_project_blocking("joined-note", Some("paper-3".into())).unwrap();
+        assert_eq!(read_meta("joined-note").unwrap().kind, NOTE_KIND);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn origin(task: &str, source: &str, sha256: &str) -> NoteAssetOrigin {
+        NoteAssetOrigin {
+            sha256: sha256.to_string(),
+            copied_at: 1,
+            project_id: "paper-1".to_string(),
+            project_name: Some("Paper".to_string()),
+            task_id: task.to_string(),
+            task_title: "Ablation".to_string(),
+            source_path: source.to_string(),
+            runtime_id: "acp".to_string(),
+            agent_id: "claude".to_string(),
+            model_id: "default".to_string(),
+            finished_at: Some(2),
+        }
+    }
+
+    fn sha(bytes: &[u8]) -> String {
+        use sha2::{Digest, Sha256};
+        format!("{:x}", Sha256::digest(bytes))
+    }
+
+    #[test]
+    fn copying_into_a_note_names_files_by_content_and_records_each_origin_on_its_own() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("note-asset-copy");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let note = create_note_project_from("Note".to_string(), String::new(), None).unwrap();
+        let dir = crate::paths::project_dir(&note).unwrap();
+        let one = sha(b"png-1");
+        let two = sha(b"png-2");
+
+        let first = copy_into_note(&note, b"png-1", origin("t1", "figs/loss.png", &one)).unwrap();
+        let first_path = format!("assets/loss-{}.png", &one[..8]);
+        assert_eq!(
+            first,
+            NoteAssetCopy {
+                path: first_path.clone(),
+                reused: false
+            }
+        );
+        assert_eq!(std::fs::read(dir.join(&first_path)).unwrap(), b"png-1");
+
+        let again = copy_into_note(&note, b"png-1", origin("t9", "other/loss.png", &one)).unwrap();
+        assert_eq!(again.path, first_path);
+        assert!(again.reused);
+
+        let newer = copy_into_note(&note, b"png-2", origin("t2", "figs/loss.png", &two)).unwrap();
+        assert_eq!(newer.path, format!("assets/loss-{}.png", &two[..8]));
+        assert!(!newer.reused);
+
+        std::fs::write(dir.join(&first_path), b"edited").unwrap();
+        let replaced =
+            copy_into_note(&note, b"png-1", origin("t1", "figs/loss.png", &one)).unwrap();
+        assert_eq!(replaced.path, format!("assets/loss-{}-2.png", &one[..8]));
+        assert_eq!(std::fs::read(dir.join(&first_path)).unwrap(), b"edited");
+
+        let record: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.join(note_origin_path(&first_path))).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(record["version"], 1);
+        assert_eq!(record["asset"], first_path.as_str());
+        assert_eq!(record["taskId"], "t1");
+        assert_eq!(record["sourcePath"], "figs/loss.png");
+        assert_eq!(record["projectName"], "Paper");
+        let second: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.join(note_origin_path(&newer.path))).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(second["taskId"], "t2");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn copying_refuses_a_project_that_is_not_a_note() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("note-asset-refusals");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let plain = create_blank_project("Plain".to_string()).unwrap();
+        let error = copy_into_note(&plain, b"x", origin("t1", "a.png", &sha(b"x"))).unwrap_err();
+        assert_eq!(error, "Files can only be copied into a note.");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_note_can_change_or_drop_its_related_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("note-related-project");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let note = create_note_project_from("Note".to_string(), String::new(), None).unwrap();
+        let related = |id: &str| {
+            list_projects_blocking()
+                .unwrap()
+                .into_iter()
+                .find(|project| project.id == id)
+                .unwrap()
+                .related_project
+        };
+        set_note_related_project_blocking(&note, Some("paper-2".to_string())).unwrap();
+        assert_eq!(related(&note).as_deref(), Some("paper-2"));
+        set_note_related_project_blocking(&note, Some(String::new())).unwrap();
+        assert_eq!(related(&note), None);
+        assert!(
+            set_note_related_project_blocking(&note, Some("../x".to_string()))
+                .unwrap_err()
+                .contains("illegal project id")
+        );
+        assert_eq!(
+            set_note_related_project_blocking(&note, Some(note.clone())).unwrap_err(),
+            "A note can't be its own project."
+        );
+        let plain = create_blank_project("Plain".to_string()).unwrap();
+        assert_eq!(
+            set_note_related_project_blocking(&plain, Some("paper-2".to_string())).unwrap_err(),
+            "Only a note has a related project."
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn note_head_stops_at_a_character_boundary() {
+        let text = format!("{}é", "a".repeat(NOTE_HEAD_BYTES - 1));
+        let head = text_head(text.as_bytes());
+        assert_eq!(head.len(), NOTE_HEAD_BYTES - 1);
+        assert!(head.chars().all(|c| c == 'a'));
+        assert_eq!(text_head("short".as_bytes()), "short");
     }
 
     #[test]
