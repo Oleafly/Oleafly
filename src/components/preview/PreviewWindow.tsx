@@ -2,7 +2,7 @@ import { PdfToolbarControls } from "./PdfToolbarControls";
 import { present } from "@/features/presentation/launch";
 import { CompileLogControls } from "./CompileLogControls";
 import { SavePreviewDialog } from "./SavePreviewDialog";
-import { usePdfSync } from "./use-pdf-sync";
+import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
@@ -891,7 +891,7 @@ export function PreviewWindow({
   const pdfSync = usePdfSync({
     projectId,
     available: isTauri() && !disableNativeBridge,
-    outputId: displayedIsCurrent ? (previewDocument?.checkpoint?.outputId ?? null) : null,
+    outputId: currentOutputId(previewDocument?.checkpoint, displayedIsCurrent),
     fastCompile: workspace?.compileMode === "fast",
   });
   const htmlBuiltAt =

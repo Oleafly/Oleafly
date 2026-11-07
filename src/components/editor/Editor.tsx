@@ -69,34 +69,32 @@ function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: st
   const { t } = useTranslation(["common", "editor"]);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [revision, setRevision] = useState(0);
+  const latestRead = useRef(0);
+
+  const read = useCallback(() => {
+    latestRead.current += 1;
+    const request = latestRead.current;
+    readFileBase64(projectId, path)
+      .then((b64) => { if (request === latestRead.current) setBytes(base64ToUint8Array(b64)); })
+      .catch((e) => { if (request === latestRead.current) setErr(String(e)); });
+  }, [projectId, path]);
 
   useTauriEvent<{ projectId?: string; path?: string }>(
     "pdf-sync:written",
     (payload) => {
-      if (payload?.projectId === projectId && payload.path === path) {
-        setRevision((current) => current + 1);
-      }
+      if (payload?.projectId === projectId && payload.path === path) read();
     },
     isTauri(),
   );
 
-  const shownFile = useRef<string | null>(null);
-
   useEffect(() => {
-    void revision;
-    let cancelled = false;
-    const file = `${projectId}/${path}`;
-    if (shownFile.current !== file) {
-      shownFile.current = file;
-      setBytes(null);
-      setErr(null);
-    }
-    readFileBase64(projectId, path)
-      .then((b64) => { if (!cancelled) setBytes(base64ToUint8Array(b64)); })
-      .catch((e) => { if (!cancelled) setErr(String(e)); });
-    return () => { cancelled = true; };
-  }, [projectId, path, revision]);
+    setBytes(null);
+    setErr(null);
+    read();
+    return () => {
+      latestRead.current += 1;
+    };
+  }, [read]);
 
   if (err) {
     return (

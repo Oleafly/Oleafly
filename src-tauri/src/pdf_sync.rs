@@ -289,7 +289,7 @@ pub(crate) fn sync_compiled(
     if !wants_sync(&meta, main_document) {
         return Ok(None);
     }
-    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(project_id)?;
     let mut device = read_state(&location);
     if nothing_changed(&meta, &location.root, &device, compiled) {
         return Ok(None);
@@ -357,7 +357,7 @@ pub(crate) async fn sync_in_background<R: tauri::Runtime>(
 
 fn status(project_id: &str) -> Result<PdfSyncStatus, String> {
     let meta = crate::project::read_meta(project_id)?;
-    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(project_id)?;
     let sync = meta.pdf_sync.unwrap_or_default();
     Ok(PdfSyncStatus {
         path: sync.target().map(str::to_owned),
@@ -376,7 +376,7 @@ fn set_enabled(
     let Some(output_id) = output_id.filter(|_| enabled) else {
         return Ok(Ok(None));
     };
-    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(project_id)?;
     let compiled = CompiledPdf {
         output_id,
         sources: stamp_for(&meta, &location.root),
@@ -385,7 +385,7 @@ fn set_enabled(
 }
 
 fn note_saved(project_id: &str, path: &str) -> Result<(), String> {
-    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(project_id)?;
     let hash = ContentHash::digest_file(crate::sandbox::resolve(project_id, path)?)
         .map_err(|error| format!("could not read {path}: {error}"))?;
     let mut device = read_state(&location);

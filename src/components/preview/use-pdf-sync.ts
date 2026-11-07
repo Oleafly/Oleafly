@@ -13,6 +13,13 @@ export interface PdfSyncToggle {
   setEnabled: (enabled: boolean) => void;
 }
 
+export function currentOutputId(
+  checkpoint: { readonly outputId: string } | null | undefined,
+  isCurrent: boolean,
+): string | null {
+  return isCurrent ? (checkpoint?.outputId ?? null) : null;
+}
+
 export function usePdfSync({
   projectId,
   available,

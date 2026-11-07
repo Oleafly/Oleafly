@@ -17,7 +17,7 @@ vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
-import { usePdfSync } from "./use-pdf-sync";
+import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 
 const off = { enabled: false, path: null, failed: null, localOnly: false };
 const on = { enabled: true, path: "Thesis.pdf", failed: null, localOnly: false };
@@ -38,6 +38,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.pdfSyncStatus.mockResolvedValue(off);
   mocks.pdfSyncSet.mockResolvedValue(on);
+});
+
+describe("currentOutputId", () => {
+  it("only offers a preview that matches the current sources", () => {
+    const checkpoint = { outputId: "pdf-v1:1:aa" };
+    expect(currentOutputId(checkpoint, true)).toBe("pdf-v1:1:aa");
+    expect(currentOutputId(checkpoint, false)).toBeNull();
+    expect(currentOutputId(null, true)).toBeNull();
+  });
 });
 
 describe("usePdfSync", () => {

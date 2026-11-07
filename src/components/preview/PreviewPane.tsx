@@ -1,6 +1,6 @@
 import { previewWindowState } from "@/lib/preview-state";
 import { SavePreviewDialog } from "./SavePreviewDialog";
-import { usePdfSync } from "./use-pdf-sync";
+import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { CompileLogControls } from "./CompileLogControls";
 import { PdfToolbarControls } from "./PdfToolbarControls";
 import { present } from "@/features/presentation/launch";
@@ -870,7 +870,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const pdfSync = usePdfSync({
     projectId,
     available: isTauri() && !isImage,
-    outputId: pdfIsCurrent ? (displayedCheckpoint?.outputId ?? null) : null,
+    outputId: currentOutputId(displayedCheckpoint, pdfIsCurrent),
     fastCompile: compileMode === "fast",
   });
   const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
