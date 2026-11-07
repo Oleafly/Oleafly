@@ -4109,6 +4109,18 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         run_git(&dir, &["init", "--quiet"]).unwrap();
         run_git(&dir, &["config", "core.autocrlf", "false"]).unwrap();
+        // A developer's global ignore list (often `*.log`) would decide what
+        // these tests can stage.
+        let no_excludes = dir.join(".git").join("no-global-excludes");
+        run_git(
+            &dir,
+            &[
+                "config",
+                "core.excludesFile",
+                &no_excludes.to_string_lossy(),
+            ],
+        )
+        .unwrap();
         run_git(&dir, &["symbolic-ref", "HEAD", "refs/heads/main"]).unwrap();
         run_git(&dir, &["config", "user.email", "t@t"]).unwrap();
         run_git(&dir, &["config", "user.name", "t"]).unwrap();

@@ -2414,7 +2414,9 @@ async fn a_log_git_tracks_is_backed_up_and_other_build_output_is_not() {
     if !git(&desk.root(), &["init", "-q"]) {
         return;
     }
-    assert!(git(&desk.root(), &["add", "results/run.log"]));
+    // -f: a developer's global ignore list often has *.log, and the test only
+    // needs the file tracked.
+    assert!(git(&desk.root(), &["add", "-f", "results/run.log"]));
     desk.sync(&store, cloud).await;
     assert_eq!(
         store
