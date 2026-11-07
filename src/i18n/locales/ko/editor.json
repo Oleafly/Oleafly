@@ -550,7 +550,9 @@
       "hideFor": "{{version}}의 파일 숨기기",
       "show": "파일 보기",
       "hide": "파일 숨기기",
-      "folderSettings": "이 폴더의 Oleafly 설정"
+      "folderSettings": "이 폴더의 Oleafly 설정",
+      "savePdf": "PDF 저장",
+      "savePdfFor": "{{name}} 저장"
     },
     "entry": {
       "labelInput": "체크포인트 레이블",
@@ -586,7 +588,9 @@
       "exported": "체크포인트 압축 파일을 내보냈습니다.",
       "exportFailed": "체크포인트 압축 파일을 내보내지 못했습니다.",
       "imported": "체크포인트 압축 파일을 가져왔습니다.",
-      "importFailed": "체크포인트 압축 파일을 가져오지 못했습니다."
+      "importFailed": "체크포인트 압축 파일을 가져오지 못했습니다.",
+      "pdfSaved": "{{name}}을(를) 저장했습니다.",
+      "pdfSaveFailed": "이 PDF를 저장하지 못했습니다."
     },
     "panel": {
       "summary": "소스를 바꾼 컴파일이 성공할 때마다 버전이 하나씩 생깁니다.",

@@ -138,6 +138,12 @@
     "pdfSaved": "PDF projeye kaydedildi.",
     "failed": "Projeye kaydedilemedi."
   },
+  "sync": {
+    "toggle": "Derlemede PDF'yi eşitle",
+    "failed": "{{name}} güncellenemedi. Oleafly bir sonraki derlemede yeniden deneyecek.",
+    "fastMode": "Hızlı derlemeler bu PDF'yi güncellemez.",
+    "localOnly": "Bu kopya bu bilgisayarda kalır."
+  },
   "download": {
     "pngFilter": "PNG görseli",
     "imageSaved": "Görsel kaydedildi · {{name}}",

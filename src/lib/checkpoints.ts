@@ -31,6 +31,7 @@ export {
   checkpointReset,
   checkpointRestore,
   checkpointRevealStore,
+  checkpointSaveFile,
   checkpointSetLabel,
   checkpointStats,
   checkpointVerify,

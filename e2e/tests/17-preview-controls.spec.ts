@@ -154,6 +154,26 @@ async function activatePreviewControl(
   await menu.getByText(label, { exact: true }).click();
 }
 
+async function openSavePdfMenu(tauriPage: TauriPage) {
+  const direct = tauriPage.locator('[aria-label="Save PDF to project"]');
+  const trigger = (await direct.isVisible())
+    ? direct
+    : tauriPage.locator('[aria-label="More preview controls"]');
+  await expect(trigger).toBeVisible();
+  // Radix opens this trigger from keyboard activation consistently across
+  // WebKitGTK; the bridge's synthetic pointer click can be discarded.
+  await trigger.focus();
+  await trigger.press("Enter");
+  const menu = tauriPage.getByRole("menu");
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+async function openSavePdfDialog(tauriPage: TauriPage) {
+  const menu = await openSavePdfMenu(tauriPage);
+  await menu.getByText("Save PDF to project", { exact: true }).click();
+}
+
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
   await expect(
@@ -337,7 +357,7 @@ test("save PDF writes the exact compiled bytes at the requested relative path an
 }) => {
   const compiledBase64 = await readCompiledPdfBase64(tauriPage);
   expect((await getCompiledPdfProbe(tauriPage)).text).toContain("Introduction");
-  await activatePreviewControl(tauriPage, "Save PDF to project");
+  await openSavePdfDialog(tauriPage);
   const name = `e2e-saved-${Date.now().toString(36)}.pdf`;
   const path = `exports/${name}`;
   await tauriPage.fill('[aria-label="Project save name"]', path);
@@ -350,13 +370,36 @@ test("save PDF writes the exact compiled bytes at the requested relative path an
   expect(savedBase64).toBe(compiledBase64);
   expect(Buffer.from(savedBase64, "base64").subarray(0, 5).toString("ascii")).toBe("%PDF-");
 
-  await activatePreviewControl(tauriPage, "Save PDF to project");
+  await openSavePdfDialog(tauriPage);
   await tauriPage.fill('[aria-label="Project save name"]', "../outside-project.pdf");
   await tauriPage.getByText("Save", { exact: true }).click();
   await expect(tauriPage.getByText("Couldn't save into the project.", { exact: true })).toBeVisible({
     timeout: 15_000,
   });
   await expect(tauriPage.locator('[aria-label="Project save name"]')).toBeVisible();
+});
+
+test("sync PDF on compiles writes a PDF named after the project title", async ({
+  tauriPage,
+}) => {
+  const compiledBase64 = await readCompiledPdfBase64(tauriPage);
+  const synced = "E2E_Doc.pdf";
+  const syncRow = tauriPage.locator('[role="menuitemcheckbox"]');
+
+  await openSavePdfMenu(tauriPage);
+  await expect(syncRow).toHaveAttribute("aria-checked", "false");
+  await syncRow.click();
+  await expect(syncRow).toHaveAttribute("aria-checked", "true");
+  await expect.poll(() => readProjectBase64(tauriPage, synced).catch(() => ""), {
+    timeout: 20_000,
+  }).toBe(compiledBase64);
+
+  await tauriPage.keyboard.press("Escape");
+  await expect(tauriPage.locator('[data-testid="preview-stale-badge"]')).not.toBeVisible();
+  await openSavePdfMenu(tauriPage);
+  await syncRow.click();
+  await expect(syncRow).toHaveAttribute("aria-checked", "false");
+  await tauriPage.keyboard.press("Escape");
 });
 
 test("save image writes a real nonblank PNG at the requested relative path", async ({

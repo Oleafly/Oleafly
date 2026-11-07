@@ -2,6 +2,7 @@ import { PdfToolbarControls } from "./PdfToolbarControls";
 import { present } from "@/features/presentation/launch";
 import { CompileLogControls } from "./CompileLogControls";
 import { SavePreviewDialog } from "./SavePreviewDialog";
+import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
@@ -63,6 +64,7 @@ import {
   type PreviewWindowState,
 } from "@/lib/preview-window";
 import {
+  pdfSyncNoteSaved,
   readCompiledPdf,
   saveFileBase64,
   uint8ToBase64,
@@ -372,6 +374,9 @@ export function PreviewWindow({
     try {
       const name = `${(saveName.trim() || "document").replace(/\.pdf$/i, "")}.pdf`;
       await saveFileBase64(projectId, name, uint8ToBase64(previewDocument.bytes));
+      if (isTauri()) {
+        void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
+      }
       await command({ action: "refresh-files" });
       setSaveOpen(false);
       toast.success(t(($) => $.preview.save.pdfSaved));
@@ -883,6 +888,12 @@ export function PreviewWindow({
     previewDocument !== null &&
     !displayedIsCurrent &&
     !disableNativeBridge;
+  const pdfSync = usePdfSync({
+    projectId,
+    available: isTauri() && !disableNativeBridge,
+    outputId: currentOutputId(previewDocument?.checkpoint, displayedIsCurrent),
+    fastCompile: workspace?.compileMode === "fast",
+  });
   const htmlBuiltAt =
     workspace?.htmlOutput && workspace.htmlOutput.projectId === projectId
       ? workspace.htmlOutput.builtAt
@@ -1154,8 +1165,9 @@ export function PreviewWindow({
           scale={scale} setScale={setScale} setClampedScale={setClampedScale} userZoom={userZoom} fitPreview={fitPreview}
           exporting={exporting} exportDisplayedPreview={downloadDisplayedPdf}
           downloadActionLabel={() => displayedIsStale ? t(($) => $.preview.actions.downloadStalePdf) : t(($) => $.preview.actions.downloadPdf)}
+          pdfSync={pdfSync}
           onSave={() => {
-            setSaveName(`${(workspace?.mainDoc || compileState?.identity.mainDocument || "document").replace(/\.(?:tex|typ|md|markdown|qmd|rmd)$/i, "")}.pdf`);
+            setSaveName(`${exportFileStem(workspace?.projectName, "document")}.pdf`);
             setSaveOpen(true);
           }}
           inverted={inverted} setInverted={setInverted} screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}

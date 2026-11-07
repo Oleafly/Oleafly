@@ -560,7 +560,9 @@
       "hideFor": "Bestanden voor {{version}} verbergen",
       "show": "Bestanden tonen",
       "hide": "Bestanden verbergen",
-      "folderSettings": "Oleafly-instellingen voor deze map"
+      "folderSettings": "Oleafly-instellingen voor deze map",
+      "savePdf": "PDF opslaan",
+      "savePdfFor": "{{name}} opslaan"
     },
     "entry": {
       "labelInput": "Checkpointlabel",
@@ -596,7 +598,9 @@
       "exported": "Checkpointarchief geëxporteerd.",
       "exportFailed": "Kon het checkpointarchief niet exporteren.",
       "imported": "Checkpointarchief geïmporteerd.",
-      "importFailed": "Kon het checkpointarchief niet importeren."
+      "importFailed": "Kon het checkpointarchief niet importeren.",
+      "pdfSaved": "{{name}} opgeslagen.",
+      "pdfSaveFailed": "Deze PDF kon niet worden opgeslagen."
     },
     "panel": {
       "summary": "Eén versie per geslaagde compilatie die de broncode heeft gewijzigd.",

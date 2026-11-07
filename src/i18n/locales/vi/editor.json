@@ -550,7 +550,9 @@
       "hideFor": "Ẩn tệp cho {{version}}",
       "show": "Hiện tệp",
       "hide": "Ẩn tệp",
-      "folderSettings": "Cài đặt Oleafly cho thư mục này"
+      "folderSettings": "Cài đặt Oleafly cho thư mục này",
+      "savePdf": "Lưu PDF",
+      "savePdfFor": "Lưu {{name}}"
     },
     "entry": {
       "labelInput": "Nhãn điểm lưu",
@@ -586,7 +588,9 @@
       "exported": "Đã xuất kho điểm lưu.",
       "exportFailed": "Không thể xuất kho điểm lưu.",
       "imported": "Đã nhập kho điểm lưu.",
-      "importFailed": "Không thể nhập kho điểm lưu."
+      "importFailed": "Không thể nhập kho điểm lưu.",
+      "pdfSaved": "Đã lưu {{name}}.",
+      "pdfSaveFailed": "Không thể lưu PDF này."
     },
     "panel": {
       "summary": "Một phiên bản cho mỗi lần biên dịch thành công có thay đổi mã nguồn.",

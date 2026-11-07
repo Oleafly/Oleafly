@@ -34,6 +34,7 @@ export interface PreviewWorkspaceSnapshot extends
     "autoCompile" | "compileMode" | "checkSyntaxBeforeCompile" | "stopOnFirstError">,
   Pick<FileState, "engine" | "engineLoaded" | "mainDoc"> {
   projectId: string;
+  projectName?: string;
   compileRevision: number;
   noMainDocument: boolean;
   systemTexLocked: boolean;
@@ -75,7 +76,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     const compile = useCompileStore.getState();
     const previewState = previewWindowState(compile.status, compile.lastAttemptIdentity, compile.lastCompileCheckpoint, compile.failureReason);
     void emitTo("preview", "preview:workspace", {
-      projectId, engine: files.engine, engineLoaded: files.engineLoaded, mainDoc: files.mainDoc,
+      projectId, projectName: files.projectName, engine: files.engine, engineLoaded: files.engineLoaded, mainDoc: files.mainDoc,
       status: compile.status, log: compile.log, errors: compile.errors, diagnostics: compile.diagnostics,
       compileTimeMs: compile.compileTimeMs, compileRevision: compile.lastCompileCheckpoint?.outputRevision ?? 0,
       autoCompile: compile.autoCompile, compileMode: compile.compileMode,
@@ -204,6 +205,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
   const offDetached = usePreviewDetachedStore.subscribe(schedule);
   const offFiles = useFilesStore.subscribe((next, previous) => {
     if (next.engine !== previous.engine || next.engineLoaded !== previous.engineLoaded || next.mainDoc !== previous.mainDoc ||
+      next.projectName !== previous.projectName ||
       mainDocumentMissing(next) !== mainDocumentMissing(previous)) schedule();
   });
   const offAccess = useFolderAccessStore.subscribe((next, previous) => {

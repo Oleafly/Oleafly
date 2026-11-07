@@ -140,6 +140,12 @@
     "pdfSaved": "PDF zapisany w projekcie.",
     "failed": "Nie udało się zapisać w projekcie."
   },
+  "sync": {
+    "toggle": "Synchronizuj PDF przy kompilacji",
+    "failed": "Nie udało się zaktualizować {{name}}. Oleafly spróbuje ponownie przy następnej kompilacji.",
+    "fastMode": "Szybkie kompilacje nie aktualizują tego pliku PDF.",
+    "localOnly": "Ta kopia pozostaje na tym komputerze."
+  },
   "download": {
     "pngFilter": "Obraz PNG",
     "imageSaved": "Obraz zapisany · {{name}}",

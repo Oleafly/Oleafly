@@ -137,6 +137,12 @@
     "pdfSaved": "Đã lưu PDF vào dự án.",
     "failed": "Không thể lưu vào dự án."
   },
+  "sync": {
+    "toggle": "Đồng bộ PDF khi biên dịch",
+    "failed": "Không thể cập nhật {{name}}. Oleafly sẽ thử lại ở lần biên dịch tiếp theo.",
+    "fastMode": "Biên dịch nhanh không cập nhật PDF này.",
+    "localOnly": "Bản sao này chỉ lưu trên máy tính này."
+  },
   "download": {
     "pngFilter": "Hình ảnh PNG",
     "imageSaved": "Đã lưu hình ảnh · {{name}}",

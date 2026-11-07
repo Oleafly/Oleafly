@@ -1322,6 +1322,7 @@ pub async fn typst_watch_compile(
 ) -> Result<LiveCompileResult, String> {
     let (session, started, target) =
         ensure_session(app.clone(), &project_id, &main_doc, offline, typst_variant).await?;
+    let pdf_plan = crate::pdf_sync::plan_live_compile(&project_id, &main_doc).await;
     let record = session.compile(fresh.unwrap_or(false), started).await?;
     if record.result.ok {
         crate::commands::record_compile_output(crate::commands::CompiledRecord {
@@ -1340,6 +1341,9 @@ pub async fn typst_watch_compile(
             &target.engine_name,
             &target.main_document,
             &target.toolchain_identity,
+            pdf_plan.and_then(|plan| {
+                plan.compiled(record.result.has_pdf, record.result.output_id.as_deref())
+            }),
         );
     }
     Ok(record.result.clone())

@@ -43,6 +43,7 @@ import {
   checkpointReset,
   checkpointRestore,
   checkpointRevealStore,
+  checkpointSaveFile,
   checkpointSetLabel,
   checkpointStats,
   type CheckpointCaptureNotice,
@@ -318,10 +319,16 @@ interface FileListProps {
   id: string;
   label: string;
   state: FileState | undefined;
+  busy: boolean;
   onRetry: () => void;
+  onSaveFile: (file: CheckpointFileSummary) => void;
 }
 
-function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
+function canSaveFile(file: CheckpointFileSummary): boolean {
+  return file.stored && file.path.toLowerCase().endsWith(".pdf");
+}
+
+function FileList({ id, label, state, busy, onRetry, onSaveFile }: Readonly<FileListProps>) {
   const { t } = useTranslation(["common", "editor"]);
   if (!state || state.status === "loading") {
     return (
@@ -381,6 +388,20 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
             </div>
             <p className="mt-0.5 text-[0.6875rem] text-muted-foreground">{formatBytes(file.bytes)}</p>
           </div>
+          {canSaveFile(file) ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              aria-label={t(($) => $.editor.checkpoints.files.savePdfFor, {
+                name: checkpointFileName(file),
+              })}
+              onClick={() => onSaveFile(file)}
+            >
+              <Download className="size-3.5" />
+              {t(($) => $.editor.checkpoints.files.savePdf)}
+            </Button>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -405,6 +426,7 @@ interface TimelineEntryProps {
   onDelete: () => void;
   onCopyRoot: () => void;
   onRetryFiles: () => void;
+  onSaveFile: (file: CheckpointFileSummary) => void;
   onStartLabelEdit: () => void;
   onLabelDraftChange: (value: string) => void;
   onSaveLabel: () => void;
@@ -430,6 +452,7 @@ function TimelineEntry({
   onDelete,
   onCopyRoot,
   onRetryFiles,
+  onSaveFile,
   onStartLabelEdit,
   onLabelDraftChange,
   onSaveLabel,
@@ -708,7 +731,14 @@ function TimelineEntry({
       </button>
 
       {expanded ? (
-        <FileList id={filesId} label={version} state={fileState} onRetry={onRetryFiles} />
+        <FileList
+          id={filesId}
+          label={version}
+          state={fileState}
+          busy={busy}
+          onRetry={onRetryFiles}
+          onSaveFile={onSaveFile}
+        />
       ) : null}
     </li>
   );
@@ -721,6 +751,7 @@ interface TimelineActions {
   remove: (checkpoint: CheckpointSummary) => void;
   copyRoot: (snapshotRoot: string) => void;
   retryFiles: (snapshotRoot: string) => void;
+  saveFile: (snapshotRoot: string, file: CheckpointFileSummary) => void;
   startLabelEdit: (checkpoint: CheckpointSummary) => void;
   setLabelDraft: (value: string) => void;
   saveLabel: (snapshotRoot: string) => void;
@@ -755,6 +786,7 @@ const TimelineRow = memo(function TimelineRow({ actions, ...entry }: Readonly<Ti
       onDelete={() => actions.remove(checkpoint)}
       onCopyRoot={() => actions.copyRoot(root)}
       onRetryFiles={() => actions.retryFiles(root)}
+      onSaveFile={(file) => actions.saveFile(root, file)}
       onStartLabelEdit={() => actions.startLabelEdit(checkpoint)}
       onLabelDraftChange={actions.setLabelDraft}
       onSaveLabel={() => actions.saveLabel(root)}
@@ -818,6 +850,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
       remove: (checkpoint) => timelineActionsRef.current?.remove(checkpoint),
       copyRoot: (snapshotRoot) => timelineActionsRef.current?.copyRoot(snapshotRoot),
       retryFiles: (snapshotRoot) => timelineActionsRef.current?.retryFiles(snapshotRoot),
+      saveFile: (snapshotRoot, file) => timelineActionsRef.current?.saveFile(snapshotRoot, file),
       startLabelEdit: (checkpoint) => timelineActionsRef.current?.startLabelEdit(checkpoint),
       setLabelDraft: (value) => timelineActionsRef.current?.setLabelDraft(value),
       saveLabel: (snapshotRoot) => timelineActionsRef.current?.saveLabel(snapshotRoot),
@@ -1227,6 +1260,29 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     return false;
   };
 
+  const saveCheckpointFile = async (snapshotRoot: string, file: CheckpointFileSummary) => {
+    if (!projectId) return;
+    const action = beginAction(projectId);
+    if (!action || !isCurrentAction(action)) return;
+    const name = file.path.slice(file.path.lastIndexOf("/") + 1);
+    const dest = await pickSavePath({
+      defaultPath: name,
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+    });
+    if (!dest || !isCurrentAction(action)) return;
+    setBusyAction(`save-file:${snapshotRoot}`);
+    try {
+      await checkpointSaveFile(action.projectId, snapshotRoot, file.path, dest);
+      if (!isCurrentAction(action)) return;
+      toast.success(t(($) => $.editor.checkpoints.toast.pdfSaved, { name }));
+    } catch (error) {
+      if (!isCurrentAction(action)) return;
+      notifyError("save checkpoint PDF", error, t(($) => $.editor.checkpoints.toast.pdfSaveFailed));
+    } finally {
+      if (isCurrentAction(action)) setBusyAction(null);
+    }
+  };
+
   const exportArchive = async () => {
     if (!projectId || checkpointCount === 0 || !archivePasswordIsValid()) return;
     const action = beginAction(projectId);
@@ -1302,6 +1358,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     remove: (checkpoint) => void deleteCheckpoint(checkpoint),
     copyRoot: (snapshotRoot) => void copyRoot(snapshotRoot),
     retryFiles: ensureFiles,
+    saveFile: (snapshotRoot, file) => void saveCheckpointFile(snapshotRoot, file),
     startLabelEdit,
     setLabelDraft,
     saveLabel: (snapshotRoot) => void saveLabel(snapshotRoot, labelDraft),

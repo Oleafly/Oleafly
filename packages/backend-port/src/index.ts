@@ -297,6 +297,18 @@ export interface ProjectMeta {
     forked_from?: string | null;
     allow_shell_escape: boolean;
     checkpoints: CheckpointPolicy;
+    pdf_sync?: PdfSyncSetting | null;
+}
+export interface PdfSyncSetting {
+    enabled: boolean;
+    stem?: string;
+    path?: string;
+}
+export interface PdfSyncStatus {
+    enabled: boolean;
+    path: string | null;
+    failed: string | null;
+    localOnly: boolean;
 }
 export interface ProjectStateChanged {
     projectId: string;
@@ -1429,6 +1441,10 @@ export interface BackendPort {
   checkpointList: (projectId: string) => Promise<CheckpointSummary[]>;
   checkpointSetLabel: (projectId: string, snapshotRoot: string, label: string) => Promise<CheckpointSummary>;
   checkpointFiles: (projectId: string, snapshotRoot: string) => Promise<CheckpointFileSummary[]>;
+  checkpointSaveFile: (projectId: string, snapshotRoot: string, path: string, dest: string) => Promise<void>;
+  pdfSyncStatus: (projectId: string) => Promise<PdfSyncStatus>;
+  pdfSyncSet: (projectId: string, enabled: boolean, outputId: string | null) => Promise<PdfSyncStatus>;
+  pdfSyncNoteSaved: (projectId: string, path: string) => Promise<void>;
   checkpointInspect: (projectId: string) => Promise<CheckpointStoreInspection>;
   checkpointRevealStore: (projectId: string) => Promise<void>;
   checkpointStats: (projectId: string) => Promise<CheckpointStoreStats>;

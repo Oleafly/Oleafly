@@ -570,7 +570,9 @@
       "hideFor": "Masquer les fichiers de {{version}}",
       "show": "Afficher les fichiers",
       "hide": "Masquer les fichiers",
-      "folderSettings": "Réglages Oleafly de ce dossier"
+      "folderSettings": "Réglages Oleafly de ce dossier",
+      "savePdf": "Enregistrer le PDF",
+      "savePdfFor": "Enregistrer {{name}}"
     },
     "entry": {
       "labelInput": "Libellé du point de contrôle",
@@ -606,7 +608,9 @@
       "exported": "Archive de points de contrôle exportée.",
       "exportFailed": "Impossible d'exporter l'archive de points de contrôle.",
       "imported": "Archive de points de contrôle importée.",
-      "importFailed": "Impossible d'importer l'archive de points de contrôle."
+      "importFailed": "Impossible d'importer l'archive de points de contrôle.",
+      "pdfSaved": "{{name}} enregistré.",
+      "pdfSaveFailed": "Impossible d'enregistrer ce PDF."
     },
     "panel": {
       "summary": "Une version par compilation réussie ayant modifié le source.",

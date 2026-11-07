@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Thanks
 
+- Teng Qin ([@palmtenor](https://github.com/palmtenor)): asked for a PDF in the
+  project folder that stays up to date (#418).
 - Matt Van Horn ([@mvanhorn](https://github.com/mvanhorn)): catching that tlmgr
   can refuse an install and still exit with a success code (#401).
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)): reported the clash
@@ -23,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The Save button in the PDF preview now opens a menu with a one-line "Sync PDF
+  on compiles" toggle. With it on, a PDF named after your project title is
+  refreshed in the project folder after each successful compile, whatever the
+  source file is called. It's a normal project file, so cloud sync and
+  checkpoints pick it up. If you rename the project, sync moves to a new file
+  and the old one stays as it is. Oleafly won't overwrite a file it didn't make,
+  fast compiles leave the PDF alone, and a shared project keeps this copy on
+  your computer (#418).
+- Save a PDF from any checkpoint without restoring the project. Open a
+  checkpoint's files and choose Save PDF (#418).
 - Antigravity CLI is now a built-in agent. Oleafly runs `agy acp` from your own
   install, and you sign in with your Google account through `agy acp --login`.
   Pick its Gemini model, thinking level and mode in the assistant. It needs agy

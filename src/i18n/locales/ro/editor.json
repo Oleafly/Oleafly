@@ -570,7 +570,9 @@
       "hideFor": "Ascunde fișierele pentru {{version}}",
       "show": "Arată fișierele",
       "hide": "Ascunde fișierele",
-      "folderSettings": "Setările Oleafly pentru acest folder"
+      "folderSettings": "Setările Oleafly pentru acest folder",
+      "savePdf": "Salvează PDF",
+      "savePdfFor": "Salvează {{name}}"
     },
     "entry": {
       "labelInput": "Eticheta punctului de control",
@@ -606,7 +608,9 @@
       "exported": "Arhiva de puncte de control a fost exportată.",
       "exportFailed": "Arhiva de puncte de control nu a putut fi exportată.",
       "imported": "Arhiva de puncte de control a fost importată.",
-      "importFailed": "Arhiva de puncte de control nu a putut fi importată."
+      "importFailed": "Arhiva de puncte de control nu a putut fi importată.",
+      "pdfSaved": "{{name}} a fost salvat.",
+      "pdfSaveFailed": "Acest PDF nu a putut fi salvat."
     },
     "panel": {
       "summary": "Câte o versiune pentru fiecare compilare reușită care a schimbat sursa.",

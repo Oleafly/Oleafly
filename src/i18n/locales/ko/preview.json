@@ -137,6 +137,12 @@
     "pdfSaved": "PDF를 프로젝트에 저장했습니다.",
     "failed": "프로젝트에 저장하지 못했습니다."
   },
+  "sync": {
+    "toggle": "컴파일할 때 PDF 동기화",
+    "failed": "{{name}}을(를) 업데이트하지 못했습니다. Oleafly가 다음 컴파일 때 다시 시도합니다.",
+    "fastMode": "빠른 컴파일은 이 PDF를 업데이트하지 않습니다.",
+    "localOnly": "이 사본은 이 컴퓨터에만 보관됩니다."
+  },
   "download": {
     "pngFilter": "PNG 이미지",
     "imageSaved": "이미지 저장됨 · {{name}}",

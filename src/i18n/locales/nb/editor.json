@@ -560,7 +560,9 @@
       "hideFor": "Skjul filene for {{version}}",
       "show": "Vis filene",
       "hide": "Skjul filene",
-      "folderSettings": "Oleafly-innstillinger for denne mappen"
+      "folderSettings": "Oleafly-innstillinger for denne mappen",
+      "savePdf": "Lagre PDF",
+      "savePdfFor": "Lagre {{name}}"
     },
     "entry": {
       "labelInput": "Sjekkpunktetikett",
@@ -596,7 +598,9 @@
       "exported": "Sjekkpunktarkivet er eksportert.",
       "exportFailed": "Kunne ikke eksportere sjekkpunktarkivet.",
       "imported": "Sjekkpunktarkivet er importert.",
-      "importFailed": "Kunne ikke importere sjekkpunktarkivet."
+      "importFailed": "Kunne ikke importere sjekkpunktarkivet.",
+      "pdfSaved": "{{name}} er lagret.",
+      "pdfSaveFailed": "Kunne ikke lagre denne PDF-en."
     },
     "panel": {
       "summary": "Én versjon per vellykket kompilering som endret kildekoden.",

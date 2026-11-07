@@ -109,6 +109,58 @@ describe("IndexKeeper filesystem identity", () => {
   });
 });
 
+describe("IndexKeeper generated files", () => {
+  it("shows a synced PDF without treating it as a source change", () => {
+    render(<IndexKeeper />);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    for (const action of Object.values(indexActions)) action.mockClear();
+
+    act(() => {
+      useFilesStore.getState().addGeneratedFile("project", "Thesis.pdf");
+      useFilesStore.getState().addGeneratedFile("project", "Abstract.pdf");
+    });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(useFilesStore.getState().tree.map((entry) => entry.path)).toEqual([
+      "Abstract.pdf",
+      "Thesis.pdf",
+      "main.tex",
+    ]);
+    expect(indexActions.invalidateFilesystem).not.toHaveBeenCalled();
+    expect(indexActions.rebuildFromDisk).not.toHaveBeenCalled();
+  });
+
+  it("ignores a file that is already listed or belongs to another project", () => {
+    const before = useFilesStore.getState().tree;
+    useFilesStore.getState().addGeneratedFile("project", "main.tex");
+    useFilesStore.getState().addGeneratedFile("other", "Thesis.pdf");
+    expect(useFilesStore.getState().tree).toBe(before);
+  });
+
+  it("goes back to tracking the tree after the next real listing", () => {
+    render(<IndexKeeper />);
+    act(() => {
+      useFilesStore.getState().addGeneratedFile("project", "Thesis.pdf");
+    });
+    for (const action of Object.values(indexActions)) action.mockClear();
+
+    act(() => {
+      useFilesStore.setState({
+        tree: [
+          { path: "Thesis.pdf", is_dir: false },
+          { path: "main.tex", is_dir: false },
+        ],
+      });
+    });
+
+    expect(indexActions.invalidateFilesystem).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("IndexKeeper project lifecycle", () => {
   it("releases the analysis worker and the cached sources when the project closes", () => {
     render(<IndexKeeper />);

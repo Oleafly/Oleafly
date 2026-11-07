@@ -442,6 +442,7 @@ interface FilesStore {
   discardFromGit: (expectedProjectId: string, path: string) => Promise<void>;
 
   refreshTree: (options?: { keepUnchanged?: boolean }) => Promise<boolean>;
+  addGeneratedFile: (projectId: string, path: string) => void;
   resumeAutosave: (projectId: string) => void;
   openFile: (path: string, options?: OpenFileOptions) => Promise<void>;
   setActive: (path: string) => void;
@@ -513,6 +514,12 @@ export interface EntryRenamedEvent {
 const entryRenamed = createEmitter<[event: EntryRenamedEvent]>();
 
 export const onEntryRenamed = entryRenamed.subscribe;
+
+let generatedTree: { readonly withFile: FileEntry[]; readonly without: FileEntry[] } | null = null;
+
+export function filesystemTree(state: { readonly tree: FileEntry[] }): FileEntry[] {
+  return state.tree === generatedTree?.withFile ? generatedTree.without : state.tree;
+}
 
 export interface PathsMovedEvent {
   readonly projectId: string;
@@ -1924,6 +1931,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
     set({ tree: listing.entries, treeTruncated: listing.truncated });
     return true;
+  },
+
+  addGeneratedFile: (projectId, path) => {
+    const state = get();
+    if (state.projectId !== projectId || state.tree.some((entry) => entry.path === path)) return;
+    const tree = [...state.tree, { path, is_dir: false }].sort(
+      (left, right) => Number(left.path > right.path) - Number(left.path < right.path),
+    );
+    generatedTree = { withFile: tree, without: filesystemTree(state) };
+    set({ tree });
   },
 
   resumeAutosave: (projectId) => {

@@ -580,7 +580,9 @@
       "hideFor": "Ukryj pliki dla {{version}}",
       "show": "Pokaż pliki",
       "hide": "Ukryj pliki",
-      "folderSettings": "Ustawienia Oleafly dla tego folderu"
+      "folderSettings": "Ustawienia Oleafly dla tego folderu",
+      "savePdf": "Zapisz PDF",
+      "savePdfFor": "Zapisz {{name}}"
     },
     "entry": {
       "labelInput": "Etykieta punktu kontrolnego",
@@ -616,7 +618,9 @@
       "exported": "Wyeksportowano archiwum punktów kontrolnych.",
       "exportFailed": "Nie udało się wyeksportować archiwum punktów kontrolnych.",
       "imported": "Zaimportowano archiwum punktów kontrolnych.",
-      "importFailed": "Nie udało się zaimportować archiwum punktów kontrolnych."
+      "importFailed": "Nie udało się zaimportować archiwum punktów kontrolnych.",
+      "pdfSaved": "Zapisano {{name}}.",
+      "pdfSaveFailed": "Nie udało się zapisać tego pliku PDF."
     },
     "panel": {
       "summary": "Jedna wersja na każdą udaną kompilację, która zmieniła źródło.",

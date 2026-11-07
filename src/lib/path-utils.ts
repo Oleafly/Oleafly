@@ -28,6 +28,7 @@ export function dirname(path: string): string {
 export const UNSAFE_FILE_NAME_CHARACTERS = /[^\p{L}\p{M}\p{N}_.-]+/gu;
 
 const FILE_STEM_EDGE = new Set(["_", "."]);
+const WINDOWS_RESERVED_STEM = /^(?:con|prn|aux|nul|(?:com|lpt)[1-9])(?:\.|$)/iu;
 
 export function exportFileStem(name: string | null | undefined, fallback: string): string {
   const stem = (name ?? "").replace(UNSAFE_FILE_NAME_CHARACTERS, "_");
@@ -35,7 +36,9 @@ export function exportFileStem(name: string | null | undefined, fallback: string
   let end = stem.length;
   while (start < end && FILE_STEM_EDGE.has(stem[start])) start += 1;
   while (end > start && FILE_STEM_EDGE.has(stem[end - 1])) end -= 1;
-  return stem.slice(start, end) || fallback;
+  const trimmed = stem.slice(start, end);
+  if (!trimmed) return fallback;
+  return WINDOWS_RESERVED_STEM.test(trimmed) ? `${fallback}_${trimmed}` : trimmed;
 }
 
 export function relativeFilePath(fromFile: string, target: string): string {

@@ -18,6 +18,7 @@ import {
   checkpointReset,
   checkpointRestore,
   checkpointRevealStore,
+  checkpointSaveFile,
   checkpointStats,
   checkpointVerify,
   confirmQuitFlush,
@@ -55,6 +56,9 @@ import {
   mcpServerUpdate,
   mcpServerUpdateValidated,
   mcpServerValidate,
+  pdfSyncNoteSaved,
+  pdfSyncSet,
+  pdfSyncStatus,
   projectFolderStatus,
   projectTrustState,
   renameFile,
@@ -179,6 +183,28 @@ describe("browser cookie import bridge", () => {
   });
 });
 
+describe("PDF sync bridge", () => {
+  it("routes the setting and the saved-file note to the backend", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await pdfSyncStatus("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("pdf_sync_status", { projectId: "project" });
+
+    await pdfSyncSet("project", true, "pdf-v1:1:aa");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("pdf_sync_set", {
+      projectId: "project",
+      enabled: true,
+      outputId: "pdf-v1:1:aa",
+    });
+
+    await pdfSyncNoteSaved("project", "Thesis.pdf");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("pdf_sync_note_saved", {
+      projectId: "project",
+      path: "Thesis.pdf",
+    });
+  });
+});
+
 describe("Checkpoints bridge", () => {
   it("routes reads, verification, and restore through the shared desktop port", async () => {
     mocks.invoke.mockResolvedValue(undefined);
@@ -247,6 +273,14 @@ describe("Checkpoints bridge", () => {
     expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_files", {
       projectId: "project",
       snapshotRoot: "root-1",
+    });
+
+    await checkpointSaveFile("project", "root-1", "Thesis.pdf", "/tmp/Thesis.pdf");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_save_file", {
+      projectId: "project",
+      snapshotRoot: "root-1",
+      path: "Thesis.pdf",
+      dest: "/tmp/Thesis.pdf",
     });
 
     await checkpointInspect("project");

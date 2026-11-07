@@ -317,6 +317,44 @@ fn retention_removes_visible_roots_before_reclaiming_unreachable_packs() {
 }
 
 #[test]
+fn one_file_can_be_read_back_from_a_checkpoint_without_touching_the_project() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), br#"{"main":"main.tex"}"#).unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    fs::write(project.join("Thesis.pdf"), b"%PDF first").unwrap();
+    let inputs = capture_inputs(&project, &["Thesis.pdf", "main.tex", "project.json"]);
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let candidate = store.stage_candidate(&project, &inputs).unwrap();
+    let root = *candidate.snapshot_root();
+    publish(&store, candidate, 10).unwrap();
+
+    fs::write(project.join("Thesis.pdf"), b"%PDF second").unwrap();
+    let mut saved = Vec::new();
+    assert_eq!(
+        store
+            .write_file_to(&root, "Thesis.pdf", &mut saved)
+            .unwrap(),
+        Some(10)
+    );
+    assert_eq!(saved, b"%PDF first");
+    assert_eq!(
+        fs::read(project.join("Thesis.pdf")).unwrap(),
+        b"%PDF second"
+    );
+
+    let mut missing = Vec::new();
+    assert_eq!(
+        store
+            .write_file_to(&root, "other.pdf", &mut missing)
+            .unwrap(),
+        None
+    );
+    assert!(missing.is_empty());
+}
+
+#[test]
 fn read_only_open_and_candidate_evidence_preserve_lazy_store_creation() {
     let temp = tempdir().unwrap();
     let history = temp.path().join("history");

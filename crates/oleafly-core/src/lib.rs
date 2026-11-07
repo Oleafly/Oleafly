@@ -23,6 +23,7 @@ pub mod locking;
 mod manifest;
 pub mod pandoc;
 mod pandoc_log;
+pub mod pdf_sync;
 pub mod portable;
 pub mod process_probe;
 pub mod sidecar;

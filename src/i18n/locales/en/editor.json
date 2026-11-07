@@ -560,7 +560,9 @@
       "hideFor": "Hide files for {{version}}",
       "show": "Show files",
       "hide": "Hide files",
-      "folderSettings": "Oleafly settings for this folder"
+      "folderSettings": "Oleafly settings for this folder",
+      "savePdf": "Save PDF",
+      "savePdfFor": "Save {{name}}"
     },
     "entry": {
       "labelInput": "Checkpoint label",
@@ -596,7 +598,9 @@
       "exported": "Checkpoint archive exported.",
       "exportFailed": "Couldn't export the checkpoint archive.",
       "imported": "Checkpoint archive imported.",
-      "importFailed": "Couldn't import the checkpoint archive."
+      "importFailed": "Couldn't import the checkpoint archive.",
+      "pdfSaved": "{{name}} saved.",
+      "pdfSaveFailed": "Couldn't save this PDF."
     },
     "panel": {
       "summary": "One version per successful compile that changed the source.",

@@ -550,7 +550,9 @@
       "hideFor": "{{version}} のファイルを隠す",
       "show": "ファイルを表示",
       "hide": "ファイルを隠す",
-      "folderSettings": "このフォルダの Oleafly 設定"
+      "folderSettings": "このフォルダの Oleafly 設定",
+      "savePdf": "PDF を保存",
+      "savePdfFor": "{{name}} を保存"
     },
     "entry": {
       "labelInput": "チェックポイントのラベル",
@@ -586,7 +588,9 @@
       "exported": "チェックポイントのアーカイブを書き出しました。",
       "exportFailed": "チェックポイントのアーカイブを書き出せませんでした。",
       "imported": "チェックポイントのアーカイブを読み込みました。",
-      "importFailed": "チェックポイントのアーカイブを読み込めませんでした。"
+      "importFailed": "チェックポイントのアーカイブを読み込めませんでした。",
+      "pdfSaved": "{{name}} を保存しました。",
+      "pdfSaveFailed": "この PDF を保存できませんでした。"
     },
     "panel": {
       "summary": "ソースが変わったコンパイルが成功するたびに、バージョンが 1 つ作られます。",

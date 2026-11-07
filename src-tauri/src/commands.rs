@@ -393,6 +393,9 @@ pub async fn compile_project(
 
     let main = MainCompile::prepare(&project_id, &main_doc, typst_variant, options).await?;
     let toolchain_identity = main.toolchain_identity();
+    let pdf_plan =
+        crate::pdf_sync::plan_compile(&main.meta, &main_doc, main.options.fast, &main.project_dir)
+            .await;
     let prepared_spec = main
         .spec(&main_doc, &main.build_dir, main.options.clone())
         .await?;
@@ -469,6 +472,7 @@ pub async fn compile_project(
             &meta.engine,
             &meta.main_doc,
             &toolchain_identity,
+            pdf_plan.and_then(|plan| plan.compiled(result.has_pdf, result.output_id.as_deref())),
         );
         if let (true, Some(output_id)) = (result.has_pdf, result.output_id.clone()) {
             crate::collab::output::upload_after_compile(

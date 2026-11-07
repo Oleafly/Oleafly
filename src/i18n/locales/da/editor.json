@@ -560,7 +560,9 @@
       "hideFor": "Skjul filer for {{version}}",
       "show": "Vis filer",
       "hide": "Skjul filer",
-      "folderSettings": "Oleafly-indstillinger for denne mappe"
+      "folderSettings": "Oleafly-indstillinger for denne mappe",
+      "savePdf": "Gem PDF",
+      "savePdfFor": "Gem {{name}}"
     },
     "entry": {
       "labelInput": "Navn på kontrolpunktet",
@@ -596,7 +598,9 @@
       "exported": "Arkivet med kontrolpunkter er eksporteret.",
       "exportFailed": "Kunne ikke eksportere arkivet med kontrolpunkter.",
       "imported": "Arkivet med kontrolpunkter er importeret.",
-      "importFailed": "Kunne ikke importere arkivet med kontrolpunkter."
+      "importFailed": "Kunne ikke importere arkivet med kontrolpunkter.",
+      "pdfSaved": "{{name}} er gemt.",
+      "pdfSaveFailed": "Denne PDF kunne ikke gemmes."
     },
     "panel": {
       "summary": "Én version pr. vellykket kompilering, hvor kilden var ændret.",

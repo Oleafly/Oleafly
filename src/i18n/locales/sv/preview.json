@@ -138,6 +138,12 @@
     "pdfSaved": "PDF:en sparades i projektet.",
     "failed": "Det gick inte att spara i projektet."
   },
+  "sync": {
+    "toggle": "Synkronisera PDF vid kompilering",
+    "failed": "Det gick inte att uppdatera {{name}}. Oleafly försöker igen vid nästa kompilering.",
+    "fastMode": "Snabba kompileringar uppdaterar inte den här PDF-filen.",
+    "localOnly": "Den här kopian stannar på den här datorn."
+  },
   "download": {
     "pngFilter": "PNG-bild",
     "imageSaved": "Bilden sparad · {{name}}",

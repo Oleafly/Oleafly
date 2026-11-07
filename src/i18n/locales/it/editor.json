@@ -570,7 +570,9 @@
       "hideFor": "Nascondi i file di {{version}}",
       "show": "Mostra i file",
       "hide": "Nascondi i file",
-      "folderSettings": "Impostazioni di Oleafly per questa cartella"
+      "folderSettings": "Impostazioni di Oleafly per questa cartella",
+      "savePdf": "Salva PDF",
+      "savePdfFor": "Salva {{name}}"
     },
     "entry": {
       "labelInput": "Etichetta del checkpoint",
@@ -606,7 +608,9 @@
       "exported": "Archivio dei checkpoint esportato.",
       "exportFailed": "Non è stato possibile esportare l'archivio dei checkpoint.",
       "imported": "Archivio dei checkpoint importato.",
-      "importFailed": "Non è stato possibile importare l'archivio dei checkpoint."
+      "importFailed": "Non è stato possibile importare l'archivio dei checkpoint.",
+      "pdfSaved": "{{name}} salvato.",
+      "pdfSaveFailed": "Impossibile salvare questo PDF."
     },
     "panel": {
       "summary": "Una versione per ogni compilazione riuscita che ha cambiato il sorgente.",

@@ -816,6 +816,15 @@ function AppContent() {
     native,
   );
   useTauriEvent<unknown>(CHECKPOINT_PUBLICATION_EVENT, applyCheckpointPublicationEvent, native);
+  useTauriEvent<{ projectId?: string; path?: string }>(
+    "pdf-sync:written",
+    (payload) => {
+      if (payload?.projectId && payload.path) {
+        useFilesStore.getState().addGeneratedFile(payload.projectId, payload.path);
+      }
+    },
+    native,
+  );
   useTauriEvent<ProjectStateChanged>(
     "project-state-changed",
     (payload) => {

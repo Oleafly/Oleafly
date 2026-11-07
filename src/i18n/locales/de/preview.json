@@ -138,6 +138,12 @@
     "pdfSaved": "PDF im Projekt gespeichert.",
     "failed": "Speichern im Projekt nicht möglich."
   },
+  "sync": {
+    "toggle": "PDF beim Kompilieren synchronisieren",
+    "failed": "{{name}} konnte nicht aktualisiert werden. Oleafly versucht es beim nächsten Kompilieren erneut.",
+    "fastMode": "Schnelles Kompilieren aktualisiert dieses PDF nicht.",
+    "localOnly": "Diese Kopie bleibt auf diesem Computer."
+  },
   "download": {
     "pngFilter": "PNG-Bild",
     "imageSaved": "Bild gespeichert · {{name}}",

@@ -212,22 +212,21 @@ test("the shared detached PDF controls save a copy into the current project", as
   const preview = await page.waitForWindow(window => window.label === "preview", { timeout: 20_000 });
   await expect.poll(async () => preview.evaluate(`document.querySelectorAll('[data-page]').length`), { timeout: 20_000 }).toBeGreaterThan(0);
   const saveButton = 'button[aria-label="Save PDF to project"]';
-  if (await preview.evaluate(`!!document.querySelector(${JSON.stringify(saveButton)})`)) {
-    await preview.click(saveButton);
-  } else {
-    await preview.evaluate(`(() => {
-      const trigger = document.querySelector('button[aria-label="More preview controls"]');
-      trigger.focus();
-      trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    })()`);
-    await preview.waitForFunction(`(() => {
-      const item = [...document.querySelectorAll('[role="menuitem"]')]
-        .find(el => el.textContent.trim() === 'Save PDF to project');
-      if (!item) return false;
-      item.click();
-      return true;
-    })()`, 15_000);
-  }
+  const menuButton = await preview.evaluate(`!!document.querySelector(${JSON.stringify(saveButton)})`)
+    ? saveButton
+    : 'button[aria-label="More preview controls"]';
+  await preview.evaluate(`(() => {
+    const trigger = document.querySelector(${JSON.stringify(menuButton)});
+    trigger.focus();
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  })()`);
+  await preview.waitForFunction(`(() => {
+    const item = [...document.querySelectorAll('[role="menuitem"]')]
+      .find(el => el.textContent.trim() === 'Save PDF to project');
+    if (!item) return false;
+    item.click();
+    return true;
+  })()`, 15_000);
   await preview.fill('input[aria-label="Project save name"]', 'detached-copy.pdf');
   await preview.getByText("Save", { exact: true }).click();
   await expect.poll(async () => page.evaluate(`import("/src/store/files.ts").then(m => JSON.stringify(m.useFilesStore.getState().tree).includes('detached-copy.pdf'))`), { timeout: 15_000 }).toBe(true);

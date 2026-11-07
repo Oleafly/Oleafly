@@ -580,7 +580,9 @@
       "hideFor": "Skrýt soubory pro {{version}}",
       "show": "Zobrazit soubory",
       "hide": "Skrýt soubory",
-      "folderSettings": "Nastavení Oleafly pro tuto složku"
+      "folderSettings": "Nastavení Oleafly pro tuto složku",
+      "savePdf": "Uložit PDF",
+      "savePdfFor": "Uložit {{name}}"
     },
     "entry": {
       "labelInput": "Popisek záchytného bodu",
@@ -616,7 +618,9 @@
       "exported": "Archiv záchytných bodů byl vyexportován.",
       "exportFailed": "Archiv záchytných bodů se nepodařilo vyexportovat.",
       "imported": "Archiv záchytných bodů byl importován.",
-      "importFailed": "Archiv záchytných bodů se nepodařilo importovat."
+      "importFailed": "Archiv záchytných bodů se nepodařilo importovat.",
+      "pdfSaved": "{{name}} uloženo.",
+      "pdfSaveFailed": "Toto PDF se nepodařilo uložit."
     },
     "panel": {
       "summary": "Jedna verze za každou úspěšnou kompilaci, která změnila zdroj.",

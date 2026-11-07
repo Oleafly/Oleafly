@@ -80,6 +80,7 @@ mod overleaf;
 mod pandoc_citations;
 mod path_grants;
 mod paths;
+mod pdf_sync;
 mod proc;
 mod process_identity;
 mod program_locator;
@@ -606,6 +607,7 @@ pub fn run() {
             checkpoints::checkpoint_verify,
             checkpoints::checkpoint_reveal_store,
             checkpoints::checkpoint_files,
+            checkpoints::checkpoint_save_file,
             checkpoints::checkpoint_inspect,
             checkpoint_backup::checkpoint_export,
             checkpoint_backup::checkpoint_import,
@@ -1059,6 +1061,9 @@ pub fn run() {
             deadlines::read_deadlines,
             deadlines::refresh_deadlines,
             project::export_pdf,
+            pdf_sync::pdf_sync_status,
+            pdf_sync::pdf_sync_set,
+            pdf_sync::pdf_sync_note_saved,
             project::export_document,
             project::search_docs,
             project::search_project,

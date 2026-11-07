@@ -1,5 +1,6 @@
 import { previewWindowState } from "@/lib/preview-state";
 import { SavePreviewDialog } from "./SavePreviewDialog";
+import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { CompileLogControls } from "./CompileLogControls";
 import { PdfToolbarControls } from "./PdfToolbarControls";
 import { present } from "@/features/presentation/launch";
@@ -67,6 +68,7 @@ import {
 } from "@/features/synctex";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
+  pdfSyncNoteSaved,
   revealInDir,
   saveFileBase64,
   uint8ToBase64,
@@ -694,6 +696,7 @@ function StaleTooltipLabel({
 export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const { t } = useTranslation(["common", "preview", "shell"]);
   const status = useCompileStore((s) => s.status);
+  const compileMode = useCompileStore((s) => s.compileMode);
   const phase = useCompileStore((s) => s.phase);
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
   const recompile = useCompileStore((s) => s.recompile);
@@ -864,6 +867,12 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     displayedCheckpoint !== null &&
     displayedCheckpointCurrent;
   const pdfIsStale = viewerDocument !== null && !pdfIsCurrent;
+  const pdfSync = usePdfSync({
+    projectId,
+    available: isTauri() && !isImage,
+    outputId: currentOutputId(displayedCheckpoint, pdfIsCurrent),
+    fastCompile: compileMode === "fast",
+  });
   const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
   const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
   const displayedBytes = viewerDocument?.bytes ?? null;
@@ -1061,13 +1070,16 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
         setSaveName("");
         toast.success(t(($) => $.preview.save.imageSaved));
       } else {
-        const raw = saveName.trim() || mainDoc.replace(/\.(?:tex|typ|md|markdown|qmd|rmd)$/i, "") || "document";
+        const raw = saveName.trim() || exportBaseName();
         const name = `${raw.replace(/\.pdf$/i, "")}.pdf`;
         await saveFileBase64(
           projectId,
           name,
           uint8ToBase64(displayedBytes),
         );
+        if (isTauri()) {
+          void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
+        }
         await refreshTreeQuietly();
         setSaveOpen(false);
         setSaveName("");
@@ -1298,10 +1310,11 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           scale={scale} setScale={setScale} setClampedScale={setClampedScale}
           userZoom={userZoom} fitPreview={fitPreview} exporting={exporting}
           exportDisplayedPreview={exportDisplayedPreview} downloadActionLabel={downloadActionLabel}
+          pdfSync={pdfSync}
           onSave={() => {
             const base = isImage
               ? trimEdgeCharacter((projectName || "figure").replace(UNSAFE_FILE_NAME_CHARACTERS, "-"), "-") || "figure"
-              : mainDoc.replace(/\.(?:tex|typ|md|markdown|qmd|rmd)$/i, "") || "document";
+              : exportBaseName();
             setSaveName(`${base}.${isImage ? "png" : "pdf"}`);
             setSaveOpen(true);
           }}
