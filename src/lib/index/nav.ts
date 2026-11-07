@@ -39,13 +39,12 @@ import {
   locationsFromValue,
   offsetEdits,
   offsetRange,
-  projectPathForUri,
   workspaceEditFromValue,
   type LanguageServiceLocation,
   type OffsetRange,
   type WorkspaceEditOperation,
 } from "@/lib/analysis/language-service-results";
-import type { LanguageServiceFeature } from "@/lib/language-service";
+import { projectPathForUri, type LanguageServiceFeature } from "@/lib/language-service";
 import {
   isLanguageServiceCancellation,
   isLanguageServiceStaleError,

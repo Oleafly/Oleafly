@@ -15,6 +15,7 @@ import {
   type JsonRpcSuccessResponse,
   type JsonValue,
 } from "./json-rpc";
+import { fileUriForProjectPath } from "./file-uri";
 import {
   createInitializeParams,
   EMPTY_SERVER_CAPABILITIES,
@@ -290,19 +291,6 @@ function cloneCapabilities(
   };
 }
 
-function fileUriForWorkspaceRoot(workspaceRoot: string): string {
-  const normalized = workspaceRoot.replaceAll("\\", "/");
-  const absolute = normalized.startsWith("/") ? normalized : `/${normalized}`;
-  return `file://${absolute
-    .split("/")
-    .map((segment) =>
-      /^[A-Za-z]:$/.test(segment)
-        ? segment
-        : encodeURIComponent(segment),
-    )
-    .join("/")}`;
-}
-
 function safeCommonPrefixLength(left: string, right: string): number {
   const max = Math.min(left.length, right.length);
   let offset = 0;
@@ -449,7 +437,7 @@ export class LanguageServiceClient {
 
   get rootUri(): string | null {
     return this.activeSession
-      ? fileUriForWorkspaceRoot(this.activeSession.workspaceRoot)
+      ? fileUriForProjectPath(this.activeSession.workspaceRoot)
       : null;
   }
 
@@ -643,7 +631,7 @@ export class LanguageServiceClient {
       for (const event of earlyEvents) this.handleTransportEvent(event);
       this.ensureCurrentSession(session);
       this.setState("initializing");
-      const rootUri = fileUriForWorkspaceRoot(session.workspaceRoot);
+      const rootUri = fileUriForProjectPath(session.workspaceRoot);
       const initializeResult = await this.sendRequest(
         "initialize",
         createInitializeParams(

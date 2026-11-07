@@ -1,5 +1,6 @@
 import {
   createTauriLanguageServiceTransport,
+  fileUriForProjectPath,
   getLanguageServiceRuntimeProfile,
   isLanguageServiceSetupRequiredError,
   isTauriLanguageServiceAvailable,
@@ -58,6 +59,7 @@ import {
   tinymistOptionsForVersion,
   tinymistProfileForVersion,
 } from "@/lib/analysis/tinymist-compat";
+import { logError } from "@/lib/log";
 import { languageServiceContribution } from "@/lib/project-intelligence/language-service-contribution";
 import type { ProjectIntelligenceIdentity } from "@/lib/project-intelligence/types";
 import {
@@ -227,6 +229,7 @@ interface ActiveRuntime {
   profile: LanguageServiceRuntimeProfile | null;
   configurationKey: string | null;
   pinnedMain: string | null | undefined;
+  stderrTail: string;
 }
 
 interface LastObservedProject {
@@ -250,6 +253,7 @@ const SETUP_VERDICT_REUSE_MS = 30_000;
 const LANGUAGE_SERVICE_INTELLIGENCE_DELAY_MS = 400;
 const LANGUAGE_SERVICE_INTELLIGENCE_TIMEOUT_MS = 8_000;
 const LANGUAGE_SERVICE_COMMAND_TIMEOUT_MS = 5_000;
+const STDERR_TAIL_CHARS = 2_000;
 
 class LanguageServiceSetupActionError extends Error {
   constructor() {
@@ -585,25 +589,8 @@ function matchedTinymistVersion(
 function encodePathSegments(path: string): string {
   return path
     .split("/")
-    .map((segment, index) =>
-      index === 0 && /^[A-Za-z]:$/.test(segment)
-        ? segment
-        : encodeURIComponent(segment),
-    )
+    .map((segment) => encodeURIComponent(segment))
     .join("/");
-}
-
-export function fileUriForProjectPath(
-  workspaceRoot: string,
-  path = "",
-): string {
-  const normalizedRoot = workspaceRoot.replaceAll("\\", "/").replace(/(?<!\/)\/+$/, "");
-  const normalizedPath = path.replaceAll("\\", "/").replace(/^\/+/, "");
-  const absolute = normalizedPath
-    ? `${normalizedRoot}/${normalizedPath}`
-    : normalizedRoot;
-  const encoded = encodePathSegments(absolute);
-  return `file://${encoded.startsWith("/") ? "" : "/"}${encoded}`;
 }
 
 function localDocumentUri(projectId: string, path: string): string {
@@ -1534,6 +1521,7 @@ export class LanguageServiceController {
         liveConfiguration(runtimeProfile, settings),
       ),
       pinnedMain: undefined,
+      stderrTail: "",
     };
     runtime.unsubscribe = client.subscribe((event) =>
       this.handleClientEvent(runtime, event),
@@ -1573,6 +1561,7 @@ export class LanguageServiceController {
             { key: "setupRequiredBeforeAnalysis" },
           );
         } else {
+          this.logServerFailure(runtime, normalizeAnalysisFailure(error).message);
           this.publishUnavailable(safeLanguageServiceFailure(error), {
             key: "startFailed",
           });
@@ -2276,6 +2265,10 @@ export class LanguageServiceController {
     runtime: ActiveRuntime,
     event: LanguageServiceClientEvent,
   ): void {
+    if (event.type === "log" && event.stream === "stderr") {
+      runtime.stderrTail = `${runtime.stderrTail}${event.message}`.slice(-STDERR_TAIL_CHARS);
+      return;
+    }
     if (
       event.type !== "status" ||
       runtime !== this.runtime ||
@@ -2302,6 +2295,7 @@ export class LanguageServiceController {
     const failure = normalizeAnalysisFailure(
       event.error ?? analysisReasonError({ key: "processExited" }),
     );
+    this.logServerFailure(runtime, failure.message);
     if (this.restartAttempts >= this.maxRestartAttempts) {
       this.publishUnavailable(
         { ...failure, retryable: false },
@@ -2483,6 +2477,12 @@ export class LanguageServiceController {
     this.store
       .getState()
       .markFeaturesNotRun(PROJECT_ANALYSIS_FEATURES, reason);
+  }
+
+  // The status only says the service stopped. The server's last output says why.
+  private logServerFailure(runtime: ActiveRuntime, message: string): void {
+    const detail = `${message}\n${runtime.stderrTail}`.trim();
+    void logError(`language service ${runtime.kind} stopped`, detail);
   }
 
   private publishUnavailable(
