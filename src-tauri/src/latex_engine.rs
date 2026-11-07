@@ -2526,6 +2526,15 @@ fn tagged_lualatex_args(out_dir: &str, main_doc: &str) -> Vec<String> {
     ]
 }
 
+/// The build folder as LuaTeX should see it. On Windows the canonical build
+/// path starts with `\\?\`: LuaTeX writes the .aux through it but can't read
+/// it back at `\end{document}`, so every tagged compile stopped there.
+fn tagged_output_dir(build_dir: &Path) -> String {
+    crate::project_availability::without_verbatim_prefix(build_dir)
+        .to_string_lossy()
+        .into_owned()
+}
+
 struct TaggedCancelGuard<'a> {
     cancel: &'a crate::state::CompileCancel,
     active: bool,
@@ -2608,7 +2617,7 @@ async fn prepare_tagged_compile(
     let pdf = build_dir.join(format!("{}.pdf", paths::ENTRY_STEM));
     remove_stale_tagged_pdf(&pdf)?;
     let (working_dir, entry) = tagged_entry(&location, &main_doc);
-    let args = tagged_lualatex_args(&build_dir.to_string_lossy(), &entry);
+    let args = tagged_lualatex_args(&tagged_output_dir(&build_dir), &entry);
     Ok(TaggedCompilePlan {
         project_id,
         main_doc,
@@ -3183,6 +3192,22 @@ mod tests {
         assert_eq!(
             lualatex_run_failure("timed out".to_string()),
             "failed to run lualatex: timed out"
+        );
+    }
+
+    #[test]
+    fn tagged_builds_name_the_output_folder_without_the_verbatim_prefix() {
+        assert_eq!(
+            tagged_output_dir(Path::new(r"\\?\C:\Users\me\data\linked\p\build")),
+            r"C:\Users\me\data\linked\p\build"
+        );
+        assert_eq!(
+            tagged_output_dir(Path::new(r"\\?\UNC\server\share\p\build")),
+            r"\\server\share\p\build"
+        );
+        assert_eq!(
+            tagged_output_dir(Path::new("/data/p/build")),
+            "/data/p/build"
         );
     }
 
