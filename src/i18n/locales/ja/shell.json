@@ -922,10 +922,6 @@
         "description": "Oleafly ツールのギャラリーと個々のツール（PDF の読み込み、数式、表、BibTeX、研究室と文献の検索、締め切り）、およびそのスラッシュコマンドを表示します。ベータ版のため、既定ではオフです。",
         "label": "LaTeX ツール"
       },
-      "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
-      },
       "researchTasks": {
         "description": "エージェントがプロジェクトのコピー上で自律的に作業し、変更はあなたが確認できるように残します。非常に不安定で、実行が止まったり、失敗したり、手作業で整理が必要な変更が残ったりすることがあり、その間ずっとプロバイダの利用枠を消費します。設定に「研究」セクションを追加します。オフにすると、実行中のタスクはすべて停止します。既定ではオフです。自己責任でオンにしてください。",
         "label": "研究タスク",

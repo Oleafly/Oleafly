@@ -680,7 +680,6 @@ pub struct ProjectInfo {
     pub last_opened_at: f64,
     pub shared: Option<crate::collab::share::ProjectSharing>,
     pub imported_from: Option<String>,
-    pub related_project: Option<String>,
 }
 
 fn imported_service(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
@@ -4779,7 +4778,6 @@ fn recovery_pending_project_info(
         last_opened_at: 0.0,
         shared: None,
         imported_from: None,
-        related_project: None,
         id: project_id,
     }
 }
@@ -4934,9 +4932,6 @@ fn linked_project_info(
         last_opened_at: record.last_opened_at as f64 / 1000.0,
         shared: None,
         imported_from: meta.as_ref().and_then(|meta| imported_service(&meta.extra)),
-        related_project: meta
-            .as_ref()
-            .and_then(|meta| related_project_of(&meta.extra)),
     })
 }
 
@@ -5027,7 +5022,6 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
                 .is_some_and(|path| path.is_file());
         let exports = project_export_infos(&meta.exports);
         let imported_from = imported_service(&meta.extra);
-        let related_project = related_project_of(&meta.extra);
         out.push(ProjectInfo {
             name: if meta.name.is_empty() {
                 id.clone()
@@ -5055,7 +5049,6 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             last_opened_at: opened.get(&id).map_or(0.0, |at| *at as f64 / 1000.0),
             shared: crate::collab::share::sharing_of(&id),
             imported_from,
-            related_project,
             id,
             updated_at,
         });
@@ -6095,115 +6088,6 @@ pub(crate) fn create_diagram_project_from(
     })?;
     initialize_git_for_new_project(&project_id);
     Ok(project_id)
-}
-
-pub const NOTE_KIND: &str = "note";
-pub const NOTE_FILE: &str = "note.md";
-const NOTE_HEAD_BYTES: usize = 8 * 1024;
-const RELATED_PROJECT_KEY: &str = "relatedProject";
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct NoteHead {
-    pub id: String,
-    pub head: String,
-}
-
-#[tauri::command(async)]
-pub fn create_note_project(
-    name: String,
-    source: String,
-    related_project: Option<String>,
-) -> Result<String, String> {
-    create_note_project_from(name, source, related_project)
-}
-
-pub(crate) fn create_note_project_from(
-    name: String,
-    source: String,
-    related_project: Option<String>,
-) -> Result<String, String> {
-    let mut extra = HashMap::new();
-    if let Some(related) = related_project.filter(|id| !id.is_empty()) {
-        paths::validate_project_id(&related)?;
-        extra.insert(
-            RELATED_PROJECT_KEY.to_string(),
-            serde_json::Value::String(related),
-        );
-    }
-    let root = paths::projects_root()?;
-    let reservation = reserve_unique_project_directory(&root, true)?;
-    let dir = reservation.path().to_path_buf();
-    let project_id = create_project_transaction(reservation, || {
-        std::fs::write(dir.join(NOTE_FILE), &source).map_err(|e| e.to_string())?;
-        write_meta_at(
-            &dir.join("project.json"),
-            &ProjectMeta {
-                dictionary_locale: None,
-                name,
-                main_doc: NOTE_FILE.into(),
-                engine: "markdown".into(),
-                color: String::new(),
-                kind: NOTE_KIND.into(),
-                exports: Vec::new(),
-                hidden: false,
-                forked_from: None,
-                tex: None,
-                tex_flavor: None,
-                typst: None,
-                allow_shell_escape: false,
-                checkpoints: oleafly_core::CheckpointPolicy::default(),
-                pdf_sync: None,
-                extra,
-            },
-        )
-    })?;
-    initialize_git_for_new_project(&project_id);
-    Ok(project_id)
-}
-
-fn related_project_of(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
-    let id = extra.get(RELATED_PROJECT_KEY)?.as_str()?;
-    paths::validate_project_id(id).ok()?;
-    Some(id.to_string())
-}
-
-fn text_head(bytes: &[u8]) -> String {
-    let mut end = bytes.len().min(NOTE_HEAD_BYTES);
-    while end > 0 && std::str::from_utf8(&bytes[..end]).is_err() {
-        end -= 1;
-    }
-    String::from_utf8_lossy(&bytes[..end]).into_owned()
-}
-
-fn note_head(project: &ProjectInfo) -> Result<NoteHead, String> {
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project.id)?;
-    let path = crate::sandbox::resolve_readable(&project.id, &project.main_doc)?;
-    let mut bytes = Vec::with_capacity(NOTE_HEAD_BYTES);
-    std::fs::File::open(&path)
-        .and_then(|file| {
-            use std::io::Read;
-            file.take(NOTE_HEAD_BYTES as u64).read_to_end(&mut bytes)
-        })
-        .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
-    Ok(NoteHead {
-        id: project.id.clone(),
-        head: text_head(&bytes),
-    })
-}
-
-#[tauri::command(async)]
-pub fn note_heads() -> Result<Vec<NoteHead>, String> {
-    Ok(list_projects_blocking()?
-        .iter()
-        .filter(|project| project.kind == NOTE_KIND && !project.recovery_pending)
-        .filter_map(|project| match note_head(project) {
-            Ok(head) => Some(head),
-            Err(error) => {
-                log_project_enumeration_skip(&project.id, &error);
-                None
-            }
-        })
-        .collect())
 }
 
 #[tauri::command]
@@ -8627,24 +8511,22 @@ mod tests {
     use super::{
         allow_table_import_path, assert_table_import_allowed, canonical_table_import_path,
         copy_path_in_project, create_blank_project, create_diagram_project_from,
-        create_image_project_in, create_markdown_project_in, create_note_project_from,
-        create_path_in_project, create_project_from_ad_hoc_blocking,
-        create_project_from_pdf_conversion_blocking, create_project_transaction,
-        create_typst_project_in, declared_template_engine, duplicate_project,
-        engine_for_main_document, engine_for_untrusted_project, engine_runs_notebook_code,
-        engine_runs_project_code, export_would_write_inside_project, extract_pandoc,
-        flatten_single_root_folder, get_or_create_scratch_project_blocking,
+        create_image_project_in, create_markdown_project_in, create_path_in_project,
+        create_project_from_ad_hoc_blocking, create_project_from_pdf_conversion_blocking,
+        create_project_transaction, create_typst_project_in, declared_template_engine,
+        duplicate_project, engine_for_main_document, engine_for_untrusted_project,
+        engine_runs_notebook_code, engine_runs_project_code, export_would_write_inside_project,
+        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
         import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
         import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
-        list_projects_blocking, normalize_loaded_tex_flavor, normalize_relative, note_heads,
-        pandoc_asset_for, pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash,
-        rename_exclusive, rename_path_in_project, safe_ad_hoc_project_path, search_docs,
-        set_main_doc_synchronized, set_main_doc_unlocked, text_head, try_reserve_project_directory,
+        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
+        rename_path_in_project, safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized,
+        set_main_doc_unlocked, try_reserve_project_directory,
         try_reserve_project_directory_adopting, validate_conversion_export, validate_tex_flavor,
         write_meta_at, write_project_zip, AdHocProjectFile, CreateAdHocProjectRequest,
-        CreateFileResult, FileConflictStrategy, MutationScope, NoteHead, PdfConversionFigure,
-        ProjectMeta, RenameFileResult, SearchHit, TexSpec, NOTE_FILE, NOTE_HEAD_BYTES, NOTE_KIND,
-        SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
+        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -16979,78 +16861,6 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
-    }
-
-    #[test]
-    fn note_project_is_a_visible_note_with_its_related_project() {
-        let _env_guard = crate::paths::data_dir_env_lock();
-        let root = test_dir("note-project");
-        std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let source = "---\ntitle: Masking\nicon: 🧪\n---\n\nRun 3 reached 64.1%.\n";
-        let id = create_note_project_from(
-            "Masking".to_string(),
-            source.to_string(),
-            Some("paper-1".to_string()),
-        )
-        .unwrap();
-        let meta = read_meta(&id).unwrap();
-        assert_eq!(meta.kind, NOTE_KIND);
-        assert_eq!(meta.main_doc, NOTE_FILE);
-        assert_eq!(meta.engine, "markdown");
-        assert!(!meta.hidden);
-        let dir = crate::paths::project_dir(&id).unwrap();
-        assert_eq!(
-            std::fs::read_to_string(dir.join(NOTE_FILE)).unwrap(),
-            source
-        );
-        let listed = list_projects_blocking()
-            .unwrap()
-            .into_iter()
-            .find(|project| project.id == id)
-            .unwrap();
-        assert_eq!(listed.kind, NOTE_KIND);
-        assert_eq!(listed.related_project.as_deref(), Some("paper-1"));
-        assert_eq!(
-            note_heads().unwrap(),
-            vec![NoteHead {
-                id: id.clone(),
-                head: source.to_string()
-            }]
-        );
-        std::env::remove_var("OLEAFLY_DATA_DIR");
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn note_project_refuses_a_malformed_related_project() {
-        let _env_guard = crate::paths::data_dir_env_lock();
-        let root = test_dir("note-project-bad-related");
-        std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let error = create_note_project_from(
-            "Bad".to_string(),
-            String::new(),
-            Some("../escape".to_string()),
-        )
-        .unwrap_err();
-        assert!(error.contains("illegal project id"));
-        let without = create_note_project_from("Plain".to_string(), String::new(), None).unwrap();
-        let listed = list_projects_blocking()
-            .unwrap()
-            .into_iter()
-            .find(|project| project.id == without)
-            .unwrap();
-        assert_eq!(listed.related_project, None);
-        std::env::remove_var("OLEAFLY_DATA_DIR");
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn note_head_stops_at_a_character_boundary() {
-        let text = format!("{}é", "a".repeat(NOTE_HEAD_BYTES - 1));
-        let head = text_head(text.as_bytes());
-        assert_eq!(head.len(), NOTE_HEAD_BYTES - 1);
-        assert!(head.chars().all(|c| c == 'a'));
-        assert_eq!(text_head("short".as_bytes()), "short");
     }
 
     #[test]

@@ -2,13 +2,10 @@
 import { act, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { i18n } from "@/i18n";
-import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import type { ProjectInfo } from "@/lib/tauri";
 import {
   ProjectGrid,
   ProjectList,
-  projectKindLabel,
   type ProjectCardActions,
   type ProjectCardData,
 } from "./ProjectCollection";
@@ -214,20 +211,5 @@ describe("project kind label", () => {
     render(<Grid />);
     expect(screen.getByText("Overleaf")).toBeInTheDocument();
     expect(screen.getAllByText("document")).toHaveLength(1);
-  });
-
-  it("names notes as notes", () => {
-    const projects = [project(1), { ...project(2), kind: "note", main_doc: "note.md" }];
-    function Grid() {
-      const scrollRef = useRef<HTMLDivElement>(null);
-      return (
-        <div ref={scrollRef}>
-          <ProjectGrid projects={projects} data={data} scrollRef={scrollRef} />
-        </div>
-      );
-    }
-    render(<Grid />);
-    expect(screen.getByText(enLibrary.projects.kind.note)).toBeInTheDocument();
-    expect(projectKindLabel(i18n.t.bind(i18n) as never, "note")).toBe(enLibrary.projects.kind.note);
   });
 });

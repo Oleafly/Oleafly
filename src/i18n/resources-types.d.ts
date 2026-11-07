@@ -11,7 +11,6 @@ import type errors from "./locales/en/errors.json";
 import type intelligence from "./locales/en/intelligence.json";
 import type library from "./locales/en/library.json";
 import type native from "./locales/en/native.json";
-import type notes from "./locales/en/notes.json";
 import type onboarding from "./locales/en/onboarding.json";
 import type preflight from "./locales/en/preflight.json";
 import type preview from "./locales/en/preview.json";
@@ -38,7 +37,6 @@ export interface Resources {
   "intelligence": typeof intelligence;
   "library": typeof library;
   "native": typeof native;
-  "notes": typeof notes;
   "onboarding": typeof onboarding;
   "preflight": typeof preflight;
   "preview": typeof preview;
@@ -53,4 +51,4 @@ export interface Resources {
   "workspace": typeof workspace;
 }
 
-export const NAMESPACE_NAMES = ["ai","catalog","cloud","collab","common","core","diagram","editor","errors","intelligence","library","native","notes","onboarding","preflight","preview","references","researchTools","settings","settingsFile","shell","symbols","templates","usage","workspace"] as const;
+export const NAMESPACE_NAMES = ["ai","catalog","cloud","collab","common","core","diagram","editor","errors","intelligence","library","native","onboarding","preflight","preview","references","researchTools","settings","settingsFile","shell","symbols","templates","usage","workspace"] as const;

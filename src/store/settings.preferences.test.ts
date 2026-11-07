@@ -40,7 +40,6 @@ describe("on/off preferences", () => {
     ["setShowWordChoice", "showWordChoice", "oleafly.harper.wordchoice"],
     ["setChatFloating", "chatFloating", "oleafly.ai.floating"],
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
-    ["setNotes", "notes", "oleafly.notes"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
     ["setEditorStickyScroll", "editorStickyScroll", "oleafly.editor.stickyScroll"],
@@ -65,12 +64,6 @@ describe("on/off preferences", () => {
     set(false);
     expect(useSettingsStore.getState()[field]).toBe(false);
     expect(localStorage.getItem(key)).toBe("0");
-  });
-
-  it("reads the saved Notes switch after a restart", async () => {
-    expect((await reload({})).notes).toBe(false);
-    expect((await reload({ "oleafly.notes": "1" })).notes).toBe(true);
-    expect((await reload({ "oleafly.notes": "0" })).notes).toBe(false);
   });
 
   it("toggles spellcheck both ways", () => {

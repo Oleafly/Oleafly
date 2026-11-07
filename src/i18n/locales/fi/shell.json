@@ -936,10 +936,6 @@
         "description": "Näytä Oleafly Tools -galleria ja yksittäiset työkalut (PDF-tuonti, kaavat, taulukot, BibTeX, labra- ja kirjallisuushaku, määräajat) sekä niiden kauttaviivakomennot. Oletuksena pois, koska nämä ovat vielä beta-vaiheessa.",
         "label": "LaTeX-työkalut"
       },
-      "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
-      },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
         "label": "Tutkimustehtävät",

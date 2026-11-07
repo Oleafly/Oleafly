@@ -3,7 +3,6 @@
     "newProject": "Uusi projekti",
     "search": "Hae dokumenteista ({{shortcut}})",
     "diagramComposer": "Kaavioeditori",
-    "notes": "Notes",
     "tools": "Oleafly Tools",
     "settings": "Asetukset"
   },
@@ -55,7 +54,6 @@
       "kindDocument": "Dokumentti",
       "kindImage": "Kuva",
       "kindDiagram": "Kaavio",
-      "kindNote": "Note",
       "bookmark": "Kirjanmerkki",
       "bookmarkAll": "Mikä tahansa tila",
       "bookmarkYes": "Kirjanmerkitty",
@@ -139,7 +137,6 @@
       "document": "dokumentti",
       "image": "kuva",
       "diagram": "kaavio",
-      "note": "note",
       "external": "ulkoinen",
       "overleaf": "Overleaf"
     },

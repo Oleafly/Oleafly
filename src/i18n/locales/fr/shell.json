@@ -950,10 +950,6 @@
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"
       },
-      "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
-      },
       "researchTasks": {
         "description": "Un agent travaille seul dans une copie du projet et vous laisse ses modifications à relire. Très instable. Une exécution peut se bloquer, échouer ou laisser des modifications à trier à la main, et elle consomme en continu le quota de votre fournisseur. Ajoute une section Recherche aux Paramètres. La désactiver arrête toutes les tâches en cours. Désactivé par défaut, à activer à vos risques et périls.",
         "label": "Tâches de recherche",
