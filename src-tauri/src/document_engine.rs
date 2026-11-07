@@ -571,6 +571,46 @@ fn latexmk_absolute_path_arg(path: &Path) -> Result<String, String> {
         .ok_or_else(|| crate::app_error::AppError::new("tex.latexmk_build_path").into())
 }
 
+/// latexmk runs on Perl, which opens paths through the ANSI code page on
+/// Windows, so a build folder outside the project whose path isn't ASCII (Oleafly
+/// data under C:\Users\Jörg) came out mangled and every compile stopped. The
+/// folder's 8.3 short spelling is ASCII when the volume keeps short names.
+fn latexmk_owned_path_arg(path: &Path) -> Result<String, String> {
+    owned_path_text(
+        path,
+        cfg!(windows),
+        &crate::project_availability::short_spelling,
+    )
+    .ok_or_else(|| crate::app_error::AppError::new("tex.latexmk_build_path").into())
+}
+
+fn owned_path_text(
+    path: &Path,
+    windows: bool,
+    short_spelling: &dyn Fn(&Path) -> Option<PathBuf>,
+) -> Option<String> {
+    let text = latexmk_absolute_path_text(path, windows)?;
+    if !windows || text.is_ascii() {
+        return Some(text);
+    }
+    // A file the compile writes later has no short name yet, so shorten the
+    // nearest folder that exists and keep the names below it.
+    let mut below = Vec::new();
+    let mut existing = path;
+    let short = loop {
+        if let Some(short) = short_spelling(existing) {
+            break short;
+        }
+        below.push(existing.file_name()?);
+        existing = existing.parent()?;
+    };
+    let shortened = below
+        .into_iter()
+        .rev()
+        .fold(short, |folder, name| folder.join(name));
+    latexmk_absolute_path_text(&shortened, windows).filter(|text| text.is_ascii())
+}
+
 fn windows_network_path(path: &Path) -> bool {
     crate::project_availability::without_verbatim_prefix(path)
         .to_string_lossy()
@@ -588,7 +628,7 @@ fn latexmk_path_arg(
     }
     match owned {
         Some(owned) if path.starts_with(owned) && !owned.starts_with(project_dir) => {
-            latexmk_absolute_path_arg(path)
+            latexmk_owned_path_arg(path)
         }
         _ => Err(format!(
             "latexmk {role} must stay inside the project directory"
@@ -8711,6 +8751,45 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert_eq!(
             crate::app_error::code(&tectonic).as_deref(),
             Some("tex.main_document_characters")
+        );
+    }
+
+    #[test]
+    fn a_non_ascii_owned_build_folder_reaches_latexmk_by_its_short_name() {
+        let build = Path::new("C:/Users/Jörg/.oleafly/linked/p/build");
+        let short = |path: &Path| {
+            (path == build).then(|| PathBuf::from("C:/Users/JRG~1/.oleafly/linked/p/build"))
+        };
+        assert_eq!(
+            owned_path_text(build, true, &short).as_deref(),
+            Some("C:/Users/JRG~1/.oleafly/linked/p/build")
+        );
+        assert_eq!(
+            owned_path_text(&build.join("_figure.tex"), true, &short).as_deref(),
+            Some("C:/Users/JRG~1/.oleafly/linked/p/build/_figure.tex")
+        );
+    }
+
+    #[test]
+    fn a_non_ascii_owned_build_folder_without_a_short_name_is_refused() {
+        let build = Path::new("C:/Users/张三/.oleafly/linked/p/build");
+        assert_eq!(owned_path_text(build, true, &|_| None), None);
+        let unchanged = |path: &Path| Some(path.to_path_buf());
+        assert_eq!(owned_path_text(build, true, &unchanged), None);
+    }
+
+    #[test]
+    fn an_ascii_owned_build_folder_keeps_its_own_name() {
+        let build = Path::new("C:/Users/ada/.oleafly/linked/p/build");
+        let never = |_: &Path| -> Option<PathBuf> { panic!("no short name needed") };
+        assert_eq!(
+            owned_path_text(build, true, &never).as_deref(),
+            Some("C:/Users/ada/.oleafly/linked/p/build")
+        );
+        let unix = Path::new("/home/jörg/.oleafly/linked/p/build");
+        assert_eq!(
+            owned_path_text(unix, false, &never).as_deref(),
+            Some("/home/jörg/.oleafly/linked/p/build")
         );
     }
 
