@@ -99,7 +99,7 @@ vi.mock("@/components/research/workspace/ResearchProjectSetup", () => ({
         <button
           type="button"
           data-testid="research-created"
-          onClick={() => void onCreated("proj-1")}
+          onClick={() => void onCreated("proj-1").catch(() => {})}
         >
           <span>{"created"}</span>
         </button>
@@ -291,13 +291,31 @@ describe("NewProjectDialog flow", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens the project the research setup created", async () => {
-    const openProject = vi.fn(async () => {});
+  it("opens the project the research setup created, then reports the flow done", async () => {
+    const opened = { value: false };
+    const openProject = vi.fn(async () => {
+      opened.value = true;
+    });
+    const onProjectOpened = vi.fn(() => expect(opened.value).toBe(true));
     useFilesStore.setState({ openProject });
-    renderDialog();
+    renderDialog(true, { onProjectOpened });
+    fireEvent.click(await screen.findByTestId("project-kind-research"));
+    fireEvent.click(screen.getByTestId("research-created"));
+    await waitFor(() => expect(onProjectOpened).toHaveBeenCalledOnce());
+    expect(openProject).toHaveBeenCalledWith("proj-1");
+  });
+
+  it("does not report the flow done when the research project fails to open", async () => {
+    const openProject = vi.fn(async () => {
+      throw new Error("project busy");
+    });
+    const onProjectOpened = vi.fn();
+    useFilesStore.setState({ openProject });
+    renderDialog(true, { onProjectOpened });
     fireEvent.click(await screen.findByTestId("project-kind-research"));
     fireEvent.click(screen.getByTestId("research-created"));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("proj-1"));
+    expect(onProjectOpened).not.toHaveBeenCalled();
   });
 
   it("returns focus to whatever opened the flow", async () => {
