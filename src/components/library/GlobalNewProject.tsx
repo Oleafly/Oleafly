@@ -127,6 +127,10 @@ function NewProjectFlow() {
       onCreate={(n, t, c) => {
         void create(n, t, c);
       }}
+      onProjectOpened={() => {
+        finishHomeTourAfterProjectCreation(useTourStore.getState());
+        setOpen(false);
+      }}
       onTemplatesChanged={() => {
         void listTemplates()
           .then(setTemplates)
