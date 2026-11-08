@@ -1137,6 +1137,11 @@ impl NativeCompiler {
                 {
                     seed_shipped_bibliography(build.project_root(), &bbl, build_dir)?;
                 }
+                // latexmk can't write `\include` aux files into build subfolders
+                // that don't exist yet. If this fails, latexmk makes them itself
+                // as before, so the build goes on.
+                let _ =
+                    engine_spec::create_include_output_dirs(build.compile_directory(), build_dir);
                 environment.extend(latexmk_environment(build));
                 environment.extend(self.latexmk_tex_environment(&executable, build.project_root()));
                 if let Some(output) = texmf_output {

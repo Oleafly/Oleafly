@@ -709,3 +709,51 @@ pub fn discover_bibliographies(project_root: &Path) -> crate::Result<Vec<String>
     found.sort();
     Ok(found)
 }
+
+/// The most source folders [`create_include_output_dirs`] copies into the
+/// build folder, so a huge tree can't fill it with empty folders.
+pub const MAX_INCLUDE_OUTPUT_DIRS: usize = 512;
+
+/// Creates, under `out_dir`, every folder of `source_dir` that holds a `.tex`
+/// file, and returns how many it had to create.
+///
+/// With `-outdir`, `\include{chapters/one}` writes
+/// `<out_dir>/chapters/one.aux`, and TeX can't make that folder itself.
+/// latexmk adds one missing folder per run and stops after five runs, so the
+/// first build of a document that includes files from five or more folders
+/// failed with "I can't write on file `chapters/one.aux'", and only the
+/// second build worked. Run this before latexmk; Tectonic doesn't need it.
+pub fn create_include_output_dirs(source_dir: &Path, out_dir: &Path) -> crate::Result<usize> {
+    if !source_dir.is_dir() {
+        return Ok(0);
+    }
+    let mut folders = std::collections::BTreeSet::new();
+    crate::tree::walk_tree_skipping(
+        source_dir,
+        "include folder search",
+        &|name| matches!(name.to_str(), Some(".oleafly" | ".git" | "node_modules")),
+        &mut |relative, path| {
+            let is_tex = relative
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("tex"));
+            let folder = relative
+                .parent()
+                .filter(|folder| !folder.as_os_str().is_empty());
+            if let Some(folder) = folder.filter(|_| is_tex && !path.starts_with(out_dir)) {
+                if folders.len() < MAX_INCLUDE_OUTPUT_DIRS {
+                    folders.insert(folder.to_path_buf());
+                }
+            }
+            Ok(())
+        },
+    )?;
+    let mut created = 0;
+    for folder in folders {
+        let target = out_dir.join(folder);
+        if !target.is_dir() {
+            std::fs::create_dir_all(&target)?;
+            created += 1;
+        }
+    }
+    Ok(created)
+}

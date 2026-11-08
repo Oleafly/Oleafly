@@ -2237,6 +2237,19 @@ async fn finish_compile(
     ))
 }
 
+/// latexmk can't write `\include` aux files into build subfolders that don't
+/// exist yet, so a first build that includes from five or more folders used
+/// to fail. A failure here only costs the old behaviour, so it is logged.
+fn create_include_output_dirs(tex_working_dir: &Path, out_dir: &Path) {
+    if let Err(error) =
+        oleafly_core::engine_spec::create_include_output_dirs(tex_working_dir, out_dir)
+    {
+        let _ = crate::project::append_app_log(format!(
+            "Could not create build folders for included files: {error}"
+        ));
+    }
+}
+
 fn seed_project_bibliography(project_dir: &Path, main_document: &str, out_dir: &Path) {
     let Some(bbl) = shipped_bibliography(project_dir, main_document) else {
         return;
@@ -2902,11 +2915,13 @@ async fn prepare_compile_artifacts(
             CompileTarget::Isolated { .. } => None,
         })
         .map(|main_document| (request.project_dir.to_owned(), main_document));
+    let tex_working_dir = spec.working_dir.clone();
     let retained = tokio::task::spawn_blocking(move || {
         clear_latexmk_page_files(engine, &cleanup_artifacts);
         let retained = clear_stale_compile_artifacts(&cleanup_artifacts, biber_control.as_deref());
         if let Some((project_dir, main_document)) = shipped_bibliography_source {
             seed_project_bibliography(&project_dir, &main_document, &cleanup_artifacts.output_dir);
+            create_include_output_dirs(&tex_working_dir, &cleanup_artifacts.output_dir);
         }
         retained
     })

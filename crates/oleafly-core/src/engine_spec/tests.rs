@@ -820,6 +820,74 @@ fn bibliographies_in_build_output_and_dot_folders_are_found() {
 }
 
 #[test]
+fn include_output_dirs_mirror_every_folder_that_holds_tex() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let out = root.join(".oleafly/build");
+    for file in [
+        "main.tex",
+        "Chapter1/chapter1.tex",
+        "Chapter2/chapter2.tex",
+        "parts/a/section.TEX",
+        "figures/plot.pdf",
+        ".git/hooks/x.tex",
+        "node_modules/pkg/y.tex",
+        ".oleafly/build/stale/z.tex",
+    ] {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, "").unwrap();
+    }
+    assert_eq!(create_include_output_dirs(root, &out).unwrap(), 3);
+    for folder in ["Chapter1", "Chapter2", "parts/a"] {
+        assert!(out.join(folder).is_dir(), "{folder} should exist");
+    }
+    // `stale` sits inside the build folder already; it must not be copied
+    // into the build folder a second time.
+    for folder in ["figures", ".git", "node_modules", ".oleafly"] {
+        assert!(!out.join(folder).exists(), "{folder} should not exist");
+    }
+    // A second build finds them all in place.
+    assert_eq!(create_include_output_dirs(root, &out).unwrap(), 0);
+}
+
+#[test]
+fn include_output_dirs_work_with_a_build_folder_outside_the_project() {
+    let project = tempfile::tempdir().unwrap();
+    let external = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(project.path().join("ch/one")).unwrap();
+    std::fs::write(project.path().join("ch/one/one.tex"), "").unwrap();
+    assert_eq!(
+        create_include_output_dirs(project.path(), external.path()).unwrap(),
+        1
+    );
+    assert!(external.path().join("ch/one").is_dir());
+}
+
+#[test]
+fn include_output_dirs_stop_at_the_folder_cap() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let out = tempfile::tempdir().unwrap();
+    for index in 0..MAX_INCLUDE_OUTPUT_DIRS + 3 {
+        let folder = root.join(format!("f{index:04}"));
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("x.tex"), "").unwrap();
+    }
+    assert_eq!(
+        create_include_output_dirs(root, out.path()).unwrap(),
+        MAX_INCLUDE_OUTPUT_DIRS
+    );
+}
+
+#[test]
+fn include_output_dirs_skip_a_missing_project() {
+    let dir = tempfile::tempdir().unwrap();
+    let missing = dir.path().join("gone");
+    assert_eq!(create_include_output_dirs(&missing, dir.path()).unwrap(), 0);
+}
+
+#[test]
 fn crash_notes_name_the_signal_or_exception() {
     #[cfg(unix)]
     {
