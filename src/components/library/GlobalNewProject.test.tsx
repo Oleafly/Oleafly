@@ -42,6 +42,7 @@ vi.mock("@/components/library/NewProjectDialog", () => ({
     allowEnterSubmit,
     onClose,
     onCreate,
+    onProjectOpened,
     onTemplatesChanged,
     initialTemplateId,
   }: {
@@ -52,6 +53,7 @@ vi.mock("@/components/library/NewProjectDialog", () => ({
     initialTemplateId?: string | null;
     onClose: () => void;
     onCreate: (name: string, templateId: string, color: string) => void;
+    onProjectOpened?: () => void;
     onTemplatesChanged?: () => void;
   }) => {
     if (open && crashOnOpen) throw new Error("dialog broke");
@@ -76,6 +78,9 @@ vi.mock("@/components/library/NewProjectDialog", () => ({
           onClick={() => onCreate("   ", "article", "indigo")}
         >
           <span>{"create-unnamed"}</span>
+        </button>
+        <button type="button" data-testid="dialog-research-opened" onClick={() => onProjectOpened?.()}>
+          <span>{"research opened"}</span>
         </button>
         <button type="button" data-testid="dialog-close" onClick={onClose}>
           <span>{"close"}</span>
@@ -216,6 +221,20 @@ describe("GlobalNewProject", () => {
     expect(dialog).toHaveAttribute("data-allow-enter", "false");
     dialog.querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')?.click();
     expect(useSettingsStore.getState().newProjectOpen).toBe(true);
+  });
+
+  it("closes once a research project has opened, even mid home tour, so New project opens again", () => {
+    useTourStore.setState({ activeTourId: "home" });
+    render(<GlobalNewProject />);
+    act(() => {
+      screen.getByTestId("dialog-research-opened").click();
+    });
+    expect(useSettingsStore.getState().newProjectOpen).toBe(false);
+    expect(finishHomeTourAfterProjectCreation).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("new-project-dialog")).not.toBeInTheDocument();
+
+    act(() => useSettingsStore.getState().setNewProjectOpen(true));
+    expect(screen.getByTestId("new-project-dialog")).toBeInTheDocument();
   });
 
   it("opens a template installed from a pack with a fresh template list", async () => {

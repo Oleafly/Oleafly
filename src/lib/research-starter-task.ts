@@ -16,6 +16,9 @@ export function ensureResearchStarterTask({ projectId, title, prompt }: {
     const tasks = await listResearchTasks(projectId);
     if (tasks.some((task) => task.title === title && task.prompt === prompt)) return;
     const config = await getConfig();
+    // Research tasks are experimental and off until the user turns them on;
+    // the project is complete without its starter task.
+    if (config.research_tasks_enabled !== true) return;
     const { providerId, modelId } = pickActiveProvider(config, suggestedProviderId(currentLocale()));
     await createResearchTask({
       projectId,
