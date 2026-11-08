@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- After a research project was created, New project did nothing until Oleafly
+  restarted. Setup tried to add the project's first research task while
+  research tasks were still turned off, which they are on a fresh install.
+  When that failed, the hidden setup dialog stayed open and blocked the next
+  one. A research project now skips that task while research tasks are off, and
+  setup always closes once the project opens.
+
 ## [0.4.11] - 2026-11-07
 
 ### Thanks
