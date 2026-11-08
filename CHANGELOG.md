@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   When that failed, the hidden setup dialog stayed open and blocked the next
   one. A research project now skips that task while research tasks are off, and
   setup always closes once the project opens.
+- A latexmk project that includes files from five or more folders, such as
+  `\include{Chapter1/chapter1}`, builds the first time. The first build used to
+  stop at the fifth folder with "I can't write on file `Chapter5/chapter5.aux'",
+  and only a second build worked. Oleafly now makes those folders in the build
+  folder before latexmk starts, in the app and in `oleafly build`.
 
 ## [0.4.11] - 2026-11-07
 
