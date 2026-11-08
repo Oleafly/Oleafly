@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- A latexmk project that includes files from five or more folders, such as
-  `\include{Chapter1/chapter1}`, builds the first time. The first build used to
-  stop at the fifth folder with "I can't write on file `Chapter5/chapter5.aux'",
-  and only a second build worked. Oleafly now makes those folders in the build
-  folder before latexmk starts, in the app and in `oleafly build`.
-
 ## [0.4.11] - 2026-11-07
 
 ### Thanks
