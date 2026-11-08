@@ -474,7 +474,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "A falha corresponde a uma limitação conhecida do motor Tectonic embutido. Escolha como este projeto deve compilar. A escolha fica salva no projeto, então quem colabora recebe a mesma configuração.",
+    "descriptionCompileFailure": "A última compilação esbarrou em uma limitação conhecida do motor Tectonic embutido. Escolha como este projeto deve compilar. A escolha fica salva no projeto, então quem colabora recebe a mesma configuração.",
     "descriptionImportScan": "A varredura de importação encontrou recursos que o motor Tectonic embutido não orquestra. Escolha como este projeto deve compilar. A escolha fica salva no projeto, então quem colabora recebe a mesma configuração.",
     "descriptionTexMissing": "Este projeto agora compila com o latexmk, e este computador ainda não consegue executá-lo. O Oleafly pode instalar o TinyTeX para você, ou você pode voltar ao motor Tectonic embutido.",
     "engineNames": {
@@ -561,9 +561,9 @@
       "keep": "Continuar com o Tectonic",
       "switchBack": "Voltar para o Tectonic",
       "title": "Continuar usando o Tectonic",
-      "withFailures_one": "Sem instalação, funciona offline. A expectativa é que {{features}} continue falhando.",
-      "withFailures_many": "Sem instalação, funciona offline. A expectativa é que {{features}} continuem falhando.",
-      "withFailures_other": "Sem instalação, funciona offline. A expectativa é que {{features}} continuem falhando."
+      "withFailures_one": "Sem instalação, funciona offline. O problema acima não vai desaparecer.",
+      "withFailures_many": "Sem instalação, funciona offline. Os problemas acima não vão desaparecer.",
+      "withFailures_other": "Sem instalação, funciona offline. Os problemas acima não vão desaparecer."
     },
     "tinytex": {
       "description": "Instala um TeX Live compacto, sem precisar de permissões de administrador. O download principal tem cerca de 250 MB. Modelos de periódico podem baixar mais pacotes depois, chegando a cerca de 1 GB no total.",

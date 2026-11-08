@@ -474,7 +474,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "L'errore corrisponde a una lacuna nota del motore Tectonic incluso. Scegli come deve compilarsi questo progetto. La scelta viene salvata nel progetto, così i collaboratori hanno la stessa configurazione.",
+    "descriptionCompileFailure": "L'ultima compilazione si è scontrata con un limite noto del motore Tectonic integrato. Scegli come deve compilarsi questo progetto. La scelta viene salvata nel progetto, così i collaboratori hanno la stessa configurazione.",
     "descriptionImportScan": "La scansione dell'importazione ha trovato funzioni che il motore Tectonic incluso non gestisce. Scegli come deve compilarsi questo progetto. La scelta viene salvata nel progetto, così i collaboratori hanno la stessa configurazione.",
     "descriptionTexMissing": "Questo progetto ora si compila con latexmk e questo computer non può ancora eseguirlo. Oleafly può installare TinyTeX per te, oppure puoi tornare al motore Tectonic integrato.",
     "engineNames": {
@@ -561,9 +561,9 @@
       "keep": "Continua con Tectonic",
       "switchBack": "Torna a Tectonic",
       "title": "Continua a usare Tectonic",
-      "withFailures_one": "Nessuna configurazione, funziona offline. {{features}} continuerà probabilmente a non funzionare.",
-      "withFailures_many": "Nessuna configurazione, funziona offline. {{features}} continueranno probabilmente a non funzionare.",
-      "withFailures_other": "Nessuna configurazione, funziona offline. {{features}} continueranno probabilmente a non funzionare."
+      "withFailures_one": "Nessuna configurazione, funziona offline. Il problema qui sopra non sparirà.",
+      "withFailures_many": "Nessuna configurazione, funziona offline. I problemi qui sopra non spariranno.",
+      "withFailures_other": "Nessuna configurazione, funziona offline. I problemi qui sopra non spariranno."
     },
     "tinytex": {
       "description": "Installa un TeX Live compatto, senza bisogno di permessi di amministratore. Il download di base è di circa 250 MB. I modelli delle riviste possono scaricare altri pacchetti in seguito, fino a circa 1 GB in totale.",

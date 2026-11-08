@@ -278,16 +278,47 @@ export function EnginePickerModal() {
           {t(($) => $.shell.enginePicker.shellEscape.included)}
         </p>
       )}
+      {hasSystemTex && (
+        <div className="mt-2">
+          <Button
+            size="sm"
+            data-testid="engine-picker-use-system"
+            disabled={switching || systemTexLocked}
+            onClick={() => void chooseSystemTex()}
+            data-modal-initial-focus
+          >
+            {switching ? <Spinner size="sm" /> : null}
+            {systemTexActionLabel()}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderTinytexOption = () => (
+    <div className="rounded-lg border border-primary/60 p-3">
+      <div className="flex items-center gap-2">
+        <Download className="size-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm font-medium">
+          {t(($) => $.shell.enginePicker.tinytex.title)}
+        </span>
+        <Badge variant="primaryGhost" size="sm">
+          {t(($) => $.shell.enginePicker.recommended)}
+        </Badge>
+      </div>
+      <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
+        {t(($) => $.shell.enginePicker.tinytex.description)}
+      </p>
       <div className="mt-2">
         <Button
           size="sm"
-          data-testid="engine-picker-use-system"
-          disabled={!hasSystemTex || switching || systemTexLocked}
-          onClick={() => void chooseSystemTex()}
-          data-modal-initial-focus={hasSystemTex || undefined}
+          data-testid="engine-picker-download-tinytex"
+          disabled={installing || switching || systemTexLocked}
+          onClick={() => void installThenPin()}
+          data-modal-initial-focus
         >
-          {switching ? <Spinner size="sm" /> : null}
-          {systemTexActionLabel()}
+          {installing ? <Spinner size="sm" /> : null}
+          {tinytexActionLabel({ installing, installPhase, progress, partialDownloadBytes })}
         </Button>
       </div>
     </div>
@@ -335,32 +366,9 @@ export function EnginePickerModal() {
       )}
 
       <div className="flex flex-col gap-2">
-        {renderSystemTexOption()}
+        {!hasSystemTex && renderTinytexOption()}
 
-        {!hasSystemTex && (
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center gap-2">
-              <Download className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-medium">
-                {t(($) => $.shell.enginePicker.tinytex.title)}
-              </span>
-            </div>
-            <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
-              {t(($) => $.shell.enginePicker.tinytex.description)}
-            </p>
-            <div className="mt-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={installing || switching || systemTexLocked}
-                onClick={() => void installThenPin()}
-              >
-                {installing ? <Spinner size="sm" /> : null}
-                {tinytexActionLabel({ installing, installPhase, progress, partialDownloadBytes })}
-              </Button>
-            </div>
-          </div>
-        )}
+        {renderSystemTexOption()}
 
         <div className="rounded-lg border p-3">
           <div className="flex items-center gap-2">
@@ -371,10 +379,7 @@ export function EnginePickerModal() {
           </div>
           <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             {fixable.length > 0
-              ? t(($) => $.shell.enginePicker.tectonic.withFailures, {
-                  count: fixable.length,
-                  features: formatList(fixable.map(engineFindingTitle)),
-                })
+              ? t(($) => $.shell.enginePicker.tectonic.withFailures, { count: fixable.length })
               : t(($) => $.shell.enginePicker.tectonic.description)}
           </p>
           <div className="mt-2">

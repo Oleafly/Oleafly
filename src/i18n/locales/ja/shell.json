@@ -472,7 +472,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "この失敗は、同梱の Tectonic エンジンで知られている制約に当てはまります。このプロジェクトのコンパイル方法を選んでください。選択はプロジェクトに保存されるため、共同作業者にも同じ設定が適用されます。",
+    "descriptionCompileFailure": "前回のコンパイルで、組み込みの Tectonic エンジンの既知の制限に当たりました。このプロジェクトのコンパイル方法を選んでください。選択はプロジェクトに保存されるため、共同作業者にも同じ設定が適用されます。",
     "descriptionImportScan": "読み込み時のスキャンで、同梱の Tectonic エンジンでは扱えない機能が見つかりました。このプロジェクトのコンパイル方法を選んでください。選択はプロジェクトに保存されるため、共同作業者にも同じ設定が適用されます。",
     "descriptionTexMissing": "このプロジェクトは latexmk でコンパイルするようになりましたが、このコンピュータではまだ実行できません。Oleafly が TinyTeX をインストールすることも、組み込みの Tectonic エンジンに戻すこともできます。",
     "engineNames": {
@@ -559,7 +559,7 @@
       "keep": "Tectonic のままにする",
       "switchBack": "Tectonic に戻す",
       "title": "Tectonic を使い続ける",
-      "withFailures_other": "設定不要で、オフラインでも動きます。{{features}} は引き続き失敗する見込みです。"
+      "withFailures_other": "設定不要で、オフラインでも動きます。上記の問題は解消されません。"
     },
     "tinytex": {
       "description": "コンパクトな TeX Live をインストールします。管理者権限は不要です。最初のダウンロードは約 250 MB です。論文誌のテンプレートがあとからパッケージを追加で取得し、合計でおよそ 1 GB になることがあります。",
