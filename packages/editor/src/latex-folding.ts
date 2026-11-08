@@ -15,7 +15,7 @@ const SECTION_LEVEL: Record<string, number> = {
   paragraph: 5,
   subparagraph: 6,
 };
-const SECTION_RE = /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/;
+const SECTION_RE = /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*[[{]/;
 
 const WINDOW = 200_000;
 

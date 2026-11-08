@@ -29,6 +29,13 @@ describe("LaTeX source folding", () => {
     expect(foldAt(doc, 5)).toBe("\nlast");
   });
 
+  it("folds sections that have a short title", () => {
+    const doc = "\\section[One]{First}\ntext\n\\subsection [In]\n{Inner}\nmore\n\\section*[Two]{Second}\nlast";
+    expect(foldAt(doc, 1)).toBe("\ntext\n\\subsection [In]\n{Inner}\nmore");
+    expect(foldAt(doc, 3)).toBe("\n{Inner}\nmore");
+    expect(foldAt(doc, 6)).toBe("\nlast");
+  });
+
   it("does not fold a section with nothing after it or plain lines", () => {
     expect(foldAt("\\section{Only}", 1)).toBeNull();
     expect(foldAt("\\section{A}\n\\section{B}", 1)).toBeNull();

@@ -1,0 +1,42 @@
+{
+  "files": [
+    "main.tex"
+  ],
+  "sections": [
+    {
+      "title": "Introduction",
+      "level": 2,
+      "file": "main.tex",
+      "line": 4
+    },
+    {
+      "title": "Full title",
+      "level": 3,
+      "file": "main.tex",
+      "line": 6
+    },
+    {
+      "title": "Bounds on $[0,1]$",
+      "level": 3,
+      "file": "main.tex",
+      "line": 7
+    },
+    {
+      "title": "Closing",
+      "level": 2,
+      "file": "main.tex",
+      "line": 13
+    }
+  ],
+  "labels": [],
+  "bibKeys": [],
+  "macros": [],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [],
+  "unresolvedRefs": [],
+  "unresolvedCites": [
+    "knuth"
+  ],
+  "ambiguousTypstAtUses": []
+}

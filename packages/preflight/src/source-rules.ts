@@ -1,3 +1,4 @@
+import { latexHeadingTitleBrace, matchingBrace } from "@oleafly/latex";
 import { maskComments } from "./mask";
 import { findDocumentMetadata, formatGuardDate, parseMetadataKeys } from "./document-metadata";
 import { containsContactToken } from "./contact";
@@ -279,10 +280,12 @@ const HEADING_LEVEL: Record<string, number> = {
 
 const headingSkip: Rule = (text) => {
   const out: Finding[] = [];
-  const re = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\s*(?:\*\s*)?\{/g;
+  const re = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\s*(?:\*\s*)?[[{]/g;
   let m: RegExpExecArray | null;
   let prev: number | null = null;
   while ((m = re.exec(text))) {
+    const open = latexHeadingTitleBrace(text, re.lastIndex - 1);
+    if (open < 0) continue;
     const level = HEADING_LEVEL[m[1]];
     if (prev !== null && level > prev + 1) {
       out.push(
@@ -292,7 +295,7 @@ const headingSkip: Rule = (text) => {
           "warning",
           message("rules.heading-skip.title"),
           message("rules.heading-skip.detail"),
-          { from: m.index, to: m.index + m[0].length },
+          { from: m.index, to: open + 1 },
         ),
       );
     }
@@ -302,11 +305,14 @@ const headingSkip: Rule = (text) => {
 };
 
 const nonstandardHeadings: Rule = (text) => {
-  const re = /\\(?:section|subsection)\s*(?:\*\s*)?\{([^}]*)\}/g;
+  const re = /\\(?:section|subsection)\s*(?:\*\s*)?[[{]/g;
   const titles: { label: string; from: number; to: number }[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    titles.push({ label: m[1].trim(), from: m.index, to: m.index + m[0].length });
+    const open = latexHeadingTitleBrace(text, re.lastIndex - 1);
+    const close = open < 0 ? -1 : matchingBrace(text, open);
+    if (close < 0) continue;
+    titles.push({ label: text.slice(open + 1, close).trim(), from: m.index, to: close + 1 });
   }
   const looksLikeResume = titles.some((title) => matchResumeSectionHeading(title.label) !== null);
   if (!looksLikeResume) return [];

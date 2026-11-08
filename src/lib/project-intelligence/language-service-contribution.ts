@@ -8,7 +8,12 @@ import {
 } from "@/lib/language-service";
 import { maskLatexIgnoredRegions } from "@oleafly/editor/latex-analysis";
 import { TYPST_IDENTIFIER_PATTERN } from "@oleafly/editor/typst-syntax";
-import { insideLatexDefinition, latexDefinitionStartsAt, scanLatexDefinitions } from "@oleafly/latex";
+import {
+  insideLatexDefinition,
+  latexDefinitionStartsAt,
+  latexHeadingTitleBrace,
+  scanLatexDefinitions,
+} from "@oleafly/latex";
 import { maskComments } from "@/lib/index/parse-file";
 import {
   lineStarts,
@@ -177,11 +182,10 @@ function latexDefinition(
   level?: number;
 } | null {
   const excerpt = source.slice(from, to);
-  const section = inDefinition
+  const head = inDefinition
     ? null
-    : /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?:\[[^\]]*\]\s*)?\{/u.exec(
-        excerpt,
-      );
+    : /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?=[[{])/u.exec(excerpt);
+  const section = head && latexHeadingTitleBrace(excerpt, head[0].length) >= 0 ? head : null;
   const definitionHead = startsWithDefinitionHead(excerpt);
   if (section || (symbol.kind === 2 && !inDefinition && !definitionHead)) {
     const levels: Readonly<Record<string, number>> = {

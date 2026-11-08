@@ -71,7 +71,7 @@ const summary = (result: ReturnType<typeof contribute>) =>
 describe("LaTeX symbol recovery", () => {
   const source = [
     String.raw`\chapter{Start}`,
-    String.raw`\subsubsection*{Deep}`,
+    String.raw`\subsubsection*[{$[0,1]$}]{Deep}`,
     String.raw`\label{fig:x}`,
     String.raw`\begin{theorem}`,
     "plain text",
@@ -81,7 +81,7 @@ describe("LaTeX symbol recovery", () => {
   it("recovers sections with their level, labels, environments and named macros", () => {
     const result = contribute({ "main.tex": source }, [
       { name: "Start", kind: 5, line: 0, from: 0, to: 15 },
-      { name: "Deep", kind: 5, line: 1, from: 0, to: 21 },
+      { name: "Deep", kind: 5, line: 1, from: 0, to: 32 },
       { name: "Outline entry", kind: 2, line: 4, from: 0, to: 5 },
       { name: "fig:x", kind: 7, line: 2, from: 0, to: 13 },
       { name: "theorem", kind: 7, line: 3, from: 0, to: 15 },

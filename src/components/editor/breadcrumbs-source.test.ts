@@ -57,7 +57,7 @@ describe("scanSectionHeadings", () => {
   });
 
   it("reads a title that carries braces and an optional short title", () => {
-    const doc = String.raw`\chapter[Short]{A \emph{bold} title}`;
+    const doc = String.raw`\chapter[{$[0,1]$} Short]{A \emph{bold} title}`;
     const [heading] = scanSectionHeadings(Text.of([doc]));
     expect(heading.title).toBe("A bold title");
     expect(heading.level).toBe(1);

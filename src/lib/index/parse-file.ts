@@ -1,4 +1,9 @@
-import { insideLatexDefinition, scanLatexDefinitions } from "@oleafly/latex";
+import {
+  insideLatexDefinition,
+  latexHeadingTitleBrace,
+  matchingBrace,
+  scanLatexDefinitions,
+} from "@oleafly/latex";
 import { dirname } from "@/lib/path-utils";
 import type { FileSymbols, Sym, SymKind } from "./types";
 import { parseTypstFile } from "./parse-typst";
@@ -42,23 +47,6 @@ export function maskComments(text: string): string {
       return line;
     })
     .join("\n");
-}
-
-function matchBrace(text: string, openIdx: number): number {
-  let depth = 0;
-  for (let i = openIdx; i < text.length; i++) {
-    const c = text[i];
-    if (c === "\\") {
-      i++;
-      continue;
-    }
-    if (c === "{") depth++;
-    else if (c === "}") {
-      depth--;
-      if (depth === 0) return i;
-    }
-  }
-  return -1;
 }
 
 function lastSegmentHasExtension(
@@ -146,38 +134,15 @@ function collectBibEntries(sink: SymSink): void {
   }
 }
 
-// The `{` that opens a heading's title, past an optional `[short title]`.
-// Like TeX, the optional argument ends at the first `]` outside braces, and
-// it can't run past a blank line.
-function titleBrace(text: string, from: number): number {
-  let at = from;
-  if (text[at] === "[") {
-    const paragraph = /\n[ \t]*\n/g;
-    paragraph.lastIndex = at;
-    const end = paragraph.exec(text)?.index ?? text.length;
-    for (at += 1; at < end && text[at] !== "]"; at++) {
-      if (text[at] === "\\") at++;
-      else if (text[at] === "{") {
-        at = matchBrace(text, at);
-        if (at < 0 || at >= end) return -1;
-      }
-    }
-    if (at >= end) return -1;
-    at++;
-    while (at < text.length && /\s/.test(text[at])) at++;
-  }
-  return text[at] === "{" ? at : -1;
-}
-
 function collectSections(sink: SymSink): void {
   const { text } = sink;
   const { spans } = scanLatexDefinitions(text);
   const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?=[[{])/g;
   for (let m = sec.exec(text); m; m = sec.exec(text)) {
     if (insideLatexDefinition(spans, m.index)) continue;
-    const open = titleBrace(text, sec.lastIndex);
+    const open = latexHeadingTitleBrace(text, sec.lastIndex);
     if (open < 0) continue;
-    const close = matchBrace(text, open);
+    const close = matchingBrace(text, open);
     if (close < 0) continue;
     const inner = text.slice(open + 1, close);
     const nameStart = open + 1;

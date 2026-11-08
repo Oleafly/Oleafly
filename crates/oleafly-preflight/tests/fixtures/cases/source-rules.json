@@ -247,12 +247,32 @@
     "text": "\\chapter*{A}\n\\subsection *{B}"
   },
   {
+    "name": "heading-short-title-nested",
+    "text": "\\section{A}\\subsection[b]{B}\\subsubsection{C}"
+  },
+  {
+    "name": "heading-short-title-skip",
+    "text": "\\section{😀 A}\n\\subsubsection [{$[0,1]$} \\] b]\n{B}"
+  },
+  {
+    "name": "heading-short-title-unclosed",
+    "text": "\\section{A}\\subsubsection[{B}\n\nSee \\cite[p.~3]{knuth}."
+  },
+  {
+    "name": "heading-short-title-unclosed-crlf",
+    "text": "\\section{A}\\subsubsection[{B}\r\n\r\nSee \\cite[p.~3]{knuth}."
+  },
+  {
     "name": "resume-nonstandard",
     "text": "\\section{Experience}\\section{My Journey}"
   },
   {
     "name": "resume-hobbies",
     "text": "\\section{Experience}\n\\section{Education}\n\\section{Hobbies and Passions}"
+  },
+  {
+    "name": "resume-short-title",
+    "text": "\\section[Exp]{Experience}\n\\section[Fun]{My \\textbf{Journey}}"
   },
   {
     "name": "paper-headings",

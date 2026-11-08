@@ -87,3 +87,35 @@ describe("splitIntoParagraphs without document markers", () => {
     ]);
   });
 });
+
+describe("headings with a short title", () => {
+  it("drops a heading-only chunk that has a short title", () => {
+    const source = [
+      "\\section[Short]{A Heading That Is Long Enough To Count}",
+      "",
+      String.raw`\subsection[{$[0,1]$} bound]{Bounds That Are Long Enough To Count}`,
+      "",
+      String.raw`\subsection [a\]b {c {d}}]{An Escaped Bracket And Nested Braces}`,
+      "",
+      "Graph neural networks enable molecule generation with high fidelity.",
+    ].join("\n");
+    expect(splitIntoParagraphs(source)).toEqual([
+      { index: 0, text: "Graph neural networks enable molecule generation with high fidelity." },
+    ]);
+  });
+
+  it("keeps the full title and drops the short one from keywords", () => {
+    const q = extractKeywords("\\section[Brief]{Molecular generation} with graph neural networks today.");
+    expect(q).toBe("Molecular generation with graph neural networks today.");
+    for (const short of [String.raw`[a\]b]`, "[{A {B}}]", " [Short]"]) {
+      expect(extractKeywords(`\\section${short}{Molecular generation} with graph neural networks today.`)).toBe(
+        "Molecular generation with graph neural networks today.",
+      );
+    }
+  });
+
+  it("does not run an unclosed short title past a blank line", () => {
+    const q = extractKeywords("\\section[{Intro}\n\nWe follow \\cite[p.~3]{knuth} for graph learning.");
+    expect(q).toContain("We follow");
+  });
+});
