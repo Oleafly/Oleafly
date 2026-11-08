@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deleted for good, although the dialog said it went to the Recycle Bin. It
   now goes to this computer's trash, so you can still get it back.
 
+### Added
+
+- Show matched LaTeX outline headings with numbers from the last successful
+  compile. Starred headings remain unnumbered; edits may leave numbers stale
+  or missing until recompilation.
+
 ## [0.4.12] - 2026-11-12
 
 ### Added

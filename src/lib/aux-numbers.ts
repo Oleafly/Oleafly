@@ -10,6 +10,8 @@
 // project/main-document stores, and every failure keeps the old cache silently.
 // ---------------------------------------------------------------------------
 
+import { LATEX_SECTION_LEVELS } from "@oleafly/latex";
+import { createEmitter } from "@/lib/emitter";
 import type { LatexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { readBuildArtifact } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
@@ -21,6 +23,18 @@ export interface LabelNumber {
   page: string;
 }
 
+export interface AuxTocEntry {
+  readonly level: number;
+  readonly number: string | null;
+  readonly title: string;
+}
+
+export interface AuxToc {
+  readonly projectId: string;
+  readonly mainDocument: string;
+  readonly entries: readonly AuxTocEntry[];
+}
+
 const ENTRY_AUX = "_oleafly_entry.aux";
 const MAX_AUX_CHARS = 1024 * 1024;
 const MAX_AUX_FILES = 20;
@@ -30,15 +44,30 @@ interface AuxCache {
   mainDocument: string;
   outputId: string;
   map: Map<string, LabelNumber>;
+  toc: AuxToc;
 }
 
 let cache: AuxCache | null = null;
 let refreshSeq = 0;
 let unsubscribe: (() => void) | null = null;
+const auxNumbersChanged = createEmitter();
+
+function setCache(next: AuxCache | null): void {
+  cache = next;
+  auxNumbersChanged.emit();
+}
 
 export function clearAuxNumbers(): void {
-  cache = null;
+  setCache(null);
   refreshSeq++;
+}
+
+export function subscribeAuxNumbers(listener: () => void): () => void {
+  return auxNumbersChanged.subscribe(listener);
+}
+
+export function currentAuxToc(): AuxToc | null {
+  return cache?.toc ?? null;
 }
 
 function readBalancedGroup(
@@ -114,16 +143,85 @@ export function parseAuxLabels(aux: string): Map<string, LabelNumber> {
   return out;
 }
 
+function safeAuxReference(raw: string): string | null {
+  const ref = raw.trim();
+  if (!ref.endsWith(".aux")) return null;
+  if (ref.startsWith("/") || ref.includes("\\")) return null;
+  if (ref.split("/").some((part) => part === ".." || part === "")) return null;
+  return ref;
+}
+
 function auxInputReferences(content: string): string[] {
   const refs: string[] = [];
   for (const match of content.matchAll(/\\@input\{([^{}]+)\}/g)) {
-    const ref = match[1].trim();
-    if (!ref.endsWith(".aux")) continue;
-    if (ref.startsWith("/") || ref.includes("\\")) continue;
-    if (ref.split("/").some((part) => part === ".." || part === "")) continue;
-    refs.push(ref);
+    const ref = safeAuxReference(match[1]);
+    if (ref !== null) refs.push(ref);
   }
   return refs;
+}
+
+const CONTENTS_LINE = /^\s*(?:\\protect\s*)?\\contentsline\s*(?=\{)/u;
+// `\numberline{1}Title`, and memoir's `\chapternumberline` and `\partnumberline`.
+const NUMBER_LINE = /^\s*(?:\\protect\s*)?\\(?:part|chapter)?numberline\s*(?=\{)/u;
+// amsart and amsbook write `\tocsection{Appendix}{A}{Title}`.
+const AMS_TOC_LINE =
+  /^\s*(?:\\protect\s*)?\\toc(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph|appendix)\s*(?=\{)/u;
+// The standard classes write a part as `I\hspace {1em}Title`.
+const PART_NUMBER = /^\s*([^\\{}]+?)\s*\\hspace\s*\{1em\}/u;
+
+function numbered(number: string, title: string): Pick<AuxTocEntry, "number" | "title"> {
+  return { number: number.trim() || null, title };
+}
+
+function splitTocText(level: number, text: string): Pick<AuxTocEntry, "number" | "title"> {
+  const line = NUMBER_LINE.exec(text);
+  const number = line && readBalancedGroup(text, line[0].length);
+  if (number) return numbered(number.content, text.slice(number.end));
+  const ams = AMS_TOC_LINE.exec(text);
+  const name = ams && readBalancedGroup(text, ams[0].length);
+  const amsNumber = name && readBalancedGroup(text, skipTabsAndSpaces(text, name.end));
+  const amsTitle = amsNumber && readBalancedGroup(text, skipTabsAndSpaces(text, amsNumber.end));
+  if (amsNumber && amsTitle) return numbered(amsNumber.content, amsTitle.content);
+  const part = level === 0 ? PART_NUMBER.exec(text) : null;
+  if (part) return numbered(part[1], text.slice(part[0].length));
+  return { number: null, title: text };
+}
+
+function parseTocRecord(record: string): AuxTocEntry | null {
+  const line = CONTENTS_LINE.exec(record);
+  const kind = line && readBalancedGroup(record, line[0].length);
+  if (!kind) return null;
+  const name = kind.content.trim();
+  const level = Object.hasOwn(LATEX_SECTION_LEVELS, name) ? LATEX_SECTION_LEVELS[name] : undefined;
+  if (level === undefined) return null;
+  const text = readBalancedGroup(record, skipTabsAndSpaces(record, kind.end));
+  if (!text) return null;
+  return { level, ...splitTocText(level, text.content) };
+}
+
+export function parseAuxToc(files: ReadonlyMap<string, string>): AuxTocEntry[] {
+  const entries: AuxTocEntry[] = [];
+  const visited = new Set<string>();
+  const walk = (name: string): void => {
+    const content = files.get(name);
+    if (content === undefined || visited.has(name)) return;
+    visited.add(name);
+    const record = /\\@writefile\s*\{toc\}\s*|\\@input\{([^{}]+)\}/gu;
+    for (let match = record.exec(content); match; match = record.exec(content)) {
+      if (match[1] !== undefined) {
+        const ref = safeAuxReference(match[1]);
+        if (ref !== null) walk(ref);
+        continue;
+      }
+      const group = readBalancedGroup(content, record.lastIndex);
+      if (!group) continue;
+      record.lastIndex = group.end;
+      const parsed = parseTocRecord(group.content);
+      if (parsed) entries.push(parsed);
+    }
+  };
+  walk(ENTRY_AUX);
+  return entries;
 }
 
 async function readAuxFile(
@@ -158,10 +256,13 @@ function enqueueAuxInputs(
   }
 }
 
-async function collectAuxChain(
-  projectId: string,
-): Promise<{ merged: Map<string, LabelNumber>; entryRead: boolean }> {
+async function collectAuxChain(projectId: string): Promise<{
+  merged: Map<string, LabelNumber>;
+  files: Map<string, string>;
+  entryRead: boolean;
+}> {
   const merged = new Map<string, LabelNumber>();
+  const files = new Map<string, string>();
   const visited = new Set<string>([ENTRY_AUX]);
   const queue: string[] = [ENTRY_AUX];
   let totalChars = 0;
@@ -176,10 +277,11 @@ async function collectAuxChain(
     const remaining = MAX_AUX_CHARS - totalChars;
     const content = raw.length > remaining ? raw.slice(0, remaining) : raw;
     totalChars += content.length;
+    files.set(name, content);
     mergeAuxLabels(merged, content);
     enqueueAuxInputs(content, visited, queue);
   }
-  return { merged, entryRead };
+  return { merged, files, entryRead };
 }
 
 export async function refreshAuxNumbers(
@@ -197,10 +299,11 @@ export async function refreshAuxNumbers(
   }
   const seq = ++refreshSeq;
   try {
-    const { merged, entryRead } = await collectAuxChain(projectId);
+    const { merged, files, entryRead } = await collectAuxChain(projectId);
     if (!entryRead) return;
     if (seq !== refreshSeq) return;
-    cache = { projectId, mainDocument, outputId, map: merged };
+    const toc = { projectId, mainDocument, entries: parseAuxToc(files) };
+    setCache({ projectId, mainDocument, outputId, map: merged, toc });
   } catch {
     // Keep the old cache silently.
   }
@@ -229,13 +332,8 @@ export function auxNumberForDefinition(
 
 export function installAuxNumbers(): void {
   if (unsubscribe !== null) return;
-  let lastOutputId =
-    useCompileStore.getState().lastCompileCheckpoint?.outputId ?? null;
-  unsubscribe = useCompileStore.subscribe((state) => {
+  const refresh = (state: ReturnType<typeof useCompileStore.getState>) => {
     const checkpoint = state.lastCompileCheckpoint;
-    const outputId = checkpoint?.outputId ?? null;
-    if (outputId === lastOutputId) return;
-    lastOutputId = outputId;
     if (checkpoint !== null && state.status === "success") {
       void refreshAuxNumbers(
         checkpoint.projectId,
@@ -243,5 +341,14 @@ export function installAuxNumbers(): void {
         checkpoint.outputId,
       );
     }
+  };
+  const initial = useCompileStore.getState();
+  let lastOutputId = initial.lastCompileCheckpoint?.outputId ?? null;
+  refresh(initial);
+  unsubscribe = useCompileStore.subscribe((state) => {
+    const outputId = state.lastCompileCheckpoint?.outputId ?? null;
+    if (outputId === lastOutputId) return;
+    lastOutputId = outputId;
+    refresh(state);
   });
 }
