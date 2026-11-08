@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- After a research project was created, New project did nothing until Oleafly
+  restarted. Setup tried to add the project's first research task while
+  research tasks were still turned off, which they are on a fresh install.
+  When that failed, the hidden setup dialog stayed open and blocked the next
+  one. A research project now skips that task while research tasks are off, and
+  setup always closes once the project opens.
 - Updates download from the release's own address. The update feed pointed at
   GitHub's API, which allows 60 anonymous requests an hour for each network
   address, so on a shared network Update now could fail with "Download request
