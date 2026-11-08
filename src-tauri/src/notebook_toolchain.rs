@@ -603,9 +603,21 @@ fn quarto_python_variables(project_dir: &Path, allow_code: bool) -> Vec<(&'stati
             return Vec::new();
         }
         if let Some((environment, python)) = project_python(project_dir) {
+            // The project root is canonical, so on Windows these carry the \\?\
+            // prefix, and Quarto can't start a Python named that way.
             return vec![
-                ("QUARTO_PYTHON", python.to_string_lossy().into_owned()),
-                ("VIRTUAL_ENV", environment.to_string_lossy().into_owned()),
+                (
+                    "QUARTO_PYTHON",
+                    oleafly_core::plain_path(&python)
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
+                (
+                    "VIRTUAL_ENV",
+                    oleafly_core::plain_path(&environment)
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
             ];
         }
     }
@@ -617,6 +629,14 @@ fn quarto_python_variables(project_dir: &Path, allow_code: bool) -> Vec<(&'stati
 
 fn locale_variable() -> Option<(&'static str, String)> {
     crate::proc::fallback_utf8_locale().map(|locale| ("LANG", locale.to_owned()))
+}
+
+/// On Windows, Python reads and writes pipes in the ANSI code page, while
+/// Quarto and Calepin talk to it in UTF-8: Quarto reads back the path Python
+/// reports, and Calepin hands it each chunk's source. Any non-ASCII character
+/// in either arrives mangled, so the folder can't be found or the chunk fails.
+fn python_io_variable() -> Option<(&'static str, String)> {
+    (cfg!(windows) && unset("PYTHONIOENCODING")).then(|| ("PYTHONIOENCODING", "utf-8".to_owned()))
 }
 
 pub(crate) fn quarto_runtime_variables(
@@ -637,6 +657,7 @@ pub(crate) fn quarto_runtime_variables(
             variables.push(("QUARTO_JULIA", path.to_string_lossy().into_owned()));
         }
     }
+    variables.extend(python_io_variable());
     variables.extend(locale_variable());
     variables
 }
@@ -648,6 +669,7 @@ pub(crate) fn calepin_runtime_variables(project_dir: &Path) -> Vec<(&'static str
             variables.push(("CALEPIN_PYTHON", path.to_string_lossy().into_owned()));
         }
     }
+    variables.extend(python_io_variable());
     variables.extend(locale_variable());
     variables
 }
@@ -1147,6 +1169,26 @@ mod tests {
     }
 
     #[test]
+    fn a_project_environment_reaches_quarto_without_the_verbatim_prefix() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path().canonicalize().unwrap();
+        let environment = venv(&root, ".venv", &JUPYTER_MODULES);
+        let chosen = quarto_python_variables(&root, true);
+        let plain = oleafly_core::plain_path(&environment);
+        assert_eq!(
+            variable(&chosen, "QUARTO_PYTHON"),
+            Some(plain.join("bin").join("python3").to_str().unwrap())
+        );
+        assert_eq!(
+            variable(&chosen, "VIRTUAL_ENV"),
+            Some(plain.to_str().unwrap())
+        );
+        for (_, value) in &chosen {
+            assert!(!value.starts_with(r"\\?\"), "{value}");
+        }
+    }
+
+    #[test]
     fn code_off_ignores_the_project_environment() {
         let project = tempfile::tempdir().unwrap();
         venv(project.path(), ".venv", &JUPYTER_MODULES);
@@ -1214,6 +1256,18 @@ mod tests {
         assert_eq!(variable(&quarto, "LANG"), expected);
         let calepin = calepin_runtime_variables(project.path());
         assert_eq!(variable(&calepin, "LANG"), expected);
+    }
+
+    #[test]
+    fn notebook_runs_talk_to_python_in_utf8_on_windows() {
+        let project = tempfile::tempdir().unwrap();
+        let expected = (cfg!(windows) && unset("PYTHONIOENCODING")).then_some("utf-8");
+        for allow_code in [false, true] {
+            let quarto = quarto_runtime_variables(project.path(), allow_code);
+            assert_eq!(variable(&quarto, "PYTHONIOENCODING"), expected);
+        }
+        let calepin = calepin_runtime_variables(project.path());
+        assert_eq!(variable(&calepin, "PYTHONIOENCODING"), expected);
     }
 
     #[test]
