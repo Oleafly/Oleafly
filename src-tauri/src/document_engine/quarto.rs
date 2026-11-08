@@ -488,6 +488,11 @@ impl QuartoRun {
             self.allow_code,
         );
         args.push("--no-clean".to_owned());
+        if extension == "html" {
+            // Oleafly renders one format, so Quarto's "Other Formats" links
+            // would point at files that are never built.
+            args.extend(["-M".to_owned(), "format-links:false".to_owned()]);
+        }
         if !self.allow_code && self.previews_without_r() {
             args.extend(["-M".to_owned(), "engine:markdown".to_owned()]);
         }
@@ -932,7 +937,7 @@ pub(super) fn strip_ansi(line: &str) -> String {
 fn quarto_explanation(message: &str) -> Option<(&'static str, &'static str)> {
     let lower = message.to_ascii_lowercase();
     if lower.contains("no tex installation") || lower.contains("no tex distribution") {
-        return Some(("notebook.quarto_needs_tex", "This format needs LaTeX. Install TinyTeX, or add pdf-engine: tectonic to the document, which needs no TeX install. You can also switch the document to format: typst."));
+        return Some(("notebook.quarto_needs_tex", "This format needs LaTeX. Install TinyTeX, or switch the document to format: typst. With code allowed in this project, you can instead add pdf-engine: tectonic, which needs no TeX install."));
     }
     if lower.contains("there is no package called")
         || lower.contains("is not available in this r installation")
@@ -2117,6 +2122,19 @@ mod tests {
             .variables()
             .iter()
             .any(|(name, value)| name == "NO_COLOR" && value == "1"));
+    }
+
+    #[test]
+    fn web_pages_carry_no_links_to_formats_that_are_never_built() {
+        let layout = Layout::new(&["main.qmd"]);
+        let links_off = |spec: &EngineCompileSpec| {
+            spec.args
+                .windows(2)
+                .any(|pair| pair == ["-M", "format-links:false"])
+        };
+        assert!(links_off(&layout.spec("main.qmd", "html", true)));
+        assert!(links_off(&layout.spec("main.qmd", "revealjs", true)));
+        assert!(!links_off(&layout.spec("main.qmd", "typst", false)));
     }
 
     #[test]

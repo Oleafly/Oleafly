@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => ({
     tree: [{ path: "report.qmd", is_dir: false }],
     files: { "report.qmd": { content: "# Hello", dirty: false } } as Record<string, { content: string; dirty: boolean }>,
     saveAllDirty: vi.fn(async () => {}),
+    refreshEngine: vi.fn(async () => {}),
   },
 }));
 
@@ -201,6 +202,20 @@ describe("a compile that writes a web page", () => {
     expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(refreshStatuses()).toContain("compiling"));
     expect(refreshStatuses()).not.toContain("success");
+  });
+
+  it("reads the engine again when a document that built a PDF now builds a page", async () => {
+    mocks.compileProject.mockResolvedValue(htmlResult());
+    await useCompileStore.getState().recompile();
+    expect(mocks.files.refreshEngine).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the engine it has when it already builds a page", async () => {
+    mocks.files.engine = { ...notebookEngine("quarto"), notebook_output: "html" };
+    mocks.compileProject.mockResolvedValue(htmlResult());
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().htmlOutput).not.toBeNull();
+    expect(mocks.files.refreshEngine).not.toHaveBeenCalled();
   });
 
   it("forgets the page when a PDF compile for the project succeeds", async () => {

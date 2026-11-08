@@ -96,7 +96,7 @@ import {
 } from "@/store/project-index";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { mainDocumentMissing } from "@/lib/main-document";
-import { compiledHtmlOutput } from "@/lib/notebook-engines";
+import { compiledHtmlOutput, notebookOutput } from "@/lib/notebook-engines";
 import type { NotebookTool } from "@/lib/notebook-commands";
 
 let compileSeq = 0;
@@ -1954,6 +1954,13 @@ async function applyHtmlCompileResult(
     };
   });
   if (applied) settleCompileNotices(ctx.projectId);
+  // The preview shows a page only for an engine that builds one, and that was
+  // read when the project opened. A document whose format changed since then
+  // would keep its old PDF on screen, so read the engine again.
+  const files = useFilesStore.getState();
+  if (applied && files.projectId === ctx.projectId && notebookOutput(files.engine) !== "html") {
+    void files.refreshEngine();
+  }
   return result;
 }
 
