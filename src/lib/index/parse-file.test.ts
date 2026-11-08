@@ -87,6 +87,31 @@ describe("parseFile: definitions", () => {
     expect(def(t2, "label", "sec:a")).toBeDefined();
   });
 
+  it("finds a section with a short title and keeps the full title", () => {
+    const t = "\\subsection[Short]\n  {Full title} body";
+    const d = required(def(t, "section", "Full title"));
+    expect(d.level).toBe(3);
+    expect(spanOk(t, d)).toBe(true);
+    expect(t.slice(d.from, d.to)).toBe("\\subsection[Short]\n  {Full title}");
+  });
+
+  it("ends a short title at the first bracket outside braces", () => {
+    const t = String.raw`\section[{$[0,1]$} bound]{Bounds on $[0,1]$}`;
+    expect(def(t, "section", "Bounds on $[0,1]$")).toBeDefined();
+    const sections = parseFile("main.tex", "\\section[Short]\n\\section[A {B}\n\\section{Next}")
+      .defs.filter((d) => d.kind === "section")
+      .map((d) => d.name);
+    expect(sections).toEqual(["Next"]);
+  });
+
+  it("keeps an unclosed short title inside its paragraph", () => {
+    const t = "\\section[{Intro}\n\nWe follow \\cite[p.~3]{knuth}.\n\n\\section{Two}\n\n\\section[3]{Three}";
+    const sections = parseFile("main.tex", t)
+      .defs.filter((d) => d.kind === "section")
+      .map((d) => d.name);
+    expect(sections).toEqual(["Two", "Three"]);
+  });
+
   it("parses only bib entries from a .bib file", () => {
     const t = "@article{smith21,\n title={X}\n}\n@book{jones19, title={Y}}";
     const r = parseFile("refs.bib", t);

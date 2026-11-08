@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stop at the fifth folder with "I can't write on file `Chapter5/chapter5.aux'",
   and only a second build worked. Oleafly now makes those folders in the build
   folder before latexmk starts, in the app and in `oleafly build`.
+- Headings with a short title, such as `\section[Short]{Full title}`, show up
+  in the document outline. They were left out before (#425).
 - On Windows, a Calepin code chunk with any non-ASCII text, such as
   `print("café")`, failed with a Python UnicodeEncodeError, and Quarto
   couldn't start a Python whose folder name has an accent or other non-ASCII
