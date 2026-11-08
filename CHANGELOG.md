@@ -22,6 +22,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   folder before latexmk starts, in the app and in `oleafly build`.
 - Headings with a short title, such as `\section[Short]{Full title}`, show up
   in the document outline. They were left out before (#425).
+- On Windows, a Calepin code chunk with any non-ASCII text, such as
+  `print("café")`, failed with a Python UnicodeEncodeError, and Quarto
+  couldn't start a Python whose folder name has an accent or other non-ASCII
+  character. Python wrote to them in the Windows code page; Oleafly now has it
+  use UTF-8.
+- On Windows, Quarto couldn't start the Python in a project's `.venv` and
+  failed with "Failed to spawn … File not found", because Oleafly passed the
+  path in the `\\?\` form.
+- After you changed a Quarto document's `format:` from a PDF format to a web
+  page, the preview kept the old PDF until you reopened the project. It now
+  shows the page as soon as it's built.
+- An HTML export of a Quarto document that also declares another format
+  carried an "Other Formats" link to a file that doesn't exist.
+- The "needs LaTeX" and missing-character hints for Quarto suggested
+  `pdf-engine: tectonic` without saying it only runs when code is allowed in
+  the project, so following them with code off ended in another error.
 
 ## [0.4.11] - 2026-11-07
 
