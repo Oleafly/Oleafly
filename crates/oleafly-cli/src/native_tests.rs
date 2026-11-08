@@ -477,6 +477,33 @@ fn a_shipped_bbl_reaches_tectonic_through_the_entry_and_latexmk_through_the_buil
 }
 
 #[test]
+fn latexmk_builds_start_with_a_build_folder_for_every_included_folder() {
+    let tools_directory = TempDir::new().unwrap();
+    let latexmk = tool_in(tools_directory.path(), "latexmk");
+    let compiler = NativeCompiler::new(BuildTools {
+        latexmk: Some(latexmk),
+        ..BuildTools::default()
+    });
+    let project = TempDir::new().unwrap();
+    let workspace = tex_project(project.path(), "main.tex", Engine::Latexmk, None);
+    // Five or more included folders used to fail the first build with
+    // "I can't write on file `Ch5/ch5.aux'".
+    for index in 1..=7 {
+        let folder = project.path().join(format!("Ch{index}"));
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join(format!("ch{index}.tex")), "Text.").unwrap();
+    }
+    let build = workspace.prepare_build().unwrap();
+    compiler
+        .command(&build, BuildOptions::default(), true)
+        .unwrap();
+    for index in 1..=7 {
+        let folder = build.build_directory().join(format!("Ch{index}"));
+        assert!(folder.is_dir(), "{}", folder.display());
+    }
+}
+
+#[test]
 fn only_a_failed_latexmk_build_blames_a_bibliography_path_bibtex_cannot_follow() {
     for (engine, succeeded, expected) in [
         (Engine::Latexmk, false, true),
