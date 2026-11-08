@@ -9269,6 +9269,35 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
     }
 
     #[test]
+    fn latexmk_builds_get_a_build_folder_for_each_included_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project = tempfile::tempdir().unwrap();
+        for index in 1..=6 {
+            let folder = project.path().join(format!("Ch{index}"));
+            std::fs::create_dir(&folder).unwrap();
+            std::fs::write(folder.join(format!("ch{index}.tex")), "Text.").unwrap();
+        }
+        let out = tempfile::tempdir().unwrap();
+        create_include_output_dirs(project.path(), out.path());
+        for index in 1..=6 {
+            assert!(out.path().join(format!("Ch{index}")).is_dir(), "Ch{index}");
+        }
+
+        // A build folder that can't hold folders leaves the build to latexmk,
+        // as before, and the app log says why.
+        let blocked = out.path().join("blocked");
+        std::fs::write(&blocked, "").unwrap();
+        create_include_output_dirs(project.path(), &blocked);
+        let log = std::fs::read_to_string(data.path().join("app.log")).unwrap();
+        assert!(
+            log.contains("Could not create build folders for included files"),
+            "{log}"
+        );
+    }
+
+    #[test]
     fn a_shipped_bbl_reaches_both_engines_only_when_no_bib_file_exists() {
         let project = tempfile::tempdir().unwrap();
         let out = tempfile::tempdir().unwrap();

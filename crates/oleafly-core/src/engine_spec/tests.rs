@@ -881,6 +881,20 @@ fn include_output_dirs_stop_at_the_folder_cap() {
 }
 
 #[test]
+fn include_output_dirs_report_a_tree_deeper_than_the_walker_allows() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut deep = dir.path().to_path_buf();
+    for _ in 0..=crate::tree::MAX_DISCOVERY_DEPTH + 1 {
+        deep.push("d");
+    }
+    std::fs::create_dir_all(&deep).unwrap();
+    std::fs::write(deep.join("x.tex"), "").unwrap();
+    let out = tempfile::tempdir().unwrap();
+    assert!(create_include_output_dirs(dir.path(), out.path()).is_err());
+    assert_eq!(std::fs::read_dir(out.path()).unwrap().count(), 0);
+}
+
+#[test]
 fn include_output_dirs_skip_a_missing_project() {
     let dir = tempfile::tempdir().unwrap();
     let missing = dir.path().join("gone");
