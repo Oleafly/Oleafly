@@ -473,7 +473,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "The failure matches a known gap in the bundled Tectonic engine. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup.",
+    "descriptionCompileFailure": "The last compile ran into a known limit of the built-in Tectonic engine. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup.",
     "descriptionImportScan": "The import scan found features the bundled Tectonic engine does not orchestrate. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup.",
     "descriptionTexMissing": "This project now compiles with latexmk, and this computer can't run it yet. Oleafly can install TinyTeX for you, or you can go back to the built-in Tectonic engine.",
     "engineNames": {
@@ -560,8 +560,8 @@
       "keep": "Keep Tectonic",
       "switchBack": "Switch back to Tectonic",
       "title": "Keep using Tectonic",
-      "withFailures_one": "Zero setup, works offline. {{features}} is expected to keep failing.",
-      "withFailures_other": "Zero setup, works offline. {{features}} are expected to keep failing."
+      "withFailures_one": "Zero setup, works offline. The problem above won't go away.",
+      "withFailures_other": "Zero setup, works offline. The problems above won't go away."
     },
     "tinytex": {
       "description": "Installs a compact TeX Live, no admin rights needed. The core download is about 250 MB. Journal templates can pull more packages later, up to roughly 1 GB in total.",

@@ -166,6 +166,33 @@ describe("EnginePickerModal states", () => {
     expect(mocks.setEngine).not.toHaveBeenCalled();
   });
 
+  it("recommends TinyTeX first and drops the system button it can't use without TeX", () => {
+    mocks.engine.info = null;
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [{ id: "pdftex-only", level: "blocker", title: "pdfTeX packages", detail: "why" }];
+    render(<EnginePickerModal />);
+    const download = screen.getByTestId("engine-picker-download-tinytex");
+    expect(download).toHaveTextContent(copy.tinytex.download);
+    expect(download).toBeEnabled();
+    expect(download).toHaveAttribute("data-modal-initial-focus");
+    expect(screen.queryByTestId("engine-picker-use-system")).toBeNull();
+    expect(screen.getByText(copy.systemTex.titlePdflatex)).toBeInTheDocument();
+    const badge = screen.getByText(copy.recommended);
+    const tinytexTitle = screen.getByText(copy.tinytex.title);
+    expect(tinytexTitle.parentElement).toContainElement(badge);
+    expect(
+      tinytexTitle.compareDocumentPosition(screen.getByText(copy.systemTex.titlePdflatex)) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("holds the TinyTeX button while an install is already running", () => {
+    mocks.engine.info = null;
+    mocks.engine.installing = true;
+    render(<EnginePickerModal />);
+    expect(screen.getByTestId("engine-picker-download-tinytex")).toBeDisabled();
+  });
+
   it("offers to resume a partial download", () => {
     mocks.engine.info = null;
     mocks.engine.partialDownloadBytes = 42_000_000;
@@ -212,10 +239,24 @@ describe("EnginePickerModal states", () => {
     mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
     render(<EnginePickerModal />);
     expect(screen.getByText(copy.titleCompileFailure)).toBeInTheDocument();
+    expect(screen.getByText(copy.descriptionCompileFailure)).toBeInTheDocument();
     expect(screen.getByText("minted needs a shell")).toBeInTheDocument();
     expect(screen.getByText("why")).toBeInTheDocument();
     expect(screen.getByText(copy.shellEscape.included)).toBeInTheDocument();
     expect(screen.queryByTestId("engine-picker-shell-escape")).toBeNull();
+    expect(screen.getByText(copy.tectonic.withFailures_one)).toBeInTheDocument();
+  });
+
+  it("says the listed problems stay on Tectonic without naming each one", () => {
+    mocks.picker.source = "compile-failure";
+    mocks.fixes = true;
+    mocks.picker.findings = [
+      { id: "cjk-pdftex-package", level: "blocker", title: "CJKutf8 needs pdfLaTeX", detail: "why" },
+      { id: "biblatex-biber", level: "warning", title: "Bibliography uses biblatex and Biber", detail: "why" },
+    ];
+    render(<EnginePickerModal />);
+    expect(screen.getByText(copy.tectonic.withFailures_other)).toBeInTheDocument();
+    expect(screen.queryByText(/is expected to keep failing|are expected to keep failing/)).toBeNull();
   });
 
   it("allows external commands with the switch when the project needs them", async () => {
@@ -397,9 +438,10 @@ describe("EnginePickerModal with TeX that can't run latexmk", () => {
     expect(screen.getByText(copy.titleTexMissing)).toBeInTheDocument();
     expect(screen.getByText(copy.descriptionTexMissing)).toBeInTheDocument();
     expect(screen.getByText(enErrors.tex.latexmk_needs_perl)).toBeInTheDocument();
-    expect(screen.queryByText(copy.recommended)).not.toBeInTheDocument();
-    expect(screen.getByTestId("engine-picker-use-system")).toBeDisabled();
-    expect(screen.getByText(copy.tinytex.title)).toBeInTheDocument();
+    expect(screen.queryByTestId("engine-picker-use-system")).toBeNull();
+    expect(screen.getByText(copy.tinytex.title).parentElement).toContainElement(
+      screen.getByText(copy.recommended),
+    );
   });
 
   it("names the folder when TeX has no latexmk, and keeps the plain text when there is no TeX", () => {

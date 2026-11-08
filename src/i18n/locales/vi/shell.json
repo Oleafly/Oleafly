@@ -472,7 +472,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Lỗi khớp với một thiếu hụt đã biết của engine Tectonic đi kèm. Chọn cách dự án này nên biên dịch. Lựa chọn được lưu trong dự án, nên cộng tác viên dùng cùng thiết lập.",
+    "descriptionCompileFailure": "Lần biên dịch gần nhất gặp một giới hạn đã biết của engine Tectonic tích hợp sẵn. Chọn cách dự án này nên biên dịch. Lựa chọn được lưu trong dự án, nên cộng tác viên dùng cùng thiết lập.",
     "descriptionImportScan": "Quá trình quét import phát hiện những tính năng mà engine Tectonic đi kèm không điều phối. Chọn cách dự án này nên biên dịch. Lựa chọn được lưu trong dự án, nên cộng tác viên dùng cùng thiết lập.",
     "descriptionTexMissing": "Dự án này giờ biên dịch bằng latexmk, và máy tính này chưa chạy được nó. Oleafly có thể cài TinyTeX cho bạn, hoặc bạn có thể quay lại engine Tectonic tích hợp sẵn.",
     "engineNames": {
@@ -559,7 +559,7 @@
       "keep": "Giữ Tectonic",
       "switchBack": "Chuyển lại Tectonic",
       "title": "Tiếp tục dùng Tectonic",
-      "withFailures_other": "Không cần thiết lập, hoạt động ngoại tuyến. Dự kiến {{features}} vẫn tiếp tục lỗi."
+      "withFailures_other": "Không cần thiết lập, hoạt động ngoại tuyến. Các vấn đề ở trên sẽ vẫn còn."
     },
     "tinytex": {
       "description": "Cài một bản TeX Live gọn, không cần quyền quản trị. Bản tải lõi khoảng 250 MB. Mẫu tạp chí có thể kéo thêm gói sau này, tổng cộng tới khoảng 1 GB.",

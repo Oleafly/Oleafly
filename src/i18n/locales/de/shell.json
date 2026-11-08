@@ -473,7 +473,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Der Fehler passt zu einer bekannten Lücke der mitgelieferten Tectonic-Engine. Wählen Sie, wie dieses Projekt kompilieren soll. Die Wahl wird im Projekt gespeichert, damit Mitarbeitende dieselbe Einrichtung bekommen.",
+    "descriptionCompileFailure": "Die letzte Kompilierung ist an eine bekannte Grenze der eingebauten Tectonic-Engine gestoßen. Wählen Sie, wie dieses Projekt kompilieren soll. Die Wahl wird im Projekt gespeichert, damit Mitarbeitende dieselbe Einrichtung bekommen.",
     "descriptionImportScan": "Die Importprüfung hat Funktionen gefunden, die die mitgelieferte Tectonic-Engine nicht steuert. Wählen Sie, wie dieses Projekt kompilieren soll. Die Wahl wird im Projekt gespeichert, damit Mitarbeitende dieselbe Einrichtung bekommen.",
     "descriptionTexMissing": "Dieses Projekt wird jetzt mit latexmk kompiliert, und dieser Computer kann es noch nicht ausführen. Oleafly kann TinyTeX für Sie installieren, oder Sie wechseln zurück zur eingebauten Tectonic-Engine.",
     "engineNames": {
@@ -560,8 +560,8 @@
       "keep": "Bei Tectonic bleiben",
       "switchBack": "Zurück zu Tectonic wechseln",
       "title": "Weiter Tectonic verwenden",
-      "withFailures_one": "Keine Einrichtung nötig, funktioniert offline. {{features}} wird voraussichtlich weiter scheitern.",
-      "withFailures_other": "Keine Einrichtung nötig, funktioniert offline. {{features}} werden voraussichtlich weiter scheitern."
+      "withFailures_one": "Keine Einrichtung nötig, funktioniert offline. Das Problem oben bleibt bestehen.",
+      "withFailures_other": "Keine Einrichtung nötig, funktioniert offline. Die Probleme oben bleiben bestehen."
     },
     "tinytex": {
       "description": "Installiert ein kompaktes TeX Live, ganz ohne Administratorrechte. Der Kern-Download ist rund 250 MB groß. Zeitschriftenvorlagen können später weitere Pakete nachziehen, insgesamt bis etwa 1 GB.",

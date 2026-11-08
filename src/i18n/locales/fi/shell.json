@@ -473,7 +473,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Virhe vastaa tunnettua puutetta mukana tulevassa Tectonic-moottorissa. Valitse, miten tämä projekti käännetään. Valinta tallennetaan projektiin, joten yhteistyökumppanit saavat saman asetuksen.",
+    "descriptionCompileFailure": "Viimeisin käännös törmäsi sisäänrakennetun Tectonic-moottorin tunnettuun rajoitukseen. Valitse, miten tämä projekti käännetään. Valinta tallennetaan projektiin, joten yhteistyökumppanit saavat saman asetuksen.",
     "descriptionImportScan": "Tuontitarkistus löysi ominaisuuksia, joita mukana tuleva Tectonic-moottori ei hallitse. Valitse, miten tämä projekti käännetään. Valinta tallennetaan projektiin, joten yhteistyökumppanit saavat saman asetuksen.",
     "descriptionTexMissing": "Tämä projekti kääntyy nyt latexmkillä, eikä tämä kone voi vielä ajaa sitä. Oleafly voi asentaa TinyTeXin puolestasi tai voit palata sisäänrakennettuun Tectonic-moottoriin.",
     "engineNames": {
@@ -560,8 +560,8 @@
       "keep": "Pidä Tectonic",
       "switchBack": "Vaihda takaisin Tectonicin",
       "title": "Jatka Tectonicin käyttöä",
-      "withFailures_one": "Ei asennusta, toimii ilman verkkoa. {{features}} todennäköisesti epäonnistuu jatkossakin.",
-      "withFailures_other": "Ei asennusta, toimii ilman verkkoa. {{features}} todennäköisesti epäonnistuvat jatkossakin."
+      "withFailures_one": "Ei asennusta, toimii ilman verkkoa. Yllä oleva ongelma ei katoa.",
+      "withFailures_other": "Ei asennusta, toimii ilman verkkoa. Yllä olevat ongelmat eivät katoa."
     },
     "tinytex": {
       "description": "Asentaa kompaktin TeX Live -jakelun ilman pääkäyttäjän oikeuksia. Ydinlataus on noin 250 MB. Lehtien mallipohjat voivat hakea lisää paketteja myöhemmin, yhteensä noin 1 GB asti.",

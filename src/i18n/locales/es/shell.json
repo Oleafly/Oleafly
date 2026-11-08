@@ -474,7 +474,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "El fallo coincide con una carencia conocida del motor Tectonic incluido. Elige cómo debe compilar este proyecto. La elección se guarda en el proyecto, así que quien colabore tendrá la misma configuración.",
+    "descriptionCompileFailure": "La última compilación chocó con una limitación conocida del motor Tectonic incluido. Elige cómo debe compilar este proyecto. La elección se guarda en el proyecto, así que quien colabore tendrá la misma configuración.",
     "descriptionImportScan": "El análisis de la importación encontró funciones que el motor Tectonic incluido no orquesta. Elige cómo debe compilar este proyecto. La elección se guarda en el proyecto, así que quien colabore tendrá la misma configuración.",
     "descriptionTexMissing": "Este proyecto ahora compila con latexmk y este equipo todavía no puede ejecutarlo. Oleafly puede instalar TinyTeX por ti, o puedes volver al motor Tectonic incluido.",
     "engineNames": {
@@ -561,9 +561,9 @@
       "keep": "Seguir con Tectonic",
       "switchBack": "Volver a Tectonic",
       "title": "Seguir usando Tectonic",
-      "withFailures_one": "Sin configuración y funciona sin conexión. Se espera que {{features}} siga fallando.",
-      "withFailures_many": "Sin configuración y funciona sin conexión. Se espera que {{features}} sigan fallando.",
-      "withFailures_other": "Sin configuración y funciona sin conexión. Se espera que {{features}} sigan fallando."
+      "withFailures_one": "Sin configuración y funciona sin conexión. El problema de arriba no desaparecerá.",
+      "withFailures_many": "Sin configuración y funciona sin conexión. Los problemas de arriba no desaparecerán.",
+      "withFailures_other": "Sin configuración y funciona sin conexión. Los problemas de arriba no desaparecerán."
     },
     "tinytex": {
       "description": "Instala un TeX Live compacto, sin permisos de administrador. La descarga básica ocupa unos 250 MB. Las plantillas de revista pueden traer más paquetes después, hasta alrededor de 1 GB en total.",
