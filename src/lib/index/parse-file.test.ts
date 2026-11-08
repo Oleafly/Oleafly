@@ -104,6 +104,14 @@ describe("parseFile: definitions", () => {
     expect(sections).toEqual(["Next"]);
   });
 
+  it("keeps an unclosed short title inside its paragraph", () => {
+    const t = "\\section[{Intro}\n\nWe follow \\cite[p.~3]{knuth}.\n\n\\section{Two}\n\n\\section[3]{Three}";
+    const sections = parseFile("main.tex", t)
+      .defs.filter((d) => d.kind === "section")
+      .map((d) => d.name);
+    expect(sections).toEqual(["Two", "Three"]);
+  });
+
   it("parses only bib entries from a .bib file", () => {
     const t = "@article{smith21,\n title={X}\n}\n@book{jones19, title={Y}}";
     const r = parseFile("refs.bib", t);
