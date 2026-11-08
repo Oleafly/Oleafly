@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Updates download from the release's own address. The update feed pointed at
+  GitHub's API, which allows 60 anonymous requests an hour for each network
+  address, so on a shared network Update now could fail with "Download request
+  failed with status: 403 Forbidden". Every release since at least 0.4.7 was
+  affected, and 0.4.11's feed was corrected after release.
+
 ## [0.4.11] - 2026-11-07
 
 ### Thanks

@@ -650,6 +650,27 @@ jobs:
                 )
               }
             ' > latest.json
+          # tauri-action builds into a draft, and a draft's assets only have
+          # api.github.com addresses. Those count against GitHub's limit of
+          # 60 anonymous API requests an hour per IP, so on a shared network
+          # installed apps got "403 Forbidden" when they downloaded an update.
+          # Point every platform at the published release's download address.
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '[.assets[] | {key: .apiUrl, value: .name}] | from_entries' > asset-names.json
+          jq --slurpfile names asset-names.json \
+            --arg base "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/" '
+              .platforms |= with_entries(.value.url |= (
+                if startswith("https://api.github.com/") then
+                  ($names[0][.] // error("latest.json names an asset the release lacks: \(.)"))
+                  | $base + @uri
+                else . end))
+            ' latest.json > latest.public.json
+          mv latest.public.json latest.json
+          if jq -e '[.platforms[].url | select(startswith("https://github.com/") | not)] | length > 0' latest.json >/dev/null; then
+            echo "latest.json still has a download address outside github.com/.../releases/download:" >&2
+            jq -r '.platforms[].url' latest.json >&2
+            exit 1
+          fi
           required=(
             darwin-aarch64 darwin-aarch64-app
             darwin-x86_64 darwin-x86_64-app
