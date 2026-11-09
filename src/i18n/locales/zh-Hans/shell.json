@@ -504,7 +504,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "此错误与内置 Tectonic 引擎的已知不足相符。请选择此项目的编译方式。所选方案会保存在项目中，协作者也会获得相同的配置。",
+    "descriptionCompileFailure": "上次编译遇到了内置 Tectonic 引擎的已知限制。请选择此项目的编译方式。所选方案会保存在项目中，协作者也会获得相同的配置。",
     "descriptionImportScan": "导入扫描发现了一些内置 Tectonic 引擎无法编排处理的特性。请选择此项目的编译方式。所选方案会保存在项目中，协作者也会获得相同的配置。",
     "descriptionTexMissing": "此项目现在使用 latexmk 编译，但这台电脑还无法运行它。Oleafly 可以为你安装 TinyTeX，你也可以改回内置的 Tectonic 引擎。",
     "engineNames": {
@@ -591,7 +591,7 @@
       "keep": "保留 Tectonic",
       "switchBack": "切换回 Tectonic。",
       "title": "继续使用 Tectonic",
-      "withFailures_other": "无需配置，可离线使用。{{features}} 预计仍会失败。"
+      "withFailures_other": "无需配置，可离线使用。上述问题仍会存在。"
     },
     "tinytex": {
       "description": "安装一个精简版 TeX Live，无需管理员权限。核心下载约为 250 MB。期刊模板之后可能会拉取更多宏包，总计最多约 1 GB。",

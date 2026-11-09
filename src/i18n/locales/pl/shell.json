@@ -507,7 +507,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "To niepowodzenie odpowiada znanej luce wbudowanego silnika Tectonic. Wybierz, jak ma się kompilować ten projekt. Wybór jest zapisywany w projekcie, więc współpracownicy dostaną tę samą konfigurację.",
+    "descriptionCompileFailure": "Ostatnia kompilacja trafiła na znane ograniczenie wbudowanego silnika Tectonic. Wybierz, jak ma się kompilować ten projekt. Wybór jest zapisywany w projekcie, więc współpracownicy dostaną tę samą konfigurację.",
     "descriptionImportScan": "Skanowanie importu wykryło funkcje, których wbudowany silnik Tectonic nie obsługuje. Wybierz, jak ma się kompilować ten projekt. Wybór jest zapisywany w projekcie, więc współpracownicy dostaną tę samą konfigurację.",
     "descriptionTexMissing": "Ten projekt kompiluje się teraz przy użyciu latexmk, a ten komputer nie może go jeszcze uruchomić. Oleafly może zainstalować TinyTeX za Ciebie albo możesz wrócić do wbudowanego silnika Tectonic.",
     "engineNames": {
@@ -594,10 +594,10 @@
       "keep": "Zostań przy Tectonic",
       "switchBack": "Wróć do Tectonic",
       "title": "Korzystaj dalej z Tectonic",
-      "withFailures_one": "Zero konfiguracji, działa offline. {{features}} zapewne nadal będzie zawodzić.",
-      "withFailures_few": "Zero konfiguracji, działa offline. {{features}} zapewne nadal będą zawodzić.",
-      "withFailures_many": "Zero konfiguracji, działa offline. {{features}} zapewne nadal będą zawodzić.",
-      "withFailures_other": "Zero konfiguracji, działa offline. {{features}} zapewne nadal będą zawodzić."
+      "withFailures_one": "Zero konfiguracji, działa offline. Powyższy problem nie zniknie.",
+      "withFailures_few": "Zero konfiguracji, działa offline. Powyższe problemy nie znikną.",
+      "withFailures_many": "Zero konfiguracji, działa offline. Powyższe problemy nie znikną.",
+      "withFailures_other": "Zero konfiguracji, działa offline. Powyższe problemy nie znikną."
     },
     "tinytex": {
       "description": "Instaluje kompaktową dystrybucję TeX Live bez uprawnień administratora. Podstawowe pobieranie to około 250 MB. Szablony czasopism mogą później dociągnąć więcej pakietów, łącznie do mniej więcej 1 GB.",

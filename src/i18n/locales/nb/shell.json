@@ -505,7 +505,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Feilen stemmer med et kjent hull i Tectonic-motoren som følger med. Velg hvordan dette prosjektet skal kompileres. Valget lagres i prosjektet, så samarbeidspartnerne dine får samme oppsett.",
+    "descriptionCompileFailure": "Den siste kompileringen traff en kjent begrensning i den innebygde Tectonic-motoren. Velg hvordan dette prosjektet skal kompileres. Valget lagres i prosjektet, så samarbeidspartnerne dine får samme oppsett.",
     "descriptionImportScan": "Importgjennomgangen fant funksjoner som Tectonic-motoren som følger med, ikke styrer. Velg hvordan dette prosjektet skal kompileres. Valget lagres i prosjektet, så samarbeidspartnerne dine får samme oppsett.",
     "descriptionTexMissing": "Dette prosjektet kompileres nå med latexmk, og denne datamaskinen kan ikke kjøre det ennå. Oleafly kan installere TinyTeX for deg, eller du kan gå tilbake til den innebygde Tectonic-motoren.",
     "engineNames": {
@@ -592,8 +592,8 @@
       "keep": "Behold Tectonic",
       "switchBack": "Bytt tilbake til Tectonic",
       "title": "Fortsett med Tectonic",
-      "withFailures_one": "Null oppsett, virker uten nett. {{features}} kommer trolig til å fortsette å feile.",
-      "withFailures_other": "Null oppsett, virker uten nett. {{features}} kommer trolig til å fortsette å feile."
+      "withFailures_one": "Null oppsett, virker uten nett. Problemet ovenfor forsvinner ikke.",
+      "withFailures_other": "Null oppsett, virker uten nett. Problemene ovenfor forsvinner ikke."
     },
     "tinytex": {
       "description": "Installerer en kompakt TeX Live uten behov for administratorrettigheter. Kjernenedlastingen er på rundt 250 MB. Tidsskriftmaler kan hente flere pakker senere, opptil omtrent 1 GB til sammen.",

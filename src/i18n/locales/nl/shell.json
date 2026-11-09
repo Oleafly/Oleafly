@@ -505,7 +505,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "De fout past bij een bekend gat in de meegeleverde Tectonic-engine. Kies hoe dit project moet compileren. De keuze wordt in het project bewaard, dus medewerkers krijgen dezelfde instelling.",
+    "descriptionCompileFailure": "De laatste compilatie liep tegen een bekende beperking van de ingebouwde Tectonic-engine aan. Kies hoe dit project moet compileren. De keuze wordt in het project bewaard, dus medewerkers krijgen dezelfde instelling.",
     "descriptionImportScan": "De importscan vond functies die de meegeleverde Tectonic-engine niet aanstuurt. Kies hoe dit project moet compileren. De keuze wordt in het project bewaard, dus medewerkers krijgen dezelfde instelling.",
     "descriptionTexMissing": "Dit project compileert nu met latexmk, en deze computer kan dat nog niet uitvoeren. Oleafly kan TinyTeX voor je installeren, of je kunt teruggaan naar de ingebouwde Tectonic-engine.",
     "engineNames": {
@@ -592,8 +592,8 @@
       "keep": "Tectonic houden",
       "switchBack": "Terug naar Tectonic",
       "title": "Tectonic blijven gebruiken",
-      "withFailures_one": "Geen installatie nodig, werkt offline. {{features}} zal naar verwachting blijven mislukken.",
-      "withFailures_other": "Geen installatie nodig, werkt offline. {{features}} zullen naar verwachting blijven mislukken."
+      "withFailures_one": "Geen installatie nodig, werkt offline. Het probleem hierboven blijft bestaan.",
+      "withFailures_other": "Geen installatie nodig, werkt offline. De problemen hierboven blijven bestaan."
     },
     "tinytex": {
       "description": "Installeert een compacte TeX Live, zonder beheerdersrechten. De kerndownload is ongeveer 250 MB. Tijdschriftsjablonen kunnen later meer pakketten ophalen, tot ruwweg 1 GB in totaal.",

@@ -504,7 +504,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "이 실패는 내장 Tectonic 엔진에 알려진 한계와 일치합니다. 이 프로젝트를 어떻게 컴파일할지 고르세요. 선택은 프로젝트에 저장되어 공동 작업자도 같은 설정을 씁니다.",
+    "descriptionCompileFailure": "마지막 컴파일이 내장 Tectonic 엔진의 알려진 한계에 걸렸습니다. 이 프로젝트를 어떻게 컴파일할지 고르세요. 선택은 프로젝트에 저장되어 공동 작업자도 같은 설정을 씁니다.",
     "descriptionImportScan": "가져오기 검사에서 내장 Tectonic 엔진이 처리하지 못하는 기능을 찾았습니다. 이 프로젝트를 어떻게 컴파일할지 고르세요. 선택은 프로젝트에 저장되어 공동 작업자도 같은 설정을 씁니다.",
     "descriptionTexMissing": "이 프로젝트는 이제 latexmk로 컴파일하는데, 이 컴퓨터에서는 아직 실행할 수 없습니다. Oleafly가 TinyTeX를 대신 설치하거나, 내장 Tectonic 엔진으로 되돌릴 수 있습니다.",
     "engineNames": {
@@ -591,7 +591,7 @@
       "keep": "Tectonic 유지",
       "switchBack": "Tectonic으로 되돌리기",
       "title": "Tectonic 계속 사용",
-      "withFailures_other": "설정이 필요 없고 오프라인에서도 동작합니다. {{features}}은(는) 계속 실패할 것으로 보입니다."
+      "withFailures_other": "설정이 필요 없고 오프라인에서도 동작합니다. 위의 문제는 해결되지 않습니다."
     },
     "tinytex": {
       "description": "관리자 권한 없이 소형 TeX Live를 설치합니다. 기본 다운로드는 약 250 MB입니다. 저널 템플릿이 나중에 패키지를 더 받아 전체가 1 GB 정도까지 늘어날 수 있습니다.",

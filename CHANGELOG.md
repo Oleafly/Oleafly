@@ -7,21 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- After a research project was created, New project did nothing until Oleafly
+  restarted. Setup tried to add the project's first research task while
+  research tasks were still turned off, which they are on a fresh install.
+  When that failed, the hidden setup dialog stayed open and blocked the next
+  one. A research project now skips that task while research tasks are off, and
+  setup always closes once the project opens.
+- A latexmk project that includes files from five or more folders, such as
+  `\include{Chapter1/chapter1}`, builds the first time. The first build used to
+  stop at the fifth folder with "I can't write on file `Chapter5/chapter5.aux'",
+  and only a second build worked. Oleafly now makes those folders in the build
+  folder before latexmk starts, in the app and in `oleafly build`.
+- Headings with a short title, such as `\section[Short]{Full title}`, show up
+  in the document outline. They were left out before (#425).
+- On Windows, a Calepin code chunk with any non-ASCII text, such as
+  `print("café")`, failed with a Python UnicodeEncodeError, and Quarto
+  couldn't start a Python whose folder name has an accent or other non-ASCII
+  character. Python wrote to them in the Windows code page; Oleafly now has it
+  use UTF-8.
+- On Windows, Quarto couldn't start the Python in a project's `.venv` and
+  failed with "Failed to spawn … File not found", because Oleafly passed the
+  path in the `\\?\` form.
+- After you changed a Quarto document's `format:` from a PDF format to a web
+  page, the preview kept the old PDF until you reopened the project. It now
+  shows the page as soon as it's built.
+- An HTML export of a Quarto document that also declares another format
+  carried an "Other Formats" link to a file that doesn't exist.
+- The "needs LaTeX" and missing-character hints for Quarto suggested
+  `pdf-engine: tectonic` without saying it only runs when code is allowed in
+  the project, so following them with code off ended in another error.
+
+## [0.4.11] - 2026-11-07
+
 ### Thanks
 
-- Teng Qin ([@palmtenor](https://github.com/palmtenor)): asked for a PDF in the
-  project folder that stays up to date (#418).
 - Matt Van Horn ([@mvanhorn](https://github.com/mvanhorn)): catching that tlmgr
   can refuse an install and still exit with a success code (#401).
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)): reported the clash
-  between documents in one folder (#389) and wrote the first fix and its tests
-  (#395).
+  between documents in one folder (#389), wrote the first fix and its tests
+  (#395), and asked for a PDF in the project folder that stays up to date
+  (#418).
 - Jack Wu ([@a-green-hand-jack](https://github.com/a-green-hand-jack)): asked
   for Antigravity CLI as a built-in agent and worked out the catalog entry it
   needs (#402).
 - zemelua ([@zemelua](https://github.com/zemelua)): traced the Typst failure on
   Windows to the file address Oleafly sends Tinymist, and proved it with a
   standalone run of the server (#414).
+- Angelk90 ([@Angelk90](https://github.com/Angelk90)): tried the Intel build
+  and reported Korean text missing from a PDF, a dead-end "latexmk was not
+  found" error, a log you couldn't clear and no way to use iTerm, which led to
+  the install, compile and export fixes in this release (#372).
+- Masum ([@masumeee](https://github.com/masumeee)): asked for a way to turn
+  off thinking for local models (#381).
+- guangle cao ([@cgl-sd](https://github.com/cgl-sd)): reported that OpenCode
+  failed as a custom provider and that agents at the end of the picker were out
+  of reach, and asked for buttons to turn every model on or off (#385).
+- Minyang Bao ([@CherryYang05](https://github.com/CherryYang05)): asked for a
+  separate font for Chinese, Japanese and Korean text, and for downloaded font
+  packs that work by name (#392, #393).
+- MaverickJohn026 ([@MaverickJohn026](https://github.com/MaverickJohn026)):
+  asked for download mirrors you can choose, and reported the managed TinyTeX
+  refusing every package install (#396, #397).
+- Marlon Luís de Col ([@marlondecol](https://github.com/marlondecol)): asked to
+  use a TeX distribution installed in any folder (#416).
 
 ### Added
 
@@ -41,9 +91,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1.5.0 or newer. With an older agy, Oleafly tells you to run `agy update`
   instead of failing to start. Research tasks stay off for it until a test run
   passes (#402).
-
-### Added
-
 - The Tools can use a connected CLI agent. Image to LaTeX, Image to Typst, the
   equation tools and scanned PDFs now list Claude Code, Codex and other
   connected agents, so they run on your own sign-in with no API key. Claude Code
@@ -64,6 +111,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   second source when GitHub fails. Settings > Engines shows which TeX
   distribution compiles, with an Update button when the managed TinyTeX is older
   than the one this version expects.
+- Settings > Downloads has a Sources tab. By default downloads come from
+  Oleafly's mirror and fall back to the original host. You can pick Original
+  hosts instead, or put your own mirror in front of both, such as a university
+  or lab copy. This covers TinyTeX, Typst and Tinymist, font packs and the
+  Tectonic bundle, in the app and in `oleafly`. Every file is still checked
+  against the checksum the app ships with, so a mirror can make a download
+  faster but can't change it. The same tab sets the TeX package repository
+  that tlmgr uses. The TinyTeX Oleafly installs uses the nearest CTAN mirror
+  unless you set one (#396).
 - TeX installed in a folder Oleafly doesn't look in can be used for compiles.
   In Settings > Engines > LaTeX, click Choose a TeX folder under Manage TeX
   distributions and pick the folder with latexmk in it or the TeX Live year
@@ -75,6 +131,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   don't offer None, since they would think anyway. A Lemonade provider added
   before this version needs one press of Refresh on its model list in
   Settings > AI (#381).
+- Each provider's model list has Enable all and Disable all buttons. Turn off
+  a long list in one click, then switch back on the few models you use (#385).
+- A CJK font setting in Settings > Appearance > Editor sets the font for
+  Chinese, Japanese and Korean characters. Latin text stays in the Editor font,
+  so a coding font and PingFang SC or Microsoft YaHei work side by side. On
+  macOS, PingFang now shows in the font lists (#392).
+- Downloaded Lato, PT Sans and PT Serif now work by name. Typst projects find
+  them the way they find the Typst font packs. For LaTeX, Add to project in
+  Settings > Downloads copies a font into the project's fonts folder with a
+  small .fontspec file, so `\setmainfont{PT Serif}` works without options, and
+  the project still compiles on other computers (#393).
 
 ### Fixed
 
@@ -245,34 +312,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   folder has one document, not more than one.
 - `oleafly check --json` names the project folder without Windows' `\\?\`
   prefix.
-
-## [0.4.11] - 2026-11-04
-
-### Added
-
-- Each provider's model list has Enable all and Disable all buttons. Turn off
-  a long list in one click, then switch back on the few models you use (#385).
-- A CJK font setting in Settings > Appearance > Editor sets the font for
-  Chinese, Japanese and Korean characters. Latin text stays in the Editor font,
-  so a coding font and PingFang SC or Microsoft YaHei work side by side. On
-  macOS, PingFang now shows in the font lists (#392).
-- Downloaded Lato, PT Sans and PT Serif now work by name. Typst projects find
-  them the way they find the Typst font packs. For LaTeX, Add to project in
-  Settings > Downloads copies a font into the project's fonts folder with a
-  small .fontspec file, so `\setmainfont{PT Serif}` works without options, and
-  the project still compiles on other computers (#393).
-
-### Security
-
-- Compiling with the bundled Tectonic engine could run code from the project,
-  even with shell-escape off. Tectonic ran any `tectonic-biber` file it found in
-  the project folder, and a document could reach Perl inside Biber through its
-  bibliography settings. Tectonic now starts outside the project, and the Biber
-  that Oleafly ships treats those settings as plain text. Biber also stops
-  reading `biber.conf` during a compile.
-
-### Fixed
-
 - biblatex projects compile on ARM64 Linux. ARM builds shipped a placeholder that
   always failed in place of Biber, so any biblatex project on the default engine
   stopped with no PDF. They now include a working Biber 2.17.
@@ -320,6 +359,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   too narrow for every agent, the ones past the edge, like a custom agent at
   the end, could only be reached with a trackpad. The selected agent now
   scrolls into view too (#385).
+
+### Security
+
+- Compiling with the bundled Tectonic engine could run code from the project,
+  even with shell-escape off. Tectonic ran any `tectonic-biber` file it found in
+  the project folder, and a document could reach Perl inside Biber through its
+  bibliography settings. Tectonic now starts outside the project, and the Biber
+  that Oleafly ships treats those settings as plain text. Biber also stops
+  reading `biber.conf` during a compile.
 
 ## [0.4.10] - 2026-11-02
 

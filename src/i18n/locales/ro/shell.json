@@ -506,7 +506,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Eșecul corespunde unei limitări cunoscute a motorului Tectonic inclus. Alege cum ar trebui să se compileze acest proiect. Alegerea se salvează în proiect, așa că și colaboratorii primesc aceeași configurație.",
+    "descriptionCompileFailure": "Ultima compilare s-a lovit de o limitare cunoscută a motorului Tectonic inclus. Alege cum ar trebui să se compileze acest proiect. Alegerea se salvează în proiect, așa că și colaboratorii primesc aceeași configurație.",
     "descriptionImportScan": "Scanarea de import a găsit funcții pe care motorul Tectonic inclus nu le orchestrează. Alege cum ar trebui să se compileze acest proiect. Alegerea se salvează în proiect, așa că și colaboratorii primesc aceeași configurație.",
     "descriptionTexMissing": "Acest proiect se compilează acum cu latexmk, iar acest computer nu îl poate rula încă. Oleafly poate instala TinyTeX pentru tine sau poți reveni la motorul Tectonic inclus.",
     "engineNames": {
@@ -593,9 +593,9 @@
       "keep": "Rămâi la Tectonic",
       "switchBack": "Revino la Tectonic",
       "title": "Rămâi la Tectonic",
-      "withFailures_one": "Fără configurare, funcționează offline. {{features}} va continua probabil să eșueze.",
-      "withFailures_few": "Fără configurare, funcționează offline. {{features}} vor continua probabil să eșueze.",
-      "withFailures_other": "Fără configurare, funcționează offline. {{features}} vor continua probabil să eșueze."
+      "withFailures_one": "Fără configurare, funcționează offline. Problema de mai sus nu va dispărea.",
+      "withFailures_few": "Fără configurare, funcționează offline. Problemele de mai sus nu vor dispărea.",
+      "withFailures_other": "Fără configurare, funcționează offline. Problemele de mai sus nu vor dispărea."
     },
     "tinytex": {
       "description": "Instalează o distribuție TeX Live compactă, fără drepturi de administrator. Descărcarea de bază este de circa 250 MB. Șabloanele de reviste pot aduce mai târziu și alte pachete, până la circa 1 GB în total.",

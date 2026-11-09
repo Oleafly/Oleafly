@@ -92,6 +92,8 @@ export function NewProjectDialog(props: Readonly<{
   busy?: boolean;
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
+  /** A research project has been created and opened: the flow is over. */
+  onProjectOpened?: () => void;
   onTemplatesChanged?: () => void;
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
@@ -190,6 +192,9 @@ export function NewProjectDialog(props: Readonly<{
         onFinished={props.onClose}
         onCreated={async (projectId) => {
           await useFilesStore.getState().openProject(projectId);
+          // Opening swaps Home for the workspace, which remounts this flow
+          // hidden; it has to close now or New project stays "open" and dead.
+          props.onProjectOpened?.();
         }}
       />
       <TemplateGenerateModal

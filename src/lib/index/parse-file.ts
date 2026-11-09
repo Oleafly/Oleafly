@@ -146,13 +146,37 @@ function collectBibEntries(sink: SymSink): void {
   }
 }
 
+// The `{` that opens a heading's title, past an optional `[short title]`.
+// Like TeX, the optional argument ends at the first `]` outside braces, and
+// it can't run past a blank line.
+function titleBrace(text: string, from: number): number {
+  let at = from;
+  if (text[at] === "[") {
+    const paragraph = /\n[ \t]*\n/g;
+    paragraph.lastIndex = at;
+    const end = paragraph.exec(text)?.index ?? text.length;
+    for (at += 1; at < end && text[at] !== "]"; at++) {
+      if (text[at] === "\\") at++;
+      else if (text[at] === "{") {
+        at = matchBrace(text, at);
+        if (at < 0 || at >= end) return -1;
+      }
+    }
+    if (at >= end) return -1;
+    at++;
+    while (at < text.length && /\s/.test(text[at])) at++;
+  }
+  return text[at] === "{" ? at : -1;
+}
+
 function collectSections(sink: SymSink): void {
   const { text } = sink;
   const { spans } = scanLatexDefinitions(text);
-  const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/g;
+  const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?=[[{])/g;
   for (let m = sec.exec(text); m; m = sec.exec(text)) {
     if (insideLatexDefinition(spans, m.index)) continue;
-    const open = m.index + m[0].length - 1;
+    const open = titleBrace(text, sec.lastIndex);
+    if (open < 0) continue;
     const close = matchBrace(text, open);
     if (close < 0) continue;
     const inner = text.slice(open + 1, close);

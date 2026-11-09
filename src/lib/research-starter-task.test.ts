@@ -27,7 +27,7 @@ describe("research starter task integration", () => {
     const listing = deferred<ResearchTask[]>();
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "research_task_list") return listing.promise;
-      if (command === "get_config") return { ai_provider: "local-research", ai_model: "study-model" };
+      if (command === "get_config") return { ai_provider: "local-research", ai_model: "study-model", research_tasks_enabled: true };
       if (command === "research_task_create") return args.draft;
       throw new Error(`Unexpected command: ${command}`);
     });
@@ -46,7 +46,7 @@ describe("research starter task integration", () => {
   it("sends the default brief with the starter prompt as its goal", async () => {
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "research_task_list") return [];
-      if (command === "get_config") return { ai_provider: "openai", ai_model: "research-model" };
+      if (command === "get_config") return { ai_provider: "openai", ai_model: "research-model", research_tasks_enabled: true };
       if (command === "research_task_create") return args.draft;
       throw new Error(`Unexpected command: ${command}`);
     });
@@ -72,7 +72,7 @@ describe("research starter task integration", () => {
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "research_task_list") return [];
       if (command === "get_config") {
-        return { ai_provider: "openai", ai_model: "research-model", research_command_network: true, research_time_budget_minutes: 240 };
+        return { ai_provider: "openai", ai_model: "research-model", research_command_network: true, research_time_budget_minutes: 240, research_tasks_enabled: true };
       }
       if (command === "research_task_create") return args.draft;
       throw new Error(`Unexpected command: ${command}`);
@@ -92,8 +92,8 @@ describe("research starter task integration", () => {
     const lemonade = { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true };
     const models = { lemonade: [{ id: "off", enabled: false }, { id: "Qwen3-4B", enabled: true }] };
     const configs = [
-      { ai_provider: "lemonade", ai_model: "Qwen3-4B", ai_custom_providers: [lemonade], ai_provider_models: models },
-      { ai_provider: "openai", ai_model: "gpt-4o", ai_keys: {}, ai_custom_providers: [lemonade], ai_provider_models: models },
+      { ai_provider: "lemonade", ai_model: "Qwen3-4B", ai_custom_providers: [lemonade], ai_provider_models: models, research_tasks_enabled: true },
+      { ai_provider: "openai", ai_model: "gpt-4o", ai_keys: {}, ai_custom_providers: [lemonade], ai_provider_models: models, research_tasks_enabled: true },
     ];
     for (const config of configs) {
       native.invoke.mockReset();
@@ -109,6 +109,19 @@ describe("research starter task integration", () => {
     }
   });
 
+  it("adds no starter task while research tasks are turned off", async () => {
+    for (const config of [{ ai_provider: "openai", ai_model: "research-model" }, { research_tasks_enabled: false }]) {
+      native.invoke.mockReset();
+      native.invoke.mockImplementation(async (command) => {
+        if (command === "research_task_list") return [];
+        if (command === "get_config") return config;
+        throw new Error(`Unexpected command: ${command}`);
+      });
+      await ensureResearchStarterTask(input());
+      expect(native.invoke.mock.calls).toEqual([["research_task_list", { projectId: "paper" }], ["get_config"]]);
+    }
+  });
+
   it("recognizes a persisted starter on reload without duplicating it or requiring provider settings", async () => {
     native.invoke.mockResolvedValue([{ ...input(), status: "queued" }]);
     await ensureResearchStarterTask(input());
@@ -118,7 +131,7 @@ describe("research starter task integration", () => {
   it("does not deduplicate different projects and keeps a new starter's exact prompt", async () => {
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "research_task_list") return [{ title: "Plan the thesis", prompt: "An older prompt" }];
-      if (command === "get_config") return {};
+      if (command === "get_config") return { research_tasks_enabled: true };
       if (command === "research_task_create") return args.draft;
       throw new Error(`Unexpected command: ${command}`);
     });
@@ -134,7 +147,7 @@ describe("research starter task integration", () => {
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "create_research_project") return "created-project";
       if (command === "research_task_list") return tasks;
-      if (command === "get_config") return { ai_provider: "openai", ai_model: "research-model" };
+      if (command === "get_config") return { ai_provider: "openai", ai_model: "research-model", research_tasks_enabled: true };
       if (command === "research_task_create") {
         tasks.push(args.draft);
         throw new Error("Task saved, response disconnected");
@@ -167,7 +180,7 @@ describe("research starter task integration", () => {
       if (command === "research_task_list") return [];
       if (command === "get_config") {
         if (failed) throw new Error("Settings unavailable");
-        return { ai_provider: "openai", ai_model: "research-model" };
+        return { ai_provider: "openai", ai_model: "research-model", research_tasks_enabled: true };
       }
       if (command === "research_task_create") return args.draft;
       throw new Error(`Unexpected command: ${command}`);

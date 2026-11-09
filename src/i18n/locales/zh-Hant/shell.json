@@ -504,7 +504,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "這次失敗符合內建 Tectonic 引擎的已知限制。請選擇這個專案的編譯方式。選擇會儲存在專案中，協作者也會取得相同的設定。",
+    "descriptionCompileFailure": "上次編譯遇到了內建 Tectonic 引擎的已知限制。請選擇這個專案的編譯方式。選擇會儲存在專案中，協作者也會取得相同的設定。",
     "descriptionImportScan": "匯入掃描發現了一些內建 Tectonic 引擎無法調度的功能。請選擇這個專案的編譯方式。選擇會儲存在專案中，協作者也會取得相同的設定。",
     "descriptionTexMissing": "這個專案現在使用 latexmk 編譯，而這台電腦還無法執行它。Oleafly 可以替你安裝 TinyTeX，你也可以改回內建的 Tectonic 引擎。",
     "engineNames": {
@@ -591,7 +591,7 @@
       "keep": "保留 Tectonic",
       "switchBack": "切換回 Tectonic",
       "title": "繼續使用 Tectonic",
-      "withFailures_other": "無需設定，可離線使用。{{features}} 預期仍會失敗。"
+      "withFailures_other": "無需設定，可離線使用。上述問題仍會存在。"
     },
     "tinytex": {
       "description": "安裝精簡版的 TeX Live，不需要管理員權限。核心下載約 250 MB。期刊範本之後可能會再取得更多套件，總計最多約 1 GB。",

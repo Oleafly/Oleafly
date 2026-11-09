@@ -505,7 +505,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Bu başarısızlık, paketlenmiş Tectonic motorunun bilinen bir eksiğiyle örtüşüyor. Bu projenin nasıl derleneceğini seçin. Seçim projede kaydedilir, böylece iş arkadaşlarınız da aynı kurulumu alır.",
+    "descriptionCompileFailure": "Son derleme, yerleşik Tectonic motorunun bilinen bir sınırına takıldı. Bu projenin nasıl derleneceğini seçin. Seçim projede kaydedilir, böylece iş arkadaşlarınız da aynı kurulumu alır.",
     "descriptionImportScan": "İçe aktarma taraması, paketlenmiş Tectonic motorunun yönetemediği özellikler buldu. Bu projenin nasıl derleneceğini seçin. Seçim projede kaydedilir, böylece iş arkadaşlarınız da aynı kurulumu alır.",
     "descriptionTexMissing": "Bu proje artık latexmk ile derleniyor ve bu bilgisayar onu henüz çalıştıramıyor. Oleafly sizin için TinyTeX'i kurabilir ya da yerleşik Tectonic motoruna geri dönebilirsiniz.",
     "engineNames": {
@@ -592,8 +592,8 @@
       "keep": "Tectonic'te kal",
       "switchBack": "Tectonic'e geri dön",
       "title": "Tectonic kullanmayı sürdür",
-      "withFailures_one": "Kurulum gerektirmez, çevrimdışı çalışır. {{features}} için başarısızlığın süreceği bekleniyor.",
-      "withFailures_other": "Kurulum gerektirmez, çevrimdışı çalışır. {{features}} için başarısızlığın süreceği bekleniyor."
+      "withFailures_one": "Kurulum gerektirmez, çevrimdışı çalışır. Yukarıdaki sorun ortadan kalkmaz.",
+      "withFailures_other": "Kurulum gerektirmez, çevrimdışı çalışır. Yukarıdaki sorunlar ortadan kalkmaz."
     },
     "tinytex": {
       "description": "Yönetici izni gerektirmeyen kompakt bir TeX Live kurar. Temel indirme yaklaşık 250 MB'tır. Dergi şablonları sonradan daha fazla paket çekebilir, toplamda kabaca 1 GB'a kadar.",

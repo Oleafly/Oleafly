@@ -506,7 +506,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Cet échec correspond à une limite connue du moteur Tectonic fourni. Choisissez comment ce projet doit compiler. Le choix est enregistré dans le projet, vos collaborateurs auront donc la même configuration.",
+    "descriptionCompileFailure": "La dernière compilation s'est heurtée à une limite connue du moteur Tectonic intégré. Choisissez comment ce projet doit compiler. Le choix est enregistré dans le projet, vos collaborateurs auront donc la même configuration.",
     "descriptionImportScan": "L'analyse d'import a repéré des fonctions que le moteur Tectonic fourni n'orchestre pas. Choisissez comment ce projet doit compiler. Le choix est enregistré dans le projet, vos collaborateurs auront donc la même configuration.",
     "descriptionTexMissing": "Ce projet compile désormais avec latexmk, et cet ordinateur ne peut pas encore l'exécuter. Oleafly peut installer TinyTeX pour vous, ou vous pouvez revenir au moteur Tectonic intégré.",
     "engineNames": {
@@ -593,9 +593,9 @@
       "keep": "Garder Tectonic",
       "switchBack": "Revenir à Tectonic",
       "title": "Continuer avec Tectonic",
-      "withFailures_one": "Aucune installation, fonctionne hors ligne. {{features}} devrait continuer à échouer.",
-      "withFailures_many": "Aucune installation, fonctionne hors ligne. {{features}} devraient continuer à échouer.",
-      "withFailures_other": "Aucune installation, fonctionne hors ligne. {{features}} devraient continuer à échouer."
+      "withFailures_one": "Aucune installation, fonctionne hors ligne. Le problème ci-dessus ne disparaîtra pas.",
+      "withFailures_many": "Aucune installation, fonctionne hors ligne. Les problèmes ci-dessus ne disparaîtront pas.",
+      "withFailures_other": "Aucune installation, fonctionne hors ligne. Les problèmes ci-dessus ne disparaîtront pas."
     },
     "tinytex": {
       "description": "Installe un TeX Live compact, sans droits d'administrateur. Le téléchargement de base pèse environ 250 Mo. Les modèles de revues peuvent réclamer d'autres paquets plus tard, jusqu'à 1 Go environ au total.",

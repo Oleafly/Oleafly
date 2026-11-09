@@ -507,7 +507,7 @@
     }
   },
   "enginePicker": {
-    "descriptionCompileFailure": "Toto selhání odpovídá známé mezeře vestavěného enginu Tectonic. Zvolte, jak se má tento projekt kompilovat. Volba se uloží do projektu, takže spolupracovníci dostanou stejné nastavení.",
+    "descriptionCompileFailure": "Poslední kompilace narazila na známé omezení vestavěného enginu Tectonic. Zvolte, jak se má tento projekt kompilovat. Volba se uloží do projektu, takže spolupracovníci dostanou stejné nastavení.",
     "descriptionImportScan": "Kontrola importu našla funkce, které vestavěný engine Tectonic neřídí. Zvolte, jak se má tento projekt kompilovat. Volba se uloží do projektu, takže spolupracovníci dostanou stejné nastavení.",
     "descriptionTexMissing": "Tento projekt se teď kompiluje pomocí latexmk a tento počítač ho zatím spustit neumí. Oleafly může TinyTeX nainstalovat za vás, nebo se můžete vrátit k vestavěnému enginu Tectonic.",
     "engineNames": {
@@ -594,10 +594,10 @@
       "keep": "Ponechat Tectonic",
       "switchBack": "Přepnout zpět na Tectonic",
       "title": "Zůstat u Tectonicu",
-      "withFailures_one": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že bude selhávat dál.",
-      "withFailures_few": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že budou selhávat dál.",
-      "withFailures_many": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že budou selhávat dál.",
-      "withFailures_other": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že budou selhávat dál."
+      "withFailures_one": "Bez nastavování, funguje offline. Problém výše nezmizí.",
+      "withFailures_few": "Bez nastavování, funguje offline. Problémy výše nezmizí.",
+      "withFailures_many": "Bez nastavování, funguje offline. Problémy výše nezmizí.",
+      "withFailures_other": "Bez nastavování, funguje offline. Problémy výše nezmizí."
     },
     "tinytex": {
       "description": "Nainstaluje kompaktní TeX Live bez nutnosti práv správce. Základní stažení má asi 250 MB. Šablony časopisů mohou později dotáhnout další balíčky, dohromady zhruba do 1 GB.",
