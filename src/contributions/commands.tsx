@@ -136,6 +136,7 @@ import {
 import {
   openDiagramComposerChooser,
   openHomePage,
+  openNotes,
   openTool,
   openToolsGallery,
 } from "@/features/open-tool";
@@ -199,6 +200,7 @@ const ENGLISH_KEYWORDS = {
   theme: "theme dark light appearance mode",
   generateFigure: "figure diagram draw tikz cetz fletcher typst plot chart illustration",
   diagramComposer: "diagram figure tikz composer draw canvas",
+  notes: "notes notebook knowledge ideas research journal",
   tools: "tools latex pdf equation bibtex table lab search deadlines gallery",
   settings: "settings preferences options",
   clearCache: "clear build cache clean rebuild stale reset aux",
@@ -512,6 +514,17 @@ export function registerOmnibarCommands() {
     run: () => openDiagramComposerChooser(),
   });
   registerCommand({
+    id: "omnibar.notes",
+    surfaces: ["omnibar", "palette"],
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.notes.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.notes.keywords)} ${ENGLISH_KEYWORDS.notes}`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 21,
+    when: () => useSettingsStore.getState().notes === true,
+    run: () => void openNotes(),
+  });
+  registerCommand({
     id: "omnibar.tools",
     surfaces: ["omnibar", "palette"],
     group: () => i18n.t(($) => $.shell.commandGroups.tools),
@@ -621,12 +634,31 @@ export function registerPaletteCommands() {
     },
   });
   palette({
-    id: "palette.new-project-note",
+    id: "palette.new-project-note-file",
     group: () => i18n.t(($) => $.shell.commandGroups.project),
-    label: () => i18n.t(($) => $.shell.commands.projectNotes.new),
-    keywords: () => `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research new create project`,
+    label: () => i18n.t(($) => $.shell.commands.projectNotes.newShared),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research new create project shared file folder`,
     icon: () => <NotebookPen className="size-4" />,
     order: 126,
+    when: projectNotesShown,
+    run: (ctx) => {
+      const projectId = ctx.projectId;
+      if (!projectId) return;
+      void import("@/components/notes/project-note-actions").then(
+        (module) => module.createProjectNoteFile(projectId, ""),
+        (error: unknown) => logError("load project notes", error),
+      );
+    },
+  });
+  palette({
+    id: "palette.new-project-note",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.projectNotes.newPersonal),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research new create project personal private mine`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 127,
     when: projectNotesShown,
     run: (ctx) => {
       const projectId = ctx.projectId;

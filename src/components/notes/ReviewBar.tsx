@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AiChrome } from "@/components/ai/AiChrome";
 import { DiffAction } from "@/components/editor/cm/inline-ai/DiffActionBar";
@@ -14,6 +14,7 @@ interface ReviewBarProps {
   onReject: () => void;
   onAcceptAll: () => void;
   onRejectAll: () => void;
+  onUndo?: () => void;
 }
 
 const STEP =
@@ -28,6 +29,7 @@ export function ReviewBar({
   onReject,
   onAcceptAll,
   onRejectAll,
+  onUndo,
 }: Readonly<ReviewBarProps>) {
   const { t } = useTranslation(["notes", "editor"]);
   const previous = t(($) => $.editor.diff.previousChange);
@@ -38,6 +40,12 @@ export function ReviewBar({
       className="pointer-events-auto mx-auto w-fit"
       contentClassName="ai-surface-elevated flex items-center gap-1 p-1 text-popover-foreground"
     >
+      {onUndo && (
+        <Button variant="ghost" size="xs" aria-keyshortcuts="Meta+Z Control+Z" onClick={onUndo}>
+          <Undo2 aria-hidden className="size-3.5" />
+          {t(($) => $.notes.review.undo)}
+        </Button>
+      )}
       {count > 1 && (
         <>
           <Button variant="ghost" size="xs" onClick={onRejectAll}>
@@ -65,15 +73,17 @@ export function ReviewBar({
           </Tooltip>
         </>
       )}
-      <div className="flex items-center divide-x divide-primary/20 overflow-hidden rounded-md bg-primary/10">
-        <DiffAction
-          icon={Check}
-          label={t(($) => $.editor.inlineAi.accept)}
-          keyShortcut="Control+Enter Meta+Enter"
-          onClick={onAccept}
-        />
-        <DiffAction icon={X} label={t(($) => $.editor.inlineAi.reject)} keyShortcut="Escape" onClick={onReject} />
-      </div>
+      {count > 0 && (
+        <div className="flex items-center divide-x divide-primary/20 overflow-hidden rounded-md bg-primary/10">
+          <DiffAction
+            icon={Check}
+            label={t(($) => $.editor.inlineAi.accept)}
+            keyShortcut="Control+Enter Meta+Enter"
+            onClick={onAccept}
+          />
+          <DiffAction icon={X} label={t(($) => $.editor.inlineAi.reject)} keyShortcut="Escape" onClick={onReject} />
+        </div>
+      )}
     </AiChrome>
   );
 }

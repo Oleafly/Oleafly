@@ -37,7 +37,7 @@ export function readCodePalette(theme: EditorThemeId): Readonly<Record<string, s
   return palette;
 }
 
-export function forgetCodePalettes(): void {
+export function resetCodePalettesForTest(): void {
   palettes.clear();
 }
 

@@ -138,12 +138,12 @@ let issueListener:
   | null = null;
 const resumers = new WeakMap<EditorView, () => void>();
 
-function proofreadingMode(
-  harper: boolean,
-  spellcheck: boolean,
-): ProofreadingMode {
-  if (!harper) return "spelling";
-  return spellcheck ? "combined" : "grammar";
+export function proofreadingModeFor(
+  spelling: boolean,
+  grammar: boolean,
+): ProofreadingMode | null {
+  if (!grammar) return spelling ? "spelling" : null;
+  return spelling ? "combined" : "grammar";
 }
 
 function formatForPath(path: string): ProofreadingFormat | null {
@@ -170,8 +170,7 @@ function currentIdentity(): ProofreadingDocument | null {
 
 function visualMode(): ProofreadingMode | null {
   const settings = useSettingsStore.getState();
-  if (!settings.spellcheck && !settings.harper) return null;
-  return proofreadingMode(settings.harper, settings.spellcheck);
+  return proofreadingModeFor(settings.spellcheck, settings.harper);
 }
 
 const VISUAL_TARGET: ProofreadingTarget = {
@@ -284,23 +283,21 @@ function maskProtectedSpans(
   text: string,
   blocked: boolean[],
   protect?: (text: string) => readonly ProtectedProseRange[],
-): string[] {
-  const characters = text.split("");
+): string {
+  const ranges: ProtectedProseRange[] = [];
   for (const pattern of PROTECTED_PROSE_PATTERNS) {
     for (const match of text.matchAll(pattern)) {
       if (match.index === undefined) continue;
-      maskProseRange(
-        characters,
-        blocked,
-        match.index,
-        match.index + match[0].length,
-      );
+      ranges.push({ from: match.index, to: match.index + match[0].length });
     }
   }
-  for (const range of protect?.(text) ?? []) {
+  ranges.push(...(protect?.(text) ?? []));
+  if (ranges.length === 0) return text;
+  const characters = text.split("");
+  for (const range of ranges) {
     maskProseRange(characters, blocked, range.from, range.to);
   }
-  return characters;
+  return characters.join("");
 }
 
 function proseBoundaryPrefixes(accumulator: ProseAccumulator): {
@@ -367,14 +364,14 @@ export function extractVisualProofreadingProse(
     appendTextProse(accumulator, node.text, position, format);
     return true;
   });
-  const characters = maskProtectedSpans(
+  const text = maskProtectedSpans(
     accumulator.text,
     accumulator.blocked,
     protect,
   );
   const { blockedPrefix, gapPrefix } = proseBoundaryPrefixes(accumulator);
   return {
-    text: characters.join(""),
+    text,
     map: accumulator.map,
     rawBlockIndex: accumulator.rawBlockIndex,
     rawSourceOffset: accumulator.rawSourceOffset,
@@ -594,6 +591,25 @@ function issueFromTarget(
   );
 }
 
+function untouchedDecorations(
+  decorations: DecorationSet,
+  transaction: Transaction,
+): DecorationSet {
+  if (decorations === DecorationSet.empty) return decorations;
+  const mapped = decorations.map(transaction.mapping, transaction.doc);
+  const touched: Decoration[] = [];
+  const { maps } = transaction.mapping;
+  maps.forEach((stepMap, index) => {
+    const later = transaction.mapping.slice(index + 1);
+    stepMap.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      touched.push(
+        ...mapped.find(later.map(newStart, -1), later.map(newEnd, 1)),
+      );
+    });
+  });
+  return touched.length > 0 ? mapped.remove(touched) : mapped;
+}
+
 function applyVisualProofreadingState(
   transaction: Transaction,
   previous: VisualProofreadingState,
@@ -604,7 +620,10 @@ function applyVisualProofreadingState(
   ) as VisualProofreadingMeta | null;
   if (transaction.docChanged || meta?.type === "refresh") {
     return {
-      decorations: DecorationSet.empty,
+      decorations:
+        meta?.type === "refresh"
+          ? DecorationSet.empty
+          : untouchedDecorations(previous.decorations, transaction),
       issues: [],
       dirty: true,
       revision: previous.revision + 1,
@@ -958,6 +977,7 @@ function proofreadingPlugin(
               requestedPath
             ) {
               cancelProofreading(target.surface, requestedPath);
+              requestedPath = null;
             }
             schedule();
           }

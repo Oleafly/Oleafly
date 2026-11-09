@@ -84,6 +84,14 @@ export async function importNoteImages(view: EditorView, target: NoteImageTarget
   if (!view.isDestroyed) view.focus();
 }
 
+function noteImageFiles(files: ArrayLike<File> | null | undefined): File[] {
+  return importableImageFiles(files).filter((file) => file.type.startsWith("image/"));
+}
+
+function sayOnlyImages(): void {
+  toast.infoUnique(NOTE_IMAGE_TOAST_KEY, i18n.t(($) => $.notes.document.onlyImages));
+}
+
 function carriesAnyFile(transfer: DataTransfer | null): boolean {
   return carriesFiles(transfer) || isNativeFileDrop(transfer);
 }
@@ -114,7 +122,7 @@ export const NoteImageDrop = Extension.create<NoteImageDropOptions>({
             const data = event.clipboardData;
             const where = target();
             if (!data || !where) return false;
-            const files = importableImageFiles(data.files);
+            const files = noteImageFiles(data.files);
             if (files.length === 0 || Array.from(data.types).includes("text/plain")) return false;
             event.preventDefault();
             void importNoteImages(view, where, files, null);
@@ -127,13 +135,19 @@ export const NoteImageDrop = Extension.create<NoteImageDropOptions>({
             const where = target();
             if (!where) return true;
             const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? null;
-            const files = importableImageFiles(data?.files);
+            const files = noteImageFiles(data?.files);
             if (files.length > 0) {
               void importNoteImages(view, where, files, at);
               return true;
             }
             if (isNativeFileDrop(data)) {
-              void nativeDroppedImages().then((images) => (images.length > 0 ? importNoteImages(view, where, images, at) : undefined));
+              void nativeDroppedImages().then((dropped) => {
+                const images = noteImageFiles(dropped);
+                if (images.length > 0) return importNoteImages(view, where, images, at);
+                sayOnlyImages();
+              });
+            } else {
+              sayOnlyImages();
             }
             return true;
           },

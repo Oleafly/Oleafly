@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ import { noteLinkHref, parseNoteLink } from "./note-link-format";
 import type { LinkableNote } from "./note-links";
 import {
   canAddProperty,
+  conversionLoss,
   convertValue,
   emptyValue,
   LIST_KEYS,
@@ -58,6 +60,19 @@ interface NotePropertiesProps {
   editable?: boolean;
 }
 
+function focusAfterRemoving(list: HTMLElement | null, key: string): HTMLElement | null {
+  const rows = [...(list?.children ?? [])].filter(
+    (row): row is HTMLElement => row instanceof HTMLElement && row.dataset.property !== undefined,
+  );
+  const index = rows.findIndex((row) => row.dataset.property === key);
+  const neighbour = index < 0 ? undefined : (rows[index + 1] ?? rows[index - 1]);
+  return (
+    neighbour?.querySelector<HTMLElement>("[data-property-menu]") ??
+    list?.closest("article")?.querySelector<HTMLElement>(".ProseMirror") ??
+    null
+  );
+}
+
 function readOpen(): boolean {
   return readString(OPEN_KEY) !== "false";
 }
@@ -71,18 +86,31 @@ function TextField({
   label,
   type = "text",
   disabled,
+  error,
   onCommit,
-}: Readonly<{ value: string; label: string; type?: "text" | "number" | "date"; disabled?: boolean; onCommit: (value: string) => void }>) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
+}: Readonly<{
+  value: string;
+  label: string;
+  type?: "text" | "number" | "date";
+  disabled?: boolean;
+  error?: (draft: string) => string | null;
+  onCommit: (value: string) => void;
+}>) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const hint = useId();
+  const shown = draft ?? value;
+  const problem = draft === null ? null : (error?.(draft) ?? null);
   const commit = () => {
-    if (draft !== value) onCommit(draft);
+    if (draft !== null && draft !== value && problem === null) onCommit(draft);
+    setDraft(null);
   };
-  return (
+  const input = (
     <input
       type={type}
       aria-label={label}
-      value={draft}
+      aria-invalid={problem === null ? undefined : true}
+      aria-describedby={problem === null ? undefined : hint}
+      value={shown}
       disabled={disabled}
       inputMode={type === "number" ? "decimal" : undefined}
       onChange={(event) => setDraft(event.target.value)}
@@ -91,12 +119,23 @@ function TextField({
         if (isImeEnter(event)) return;
         if (event.key === "Enter") {
           event.preventDefault();
-          commit();
+          if (problem === null) commit();
         }
-        if (event.key === "Escape") setDraft(value);
+        if (event.key === "Escape") setDraft(null);
       }}
       className={cn(FIELD, "w-full")}
     />
+  );
+  if (!error) return input;
+  return (
+    <span className="flex min-w-0 flex-1 flex-col">
+      {input}
+      {problem !== null && (
+        <span id={hint} className="px-1.5 text-xs text-destructive">
+          {problem}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -276,10 +315,19 @@ function TypeMenu({
   disabled,
   onType,
   onRemove,
-}: Readonly<{ property: NoteProperty; disabled: boolean; onType: (type: PropertyType) => void; onRemove: () => void }>) {
+  onRemoved,
+}: Readonly<{
+  property: NoteProperty;
+  disabled: boolean;
+  onType: (type: PropertyType) => void;
+  onRemove: () => void;
+  onRemoved: () => void;
+}>) {
   const { t } = useTranslation(["notes"]);
   const Icon = TYPE_ICONS[property.type];
   const typeLabel = t(($) => $.notes.kb.properties.types[property.type]);
+  const pending = useRef<PropertyType | null>(null);
+  const removed = useRef(false);
   if (disabled) {
     return (
       <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
@@ -290,15 +338,35 @@ function TypeMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        data-property-menu
         aria-label={t(($) => $.notes.kb.properties.type, { key: property.key, type: typeLabel })}
         className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent motion-reduce:transition-none"
       >
         <Icon aria-hidden className="size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44">
+      <DropdownMenuContent
+        align="start"
+        className="w-44"
+        onCloseAutoFocus={(event) => {
+          if (removed.current) {
+            removed.current = false;
+            event.preventDefault();
+            onRemoved();
+            return;
+          }
+          const type = pending.current;
+          pending.current = null;
+          if (type !== null) onType(type);
+        }}
+      >
         {!LIST_KEYS.has(property.key) && !property.readOnly && (
           <>
-            <DropdownMenuRadioGroup value={property.type} onValueChange={(type) => onType(type as PropertyType)}>
+            <DropdownMenuRadioGroup
+              value={property.type}
+              onValueChange={(type) => {
+                pending.current = type as PropertyType;
+              }}
+            >
               {PROPERTY_TYPES.map((type) => {
                 const TypeIcon = TYPE_ICONS[type];
                 return (
@@ -312,7 +380,13 @@ function TypeMenu({
             <DropdownMenuSeparator />
           </>
         )}
-        <DropdownMenuItem onSelect={onRemove} className="gap-2 text-xs text-destructive">
+        <DropdownMenuItem
+          onSelect={() => {
+            removed.current = true;
+            onRemove();
+          }}
+          className="gap-2 text-xs text-destructive"
+        >
           <Trash2 aria-hidden className="size-3.5" />
           {t(($) => $.notes.kb.properties.remove)}
         </DropdownMenuItem>
@@ -321,11 +395,35 @@ function TypeMenu({
   );
 }
 
-function KeyField({ name, disabled, onRename }: Readonly<{ name: string; disabled: boolean; onRename: (name: string) => void }>) {
+function KeyField({
+  name,
+  frontMatter,
+  disabled,
+  onRename,
+}: Readonly<{ name: string; frontMatter: string; disabled: boolean; onRename: (name: string) => void }>) {
   const { t } = useTranslation(["notes"]);
+  const taken = t(($) => $.notes.kb.properties.taken);
+  const problem = (draft: string) => {
+    const next = draft.trim();
+    return next === "" || next === name || canAddProperty(frontMatter, next) ? null : taken;
+  };
   return (
-    <TextField label={t(($) => $.notes.kb.properties.name, { key: name })} value={name} disabled={disabled} onCommit={(next) => onRename(next)} />
+    <TextField
+      label={t(($) => $.notes.kb.properties.name, { key: name })}
+      value={name}
+      disabled={disabled}
+      error={problem}
+      onCommit={(next) => {
+        if (next.trim() !== "") onRename(next);
+      }}
+    />
   );
+}
+
+interface PendingConversion {
+  property: NoteProperty;
+  type: PropertyType;
+  loss: "items" | "value";
 }
 
 function NewProperty({ frontMatter, onAdd, onCancel }: Readonly<{ frontMatter: string; onAdd: (key: string) => void; onCancel: () => void }>) {
@@ -375,15 +473,33 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
   const properties = useMemo(() => readProperties(frontMatter, known), [frontMatter, known]);
   const [open, setOpen] = useState(readOpen);
   const [adding, setAdding] = useState(false);
+  const [converting, setConverting] = useState<PendingConversion | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const refocus = useRef<HTMLElement | null>(null);
   const list = properties ?? [];
   const linkable = notes ?? [];
 
   const write = (update: (text: string) => string) => onChange(update);
+  const remove = (key: string) => {
+    refocus.current = focusAfterRemoving(listRef.current, key);
+    write((text) => removeProperty(text, key));
+  };
+  const restoreFocus = () => {
+    const target = refocus.current;
+    refocus.current = null;
+    if (target?.isConnected) target.focus();
+  };
   const commit = (key: string, value: PropertyValue) => write((text) => setProperty(text, key, value));
-  const changeType = (property: NoteProperty, type: PropertyType) => {
+  const applyType = (property: NoteProperty, type: PropertyType) => {
     savePropertyType(property.key, type);
     setKnown(readPropertyTypes());
     commit(property.key, convertValue(property.value, type));
+  };
+  const changeType = (property: NoteProperty, type: PropertyType) => {
+    if (type === property.type) return;
+    const loss = conversionLoss(property.value, type);
+    if (loss === null) applyType(property, type);
+    else setConverting({ property, type, loss });
   };
   const add = (key: string) => {
     setAdding(false);
@@ -444,7 +560,7 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
         <span className="tabular-nums">{list.length}</span>
       </button>
       {open && (
-        <ul className="mt-1 flex flex-col gap-0.5">
+        <ul ref={listRef} className="mt-1 flex flex-col gap-0.5">
           {list.map((property) => (
             <li key={property.key} data-property={property.key} className="grid grid-cols-[minmax(7rem,11rem)_1fr] items-start gap-1">
               <div className="flex min-w-0 items-center">
@@ -452,9 +568,15 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
                   property={property}
                   disabled={!editable}
                   onType={(type) => changeType(property, type)}
-                  onRemove={() => write((text) => removeProperty(text, property.key))}
+                  onRemove={() => remove(property.key)}
+                  onRemoved={restoreFocus}
                 />
-                <KeyField name={property.key} disabled={!editable} onRename={(name) => write((text) => renameProperty(text, property.key, name))} />
+                <KeyField
+                  name={property.key}
+                  frontMatter={frontMatter}
+                  disabled={!editable}
+                  onRename={(name) => write((text) => renameProperty(text, property.key, name))}
+                />
               </div>
               <ValueField
                 property={property}
@@ -484,6 +606,26 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
             </li>
           )}
         </ul>
+      )}
+      {converting && (
+        <ConfirmationDialog
+          open
+          title={t(($) => $.notes.kb.properties.convert.title, {
+            key: converting.property.key,
+            type: t(($) => $.notes.kb.properties.types[converting.type]),
+          })}
+          description={
+            converting.loss === "items"
+              ? t(($) => $.notes.kb.properties.convert.list)
+              : t(($) => $.notes.kb.properties.convert.value)
+          }
+          confirmLabel={t(($) => $.notes.kb.properties.convert.confirm)}
+          onCancel={() => setConverting(null)}
+          onConfirm={() => {
+            setConverting(null);
+            applyType(converting.property, converting.type);
+          }}
+        />
       )}
     </section>
   );

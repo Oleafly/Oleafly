@@ -32,6 +32,7 @@ import {
   type Segment,
   type SuggestContext,
 } from "@oleafly/search-query";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
@@ -436,7 +437,7 @@ export function QuerySearch<T>({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.nativeEvent.isComposing) return;
+    if (isImeEnter(event)) return;
     const menuTakes = open && (MENU_KEYS.has(event.key) || (event.key === "Enter" && activeIndex >= 0));
     if (!menuTakes) onOuterKeyDown?.(event);
     if (event.defaultPrevented) return;

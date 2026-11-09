@@ -61,6 +61,7 @@ export interface NoteLiveEditor {
   setPeerCarets(carets: readonly NotePeerCaret[], replace?: ReadonlySet<string>): void;
   revealBlock(index: number): void;
   onCaret(listener: () => void): () => void;
+  batch(run: () => void): void;
 }
 
 export type NoteLiveEndReason = "released" | "dropped";
@@ -126,10 +127,12 @@ export function onNoteLiveHoldsChange(listener: () => void): () => void {
 
 export interface NoteLiveBindRequest {
   noteId: string;
+  noticeId?: string;
   path: string;
   session: LiveNoteSession;
   editor: NoteLiveEditor;
   baseline: { text: string; serialized: string };
+  onOpen?(): void;
   onEnd(state: NoteHandBack): void;
 }
 
@@ -194,8 +197,8 @@ export function collabDocumentSession(path: string): DocumentSession | null {
   return port?.documentSession(path) ?? null;
 }
 
-export function collabHoldsDocument(path: string): boolean {
-  return (port?.holds?.(path) ?? false) || [...heldNotePaths.values()].some((paths) => paths.has(path));
+export function collabHoldsDocument(path: string, projectId: string | null): boolean {
+  return (port?.holds?.(path) ?? false) || noteLiveHolds(projectId, path);
 }
 
 export async function collabCompileBarrier(projectId: string | null): Promise<void> {

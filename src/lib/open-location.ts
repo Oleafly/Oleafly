@@ -1,6 +1,8 @@
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
+import { isEditorNoteFile, projectNoteKey } from "@/lib/project-notes";
 import { isBinaryProjectPath } from "@/lib/project-paths";
 import { useFilesStore, type TabOpener } from "@/store/files";
+import { editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
 import { useSettingsStore } from "@/store/settings";
 import { useVisualModeStore } from "@/store/visual-mode";
 
@@ -128,6 +130,32 @@ async function revealInCodeEditor(
   });
 }
 
+function opensAsNote(files: ReturnType<typeof useFilesStore.getState>, path: string): boolean {
+  if (!useSettingsStore.getState().notes) return false;
+  return (
+    isEditorNoteFile(path, files.files[path]?.content, { notes: true, projectKind: files.projectKind }) &&
+    !editsAsMarkdown(useNoteTabsStore.getState(), files.projectId, path)
+  );
+}
+
+function revealInNoteEditor(
+  projectId: string,
+  target: ProjectLocation,
+  options: OpenLocationOptions,
+  abort: AbortController,
+  current: StillCurrent,
+): Promise<boolean> {
+  return whileCurrent(abort, current, async () => {
+    const notes = await import("@/components/notes/note-reveal");
+    const source = useFilesStore.getState().files[target.path]?.content;
+    if (!current() || source === undefined) return false;
+    return notes.revealNoteLocation(projectNoteKey(projectId, target.path), source, target, abort.signal, {
+      select: !options.keepSelection,
+      focus: !options.keepSelection && !options.keepFocus,
+    });
+  });
+}
+
 function openTab(
   files: ReturnType<typeof useFilesStore.getState>,
   path: string,
@@ -186,6 +214,9 @@ async function openLocation(
     !abort.signal.aborted && state.projectId === projectId && state.activePath === target.path;
   if (!current()) return false;
   if (isBinaryProjectPath(target.path)) return true;
+  if (opensAsNote(useFilesStore.getState(), target.path)) {
+    return revealInNoteEditor(projectId, target, options, abort, current);
+  }
   const visualSource = options.showEditor !== false && VISUAL_SOURCE.test(target.path);
   if (visualSource && (await showInVisualMode(target, options, abort, current))) return true;
   return revealInCodeEditor(target, options, abort, current);

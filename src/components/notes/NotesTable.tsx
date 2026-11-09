@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Columns3 } from "lucide-react";
 import { memo, type RefObject, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckBadge } from "@/components/ui/check-badge";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,8 @@ import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { compareText, formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { isSelectionModifier } from "@/store/library-selection";
+import { RowCornerButtons, useNoteMenus } from "./NoteCard";
+import { CONTEXT_MENU_KIT, ConflictMark, hasNoteMenu, type NoteActions, NoteRenameInput } from "./note-actions";
 import { NoteChip } from "./note-icons";
 import {
   DEFAULT_TABLE_SORT,
@@ -23,6 +26,7 @@ import {
   useTableColumns,
   useTableSort,
 } from "./note-home-prefs";
+import { LIST_KEYS, MANAGED_KEYS } from "./note-properties";
 import { ProjectDot } from "./project-color";
 import type { NoteItem } from "./types";
 import { filterByTag } from "./vault-store";
@@ -32,7 +36,7 @@ export type BaseColumn = "title" | "tags" | "status" | "project" | "edited";
 export const BASE_COLUMNS: readonly BaseColumn[] = ["title", "tags", "status", "project", "edited"];
 export const PROPERTY_PREFIX = "prop:";
 
-const HIDDEN_KEYS = new Set(["title", "kind", "id", "icon", "color", "agent", "tags", "status", "aliases", "template"]);
+const HIDDEN_KEYS: ReadonlySet<string> = new Set([...MANAGED_KEYS, ...LIST_KEYS, "status", "template"]);
 
 type CellValue = string | number | null;
 
@@ -94,6 +98,7 @@ interface NotesTableProps {
   onOpenNote: (id: string) => void;
   onOpenNoteInNewTab?: (id: string) => void;
   onTag?: (tag: string) => void;
+  actionsFor?: (note: NoteItem) => NoteActions;
   scrollRef?: RefObject<HTMLElement | null>;
 }
 
@@ -113,7 +118,10 @@ interface TableRowProps {
   onOpenNote: (id: string) => void;
   onOpenNoteInNewTab?: (id: string) => void;
   onTag: (tag: string) => void;
+  actionsFor?: (note: NoteItem) => NoteActions;
 }
+
+const NO_ACTIONS: NoteActions = {};
 
 const TableRow = memo(function TableRow({
   note,
@@ -129,27 +137,40 @@ const TableRow = memo(function TableRow({
   onOpenNote,
   onOpenNoteInNewTab,
   onTag,
+  actionsFor,
 }: Readonly<TableRowProps>) {
   const { t } = useTranslation(["notes"]);
-  return (
+  const actions = actionsFor ? actionsFor(note) : NO_ACTIONS;
+  const menus = useNoteMenus(note, actions);
+  const withMenu = hasNoteMenu(actions);
+  const row = (
     <tr
       {...{ [ROW_WINDOW_ITEM]: "" }}
       aria-rowindex={index}
       data-note-table-row={note.id}
-      className="border-b border-foreground/[0.045] hover:bg-foreground/[0.025]"
+      data-menu-open={menus.open ? "true" : "false"}
+      className="group/row border-b border-foreground/[0.045] hover:bg-foreground/[0.025] data-[menu-open=true]:bg-foreground/[0.025]"
     >
       <td className="max-w-0 py-1.5 pl-1 pr-3">
-        <button
-          type="button"
-          onClick={(event) => {
-            if (isSelectionModifier(event) && onOpenNoteInNewTab) onOpenNoteInNewTab(note.id);
-            else onOpenNote(note.id);
-          }}
-          className="flex w-full min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-foreground/[0.045] focus-visible:bg-foreground/[0.06] motion-reduce:transition-none"
-        >
-          <NoteChip icon={icon} color={note.color} className="size-5 rounded" />
-          <span className="truncate font-medium">{note.title}</span>
-        </button>
+        {menus.renaming ? (
+          <span className="flex min-w-0 items-center gap-2 px-1 py-0.5">
+            <NoteChip icon={icon} color={note.color} className="size-5 rounded" />
+            <NoteRenameInput title={note.title} className="h-6 rounded-md px-1 py-0 font-medium" onDone={menus.finishRename} />
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={(event) => {
+              if (isSelectionModifier(event) && onOpenNoteInNewTab) onOpenNoteInNewTab(note.id);
+              else onOpenNote(note.id);
+            }}
+            className="flex w-full min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-foreground/[0.045] focus-visible:bg-foreground/[0.06] motion-reduce:transition-none"
+          >
+            <NoteChip icon={icon} color={note.color} className="size-5 rounded" />
+            <span className="truncate font-medium">{note.title}</span>
+            {actions.conflict && <ConflictMark />}
+          </button>
+        )}
       </td>
       <td className="px-3 py-1.5">
         <span className="flex max-w-[16rem] gap-1 overflow-hidden">
@@ -181,8 +202,21 @@ const TableRow = memo(function TableRow({
           {formatValue(note.properties?.[key], yes, no)}
         </td>
       ))}
-      <td />
+      <td className="relative">
+        {withMenu && <RowCornerButtons favorite={actions.favorite} menus={menus} className="right-1 top-1/2 -translate-y-1/2" />}
+      </td>
     </tr>
+  );
+  if (!withMenu) return row;
+  return (
+    <ContextMenu onOpenChange={menus.setContextOpen}>
+      <ContextMenuTrigger asChild disabled={menus.renaming}>
+        {row}
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52" onCloseAutoFocus={menus.runPending}>
+        {menus.items(CONTEXT_MENU_KIT)}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 
@@ -231,6 +265,7 @@ export function NotesTable({
   onOpenNote,
   onOpenNoteInNewTab,
   onTag = filterByTag,
+  actionsFor,
   scrollRef,
 }: Readonly<NotesTableProps>) {
   const { t } = useTranslation(["notes"]);
@@ -266,7 +301,7 @@ export function NotesTable({
               {extra.map((key) => (
                 <HeaderCell key={key} label={key} column={`${PROPERTY_PREFIX}${key}`} sort={sort} />
               ))}
-              <th scope="col" className="w-10 px-1 text-right font-normal">
+              <th scope="col" className="w-16 px-1 text-right font-normal">
                 <DropdownMenu>
                   <Tooltip label={t(($) => $.notes.vault.table.addColumn)} side="bottom">
                     <DropdownMenuTrigger asChild>
@@ -322,6 +357,7 @@ export function NotesTable({
                 onOpenNote={onOpenNote}
                 onOpenNoteInNewTab={onOpenNoteInNewTab}
                 onTag={onTag}
+                actionsFor={actionsFor}
               />
             ))}
             {shown.paddingBottom > 0 && <SpacerRow height={shown.paddingBottom} span={span} />}

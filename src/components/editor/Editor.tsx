@@ -1,5 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HEAVY, lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
@@ -23,11 +23,13 @@ import { useFilesStore } from "@/store/files";
 import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
 import { inWidgetControl } from "@/lib/field-history";
 import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
+import { NoteMarkdownBanner } from "./NoteMarkdownBanner";
 import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { activeNoteTab, editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
-import { declaresNoteFile } from "@/lib/project-notes";
+import { isEditorNoteFile } from "@/lib/project-notes";
+import { fileNoteView, type NoteTabView, personalNoteView, useKeptNoteTabs } from "./kept-note-tabs";
 import { loadNamespace } from "@/i18n";
 import { useZenStore } from "@/store/zen";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
@@ -254,13 +256,14 @@ export function Editor() {
   const asMarkdown = useNoteTabsStore((s) => editsAsMarkdown(s, projectId, activePath));
   const noteFile = useFilesStore(
     (s) =>
-      notesOn &&
-      isMarkdownFile &&
       !asMarkdown &&
-      projectKind !== "note" &&
       s.activePath !== null &&
-      declaresNoteFile(s.files[s.activePath]?.content),
+      isEditorNoteFile(s.activePath, s.files[s.activePath]?.content, { notes: notesOn, projectKind: s.projectKind }),
   );
+  let shownNote: NoteTabView | null = null;
+  if (noteTab && projectId) shownNote = personalNoteView(projectId, noteTab);
+  else if (!diffFocused && noteFile && projectId && activePath) shownNote = fileNoteView(projectId, activePath);
+  const keptNotes = useKeptNoteTabs(shownNote, projectId, notesOn);
   const toolbarProfile = formattingProfileForPath(engine, engineLoaded, activePath);
   const showLatexToolbar = !zen && toolbarProfile === "latex";
   const markdownIsEngineSource =
@@ -313,6 +316,7 @@ export function Editor() {
         </output>
       ) : null}
       <ChangedOnDiskBanner />
+      <NoteMarkdownBanner />
       {linkedFile && !managedFile ? (
         <output
           data-testid="linked-file-notice"
@@ -451,18 +455,22 @@ export function Editor() {
     return renderTextArea();
   };
 
-  const renderNote = (note: ReactNode) => (
-    <ErrorBoundary surface="editor" resetKey={noteTab ?? activePath}>
-      <Suspense fallback={<LoadingState className="h-full justify-center" label={t(($) => $.common.state.loading)} />}>
-        {note}
-      </Suspense>
-    </ErrorBoundary>
+  const renderNote = (view: NoteTabView, shown: boolean) => (
+    <div key={view.key} hidden={!shown} className={shown ? "flex min-h-0 flex-1 flex-col" : undefined}>
+      <ErrorBoundary surface="editor" resetKey={`${view.key}\u0000${shown}`}>
+        <Suspense fallback={<LoadingState className="h-full justify-center" label={t(($) => $.common.state.loading)} />}>
+          {view.kind === "personal" ? (
+            <PersonalNoteTab projectId={view.projectId} noteId={view.noteId} shown={shown} />
+          ) : (
+            <ProjectNoteTab projectId={view.projectId} path={view.path} shown={shown} />
+          )}
+        </Suspense>
+      </ErrorBoundary>
+    </div>
   );
 
   const renderBody = () => {
-    if (noteTab && projectId) {
-      return renderNote(<PersonalNoteTab key={noteTab} projectId={projectId} noteId={noteTab} />);
-    }
+    if (shownNote) return null;
     if (diffFocused) {
       return (
         <ErrorBoundary
@@ -484,9 +492,6 @@ export function Editor() {
           <p className="text-xs">{t(($) => $.editor.shell.noFileOpenHint)}</p>
         </div>
       );
-    }
-    if (noteFile && projectId && activePath) {
-      return renderNote(<ProjectNoteTab key={`${projectId}:${activePath}`} projectId={projectId} path={activePath} />);
     }
     return (
       <>
@@ -561,6 +566,7 @@ export function Editor() {
         />
       ) : null}
       {renderBody()}
+      {keptNotes.map(({ view, shown }) => renderNote(view, shown))}
     </div>
   );
 }

@@ -1,4 +1,6 @@
-export const DRAG_THRESHOLD_PX = 6;
+import { trackPointerDrag, type DragPoint } from "@oleafly/workspace/drag";
+
+export { DRAG_THRESHOLD_PX, swallowNextClick } from "@oleafly/workspace/drag";
 
 export type ReorderAxis = "x" | "y";
 
@@ -9,67 +11,20 @@ export interface ReorderGesture<T> {
   land(drop: T): void;
 }
 
-interface Point {
-  readonly clientX: number;
-  readonly clientY: number;
-}
-
-function along(point: Point, axis: ReorderAxis): number {
-  return axis === "x" ? point.clientX : point.clientY;
-}
-
-export function swallowNextClick() {
-  const swallow = (event: MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-  window.addEventListener("click", swallow, { capture: true, once: true });
-  window.setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
-}
-
-export function trackReorderDrag<T>(press: Point, gesture: ReorderGesture<T>): () => void {
-  const origin = along(press, gesture.axis);
-  let latest: T | null = null;
-  let stopped = false;
-  const move = (next: PointerEvent) => {
-    const position = along(next, gesture.axis);
-    if (latest === null && Math.abs(position - origin) < DRAG_THRESHOLD_PX) return;
-    latest = gesture.locate(position);
-    gesture.show(latest);
-  };
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", finish);
-    window.removeEventListener("pointercancel", cancel);
-    window.removeEventListener("blur", cancel);
-    window.removeEventListener("keydown", onEscape, true);
-    gesture.show(null);
-  };
-  const finish = () => {
-    const landed = latest;
-    stop();
-    if (landed === null) return;
-    swallowNextClick();
-    gesture.land(landed);
-  };
-  const cancel = () => {
-    if (latest !== null) swallowNextClick();
-    stop();
-  };
-  const onEscape = (key: KeyboardEvent) => {
-    if (key.key !== "Escape" || latest === null) return;
-    key.preventDefault();
-    key.stopPropagation();
-    cancel();
-  };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", finish);
-  window.addEventListener("pointercancel", cancel);
-  window.addEventListener("blur", cancel);
-  window.addEventListener("keydown", onEscape, true);
-  return stop;
+export function trackReorderDrag<T>(press: DragPoint, gesture: ReorderGesture<T>): () => void {
+  let latest: { drop: T } | null = null;
+  return trackPointerDrag(press, {
+    axis: gesture.axis,
+    move(point) {
+      latest = { drop: gesture.locate(gesture.axis === "x" ? point.clientX : point.clientY) };
+      gesture.show(latest.drop);
+    },
+    end(dropped) {
+      const landed = latest;
+      gesture.show(null);
+      if (dropped && landed) gesture.land(landed.drop);
+    },
+  });
 }
 
 export function slotAlong(rects: readonly DOMRect[], position: number, axis: ReorderAxis): number {

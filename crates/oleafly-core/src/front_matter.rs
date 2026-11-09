@@ -80,30 +80,41 @@ pub fn value_of(line: &str) -> &str {
     line.split_once(':').map_or("", |(_, rest)| rest.trim())
 }
 
-fn double_quoted(raw: &str) -> Option<String> {
+fn double_quoted(raw: &str) -> Option<(String, usize)> {
     let bytes = raw.as_bytes();
     let mut index = 1;
     while index < bytes.len() && bytes[index] != b'"' {
         index += if bytes[index] == b'\\' { 2 } else { 1 };
     }
-    serde_json::from_str::<String>(raw.get(..=index)?).ok()
+    let value = serde_json::from_str::<String>(raw.get(..=index)?).ok()?;
+    Some((value, index + 1))
 }
 
-fn single_quoted(raw: &str) -> Option<String> {
+fn single_quoted(raw: &str) -> Option<(String, usize)> {
     let mut value = String::new();
-    let mut chars = raw[1..].chars().peekable();
-    while let Some(c) = chars.next() {
+    let mut chars = raw.char_indices().skip(1).peekable();
+    while let Some((at, c)) = chars.next() {
         if c == '\'' {
-            if chars.peek() == Some(&'\'') {
+            if chars.peek().map(|(_, next)| *next) == Some('\'') {
                 chars.next();
                 value.push('\'');
                 continue;
             }
-            return Some(value);
+            return Some((value, at + 1));
         }
         value.push(c);
     }
     None
+}
+
+pub fn quoted_scalar(raw: &str) -> Option<(String, usize)> {
+    if raw.starts_with('"') {
+        double_quoted(raw)
+    } else if raw.starts_with('\'') {
+        single_quoted(raw)
+    } else {
+        None
+    }
 }
 
 fn without_comment(raw: &str) -> &str {
@@ -119,10 +130,8 @@ fn without_comment(raw: &str) -> &str {
 
 pub fn scalar_value(raw: &str) -> Option<String> {
     let raw = raw.trim();
-    let value = if raw.starts_with('"') {
-        double_quoted(raw)?
-    } else if raw.starts_with('\'') {
-        single_quoted(raw)?
+    let value = if raw.starts_with(['"', '\'']) {
+        quoted_scalar(raw)?.0
     } else if raw.starts_with('#') {
         return None;
     } else {
@@ -141,7 +150,7 @@ pub fn scalar(lines: &[&str], key: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{key_of, scalar, scalar_value, split, value_of};
+    use super::{key_of, quoted_scalar, scalar, scalar_value, split, value_of};
 
     fn read(text: &str, key: &str) -> Option<String> {
         split(text)?.scalar(key)
@@ -235,5 +244,16 @@ mod tests {
             Some("Paper: draft")
         );
         assert_eq!(scalar_value("  note  ").as_deref(), Some("note"));
+    }
+
+    #[test]
+    fn quoted_scalars_report_where_they_end() {
+        assert_eq!(quoted_scalar("\"a, b\", c"), Some(("a, b".to_string(), 6)));
+        assert_eq!(quoted_scalar("'it''s']"), Some(("it's".to_string(), 7)));
+        assert_eq!(quoted_scalar("'é' x"), Some(("é".to_string(), 4)));
+        assert_eq!(quoted_scalar("\"x\\\"y\" z"), Some(("x\"y".to_string(), 6)));
+        assert_eq!(quoted_scalar("plain"), None);
+        assert_eq!(quoted_scalar("'open"), None);
+        assert_eq!(quoted_scalar("\"open"), None);
     }
 }

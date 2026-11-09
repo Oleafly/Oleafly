@@ -10,9 +10,9 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { trackPointerDrag } from "@oleafly/workspace/drag";
 import { contains, nearestEdge, zoneAt, zoneRect, type Rect } from "@oleafly/workspace/geometry";
 import { PANES, usePaneLayoutStore, type DropTarget, type PaneId } from "@/store/pane-layout";
-import { DRAG_THRESHOLD_PX, swallowNextClick } from "./reorder-drag";
 
 const DROP_INSET_PX = 4;
 const OUTER_EDGE_PX = 24;
@@ -118,8 +118,6 @@ export function PaneReorderProvider({
   visiblePanes: readonly PaneId[];
   children: ReactNode;
 }>) {
-  const visibleRef = useRef(visiblePanes);
-  visibleRef.current = visiblePanes;
   const cleanup = useRef<(() => void) | null>(null);
   const [drag, setDrag] = useState<{ drop: PaneDrop | null } | null>(null);
 
@@ -128,10 +126,9 @@ export function PaneReorderProvider({
   const visibleKey = visiblePanes.join("|");
 
   const reorder = useMemo<PaneReorder>(() => {
-    void visibleKey;
+    const visible = visibleKey === "" ? [] : visibleKey.split("|");
     return {
       movable(pane) {
-        const visible = visibleRef.current;
         return visible.length > 1 && visible.includes(pane);
       },
       begin(pane, bar, event) {
@@ -139,51 +136,22 @@ export function PaneReorderProvider({
         if (!root) return;
         cleanup.current?.();
         event.preventDefault();
-        const startX = event.clientX;
-        const startY = event.clientY;
-        let started = false;
         let latest: PaneDrop | null = null;
-        const move = (next: PointerEvent) => {
-          if (!started && Math.hypot(next.clientX - startX, next.clientY - startY) < DRAG_THRESHOLD_PX) return;
-          started = true;
-          bar.dataset.paneDragging = "true";
-          latest = dropAt(root, pane, next.clientX, next.clientY);
-          setDrag({ drop: latest });
-        };
-        const stop = () => {
-          window.removeEventListener("pointermove", move);
-          window.removeEventListener("pointerup", finish);
-          window.removeEventListener("pointercancel", cancel);
-          window.removeEventListener("blur", cancel);
-          window.removeEventListener("keydown", onEscape, true);
-          delete bar.dataset.paneDragging;
-          cleanup.current = null;
-          setDrag(null);
-        };
-        const finish = () => {
-          const landed = latest;
-          const dragged = started;
-          stop();
-          if (!dragged) return;
-          swallowNextClick();
-          if (landed) usePaneLayoutStore.getState().move(pane, landed.target);
-        };
-        const cancel = () => {
-          if (started) swallowNextClick();
-          stop();
-        };
-        const onEscape = (key: KeyboardEvent) => {
-          if (key.key !== "Escape" || !started) return;
-          key.preventDefault();
-          key.stopPropagation();
-          cancel();
-        };
-        window.addEventListener("pointermove", move);
-        window.addEventListener("pointerup", finish);
-        window.addEventListener("pointercancel", cancel);
-        window.addEventListener("blur", cancel);
-        window.addEventListener("keydown", onEscape, true);
-        cleanup.current = stop;
+        cleanup.current = trackPointerDrag(event, {
+          start() {
+            bar.dataset.paneDragging = "true";
+          },
+          move(point) {
+            latest = dropAt(root, pane, point.clientX, point.clientY);
+            setDrag({ drop: latest });
+          },
+          end(dropped) {
+            delete bar.dataset.paneDragging;
+            cleanup.current = null;
+            setDrag(null);
+            if (dropped && latest) usePaneLayoutStore.getState().move(pane, latest.target);
+          },
+        });
       },
     };
   }, [rootRef, visibleKey]);

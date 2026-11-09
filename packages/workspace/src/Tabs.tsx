@@ -41,6 +41,10 @@ export interface TabProps {
   onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;
 }
 
+function withTooltip(renderTooltip: RenderTooltip | undefined, label: string, trigger: ReactNode, className?: string): ReactNode {
+  return renderTooltip ? renderTooltip(label, trigger, { side: "bottom", className }) : trigger;
+}
+
 function Description({ id, text }: Readonly<{ id: string; text: string | undefined }>) {
   return text === undefined ? null : (
     <span id={id} className="sr-only">
@@ -59,12 +63,49 @@ export function Tab({
   controls,
   describedBy,
   closeLabel,
+  renderTooltip,
   onPointerDown,
   onClick,
   onClose,
   onKeyDown,
 }: Readonly<TabProps>) {
   const description = badgeDescription(info);
+  const button: ReactNode = (
+    <button
+      type="button"
+      role="tab"
+      id={tabId}
+      aria-selected={selected}
+      aria-controls={controls}
+      aria-describedby={description === undefined ? undefined : describedBy}
+      tabIndex={selected ? 0 : -1}
+      className="flex h-full min-w-0 items-center gap-1.5 pl-3 pr-1 focus-visible:bg-accent"
+      onPointerDown={onPointerDown}
+      onClick={onClick}
+      onAuxClick={(event) => {
+        if (event.button === 1 && closable) onClose();
+      }}
+      onKeyDown={onKeyDown}
+    >
+      {info.icon}
+      <span className="truncate">{info.title}</span>
+      {badgeShown(info.badge) && <BadgeMark badge={info.badge as Badge} corner={false} />}
+    </button>
+  );
+  const close: ReactNode = (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-label={closeLabel}
+      className={[
+        "mr-1 flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent",
+        selected ? "" : "opacity-0 group-hover/tab:opacity-100",
+      ].join(" ")}
+      onClick={onClose}
+    >
+      <X className="size-3" />
+    </button>
+  );
   return (
     <div
       data-tab-view={id}
@@ -74,43 +115,9 @@ export function Tab({
         dragging ? "opacity-50" : "",
       ].join(" ")}
     >
-      <button
-        type="button"
-        role="tab"
-        id={tabId}
-        aria-selected={selected}
-        aria-controls={controls}
-        aria-describedby={description === undefined ? undefined : describedBy}
-        tabIndex={selected ? 0 : -1}
-        className="flex h-full min-w-0 items-center gap-1.5 pl-3 pr-1 focus-visible:bg-accent"
-        onPointerDown={onPointerDown}
-        onClick={onClick}
-        onAuxClick={(event) => {
-          if (event.button === 1 && closable) onClose();
-        }}
-        onKeyDown={onKeyDown}
-      >
-        {info.icon}
-        <span className="truncate">{info.title}</span>
-        {badgeShown(info.badge) && <BadgeMark badge={info.badge as Badge} corner={false} />}
-      </button>
+      {withTooltip(renderTooltip, info.title, button, "flex h-full min-w-0")}
       <Description id={describedBy} text={description} />
-      {closable ? (
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label={closeLabel}
-          className={[
-            "mr-1 flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent",
-            selected ? "" : "opacity-0 group-hover/tab:opacity-100",
-          ].join(" ")}
-          onClick={onClose}
-        >
-          <X className="size-3" />
-        </button>
-      ) : (
-        <span className="w-2" />
-      )}
+      {closable ? withTooltip(renderTooltip, closeLabel, close, "shrink-0") : <span className="w-2" />}
     </div>
   );
 }
@@ -144,7 +151,6 @@ export function IconTab({
       aria-selected={selected}
       aria-controls={controls}
       aria-describedby={description === undefined ? undefined : describedBy}
-      title={renderTooltip ? undefined : info.title}
       tabIndex={selected ? 0 : -1}
       className={[
         "relative flex size-7 items-center justify-center rounded-md transition-colors focus-visible:bg-accent motion-reduce:transition-none",
@@ -168,7 +174,7 @@ export function IconTab({
   );
   return (
     <div data-tab-view={id} className="relative flex h-full shrink-0 items-center">
-      {renderTooltip ? renderTooltip(info.title, button, { side: "bottom" }) : button}
+      {withTooltip(renderTooltip, info.title, button)}
       <Description id={describedBy} text={description} />
     </div>
   );

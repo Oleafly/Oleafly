@@ -13,6 +13,7 @@ import {
   NoteSelection,
   noteClipboardText,
   SELECTING,
+  SELECTION_ROOT,
   STRAY_SELECTION,
   selectingAttributes,
   selectsAsWhole,
@@ -134,6 +135,22 @@ describe("blocks that select as a whole", () => {
     expect(selectingAttributes(editor.state)).toEqual({ [SELECTING]: "" });
     select(editor, "A step", "A step");
     expect(editor.view.dom.hasAttribute(SELECTING)).toBe(false);
+  });
+
+  it("makes only the blocks a selection touches their own selection roots, so selecting never restyles the whole note", () => {
+    const editor = build();
+    const roots = () =>
+      [...editor.view.dom.querySelectorAll<HTMLElement>(`.${SELECTION_ROOT}`)].map((element) => element.textContent?.trim());
+    expect(roots()).toEqual([]);
+    select(editor, "Open task", "A --> B", 2);
+    expect(roots()).toEqual(["Open task", "Plain item", "A --> B"]);
+    expect([...editor.view.dom.querySelectorAll(`.${SELECTION_ROOT}`)].map((element) => element.tagName)).toEqual(["LI", "LI", "PRE"]);
+    select(editor, "Last", "line");
+    expect(roots()).toEqual([]);
+    editor.view.dispatch(editor.state.tr.setSelection(new AllSelection(editor.state.doc)));
+    expect(roots()).toEqual(["Open task", "Plain item", "A --> B", 'print("hi")']);
+    select(editor, "A step", "A step");
+    expect(roots()).toEqual([]);
   });
 
   it("marks only the blocks a range fully covers", () => {
@@ -280,6 +297,26 @@ describe("selections that leave the note text", () => {
     document.dispatchEvent(new Event("selectionchange"));
     expect(dom.hasAttribute(STRAY_SELECTION)).toBe(true);
     outside.remove();
+  });
+
+  it("updates every open editor from one shared page listener", () => {
+    const first = build("First.");
+    const second = build("Second.");
+    const add = vi.spyOn(document, "addEventListener");
+    const remove = vi.spyOn(document, "removeEventListener");
+    const extra = watchStraySelection(second.view);
+    expect(add.mock.calls.some(([name]) => name === "selectionchange")).toBe(false);
+    selectNode(first.view.dom.querySelector("p")?.firstChild as Node);
+    expect(first.view.dom.hasAttribute(STRAY_SELECTION)).toBe(false);
+    expect(second.view.dom.hasAttribute(STRAY_SELECTION)).toBe(true);
+    selectNode(second.view.dom.querySelector("p")?.firstChild as Node);
+    expect(first.view.dom.hasAttribute(STRAY_SELECTION)).toBe(true);
+    extra.destroy();
+    for (const editor of editors.splice(0)) {
+      editor.view.dom.parentElement?.remove();
+      editor.destroy();
+    }
+    expect(remove.mock.calls.filter(([name, listener]) => name === "selectionchange" && typeof listener === "function" && listener.name === "syncStraySelections")).toHaveLength(1);
   });
 
   it("stops watching and clears the flag when the view goes away", () => {

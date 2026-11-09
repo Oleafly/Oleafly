@@ -16,8 +16,10 @@ import { openNotes } from "@/features/open-tool";
 import { useCollabProjectShared } from "@/lib/collab-live-bridge";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
-import { deleteProjectEntry, projectDeleteQuestion } from "@/lib/project-file-delete";
+import { deleteProjectEntry } from "@/lib/project-file-delete";
 import { noteHeads } from "@/lib/tauri";
+import { notifyError, toast } from "@/lib/toast";
+import { isWindows } from "@/lib/utils";
 import { i18n } from "@/i18n";
 import { confirmAction } from "@/store/confirm-dialog";
 import { useFilesStore } from "@/store/files";
@@ -25,7 +27,7 @@ import { useHomeViewStore } from "@/store/home-view";
 import { useNoteActions } from "./note-actions";
 import { NoteChip } from "./note-icons";
 import { useNoteActionsData } from "./note-tab-data";
-import { NotesDataProvider } from "./notes-data";
+import { NotesDataProvider, useNotesData } from "./notes-data";
 import {
   copyProjectNoteToMine,
   createProjectNoteFile,
@@ -210,7 +212,11 @@ function NoteTitleField({
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => setTitle(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === "Enter" && !isImeEnter(event)) {
+          if (isImeEnter(event)) {
+            if (event.key === "Escape") event.stopPropagation();
+            return;
+          }
+          if (event.key === "Enter") {
             event.preventDefault();
             submit();
           } else if (event.key === "Escape") {
@@ -241,13 +247,27 @@ function personalNoteItem(note: ProjectNote, projectId: string): NoteItem {
   };
 }
 
-async function deleteProjectNote(path: string, title: string): Promise<void> {
-  const openedInPlace = useFilesStore.getState().manifestHome !== "library";
-  const confirmed = await confirmAction({
-    message: projectDeleteQuestion(title, openedInPlace),
-    confirmLabel: i18n.t(($) => $.common.actions.delete),
-    destructive: true,
-  });
+function deleteLabel(trashed: boolean): string {
+  if (!trashed) return i18n.t(($) => $.common.actions.delete);
+  return isWindows ? i18n.t(($) => $.notes.projectNotes.trashWindows) : i18n.t(($) => $.notes.projectNotes.trash);
+}
+
+function deleteQuestion(title: string, trashed: boolean): { title: string; message: string } {
+  const name = { name: title };
+  if (!trashed) {
+    return { title: i18n.t(($) => $.notes.projectNotes.deleteTitle, name), message: i18n.t(($) => $.notes.projectNotes.deleteMessage) };
+  }
+  if (isWindows) {
+    return {
+      title: i18n.t(($) => $.notes.projectNotes.trashTitleWindows, name),
+      message: i18n.t(($) => $.notes.projectNotes.trashMessageWindows),
+    };
+  }
+  return { title: i18n.t(($) => $.notes.projectNotes.trashTitle, name), message: i18n.t(($) => $.notes.projectNotes.trashMessage) };
+}
+
+async function deleteProjectNote(path: string, title: string, trashed: boolean): Promise<void> {
+  const confirmed = await confirmAction({ ...deleteQuestion(title, trashed), confirmLabel: deleteLabel(trashed), destructive: true });
   if (confirmed) await deleteProjectEntry(path);
 }
 
@@ -302,12 +322,14 @@ function ProjectNotesList() {
     Boolean(state.projects.find((project) => project.id === state.projectId)?.shared),
   );
   const liveShared = useCollabProjectShared(projectId);
+  const trashed = useFilesStore((state) => state.manifestHome !== "library");
   const notesOpen = useHomeViewStore((state) => state.page === "notes");
   const [query, setQuery] = useState("");
   const [creatingFile, setCreatingFile] = useState(false);
   const [renaming, setRenaming] = useState<{ kind: "file" | "mine"; key: string } | null>(null);
   const [creatingMine, setCreatingMine] = useState(false);
   const noteActions = useNoteActions();
+  const { setRelatedProject } = useNotesData();
   const searchRef = useRef<HTMLInputElement>(null);
 
   const linked = useMemo(() => projectNoteProjects(projects, projectId), [projectId, projects]);
@@ -356,11 +378,28 @@ function ProjectNotesList() {
           },
           {
             id: "delete",
-            label: t(($) => $.notes.library.menu.delete),
-            run: () => void deleteProjectNote(note.path, note.title),
+            label: deleteLabel(trashed),
+            run: () => void deleteProjectNote(note.path, note.title, trashed),
           },
         ]
       : [];
+
+  const unlink = (note: ProjectNote, from: string) => {
+    if (!setRelatedProject) return;
+    const relink = () =>
+      void setRelatedProject(note.id, from).catch((error: unknown) =>
+        notifyError("link a note back to the project", error, t(($) => $.notes.failures.linkNote, { name: note.title })),
+      );
+    setRelatedProject(note.id, null).then(
+      () =>
+        toast.success(t(($) => $.notes.projectNotes.unlinked, { title: note.title }), {
+          label: t(($) => $.notes.projectNotes.undoUnlink),
+          onClick: relink,
+        }),
+      (error: unknown) =>
+        notifyError("unlink a note from the project", error, t(($) => $.notes.projectNotes.unlinkFailed, { title: note.title })),
+    );
+  };
 
   const mineActions = (note: ProjectNote): RowAction[] => {
     if (!projectId) return [];
@@ -380,12 +419,14 @@ function ProjectNotesList() {
         run: () => setRenaming({ kind: "mine", key: note.id }),
       });
     }
-    const move = actions.move;
-    if (move) rows.push({ id: "unlink", label: t(($) => $.notes.projectNotes.unlink), run: () => move.to(null) });
+    if (setRelatedProject) {
+      rows.push({ id: "unlink", label: t(($) => $.notes.projectNotes.unlink), run: () => unlink(note, projectId) });
+    }
     const remove = actions.remove;
-    if (remove) rows.push({ id: "delete", label: t(($) => $.notes.library.menu.delete), run: remove });
+    if (remove) rows.push({ id: "delete", label: t(($) => $.notes.library.menu.deleteConfirm), run: remove });
     return rows;
   };
+
 
   const renameMine = async (note: ProjectNote, title: string) => {
     if (!projectId) return;

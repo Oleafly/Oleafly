@@ -348,6 +348,26 @@ describe("live editing", () => {
     expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "notes/Plan.md", null, null);
   });
 
+  it("sends this person's place again as soon as a project note's live binding lets it go", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    useFilesStore.setState({ activePath: "notes/Plan.md" });
+    start();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "notes/Plan.md", null, null);
+    const release = holdNoteLivePath(PROJECT, "notes/Plan.md");
+    await settle();
+    mocks.collabPresenceSet.mockClear();
+    vi.advanceTimersByTime(5_000);
+    release();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenCalledExactlyOnceWith(PROJECT, "notes/Plan.md", null, null);
+    const other = holdNoteLivePath(PROJECT, "notes/Other.md");
+    other();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenCalledTimes(1);
+  });
+
   it("closes everything and returns the editor to local files when it stops", async () => {
     start("viewer");
     collabDocumentSession("main.tex");

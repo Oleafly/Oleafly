@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   declaresNoteFile,
+  isEditorNoteFile,
   isMarkdownFile,
   isProjectNotePath,
   noteFileFacts,
@@ -31,6 +32,20 @@ describe("project note paths", () => {
     expect(isProjectNotePath("notes/assets/readme.md")).toBe(false);
     expect(isProjectNotePath("notes/data.csv")).toBe(false);
     expect(isProjectNotePath("docs/Plan.md")).toBe(false);
+    expect(isProjectNotePath("notesx/Plan.md")).toBe(false);
+    expect(isProjectNotePath("note/Plan.md")).toBe(false);
+    expect(isProjectNotePath("note\u017F/Plan.md")).toBe(true);
+  });
+
+  it("knows which project files open as note tabs", () => {
+    const on = { notes: true, projectKind: "document" };
+    expect(isEditorNoteFile("notes/Plan.md", NOTE, on)).toBe(true);
+    expect(isEditorNoteFile("ideas.md", NOTE, on)).toBe(true);
+    expect(isEditorNoteFile("notes/Plan.md", "# Plain\n", on)).toBe(false);
+    expect(isEditorNoteFile("notes/Plan.tex", NOTE, on)).toBe(false);
+    expect(isEditorNoteFile(null, NOTE, on)).toBe(false);
+    expect(isEditorNoteFile("notes/Plan.md", NOTE, { ...on, notes: false })).toBe(false);
+    expect(isEditorNoteFile("note.md", NOTE, { ...on, projectKind: "note" })).toBe(false);
   });
 
   it("names the stem without the extension", () => {
@@ -49,7 +64,7 @@ describe("project note paths", () => {
     expect(isProjectNoteAssetPath("Notes/Assets/fig.png")).toBe(true);
     expect(projectNotesFolder(["main.tex", "Notes/Plan.md"])).toBe("Notes");
     expect(projectNotesFolder(["main.tex"])).toBe("notes");
-    expect(projectNoteFilePath("Plan", ["Notes", "Notes/plan.md"], "Untitled")).toBe("Notes/Plan 2.md");
+    expect(projectNoteFilePath("Plan", ["Notes", "Notes/plan.md"], "Untitled")).toBe("Notes/Plan-2.md");
   });
 });
 
@@ -133,13 +148,14 @@ describe("note file names", () => {
   });
 
   it("renames a note next to where it is, numbering names that are taken", () => {
-    expect(renamedNotePath("notes/deep/Old.md", "New", ["notes/deep/new.md"], "Untitled")).toBe("notes/deep/New 2.md");
+    expect(renamedNotePath("notes/deep/Old.md", "New", ["notes/deep/new.md"], "Untitled")).toBe("notes/deep/New-2.md");
     expect(renamedNotePath("notes/Old.md", "Old", [], "Untitled")).toBe("notes/Old.md");
   });
 
   it("numbers names that are taken, ignoring case", () => {
     expect(projectNoteFilePath("Plan", ["main.tex"], "Untitled")).toBe("notes/Plan.md");
-    expect(projectNoteFilePath("Plan", ["notes/plan.md", "notes/Plan 2.md"], "Untitled")).toBe("notes/Plan 3.md");
+    expect(projectNoteFilePath("Plan", ["notes/plan.md", "notes/Plan-2.md"], "Untitled")).toBe("notes/Plan-3.md");
+    expect(projectNoteFilePath("Café", ["notes/CAFÉ.md"], "Untitled")).toBe("notes/Café-2.md");
     expect(projectNoteFilePath("", [], "Untitled")).toBe("notes/Untitled.md");
   });
 });

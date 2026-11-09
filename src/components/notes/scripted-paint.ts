@@ -6,6 +6,7 @@ interface Slot {
   loading: boolean;
   generation: number;
   running: boolean;
+  code: string | null;
   closed: boolean;
   render: () => void;
 }
@@ -23,10 +24,15 @@ export interface ScriptedPaint {
 export function paintScripted(preview: HTMLElement, source: string, context: PaintContext, paint: ScriptedPaint): Dispose {
   let slot = slots.get(preview);
   if (!slot || slot.closed) {
-    slot = { mount: null, loading: false, generation: 0, running: false, closed: false, render: () => undefined };
+    slot = { mount: null, loading: false, generation: 0, running: false, code: null, closed: false, render: () => undefined };
     slots.set(preview, slot);
   }
   const current = slot;
+  const code = `${paint.kind}\n${source}`;
+  if (current.code !== code) {
+    current.code = code;
+    current.running = false;
+  }
   current.generation += 1;
   const generation = current.generation;
   const props = (): ScriptedBlockProps => ({

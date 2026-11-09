@@ -1,15 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  RAIL_ORDER_KEY,
-  applyRailOrder,
-  mergeRailOrder,
-  parseRailOrder,
-  readRailOrder,
-  useRailOrder,
-  writeRailOrder,
-} from "./rail-order";
+import { RAIL_ORDER_KEY, applyRailOrder, mergeRailOrder, useRailOrder } from "./rail-order";
 
 const REGISTERED = ["files", "search", "source", "preflight", "refs", "collab", "mcp"];
 
@@ -19,24 +11,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-});
-
-describe("parseRailOrder", () => {
-  it("reads a list of ids and drops duplicates, blanks and other values", () => {
-    expect(parseRailOrder(JSON.stringify(["refs", "files", "refs", "", 4, null, "search"]))).toEqual([
-      "refs",
-      "files",
-      "search",
-    ]);
-  });
-
-  it("returns nothing for missing, malformed or non-list values", () => {
-    expect(parseRailOrder(null)).toBeNull();
-    expect(parseRailOrder("")).toBeNull();
-    expect(parseRailOrder("{not json")).toBeNull();
-    expect(parseRailOrder(JSON.stringify({ files: 1 }))).toBeNull();
-    expect(parseRailOrder(JSON.stringify("files"))).toBeNull();
-  });
 });
 
 describe("mergeRailOrder", () => {
@@ -86,35 +60,6 @@ describe("applyRailOrder", () => {
   });
 });
 
-describe("rail order storage", () => {
-  it("writes a custom order and clears the key when the order is back to the default", () => {
-    writeRailOrder(["refs", ...REGISTERED.filter((id) => id !== "refs")], REGISTERED);
-    expect(JSON.parse(localStorage.getItem(RAIL_ORDER_KEY) ?? "null")).toEqual([
-      "refs",
-      "files",
-      "search",
-      "source",
-      "preflight",
-      "collab",
-      "mcp",
-    ]);
-    expect(readRailOrder()).toEqual(["refs", "files", "search", "source", "preflight", "collab", "mcp"]);
-    writeRailOrder(REGISTERED, REGISTERED);
-    expect(localStorage.getItem(RAIL_ORDER_KEY)).toBeNull();
-  });
-
-  it("survives storage that throws", () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
-    expect(readRailOrder()).toBeNull();
-    expect(() => writeRailOrder(["refs", "files"], ["files", "refs"])).not.toThrow();
-  });
-});
-
 describe("useRailOrder", () => {
   it("loads the saved order, saves changes and follows newly registered tabs", () => {
     localStorage.setItem(RAIL_ORDER_KEY, JSON.stringify(["search", "files", "ghost"]));
@@ -132,5 +77,53 @@ describe("useRailOrder", () => {
 
     rerender({ ids: ["files", "search", "refs"] });
     expect(result.current[0]).toEqual(["search", "refs", "files"]);
+  });
+});
+
+describe("saved rail order", () => {
+  function savedOrder(ids: readonly string[]) {
+    return renderHook(() => useRailOrder(ids)).result.current[0];
+  }
+
+  it("reads a list of ids and drops duplicates, blanks and other values", () => {
+    localStorage.setItem(RAIL_ORDER_KEY, JSON.stringify(["refs", "files", "refs", "", 4, null, "search"]));
+    expect(savedOrder(["files", "search", "refs"])).toEqual(["refs", "files", "search"]);
+  });
+
+  it("falls back to the registry order for malformed or non-list values", () => {
+    for (const raw of ["", "{not json", JSON.stringify({ files: 1 }), JSON.stringify("files")]) {
+      localStorage.setItem(RAIL_ORDER_KEY, raw);
+      expect(savedOrder(REGISTERED)).toEqual(REGISTERED);
+    }
+  });
+
+  it("writes a custom order and clears the key when the order is back to the default", () => {
+    const { result } = renderHook(() => useRailOrder(REGISTERED));
+    act(() => result.current[1](["refs", ...REGISTERED.filter((id) => id !== "refs")]));
+    expect(JSON.parse(localStorage.getItem(RAIL_ORDER_KEY) ?? "null")).toEqual([
+      "refs",
+      "files",
+      "search",
+      "source",
+      "preflight",
+      "collab",
+      "mcp",
+    ]);
+    expect(savedOrder(REGISTERED)[0]).toBe("refs");
+    act(() => result.current[1](REGISTERED));
+    expect(localStorage.getItem(RAIL_ORDER_KEY)).toBeNull();
+  });
+
+  it("still reorders for the session when storage throws", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    const { result } = renderHook(() => useRailOrder(["files", "refs"]));
+    expect(result.current[0]).toEqual(["files", "refs"]);
+    act(() => result.current[1](["refs", "files"]));
+    expect(result.current[0]).toEqual(["refs", "files"]);
   });
 });

@@ -20,7 +20,7 @@ import { NOTES_APPEARANCE_DEFAULTS, type NotesAppearance } from "@/lib/notes-app
 import { useSettingsStore } from "@/store/settings";
 import {
   attachNotesAppearance,
-  forgetCodePalettes,
+  resetCodePalettesForTest,
   notesAppearanceStyle,
   readCodePalette,
   useNotesAppearanceRef,
@@ -49,7 +49,7 @@ const EDITOR = { light: "system", dark: "system" } as const;
 beforeEach(() => {
   theme.mode = "light";
   theme.listeners.clear();
-  forgetCodePalettes();
+  resetCodePalettesForTest();
   useSettingsStore.getState().resetNotesAppearance();
   useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system" });
 });

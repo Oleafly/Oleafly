@@ -1,3 +1,4 @@
+import type { FileEntry } from "@oleafly/backend-port";
 import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -19,6 +20,16 @@ export interface ProjectNoteFile {
   icon?: string;
   color?: NoteColor;
   summary: string;
+}
+
+const NOTE_PATHS = new WeakMap<readonly FileEntry[], readonly string[]>();
+
+export function projectNotePaths(tree: readonly FileEntry[]): readonly string[] {
+  const cached = NOTE_PATHS.get(tree);
+  if (cached) return cached;
+  const paths = tree.filter((entry) => !entry.is_dir && isProjectNotePath(entry.path)).map((entry) => entry.path);
+  NOTE_PATHS.set(tree, paths);
+  return paths;
 }
 
 interface FolderChange {
@@ -73,9 +84,7 @@ export function useProjectNoteFiles(projectId: string | null): {
 } {
   const paths = useFilesStore(
     useShallow((state) =>
-      state.projectId === projectId && projectId !== null
-        ? state.tree.filter((entry) => !entry.is_dir && isProjectNotePath(entry.path)).map((entry) => entry.path)
-        : NO_PATHS,
+      state.projectId === projectId && projectId !== null ? projectNotePaths(state.tree) : NO_PATHS,
     ),
   );
   const open = useFilesStore(

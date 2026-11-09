@@ -1,3 +1,4 @@
+import { markdownBlockKey } from "@oleafly/wysiwyg";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Transform } from "@tiptap/pm/transform";
 import { diffWords } from "@/lib/diff-words";
@@ -15,10 +16,6 @@ function children(node: ProseMirrorNode): ProseMirrorNode[] {
     out.push(child);
   });
   return out;
-}
-
-function blockKey(node: ProseMirrorNode): string {
-  return JSON.stringify(node.toJSON());
 }
 
 function flatInline(block: ProseMirrorNode): boolean {
@@ -96,13 +93,25 @@ export function diffNoteDocs(current: ProseMirrorNode, proposed: ProseMirrorNode
     position += block.nodeSize;
   }
   const startOf = (index: number) => (index < oldBlocks.length ? starts[index] : current.content.size);
-  const script = myersEditScript(oldBlocks.map(blockKey), newBlocks.map(blockKey));
-  if (!script) return [{ kind: "blocks", from: 0, to: current.content.size, nodes: newBlocks }];
+  let head = 0;
+  while (head < oldBlocks.length && head < newBlocks.length && oldBlocks[head] === newBlocks[head]) head += 1;
+  let oldEnd = oldBlocks.length;
+  let newEnd = newBlocks.length;
+  while (oldEnd > head && newEnd > head && oldBlocks[oldEnd - 1] === newBlocks[newEnd - 1]) {
+    oldEnd -= 1;
+    newEnd -= 1;
+  }
+  const trimmed = myersEditScript(
+    oldBlocks.slice(head, oldEnd).map(markdownBlockKey),
+    newBlocks.slice(head, newEnd).map(markdownBlockKey),
+  );
+  if (!trimmed) return [{ kind: "blocks", from: startOf(head), to: startOf(oldEnd), nodes: newBlocks.slice(head, newEnd) }];
+  const script = trimmed.map((edit) => ({ ...edit, oldStart: edit.oldStart + head, newStart: edit.newStart + head }));
 
   const changes: NoteChangeDraft[] = [];
   let removed: number[] = [];
   let added: number[] = [];
-  let oldCursor = 0;
+  let oldCursor = head;
   const flush = () => {
     if (removed.length === 0 && added.length === 0) return;
     if (removed.length === added.length) {

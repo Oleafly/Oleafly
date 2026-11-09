@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useBookColorLabels } from "@/components/library/Book";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover } from "@/components/ui/popover";
+import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -51,7 +51,7 @@ function ColorRow({ color, onChange }: Readonly<{ color: NoteColor | undefined; 
               aria-pressed={current}
               data-note-swatch={option}
               style={noteColorStyle(option)}
-              className="note-swatch flex size-5 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:scale-110"
+              className="note-swatch flex size-5 items-center justify-center rounded-full transition-transform hover:scale-110 motion-reduce:transition-none"
               onClick={() => onChange(option)}
             >
               {current && <Check aria-hidden className={cn("size-3", option === "blue" ? "text-white" : "text-black/70")} />}
@@ -162,15 +162,14 @@ export function IconPicker({
   const selected = value ?? DEFAULT_LINE_ICON;
   const lineIcon = selected.startsWith(LINE_ICON_PREFIX);
   const [tab, setTab] = useState<"emoji" | "lines">(lineIcon ? "lines" : "emoji");
-  const [generation, setGeneration] = useState(0);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const choose = (icon: string | undefined) => {
     onChange(icon);
-    setGeneration((value) => value + 1);
+    closeRef.current?.click();
   };
 
   return (
     <Popover
-      key={generation}
       trigger={trigger}
       ariaLabel={t(($) => $.notes.icons.choose)}
       contentAriaLabel={t(($) => $.notes.icons.dialog)}
@@ -182,6 +181,7 @@ export function IconPicker({
       className="w-[20rem] min-w-0 p-2"
     >
       <div style={noteColorStyle(color)}>
+        <PopoverClose ref={closeRef} hidden tabIndex={-1} />
         <div className="mb-2 flex items-center justify-between gap-2">
           <Tabs value={tab} onValueChange={(value) => setTab(value === "lines" ? "lines" : "emoji")}>
             <TabsList size="sm">

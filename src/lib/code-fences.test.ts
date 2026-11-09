@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lineInsideFence, scanFences } from "@/lib/code-fences";
+import { backtickRunEnd, codeSpanEnd, fencedLines, lineInsideFence, scanFences } from "@/lib/code-fences";
 
 const LINE_SEPARATOR = String.fromCodePoint(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCodePoint(0x2029);
@@ -112,5 +112,48 @@ describe("scanFences", () => {
     expect(scanFences(`${"`".repeat(50_000)}${LINE_SEPARATOR}`)).toEqual([]);
     expect(scanFences(`${"~".repeat(50_000)}\rx`)).toEqual([]);
     expect(performance.now() - started).toBeLessThan(1000);
+  });
+});
+
+describe("fencedLines", () => {
+  const fenced = (markdown: string) => fencedLines(markdown).map((line) => (line.fenced ? "c" : ".")).join("");
+
+  it("marks the same lines as scanFences and lineInsideFence", () => {
+    const markdown = "a\n```\nb\n\n```\nc\n~~~\nd\n- x\n  ```\n  y\n  ```\n> ```\n> z\n";
+    expect(fenced(markdown)).toBe(marks(markdown));
+  });
+
+  it("keeps a backtick line inside a tilde fence, and a shorter run inside a longer fence", () => {
+    expect(fenced("~~~\n```\n[[x]]\n~~~\nafter")).toBe("cccc.");
+    expect(fenced("````\n```\ninside\n````\nafter")).toBe("cccc.");
+  });
+
+  it("reads four spaces of indent as code text, not a fence", () => {
+    expect(fenced("    ```\nplain\n    ```")).toBe("...");
+  });
+
+  it("gives each line's text without its carriage return, and its offset", () => {
+    expect(fencedLines("a\r\n```\r\nb")).toEqual([
+      { text: "a", from: 0, fenced: false },
+      { text: "```", from: 3, fenced: true },
+      { text: "b", from: 8, fenced: true },
+    ]);
+    expect(fencedLines("")).toEqual([{ text: "", from: 0, fenced: false }]);
+  });
+});
+
+describe("codeSpanEnd", () => {
+  it("ends after the closing run of the same length", () => {
+    expect(codeSpanEnd("`a` b", 0)).toBe(3);
+    expect(codeSpanEnd("``a`b`` c", 0)).toBe(7);
+    expect(codeSpanEnd(Array.from("x `é` y"), 2)).toBe(5);
+  });
+
+  it("finds no span when the run never closes or the limit cuts it off", () => {
+    expect(codeSpanEnd("``a`", 0)).toBeNull();
+    expect(codeSpanEnd("`a`", 0, 2)).toBeNull();
+    expect(codeSpanEnd("a", 0)).toBeNull();
+    expect(backtickRunEnd("``a`", 0)).toBe(2);
+    expect(backtickRunEnd("```", 0, 2)).toBe(2);
   });
 });

@@ -7,6 +7,7 @@ import {
   rejectActive,
   rejectAll,
   type ReviewSummary,
+  undoReject,
 } from "./note-suggestions";
 import { ReviewBar } from "./ReviewBar";
 
@@ -78,11 +79,13 @@ function visibleArea(scroller: HTMLElement, top: HTMLElement | null, bottom: HTM
 export function FloatingReview({
   editor,
   review,
+  canUndo = false,
   scrollRef,
   bottomRef,
 }: Readonly<{
   editor: Editor;
   review: ReviewSummary;
+  canUndo?: boolean;
   scrollRef: RefObject<HTMLElement | null>;
   bottomRef: RefObject<HTMLElement | null>;
 }>) {
@@ -126,6 +129,11 @@ export function FloatingReview({
     };
   }, [bottomRef, editor, scrollRef]);
 
+  const settle = (run: (target: Editor) => unknown) => () => {
+    run(editor);
+    if (!editor.isDestroyed) editor.view.focus();
+  };
+
   return (
     <div
       ref={barRef}
@@ -138,10 +146,11 @@ export function FloatingReview({
         index={review.index}
         onPrevious={() => moveReview(editor, -1)}
         onNext={() => moveReview(editor, 1)}
-        onAccept={() => acceptActive(editor)}
-        onReject={() => rejectActive(editor)}
-        onAcceptAll={() => acceptAll(editor)}
-        onRejectAll={() => rejectAll(editor)}
+        onAccept={settle(acceptActive)}
+        onReject={settle(rejectActive)}
+        onAcceptAll={settle(acceptAll)}
+        onRejectAll={settle(rejectAll)}
+        onUndo={canUndo ? settle(undoReject) : undefined}
       />
     </div>
   );

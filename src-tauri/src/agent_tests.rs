@@ -1433,6 +1433,85 @@ fn related_project_reads_follow_the_related_projects_denials() {
     );
 }
 
+#[test]
+fn research_tasks_from_a_linked_note_follow_the_related_projects_rules() {
+    use crate::approvals::ToolDecision;
+    let decisions = |project: &str, tool: &str| match (project, tool) {
+        ("paper", "research_task_create") => Some(ToolDecision::Deny),
+        ("note", "research_task_create") => Some(ToolDecision::Allow),
+        ("note", "research_task_status") => Some(ToolDecision::Allow),
+        _ => None,
+    };
+    let related = |id: &str| (id == "note").then(|| "paper".to_string());
+    assert_eq!(
+        super::tool_decision("note", "research_task_create", related, decisions),
+        Some(ToolDecision::Deny)
+    );
+    assert_eq!(
+        super::tool_decision("note", "research_task_status", related, decisions),
+        Some(ToolDecision::Allow)
+    );
+}
+
+#[test]
+fn a_project_notes_alias_tools_follow_the_projects_own_rules() {
+    use crate::approvals::ToolDecision;
+    let decisions = |project: &str, tool: &str| match (project, tool) {
+        ("paper", "read_file") => Some(ToolDecision::Deny),
+        ("paper", "list_files") => Some(ToolDecision::Allow),
+        _ => None,
+    };
+    assert_eq!(
+        super::tool_decision("paper", "read_related_project_file", |_| None, decisions),
+        Some(ToolDecision::Deny)
+    );
+    assert_eq!(
+        super::tool_decision("paper", "related_project_files", |_| None, decisions),
+        None
+    );
+}
+
+#[test]
+fn a_note_is_trusted_only_when_its_related_project_is() {
+    let trusted = |id: &str| id != "untrusted-paper";
+    let related = |id: &str| match id {
+        "linked-note" => Some("untrusted-paper".to_string()),
+        "fine-note" => Some("paper".to_string()),
+        _ => None,
+    };
+    assert!(!super::run_trusted_with(
+        Some("linked-note"),
+        related,
+        trusted
+    ));
+    assert!(super::run_trusted_with(Some("fine-note"), related, trusted));
+    assert!(super::run_trusted_with(
+        Some("lonely-note"),
+        related,
+        trusted
+    ));
+    assert!(!super::run_trusted_with(
+        Some("untrusted-paper"),
+        related,
+        trusted
+    ));
+    assert!(super::run_trusted_with(None, related, trusted));
+}
+
+#[test]
+fn a_related_project_that_denies_fetches_gates_the_notes_fetches() {
+    use crate::approvals::{ApprovalMode, ToolDecision};
+    let deny = |_: &str| Ok((ApprovalMode::FullAccess, Some(ToolDecision::Deny)));
+    let allow = |_: &str| Ok((ApprovalMode::FullAccess, Some(ToolDecision::Allow)));
+    assert!(super::related_fetch_denied(true, Some("paper"), deny));
+    assert!(!super::related_fetch_denied(true, Some("paper"), allow));
+    assert!(!super::related_fetch_denied(true, None, deny));
+    assert!(!super::related_fetch_denied(false, Some("paper"), deny));
+    assert!(super::related_fetch_denied(true, Some("paper"), |_| Err(
+        "unreadable".to_string()
+    )));
+}
+
 #[tokio::test]
 async fn fetch_prompts_for_one_run_open_one_at_a_time() {
     let open = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));

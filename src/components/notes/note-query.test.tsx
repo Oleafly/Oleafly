@@ -5,7 +5,6 @@ import type { NoteTagCount } from "@/lib/tauri";
 import {
   activeFilterCount,
   buildNoteSearchSchema,
-  type NoteSearchExtension,
   type NoteSearchState,
   selectedTag,
   tagFilterKey,
@@ -55,12 +54,12 @@ const TAGS: NoteTagCount[] = [
 
 const STATE: NoteSearchState = { favorites: new Set(["reading"]), tags: TAGS, projects: ["Language", "Vision"] };
 
-function schemaFor(state: Partial<NoteSearchState> = {}, extensions: readonly NoteSearchExtension[] = []) {
-  return buildNoteSearchSchema(i18n.t.bind(i18n) as never, { ...STATE, ...state }, extensions);
+function schemaFor(state: Partial<NoteSearchState> = {}) {
+  return buildNoteSearchSchema(i18n.t.bind(i18n) as never, { ...STATE, ...state });
 }
 
-function planFor(source: string, state: Partial<NoteSearchState> = {}, extensions: readonly NoteSearchExtension[] = []) {
-  const schema = schemaFor(state, extensions);
+function planFor(source: string, state: Partial<NoteSearchState> = {}) {
+  const schema = schemaFor(state);
   const query = analyze(source, schema, CONTEXT);
   return { schema, query, plan: vaultPlan(query, schema, CONTEXT) };
 }
@@ -90,16 +89,8 @@ describe("note search schema", () => {
     expect(schema.field("tags")).toBe(schema.field("tag"));
   });
 
-  it("takes more qualifiers from extensions, the way the library does", () => {
-    const shared: NoteSearchExtension = {
-      is: [{ value: "shared", test: (item) => "shared" in item && item.shared === true }],
-      has: [{ value: "aliases", test: (item) => "aliases" in item && (item.aliases ?? []).length > 0 }],
-    };
-    const schema = schemaFor({}, [shared]);
-    expect(schema.field("is")?.options?.map((option) => option.value)).toEqual(["favorite", "shared"]);
-    expect(schema.field("has")?.options?.map((option) => option.value)).toEqual(["aliases"]);
-    const { plan } = planFor("has:aliases", {}, [shared]);
-    expect(ITEMS.filter(plan.test).map((item) => item.id)).toEqual(["masking"]);
+  it("offers favorite as the only is: flag and no has: field", () => {
+    expect(schemaFor().field("is")?.options?.map((option) => option.value)).toEqual(["favorite"]);
     expect(schemaFor().field("has")).toBeUndefined();
   });
 });
@@ -191,18 +182,6 @@ describe("note search plan", () => {
     const masking = ITEMS[0];
     expect(plan.branches.map((branch) => branch.keep(reading))).toEqual([true, true, true]);
     expect(plan.branches.map((branch) => branch.keep(masking))).toEqual([false, true, true]);
-  });
-
-  it("checks an extension's number field on the search hits", () => {
-    const words: NoteSearchExtension = {
-      fields: [{ key: "words", type: "number", get: (item) => ("author" in item ? Number(item.properties?.words ?? 0) : null) }],
-    };
-    const { plan } = planFor("mask words:>2", {}, [words]);
-    expect(plan.searches).toEqual(["mask"]);
-    const [branch] = plan.branches;
-    expect(branch.keep(note("long", { properties: { words: 5 } }))).toBe(true);
-    expect(branch.keep(note("short", { properties: { words: 1 } }))).toBe(false);
-    expect(branch.keep(artifact("loss"))).toBe(false);
   });
 
   it("ignores terms it can't use", () => {

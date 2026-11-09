@@ -1,8 +1,7 @@
 import { CalendarDays, ChevronRight, FileSearch, LayoutTemplate, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
+import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import type { NoteSearchHit } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { isSelectionModifier } from "@/store/library-selection";
@@ -203,43 +202,33 @@ export function TagChip({ tag, onClear }: Readonly<{ tag: string; onClear: () =>
   );
 }
 
-function HeaderAction({
-  label,
-  shortcut,
-  disabled,
-  onClick,
-  children,
-}: Readonly<{ label: string; shortcut: string; disabled?: boolean; onClick?: () => void; children: ReactNode }>) {
-  const { t } = useTranslation(["notes"]);
-  return (
-    <Tooltip label={t(($) => $.notes.vault.withShortcut, { label, shortcut })} side="bottom">
-      <Button variant="ghost" size="icon" aria-label={label} className="size-7" disabled={disabled} onClick={onClick}>
-        {children}
-      </Button>
-    </Tooltip>
-  );
-}
-
 export function VaultHeaderActions({
   onToday,
   onSwitcher,
 }: Readonly<{ onToday?: () => void; onSwitcher?: () => void }>) {
-  const { t } = useTranslation(["notes"]);
+  const { t } = useTranslation(["notes", "shell"]);
   const today = useShortcutStore((state) => shortcutLabel(state.bindings.notesTodayNote));
   const switcher = useShortcutStore((state) => shortcutLabel(state.bindings.notesQuickSwitcher));
+  const todayLabel = t(($) => $.notes.vault.daily.open);
+  const switcherLabel = t(($) => $.notes.vault.switcher.open);
   return (
     <>
-      <HeaderAction
-        label={t(($) => $.notes.vault.daily.open)}
-        shortcut={today}
+      <TooltipIconButton
+        label={todayLabel}
+        tooltip={t(($) => $.shell.rail.withShortcut, { label: todayLabel, shortcut: today })}
         disabled={!onToday}
         onClick={onToday}
       >
         <CalendarDays aria-hidden />
-      </HeaderAction>
-      <HeaderAction label={t(($) => $.notes.vault.switcher.open)} shortcut={switcher} disabled={!onSwitcher} onClick={onSwitcher}>
+      </TooltipIconButton>
+      <TooltipIconButton
+        label={switcherLabel}
+        tooltip={t(($) => $.shell.rail.withShortcut, { label: switcherLabel, shortcut: switcher })}
+        disabled={!onSwitcher}
+        onClick={onSwitcher}
+      >
         <FileSearch aria-hidden />
-      </HeaderAction>
+      </TooltipIconButton>
     </>
   );
 }
@@ -247,17 +236,8 @@ export function VaultHeaderActions({
 export function TemplateButton({ onClick }: Readonly<{ onClick?: () => void }>) {
   const { t } = useTranslation(["notes"]);
   return (
-    <Tooltip label={t(($) => $.notes.vault.templates.open)} side="bottom">
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={t(($) => $.notes.vault.templates.open)}
-        className="size-9 shrink-0"
-        disabled={!onClick}
-        onClick={onClick}
-      >
-        <LayoutTemplate aria-hidden />
-      </Button>
-    </Tooltip>
+    <TooltipIconButton label={t(($) => $.notes.vault.templates.open)} className="size-9 shrink-0" disabled={!onClick} onClick={onClick}>
+      <LayoutTemplate aria-hidden />
+    </TooltipIconButton>
   );
 }

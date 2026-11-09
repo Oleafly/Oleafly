@@ -1,6 +1,7 @@
 import { splitMarkdownFrontMatter } from "@oleafly/wysiwyg/front-matter";
 import { i18n } from "@/i18n";
 import { frontMatterKey, splitFrontMatter } from "@/lib/front-matter";
+import { readNoteFacts } from "./note-file";
 import { removeProperty, setProperty } from "./note-properties";
 import type { NoteDraft } from "./notes-data";
 import type { NoteColor, NoteItem } from "./types";
@@ -191,11 +192,15 @@ export function draftFromNote(title: string, text: string, now: Date, locale: st
   const expandedTitle = expandTemplate(title, base);
   const vars = { ...base, title: expandedTitle };
   const { frontMatter, body } = splitNoteSource(text);
-  return {
+  const { icon, color } = readNoteFacts(text);
+  const draft: NoteDraft = {
     title: expandedTitle,
     body: expandTemplate(body, vars),
     properties: expandTemplate(extraFrontMatter(frontMatter), vars),
+    color,
   };
+  if (icon) draft.icon = icon;
+  return draft;
 }
 
 function tagItem(tag: string): string {

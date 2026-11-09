@@ -120,9 +120,12 @@ export function openZoteroUpdates(): void {
   useZoteroDialogStore.getState().openBulk("update");
 }
 
-export function insertZoteroCitation(hit: ZoteroHit): string | null {
+export function insertZoteroCitation(
+  hit: ZoteroHit,
+  insert: (key: string) => string | null = insertCitationKey,
+): string | null {
   const key = citationKeyForHit(hit);
-  const cite = insertCitationKey(key);
+  const cite = insert(key);
   if (!cite) return null;
   void ensureZoteroEntries([{ hit, key }], { chooseBibliography })
     .then((result) => {

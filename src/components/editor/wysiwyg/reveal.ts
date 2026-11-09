@@ -12,7 +12,7 @@ export interface VisualLocation {
   range?: { from: number; to: number };
 }
 
-function sourceOffset(source: string, target: VisualLocation): number {
+export function sourceOffset(source: string, target: VisualLocation): number {
   if (target.range) return Math.min(Math.max(0, target.range.from), source.length);
   let offset = 0;
   for (let line = 1; line < (target.line ?? 1); line++) {
@@ -23,7 +23,7 @@ function sourceOffset(source: string, target: VisualLocation): number {
   return offset;
 }
 
-function blockCount(doc: ProseMirrorNode): number {
+export function blockCount(doc: ProseMirrorNode): number {
   const last = doc.lastChild;
   return last?.type.name === "paragraph" && last.childCount === 0
     ? doc.childCount - 1

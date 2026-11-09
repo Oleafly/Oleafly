@@ -1,3 +1,4 @@
+import { parseDelimited } from "@oleafly/conversion-registry/table";
 import type { ResearchTask, TaskArtifact, TaskPreviewContent } from "@/lib/research-tasks";
 import { isNotebookPath, notebookFence } from "./notebook-block";
 import type { ArtifactItem, ArtifactKind, ArtifactPreview, ExperimentItem, NoteItem } from "./types";
@@ -100,46 +101,12 @@ export function experimentItems(
 }
 
 export function csvRows(text: string, separator: string): { rows: string[][]; truncated: boolean } {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-  let truncated = false;
-  const endRow = () => {
-    row.push(cell);
-    cell = "";
-    if (row.length > TABLE_COLUMNS) truncated = true;
-    if (row.some((value) => value !== "")) rows.push(row.slice(0, TABLE_COLUMNS));
-    row = [];
+  const parsed = parseDelimited(text, { delimiter: separator, limit: TABLE_ROWS + 1, trim: false });
+  const rows = parsed.filter((row) => row.some((value) => value !== ""));
+  return {
+    rows: rows.slice(0, TABLE_ROWS).map((row) => row.slice(0, TABLE_COLUMNS)),
+    truncated: parsed.length > TABLE_ROWS || rows.some((row) => row.length > TABLE_COLUMNS),
   };
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    if (quoted) {
-      if (character === '"' && text[index + 1] === '"') {
-        cell += '"';
-        index += 1;
-      } else if (character === '"') {
-        quoted = false;
-      } else {
-        cell += character;
-      }
-      continue;
-    }
-    if (character === '"') quoted = true;
-    else if (character === separator) {
-      row.push(cell);
-      cell = "";
-    } else if (character === "\n") {
-      endRow();
-      if (rows.length > TABLE_ROWS) break;
-    } else if (character !== "\r") cell += character;
-  }
-  if (rows.length <= TABLE_ROWS && (cell !== "" || row.length > 0)) endRow();
-  if (rows.length > TABLE_ROWS) {
-    rows.length = TABLE_ROWS;
-    truncated = true;
-  }
-  return { rows, truncated };
 }
 
 export function artifactPreview(artifact: Pick<ArtifactItem, "kind" | "path">, content: TaskPreviewContent): ArtifactPreview {

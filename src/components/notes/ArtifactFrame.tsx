@@ -11,7 +11,7 @@ import { watchVisibility } from "@/hooks/use-near-viewport";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { readJson, writeJson } from "@/lib/local-storage";
-import { artifactFrameClose, artifactFrameOpen, artifactFramePutRuntime } from "@/lib/tauri";
+import { artifactFrameClose, artifactFrameOpen, artifactFrameRuntimeUrl } from "@/lib/tauri";
 import {
   type FrameMessages,
   type FrameTheme,
@@ -25,8 +25,6 @@ import {
 
 export type ScriptedKind = "html" | "react";
 
-export const RUNTIME_URL = `${import.meta.env.BASE_URL}artifact-runtime/react-runtime.js`;
-export const RUNTIME_MARKER = "oleafly-runtime:";
 export const RUN_BLOCKS_KEY = "oleafly.notes.runBlocks";
 export const WATCHDOG_MS = 5000;
 export const START_GRACE_MS = 10_000;
@@ -39,21 +37,20 @@ const TRUSTED_LIMIT = 500;
 const SOURCE_LINES = 12;
 const NOTICE_URLS = 4;
 
-let runtimeReference: Promise<string> | null = null;
+let runtimeAddress: Promise<string> | null = null;
 
 export function loadArtifactRuntime(): Promise<string> {
-  runtimeReference ??= fetch(RUNTIME_URL).then(async (response) => {
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return `${RUNTIME_MARKER}${await artifactFramePutRuntime(await response.text())}`;
+  if (runtimeAddress) return runtimeAddress;
+  const pending = artifactFrameRuntimeUrl();
+  runtimeAddress = pending;
+  pending.catch(() => {
+    if (runtimeAddress === pending) runtimeAddress = null;
   });
-  runtimeReference.catch(() => {
-    runtimeReference = null;
-  });
-  return runtimeReference;
+  return pending;
 }
 
 export function resetArtifactRuntime(): void {
-  runtimeReference = null;
+  runtimeAddress = null;
 }
 
 function desktop(): boolean {
@@ -128,32 +125,21 @@ export function frameMessages(): FrameMessages {
     compileError: i18n.t(($) => $.notes.blocks.artifact.compileError),
     runtimeError: i18n.t(($) => $.notes.blocks.artifact.runtimeError),
     noComponent: i18n.t(($) => $.notes.blocks.artifact.noComponent),
+    loadFailed: i18n.t(($) => $.notes.blocks.artifact.loadFailed),
   };
 }
 
 export interface BuiltFrame {
   html: string;
   removed: string[];
-  runtime: boolean;
 }
 
 export async function buildFrame(kind: ScriptedKind, source: string, theme: FrameTheme, channel: string): Promise<BuiltFrame> {
   const options = { theme, channel, messages: frameMessages() };
-  if (kind === "react") return { html: reactFrameDocument(source, options, await loadArtifactRuntime()), removed: [], runtime: true };
+  if (kind === "react") return { html: reactFrameDocument(source, options, await loadArtifactRuntime()), removed: [] };
   const prepared = prepareHtml(source);
   const runtime = prepared.libraries.length > 0 ? await loadArtifactRuntime() : null;
-  return { html: htmlFrameDocument(prepared, options, runtime), removed: prepared.removed, runtime: runtime !== null };
-}
-
-async function openBuilt(built: BuiltFrame, rebuild: () => Promise<BuiltFrame>): Promise<FrameState> {
-  try {
-    return { url: await artifactFrameOpen(built.html), removed: built.removed };
-  } catch (error) {
-    if (!built.runtime) throw error;
-    resetArtifactRuntime();
-    const fresh = await rebuild();
-    return { url: await artifactFrameOpen(fresh.html), removed: fresh.removed };
-  }
+  return { html: htmlFrameDocument(prepared, options, runtime), removed: prepared.removed };
 }
 
 export function nextHeight(reported: number): number {
@@ -229,18 +215,17 @@ export function ArtifactFrame({ kind, source, label }: Readonly<{ kind: Scripted
     const delay = reopened === lastReopened.current ? BUILD_DELAY_MS : 0;
     lastReopened.current = reopened;
     const timer = window.setTimeout(() => {
-      const build = () => buildFrame(kind, source, themeRef.current, channel);
-      build()
+      buildFrame(kind, source, themeRef.current, channel)
         .then(async (built) => {
           if (!live) return;
-          const opened = await openBuilt(built, build);
-          token = tokenOf(opened.url);
+          const url = await artifactFrameOpen(built.html);
+          token = tokenOf(url);
           if (!live) {
             void artifactFrameClose(token).catch(() => undefined);
             return;
           }
           lastBeat.current = performance.now() + START_GRACE_MS;
-          setFrame(opened);
+          setFrame({ url, removed: built.removed });
         })
         .catch((error: unknown) => {
           if (live) setFailure(describeError(error));

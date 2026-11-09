@@ -85,7 +85,7 @@ export function applyFolderChange(change: FolderChangePayload): void {
     change.rescan ||
     change.structural === true ||
     change.paths.some((path) => !known.has(path));
-  const held = change.paths.filter(collabHoldsDocument);
+  const held = change.paths.filter((path) => collabHoldsDocument(path, change.projectId));
   const fromDisk = change.paths.filter((path) => !held.includes(path));
   const sourcesChanged = change.rescan || fromDisk.some(isProjectIntelligencePath);
   updateIndexFromHeld(held);
@@ -94,7 +94,7 @@ export function applyFolderChange(change: FolderChangePayload): void {
     change.rescan ||
     change.paths.some((changed) => path === changed || path.startsWith(`${changed}/`));
   for (const [path, file] of Object.entries(files.files)) {
-    if (!affected(path) || collabHoldsDocument(path)) continue;
+    if (!affected(path) || collabHoldsDocument(path, change.projectId)) continue;
     if (file.dirty) void detectDiskChange(change.projectId, path);
     else refreshExternalFile(change.projectId, path, file);
   }

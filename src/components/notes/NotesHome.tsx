@@ -349,6 +349,7 @@ export function NotesHome({ iconFor, onOpenNote, onOpenNoteInNewTab, onNewNote }
           onOpenNote={openNote}
           onOpenNoteInNewTab={newTab}
           onTag={filterTag}
+          actionsFor={actionsFor}
           scrollRef={scroller}
         />
       );

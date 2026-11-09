@@ -373,8 +373,13 @@
     },
     "projectNotes": {
       "open": "Open notes for this project",
-      "new": "New note for this project",
+      "newShared": "New project note",
+      "newPersonal": "New personal note for this project",
       "keywords": "notes research linked related project"
+    },
+    "notes": {
+      "label": "Open Notes",
+      "keywords": "notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -672,7 +677,6 @@
   "home": {
     "ariaLabel": "Home",
     "label": "Home",
-    "title": "Back to library",
     "tooltip": "Go back to project library"
   },
   "importDestination": {

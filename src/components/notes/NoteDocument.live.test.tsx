@@ -28,8 +28,12 @@ vi.mock("@tiptap/react", async (importOriginal) => {
 vi.mock("./NoteAssistant", async () => {
   const { forwardRef } = await import("react");
   return {
-    NoteAssistant: forwardRef(function NoteAssistant(props: { review: ReactNode }) {
-      return <section data-testid="note-assistant">{props.review}</section>;
+    NoteAssistant: forwardRef(function NoteAssistant(props: { review: ReactNode; viewOnly?: boolean }) {
+      return (
+        <section data-testid="note-assistant" data-view-only={props.viewOnly ? "true" : "false"}>
+          {props.review}
+        </section>
+      );
     }),
   };
 });
@@ -175,8 +179,10 @@ describe("a shared note edited live", () => {
     expect(harness.channel?.text).toBe(TEXT.replace("First entry.", "First entry. Alice was here.").replace("Second entry.", "Second entry. Bob too."));
     expect(fake.saveNote).not.toHaveBeenCalled();
     fake.loadNote.mockResolvedValue({ text: TEXT.replace("First entry.", "From disk."), version: "v9" });
+    const loads = fake.loadNote.mock.calls.length;
     fake.diskChanged();
     await wait(5);
+    expect(fake.loadNote).toHaveBeenCalledTimes(loads);
     expect(alice.state.doc.child(0).textContent).toBe("First entry. Alice was here.");
     expect(alice.view.dom.querySelector(".note-diff-insert, .note-diff-block")).toBeNull();
   });
@@ -212,6 +218,7 @@ describe("a shared note edited live", () => {
     expect(alice.isEditable).toBe(false);
     expect(screen.getAllByText(enNotes.live.viewOnly)).toHaveLength(2);
     expect(screen.getAllByLabelText<HTMLInputElement>(enNotes.document.titleLabel)[0].readOnly).toBe(true);
+    expect(screen.getAllByTestId("note-assistant").map((section) => section.dataset.viewOnly)).toEqual(["true", "true"]);
   });
 
   it("saves edits made while connecting once the note turns out not to go live", async () => {
@@ -249,5 +256,48 @@ describe("a shared note edited live", () => {
     await wait(5);
     const call = fake.saveNote.mock.calls.find((args) => args[1].includes("Late."));
     expect(call?.[3]).toBe(TEXT);
+  });
+
+  it("sends edits the shared note already holds only once after a hand-back during a reconnect", async () => {
+    const fake = fakeData();
+    const onStatusChange = vi.fn();
+    render(
+      <NotesDataProvider value={fake.data}>
+        <NoteDocument note={NOTE} insertRequest={null} onStatusChange={onStatusChange} />
+      </NotesDataProvider>,
+    );
+    await screen.findByLabelText(enNotes.document.titleLabel);
+    const [alice] = harness.editors;
+    await act(async () => {
+      goLive();
+      await Promise.resolve();
+    });
+    await exchange();
+    act(() => {
+      alice.commands.setTextSelection(paragraph(alice, 1));
+      alice.commands.insertContent(" Late.");
+    });
+    await wait(LIVE_SEND_MS + 30);
+    act(() => {
+      harness.channel?.receiveOne();
+    });
+    expect(harness.channel?.text).toContain("Second entry. Late.");
+    await act(async () => {
+      useCollabEditorGate.setState({ connecting: true });
+      useCollabLiveNote.setState({ session: null });
+      await Promise.resolve();
+    });
+    await wait(5);
+    expect(fake.saveNote).not.toHaveBeenCalled();
+    expect(onStatusChange).not.toHaveBeenLastCalledWith("saved", null);
+    await act(async () => {
+      goLive();
+      await Promise.resolve();
+    });
+    await exchange();
+    await exchange();
+    expect(harness.channel?.text.match(/Late\./gu)).toHaveLength(1);
+    expect(alice.state.doc.child(1).textContent).toBe("Second entry. Late.");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
   });
 });

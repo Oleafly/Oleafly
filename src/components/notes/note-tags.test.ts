@@ -50,6 +50,12 @@ describe("inline tags", () => {
     expect(tagsIn("#a\n```\n#b")).toEqual(["a"]);
   });
 
+  it("keeps a backtick line inside a tilde fence, and reads four spaces of indent as text", () => {
+    expect(tagsIn("~~~\n```\n#hidden\n~~~\n#after")).toEqual(["after"]);
+    expect(tagsIn("    ```\n#shown")).toEqual(["shown"]);
+    expect(tagsIn("- item\n  ```\n  #listed\n  ```\n#out")).toEqual(["out"]);
+  });
+
   it("gives offsets in the source with CRLF lines", () => {
     const text = "x #a\r\n#bb\r\n";
     expect(markdownTagRanges(text)).toEqual([
@@ -93,6 +99,10 @@ describe("front matter lists", () => {
     ["---\n\"tags\" : [a, b]\n---\n", ["a", "b"]],
     ["---\ntags:[a]\n---\n", []],
     ["---\n---\ntags: [a]\n---\n", []],
+    ["---\ntags: [\"a, b\"]\n---\n", ["a, b"]],
+    ["---\ntags: ['it''s', \"x\\\"y\", plain]\n---\n", ["it's", 'x"y', "plain"]],
+    ["---\ntags:\n  - \"a, b\"\n  - 'c' \n---\n", ["a, b", "c"]],
+    ["---\ntags: []\n---\n", []],
   ])("reads %j", (text, expected) => {
     expect(frontMatterList(text, "tags")).toEqual(expected);
   });
@@ -109,6 +119,10 @@ describe("note tags", () => {
   it("puts front matter first and keeps the first spelling", () => {
     expect(displayTags(text)).toEqual(["Draft", "ml/vision", "new"]);
     expect(noteTags(text)).toEqual(["draft", "ml/vision", "new"]);
+  });
+
+  it("indexes a quoted list item that holds a comma as one tag, as the Properties panel does", () => {
+    expect(noteTags('---\ntags: ["A, b", c]\n---\n')).toEqual(["a, b", "c"]);
   });
 
   it("matches a tag and its children", () => {

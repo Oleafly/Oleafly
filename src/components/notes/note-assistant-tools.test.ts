@@ -155,6 +155,10 @@ describe("guarding note.md", () => {
     expect(noteExcludedTools("paper")).toContain("get_pdf_text");
     expect(noteExcludedTools("paper")).not.toContain("write_file");
     expect(noteExcludedTools("paper", true)).toEqual(expect.arrayContaining([...NOTE_FILE_MUTATION_TOOLS]));
+    expect(noteExcludedTools("paper", true)).not.toContain("search_notes");
+    expect(noteExcludedTools("paper", true, true)).toEqual(
+      expect.arrayContaining(["search_notes", "list_knowledge_notes", "read_note_by_id"]),
+    );
   });
 });
 

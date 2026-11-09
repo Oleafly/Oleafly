@@ -212,7 +212,7 @@ function isMutationConflict(error: unknown): boolean {
   return String(error).includes(MUTATION_CONFLICT);
 }
 
-function isDiskConflict(error: unknown): boolean {
+export function isDiskConflict(error: unknown): boolean {
   return String(error).includes(DISK_CONFLICT);
 }
 
@@ -483,7 +483,7 @@ interface FilesStore {
     projectId: string,
     path: string,
     content: string,
-    options?: { crlf?: boolean; base?: string; closedProject?: boolean },
+    options?: { crlf?: boolean; base?: string; closedProject?: boolean; expectedHash?: string },
   ) => Promise<void>;
   applyExternalWrite: (
     projectId: string,
@@ -2449,12 +2449,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const shared = await writeSharedText(projectId, path, canonicalContent, base);
     const result = shared
       ? null
-      : await writeFileContent(
-          projectId,
-          path,
-          bytes,
-          expectedGeneration,
-        );
+      : options?.expectedHash === undefined
+        ? await writeFileContent(projectId, path, bytes, expectedGeneration)
+        : await writeFileContent(projectId, path, bytes, expectedGeneration, options.expectedHash);
     rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf, length: bytes.length });
     settleDiskConflict(writeKey(projectId, path));
     if (result && Number.isSafeInteger(result.generation)) {

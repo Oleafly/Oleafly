@@ -3,7 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import {
-  clearTypstCache,
+  resetTypstCacheForTest,
   MAX_TYPST_RENDERS,
   paintTypst,
   paintTypstStill,
@@ -25,7 +25,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   render.mockReset();
   render.mockImplementation(async () => '<svg xmlns="http://www.w3.org/2000/svg"/>');
-  clearTypstCache();
+  resetTypstCacheForTest();
   Object.assign(globalThis, { isTauri: true });
 });
 

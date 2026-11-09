@@ -12,7 +12,6 @@ import {
   captureListeners,
   cssColorHex,
   isPolymer,
-  liveSharedViewers,
   MoleculeFileError,
   moleculeBlock,
   moleculeData,
@@ -23,6 +22,7 @@ import {
   MoleculeViewError,
   type OpenedViewer,
   openViewer,
+  withMoleculeOption,
   paintMolecule,
   parseMoleculeSource,
   releaseViewer,
@@ -35,7 +35,7 @@ import {
   themeBackground,
   webglMode,
   cachedWebglMode,
-  forgetWebglMode,
+  resetWebglModeForTest,
   ZOOM_STEP,
 } from "./molecule-block";
 
@@ -195,6 +195,9 @@ function textUrl(text: string): string {
 
 beforeAll(async () => {
   await loadNamespace("notes");
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.releasePointerCapture ??= () => undefined;
+  Element.prototype.scrollIntoView ??= () => undefined;
 });
 
 beforeEach(() => {
@@ -207,7 +210,7 @@ beforeEach(() => {
   lib.addModelError = false;
   lib.styleError = false;
   FakeObserver.instances = [];
-  forgetWebglMode();
+  resetWebglModeForTest();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => null) as never);
 });
 
@@ -247,6 +250,24 @@ describe("parseMoleculeSource", () => {
     ["style: stick\n\n", "empty", ""],
   ])("reports %j", (source, problem, value) => {
     expect(parseMoleculeSource(source)).toEqual({ ok: false, problem, value });
+  });
+});
+
+describe("withMoleculeOption", () => {
+  it("rewrites an existing option line and keeps how it was written", () => {
+    expect(withMoleculeOption("format: xyz\nStyle:  stick\n3\n", "style", "sphere")).toBe("format: xyz\nStyle: sphere\n3\n");
+    expect(withMoleculeOption("colour: chain\nATOM  1", "color", "residue")).toBe("colour: residue\nATOM  1");
+  });
+
+  it("adds the option after the others, or first when there are none", () => {
+    expect(withMoleculeOption("path: assets/a.pdb", "style", "line")).toBe("path: assets/a.pdb\nstyle: line");
+    expect(withMoleculeOption("\nformat: xyz\n3\n\nC 0 0 0", "color", "chain")).toBe("\nformat: xyz\ncolor: chain\n3\n\nC 0 0 0");
+    expect(withMoleculeOption("3\nstyle: stick\nC 0 0 0", "style", "line")).toBe("style: line\n3\nstyle: stick\nC 0 0 0");
+  });
+
+  it("writes a source that parses to the chosen style and color", () => {
+    const source = withMoleculeOption(withMoleculeOption(XYZ, "style", "sphere"), "color", "chain");
+    expect(parseMoleculeSource(source)).toMatchObject({ ok: true, spec: { style: "sphere", color: "chain" } });
   });
 });
 
@@ -484,12 +505,10 @@ describe("viewer lifecycle", () => {
     const first = openViewer(three, preview(), "#fff", XYZ, "xyz", "shared");
     const second = openViewer(three, preview(), "#fff", XYZ, "xyz", "shared");
     expect(lib.configs[0]).toEqual({ backgroundColor: "#fff", antialias: true });
-    expect(liveSharedViewers()).toBe(2);
     first.release();
     expect(fakeViewer(first.viewer).lose).not.toHaveBeenCalled();
     second.release();
     expect(fakeViewer(second.viewer).lose).toHaveBeenCalled();
-    expect(liveSharedViewers()).toBe(0);
   });
 
   it("survives a viewer that fails to clear", async () => {
@@ -522,7 +541,11 @@ describe("viewer lifecycle", () => {
     expect(() => openViewer(three, preview(), "#fff", XYZ, "xyz", "shared")).toThrow(
       expect.objectContaining({ problem: "atoms" }),
     );
-    expect(liveSharedViewers()).toBe(0);
+    lib.atoms = SMALL;
+    const survivor = openViewer(three, preview(), "#fff", XYZ, "xyz", "shared");
+    survivor.release();
+    expect(fakeViewer(survivor.viewer).lose).toHaveBeenCalled();
+    lib.atoms = [];
     lib.addModelError = true;
     expect(() => openViewer(three, preview(), "#fff", XYZ, "xyz", "dedicated")).toThrow(
       expect.objectContaining({ problem: "atoms" }),
@@ -566,17 +589,19 @@ describe("MoleculeView", () => {
     const { unmount } = render(<MoleculeView data={XYZ} format="xyz" style={null} color={null} mode="dedicated" />);
     expect(screen.getByText(copy.loading)).toBeInTheDocument();
     const style = await screen.findByRole("combobox", { name: copy.style });
-    expect(style).toHaveValue("stick");
-    expect(screen.getByRole("combobox", { name: copy.color })).toHaveValue("element");
+    expect(style).toHaveTextContent(copy.styles.stick);
+    expect(screen.getByRole("combobox", { name: copy.color })).toHaveTextContent(copy.colors.element);
     expect(screen.getByRole("group", { name: copy.controls })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: copy.viewer })).toBeInTheDocument();
     expect(screen.queryByText(copy.loading)).toBeNull();
     const viewer = lib.viewers[0];
     expect(viewer.zoomTo).toHaveBeenCalled();
     expect(viewer.setStyle).toHaveBeenLastCalledWith({}, { stick: { colorscheme: "default", radius: 0.2 } });
-    await user.selectOptions(style, "sphere");
+    await user.click(style);
+    await user.click(await screen.findByRole("option", { name: copy.styles.sphere }));
     expect(viewer.setStyle).toHaveBeenLastCalledWith({}, { sphere: { colorscheme: "default", scale: 0.9 } });
-    await user.selectOptions(screen.getByRole("combobox", { name: copy.color }), "chain");
+    await user.click(screen.getByRole("combobox", { name: copy.color }));
+    await user.click(await screen.findByRole("option", { name: copy.colors.chain }));
     expect(viewer.setStyle).toHaveBeenLastCalledWith({}, { sphere: { colorscheme: "chain", scale: 0.9 } });
     await user.click(screen.getByRole("button", { name: copy.rotateLeft }));
     expect(viewer.rotate).toHaveBeenCalledWith(-ROTATE_STEP, "vy");
@@ -593,15 +618,30 @@ describe("MoleculeView", () => {
     expect(viewer.lose).toHaveBeenCalled();
   });
 
+  it("reports each style and color the person picks so the block can keep it", async () => {
+    const user = userEvent.setup();
+    const onChoose = vi.fn();
+    render(<MoleculeView data={XYZ} format="xyz" style={null} color={null} mode="dedicated" onChoose={onChoose} />);
+    await user.click(await screen.findByRole("combobox", { name: copy.style }));
+    await user.click(await screen.findByRole("option", { name: copy.styles.line }));
+    await user.click(screen.getByRole("combobox", { name: copy.color }));
+    await user.click(await screen.findByRole("option", { name: copy.colors.residue }));
+    expect(onChoose.mock.calls).toEqual([
+      ["style", "line"],
+      ["color", "residue"],
+    ]);
+    expect(screen.getByRole("combobox", { name: copy.style })).toHaveTextContent(copy.styles.line);
+  });
+
   it("shows proteins as a spectrum cartoon and keeps a chosen style and color", async () => {
     lib.atoms = PROTEIN;
     render(<MoleculeView data="ATOM  " format="pdb" style={null} color={null} mode="shared" />);
-    expect(await screen.findByRole("combobox", { name: copy.style })).toHaveValue("cartoon");
-    expect(screen.getByRole("combobox", { name: copy.color })).toHaveValue("spectrum");
+    expect(await screen.findByRole("combobox", { name: copy.style })).toHaveTextContent(copy.styles.cartoon);
+    expect(screen.getByRole("combobox", { name: copy.color })).toHaveTextContent(copy.colors.spectrum);
     const other = render(<MoleculeView data="ATOM  " format="pdb" style="line" color="residue" mode="shared" />);
     const [, style] = await within(other.container).findAllByRole("combobox");
-    expect(within(other.container).getAllByRole("combobox")[0]).toHaveValue("line");
-    expect(style).toHaveValue("residue");
+    expect(within(other.container).getAllByRole("combobox")[0]).toHaveTextContent(copy.styles.line);
+    expect(style).toHaveTextContent(copy.colors.residue);
   });
 
   it("explains WebGL and empty model problems", async () => {
@@ -664,6 +704,24 @@ describe("paintMolecule", () => {
     expect(element).toHaveTextContent(copy.noWebgl);
   });
 
+  it("saves a picked style into the block's source", async () => {
+    vi.stubGlobal("IntersectionObserver", undefined);
+    stubWebgl(true);
+    const user = userEvent.setup();
+    const element = preview();
+    let source = `style: line\n${XYZ}`;
+    const rewrite = vi.fn((change: (current: string) => string) => {
+      source = change(source);
+    });
+    const dispose = paintMolecule(element, source, { still: false, rewrite });
+    await user.click(await within(element).findByRole("combobox", { name: copy.style }));
+    await user.click(await screen.findByRole("option", { name: copy.styles.sphere }));
+    expect(rewrite).toHaveBeenCalledOnce();
+    expect(source).toBe(`style: sphere\n${XYZ}`);
+    dispose?.();
+    await settle();
+  });
+
   it("waits until the block is visible, then mounts the viewer", async () => {
     vi.stubGlobal("IntersectionObserver", FakeObserver);
     stubWebgl(true);
@@ -676,7 +734,7 @@ describe("paintMolecule", () => {
     expect(lib.viewers).toHaveLength(0);
     act(() => observer.fire(true));
     expect(observer.disconnected).toBe(true);
-    await waitFor(() => expect(within(element).getByRole("combobox", { name: copy.style })).toHaveValue("line"));
+    await waitFor(() => expect(within(element).getByRole("combobox", { name: copy.style })).toHaveTextContent(copy.styles.line));
     expect(lib.formats).toEqual(["xyz"]);
     dispose?.();
     await settle();

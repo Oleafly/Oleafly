@@ -9,6 +9,7 @@ import { TextOperation } from "@/features/collab/live/ot";
 import { FakeChannel } from "@/features/collab/live/tests/fake-channel";
 import type { LivePeer } from "@/features/collab/live/live-store";
 import { PRESENCE_INTERVAL_MS } from "@/features/collab/live/presence";
+import type { RemoteSessionTransport } from "@/features/collab/live/remote-session";
 import type { NoteLiveClock } from "@/features/collab/notes/note-live";
 
 const mocks = vi.hoisted(() => ({
@@ -59,12 +60,16 @@ import type { NoteHandBack } from "@/lib/collab-live-bridge";
 import { blockAtOffset } from "./note-live-doc";
 import {
   COMPOSITION_SETTLE_MS,
+  createNoteLiveEditor,
+  LARGE_NOTE_CHARS,
   LIVE_FLUSH_MS,
   LIVE_HEAD_MS,
   LIVE_REBIND_MS,
   makeNoteLive,
   nextLiveNote,
   type NoteLiveHost,
+  PARSED_NOTES_KEPT,
+  parsedNotesKept,
   useLiveNoteClaim,
   useNoteLiveEditor,
   useNoteLiveMode,
@@ -198,13 +203,12 @@ function peer(accountId: string, cursor: number | null, path = "note.md"): LiveP
   };
 }
 
-function mount(text: string, channel: FakeChannel, extra: { open?: () => Promise<null> } = {}) {
+function mount(text: string, channel: FakeChannel, extra: Partial<RemoteSessionTransport> = {}) {
   const editor = editorFor(text);
   const host = new Host(editor, text);
   const clock = new Clock();
   const presence = { set: vi.fn(async () => undefined), leave: vi.fn(async () => undefined) };
-  const transport = channel.transport();
-  if (extra.open) transport.open = extra.open;
+  const transport = { ...channel.transport(), ...extra };
   install({ transport: () => transport, presence, clock });
   const hook = renderHook(() => useNoteLiveEditor(NOTE, editor, host));
   return { editor, host, clock, presence, hook };
@@ -551,7 +555,8 @@ describe("useNoteLiveEditor", () => {
       await settle();
     });
     await expect(waiting).resolves.toBe(true);
-    expect(collabHoldsDocument("note.md")).toBe(true);
+    expect(collabHoldsDocument("note.md", NOTE)).toBe(true);
+    expect(collabHoldsDocument("note.md", "paper")).toBe(false);
     expect(noteLiveHolds(NOTE, "note.md")).toBe(true);
     editor.commands.setTextSelection(editor.state.doc.content.size - 1);
     editor.commands.insertContent("!");
@@ -563,7 +568,7 @@ describe("useNoteLiveEditor", () => {
     });
     expect(channel.text).toBe(TEXT.replace("Second.", "Second.!"));
     act(() => useCollabLiveNote.setState({ session: null }));
-    expect(collabHoldsDocument("note.md")).toBe(false);
+    expect(collabHoldsDocument("note.md", NOTE)).toBe(false);
     await expect(jumpToNotePeerWhenBound(NOTE, "note.md", "alice", 10)).resolves.toBe(false);
   });
 
@@ -635,6 +640,7 @@ describe("useNoteLiveEditor", () => {
     const second = TEXT.indexOf("Second.");
     act(() => useCollabLiveStore.setState({ peers: { a: peer("alice", second), b: peer("me", 0), c: peer("bob", null) } }));
     expect(peerMarksOf(editor.state).map((mark) => mark.id)).toEqual(["alice"]);
+    expect(peerCaretsOf(editor.state).map((caret) => caret.id)).toEqual(["device-alice"]);
     const alice = peerCaretsOf(editor.state).find((caret) => caret.id === "device-alice");
     expect(editor.state.doc.textBetween(alice?.head ?? 0, (alice?.head ?? 0) + 7)).toBe("Second.");
     expect(editor.view.dom.querySelector('[data-note-peer-caret="device-alice"]')?.textContent).toBe("Person alice");
@@ -707,6 +713,209 @@ function textAt(editor: Editor, text: string): number {
   });
   return found;
 }
+
+function around(editor: Editor): string[] {
+  const head = peerCaretsOf(editor.state)[0]?.head ?? 0;
+  return [editor.state.doc.textBetween(head - 3, head), editor.state.doc.textBetween(head, head + 3)];
+}
+
+describe("live note carets and margin bars", () => {
+  it("places carets, margin bars and the sent caret on the right block below an empty paragraph", async () => {
+    const channel = new FakeChannel(TEXT);
+    const { editor, presence } = mount(TEXT, channel);
+    await act(async () => {
+      goLive();
+      await settle();
+    });
+    editor.commands.setTextSelection(textAt(editor, "First.") + 6);
+    editor.commands.splitBlock();
+    expect(editor.state.doc.child(2).content.size).toBe(0);
+    const second = TEXT.indexOf("Second.");
+    act(() => useCollabLiveStore.setState({ peers: { a: peer("alice", second + 3) } }));
+    expect(around(editor)).toEqual(["Sec", "ond"]);
+    expect(editor.state.doc.nodeAt(peerMarksOf(editor.state)[0].pos)?.textContent).toBe("Second.");
+    presence.set.mockClear();
+    await act(async () => {
+      editor.commands.setTextSelection(textAt(editor, "Second.") + 2);
+      await new Promise((resolve) => setTimeout(resolve, PRESENCE_INTERVAL_MS + 20));
+    });
+    expect(presence.set).toHaveBeenLastCalledWith(NOTE, "note.md", second + 2, second + 2);
+  });
+
+  it("re-places an idle collaborator's caret only once after their report, then follows the text", async () => {
+    const channel = new FakeChannel(TEXT);
+    const { editor, clock } = mount(TEXT, channel);
+    await act(async () => {
+      goLive();
+      await settle();
+    });
+    const at = TEXT.indexOf("Second.");
+    act(() => useCollabLiveStore.setState({ peers: { a: peer("alice", at + 3), b: { ...peer("bob", 0), path: "other.md" } } }));
+    expect(around(editor)).toEqual(["Sec", "ond"]);
+    const remote = (offset: number, text: string) =>
+      act(async () => {
+        channel.remote(new TextOperation().retain(offset).insert(text).retain(channel.text.length - offset));
+        channel.drain();
+        clock.flush();
+        await settle();
+      });
+    await remote(channel.text.length - 1, "!");
+    expect(around(editor)).toEqual(["Sec", "ond"]);
+    await remote(channel.text.indexOf("First."), "Top ");
+    expect(around(editor)).toEqual(["Sec", "ond"]);
+    await remote(channel.text.indexOf("First."), "More ");
+    expect(around(editor)).toEqual(["Sec", "ond"]);
+  });
+
+  it("shows a remote edit, the margin bars and a re-placed caret in one transaction", async () => {
+    const channel = new FakeChannel(TEXT);
+    const { editor, clock } = mount(TEXT, channel);
+    await act(async () => {
+      goLive();
+      await settle();
+    });
+    const at = TEXT.indexOf("Second.");
+    act(() => useCollabLiveStore.setState({ peers: { a: peer("alice", at + 3) } }));
+    let transactions = 0;
+    const count = () => {
+      transactions += 1;
+    };
+    editor.on("transaction", count);
+    await act(async () => {
+      channel.remote(new TextOperation().retain(at).insert("Wow").retain(channel.text.length - at));
+      channel.drain();
+      clock.flush();
+      await settle();
+    });
+    editor.off("transaction", count);
+    expect(transactions).toBe(1);
+    expect(around(editor)).toEqual(["Wow", "Sec"]);
+    expect(editor.state.doc.nodeAt(peerMarksOf(editor.state)[0].pos)?.textContent).toBe("WowSecond.");
+  });
+});
+
+describe("useNoteLiveEditor while the binding is down", () => {
+  it("keeps a viewer's editor read-only while waiting to bind again", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const channel = new FakeChannel(TEXT);
+    const { editor, hook } = mount(TEXT, channel, { open: async () => null });
+    await act(async () => {
+      goLive("viewer");
+      await settle();
+    });
+    expect(hook.result.current.state).toEqual({ live: false, readOnly: true, viewOnly: true });
+    expect(editor.isEditable).toBe(false);
+    act(() => setRole("editor"));
+    expect(hook.result.current.state.readOnly).toBe(false);
+    expect(editor.isEditable).toBe(true);
+  });
+
+  it("waits for a reconnect when the app flushes instead of ending the live note", async () => {
+    const channel = new FakeChannel(TEXT);
+    const base = channel.transport();
+    let opens = 0;
+    let rejects = 0;
+    let reopen: () => void = () => undefined;
+    const { editor, host, clock, hook } = mount(TEXT, channel, {
+      open: (path, onMessage) => {
+        opens += 1;
+        if (opens === 1) return base.open(path, onMessage);
+        return new Promise((resolve) => {
+          reopen = () => resolve(base.open(path, onMessage));
+        });
+      },
+      change: (fileId, rev, op) => {
+        if (rejects > 0) {
+          rejects -= 1;
+          return Promise.reject(new Error("The file is not open."));
+        }
+        return base.change(fileId, rev, op);
+      },
+    });
+    await act(async () => {
+      goLive();
+      await settle();
+    });
+    rejects = 1;
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    editor.commands.insertContent(" More");
+    hook.result.current.control.localChanged();
+    await act(async () => {
+      clock.flush();
+      await settle();
+    });
+    expect(opens).toBe(2);
+    const flushing = hook.result.current.control.flush();
+    await act(async () => {
+      await settle();
+    });
+    await act(async () => {
+      reopen();
+      await settle();
+      channel.drain();
+      await flushing;
+    });
+    expect(host.handBacks).toEqual([]);
+    expect(hook.result.current.state.live).toBe(true);
+    expect(channel.text).toBe(TEXT.replace("Second.", "Second. More"));
+  });
+
+  it("starts the wait to bind again from the shortest after a bind that opened", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const channel = new FakeChannel(TEXT);
+    const base = channel.transport();
+    const answers = [false, true, false];
+    const open = vi.fn<RemoteSessionTransport["open"]>((path, onMessage) =>
+      answers.shift() ? base.open(path, onMessage) : Promise.resolve(null),
+    );
+    const { hook } = mount(TEXT, channel, { open });
+    await act(async () => {
+      goLive();
+      await settle();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_REBIND_MS[0]);
+      await settle();
+    });
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(hook.result.current.state.live).toBe(true);
+    const id = channel.opens.at(-1) ?? "";
+    await act(async () => {
+      channel.clients.get(id)?.outbox.push({ kind: "ack", rev: 99, length: 0 });
+      channel.deliverOne(id);
+      await settle();
+    });
+    expect(open).toHaveBeenCalledTimes(3);
+    expect(hook.result.current.state.live).toBe(false);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_REBIND_MS[0]);
+      await settle();
+    });
+    expect(open).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("live note parse cache", () => {
+  it("keeps three parsed versions of a note, and two of a large one", () => {
+    expect(parsedNotesKept(10)).toBe(PARSED_NOTES_KEPT);
+    expect(parsedNotesKept(LARGE_NOTE_CHARS + 1)).toBe(2);
+    const editor = editorFor(TEXT);
+    const host = new Host(editor, TEXT);
+    const adapter = createNoteLiveEditor(editor, () => host, TEXT);
+    const first = adapter.parse("A.\n");
+    const second = adapter.parse("B.\n");
+    expect(adapter.parse("A.\n")).toBe(first);
+    adapter.parse("C.\n");
+    adapter.parse("D.\n");
+    expect(adapter.parse("B.\n")).toBe(second);
+    expect(adapter.parse("A.\n")).not.toBe(first);
+    const large = (mark: string) => `${mark}${"x".repeat(LARGE_NOTE_CHARS)}\n`;
+    const big = adapter.parse(large("a"));
+    adapter.parse(large("b"));
+    adapter.parse(large("c"));
+    expect(adapter.parse(large("a"))).not.toBe(big);
+  });
+});
 
 describe("useNoteLiveEditor edge cases", () => {
   it("does not bind when the live slot moves away before saves settle", async () => {
@@ -812,11 +1021,18 @@ describe("peerCaretsFor", () => {
         c: peer("c", 2, "assets/x.png"),
       },
       "note.md",
+      null,
     );
     expect(carets).toEqual([
       { id: "device-a", name: null, hue: 120, head: 3, anchor: 3 },
       { id: "device-z", name: "Person z", hue: 120, head: 9, anchor: 4 },
     ]);
+  });
+
+  it("leaves out this person's other devices, as the margin bars and avatars do", () => {
+    const laptop = { ...peer("me", 5), deviceId: "laptop" };
+    const carets = peerCaretsFor({ a: peer("alice", 3), l: laptop }, "note.md", "me");
+    expect(carets.map((caret) => caret.id)).toEqual(["device-alice"]);
   });
 });
 

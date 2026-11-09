@@ -40,10 +40,11 @@ vi.mock("@/lib/open-note-editors", async (importOriginal) => ({
   flushOpenNotes: mocks.flushOpenNotes,
 }));
 
+import { registerNoteEditor } from "@/lib/open-note-editors";
+import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
 import { useFilesStore } from "@/store/files";
 import { useNoteTabsStore } from "@/store/note-tabs";
 import {
-  numberedPath,
   relinkAssets,
   copyProjectNoteToMine,
   createProjectNoteFile,
@@ -66,6 +67,8 @@ const NOTE_PROJECT: ProjectInfo = {
   related_project: "paper",
 };
 const PROJECT_NOTE = "---\ntitle: Lab plan\nkind: note\nid: old-id\n---\n\n![fig](assets/fig-1a2b3c4d.png)\n";
+const PERSONAL_NOTE =
+  "---\ntitle: Reading list\nkind: note\nid: n1\n---\n\nBody\n\n![fig](assets/fig-1a2b3c4d.png)\n\n[data](./assets/kept-00000000.csv)\n";
 
 let writeProjectFile = vi.fn(async (_projectId: string, _path: string, _content: string) => {});
 let openFile = vi.fn(async (_path: string) => {});
@@ -82,7 +85,7 @@ beforeEach(() => {
   refreshProjects = vi.fn(async () => {});
   mocks.askInApp.mockResolvedValue(true);
   mocks.createNoteProject.mockResolvedValue("copy");
-  mocks.readFileContent.mockResolvedValue("---\ntitle: Reading list\nkind: note\nid: n1\n---\n\nBody\n");
+  mocks.readFileContent.mockResolvedValue(PERSONAL_NOTE);
   mocks.listFiles.mockResolvedValue([
     { path: "note.md", is_dir: false },
     { path: "assets", is_dir: true },
@@ -113,10 +116,10 @@ beforeEach(() => {
 
 describe("creating project notes", () => {
   it("writes a titled note under notes/ and opens it", async () => {
-    await expect(createProjectNoteFile("paper", " Plan ")).resolves.toBe("notes/Plan 2.md");
-    expect(writeProjectFile).toHaveBeenCalledWith("paper", "notes/Plan 2.md", expect.stringContaining("title: Plan"));
+    await expect(createProjectNoteFile("paper", " Plan ")).resolves.toBe("notes/Plan-2.md");
+    expect(writeProjectFile).toHaveBeenCalledWith("paper", "notes/Plan-2.md", expect.stringContaining("title: Plan"));
     expect(writeProjectFile.mock.calls[0][2]).toContain("kind: note");
-    expect(openFile).toHaveBeenCalledWith("notes/Plan 2.md");
+    expect(openFile).toHaveBeenCalledWith("notes/Plan-2.md");
   });
 
   it("names an empty title Untitled", async () => {
@@ -141,7 +144,7 @@ describe("moving a personal note into the project", () => {
   it("asks first, copies the note and its assets, trashes the personal copy and opens the file", async () => {
     useFilesStore.setState((state) => ({ tree: state.tree.filter((entry) => !entry.path.includes("fig-1a2b3c4d")) }));
     openPersonalNoteTab("paper", "mine");
-    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list 2.md");
+    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list-2.md");
     expect(mocks.askInApp).toHaveBeenCalledWith({
       title: enNotes.projectNotes.moveTitle,
       message: enNotes.projectNotes.moveMessage.replace("{{project}}", "Paper"),
@@ -154,11 +157,11 @@ describe("moving a personal note into the project", () => {
       "notes/assets/fig-1a2b3c4d.png",
       "b64:mine:assets/fig-1a2b3c4d.png",
     );
-    expect(writeProjectFile).toHaveBeenCalledWith("paper", "notes/Reading list 2.md", expect.stringContaining("Body"));
+    expect(writeProjectFile).toHaveBeenCalledWith("paper", "notes/Reading list-2.md", expect.stringContaining("Body"));
     expect(mocks.recycleProject).toHaveBeenCalledWith("mine");
     expect(useNoteTabsStore.getState().tabs).toEqual([]);
     expect(refreshProjects).toHaveBeenCalled();
-    expect(openFile).toHaveBeenCalledWith("notes/Reading list 2.md");
+    expect(openFile).toHaveBeenCalledWith("notes/Reading list-2.md");
     expect(mocks.success).toHaveBeenCalledWith(enNotes.projectNotes.moved.replace("{{title}}", "Reading list"));
   });
 
@@ -166,19 +169,16 @@ describe("moving a personal note into the project", () => {
     mocks.readFileContent.mockResolvedValue(
       "---\ntitle: Reading list\nkind: note\nid: n1\n---\n\n![fig](assets/fig-1a2b3c4d.png) and assets/fig-1a2b3c4d.png.bak\n",
     );
-    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list 2.md");
+    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list-2.md");
     expect(mocks.writeProjectBytes.mock.calls.map((call) => call[1])).toEqual(["notes/assets/fig-1a2b3c4d-2.png"]);
     expect(writeProjectFile).toHaveBeenCalledWith(
       "paper",
-      "notes/Reading list 2.md",
+      "notes/Reading list-2.md",
       expect.stringContaining("![fig](assets/fig-1a2b3c4d-2.png) and assets/fig-1a2b3c4d.png.bak"),
     );
   });
 
-  it("numbers paths case-insensitively and relinks several renamed assets at once", () => {
-    expect(numberedPath("notes/assets/fig.png", new Set(["notes/assets/fig-2.png"]))).toBe("notes/assets/fig-3.png");
-    expect(numberedPath("notes/assets/README", new Set())).toBe("notes/assets/README-2");
-    expect(numberedPath("notes/.hidden", new Set())).toBe("notes/.hidden-2");
+  it("relinks several renamed assets at once", () => {
     const renames = new Map([
       ["assets/x.png", "assets/x-2.png"],
       ["assets/x-2.png", "assets/x-2-2.png"],
@@ -190,10 +190,25 @@ describe("moving a personal note into the project", () => {
     expect(relinkAssets("same", new Map())).toBe("same");
   });
 
+  it("relinks assets written with a leading ./ and leaves other folders alone", () => {
+    const renames = new Map([["assets/x.png", "assets/x-2.png"]]);
+    expect(relinkAssets("![](./assets/x.png) <./assets/x.png> ../assets/x.png a./assets/x.png", renames)).toBe(
+      "![](./assets/x-2.png) <./assets/x-2.png> ../assets/x.png a./assets/x.png",
+    );
+  });
+
+  it("copies only the assets the note still uses", async () => {
+    mocks.readFileContent.mockResolvedValue("---\ntitle: Reading list\nkind: note\n---\n\n![fig](assets/fig-1a2b3c4d.png)\n");
+    useFilesStore.setState({ tree: [{ path: "main.tex", is_dir: false }] });
+    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list.md");
+    expect(mocks.writeProjectBytes.mock.calls.map((call) => call[1])).toEqual(["notes/assets/fig-1a2b3c4d.png"]);
+    expect(mocks.readFileBase64).not.toHaveBeenCalledWith("mine", "assets/kept-00000000.csv");
+  });
+
   it("uses the project name when the note has no title", async () => {
     mocks.readFileContent.mockResolvedValue("Just text\n");
     useFilesStore.setState({ projects: [{ ...NOTE_PROJECT, main_doc: "" }] });
-    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list 2.md");
+    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list-2.md");
     expect(mocks.readFileContent).toHaveBeenCalledWith("mine", "note.md");
   });
 
@@ -236,9 +251,9 @@ describe("moving a personal note into the project", () => {
     mocks.readFileContent
       .mockResolvedValueOnce("---\ntitle: Reading list\nkind: note\n---\n\nBody\n")
       .mockResolvedValueOnce("---\ntitle: Reading list\nkind: note\n---\n\nBody, and more\n");
-    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list 2.md");
+    await expect(moveNoteIntoProject("mine", "paper")).resolves.toBe("notes/Reading list-2.md");
     expect(mocks.flushOpenNotes).toHaveBeenCalledTimes(2);
-    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", "notes/Reading list 2.md", expect.stringContaining("Body, and more"));
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", "notes/Reading list-2.md", expect.stringContaining("Body, and more"));
     expect(writeProjectFile.mock.invocationCallOrder.at(-1)).toBeLessThan(mocks.recycleProject.mock.invocationCallOrder[0]);
   });
 
@@ -300,6 +315,22 @@ describe("copying a project note to my notes", () => {
     );
   });
 
+  it("copies what the open editor shows, even before the project file catches up", async () => {
+    useFilesStore.setState({ files: { "notes/Plan.md": { content: PROJECT_NOTE, dirty: false } } });
+    const stop = registerNoteEditor(
+      "project-note:paper:notes/Plan.md",
+      noteEditorHandle({ text: () => "---\ntitle: Live plan\nkind: note\n---\n\nTyped just now\n" }),
+    );
+    try {
+      await copyProjectNoteToMine("paper", "notes/Plan.md");
+    } finally {
+      stop();
+    }
+    const [title, source] = mocks.createNoteProject.mock.calls[0];
+    expect(title).toBe("Live plan");
+    expect(source).toContain("Typed just now");
+  });
+
   it("prefers the open file's text and falls back to the file name", async () => {
     useFilesStore.setState({ files: { "notes/Plan.md": { content: "---\nkind: note\n---\nBody", dirty: true } } });
     await copyProjectNoteToMine("paper", "notes/Plan.md");
@@ -322,8 +353,26 @@ describe("renaming a project note", () => {
     const renameEntry = vi.fn(async (_from: string, to: string) => to);
     useFilesStore.setState({ files: { "notes/Plan.md": { content: PROJECT_NOTE, dirty: false } }, renameEntry } as never);
     await expect(renameProjectNote("paper", "notes/Plan.md", " Results ")).resolves.toBe("notes/Results.md");
-    expect(writeProjectFile).toHaveBeenCalledWith("paper", "notes/Plan.md", expect.stringContaining("title: Results"));
+    expect(writeProjectFile).toHaveBeenCalledWith("paper", "notes/Plan.md", expect.stringContaining("title: Results"), {
+      base: PROJECT_NOTE,
+    });
     expect(renameEntry).toHaveBeenCalledWith("notes/Plan.md", "notes/Results.md");
+  });
+
+  it("renames from the open editor's text and writes it with that text as the base", async () => {
+    const renameEntry = vi.fn(async (_from: string, to: string) => to);
+    useFilesStore.setState({ files: { "notes/Plan.md": { content: PROJECT_NOTE, dirty: false } }, renameEntry } as never);
+    const live = "---\ntitle: Lab plan\nkind: note\n---\n\nLatest line\n";
+    const stop = registerNoteEditor("project-note:paper:notes/Plan.md", noteEditorHandle({ text: () => live }));
+    try {
+      await renameProjectNote("paper", "notes/Plan.md", "Results");
+    } finally {
+      stop();
+    }
+    const [, , written, options] = writeProjectFile.mock.calls[0] as unknown as [string, string, string, object];
+    expect(written).toContain("Latest line");
+    expect(written).toContain("title: Results");
+    expect(options).toEqual({ base: live });
   });
 
   it("keeps the file name when it already fits and ignores empty titles", async () => {

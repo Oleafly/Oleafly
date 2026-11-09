@@ -1,9 +1,11 @@
 import { readMarkdownDocumentSettings, setFrontMatterScalar } from "@/features/markdown-document-settings";
-import { frontMatterBody, frontMatterValue } from "@/lib/front-matter";
+import { fencedLines } from "@/lib/code-fences";
+import { frontMatterBody, frontMatterValue, splitFrontMatter, valuesOfLines } from "@/lib/front-matter";
+import { NOTE_FILE_KIND } from "@/lib/project-notes";
 import { LINE_ICON_PREFIX, LINE_ICONS } from "./note-icons";
 import type { NoteColor } from "./types";
 
-export const NOTE_KIND = "note";
+export const NOTE_KIND = NOTE_FILE_KIND;
 const BOM = "\uFEFF";
 const OPENING_FENCE = /^\uFEFF?---[ \t]*(?:\r?\n|$)/u;
 const SUMMARY_LIMIT = 180;
@@ -68,15 +70,12 @@ function plainInline(line: string): string {
 
 export function noteSummary(body: string): string {
   const lines: string[] = [];
-  let fenced = false;
-  for (const raw of body.split(/\r?\n/u)) {
-    const line = raw.trim();
-    if (/^(?:```|~~~)/u.test(line)) {
-      fenced = !fenced;
+  for (const raw of fencedLines(body)) {
+    if (raw.fenced) {
       if (lines.length > 0) break;
       continue;
     }
-    if (fenced) continue;
+    const line = raw.text.trim();
     if (line === "") {
       if (lines.length > 0) break;
       continue;
@@ -94,21 +93,19 @@ export function noteSummary(body: string): string {
   return `${(space > SUMMARY_LIMIT / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-function scalar(text: string, key: string): string | undefined {
-  return frontMatterValue(text, key) ?? undefined;
-}
-
 export function readNoteFacts(text: string): NoteFacts {
-  const title = scalar(text, "title") ?? null;
-  const id = scalar(text, "id");
-  const declared = scalar(text, "color")?.toLowerCase();
+  const front = splitFrontMatter(text);
+  const values = valuesOfLines(front?.lines ?? []);
+  const title = values.get("title") ?? null;
+  const id = values.get("id");
+  const declared = values.get("color")?.toLowerCase();
   return {
     title,
     id,
-    icon: scalar(text, "icon"),
+    icon: values.get("icon"),
     color: isNoteColor(declared) ? declared : noteColorFor(id ?? title ?? ""),
-    agent: scalar(text, "agent"),
-    summary: noteSummary(noteBody(text)),
+    agent: values.get("agent"),
+    summary: noteSummary(front ? front.body : text),
   };
 }
 
@@ -124,8 +121,8 @@ function openFrontMatter(text: string): string | null {
 export function withNoteIdentity(text: string, id?: string): string {
   const opened = openFrontMatter(text);
   if (opened === null) return text;
-  const declared = scalar(opened, "kind") === NOTE_KIND ? opened : setFrontMatterScalar(opened, "kind", NOTE_KIND);
-  return scalar(declared, "id") ? declared : setFrontMatterScalar(declared, "id", id ?? crypto.randomUUID());
+  const declared = frontMatterValue(opened, "kind") === NOTE_KIND ? opened : setFrontMatterScalar(opened, "kind", NOTE_KIND);
+  return frontMatterValue(declared, "id") ? declared : setFrontMatterScalar(declared, "id", id ?? crypto.randomUUID());
 }
 
 export function newNoteSource(title: string, body = "", agent?: string, id: string = crypto.randomUUID()): string {

@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   editorView: null as { contentDOM: HTMLElement } | null,
   keepVisualMode: false,
   revealVisualLocation: vi.fn(),
+  notes: false,
+  revealNoteLocation: vi.fn(),
 }));
 
 vi.mock("@/store/files", async () => {
@@ -33,6 +35,7 @@ vi.mock("@/store/settings", () => ({
       revealEditor: mocks.revealEditor,
       setViewMode: mocks.setViewMode,
       editorKeepVisualMode: mocks.keepVisualMode,
+      notes: mocks.notes,
     }),
   },
 }));
@@ -41,6 +44,9 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 }));
 vi.mock("@/components/editor/wysiwyg/reveal", () => ({
   revealVisualLocation: mocks.revealVisualLocation,
+}));
+vi.mock("@/components/notes/note-reveal", () => ({
+  revealNoteLocation: mocks.revealNoteLocation,
 }));
 vi.mock("@/components/editor/cm/controller", () => ({
   waitForEditorDocument: mocks.waitForEditorDocument,
@@ -51,6 +57,7 @@ vi.mock("@/components/editor/cm/controller", () => ({
 }));
 
 import { useFilesStore } from "@/store/files";
+import { useNoteTabsStore } from "@/store/note-tabs";
 import { useVisualModeStore } from "@/store/visual-mode";
 import { EDITOR_DOCUMENT_WAIT_MS, keptVisualEditor, openProjectLocation } from "./open-location";
 
@@ -72,7 +79,9 @@ beforeEach(() => {
   mocks.editorView = null;
   mocks.viewMode = "editor";
   mocks.keepVisualMode = false;
+  mocks.notes = false;
   mocks.revealVisualLocation.mockResolvedValue(true);
+  mocks.revealNoteLocation.mockResolvedValue(true);
   useVisualModeStore.setState({ enabled: false, markdownSplit: false });
   mocks.waitForEditorDocument.mockResolvedValue(view);
   useFilesStore.setState({ projectId: "proj", activePath: null, openFile });
@@ -331,6 +340,56 @@ describe("openProjectLocation", () => {
     it("switches to Code as before while the editor is already in Code", () => {
       useVisualModeStore.setState({ enabled: false });
       expect(keptVisualEditor("main.tex")).toBeNull();
+    });
+  });
+
+  describe("project notes", () => {
+    const NOTE = "---\nkind: note\n---\n\n# Plan\n\nSecond block\n";
+
+    beforeEach(() => {
+      mocks.notes = true;
+      useFilesStore.setState({ projectKind: "document", files: { "notes/Plan.md": { content: NOTE, dirty: false } } } as never);
+      useNoteTabsStore.setState({ markdown: {} });
+    });
+
+    it("shows the line inside the note editor instead of waiting for Code", async () => {
+      expect(await openProjectLocation({ path: "notes/Plan.md", line: 7 })).toBe(true);
+      expect(mocks.revealNoteLocation).toHaveBeenCalledWith(
+        "project-note:proj:notes/Plan.md",
+        NOTE,
+        { path: "notes/Plan.md", line: 7 },
+        expect.any(AbortSignal),
+        { select: true, focus: true },
+      );
+      expect(mocks.waitForEditorDocument).not.toHaveBeenCalled();
+      expect(mocks.revealSourceEditor).not.toHaveBeenCalled();
+    });
+
+    it("keeps the selection and focus where the caller asks", async () => {
+      await openProjectLocation({ path: "notes/Plan.md", range: { from: 3, to: 3 } }, { keepSelection: true });
+      expect(mocks.revealNoteLocation.mock.lastCall?.[4]).toEqual({ select: false, focus: false });
+      await openProjectLocation({ path: "notes/Plan.md", line: 1 }, { keepFocus: true });
+      expect(mocks.revealNoteLocation.mock.lastCall?.[4]).toEqual({ select: true, focus: false });
+    });
+
+    it("uses Code for a note shown as Markdown, with Notes off, or in a note project", async () => {
+      useNoteTabsStore.getState().setMarkdown("proj", "notes/Plan.md", true);
+      await openProjectLocation({ path: "notes/Plan.md", line: 2 });
+      useNoteTabsStore.setState({ markdown: {} });
+      useFilesStore.setState({ projectKind: "note" } as never);
+      await openProjectLocation({ path: "notes/Plan.md", line: 2 });
+      useFilesStore.setState({ projectKind: "document" } as never);
+      mocks.notes = false;
+      await openProjectLocation({ path: "notes/Plan.md", line: 2 });
+      expect(mocks.revealNoteLocation).not.toHaveBeenCalled();
+      expect(mocks.gotoLine).toHaveBeenCalledTimes(3);
+    });
+
+    it("uses Code when the file's text is not loaded", async () => {
+      useFilesStore.setState({ files: {} } as never);
+      mocks.notes = true;
+      await openProjectLocation({ path: "notes/Plan.md", line: 2 });
+      expect(mocks.revealNoteLocation).not.toHaveBeenCalled();
     });
   });
 

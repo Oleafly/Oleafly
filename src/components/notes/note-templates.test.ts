@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { NOTE_COLORS, newNoteSource } from "./note-file";
+import { NOTE_COLORS, newNoteSource, noteColorFor } from "./note-file";
 import { LINE_ICON_PREFIX, LINE_ICONS } from "./note-icons";
 import { readProperties } from "./note-properties";
 import { frontMatterList, noteTags } from "./note-tags";
@@ -151,7 +151,18 @@ describe("user templates", () => {
       title: "Meeting 2026-11-08",
       body: "Body for Meeting 2026-11-08 on 2026-11-08.",
       properties: "status: open\nattendees:\n  - Ana\n- Bo\n# a comment\n\nnotes: |\n  keep Meeting 2026-11-08",
+      icon: "lucide:atom",
+      color: noteColorFor("abc"),
     });
+  });
+
+  it("gives the new note the template's own icon and colour", () => {
+    const tinted = source.replace("icon: lucide:atom", "icon: 🧪\ncolor: peach");
+    expect(draftFromNote("Plan", tinted, NOW, "en")).toMatchObject({ icon: "🧪", color: "peach" });
+    const plain = source.replace("icon: lucide:atom\n", "");
+    const draft = draftFromNote("Plan", plain, NOW, "en");
+    expect(draft).not.toHaveProperty("icon");
+    expect(draft.color).toBe(noteColorFor("abc"));
   });
 
   it("recognises notes marked as templates", () => {

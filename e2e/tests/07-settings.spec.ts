@@ -58,7 +58,7 @@ test("keyboard shortcuts are editable from their Settings section", async ({ tau
 });
 
 test("keyboard shortcuts Settings section opens from the home view", async ({ tauriPage }) => {
-  const back = tauriPage.locator('[title="Back to library"]');
+  const back = tauriPage.locator('[data-toolbar-part="home"][aria-label="Home"]');
   if (await back.isVisible()) await back.click();
   await openSettings(tauriPage, "shortcuts");
   await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
@@ -67,7 +67,7 @@ test("keyboard shortcuts Settings section opens from the home view", async ({ ta
 });
 
 test("home tour opens from Help and About", async ({ tauriPage }) => {
-  const back = tauriPage.locator('[title="Back to library"]');
+  const back = tauriPage.locator('[data-toolbar-part="home"][aria-label="Home"]');
   if (await back.isVisible()) await back.click();
   await openSettings(tauriPage, "help");
   await tauriPage.getByText("Start tour", { exact: true }).click();

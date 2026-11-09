@@ -66,18 +66,18 @@ test.describe("project notes in the project view", () => {
     await panel.getByRole("button", { name: "Reading list", exact: true }).click();
     await expect(page.getByTestId("editor-personal-note-tab-title")).toHaveText("Reading list");
     await expect(page.getByTestId("personal-note-tab")).toBeVisible();
-    await expect(page.getByTestId("note-tab-bar")).toContainText("Only you can see it");
+    await expect(page.locator('[data-testid="note-tab-bar"]:visible')).toContainText("Only you can see it");
     await expect(page.getByRole("textbox", { name: "Note title" })).toHaveValue("Reading list");
 
     await page.getByTestId("editor-note-tab-title").click();
     await expect(page.getByTestId("project-note-tab")).toBeVisible();
-    await expect(page.getByTestId("personal-note-tab")).toHaveCount(0);
+    await expect(page.getByTestId("personal-note-tab")).toBeHidden();
   });
 
   test("opens a project note from the panel", async ({ page }) => {
     await open(page);
     await page.getByText("main.tex", { exact: true }).click();
-    await expect(page.getByTestId("project-note-tab")).toHaveCount(0);
+    await expect(page.getByTestId("project-note-tab")).toBeHidden();
     await page.getByTestId("project-notes-panel").getByRole("button", { name: "Lab plan", exact: true }).click();
     await expect(page.getByTestId("project-note-tab")).toBeVisible();
   });

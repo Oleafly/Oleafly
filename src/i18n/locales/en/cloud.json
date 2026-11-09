@@ -110,6 +110,8 @@
     "conflictsHelp_one": "This file changed here and on another computer before they synced, so Oleafly kept both. Keep what you need, then delete the copy.",
     "conflictsHelp_other": "These files changed here and on another computer before they synced, so Oleafly kept both. Keep what you need, then delete the copies.",
     "conflictsLabel": "Conflict copies in {{name}}",
+    "compare": "Compare",
+    "compareLabel": "Compare {{path}} with the note",
     "dismiss": "Dismiss",
     "skipped_one": "{{count}} file was skipped",
     "skipped_other": "{{count}} files were skipped",

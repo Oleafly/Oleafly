@@ -271,6 +271,8 @@ import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTypstFormsStore } from "@/store/typst-forms";
 import { setWysiwygEditor } from "@/components/editor/wysiwyg/controller";
+import { registerNoteEditor } from "@/lib/open-note-editors";
+import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
 
 const initialFiles = useFilesStore.getState();
 const initialCompile = useCompileStore.getState();
@@ -796,6 +798,29 @@ describe("native events", () => {
     expect(mocks.editorUndo).not.toHaveBeenCalled();
     expect(mocks.editorRedo).not.toHaveBeenCalled();
     note.remove();
+  });
+
+  it("sends undo from an open note's controls and the Edit menu to that note", async () => {
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("menu://undo")).toBe(true));
+    const root = document.createElement("div");
+    const control = document.createElement("button");
+    root.append(control);
+    document.body.append(root);
+    const run = vi.fn();
+    const stop = registerNoteEditor("note", noteEditorHandle({ root, history: run }));
+    control.focus();
+    const key = keydown(control, { key: "z", ctrlKey: true });
+    keydown(control, { key: "z", ctrlKey: true, shiftKey: true });
+    emit("menu://undo", null);
+    act(() => useFilesStore.setState({ projectId: null }));
+    emit("menu://redo", null);
+    expect(key.defaultPrevented).toBe(true);
+    expect(run.mock.calls).toEqual([[false], [true], [false], [true]]);
+    expect(mocks.editorUndo).not.toHaveBeenCalled();
+    expect(mocks.editorRedo).not.toHaveBeenCalled();
+    stop();
+    root.remove();
   });
 
   it("keeps menu history in the Markdown visual editor on the document", async () => {

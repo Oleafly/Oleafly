@@ -79,7 +79,20 @@
       "useAsTemplate": "Use as template",
       "stopTemplate": "Stop using as template",
       "templateOn": "\"{{name}}\" is now one of your templates.",
-      "templateOff": "\"{{name}}\" is no longer a template."
+      "templateOff": "\"{{name}}\" is no longer a template.",
+      "linkProject": "Link to project",
+      "compareConflict": "Compare conflict copy"
+    },
+    "conflicts": {
+      "title": "Two versions of \"{{name}}\"",
+      "description": "This note changed here and on another computer before they synced, so Oleafly kept both. Keep one version. The other goes to the Recycle Bin.",
+      "diffLabel": "Differences between the two versions",
+      "loading": "Reading both versions…",
+      "readFailed": "Couldn't read the conflict copy.",
+      "resolveFailed": "Couldn't keep that version.",
+      "keepMine": "Keep this computer's version",
+      "useCopy": "Use the other computer's version",
+      "badge": "This note has a conflict copy"
     }
   },
   "home": {
@@ -113,6 +126,12 @@
     "retryLoad": "Try again",
     "closeTab": "Close tab",
     "imageFailed": "Couldn't save the image to the note.",
+    "onlyImages": "Only PNG, JPEG and SVG images can be added to a note.",
+    "remoteImages": {
+      "more": "More ways to load images",
+      "loadAll": "Load all images in this note",
+      "trustHost": "Always load images from {{host}}"
+    },
     "titleLabel": "Note title",
     "untitled": "Untitled"
   },
@@ -136,7 +155,8 @@
   "review": {
     "rejectAll": "Reject all",
     "acceptAll": "Accept all",
-    "position": "Change {{current}} of {{total}}"
+    "position": "Change {{current}} of {{total}}",
+    "undo": "Undo"
   },
   "toolbar": {
     "label": "Formatting",
@@ -157,9 +177,6 @@
     "addColumn": "Add column",
     "chart": "Chart",
     "mermaid": "Mermaid diagram",
-    "rawBlock": "LaTeX or Typst block",
-    "latexBlock": "LaTeX block",
-    "typstBlock": "Typst block",
     "outline": "Outline",
     "emptyOutline": "Add a heading to build the outline",
     "words_one": "{{count}} word",
@@ -184,6 +201,11 @@
       "title": "New chart",
       "description": "Ask the agent to fill this in, or edit the source.",
       "series": "Values"
+    },
+    "newHtml": {
+      "title": "Dose response",
+      "dose": "Dose",
+      "response": "Response:"
     },
     "imageMissing": "Image not found: {{path}}",
     "plot": {
@@ -612,6 +634,7 @@
     "projects": "Projects",
     "noMatches": "No notes or projects match",
     "missingNote": "This note no longer exists",
+    "missingNoteCreate": "This note no longer exists. Click to create a new note with this name.",
     "missingProject": "This project no longer exists",
     "linkedFrom": "Linked from"
   },
@@ -643,7 +666,18 @@
     "copyUnsaved": "Some notes have unsaved changes, so the note wasn't copied. Save them and try again.",
     "renameUnsaved": "Some notes have unsaved changes, so the note wasn't renamed. Save them and try again.",
     "unlink": "Unlink from this project",
-    "mineDeviceOnly": "These notes are linked to this project on this computer only.",
+    "unlinked": "Unlinked {{title}} from this project.",
+    "undoUnlink": "Undo",
+    "unlinkFailed": "Couldn't unlink {{title}} from this project.",
+    "deleteTitle": "Delete \"{{name}}\"?",
+    "deleteMessage": "The note file is removed from this project. You can't undo this.",
+    "trash": "Move to Trash",
+    "trashWindows": "Move to Recycle Bin",
+    "trashTitle": "Move \"{{name}}\" to the Trash?",
+    "trashTitleWindows": "Move \"{{name}}\" to the Recycle Bin?",
+    "trashMessage": "The note file moves out of this project and into the Trash, where you can restore it.",
+    "trashMessageWindows": "The note file moves out of this project and into the Recycle Bin, where you can restore it.",
+    "mineDeviceOnly":"These notes are linked to this project on this computer only.",
     "moreFiles_one": "{{count}} more file in the notes folder isn't listed.",
     "moreFiles_other": "{{count}} more files in the notes folder aren't listed."
   },
@@ -709,7 +743,13 @@
       "newName": "Property name",
       "taken": "That name is already used",
       "invalid": "The front matter isn't valid YAML, so properties can't be edited here.",
-      "editSource": "Fix it in Markdown"
+      "editSource": "Fix it in Markdown",
+      "convert": {
+        "title": "Change {{key}} to {{type}}?",
+        "list": "Only the first item is kept. The others are removed.",
+        "value": "The current value doesn't fit this type and will be lost.",
+        "confirm": "Change type"
+      }
     }
   },
   "live": {
@@ -816,7 +856,6 @@
       "chooseFiles": "Choose files",
       "filesPickerTitle": "Choose Markdown files to import"
     },
-    "withShortcut": "{{label}} ({{shortcut}})",
     "search": {
       "results": "Matching notes",
       "searching": "Searching…",
@@ -825,7 +864,6 @@
       "favorite": "Favorite",
       "fields": {
         "is": "Is",
-        "has": "Has",
         "tag": "Tag",
         "kind": "Kind",
         "author": "Author",
@@ -948,7 +986,8 @@
     "allowWritesLabel": "Let the agent change files",
     "allowWritesAsk": "{{agent}} has no read-only mode, so it could change files in {{project}}. Send your message anyway?",
     "allowWrites": "Allow in this chat",
-    "dontSend": "Don't send"
+    "dontSend": "Don't send",
+    "viewOnly": "You can only view this note, so the assistant can't change it."
   },
   "saving": {
     "notSaved": "Your latest changes are not saved.",
@@ -956,10 +995,11 @@
   },
   "failures": {
     "createNote": "Couldn't create the note.",
-    "moveNote": "Couldn't move \"{{name}}\" to that project.",
+    "linkNote": "Couldn't link \"{{name}}\" to that project.",
     "linkProject": "The project was created, but the note couldn't be linked to it.",
     "sendToPaper": "Couldn't add this to the paper.",
-    "template": "Couldn't change the template setting of \"{{name}}\"."
+    "paperNotOpen": "Open a LaTeX, Typst or Markdown file of the paper first, then send it again.",
+    "template":"Couldn't change the template setting of \"{{name}}\"."
   },
   "noteTab": {
     "projectNote": "Project note",

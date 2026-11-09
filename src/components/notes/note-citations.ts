@@ -1,3 +1,4 @@
+import { type HayagrivaEntry, hayagrivaEntries, isHayagrivaPath, looksLikeHayagriva } from "@/lib/citation/hayagriva";
 import { parseBib } from "@/lib/latex-tools";
 import { listFiles, readFileContent } from "@/lib/tauri";
 import type { CitationItem } from "./types";
@@ -29,19 +30,44 @@ export function citationLabel(key: string, fields: Readonly<Record<string, strin
   return lead || title || key;
 }
 
+interface CitedEntry {
+  readonly key: string;
+  readonly fields: Readonly<Record<string, string>>;
+}
+
+function isBibPath(path: string): boolean {
+  return path.toLowerCase().endsWith(".bib");
+}
+
+function hayagrivaFields(entry: HayagrivaEntry): Record<string, string> {
+  const fields: Record<string, string> = {};
+  if (entry.author?.value) fields.author = entry.author.value;
+  if (entry.title?.value) fields.title = entry.title.value;
+  if (entry.date?.value) fields.date = entry.date.value;
+  return fields;
+}
+
+function entriesIn(path: string, source: string): CitedEntry[] {
+  if (isBibPath(path)) return parseBib(source).entries;
+  if (!looksLikeHayagriva(source)) return [];
+  return hayagrivaEntries(source)
+    .filter((entry) => entry.isEntry)
+    .map((entry) => ({ key: entry.key, fields: hayagrivaFields(entry) }));
+}
+
 export async function projectCitations(projectId: string): Promise<CitationItem[]> {
   const files = (await listFiles(projectId)).filter(
-    (entry) => !entry.is_dir && !entry.unreadable && entry.path.toLowerCase().endsWith(".bib"),
+    (entry) => !entry.is_dir && !entry.unreadable && (isBibPath(entry.path) || isHayagrivaPath(entry.path)),
   );
   const sources = await Promise.all(files.map((file) => readFileContent(projectId, file.path).catch(() => "")));
   const seen = new Set<string>();
   const items: CitationItem[] = [];
-  for (const source of sources) {
-    for (const entry of parseBib(source).entries) {
+  files.forEach((file, index) => {
+    for (const entry of entriesIn(file.path, sources[index])) {
       if (seen.has(entry.key)) continue;
       seen.add(entry.key);
       items.push({ key: entry.key, label: citationLabel(entry.key, entry.fields) });
     }
-  }
+  });
   return items;
 }

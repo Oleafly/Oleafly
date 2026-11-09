@@ -128,16 +128,26 @@ describe("project notes in the Share dialog", () => {
     expect(mocks.logError).toHaveBeenCalledWith("count the project notes for sharing", failure);
   });
 
-  it("drops counts that arrive after it closes", async () => {
+  it("keeps the line of the project it now shows when an older count arrives late", async () => {
     let deliver: (value: unknown[]) => void = () => {};
     mocks.listFiles.mockImplementationOnce(() => new Promise((resolve) => (deliver = resolve)));
-    const { unmount } = render(<ProjectNotesShareLine projectId="thesis" />);
-    unmount();
+    const { rerender } = render(<ProjectNotesShareLine projectId="thesis" />);
+    rerender(<ProjectNotesShareLine projectId="paper" />);
+    const line = await screen.findByTestId("collab-share-project-notes");
+    expect(line).toHaveTextContent(enCollab.share.projectNotesShared);
     await act(async () => deliver([]));
+    expect(screen.getByTestId("collab-share-project-notes")).toHaveTextContent(enCollab.share.projectNotesShared);
+  });
+
+  it("keeps the line of the project it now shows when an older count fails late", async () => {
     let fail: (error: Error) => void = () => {};
     mocks.listFiles.mockImplementationOnce(() => new Promise((_resolve, reject) => (fail = reject)));
-    const second = render(<ProjectNotesShareLine projectId="thesis" />);
-    second.unmount();
-    await act(async () => fail(new Error("late")));
+    const { rerender } = render(<ProjectNotesShareLine projectId="thesis" />);
+    rerender(<ProjectNotesShareLine projectId="paper" />);
+    expect(await screen.findByTestId("collab-share-project-notes")).toHaveTextContent(enCollab.share.projectNotesShared);
+    const late = new Error("late");
+    await act(async () => fail(late));
+    expect(screen.getByTestId("collab-share-project-notes")).toHaveTextContent(enCollab.share.projectNotesShared);
+    expect(mocks.logError).toHaveBeenCalledWith("count the project notes for sharing", late);
   });
 });

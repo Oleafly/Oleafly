@@ -285,7 +285,7 @@ export interface SidebarGraphActionsProps {
 }
 
 export function SidebarGraphActions({ onOpenGraph, onImportFolder, onExportFolder }: Readonly<SidebarGraphActionsProps>) {
-  const { t } = useTranslation(["notes"]);
+  const { t } = useTranslation(["notes", "shell"]);
   const graphKeys = useShortcutStore((state) => shortcutLabel(state.bindings.notesGraph));
   const pending = useRef<(() => void) | null>(null);
   const later = (action: () => void) => () => {
@@ -294,7 +294,7 @@ export function SidebarGraphActions({ onOpenGraph, onImportFolder, onExportFolde
   return (
     <>
       {onOpenGraph && (
-        <Tooltip label={t(($) => $.notes.vault.withShortcut, { label: t(($) => $.notes.graph.openGraph), shortcut: graphKeys })} side="bottom">
+        <Tooltip label={t(($) => $.shell.rail.withShortcut, { label: t(($) => $.notes.graph.openGraph), shortcut: graphKeys })} side="bottom">
           <Button variant="ghost" size="icon" aria-label={t(($) => $.notes.graph.openGraph)} className="size-7" onClick={onOpenGraph}>
             <Waypoints aria-hidden />
           </Button>

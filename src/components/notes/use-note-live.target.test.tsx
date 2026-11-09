@@ -85,7 +85,7 @@ describe("live project notes", () => {
       await settle();
     });
     expect(bound).toHaveLength(1);
-    expect(bound[0]).toMatchObject({ noteId: "paper", path: "notes/Plan.md", session: SESSION });
+    expect(bound[0]).toMatchObject({ noteId: "paper", noticeId: KEY, path: "notes/Plan.md", session: SESSION });
     expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false });
     expect(hook.result.current.control.holds()).toBe(true);
     hook.unmount();

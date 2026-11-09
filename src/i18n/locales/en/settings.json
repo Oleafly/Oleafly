@@ -1260,6 +1260,12 @@
           "bar": "Side bar"
         }
       },
+      "remoteImages": {
+        "title": "Images from the web",
+        "description": "Notes load images from these sites without asking.",
+        "empty": "Notes ask before they load an image from the web. Sites you always allow appear here.",
+        "remove": "Remove {{host}}"
+      },
       "resetAll": "Reset Notes appearance"
     }
   },
@@ -2475,7 +2481,7 @@
       },
       "notesQuickSwitcher": {
         "description": "Find a note by name and open it.",
-        "label": "Notes: quick switcher"
+        "label": "Notes: go to note"
       },
       "notesTodayNote": {
         "description": "Open today's note, or start it.",
@@ -2492,6 +2498,10 @@
       "notesOutline": {
         "description": "Show or hide the outline of the open note.",
         "label": "Notes: outline"
+      },
+      "notesAskAgent": {
+        "description": "Ask the agent about the selected text, or open and close the note's agent.",
+        "label": "Notes: ask agent"
       }
     },
     "application": {

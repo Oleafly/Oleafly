@@ -3,6 +3,7 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
@@ -53,6 +54,7 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNoteTabsStore } from "@/store/note-tabs";
 import { useNotesViewStore } from "@/store/notes-view";
+import { useToastStore } from "@/store/toast";
 import { PROJECT_NOTES_SEARCH_MIN, ProjectNotesPanel } from "./ProjectNotesPanel";
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -137,6 +139,7 @@ beforeEach(() => {
   useNotesViewStore.setState({ requestedNoteId: null });
   useNoteTabsStore.setState({ tabs: [], active: null, markdown: {} });
   useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
+  useToastStore.getState().reset();
 });
 
 afterEach(() => {
@@ -255,12 +258,83 @@ describe("ProjectNotesPanel", () => {
     openMenu(screen.getAllByTestId("project-note-file-menu")[1]);
     fireEvent.click(await screen.findByTestId("project-note-file-delete"));
     await waitFor(() => expect(mocks.deleteProjectEntry).toHaveBeenCalledWith("notes/Plan.md"));
-    expect(mocks.confirmAction).toHaveBeenCalledWith(expect.objectContaining({ destructive: true }));
+    expect(mocks.confirmAction).toHaveBeenCalledWith({
+      title: enNotes.projectNotes.deleteTitle.replace("{{name}}", "Lab plan"),
+      message: enNotes.projectNotes.deleteMessage,
+      confirmLabel: enCommon.actions.delete,
+      destructive: true,
+    });
 
     openMenu(screen.getAllByTestId("project-note-menu")[0]);
     fireEvent.click(await screen.findByTestId("project-note-unlink"));
     await waitFor(() => expect(mocks.setNoteRelatedProject).toHaveBeenCalledWith("masking", null));
     expect(screen.getByTestId("project-notes-device")).toHaveTextContent(enNotes.projectNotes.mineDeviceOnly);
+  });
+
+  it("says a project note in an opened folder goes to the Trash, and a personal note to the Recycle Bin", async () => {
+    useFilesStore.setState({ manifestHome: "device" });
+    mocks.confirmAction.mockResolvedValueOnce(false);
+    render(<ProjectNotesPanel />);
+    await screen.findByRole("button", { name: "Lab plan" });
+    openMenu(screen.getAllByTestId("project-note-file-menu")[1]);
+    const trash = await screen.findByTestId("project-note-file-delete");
+    expect(trash).toHaveTextContent(enNotes.projectNotes.trash);
+    fireEvent.click(trash);
+    await waitFor(() =>
+      expect(mocks.confirmAction).toHaveBeenCalledWith({
+        title: enNotes.projectNotes.trashTitle.replace("{{name}}", "Lab plan"),
+        message: enNotes.projectNotes.trashMessage,
+        confirmLabel: enNotes.projectNotes.trash,
+        destructive: true,
+      }),
+    );
+    expect(mocks.deleteProjectEntry).not.toHaveBeenCalled();
+
+    openMenu(screen.getAllByTestId("project-note-menu")[0]);
+    expect(await screen.findByTestId("project-note-delete")).toHaveTextContent(enNotes.library.menu.deleteConfirm);
+  });
+
+  it("unlinks a personal note with an Undo that links it back", async () => {
+    mocks.setNoteRelatedProject.mockResolvedValue(undefined);
+    render(<ProjectNotesPanel />);
+    await screen.findByRole("button", { name: "Masking ablation" });
+    openMenu(screen.getAllByTestId("project-note-menu")[0]);
+    fireEvent.click(await screen.findByTestId("project-note-unlink"));
+    await waitFor(() => expect(useToastStore.getState().toasts).toHaveLength(1));
+    const [shown] = useToastStore.getState().toasts;
+    expect(shown).toMatchObject({
+      kind: "success",
+      message: enNotes.projectNotes.unlinked.replace("{{title}}", "Masking ablation"),
+      action: { label: enNotes.projectNotes.undoUnlink },
+    });
+    act(() => shown.action?.onClick());
+    await waitFor(() => expect(mocks.setNoteRelatedProject).toHaveBeenLastCalledWith("masking", "paper"));
+  });
+
+  it("says when a note could not be unlinked", async () => {
+    mocks.setNoteRelatedProject.mockRejectedValueOnce(new Error("locked"));
+    render(<ProjectNotesPanel />);
+    await screen.findByRole("button", { name: "Masking ablation" });
+    openMenu(screen.getAllByTestId("project-note-menu")[0]);
+    fireEvent.click(await screen.findByTestId("project-note-unlink"));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts[0]).toMatchObject({
+        kind: "error",
+        message: enNotes.projectNotes.unlinkFailed.replace("{{title}}", "Masking ablation"),
+      }),
+    );
+  });
+
+  it("does not cancel a title while an input method ends its composition with Escape", async () => {
+    mocks.createProjectNoteFile.mockResolvedValueOnce(`notes/${enNotes.document.untitled}.md`);
+    render(<ProjectNotesPanel />);
+    fireEvent.click(screen.getByRole("button", { name: enNotes.projectNotes.newProjectNote }));
+    const field = await screen.findByRole("textbox", { name: enNotes.projectNotes.titleLabel });
+    fireEvent.keyDown(field, { key: "Escape", keyCode: 229 });
+    fireEvent.keyDown(field, { key: "Escape", isComposing: true });
+    expect(screen.getByRole("textbox", { name: enNotes.projectNotes.titleLabel })).toBe(field);
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(screen.queryByRole("textbox", { name: enNotes.projectNotes.titleLabel })).toBeNull();
   });
 
   it("explains empty groups", async () => {

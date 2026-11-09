@@ -106,11 +106,13 @@ test.describe("Notes notebooks", () => {
     const errors = await open(page, "?theme=dark");
     const sidebar = page.locator("aside");
     await sidebar.getByRole("button", { name: "Filters" }).click();
-    await sidebar.getByRole("tab", { name: "Notebooks" }).click();
+    const kinds = sidebar.getByRole("group", { name: "Kind" });
+    await kinds.getByRole("button", { name: "Notebooks", exact: true }).click();
+    await expect(kinds.getByRole("button", { name: "Notebooks", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(sidebar.getByRole("button", { name: /Mask ratio sweep/ })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: /Masking strategy report/ })).toHaveCount(0);
     await expect(sidebar.locator('[data-kind-dot="notebook"]')).toBeVisible();
-    await sidebar.getByRole("tab", { name: "All" }).click();
+    await kinds.getByRole("button", { name: "All", exact: true }).click();
 
     await openNote(page, "Dataloader rewrite: what changed");
     await page.getByRole("button", { name: "Artifacts, 1" }).click();

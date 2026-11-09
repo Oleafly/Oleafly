@@ -1,17 +1,6 @@
-import { useCallback, useRef, useState } from "react";
+import { usePersistedOrder } from "./persisted-order";
 
 export const RAIL_ORDER_KEY = "oleafly.sidebar.railOrder";
-
-export function parseRailOrder(raw: string | null): string[] | null {
-  let value: unknown = null;
-  try {
-    value = raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(value)) return null;
-  return [...new Set(value.filter((id): id is string => typeof id === "string" && id !== ""))];
-}
 
 export function mergeRailOrder(saved: readonly string[] | null, registered: readonly string[]): string[] {
   const known = new Set(registered);
@@ -32,33 +21,6 @@ export function applyRailOrder<T extends { id: string }>(tabs: readonly T[], ord
   return [...tabs].sort((a, b) => rank(a) - rank(b));
 }
 
-export function readRailOrder(): string[] | null {
-  try {
-    return parseRailOrder(localStorage.getItem(RAIL_ORDER_KEY));
-  } catch {
-    return null;
-  }
-}
-
-export function writeRailOrder(order: readonly string[], registered: readonly string[]): void {
-  const fallback = mergeRailOrder(null, registered);
-  const isDefault = order.length === fallback.length && order.every((id, index) => id === fallback[index]);
-  try {
-    if (isDefault) localStorage.removeItem(RAIL_ORDER_KEY);
-    else localStorage.setItem(RAIL_ORDER_KEY, JSON.stringify(order));
-  } catch {
-    return;
-  }
-}
-
 export function useRailOrder(registered: readonly string[]): readonly [string[], (next: readonly string[]) => void] {
-  const [saved, setSaved] = useState(readRailOrder);
-  const registeredRef = useRef(registered);
-  registeredRef.current = registered;
-  const reorder = useCallback((next: readonly string[]) => {
-    const merged = mergeRailOrder(next, registeredRef.current);
-    setSaved(merged);
-    writeRailOrder(merged, registeredRef.current);
-  }, []);
-  return [mergeRailOrder(saved, registered), reorder] as const;
+  return usePersistedOrder(RAIL_ORDER_KEY, registered, mergeRailOrder);
 }

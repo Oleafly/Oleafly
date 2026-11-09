@@ -1,6 +1,7 @@
 import { ChartColumn } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { currentLocale, i18n } from "@/i18n";
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { newChartSource } from "./block-templates";
 import type { NoteBlockKind, PaintContext } from "./note-blocks";
@@ -169,11 +170,6 @@ export function checkChart(source: string): ChartCheck {
   return problem ? { ok: false, problem } : { ok: true, chart: data as ChartData };
 }
 
-export function parseChart(source: string): ChartData | null {
-  const result = checkChart(source);
-  return result.ok ? result.chart : null;
-}
-
 export function chartType(data: ChartData): ChartType {
   return data.type ?? "bar";
 }
@@ -228,18 +224,8 @@ export function ticksBetween(low: number, high: number, step: number): number[] 
   return ticks;
 }
 
-const FORMATS = new Map<string, Intl.NumberFormat>();
-
-function numberFormat(options: Intl.NumberFormatOptions): Intl.NumberFormat {
-  const locale = currentLocale();
-  const key = `${locale}:${JSON.stringify(options)}`;
-  let format = FORMATS.get(key);
-  if (!format) {
-    format = new Intl.NumberFormat(locale, options);
-    FORMATS.set(key, format);
-  }
-  return format;
-}
+const WHOLE_NUMBER: Intl.NumberFormatOptions = { maximumFractionDigits: 0 };
+const SHARE: Intl.NumberFormatOptions = { style: "percent", maximumFractionDigits: 1 };
 
 export function formatTick(value: number, step: number): string {
   if (value === 0) return "0";
@@ -249,15 +235,15 @@ export function formatTick(value: number, step: number): string {
     return `${Number(mantissa)}e${Number(exponent)}`;
   }
   const digits = Math.min(10, Math.max(0, Math.ceil(-Math.log10(step) - 1e-9)) + 1);
-  return numberFormat({ maximumFractionDigits: digits }).format(value);
+  return formatNumber(value, { maximumFractionDigits: digits });
 }
 
 export function formatCount(value: number): string {
-  return numberFormat({ maximumFractionDigits: 0 }).format(value);
+  return formatNumber(value, WHOLE_NUMBER);
 }
 
 function formatShare(share: number): string {
-  return numberFormat({ style: "percent", maximumFractionDigits: 1 }).format(share);
+  return formatNumber(share, SHARE);
 }
 
 export interface LegendItem {

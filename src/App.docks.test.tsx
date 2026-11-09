@@ -268,6 +268,7 @@ vi.mock("@/components/layout/OpenFolderGuards", () => ({
 }));
 vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null }));
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
+vi.mock("@/components/notes/NotesHost", () => ({ NotesHost: () => null }));
 vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => null }));
 vi.mock("@/components/editor/WordCountModal", () => ({ WordCountModal: () => null }));
 vi.mock("@/components/editor/VersioningModal", () => ({
@@ -667,6 +668,78 @@ describe("project dock layout", () => {
     expect(events.map((event) => event.defaultPrevented)).toEqual([false, false, false]);
     xterm.remove();
   });
+
+  it.each(["notes", "diagram-composer"])(
+    "leaves the hidden project alone while %s covers it",
+    async (page) => {
+      const { act } = await import("react");
+      const { createRoot } = await import("react-dom/client");
+      const { default: App } = await import("./App");
+      const { useSettingsStore } = await import("@/store/settings");
+      const { forwardFromCursor } = await import("@/features/synctex");
+      const host = document.getElementById("root");
+      if (!host) throw new Error("test root is unavailable");
+      appState.tauri = true;
+      appState.home.page = page;
+      root = createRoot(host);
+      await act(async () => {
+        root?.render(<App />);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      const card = document.createElement("button");
+      const title = document.createElement("input");
+      document.body.append(card, title);
+      card.focus();
+      const before = useSettingsStore.getState();
+      const keys = [
+        { key: "z", ctrlKey: true },
+        { key: "y", ctrlKey: true },
+        { key: "Enter", ctrlKey: true },
+        { key: "J", ctrlKey: true, shiftKey: true },
+        { key: "b", ctrlKey: true },
+        { key: "p", ctrlKey: true, altKey: true },
+        { key: "`", ctrlKey: true },
+        { key: "~", ctrlKey: true, shiftKey: true },
+      ].map((init) => new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+      await act(async () => {
+        for (const event of keys) card.dispatchEvent(event);
+        appState.menuListeners.get("menu://undo")?.();
+        appState.menuListeners.get("menu://redo")?.();
+      });
+
+      expect(keys.map((event) => event.defaultPrevented)).toEqual(keys.map(() => false));
+      expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+      expect(editorControllerMocks.editorRedo).not.toHaveBeenCalled();
+      expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
+      expect(appState.compile.recompile).not.toHaveBeenCalled();
+      expect(forwardFromCursor).not.toHaveBeenCalled();
+      expect(useSettingsStore.getState().showTree).toBe(before.showTree);
+      expect(useSettingsStore.getState().viewMode).toBe(before.viewMode);
+      expect(useSettingsStore.getState().terminalOpen).toBe(false);
+
+      const execCommand = vi.fn(() => true);
+      Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+      title.focus();
+      await act(async () => {
+        appState.menuListeners.get("menu://undo")?.();
+        appState.menuListeners.get("menu://redo")?.();
+      });
+      expect(execCommand.mock.calls).toEqual([["undo"], ["redo"]]);
+      expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+
+      appState.home.page = "library";
+      card.focus();
+      await act(async () => {
+        card.dispatchEvent(new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "z", ctrlKey: true }));
+      });
+      expect(editorControllerMocks.editorUndo).toHaveBeenCalledOnce();
+      card.remove();
+      title.remove();
+      delete (document as unknown as Record<string, unknown>).execCommand;
+    },
+  );
 
   it("still opens the terminal tab shortcuts on macOS", async () => {
     const { act } = await import("react");

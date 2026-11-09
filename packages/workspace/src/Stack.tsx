@@ -18,7 +18,6 @@ export interface StackBodyProps {
   tabId: (id: string) => string;
   stackRef: (element: HTMLElement | null) => void;
   slotRef: (viewId: string) => (element: HTMLElement | null) => void;
-  consumeClick: () => boolean;
   onToggle: (viewId: string) => void;
   onMove: (viewId: string, step: -1 | 1) => void;
   onStartDrag: (event: ReactPointerEvent<HTMLElement>, viewId: string, title: string) => void;
@@ -44,7 +43,6 @@ interface SectionHeaderProps {
   controls: string;
   labels: WorkspaceLabels;
   renderTooltip?: RenderTooltip;
-  consumeClick: () => boolean;
   onToggle: (viewId: string) => void;
   onMove: (viewId: string, step: -1 | 1) => void;
   onStartDrag: (event: ReactPointerEvent<HTMLElement>, viewId: string, title: string) => void;
@@ -59,7 +57,6 @@ function SectionHeader({
   controls,
   labels,
   renderTooltip,
-  consumeClick,
   onToggle,
   onMove,
   onStartDrag,
@@ -80,10 +77,7 @@ function SectionHeader({
       aria-describedby={described.length > 0 ? described.join(" ") : undefined}
       aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
       className="flex h-full w-full min-w-0 items-center gap-1.5 px-2 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground focus-visible:bg-accent"
-      onClick={() => {
-        if (consumeClick()) return;
-        onToggle(id);
-      }}
+      onClick={() => onToggle(id)}
       onKeyDown={(event) => {
         if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
         event.preventDefault();
@@ -145,7 +139,6 @@ export function StackBody({
   tabId,
   stackRef,
   slotRef,
-  consumeClick,
   onToggle,
   onMove,
   onStartDrag,
@@ -185,7 +178,6 @@ export function StackBody({
               controls={panelId(id)}
               labels={labels}
               renderTooltip={renderTooltip}
-              consumeClick={consumeClick}
               onToggle={onToggle}
               onMove={onMove}
               onStartDrag={onStartDrag}

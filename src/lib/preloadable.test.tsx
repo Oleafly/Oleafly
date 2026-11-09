@@ -2,7 +2,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { createRef, forwardRef, Suspense } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { IDLE_FALLBACK_MS, lazy, stopWarming, whenIdle } from "./preloadable";
+import { lazy, stopWarming } from "./preloadable";
 
 const WAITING = "Waiting";
 const FIELD = "field";
@@ -77,15 +77,27 @@ describe("lazy", () => {
   });
 });
 
-describe("warming views ahead of time", () => {
-  async function fresh() {
-    vi.resetModules();
-    vi.useFakeTimers();
-    vi.stubGlobal("requestIdleCallback", undefined);
-    return import("./preloadable");
-  }
 
-  it("waits for the start, then loads one wanted view per idle moment and skips the rest", async () => {
+type Warming = typeof import("./preloadable");
+
+async function fresh(idle?: (run: IdleRequestCallback) => number): Promise<Warming> {
+  vi.resetModules();
+  vi.useFakeTimers();
+  vi.stubGlobal("requestIdleCallback", idle);
+  vi.stubGlobal("cancelIdleCallback", idle ? vi.fn() : undefined);
+  return import("./preloadable");
+}
+
+async function pastStartup(warming: Warming) {
+  await vi.advanceTimersByTimeAsync(warming.STARTUP_MS);
+}
+
+function input(type: string, init: MouseEventInit = {}) {
+  act(() => void window.dispatchEvent(new MouseEvent(type, init)));
+}
+
+describe("warming views ahead of time", () => {
+  it("waits for the start and a quiet startup, then loads one wanted view per idle moment and skips the rest", async () => {
     const warming = await fresh();
     const order: string[] = [];
     const First = warming.lazy(loading(order, "first"), { warm: true });
@@ -98,22 +110,24 @@ describe("warming views ahead of time", () => {
       { warm: true },
     );
     expect(warming.warmingQueueLength()).toBe(3);
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS * 2);
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS * 2);
     expect(order).toEqual([]);
     const onError = vi.fn();
     warming.startWarming(onError);
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS);
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS - 1);
+    expect(order).toEqual([]);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS + 1);
     expect(order).toEqual(["first"]);
     expect(First.loaded()).toBe(true);
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS * 2);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS * 2);
     expect(order).toEqual(["first", "broken"]);
     expect(Skipped.loaded()).toBe(false);
     expect(Broken.loaded()).toBe(false);
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "missing chunk" }));
     const Later = warming.lazy(loading(order, "later"), { warm: true });
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
     expect(Later.loaded()).toBe(true);
-    warming.stopWarming();
+    expect(warming.warmingQueueLength()).toBe(1);
   });
 
   it("waits for a quiet moment after input, warms higher priorities first and rewarms skipped views on request", async () => {
@@ -124,73 +138,184 @@ describe("warming views ahead of time", () => {
     warming.lazy(loading(order, "later"), { warm: () => wanted });
     warming.lazy(loading(order, "first"), { warm: true, priority: 1 });
     warming.startWarming(vi.fn());
-    window.dispatchEvent(new KeyboardEvent("keydown"));
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS);
+    await pastStartup(warming);
+    input("keydown");
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS - 1);
     expect(order).toEqual([]);
-    await vi.advanceTimersByTimeAsync(warming.QUIET_MS + IDLE_FALLBACK_MS);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS + 1);
     expect(order).toEqual(["first"]);
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS * 3);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS * 3);
+    expect(order).toEqual(["first"]);
+    await vi.advanceTimersByTimeAsync(warming.HEAVY_QUIET_MS);
     expect(order).toEqual(["first", "heavy"]);
     wanted = true;
     warming.warmDeferred();
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
     expect(order).toEqual(["first", "heavy", "later"]);
-    warming.stopWarming();
   });
 
-  it("keeps the view it had taken when stopped and starts there again", async () => {
+  it("loads a heavy view only after a long stretch without input", async () => {
+    const warming = await fresh();
+    const order: string[] = [];
+    warming.lazy(loading(order, "heavy"), { warm: true, priority: warming.HEAVY });
+    warming.startWarming(vi.fn());
+    for (let pause = 0; pause < 4; pause++) {
+      await vi.advanceTimersByTimeAsync(warming.HEAVY_QUIET_MS / 2);
+      input("keydown");
+    }
+    expect(order).toEqual([]);
+    await vi.advanceTimersByTimeAsync(warming.HEAVY_QUIET_MS + warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["heavy"]);
+  });
+
+  it("takes a newly declared view ahead of a heavy one that is still waiting", async () => {
+    const warming = await fresh();
+    const order: string[] = [];
+    warming.lazy(loading(order, "heavy"), { warm: true, priority: warming.HEAVY });
+    warming.startWarming(vi.fn());
+    await pastStartup(warming);
+    input("keydown");
+    warming.lazy(loading(order, "dialog"), { warm: true });
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS + warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["dialog"]);
+  });
+
+  it.each([
+    ["a drag with the button held", "pointermove", { buttons: 1 }],
+    ["a window resize", "resize", {}],
+    ["a scroll", "scroll", {}],
+    ["a wheel turn", "wheel", {}],
+  ])("counts %s as input", async (_name, type, init) => {
+    const warming = await fresh();
+    const order: string[] = [];
+    warming.lazy(loading(order, "view"), { warm: true });
+    warming.startWarming(vi.fn());
+    await pastStartup(warming);
+    for (let step = 0; step < 4; step++) {
+      input(type, init);
+      await vi.advanceTimersByTimeAsync(warming.QUIET_MS / 2);
+    }
+    expect(order).toEqual([]);
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS + warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["view"]);
+  });
+
+  it("ignores a hover with no button held", async () => {
+    const warming = await fresh();
+    const order: string[] = [];
+    warming.lazy(loading(order, "view"), { warm: true });
+    warming.startWarming(vi.fn());
+    await pastStartup(warming);
+    input("pointermove", { buttons: 0 });
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["view"]);
+  });
+
+  it("waits while a button is held still or the pointer is captured", async () => {
+    const warming = await fresh();
+    const order: string[] = [];
+    warming.lazy(loading(order, "first"), { warm: true });
+    warming.lazy(loading(order, "second"), { warm: true });
+    warming.startWarming(vi.fn());
+    await pastStartup(warming);
+    input("pointerdown", { buttons: 1 });
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS * 4);
+    expect(order).toEqual([]);
+    input("pointerup");
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS + warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["first"]);
+    input("gotpointercapture");
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS * 4);
+    expect(order).toEqual(["first"]);
+    input("lostpointercapture");
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS + warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["first", "second"]);
+  });
+
+  it("lets go of a held button when the window loses focus", async () => {
+    const warming = await fresh();
+    const order: string[] = [];
+    warming.lazy(loading(order, "view"), { warm: true });
+    warming.startWarming(vi.fn());
+    await pastStartup(warming);
+    input("pointerdown", { buttons: 1 });
+    input("gotpointercapture");
+    const field = document.createElement("input");
+    document.body.append(field);
+    act(() => void field.dispatchEvent(new FocusEvent("blur")));
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS * 4);
+    expect(order).toEqual([]);
+    act(() => void window.dispatchEvent(new FocusEvent("blur")));
+    await vi.advanceTimersByTimeAsync(warming.QUIET_MS + warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["view"]);
+    field.remove();
+  });
+
+  it("waits again when the fallback timer fires late behind a long task", async () => {
+    const warming = await fresh();
+    const order: string[] = [];
+    warming.lazy(loading(order, "view"), { warm: true });
+    warming.startWarming(vi.fn());
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS - 1);
+    await vi.advanceTimersByTimeAsync(1);
+    vi.setSystemTime(Date.now() + warming.LATE_MS * 4);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual([]);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["view"]);
+  });
+
+  it("needs a roomy idle deadline, but gives in after a long busy stretch", async () => {
+    const idle: IdleRequestCallback[] = [];
+    const warming = await fresh((run) => idle.push(run));
+    const order: string[] = [];
+    warming.lazy(loading(order, "first"), { warm: true });
+    warming.lazy(loading(order, "second"), { warm: true });
+    warming.startWarming(vi.fn());
+    await pastStartup(warming);
+    const offer = async (left: number, didTimeout = false) => {
+      const run = idle.shift();
+      await act(async () => run?.({ didTimeout, timeRemaining: () => left }));
+    };
+    await offer(warming.MIN_IDLE_MS - 1);
+    await offer(warming.MIN_IDLE_MS + 30, true);
+    expect(order).toEqual([]);
+    await offer(warming.MIN_IDLE_MS);
+    expect(order).toEqual(["first"]);
+    await offer(1);
+    vi.setSystemTime(Date.now() + warming.BUSY_PATIENCE_MS);
+    expect(order).toEqual(["first"]);
+    await offer(1);
+    expect(order).toEqual(["first", "second"]);
+  });
+
+  it("keeps a waiting view when stopped and starts there again after a fresh startup delay", async () => {
     const warming = await fresh();
     const order: string[] = [];
     warming.startWarming(vi.fn());
     warming.lazy(loading(order, "kept"), { warm: true });
     warming.stopWarming();
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS * 2);
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS * 2);
     expect(order).toEqual([]);
+    expect(warming.warmingQueueLength()).toBe(1);
     warming.startWarming(vi.fn());
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS);
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS + warming.IDLE_FALLBACK_MS);
     expect(order).toEqual(["kept"]);
-    warming.stopWarming();
   });
 
-  it("stops before the next view", async () => {
+  it("stops before the next view and stops listening for input", async () => {
     const warming = await fresh();
     warming.startWarming(vi.fn());
     const First = warming.lazy(async () => ({ default: Hello }), { warm: true });
     const Second = warming.lazy(async () => ({ default: Hello }), { warm: true });
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS);
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS + warming.IDLE_FALLBACK_MS);
     warming.stopWarming();
-    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS * 3);
+    input("pointerdown", { buttons: 1 });
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS * 3);
     expect(First.loaded()).toBe(true);
     expect(Second.loaded()).toBe(false);
-  });
-});
-
-describe("whenIdle", () => {
-  it("waits for an idle moment when the webview has idle callbacks", () => {
-    const request = vi.fn((_run: () => void, _options: { timeout: number }) => 7);
-    const cancel = vi.fn();
-    vi.stubGlobal("requestIdleCallback", request);
-    vi.stubGlobal("cancelIdleCallback", cancel);
-    const run = vi.fn();
-    const stop = whenIdle(run);
-    expect(request).toHaveBeenCalledTimes(1);
-    request.mock.calls[0][0]();
-    expect(run).toHaveBeenCalledTimes(1);
-    stop();
-    expect(cancel).toHaveBeenCalledWith(7);
-  });
-
-  it("falls back to a short timer and can be cancelled", () => {
-    vi.useFakeTimers();
-    vi.stubGlobal("requestIdleCallback", undefined);
-    const run = vi.fn();
-    whenIdle(run);
-    vi.advanceTimersByTime(IDLE_FALLBACK_MS);
-    expect(run).toHaveBeenCalledTimes(1);
-    const later = vi.fn();
-    const stop = whenIdle(later);
-    stop();
-    vi.advanceTimersByTime(IDLE_FALLBACK_MS);
-    expect(later).not.toHaveBeenCalled();
+    warming.startWarming(vi.fn());
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS + warming.IDLE_FALLBACK_MS);
+    expect(Second.loaded()).toBe(true);
   });
 });

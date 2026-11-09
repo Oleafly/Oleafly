@@ -13,11 +13,13 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
+import { loadNamespace } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import type { CloudProgress, CloudProject, CloudState } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { isNoteProject } from "@/lib/library-projects";
+import { lazy } from "@/lib/preloadable";
 import { cn } from "@/lib/utils";
 import { cloudErrorCode, remoteBusyKey, useCloudProviderName, useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
@@ -32,8 +34,12 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { Suspense, useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+const NoteConflictDialog = lazy(() =>
+  Promise.all([import("@/components/notes/NoteConflictDialog"), loadNamespace("notes")]).then(([module]) => module),
+);
 
 type CloudTranslate = ReturnType<typeof useTranslation<["cloud"]>>["t"];
 
@@ -375,36 +381,73 @@ function ConflictNotice({ project }: Readonly<{ project: CloudProject }>) {
   const localId = project.localId as string;
   const busy = useCloudStore((s) => s.busyProjects.includes(localId));
   const dismissConflicts = useCloudStore((s) => s.dismissConflicts);
+  const noteDoc = useFilesStore((s) => {
+    const info = s.projects.find((entry) => entry.id === localId);
+    return isNoteProject(info) ? (info?.main_doc ?? null) : null;
+  });
+  const [comparing, setComparing] = useState<string | null>(null);
+  const copies = project.conflictCopies;
+  const conflict = useMemo(
+    () =>
+      comparing === null || noteDoc === null
+        ? null
+        : {
+            projectId: localId,
+            title: project.name,
+            mainDoc: noteDoc,
+            copies: [comparing, ...copies.filter((path) => path !== comparing)],
+          },
+    [comparing, copies, localId, noteDoc, project.name],
+  );
   const count = project.conflictCopies.length || project.conflicts;
   return (
-    <CloudNotice
-      tone="warning"
-      icon={Copy}
-      testId="cloud-project-conflicts"
-      className="mt-2"
-      actions={
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void dismissConflicts(localId)}>
-          {t(($) => $.cloud.row.dismiss)}
-        </Button>
-      }
-      details={
-        project.conflictCopies.length > 0 ? (
-          <ul
-            aria-label={t(($) => $.cloud.row.conflictsLabel, { name: project.name })}
-            className="mt-2 space-y-0.5 pl-6.5"
-          >
-            {project.conflictCopies.map((path) => (
-              <li key={path} className="select-text break-all">
-                {path}
-              </li>
-            ))}
-          </ul>
-        ) : null
-      }
-    >
-      <span className="block font-medium">{t(($) => $.cloud.row.conflicts, { count })}</span>
-      <span className="block">{t(($) => $.cloud.row.conflictsHelp, { count })}</span>
-    </CloudNotice>
+    <>
+      <CloudNotice
+        tone="warning"
+        icon={Copy}
+        testId="cloud-project-conflicts"
+        className="mt-2"
+        actions={
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void dismissConflicts(localId)}>
+            {t(($) => $.cloud.row.dismiss)}
+          </Button>
+        }
+        details={
+          project.conflictCopies.length > 0 ? (
+            <ul
+              aria-label={t(($) => $.cloud.row.conflictsLabel, { name: project.name })}
+              className="mt-2 space-y-0.5 pl-6.5"
+            >
+              {project.conflictCopies.map((path) => (
+                <li key={path} className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 flex-1 select-text break-all">{path}</span>
+                  {noteDoc !== null && (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      disabled={busy}
+                      aria-label={t(($) => $.cloud.row.compareLabel, { path })}
+                      onClick={() => setComparing(path)}
+                    >
+                      {t(($) => $.cloud.row.compare)}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null
+        }
+      >
+        <span className="block font-medium">{t(($) => $.cloud.row.conflicts, { count })}</span>
+        <span className="block">{t(($) => $.cloud.row.conflictsHelp, { count })}</span>
+      </CloudNotice>
+      {conflict && (
+        <Suspense fallback={null}>
+          <NoteConflictDialog conflict={conflict} onClose={() => setComparing(null)} />
+        </Suspense>
+      )}
+    </>
   );
 }
 

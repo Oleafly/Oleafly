@@ -1,20 +1,20 @@
 // @vitest-environment jsdom
 
-import { act, render, screen } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  NOTE_FAVORITES_KEY,
-  readNoteFavorites,
-  setNoteFavorite,
-  subscribeNoteFavorites,
-  toggleNoteFavorite,
-  useNoteFavorites,
-} from "./note-favorites";
+import { NOTE_FAVORITES_KEY, setNoteFavorite, toggleNoteFavorite, useNoteFavorites } from "./note-favorites";
 import { parseJson, storedValue, useStoredValue } from "./note-storage";
 
 function Favorites() {
   const favorites = useNoteFavorites();
   return <output>{[...favorites].join(",")}</output>;
+}
+
+function favorites() {
+  const { result, unmount } = renderHook(() => useNoteFavorites());
+  const ids = [...result.current];
+  unmount();
+  return ids;
 }
 
 beforeEach(() => {
@@ -27,46 +27,56 @@ afterEach(() => {
 
 describe("note favorites", () => {
   it("starts empty and keeps the newest favorite first", () => {
-    expect(readNoteFavorites()).toEqual([]);
+    expect(favorites()).toEqual([]);
     setNoteFavorite("a", true);
     setNoteFavorite("b", true);
     setNoteFavorite("b", true);
-    expect(readNoteFavorites()).toEqual(["b", "a"]);
+    expect(favorites()).toEqual(["b", "a"]);
     expect(JSON.parse(localStorage.getItem(NOTE_FAVORITES_KEY) ?? "")).toEqual(["b", "a"]);
     toggleNoteFavorite("a");
-    expect(readNoteFavorites()).toEqual(["b"]);
+    expect(favorites()).toEqual(["b"]);
     setNoteFavorite("a", false);
     toggleNoteFavorite("c");
-    expect(readNoteFavorites()).toEqual(["c", "b"]);
+    expect(favorites()).toEqual(["c", "b"]);
   });
 
   it("ignores stored values that are not a list of ids", () => {
     localStorage.setItem(NOTE_FAVORITES_KEY, "not json");
-    expect(readNoteFavorites()).toEqual([]);
+    expect(favorites()).toEqual([]);
     localStorage.setItem(NOTE_FAVORITES_KEY, JSON.stringify({ a: true }));
-    expect(readNoteFavorites()).toEqual([]);
+    expect(favorites()).toEqual([]);
     localStorage.setItem(NOTE_FAVORITES_KEY, JSON.stringify(["a", 3, "a", null, "b"]));
-    expect(readNoteFavorites()).toEqual(["a", "b"]);
+    expect(favorites()).toEqual(["a", "b"]);
   });
 
-  it("hands out the same list until it changes", () => {
+  it("hands out the same set until the favorites change", () => {
     localStorage.setItem(NOTE_FAVORITES_KEY, JSON.stringify(["a"]));
-    expect(readNoteFavorites()).toBe(readNoteFavorites());
+    const { result, rerender } = renderHook(() => useNoteFavorites());
+    const first = result.current;
+    rerender();
+    expect(result.current).toBe(first);
+    act(() => setNoteFavorite("b", true));
+    expect(result.current).not.toBe(first);
+    expect([...result.current]).toEqual(["b", "a"]);
   });
 
-  it("tells every subscriber, including other windows, and stops when unsubscribed", () => {
-    const listener = vi.fn();
-    const stop = subscribeNoteFavorites(listener);
-    setNoteFavorite("a", true);
-    expect(listener).toHaveBeenCalledTimes(1);
-    window.dispatchEvent(new StorageEvent("storage", { key: NOTE_FAVORITES_KEY }));
-    window.dispatchEvent(new StorageEvent("storage", { key: null }));
-    window.dispatchEvent(new StorageEvent("storage", { key: "something.else" }));
-    expect(listener).toHaveBeenCalledTimes(3);
-    stop();
-    setNoteFavorite("b", true);
-    window.dispatchEvent(new StorageEvent("storage", { key: NOTE_FAVORITES_KEY }));
-    expect(listener).toHaveBeenCalledTimes(3);
+  it("follows a change made in another window and ignores other keys", () => {
+    render(<Favorites />);
+    localStorage.setItem(NOTE_FAVORITES_KEY, JSON.stringify(["x"]));
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "something.else" }));
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("");
+    localStorage.setItem(NOTE_FAVORITES_KEY, JSON.stringify(["y", "x"]));
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: NOTE_FAVORITES_KEY }));
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("y,x");
+    localStorage.clear();
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: null }));
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("");
   });
 
   it("keeps working in memory when storage can't be used", () => {
@@ -76,12 +86,12 @@ describe("note favorites", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("blocked");
     });
-    expect(readNoteFavorites()).toEqual([]);
+    expect(favorites()).toEqual([]);
     setNoteFavorite("a", true);
-    expect(readNoteFavorites()).toEqual(["a"]);
+    expect(favorites()).toEqual(["a"]);
     vi.restoreAllMocks();
     setNoteFavorite("a", false);
-    expect(readNoteFavorites()).toEqual([]);
+    expect(favorites()).toEqual([]);
     expect(localStorage.getItem(NOTE_FAVORITES_KEY)).toBe("[]");
   });
 

@@ -493,7 +493,7 @@ describe("NotesHome note menus", () => {
       menuCopy.favorite,
       menuCopy.rename,
       menuCopy.useAsTemplate,
-      enNotes.workspace.project,
+      enNotes.library.menu.linkProject,
       menuCopy.delete,
     ]);
     expect(card("n1")).toHaveAttribute("data-menu-open", "true");
@@ -505,6 +505,16 @@ describe("NotesHome note menus", () => {
     expect(menuItemNames(context)[1]).toBe(menuCopy.favorite);
     await user.click(within(context).getByRole("menuitem", { name: menuCopy.openInNewTab }));
     expect(onOpenNoteInNewTab).toHaveBeenCalledWith("n2");
+  });
+
+  it("names the icon-only More and star buttons in tooltips", async () => {
+    renderHome();
+    fireEvent.mouseEnter(within(card("n1")).getByRole("button", { name: menuCopy.more }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(menuCopy.more);
+    fireEvent.mouseLeave(within(card("n1")).getByRole("button", { name: menuCopy.more }));
+    await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
+    fireEvent.mouseEnter(within(card("n1")).getByRole("button", { name: menuCopy.favorite }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(menuCopy.favorite);
   });
 
   it("keeps only the actions the data can do", () => {
@@ -561,7 +571,7 @@ describe("NotesHome note menus", () => {
     const user = userEvent.setup();
     const { data } = renderHome();
     const choose = async (id: string, name: string) => {
-      const trigger = within(openMore(card(id))).getByRole("menuitem", { name: enNotes.workspace.project });
+      const trigger = within(openMore(card(id))).getByRole("menuitem", { name: enNotes.library.menu.linkProject });
       trigger.focus();
       await user.keyboard("{ArrowRight}");
       const submenu = (await screen.findAllByRole("menu")).at(-1) as HTMLElement;
@@ -576,14 +586,14 @@ describe("NotesHome note menus", () => {
   it("logs a project move that fails", async () => {
     const user = userEvent.setup();
     renderHome({ data: fakeData({ setRelatedProject: vi.fn(async () => Promise.reject(new Error("gone"))) }) });
-    const trigger = within(openMore(card("n2"))).getByRole("menuitem", { name: enNotes.workspace.project });
+    const trigger = within(openMore(card("n2"))).getByRole("menuitem", { name: enNotes.library.menu.linkProject });
     trigger.focus();
     await user.keyboard("{ArrowRight}");
     const submenu = (await screen.findAllByRole("menu")).at(-1) as HTMLElement;
     await user.click(within(submenu).getByRole("menuitem", { name: "Vision" }));
     await waitFor(() => expect(log.logError).toHaveBeenCalledWith("set the note's project", expect.any(Error)));
     expect(useToastStore.getState().toasts.map((toast) => toast.message)).toContain(
-      enNotes.failures.moveNote.replace("{{name}}", "Reading list"),
+      enNotes.failures.linkNote.replace("{{name}}", "Reading list"),
     );
   });
 

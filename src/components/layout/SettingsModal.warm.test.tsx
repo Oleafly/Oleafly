@@ -25,20 +25,24 @@ vi.mock("@/components/settings/NotesAppearance", () => ({
   NotesAppearanceTab: () => <div data-testid="notes-appearance-stub" />,
 }));
 
-import { startWarming, stopWarming } from "@/lib/preloadable";
+import { STARTUP_MS, startWarming, stopWarming } from "@/lib/preloadable";
 import { SettingsModal } from "./SettingsModal";
 
 afterEach(() => {
   stopWarming();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe("warming the settings tabs", () => {
   it("loads the tabs ahead of time so Collaboration shows on the first click", async () => {
     useSettingsStore.setState({ notes: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.stubGlobal("requestIdleCallback", (run: () => void) => setTimeout(run, 0));
     vi.stubGlobal("cancelIdleCallback", (id: number) => clearTimeout(id));
     startWarming(vi.fn());
+    expect(imported.collaboration).toBe(false);
+    await vi.advanceTimersByTimeAsync(STARTUP_MS);
     await waitFor(() => expect(imported.collaboration).toBe(true), { timeout: 20_000 });
     await new Promise((resolve) => setTimeout(resolve, 50));
     stopWarming();

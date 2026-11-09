@@ -22,7 +22,7 @@ import {
   unwatchProjectFolder,
   watchProjectFolder,
 } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
+import { isDiskConflict, useFilesStore } from "@/store/files";
 import { artifactPreview } from "./note-artifacts";
 import { isNotebookPath, NOTEBOOK_MAX_BYTES, NotebookTooLargeError } from "./notebook-block";
 import { NOTE_KIND, newNoteSource, readNoteFacts, withNoteColor, withNoteIcon, withNoteTitle } from "./note-file";
@@ -234,29 +234,142 @@ function lineEndings(text: string): string {
   return text.replace(/\r\n?/gu, "\n");
 }
 
-function usesCrlf(disk: string): boolean {
+export function usesCrlf(disk: string): boolean {
   return /^[^\n]*\r\n/u.test(disk);
-}
-
-async function writeNoteFile(project: ProjectInfo, text: string, crlf: boolean): Promise<string> {
-  const plain = lineEndings(text);
-  await useFilesStore.getState().writeProjectFile(project.id, project.main_doc, plain, { closedProject: true, crlf });
-  return crlf ? plain.replace(/\n/gu, "\r\n") : plain;
-}
-
-async function writeNoteTitle(project: ProjectInfo, title: string): Promise<void> {
-  const text = await readFileContent(project.id, project.main_doc);
-  const next = withNoteTitle(text, title);
-  if (next !== text) await writeNoteFile(project, next, usesCrlf(text));
 }
 
 export function noteVersion(text: string): string {
   return diskHash(lineEndings(text));
 }
 
-async function readNote(project: ProjectInfo): Promise<NoteSource> {
+interface DiskState {
+  version: string;
+  hash: string;
+  crlf: boolean;
+}
+
+function diskStateOf(raw: string): DiskState {
+  const version = noteVersion(raw);
+  return { version, hash: raw.includes("\r") ? diskHash(raw) : version, crlf: usesCrlf(raw) };
+}
+
+async function writeNoteFile(
+  project: ProjectInfo,
+  text: string,
+  crlf: boolean,
+  expectedHash?: string,
+): Promise<{ text: string; state: DiskState }> {
+  const plain = lineEndings(text);
+  await useFilesStore.getState().writeProjectFile(project.id, project.main_doc, plain, {
+    closedProject: true,
+    crlf,
+    ...(expectedHash === undefined ? {} : { expectedHash }),
+  });
+  const written = crlf ? plain.replace(/\n/gu, "\r\n") : plain;
+  return { text: written, state: diskStateOf(written) };
+}
+
+async function writeNoteTitle(project: ProjectInfo, title: string): Promise<void> {
   const text = await readFileContent(project.id, project.main_doc);
-  return { text, version: noteVersion(text) };
+  const next = withNoteTitle(text, title);
+  if (next !== text) {
+    await recordNoteWrite(project.id, next, () => writeNoteFile(project, next, usesCrlf(text), diskStateOf(text).hash));
+  }
+}
+
+async function readNote(project: ProjectInfo): Promise<{ source: NoteSource; state: DiskState }> {
+  const text = await readFileContent(project.id, project.main_doc);
+  const state = diskStateOf(text);
+  return { source: { text, version: state.version }, state };
+}
+
+const KEPT_STATES = 64;
+const WRITE_ATTEMPTS = 3;
+
+function keep<T>(states: Map<string, T>, id: string, value: T): void {
+  states.delete(id);
+  states.set(id, value);
+  if (states.size > KEPT_STATES) states.delete(states.keys().next().value as string);
+}
+
+interface NoteWrite {
+  version: string;
+  landed: boolean;
+}
+
+const WRITES_PER_NOTE = 8;
+const noteWrites = new Map<string, NoteWrite[]>();
+
+function startNoteWrite(id: string, text: string): (landed: boolean) => void {
+  const write: NoteWrite = { version: noteVersion(text), landed: false };
+  keep(noteWrites, id, [...(noteWrites.get(id) ?? []), write].slice(-WRITES_PER_NOTE));
+  return (landed) => {
+    const kept = (noteWrites.get(id) ?? []).filter((known) => known !== write && !(landed && known.landed));
+    if (landed) kept.push({ ...write, landed: true });
+    if (kept.length > 0) noteWrites.set(id, kept);
+    else noteWrites.delete(id);
+  };
+}
+
+export async function recordNoteWrite<T>(id: string, text: string, write: () => Promise<T>): Promise<T> {
+  const settle = startNoteWrite(id, text);
+  try {
+    const written = await write();
+    settle(true);
+    return written;
+  } catch (error) {
+    settle(false);
+    throw error;
+  }
+}
+
+export function noteWrittenHere(id: string, text: string): boolean {
+  const writes = noteWrites.get(id);
+  if (!writes) return false;
+  const version = noteVersion(text);
+  return writes.some((write) => write.version === version);
+}
+
+export function resetNoteWritesForTest(): void {
+  noteWrites.clear();
+}
+
+const LINE_LEAD = /^[ \t\r>*+\-.)_=0-9]*/u;
+const KNOWLEDGE_MARKS = /[[\]<>#`~\\]/u;
+
+function commonPrefix(left: string, right: string): number {
+  const shortest = Math.min(left.length, right.length);
+  let index = 0;
+  while (index < shortest && left.charCodeAt(index) === right.charCodeAt(index)) index += 1;
+  return index;
+}
+
+function commonSuffix(left: string, right: string, start: number): number {
+  const room = Math.min(left.length, right.length) - start;
+  let count = 0;
+  while (count < room && left.charCodeAt(left.length - 1 - count) === right.charCodeAt(right.length - 1 - count)) count += 1;
+  return count;
+}
+
+function lineEnd(text: string, from: number): number {
+  const at = text.indexOf("\n", from);
+  return at < 0 ? text.length : at;
+}
+
+function keepsKnowledge(before: string, after: string): boolean {
+  const start = commonPrefix(before, after);
+  if (start === 0) return false;
+  const tail = commonSuffix(before, after, start);
+  const lineStart = before.lastIndexOf("\n", start - 1) + 1;
+  if (lineStart === 0 || lineStart <= splitMarkdownFrontMatter(before).frontmatter.length) return false;
+  const endBefore = lineEnd(before, start);
+  const endAfter = lineEnd(after, start);
+  if (endBefore < before.length - tail || endAfter < after.length - tail) return false;
+  const lineBefore = before.slice(lineStart, endBefore);
+  const lineAfter = after.slice(lineStart, endAfter);
+  if (KNOWLEDGE_MARKS.test(lineBefore) || KNOWLEDGE_MARKS.test(lineAfter)) return false;
+  const lead = LINE_LEAD.exec(lineBefore)?.[0].length ?? 0;
+  return start - lineStart > lead;
 }
 
 function namesFile(path: string, mainDoc: string): boolean {
@@ -307,29 +420,60 @@ export function createNotesService(deps: NotesServiceDeps): NotesService {
     if (!project) throw new Error(deps.missing);
     return project;
   };
+  const disk = new Map<string, DiskState>();
+  const knowledge = new Map<string, { text: string; key: string }>();
+  const knowledgeOf = (id: string, text: string): string => {
+    const last = knowledge.get(id);
+    const key = last && (last.text === text || keepsKnowledge(last.text, text)) ? last.key : noteKnowledgeKey(text);
+    keep(knowledge, id, { text, key });
+    return key;
+  };
   const updateHead = (id: string, text: string, changed: boolean) => {
-    if (deps.setHead) deps.setHead(id, noteHeadOf(text), changed, noteKnowledgeKey(text));
+    if (deps.setHead) deps.setHead(id, noteHeadOf(text), changed, knowledgeOf(id, text));
     else deps.refreshHeads();
   };
-  return {
-    loadNote: async (id) => readNote(projectOf(id)),
-    saveNote: async (id, text, version, base) => {
-      const project = projectOf(id);
-      const shared = base !== undefined && sharedDocumentLive(id) ? lineEndings(base) : null;
-      let written = lineEndings(text);
-      let changed: boolean;
-      if (shared === null) {
-        const disk = await readNote(project);
-        if (disk.version !== version) throw new NoteConflictError(disk);
-        written = await writeNoteFile(project, text, usesCrlf(disk.text));
-        changed = disk.text !== written;
-      } else {
-        await useFilesStore.getState().writeProjectFile(id, project.main_doc, written, { base: shared, closedProject: true });
-        changed = shared !== written;
+  const load = async (project: ProjectInfo) => {
+    const read = await readNote(project);
+    keep(disk, project.id, read.state);
+    return read;
+  };
+  const writeLocal = async (project: ProjectInfo, text: string, version: string) => {
+    let known = sharedDocumentLive(project.id) ? undefined : disk.get(project.id);
+    for (let attempt = 1; ; attempt += 1) {
+      if (known?.version !== version) {
+        const read = await load(project);
+        if (read.state.version !== version) throw new NoteConflictError(read.source);
+        known = read.state;
       }
-      updateHead(id, written, changed);
-      return { text: written, version: noteVersion(written) };
-    },
+      try {
+        const written = await writeNoteFile(project, text, known.crlf, known.hash);
+        keep(disk, project.id, written.state);
+        return { text: written.text, version: written.state.version, changed: written.state.version !== known.version };
+      } catch (error) {
+        if (!isDiskConflict(error)) throw error;
+        disk.delete(project.id);
+        if (attempt >= WRITE_ATTEMPTS) throw new NoteConflictError((await load(project)).source);
+        known = undefined;
+      }
+    }
+  };
+  return {
+    loadNote: async (id) => (await load(projectOf(id))).source,
+    saveNote: (id, text, version, base) =>
+      recordNoteWrite(id, text, async () => {
+        const project = projectOf(id);
+        const shared = base !== undefined && sharedDocumentLive(id) ? lineEndings(base) : null;
+        if (shared === null) {
+          const saved = await writeLocal(project, text, version);
+          updateHead(id, saved.text, saved.changed);
+          return { text: saved.text, version: saved.version };
+        }
+        const written = lineEndings(text);
+        disk.delete(id);
+        await useFilesStore.getState().writeProjectFile(id, project.main_doc, written, { base: shared, closedProject: true });
+        updateHead(id, written, shared !== written);
+        return { text: written, version: noteVersion(written) };
+      }),
     renameNote: async (id, title) => {
       await renameProjectCmd(id, title);
       if (!noteEditorOpen(id)) {

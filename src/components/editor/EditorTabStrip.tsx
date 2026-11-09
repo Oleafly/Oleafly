@@ -16,6 +16,7 @@ import { useDiffStore, type DiffSide, type OpenDiff } from "@/store/diff";
 import { activeNoteTab, editsAsMarkdown, noteTabsFor, useNoteTabsStore } from "@/store/note-tabs";
 import { useSettingsStore } from "@/store/settings";
 import { isMarkdownFile, noteFileFacts, noteFileStem } from "@/lib/project-notes";
+import { openContextMenuFromKey } from "@/lib/context-menu-key";
 import { logError } from "@/lib/log";
 import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
@@ -90,19 +91,6 @@ function NoteTabMark({ icon, color }: Readonly<{ icon?: string; color?: string }
     <Suspense fallback={<NotebookPen aria-hidden className="size-3.5 shrink-0" />}>
       <NoteTabIcon icon={icon} color={color} />
     </Suspense>
-  );
-}
-
-function openMenuFrom(row: HTMLElement | null) {
-  if (!row) return;
-  const rect = row.getBoundingClientRect();
-  row.dispatchEvent(
-    new MouseEvent("contextmenu", {
-      bubbles: true,
-      cancelable: true,
-      clientX: Math.round(rect.left + rect.width / 2),
-      clientY: Math.round(rect.bottom),
-    }),
   );
 }
 
@@ -199,12 +187,7 @@ function EditorTabItem({
     event.preventDefault();
     closeEditorTab(tab);
   };
-  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
-      event.preventDefault();
-      openMenuFrom(rowRef.current);
-    }
-  };
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => openContextMenuFromKey(event, rowRef.current);
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild onMouseDown={preventMiddleScroll} onAuxClick={onAuxClick}>

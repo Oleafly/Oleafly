@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { destroyKbEditors, kbEditor } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor } from "./tests/kb-editor-fixtures";
 import { countedWordStarts } from "@oleafly/editor/prose";
 import { noteTextWords, noteWordCount } from "./note-word-count";
 

@@ -2,7 +2,8 @@ import type { FileEntry } from "@oleafly/backend-port";
 import { setFrontMatterScalar } from "@/features/markdown-document-settings";
 import { i18n, loadNamespace } from "@/i18n";
 import { describeError } from "@/lib/app-error";
-import { flushOpenNotes } from "@/lib/open-note-editors";
+import { flushOpenNotes, openNoteText } from "@/lib/open-note-editors";
+import { numberedPath } from "@/lib/path-utils";
 import {
   foldPath,
   isProjectNoteAssetPath,
@@ -10,6 +11,7 @@ import {
   noteFileFacts,
   noteFileStem,
   projectNoteFilePath,
+  projectNoteKey,
   projectNotesFolder,
   renamedNotePath,
 } from "@/lib/project-notes";
@@ -109,17 +111,6 @@ function originOf(asset: string, assetsDir: string): string {
   return `${assetsDir}/origins/${asset.slice(asset.lastIndexOf("/") + 1)}.json`;
 }
 
-export function numberedPath(path: string, taken: ReadonlySet<string>): string {
-  const slash = path.lastIndexOf("/");
-  const dot = path.lastIndexOf(".");
-  const stem = dot > slash + 1 ? path.slice(0, dot) : path;
-  const extension = dot > slash + 1 ? path.slice(dot) : "";
-  for (let attempt = 2; ; attempt += 1) {
-    const next = `${stem}-${attempt}${extension}`;
-    if (!taken.has(foldPath(next))) return next;
-  }
-}
-
 function escapeRegExp(text: string): string {
   return text.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
@@ -127,18 +118,26 @@ function escapeRegExp(text: string): string {
 export function relinkAssets(text: string, renames: ReadonlyMap<string, string>): string {
   if (renames.size === 0) return text;
   const names = [...renames.keys()].sort((left, right) => right.length - left.length).map(escapeRegExp);
-  const pattern = new RegExp(`(?<![\\w./-])(?:${names.join("|")})(?![\\w.-])`, "gu");
-  return text.replace(pattern, (found) => renames.get(found) ?? found);
+  const pattern = new RegExp(`(?<![\\w./-])(\\./)?(${names.join("|")})(?![\\w.-])`, "gu");
+  return text.replace(pattern, (found, dot: string | undefined, name: string) => {
+    const renamed = renames.get(name);
+    return renamed === undefined ? found : `${dot ?? ""}${renamed}`;
+  });
+}
+
+function usesAsset(text: string, relative: string): boolean {
+  return text.includes(`${NOTE_ASSETS}/${relative}`);
 }
 
 async function moveAssets(
   noteId: string,
-  projectId: string,
-  existing: ReadonlySet<string>,
-  folder: string,
+  text: string,
+  target: { projectId: string; existing: ReadonlySet<string>; folder: string },
 ): Promise<Map<string, string>> {
+  const { projectId, existing, folder } = target;
   const listed = assetFiles(await listFiles(noteId), NOTE_ASSETS).filter(
-    (path) => !path.startsWith(`${NOTE_ASSETS}/origins/`),
+    (path) =>
+      !path.startsWith(`${NOTE_ASSETS}/origins/`) && usesAsset(text, path.slice(NOTE_ASSETS.length + 1)),
   );
   const actual = new Map([...existing].map((path) => [foldPath(path), path]));
   const taken = new Set(actual.keys());
@@ -148,7 +147,7 @@ async function moveAssets(
     const wanted = `${folder}/${asset}`;
     const present = actual.get(foldPath(wanted));
     if (present !== undefined && (await readFileBase64(projectId, present)) === bytes) continue;
-    const target = taken.has(foldPath(wanted)) ? numberedPath(wanted, taken) : wanted;
+    const target = numberedPath(wanted, (path) => taken.has(foldPath(path)));
     taken.add(foldPath(target));
     await writeProjectBytes(projectId, target, bytes);
     if (target !== wanted) renames.set(asset, target.slice(folder.length + 1));
@@ -176,7 +175,7 @@ export async function moveNoteIntoProject(noteId: string, projectId: string): Pr
     if (current.projectId !== projectId) return null;
     const existing = new Set(current.tree.map((entry) => entry.path));
     const path = projectNoteFilePath(title, existing, untitled());
-    const renames = await moveAssets(noteId, projectId, existing, projectNotesFolder(existing));
+    const renames = await moveAssets(noteId, text, { projectId, existing, folder: projectNotesFolder(existing) });
     await current.writeProjectFile(projectId, path, relinkAssets(text, renames));
     useNoteTabsStore.getState().close(noteId);
     await flushedNotes();
@@ -198,13 +197,19 @@ export async function moveNoteIntoProject(noteId: string, projectId: string): Pr
   }
 }
 
+async function currentNoteText(projectId: string, path: string): Promise<string> {
+  const open = openNoteText(projectNoteKey(projectId, path));
+  if (open !== null) return open;
+  return useFilesStore.getState().files[path]?.content ?? (await readFileContent(projectId, path));
+}
+
 function referencedAssets(text: string, tree: readonly FileEntry[], assetsDir: string): string[] {
   return tree
     .filter((entry) => !entry.is_dir && isProjectNoteAssetPath(entry.path) && entry.path.startsWith(`${assetsDir}/`))
     .map((entry) => entry.path)
     .filter((path) => {
       const relative = path.slice(assetsDir.length + 1);
-      return !relative.startsWith("origins/") && text.includes(`${NOTE_ASSETS}/${relative}`);
+      return !relative.startsWith("origins/") && usesAsset(text, relative);
     });
 }
 
@@ -219,7 +224,8 @@ async function copyNote(projectId: string, path: string): Promise<string | null>
     await flushedNotes();
     const files = useFilesStore.getState();
     if (files.projectId !== projectId) return null;
-    const text = files.files[path]?.content ?? (await readFileContent(projectId, path));
+    const text = await currentNoteText(projectId, path);
+    if (useFilesStore.getState().projectId !== projectId) return null;
     const title = noteFileFacts(text)?.title ?? noteFileStem(path);
     const source = setFrontMatterScalar(text, "id", crypto.randomUUID());
     const id = await createNoteProject(title, source, projectId);
@@ -255,9 +261,10 @@ export async function renameProjectNote(projectId: string, path: string, title: 
     await flushedNotes();
     const current = useFilesStore.getState();
     if (current.projectId !== projectId) return null;
-    const text = current.files[path]?.content ?? (await readFileContent(projectId, path));
+    const text = await currentNoteText(projectId, path);
+    if (useFilesStore.getState().projectId !== projectId) return null;
     if (noteFileFacts(text)?.title !== name) {
-      await current.writeProjectFile(projectId, path, setFrontMatterScalar(text, "title", name));
+      await useFilesStore.getState().writeProjectFile(projectId, path, setFrontMatterScalar(text, "title", name), { base: text });
     }
     const others = useFilesStore
       .getState()

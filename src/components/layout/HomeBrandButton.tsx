@@ -27,7 +27,6 @@ export function HomeBrandButton({
         data-toolbar-part="home"
         onClick={onClick}
         aria-label={label ?? t(($) => $.shell.home.ariaLabel)}
-        title={label ?? t(($) => $.shell.home.title)}
         className="group grid place-items-center rounded px-1.5 py-1 text-sm font-semibold tracking-tight hover:bg-accent"
       >
         <span data-toolbar-part="brand" className="col-start-1 row-start-1 flex items-center gap-1.5 group-hover:invisible">

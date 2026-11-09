@@ -18,38 +18,19 @@ export interface TableOptions {
   boldHeader?: boolean;
 }
 
-function splitRecord(line: string, delimiter: string): string[] {
-  const cells: string[] = [];
-  let current = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (quoted) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          quoted = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else if (ch === '"' && current === "") {
-      quoted = true;
-    } else if (ch === delimiter) {
-      cells.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  cells.push(current);
-  return cells;
+export interface DelimitedOptions {
+  delimiter?: string;
+  limit?: number;
+  trim?: boolean;
 }
 
+const LINE_FEED = 10;
+const CARRIAGE_RETURN = 13;
+const QUOTE = '"';
+const BYTE_ORDER_MARK = 0xfeff;
+
 export function delimiterOf(text: string): string {
-  return detectDelimiter(text.replace(/\r\n?/g, "\n"));
+  return detectDelimiter(text);
 }
 
 function detectDelimiter(text: string): string {
@@ -65,42 +46,89 @@ function detectDelimiter(text: string): string {
       }
       continue;
     }
-    if (!quoted && character === "\n") break;
+    if (!quoted && (character === "\n" || character === "\r")) break;
     if (!quoted && character === "\t") tabs += 1;
   }
   return tabs > 0 ? "\t" : ",";
 }
 
-export function parseDelimited(text: string): string[][] {
-  const normalized = text.replace(/\r\n?/g, "\n");
-  const delimiter = detectDelimiter(normalized);
-  const physical = normalized.split("\n");
+function quotedText(text: string): string {
+  return text.includes("\r") ? text.replace(/\r\n?/g, "\n") : text;
+}
 
-  const records: string[] = [];
-  let open = false;
-  let carry = "";
-  for (const line of physical) {
-    carry = open ? `${carry}\n${line}` : line;
-    const quotes = (line.match(/"/g) ?? []).length;
-    if (quotes % 2 === 1) {
-      open = !open;
+function scanDelimited(text: string, delimiter: string, limit: number): string[][] {
+  const rows: string[][] = [];
+  const separator = delimiter.charCodeAt(0);
+  const end = text.length;
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  let index = text.charCodeAt(0) === BYTE_ORDER_MARK ? 1 : 0;
+  const finishRow = () => {
+    row.push(field);
+    if (row.length > 1 || field !== "" || quoted) rows.push(row);
+    row = [];
+    field = "";
+    quoted = false;
+  };
+  while (index < end && rows.length < limit) {
+    if (text[index] === QUOTE && field === "" && !quoted) {
+      quoted = true;
+      index += 1;
+      while (index < end) {
+        const close = text.indexOf(QUOTE, index);
+        if (close === -1) {
+          field += quotedText(text.slice(index));
+          index = end;
+          break;
+        }
+        field += quotedText(text.slice(index, close));
+        if (text[close + 1] === QUOTE) {
+          field += QUOTE;
+          index = close + 2;
+          continue;
+        }
+        index = close + 1;
+        break;
+      }
+      continue;
     }
-    if (!open) {
-      records.push(carry);
-      carry = "";
+    let stop = index;
+    while (stop < end) {
+      const code = text.charCodeAt(stop);
+      if (code === separator || code === LINE_FEED || code === CARRIAGE_RETURN) break;
+      stop += 1;
     }
+    field += text.slice(index, stop);
+    index = stop;
+    if (index >= end) break;
+    const code = text.charCodeAt(index);
+    if (code === separator) {
+      row.push(field);
+      field = "";
+      quoted = false;
+      index += 1;
+      continue;
+    }
+    finishRow();
+    index += code === CARRIAGE_RETURN && text.charCodeAt(index + 1) === LINE_FEED ? 2 : 1;
   }
-  if (carry !== "" || open) {
-    records.push(carry);
-  }
-
-  const rows = records
-    .filter((record) => record !== "")
-    .map((record) => splitRecord(record, delimiter).map((cell) => cell.trim()));
-  while (rows.length > 0 && rows[rows.length - 1].every((cell) => cell === "")) {
-    rows.pop();
-  }
+  if (rows.length < limit && (row.length > 0 || field !== "" || quoted)) finishRow();
   return rows;
+}
+
+export function parseDelimited(text: string, options: DelimitedOptions = {}): string[][] {
+  const rows = scanDelimited(
+    text,
+    options.delimiter ?? detectDelimiter(text),
+    options.limit ?? Number.POSITIVE_INFINITY,
+  );
+  if (options.trim === false) return rows;
+  const trimmed = rows.map((row) => row.map((cell) => cell.trim()));
+  while (trimmed.length > 0 && trimmed[trimmed.length - 1].every((cell) => cell === "")) {
+    trimmed.pop();
+  }
+  return trimmed;
 }
 
 function padRows(rows: string[][]): { rows: string[][]; width: number } {

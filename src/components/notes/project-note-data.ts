@@ -5,7 +5,7 @@ import { readFileContent } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { isNotebookPath } from "./notebook-block";
 import type { NotesData } from "./notes-data";
-import { notebookUrl, noteVersion } from "./notes-service";
+import { notebookUrl, noteVersion, usesCrlf } from "./notes-service";
 import { NoteConflictError, type NoteSource } from "./types";
 
 export interface ProjectNoteTarget {
@@ -46,14 +46,14 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
   let own: string | null = null;
   const openHere = () => useFilesStore.getState().projectId === projectId;
   const held = () => (openHere() ? useFilesStore.getState().files[path] : undefined);
-  const readDisk = async () => lf(await readFileContent(projectId, path));
+  const readRaw = () => readFileContent(projectId, path);
+  const readDisk = async () => lf(await readRaw());
 
   const writeFile = async (text: string, version: string, base: string | undefined, closedProject: boolean) => {
-    if (base === undefined) {
-      const disk = await readDisk();
-      if (noteVersion(disk) !== version) throw new NoteConflictError(source(disk));
-    }
+    const disk = base === undefined ? await readRaw() : await readRaw().catch(() => null);
+    if (base === undefined && disk !== null && noteVersion(disk) !== version) throw new NoteConflictError(source(lf(disk)));
     await useFilesStore.getState().writeProjectFile(projectId, path, text, {
+      ...(disk === null ? {} : { crlf: usesCrlf(disk) }),
       ...(closedProject ? { closedProject: true } : {}),
       ...(base === undefined ? {} : { base: lf(base) }),
     });
@@ -65,7 +65,10 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
     if (!openHere()) return writeFile(written, version, base, true);
     const file = held();
     if (!file) return writeFile(written, version, base, false);
-    if (base === undefined && noteVersion(file.content) !== version) throw new NoteConflictError(source(file.content));
+    const unsavedOwnWrite = file.dirty && file.content === own;
+    if (base === undefined && !unsavedOwnWrite && noteVersion(file.content) !== version) {
+      throw new NoteConflictError(source(file.content));
+    }
     own = written;
     const files = useFilesStore.getState();
     const accepted = base === undefined ? files.setContent(path, written) : files.setContent(path, written, { base: lf(base) });

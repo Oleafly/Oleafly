@@ -21,7 +21,8 @@ vi.mock("@/lib/research-tasks", () => ({}));
 vi.mock("@/components/editor/cm/hover-asset", () => ({}));
 
 const { createNotesService, noteItems } = await import("./notes-service");
-const { noteEditorOpened, noteEditorOpen } = await import("@/lib/open-note-editors");
+const { noteEditorOpen, registerNoteEditor } = await import("@/lib/open-note-editors");
+const { noteEditorHandle } = await import("@/lib/tests/open-note-editor-fixtures");
 
 function project(overrides: Partial<ProjectInfo> = {}): ProjectInfo {
   return {
@@ -79,7 +80,12 @@ describe("notes service for shared notes", () => {
     const { notes } = service();
     await expect(notes.saveNote("note-1", "mine\n", "stale", "base\n")).rejects.toBeInstanceOf(NoteConflictError);
     await expect(notes.saveNote("note-1", "mine\n", diskHash("disk\n"), "base\n")).resolves.toMatchObject({ text: "mine\n" });
-    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "mine\n", { closedProject: true, crlf: false });
+    expect(tauri.readFileContent).toHaveBeenCalledOnce();
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "mine\n", {
+      closedProject: true,
+      crlf: false,
+      expectedHash: diskHash("disk\n"),
+    });
   });
 
   it("writes the new title into a closed note's front matter", async () => {
@@ -91,7 +97,7 @@ describe("notes service for shared notes", () => {
       "note-1",
       "note.md",
       "---\ntitle: Bench log\nkind: note\n---\n\nBody.\n",
-      { closedProject: true, crlf: false },
+      { closedProject: true, crlf: false, expectedHash: diskHash("---\ntitle: Bench notes\nkind: note\n---\n\nBody.\n") },
     );
     expect(deps.refreshProjects).toHaveBeenCalledOnce();
   });
@@ -104,7 +110,7 @@ describe("notes service for shared notes", () => {
       "note-1",
       "note.md",
       "---\ntitle: Bench log\n---\n\nBody.\n",
-      { closedProject: true, crlf: true },
+      { closedProject: true, crlf: true, expectedHash: diskHash("---\r\ntitle: Bench notes\r\n---\r\n\r\nBody.\r\n") },
     );
   });
 
@@ -116,8 +122,8 @@ describe("notes service for shared notes", () => {
   });
 
   it("lets an open editor write the title and logs a failed title write", async () => {
-    const close = noteEditorOpened("note-1");
-    const again = noteEditorOpened("note-1");
+    const close = registerNoteEditor("note-1", noteEditorHandle());
+    const again = registerNoteEditor("note-1", noteEditorHandle());
     const { notes } = service();
     await notes.renameNote?.("note-1", "Open");
     expect(tauri.readFileContent).not.toHaveBeenCalled();

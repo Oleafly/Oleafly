@@ -194,10 +194,6 @@ fn same_size(path: &Path, size: u64) -> bool {
     std::fs::metadata(path).is_ok_and(|metadata| metadata.is_file() && metadata.len() == size)
 }
 
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
-
 #[cfg(test)]
 pub(crate) fn store_bytes(
     root: &Path,
@@ -226,7 +222,7 @@ fn store_bytes_reporting(
     }
     let mime = clean_mime(mime)?;
     let name = clean_name(name);
-    let hash = hex(&Sha256::digest(bytes));
+    let hash = oleafly_core::encoding::hex_lower(&Sha256::digest(bytes));
     let dir = scope_dir(root, scope);
     std::fs::create_dir_all(&dir).map_err(storage_failed)?;
     let blob = blob_path(root, scope, &hash);

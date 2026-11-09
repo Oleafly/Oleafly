@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
@@ -278,4 +279,21 @@ describe("native dock shortcuts", () => {
       stop();
     }
   });
+
+  it.each(["notes", "diagram-composer"] as const)(
+    "leaves the hidden project's terminal and Zen mode alone while %s covers it",
+    async (page) => {
+      const stop = await startNativeDockShortcutBridge();
+      useHomeViewStore.setState({ page });
+      try {
+        native.listeners.get("menu://toggle-terminal")?.({ payload: null });
+        native.listeners.get("menu://toggle-zen-mode")?.({ payload: null });
+        expect(useSettingsStore.getState().terminalOpen).toBe(false);
+        expect(toggleZenMode).not.toHaveBeenCalled();
+      } finally {
+        useHomeViewStore.setState({ page: "library" });
+        stop();
+      }
+    },
+  );
 });

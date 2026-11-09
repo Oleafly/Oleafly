@@ -100,7 +100,14 @@ beforeEach(() => {
   }));
   client.cancelProofreading.mockReset();
   useDictionary.setState({ ignored: { paper: ["Oleafly"] }, global: ["mine"], suppressed: {}, revision: 0 });
-  useSettingsStore.setState({ notesSpellcheck: true, dictionaryLocale: "en_GB" });
+  useSettingsStore.setState({
+    notesSpellcheck: true,
+    harper: false,
+    dictionaryLocale: "en_GB",
+    grammarDialect: "american",
+    showRegionalism: true,
+    showWordChoice: true,
+  });
   useFilesStore.setState({ projectId: null, projectDictionaryLocale: null });
   useProofreadingStore.getState().clear("notes");
 });
@@ -152,6 +159,65 @@ describe("note proofreading requests", () => {
     expect(requests()[0].text).not.toContain("projectx");
     expect(findings(editor).map((node) => node.textContent)).toEqual(["Speling"]);
     expect(editor.view.dom.getAttribute("spellcheck")).toBe("false");
+  });
+});
+
+describe("matching the Visual editor's settings", () => {
+  it.each([
+    [true, true, "combined"],
+    [false, true, "grammar"],
+    [true, false, "spelling"],
+  ] as const)("checks a note with spelling %s and grammar %s as %s", async (notesSpellcheck, harper, mode) => {
+    useSettingsStore.setState({ notesSpellcheck, harper });
+    mount(new NoteProofreading({ id: "idea" }), "<p>Speling here.</p>");
+    await settle();
+    expect(requests()[0].mode).toBe(mode);
+  });
+
+  it("checks nothing when spelling in notes and grammar are both off", async () => {
+    useSettingsStore.setState({ notesSpellcheck: false, harper: false });
+    mount(new NoteProofreading({ id: "idea" }), "<p>Speling here.</p>");
+    await settle(800);
+    expect(client.proofreadDocument).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["the dictionary language", () => useSettingsStore.setState({ dictionaryLocale: "de_DE" })],
+    ["Grammar & style", () => useSettingsStore.setState({ harper: true })],
+    ["the grammar dialect", () => useSettingsStore.setState({ grammarDialect: "british" })],
+    ["regional wording", () => useSettingsStore.setState({ showRegionalism: false })],
+    ["word choice", () => useSettingsStore.setState({ showWordChoice: false })],
+    ["the personal word list", () => useDictionary.setState({ global: ["mine", "Speling"] })],
+    ["a project's word list", () => useDictionary.setState({ ignored: { paper: ["Oleafly", "Speling"] } })],
+  ])("checks the note again when %s changes", async (_name, change) => {
+    const proofreading = new NoteProofreading({ id: "idea" });
+    const editor = mount(proofreading, "<p>Speling here.</p>");
+    render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
+    await settle();
+    expect(client.proofreadDocument).toHaveBeenCalledOnce();
+    act(() => change());
+    await settle(800);
+    expect(client.proofreadDocument).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks with the new dictionary language after it changes", async () => {
+    const proofreading = new NoteProofreading({ id: "idea" });
+    const editor = mount(proofreading, "<p>Speling here.</p>");
+    render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
+    await settle();
+    act(() => useSettingsStore.setState({ dictionaryLocale: "de_DE" }));
+    await settle(800);
+    expect(requests().at(-1)?.preferences.dictionaryLocale).toBe("de_DE");
+  });
+
+  it("leaves unrelated settings alone", async () => {
+    const proofreading = new NoteProofreading({ id: "idea" });
+    const editor = mount(proofreading, "<p>Speling here.</p>");
+    render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
+    await settle();
+    act(() => useSettingsStore.setState({ notesShowWordCount: false }));
+    await settle(800);
+    expect(client.proofreadDocument).toHaveBeenCalledOnce();
   });
 });
 

@@ -832,21 +832,24 @@ pub async fn agent_run(
                 let summaries = crate::config::read_config()
                     .map(|cfg| cfg.ai_reasoning_summaries)
                     .unwrap_or(false);
-                let hosted_web = trust_project
+                let hosted_web = run_trusted(trust_project.as_deref());
+                let fetch_policy = |project: &str| {
+                    crate::approvals::policy_for(
+                        &crate::paths::oleafly_root()?,
+                        project,
+                        oleafly_agent::tools::web::WEB_FETCH_TOOL,
+                    )
+                };
+                let related = trust_project
                     .as_deref()
-                    .is_none_or(crate::trust::is_trusted);
-                let fetch_gate = fetch_needs_approval(
-                    fetch_gate_requested,
-                    hosted_web,
-                    trust_project.as_deref(),
-                    |project| {
-                        crate::approvals::policy_for(
-                            &crate::paths::oleafly_root()?,
-                            project,
-                            oleafly_agent::tools::web::WEB_FETCH_TOOL,
-                        )
-                    },
-                );
+                    .and_then(crate::project::note_related_project);
+                let fetch_gate =
+                    fetch_needs_approval(
+                        fetch_gate_requested,
+                        hosted_web,
+                        trust_project.as_deref(),
+                        fetch_policy,
+                    ) || related_fetch_denied(hosted_web, related.as_deref(), fetch_policy);
                 (
                     web::configured_search_key(),
                     summaries,
@@ -1143,8 +1146,28 @@ fn related_project_tool(name: &str) -> Option<&'static str> {
         "related_project_files" => Some("list_files"),
         "read_related_project_file" => Some("read_file"),
         "search_related_project" => Some("search_project"),
+        "research_task_create" => Some("research_task_create"),
+        "research_task_status" => Some("research_task_status"),
         _ => None,
     }
+}
+
+fn run_trusted_with(
+    project: Option<&str>,
+    related_project: impl FnOnce(&str) -> Option<String>,
+    trusted: impl Fn(&str) -> bool,
+) -> bool {
+    project.is_none_or(|project| {
+        trusted(project) && related_project(project).is_none_or(|related| trusted(&related))
+    })
+}
+
+fn run_trusted(project: Option<&str>) -> bool {
+    run_trusted_with(
+        project,
+        crate::project::note_related_project,
+        crate::trust::is_trusted,
+    )
 }
 
 fn tool_decision(
@@ -1155,8 +1178,8 @@ fn tool_decision(
 ) -> Option<crate::approvals::ToolDecision> {
     let own = decision_for(project, tool);
     let related = related_project_tool(tool).and_then(|mapped| {
-        let related = related_project(project)?;
-        decision_for(&related, mapped)
+        let target = related_project(project).unwrap_or_else(|| project.to_string());
+        decision_for(&target, mapped)
     });
     match related {
         Some(crate::approvals::ToolDecision::Deny) => Some(crate::approvals::ToolDecision::Deny),
@@ -1393,10 +1416,9 @@ fn restricted_tool_runner(
             let Some(project_id) = project_id else {
                 return inner(call).await;
             };
-            let trusted =
-                tokio::task::spawn_blocking(move || crate::trust::is_trusted(&project_id))
-                    .await
-                    .unwrap_or(false);
+            let trusted = tokio::task::spawn_blocking(move || run_trusted(Some(&project_id)))
+                .await
+                .unwrap_or(false);
             if trusted {
                 return inner(call).await;
             }
@@ -1443,6 +1465,28 @@ fn fetch_needs_approval(
         Ok((ApprovalMode::FullAccess, _)) | Ok((_, Some(ToolDecision::Allow))) => false,
         Ok(_) => requested,
     }
+}
+
+fn related_fetch_denied(
+    trusted: bool,
+    related: Option<&str>,
+    policy: impl FnOnce(
+        &str,
+    ) -> Result<
+        (
+            crate::approvals::ApprovalMode,
+            Option<crate::approvals::ToolDecision>,
+        ),
+        String,
+    >,
+) -> bool {
+    let Some(related) = related.filter(|_| trusted) else {
+        return false;
+    };
+    matches!(
+        policy(related),
+        Ok((_, Some(crate::approvals::ToolDecision::Deny))) | Err(_)
+    )
 }
 
 fn hosted_web_for(trusted: bool, fetch_gate: bool) -> web::HostedWeb {
@@ -1824,10 +1868,11 @@ pub async fn agent_web_search_ready(
         })
         .unwrap_or(true);
     tauri::async_runtime::spawn_blocking(move || {
-        let hosted = project_id
-            .as_deref()
-            .filter(|id| crate::paths::validate_project_id(id).is_ok())
-            .is_none_or(crate::trust::is_trusted);
+        let hosted = run_trusted(
+            project_id
+                .as_deref()
+                .filter(|id| crate::paths::validate_project_id(id).is_ok()),
+        );
         (native && hosted) || web::configured_search_key().is_some()
     })
     .await

@@ -1,6 +1,6 @@
 import { Mapping, StepMap } from "@tiptap/pm/transform";
 import { describe, expect, it } from "vitest";
-import { LocalEdits } from "./local-edits";
+import { LocalEdits, MAX_LOCAL_EDITS } from "./local-edits";
 
 function insertion(at: number, length: number): StepMap {
   return new StepMap([at, 0, length]);
@@ -71,6 +71,32 @@ describe("local edits", () => {
     const edits = new LocalEdits();
     edits.record(new Mapping([StepMap.empty]));
     expect(edits.dirty).toBe(false);
+  });
+
+  it("keeps one range for typing that runs on in one place", () => {
+    const edits = new LocalEdits();
+    for (let at = 4; at < 1004; at += 1) edits.record(new Mapping([insertion(at, 1)]));
+    expect(edits.count).toBe(1);
+    expect(edits.overlaps(4, 4)).toBe(true);
+    expect(edits.overlaps(1004, 1004)).toBe(true);
+    expect(edits.overlaps(0, 3)).toBe(false);
+    expect(edits.overlaps(1005, 1010)).toBe(false);
+  });
+
+  it("joins ranges that come to overlap", () => {
+    const edits = new LocalEdits();
+    edits.record(new Mapping([insertion(4, 3)]));
+    edits.record(new Mapping([insertion(20, 3)]));
+    expect(edits.count).toBe(2);
+    edits.record(new Mapping([deletion(6, 15)]));
+    expect(edits.count).toBe(1);
+  });
+
+  it("stays small over a long session by joining the closest ranges", () => {
+    const edits = new LocalEdits();
+    for (let index = 0; index < 1000; index += 1) edits.record(new Mapping([insertion(index * 10, 1)]));
+    expect(edits.count).toBe(MAX_LOCAL_EDITS);
+    for (let index = 0; index < 1000; index += 1) expect(edits.overlaps(index * 10, index * 10)).toBe(true);
   });
 
   it("forgets every edit once cleared", () => {

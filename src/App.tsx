@@ -89,6 +89,8 @@ import { START_TOUR_EVENT } from "@/lib/tour";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { OpeningIndicator } from "@/components/ui/opening-indicator";
 import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
+import { coversProject, projectCovered } from "@/lib/project-covered";
+import { noteHistoryAt } from "@/lib/open-note-editors";
 import { useZenStore } from "@/store/zen";
 import { exitZenMode } from "@/lib/zen-mode";
 import {
@@ -417,12 +419,20 @@ function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void
 
 function runMenuHistory(redo: boolean): void {
   const active = document.activeElement as HTMLElement | null;
+  const noteHistory = inPlainField(active) ? null : noteHistoryAt(active);
+  if (noteHistory) {
+    noteHistory(redo);
+    return;
+  }
   const richText = separateRichTextEditor(active);
   if (richText) {
     runRichTextHistory(richText, redo);
     return;
   }
-  if (!useFilesStore.getState().projectId) return;
+  if (!useFilesStore.getState().projectId || projectCovered()) {
+    if (inPlainField(active)) runFieldHistory(document, redo ? "redo" : "undo");
+    return;
+  }
   const form = visualFormHistory(active);
   if (form === "document") {
     runDocumentMenuHistory(active, redo);
@@ -517,7 +527,6 @@ function AppContent() {
     !detached && projectId !== null && (previewShown || previewKeptFor === projectId);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
-  const projectComposerOpen = homePage === "diagram-composer" || homePage === "notes";
   const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
   const editorPanelRef = useRef<PanelImperativeHandle>(null);
   const pdfPanelRef = useRef<PanelImperativeHandle>(null);
@@ -858,11 +867,12 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       const bindings = useShortcutStore.getState().bindings;
       if (matchesShortcut(e, bindings.recompile)) {
-        if (!recompileWanted(e)) return;
+        if (projectCovered() || !recompileWanted(e)) return;
         e.preventDefault();
         revealPreviewForCompile();
         void recompile();
       } else if (matchesShortcut(e, bindings.forwardSync)) {
+        if (projectCovered()) return;
         e.preventDefault();
         void forwardFromCursor();
       } else if (matchesShortcut(e, bindings.shortcutReference)) {
@@ -882,7 +892,7 @@ function AppContent() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
-      if (!useFilesStore.getState().projectId) return;
+      if (!useFilesStore.getState().projectId || projectCovered()) return;
       if (terminalOwnsKey(e)) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
         const el = document.activeElement as HTMLElement | null;
@@ -914,7 +924,15 @@ function AppContent() {
       if (isTerminalTarget(e.target)) return;
       const isRedo = command === "redo";
       if (useTourStore.getState().activeTourId) return;
-      if (!useFilesStore.getState().projectId) return;
+      const focused = document.activeElement;
+      const noteHistory = focused?.closest(".ProseMirror") || inPlainField(focused) ? null : noteHistoryAt(focused);
+      if (noteHistory) {
+        e.preventDefault();
+        e.stopPropagation();
+        noteHistory(isRedo);
+        return;
+      }
+      if (!useFilesStore.getState().projectId || projectCovered()) return;
       const active = document.activeElement as HTMLElement | null;
       if (inVisualForm(active)) return;
       if (secondaryCodeEditorOwns(active) || separateRichTextEditor(active)) return;
@@ -948,7 +966,7 @@ function AppContent() {
   useEffect(() => {
     if (!projectId) return;
     const onKey = (event: KeyboardEvent) => {
-      if (useTourStore.getState().activeTourId) return;
+      if (useTourStore.getState().activeTourId || projectCovered()) return;
       if (handleTerminalTabShortcut(event)) return;
       if (!usesNativeDockMenu()) handleDockShortcut(event);
     };
@@ -1050,7 +1068,7 @@ function AppContent() {
         data-zen={zen ? "true" : undefined}
         className="flex h-full flex-col"
       >
-        <div className="contents" inert={projectToolOpen || projectComposerOpen || undefined}>
+        <div className="contents" inert={coversProject(homePage) || undefined}>
           <div hidden={zen} className={zen ? undefined : "contents"}>
             <Contained resetKey={projectId}>
               <TopToolbar />

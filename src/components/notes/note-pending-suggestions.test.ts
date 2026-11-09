@@ -7,7 +7,7 @@ import {
   noteEditorLink,
   pendingBatches,
   registerNoteEditor,
-  resetPendingSuggestions,
+  resetPendingSuggestionsForTest,
   takePendingBatches,
   withPendingEdits,
 } from "./note-pending-suggestions";
@@ -16,7 +16,7 @@ const KEY = "oleafly.notes.pendingSuggestions";
 
 afterEach(() => {
   localStorage.clear();
-  resetPendingSuggestions();
+  resetPendingSuggestionsForTest();
   vi.restoreAllMocks();
 });
 
@@ -64,7 +64,7 @@ describe("suggestions waiting for a closed note", () => {
     addPendingBatch("n1", [{ find: "x", replace: "y" }], true);
     addPendingBatch("n1", []);
     expect(pendingBatches("n1")).toEqual([[{ find: "x", replace: "y" }], [{ find: "a", replace: "b" }], [{ find: "b", replace: "c" }]]);
-    resetPendingSuggestions();
+    resetPendingSuggestionsForTest();
     expect(pendingBatches("n1")).toHaveLength(3);
     expect(withPendingEdits("a", pendingBatches("n1"))).toBe("c");
     expect(takePendingBatches("n1")).toHaveLength(3);
@@ -75,10 +75,10 @@ describe("suggestions waiting for a closed note", () => {
   it("ignores stored data it can't read and survives full storage", () => {
     localStorage.setItem(KEY, "{");
     expect(pendingBatches("n1")).toEqual([]);
-    resetPendingSuggestions();
+    resetPendingSuggestionsForTest();
     localStorage.setItem(KEY, "[1]");
     expect(pendingBatches("n1")).toEqual([]);
-    resetPendingSuggestions();
+    resetPendingSuggestionsForTest();
     localStorage.setItem(KEY, JSON.stringify({ n1: [[{ find: "a", replace: "b" }], [{ find: 1 }], []], n2: "x", n3: [[null]] }));
     expect(pendingBatches("n1")).toEqual([[{ find: "a", replace: "b" }]]);
     expect(pendingBatches("n2")).toEqual([]);
@@ -107,6 +107,18 @@ describe("open note editors", () => {
     stop();
     expect(noteEditorLink("n1")).not.toBe(link);
     other();
+    expect(noteEditorLink("n1")).toBeNull();
+  });
+
+  it("goes back to the editor still open when the newer one closes", () => {
+    const first = { readSource: () => "first", propose: () => 1, pending: () => 0 };
+    const second = { readSource: () => "second", propose: () => 1, pending: () => 0 };
+    const stopFirst = registerNoteEditor("n1", first);
+    const stopSecond = registerNoteEditor("n1", second);
+    expect(noteEditorLink("n1")).toBe(second);
+    stopSecond();
+    expect(noteEditorLink("n1")).toBe(first);
+    stopFirst();
     expect(noteEditorLink("n1")).toBeNull();
   });
 });

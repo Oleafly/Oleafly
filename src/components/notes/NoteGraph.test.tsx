@@ -7,7 +7,7 @@ import { allowRadixSelect, chooseOption } from "@/features/collab/tests/select";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { NoteLinkRecord, NoteTagCount } from "@/lib/tauri";
-import { buildGraph, fitView, GRAPH_LAYOUT_KEY, toScreen, type GraphData, type LayoutRequest, type LayoutUpdate } from "./note-graph-layout";
+import { buildGraph, fitView, GRAPH_LAYOUT_KEY, type GraphData, type LayoutRequest, type LayoutUpdate } from "./note-graph-layout";
 import {
   createLayoutRunner,
   drawGraph,
@@ -26,6 +26,10 @@ import type { NoteItem } from "./types";
 const copy = enNotes.graph;
 const logs = vi.hoisted(() => ({ logError: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logError: logs.logError }));
+vi.mock("./note-graph-layout", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./note-graph-layout")>();
+  return { ...actual, buildGraph: vi.fn(actual.buildGraph) };
+});
 
 type Call = [string, unknown[]];
 
@@ -135,6 +139,28 @@ async function settled() {
 }
 
 describe("NoteGraph", () => {
+  it("rebuilds the graph when a note's title or look changes, not on every save", async () => {
+    const value = data({ notes: [note("a", "Alpha"), note("b", "Beta")] });
+    const { rerender } = renderGraph({}, value);
+    await waitFor(() => expect(screen.getByRole("application", { name: "Graph of 2 notes" })).toBeInTheDocument());
+    const built = vi.mocked(buildGraph).mock.calls.length;
+    const saved = { ...value, notes: value.notes.map((item) => ({ ...item, summary: "edited", updatedAt: 99 })) };
+    rerender(
+      <NotesDataProvider value={saved}>
+        <NoteGraph mode="global" onOpenNote={vi.fn()} onOpenProject={vi.fn()} />
+      </NotesDataProvider>,
+    );
+    expect(vi.mocked(buildGraph).mock.calls.length).toBe(built);
+    const renamed = { ...saved, notes: saved.notes.map((item) => (item.id === "b" ? { ...item, title: "Beta two" } : item)) };
+    rerender(
+      <NotesDataProvider value={renamed}>
+        <NoteGraph mode="global" onOpenNote={vi.fn()} onOpenProject={vi.fn()} />
+      </NotesDataProvider>,
+    );
+    expect(vi.mocked(buildGraph).mock.calls.length).toBe(built + 1);
+    expect(vi.mocked(buildGraph).mock.lastCall?.[0].notes.map((item) => item.title)).toEqual(["Alpha", "Beta two"]);
+  });
+
   it("draws every note and opens one on click", async () => {
     const { onOpenNote } = renderGraph();
     const canvas = screen.getByRole("application", { name: "Graph of 1 note" });
@@ -569,7 +595,10 @@ describe("NoteGraph with a layout worker", () => {
     { projects: true, projectColor: "#888" },
   );
   const positions = [0, 0, 100, 0, -100, 0];
-  const at = (index: number) => toScreen(fitView(new Float32Array(positions), graph.nodes, 800, 600), positions[index * 2], positions[index * 2 + 1]);
+  const at = (index: number) => {
+    const view = fitView(new Float32Array(positions), graph.nodes, 800, 600);
+    return [positions[index * 2] * view.k + view.x, positions[index * 2 + 1] * view.k + view.y];
+  };
 
   beforeEach(() => {
     FakeWorker.last = null;

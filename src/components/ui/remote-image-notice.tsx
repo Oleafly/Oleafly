@@ -1,8 +1,14 @@
 import { ImageOff } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 
-export function RemoteImageNotice({ host, alt, onLoad }: Readonly<{ host: string; alt?: string; onLoad?: () => void }>) {
+export function RemoteImageNotice({
+  host,
+  alt,
+  onLoad,
+  children,
+}: Readonly<{ host: string; alt?: string; onLoad?: () => void; children?: ReactNode }>) {
   const { t } = useTranslation(["common"]);
   const text = <span className="min-w-0 truncate">{t(($) => $.common.remoteImage.blocked, { host })}</span>;
   return (
@@ -32,6 +38,7 @@ export function RemoteImageNotice({ host, alt, onLoad }: Readonly<{ host: string
           {t(($) => $.common.remoteImage.load)}
         </button>
       )}
+      {children}
     </span>
   );
 }

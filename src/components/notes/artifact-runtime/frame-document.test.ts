@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   FRAME_POLICY,
   frameChannel,
+  framePolicy,
   framePrelude,
   globalsFor,
   htmlFrameDocument,
@@ -23,9 +24,31 @@ const MESSAGES = {
   compileError: "Syntax",
   runtimeError: "Runtime",
   noComponent: "None",
+  loadFailed: "Couldn't load",
 };
 const OPTIONS = { theme: "light" as const, channel: "abc", messages: MESSAGES };
+const HASH = "0123456789abcdef".repeat(4);
+const RUNTIME = `oleafly-artifact://localhost/runtime/${HASH}.js`;
+const WINDOWS_RUNTIME = `http://oleafly-artifact.localhost/runtime/${HASH}.js`;
+const RUNTIME_TAG = `<script src="${RUNTIME}"></script>`;
+
+function metaPolicy(html: string): string {
+  const meta = new DOMParser().parseFromString(html, "text/html").querySelector('meta[http-equiv="Content-Security-Policy"]');
+  return meta?.getAttribute("content") ?? "";
+}
 const SCRIPTED_DOM = { runScripts: "outside-only", pretendToBeVisual: true } as unknown as ConstructorParameters<typeof JSDOM>[1];
+type DomOptions = ConstructorParameters<typeof JSDOM>[1];
+
+function runningDom(html: string, runtime?: object): JSDOM {
+  const options = {
+    runScripts: "dangerously",
+    pretendToBeVisual: true,
+    beforeParse: (window: Window) => {
+      if (runtime) Object.assign(window, { __oleaflyArtifact: runtime });
+    },
+  };
+  return new JSDOM(html, options as unknown as DomOptions);
+}
 
 function frameWindow() {
   const dom = new JSDOM("<!doctype html><html><head></head><body><p>x</p></body></html>", SCRIPTED_DOM);
@@ -283,20 +306,40 @@ describe("frame documents", () => {
     expect(text).not.toContain("<");
     expect(text).toContain(String.raw`\u2028`);
     expect(JSON.parse(text)).toBe("</script><script>alert(1)</script>\u2028\u2029");
-    expect(runtimeScript("var a = '</script>';")).toBe(`<script>(0, eval)(${inlineJson("var a = '</script>';")});</script>`);
+  });
+
+  it("loads the runtime only from the app's runtime address", () => {
+    expect(runtimeScript(RUNTIME)).toBe(RUNTIME_TAG);
+    expect(runtimeScript(WINDOWS_RUNTIME)).toBe(`<script src="${WINDOWS_RUNTIME}"></script>`);
+    for (const url of [
+      `${RUNTIME}"></script><script>alert(1)`,
+      `oleafly-artifact://localhost/runtime/${HASH.toUpperCase()}.js`,
+      `oleafly-artifact://localhost/runtime/${HASH.slice(1)}.js`,
+      `oleafly-artifact://localhost/${HASH}.js`,
+      `https://oleafly-artifact.localhost/runtime/${HASH}.js`,
+      `oleafly-artifact://evil/runtime/${HASH}.js`,
+      `${RUNTIME}; script-src *`,
+      `${RUNTIME}?x`,
+      "/artifact-runtime/react-runtime.js",
+      "",
+    ]) {
+      expect(() => runtimeScript(url)).toThrow(TypeError);
+      expect(() => framePolicy(url)).toThrow(TypeError);
+    }
   });
 
   it("puts the policy, prelude and runtime before the page's own head", () => {
     const prepared = prepareHtml(
       '<html lang="fr" data-x="1"><head><title>Doc</title><script src="https://d3js.org/d3.v7.min.js"></script></head><body class="b"><p>Hi</p></body></html>',
     );
-    const html = htmlFrameDocument(prepared, { ...OPTIONS, theme: "dark" }, "RUNTIME");
+    const html = htmlFrameDocument(prepared, { ...OPTIONS, theme: "dark" }, RUNTIME);
     expect(html.startsWith("<!doctype html><html")).toBe(true);
     expect(html).toContain('lang="fr"');
     expect(html).toContain('class="dark"');
+    expect(metaPolicy(html)).toBe(framePolicy(RUNTIME));
     const policy = html.indexOf("Content-Security-Policy");
     const prelude = html.indexOf('"use strict"');
-    const runtime = html.indexOf(inlineJson("RUNTIME"));
+    const runtime = html.indexOf(RUNTIME_TAG);
     const expose = html.indexOf('__oleaflyArtifact.expose(["d3"])');
     const title = html.indexOf("<title>Doc</title>");
     expect(policy).toBeGreaterThan(0);
@@ -310,23 +353,65 @@ describe("frame documents", () => {
   });
 
   it("runs Babel scripts after the page loads and skips the runtime when no library is used", () => {
-    const babel = htmlFrameDocument(prepareHtml('<script type="text/babel">x</script>'), OPTIONS, "RT");
+    const babel = htmlFrameDocument(prepareHtml('<script type="text/babel">x</script>'), OPTIONS, RUNTIME);
     expect(babel).toContain("__oleaflyArtifact.runScripts(");
     expect(babel).toContain('lang="en"');
+    expect(babel).toContain(RUNTIME_TAG);
     const plain = htmlFrameDocument(prepareHtml("<p>plain</p>"), OPTIONS, null);
     expect(plain).not.toContain("__oleaflyArtifact");
-    expect(plain).not.toContain("(0, eval)");
+    expect(plain).not.toContain("/runtime/");
+    expect(metaPolicy(plain)).toBe(FRAME_POLICY);
+    const unused = htmlFrameDocument(prepareHtml("<p>no library</p>"), OPTIONS, RUNTIME);
+    expect(unused).not.toContain("/runtime/");
+    expect(metaPolicy(unused)).toBe(FRAME_POLICY);
     const noRuntime = htmlFrameDocument(prepareHtml('<script src="https://d3js.org/d3.v7.min.js"></script>'), OPTIONS, null);
     expect(noRuntime).not.toContain("__oleaflyArtifact");
   });
 
+  it("says the block couldn't load when the runtime script never ran, and runs it when it did", async () => {
+    const documents = [
+      reactFrameDocument("export default () => null", OPTIONS, RUNTIME),
+      htmlFrameDocument(prepareHtml('<script src="https://d3js.org/d3.v7.min.js"></script><p>x</p>'), OPTIONS, RUNTIME),
+    ];
+    const settle = (dom: JSDOM) =>
+      new Promise<void>((done) => {
+        if (dom.window.document.readyState === "complete") done();
+        else dom.window.addEventListener("load", () => done());
+      });
+    for (const html of documents) {
+      const missing = runningDom(html);
+      await settle(missing);
+      const alerts = missing.window.document.querySelectorAll('[role="alert"]');
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0].textContent).toBe(MESSAGES.loadFailed);
+      missing.window.close();
+      const runtime = { expose: vi.fn(), runReact: vi.fn(), runScripts: vi.fn() };
+      const loaded = runningDom(html, runtime);
+      await settle(loaded);
+      expect(loaded.window.document.querySelector('[role="alert"]')).toBeNull();
+      expect(runtime.expose.mock.calls.length + runtime.runReact.mock.calls.length).toBe(1);
+      loaded.window.close();
+    }
+  });
+
+  it("drops a page's own copy of the runtime address so only the app adds it", () => {
+    const prepared = prepareHtml(`<script src="${RUNTIME}"></script><p>x</p>`);
+    expect(prepared.libraries).toEqual([]);
+    expect(prepared.removed).toEqual([RUNTIME]);
+    expect(htmlFrameDocument(prepared, OPTIONS, null)).not.toContain("/runtime/");
+  });
+
   it("builds a React document that passes the code and messages as data", () => {
-    const html = reactFrameDocument('export default () => "</script>"', { ...OPTIONS, theme: "dark" }, "RT");
+    const html = reactFrameDocument('export default () => "</script>"', { ...OPTIONS, theme: "dark" }, RUNTIME);
     expect(html).toContain('class="dark"');
+    expect(html).toContain(RUNTIME_TAG);
+    expect(metaPolicy(html)).toBe(framePolicy(RUNTIME));
+    expect(html.indexOf(RUNTIME_TAG)).toBeLessThan(html.indexOf("__oleaflyArtifact.runReact"));
     expect(html).toContain('<div id="root"></div>');
     expect(html).toContain(`__oleaflyArtifact.runReact(${inlineJson('export default () => "</script>"')}, ${inlineJson(MESSAGES)});`);
     expect(html.match(/<\/script>/gu)).toHaveLength(3);
-    expect(reactFrameDocument("x", OPTIONS, "RT")).not.toContain('class="dark"');
+    expect(reactFrameDocument("x", OPTIONS, RUNTIME)).not.toContain('class="dark"');
+    expect(() => reactFrameDocument("x", OPTIONS, "RT")).toThrow(TypeError);
   });
 
   it("wraps static previews in a script-free policy", () => {
@@ -343,6 +428,10 @@ describe("frame documents", () => {
       expect(FRAME_POLICY).toContain(directive);
     }
     expect(FRAME_POLICY).not.toMatch(/https?:|\*/u);
+    expect(FRAME_POLICY).toContain("script-src 'unsafe-inline' 'unsafe-eval';");
+    for (const url of [RUNTIME, WINDOWS_RUNTIME]) {
+      expect(framePolicy(url)).toBe(FRAME_POLICY.replace("'unsafe-eval';", `'unsafe-eval' ${url};`));
+    }
   });
 });
 

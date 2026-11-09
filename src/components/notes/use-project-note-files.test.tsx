@@ -26,7 +26,13 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 }));
 
 import { useFilesStore } from "@/store/files";
-import { PROJECT_NOTE_READ_LIMIT, projectNoteFile, touchesNotes, useProjectNoteFiles } from "./use-project-note-files";
+import {
+  PROJECT_NOTE_READ_LIMIT,
+  projectNoteFile,
+  projectNotePaths,
+  touchesNotes,
+  useProjectNoteFiles,
+} from "./use-project-note-files";
 
 const NOTE = "---\ntitle: Plan\nkind: note\n---\n\nFirst line.\n";
 
@@ -111,6 +117,24 @@ describe("project note files", () => {
     expect(result.current.notes[0]).toBe(row);
   });
 
+  it("scans the file tree once per tree, not on every keystroke", async () => {
+    const tree = [
+      { path: "main.tex", is_dir: false },
+      { path: "notes/Plan.md", is_dir: false },
+      { path: "notes/assets/fig.md", is_dir: false },
+    ];
+    const scan = vi.spyOn(tree, "filter");
+    useFilesStore.setState({ tree });
+    const { result } = renderHook(() => useProjectNoteFiles("paper"));
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    for (const text of ["a", "ab", "abc"]) {
+      act(() => useFilesStore.setState({ files: { "main.tex": { content: text, dirty: true } } }));
+    }
+    expect(scan).toHaveBeenCalledTimes(1);
+    expect(projectNotePaths(tree)).toEqual(["notes/Plan.md"]);
+    expect(projectNotePaths(tree)).toBe(projectNotePaths(tree));
+  });
+
   it("lists nothing without an open project or for another project", () => {
     const none = renderHook(() => useProjectNoteFiles(null));
     expect(none.result.current).toEqual({ notes: [], loaded: true, more: 0 });
@@ -120,11 +144,14 @@ describe("project note files", () => {
     expect(mocks.readFileContent).not.toHaveBeenCalled();
   });
 
-  it("drops reads that finish after it unmounts", async () => {
-    let deliver: (text: string) => void = () => {};
-    mocks.readFileContent.mockImplementationOnce(() => new Promise((resolve) => (deliver = resolve)));
-    const { unmount } = renderHook(() => useProjectNoteFiles("paper"));
-    unmount();
-    await act(async () => deliver(NOTE));
+  it("drops a read that a newer read of the same note replaced", async () => {
+    let deliverOld: (text: string) => void = () => {};
+    mocks.readFileContent.mockImplementationOnce(() => new Promise((resolve) => (deliverOld = resolve)));
+    mocks.readFileContent.mockResolvedValueOnce("---\ntitle: Fresh\nkind: note\n---\n");
+    const { result } = renderHook(() => useProjectNoteFiles("paper"));
+    act(() => mocks.handler?.({ projectId: "paper", paths: ["notes/Plan.md"], rescan: false }));
+    await waitFor(() => expect(result.current.notes.map((note) => note.title)).toEqual(["Fresh"]));
+    await act(async () => deliverOld(NOTE));
+    expect(result.current.notes.map((note) => note.title)).toEqual(["Fresh"]);
   });
 });

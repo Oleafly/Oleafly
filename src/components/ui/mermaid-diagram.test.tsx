@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { applyTheme } from "@/lib/theme";
 import { cachedDiagram, clearDiagramCache, MermaidDiagram, renderDiagram } from "./mermaid-diagram";
+import { MERMAID_LABEL_PURIFY, MermaidRemoteContentError } from "./mermaid-remote";
 
 const mermaid = vi.hoisted(() => ({
   initialize: vi.fn(),
@@ -61,6 +62,53 @@ describe("rendering diagrams", () => {
     await expect(renderDiagram(SOURCE, "light")).rejects.toThrow("Invalid Mermaid SVG");
     expect(cachedDiagram(SOURCE, "light")).toBeUndefined();
   });
+
+  it.each([
+    ["an image shape", 'flowchart LR\n  A@{ img: "https://attacker.example/p.png?u=1" }'],
+    ["themeCSS", '%%{init: {"themeCSS": ".node rect { fill: url(https://attacker.example/t.png) }"}}%%\nflowchart LR\n  A --> B'],
+    ["a font family", '%%{init: {"fontFamily": "x; background: url(https://attacker.example/f.png)"}}%%\nflowchart LR\n  A --> B'],
+    ["a classDef", "flowchart LR\n  A --> B\n  classDef bad fill:url(https://attacker.example/c.png)\n  class A bad"],
+    ["a style statement", "flowchart LR\n  A --> B\n  style A background-image:url('//attacker.example/s.png')"],
+    ["image-set", 'flowchart LR\n  A --> B\n  style A background:image-set("https://attacker.example/i.png" 1x)'],
+    ["an HTML label image", "flowchart LR\n  A[\"<img src='https://attacker.example/h.png'>\"]"],
+    ["a sequence actor icon", 'sequenceDiagram\n  participant A\n  properties A: {"icon": "https://attacker.example/i.png"}\n  A->>A: hi'],
+    ["sequence actor details", "sequenceDiagram\n  participant A\n  details A: note-heading\n  A->>A: hi"],
+  ])("refuses %s that loads from the internet without starting mermaid", async (_name, source) => {
+    await expect(renderDiagram(source, "light")).rejects.toBeInstanceOf(MermaidRemoteContentError);
+    expect(mermaid.initialize).not.toHaveBeenCalled();
+    expect(mermaid.render).not.toHaveBeenCalled();
+  });
+
+  it("strips sources and links from labels and keeps diagrams from changing that", async () => {
+    await renderDiagram(SOURCE, "light");
+
+    expect(mermaid.initialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dompurifyConfig: MERMAID_LABEL_PURIFY,
+        secure: expect.arrayContaining(["dompurifyConfig", "securityLevel"]),
+      }),
+    );
+  });
+
+  it("refuses a drawing that still points at the internet", async () => {
+    mermaid.render.mockResolvedValue({
+      svg: '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://attacker.example/i.png"/></svg>',
+    });
+
+    await expect(renderDiagram(SOURCE, "light")).rejects.toBeInstanceOf(MermaidRemoteContentError);
+    expect(cachedDiagram(SOURCE, "light")).toBeUndefined();
+  });
+
+  it("keeps a node's link as plain text", async () => {
+    mermaid.render.mockResolvedValue({
+      svg: '<svg xmlns="http://www.w3.org/2000/svg"><a xlink:href="https://example.com/docs" target="_blank"><text>A</text></a></svg>',
+    });
+
+    const svg = await renderDiagram(SOURCE, "light");
+
+    expect(svg.querySelector("a")?.getAttributeNames()).toEqual([]);
+    expect(svg.textContent).toBe("A");
+  });
 });
 
 describe("MermaidDiagram", () => {
@@ -76,6 +124,16 @@ describe("MermaidDiagram", () => {
 
     expect(await screen.findByRole("status", { name: enCore.mermaid.renderFailed })).toBeTruthy();
     expect(mermaid.render).toHaveBeenCalledTimes(1);
+  });
+
+  it("says why a diagram that loads from the internet was not drawn and shows its source", async () => {
+    const source = 'flowchart LR\n  A@{ img: "https://attacker.example/p.png" }';
+    const { container } = render(<MermaidDiagram source={source} />);
+
+    expect(await screen.findByRole("status", { name: enCore.mermaid.remoteBlocked })).toBeTruthy();
+    expect(container.querySelector("code")?.textContent).toBe(source);
+    expect(container.querySelector("img, image")).toBeNull();
+    expect(mermaid.render).not.toHaveBeenCalled();
   });
 
   it("redraws for a new theme when the browser is idle and reuses earlier drawings", async () => {

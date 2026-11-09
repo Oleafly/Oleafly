@@ -16,7 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { prefersReducedMotion } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
-import { matchesShortcut, shortcutLabel, type ShortcutBinding } from "@/store/shortcuts";
+import { matchesShortcut, shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { readPromptCollapsed, savePromptCollapsed } from "./note-prefs";
 
 export interface PromptDockHandle {
@@ -48,7 +48,6 @@ const SHELL_DELAY_MS = 50;
 const SHELL_MS = 260;
 const FADE_IN_DELAY_MS = 230;
 const FADE_IN_MS = 140;
-const TOGGLE_BINDING: ShortcutBinding = { key: "j", mod: true };
 
 function boxOf(element: Element, origin: DOMRect): Box {
   const rect = element.getBoundingClientRect();
@@ -73,10 +72,11 @@ function shellFrame(box: Box): Keyframe {
 }
 
 export function ShortcutLabel({ label }: Readonly<{ label: string }>) {
+  const keys = useShortcutStore((state) => shortcutLabel(state.bindings.notesAskAgent));
   return (
     <span className="flex items-center gap-1.5">
       {label}
-      <Kbd>{shortcutLabel(TOGGLE_BINDING)}</Kbd>
+      <Kbd>{keys}</Kbd>
     </span>
   );
 }
@@ -225,7 +225,7 @@ export function PromptDock({
     const scope = shortcutScope?.current;
     if (!scope) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!matchesShortcut(event, TOGGLE_BINDING)) return;
+      if (!matchesShortcut(event, useShortcutStore.getState().bindings.notesAskAgent)) return;
       event.preventDefault();
       if (collapsedRef.current) change(false, true);
       else if (composerText(panelRef.current).trim() === "") change(true, false);

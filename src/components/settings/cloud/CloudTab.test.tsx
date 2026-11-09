@@ -728,6 +728,36 @@ describe("CloudTab", () => {
     await waitFor(() => expect(screen.queryByTestId("cloud-project-conflicts")).toBeNull());
   });
 
+  it("lets you compare a note's conflict copy with the note, and offers no compare for other projects", async () => {
+    const copy = "note (Laptop 2026-11-08).md";
+    serve(
+      cloudState({
+        projects: [
+          project({ localId: "idea", cloudId: "c-idea", name: "Idea", lastSyncedMs: Date.now(), conflicts: 1, conflictCopies: [copy] }),
+          project({ lastSyncedMs: Date.now(), conflicts: 1, conflictCopies: ["main (Laptop 2026-10-14).tex"] }),
+        ],
+      }),
+    );
+    useFilesStore.setState({
+      projects: [
+        { id: "idea", name: "Idea", kind: "note", main_doc: "note.md" },
+        { id: "thesis", name: "Thesis", kind: "document", main_doc: "main.tex" },
+      ] as never,
+    });
+    try {
+      render(<CloudTab />);
+      const notices = await screen.findAllByTestId("cloud-project-conflicts");
+      expect(notices).toHaveLength(2);
+      const compare = screen.getAllByRole("button", { name: `Compare ${copy} with the note` });
+      expect(compare).toHaveLength(1);
+      expect(screen.queryByRole("button", { name: "Compare main (Laptop 2026-10-14).tex with the note" })).toBeNull();
+      await userEvent.click(compare[0]);
+      expect(await screen.findByRole("dialog", { name: 'Two versions of "Idea"' })).toBeInTheDocument();
+    } finally {
+      useFilesStore.setState({ projects: [] });
+    }
+  });
+
   it("replaces an unreadable copy in Dropbox only after confirming", async () => {
     serve(cloudState({ projects: [project({ lastSyncedMs: 5, error: UNREADABLE })] }));
     mocks.cloud.cloudProjectReplaceRemote.mockResolvedValue({ ...holdReport(), downloaded: 0, uploaded: 4 });

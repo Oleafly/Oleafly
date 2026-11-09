@@ -184,10 +184,12 @@ export function startLiveEditing(live: LiveSession): () => void {
     },
     () => queue(() => collabPresenceLeave(projectId)),
   );
+  let held = false;
   const stopNoteHolds = onNoteLiveHoldsChange(() => {
-    if (!deferred) return;
     const { path, cursor, anchor } = currentPresence(projectId);
-    if (noteLiveHolds(projectId, path)) return;
+    const wasHeld = held;
+    held = noteLiveHolds(projectId, path);
+    if (held || (!deferred && !wasHeld)) return;
     deferred = false;
     queue(() => collabPresenceSet(projectId, path, cursor, anchor));
   });

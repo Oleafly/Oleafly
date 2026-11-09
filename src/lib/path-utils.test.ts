@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { basename, dirname, exportFileStem, isSeparator, relativeFilePath } from "./path-utils";
+import { basename, dirname, exportFileStem, isSeparator, numberedPath, relativeFilePath } from "./path-utils";
+
+describe("numberedPath", () => {
+  const takenFrom = (paths: string[]) => {
+    const taken = new Set(paths.map((path) => path.toLowerCase()));
+    return (path: string) => taken.has(path.toLowerCase());
+  };
+
+  it("keeps a free path and numbers a taken one before its extension", () => {
+    expect(numberedPath("figures/plot.png", takenFrom([]))).toBe("figures/plot.png");
+    expect(numberedPath("figures/plot.png", takenFrom(["figures/plot.png"]))).toBe("figures/plot-2.png");
+    expect(numberedPath("figures/PLOT.png", takenFrom(["figures/plot.png", "figures/plot-2.png"]))).toBe("figures/PLOT-3.png");
+    expect(numberedPath("notes/Plan v1.2.md", takenFrom(["notes/plan v1.2.md"]))).toBe("notes/Plan v1.2-2.md");
+  });
+
+  it("numbers names without an extension, dot files and dotted folders at the end", () => {
+    expect(numberedPath("notes/README", takenFrom(["notes/readme"]))).toBe("notes/README-2");
+    expect(numberedPath("notes/.hidden", takenFrom(["notes/.hidden"]))).toBe("notes/.hidden-2");
+    expect(numberedPath("v1.0/data", takenFrom(["v1.0/data"]))).toBe("v1.0/data-2");
+  });
+});
 
 describe("exportFileStem", () => {
   it("avoids names Windows reserves", () => {

@@ -3,11 +3,10 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey } from "./tests/kb-editor-fixtures";
 import { NoteTagMenu } from "./NoteTagMenu";
 import {
   closeTagMenu,
-  docTags,
   insertTag,
   noteTagExtensions,
   tagCandidates,
@@ -54,7 +53,6 @@ describe("tag chips", () => {
     const chips = [...editor.view.dom.querySelectorAll<HTMLElement>(".note-tag")];
     expect(chips.map((chip) => chip.dataset.tag)).toEqual(["idea", "ml/vision"]);
     expect(chips[0].dataset.tooltip).toBeUndefined();
-    expect(docTags(editor.state.doc).map((range) => range.tag)).toEqual(["idea", "ml/vision"]);
     expect(textblockText(editor.state.doc.child(0))).toContain("￼");
   });
 
@@ -99,6 +97,17 @@ describe("tag suggestions", () => {
     expect(tagSuggestion(editor.state)?.index).toBe(2);
     expect(pressKey(editor, "Enter")).toBe(true);
     expect(kbMarkdown(editor)).toBe("Local #rare\n\nx #rare ");
+  });
+
+  it("works the list out once per editor state, and again when the vault tags change", () => {
+    let tags = ["research", "reading"];
+    const { editor } = build("x", { getTags: () => tags });
+    placeCursor(editor, "x", 1);
+    type(editor, " #r");
+    const first = tagSuggestion(editor.state);
+    expect(tagSuggestion(editor.state)).toBe(first);
+    tags = ["rust"];
+    expect(tagSuggestion(editor.state)?.items).toEqual(["rust"]);
   });
 
   it("closes on Escape, ignores modifiers and stays out of code and links", () => {

@@ -12,8 +12,13 @@ vi.mock("@/lib/theme", () => ({
   subscribeTheme: () => () => undefined,
 }));
 
+import {
+  REMOTE_IMAGE_HOSTS_KEY,
+  remoteImageAllowed,
+  resetRemoteImagesForTest,
+  trustRemoteImageHost,
+} from "@/components/notes/note-remote-images";
 import { NOTES_APPEARANCE_DEFAULTS, NOTES_TYPEFACE_STACKS } from "@/lib/notes-appearance";
-import { readNoteWidth } from "@/components/notes/note-prefs";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { NotesAppearanceTab } from "./NotesAppearance";
 
@@ -143,7 +148,7 @@ describe("Notes appearance tab", () => {
     const user = userEvent.setup();
     render(<NotesAppearanceTab />);
     await user.click(screen.getByTestId("settings-notes-width-full"));
-    expect(readNoteWidth()).toBe("full");
+    expect(useSettingsStore.getState().notesWidth).toBe("full");
     act(() => useSettingsStore.getState().setNotesAppearance("notesWidth", "wide"));
     expect(screen.getByTestId("settings-notes-width-wide")).toHaveAttribute("aria-pressed", "true");
   });
@@ -217,5 +222,69 @@ describe("Notes appearance tab", () => {
     expect(useSettingsStore.getState()).toMatchObject(NOTES_APPEARANCE_DEFAULTS);
     expect(screen.queryByTestId("settings-notes-reset-all")).toBeNull();
     expect(variable("--notes-text-size")).toBe("0.9375rem");
+  });
+
+  it("keeps focus in the row when a reset button goes away", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ notesTypeface: "serif", notesLineHeight: "wide", notesAccentColor: ACCENTS[1].color });
+    render(<NotesAppearanceTab />);
+
+    await user.click(screen.getByRole("button", { name: reset(notes.typeface.label) }));
+    expect(screen.getByTestId(`settings-notes-typeface-${NOTES_APPEARANCE_DEFAULTS.notesTypeface}`)).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: reset(notes.lineHeight.label) }));
+    expect(screen.getByTestId("settings-notes-line-height-trigger")).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: reset(notes.accent.label) }));
+    expect(screen.getByTestId("settings-notes-accent-app")).toHaveFocus();
+  });
+
+  it("puts focus on the first setting after Reset all goes away", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ notesTypeface: "serif" });
+    render(<NotesAppearanceTab />);
+    await user.click(screen.getByTestId("settings-notes-reset-all"));
+    expect(screen.queryByTestId("settings-notes-reset-all")).toBeNull();
+    expect(screen.getByTestId(`settings-notes-typeface-${NOTES_APPEARANCE_DEFAULTS.notesTypeface}`)).toHaveFocus();
+  });
+
+  it("lists the sites that always load images and removes them, keeping focus in the list", async () => {
+    const user = userEvent.setup();
+    const copy = notes.remoteImages;
+    const removeLabel = (host: string) => copy.remove.replace("{{host}}", host);
+    localStorage.setItem(REMOTE_IMAGE_HOSTS_KEY, JSON.stringify(["a.org", "b.org"]));
+    resetRemoteImagesForTest();
+    render(<NotesAppearanceTab />);
+    const region = screen.getByRole("region", { name: copy.title });
+    expect(within(region).getByText(copy.description)).toBeInTheDocument();
+    expect(within(region).getByText("a.org")).toBeInTheDocument();
+
+    await user.click(within(region).getByRole("button", { name: removeLabel("a.org") }));
+    expect(within(region).queryByText("a.org")).toBeNull();
+    expect(JSON.parse(localStorage.getItem(REMOTE_IMAGE_HOSTS_KEY) ?? "null")).toEqual(["b.org"]);
+    expect(remoteImageAllowed("https://a.org/figure.png")).toBe(false);
+    expect(remoteImageAllowed("https://b.org/figure.png")).toBe(true);
+    expect(within(region).getByRole("button", { name: removeLabel("b.org") })).toHaveFocus();
+
+    await user.click(within(region).getByRole("button", { name: removeLabel("b.org") }));
+    expect(JSON.parse(localStorage.getItem(REMOTE_IMAGE_HOSTS_KEY) ?? "null")).toEqual([]);
+    expect(within(region).getByText(copy.empty)).toHaveFocus();
+  });
+
+  it("shows a site trusted from a note while the tab is open", () => {
+    resetRemoteImagesForTest();
+    render(<NotesAppearanceTab />);
+    const region = screen.getByRole("region", { name: notes.remoteImages.title });
+    expect(within(region).getByText(notes.remoteImages.empty)).toBeInTheDocument();
+    act(() => trustRemoteImageHost("figures.example.org"));
+    expect(within(region).getByText("figures.example.org")).toBeInTheDocument();
+    expect(within(region).queryByText(notes.remoteImages.empty)).toBeNull();
+  });
+
+  it("marks a focused accent swatch with a border colour, not by growing it", () => {
+    render(<NotesAppearanceTab />);
+    const swatch = screen.getByTestId(`settings-notes-accent-${ACCENTS[1].id}`);
+    expect(swatch).toHaveClass("focus-visible:border-ring");
+    expect(swatch.className).not.toMatch(/focus-visible:scale/u);
   });
 });

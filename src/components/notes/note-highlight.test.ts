@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./tests/kb-editor-fixtures";
 import { highlightEnd } from "./note-highlight";
 
 afterEach(destroyKbEditors);

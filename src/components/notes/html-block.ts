@@ -4,10 +4,21 @@ import { prepareHtml } from "./artifact-runtime/frame-document";
 import type { NoteBlockKind } from "./note-blocks";
 import { paintScripted } from "./scripted-paint";
 
-export const HTML_TEMPLATE = `<div class="dose">
-  <h3>Dose response</h3>
-  <label>Dose <input id="dose" type="range" min="0" max="100" value="40"></label>
-  <p>Response: <strong id="response"></strong></p>
+const HTML_TEXT = /[&<>]/gu;
+const HTML_ENTITIES: Readonly<Record<string, string>> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+
+function htmlText(text: string): string {
+  return text.replace(HTML_TEXT, (character) => HTML_ENTITIES[character] ?? character);
+}
+
+export function htmlTemplate(): string {
+  const title = htmlText(i18n.t(($) => $.notes.blocks.newHtml.title));
+  const dose = htmlText(i18n.t(($) => $.notes.blocks.newHtml.dose));
+  const response = htmlText(i18n.t(($) => $.notes.blocks.newHtml.response));
+  return `<div class="dose">
+  <h3>${title}</h3>
+  <label>${dose} <input id="dose" type="range" min="0" max="100" value="40"></label>
+  <p>${response} <strong id="response"></strong></p>
 </div>
 <style>
   .dose { font-family: system-ui, sans-serif; }
@@ -23,6 +34,7 @@ export const HTML_TEMPLATE = `<div class="dose">
   dose.addEventListener("input", update);
   update();
 </script>`;
+}
 
 export function htmlRunsScripts(source: string): boolean {
   return prepareHtml(source).scripts;
@@ -43,5 +55,5 @@ export const htmlBlock: NoteBlockKind = {
   still: "card",
   interactive: true,
   scripted: true,
-  template: () => ({ info: "html", source: HTML_TEMPLATE }),
+  template: () => ({ info: "html", source: htmlTemplate() }),
 };

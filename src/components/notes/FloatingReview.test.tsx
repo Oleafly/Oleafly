@@ -123,7 +123,8 @@ describe("FloatingReview", () => {
     place(change, { top: 200, bottom: 300, left: 100, right: 700 });
     const listeners = new Set<() => void>();
     const editor = {
-      view: { dom },
+      isDestroyed: false,
+      view: { dom, focus: vi.fn() },
       on: (_event: string, listener: () => void) => listeners.add(listener),
       off: (_event: string, listener: () => void) => listeners.delete(listener),
     } as unknown as Editor;
@@ -192,5 +193,6 @@ describe("FloatingReview", () => {
     expect(suggestions.rejectAll).toHaveBeenCalledWith(editor);
     expect(suggestions.moveReview).toHaveBeenCalledWith(editor, 1);
     expect(suggestions.moveReview).toHaveBeenCalledWith(editor, -1);
+    expect(editor.view.focus).toHaveBeenCalledTimes(4);
   });
 });

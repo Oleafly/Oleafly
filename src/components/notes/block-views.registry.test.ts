@@ -8,13 +8,12 @@ import {
   BUILT_IN_BLOCKS,
   blockGroups,
   blockLabel,
-  insertableBlocks,
   loadChemistry,
   paintStillBlock,
   withBlockViews,
   withImageView,
 } from "./block-views";
-import { noteBlock } from "./note-blocks";
+import { noteBlock, noteBlockKinds } from "./note-blocks";
 
 const clipboard = vi.hoisted(() => ({ write: vi.fn(async (_text: string) => undefined) }));
 
@@ -62,7 +61,9 @@ describe("block registry", () => {
 
   it("groups every insertable block for the menus", () => {
     const grouped = blockGroups().flatMap((group) => group.kinds.map((kind) => kind.name));
-    const insertable = insertableBlocks().map((kind) => kind.name);
+    const insertable = noteBlockKinds()
+      .filter((kind) => kind.template)
+      .map((kind) => kind.name);
     expect(new Set(grouped)).toEqual(new Set(insertable.filter((name) => grouped.includes(name))));
     expect(grouped).toEqual(["csv", "chart", "plot", "latex", "typst", "mermaid", "svg", "html", "jsx", "smiles", "molecule", "sequence"]);
     expect(insertable).not.toContain("notebook");

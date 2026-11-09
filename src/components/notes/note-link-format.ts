@@ -1,3 +1,4 @@
+import { backtickRunEnd, codeSpanEnd, type FencedLine, fencedLines } from "@/lib/code-fences";
 import { frontMatterBody } from "@/lib/front-matter";
 
 export type NoteLinkKind = "note" | "project";
@@ -27,7 +28,6 @@ const SLUG_DROP = /[^\p{L}\p{M}\p{N}_\- ]/gu;
 const ATX_HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/u;
 const SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/u;
 const BLOCK_MARKER = /^(?:#{1,6}[ \t]+|>[ \t]?|[-*+][ \t]+(?:\[[ xX]\][ \t]+)?|\d{1,9}[.)][ \t]+)/u;
-const FENCE = /^[ \t]*(?:```|~~~)/u;
 
 export function isLinkableId(id: string | null | undefined): id is string {
   return typeof id === "string" && id.length <= MAX_ID_CHARS && LINKABLE_ID.test(id);
@@ -83,20 +83,10 @@ export function plainHeading(source: string): string {
   return text.replace(/\\(.)/gu, "$1").replace(/\s+/gu, " ").trim();
 }
 
-function headingLines(lines: readonly string[]): { level: number; text: string; line: number }[] {
+function headingLines(lines: readonly FencedLine[]): { level: number; text: string; line: number }[] {
   const found: { level: number; text: string; line: number }[] = [];
-  let fence: string | null = null;
   lines.forEach((line, index) => {
-    const marker = /^ {0,3}(`{3,}|~{3,})/u.exec(line)?.[1];
-    if (fence !== null) {
-      if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
-      return;
-    }
-    if (marker) {
-      fence = marker;
-      return;
-    }
-    const heading = ATX_HEADING.exec(line);
+    const heading = line.fenced ? null : ATX_HEADING.exec(line.text);
     if (heading) found.push({ level: heading[1].length, text: plainHeading(heading[2] ?? ""), line: index });
   });
   return found;
@@ -111,6 +101,7 @@ export function noteSection(markdown: string, slug: string): string | null {
   const next = found.slice(at + 1).find((heading) => heading.level <= start.level);
   return lines
     .slice(start.line, next ? next.line : lines.length)
+    .map((line) => line.text)
     .join("\n")
     .trim();
 }
@@ -228,23 +219,6 @@ function autolinkAt(chars: readonly string[], start: number): { url: string; end
   return SCHEME.test(url) ? { url, end: index + 1 } : null;
 }
 
-function codeSpanEnd(chars: readonly string[], start: number): { content: string; end: number } | null {
-  let run = 0;
-  while (chars[start + run] === "`") run++;
-  let index = start + run;
-  while (index < chars.length) {
-    if (chars[index] !== "`") {
-      index++;
-      continue;
-    }
-    let close = 0;
-    while (chars[index + close] === "`") close++;
-    if (close === run) return { content: chars.slice(start + run, index).join(""), end: index + close };
-    index += close;
-  }
-  return null;
-}
-
 function lineBody(line: string): string {
   let rest = line.trimStart();
   for (let match = BLOCK_MARKER.exec(rest); match; match = BLOCK_MARKER.exec(rest)) {
@@ -270,13 +244,17 @@ function linePieces(line: string): Piece[] {
       continue;
     }
     if (char === "`") {
-      const code = codeSpanEnd(chars, index);
-      if (code) {
-        flush();
-        pieces.push({ text: code.content, target: null });
-        index = code.end;
+      const open = backtickRunEnd(chars, index);
+      const end = codeSpanEnd(chars, index);
+      if (end === null) {
+        run.push(...chars.slice(index, open));
+        index = open;
         continue;
       }
+      flush();
+      pieces.push({ text: chars.slice(open, end - (open - index)).join(""), target: null });
+      index = end;
+      continue;
     }
     const image = char === "!" && chars[index + 1] === "[";
     if (char === "[" || image) {
@@ -338,20 +316,15 @@ function snippetOf(pieces: readonly Piece[], at: number): string {
   return `${start > 0 ? "…" : ""}${text}${end < chars.length ? "…" : ""}`;
 }
 
-function bodyLines(markdown: string): string[] {
-  return frontMatterBody(markdown).split(/\r?\n/u);
+function bodyLines(markdown: string): FencedLine[] {
+  return fencedLines(frontMatterBody(markdown));
 }
 
 export function linkTargets(markdown: string): NoteLinkMention[] {
   const found = new Map<string, NoteLinkMention>();
-  let fenced = false;
   for (const line of bodyLines(markdown)) {
-    if (FENCE.test(line)) {
-      fenced = !fenced;
-      continue;
-    }
-    if (fenced) continue;
-    const pieces = linePieces(line);
+    if (line.fenced) continue;
+    const pieces = linePieces(line.text);
     pieces.forEach((piece, index) => {
       if (!piece.target || found.has(targetKey(piece.target))) return;
       const { kind, id } = piece.target;

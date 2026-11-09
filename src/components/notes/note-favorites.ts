@@ -12,12 +12,6 @@ const favorites = storedValue<readonly string[]>(
   (ids) => JSON.stringify(ids),
 );
 
-export const subscribeNoteFavorites = favorites.subscribe;
-
-export function readNoteFavorites(): readonly string[] {
-  return favorites.read();
-}
-
 export function setNoteFavorite(id: string, favorite: boolean): void {
   const current = favorites.read();
   if (current.includes(id) === favorite) return;

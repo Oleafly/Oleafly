@@ -10,6 +10,7 @@ import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { CollapsePromptButton, GlowRing, PromptDock, ShortcutLabel, type PromptDockHandle } from "./AgentPrompt";
 import { PROMPT_COLLAPSED_KEY } from "./note-prefs";
+import { useShortcutStore } from "@/store/shortcuts";
 
 interface FakeAnimation {
   element: Element;
@@ -229,6 +230,21 @@ describe("the assistant dock", () => {
     expect(root()).toHaveAttribute("data-prompt-state", "expanded");
     press({ key: "j", metaKey: true });
     expect(root()).toHaveAttribute("data-prompt-state", "collapsed");
+  });
+
+  it("follows the Ask agent shortcut set in Settings", () => {
+    useShortcutStore.getState().setBinding("notesAskAgent", { key: "k", mod: true, shift: true });
+    try {
+      render(<ShortcutLabel label={enNotes.prompt.collapse} />);
+      expect(screen.getByText("Ctrl+Shift+K")).toBeInTheDocument();
+      setup({ shortcutScope: { current: scope } });
+      expect(press({ key: "j", ctrlKey: true }).defaultPrevented).toBe(false);
+      expect(root()).toHaveAttribute("data-prompt-state", "expanded");
+      press({ key: "K", ctrlKey: true, shiftKey: true });
+      expect(root()).toHaveAttribute("data-prompt-state", "collapsed");
+    } finally {
+      useShortcutStore.getState().resetAll();
+    }
   });
 
   it("listens for Mod+J only inside its own note and stops when it closes", () => {

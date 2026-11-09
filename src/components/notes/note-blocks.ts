@@ -7,6 +7,7 @@ export interface PaintContext {
   still: boolean;
   fence?: string;
   noteId?: string;
+  rewrite?: (change: (source: string) => string) => void;
 }
 
 export type Dispose = () => void;
@@ -133,7 +134,7 @@ export function dataUrlText(url: string, maxBytes: number): string | null {
   return bytes ? new TextDecoder().decode(bytes) : null;
 }
 
-const OPTION_LINE = /^([a-z][a-z0-9_-]*)\s*:\s*(.*)$/iu;
+export const OPTION_LINE = /^([a-z][a-z0-9_-]*)\s*:\s*(.*)$/iu;
 
 export interface BlockOptions {
   options: Map<string, string>;

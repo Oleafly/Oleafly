@@ -748,6 +748,21 @@ describe("NotesHost papers and projects", () => {
     expect(props().onSendToPaper).toEqual(expect.any(Function));
   });
 
+  it("tells the user why nothing was sent when the paper is no longer open", async () => {
+    useFilesStore.setState({ projectId: "paper-1", activePath: "main.tex" });
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    toastError.mockClear();
+    act(() => useFilesStore.setState({ activePath: "refs.bib" }));
+    await act(async () => {
+      props().onSendToPaper?.({ paperId: "paper-1", text: "# Plan" });
+    });
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(toastError).toHaveBeenCalledWith(enNotes.failures.paperNotOpen);
+    expect(paper.insertAtCursor).not.toHaveBeenCalled();
+  });
+
   it("starts the library's new project flow and links the note to the project it makes", async () => {
     useSettingsStore.setState({ newProjectOpen: false });
     openNotes();

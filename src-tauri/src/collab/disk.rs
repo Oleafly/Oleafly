@@ -51,11 +51,7 @@ impl DiskState {
 }
 
 pub fn sha256_hex(bytes: &[u8]) -> String {
-    digest(&SHA256, bytes)
-        .as_ref()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    oleafly_core::encoding::hex_lower(digest(&SHA256, bytes).as_ref())
 }
 
 pub fn as_text(bytes: &[u8]) -> Option<String> {
@@ -163,6 +159,26 @@ pub struct ShareRules {
     rules: Vec<IgnoreRule>,
     root: Option<PathBuf>,
     synced_pdf: Option<String>,
+    note: bool,
+}
+
+fn is_note_folder(root: &Path) -> bool {
+    use std::io::Read;
+    let declared_in_meta = std::fs::read(root.join("project.json"))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .is_some_and(|meta| meta.get("kind").and_then(|kind| kind.as_str()) == Some("note"));
+    if declared_in_meta {
+        return true;
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(root.join(crate::project::NOTE_FILE))
+        .and_then(|file| {
+            file.take(crate::project::NOTE_DECLARATION_BYTES as u64)
+                .read_to_end(&mut bytes)
+        })
+        .is_ok()
+        && crate::project::front_matter_declares_note(&crate::note_index::utf8_prefix(&bytes))
 }
 
 impl ShareRules {
@@ -173,7 +189,17 @@ impl ShareRules {
                 .unwrap_or_default(),
             root: Some(root.to_path_buf()),
             synced_pdf: oleafly_core::pdf_sync::target_in_folder(root),
+            note: is_note_folder(root),
         }
+    }
+
+    pub fn private_record(&self, relative: &str) -> bool {
+        let origins = crate::project::NOTE_ORIGINS;
+        self.note
+            && relative.get(..origins.len()).is_some_and(|head| {
+                head.eq_ignore_ascii_case(origins)
+                    && matches!(relative.as_bytes().get(origins.len()), None | Some(b'/'))
+            })
     }
 
     fn generated(&self, relative: &str) -> bool {
@@ -186,6 +212,7 @@ impl ShareRules {
 
     fn skips(&self, name: &str, relative: &str, is_dir: bool) -> bool {
         scratch_name(name)
+            || self.private_record(relative)
             || self.synced_pdf.as_deref() == Some(relative)
             || self.generated(relative)
             || ignored(&self.rules, relative, is_dir)
@@ -305,7 +332,7 @@ fn walk(
             continue;
         }
         if rules.skips(&name, &child, kind.is_dir()) {
-            if crate::checkpoint_capture::is_oleafly_owned(&name) {
+            if crate::checkpoint_capture::is_oleafly_owned(&name) || rules.private_record(&child) {
                 continue;
             }
             scan.excluded.push(if kind.is_dir() {
@@ -360,8 +387,17 @@ pub fn write_file(root: &Path, relative: &str, bytes: &[u8]) -> Result<bool, Str
         }
     }
     crate::sandbox::atomic_write(&target, bytes)?;
-    crate::folder_watch::note_own_write(&target);
+    wrote(root, relative, &target, bytes);
     Ok(true)
+}
+
+fn wrote(root: &Path, relative: &str, target: &Path, bytes: &[u8]) {
+    crate::folder_watch::note_own_write(target);
+    if relative == crate::project::NOTE_FILE {
+        if let Some(project_id) = root.file_name().and_then(|name| name.to_str()) {
+            crate::note_index::note_file_written(project_id, bytes);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -421,7 +457,7 @@ pub fn write_file_over(
         return Ok(WriteOutcome::ChangedOutside);
     }
     staged.commit()?;
-    crate::folder_watch::note_own_write(&target);
+    wrote(root, relative, &target, bytes);
     Ok(WriteOutcome::Written)
 }
 
@@ -817,6 +853,50 @@ mod tests {
                 scan.excluded
             );
         }
+    }
+
+    #[test]
+    fn a_note_shares_its_attachments_but_not_where_they_came_from() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write(
+            root,
+            "note.md",
+            "---\nkind: note\nid: n-1\n---\n![f](assets/fig.png)\n",
+        );
+        write(root, "assets/fig.png", "png");
+        write(
+            root,
+            "assets/origins/fig.png.json",
+            "{\"projectId\":\"private\"}",
+        );
+        let scan = scan_folder(root).unwrap();
+        let files: Vec<&str> = scan.files.iter().map(|(path, _)| path.as_str()).collect();
+        assert_eq!(files, vec!["assets/fig.png", "note.md"]);
+        assert_eq!(scan.dirs, vec!["assets".to_owned()]);
+        assert!(scan.excluded.is_empty(), "{:?}", scan.excluded);
+        let rules = ShareRules::load(root);
+        assert!(rules.leaves_out("assets/origins/fig.png.json", false));
+        assert!(rules.leaves_out("Assets/Origins", true));
+        assert!(!rules.leaves_out("assets/originsx.png", false));
+        assert!(!rules.leaves_out("assets/fig.png", false));
+
+        let owner = tempfile::tempdir().unwrap();
+        write(owner.path(), "project.json", "{\"kind\":\"note\"}");
+        write(owner.path(), "note.md", "No front matter");
+        write(owner.path(), "assets/origins/a.json", "{}");
+        assert!(ShareRules::load(owner.path()).leaves_out("assets/origins/a.json", false));
+
+        let paper = tempfile::tempdir().unwrap();
+        write(paper.path(), "main.tex", "x");
+        write(paper.path(), "assets/origins/data.csv", "1,2");
+        let files: Vec<String> = scan_folder(paper.path())
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|(path, _)| path)
+            .collect();
+        assert_eq!(files, vec!["assets/origins/data.csv", "main.tex"]);
     }
 
     #[test]

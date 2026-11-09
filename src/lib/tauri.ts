@@ -666,7 +666,7 @@ export const artifactFrameOpen = (html: string) => invoke<string>("artifact_fram
 
 export const artifactFrameClose = (token: string) => invoke<boolean>("artifact_frame_close", { token });
 
-export const artifactFramePutRuntime = (text: string) => invoke<string>("artifact_frame_put_runtime", { text });
+export const artifactFrameRuntimeUrl = () => invoke<string>("artifact_frame_runtime_url");
 
 export interface ArxivSourceRequest {
   arxivId?: string;

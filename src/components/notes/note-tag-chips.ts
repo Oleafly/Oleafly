@@ -63,16 +63,6 @@ function blockTags(block: ProseMirrorNode, pos: number): TagRange[] {
   return plainTextTags(textblockText(block)).map((range) => ({ from: pos + 1 + range.from, to: pos + 1 + range.to, tag: range.tag }));
 }
 
-export function docTags(doc: ProseMirrorNode): TagRange[] {
-  const found: TagRange[] = [];
-  doc.descendants((node, pos) => {
-    if (!node.isTextblock) return true;
-    found.push(...blockTags(node, pos));
-    return false;
-  });
-  return found;
-}
-
 type Chip = (range: TagRange) => Decoration;
 
 function chipMaker(options: NoteTagOptions): Chip {
@@ -129,15 +119,21 @@ function specOf(state: EditorState): TagPluginSpec | null {
   return plugin ? (plugin.spec as unknown as TagPluginSpec) : null;
 }
 
+const suggestions = new WeakMap<EditorState, { tags: readonly string[]; suggestion: TagSuggestion | null }>();
+
 export function tagSuggestion(state: EditorState): TagSuggestion | null {
   const spec = specOf(state);
   const plugin = tagPluginKey.getState(state);
   const suggest = plugin?.suggest;
   if (!spec || !plugin || !suggest) return null;
+  const tags = spec.noteTags.getTags();
+  const cached = suggestions.get(state);
+  if (cached?.tags === tags) return cached.suggestion;
   const local = rangesOf(plugin.decorations).filter((range) => range.to !== suggest.to).map((range) => range.tag);
-  const items = tagCandidates([...spec.noteTags.getTags(), ...local], suggest.query);
-  if (items.length === 0) return null;
-  return { ...suggest, menuId: spec.menuId, index: Math.min(suggest.index, items.length - 1), items };
+  const items = tagCandidates([...tags, ...local], suggest.query);
+  const suggestion = items.length === 0 ? null : { ...suggest, menuId: spec.menuId, index: Math.min(suggest.index, items.length - 1), items };
+  suggestions.set(state, { tags, suggestion });
+  return suggestion;
 }
 
 export const tagOptionId = suggestOptionId;

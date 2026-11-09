@@ -12,6 +12,17 @@ const files = vi.hoisted(() => ({ writeProjectFile: vi.fn() }));
 vi.mock("@/lib/tauri", () => tauri);
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => files } }));
 vi.mock("@/lib/shared-document-writes", () => ({ sharedDocumentLive: () => false }));
+const scans = vi.hoisted(() => ({ links: 0 }));
+vi.mock("./note-link-format", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./note-link-format")>();
+  return {
+    ...actual,
+    linkTargets: (markdown: string) => {
+      scans.links += 1;
+      return actual.linkTargets(markdown);
+    },
+  };
+});
 
 const { createNoteItems, createNotesService, noteHeadOf, noteItems, noteKnowledgeKey } = await import("./notes-service");
 
@@ -129,6 +140,95 @@ describe("noteKnowledgeKey", () => {
     expect(noteKnowledgeKey(note.replace("[Mask]", "[Masks]"))).not.toBe(key);
     expect(noteKnowledgeKey(note.replace("title: Masking", "title: Masked"))).not.toBe(key);
     expect(noteKnowledgeKey(note.replace("for #method", "for the #method"))).not.toBe(key);
+  });
+});
+
+describe("knowledge keys on save", () => {
+  const BASE = [
+    "---",
+    "title: Plan",
+    "kind: note",
+    "tags: [lab]",
+    "---",
+    "",
+    "# Plan",
+    "",
+    "We ran the sweep on Monday.",
+    "",
+    "See [Other](oleafly://note/abc) for more.",
+    "",
+    "- first item",
+    "- second item",
+    "",
+    "> quoted line",
+    "",
+    "```",
+    "code line",
+    "```",
+    "",
+    "Last line here.",
+    "",
+  ].join("\n");
+
+  const EDITS: readonly (readonly [string, string])[] = [
+    ["sweep on Monday", "long sweep on Monday"],
+    ["on Monday.", "on Monday #results."],
+    ["for more.", "for more detail."],
+    ["Last line here.", "Last line here, done."],
+    ["second item", "second item updated"],
+    ["code line", "code line edited"],
+    ["code line edited", "code [x](oleafly://note/zzz)"],
+    ["quoted line", "quoted line again"],
+    ["title: Plan", "title: Plans"],
+    ["Last line here, done.", "Last line\nhere, done."],
+    ["- first item", "first item"],
+    ["We ran the long", "```\nWe ran the long"],
+    ["here, done.", ""],
+    ["Last line", "Last line #tagged"],
+    ["# Plan", "# Plan [ref](oleafly://note/def)"],
+  ];
+
+  async function savedKeys(base: string, edits: readonly (readonly [string, string])[]) {
+    const { deps, notes } = withHeads();
+    tauri.readFileContent.mockResolvedValue(base);
+    let text = base;
+    let version = diskHash(base.replaceAll("\r\n", "\n"));
+    const pairs: { sent: string; expected: string }[] = [];
+    for (const [from, to] of edits) {
+      expect(text).toContain(from);
+      text = text.replace(from, to);
+      const saved = await notes.saveNote?.("note-1", text, version);
+      version = saved?.version ?? version;
+      pairs.push({ sent: deps.setHead.mock.lastCall?.[3] as string, expected: noteKnowledgeKey(saved?.text ?? text) });
+    }
+    return pairs;
+  }
+
+  it("always hands the host the key of the text it saved", async () => {
+    for (const pair of await savedKeys(BASE, EDITS)) expect(pair.sent).toBe(pair.expected);
+    const crlf = BASE.replaceAll("\n", "\r\n");
+    for (const pair of await savedKeys(crlf, EDITS)) expect(pair.sent).toBe(pair.expected);
+  });
+
+  it("skips the link and tag scans for an edit inside a plain line", async () => {
+    const { notes } = withHeads();
+    tauri.readFileContent.mockResolvedValue(BASE);
+    const save = async (text: string, version: string) => {
+      const before = scans.links;
+      const saved = await notes.saveNote?.("note-1", text, version);
+      return { version: saved?.version ?? "", scanned: scans.links - before };
+    };
+    const first = await save(BASE.replace("Monday", "Tuesday"), diskHash(BASE));
+    expect(first.scanned).toBe(1);
+    const plain = await save(BASE.replace("Monday", "Tuesday, again"), first.version);
+    expect(plain.scanned).toBe(0);
+    const listed = await save(BASE.replace("Monday", "Tuesday, again").replace("second item", "second step"), plain.version);
+    expect(listed.scanned).toBe(0);
+    const linked = await save(
+      BASE.replace("Monday", "Tuesday, again").replace("second item", "second step").replace("for more", "for less"),
+      listed.version,
+    );
+    expect(linked.scanned).toBe(1);
   });
 });
 

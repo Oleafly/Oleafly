@@ -121,8 +121,9 @@ export function peerMarksFor(
   return marks.sort((left, right) => left.index - right.index || left.name.localeCompare(right.name));
 }
 
-export function peerCaretsFor(peers: Readonly<Record<string, LivePeer>>, path: string): NotePeerCaret[] {
-  return peerCursors(peers, path).sort((left, right) => left.id.localeCompare(right.id));
+export function peerCaretsFor(peers: Readonly<Record<string, LivePeer>>, path: string, selfId: string | null): NotePeerCaret[] {
+  const others = selfId === null ? peers : Object.fromEntries(Object.entries(peers).filter(([, peer]) => peer.accountId !== selfId));
+  return peerCursors(others, path).sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function presenceFor(noteId: string, path: string, editor: NoteLiveEditor, send: NotePresenceSender) {
@@ -148,20 +149,28 @@ function presenceFor(noteId: string, path: string, editor: NoteLiveEditor, send:
   const reports = new Map<string, { head: number; anchor: number; applied: number }>();
   const refresh = (remoteEdit = false) => {
     const state = useCollabLiveStore.getState();
-    editor.setPeerMarks(marks(state.share?.account_id ?? null));
-    const carets = state.projectId === noteId ? peerCaretsFor(state.peers, path) : [];
+    const selfId = state.share?.account_id ?? null;
+    const carets = state.projectId === noteId ? peerCaretsFor(state.peers, path, selfId) : [];
     if (remoteEdit) applied += 1;
     const replace = new Set<string>();
+    const present = new Set<string>();
     for (const caret of carets) {
+      present.add(caret.id);
       const seen = reports.get(caret.id);
       if (!seen || seen.head !== caret.head || seen.anchor !== caret.anchor) {
         reports.set(caret.id, { head: caret.head, anchor: caret.anchor, applied });
       } else if (remoteEdit && seen.applied === applied - 1) {
         replace.add(caret.id);
-        reports.set(caret.id, { ...seen, applied });
+        reports.set(caret.id, { ...seen, applied: Number.NaN });
       }
     }
-    editor.setPeerCarets(carets, replace);
+    for (const id of reports.keys()) {
+      if (!present.has(id)) reports.delete(id);
+    }
+    editor.batch(() => {
+      editor.setPeerMarks(marks(selfId));
+      editor.setPeerCarets(carets, replace);
+    });
   };
   let deferred: ReturnType<typeof setTimeout> | null = null;
   const stopCaret = editor.onCaret(() => {
@@ -189,8 +198,10 @@ function presenceFor(noteId: string, path: string, editor: NoteLiveEditor, send:
       if (deferred !== null) clearTimeout(deferred);
       unsubscribe();
       if (jumpers.get(key) === jump) jumpers.delete(key);
-      editor.setPeerMarks([]);
-      editor.setPeerCarets([]);
+      editor.batch(() => {
+        editor.setPeerMarks([]);
+        editor.setPeerCarets([]);
+      });
       if (leave) queue(() => send.leave(noteId));
     },
   };
@@ -218,8 +229,10 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
     serialize: () => editor.serialize(),
     composing: () => editor.composing(),
     show: (previous: string, next: string, keepLocal: boolean) => {
-      editor.show(previous, next, keepLocal);
-      refreshMarks(true);
+      editor.batch(() => {
+        editor.show(previous, next, keepLocal);
+        refreshMarks(true);
+      });
     },
   };
   const end = (reason: NoteLiveEndReason = "released") => {
@@ -247,8 +260,9 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
     readOnly: () => !canEditProjectRole(roles.role()),
     onPhase: (phase) => {
       if (phase === "detached") end("dropped");
+      else if (phase === "open") request.onOpen?.();
     },
-    onDiscarded: (reason) => showNoteLiveNotice(noteId, reason),
+    onDiscarded: (reason) => showNoteLiveNotice(request.noticeId ?? noteId, reason),
   });
   const binding = new NoteLiveBinding({
     session,

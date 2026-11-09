@@ -3,7 +3,8 @@ import { foldLatinDiacritics } from "@oleafly/latex";
 import { i18n } from "@/i18n";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
-import { dirname, relativeFilePath } from "@/lib/path-utils";
+import { dirname, numberedPath, relativeFilePath } from "@/lib/path-utils";
+import { foldPath } from "@/lib/project-notes";
 import { insertableImageExtension, isInsertableImagePath } from "@/lib/image-mime";
 import { logError } from "@/lib/log";
 import { takeNativeDrop } from "@/lib/native-drop";
@@ -89,15 +90,8 @@ export function preferredImageName(file: File, now: Date): string {
 }
 
 export function uniqueProjectPath(candidate: string, tree: readonly FileEntry[]): string {
-  const taken = new Set(tree.map((entry) => entry.path.toLowerCase()));
-  if (!taken.has(candidate.toLowerCase())) return candidate;
-  const extensionIndex = candidate.lastIndexOf(".");
-  const stem = extensionIndex > candidate.lastIndexOf("/") ? candidate.slice(0, extensionIndex) : candidate;
-  const extension = stem === candidate ? "" : candidate.slice(extensionIndex);
-  for (let counter = 2; ; counter++) {
-    const next = `${stem}-${counter}${extension}`;
-    if (!taken.has(next.toLowerCase())) return next;
-  }
+  const taken = new Set(tree.map((entry) => foldPath(entry.path)));
+  return numberedPath(candidate, (path) => taken.has(foldPath(path)));
 }
 
 export function pastedImagePath(file: File, tree: readonly FileEntry[], mainDoc: string, now: Date): string {

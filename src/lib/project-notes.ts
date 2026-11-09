@@ -1,4 +1,5 @@
 import { frontMatterValues } from "@/lib/front-matter";
+import { numberedPath } from "@/lib/path-utils";
 
 export const PROJECT_NOTES_DIR = "notes";
 export const PROJECT_NOTE_ASSETS_DIR = `${PROJECT_NOTES_DIR}/assets`;
@@ -68,12 +69,9 @@ export function isMarkdownFile(path: string): boolean {
 }
 
 export function isProjectNotePath(path: string): boolean {
+  if (path.charAt(PROJECT_NOTES_DIR.length) !== "/" || !isMarkdownFile(path)) return false;
   const folded = foldPath(path);
-  return (
-    folded.startsWith(`${PROJECT_NOTES_DIR}/`) &&
-    !folded.startsWith(`${PROJECT_NOTE_ASSETS_DIR}/`) &&
-    isMarkdownFile(path)
-  );
+  return folded.startsWith(`${PROJECT_NOTES_DIR}/`) && !folded.startsWith(`${PROJECT_NOTE_ASSETS_DIR}/`);
 }
 
 export function isProjectNoteAssetPath(path: string): boolean {
@@ -94,6 +92,15 @@ export function noteFileFacts(text: string | null | undefined): NoteFileFacts | 
 
 export function declaresNoteFile(text: string | null | undefined): boolean {
   return noteFileFacts(text) !== null;
+}
+
+export interface NoteFileContext {
+  notes: boolean;
+  projectKind: string | null;
+}
+
+export function isEditorNoteFile(path: string | null, text: string | null | undefined, context: NoteFileContext): boolean {
+  return context.notes && context.projectKind !== "note" && path !== null && isMarkdownFile(path) && declaresNoteFile(text);
 }
 
 export function noteFileStem(path: string): string {
@@ -118,10 +125,7 @@ export function noteFileName(title: string, fallback: string): string {
 
 function freeNotePath(folder: string, stem: string, taken: readonly string[]): string {
   const used = new Set(taken.map(foldPath));
-  for (let attempt = 1; ; attempt += 1) {
-    const path = `${folder}${attempt === 1 ? stem : `${stem} ${attempt}`}.md`;
-    if (!used.has(foldPath(path))) return path;
-  }
+  return numberedPath(`${folder}${stem}.md`, (path) => used.has(foldPath(path)));
 }
 
 export function projectNoteFilePath(title: string, taken: Iterable<string>, fallback: string): string {

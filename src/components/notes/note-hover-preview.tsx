@@ -5,18 +5,17 @@ import { NoteChip } from "./note-icons";
 import { embedSource } from "./note-embeds";
 import type { LinkableNote } from "./note-links";
 import { NoteMarkdown } from "./note-preview";
+import { type AnchorRect, anchoredPlacement, type MenuSize, windowViewport } from "./SuggestionListbox";
 
 export const HOVER_DELAY_MS = 400;
 export const HIDE_DELAY_MS = 150;
-const WIDTH = 352;
-const HEIGHT = 288;
+const CARD: MenuSize = { width: 352, height: 288 };
 const GAP = 6;
-const MARGIN = 8;
 
 interface HoverTarget {
   note: LinkableNote;
   heading: string | null;
-  rect: { left: number; top: number; bottom: number };
+  rect: AnchorRect;
 }
 
 interface HoverPreviewProps {
@@ -25,14 +24,6 @@ interface HoverPreviewProps {
   previewOf: (projectId: string) => string | undefined;
   loadText: (projectId: string) => Promise<string>;
   resolveAsset?: (projectId: string, path: string) => Promise<string | null>;
-}
-
-export function hoverPlacement(rect: HoverTarget["rect"], viewport: { width: number; height: number }) {
-  const left = Math.max(MARGIN, Math.min(rect.left, viewport.width - WIDTH - MARGIN));
-  if (rect.bottom + GAP + HEIGHT > viewport.height && rect.top - GAP - HEIGHT >= 0) {
-    return { left, bottom: viewport.height - rect.top + GAP };
-  }
-  return { left, top: rect.bottom + GAP };
 }
 
 function linkFrom(target: EventTarget | null, container: HTMLElement): HTMLElement | null {
@@ -140,7 +131,7 @@ export function NoteHoverPreview({ containerRef, getNotes, previewOf, loadText, 
     <div
       role="tooltip"
       data-note-hover={target.note.projectId}
-      style={hoverPlacement(target.rect, { width: window.innerWidth, height: window.innerHeight })}
+      style={anchoredPlacement(target.rect, CARD, GAP, windowViewport())}
       onMouseEnter={() => clear(hideTimer)}
       onMouseLeave={hideSoon}
       className="fixed z-50 flex max-h-72 w-[22rem] flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl"

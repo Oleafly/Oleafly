@@ -16,7 +16,14 @@ import type { ArtifactItem, NoteItem } from "./types";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const env = vi.hoisted(() => ({ mac: false, fullscreen: false }));
-const probe = vi.hoisted(() => ({ mounts: new Map<string, number>(), renders: new Map<string, number>(), titles: new Map<string, string>(), retry: vi.fn() }));
+const probe = vi.hoisted(() => ({
+  mounts: new Map<string, number>(),
+  renders: new Map<string, number>(),
+  titles: new Map<string, string>(),
+  homeSaw: [] as string[],
+  homeOpen: [] as unknown[],
+  retry: vi.fn(),
+}));
 const label = vi.hoisted(() => ({
   library: "Library",
   libraryHome: "Library home",
@@ -40,6 +47,9 @@ vi.mock("@/lib/utils", async (importOriginal) => {
   };
 });
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => env.fullscreen }));
+vi.mock("@/components/layout/WindowControls", () => ({
+  WindowControls: ({ compact }: { compact?: boolean }) => <div data-testid="window-controls" data-compact={String(compact === true)} />,
+}));
 
 vi.mock("./NoteDocument", async () => {
   const { useEffect } = await import("react");
@@ -142,6 +152,8 @@ vi.mock("./NotesHome", async () => {
       onNewNote,
     }: Parameters<typeof NotesHomeComponent>[0]) {
       const data = useNotesData();
+      probe.homeSaw.push(data.notes.find((note) => note.id === "n1")?.summary ?? "");
+      probe.homeOpen.push(onOpenNote);
       return (
         <section data-testid="home">
           {data.notes.map((note) => (
@@ -429,7 +441,7 @@ describe("NotesWorkspace layout", () => {
     expect(strip).toHaveAttribute("data-tauri-drag-region");
     expect(area).toHaveAttribute("data-tauri-drag-region");
     expect(bar).toHaveAttribute("data-tauri-drag-region");
-    expect(within(area).getByRole("button", { name: copy.newTab }).parentElement).toHaveAttribute("data-tauri-drag-region");
+    expect(within(area).getByRole("button", { name: copy.newTab }).closest("[data-tauri-drag-region]")).not.toBe(area);
     expect(root).toHaveAttribute("data-tauri-drag-region");
     const sidebar = within(bar).getByRole("button", { name: copy.hideSidebar });
     expect(sidebar).toHaveAttribute("aria-expanded", "true");
@@ -1501,5 +1513,122 @@ describe("NotesWorkspace render cost", () => {
     expect(probe.titles.get("n2")).toBe("Reading list");
     await user.click(tab("Reading list v2"));
     expect(probe.titles.get("n2")).toBe("Reading list v2");
+  });
+});
+
+describe("NotesWorkspace window chrome", () => {
+  it("draws the app's window controls at the end of the top-right tab bar, inside the window drag area", () => {
+    renderWorkspace();
+    const controls = screen.getByTestId("window-controls");
+    expect(controls).toHaveAttribute("data-compact", "true");
+    const bar = screen.getByRole("tablist").closest("[data-strip]")?.parentElement as HTMLElement;
+    expect(bar).toContainElement(controls);
+    expect(controls.closest("[data-tauri-drag-region]")).not.toBeNull();
+    const toggle = within(bar).getByRole("button", { name: copy.artifacts.replace("{{total}}", "0") });
+    expect(toggle.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(controls.closest("[data-group-actions]")).toBeNull();
+  });
+
+  it("draws the window controls once, in the right-hand group, and without the research tasks too", () => {
+    seedLayout(createLayout(split("s1", "row", [group("g1", ["home"]), group("g2", ["note:n1"])]), { home: VIEWS.home, "note:n1": VIEWS["note:n1"] }));
+    renderWorkspace({}, fakeData({ researchTasks: false }));
+    const controls = screen.getAllByTestId("window-controls");
+    expect(controls).toHaveLength(1);
+    expect(groupIdOf(controls[0])).toBe("g2");
+    expect(screen.queryByRole("button", { name: copy.artifacts.replace("{{total}}", "0") })).toBeNull();
+  });
+});
+
+describe("NotesWorkspace hover help", () => {
+  it("shows the app tooltip for the workspace buttons and tab titles, never a native title", async () => {
+    seedLayout(createLayout(split("s1", "row", [group("g1", ["home"]), group("g2", ["note:n1"])]), { home: VIEWS.home, "note:n1": VIEWS["note:n1"] }));
+    renderWorkspace();
+    const workspace = screen.getAllByRole("tablist")[0].closest("[data-group]")?.parentElement?.parentElement as HTMLElement;
+    expect(workspace.querySelectorAll("[title]")).toHaveLength(0);
+    const hover = async (element: HTMLElement, text: string) => {
+      fireEvent.mouseEnter(element.parentElement as HTMLElement);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(text);
+      fireEvent.mouseLeave(element.parentElement as HTMLElement);
+      await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    };
+    await hover(screen.getAllByRole("button", { name: copy.newTab })[0], copy.newTab);
+    await hover(screen.getAllByRole("button", { name: copy.maximize })[0], copy.maximize);
+    await hover(tab("Masking ablation"), "Masking ablation");
+  });
+
+  it("uses a different icon for the outline panel toggle than the toolbar's outline menu", () => {
+    renderWorkspace({ initialNoteId: "n1" });
+    const toggle = within(panel("Masking ablation")).getByRole("button", { name: enNotes.graph.showOutline });
+    expect(toggle.querySelector("svg")).toHaveClass("lucide-table-of-contents");
+    expect(toggle.querySelector(".lucide-list-tree")).toBeNull();
+  });
+});
+
+describe("NotesWorkspace hidden views", () => {
+  it("holds a hidden Home view's data while notes save, and shows fresh data once it is shown", async () => {
+    const user = userEvent.setup();
+    const base = fakeData();
+    const { rerender } = render(
+      <NotesDataProvider value={base}>
+        <NotesWorkspace />
+      </NotesDataProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Library note n1" }));
+    probe.homeSaw.length = 0;
+    probe.homeOpen.length = 0;
+    const fresh = "Masking ratio sweep, now five seeds";
+    const saved = notes.map((note) => (note.id === "n1" ? { ...note, summary: fresh, updatedAt: NOW } : note));
+    rerender(
+      <NotesDataProvider value={{ ...base, notes: saved }}>
+        <NotesWorkspace />
+      </NotesDataProvider>,
+    );
+    const renamed = saved.map((note) => (note.id === "n2" ? { ...note, title: "Reading list v2" } : note));
+    rerender(
+      <NotesDataProvider value={{ ...base, notes: renamed }}>
+        <NotesWorkspace />
+      </NotesDataProvider>,
+    );
+    expect(probe.homeSaw).not.toContain(fresh);
+    expect(new Set(probe.homeOpen).size).toBeLessThanOrEqual(1);
+    await user.click(tab(copy.home));
+    expect(probe.homeSaw.at(-1)).toBe(fresh);
+    expect(within(homePanel()).getByRole("button", { name: "Home note n2" })).toBeInTheDocument();
+  });
+
+  function manyNotes(): NoteItem[] {
+    return ["n1", "n2", "n3", "n4", "n5", "n6"].map((id, index) => ({ ...notes[0], id, title: `Note ${id}`, updatedAt: NOW - index }));
+  }
+
+  async function openInTurn(user: ReturnType<typeof userEvent.setup>, ...ids: string[]) {
+    for (const id of ids) await user.click(screen.getByRole("button", { name: `Library note ${id}` }));
+  }
+
+  it("releases the least recently shown hidden note editors and builds one again when it shows", async () => {
+    const user = userEvent.setup();
+    probe.mounts.clear();
+    renderWorkspace({}, fakeData({ notes: manyNotes() }));
+    await openInTurn(user, "n1", "n2", "n3", "n4", "n5", "n6");
+    expect(screen.queryByTestId("document-n1")).toBeNull();
+    expect(screen.getByTestId("document-n2")).toBeInTheDocument();
+    expect(screen.getByTestId("document-n6")).toBeInTheDocument();
+    expect(screen.queryByTestId("home")).toBeNull();
+    await user.click(tab("Note n1"));
+    expect(screen.getByTestId("document-n1")).toBeInTheDocument();
+    expect(probe.mounts.get("n1")).toBe(2);
+    expect(probe.mounts.get("n2")).toBe(1);
+  });
+
+  it("keeps a hidden note editor whose save has not finished", async () => {
+    const user = userEvent.setup();
+    renderWorkspace({}, fakeData({ notes: manyNotes() }));
+    await openInTurn(user, "n1");
+    await user.click(within(panel("Note n1")).getByRole("button", { name: label.markFailed }));
+    await openInTurn(user, "n2", "n3", "n4", "n5", "n6");
+    expect(screen.getByTestId("document-n1")).toBeInTheDocument();
+    await user.click(tab("Note n1"));
+    await user.click(within(panel("Note n1")).getByRole("button", { name: label.markSaved }));
+    await openInTurn(user, "n2", "n3", "n4", "n5", "n6");
+    expect(screen.queryByTestId("document-n1")).toBeNull();
   });
 });

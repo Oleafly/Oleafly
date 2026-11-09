@@ -13,8 +13,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
-import { cn, shortcut } from "@/lib/utils";
+import { notifyError } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { useNoteTabsStore } from "@/store/note-tabs";
+import { matchesShortcut, shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { NoteAssistant, type NoteAssistantHandle, type NoteEditorBridge } from "./NoteAssistant";
 import { NoteBacklinks } from "./NoteBacklinks";
 import { calloutNodeView } from "./NoteCallout";
@@ -41,6 +43,7 @@ import { useNoteWidth, type NoteWidth } from "./note-prefs";
 import { useNoteLinkExtensions } from "./use-note-links";
 import { NoteImageDrop, noteImageTarget } from "./note-image-drop";
 import {
+  canUndoReject,
   docWithPending,
   hasPending,
   isReviewNavigation,
@@ -48,18 +51,23 @@ import {
   NoteSuggestions,
   reviewSummary,
   showSuggestions,
+  undoReject,
   type ReviewSummary,
 } from "./note-suggestions";
 import { NoteToolbar } from "./NoteToolbar";
-import { isRemoteTransaction, noteSourceOf } from "./note-live-doc";
+import { NoteFind } from "./note-find";
+import { NoteFindBar } from "./NoteFindBar";
+import { isRemoteTransaction, noteSourceOf, showNoteDoc } from "./note-live-doc";
 import { NotePeerMarks } from "./note-presence-decorations";
-import { NoteSelection } from "./note-selection";
-import { noteEditorOpened, registerNoteFlush, trackNoteSave } from "@/lib/open-note-editors";
+import { noteClipboardText, NoteSelection, type WholeNoteText } from "./note-selection";
+import { frontMatterChange, frontMatterSteps } from "./note-front-matter-step";
+import { mergeSequences } from "./note-merge";
+import { registerNoteEditor, trackNoteSave } from "@/lib/open-note-editors";
 import { addPendingBatch, editsBetween, takePendingBatches } from "./note-pending-suggestions";
 import { editableChanged } from "./note-editable";
 import { type NoteLiveControl, type NoteLiveTarget, useNoteLiveEditor } from "./use-note-live";
 import { useNotesData } from "./notes-data";
-import { noteVersion } from "./notes-service";
+import { noteVersion, noteWrittenHere, recordNoteWrite } from "./notes-service";
 import { FloatingReview } from "./FloatingReview";
 import { NoteConflictError, type NoteItem, type NoteSource } from "./types";
 
@@ -80,6 +88,7 @@ interface NoteDocumentProps {
   openHeading?: { slug: string; id: number } | null;
   live?: NoteLiveTarget | null;
   onClose?: () => void;
+  shown?: boolean;
 }
 
 interface SelectionBubble {
@@ -91,7 +100,6 @@ const BUBBLE_HEIGHT = 40;
 const BUBBLE_WIDTH = 200;
 const BUBBLE_GAP = 8;
 const BUBBLE_PROBE = 4096;
-const ASK_AGENT_KEYS = "⌘J";
 
 export function bubblePlace(start: { top: number; left: number }, end: { bottom: number }, viewport: { width: number }): SelectionBubble {
   const above = start.top - BUBBLE_HEIGHT;
@@ -99,13 +107,47 @@ export function bubblePlace(start: { top: number; left: number }, end: { bottom:
   return { top, left: Math.max(BUBBLE_GAP, Math.min(start.left, viewport.width - BUBBLE_WIDTH)) };
 }
 
-function isAskAgentKey(event: KeyboardEvent): boolean {
-  return (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "j";
+function selectedText(editor: Editor, wholeNote: WholeNoteText): string {
+  const { selection, doc } = editor.state;
+  return selection.empty ? "" : noteClipboardText(selection.content(), doc, wholeNote).trim();
 }
 
-function selectedText(editor: Editor): string {
-  const { from, to, empty } = editor.state.selection;
-  return empty ? "" : editor.state.doc.textBetween(from, to, " ").trim();
+const handledRequests = new WeakSet<object>();
+
+function firstTime(request: object | null | undefined): boolean {
+  if (!request || handledRequests.has(request)) return false;
+  handledRequests.add(request);
+  return true;
+}
+
+function lf(text: string): string {
+  return text.replace(/\r\n?/gu, "\n");
+}
+
+export function keepClosedEdits(saved: string, closing: string, disk: string): string {
+  const lines = (text: string) => lf(text).split("\n");
+  return mergeSequences(lines(saved), lines(disk), lines(closing), (line) => line).join("\n");
+}
+
+type ClosedWrite = (text: string, version: string) => Promise<NoteSource>;
+
+async function writeClosedNote(write: ClosedWrite, text: string, version: string, saved: string): Promise<string | null> {
+  try {
+    await write(text, version);
+    return null;
+  } catch (error) {
+    if (!(error instanceof NoteConflictError)) {
+      void logError("save the note", error);
+      return describeError(error);
+    }
+    try {
+      await write(keepClosedEdits(saved, text, error.disk.text), error.disk.version);
+      return null;
+    } catch (again) {
+      void logError("save the note", again);
+      return describeError(again);
+    }
+  }
 }
 
 const SAVE_DELAY_MS = 800;
@@ -218,6 +260,7 @@ function NoteEditor({
   onOpenTag,
   openHeading,
   live = null,
+  shown = true,
 }: Readonly<NoteDocumentProps & { initial: NoteSource }>) {
   const { t } = useTranslation(["notes"]);
   const {
@@ -264,6 +307,7 @@ function NoteEditor({
       ...noteLinks.extensions,
       ...knowledge.tagExtensions,
       proofreading.extension,
+      NoteFind,
     ];
   }, [knowledge, note.id, noteLinks.extensions, proofreading.extension]);
   const editor = useEditor({ extensions, content: parsed.doc });
@@ -291,7 +335,9 @@ function NoteEditor({
   const [facts, setFacts] = useState(() => readNoteFacts(initial.text));
   const [title, setTitle] = useState(facts.title ?? note.title);
   const [review, setReview] = useState<ReviewSummary>({ count: 0, index: -1, activeId: null });
+  const [canUndo, setCanUndo] = useState(false);
   const [bubble, setBubble] = useState<SelectionBubble | null>(null);
+  const askKeys = useShortcutStore((state) => shortcutLabel(state.bindings.notesAskAgent));
   const width = useNoteWidth();
   const editingTitle = useRef(false);
   const savedDocRef = useRef<ProseMirrorNode | null>(editor.state.doc);
@@ -299,6 +345,10 @@ function NoteEditor({
   const collabRef = useRef<NoteLiveControl | null>(null);
   const readOnlyRef = useRef(false);
   const deferredRef = useRef(false);
+  const handBackRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
+  const quietRef = useRef(false);
+  const wholeNote = useCallback<WholeNoteText>((doc) => serializeNoteMarkdown(doc.toJSON(), snapshotRef.current), []);
 
   const sourceOf = useCallback(
     (doc: ProseMirrorNode) => noteSourceOf(doc, frontMatterRef.current, separatorRef.current, snapshotRef.current),
@@ -322,6 +372,32 @@ function NoteEditor({
         return false;
       }
       const next = parseNote(disk.text);
+      const ownWrite =
+        timerRef.current === null &&
+        savingRef.current === null &&
+        noteWrittenHere(note.id, disk.text) &&
+        sameText(sourceOf(docWithPending(editor, "disk")), savedTextRef.current);
+      if (ownWrite) {
+        if (hasPending(editor, "disk")) {
+          quietRef.current = true;
+          try {
+            showSuggestions(editor, [], "disk");
+          } finally {
+            quietRef.current = false;
+          }
+        }
+        frontMatterRef.current = next.frontmatter;
+        savedFrontMatterRef.current = next.frontmatter;
+        separatorRef.current = next.separator;
+        adoptFacts(next.frontmatter);
+        showNoteDoc(editor, editor.schema.nodeFromJSON(next.doc));
+        snapshotRef.current = createMarkdownSourceSnapshot(next.layout, editor.getJSON());
+        savedDocRef.current = editor.state.doc;
+        localRef.current.clear();
+        versionRef.current = disk.version;
+        savedTextRef.current = disk.text;
+        return false;
+      }
       const merged = mergeFrontMatter(savedFrontMatterRef.current, frontMatterRef.current, next.frontmatter);
       frontMatterRef.current = merged;
       savedFrontMatterRef.current = next.frontmatter;
@@ -330,13 +406,13 @@ function NoteEditor({
       const drafts = diffNoteDocs(editor.state.doc, editor.schema.nodeFromJSON(next.doc)).filter(
         (draft) => !localRef.current.overlaps(draft.from, draft.to),
       );
-      showSuggestions(editor, drafts, "disk");
+      if (drafts.length > 0 || hasPending(editor, "disk")) showSuggestions(editor, drafts, "disk");
       savedDocRef.current = docWithPending(editor, "disk");
       versionRef.current = disk.version;
       savedTextRef.current = disk.text;
       return merged !== next.frontmatter;
     },
-    [adoptFacts, editor],
+    [adoptFacts, editor, note.id, sourceOf],
   );
 
   const save = useCallback(async (): Promise<void> => {
@@ -358,11 +434,14 @@ function NoteEditor({
     const docAtStart = editor.state.doc;
     const base = baseRef.current;
     baseRef.current = null;
-    const saving =
-      base === null ? saveNote(note.id, text, versionRef.current) : saveNote(note.id, text, versionRef.current, base);
+    const version = versionRef.current;
+    const saving = recordNoteWrite(note.id, text, () =>
+      base === null ? saveNote(note.id, text, version) : saveNote(note.id, text, version, base),
+    );
     const run = saving.then(
       (saved) => {
         failureRef.current = null;
+        handBackRef.current = null;
         versionRef.current = saved.version;
         savedTextRef.current = saved.text;
         savedFrontMatterRef.current = frontMatter;
@@ -371,6 +450,8 @@ function NoteEditor({
         report("saved");
       },
       (error: unknown) => {
+        if (baseRef.current === null) baseRef.current = base;
+        if (!mountedRef.current) return;
         if (error instanceof NoteConflictError) {
           handleDisk(error.disk);
           report("saving");
@@ -409,13 +490,31 @@ function NoteEditor({
 
   const collab = useNoteLiveEditor(note.id, editor, {
     sourceOf,
-    baseline: () => ({
-      text: savedTextRef.current,
-      serialized: savedDocRef.current ? sourceOf(savedDocRef.current) : savedTextRef.current,
-    }),
+    baseline: () => {
+      localRef.current.clear();
+      const shared = handBackRef.current;
+      if (shared !== null) {
+        handBackRef.current = null;
+        if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+        deferredRef.current = false;
+        baseRef.current = null;
+        failureRef.current = null;
+        savedTextRef.current = shared;
+        savedFrontMatterRef.current = splitMarkdownFrontMatter(shared).frontmatter;
+        versionRef.current = noteVersion(shared);
+        savedDocRef.current = null;
+        report("saved");
+        return { text: shared, serialized: shared };
+      }
+      return {
+        text: savedTextRef.current,
+        serialized: savedDocRef.current ? sourceOf(savedDocRef.current) : savedTextRef.current,
+      };
+    },
     settle: async () => {
       if (savingRef.current) await savingRef.current;
-      if (timerRef.current === null) return;
+      if (timerRef.current === null || handBackRef.current !== null) return;
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
       await save();
@@ -428,16 +527,24 @@ function NoteEditor({
       const next = readNoteFacts(text);
       setFacts(next);
       if (!editingTitle.current) setTitle(next.title ?? note.title);
-      if (next.title && next.title !== note.title) void renameNote?.(note.id, next.title);
+      if (next.title && next.title !== note.title && !note.home) {
+        void renameNote?.(note.id, next.title).catch((error: unknown) => logError("rename note", error));
+      }
     },
     handBack: ({ text, base, edited }) => {
+      localRef.current.clear();
+      handBackRef.current = edited ? text : null;
       savedTextRef.current = edited ? base : text;
       savedFrontMatterRef.current = splitMarkdownFrontMatter(savedTextRef.current).frontmatter;
       versionRef.current = noteVersion(savedTextRef.current);
       savedDocRef.current = edited ? null : editor.state.doc;
       baseRef.current = edited ? base : null;
-      report("saved");
-      if (edited) void save();
+      if (!edited) {
+        report("saved");
+        return;
+      }
+      report("saving");
+      void save();
     },
   }, live);
   collabRef.current = collab.control;
@@ -473,7 +580,17 @@ function NoteEditor({
     return unsavedReason();
   }, [save, unsavedReason]);
 
-  useEffect(() => registerNoteFlush({ ...saveJob, flush: flushNow }), [flushNow, saveJob]);
+  const flushRef = useRef(flushNow);
+  flushRef.current = flushNow;
+  const busy = useCallback(
+    () =>
+      timerRef.current !== null ||
+      savingRef.current !== null ||
+      lastStatusRef.current !== "saved" ||
+      deferredRef.current ||
+      handBackRef.current !== null,
+    [],
+  );
 
   useEffect(() => {
     if (collab.state.live || collab.state.readOnly || !deferredRef.current) return;
@@ -481,7 +598,24 @@ function NoteEditor({
     scheduleSave();
   }, [collab.state.live, collab.state.readOnly, scheduleSave]);
 
-  useEffect(() => noteEditorOpened(note.id), [note.id]);
+  useEffect(
+    () =>
+      registerNoteEditor(note.id, {
+        ...saveJob,
+        editor,
+        root: scrollRef.current,
+        text: () => sourceOf(docWithPending(editor, "disk")),
+        flush: () => flushRef.current(),
+        busy,
+        history: (redo) => {
+          if (editor.isDestroyed) return;
+          if (!redo && undoReject(editor)) return;
+          if (redo) editor.commands.redo();
+          else editor.commands.undo();
+        },
+      }),
+    [busy, editor, note.id, saveJob, sourceOf],
+  );
 
   useEffect(() => {
     snapshotRef.current = createMarkdownSourceSnapshot(parsed.layout, editor.getJSON());
@@ -495,12 +629,21 @@ function NoteEditor({
           ? current
           : next,
       );
+      setCanUndo(canUndoReject(editor));
       if (isReviewNavigation(transaction)) {
         editor.view.dom.querySelector(".note-diff-active")?.scrollIntoView({ block: "center" });
       }
-      if (isRemoteTransaction(transaction)) return;
+      if (isRemoteTransaction(transaction) || quietRef.current) return;
+      let frontMatter = frontMatterRef.current;
+      for (const step of frontMatterSteps(transaction)) {
+        frontMatter = frontMatterBlock(mergeFrontMatter(step.before, step.after, frontMatter));
+      }
+      if (frontMatter !== frontMatterRef.current) {
+        frontMatterRef.current = frontMatter;
+        adoptFacts(frontMatter);
+      }
       if (transaction.docChanged) {
-        localRef.current.record(transaction.mapping);
+        if (!liveRef.current) localRef.current.record(transaction.mapping);
         scheduleSave();
       } else if (isReviewTransaction(transaction)) {
         scheduleSave();
@@ -543,14 +686,14 @@ function NoteEditor({
       editor.off("blur", hide);
       scroller?.removeEventListener("scroll", hide);
     };
-  }, [editor, scheduleSave]);
+  }, [adoptFacts, editor, scheduleSave]);
 
   useEffect(() => {
     const scroller = scrollRef.current;
     if (!scroller) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!isAskAgentKey(event) || !editor.view.hasFocus()) return;
-      const text = selectedText(editor);
+      if (!matchesShortcut(event, useShortcutStore.getState().bindings.notesAskAgent) || !editor.view.hasFocus()) return;
+      const text = selectedText(editor, wholeNote);
       if (!text) return;
       event.preventDefault();
       event.stopPropagation();
@@ -558,19 +701,26 @@ function NoteEditor({
     };
     scroller.addEventListener("keydown", onKeyDown, true);
     return () => scroller.removeEventListener("keydown", onKeyDown, true);
-  }, [editor]);
+  }, [editor, wholeNote]);
 
+  const checkDisk = useCallback(() => {
+    if (collabRef.current?.holds()) return;
+    loadNote(note.id).then(
+      (disk) => {
+        if (handleDisk(disk)) scheduleSave();
+      },
+      () => {},
+    );
+  }, [handleDisk, loadNote, note.id, scheduleSave]);
+
+  useEffect(() => watchNote?.(note.id, checkDisk), [checkDisk, note.id, watchNote]);
+
+  const shownRef = useRef(shown);
   useEffect(() => {
-    const stop = watchNote?.(note.id, () => {
-      loadNote(note.id).then(
-        (disk) => {
-          if (handleDisk(disk)) scheduleSave();
-        },
-        () => {},
-      );
-    });
-    return stop;
-  }, [handleDisk, loadNote, note.id, scheduleSave, watchNote]);
+    const returning = shown && !shownRef.current;
+    shownRef.current = shown;
+    if (returning) checkDisk();
+  }, [checkDisk, shown]);
 
   useEffect(() => {
     const flush = () => {
@@ -590,31 +740,63 @@ function NoteEditor({
       window.removeEventListener("blur", onLeave);
       window.removeEventListener("pagehide", onLeave);
       document.removeEventListener("visibilitychange", onHidden);
-      const saving = flush();
-      if (saving) {
-        trackNoteSave(
-          saveJob,
-          saving.then(() => (lastStatusRef.current === "failed" ? describeError(failureRef.current) : null)),
-        );
-      }
     };
-  }, [save, saveJob]);
+  }, [save]);
+
+  const closeRef = useRef<() => void>(() => undefined);
+  closeRef.current = () => {
+    mountedRef.current = false;
+    const dirty = busy();
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+    const pending = savingRef.current;
+    if (!dirty) return;
+    frontMatterRef.current = frontMatterBlock(withNoteIdentity(frontMatterRef.current));
+    const text = sourceOf(docWithPending(editor, "disk"));
+    const notSaved = t(($) => $.notes.saving.notSaved);
+    const write: ClosedWrite = (body, version) => {
+      const base = baseRef.current;
+      return recordNoteWrite(note.id, body, () =>
+        base === null ? saveNote(note.id, body, version) : saveNote(note.id, body, version, base),
+      );
+    };
+    const attempt = async (): Promise<string | null> => {
+      if (collabRef.current?.holds()) return notSaved;
+      if (sameText(text, savedTextRef.current)) return null;
+      return writeClosedNote(write, text, versionRef.current, savedTextRef.current);
+    };
+    const done = (async () => {
+      await pending?.catch(() => undefined);
+      return attempt();
+    })();
+    trackNoteSave(saveJob, done, attempt);
+  };
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => closeRef.current();
+  }, []);
 
   useEffect(() => {
     const snippet = insertRequest?.snippet;
-    if (!snippet || readOnlyRef.current) return;
+    if (!snippet || !firstTime(insertRequest) || readOnlyRef.current) return;
     editor.chain().focus("end").insertContent(parseNote(snippet).doc.content ?? []).run();
   }, [editor, insertRequest]);
 
   useEffect(() => {
-    if (openHeading) scrollViewToHeading(editor.view, openHeading.slug);
+    if (openHeading && firstTime(openHeading)) scrollViewToHeading(editor.view, openHeading.slug);
   }, [editor, openHeading]);
 
-  const changeFrontMatter = (update: (text: string) => string) => {
+  const changeFrontMatter = (update: (text: string) => string, undoable = true) => {
     if (readOnlyRef.current) return;
-    frontMatterRef.current = frontMatterBlock(update(frontMatterRef.current));
-    adoptFacts(frontMatterRef.current);
-    scheduleSave();
+    const before = frontMatterRef.current;
+    const after = frontMatterBlock(update(before));
+    frontMatterRef.current = after;
+    adoptFacts(after);
+    if (after === before) {
+      scheduleSave();
+      return;
+    }
+    editor.view.dispatch(frontMatterChange(editor.state.tr, before, after, undoable));
   };
   const changeRef = useRef(changeFrontMatter);
   changeRef.current = changeFrontMatter;
@@ -624,7 +806,7 @@ function NoteEditor({
   const adoptName = useCallback((name: string) => {
     const declared = declaredTitle.current;
     if (declared === null) setTitle(name);
-    else if (!namesTitle(name, declared)) changeRef.current((text) => withNoteTitle(text, name));
+    else if (!namesTitle(name, declared)) changeRef.current((text) => withNoteTitle(text, name), false);
   }, []);
 
   useEffect(() => {
@@ -644,8 +826,11 @@ function NoteEditor({
       adoptName(note.title);
       return;
     }
-    changeFrontMatter((text) => withNoteTitle(text, next));
-    void renameNote?.(note.id, next);
+    changeFrontMatter((text) => withNoteTitle(text, next), false);
+    void renameNote?.(note.id, next).catch((error: unknown) => {
+      notifyError("rename note", error, t(($) => $.notes.library.menu.renameFailed, { name: current }));
+      if (mountedRef.current) changeRef.current((text) => (readNoteFacts(text).title === next ? withNoteTitle(text, current) : text), false);
+    });
   };
 
   const assistantBridge = useMemo<NoteEditorBridge>(
@@ -715,12 +900,13 @@ function NoteEditor({
       data-note-blank
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
     >
-      <NoteToolbar editor={editor} noteId={note.id} readOnly={collab.state.readOnly} />
+      <NoteToolbar editor={editor} noteId={note.id} projectId={note.relatedProjectId} readOnly={collab.state.readOnly} />
+      <NoteFindBar editor={editor} scope={scrollRef} />
       <article
         data-note-blank
         className={cn("mx-auto w-full flex-1 cursor-text pb-32 pt-10 transition-[max-width] duration-200 motion-reduce:transition-none", WIDTH_CLASSES[width])}
       >
-        <div className="group/header">
+        <div className="group/header" spellCheck={false}>
           {collab.state.readOnly ? (
             facts.icon && (
               <span data-note-icon-static className="-ml-1 mb-3 inline-flex rounded-xl p-1">
@@ -810,13 +996,13 @@ function NoteEditor({
           <Button
             variant="ghost"
             size="xs"
-            aria-keyshortcuts="Meta+J Control+J"
+            aria-keyshortcuts={askKeys}
             onMouseDown={(event) => event.preventDefault()}
-            onClick={() => assistantRef.current?.quote(selectedText(editor))}
+            onClick={() => assistantRef.current?.quote(selectedText(editor, wholeNote))}
           >
             {t(($) => $.notes.document.askAgent)}
             <span aria-hidden className="text-muted-foreground">
-              {shortcut(ASK_AGENT_KEYS)}
+              {askKeys}
             </span>
           </Button>
           {onSendToPaper && (
@@ -824,15 +1010,21 @@ function NoteEditor({
               variant="ghost"
               size="xs"
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onSendToPaper(selectedText(editor))}
+              onClick={() => onSendToPaper(selectedText(editor, wholeNote))}
             >
               {t(($) => $.notes.document.sendToPaper)}
             </Button>
           )}
         </div>
       )}
-      {review.count > 0 && !collab.state.readOnly && (
-        <FloatingReview editor={editor} review={review} scrollRef={scrollRef} bottomRef={assistantDockRef} />
+      {(review.count > 0 || canUndo) && !collab.state.readOnly && (
+        <FloatingReview
+          editor={editor}
+          review={review}
+          canUndo={canUndo}
+          scrollRef={scrollRef}
+          bottomRef={assistantDockRef}
+        />
       )}
       <div ref={assistantDockRef} className="pointer-events-none sticky bottom-0 z-10 px-6 pb-4">
         <NoteAssistant
@@ -841,6 +1033,7 @@ function NoteEditor({
           note={note}
           bridge={assistantBridge}
           shortcutScope={scrollRef}
+          viewOnly={collab.state.viewOnly}
         />
       </div>
     </div>

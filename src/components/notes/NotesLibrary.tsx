@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { QuerySearch } from "@/components/ui/query-search";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { formatRelativeTimeFrom } from "@/lib/intl";
@@ -19,6 +18,7 @@ import { cn, isMac } from "@/lib/utils";
 import { isSelectionModifier } from "@/store/library-selection";
 import {
   CONTEXT_MENU_KIT,
+  ConflictMark,
   DROPDOWN_MENU_KIT,
   hasNoteMenu,
   type MenuKit,
@@ -59,9 +59,9 @@ const CUSTOM_FILTER = "custom";
 const NOTES_FILTERS_OPEN_KEY = "oleafly.notes.filtersOpen";
 const MINUTE_MS = 60_000;
 
-const CHIP_LIST = "flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0";
+const CHIP_LIST = "m-0 flex min-w-0 flex-wrap justify-start gap-1 border-0 p-0";
 const CHIP =
-  "rounded-full border border-sidebar-border bg-background px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent data-[state=active]:border-primary/30 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none";
+  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border border-sidebar-border bg-background px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent aria-pressed:border-primary/30 aria-pressed:bg-primary/10 aria-pressed:text-primary motion-reduce:transition-none";
 
 interface ProjectGroup {
   projectId?: string;
@@ -174,7 +174,13 @@ const NoteRow = memo(function NoteRow({
   const actions = actionsFor(note);
   const icon = <NoteChip icon={iconFor(note)} color={note.color} />;
   const meta = bylineFor(note, now);
-  const badge = note.shared ? <SharedMark /> : null;
+  const badge =
+    note.shared || actions.conflict ? (
+      <>
+        {note.shared && <SharedMark />}
+        {actions.conflict && <ConflictMark />}
+      </>
+    ) : null;
   const open = () => onOpenNote(note.id);
   if (!hasNoteMenu(actions)) {
     return (
@@ -220,15 +226,22 @@ const NoteRow = memo(function NoteRow({
             <>
               <Row active={active} icon={icon} title={note.title} meta={meta} badge={badge} className="pr-9" onClick={open} />
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t(($) => $.notes.library.menu.more)}
-                    className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10 focus-visible:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:bg-foreground/10 data-[state=open]:text-foreground data-[state=open]:opacity-100"
-                  >
-                    <MoreHorizontal aria-hidden className="size-4" />
-                  </button>
-                </DropdownMenuTrigger>
+                <Tooltip
+                  label={t(($) => $.notes.library.menu.more)}
+                  side="bottom"
+                  relative={false}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2"
+                >
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t(($) => $.notes.library.menu.more)}
+                      className="flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10 focus-visible:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:bg-foreground/10 data-[state=open]:text-foreground data-[state=open]:opacity-100"
+                    >
+                      <MoreHorizontal aria-hidden className="size-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </Tooltip>
                 <DropdownMenuContent align="end" className="w-52" onCloseAutoFocus={runPending}>
                   {items(DROPDOWN_MENU_KIT)}
                 </DropdownMenuContent>
@@ -339,6 +352,30 @@ function facetValue(state: FacetState): string {
   return state.kind === "custom" ? CUSTOM_FILTER : ALL_FILTER;
 }
 
+function FilterChips<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  render,
+}: Readonly<{
+  label: string;
+  options: readonly T[];
+  value: string;
+  onChange: (value: T) => void;
+  render: (option: T) => ReactNode;
+}>) {
+  return (
+    <fieldset aria-label={label} className={CHIP_LIST}>
+      {options.map((option) => (
+        <button key={option} type="button" aria-pressed={value === option} onClick={() => onChange(option)} className={CHIP}>
+          {render(option)}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
 export function NotesLibrary({
   iconFor,
   activeNoteId,
@@ -426,6 +463,7 @@ export function NotesLibrary({
     else onOpenNote(id);
   };
   const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (isImeEnter(event)) return;
     if (event.key === "Escape" && query !== "") {
       event.stopPropagation();
       setQuery("");
@@ -436,7 +474,7 @@ export function NotesLibrary({
       event.preventDefault();
       const step = event.key === "ArrowDown" ? 1 : -1;
       setActiveHit((activeRow + step + hitRows.length) % hitRows.length);
-    } else if (event.key === "Enter" && !isImeEnter(event)) {
+    } else if (event.key === "Enter") {
       event.preventDefault();
       const row = hitRows[activeRow];
       openHit(row.note.id, isSelectionModifier(event));
@@ -446,6 +484,7 @@ export function NotesLibrary({
     setFiltersOpen(open);
     saveFiltersOpen(open);
   };
+  const searchLabel = research ? t(($) => $.notes.library.search) : t(($) => $.notes.home.search);
   const emptyText = kind === null ? t(($) => $.notes.library.empty) : t(($) => $.notes.library.emptyKind[kind]);
   const hasHits = hitRows.length > 0;
   const activeId = hasHits ? optionId(listId, activeRow) : undefined;
@@ -484,8 +523,8 @@ export function NotesLibrary({
           }}
           query={vault.query}
           schema={schema}
-          ariaLabel={t(($) => $.notes.library.search)}
-          placeholder={t(($) => $.notes.library.search)}
+          ariaLabel={searchLabel}
+          placeholder={searchLabel}
           clearLabel={t(($) => $.notes.vault.search.clear)}
           results={results}
           onKeyDown={onSearchKey}
@@ -569,28 +608,28 @@ export function NotesLibrary({
       >
         <TagPane tree={tree} selected={tag} onSelect={chooseTag} />
         {research && (
-          <Tabs value={facetValue(kindFacet)} onValueChange={(value) => chooseFacet(VAULT_FACETS.kind, value)}>
-            <TabsList size="sm" className={CHIP_LIST}>
-              {KIND_FILTERS.map((value) => (
-                <TabsTrigger key={value} value={value} className={CHIP}>
-                  {value !== "all" && (
-                    <span aria-hidden data-kind-dot={value} className={cn("size-1.5 shrink-0 rounded-full", KIND_TONES[value].dot)} />
-                  )}
-                  {t(($) => $.notes.library.kind[value])}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <FilterChips
+            label={t(($) => $.notes.vault.search.fields.kind)}
+            options={KIND_FILTERS}
+            value={facetValue(kindFacet)}
+            onChange={(value) => chooseFacet(VAULT_FACETS.kind, value)}
+            render={(value) => (
+              <>
+                {value !== "all" && (
+                  <span aria-hidden data-kind-dot={value} className={cn("size-1.5 shrink-0 rounded-full", KIND_TONES[value].dot)} />
+                )}
+                {t(($) => $.notes.library.kind[value])}
+              </>
+            )}
+          />
         )}
-        <Tabs value={facetValue(authorFacet)} onValueChange={(value) => chooseFacet(VAULT_FACETS.author, value)}>
-          <TabsList size="sm" className={CHIP_LIST}>
-            {AUTHOR_FILTERS.map((value) => (
-              <TabsTrigger key={value} value={value} className={CHIP}>
-                {t(($) => $.notes.library.author[value])}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <FilterChips
+          label={t(($) => $.notes.vault.search.fields.author)}
+          options={AUTHOR_FILTERS}
+          value={facetValue(authorFacet)}
+          onChange={(value) => chooseFacet(VAULT_FACETS.author, value)}
+          render={(value) => t(($) => $.notes.library.author[value])}
+        />
         {activeFilters > 0 && (
           <Button variant="ghost" size="xs" onClick={clearFilters}>
             {t(($) => $.notes.library.filters.clear)}

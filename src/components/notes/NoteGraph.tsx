@@ -8,14 +8,12 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tooltip } from "@/components/ui/tooltip";
+import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { compareText } from "@/lib/intl";
 import { readJson, writeJson } from "@/lib/local-storage";
 import { logError } from "@/lib/log";
@@ -51,6 +49,7 @@ import {
 } from "./note-graph-layout";
 import { LINE_ICON_PREFIX, LINE_ICONS, NOTE_COLOR_HEX } from "./note-icons";
 import { useNotesData } from "./notes-data";
+import { useNotesByLook } from "./note-signature";
 import { useVaultKey, vaultLoad } from "./vault-loads";
 
 export type GraphMode = "global" | "local";
@@ -427,16 +426,6 @@ function ControlSwitch({ id, label, checked, onChange }: Readonly<{ id: string; 
   );
 }
 
-function IconButton({ label, onClick, children }: Readonly<{ label: string; onClick: () => void; children: ReactNode }>) {
-  return (
-    <Tooltip label={label} side="bottom">
-      <Button variant="ghost" size="icon" aria-label={label} className="size-7" onClick={onClick}>
-        {children}
-      </Button>
-    </Tooltip>
-  );
-}
-
 export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, onOpenProject }: Readonly<NoteGraphProps>) {
   const { t } = useTranslation(["notes"]);
   const data = useNotesData();
@@ -444,6 +433,7 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
   const tagRead = useVaultRead(data.noteTags, NO_TAGS, "read note tags for the graph");
   const records = linkRead.value;
   const tags = tagRead.value;
+  const notes = useNotesByLook(data.notes);
   const theme = useAppTheme();
   const reduced = useReducedMotion();
   const appFontSize = useSettingsStore((state) => state.appFontSize);
@@ -498,7 +488,7 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
     () =>
       buildGraph(
         {
-          notes: data.notes.map((note) => ({
+          notes: notes.map((note) => ({
             id: note.id,
             title: note.title,
             icon: note.icon,
@@ -510,7 +500,7 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
         },
         { projects: prefs.projects, projectColor: paletteRef.current.muted },
       ),
-    [data.notes, data.projects, prefs.projects, records, tagsByNote],
+    [data.projects, notes, prefs.projects, records, tagsByNote],
   );
 
   const graph = useMemo(() => {
@@ -962,13 +952,13 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
           </Select>
         )}
         <div className="ml-auto flex items-center gap-0.5">
-          <IconButton label={t(($) => $.notes.graph.zoomOut)} onClick={() => zoomBy(1 / KEY_ZOOM)}>
+          <TooltipIconButton label={t(($) => $.notes.graph.zoomOut)} onClick={() => zoomBy(1 / KEY_ZOOM)}>
             <Minus aria-hidden className="size-4" />
-          </IconButton>
-          <IconButton label={t(($) => $.notes.graph.zoomIn)} onClick={() => zoomBy(KEY_ZOOM)}>
+          </TooltipIconButton>
+          <TooltipIconButton label={t(($) => $.notes.graph.zoomIn)} onClick={() => zoomBy(KEY_ZOOM)}>
             <Plus aria-hidden className="size-4" />
-          </IconButton>
-          <IconButton
+          </TooltipIconButton>
+          <TooltipIconButton
             label={t(($) => $.notes.graph.fit)}
             onClick={() => {
               movedRef.current = false;
@@ -976,10 +966,10 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
             }}
           >
             <Maximize aria-hidden className="size-4" />
-          </IconButton>
-          <IconButton label={t(($) => $.notes.graph.reset)} onClick={resetLayout}>
+          </TooltipIconButton>
+          <TooltipIconButton label={t(($) => $.notes.graph.reset)} onClick={resetLayout}>
             <RotateCcw aria-hidden className="size-4" />
-          </IconButton>
+          </TooltipIconButton>
         </div>
       </div>
       <div ref={wrapRef} className="relative min-h-0 flex-1 overflow-hidden">

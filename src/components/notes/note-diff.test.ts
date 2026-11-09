@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { getSchema } from "@tiptap/core";
-import { Schema, type Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { Fragment, Schema, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { createWysiwygExtensions, parseMarkdownBody } from "@oleafly/wysiwyg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { myersEditScript } from "@/lib/myers-diff";
@@ -114,5 +114,27 @@ describe("note diff", () => {
     expect(diffNoteDocs(before, after)).toEqual([
       { kind: "blocks", from: 0, to: before.firstChild?.nodeSize, nodes: [after.firstChild] },
     ]);
+  });
+
+  it("compares only the blocks between the ones both documents share", () => {
+    const before = doc("Intro.\n\nMiddle.\n\nOutro.\n");
+    const replaced = doc("Middle, edited.\n").firstChild;
+    if (!replaced) throw new Error("No paragraph was parsed.");
+    const after = before.copy(Fragment.from([before.child(0), replaced, before.child(2)]));
+    const changes = diffNoteDocs(before, after);
+    const [oldKeys, newKeys] = vi.mocked(myersEditScript).mock.calls[0];
+    expect([oldKeys.length, newKeys.length]).toEqual([1, 1]);
+    const from = before.child(0).nodeSize + 1;
+    expect(changes).toEqual([{ kind: "text", from, to: from + "Middle.".length, text: "Middle, edited." }]);
+  });
+
+  it("replaces only the blocks between the shared ones when the block diff gives up", () => {
+    vi.mocked(myersEditScript).mockReturnValueOnce(null);
+    const before = doc("Intro.\n\nMiddle.\n\nOutro.\n");
+    const replaced = doc("Other.\n").firstChild;
+    if (!replaced) throw new Error("No paragraph was parsed.");
+    const after = before.copy(Fragment.from([before.child(0), replaced, before.child(2)]));
+    const from = before.child(0).nodeSize;
+    expect(diffNoteDocs(before, after)).toEqual([{ kind: "blocks", from, to: from + before.child(1).nodeSize, nodes: [replaced] }]);
   });
 });

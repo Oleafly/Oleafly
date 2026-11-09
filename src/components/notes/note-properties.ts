@@ -1,4 +1,5 @@
 import { Document, isMap, isScalar, isSeq, parseDocument, type Node as YamlNode, type Pair } from "yaml";
+import { splitMarkdownFrontMatter } from "@oleafly/wysiwyg/front-matter";
 import { readJson, writeJson } from "@/lib/local-storage";
 
 export type PropertyType = "text" | "list" | "number" | "checkbox" | "date" | "link";
@@ -15,8 +16,6 @@ export const PROPERTY_TYPES: readonly PropertyType[] = ["text", "list", "number"
 export const MANAGED_KEYS: ReadonlySet<string> = new Set(["title", "kind", "id", "icon", "color", "agent"]);
 export const LIST_KEYS: ReadonlySet<string> = new Set(["tags", "aliases"]);
 
-const OPEN = /^﻿?---[ \t]*\r?\n/u;
-const CLOSE = /\r?\n(?:---|\.\.\.)[ \t]*$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const NOTE_LINK = /^oleafly:\/\/note\/[\w-]+(?:#\S*)?$/iu;
 const TYPES_KEY = "oleafly.notes.propertyTypes";
@@ -31,13 +30,15 @@ interface Split {
 
 function split(frontMatter: string): Split {
   const eol = frontMatter.includes("\r\n") ? "\r\n" : "\n";
-  const open = OPEN.exec(frontMatter);
-  const close = CLOSE.exec(frontMatter);
-  if (!open || !close || close.index < open[0].length - 1) return { open: `---${eol}`, inner: "", close: `${eol}---`, eol };
+  const block = splitMarkdownFrontMatter(frontMatter).frontmatter;
+  if (!block || block !== frontMatter) return { open: `---${eol}`, inner: "", close: `${eol}---`, eol };
+  const innerFrom = block.indexOf("\n") + 1;
+  const lastBreak = block.lastIndexOf("\n");
+  const closeFrom = block[lastBreak - 1] === "\r" ? lastBreak - 1 : lastBreak;
   return {
-    open: open[0],
-    inner: frontMatter.slice(open[0].length, close.index),
-    close: frontMatter.slice(close.index),
+    open: block.slice(0, innerFrom),
+    inner: block.slice(innerFrom, Math.max(innerFrom, closeFrom)),
+    close: block.slice(closeFrom),
     eol,
   };
 }
@@ -118,6 +119,22 @@ export function convertValue(value: PropertyValue, type: PropertyType): Property
   }
 }
 
+const BOOLEAN_TEXT = /^(?:true|false|yes|no|1|0)$/iu;
+
+export type ConversionLoss = "items" | "value" | null;
+
+export function conversionLoss(value: PropertyValue, type: PropertyType): ConversionLoss {
+  if (type === "list" || value === null || value === "") return null;
+  if (Array.isArray(value)) {
+    if (value.length > 1) return "items";
+    return value.length === 1 ? conversionLoss(value[0], type) : null;
+  }
+  if (convertValue(value, type) === null) return "value";
+  if (type === "number" && typeof value !== "number" && !Number.isFinite(Number(String(value).trim()))) return "value";
+  if (type === "checkbox" && typeof value !== "boolean" && !BOOLEAN_TEXT.test(String(value).trim())) return "value";
+  return null;
+}
+
 function plainValue(node: YamlNode | null, type: PropertyType): PropertyValue {
   const value: unknown = node === null ? null : node.toJSON();
   if (type === "list") return asList(value);
@@ -138,10 +155,6 @@ export function readProperties(frontMatter: string, known: Readonly<Record<strin
     const type = nested ? "text" : inferType(key, raw, known[key]);
     return [{ key, type, value: nested ? JSON.stringify(raw) : plainValue(node, type), readOnly: nested }];
   });
-}
-
-export function hasProperties(frontMatter: string): boolean {
-  return (readProperties(frontMatter) ?? []).length > 0;
 }
 
 function valueText(key: string, value: PropertyValue, flow: boolean): string {

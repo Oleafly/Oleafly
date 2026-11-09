@@ -1,4 +1,4 @@
-import { Bot, CircleCheck, CircleDot, FolderOpen, Hash, Shapes, Star, TextSearch, UserRound } from "lucide-react";
+import { Bot, CircleDot, FolderOpen, Hash, Shapes, Star, TextSearch, UserRound } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -37,7 +37,7 @@ type VaultTerm = AnalyzedTerm<VaultItem, QueryMeta>;
 export type VaultItem = NoteItem | ArtifactItem;
 export type VaultSchema = SearchSchema<VaultItem, QueryMeta>;
 export type VaultQuery = AnalyzedQuery<VaultItem, QueryMeta>;
-export type NoteSearchExtension = SearchExtension<VaultItem, QueryMeta>;
+type NoteSearchExtension = SearchExtension<VaultItem, QueryMeta>;
 
 export const VAULT_KINDS = ["note", "figure", "report", "data", "notebook"] as const;
 export type VaultKind = (typeof VAULT_KINDS)[number];
@@ -45,7 +45,6 @@ export const VAULT_AUTHORS = ["agent", "you"] as const satisfies readonly Author
 
 const INDEXED_FIELDS: ReadonlySet<string> = new Set(["tag", "title"]);
 const MAX_BRANCHES = 8;
-const NO_EXTENSIONS: readonly NoteSearchExtension[] = [];
 const PROJECT_SEPARATOR = "\u0000";
 
 export interface NoteSearchState {
@@ -111,7 +110,7 @@ const TEXT: TextScope<VaultItem, QueryMeta> = {
   get: (item) => (isArtifact(item) ? item.title : [item.title, ...(item.aliases ?? []), item.preview ?? item.summary]),
 };
 
-export function noteQualifiers(t: Translate, state: NoteSearchState): NoteSearchExtension {
+function noteQualifiers(t: Translate, state: NoteSearchState): NoteSearchExtension {
   const authorLabel = (author: Author) => t(($) => $.notes.library.author[author]);
   return {
     is: [
@@ -167,18 +166,10 @@ export function noteQualifiers(t: Translate, state: NoteSearchState): NoteSearch
   };
 }
 
-export function buildNoteSearchSchema(
-  t: Translate,
-  state: NoteSearchState,
-  extensions: readonly NoteSearchExtension[] = NO_EXTENSIONS,
-): VaultSchema {
-  const parts = mergeExtensions([noteQualifiers(t, state), ...extensions]);
-  const has = parts.has.length > 0
-    ? [flagField("has", parts.has, { meta: { label: t(($) => $.notes.vault.search.fields.has), icon: icon(CircleCheck) } })]
-    : [];
+export function buildNoteSearchSchema(t: Translate, state: NoteSearchState): VaultSchema {
+  const parts = mergeExtensions([noteQualifiers(t, state)]);
   const fields: SearchField<VaultItem, QueryMeta>[] = [
     flagField("is", parts.is, { meta: { label: t(($) => $.notes.vault.search.fields.is), icon: icon(CircleDot) } }),
-    ...has,
     ...parts.fields,
   ];
   return defineSchema({ fields, text: [TEXT, ...parts.text], sorts: parts.sorts });
@@ -346,19 +337,15 @@ export interface VaultSearchBox {
   readonly plan: VaultPlan;
 }
 
-export function useVaultQuery(
-  source: string,
-  tags: readonly NoteTagCount[] | null,
-  extensions: readonly NoteSearchExtension[] = NO_EXTENSIONS,
-): VaultSearchBox {
+export function useVaultQuery(source: string, tags: readonly NoteTagCount[] | null): VaultSearchBox {
   const { t } = useTranslation(["notes"]);
   const { notes, artifacts } = useNotesData();
   const favorites = useNoteFavorites();
   const projectKey = useMemo(() => projectNames(notes, artifacts).join(PROJECT_SEPARATOR), [notes, artifacts]);
   const projects = useMemo(() => (projectKey === "" ? [] : projectKey.split(PROJECT_SEPARATOR)), [projectKey]);
   const schema = useMemo(
-    () => buildNoteSearchSchema(t, { favorites, tags, projects }, extensions),
-    [t, favorites, tags, projects, extensions],
+    () => buildNoteSearchSchema(t, { favorites, tags, projects }),
+    [t, favorites, tags, projects],
   );
   return useMemo(() => {
     const context = { now: Date.now() };

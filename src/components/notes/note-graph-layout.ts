@@ -1,3 +1,4 @@
+import { readJson, writeJson } from "@/lib/local-storage";
 import type { NoteLinkRecord } from "@/lib/tauri";
 
 export type GraphNodeKind = "note" | "project";
@@ -279,10 +280,6 @@ export function toWorld(view: View, px: number, py: number): [number, number] {
   return [(px - view.x) / view.k, (py - view.y) / view.k];
 }
 
-export function toScreen(view: View, wx: number, wy: number): [number, number] {
-  return [wx * view.k + view.x, wy * view.k + view.y];
-}
-
 export function fitView(
   positions: Float32Array | null,
   nodes: readonly Pick<GraphNode, "degree" | "kind">[],
@@ -339,39 +336,27 @@ export function hitTest(
   return best;
 }
 
-type Storage = Pick<globalThis.Storage, "getItem" | "setItem">;
-
-function storageOf(storage: Storage | undefined): Storage | null {
-  if (storage) return storage;
-  try {
-    return globalThis.localStorage ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function readSavedPositions(storage?: Storage): Map<string, [number, number]> {
+function savedPositions(value: unknown): Map<string, [number, number]> {
   const saved = new Map<string, [number, number]>();
-  try {
-    const raw = storageOf(storage)?.getItem(GRAPH_LAYOUT_KEY);
-    const parsed = raw ? (JSON.parse(raw) as { version?: number; positions?: Record<string, unknown> }) : null;
-    if (parsed?.version !== 1 || typeof parsed.positions !== "object" || parsed.positions === null) return saved;
-    for (const [key, value] of Object.entries(parsed.positions)) {
-      if (Array.isArray(value) && value.length === 2 && value.every((part) => typeof part === "number" && Number.isFinite(part))) {
-        saved.set(key, [value[0] as number, value[1] as number]);
-      }
+  if (typeof value !== "object" || value === null) return saved;
+  const { version, positions } = value as { version?: unknown; positions?: unknown };
+  if (version !== 1 || typeof positions !== "object" || positions === null) return saved;
+  for (const [key, point] of Object.entries(positions)) {
+    if (Array.isArray(point) && point.length === 2 && point.every((part) => typeof part === "number" && Number.isFinite(part))) {
+      saved.set(key, [point[0] as number, point[1] as number]);
     }
-  } catch {
-    return saved;
   }
   return saved;
+}
+
+export function readSavedPositions(): Map<string, [number, number]> {
+  return readJson(GRAPH_LAYOUT_KEY, new Map<string, [number, number]>(), savedPositions);
 }
 
 export function savePositions(
   nodes: readonly Pick<GraphNode, "key">[],
   positions: Float32Array,
   previous: ReadonlyMap<string, [number, number]>,
-  storage?: Storage,
 ): Map<string, [number, number]> {
   const merged = new Map(previous);
   const count = Math.min(nodes.length, positions.length / 2);
@@ -380,11 +365,7 @@ export function savePositions(
     merged.set(nodes[index].key, [Math.round(positions[index * 2] * 10) / 10, Math.round(positions[index * 2 + 1] * 10) / 10]);
   }
   const entries = [...merged.entries()].slice(-SAVED_LIMIT);
-  try {
-    storageOf(storage)?.setItem(GRAPH_LAYOUT_KEY, JSON.stringify({ version: 1, positions: Object.fromEntries(entries) }));
-  } catch {
-    return new Map(entries);
-  }
+  writeJson(GRAPH_LAYOUT_KEY, { version: 1, positions: Object.fromEntries(entries) });
   return new Map(entries);
 }
 

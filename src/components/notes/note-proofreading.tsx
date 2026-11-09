@@ -3,11 +3,13 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   createProofreading,
   type ProofreadingDocument,
+  proofreadingModeFor,
   refreshVisualProofreading,
   resumeVisualProofreading,
   type VisualProofreadingIssue,
 } from "@/components/editor/wysiwyg/proofreading";
 import { ProofreadingPopover } from "@/components/editor/wysiwyg/ProofreadingPopover";
+import { useDictionary } from "@/lib/dictionary";
 import { createEmitter } from "@/lib/emitter";
 import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
 import { useFilesStore } from "@/store/files";
@@ -43,6 +45,22 @@ function openFinding(): OpenFinding | null {
   return open;
 }
 
+type Settings = ReturnType<typeof useSettingsStore.getState>;
+
+const PROOFREADING_SETTINGS = [
+  "notesSpellcheck",
+  "harper",
+  "showRegionalism",
+  "showWordChoice",
+  "grammarDialect",
+  "dictionaryLocale",
+] as const satisfies readonly (keyof Settings)[];
+
+function notesProofreadingMode(): ReturnType<typeof proofreadingModeFor> {
+  const settings = useSettingsStore.getState();
+  return proofreadingModeFor(settings.notesSpellcheck, settings.harper);
+}
+
 function homeLocale(home: NoteItem["home"]): string {
   const files = useFilesStore.getState();
   return effectiveDictionaryLocale({
@@ -68,7 +86,7 @@ export class NoteProofreading {
       surface: "notes",
       document: () => identity,
       active: (view) => view.dom.closest("[inert]") === null,
-      mode: () => (useSettingsStore.getState().notesSpellcheck ? "spelling" : null),
+      mode: notesProofreadingMode,
       locale: this.locale,
       publish: (issue) => (issue ? setOpen({ owner: this, issue }) : closeFor(this)),
       protect: plainTextTags,
@@ -94,15 +112,21 @@ export function NoteProofreadingPopover({
     else resumeVisualProofreading(editor);
   }, [editor, inert, proofreading]);
 
-  useEffect(
-    () =>
-      useSettingsStore.subscribe((state, previous) => {
-        if (state.notesSpellcheck !== previous.notesSpellcheck && !editor.isDestroyed) {
-          refreshVisualProofreading(editor);
-        }
-      }),
-    [editor],
-  );
+  useEffect(() => {
+    const refresh = () => {
+      if (!editor.isDestroyed) refreshVisualProofreading(editor);
+    };
+    const stopSettings = useSettingsStore.subscribe((state, previous) => {
+      if (PROOFREADING_SETTINGS.some((key) => state[key] !== previous[key])) refresh();
+    });
+    const stopWords = useDictionary.subscribe((state, previous) => {
+      if (state.global !== previous.global || state.ignored !== previous.ignored) refresh();
+    });
+    return () => {
+      stopSettings();
+      stopWords();
+    };
+  }, [editor]);
 
   const close = useCallback(() => closeFor(proofreading), [proofreading]);
   const navigate = useCallback(

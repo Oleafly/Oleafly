@@ -11,6 +11,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
+import { trackPointerDrag } from "./drag";
 import {
   BAR_PX,
   childrenWith,
@@ -26,6 +28,7 @@ import {
   type Rect,
 } from "./geometry";
 import { Maximize, Minimize, Plus, X } from "lucide-react";
+import { keptViews, promoteShown } from "./retention";
 import {
   activate,
   closeGroup,
@@ -73,6 +76,8 @@ export interface WorkspaceProps {
   onNewTab?: (groupId: string) => void;
   stageCandidate?: (group: GroupNode) => boolean;
   canDrop?: (id: string, target: MoveTarget) => boolean;
+  keepHidden?: number;
+  canRelease?: (id: string) => boolean;
   leading?: ReactNode;
   trailing?: ReactNode;
   chromeAttributes?: Readonly<Record<string, string>>;
@@ -101,7 +106,6 @@ interface Placement {
   labelledBy: string;
 }
 
-const DRAG_START_PX = 6;
 const BAR_WIDTH_PX = 2;
 
 type ElementRef = (element: HTMLElement | null) => void;
@@ -195,6 +199,112 @@ function dropKind(target: MoveTarget): string {
   return "stackId" in target ? "stack" : target.zone;
 }
 
+function layoutStructure(layout: WorkspaceLayout): string {
+  const walk = (node: LayoutNode): unknown => {
+    if (node.kind === "split") return [node.id, node.direction, node.children.map(walk)];
+    const holder = node.active === null ? null : stackOf(layout, node.active);
+    const sections = holder && holder.sections.length > 1 ? holder.sections.map((id) => [id, holder.collapsed.includes(id)]) : null;
+    return [node.id, node.hidden === true, sections];
+  };
+  return JSON.stringify([layout.maximized, walk(layout.root)]);
+}
+
+function hiddenViewClass(): string {
+  const supported = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("content-visibility", "hidden");
+  return supported ? "flex invisible [content-visibility:hidden]" : "hidden";
+}
+
+interface SectionProbe {
+  box: Rect;
+  headers: Rect[];
+}
+
+interface StackProbe {
+  stackId: string;
+  count: number;
+  box: Rect;
+  sections: SectionProbe[] | null;
+}
+
+interface StripProbe {
+  groupId: string;
+  box: Rect;
+  tabs: Rect[];
+}
+
+interface DropProbes {
+  origin: DOMRect;
+  stacks: StackProbe[];
+  strips: StripProbe[];
+  groups: { groupId: string; box: Rect }[];
+}
+
+function stackDrop(probe: StackProbe, px: number, py: number): Found | null {
+  const { box, stackId, count } = probe;
+  if (!contains(box, px, py)) return null;
+  if (probe.sections === null) {
+    const before = py - box.top <= GAP_BAND_PX;
+    if (!before && box.top + box.height - py > GAP_BAND_PX) return null;
+    const edge = before ? box.top : box.top + box.height;
+    return {
+      target: { stackId, index: before ? 0 : count },
+      indicator: { left: box.left, top: clamp(edge - BAR_WIDTH_PX / 2, box.top, box.top + box.height - BAR_WIDTH_PX), width: box.width, height: BAR_WIDTH_PX },
+      bar: true,
+    };
+  }
+  const sections = probe.sections;
+  const edges = [...sections.map((section) => section.box.top), Math.max(...sections.map((section) => section.box.top + section.box.height))];
+  let gap: number | null = null;
+  sections.forEach((section, index) => {
+    for (const head of section.headers) {
+      if (gap === null && contains(head, px, py)) gap = py < head.top + head.height / 2 ? index : index + 1;
+    }
+  });
+  if (gap === null) {
+    let best = GAP_BAND_PX;
+    edges.forEach((edge, index) => {
+      const distance = Math.abs(py - edge);
+      if (distance <= best) {
+        best = distance;
+        gap = index;
+      }
+    });
+  }
+  if (gap === null) return null;
+  return {
+    target: { stackId, index: gap },
+    indicator: { left: box.left, top: clamp(edges[gap] - BAR_WIDTH_PX / 2, box.top, box.top + box.height - BAR_WIDTH_PX), width: box.width, height: BAR_WIDTH_PX },
+    bar: true,
+  };
+}
+
+function findDrop(probes: DropProbes, x: number, y: number): Found | null {
+  const px = x - probes.origin.left;
+  const py = y - probes.origin.top;
+  for (const probe of probes.stacks) {
+    const found = stackDrop(probe, px, py);
+    if (found) return found;
+  }
+  for (const { groupId, box, tabs } of probes.strips) {
+    if (!contains(box, px, py)) continue;
+    const found = tabs.findIndex((tab) => px < tab.left + tab.width / 2);
+    const index = found < 0 ? tabs.length : found;
+    const lastTab = tabs.at(-1);
+    const at = index < tabs.length ? tabs[index].left : lastTab ? lastTab.left + lastTab.width : box.left;
+    return {
+      target: { groupId, zone: "center", index },
+      indicator: { left: clamp(at - BAR_WIDTH_PX / 2, box.left, box.left + box.width - BAR_WIDTH_PX), top: box.top, width: BAR_WIDTH_PX, height: box.height },
+      bar: true,
+    };
+  }
+  for (const { groupId, box } of probes.groups) {
+    if (!contains(box, px, py)) continue;
+    const zone = zoneAt(box, px, py);
+    return { target: { groupId, zone }, indicator: zoneRect(box, zone), bar: false };
+  }
+  return null;
+}
+
 const BAR_BUTTON =
   "flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent";
 
@@ -203,6 +313,7 @@ interface ViewHostProps {
   view: ViewState;
   rect: Rect | undefined;
   visible: boolean;
+  mounted: boolean;
   interactive: boolean;
   panelId: string;
   role: "tabpanel" | "region";
@@ -216,6 +327,7 @@ const ViewHost = memo(function ViewHost({
   view,
   rect,
   visible,
+  mounted,
   interactive,
   panelId,
   role,
@@ -225,10 +337,7 @@ const ViewHost = memo(function ViewHost({
 }: Readonly<ViewHostProps>) {
   const placed = rect !== undefined;
   const shown = visible && placed;
-  const [opened, setOpened] = useState(shown);
-  if (shown && !opened) setOpened(true);
-  const active = opened || shown;
-  const content = useMemo(() => (active ? render(id, view) : null), [active, render, id, view]);
+  const content = useMemo(() => (mounted ? render(id, view) : null), [mounted, render, id, view]);
   return (
     <div
       role={role}
@@ -242,8 +351,8 @@ const ViewHost = memo(function ViewHost({
       onPointerDownCapture={onFocus ? () => onFocus(id) : undefined}
       onFocusCapture={onFocus ? () => onFocus(id) : undefined}
       className={[
-        "absolute z-10 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-md bg-background",
-        shown ? "" : "invisible [content-visibility:hidden]",
+        "absolute z-10 min-h-0 min-w-0 flex-col overflow-hidden rounded-b-md bg-background",
+        shown ? "flex" : hiddenViewClass(),
         interactive ? "" : "pointer-events-none select-none",
       ].join(" ")}
       style={rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : undefined}
@@ -268,6 +377,8 @@ export function Workspace({
   onNewTab,
   stageCandidate,
   canDrop,
+  keepHidden = Number.POSITIVE_INFINITY,
+  canRelease,
   leading,
   trailing,
   chromeAttributes,
@@ -295,8 +406,8 @@ export function Workspace({
   const visibleRef = useRef(onVisibleViewsChange);
   visibleRef.current = onVisibleViewsChange;
   const reported = useRef<string[] | null>(null);
-  const suppressClick = useRef(false);
   const stopGesture = useRef<(() => void) | null>(null);
+  const [recent, setRecent] = useState<readonly string[]>([]);
 
   useEffect(() => () => stopGesture.current?.(), []);
 
@@ -345,26 +456,23 @@ export function Workspace({
     setRects((current) => (sameRects(current, next) ? current : next));
   }, [slots]);
 
-  const measured = useRef<WorkspaceLayout | null>(null);
+  const structure = useMemo(() => layoutStructure(layout), [layout]);
+  const measuredFor = useRef<unknown>(null);
   useLayoutEffect(() => {
-    if (measured.current === layout) return;
-    measured.current = layout;
+    const trigger = typeof ResizeObserver === "undefined" ? layout : structure;
+    if (measuredFor.current === trigger) return;
+    measuredFor.current = trigger;
     measure();
   });
 
   useEffect(() => {
     const root = rootRef.current;
     if (!root || typeof ResizeObserver === "undefined") return;
-    let frame = 0;
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
-    });
+    const observer = new ResizeObserver(() => flushSync(measure));
     observer.observe(root);
     for (const element of slots.elements.values()) observer.observe(element);
     observerRef.current = observer;
     return () => {
-      cancelAnimationFrame(frame);
       observer.disconnect();
       observerRef.current = null;
     };
@@ -372,12 +480,6 @@ export function Workspace({
 
   const change = useCallback((next: WorkspaceLayout) => {
     if (!sameLayout(next, layoutRef.current)) changeRef.current(next);
-  }, []);
-
-  const consumeClick = useCallback(() => {
-    if (!suppressClick.current) return false;
-    suppressClick.current = false;
-    return true;
   }, []);
 
   const select = useCallback(
@@ -393,155 +495,70 @@ export function Workspace({
 
   const close = useCallback((id: string) => change(closeView(layoutRef.current, id)), [change]);
 
-  const stackTargetAt = useCallback(
-    (origin: DOMRect, px: number, py: number): Found | null => {
-      const current = layoutRef.current;
-      for (const owner of groupsOf(current.root)) {
-        if (owner.hidden === true || owner.active === null) continue;
-        const stackId = owner.active;
-        const holder = stackOf(current, stackId);
-        if (!holder) continue;
-        const element = stackElements.elements.get(stackId);
-        if (holder.sections.length === 1 || !element) {
-          const slot = slots.elements.get(groupKey(owner.id));
-          if (!slot?.isConnected) continue;
-          const box = relativeRect(slot, origin);
-          if (!contains(box, px, py)) continue;
-          const before = py - box.top <= GAP_BAND_PX;
-          if (!before && box.top + box.height - py > GAP_BAND_PX) continue;
-          const edge = before ? box.top : box.top + box.height;
-          return {
-            target: { stackId, index: before ? 0 : holder.sections.length },
-            indicator: { left: box.left, top: clamp(edge - BAR_WIDTH_PX / 2, box.top, box.top + box.height - BAR_WIDTH_PX), width: box.width, height: BAR_WIDTH_PX },
-            bar: true,
-          };
-        }
-        const box = relativeRect(element, origin);
-        if (!contains(box, px, py)) continue;
-        const sections = childrenWith(element, "data-section").map((section) => ({
+  const captureProbes = useCallback((): DropProbes | null => {
+    const root = rootRef.current;
+    if (!root) return null;
+    const origin = root.getBoundingClientRect();
+    const current = layoutRef.current;
+    const stacks: StackProbe[] = [];
+    for (const owner of groupsOf(current.root)) {
+      if (owner.hidden === true || owner.active === null) continue;
+      const stackId = owner.active;
+      const holder = stackOf(current, stackId);
+      if (!holder) continue;
+      const element = stackElements.elements.get(stackId);
+      if (holder.sections.length === 1 || !element) {
+        const slot = slots.elements.get(groupKey(owner.id));
+        if (slot?.isConnected) stacks.push({ stackId, count: holder.sections.length, box: relativeRect(slot, origin), sections: null });
+        continue;
+      }
+      stacks.push({
+        stackId,
+        count: holder.sections.length,
+        box: relativeRect(element, origin),
+        sections: childrenWith(element, "data-section").map((section) => ({
           box: relativeRect(section, origin),
           headers: childrenWith(section, "data-section-header").map((head) => relativeRect(head, origin)),
-        }));
-        const edges = [...sections.map((section) => section.box.top), Math.max(...sections.map((section) => section.box.top + section.box.height))];
-        let gap: number | null = null;
-        sections.forEach((section, index) => {
-          for (const head of section.headers) {
-            if (gap === null && contains(head, px, py)) gap = py < head.top + head.height / 2 ? index : index + 1;
-          }
-        });
-        if (gap === null) {
-          let best = GAP_BAND_PX;
-          edges.forEach((edge, index) => {
-            const distance = Math.abs(py - edge);
-            if (distance <= best) {
-              best = distance;
-              gap = index;
-            }
-          });
-        }
-        if (gap === null) continue;
-        return {
-          target: { stackId, index: gap },
-          indicator: {
-            left: box.left,
-            top: clamp(edges[gap] - BAR_WIDTH_PX / 2, box.top, box.top + box.height - BAR_WIDTH_PX),
-            width: box.width,
-            height: BAR_WIDTH_PX,
-          },
-          bar: true,
-        };
-      }
-      return null;
-    },
-    [slots, stackElements],
-  );
-
-  const targetAt = useCallback(
-    (x: number, y: number): Found | null => {
-      const root = rootRef.current;
-      if (!root) return null;
-      const origin = root.getBoundingClientRect();
-      const px = x - origin.left;
-      const py = y - origin.top;
-      const inStack = stackTargetAt(origin, px, py);
-      if (inStack) return inStack;
-      for (const [groupId, strip] of strips.elements) {
-        const rect = relativeRect(strip, origin);
-        if (!contains(rect, px, py)) continue;
-        const boxes = [...strip.querySelectorAll<HTMLElement>("[data-tab-view]")].map((tab) => relativeRect(tab, origin));
-        const found = boxes.findIndex((box) => px < box.left + box.width / 2);
-        const index = found < 0 ? boxes.length : found;
-        const lastBox = boxes.at(-1);
-        const at = index < boxes.length ? boxes[index].left : lastBox ? lastBox.left + lastBox.width : rect.left;
-        return {
-          target: { groupId, zone: "center", index },
-          indicator: { left: clamp(at - BAR_WIDTH_PX / 2, rect.left, rect.left + rect.width - BAR_WIDTH_PX), top: rect.top, width: BAR_WIDTH_PX, height: rect.height },
-          bar: true,
-        };
-      }
-      for (const [key, rect] of Object.entries(rects)) {
-        if (!key.startsWith("g:") || !contains(rect, px, py)) continue;
-        const zone = zoneAt(rect, px, py);
-        return { target: { groupId: key.slice(2), zone }, indicator: zoneRect(rect, zone), bar: false };
-      }
-      return null;
-    },
-    [rects, stackTargetAt, strips],
-  );
+        })),
+      });
+    }
+    const stripProbes = [...strips.elements].map(([groupId, strip]) => ({
+      groupId,
+      box: relativeRect(strip, origin),
+      tabs: [...strip.querySelectorAll<HTMLElement>("[data-tab-view]")].map((tab) => relativeRect(tab, origin)),
+    }));
+    const groups: DropProbes["groups"] = [];
+    for (const [key, element] of slots.elements) {
+      if (key.startsWith("g:") && element.isConnected) groups.push({ groupId: key.slice(2), box: relativeRect(element, origin) });
+    }
+    return { origin, stacks, strips: stripProbes, groups };
+  }, [slots, stackElements, strips]);
 
   const startDrag = useCallback(
     (event: ReactPointerEvent<HTMLElement>, id: string, title: string) => {
       if (event.button !== 0) return;
-      suppressClick.current = false;
       stopGesture.current?.();
-      const startX = event.clientX;
-      const startY = event.clientY;
-      let active = false;
-      const move = (moveEvent: PointerEvent) => {
-        if (!active && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < DRAG_START_PX) return;
-        active = true;
-        const found = targetAt(moveEvent.clientX, moveEvent.clientY);
-        const current = layoutRef.current;
-        const allowed = found && (!canDrop || canDrop(id, found.target)) && moveView(current, id, found.target) !== current ? found : null;
-        setDrag({ id, title, x: moveEvent.clientX, y: moveEvent.clientY, found: allowed });
-      };
-      const finish = (commit: boolean) => {
-        stopGesture.current = null;
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-        window.removeEventListener("pointercancel", cancel);
-        window.removeEventListener("keydown", escape, true);
-        window.removeEventListener("blur", cancel);
-        setDrag((current) => {
-          if (commit && current?.found) {
-            const next = moveView(layoutRef.current, id, current.found.target);
-            queueMicrotask(() => change(next));
-          }
-          return null;
-        });
-        if (active) {
-          suppressClick.current = true;
-          setTimeout(() => {
-            suppressClick.current = false;
-          }, 0);
-        }
-      };
-      const up = () => finish(true);
-      const cancel = () => finish(false);
-      const escape = (keyEvent: KeyboardEvent) => {
-        if (keyEvent.key !== "Escape") return;
-        keyEvent.preventDefault();
-        keyEvent.stopPropagation();
-        finish(false);
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
-      window.addEventListener("pointercancel", cancel);
-      window.addEventListener("keydown", escape, true);
-      window.addEventListener("blur", cancel);
-      stopGesture.current = cancel;
+      let probes: DropProbes | null = null;
+      let landing: Found | null = null;
+      stopGesture.current = trackPointerDrag(event, {
+        perFrame: true,
+        start() {
+          probes = captureProbes();
+        },
+        move(point) {
+          const found = probes ? findDrop(probes, point.clientX, point.clientY) : null;
+          const current = layoutRef.current;
+          landing = found && (!canDrop || canDrop(id, found.target)) && moveView(current, id, found.target) !== current ? found : null;
+          setDrag({ id, title, x: point.clientX, y: point.clientY, found: landing });
+        },
+        end(dropped) {
+          stopGesture.current = null;
+          setDrag(null);
+          if (dropped && landing) change(moveView(layoutRef.current, id, landing.target));
+        },
+      });
     },
-    [canDrop, change, targetAt],
+    [canDrop, captureProbes, change],
   );
 
   const tabKeyDown = useCallback(
@@ -670,32 +687,30 @@ export function Workspace({
       closeLabel: labels.closeTab(info.title),
       renderTooltip,
       onPointerDown: (event: ReactPointerEvent<HTMLElement>) => startDrag(event, id, info.title),
-      onClick: () => {
-        if (consumeClick()) return;
-        select(id);
-      },
+      onClick: () => select(id),
       onClose: () => close(id),
       onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => tabKeyDown(event, group, id, closable),
     };
     return icons ? <IconTab key={id} {...props} /> : <Tab key={id} {...props} />;
   };
 
+  const hint = (label: string, button: ReactNode): ReactNode => (renderTooltip ? renderTooltip(label, button, { side: "bottom" }) : button);
+
   const maximizeButton = (group: GroupNode): ReactNode => {
     const maximized = layout.maximized === group.id;
     const label = maximized ? labels.restore : labels.maximize;
-    const button = (
+    return hint(
+      label,
       <button
         type="button"
         aria-label={label}
         aria-pressed={maximized}
-        title={renderTooltip ? undefined : label}
         className={BAR_BUTTON}
         onClick={() => change(toggleMaximize(layoutRef.current, group.id))}
       >
         {maximized ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-      </button>
+      </button>,
     );
-    return renderTooltip ? renderTooltip(label, button, { side: "bottom" }) : button;
   };
 
   const renderGroup = (group: GroupNode): ReactNode => {
@@ -742,31 +757,43 @@ export function Workspace({
             </div>
             {onNewTab && (
               <div {...chrome} className={`flex h-full shrink-0 items-center pl-0.5 ${icons ? "" : "pt-1"}`}>
-                <button type="button" aria-label={labels.newTab} className={BAR_BUTTON} onClick={() => onNewTab(group.id)}>
-                  <Plus className="size-3.5" />
-                </button>
+                {hint(
+                  labels.newTab,
+                  <button type="button" aria-label={labels.newTab} className={BAR_BUTTON} onClick={() => onNewTab(group.id)}>
+                    <Plus className="size-3.5" />
+                  </button>,
+                )}
               </div>
             )}
           </div>
-          <div className="flex h-full shrink-0 items-center gap-0.5 pl-1">
-            {barActions !== undefined && (
-              <div data-view-actions={group.active ?? undefined} className="flex shrink-0 items-center gap-0.5">
-                {barActions}
+          <div {...chrome} className="flex h-full min-w-0 items-center gap-0.5 pl-1">
+            <div {...chrome} data-group-actions={group.id} className="flex h-full min-w-0 items-center gap-0.5 overflow-hidden">
+              {barActions !== undefined && (
+                <div data-view-actions={group.active ?? undefined} className="flex shrink-0 items-center gap-0.5">
+                  {barActions}
+                </div>
+              )}
+              {groupActions?.(group)}
+              {groupCount > 1 && maximizeButton(group)}
+              {groupCount > 1 &&
+                group.views.length === 0 &&
+                hint(
+                  labels.closePanel,
+                  <button
+                    type="button"
+                    aria-label={labels.closePanel}
+                    className={BAR_BUTTON}
+                    onClick={() => change(closeGroup(layoutRef.current, group.id, stageCandidate))}
+                  >
+                    <X className="size-3.5" />
+                  </button>,
+                )}
+            </div>
+            {group.id === trailingGroup && trailing !== undefined && trailing !== null && (
+              <div {...chrome} data-trailing className="flex h-full shrink-0 items-center gap-0.5">
+                {trailing}
               </div>
             )}
-            {groupActions?.(group)}
-            {groupCount > 1 && maximizeButton(group)}
-            {groupCount > 1 && group.views.length === 0 && (
-              <button
-                type="button"
-                aria-label={labels.closePanel}
-                className={BAR_BUTTON}
-                onClick={() => change(closeGroup(layoutRef.current, group.id, stageCandidate))}
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-            {group.id === trailingGroup && trailing}
           </div>
         </div>
         <div ref={slots.ref(groupKey(group.id))} className="relative min-h-0 flex-1" data-slot={group.id}>
@@ -784,7 +811,6 @@ export function Workspace({
               tabId={tabId}
               stackRef={stackElements.ref(group.active)}
               slotRef={(viewId) => slots.ref(sectionKey(viewId))}
-              consumeClick={consumeClick}
               onToggle={(viewId) => change(toggleSection(layoutRef.current, group.active ?? "", viewId))}
               onMove={(viewId, step) => moveSection(group.active ?? "", viewId, step)}
               onStartDrag={startDrag}
@@ -878,6 +904,16 @@ export function Workspace({
     }
   }
 
+  const hosts = Object.entries(layout.views).map(([id, view]) => {
+    const place = placements.get(id);
+    const rect = place ? (rects[place.slot] ?? known.current[place.slot] ?? rects[place.fallback] ?? known.current[place.fallback]) : undefined;
+    return { id, view, place, rect, shown: place?.shown === true && rect !== undefined };
+  });
+  const shownIds = hosts.flatMap((host) => (host.shown ? [host.id] : []));
+  const promoted = promoteShown(recent, shownIds, layout.views);
+  if (promoted !== recent) setRecent(promoted);
+  const mounted = keptViews(promoted, new Set(shownIds), keepHidden, canRelease);
+
   return (
     <div
       {...chromeAttributes}
@@ -886,25 +922,22 @@ export function Workspace({
       className={`relative h-full w-full min-h-0 min-w-0 overflow-hidden bg-muted/30 p-1 ${className ?? ""}`}
     >
       {nodeShown(shownRoot) && renderNode(shownRoot)}
-      {Object.entries(layout.views).map(([id, view]) => {
-        const place = placements.get(id);
-        const rect = place ? (rects[place.slot] ?? known.current[place.slot] ?? rects[place.fallback] ?? known.current[place.fallback]) : undefined;
-        return (
-          <ViewHost
-            key={id}
-            id={id}
-            view={view}
-            rect={rect}
-            visible={place?.shown === true}
-            interactive={interactive}
-            panelId={panelId(id)}
-            role={place?.role ?? "tabpanel"}
-            labelledBy={place?.labelledBy ?? tabId(id)}
-            render={renderView}
-            onFocus={onFocusView}
-          />
-        );
-      })}
+      {hosts.map(({ id, view, place, rect }) => (
+        <ViewHost
+          key={id}
+          id={id}
+          view={view}
+          rect={rect}
+          visible={place?.shown === true}
+          mounted={mounted.has(id)}
+          interactive={interactive}
+          panelId={panelId(id)}
+          role={place?.role ?? "tabpanel"}
+          labelledBy={place?.labelledBy ?? tabId(id)}
+          render={renderView}
+          onFocus={onFocusView}
+        />
+      ))}
       {drag?.found && (
         <div
           aria-hidden

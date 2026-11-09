@@ -1,7 +1,16 @@
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { scheduleIdle } from "@/lib/idle";
 import { currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import {
+  isMermaidRemoteContentError,
+  MERMAID_LABEL_PURIFY,
+  MERMAID_SECURE_KEYS,
+  MermaidRemoteContentError,
+  secureDrawing,
+  sourceLoadsRemoteContent,
+} from "./mermaid-remote";
 import { RenderCache } from "./render-cache";
 
 const MERMAID_MAX_TEXT_SIZE = 50_000;
@@ -9,18 +18,19 @@ const MAX_CACHED_DIAGRAMS = 64;
 const MAX_CACHED_DIAGRAM_CHARS = 6_000_000;
 const VISIBILITY_MARGIN = "240px 0px";
 const IDLE_FALLBACK_MS = 48;
+const IDLE_TIMEOUT_MS = 500;
 
 type DiagramState =
   | { status: "loading" }
   | { status: "ready"; svg: Element; theme: Theme }
-  | { status: "error" };
+  | { status: "error"; blocked: boolean };
 
 let renderQueue = Promise.resolve();
 let renderSequence = 0;
 const pendingRenders = new Map<string, Promise<Element>>();
 const diagramCache = new RenderCache<Element>(MAX_CACHED_DIAGRAMS, MAX_CACHED_DIAGRAM_CHARS);
 
-const failedDiagrams = new Set<string>();
+const failedDiagrams = new Map<string, boolean>();
 
 function cacheKey(source: string, theme: Theme) {
   return `${theme} ${source}`;
@@ -33,15 +43,6 @@ function hashSource(source: string) {
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0).toString(36);
-}
-
-function scheduleIdle(callback: () => void): () => void {
-  if (typeof window.requestIdleCallback === "function") {
-    const handle = window.requestIdleCallback(callback, { timeout: 500 });
-    return () => window.cancelIdleCallback(handle);
-  }
-  const handle = window.setTimeout(callback, IDLE_FALLBACK_MS);
-  return () => window.clearTimeout(handle);
 }
 
 export function cachedDiagram(source: string, theme: Theme): Element | undefined {
@@ -59,12 +60,15 @@ export function renderDiagram(source: string, theme: Theme): Promise<Element> {
   if (cached) return Promise.resolve(cached);
   const pending = pendingRenders.get(key);
   if (pending) return pending;
+  if (sourceLoadsRemoteContent(source)) return Promise.reject(new MermaidRemoteContentError());
 
   const id = `mermaid-${hashSource(source)}-${(++renderSequence).toString(36)}`;
   const result = renderQueue.then(async () => {
     const { default: mermaid } = await import("mermaid");
     mermaid.initialize({
+      dompurifyConfig: MERMAID_LABEL_PURIFY,
       maxTextSize: MERMAID_MAX_TEXT_SIZE,
+      secure: MERMAID_SECURE_KEYS,
       securityLevel: "strict",
       startOnLoad: false,
       suppressErrorRendering: true,
@@ -80,6 +84,7 @@ export function renderDiagram(source: string, theme: Theme): Promise<Element> {
     ) {
       throw new Error("Invalid Mermaid SVG");
     }
+    secureDrawing(svg);
     diagramCache.set(key, svg, rendered.svg.length);
     return svg;
   });
@@ -165,8 +170,9 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
         return;
       }
       const key = cacheKey(source, theme);
-      if (failedDiagrams.has(key)) {
-        if (mountedTheme.current === null) setState({ status: "error" });
+      const blocked = failedDiagrams.get(key);
+      if (blocked !== undefined) {
+        if (mountedTheme.current === null) setState({ status: "error", blocked });
         return;
       }
       if (inFlight === key) return;
@@ -184,16 +190,17 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
             }
             adopt(svg, theme);
           },
-          () => {
-            failedDiagrams.add(key);
+          (error: unknown) => {
+            const remote = isMermaidRemoteContentError(error);
+            failedDiagrams.set(key, remote);
             if (cancelled) return;
             inFlight = null;
-            if (mountedTheme.current === null) setState({ status: "error" });
+            if (mountedTheme.current === null) setState({ status: "error", blocked: remote });
           },
         );
       };
       cancelIdle?.();
-      if (deferred) cancelIdle = scheduleIdle(run);
+      if (deferred) cancelIdle = scheduleIdle(run, { timeout: IDLE_TIMEOUT_MS, fallbackMs: IDLE_FALLBACK_MS });
       else run();
     };
 
@@ -251,10 +258,10 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
         <div>
           <output
             aria-live="polite"
-            aria-label={t(($) => $.core.mermaid.renderFailed)}
+            aria-label={state.blocked ? t(($) => $.core.mermaid.remoteBlocked) : t(($) => $.core.mermaid.renderFailed)}
             className="block px-2.5 pt-2.5 text-xs text-destructive"
           >
-            {t(($) => $.core.mermaid.renderFailed)}
+            {state.blocked ? t(($) => $.core.mermaid.remoteBlocked) : t(($) => $.core.mermaid.renderFailed)}
           </output>
           <pre data-select-all-scope className="select-text overflow-x-auto p-2.5 text-[0.85em]">
             <code className="font-mono language-mermaid">{source}</code>

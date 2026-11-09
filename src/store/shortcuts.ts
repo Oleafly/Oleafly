@@ -25,7 +25,8 @@ export type ShortcutId =
   | "notesTodayNote"
   | "notesGraph"
   | "notesLocalGraph"
-  | "notesOutline";
+  | "notesOutline"
+  | "notesAskAgent";
 
 export interface ShortcutBinding {
   key: string;
@@ -45,6 +46,10 @@ export interface ShortcutDefinition {
 
 const ZEN_MAC_BINDING: ShortcutBinding = { key: "f", mod: true, ctrl: true, shift: true };
 const ZEN_BINDING: ShortcutBinding = { key: "F11", shift: true };
+const LOCAL_GRAPH_MAC_BINDING: ShortcutBinding = { key: "g", mod: true, alt: true };
+const LOCAL_GRAPH_BINDING: ShortcutBinding = { key: "m", mod: true, shift: true };
+const OUTLINE_MAC_BINDING: ShortcutBinding = { key: "o", mod: true, alt: true };
+const OUTLINE_BINDING: ShortcutBinding = { key: "k", mod: true, shift: true };
 const FUNCTION_KEY = /^F(?:[1-9]|1\d|2[0-4])$/;
 
 function onApplePlatform(): boolean {
@@ -143,12 +148,21 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   },
   {
     id: "notesLocalGraph",
-    defaultBinding: { key: "g", mod: true, alt: true },
+    get defaultBinding() {
+      return onApplePlatform() ? LOCAL_GRAPH_MAC_BINDING : LOCAL_GRAPH_BINDING;
+    },
     scope: "notes",
   },
   {
     id: "notesOutline",
-    defaultBinding: { key: "o", mod: true, alt: true },
+    get defaultBinding() {
+      return onApplePlatform() ? OUTLINE_MAC_BINDING : OUTLINE_BINDING;
+    },
+    scope: "notes",
+  },
+  {
+    id: "notesAskAgent",
+    defaultBinding: { key: "j", mod: true },
     scope: "notes",
   },
 ];
@@ -226,6 +240,7 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
 
 const PHYSICAL_KEY = /^(?:Key([A-Z])|Digit(\d))$/;
 const PRINTABLE_ASCII = /^[\x20-\x7e]$/;
+const NON_LATIN_CHARACTER = /^(?![\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}])[\p{L}\p{Nd}]$/u;
 
 function physicalKey(event: KeyboardEvent): string | null {
   const match = PHYSICAL_KEY.exec(event.code ?? "");
@@ -235,6 +250,10 @@ function physicalKey(event: KeyboardEvent): string | null {
 function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
   if (!apple || !event.altKey || event.key.length !== 1 || PRINTABLE_ASCII.test(event.key)) return null;
   return physicalKey(event);
+}
+
+function nonLatinLayoutKey(event: KeyboardEvent): string | null {
+  return NON_LATIN_CHARACTER.test(event.key ?? "") ? physicalKey(event) : null;
 }
 
 function isBackquoteBinding(key: string): boolean {
@@ -250,7 +269,10 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
   const key = binding.key.toLowerCase();
   const physicalBackquote = isBackquoteBinding(key) && event.code === "Backquote";
   return (
-    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key || physicalBackquote) &&
+    (event.key.toLowerCase() === key ||
+      optionLevelKey(event, apple) === key ||
+      nonLatinLayoutKey(event) === key ||
+      physicalBackquote) &&
     event.ctrlKey === ctrl &&
     event.metaKey === meta &&
     event.shiftKey === Boolean(binding.shift) &&
@@ -260,8 +282,8 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
 
 function bindingKey(event: KeyboardEvent, apple: boolean): string {
   if (event.code === "Backquote") return event.shiftKey ? "~" : "`";
-  const optionLevel = optionLevelKey(event, apple);
-  if (optionLevel) return optionLevel;
+  const physical = optionLevelKey(event, apple) ?? nonLatinLayoutKey(event);
+  if (physical) return physical;
   return event.key.length === 1 ? event.key.toLowerCase() : event.key;
 }
 

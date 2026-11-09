@@ -127,7 +127,7 @@ describe("pasting and dropping images into a note", () => {
     expect(images(editor)[0]).toBe(String(path).slice("notes/".length));
   });
 
-  it("swallows other file drops instead of typing a file address", () => {
+  it("keeps other file drops out of the note and says only images can be dropped", () => {
     const editor = build();
     const pdf = new File(["%PDF"], "paper.pdf", { type: "application/pdf" });
     const { handled, event } = drop(editor, transfer([pdf]));
@@ -135,7 +135,31 @@ describe("pasting and dropping images into a note", () => {
     expect(event.preventDefault).toHaveBeenCalled();
     expect(tauri.write).not.toHaveBeenCalled();
     expect(editor.getText()).toBe("Hello");
+    expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([enNotes.document.onlyImages]);
+    drop(editor, transfer([pdf]));
+    expect(useToastStore.getState().toasts).toHaveLength(1);
     expect(drop(editor, transfer([], ["text/plain"])).handled).toBe(false);
+  });
+
+  it("never saves a dropped or pasted PDF as a broken note image", async () => {
+    const editor = build();
+    const pdf = new File(["%PDF"], "paper.pdf", { type: "application/pdf" });
+    drop(editor, transfer([pdf]));
+    expect(paste(editor, transfer([pdf])).handled).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(tauri.write).not.toHaveBeenCalled();
+    expect(images(editor)).toEqual([]);
+  });
+
+  it("says only images can be dropped when a Linux file drop holds none", async () => {
+    native.drop.mockReturnValue(true);
+    native.images.mockResolvedValue([]);
+    const editor = build();
+    expect(drop(editor, transfer([], ["text/uri-list"])).handled).toBe(true);
+    await vi.waitFor(() =>
+      expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([enNotes.document.onlyImages]),
+    );
+    expect(tauri.write).not.toHaveBeenCalled();
   });
 
   it("reads images dropped from the Linux file manager through the app", async () => {

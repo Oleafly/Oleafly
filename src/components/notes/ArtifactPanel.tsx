@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Spinner } from "@/components/ui/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
 import { formatRelativeTimeFrom } from "@/lib/intl";
@@ -86,30 +87,28 @@ function PreviewBody({ preview, title }: Readonly<{ preview: ArtifactPreview; ti
     const [head = { id: "head", cells: [] }, ...body] = keyedRows(preview.rows);
     return (
       <div className="space-y-1">
-        <div className="max-h-72 overflow-auto rounded-md border">
-          <table className="w-full text-left text-xs tabular-nums">
-            <thead className="bg-muted/50">
-              <tr>
-                {head.cells.map((cell) => (
-                  <th key={cell.id} scope="col" className="whitespace-nowrap px-2 py-1 font-medium">
-                    {cell.value}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {body.map((row) => (
-                <tr key={row.id} className="border-t">
-                  {row.cells.map((cell) => (
-                    <td key={cell.id} className="whitespace-nowrap px-2 py-1">
-                      {cell.value}
-                    </td>
-                  ))}
-                </tr>
+        <Table containerClassName="max-h-72 rounded-md border" className="text-left tabular-nums">
+          <TableHeader className="bg-muted text-foreground">
+            <TableRow className="hover:bg-transparent">
+              {head.cells.map((cell) => (
+                <TableHead key={cell.id} scope="col" className="h-auto px-2 py-1 text-xs normal-case tracking-normal">
+                  {cell.value}
+                </TableHead>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {body.map((row) => (
+              <TableRow key={row.id}>
+                {row.cells.map((cell) => (
+                  <TableCell key={cell.id} className="whitespace-nowrap px-2 py-1">
+                    {cell.value}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         {truncated(preview.truncated)}
       </div>
     );

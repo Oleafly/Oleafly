@@ -44,6 +44,15 @@ describe("useSectionOrder", () => {
     expect(JSON.parse(localStorage.getItem(KEY) ?? "null")).toEqual(["structure", "outline", "explorer"]);
   });
 
+  it("forgets the saved order once it is back to the default", () => {
+    const { result } = renderHook(() => useSectionOrder(KEY, IDS));
+    act(() => result.current[1](["outline", "ghost", "explorer", "structure"]));
+    expect(JSON.parse(localStorage.getItem(KEY) ?? "null")).toEqual(["outline", "explorer", "structure"]);
+    act(() => result.current[1](IDS));
+    expect(result.current[0]).toEqual(IDS);
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+
   it("ignores a saved value that is not a list of ids", () => {
     localStorage.setItem(KEY, JSON.stringify({ order: 1 }));
     expect(renderHook(() => useSectionOrder(KEY, IDS)).result.current[0]).toEqual(IDS);

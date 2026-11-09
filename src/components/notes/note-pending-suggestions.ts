@@ -11,7 +11,7 @@ export interface NoteEditorLink {
 const STORAGE_KEY = "oleafly.notes.pendingSuggestions";
 const MAX_STORED_CHARS = 1_000_000;
 
-const editors = new Map<string, NoteEditorLink>();
+const editors = new Map<string, NoteEditorLink[]>();
 let batches: Map<string, NoteEdit[][]> | null = null;
 
 function isEdit(value: unknown): value is NoteEdit {
@@ -53,14 +53,16 @@ function persist(): void {
 }
 
 export function registerNoteEditor(noteId: string, link: NoteEditorLink): () => void {
-  editors.set(noteId, link);
+  editors.set(noteId, [...(editors.get(noteId) ?? []).filter((open) => open !== link), link]);
   return () => {
-    if (editors.get(noteId) === link) editors.delete(noteId);
+    const left = (editors.get(noteId) ?? []).filter((open) => open !== link);
+    if (left.length > 0) editors.set(noteId, left);
+    else editors.delete(noteId);
   };
 }
 
 export function noteEditorLink(noteId: string): NoteEditorLink | null {
-  return editors.get(noteId) ?? null;
+  return editors.get(noteId)?.at(-1) ?? null;
 }
 
 export function pendingBatches(noteId: string): readonly (readonly NoteEdit[])[] {
@@ -88,7 +90,7 @@ export function withPendingEdits(text: string, pending: readonly (readonly NoteE
   return pending.reduce((current, batch) => applyNoteEdits(current, batch).text, text);
 }
 
-export function resetPendingSuggestions(): void {
+export function resetPendingSuggestionsForTest(): void {
   batches = null;
   editors.clear();
 }

@@ -1,19 +1,104 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { logError } from "@/lib/log";
 import { noteHeads, noteLinks } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { NOTE_KIND } from "./note-file";
 import type { NotesData } from "./notes-data";
-import { createNotesService, noteHeadOf, noteItems, relatedProjectChoices } from "./notes-service";
+import { createNotesService, noteHeadOf, noteItems, type NotesServiceDeps, relatedProjectChoices } from "./notes-service";
 
 const NONE: readonly never[] = [];
 
-let shared: { signature: string; heads: ReadonlyMap<string, string> } | null = null;
+const NO_HEADS: ReadonlyMap<string, string> = new Map();
 
-export function forgetNoteTabHeads(): void {
-  shared = null;
+let heads = NO_HEADS;
+let loadedSignature: string | null = null;
+let loading: { signature: string; done: Promise<void> } | null = null;
+let vaultRevision = 0;
+let vaultSignature: string | null = null;
+let openTabs = 0;
+const watchers = new Set<() => void>();
+const knowledge = new Map<string, string>();
+
+export function resetNoteTabHeadsForTest(): void {
+  heads = NO_HEADS;
+  loadedSignature = null;
+  loading = null;
+  vaultRevision += 1;
+  vaultSignature = null;
+  knowledge.clear();
+}
+
+function notify(): void {
+  for (const wake of [...watchers]) wake();
+}
+
+function watch(wake: () => void): () => void {
+  watchers.add(wake);
+  return () => {
+    watchers.delete(wake);
+  };
+}
+
+const readHeads = () => heads;
+const readLoaded = () => loadedSignature !== null;
+const readVault = () => vaultRevision;
+
+function bumpVault(): void {
+  vaultRevision += 1;
+  notify();
+}
+
+function loadHeads(signature: string): Promise<void> {
+  if (loading?.signature === signature) return loading.done;
+  const done = noteHeads()
+    .then((list) => {
+      heads = new Map(list.map((head) => [head.id, head.head]));
+      loadedSignature = signature;
+      notify();
+    })
+    .finally(() => {
+      if (loading?.done === done) loading = null;
+    });
+  loading = { signature, done };
+  return done;
+}
+
+function applyHead(id: string, head: string): void {
+  if (heads.get(id) === head) return;
+  heads = new Map(heads).set(id, head);
+  notify();
+}
+
+function savedHead(id: string, head: string, changed: boolean, key: string): void {
+  applyHead(id, head);
+  const known = knowledge.get(id);
+  knowledge.set(id, key);
+  if (changed && known !== key) bumpVault();
+}
+
+function noteTextChanged(id: string, text: string): void {
+  applyHead(id, noteHeadOf(text));
+}
+
+const tabNoteLinks = () => noteLinks();
+
+function useVaultRevision(signature: string): number {
+  useState(() => {
+    if (openTabs === 0) vaultRevision += 1;
+  });
+  useEffect(() => {
+    openTabs += 1;
+    return () => {
+      openTabs -= 1;
+    };
+  }, []);
+  useEffect(() => {
+    if (vaultSignature !== null && vaultSignature !== signature) bumpVault();
+    vaultSignature = signature;
+  }, [signature]);
+  return useSyncExternalStore(watch, readVault);
 }
 
 export function noteListSignature(projects: readonly ProjectInfo[]): string {
@@ -23,15 +108,9 @@ export function noteListSignature(projects: readonly ProjectInfo[]): string {
     .join("\u0001");
 }
 
-function useChangeCount(value: unknown): number {
-  const seen = useRef({ value, count: 0 });
-  if (seen.current.value !== value) seen.current = { value, count: seen.current.count + 1 };
-  return seen.current.count;
-}
-
 const noHeads = () => undefined;
 
-export function useNotesService(refreshHeads: () => void = noHeads, setHead?: (id: string, head: string) => void) {
+export function useNotesService(refreshHeads: () => void = noHeads, setHead?: NotesServiceDeps["setHead"]) {
   const { t } = useTranslation(["notes"]);
   const projects = useFilesStore((state) => state.projects);
   const refreshProjects = useFilesStore((state) => state.refreshProjects);
@@ -74,44 +153,26 @@ export function useLibraryNotesData(): LibraryNotesData {
   const signature = useMemo(() => noteListSignature(projects), [projects]);
   const signatureRef = useRef(signature);
   signatureRef.current = signature;
-  const [heads, setHeads] = useState<ReadonlyMap<string, string>>(() => shared?.heads ?? new Map());
-  const [headsLoaded, setHeadsLoaded] = useState(shared !== null);
+  const shownHeads = useSyncExternalStore(watch, readHeads);
+  const loaded = useSyncExternalStore(watch, readLoaded);
+  const [failed, setFailed] = useState(false);
 
   const refreshHeads = useCallback(() => {
-    const asked = signatureRef.current;
-    noteHeads().then(
-      (list) => {
-        const next = new Map(list.map((head) => [head.id, head.head]));
-        shared = { signature: asked, heads: next };
-        setHeads(next);
-        setHeadsLoaded(true);
-      },
-      (error: unknown) => {
-        setHeadsLoaded(true);
-        void logError("read note heads for a note tab", error);
-      },
-    );
-  }, []);
-
-  const setHead = useCallback((id: string, head: string) => {
-    setHeads((current) => {
-      if (current.get(id) === head) return current;
-      const next = new Map(current).set(id, head);
-      if (shared) shared = { signature: shared.signature, heads: next };
-      return next;
+    loadHeads(signatureRef.current).catch((error: unknown) => {
+      setFailed(true);
+      void logError("read note heads for a note tab", error);
     });
   }, []);
-  const noteTextChanged = useCallback((id: string, text: string) => setHead(id, noteHeadOf(text)), [setHead]);
 
   useEffect(() => {
-    if (shared?.signature !== signature) refreshHeads();
+    if (loadedSignature !== signature) refreshHeads();
   }, [refreshHeads, signature]);
 
   const ungrouped = t(($) => $.notes.library.ungrouped);
-  const notes = useMemo(() => noteItems(projects, heads, ungrouped), [heads, projects, ungrouped]);
-  const revision = useChangeCount(notes);
+  const notes = useMemo(() => noteItems(projects, shownHeads, ungrouped), [projects, shownHeads, ungrouped]);
+  const revision = useVaultRevision(signature);
   const choices = useMemo(() => relatedProjectChoices(projects), [projects]);
-  const service = useNotesService(refreshHeads, setHead);
+  const service = useNotesService(refreshHeads, savedHead);
 
   const data = useMemo<NotesData>(
     () => ({
@@ -123,7 +184,7 @@ export function useLibraryNotesData(): LibraryNotesData {
       experiments: NONE,
       papers: NONE,
       projects: choices,
-      noteLinks,
+      noteLinks: tabNoteLinks,
       openProject: (projectId: string) => {
         useFilesStore
           .getState()
@@ -131,8 +192,8 @@ export function useLibraryNotesData(): LibraryNotesData {
           .catch((error: unknown) => logError("open a project from a note tab", error));
       },
     }),
-    [choices, noteTextChanged, notes, revision, service],
+    [choices, notes, revision, service],
   );
 
-  return { data, headsLoaded };
+  return { data, headsLoaded: loaded || failed };
 }

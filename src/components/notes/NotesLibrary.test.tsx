@@ -30,6 +30,7 @@ vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => env.fullscreen }))
 
 import type { ProjectInfo } from "@oleafly/backend-port";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
+import { useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { useToastStore } from "@/store/toast";
@@ -159,6 +160,10 @@ function rowTitles(): string[] {
     .filter((title): title is string => Boolean(title));
 }
 
+function chip(name: string): HTMLElement {
+  return screen.getByRole("button", { name });
+}
+
 function filtersToggle(): HTMLElement {
   return screen.getByRole("button", { name: copy.filters.title });
 }
@@ -278,9 +283,8 @@ describe("NotesLibrary", () => {
   it("shows the filters as chips with a dot in each kind's colour", async () => {
     renderLibrary();
     await openFilters(userEvent.setup());
-    const chip = (name: string) => screen.getByRole("tab", { name });
     for (const name of [copy.kind.all, copy.kind.note, copy.author.all, copy.author.you]) {
-      expect(chip(name)).toHaveClass("rounded-full", "border", "data-[state=active]:bg-primary/10", "data-[state=active]:text-primary");
+      expect(chip(name)).toHaveClass("rounded-full", "border", "aria-pressed:bg-primary/10", "aria-pressed:text-primary");
     }
     expect(chip(copy.kind.all).querySelector("[data-kind-dot]")).toBeNull();
     expect(chip(copy.kind.note).querySelector("[data-kind-dot]")).toHaveClass("bg-violet-500");
@@ -341,7 +345,7 @@ describe("NotesLibrary", () => {
   it("offers the note, figure, report and data filters", async () => {
     renderLibrary();
     await openFilters(userEvent.setup());
-    expect(screen.getAllByRole("tab").slice(0, 5).map((tab) => tab.textContent)).toEqual([
+    expect(within(screen.getByRole("group", { name: enNotes.vault.search.fields.kind })).getAllByRole("button").slice(0, 5).map((tab) => tab.textContent)).toEqual([
       copy.kind.all,
       copy.kind.note,
       copy.kind.figure,
@@ -354,21 +358,21 @@ describe("NotesLibrary", () => {
     const user = userEvent.setup();
     renderLibrary();
     await openFilters(user);
-    expect(screen.getByRole("tab", { name: copy.kind.all })).toHaveAttribute("aria-selected", "true");
+    expect(chip(copy.kind.all)).toHaveAttribute("aria-pressed", "true");
 
-    await user.click(screen.getByRole("tab", { name: copy.kind.note }));
+    await user.click(chip(copy.kind.note));
     expect(rowTitles()).toEqual(["Masking ablation", "Agent scratch", "Reading list"]);
 
-    await user.click(screen.getByRole("tab", { name: copy.kind.figure }));
+    await user.click(chip(copy.kind.figure));
     expect(rowTitles()).toEqual(["Loss curve", "Attention map"]);
 
-    await user.click(screen.getByRole("tab", { name: copy.kind.report }));
+    await user.click(chip(copy.kind.report));
     expect(rowTitles()).toEqual(["Ablation report"]);
 
-    await user.click(screen.getByRole("tab", { name: copy.kind.data }));
+    await user.click(chip(copy.kind.data));
     expect(rowTitles()).toEqual(["Metrics table"]);
 
-    await user.click(screen.getByRole("tab", { name: copy.kind.all }));
+    await user.click(chip(copy.kind.all));
     expect(rowTitles()).toEqual([
       "Masking ablation",
       "Agent scratch",
@@ -386,10 +390,10 @@ describe("NotesLibrary", () => {
     renderLibrary();
     await openFilters(user);
 
-    await user.click(screen.getByRole("tab", { name: copy.author.you }));
+    await user.click(chip(copy.author.you));
     expect(rowTitles()).toEqual(["Reading list"]);
 
-    await user.click(screen.getByRole("tab", { name: copy.author.agent }));
+    await user.click(chip(copy.author.agent));
     expect(rowTitles()).toEqual([
       "Masking ablation",
       "Agent scratch",
@@ -400,7 +404,7 @@ describe("NotesLibrary", () => {
       "Ablation report",
     ]);
 
-    await user.click(screen.getByRole("tab", { name: copy.author.all }));
+    await user.click(chip(copy.author.all));
     expect(rowTitles()).toHaveLength(8);
   });
 
@@ -508,7 +512,7 @@ function menuItemNames(menu: HTMLElement): string[] {
 
 async function openProjects(user: ReturnType<typeof userEvent.setup>, title: string): Promise<HTMLElement> {
   const menu = openMore(title);
-  const trigger = within(menu).getByRole("menuitem", { name: enNotes.workspace.project });
+  const trigger = within(menu).getByRole("menuitem", { name: menuCopy.linkProject });
   trigger.focus();
   await user.keyboard("{ArrowRight}");
   return (await screen.findAllByRole("menu")).at(-1) as HTMLElement;
@@ -531,7 +535,7 @@ describe("NotesLibrary filters", () => {
     const { container } = renderLibrary();
     const aside = container.querySelector("aside") as HTMLElement;
     expect(filtersToggle()).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: enNotes.vault.search.fields.author })).not.toBeInTheDocument();
     expect(aside.lastElementChild).toBe(screen.getByTestId("notes-filters"));
     expect(screen.getByTestId("notes-filters")).toHaveClass("border-t", "shrink-0");
     const search = screen.getByRole("combobox", { name: copy.search });
@@ -546,14 +550,14 @@ describe("NotesLibrary filters", () => {
     const first = renderLibrary();
     await openFilters(user);
     expect(filtersToggle()).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("tab", { name: copy.kind.figure })).toBeInTheDocument();
+    expect(chip(copy.kind.figure)).toBeInTheDocument();
     expect(localStorage.getItem(NOTES_FILTERS_OPEN_KEY)).toBe("true");
     first.unmount();
 
     renderLibrary();
     expect(filtersToggle()).toHaveAttribute("aria-expanded", "true");
     await user.click(filtersToggle());
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: enNotes.vault.search.fields.author })).not.toBeInTheDocument();
     expect(localStorage.getItem(NOTES_FILTERS_OPEN_KEY)).toBe("false");
   });
 
@@ -564,11 +568,11 @@ describe("NotesLibrary filters", () => {
     expect(count()).toBeNull();
 
     await openFilters(user);
-    await user.click(screen.getByRole("tab", { name: copy.kind.figure }));
+    await user.click(chip(copy.kind.figure));
     expect(count()).toHaveTextContent("1");
     expect(count()).toHaveAttribute("aria-label", copy.filters.active_one.replace("{{count}}", "1"));
 
-    await user.click(screen.getByRole("tab", { name: copy.author.you }));
+    await user.click(chip(copy.author.you));
     expect(count()).toHaveTextContent("2");
     expect(count()).toHaveAttribute("aria-label", copy.filters.active_other.replace("{{count}}", "2"));
 
@@ -577,8 +581,8 @@ describe("NotesLibrary filters", () => {
     expect(rowTitles()).toEqual([]);
 
     await user.click(filtersToggle());
-    await user.click(screen.getByRole("tab", { name: copy.kind.all }));
-    await user.click(screen.getByRole("tab", { name: copy.author.all }));
+    await user.click(chip(copy.kind.all));
+    await user.click(chip(copy.author.all));
     expect(count()).toBeNull();
   });
 
@@ -688,7 +692,7 @@ describe("NotesLibrary note actions", () => {
       menuCopy.favorite,
       menuCopy.rename,
       menuCopy.useAsTemplate,
-      enNotes.workspace.project,
+      menuCopy.linkProject,
       menuCopy.delete,
     ]);
     expect(within(menu).getByRole("separator")).toBeInTheDocument();
@@ -699,7 +703,7 @@ describe("NotesLibrary note actions", () => {
       menuCopy.favorite,
       menuCopy.rename,
       menuCopy.useAsTemplate,
-      enNotes.workspace.project,
+      menuCopy.linkProject,
       menuCopy.delete,
     ]);
   });
@@ -774,6 +778,40 @@ describe("NotesLibrary note actions", () => {
     expect(data.renameNote).not.toHaveBeenCalled();
   });
 
+  it("keeps renaming when Escape only ends an IME composition", async () => {
+    const user = userEvent.setup();
+    const data = actionData();
+    renderLibrary({ data });
+    const input = await startRename(user, "Masking ablation");
+    fireEvent.keyDown(input, { key: "Escape", keyCode: 229 });
+    fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
+    expect(screen.getByRole("textbox", { name: menuCopy.renameLabel })).toBe(input);
+    expect(data.renameNote).not.toHaveBeenCalled();
+  });
+
+  it("marks a note with a cloud conflict copy and opens the compare dialog from its menu", async () => {
+    useFilesStore.setState({ projects: [{ id: "n1", kind: "note", main_doc: "note.md" } as ProjectInfo] });
+    const conflictCopies = ["note (Laptop 2026-11-08).md"];
+    useCloudStore.setState({ state: { projects: [{ localId: "n1", conflictCopies }] } } as unknown as Partial<ReturnType<typeof useCloudStore.getState>>);
+    try {
+      renderLibrary({ data: actionData() });
+      expect(within(noteRow("Masking ablation")).getByRole("img", { name: copy.conflicts.badge })).toBeInTheDocument();
+      expect(within(noteRow("Reading list")).queryByRole("img", { name: copy.conflicts.badge })).toBeNull();
+      const menu = openMore("Masking ablation");
+      fireEvent.click(within(menu).getByRole("menuitem", { name: menuCopy.compareConflict }));
+      expect(await screen.findByRole("dialog", { name: copy.conflicts.title.replace("{{name}}", "Masking ablation") })).toBeInTheDocument();
+      expect(menuItemNames(openMore("Reading list"))).not.toContain(menuCopy.compareConflict);
+    } finally {
+      useCloudStore.setState({ state: null });
+    }
+  });
+
+  it("names the More button in a tooltip", async () => {
+    renderLibrary({ data: actionData() });
+    fireEvent.mouseEnter(moreButton("Masking ablation"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(menuCopy.more);
+  });
+
   it("ignores other keys while renaming", async () => {
     const user = userEvent.setup();
     const data = actionData();
@@ -825,7 +863,7 @@ describe("NotesLibrary note actions", () => {
     expect(setRelatedProject).toHaveBeenCalledExactlyOnceWith("n1", null);
   });
 
-  it("logs a move that fails", async () => {
+  it("logs a link that fails and says it couldn't link the note", async () => {
     const user = userEvent.setup();
     const setRelatedProject = vi.fn(async () => {
       throw new Error("no such project");
@@ -833,7 +871,7 @@ describe("NotesLibrary note actions", () => {
     renderLibrary({ data: actionData({ setRelatedProject }) });
     await user.click(within(await openProjects(user, "Reading list")).getByRole("menuitem", { name: "Vision" }));
     await waitFor(() => expect(log.logError).toHaveBeenCalledWith("set the note's project", expect.any(Error)));
-    expect(toastMessages("error")).toEqual(['Couldn\'t move "Reading list" to that project.']);
+    expect(toastMessages("error")).toEqual(['Couldn\'t link "Reading list" to that project.']);
   });
 
   it("hides Project without a project list or a way to set one", () => {
@@ -847,7 +885,7 @@ describe("NotesLibrary note actions", () => {
   it("hides Rename and Delete when the data can't do them", () => {
     renderLibrary({ data: actionData({ renameNote: undefined, deleteNote: undefined }) });
     const menu = openMore("Masking ablation");
-    expect(menuItemNames(menu)).toEqual([menuCopy.favorite, menuCopy.useAsTemplate, enNotes.workspace.project]);
+    expect(menuItemNames(menu)).toEqual([menuCopy.favorite, menuCopy.useAsTemplate, menuCopy.linkProject]);
     expect(within(menu).queryByRole("separator")).not.toBeInTheDocument();
   });
 
@@ -911,7 +949,7 @@ describe("NotesLibrary note actions", () => {
       menuCopy.favorite,
       menuCopy.rename,
       menuCopy.useAsTemplate,
-      enNotes.workspace.project,
+      menuCopy.linkProject,
       menuCopy.delete,
     ]);
     await user.click(within(menu).getByRole("menuitem", { name: menuCopy.rename }));
@@ -949,8 +987,8 @@ describe("NotesLibrary filters", () => {
     const user = userEvent.setup();
     renderLibrary();
     await openFilters(user);
-    await user.click(screen.getByRole("tab", { name: copy.kind.figure }));
-    await user.click(screen.getByRole("tab", { name: copy.author.you }));
+    await user.click(chip(copy.kind.figure));
+    await user.click(chip(copy.author.you));
     expect(screen.getByText(copy.emptyKind.figure)).toBeInTheDocument();
     expect(filtersToggle()).toHaveAccessibleName(expect.stringContaining(copy.filters.title));
     expect(screen.getByText("2")).toBeInTheDocument();
@@ -962,9 +1000,39 @@ describe("NotesLibrary filters", () => {
   it("hides artifacts and the kind filter while Research tasks is off", async () => {
     renderLibrary({ data: fakeData({ researchTasks: false }) });
     await openFilters(userEvent.setup());
-    expect(screen.queryByRole("tab", { name: copy.kind.figure })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: copy.kind.figure })).not.toBeInTheDocument();
     expect(screen.queryByText("Loss curve")).not.toBeInTheDocument();
     expect(rowTitles()).toContain("Masking ablation");
+  });
+
+  it("says Search notes, not artifacts, while Research tasks is off", () => {
+    const { unmount } = renderLibrary({ data: fakeData({ researchTasks: false }) });
+    const search = screen.getByRole("combobox", { name: enNotes.home.search });
+    expect(search).toHaveAttribute("placeholder", enNotes.home.search);
+    unmount();
+    renderLibrary();
+    expect(screen.getByRole("combobox", { name: copy.search })).toHaveAttribute("placeholder", copy.search);
+  });
+
+  it("groups the filters as toggle buttons, not tabs without panels", async () => {
+    renderLibrary();
+    await openFilters(userEvent.setup());
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    const kinds = screen.getByRole("group", { name: enNotes.vault.search.fields.kind });
+    const authors = screen.getByRole("group", { name: enNotes.vault.search.fields.author });
+    expect(within(kinds).getAllByRole("button", { pressed: true }).map((button) => button.textContent)).toEqual([copy.kind.all]);
+    expect(within(authors).getAllByRole("button", { pressed: true }).map((button) => button.textContent)).toEqual([copy.author.all]);
+  });
+
+  it("keeps the search text when Escape only ends an IME composition", async () => {
+    const user = userEvent.setup();
+    renderLibrary();
+    const search = screen.getByRole("combobox", { name: copy.search });
+    await user.type(search, "mask");
+    fireEvent.keyDown(search, { key: "Escape", keyCode: 229 });
+    expect(search).toHaveValue("mask");
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(search).toHaveValue("");
   });
 });
 

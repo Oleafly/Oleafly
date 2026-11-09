@@ -341,6 +341,7 @@
   },
   "mermaid": {
     "diagram": "Diagram",
+    "remoteBlocked": "This diagram wasn't drawn because it loads images or styles from the internet.",
     "renderFailed": "Unable to render diagram.",
     "rendering": "Rendering diagram"
   },

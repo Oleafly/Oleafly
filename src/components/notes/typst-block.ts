@@ -102,7 +102,7 @@ function remember(source: string, svg: string): void {
   }
 }
 
-export function clearTypstCache(): void {
+export function resetTypstCacheForTest(): void {
   rendered.clear();
   jobs.clear();
   queue.length = 0;

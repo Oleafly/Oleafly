@@ -4,7 +4,7 @@ import { Pencil, Sigma } from "lucide-react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { destroyKbEditors, kbEditor, kbMarkdown } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor, kbMarkdown } from "./tests/kb-editor-fixtures";
 import { CalloutChrome, calloutIcon, calloutNodeView } from "./NoteCallout";
 import { editableChanged } from "./note-editable";
 
@@ -36,6 +36,15 @@ describe("callout chrome", () => {
     expect(onType).toHaveBeenCalledWith("theorem");
     fireEvent.click(screen.getByRole("button", { name: enNotes.kb.callouts.fold }));
     expect(onFold).toHaveBeenCalled();
+  });
+
+  it("explains the icon-only type and fold buttons on hover", async () => {
+    render(<CalloutChrome type="tip" folded={false} editable onFold={vi.fn()} onType={vi.fn()} />);
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Callout type: Tip" }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Callout type: Tip");
+    fireEvent.mouseLeave(screen.getByRole("button", { name: "Callout type: Tip" }));
+    fireEvent.mouseEnter(screen.getByRole("button", { name: enNotes.kb.callouts.fold }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(enNotes.kb.callouts.fold);
   });
 
   it("shows a plain icon when the note is read only and names the unfold action", () => {

@@ -1,5 +1,5 @@
-import { FolderInput, LayoutTemplate, PanelsTopLeft, Pencil, Share2, Star, StarOff, Trash2 } from "lucide-react";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { FileDiff, LayoutTemplate, Link2, PanelsTopLeft, Pencil, Share2, Star, StarOff, Trash2 } from "lucide-react";
+import { Suspense, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -19,15 +19,22 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
+import { lazy } from "@/lib/preloadable";
 import { shortProjectName } from "@/lib/project-format";
 import { notifyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useCloudStore } from "@/store/cloud";
+import { useFilesStore } from "@/store/files";
 import { toggleNoteFavorite, useNoteFavorites } from "./note-favorites";
 import { isTemplateNote, withTemplateFlag } from "./note-templates";
 import { useNotesData } from "./notes-data";
 import { ProjectDot, useProjectColor } from "./project-color";
+import type { NoteConflict } from "./NoteConflictDialog";
 import type { NoteItem } from "./types";
+
+const NoteConflictDialog = lazy(() => import("./NoteConflictDialog"));
 
 export interface NoteActions {
   openInNewTab?: () => void;
@@ -37,6 +44,7 @@ export interface NoteActions {
   template?: { on: boolean; toggle: () => void };
   remove?: () => void;
   share?: () => void;
+  conflict?: () => void;
 }
 
 export type MenuKit = Readonly<{
@@ -67,7 +75,14 @@ const MENU_ITEM = "gap-2 [&>svg]:size-4 [&>svg]:shrink-0";
 
 export function hasNoteMenu(actions: NoteActions): boolean {
   return Boolean(
-    actions.openInNewTab || actions.share || actions.favorite || actions.rename || actions.move || actions.template || actions.remove,
+    actions.openInNewTab ||
+      actions.share ||
+      actions.favorite ||
+      actions.rename ||
+      actions.move ||
+      actions.template ||
+      actions.remove ||
+      actions.conflict,
   );
 }
 
@@ -81,7 +96,7 @@ export function NoteMenuItems({
   const { t } = useTranslation(["notes"]);
   const colorOf = useProjectColor();
   const { Item, Separator, Sub, SubTrigger, SubContent } = kit;
-  const { openInNewTab, favorite, rename, move, template, remove, share } = actions;
+  const { openInNewTab, favorite, rename, move, template, remove, share, conflict } = actions;
   const current = note.relatedProjectId ?? null;
   const choose = (projectId: string | null) => {
     if (move && projectId !== current) move.to(projectId);
@@ -92,6 +107,12 @@ export function NoteMenuItems({
         <Item className={MENU_ITEM} onSelect={openInNewTab}>
           <PanelsTopLeft aria-hidden />
           {t(($) => $.notes.library.menu.openInNewTab)}
+        </Item>
+      )}
+      {conflict && (
+        <Item className={MENU_ITEM} onSelect={conflict}>
+          <FileDiff aria-hidden />
+          {t(($) => $.notes.library.menu.compareConflict)}
         </Item>
       )}
       {share && (
@@ -121,8 +142,8 @@ export function NoteMenuItems({
       {move && (
         <Sub>
           <SubTrigger className={MENU_ITEM}>
-            <FolderInput aria-hidden />
-            {t(($) => $.notes.workspace.project)}
+            <Link2 aria-hidden />
+            {t(($) => $.notes.library.menu.linkProject)}
           </SubTrigger>
           <SubContent className="max-h-80 w-56 overflow-y-auto">
             <Item className="gap-2" onSelect={() => choose(null)}>
@@ -142,7 +163,7 @@ export function NoteMenuItems({
       )}
       {remove && (
         <>
-          {(openInNewTab || share || favorite || rename || template || move) && <Separator />}
+          {(openInNewTab || conflict || share || favorite || rename || template || move) && <Separator />}
           <Item className={cn(MENU_ITEM, "text-destructive focus:text-destructive")} onSelect={onDelete}>
             <Trash2 aria-hidden />
             {t(($) => $.notes.library.menu.delete)}
@@ -150,6 +171,44 @@ export function NoteMenuItems({
         </>
       )}
     </>
+  );
+}
+
+export function ConflictMark({ className }: Readonly<{ className?: string }>) {
+  const { t } = useTranslation(["notes"]);
+  const label = t(($) => $.notes.library.conflicts.badge);
+  return (
+    <Tooltip label={label}>
+      <span role="img" aria-label={label} data-note-conflict className={cn("flex shrink-0 items-center text-amber-600 dark:text-amber-400", className)}>
+        <FileDiff aria-hidden className="size-3.5" />
+      </span>
+    </Tooltip>
+  );
+}
+
+function useNoteConflicts(): ReadonlyMap<string, readonly string[]> {
+  const projects = useCloudStore((state) => state.state?.projects);
+  return useMemo(
+    () =>
+      new Map(
+        (projects ?? []).flatMap((project): [string, readonly string[]][] =>
+          project.localId && project.conflictCopies.length > 0 ? [[project.localId, project.conflictCopies]] : [],
+        ),
+      ),
+    [projects],
+  );
+}
+
+function mainDocOf(projectId: string): string | null {
+  return useFilesStore.getState().projects.find((project) => project.id === projectId)?.main_doc ?? null;
+}
+
+export function NoteConflictHost({ conflict, onClose }: Readonly<{ conflict: NoteConflict | null; onClose: () => void }>) {
+  if (!conflict) return null;
+  return (
+    <Suspense fallback={null}>
+      <NoteConflictDialog conflict={conflict} onClose={onClose} />
+    </Suspense>
   );
 }
 
@@ -176,7 +235,8 @@ export function NoteRenameInput({
       onFocus={(event) => event.currentTarget.select()}
       onBlur={() => finish(value)}
       onKeyDown={(event) => {
-        if (event.key === "Enter" && !isImeEnter(event)) finish(value);
+        if (isImeEnter(event)) return;
+        if (event.key === "Enter") finish(value);
         else if (event.key === "Escape") {
           event.stopPropagation();
           finish(null);
@@ -199,12 +259,18 @@ export function useNoteActions(onOpenNoteInNewTab?: (id: string) => void): {
   const { t } = useTranslation(["notes"]);
   const { projects, setRelatedProject, renameNote, deleteNote, shareNote, loadNote, saveNote } = useNotesData();
   const favorites = useNoteFavorites();
+  const conflicts = useNoteConflicts();
   const [deleting, setDeleting] = useState<PendingDelete | null>(null);
+  const [comparing, setComparing] = useState<NoteConflict | null>(null);
 
   const actionsFor = useCallback(
     (note: NoteItem): NoteActions => {
       const asTemplate = isTemplateNote(note);
+      const copies = conflicts.get(note.id);
+      const mainDoc = copies ? mainDocOf(note.id) : null;
       return {
+        conflict:
+          copies && mainDoc ? () => setComparing({ projectId: note.id, title: note.title, mainDoc, copies }) : undefined,
         openInNewTab: onOpenNoteInNewTab ? () => onOpenNoteInNewTab(note.id) : undefined,
         share: shareNote ? () => shareNote(note.id) : undefined,
         favorite: { on: favorites.has(note.id), toggle: () => toggleNoteFavorite(note.id) },
@@ -220,7 +286,7 @@ export function useNoteActions(onOpenNoteInNewTab?: (id: string) => void): {
                 projects,
                 to: (projectId) =>
                   void setRelatedProject(note.id, projectId).catch((error: unknown) =>
-                    notifyError("set the note's project", error, t(($) => $.notes.failures.moveNote, { name: note.title })),
+                    notifyError("set the note's project", error, t(($) => $.notes.failures.linkNote, { name: note.title })),
                   ),
               }
             : undefined,
@@ -245,7 +311,7 @@ export function useNoteActions(onOpenNoteInNewTab?: (id: string) => void): {
         remove: deleteNote ? () => setDeleting({ title: note.title, remove: () => deleteNote(note.id) }) : undefined,
       };
     },
-    [deleteNote, favorites, loadNote, onOpenNoteInNewTab, projects, renameNote, saveNote, setRelatedProject, shareNote, t],
+    [conflicts, deleteNote, favorites, loadNote, onOpenNoteInNewTab, projects, renameNote, saveNote, setRelatedProject, shareNote, t],
   );
 
   const confirmDelete = async (target: PendingDelete) => {
@@ -259,16 +325,21 @@ export function useNoteActions(onOpenNoteInNewTab?: (id: string) => void): {
     toast.success(t(($) => $.notes.library.menu.deleted, { name: target.title }));
   };
 
-  const dialog = deleting && (
-    <ConfirmationDialog
-      open
-      title={t(($) => $.notes.library.menu.deleteTitle, { name: shortProjectName(deleting.title) })}
-      description={t(($) => $.notes.library.menu.deleteDescription)}
-      confirmLabel={t(($) => $.notes.library.menu.deleteConfirm)}
-      destructive
-      onCancel={() => setDeleting(null)}
-      onConfirm={() => void confirmDelete(deleting)}
-    />
+  const dialog = (
+    <>
+      {deleting && (
+        <ConfirmationDialog
+          open
+          title={t(($) => $.notes.library.menu.deleteTitle, { name: shortProjectName(deleting.title) })}
+          description={t(($) => $.notes.library.menu.deleteDescription)}
+          confirmLabel={t(($) => $.notes.library.menu.deleteConfirm)}
+          destructive
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => void confirmDelete(deleting)}
+        />
+      )}
+      <NoteConflictHost conflict={comparing} onClose={() => setComparing(null)} />
+    </>
   );
 
   return { actionsFor, dialog };

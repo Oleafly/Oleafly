@@ -147,3 +147,31 @@ describe("collaborator carets", () => {
     expect(next[0]).toMatchObject({ head: 5, anchor: 5, name: "Alice", hue: 40 });
   });
 });
+
+describe("collaborators drawn with a document change", () => {
+  const caret = (id: string, head: number) => ({ id, name: `Person ${id}`, hue: 200, head, anchor: head });
+
+  it("adds marks and carets to the change's own transaction and leaves out what the change already moved", () => {
+    const editor = build("First.\n\nSecond.\n");
+    setNotePeerMarks(editor, [{ id: "alice", name: "Alice", hue: 10, index: 1 }]);
+    setNotePeerCarets(editor, [caret("bob", 10)], (offset) => offset);
+    let dispatched = 0;
+    editor.on("transaction", () => {
+      dispatched += 1;
+    });
+    const unchanged = editor.state.tr.insertText("Big ", 1);
+    expect(setNotePeerMarks(editor, [{ id: "alice", name: "Alice", hue: 10, index: 1 }], unchanged)).toBe(false);
+    expect(setNotePeerCarets(editor, [caret("bob", 10)], (offset) => offset, undefined, unchanged)).toBe(false);
+    expect(dispatched).toBe(0);
+    const tr = editor.state.tr.insertText("Big ", 1);
+    expect(setNotePeerMarks(editor, [{ id: "carol", name: "Carol", hue: 90, index: 0 }], tr)).toBe(true);
+    expect(setNotePeerCarets(editor, [caret("bob", 3)], (offset) => offset, new Set(["bob"]), tr)).toBe(true);
+    expect(setNotePeerMarks(editor, [{ id: "carol", name: "Carol", hue: 90, index: 0 }], tr)).toBe(false);
+    expect(dispatched).toBe(0);
+    editor.view.dispatch(tr);
+    expect(dispatched).toBe(1);
+    expect(editor.state.doc.child(0).textContent).toBe("Big First.");
+    expect(peerMarksOf(editor.state).map((mark) => [mark.id, mark.pos])).toEqual([["carol", 0]]);
+    expect(peerCaretsOf(editor.state).map((placed) => [placed.id, placed.head])).toEqual([["bob", 3]]);
+  });
+});

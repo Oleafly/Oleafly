@@ -1,27 +1,11 @@
 import { Mark, markInputRule, markPasteRule, mergeAttributes } from "@tiptap/core";
+import { backtickRunEnd, codeSpanEnd } from "@/lib/code-fences";
 import { onceFor, type MarkdownIt, type MdInlineState } from "./note-markdown-it";
 
 const EQUALS = 0x3d;
 const SPACE = /\s/u;
 const INPUT = /(?:^|\s)(==(?!\s)([^=]+?)(?<!\s)==)$/u;
 const PASTE = /(?:^|\s)(==(?!\s)([^=]+?)(?<!\s)==)/gu;
-
-function codeSpanEnd(src: string, start: number, max: number): number {
-  let run = 0;
-  while (src[start + run] === "`") run++;
-  let cursor = start + run;
-  while (cursor < max) {
-    if (src[cursor] !== "`") {
-      cursor++;
-      continue;
-    }
-    let close = 0;
-    while (src[cursor + close] === "`") close++;
-    if (close === run) return cursor + close;
-    cursor += close;
-  }
-  return start + run;
-}
 
 export function highlightEnd(src: string, start: number, max: number): number {
   if (src.charCodeAt(start) !== EQUALS || src.charCodeAt(start + 1) !== EQUALS) return -1;
@@ -35,7 +19,7 @@ export function highlightEnd(src: string, start: number, max: number): number {
       continue;
     }
     if (char === "`") {
-      cursor = codeSpanEnd(src, cursor, max);
+      cursor = codeSpanEnd(src, cursor, max) ?? backtickRunEnd(src, cursor, max);
       continue;
     }
     if (char === "=" && src[cursor + 1] === "=" && cursor + 1 < max) {

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { logError } from "@/lib/log";
-import { isMarkdownFile, noteFileFacts } from "@/lib/project-notes";
+import { isEditorNoteFile } from "@/lib/project-notes";
 import { useFilesStore } from "@/store/files";
 import { editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
 import { useSettingsStore } from "@/store/settings";
@@ -21,8 +21,8 @@ function NoteFileMenuItems({ path }: Readonly<{ path: string }>) {
   const { t } = useTranslation(["editor"]);
   const notesOn = useSettingsStore((s) => s.notes);
   const projectId = useFilesStore((s) => s.projectId);
-  const note = useFilesStore(
-    (s) => notesOn && s.projectKind !== "note" && isMarkdownFile(path) && noteFileFacts(s.files[path]?.content) !== null,
+  const note = useFilesStore((s) =>
+    isEditorNoteFile(path, s.files[path]?.content, { notes: notesOn, projectKind: s.projectKind }),
   );
   const markdown = useNoteTabsStore((s) => editsAsMarkdown(s, projectId, path));
   if (!note || !projectId) return null;

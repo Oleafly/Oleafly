@@ -1,13 +1,26 @@
 // @vitest-environment jsdom
 import { Editor, Extension, type JSONContent } from "@tiptap/core";
 import { createWysiwygExtensions } from "@oleafly/wysiwyg";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { DecorationSet } from "@tiptap/pm/view";
+import { Network } from "lucide-react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
+import { MermaidRemoteContentError } from "@/components/ui/mermaid-remote";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { BLOCK_REPAINT_MS, withBlockViews, withImageView } from "./block-views";
-import { allowRemoteImage, forgetRemoteImages } from "./note-remote-images";
+import {
+  BLOCK_REPAINT_MS,
+  caretAfterDrawnBlock,
+  EDITING_CLASS,
+  SOURCE_CLASS,
+  withBlockViews,
+  withImageView,
+} from "./block-views";
+import { type PaintContext, registerNoteBlock } from "./note-blocks";
+import { showNoteDoc } from "./note-live-doc";
+import { allowRemoteImage, resetRemoteImagesForTest } from "./note-remote-images";
 import { NotebookTooLargeError } from "./notebook-block";
 
 const mocks = vi.hoisted(() => ({ renderDiagram: vi.fn() }));
@@ -94,7 +107,7 @@ afterEach(() => {
   }
   editors = [];
   document.documentElement.classList.remove("dark");
-  forgetRemoteImages();
+  resetRemoteImagesForTest();
 });
 
 describe("drawn block views", () => {
@@ -156,6 +169,13 @@ describe("drawn block views", () => {
     expect(preview.querySelector("p")).toHaveClass("note-drawn-empty");
   });
 
+  it("says when a Mermaid diagram was not drawn because it loads from the internet", async () => {
+    mocks.renderDiagram.mockRejectedValue(new MermaidRemoteContentError());
+    const editor = build(codeBlock("mermaid", 'flowchart LR\n  A@{ img: "https://attacker.example/p.png" }'));
+    const preview = drawn(editor).querySelector(".note-drawn-preview") as HTMLElement;
+    await vi.waitFor(() => expect(preview.textContent).toBe(enCore.mermaid.remoteBlocked));
+  });
+
   it("draws a chart and labels it with the translated name", () => {
     const editor = build(codeBlock("chart", CHART));
     const dom = drawn(editor);
@@ -188,7 +208,8 @@ describe("drawn block views", () => {
   });
 
   it("switches between the preview and the source with a pressed toggle", () => {
-    const editor = build(codeBlock("{=typst}", "$ x $"));
+    const editor = build({ type: "paragraph", content: [{ type: "text", text: "Before" }] }, codeBlock("{=typst}", "$ x $"));
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 2)));
     const dom = drawn(editor);
     const toggle = dom.querySelector("button") as HTMLButtonElement;
     expect(toggle.type).toBe("button");
@@ -286,6 +307,333 @@ describe("drawn block views", () => {
     await vi.waitFor(() => expect(drawn(editor).querySelector("[data-testid=diagram]")).not.toBeNull());
     await new Promise<void>((resolve) => queueMicrotask(resolve));
     expect(editor.getJSON()).toEqual(before);
+  });
+});
+
+function paragraph(text = ""): JSONContent {
+  return text ? { type: "paragraph", content: [{ type: "text", text }] } : { type: "paragraph" };
+}
+
+function caretIn(editor: Editor, position: number) {
+  editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, position)));
+}
+
+describe("editing a drawn block's source", () => {
+  it("shows the hidden source while the caret is inside the block, so typing is never invisible", () => {
+    const editor = build(paragraph("Before"), codeBlock("mermaid", "flowchart LR"), paragraph("After"));
+    const dom = drawn(editor);
+    expect(dom).not.toHaveClass(EDITING_CLASS);
+    caretIn(editor, codeBlockPosition(editor) + 3);
+    expect(dom).toHaveClass(EDITING_CLASS);
+    expect(dom).toHaveClass("note-drawn");
+    caretIn(editor, 2);
+    expect(dom).not.toHaveClass(EDITING_CLASS);
+  });
+
+  it("keeps the source hidden for a selection that only passes through the block or selects it whole", () => {
+    const editor = build(paragraph("Before"), codeBlock("mermaid", "flowchart LR"), paragraph("After"));
+    const position = codeBlockPosition(editor);
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 2, position + 3)));
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+    editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position)));
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+  });
+
+  it("does not mark plain code blocks", () => {
+    const editor = build(codeBlock("python", "print(1)"));
+    caretIn(editor, 2);
+    expect(editor.view.dom.querySelector(`.${EDITING_CLASS}`)).toBeNull();
+  });
+
+  it("follows the block while its source is edited and keeps the drawing", () => {
+    const editor = build(paragraph("Before"), codeBlock("mermaid", "flowchart LR"));
+    caretIn(editor, codeBlockPosition(editor) + 3);
+    editor.commands.insertContent("x");
+    expect(drawn(editor)).toHaveClass(EDITING_CLASS);
+    expect(drawn(editor).querySelector("pre > code")?.textContent).toBe("flxowchart LR");
+  });
+
+  it.each([
+    ["at the end of the note", [paragraph("Intro")], ["paragraph", "codeBlock", "paragraph"]],
+    ["before an empty paragraph", [paragraph("Intro"), paragraph()], ["paragraph", "codeBlock", "paragraph"]],
+    ["before more text", [paragraph("Intro"), paragraph("Next")], ["paragraph", "codeBlock", "paragraph", "paragraph"]],
+  ])("puts the caret on an empty line after a block inserted %s", (_case, content, types) => {
+    const editor = build(...content);
+    caretIn(editor, 6);
+    editor
+      .chain()
+      .insertContent(codeBlock("mermaid", "flowchart LR"))
+      .command(caretAfterDrawnBlock)
+      .run();
+    expect((editor.getJSON().content ?? []).map((node) => node.type)).toEqual(types);
+    const { $head } = editor.state.selection;
+    expect($head.parent.type.name).toBe("paragraph");
+    expect($head.parent.content.size).toBe(0);
+    expect($head.index($head.depth - 1)).toBe(2);
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+  });
+
+  it("leaves the caret alone after inserting plain code", () => {
+    const editor = build(paragraph("Intro"));
+    caretIn(editor, 6);
+    editor.chain().insertContent(codeBlock("python", "print(1)")).command(caretAfterDrawnBlock).run();
+    expect(editor.state.selection.$head.parent.type.name).toBe("codeBlock");
+  });
+});
+
+function toggleOf(editor: Editor, index = 0): HTMLButtonElement {
+  return drawn(editor, index).querySelector(".note-drawn-toggle") as HTMLButtonElement;
+}
+
+function sourceText(editor: Editor, index = 0): string {
+  return editor.state.doc.nodeAt(codeBlockPosition(editor, index))?.textContent ?? "";
+}
+
+function shows(editor: Editor, label: string, pressed: boolean, index = 0) {
+  expect(toggleOf(editor, index).textContent).toBe(label);
+  expect(toggleOf(editor, index)).toHaveAttribute("aria-pressed", String(pressed));
+}
+
+describe("a note that starts with a drawn block", () => {
+  function opened(): Editor {
+    const editor = build(codeBlock("mermaid", "flowchart LR"), paragraph("After"));
+    expect(editor.state.selection.$head.parent.type.name).toBe("codeBlock");
+    return editor;
+  }
+
+  function hidden(editor: Editor) {
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+    expect(drawn(editor)).not.toHaveClass(SOURCE_CLASS);
+    shows(editor, enNotes.blocks.source, false);
+  }
+
+  function open(editor: Editor) {
+    expect(drawn(editor)).toHaveClass(EDITING_CLASS);
+    shows(editor, enNotes.blocks.preview, true);
+  }
+
+  function reloaded(editor: Editor, block: string, after: string) {
+    const target = editor.schema.nodeFromJSON({ type: "doc", content: [codeBlock("mermaid", block), paragraph(after)] });
+    showNoteDoc(editor, target);
+    expect(editor.state.doc.eq(target)).toBe(true);
+  }
+
+  it("opens with the source hidden although the caret starts inside the block", () => {
+    hidden(opened());
+  });
+
+  it("shows the source once the arrow keys move the caret into the block", () => {
+    const editor = opened();
+    const after = editor.state.doc.child(0).nodeSize + 1;
+    caretIn(editor, after);
+    hidden(editor);
+    caretIn(editor, after - 2);
+    open(editor);
+  });
+
+  it("shows the source once the caret moves within the block it starts in", () => {
+    const editor = opened();
+    caretIn(editor, 3);
+    open(editor);
+  });
+
+  it("shows the source when typing at the caret the note opened with", () => {
+    const editor = opened();
+    editor.view.dispatch(editor.state.tr.insertText("x"));
+    expect(sourceText(editor)).toBe("xflowchart LR");
+    open(editor);
+  });
+
+  it("shows the source and puts the caret in it from the Source button", () => {
+    const editor = opened();
+    toggleOf(editor).click();
+    open(editor);
+    expect(drawn(editor)).toHaveClass(SOURCE_CLASS);
+    expect(editor.state.selection.$head.parentOffset).toBe("flowchart LR".length);
+  });
+
+  it("keeps the source hidden when the note changes away from the caret", () => {
+    const editor = opened();
+    editor.view.dispatch(editor.state.tr.insertText("!", editor.state.doc.content.size - 1));
+    expect(editor.state.doc.child(1).textContent).toBe("After!");
+    hidden(editor);
+  });
+
+  it("keeps the source hidden when a disk reload replaces the note with the caret still at the start", () => {
+    const editor = opened();
+    reloaded(editor, "flowchart TD", "After the reload");
+    expect(editor.state.selection.$head.parent.type.name).toBe("codeBlock");
+    hidden(editor);
+  });
+
+  it("keeps a source the person opened through a disk reload", () => {
+    const editor = opened();
+    caretIn(editor, 3);
+    reloaded(editor, "flowchart LR", "After the reload");
+    expect(editor.state.selection.head).toBe(3);
+    open(editor);
+  });
+});
+
+describe("the Source and Preview toggle of a drawn block", () => {
+  it("puts the caret at the end of the source it shows, so typing goes into the visible source", () => {
+    const editor = build(paragraph("Before"), codeBlock("notebook", "run.ipynb"), paragraph("After"));
+    caretIn(editor, 2);
+    toggleOf(editor).click();
+    const dom = drawn(editor);
+    expect(dom).toHaveClass(SOURCE_CLASS);
+    expect(dom).toHaveClass(EDITING_CLASS);
+    shows(editor, enNotes.blocks.preview, true);
+    const { $head } = editor.state.selection;
+    expect($head.parent.type.name).toBe("codeBlock");
+    expect($head.parentOffset).toBe("run.ipynb".length);
+
+    editor.commands.keyboardShortcut("Enter");
+    editor.commands.insertContent("cells: 2-3");
+    editor.commands.keyboardShortcut("Enter");
+    editor.commands.insertContent("code: hide");
+    expect(sourceText(editor)).toBe("run.ipynb\ncells: 2-3\ncode: hide");
+    expect(editor.state.doc.childCount).toBe(3);
+
+    toggleOf(editor).click();
+    expect(dom).not.toHaveClass(SOURCE_CLASS);
+    expect(dom).not.toHaveClass(EDITING_CLASS);
+    shows(editor, enNotes.blocks.source, false);
+    expect(editor.state.selection.$head.parent.textContent).toBe("After");
+    expect(editor.state.selection.$head.parentOffset).toBe(0);
+    expect(sourceText(editor)).toBe("run.ipynb\ncells: 2-3\ncode: hide");
+    expect(editor.state.doc.childCount).toBe(3);
+  });
+
+  it("names the toggle Preview while the caret has opened the source, and hides it on click", () => {
+    const editor = build(paragraph("Before"), codeBlock("mermaid", "flowchart LR"), paragraph("After"));
+    caretIn(editor, 2);
+    shows(editor, enNotes.blocks.source, false);
+    caretIn(editor, codeBlockPosition(editor) + 3);
+    expect(drawn(editor)).toHaveClass(EDITING_CLASS);
+    shows(editor, enNotes.blocks.preview, true);
+
+    toggleOf(editor).click();
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+    expect(drawn(editor)).not.toHaveClass(SOURCE_CLASS);
+    shows(editor, enNotes.blocks.source, false);
+    expect(editor.state.selection.$head.parent.textContent).toBe("After");
+    expect(editor.state.doc.childCount).toBe(3);
+  });
+
+  it("keeps a source opened with the toggle after the caret leaves the block", () => {
+    const editor = build(paragraph("Before"), codeBlock("mermaid", "flowchart LR"));
+    caretIn(editor, 2);
+    toggleOf(editor).click();
+    caretIn(editor, 2);
+    expect(drawn(editor)).toHaveClass(SOURCE_CLASS);
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+    shows(editor, enNotes.blocks.preview, true);
+    toggleOf(editor).click();
+    expect(drawn(editor)).not.toHaveClass(SOURCE_CLASS);
+    shows(editor, enNotes.blocks.source, false);
+    expect(editor.state.selection.$head.parent.textContent).toBe("Before");
+  });
+
+  it("leaves the caret on a new empty line when the block ends the note", () => {
+    const editor = build(paragraph("Before"), codeBlock("mermaid", "flowchart LR"));
+    caretIn(editor, codeBlockPosition(editor) + 3);
+    toggleOf(editor).click();
+    expect((editor.getJSON().content ?? []).map((node) => node.type)).toEqual(["paragraph", "codeBlock", "paragraph"]);
+    const { $head } = editor.state.selection;
+    expect($head.parent.type.name).toBe("paragraph");
+    expect($head.index($head.depth - 1)).toBe(2);
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+  });
+
+  it("does not move the caret into the next drawn block's hidden source", () => {
+    const editor = build(codeBlock("mermaid", "flowchart LR"), codeBlock("latex", "x^2"));
+    caretIn(editor, 3);
+    toggleOf(editor).click();
+    expect((editor.getJSON().content ?? []).map((node) => node.type).slice(0, 3)).toEqual(["codeBlock", "paragraph", "codeBlock"]);
+    const { $head } = editor.state.selection;
+    expect($head.parent.type.name).toBe("paragraph");
+    expect($head.index($head.depth - 1)).toBe(1);
+    expect(editor.view.dom.querySelector(`.${EDITING_CLASS}`)).toBeNull();
+  });
+
+  it("only switches the view in a note that can't be edited", () => {
+    const editor = build(paragraph("Before"), codeBlock("mermaid", "flowchart LR"));
+    caretIn(editor, 2);
+    editor.setEditable(false);
+    toggleOf(editor).click();
+    expect(drawn(editor)).toHaveClass(SOURCE_CLASS);
+    expect(editor.state.selection.$head.parent.textContent).toBe("Before");
+    shows(editor, enNotes.blocks.preview, true);
+  });
+});
+
+describe("blocks that save their own settings", () => {
+  const probe = { paints: [] as string[], contexts: [] as PaintContext[] };
+
+  beforeAll(() => {
+    registerNoteBlock({
+      name: "probe-block",
+      label: () => "Probe",
+      icon: Network,
+      paint: (_preview, source, context) => {
+        probe.paints.push(source);
+        probe.contexts.push(context);
+        return undefined;
+      },
+    });
+  });
+
+  beforeEach(() => {
+    probe.paints = [];
+    probe.contexts = [];
+  });
+
+  it("rewrites the block's source as one edit and keeps the drawing it already shows", async () => {
+    vi.useFakeTimers();
+    try {
+      const editor = build(paragraph("Before"), codeBlock("probe-block", "style: a\ndata"));
+      const rewrite = probe.contexts[0].rewrite;
+      rewrite?.((source) => source.replace("style: a", "style: b"));
+      expect(editor.state.doc.child(1).textContent).toBe("style: b\ndata");
+      await vi.advanceTimersByTimeAsync(BLOCK_REPAINT_MS * 2);
+      expect(probe.paints).toEqual(["style: a\ndata"]);
+      editor.commands.undo();
+      expect(editor.state.doc.child(1).textContent).toBe("style: a\ndata");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("repaints when the source had changed before the block rewrote it", async () => {
+    vi.useFakeTimers();
+    try {
+      const editor = build(codeBlock("probe-block", "style: a"));
+      replaceCode(editor, "style: a\nmore");
+      probe.contexts[0].rewrite?.((source) => `${source}!`);
+      await vi.advanceTimersByTimeAsync(BLOCK_REPAINT_MS * 2);
+      expect(probe.paints).toEqual(["style: a", "style: a\nmore!"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the source hidden when a control in the preview rewrites it", () => {
+    const editor = build(codeBlock("probe-block", "style: a"), paragraph("After"));
+    probe.contexts[0].rewrite?.((source) => source.replace("style: a", "style: b"));
+    expect(editor.state.doc.child(0).textContent).toBe("style: b");
+    expect(editor.state.selection.$head.parent.type.name).toBe("codeBlock");
+    expect(drawn(editor)).not.toHaveClass(EDITING_CLASS);
+  });
+
+  it("leaves a read-only note and an unchanged source alone", () => {
+    const editor = build(codeBlock("probe-block", "style: a"));
+    const before = editor.state.doc;
+    probe.contexts[0].rewrite?.((source) => source);
+    expect(editor.state.doc).toBe(before);
+    editor.setEditable(false);
+    probe.contexts[0].rewrite?.(() => "style: b");
+    expect(editor.state.doc.child(0).textContent).toBe("style: a");
   });
 });
 

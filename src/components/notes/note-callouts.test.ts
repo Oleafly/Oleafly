@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { NodeViewRenderer } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./tests/kb-editor-fixtures";
 import { CALLOUT_TYPES, calloutFold, calloutKind, calloutLabel, leaveCalloutTitle, unwrapCallout } from "./note-callouts";
 
 const plainView: NodeViewRenderer = () => {

@@ -1,9 +1,11 @@
 import { Copy, FileCode, FolderInput, Lock, NotebookPen, Users } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip } from "@/components/ui/tooltip";
 import { openNotes } from "@/features/open-tool";
 import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
 import { useCollabProjectShared } from "@/lib/collab-live-bridge";
@@ -17,7 +19,7 @@ import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocum
 import { NoteLiveNotice } from "./NoteLiveNotice";
 import { NoteSaveStatus } from "./NoteSaveStatus";
 import { NotesDataProvider, type NotesData } from "./notes-data";
-import { copyProjectNoteToMine, moveNoteIntoProject, openPersonalNoteTab } from "./project-note-actions";
+import { copyProjectNoteToMine, moveNoteIntoProject, openPersonalNoteTab, renameProjectNote } from "./project-note-actions";
 import { createProjectNoteFiles } from "./project-note-data";
 import { useLibraryNotesData } from "./note-tab-data";
 import type { CitationItem, NoteItem } from "./types";
@@ -41,27 +43,78 @@ function useSaveState(): [SaveState, (status: SaveStatus, failure: NoteSaveFailu
   return [state, report];
 }
 
+interface TabHeading {
+  noteId: string;
+  slug: string;
+  id: number;
+}
+
+const useTabHeadings = create<{ request: TabHeading | null }>(() => ({ request: null }));
+let headingRequests = 0;
+
+function openLinkedNote(projectId: string, noteId: string, heading: string | undefined): void {
+  openPersonalNoteTab(projectId, noteId);
+  if (!heading) return;
+  headingRequests += 1;
+  useTabHeadings.setState({ request: { noteId, slug: heading, id: headingRequests } });
+}
+
+function useOpenHeading(noteId: string): TabHeading | null {
+  const request = useTabHeadings((state) => (state.request?.noteId === noteId ? state.request : null));
+  const [heading, setHeading] = useState<TabHeading | null>(null);
+  useEffect(() => {
+    if (!request) return;
+    setHeading(request);
+    useTabHeadings.setState((state) => (state.request === request ? { request: null } : state));
+  }, [request]);
+  return heading;
+}
+
+function useOpenLinked(projectId: string) {
+  return useCallback(
+    (noteId: string, options?: { heading?: string }) => openLinkedNote(projectId, noteId, options?.heading),
+    [projectId],
+  );
+}
+
+function NoteTabButton({
+  label,
+  icon,
+  testId,
+  disabled,
+  onClick,
+}: Readonly<{ label: string; icon: ReactNode; testId: string; disabled?: boolean; onClick: () => void }>) {
+  return (
+    <Tooltip label={label} side="bottom">
+      <Button type="button" variant="ghost" size="xs" data-testid={testId} disabled={disabled} onClick={onClick}>
+        {icon}
+        <span className="@max-[34rem]:sr-only">{label}</span>
+      </Button>
+    </Tooltip>
+  );
+}
+
 function NoteTabBar({
   icon,
   label,
   detail,
-  noteId,
+  noticeId,
   save,
   children,
-}: Readonly<{ icon: ReactNode; label: string; detail: string; noteId: string; save: SaveState; children: ReactNode }>) {
+}: Readonly<{ icon: ReactNode; label: string; detail: string; noticeId: string; save: SaveState; children: ReactNode }>) {
   return (
     <div
       data-testid="note-tab-bar"
-      className="flex h-8 shrink-0 items-center gap-2 border-b px-3 text-xs text-muted-foreground"
+      className="@container flex h-8 min-w-0 shrink-0 items-center gap-2 overflow-hidden border-b px-3 text-xs text-muted-foreground"
     >
-      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      <span data-testid="note-tab-label" className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
         {icon}
-        <span className="shrink-0 font-medium text-foreground">{label}</span>
-        <span aria-hidden>·</span>
-        <span className="truncate">{detail}</span>
+        <span className="min-w-0 shrink-0 truncate font-medium text-foreground @max-[24rem]:shrink">{label}</span>
+        <span aria-hidden className="@max-[24rem]:hidden">·</span>
+        <span className="min-w-0 truncate @max-[24rem]:hidden">{detail}</span>
       </span>
-      <NoteLiveNotice noteId={noteId} className="max-w-[20rem]" />
-      <NoteSaveStatus status={save.status} failure={save.failure} className="max-w-[20rem] shrink-0" />
+      <NoteLiveNotice noteId={noticeId} className="max-w-[20rem]" />
+      <NoteSaveStatus status={save.status} failure={save.failure} className="min-w-0 max-w-[20rem] truncate" />
       <span className="flex shrink-0 items-center gap-1">{children}</span>
     </div>
   );
@@ -105,7 +158,7 @@ function useBusy(): [boolean, (run: () => Promise<unknown>) => void] {
   return [busy, start];
 }
 
-export function ProjectNoteTab({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
+export function ProjectNoteTab({ projectId, path, shown = true }: Readonly<{ projectId: string; path: string; shown?: boolean }>) {
   const { t } = useTranslation(["notes", "editor"]);
   const library = useLibraryNotesData().data;
   const facts = useFilesStore(
@@ -135,7 +188,13 @@ export function ProjectNoteTab({ projectId, path }: Readonly<{ projectId: string
   const [save, report] = useSaveState();
   const [copying, copy] = useBusy();
   const appearanceRef = useNotesAppearanceRef<HTMLDivElement>();
-  const openLinked = useCallback((noteId: string) => openPersonalNoteTab(projectId, noteId), [projectId]);
+  const openLinked = useOpenLinked(projectId);
+  const rename = useCallback(
+    async (id: string, name: string) => {
+      if (id === key) await renameProjectNote(projectId, path, name);
+    },
+    [key, path, projectId],
+  );
 
   const note = useMemo<NoteItem>(
     () => ({
@@ -162,13 +221,13 @@ export function ProjectNoteTab({ projectId, path }: Readonly<{ projectId: string
       citations,
       projectCitations: undefined,
       importNotebook: undefined,
-      renameNote: undefined,
+      renameNote: rename,
       deleteNote: undefined,
       setRelatedProject: undefined,
       copyArtifact: undefined,
       previewArtifact: undefined,
     }),
-    [citations, files, library, shared],
+    [citations, files, library, rename, shared],
   );
 
   return (
@@ -184,38 +243,37 @@ export function ProjectNoteTab({ projectId, path }: Readonly<{ projectId: string
           }
           label={t(($) => $.notes.noteTab.projectNote)}
           detail={shared ? t(($) => $.notes.noteTab.sharedProject) : t(($) => $.notes.noteTab.localProject)}
-          noteId={projectId}
+          noticeId={key}
           save={save}
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            data-testid="note-tab-markdown"
+          <NoteTabButton
+            testId="note-tab-markdown"
+            label={t(($) => $.editor.shell.editAsMarkdown)}
+            icon={<FileCode aria-hidden className="size-3.5" />}
             onClick={() => useNoteTabsStore.getState().setMarkdown(projectId, path, true)}
-          >
-            <FileCode aria-hidden className="size-3.5" />
-            {t(($) => $.editor.shell.editAsMarkdown)}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            data-testid="note-tab-copy"
+          />
+          <NoteTabButton
+            testId="note-tab-copy"
+            label={t(($) => $.notes.noteTab.copyToMine)}
+            icon={copying ? <Spinner size="sm" /> : <Copy aria-hidden className="size-3.5" />}
             disabled={copying}
             onClick={() => copy(() => copyProjectNoteToMine(projectId, path))}
-          >
-            {copying ? <Spinner size="sm" /> : <Copy aria-hidden className="size-3.5" />}
-            {t(($) => $.notes.noteTab.copyToMine)}
-          </Button>
+          />
         </NoteTabBar>
-        <TabDocument note={note} insertRequest={null} live={live} onOpenNote={openLinked} onStatusChange={report} />
+        <TabDocument
+          note={note}
+          insertRequest={null}
+          live={live}
+          shown={shown}
+          onOpenNote={openLinked}
+          onStatusChange={report}
+        />
       </div>
     </NotesDataProvider>
   );
 }
 
-export function PersonalNoteTab({ projectId, noteId }: Readonly<{ projectId: string; noteId: string }>) {
+export function PersonalNoteTab({ projectId, noteId, shown = true }: Readonly<{ projectId: string; noteId: string; shown?: boolean }>) {
   const { t } = useTranslation(["notes"]);
   const { data, headsLoaded } = useLibraryNotesData();
   const note = data.notes.find((entry) => entry.id === noteId) ?? null;
@@ -225,7 +283,8 @@ export function PersonalNoteTab({ projectId, noteId }: Readonly<{ projectId: str
   const [save, report] = useSaveState();
   const [moving, move] = useBusy();
   const appearanceRef = useNotesAppearanceRef<HTMLDivElement>();
-  const openLinked = useCallback((linked: string) => openPersonalNoteTab(projectId, linked), [projectId]);
+  const openLinked = useOpenLinked(projectId);
+  const openHeading = useOpenHeading(noteId);
 
   useEffect(() => {
     if (headsLoaded) useNoteTabsStore.getState().setLook(noteId, { icon, color });
@@ -253,31 +312,31 @@ export function PersonalNoteTab({ projectId, noteId }: Readonly<{ projectId: str
           icon={<Lock aria-hidden className="size-3.5 shrink-0" />}
           label={t(($) => $.notes.noteTab.personalNote)}
           detail={note.shared ? t(($) => $.notes.noteTab.personalShared) : t(($) => $.notes.noteTab.private)}
-          noteId={noteId}
+          noticeId={noteId}
           save={save}
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            data-testid="note-tab-move"
+          <NoteTabButton
+            testId="note-tab-move"
+            label={t(($) => $.notes.noteTab.moveIntoProject)}
+            icon={moving ? <Spinner size="sm" /> : <FolderInput aria-hidden className="size-3.5" />}
             disabled={moving}
             onClick={() => move(() => moveNoteIntoProject(noteId, projectId))}
-          >
-            {moving ? <Spinner size="sm" /> : <FolderInput aria-hidden className="size-3.5" />}
-            {t(($) => $.notes.noteTab.moveIntoProject)}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            data-testid="note-tab-open-in-notes"
+          />
+          <NoteTabButton
+            testId="note-tab-open-in-notes"
+            label={t(($) => $.notes.noteTab.openInNotes)}
+            icon={<NotebookPen aria-hidden className="size-3.5" />}
             onClick={() => void openNotes(noteId)}
-          >
-            {t(($) => $.notes.noteTab.openInNotes)}
-          </Button>
+          />
         </NoteTabBar>
-        <TabDocument note={note} insertRequest={null} onOpenNote={openLinked} onStatusChange={report} />
+        <TabDocument
+          note={note}
+          insertRequest={null}
+          openHeading={openHeading}
+          shown={shown}
+          onOpenNote={openLinked}
+          onStatusChange={report}
+        />
       </div>
     </NotesDataProvider>
   );

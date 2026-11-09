@@ -13,7 +13,6 @@ import {
   histogramBins,
   niceStep,
   paintChart,
-  parseChart,
   seriesColor,
   ticksBetween,
 } from "./chart-block";
@@ -55,7 +54,7 @@ const BAR = { categories: ["a"], series: [{ name: "A", values: [1] }] };
 
 describe("chart data", () => {
   it("reads valid chart data", () => {
-    expect(parseChart(JSON.stringify(VALID))).toEqual(VALID);
+    expect(checkChart(JSON.stringify(VALID))).toEqual({ ok: true, chart: VALID });
   });
 
   it.each([
@@ -74,7 +73,7 @@ describe("chart data", () => {
     ["a series without a name", JSON.stringify({ ...VALID, series: [{ values: [1, 2] }] })],
     ["a unit that is not text", JSON.stringify({ ...VALID, unit: 1 })],
   ])("rejects %s", (_name, source) => {
-    expect(parseChart(source)).toBeNull();
+    expect(checkChart(source).ok).toBe(false);
   });
 
   const scatter = (points: unknown, extra: object = {}) => ({

@@ -56,6 +56,18 @@ describe("ShortcutsSection editor keys", () => {
     ).toBe("Mod-Shift-k");
   });
 
+  it("lets an editor key share a chord with a shortcut that only works in Notes", async () => {
+    Object.defineProperty(navigator, "platform", { value: "Win32", configurable: true });
+    useShortcutStore.getState().resetAll();
+    expect(useShortcutStore.getState().bindings.notesOutline).toMatchObject({ key: "k", mod: true, shift: true });
+    render(<ShortcutsSection />);
+    await openEditorTab();
+
+    fireEvent.keyDown(startCapture("deleteLine"), { key: "K", ctrlKey: true, shiftKey: true });
+
+    expect(useEditorKeymapStore.getState().keys.deleteLine).toBe("Mod-Shift-k");
+  });
+
   it.each([
     { key: "F8" },
     { key: "F8", altKey: true },

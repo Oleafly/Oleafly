@@ -4,6 +4,7 @@ import { logError } from "@/lib/log";
 import type { NoteLinkRecord } from "@/lib/tauri";
 import { isLinkableId, noteHeadings, targetKey, type NoteHeading } from "./note-link-format";
 import {
+  linkedNoteCreator,
   noteLinkExtensions,
   type LinkableNote,
   type LinkableProject,
@@ -11,6 +12,7 @@ import {
   type OpenProjectHandler,
 } from "./note-links";
 import { useNotesData } from "./notes-data";
+import { useNotesByLook } from "./note-signature";
 import { useProjectColor, type ProjectColorOf } from "./project-color";
 import type { NoteItem } from "./types";
 import { useVaultKey, vaultLoad } from "./vault-loads";
@@ -195,7 +197,9 @@ function sharedBuild(
 }
 
 function useBuiltNoteLinkIndex(enabled: boolean): NoteLinkIndex {
-  const { notes, projects } = useNotesData();
+  const data = useNotesData();
+  const notes = useNotesByLook(data.notes);
+  const projects = data.projects;
   const colorOf = useProjectColor();
   const records = useNoteLinkRecords(enabled);
   const previous = useRef<NoteLinkIndex | null>(null);
@@ -276,12 +280,15 @@ export class HeadingCache {
 
 export function useNoteLinkExtensions(handlers: NoteLinkHandlers): { extensions: AnyExtension[]; index: NoteLinkIndex } {
   const index = useNoteLinkIndex();
-  const { notes, loadNote } = useNotesData();
+  const { notes, loadNote, createNoteFrom } = useNotesData();
   const indexRef = useRef(index);
   const notesRef = useRef(notes);
   notesRef.current = notes;
   const loadRef = useRef(loadNote);
   loadRef.current = loadNote;
+  const createRef = useRef(createNoteFrom);
+  createRef.current = createNoteFrom;
+  const canCreate = createNoteFrom !== undefined;
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
   const [listeners] = useState(() => new Set<() => void>());
@@ -321,8 +328,14 @@ export function useNoteLinkExtensions(handlers: NoteLinkHandlers): { extensions:
           listeners.add(listener);
           return () => listeners.delete(listener);
         },
+        createNote: canCreate
+          ? linkedNoteCreator(
+              (title) => createRef.current?.({ title }) ?? Promise.reject(new Error("This window can't create notes.")),
+              (projectId) => loadRef.current(projectId),
+            )
+          : undefined,
       }),
-    [current, headings, listeners],
+    [canCreate, current, headings, listeners],
   );
 
   return { extensions, index };

@@ -273,6 +273,75 @@ describe("shortcut bindings", () => {
     }
   });
 
+  it("matches and records Cmd+letter by the key pressed on a Russian layout on macOS", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      const askAgent = { key: "j", mod: true };
+      const cmdJ = keyboard("о", { code: "KeyJ", metaKey: true });
+
+      expect(matchesShortcut(cmdJ, askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("О", { code: "KeyJ", metaKey: true, shiftKey: true }), { ...askAgent, shift: true })).toBe(true);
+      expect(matchesShortcut(cmdJ, { key: "o", mod: true })).toBe(false);
+      expect(matchesShortcut(cmdJ, { ...askAgent, shift: true })).toBe(false);
+      expect(matchesShortcut(keyboard("о", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(false);
+      expect(matchesShortcut(keyboard("ф", { code: "KeyA", metaKey: true, altKey: true }), { key: "a", mod: true, alt: true })).toBe(true);
+      expect(bindingFromEvent(cmdJ)).toEqual({ key: "j", mod: true, shift: false, alt: false });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("matches and records Ctrl+letter and Ctrl+digit by the key pressed on non-Latin layouts on Windows", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      const askAgent = { key: "j", mod: true };
+      const russian = keyboard("о", { code: "KeyJ", ctrlKey: true });
+
+      expect(matchesShortcut(russian, askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("ξ", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("ח", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("ت", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("۱", { code: "Digit1", ctrlKey: true }), { key: "1", mod: true })).toBe(true);
+      expect(matchesShortcut(russian, { key: "o", mod: true })).toBe(false);
+      expect(matchesShortcut(keyboard("о", { code: "KeyJ", metaKey: true }), askAgent)).toBe(false);
+      expect(matchesShortcut(keyboard("о", { code: "KeyJ" }), askAgent)).toBe(false);
+      expect(bindingFromEvent(russian)).toEqual({ key: "j", mod: true, shift: false, alt: false });
+      expect(
+        matchesShortcut(keyboard("о", { code: "KeyJ", ctrlKey: true, altKey: true, getModifierState: altGraph }), {
+          key: "j",
+          mod: true,
+          alt: true,
+        }),
+      ).toBe(false);
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("keeps matching Latin layouts by the character they type", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      const azertyTwo = keyboard("é", { code: "Digit2", ctrlKey: true });
+      const germanThree = keyboard("§", { code: "Digit3", ctrlKey: true, shiftKey: true });
+
+      expect(matchesShortcut(azertyTwo, { key: "2", mod: true })).toBe(false);
+      expect(matchesShortcut(azertyTwo, { key: "é", mod: true })).toBe(true);
+      expect(matchesShortcut(germanThree, { key: "3", mod: true, shift: true })).toBe(false);
+      expect(matchesShortcut(keyboard("ö", { code: "Semicolon", ctrlKey: true }), { key: "ö", mod: true })).toBe(true);
+      expect(matchesShortcut(keyboard("z", { code: "KeyY", ctrlKey: true }), { key: "z", mod: true })).toBe(true);
+      expect(matchesShortcut(keyboard("z", { code: "KeyY", ctrlKey: true }), { key: "y", mod: true })).toBe(false);
+      expect(bindingFromEvent(azertyTwo)).toEqual({ key: "é", mod: true, shift: false, alt: false });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("keeps fixed Ctrl distinct from the macOS platform modifier", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "MacIntel" });

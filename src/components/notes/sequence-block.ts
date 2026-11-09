@@ -1,6 +1,7 @@
 import { Dna } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { currentLocale, i18n } from "@/i18n";
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { formatCount } from "./chart-block";
 import { blockMessage, type NoteBlockKind, type PaintContext } from "./note-blocks";
@@ -284,8 +285,10 @@ function residueLines(residues: string, kind: SequenceKind, track: string | null
   return box;
 }
 
+const PERCENT: Intl.NumberFormatOptions = { style: "percent", maximumFractionDigits: 1 };
+
 function percent(share: number): string {
-  return new Intl.NumberFormat(currentLocale(), { style: "percent", maximumFractionDigits: 1 }).format(share);
+  return formatNumber(share, PERCENT);
 }
 
 function kindLabel(kind: SequenceKind): string {

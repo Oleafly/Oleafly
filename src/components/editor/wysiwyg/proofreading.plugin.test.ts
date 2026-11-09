@@ -226,6 +226,47 @@ describe("Visual proofreading requests", () => {
     expect(client.proofreadDocument).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps the findings in place while typing elsewhere and drops only the one being edited", async () => {
+    client.words = ["Speling", "Wrod"];
+    mount("<p>Speling first.</p><p>Then Wrod.</p><p>End</p>");
+    await settle();
+    expect(findings().map((node) => node.textContent)).toEqual(["Speling", "Wrod"]);
+    const end = (editor as Editor).state.doc.content.size - 1;
+    editor?.commands.insertContentAt(end, " more");
+    expect(findings().map((node) => node.textContent)).toEqual(["Speling", "Wrod"]);
+    editor?.commands.insertContentAt(4, "l");
+    expect(findings().map((node) => node.textContent)).toEqual(["Wrod"]);
+    expect(published.at(-1)).toBeNull();
+    findings()[0].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }));
+    expect(published.filter(Boolean)).toHaveLength(0);
+    client.words = ["Wrod"];
+    await settle(800);
+    expect(findings().map((node) => node.textContent)).toEqual(["Wrod"]);
+  });
+
+  it("clears every finding when the settings ask for a fresh check", async () => {
+    client.words = ["Speling"];
+    mount("<p>Speling first.</p>");
+    await settle();
+    expect(findings()).toHaveLength(1);
+    refreshVisualProofreading(editor as Editor);
+    expect(findings()).toEqual([]);
+  });
+
+  it("cancels the finished check once for a burst of typing", async () => {
+    mount("<p>Text.</p>");
+    await settle();
+    client.cancelProofreading.mockClear();
+    editor?.commands.insertContentAt(1, "A");
+    editor?.commands.insertContentAt(1, "B");
+    editor?.commands.insertContentAt(1, "C");
+    expect(client.cancelProofreading).toHaveBeenCalledOnce();
+    await settle(800);
+    expect(client.proofreadDocument).toHaveBeenCalledTimes(2);
+    editor?.commands.insertContentAt(1, "D");
+    expect(client.cancelProofreading).toHaveBeenCalledTimes(2);
+  });
+
   it("retries on request for its own visual file only", async () => {
     mount("<p>Text.</p>");
     await settle();

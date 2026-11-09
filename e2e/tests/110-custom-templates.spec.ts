@@ -56,8 +56,8 @@ async function projectState(page: Page) {
 }
 
 async function backToLibrary(page: Page) {
-  const hasBack = await page.evaluate<boolean>(`!!document.querySelector('[title="Back to library"]')`);
-  if (hasBack) await page.click('[title="Back to library"]');
+  const hasBack = await page.evaluate<boolean>(`!!document.querySelector('[data-toolbar-part="home"][aria-label="Home"]')`);
+  if (hasBack) await page.click('[data-toolbar-part="home"][aria-label="Home"]');
   await waitLong(page, `!!document.querySelector('[data-testid="library"][data-projects-loaded="true"]')`, 30_000);
 }
 

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -208,6 +209,35 @@ describe("IconPicker", () => {
     expect(blue).toHaveAttribute("aria-pressed", "true");
     expect(blue.querySelector("svg")).toHaveClass("text-white");
     expect(blue.querySelector("svg")).not.toHaveClass("text-black/70");
+  });
+
+  it("closes after a pick and gives focus back to the same trigger", async () => {
+    const { onChange, user } = setup("lucide:atom");
+    const trigger = screen.getByRole("button", { name: enNotes.icons.choose });
+    await user.click(trigger);
+    await user.click(lineIcon(enNotes.icons.names.rocket));
+    expect(onChange).toHaveBeenCalledWith("lucide:rocket");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: enNotes.icons.choose })).toBe(trigger);
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("gives focus back to the trigger after Remove too", async () => {
+    const { user } = setup("🧪");
+    const trigger = screen.getByRole("button", { name: enNotes.icons.choose });
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: enCommon.actions.remove }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("shows a focused colour swatch with a border, not by growing it", async () => {
+    const { user } = setup("lucide:atom", { color: "lilac", withColors: true });
+    await open(user);
+    const swatch = screen.getByRole("button", { name: enLibrary.colors.peach });
+    expect(swatch.className).not.toMatch(/focus-visible:scale/u);
+    const css = readFileSync("src/components/notes/notes.css", "utf8");
+    expect(css).toMatch(/\.note-swatch:focus-visible \{\s*border: 2px solid var\(--ring\);/u);
   });
 
   it("changes the colour without closing, and still closes after an icon is picked", async () => {

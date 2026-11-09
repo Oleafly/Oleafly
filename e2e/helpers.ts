@@ -978,9 +978,9 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   );
   if (!libraryVisible) {
     const hasBack = await page.evaluate<boolean>(
-      `!!document.querySelector('[title="Back to library"]')`,
+      `!!document.querySelector('[data-toolbar-part="home"][aria-label="Home"]')`,
     );
-    if (hasBack) await page.click('[title="Back to library"]');
+    if (hasBack) await page.click('[data-toolbar-part="home"][aria-label="Home"]');
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
@@ -1545,9 +1545,9 @@ export async function openDiagramComposer(page: Page) {
   );
   if (!libraryVisible) {
     const hasBack = await page.evaluate<boolean>(
-      `!!document.querySelector('[title="Back to library"]')`,
+      `!!document.querySelector('[data-toolbar-part="home"][aria-label="Home"]')`,
     );
-    if (hasBack) await page.click('[title="Back to library"]');
+    if (hasBack) await page.click('[data-toolbar-part="home"][aria-label="Home"]');
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',

@@ -51,6 +51,8 @@
       "@oleafly/registry": ["./packages/registry/src/index.ts"],
       "@oleafly/workspace": ["./packages/workspace/src/index.ts"],
       "@oleafly/workspace/geometry": ["./packages/workspace/src/geometry.ts"],
+      "@oleafly/workspace/drag": ["./packages/workspace/src/drag.ts"],
+      "@oleafly/workspace/retention": ["./packages/workspace/src/retention.ts"],
       "@oleafly/workspace/tree": ["./packages/workspace/src/tree.ts"],
       "@oleafly/i18n-contract": ["./packages/i18n-contract/src/index.ts"],
       "@oleafly/i18n-contract/testing": ["./packages/i18n-contract/src/testing.ts"],

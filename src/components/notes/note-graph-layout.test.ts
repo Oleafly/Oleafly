@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NoteLinkRecord } from "@/lib/tauri";
 import {
   adjacency,
@@ -27,12 +27,15 @@ import {
   readSavedPositions,
   savePositions,
   Simulation,
-  toScreen,
   toWorld,
   zoomAt,
   type GraphData,
   type LayoutUpdate,
 } from "./note-graph-layout";
+
+function toScreen(view: { x: number; y: number; k: number }, wx: number, wy: number): [number, number] {
+  return [wx * view.k + view.x, wy * view.k + view.y];
+}
 
 function record(projectId: string, noteId: string | null, links: [kind: "note" | "project", id: string][]): NoteLinkRecord {
   return { projectId, noteId, title: projectId, links: links.map(([kind, id]) => ({ kind, id, snippet: "" })) };
@@ -170,55 +173,43 @@ describe("view math", () => {
 });
 
 describe("saved positions", () => {
-  function memory(initial?: string) {
-    const store = new Map<string, string>(initial === undefined ? [] : [[GRAPH_LAYOUT_KEY, initial]]);
-    return {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => void store.set(key, value),
-      store,
-    };
-  }
+  beforeEach(() => {
+    localStorage.removeItem(GRAPH_LAYOUT_KEY);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.removeItem(GRAPH_LAYOUT_KEY);
+  });
 
   it("reads only well formed entries", () => {
-    expect(readSavedPositions(memory()).size).toBe(0);
-    expect(readSavedPositions(memory("not json")).size).toBe(0);
-    expect(readSavedPositions(memory(JSON.stringify({ version: 2, positions: {} }))).size).toBe(0);
-    expect(readSavedPositions(memory(JSON.stringify({ version: 1, positions: null }))).size).toBe(0);
-    const saved = readSavedPositions(
-      memory(JSON.stringify({ version: 1, positions: { a: [1, 2], b: [1], c: ["x", 2], d: [Number.NaN, 1] } })),
+    expect(readSavedPositions().size).toBe(0);
+    for (const raw of ["not json", JSON.stringify({ version: 2, positions: {} }), JSON.stringify({ version: 1, positions: null }), "null"]) {
+      localStorage.setItem(GRAPH_LAYOUT_KEY, raw);
+      expect(readSavedPositions().size).toBe(0);
+    }
+    localStorage.setItem(
+      GRAPH_LAYOUT_KEY,
+      JSON.stringify({ version: 1, positions: { a: [1, 2], b: [1], c: ["x", 2], d: [Number.NaN, 1] } }),
     );
-    expect([...saved]).toEqual([["a", [1, 2]]]);
+    expect([...readSavedPositions()]).toEqual([["a", [1, 2]]]);
   });
 
   it("merges, rounds and survives a full or broken storage", () => {
-    const storage = memory();
-    const merged = savePositions([{ key: "b" }], new Float32Array([1.234, 5.678]), new Map([["a", [0, 0]]]), storage);
+    const merged = savePositions([{ key: "b" }], new Float32Array([1.234, 5.678]), new Map([["a", [0, 0]]]));
     expect([...merged]).toEqual([
       ["a", [0, 0]],
       ["b", [1.2, 5.7]],
     ]);
-    expect(readSavedPositions(storage).get("b")).toEqual([1.2, 5.7]);
-    const failing = {
-      getItem: () => null,
-      setItem: () => {
-        throw new Error("full");
-      },
-    };
-    expect(savePositions([{ key: "x" }], new Float32Array([1, 1]), new Map(), failing).get("x")).toEqual([1, 1]);
-    const broken = {
-      getItem: () => {
-        throw new Error("blocked");
-      },
-      setItem: vi.fn(),
-    };
-    expect(readSavedPositions(broken).size).toBe(0);
-  });
-
-  it("uses the default storage", () => {
-    localStorage.removeItem(GRAPH_LAYOUT_KEY);
-    savePositions([{ key: "k" }], new Float32Array([3, 4]), new Map());
-    expect(readSavedPositions().get("k")).toEqual([3, 4]);
-    localStorage.removeItem(GRAPH_LAYOUT_KEY);
+    expect(readSavedPositions().get("b")).toEqual([1.2, 5.7]);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("full");
+    });
+    expect(savePositions([{ key: "x" }], new Float32Array([1, 1]), new Map()).get("x")).toEqual([1, 1]);
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(readSavedPositions().size).toBe(0);
   });
 
   it("warms the start from known positions", () => {

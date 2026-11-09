@@ -12,10 +12,12 @@ vi.mock("@/components/ui/mermaid-diagram", () => ({
   renderDiagram: vi.fn(() => Promise.resolve(document.createElementNS("http://www.w3.org/2000/svg", "svg"))),
 }));
 
+import { setNoteFavorite } from "./note-favorites";
 import { NOTE_HOME_COLUMNS_KEY, NOTE_HOME_LAYOUT_KEY, NOTE_HOME_TABLE_SORT_KEY, saveHomeLayout } from "./note-home-prefs";
 import { NotesHome } from "./NotesHome";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { formatValue, nextSort, NotesTable, propertyKeys, sortTableRows } from "./NotesTable";
+import { LIST_KEYS, MANAGED_KEYS } from "./note-properties";
 import type { NoteItem } from "./types";
 import { useVaultStore } from "./vault-store";
 
@@ -78,6 +80,8 @@ describe("table helpers", () => {
   it("lists the user's property keys in order, without the managed and built-in ones", () => {
     expect(propertyKeys(notes)).toEqual(["authors", "meta", "priority", "reviewed", "venue"]);
     expect(propertyKeys([note("x", "X")])).toEqual([]);
+    const managed = Object.fromEntries([...MANAGED_KEYS, ...LIST_KEYS, "status", "template", "owner"].map((key) => [key, "v"]));
+    expect(propertyKeys([{ ...note("y", "Y"), properties: managed }])).toEqual(["owner"]);
   });
 
   it("formats lists, booleans, objects and empty values", () => {
@@ -239,6 +243,32 @@ describe("Notes Home table view", () => {
     expect(screen.queryByRole("button", { name: enNotes.home.sort.opened })).not.toBeInTheDocument();
     expect(localStorage.getItem(NOTE_HOME_LAYOUT_KEY)).toBe("table");
     expect(screen.getByRole("button", { name: enLibrary.home.gridView })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("gives each row the same star and menu as the grid and list", async () => {
+    const user = userEvent.setup();
+    saveHomeLayout("table");
+    const renameNote = vi.fn(async () => {});
+    renderHome(data({ renameNote, deleteNote: vi.fn(async () => {}) }));
+    const row = document.querySelector<HTMLElement>('[data-note-table-row="b"]');
+    if (!row) throw new Error("no row");
+    const star = within(row).getByRole("button", { name: enNotes.library.menu.favorite });
+    await user.click(star);
+    expect(within(row).getByRole("button", { name: enNotes.library.menu.unfavorite })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.pointerDown(within(row).getByRole("button", { name: enNotes.library.menu.more }), { button: 0, ctrlKey: false });
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: enNotes.library.menu.rename })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: enNotes.library.menu.delete })).toBeInTheDocument();
+    await user.click(within(menu).getByRole("menuitem", { name: enNotes.library.menu.rename }));
+    const input = await screen.findByRole("textbox", { name: enNotes.library.menu.renameLabel });
+    await user.clear(input);
+    await user.type(input, "Alpha sweep{Enter}");
+    expect(renameNote).toHaveBeenCalledWith("b", "Alpha sweep");
+
+    fireEvent.contextMenu(row);
+    expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: enNotes.library.menu.unfavorite })).toBeInTheDocument();
+    setNoteFavorite("b", false);
   });
 
   it("shows every tag from the tag index, not only the ones in the note head", async () => {

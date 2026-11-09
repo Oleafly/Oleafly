@@ -198,7 +198,12 @@ const limits = {
   // bytes, for the Notes settings, the shared command dialog, the front matter
   // reader and the shared docking helpers. The combined graph measures
   // 22,949,633 bytes on macOS.
-  totalJavaScript: 23_000_000,
+  // +61 KB for the second Notes audit: find and replace in notes, the Mermaid
+  // remote-load guard, the conflict copy dialog, Zotero search in note
+  // citations, the trusted image hosts list and the shared suggestion menu.
+  // The entry grows 8 KB, to 4,975,382 bytes. The combined graph measures
+  // 23,010,241 bytes on macOS.
+  totalJavaScript: 23_100_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // The Notes namespace itself is its own lazy chunk. This gate is here to

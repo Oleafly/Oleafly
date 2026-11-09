@@ -4,8 +4,10 @@ import { PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
 import { Decoration, type EditorView } from "@tiptap/pm/view";
 import type { CSSProperties } from "react";
 import { i18n } from "@/i18n";
+import { notifyError } from "@/lib/toast";
+import { readNoteFacts } from "./note-file";
 import { noteColorStyle } from "./note-icons";
-import { noteLinkHref, parseNoteLink, uniqueSlugs, type NoteHeading, type NoteLinkTarget } from "./note-link-format";
+import { isLinkableId, noteLinkHref, parseNoteLink, uniqueSlugs, type NoteHeading, type NoteLinkTarget } from "./note-link-format";
 import { isSelectionModifier } from "@/store/library-selection";
 import { sendSuggestMeta, suggestionKey, suggestOptionId, suggestPlugin, type SuggestState } from "./note-suggest-plugin";
 import { projectStyle } from "./project-color";
@@ -28,7 +30,10 @@ export interface LinkableProject {
 export type LinkCandidate =
   | { kind: "note"; id: string; projectId: string; title: string; color?: string; icon?: string; alias?: string }
   | { kind: "project"; id: string; title: string; color: string | null }
-  | { kind: "heading"; id: string; projectId: string; title: string; heading: NoteHeading; self: boolean; color?: string; icon?: string };
+  | { kind: "heading"; id: string; projectId: string; title: string; heading: NoteHeading; self: boolean; color?: string; icon?: string }
+  | { kind: "create"; id: string; title: string };
+
+type LinkTarget = Exclude<LinkCandidate, { kind: "create" }>;
 
 export interface OpenNoteOptions {
   newTab: boolean;
@@ -47,6 +52,7 @@ export interface NoteLinkOptions {
   onOpenProject: OpenProjectHandler;
   currentProjectId?: string | null;
   subscribe?: (listener: () => void) => () => void;
+  createNote?: (title: string) => Promise<LinkableNote | null>;
 }
 
 export interface LinkQuery {
@@ -91,7 +97,21 @@ export const HEADING_LIMIT = 12;
 const TRIGGER = /(!?)\[\[([^[\]\n￼]{0,80})$/u;
 const LOOK_BEHIND = 96;
 const linkKey = new PluginKey<SuggestState<SuggestRange>>("noteLinks");
+const foldedNames = new WeakMap<object, readonly string[]>();
 let menuCount = 0;
+
+function fold(text: string): string {
+  return text.normalize("NFC").toLocaleLowerCase();
+}
+
+function namesOf(item: { title: string; aliases?: readonly string[] }): readonly string[] {
+  let names = foldedNames.get(item);
+  if (!names) {
+    names = [item.title, ...(item.aliases ?? [])].map(fold);
+    foldedNames.set(item, names);
+  }
+  return names;
+}
 
 export function parseLinkQuery(query: string): LinkQuery {
   const bar = query.indexOf("|");
@@ -108,7 +128,7 @@ export function parseLinkQuery(query: string): LinkQuery {
 function rankOf(names: readonly string[], needle: string): { rank: number; name: number } | null {
   let best: { rank: number; name: number } | null = null;
   names.forEach((name, index) => {
-    const at = name.toLocaleLowerCase().indexOf(needle);
+    const at = name.indexOf(needle);
     if (at < 0) return;
     const rank = (at === 0 ? 0 : 2) + (index === 0 ? 0 : 1);
     if (!best || rank < best.rank) best = { rank, name: index };
@@ -127,9 +147,8 @@ function ranked<T extends { title: string; aliases?: readonly string[] }>(
       scored.push({ item, rank: 0, order });
       return;
     }
-    const names = [item.title, ...(item.aliases ?? [])];
-    const best = rankOf(names, needle);
-    if (best) scored.push({ item, rank: best.rank, order, alias: best.name > 0 ? names[best.name] : undefined });
+    const best = rankOf(namesOf(item), needle);
+    if (best) scored.push({ item, rank: best.rank, order, alias: best.name > 0 ? item.aliases?.[best.name - 1] : undefined });
   });
   scored.sort((left, right) => left.rank - right.rank || left.order - right.order);
   return scored.slice(0, limit).map(({ item, alias }) => ({ item, alias }));
@@ -155,7 +174,7 @@ export function linkCandidates(
   currentProjectId?: string | null,
   embed = false,
 ): LinkCandidate[] {
-  const needle = parseLinkQuery(query).name.toLocaleLowerCase();
+  const needle = fold(parseLinkQuery(query).name);
   const others = notes.filter((note) => note.projectId !== currentProjectId);
   const found = ranked(others, needle, NOTE_LIMIT).map(({ item, alias }) => noteCandidate(item, alias));
   if (embed) return found;
@@ -173,10 +192,8 @@ export function headingTarget(
   currentProjectId?: string | null,
 ): LinkableNote | null {
   if (!name) return notes.find((note) => note.projectId === currentProjectId) ?? null;
-  const wanted = name.toLocaleLowerCase();
-  const exact = notes.find((note) =>
-    [note.title, ...(note.aliases ?? [])].some((candidate) => candidate.toLocaleLowerCase() === wanted),
-  );
+  const wanted = fold(name);
+  const exact = notes.find((note) => namesOf(note).includes(wanted));
   if (exact) return exact;
   const others = notes.filter((note) => note.projectId !== currentProjectId);
   return ranked(others, wanted, 1)[0]?.item ?? null;
@@ -199,9 +216,9 @@ export function headingCandidates(
   query: string,
   self: boolean,
 ): LinkCandidate[] {
-  const needle = query.toLocaleLowerCase();
+  const needle = fold(query);
   return headings
-    .filter((heading) => !needle || heading.text.toLocaleLowerCase().includes(needle))
+    .filter((heading) => !needle || fold(heading.text).includes(needle))
     .slice(0, HEADING_LIMIT)
     .map((heading) => ({
       kind: "heading",
@@ -247,6 +264,7 @@ function linkAttrs(
   start: boolean,
   notes: ReadonlyMap<string, LinkableNote> | null,
   projects: ReadonlyMap<string, LinkableProject> | null,
+  creatable: boolean,
 ): Record<string, string> {
   const attrs: Record<string, string> = {
     class: start ? "note-link note-link-start" : "note-link",
@@ -256,7 +274,7 @@ function linkAttrs(
   if (target.kind === "note") {
     if (!notes) return attrs;
     const note = notes.get(target.id);
-    if (!note) return missing(attrs, i18n.t(($) => $.notes.links.missingNote));
+    if (!note) return missing(attrs, creatable ? i18n.t(($) => $.notes.links.missingNoteCreate) : i18n.t(($) => $.notes.links.missingNote));
     return { ...attrs, "data-note-id": target.id, style: cssText(noteColorStyle(note.color)) };
   }
   if (!projects) return attrs;
@@ -268,6 +286,7 @@ function linkAttrs(
 interface LinkIndexes {
   notes: ReadonlyMap<string, LinkableNote> | null;
   projects: ReadonlyMap<string, LinkableProject> | null;
+  creatable: boolean;
 }
 
 const noteIndexes = new WeakMap<readonly LinkableNote[], ReadonlyMap<string, LinkableNote>>();
@@ -282,12 +301,13 @@ function indexed<T, K extends object>(cache: WeakMap<K, ReadonlyMap<string, T>>,
   return found;
 }
 
-function linkIndexes(options: NoteLinkOptions): LinkIndexes {
+function linkIndexes(options: NoteLinkOptions, editable: boolean): LinkIndexes {
   const notes = options.getNotes();
   const projects = options.getProjects();
   return {
     notes: notes ? indexed(noteIndexes, notes, () => new Map(notes.map((note) => [note.noteId, note]))) : null,
     projects: projects ? indexed(projectIndexes, projects, () => new Map(projects.map((project) => [project.projectId, project]))) : null,
+    creatable: editable && options.createNote !== undefined,
   };
 }
 
@@ -305,7 +325,7 @@ function blockDecorations(block: ProseMirrorNode, blockPos: number, indexes: Lin
     const start = href !== lastHref || pos !== lastEnd;
     lastHref = href;
     lastEnd = end;
-    found.push(Decoration.inline(pos, end, linkAttrs(target, start, indexes.notes, indexes.projects)));
+    found.push(Decoration.inline(pos, end, linkAttrs(target, start, indexes.notes, indexes.projects, indexes.creatable)));
   });
   return found;
 }
@@ -325,16 +345,62 @@ function headingItems(state: EditorState, options: NoteLinkOptions, query: LinkQ
   return { items: headingCandidates(target, headings, query.heading ?? "", self), loading: false };
 }
 
+export function linkedNoteCreator(
+  create: (title: string) => Promise<string>,
+  load: (projectId: string) => Promise<{ text: string }>,
+): (title: string) => Promise<LinkableNote | null> {
+  return async (title) => {
+    try {
+      const projectId = await create(title);
+      const { id } = readNoteFacts((await load(projectId)).text);
+      return isLinkableId(id) ? { noteId: id, projectId, title } : null;
+    } catch (error) {
+      notifyError("create a linked note", error, i18n.t(($) => $.notes.vault.switcher.createFailed));
+      return null;
+    }
+  };
+}
+
+export function createCandidate(options: NoteLinkOptions, query: LinkQuery, embed: boolean): LinkCandidate | null {
+  const notes = options.getNotes();
+  if (!options.createNote || !notes || embed || query.heading !== null || query.name === "") return null;
+  const wanted = fold(query.name);
+  const exists = notes.some((note) => namesOf(note).some((name) => name.trim() === wanted));
+  return exists ? null : { kind: "create", id: query.name, title: query.name };
+}
+
+interface CachedSuggestion {
+  notes: readonly LinkableNote[] | null;
+  projects: readonly LinkableProject[] | null;
+  suggestion: NoteLinkSuggestion | null;
+}
+
+const suggestions = new WeakMap<EditorState, CachedSuggestion>();
+
 export function noteLinkSuggestion(state: EditorState): NoteLinkSuggestion | null {
   const spec = specOf(state);
   const suggest = linkKey.getState(state)?.suggest;
   if (!spec || !suggest) return null;
+  const notes = spec.noteLinks.getNotes();
+  const projects = spec.noteLinks.getProjects();
+  const cached = suggestions.get(state);
+  if (cached && cached.notes === notes && cached.projects === projects) return cached.suggestion;
+  const suggestion = buildSuggestion(state, spec, suggest);
+  suggestions.set(state, { notes, projects, suggestion });
+  return suggestion;
+}
+
+function buildSuggestion(state: EditorState, spec: LinkPluginSpec, suggest: SuggestRange): NoteLinkSuggestion {
   const options = spec.noteLinks;
   const query = parseLinkQuery(suggest.query);
+  const create = createCandidate(options, query, suggest.embed);
   const found =
     query.heading === null
       ? {
-          items: linkCandidates(options.getNotes() ?? [], options.getProjects() ?? [], suggest.query, options.currentProjectId, suggest.embed),
+          items: [
+            ...linkCandidates(options.getNotes() ?? [], options.getProjects() ?? [], suggest.query, options.currentProjectId, suggest.embed),
+            ...(create ? [create] : []),
+          ],
           loading: false,
         }
       : headingItems(state, options, query);
@@ -359,12 +425,12 @@ export function closeNoteLinkMenu(view: EditorView): void {
   sendSuggestMeta(view, linkKey, { dismiss: true });
 }
 
-export function candidateHref(candidate: LinkCandidate): string {
+export function candidateHref(candidate: LinkTarget): string {
   if (candidate.kind === "heading") return noteLinkHref("note", candidate.id, candidate.heading.slug);
   return noteLinkHref(candidate.kind, candidate.id);
 }
 
-export function candidateText(candidate: LinkCandidate, alias: string | null): string {
+export function candidateText(candidate: LinkTarget, alias: string | null): string {
   if (alias) return alias;
   if (candidate.kind === "heading") {
     return candidate.self ? candidate.heading.text : `${candidate.title.trim() || candidate.id} > ${candidate.heading.text}`;
@@ -373,7 +439,25 @@ export function candidateText(candidate: LinkCandidate, alias: string | null): s
 }
 
 export function canEmbed(candidate: LinkCandidate): boolean {
-  return candidate.kind !== "project" && !(candidate.kind === "heading" && candidate.self);
+  return candidate.kind === "note" || (candidate.kind === "heading" && !candidate.self);
+}
+
+const creating = new WeakSet<EditorView>();
+
+function createAndLink(view: EditorView, suggestion: NoteLinkSuggestion, title: string): boolean {
+  const create = specOf(view.state)?.noteLinks.createNote;
+  if (!create) return false;
+  if (creating.has(view)) return true;
+  creating.add(view);
+  const { from, query } = suggestion;
+  create(title)
+    .then((note) => {
+      const current = view.isDestroyed ? null : noteLinkSuggestion(view.state);
+      if (note && current?.from === from && current.query === query) insertNoteLink(view, noteCandidate(note));
+    })
+    .catch(() => undefined)
+    .finally(() => creating.delete(view));
+  return true;
 }
 
 export function insertNoteLink(view: EditorView, candidate: LinkCandidate, asEmbed?: boolean): boolean {
@@ -381,6 +465,7 @@ export function insertNoteLink(view: EditorView, candidate: LinkCandidate, asEmb
   const { state } = view;
   const link = state.schema.marks.link;
   if (!suggestion || !link) return false;
+  if (candidate.kind === "create") return createAndLink(view, suggestion, candidate.title);
   const { from, to } = suggestion;
   const text = candidateText(candidate, suggestion.alias);
   const href = candidateHref(candidate);
@@ -418,6 +503,63 @@ export function scrollViewToHeading(view: EditorView, slug: string): boolean {
   return true;
 }
 
+function linkSpan(view: EditorView, anchor: Element, href: string): { from: number; to: number; text: string } | null {
+  let pos: number;
+  try {
+    pos = view.posAtDOM(anchor, 0);
+  } catch {
+    return null;
+  }
+  const $pos = view.state.doc.resolve(pos);
+  const start = $pos.start();
+  let from = -1;
+  let to = -1;
+  let found: { from: number; to: number } | null = null;
+  $pos.parent.forEach((child, offset) => {
+    if (found) return;
+    const childFrom = start + offset;
+    if (hrefOf(child) === href) {
+      if (from < 0) from = childFrom;
+      to = childFrom + child.nodeSize;
+      return;
+    }
+    if (from >= 0 && pos >= from && pos <= to) found = { from, to };
+    from = -1;
+  });
+  if (!found && from >= 0 && pos >= from && pos <= to) found = { from, to };
+  if (!found) return null;
+  const span: { from: number; to: number } = found;
+  return { ...span, text: view.state.doc.textBetween(span.from, span.to, " ").trim() };
+}
+
+function holdsLink(doc: ProseMirrorNode, span: { from: number; to: number; text: string }, href: string): boolean {
+  if (span.to > doc.content.size) return false;
+  let linked = true;
+  doc.nodesBetween(span.from, span.to, (node) => {
+    if (node.isText && hrefOf(node) !== href) linked = false;
+  });
+  return linked && doc.textBetween(span.from, span.to, " ").trim() === span.text;
+}
+
+function recreateMissing(view: EditorView, anchor: Element, href: string, options: NoteLinkOptions, newTab: boolean): void {
+  const create = options.createNote;
+  const link = view.state.schema.marks.link;
+  const span = view.editable && create && link ? linkSpan(view, anchor, href) : null;
+  if (!create || !link || !span || span.text === "" || creating.has(view)) return;
+  creating.add(view);
+  create(span.text)
+    .then((note) => {
+      if (!note || view.isDestroyed) return;
+      if (holdsLink(view.state.doc, span, href)) {
+        const next = noteLinkHref("note", note.noteId);
+        view.dispatch(view.state.tr.removeMark(span.from, span.to, link).addMark(span.from, span.to, link.create({ href: next })));
+      }
+      options.onOpenNote(note.noteId, { newTab, projectId: note.projectId });
+    })
+    .catch(() => undefined)
+    .finally(() => creating.delete(view));
+}
+
 function openClicked(view: EditorView, event: MouseEvent, options: NoteLinkOptions): boolean {
   if (event.button !== 0 || !(event.target instanceof Element)) return false;
   const anchor = event.target.closest("a");
@@ -428,8 +570,12 @@ function openClicked(view: EditorView, event: MouseEvent, options: NoteLinkOptio
   if (!view.state.selection.empty) return true;
   const newTab = isSelectionModifier(event);
   if (target.kind === "note") {
-    const note = options.getNotes()?.find((candidate) => candidate.noteId === target.id);
-    if (!note) return true;
+    const notes = options.getNotes();
+    const note = notes?.find((candidate) => candidate.noteId === target.id);
+    if (!note) {
+      if (notes) recreateMissing(view, anchor, anchor.getAttribute("href") ?? "", options, newTab);
+      return true;
+    }
     if (target.heading && note.projectId === options.currentProjectId && !newTab) {
       scrollViewToHeading(view, target.heading);
       return true;
@@ -464,13 +610,19 @@ function handleKey(view: EditorView, event: KeyboardEvent): boolean {
 function linkPlugin(options: NoteLinkOptions) {
   const menuId = `note-link-menu-${++menuCount}`;
   const spec: LinkPluginSpec = { noteLinks: options, menuId };
+  let editable = true;
   return suggestPlugin<SuggestRange>({
     key: linkKey,
     menuId,
     spec,
     decorator: () => {
-      const indexes = linkIndexes(options);
+      const indexes = linkIndexes(options, editable);
       return (block, pos) => blockDecorations(block, pos, indexes);
+    },
+    redecorates: (view) => {
+      if (view.editable === editable) return false;
+      editable = view.editable;
+      return options.createNote !== undefined;
     },
     trigger: triggerAt,
     options: (state) => {

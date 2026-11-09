@@ -1,6 +1,6 @@
 import { mathNodeJSON } from "@oleafly/wysiwyg";
 import { type Editor, Extension } from "@tiptap/core";
-import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
+import { type EditorState, type Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import {
   Heading1,
@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import { i18n } from "@/i18n";
 import type { BlockGroupId } from "./block-templates";
-import { blockGroups } from "./block-views";
-import { suggestionKey, suggestOptionId } from "./note-suggest-plugin";
+import { blockGroups, caretAfterDrawnBlock } from "./block-views";
+import { type SuggestRange, type SuggestState, sendSuggestMeta, suggestionKey, suggestOptionId, suggestPlugin } from "./note-suggest-plugin";
 
 export type SlashGroup = "basic" | BlockGroupId;
 
@@ -67,7 +67,8 @@ const BLOCK_KEYWORDS: Readonly<Record<string, readonly string[]>> = {
 };
 const INACTIVE: SlashState = { active: false, from: 0, to: 0, query: "", index: 0, dismissed: null };
 
-export const noteSlashKey = new PluginKey<SlashState>("noteSlash");
+export const noteSlashKey = new PluginKey<SuggestState<SuggestRange>>("noteSlash");
+const visibleItems = new WeakMap<EditorState, SlashItem[]>();
 let menuCount = 0;
 
 interface SlashPluginSpec {
@@ -224,6 +225,7 @@ function blockItems(): SlashItem[] {
               attrs: { language: template.info },
               content: [{ type: "text", text: template.source }],
             })
+            .command(caretAfterDrawnBlock)
             .run();
         },
       }),
@@ -252,26 +254,34 @@ export function filterSlashItems(items: readonly SlashItem[], query: string): Sl
 }
 
 export function slashState(state: EditorState): SlashState {
-  return noteSlashKey.getState(state) ?? INACTIVE;
+  const plugin = noteSlashKey.getState(state);
+  const suggest = plugin?.suggest;
+  if (!suggest) return plugin?.dismissed == null ? INACTIVE : { ...INACTIVE, dismissed: plugin.dismissed };
+  return { active: true, from: suggest.from, to: suggest.to, query: suggest.query, index: suggest.index, dismissed: null };
 }
 
-export function visibleSlashItems(editor: Editor, state: SlashState = slashState(editor.state)): SlashItem[] {
-  return state.active ? filterSlashItems(slashItems(editor), state.query) : [];
+export function visibleSlashItems(editor: Editor): SlashItem[] {
+  const { state } = editor;
+  let items = visibleItems.get(state);
+  if (!items) {
+    const slash = slashState(state);
+    items = slash.active ? filterSlashItems(slashItems(editor), slash.query) : [];
+    visibleItems.set(state, items);
+  }
+  return items;
 }
-
-type SlashMeta = { type: "move"; index: number } | { type: "dismiss" };
 
 export function moveSlash(view: EditorView, index: number): void {
-  view.dispatch(view.state.tr.setMeta(noteSlashKey, { type: "move", index } satisfies SlashMeta));
+  sendSuggestMeta(view, noteSlashKey, { index });
 }
 
 export function dismissSlash(view: EditorView): void {
-  view.dispatch(view.state.tr.setMeta(noteSlashKey, { type: "dismiss" } satisfies SlashMeta));
+  sendSuggestMeta(view, noteSlashKey, { dismiss: true });
 }
 
 export function chooseSlash(editor: Editor, index: number): boolean {
   const state = slashState(editor.state);
-  const item = visibleSlashItems(editor, state)[index];
+  const item = visibleSlashItems(editor)[index];
   if (!item) return false;
   return item.run(editor, { from: state.from, to: state.to });
 }
@@ -285,47 +295,33 @@ export function slashOptionId(menuId: string, index: number): string {
   return suggestOptionId(menuId, index);
 }
 
-export function slashPlugin(editor: Editor): Plugin<SlashState> {
-  const spec: SlashPluginSpec = { slashMenuId: `note-slash-menu-${++menuCount}` };
-  return new Plugin<SlashState>({
-    ...spec,
+function slashOptions(editor: Editor, state: EditorState): { index: number; count: number } | null {
+  const slash = slashState(state);
+  if (!slash.active) return null;
+  const count = visibleSlashItems(editor).length;
+  return { index: Math.min(slash.index, Math.max(0, count - 1)), count };
+}
+
+export function slashPlugin(editor: Editor): Plugin<SuggestState<SuggestRange>> {
+  const menuId = `note-slash-menu-${++menuCount}`;
+  const spec: SlashPluginSpec = { slashMenuId: menuId };
+  return suggestPlugin<SuggestRange>({
     key: noteSlashKey,
-    state: {
-      init: () => INACTIVE,
-      apply: (transaction, previous, _old, state) => {
-        const meta = transaction.getMeta(noteSlashKey) as SlashMeta | undefined;
-        const match = slashMatch(state);
-        if (!match) return INACTIVE;
-        if (meta?.type === "dismiss") return { ...INACTIVE, dismissed: match.from };
-        if (previous.dismissed === match.from) return { ...INACTIVE, dismissed: match.from };
-        const sameQuery = previous.active && previous.from === match.from && previous.query === match.query;
-        const index = meta?.type === "move" ? meta.index : sameQuery ? previous.index : 0;
-        return { active: true, ...match, index, dismissed: null };
-      },
-    },
-    props: {
-      handleKeyDown: (view, event) => {
-        const state = slashState(view.state);
-        if (!state.active) return false;
-        const items = visibleSlashItems(editor, state);
-        const index = Math.min(state.index, Math.max(0, items.length - 1));
-        return suggestionKey(event, {
-          count: items.length,
-          index,
+    menuId,
+    spec,
+    trigger: slashMatch,
+    options: (state) => slashOptions(editor, state),
+    handleKeyDown: (view, event) => {
+      const options = slashOptions(editor, view.state);
+      return suggestionKey(
+        event,
+        options && {
+          ...options,
           close: () => dismissSlash(view),
           highlight: (next) => moveSlash(view, next),
-          choose: () => chooseSlash(editor, index),
-        });
-      },
-      attributes: (state): Record<string, string> => {
-        const slash = slashState(state);
-        if (!slash.active) return {};
-        const menuId = spec.slashMenuId;
-        const count = visibleSlashItems(editor, slash).length;
-        const attributes: Record<string, string> = { "aria-controls": menuId, "aria-expanded": "true" };
-        if (count > 0) attributes["aria-activedescendant"] = slashOptionId(menuId, Math.min(slash.index, count - 1));
-        return attributes;
-      },
+          choose: () => chooseSlash(editor, options.index),
+        },
+      );
     },
   });
 }

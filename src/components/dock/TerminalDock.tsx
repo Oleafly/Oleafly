@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { PanelBottomClose, Palette, Pencil, Plus, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { openContextMenuFromKey } from "@/lib/context-menu-key";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -132,25 +133,7 @@ function TerminalTabItem({
       cancel();
     }
   };
-  const openMenu = () => {
-    const row = rowRef.current;
-    if (!row) return;
-    const rect = row.getBoundingClientRect();
-    row.dispatchEvent(
-      new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: Math.round(rect.left + rect.width / 2),
-        clientY: Math.round(rect.bottom),
-      }),
-    );
-  };
-  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
-      event.preventDefault();
-      openMenu();
-    }
-  };
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => openContextMenuFromKey(event, rowRef.current);
   const controlBase =
     "inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:opacity-100 focus-visible:bg-foreground/10 focus-visible:text-foreground";
   const hoverOnly = "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";

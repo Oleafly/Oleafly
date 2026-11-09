@@ -329,7 +329,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     try {
       const catalog = await acpCatalog(probe);
       if (request !== catalogRequest) return false;
-      set({ catalog });
+      if (JSON.stringify(catalog) !== JSON.stringify(get().catalog)) set({ catalog });
       return true;
     } catch (error) {
       if (request === catalogRequest) throw error;

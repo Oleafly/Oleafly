@@ -105,13 +105,53 @@ describe("project note files", () => {
     const data = files();
     const disk = noteVersion("disk\ntext");
     await data.saveNote(KEY, "mine", disk);
-    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "mine", {});
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "mine", { crlf: true });
     useFilesStore.setState({ projectId: "thesis" });
     await data.saveNote(KEY, "mine", disk);
-    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "mine", { closedProject: true });
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "mine", { crlf: true, closedProject: true });
     await data.saveNote(KEY, "mine", "stale", "base");
-    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "mine", { closedProject: true, base: "base" });
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "mine", { crlf: true, closedProject: true, base: "base" });
     await expect(data.saveNote(KEY, "mine", "stale")).rejects.toBeInstanceOf(NoteConflictError);
+  });
+
+  it("keeps the file's line endings when it saves after the project closed", async () => {
+    useFilesStore.setState({ projectId: "thesis", files: {} });
+    const data = files();
+    mocks.readFileContent.mockResolvedValue("---\r\nkind: note\r\n---\r\n\r\nOne\r\n");
+    await data.saveNote(KEY, "Two\n", noteVersion("---\nkind: note\n---\n\nOne\n"));
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "Two\n", { crlf: true, closedProject: true });
+    mocks.readFileContent.mockResolvedValue("---\nkind: note\n---\n\nOne\n");
+    await data.saveNote(KEY, "Two\n", noteVersion("---\nkind: note\n---\n\nOne\n"));
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "Two\n", { crlf: false, closedProject: true });
+  });
+
+  it("still hands back a live note when the disk cannot be read for its line endings", async () => {
+    useFilesStore.setState({ projectId: "thesis", files: {} });
+    mocks.readFileContent.mockRejectedValue(new Error("gone"));
+    await files().saveNote(KEY, "mine", "stale", "base");
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", PATH, "mine", { closedProject: true, base: "base" });
+  });
+
+  it("writes again after a failed save instead of calling its own text a conflict", async () => {
+    const failure = new Error("The disk is full.");
+    const store = {
+      setContent: vi.fn((path: string, content: string) => {
+        useFilesStore.setState((state) => ({ files: { ...state.files, [path]: { content, dirty: true } } }));
+        return true;
+      }),
+      saveFile: vi.fn(async (_path: string) => {}),
+    };
+    store.saveFile.mockRejectedValueOnce(failure);
+    useFilesStore.setState(store);
+    const data = files();
+    await expect(data.saveNote(KEY, "mine", noteVersion(TEXT))).rejects.toBe(failure);
+    await expect(data.saveNote(KEY, "mine", noteVersion(TEXT))).resolves.toEqual({ text: "mine", version: noteVersion("mine") });
+    expect(store.saveFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("still reports a conflict when someone else changed a file it could not save", async () => {
+    useFilesStore.setState({ files: { [PATH]: { content: "theirs", dirty: true } } });
+    await expect(files().saveNote(KEY, "mine", noteVersion(TEXT))).rejects.toBeInstanceOf(NoteConflictError);
   });
 
   it("hands other notes to the library", async () => {

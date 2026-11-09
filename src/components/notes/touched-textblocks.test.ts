@@ -6,7 +6,7 @@ import { DocAttrStep, ReplaceAroundStep } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { loadNamespace } from "@/i18n";
-import { destroyKbEditors, kbEditor } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor } from "./tests/kb-editor-fixtures";
 import { noteLinkExtensions, type LinkableNote } from "./note-links";
 import { noteTagExtensions } from "./note-tag-chips";
 import { redecorateTextblocks, touchedTextblocks } from "./touched-textblocks";

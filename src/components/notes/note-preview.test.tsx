@@ -19,7 +19,7 @@ import {
   PREVIEW_TABLE,
   previewContent,
 } from "./note-preview";
-import { forgetRemoteImages } from "./note-remote-images";
+import { resetRemoteImagesForTest } from "./note-remote-images";
 
 const FENCE = "```";
 const SVG_URL = "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E";
@@ -38,7 +38,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   clearPreviewCache();
-  forgetRemoteImages();
+  resetRemoteImagesForTest();
   mermaid.renderDiagram.mockReset();
   mermaid.renderDiagram.mockResolvedValue(document.createElementNS("http://www.w3.org/2000/svg", "svg"));
   document.documentElement.classList.remove("dark");

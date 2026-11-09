@@ -115,6 +115,10 @@ impl DeviceId {
     }
 }
 
+pub fn random_uuid() -> String {
+    Uuid::new_v4().to_string()
+}
+
 pub fn device_slug(name: &str) -> String {
     let mut slug = String::with_capacity(name.len());
     let mut pending_dash = false;
@@ -138,7 +142,17 @@ pub fn device_slug(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{device_slug, DeviceId, FileId, ProjectId};
+    use super::{device_slug, random_uuid, DeviceId, FileId, ProjectId};
+
+    #[test]
+    fn random_uuids_are_version_4_and_differ() {
+        let first = random_uuid();
+        let parsed = uuid::Uuid::parse_str(&first).unwrap();
+        assert_eq!(parsed.get_version_num(), 4);
+        assert_eq!(first, first.to_lowercase());
+        assert_eq!(first.len(), 36);
+        assert_ne!(first, random_uuid());
+    }
 
     #[test]
     fn generated_ids_round_trip_through_strict_parsing() {

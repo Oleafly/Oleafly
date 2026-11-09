@@ -208,7 +208,7 @@ export function createNoteScope(options: NoteScopeOptions): AssistantScopeValue 
     cachedContent: () => undefined,
     toolHost: createProjectToolsHost({ projectId: () => folder, scope: key, unavailable: NOTE_TOOL_UNAVAILABLE }),
     toolAdditions: (run) => [createNoteAssistantTools(options.deps, run)],
-    excludedNames: noteExcludedTools(options.deps.relatedProjectId, note.home !== undefined),
+    excludedNames: noteExcludedTools(options.deps.relatedProjectId, note.home !== undefined, note.shared === true),
     contextBlock: options.context,
     networkNeedsApproval: true,
     systemPrompt: (input) => noteAssistantPrompt(options.facts(), input),

@@ -1,23 +1,47 @@
 // @vitest-environment jsdom
 import { Editor, type JSONContent } from "@tiptap/core";
 import { createWysiwygExtensions, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import type { ZoteroHit, ZoteroLibraryStatus } from "@oleafly/backend-port";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { NEW_BLOCKS, newChartSource } from "./block-templates";
-import { HTML_TEMPLATE } from "./html-block";
+import { htmlTemplate } from "./html-block";
 import { REACT_TEMPLATE } from "./react-block";
 import { SVG_TEMPLATE } from "./svg-block";
 import { TYPST_TEMPLATE } from "./typst-block";
 import { useToastStore } from "@/store/toast";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { NOTE_WIDTH_KEY, readNoteWidth, saveNoteWidth } from "./note-prefs";
+import { useZoteroLibraryStore } from "@/store/zotero-library";
+import { NOTE_WIDTH_KEY, saveNoteWidth } from "./note-prefs";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { NoteToolbar } from "./NoteToolbar";
 import type { CitationItem } from "./types";
+
+const counter = vi.hoisted(() => vi.fn());
+const zotero = vi.hoisted(() => ({ search: vi.fn(), insert: vi.fn() }));
+
+vi.mock("./note-word-count", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./note-word-count")>();
+  counter.mockImplementation(real.noteWordCount);
+  return { ...real, noteWordCount: counter };
+});
+
+vi.mock("@/lib/zotero/search-client", () => ({
+  cachedZoteroSearch: () => null,
+  searchZoteroLibrary: zotero.search,
+}));
+
+vi.mock("@/features/zotero-actions", () => ({ insertZoteroCitation: zotero.insert }));
+
+vi.mock("@/features/zotero-cite", () => ({
+  projectBibliography: () => ({ keys: new Set(["taken2020"]), doiToKey: new Map(), links: {} }),
+  existingKeyForHit: () => null,
+}));
 
 let editors: Editor[] = [];
 let hosts: HTMLElement[] = [];
@@ -36,6 +60,7 @@ interface Sources {
   related?: string;
   projectCitations?: NotesData["projectCitations"];
   readOnly?: boolean;
+  projectId?: string;
 }
 
 function notesData(citations: readonly CitationItem[], sources: Sources): NotesData {
@@ -64,7 +89,7 @@ function mount(markdown: string, citations: readonly CitationItem[] = [], source
   const user = userEvent.setup();
   render(
     <NotesDataProvider value={notesData(citations, sources)}>
-      <NoteToolbar editor={editor} noteId="n1" readOnly={sources.readOnly} />
+      <NoteToolbar editor={editor} noteId="n1" projectId={sources.projectId} readOnly={sources.readOnly} />
     </NotesDataProvider>,
   );
   return { editor, user };
@@ -404,11 +429,32 @@ describe("NoteToolbar", () => {
     expect(mermaid?.content?.[0].text).toBe(NEW_BLOCKS.mermaid.source);
   });
 
+  it("leaves the caret on a line after an inserted block, so typing lands outside its hidden source", async () => {
+    const { editor, user } = mount("Figures");
+    select(editor, 8, 8);
+    await user.click(button(enNotes.toolbar.chart));
+    act(() => {
+      editor.commands.insertContent("Caption");
+    });
+    const content = blocks(editor);
+    const chart = content.findIndex((block) => block.type === "codeBlock");
+    expect(content[chart]?.content?.[0].text).toBe(newChartSource());
+    expect(content[chart + 1]).toEqual({ type: "paragraph", content: [{ type: "text", text: "Caption" }] });
+  });
+
   it.each([
     ["LaTeX", NEW_BLOCKS.latex],
     ["Typst", { info: "{=typst}", source: TYPST_TEMPLATE }],
     ["SVG", { info: "svg", source: SVG_TEMPLATE }],
-    ["HTML", { info: "html", source: HTML_TEMPLATE }],
+    [
+      "HTML",
+      {
+        info: "html",
+        get source() {
+          return htmlTemplate();
+        },
+      },
+    ],
     ["React", { info: "jsx", source: REACT_TEMPLATE }],
   ])("inserts a %s block from the Insert block menu", async (name, block) => {
     const { editor, user } = mount("Equations");
@@ -452,12 +498,63 @@ describe("NoteToolbar", () => {
     expect(editor.view.hasFocus()).toBe(true);
   });
 
-  it("does not scroll when the outline entry has no element on the page", async () => {
-    const { editor, user } = mount("# Overview\n");
-    const nodeDOM = vi.spyOn(editor.view, "nodeDOM").mockReturnValue(null);
+  it("follows the headings while the outline is open", () => {
+    const { editor } = mount("# Overview\n\nText\n");
     const menu = openMenu(enNotes.toolbar.outline);
-    await user.click(within(menu).getByRole("menuitem", { name: "Overview" }));
-    expect(nodeDOM).toHaveBeenCalledWith(0);
+    expect(within(menu).getByRole("menuitem", { name: "Overview" })).toBeInTheDocument();
+    act(() => {
+      editor.commands.setContent("<p>Only text</p>");
+    });
+    expect(within(menu).queryByRole("menuitem")).toBeNull();
+    expect(within(menu).getByText(enNotes.toolbar.emptyOutline)).toBeInTheDocument();
+  });
+
+  it("lists the same headings as the outline panel, leaving out quoted and empty ones", () => {
+    mount("# Overview\n\n> ## Quoted\n\n##\n\n## Method   plan\n");
+    const menu = openMenu(enNotes.toolbar.outline);
+    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Overview", "Method plan"]);
+  });
+
+  it("checks the formatting once per change, not on every transaction", () => {
+    const { editor } = mount("Some **bold** words");
+    const isActive = vi.spyOn(editor, "isActive");
+    act(() => {
+      editor.view.dispatch(editor.state.tr.setMeta("unrelated", true));
+    });
+    expect(isActive).not.toHaveBeenCalled();
+    act(() => {
+      editor.commands.setTextSelection(7);
+    });
+    const checks = isActive.mock.calls.length;
+    expect(checks).toBeGreaterThan(0);
+    act(() => {
+      editor.view.dispatch(editor.state.tr.setMeta("unrelated", true));
+    });
+    expect(isActive).toHaveBeenCalledTimes(checks);
+    expect(button(enEditor.toolbar.bold)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("counts the words once for each version of the note", () => {
+    const { editor } = mount("One two");
+    counter.mockClear();
+    act(() => {
+      editor.commands.insertContentAt(1, "Zero ");
+    });
+    expect(counter).toHaveBeenCalledTimes(1);
+    act(() => {
+      editor.view.dispatch(editor.state.tr.setMeta("unrelated", true));
+    });
+    expect(counter).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(enNotes.toolbar.words_other.replace("{{count}}", "3"))).toBeInTheDocument();
+  });
+
+  it.each([
+    [enEditor.toolbar.insertTable],
+    [enNotes.toolbar.link],
+  ])("explains the %s button with a tooltip", async (label) => {
+    const { user } = mount("Text");
+    await user.hover(button(label));
+    expect((await screen.findByRole("tooltip")).textContent).toBe(label);
   });
 
   it("asks for a heading when the outline is empty", () => {
@@ -486,6 +583,121 @@ describe("NoteToolbar", () => {
     expect(screen.queryByText("2 words")).toBeNull();
     act(() => useSettingsStore.getState().setNotesAppearance("notesShowWordCount", true));
     expect(screen.getByText("2 words")).toBeInTheDocument();
+  });
+});
+
+function zoteroHit(citationKey: string, title: string): ZoteroHit {
+  return {
+    library: "user",
+    itemKey: citationKey.toUpperCase(),
+    citationKey,
+    keySource: "bbt",
+    title,
+    authors: ["Vaswani"],
+    authorCount: 1,
+    year: "2017",
+    itemType: "journalArticle",
+    dateModified: "2024-01-01",
+    score: 1,
+  };
+}
+
+describe("citing from Zotero", () => {
+  const MAE = { key: "he2022mae", label: "He 2022, MAE" };
+  const searchLabel = enEditor.citations.filterLabel;
+
+  beforeAll(async () => {
+    await loadNamespace("references");
+  });
+
+  beforeEach(() => {
+    useFilesStore.setState({ projectId: "paper-1" });
+    useZoteroLibraryStore.setState({ status: { itemCount: 3, generation: 1, libraries: [] } as unknown as ZoteroLibraryStatus });
+    zotero.search.mockReset();
+    zotero.search.mockResolvedValue({
+      generation: 1,
+      total: 3,
+      complete: true,
+      hits: [zoteroHit("vaswani2017", "Attention is all you need"), zoteroHit("taken2020", "Already cited"), zoteroHit("he2022mae", "Masked autoencoders")],
+    });
+    zotero.insert.mockReset();
+    zotero.insert.mockImplementation((hit: ZoteroHit, insert: (key: string) => string | null) => insert(hit.citationKey));
+  });
+
+  afterEach(() => {
+    useFilesStore.setState({ projectId: null });
+    useZoteroLibraryStore.setState({ status: null });
+  });
+
+  it("searches Zotero when the note's project is the open one, and cites the picked entry", async () => {
+    const projectCitations = vi.fn(async () => [MAE]);
+    const { editor, user } = mount("As shown", [], { related: "paper-1", projectCitations });
+    select(editor, 9, 9);
+    const menu = openMenu(enNotes.toolbar.citation);
+    const search = within(menu).getByRole("textbox", { name: searchLabel });
+    await vi.waitFor(() => expect(search).toHaveFocus());
+    expect(await within(menu).findByRole("menuitem", { name: MAE.label })).toBeInTheDocument();
+
+    await user.keyboard("mae");
+    expect(search).toHaveValue("mae");
+    expect(search).toHaveFocus();
+    expect(within(menu).getByRole("menuitem", { name: MAE.label })).toBeInTheDocument();
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    expect(within(menu).getByRole("menuitem", { name: MAE.label })).toHaveFocus();
+
+    fireEvent.change(search, { target: { value: "attention" } });
+    const pick = await within(menu).findByRole("menuitem", { name: /vaswani2017/u });
+    expect(within(menu).getByText(enEditor.citations.zoteroHeading)).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitem", { name: MAE.label })).toBeNull();
+    expect(within(menu).queryByRole("menuitem", { name: /taken2020/u })).toBeNull();
+    expect(within(menu).queryByRole("menuitem", { name: /he2022mae/u })).toBeNull();
+
+    await user.click(pick);
+    expect(editor.getText()).toBe("As shown[@vaswani2017]");
+    expect(zotero.insert).toHaveBeenCalledWith(expect.objectContaining({ citationKey: "vaswani2017" }), expect.any(Function));
+  });
+
+  it("says nothing matched when neither the project nor Zotero has the search", async () => {
+    zotero.search.mockResolvedValue({ generation: 1, total: 0, complete: true, hits: [] });
+    mount("As shown", [], { related: "paper-1", projectCitations: vi.fn(async () => [MAE]) });
+    const menu = openMenu(enNotes.toolbar.citation);
+    fireEvent.change(within(menu).getByRole("textbox", { name: searchLabel }), { target: { value: "zzz" } });
+    expect(await within(menu).findByText(enEditor.citations.noMatches)).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitem")).toBeNull();
+  });
+
+  it("offers the Zotero search before the project has any references", async () => {
+    mount("As shown", [], { related: "paper-1", projectCitations: vi.fn(async () => []) });
+    const menu = openMenu(enNotes.toolbar.citation);
+    expect(within(menu).getByRole("textbox", { name: searchLabel })).toBeInTheDocument();
+    expect(await within(menu).findByText(enNotes.toolbar.noCitations)).toBeInTheDocument();
+  });
+
+  it("searches Zotero from a project note, whose project is the open one", async () => {
+    mount("As shown", [MAE], { projectId: "paper-1" });
+    const menu = openMenu(enNotes.toolbar.citation);
+    expect(within(menu).getByRole("textbox", { name: searchLabel })).toBeInTheDocument();
+    expect(await within(menu).findByRole("menuitem", { name: MAE.label })).toBeInTheDocument();
+  });
+
+  it("keeps to the note's own references when its project isn't the open one", async () => {
+    useFilesStore.setState({ projectId: "another-paper" });
+    mount("As shown", [], { related: "paper-1", projectCitations: vi.fn(async () => [MAE]) });
+    const menu = openMenu(enNotes.toolbar.citation);
+    expect(await within(menu).findByRole("menuitem", { name: MAE.label })).toBeInTheDocument();
+    expect(within(menu).queryByRole("textbox")).toBeNull();
+    expect(zotero.search).not.toHaveBeenCalled();
+  });
+
+  it("offers no Zotero search for a note with no project, or when Zotero has nothing to search", async () => {
+    mount("As shown", [], { projectCitations: vi.fn() });
+    expect(screen.queryByRole("button", { name: enNotes.toolbar.citation })).toBeNull();
+    cleanup();
+    useZoteroLibraryStore.setState({ status: { itemCount: 0, generation: 1, libraries: [] } as unknown as ZoteroLibraryStatus });
+    mount("As shown", [], { related: "paper-1", projectCitations: vi.fn(async () => [MAE]) });
+    const menu = openMenu(enNotes.toolbar.citation);
+    expect(await within(menu).findByRole("menuitem", { name: MAE.label })).toBeInTheDocument();
+    expect(within(menu).queryByRole("textbox")).toBeNull();
   });
 });
 
@@ -604,6 +816,22 @@ describe("NoteToolbar in a narrow panel", () => {
     expect(editor.getText()).toBe("As shown[@he2022mae]");
   });
 
+  it("puts the Zotero search first in the More submenu when the note's project is open", async () => {
+    layout(0);
+    useFilesStore.setState({ projectId: "paper-1" });
+    useZoteroLibraryStore.setState({ status: { itemCount: 1, generation: 1, libraries: [] } as unknown as ZoteroLibraryStatus });
+    try {
+      mount("As shown", [{ key: "he2022mae", label: "He et al., 2022" }], { projectId: "paper-1" });
+      const sub = openSub(openMore(), enNotes.toolbar.citation);
+      const search = within(sub).getByRole("textbox", { name: enEditor.citations.filterLabel });
+      await vi.waitFor(() => expect(search).toHaveFocus());
+      expect(await within(sub).findByRole("menuitem", { name: "He et al., 2022" })).toBeInTheDocument();
+    } finally {
+      useFilesStore.setState({ projectId: null });
+      useZoteroLibraryStore.setState({ status: null });
+    }
+  });
+
   it("leaves the Citation submenu out of More when there is nothing to cite", () => {
     layout(0);
     mount("As shown");
@@ -700,7 +928,7 @@ describe("note width", () => {
     expect(within(menu).getByText(enNotes.toolbar.width)).toBeInTheDocument();
     expect(within(menu).getByRole("menuitemradio", { name: enNotes.toolbar.widths.standard })).toHaveAttribute("aria-checked", "true");
     await user.click(within(menu).getByRole("menuitemradio", { name: enNotes.toolbar.widths.wide }));
-    expect(readNoteWidth()).toBe("wide");
+    expect(useSettingsStore.getState().notesWidth).toBe("wide");
     expect(localStorage.getItem(NOTE_WIDTH_KEY)).toBe("wide");
     expect(button(enNotes.toolbar.width).querySelector(".lucide-rectangle-horizontal")).not.toBeNull();
     menu = openMenu(enNotes.toolbar.width);
@@ -723,7 +951,7 @@ describe("note width", () => {
       ctrlKey: false,
     });
     await user.click(within(screen.getByRole("menu")).getByRole("menuitemradio", { name: enNotes.toolbar.widths.full }));
-    expect(readNoteWidth()).toBe("full");
+    expect(useSettingsStore.getState().notesWidth).toBe("full");
   });
 });
 
@@ -766,8 +994,9 @@ describe("inserting a notebook", () => {
     await user.click(button(enNotes.toolbar.notebook));
     expect(importNotebook).toHaveBeenCalledWith("n1");
     await vi.waitFor(() => expect(notebookBlocks(editor)).toHaveLength(1));
-    expect(blocks(editor).map((block) => block.type)).toEqual(["paragraph", "codeBlock", "paragraph"]);
-    expect(markdownOf(editor)).toContain("```notebook\nassets/run-1a2b3c4d.ipynb\n```");
+    expect(blocks(editor).map((block) => block.type)).toEqual(["paragraph", "codeBlock", "paragraph", "paragraph"]);
+    expect(editor.state.selection.$head.parent.content.size).toBe(0);
+    expect(markdownOf(editor)).toContain("```notebook\nassets/run-1a2b3c4d.ipynb\n```\n\nOutro");
   });
 
   it("leaves the note alone when the file dialog is closed", async () => {

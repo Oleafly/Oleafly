@@ -1,7 +1,7 @@
 import { Editor, type AnyExtension } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
-import type { NoteViews } from "./note-markdown";
-import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
+import type { NoteViews } from "../note-markdown";
+import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "../note-markdown";
 
 const editors: Editor[] = [];
 

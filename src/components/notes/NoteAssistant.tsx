@@ -67,12 +67,14 @@ interface NoteAssistantProps {
   note: NoteItem;
   bridge: NoteEditorBridge;
   shortcutScope: RefObject<HTMLElement | null>;
+  viewOnly?: boolean;
 }
 
 interface NoteUi {
   runtimeSwitch: ReactNode;
   onStatus: (working: boolean, stop: () => void) => void;
   collapse: () => void;
+  viewOnly: boolean;
 }
 
 const NoteUiContext = createContext<NoteUi | null>(null);
@@ -80,8 +82,23 @@ const CLI_GROUP_ID = "note-cli-agents";
 const QUOTE_CHARS = 2_000;
 const LINK_CACHE_MS = 10_000;
 const NO_FILES: FileEntry[] = [];
+const NO_NOTES: readonly NoteItem[] = [];
+const NO_LINKS: ReadonlyMap<string, string> = new Map();
 
 const mountedScopes = new Map<string, number>();
+let catalogRefresh: Promise<unknown> | null = null;
+
+function refreshAgentCatalog(): void {
+  if (catalogRefresh) return;
+  const request = useAcpSessionsStore
+    .getState()
+    .refreshCatalog()
+    .catch(() => false)
+    .finally(() => {
+      if (catalogRefresh === request) catalogRefresh = null;
+    });
+  catalogRefresh = request;
+}
 
 function forgetScope(scope: string): void {
   useChatsStore.getState().forgetScope(scope);
@@ -217,7 +234,9 @@ function NoteConversation({ parts }: Readonly<{ parts: AssistantLayoutParts }>) 
         <div className="flex justify-end">{header}</div>
       )}
       {parts.footer}
-      {parts.setup ? (
+      {ui?.viewOnly ? (
+        <ViewOnlyNotice onCollapse={ui.collapse} />
+      ) : parts.setup ? (
         <div className="relative">
           {parts.setup}
           {ui && <CollapsePromptButton onCollapse={ui.collapse} />}
@@ -227,6 +246,21 @@ function NoteConversation({ parts }: Readonly<{ parts: AssistantLayoutParts }>) 
       )}
       {parts.dialogs}
     </>
+  );
+}
+
+function ViewOnlyNotice({ onCollapse }: Readonly<{ onCollapse: () => void }>) {
+  const { t } = useTranslation(["notes"]);
+  return (
+    <div className="relative">
+      <p
+        data-note-assistant-view-only
+        className="rounded-[1.375rem] border bg-card py-3 pl-4 pr-10 text-sm text-muted-foreground shadow-sm"
+      >
+        {t(($) => $.notes.assistant.viewOnly)}
+      </p>
+      <CollapsePromptButton onCollapse={onCollapse} />
+    </div>
   );
 }
 
@@ -344,7 +378,7 @@ function NoteAcpPanel({
 }
 
 export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantProps>(function NoteAssistant(
-  { note, bridge, shortcutScope },
+  { note, bridge, shortcutScope, viewOnly = false },
   ref,
 ) {
   const { t } = useTranslation(["notes", "ai"]);
@@ -365,7 +399,10 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
   bridgeRef.current = bridge;
   const dataRef = useRef(data);
   dataRef.current = data;
-  const linkIds = useLinkIds();
+  const shared = note.shared === true;
+  const allLinkIds = useLinkIds();
+  const linkIds = useCallback(() => (shared ? Promise.resolve(NO_LINKS) : allLinkIds()), [allLinkIds, shared]);
+  const personalNotes = shared ? NO_NOTES : data.notes;
   const related = note.relatedProjectId ?? null;
   const relatedName = related ? (data.projects?.find((project) => project.id === related)?.name ?? note.project) : null;
   const latestRun = data.latestRun?.(note.id) ?? null;
@@ -373,10 +410,7 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
   const slot = noteAcpTarget(note.id, related).slot;
 
   useEffect(() => {
-    void useAcpSessionsStore
-      .getState()
-      .refreshCatalog()
-      .catch(() => false);
+    refreshAgentCatalog();
   }, []);
 
   const folder = note.home?.projectId ?? note.id;
@@ -416,8 +450,8 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
   const runtimeSwitch = useMemo(() => (hasCli ? <RuntimeSwitch scope={scopeKey} /> : null), [hasCli, scopeKey]);
   const collapse = useCallback(() => dockRef.current?.collapse(), []);
   const ui = useMemo<NoteUi>(
-    () => ({ runtimeSwitch, onStatus, collapse }),
-    [collapse, onStatus, runtimeSwitch],
+    () => ({ runtimeSwitch, onStatus, collapse, viewOnly }),
+    [collapse, onStatus, runtimeSwitch, viewOnly],
   );
 
   const facts = useCallback(
@@ -452,11 +486,11 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
         addPendingBatch(note.id, edits);
         return edits.length;
       },
-      notes: () => dataRef.current.notes,
+      notes: () => (shared ? NO_NOTES : dataRef.current.notes),
       projects: () => dataRef.current.projects ?? [],
       loadNote: (id) => dataRef.current.loadNote(id),
-      searchNotes: (query, limit) => noteSearch(query, limit),
-      noteTags: () => listNoteTags(),
+      searchNotes: (query, limit) => (shared ? Promise.resolve([]) : noteSearch(query, limit)),
+      noteTags: () => (shared ? Promise.resolve([]) : listNoteTags()),
       linkIds,
       createNote: canCreate
         ? async (draft) => {
@@ -466,7 +500,7 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
           }
         : undefined,
     };
-  }, [canCreate, linkIds, note.id, related]);
+  }, [canCreate, linkIds, note.id, related, shared]);
 
   const composer = useMemo<AssistantScopeComposer>(() => {
     const hidden = hiddenResearchActions(Boolean(latestRun), Boolean(related));
@@ -512,8 +546,8 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
   }, [cliAgents, collapse, latestRun, related, scopeKey, setScopeRuntime, slot, t]);
 
   const mentions = useMemo(
-    () => noteMentions(note.id, data.notes, (id) => dataRef.current.loadNote(id)),
-    [data.notes, note.id],
+    () => noteMentions(note.id, personalNotes, (id) => dataRef.current.loadNote(id)),
+    [note.id, personalNotes],
   );
 
   const context = useCallback(
@@ -523,11 +557,11 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
         source: bridgeRef.current.readSource(),
         pending: bridgeRef.current.pending(),
         files: treeRef.current,
-        notes: dataRef.current.notes,
+        notes: shared ? NO_NOTES : dataRef.current.notes,
         links: await linkIds().catch(() => new Map<string, string>()),
         memoryScope: scopeKey,
       }),
-    [facts, linkIds, scopeKey],
+    [facts, linkIds, scopeKey, shared],
   );
 
   const modelMemory = useMemo(() => noteModelMemory(note.id), [note.id]);
@@ -559,6 +593,7 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
       quote: (text) => {
         if (!text.trim()) return;
         dockRef.current?.expand(false);
+        if (viewOnly) return;
         if (acp) {
           const store = useAcpSessionsStore.getState();
           const selection: AcpSelection = {
@@ -578,7 +613,7 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
         });
       },
     }),
-    [acp, note.title, slot],
+    [acp, note.title, slot, viewOnly],
   );
 
   const detail = acp ? t(($) => $.ai.runtime.cli) : t(($) => $.ai.runtime.builtIn);
@@ -594,7 +629,9 @@ export const NoteAssistant = memo(forwardRef<NoteAssistantHandle, NoteAssistantP
     >
       <ErrorBoundary surface="AI assistant" resetKey={runtime}>
         <div className="space-y-2">
-          {acp ? (
+          {acp && viewOnly ? (
+            <ViewOnlyNotice onCollapse={collapse} />
+          ) : acp ? (
             <NoteAcpPanel
               note={note}
               bridge={bridge}

@@ -215,17 +215,17 @@ describe("NotesWorkspace graph, outline and vault views", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open n2" }));
     fireEvent.keyDown(window, { code: "KeyG", key: "G", ctrlKey: true, shiftKey: true });
     expect(screen.getByRole("tab", { name: graphCopy.title })).toBeInTheDocument();
-    fireEvent.keyDown(window, { code: "KeyG", key: "g", ctrlKey: true, altKey: true });
-    fireEvent.keyDown(window, { code: "KeyO", key: "o", ctrlKey: true, altKey: true });
+    fireEvent.keyDown(window, { code: "KeyM", key: "M", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { code: "KeyK", key: "K", ctrlKey: true, shiftKey: true });
     expect(screen.getByRole("tab", { name: graphCopy.localTitle })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: graphCopy.outline.title })).toBeInTheDocument();
-    fireEvent.keyDown(window, { code: "KeyO", key: "o", altKey: true });
+    fireEvent.keyDown(window, { code: "KeyK", key: "K", shiftKey: true });
     fireEvent.keyDown(window, { code: "KeyG", key: "g" });
-    const blocked = new KeyboardEvent("keydown", { code: "KeyO", key: "o", altKey: true, ctrlKey: true, cancelable: true });
+    const blocked = new KeyboardEvent("keydown", { code: "KeyK", key: "K", shiftKey: true, ctrlKey: true, cancelable: true });
     blocked.preventDefault();
     act(() => void window.dispatchEvent(blocked));
     expect(screen.getByRole("tab", { name: graphCopy.outline.title })).toBeInTheDocument();
-    fireEvent.keyDown(window, { code: "KeyO", key: "o", ctrlKey: true, altKey: true });
+    fireEvent.keyDown(window, { code: "KeyK", key: "K", ctrlKey: true, shiftKey: true });
     expect(screen.queryByRole("tab", { name: graphCopy.outline.title })).not.toBeInTheDocument();
   });
 

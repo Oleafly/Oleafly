@@ -1,5 +1,5 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { blockAtOffset, blockIndexAt, blockPosition, type SharedNote } from "./note-live-doc";
+import { alignSharedNote, blockAtOffset, blockIndexAt, blockPosition, noteUnitAt, type SharedNote } from "./note-live-doc";
 
 export const MATCH_WINDOW = 400;
 
@@ -74,10 +74,16 @@ interface Block {
   map: CharMap;
 }
 
+function unitAt(note: SharedNote, at: number): { node: number; source: string } {
+  return noteUnitAt(note, at) ?? unitSource(note.sources[at] ?? "");
+}
+
 function mapBlock(note: SharedNote, doc: ProseMirrorNode, at: number): Block {
   const start = blockPosition(doc, at);
-  const { node, source } = unitSource(note.sources[at] ?? "");
-  const previous = node > 0 && at > 0 ? mapBlock(note, doc, at - 1).map.src.at(-1) : undefined;
+  const { node, source } = unitAt(note, at);
+  let before = node > 0 ? at - 1 : -1;
+  while (before >= 0 && unitAt(note, before).source === "") before -= 1;
+  const previous = before >= 0 && unitAt(note, before).source === source ? mapBlock(note, doc, before).map.src.at(-1) : undefined;
   const from = previous === undefined ? 0 : previous + 1;
   return { at, start, source, map: blockCharMap(doc.child(at), start, source, from) };
 }
@@ -88,7 +94,8 @@ function blockOf(note: SharedNote, doc: ProseMirrorNode, index: number): Block |
   return mapBlock(note, doc, Math.max(0, Math.min(index, last)));
 }
 
-export function sourceOffsetAt(note: SharedNote, doc: ProseMirrorNode, pos: number): number {
+export function sourceOffsetAt(shared: SharedNote, doc: ProseMirrorNode, pos: number): number {
+  const note = alignSharedNote(shared, doc);
   const block = blockOf(note, doc, blockIndexAt(doc, pos));
   if (!block) return 0;
   const { at, source, map } = block;
@@ -97,7 +104,8 @@ export function sourceOffsetAt(note: SharedNote, doc: ProseMirrorNode, pos: numb
   return note.starts[at] + Math.min(relative, source.length);
 }
 
-export function docPosAt(note: SharedNote, doc: ProseMirrorNode, offset: number): number {
+export function docPosAt(shared: SharedNote, doc: ProseMirrorNode, offset: number): number {
+  const note = alignSharedNote(shared, doc);
   const block = blockOf(note, doc, blockAtOffset(note.starts, offset));
   if (!block) return 0;
   const { at, start, map } = block;

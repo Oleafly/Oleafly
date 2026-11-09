@@ -6,14 +6,12 @@ import {
   buildTable,
   columnKeyCache,
   columnKeys,
-  csvField,
   detectTypes,
   fileDelimiter,
   filterRows,
   loadTableFile,
   parseBoolean,
   parseDate,
-  parseDelimited,
   parseNumber,
   pickSheet,
   readSpreadsheetRows,
@@ -52,53 +50,6 @@ function table(header: string[], rows: string[][]): TableData {
 }
 
 const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
-
-describe("parseDelimited", () => {
-  it("reads plain rows and drops the trailing newline", () => {
-    expect(parseDelimited("a,b\n1,2\n", ",")).toEqual([
-      ["a", "b"],
-      ["1", "2"],
-    ]);
-  });
-
-  it("reads quoted fields with doubled quotes, delimiters and newlines", () => {
-    expect(parseDelimited('name,note\n"Smith, J","said ""hi""\nand left"\n', ",")).toEqual([
-      ["name", "note"],
-      ["Smith, J", 'said "hi"\nand left'],
-    ]);
-  });
-
-  it("handles CRLF, lone CR and a byte order mark", () => {
-    expect(parseDelimited("\uFEFFa,b\r\n1,2\r3,4", ",")).toEqual([
-      ["a", "b"],
-      ["1", "2"],
-      ["3", "4"],
-    ]);
-  });
-
-  it("skips blank lines but keeps an empty quoted field and empty cells", () => {
-    expect(parseDelimited('a\n\n""\n,\n', ",")).toEqual([["a"], [""], ["", ""]]);
-  });
-
-  it("keeps text after a closing quote and an unterminated quote", () => {
-    expect(parseDelimited('"ab"cd,"open', ",")).toEqual([["abcd", "open"]]);
-  });
-
-  it("treats a quote inside a field as text", () => {
-    expect(parseDelimited('a"b,c', ",")).toEqual([['a"b', "c"]]);
-  });
-
-  it("reads tabs and stops at the row limit", () => {
-    expect(parseDelimited("a\tb\n1\t2\n3\t4\n", "\t", 2)).toEqual([
-      ["a", "b"],
-      ["1", "2"],
-    ]);
-  });
-
-  it("returns no rows for empty text", () => {
-    expect(parseDelimited("", ",")).toEqual([]);
-  });
-});
 
 describe("delimiters", () => {
   it("sniffs tabs against commas on the first line with text", () => {
@@ -383,10 +334,5 @@ describe("sorting, filtering and summaries", () => {
       maxText: "2.5e1",
     });
     expect(summarizeColumn(data, [1], keys, 1)).toBeNull();
-  });
-
-  it("quotes CSV fields that need it", () => {
-    expect(csvField("plain")).toBe("plain");
-    expect(csvField('a "b", c')).toBe('"a ""b"", c"');
   });
 });

@@ -1,7 +1,8 @@
 import { visibleViews, type WorkspaceLayout } from "@oleafly/workspace";
-import { createMarkdownSourceSnapshot, type MarkdownSourceSnapshot } from "@oleafly/wysiwyg";
+import type { MarkdownSourceSnapshot } from "@oleafly/wysiwyg";
 import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { Transaction } from "@tiptap/pm/state";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -20,12 +21,13 @@ import { scrollBehavior } from "@/lib/reduced-motion";
 import { useFilesStore } from "@/store/files";
 import { docPosAt, sourceOffsetAt } from "./note-caret-map";
 import {
+  alignSharedNote,
   blockAtOffset,
-  blockKeysOf,
   blockPosition,
   parseSharedNote,
+  sharedNoteSnapshot,
+  sharedNoteTransaction,
   showNoteDoc,
-  showSharedNote,
   type SharedNote,
 } from "./note-live-doc";
 import { setNotePeerCarets, setNotePeerMarks } from "./note-presence-decorations";
@@ -133,7 +135,12 @@ export interface NoteLiveAdapter extends NoteLiveEditor {
   invalidate(): void;
 }
 
-export const PARSED_NOTES_KEPT = 6;
+export const PARSED_NOTES_KEPT = 3;
+export const LARGE_NOTE_CHARS = 100_000;
+
+export function parsedNotesKept(length: number): number {
+  return length > LARGE_NOTE_CHARS ? 2 : PARSED_NOTES_KEPT;
+}
 
 export function createNoteLiveEditor(
   editor: Editor,
@@ -148,51 +155,88 @@ export function createNoteLiveEditor(
     const note = parseSharedNote(editor.schema, text, latest);
     latest = note;
     parsed.set(text, note);
-    while (parsed.size > PARSED_NOTES_KEPT) parsed.delete(parsed.keys().next().value as string);
+    const kept = parsedNotesKept(text.length);
+    while (parsed.size > kept) parsed.delete(parsed.keys().next().value as string);
     return note;
   };
   parse(start);
+  let batching = false;
+  let batched: Transaction | null = null;
+  let changed = false;
+  const pending = (): Transaction | undefined => {
+    if (!batching) return undefined;
+    batched ??= editor.state.tr.setMeta("addToHistory", false);
+    return batched;
+  };
+  const docNow = (): ProseMirrorNode => batched?.doc ?? editor.state.doc;
   let current: { doc: ProseMirrorNode; note: SharedNote } | null = null;
   const local = (): SharedNote => {
-    const { doc } = editor.state;
-    if (current?.doc !== doc) current = { doc, note: parse(host().sourceOf(doc)) };
+    const doc = docNow();
+    if (current?.doc !== doc) current = { doc, note: alignSharedNote(parse(host().sourceOf(doc)), doc) };
     return current.note;
+  };
+  const marked = (dispatched: boolean) => {
+    if (dispatched && batching) changed = true;
   };
   return {
     parse,
     invalidate: () => {
       current = null;
     },
+    batch: (run) => {
+      if (batching) {
+        run();
+        return;
+      }
+      batching = true;
+      changed = false;
+      try {
+        run();
+      } finally {
+        batching = false;
+        const tr = batched;
+        batched = null;
+        if (tr && changed && !editor.isDestroyed) editor.view.dispatch(tr);
+      }
+    },
     serialize: () => host().sourceOf(editor.state.doc),
     composing: () => editor.view.composing,
     show: (previous, next, keepLocal) => {
       const nextNote = parse(next);
-      showSharedNote(editor, keepLocal ? parse(previous) : null, nextNote);
-      host().adopt({
-        text: next,
-        frontmatter: nextNote.frontmatter,
-        snapshot: createMarkdownSourceSnapshot(nextNote.layout, nextNote.doc.toJSON(), blockKeysOf(nextNote.doc)),
-      });
+      const base = keepLocal ? parse(previous) : null;
+      if (batched && changed && !editor.isDestroyed) editor.view.dispatch(batched);
+      batched = null;
+      host().adopt({ text: next, frontmatter: nextNote.frontmatter, snapshot: sharedNoteSnapshot(nextNote) });
       current = null;
+      const tr = sharedNoteTransaction(editor.state, base, nextNote);
+      if (!tr) return;
+      if (batching) {
+        batched = tr;
+        changed = true;
+      } else {
+        editor.view.dispatch(tr);
+      }
     },
     selectionOffsets: () => {
       const note = local();
-      const { doc, selection } = editor.state;
+      const { doc, selection } = batched ?? editor.state;
       const head = sourceOffsetAt(note, doc, selection.head);
       return { head, anchor: selection.empty ? head : sourceOffsetAt(note, doc, selection.anchor) };
     },
     blockAt: (offset) => blockAtOffset(local().starts, offset),
     setPeerMarks: (marks) => {
-      if (!editor.isDestroyed) setNotePeerMarks(editor, marks);
+      if (!editor.isDestroyed) marked(setNotePeerMarks(editor, marks, pending()));
     },
     setPeerCarets: (carets, replace) => {
       if (editor.isDestroyed) return;
       if (carets.length === 0) {
-        setNotePeerCarets(editor, carets, () => 0);
+        marked(setNotePeerCarets(editor, carets, () => 0, undefined, pending()));
         return;
       }
+      const into = pending();
       const note = local();
-      setNotePeerCarets(editor, carets, (offset) => docPosAt(note, editor.state.doc, offset), replace);
+      const doc = docNow();
+      marked(setNotePeerCarets(editor, carets, (offset) => docPosAt(note, doc, offset), replace, into));
     },
     revealBlock: (index) => {
       const node = editor.view.nodeDOM(blockPosition(editor.state.doc, index));
@@ -315,7 +359,7 @@ export function useNoteLiveEditor(
       locked: state.projectId === liveId && state.locked,
     })),
   );
-  const viewOnly = live && gate.locked;
+  const viewOnly = gate.locked;
   const readOnly = gate.connecting || viewOnly;
 
   const control = useMemo<NoteLiveControl>(
@@ -371,10 +415,14 @@ export function useNoteLiveEditor(
       const adapter = createNoteLiveEditor(editor, () => liveHost, baseline.text);
       const bound: NoteLiveHandle = port.bind({
         noteId: liveId,
+        noticeId: noteId,
         path: livePath ?? mainDocOf(noteId),
         session,
         editor: adapter,
         baseline,
+        onOpen: () => {
+          attempts = 0;
+        },
         onEnd: (state) => {
           if (handleRef.current === bound) handleRef.current = null;
           if (adapterRef.current === adapter) adapterRef.current = null;

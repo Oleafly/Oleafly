@@ -536,7 +536,7 @@ pub fn run() {
             notes_typst::notes_render_typst,
             artifact_frame::artifact_frame_open,
             artifact_frame::artifact_frame_close,
-            artifact_frame::artifact_frame_put_runtime,
+            artifact_frame::artifact_frame_runtime_url,
             typst_query::typst_document_insights,
             typst_slide_notes::typst_slide_notes,
             arxiv_import::extract_arxiv_source,

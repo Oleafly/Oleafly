@@ -1,7 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 
+use oleafly_core::markdown_scan::{
+    line_body, link_tail, matching_brackets, run_at, CodeSpans, FenceLine, Fences,
+};
 use serde::Serialize;
+
 const SNIPPET_CHARS: usize = 120;
 const SNAP_CHARS: usize = 20;
 const SNIPPET_WINDOW: usize = 4 * SNIPPET_CHARS;
@@ -163,99 +167,13 @@ fn plain_fragment(chars: &[char]) -> Vec<char> {
     out
 }
 
-pub(crate) fn matching_brackets<T: Copy + PartialEq>(
-    items: &[T],
-    open: T,
-    close: T,
-    escape: T,
-) -> HashMap<usize, usize> {
-    let mut pairs = HashMap::new();
-    let mut stack = Vec::new();
-    let mut index = 0;
-    while index < items.len() {
-        let item = items[index];
-        if item == escape {
-            index += 2;
-            continue;
-        }
-        if item == open {
-            stack.push(index);
-        } else if item == close {
-            if let Some(at) = stack.pop() {
-                pairs.insert(at, index);
-            }
-        }
-        index += 1;
-    }
-    pairs
-}
-
-fn skip_spaces(chars: &[char], start: usize) -> usize {
-    let mut index = start;
-    while matches!(chars.get(index), Some(' ' | '\t')) {
-        index += 1;
-    }
-    index
-}
-
-fn destination_at(chars: &[char], start: usize) -> Option<(String, usize)> {
-    if chars.get(start) == Some(&'<') {
-        let mut index = start + 1;
-        while index < chars.len() && chars[index] != '>' && chars[index] != '<' {
-            index += if chars[index] == '\\' { 2 } else { 1 };
-        }
-        if chars.get(index) != Some(&'>') {
-            return None;
-        }
-        return Some((chars[start + 1..index].iter().collect(), index + 1));
-    }
-    let mut index = start;
-    let mut depth = 0usize;
-    while index < chars.len() {
-        match chars[index] {
-            ' ' | '\t' => break,
-            '\\' => {
-                index += 2;
-                continue;
-            }
-            '(' => depth += 1,
-            ')' if depth == 0 => break,
-            ')' => depth -= 1,
-            _ => {}
-        }
-        index += 1;
-    }
-    let end = index.min(chars.len());
-    Some((chars[start.min(end)..end].iter().collect(), index))
-}
-
-fn title_end(chars: &[char], start: usize) -> Option<usize> {
-    let quote = match chars.get(start) {
-        Some(quote @ ('"' | '\'')) => *quote,
-        _ => return Some(start),
-    };
-    let mut index = start + 1;
-    while index < chars.len() && chars[index] != quote {
-        index += if chars[index] == '\\' { 2 } else { 1 };
-    }
-    (index < chars.len()).then_some(index + 1)
-}
-
 fn link_at(chars: &[char], start: usize, brackets: &HashMap<usize, usize>) -> Option<ParsedLink> {
     let close = *brackets.get(&start)?;
-    if chars.get(close + 1) != Some(&'(') {
-        return None;
-    }
-    let (destination, end) = destination_at(chars, skip_spaces(chars, close + 2))?;
-    let index = title_end(chars, skip_spaces(chars, end))?;
-    let index = skip_spaces(chars, index);
-    if chars.get(index) != Some(&')') {
-        return None;
-    }
+    let (destination, end) = link_tail(chars, close + 1)?;
     Some(ParsedLink {
         label: plain_fragment(&chars[start + 1..close]),
-        destination,
-        end: index + 1,
+        destination: chars[destination].iter().collect(),
+        end,
     })
 }
 
@@ -290,81 +208,14 @@ fn autolink_at(chars: &[char], start: usize) -> Option<(Vec<char>, usize)> {
     has_scheme(&url.iter().collect::<String>()).then_some((url, index + 1))
 }
 
-fn code_span_at(chars: &[char], start: usize) -> Option<(Vec<char>, usize)> {
-    let run = chars[start..].iter().take_while(|c| **c == '`').count();
-    let mut index = start + run;
-    while index < chars.len() {
-        if chars[index] != '`' {
-            index += 1;
-            continue;
-        }
-        let close = chars[index..].iter().take_while(|c| **c == '`').count();
-        if close == run {
-            return Some((chars[start + run..index].to_vec(), index + close));
-        }
-        index += close;
-    }
-    None
-}
-
-fn block_marker_len(text: &str) -> Option<usize> {
-    let bytes = text.as_bytes();
-    let spaces_after = |at: usize| {
-        bytes[at..]
-            .iter()
-            .take_while(|b| matches!(b, b' ' | b'\t'))
-            .count()
-    };
-    match bytes.first()? {
-        b'#' => {
-            let hashes = bytes.iter().take_while(|b| **b == b'#').count();
-            let gap = spaces_after(hashes);
-            (hashes <= 6 && gap > 0).then_some(hashes + gap)
-        }
-        b'>' => Some(1 + usize::from(matches!(bytes.get(1), Some(b' ' | b'\t')))),
-        b'-' | b'*' | b'+' => {
-            let gap = spaces_after(1);
-            if gap == 0 {
-                return None;
-            }
-            let at = 1 + gap;
-            let task = bytes.get(at) == Some(&b'[')
-                && matches!(bytes.get(at + 1), Some(b' ' | b'x' | b'X'))
-                && bytes.get(at + 2) == Some(&b']');
-            let task_gap = if task { spaces_after(at + 3) } else { 0 };
-            Some(if task && task_gap > 0 {
-                at + 3 + task_gap
-            } else {
-                at
-            })
-        }
-        b'0'..=b'9' => {
-            let digits = bytes.iter().take_while(|b| b.is_ascii_digit()).count();
-            if digits > 9 || !matches!(bytes.get(digits), Some(b'.' | b')')) {
-                return None;
-            }
-            let gap = spaces_after(digits + 1);
-            (gap > 0).then_some(digits + 1 + gap)
-        }
-        _ => None,
-    }
-}
-
-fn line_body(line: &str) -> &str {
-    let mut rest = line.trim_start();
-    while let Some(length) = block_marker_len(rest) {
-        rest = rest[length..].trim_start();
-    }
-    rest
-}
-
 fn line_pieces(line: &str) -> Vec<Piece> {
     let chars: Vec<char> = line_body(line).chars().collect();
     let brackets = if chars.contains(&'[') {
-        matching_brackets(&chars, '[', ']', '\\')
+        matching_brackets(&chars, b'[', b']')
     } else {
         HashMap::new()
     };
+    let spans = CodeSpans::new(&chars);
     let mut pieces = Vec::new();
     let mut run: Vec<char> = Vec::new();
     let flush = |run: &mut Vec<char>, pieces: &mut Vec<Piece>| {
@@ -385,15 +236,22 @@ fn line_pieces(line: &str) -> Vec<Piece> {
             continue;
         }
         if c == '`' {
-            if let Some((content, end)) = code_span_at(&chars, index) {
-                flush(&mut run, &mut pieces);
-                pieces.push(Piece {
-                    text: content,
-                    target: None,
-                });
-                index = end;
-                continue;
+            let ticks = run_at(&chars, index, b'`');
+            match spans.close(index, ticks, chars.len()) {
+                Some(close) => {
+                    flush(&mut run, &mut pieces);
+                    pieces.push(Piece {
+                        text: chars[index + ticks..close].to_vec(),
+                        target: None,
+                    });
+                    index = close + ticks;
+                }
+                None => {
+                    run.extend_from_slice(&chars[index..index + ticks]);
+                    index += ticks;
+                }
             }
+            continue;
         }
         let image = c == '!' && chars.get(index + 1) == Some(&'[');
         if c == '[' || image {
@@ -494,21 +352,12 @@ fn snippet_of(flat: &[char], link_start: usize, link_end: usize) -> String {
     )
 }
 
-fn is_fence(line: &str) -> bool {
-    let line = line.trim_start_matches([' ', '\t']);
-    line.starts_with("```") || line.starts_with("~~~")
-}
-
 fn link_targets(lines: &[&str]) -> Vec<LinkTarget> {
     let mut seen = HashSet::new();
     let mut found = Vec::new();
-    let mut fenced = false;
+    let mut fences = Fences::default();
     for line in lines {
-        if is_fence(line) {
-            fenced = !fenced;
-            continue;
-        }
-        if fenced {
+        if fences.line(line) != FenceLine::Text {
             continue;
         }
         let pieces = line_pieces(line);
@@ -636,13 +485,6 @@ mod tests {
 
     #[test]
     fn matches_brackets_in_one_pass() {
-        let chars: Vec<char> = "[a [b] \\] c] [d [e".chars().collect();
-        let pairs = matching_brackets(&chars, '[', ']', '\\');
-        assert_eq!(pairs.get(&0), Some(&11));
-        assert_eq!(pairs.get(&3), Some(&5));
-        assert_eq!(pairs.get(&13), None);
-        assert_eq!(pairs.get(&16), None);
-        assert_eq!(pairs.len(), 2);
         let line = format!("{}[x](oleafly://note/far)", "[".repeat(200_000));
         let found = links(&line);
         assert_eq!(found.len(), 1);
@@ -705,6 +547,37 @@ mod tests {
     fn skips_code_and_other_links() {
         let text = "```\n[a](oleafly://note/fenced)\n```\n~~~md\n[b](oleafly://note/tilde)\n~~~\nUse `[c](oleafly://note/code)` or ``[d](oleafly://note/x)``.\n![e](assets/e.png) [f](https://example.org) [g](oleafly://template/a/b)\n";
         assert!(links(text).is_empty());
+    }
+
+    #[test]
+    fn a_fence_of_another_kind_does_not_end_the_code_block() {
+        let text = "~~~\n```\n[a](oleafly://note/inside)\n~~~\n[b](oleafly://note/after)\n````md\n```\n[c](oleafly://note/nested)\n````\n``` js\n";
+        assert_eq!(links(text), vec![one(LinkKind::Note, "after", "b")]);
+    }
+
+    #[test]
+    fn callout_markers_stay_out_of_link_snippets() {
+        assert_eq!(
+            links("> [!note]+ See [x](oleafly://note/a)\n[!tip] [y](oleafly://note/b)\n## \n"),
+            vec![
+                one(LinkKind::Note, "a", "See x"),
+                one(LinkKind::Note, "b", "[!tip] y"),
+            ]
+        );
+    }
+
+    #[test]
+    fn long_backtick_runs_are_read_in_one_pass() {
+        let line = format!(
+            "{} [x](oleafly://note/a) {}`code`",
+            "`".repeat(200_000),
+            "``` ".repeat(20_000)
+        );
+        let started = std::time::Instant::now();
+        let found = links(&line);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].1, "a");
+        assert!(started.elapsed() < std::time::Duration::from_secs(10));
     }
 
     #[test]

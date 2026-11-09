@@ -14,6 +14,7 @@ const notesShortcuts = [
   actions.notesGraph,
   actions.notesLocalGraph,
   actions.notesOutline,
+  actions.notesAskAgent,
 ];
 
 beforeEach(() => {
@@ -46,6 +47,7 @@ describe("Notes shortcuts in the application shortcuts", () => {
       "notesGraph",
       "notesLocalGraph",
       "notesOutline",
+      "notesAskAgent",
     ]);
     for (const shortcut of notes) {
       const clashes = SHORTCUT_DEFINITIONS.filter(

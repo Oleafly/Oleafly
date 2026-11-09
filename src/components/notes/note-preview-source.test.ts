@@ -41,6 +41,11 @@ describe("notePreviewSource", () => {
     expect(notePreviewSource(`${FENCE}\na\n${FENCE}python\n\nb\n${FENCE}`)).toBe(`${FENCE}\na\n${FENCE}python\n\nb\n${FENCE}`);
   });
 
+  it("keeps a fence inside a list item whole, counting its indent from the item", () => {
+    const item = `1. item\n\n    ${FENCE}\n    a\n\n\n    b\n    ${FENCE}`;
+    expect(notePreviewSource(item)).toBe(item);
+  });
+
   it("keeps an unclosed fence to the end", () => {
     expect(notePreviewSource(`Intro\n\n${FENCE}\nopen\n\nstill code`)).toBe(`Intro\n\n${FENCE}\nopen\n\nstill code`);
   });

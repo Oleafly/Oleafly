@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime};
 
 use crate::project::{list_projects_blocking, ProjectInfo, NOTE_KIND};
 
-pub(crate) const MAX_NOTE_BYTES: u64 = 2 * 1024 * 1024;
+pub(crate) const MAX_NOTE_BYTES: u64 = 5 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct NoteEntry {
@@ -71,6 +71,23 @@ pub(crate) fn invalidate() {
 
 pub(crate) fn revision() -> u64 {
     REVISION.load(Ordering::SeqCst)
+}
+
+fn listed_as_note(project_id: &str) -> Option<bool> {
+    LISTING
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_ref()
+        .map(|listing| listing.notes.iter().any(|note| note.id == project_id))
+}
+
+pub(crate) fn note_file_written(project_id: &str, bytes: &[u8]) {
+    let declares = crate::project::front_matter_declares_note(&utf8_prefix(
+        &bytes[..bytes.len().min(crate::project::NOTE_DECLARATION_BYTES)],
+    ));
+    if listed_as_note(project_id).is_some_and(|listed| listed != declares) {
+        invalidate();
+    }
 }
 
 fn root_mark() -> RootMark {
@@ -213,29 +230,43 @@ pub(crate) fn read_parsed<T>(
     mode: LockMode,
     parse: impl FnOnce(&str) -> T,
 ) -> Result<Option<(PathBuf, Arc<T>, FileKey)>, String> {
+    read_parsed_within(cache, entry, mode, MAX_NOTE_BYTES, parse)
+}
+
+pub(crate) fn read_parsed_within<T>(
+    cache: &ParsedCache<T>,
+    entry: &NoteEntry,
+    mode: LockMode,
+    limit: u64,
+    parse: impl FnOnce(&str) -> T,
+) -> Result<Option<(PathBuf, Arc<T>, FileKey)>, String> {
     if let Some(found) = unchanged(cache, entry) {
         return Ok(Some(found));
     }
     let path = resolve(entry)?;
-    let lock = match mode {
-        LockMode::Bounded => {
-            crate::worktree_lock::ProjectWorktreeLock::shared_bounded(&entry.id, LOCK_BUDGET).ok()
+    let (key, bytes) = {
+        let lock = match mode {
+            LockMode::Bounded => {
+                crate::worktree_lock::ProjectWorktreeLock::shared_bounded(&entry.id, LOCK_BUDGET)
+                    .ok()
+            }
+            LockMode::Try => crate::worktree_lock::ProjectWorktreeLock::try_shared(&entry.id)?,
+        };
+        let Some(_lock) = lock else {
+            return Ok(cached_value(cache, &path, None).map(|(value, key)| (path, value, key)));
+        };
+        let metadata = std::fs::metadata(&path)
+            .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
+        let key = key_of(&metadata);
+        if let Some((value, key)) = cached_value(cache, &path, Some(key)) {
+            return Ok(Some((path, value, key)));
         }
-        LockMode::Try => crate::worktree_lock::ProjectWorktreeLock::try_shared(&entry.id)?,
+        let mut bytes = Vec::new();
+        std::fs::File::open(&path)
+            .and_then(|file| file.take(limit).read_to_end(&mut bytes))
+            .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
+        (key, bytes)
     };
-    let Some(_lock) = lock else {
-        return Ok(cached_value(cache, &path, None).map(|(value, key)| (path, value, key)));
-    };
-    let metadata = std::fs::metadata(&path)
-        .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
-    let key = key_of(&metadata);
-    if let Some((value, key)) = cached_value(cache, &path, Some(key)) {
-        return Ok(Some((path, value, key)));
-    }
-    let mut bytes = Vec::new();
-    std::fs::File::open(&path)
-        .and_then(|file| file.take(MAX_NOTE_BYTES).read_to_end(&mut bytes))
-        .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
     let value = Arc::new(parse(&utf8_prefix(&bytes)));
     cache.lock().unwrap_or_else(PoisonError::into_inner).insert(
         path.clone(),
@@ -367,6 +398,71 @@ mod tests {
             .insert(key.clone(), PathBuf::from("/library/projects/n/note.md"));
         assert!(resolved.scoped(4, library).is_empty());
         assert!(resolved.scoped(4, None).is_empty());
+    }
+
+    #[test]
+    fn parses_after_letting_go_of_the_project_lock() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", root.path());
+        let id =
+            crate::project::create_note_project_from("Locked".into(), "text".into(), None).unwrap();
+        let entry = NoteEntry {
+            id: id.clone(),
+            title: "Locked".into(),
+            main_doc: crate::project::NOTE_FILE.into(),
+            related_project: None,
+            updated_at: 0.0,
+        };
+        let parsed = read_parsed(&TEST_CACHE, &entry, LockMode::Try, |text| {
+            let free = crate::worktree_lock::ProjectWorktreeLock::try_exclusive(&id)
+                .unwrap()
+                .is_some();
+            format!("{text}:{free}")
+        })
+        .unwrap()
+        .unwrap();
+        assert_eq!(parsed.1.as_str(), "text:true");
+        let head = read_parsed_within(
+            &TEST_CACHE,
+            &NoteEntry {
+                main_doc: crate::project::NOTE_FILE.into(),
+                ..entry.clone()
+            },
+            LockMode::Bounded,
+            2,
+            str::to_string,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(head.1.as_str(), "text:true");
+        std::fs::write(parsed.0, "longer text").unwrap();
+        let fresh = read_parsed_within(&TEST_CACHE, &entry, LockMode::Bounded, 2, str::to_string)
+            .unwrap()
+            .unwrap();
+        assert_eq!(fresh.1.as_str(), "lo");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_note_file_write_drops_the_listing_only_when_it_changes_the_kind() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root: RootMark = Some((PathBuf::from("/library"), Some(SystemTime::UNIX_EPOCH)));
+        remember(
+            &[info("joined", "", false), info("note", NOTE_KIND, false)],
+            revision(),
+            root,
+        );
+        let base = revision();
+        note_file_written("note", b"---\nkind: note\nid: a\n---\nBody");
+        note_file_written("other", b"plain text");
+        assert_eq!(revision(), base);
+        note_file_written("joined", b"---\nkind: note\n---\n");
+        assert!(revision() > base);
+        let base = revision();
+        remember(&[info("note", NOTE_KIND, false)], base, None);
+        note_file_written("note", b"no front matter any more");
+        assert!(revision() > base);
     }
 
     #[test]

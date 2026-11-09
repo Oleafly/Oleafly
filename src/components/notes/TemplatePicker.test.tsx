@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { useToastStore } from "@/store/toast";
+import { noteColorFor } from "./note-file";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { TemplatePicker } from "./TemplatePicker";
 import type { NoteItem } from "./types";
@@ -108,7 +109,17 @@ describe("TemplatePicker", () => {
       title: "Alpha template",
       body: "Hello Alpha template",
       properties: "status: open",
+      color: noteColorFor("Alpha"),
     });
+  });
+
+  it("gives a note made from your template the template's icon and colour", async () => {
+    const user = userEvent.setup();
+    const loadNote = vi.fn(async () => ({ text: "---\ntitle: Alpha\nicon: 🧪\ncolor: peach\ntemplate: true\n---\nBody", version: "v" }));
+    const view = renderPicker(data({ loadNote }));
+    await user.click(screen.getByText("Alpha template"));
+    await waitFor(() => expect(view.onCreated).toHaveBeenCalled());
+    expect(view.value.createNoteFrom).toHaveBeenCalledWith(expect.objectContaining({ icon: "🧪", color: "peach" }));
   });
 
   it("reports a failure and lets the user try again", async () => {

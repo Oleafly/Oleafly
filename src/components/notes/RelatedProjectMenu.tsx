@@ -45,7 +45,7 @@ export function RelatedProjectMenu({ note }: Readonly<{ note: NoteItem }>) {
           onValueChange={(value) => {
             if (value === (note.relatedProjectId ?? "")) return;
             void setRelatedProject(note.id, value === "" ? null : value).catch((error: unknown) =>
-              notifyError("set the note's project", error, t(($) => $.notes.failures.moveNote, { name: note.title })),
+              notifyError("set the note's project", error, t(($) => $.notes.failures.linkNote, { name: note.title })),
             );
           }}
         >

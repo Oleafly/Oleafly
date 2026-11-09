@@ -182,10 +182,11 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  await new Promise((resolve) => setTimeout(resolve, 0));
 });
 
 type HarnessProps = Omit<Partial<WorkspaceProps>, "layout" | "onLayoutChange"> & {
@@ -266,6 +267,11 @@ function pointer(type: string, clientX: number, clientY: number) {
   });
 }
 
+function dragTo(clientX: number, clientY: number) {
+  pointer("pointermove", clientX, clientY);
+  flushFrames();
+}
+
 async function release(clientX: number, clientY: number) {
   await act(async () => {
     window.dispatchEvent(new PointerEvent("pointerup", { clientX, clientY, bubbles: true }));
@@ -341,6 +347,7 @@ describe("Workspace rendering", () => {
 
   it("gives every view a panel over its group and builds a hidden view only once it is first shown", () => {
     twoGroupGeometry();
+    vi.stubGlobal("CSS", { supports: (property: string, value: string) => property === "content-visibility" && value === "hidden" });
     const { update } = renderStatic(twoGroups());
     for (const id of ["a", "b", "c"]) expect(document.querySelectorAll(`[data-view="${id}"]`)).toHaveLength(1);
     for (const id of ["a", "c"]) expect(screen.getAllByTestId(`content-${id}`)).toHaveLength(1);
@@ -359,6 +366,18 @@ describe("Workspace rendering", () => {
     expect(panel("b")).toHaveClass("[content-visibility:hidden]");
     expect(panel("a").style).toMatchObject({ left: "0px", top: "36px", width: "400px", height: "564px" });
     expect(panel("c").style).toMatchObject({ left: "400px", top: "36px", width: "400px", height: "564px" });
+  });
+
+  it("hides a hidden view with display none where content-visibility is unsupported", () => {
+    twoGroupGeometry();
+    vi.stubGlobal("CSS", { supports: () => false });
+    const { update } = renderStatic(twoGroups());
+    update(activate(twoGroups(), "b"));
+    expect(panel("a")).toHaveClass("hidden");
+    expect(panel("a")).not.toHaveClass("flex", "invisible", "[content-visibility:hidden]");
+    expect(panel("b")).toHaveClass("flex");
+    expect(panel("b")).not.toHaveClass("hidden");
+    expect(screen.getByTestId("content-a")).toBeInTheDocument();
   });
 
   it("hides the panel of a view that no group shows", () => {
@@ -513,7 +532,7 @@ describe("Workspace maximize", () => {
     expect(screen.getAllByRole("button", { name: "Maximize group" })).toHaveLength(2);
     const maximize = within(groupElement("g2")).getByRole("button", { name: "Maximize group" });
     expect(maximize).toHaveAttribute("aria-pressed", "false");
-    expect(maximize).toHaveAttribute("title", "Maximize group");
+    expect(maximize).not.toHaveAttribute("title");
     fireEvent.click(maximize);
     expect(latest().maximized).toBe("g2");
     expect(screen.getAllByRole("tablist")).toHaveLength(1);
@@ -523,7 +542,7 @@ describe("Workspace maximize", () => {
     expect(separators()).toHaveLength(0);
     const restore = screen.getByRole("button", { name: "Restore group" });
     expect(restore).toHaveAttribute("aria-pressed", "true");
-    expect(restore).toHaveAttribute("title", "Restore group");
+    expect(restore).not.toHaveAttribute("title");
     fireEvent.click(restore);
     expect(latest().maximized).toBeNull();
     expect(screen.getAllByRole("tablist")).toHaveLength(2);
@@ -642,7 +661,7 @@ describe("Workspace views stay mounted", () => {
     renderHarness(twoGroups());
     fireEvent.change(screen.getByLabelText("Field a"), { target: { value: "draft" } });
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     await release(700, 368);
     expect(within(strip("g2")).getByRole("tab", { name: "Title a" })).toBeInTheDocument();
     expect(screen.getByLabelText("Field a")).toHaveValue("draft");
@@ -750,7 +769,7 @@ describe("Workspace new tabs", () => {
     twoGroupGeometry();
     const { latest } = renderHarness(twoGroups(), { onNewTab: vi.fn() });
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 850, 60);
+    dragTo(850, 60);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
     await release(850, 60);
     expect(groupOfView(latest(), "a")?.views).toEqual(["c", "a"]);
@@ -804,7 +823,7 @@ describe("Workspace empty panels", () => {
 });
 
 describe("Workspace measuring", () => {
-  it("re-measures the slots when the resize observer fires, once per frame", () => {
+  it("re-measures the slots inside the resize observer callback, before the frame paints", () => {
     twoGroupGeometry();
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
     renderHarness(twoGroups());
@@ -813,11 +832,30 @@ describe("Workspace measuring", () => {
     geometry["slot:g1"] = { left: 100, top: 86, width: 300, height: 564 };
     geometry["slot:g2"] = { left: 400, top: 86, width: 500, height: 564 };
     observer.callback([], observer as unknown as ResizeObserver);
-    observer.callback([], observer as unknown as ResizeObserver);
-    expect(frames.size).toBe(1);
-    flushFrames();
+    expect(frames.size).toBe(0);
     expect(panel("a").style.width).toBe("300px");
     expect(panel("c").style).toMatchObject({ left: "300px", width: "500px" });
+  });
+
+  it("leaves a weight change to the resize observer instead of measuring in the commit", () => {
+    twoGroupGeometry();
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    const measured = () =>
+      vi.mocked(Element.prototype.getBoundingClientRect).mock.contexts.filter((element) => geometryKey(element as Element) === "root").length;
+    const layout = twoGroups();
+    const { update } = renderStatic(layout);
+    const observer = FakeResizeObserver.live();
+    const first = measured();
+    const root = layout.root as SplitNode;
+    update({ ...layout, root: { ...root, weights: [0.3, 0.7] } });
+    expect(measured()).toBe(first);
+    geometry["slot:g1"] = { left: 100, top: 86, width: 240, height: 564 };
+    geometry["slot:g2"] = { left: 340, top: 86, width: 560, height: 564 };
+    observer.callback([], observer as unknown as ResizeObserver);
+    expect(measured()).toBe(first + 1);
+    expect(panel("c").style).toMatchObject({ left: "240px", width: "560px" });
+    update(toggleMaximize(layout, "g1"));
+    expect(measured()).toBe(first + 2);
   });
 
   it("keeps one observer across renders and observes slots as they appear and go", () => {
@@ -851,16 +889,13 @@ describe("Workspace measuring", () => {
     expect(measured()).toBe(first + 1);
   });
 
-  it("disconnects the observer and drops a pending frame on unmount", () => {
+  it("disconnects the observer on unmount", () => {
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
     const { unmount } = renderHarness(twoGroups());
     const observer = FakeResizeObserver.live();
-    observer.callback([], observer as unknown as ResizeObserver);
-    const pending = [...frames.values()];
     unmount();
     expect(observer.disconnected).toBe(true);
     expect(frames.size).toBe(0);
-    expect(() => pending[0](0)).not.toThrow();
   });
 
   it("measures without a resize observer", () => {
@@ -1082,7 +1117,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { onChange, latest } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("b"), { button: 0, clientX: 200, clientY: 60 });
-    pointer("pointermove", 202, 61);
+    dragTo(202, 61);
     expect(ghost()).toBeNull();
     pointer("pointerup", 202, 61);
     expect(onChange).not.toHaveBeenCalled();
@@ -1094,7 +1129,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { onChange, latest } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     expect(ghost()).toHaveTextContent("Title a");
     expect(ghost()?.style).toMatchObject({ left: "712px", top: "376px" });
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
@@ -1111,10 +1146,10 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { latest } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 880, 300);
+    dragTo(880, 300);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "right");
     expect(indicator()?.style).toMatchObject({ left: "600px", width: "200px" });
-    pointer("pointermove", 700, 620);
+    dragTo(700, 620);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "bottom");
     expect(indicator()?.style).toMatchObject({ top: "318px", height: "282px" });
     await release(700, 620);
@@ -1128,7 +1163,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { latest } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 250, 60);
+    dragTo(250, 60);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
     expect(indicator()?.style).toMatchObject({ left: "159px", top: "0px", width: "2px", height: "36px" });
     expect(indicator()).toHaveClass("bg-primary");
@@ -1141,7 +1176,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { latest } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("b"), { button: 0, clientX: 200, clientY: 60 });
-    pointer("pointermove", 510, 60);
+    dragTo(510, 60);
     await release(510, 60);
     expect(groupOfView(latest(), "b")?.views).toEqual(["b", "c"]);
   });
@@ -1150,7 +1185,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { onChange } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("c"), { button: 0, clientX: 520, clientY: 60 });
-    pointer("pointermove", 880, 300);
+    dragTo(880, 300);
     expect(ghost()).toHaveTextContent("Title c");
     expect(indicator()).toBeNull();
     await release(880, 300);
@@ -1161,7 +1196,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { onChange } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 40, 20);
+    dragTo(40, 20);
     expect(ghost()).toBeInTheDocument();
     expect(indicator()).toBeNull();
     await release(40, 20);
@@ -1174,12 +1209,12 @@ describe("Workspace tab drag", () => {
     const canDrop = vi.fn((_id: string, target: MoveTarget) => !("groupId" in target) || target.groupId !== "g2");
     const { onChange } = renderHarness(twoGroups(), { canDrop });
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     expect(canDrop).toHaveBeenLastCalledWith("a", { groupId: "g2", zone: "center" });
     expect(indicator()).toBeNull();
-    pointer("pointermove", 300, 368);
+    dragTo(300, 368);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     await release(700, 368);
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -1188,7 +1223,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { onChange } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     const other = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
     act(() => {
       window.dispatchEvent(other);
@@ -1202,7 +1237,7 @@ describe("Workspace tab drag", () => {
     expect(escape.defaultPrevented).toBe(true);
     expect(indicator()).toBeNull();
     expect(ghost()).toBeNull();
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     await release(700, 368);
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -1211,7 +1246,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { onChange } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     pointer("pointercancel", 700, 368);
     expect(ghost()).toBeNull();
     await release(700, 368);
@@ -1222,7 +1257,7 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 2, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     expect(ghost()).toBeNull();
   });
 
@@ -1237,7 +1272,7 @@ describe("Workspace tab drag", () => {
     const onFocusView = vi.fn();
     const { onChange, latest } = renderHarness(createLayout(group("g1", ["a", "b"]), views("a", "b")), { onFocusView });
     fireEvent.pointerDown(tab("b"), { button: 0, clientX: 200, clientY: 60 });
-    pointer("pointermove", 210, 60);
+    dragTo(210, 60);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
     await act(async () => {
       window.dispatchEvent(new PointerEvent("pointerup", { clientX: 210, clientY: 60, bubbles: true }));
@@ -1258,9 +1293,9 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { unmount } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     unmount();
-    expect(() => pointer("pointermove", 710, 368)).not.toThrow();
+    expect(() => dragTo(710, 368)).not.toThrow();
     await expect(release(710, 368)).resolves.toBeUndefined();
   });
 
@@ -1268,9 +1303,11 @@ describe("Workspace tab drag", () => {
     twoGroupGeometry();
     const { latest } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 368);
+    dragTo(700, 368);
     await release(700, 368);
     expect(groupOfView(latest(), "c")?.active).toBe("a");
+    fireEvent.pointerDown(tab("c"), { button: 0, clientX: 520, clientY: 60 });
+    fireEvent.pointerUp(window);
     fireEvent.click(tab("c"));
     expect(groupOfView(latest(), "c")?.active).toBe("c");
   });
@@ -1285,7 +1322,7 @@ describe("Workspace tab drag", () => {
     };
     const { latest } = renderHarness(toggleMaximize(twoGroups(), "g1"));
     fireEvent.pointerDown(tab("b"), { button: 0, clientX: 200, clientY: 60 });
-    pointer("pointermove", 880, 368);
+    dragTo(880, 368);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "right");
     await release(880, 368);
     expect(groupOfView(latest(), "b")?.id).not.toBe("g1");
@@ -1350,7 +1387,7 @@ describe("Workspace tab drag cancel", () => {
     twoGroupGeometry();
     const { onChange } = renderHarness(twoGroups());
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
-    pointer("pointermove", 700, 300);
+    dragTo(700, 300);
     expect(indicator()).not.toBeNull();
     act(() => {
       window.dispatchEvent(new Event("blur"));
@@ -1452,11 +1489,11 @@ describe("Workspace icon tabs", () => {
     expect(groupElement("g2")).not.toHaveAttribute("data-presentation");
   });
 
-  it("falls back to a title attribute and the title's first letter", () => {
+  it("never falls back to a native title, and draws the title's first letter", () => {
     const plain = (id: string) => ({ title: id === "search" ? " search results" : `Title ${id}` });
     renderHarness(dockLayout(), { describeView: plain });
     const search = screen.getByRole("tab", { name: "search results" });
-    expect(search).toHaveAttribute("title", " search results");
+    expect(search).not.toHaveAttribute("title");
     expect(search).toHaveTextContent("S");
     expect(screen.getByRole("tab", { name: "Title explorer" })).toHaveTextContent("T");
   });
@@ -1684,14 +1721,14 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout());
     fireEvent.pointerDown(header("outline"), { button: 0, clientX: 150, clientY: 250 });
-    pointer("pointermove", 150, 40);
+    dragTo(150, 40);
     expect(ghost()).toHaveTextContent("Title outline");
     expect(header("outline")).toHaveClass("opacity-50");
     expect(indicator()).toHaveAttribute("data-drop-indicator", "stack");
     expect(indicator()?.style).toMatchObject({ left: "0px", top: "36px", width: "300px", height: "2px" });
-    pointer("pointermove", 150, 460);
+    dragTo(150, 460);
     expect(indicator()?.style).toMatchObject({ top: "467px" });
-    pointer("pointermove", 150, 40);
+    dragTo(150, 40);
     await release(150, 40);
     expect(stackOf(latest(), "files")?.sections).toEqual(["outline", "explorer", "structure"]);
     expect(mounts.get("outline")).toBe(1);
@@ -1701,11 +1738,11 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout());
     fireEvent.pointerDown(header("explorer"), { button: 0, clientX: 150, clientY: 50 });
-    pointer("pointermove", 150, 466);
+    dragTo(150, 466);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "stack");
-    pointer("pointermove", 150, 150);
+    dragTo(150, 150);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "top");
-    pointer("pointermove", 150, 470);
+    dragTo(150, 470);
     expect(indicator()?.style).toMatchObject({ top: "467px" });
     await release(150, 470);
     expect(stackOf(latest(), "files")?.sections).toEqual(["outline", "structure", "explorer"]);
@@ -1715,10 +1752,10 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { onChange } = renderHarness(dockLayout());
     fireEvent.pointerDown(header("explorer"), { button: 0, clientX: 150, clientY: 50 });
-    pointer("pointermove", 150, 40);
+    dragTo(150, 40);
     expect(ghost()).toHaveTextContent("Title explorer");
     expect(indicator()).toBeNull();
-    pointer("pointermove", 150, 240);
+    dragTo(150, 240);
     expect(indicator()).toBeNull();
     pointer("pointerup", 150, 240);
     expect(onChange).not.toHaveBeenCalled();
@@ -1728,7 +1765,7 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout());
     fireEvent.pointerDown(header("outline"), { button: 0, clientX: 150, clientY: 250 });
-    pointer("pointermove", 450, 10);
+    dragTo(450, 10);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
     expect(indicator()?.style).toMatchObject({ left: "499px", top: "0px", width: "2px", height: "36px" });
     await release(450, 10);
@@ -1741,7 +1778,7 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout());
     fireEvent.pointerDown(header("explorer"), { button: 0, clientX: 150, clientY: 50 });
-    pointer("pointermove", 980, 300);
+    dragTo(980, 300);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "right");
     await release(980, 300);
     expect(groupOfView(latest(), "explorer")?.views).toEqual(["explorer"]);
@@ -1777,7 +1814,7 @@ describe("Workspace section drag", () => {
     const { latest } = renderHarness(layout);
     fireEvent.change(screen.getByLabelText("Field explorer"), { target: { value: "kept" } });
     fireEvent.pointerDown(header("explorer"), { button: 0, clientX: 150, clientY: 50 });
-    pointer("pointermove", 650, 330);
+    dragTo(650, 330);
     expect(indicator()?.style).toMatchObject({ left: "300px", top: "317px", width: "700px" });
     await release(650, 330);
     expect(stackOf(latest(), "refs")?.sections).toEqual(["citations", "explorer", "bib"]);
@@ -1790,7 +1827,7 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout());
     fireEvent.pointerDown(tab("preview"), { button: 0, clientX: 450, clientY: 18 });
-    pointer("pointermove", 150, 250);
+    dragTo(150, 250);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "stack");
     await release(150, 250);
     expect(stackOf(latest(), "files")?.sections).toEqual(["explorer", "preview", "outline", "structure"]);
@@ -1802,7 +1839,7 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout());
     fireEvent.pointerDown(tab("preview"), { button: 0, clientX: 450, clientY: 18 });
-    pointer("pointermove", 200, 18);
+    dragTo(200, 18);
     expect(indicator()?.style).toMatchObject({ left: "61px", width: "2px" });
     await release(200, 18);
     expect(groupOfView(latest(), "preview")).toMatchObject({ id: "g1", views: ["files", "search", "stack-1"], active: "stack-1" });
@@ -1828,16 +1865,16 @@ describe("Workspace section drag", () => {
     );
     const { latest } = renderHarness(layout);
     fireEvent.pointerDown(tab("editor"), { button: 0, clientX: 350, clientY: 18 });
-    pointer("pointermove", 150, 40);
+    dragTo(150, 40);
     expect(indicator()?.style).toMatchObject({ top: "36px", height: "2px" });
-    pointer("pointermove", 150, 300);
+    dragTo(150, 300);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
-    pointer("pointermove", 150, 596);
+    dragTo(150, 596);
     expect(indicator()?.style).toMatchObject({ top: "598px" });
     await release(150, 596);
     expect(stackOf(latest(), "k")?.sections).toEqual(["only", "editor"]);
     fireEvent.pointerDown(tab("preview"), { button: 0, clientX: 450, clientY: 18 });
-    pointer("pointermove", 150, 300);
+    dragTo(150, 300);
     await release(150, 300);
     expect(groupOfView(latest(), "preview")).toMatchObject({ id: "g1", views: ["k", "stack-1"] });
   });
@@ -1846,11 +1883,11 @@ describe("Workspace section drag", () => {
     dockGeometry();
     const { onChange } = renderHarness(dockLayout(), { describeView: dockDescribe });
     fireEvent.pointerDown(screen.getByRole("button", { name: "Refresh outline" }), { button: 0, clientX: 280, clientY: 250 });
-    pointer("pointermove", 150, 40);
+    dragTo(150, 40);
     expect(ghost()).toBeNull();
     pointer("pointerup", 150, 40);
     fireEvent.pointerDown(header("outline"), { button: 0, clientX: 150, clientY: 250 });
-    pointer("pointermove", 1200, 700);
+    dragTo(1200, 700);
     expect(ghost()).toHaveTextContent("Title outline");
     await act(async () => {
       window.dispatchEvent(new PointerEvent("pointerup", { clientX: 1200, clientY: 700, bubbles: true }));
@@ -2018,6 +2055,139 @@ describe("Workspace tooltips", () => {
     expect(maximize).not.toHaveAttribute("title");
     expect(maximize.closest("[data-tooltip]")).toHaveAttribute("data-tooltip", "Maximize group");
   });
+
+  it("gives every icon button and every tab title the app's tooltip, and no native titles", () => {
+    const layout = createLayout(split("s1", "row", [group("g1", ["a", "b"]), group("g2", ["c"]), group("g3", [])]), views("a", "b", "c"), "g3");
+    renderHarness(layout, { renderTooltip: tooltip, onNewTab: vi.fn() });
+    const hint = (element: HTMLElement) => element.closest("[data-tooltip]")?.getAttribute("data-tooltip");
+    expect(hint(within(groupElement("g1")).getByRole("button", { name: "New tab" }))).toBe("New tab");
+    expect(hint(within(groupElement("g3")).getByRole("button", { name: "Close panel" }))).toBe("Close panel");
+    expect(hint(tab("a"))).toBe("Title a");
+    expect(hint(tab("b"))).toBe("Title b");
+    expect(hint(screen.getByRole("button", { name: "Close Title a" }))).toBe("Close Title a");
+    expect(tab("a").closest("[data-tooltip]")).toHaveClass("min-w-0");
+    expect(document.querySelectorAll("[title]")).toHaveLength(0);
+  });
+
+  it("keeps tab titles and buttons plain without a tooltip renderer", () => {
+    renderHarness(twoGroups(), { onNewTab: vi.fn() });
+    expect(document.querySelectorAll("[data-tooltip]")).toHaveLength(0);
+    expect(document.querySelectorAll("[title]")).toHaveLength(0);
+    expect(tab("a").parentElement).toHaveAttribute("data-tab-view", "a");
+  });
+});
+
+describe("Workspace trailing content", () => {
+  it("keeps the trailing content out of the bar area that clips when the group gets narrow", () => {
+    const chromeAttributes = { "data-chrome": "drag" };
+    const windowMenu = "Window menu";
+    renderHarness(twoGroups(), { chromeAttributes, trailing: <button type="button" aria-label={windowMenu} /> });
+    const menu = within(groupElement("g2")).getByRole("button", { name: windowMenu });
+    const holder = menu.closest("[data-trailing]");
+    expect(holder).toHaveClass("shrink-0");
+    expect(holder).toHaveAttribute("data-chrome", "drag");
+    expect(menu.closest("[data-group-actions]")).toBeNull();
+    const maximize = within(groupElement("g2")).getByRole("button", { name: "Maximize group" });
+    expect(maximize.closest("[data-group-actions]")).toHaveClass("min-w-0", "overflow-hidden");
+    expect(within(groupElement("g1")).queryByRole("button", { name: windowMenu })).toBeNull();
+    expect(groupElement("g1").querySelector("[data-trailing]")).toBeNull();
+  });
+
+  it("draws no trailing holder for empty trailing content", () => {
+    renderHarness(twoGroups(), { trailing: null });
+    expect(document.querySelector("[data-trailing]")).toBeNull();
+  });
+});
+
+describe("Workspace drag frames", () => {
+  it("updates a tab drag once per animation frame and lands on the last position", async () => {
+    twoGroupGeometry();
+    const { latest } = renderHarness(twoGroups());
+    fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
+    pointer("pointermove", 300, 368);
+    pointer("pointermove", 700, 368);
+    expect(ghost()).toBeNull();
+    expect(frames.size).toBe(1);
+    flushFrames();
+    expect(ghost()?.style).toMatchObject({ left: "712px", top: "376px" });
+    expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
+    pointer("pointermove", 880, 300);
+    await release(880, 300);
+    expect(groupOfView(latest(), "a")).toMatchObject({ views: ["a"] });
+    expect(groupOfView(latest(), "a")?.id).not.toBe("g1");
+  });
+
+  it("reads the tab geometry once when the drag starts, not on every move", () => {
+    twoGroupGeometry();
+    renderHarness(twoGroups());
+    const reads = () =>
+      vi.mocked(Element.prototype.getBoundingClientRect).mock.contexts.filter((element) => (element as Element).hasAttribute("data-tab-view")).length;
+    fireEvent.pointerDown(tab("a"), { button: 0, clientX: 120, clientY: 60 });
+    const before = reads();
+    dragTo(250, 60);
+    const first = reads();
+    expect(first).toBeGreaterThan(before);
+    dragTo(300, 60);
+    dragTo(700, 368);
+    dragTo(260, 60);
+    expect(reads()).toBe(first);
+    expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
+    pointer("pointerup", 260, 60);
+  });
+});
+
+describe("Workspace hidden view retention", () => {
+  function oneGroup(): WorkspaceLayout {
+    return createLayout(group("g1", ["a", "b", "c", "d"]), views("a", "b", "c", "d"));
+  }
+
+  function showInTurn(update: (layout: WorkspaceLayout) => void, ...ids: string[]): WorkspaceLayout {
+    let layout = oneGroup();
+    for (const id of ids) {
+      layout = activate(layout, id);
+      update(layout);
+    }
+    return layout;
+  }
+
+  it("keeps only the most recently shown hidden views mounted and builds a released one again", () => {
+    const { update } = renderStatic(oneGroup(), { keepHidden: 1 });
+    showInTurn(update, "b", "c");
+    expect(screen.queryByTestId("content-a")).toBeNull();
+    expect(screen.getByTestId("content-b")).toBeInTheDocument();
+    expect(screen.getByTestId("content-c")).toBeInTheDocument();
+    expect(unmounts.get("a")).toBe(1);
+    expect(panel("a")).toHaveAttribute("data-shown", "false");
+    update(activate(oneGroup(), "a"));
+    expect(screen.getByTestId("content-a")).toBeInTheDocument();
+    expect(mounts.get("a")).toBe(2);
+    expect(screen.getByTestId("content-c")).toBeInTheDocument();
+    expect(screen.queryByTestId("content-b")).toBeNull();
+    expect(screen.queryByTestId("content-d")).toBeNull();
+  });
+
+  it("keeps a hidden view mounted while the app cannot release it", () => {
+    const busy = new Set(["a"]);
+    const canRelease = (id: string) => !busy.has(id);
+    const { update } = renderStatic(oneGroup(), { keepHidden: 0, canRelease });
+    showInTurn(update, "b", "c");
+    expect(screen.getByTestId("content-a")).toBeInTheDocument();
+    expect(screen.queryByTestId("content-b")).toBeNull();
+    busy.clear();
+    update(activate(oneGroup(), "d"));
+    expect(screen.queryByTestId("content-a")).toBeNull();
+    expect(screen.queryByTestId("content-c")).toBeNull();
+    expect(screen.getByTestId("content-d")).toBeInTheDocument();
+  });
+
+  it("forgets a closed view so it is not kept or counted", () => {
+    const { update } = renderStatic(oneGroup(), { keepHidden: 1 });
+    const layout = showInTurn(update, "b", "a");
+    update(activate({ ...layout, root: group("g1", ["b", "c", "d"]), views: views("b", "c", "d") }, "c"));
+    expect(screen.queryByTestId("content-a")).toBeNull();
+    expect(screen.getByTestId("content-b")).toBeInTheDocument();
+    expect(screen.getByTestId("content-c")).toBeInTheDocument();
+  });
 });
 
 describe("Workspace dock edge cases", () => {
@@ -2059,14 +2229,14 @@ describe("Workspace dock edge cases", () => {
     );
     const { latest } = renderHarness(layout);
     fireEvent.pointerDown(tab("b"), { button: 0, clientX: 420, clientY: 18 });
-    pointer("pointermove", 880, 300);
+    dragTo(880, 300);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "right");
     await release(880, 300);
     expect(groupOfView(latest(), "b")?.views).toEqual(["b"]);
     cleanup();
     const { latest: after } = renderHarness(toggleMaximize(layout, "g1"));
     fireEvent.pointerDown(tab("b"), { button: 0, clientX: 420, clientY: 18 });
-    pointer("pointermove", 880, 300);
+    dragTo(880, 300);
     await release(880, 300);
     expect(groupOfView(after(), "b")?.views).toEqual(["b"]);
   });
@@ -2081,7 +2251,7 @@ describe("Workspace dock edge cases", () => {
     };
     const { latest } = renderHarness(createLayout(split("s1", "row", [group("g1", ["a", "b"]), group("g2", [])]), views("a", "b"), "g2"));
     fireEvent.pointerDown(tab("a"), { button: 0, clientX: 20, clientY: 18 });
-    pointer("pointermove", 700, 18);
+    dragTo(700, 18);
     expect(indicator()?.style).toMatchObject({ left: "500px", width: "2px" });
     await release(700, 18);
     expect(groupOfView(latest(), "a")?.id).toBe("g2");
@@ -2091,7 +2261,7 @@ describe("Workspace dock edge cases", () => {
     dockGeometry();
     renderHarness(dockLayout());
     fireEvent.pointerDown(screen.getByRole("tab", { name: "Title search" }), { button: 0, clientX: 48, clientY: 18 });
-    pointer("pointermove", 700, 300);
+    dragTo(700, 300);
     expect(screen.getByRole("tab", { name: "Title search" })).toHaveClass("opacity-50");
   });
 

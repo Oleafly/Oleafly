@@ -68,6 +68,16 @@ describe("note files", () => {
     expect(noteSummary(body)).toBe("The real paragraph.");
   });
 
+  it("keeps a backtick line inside a tilde fence out of the summary", () => {
+    expect(noteSummary("~~~\n```\nnot prose\n~~~\n\nThe real paragraph.\n")).toBe("The real paragraph.");
+    expect(noteSummary("````md\n```\ninside\n```\n````\nAfter the fence.")).toBe("After the fence.");
+  });
+
+  it("reads the last value of a key and treats an empty last value as missing", () => {
+    expect(readNoteFacts("---\ntitle: One\ntitle: Two\nicon: a\nicon:\n---\nBody").title).toBe("Two");
+    expect(readNoteFacts("---\ntitle: One\ntitle: Two\nicon: a\nicon:\n---\nBody").icon).toBeUndefined();
+  });
+
   it("ends the summary at a code block or list that follows the first paragraph", () => {
     expect(noteSummary("First line\nsecond line\n```js\nx = 1\n```\n")).toBe("First line second line");
     expect(noteSummary("Opening words\n- a list item\n")).toBe("Opening words");

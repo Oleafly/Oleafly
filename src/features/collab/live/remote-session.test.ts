@@ -639,6 +639,56 @@ describe("RemoteDocumentSession", () => {
     expect(session.readOnly).toBe(true);
   });
 
+  it("counts typing as settled only once a reconnect confirms it, or fails", async () => {
+    const channel = new FakeChannel("abc");
+    const base = channel.transport();
+    let opens = 0;
+    let rejects = 1;
+    const answers: ((value: CollabDocOpened | null) => void)[] = [];
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: {
+        open: (path, onMessage) => {
+          opens += 1;
+          if (opens === 1) return base.open(path, onMessage);
+          return new Promise<CollabDocOpened | null>((resolve) => answers.push(resolve)).then((answer) =>
+            answer === null ? null : base.open(path, onMessage),
+          );
+        },
+        change: (fileId, rev, op) => {
+          if (rejects-- > 0) return Promise.reject(new Error("The file is not open."));
+          return base.change(fileId, rev, op);
+        },
+        close: base.close,
+      },
+    });
+    await session.open();
+    session.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    await flush();
+    expect(session.phase).toBe("opening");
+    let settled = false;
+    void session.settled().then(() => (settled = true));
+    await flush();
+    expect(settled).toBe(false);
+    answers.shift()?.({ file_id: "", rev: 0, text: "", session: 0 });
+    await flush();
+    expect(session.phase).toBe("open");
+    expect(settled).toBe(false);
+    channel.drain();
+    await flush();
+    expect(settled).toBe(true);
+    expect(channel.text).toBe("abc!");
+
+    rejects = 1;
+    session.applyLocal([{ from: 4, to: 4, insert: "?" }], session.version());
+    await flush();
+    let failed = false;
+    void session.settled().then(() => (failed = true));
+    answers.shift()?.(null);
+    await flush();
+    expect(session.phase).toBe("detached");
+    expect(failed).toBe(true);
+  });
+
   it("converges for two editors under random interleavings", async () => {
     let seed = 0x2545f491;
     const below = (bound: number) => {

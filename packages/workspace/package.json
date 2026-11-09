@@ -6,7 +6,7 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "exports": { ".": "./src/index.ts", "./geometry": "./src/geometry.ts", "./tree": "./src/tree.ts" },
+  "exports": { ".": "./src/index.ts", "./geometry": "./src/geometry.ts", "./drag": "./src/drag.ts", "./retention": "./src/retention.ts", "./tree": "./src/tree.ts" },
   "sideEffects": false,
   "dependencies": {
     "lucide-react": "*",

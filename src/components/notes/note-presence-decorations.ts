@@ -1,6 +1,6 @@
 import { type Editor, Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
+import { type EditorState, Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { NotePeerCaret, NotePeerMark } from "@/lib/collab-live-bridge";
 import { cssText, labelLightness, REMOTE_CARET_COLOR, REMOTE_PART_STYLES, remoteLabelColor } from "@/lib/peer-colors";
@@ -52,11 +52,19 @@ export function peerMarksOf(state: EditorState): readonly PlacedMark[] {
   return peerKey.getState(state)?.marks ?? [];
 }
 
-export function setNotePeerMarks(editor: Editor, marks: readonly NotePeerMark[]): void {
-  const { doc } = editor.state;
-  const placed = marks.map((mark) => ({ id: mark.id, name: mark.name, hue: mark.hue, pos: startOfBlock(doc, mark.index) }));
-  if (samePlaced(peerMarksOf(editor.state), placed)) return;
-  editor.view.dispatch(editor.state.tr.setMeta(peerKey, placed).setMeta("addToHistory", false));
+function mappedMarks(marks: readonly PlacedMark[], tr: Transaction): readonly PlacedMark[] {
+  if (!tr.docChanged || marks.length === 0) return marks;
+  return marks.map((mark) => ({ ...mark, pos: topStart(tr.doc, tr.mapping.map(mark.pos, 1)) }));
+}
+
+export function setNotePeerMarks(editor: Editor, marks: readonly NotePeerMark[], into?: Transaction): boolean {
+  const tr = into ?? editor.state.tr;
+  const previous = (tr.getMeta(peerKey) as PlacedMark[] | undefined) ?? mappedMarks(peerMarksOf(editor.state), tr);
+  const placed = marks.map((mark) => ({ id: mark.id, name: mark.name, hue: mark.hue, pos: startOfBlock(tr.doc, mark.index) }));
+  if (samePlaced(previous, placed)) return false;
+  tr.setMeta(peerKey, placed).setMeta("addToHistory", false);
+  if (!into) editor.view.dispatch(tr);
+  return true;
 }
 
 function markElement(marks: readonly PlacedMark[]): HTMLElement {
@@ -163,16 +171,29 @@ export function placeNotePeerCarets(
   });
 }
 
+function mappedCarets(carets: readonly PlacedCaret[], tr: Transaction): readonly PlacedCaret[] {
+  if (!tr.docChanged || carets.length === 0) return carets;
+  return carets.map((caret) => ({
+    ...caret,
+    head: tr.mapping.map(caret.head, -1),
+    anchor: tr.mapping.map(caret.anchor, -1),
+  }));
+}
+
 export function setNotePeerCarets(
   editor: Editor,
   carets: readonly NotePeerCaret[],
   place: (offset: number) => number,
   replace: ReadonlySet<string> = NONE,
-): void {
-  const previous = peerCaretsOf(editor.state);
-  const placed = placeNotePeerCarets(editor.state.doc, previous, carets, place, replace);
-  if (sameCarets(previous, placed)) return;
-  editor.view.dispatch(editor.state.tr.setMeta(caretKey, placed).setMeta("addToHistory", false));
+  into?: Transaction,
+): boolean {
+  const tr = into ?? editor.state.tr;
+  const previous = (tr.getMeta(caretKey) as PlacedCaret[] | undefined) ?? mappedCarets(peerCaretsOf(editor.state), tr);
+  const placed = placeNotePeerCarets(tr.doc, previous, carets, place, replace);
+  if (sameCarets(previous, placed)) return false;
+  tr.setMeta(caretKey, placed).setMeta("addToHistory", false);
+  if (!into) editor.view.dispatch(tr);
+  return true;
 }
 
 function caretElement(caret: PlacedCaret): HTMLElement {
@@ -232,7 +253,7 @@ export const NotePeerMarks = Extension.create({
             const next = tr.getMeta(peerKey) as PlacedMark[] | undefined;
             if (next) return { marks: next, decorations: decorationsFor(tr.doc, next) };
             if (!tr.docChanged || value.marks.length === 0) return value;
-            const marks = value.marks.map((mark) => ({ ...mark, pos: topStart(tr.doc, tr.mapping.map(mark.pos, 1)) }));
+            const marks = mappedMarks(value.marks, tr);
             return { marks, decorations: decorationsFor(tr.doc, marks) };
           },
         },
@@ -248,11 +269,7 @@ export const NotePeerMarks = Extension.create({
             const next = tr.getMeta(caretKey) as PlacedCaret[] | undefined;
             if (next) return { carets: next, decorations: caretDecorations(tr.doc, next) };
             if (!tr.docChanged || value.carets.length === 0) return value;
-            const carets = value.carets.map((caret) => ({
-              ...caret,
-              head: tr.mapping.map(caret.head, -1),
-              anchor: tr.mapping.map(caret.anchor, -1),
-            }));
+            const carets = mappedCarets(value.carets, tr);
             return { carets, decorations: caretDecorations(tr.doc, carets) };
           },
         },

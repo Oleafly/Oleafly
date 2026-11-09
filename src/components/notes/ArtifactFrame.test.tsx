@@ -16,7 +16,6 @@ import {
   nextHeight,
   noteRunsBlocks,
   RUN_BLOCKS_KEY,
-  RUNTIME_MARKER,
   resetArtifactRuntime,
   ScriptedBlock,
   type ScriptedBlockProps,
@@ -26,16 +25,22 @@ import {
   tokenOf,
   WATCHDOG_MS,
 } from "./ArtifactFrame";
-import { inlineJson, STATIC_POLICY } from "./artifact-runtime/frame-document";
+import { framePolicy, STATIC_POLICY } from "./artifact-runtime/frame-document";
 
 const tauri = vi.hoisted(() => ({
   open: vi.fn(async (_html: string) => "oleafly-artifact://localhost/0123456789abcdef0123456789abcdef"),
   close: vi.fn(async (_token: string) => true),
-  put: vi.fn(async (_text: string) => "ab".repeat(32)),
-  hash: "ab".repeat(32),
+  runtime: vi.fn(async () => `oleafly-artifact://localhost/runtime/${"ab".repeat(32)}.js`),
 }));
 
-vi.mock("@/lib/tauri", () => ({ artifactFrameOpen: tauri.open, artifactFrameClose: tauri.close, artifactFramePutRuntime: tauri.put }));
+vi.mock("@/lib/tauri", () => ({
+  artifactFrameOpen: tauri.open,
+  artifactFrameClose: tauri.close,
+  artifactFrameRuntimeUrl: tauri.runtime,
+}));
+
+const RUNTIME_URL = `oleafly-artifact://localhost/runtime/${"ab".repeat(32)}.js`;
+const RUNTIME_TAG = `<script src="${RUNTIME_URL}"></script>`;
 
 const TOKEN = "0123456789abcdef0123456789abcdef";
 const HTML_LABEL = "HTML";
@@ -98,7 +103,7 @@ beforeEach(() => {
   setNoteRunsBlocks("note-1", false);
   tauri.open.mockClear();
   tauri.close.mockClear();
-  tauri.put.mockClear();
+  tauri.runtime.mockClear();
   observers = [];
   visibleOnObserve = true;
   vi.stubGlobal(
@@ -121,10 +126,7 @@ beforeEach(() => {
       }
     },
   );
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => new Response("window.__oleaflyArtifact = {};", { status: 200 })),
-  );
+  vi.stubGlobal("fetch", vi.fn());
   resetArtifactRuntime();
 });
 
@@ -156,46 +158,48 @@ describe("helpers", () => {
     expect(frameMessages().unknownImport).toContain("{{name}}");
   });
 
-  it("registers the runtime once, and again after a failure", async () => {
-    const fetcher = vi.fn(async () => new Response("RT", { status: 200 }));
-    vi.stubGlobal("fetch", fetcher);
-    const reference = `${RUNTIME_MARKER}${tauri.hash}`;
-    expect(await loadArtifactRuntime()).toBe(reference);
-    expect(await loadArtifactRuntime()).toBe(reference);
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(tauri.put).toHaveBeenCalledOnce();
-    expect(tauri.put).toHaveBeenCalledWith("RT");
+  it("asks the app for the runtime address once, and again after a failure", async () => {
+    expect(await loadArtifactRuntime()).toBe(RUNTIME_URL);
+    expect(await loadArtifactRuntime()).toBe(RUNTIME_URL);
+    expect(tauri.runtime).toHaveBeenCalledOnce();
     resetArtifactRuntime();
-    fetcher.mockResolvedValueOnce(new Response("", { status: 404 }));
-    await expect(loadArtifactRuntime()).rejects.toThrow("HTTP 404");
-    await Promise.resolve();
-    tauri.put.mockRejectedValueOnce(new Error("refused"));
-    await expect(loadArtifactRuntime()).rejects.toThrow("refused");
-    await Promise.resolve();
-    expect(await loadArtifactRuntime()).toBe(reference);
-    expect(tauri.put).toHaveBeenCalledTimes(3);
+    tauri.runtime.mockRejectedValueOnce(new Error("This block couldn't load its libraries."));
+    await expect(loadArtifactRuntime()).rejects.toThrow("couldn't load its libraries");
+    expect(await loadArtifactRuntime()).toBe(RUNTIME_URL);
+    expect(tauri.runtime).toHaveBeenCalledTimes(3);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps a newer runtime request when an older one fails late", async () => {
+    let fail: (error: Error) => void = () => undefined;
+    tauri.runtime.mockImplementationOnce(() => new Promise<string>((_done, reject) => (fail = reject)));
+    const stale = loadArtifactRuntime();
+    resetArtifactRuntime();
+    const fresh = loadArtifactRuntime();
+    fail(new Error("late"));
+    await expect(stale).rejects.toThrow("late");
+    expect(loadArtifactRuntime()).toBe(fresh);
+    await expect(fresh).resolves.toBe(RUNTIME_URL);
+    expect(tauri.runtime).toHaveBeenCalledTimes(2);
   });
 
   it("builds HTML frames without the runtime unless a library needs it", async () => {
-    const fetcher = vi.fn(async () => new Response("RUNTIME_TEXT", { status: 200 }));
-    vi.stubGlobal("fetch", fetcher);
-    const reference = inlineJson(`${RUNTIME_MARKER}${tauri.hash}`);
     const plain = await buildFrame("html", "<p>x</p><img src='https://a.example/i.png'>", "light", "c");
     expect(plain.removed).toEqual(["https://a.example/i.png"]);
-    expect(plain.html).not.toContain(RUNTIME_MARKER);
-    expect(plain.runtime).toBe(false);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(plain.html).not.toContain("/runtime/");
+    expect(plain.html).toContain(framePolicy(null));
+    expect(tauri.runtime).not.toHaveBeenCalled();
     const swapped = await buildFrame("html", '<script src="https://d3js.org/d3.v7.min.js"></script>', "dark", "c");
-    expect(swapped.html).toContain(`(0, eval)(${reference})`);
-    expect(swapped.html).not.toContain("RUNTIME_TEXT");
-    expect(swapped.runtime).toBe(true);
+    expect(swapped.html).toContain(RUNTIME_TAG);
+    expect(swapped.html).toContain(framePolicy(RUNTIME_URL));
+    expect(swapped.html).not.toContain("d3js.org");
     const react = await buildFrame("react", "export default () => null", "light", "c");
     expect(react.html).toContain("__oleaflyArtifact.runReact");
-    expect(react.html).toContain(`(0, eval)(${reference})`);
-    expect(react.html).not.toContain("RUNTIME_TEXT");
+    expect(react.html).toContain(RUNTIME_TAG);
+    expect(react.html).toContain(framePolicy(RUNTIME_URL));
     expect(react.removed).toEqual([]);
-    expect(react.runtime).toBe(true);
-    expect(tauri.put).toHaveBeenCalledOnce();
+    expect(tauri.runtime).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -471,22 +475,19 @@ describe("ArtifactFrame", () => {
     expect(frame()).toBeTruthy();
   });
 
-  it("registers the runtime once and sends only a reference with each edit", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("RUNTIME_TEXT", { status: 200 })),
-    );
+  it("loads the runtime by address, so each edit sends only the block's own document", async () => {
     const view = render(<ArtifactFrame kind="react" source="export default () => 1" label={REACT_LABEL} />);
     await advance(BUILD_DELAY_MS);
     view.rerender(<ArtifactFrame kind="react" source="export default () => 2" label={REACT_LABEL} />);
     await advance(BUILD_DELAY_MS);
     expect(tauri.open).toHaveBeenCalledTimes(2);
-    expect(tauri.put).toHaveBeenCalledOnce();
-    expect(tauri.put).toHaveBeenCalledWith("RUNTIME_TEXT");
+    expect(tauri.runtime).toHaveBeenCalledOnce();
     for (const [html] of tauri.open.mock.calls) {
-      expect(html).not.toContain("RUNTIME_TEXT");
-      expect(html).toContain(inlineJson(`${RUNTIME_MARKER}${tauri.hash}`));
+      expect(html).toContain(RUNTIME_TAG);
+      expect(html).not.toContain("(0, eval)");
+      expect(html.length).toBeLessThan(64 * 1024);
     }
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("releases its document once loaded and registers a new one when the frame reloads", async () => {
@@ -511,35 +512,31 @@ describe("ArtifactFrame", () => {
   });
 
   it("opens nothing for a frame that went away while the runtime was loading", async () => {
-    let finish: (response: Response) => void = () => undefined;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>((done) => (finish = done))),
-    );
+    let finish: (url: string) => void = () => undefined;
+    tauri.runtime.mockImplementationOnce(() => new Promise<string>((done) => (finish = done)));
     const view = render(<ArtifactFrame kind="react" source="export default () => null" label={REACT_LABEL} />);
     await advance(BUILD_DELAY_MS);
     view.unmount();
-    await act(async () => finish(new Response("RT", { status: 200 })));
-    expect(tauri.put).toHaveBeenCalledOnce();
+    await act(async () => finish(RUNTIME_URL));
+    expect(tauri.runtime).toHaveBeenCalledOnce();
     expect(tauri.open).not.toHaveBeenCalled();
   });
 
-  it("registers the runtime again and rebuilds once when the app no longer has it", async () => {
-    tauri.open.mockRejectedValueOnce(new Error("This block couldn't load its libraries."));
+  it("explains the failure when the app has no runtime to give", async () => {
+    tauri.runtime.mockRejectedValueOnce(new Error("This block couldn't load its libraries."));
     render(<ArtifactFrame kind="react" source="export default () => null" label={REACT_LABEL} />);
     await advance(BUILD_DELAY_MS);
-    expect(tauri.put).toHaveBeenCalledTimes(2);
-    expect(tauri.open).toHaveBeenCalledTimes(2);
-    expect(frame()).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent("This block couldn't load its libraries.");
+    expect(tauri.open).not.toHaveBeenCalled();
   });
 
-  it("explains the failure when the rebuilt frame cannot start either", async () => {
-    tauri.open.mockRejectedValueOnce(new Error("first")).mockRejectedValueOnce(new Error("second"));
+  it("explains the failure when a React frame cannot start, without reopening it", async () => {
+    tauri.open.mockRejectedValueOnce(new Error("first"));
     render(<ArtifactFrame kind="react" source="export default () => null" label={REACT_LABEL} />);
     await advance(BUILD_DELAY_MS);
-    expect(tauri.open).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole("alert")).toHaveTextContent("second");
+    expect(tauri.open).toHaveBeenCalledOnce();
+    expect(tauri.runtime).toHaveBeenCalledOnce();
+    expect(screen.getByRole("alert")).toHaveTextContent("first");
   });
 });
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
@@ -13,13 +13,15 @@ const mocks = vi.hoisted(() => ({
   projectCitations: vi.fn(),
   copyProjectNoteToMine: vi.fn(async () => "copy"),
   moveNoteIntoProject: vi.fn(async () => "notes/x.md"),
+  renameProjectNote: vi.fn(async () => "notes/Results.md"),
   openNotes: vi.fn(async () => {}),
   logError: vi.fn(),
   seen: [] as {
     note: NoteItem;
     data: NotesData;
     live: unknown;
-    onOpenNote?: (id: string, options: { newTab: boolean }) => void;
+    openHeading?: { slug: string; id: number } | null;
+    onOpenNote?: (id: string, options: { newTab: boolean; heading?: string }) => void;
     onStatusChange?: (status: "saved" | "saving" | "failed", failure: { error: unknown; retry: () => void } | null) => void;
   }[],
 }));
@@ -33,6 +35,7 @@ vi.mock("./project-note-actions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./project-note-actions")>()),
   copyProjectNoteToMine: mocks.copyProjectNoteToMine,
   moveNoteIntoProject: mocks.moveNoteIntoProject,
+  renameProjectNote: mocks.renameProjectNote,
 }));
 vi.mock("@/features/open-tool", () => ({ openNotes: mocks.openNotes }));
 vi.mock("@/lib/log", async (importOriginal) => ({
@@ -45,7 +48,8 @@ vi.mock("./NoteDocument", async () => {
     NoteDocument: (props: {
       note: NoteItem;
       live?: unknown;
-      onOpenNote?: (id: string, options: { newTab: boolean }) => void;
+      openHeading?: { slug: string; id: number } | null;
+      onOpenNote?: (id: string, options: { newTab: boolean; heading?: string }) => void;
       onStatusChange?: (status: "saved" | "saving" | "failed", failure: { error: unknown; retry: () => void } | null) => void;
     }) => {
       const data = useNotesData();
@@ -53,6 +57,7 @@ vi.mock("./NoteDocument", async () => {
         note: props.note,
         data,
         live: props.live,
+        openHeading: props.openHeading,
         onOpenNote: props.onOpenNote,
         onStatusChange: props.onStatusChange,
       });
@@ -61,10 +66,10 @@ vi.mock("./NoteDocument", async () => {
   };
 });
 
-import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { dismissNoteLiveNotice, showNoteLiveNotice, useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
 import { useNoteTabsStore } from "@/store/note-tabs";
-import { forgetNoteTabHeads, noteListSignature } from "./note-tab-data";
+import { noteListSignature, resetNoteTabHeadsForTest } from "./note-tab-data";
 import { PersonalNoteTab, ProjectNoteTab } from "./NoteTabView";
 
 const PATH = "notes/Plan.md";
@@ -96,7 +101,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  forgetNoteTabHeads();
+  resetNoteTabHeadsForTest();
   mocks.seen = [];
   mocks.noteHeads.mockResolvedValue([{ id: "mine", head: "---\ntitle: Reading list\nicon: lucide:book\ncolor: rose\n---\n\nPapers.\n" }]);
   mocks.projectCitations.mockResolvedValue([{ key: "smith2020", label: "Smith 2020" }]);
@@ -129,7 +134,6 @@ describe("project note tab", () => {
     expect(note.shared).toBeUndefined();
     expect(live).toEqual({ projectId: "paper", path: PATH });
     expect(data.importNotebook).toBeUndefined();
-    expect(data.renameNote).toBeUndefined();
     expect(data.projectCitations).toBeUndefined();
     await expect(data.loadNote(note.id)).resolves.toMatchObject({ text: NOTE });
     await waitFor(() => expect(latest().data.citations).toEqual([{ key: "smith2020", label: "Smith 2020" }]));
@@ -207,6 +211,41 @@ describe("project note tab", () => {
     await act(async () => deliver([{ key: "late", label: "Late" }]));
   });
 
+  it("renames the note's file when its title changes in the editor", async () => {
+    render(<ProjectNoteTab projectId="paper" path={PATH} />);
+    const { data, note } = latest();
+    await data.renameNote?.(note.id, "Results");
+    expect(mocks.renameProjectNote).toHaveBeenCalledWith("paper", PATH, "Results");
+    await data.renameNote?.("mine", "Other");
+    expect(mocks.renameProjectNote).toHaveBeenCalledOnce();
+  });
+
+  it("shows a dropped-changes notice only on the note it belongs to", () => {
+    showNoteLiveNotice("project-note:paper:notes/Other.md", "refused");
+    showNoteLiveNotice("paper", "read_only");
+    const { unmount } = render(<ProjectNoteTab projectId="paper" path={PATH} />);
+    expect(screen.queryByTestId("note-live-notice")).toBeNull();
+    unmount();
+    showNoteLiveNotice("project-note:paper:notes/Plan.md", "refused");
+    render(<ProjectNoteTab projectId="paper" path={PATH} />);
+    expect(screen.getByTestId("note-live-notice")).toHaveTextContent(enNotes.live.unsentRefused);
+    for (const id of ["project-note:paper:notes/Other.md", "project-note:paper:notes/Plan.md", "paper"]) {
+      dismissNoteLiveNotice(id);
+    }
+  });
+
+  it("keeps its buttons on screen in a narrow pane", () => {
+    render(<ProjectNoteTab projectId="paper" path={PATH} />);
+    const bar = screen.getByTestId("note-tab-bar");
+    expect(bar).toHaveClass("@container", "min-w-0", "overflow-hidden");
+    expect(screen.getByTestId("note-tab-label")).toHaveClass("min-w-0", "flex-1", "overflow-hidden");
+    expect(bar.querySelector("[data-note-save-status]")).not.toHaveClass("shrink-0");
+    const copy = screen.getByTestId("note-tab-copy");
+    expect(copy.parentElement?.parentElement).toHaveClass("shrink-0");
+    expect(copy).toHaveAccessibleName(enNotes.noteTab.copyToMine);
+    expect(within(copy).getByText(enNotes.noteTab.copyToMine)).toHaveClass("@max-[34rem]:sr-only");
+  });
+
   it("keeps the note's write refusal message current", async () => {
     const setContent = vi.fn(() => false);
     useFilesStore.setState({ setContent });
@@ -240,6 +279,29 @@ describe("personal note tab", () => {
     expect(mocks.openNotes).toHaveBeenCalledWith("mine");
     act(() => latest().onOpenNote?.("other", { newTab: true }));
     expect(useNoteTabsStore.getState().active).toBe("other");
+  });
+
+  it("opens a linked note at the heading the link points to", async () => {
+    render(<PersonalNoteTab projectId="paper" noteId="mine" />);
+    await screen.findByTestId("note-document");
+    expect(latest().openHeading).toBeNull();
+    act(() => latest().onOpenNote?.("mine", { newTab: true, heading: "methods" }));
+    await waitFor(() => expect(latest().openHeading).toMatchObject({ slug: "methods" }));
+    const first = latest().openHeading;
+    act(() => latest().onOpenNote?.("mine", { newTab: false, heading: "results" }));
+    await waitFor(() => expect(latest().openHeading).toMatchObject({ slug: "results" }));
+    expect(latest().openHeading?.id).not.toBe(first?.id);
+  });
+
+  it("does not jump to an old heading when the tab opens again", async () => {
+    const first = render(<PersonalNoteTab projectId="paper" noteId="mine" />);
+    await screen.findByTestId("note-document");
+    act(() => latest().onOpenNote?.("mine", { newTab: false, heading: "methods" }));
+    await waitFor(() => expect(latest().openHeading).toMatchObject({ slug: "methods" }));
+    first.unmount();
+    render(<PersonalNoteTab projectId="paper" noteId="mine" />);
+    await screen.findByTestId("note-document");
+    expect(latest().openHeading).toBeNull();
   });
 
   it("waits for the lists, then says when the note is gone", async () => {

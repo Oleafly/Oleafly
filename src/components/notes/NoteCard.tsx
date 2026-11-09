@@ -3,12 +3,21 @@ import { useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { ROW_WINDOW_ITEM } from "@/hooks/use-row-window";
 import { cn } from "@/lib/utils";
 import { AgentTag, NoteChip, NoteIcon } from "./note-icons";
 import { NotePreview } from "./note-preview";
-import { CONTEXT_MENU_KIT, DROPDOWN_MENU_KIT, type MenuKit, type NoteActions, NoteMenuItems, NoteRenameInput } from "./note-actions";
+import {
+  CONTEXT_MENU_KIT,
+  ConflictMark,
+  DROPDOWN_MENU_KIT,
+  type MenuKit,
+  type NoteActions,
+  NoteMenuItems,
+  NoteRenameInput,
+} from "./note-actions";
 import { SharedMark } from "./NoteShareButton";
 import { ProjectDot } from "./project-color";
 import type { NoteItem } from "./types";
@@ -37,7 +46,7 @@ export function listColumn(column: ListColumn, sorted: ListColumn | null): strin
 
 const NEAR_MARGIN = "400px 0px";
 
-interface NoteMenus {
+export interface NoteMenus {
   open: boolean;
   renaming: boolean;
   finishRename: (title: string | null) => void;
@@ -47,7 +56,7 @@ interface NoteMenus {
   runPending: () => void;
 }
 
-function useNoteMenus(note: NoteItem, actions: NoteActions): NoteMenus {
+export function useNoteMenus(note: NoteItem, actions: NoteActions): NoteMenus {
   const [renaming, setRenaming] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
@@ -91,20 +100,23 @@ function FavoriteButton({
   className,
 }: Readonly<{ favorite: NonNullable<NoteActions["favorite"]>; reveal: string; className?: string }>) {
   const { t } = useTranslation(["notes"]);
+  const label = favorite.on ? t(($) => $.notes.library.menu.unfavorite) : t(($) => $.notes.library.menu.favorite);
   return (
-    <button
-      type="button"
-      aria-label={favorite.on ? t(($) => $.notes.library.menu.unfavorite) : t(($) => $.notes.library.menu.favorite)}
-      aria-pressed={favorite.on}
-      onClick={favorite.toggle}
-      className={cn(
-        CORNER_BUTTON,
-        favorite.on ? "text-amber-500 opacity-100 hover:text-amber-600" : cn(REVEAL, reveal),
-        className,
-      )}
-    >
-      <Star aria-hidden className={cn("size-3.5", favorite.on && "fill-current")} />
-    </button>
+    <Tooltip label={label} side="bottom">
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={favorite.on}
+        onClick={favorite.toggle}
+        className={cn(
+          CORNER_BUTTON,
+          favorite.on ? "text-amber-500 opacity-100 hover:text-amber-600" : cn(REVEAL, reveal),
+          className,
+        )}
+      >
+        <Star aria-hidden className={cn("size-3.5", favorite.on && "fill-current")} />
+      </button>
+    </Tooltip>
   );
 }
 
@@ -116,20 +128,33 @@ function CornerButtons({
   className,
 }: Readonly<{ favorite?: NoteActions["favorite"]; menus: NoteMenus; shape: string; reveal: string; className?: string }>) {
   const { t } = useTranslation(["notes"]);
+  const more = t(($) => $.notes.library.menu.more);
   return (
     <div className={cn("absolute flex items-center gap-1", className)}>
       {favorite && <FavoriteButton favorite={favorite} reveal={reveal} className={shape} />}
       <DropdownMenu onOpenChange={menus.setMoreOpen}>
-        <DropdownMenuTrigger asChild>
-          <button type="button" aria-label={t(($) => $.notes.library.menu.more)} className={cn(CORNER_BUTTON, shape, REVEAL, reveal)}>
-            <MoreHorizontal aria-hidden className="size-4" />
-          </button>
-        </DropdownMenuTrigger>
+        <Tooltip label={more} side="bottom">
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label={more} className={cn(CORNER_BUTTON, shape, REVEAL, reveal)}>
+              <MoreHorizontal aria-hidden className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+        </Tooltip>
         <DropdownMenuContent align="end" className="w-52" onCloseAutoFocus={menus.runPending}>
           {menus.items(DROPDOWN_MENU_KIT)}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  );
+}
+
+export function RowCornerButtons({
+  favorite,
+  menus,
+  className,
+}: Readonly<{ favorite?: NoteActions["favorite"]; menus: NoteMenus; className?: string }>) {
+  return (
+    <CornerButtons favorite={favorite} menus={menus} shape="rounded-md hover:bg-foreground/[0.06]" reveal={ROW_REVEAL} className={className} />
   );
 }
 
@@ -172,6 +197,7 @@ export function NoteCard({
                 <span className="min-w-0 break-words">{note.title}</span>
               )}
               {note.shared && <SharedMark className="h-5" />}
+              {actions.conflict && <ConflictMark className="h-5" />}
             </div>
             <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5">
               <p id={metaId} className="flex min-w-0 flex-1 items-center gap-1.5 text-[0.6875rem] leading-4 text-muted-foreground">
@@ -256,6 +282,7 @@ export function NoteListRow({
               <span className="truncate text-[0.9375rem]/[1.375rem] text-foreground">{note.title}</span>
             )}
             {note.shared && <SharedMark />}
+            {actions.conflict && <ConflictMark />}
           </div>
           <div className={cn(listColumn("project", sorted), "gap-1.5")}>
             <ProjectDot color={projectColor} className="size-1.5" />
@@ -281,13 +308,7 @@ export function NoteListRow({
               className="absolute inset-0 rounded-md"
             />
           )}
-          <CornerButtons
-            favorite={actions.favorite}
-            menus={menus}
-            shape="rounded-md hover:bg-foreground/[0.06]"
-            reveal={ROW_REVEAL}
-            className="right-3 top-1/2 -translate-y-1/2"
-          />
+          <RowCornerButtons favorite={actions.favorite} menus={menus} className="right-3 top-1/2 -translate-y-1/2" />
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52" onCloseAutoFocus={menus.runPending}>

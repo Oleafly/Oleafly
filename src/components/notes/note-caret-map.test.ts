@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-import { getSchema } from "@tiptap/core";
-import { describe, expect, it } from "vitest";
+import { createMarkdownSourceSnapshot } from "@oleafly/wysiwyg";
+import { Editor, getSchema } from "@tiptap/core";
+import { afterEach, describe, expect, it } from "vitest";
 import { blockCharMap, docPosAt, MATCH_WINDOW, sourceOffsetAt, unitSource } from "./note-caret-map";
-import { parseSharedNote } from "./note-live-doc";
-import { noteMarkdownExtensions } from "./note-markdown";
+import { alignSharedNote, blockAtOffset, matchBlocks, parseSharedNote } from "./note-live-doc";
+import { noteBaseExtensions, noteMarkdownExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
+import { NotePeerMarks } from "./note-presence-decorations";
+import { NoteSuggestions } from "./note-suggestions";
 
 const schema = getSchema(noteMarkdownExtensions());
 
@@ -123,5 +126,87 @@ describe("note caret map", () => {
     const near = blockCharMap(block, 0, "Hello");
     expect(near.src).toEqual([0, 1, 2, 3, 4]);
     expect(blockCharMap(block, 0, "Hello")).toBe(near);
+  });
+});
+
+let editors: Editor[] = [];
+
+afterEach(() => {
+  for (const editor of editors) editor.destroy();
+  editors = [];
+});
+
+function liveEditor(text: string) {
+  const parsed = parseNoteMarkdown(text);
+  const editor = new Editor({
+    element: document.createElement("div"),
+    extensions: [...noteBaseExtensions(), NoteSuggestions, NotePeerMarks],
+    content: parsed.doc,
+  });
+  editors.push(editor);
+  const snapshot = createMarkdownSourceSnapshot(parsed.layout, editor.getJSON());
+  const shared = () => parseSharedNote(editor.schema, serializeNoteMarkdown(editor.getJSON(), snapshot));
+  return { editor, shared };
+}
+
+function textIn(editor: Editor, needle: string): number {
+  let found = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (found >= 0 || !node.isText) return found < 0;
+    const index = node.text?.indexOf(needle) ?? -1;
+    if (index >= 0) found = pos + index;
+    return false;
+  });
+  return found;
+}
+
+describe("note caret map below an empty paragraph", () => {
+  const TEXT = "One\n\nTwo\n\nThree\n";
+
+  function withBlankLine() {
+    const live = liveEditor(TEXT);
+    live.editor.commands.setTextSelection(textIn(live.editor, "One") + 3);
+    live.editor.commands.splitBlock();
+    const note = live.shared();
+    expect(live.editor.state.doc.childCount).toBe(note.doc.childCount + 1);
+    expect(note.text).toBe(TEXT);
+    return { ...live, note };
+  }
+
+  it("sends a caret in a later block at that block's text", () => {
+    const { editor, note } = withBlankLine();
+    const caret = textIn(editor, "Three") + 2;
+    expect(sourceOffsetAt(note, editor.state.doc, caret)).toBe(TEXT.indexOf("Three") + 2);
+    expect(sourceOffsetAt(note, editor.state.doc, textIn(editor, "Two") + 1)).toBe(TEXT.indexOf("Two") + 1);
+  });
+
+  it("draws a collaborator's caret in the block their text is in", () => {
+    const { editor, note } = withBlankLine();
+    const pos = docPosAt(note, editor.state.doc, TEXT.indexOf("Two") + 1);
+    expect(editor.state.doc.textBetween(pos - 1, pos + 2)).toBe("Two");
+    const later = docPosAt(note, editor.state.doc, TEXT.indexOf("Three") + 3);
+    expect(editor.state.doc.textBetween(later - 3, later + 2)).toBe("Three");
+  });
+
+  it("gives the empty paragraph no text of its own and finds the next block for its offset", () => {
+    const { editor, note } = withBlankLine();
+    const aligned = alignSharedNote(note, editor.state.doc);
+    expect(aligned.starts).toEqual([0, TEXT.indexOf("Two"), TEXT.indexOf("Two"), TEXT.indexOf("Three")]);
+    expect(aligned.sources[1]).toBe("");
+    expect(blockAtOffset(aligned.starts, TEXT.indexOf("Two"))).toBe(2);
+    expect(sourceOffsetAt(note, editor.state.doc, 6)).toBe(TEXT.indexOf("Two"));
+    expect(alignSharedNote(note, editor.state.doc)).toBe(aligned);
+    expect(alignSharedNote(note, note.doc)).toBe(note);
+  });
+
+  it("pairs a block the serializer changes with its source even next to an empty paragraph", () => {
+    const schema = getSchema(noteMarkdownExtensions());
+    const paragraph = (text?: string) => schema.node("paragraph", null, text ? [schema.text(text)] : []);
+    const source = [paragraph("One"), paragraph("Two"), paragraph("Three")];
+    expect(matchBlocks(source, [paragraph("One"), paragraph(), paragraph("Two "), paragraph("Three")])).toEqual([0, -1, 1, 2]);
+    expect(matchBlocks(source, [paragraph("Uno"), paragraph("Dos"), paragraph("Three")])).toEqual([0, 1, 2]);
+    expect(matchBlocks(source, [paragraph(), paragraph("One"), paragraph("Two"), paragraph("Three"), paragraph()])).toEqual([
+      -1, 0, 1, 2, -1,
+    ]);
   });
 });

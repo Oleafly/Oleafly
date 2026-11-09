@@ -329,6 +329,20 @@ describe("csvRows", () => {
   it("reads tab separated text", () => {
     expect(csvRows("a\tb,c\n1\t2", "\t")).toEqual({ rows: [["a", "b,c"], ["1", "2"]], truncated: false });
   });
+
+  it("reads a quote inside a cell as text, like the table block does", () => {
+    expect(csvRows('size,label\n5" screen,x\nnext,y\n', ",")).toEqual({
+      rows: [["size", "label"], ['5" screen', "x"], ["next", "y"]],
+      truncated: false,
+    });
+  });
+
+  it("reads a file saved with Windows line endings, also inside quoted cells", () => {
+    expect(csvRows('\uFEFFa,b\r\n"two\r\nlines",c\r\n', ",")).toEqual({
+      rows: [["a", "b"], ["two\nlines", "c"]],
+      truncated: false,
+    });
+  });
 });
 
 describe("artifactPreview", () => {

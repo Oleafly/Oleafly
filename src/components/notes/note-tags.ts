@@ -1,4 +1,5 @@
-import { frontMatterKey, frontMatterRawValue, splitFrontMatter } from "@/lib/front-matter";
+import { backtickRunEnd, codeSpanEnd, fencedLines } from "@/lib/code-fences";
+import { frontMatterKey, frontMatterRawValue, quotedScalar, splitFrontMatter } from "@/lib/front-matter";
 
 export interface TagRange {
   from: number;
@@ -9,7 +10,6 @@ export interface TagRange {
 const TAG_RUN = /[\p{L}\p{N}_\-/]+/uy;
 const NOT_DIGIT = /[^\p{N}]/u;
 const SPACE = /\s/u;
-const FENCE = /^[ \t]*(`{3,}|~{3,})/u;
 const SCHEME_URL = /[A-Za-z][A-Za-z0-9+.-]*:\/\/\S*/uy;
 const SCHEME_CHAR = /[A-Za-z0-9+.-]/u;
 const AUTOLINK = /<[A-Za-z][A-Za-z0-9+.-]*:[^\s<>]*>/uy;
@@ -68,23 +68,6 @@ export function plainTextTags(text: string): TagRange[] {
   return found;
 }
 
-function codeSpanEnd(line: string, index: number): number {
-  let run = 0;
-  while (line[index + run] === "`") run++;
-  let cursor = index + run;
-  while (cursor < line.length) {
-    if (line[cursor] !== "`") {
-      cursor++;
-      continue;
-    }
-    let close = 0;
-    while (line[cursor + close] === "`") close++;
-    if (close === run) return cursor + close;
-    cursor += close;
-  }
-  return index + run;
-}
-
 function stickyEnd(pattern: RegExp, line: string, index: number): number {
   pattern.lastIndex = index;
   const match = pattern.exec(line)?.[0];
@@ -99,7 +82,7 @@ function destinationEnd(line: string, index: number): number {
 function skipAt(line: string, index: number): number {
   const char = line[index];
   if (char === "\\") return Math.min(line.length, index + 2);
-  if (char === "`") return codeSpanEnd(line, index);
+  if (char === "`") return codeSpanEnd(line, index) ?? backtickRunEnd(line, index);
   if (char === "[") return stickyEnd(INLINE_LINK, line, index);
   if (char === "]" && line[index + 1] === "(") return destinationEnd(line, index);
   if (char === "<") return stickyEnd(AUTOLINK, line, index);
@@ -124,56 +107,38 @@ function lineTags(line: string, offset: number, found: TagRange[]): void {
   }
 }
 
-interface Line {
-  text: string;
-  offset: number;
-}
-
-function linesOf(text: string, start: number): Line[] {
-  const lines: Line[] = [];
-  let offset = start;
-  for (const raw of text.split("\n")) {
-    lines.push({ text: raw.endsWith("\r") ? raw.slice(0, -1) : raw, offset });
-    offset += raw.length + 1;
-  }
-  return lines;
-}
-
 export function markdownTagRanges(markdown: string): TagRange[] {
   const front = splitFrontMatter(markdown);
+  const offset = front?.bodyFrom ?? 0;
   const found: TagRange[] = [];
-  let fence: string | null = null;
-  for (const line of linesOf(front ? front.body : markdown, front?.bodyFrom ?? 0)) {
-    const marker = FENCE.exec(line.text)?.[1];
-    if (fence !== null) {
-      if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
-      continue;
-    }
-    if (marker) {
-      fence = marker;
-      continue;
-    }
-    lineTags(line.text, line.offset, found);
+  for (const line of fencedLines(front ? front.body : markdown)) {
+    if (!line.fenced) lineTags(line.text, offset + line.from, found);
   }
   return found;
 }
 
-function unquoted(item: string): string {
-  const trimmed = item.trim();
-  const first = trimmed[0];
-  if (trimmed.length >= 2 && (first === '"' || first === "'") && trimmed.at(-1) === first) {
-    return trimmed.slice(1, -1).trim();
-  }
-  return trimmed;
+function scalarItem(raw: string): string {
+  const trimmed = raw.trim();
+  return quotedScalar(trimmed)?.value ?? trimmed;
 }
 
 function cleanItem(item: string): string {
-  return unquoted(item).replace(/^#+/u, "").trim();
+  return item.trim().replace(/^#+/u, "").trim();
 }
 
 function flowItems(value: string): string[] {
-  const close = value.lastIndexOf("]");
-  return value.slice(1, close < 0 ? value.length : close).split(",");
+  const items: string[] = [];
+  let index = 1;
+  while (index < value.length && value[index] !== "]") {
+    const rest = value.slice(index).trimStart();
+    index = value.length - rest.length;
+    const quoted = quotedScalar(rest);
+    let end = quoted ? index + quoted.end : index;
+    while (end < value.length && value[end] !== "," && value[end] !== "]") end++;
+    items.push(quoted ? quoted.value : value.slice(index, end));
+    index = value[end] === "," ? end + 1 : end;
+  }
+  return items;
 }
 
 const SCALAR_SPLIT: Readonly<Record<string, RegExp>> = { aliases: /,/u };
@@ -188,14 +153,14 @@ export function frontMatterList(markdown: string, key: string): string[] {
   if (value.startsWith("[")) {
     items = flowItems(value);
   } else if (value !== "") {
-    items = unquoted(value).split(SCALAR_SPLIT[key] ?? DEFAULT_SPLIT);
+    items = scalarItem(value).split(SCALAR_SPLIT[key] ?? DEFAULT_SPLIT);
   } else {
     items = [];
     for (const line of yaml.slice(at + 1)) {
       if (line.trim() === "") continue;
       const item = LIST_ITEM.exec(line);
       if (!item) break;
-      items.push(item[1] ?? "");
+      items.push(scalarItem(item[1] ?? ""));
     }
   }
   return items.map(cleanItem).filter((item) => item !== "");

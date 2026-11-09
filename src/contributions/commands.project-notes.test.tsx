@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
     setShowTree: vi.fn(),
   },
   startProjectNote: vi.fn(async () => "fresh"),
+  createProjectNoteFile: vi.fn(async () => "notes/Untitled.md"),
+  openNotes: vi.fn(async () => {}),
   logError: vi.fn(),
 }));
 
@@ -28,8 +30,13 @@ vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({}) } })
 vi.mock("@/store/citation", () => ({ useCitationStore: { getState: () => ({}) } }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/components/notes/project-notes", () => ({ startProjectNote: mocks.startProjectNote }));
+vi.mock("@/components/notes/project-note-actions", () => ({ createProjectNoteFile: mocks.createProjectNoteFile }));
+vi.mock("@/features/open-tool", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/open-tool")>()),
+  openNotes: mocks.openNotes,
+}));
 
-import { registerPaletteCommands } from "./commands";
+import { registerOmnibarCommands, registerPaletteCommands } from "./commands";
 
 const project: AppContext = { projectId: "paper", projectKind: "latex", theme: "light" };
 const library: AppContext = { projectId: null, projectKind: null, theme: "light" };
@@ -54,8 +61,12 @@ describe("project notes commands", () => {
   it("are offered in a project while Notes is on", () => {
     const open = command("palette.project-notes", project);
     const create = command("palette.new-project-note", project);
+    const shared = command("palette.new-project-note-file", project);
     expect(open && commandLabel(open, project)).toBe(enShell.commands.projectNotes.open);
-    expect(create && commandLabel(create, project)).toBe(enShell.commands.projectNotes.new);
+    expect(create && commandLabel(create, project)).toBe(enShell.commands.projectNotes.newPersonal);
+    expect(shared && commandLabel(shared, project)).toBe(enShell.commands.projectNotes.newShared);
+    expect(shared && commandKeywords(shared, project)).toContain("shared");
+    expect(create && commandKeywords(create, project)).toContain("personal");
     expect(open && commandGroup(open, project)).toBe(enShell.commandGroups.project);
     expect(open && commandKeywords(open, project)).toContain(enShell.commands.projectNotes.keywords);
     expect(create && commandKeywords(create, project)).toContain("new");
@@ -65,10 +76,12 @@ describe("project notes commands", () => {
     for (const ctx of [library, note]) {
       expect(command("palette.project-notes", ctx)).toBeUndefined();
       expect(command("palette.new-project-note", ctx)).toBeUndefined();
+      expect(command("palette.new-project-note-file", ctx)).toBeUndefined();
     }
     mocks.settings.notes = false;
     expect(command("palette.project-notes", project)).toBeUndefined();
     expect(command("palette.new-project-note", project)).toBeUndefined();
+    expect(command("palette.new-project-note-file", project)).toBeUndefined();
   });
 
   it("opens the Notes rail tab with the sidebar showing", () => {
@@ -80,6 +93,15 @@ describe("project notes commands", () => {
   it("starts a note linked to the open project", async () => {
     command("palette.new-project-note", project)?.run(project);
     await vi.waitFor(() => expect(mocks.startProjectNote).toHaveBeenCalledWith("paper"));
+  });
+
+  it("creates a project note file that travels with the project", async () => {
+    command("palette.new-project-note-file", project)?.run(project);
+    await vi.waitFor(() => expect(mocks.createProjectNoteFile).toHaveBeenCalledWith("paper", ""));
+    expect(mocks.startProjectNote).not.toHaveBeenCalled();
+    command("palette.new-project-note-file", project)?.run(library);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.createProjectNoteFile).toHaveBeenCalledOnce();
   });
 
   it("does nothing without a project id", async () => {
@@ -102,5 +124,28 @@ describe("project notes commands", () => {
     await vi.waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("load project notes", expect.any(Error)));
     registryModule.registry.commands.length = 0;
     vi.doUnmock("@/components/notes/project-notes");
+  });
+});
+
+describe("Open Notes command", () => {
+  beforeEach(() => {
+    registry.commands.length = 0;
+    registerOmnibarCommands();
+  });
+
+  it("opens Notes from the palette and the omnibar while Notes is on", () => {
+    for (const surface of ["palette", "omnibar"] as const) {
+      const open = commandsFor(surface, library).find((entry) => entry.id === "omnibar.notes");
+      expect(open && commandLabel(open, library)).toBe(enShell.commands.notes.label);
+      expect(open && commandGroup(open, library)).toBe(enShell.commandGroups.tools);
+      expect(open && commandKeywords(open, library)).toContain(enShell.commands.notes.keywords);
+    }
+    commandsFor("palette", project).find((entry) => entry.id === "omnibar.notes")?.run(project);
+    expect(mocks.openNotes).toHaveBeenCalledOnce();
+  });
+
+  it("stays hidden while Notes is off", () => {
+    mocks.settings.notes = false;
+    expect(commandsFor("palette", project).find((entry) => entry.id === "omnibar.notes")).toBeUndefined();
   });
 });

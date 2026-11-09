@@ -57,7 +57,8 @@
   display: none;
   margin-block: 0.75rem 0;
 }
-.note-drawn-source > pre {
+.note-drawn-source > pre,
+.note-drawn-editing > pre {
   display: block;
 }
 .note-drawn-preview {
@@ -183,6 +184,9 @@
 }
 .note-swatch[aria-pressed="true"] {
   border: 2px solid var(--foreground);
+}
+.note-swatch:focus-visible {
+  border: 2px solid var(--ring);
 }
 .note-project-dot {
   background: var(--note-project);
@@ -879,8 +883,9 @@
   --note-selection: color-mix(in srgb, var(--primary) 26%, transparent);
 }
 .note-body .ProseMirror[data-note-selecting],
-.note-body .ProseMirror[data-note-selecting] :is(.note-callout, .note-code, .note-task-content, pre, td, th),
-.note-body .ProseMirror[data-note-selecting] > .relative {
+.note-body .ProseMirror[data-note-selecting] > .relative,
+.note-body .ProseMirror :is(.note-callout, .note-code, td, th).note-selection-root,
+.note-body .ProseMirror .note-selection-root > :is(pre, .note-task-content) {
   transform: translate(0);
 }
 .note-body .ProseMirror::selection,
@@ -927,4 +932,11 @@
 }
 .note-body .ProseMirror .note-embed.note-in-selection::after {
   border-radius: 0.625rem;
+}
+.note-body .ProseMirror .note-find-match {
+  border-radius: 2px;
+  background-color: color-mix(in oklch, var(--primary) 25%, transparent);
+}
+.note-body .ProseMirror .note-find-match-active {
+  background-color: color-mix(in oklch, var(--primary) 50%, transparent);
 }

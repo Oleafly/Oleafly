@@ -35,7 +35,10 @@ const dialog = vi.hoisted(() => ({ pickOpenPath: vi.fn() }));
 vi.mock("@/lib/native-file-dialog", () => dialog);
 vi.mock("@/lib/research-tasks", () => research);
 vi.mock("@/components/editor/cm/hover-asset", () => assets);
-vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => files } }));
+vi.mock("@/store/files", () => ({
+  isDiskConflict: (error: unknown) => String(error).includes("file changed on disk"),
+  useFilesStore: { getState: () => files },
+}));
 const log = vi.hoisted(() => ({ logError: vi.fn() }));
 vi.mock("@/lib/log", () => log);
 vi.mock("@tauri-apps/api/event", () => ({
@@ -45,7 +48,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-const { createNotesService, noteItems, relatedProjectChoices } = await import("./notes-service");
+const { createNotesService, noteItems, noteWrittenHere, recordNoteWrite, relatedProjectChoices, resetNoteWritesForTest } =
+  await import("./notes-service");
 
 function project(overrides: Partial<ProjectInfo>): ProjectInfo {
   return {
@@ -87,6 +91,47 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   events.handler = null;
+  resetNoteWritesForTest();
+});
+
+describe("texts the app wrote to a note", () => {
+  it("knows a text from the start of its write until a later write lands, and forgets a write that fails", async () => {
+    await recordNoteWrite("note-1", "one\n", async () => undefined);
+    let land = () => {};
+    const writing = recordNoteWrite("note-1", "two\n", () => new Promise<void>((resolve) => (land = resolve)));
+    expect(noteWrittenHere("note-1", "one\n")).toBe(true);
+    expect(noteWrittenHere("note-1", "two\r\n")).toBe(true);
+    land();
+    await writing;
+    expect(noteWrittenHere("note-1", "one\n")).toBe(false);
+    expect(noteWrittenHere("note-1", "two\n")).toBe(true);
+    await expect(recordNoteWrite("note-1", "three\n", () => Promise.reject(new Error("disk full")))).rejects.toThrow("disk full");
+    expect(noteWrittenHere("note-1", "three\n")).toBe(false);
+    expect(noteWrittenHere("note-1", "two\n")).toBe(true);
+    expect(noteWrittenHere("plain", "two\n")).toBe(false);
+  });
+
+  it("keeps the newest write that landed when an older one lands after it", async () => {
+    let landOld = () => {};
+    const old = recordNoteWrite("note-1", "old\n", () => new Promise<void>((resolve) => (landOld = resolve)));
+    await recordNoteWrite("note-1", "new\n", async () => undefined);
+    landOld();
+    await old;
+    expect(noteWrittenHere("note-1", "old\n")).toBe(true);
+    expect(noteWrittenHere("note-1", "new\n")).toBe(false);
+  });
+
+  it("counts its own saves and the title a rename writes", async () => {
+    tauri.readFileContent.mockResolvedValue("---\ntitle: Masking\n---\n\nold\n");
+    tauri.renameProjectCmd.mockResolvedValue({});
+    files.writeProjectFile.mockResolvedValue(undefined);
+    const { notes } = service();
+    await notes.renameNote?.("note-1", "Renamed");
+    expect(noteWrittenHere("note-1", "---\ntitle: Renamed\n---\n\nold\n")).toBe(true);
+    await notes.saveNote("note-1", "---\ntitle: Renamed\n---\n\nnew\n", diskHash("---\ntitle: Masking\n---\n\nold\n"));
+    expect(noteWrittenHere("note-1", "---\ntitle: Renamed\n---\n\nnew\n")).toBe(true);
+    expect(noteWrittenHere("note-1", "---\ntitle: Renamed\n---\n\nold\n")).toBe(false);
+  });
 });
 
 describe("notes from the library", () => {
@@ -158,7 +203,11 @@ describe("notes from the library", () => {
       text: "new\n",
       version: diskHash("new\n"),
     });
-    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "new\n", { closedProject: true, crlf: false });
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "new\n", {
+      closedProject: true,
+      crlf: false,
+      expectedHash: diskHash("old\n"),
+    });
     expect(deps.refreshHeads).toHaveBeenCalled();
   });
 
@@ -191,7 +240,12 @@ describe("notes from the library", () => {
       text: "a\r\nc\r\n",
       version: diskHash("a\nc\n"),
     });
-    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "a\nc\n", { closedProject: true, crlf: true });
+    expect(tauri.readFileContent).toHaveBeenCalledOnce();
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "a\nc\n", {
+      closedProject: true,
+      crlf: true,
+      expectedHash: diskHash("a\r\nb\r\n"),
+    });
   });
 
   it("writes LF to a file that uses LF", async () => {
@@ -199,7 +253,11 @@ describe("notes from the library", () => {
     files.writeProjectFile.mockResolvedValue(undefined);
     const { notes } = service();
     await expect(notes.saveNote("note-1", "a\r\nc\r\n", diskHash("a\nb\n"))).resolves.toMatchObject({ text: "a\nc\n" });
-    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "a\nc\n", { closedProject: true, crlf: false });
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "a\nc\n", {
+      closedProject: true,
+      crlf: false,
+      expectedHash: diskHash("a\nb\r\n"),
+    });
   });
 
   it("reads a project's references from its BibTeX files", async () => {
@@ -298,6 +356,86 @@ describe("notes from the library", () => {
     expect(onChange).toHaveBeenCalledOnce();
     stop?.();
     await vi.waitFor(() => expect(log.logError).toHaveBeenCalledWith("stop watching note folder", failure));
+  });
+});
+
+describe("saving without reading the note back", () => {
+  const OUTSIDE = new Error("file changed on disk: note.md was changed outside Oleafly after it was loaded");
+
+  it("writes each save to disk against the hash of the last version it knows, with no read", async () => {
+    tauri.readFileContent.mockResolvedValue("old\n");
+    files.writeProjectFile.mockResolvedValue(undefined);
+    const { notes } = service();
+    const loaded = await notes.loadNote("note-1");
+    const first = await notes.saveNote("note-1", "first\n", loaded.version);
+    const second = await notes.saveNote("note-1", "second\n", first.version);
+    expect(second).toEqual({ text: "second\n", version: diskHash("second\n") });
+    expect(tauri.readFileContent).toHaveBeenCalledOnce();
+    expect(files.writeProjectFile.mock.calls).toEqual([
+      ["note-1", "note.md", "first\n", { closedProject: true, crlf: false, expectedHash: diskHash("old\n") }],
+      ["note-1", "note.md", "second\n", { closedProject: true, crlf: false, expectedHash: diskHash("first\n") }],
+    ]);
+  });
+
+  it("hands back what is on disk when the file changed outside since the last save", async () => {
+    tauri.readFileContent.mockResolvedValueOnce("old\n").mockResolvedValue("from the agent\n");
+    files.writeProjectFile.mockRejectedValueOnce(OUTSIDE);
+    const { notes } = service();
+    const loaded = await notes.loadNote("note-1");
+    const error = await notes.saveNote("note-1", "mine\n", loaded.version).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(NoteConflictError);
+    expect((error as NoteConflictError).disk).toEqual({ text: "from the agent\n", version: diskHash("from the agent\n") });
+    expect(files.writeProjectFile).toHaveBeenCalledOnce();
+    files.writeProjectFile.mockResolvedValue(undefined);
+    await notes.saveNote("note-1", "merged\n", diskHash("from the agent\n"));
+    expect(files.writeProjectFile).toHaveBeenLastCalledWith("note-1", "note.md", "merged\n", {
+      closedProject: true,
+      crlf: false,
+      expectedHash: diskHash("from the agent\n"),
+    });
+    expect(tauri.readFileContent).toHaveBeenCalledTimes(2);
+  });
+
+  it("still saves when only the line endings on disk changed", async () => {
+    tauri.readFileContent.mockResolvedValueOnce("a\nb\n").mockResolvedValue("a\r\nb\r\n");
+    files.writeProjectFile.mockRejectedValueOnce(OUTSIDE).mockResolvedValue(undefined);
+    const { notes } = service();
+    const loaded = await notes.loadNote("note-1");
+    await expect(notes.saveNote("note-1", "a\nc\n", loaded.version)).resolves.toEqual({
+      text: "a\r\nc\r\n",
+      version: diskHash("a\nc\n"),
+    });
+    expect(files.writeProjectFile).toHaveBeenLastCalledWith("note-1", "note.md", "a\nc\n", {
+      closedProject: true,
+      crlf: true,
+      expectedHash: diskHash("a\r\nb\r\n"),
+    });
+  });
+
+  it("gives up with what is on disk when the file keeps changing under the save", async () => {
+    tauri.readFileContent.mockResolvedValue("old\n");
+    files.writeProjectFile.mockRejectedValue(OUTSIDE);
+    const { notes } = service();
+    const error = await notes.saveNote("note-1", "mine\n", diskHash("old\n")).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(NoteConflictError);
+    expect((error as NoteConflictError).disk.text).toBe("old\n");
+    expect(files.writeProjectFile).toHaveBeenCalledTimes(3);
+  });
+
+  it("tries the same checked write again after a save that failed for another reason", async () => {
+    tauri.readFileContent.mockResolvedValue("old\n");
+    files.writeProjectFile.mockRejectedValueOnce(new Error("disk full")).mockResolvedValue(undefined);
+    const { notes } = service();
+    const loaded = await notes.loadNote("note-1");
+    await expect(notes.saveNote("note-1", "mine\n", loaded.version)).rejects.toThrow("disk full");
+    await notes.saveNote("note-1", "mine\n", loaded.version);
+    expect(tauri.readFileContent).toHaveBeenCalledOnce();
+    expect(files.writeProjectFile).toHaveBeenCalledTimes(2);
+    expect(files.writeProjectFile).toHaveBeenLastCalledWith("note-1", "note.md", "mine\n", {
+      closedProject: true,
+      crlf: false,
+      expectedHash: diskHash("old\n"),
+    });
   });
 });
 

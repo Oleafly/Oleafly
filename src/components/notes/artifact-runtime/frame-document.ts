@@ -1,7 +1,21 @@
 import { frameSealScript } from "./frame-seal";
 
-export const FRAME_POLICY =
-  "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; worker-src blob:; form-action 'none'; base-uri 'none'; frame-src 'none'";
+const FRAME_SCRIPTS = "'unsafe-inline' 'unsafe-eval'";
+const FRAME_POLICY_REST =
+  "style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; worker-src blob:; form-action 'none'; base-uri 'none'; frame-src 'none'";
+const RUNTIME_ADDRESS = /^(?:oleafly-artifact:\/\/localhost|http:\/\/oleafly-artifact\.localhost)\/runtime\/[0-9a-f]{64}\.js$/u;
+
+function checkedRuntime(url: string): string {
+  if (!RUNTIME_ADDRESS.test(url)) throw new TypeError(`Unexpected artifact runtime address: ${url}`);
+  return url;
+}
+
+export function framePolicy(runtime: string | null): string {
+  const scripts = runtime === null ? FRAME_SCRIPTS : `${FRAME_SCRIPTS} ${checkedRuntime(runtime)}`;
+  return `default-src 'none'; script-src ${scripts}; ${FRAME_POLICY_REST}`;
+}
+
+export const FRAME_POLICY = framePolicy(null);
 export const STATIC_POLICY =
   "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; form-action 'none'; base-uri 'none'";
 
@@ -26,6 +40,7 @@ export interface FrameMessages {
   compileError: string;
   runtimeError: string;
   noComponent: string;
+  loadFailed: string;
 }
 
 export interface FrameOptions {
@@ -99,18 +114,25 @@ function baseStyle(theme: FrameTheme): string {
   return `:root{color-scheme:${theme}}:where(html){font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}:where(body){margin:0;padding:12px;color:${foreground};background:transparent;line-height:1.5}`;
 }
 
-function headStart(options: FrameOptions): string {
+function headStart(options: FrameOptions, runtime: string | null): string {
   return [
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(FRAME_POLICY)}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(framePolicy(runtime))}">`,
     `<script>${framePrelude(options.channel)}</script>`,
     `<style>${baseStyle(options.theme)}</style>`,
   ].join("");
 }
 
 export function runtimeScript(runtime: string): string {
-  return `<script>(0, eval)(${inlineJson(runtime)});</script>`;
+  return `<script src="${escapeAttribute(checkedRuntime(runtime))}"></script>`;
+}
+
+function withRuntime(code: string, messages: FrameMessages): string {
+  return `<script>if (typeof __oleaflyArtifact === "undefined") {
+const show = () => { const notice = document.createElement("p"); notice.setAttribute("role", "alert"); notice.dataset.artifactError = ""; notice.textContent = ${inlineJson(messages.loadFailed)}; document.body.prepend(notice); };
+if (document.body) show(); else document.addEventListener("DOMContentLoaded", show, { once: true });
+} else { ${code} }</script>`;
 }
 
 const REMOTE = /^(?:[a-z][a-z0-9+.-]*:)?\/\//iu;
@@ -318,20 +340,24 @@ export function htmlFrameDocument(prepared: PreparedHtml, options: FrameOptions,
   const { document } = prepared;
   themed(document, options.theme);
   const globals = globalsFor(prepared.libraries);
+  const loaded = globals.length > 0 ? runtime : null;
   const boot =
-    runtime && globals.length > 0
-      ? `${runtimeScript(runtime)}<script>__oleaflyArtifact.expose(${inlineJson(globals)});${
-          prepared.libraries.includes("babel")
-            ? `document.addEventListener("DOMContentLoaded", () => __oleaflyArtifact.runScripts(${inlineJson(options.messages)}), { once: true });`
-            : ""
-        }</script>`
-      : "";
-  return `<!doctype html>${shellOpen(document)}<head>${headStart(options)}${boot}${document.head.innerHTML}</head>${document.body.outerHTML}</html>`;
+    loaded === null
+      ? ""
+      : `${runtimeScript(loaded)}${withRuntime(
+          `__oleaflyArtifact.expose(${inlineJson(globals)});${
+            prepared.libraries.includes("babel")
+              ? `document.addEventListener("DOMContentLoaded", () => __oleaflyArtifact.runScripts(${inlineJson(options.messages)}), { once: true });`
+              : ""
+          }`,
+          options.messages,
+        )}`;
+  return `<!doctype html>${shellOpen(document)}<head>${headStart(options, loaded)}${boot}${document.head.innerHTML}</head>${document.body.outerHTML}</html>`;
 }
 
 export function reactFrameDocument(code: string, options: FrameOptions, runtime: string): string {
   const dark = options.theme === "dark";
-  return `<!doctype html><html lang="en" data-theme="${options.theme}"${dark ? ' class="dark"' : ""} style="color-scheme:${options.theme}"><head>${headStart(options)}<style>:where(body){padding:0}</style>${runtimeScript(runtime)}</head><body><div id="root"></div><script>__oleaflyArtifact.runReact(${inlineJson(code)}, ${inlineJson(options.messages)});</script></body></html>`;
+  return `<!doctype html><html lang="en" data-theme="${options.theme}"${dark ? ' class="dark"' : ""} style="color-scheme:${options.theme}"><head>${headStart(options, runtime)}<style>:where(body){padding:0}</style>${runtimeScript(runtime)}</head><body><div id="root"></div>${withRuntime(`__oleaflyArtifact.runReact(${inlineJson(code)}, ${inlineJson(options.messages)});`, options.messages)}</body></html>`;
 }
 
 export function staticFrameDocument(cleanHtml: string, theme: FrameTheme): string {

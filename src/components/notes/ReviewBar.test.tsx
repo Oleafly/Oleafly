@@ -58,4 +58,27 @@ describe("ReviewBar", () => {
     fireEvent.click(accept);
     expect(calls.onAccept).toHaveBeenCalledOnce();
   });
+
+  it("offers only Undo once every change is settled and Undo is still possible", () => {
+    const calls = handlers();
+    const onUndo = vi.fn();
+    render(<ReviewBar count={0} index={-1} {...calls} onUndo={onUndo} />);
+    expect(screen.queryByRole("button", { name: enEditor.inlineAi.accept })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enEditor.inlineAi.reject })).not.toBeInTheDocument();
+    const undo = screen.getByRole("button", { name: enNotes.review.undo });
+    expect(undo).toHaveAttribute("aria-keyshortcuts", "Meta+Z Control+Z");
+    fireEvent.click(undo);
+    expect(onUndo).toHaveBeenCalledOnce();
+  });
+
+  it("offers Undo next to the changes still waiting", () => {
+    render(<ReviewBar count={2} index={0} {...handlers()} onUndo={vi.fn()} />);
+    expect(screen.getByRole("button", { name: enNotes.review.undo })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enNotes.review.rejectAll })).toBeInTheDocument();
+  });
+
+  it("has no Undo when there is nothing to bring back", () => {
+    render(<ReviewBar count={2} index={0} {...handlers()} />);
+    expect(screen.queryByRole("button", { name: enNotes.review.undo })).not.toBeInTheDocument();
+  });
 });

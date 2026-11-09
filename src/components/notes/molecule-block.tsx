@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider, useTranslation } from "react-i18next";
 import { buttonVariants } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { whenNearViewport } from "@/hooks/use-near-viewport";
 import { i18n } from "@/i18n";
@@ -16,6 +17,7 @@ import {
   type Dispose,
   type NoteBlockKind,
   type NoteFile,
+  OPTION_LINE,
   type PaintContext,
   paintBlockCard,
   splitBlockOptions,
@@ -88,6 +90,31 @@ export function parseMoleculeSource(source: string): MoleculeParse {
   if (written !== undefined && !path) return { ok: false, problem: "path", value: written };
   if (!path && !body.trim()) return { ok: false, problem: "empty", value: "" };
   return { ok: true, spec: { path, format, style, color, data: path ? "" : body } };
+}
+
+export type MoleculeOption = "style" | "color";
+
+const OPTION_NAMES: Readonly<Record<MoleculeOption, readonly string[]>> = {
+  style: ["style"],
+  color: ["color", "colour"],
+};
+
+export function withMoleculeOption(source: string, option: MoleculeOption, value: string): string {
+  const lines = source.split(/\r?\n/u);
+  let last = -1;
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index].trim();
+    if (!line) continue;
+    const name = OPTION_LINE.exec(line)?.[1].toLowerCase();
+    if (!name || !OPTIONS.has(name)) break;
+    if (OPTION_NAMES[option].includes(name)) {
+      lines[index] = lines[index].replace(/:.*$/u, `: ${value}`);
+      return lines.join("\n");
+    }
+    last = index;
+  }
+  lines.splice(last + 1, 0, `${option}: ${value}`);
+  return lines.join("\n");
 }
 
 function looksLikeXyz(text: string): boolean {
@@ -173,7 +200,7 @@ export function cachedWebglMode(): WebglMode | null {
   return probedWebgl;
 }
 
-export function forgetWebglMode(): void {
+export function resetWebglModeForTest(): void {
   probedWebgl = null;
 }
 
@@ -257,10 +284,6 @@ function attempt(run: () => void): void {
 
 function loseContext(context: WebGLRenderingContext | null | undefined): void {
   attempt(() => context?.getExtension("WEBGL_lose_context")?.loseContext());
-}
-
-export function liveSharedViewers(): number {
-  return sharedViewers.size;
 }
 
 export function releaseViewer(viewer: GLViewer, mode: WebglMode, releaseListeners: () => void): void {
@@ -392,6 +415,7 @@ export interface MoleculeViewProps {
   style: MoleculeStyle | null;
   color: MoleculeColor | null;
   mode: WebglMode;
+  onChoose?: (option: MoleculeOption, value: string) => void;
 }
 
 type ViewStatus = "loading" | "ready" | MoleculeViewError["problem"] | "loadError";
@@ -405,8 +429,7 @@ const ACTIONS: readonly { id: ViewAction; icon: LucideIcon }[] = [
   { id: "reset", icon: Undo2 },
 ];
 
-const SELECT_CLASS =
-  "h-6 rounded-md border border-input bg-background px-1.5 text-[0.6875rem] text-foreground hover:bg-accent focus-visible:border-ring";
+const SELECT_CLASS = "h-6 w-auto gap-1 px-1.5 py-0 text-[0.6875rem] text-foreground hover:bg-accent";
 
 export function runAction(opened: OpenedViewer, action: ViewAction): void {
   const { viewer } = opened;
@@ -425,7 +448,40 @@ function useViewLabel(): (action: ViewAction) => string {
   return (action) => t(($) => $.notes.blocks.molecule[action]);
 }
 
-export function MoleculeView({ data, format, style: initialStyle, color: initialColor, mode }: Readonly<MoleculeViewProps>) {
+function OptionSelect<T extends string>({
+  label,
+  value,
+  values,
+  name,
+  onChange,
+}: Readonly<{ label: string; value: T; values: readonly T[]; name: (value: T) => string; onChange: (value: T) => void }>) {
+  return (
+    <div className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
+      <span aria-hidden="true">{label}</span>
+      <Select value={value} onValueChange={(next) => onChange(next as T)}>
+        <SelectTrigger aria-label={label} className={SELECT_CLASS}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {values.map((option) => (
+            <SelectItem key={option} value={option} className="text-xs">
+              {name(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+export function MoleculeView({
+  data,
+  format,
+  style: initialStyle,
+  color: initialColor,
+  mode,
+  onChoose,
+}: Readonly<MoleculeViewProps>) {
   const { t } = useTranslation(["notes"]);
   const actionLabel = useViewLabel();
   const frameRef = useRef<HTMLDivElement>(null);
@@ -494,42 +550,28 @@ export function MoleculeView({ data, format, style: initialStyle, color: initial
           aria-label={t(($) => $.notes.blocks.molecule.controls)}
           className="mb-2 flex min-w-0 flex-wrap items-center gap-2 border-0 p-0"
         >
-          <label className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
-            {t(($) => $.notes.blocks.molecule.style)}
-            <select
-              value={style}
-              onChange={(event) => {
-                const next = event.target.value as MoleculeStyle;
-                setStyle(next);
-                applyStyle(opened, next, color);
-              }}
-              className={SELECT_CLASS}
-            >
-              {MOLECULE_STYLES.map((value) => (
-                <option key={value} value={value}>
-                  {t(($) => $.notes.blocks.molecule.styles[value])}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
-            {t(($) => $.notes.blocks.molecule.color)}
-            <select
-              value={color}
-              onChange={(event) => {
-                const next = event.target.value as MoleculeColor;
-                setColor(next);
-                applyStyle(opened, style, next);
-              }}
-              className={SELECT_CLASS}
-            >
-              {MOLECULE_COLORS.map((value) => (
-                <option key={value} value={value}>
-                  {t(($) => $.notes.blocks.molecule.colors[value])}
-                </option>
-              ))}
-            </select>
-          </label>
+          <OptionSelect
+            label={t(($) => $.notes.blocks.molecule.style)}
+            value={style}
+            values={MOLECULE_STYLES}
+            name={(value) => t(($) => $.notes.blocks.molecule.styles[value])}
+            onChange={(next) => {
+              setStyle(next);
+              applyStyle(opened, next, color);
+              onChoose?.("style", next);
+            }}
+          />
+          <OptionSelect
+            label={t(($) => $.notes.blocks.molecule.color)}
+            value={color}
+            values={MOLECULE_COLORS}
+            name={(value) => t(($) => $.notes.blocks.molecule.colors[value])}
+            onChange={(next) => {
+              setColor(next);
+              applyStyle(opened, style, next);
+              onChoose?.("color", next);
+            }}
+          />
           <div className="ms-auto flex items-center gap-0.5">
             {ACTIONS.map(({ id, icon: Icon }) => (
               <Tooltip key={id} label={actionLabel(id)}>
@@ -640,7 +682,15 @@ export function paintMolecule(preview: HTMLElement, source: string, context: Pai
         const host = document.createElement("div");
         host.className = "note-molecule-host w-full min-w-0";
         preview.replaceChildren(host);
-        unmount = mountMolecule(host, { data: moleculeData(text, format), format, style: spec.style, color: spec.color, mode });
+        const { rewrite } = context;
+        unmount = mountMolecule(host, {
+          data: moleculeData(text, format),
+          format,
+          style: spec.style,
+          color: spec.color,
+          mode,
+          onChoose: rewrite ? (option, value) => rewrite((current) => withMoleculeOption(current, option, value)) : undefined,
+        });
       },
       (error: unknown) => {
         if (live) blockMessage(preview, moleculeReadErrorText(error, spec.path));

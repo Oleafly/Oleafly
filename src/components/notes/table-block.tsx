@@ -1,9 +1,12 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Table2 } from "lucide-react";
-import { type UIEvent, useDeferredValue, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider, useTranslation } from "react-i18next";
+import { parseDelimited, serializeCsv } from "@oleafly/conversion-registry/table";
 import { Input } from "@/components/ui/input";
-import { currentLocale, i18n } from "@/i18n";
+import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
+import { i18n } from "@/i18n";
+import { formatList, formatNumber, textCollator } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import {
   BlockFileTooLargeError,
@@ -18,10 +21,8 @@ import {
   buildTable,
   type ColumnSummary,
   columnKeyCache,
-  csvField,
   filterRows,
   loadTableFile,
-  parseDelimited,
   type SortDirection,
   sortRows,
   summarizeColumn,
@@ -41,6 +42,8 @@ export const VIEW_REM = 24;
 export const OVERSCAN = 8;
 export const STILL_ROWS = 6;
 export const STILL_COLUMNS = 6;
+const FIRST_WINDOW = Math.ceil(VIEW_REM / ROW_REM) + OVERSCAN * 2;
+const MEAN_FORMAT: Intl.NumberFormatOptions = { maximumSignificantDigits: 6 };
 
 type SortState = { column: number; direction: SortDirection } | null;
 
@@ -49,20 +52,8 @@ function nextSort(current: SortState, column: number): SortState {
   return current.direction === "ascending" ? { column, direction: "descending" } : null;
 }
 
-function rootRem(): number {
-  const size = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
-  return Number.isFinite(size) && size > 0 ? size : 16;
-}
-
 function columnName(name: string, index: number): string {
   return name.trim() || i18n.t(($) => $.notes.blocks.table.column, { number: index + 1 });
-}
-
-export function rowWindow(total: number, scrollTop: number, rowPx: number): { start: number; end: number } {
-  const visible = Math.ceil(VIEW_REM / ROW_REM);
-  const first = Math.floor(Math.max(0, scrollTop) / rowPx) - OVERSCAN;
-  const start = Math.min(Math.max(0, first), Math.max(0, total - 1));
-  return { start, end: Math.min(total, start + visible + OVERSCAN * 2) };
 }
 
 function SortIcon({ direction }: Readonly<{ direction: SortDirection | null }>) {
@@ -71,12 +62,11 @@ function SortIcon({ direction }: Readonly<{ direction: SortDirection | null }>) 
   return <ArrowUpDown aria-hidden="true" className="size-3 shrink-0 opacity-40" />;
 }
 
-function SummaryCell({ summary, format }: Readonly<{ summary: ColumnSummary; format: Intl.NumberFormat }>) {
+function SummaryCell({ summary }: Readonly<{ summary: ColumnSummary }>) {
   const { t } = useTranslation(["notes"]);
-  const mean = new Intl.NumberFormat(currentLocale(), { maximumSignificantDigits: 6 });
   const items: [string, string][] = [
-    [t(($) => $.notes.blocks.table.count), format.format(summary.count)],
-    [t(($) => $.notes.blocks.table.mean), mean.format(summary.mean)],
+    [t(($) => $.notes.blocks.table.count), formatNumber(summary.count)],
+    [t(($) => $.notes.blocks.table.mean), formatNumber(summary.mean, MEAN_FORMAT)],
     [t(($) => $.notes.blocks.table.min), summary.minText],
     [t(($) => $.notes.blocks.table.max), summary.maxText],
   ];
@@ -96,13 +86,10 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
   const { t } = useTranslation(["notes"]);
   const [filter, setFilter] = useState("");
   const [sort, setSort] = useState<SortState>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [rowPx] = useState(() => rootRem() * ROW_REM);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
   const query = useDeferredValue(filter);
-  const locale = currentLocale();
-  const format = useMemo(() => new Intl.NumberFormat(locale), [locale]);
-  const collator = useMemo(() => new Intl.Collator(locale, { numeric: true, sensitivity: "base" }), [locale]);
+  const collator = textCollator();
   const keys = useMemo(() => columnKeyCache(table), [table]);
   const filtered = useMemo(() => filterRows(table, query), [table, query]);
   const order = useMemo(
@@ -130,20 +117,22 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
   const width = columns.length;
   const total = table.rows.length;
   const virtual = order.length > VIRTUAL_AFTER;
-  const { start, end } = virtual ? rowWindow(order.length, scrollTop, rowPx) : { start: 0, end: order.length };
+  const shown = useRowWindow({ count: order.length, scrollRef, listRef: bodyRef, overscan: OVERSCAN, unmeasuredCount: FIRST_WINDOW });
+  const { start, end, paddingTop, paddingBottom } = virtual
+    ? shown
+    : { start: 0, end: order.length, paddingTop: 0, paddingBottom: 0 };
 
   const toTop = () => {
     (scrollRef.current as HTMLDivElement).scrollTop = 0;
-    setScrollTop(0);
   };
 
   const countText =
     order.length === total
-      ? t(($) => $.notes.blocks.table.rows, { count: total, total: format.format(total) })
+      ? t(($) => $.notes.blocks.table.rows, { count: total, total: formatNumber(total) })
       : t(($) => $.notes.blocks.table.filtered, {
           count: total,
-          shown: format.format(order.length),
-          total: format.format(total),
+          shown: formatNumber(order.length),
+          total: formatNumber(total),
         });
 
   return (
@@ -166,14 +155,10 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
       </div>
       {table.truncated ? (
         <p className="mb-2 text-[0.6875rem] text-muted-foreground">
-          {t(($) => $.notes.blocks.table.truncated, { limit: format.format(TABLE_MAX_ROWS) })}
+          {t(($) => $.notes.blocks.table.truncated, { limit: formatNumber(TABLE_MAX_ROWS) })}
         </p>
       ) : null}
-      <div
-        ref={scrollRef}
-        onScroll={(event: UIEvent<HTMLDivElement>) => setScrollTop(event.currentTarget.scrollTop)}
-        className={cn("overflow-auto rounded-md border", virtual ? "h-[24rem]" : "max-h-[24rem]")}
-      >
+      <div ref={scrollRef} className={cn("overflow-auto rounded-md border", virtual ? "h-[24rem]" : "max-h-[24rem]")}>
         <table
           className="w-full border-separate border-spacing-0 text-xs"
           aria-rowcount={order.length + (hasSummary ? 2 : 1)}
@@ -209,15 +194,16 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
               })}
             </tr>
           </thead>
-          <tbody className="[&>tr:last-child>td]:border-b-0">
-            {start > 0 ? (
-              <tr data-spacer="before" style={{ height: `${start * rowPx}px` }}>
+          <tbody ref={bodyRef} className="[&>tr:last-child>td]:border-b-0">
+            {paddingTop > 0 ? (
+              <tr data-spacer="before" style={{ height: `${paddingTop}px` }}>
                 <td colSpan={width} className="p-0" />
               </tr>
             ) : null}
             {order.slice(start, end).map((rowIndex, offset) => (
               <tr
                 key={rowIndex}
+                {...{ [ROW_WINDOW_ITEM]: "" }}
                 aria-rowindex={start + offset + 2}
                 style={{ height: `${ROW_REM}rem` }}
                 className="hover:bg-muted/40"
@@ -229,8 +215,8 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
                 ))}
               </tr>
             ))}
-            {order.length - end > 0 ? (
-              <tr data-spacer="after" style={{ height: `${(order.length - end) * rowPx}px` }}>
+            {paddingBottom > 0 ? (
+              <tr data-spacer="after" style={{ height: `${paddingBottom}px` }}>
                 <td colSpan={width} className="p-0" />
               </tr>
             ) : null}
@@ -249,7 +235,7 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
                   const summary = summaries[column];
                   return (
                     <td key={id} className="sticky bottom-0 border-t bg-muted px-2 py-1 align-top">
-                      {summary ? <SummaryCell summary={summary} format={format} /> : null}
+                      {summary ? <SummaryCell summary={summary} /> : null}
                     </td>
                   );
                 })}
@@ -289,7 +275,7 @@ function invalidText(source: Extract<TableSource, { kind: "invalid" }>): string 
 }
 
 function sheetList(sheets: readonly string[]): string {
-  return new Intl.ListFormat(currentLocale(), { type: "conjunction" }).format(sheets);
+  return formatList(sheets);
 }
 
 export function tableErrorText(error: unknown, source: Extract<TableSource, { kind: "file" }>): string {
@@ -319,7 +305,7 @@ function showTable(preview: HTMLElement, result: TableResult): Dispose | undefin
 }
 
 function inlineRows(text: string, fence: string | undefined, limit?: number): string[][] {
-  return parseDelimited(text, tableDelimiter(fence, text), limit ?? TABLE_MAX_ROWS + 2);
+  return parseDelimited(text, { delimiter: tableDelimiter(fence, text), limit: limit ?? TABLE_MAX_ROWS + 2, trim: false });
 }
 
 export const paintTableStill: BlockPaint = (preview, source, context) => {
@@ -408,7 +394,7 @@ function templateSource(): string {
     ["B1", "25", "58.0", "true"],
     ["B2", "40", "66.3", "true"],
   ];
-  return [header, ...rows].map((row) => row.map(csvField).join(",")).join("\n");
+  return serializeCsv([header, ...rows]).replace(/\n$/u, "");
 }
 
 export const tableBlock: NoteBlockKind = {

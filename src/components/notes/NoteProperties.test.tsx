@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
@@ -152,12 +152,40 @@ describe("editing values", () => {
 });
 
 describe("property menu", () => {
-  it("changes a type, converts the value and remembers the type", () => {
+  it("changes a type, converts the value and remembers the type", async () => {
     render(<Harness initial={"---\nrank: '3'\n---"} />);
     openMenu("rank type: Text");
     fireEvent.click(screen.getByRole("menuitemradio", { name: P.types.number }));
-    expect(frontMatter()).toBe("---\nrank: 3\n---");
+    await waitFor(() => expect(frontMatter()).toBe("---\nrank: 3\n---"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(JSON.parse(localStorage.getItem("oleafly.notes.propertyTypes") ?? "{}")).toEqual({ rank: "number" });
+  });
+
+  it("asks before a type change that would drop list items, and keeps them when cancelled", async () => {
+    render(<Harness initial={"---\nauthors: [Ana, Bo]\n---"} />);
+    openMenu("authors type: List");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: P.types.text }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: P.convert.title.replace("{{key}}", "authors").replace("{{type}}", P.types.text),
+    });
+    expect(dialog).toHaveTextContent(P.convert.list);
+    expect(frontMatter()).toBe("---\nauthors: [Ana, Bo]\n---");
+    fireEvent.click(within(dialog).getByRole("button", { name: /Cancel/u }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(frontMatter()).toBe("---\nauthors: [Ana, Bo]\n---");
+    expect(localStorage.getItem("oleafly.notes.propertyTypes")).toBeNull();
+
+    openMenu("authors type: List");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: P.types.text }));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: new RegExp(P.convert.confirm, "u") }));
+    expect(frontMatter()).toBe("---\nauthors: Ana\n---");
+  });
+
+  it("warns when a value can't survive the new type", async () => {
+    render(<Harness initial={"---\nvenue: ICML\n---"} />);
+    openMenu("venue type: Text");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: P.types.number }));
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(P.convert.value);
   });
 
   it("keeps tags as a list and renames other keys", () => {
@@ -169,6 +197,65 @@ describe("property menu", () => {
     fireEvent.change(key, { target: { value: "status" } });
     fireEvent.blur(key);
     expect(frontMatter()).toBe("---\ntags: [a]\nstatus: x\n---");
+  });
+
+  it("says when a new name is taken or reserved, and puts the old name back", () => {
+    render(<Harness initial={"---\nstate: x\nphase: y\n---"} />);
+    const key = screen.getByRole("textbox", { name: "Name of state" });
+    fireEvent.change(key, { target: { value: "phase" } });
+    expect(key).toHaveAttribute("aria-invalid", "true");
+    expect(key).toHaveAccessibleDescription(P.taken);
+    fireEvent.keyDown(key, { key: "Enter" });
+    expect(key).toHaveValue("phase");
+    fireEvent.change(key, { target: { value: "title" } });
+    expect(screen.getByText(P.taken)).toBeTruthy();
+    fireEvent.blur(key);
+    expect(key).toHaveValue("state");
+    expect(key).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText(P.taken)).toBeNull();
+    fireEvent.change(key, { target: { value: "   " } });
+    fireEvent.blur(key);
+    expect(key).toHaveValue("state");
+    expect(frontMatter()).toBe("---\nstate: x\nphase: y\n---");
+  });
+});
+
+describe("focus after removing a property", () => {
+  function NoteHarness({ initial }: Readonly<{ initial: string }>) {
+    return (
+      <article>
+        <Harness initial={initial} />
+        <div className="ProseMirror" contentEditable suppressContentEditableWarning tabIndex={-1} data-testid="note-body" />
+      </article>
+    );
+  }
+
+  function removeFromMenu(key: string) {
+    openMenu(`${key} type: Text`);
+    fireEvent.click(screen.getByRole("menuitem", { name: P.remove }));
+  }
+
+  it("moves to the next property, then the one before, then the note body", async () => {
+    render(<NoteHarness initial={"---\na: x\nb: y\nc: z\n---"} />);
+
+    removeFromMenu("a");
+    await waitFor(() => expect(screen.getByRole("button", { name: "b type: Text" })).toHaveFocus());
+    expect(frontMatter()).toBe("---\nb: y\nc: z\n---");
+
+    removeFromMenu("c");
+    await waitFor(() => expect(screen.getByRole("button", { name: "b type: Text" })).toHaveFocus());
+
+    removeFromMenu("b");
+    await waitFor(() => expect(screen.getByTestId("note-body")).toHaveFocus());
+    expect(frontMatter()).toBe("---\n---");
+  });
+
+  it("never leaves focus in a text field, where Cmd or Ctrl+Z would undo the field instead of the note", async () => {
+    render(<NoteHarness initial={"---\na: x\nb: y\n---"} />);
+    removeFromMenu("a");
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    expect(document.activeElement?.closest("article")).not.toBeNull();
+    expect(document.activeElement?.tagName).toBe("BUTTON");
   });
 });
 

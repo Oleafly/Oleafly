@@ -6,8 +6,9 @@ import { act, fireEvent, render, renderHook, screen } from "@testing-library/rea
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { NoteLinkMenu, sameSuggestion, useEditorSuggestion } from "./NoteLinkMenu";
+import { NoteLinkMenu } from "./NoteLinkMenu";
 import { noteLinkExtensions, noteLinkSuggestion, type LinkableNote, type LinkableProject } from "./note-links";
+import { sameSuggestion, useEditorSuggestion } from "./SuggestionListbox";
 
 const NOTES: LinkableNote[] = [
   { noteId: "n-1", projectId: "lib-1", title: "Masking report", color: "rose", icon: "🧪" },
@@ -17,14 +18,17 @@ const PROJECTS: LinkableProject[] = [{ projectId: "ssl", title: "SSL masking", c
 
 let editors: Editor[] = [];
 
-function build(rect: () => { left: number; top: number; bottom: number } = () => ({ left: 40, top: 100, bottom: 120 })) {
+function build(
+  rect: () => { left: number; top: number; bottom: number } = () => ({ left: 40, top: 100, bottom: 120 }),
+  createNote?: (title: string) => Promise<LinkableNote | null>,
+) {
   const element = document.createElement("div");
   document.body.append(element);
   const editor = new Editor({
     element,
     extensions: [
       ...createWysiwygExtensions(),
-      ...noteLinkExtensions({ getNotes: () => NOTES, getProjects: () => PROJECTS, onOpenNote: vi.fn(), onOpenProject: vi.fn() }),
+      ...noteLinkExtensions({ getNotes: () => NOTES, getProjects: () => PROJECTS, onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote }),
     ],
     content: parseMarkdownBody("A\n").doc,
   });
@@ -85,6 +89,20 @@ describe("NoteLinkMenu", () => {
     act(() => fireEvent.click(screen.getAllByRole("option")[2]));
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(serializeMarkdownBody(editor.getJSON())).toBe("A[SSL masking](oleafly://project/ssl) ");
+  });
+
+  it("offers Create note for a name no note has, and links the new note", async () => {
+    const createNote = vi.fn(async (title: string) => ({ noteId: "n-9", projectId: "lib-9", title }));
+    const editor = build(undefined, createNote);
+    render(<NoteLinkMenu editor={editor} />);
+    type(editor, "[[Fresh");
+    const create = screen.getByRole("option", { name: enNotes.vault.switcher.create.replace("{{title}}", "Fresh") });
+    expect(create.getAttribute("aria-selected")).toBe("true");
+    expect(create.parentElement?.querySelector("[data-embed-option]")).toBeNull();
+    expect(screen.queryByText(enNotes.links.noMatches)).toBeNull();
+    act(() => fireEvent.click(create));
+    await vi.waitFor(() => expect(serializeMarkdownBody(editor.getJSON())).toBe("A[Fresh](oleafly://note/n-9) "));
+    expect(createNote).toHaveBeenCalledWith("Fresh");
   });
 
   it("keeps the active option in view while moving with the keyboard", () => {

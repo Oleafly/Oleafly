@@ -225,6 +225,7 @@
     "closeAssistantTabsCount_other": "Close the {{count}} files the assistant opened",
     "editAsMarkdown": "Edit as Markdown",
     "editAsNote": "Edit as note",
+    "noteAsMarkdown": "You're editing this note as Markdown.",
     "openInNotes": "Open in Notes",
     "moveIntoProject": "Move into project",
     "copyToMyNotes": "Copy to my notes"

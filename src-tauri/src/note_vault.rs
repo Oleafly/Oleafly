@@ -5,7 +5,11 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use oleafly_core::encoding::percent_decode;
 use oleafly_core::front_matter::{key_of, scalar_value, value_of};
+use oleafly_core::markdown_scan::{
+    link_tail, matching_brackets, run_at, CodeSpans, FenceLine, Fences,
+};
 use oleafly_core::portable::fold;
 use serde::{Deserialize, Serialize};
 
@@ -13,16 +17,16 @@ use crate::app_error::AppError;
 use crate::note_links::{has_scheme, is_linkable_id, scan_note, LinkKind};
 use crate::project::{NOTE_ASSETS, NOTE_KIND};
 
-const MAX_NOTE_BYTES: u64 = 5 * 1024 * 1024;
+const MAX_NOTE_BYTES: u64 = crate::note_index::MAX_NOTE_BYTES;
 const MAX_ATTACHMENT_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_IMPORT_ATTACHMENT_BYTES: u64 = 2 * 1024 * 1024 * 1024;
-const KEEP_FREE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+const KEEP_FREE_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_ORIGIN_BYTES: u64 = 64 * 1024;
 const MAX_ENTRIES: usize = 200_000;
 const MAX_DEPTH: usize = 64;
 const FILE_IMPORT_DEPTH: usize = 1;
 const MAX_TITLE_CHARS: usize = 200;
-const MAX_STEM_CHARS: usize = 120;
+const MAX_STEM_BYTES: usize = 200;
 const MAX_NAME_ATTEMPTS: usize = 999;
 const MAX_RUN_ID_CHARS: usize = 64;
 const MAX_PENDING: usize = 16;
@@ -137,20 +141,7 @@ struct Vault {
 }
 
 fn new_note_id() -> String {
-    use rand::RngCore;
-    let mut bytes = [0u8; 16];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    let hex: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
-    format!(
-        "{}-{}-{}-{}-{}",
-        &hex[0..8],
-        &hex[8..12],
-        &hex[12..16],
-        &hex[16..20],
-        &hex[20..32]
-    )
+    oleafly_core::ids::random_uuid()
 }
 
 fn normalize_text(text: &str) -> String {
@@ -194,29 +185,12 @@ fn truncate_chars(text: &str, limit: usize) -> String {
     text.chars().take(limit).collect()
 }
 
-fn file_sha256(path: &Path) -> Option<String> {
-    oleafly_research::isolation::hash_file(path)
-        .ok()
-        .map(|(hash, _)| hash)
-}
-
-fn percent_decode(text: &str) -> String {
-    let bytes = text.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'%' && index + 2 < bytes.len() {
-            let hex = |byte: u8| (byte as char).to_digit(16);
-            if let (Some(high), Some(low)) = (hex(bytes[index + 1]), hex(bytes[index + 2])) {
-                out.push((high * 16 + low) as u8);
-                index += 3;
-                continue;
-            }
-        }
-        out.push(bytes[index]);
-        index += 1;
+fn truncate_bytes(text: &str, limit: usize) -> &str {
+    let mut end = text.len().min(limit);
+    while !text.is_char_boundary(end) {
+        end -= 1;
     }
-    String::from_utf8_lossy(&out).into_owned()
+    &text[..end]
 }
 
 fn relative_destination(destination: &str) -> bool {
@@ -313,6 +287,7 @@ fn link_labels(text: &str) -> String {
 
 fn code_contents(text: &str) -> String {
     let bytes = text.as_bytes();
+    let spans = CodeSpans::new(bytes);
     let mut out = String::with_capacity(text.len());
     let mut copied = 0;
     let mut index = 0;
@@ -321,17 +296,16 @@ fn code_contents(text: &str) -> String {
             index += 1;
             continue;
         }
-        let run = bytes[index..]
-            .iter()
-            .take_while(|byte| **byte == b'`')
-            .count();
-        let end = code_span_end(bytes, index);
-        if end > index + run {
-            out.push_str(&text[copied..index]);
-            out.push_str(&text[index + run..end - run]);
-            copied = end;
+        let run = run_at(bytes, index, b'`');
+        match spans.close(index, run, bytes.len()) {
+            Some(close) => {
+                out.push_str(&text[copied..index]);
+                out.push_str(&text[index + run..close]);
+                copied = close + run;
+                index = close + run;
+            }
+            None => index += run,
         }
-        index = end;
     }
     out.push_str(&text[copied..]);
     out
@@ -668,10 +642,13 @@ fn folder_tag(rel: &str) -> Option<String> {
 }
 
 fn full_note_title(front: Option<&[&str]>, body: &str, rel: &str) -> String {
-    let title = front
+    use unicode_normalization::UnicodeNormalization;
+    let title: String = front
         .and_then(|lines| front_value(lines, "title"))
         .or_else(|| first_title_heading(body))
-        .unwrap_or_else(|| file_stem(base_name(rel)).trim().to_string());
+        .unwrap_or_else(|| file_stem(base_name(rel)).trim().to_string())
+        .nfc()
+        .collect();
     let title = title.trim();
     if title.is_empty() {
         UNTITLED.to_string()
@@ -738,58 +715,29 @@ enum Block<'a> {
     },
 }
 
-fn fence_open(line: &str) -> Option<(u8, usize, &str)> {
-    let trimmed = line.trim_start_matches(' ');
-    if line.len() - trimmed.len() > 3 {
-        return None;
-    }
-    let marker = *trimmed.as_bytes().first()?;
-    if marker != b'`' && marker != b'~' {
-        return None;
-    }
-    let run = trimmed.bytes().take_while(|byte| *byte == marker).count();
-    if run < 3 {
-        return None;
-    }
-    let info = trimmed[run..].trim();
-    if marker == b'`' && info.contains('`') {
-        return None;
-    }
-    Some((marker, run, info))
-}
-
-fn fence_closes(line: &str, marker: u8, run: usize) -> bool {
-    let trimmed = line.trim_start_matches(' ');
-    if line.len() - trimmed.len() > 3 {
-        return false;
-    }
-    let count = trimmed.bytes().take_while(|byte| *byte == marker).count();
-    count >= run && trimmed[count..].trim().is_empty()
-}
-
 fn blocks(body: &str) -> Vec<Block<'_>> {
     let mut found = Vec::new();
-    let mut lines = body.split('\n');
-    while let Some(line) = lines.next() {
-        let Some((marker, run, info)) = fence_open(line) else {
-            found.push(Block::Line(line));
-            continue;
-        };
-        let mut inner = Vec::new();
-        let mut close = None;
-        for next in lines.by_ref() {
-            if fence_closes(next, marker, run) {
-                close = Some(next);
-                break;
+    let mut fences = Fences::default();
+    for line in body.split('\n') {
+        match fences.read(line) {
+            (FenceLine::Opens, info) => found.push(Block::Fence {
+                open: line,
+                info: info.unwrap_or_default(),
+                lines: Vec::new(),
+                close: None,
+            }),
+            (FenceLine::Inside, _) => {
+                if let Some(Block::Fence { lines, .. }) = found.last_mut() {
+                    lines.push(line);
+                }
             }
-            inner.push(next);
+            (FenceLine::Closes, _) => {
+                if let Some(Block::Fence { close, .. }) = found.last_mut() {
+                    *close = Some(line);
+                }
+            }
+            (FenceLine::Text, _) => found.push(Block::Line(line)),
         }
-        found.push(Block::Fence {
-            open: line,
-            info,
-            lines: inner,
-            close,
-        });
     }
     found
 }
@@ -823,29 +771,6 @@ enum Token<'a> {
     },
 }
 
-fn code_span_end(bytes: &[u8], start: usize) -> usize {
-    let run = bytes[start..]
-        .iter()
-        .take_while(|byte| **byte == b'`')
-        .count();
-    let mut index = start + run;
-    while index < bytes.len() {
-        if bytes[index] != b'`' {
-            index += 1;
-            continue;
-        }
-        let close = bytes[index..]
-            .iter()
-            .take_while(|byte| **byte == b'`')
-            .count();
-        if close == run {
-            return index + close;
-        }
-        index += close;
-    }
-    start + run
-}
-
 struct LineMarks {
     brackets: HashMap<usize, usize>,
     wiki_closes: Vec<usize>,
@@ -861,7 +786,7 @@ impl LineMarks {
             };
         }
         Self {
-            brackets: crate::note_links::matching_brackets(bytes, b'[', b']', b'\\'),
+            brackets: matching_brackets(bytes, b'[', b']'),
             wiki_closes: bytes
                 .windows(2)
                 .enumerate()
@@ -875,58 +800,6 @@ impl LineMarks {
         let at = self.wiki_closes.partition_point(|close| *close < from);
         self.wiki_closes.get(at).copied()
     }
-}
-
-fn skip_spaces(bytes: &[u8], start: usize) -> usize {
-    let mut index = start;
-    while matches!(bytes.get(index), Some(b' ' | b'\t')) {
-        index += 1;
-    }
-    index
-}
-
-fn destination_at(line: &str, start: usize) -> Option<(String, usize)> {
-    let bytes = line.as_bytes();
-    if bytes.get(start) == Some(&b'<') {
-        let mut index = start + 1;
-        while index < bytes.len() && bytes[index] != b'>' && bytes[index] != b'<' {
-            index += if bytes[index] == b'\\' { 2 } else { 1 };
-        }
-        if bytes.get(index) != Some(&b'>') {
-            return None;
-        }
-        return Some((line[start + 1..index].to_string(), index + 1));
-    }
-    let mut index = start;
-    let mut depth = 0usize;
-    while index < bytes.len() {
-        match bytes[index] {
-            b' ' | b'\t' => break,
-            b'\\' => {
-                index += 2;
-                continue;
-            }
-            b'(' => depth += 1,
-            b')' if depth == 0 => break,
-            b')' => depth -= 1,
-            _ => {}
-        }
-        index += 1;
-    }
-    let end = index.min(bytes.len());
-    Some((line.get(start..end)?.to_string(), end))
-}
-
-fn title_end(bytes: &[u8], start: usize) -> Option<usize> {
-    let quote = match bytes.get(start) {
-        Some(quote @ (b'"' | b'\'')) => *quote,
-        _ => return Some(start),
-    };
-    let mut index = start + 1;
-    while index < bytes.len() && bytes[index] != quote {
-        index += if bytes[index] == b'\\' { 2 } else { 1 };
-    }
-    (index < bytes.len()).then_some(index + 1)
 }
 
 fn token_at<'a>(
@@ -946,22 +819,14 @@ fn token_at<'a>(
         }
     }
     let close = *marks.brackets.get(&open)?;
-    if bytes.get(close + 1) != Some(&b'(') {
-        return None;
-    }
-    let (destination, end) = destination_at(line, skip_spaces(bytes, close + 2))?;
-    let index = title_end(bytes, skip_spaces(bytes, end))?;
-    let index = skip_spaces(bytes, index);
-    if bytes.get(index) != Some(&b')') {
-        return None;
-    }
+    let (destination, end) = link_tail(bytes, close + 1)?;
     Some((
         Token::Link {
             embed,
             label: &line[open + 1..close],
-            destination,
+            destination: line.get(destination)?.to_string(),
         },
-        index + 1,
+        end,
     ))
 }
 
@@ -971,6 +836,7 @@ where
 {
     let bytes = line.as_bytes();
     let marks = LineMarks::of(line);
+    let spans = CodeSpans::new(bytes);
     let mut out = String::with_capacity(line.len());
     let mut copied = 0;
     let mut index = 0;
@@ -981,7 +847,10 @@ where
             continue;
         }
         if byte == b'`' {
-            index = code_span_end(bytes, index);
+            let run = run_at(bytes, index, b'`');
+            index = spans
+                .close(index, run, bytes.len())
+                .map_or(index + run, |close| close + run);
             continue;
         }
         let embed = byte == b'!' && bytes.get(index + 1) == Some(&b'[');
@@ -1176,7 +1045,7 @@ impl ImportShared {
         if let Some(known) = self.hashes.borrow().get(&index) {
             return known.clone();
         }
-        let sha = file_sha256(&file.path);
+        let sha = crate::project::file_sha256(&file.path);
         self.hashes.borrow_mut().insert(index, sha.clone());
         sha
     }
@@ -1567,10 +1436,18 @@ fn imports_entry(path: &Path, metadata: &std::fs::Metadata) -> bool {
 }
 
 fn scan_vault(root: &Path, cancel: &AtomicBool) -> Result<Option<Vault>, String> {
+    scan_vault_within(root, cancel, MAX_ENTRIES)
+}
+
+fn scan_vault_within(
+    root: &Path,
+    cancel: &AtomicBool,
+    max_entries: usize,
+) -> Result<Option<Vault>, String> {
     let mut vault = Vault::default();
     let mut stack = vec![(root.to_path_buf(), String::new(), 0usize)];
     let mut entries = 0usize;
-    'scan: while let Some((dir, prefix, depth)) = stack.pop() {
+    while let Some((dir, prefix, depth)) = stack.pop() {
         if cancel.load(Ordering::SeqCst) {
             return Ok(None);
         }
@@ -1588,9 +1465,8 @@ fn scan_vault(root: &Path, cancel: &AtomicBool) -> Result<Option<Vault>, String>
         };
         for entry in read.flatten() {
             entries += 1;
-            if entries > MAX_ENTRIES {
-                vault.skipped += 1;
-                break 'scan;
+            if entries > max_entries {
+                return Err(AppError::new("notes.import_too_many_files").into());
             }
             let name = entry.file_name().to_string_lossy().into_owned();
             if name.starts_with('.') {
@@ -1828,11 +1704,12 @@ fn size_text(bytes: u64) -> String {
 }
 
 fn room_for(needed: u64, available: u64) -> Result<(), String> {
-    if available.saturating_sub(needed) >= KEEP_FREE_BYTES {
+    let wanted = needed.saturating_add(KEEP_FREE_BYTES);
+    if available >= wanted {
         return Ok(());
     }
     Err(AppError::new("notes.import_no_space")
-        .param("size", size_text(needed))
+        .param("size", size_text(wanted))
         .into())
 }
 
@@ -2004,17 +1881,12 @@ fn import_scanned(
                 }
                 Err(_) => {
                     skipped += 1;
-                    if vault.beside_only {
-                        note_not_copied(&mut report.summary, attachment.rel.clone());
-                    }
+                    note_not_copied(&mut report.summary, attachment.rel.clone());
                 }
             }
         }
         if !moved.is_empty() {
-            let mut fixed = source.clone();
-            for (planned, actual) in &moved {
-                fixed = fixed.replace(planned.as_str(), actual);
-            }
+            let fixed = retarget_assets(&source, &moved);
             let written = crate::sandbox::resolve_readable(&project_id, crate::project::NOTE_FILE)
                 .and_then(|target| crate::sandbox::atomic_write(&target, fixed.as_bytes()));
             if let Err(error) = written {
@@ -2031,6 +1903,48 @@ fn import_scanned(
     }
     report.summary.skipped = skipped;
     Ok(report)
+}
+
+fn retarget_assets(source: &str, moved: &[(String, String)]) -> String {
+    let actual = |destination: &str| {
+        moved
+            .iter()
+            .find(|(planned, _)| planned == destination)
+            .map(|(_, actual)| actual.as_str())
+    };
+    let split = split_front_matter(source);
+    let head = &source[..source.len() - split.body.len()];
+    let mut parts = Vec::new();
+    for block in blocks(split.body) {
+        match block {
+            Block::Line(line) => parts.push(rewrite_inline(line, |token| match token {
+                Token::Link {
+                    embed,
+                    label,
+                    destination,
+                } => actual(destination)
+                    .map(|path| format!("{}[{label}]({path})", if *embed { "!" } else { "" })),
+                Token::Wiki { .. } => None,
+            })),
+            Block::Fence {
+                open,
+                info,
+                lines,
+                close,
+            } => {
+                let mut out: Vec<String> = lines.iter().map(|line| (*line).to_string()).collect();
+                let first = lines.iter().position(|line| !line.trim().is_empty());
+                if let Some(at) = first.filter(|_| is_notebook_info(info)) {
+                    if let Some(path) = actual(lines[at].trim()) {
+                        let indent = &lines[at][..lines[at].len() - lines[at].trim_start().len()];
+                        out[at] = format!("{indent}{path}");
+                    }
+                }
+                parts.push(fence_lines(open, &out, close));
+            }
+        }
+    }
+    format!("{head}{}", join_blocks(parts))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2120,12 +2034,12 @@ fn safe_part(text: &str, limit: usize) -> String {
         })
         .collect();
     let collapsed = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
-    let trimmed = truncate_chars(collapsed.trim_start_matches('.'), limit);
+    let trimmed = truncate_bytes(collapsed.trim_start_matches('.'), limit);
     trimmed.trim().trim_end_matches('.').trim().to_string()
 }
 
 pub(crate) fn safe_stem(title: &str) -> String {
-    let stem = safe_part(title, MAX_STEM_CHARS);
+    let stem = safe_part(title, MAX_STEM_BYTES);
     if stem.is_empty() {
         return UNTITLED.to_string();
     }
@@ -2362,23 +2276,36 @@ fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-fn reserve_note_files(selected: &[ExportNote], folder: &Path) -> Result<Vec<String>, String> {
+fn reserve_note_files(
+    selected: &[ExportNote],
+    folder: &Path,
+    created: &mut Vec<PathBuf>,
+) -> Result<Vec<String>, String> {
     let mut stems = Vec::with_capacity(selected.len());
     let mut taken: HashSet<String> = HashSet::new();
+    let mut next: HashMap<String, usize> = HashMap::new();
     for note in selected {
         let base = safe_stem(&note.title);
-        let mut chosen = None;
-        for attempt in 1..=MAX_NAME_ATTEMPTS {
-            let candidate = numbered(&base, attempt);
+        let attempt = next.entry(fold(&base)).or_insert(1);
+        let mut on_disk = 0;
+        let chosen = loop {
+            let candidate = numbered(&base, *attempt);
+            *attempt += 1;
             if !taken.insert(fold(&candidate)) {
                 continue;
             }
-            match create_new(&folder.join(format!("{candidate}.md"))) {
+            let path = folder.join(format!("{candidate}.md"));
+            match create_new(&path) {
                 Ok(_) => {
-                    chosen = Some(candidate);
-                    break;
+                    created.push(path);
+                    break candidate;
                 }
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    on_disk += 1;
+                    if on_disk >= MAX_NAME_ATTEMPTS {
+                        return Err(AppError::new("notes.export_too_many_titles").into());
+                    }
+                }
                 Err(error) => {
                     return Err(AppError::new("notes.export_write_failed")
                         .param("name", format!("{candidate}.md"))
@@ -2386,58 +2313,105 @@ fn reserve_note_files(selected: &[ExportNote], folder: &Path) -> Result<Vec<Stri
                         .into())
                 }
             }
-        }
-        stems.push(chosen.ok_or_else(|| AppError::new("notes.export_too_many_titles"))?);
+        };
+        stems.push(chosen);
     }
     Ok(stems)
 }
 
 struct ExportedAttachments {
     folder: PathBuf,
-    names: HashMap<String, (String, String)>,
+    names: HashSet<String>,
+    by_hash: HashMap<(String, String), String>,
+    next: HashMap<String, usize>,
     copied: usize,
     skipped: usize,
 }
 
 impl ExportedAttachments {
-    fn place(&mut self, asset: &ExportAsset) -> Result<Option<String>, String> {
-        let Some(sha) = file_sha256(&asset.path) else {
+    fn new(folder: PathBuf) -> Self {
+        Self {
+            folder,
+            names: HashSet::new(),
+            by_hash: HashMap::new(),
+            next: HashMap::new(),
+            copied: 0,
+            skipped: 0,
+        }
+    }
+
+    fn place(
+        &mut self,
+        asset: &ExportAsset,
+        created: &mut Vec<PathBuf>,
+    ) -> Result<Option<String>, String> {
+        let Some(sha) = crate::project::file_sha256(&asset.path) else {
             self.skipped += 1;
             return Ok(None);
         };
         let base = safe_file_name(asset.original.as_deref().unwrap_or(base_name(&asset.rel)));
-        for attempt in 1..=MAX_NAME_ATTEMPTS {
-            let candidate = numbered(&base, attempt);
-            let key = fold(&candidate);
-            match self.names.get(&key) {
-                None => {
-                    std::fs::create_dir_all(&self.folder).map_err(|error| {
-                        String::from(AppError::new("notes.export_attachments_failed").detail(error))
-                    })?;
-                    match copy_new(&asset.path, &self.folder.join(&candidate)) {
-                        Ok(()) => {
-                            self.names.insert(key, (candidate.clone(), sha));
-                            self.copied += 1;
-                            return Ok(Some(candidate));
-                        }
-                        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                            self.names.insert(key, (candidate, String::new()));
-                        }
-                        Err(error) => {
-                            return Err(AppError::new("notes.export_copy_failed")
-                                .param("name", candidate)
-                                .detail(error)
-                                .into())
-                        }
+        let key = (fold(&base), sha);
+        if let Some(existing) = self.by_hash.get(&key) {
+            return Ok(Some(existing.clone()));
+        }
+        let attempt = self.next.entry(key.0.clone()).or_insert(1);
+        let mut on_disk = 0;
+        loop {
+            let candidate = numbered(&base, *attempt);
+            *attempt += 1;
+            if !self.names.insert(fold(&candidate)) {
+                continue;
+            }
+            std::fs::create_dir_all(&self.folder).map_err(|error| {
+                String::from(AppError::new("notes.export_attachments_failed").detail(error))
+            })?;
+            let target = self.folder.join(&candidate);
+            match copy_new(&asset.path, &target) {
+                Ok(()) => {
+                    created.push(target);
+                    self.by_hash.insert(key, candidate.clone());
+                    self.copied += 1;
+                    return Ok(Some(candidate));
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    on_disk += 1;
+                    if on_disk >= MAX_NAME_ATTEMPTS {
+                        self.skipped += 1;
+                        return Ok(None);
                     }
                 }
-                Some((existing, hash)) if *hash == sha => return Ok(Some(existing.clone())),
-                Some(_) => {}
+                Err(error) => {
+                    return Err(AppError::new("notes.export_copy_failed")
+                        .param("name", candidate)
+                        .detail(error)
+                        .into())
+                }
             }
         }
-        self.skipped += 1;
-        Ok(None)
     }
+}
+
+fn referenced_assets(text: &str) -> HashSet<String> {
+    let mut keys = HashSet::new();
+    for block in blocks(split_front_matter(text).body) {
+        match block {
+            Block::Line(line) => {
+                rewrite_inline(line, |token| {
+                    if let Token::Link { destination, .. } = token {
+                        keys.extend(asset_key(destination));
+                    }
+                    None
+                });
+            }
+            Block::Fence { info, lines, .. } if is_notebook_info(info) => {
+                if let Some(first) = lines.iter().find(|line| !line.trim().is_empty()) {
+                    keys.extend(asset_key(first));
+                }
+            }
+            Block::Fence { .. } => {}
+        }
+    }
+    keys
 }
 
 pub(crate) fn export_notes(
@@ -2445,7 +2419,24 @@ pub(crate) fn export_notes(
     outside: &HashMap<String, OutsideNote>,
     folder: &Path,
 ) -> Result<ExportSummary, String> {
-    let stems = reserve_note_files(selected, folder)?;
+    let mut created = Vec::new();
+    let exported = write_export(selected, outside, folder, &mut created);
+    if exported.is_err() {
+        for path in created.iter().rev() {
+            let _ = std::fs::remove_file(path);
+        }
+        let _ = std::fs::remove_dir(folder.join(ATTACHMENTS));
+    }
+    exported
+}
+
+fn write_export(
+    selected: &[ExportNote],
+    outside: &HashMap<String, OutsideNote>,
+    folder: &Path,
+    created: &mut Vec<PathBuf>,
+) -> Result<ExportSummary, String> {
+    let stems = reserve_note_files(selected, folder, created)?;
     let mut targets = HashMap::new();
     for (id, note) in outside {
         let split = split_front_matter(&note.text);
@@ -2471,17 +2462,17 @@ pub(crate) fn export_notes(
             );
         }
     }
-    let mut attachments = ExportedAttachments {
-        folder: folder.join(ATTACHMENTS),
-        names: HashMap::new(),
-        copied: 0,
-        skipped: 0,
-    };
+    let mut attachments = ExportedAttachments::new(folder.join(ATTACHMENTS));
     let mut written = 0usize;
     for (note, stem) in selected.iter().zip(&stems) {
+        let referenced = referenced_assets(&note.text);
         let mut assets = HashMap::new();
-        for asset in &note.assets {
-            if let Some(name) = attachments.place(asset)? {
+        for asset in note
+            .assets
+            .iter()
+            .filter(|asset| referenced.contains(&asset.rel))
+        {
+            if let Some(name) = attachments.place(asset, created)? {
                 assets.insert(asset.rel.clone(), name);
             }
         }
@@ -2875,15 +2866,22 @@ async fn import_picked_files(
 }
 
 async fn roll_back(state: &crate::state::AppState, created: Vec<String>) {
-    for project_id in created {
-        if let Err(error) =
-            crate::project::recycle_project_synchronized(state, project_id.clone()).await
-        {
-            let _ = crate::project::append_app_log(format!(
-                "Could not remove note {project_id:?} after a stopped import: {error}"
-            ));
-        }
+    if created.is_empty() {
+        return;
     }
+    for (project_id, error) in crate::project::recycle_projects_synchronized(state, created).await {
+        let _ = crate::project::append_app_log(format!(
+            "Could not remove note {project_id:?} after a stopped import: {error}"
+        ));
+    }
+}
+
+async fn off_thread<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|error| String::from(AppError::new("notes.import_stopped").detail(error)))?
 }
 
 #[tauri::command]
@@ -2907,15 +2905,19 @@ pub async fn notes_import_folder(
     let Some(picked) = picked else {
         return Ok(ImportOutcome::Dismissed);
     };
-    let root = chosen_folder(&picked)?;
-    if !request.again {
-        if let Some(previous) = previous_import(&root) {
-            hold_pending(&request.run_id, root);
-            return Ok(ImportOutcome::Seen {
-                imported_at: previous.imported_at,
-                notes: previous.notes,
-            });
-        }
+    let again = request.again;
+    let (root, previous) = off_thread(move || {
+        let root = chosen_folder(&picked)?;
+        let previous = if again { None } else { previous_import(&root) };
+        Ok((root, previous))
+    })
+    .await?;
+    if let Some(previous) = previous {
+        hold_pending(&request.run_id, root);
+        return Ok(ImportOutcome::Seen {
+            imported_at: previous.imported_at,
+            notes: previous.notes,
+        });
     }
     let options = ImportOptions {
         folder_tags: request.folder_tags,
@@ -2937,7 +2939,7 @@ pub async fn notes_import_folder(
     let notes = report.summary.notes;
     let outcome = finish_import(state.inner(), report).await?;
     if notes > 0 && matches!(&outcome, ImportOutcome::Done(summary) if !summary.cancelled) {
-        if let Err(error) = record_import(&root, notes) {
+        if let Err(error) = off_thread(move || record_import(&root, notes)).await {
             let _ = crate::project::append_app_log(format!(
                 "Could not remember the imported folder: {error}"
             ));
@@ -2978,7 +2980,11 @@ pub async fn notes_export_folder(
     let summary = tauri::async_runtime::spawn_blocking(move || {
         let (selected, outside) = collect_export(note_id.as_deref())?;
         let folder = create_export_folder(&parent, &folder_name)?;
-        export_notes(&selected, &outside, &folder)
+        let exported = export_notes(&selected, &outside, &folder);
+        if exported.is_err() {
+            let _ = std::fs::remove_dir(&folder);
+        }
+        exported
     })
     .await
     .map_err(|error| String::from(AppError::new("notes.export_stopped").detail(error)))??;
@@ -3162,7 +3168,7 @@ mod tests {
         write(root.path(), "doc.pdf", b"%PDF");
         let cancel = AtomicBool::new(false);
         let scanned = scan_vault(root.path(), &cancel).unwrap().unwrap();
-        let sha = file_sha256(&root.path().join("img/Fig 1.png")).unwrap();
+        let sha = crate::project::file_sha256(&root.path().join("img/Fig 1.png")).unwrap();
         let hash = &sha[..8];
         let text = "![[Fig 1.png|300]] ![[img/Fig 1.png|A figure]] ![](copy/Fig%201.png) [[data.csv]]\n![[run.ipynb]]\n![[doc.pdf]] [paper](doc.pdf)\n";
         let (body, unresolved) = convert(text, "Inbox.md", &scanned);
@@ -3180,7 +3186,7 @@ mod tests {
         let converted = conversion.body("![[img/Fig 1.png]] ![](copy/Fig%201.png) [d](data.csv)");
         assert_eq!(
             converted,
-            format!("![Fig 1.png](assets/Fig-1-{hash}.png) ![](assets/Fig-1-{hash}.png) [d](assets/data-{}.csv)", &file_sha256(&root.path().join("data.csv")).unwrap()[..8])
+            format!("![Fig 1.png](assets/Fig-1-{hash}.png) ![](assets/Fig-1-{hash}.png) [d](assets/data-{}.csv)", &crate::project::file_sha256(&root.path().join("data.csv")).unwrap()[..8])
         );
         assert_eq!(conversion.assets.copies.len(), 2);
         assert!(body.starts_with("![[Fig 1.png|300]] "), "{body}");
@@ -3228,7 +3234,7 @@ mod tests {
         };
         let mut conversion = NoteConversion::new(&context, "one", "One.md");
         let body = conversion.body("![](a/Fig.png) ![](b/fig.png)");
-        let hash = &file_sha256(&root.path().join("a/Fig.png")).unwrap()[..8];
+        let hash = &crate::project::file_sha256(&root.path().join("a/Fig.png")).unwrap()[..8];
         assert_eq!(
             body,
             format!("![](assets/Fig-{hash}.png) ![](assets/Fig-{hash}.png)")
@@ -3322,16 +3328,118 @@ mod tests {
 
     #[test]
     fn refuses_an_import_that_would_leave_too_little_free_space() {
-        let gib = 1024 * 1024 * 1024;
+        let mib = 1024 * 1024;
+        let gib = 1024 * mib;
         assert!(room_for(gib, 4 * gib).is_ok());
-        assert!(room_for(2 * gib, 4 * gib).is_ok());
-        let tight = crate::app_error::english(&room_for(3 * gib, 4 * gib).unwrap_err()).unwrap();
-        assert!(
-            tight.contains("3.2 GB") && tight.contains("2 GB free"),
-            "{tight}"
-        );
+        assert!(room_for(3 * gib, 4 * gib).is_ok());
+        assert!(room_for(5 * mib, gib).is_ok());
+        assert!(room_for(5 * mib, 300 * mib).is_ok());
+        let tight = crate::app_error::english(&room_for(4 * gib, 4 * gib).unwrap_err()).unwrap();
+        assert!(tight.contains("needs about 4.6 GB."), "{tight}");
         assert!(room_for(5 * gib, 4 * gib).is_err());
-        assert!(room_for(0, gib).is_err());
+        assert!(room_for(0, 200 * mib).is_err());
+        assert!(room_for(u64::MAX, u64::MAX - 1).is_err());
+    }
+
+    #[test]
+    fn a_folder_with_too_many_entries_is_refused_before_anything_is_imported() {
+        let vault = tempfile::tempdir().unwrap();
+        for name in ["a.md", "b.md", "c.png", "d/e.md"] {
+            write(vault.path(), name, b"x");
+        }
+        let cancel = AtomicBool::new(false);
+        let scanned = scan_vault_within(vault.path(), &cancel, 5)
+            .unwrap()
+            .unwrap();
+        assert_eq!(scanned.notes.len(), 3);
+        assert_eq!(scanned.skipped, 0);
+        let refused = scan_vault_within(vault.path(), &cancel, 4).unwrap_err();
+        assert_eq!(
+            crate::app_error::english(&refused).unwrap(),
+            "This folder has too many files to import. Choose a smaller folder."
+        );
+    }
+
+    #[test]
+    fn imported_titles_are_stored_composed() {
+        assert_eq!(note_title(None, "", "dir/E\u{301}cole.md"), "\u{c9}cole");
+        assert_eq!(
+            note_title(None, "# Re\u{301}sume\u{301}\n", "x.md"),
+            "R\u{e9}sum\u{e9}"
+        );
+        let front = ["title: Cafe\u{301}"];
+        assert_eq!(note_title(Some(&front), "", "x.md"), "Caf\u{e9}");
+    }
+
+    #[test]
+    fn fences_inside_nested_lists_keep_their_links() {
+        let body = "- item\n  - nested\n    ```\n    [[Kept]]\n    ```\n[[Out]]";
+        let kinds: Vec<bool> = blocks(body)
+            .iter()
+            .map(|block| matches!(block, Block::Fence { .. }))
+            .collect();
+        assert_eq!(kinds, vec![false, false, true, false]);
+    }
+
+    #[test]
+    fn retargets_only_the_links_that_point_at_a_moved_asset() {
+        let source = "---\nkind: note\nid: n\n---\n![a](assets/x-1.png) `assets/x-1.png` [b](assets/x-1.png.bak)\nassets/x-1.png [c](assets/x-1.png)\n```notebook\n  assets/x-1.png\n```\n```\n[d](assets/x-1.png)\n```";
+        let moved = vec![("assets/x-1.png".to_string(), "assets/x-1-2.png".to_string())];
+        assert_eq!(
+            retarget_assets(source, &moved),
+            "---\nkind: note\nid: n\n---\n![a](assets/x-1-2.png) `assets/x-1.png` [b](assets/x-1.png.bak)\nassets/x-1.png [c](assets/x-1-2.png)\n```notebook\n  assets/x-1-2.png\n```\n```\n[d](assets/x-1.png)\n```"
+        );
+        assert_eq!(retarget_assets("plain", &moved), "plain");
+    }
+
+    #[test]
+    fn every_line_of_an_imported_note_is_searchable() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let vault = tempfile::tempdir().unwrap();
+        let mut text = "word ".repeat(3 * 1024 * 1024 / 5);
+        text.push_str("\n#late\n");
+        assert!(text.len() as u64 <= MAX_NOTE_BYTES);
+        write(vault.path(), "Big.md", text.as_bytes());
+        let report = import_vault(
+            vault.path(),
+            ImportOptions::default(),
+            &AtomicBool::new(false),
+            &mut |_| {},
+        )
+        .unwrap();
+        assert_eq!(report.summary.notes, 1);
+        let tags = crate::note_search::note_tags_blocking().unwrap();
+        assert!(tags.iter().any(|tag| tag.tag == "late"), "{tags:?}");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_folder_import_reports_an_attachment_it_could_not_copy() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let vault = tempfile::tempdir().unwrap();
+        write(vault.path(), "One.md", b"# One\n![[pic.png]]\n");
+        write(vault.path(), "img/pic.png", b"0123456789");
+        let picture = vault.path().join("img/pic.png");
+        let report = import_vault_with(
+            vault.path(),
+            ImportOptions::default(),
+            &AtomicBool::new(false),
+            &mut |_| {},
+            &|_| {
+                std::fs::remove_file(&picture).unwrap();
+                Ok(())
+            },
+            &CreatedNotes::default(),
+        )
+        .unwrap();
+        assert_eq!(report.summary.notes, 1);
+        assert_eq!(report.summary.attachments, 0);
+        assert_eq!(report.summary.not_copied, vec!["img/pic.png".to_string()]);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]
@@ -3532,7 +3640,18 @@ mod tests {
         assert_eq!(safe_stem("a\u{ad}b\u{200b}c\u{202e}d"), "abcd");
         assert_eq!(safe_stem("Cafe\u{301}"), "Caf\u{e9}");
         assert_eq!(safe_file_name("con.png"), "con note.png");
-        assert_eq!(safe_stem(&"x".repeat(300)).len(), MAX_STEM_CHARS);
+        assert_eq!(safe_stem(&"x".repeat(300)).len(), MAX_STEM_BYTES);
+        let wide = safe_stem(&"研究".repeat(150));
+        assert!(wide.len() <= MAX_STEM_BYTES, "{}", wide.len());
+        assert_eq!(wide, "研究".repeat(33));
+        assert!(
+            format!(
+                "{} 999.md",
+                safe_file_name(&format!("{}.png", "😀a".repeat(100)))
+            )
+            .len()
+                < 255
+        );
         assert_eq!(safe_file_name("dir/Fig: 1.PNG"), "Fig 1.png");
         assert_eq!(safe_file_name("README"), "README");
         assert_eq!(numbered("Fig.png", 2), "Fig 2.png");
@@ -3604,6 +3723,78 @@ mod tests {
     }
 
     #[test]
+    fn exports_only_the_attachments_a_note_links_to() {
+        let folder = tempfile::tempdir().unwrap();
+        let assets_dir = tempfile::tempdir().unwrap();
+        for name in ["used.png", "deleted.png", "run.ipynb"] {
+            write(assets_dir.path(), name, name.as_bytes());
+        }
+        let asset = |name: &str| ExportAsset {
+            rel: format!("assets/{name}"),
+            path: assets_dir.path().join(name),
+            original: None,
+        };
+        let note = export_note(
+            "a",
+            "Alpha",
+            "![u](assets/used.png)\n```notebook\nassets/run.ipynb\n```\n`![d](assets/deleted.png)`\n",
+            vec![asset("used.png"), asset("deleted.png"), asset("run.ipynb")],
+        );
+        let summary = export_notes(&[note], &HashMap::new(), folder.path()).unwrap();
+        assert_eq!(summary.attachments, 2);
+        let mut copied: Vec<String> = std::fs::read_dir(folder.path().join(ATTACHMENTS))
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        copied.sort();
+        assert_eq!(copied, vec!["run.ipynb", "used.png"]);
+    }
+
+    #[test]
+    fn a_failed_export_removes_what_it_wrote_and_keeps_what_was_there() {
+        let folder = tempfile::tempdir().unwrap();
+        write(folder.path(), ATTACHMENTS, b"a file, not a folder");
+        let assets_dir = tempfile::tempdir().unwrap();
+        write(assets_dir.path(), "fig.png", b"png");
+        let notes = [
+            export_note("a", "Alpha", "First", Vec::new()),
+            export_note(
+                "b",
+                "Beta",
+                "![f](assets/fig.png)",
+                vec![ExportAsset {
+                    rel: "assets/fig.png".into(),
+                    path: assets_dir.path().join("fig.png"),
+                    original: None,
+                }],
+            ),
+        ];
+        let error = export_notes(&notes, &HashMap::new(), folder.path()).unwrap_err();
+        assert!(error.contains("export_attachments_failed"), "{error}");
+        let left: Vec<String> = std::fs::read_dir(folder.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(left, vec![ATTACHMENTS.to_string()]);
+        assert_eq!(
+            std::fs::read(folder.path().join(ATTACHMENTS)).unwrap(),
+            b"a file, not a folder"
+        );
+    }
+
+    #[test]
+    fn exports_more_than_a_thousand_notes_with_one_title() {
+        let folder = tempfile::tempdir().unwrap();
+        let notes: Vec<ExportNote> = (0..1_005)
+            .map(|index| export_note(&format!("n{index}"), "Untitled", "x", Vec::new()))
+            .collect();
+        let summary = export_notes(&notes, &HashMap::new(), folder.path()).unwrap();
+        assert_eq!(summary.notes, 1_005);
+        assert!(folder.path().join("Untitled.md").is_file());
+        assert!(folder.path().join("Untitled 1005.md").is_file());
+    }
+
+    #[test]
     fn exports_never_overwrite_and_count_attachments_left_behind() {
         let folder = tempfile::tempdir().unwrap();
         write(folder.path(), "Alpha.md", b"keep");
@@ -3619,7 +3810,7 @@ mod tests {
             export_note(
                 "a",
                 "Alpha",
-                "![x](assets/fig.png)",
+                "![x](assets/fig.png) ![g](assets/gone.png)",
                 vec![
                     asset("assets/fig.png", "fig.png", Some("Fig.png")),
                     asset("assets/gone.png", "gone.png", None),
@@ -3635,7 +3826,7 @@ mod tests {
         assert_eq!(summary.skipped, 1);
         let read = |name: &str| std::fs::read_to_string(folder.path().join(name)).unwrap();
         assert_eq!(read("Alpha.md"), "keep");
-        assert_eq!(read("Alpha 2.md"), "![[Fig 2.png|x]]");
+        assert_eq!(read("Alpha 2.md"), "![[Fig 2.png|x]] ![g](assets/gone.png)");
         assert_eq!(read("attachments/Fig.png"), "other");
         assert_eq!(read("attachments/Fig 2.png"), "png");
         assert_eq!(read("Caf\u{e9}.md"), "composed");

@@ -62,7 +62,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/files/gitStatus.tsx": 2,
   "src/components/layout/CompileControls.tsx": 1,
   "src/components/layout/DocumentOutline.tsx": 1,
-  "src/components/layout/HomeBrandButton.tsx": 1,
   "src/components/layout/McpActivityPanel.tsx": 2,
   "src/components/layout/ReferencesPanel.tsx": 1,
   "src/components/layout/ReleaseTimeline.tsx": 2,

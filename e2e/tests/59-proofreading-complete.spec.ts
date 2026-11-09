@@ -231,7 +231,7 @@ async function createProjectForFormat(
 }
 
 async function returnToLibrary(page: TauriPage): Promise<void> {
-  await page.click('[title="Back to library"]');
+  await page.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(
     page.locator('[data-testid="library"][data-projects-loaded="true"]'),
   ).toBeVisible({ timeout: 30_000 });

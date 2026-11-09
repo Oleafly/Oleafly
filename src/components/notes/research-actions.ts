@@ -25,7 +25,3 @@ export const RESEARCH_ACTIONS: readonly { id: ResearchActionId; icon: LucideIcon
   { id: "figure", icon: ChartLine },
   { id: "abstract", icon: FileText },
 ];
-
-export function isResearchAction(id: string): id is ResearchActionId {
-  return RESEARCH_ACTIONS.some((action) => action.id === id);
-}

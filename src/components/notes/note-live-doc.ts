@@ -1,4 +1,5 @@
 import {
+  createMarkdownSourceSnapshot,
   markdownBlockKey,
   markdownPreservedRanges,
   serializeMarkdownDoc,
@@ -6,10 +7,11 @@ import {
   type MarkdownSourceLayout,
   type MarkdownSourceSnapshot,
 } from "@oleafly/wysiwyg";
-import type { Editor } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Fragment, type Node as ProseMirrorNode, type Schema } from "@tiptap/pm/model";
-import { TextSelection, type Selection, type Transaction } from "@tiptap/pm/state";
+import { type EditorState, TextSelection, type Selection, type Transaction } from "@tiptap/pm/state";
 import { markdownMathRanges } from "@/components/editor/wysiwyg/markdown-source";
+import { myersEditScript } from "@/lib/myers-diff";
 import { diffNoteDocs, type NoteChangeDraft } from "./note-diff";
 import { mergeSequences } from "./note-merge";
 import { joinNoteSource, noteMarkdownExtensions, parseNoteMarkdown } from "./note-markdown";
@@ -23,7 +25,7 @@ export interface SharedNote {
   doc: ProseMirrorNode;
   frontmatter: string;
   layout: MarkdownSourceLayout | null;
-  sources: string[];
+  readonly sources: readonly string[];
   starts: number[];
 }
 
@@ -39,32 +41,176 @@ function children(node: ProseMirrorNode): ProseMirrorNode[] {
   return out;
 }
 
-function unitsOf(text: string, layout: MarkdownSourceLayout | null, count: number): { sources: string[]; starts: number[] } {
-  const sources: string[] = [];
-  const starts: number[] = [];
-  if (layout) {
-    const mapped =
-      layout.units.reduce((sum, unit) => sum + unit.source.length, 0) +
-      layout.separators.reduce((sum, separator) => sum + separator.length, 0) +
-      layout.trailing.length;
-    let start = Math.max(0, text.length - mapped);
-    layout.units.forEach((unit, index) => {
-      for (let node = 0; node < unit.nodes; node += 1) {
-        sources.push(`${node}:${unit.source}`);
-        starts.push(start);
-      }
-      start += unit.source.length + (layout.separators[index]?.length ?? 0);
-    });
-  }
-  while (sources.length < count) {
-    sources.push("");
-    starts.push(layout ? text.length : 0);
-  }
-  return { sources: sources.slice(0, count), starts: starts.slice(0, count) };
+interface UnitIndex {
+  layout: MarkdownSourceLayout;
+  unit: readonly number[];
+  node: readonly number[];
 }
 
-const REFERENCE_DEFINITION = /^ {0,3}\[(?:[^\]\\\n]|\\.)+\]:/mu;
+const unitIndexes = new WeakMap<SharedNote, UnitIndex>();
+
+function noteWith(fields: Omit<SharedNote, "sources">, index: UnitIndex | null, given?: readonly string[]): SharedNote {
+  let sources: readonly string[] | null = given ?? null;
+  const note: SharedNote = {
+    ...fields,
+    get sources() {
+      sources ??= index
+        ? index.unit.map((unit, at) => (unit < 0 ? "" : `${index.node[at]}:${index.layout.units[unit].source}`))
+        : fields.starts.map(() => "");
+      return sources;
+    },
+  };
+  if (index) unitIndexes.set(note, index);
+  return note;
+}
+
+function mappedLength(layout: MarkdownSourceLayout): number {
+  return (
+    layout.units.reduce((sum, unit) => sum + unit.source.length, 0) +
+    layout.separators.reduce((sum, separator) => sum + separator.length, 0) +
+    layout.trailing.length
+  );
+}
+
+function sharedNoteOf(text: string, doc: ProseMirrorNode, frontmatter: string, layout: MarkdownSourceLayout | null): SharedNote {
+  const count = doc.childCount;
+  const unit: number[] = [];
+  const node: number[] = [];
+  const starts: number[] = [];
+  if (layout) {
+    let start = Math.max(0, text.length - mappedLength(layout));
+    layout.units.forEach((entry, index) => {
+      for (let at = 0; at < entry.nodes && starts.length < count; at += 1) {
+        unit.push(index);
+        node.push(at);
+        starts.push(start);
+      }
+      start += entry.source.length + (layout.separators[index]?.length ?? 0);
+    });
+  }
+  while (starts.length < count) {
+    unit.push(-1);
+    node.push(0);
+    starts.push(layout ? text.length : 0);
+  }
+  return noteWith({ text, doc, frontmatter, layout, starts }, layout ? { layout, unit, node } : null);
+}
+
+export function noteUnitAt(note: SharedNote, at: number): { node: number; source: string } | null {
+  const index = unitIndexes.get(note);
+  if (!index) return null;
+  const unit = index.unit[at] ?? -1;
+  return unit < 0 ? { node: 0, source: "" } : { node: index.node[at], source: index.layout.units[unit].source };
+}
+
+function isEmptyBlock(node: ProseMirrorNode): boolean {
+  return node.type.name === "paragraph" && node.content.size === 0;
+}
+
+function sameBlock(left: ProseMirrorNode, right: ProseMirrorNode): boolean {
+  return left === right || markdownBlockKey(left) === markdownBlockKey(right);
+}
+
+function pairBlocks(target: readonly ProseMirrorNode[], removed: readonly number[], added: readonly number[], match: number[]): void {
+  const filled = added.filter((index) => !isEmptyBlock(target[index]));
+  const paired = filled.length === removed.length ? filled : added;
+  paired.forEach((index, at) => {
+    if (at < removed.length) match[index] = removed[at];
+  });
+}
+
+function range(from: number, to: number): number[] {
+  return Array.from({ length: Math.max(0, to - from) }, (_, index) => from + index);
+}
+
+export function matchBlocks(source: readonly ProseMirrorNode[], target: readonly ProseMirrorNode[]): number[] {
+  const match = new Array<number>(target.length).fill(-1);
+  let head = 0;
+  while (head < source.length && head < target.length && sameBlock(source[head], target[head])) {
+    match[head] = head;
+    head += 1;
+  }
+  let sourceEnd = source.length;
+  let targetEnd = target.length;
+  while (sourceEnd > head && targetEnd > head && sameBlock(source[sourceEnd - 1], target[targetEnd - 1])) {
+    sourceEnd -= 1;
+    targetEnd -= 1;
+    match[targetEnd] = sourceEnd;
+  }
+  if (head === sourceEnd || head === targetEnd) return match;
+  const script = myersEditScript(source.slice(head, sourceEnd).map(markdownBlockKey), target.slice(head, targetEnd).map(markdownBlockKey));
+  if (!script) {
+    pairBlocks(target, range(head, sourceEnd), range(head, targetEnd), match);
+    return match;
+  }
+  let removed: number[] = [];
+  let added: number[] = [];
+  for (const edit of script) {
+    if (edit.kind === "same") {
+      pairBlocks(target, removed, added, match);
+      removed = [];
+      added = [];
+      for (let offset = 0; offset < edit.length; offset += 1) match[head + edit.newStart + offset] = head + edit.oldStart + offset;
+    } else if (edit.kind === "del") {
+      removed.push(...range(head + edit.oldStart, head + edit.oldStart + edit.length));
+    } else {
+      added.push(...range(head + edit.newStart, head + edit.newStart + edit.length));
+    }
+  }
+  pairBlocks(target, removed, added, match);
+  return match;
+}
+
+const alignments = new WeakMap<SharedNote, { doc: ProseMirrorNode; note: SharedNote }>();
+
+export function alignSharedNote(note: SharedNote, doc: ProseMirrorNode): SharedNote {
+  if (note.doc === doc) return note;
+  const known = alignments.get(note);
+  if (known?.doc === doc) return known.note;
+  const match = matchBlocks(children(note.doc), children(doc));
+  const starts = new Array<number>(match.length);
+  let next = note.text.length;
+  for (let at = match.length - 1; at >= 0; at -= 1) {
+    const from = match[at];
+    starts[at] = from >= 0 ? (note.starts[from] ?? next) : next;
+    next = starts[at];
+  }
+  const index = unitIndexes.get(note);
+  const fields = { text: note.text, doc, frontmatter: note.frontmatter, layout: note.layout, starts };
+  const aligned = index
+    ? noteWith(fields, {
+        layout: index.layout,
+        unit: match.map((from) => (from >= 0 ? (index.unit[from] ?? -1) : -1)),
+        node: match.map((from) => (from >= 0 ? (index.node[from] ?? 0) : 0)),
+      })
+    : noteWith(fields, null, match.map((from) => (from >= 0 ? (note.sources[from] ?? "") : "")));
+  alignments.set(note, { doc, note: aligned });
+  return aligned;
+}
+
+const DEFINITION_START = String.raw`^[ \t]*(?:(?:>|[-*+]|\d{1,9}[.)])[ \t]*)*\[(?!\^[^\]\s[]+\]:)`;
+const REFERENCE_DEFINITION = new RegExp(String.raw`${DEFINITION_START}(?:[^\][\\]|\\.)+\]:`, "mu");
 const BLANK_LINE = /\n[ \t]*\n/u;
+
+const definitions = new WeakMap<SharedNote, boolean>();
+
+function definesLinks(note: SharedNote): boolean {
+  let found = definitions.get(note);
+  if (found === undefined) {
+    found = REFERENCE_DEFINITION.test(note.text);
+    definitions.set(note, found);
+  }
+  return found;
+}
+
+function unclosedComment(region: string): boolean {
+  const opened = region.lastIndexOf("<!--");
+  return opened >= 0 && !region.includes("-->", opened + 4);
+}
+
+function changesDocument(region: string): boolean {
+  return unclosedComment(region) || REFERENCE_DEFINITION.test(region);
+}
 
 function commonPrefix(left: string, right: string): number {
   const limit = Math.min(left.length, right.length);
@@ -80,11 +226,7 @@ function commonSuffix(left: string, right: string, limit: number): number {
 }
 
 function unitStarts(text: string, layout: MarkdownSourceLayout): number[] | null {
-  const mapped =
-    layout.units.reduce((sum, unit) => sum + unit.source.length, 0) +
-    layout.separators.reduce((sum, separator) => sum + separator.length, 0) +
-    layout.trailing.length;
-  let start = text.length - mapped;
+  let start = text.length - mappedLength(layout);
   if (start < 0) return null;
   return layout.units.map((unit, index) => {
     const at = start;
@@ -168,14 +310,12 @@ function sameNodes(fresh: readonly ProseMirrorNode[], from: number, kept: readon
 }
 
 function isEmptyParagraph(node: ProseMirrorNode | undefined): boolean {
-  return node?.type.name === "paragraph" && node.content.size === 0;
+  return node !== undefined && isEmptyBlock(node);
 }
 
 function reparsedNote(schema: Schema, previous: SharedNote, text: string): SharedNote | null {
   const { layout } = previous;
-  if (!layout || layout.units.length === 0) return null;
-  if (previous.text.includes("<!--") || text.includes("<!--")) return null;
-  if (REFERENCE_DEFINITION.test(previous.text) || REFERENCE_DEFINITION.test(text)) return null;
+  if (!layout || layout.units.length === 0 || definesLinks(previous)) return null;
   const starts = unitStarts(previous.text, layout);
   if (!starts) return null;
   const count = layout.units.length;
@@ -194,6 +334,7 @@ function reparsedNote(schema: Schema, previous: SharedNote, text: string): Share
   const nextEnd = regionEnd + text.length - previous.text.length;
   if (nextEnd < regionStart) return null;
   const region = text.slice(regionStart, nextEnd);
+  if (changesDocument(region) || changesDocument(previous.text.slice(regionStart, regionEnd))) return null;
   const was = rangesOf(previous);
   const now = scanRanges(text);
   if (!sameRangesIn(now.math, regionStart, nextEnd, markdownMathRanges(region))) return null;
@@ -243,8 +384,9 @@ function reparsedNote(schema: Schema, previous: SharedNote, text: string): Share
     separators: [...layout.separators.slice(0, first), ...separators, ...layout.separators.slice(last)],
     trailing: toEnd ? sub.layout.trailing : layout.trailing,
   };
-  const note: SharedNote = { text, doc, frontmatter: previous.frontmatter, layout: nextLayout, ...unitsOf(text, nextLayout, doc.childCount) };
+  const note = sharedNoteOf(text, doc, previous.frontmatter, nextLayout);
   protectedRanges.set(note, now);
+  definitions.set(note, false);
   return note;
 }
 
@@ -253,8 +395,28 @@ export function parseSharedNote(schema: Schema, text: string, previous: SharedNo
   const reparsed = previous ? reparsedNote(schema, previous, text) : null;
   if (reparsed) return reparsed;
   const parsed = parseNoteMarkdown(text);
-  const doc = schema.nodeFromJSON(parsed.doc);
-  return { text, doc, frontmatter: parsed.frontmatter, layout: parsed.layout, ...unitsOf(text, parsed.layout, doc.childCount) };
+  return sharedNoteOf(text, schema.nodeFromJSON(parsed.doc), parsed.frontmatter, parsed.layout);
+}
+
+const blockJson = new WeakMap<ProseMirrorNode, JSONContent>();
+const snapshots = new WeakMap<SharedNote, MarkdownSourceSnapshot | null>();
+
+function jsonOf(node: ProseMirrorNode): JSONContent {
+  let json = blockJson.get(node);
+  if (!json) {
+    json = node.toJSON() as JSONContent;
+    blockJson.set(node, json);
+  }
+  return json;
+}
+
+export function sharedNoteSnapshot(note: SharedNote): MarkdownSourceSnapshot | null {
+  const known = snapshots.get(note);
+  if (known !== undefined) return known;
+  const blocks = children(note.doc);
+  const snapshot = createMarkdownSourceSnapshot(note.layout, { type: "doc", content: blocks.map(jsonOf) }, blocks.map(markdownBlockKey));
+  snapshots.set(note, snapshot);
+  return snapshot;
 }
 
 interface KnownSource {
@@ -277,10 +439,6 @@ export function noteSourceOf(
   const text = joinNoteSource(frontMatter, separator, serializeMarkdownDoc(doc, snapshot, noteMarkdownExtensions()));
   knownSources.set(doc, { frontMatter, separator, snapshot, text });
   return text;
-}
-
-export function blockKeysOf(doc: ProseMirrorNode): string[] {
-  return children(doc).map(markdownBlockKey);
 }
 
 export function mergedDoc(base: SharedNote, current: ProseMirrorNode, next: SharedNote): ProseMirrorNode {
@@ -419,14 +577,9 @@ function applyDrafts(tr: Transaction, drafts: readonly NoteChangeDraft[]): void 
   }
 }
 
-export function showSharedNote(editor: Editor, base: SharedNote | null, next: SharedNote): void {
-  showNoteDoc(editor, base ? mergedDoc(base, editor.state.doc, next) : next.doc);
-}
-
-export function showNoteDoc(editor: Editor, target: ProseMirrorNode): void {
-  const { state } = editor;
+export function noteDocTransaction(state: EditorState, target: ProseMirrorNode): Transaction | null {
   const current = state.doc;
-  if (target.eq(current)) return;
+  if (target.eq(current)) return null;
   const drafts = diffNoteDocs(current, target);
   let tr = state.tr;
   applyDrafts(tr, drafts);
@@ -436,8 +589,21 @@ export function showNoteDoc(editor: Editor, target: ProseMirrorNode): void {
     placed = null;
   }
   keepSelection(tr, state.selection, current, placed);
-  tr.setMeta(NOTE_REMOTE, true).setMeta("addToHistory", false);
-  editor.view.dispatch(tr);
+  return tr.setMeta(NOTE_REMOTE, true).setMeta("addToHistory", false);
+}
+
+export function sharedNoteTransaction(state: EditorState, base: SharedNote | null, next: SharedNote): Transaction | null {
+  return noteDocTransaction(state, base ? mergedDoc(base, state.doc, next) : next.doc);
+}
+
+export function showSharedNote(editor: Editor, base: SharedNote | null, next: SharedNote): void {
+  const tr = sharedNoteTransaction(editor.state, base, next);
+  if (tr) editor.view.dispatch(tr);
+}
+
+export function showNoteDoc(editor: Editor, target: ProseMirrorNode): void {
+  const tr = noteDocTransaction(editor.state, target);
+  if (tr) editor.view.dispatch(tr);
 }
 
 export function blockIndexAt(doc: ProseMirrorNode, pos: number): number {

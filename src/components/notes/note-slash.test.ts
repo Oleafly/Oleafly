@@ -165,6 +165,27 @@ describe("slash plugin", () => {
     expect(slashState(editor.state)).toMatchObject({ active: false, dismissed: 1 });
   });
 
+  it("works the visible items out once per editor state", () => {
+    const editor = build();
+    type(editor, "/he");
+    const items = visibleSlashItems(editor);
+    expect(items.length).toBeGreaterThan(0);
+    expect(visibleSlashItems(editor)).toBe(items);
+    type(editor, "a");
+    expect(visibleSlashItems(editor)).not.toBe(items);
+  });
+
+  it("stays closed after Escape when text above moves the slash", () => {
+    const editor = build([{ type: "paragraph", content: [{ type: "text", text: "a" }] }, { type: "paragraph" }]);
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 4)));
+    type(editor, "/");
+    expect(slashState(editor.state)).toMatchObject({ active: true, from: 4 });
+    dismissSlash(editor.view);
+    editor.view.dispatch(editor.state.tr.insertText("b", 1));
+    expect(slashMatch(editor.state)?.from).toBe(5);
+    expect(slashState(editor.state)).toMatchObject({ active: false, dismissed: 5 });
+  });
+
   it("lets other keys through and Enter through when nothing matches", () => {
     const editor = build();
     expect(key(editor, "ArrowDown")).toBe(false);
@@ -243,6 +264,15 @@ describe("slash plugin", () => {
     expect(block?.attrs?.language).toBe("chart");
     const text = (block?.content?.[0] as { text?: string } | undefined)?.text;
     expect(JSON.parse(text ?? "{}").categories).toEqual(["A", "B", "C"]);
+  });
+
+  it("leaves the caret on a line after the block it inserts", () => {
+    const editor = build();
+    type(editor, "/mermaid");
+    expect(pick(editor, "block:mermaid")).toBe(true);
+    const { $head } = editor.state.selection;
+    expect($head.parent.type.name).toBe("paragraph");
+    expect($head.node($head.depth - 1).child($head.index($head.depth - 1) - 1).type.name).toBe("codeBlock");
   });
 
   it("names its groups and items in the interface language", () => {

@@ -34,6 +34,8 @@ export const NOTE_WORKSPACE_ONLY_TOOLS: readonly string[] = [
 
 export const NOTE_TASK_TOOLS: readonly string[] = ["research_task_create", "research_task_status"];
 
+export const NOTE_KNOWLEDGE_TOOLS: readonly string[] = ["search_notes", "list_knowledge_notes", "read_note_by_id"];
+
 export const NOTE_FILE_MUTATION_TOOLS: readonly string[] = [
   "write_file",
   "replace_in_file",
@@ -518,10 +520,11 @@ export function createNoteAssistantTools(deps: NoteToolDeps, run: NoteToolRun): 
   };
 }
 
-export function noteExcludedTools(relatedProjectId: string | null, inProject = false): string[] {
+export function noteExcludedTools(relatedProjectId: string | null, inProject = false, shared = false): string[] {
   return [
     ...NOTE_WORKSPACE_ONLY_TOOLS,
     ...(relatedProjectId ? [] : NOTE_TASK_TOOLS),
     ...(inProject ? NOTE_FILE_MUTATION_TOOLS : []),
+    ...(shared ? NOTE_KNOWLEDGE_TOOLS : []),
   ];
 }

@@ -9,13 +9,17 @@ import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import {
   chooseNoteLink,
   closeNoteLinkMenu,
+  createCandidate,
+  headingTarget,
   highlightNoteLink,
   insertNoteLink,
   linkCandidates,
+  linkedNoteCreator,
   NOTE_LIMIT,
   noteLinkExtensions,
   noteLinkOptionId,
   noteLinkSuggestion,
+  parseLinkQuery,
   PROJECT_LIMIT,
   type LinkableNote,
   type LinkableProject,
@@ -213,6 +217,102 @@ describe("opening links", () => {
     expect(options.onOpenProject).not.toHaveBeenCalled();
   });
 
+  it("offers to create the note a typed link names, then links it", async () => {
+    const createNote = vi.fn(async (title: string) => ({ noteId: "n-9", projectId: "lib-9", title }));
+    const { editor } = build("A\n", { createNote });
+    cursorAtEnd(editor);
+    typeText(editor, "[[Brand new idea");
+    const items = noteLinkSuggestion(editor.state)?.items ?? [];
+    expect(items.at(-1)).toEqual({ kind: "create", id: "Brand new idea", title: "Brand new idea" });
+    expect(press(editor, "Enter")).toBe(true);
+    expect(press(editor, "Enter")).toBe(true);
+    await vi.waitFor(() => expect(markdown(editor)).toBe("A[Brand new idea](oleafly://note/n-9) "));
+    expect(createNote).toHaveBeenCalledExactlyOnceWith("Brand new idea");
+  });
+
+  it("offers no create for a note that already exists, an embed, a heading or an empty name", () => {
+    const { editor } = build("A\n", { createNote: vi.fn() });
+    cursorAtEnd(editor);
+    typeText(editor, "[[masking REPORT");
+    expect(noteLinkSuggestion(editor.state)?.items.some((item) => item.kind === "create")).toBe(false);
+    const kinds = (text: string) => {
+      const next = build("A\n", { createNote: vi.fn() }).editor;
+      cursorAtEnd(next);
+      typeText(next, text);
+      return noteLinkSuggestion(next.state)?.items.map((item) => item.kind) ?? [];
+    };
+    expect(kinds("![[New")).not.toContain("create");
+    expect(kinds("[[New#part")).not.toContain("create");
+    expect(kinds("[[")).not.toContain("create");
+    const without = build("A\n").editor;
+    cursorAtEnd(without);
+    typeText(without, "[[Brand new");
+    expect(noteLinkSuggestion(without.state)?.items.some((item) => item.kind === "create")).toBe(false);
+  });
+
+  it("leaves the text alone when the created note can't be linked", async () => {
+    const createNote = vi.fn(async () => null);
+    const { editor } = build("A\n", { createNote });
+    cursorAtEnd(editor);
+    typeText(editor, "[[Lost");
+    press(editor, "Enter");
+    await vi.waitFor(() => expect(createNote).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(editor.state.doc.textContent).toBe("A[[Lost");
+  });
+
+  it("creates a note for a broken link, points the link at it and opens it", async () => {
+    const createNote = vi.fn(async (title: string) => ({ noteId: "n-9", projectId: "lib-9", title }));
+    const { editor, options } = build("See [Old idea](oleafly://note/gone) here\n", { createNote });
+    expect(chips(editor)[0].dataset.tooltip).toBe(enNotes.links.missingNoteCreate);
+    click(editor);
+    await vi.waitFor(() => expect(markdown(editor)).toBe("See [Old idea](oleafly://note/n-9) here"));
+    expect(createNote).toHaveBeenCalledExactlyOnceWith("Old idea");
+    expect(options.onOpenNote).toHaveBeenCalledWith("n-9", { newTab: false, projectId: "lib-9" });
+  });
+
+  it("does not create a note from a broken link in a read-only note", () => {
+    const createNote = vi.fn();
+    const { editor } = build("[Old](oleafly://note/gone)\n", { createNote });
+    editor.setEditable(false);
+    click(editor);
+    expect(createNote).not.toHaveBeenCalled();
+  });
+
+  it("offers to create a note from a broken link only while the note can be edited", async () => {
+    const { editor } = build("[Old](oleafly://note/gone)\n", { createNote: vi.fn() });
+    expect(chips(editor)[0].dataset.tooltip).toBe(enNotes.links.missingNoteCreate);
+    editor.setEditable(false);
+    await vi.waitFor(() => expect(chips(editor)[0].dataset.tooltip).toBe(enNotes.links.missingNote));
+    editor.setEditable(true);
+    await vi.waitFor(() => expect(chips(editor)[0].dataset.tooltip).toBe(enNotes.links.missingNoteCreate));
+  });
+
+  it("shows the plain missing-note text in a note that opens read-only", async () => {
+    const element = document.createElement("div");
+    document.body.append(element);
+    const editor = new Editor({
+      element,
+      editable: false,
+      extensions: [...createWysiwygExtensions(), ...noteLinkExtensions({ getNotes: () => NOTES, getProjects: () => PROJECTS, onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote: vi.fn() })],
+      content: parseMarkdownBody("[Old](oleafly://note/gone)\n").doc,
+    });
+    editors.push(editor);
+    await vi.waitFor(() => expect(chips(editor)[0].dataset.tooltip).toBe(enNotes.links.missingNote));
+  });
+
+  it("creates the linked note through the data layer and reads its link id", async () => {
+    const create = vi.fn(async () => "lib-7");
+    const load = vi.fn(async () => ({ text: "---\nkind: note\nid: abc-123\ntitle: Plan\n---\n" }));
+    await expect(linkedNoteCreator(create, load)("Plan")).resolves.toEqual({ noteId: "abc-123", projectId: "lib-7", title: "Plan" });
+    expect(create).toHaveBeenCalledWith("Plan");
+    expect(load).toHaveBeenCalledWith("lib-7");
+    const failing = vi.fn(async () => {
+      throw new Error("disk full");
+    });
+    await expect(linkedNoteCreator(failing, load)("Plan")).resolves.toBeNull();
+  });
+
   it("ignores other buttons, other links, selections and clicks outside links", () => {
     const { editor, options } = build("[Masking report](oleafly://note/n-1) and [web](https://example.org)\n");
     expect(click(editor, { button: 1 }).defaultPrevented).toBe(false);
@@ -242,6 +342,17 @@ describe("candidates", () => {
     ]);
     expect(linkCandidates(NOTES, PROJECTS, " ", "lib-1").map((item) => item.id)).toEqual(["n-2", "n-3", "ssl", "thesis"]);
     expect(linkCandidates(NOTES, PROJECTS, "zzz")).toEqual([]);
+  });
+
+  it("matches accented titles whether the title or the query is composed or decomposed", () => {
+    const decomposed = "E\u0301cole notes";
+    const notes: LinkableNote[] = [{ noteId: "n-e", projectId: "lib-e", title: decomposed, aliases: ["Cafe\u0301 plan"] }];
+    expect(linkCandidates(notes, [], "\u00c9c").map((item) => item.id)).toEqual(["n-e"]);
+    expect(linkCandidates(notes, [], "e\u0301co").map((item) => item.id)).toEqual(["n-e"]);
+    const [alias] = linkCandidates(notes, [], "caf\u00e9");
+    expect(alias.kind === "note" ? alias.alias : null).toBe("Cafe\u0301 plan");
+    expect(headingTarget(notes, "\u00e9cole notes")?.noteId).toBe("n-e");
+    expect(createCandidate({ getNotes: () => notes, getProjects: () => [], onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote: vi.fn() }, parseLinkQuery("\u00c9cole notes"), false)).toBeNull();
   });
 
   it("limits each group", () => {
@@ -306,6 +417,18 @@ describe("typing [[", () => {
     typeText(editor, "[[");
     expect(press(editor, "Enter")).toBe(true);
     expect(markdown(editor)).toBe("A[n-9](oleafly://note/n-9) ");
+  });
+
+  it("works the list out once per editor state, and again when the notes change", () => {
+    let notes = NOTES;
+    const getNotes = vi.fn(() => notes);
+    const { editor } = build("A\n", { getNotes });
+    cursorAtEnd(editor);
+    typeText(editor, " [[mask");
+    const first = noteLinkSuggestion(editor.state);
+    expect(noteLinkSuggestion(editor.state)).toBe(first);
+    notes = NOTES.slice(0, 1);
+    expect(noteLinkSuggestion(editor.state)?.items.filter((item) => item.kind === "note")).toHaveLength(1);
   });
 
   it("closes with Escape until the trigger is typed again", () => {

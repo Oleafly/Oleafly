@@ -159,3 +159,51 @@ export function lineInsideFence(
 ): boolean {
   return fences.some((fence) => fence.from < lineTo && fence.to >= lineFrom);
 }
+
+export interface FencedLine {
+  text: string;
+  from: number;
+  fenced: boolean;
+}
+
+export function fencedLines(source: string): FencedLine[] {
+  const fences = scanFences(source);
+  const lines: FencedLine[] = [];
+  let fence = 0;
+  let lineFrom = 0;
+  while (true) {
+    const lineBreak = source.indexOf("\n", lineFrom);
+    const lineTo = lineBreak < 0 ? source.length : lineBreak;
+    while (fence < fences.length && fences[fence].to < lineFrom) fence++;
+    lines.push({
+      text: source.slice(lineFrom, lineTo).replace(/\r$/u, ""),
+      from: lineFrom,
+      fenced: fence < fences.length && fences[fence].from < lineTo,
+    });
+    if (lineBreak < 0) return lines;
+    lineFrom = lineBreak + 1;
+  }
+}
+
+export function backtickRunEnd(text: ArrayLike<string>, start: number, max = text.length): number {
+  let end = start;
+  while (end < max && text[end] === "`") end++;
+  return end;
+}
+
+export function codeSpanEnd(text: ArrayLike<string>, start: number, max = text.length): number | null {
+  const open = backtickRunEnd(text, start, max);
+  const run = open - start;
+  if (run === 0) return null;
+  let cursor = open;
+  while (cursor < max) {
+    if (text[cursor] !== "`") {
+      cursor++;
+      continue;
+    }
+    const close = backtickRunEnd(text, cursor, max);
+    if (close - cursor === run) return close;
+    cursor = close;
+  }
+  return null;
+}

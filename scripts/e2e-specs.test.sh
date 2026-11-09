@@ -28,19 +28,35 @@ check "a browser-harness spec does not" no "$(peer e2e/tests/24-pdf-selection-br
 check "a spec merely named peer does not" no "$(peer e2e/tests/peer.spec.ts)"
 check "a peer helper file is not a spec" no "$(peer e2e/tests/109-live-collaboration-peer.ts)"
 
-check "ordinary specs turn live collaboration off so a peer spec never leaks it" \
-  '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"0","oleafly.preview.detached.*":null}' \
+notes() {
+  local spec="$1"
+  if e2e_needs_notes "$spec"; then echo yes; else echo no; fi
+}
+
+check "a packaged notes spec needs Notes" yes "$(notes e2e/tests/123-notes-artifact-runtime.spec.ts)"
+check "a notes spec with a line filter needs it too" yes "$(notes e2e/tests/123-notes-artifact-runtime.spec.ts:42)"
+check "an ordinary spec does not need Notes" no "$(notes e2e/tests/21-library.spec.ts)"
+check "a peer spec does not need Notes" no "$(notes e2e/tests/109-live-collaboration-peer.spec.ts)"
+check "a notes helper file is not a spec" no "$(notes e2e/tests/123-notes-artifact-runtime.ts)"
+
+check "ordinary specs turn live collaboration and Notes off so neither leaks between specs" \
+  '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"0","oleafly.notes":"0","oleafly.preview.detached.*":null}' \
   "$(e2e_launch_seed_for e2e/tests/21-library.spec.ts)"
-check "a run without a spec keeps live collaboration off" \
-  '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"0","oleafly.preview.detached.*":null}' \
+check "a run without a spec keeps live collaboration and Notes off" \
+  '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"0","oleafly.notes":"0","oleafly.preview.detached.*":null}' \
   "$(e2e_launch_seed_for "")"
 
-seed="$(e2e_launch_seed_for e2e/tests/109-live-collaboration-peer.spec.ts)"
-parsed="$(SEED="$seed" node -e '
-  const seed = JSON.parse(process.env.SEED);
-  process.stdout.write([seed["oleafly.liveCollaboration"], seed["oleafly.dictionary.locale"], seed["oleafly.harper"], String(seed["oleafly.preview.detached.*"])].join(","));
-' 2>&1 || true)"
-check "a peer spec turns live collaboration on at launch and keeps the rest" "1,en_US,1,null" "$parsed"
+launch_values() {
+  SEED="$(e2e_launch_seed_for "$1")" node -e '
+    const seed = JSON.parse(process.env.SEED);
+    process.stdout.write([seed["oleafly.liveCollaboration"], seed["oleafly.notes"], seed["oleafly.dictionary.locale"], seed["oleafly.harper"], String(seed["oleafly.preview.detached.*"])].join(","));
+  ' 2>&1 || true
+}
+
+check "a peer spec turns live collaboration on at launch and keeps the rest" "1,0,en_US,1,null" \
+  "$(launch_values e2e/tests/109-live-collaboration-peer.spec.ts)"
+check "a notes spec turns Notes on at launch and keeps the rest" "0,1,en_US,1,null" \
+  "$(launch_values e2e/tests/123-notes-artifact-runtime.spec.ts)"
 
 if ((failures > 0)); then
   echo "$failures e2e spec selection check(s) failed" >&2

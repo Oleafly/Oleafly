@@ -34,12 +34,13 @@ export interface SuggestPluginConfig<R extends SuggestRange> {
   key: PluginKey<SuggestState<R>>;
   menuId: string;
   spec: object;
-  decorator: () => BlockDecorator;
+  decorator?: () => BlockDecorator;
   trigger: (state: EditorState) => Omit<R, "index"> | null;
   options: (state: EditorState) => SuggestOptions | null;
   handleKeyDown: (view: EditorView, event: KeyboardEvent) => boolean;
-  click: (view: EditorView, event: MouseEvent) => boolean;
+  click?: (view: EditorView, event: MouseEvent) => boolean;
   subscribe?: (listener: () => void) => () => void;
+  redecorates?: (view: EditorView) => boolean;
 }
 
 export interface SuggestKeys {
@@ -77,7 +78,8 @@ export function suggestionKey(event: KeyboardEvent, keys: SuggestKeys | null): b
   return chosen;
 }
 
-function buildDecorations(doc: ProseMirrorNode, decorate: BlockDecorator): DecorationSet {
+function buildDecorations(doc: ProseMirrorNode, decorate: BlockDecorator | null): DecorationSet {
+  if (!decorate) return DecorationSet.empty;
   const found: Decoration[] = [];
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
@@ -89,19 +91,22 @@ function buildDecorations(doc: ProseMirrorNode, decorate: BlockDecorator): Decor
 
 export function suggestPlugin<R extends SuggestRange>(config: SuggestPluginConfig<R>): Plugin<SuggestState<R>> {
   const { key } = config;
+  const decorator = () => config.decorator?.() ?? null;
   return new Plugin<SuggestState<R>>({
     ...config.spec,
     key,
     state: {
-      init: (_config, state) => ({ decorations: buildDecorations(state.doc, config.decorator()), suggest: null, dismissed: null }),
+      init: (_config, state) => ({ decorations: buildDecorations(state.doc, decorator()), suggest: null, dismissed: null }),
       apply: (tr, previous, _old, state) => {
         const meta = tr.getMeta(key) as SuggestMeta | undefined;
         if (!meta && !tr.docChanged && !tr.selectionSet) return previous;
         let decorations = previous.decorations;
-        if (meta?.refresh) decorations = buildDecorations(tr.doc, config.decorator());
+        if (meta?.refresh) decorations = buildDecorations(tr.doc, decorator());
         else if (tr.docChanged) {
-          const decorate = config.decorator();
-          decorations = redecorateTextblocks(previous.decorations, tr, decorate) ?? buildDecorations(tr.doc, decorate);
+          const decorate = decorator();
+          decorations = decorate
+            ? (redecorateTextblocks(previous.decorations, tr, decorate) ?? buildDecorations(tr.doc, decorate))
+            : DecorationSet.empty;
         }
         const trigger = config.trigger(state);
         const mapped = previous.dismissed === null ? null : tr.mapping.map(previous.dismissed);
@@ -115,9 +120,7 @@ export function suggestPlugin<R extends SuggestRange>(config: SuggestPluginConfi
     props: {
       decorations: (state) => key.getState(state)?.decorations ?? DecorationSet.empty,
       handleKeyDown: config.handleKeyDown,
-      handleDOMEvents: {
-        click: config.click,
-      },
+      handleDOMEvents: config.click ? { click: config.click } : {},
       attributes: (state): Record<string, string> => {
         const options = config.options(state);
         if (!options) return {};
@@ -128,10 +131,16 @@ export function suggestPlugin<R extends SuggestRange>(config: SuggestPluginConfi
     },
     view: (view) => {
       let live = true;
-      const stop = config.subscribe?.(() => {
+      const refresh = () => {
         if (live) sendSuggestMeta(view, key, { refresh: true });
-      });
+      };
+      const refreshIfStale = (current: EditorView) => {
+        if (config.redecorates?.(current)) queueMicrotask(refresh);
+      };
+      const stop = config.subscribe?.(refresh);
+      refreshIfStale(view);
       return {
+        update: refreshIfStale,
         destroy: () => {
           live = false;
           stop?.();

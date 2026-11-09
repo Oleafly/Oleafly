@@ -45,6 +45,38 @@ describe("a project's references", () => {
     expect(tauri.readFileContent.mock.calls.map((call) => call[1])).toEqual(["refs/main.bib", "extra.BIB"]);
   });
 
+  it("reads Hayagriva YAML files too, skips other YAML and keeps the first entry for a key", async () => {
+    const files: Record<string, string> = {
+      "refs.bib": "@article{shared, title = {From BibTeX}}",
+      "refs.yml": [
+        "doe2023:",
+        "  type: article",
+        "  title: Typst Bibliographies",
+        "  author: [Doe, Jane, Roe, Rick]",
+        "  date: 2023-05",
+        "shared:",
+        "  type: misc",
+        "  title: From YAML",
+        "knuth:",
+        "  type: book",
+        "  title: The Art of Computer Programming",
+        "  author: Knuth, Donald",
+        "",
+      ].join("\n"),
+      "more/extra.YAML": "solo: {type: web, title: Only a title}\n",
+      ".github/workflows/ci.yml": "name: CI\non:\n  push:\n    branches: [main]\n",
+      "data.yaml": "settings:\n  theme: dark\n",
+    };
+    tauri.listFiles.mockResolvedValue(Object.keys(files).map((path) => ({ path, is_dir: false })));
+    tauri.readFileContent.mockImplementation(async (_project: string, path: string) => files[path] ?? "");
+    const found = await projectCitations("typst-paper");
+    expect(found.map((citation) => citation.key)).toEqual(["shared", "doe2023", "knuth", "solo"]);
+    expect(found.find((citation) => citation.key === "shared")?.label).toBe("From BibTeX");
+    expect(found.find((citation) => citation.key === "knuth")?.label).toBe("Knuth, The Art of Computer Programming");
+    expect(found.find((citation) => citation.key === "doe2023")?.label).toMatch(/^Doe.* 2023, Typst Bibliographies$/u);
+    expect(found.find((citation) => citation.key === "solo")?.label).toBe("Only a title");
+  });
+
   it("skips a file it can't read", async () => {
     tauri.listFiles.mockResolvedValue([
       { path: "a.bib", is_dir: false },

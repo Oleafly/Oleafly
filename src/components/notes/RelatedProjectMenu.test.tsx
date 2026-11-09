@@ -179,7 +179,7 @@ describe("RelatedProjectMenu", () => {
     await user.click(within(openMenu("Vision")).getByRole("menuitemradio", { name: "Speech" }));
     await waitFor(() => expect(mocks.logError).toHaveBeenCalledExactlyOnceWith("set the note's project", failure));
     expect(useToastStore.getState().toasts.map((toast) => toast.message)).toContain(
-      enNotes.failures.moveNote.replace("{{name}}", "Masking ablation"),
+      enNotes.failures.linkNote.replace("{{name}}", "Masking ablation"),
     );
   });
 

@@ -1,3 +1,4 @@
+import { parseDelimited } from "@oleafly/conversion-registry/table";
 import { dataUrlBytes, dataUrlText, type NoteFile, splitBlockOptions } from "./note-blocks";
 import { notePath } from "./note-path";
 
@@ -38,9 +39,6 @@ export const TABLE_MAX_COLUMNS = 500;
 export const TABLE_MAX_BYTES = 6 * 1024 * 1024;
 export const TABLE_OPTIONS: ReadonlySet<string> = new Set(["path", "sheet", "thousands"]);
 
-const LINE_FEED = 10;
-const CARRIAGE_RETURN = 13;
-const QUOTE = '"';
 const YES = /^(?:yes|true|on|1)$/iu;
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/iu;
 const GROUPED = /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?(?:e[+-]?\d+)?$/iu;
@@ -49,67 +47,6 @@ const TRUTHY = /^(?:true|yes)$/iu;
 const ISO_DATE =
   /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}:?\d{2})?)?$/u;
 const SEARCH_SEPARATOR = "\u0000";
-
-export function parseDelimited(text: string, delimiter: string, limit = Number.POSITIVE_INFINITY): string[][] {
-  const rows: string[][] = [];
-  const separator = delimiter.charCodeAt(0);
-  const end = text.length;
-  let row: string[] = [];
-  let field = "";
-  let quoted = false;
-  let index = text.charCodeAt(0) === 0xfeff ? 1 : 0;
-  const finishRow = () => {
-    row.push(field);
-    if (row.length > 1 || field !== "" || quoted) rows.push(row);
-    row = [];
-    field = "";
-    quoted = false;
-  };
-  while (index < end && rows.length < limit) {
-    if (text[index] === QUOTE && field === "" && !quoted) {
-      quoted = true;
-      index += 1;
-      while (index < end) {
-        const close = text.indexOf(QUOTE, index);
-        if (close === -1) {
-          field += text.slice(index);
-          index = end;
-          break;
-        }
-        field += text.slice(index, close);
-        if (text[close + 1] === QUOTE) {
-          field += QUOTE;
-          index = close + 2;
-          continue;
-        }
-        index = close + 1;
-        break;
-      }
-      continue;
-    }
-    let stop = index;
-    while (stop < end) {
-      const code = text.charCodeAt(stop);
-      if (code === separator || code === LINE_FEED || code === CARRIAGE_RETURN) break;
-      stop += 1;
-    }
-    field += text.slice(index, stop);
-    index = stop;
-    if (index >= end) break;
-    const code = text.charCodeAt(index);
-    if (code === separator) {
-      row.push(field);
-      field = "";
-      quoted = false;
-      index += 1;
-      continue;
-    }
-    finishRow();
-    index += code === CARRIAGE_RETURN && text.charCodeAt(index + 1) === LINE_FEED ? 2 : 1;
-  }
-  if (rows.length < limit && (row.length > 0 || field !== "" || quoted)) finishRow();
-  return rows;
-}
 
 function firstLine(text: string): string {
   for (const line of text.split(/\r?\n|\r/u)) {
@@ -305,7 +242,8 @@ export async function loadTableFile(
   }
   const text = dataUrlText(url, TABLE_MAX_BYTES);
   if (text === null) throw new TableFileError("unreadable");
-  return buildTable(parseDelimited(text, fileDelimiter(source.format, text), TABLE_MAX_ROWS + 2), source.thousands);
+  const rows = parseDelimited(text, { delimiter: fileDelimiter(source.format, text), limit: TABLE_MAX_ROWS + 2, trim: false });
+  return buildTable(rows, source.thousands);
 }
 
 export function columnKeys(table: TableData, column: number): SortKey[] {
@@ -394,8 +332,4 @@ export function summarizeColumn(
     }
   }
   return count === 0 ? null : { count, mean: sum / count, min, max, minText, maxText };
-}
-
-export function csvField(value: string): string {
-  return /[",\r\n]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }

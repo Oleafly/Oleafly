@@ -1,32 +1,20 @@
+import { fencedLines } from "@/lib/code-fences";
 import { noteBody } from "./note-file";
 
 export const PREVIEW_LIMIT = 3000;
 
-const FENCE = /^ {0,3}(`{3,}|~{3,})/u;
 const HEADING_ONE = /^ {0,3}#[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/u;
-
-function closes(line: string, fence: string): boolean {
-  const marker = FENCE.exec(line)?.[1];
-  return marker !== undefined && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker;
-}
 
 function blocksOf(body: string): string[] {
   const blocks: string[] = [];
   let current: string[] = [];
-  let fence: string | null = null;
-  for (const line of body.split(/\r?\n/u)) {
-    if (fence !== null) {
-      current.push(line);
-      if (closes(line, fence)) fence = null;
-      continue;
-    }
-    if (line.trim() === "") {
+  for (const line of fencedLines(body)) {
+    if (!line.fenced && line.text.trim() === "") {
       if (current.length > 0) blocks.push(current.join("\n"));
       current = [];
       continue;
     }
-    fence = FENCE.exec(line)?.[1] ?? null;
-    current.push(line);
+    current.push(line.text);
   }
   if (current.length > 0) blocks.push(current.join("\n"));
   return blocks;

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Check, MoveHorizontal, RectangleHorizontal, RectangleVertical, RotateCcw, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { SettingsOptionCards } from "@/components/settings/SettingsOptionCards";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
+import { untrustRemoteImageHost, useTrustedRemoteImageHosts } from "@/components/notes/note-remote-images";
 import {
   NOTE_WIDTHS,
   NOTES_APPEARANCE_DEFAULTS,
@@ -41,6 +43,28 @@ import {
 } from "@/lib/notes-appearance";
 import { cn } from "@/lib/utils";
 import { ACCENTS, EDITOR_THEMES, useSettingsStore } from "@/store/settings";
+
+const SETTING_CONTROL = 'button:not([disabled]), input:not([disabled]), [role="combobox"]';
+const NEAREST_ROW_DEPTH = 6;
+
+function controlsIn(scope: Element | null, skip?: Element): HTMLElement[] {
+  return [...(scope?.querySelectorAll<HTMLElement>(SETTING_CONTROL) ?? [])].filter((control) => control !== skip);
+}
+
+function focusFirstControl(controls: readonly HTMLElement[]): boolean {
+  const target = controls.find((control) => control.getAttribute("aria-pressed") === "true") ?? controls[0];
+  target?.focus();
+  return target !== undefined;
+}
+
+function focusNearestControl(from: HTMLElement, reset: () => void): void {
+  const scopes: Element[] = [];
+  for (let node = from.parentElement; node && scopes.length < NEAREST_ROW_DEPTH; node = node.parentElement) scopes.push(node);
+  flushSync(reset);
+  for (const scope of scopes) {
+    if (scope.isConnected && focusFirstControl(controlsIn(scope, from))) return;
+  }
+}
 
 function useNotesSetting<K extends NotesAppearanceKey>(key: K): readonly [NotesAppearance[K], (value: NotesAppearance[K]) => void] {
   const value = useSettingsStore((state) => state[key]) as NotesAppearance[K];
@@ -73,10 +97,12 @@ function ResetSetting({
         className="size-6 shrink-0 px-0"
         aria-label={label}
         data-testid={`settings-notes-reset-${settingKey}`}
-        onClick={() => {
-          for (const key of [settingKey, ...alsoReset]) setAppearance(key, NOTES_APPEARANCE_DEFAULTS[key]);
-          onReset?.();
-        }}
+        onClick={(event) =>
+          focusNearestControl(event.currentTarget, () => {
+            for (const key of [settingKey, ...alsoReset]) setAppearance(key, NOTES_APPEARANCE_DEFAULTS[key]);
+            onReset?.();
+          })
+        }
       >
         <RotateCcw aria-hidden />
       </Button>
@@ -426,7 +452,7 @@ function AccentRow() {
         data-testid={testId}
         onClick={onPick}
         className={cn(
-          "flex size-7 items-center justify-center rounded-full border transition-transform hover:scale-110 focus-visible:scale-110 motion-reduce:transition-none",
+          "flex size-7 items-center justify-center rounded-full border transition-transform hover:scale-110 focus-visible:border-2 focus-visible:border-ring motion-reduce:transition-none",
           active ? "border-foreground" : "border-border",
         )}
         style={{ backgroundColor: color }}
@@ -550,12 +576,60 @@ function CalloutCards() {
   );
 }
 
+function RemoteImageHosts() {
+  const { t } = useTranslation(["common", "settings"]);
+  const hosts = useTrustedRemoteImageHosts();
+  const listRef = useRef<HTMLDivElement>(null);
+  const emptyRef = useRef<HTMLParagraphElement>(null);
+  const remove = (host: string, button: HTMLElement) => {
+    const buttons = [...(listRef.current?.querySelectorAll<HTMLElement>("button") ?? [])];
+    const index = buttons.indexOf(button);
+    const neighbour = buttons[index + 1] ?? buttons[index - 1];
+    flushSync(() => untrustRemoteImageHost(host));
+    (neighbour?.isConnected ? neighbour : emptyRef.current)?.focus();
+  };
+  if (hosts.length === 0) {
+    return (
+      <p ref={emptyRef} tabIndex={-1} className="text-xs text-muted-foreground" data-testid="settings-notes-remote-images-empty">
+        {t(($) => $.settings.appearance.notes.remoteImages.empty)}
+      </p>
+    );
+  }
+  return (
+    <div ref={listRef} className="space-y-2" data-testid="settings-notes-remote-images">
+      <p className="text-xs text-muted-foreground">{t(($) => $.settings.appearance.notes.remoteImages.description)}</p>
+      {hosts.map((host) => (
+        <SettingsRow
+          key={host}
+          label={host}
+          control={
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              aria-label={t(($) => $.settings.appearance.notes.remoteImages.remove, { host })}
+              onClick={(event) => remove(host, event.currentTarget)}
+            >
+              {t(($) => $.common.actions.remove)}
+            </Button>
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 export function NotesAppearanceTab() {
   const { t } = useTranslation(["core", "settings"]);
   const changed = useSettingsStore((state) => notesAppearanceDiffersFromDefaults(state));
   const resetNotesAppearance = useSettingsStore((state) => state.resetNotesAppearance);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const resetAll = () => {
+    flushSync(resetNotesAppearance);
+    focusFirstControl(controlsIn(rootRef.current?.querySelector("section") ?? null));
+  };
   return (
-    <div className="space-y-3" data-testid="settings-appearance-notes">
+    <div ref={rootRef} className="space-y-3" data-testid="settings-appearance-notes">
       <NotesAppearancePreview
         actions={
           changed ? (
@@ -564,7 +638,7 @@ export function NotesAppearanceTab() {
               size="xs"
               variant="ghost"
               data-testid="settings-notes-reset-all"
-              onClick={resetNotesAppearance}
+              onClick={resetAll}
             >
               <RotateCcw aria-hidden />
               {t(($) => $.settings.appearance.notes.resetAll)}
@@ -661,6 +735,10 @@ export function NotesAppearanceTab() {
         <AccentRow />
         <HighlightRow />
         <CalloutCards />
+      </Group>
+
+      <Group title={t(($) => $.settings.appearance.notes.remoteImages.title)}>
+        <RemoteImageHosts />
       </Group>
     </div>
   );

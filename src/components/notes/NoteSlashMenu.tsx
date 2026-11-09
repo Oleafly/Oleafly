@@ -1,10 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
-import { type MenuSize, menuPlacement, useEditorSuggestion } from "./NoteLinkMenu";
 import {
   chooseSlash,
   moveSlash,
@@ -16,6 +12,7 @@ import {
   slashState,
   visibleSlashItems,
 } from "./note-slash";
+import { type MenuSize, SuggestionListbox, SuggestionOption, useEditorSuggestion } from "./SuggestionListbox";
 
 const SLASH_MENU: MenuSize = { width: 256, height: 320 };
 
@@ -37,27 +34,22 @@ function groupsOf(items: readonly SlashItem[]): { group: SlashGroup; items: { it
 export function NoteSlashMenu({ editor }: Readonly<{ editor: Editor }>) {
   const { t } = useTranslation(["notes"]);
   const slash = useEditorSuggestion(editor, activeSlash);
-  const items = slash ? visibleSlashItems(editor, slash) : [];
-  const index = slash ? Math.min(slash.index, Math.max(0, items.length - 1)) : 0;
-  const menuId = slashMenuId(editor.state);
-  const activeId = items.length > 0 ? slashOptionId(menuId, index) : null;
-
-  useEffect(() => {
-    if (activeId) document.getElementById(activeId)?.scrollIntoView?.({ block: "nearest" });
-  }, [activeId]);
-
   if (!slash) return null;
+  const items = visibleSlashItems(editor);
+  const index = Math.min(slash.index, Math.max(0, items.length - 1));
+  const menuId = slashMenuId(editor.state);
   const groupLabel = (group: SlashGroup) =>
     group === "basic" ? t(($) => $.notes.blocks.slash.basic) : t(($) => $.notes.blocks.insert[group]);
-  return createPortal(
-    <div
+  return (
+    <SuggestionListbox
+      editor={editor}
       id={menuId}
-      role="listbox"
-      aria-label={t(($) => $.notes.blocks.slash.menu)}
+      label={t(($) => $.notes.blocks.slash.menu)}
       data-note-slash
-      style={menuPlacement(editor, slash.from, SLASH_MENU)}
-      className="fixed z-50 max-h-80 w-64 overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
-      onMouseDown={(event) => event.preventDefault()}
+      from={slash.from}
+      size={SLASH_MENU}
+      activeId={items.length > 0 ? slashOptionId(menuId, index) : null}
+      className="max-h-80 w-64"
     >
       {items.length === 0 && (
         <p className="px-2.5 py-1.5 text-xs text-muted-foreground">{t(($) => $.notes.blocks.slash.noMatches)}</p>
@@ -67,34 +59,21 @@ export function NoteSlashMenu({ editor }: Readonly<{ editor: Editor }>) {
           <p aria-hidden className="px-2.5 pb-1 pt-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             {groupLabel(group)}
           </p>
-          {members.map(({ item, position }) => {
-            const selected = position === index;
-            return (
-              <button
-                key={item.id}
-                id={slashOptionId(menuId, position)}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                tabIndex={-1}
-                data-slash-item={item.id}
-                onMouseEnter={() => {
-                  if (!selected) moveSlash(editor.view, position);
-                }}
-                onClick={() => chooseSlash(editor, position)}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors motion-reduce:transition-none",
-                  selected && "bg-accent text-accent-foreground",
-                )}
-              >
-                <item.icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">{item.label}</span>
-              </button>
-            );
-          })}
+          {members.map(({ item, position }) => (
+            <SuggestionOption
+              key={item.id}
+              id={slashOptionId(menuId, position)}
+              selected={position === index}
+              data-slash-item={item.id}
+              onHighlight={() => moveSlash(editor.view, position)}
+              onChoose={() => chooseSlash(editor, position)}
+            >
+              <item.icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate text-xs font-medium">{item.label}</span>
+            </SuggestionOption>
+          ))}
         </fieldset>
       ))}
-    </div>,
-    document.body,
+    </SuggestionListbox>
   );
 }

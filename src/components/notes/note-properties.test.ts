@@ -2,9 +2,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   canAddProperty,
+  conversionLoss,
   convertValue,
   emptyValue,
-  hasProperties,
   inferType,
   mergeFrontMatter,
   readProperties,
@@ -54,8 +54,16 @@ describe("reading properties", () => {
       { key: "matrix", type: "text", value: "[[1,2]]", readOnly: true },
       { key: "empty", type: "text", value: null, readOnly: false },
     ]);
-    expect(hasProperties(FM)).toBe(true);
-    expect(hasProperties("---\ntitle: x\n---")).toBe(false);
+    expect(readProperties("---\ntitle: x\n---")).toEqual([]);
+  });
+
+  it("reads a quoted list item that holds a comma as one value, as the tag index does", () => {
+    expect(readProperties('---\ntags: ["a, b", c]\n---')).toEqual([{ key: "tags", type: "list", value: ["a, b", "c"], readOnly: false }]);
+  });
+
+  it("reads only a whole front matter block, closed by --- or ...", () => {
+    expect(readProperties("---\nstatus: x\n...")).toEqual([{ key: "status", type: "text", value: "x", readOnly: false }]);
+    expect(readProperties("---\nstatus: x\n---\nbody")).toEqual([]);
   });
 
   it("treats tags and aliases as lists even when written as text", () => {
@@ -123,6 +131,27 @@ describe("types and values", () => {
     expect(emptyValue("list")).toEqual([]);
     expect(emptyValue("checkbox")).toBe(false);
     expect(emptyValue("text")).toBeNull();
+  });
+});
+
+describe("lossy type changes", () => {
+  it("flags dropped list items and values the new type can't hold", () => {
+    expect(conversionLoss(["a", "b"], "text")).toBe("items");
+    expect(conversionLoss(["a"], "text")).toBeNull();
+    expect(conversionLoss(["x"], "number")).toBe("value");
+    expect(conversionLoss([], "number")).toBeNull();
+    expect(conversionLoss("a, b", "list")).toBeNull();
+    expect(conversionLoss("hello", "number")).toBe("value");
+    expect(conversionLoss("2026-01-01", "number")).toBe("value");
+    expect(conversionLoss("5", "number")).toBeNull();
+    expect(conversionLoss("hello", "date")).toBe("value");
+    expect(conversionLoss("hello", "checkbox")).toBe("value");
+    expect(conversionLoss("yes", "checkbox")).toBeNull();
+    expect(conversionLoss(5, "checkbox")).toBe("value");
+    expect(conversionLoss(1, "checkbox")).toBeNull();
+    expect(conversionLoss(true, "text")).toBeNull();
+    expect(conversionLoss(null, "number")).toBeNull();
+    expect(conversionLoss("", "date")).toBeNull();
   });
 });
 

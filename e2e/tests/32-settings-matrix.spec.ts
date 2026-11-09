@@ -194,7 +194,7 @@ test("open-projects-in controls new project landing layouts", async ({ tauriPage
     await tauriPage.click('[aria-label="Close settings"]');
   };
   const createNextProject = async (name: string) => {
-    await tauriPage.click('[title="Back to library"]');
+    await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
     await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
     await createBlankProject(tauriPage, `E2E Default ${name} ${run}`);
   };
@@ -228,7 +228,7 @@ test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage 
     })()`,
   );
   await tauriPage.click('[aria-label="Close settings"]');
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
   await createBlankProject(tauriPage, `E2E Sidebar Hidden ${run}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -246,7 +246,7 @@ test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage 
     })()`,
   );
   await tauriPage.click('[aria-label="Close settings"]');
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
   await createBlankProject(tauriPage, `E2E Sidebar Visible ${run}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });

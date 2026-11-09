@@ -83,14 +83,14 @@ test.describe("Notes", () => {
     await open(page);
     const sidebar = page.locator("aside");
     await sidebar.getByRole("button", { name: "Filters" }).click();
-    await sidebar.getByRole("tab", { name: "Data" }).click();
+    await sidebar.getByRole("button", { name: "Data", exact: true }).click();
     await expect(sidebar.getByRole("button", { name: /Run 3, mask ratio 0.60/ })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: /Masking strategy report/ })).toHaveCount(0);
-    await sidebar.getByRole("tab", { name: "All" }).click();
-    await sidebar.getByRole("tab", { name: "You" }).click();
+    await sidebar.getByRole("button", { name: "All", exact: true }).click();
+    await sidebar.getByRole("button", { name: "You", exact: true }).click();
     await expect(sidebar.getByRole("button", { name: /Abstract draft/ })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: /Masking strategy report/ })).toHaveCount(0);
-    await sidebar.getByRole("tab", { name: "Anyone" }).click();
+    await sidebar.getByRole("button", { name: "Anyone", exact: true }).click();
     await sidebar.getByRole("combobox", { name: "Search notes and artifacts" }).fill("zzz");
     await expect(sidebar.getByText("Nothing matches these filters.")).toBeVisible();
   });
@@ -385,8 +385,8 @@ test.describe("Notes", () => {
     }, after);
     await page.getByRole("button", { name: "Accept", exact: true }).click();
     await expect(page.locator(".ProseMirror:visible")).toContainText("per patch");
-    await page.waitForTimeout(1200);
-    expect(await noteText(page, "masking")).toBe(after);
+    await expect(page.locator('[data-note-view="masking"] [data-note-save-status="saved"]')).toBeVisible();
+    await expect.poll(() => noteText(page, "masking")).toBe(after);
   });
 
   test("starts a new note", async ({ page }) => {
@@ -486,7 +486,7 @@ test.describe("Notes", () => {
     const sidebar = page.locator("aside");
     const toggle = sidebar.getByRole("button", { name: "Filters" });
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await expect(sidebar.getByRole("tab")).toHaveCount(0);
+    await expect(sidebar.getByRole("button", { name: "Figures", exact: true })).toHaveCount(0);
     const search = await sidebar.getByRole("combobox", { name: "Search notes and artifacts" }).boundingBox();
     const fold = await toggle.boundingBox();
     const aside = await sidebar.boundingBox();
@@ -495,8 +495,8 @@ test.describe("Notes", () => {
     expect(fold.y + fold.height).toBeGreaterThan(aside.y + aside.height - 8);
 
     await toggle.click();
-    await sidebar.getByRole("tab", { name: "Figures" }).click();
-    await sidebar.getByRole("tab", { name: "Agents" }).click();
+    await sidebar.getByRole("button", { name: "Figures", exact: true }).click();
+    await sidebar.getByRole("button", { name: "Agents", exact: true }).click();
     const count = page.getByTestId("notes-filters").locator("output");
     await expect(count).toHaveText("2");
     await expect(count).toHaveAttribute("aria-label", "2 filters on");
@@ -506,7 +506,7 @@ test.describe("Notes", () => {
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.fixtureState === "mounted", null, { timeout: 60_000 });
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await expect(sidebar.getByRole("tab", { name: "Figures" })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: "Figures", exact: true })).toBeVisible();
     await toggle.click();
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.fixtureState === "mounted", null, { timeout: 60_000 });
@@ -558,7 +558,7 @@ test.describe("Notes", () => {
     const row = sidebar.locator("[data-note-row]", { hasText: "Reading notes: masked autoencoders" });
     await row.hover();
     await row.getByRole("button", { name: "More" }).click();
-    await page.getByRole("menuitem", { name: "Project" }).click();
+    await page.getByRole("menuitem", { name: "Link to project" }).click();
     await page.getByRole("menuitem", { name: "Thesis" }).click();
     await expect(sidebar.locator("section", { has: page.getByRole("heading", { name: "Thesis" }) })).toContainText(
       "Reading notes: masked autoencoders",

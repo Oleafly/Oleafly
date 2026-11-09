@@ -72,6 +72,17 @@ describe("link targets in a note", () => {
     expect(linkTargets(text)).toEqual([]);
   });
 
+  it("keeps a backtick line inside a tilde fence, and reads four spaces of indent as text", () => {
+    const text = "~~~\n```\n[a](oleafly://note/hidden)\n~~~\n[b](oleafly://note/after)\n    ```\n[c](oleafly://note/shown)\n";
+    expect(linkTargets(text).map((mention) => mention.id)).toEqual(["after", "shown"]);
+    expect(noteHeadings("~~~\n```\n# Hidden\n~~~\n# Shown").map((heading) => heading.text)).toEqual(["Shown"]);
+  });
+
+  it("reads an unmatched backtick run as text, the way the Rust index does", () => {
+    expect(linkTargets("``a`b [x](oleafly://note/a) `c")).toEqual([]);
+    expect(linkTargets("``a [x](oleafly://note/b)").map((mention) => mention.id)).toEqual(["b"]);
+  });
+
   it("counts embeds and heading links as links to the note", () => {
     expect(linkTargets("![Method](oleafly://note/m1)\nSee [Setup](oleafly://note/m2#set-up).\n")).toEqual([
       { kind: "note", id: "m1", snippet: "Method" },

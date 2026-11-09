@@ -2,7 +2,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as XLSX from "xlsx";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { ROW_WINDOW_ITEM } from "@/hooks/use-row-window";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { BlockFileTooLargeError } from "./note-blocks";
@@ -11,7 +12,6 @@ import {
   ROW_REM,
   paintTable,
   paintTableStill,
-  rowWindow,
   STILL_COLUMNS,
   STILL_ROWS,
   TableView,
@@ -66,6 +66,7 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   document.body.replaceChildren();
   document.documentElement.style.fontSize = "";
 });
@@ -137,28 +138,50 @@ describe("TableView", () => {
     expect(screen.getByText(`Showing the first ${TABLE_MAX_ROWS.toLocaleString("en")} rows.`)).toBeInTheDocument();
   });
 
-  it("draws only the visible window of a long table", () => {
-    document.documentElement.style.fontSize = "20px";
-    const rowPx = 20 * ROW_REM;
+  it("draws only the visible window of a long table, measured from the rows on the page", () => {
+    const rowPx = 28;
+    const headPx = 30;
+    let scrollTop = 0;
+    const isScroller = (element: Element) => element.classList.contains("h-[24rem]");
+    vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function (this: Element) {
+      return isScroller(this) ? 384 : 0;
+    });
+    vi.spyOn(Element.prototype, "scrollTop", "get").mockImplementation(function (this: Element) {
+      return isScroller(this) ? scrollTop : 0;
+    });
+    vi.spyOn(Element.prototype, "scrollTop", "set").mockImplementation(function (this: Element, value: number) {
+      if (isScroller(this)) scrollTop = value;
+    });
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      if (this.hasAttribute(ROW_WINDOW_ITEM)) return new DOMRect(0, 0, 100, rowPx);
+      if (this.tagName === "TBODY") return new DOMRect(0, headPx - scrollTop, 100, 0);
+      return new DOMRect(0, 0, 100, 384);
+    });
     const lines = ["n,label", ...Array.from({ length: 1000 }, (_, index) => `${index},row ${index}`)];
     const { container } = render(<TableView table={tableOf(lines.join("\n"))} />);
     const rows = () => container.querySelectorAll("tbody tr[aria-rowindex]");
-    const window = Math.ceil(VIEW_REM / ROW_REM) + OVERSCAN * 2;
-    expect(rows()).toHaveLength(window);
+    const shown = Math.ceil(384 / rowPx) + OVERSCAN;
+    expect(rows()).toHaveLength(shown);
     expect(container.querySelector('[data-spacer="before"]')).toBeNull();
-    expect(container.querySelector('[data-spacer="after"]')).toHaveStyle({ height: `${(1000 - window) * rowPx}px` });
+    expect(container.querySelector('[data-spacer="after"]')).toHaveStyle({ height: `${(1000 - shown) * rowPx}px` });
     const scroller = container.querySelector("table")?.parentElement as HTMLElement;
     expect(scroller).toHaveClass("h-[24rem]");
-    scroller.scrollTop = 500 * rowPx;
+    scrollTop = headPx + 500 * rowPx;
     fireEvent.scroll(scroller);
     expect(rows()[0]).toHaveAttribute("aria-rowindex", String(500 - OVERSCAN + 2));
     expect(container.querySelector('[data-spacer="before"]')).toHaveStyle({ height: `${(500 - OVERSCAN) * rowPx}px` });
-    scroller.scrollTop = 1000 * rowPx;
+    scrollTop = headPx + 1000 * rowPx;
     fireEvent.scroll(scroller);
     expect(container.querySelector('[data-spacer="after"]')).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Sort by n" }));
-    expect(scroller.scrollTop).toBe(0);
+    expect(scrollTop).toBe(0);
     expect(rows()[0]).toHaveAttribute("aria-rowindex", "2");
+  });
+
+  it("draws a bounded first page of a long table before the rows are measured", () => {
+    const lines = ["n", ...Array.from({ length: 1000 }, (_, index) => String(index))];
+    const { container } = render(<TableView table={tableOf(lines.join("\n"))} />);
+    expect(container.querySelectorAll("tbody tr[aria-rowindex]")).toHaveLength(Math.ceil(VIEW_REM / ROW_REM) + OVERSCAN * 2);
   });
 
   it("does not virtualise a short table", () => {
@@ -166,15 +189,6 @@ describe("TableView", () => {
     const { container } = render(<TableView table={tableOf(lines.join("\n"))} />);
     expect(container.querySelectorAll("tbody tr[aria-rowindex]")).toHaveLength(VIRTUAL_AFTER);
     expect(container.querySelector("table")?.parentElement).toHaveClass("max-h-[24rem]");
-  });
-});
-
-describe("rowWindow", () => {
-  it("clamps the window to the rows", () => {
-    expect(rowWindow(1000, -50, 28)).toEqual({ start: 0, end: 30 });
-    expect(rowWindow(1000, 28 * 100, 28)).toEqual({ start: 92, end: 122 });
-    expect(rowWindow(10, 28 * 100, 28)).toEqual({ start: 9, end: 10 });
-    expect(rowWindow(0, 0, 28)).toEqual({ start: 0, end: 0 });
   });
 });
 

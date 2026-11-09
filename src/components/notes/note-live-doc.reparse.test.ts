@@ -139,4 +139,65 @@ describe("parseSharedNote with a previous parse", () => {
     const empty = parseSharedNote(schema, "");
     expect(parseSharedNote(schema, "Now text.", empty).doc.toJSON()).toEqual(parseSharedNote(schema, "Now text.").doc.toJSON());
   });
+
+  const LINKED = `# Sources
+
+Opening paragraph with a note[^1] and a [ref] link.
+
+<!-- reviewer: check the numbers -->
+
+Middle paragraph about results.
+
+Another paragraph near the end.
+
+[^1]: The footnote text.
+`;
+
+  it("reparses only the edited blocks of a note with a footnote and a comment", () => {
+    const previous = parseSharedNote(schema, LINKED);
+    const text = LINKED.replace("about results.", "about the results.");
+    const next = parseSharedNote(schema, text, previous);
+    expect(next.doc.child(0)).toBe(previous.doc.child(0));
+    expect(next.doc.child(1)).toBe(previous.doc.child(1));
+    expect(next.doc.child(next.doc.childCount - 1)).toBe(previous.doc.child(previous.doc.childCount - 1));
+    expect(shape(next)).toEqual(shape(parseSharedNote(schema, text)));
+  });
+
+  it("parses everything again in a note that defines a link label, even inside a list", () => {
+    for (const definition of ["[ref]: https://example.com\n", "- [ref]: https://example.com\n", "> [ref]: https://example.com\n"]) {
+      const defined = `${LINKED}\n${definition}`;
+      const previous = parseSharedNote(schema, defined);
+      const text = defined.replace("about results.", "about [REF] results.");
+      const next = parseSharedNote(schema, text, previous);
+      expect(next.doc.child(0), definition).not.toBe(previous.doc.child(0));
+      expect(shape(next)).toEqual(shape(parseSharedNote(schema, text)));
+    }
+  });
+
+  it("parses everything again when an edit leaves a comment open", () => {
+    const previous = parseSharedNote(schema, LINKED);
+    const text = LINKED.replace("about results.", "about results. <!-- open");
+    const next = parseSharedNote(schema, text, previous);
+    expect(next.doc.child(0)).not.toBe(previous.doc.child(0));
+    expect(shape(next)).toEqual(shape(parseSharedNote(schema, text)));
+  });
+
+  it("matches a full parse after random edits around footnotes, comments and link definitions", () => {
+    const pieces = ["<!--", "-->", "<!-- note -->", "\n<!--\n", "[^1]: more\n", "[ref]", "[x][ref]", "- [ref]: /other\n", "\n\n", "x", "[^2]", "`"];
+    for (let seed = 1; seed <= 12; seed += 1) {
+      const random = seeded(seed);
+      let text = LINKED;
+      let previous = parseSharedNote(schema, text);
+      for (let step = 0; step < 15; step += 1) {
+        const at = Math.floor(random() * (text.length + 1));
+        text =
+          random() < 0.3
+            ? text.slice(0, at) + text.slice(Math.min(text.length, at + 1 + Math.floor(random() * 8)))
+            : text.slice(0, at) + pieces[Math.floor(random() * pieces.length)] + text.slice(at);
+        const incremental = parseSharedNote(schema, text, previous);
+        expect(shape(incremental), `seed ${seed} step ${step}`).toEqual(shape(parseSharedNote(schema, text)));
+        previous = incremental;
+      }
+    }
+  }, 240_000);
 });

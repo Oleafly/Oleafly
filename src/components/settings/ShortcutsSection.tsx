@@ -164,8 +164,8 @@ function EditorKeyRows() {
     t(($) => $.settings.shortcuts.editorKeys.labels[id]);
 
   const conflictLabel = (candidate: string, current: EditorKeyId): string => {
-    const app = SHORTCUT_DEFINITIONS.find(({ id }) =>
-      sameEditorKey(appShortcutKey(appBindings[id]), candidate),
+    const app = SHORTCUT_DEFINITIONS.find(
+      ({ id, scope }) => scope !== "notes" && sameEditorKey(appShortcutKey(appBindings[id]), candidate),
     );
     if (app) return t(($) => $.settings.shortcuts.actions[app.id].label);
     const editor = EDITOR_KEY_DEFINITIONS.find(

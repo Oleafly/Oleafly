@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -12,8 +13,8 @@ export function OpeningIndicator() {
     return () => clearTimeout(timer);
   }, []);
   if (!shown) return null;
-  return (
-    <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center">
+  return createPortal(
+    <div data-opening-indicator className="pointer-events-none fixed inset-0 z-[130] grid place-items-center">
       <div
         role="status"
         aria-label={t(($) => $.common.state.loading)}
@@ -21,6 +22,7 @@ export function OpeningIndicator() {
       >
         <Spinner size="lg" aria-hidden />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

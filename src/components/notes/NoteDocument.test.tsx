@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { Editor } from "@tiptap/core";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode, RefObject } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
@@ -9,12 +9,14 @@ import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { NoteEditorBridge } from "./NoteAssistant";
 import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocument";
 import { NOTE_COLOR_HEX } from "./note-icons";
-import { flushOpenNotes } from "@/lib/open-note-editors";
-import { addPendingBatch, pendingBatches, resetPendingSuggestions } from "./note-pending-suggestions";
+import { flushOpenNotes, noteEditorBusy, noteHistoryAt } from "@/lib/open-note-editors";
+import { useShortcutStore } from "@/store/shortcuts";
+import { addPendingBatch, pendingBatches, resetPendingSuggestionsForTest } from "./note-pending-suggestions";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
 import { NOTE_WIDTH_KEY, saveNoteWidth } from "./note-prefs";
 import { type NotesData, NotesDataProvider } from "./notes-data";
+import { recordNoteWrite, resetNoteWritesForTest } from "./notes-service";
 import { type NoteColor, NoteConflictError, type NoteItem, type NoteSource } from "./types";
 
 const editors = vi.hoisted(() => ({ last: null as Editor | null }));
@@ -27,6 +29,12 @@ const assistant = vi.hoisted(() => ({
 
 const logs = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
 vi.mock("@/lib/log", () => logs);
+
+const toasts = vi.hoisted(() => ({ notifyError: vi.fn() }));
+vi.mock("@/lib/toast", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/toast")>()),
+  notifyError: toasts.notifyError,
+}));
 
 vi.mock("@tiptap/react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tiptap/react")>();
@@ -249,7 +257,7 @@ afterAll(() => {
   Reflect.deleteProperty(Element.prototype, "scrollIntoView");
 });
 
-afterEach(() => {
+afterEach(async () => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   editors.last = null;
@@ -259,8 +267,10 @@ afterEach(() => {
   assistant.bridge = null;
   assistant.quote.mockClear();
   cleanup();
+  await flushOpenNotes(10);
   localStorage.clear();
-  resetPendingSuggestions();
+  resetPendingSuggestionsForTest();
+  resetNoteWritesForTest();
 });
 
 describe("opening a note", () => {
@@ -617,6 +627,59 @@ describe("saving before the app quits", () => {
     await expect(flushing).resolves.toEqual([{ path: "Mask ratios", reason: "disk full" }]);
   });
 
+  it("tries a failed save again when the note closes", async () => {
+    const fake = fakeData();
+    fake.saveNote.mockRejectedValueOnce(new Error("disk full"));
+    const { editor, unmount, onStatusChange } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    expect(onStatusChange).toHaveBeenLastCalledWith("failed", expect.anything());
+    await act(async () => {
+      unmount();
+    });
+    await vi.waitFor(() => expect(fake.saveNote).toHaveBeenCalledTimes(2));
+    expect(savedText(fake)).toBe(TEXT.replace("trains", "really trains"));
+    await expect(flushOpenNotes()).resolves.toEqual([]);
+  });
+
+  it("names a closed note whose save keeps failing when the app quits", async () => {
+    const fake = fakeData();
+    fake.saveNote.mockRejectedValue(new Error("disk full"));
+    const { editor, unmount } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    await act(async () => {
+      unmount();
+    });
+    await vi.waitFor(() => expect(fake.saveNote).toHaveBeenCalledTimes(2));
+    await expect(flushOpenNotes()).resolves.toEqual([{ path: "Mask ratios", reason: "disk full" }]);
+    expect(fake.saveNote).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps both sides when a closed note's save meets a change on disk", async () => {
+    const fake = fakeData();
+    fake.saveNote.mockRejectedValueOnce(new NoteConflictError({ text: DISK, version: "v9" }));
+    const { editor, unmount } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await act(async () => {
+      unmount();
+    });
+    await vi.waitFor(() => expect(fake.saveNote).toHaveBeenCalledTimes(2));
+    expect(fake.saveNote.mock.calls[1][2]).toBe("v9");
+    expect(savedText(fake)).toBe(DISK.replace("trains", "really trains"));
+    await expect(flushOpenNotes()).resolves.toEqual([]);
+  });
+
+  it("does not write an untouched note when it closes", async () => {
+    const fake = fakeData({ text: OLD_TEXT });
+    const { unmount } = await openNote(fake);
+    await act(async () => {
+      unmount();
+    });
+    await expect(flushOpenNotes()).resolves.toEqual([]);
+    expect(fake.saveNote).not.toHaveBeenCalled();
+  });
+
   it("saves when the page is about to unload", async () => {
     const fake = fakeData();
     const { editor } = await openNote(fake);
@@ -753,9 +816,197 @@ describe("saving after a conflict", () => {
 });
 
 describe("changes on disk", () => {
-  it("offers a changed file as suggestions to accept", async () => {
+  it("reads the disk again when a hidden note is shown, and takes what the app wrote there meanwhile", async () => {
+    const fake = fakeData();
+    const tree = (shown: boolean) => (
+      <NotesDataProvider value={fake.data}>
+        <NoteDocument note={NOTE} insertRequest={null} shown={shown} />
+      </NotesDataProvider>
+    );
+    const view = render(tree(true));
+    await screen.findByLabelText(enNotes.document.titleLabel);
+    const editor = editors.last as Editor;
+    expect(fake.loadNote).toHaveBeenCalledOnce();
+    view.rerender(tree(false));
+    expect(fake.loadNote).toHaveBeenCalledOnce();
+    await recordNoteWrite("note-1", DISK, async () => undefined);
+    fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
+    await act(async () => {
+      view.rerender(tree(true));
+    });
+    expect(fake.loadNote).toHaveBeenCalledTimes(2);
+    expect(bodyText(editor)).toContain("per patch");
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+    await act(async () => {
+      view.rerender(tree(true));
+    });
+    expect(fake.loadNote).toHaveBeenCalledTimes(2);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    expect(fake.saveNote.mock.calls[0][2]).toBe("v4");
+  });
+
+  it("says it is busy while a save waits, so a hidden tab is not dropped", async () => {
+    const fake = fakeData();
+    const { editor } = await openNote(fake);
+    expect(noteEditorBusy("note-1")).toBe(false);
+    typeBefore(editor, "trains", "really ");
+    expect(noteEditorBusy("note-1")).toBe(true);
+    await flushSave();
+    expect(noteEditorBusy("note-1")).toBe(false);
+  });
+
+  it("offers a change made outside the app as suggestions even when nothing here is unsaved", async () => {
     const fake = fakeData();
     const { editor, title } = await openNote(fake);
+    fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
+    await fake.diskChanged();
+    expect(title.value).toBe("Mask ratio study");
+    expect(bodyText(editor)).toContain("per pixel");
+    expect(document.querySelector(".note-diff-insert")).toHaveTextContent("patch");
+    expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: REJECT }));
+    });
+    await flushSave();
+    expect(fake.saveNote).toHaveBeenCalledOnce();
+    expect(fake.saveNote.mock.calls[0][2]).toBe("v4");
+    expect(savedText(fake)).toBe(TEXT.replace("Mask ratios", "Mask ratio study"));
+  });
+
+  it("offers a change from outside that brings back an older save of this app", async () => {
+    const fake = fakeData();
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    typeBefore(editor, "really", "quite ");
+    await flushSave();
+    fake.loadNote.mockResolvedValueOnce({ text: savedText(fake, 0), version: "v9" });
+    await fake.diskChanged();
+    expect(bodyText(editor)).toContain("quite really trains");
+    expect(screen.getByRole("button", { name: REJECT })).toBeInTheDocument();
+  });
+
+  it("takes a change this app wrote elsewhere quietly when nothing here is unsaved", async () => {
+    const fake = fakeData();
+    const { editor, title, onStatusChange } = await openNote(fake);
+    await recordNoteWrite("note-1", DISK, async () => undefined);
+    fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
+    await fake.diskChanged();
+    expect(title.value).toBe("Mask ratio study");
+    expect(bodyText(editor)).toContain("per patch");
+    expect(bodyText(editor)).not.toContain("per pixel");
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+    expect(onStatusChange).not.toHaveBeenCalled();
+    await flushSave();
+    expect(fake.saveNote).not.toHaveBeenCalled();
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    expect(fake.saveNote.mock.calls[0][2]).toBe("v4");
+    expect(savedText(fake)).toBe(DISK.replace("trains", "really trains"));
+  });
+
+  async function openTwice() {
+    const disk = { text: TEXT, version: 1 };
+    const watchers = new Set<() => void>();
+    const fake = fakeData();
+    const changed = () => {
+      for (const watcher of watchers) queueMicrotask(watcher);
+    };
+    fake.loadNote.mockImplementation(async () => ({ text: disk.text, version: `v${disk.version}` }));
+    fake.saveNote.mockImplementation(async (_id, saved) => {
+      disk.text = saved;
+      disk.version += 1;
+      changed();
+      return { text: saved, version: `v${disk.version}` };
+    });
+    fake.watchNote.mockImplementation((_id, onChange) => {
+      watchers.add(onChange);
+      return vi.fn(() => {
+        watchers.delete(onChange);
+      });
+    });
+    render(
+      <NotesDataProvider value={fake.data}>
+        <NoteDocument note={NOTE} insertRequest={null} />
+        <NoteDocument note={NOTE} insertRequest={null} />
+      </NotesDataProvider>,
+    );
+    await screen.findAllByLabelText(enNotes.document.titleLabel);
+    const [first, second] = [...document.querySelectorAll<HTMLElement & { editor?: Editor }>(".ProseMirror")].map(
+      (dom) => dom.editor as Editor,
+    );
+    const settle = () =>
+      act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    const writeOutside = async (text: string) => {
+      disk.text = text;
+      disk.version += 1;
+      changed();
+      await settle();
+    };
+    return { fake, disk, first, second, settle, writeOutside };
+  }
+
+  it("keeps a second editor of the same note in step without asking", async () => {
+    const { fake, first, second, settle } = await openTwice();
+    typeBefore(first, "trains", "really ");
+    await flushSave();
+    await settle();
+    expect(bodyText(second)).toContain("really trains");
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+    expect(screen.queryByRole("button", { name: REJECT })).toBeNull();
+    expect(fake.saveNote).toHaveBeenCalledTimes(1);
+    typeBefore(second, "Masks", "All ");
+    await flushSave();
+    await settle();
+    expect(bodyText(first)).toContain("All Masks");
+    expect(bodyText(first)).toContain("really trains");
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+    expect(fake.saveNote).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not queue another save when the watcher reports the save that is still running", async () => {
+    const fake = fakeData();
+    const running = deferred<NoteSource>();
+    fake.saveNote.mockReturnValueOnce(running.promise);
+    const { editor, onStatusChange } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    const written = savedText(fake);
+    fake.loadNote.mockResolvedValueOnce({ text: written, version: "v2" });
+    await fake.diskChanged();
+    await act(async () => {
+      running.resolve({ text: written, version: "v2" });
+    });
+    expect(noteEditorBusy("note-1")).toBe(false);
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+  });
+
+  it("offers a change made outside the app in every editor of the note, which follow the one that settles it", async () => {
+    const { fake, disk, first, second, settle, writeOutside } = await openTwice();
+    await writeOutside(TEXT.replace("per pixel", "per patch"));
+    expect(screen.getAllByRole("button", { name: REJECT })).toHaveLength(2);
+    expect(bodyText(first)).toContain("per pixel");
+    expect(bodyText(second)).toContain("per pixel");
+    act(() => {
+      fireEvent.click(within(first.view.dom.closest("[data-note-width]") as HTMLElement).getByRole("button", { name: REJECT }));
+    });
+    await flushSave();
+    await settle();
+    expect(fake.saveNote).toHaveBeenCalledOnce();
+    expect(disk.text).toBe(TEXT);
+    expect(screen.queryByRole("button", { name: REJECT })).toBeNull();
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+    expect(bodyText(second)).toContain("per pixel");
+  });
+
+  it("offers a changed file as suggestions while this note has unsaved edits", async () => {
+    const fake = fakeData();
+    const { editor, title } = await openNote(fake);
+    typeBefore(editor, "Masks", "All ");
     fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
     await fake.diskChanged();
     expect(fake.loadNote).toHaveBeenLastCalledWith("note-1");
@@ -775,6 +1026,7 @@ describe("changes on disk", () => {
   it("drops a disk suggestion that is rejected", async () => {
     const fake = fakeData();
     const { editor } = await openNote(fake);
+    typeBefore(editor, "Masks", "All ");
     fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
     await fake.diskChanged();
     act(() => {
@@ -819,6 +1071,17 @@ describe("changes on disk", () => {
     expect(bodyText(editor)).toContain("per patch");
   });
 
+  it("offers disk changes to text that was already saved while other edits wait", async () => {
+    const fake = fakeData();
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    typeBefore(editor, "0.75", "about ");
+    fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
+    await fake.diskChanged();
+    expect(screen.getByRole("button", { name: enNotes.review.acceptAll })).toBeInTheDocument();
+  });
+
   it("offers disk changes to text that was already saved", async () => {
     const fake = fakeData();
     const { editor } = await openNote(fake);
@@ -827,6 +1090,8 @@ describe("changes on disk", () => {
     fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
     await fake.diskChanged();
     expect(screen.getByRole("button", { name: enNotes.review.acceptAll })).toBeInTheDocument();
+    expect(bodyText(editor)).toContain("really trains");
+    expect(bodyText(editor)).toContain("per pixel");
   });
 
   it("protects edits made while a save was running", async () => {
@@ -852,6 +1117,73 @@ describe("changes on disk", () => {
     expect(fake.watchNote).toHaveBeenCalledWith("note-1", expect.any(Function));
     unmount();
     expect(fake.stopWatching).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("settling a review", () => {
+  function reviewUndo() {
+    const bar = document.querySelector<HTMLElement>("[data-note-review]");
+    return bar ? within(bar).queryByRole("button", { name: enNotes.review.undo }) : null;
+  }
+
+  async function reviewTwo() {
+    const fake = fakeData();
+    const opened = await openNote(fake);
+    typeBefore(opened.editor, "Masks", "All ");
+    fake.loadNote.mockResolvedValueOnce({ text: DISK.replace("0.75", "0.60"), version: "v4" });
+    await fake.diskChanged();
+    return opened;
+  }
+
+  it("offers Undo after rejecting every change and puts focus back in the note", async () => {
+    const { editor } = await reviewTwo();
+    const rejectAll = screen.getByRole("button", { name: enNotes.review.rejectAll });
+    act(() => {
+      rejectAll.focus();
+      fireEvent.click(rejectAll);
+    });
+    expect(screen.queryByRole("button", { name: enNotes.review.rejectAll })).toBeNull();
+    expect(editor.view.hasFocus()).toBe(true);
+    const undo = reviewUndo() as HTMLElement;
+    act(() => {
+      undo.focus();
+      fireEvent.click(undo);
+    });
+    expect(screen.getByRole("button", { name: enNotes.review.rejectAll })).toBeInTheDocument();
+    expect(reviewUndo()).toBeNull();
+    expect(editor.view.hasFocus()).toBe(true);
+  });
+
+  it("puts focus back in the note after accepting a change from the bar", async () => {
+    const { editor } = await reviewTwo();
+    const accept = screen.getByRole("button", { name: ACCEPT });
+    act(() => {
+      accept.focus();
+      fireEvent.click(accept);
+    });
+    expect(editor.view.hasFocus()).toBe(true);
+  });
+
+  it("drops the Undo once the note is edited again", async () => {
+    const { editor } = await reviewTwo();
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: REJECT }));
+    });
+    expect(reviewUndo()).toBeInTheDocument();
+    typeBefore(editor, "encoder", "big ");
+    expect(reviewUndo()).toBeNull();
+  });
+
+  it("brings back rejected changes from the Edit menu's Undo, as the key does", async () => {
+    const { editor } = await reviewTwo();
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: enNotes.review.rejectAll }));
+    });
+    act(() => {
+      noteHistoryAt(editor.view.dom)?.(false);
+    });
+    expect(screen.getByRole("button", { name: enNotes.review.rejectAll })).toBeInTheDocument();
+    expect(bodyText(editor)).toContain("All Masks");
   });
 });
 
@@ -926,6 +1258,28 @@ describe("front matter edits across changes elsewhere", () => {
     await act(() => vi.advanceTimersByTimeAsync(800));
     expect(fake.saveNote).not.toHaveBeenCalled();
   });
+
+  it("keeps focus in the note after removing a property, so undo brings it back", async () => {
+    const rect = new DOMRect(0, 0, 0, 0);
+    Range.prototype.getClientRects = () => [rect] as unknown as DOMRectList;
+    Range.prototype.getBoundingClientRect = () => rect;
+    try {
+      const fake = fakeData({ text: WITH_STATUS });
+      const { editor } = await openNote(fake);
+      fireEvent.pointerDown(screen.getByRole("button", { name: "status type: Text" }), { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(screen.getByRole("menuitem", { name: enNotes.kb.properties.remove }));
+      expect(screen.queryByRole("textbox", { name: "Value of status" })).toBeNull();
+      await vi.waitFor(() => expect(document.activeElement).toBe(editor.view.dom));
+      act(() => {
+        noteHistoryAt(document.activeElement)?.(false);
+      });
+      expect(screen.getByRole("textbox", { name: "Value of status" })).toHaveValue("draft");
+      act(() => editor.commands.blur());
+    } finally {
+      Reflect.deleteProperty(Range.prototype, "getClientRects");
+      Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
+    }
+  });
 });
 
 describe("bytes outside the edit", () => {
@@ -981,6 +1335,12 @@ describe("bytes outside the edit", () => {
 });
 
 describe("title and icon", () => {
+  it("keeps the WebView's own spell check off the title and properties, which the note's checker does not read", async () => {
+    const { title } = await openNote(fakeData());
+    expect(title.closest('[spellcheck="false"]')).not.toBeNull();
+    expect(title.closest(".group\\/header")).toBe(title.closest('[spellcheck="false"]'));
+  });
+
   it("renames the note and writes the title into the front matter", async () => {
     const fake = fakeData();
     const { title } = await openNote(fake);
@@ -989,6 +1349,25 @@ describe("title and icon", () => {
     expect(fake.renameNote).toHaveBeenCalledWith("note-1", "Mask ratio study");
     await flushSave();
     expect(savedText(fake)).toBe(TEXT.replace("title: Mask ratios", "title: Mask ratio study"));
+  });
+
+  it("puts the title back and says so when the rename fails", async () => {
+    const fake = fakeData();
+    const failure = new Error("name taken");
+    fake.renameNote.mockRejectedValueOnce(failure);
+    const { title } = await openNote(fake);
+    fireEvent.change(title, { target: { value: "Mask ratio study" } });
+    await act(async () => {
+      fireEvent.blur(title);
+    });
+    expect(toasts.notifyError).toHaveBeenCalledWith(
+      "rename note",
+      failure,
+      enNotes.library.menu.renameFailed.replace("{{name}}", "Mask ratios"),
+    );
+    expect(title.value).toBe("Mask ratios");
+    await flushSave();
+    expect(fake.saveNote).not.toHaveBeenCalled();
   });
 
   it("commits the title and moves into the body on Enter", async () => {
@@ -1074,6 +1453,52 @@ describe("title and icon", () => {
     expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-value", "🧪");
     await flushSave();
     expect(savedText(fake)).toBe(`---\nicon: 🧪\nkind: note\nid: ${NEW_ID}\n---\n\n${BODY}`);
+  });
+
+  it("undoes and redoes an icon change with the note's own undo", async () => {
+    const fake = fakeData();
+    const { editor } = await openNote(fake);
+    fireEvent.click(screen.getByTestId("pick-icon"));
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-value", "🧪");
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-value", "none");
+    act(() => {
+      editor.commands.redo();
+    });
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-value", "🧪");
+    act(() => {
+      noteHistoryAt(screen.getByTestId("pick-icon"))?.(false);
+    });
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-value", "none");
+    await flushSave();
+    expect(fake.saveNote.mock.calls.every((call) => call[1] === TEXT)).toBe(true);
+  });
+
+  it("keeps undo of a property from wiping a change that came from disk since", async () => {
+    const fake = fakeData();
+    const { editor } = await openNote(fake);
+    fireEvent.click(screen.getByTestId("pick-icon"));
+    await flushSave();
+    fake.loadNote.mockResolvedValueOnce({ text: savedText(fake).replace("Mask ratios", "Mask ratio study"), version: "v9" });
+    await fake.diskChanged();
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-value", "none");
+    expect(screen.getByLabelText<HTMLInputElement>(enNotes.document.titleLabel).value).toBe("Mask ratio study");
+  });
+
+  it("leaves a title change out of the note's undo", async () => {
+    const fake = fakeData();
+    const { title, editor } = await openNote(fake);
+    fireEvent.change(title, { target: { value: "Mask ratio study" } });
+    fireEvent.blur(title);
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(title.value).toBe("Mask ratio study");
   });
 
   it("removes the icon from the front matter", async () => {
@@ -1419,6 +1844,59 @@ describe("selection bubble", () => {
     expect(empty.defaultPrevented).toBe(false);
   });
 
+  it("sends a selection across blocks as Markdown", async () => {
+    const fake = fakeData({ text: `${TEXT}\n- first step\n- second step\n` });
+    const opened = await openNote(fake);
+    vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
+    act(() => {
+      const from = positionOf(opened.editor, "Masks");
+      const to = positionOf(opened.editor, "second step") + "second step".length;
+      opened.editor.commands.setTextSelection({ from, to });
+    });
+    await frame();
+    fireEvent.click(bubbleButton(enNotes.document.sendToPaper) as HTMLElement);
+    expect(opened.onSendToPaper.mock.lastCall?.[0]).toMatch(/^Masks are sampled per pixel\.\n\n[-*] first step\n[-*] second step$/u);
+    fireEvent.click(bubbleButton(enNotes.document.askAgent) as HTMLElement);
+    expect(assistant.quote.mock.lastCall?.[0]).toBe(opened.onSendToPaper.mock.lastCall?.[0]);
+  });
+
+  it("follows the Ask agent shortcut set in Settings and shows it on the button", async () => {
+    useShortcutStore.getState().setBinding("notesAskAgent", { key: "k", mod: true, shift: true });
+    try {
+      const { editor } = await openWithSelection(fakeData());
+      expect(bubbleButton(enNotes.document.askAgent)).toHaveTextContent("Ctrl+Shift+K");
+      act(() => editor.view.focus());
+      const old = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
+      act(() => {
+        editor.view.dom.dispatchEvent(old);
+      });
+      expect(assistant.quote).not.toHaveBeenCalled();
+      const rebound = new KeyboardEvent("keydown", { key: "K", ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true });
+      act(() => {
+        editor.view.dom.dispatchEvent(rebound);
+      });
+      expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
+    } finally {
+      useShortcutStore.getState().resetAll();
+    }
+  });
+
+  it("takes Command and not Control for the Ask agent shortcut on a Mac", async () => {
+    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    const { editor } = await openWithSelection(fakeData());
+    act(() => editor.view.focus());
+    const control = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      editor.view.dom.dispatchEvent(control);
+    });
+    expect(assistant.quote).not.toHaveBeenCalled();
+    const command = new KeyboardEvent("keydown", { key: "j", metaKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      editor.view.dom.dispatchEvent(command);
+    });
+    expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
+  });
+
   it("appears above a selection and sends it to the paper", async () => {
     const { onSendToPaper } = await openWithSelection(fakeData());
     const send = bubbleButton(enNotes.document.sendToPaper);
@@ -1482,6 +1960,18 @@ describe("selection bubble", () => {
 });
 
 describe("artifact inserts", () => {
+  beforeAll(() => {
+    const rect = new DOMRect(0, 0, 0, 0);
+    Range.prototype.getClientRects = () => [rect] as unknown as DOMRectList;
+    Range.prototype.getBoundingClientRect = () => rect;
+  });
+
+  afterAll(async () => {
+    await new Promise((settle) => setTimeout(settle, 50));
+    Reflect.deleteProperty(Range.prototype, "getClientRects");
+    Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
+  });
+
   it("adds a snippet at the end of the note", async () => {
     const fake = fakeData();
     const { editor, requestInsert } = await openNote(fake);
@@ -1499,6 +1989,36 @@ describe("artifact inserts", () => {
     expect(bodyText(editor).match(/Metrics/gu)).toHaveLength(2);
     await flushSave();
     expect(savedText(fake)).toBe(`${TEXT}\n[Metrics](metrics.csv)\n\n[Metrics](metrics.csv)\n`);
+  });
+
+  it("adds a requested snippet once, not again when the note opens again", async () => {
+    const fake = fakeData();
+    const request = { snippet: "**Figure 2** shows the loss.", id: 1 };
+    const first = await openNote(fake, { insertRequest: request });
+    expect(bodyText(first.editor)).toContain("Figure 2 shows the loss.");
+    await act(async () => {
+      first.unmount();
+    });
+    const second = await openNote(fake, { insertRequest: request });
+    expect(bodyText(second.editor)).not.toContain("Figure 2");
+  });
+
+  it("jumps to a requested heading once, not again when the note opens again", async () => {
+    const fake = fakeData({ text: `${TEXT}\n## Results\n\nDone.\n` });
+    const request = { slug: "results", id: 1 };
+    const tree = () => (
+      <NotesDataProvider value={fake.data}>
+        <NoteDocument note={NOTE} insertRequest={null} openHeading={request} />
+      </NotesDataProvider>
+    );
+    const first = render(tree());
+    await screen.findByLabelText(enNotes.document.titleLabel);
+    const heading = positionOf(editors.last as Editor, "Results");
+    expect(editors.last?.state.selection.from).toBe(heading);
+    first.unmount();
+    render(tree());
+    await screen.findByLabelText(enNotes.document.titleLabel);
+    expect(editors.last?.state.selection.from).not.toBe(positionOf(editors.last as Editor, "Results"));
   });
 
   it("ignores an empty snippet", async () => {
@@ -1567,5 +2087,31 @@ describe("images", () => {
     expect(missing?.textContent).toBe(
       enNotes.blocks.imageMissing.replace("{{path}}", "./figures/loss%20curve.png"),
     );
+  });
+});
+
+describe("find and replace", () => {
+  it("opens the find bar with Ctrl+F from the title or the body and replaces in the note", async () => {
+    const fake = fakeData({ text: "---\ntitle: Find\n---\nAlpha beta alpha\n" });
+    const { editor, title } = await openNote(fake);
+    expect(screen.queryByRole("search", { name: enEditor.package.search.panel })).toBeNull();
+    fireEvent.keyDown(title, { key: "f", ctrlKey: true });
+    const field = screen.getByRole("textbox", { name: enEditor.package.search.find });
+    fireEvent.change(field, { target: { value: "alpha" } });
+    expect(editor.view.dom.querySelectorAll(".note-find-match")).toHaveLength(2);
+    fireEvent.keyDown(field, { key: "Enter" });
+    await act(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(editor.view.dom.querySelectorAll(".note-find-match-active")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: enNotes.document.askAgent })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: enEditor.package.search.toggleReplace }));
+    fireEvent.change(screen.getByRole("textbox", { name: enEditor.package.search.replace }), { target: { value: "gamma" } });
+    fireEvent.click(screen.getByRole("button", { name: enEditor.package.search.replaceAllAction }));
+    expect(bodyText(editor)).toContain("gamma beta gamma");
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(screen.queryByRole("search", { name: enEditor.package.search.panel })).toBeNull();
+    fireEvent.keyDown(editor.view.dom, { key: "f", ctrlKey: true });
+    expect(screen.getByRole("search", { name: enEditor.package.search.panel })).toBeInTheDocument();
   });
 });

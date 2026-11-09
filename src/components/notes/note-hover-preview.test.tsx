@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { LinkableNote } from "./note-links";
-import { HIDE_DELAY_MS, hoverPlacement, HOVER_DELAY_MS, NoteHoverPreview } from "./note-hover-preview";
+import { HIDE_DELAY_MS, HOVER_DELAY_MS, NoteHoverPreview } from "./note-hover-preview";
 
 const NOTES: LinkableNote[] = [
   { noteId: "n-1", projectId: "lib-1", title: "Masking", icon: "🧪" },
@@ -129,7 +129,16 @@ describe("hover previews", () => {
   });
 
   it("places the card below a link, or above it near the bottom edge", () => {
-    expect(hoverPlacement({ left: 900, top: 100, bottom: 120 }, { width: 1000, height: 800 })).toEqual({ left: 640, top: 126 });
-    expect(hoverPlacement({ left: 0, top: 700, bottom: 720 }, { width: 1000, height: 800 })).toEqual({ left: 8, bottom: 106 });
+    render(<Harness loadText={vi.fn()} />);
+    const place = (id: string, rect: { left: number; top: number; bottom: number }) => {
+      vi.spyOn(link(id), "getBoundingClientRect").mockReturnValue({ ...rect, right: rect.left, width: 0, height: 0, x: 0, y: 0 } as DOMRect);
+      hover(id);
+      return screen.getByRole("tooltip").style;
+    };
+    const below = place("n-1", { left: 900, top: 100, bottom: 120 });
+    expect([below.left, below.top, below.bottom]).toEqual([`${window.innerWidth - 360}px`, "126px", ""]);
+    fireEvent.mouseDown(link("n-1"));
+    const above = place("n-3", { left: 0, top: 700, bottom: 720 });
+    expect([above.left, above.top, above.bottom]).toEqual(["8px", "", `${window.innerHeight - 694}px`]);
   });
 });

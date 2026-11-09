@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { createRoot, type Root } from "react-dom/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { CALLOUT_TYPES, calloutKind, calloutLabel } from "./note-callouts";
@@ -72,16 +73,20 @@ export function CalloutChrome({ type, folded, editable, onFold, onType }: Readon
   const Icon = calloutIcon(type);
   const current = calloutKind(type).id;
   const icon = <Icon aria-hidden className="size-4" />;
+  const typeLabel = i18n.t(($) => $.notes.kb.callouts.type, { type: calloutLabel(type) });
+  const foldLabel = folded ? i18n.t(($) => $.notes.kb.callouts.unfold) : i18n.t(($) => $.notes.kb.callouts.fold);
   return (
     <>
       {editable ? (
         <DropdownMenu>
-          <DropdownMenuTrigger
-            aria-label={i18n.t(($) => $.notes.kb.callouts.type, { type: calloutLabel(type) })}
-            className="note-callout-icon rounded-md transition-colors hover:bg-foreground/10 focus-visible:bg-foreground/10 motion-reduce:transition-none"
-          >
-            {icon}
-          </DropdownMenuTrigger>
+          <Tooltip label={typeLabel} side="top">
+            <DropdownMenuTrigger
+              aria-label={typeLabel}
+              className="note-callout-icon rounded-md transition-colors hover:bg-foreground/10 focus-visible:bg-foreground/10 motion-reduce:transition-none"
+            >
+              {icon}
+            </DropdownMenuTrigger>
+          </Tooltip>
           <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
             {CALLOUT_TYPES.map((option) => {
               const OptionIcon = calloutIcon(option);
@@ -103,16 +108,18 @@ export function CalloutChrome({ type, folded, editable, onFold, onType }: Readon
       ) : (
         <span className="note-callout-icon">{icon}</span>
       )}
-      <button
-        type="button"
-        aria-expanded={!folded}
-        aria-label={folded ? i18n.t(($) => $.notes.kb.callouts.unfold) : i18n.t(($) => $.notes.kb.callouts.fold)}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={onFold}
-        className="note-callout-fold rounded-md transition-colors hover:bg-foreground/10 focus-visible:bg-foreground/10 motion-reduce:transition-none"
-      >
-        <ChevronDown aria-hidden className={cn("size-4 transition-transform motion-reduce:transition-none", folded && "-rotate-90")} />
-      </button>
+      <Tooltip label={foldLabel} side="top">
+        <button
+          type="button"
+          aria-expanded={!folded}
+          aria-label={foldLabel}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onFold}
+          className="note-callout-fold rounded-md transition-colors hover:bg-foreground/10 focus-visible:bg-foreground/10 motion-reduce:transition-none"
+        >
+          <ChevronDown aria-hidden className={cn("size-4 transition-transform motion-reduce:transition-none", folded && "-rotate-90")} />
+        </button>
+      </Tooltip>
     </>
   );
 }

@@ -30,7 +30,7 @@ import {
   turnReplyText,
   useNoteAcpEdits,
 } from "./note-acp";
-import { pendingBatches, resetPendingSuggestions } from "./note-pending-suggestions";
+import { pendingBatches, resetPendingSuggestionsForTest } from "./note-pending-suggestions";
 
 function event(kind: string, turnId: string | null, data: Record<string, unknown>, sequence: number, timestamp = 10): AcpEvent {
   return { sessionId: "s1", projectId: "paper", agentId: "claude", modelId: null, taskId: null, turnId, sequence, timestamp, kind, data };
@@ -53,7 +53,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
-  resetPendingSuggestions();
+  resetPendingSuggestionsForTest();
 });
 
 describe("where a note's CLI session runs", () => {

@@ -13,7 +13,7 @@ import { selectScopeRuntime, useAssistantRuntimeStore } from "@/store/assistant-
 import { useChatsStore } from "@/store/chats";
 import { beginChatRun, activeChatRun, endChatRun } from "@/components/ai/chat-run-registry";
 import { NoteAssistant, type NoteAssistantHandle, type NoteEditorBridge } from "./NoteAssistant";
-import { pendingBatches, registerNoteEditor, resetPendingSuggestions } from "./note-pending-suggestions";
+import { pendingBatches, registerNoteEditor, resetPendingSuggestionsForTest } from "./note-pending-suggestions";
 import { PROMPT_COLLAPSED_KEY } from "./note-prefs";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import type { NoteItem } from "./types";
@@ -118,7 +118,7 @@ function bridge(): NoteEditorBridge & { propose: ReturnType<typeof vi.fn> } {
   return { readSource: () => SOURCE, pending: () => 0, propose: vi.fn(() => 1) };
 }
 
-function show(options: { note?: NoteItem; notes?: NotesData; bridge?: NoteEditorBridge } = {}) {
+function show(options: { note?: NoteItem; notes?: NotesData; bridge?: NoteEditorBridge; viewOnly?: boolean } = {}) {
   const ref = createRef<NoteAssistantHandle>();
   const scope = { current: document.createElement("div") };
   const editor = options.bridge ?? bridge();
@@ -129,6 +129,7 @@ function show(options: { note?: NoteItem; notes?: NotesData; bridge?: NoteEditor
         note={note}
         bridge={editor}
         shortcutScope={scope}
+        viewOnly={options.viewOnly}
       />
     </NotesDataProvider>
   );
@@ -160,7 +161,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  resetPendingSuggestions();
+  resetPendingSuggestionsForTest();
 });
 
 describe("the note assistant", () => {
@@ -501,5 +502,59 @@ describe("the note assistant", () => {
     expect(tauri.listNoteTags).toHaveBeenCalled();
     expect(await tools.read_note_by_id.execute?.({ id: "note-2" })).toMatchObject({ markdown: "# note-2" });
     expect(await tools.read_note.execute?.({})).toMatchObject({ markdown: SOURCE });
+  });
+
+  it("keeps personal notes out of a shared note's assistant", async () => {
+    for (const fn of [tauri.noteSearch, tauri.listNoteTags, tauri.noteHeads]) fn.mockClear();
+    show({ note: { ...NOTE, shared: true } });
+    await waitFor(() => expect(ui.scope).not.toBeNull());
+    const scope = ui.scope as AssistantScopeValue;
+    expect(scope.excludedNames).toEqual(expect.arrayContaining(["search_notes", "list_knowledge_notes", "read_note_by_id"]));
+    expect(scope.mentions?.paths).toEqual([]);
+    const context = await scope.contextBlock?.("q");
+    expect(context).not.toContain("Ablations");
+    expect(context).toContain(`Note: "Masks" (id note-1, link id link-1)`);
+    const tools = scope.toolAdditions?.({ projectId: "note-1", confirm: vi.fn(), onImage: vi.fn(), runId: () => null, isActive: () => true })[0].tools ?? {};
+    expect(await tools.search_notes.execute?.({ query: "ratio" })).toMatchObject({ notes: [] });
+    expect(await tools.list_knowledge_notes.execute?.({})).toMatchObject({ notes: [] });
+    expect(await tools.read_note_by_id.execute?.({ id: "note-2" })).toHaveProperty("error");
+    expect(tauri.noteSearch).not.toHaveBeenCalled();
+    expect(tauri.listNoteTags).not.toHaveBeenCalled();
+    expect(tauri.noteHeads).not.toHaveBeenCalled();
+  });
+
+  it("turns the composer into a plain notice for a note the person can only view", async () => {
+    const view = show({ viewOnly: true });
+    expect(await screen.findByText(enNotes.assistant.viewOnly)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Box" })).toBeNull();
+    act(() => view.ref.current?.quote("Ratio 0.75."));
+    expect(ui.handle.insertText).not.toHaveBeenCalled();
+    view.rerender(
+      <NotesDataProvider value={data()}>
+        <NoteAssistant note={NOTE} bridge={bridge()} shortcutScope={{ current: null }} />
+      </NotesDataProvider>,
+    );
+    expect(await screen.findByRole("textbox", { name: "Box" })).toBeInTheDocument();
+    expect(screen.queryByText(enNotes.assistant.viewOnly)).toBeNull();
+  });
+
+  it("shows the view-only notice in place of a CLI agent", async () => {
+    useAssistantRuntimeStore.setState({ runtimeByScope: { "note:note-1": "acp" } });
+    show({ viewOnly: true, note: { ...NOTE, relatedProjectId: "paper" } });
+    expect(await screen.findByText(enNotes.assistant.viewOnly)).toBeInTheDocument();
+    expect(screen.queryByTestId("acp-assistant")).toBeNull();
+  });
+
+  it("asks for the agent list once when several notes open together", async () => {
+    const refresh = vi.mocked(useAcpSessionsStore.getState().refreshCatalog);
+    refresh.mockClear();
+    render(
+      <NotesDataProvider value={data()}>
+        <NoteAssistant note={NOTE} bridge={bridge()} shortcutScope={{ current: null }} />
+        <NoteAssistant note={{ ...NOTE, id: "note-2", title: "Ablations" }} bridge={bridge()} shortcutScope={{ current: null }} />
+      </NotesDataProvider>,
+    );
+    await waitFor(() => expect(ui.scope).not.toBeNull());
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });

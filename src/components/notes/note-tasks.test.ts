@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { loadNamespace } from "@/i18n";
-import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./tests/kb-editor-fixtures";
 import { applyTypedTask, clearTaskAtStart, taskMarker, toggledTask, toggleTaskAt } from "./note-tasks";
 import { editableChanged } from "./note-editable";
 

@@ -7,6 +7,7 @@ import {
   collabSettingsLocked,
   collabVisualReadOnly,
   collabHoldsDocument,
+  holdNoteLivePath,
   installCollabEditorPort,
   installReviewNotice,
   noteUnreviewedSuggestions,
@@ -41,18 +42,27 @@ describe("collab live bridge", () => {
   });
 
   it("says which files a live session holds without opening one", () => {
-    expect(collabHoldsDocument("main.tex")).toBe(false);
+    expect(collabHoldsDocument("main.tex", "project")).toBe(false);
     const documentSession = vi.fn(() => null);
     const uninstall = installCollabEditorPort({
       documentSession,
       holds: (path) => path === "main.tex",
       flush: async () => {},
     });
-    expect(collabHoldsDocument("main.tex")).toBe(true);
-    expect(collabHoldsDocument("intro.tex")).toBe(false);
+    expect(collabHoldsDocument("main.tex", "project")).toBe(true);
+    expect(collabHoldsDocument("intro.tex", "project")).toBe(false);
     expect(documentSession).not.toHaveBeenCalled();
     uninstall();
-    expect(collabHoldsDocument("main.tex")).toBe(false);
+    expect(collabHoldsDocument("main.tex", "project")).toBe(false);
+  });
+
+  it("holds a live note's file only in that note's own project", () => {
+    const release = holdNoteLivePath("library-note", "note.md");
+    expect(collabHoldsDocument("note.md", "library-note")).toBe(true);
+    expect(collabHoldsDocument("note.md", "paper")).toBe(false);
+    expect(collabHoldsDocument("note.md", null)).toBe(false);
+    release();
+    expect(collabHoldsDocument("note.md", "library-note")).toBe(false);
   });
 
   it("keeps a newer port when an older one uninstalls", () => {

@@ -23,7 +23,7 @@ import {
   showSuggestions,
   undoReject,
 } from "./note-suggestions";
-import { forgetRemoteImages } from "./note-remote-images";
+import { resetRemoteImagesForTest } from "./note-remote-images";
 
 const BODY = `## Results
 
@@ -70,7 +70,7 @@ beforeAll(async () => {
 afterEach(() => {
   for (const editor of editors) editor.destroy();
   editors = [];
-  forgetRemoteImages();
+  resetRemoteImagesForTest();
 });
 
 describe("note changes", () => {

@@ -2,6 +2,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use oleafly_core::front_matter::quoted_scalar;
+use oleafly_core::markdown_scan::{
+    line_body, link_tail, matching_brackets, run_at, CodeSpans, FenceLine, Fences,
+};
 use serde::Serialize;
 use unicode_normalization::char::{decompose_canonical, is_combining_mark};
 
@@ -624,23 +628,17 @@ pub(crate) fn parse_note(text: &str) -> ParsedNote {
     let mut plain_lines = Vec::new();
     let mut folded = String::new();
     let mut folded_starts = Vec::new();
-    let mut fence: Option<(char, usize)> = None;
+    let mut fences = Fences::default();
     for line in &body {
-        let marker = fence_marker(line);
-        let text = if let Some((open, length)) = fence {
-            if marker.is_some_and(|(close, run)| close == open && run >= length) {
-                fence = None;
-                continue;
+        let text = match fences.line(line) {
+            FenceLine::Opens | FenceLine::Closes => continue,
+            FenceLine::Inside => collapse(line),
+            FenceLine::Text => {
+                for tag in line_tags(line) {
+                    add_tag(&tag);
+                }
+                plain_line(line)
             }
-            collapse(line)
-        } else if marker.is_some() {
-            fence = marker;
-            continue;
-        } else {
-            for tag in line_tags(line) {
-                add_tag(&tag);
-            }
-            plain_line(line)
         };
         if text.is_empty() || is_table_rule(&text) {
             continue;
@@ -676,7 +674,7 @@ fn key_value<'a>(line: &'a str, key: &str) -> Option<&'a str> {
 }
 
 fn list_item(raw: &str, tags: bool) -> Option<String> {
-    let item = unquote_once(raw);
+    let item = raw.trim();
     let item = if tags {
         item.trim_start_matches('#').trim()
     } else {
@@ -685,15 +683,29 @@ fn list_item(raw: &str, tags: bool) -> Option<String> {
     (!item.is_empty()).then(|| item.to_string())
 }
 
-fn unquote_once(raw: &str) -> &str {
+fn scalar_item(raw: &str) -> String {
     let trimmed = raw.trim();
-    let mut chars = trimmed.chars();
-    match (chars.next(), chars.next_back()) {
-        (Some(first @ ('"' | '\'')), Some(last)) if first == last => {
-            trimmed[1..trimmed.len() - 1].trim()
-        }
-        _ => trimmed,
+    quoted_scalar(trimmed).map_or_else(|| trimmed.to_string(), |(value, _)| value)
+}
+
+fn flow_items(value: &str) -> Vec<String> {
+    let mut items = Vec::new();
+    let mut index = 1;
+    while index < value.len() && !value[index..].starts_with(']') {
+        index = value.len() - value[index..].trim_start().len();
+        let quoted = quoted_scalar(&value[index..]);
+        let start = quoted.as_ref().map_or(index, |(_, length)| index + length);
+        let end = value[start..]
+            .find([',', ']'])
+            .map_or(value.len(), |at| start + at);
+        items.push(quoted.map_or_else(|| value[index..end].to_string(), |(text, _)| text));
+        index = if value[end..].starts_with(',') {
+            end + 1
+        } else {
+            end
+        };
     }
+    items
 }
 
 fn front_matter_list(lines: &[&str], key: &str, tags: bool) -> Vec<String> {
@@ -701,28 +713,28 @@ fn front_matter_list(lines: &[&str], key: &str, tags: bool) -> Vec<String> {
         return Vec::new();
     };
     let value = key_value(lines[at], key).unwrap_or_default();
-    let items: Vec<&str> = if let Some(inner) = value.strip_prefix('[') {
-        inner
-            .rsplit_once(']')
-            .map_or(inner, |(head, _)| head)
-            .split(',')
-            .collect()
+    let items: Vec<String> = if value.starts_with('[') {
+        flow_items(value)
     } else if !value.is_empty() {
-        let value = unquote_once(value);
+        let value = scalar_item(value);
         if tags {
-            value.split(|c: char| c == ',' || is_space(c)).collect()
+            value
+                .split(|c: char| c == ',' || is_space(c))
+                .map(str::to_string)
+                .collect()
         } else {
-            value.split(',').collect()
+            value.split(',').map(str::to_string).collect()
         }
     } else {
         lines[at + 1..]
             .iter()
             .filter(|line| !line.trim().is_empty())
             .map_while(|line| block_item(line))
+            .map(scalar_item)
             .collect()
     };
     items
-        .into_iter()
+        .iter()
         .filter_map(|item| list_item(item, tags))
         .collect()
 }
@@ -736,13 +748,6 @@ fn block_item(line: &str) -> Option<&str> {
         .then(|| rest.trim_start_matches([' ', '\t']))
 }
 
-fn fence_marker(line: &str) -> Option<(char, usize)> {
-    let line = line.trim_start_matches([' ', '\t']);
-    let first = line.chars().next().filter(|c| matches!(c, '`' | '~'))?;
-    let run = line.chars().take_while(|c| *c == first).count();
-    (run >= 3).then_some((first, run))
-}
-
 fn is_table_rule(text: &str) -> bool {
     text.chars().all(|c| matches!(c, '-' | ':' | ' '))
 }
@@ -751,112 +756,17 @@ fn collapse(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn block_marker_len(text: &str) -> Option<usize> {
-    let bytes = text.as_bytes();
-    let spaces_after = |at: usize| {
-        bytes[at..]
-            .iter()
-            .take_while(|b| matches!(b, b' ' | b'\t'))
-            .count()
-    };
-    match bytes.first()? {
-        b'#' => {
-            let hashes = bytes.iter().take_while(|b| **b == b'#').count();
-            let gap = spaces_after(hashes);
-            (hashes <= 6 && (gap > 0 || hashes == bytes.len())).then_some(hashes + gap)
-        }
-        b'>' => Some(1 + usize::from(matches!(bytes.get(1), Some(b' ' | b'\t')))),
-        b'-' | b'*' | b'+' => {
-            let gap = spaces_after(1);
-            if gap == 0 {
-                return None;
-            }
-            let at = 1 + gap;
-            let task = bytes.get(at) == Some(&b'[')
-                && matches!(bytes.get(at + 1), Some(b' ' | b'x' | b'X'))
-                && bytes.get(at + 2) == Some(&b']');
-            let task_gap = if task { spaces_after(at + 3) } else { 0 };
-            Some(if task && task_gap > 0 {
-                at + 3 + task_gap
-            } else {
-                at
-            })
-        }
-        b'0'..=b'9' => {
-            let digits = bytes.iter().take_while(|b| b.is_ascii_digit()).count();
-            if digits > 9 || !matches!(bytes.get(digits), Some(b'.' | b')')) {
-                return None;
-            }
-            let gap = spaces_after(digits + 1);
-            (gap > 0).then_some(digits + 1 + gap)
-        }
-        _ => None,
-    }
-}
-
-fn callout_marker_len(text: &str) -> Option<usize> {
-    let rest = text.strip_prefix("[!")?;
-    let close = rest.find(']')?;
-    let name = &rest[..close];
-    if name.is_empty()
-        || !name
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
-    {
-        return None;
-    }
-    let after = &rest[close + 1..];
-    let fold = usize::from(after.starts_with(['+', '-']));
-    Some(2 + close + 1 + fold)
-}
-
-fn line_body(line: &str) -> &str {
-    let mut rest = line.trim_start();
-    while let Some(length) = block_marker_len(rest).or_else(|| callout_marker_len(rest)) {
-        rest = rest[length..].trim_start();
-    }
-    rest
-}
-
-fn destination_end(chars: &[char], open: usize) -> Option<usize> {
-    let mut index = open + 1;
-    let mut depth = 0usize;
-    while index < chars.len() {
-        match chars[index] {
-            '\\' => index += 1,
-            '<' if index == open + 1 => {
-                let close = chars[index..].iter().position(|c| *c == '>')?;
-                index += close;
-            }
-            '"' | '\'' if index > open + 1 && chars[index - 1] == ' ' => {
-                let quote = chars[index];
-                let close = chars[index + 1..].iter().position(|c| *c == quote)?;
-                index += close + 1;
-            }
-            '(' => depth += 1,
-            ')' if depth == 0 => return Some(index + 1),
-            ')' => depth -= 1,
-            _ => {}
-        }
-        index += 1;
-    }
-    None
-}
-
 fn link_at(
     chars: &[char],
     start: usize,
-    offset: usize,
+    limit: usize,
     brackets: &HashMap<usize, usize>,
 ) -> Option<(usize, usize, usize)> {
-    let close = brackets
-        .get(&(start + offset))?
-        .checked_sub(offset)
-        .filter(|close| *close < chars.len())?;
-    if chars.get(close + 1) != Some(&'(') {
+    let close = *brackets.get(&start)?;
+    if close >= limit {
         return None;
     }
-    let end = destination_end(chars, close + 1)?;
+    let (_, end) = link_tail(&chars[..limit], close + 1)?;
     Some((start + 1, close, end))
 }
 
@@ -900,23 +810,6 @@ fn url_end(chars: &[char], start: usize) -> usize {
         .iter()
         .position(|c| is_space(*c))
         .map_or(chars.len(), |offset| start + offset)
-}
-
-fn code_span_end(chars: &[char], start: usize) -> Option<(usize, usize)> {
-    let run = chars[start..].iter().take_while(|c| **c == '`').count();
-    let mut index = start + run;
-    while index < chars.len() {
-        if chars[index] != '`' {
-            index += 1;
-            continue;
-        }
-        let close = chars[index..].iter().take_while(|c| **c == '`').count();
-        if close == run {
-            return Some((index, index + close));
-        }
-        index += close;
-    }
-    None
 }
 
 fn is_space(c: char) -> bool {
@@ -967,13 +860,15 @@ fn inline_link_end(chars: &[char], start: usize) -> Option<usize> {
     Some(close + 2 + paren + 1)
 }
 
-fn tag_skip(chars: &[char], index: usize) -> usize {
+fn tag_skip(chars: &[char], spans: &CodeSpans, index: usize) -> usize {
     match chars[index] {
         '\\' => (index + 2).min(chars.len()),
-        '`' => code_span_end(chars, index).map_or_else(
-            || index + chars[index..].iter().take_while(|c| **c == '`').count(),
-            |(_, end)| end,
-        ),
+        '`' => {
+            let run = run_at(chars, index, b'`');
+            spans
+                .close(index, run, chars.len())
+                .map_or(index + run, |close| close + run)
+        }
         '[' => inline_link_end(chars, index).unwrap_or(index),
         ']' if chars.get(index + 1) == Some(&'(') => chars[index + 2..]
             .iter()
@@ -986,10 +881,11 @@ fn tag_skip(chars: &[char], index: usize) -> usize {
 
 fn line_tags(line: &str) -> Vec<String> {
     let chars: Vec<char> = line.chars().collect();
+    let spans = CodeSpans::new(&chars);
     let mut tags = Vec::new();
     let mut index = 0;
     while index < chars.len() {
-        let skipped = tag_skip(&chars, index);
+        let skipped = tag_skip(&chars, &spans, index);
         if skipped > index {
             index = skipped;
         } else if let Some((tag, end)) = tag_at(&chars, index) {
@@ -1005,76 +901,76 @@ fn line_tags(line: &str) -> Vec<String> {
 fn plain_line(line: &str) -> String {
     let chars: Vec<char> = line_body(line).chars().collect();
     let brackets = if chars.contains(&'[') {
-        crate::note_links::matching_brackets(&chars, '[', ']', '\\')
+        matching_brackets(&chars, b'[', b']')
     } else {
         HashMap::new()
     };
+    let spans = CodeSpans::new(&chars);
     let mut out = String::new();
-    plain_inline(&chars, 0, &brackets, &mut out);
+    plain_inline(&chars, &brackets, &spans, &mut out);
     collapse(&out)
 }
 
-fn plain_inline(chars: &[char], offset: usize, brackets: &HashMap<usize, usize>, out: &mut String) {
-    let mut index = 0;
-    while index < chars.len() {
-        let c = chars[index];
-        let next = chars.get(index + 1).copied();
-        if c == '\\' && next.is_some_and(|next| next.is_ascii_punctuation()) {
-            out.extend(next);
-            index += 2;
-            continue;
-        }
-        if c == '`' {
-            let run = chars[index..].iter().take_while(|c| **c == '`').count();
-            match code_span_end(chars, index) {
-                Some((close, end)) => {
-                    out.push(' ');
-                    out.extend(&chars[index + run..close]);
-                    out.push(' ');
+fn plain_inline(
+    chars: &[char],
+    brackets: &HashMap<usize, usize>,
+    spans: &CodeSpans,
+    out: &mut String,
+) {
+    let mut frames = vec![(0, chars.len())];
+    'frames: while let Some((mut index, limit)) = frames.pop() {
+        let within = &chars[..limit];
+        while index < limit {
+            let c = chars[index];
+            let next = within.get(index + 1).copied();
+            if c == '\\' && next.is_some_and(|next| next.is_ascii_punctuation()) {
+                out.extend(next);
+                index += 2;
+                continue;
+            }
+            if c == '`' {
+                let run = run_at(within, index, b'`');
+                match spans.close(index, run, limit) {
+                    Some(close) => {
+                        out.push(' ');
+                        out.extend(&chars[index + run..close]);
+                        out.push(' ');
+                        index = close + run;
+                    }
+                    None => {
+                        out.extend(&chars[index..index + run]);
+                        index += run;
+                    }
+                }
+                continue;
+            }
+            let image = c == '!' && next == Some('[');
+            if c == '[' || image {
+                let open = if image { index + 1 } else { index };
+                if let Some((label_start, label_end, end)) = link_at(chars, open, limit, brackets) {
+                    frames.push((end, limit));
+                    frames.push((label_start, label_end));
+                    continue 'frames;
+                }
+            }
+            if c == '<' {
+                if let Some(end) = autolink_end(within, index) {
+                    out.extend(&chars[index + 1..end - 1]);
                     index = end;
-                }
-                None => {
-                    out.extend(&chars[index..index + run]);
-                    index += run;
+                    continue;
                 }
             }
-            continue;
-        }
-        let image = c == '!' && next == Some('[');
-        if c == '[' || image {
-            if let Some((label_start, label_end, end)) = link_at(
-                chars,
-                if image { index + 1 } else { index },
-                offset,
-                brackets,
-            ) {
-                plain_inline(
-                    &chars[label_start..label_end],
-                    offset + label_start,
-                    brackets,
-                    out,
-                );
-                index = end;
+            if c == '~' && next == Some('~') {
+                index += 2;
                 continue;
             }
-        }
-        if c == '<' {
-            if let Some(end) = autolink_end(chars, index) {
-                out.extend(&chars[index + 1..end - 1]);
-                index = end;
-                continue;
+            match c {
+                '*' => {}
+                '|' => out.push(' '),
+                _ => out.push(c),
             }
+            index += 1;
         }
-        if c == '~' && next == Some('~') {
-            index += 2;
-            continue;
-        }
-        match c {
-            '*' => {}
-            '|' => out.push(' '),
-            _ => out.push(c),
-        }
-        index += 1;
     }
 }
 
@@ -1170,12 +1066,45 @@ mod tests {
         assert_eq!(tags("tags:\n  -x\n  - y"), Vec::<String>::new());
         assert_eq!(tags("  tags: nested"), Vec::<String>::new());
         assert_eq!(tags("tagsx: no"), Vec::<String>::new());
+        assert_eq!(tags("tags: []"), Vec::<String>::new());
+        assert_eq!(tags("tags: [ , ]"), Vec::<String>::new());
+        assert_eq!(tags("tags: [a, \"b c\", '#d']"), vec!["a", "b c", "d"]);
         let parsed = parse_note("---\naliases:\n  - 'Masked encoders'\nalias: [MAE]\n---\n");
         assert_eq!(parsed.aliases, vec!["Masked encoders", "MAE"]);
         assert_eq!(parse_note("No front matter #tag").tags, vec!["tag"]);
         assert_eq!(
             parse_note("---\ntags: a\nno close").tags,
             Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn tag_list_items_follow_the_quoted_scalar_rules() {
+        let parsed = |front: &str| parse_note(&format!("---\n{front}\n---\nBody\n"));
+        let tags = |front: &str| parsed(front).tags;
+        assert_eq!(tags("tags: [\"a, b\"]"), vec!["a, b"]);
+        assert_eq!(tags("tags: ['it''s']"), vec!["it's"]);
+        assert_eq!(tags("tags: [a, \"b c\"]"), vec!["a", "b c"]);
+        assert_eq!(
+            tags("tags: ['it''s', \"x\\\"y\", plain]"),
+            vec!["it's", "x\"y", "plain"]
+        );
+        assert_eq!(tags("tags: [\"a]b\", c]"), vec!["a]b", "c"]);
+        assert_eq!(tags("tags: [\"caf\\u00e9\" x, d]"), vec!["caf\u{e9}", "d"]);
+        assert_eq!(
+            tags("tags:\n  - \"a, b\"\n  - 'c' \n  - 'it''s'\n  - \"#d\""),
+            vec!["a, b", "c", "it's", "d"]
+        );
+        assert_eq!(parsed("tags: [\"A, b\", C]").tag_labels, vec!["A, b", "C"]);
+        assert_eq!(tags("tags: \"#a #b\""), vec!["a", "b"]);
+        assert_eq!(tags("tags: 'one, two'"), vec!["one", "two"]);
+        assert_eq!(
+            parsed("aliases: [\"Smith, J.\", 'O''Brien']").aliases,
+            vec!["Smith, J.", "O'Brien"]
+        );
+        assert_eq!(
+            parsed("aliases:\n  - \"Masking, study\"").aliases,
+            vec!["Masking, study"]
         );
     }
 
@@ -1196,6 +1125,29 @@ mod tests {
             "{}",
             &open.plain[open.plain.len() - 20..]
         );
+    }
+
+    #[test]
+    fn deeply_nested_link_labels_do_not_overflow_the_stack() {
+        let depth = 200_000;
+        let line = format!("{}deep{} after", "[".repeat(depth), "](x)".repeat(depth));
+        let parsed = std::thread::Builder::new()
+            .stack_size(256 * 1024)
+            .spawn(move || parse_note(&line))
+            .unwrap()
+            .join()
+            .unwrap();
+        assert_eq!(parsed.plain, "deep after");
+    }
+
+    #[test]
+    fn a_fence_closes_only_on_a_bare_marker_of_the_same_kind() {
+        let parsed = parse_note(
+            "```\n``` js\n#hidden\n~~~\n#also\n```\n#shown\n~~~~\n```\n#quiet\n~~~~~\n#last\n",
+        );
+        assert_eq!(parsed.tags, vec!["shown", "last"]);
+        assert!(parsed.plain.contains("#hidden"));
+        assert!(parsed.plain.contains("#quiet"));
     }
 
     #[test]

@@ -6,7 +6,7 @@ import { sourceLanguageForPath } from "@/lib/document-engine";
 import { logError } from "@/lib/log";
 import type { ResearchTask } from "@/lib/research-tasks";
 import { noteHeads, noteLinks, setNoteRelatedProject } from "@/lib/tauri";
-import { notifyError } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNotesViewStore } from "@/store/notes-view";
@@ -316,8 +316,11 @@ function NotesSurface() {
   );
   const onSendToPaper = useCallback(
     ({ paperId, text }: { paperId: string; text: string }) => {
-      sendTextToPaper(paperId, text).catch((error: unknown) =>
-        notifyError("send a note to a paper", error, t(($) => $.notes.failures.sendToPaper)),
+      sendTextToPaper(paperId, text).then(
+        (sent) => {
+          if (!sent) toast.error(t(($) => $.notes.failures.paperNotOpen));
+        },
+        (error: unknown) => notifyError("send a note to a paper", error, t(($) => $.notes.failures.sendToPaper)),
       );
     },
     [t],

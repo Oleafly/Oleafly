@@ -88,7 +88,8 @@ import { projectCompatibilityFindings, SaveFlushError, useFilesStore } from "./f
 import { acquireEditorMutationLease, isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { useMcpApprovalStore } from "./mcp-approvals";
 import { useSettingsStore } from "./settings";
-import { registerNoteFlush } from "@/lib/open-note-editors";
+import { registerNoteEditor } from "@/lib/open-note-editors";
+import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
 
 let projectStateRevision = 10_000;
 
@@ -1053,7 +1054,7 @@ describe("transactional quit flush", () => {
 
   it("saves open notes before quitting, even with no project open", async () => {
     const flush = vi.fn(async () => null);
-    const stop = registerNoteFlush({ title: () => "Bench notes", timedOut: () => "slow", flush });
+    const stop = registerNoteEditor("bench", noteEditorHandle({ title: () => "Bench notes", timedOut: () => "slow", flush }));
     try {
       await useFilesStore.getState().flushForQuit();
     } finally {
@@ -1070,7 +1071,10 @@ describe("transactional quit flush", () => {
       openTabs: ["main.tex"],
       activePath: "main.tex",
     });
-    const stop = registerNoteFlush({ title: () => "Bench notes", timedOut: () => "slow", flush: async () => "locked" });
+    const stop = registerNoteEditor(
+      "bench",
+      noteEditorHandle({ title: () => "Bench notes", timedOut: () => "slow", flush: async () => "locked" }),
+    );
     try {
       const error = await useFilesStore.getState().flushForQuit().catch((caught: unknown) => caught);
       expect(error).toBeInstanceOf(SaveFlushError);

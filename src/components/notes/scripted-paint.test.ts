@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { ScriptedBlockProps } from "./ArtifactFrame";
-import { HTML_TEMPLATE, htmlBlock, htmlRunsScripts } from "./html-block";
+import { htmlBlock, htmlRunsScripts, htmlTemplate } from "./html-block";
 import { REACT_TEMPLATE, reactBlock } from "./react-block";
 import { paintScripted } from "./scripted-paint";
 
@@ -56,15 +56,33 @@ describe("paintScripted", () => {
     expect(frames.render).toHaveBeenLastCalledWith(expect.objectContaining({ source: "<p>2</p>", noteId: null }));
   });
 
-  it("keeps the running state and passes it to the next render", async () => {
+  it("keeps the running state while the code stays the same", async () => {
     const preview = document.createElement("div");
     paintScripted(preview, "<p>1</p>", { still: false }, PAINT);
     await flush();
     const props = frames.render.mock.lastCall?.[0] as ScriptedBlockProps;
     props.onRunningChange(true);
     expect(frames.render).toHaveBeenLastCalledWith(expect.objectContaining({ running: true }));
-    paintScripted(preview, "<p>3</p>", { still: false }, PAINT);
-    expect(frames.render).toHaveBeenLastCalledWith(expect.objectContaining({ running: true, source: "<p>3</p>" }));
+    paintScripted(preview, "<p>1</p>", { still: false, noteId: "n1" }, PAINT);
+    expect(frames.render).toHaveBeenLastCalledWith(expect.objectContaining({ running: true, source: "<p>1</p>" }));
+  });
+
+  it("asks to run again when the code changes", async () => {
+    const preview = document.createElement("div");
+    const start = () => {
+      const props = frames.render.mock.lastCall?.[0] as ScriptedBlockProps;
+      props.onRunningChange(true);
+    };
+    paintScripted(preview, "<p>1</p>", { still: false }, PAINT);
+    await flush();
+    start();
+    paintScripted(preview, "<p>changed by someone else</p>", { still: false }, PAINT);
+    expect(frames.render).toHaveBeenLastCalledWith(
+      expect.objectContaining({ running: false, source: "<p>changed by someone else</p>" }),
+    );
+    start();
+    paintScripted(preview, "<p>changed by someone else</p>", { still: false }, { ...PAINT, kind: "react" });
+    expect(frames.render).toHaveBeenLastCalledWith(expect.objectContaining({ running: false, kind: "react" }));
   });
 
   it("unmounts when the block goes away and starts fresh afterwards", async () => {
@@ -114,7 +132,7 @@ describe("paintScripted", () => {
 
 describe("html and React blocks", () => {
   it("tells scripted HTML from static HTML", () => {
-    expect(htmlRunsScripts(HTML_TEMPLATE)).toBe(true);
+    expect(htmlRunsScripts(htmlTemplate())).toBe(true);
     expect(htmlRunsScripts("<p>static</p>")).toBe(false);
     expect(htmlRunsScripts('<script src="https://cdn.tailwindcss.com"></script><p class="p-2">x</p>')).toBe(true);
   });
@@ -126,7 +144,7 @@ describe("html and React blocks", () => {
       expect(kind.still).toBe("card");
     }
     expect(reactBlock.aliases).toEqual(["react", "tsx"]);
-    expect(htmlBlock.template?.()).toEqual({ info: "html", source: HTML_TEMPLATE });
+    expect(htmlBlock.template?.()).toEqual({ info: "html", source: htmlTemplate() });
     expect(reactBlock.template?.()).toEqual({ info: "jsx", source: REACT_TEMPLATE });
     const html = document.createElement("div");
     htmlBlock.paint(html, "<p>static</p>", { still: false });

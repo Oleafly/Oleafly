@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { createMarkdownSourceSnapshot, type MarkdownSourceSnapshot } from "@oleafly/wysiwyg";
+import { createMarkdownSourceSnapshot, markdownBlockKey, type MarkdownSourceSnapshot } from "@oleafly/wysiwyg";
 import { Editor } from "@tiptap/core";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TextOperation } from "@/features/collab/live/ot";
@@ -383,5 +383,40 @@ describe("live note editors", () => {
     const note = parseSharedNote(pad.editor.schema, "");
     expect(note.starts.length).toBe(note.doc.childCount);
     expect(note.sources.every((source) => source === "")).toBe(true);
+  });
+
+  it("shows a remote edit without writing the whole note out again and reuses its snapshot", () => {
+    const start = `${Array.from({ length: 30 }, (_, index) => `Paragraph ${index}.`).join("\n\n")}\n`;
+    const first = start.replace("Paragraph 5.", "Paragraph 5, edited.");
+    const second = first.replace("Paragraph 20.", "Paragraph 20, edited.");
+    const pad = new Pad(start);
+    const adopted: (MarkdownSourceSnapshot | null)[] = [];
+    const host = {
+      sourceOf: pad.sourceOf,
+      adopt: (shared: { text: string; frontmatter: string; snapshot: MarkdownSourceSnapshot | null }) => {
+        pad.adopt(shared);
+        adopted.push(shared.snapshot);
+      },
+    };
+    const editor = createNoteLiveEditor(pad.editor, () => host, start);
+    editor.show(start, first, false);
+    const note = editor.parse(second);
+    const toJSON = vi.spyOn(ProseMirrorNode.prototype, "toJSON");
+    try {
+      editor.show(first, second, false);
+      const written = toJSON.mock.contexts as ProseMirrorNode[];
+      expect(written.filter((node) => node.type.name === "doc")).toEqual([]);
+      expect(written.filter((node) => node.type.name === "paragraph").length).toBeLessThan(10);
+    } finally {
+      toJSON.mockRestore();
+    }
+    expect(pad.text()).toBe(second);
+    const blocks: ProseMirrorNode[] = [];
+    note.doc.forEach((block) => {
+      blocks.push(block);
+    });
+    expect(adopted.at(-1)).toEqual(createMarkdownSourceSnapshot(note.layout, note.doc.toJSON(), blocks.map(markdownBlockKey)));
+    editor.show(first, second, false);
+    expect(adopted.at(-1)).toBe(adopted.at(-2));
   });
 });

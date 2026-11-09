@@ -6,11 +6,11 @@ import { loadNamespace } from "@/i18n";
 import { isMac } from "@/lib/utils";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { withImageView } from "./block-views";
-import { destroyKbEditors, kbEditor, kbMarkdown } from "./kb-test-editor";
+import { destroyKbEditors, kbEditor, kbMarkdown } from "./tests/kb-editor-fixtures";
 import { EmbedCard, embedNodeView, embedSource, embedTarget, plainImageView, withNoteEmbeds, type EmbedOptions } from "./note-embeds";
 import type { LinkableNote } from "./note-links";
 import { noteBaseExtensions, parseNoteMarkdown } from "./note-markdown";
-import { forgetRemoteImages } from "./note-remote-images";
+import { resetRemoteImagesForTest } from "./note-remote-images";
 
 const E = enNotes.kb.embeds;
 const NOTES: LinkableNote[] = [
@@ -41,7 +41,7 @@ beforeAll(async () => {
 afterEach(() => {
   destroyKbEditors();
   vi.unstubAllGlobals();
-  forgetRemoteImages();
+  resetRemoteImagesForTest();
 });
 
 describe("embed targets and sources", () => {
