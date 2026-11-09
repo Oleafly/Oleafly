@@ -95,6 +95,9 @@ import {
   validateToolInput,
 } from "@/lib/mcp-bridge";
 import { summarizeMcpError, summarizeMcpResult } from "@/store/mcp-activity";
+import { useHomeViewStore } from "@/store/home-view";
+import { useNotesViewStore } from "@/store/notes-view";
+import { useSettingsStore } from "@/store/settings";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillEntry } from "@/lib/skills";
 import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
@@ -430,6 +433,49 @@ describe("mcp tool registry", () => {
 
     expect(result).toMatchObject({ error: expect.stringContaining("could not be opened") });
     expect(mocks.filesState.openProject).toHaveBeenCalledWith("next", expect.any(Function));
+  });
+
+  it("lists notes as projects only while Notes is off", async () => {
+    const notes = useSettingsStore.getState().notes;
+    mocks.api.listProjects.mockResolvedValue([
+      { id: "paper", name: "Paper", kind: "document" },
+      { id: "idea", name: "Idea", kind: "note" },
+    ] as never);
+    useSettingsStore.setState({ notes: true });
+    expect(await registry.list_projects.execute({})).toEqual({
+      projects: [{ id: "paper", name: "Paper", kind: "document" }],
+    });
+    useSettingsStore.setState({ notes: false });
+    expect(await registry.list_projects.execute({})).toMatchObject({
+      projects: [{ id: "paper" }, { id: "idea" }],
+    });
+    useSettingsStore.setState({ notes });
+  });
+
+  it("open_project opens a note in Notes and leaves the open project alone", async () => {
+    const notes = useSettingsStore.getState().notes;
+    useSettingsStore.setState({ notes: true });
+    useHomeViewStore.setState({ page: "library" });
+    useNotesViewStore.setState({ requestedNoteId: null });
+    mocks.api.listProjects.mockResolvedValue([{ id: "idea", name: "Idea", kind: "note" }] as never);
+    mocks.filesState.projectId = "proj";
+    mocks.filesState.openProject.mockClear();
+    const local = buildMcpToolRegistry({
+      confirm: async () => true,
+      readOnly: false,
+      onImage: () => {},
+      mutationAllowed: () => true,
+    });
+
+    const result = await local.open_project.execute({ project_id: "idea" });
+
+    expect(result).toMatchObject({ success: true, project_id: "idea", opened_in: "notes" });
+    expect(mocks.filesState.openProject).not.toHaveBeenCalled();
+    expect(useHomeViewStore.getState().page).toBe("notes");
+    expect(useNotesViewStore.getState().requestedNoteId).toBe("idea");
+    useSettingsStore.setState({ notes });
+    useHomeViewStore.setState({ page: "library" });
+    useNotesViewStore.setState({ requestedNoteId: null });
   });
 
   it("validates required fields, types, bounds, and unexpected arguments", () => {

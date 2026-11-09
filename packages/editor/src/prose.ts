@@ -18,6 +18,7 @@ export {
   grammarSuppressionKey,
   guardProofreadingDiagnostics,
   isProofreadingSuggestResult,
+  isProofreadingSurface,
   isProofreadingWorkerResponse,
   isSpellingDiagnosticKind,
   proofreadingContextSentence,

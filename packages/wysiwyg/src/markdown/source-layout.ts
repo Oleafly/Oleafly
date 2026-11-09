@@ -33,7 +33,7 @@ export interface MarkdownSourceSnapshot {
   preservable: boolean[];
 }
 
-type Item = { unit: number } | { fresh: JSONContent[] };
+type Item<T> = { unit: number } | { fresh: T[] };
 
 const REGENERATED_NODE_TYPES = new Set(["figure"]);
 const MAX_ALIGNMENT_CELLS = 1_000_000;
@@ -187,6 +187,7 @@ function isEmptyParagraph(node: JSONContent | undefined): boolean {
 export function createMarkdownSourceSnapshot(
   sourceLayout: MarkdownSourceLayout | null,
   loaded: JSONContent,
+  nodeKeys?: readonly string[],
 ): MarkdownSourceSnapshot | null {
   if (!sourceLayout) return null;
   const nodes = loaded.content ?? [];
@@ -211,7 +212,7 @@ export function createMarkdownSourceSnapshot(
   });
   return {
     layout,
-    keys: nodes.map((node) => JSON.stringify(node)),
+    keys: nodeKeys?.length === nodes.length ? [...nodeKeys] : nodes.map((node) => JSON.stringify(node)),
     unitOfNode,
     firstNode,
     preservable,
@@ -349,17 +350,17 @@ function intactUnits(snapshot: MarkdownSourceSnapshot, match: readonly number[])
   });
 }
 
-function planItems(
-  current: readonly JSONContent[],
+function planItems<T>(
+  current: readonly T[],
   match: readonly number[],
   snapshot: MarkdownSourceSnapshot,
-): Item[] {
+): Item<T>[] {
   const { layout, unitOfNode, firstNode } = snapshot;
   const intact = intactUnits(snapshot, match);
   const hidden = layout.units.flatMap((unit, index) => (unit.nodes === 0 ? [index] : []));
 
-  const items: Item[] = [];
-  let fresh: JSONContent[] = [];
+  const items: Item<T>[] = [];
+  let fresh: T[] = [];
   let nextHidden = 0;
   const closeFresh = () => {
     if (fresh.length > 0) items.push({ fresh });
@@ -417,17 +418,15 @@ function separatorBetween(
     : eol + eol;
 }
 
-export function serializeWithSourceLayout(
-  doc: JSONContent,
+export function serializeWithSourceLayout<T = JSONContent>(
+  doc: { content?: readonly T[] },
   snapshot: MarkdownSourceSnapshot,
-  serializeNodes: (nodes: JSONContent[]) => string,
+  serializeNodes: (nodes: T[]) => string,
+  keyOf: (node: T) => string = (node) => JSON.stringify(node),
 ): string {
   const { layout, keys } = snapshot;
   const current = doc.content ?? [];
-  const match = alignNodes(
-    keys,
-    current.map((node) => JSON.stringify(node)),
-  );
+  const match = alignNodes(keys, current.map(keyOf));
   const items = planItems(current, match, snapshot);
   const eol = layoutLineEnding(layout);
   let output = "";

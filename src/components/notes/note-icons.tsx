@@ -74,6 +74,7 @@ import {
   Network,
   Notebook,
   NotebookPen,
+  NotebookTabs,
   NotebookText,
   Omega,
   Orbit,
@@ -126,8 +127,9 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { Badge } from "@/components/ui/badge";
 import type { Resources } from "@/i18n/resources-types";
 import { cn } from "@/lib/utils";
@@ -303,6 +305,12 @@ export const KIND_TONES: Readonly<Record<ItemKind, KindTone>> = {
     tint: "bg-sky-500/10",
     dot: "bg-sky-500",
   },
+  notebook: {
+    icon: "text-amber-600 dark:text-amber-400",
+    text: "text-amber-700 dark:text-amber-300",
+    tint: "bg-amber-500/10",
+    dot: "bg-amber-500",
+  },
   file: {
     icon: "text-slate-600 dark:text-slate-400",
     text: "text-slate-700 dark:text-slate-300",
@@ -311,20 +319,19 @@ export const KIND_TONES: Readonly<Record<ItemKind, KindTone>> = {
   },
 };
 
-export const NOTE_TONES: Readonly<Record<NoteColor, { icon: string; tint: string }>> = {
-  violet: { icon: "text-violet-600 dark:text-violet-400", tint: "bg-violet-500/10" },
-  blue: { icon: "text-blue-600 dark:text-blue-400", tint: "bg-blue-500/10" },
-  sky: { icon: "text-sky-600 dark:text-sky-400", tint: "bg-sky-500/10" },
-  teal: { icon: "text-teal-600 dark:text-teal-400", tint: "bg-teal-500/10" },
-  emerald: { icon: "text-emerald-600 dark:text-emerald-400", tint: "bg-emerald-500/10" },
-  lime: { icon: "text-lime-700 dark:text-lime-400", tint: "bg-lime-500/10" },
-  amber: { icon: "text-amber-700 dark:text-amber-400", tint: "bg-amber-500/10" },
-  orange: { icon: "text-orange-600 dark:text-orange-400", tint: "bg-orange-500/10" },
-  rose: { icon: "text-rose-600 dark:text-rose-400", tint: "bg-rose-500/10" },
-  pink: { icon: "text-pink-600 dark:text-pink-400", tint: "bg-pink-500/10" },
-};
+export const NOTE_COLOR_HEX = Object.fromEntries(
+  BOOK_COLOR_OPTIONS.map(({ name, hex }) => [name.toLowerCase(), hex]),
+) as Readonly<Record<NoteColor, string>>;
 
-const DEFAULT_TONE: NoteColor = "violet";
+export const NOTE_COLOR_LABELS = Object.fromEntries(
+  BOOK_COLOR_OPTIONS.map(({ name }) => [name.toLowerCase(), name]),
+) as Readonly<Record<NoteColor, string>>;
+
+const DEFAULT_TONE: NoteColor = "blue";
+
+export function noteColorStyle(color: string | undefined): CSSProperties {
+  return { "--note-color": NOTE_COLOR_HEX[toneOf(color)] } as CSSProperties;
+}
 
 export type NoteIconSize = "sm" | "md" | "lg";
 
@@ -368,7 +375,7 @@ export function NoteIcon({
 }
 
 function toneOf(color: string | undefined): NoteColor {
-  return color !== undefined && Object.hasOwn(NOTE_TONES, color) ? (color as NoteColor) : DEFAULT_TONE;
+  return color !== undefined && Object.hasOwn(NOTE_COLOR_HEX, color) ? (color as NoteColor) : DEFAULT_TONE;
 }
 
 export function NoteChip({
@@ -382,9 +389,10 @@ export function NoteChip({
     <span
       aria-hidden
       data-note-color={tone}
-      className={cn("flex shrink-0 items-center justify-center", CHIP_SIZES[size], NOTE_TONES[tone].tint, className)}
+      style={noteColorStyle(tone)}
+      className={cn("note-chip flex shrink-0 items-center justify-center", CHIP_SIZES[size], className)}
     >
-      <NoteIcon icon={icon} size={size} className={NOTE_TONES[tone].icon} />
+      <NoteIcon icon={icon} size={size} className="text-current" />
     </span>
   );
 }
@@ -394,6 +402,7 @@ const ARTIFACT_ICONS: Readonly<Record<ArtifactKind, LucideIcon>> = {
   data: Database,
   file: File,
   html: Braces,
+  notebook: NotebookTabs,
   report: FileText,
 };
 
@@ -445,8 +454,10 @@ export function Byline({
   agent,
   when,
   className,
-}: Readonly<{ author: Author; agent?: string; when: string; className?: string }>) {
+  shared = false,
+}: Readonly<{ author: Author; agent?: string; when: string; className?: string; shared?: boolean }>) {
   const { t } = useTranslation(["notes"]);
+  if (author === "you" && shared) return <span className={cn("block truncate", className)}>{when}</span>;
   if (author === "you") {
     return <span className={cn("block truncate", className)}>{`${t(($) => $.notes.library.author.you)} · ${when}`}</span>;
   }

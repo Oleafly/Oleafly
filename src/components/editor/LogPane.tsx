@@ -1,18 +1,5 @@
-import {
-  createContext,
-  lazy,
-  memo,
-  Suspense,
-  useCallback,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { createContext, memo, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Eraser } from "lucide-react";
 import { EditorState } from "@codemirror/state";
@@ -218,11 +205,9 @@ function extractErrorExcerpt(log: string, message: string): string {
 const LogNavigation = createContext(openFileAndGotoLine);
 
 const CompileErrorDetails = lazy(() =>
-  import("./compile-log-details").then((module) => ({ default: module.CompileErrorDetails })),
-);
+  import("./compile-log-details").then((module) => ({ default: module.CompileErrorDetails })), { warm: true });
 const CompileLogSummary = lazy(() =>
-  import("./compile-log-details").then((module) => ({ default: module.CompileLogSummary })),
-);
+  import("./compile-log-details").then((module) => ({ default: module.CompileLogSummary })), { warm: true });
 
 function hasErrorDetails(err: CompileError): boolean {
   return err.source_line != null || (err.hints?.length ?? 0) > 0;

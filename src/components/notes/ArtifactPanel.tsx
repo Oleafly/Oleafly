@@ -1,15 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
+import { describeError } from "@/lib/app-error";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { artifactsForNote } from "./note-artifacts";
 import { AgentTag, KindBadge, KindChip } from "./note-icons";
 import { useNotesData } from "./notes-data";
 import type { ArtifactItem, ArtifactPreview, NoteItem } from "./types";
+
+const NotebookView = lazy(() => import("./NotebookView").then((module) => ({ default: module.NotebookView })), { warm: true });
 
 interface ArtifactPanelProps {
   note: NoteItem;
@@ -24,10 +28,6 @@ type PreviewState =
   | { status: "ready"; preview: ArtifactPreview }
   | { status: "failed"; error: string };
 
-function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function usePreview(artifact: ArtifactItem): PreviewState | null {
   const { previewArtifact } = useNotesData();
   const [state, setState] = useState<{ key: string; value: PreviewState } | null>(null);
@@ -41,7 +41,7 @@ function usePreview(artifact: ArtifactItem): PreviewState | null {
     setState({ key, value: { status: "loading" } });
     previewArtifact(artifactRef.current).then(
       (preview) => live && setState({ key, value: { status: "ready", preview } }),
-      (error: unknown) => live && setState({ key, value: { status: "failed", error: errorText(error) } }),
+      (error: unknown) => live && setState({ key, value: { status: "failed", error: describeError(error) } }),
     );
     return () => {
       live = false;
@@ -62,6 +62,16 @@ function keyedRows(rows: readonly (readonly string[])[]): KeyedRow[] {
     id: `row-${String(row)}`,
     cells: cells.map((value, column) => ({ id: `cell-${String(column)}`, value })),
   }));
+}
+
+function Loading() {
+  const { t } = useTranslation(["notes"]);
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Spinner size="sm" />
+      {t(($) => $.notes.artifacts.loading)}
+    </div>
+  );
 }
 
 function PreviewBody({ preview, title }: Readonly<{ preview: ArtifactPreview; title: string }>) {
@@ -104,6 +114,15 @@ function PreviewBody({ preview, title }: Readonly<{ preview: ArtifactPreview; ti
       </div>
     );
   }
+  if (preview.type === "notebook") {
+    return (
+      <div data-artifact-notebook className="max-h-[32rem] overflow-auto rounded-md border p-2">
+        <Suspense fallback={<Loading />}>
+          <NotebookView text={preview.text} />
+        </Suspense>
+      </div>
+    );
+  }
   if (preview.type === "text") {
     return (
       <div className="space-y-1">
@@ -114,6 +133,7 @@ function PreviewBody({ preview, title }: Readonly<{ preview: ArtifactPreview; ti
   }
   if (preview.reason === "html") return note(t(($) => $.notes.artifacts.htmlPreview));
   if (preview.reason === "missing") return note(t(($) => $.notes.artifacts.missing));
+  if (preview.reason === "large") return note(t(($) => $.notes.artifacts.notebookTooLarge));
   return note(t(($) => $.notes.artifacts.binary));
 }
 
@@ -121,14 +141,7 @@ function Preview({ artifact }: Readonly<{ artifact: ArtifactItem }>) {
   const { t } = useTranslation(["notes"]);
   const state = usePreview(artifact);
   if (!state) return null;
-  if (state.status === "loading") {
-    return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Spinner size="sm" />
-        {t(($) => $.notes.artifacts.loading)}
-      </div>
-    );
-  }
+  if (state.status === "loading") return <Loading />;
   if (state.status === "failed") {
     return (
       <p className="text-xs text-destructive">{t(($) => $.notes.artifacts.previewFailed, { error: state.error })}</p>
@@ -151,7 +164,7 @@ function InsertButton({ artifact, onInsert }: Readonly<{ artifact: ArtifactItem;
       () => setState((previous) => (previous.id === artifact.id ? { ...previous, busy: false } : previous)),
       (error: unknown) =>
         setState((previous) =>
-          previous.id === artifact.id ? { id: artifact.id, busy: false, error: errorText(error) } : previous,
+          previous.id === artifact.id ? { id: artifact.id, busy: false, error: describeError(error) } : previous,
         ),
     );
   };

@@ -54,9 +54,13 @@ import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading, releaseIdleProofreadingWorker } from "@/lib/proofreading/client";
 import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
 import { useDiffStore } from "@/store/diff";
+import { clearActiveNoteTab } from "@/store/note-tabs";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { dismissEngineHint, engineHintDismissed } from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
+import { useHomeViewStore } from "@/store/home-view";
+import { useNotesViewStore } from "@/store/notes-view";
+import { opensInNotes } from "@/lib/library-projects";
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
@@ -76,6 +80,7 @@ import {
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
 import { collabHandBack } from "@/lib/collab-live-bridge";
+import { flushOpenNotes } from "@/lib/open-note-editors";
 import { projectLeaveAllowed } from "@/lib/project-leave-guards";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
@@ -478,7 +483,7 @@ interface FilesStore {
     projectId: string,
     path: string,
     content: string,
-    options?: { crlf?: boolean; base?: string },
+    options?: { crlf?: boolean; base?: string; closedProject?: boolean },
   ) => Promise<void>;
   applyExternalWrite: (
     projectId: string,
@@ -1766,8 +1771,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set({ projects, projectsLoaded: true });
   },
 
-  openProject: (id, shouldContinue = () => true) =>
-    enqueueProjectTransition(() => openProjectTransition(id, shouldContinue, set, get)),
+  openProject: (id, shouldContinue = () => true) => {
+    if (opensInNotes(get().projects, id, useSettingsStore.getState().notes)) {
+      useNotesViewStore.getState().request(id);
+      useHomeViewStore.getState().goTo("notes");
+      return Promise.resolve();
+    }
+    return enqueueProjectTransition(() => openProjectTransition(id, shouldContinue, set, get));
+  },
 
   closeProject: () => enqueueProjectTransition(async () => {
     const projectId = get().projectId;
@@ -1840,11 +1851,27 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  flushForQuit: () =>
-    enqueueProjectTransition(async () => {
+  flushForQuit: async () => {
+    const notes = flushOpenNotes();
+    const project = await enqueueProjectTransition(async () => {
       await collabHandBack(get().projectId);
       await get().saveAllDirty();
-    }),
+    }).then(
+      () => null,
+      (error: unknown) => ({ error }),
+    );
+    const noteFailures = await notes;
+    if (noteFailures.length === 0) {
+      if (project) throw project.error;
+      return;
+    }
+    const projectFailures = !project
+      ? []
+      : project.error instanceof SaveFlushError
+        ? project.error.failures
+        : [{ path: get().projectName || get().projectId || "", reason: describeFailure(project.error) }];
+    throw new SaveFlushError([...projectFailures, ...noteFailures]);
+  },
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
@@ -1987,6 +2014,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return;
     }
     useDiffStore.getState().clearActiveDiff();
+    clearActiveNoteTab();
     set((s) => {
       const isNew = !s.openTabs.includes(path);
       return {
@@ -2001,6 +2029,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   setActive: (path) => {
     useDiffStore.getState().clearActiveDiff();
+    clearActiveNoteTab();
     set({ activePath: path });
   },
 
@@ -2409,7 +2438,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const baselineRevision = fileReloadRevision;
     const adoptable = (file: FileState | undefined) =>
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
-    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const expectedGeneration =
+      options?.closedProject && get().projectId !== projectId
+        ? await refreshMutationGeneration(projectId)
+        : await get().prepareExternalMutation(projectId);
     const canonicalContent = normalizeTextContent(content);
     const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;

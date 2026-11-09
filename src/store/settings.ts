@@ -19,6 +19,16 @@ import {
   primaryFontFamily,
   withoutControlCharacters,
 } from "@/lib/font-families";
+import {
+  NOTES_APPEARANCE_DEFAULTS,
+  NOTES_APPEARANCE_KEYS,
+  NOTES_APPEARANCE_STORAGE_KEYS,
+  NOTES_LINE_HEIGHTS,
+  normalizeNotesSetting,
+  readNotesAppearance,
+  type NotesAppearance,
+  type NotesAppearanceKey,
+} from "@/lib/notes-appearance";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -67,6 +77,7 @@ export function layoutPresetHidesWorkspace(preset: LayoutPreset): boolean {
 
 export type RailTab =
   | "files"
+  | "notes"
   | "search"
   | "source"
   | "review"
@@ -1101,6 +1112,26 @@ interface SettingsState {
   setLatexTools: (v: boolean) => void;
   notes: boolean;
   setNotes: (v: boolean) => void;
+  notesTypeface: NotesAppearance["notesTypeface"];
+  notesFontFamily: string;
+  notesFontSize: number;
+  notesLineHeight: NotesAppearance["notesLineHeight"];
+  notesCustomLineHeight: number;
+  notesParagraphSpacing: NotesAppearance["notesParagraphSpacing"];
+  notesHeadingTypeface: NotesAppearance["notesHeadingTypeface"];
+  notesHeadingFontFamily: string;
+  notesHeadingSize: NotesAppearance["notesHeadingSize"];
+  notesTitleSize: number;
+  notesWidth: NotesAppearance["notesWidth"];
+  notesCodeFontFamily: string;
+  notesCodeTheme: NotesAppearance["notesCodeTheme"];
+  notesAccentColor: string;
+  notesHighlightColor: NotesAppearance["notesHighlightColor"];
+  notesCalloutStyle: NotesAppearance["notesCalloutStyle"];
+  notesShowWordCount: boolean;
+  notesSpellcheck: boolean;
+  setNotesAppearance: <K extends NotesAppearanceKey>(key: K, value: NotesAppearance[K]) => void;
+  resetNotesAppearance: () => void;
   defaultLatexEngine: DefaultLatexEngine;
   setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
   resetGeneralPreferences: () => void;
@@ -1276,6 +1307,7 @@ const PREF_DEFAULTS = {
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   notes: false,
+  ...NOTES_APPEARANCE_DEFAULTS,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1368,6 +1400,7 @@ export const SECTION_SETTINGS = {
     bgPattern: "oleafly.bgPattern",
     appIcon: "oleafly.appIcon",
     homeProjectLayout: "oleafly.library.projectLayout",
+    ...NOTES_APPEARANCE_STORAGE_KEYS,
   },
   experimentation: {
     latexTools: "oleafly.latexTools",
@@ -2082,6 +2115,26 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setNotes: (v) => {
     saveLs("oleafly.notes", v ? "1" : "0");
     set({ notes: v });
+  },
+  ...readNotesAppearance((key) => ls(key, "")),
+  setNotesAppearance: (key, v) => {
+    const value = normalizeNotesSetting(key, v);
+    saveLs(NOTES_APPEARANCE_STORAGE_KEYS[key], storedDefault(value));
+    const previous = get().notesLineHeight;
+    const customKey = NOTES_APPEARANCE_STORAGE_KEYS.notesCustomLineHeight;
+    if (key === "notesLineHeight" && value === "custom" && previous !== "custom" && ls(customKey, "") === "") {
+      const seeded = NOTES_LINE_HEIGHTS[previous];
+      saveLs(customKey, String(seeded));
+      set({ notesLineHeight: "custom", notesCustomLineHeight: seeded });
+      return;
+    }
+    set({ [key]: value } as Partial<SettingsState>);
+  },
+  resetNotesAppearance: () => {
+    for (const key of NOTES_APPEARANCE_KEYS) {
+      saveLs(NOTES_APPEARANCE_STORAGE_KEYS[key], storedDefault(NOTES_APPEARANCE_DEFAULTS[key]));
+    }
+    set({ ...NOTES_APPEARANCE_DEFAULTS });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import {
   BookmarkX,
@@ -86,7 +87,6 @@ import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
-import { openNotes } from "@/features/open-tool";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { appIconSource, useSettingsStore } from "@/store/settings";
@@ -103,6 +103,7 @@ import {
 import {
   folderAvailability,
   isFolderProject,
+  libraryProjects,
   projectUpdatedAt,
 } from "@/lib/library-projects";
 import {
@@ -191,13 +192,14 @@ function FilterSelect({
   className?: string;
 }>) {
   const id = `project-filter-${name}`;
+  const shown = value === CUSTOM_FILTER || options.some((option) => option.value === value) ? value : CUSTOM_FILTER;
   return (
     <label
       htmlFor={id}
       className={cn("flex min-w-0 flex-col gap-1 text-xs font-medium", className)}
     >
       {label}
-      <Select value={value} onValueChange={onChange}>
+      <Select value={shown} onValueChange={onChange}>
         <SelectTrigger
           id={id}
           className="h-10 border-white/20 bg-background/35 text-sm backdrop-blur-md dark:border-white/10"
@@ -211,7 +213,7 @@ function FilterSelect({
                 {option.label}
               </SelectItem>
             ))}
-            {value === CUSTOM_FILTER ? (
+            {shown === CUSTOM_FILTER ? (
               <SelectItem value={CUSTOM_FILTER} disabled>
                 {customLabel}
               </SelectItem>
@@ -228,7 +230,9 @@ export function Library() {
   const displayPath = useDisplayPath();
   const colorLabels = useBookColorLabels();
   const page = useHomeViewStore((s) => s.page);
-  const projects = useFilesStore((s) => s.projects);
+  const allProjects = useFilesStore((s) => s.projects);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const projects = useMemo(() => libraryProjects(allProjects, notesOn), [allProjects, notesOn]);
   const projectsLoaded = useFilesStore((s) => s.projectsLoaded);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const openProject = useFilesStore((s) => s.openProject);
@@ -292,10 +296,11 @@ export function Library() {
           modified: modifiedFolders,
           colorOf: coverColor,
           colorLabels,
+          hideNotes: notesOn,
         },
         collabKit ? [collabKit.extension] : [],
       ),
-    [t, favs, modifiedFolders, coverColor, colorLabels, collabKit],
+    [t, favs, modifiedFolders, coverColor, colorLabels, collabKit, notesOn],
   );
   const analyzedQuery = useMemo(
     () => analyze(query, searchSchema, { now: Date.now() }),
@@ -331,10 +336,6 @@ export function Library() {
     const state = asUnavailable(availabilityOf(project));
     if (state) {
       window.setTimeout(() => setUnavailableTarget({ project, state }), 0);
-      return;
-    }
-    if (project.kind === "note") {
-      void openNotes(project.id);
       return;
     }
     void openProject(project.id);
@@ -1105,7 +1106,7 @@ export function Library() {
                 { value: "document", label: t(($) => $.library.home.filters.kindDocument) },
                 { value: "image", label: t(($) => $.library.home.filters.kindImage) },
                 { value: "diagram", label: t(($) => $.library.home.filters.kindDiagram) },
-                { value: "note", label: t(($) => $.library.home.filters.kindNote) },
+                ...(notesOn ? [] : [{ value: "note", label: t(($) => $.library.home.filters.kindNote) }]),
               ]}
             />
             <FilterSelect

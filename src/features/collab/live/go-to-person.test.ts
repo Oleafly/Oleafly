@@ -9,7 +9,9 @@ import { ALICE_ID, BOB_ID, CAROL_ID, shareInfo } from "../tests/fixtures";
 import { type LivePeer, useCollabLiveStore } from "./live-store";
 import { type RemoteCursorSource, remoteCursors } from "./remote-cursors";
 
-const mocks = vi.hoisted(() => ({ open: vi.fn(), scroll: vi.fn() }));
+const mocks = vi.hoisted(() => ({ open: vi.fn(), scroll: vi.fn(), jump: vi.fn(async () => true) }));
+
+vi.mock("../notes/note-live-port", () => ({ jumpToNotePeerWhenBound: mocks.jump }));
 
 vi.mock("@/lib/open-location", () => ({ openProjectLocation: mocks.open }));
 vi.mock("@oleafly/editor", async (importOriginal) => ({
@@ -95,6 +97,16 @@ describe("goToPerson", () => {
       { keepSelection: true },
     );
     expect(mocks.scroll).toHaveBeenLastCalledWith(view, at);
+  });
+
+  it("hands a person in a project note to the note editor instead of the source editor", async () => {
+    place(bob("notes/Plan.md", 12));
+    mocks.open.mockResolvedValue(true);
+
+    expect(await goToPerson(BOB_ID)).toBe(true);
+
+    expect(mocks.jump).toHaveBeenCalledExactlyOnceWith("grant", "notes/Plan.md", BOB_ID);
+    expect(mocks.scroll).not.toHaveBeenCalled();
   });
 
   it("briefly tints the line their caret is on", async () => {

@@ -44,14 +44,16 @@
       "externalTool": "Confirm external tool action",
       "internet": "Confirm internet access",
       "edit": "Confirm AI edit",
-      "researchTask": "Confirm research task"
+      "researchTask": "Confirm research task",
+      "note": "Confirm new note"
     },
     "headline": {
       "command": "The assistant wants to run this command",
       "externalTool": "The assistant wants to use an external tool",
       "internet": "The assistant wants to access the internet",
       "edit": "The assistant wants to change your files",
-      "researchTask": "The assistant wants to create a research task"
+      "researchTask": "The assistant wants to create a research task",
+      "note": "The assistant wants to create a note"
     },
     "mcpNote": "This sends the arguments below to the configured MCP server.",
     "line": "line {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} minutes",
       "planFirst": "Plan first",
       "startNow": "Start now"
+    },
+    "noteDraft": {
+      "title": "Title",
+      "project": "Linked project",
+      "tags": "Tags",
+      "text": "Text",
+      "empty": "No text",
+      "more": "The note goes on past this point."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Replace reply",
     "forked": "Started a new chat from the edited message.",
     "failed": "Couldn't send the message again."
+  },
+  "noteScope": {
+    "notesOnly": "Only in a note assistant.",
+    "tools": {
+      "readNote": "Read the open note, including suggestions that wait for review.",
+      "proposeNoteEdits": "Suggest changes to the open note for you to accept or reject.",
+      "searchNotes": "Search all your notes.",
+      "listKnowledgeNotes": "List your notes, by tag or project.",
+      "readNoteById": "Read another note.",
+      "createNote": "Create a new note.",
+      "relatedProjectFiles": "List the files of the project the note is linked to.",
+      "readRelatedProjectFile": "Read a file from the project the note is linked to.",
+      "searchRelatedProject": "Search the project the note is linked to."
+    }
   }
 }

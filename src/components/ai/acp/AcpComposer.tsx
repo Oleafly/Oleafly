@@ -11,8 +11,9 @@ import { acpCancel, acpError, acpUsable, type AcpAgentStatus, type AcpSession } 
 import { mentionInsertText } from "@/lib/composer-tokens";
 import { logError } from "@/lib/log";
 import { isSkillAvailable, useSkills } from "@/lib/skills";
-import { acpComposerId, useAcpSessionsStore, type AcpPromptDraft } from "@/store/acp-sessions";
+import { acpComposerId, useAcpSessionsStore, type AcpPromptDraft, type AcpSelection } from "@/store/acp-sessions";
 import { EMPTY_ATTACHMENTS, useComposerDrafts } from "@/store/composer-drafts";
+import type { FileEntry } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { acpAttachmentKinds, acpMentionItems, acpSlashItems, composerMode } from "./acp-composer";
 import { promptMentions } from "./acp-attachments";
@@ -22,14 +23,14 @@ export function acpDraftId(projectId: string, agentId: string | null, session: A
   return session ? acpComposerId(projectId, session.agentId, session.id) : acpComposerId(projectId, agentId);
 }
 
-function takeDraft(projectId: string, composerId: string): AcpPromptDraft {
+function takeDraft(projectId: string, composerId: string, tree: readonly FileEntry[]): AcpPromptDraft {
   const draft = useComposerDrafts.getState().drafts[composerId];
   const composer = useAcpSessionsStore.getState().composers[projectId];
   const text = draft?.text ?? "";
   return {
     text,
     attachments: (draft?.attachments ?? EMPTY_ATTACHMENTS).filter((item) => item.status === "ready"),
-    mentions: promptMentions(text, useFilesStore.getState().tree),
+    mentions: promptMentions(text, tree),
     selections: [...(composer?.selections ?? [])],
     skill: composer?.skill ?? null,
   };
@@ -58,12 +59,21 @@ export function restoreDraft(projectId: string, composerId: string, draft: AcpPr
   });
 }
 
+function withContext(draft: AcpPromptDraft, extra?: () => readonly AcpSelection[]): AcpPromptDraft {
+  const added = extra?.() ?? [];
+  return added.length > 0 ? { ...draft, selections: [...added, ...draft.selections] } : draft;
+}
+
 function isEmpty(draft: AcpPromptDraft): boolean {
   return !draft.text.trim() && draft.attachments.length === 0 && draft.selections.length === 0 && !draft.skill;
 }
 
 export interface AcpComposerProps {
   projectId: string;
+  slot?: string;
+  tree?: readonly FileEntry[];
+  quoteEditor?: boolean;
+  extraSelections?: () => readonly AcpSelection[];
   session: AcpSession | undefined;
   agent: AcpAgentStatus | undefined;
   agentId: string | null;
@@ -75,9 +85,24 @@ export interface AcpComposerProps {
 }
 
 export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(function AcpComposer(
-  { projectId, session, agent, agentId, onStart, onSend, onError, leftControls, trailingControls },
+  {
+    projectId,
+    slot,
+    tree: scopedTree,
+    quoteEditor = true,
+    extraSelections,
+    session,
+    agent,
+    agentId,
+    onStart,
+    onSend,
+    onError,
+    leftControls,
+    trailingControls,
+  },
   ref,
 ) {
+  const key = slot ?? projectId;
   const { t } = useTranslation(["common", "ai"]);
   const inner = useRef<ChatComposerHandle>(null);
   useImperativeHandle(ref, () => ({
@@ -86,10 +111,11 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
     insertText: (text) => inner.current?.insertText(text),
     openFilePicker: () => inner.current?.openFilePicker(),
   }), []);
-  const composerId = acpDraftId(projectId, agentId, session);
+  const composerId = acpDraftId(key, agentId, session);
   const text = useComposerDrafts((state) => state.drafts[composerId]?.text ?? "");
   const attachments = useComposerDrafts((state) => state.drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS);
-  const tree = useFilesStore((state) => state.tree);
+  const workspaceTree = useFilesStore((state) => state.tree);
+  const tree = scopedTree ?? workspaceTree;
   const skillsQuery = useSkills(projectId);
   const sending = useAcpSessionsStore((state) => (session ? (state.sending[session.id] ?? 0) > 0 : false));
   const mode = composerMode(session, !!agent && acpUsable(agent), sending);
@@ -116,8 +142,8 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
   const onSlashSelect = useCallback((item: SlashItem) => {
     if (!item.id.startsWith("skill:")) return;
     const skillId = item.id.slice("skill:".length);
-    useAcpSessionsStore.getState().setComposer(projectId, { skill: { id: skillId, name: item.label } });
-  }, [projectId]);
+    useAcpSessionsStore.getState().setComposer(key, { skill: { id: skillId, name: item.label } });
+  }, [key]);
 
   const mentionItems = useCallback(
     (query: string): MentionItem[] => acpMentionItems(mentionEntries, query),
@@ -125,33 +151,33 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
   );
 
   const submit = useCallback(() => {
-    const draft = takeDraft(projectId, composerId);
+    const draft = takeDraft(key, composerId, tree);
     if (isEmpty(draft)) return;
     const store = useAcpSessionsStore.getState();
     if (mode === "start") {
-      clearDraft(projectId, composerId);
-      onStart(draft);
+      clearDraft(key, composerId);
+      onStart(withContext(draft, extraSelections));
       return;
     }
     if (mode !== "send" || !session) return;
-    clearDraft(projectId, composerId);
+    clearDraft(key, composerId);
     onError(null);
     onSend();
-    void store.sendPrompt(projectId, session.id, draft).then((sent) => {
-      if (!sent) restoreDraft(projectId, composerId, draft);
+    void store.sendPrompt(key, session.id, withContext(draft, extraSelections)).then((sent) => {
+      if (!sent) restoreDraft(key, composerId, draft);
     }).catch((error: unknown) => {
-      restoreDraft(projectId, composerId, draft);
+      restoreDraft(key, composerId, draft);
       onError(acpError(error));
     });
-  }, [composerId, mode, onError, onSend, onStart, projectId, session]);
+  }, [composerId, extraSelections, key, mode, onError, onSend, onStart, session, tree]);
 
   const queue = useCallback(() => {
     if (!session) return;
-    const draft = takeDraft(projectId, composerId);
+    const draft = takeDraft(key, composerId, tree);
     if (isEmpty(draft)) return;
-    useAcpSessionsStore.getState().enqueue(session.id, draft);
-    clearDraft(projectId, composerId);
-  }, [composerId, projectId, session]);
+    useAcpSessionsStore.getState().enqueue(session.id, withContext(draft, extraSelections));
+    clearDraft(key, composerId);
+  }, [composerId, extraSelections, key, session, tree]);
 
   const stop = useCallback(() => {
     if (session?.status !== "running") return;
@@ -176,7 +202,7 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
     for (const path of paths) inner.current?.insertText(mentionInsertText(path, dirs.has(path)));
   }, [tree]);
 
-  useSelectionQuote(projectId);
+  useSelectionQuote(quoteEditor ? key : null);
 
   const placeholder = (() => {
     switch (mode) {

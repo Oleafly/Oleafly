@@ -73,13 +73,16 @@ export { htmlToLatex, type HtmlToLatexOptions } from "./paste/html-to-latex";
 export {
   markdownBlockAt,
   parseMarkdownBody,
+  splitMarkdownFrontMatter,
+  type MarkdownFrontMatterSplit,
   type ParseMarkdownBodyOptions,
   type PreservedMarkdownInlineRange,
 } from "./markdown/parse";
-export { serializeMarkdownBody } from "./markdown/serialize";
+export { markdownBlockKey, serializeMarkdownBody, serializeMarkdownDoc } from "./markdown/serialize";
 export { markdownLinkDestination } from "./link-destination";
 export {
   createMarkdownSourceSnapshot,
+  markdownPreservedRanges,
   type MarkdownSourceLayout,
   type MarkdownSourceSnapshot,
 } from "./markdown/source-layout";

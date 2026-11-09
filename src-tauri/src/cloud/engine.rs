@@ -1690,12 +1690,14 @@ struct ApplyJob {
 }
 
 fn write_meta(lock_id: Option<&str>, target: &Path, bytes: &[u8]) -> Result<(), String> {
-    match lock_id {
+    let written = match lock_id {
         Some(id) => crate::project::with_project_metadata_lock_held(id, || {
             crate::sandbox::atomic_write(target, bytes)
         }),
         None => crate::sandbox::atomic_write(target, bytes),
-    }
+    };
+    crate::note_index::invalidate();
+    written
 }
 
 fn apply_download(job: &ApplyJob, item: &ApplyItem, temp: &Path, applied: &mut Applied) {

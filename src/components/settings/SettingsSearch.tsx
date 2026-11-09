@@ -17,11 +17,16 @@ import {
   settingsTabFor,
   type CatalogPath,
   type SettingsSearchHit,
+  type SettingsSearchFeature,
   type SettingsSearchIndex,
   type SettingsSearchPlatform,
   type SettingsSearchRowHit,
 } from "@/components/settings/settings-search";
 import { cn, isMac, isWindows } from "@/lib/utils";
+import { useSettingsStore } from "@/store/settings";
+
+const NO_FEATURES: ReadonlySet<SettingsSearchFeature> = new Set();
+const NOTES_FEATURES: ReadonlySet<SettingsSearchFeature> = new Set(["notes"]);
 
 const SEARCH_DELAY_MS = 150;
 
@@ -222,6 +227,7 @@ export function useSettingsSearch<Id extends string>({
   const setQuery = store.set;
   const [pendingRow, setPendingRow] = useState<PendingRow<Id> | null>(null);
   const [catalogs, setCatalogs] = useState(0);
+  const features = useSettingsStore((state) => (state.notes ? NOTES_FEATURES : NO_FEATURES));
 
   useEffect(() => {
     const added = () => setCatalogs((count) => count + 1);
@@ -250,7 +256,12 @@ export function useSettingsSearch<Id extends string>({
       if (timer !== null) clearTimeout(timer);
     };
   }, [store]);
-  const indexRef = useRef<{ locale: string; catalogs: number; index: SettingsSearchIndex } | null>(null);
+  const indexRef = useRef<{
+    locale: string;
+    catalogs: number;
+    features: ReadonlySet<SettingsSearchFeature>;
+    index: SettingsSearchIndex;
+  } | null>(null);
   const selectRef = useRef(onSelectSection);
   selectRef.current = onSelectSection;
 
@@ -278,15 +289,18 @@ export function useSettingsSearch<Id extends string>({
   const active = !suspended && applied.trim() !== "";
   const hits: SettingsSearchHit<Id>[] | null = useMemo(() => {
     if (!active) return null;
-    if (indexRef.current?.locale !== locale || indexRef.current.catalogs !== catalogs) {
-      indexRef.current = {
+    let cached = indexRef.current;
+    if (cached?.locale !== locale || cached.catalogs !== catalogs || cached.features !== features) {
+      cached = {
         locale,
         catalogs,
-        index: buildSettingsIndex(catalogLookup(i18n, locale), locale, currentPlatform()),
+        features,
+        index: buildSettingsIndex(catalogLookup(i18n, locale), locale, currentPlatform(), features),
       };
+      indexRef.current = cached;
     }
-    return searchSettings(indexRef.current.index, sections, applied, locale);
-  }, [active, applied, catalogs, i18n, locale, sections]);
+    return searchSettings(cached.index, sections, applied, locale);
+  }, [active, applied, catalogs, features, i18n, locale, sections]);
   const currentVisible = hits ? hits.some((hit) => hit.id === currentSection) : true;
   const bestHitRef = useRef<Id | null>(null);
   bestHitRef.current = hits ? bestSettingsHit(hits, currentSection) : null;

@@ -265,7 +265,7 @@ export function GeneratorsToolView() {
                 rows={4}
                 placeholder={t(($) => $.researchTools.generators.instructionsPlaceholder)}
                 onChange={(event) => { revision.current += 1; setInstructions(event.target.value); setError(null); }}
-                className="w-full resize-y rounded-md border bg-transparent px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus-visible:border-ring"
+                className="w-full resize-y rounded-md border bg-transparent px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground"
               />
             </div>
             {error ? <p role="alert" className="select-text text-xs leading-relaxed text-destructive">{errorText}</p> : null}

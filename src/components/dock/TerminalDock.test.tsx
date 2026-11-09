@@ -12,6 +12,9 @@ import { projectLeaveAllowed } from "@/lib/project-leave-guards";
 import { resetTerminalLifecycleForTest } from "@/lib/terminal-lifecycle";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
+import { i18n } from "@/i18n";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { PANE_BAR_CLASS } from "@/components/layout/pane-reorder";
 
 const mocks = vi.hoisted(() => ({
   panes: [] as Array<Record<string, unknown>>,
@@ -32,6 +35,16 @@ const sessions = vi.hoisted(() => ({
   ),
 }));
 vi.mock("@/lib/terminal-sessions", () => sessions);
+
+const paneBar = vi.hoisted(() => ({
+  onPointerDown: vi.fn(),
+  onPointerMove: vi.fn(),
+  onPointerLeave: vi.fn(),
+}));
+vi.mock("@/components/layout/pane-reorder", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/layout/pane-reorder")>()),
+  usePaneBar: () => ({ "data-pane-bar": "", ...paneBar }),
+}));
 
 vi.mock("@/store/settings", () => ({
   useSettingsStore: Object.assign(
@@ -665,5 +678,142 @@ describe("TerminalDock in a folder that is not trusted yet", () => {
     fireEvent.click(screen.getByRole("button", { name: "Terminal settings" }));
 
     expect(mocks.settings.openSettingsAt).toHaveBeenCalledWith("appearance", "terminal");
+  });
+});
+
+describe("TerminalDock tab strip", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mocks.panes.length = 0;
+    mocks.setOpen = null;
+    mocks.settings.setTerminalOpen.mockReset();
+    mocks.settings.setTerminalOpen.mockImplementation((open: boolean) => mocks.setOpen?.(open));
+    mocks.settings.terminalConfirmClose = false;
+    sessions.terminalJobs.mockReset().mockResolvedValue([]);
+    resetTerminalLifecycleForTest();
+    useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
+    paneBar.onPointerDown.mockReset();
+    paneBar.onPointerMove.mockReset();
+  });
+
+  function box(left: number, width: number): DOMRect {
+    return { left, top: 4, width, height: 28, right: left + width, bottom: 32, x: left, y: 4, toJSON: () => ({}) } as DOMRect;
+  }
+
+  function strip() {
+    return screen.getByTestId("dock-terminal-tabs");
+  }
+
+  function place() {
+    [...strip().querySelectorAll<HTMLElement>("[data-reorder-item]")].forEach((row, index) => {
+      row.getBoundingClientRect = () => box(4 + index * 100, 90);
+    });
+    strip().getBoundingClientRect = () => box(0, 600);
+  }
+
+  function dragTab(index: number, toX: number) {
+    const tab = tabs()[index];
+    const from = (tab.closest<HTMLElement>("[data-reorder-item]")?.getBoundingClientRect().left ?? 0) + 40;
+    fireEvent.pointerDown(tab, { button: 0, clientX: from, clientY: 16 });
+    fireEvent.pointerMove(window, { clientX: toX, clientY: 16 });
+  }
+
+  function titles() {
+    return tabs().map((tab) => tab.textContent);
+  }
+
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  it("reorders tabs by dragging, shows where the tab lands, and keeps the click from switching", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    place();
+
+    dragTab(0, 400);
+    const drop = strip().querySelector<HTMLElement>("[data-reorder-drop]");
+    expect(drop).toHaveAttribute("data-reorder-drop", "2");
+    expect(drop).toHaveClass("rounded-md", "border-primary/60", "bg-primary/10");
+    expect(drop?.style.left).toBe("249px");
+    fireEvent.pointerUp(window);
+    fireEvent.click(tabs()[2]);
+
+    expect(titles()).toEqual(["Terminal 2", "Terminal 3", "Terminal 1"]);
+    expect(useTerminalsStore.getState().tabs.map((tab) => tab.title)).toEqual(["Terminal 2", "Terminal 3", "Terminal 1"]);
+    expect(tabs()[1]).toHaveAttribute("data-active", "true");
+    expect(strip().querySelector("[data-reorder-drop]")).toBeNull();
+    expect(paneBar.onPointerDown).not.toHaveBeenCalled();
+  });
+
+  it("moves by the tab ids even though the tabs show their session numbers", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    const ids = useTerminalsStore.getState().tabs.map((tab) => tab.id);
+    const rows = [...strip().querySelectorAll<HTMLElement>("[data-reorder-item]")];
+    expect(rows.map((row) => row.dataset.reorderItem)).toEqual(ids);
+    expect(tabs().map((tab) => tab.dataset.sessionIndex)).toEqual(["1", "2"]);
+    place();
+
+    dragTab(1, 2);
+    fireEvent.pointerUp(window);
+
+    expect(useTerminalsStore.getState().tabs.map((tab) => tab.id)).toEqual([ids[1], ids[0]]);
+    expect(tabs().map((tab) => tab.dataset.sessionIndex)).toEqual(["2", "1"]);
+  });
+
+  it("still activates a tab on a plain click and never drags from the rename field", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    place();
+
+    fireEvent.pointerDown(tabs()[0], { button: 0, clientX: 40, clientY: 16 });
+    fireEvent.pointerMove(window, { clientX: 43, clientY: 16 });
+    fireEvent.pointerUp(window);
+    fireEvent.click(tabs()[0]);
+    expect(tabs()[0]).toHaveAttribute("data-active", "true");
+
+    fireEvent.doubleClick(tabs()[1]);
+    const input = screen.getByLabelText("Terminal title");
+    fireEvent.pointerDown(input, { button: 0, clientX: 140, clientY: 16 });
+    fireEvent.pointerMove(window, { clientX: 2, clientY: 16 });
+    expect(strip().querySelector("[data-reorder-drop]")).toBeNull();
+    fireEvent.pointerUp(window);
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(titles()).toEqual(["Terminal 1", "Terminal 2"]);
+  });
+
+  it("hides the terminal from the button at the end of the strip", () => {
+    render(<DockHarness projectId="project-1" />);
+    const label = i18n.t(($) => $.shell.dock.terminal.hide, {
+      shortcut: shortcutLabel(useShortcutStore.getState().bindings.toggleTerminal),
+    });
+    const hide = screen.getByTestId("dock-terminal-hide");
+    expect(hide).toHaveAttribute("aria-label", label);
+    expect(strip().lastElementChild?.contains(hide) || strip().lastElementChild === hide).toBe(true);
+
+    fireEvent.click(hide);
+
+    expect(mocks.settings.setTerminalOpen).toHaveBeenCalledWith(false);
+    expect(screen.getByTestId("dock-terminal")).toHaveAttribute("data-visible", "false");
+  });
+
+  it("is a pane bar that a press on blank space can drag but a press on a tab cannot", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    expect(strip()).toHaveAttribute("data-pane-bar", "");
+    for (const name of PANE_BAR_CLASS.split(" ")) expect(strip()).toHaveClass(name);
+    expect(tabs()[0]).toHaveAttribute("role", "tab");
+
+    fireEvent.pointerDown(tabs()[0], { button: 0, clientX: 40, clientY: 16 });
+    fireEvent.pointerUp(window);
+    fireEvent.pointerDown(tabs()[0].closest("[data-reorder-item]") as HTMLElement, { button: 0 });
+    fireEvent.pointerUp(window);
+    expect(paneBar.onPointerDown).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(strip(), { button: 0, clientX: 500, clientY: 16 });
+    expect(paneBar.onPointerDown).toHaveBeenCalledOnce();
+    fireEvent.pointerMove(strip(), { clientX: 510, clientY: 16 });
+    expect(paneBar.onPointerMove).toHaveBeenCalled();
   });
 });

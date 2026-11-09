@@ -367,7 +367,7 @@ export function DocumentOutline({
       }
     >
         {items.length === 0 ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto [scrollbar-width:thin]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto">
             <PanelState
               state="empty"
               icon={<List aria-hidden className="size-4" />}
@@ -379,7 +379,7 @@ export function DocumentOutline({
         ) : (
         <div
           ref={listRef}
-          className="min-h-0 flex-1 overflow-auto py-1 [scrollbar-width:thin]"
+          className="min-h-0 flex-1 overflow-auto py-1"
           onPointerEnter={() => {
             hoveringRef.current = true;
           }}

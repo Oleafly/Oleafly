@@ -216,7 +216,7 @@ function SkillEditorDialog({
               }
               rows={8}
               placeholder={t(($) => $.settings.ai.skills.editor.instructionsPlaceholder)}
-              className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:border-ring"
+              className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed"
             />
             {!editing && !form.instructions.trim() ? (
               <p className="text-xs text-muted-foreground">

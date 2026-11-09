@@ -170,7 +170,7 @@ function TargetPopover({
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder={placeholder}
-            className="h-8 rounded-md border bg-background px-2 text-sm font-normal text-foreground focus-visible:border-ring"
+            className="h-8 rounded-md border bg-background px-2 text-sm font-normal text-foreground"
           />
         </label>
         <div className="flex justify-end gap-1">

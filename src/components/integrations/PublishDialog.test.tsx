@@ -275,7 +275,8 @@ describe("PublishDialog", () => {
 
     const search = screen.getByRole("textbox", { name: "Search repositories" });
     expect(search).toHaveClass("border-0");
-    expect(search.parentElement).toHaveClass("border", "focus-within:border-ring");
+    expect(search.parentElement).toHaveClass("border");
+    expect(search.parentElement?.className).not.toMatch(/focus[\w-]*:border/);
   });
 
   it("shows a new search's results from the top of the list", async () => {

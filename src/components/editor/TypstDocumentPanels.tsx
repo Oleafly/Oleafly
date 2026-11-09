@@ -1,4 +1,5 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 
 const DocumentInsightsDialog = lazy(() =>

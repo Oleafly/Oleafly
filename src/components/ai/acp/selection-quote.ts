@@ -35,8 +35,9 @@ export function unsettleSelectionQuote(projectId: string): void {
   settled.delete(projectId);
 }
 
-export function useSelectionQuote(projectId: string): void {
+export function useSelectionQuote(projectId: string | null): void {
   useEffect(() => {
+    if (!projectId) return;
     let frame = 0;
     let disposed = false;
     const sync = () => {

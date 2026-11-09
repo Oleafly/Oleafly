@@ -303,6 +303,12 @@ function SuggestionMenu<T>({
   );
 }
 
+export interface QuerySearchResults {
+  readonly listId: string;
+  readonly open: boolean;
+  readonly activeId?: string;
+}
+
 export interface QuerySearchProps<T> {
   readonly value: string;
   readonly onChange: (value: string) => void;
@@ -312,7 +318,11 @@ export interface QuerySearchProps<T> {
   readonly placeholder: string;
   readonly clearLabel: string;
   readonly className?: string;
+  readonly results?: QuerySearchResults;
+  readonly onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 }
+
+const MENU_KEYS = new Set(["ArrowDown", "ArrowUp", "Escape"]);
 
 export function QuerySearch<T>({
   value,
@@ -323,6 +333,8 @@ export function QuerySearch<T>({
   placeholder,
   clearLabel,
   className,
+  results,
+  onKeyDown: onOuterKeyDown,
 }: QuerySearchProps<T>) {
   const id = useId();
   const listId = `${id}-suggestions`;
@@ -355,6 +367,7 @@ export function QuerySearch<T>({
   const open = focused && !dismissed && hasContent;
   const anchorText = value.slice(0, anchorOf(context, caret));
   const activeDescendant = open && activeIndex >= 0 ? `${id}-${options[activeIndex].id}` : undefined;
+  const resultsListId = results?.open ? results.listId : undefined;
 
   useLayoutEffect(() => {
     const input = inputRef.current;
@@ -424,6 +437,9 @@ export function QuerySearch<T>({
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) return;
+    const menuTakes = open && (MENU_KEYS.has(event.key) || (event.key === "Enter" && activeIndex >= 0));
+    if (!menuTakes) onOuterKeyDown?.(event);
+    if (event.defaultPrevented) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") onArrow(event);
     else if (event.key === "Enter") onEnter(event);
     else if (event.key === "Tab") close();
@@ -437,7 +453,7 @@ export function QuerySearch<T>({
   return (
     <div
       className={cn(
-        "relative flex min-w-0 items-center rounded-md border border-input focus-within:border-ring",
+        "relative flex min-w-0 items-center rounded-md border border-input",
         className,
       )}
     >
@@ -458,9 +474,9 @@ export function QuerySearch<T>({
         role="combobox"
         aria-label={ariaLabel}
         aria-autocomplete="list"
-        aria-expanded={open}
-        aria-controls={open && options.length > 0 ? listId : undefined}
-        aria-activedescendant={activeDescendant}
+        aria-expanded={open || Boolean(results?.open)}
+        aria-controls={open && options.length > 0 ? listId : resultsListId}
+        aria-activedescendant={open ? activeDescendant : results?.activeId}
         autoComplete="off"
         spellCheck={false}
         placeholder={placeholder}

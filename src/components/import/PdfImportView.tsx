@@ -1,12 +1,5 @@
-import {
-  type DragEvent as ReactDragEvent,
-  lazy,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type DragEvent as ReactDragEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,

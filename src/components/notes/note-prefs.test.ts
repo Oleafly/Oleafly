@@ -11,9 +11,11 @@ import {
   savePromptCollapsed,
   useNoteWidth,
 } from "./note-prefs";
+import { useSettingsStore } from "@/store/settings";
 
 beforeEach(() => {
   localStorage.clear();
+  useSettingsStore.setState({ notesWidth: "standard" });
 });
 
 afterEach(() => {
@@ -30,8 +32,35 @@ describe("note width", () => {
   });
 
   it("ignores a saved value it does not know", () => {
+    const { result, unmount } = renderHook(() => useNoteWidth());
+    act(() => saveNoteWidth("wide"));
     localStorage.setItem(NOTE_WIDTH_KEY, "huge");
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: NOTE_WIDTH_KEY }));
+    });
+    expect(result.current).toBe("standard");
     expect(readNoteWidth()).toBe("standard");
+    unmount();
+  });
+
+  it("is the same width the Notes appearance setting holds", () => {
+    act(() => useSettingsStore.getState().setNotesAppearance("notesWidth", "full"));
+    expect(readNoteWidth()).toBe("full");
+    saveNoteWidth("wide");
+    expect(useSettingsStore.getState().notesWidth).toBe("wide");
+  });
+
+  it("keeps its width when another window changes storage it cannot read", () => {
+    const { result, unmount } = renderHook(() => useNoteWidth());
+    act(() => saveNoteWidth("wide"));
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: NOTE_WIDTH_KEY }));
+    });
+    expect(result.current).toBe("wide");
+    unmount();
   });
 
   it("updates every open note when one of them changes the width", () => {
@@ -97,6 +126,18 @@ describe("prompt collapse", () => {
     expect(localStorage.getItem(PROMPT_COLLAPSED_KEY)).toBe("true");
     expect(readPromptCollapsed()).toBe(true);
     savePromptCollapsed(false);
+    expect(readPromptCollapsed()).toBe(false);
+  });
+
+  it("keeps the collapsed prompt for this session when storage cannot be written", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+    savePromptCollapsed(true);
+    expect(readPromptCollapsed()).toBe(true);
+    vi.restoreAllMocks();
+    savePromptCollapsed(false);
+    expect(localStorage.getItem(PROMPT_COLLAPSED_KEY)).toBe("false");
     expect(readPromptCollapsed()).toBe(false);
   });
 });

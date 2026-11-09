@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useId, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
@@ -110,7 +110,9 @@ import {
   PROJECT_NOT_FOUND,
 } from "@/lib/app-error";
 import { isLibraryProject } from "@/lib/project-location";
+import { libraryProjects as projectsOutsideNotes } from "@/lib/library-projects";
 import { logError } from "@/lib/log";
+import { lazy } from "@/lib/preloadable";
 import { notifyError, toast } from "@/lib/toast";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { startTour } from "@/lib/tour";
@@ -146,34 +148,43 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
-const SettingsFileCard = lazy(() =>
-  Promise.all([
-    import("@/components/settings/SettingsFileCard"),
-    loadNamespace("settingsFile"),
-    loadNamespace("cloud"),
-  ]).then(([module]) => module),
+const SettingsFileCard = lazy(
+  () =>
+    Promise.all([
+      import("@/components/settings/SettingsFileCard"),
+      loadNamespace("settingsFile"),
+      loadNamespace("cloud"),
+    ]).then(([module]) => module),
+  { warm: true },
 );
-const CloudTab = lazy(() =>
-  Promise.all([
-    import("@/components/settings/cloud/CloudTab"),
-    loadNamespace("cloud").catch((error: unknown) => logError("load cloud sync strings", error)),
-  ]).then(([module]) => ({ default: module.CloudTab })),
+const CloudTab = lazy(
+  () =>
+    Promise.all([
+      import("@/components/settings/cloud/CloudTab"),
+      loadNamespace("cloud").catch((error: unknown) => logError("load cloud sync strings", error)),
+    ]).then(([module]) => ({ default: module.CloudTab })),
+  { warm: true },
 );
-const ChangelogDialog = lazy(() =>
-  import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
-);
-
-const ResearchSettingsSection = lazy(() =>
-  Promise.all([
-    import("@/components/settings/research/ResearchSettingsSection"),
-    loadNamespace("researchTools"),
-  ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
+const ChangelogDialog = lazy(
+  () => import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+  { warm: true },
 );
 
-const CollaborationSection = lazy(() =>
-  Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(
-    ([module]) => ({ default: module.CollaborationSection }),
-  ),
+const ResearchSettingsSection = lazy(
+  () =>
+    Promise.all([
+      import("@/components/settings/research/ResearchSettingsSection"),
+      loadNamespace("researchTools"),
+    ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
+  { warm: true },
+);
+
+const CollaborationSection = lazy(
+  () =>
+    Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(([module]) => ({
+      default: module.CollaborationSection,
+    })),
+  { warm: true },
 );
 
 type Section = SettingsSearchSection;
@@ -349,7 +360,10 @@ export function SettingsModal() {
 
   const projectId = useFilesStore((s) => s.projectId);
   const projects = useFilesStore((s) => s.projects);
-  const libraryProjects = projects.filter(isLibraryProject);
+  const libraryProjects = projectsOutsideNotes(projects, notesEnabled).filter(isLibraryProject);
+  const projectsStatLabel = notesEnabled
+    ? t(($) => $.shell.settings.data.storage.stats.projectsAndNotes)
+    : t(($) => $.shell.settings.data.storage.stats.projects);
   const closeProject = useFilesStore((s) => s.closeProject);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const forgeStatus = useForgeAccountsStore((s) => s.status);
@@ -641,7 +655,7 @@ export function SettingsModal() {
           <span className="sr-only">{t(($) => $.shell.settings.data.storage.calculating)}</span>
           <StatGrid
             stats={[
-              { id: "projects", label: t(($) => $.shell.settings.data.storage.stats.projects), ...pending },
+              { id: "projects", label: projectsStatLabel, ...pending },
               { id: "files", label: t(($) => $.shell.settings.data.storage.stats.files), ...pending },
               { id: "images", label: t(($) => $.shell.settings.data.storage.stats.images), ...pending },
               { id: "pdfs", label: t(($) => $.shell.settings.data.storage.stats.pdfs), ...pending },
@@ -658,7 +672,7 @@ export function SettingsModal() {
           stats={[
             {
               id: "projects",
-              label: t(($) => $.shell.settings.data.storage.stats.projects),
+              label: projectsStatLabel,
               value: formatNumber(storageSummary.project_count),
               detail: formatBytes(storageSummary.projects_bytes),
             },

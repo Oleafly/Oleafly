@@ -134,7 +134,7 @@ describe("ReferencesPanel controls", () => {
     expect(filter.className).toContain("border-input");
     expect(filter.className).toContain("bg-background");
     expect(filter.className).toContain("rounded-md");
-    expect(filter.className).toContain("focus-visible:border-ring");
+    expect(filter.className).not.toMatch(/focus[\w-]*:border/);
     expect(filter.className).toContain("h-8");
     expect(filter.parentElement).toHaveClass("mt-2");
   });

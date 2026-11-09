@@ -153,6 +153,16 @@ describe("attachOverlayScrollbar", () => {
     handle.destroy();
   });
 
+  it("tints the thumb with the app's quiet scrollbar mix, stronger while it is dragged", () => {
+    const handle = attachOverlayScrollbar({ scroller, host });
+    const bar = host.querySelector<HTMLElement>(`[${OVERLAY_SCROLLBAR_ATTRIBUTE}="y"]`)!;
+    const thumb = bar.firstElementChild as HTMLElement;
+    expect(thumb.getAttribute("style")).toContain("var(--ofl-scroll-thumb-mix)");
+    bar.dispatchEvent(pointer("pointerdown", { clientY: 10 }));
+    expect(thumb.getAttribute("style")).toContain("var(--ofl-scroll-thumb-active-mix)");
+    handle.destroy();
+  });
+
   it("jumps to a pressed point on the track and keeps dragging from there", () => {
     const handle = attachOverlayScrollbar({ scroller, host });
     const bar = host.querySelector<HTMLElement>(`[${OVERLAY_SCROLLBAR_ATTRIBUTE}="y"]`)!;

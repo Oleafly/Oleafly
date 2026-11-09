@@ -1,15 +1,5 @@
-import {
-  Component,
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ComponentType,
-  type ReactNode,
-} from "react";
+import { Component, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
+import { lazy } from "@/lib/preloadable";
 import { logError } from "@/lib/log";
 import { randomFraction } from "@/lib/random";
 import { createEmitter } from "@/lib/emitter";

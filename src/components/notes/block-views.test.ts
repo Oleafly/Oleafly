@@ -8,11 +8,26 @@ describe("drawn blocks", () => {
     ["{=latex}", "latex"],
     ["{=typst}", "typst"],
     [" {=latex} ", "latex"],
+    ["html", "html"],
+    ["{=html}", "html"],
+    ["jsx", "jsx"],
+    ["React", "jsx"],
+    ["tsx", "jsx"],
+    ["svg", "svg"],
+    ["csv", "csv"],
+    ["tsv", "csv"],
+    ["plot", "plot"],
+    ["smiles", "smiles"],
+    ["molecule", "molecule"],
+    ["pdb", "molecule"],
+    ["sequence", "sequence"],
+    ["fasta", "sequence"],
+    ["notebook", "notebook"],
   ])("draws a %s fence", (info, kind) => {
     expect(blockKindOf(info)).toBe(kind);
   });
 
-  it.each(["python", "", "{.python}", "{=html}", "latex extra", "constructor", "toString"])(
+  it.each(["python", "", "{.python}", "{=markdown}", "latex extra", "constructor", "toString", "__proto__"])(
     "leaves a %s fence as code",
     (info) => {
       expect(blockKindOf(info)).toBeUndefined();

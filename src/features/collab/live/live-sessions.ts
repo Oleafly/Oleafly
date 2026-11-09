@@ -22,6 +22,21 @@ function sharedText(session: RemoteDocumentSession): string {
   }
 }
 
+export async function settledWithin(
+  sessions: readonly Pick<RemoteDocumentSession, "settled">[],
+  ms: number,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
+  });
+  try {
+    await Promise.race([Promise.all(sessions.map((session) => session.settled())), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export class LiveSessions {
   private readonly sessions = new Map<string, RemoteDocumentSession>();
   private readonly local = new Set<string>();
@@ -64,16 +79,8 @@ export class LiveSessions {
     await write();
   }
 
-  private async settledWithin(sessions: readonly RemoteDocumentSession[], ms: number): Promise<void> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, ms);
-    });
-    try {
-      await Promise.race([Promise.all(sessions.map((session) => session.settled())), timeout]);
-    } finally {
-      clearTimeout(timer);
-    }
+  private settledWithin(sessions: readonly RemoteDocumentSession[], ms: number): Promise<void> {
+    return settledWithin(sessions, ms);
   }
 
   move(from: string, to: string): void {

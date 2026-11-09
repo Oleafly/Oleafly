@@ -1,44 +1,37 @@
-import { ChevronDown, Quote, Sparkles, Square, X } from "lucide-react";
+import { ChevronDown, Sparkles, Square } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
+  type ReactNode,
+  type Ref,
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatComposer, type ChatComposerHandle, type SlashItem } from "@/components/ai/composer/ChatComposer";
-import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
-import { cn, shortcut } from "@/lib/utils";
-import { choiceIn } from "./note-agent";
+import { prefersReducedMotion } from "@/lib/reduced-motion";
+import { cn } from "@/lib/utils";
+import { matchesShortcut, shortcutLabel, type ShortcutBinding } from "@/store/shortcuts";
 import { readPromptCollapsed, savePromptCollapsed } from "./note-prefs";
-import { isResearchAction, RESEARCH_ACTIONS } from "./research-actions";
-import type { NoteAgentChoice, ResearchActionId } from "./types";
 
-export interface PromptRequest {
-  actionId: ResearchActionId | null;
-  prompt: string;
+export interface PromptDockHandle {
+  expand: (focus: boolean) => void;
+  collapse: () => void;
 }
 
-interface AgentPromptProps {
-  composerRef: RefObject<ChatComposerHandle | null>;
+interface PromptDockProps {
+  handle?: Ref<PromptDockHandle>;
   shortcutScope?: RefObject<HTMLElement | null>;
-  agents: readonly ModelSelectorGroup[];
-  hiddenActions: ReadonlySet<ResearchActionId>;
-  choice: NoteAgentChoice;
-  onChoice: (choice: NoteAgentChoice) => void;
+  detail: string;
   working: boolean;
-  quote: string | null;
-  message: string | null;
-  onClearQuote: () => void;
-  onSend: (request: PromptRequest) => void;
-  onStop: () => void;
+  onStop?: () => void;
+  focusComposer: () => void;
+  children: ReactNode;
 }
 
 interface Box {
@@ -49,14 +42,13 @@ interface Box {
   radius: number;
 }
 
-const NO_ATTACHMENTS: [] = [];
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const FADE_OUT_MS = 90;
 const SHELL_DELAY_MS = 50;
 const SHELL_MS = 260;
 const FADE_IN_DELAY_MS = 230;
 const FADE_IN_MS = 140;
-const TOGGLE_KEYS = "⌘J";
+const TOGGLE_BINDING: ShortcutBinding = { key: "j", mod: true };
 
 function boxOf(element: Element, origin: DOMRect): Box {
   const rect = element.getBoundingClientRect();
@@ -80,41 +72,54 @@ function shellFrame(box: Box): Keyframe {
   };
 }
 
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function isToggleKey(event: KeyboardEvent): boolean {
-  return (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "j";
-}
-
-function ShortcutLabel({ label }: Readonly<{ label: string }>) {
+export function ShortcutLabel({ label }: Readonly<{ label: string }>) {
   return (
     <span className="flex items-center gap-1.5">
       {label}
-      <Kbd>{shortcut(TOGGLE_KEYS)}</Kbd>
+      <Kbd>{shortcutLabel(TOGGLE_BINDING)}</Kbd>
     </span>
   );
 }
 
-export function AgentPrompt({
-  composerRef,
+export function GlowRing() {
+  return <span aria-hidden data-glow-ring className="note-prompt-glow-ring" />;
+}
+
+export function CollapsePromptButton({ onCollapse }: Readonly<{ onCollapse: () => void }>) {
+  const { t } = useTranslation(["notes"]);
+  return (
+    <div className="absolute right-2 top-2 z-10">
+      <Tooltip label={<ShortcutLabel label={t(($) => $.notes.prompt.collapse)} />} side="top">
+        <button
+          type="button"
+          aria-label={t(($) => $.notes.prompt.collapse)}
+          aria-expanded
+          onClick={onCollapse}
+          className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
+        >
+          <ChevronDown aria-hidden className="size-3.5" />
+        </button>
+      </Tooltip>
+    </div>
+  );
+}
+
+function composerText(panel: HTMLElement | null): string {
+  const field = panel?.querySelector("textarea");
+  return field instanceof HTMLTextAreaElement ? field.value : "";
+}
+
+export function PromptDock({
+  handle,
   shortcutScope,
-  agents,
-  hiddenActions,
-  choice,
-  onChoice,
+  detail,
   working,
-  quote,
-  message,
-  onClearQuote,
-  onSend,
   onStop,
-}: Readonly<AgentPromptProps>) {
+  focusComposer,
+  children,
+}: Readonly<PromptDockProps>) {
   const { t } = useTranslation(["notes", "ai"]);
-  const [text, setText] = useState("");
   const [collapsed, setCollapsed] = useState(readPromptCollapsed);
-  const composer = useRef<ChatComposerHandle>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
@@ -123,22 +128,14 @@ export function AgentPrompt({
   const motion = useRef<Animation[]>([]);
   const pending = useRef<{ focus: boolean } | null>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
-  const state = useRef({ collapsed, text });
-  state.current = { collapsed, text };
-  const slashItems = useMemo<SlashItem[]>(
-    () =>
-      RESEARCH_ACTIONS.filter(({ id }) => !hiddenActions.has(id)).map(({ id, icon }) => ({
-        id,
-        label: t(($) => $.notes.prompt.actions[id]),
-        icon,
-        group: t(($) => $.notes.prompt.actionsGroup),
-      })),
-    [hiddenActions, t],
-  );
+  const collapsedRef = useRef(collapsed);
+  collapsedRef.current = collapsed;
+  const focusRef = useRef(focusComposer);
+  focusRef.current = focusComposer;
 
   const change = useCallback((next: boolean, focus: boolean) => {
-    if (next === state.current.collapsed) {
-      if (focus) composer.current?.focus();
+    if (next === collapsedRef.current) {
+      if (focus) focusRef.current();
       return;
     }
     const active = document.activeElement;
@@ -149,12 +146,10 @@ export function AgentPrompt({
   }, []);
 
   useImperativeHandle(
-    composerRef,
+    handle,
     () => ({
-      focus: () => change(false, true),
-      setCaret: (position) => composer.current?.setCaret(position),
-      insertText: (value) => composer.current?.insertText(value),
-      openFilePicker: () => composer.current?.openFilePicker(),
+      expand: (focus) => change(false, focus),
+      collapse: () => change(true, false),
     }),
     [change],
   );
@@ -181,7 +176,7 @@ export function AgentPrompt({
       }
       returnFocus.current = null;
     } else if (request.focus) {
-      composer.current?.focus();
+      focusRef.current();
     }
     if (prefersReducedMotion() || typeof morph.animate !== "function") return;
     const leaving = collapsed ? panel : pill;
@@ -230,22 +225,15 @@ export function AgentPrompt({
     const scope = shortcutScope?.current;
     if (!scope) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!isToggleKey(event)) return;
+      if (!matchesShortcut(event, TOGGLE_BINDING)) return;
       event.preventDefault();
-      const current = state.current;
-      if (current.collapsed) change(false, true);
-      else if (current.text.trim() === "") change(true, false);
-      else composer.current?.focus();
+      if (collapsedRef.current) change(false, true);
+      else if (composerText(panelRef.current).trim() === "") change(true, false);
+      else focusRef.current();
     };
     scope.addEventListener("keydown", onKeyDown);
     return () => scope.removeEventListener("keydown", onKeyDown);
   }, [change, shortcutScope]);
-
-  const send = (actionId: ResearchActionId | null) => {
-    if (working) return;
-    onSend({ actionId, prompt: actionId ? "" : text.trim() });
-    setText("");
-  };
 
   return (
     <div ref={rootRef} data-prompt-state={collapsed ? "collapsed" : "expanded"} className="relative">
@@ -263,68 +251,7 @@ export function AgentPrompt({
           collapsed ? "pointer-events-none opacity-0" : "pointer-events-auto",
         )}
       >
-        {message && !working && (
-          <p className="rounded-lg border bg-card px-3 py-2 text-sm text-muted-foreground">{message}</p>
-        )}
-        {quote && (
-          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-            <Quote aria-hidden className="size-3 shrink-0" />
-            <span className="min-w-0 flex-1 truncate">{quote}</span>
-            <button
-              type="button"
-              aria-label={t(($) => $.notes.prompt.removeQuote)}
-              className="flex size-5 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent"
-              onClick={onClearQuote}
-            >
-              <X aria-hidden className="size-3" />
-            </button>
-          </div>
-        )}
-        <div className="relative">
-          <ChatComposer
-            ref={composer}
-            composerId="notes"
-            value={text}
-            onChange={setText}
-            onSubmit={() => send(null)}
-            busy={working}
-            onStop={onStop}
-            placeholder={t(($) => $.notes.prompt.placeholder)}
-            attachments={NO_ATTACHMENTS}
-            slashItems={slashItems}
-            onSlashSelect={(item) => {
-              if (isResearchAction(item.id)) send(item.id);
-            }}
-            labels={{ textarea: t(($) => $.notes.prompt.label) }}
-            shellClassName="[&_textarea]:pr-7"
-            controls={
-              <ModelSelector
-                compact
-                providerId={choice.providerId}
-                modelId={choice.modelId}
-                groups={[...agents]}
-                disabled={working}
-                onChange={(providerId, modelId) => {
-                  const next = choiceIn(agents, providerId, modelId);
-                  if (next) onChoice(next);
-                }}
-              />
-            }
-          />
-          <div className="absolute right-2 top-2 z-10">
-            <Tooltip label={<ShortcutLabel label={t(($) => $.notes.prompt.collapse)} />} side="top">
-              <button
-                type="button"
-                aria-label={t(($) => $.notes.prompt.collapse)}
-                aria-expanded
-                onClick={() => change(true, false)}
-                className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
-              >
-                <ChevronDown aria-hidden className="size-3.5" />
-              </button>
-            </Tooltip>
-          </div>
-        </div>
+        {children}
       </div>
       <div
         ref={pillRef}
@@ -339,17 +266,17 @@ export function AgentPrompt({
           <button
             ref={expandRef}
             type="button"
-            aria-label={`${t(($) => $.notes.prompt.label)} ${choice.label}`}
+            aria-label={`${t(($) => $.notes.assistant.label)} ${detail}`}
             aria-expanded={false}
             onClick={() => change(false, true)}
             className="flex h-7 min-w-0 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors hover:bg-accent focus-visible:bg-accent"
           >
             {working ? <Spinner size="sm" /> : <Sparkles aria-hidden className="size-3.5 shrink-0 text-primary" />}
-            <span className="shrink-0 font-medium">{t(($) => $.notes.prompt.label)}</span>
-            <span className="min-w-0 truncate text-muted-foreground">{choice.label}</span>
+            <span className="shrink-0 font-medium">{t(($) => $.notes.assistant.label)}</span>
+            {detail && <span className="min-w-0 truncate text-muted-foreground">{detail}</span>}
           </button>
         </Tooltip>
-        {working && (
+        {working && onStop && (
           <button
             type="button"
             onClick={onStop}

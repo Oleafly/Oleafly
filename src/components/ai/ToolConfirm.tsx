@@ -93,6 +93,60 @@ function ResearchTaskDetails({ task }: Readonly<{ task: ResearchTaskApprovalDeta
   );
 }
 
+interface NoteDraftDetails {
+  title: string;
+  tags: string[];
+  project: string | null;
+  excerpt: string;
+  truncated: boolean;
+}
+
+function noteDraftDetails(req: ToolApprovalRequest): NoteDraftDetails | null {
+  const draft = (req as ToolApprovalRequest & { noteDraft?: unknown }).noteDraft;
+  if (!draft || typeof draft !== "object") return null;
+  const details = draft as Partial<Record<keyof NoteDraftDetails, unknown>>;
+  if (typeof details.title !== "string" || typeof details.excerpt !== "string") return null;
+  return {
+    title: details.title,
+    tags: Array.isArray(details.tags) ? details.tags.filter((tag): tag is string => typeof tag === "string") : [],
+    project: typeof details.project === "string" ? details.project : null,
+    excerpt: details.excerpt,
+    truncated: details.truncated === true,
+  };
+}
+
+function NoteDraftCard({ draft }: Readonly<{ draft: NoteDraftDetails }>) {
+  const { t } = useTranslation(["common", "ai"]);
+  return (
+    <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.noteDraft.title)}</span>
+        <span className="min-w-0 break-words font-medium text-foreground">{draft.title}</span>
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.noteDraft.project)}</span>
+        <span className="min-w-0 break-words text-foreground">{draft.project ?? t(($) => $.common.state.none)}</span>
+        {draft.tags.length > 0 && (
+          <>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.noteDraft.tags)}</span>
+            <span className="min-w-0 break-words text-foreground">{draft.tags.join(", ")}</span>
+          </>
+        )}
+      </div>
+      <div className="space-y-1 border-t border-border/60 pt-2">
+        <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.noteDraft.text)}</p>
+        <div
+          data-select-all-scope
+          className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 text-xs text-foreground"
+        >
+          {draft.excerpt || t(($) => $.ai.approval.noteDraft.empty)}
+        </div>
+        {draft.truncated && (
+          <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.ai.approval.noteDraft.more)}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export { AI_GRADIENT, AiChrome, AiMark } from "@/components/ai/AiChrome";
 export { isAutoApprovable } from "@/store/mcp-approvals";
 
@@ -120,6 +174,7 @@ export function ToolConfirm({
   const commandApproval = req.tool === "run_command";
   const mcpApproval = mcpApprovalDetails(req);
   const researchTask = researchTaskDetails(req);
+  const noteDraft = noteDraftDetails(req);
   const networkApproval = toolRisk(req.tool) === "network";
   let approvalLabel: string;
   if (commandApproval) {
@@ -128,6 +183,8 @@ export function ToolConfirm({
     approvalLabel = t(($) => $.ai.approval.confirm.externalTool);
   } else if (researchTask) {
     approvalLabel = t(($) => $.ai.approval.confirm.researchTask);
+  } else if (noteDraft) {
+    approvalLabel = t(($) => $.ai.approval.confirm.note);
   } else if (networkApproval) {
     approvalLabel = t(($) => $.ai.approval.confirm.internet);
   } else {
@@ -160,6 +217,8 @@ export function ToolConfirm({
     approvalHeadline = t(($) => $.ai.approval.headline.externalTool);
   } else if (researchTask) {
     approvalHeadline = t(($) => $.ai.approval.headline.researchTask);
+  } else if (noteDraft) {
+    approvalHeadline = t(($) => $.ai.approval.headline.note);
   } else if (networkApproval) {
     approvalHeadline = t(($) => $.ai.approval.headline.internet);
   } else {
@@ -254,6 +313,8 @@ export function ToolConfirm({
       )}
 
       {researchTask && <ResearchTaskDetails task={researchTask} />}
+
+      {noteDraft && <NoteDraftCard draft={noteDraft} />}
 
       {req.image && (
         <div className="flex justify-center overflow-hidden rounded-lg border bg-white p-2">

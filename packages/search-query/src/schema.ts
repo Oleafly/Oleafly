@@ -58,6 +58,34 @@ export interface SearchFlag<T, M = unknown> {
   readonly test: (item: T, context: SearchContext) => boolean;
 }
 
+export interface SearchExtension<T, M = unknown> {
+  readonly is?: readonly SearchFlag<T, M>[];
+  readonly has?: readonly SearchFlag<T, M>[];
+  readonly fields?: readonly SearchField<T, M>[];
+  readonly sorts?: readonly SortOrder<T, M>[];
+  readonly text?: readonly TextScope<T, M>[];
+}
+
+export interface MergedExtensions<T, M = unknown> {
+  readonly is: readonly SearchFlag<T, M>[];
+  readonly has: readonly SearchFlag<T, M>[];
+  readonly fields: readonly SearchField<T, M>[];
+  readonly sorts: readonly SortOrder<T, M>[];
+  readonly text: readonly TextScope<T, M>[];
+}
+
+export function mergeExtensions<T, M = unknown>(
+  extensions: readonly SearchExtension<T, M>[],
+): MergedExtensions<T, M> {
+  return {
+    is: extensions.flatMap((extension) => extension.is ?? []),
+    has: extensions.flatMap((extension) => extension.has ?? []),
+    fields: extensions.flatMap((extension) => extension.fields ?? []),
+    sorts: extensions.flatMap((extension) => extension.sorts ?? []),
+    text: extensions.flatMap((extension) => extension.text ?? []),
+  };
+}
+
 export interface SchemaSpec<T, M = unknown> {
   readonly fields: readonly SearchField<T, M>[];
   readonly text: readonly TextScope<T, M>[];

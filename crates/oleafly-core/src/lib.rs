@@ -14,6 +14,7 @@ pub mod engine_spec;
 mod engine_temp;
 mod error;
 pub mod exclude;
+pub mod front_matter;
 pub mod hlc;
 pub mod ids;
 mod image_check;

@@ -55,6 +55,7 @@ vi.mock("@/lib/cloud-settings", () => ({
 import { loadNamespace } from "@/i18n";
 import { useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { CloudTab } from "./CloudTab";
 import { storageTone } from "./StorageRing";
 
@@ -401,6 +402,39 @@ describe("CloudTab", () => {
     expect(screen.getByRole("button", { name: "Download Notes" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore Binned from the Recycle Bin" })).toBeInTheDocument();
     expect(screen.getByText(/2 projects opened from a folder aren't synced/)).toBeInTheDocument();
+  });
+
+  it("tags a synced note as a note while Notes is on", async () => {
+    serve(
+      cloudState({
+        projects: [
+          project({ localId: "idea", cloudId: "c-idea", name: "Idea", lastSyncedMs: 1 }),
+          project({ localId: "draft", cloudId: "c-draft", name: "Draft", lastSyncedMs: 1 }),
+        ],
+      }),
+      null,
+      [project({ localId: null, cloudId: "c-far", name: "Far", mode: "download" })],
+    );
+    useFilesStore.setState({
+      projects: [
+        { id: "idea", name: "Idea", kind: "note" },
+        { id: "draft", name: "Draft", kind: "document" },
+      ] as never,
+    });
+    useSettingsStore.setState({ notes: true });
+    try {
+      render(<CloudTab />);
+      await openProjects();
+      const rows = await screen.findAllByTestId("cloud-project-row");
+      expect(within(rows[0]).getByTestId("cloud-project-note-tag")).toHaveTextContent("Note");
+      expect(within(rows[1]).queryByTestId("cloud-project-note-tag")).toBeNull();
+      expect(screen.getAllByTestId("cloud-project-note-tag")).toHaveLength(1);
+      act(() => useSettingsStore.setState({ notes: false }));
+      expect(screen.queryByTestId("cloud-project-note-tag")).toBeNull();
+    } finally {
+      useSettingsStore.setState({ notes: false });
+      useFilesStore.setState({ projects: [] });
+    }
   });
 
   it("turns a removed project back on so it uploads again", async () => {

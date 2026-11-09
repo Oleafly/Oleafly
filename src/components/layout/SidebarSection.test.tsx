@@ -87,6 +87,7 @@ describe("SidebarPanelHeader", () => {
     "src/components/research/ResearchWorkspacePanel.tsx",
     "src/components/layout/McpActivityPanel.tsx",
     "src/features/collab/sharing/CollabPane.tsx",
+    "src/components/notes/ProjectNotesPanel.tsx",
   ];
   const LAZY_BRIDGES: Readonly<Record<string, string>> = {
     "src/components/collab/CollabSlots.tsx": "src/features/collab/sharing/CollabPane.tsx",

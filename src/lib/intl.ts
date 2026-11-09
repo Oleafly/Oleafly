@@ -1,17 +1,21 @@
 import { currentLocale } from "@/i18n";
 
-const MAX_CACHED_DATE_FORMATS = 64;
-const dateFormats = new Map<string, Intl.DateTimeFormat>();
+const MAX_CACHED_FORMATS = 64;
+const formats = new Map<string, unknown>();
+
+function cachedFormat<T>(kind: string, options: object | undefined, create: (locale: string) => T): T {
+  const locale = currentLocale();
+  const key = `${kind}\u0000${locale}\u0000${JSON.stringify(options ?? null)}`;
+  const cached = formats.get(key);
+  if (cached) return cached as T;
+  const created = create(locale);
+  if (formats.size >= MAX_CACHED_FORMATS) formats.clear();
+  formats.set(key, created);
+  return created;
+}
 
 function dateTimeFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  const locale = currentLocale();
-  const key = `${locale}\u0000${JSON.stringify(options)}`;
-  const cached = dateFormats.get(key);
-  if (cached) return cached;
-  const created = new Intl.DateTimeFormat(locale, options);
-  if (dateFormats.size >= MAX_CACHED_DATE_FORMATS) dateFormats.clear();
-  dateFormats.set(key, created);
-  return created;
+  return cachedFormat("date", options, (locale) => new Intl.DateTimeFormat(locale, options));
 }
 
 export function formatDate(
@@ -36,15 +40,22 @@ export function formatDateTime(
 }
 
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
-  return new Intl.NumberFormat(currentLocale(), options).format(value);
+  return cachedFormat("number", options, (locale) => new Intl.NumberFormat(locale, options)).format(value);
 }
+
+const COMPACT_NUMBER: Intl.NumberFormatOptions = { notation: "compact", maximumFractionDigits: 1 };
 
 export function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat(currentLocale(), { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return formatNumber(value, COMPACT_NUMBER);
 }
 
+const RELATIVE_TIME: Intl.RelativeTimeFormatOptions = { numeric: "auto" };
+
 export function formatRelativeTime(value: number, unit: Intl.RelativeTimeFormatUnit): string {
-  return new Intl.RelativeTimeFormat(currentLocale(), { numeric: "auto" }).format(value, unit);
+  return cachedFormat("relative", RELATIVE_TIME, (locale) => new Intl.RelativeTimeFormat(locale, RELATIVE_TIME)).format(
+    value,
+    unit,
+  );
 }
 
 export type RelativeTimeUnit = "minute" | "hour" | "day" | "week" | "month" | "year";
@@ -99,8 +110,18 @@ export function formatRelativeTimeFrom(
   return format ? format(span) : formatRelativeTime(-span.value, span.unit);
 }
 
+const NATURAL_ORDER: Intl.CollatorOptions = { numeric: true, sensitivity: "base" };
+
+export function textCollator(options: Intl.CollatorOptions = NATURAL_ORDER): Intl.Collator {
+  return cachedFormat("collator", options, (locale) => new Intl.Collator(locale, options));
+}
+
+export function compareText(left: string, right: string): number {
+  return textCollator().compare(left, right);
+}
+
 export function formatList(items: readonly string[], options?: Intl.ListFormatOptions): string {
-  return new Intl.ListFormat(currentLocale(), options).format(items);
+  return cachedFormat("list", options, (locale) => new Intl.ListFormat(locale, options)).format(items);
 }
 
 export function formatNameList(

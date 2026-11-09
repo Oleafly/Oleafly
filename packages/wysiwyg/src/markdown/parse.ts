@@ -1,6 +1,7 @@
-import { Editor } from "@tiptap/core";
-import type { JSONContent } from "@tiptap/core";
+import type { AnyExtension, JSONContent } from "@tiptap/core";
+import { splitMarkdownFrontMatter } from "../front-matter";
 import { WYSIWYG_EXTENSIONS } from "../schema";
+import { markdownEngine, markdownToDoc } from "./engine";
 import {
   normalizePreservedRanges,
   protectInlineSources,
@@ -14,12 +15,13 @@ import {
   type MarkdownSourceLayout,
 } from "./source-layout";
 
-const FRONTMATTER_RE = /^(---\r?\n[\s\S]*?\r?\n---)\r?\n?/;
+export { splitMarkdownFrontMatter, type MarkdownFrontMatterSplit } from "../front-matter";
 
 export type PreservedMarkdownInlineRange = PreservedInlineRange;
 
 export interface ParseMarkdownBodyOptions {
   preservedInlineRanges?: readonly PreservedMarkdownInlineRange[];
+  extensions?: AnyExtension[];
 }
 
 function isBoundary(node: JSONContent, sentinel: string): boolean {
@@ -44,11 +46,9 @@ function splitAtBoundaries(nodes: readonly JSONContent[], sentinel: string): JSO
 export function parseMarkdownBody(
   source: string,
   options: ParseMarkdownBodyOptions = {},
-): { doc: JSONContent; frontmatter: string; layout: MarkdownSourceLayout | null } {
-  const match = FRONTMATTER_RE.exec(source);
-  const frontmatter = match ? match[1] : "";
-  const body = match ? source.slice(match[0].length) : source;
-  const bodyOffset = match?.[0].length ?? 0;
+): { doc: JSONContent; frontmatter: string; separator: string; layout: MarkdownSourceLayout | null } {
+  const { frontmatter, separator, body } = splitMarkdownFrontMatter(source);
+  const bodyOffset = source.length - body.length;
   const callerRanges = options.preservedInlineRanges ?? [];
   const markdownRanges = markdownPreservedRanges(source, bodyOffset).filter(
     (preserved) => !callerRanges.some((range) => range.from < preserved.to && preserved.from < range.to),
@@ -62,11 +62,7 @@ export function parseMarkdownBody(
     ranges,
   );
 
-  const editor = new Editor({
-    element: document.createElement("div"),
-    extensions: WYSIWYG_EXTENSIONS,
-    content: "",
-  });
+  const editor = markdownEngine(options.extensions ?? WYSIWYG_EXTENSIONS);
   const plan = planMarkdownUnits(
     protectedContent,
     editor.storage.markdown.parser.md.parse(protectedContent, {}),
@@ -76,8 +72,7 @@ export function parseMarkdownBody(
   if (plan && plan.units.length > 1) {
     let sentinel = "OLEAFLYXBLOCKBOUNDARY";
     while (protectedContent.includes(sentinel)) sentinel += "X";
-    editor.commands.setContent(plan.units.join(`\n\n${sentinel}\n\n`));
-    const json = editor.getJSON();
+    const json = markdownToDoc(editor, plan.units.join(`\n\n${sentinel}\n\n`));
     const groups = splitAtBoundaries(json.content ?? [], sentinel);
     if (groups.length === plan.units.length) {
       parsed = { ...json, content: groups.flat() };
@@ -85,8 +80,7 @@ export function parseMarkdownBody(
     }
   }
   if (!parsed) {
-    editor.commands.setContent(protectedContent);
-    parsed = editor.getJSON();
+    parsed = markdownToDoc(editor, protectedContent);
     if (plan?.units.length === 1) counts = [parsed.content?.length ?? 0];
   }
   const last = parsed.content?.at(-1);
@@ -106,9 +100,8 @@ export function parseMarkdownBody(
         }
       : null;
   const doc = restoreInlineSources(parsed, tokenPrefix, sources);
-  editor.destroy();
 
-  return { doc, frontmatter, layout };
+  return { doc, frontmatter, separator, layout };
 }
 
 function isEmptyParagraph(node: JSONContent | undefined): boolean {

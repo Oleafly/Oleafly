@@ -12,6 +12,7 @@ import type {
 } from "@/lib/tauri";
 import { avatarHue } from "@/components/ui/avatar";
 import { OWN_HUE_BAND, peerHue } from "./peer-hue";
+import { createPresencePublisher, PRESENCE_ANNOUNCE_JITTER_MS } from "./presence";
 
 type Handler<T> = (payload: T) => void;
 
@@ -679,6 +680,26 @@ describe("collab live store", () => {
     });
     emit<CollabPresenceLeft>("left", { projectId: PROJECT, deviceId: "device-bob" });
     expect(useCollabLiveStore.getState().peers).toEqual({});
+  });
+
+  it("tells this person's publishers to announce again only when a new peer appears", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    vi.useFakeTimers();
+    const sent = vi.fn();
+    const publisher = createPresencePublisher(() => ({ path: "main.tex", cursor: 1, anchor: 1 }), sent, () => undefined);
+    publisher.schedule();
+    expect(sent).toHaveBeenCalledTimes(1);
+    const bob = { projectId: PROJECT, deviceId: "device-bob", accountId: BOB, path: "main.tex", cursor: 1, anchor: 1 };
+    emit("presence", bob);
+    vi.advanceTimersByTime(PRESENCE_ANNOUNCE_JITTER_MS);
+    expect(sent).toHaveBeenCalledTimes(2);
+    emit("presence", { ...bob, cursor: 5, anchor: 5 });
+    vi.advanceTimersByTime(PRESENCE_ANNOUNCE_JITTER_MS);
+    expect(sent).toHaveBeenCalledTimes(2);
+    publisher.dispose();
+    vi.useRealTimers();
   });
 
   it("keeps a peer's colour out of the band around this person's own colour", async () => {

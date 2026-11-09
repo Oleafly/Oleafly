@@ -31,9 +31,13 @@ const PLAIN_TEXT_BLOCKS: Record<string, string> = {
   "src/components/editor/compile-log-details.tsx": "compile log output",
   "src/components/editor/LogPane.tsx": "compile log output",
   "src/components/preflight/ReaderViewDialog.tsx": "a reader view of the document's text",
+  "src/components/settings/NotesAppearancePreview.tsx": "an inert sample code block inside the Notes appearance preview",
 };
 const NATIVE_TITLE_ALLOWED: Record<string, string> = {
   "src/components/editor/MarkdownPreview.tsx": "a previewed image keeps the title its author wrote in the Markdown source",
+  "src/components/ui/markdown-renderer.tsx": "a chat image keeps the title its author wrote in the Markdown source",
+  "src/components/notes/NotebookView.tsx": "a sandboxed notebook output frame is named by its title, which is the iframe's accessible name",
+  "src/components/notes/ArtifactFrame.tsx": "a sandboxed block frame is named by its title, which is the iframe's accessible name",
 };
 const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/ai/AiToolManager.tsx": 1,

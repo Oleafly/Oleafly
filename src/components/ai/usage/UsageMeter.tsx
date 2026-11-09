@@ -1,4 +1,5 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { LoadingState } from "@/components/ui/empty";
 import { Popover } from "@/components/ui/popover";
@@ -6,7 +7,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ContextRing } from "./ContextRing";
 import type { UsageSnapshot } from "./types";
 
-const UsagePopover = lazy(() => import("./UsagePopover"));
+const UsagePopover = lazy(() => import("./UsagePopover"), { warm: true });
 
 export function UsageMeter({
   snapshot,

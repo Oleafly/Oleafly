@@ -949,6 +949,7 @@ describe("project dock layout", () => {
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
     const { useSettingsStore } = await import("@/store/settings");
+    const { setWysiwygEditor } = await import("@/components/editor/wysiwyg/controller");
     const host = document.getElementById("root");
     if (!host) throw new Error("test root is unavailable");
     appState.tauri = true;
@@ -966,6 +967,7 @@ describe("project dock layout", () => {
     visual.tabIndex = 0;
     document.body.append(source, visual);
     editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: source });
+    setWysiwygEditor({ isDestroyed: false, view: { dom: visual } } as unknown as Parameters<typeof setWysiwygEditor>[0]);
     visual.focus();
 
     const undo = appState.menuListeners.get("menu://undo");
@@ -976,6 +978,7 @@ describe("project dock layout", () => {
       undo?.();
       redo?.();
     });
+    setWysiwygEditor(null);
 
     expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
     expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();

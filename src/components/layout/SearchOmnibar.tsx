@@ -31,6 +31,7 @@ import type { ProjectInfo, SearchHit } from "@/lib/tauri";
 import { useDocSearch } from "@/hooks/use-doc-search";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { projectModifiedLabel } from "@/lib/project-format";
+import { libraryProjects } from "@/lib/library-projects";
 import { i18n } from "@/i18n";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { cn } from "@/lib/utils";
@@ -270,7 +271,9 @@ export function SearchOmnibar() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const latexTools = useSettingsStore((s) => s.latexTools);
-  const projects = useFilesStore((s) => s.projects);
+  const allProjects = useFilesStore((s) => s.projects);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const projects = useMemo(() => libraryProjects(allProjects, notesOn), [allProjects, notesOn]);
   const projectColors = useProjectColorsStore((s) => s.colors);
   const favs = useFavoritesStore((s) => s.favs);
   const projectId = useFilesStore((s) => s.projectId);

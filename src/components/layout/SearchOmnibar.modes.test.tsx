@@ -105,6 +105,20 @@ afterEach(() => {
 });
 
 describe("SearchOmnibar modes", () => {
+  it("lists notes as projects only while Notes is off", () => {
+    const note = { ...project("idea", "Masking idea", ""), kind: "note", main_doc: "note.md" };
+    useFilesStore.setState({ projects: [...PROJECTS, note] } as never);
+    useSettingsStore.setState({ notes: true });
+    const { unmount } = render(<SearchOmnibar />);
+    expect(screen.getByText("Alpha retrieval")).toBeInTheDocument();
+    expect(screen.queryByText("Masking idea")).toBeNull();
+    unmount();
+
+    useSettingsStore.setState({ notes: false });
+    render(<SearchOmnibar />);
+    expect(screen.getByText("Masking idea")).toBeInTheDocument();
+  });
+
   it("lists commands, tools and projects on the default surface", () => {
     render(<SearchOmnibar />);
     expect(screen.getAllByText(enShell.commandGroups.commands).length).toBeGreaterThan(0);

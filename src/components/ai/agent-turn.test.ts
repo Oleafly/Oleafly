@@ -725,6 +725,7 @@ describe("run scoping pass-through", () => {
       if (command !== "agent_run") return;
       expect(args.threadId).toBe("thread-9");
       expect(args.clientTurnId).toBe("client-9");
+      expect(args.networkNeedsApproval).toBe(true);
       const channel = args.onEvent as { onmessage: ((event: AgentEvent) => void) | null };
       channel.onmessage?.({ kind: "textDelta", text: "hi" });
       channel.onmessage?.({ kind: "runEnd" });
@@ -739,6 +740,7 @@ describe("run scoping pass-through", () => {
       signal: new AbortController().signal,
       threadId: "thread-9",
       clientTurnId: "client-9",
+      networkNeedsApproval: true,
       onRequestId: (id) => requestIds.push(id),
       onRawEvent: (event) => raw.push(event),
       handlers: {

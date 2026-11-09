@@ -321,6 +321,28 @@
       "keywords": "pdf preview show hide split editor only",
       "label": "Toggle PDF Preview"
     },
+    "swapEditorPreview": {
+      "keywords": "swap editor preview pdf sides pane order layout",
+      "label": "Swap editor and preview"
+    },
+    "movePaneToEdge": {
+      "bottom": "Move the {{pane}} to the bottom edge",
+      "keywords": "move pane edge dock side split stack layout",
+      "left": "Move the {{pane}} to the left edge",
+      "right": "Move the {{pane}} to the right edge",
+      "top": "Move the {{pane}} to the top edge"
+    },
+    "paneNames": {
+      "assistant": "assistant",
+      "editor": "editor",
+      "pdf": "preview",
+      "sidebar": "sidebar",
+      "terminal": "terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "reset pane layout order move panels sidebar assistant editor preview terminal default",
+      "label": "Reset pane layout"
+    },
     "zoomIn": {
       "keywords": "bigger larger magnify",
       "label": "Zoom In"
@@ -348,6 +370,11 @@
     "insertFileLink": {
       "label": "Insert link to file",
       "keywords": "link file path note reference"
+    },
+    "projectNotes": {
+      "open": "Open notes for this project",
+      "new": "New note for this project",
+      "keywords": "notes research linked related project"
     }
   },
   "community": {
@@ -791,7 +818,8 @@
     "research": "Research workspace",
     "search": "Search Project",
     "sourceControl": "Source Control",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notes"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} on {{host}}",
@@ -893,7 +921,8 @@
           "folders_other": "{{count}} folders",
           "images": "Images",
           "pdfs": "PDFs",
-          "projects": "Projects"
+          "projects": "Projects",
+          "projectsAndNotes": "Projects and notes"
         },
         "subtitle": "Projects, previews, history, and app data",
         "title": "Storage usage",
@@ -937,7 +966,7 @@
         "label": "LaTeX tools"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "description": "Adds Notes to the Home dock. A note is a Markdown file with diagrams, charts and math that you and your agents can both edit. Notes stay out of your project library, and each note can be linked to a project. Off by default while still in beta.",
         "label": "Notes"
       },
       "researchTasks": {
@@ -1281,6 +1310,7 @@
       "split": "Split View"
     },
     "moreActions": "More actions",
+    "resetPaneLayout": "Reset pane layout",
     "renameFailed": "Couldn't rename the project."
   },
   "tour": {

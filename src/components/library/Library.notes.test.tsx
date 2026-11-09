@@ -94,13 +94,70 @@ beforeEach(() => {
   });
 });
 
-describe("Library notes", () => {
-  it("opens a note card in Notes instead of the editor", async () => {
+function openKindFilter() {
+  fireEvent.click(screen.getByRole("button", { name: enLibrary.home.advancedFilters }));
+  const kind = screen.getByLabelText(enLibrary.home.filters.kind);
+  fireEvent.pointerDown(kind, { button: 0, ctrlKey: false, pointerType: "mouse" });
+  return kind;
+}
+
+function searchBox() {
+  return screen.getByRole("combobox", { name: enLibrary.home.searchLabel });
+}
+
+describe("Library notes while Notes is on", () => {
+  beforeEach(() => {
+    useSettingsStore.setState({ notes: true });
+  });
+
+  it("keeps notes out of the library", async () => {
+    await renderLibrary();
+    expect(await screen.findByRole("button", { name: openLabel(PAPER.name) })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: openLabel(NOTE.name) })).toBeNull();
+    expect(searchBox()).toHaveAttribute(
+      "placeholder",
+      enLibrary.home.searchPlaceholder_one.replace("{{total}}", "1"),
+    );
+  });
+
+  it("leaves the note kind out of the kind filter", async () => {
+    await renderLibrary();
+    openKindFilter();
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      enLibrary.home.filters.kindAll,
+      enLibrary.home.filters.kindDocument,
+      enLibrary.home.filters.kindImage,
+      enLibrary.home.filters.kindDiagram,
+    ]);
+  });
+
+  it("treats a typed note kind as a custom filter and still shows no notes", async () => {
+    await renderLibrary();
+    fireEvent.change(searchBox(), { target: { value: "kind:note" } });
+    fireEvent.click(screen.getByRole("button", { name: enLibrary.home.advancedFilters }));
+    expect(screen.getByLabelText(enLibrary.home.filters.kind)).toHaveTextContent(enLibrary.home.customFilter);
+    expect(screen.queryByRole("button", { name: openLabel(NOTE.name) })).toBeNull();
+  });
+
+  it("welcomes a library that only holds notes", async () => {
+    useFilesStore.setState({ projects: [NOTE] });
+    await renderLibrary();
+    expect(screen.getByText(enLibrary.home.welcomeTitle)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: enLibrary.home.searchLabel })).toBeNull();
+  });
+});
+
+describe("Library notes while Notes is off", () => {
+  beforeEach(() => {
+    useSettingsStore.setState({ notes: false });
+  });
+
+  it("opens a note card in the editor like any project", async () => {
     await renderLibrary();
     fireEvent.click(await screen.findByRole("button", { name: openLabel(NOTE.name) }));
-    await waitFor(() => expect(useHomeViewStore.getState().page).toBe("notes"));
-    expect(useNotesViewStore.getState().requestedNoteId).toBe(NOTE.id);
-    expect(openProject).not.toHaveBeenCalled();
+    await waitFor(() => expect(openProject).toHaveBeenCalledWith(NOTE.id));
+    expect(useHomeViewStore.getState().page).toBe("library");
+    expect(useNotesViewStore.getState().requestedNoteId).toBeNull();
   });
 
   it("still opens other projects in the editor", async () => {
@@ -108,7 +165,6 @@ describe("Library notes", () => {
     fireEvent.click(await screen.findByRole("button", { name: openLabel(PAPER.name) }));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith(PAPER.id));
     expect(useHomeViewStore.getState().page).toBe("library");
-    expect(useNotesViewStore.getState().requestedNoteId).toBeNull();
   });
 
   it("names a note card's kind", async () => {
@@ -119,9 +175,7 @@ describe("Library notes", () => {
 
   it("filters the library down to notes from the kind filter", async () => {
     await renderLibrary();
-    fireEvent.click(screen.getByRole("button", { name: enLibrary.home.advancedFilters }));
-    const kind = screen.getByLabelText(enLibrary.home.filters.kind);
-    fireEvent.pointerDown(kind, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    const kind = openKindFilter();
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
       enLibrary.home.filters.kindAll,
       enLibrary.home.filters.kindDocument,
@@ -130,7 +184,7 @@ describe("Library notes", () => {
       enLibrary.home.filters.kindNote,
     ]);
     fireEvent.click(screen.getByRole("option", { name: enLibrary.home.filters.kindNote }));
-    expect(screen.getByRole("combobox", { name: enLibrary.home.searchLabel })).toHaveValue("kind:note");
+    expect(searchBox()).toHaveValue("kind:note");
     expect(kind).toHaveTextContent(enLibrary.home.filters.kindNote);
     expect(screen.getByRole("button", { name: openLabel(NOTE.name) })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: openLabel(PAPER.name) })).toBeNull();

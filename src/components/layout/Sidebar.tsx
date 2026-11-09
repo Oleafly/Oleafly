@@ -1,4 +1,5 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { memo, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { FileText, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
@@ -17,21 +18,22 @@ import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { SidebarSectionStack, type StackSection } from "@/components/layout/SidebarSectionStack";
 import { objectKey } from "@/lib/react-key";
 import { basename } from "@/lib/path-utils";
+import { cn } from "@/lib/utils";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useSectionOrder } from "./section-order";
+import { PANE_BAR_CLASS, usePaneBar } from "./pane-reorder";
 
 const DocumentOutline = lazy(() =>
   import("@/components/layout/DocumentOutline").then((module) => ({
     default: memo(module.DocumentOutline),
-  })),
-);
+  })), { warm: true });
 
 const ProjectStructure = lazy(() =>
   import("@/components/layout/Outline").then((module) => ({
     default: memo(module.Outline),
-  })),
-);
+  })), { warm: true });
 
 const SourceTree = memo(FileTree);
 
@@ -127,12 +129,15 @@ export function ProjectSearch() {
 const SOURCE_PANEL = "source-tree-v";
 const OUTLINE_PANEL = "document-outline-v";
 const STRUCTURE_PANEL = "project-structure-v";
+export const EXPLORER_ORDER_KEY = "oleafly.sidebar.explorer.order";
+const EXPLORER_SECTIONS = [SOURCE_PANEL, OUTLINE_PANEL, STRUCTURE_PANEL];
 
 export function FilesPanel() {
   const { t } = useTranslation(["workspace"]);
   const [sourceCollapsed, setSourceCollapsed] = useState(false);
   const [outlineCollapsed, setOutlineCollapsed] = useState(false);
   const [structureCollapsed, setStructureCollapsed] = useState(true);
+  const [order, setOrder] = useSectionOrder(EXPLORER_ORDER_KEY, EXPLORER_SECTIONS);
   const resizeLabel = useCallback(
     (first: string, second: string) => t(($) => $.workspace.explorer.resizeSections, { first, second }),
     [t],
@@ -176,9 +181,10 @@ export function FilesPanel() {
       groupId={EXPLORER_GROUP_ID}
       fillerId="explorer-filler-v"
       fillerHandleId="explorer-filler-resize"
-      sections={sections}
+      sections={order.flatMap((id) => sections.filter((section) => section.id === id))}
       resizeLabel={resizeLabel}
       testId="explorer-stack"
+      onReorder={setOrder}
     />
   );
 }
@@ -194,9 +200,16 @@ function SidebarPanelFallback() {
 export function Sidebar() {
   const railTab = useSettingsStore((s) => s.railTab);
   const ActivePanel = registry.railTabs.find((t) => t.id === railTab)?.panel ?? FilesPanel;
+  const paneBar = usePaneBar();
   return (
     <div className="flex h-full flex-col bg-sidebar">
-      <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-sidebar-border bg-background px-1.5">
+      <div
+        {...paneBar}
+        className={cn(
+          "flex h-9 shrink-0 items-center gap-0.5 border-b border-sidebar-border bg-background px-1.5",
+          PANE_BAR_CLASS,
+        )}
+      >
         <SidebarViews />
       </div>
       <div className="min-h-0 flex-1">

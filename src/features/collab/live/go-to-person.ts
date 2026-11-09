@@ -1,6 +1,9 @@
 import { getEditorDocumentPath, getEditorView, scrollEditorPositionLocally } from "@oleafly/editor";
+import { noteLiveHolds } from "@/lib/collab-live-bridge";
 import { openProjectLocation, type ProjectLocation } from "@/lib/open-location";
+import { isProjectNotePath } from "@/lib/project-notes";
 import { isBinaryProjectPath } from "@/lib/project-paths";
+import { jumpToNotePeerWhenBound } from "../notes/note-live-port";
 import { type LivePeer, useCollabLiveStore } from "./live-store";
 import { flashRemoteCursor, remoteCursorsIn } from "./remote-cursors";
 
@@ -26,7 +29,14 @@ function locationOf(place: Whereabouts): ProjectLocation {
   return { path: place.path, range: { from: place.cursor, to: place.cursor } };
 }
 
-function showCaret(place: Whereabouts): void {
+async function showCaret(place: Whereabouts, accountId: string): Promise<void> {
+  const projectId = useCollabLiveStore.getState().projectId;
+  if (projectId !== null && getEditorDocumentPath() !== place.path) {
+    if (noteLiveHolds(projectId, place.path) || isProjectNotePath(place.path)) {
+      await jumpToNotePeerWhenBound(projectId, place.path, accountId);
+      return;
+    }
+  }
   const view = getEditorView();
   if (!view || place.cursor === null || getEditorDocumentPath() !== place.path) return;
   const mapped = remoteCursorsIn(view.state).find((cursor) => cursor.id === place.deviceId);
@@ -43,7 +53,7 @@ export async function goToPerson(accountId: string): Promise<boolean> {
     const place = whereIs(useCollabLiveStore.getState().peers, accountId);
     if (!place) return opened !== null;
     if (place.path === opened) {
-      showCaret(place);
+      await showCaret(place, accountId);
       return true;
     }
     if (!(await openProjectLocation(locationOf(place), { keepSelection: true }))) return false;

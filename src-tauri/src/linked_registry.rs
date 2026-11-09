@@ -467,7 +467,9 @@ fn write_record(directory: &Path, record: &LinkRecord) -> Result<(), String> {
     let bytes = serde_json::to_vec_pretty(&record)
         .map_err(|error| format!("could not encode folder link: {error}"))?;
     let path = directory.join(LINK_FILE);
-    crate::sandbox::atomic_write(&path, &bytes)?;
+    let written = crate::sandbox::atomic_write(&path, &bytes);
+    crate::note_index::invalidate();
+    written?;
     crate::fsperm::harden_file(&path);
     Ok(())
 }

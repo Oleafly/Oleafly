@@ -17,6 +17,8 @@ import { RawInline } from "./raw-inline";
 import { LatexTableAttributes, TableCaption, TableFloat } from "./table-float";
 import { Theorem } from "./theorem";
 
+const APP_ITEM_LINK = /^oleafly:\/\/(?:note|project)\/[\w-]+\/?$/iu;
+
 export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): AnyExtension[] {
   const renderMath = options.renderMath ?? null;
   const localizeHref = options.localizeLinkHref ?? null;
@@ -35,7 +37,8 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
       // A link copied out of the preview carries the app's own address. On
       // macOS and Linux that is `tauri://localhost`, a scheme Tiptap refuses,
       // so the link was dropped before it could be made relative.
-      isAllowedUri: (url, context) => context.defaultValidate(url) || (localizeHref !== null && localizeHref(url) !== null),
+      isAllowedUri: (url, context) =>
+        context.defaultValidate(url) || APP_ITEM_LINK.test(url) || (localizeHref !== null && localizeHref(url) !== null),
     }),
     LatexHeadingAttributes,
     MarkdownImage.configure({ inline: false }),

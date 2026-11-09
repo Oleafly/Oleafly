@@ -79,7 +79,8 @@ import { decodeAppError, describeError } from "@/lib/app-error";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { confirmAction } from "@/store/confirm-dialog";
-import { cn, isWindows } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { deleteProjectEntry, projectDeleteQuestion } from "@/lib/project-file-delete";
 import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import { formatNumber } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
@@ -341,7 +342,6 @@ export function FileTree({
   const activePath = useFilesStore((s) => s.activePath);
   const openFile = useFilesStore((s) => s.openFile);
   const createFile = useFilesStore((s) => s.createFile);
-  const deleteEntry = useFilesStore((s) => s.deleteEntry);
   const renameEntry = useFilesStore((s) => s.renameEntry);
   const copyEntry = useFilesStore((s) => s.copyEntry);
   const importPaths = useFilesStore((s) => s.importPaths);
@@ -885,35 +885,9 @@ export function FileTree({
       return openFile(path);
     },
     onDelete: (path) => {
-      const failed = (error: unknown) =>
-        notifyError(
-          "delete file",
-          error,
-          decodeAppError(error) ? undefined : i18n.t(($) => $.workspace.files.deleteFailed, { path }),
-        );
-      void deleteEntry(path).catch((error) => {
-        if (decodeAppError(error)?.code !== "project.trash_unavailable") {
-          failed(error);
-          return;
-        }
-        const permanent = isWindows
-          ? i18n.t(($) => $.workspace.files.confirmPermanentDeleteWindows, { path })
-          : i18n.t(($) => $.workspace.files.confirmPermanentDelete, { path });
-        void confirmAction({
-          message: permanent,
-          confirmLabel: i18n.t(($) => $.common.actions.delete),
-          destructive: true,
-        }).then((confirmed) => {
-          if (confirmed) void deleteEntry(path, { permanent: true }).catch(failed);
-        });
-      });
+      void deleteProjectEntry(path);
     },
-    deleteQuestion: (path) => {
-      if (!openedInPlace) return i18n.t(($) => $.workspace.files.confirmDelete, { path });
-      return isWindows
-        ? i18n.t(($) => $.workspace.files.confirmTrashWindows, { path })
-        : i18n.t(($) => $.workspace.files.confirmTrash, { path });
-    },
+    deleteQuestion: (path) => projectDeleteQuestion(path, openedInPlace),
     onSetMain: (path) => {
       const change = noMainDocument ? chooseMainDocument(path) : setMainDoc(path);
       void change.catch((error: unknown) => {
@@ -1295,7 +1269,7 @@ export function NewEntryInput({
             ? t(($) => $.workspace.files.newEntry.folderPlaceholder)
             : t(($) => $.workspace.files.newEntry.filePlaceholder)
         }
-        className="h-7 w-full rounded-md border border-input bg-background px-2 py-0 text-sm focus-visible:border-ring"
+        className="h-7 w-full rounded-md border border-input bg-background px-2 py-0 text-sm"
       />
     </div>
   );

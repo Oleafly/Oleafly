@@ -1,4 +1,5 @@
-import { lazy, Suspense, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { Suspense, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,

@@ -82,5 +82,9 @@
   "avatar": {
     "more_one": "{{count}} more person",
     "more_other": "{{count}} more people"
+  },
+  "remoteImage": {
+    "blocked": "Image from {{host}}",
+    "load": "Load image"
   }
 }

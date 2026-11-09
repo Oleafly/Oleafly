@@ -3,25 +3,37 @@ import {
   activate,
   closeGroup,
   closeView,
+  containerOf,
   createLayout,
+  createStack,
   evenPair,
   findNode,
   group,
   groupOfView,
   groupsOf,
+  isStack,
   MIN_WEIGHT,
   moveView,
+  newStackId,
   nextId,
   normalize,
   openView,
   parseLayout,
+  resizeSections,
   resizeSplit,
+  revealView,
   sameLayout,
+  setGroupHidden,
   split,
+  stack,
+  stackOf,
   toggleMaximize,
+  toggleSection,
+  visibleViews as shownViews,
   type GroupNode,
   type LayoutNode,
   type SplitNode,
+  type StackState,
   type ViewState,
   type WorkspaceLayout,
 } from "./layout";
@@ -738,7 +750,7 @@ describe("parseLayout", () => {
   });
 
   it.each([
-    ["another schema", { schema: 2 }],
+    ["another schema", { schema: 3 }],
     ["missing views", { views: undefined }],
     ["null views", { views: null }],
     ["string views", { views: "a" }],
@@ -869,5 +881,565 @@ describe("revealing views hidden by a maximized group", () => {
     const next = moveView(layout, "b", { groupId: "g1", zone: "center" });
     expect(next.maximized).toBe("g1");
     expect(groupOfView(next, "b")?.id).toBe("g1");
+  });
+});
+
+function dock(): WorkspaceLayout {
+  return createLayout(
+    split("s1", "row", [group("g1", ["files", "search"], "files", { presentation: "icons" }), group("g2", ["editor", "preview"])], [0.3, 0.7]),
+    views("explorer", "outline", "structure", "search", "editor", "preview"),
+    null,
+    { files: stack(["explorer", "outline", "structure"], { collapsed: ["structure"], weights: [2, 2, 1] }) },
+  );
+}
+
+function twoStacks(): WorkspaceLayout {
+  return createLayout(
+    split("s1", "row", [group("g1", ["files", "refs"], "files", { presentation: "icons" }), group("g2", ["editor"])]),
+    views("explorer", "outline", "structure", "citations", "bib", "editor"),
+    null,
+    {
+      files: stack(["explorer", "outline", "structure"], { collapsed: ["structure"], weights: [2, 2, 1] }),
+      refs: stack(["citations", "bib"], { collapsed: ["bib"], weights: [1, 3] }),
+    },
+  );
+}
+
+function rounded(values: readonly number[] | undefined): number[] {
+  return (values ?? []).map((value) => Number(value.toFixed(4)));
+}
+
+function holder(layout: WorkspaceLayout, id = "files"): StackState {
+  const found = stackOf(layout, id);
+  if (!found) throw new Error(`no stack ${id}`);
+  return found;
+}
+
+describe("group and stack builders", () => {
+  it("stores only the presentation and hidden flags that differ from the defaults", () => {
+    expect(group("g1", ["a"], "a", { presentation: "icons", hidden: true })).toEqual({
+      kind: "group",
+      id: "g1",
+      views: ["a"],
+      active: "a",
+      presentation: "icons",
+      hidden: true,
+    });
+    expect(group("g1", ["a"], "a", { presentation: "tabs", hidden: false })).toEqual({ kind: "group", id: "g1", views: ["a"], active: "a" });
+  });
+
+  it("builds a stack with normalized weights and collapsed sections in section order", () => {
+    expect(stack(["a", "b"], { collapsed: ["b", "z", "a"], weights: [3, 1], title: "Files", icon: "folder" })).toEqual({
+      title: "Files",
+      icon: "folder",
+      sections: ["a", "b"],
+      collapsed: ["a", "b"],
+      weights: [0.75, 0.25],
+    });
+    expect(stack(["a", "b"])).toEqual({ sections: ["a", "b"], collapsed: [], weights: [0.5, 0.5] });
+  });
+
+  it("picks a stack id that no view or stack uses", () => {
+    expect(newStackId(single("a"))).toBe("stack-1");
+    const taken = createLayout(group("g1", ["stack-1", "stack-2"]), views("stack-1", "x"), null, { "stack-2": stack(["x"]) });
+    expect(newStackId(taken)).toBe("stack-3");
+  });
+});
+
+describe("schema 1 layouts", () => {
+  const saved = {
+    schema: 1,
+    root: {
+      kind: "split",
+      id: "s1",
+      direction: "row",
+      weights: [0.6, 0.4],
+      children: [
+        { kind: "group", id: "g1", views: ["home", "note:n1"], active: "note:n1" },
+        { kind: "group", id: "g2", views: ["note:n2"], active: "note:n2" },
+      ],
+    },
+    views: { home: { type: "home" }, "note:n1": { type: "note", params: { noteId: "n1" } }, "note:n2": { type: "note", params: { noteId: "n2" } } },
+    maximized: null,
+    stage: "g1",
+  };
+
+  it("reads a layout saved by Notes and keeps it schema 1", () => {
+    const layout = parseLayout(JSON.parse(JSON.stringify(saved)));
+    expect(layout).toEqual(saved);
+    expect(layout).not.toHaveProperty("stacks");
+  });
+
+  it("ignores a stacks field in a schema 1 document", () => {
+    const layout = parseLayout({ ...saved, stacks: { k: "broken" } });
+    expect(layout?.schema).toBe(1);
+    expect(layout).not.toHaveProperty("stacks");
+  });
+
+  it("writes schema 2 only while the layout uses stacks, icon bars or hidden groups", () => {
+    const plain = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
+    expect(plain.schema).toBe(1);
+    expect(setGroupHidden(plain, "g2", true)).toMatchObject({ schema: 2, stacks: {} });
+    expect(createLayout(group("g1", ["a"], "a", { presentation: "icons" }), views("a")).schema).toBe(2);
+    const stacked = createLayout(group("g1", ["k", "b"]), views("a", "b"), null, { k: stack(["a"]) });
+    expect(stacked.schema).toBe(2);
+    const flat = closeView(stacked, "a");
+    expect(flat.schema).toBe(1);
+    expect(flat).not.toHaveProperty("stacks");
+  });
+
+  it("drops a tabs presentation and a false hidden flag", () => {
+    const layout = normalize({
+      schema: 2,
+      root: { kind: "group", id: "g1", views: ["a"], active: "a", presentation: "tabs", hidden: false },
+      views: views("a"),
+      stacks: {},
+      maximized: null,
+    });
+    expect(layout).toEqual({ schema: 1, root: { kind: "group", id: "g1", views: ["a"], active: "a" }, views: views("a"), maximized: null });
+  });
+});
+
+describe("parseLayout with stacks", () => {
+  function raw(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      schema: 2,
+      root: { kind: "group", id: "g1", views: ["k", "c"], active: "k", presentation: "icons" },
+      views: { a: { type: "x" }, b: { type: "x" }, c: { type: "x" } },
+      stacks: { k: { sections: ["a", "b"], collapsed: ["b"], weights: [1, 3], title: "Files", icon: "folder" } },
+      maximized: null,
+      ...overrides,
+    };
+  }
+
+  it("reads stacks and icon bars", () => {
+    expect(parseLayout(raw())).toEqual({
+      schema: 2,
+      root: { kind: "group", id: "g1", views: ["k", "c"], active: "k", presentation: "icons" },
+      views: { a: { type: "x" }, b: { type: "x" }, c: { type: "x" } },
+      stacks: { k: { title: "Files", icon: "folder", sections: ["a", "b"], collapsed: ["b"], weights: [0.25, 0.75] } },
+      maximized: null,
+    });
+  });
+
+  it("round-trips a layout with stacks, icon bars and hidden groups", () => {
+    const layout = setGroupHidden(toggleSection(dock(), "files", "explorer"), "g2", true);
+    expect(parseLayout(JSON.parse(JSON.stringify(layout)))).toEqual(layout);
+  });
+
+  it("accepts a schema 2 layout without stacks and fills in missing lists", () => {
+    expect(parseLayout(raw({ stacks: undefined }))?.root).toEqual({ kind: "group", id: "g1", views: ["c"], active: "c", presentation: "icons" });
+    expect(parseLayout(raw({ stacks: { k: { sections: ["a", "b"] } } }))?.stacks?.k).toEqual({ sections: ["a", "b"], collapsed: [], weights: [0.5, 0.5] });
+  });
+
+  it.each([
+    ["stacks that are a string", { stacks: "k" }],
+    ["stacks that are a list", { stacks: [] }],
+    ["a stack that is null", { stacks: { k: null } }],
+    ["a stack that is a list", { stacks: { k: [] } }],
+    ["a stack without sections", { stacks: { k: { collapsed: [] } } }],
+    ["a section that is not a string", { stacks: { k: { sections: ["a", 1] } } }],
+    ["collapsed sections that are not a list", { stacks: { k: { sections: ["a"], collapsed: "a" } } }],
+    ["weights that are not a list", { stacks: { k: { sections: ["a"], weights: 1 } } }],
+    ["a weight that is not a number", { stacks: { k: { sections: ["a"], weights: ["1"] } } }],
+    ["a title that is not a string", { stacks: { k: { sections: ["a"], title: 3 } } }],
+    ["an icon that is not a string", { stacks: { k: { sections: ["a"], icon: false } } }],
+    ["an unknown presentation", { root: { kind: "group", id: "g1", views: [], presentation: "list" } }],
+    ["a hidden flag that is not a boolean", { root: { kind: "group", id: "g1", views: [], hidden: "yes" } }],
+  ])("rejects %s", (_label, overrides) => {
+    expect(parseLayout(raw(overrides))).toBeNull();
+  });
+});
+
+describe("normalize with stacks", () => {
+  it("drops unknown and repeated sections and keeps each weight with its section", () => {
+    const layout = normalize({
+      schema: 2,
+      root: split("s1", "row", [group("g1", ["k", "a"]), group("g2", ["j"])]),
+      views: views("a", "b", "c"),
+      stacks: {
+        k: { sections: ["a", "ghost", "b", "b"], collapsed: ["b", "ghost"], weights: [1, 5, 3, 7] },
+        j: { sections: ["b", "c"], collapsed: [], weights: [1, 1] },
+      },
+      maximized: null,
+    });
+    expect(layout.stacks).toEqual({
+      k: { sections: ["a", "b"], collapsed: ["b"], weights: [0.25, 0.75] },
+      j: { sections: ["c"], collapsed: [], weights: [1] },
+    });
+    expect(findNode(layout.root, "g1")).toMatchObject({ views: ["k"], active: "k" });
+    expect(Object.keys(layout.views)).toEqual(["a", "b", "c"]);
+  });
+
+  it("removes an empty stack with its tab and the group it leaves empty", () => {
+    const layout = normalize({
+      schema: 2,
+      root: split("s1", "row", [group("g1", ["k"]), group("g2", ["a"])]),
+      views: views("a"),
+      stacks: { k: { sections: ["ghost"], collapsed: [], weights: [1] } },
+      maximized: null,
+    });
+    expect(layout.root).toEqual({ kind: "group", id: "g2", views: ["a"], active: "a" });
+    expect(layout).not.toHaveProperty("stacks");
+  });
+
+  it("drops stacks no group shows, with their views", () => {
+    const layout = normalize({ schema: 2, root: group("g1", ["a"]), views: views("a", "b"), stacks: { k: stack(["b"]) }, maximized: null });
+    expect(Object.keys(layout.views)).toEqual(["a"]);
+    expect(layout).not.toHaveProperty("stacks");
+  });
+
+  it("lets a view win over a stack with the same id and keeps only the first tab of a stack listed twice", () => {
+    const clash = normalize({ schema: 2, root: group("g1", ["a"]), views: views("a", "b"), stacks: { a: stack(["b"]) }, maximized: null });
+    expect(clash.root).toEqual({ kind: "group", id: "g1", views: ["a"], active: "a" });
+    expect(clash).not.toHaveProperty("stacks");
+    const twice = normalize({
+      schema: 2,
+      root: split("s1", "row", [group("g1", ["k"]), group("g2", ["k", "c"])]),
+      views: views("a", "c"),
+      stacks: { k: stack(["a"]) },
+      maximized: null,
+    });
+    expect(findNode(twice.root, "g2")).toMatchObject({ views: ["c"] });
+  });
+
+  it("repairs bad weights and broken section lists", () => {
+    const layout = normalize({
+      schema: 2,
+      root: group("g1", ["k", "j", "m"]),
+      views: views("a", "b", "c", "d"),
+      stacks: {
+        k: { sections: ["a", "b"], collapsed: [], weights: [Number.NaN, -1] },
+        j: { sections: ["c"], collapsed: "c" as unknown as string[], weights: [] },
+        m: { sections: "d" as unknown as string[], collapsed: [], weights: [1] },
+      },
+      maximized: null,
+    });
+    expect(layout.stacks).toEqual({ k: { sections: ["a", "b"], collapsed: [], weights: [0.5, 0.5] }, j: { sections: ["c"], collapsed: [], weights: [1] } });
+    expect(asGroup(layout.root).views).toEqual(["k", "j"]);
+  });
+
+  it("keeps a stack that is already normal as the same object and drops a title that is not a string", () => {
+    const kept = stack(["a"]);
+    expect(normalize({ schema: 2, root: group("g1", ["k"]), views: views("a"), stacks: { k: kept }, maximized: null }).stacks?.k).toBe(kept);
+    const odd = { ...stack(["a"]), title: 4 as unknown as string, icon: "x" };
+    expect(normalize({ schema: 2, root: group("g1", ["k"]), views: views("a"), stacks: { k: odd }, maximized: null }).stacks?.k).toEqual({
+      icon: "x",
+      sections: ["a"],
+      collapsed: [],
+      weights: [1],
+    });
+  });
+
+  it("clears maximize when the maximized group is hidden", () => {
+    const layout = { ...setGroupHidden(twoGroups(), "g2", true), maximized: "g2" };
+    expect(normalize(layout).maximized).toBeNull();
+  });
+});
+
+describe("containerOf", () => {
+  it("finds tabs, stacks and sections", () => {
+    const layout = dock();
+    expect(containerOf(layout, "search")).toEqual({ groupId: "g1", stackId: null, index: 1 });
+    expect(containerOf(layout, "files")).toEqual({ groupId: "g1", stackId: null, index: 0 });
+    expect(containerOf(layout, "outline")).toEqual({ groupId: "g1", stackId: "files", index: 1 });
+    expect(containerOf(layout, "nope")).toBeNull();
+    expect(groupOfView(layout, "outline")?.id).toBe("g1");
+    expect(isStack(layout, "files")).toBe(true);
+    expect(isStack(layout, "explorer")).toBe(false);
+    expect(stackOf(layout, "explorer")).toBeNull();
+    expect(stackOf(single("a"), "a")).toBeNull();
+  });
+
+  it("activates the stack that holds a section", () => {
+    const layout = activate(dock(), "search");
+    expect(activate(layout, "outline").root).toMatchObject({ children: [{ active: "files" }, { active: "editor" }] });
+    expect(activate(dock(), "outline")).toEqual(dock());
+  });
+});
+
+describe("moving sections", () => {
+  it("reorders a section inside its stack and keeps its weight and state", () => {
+    const up = moveView(dock(), "structure", { stackId: "files", index: 0 });
+    expect(holder(up)).toEqual({ sections: ["structure", "explorer", "outline"], collapsed: ["structure"], weights: [0.2, 0.4, 0.4] });
+    const down = moveView(dock(), "explorer", { stackId: "files", index: 2 });
+    expect(holder(down).sections).toEqual(["outline", "explorer", "structure"]);
+    expect(holder(moveView(dock(), "explorer", { stackId: "files" })).sections).toEqual(["outline", "structure", "explorer"]);
+  });
+
+  it("returns the same layout for a section dropped where it is or onto something that is not a stack", () => {
+    const layout = dock();
+    expect(moveView(layout, "explorer", { stackId: "files", index: 0 })).toBe(layout);
+    expect(moveView(layout, "explorer", { stackId: "files", index: 1 })).toBe(layout);
+    expect(moveView(layout, "explorer", { stackId: "outline" })).toBe(layout);
+    expect(moveView(layout, "explorer", { stackId: "nope" })).toBe(layout);
+    expect(moveView(layout, "files", { stackId: "files" })).toBe(layout);
+    expect(moveView(layout, "nope", { stackId: "files" })).toBe(layout);
+    const orphan = { ...layout, stacks: { ...layout.stacks, lone: stack(["editor"]) } };
+    expect(moveView(orphan, "preview", { stackId: "lone" })).toBe(orphan);
+  });
+
+  it("moves a section into another stack with an average share and shows it", () => {
+    const next = moveView(twoStacks(), "outline", { stackId: "refs", index: 1 });
+    expect(holder(next, "refs").sections).toEqual(["citations", "outline", "bib"]);
+    expect(holder(next, "refs").collapsed).toEqual(["bib"]);
+    expect(rounded(holder(next, "refs").weights)).toEqual([0.1667, 0.3333, 0.5]);
+    expect(holder(next).sections).toEqual(["explorer", "structure"]);
+    expect(rounded(holder(next).weights)).toEqual([0.6667, 0.3333]);
+    expect(findNode(next.root, "g1")).toMatchObject({ active: "refs" });
+  });
+
+  it("turns a section dropped on a tab bar into a tab", () => {
+    const next = moveView(dock(), "outline", { groupId: "g2", zone: "center", index: 1 });
+    expect(findNode(next.root, "g2")).toMatchObject({ views: ["editor", "outline", "preview"], active: "outline" });
+    expect(holder(next).sections).toEqual(["explorer", "structure"]);
+    const own = createLayout(group("g1", ["files"]), views("explorer", "outline"), null, { files: stack(["explorer", "outline"]) });
+    expect(moveView(own, "outline", { groupId: "g1", zone: "center" }).root).toMatchObject({ views: ["files", "outline"], active: "outline" });
+  });
+
+  it("opens a section dropped on a group edge in a new group", () => {
+    const next = moveView(dock(), "outline", { groupId: "g2", zone: "right" }, 0.25);
+    expect(groupOfView(next, "outline")).toMatchObject({ id: "g3", views: ["outline"] });
+    expect(rounded(asSplit(next.root).weights)).toEqual([0.3, 0.525, 0.175]);
+    expect(holder(next).sections).toEqual(["explorer", "structure"]);
+  });
+
+  it("removes a stack whose last section leaves and activates the tab beside it", () => {
+    const layout = createLayout(
+      split("s1", "row", [group("g1", ["search", "k", "files"], "k", { presentation: "icons" }), group("g2", ["editor"])]),
+      views("search", "only", "explorer", "editor"),
+      null,
+      { k: stack(["only"]), files: stack(["explorer"]) },
+    );
+    const next = moveView(layout, "only", { groupId: "g2", zone: "center" });
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["search", "files"], active: "files" });
+    expect(stackOf(next, "k")).toBeNull();
+    expect(groupOfView(next, "only")).toMatchObject({ id: "g2", views: ["editor", "only"], active: "only" });
+  });
+
+  it("leaves a lone section where it is when it drops on its own group's edge", () => {
+    const layout = createLayout(split("s1", "row", [group("g1", ["k"]), group("g2", ["editor"])]), views("only", "editor"), null, { k: stack(["only"]) });
+    expect(moveView(layout, "only", { groupId: "g1", zone: "left" })).toBe(layout);
+  });
+
+  it("turns a tab dropped into a stack into a section", () => {
+    const next = moveView(dock(), "preview", { stackId: "files", index: 1 });
+    expect(holder(next).sections).toEqual(["explorer", "preview", "outline", "structure"]);
+    expect(rounded(holder(next).weights)).toEqual([0.3, 0.25, 0.3, 0.15]);
+    expect(findNode(next.root, "g2")).toMatchObject({ views: ["editor"], active: "editor" });
+    expect(findNode(next.root, "g1")).toMatchObject({ active: "files" });
+    const fromTab = moveView(activate(dock(), "search"), "search", { stackId: "files", index: 0 });
+    expect(findNode(fromTab.root, "g1")).toMatchObject({ views: ["files"], active: "files" });
+  });
+
+  it("wraps a view dropped on an icon bar in a new stack", () => {
+    const next = moveView(dock(), "preview", { groupId: "g1", zone: "center", index: 2 });
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["files", "search", "stack-1"], active: "stack-1" });
+    expect(stackOf(next, "stack-1")).toEqual({ sections: ["preview"], collapsed: [], weights: [1] });
+    const section = moveView(dock(), "outline", { groupId: "g1", zone: "center", index: 1 });
+    expect(findNode(section.root, "g1")).toMatchObject({ views: ["files", "stack-1", "search"] });
+    expect(holder(section).sections).toEqual(["explorer", "structure"]);
+  });
+
+  it("reorders an icon tab without wrapping it", () => {
+    const next = moveView(dock(), "search", { groupId: "g1", zone: "center", index: 0 });
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["search", "files"], active: "search" });
+    expect(Object.keys(next.stacks ?? {})).toEqual(["files"]);
+  });
+
+  it("moves a whole stack as one tab", () => {
+    const next = moveView(dock(), "files", { groupId: "g2", zone: "center", index: 0 });
+    expect(findNode(next.root, "g2")).toMatchObject({ views: ["files", "editor", "preview"], active: "files" });
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["search"], active: "search" });
+    expect(holder(next)).toEqual(holder(dock()));
+    expect(groupOfView(moveView(dock(), "files", { groupId: "g2", zone: "bottom" }), "files")?.views).toEqual(["files"]);
+  });
+
+  it("merges a stack dropped into another stack and keeps its sections' state", () => {
+    const next = moveView(twoStacks(), "refs", { stackId: "files", index: 1 });
+    expect(holder(next)).toEqual({
+      sections: ["explorer", "citations", "bib", "outline", "structure"],
+      collapsed: ["bib", "structure"],
+      weights: [expect.closeTo(0.24), expect.closeTo(0.1), expect.closeTo(0.3), expect.closeTo(0.24), expect.closeTo(0.12)],
+    });
+    expect(stackOf(next, "refs")).toBeNull();
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["files"], active: "files" });
+  });
+
+  it("keeps maximize only when the moved view stays in the maximized group", () => {
+    expect(moveView(toggleMaximize(dock(), "g1"), "preview", { stackId: "files" }).maximized).toBe("g1");
+    expect(moveView(toggleMaximize(dock(), "g2"), "preview", { stackId: "files" }).maximized).toBeNull();
+    expect(moveView(toggleMaximize(twoStacks(), "g2"), "refs", { stackId: "files" }).maximized).toBeNull();
+  });
+});
+
+describe("createStack", () => {
+  it("wraps views in a new stack at a tab position", () => {
+    const next = createStack(dock(), ["search", "preview", "search"], { groupId: "g1", zone: "center", index: 1 });
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["files", "stack-1"], active: "stack-1" });
+    expect(stackOf(next, "stack-1")).toEqual({ sections: ["search", "preview"], collapsed: [], weights: [0.5, 0.5] });
+    expect(findNode(next.root, "g2")).toMatchObject({ views: ["editor"] });
+  });
+
+  it("takes an id, a title, an icon and an edge", () => {
+    const next = createStack(dock(), ["preview"], { groupId: "g2", zone: "right" }, { id: "side", title: "Side", icon: "panel", share: 0.4 });
+    expect(stackOf(next, "side")).toEqual({ title: "Side", icon: "panel", sections: ["preview"], collapsed: [], weights: [1] });
+    expect(groupOfView(next, "side")).toMatchObject({ id: "g3", views: ["side"] });
+    expect(rounded(asSplit(next.root).weights)).toEqual([0.3, 0.42, 0.28]);
+  });
+
+  it("returns the same layout without usable views, with a taken id or with a missing group", () => {
+    const layout = dock();
+    expect(createStack(layout, [], { groupId: "g1", zone: "center" })).toBe(layout);
+    expect(createStack(layout, ["nope", "files"], { groupId: "g1", zone: "center" })).toBe(layout);
+    expect(createStack(layout, ["preview"], { groupId: "g1", zone: "center" }, { id: "files" })).toBe(layout);
+    expect(createStack(layout, ["preview"], { groupId: "g1", zone: "center" }, { id: "editor" })).toBe(layout);
+    expect(createStack(layout, ["preview"], { groupId: "nope", zone: "center" })).toBe(layout);
+  });
+});
+
+describe("toggleSection", () => {
+  it("collapses and expands a section", () => {
+    const collapsed = toggleSection(dock(), "files", "explorer");
+    expect(holder(collapsed).collapsed).toEqual(["explorer", "structure"]);
+    expect(holder(toggleSection(collapsed, "files", "explorer")).collapsed).toEqual(["structure"]);
+    expect(holder(toggleSection(dock(), "files", "structure", false)).collapsed).toEqual([]);
+  });
+
+  it("returns the same layout when nothing changes", () => {
+    const layout = dock();
+    expect(toggleSection(layout, "files", "structure", true)).toBe(layout);
+    expect(toggleSection(layout, "files", "explorer", false)).toBe(layout);
+    expect(toggleSection(layout, "files", "search")).toBe(layout);
+    expect(toggleSection(layout, "nope", "explorer")).toBe(layout);
+  });
+});
+
+describe("resizeSections", () => {
+  it("normalizes the weights and raises small ones to the minimum", () => {
+    expect(holder(resizeSections(dock(), "files", [1, 1, 2])).weights).toEqual([0.25, 0.25, 0.5]);
+    const floored = holder(resizeSections(dock(), "files", [0.001, 1, 1])).weights;
+    expect(floored[0]).toBeCloseTo(MIN_WEIGHT / (MIN_WEIGHT + 0.9995));
+  });
+
+  it("ignores a wrong weight count and an unknown stack", () => {
+    const layout = dock();
+    expect(resizeSections(layout, "files", [1, 1])).toBe(layout);
+    expect(resizeSections(layout, "nope", [1, 1, 1])).toBe(layout);
+  });
+});
+
+describe("setGroupHidden", () => {
+  it("hides a group, keeps its weight and shows it again", () => {
+    const hidden = setGroupHidden(dock(), "g1", true);
+    expect(findNode(hidden.root, "g1")).toMatchObject({ hidden: true });
+    expect(asSplit(hidden.root).weights).toEqual(asSplit(dock().root).weights);
+    const shown = setGroupHidden(hidden, "g1", false);
+    expect(findNode(shown.root, "g1")).not.toHaveProperty("hidden");
+    expect(shown).toEqual(dock());
+  });
+
+  it("returns the same layout when nothing changes or the id is not a group", () => {
+    const layout = dock();
+    expect(setGroupHidden(layout, "g1", false)).toBe(layout);
+    expect(setGroupHidden(layout, "s1", true)).toBe(layout);
+    expect(setGroupHidden(layout, "nope", true)).toBe(layout);
+  });
+
+  it("clears maximize when the maximized group hides and refuses to maximize a hidden group", () => {
+    expect(setGroupHidden(toggleMaximize(dock(), "g1"), "g1", true).maximized).toBeNull();
+    const hidden = setGroupHidden(dock(), "g1", true);
+    expect(toggleMaximize(hidden, "g1")).toBe(hidden);
+  });
+});
+
+describe("revealView", () => {
+  it("shows the group, selects the stack, expands the section and restores the layout", () => {
+    const layout = toggleMaximize(setGroupHidden(activate(dock(), "search"), "g1", true), "g2");
+    const next = revealView(layout, "structure");
+    expect(findNode(next.root, "g1")).toMatchObject({ active: "files" });
+    expect(findNode(next.root, "g1")).not.toHaveProperty("hidden");
+    expect(holder(next).collapsed).toEqual([]);
+    expect(next.maximized).toBeNull();
+  });
+
+  it("keeps maximize for a view in the maximized group", () => {
+    expect(revealView(toggleMaximize(dock(), "g1"), "structure").maximized).toBe("g1");
+  });
+
+  it("returns the same layout for a view already on screen or an unknown view", () => {
+    const layout = dock();
+    expect(revealView(layout, "explorer")).toBe(layout);
+    expect(revealView(layout, "nope")).toBe(layout);
+  });
+});
+
+describe("visibleViews", () => {
+  it("lists the selected tab of each group and the expanded sections of a selected stack", () => {
+    expect(shownViews(dock())).toEqual(["explorer", "outline", "editor"]);
+    expect(shownViews(activate(dock(), "search"))).toEqual(["search", "editor"]);
+  });
+
+  it("shows the only section of a stack even when it is collapsed", () => {
+    const layout = createLayout(group("g1", ["k"]), views("only"), null, { k: stack(["only"], { collapsed: ["only"] }) });
+    expect(shownViews(layout)).toEqual(["only"]);
+  });
+
+  it("leaves out hidden groups, groups outside a maximized group and empty groups", () => {
+    expect(shownViews(setGroupHidden(dock(), "g1", true))).toEqual(["editor"]);
+    expect(shownViews(toggleMaximize(dock(), "g1"))).toEqual(["explorer", "outline"]);
+    expect(shownViews(createLayout(group("g1", []), {}))).toEqual([]);
+    expect(shownViews({ ...dock(), maximized: "gone" })).toEqual(["explorer", "outline", "editor"]);
+  });
+});
+
+describe("closing views in stacks", () => {
+  it("removes a section and keeps the rest of its stack", () => {
+    const next = closeView(dock(), "outline");
+    expect(holder(next)).toEqual({ sections: ["explorer", "structure"], collapsed: ["structure"], weights: [expect.closeTo(2 / 3), expect.closeTo(1 / 3)] });
+    expect(next.views).not.toHaveProperty("outline");
+  });
+
+  it("closes a stack with all of its sections", () => {
+    const next = closeView(dock(), "files");
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["search"], active: "search" });
+    expect(Object.keys(next.views)).toEqual(["search", "editor", "preview"]);
+    expect(stackOf(next, "files")).toBeNull();
+  });
+
+  it("closes a group with the views of its stacks", () => {
+    const next = closeGroup(dock(), "g1");
+    expect(Object.keys(next.views)).toEqual(["editor", "preview"]);
+    expect(next).not.toHaveProperty("stacks");
+  });
+});
+
+describe("opening views in stacks", () => {
+  it("opens a view as a section and selects its stack", () => {
+    const next = openView(activate(dock(), "search"), "terminal", { type: "x" }, { stackId: "files", index: 0 });
+    expect(holder(next).sections).toEqual(["terminal", "explorer", "outline", "structure"]);
+    expect(findNode(next.root, "g1")).toMatchObject({ active: "files" });
+  });
+
+  it("opens a view in the first group when the stack is unknown", () => {
+    const next = openView(dock(), "terminal", { type: "x" }, { stackId: "nope" });
+    expect(findNode(next.root, "g1")).toMatchObject({ views: ["files", "search", "terminal"], active: "terminal" });
+  });
+
+  it("reveals a section that is already open", () => {
+    const layout = setGroupHidden(toggleSection(dock(), "files", "outline"), "g1", true);
+    const next = openView(layout, "outline", { type: "x" }, { groupId: "g2", zone: "center" });
+    expect(holder(next).collapsed).toEqual(["structure"]);
+    expect(groupOfView(next, "outline")?.id).toBe("g1");
+    expect(findNode(next.root, "g1")).not.toHaveProperty("hidden");
+  });
+});
+
+describe("evenPair across a hidden group", () => {
+  it("evens two panes that are not next to each other", () => {
+    const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"]), group("g3", ["c"])], [0.3, 0.3, 0.4]), views("a", "b", "c"));
+    expect(rounded(asSplit(evenPair(layout, "s1", 0, 2).root).weights)).toEqual([0.35, 0.3, 0.35]);
+    expect(evenPair(layout, "s1", 1, 1)).toBe(layout);
+    expect(evenPair(layout, "s1", 1, 0)).toBe(layout);
   });
 });

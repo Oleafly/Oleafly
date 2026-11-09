@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
+import { useNoteTabsStore } from "@/store/note-tabs";
 import {
   closeAllEditorTabs,
+  closeEditorTab,
   closeAssistantTabs,
   closeEditorTabsAround,
   currentEditorTabs,
@@ -120,5 +122,54 @@ describe("closing editor tabs together", () => {
     useDiffStore.getState().closeDiffs(["staged:refs.bib", "working:a.tex"]);
 
     expect(useDiffStore.getState()).toMatchObject({ diffs: [], activeKey: null });
+  });
+});
+
+describe("personal note tabs in the strip", () => {
+  beforeEach(() => {
+    useNoteTabsStore.setState({
+      tabs: [
+        { id: "note-a", projectId: "project", order: 6 },
+        { id: "note-b", projectId: "elsewhere", order: 7 },
+      ],
+      active: null,
+      markdown: {},
+    });
+  });
+
+  it("orders note tabs with the others and keeps other projects' notes out", () => {
+    expect(stripKeys()).toEqual(["f:a.tex", "d:working:a.tex", "f:b.tex", "d:staged:refs.bib", "f:c.tex", "n:note-a"]);
+    expect(editorTabs([], {}, [], [{ id: "x", projectId: "p", order: 1 }])).toEqual([{ kind: "note", id: "x", order: 1 }]);
+  });
+
+  it("closes a focused note tab and gives focus back to the anchor file", () => {
+    useNoteTabsStore.getState().setActive("note-a");
+    closeEditorTabsAround("f:b.tex", "right");
+    expect(useNoteTabsStore.getState().tabs.map((tab) => tab.id)).toEqual(["note-b"]);
+    expect(useNoteTabsStore.getState().active).toBeNull();
+    expect(useFilesStore.getState().activePath).toBe("b.tex");
+  });
+
+  it("focuses a note tab that stays open when the visible note closes", () => {
+    useNoteTabsStore.setState({
+      tabs: [
+        { id: "note-a", projectId: "project", order: 6 },
+        { id: "note-c", projectId: "project", order: 8 },
+      ],
+      active: "note-c",
+    });
+    closeEditorTabsAround("n:note-a", "right");
+    expect(useNoteTabsStore.getState().active).toBe("note-a");
+  });
+
+  it("closes a single note tab", () => {
+    closeEditorTab({ kind: "note", id: "note-a", order: 6 });
+    expect(useNoteTabsStore.getState().tabs.map((tab) => tab.id)).toEqual(["note-b"]);
+  });
+
+  it("closes every tab, notes included", () => {
+    closeAllEditorTabs();
+    expect(useNoteTabsStore.getState().tabs.map((tab) => tab.id)).toEqual(["note-b"]);
+    expect(useFilesStore.getState().openTabs).toEqual([]);
   });
 });

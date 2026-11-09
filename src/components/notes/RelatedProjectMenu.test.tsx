@@ -7,6 +7,7 @@ import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useProjectColorsStore } from "@/store/project-colors";
+import { useToastStore } from "@/store/toast";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { RelatedProjectMenu } from "./RelatedProjectMenu";
 import type { NoteItem } from "./types";
@@ -54,12 +55,10 @@ function renderMenu({ note = related, projects = PROJECTS, setRelatedProject = v
     notes: [note],
     artifacts: [],
     experiments: [],
-    agents: [],
     citations: [],
     papers: [],
     ...(projects ? { projects } : {}),
     ...(setRelatedProject ? { setRelatedProject } : {}),
-    proposeEdits: vi.fn(),
     loadNote: vi.fn(),
     saveNote: vi.fn(),
   };
@@ -173,12 +172,15 @@ describe("RelatedProjectMenu", () => {
     expect(setRelatedProject).not.toHaveBeenCalled();
   });
 
-  it("logs a failure to change the project", async () => {
+  it("tells the user and logs when the project could not be changed", async () => {
     const user = userEvent.setup();
     const failure = new Error("note is read-only");
     renderMenu({ setRelatedProject: vi.fn<SetRelatedProject>(async () => Promise.reject(failure)) });
     await user.click(within(openMenu("Vision")).getByRole("menuitemradio", { name: "Speech" }));
     await waitFor(() => expect(mocks.logError).toHaveBeenCalledExactlyOnceWith("set the note's project", failure));
+    expect(useToastStore.getState().toasts.map((toast) => toast.message)).toContain(
+      enNotes.failures.moveNote.replace("{{name}}", "Masking ablation"),
+    );
   });
 
   it("shows the project as plain text when the project list is missing", () => {

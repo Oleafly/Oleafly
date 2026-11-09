@@ -6,8 +6,10 @@ import type { ProjectInfo } from "@/lib/tauri";
 import {
   buildProjectSearchSchema,
   PROJECT_FACETS,
+  PROJECT_KINDS,
   projectEngine,
   projectEngineLabel,
+  projectKinds,
   type ProjectSearchExtension,
 } from "./project-search";
 
@@ -105,6 +107,20 @@ describe("project search schema", () => {
     expect(projects.filter(compiled.test).map((item) => item.id)).toEqual(["masking"]);
     const others = compile(analyze("-type:note", schema, { now: NOW * 1000 }), schema, { now: NOW * 1000 });
     expect(projects.filter(others.test).map((item) => item.id)).not.toContain("masking");
+  });
+
+  it("leaves notes out of the kind suggestions while Notes keeps them", () => {
+    const schema = buildProjectSearchSchema(i18n.t.bind(i18n) as never, {
+      favorites: [],
+      modified: {},
+      colorOf: () => "#1982c4",
+      colorLabels: {},
+      hideNotes: true,
+    });
+    expect(schema.field("kind")?.options?.map((option) => option.value)).toEqual(["document", "image", "diagram"]);
+    expect(projectKinds(true)).toEqual(["document", "image", "diagram"]);
+    expect(projectKinds(false)).toBe(PROJECT_KINDS);
+    expect(projectKinds()).toBe(PROJECT_KINDS);
   });
 
   it("supports is:, has: and no: flags", () => {

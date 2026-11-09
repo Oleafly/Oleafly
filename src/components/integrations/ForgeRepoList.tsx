@@ -149,7 +149,7 @@ export function ForgeRepoList({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
-      <div className="flex items-center gap-2 rounded-md border px-3 transition-colors focus-within:border-ring">
+      <div className="flex items-center gap-2 rounded-md border px-3 transition-colors">
         <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <Input
           value={query}

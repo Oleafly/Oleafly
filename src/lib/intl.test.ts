@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyLocale } from "@/i18n";
 import {
+  compareText,
   formatCompactNumber,
   formatDate,
   formatList,
@@ -10,6 +11,7 @@ import {
   formatRelativeTimeFrom,
   formatTime,
   relativeTimeSpan,
+  textCollator,
 } from "./intl";
 
 const NOW = Date.UTC(2026, 9, 2, 12);
@@ -60,6 +62,35 @@ describe("intl helpers", () => {
     } finally {
       Object.defineProperty(Intl, "DateTimeFormat", { configurable: true, writable: true, value: Original });
     }
+  });
+
+  it("keeps one relative time formatter per locale, so lists of rows do not build one each", async () => {
+    const Original = Intl.RelativeTimeFormat;
+    const created = vi.fn();
+    class Counting extends Original {
+      constructor(...args: ConstructorParameters<typeof Intl.RelativeTimeFormat>) {
+        super(...args);
+        created();
+      }
+    }
+    Object.defineProperty(Intl, "RelativeTimeFormat", { configurable: true, writable: true, value: Counting });
+    try {
+      await applyLocale("fr");
+      for (let minutes = 2; minutes < 40; minutes += 1) formatRelativeTimeFrom(NOW - minutes * MINUTE, NOW);
+      expect(created).toHaveBeenCalledTimes(1);
+      await applyLocale("de");
+      expect(formatRelativeTime(-2, "day")).toBe("vorgestern");
+      expect(created).toHaveBeenCalledTimes(2);
+    } finally {
+      Object.defineProperty(Intl, "RelativeTimeFormat", { configurable: true, writable: true, value: Original });
+    }
+  });
+
+  it("sorts text in the app language with numbers in natural order", async () => {
+    expect(["b10", "a", "b2"].sort(compareText)).toEqual(["a", "b2", "b10"]);
+    expect(textCollator()).toBe(textCollator());
+    await applyLocale("sv");
+    expect(["ö", "z"].sort(compareText)).toEqual(["z", "ö"]);
   });
 
   it("shortens a long list of names and leaves the rest to the caller", () => {

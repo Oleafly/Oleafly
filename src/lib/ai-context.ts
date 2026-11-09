@@ -3,7 +3,11 @@ import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
 import { useAgentMemoryStore } from "@/store/agent-memory";
+import { useSettingsStore } from "@/store/settings";
 import { basename } from "@/lib/path-utils";
+import { isNoteProject } from "@/lib/library-projects";
+import { logError } from "@/lib/log";
+import { noteHeads, type NoteHead } from "@/lib/tauri";
 import { getCurrentLine } from "@/components/editor/cm/controller";
 
 const SNIPPET_CHARS = 2500;
@@ -62,6 +66,24 @@ async function compactProjectMap(): Promise<string> {
   }
 }
 
+async function linkedNotesBlock(): Promise<string> {
+  const { projectId, projects } = useFilesStore.getState();
+  if (!projectId || !useSettingsStore.getState().notes) return "";
+  if (!projects.some((project) => isNoteProject(project) && project.related_project === projectId)) return "";
+  const heads = noteHeads().catch((error: unknown): NoteHead[] => {
+    void logError("read linked note heads for the assistant", error);
+    return [];
+  });
+  try {
+    const notes = await import("@/components/notes/project-notes");
+    const map = new Map((await heads).map((head) => [head.id, head.head]));
+    return notes.projectNotesPrompt(notes.projectNotes(projects, projectId, map));
+  } catch (error) {
+    void logError("list linked notes for the assistant", error);
+    return "";
+  }
+}
+
 export async function buildWorkspaceContext(): Promise<string> {
   const files = useFilesStore.getState();
   const compile = useCompileStore.getState();
@@ -92,6 +114,7 @@ export async function buildWorkspaceContext(): Promise<string> {
 
   const map = await compactProjectMap();
   const memory = useAgentMemoryStore.getState().asPromptBlock();
+  const linkedNotes = await linkedNotesBlock();
 
   const cursorSuffix = line != null ? ` · cursor line ${line}` : "";
   const lastCompiledSuffix = compile.lastCompiledAt
@@ -113,6 +136,7 @@ export async function buildWorkspaceContext(): Promise<string> {
       : "Active file excerpt: (empty or binary)",
     `Project map:\n${map}`,
     memory || null,
+    linkedNotes || null,
     "Use tools to refresh anything you need to verify. Do not invent file contents beyond this context.",
   ]
     .filter(Boolean)

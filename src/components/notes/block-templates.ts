@@ -8,6 +8,16 @@ export const NEW_BLOCKS = {
   typst: { info: "{=typst}", source: "$ E = m c^2 $" },
 } as const;
 
+export type BlockGroupId = "data" | "math" | "diagrams" | "code" | "science";
+
+export const BLOCK_GROUPS: readonly { id: BlockGroupId; kinds: readonly string[] }[] = [
+  { id: "data", kinds: ["csv", "chart", "plot"] },
+  { id: "math", kinds: ["latex", "typst"] },
+  { id: "diagrams", kinds: ["mermaid", "svg"] },
+  { id: "code", kinds: ["html", "jsx"] },
+  { id: "science", kinds: ["smiles", "molecule", "sequence"] },
+];
+
 export function newChartSource(): string {
   return JSON.stringify(
     {

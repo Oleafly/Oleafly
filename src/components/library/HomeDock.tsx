@@ -4,6 +4,7 @@ import { NotebookPen, PenTool, Plus, Search, Settings as SettingsIcon, ToolCase 
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
+import { isNoteProject } from "@/lib/library-projects";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useFilesStore } from "@/store/files";
@@ -78,7 +79,7 @@ export function HomeDock() {
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const notes = useSettingsStore((s) => s.notes);
-  const hasProjects = useFilesStore((s) => s.projects.length > 0);
+  const hasProjects = useFilesStore((s) => s.projects.some((project) => !notes || !isNoteProject(project)));
   const fullscreen = useFullscreen();
   const page = useHomeViewStore((s) => s.page);
   const horizontal = dockPlacement === "bottom";

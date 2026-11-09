@@ -1,29 +1,32 @@
 // @vitest-environment jsdom
 import type { Editor } from "@tiptap/core";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode, RefObject } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import type { ModelSelectorGroup } from "@/components/ai/ModelSelector";
-import type { PromptRequest } from "./AgentPrompt";
-import { NoteDocument, type SaveStatus } from "./NoteDocument";
+import type { NoteEditorBridge } from "./NoteAssistant";
+import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocument";
+import { NOTE_COLOR_HEX } from "./note-icons";
+import { flushOpenNotes } from "@/lib/open-note-editors";
+import { addPendingBatch, pendingBatches, resetPendingSuggestions } from "./note-pending-suggestions";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
 import { NOTE_WIDTH_KEY, saveNoteWidth } from "./note-prefs";
-import type { NoteEdit } from "./note-edits";
 import { type NotesData, NotesDataProvider } from "./notes-data";
-import {
-  type EditRequest,
-  type NoteAgentChoice,
-  NoteConflictError,
-  type NoteItem,
-  type NoteSource,
-  type ResearchActionId,
-} from "./types";
+import { type NoteColor, NoteConflictError, type NoteItem, type NoteSource } from "./types";
 
 const editors = vi.hoisted(() => ({ last: null as Editor | null }));
 const prompts = vi.hoisted(() => ({ scope: null as { current: HTMLElement | null } | null }));
 const composerFocus = vi.hoisted(() => vi.fn());
+const assistant = vi.hoisted(() => ({
+  bridge: null as NoteEditorBridge | null,
+  quote: vi.fn<(text: string) => void>(),
+}));
+
+const logs = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
+vi.mock("@/lib/log", () => logs);
 
 vi.mock("@tiptap/react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tiptap/react")>();
@@ -37,57 +40,29 @@ vi.mock("@tiptap/react", async (importOriginal) => {
   };
 });
 
-vi.mock("./AgentPrompt", () => ({
-  AgentPrompt: (props: {
-    composerRef: RefObject<{ focus: () => void } | null>;
-    shortcutScope?: RefObject<HTMLElement | null>;
-    hiddenActions: ReadonlySet<ResearchActionId>;
-    choice: NoteAgentChoice;
-    onChoice: (choice: NoteAgentChoice) => void;
-    working: boolean;
-    quote: string | null;
-    message: string | null;
-    onClearQuote: () => void;
-    onSend: (request: PromptRequest) => void;
-    onStop: () => void;
-  }) => {
-    props.composerRef.current = { focus: composerFocus };
-    prompts.scope = props.shortcutScope ?? null;
-    return (
-      <section
-        data-testid="agent-prompt"
-        data-working={String(props.working)}
-        data-agent={props.choice.label}
-        data-hidden={[...props.hiddenActions].sort().join(",")}
-      >
-        {props.message && <p>{props.message}</p>}
-        {props.quote && <blockquote>{props.quote}</blockquote>}
-        <button
-          type="button"
-          data-testid="send-request"
-          onClick={() => props.onSend({ actionId: null, prompt: "Tighten it" })}
-        />
-        <button
-          type="button"
-          data-testid="send-latest-run"
-          onClick={() => props.onSend({ actionId: "latestRun", prompt: "" })}
-        />
-        <button
-          type="button"
-          data-testid="send-proofread"
-          onClick={() => props.onSend({ actionId: "proofread", prompt: "" })}
-        />
-        <button
-          type="button"
-          data-testid="pick-agent"
-          onClick={() => props.onChoice({ providerId: "openai", modelId: "gpt", label: "GPT" })}
-        />
-        <button type="button" data-testid="stop-request" onClick={props.onStop} />
-        <button type="button" data-testid="clear-quote" onClick={props.onClearQuote} />
-      </section>
-    );
-  },
-}));
+vi.mock("./NoteAssistant", async () => {
+  const { forwardRef, useImperativeHandle } = await import("react");
+  return {
+    NoteAssistant: forwardRef(function NoteAssistant(
+      props: {
+        note: NoteItem;
+        bridge: NoteEditorBridge;
+        review: ReactNode;
+        shortcutScope?: RefObject<HTMLElement | null>;
+      },
+      ref,
+    ) {
+      useImperativeHandle(ref, () => ({ focus: composerFocus, quote: assistant.quote }), []);
+      assistant.bridge = props.bridge;
+      prompts.scope = props.shortcutScope ?? null;
+      return (
+        <section data-testid="note-assistant" data-note={props.note.id}>
+          {props.review}
+        </section>
+      );
+    }),
+  };
+});
 
 vi.mock("./IconPicker", () => ({
   IconPicker: (props: {
@@ -95,13 +70,18 @@ vi.mock("./IconPicker", () => ({
     value?: string;
     hasIcon: boolean;
     onChange: (icon: string | undefined) => void;
+    color?: NoteColor;
+    onColorChange?: (color: NoteColor) => void;
   }) => (
     <div>
-      <span data-testid="icon-trigger" data-value={props.value ?? "none"}>
+      <span data-testid="icon-trigger" data-value={props.value ?? "none"} data-color={props.color ?? "none"}>
         {props.trigger}
       </span>
       <button type="button" data-testid="pick-icon" onClick={() => props.onChange("🧪")} />
       {props.hasIcon && <button type="button" data-testid="remove-icon" onClick={() => props.onChange(undefined)} />}
+      {props.onColorChange && (
+        <button type="button" data-testid="pick-color" onClick={() => props.onColorChange?.("lilac")} />
+      )}
     </div>
   ),
 }));
@@ -133,13 +113,8 @@ function deferred<T>() {
   return { promise, ...handlers };
 }
 
-const CLAUDE: ModelSelectorGroup = { id: "acp:claude", name: "Claude", models: [{ id: "default", name: "Default" }] };
-const OPENAI: ModelSelectorGroup = { id: "openai", name: "OpenAI", models: [{ id: "gpt", name: "GPT" }] };
-const CLAUDE_CHOICE = { providerId: "acp:claude", modelId: "default", label: "Claude" };
-
 interface FakeOptions {
   text?: string;
-  agents?: ModelSelectorGroup[];
   withOptional?: boolean;
 }
 
@@ -155,9 +130,6 @@ function fakeData(options: FakeOptions = {}) {
     }),
   );
   const renameNote = vi.fn(async (_id: string, _title: string) => {});
-  const proposeEdits = vi.fn(
-    async (_request: EditRequest, _signal: AbortSignal): Promise<readonly NoteEdit[]> => [],
-  );
   const stopWatching = vi.fn();
   const watchNote = vi.fn((_id: string, onChange: () => void) => {
     onDisk = onChange;
@@ -167,12 +139,10 @@ function fakeData(options: FakeOptions = {}) {
     notes: [NOTE],
     artifacts: [],
     experiments: [],
-    agents: options.agents ?? [CLAUDE],
     citations: [],
     papers: [],
     loadNote,
     saveNote,
-    proposeEdits,
     ...(options.withOptional === false ? {} : { renameNote, watchNote }),
   };
   const diskChanged = async () => {
@@ -180,7 +150,7 @@ function fakeData(options: FakeOptions = {}) {
       onDisk?.();
     });
   };
-  return { data, loadNote, saveNote, renameNote, proposeEdits, watchNote, stopWatching, diskChanged };
+  return { data, loadNote, saveNote, renameNote, watchNote, stopWatching, diskChanged };
 }
 
 type Fake = ReturnType<typeof fakeData>;
@@ -188,10 +158,11 @@ type Fake = ReturnType<typeof fakeData>;
 interface OpenOptions {
   note?: NoteItem;
   insertRequest?: { snippet: string; id: number } | null;
+  withoutPaper?: boolean;
 }
 
 async function openNote(fake: Fake, options: OpenOptions = {}) {
-  const onStatusChange = vi.fn<(status: SaveStatus) => void>();
+  const onStatusChange = vi.fn<(status: SaveStatus, failure: NoteSaveFailure | null) => void>();
   const onSendToPaper = vi.fn<(text: string) => void>();
   const note = options.note ?? NOTE;
   const tree = (insertRequest: OpenOptions["insertRequest"], shown: NoteItem = note) => (
@@ -199,7 +170,7 @@ async function openNote(fake: Fake, options: OpenOptions = {}) {
       <NoteDocument
         note={shown}
         insertRequest={insertRequest ?? null}
-        onSendToPaper={onSendToPaper}
+        onSendToPaper={options.withoutPaper ? undefined : onSendToPaper}
         onStatusChange={onStatusChange}
       />
     </NotesDataProvider>
@@ -285,7 +256,11 @@ afterEach(() => {
   composerFocus.mockClear();
   scrollIntoView.mockClear();
   Reflect.deleteProperty(document, "visibilityState");
-  localStorage.removeItem("oleafly.notes.agent");
+  assistant.bridge = null;
+  assistant.quote.mockClear();
+  cleanup();
+  localStorage.clear();
+  resetPendingSuggestions();
 });
 
 describe("opening a note", () => {
@@ -317,6 +292,23 @@ describe("opening a note", () => {
       </NotesDataProvider>,
     );
     expect(await screen.findByText(enNotes.document.loadFailed)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enNotes.document.closeTab })).toBeNull();
+  });
+
+  it("tries again or closes the tab when the note could not be opened", async () => {
+    const fake = fakeData();
+    const onClose = vi.fn();
+    fake.loadNote.mockRejectedValueOnce(new Error("gone"));
+    render(
+      <NotesDataProvider value={fake.data}>
+        <NoteDocument note={NOTE} insertRequest={null} onClose={onClose} />
+      </NotesDataProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: enNotes.document.closeTab }));
+    expect(onClose).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: enNotes.document.retryLoad }));
+    expect((await screen.findByLabelText<HTMLInputElement>(enNotes.document.titleLabel)).value).toBe("Mask ratios");
+    expect(fake.loadNote).toHaveBeenCalledTimes(2);
   });
 
   it("ignores a load that settles after the note closed", async () => {
@@ -352,9 +344,21 @@ describe("opening a note", () => {
     expect(screen.getByText(new RegExp(`^${credit} · Encoder study · `))).toBeInTheDocument();
   });
 
+  it("credits nobody on a shared note no agent wrote", async () => {
+    await openNote(fakeData(), { note: { ...NOTE, shared: true } });
+    const byline = screen.getByText(/Encoder study/u);
+    expect(byline.textContent?.startsWith("Encoder study · ")).toBe(true);
+    expect(byline).not.toHaveTextContent(enNotes.document.writtenByYou);
+  });
+
   it("credits you when an agent note does not name its agent", async () => {
     await openNote(fakeData(), { note: { ...NOTE, author: "agent" } });
     expect(screen.getByText(new RegExp(`^${enNotes.document.writtenByYou} · `))).toBeInTheDocument();
+  });
+
+  it("leaves out the time when the note's edit time is unknown", async () => {
+    await openNote(fakeData(), { note: { ...NOTE, updatedAt: 0 } });
+    expect(screen.getByText(`${enNotes.document.writtenByYou} · Encoder study`)).toBeInTheDocument();
   });
 });
 
@@ -364,7 +368,7 @@ describe("saving", () => {
     const { editor, onStatusChange } = await openNote(fake);
     vi.useFakeTimers();
     typeBefore(editor, "trains", "really ");
-    expect(onStatusChange).toHaveBeenLastCalledWith("saving");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saving", null);
     await act(() => vi.advanceTimersByTimeAsync(500));
     typeBefore(editor, "really", "quite ");
     await act(() => vi.advanceTimersByTimeAsync(799));
@@ -376,7 +380,7 @@ describe("saving", () => {
       TEXT.replace("trains", "quite really trains"),
       "v1",
     );
-    expect(onStatusChange).toHaveBeenLastCalledWith("saved");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
   });
 
   it("saves at once when the window loses focus", async () => {
@@ -439,16 +443,24 @@ describe("saving", () => {
     deleteText(editor, "x");
     await flushSave();
     expect(fake.saveNote).toHaveBeenCalledTimes(1);
-    expect(onStatusChange).toHaveBeenLastCalledWith("saved");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
   });
 
-  it("reports a save that fails", async () => {
+  it("reports a save that fails and writes why to the app log", async () => {
     const fake = fakeData();
-    fake.saveNote.mockRejectedValueOnce(new Error("disk full"));
+    const failure = new Error("disk full");
+    fake.saveNote.mockRejectedValueOnce(failure);
     const { editor, onStatusChange } = await openNote(fake);
     typeBefore(editor, "trains", "really ");
     await flushSave();
-    expect(onStatusChange).toHaveBeenLastCalledWith("failed");
+    expect(onStatusChange).toHaveBeenLastCalledWith("failed", { error: failure, retry: expect.any(Function) });
+    expect(logs.logError).toHaveBeenCalledWith("save the note", failure);
+    const saves = fake.saveNote.mock.calls.length;
+    await act(async () => {
+      onStatusChange.mock.lastCall?.[1]?.retry();
+      await Promise.resolve();
+    });
+    expect(fake.saveNote.mock.calls.length).toBe(saves + 1);
   });
 
   it("sends each save with the version the last save returned", async () => {
@@ -477,7 +489,35 @@ describe("saving", () => {
     expect(fake.saveNote).toHaveBeenCalledTimes(2);
     expect(fake.saveNote.mock.calls[1][2]).toBe("v5");
     expect(savedText(fake)).toBe(TEXT.replace("trains", "really trains").replace("sampled", "randomly sampled"));
-    expect(onStatusChange).toHaveBeenLastCalledWith("saved");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
+  });
+
+  it("never runs two saves at once when several wait for the same one", async () => {
+    const fake = fakeData();
+    const first = deferred<NoteSource>();
+    const second = deferred<NoteSource>();
+    fake.saveNote.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    typeBefore(editor, "sampled", "randomly ");
+    await flushSave();
+    typeBefore(editor, "Masks", "All ");
+    await act(async () => {
+      fireEvent(window, new Event("pagehide"));
+    });
+    await act(async () => {
+      first.resolve({ text: savedText(fake), version: "v5" });
+    });
+    expect(fake.saveNote).toHaveBeenCalledTimes(2);
+    typeBefore(editor, "encoder", "big ");
+    await flushSave();
+    expect(fake.saveNote).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      second.resolve({ text: savedText(fake), version: "v6" });
+    });
+    expect(fake.saveNote).toHaveBeenCalledTimes(3);
+    expect(fake.saveNote.mock.calls[2][2]).toBe("v6");
   });
 
   it("offers the disk text as suggestions when a save conflicts, then saves again", async () => {
@@ -489,12 +529,102 @@ describe("saving", () => {
     await flushSave();
     expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
     expect(title.value).toBe("Mask ratio study");
-    expect(onStatusChange).toHaveBeenLastCalledWith("saving");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saving", null);
     expect(bodyText(editor)).toContain("per pixel");
     await act(() => vi.advanceTimersByTimeAsync(800));
     expect(fake.saveNote.mock.calls.at(-1)?.[2]).toBe("v9");
     expect(savedText(fake)).toBe(DISK.replace("trains", "really trains"));
-    expect(onStatusChange).toHaveBeenLastCalledWith("saved");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
+  });
+});
+
+describe("saving before the app quits", () => {
+  it("saves a pending edit at once", async () => {
+    const fake = fakeData();
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await act(async () => {
+      await expect(flushOpenNotes()).resolves.toEqual([]);
+    });
+    expect(savedText(fake)).toBe(TEXT.replace("trains", "really trains"));
+  });
+
+  it("leaves a note alone when nothing changed", async () => {
+    const fake = fakeData({ text: OLD_TEXT });
+    await openNote(fake);
+    await act(async () => {
+      await expect(flushOpenNotes()).resolves.toEqual([]);
+    });
+    expect(fake.saveNote).not.toHaveBeenCalled();
+  });
+
+  it("names a note that could not be saved", async () => {
+    const fake = fakeData();
+    fake.saveNote.mockRejectedValue(new Error("disk full"));
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await act(async () => {
+      await expect(flushOpenNotes()).resolves.toEqual([{ path: "Mask ratios", reason: "disk full" }]);
+    });
+    fake.saveNote.mockRejectedValue("refused");
+    typeBefore(editor, "trains", "quite ");
+    await act(async () => {
+      await expect(flushOpenNotes()).resolves.toEqual([{ path: "Mask ratios", reason: "refused" }]);
+    });
+  });
+
+  it("finishes a save that ran into a change on disk", async () => {
+    const fake = fakeData();
+    fake.saveNote.mockRejectedValueOnce(new NoteConflictError({ text: DISK, version: "v9" }));
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await act(async () => {
+      await expect(flushOpenNotes()).resolves.toEqual([]);
+    });
+    expect(fake.saveNote).toHaveBeenCalledTimes(2);
+    expect(savedText(fake)).toBe(DISK.replace("trains", "really trains"));
+  });
+
+  it("reports a note whose save keeps running into changes", async () => {
+    const fake = fakeData();
+    fake.saveNote.mockRejectedValue(new NoteConflictError({ text: DISK, version: "v9" }));
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await act(async () => {
+      await expect(flushOpenNotes()).resolves.toEqual([{ path: "Mask ratios", reason: enNotes.saving.notSaved }]);
+    });
+  });
+
+  it("waits for the save a note started when it closed", async () => {
+    const fake = fakeData();
+    const first = deferred<NoteSource>();
+    fake.saveNote.mockReturnValueOnce(first.promise);
+    const { editor, unmount } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await act(async () => {
+      unmount();
+    });
+    let settled = false;
+    const flushing = flushOpenNotes().then((failures) => {
+      settled = true;
+      return failures;
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(settled).toBe(false);
+    first.reject(new Error("disk full"));
+    await expect(flushing).resolves.toEqual([{ path: "Mask ratios", reason: "disk full" }]);
+  });
+
+  it("saves when the page is about to unload", async () => {
+    const fake = fakeData();
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await act(async () => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+    expect(savedText(fake)).toBe(TEXT.replace("trains", "really trains"));
   });
 });
 
@@ -567,7 +697,7 @@ describe("the note's kind and id", () => {
     typeBefore(editor, "trains", "really ");
     await flushSave();
     expect(savedText(fake)).toBe(
-      `---\r\ntitle: Mask ratios\r\nkind: note\r\nid: ${NEW_ID}\r\n---\n\n${BODY.replace("trains", "really trains")}`,
+      `---\r\ntitle: Mask ratios\r\nkind: note\r\nid: ${NEW_ID}\r\n---\r\n\r\n${BODY.replace("trains", "really trains")}`,
     );
   });
 
@@ -594,12 +724,12 @@ describe("saving after a conflict", () => {
     typeBefore(editor, "trains", "really ");
     await flushSave();
     expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-    expect(onStatusChange).toHaveBeenLastCalledWith("saving");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saving", null);
     await act(() => vi.advanceTimersByTimeAsync(800));
     expect(fake.saveNote).toHaveBeenCalledTimes(2);
     expect(fake.saveNote.mock.calls[1][2]).toBe("v7");
     expect(savedText(fake)).toBe(TEXT.replace("trains", "really trains"));
-    expect(onStatusChange).toHaveBeenLastCalledWith("saved");
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
   });
 
   it("saves once when an edit was already waiting to save", async () => {
@@ -630,14 +760,16 @@ describe("changes on disk", () => {
     await fake.diskChanged();
     expect(fake.loadNote).toHaveBeenLastCalledWith("note-1");
     expect(title.value).toBe("Mask ratio study");
-    expect(screen.queryByTestId("agent-prompt")).toBeNull();
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    const floating = screen.getByRole("button", { name: ACCEPT }).closest("[data-note-review]");
+    expect(floating).toHaveClass("fixed");
+    expect(screen.getByTestId("note-assistant")).not.toContainElement(floating as HTMLElement);
+    expect(scrollIntoView).not.toHaveBeenCalledWith({ block: "center" });
     act(() => {
       fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
     });
     expect(bodyText(editor)).toContain("per patch");
     expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-    expect(screen.getByTestId("agent-prompt")).toBeInTheDocument();
+    expect(screen.getByTestId("note-assistant")).toBeInTheDocument();
   });
 
   it("drops a disk suggestion that is rejected", async () => {
@@ -720,6 +852,131 @@ describe("changes on disk", () => {
     expect(fake.watchNote).toHaveBeenCalledWith("note-1", expect.any(Function));
     unmount();
     expect(fake.stopWatching).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("front matter edits across changes elsewhere", () => {
+  const WITH_STATUS = TEXT.replace(`id: ${ID}\n`, `id: ${ID}\nstatus: draft\n`);
+  const DISK_STATUS = WITH_STATUS.replace("per pixel", "per patch").replace("Mask ratios", "Mask ratio study");
+
+  function setStatus(value: string) {
+    const status = screen.getByRole("textbox", { name: "Value of status" });
+    fireEvent.change(status, { target: { value } });
+    fireEvent.blur(status);
+  }
+
+  it("saves a property changed just before the file changed on disk", async () => {
+    const fake = fakeData({ text: WITH_STATUS });
+    const { title } = await openNote(fake);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setStatus("final");
+    fake.loadNote.mockResolvedValueOnce({ text: DISK_STATUS, version: "v4" });
+    await fake.diskChanged();
+    expect(title.value).toBe("Mask ratio study");
+    expect(screen.getByRole("textbox", { name: "Value of status" })).toHaveValue("final");
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(fake.saveNote).toHaveBeenCalledTimes(1);
+    expect(fake.saveNote.mock.calls[0][2]).toBe("v4");
+    expect(savedText(fake)).toBe(DISK_STATUS.replace("status: draft", "status: final"));
+  });
+
+  it("saves a property change whose first save hit a conflict", async () => {
+    const fake = fakeData({ text: WITH_STATUS });
+    fake.saveNote.mockRejectedValueOnce(new NoteConflictError({ text: DISK_STATUS, version: "v9" }));
+    const { onStatusChange } = await openNote(fake);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setStatus("final");
+    await flushSave();
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(fake.saveNote).toHaveBeenCalledTimes(2);
+    expect(fake.saveNote.mock.calls[1][2]).toBe("v9");
+    expect(savedText(fake)).toBe(DISK_STATUS.replace("status: draft", "status: final"));
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
+  });
+
+  it("keeps this note's value when the disk changed the same property", async () => {
+    const fake = fakeData({ text: WITH_STATUS });
+    await openNote(fake);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setStatus("final");
+    fake.loadNote.mockResolvedValueOnce({ text: WITH_STATUS.replace("status: draft", "status: review\nowner: Ada"), version: "v4" });
+    await fake.diskChanged();
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(savedText(fake)).toBe(WITH_STATUS.replace("status: draft", "status: final\nowner: Ada"));
+  });
+
+  it("keeps an icon picked before the file changed on disk", async () => {
+    const fake = fakeData();
+    await openNote(fake);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fireEvent.click(screen.getByTestId("pick-icon"));
+    fake.loadNote.mockResolvedValueOnce({ text: DISK, version: "v4" });
+    await fake.diskChanged();
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-value", "🧪");
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(savedText(fake)).toBe(DISK.replace(`id: ${ID}\n`, `id: ${ID}\nicon: 🧪\n`));
+  });
+
+  it("does not write when the disk change leaves nothing of this note to save", async () => {
+    const fake = fakeData({ text: WITH_STATUS });
+    await openNote(fake);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fake.loadNote.mockResolvedValueOnce({ text: DISK_STATUS, version: "v4" });
+    await fake.diskChanged();
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(fake.saveNote).not.toHaveBeenCalled();
+  });
+});
+
+describe("bytes outside the edit", () => {
+  it.each([
+    ["no blank line", `---\ntitle: Mask ratios\nkind: note\nid: ${ID}\n---\n${BODY}`],
+    ["two blank lines", `---\ntitle: Mask ratios\nkind: note\nid: ${ID}\n---\n\n\n${BODY}`],
+    ["a document end closer", `---\ntitle: Mask ratios\nkind: note\nid: ${ID}\n...\n\n${BODY}`],
+    ["a byte order mark", `\uFEFF---\ntitle: Mask ratios\nkind: note\nid: ${ID}\n---\n\n${BODY}`],
+  ])("keeps %s between the front matter and the body", async (_name, text) => {
+    const fake = fakeData({ text });
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    expect(savedText(fake)).toBe(text.replace("trains", "really trains"));
+  });
+
+  it("gives front matter with a byte order mark its identity in place", async () => {
+    vi.spyOn(crypto, "randomUUID").mockReturnValue(NEW_ID);
+    const fake = fakeData({ text: `\uFEFF---\ntitle: Mask ratios\n...\n\n${BODY}` });
+    const { editor } = await openNote(fake);
+    typeBefore(editor, "trains", "really ");
+    await flushSave();
+    expect(savedText(fake)).toBe(
+      `\uFEFF---\ntitle: Mask ratios\nkind: note\nid: ${NEW_ID}\n...\n\n${BODY.replace("trains", "really trains")}`,
+    );
+  });
+
+  it("does not write a CRLF note again when nothing changed since the last save", async () => {
+    const fake = fakeData({ text: `${TEXT}\n- first step\n- second step\n`.replace(/\n/gu, "\r\n") });
+    fake.saveNote.mockImplementation(async (_id, saved) => ({ text: saved.replace(/\r?\n/gu, "\r\n"), version: "v2" }));
+    const { editor, onStatusChange } = await openNote(fake);
+    typeBefore(editor, "step", "small ");
+    await flushSave();
+    expect(savedText(fake)).toContain("- first small step\r\n- second step\r\n");
+    typeBefore(editor, "trains", "x");
+    deleteText(editor, "x");
+    await flushSave();
+    expect(fake.saveNote).toHaveBeenCalledTimes(1);
+    expect(onStatusChange).toHaveBeenLastCalledWith("saved", null);
+  });
+
+  it("does not rewrite an imported title longer than a project name", async () => {
+    const long = `${"A".repeat(150)} ${"B".repeat(80)}`;
+    const fake = fakeData({ text: TEXT.replace("title: Mask ratios", `title: ${long}`) });
+    const { title, unmount } = await openNote(fake, { note: { ...NOTE, title: Array.from(long).slice(0, 200).join("").trim() } });
+    expect(title.value).toBe(long);
+    await flushSave();
+    await act(async () => {
+      unmount();
+    });
+    expect(fake.saveNote).not.toHaveBeenCalled();
   });
 });
 
@@ -809,7 +1066,8 @@ describe("title and icon", () => {
     await openNote(fake);
     const trigger = screen.getByTestId("icon-trigger");
     expect(trigger).toHaveAttribute("data-value", "none");
-    expect(trigger.querySelector(".lucide-notebook-pen")).not.toBeNull();
+    expect(trigger.querySelector("[data-add-icon]")).toHaveTextContent("Add icon");
+    expect(trigger.querySelector("[data-note-color]")).toBeNull();
     expect(screen.queryByTestId("remove-icon")).toBeNull();
     fireEvent.click(screen.getByTestId("pick-icon"));
     expect(screen.getByTestId("icon-trigger")).toHaveTextContent("🧪");
@@ -823,7 +1081,8 @@ describe("title and icon", () => {
     await openNote(fake);
     expect(screen.getByTestId("icon-trigger")).toHaveTextContent("🧪");
     fireEvent.click(screen.getByTestId("remove-icon"));
-    expect(screen.getByTestId("icon-trigger").querySelector(".lucide-notebook-pen")).not.toBeNull();
+    expect(screen.getByTestId("icon-trigger").querySelector("[data-add-icon]")).not.toBeNull();
+    expect(screen.getByTestId("icon-trigger").querySelector("[data-note-color]")).toBeNull();
     await flushSave();
     expect(savedText(fake)).toBe(TEXT);
   });
@@ -833,14 +1092,34 @@ describe("the note's look", () => {
   it("shows the icon in a large chip tinted with the colour the note's id gives it", async () => {
     await openNote(fakeData({ text: TEXT.replace("title: Mask ratios\n", "title: Mask ratios\nicon: lucide:atom\n") }));
     const chip = screen.getByTestId("icon-trigger").querySelector("[data-note-color]") as HTMLElement;
-    expect(chip).toHaveAttribute("data-note-color", "sky");
-    expect(chip).toHaveClass("size-14", "bg-sky-500/10");
-    expect(chip.querySelector("svg")).toHaveClass("lucide-atom", "text-sky-600");
+    expect(chip).toHaveAttribute("data-note-color", "cream");
+    expect(chip).toHaveClass("note-chip", "size-14");
+    expect(chip.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.cream);
+    expect(chip.querySelector("svg")).toHaveClass("lucide-atom", "text-current");
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-color", "cream");
   });
 
   it("uses the colour the front matter names", async () => {
-    await openNote(fakeData({ text: TEXT.replace("title: Mask ratios\n", "title: Mask ratios\ncolor: rose\n") }));
+    await openNote(fakeData({ text: TEXT.replace("title: Mask ratios\n", "title: Mask ratios\nicon: lucide:atom\ncolor: rose\n") }));
     expect(screen.getByTestId("icon-trigger").querySelector("[data-note-color]")).toHaveAttribute("data-note-color", "rose");
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-color", "rose");
+  });
+
+  it("saves a colour picked in the icon picker to the front matter", async () => {
+    const fake = fakeData();
+    await openNote(fake);
+    fireEvent.click(screen.getByTestId("pick-color"));
+    expect(screen.getByTestId("icon-trigger")).toHaveAttribute("data-color", "lilac");
+    await flushSave();
+    expect(savedText(fake)).toBe(`---\ntitle: Mask ratios\nkind: note\nid: ${ID}\ncolor: lilac\n---\n\n${BODY}`);
+  });
+
+  it("replaces the colour the front matter already names", async () => {
+    const fake = fakeData({ text: TEXT.replace("title: Mask ratios\n", "title: Mask ratios\ncolor: rose\n") });
+    await openNote(fake);
+    fireEvent.click(screen.getByTestId("pick-color"));
+    await flushSave();
+    expect(savedText(fake)).toBe(TEXT.replace("title: Mask ratios\n", "title: Mask ratios\ncolor: lilac\n"));
   });
 
   it("lays the note out at the width the person picked, in every open note", async () => {
@@ -930,110 +1209,93 @@ describe("renames made elsewhere", () => {
   });
 });
 
-describe("agent edits", () => {
-  function prompt() {
-    return screen.getByTestId("agent-prompt");
+describe("the assistant", () => {
+  function bridge(): NoteEditorBridge {
+    if (!assistant.bridge) throw new Error("assistant not shown");
+    return assistant.bridge;
   }
 
-  function sendRequest() {
+  function propose(...edits: { find: string; replace: string }[]): number {
+    let count = 0;
     act(() => {
-      fireEvent.click(screen.getByTestId("send-request"));
+      count = bridge().propose(edits);
     });
+    return count;
   }
 
-  it("sends a note without front matter as its body before any save", async () => {
-    const fake = fakeData({ text: BODY });
-    await openNote(fake);
-    sendRequest();
-    expect(fake.proposeEdits.mock.calls[0][0].source).toBe(BODY);
-    await act(async () => {});
-    expect(fake.saveNote).not.toHaveBeenCalled();
+  it("shows suggestions the assistant made while the note was closed", async () => {
+    addPendingBatch("note-1", [{ find: "per pixel", replace: "per patch" }]);
+    const { editor } = await openNote(fakeData());
+    expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
+    expect(pendingBatches("note-1")).toEqual([]);
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
+    });
+    expect(bodyText(editor)).toContain("per patch");
   });
 
-  it("hides the agent prompt when no agent is available", async () => {
-    await openNote(fakeData({ agents: [] }));
-    expect(screen.queryByTestId("agent-prompt")).toBeNull();
-    expect(screen.queryByText(enNotes.prompt.noAgents)).toBeNull();
-  });
-
-  it("points to the AI settings when no agent is available and settings can open", async () => {
-    const fake = fakeData({ agents: [] });
-    const openAgentSettings = vi.fn();
-    fake.data = { ...fake.data, openAgentSettings };
-    await openNote(fake);
-    expect(screen.getByText(enNotes.prompt.noAgents)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: enNotes.prompt.setUp }));
-    expect(openAgentSettings).toHaveBeenCalledTimes(1);
-  });
-
-  it("starts with the app's own model when nothing was picked before", async () => {
-    const fake = fakeData({ agents: [CLAUDE, OPENAI] });
-    fake.data = { ...fake.data, preferredAgent: { providerId: "openai", modelId: "gpt" } };
-    await openNote(fake);
-    expect(prompt()).toHaveAttribute("data-agent", "GPT");
-  });
-
-  it("remembers the agent the person picks and sends to it", async () => {
-    const fake = fakeData({ agents: [CLAUDE, OPENAI] });
-    await openNote(fake);
-    expect(prompt()).toHaveAttribute("data-agent", "Claude");
-    fireEvent.click(screen.getByTestId("pick-agent"));
-    expect(prompt()).toHaveAttribute("data-agent", "GPT");
-    expect(JSON.parse(localStorage.getItem("oleafly.notes.agent") ?? "null")).toEqual({ providerId: "openai", modelId: "gpt" });
-    sendRequest();
-    expect(fake.proposeEdits.mock.calls[0][0].agent).toEqual({ providerId: "openai", modelId: "gpt", label: "GPT" });
-    await act(async () => {});
-    expect(screen.getByText(enNotes.document.noChanges.replace("{{agent}}", "GPT"))).toBeInTheDocument();
-  });
-
-  it("keeps the picked agent while it is still offered and falls back once it is gone", async () => {
-    const fake = fakeData({ agents: [CLAUDE, OPENAI] });
-    const { rerender } = await openNote(fake);
-    fireEvent.click(screen.getByTestId("pick-agent"));
-    const offer = (agents: ModelSelectorGroup[]) =>
-      rerender(
-        <NotesDataProvider value={{ ...fake.data, agents }}>
-          <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} />
-        </NotesDataProvider>,
-      );
-    offer([OPENAI, CLAUDE]);
-    expect(prompt()).toHaveAttribute("data-agent", "GPT");
-    offer([CLAUDE]);
-    expect(prompt()).toHaveAttribute("data-agent", "Claude");
-  });
-
-  it("goes back to the saved agent when the note opens again", async () => {
-    localStorage.setItem("oleafly.notes.agent", JSON.stringify({ providerId: "openai", modelId: "gpt" }));
-    await openNote(fakeData({ agents: [CLAUDE, OPENAI] }));
-    expect(prompt()).toHaveAttribute("data-agent", "GPT");
-  });
-
-  it("sends the note to the agent and shows its edits for review", async () => {
+  it("keeps the suggestions on screen when the note closes and shows them again when it reopens", async () => {
     const fake = fakeData();
-    fake.proposeEdits.mockResolvedValueOnce([{ find: "0.75", replace: "0.60" }]);
+    const { unmount } = await openNote(fake);
+    expect(propose({ find: "per pixel", replace: "per patch" })).toBe(1);
+    await act(async () => {
+      unmount();
+    });
+    expect(pendingBatches("note-1")).toHaveLength(1);
+    expect(fake.saveNote).not.toHaveBeenCalled();
     const { editor } = await openNote(fake);
-    sendRequest();
-    expect(prompt()).toHaveAttribute("data-working", "true");
-    expect(fake.proposeEdits).toHaveBeenCalledWith(
-      { noteId: "note-1", agent: CLAUDE_CHOICE, actionId: null, prompt: "Tighten it", quote: null, source: TEXT },
-      expect.any(AbortSignal),
-    );
-    await act(async () => {});
+    expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
+    expect(bodyText(editor)).toContain("per pixel");
+  });
+
+  it("waits until a live note can be edited before it shows stored suggestions", async () => {
+    addPendingBatch("note-1", [{ find: "per pixel", replace: "per patch" }]);
+    useCollabEditorGate.setState({ projectId: "note-1", connecting: true });
+    try {
+      await openNote(fakeData());
+      expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+      expect(pendingBatches("note-1")).toHaveLength(1);
+      act(() => useCollabEditorGate.setState({ connecting: false }));
+      expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, connecting: false });
+    }
+  });
+
+  it("shows the assistant for the open note and remounts it for another note", async () => {
+    const { showNote } = await openNote(fakeData());
+    expect(screen.getByTestId("note-assistant")).toHaveAttribute("data-note", "note-1");
+    showNote({ ...NOTE, id: "note-2" });
+    expect(screen.getByTestId("note-assistant")).toHaveAttribute("data-note", "note-2");
+  });
+
+  it("reads the note's current Markdown, front matter included", async () => {
+    const { editor } = await openNote(fakeData());
+    expect(bridge().readSource()).toBe(TEXT);
+    typeBefore(editor, "Masks", "Random ");
+    expect(bridge().readSource()).toContain("Random Masks are sampled");
+  });
+
+  it("reads a note without front matter as its body before any save", async () => {
+    await openNote(fakeData({ text: BODY }));
+    expect(bridge().readSource()).toBe(BODY);
+  });
+
+  it("turns proposed edits into suggestions the person reviews", async () => {
+    const { editor } = await openNote(fakeData());
+    expect(propose({ find: "0.75", replace: "0.60" })).toBe(1);
+    expect(bridge().pending()).toBe(1);
     expect(bodyText(editor)).toContain("0.75");
+    expect(bridge().readSource()).toContain("ratio of 0.60.");
     fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
     expect(bodyText(editor)).toContain("ratio of 0.60.");
-    expect(prompt()).toHaveAttribute("data-working", "false");
+    expect(bridge().pending()).toBe(0);
   });
 
-  it("steps through several agent edits and settles them", async () => {
-    const fake = fakeData();
-    fake.proposeEdits.mockResolvedValue([
-      { find: "0.75", replace: "0.60" },
-      { find: "per pixel", replace: "per patch" },
-    ]);
-    const { editor } = await openNote(fake);
-    sendRequest();
-    await act(async () => {});
+  it("keeps earlier suggestions when the assistant proposes more in the same turn", async () => {
+    const { editor } = await openNote(fakeData());
+    propose({ find: "0.75", replace: "0.60" });
+    expect(propose({ find: "per pixel", replace: "per patch" })).toBe(2);
     const position = (current: number) =>
       enNotes.review.position.replace("{{current}}", String(current)).replace("{{total}}", "2");
     expect(screen.getByText(position(1))).toBeInTheDocument();
@@ -1044,126 +1306,72 @@ describe("agent edits", () => {
     fireEvent.click(screen.getByRole("button", { name: enNotes.review.rejectAll }));
     expect(bodyText(editor)).toContain("0.75");
     expect(bodyText(editor)).toContain("per pixel");
-    sendRequest();
-    await act(async () => {});
+    propose({ find: "0.75", replace: "0.60" }, { find: "per pixel", replace: "per patch" });
     fireEvent.click(screen.getByRole("button", { name: enNotes.review.acceptAll }));
     expect(bodyText(editor)).toContain("0.60");
     expect(bodyText(editor)).toContain("per patch");
   });
 
-  it("places agent edits on the note as shown when its Markdown reads back differently", async () => {
-    const fake = fakeData();
-    fake.proposeEdits.mockResolvedValueOnce([{ find: "0.75", replace: "0.60" }]);
-    const { editor } = await openNote(fake);
+  it("places edits on the note as shown when its Markdown reads back differently", async () => {
+    const { editor } = await openNote(fakeData());
     act(() => {
       editor.view.dispatch(editor.state.tr.insert(editor.state.doc.content.size, editor.schema.nodes.paragraph.create()));
     });
-    sendRequest();
-    await act(async () => {});
+    propose({ find: "0.75", replace: "0.60" });
     fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
     expect(bodyText(editor)).toContain("ratio of 0.60.");
     expect(bodyText(editor)).toContain("per pixel.");
   });
 
-  it("tells you when the agent has no changes", async () => {
-    const fake = fakeData();
-    const { editor } = await openNote(fake);
-    sendRequest();
-    await act(async () => {});
-    expect(screen.getByText(enNotes.document.noChanges.replace("{{agent}}", "Claude"))).toBeInTheDocument();
-    expect(bodyText(editor)).toContain("0.75");
-  });
-
-  it("says how many edits did not match the note", async () => {
-    const fake = fakeData();
-    fake.proposeEdits.mockResolvedValueOnce([
-      { find: "0.75", replace: "0.60" },
-      { find: "missing", replace: "x" },
-      { find: "also missing", replace: "y" },
-    ]);
-    await openNote(fake);
-    sendRequest();
-    await act(async () => {});
-    fireEvent.click(screen.getByRole("button", { name: REJECT }));
-    expect(screen.getByText(enNotes.document.skipped_other.replace("{{count}}", "2"))).toBeInTheDocument();
-  });
-
-  it("shows the agent's error", async () => {
-    const fake = fakeData();
-    fake.proposeEdits.mockRejectedValueOnce(new Error("Agent offline"));
-    await openNote(fake);
-    sendRequest();
-    await act(async () => {});
-    expect(screen.getByText("Agent offline")).toBeInTheDocument();
-    expect(prompt()).toHaveAttribute("data-working", "false");
-  });
-
-  it("shows a failure that is not an error as text", async () => {
-    const fake = fakeData();
-    fake.proposeEdits.mockRejectedValueOnce("quota exhausted");
-    await openNote(fake);
-    sendRequest();
-    await act(async () => {});
-    expect(screen.getByText("quota exhausted")).toBeInTheDocument();
-  });
-
-  it("stops a running request and ignores its late answer", async () => {
-    const fake = fakeData();
-    const run = deferred<readonly NoteEdit[]>();
-    fake.proposeEdits.mockReturnValueOnce(run.promise);
-    const { editor } = await openNote(fake);
-    sendRequest();
-    fireEvent.click(screen.getByTestId("stop-request"));
-    expect(prompt()).toHaveAttribute("data-working", "false");
-    expect(fake.proposeEdits.mock.calls[0][1].aborted).toBe(true);
-    await act(async () => {
-      run.resolve([{ find: "0.75", replace: "0.60" }]);
-    });
+  it("reports no suggestions for an edit that changes nothing visible", async () => {
+    await openNote(fakeData());
+    expect(propose({ find: "title: Mask ratios", replace: "title: Masks" })).toBe(0);
     expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-    expect(bodyText(editor)).toContain("0.75");
   });
 
-  it("ignores a failure that arrives after the request was stopped", async () => {
-    const fake = fakeData();
-    const run = deferred<readonly NoteEdit[]>();
-    fake.proposeEdits.mockReturnValueOnce(run.promise);
+});
+
+describe("a note that can't be edited right now", () => {
+  it("leaves out every control that would change it until it can be edited again", async () => {
+    useCollabEditorGate.setState({ projectId: "note-1", connecting: true });
+    try {
+      const fake = fakeData({ text: TEXT.replace(`id: ${ID}\n`, `id: ${ID}\nstatus: draft\n`) });
+      const { editor, title, requestInsert } = await openNote(fake);
+      expect(editor.isEditable).toBe(false);
+      expect(title).toHaveAttribute("readonly");
+      expect(screen.queryByTestId("pick-icon")).toBeNull();
+      expect(screen.queryByRole("button", { name: enNotes.toolbar.blockType })).toBeNull();
+      expect(screen.getByRole("textbox", { name: "Value of status" })).toBeDisabled();
+      requestInsert({ snippet: "![Loss](figs/loss.png)", id: 1 });
+      expect(bodyText(editor)).not.toContain("Loss");
+      act(() => useCollabEditorGate.setState({ connecting: false }));
+      expect(editor.isEditable).toBe(true);
+      expect(screen.getByRole("button", { name: enNotes.toolbar.blockType })).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Value of status" })).toBeEnabled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, connecting: false });
+    }
+  });
+});
+
+describe("front matter that can't be read", () => {
+  const BROKEN = "---\ntitle: [Mask\n---\n\nBody\n";
+
+  it("opens a personal note's Markdown in its project", async () => {
+    const fake = fakeData({ text: BROKEN });
+    const openProject = vi.fn();
+    fake.data.openProject = openProject;
     await openNote(fake);
-    sendRequest();
-    fireEvent.click(screen.getByTestId("stop-request"));
-    await act(async () => {
-      run.reject(new Error("aborted"));
-    });
-    expect(screen.queryByText("aborted")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: enNotes.kb.properties.editSource }));
+    expect(openProject).toHaveBeenCalledWith("note-1");
   });
 
-  it("replaces a running request with a new one", async () => {
-    const fake = fakeData();
-    const first = deferred<readonly NoteEdit[]>();
-    const second = deferred<readonly NoteEdit[]>();
-    fake.proposeEdits.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-    await openNote(fake);
-    sendRequest();
-    sendRequest();
-    expect(fake.proposeEdits.mock.calls[0][1].aborted).toBe(true);
-    expect(fake.proposeEdits.mock.calls[1][1].aborted).toBe(false);
-    await act(async () => {
-      first.resolve([{ find: "0.75", replace: "0.60" }]);
-    });
-    expect(prompt()).toHaveAttribute("data-working", "true");
-    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-    await act(async () => {
-      second.resolve([{ find: "per pixel", replace: "per patch" }]);
-    });
-    expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
-  });
-
-  it("cancels a running request when the note closes", async () => {
-    const fake = fakeData();
-    fake.proposeEdits.mockReturnValueOnce(deferred<readonly NoteEdit[]>().promise);
-    const { unmount } = await openNote(fake);
-    sendRequest();
-    unmount();
-    expect(fake.proposeEdits.mock.calls[0][1].aborted).toBe(true);
+  it("switches a project note to Markdown editing", async () => {
+    const fake = fakeData({ text: BROKEN });
+    await openNote(fake, { note: { ...NOTE, home: { projectId: "paper", path: "notes/a.md" } } });
+    fireEvent.click(screen.getByRole("button", { name: enNotes.kb.properties.editSource }));
+    expect(editsAsMarkdown(useNoteTabsStore.getState(), "paper", "notes/a.md")).toBe(true);
+    useNoteTabsStore.getState().setMarkdown("paper", "notes/a.md", false);
   });
 });
 
@@ -1172,12 +1380,44 @@ describe("selection bubble", () => {
     return screen.queryByRole("button", { name });
   }
 
-  async function openWithSelection(fake: Fake) {
+  async function frame() {
+    await act(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+  }
+
+  async function openWithSelection(fake: Fake, top = 200) {
     const opened = await openNote(fake);
-    vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
+    vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top, bottom: top + 16, left: 48, right: 90 });
     select(opened.editor, "mask ratio");
+    await frame();
     return opened;
   }
+
+  it("opens below a selection at the top of the window", async () => {
+    await openWithSelection(fakeData(), 20);
+    expect(bubbleButton(enNotes.document.askAgent)?.parentElement).toHaveStyle({ top: "44px", left: "48px" });
+  });
+
+  it("quotes the selection with the Ask agent shortcut", async () => {
+    const { editor } = await openWithSelection(fakeData());
+    act(() => editor.view.focus());
+    const key = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      editor.view.dom.dispatchEvent(key);
+    });
+    expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
+    expect(key.defaultPrevented).toBe(true);
+    act(() => {
+      editor.commands.setTextSelection(3);
+    });
+    const empty = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      editor.view.dom.dispatchEvent(empty);
+    });
+    expect(assistant.quote).toHaveBeenCalledTimes(1);
+    expect(empty.defaultPrevented).toBe(false);
+  });
 
   it("appears above a selection and sends it to the paper", async () => {
     const { onSendToPaper } = await openWithSelection(fakeData());
@@ -1189,32 +1429,21 @@ describe("selection bubble", () => {
     expect(onSendToPaper).toHaveBeenCalledWith("mask ratio");
   });
 
-  it("quotes the selection in the next agent request", async () => {
-    const fake = fakeData();
-    await openWithSelection(fake);
+  it("offers no Send to paper when there is no paper to send to", async () => {
+    const opened = await openNote(fakeData(), { withoutPaper: true });
+    vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
+    select(opened.editor, "mask ratio");
+    await frame();
+    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
+    expect(bubbleButton(enNotes.document.sendToPaper)).toBeNull();
+  });
+
+  it("hands the selection to the assistant as a quote", async () => {
+    await openWithSelection(fakeData());
     const ask = bubbleButton(enNotes.document.askAgent) as HTMLElement;
     expect(fireEvent.mouseDown(ask)).toBe(false);
     fireEvent.click(ask);
-    expect(composerFocus).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("blockquote")).toHaveTextContent("mask ratio");
-    act(() => {
-      fireEvent.click(screen.getByTestId("send-request"));
-    });
-    expect(fake.proposeEdits.mock.calls[0][0].quote).toBe("mask ratio");
-    expect(screen.queryByRole("blockquote")).toBeNull();
-  });
-
-  it("drops a quote that is cleared", async () => {
-    await openWithSelection(fakeData());
-    fireEvent.click(bubbleButton(enNotes.document.askAgent) as HTMLElement);
-    fireEvent.click(screen.getByTestId("clear-quote"));
-    expect(screen.queryByRole("blockquote")).toBeNull();
-  });
-
-  it("quotes a selection even without an agent prompt on screen", async () => {
-    await openWithSelection(fakeData({ agents: [] }));
-    fireEvent.click(bubbleButton(enNotes.document.askAgent) as HTMLElement);
-    expect(composerFocus).not.toHaveBeenCalled();
+    expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
   });
 
   it("hides when the selection collapses", async () => {
@@ -1231,6 +1460,7 @@ describe("selection bubble", () => {
       const from = positionOf(editor, " mask");
       editor.commands.setTextSelection({ from, to: from + 1 });
     });
+    await frame();
     expect(bubbleButton(enNotes.document.askAgent)).toBeNull();
   });
 
@@ -1337,90 +1567,5 @@ describe("images", () => {
     expect(missing?.textContent).toBe(
       enNotes.blocks.imageMissing.replace("{{path}}", "./figures/loss%20curve.png"),
     );
-  });
-});
-
-describe("the latest research task", () => {
-  const RUN = "Task: Sweep mask ratios\nSummary:\nBest ratio 0.6";
-
-  function prompt() {
-    return screen.getByTestId("agent-prompt");
-  }
-
-  function withRun(fake: Fake, latestRun: (noteId: string) => string | null) {
-    const spy = vi.fn(latestRun);
-    fake.data = { ...fake.data, latestRun: spy };
-    return spy;
-  }
-
-  it("keeps the latest run action out of the menu when the app has no runs", async () => {
-    await openNote(fakeData());
-    expect(prompt()).toHaveAttribute("data-hidden", "claims,latestRun");
-  });
-
-  it("keeps the latest run action out of the menu while the note's project has no run", async () => {
-    const fake = fakeData();
-    const latestRun = withRun(fake, () => null);
-    await openNote(fake);
-    expect(latestRun).toHaveBeenCalledWith("note-1");
-    expect(prompt()).toHaveAttribute("data-hidden", "claims,latestRun");
-  });
-
-  it("offers the latest run action once the note's project has a run", async () => {
-    const fake = fakeData();
-    withRun(fake, () => RUN);
-    await openNote(fake);
-    expect(prompt()).toHaveAttribute("data-hidden", "claims");
-  });
-
-  it("hands the latest run to the agent with the latest run action", async () => {
-    const fake = fakeData();
-    const latestRun = withRun(fake, () => RUN);
-    await openNote(fake);
-    latestRun.mockClear();
-    act(() => {
-      fireEvent.click(screen.getByTestId("send-latest-run"));
-    });
-    expect(latestRun).toHaveBeenCalledWith("note-1");
-    expect(fake.proposeEdits.mock.calls[0][0]).toMatchObject({ actionId: "latestRun", prompt: "", latestRun: RUN });
-    await act(async () => {});
-  });
-
-  it("keeps the run out of other requests", async () => {
-    const fake = fakeData();
-    withRun(fake, () => RUN);
-    await openNote(fake);
-    act(() => {
-      fireEvent.click(screen.getByTestId("send-proofread"));
-    });
-    act(() => {
-      fireEvent.click(screen.getByTestId("send-request"));
-    });
-    expect(fake.proposeEdits.mock.calls[0][0].actionId).toBe("proofread");
-    expect(fake.proposeEdits.mock.calls[0][0].latestRun).toBeUndefined();
-    expect(fake.proposeEdits.mock.calls[1][0].latestRun).toBeUndefined();
-    await act(async () => {});
-  });
-
-  it("sends the latest run action without a run when there is none to read", async () => {
-    const withoutReader = fakeData();
-    await openNote(withoutReader);
-    act(() => {
-      fireEvent.click(screen.getByTestId("send-latest-run"));
-    });
-    expect(withoutReader.proposeEdits.mock.calls[0][0]).toMatchObject({ actionId: "latestRun" });
-    expect(withoutReader.proposeEdits.mock.calls[0][0].latestRun).toBeUndefined();
-    await act(async () => {});
-  });
-
-  it("sends the latest run action without a run once the run is gone", async () => {
-    const fake = fakeData();
-    withRun(fake, () => null);
-    await openNote(fake);
-    act(() => {
-      fireEvent.click(screen.getByTestId("send-latest-run"));
-    });
-    expect(fake.proposeEdits.mock.calls[0][0].latestRun).toBeUndefined();
-    await act(async () => {});
   });
 });

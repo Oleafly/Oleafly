@@ -317,7 +317,7 @@ export function Outline({
 
       <div
         ref={treeScrollRef}
-        className="isolate min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]"
+        className="isolate min-h-0 flex-1 overflow-auto px-1"
       >
             {currentSnapshot || nodeCount > 0 ? (
               <IntelligenceTree

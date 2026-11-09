@@ -425,3 +425,22 @@ describe("ShareDialog once shared", () => {
     expect(await screen.findByRole("list", { name: manage.people })).toBeInTheDocument();
   });
 });
+
+describe("ShareDialog for a note", () => {
+  it("describes sharing a note without the project's build and PDF wording", async () => {
+    useFilesStore.setState({
+      projectId: null,
+      projects: [libraryProject({ id: "note-1", name: "Reading notes", main_doc: "note.md", kind: "note" })],
+      refreshProjects,
+    });
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.collabShareCheck.mockResolvedValue(shareCheck());
+    openDialog("note-1");
+
+    expect(await screen.findByRole("heading", { name: fill(share.title, { name: "Reading notes" }) })).toBeInTheDocument();
+    expect(screen.getByText(share.noteDescription)).toBeInTheDocument();
+    expect(screen.queryByText(share.description)).not.toBeInTheDocument();
+    expect(await screen.findByText(share.noteExcluded)).toBeInTheDocument();
+    expect(screen.queryByText(share.excluded)).not.toBeInTheDocument();
+  });
+});

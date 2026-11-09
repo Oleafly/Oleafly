@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
+import { DecorationSet } from "@tiptap/pm/view";
 import { createWysiwygExtensions, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { loadNamespace } from "@/i18n";
 import { diffNoteDocs } from "./note-diff";
 import { applyNoteEdits } from "./note-edits";
 import {
@@ -10,6 +12,8 @@ import {
   acceptAll,
   docWithPending,
   hasPending,
+  canUndoReject,
+  isReviewNavigation,
   isReviewTransaction,
   moveReview,
   NoteSuggestions,
@@ -17,7 +21,9 @@ import {
   rejectAll,
   reviewSummary,
   showSuggestions,
+  undoReject,
 } from "./note-suggestions";
+import { forgetRemoteImages } from "./note-remote-images";
 
 const BODY = `## Results
 
@@ -57,9 +63,14 @@ function normalized(text: string): string {
   return markdown(editor);
 }
 
+beforeAll(async () => {
+  await loadNamespace("notes");
+});
+
 afterEach(() => {
   for (const editor of editors) editor.destroy();
   editors = [];
+  forgetRemoteImages();
 });
 
 describe("note changes", () => {
@@ -227,6 +238,68 @@ describe("reviewing note changes", () => {
     expect(press(editor, { key: "Escape" })).toBe(true);
     expect(markdown(editor)).toContain("per pixel");
     expect(reviewSummary(editor).count).toBe(0);
+  });
+
+  it("brings back a rejected change with Mod-z until the note changes", () => {
+    const editor = build();
+    propose(editor, BODY.replace("0.75 and", "0.60 and").replace("per pixel", "per patch"));
+    expect(canUndoReject(editor)).toBe(false);
+    expect(press(editor, { key: "Escape" })).toBe(true);
+    expect(reviewSummary(editor).count).toBe(1);
+    expect(canUndoReject(editor)).toBe(true);
+    expect(press(editor, { key: "z", ctrlKey: true })).toBe(true);
+    expect(reviewSummary(editor)).toMatchObject({ count: 2, index: 0 });
+    expect(canUndoReject(editor)).toBe(false);
+    rejectAll(editor);
+    expect(reviewSummary(editor).count).toBe(0);
+    expect(undoReject(editor)).toBe(true);
+    expect(reviewSummary(editor).count).toBe(2);
+    rejectActive(editor);
+    editor.chain().insertContentAt(1, "Draft ").run();
+    expect(canUndoReject(editor)).toBe(false);
+    expect(undoReject(editor)).toBe(false);
+  });
+
+  it("marks only the person's moves between changes as navigation", () => {
+    const editor = build();
+    const seen = transactions(editor);
+    propose(editor, BODY.replace("0.75 and", "0.60 and").replace("per pixel", "per patch"));
+    moveReview(editor, 1);
+    acceptActive(editor);
+    propose(editor, BODY.replace("per pixel", "per voxel"), "disk");
+    expect(seen.map(isReviewNavigation)).toEqual([false, true, true, false]);
+  });
+
+  it("keeps its decorations for selection moves and maps them for typing elsewhere", () => {
+    const editor = build();
+    propose(editor, BODY.replace("per pixel", "per patch"));
+    const shown = () =>
+      editor.state.plugins
+        .map((plugin) => plugin.props.decorations?.call(plugin, editor.state))
+        .find((set) => set instanceof DecorationSet && set.find().length > 0);
+    const before = shown();
+    editor.commands.setTextSelection(3);
+    expect(shown()).toBe(before);
+    const insert = editor.view.dom.querySelector(".note-diff-insert")?.textContent;
+    const struck = editor.view.dom.querySelector(".note-diff-delete")?.textContent;
+    editor.chain().insertContentAt(1, "Draft ").run();
+    expect(editor.view.dom.querySelector(".note-diff-insert")?.textContent).toBe(insert);
+    expect(editor.view.dom.querySelector(".note-diff-delete")?.textContent).toBe(struck);
+  });
+
+  it("holds back remote images in a proposed block until the person loads them", async () => {
+    const editor = build();
+    propose(editor, `${BODY}\n![Chart](https://tracker.example/pixel.png)\n`);
+    const block = editor.view.dom.querySelector(".note-diff-block") as HTMLElement;
+    expect(block.querySelector("img")).toBeNull();
+    const holder = await vi.waitFor(() => {
+      const found = block.querySelector<HTMLElement>("[data-remote-image]");
+      if (!found) throw new Error("not drawn yet");
+      return found;
+    });
+    expect(holder.dataset.remoteImage).toBe("tracker.example");
+    holder.querySelector("button")?.click();
+    expect(block.querySelector("img")?.getAttribute("src")).toBe("https://tracker.example/pixel.png");
   });
 
   it("leaves Escape to others when no change is active", () => {

@@ -200,6 +200,17 @@ export function migrateLegacyPanelLayout(groupId: string, panelOrder: readonly s
   removeStorage(legacyKey);
 }
 
+function storedPanelIds(panelIds: readonly string[], panelOrder: readonly string[]): string[] {
+  const known = panelOrder.filter((id) => panelIds.includes(id));
+  return [...known, ...panelIds.filter((id) => !panelOrder.includes(id))];
+}
+
+export function inPanelOrder(layout: Layout, panelOrder: readonly string[]): Layout {
+  return Object.fromEntries(
+    storedPanelIds(Object.keys(layout), panelOrder).map((id) => [id, layout[id] ?? 0]),
+  );
+}
+
 export function usePersistentPanelLayout(
   groupId: string | undefined,
   panelOrder: readonly string[],
@@ -209,11 +220,15 @@ export function usePersistentPanelLayout(
   onLayoutChanged: (layout: Layout, meta: LayoutChangedMeta) => void;
 } {
   if (groupId) migrateLegacyPanelLayout(groupId, panelOrder);
-  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+  const { defaultLayout, onLayoutChanged: save } = useDefaultLayout({
     id: groupId ?? "",
     panelIds,
     storage: groupId ? layoutStorage : unsavedStorage,
   });
+  const onLayoutChanged = useCallback(
+    (layout: Layout, meta: LayoutChangedMeta) => save(inPanelOrder(layout, panelOrder), meta),
+    [panelOrder, save],
+  );
   return { defaultLayout: groupId ? defaultLayout : undefined, onLayoutChanged };
 }
 
@@ -603,8 +618,12 @@ function useLayoutReevaluation(
   }, [groupRef, limits, panelIds]);
 }
 
-function readStoredLayout(groupId: string, panelIds: readonly string[]): Layout | undefined {
-  const serialized = readLayout(panelLayoutKey(groupId, panelIds));
+function readStoredLayout(
+  groupId: string,
+  panelIds: readonly string[],
+  panelOrder: readonly string[],
+): Layout | undefined {
+  const serialized = readLayout(panelLayoutKey(groupId, storedPanelIds(panelIds, panelOrder)));
   if (serialized === null) return undefined;
   const stored = JSON.parse(serialized) as Layout;
   return samePanels(stored, panelIds)
@@ -615,13 +634,14 @@ function readStoredLayout(groupId: string, panelIds: readonly string[]): Layout 
 function reopenedLayout(
   layout: Layout,
   groupId: string | undefined,
+  panelOrder: readonly string[],
   limits: Readonly<Record<string, PanelLimits>>,
   panelId: string,
   defaultSize: number,
 ): Layout {
   const ids = Object.keys(layout);
   const collapsedSize = resolveLimits(limits[panelId]).collapsedSize;
-  const stored = groupId ? readStoredLayout(groupId, ids) : undefined;
+  const stored = groupId ? readStoredLayout(groupId, ids, panelOrder) : undefined;
   if (stored) {
     const restored = reevaluateLayout(stored, limits, limits);
     if (!isCollapsedIn(restored, panelId, collapsedSize)) return restored;
@@ -676,7 +696,7 @@ export function useDismissiblePanelLayout(
       const reappeared =
         last === null || last.groupId !== groupId || !samePanels(last.layout, Object.keys(layout));
       if (reappeared && isCollapsedIn(layout, dismissibleId, collapsedSize)) {
-        const target = reopenedLayout(layout, groupId, limits, dismissibleId, defaultSize);
+        const target = reopenedLayout(layout, groupId, panelOrder, limits, dismissibleId, defaultSize);
         queueMicrotask(() => {
           const group = groupRef.current;
           if (!group) return;
@@ -693,7 +713,7 @@ export function useDismissiblePanelLayout(
       lastLayout.current = { groupId, layout };
       track(layout, { [dismissibleId]: { collapsedSize, onCollapse: onDismiss } });
     },
-    [collapsedSize, defaultSize, dismissibleId, groupId, groupRef, limits, onDismiss, track],
+    [collapsedSize, defaultSize, dismissibleId, groupId, groupRef, limits, onDismiss, panelOrder, track],
   );
 
   return { defaultLayout, onLayoutChange, onLayoutChanged };

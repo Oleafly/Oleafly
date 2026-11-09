@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { IconPicker } from "./IconPicker";
-import { LINE_ICONS } from "./note-icons";
+import { NOTE_COLORS } from "./note-file";
+import { LINE_ICONS, NOTE_COLOR_HEX } from "./note-icons";
+import type { NoteColor } from "./types";
 
 vi.mock("./EmojiGrid", () => ({
   default: ({ selected, onSelect }: Readonly<{ selected?: string; onSelect: (emoji: string) => void }>) => (
@@ -27,8 +30,9 @@ afterEach(() => {
   scrollIntoView.mockClear();
 });
 
-function setup(value?: string) {
+function setup(value?: string, colors?: { color?: NoteColor; withColors?: boolean }) {
   const onChange = vi.fn();
+  const onColorChange = vi.fn();
   const user = userEvent.setup();
   render(
     <IconPicker
@@ -37,9 +41,11 @@ function setup(value?: string) {
       value={value}
       hasIcon={value !== undefined}
       onChange={onChange}
+      color={colors?.color}
+      onColorChange={colors?.withColors ? onColorChange : undefined}
     />,
   );
-  return { onChange, user };
+  return { onChange, onColorChange, user };
 }
 
 async function open(user: ReturnType<typeof userEvent.setup>) {
@@ -73,7 +79,8 @@ describe("IconPicker", () => {
     expect(tab(enNotes.icons.lines)).toHaveAttribute("aria-selected", "true");
     const notebook = lineIcon(enNotes.icons.names.notebookPen);
     expect(notebook).toHaveAttribute("aria-pressed", "true");
-    expect(notebook).toHaveClass("bg-primary/10", "text-primary");
+    expect(notebook).toHaveClass("note-chip");
+    expect(lineIcon(enNotes.icons.names.atom)).not.toHaveClass("note-chip");
     expect(lineIcon(enNotes.icons.names.atom)).toHaveAttribute("aria-pressed", "false");
     expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(1);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
@@ -87,7 +94,8 @@ describe("IconPicker", () => {
     expect(tab(enNotes.icons.lines)).toHaveAttribute("aria-selected", "true");
     const telescope = lineIcon(enNotes.icons.names.telescope);
     expect(telescope).toHaveAttribute("aria-pressed", "true");
-    expect(telescope).toHaveClass("bg-primary/10");
+    expect(telescope).toHaveClass("note-chip");
+    expect(lineIcon(enNotes.icons.names.notebookPen)).not.toHaveClass("note-chip");
     expect(lineIcon(enNotes.icons.names.notebookPen)).toHaveAttribute("aria-pressed", "false");
     expect(scrollIntoView.mock.contexts).toContain(telescope);
   });
@@ -167,4 +175,75 @@ describe("IconPicker", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: enNotes.icons.choose })).toHaveClass("note-icon-trigger");
   });
+
+  it("shows no colour row when the caller cannot change the colour", async () => {
+    const { user } = setup("lucide:atom", { color: "mint" });
+    const dialog = await open(user);
+    expect(dialog.querySelector("[data-note-colors]")).toBeNull();
+    expect(dialog.querySelector("[data-note-swatch]")).toBeNull();
+  });
+
+  it("offers the 11 cover colours by their library names and marks the note's own", async () => {
+    const { user } = setup("lucide:atom", { color: "lilac", withColors: true });
+    const dialog = await open(user);
+    const row = dialog.querySelector<HTMLElement>("[data-note-colors]");
+    if (!row) throw new Error("no colour row");
+    const swatches = Array.from(row.querySelectorAll<HTMLButtonElement>("[data-note-swatch]"));
+    expect(swatches.map((swatch) => swatch.dataset.noteSwatch)).toEqual([...NOTE_COLORS]);
+    expect(swatches.map((swatch) => swatch.getAttribute("aria-label"))).toEqual(NOTE_COLORS.map((color) => enLibrary.colors[color]));
+    for (const swatch of swatches) {
+      const current = swatch.dataset.noteSwatch === "lilac";
+      expect(swatch).toHaveAttribute("aria-pressed", String(current));
+      expect(swatch.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX[swatch.dataset.noteSwatch as NoteColor]);
+      expect(swatch.querySelector("svg") !== null).toBe(current);
+    }
+    expect(screen.getByRole("button", { name: enLibrary.colors.lilac }).querySelector("svg")).toHaveClass("text-black/70");
+    expect(row.closest<HTMLElement>("[style]")?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.lilac);
+  });
+
+  it("draws the check in white on the dark blue swatch", async () => {
+    const { user } = setup(undefined, { color: "blue", withColors: true });
+    await open(user);
+    const blue = screen.getByRole("button", { name: enLibrary.colors.blue });
+    expect(blue).toHaveAttribute("aria-pressed", "true");
+    expect(blue.querySelector("svg")).toHaveClass("text-white");
+    expect(blue.querySelector("svg")).not.toHaveClass("text-black/70");
+  });
+
+  it("changes the colour without closing, and still closes after an icon is picked", async () => {
+    const { onChange, onColorChange, user } = setup("lucide:atom", { color: "lilac", withColors: true });
+    await open(user);
+    await user.click(screen.getByRole("button", { name: enLibrary.colors.peach }));
+    expect(onColorChange).toHaveBeenCalledOnce();
+    expect(onColorChange).toHaveBeenCalledWith("peach");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: enNotes.icons.dialog })).toBeInTheDocument();
+    await user.click(lineIcon(enNotes.icons.names.rocket));
+    expect(onChange).toHaveBeenCalledWith("lucide:rocket");
+    expect(onColorChange).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
 });
+
+describe("line icon keyboard", () => {
+  it("is one tab stop that arrow keys move across, row by row", async () => {
+    const { user } = setup("lucide:atom");
+    await user.click(screen.getByRole("button", { name: enNotes.icons.choose }));
+    await user.click(screen.getByRole("tab", { name: enNotes.icons.lines }));
+    const group = await screen.findByRole("group", { name: enNotes.icons.lines });
+    const cells = within(group).getAllByRole("button");
+    expect(cells.filter((cell) => cell.tabIndex === 0)).toHaveLength(1);
+    const start = cells.findIndex((cell) => cell.tabIndex === 0);
+    cells[start].focus();
+    await user.keyboard("{ArrowRight}");
+    expect(document.activeElement).toBe(cells[start + 1]);
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(cells[start + 9]);
+    await user.keyboard("{Home}");
+    expect(document.activeElement).toBe(cells[0]);
+    expect(cells.filter((cell) => cell.tabIndex === 0)).toEqual([cells[0]]);
+    await user.keyboard("{End}");
+    expect(document.activeElement).toBe(cells.at(-1));
+  });
+});
+

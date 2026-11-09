@@ -62,3 +62,6 @@ fixtures/research-seeds/.validation.json
 
 # The browser app's SyncTeX WebAssembly, built by `pnpm synctex:wasm`
 web/src/synctex/oleafly_synctex.wasm
+
+# Built by scripts/build-artifact-runtime.mjs for Notes artifact frames
+public/artifact-runtime/

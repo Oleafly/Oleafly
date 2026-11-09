@@ -20,7 +20,12 @@ export type ShortcutId =
   | "openSettings"
   | "zoomIn"
   | "zoomOut"
-  | "resetZoom";
+  | "resetZoom"
+  | "notesQuickSwitcher"
+  | "notesTodayNote"
+  | "notesGraph"
+  | "notesLocalGraph"
+  | "notesOutline";
 
 export interface ShortcutBinding {
   key: string;
@@ -30,9 +35,12 @@ export interface ShortcutBinding {
   alt?: boolean;
 }
 
+type ShortcutScope = "notes";
+
 export interface ShortcutDefinition {
   id: ShortcutId;
   defaultBinding: ShortcutBinding;
+  scope?: ShortcutScope;
 }
 
 const ZEN_MAC_BINDING: ShortcutBinding = { key: "f", mod: true, ctrl: true, shift: true };
@@ -117,6 +125,31 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "resetZoom",
     defaultBinding: { key: "0", mod: true },
+  },
+  {
+    id: "notesQuickSwitcher",
+    defaultBinding: { key: "o", mod: true },
+    scope: "notes",
+  },
+  {
+    id: "notesTodayNote",
+    defaultBinding: { key: "d", mod: true, shift: true },
+    scope: "notes",
+  },
+  {
+    id: "notesGraph",
+    defaultBinding: { key: "g", mod: true, shift: true },
+    scope: "notes",
+  },
+  {
+    id: "notesLocalGraph",
+    defaultBinding: { key: "g", mod: true, alt: true },
+    scope: "notes",
+  },
+  {
+    id: "notesOutline",
+    defaultBinding: { key: "o", mod: true, alt: true },
+    scope: "notes",
   },
 ];
 

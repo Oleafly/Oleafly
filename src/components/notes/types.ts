@@ -1,16 +1,18 @@
+
 export type Author = "agent" | "you";
-export type ArtifactKind = "figure" | "report" | "data" | "html" | "file";
+export type ArtifactKind = "figure" | "report" | "data" | "html" | "notebook" | "file";
 export type NoteColor =
-  | "violet"
   | "blue"
-  | "sky"
-  | "teal"
-  | "emerald"
-  | "lime"
-  | "amber"
-  | "orange"
+  | "cream"
+  | "peach"
   | "rose"
-  | "pink";
+  | "pink"
+  | "lilac"
+  | "sky"
+  | "aqua"
+  | "cyan"
+  | "mint"
+  | "spring";
 
 export interface NoteItem {
   id: string;
@@ -23,6 +25,13 @@ export interface NoteItem {
   icon?: string;
   color?: NoteColor;
   summary: string;
+  createdAt?: number;
+  preview?: string;
+  aliases?: readonly string[];
+  tags?: readonly string[];
+  properties?: Readonly<Record<string, unknown>>;
+  shared?: boolean;
+  home?: { projectId: string; path: string };
 }
 
 export interface NoteSource {
@@ -41,7 +50,8 @@ export type ArtifactPreview =
   | { type: "image"; src: string }
   | { type: "text"; text: string; truncated: boolean }
   | { type: "table"; rows: readonly (readonly string[])[]; truncated: boolean }
-  | { type: "none"; reason: "html" | "binary" | "missing" };
+  | { type: "notebook"; text: string }
+  | { type: "none"; reason: "html" | "binary" | "missing" | "large" };
 
 export interface ArtifactItem {
   id: string;
@@ -88,19 +98,3 @@ export type ResearchActionId =
   | "table"
   | "figure"
   | "abstract";
-
-export interface NoteAgentChoice {
-  providerId: string;
-  modelId: string;
-  label: string;
-}
-
-export interface EditRequest {
-  noteId: string;
-  agent: NoteAgentChoice;
-  actionId: ResearchActionId | null;
-  prompt: string;
-  quote: string | null;
-  source: string;
-  latestRun?: string;
-}

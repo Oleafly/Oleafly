@@ -26,6 +26,7 @@ const themeMocks = vi.hoisted(() => ({
 vi.mock("@/lib/theme", () => ({
   applyTheme: themeMocks.applyTheme,
   currentTheme: () => "dark",
+  subscribeTheme: () => () => undefined,
   useTheme: () => ({
     preference: themeMocks.preference,
     theme: themeMocks.preference === "light" ? "light" : "dark",
@@ -87,6 +88,41 @@ describe("Appearance settings tabs", () => {
       terminalForeground: "#f2f2f2",
       terminalCursorColor: "#ffffff",
     });
+  });
+
+  it("shows the Notes tab only while Notes is on", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ notes: false });
+    const view = render(<AppearanceSection />);
+    expect(screen.queryByRole("tab", { name: appearance.tabs.notes })).toBeNull();
+
+    act(() => useSettingsStore.setState({ notes: true }));
+    const tabs = screen.getAllByRole("tab").map((tab) => tab.textContent);
+    expect(tabs.at(-1)).toBe(appearance.tabs.notes);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.notes }));
+    expect(await screen.findByTestId("settings-appearance-notes")).toBeInTheDocument();
+    expect(screen.getByText(appearance.notes.typeface.label)).toBeInTheDocument();
+
+    act(() => useSettingsStore.setState({ notes: false }));
+    expect(screen.getByRole("tab", { name: appearance.tabs.app })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByTestId("settings-appearance-notes")).toBeNull();
+    view.unmount();
+    useSettingsStore.setState({ notes: false });
+  });
+
+  it("opens on the Notes tab when asked, but only while Notes is on", async () => {
+    useSettingsStore.setState({ notes: false, settingsInitialAppearanceTab: "notes" });
+    const off = render(<AppearanceSection />);
+    expect(screen.getByRole("tab", { name: appearance.tabs.app })).toHaveAttribute("aria-selected", "true");
+    off.unmount();
+
+    useSettingsStore.setState({ notes: true, settingsInitialAppearanceTab: "notes" });
+    const on = render(<AppearanceSection />);
+    expect(screen.getByRole("tab", { name: appearance.tabs.notes })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByTestId("settings-notes-preview")).toBeInTheDocument();
+    expect(useSettingsStore.getState().settingsInitialAppearanceTab).toBeNull();
+    on.unmount();
+    useSettingsStore.setState({ notes: false });
   });
 
   it("groups editor, PDF preview, and file management settings", async () => {

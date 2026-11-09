@@ -645,7 +645,7 @@ export function ReferencesPanel() {
 
       <div
         ref={bodyRef}
-        className="isolate min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]"
+        className="isolate min-h-0 flex-1 overflow-auto px-1"
       >
         {renderPanelBody()}
         </div>

@@ -7,6 +7,7 @@ import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { useSettingsStore } from "@/store/settings";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import {
   NATIVE_MENU_SHORTCUTS,
@@ -426,6 +427,8 @@ export function ShortcutsSection() {
     editorKeysDifferFromDefaults(state.keys),
   );
   const categories = [...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))];
+  const notesEnabled = useSettingsStore((state) => state.notes);
+  const shown = SHORTCUT_DEFINITIONS.filter((definition) => definition.scope !== "notes" || notesEnabled);
 
   return (
     <div className="space-y-4">
@@ -454,7 +457,7 @@ export function ShortcutsSection() {
         <h3 id="application-shortcuts" className="sr-only">
           {t(($) => $.settings.shortcuts.application.heading)}
         </h3>
-        {SHORTCUT_DEFINITIONS.map((definition) => (
+        {shown.map((definition) => (
           <ApplicationShortcutRow key={definition.id} id={definition.id} />
         ))}
       </section>

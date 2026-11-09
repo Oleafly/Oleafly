@@ -140,7 +140,7 @@ describe("settings document", () => {
       "shortcuts",
       "experimentation",
     ]);
-    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files"]);
+    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files", "notes"]);
     const text = serializeSettingsDocument(document);
     expect(text).toContain('\n  "general": {\n    "language": "system",');
     expect(text).toContain('"fontSize": 16');
@@ -679,6 +679,82 @@ describe("Notes switch in a settings file", () => {
 
   it("refuses a Notes switch that is not on or off", () => {
     const read = readSettingsFile(fileWith({ experimentation: { notes: "maybe" } }), snapshot());
+    expect(read.ok).toBe(false);
+  });
+});
+
+describe("Notes appearance in a settings file", () => {
+  it("writes the Notes look under Appearance and reads it back unchanged", () => {
+    const store = useSettingsStore.getState();
+    store.setNotesAppearance("notesTypeface", "serif");
+    store.setNotesAppearance("notesFontSize", 17.5);
+    store.setNotesAppearance("notesWidth", "wide");
+    store.setNotesAppearance("notesAccentColor", "#0d9488");
+    store.setNotesAppearance("notesSpellcheck", false);
+    const document = buildSettingsDocument(snapshot());
+    expect((document.appearance as Record<string, unknown>).notes).toMatchObject({
+      typeface: "serif",
+      fontSize: 17.5,
+      width: "wide",
+      accentColor: "#0d9488",
+      spellcheck: false,
+      codeTheme: "system",
+      calloutStyle: "tinted",
+    });
+    const text = serializeSettingsDocument(document);
+    expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
+  });
+
+  it("applies a Notes look from a file, width included", async () => {
+    const read = readSettingsFile(
+      fileWith({
+        appearance: {
+          notes: {
+            headingTypeface: "mono",
+            lineHeight: "custom",
+            customLineHeight: 2.2,
+            width: "full",
+            wordCount: "off",
+            codeTheme: "editor",
+            highlightColor: "green",
+          },
+        },
+      }),
+      snapshot(),
+    );
+    if (!read.ok) throw new Error(read.reason);
+    expect([...read.changed].sort()).toEqual([
+      "appearance.notes.codeTheme",
+      "appearance.notes.customLineHeight",
+      "appearance.notes.headingTypeface",
+      "appearance.notes.highlightColor",
+      "appearance.notes.lineHeight",
+      "appearance.notes.width",
+      "appearance.notes.wordCount",
+    ]);
+    await applySettingsPlan(read.plan, THEME);
+    expect(useSettingsStore.getState()).toMatchObject({
+      notesHeadingTypeface: "mono",
+      notesLineHeight: "custom",
+      notesCustomLineHeight: 2.2,
+      notesWidth: "full",
+      notesShowWordCount: false,
+      notesCodeTheme: "editor",
+      notesHighlightColor: "green",
+    });
+    expect(localStorage.getItem("oleafly.notes.width")).toBe("full");
+    expect(localStorage.getItem("oleafly.notes.wordCount")).toBe("0");
+  });
+
+  it.each([
+    ["typeface", "comic"],
+    ["fontSize", 200],
+    ["titleSize", 25],
+    ["accentColor", "teal"],
+    ["calloutStyle", "neon"],
+    ["width", "narrow"],
+  ])("refuses a %s of %j", (key, value) => {
+    const read = readSettingsFile(fileWith({ appearance: { notes: { [key]: value } } }), snapshot());
     expect(read.ok).toBe(false);
   });
 });

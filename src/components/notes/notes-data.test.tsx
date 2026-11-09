@@ -10,10 +10,8 @@ function fakeData(): NotesData {
     notes: [],
     artifacts: [],
     experiments: [],
-    agents: [{ id: "acp:codex", name: "Codex", models: [{ id: "default", name: "Default model" }] }],
     citations: [],
     papers: [],
-    proposeEdits: vi.fn(),
     loadNote: vi.fn(),
     saveNote: vi.fn(),
   };

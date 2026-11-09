@@ -8,6 +8,12 @@ import { loadNamespace } from "@/i18n";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { NEW_BLOCKS, newChartSource } from "./block-templates";
+import { HTML_TEMPLATE } from "./html-block";
+import { REACT_TEMPLATE } from "./react-block";
+import { SVG_TEMPLATE } from "./svg-block";
+import { TYPST_TEMPLATE } from "./typst-block";
+import { useToastStore } from "@/store/toast";
+import { useSettingsStore } from "@/store/settings";
 import { NOTE_WIDTH_KEY, readNoteWidth, saveNoteWidth } from "./note-prefs";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { NoteToolbar } from "./NoteToolbar";
@@ -26,21 +32,26 @@ function layout(width: number) {
   });
 }
 
-function notesData(citations: readonly CitationItem[]): NotesData {
+interface Sources {
+  related?: string;
+  projectCitations?: NotesData["projectCitations"];
+  readOnly?: boolean;
+}
+
+function notesData(citations: readonly CitationItem[], sources: Sources): NotesData {
   return {
-    notes: [],
+    notes: [{ id: "n1", title: "Note", project: "Paper", relatedProjectId: sources.related, updatedAt: 1, author: "you", summary: "" }],
     artifacts: [],
     experiments: [],
-    agents: [],
     papers: [],
     citations,
-    proposeEdits: vi.fn(),
+    projectCitations: sources.projectCitations,
     loadNote: vi.fn(),
     saveNote: vi.fn(),
   };
 }
 
-function mount(markdown: string, citations: readonly CitationItem[] = []) {
+function mount(markdown: string, citations: readonly CitationItem[] = [], sources: Sources = {}) {
   const element = document.createElement("div");
   document.body.append(element);
   hosts.push(element);
@@ -52,8 +63,8 @@ function mount(markdown: string, citations: readonly CitationItem[] = []) {
   editors.push(editor);
   const user = userEvent.setup();
   render(
-    <NotesDataProvider value={notesData(citations)}>
-      <NoteToolbar editor={editor} />
+    <NotesDataProvider value={notesData(citations, sources)}>
+      <NoteToolbar editor={editor} noteId="n1" readOnly={sources.readOnly} />
     </NotesDataProvider>,
   );
   return { editor, user };
@@ -99,6 +110,7 @@ beforeAll(async () => {
 beforeEach(() => {
   layout(2000);
   localStorage.removeItem(NOTE_WIDTH_KEY);
+  useSettingsStore.setState({ notesWidth: "standard", notesShowWordCount: true });
 });
 
 afterAll(() => {
@@ -209,6 +221,56 @@ describe("NoteToolbar", () => {
     expect(markdownOf(editor)).toContain("[paper](https://example.org/paper)");
   });
 
+  it("inserts the address as a link when nothing is selected, and says when the address can't be used", async () => {
+    const { editor, user } = mount("See");
+    select(editor, 4, 4);
+    const before = markdownOf(editor);
+    await user.click(button(enNotes.toolbar.link));
+    const address = screen.getByRole("textbox", { name: enNotes.toolbar.linkAddress });
+    fireEvent.change(address, { target: { value: "javascript:alert(1)" } });
+    fireEvent.keyDown(address, { key: "Enter" });
+    expect(screen.getByRole("alert")).toHaveTextContent(enNotes.toolbar.linkInvalid);
+    expect(address).toHaveAttribute("aria-invalid", "true");
+    expect(markdownOf(editor)).toBe(before);
+    fireEvent.change(address, { target: { value: "https://example.org" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.keyDown(address, { key: "Enter", keyCode: 229 });
+    expect(markdownOf(editor)).not.toContain("](");
+    fireEvent.keyDown(address, { key: "Enter" });
+    expect(markdownOf(editor)).toContain("See<https://example.org>");
+    act(() => {
+      editor.commands.insertContent(" more");
+    });
+    expect(markdownOf(editor)).toContain("<https://example.org> more");
+  });
+
+  it("shows the current address for a link and removes it with Remove link or an empty Enter", async () => {
+    const { editor, user } = mount("See the [paper](https://example.org/paper) and [notes](oleafly://note/n-1) here");
+    select(editor, 11, 11);
+    await user.click(button(enNotes.toolbar.link));
+    const address = screen.getByRole("textbox", { name: enNotes.toolbar.linkAddress });
+    expect(address).toHaveValue("https://example.org/paper");
+    await user.click(screen.getByRole("button", { name: enEditor.toolbar.removeLink }));
+    expect(markdownOf(editor)).toContain("See the paper and [notes](oleafly://note/n-1) here");
+
+    const notes = markdownOf(editor).indexOf("notes") + 1;
+    select(editor, notes, notes);
+    await user.click(button(enNotes.toolbar.link));
+    const second = screen.getByRole("textbox", { name: enNotes.toolbar.linkAddress });
+    expect(second).toHaveValue("oleafly://note/n-1");
+    fireEvent.change(second, { target: { value: "   " } });
+    fireEvent.keyDown(second, { key: "Enter" });
+    expect(markdownOf(editor)).not.toContain("](");
+  });
+
+  it("offers Remove link only when the cursor is on a link", async () => {
+    const { editor, user } = mount("See the paper");
+    select(editor, 9, 14);
+    await user.click(button(enNotes.toolbar.link));
+    expect(screen.getByRole("textbox", { name: enNotes.toolbar.linkAddress })).toHaveValue("");
+    expect(screen.queryByRole("button", { name: enEditor.toolbar.removeLink })).not.toBeInTheDocument();
+  });
+
   it("inserts inline and display math", async () => {
     const { editor, user } = mount("Area");
     select(editor, 5, 5);
@@ -232,16 +294,56 @@ describe("NoteToolbar", () => {
     ]);
     select(editor, 9, 9);
     const menu = openMenu(enNotes.toolbar.citation);
-    expect(within(menu).getAllByRole("menuitem")).toHaveLength(2);
+    expect(await within(menu).findAllByRole("menuitem")).toHaveLength(2);
     await user.click(within(menu).getByRole("menuitem", { name: "He et al., 2022" }));
     expect(editor.getText()).toBe("As shown[@he2022mae]");
   });
 
-  it("says there are no references when the project has none", () => {
-    mount("As shown");
+  it("keeps only the view controls for a note that can't be edited", () => {
+    layout(2000);
+    mount("One two", [{ key: "he2022mae", label: "He et al., 2022" }], { readOnly: true });
+    const toolbar = screen.getByRole("toolbar");
+    for (const name of [
+      enEditor.hotkeys.actions.undo,
+      enEditor.hotkeys.actions.redo,
+      enNotes.toolbar.blockType,
+      enNotes.toolbar.list,
+      enEditor.toolbar.bold,
+      enNotes.toolbar.citation,
+      enNotes.toolbar.displayMath,
+    ]) {
+      expect(within(toolbar).queryByRole("button", { name })).toBeNull();
+    }
+    expect(within(toolbar).getByRole("button", { name: enNotes.toolbar.width })).toBeInTheDocument();
+    expect(within(toolbar).getByRole("button", { name: enNotes.toolbar.outline })).toBeInTheDocument();
+    expect(toolbar).toHaveTextContent("2 words");
+  });
+
+  it("offers no Citation menu when the note has no references to cite", () => {
+    mount("As shown", [], { projectCitations: vi.fn() });
+    expect(screen.queryByRole("button", { name: enNotes.toolbar.citation })).not.toBeInTheDocument();
+  });
+
+  it("lists the references of the note's related project", async () => {
+    const projectCitations = vi.fn(async () => [{ key: "he2022mae", label: "He 2022, MAE" }]);
+    const { editor, user } = mount("As shown", [], { related: "paper-1", projectCitations });
+    select(editor, 9, 9);
     const menu = openMenu(enNotes.toolbar.citation);
+    await user.click(await within(menu).findByRole("menuitem", { name: "He 2022, MAE" }));
+    expect(projectCitations).toHaveBeenCalledWith("paper-1");
+    expect(editor.getText()).toBe("As shown[@he2022mae]");
+  });
+
+  it("says there are no references when the related project has none or can't be read", async () => {
+    const projectCitations = vi.fn<NonNullable<NotesData["projectCitations"]>>(async () => []);
+    mount("As shown", [], { related: "paper-1", projectCitations });
+    const menu = openMenu(enNotes.toolbar.citation);
+    expect(await within(menu).findByText(enNotes.toolbar.noCitations)).toBeInTheDocument();
     expect(within(menu).queryByRole("menuitem")).not.toBeInTheDocument();
-    expect(within(menu).getByText(enNotes.toolbar.noCitations)).toBeInTheDocument();
+    fireEvent.keyDown(menu, { key: "Escape" });
+    projectCitations.mockRejectedValueOnce(new Error("gone"));
+    const again = openMenu(enNotes.toolbar.citation);
+    expect(await within(again).findByText(enNotes.toolbar.noCitations)).toBeInTheDocument();
   });
 
   it("sizes a new table by hovering the grid and inserts it on click", async () => {
@@ -303,11 +405,14 @@ describe("NoteToolbar", () => {
   });
 
   it.each([
-    [enNotes.toolbar.latexBlock, NEW_BLOCKS.latex],
-    [enNotes.toolbar.typstBlock, NEW_BLOCKS.typst],
-  ])("inserts a %s from the raw block menu", async (name, block) => {
+    ["LaTeX", NEW_BLOCKS.latex],
+    ["Typst", { info: "{=typst}", source: TYPST_TEMPLATE }],
+    ["SVG", { info: "svg", source: SVG_TEMPLATE }],
+    ["HTML", { info: "html", source: HTML_TEMPLATE }],
+    ["React", { info: "jsx", source: REACT_TEMPLATE }],
+  ])("inserts a %s block from the Insert block menu", async (name, block) => {
     const { editor, user } = mount("Equations");
-    await user.click(within(openMenu(enNotes.toolbar.rawBlock)).getByRole("menuitem", { name }));
+    await user.click(within(openMenu(enNotes.blocks.insert.label)).getByRole("menuitem", { name }));
     const inserted = blocks(editor).find((node) => node.type === "codeBlock");
     expect(inserted?.attrs?.language).toBe(block.info);
     expect(inserted?.content?.[0].text).toBe(block.source);
@@ -326,6 +431,25 @@ describe("NoteToolbar", () => {
     target.scrollIntoView = scroll;
     await user.click(items[1]);
     expect(scroll).toHaveBeenCalledWith({ block: "start" });
+  });
+
+  it("moves the caret to the outline heading and puts focus back in the note", async () => {
+    const { editor, user } = mount("# Overview\n\nText\n\n## Method\n\nMore\n");
+    const menu = openMenu(enNotes.toolbar.outline);
+    await user.click(within(menu).getByRole("menuitem", { name: "Method" }));
+    expect(editor.state.selection.$from.parent.textContent).toBe("Method");
+    expect(editor.view.hasFocus()).toBe(true);
+  });
+
+  it("puts focus back in the note after a width is picked or a menu is closed with Escape", async () => {
+    const { editor, user } = mount("Text");
+    const menu = openMenu(enNotes.toolbar.width);
+    await user.click(within(menu).getByRole("menuitemradio", { name: enNotes.toolbar.widths.wide }));
+    expect(editor.view.hasFocus()).toBe(true);
+    act(() => (document.activeElement as HTMLElement | null)?.blur());
+    openMenu(enNotes.toolbar.outline);
+    await user.keyboard("{Escape}");
+    expect(editor.view.hasFocus()).toBe(true);
   });
 
   it("does not scroll when the outline entry has no element on the page", async () => {
@@ -348,11 +472,20 @@ describe("NoteToolbar", () => {
     act(() => {
       editor.commands.setContent(parseMarkdownBody("The mask ratio\n\nis   0.75").doc);
     });
-    expect(screen.getByText("5 words")).toBeInTheDocument();
+    expect(screen.getByText("4 words")).toBeInTheDocument();
     act(() => {
       editor.commands.clearContent();
     });
     expect(screen.getByText("0 words")).toBeInTheDocument();
+  });
+
+  it("hides the word count when the Notes setting turns it off", () => {
+    mount("One two");
+    expect(screen.getByText("2 words")).toBeInTheDocument();
+    act(() => useSettingsStore.getState().setNotesAppearance("notesShowWordCount", false));
+    expect(screen.queryByText("2 words")).toBeNull();
+    act(() => useSettingsStore.getState().setNotesAppearance("notesShowWordCount", true));
+    expect(screen.getByText("2 words")).toBeInTheDocument();
   });
 });
 
@@ -402,7 +535,7 @@ describe("NoteToolbar in a narrow panel", () => {
 
   it("puts only the word count in More when everything else fits, and leaves More beside the view controls", () => {
     layout(620);
-    mount("One");
+    mount("One", [{ key: "he2022mae", label: "He et al., 2022" }]);
     expect(button(enNotes.toolbar.width)).toBeInTheDocument();
     expect(screen.queryByText("1 word")).toBeNull();
     expect(more().parentElement).not.toHaveClass("ml-auto");
@@ -452,8 +585,10 @@ describe("NoteToolbar in a narrow panel", () => {
     expect(markdownOf(editor)).toContain("$$x^2$$");
     await user.click(within(openMore()).getByRole("menuitem", { name: enNotes.toolbar.chart }));
     await user.click(within(openMore()).getByRole("menuitem", { name: enNotes.toolbar.mermaid }));
-    await user.click(within(openMore()).getByRole("menuitem", { name: enNotes.toolbar.latexBlock }));
-    await user.click(within(openMore()).getByRole("menuitem", { name: enNotes.toolbar.typstBlock }));
+    for (const name of ["LaTeX", "Typst"]) {
+      const item = within(openSub(openMore(), enNotes.blocks.insert.label)).getByRole("menuitem", { name });
+      fireEvent.keyDown(item, { key: "Enter" });
+    }
     const languages = blocks(editor)
       .filter((block) => block.type === "codeBlock")
       .map((block) => block.attrs?.language);
@@ -465,15 +600,14 @@ describe("NoteToolbar in a narrow panel", () => {
     const { editor, user } = mount("As shown", [{ key: "he2022mae", label: "He et al., 2022" }]);
     select(editor, 9, 9);
     const sub = openSub(openMore(), enNotes.toolbar.citation);
-    await user.click(within(sub).getByRole("menuitem", { name: "He et al., 2022" }));
+    await user.click(await within(sub).findByRole("menuitem", { name: "He et al., 2022" }));
     expect(editor.getText()).toBe("As shown[@he2022mae]");
   });
 
-  it("explains an empty citation list in the More submenu", () => {
+  it("leaves the Citation submenu out of More when there is nothing to cite", () => {
     layout(0);
     mount("As shown");
-    const sub = openSub(openMore(), enNotes.toolbar.citation);
-    expect(within(sub).getByText(enNotes.toolbar.noCitations)).toBeInTheDocument();
+    expect(within(openMore()).queryByRole("menuitem", { name: enNotes.toolbar.citation })).not.toBeInTheDocument();
   });
 
   it("sizes and inserts a table from the More submenu", async () => {
@@ -590,5 +724,103 @@ describe("note width", () => {
     });
     await user.click(within(screen.getByRole("menu")).getByRole("menuitemradio", { name: enNotes.toolbar.widths.full }));
     expect(readNoteWidth()).toBe("full");
+  });
+});
+
+describe("inserting a notebook", () => {
+  type Importer = NonNullable<NotesData["importNotebook"]>;
+
+  function mountNotebooks(importNotebook: Importer, viewId: string | null = "note:n1") {
+    const element = document.createElement("div");
+    if (viewId) element.setAttribute("data-view", viewId);
+    document.body.append(element);
+    hosts.push(element);
+    const editor = new Editor({ element, extensions: createWysiwygExtensions(), content: parseMarkdownBody("Intro\n\nOutro").doc });
+    editors.push(editor);
+    const user = userEvent.setup();
+    render(
+      <NotesDataProvider value={{ ...notesData([], {}), importNotebook }}>
+        <NoteToolbar editor={editor} />
+      </NotesDataProvider>,
+    );
+    return { editor, user };
+  }
+
+  function notebookBlocks(editor: Editor) {
+    return blocks(editor).filter((block) => block.type === "codeBlock" && block.attrs?.language === "notebook");
+  }
+
+  beforeEach(() => {
+    useToastStore.setState({ toasts: [] });
+  });
+
+  it("offers no notebook button when notes cannot import files", () => {
+    mount("One");
+    expect(screen.queryByRole("button", { name: enNotes.toolbar.notebook })).toBeNull();
+  });
+
+  it("copies a picked notebook into the note and inserts its block at the cursor", async () => {
+    const importNotebook = vi.fn<Importer>(async () => "assets/run-1a2b3c4d.ipynb");
+    const { editor, user } = mountNotebooks(importNotebook);
+    select(editor, 6, 6);
+    await user.click(button(enNotes.toolbar.notebook));
+    expect(importNotebook).toHaveBeenCalledWith("n1");
+    await vi.waitFor(() => expect(notebookBlocks(editor)).toHaveLength(1));
+    expect(blocks(editor).map((block) => block.type)).toEqual(["paragraph", "codeBlock", "paragraph"]);
+    expect(markdownOf(editor)).toContain("```notebook\nassets/run-1a2b3c4d.ipynb\n```");
+  });
+
+  it("leaves the note alone when the file dialog is closed", async () => {
+    const importNotebook = vi.fn<Importer>(async () => null);
+    const { editor, user } = mountNotebooks(importNotebook);
+    const before = markdownOf(editor);
+    await user.click(button(enNotes.toolbar.notebook));
+    await vi.waitFor(() => expect(importNotebook).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(markdownOf(editor)).toBe(before);
+  });
+
+  it.each([
+    ["an error", new Error("The file is larger than the 64 MiB limit."), "The file is larger than the 64 MiB limit."],
+    ["a message", "Pick it again.", "Pick it again."],
+  ])("says why the notebook could not be added when the copy fails with %s", async (_case, failure, detail) => {
+    const { editor, user } = mountNotebooks(vi.fn<Importer>(() => Promise.reject(failure)));
+    await user.click(button(enNotes.toolbar.notebook));
+    await vi.waitFor(() =>
+      expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([
+        enNotes.notebook.importFailed.replace("{{error}}", detail),
+      ]),
+    );
+    expect(notebookBlocks(editor)).toHaveLength(0);
+  });
+
+  it("does nothing outside a note's panel", async () => {
+    const importNotebook = vi.fn<Importer>(async () => "assets/run.ipynb");
+    const { user } = mountNotebooks(importNotebook, "home:1");
+    await user.click(button(enNotes.toolbar.notebook));
+    expect(importNotebook).not.toHaveBeenCalled();
+  });
+
+  it("drops the block when the note closed while the dialog was open", async () => {
+    let finish: (path: string) => void = () => {};
+    const importNotebook = vi.fn<Importer>(() => new Promise((resolve) => (finish = resolve)));
+    const { editor, user } = mountNotebooks(importNotebook);
+    await user.click(button(enNotes.toolbar.notebook));
+    editor.destroy();
+    finish("assets/run.ipynb");
+    await Promise.resolve();
+    expect(editor.isDestroyed).toBe(true);
+  });
+
+  it("inserts a notebook from More when the bar is narrow", async () => {
+    layout(0);
+    const importNotebook = vi.fn<Importer>(async () => "assets/run.ipynb");
+    const { editor, user } = mountNotebooks(importNotebook);
+    fireEvent.pointerDown(within(screen.getByRole("toolbar")).getByRole("button", { name: enNotes.toolbar.more }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    await user.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: enNotes.toolbar.notebook }));
+    await vi.waitFor(() => expect(notebookBlocks(editor)).toHaveLength(1));
   });
 });

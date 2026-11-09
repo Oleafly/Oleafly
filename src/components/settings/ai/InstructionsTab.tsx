@@ -76,7 +76,7 @@ export function InstructionsTab({
           onChange={(e) => setSysPrompt(e.target.value)}
           rows={5}
           placeholder={t(($) => $.settings.ai.instructions.customPlaceholder)}
-          className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:border-ring"
+          className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed"
         />
         <div className="flex items-center gap-2">
           <Button

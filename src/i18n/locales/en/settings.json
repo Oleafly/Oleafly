@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Project",
       "pdf": "PDF Preview",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notes"
     },
     "terminal": {
       "colorTheme": {
@@ -1126,6 +1127,140 @@
         "label": "Show the PDF when you compile"
       },
       "title": "Zen mode"
+    },
+    "notes": {
+      "sectionName": "Notes appearance",
+      "resetAriaLabel": "Reset {{setting}} to default",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Typeface",
+        "description": "Choose a typeface for note text.",
+        "options": {
+          "sans": "Sans serif",
+          "serif": "Serif",
+          "mono": "Monospace"
+        }
+      },
+      "font": {
+        "label": "Note font",
+        "description": "Pick any installed font for note text. Leave it empty to use the Typeface setting."
+      },
+      "fontSize": {
+        "label": "Note text size",
+        "description": "Set the size of note text.",
+        "custom": "Custom",
+        "customLabel": "Custom note text size in pixels"
+      },
+      "lineHeight": {
+        "label": "Note line height",
+        "description": "Set the space between lines of note text.",
+        "customLabel": "Custom note line height"
+      },
+      "paragraphSpacing": {
+        "label": "Paragraph spacing",
+        "description": "Set the space between paragraphs, lists and other blocks.",
+        "options": {
+          "compact": "Compact",
+          "normal": "Normal",
+          "relaxed": "Relaxed",
+          "spacious": "Spacious"
+        }
+      },
+      "headings": {
+        "title": "Headings and title"
+      },
+      "headingTypeface": {
+        "label": "Heading typeface",
+        "description": "Choose a typeface for headings and the note title.",
+        "options": {
+          "text": "Same as text"
+        }
+      },
+      "headingFont": {
+        "label": "Heading font",
+        "description": "Pick an installed font for headings and the note title. Leave it empty to use the Heading typeface setting."
+      },
+      "headingSize": {
+        "label": "Heading size",
+        "description": "Set how large headings are compared with the text.",
+        "options": {
+          "small": "Smaller",
+          "normal": "Normal",
+          "large": "Larger"
+        }
+      },
+      "titleSize": {
+        "label": "Title size",
+        "description": "Set the size of the title at the top of each note."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Note width",
+        "description": "How wide notes open. The width menu in a note changes this too.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Wide",
+          "full": "Full width"
+        }
+      },
+      "wordCount": {
+        "label": "Show word count",
+        "description": "Show a note's word count in its toolbar."
+      },
+      "spellcheck": {
+        "label": "Check spelling in notes",
+        "description": "Underline misspelled words while you write a note."
+      },
+      "code": {
+        "title": "Code"
+      },
+      "codeFont": {
+        "label": "Code font",
+        "description": "Pick an installed font for code blocks and inline code."
+      },
+      "codeTheme": {
+        "label": "Code block colors",
+        "description": "Pick the syntax colors for code blocks in notes.",
+        "options": {
+          "editor": "Same as editor"
+        }
+      },
+      "colors": {
+        "title": "Colors"
+      },
+      "accent": {
+        "label": "Note accent color",
+        "description": "Used for links, tags and task boxes in notes.",
+        "matchApp": "Match app",
+        "customAriaLabel": "Pick a custom note accent color"
+      },
+      "highlight": {
+        "label": "Highlight color",
+        "description": "The color behind highlighted text.",
+        "options": {
+          "yellow": "Yellow",
+          "green": "Green",
+          "blue": "Blue",
+          "pink": "Pink",
+          "purple": "Purple",
+          "accent": "Accent"
+        }
+      },
+      "callouts": {
+        "label": "Callout style",
+        "description": "How callout boxes look in notes.",
+        "options": {
+          "tinted": "Tinted",
+          "filled": "Filled",
+          "outlined": "Outlined",
+          "bar": "Side bar"
+        }
+      },
+      "resetAll": "Reset Notes appearance"
     }
   },
   "checkpoints": {
@@ -2337,6 +2472,26 @@
       "resetZoom": {
         "description": "Set the app back to 100%.",
         "label": "Reset zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Find a note by name and open it.",
+        "label": "Notes: quick switcher"
+      },
+      "notesTodayNote": {
+        "description": "Open today's note, or start it.",
+        "label": "Notes: today's note"
+      },
+      "notesGraph": {
+        "description": "Open the graph of all your notes.",
+        "label": "Notes: graph"
+      },
+      "notesLocalGraph": {
+        "description": "Show or hide the links around the open note.",
+        "label": "Notes: local graph"
+      },
+      "notesOutline": {
+        "description": "Show or hide the outline of the open note.",
+        "label": "Notes: outline"
       }
     },
     "application": {
@@ -2506,5 +2661,17 @@
       "loadFailed": "The MCP server list could not be read.",
       "missing": "{{name}} (not found)"
     }
+  },
+  "notesPreview": {
+    "label": "Preview of a note with these settings",
+    "title": "Field notes",
+    "heading": "Morning survey",
+    "paragraph": "Light rain until nine, then clear skies over the north ridge. The soil was still damp at noon.",
+    "links": "See <note>Sampling method</note> for the full steps, or browse <tag>#fieldwork</tag>.",
+    "highlight": "Seedlings doubled in height in one week.",
+    "calloutTitle": "Next visit",
+    "calloutBody": "Check the soil sensors before taking new samples.",
+    "taskDone": "Label the samples",
+    "task": "Upload the photos"
   }
 }

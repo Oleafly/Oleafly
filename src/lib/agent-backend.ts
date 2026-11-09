@@ -267,6 +267,7 @@ export async function runViaBackend(
     threadId?: string;
     clientTurnId?: string;
     onRequestId?: (id: string) => void;
+    networkNeedsApproval?: boolean;
   },
 ): Promise<AgentRunOutcome> {
   const channel = new Channel<AgentEvent>();
@@ -311,6 +312,7 @@ export async function runViaBackend(
         projectId: projectId ?? null,
         threadId: run?.threadId ?? null,
         clientTurnId: run?.clientTurnId ?? null,
+        ...(run?.networkNeedsApproval ? { networkNeedsApproval: true } : {}),
         onEvent: channel,
       },
       signal,

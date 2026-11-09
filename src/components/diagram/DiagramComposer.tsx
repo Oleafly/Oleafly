@@ -18,6 +18,7 @@ import { confirmAction } from "@/store/confirm-dialog";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { libraryProjects } from "@/lib/library-projects";
 import { useTourStore } from "@/store/tours";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { tourRegistry } from "@/lib/tours/registry";
@@ -184,7 +185,7 @@ const HOST: DiagramHost = {
   },
   listProjectNames: async () => {
     await useFilesStore.getState().refreshProjects();
-    return useFilesStore.getState().projects.map((p) => {
+    return libraryProjects(useFilesStore.getState().projects, useSettingsStore.getState().notes).map((p) => {
       const language = projectLanguage(p.engine, p.main_doc);
       return { id: p.id, name: p.name, typst: language === "typst", language };
     });

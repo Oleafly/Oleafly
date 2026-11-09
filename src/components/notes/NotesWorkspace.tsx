@@ -3,14 +3,17 @@ import {
   closeView,
   groupOfView,
   openView,
+  visibleViews,
   Workspace,
   type ViewInfo,
   type ViewState,
   type WorkspaceLayout,
 } from "@oleafly/workspace";
-import { FileText, FolderPlus, House, PanelLeft, PanelRight, Plus, Send } from "lucide-react";
+import { FileText, FolderPlus, House, ListTree, PanelLeft, PanelRight, Plus, Send, Waypoints } from "lucide-react";
 import {
   createContext,
+  memo,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -21,27 +24,43 @@ import {
   type ComponentProps,
   type ReactNode,
 } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip } from "@/components/ui/tooltip";
+import { flushOpenNotes } from "@/lib/open-note-editors";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
+import { matchesShortcut, shortcutLabel, type ShortcutId, useShortcutStore } from "@/store/shortcuts";
 import { ArtifactPanel } from "./ArtifactPanel";
-import { NewProjectDialog, type ProjectFormat, type ProjectSeed } from "./NewProjectDialog";
-import { NoteDocument, type SaveStatus } from "./NoteDocument";
+import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocument";
+import { NoteLiveHeader } from "./NotePresence";
+import { NoteSaveStatus } from "./NoteSaveStatus";
+import { useLiveNoteClaim, useNoteLiveMode, useNoteReadOnly } from "./use-note-live";
 import { artifactSnippet, artifactsForNote, noteForProject } from "./note-artifacts";
+import { noteBody } from "./note-file";
+import { useRecordNoteOpened } from "./note-home-prefs";
 import { NoteChip } from "./note-icons";
-import { useNotesData } from "./notes-data";
+import { NoteExportDialog, NoteImportDialog } from "./NoteImportDialog";
+import { NoteOutline } from "./NoteOutline";
+import { NotesDataProvider, useNotesData } from "./notes-data";
 import {
   ARTIFACTS_SHARE,
   ARTIFACTS_VIEW,
+  GRAPH_VIEW,
   HOME_VIEW,
   holdsNotes,
   homeViews,
   isHomeView,
+  isSideView,
+  LOCAL_GRAPH_VIEW,
+  OUTLINE_VIEW,
+  openGraphIn,
+  openNoteFrom,
+  toggleSideView,
   newHomeViewId,
   noteIdOf,
   noteViewId,
@@ -55,16 +74,27 @@ import {
 } from "./notes-layout";
 import { NotesHome } from "./NotesHome";
 import { NotesLibrary } from "./NotesLibrary";
+import { NotesVaultLayer } from "./QuickSwitcher";
+import { useOpenDailyNote } from "./daily-note";
+import { filterByTag } from "./vault-store";
 import { RelatedProjectMenu } from "./RelatedProjectMenu";
 import type { ArtifactItem, NoteItem } from "./types";
+import { FrozenNoteLinkIndex } from "./use-note-links";
+import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
 import "./notes.css";
+
+export interface ProjectSeed {
+  noteId: string;
+  artifactId: string | null;
+}
 
 interface NotesWorkspaceProps {
   initialNoteId?: string | null;
+  requestedNoteId?: string | null;
+  onRequestHandled?: () => void;
   onExit?: () => void;
   onNewNote?: () => Promise<string | null>;
-  onStartNote?: (prompt: string) => void;
-  onCreateProject?: (request: { seed: ProjectSeed; name: string; format: ProjectFormat; files: readonly string[] }) => void;
+  onCreateProject?: (seed: ProjectSeed) => void;
   onSendToPaper?: (request: { paperId: string; text: string }) => void;
 }
 
@@ -74,24 +104,56 @@ interface InsertRequest {
   id: number;
 }
 
+interface HeadingRequest {
+  noteId: string;
+  slug: string;
+  id: number;
+}
+
 interface WorkspaceActions {
   focusedNote: NoteItem | null;
   artifactId: string | null;
-  insertRequest: InsertRequest | null;
   setArtifactId: (id: string) => void;
   openNote: (id: string) => void;
-  closeTab: (viewId: string) => void;
+  openNoteHeading: (id: string, slug: string) => void;
   openFromHome: (homeId: string, noteId: string) => void;
-  openArtifact: (artifact: ArtifactItem, homeId?: string) => void;
   insertArtifact?: (artifact: ArtifactItem) => Promise<void>;
   newProject?: (seed: ProjectSeed) => void;
+  newNoteFromHome?: (homeId: string) => void;
+}
+
+interface NoteViewActions {
+  insertRequest: InsertRequest | null;
+  headingRequest: HeadingRequest | null;
+  openNote: (id: string) => void;
+  openNoteHeading: (id: string, slug: string) => void;
+  openTag: (tag: string) => void;
+  closeTab: (viewId: string) => void;
+  newProject?: (seed: ProjectSeed) => void;
   sendToPaper?: (text: string) => void;
-  startNote?: (prompt: string) => void;
+}
+
+interface SideActions {
+  openNoteFrom: (id: string) => void;
+  openProject?: (projectId: string) => void;
+  sideOpen: (viewId: string) => boolean;
+  toggleSide: (viewId: string) => void;
+}
+
+interface SaveState {
+  status: SaveStatus;
+  failure: NoteSaveFailure | null;
 }
 
 const ActionsContext = createContext<WorkspaceActions | null>(null);
+const NoteActionsContext = createContext<NoteViewActions | null>(null);
+const SideContext = createContext<SideActions | null>(null);
+const ShownContext = createContext<ReadonlySet<string>>(new Set());
+const LazyNoteGraph = lazy(() => import("./NoteGraph").then((module) => ({ default: module.NoteGraph })), { warm: true });
 const WINDOW_DRAG: Readonly<Record<string, string>> = { "data-tauri-drag-region": "" };
 const SAVE_DELAY_MS = 150;
+const SAVED: SaveState = { status: "saved", failure: null };
+const MemoNoteDocument = memo(NoteDocument);
 
 function useActions(): WorkspaceActions {
   const actions = useContext(ActionsContext);
@@ -99,14 +161,85 @@ function useActions(): WorkspaceActions {
   return actions;
 }
 
+function useNoteViewActions(): NoteViewActions {
+  const actions = useContext(NoteActionsContext);
+  if (!actions) throw new Error("Note views need the note actions");
+  return actions;
+}
+
+function useSideActions(): SideActions {
+  const actions = useContext(SideContext);
+  if (!actions) throw new Error("Notes views need the side panel actions");
+  return actions;
+}
+
+function useShortcut(id: ShortcutId): string {
+  return useShortcutStore((state) => shortcutLabel(state.bindings[id]));
+}
+
+function SideToggles() {
+  const { t } = useTranslation(["notes"]);
+  const side = useSideActions();
+  const outline = side.sideOpen(OUTLINE_VIEW);
+  const local = side.sideOpen(LOCAL_GRAPH_VIEW);
+  const outlineKeys = useShortcut("notesOutline");
+  const localKeys = useShortcut("notesLocalGraph");
+  return (
+    <>
+      <IconAction
+        label={outline ? t(($) => $.notes.graph.hideOutline) : t(($) => $.notes.graph.showOutline)}
+        shortcut={outlineKeys}
+        aria-pressed={outline}
+        className={cn(outline && "bg-accent")}
+        onClick={() => side.toggleSide(OUTLINE_VIEW)}
+      >
+        <ListTree aria-hidden className="size-4" />
+      </IconAction>
+      <IconAction
+        label={local ? t(($) => $.notes.graph.hideLocal) : t(($) => $.notes.graph.showLocal)}
+        shortcut={localKeys}
+        aria-pressed={local}
+        className={cn(local && "bg-accent")}
+        onClick={() => side.toggleSide(LOCAL_GRAPH_VIEW)}
+      >
+        <Waypoints aria-hidden className="size-4" />
+      </IconAction>
+    </>
+  );
+}
+
+function GraphView({ local }: Readonly<{ local: boolean }>) {
+  const actions = useActions();
+  const side = useSideActions();
+  const activeId = actions.focusedNote?.id ?? null;
+  return (
+    <Suspense fallback={null}>
+      <LazyNoteGraph
+        mode={local ? "local" : "global"}
+        centerId={local ? activeId : null}
+        activeId={activeId}
+        onOpenNote={(id, { newTab }) => (newTab ? actions.openNote(id) : side.openNoteFrom(id))}
+        onOpenProject={side.openProject}
+      />
+    </Suspense>
+  );
+}
+
+function OutlineView() {
+  const actions = useActions();
+  return <NoteOutline noteId={actions.focusedNote?.id ?? null} onOpenHeading={actions.openNoteHeading} />;
+}
+
 function IconAction({
   label,
+  shortcut,
   children,
   className,
   ...props
-}: Readonly<{ label: string; children: ReactNode } & ComponentProps<typeof Button>>) {
+}: Readonly<{ label: string; shortcut?: string; children: ReactNode } & ComponentProps<typeof Button>>) {
+  const { t } = useTranslation(["notes"]);
   return (
-    <Tooltip label={label} side="bottom">
+    <Tooltip label={shortcut ? t(($) => $.notes.vault.withShortcut, { label, shortcut }) : label} side="bottom">
       <Button variant="ghost" size="icon" aria-label={label} className={cn("relative size-7", className)} {...props}>
         {children}
       </Button>
@@ -114,12 +247,46 @@ function IconAction({
   );
 }
 
-function NoteView({ noteId }: Readonly<{ noteId: string }>) {
+const NoteView = memo(function NoteView({ noteId }: Readonly<{ noteId: string }>) {
+  const data = useNotesData();
+  const shown = useContext(ShownContext).has(noteViewId(noteId));
+  const kept = useRef(data);
+  if (shown) kept.current = data;
+  return (
+    <NotesDataProvider value={kept.current}>
+      <FrozenNoteLinkIndex live={shown}>
+        <NoteViewBody noteId={noteId} />
+      </FrozenNoteLinkIndex>
+    </NotesDataProvider>
+  );
+});
+
+const NoteViewBody = memo(function NoteViewBody({ noteId }: Readonly<{ noteId: string }>) {
   const { t } = useTranslation(["notes"]);
   const data = useNotesData();
-  const actions = useActions();
-  const [status, setStatus] = useState<SaveStatus>("saved");
+  const actions = useNoteViewActions();
+  const [save, setSave] = useState<SaveState>(SAVED);
+  const onStatusChange = useCallback((status: SaveStatus, failure: NoteSaveFailure | null) => {
+    setSave((current) => (current.status === status && current.failure === failure ? current : { status, failure }));
+  }, []);
+  const openRef = useRef(actions);
+  openRef.current = actions;
+  const onOpenNote = useCallback((id: string, options?: { newTab: boolean; heading?: string }) => {
+    if (options?.heading) openRef.current.openNoteHeading(id, options.heading);
+    else openRef.current.openNote(id);
+  }, []);
+  const onClose = useCallback(() => openRef.current.closeTab(noteViewId(noteId)), [noteId]);
   const note = data.notes.find((candidate) => candidate.id === noteId);
+  const liveMode = useNoteLiveMode(noteId, note?.shared === true);
+  const insertRequest = actions.insertRequest?.noteId === noteId ? actions.insertRequest : null;
+  const openHeading = actions.headingRequest?.noteId === noteId ? actions.headingRequest : null;
+  const { loadNote } = data;
+  const sendToPaper = actions.sendToPaper;
+  const sendNote = useCallback(async () => {
+    if (!sendToPaper) return;
+    await flushOpenNotes();
+    sendToPaper(noteBody((await loadNote(noteId)).text).trim());
+  }, [loadNote, noteId, sendToPaper]);
   if (!note) {
     return (
       <div className="flex flex-col items-start gap-3 p-6">
@@ -130,21 +297,18 @@ function NoteView({ noteId }: Readonly<{ noteId: string }>) {
       </div>
     );
   }
-  const insertRequest = actions.insertRequest?.noteId === noteId ? actions.insertRequest : null;
+  const showStatus = liveMode !== "live" || save.status === "failed";
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col" data-note-view={note.id}>
       <div className="flex min-h-10 shrink-0 items-center justify-between gap-3 border-b px-2">
         <p className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
           <RelatedProjectMenu note={note} />
           <span aria-hidden>/</span>
           <span className="truncate text-foreground">{note.title}</span>
         </p>
-        <div className="flex shrink-0 items-center gap-1">
-          <span aria-live="polite" className={cn("pr-2 text-xs", status === "failed" ? "text-destructive" : "text-muted-foreground")}>
-            {status === "saved" && t(($) => $.notes.workspace.saved)}
-            {status === "saving" && t(($) => $.notes.workspace.saving)}
-            {status === "failed" && t(($) => $.notes.workspace.saveFailed)}
-          </span>
+        <div className="flex min-w-0 shrink-0 items-center gap-1">
+          {showStatus && <NoteSaveStatus status={save.status} failure={save.failure} className="max-w-[18rem] pr-2" />}
+          <NoteLiveHeader noteId={note.id} mode={liveMode} onShare={data.shareNote && (() => data.shareNote?.(note.id))} />
           {actions.newProject && (
             <IconAction
               label={t(($) => $.notes.workspace.newProject)}
@@ -153,36 +317,42 @@ function NoteView({ noteId }: Readonly<{ noteId: string }>) {
               <FolderPlus aria-hidden className="size-4" />
             </IconAction>
           )}
-          {actions.sendToPaper && (
-            <IconAction label={t(($) => $.notes.workspace.sendToPaper)} onClick={() => actions.sendToPaper?.(note.summary)}>
+          {sendToPaper && (
+            <IconAction label={t(($) => $.notes.workspace.sendToPaper)} onClick={() => void sendNote()}>
               <Send aria-hidden className="size-4" />
             </IconAction>
           )}
+          <SideToggles />
         </div>
       </div>
       <div className="flex min-h-0 flex-1">
-        <NoteDocument
+        <MemoNoteDocument
           note={note}
           insertRequest={insertRequest}
-          onSendToPaper={(text) => actions.sendToPaper?.(text)}
-          onStatusChange={setStatus}
+          onSendToPaper={sendToPaper}
+          onStatusChange={onStatusChange}
+          onOpenNote={onOpenNote}
+          onOpenTag={actions.openTag}
+          openHeading={openHeading}
+          onClose={onClose}
         />
       </div>
     </div>
   );
-}
+});
 
 function ArtifactsView() {
   const { t } = useTranslation(["notes"]);
   const actions = useActions();
   const note = actions.focusedNote;
+  const readOnly = useNoteReadOnly(note?.id ?? null);
   if (!note) return <p className="p-4 text-sm text-muted-foreground">{t(($) => $.notes.artifacts.noNote)}</p>;
   return (
     <ArtifactPanel
       note={note}
       selectedId={actions.artifactId}
       onSelect={actions.setArtifactId}
-      onInsert={actions.insertArtifact}
+      onInsert={readOnly ? undefined : actions.insertArtifact}
       onNewProject={actions.newProject && ((artifact) => actions.newProject?.({ noteId: note.id, artifactId: artifact.id }))}
     />
   );
@@ -194,8 +364,8 @@ function HomeView({ viewId }: Readonly<{ viewId: string }>) {
     <NotesHome
       iconFor={(item) => item.icon}
       onOpenNote={(noteId) => actions.openFromHome(viewId, noteId)}
-      onOpenArtifact={(artifact) => actions.openArtifact(artifact, viewId)}
-      onStartNote={actions.startNote}
+      onOpenNoteInNewTab={actions.openNote}
+      onNewNote={actions.newNoteFromHome && (() => actions.newNoteFromHome?.(viewId))}
     />
   );
 }
@@ -224,20 +394,29 @@ function EmptyPanel({ onNewNote, onHome }: Readonly<{ onNewNote?: () => void; on
 function renderNotesView(id: string, view: ViewState): ReactNode {
   if (view.type === "home") return <HomeView viewId={id} />;
   if (view.type === "artifacts") return <ArtifactsView />;
+  if (view.type === "graph") return <GraphView local={view.params?.local === true} />;
+  if (view.type === "outline") return <OutlineView />;
   const noteId = noteIdOf(id);
   return noteId ? <NoteView noteId={noteId} /> : null;
 }
 
+function openTag(tag: string, showSidebar: () => void): void {
+  filterByTag(tag);
+  showSidebar();
+}
+
 export function NotesWorkspace({
   initialNoteId = null,
+  requestedNoteId = null,
+  onRequestHandled,
   onExit,
   onNewNote,
-  onStartNote,
   onCreateProject,
   onSendToPaper,
 }: Readonly<NotesWorkspaceProps>) {
   const { t } = useTranslation(["notes", "common"]);
   const data = useNotesData();
+  const research = data.researchTasks !== false;
   const [initial] = useState(() => {
     const saved = readNotesLayout();
     if (!initialNoteId) return { layout: saved, focused: stageGroup(saved, null).active };
@@ -249,12 +428,14 @@ export function NotesWorkspace({
   const [focused, setFocused] = useState<string | null>(initial.focused);
   const [artifactId, setArtifactId] = useState<string | null>(null);
   const [insertRequest, setInsertRequest] = useState<InsertRequest | null>(null);
+  const [headingRequest, setHeadingRequest] = useState<HeadingRequest | null>(null);
   const [paperText, setPaperText] = useState<string | null>(null);
-  const [paperId, setPaperId] = useState(data.papers[0]?.id ?? "");
+  const [paperId, setPaperId] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [projectSeed, setProjectSeed] = useState<ProjectSeed | null>(null);
+  const [vaultDialog, setVaultDialog] = useState<"import" | "export" | null>(null);
   const fullscreen = useFullscreen();
   const paperFieldId = useId();
+  const chosenPaper = data.papers.some((paper) => paper.id === paperId) ? paperId : (data.papers[0]?.id ?? "");
 
   const pendingSave = useRef<WorkspaceLayout | null>(null);
   useEffect(() => {
@@ -277,6 +458,13 @@ export function NotesWorkspace({
     };
   }, []);
 
+  useEffect(() => {
+    if (!research) setLayout((current) => (ARTIFACTS_VIEW in current.views ? closeView(current, ARTIFACTS_VIEW) : current));
+  }, [research]);
+
+  const shownKey = visibleViews(layout).join("\n");
+  const shown = useMemo<ReadonlySet<string>>(() => new Set(shownKey.split("\n")), [shownKey]);
+
   const focusedNoteId = useMemo(() => {
     const direct = noteIdOf(focused);
     if (direct && layout.views[noteViewId(direct)]) return direct;
@@ -284,7 +472,10 @@ export function NotesWorkspace({
     const nearby = noteIdOf(owner?.active) ?? noteIdOf(openNoteViews(layout)[0]);
     return nearby;
   }, [focused, layout]);
+  useRecordNoteOpened(noteIdOf(focused));
   const focusedNote = data.notes.find((note) => note.id === focusedNoteId) ?? null;
+  const directNoteId = noteIdOf(focused);
+  useLiveNoteClaim(layout, directNoteId && layout.views[noteViewId(directNoteId)] ? directNoteId : null, data.notes);
   const artifactCount = artifactsForNote(data.artifacts, focusedNote).length;
   const artifactsOpen = ARTIFACTS_VIEW in layout.views;
 
@@ -293,8 +484,22 @@ export function NotesWorkspace({
     setFocused(noteViewId(id));
   }, []);
   const openNote = useCallback((id: string) => openNoteAt(id, null), [openNoteAt]);
+  const openNoteHeading = useCallback(
+    (id: string, slug: string) => {
+      openNoteAt(id, null);
+      setHeadingRequest((previous) => ({ noteId: id, slug, id: (previous?.id ?? 0) + 1 }));
+    },
+    [openNoteAt],
+  );
+  useEffect(() => {
+    if (!requestedNoteId) return;
+    openNote(requestedNoteId);
+    onRequestHandled?.();
+  }, [onRequestHandled, openNote, requestedNoteId]);
 
   const closeTab = useCallback((viewId: string) => setLayout((current) => closeView(current, viewId)), []);
+  const showSidebar = useCallback(() => setSidebarOpen(true), []);
+  const onOpenTag = useCallback((tag: string) => openTag(tag, showSidebar), [showSidebar]);
 
   const openFromHome = useCallback((homeId: string, noteId: string) => {
     setLayout((current) => openNoteInPlace(current, homeId, noteId));
@@ -315,11 +520,10 @@ export function NotesWorkspace({
   };
 
   const openArtifact = useCallback(
-    (artifact: ArtifactItem, homeId?: string) => {
+    (artifact: ArtifactItem) => {
       const owner = noteForProject(data.notes, artifact.projectId);
       if (!owner) return;
-      if (homeId) openFromHome(homeId, owner.id);
-      else openNote(owner.id);
+      openNote(owner.id);
       setArtifactId(artifact.id);
       setLayout((current) => {
         if (ARTIFACTS_VIEW in current.views) return activate(current, ARTIFACTS_VIEW);
@@ -327,7 +531,7 @@ export function NotesWorkspace({
         return openView(current, ARTIFACTS_VIEW, { type: "artifacts" }, { groupId: stage.id, zone: "right" }, ARTIFACTS_SHARE);
       });
     },
-    [data.notes, openFromHome, openNote],
+    [data.notes, openNote],
   );
 
   const copyArtifact = data.copyArtifact;
@@ -343,66 +547,139 @@ export function NotesWorkspace({
     [copyArtifact, focusedNote],
   );
 
+  const canSend = onSendToPaper !== undefined && data.papers.length > 0;
+  const sendToPaper = canSend ? setPaperText : undefined;
+
   const actions = useMemo<WorkspaceActions>(
     () => ({
       focusedNote,
       artifactId,
-      insertRequest,
       setArtifactId,
       openNote,
-      closeTab,
+      openNoteHeading,
       openFromHome,
-      openArtifact,
       insertArtifact,
-      newProject: onCreateProject ? setProjectSeed : undefined,
-      sendToPaper: onSendToPaper ? setPaperText : undefined,
-      startNote: onStartNote,
+      newProject: onCreateProject,
+      newNoteFromHome: onNewNote
+        ? (homeId) =>
+            void onNewNote().then((id) => {
+              if (id) openFromHome(homeId, id);
+            })
+        : undefined,
     }),
-    [
-      artifactId,
-      closeTab,
-      focusedNote,
-      insertArtifact,
-      insertRequest,
-      onCreateProject,
-      onSendToPaper,
-      onStartNote,
-      openArtifact,
-      openFromHome,
-      openNote,
-    ],
+    [artifactId, focusedNote, insertArtifact, onCreateProject, onNewNote, openFromHome, openNote, openNoteHeading],
   );
 
-  const goHome = () => {
-    const onHome = focused !== null && isHomeView(focused) && groupOfView(layout, focused)?.active === focused;
-    if (onHome && onExit) {
+  const noteActions = useMemo<NoteViewActions>(
+    () => ({
+      insertRequest,
+      headingRequest,
+      openNote,
+      openNoteHeading,
+      openTag: onOpenTag,
+      closeTab,
+      newProject: onCreateProject,
+      sendToPaper,
+    }),
+    [closeTab, headingRequest, insertRequest, onCreateProject, onOpenTag, openNote, openNoteHeading, sendToPaper],
+  );
+
+  const focusedNoteView = focusedNoteId ? noteViewId(focusedNoteId) : null;
+  const toggleSide = useCallback(
+    (viewId: string) => setLayout((current) => toggleSideView(current, viewId, focusedNoteView)),
+    [focusedNoteView],
+  );
+  const openGraph = useCallback(() => {
+    setLayout((current) => openGraphIn(current, focusedNoteView));
+    setFocused(GRAPH_VIEW);
+  }, [focusedNoteView]);
+  const sideActions = useMemo<SideActions>(
+    () => ({
+      openNoteFrom: (id) => {
+        setLayout((current) => openNoteFrom(current, id, focusedNoteView));
+        setFocused(noteViewId(id));
+      },
+      openProject: data.openProject,
+      sideOpen: (viewId) => viewId in layout.views,
+      toggleSide,
+    }),
+    [data.openProject, focusedNoteView, layout.views, toggleSide],
+  );
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const { bindings } = useShortcutStore.getState();
+      let handled = true;
+      if (matchesShortcut(event, bindings.notesGraph)) openGraph();
+      else if (matchesShortcut(event, bindings.notesLocalGraph)) toggleSide(LOCAL_GRAPH_VIEW);
+      else if (matchesShortcut(event, bindings.notesOutline)) toggleSide(OUTLINE_VIEW);
+      else handled = false;
+      if (handled) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openGraph, toggleSide]);
+
+  const openInPlace = useCallback(
+    (id: string) => {
+      if (focused && layout.views[focused]) openFromHome(focused, id);
+      else openNote(id);
+    },
+    [focused, layout.views, openFromHome, openNote],
+  );
+  const openToday = useOpenDailyNote(openNote);
+
+  const onNotesHome = focused !== null && isHomeView(focused) && groupOfView(layout, focused)?.active === focused;
+  const goHome = useCallback(() => {
+    if (onNotesHome && onExit) {
       onExit();
       return;
     }
     const home = homeViews(layout)[0] ?? HOME_VIEW;
     setLayout((current) => openHomeIn(current, home, stageGroup(current, null).id));
     setFocused(home);
-  };
+  }, [layout, onExit, onNotesHome]);
+  const homeLabel = onNotesHome && onExit ? undefined : t(($) => $.notes.workspace.notesHome);
 
-  const newTab = (groupId: string) => {
-    const home = newHomeViewId(layout);
-    setLayout((current) => openHomeIn(current, home, groupId));
-    setFocused(home);
-  };
+  const newTab = useCallback(
+    (groupId: string) => {
+      const home = newHomeViewId(layout);
+      setLayout((current) => openHomeIn(current, home, groupId));
+      setFocused(home);
+    },
+    [layout],
+  );
 
-  const newNote = onNewNote
-    ? (groupId: string | null) => {
-        void onNewNote().then((id) => {
-          if (id) openNoteAt(id, groupId);
-        });
-      }
-    : undefined;
+  const newNote = useMemo(
+    () =>
+      onNewNote
+        ? (groupId: string | null) => {
+            void onNewNote().then((id) => {
+              if (id) openNoteAt(id, groupId);
+            });
+          }
+        : undefined,
+    [onNewNote, openNoteAt],
+  );
+  const newNoteHere = useMemo(() => (newNote ? () => newNote(null) : undefined), [newNote]);
+  const openImport = useCallback(() => setVaultDialog("import"), []);
+  const openExport = useCallback(() => setVaultDialog("export"), []);
+  const iconFor = useCallback((item: NoteItem) => item.icon, []);
 
   const describeView = useCallback(
     (id: string, view: ViewState): ViewInfo => {
       if (view.type === "home") return { title: t(($) => $.notes.workspace.home), icon: <House aria-hidden className="size-3.5 shrink-0" /> };
       if (view.type === "artifacts") {
         return { title: t(($) => $.notes.artifacts.title), icon: <PanelRight aria-hidden className="size-3.5 shrink-0" /> };
+      }
+      if (view.type === "graph") {
+        return {
+          title: view.params?.local === true ? t(($) => $.notes.graph.localTitle) : t(($) => $.notes.graph.title),
+          icon: <Waypoints aria-hidden className="size-3.5 shrink-0" />,
+        };
+      }
+      if (view.type === "outline") {
+        return { title: t(($) => $.notes.graph.outline.title), icon: <ListTree aria-hidden className="size-3.5 shrink-0" /> };
       }
       const note = data.notes.find((candidate) => candidate.id === noteIdOf(id));
       return {
@@ -430,115 +707,118 @@ export function NotesWorkspace({
   );
 
   const onFocusView = useCallback((id: string) => {
-    if (id !== ARTIFACTS_VIEW) setFocused(id);
+    if (!isSideView(id)) setFocused(id);
   }, []);
 
+  const appearanceRef = useNotesAppearanceRef<HTMLDivElement>();
   const headerInset = !sidebarOpen && isMac && !fullscreen;
   const sidebarLabel = sidebarOpen ? t(($) => $.notes.workspace.hideSidebar) : t(($) => $.notes.workspace.showSidebar);
 
   return (
     <ActionsContext.Provider value={actions}>
-      <div className="flex h-full min-h-0 bg-background text-foreground">
-        {sidebarOpen && (
-          <NotesLibrary
-            iconFor={(item) => item.icon}
-            activeNoteId={focusedNoteId}
-            activeArtifactId={artifactsOpen ? artifactId : null}
-            onHome={goHome}
-            onNewNote={newNote && (() => newNote(null))}
-            onOpenNote={openNote}
-            onOpenNoteInNewTab={openNote}
-            onOpenArtifact={openArtifact}
-          />
-        )}
-        <main className="flex min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1">
-            <Workspace
-              layout={layout}
-              onLayoutChange={setLayout}
-              renderView={renderNotesView}
-              describeView={describeView}
-              labels={labels}
-              onFocusView={onFocusView}
-              onNewTab={newTab}
-              stageCandidate={holdsNotes}
-              chromeAttributes={WINDOW_DRAG}
-              leading={
-                <>
-                  {headerInset && <span aria-hidden className="w-[70px] shrink-0" />}
-                  {!sidebarOpen && <HomeBrandButton compact onClick={goHome} />}
-                  <IconAction label={sidebarLabel} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}>
-                    <PanelLeft aria-hidden className="size-4" />
-                  </IconAction>
-                </>
-              }
-              trailing={
-                <IconAction
-                  label={t(($) => $.notes.workspace.artifacts, { total: artifactCount })}
-                  aria-pressed={artifactsOpen}
-                  className={cn(artifactsOpen && "bg-accent")}
-                  onClick={toggleArtifacts}
-                >
-                  <PanelRight aria-hidden className="size-4" />
-                  {artifactCount > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full border border-background bg-primary px-1 text-[0.5625rem] font-bold text-primary-foreground">
-                      {artifactCount}
-                    </span>
-                  )}
-                </IconAction>
-              }
-              empty={(group) => (
-                <EmptyPanel onNewNote={newNote && (() => newNote(group.id))} onHome={() => newTab(group.id)} />
+      <NoteActionsContext.Provider value={noteActions}>
+        <SideContext.Provider value={sideActions}>
+          <ShownContext.Provider value={shown}>
+            <div ref={appearanceRef} className="flex h-full min-h-0 bg-background text-foreground">
+              {sidebarOpen && (
+                <NotesLibrary
+                  iconFor={iconFor}
+                  activeNoteId={focusedNoteId}
+                  activeArtifactId={artifactsOpen ? artifactId : null}
+                  homeLabel={homeLabel}
+                  onHome={goHome}
+                  onNewNote={newNoteHere}
+                  onOpenNote={openNote}
+                  onOpenNoteInNewTab={openNote}
+                  onOpenArtifact={openArtifact}
+                  onToday={openToday}
+                  onOpenGraph={openGraph}
+                  onImportFolder={openImport}
+                  onExportFolder={openExport}
+                />
               )}
-            />
-          </div>
-        </main>
-        {projectSeed && (
-          <NewProjectDialog
-            key={`${projectSeed.noteId}-${projectSeed.artifactId}`}
-            seed={projectSeed}
-            onClose={() => setProjectSeed(null)}
-            onCreate={
-              onCreateProject &&
-              ((request) => {
-                onCreateProject({ seed: projectSeed, ...request });
-                setProjectSeed(null);
-              })
-            }
-          />
-        )}
-        <Dialog open={paperText !== null} onOpenChange={(open) => !open && setPaperText(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t(($) => $.notes.sendToPaper.title)}</DialogTitle>
-              <DialogDescription>{t(($) => $.notes.sendToPaper.description)}</DialogDescription>
-            </DialogHeader>
-            <p className="line-clamp-3 rounded-md border p-2 text-sm text-muted-foreground">{paperText}</p>
-            <RadioGroup value={paperId} onValueChange={setPaperId} className="gap-1">
-              {data.papers.map((paper) => (
-                <label key={paper.id} htmlFor={`${paperFieldId}-${paper.id}`} className="flex items-center gap-2 text-sm">
-                  <RadioGroupItem id={`${paperFieldId}-${paper.id}`} value={paper.id} />
-                  {paper.label}
-                </label>
-              ))}
-            </RadioGroup>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setPaperText(null)}>
-                {t(($) => $.common.actions.cancel)}
-              </Button>
-              <Button
-                disabled={!onSendToPaper || !paperId}
-                onClick={() => {
-                  if (paperText !== null) onSendToPaper?.({ paperId, text: paperText });
-                  setPaperText(null);
-                }}
-              >
-                {t(($) => $.notes.sendToPaper.send)}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <NotesVaultLayer onOpenNote={openInPlace} onOpenNoteInNewTab={openNote} onToday={openToday} />
+              <main className="flex min-w-0 flex-1 flex-col">
+                <div className="min-h-0 flex-1">
+                  <Workspace
+                    layout={layout}
+                    onLayoutChange={setLayout}
+                    renderView={renderNotesView}
+                    describeView={describeView}
+                    labels={labels}
+                    onFocusView={onFocusView}
+                    onNewTab={newTab}
+                    stageCandidate={holdsNotes}
+                    chromeAttributes={WINDOW_DRAG}
+                    leading={
+                      <>
+                        {headerInset && <span aria-hidden className="w-[70px] shrink-0" />}
+                        {!sidebarOpen && <HomeBrandButton compact label={homeLabel} onClick={goHome} />}
+                        <IconAction label={sidebarLabel} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}>
+                          <PanelLeft aria-hidden className="size-4" />
+                        </IconAction>
+                      </>
+                    }
+                    trailing={
+                      research ? (
+                        <IconAction
+                          label={t(($) => $.notes.workspace.artifacts, { total: artifactCount })}
+                          aria-pressed={artifactsOpen}
+                          className={cn(artifactsOpen && "bg-accent")}
+                          onClick={toggleArtifacts}
+                        >
+                          <PanelRight aria-hidden className="size-4" />
+                          {artifactCount > 0 && (
+                            <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full border border-background bg-primary px-1 text-[0.5625rem] font-bold text-primary-foreground">
+                              {artifactCount}
+                            </span>
+                          )}
+                        </IconAction>
+                      ) : null
+                    }
+                    empty={(group) => <EmptyPanel onNewNote={newNote && (() => newNote(group.id))} onHome={() => newTab(group.id)} />}
+                  />
+                </div>
+              </main>
+              <NoteImportDialog open={vaultDialog === "import"} onClose={() => setVaultDialog(null)} onImported={() => void data.refreshNotes?.()} />
+              {vaultDialog === "export" && (
+                <NoteExportDialog open note={focusedNote} total={data.notes.length} onClose={() => setVaultDialog(null)} />
+              )}
+              <Dialog open={paperText !== null} onOpenChange={(open) => !open && setPaperText(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{t(($) => $.notes.sendToPaper.title)}</DialogTitle>
+                    <DialogDescription>{t(($) => $.notes.sendToPaper.description)}</DialogDescription>
+                  </DialogHeader>
+                  <p className="line-clamp-3 rounded-md border p-2 text-sm text-muted-foreground">{paperText}</p>
+                  <RadioGroup value={chosenPaper} onValueChange={setPaperId} className="gap-1">
+                    {data.papers.map((paper) => (
+                      <label key={paper.id} htmlFor={`${paperFieldId}-${paper.id}`} className="flex items-center gap-2 text-sm">
+                        <RadioGroupItem id={`${paperFieldId}-${paper.id}`} value={paper.id} />
+                        {paper.label}
+                      </label>
+                    ))}
+                  </RadioGroup>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setPaperText(null)}>
+                      {t(($) => $.common.actions.cancel)}
+                    </Button>
+                    <Button
+                      disabled={!onSendToPaper || !chosenPaper}
+                      onClick={() => {
+                        if (paperText !== null) onSendToPaper?.({ paperId: chosenPaper, text: paperText });
+                        setPaperText(null);
+                      }}
+                    >
+                      {t(($) => $.notes.sendToPaper.send)}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </ShownContext.Provider>
+        </SideContext.Provider>
+      </NoteActionsContext.Provider>
     </ActionsContext.Provider>
   );
 }

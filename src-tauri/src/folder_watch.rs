@@ -647,6 +647,14 @@ impl RootWaiter {
     }
 }
 
+fn touches_listing(change: &FolderChange) -> bool {
+    change.rescan
+        || change.paths.iter().any(|path| {
+            Path::new(path).file_name()
+                == Some(std::ffi::OsStr::new(crate::project_location::MANIFEST_FILE))
+        })
+}
+
 #[tauri::command]
 pub async fn watch_project_folder<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -657,6 +665,9 @@ pub async fn watch_project_folder<R: tauri::Runtime>(
         use tauri::Emitter as _;
         let host: Arc<dyn SyncPauseHost> = Arc::new(app.clone());
         let sink: ChangeSink = Arc::new(move |change| {
+            if touches_listing(&change) {
+                crate::note_index::invalidate();
+            }
             let _ = app.emit(FOLDER_CHANGED_EVENT, change);
         });
         watch_project_as(request, &project_id, sink, host, None, true)
@@ -1500,5 +1511,21 @@ mod tests {
             edit.rescan || edit.paths.contains(&"main.tex".to_string()),
             "{edit:?}"
         );
+    }
+
+    #[test]
+    fn a_manifest_change_or_rescan_refreshes_the_note_listing() {
+        let change = |paths: &[&str], rescan: bool| FolderChange {
+            project_id: "p".into(),
+            paths: paths.iter().map(|path| path.to_string()).collect(),
+            rescan,
+            structural: false,
+            renamed: Vec::new(),
+            deleted: Vec::new(),
+        };
+        assert!(touches_listing(&change(&["project.json"], false)));
+        assert!(touches_listing(&change(&["nested/project.json"], false)));
+        assert!(touches_listing(&change(&[], true)));
+        assert!(!touches_listing(&change(&["note.md"], false)));
     }
 }

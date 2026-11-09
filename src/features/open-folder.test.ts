@@ -7,6 +7,7 @@ import { useCompileStore } from "@/store/compile";
 import { useHomeViewStore } from "@/store/home-view";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
+import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 import { beginChatRun, endChatRun } from "@/components/ai/chat-run-registry";
 import { bootSplashHeld } from "@/lib/boot-telemetry";
@@ -585,6 +586,32 @@ describe("the Open Recent menu", () => {
     startRecentProjectsMenuSync(false)();
     expect(mocks.setRecentProjects).not.toHaveBeenCalled();
   });
+
+  it("leaves notes out while Notes is on and resends when the setting changes", () => {
+    const notes = useSettingsStore.getState().notes;
+    mocks.setRecentProjects.mockResolvedValue(undefined);
+    useSettingsStore.setState({ notes: true });
+    useFilesStore.setState({
+      projects: [
+        { id: "paper", name: "Paper", kind: "document", updated_at: 1 },
+        { id: "idea", name: "Idea", kind: "note", updated_at: 2 },
+      ] as never[],
+    });
+
+    const stop = startRecentProjectsMenuSync(true);
+    expect(mocks.setRecentProjects).toHaveBeenLastCalledWith([{ id: "paper", name: "Paper" }]);
+    useSettingsStore.setState({ hoverPreview: !useSettingsStore.getState().hoverPreview });
+    expect(mocks.setRecentProjects).toHaveBeenCalledTimes(1);
+    useSettingsStore.setState({ notes: false });
+    expect(mocks.setRecentProjects).toHaveBeenLastCalledWith([
+      { id: "idea", name: "Idea" },
+      { id: "paper", name: "Paper" },
+    ]);
+    stop();
+    useSettingsStore.setState({ notes: true });
+    expect(mocks.setRecentProjects).toHaveBeenCalledTimes(2);
+    useSettingsStore.setState({ notes });
+  });
 });
 
 describe("open folder failures", () => {
@@ -657,6 +684,24 @@ describe("Open Recent", () => {
     await settled();
     expect(openProject).toHaveBeenCalledWith(NOTES_ID);
     stop();
+  });
+
+  it("opens a note in Notes without asking to stop running work", async () => {
+    const notes = useSettingsStore.getState().notes;
+    useSettingsStore.setState({ notes: true });
+    useFilesStore.setState({
+      projectId: "thesis-1",
+      projectName: "Thesis",
+      projects: [{ id: "idea", name: "Idea", kind: "note" }] as never[],
+    });
+    useCompileStore.setState({ status: "compiling" });
+
+    await openRecentProject("idea");
+
+    expect(useOpenFolderFlowStore.getState().prompt).toBeNull();
+    expect(openProject).toHaveBeenCalledWith("idea");
+    expect(stopCompile).not.toHaveBeenCalled();
+    useSettingsStore.setState({ notes });
   });
 
   it("does nothing for the open project and keeps it when the stop prompt is declined", async () => {

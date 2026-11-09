@@ -1,7 +1,5 @@
-import {
-  lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
-  useSyncExternalStore, type MutableRefObject, type RefObject,
-} from "react";
+import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type MutableRefObject, type RefObject } from "react";
+import { lazy } from "@/lib/preloadable";
 import { Brain, Plus, Server } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
@@ -21,7 +19,7 @@ import { errorText } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import {
   acpComposerId, attachAcpListeners, isDelegatedSession, useAcpSessionView, useAcpSessionsStore,
-  type AcpPromptDraft,
+  type AcpPromptDraft, type AcpSelection,
 } from "@/store/acp-sessions";
 import { useComposerDrafts } from "@/store/composer-drafts";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
@@ -29,7 +27,7 @@ import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
 import { isSkillAvailable, useSkills, type SkillEntry } from "@/lib/skills";
 import { cliResearchPresets, type ResearchPreset } from "@/lib/research-presets";
-import { gitIsInitialized } from "@/lib/tauri";
+import { gitIsInitialized, type FileEntry } from "@/lib/tauri";
 import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -60,12 +58,30 @@ function canReconnect(session: AcpSession): boolean {
   return !session.nativeSessionId || session.capabilities.resume || session.capabilities.loadSession;
 }
 
-export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: string }>) {
+export interface AcpWorkspaceAssistantProps {
+  projectId: string;
+  slot?: string;
+  projectName?: string;
+  tree?: readonly FileEntry[];
+  variant?: "workspace" | "note";
+  extraSelections?: () => readonly AcpSelection[];
+}
+
+export function AcpWorkspaceAssistant({
+  projectId,
+  slot,
+  projectName: scopedName,
+  tree,
+  variant = "workspace",
+  extraSelections,
+}: Readonly<AcpWorkspaceAssistantProps>) {
   const { t } = useTranslation(["common", "ai", "errors"]);
+  const key = slot ?? projectId;
+  const workspace = variant === "workspace";
   const researchChatActions = useResearchChatActions(projectId);
   const catalog = useAcpSessionsStore((state) => state.catalog);
-  const activeId = useAcpSessionsStore((state) => state.activeByProject[projectId] ?? null);
-  const composer = useAcpSessionsStore((state) => state.composers[projectId]);
+  const activeId = useAcpSessionsStore((state) => state.activeByProject[key] ?? null);
+  const composer = useAcpSessionsStore((state) => state.composers[key]);
   const session = useAcpSessionView(activeId);
   const hasEarlier = useAcpSessionsStore((state) => (activeId ? (state.events[activeId]?.[0]?.sequence ?? 0) > 1 : false));
   const permissions = useAcpSessionsStore((state) => activeId ? state.permissions[activeId] ?? EMPTY_PERMISSIONS : EMPTY_PERMISSIONS);
@@ -73,19 +89,19 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const sending = useAcpSessionsStore((state) => (activeId ? (state.sending[activeId] ?? 0) > 0 : false));
   const agentId = composer?.agentId ?? null;
   const setComposer = useAcpSessionsStore((state) => state.setComposer);
-  const error = useAcpSessionsStore((state) => state.errors[projectId] ?? null);
+  const error = useAcpSessionsStore((state) => state.errors[key] ?? null);
   const sessionError = useAcpSessionsStore((state) => (activeId ? state.sessionErrors[activeId] ?? null : null));
-  const starting = useAcpSessionsStore((state) => state.starting[projectId] ?? false);
+  const starting = useAcpSessionsStore((state) => state.starting[key] ?? false);
   const setProjectError = useAcpSessionsStore((state) => state.setError);
   const setError = useCallback(
     (message: string | null) => {
-      setProjectError(projectId, message);
+      setProjectError(key, message);
       if (message === null) {
-        const shown = useAcpSessionsStore.getState().activeByProject[projectId];
+        const shown = useAcpSessionsStore.getState().activeByProject[key];
         if (shown) useAcpSessionsStore.getState().setSessionError(shown, null);
       }
     },
-    [projectId, setProjectError],
+    [key, setProjectError],
   );
   const [busy, setBusy] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -105,7 +121,8 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     [catalog, session],
   );
   const selectedReadiness = selectedAgent ? acpReadiness(selectedAgent) : null;
-  const projectName = useFilesStore((state) => state.projectName);
+  const workspaceName = useFilesStore((state) => state.projectName);
+  const projectName = scopedName ?? workspaceName;
   const skillsQuery = useSkills(projectId);
   const skills = skillsQuery.data ?? [];
   const [cleanLibraryOpen, setCleanLibraryOpen] = useState(false);
@@ -118,10 +135,10 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   }, []);
   const pickSkill = useCallback(
     (skill: SkillEntry) => {
-      setComposer(projectId, { skill: { id: skill.id, name: skill.name } });
+      setComposer(key, { skill: { id: skill.id, name: skill.name } });
       focusComposer();
     },
-    [focusComposer, projectId, setComposer],
+    [focusComposer, key, setComposer],
   );
   const perform = useCallback(async (action: () => Promise<void>) => {
     setError(null); setBusy(true);
@@ -134,15 +151,15 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   }, [perform]);
   const carryDraft = (fromId: string) => {
     const state = useAcpSessionsStore.getState();
-    const id = state.activeByProject[projectId];
+    const id = state.activeByProject[key];
     const started = id ? state.sessions[id] : undefined;
-    if (started) useComposerDrafts.getState().moveDraft(fromId, acpDraftId(projectId, null, started));
+    if (started) useComposerDrafts.getState().moveDraft(fromId, acpDraftId(key, null, started));
   };
   const chooseAgent = (nextAgentId: string) => {
     const state = useAcpSessionsStore.getState();
-    if (state.composers[projectId]?.agentId === nextAgentId) return;
-    setComposer(projectId, { agentId: nextAgentId });
-    const openId = state.activeByProject[projectId];
+    if (state.composers[key]?.agentId === nextAgentId) return;
+    setComposer(key, { agentId: nextAgentId });
+    const openId = state.activeByProject[key];
     const open = openId ? state.sessions[openId] : undefined;
     if (!openId || !open || open.agentId === nextAgentId) return;
     const ready = state.catalog.some(
@@ -150,11 +167,11 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     );
     void perform(async () => {
       if (ready) {
-        const shownDraft = acpDraftId(projectId, open.agentId, open);
+        const shownDraft = acpDraftId(key, open.agentId, open);
         try {
-          await useAcpSessionsStore.getState().start(projectId, nextAgentId);
+          await useAcpSessionsStore.getState().start(key, nextAgentId);
         } catch (error_) {
-          setComposer(projectId, { agentId: open.agentId });
+          setComposer(key, { agentId: open.agentId });
           throw error_;
         }
         carryDraft(shownDraft);
@@ -163,7 +180,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       if (["ready", "auth_required"].includes(open.status)) {
         await acpDisconnect(projectId, openId);
       }
-      useAcpSessionsStore.getState().setActive(projectId, null);
+      useAcpSessionsStore.getState().setActive(key, null);
     });
   };
 
@@ -186,15 +203,15 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   useEffect(() => {
     let disposed = false;
     let detach: (() => void) | undefined;
-    setProjectError(projectId, null);
+    setProjectError(key, null);
     void (async () => {
       detach = await attachAcpListeners();
       if (disposed) { detach(); return; }
       const state = useAcpSessionsStore.getState();
       await Promise.all([state.refreshCatalog(), state.loadProject(projectId)]);
       if (disposed) return;
-      const id = useAcpSessionsStore.getState().activeByProject[projectId];
-      if (id) await state.open(projectId, id);
+      const id = useAcpSessionsStore.getState().activeByProject[key];
+      if (id) await state.open(key, id);
     })().catch((error_: unknown) => { if (!disposed) setError(acpError(error_)); });
     const refresh = () => { void useAcpSessionsStore.getState().refreshCatalog().catch(() => {}); };
     window.addEventListener("oleafly:acp-catalog-changed", refresh);
@@ -203,15 +220,15 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       detach?.();
       window.removeEventListener("oleafly:acp-catalog-changed", refresh);
     };
-  }, [projectId, setError, setProjectError]);
+  }, [key, projectId, setError, setProjectError]);
 
   useEffect(() => {
     if (!catalog.length) return;
     if (agentId && catalog.some((agent) => agent.definition.id === agentId)) return;
     const preferred = catalog.find((agent) => acpUsable(agent)) ?? catalog[0];
-    useComposerDrafts.getState().moveDraft(acpComposerId(projectId, null), acpComposerId(projectId, preferred.definition.id));
-    setComposer(projectId, { agentId: preferred.definition.id });
-  }, [catalog, agentId, projectId, setComposer]);
+    useComposerDrafts.getState().moveDraft(acpComposerId(key, null), acpComposerId(key, preferred.definition.id));
+    setComposer(key, { agentId: preferred.definition.id });
+  }, [catalog, agentId, key, setComposer]);
 
   const choosePermission = async (id: string, option: string | null) => {
     if (!activeId) return;
@@ -234,25 +251,25 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const canStart = !!selectedAgent && acpUsable(selectedAgent) && !busy && !running;
   const start = () => void perform(async () => {
     if (!agentId) return;
-    const shownDraft = acpDraftId(projectId, agentId, session);
-    await useAcpSessionsStore.getState().start(projectId, agentId);
+    const shownDraft = acpDraftId(key, agentId, session);
+    await useAcpSessionsStore.getState().start(key, agentId);
     carryDraft(shownDraft);
   });
   const startWithDraft = useCallback((draft: AcpPromptDraft) => {
     if (!agentId) return;
     void perform(async () => {
       try {
-        await useAcpSessionsStore.getState().startWithPrompt(projectId, agentId, draft);
+        await useAcpSessionsStore.getState().startWithPrompt(key, agentId, draft);
       } catch (error_) {
-        restoreDraft(projectId, acpDraftId(projectId, agentId, undefined), draft);
+        restoreDraft(key, acpDraftId(key, agentId, undefined), draft);
         throw error_;
       }
     });
-  }, [agentId, perform, projectId]);
+  }, [agentId, key, perform]);
 
   // A hand-off from elsewhere in the app (Generators, Ask AI, selection
   // actions) lands here when this is the assistant in use.
-  const handoffPending = useAgentHandoffStore((state) => (state.target === "acp" ? state.pendingPrompt : null));
+  const handoffPending = useAgentHandoffStore((state) => (workspace && state.target === "acp" ? state.pendingPrompt : null));
   useEffect(() => {
     if (!handoffPending || !agentId || !selectedAgent) return;
     const handoff = useAgentHandoffStore.getState().consume();
@@ -297,13 +314,13 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const presetSkill = preset.skillId
       ? skills.find((entry) => entry.id === preset.skillId && entry.validation.status === "valid" && isSkillAvailable(entry))
       : undefined;
-    const draftId = acpDraftId(projectId, agentId, session);
+    const draftId = acpDraftId(key, agentId, session);
     const typed = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
     let text = preset.prompt;
     if (typed.includes(preset.prompt)) text = typed;
     else if (typed.trim()) text = `${typed.trimEnd()}\n\n${preset.prompt}`;
     useComposerDrafts.getState().setText(draftId, text);
-    setComposer(projectId, { skill: presetSkill ? { id: presetSkill.id, name: presetSkill.name } : null });
+    setComposer(key, { skill: presetSkill ? { id: presetSkill.id, name: presetSkill.name } : null });
     focusComposer();
     if (!session && canStart && !starting) start();
   };
@@ -531,6 +548,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       {session && !isDelegatedSession(session) && (
         <AcpSessionHeader
           projectId={projectId}
+          slot={key}
           session={session}
           agentName={agentNameOf(session.agentId)}
           busy={busy}
@@ -573,11 +591,15 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
           />
         </div>
       )}
-      <AcpComposerChips projectId={projectId} session={session} />
+      <AcpComposerChips projectId={key} session={session} />
       <div className="p-3 pt-1">
         <AcpComposer
           ref={composerRef}
           projectId={projectId}
+          slot={key}
+          tree={tree}
+          quoteEditor={workspace}
+          extraSelections={extraSelections}
           session={session}
           agent={selectedAgent}
           agentId={agentId}

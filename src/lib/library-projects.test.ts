@@ -5,6 +5,9 @@ import {
   folderDisplayPath,
   folderUnavailable,
   isFolderProject,
+  isNoteProject,
+  libraryProjects,
+  opensInNotes,
   projectActivityAt,
   projectInScope,
   projectUpdatedAt,
@@ -147,5 +150,31 @@ describe("updated time", () => {
     expect(projectUpdatedAt(thesis, { thesis: 50 })).toBe(100);
     expect(projectUpdatedAt(folder("fresh", "ok", { updated_at: 0 }), { fresh: 40 })).toBe(40);
     expect(projectUpdatedAt(project("paper", { updated_at: 10 }), { paper: 999 })).toBe(10);
+  });
+});
+
+describe("notes in the library", () => {
+  const paper = project("paper");
+  const note = project("idea", { kind: "note", main_doc: "note.md" });
+
+  it("knows a note by its kind", () => {
+    expect(isNoteProject(note)).toBe(true);
+    expect(isNoteProject(paper)).toBe(false);
+    expect(isNoteProject(null)).toBe(false);
+    expect(isNoteProject(undefined)).toBe(false);
+  });
+
+  it("leaves notes out of the library only while Notes is on", () => {
+    const all = [paper, note];
+    expect(libraryProjects(all, true)).toEqual([paper]);
+    expect(libraryProjects(all, false)).toBe(all);
+  });
+
+  it("sends a note to Notes only while Notes is on", () => {
+    const all = [paper, note];
+    expect(opensInNotes(all, "idea", true)).toBe(true);
+    expect(opensInNotes(all, "idea", false)).toBe(false);
+    expect(opensInNotes(all, "paper", true)).toBe(false);
+    expect(opensInNotes(all, "missing", true)).toBe(false);
   });
 });

@@ -4,6 +4,8 @@ import {
   commandHint,
   commandKeywords,
   commandLabel,
+  railSections,
+  railTabIds,
   railTabLabel,
   registerCommand,
   registerRailTab,
@@ -54,5 +56,28 @@ describe("message resolution", () => {
     expect(commandGroup(cmd, ctx)).toBeUndefined();
     expect(commandHint(cmd, ctx)).toBeUndefined();
     expect(commandKeywords(cmd, ctx)).toBe("");
+  });
+});
+
+describe("rail tab ids", () => {
+  it("lists every shown tab by section, then by order, whether or not it applies right now", () => {
+    const tab = (id: string, section: "explore" | "review" | "assist", order: number, extra = {}) => ({
+      id,
+      label: id,
+      icon: () => null,
+      section,
+      order,
+      panel: () => null,
+      ...extra,
+    });
+    registerRailTab(tab("assist", "assist", 1));
+    registerRailTab(tab("files", "explore", 10));
+    registerRailTab(tab("refs", "review", 5, { when: () => false }));
+    registerRailTab(tab("secret", "explore", 2, { hidden: true }));
+    registerRailTab(tab("files", "explore", 11));
+
+    expect(railTabIds()).toEqual(["files", "refs", "assist"]);
+    const ctx: AppContext = { projectId: null, projectKind: null, theme: "light" };
+    expect(railSections(ctx).flat().map((entry) => entry.id)).not.toContain("refs");
   });
 });

@@ -102,6 +102,12 @@ function content(overrides: Partial<TaskPreviewContent> = {}): TaskPreviewConten
 }
 
 describe("artifactKind", () => {
+  it("treats Jupyter files as notebooks before anything else", () => {
+    expect(artifactKind(file("runs/analysis.ipynb"))).toBe("notebook");
+    expect(artifactKind(file("runs/ANALYSIS.IPYNB", "", "application/json"))).toBe("notebook");
+    expect(artifactKind(file("runs/analysis", "", "application/x-ipynb+json"))).toBe("notebook");
+  });
+
   it("treats HTML by extension or media type as a page", () => {
     expect(artifactKind(file("out/report.html"))).toBe("html");
     expect(artifactKind(file("out/REPORT.HTM"))).toBe("html");
@@ -332,6 +338,20 @@ describe("artifactPreview", () => {
     expect(artifactPreview(figure, content({ exists: false }))).toEqual({ type: "none", reason: "missing" });
   });
 
+  it("hands a notebook's text to the notebook view", () => {
+    const notebook = { kind: "notebook" as const, path: "runs/a.ipynb" };
+    expect(artifactPreview(notebook, content({ text: '{"nbformat": 4}' }))).toEqual({ type: "notebook", text: '{"nbformat": 4}' });
+  });
+
+  it("says a notebook without text is too large to preview", () => {
+    const notebook = { kind: "notebook" as const, path: "runs/a.ipynb" };
+    expect(artifactPreview(notebook, content({ text: null, binary: true, truncated: true }))).toEqual({
+      type: "none",
+      reason: "large",
+    });
+    expect(artifactPreview(notebook, content({ exists: false }))).toEqual({ type: "none", reason: "missing" });
+  });
+
   it("never previews HTML", () => {
     expect(artifactPreview({ kind: "html", path: "out/page.html" }, content({ text: "<p>x</p>" }))).toEqual({
       type: "none",
@@ -418,6 +438,12 @@ describe("artifactPreview", () => {
 });
 
 describe("artifactSnippet", () => {
+  it("embeds notebooks as a notebook block", () => {
+    expect(artifactSnippet({ kind: "notebook", title: "Run [3]" }, "assets/analysis-1a2b3c4d.ipynb")).toBe(
+      "```notebook\nassets/analysis-1a2b3c4d.ipynb\n```",
+    );
+  });
+
   it("embeds figures as images", () => {
     expect(artifactSnippet({ kind: "figure", title: "Loss curve" }, "assets/loss.png")).toBe("![Loss curve](assets/loss.png)");
   });

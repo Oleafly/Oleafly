@@ -1,13 +1,8 @@
-import {
-  memo,
-  useMemo,
-  useRef,
-  type KeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-  type ReactNode,
-} from "react";
+import { memo, Suspense, useEffect, useMemo, useRef, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
-import { Sparkles, X } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
+import { NotebookPen, Sparkles, X } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,6 +13,10 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
 import { useDiffStore, type DiffSide, type OpenDiff } from "@/store/diff";
+import { activeNoteTab, editsAsMarkdown, noteTabsFor, useNoteTabsStore } from "@/store/note-tabs";
+import { useSettingsStore } from "@/store/settings";
+import { isMarkdownFile, noteFileFacts, noteFileStem } from "@/lib/project-notes";
+import { logError } from "@/lib/log";
 import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 import { FileTabStatus } from "./FileTabStatus";
@@ -38,6 +37,61 @@ const DIFF_TAB_SIDE_LABEL = {
 } as const satisfies Record<DiffSide, string>;
 
 const MIDDLE_BUTTON = 1;
+
+const NoteTabIcon = lazy(() => import("@/components/notes/note-tab-icon"), { warm: () => useSettingsStore.getState().notes });
+
+const loadNoteTabMenu = () => import("./note-tab-menu");
+const NoteTabMenuItems = lazy(loadNoteTabMenu, { warm: () => useSettingsStore.getState().notes });
+
+function useNoteTabMenu(tab: EditorTab): boolean {
+  const notesOn = useSettingsStore((s) => s.notes);
+  return useFilesStore(
+    (s) =>
+      tab.kind === "note" ||
+      (tab.kind === "file" &&
+        notesOn &&
+        s.projectKind !== "note" &&
+        isMarkdownFile(tab.id) &&
+        noteFileFacts(s.files[tab.id]?.content) !== null),
+  );
+}
+
+interface NoteLabel {
+  title: string;
+  icon?: string;
+  color?: string;
+}
+
+function useNoteFileLabel(path: string): NoteLabel | null {
+  const notesOn = useSettingsStore((s) => s.notes);
+  const projectId = useFilesStore((s) => s.projectId);
+  const markdown = useNoteTabsStore((s) => editsAsMarkdown(s, projectId, path));
+  const facts = useFilesStore(
+    useShallow((s) => {
+      if (!notesOn || markdown || s.projectKind === "note" || !isMarkdownFile(path)) return null;
+      const found = noteFileFacts(s.files[path]?.content);
+      return found ? { title: found.title, icon: found.icon, color: found.color } : null;
+    }),
+  );
+  return useMemo(
+    () =>
+      facts
+        ? { title: facts.title ?? noteFileStem(path), icon: facts.icon ?? undefined, color: facts.color ?? undefined }
+        : null,
+    [facts, path],
+  );
+}
+
+function NoteTabMark({ icon, color }: Readonly<{ icon?: string; color?: string }>) {
+  useEffect(() => {
+    loadNoteTabMenu().catch((error: unknown) => logError("load the note tab menu", error));
+  }, []);
+  return (
+    <Suspense fallback={<NotebookPen aria-hidden className="size-3.5 shrink-0" />}>
+      <NoteTabIcon icon={icon} color={color} />
+    </Suspense>
+  );
+}
 
 function openMenuFrom(row: HTMLElement | null) {
   if (!row) return;
@@ -65,12 +119,14 @@ interface ScopeItem {
 function useEditorTabPlacement(tab: EditorTab): { position: number; total: number } {
   const openTabs = useFilesStore((s) => s.openTabs);
   const tabOrder = useFilesStore((s) => s.tabOrder);
+  const projectId = useFilesStore((s) => s.projectId);
   const diffs = useDiffStore((s) => s.diffs);
+  const allNotes = useNoteTabsStore((s) => s.tabs);
   return useMemo(() => {
-    const tabs = editorTabs(openTabs, tabOrder, diffs);
+    const tabs = editorTabs(openTabs, tabOrder, diffs, noteTabsFor({ tabs: allNotes }, projectId));
     const key = editorTabKey(tab);
     return { position: tabs.findIndex((entry) => editorTabKey(entry) === key), total: tabs.length };
-  }, [diffs, openTabs, tab, tabOrder]);
+  }, [allNotes, diffs, openTabs, projectId, tab, tabOrder]);
 }
 
 function EditorTabMenu({ tab }: Readonly<{ tab: EditorTab }>) {
@@ -85,6 +141,7 @@ function EditorTabMenuItems({ tab }: Readonly<{ tab: EditorTab }>) {
   const { t } = useTranslation(["common", "editor"]);
   const assistantCount = useFilesStore((s) => s.assistantTabs.length);
   const { position, total } = useEditorTabPlacement(tab);
+  const noteMenu = useNoteTabMenu(tab);
   const items: ScopeItem[] = [
     { scope: "others", label: t(($) => $.editor.shell.closeOthers), disabled: total < 2 },
     { scope: "left", label: t(($) => $.editor.shell.closeLeft), disabled: position === 0 },
@@ -93,6 +150,11 @@ function EditorTabMenuItems({ tab }: Readonly<{ tab: EditorTab }>) {
   ];
   return (
     <>
+      {noteMenu ? (
+        <Suspense fallback={null}>
+          <NoteTabMenuItems tab={tab} />
+        </Suspense>
+      ) : null}
       <ContextMenuItem data-testid="editor-tab-menu-close" onClick={() => closeEditorTab(tab)}>
         {t(($) => $.common.actions.close)}
       </ContextMenuItem>
@@ -206,6 +268,7 @@ const FileTab = memo(function FileTab({
   closeLabel: string;
 }>) {
   const tab = useMemo<EditorTab>(() => ({ kind: "file", id: path, order }), [path, order]);
+  const note = useNoteFileLabel(path);
   return (
     <EditorTabItem
       tab={tab}
@@ -213,7 +276,16 @@ const FileTab = memo(function FileTab({
       closeLabel={closeLabel}
       onActivate={() => useFilesStore.getState().setActive(path)}
     >
-      {basename(path)}
+      {note ? (
+        <>
+          <NoteTabMark icon={note.icon} color={note.color} />
+          <span data-testid="editor-note-tab-title" className="max-w-48 truncate">
+            {note.title}
+          </span>
+        </>
+      ) : (
+        basename(path)
+      )}
       {assistant ? <AssistantTabMark /> : null}
       <FileTabStatus path={path} />
     </EditorTabItem>
@@ -250,15 +322,57 @@ const DiffTab = memo(function DiffTab({
   );
 });
 
+const PersonalNoteTab = memo(function PersonalNoteTab({
+  id,
+  order,
+  active,
+}: Readonly<{
+  id: string;
+  order: number;
+  active: boolean;
+}>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const tab = useMemo<EditorTab>(() => ({ kind: "note", id, order }), [id, order]);
+  const title = useFilesStore((s) => s.projects.find((project) => project.id === id)?.name ?? "");
+  const look = useNoteTabsStore(
+    useShallow((s) => {
+      const found = s.tabs.find((entry) => entry.id === id);
+      return { icon: found?.icon, color: found?.color };
+    }),
+  );
+  return (
+    <EditorTabItem
+      tab={tab}
+      active={active}
+      closeLabel={t(($) => $.editor.shell.closeFile, { name: title })}
+      onActivate={() => useNoteTabsStore.getState().setActive(id)}
+    >
+      <NoteTabMark icon={look.icon} color={look.color} />
+      <span data-testid="editor-personal-note-tab-title" className="max-w-48 truncate">
+        {title}
+      </span>
+    </EditorTabItem>
+  );
+});
+
 export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const openTabs = useFilesStore((s) => s.openTabs);
   const tabOrder = useFilesStore((s) => s.tabOrder);
   const activePath = useFilesStore((s) => s.activePath);
   const assistantTabs = useFilesStore((s) => s.assistantTabs);
+  const projectId = useFilesStore((s) => s.projectId);
   const diffs = useDiffStore((s) => s.diffs);
   const activeKey = useDiffStore((s) => s.activeKey);
-  const tabs = useMemo(() => editorTabs(openTabs, tabOrder, diffs), [openTabs, tabOrder, diffs]);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const allNotes = useNoteTabsStore((s) => s.tabs);
+  const activeNote = useNoteTabsStore((s) => (notesOn ? activeNoteTab(s, projectId) : null));
+  const notes = useMemo(
+    () => (notesOn ? noteTabsFor({ tabs: allNotes }, projectId) : []),
+    [allNotes, notesOn, projectId],
+  );
+  const tabs = useMemo(() => editorTabs(openTabs, tabOrder, diffs, notes), [openTabs, tabOrder, diffs, notes]);
+  const fileFocused = !diffFocused && activeNote === null;
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar">
@@ -273,16 +387,18 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
             key={`f:${tab.id}`}
             path={tab.id}
             order={tab.order}
-            active={tab.id === activePath && !diffFocused}
+            active={tab.id === activePath && fileFocused}
             assistant={assistantTabs.includes(tab.id)}
             closeLabel={t(($) => $.editor.shell.closeFile, { name: basename(tab.id) })}
           />
+        ) : tab.kind === "note" ? (
+          <PersonalNoteTab key={`n:${tab.id}`} id={tab.id} order={tab.order} active={activeNote === tab.id} />
         ) : (
           <DiffTab
             key={`d:${tab.id}`}
             id={tab.id}
             diff={tab.d}
-            active={activeKey === tab.id}
+            active={activeKey === tab.id && activeNote === null}
             closeLabel={t(($) => $.editor.shell.closeDiffTab, { name: basename(tab.d.path) })}
             sideLabel={t(($) => $.editor.shell[DIFF_TAB_SIDE_LABEL[tab.d.side]])}
           />

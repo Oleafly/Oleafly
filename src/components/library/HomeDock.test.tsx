@@ -150,6 +150,18 @@ describe("HomeDock", () => {
     expect(screen.queryByTestId("open-search")).toBeNull();
   });
 
+  it("does not count notes as projects while Notes is on", () => {
+    useFilesStore.setState({ projects: [{ id: "n1", kind: "note" }] as never });
+    useSettingsStore.setState({ notes: true });
+    const { unmount } = render(<HomeDock />);
+    expect(screen.queryByTestId("open-search")).toBeNull();
+    unmount();
+
+    useSettingsStore.setState({ notes: false });
+    render(<HomeDock />);
+    expect(screen.getByTestId("open-search")).toBeInTheDocument();
+  });
+
   it("docks on the right edge", () => {
     useSettingsStore.setState({ dockPlacement: "right" });
     render(<HomeDock />);

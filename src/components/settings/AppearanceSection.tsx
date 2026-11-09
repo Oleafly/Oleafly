@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronRight, Plus, RotateCcw } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -65,6 +65,7 @@ import {
   useSettingsStore,
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
+import { lazy } from "@/lib/preloadable";
 import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -77,6 +78,15 @@ import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { InfoHint } from "@/components/ui/info-hint";
+import { CustomNumberInput } from "@/components/settings/CustomNumberInput";
+import { FontSizeControl } from "@/components/settings/FontSizeControl";
+import { LoadingState } from "@/components/ui/empty";
+import { SettingsOptionCards } from "@/components/settings/SettingsOptionCards";
+
+const NotesAppearanceTab = lazy(
+  () => import("@/components/settings/NotesAppearance").then((module) => ({ default: module.NotesAppearanceTab })),
+  { warm: () => useSettingsStore.getState().notes },
+);
 
 const APPEARANCE_TABS = [
   { id: "app", label: () => i18n.t(($) => $.settings.appearance.tabs.app) },
@@ -84,6 +94,7 @@ const APPEARANCE_TABS = [
   { id: "terminal", label: () => i18n.t(($) => $.settings.appearance.tabs.terminal) },
   { id: "pdf", label: () => i18n.t(($) => $.settings.appearance.tabs.pdf) },
   { id: "files", label: () => i18n.t(($) => $.settings.appearance.tabs.files) },
+  { id: "notes", label: () => i18n.t(($) => $.settings.appearance.tabs.notes) },
 ] as const;
 
 type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
@@ -155,94 +166,75 @@ function AppAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.dock.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.dock.description)}
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              { id: "left", label: t(($) => $.settings.appearance.app.dock.left) },
-              { id: "bottom", label: t(($) => $.settings.appearance.app.dock.bottom) },
-              { id: "right", label: t(($) => $.settings.appearance.app.dock.right) },
-            ] as const
-          ).map((option) => {
-            const active = dockPlacement === option.id;
-            return (
-              <button
-                type="button"
-                key={option.id}
-                data-testid={`settings-dock-placement-${option.id}`}
-                onClick={() => setDockPlacement(option.id)}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-accent",
-                )}
-              >
-                <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
-                  {option.id === "left" ? (
-                    <div className="absolute inset-y-1 left-1 w-2 rounded bg-foreground/30" />
-                  ) : null}
-                  {option.id === "right" ? (
-                    <div className="absolute inset-y-1 right-1 w-2 rounded bg-foreground/30" />
-                  ) : null}
-                  {option.id === "bottom" ? (
-                    <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
-                  ) : null}
-                </div>
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <SettingsOptionCards
+        label={t(($) => $.settings.appearance.app.dock.label)}
+        description={t(($) => $.settings.appearance.app.dock.description)}
+        value={dockPlacement}
+        onChange={setDockPlacement}
+        optionTestId={(id) => `settings-dock-placement-${id}`}
+        options={[
+          {
+            id: "left",
+            label: t(($) => $.settings.appearance.app.dock.left),
+            preview: (
+              <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
+                <div className="absolute inset-y-1 left-1 w-2 rounded bg-foreground/30" />
+              </div>
+            ),
+          },
+          {
+            id: "bottom",
+            label: t(($) => $.settings.appearance.app.dock.bottom),
+            preview: (
+              <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
+                <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
+              </div>
+            ),
+          },
+          {
+            id: "right",
+            label: t(($) => $.settings.appearance.app.dock.right),
+            preview: (
+              <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
+                <div className="absolute inset-y-1 right-1 w-2 rounded bg-foreground/30" />
+              </div>
+            ),
+          },
+        ]}
+      />
 
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.bgPattern.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.bgPattern.description)}
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              { id: "dots", label: t(($) => $.settings.appearance.app.bgPattern.dots) },
-              { id: "grid", label: t(($) => $.settings.appearance.app.bgPattern.grid) },
-              { id: "none", label: t(($) => $.common.state.none) },
-            ] as const
-          ).map((option) => {
-            const active = bgPattern === option.id;
-            return (
-              <button
-                type="button"
-                key={option.id}
-                data-testid={`settings-bg-pattern-${option.id}`}
-                onClick={() => setBgPattern(option.id)}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-accent",
-                )}
-              >
-                <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
-                  {option.id === "dots" ? (
-                    <DotPattern width={10} height={10} radius={0.75} />
-                  ) : null}
-                  {option.id === "grid" ? <GridPattern width={16} height={16} className="home-grid-fade" /> : null}
-                </div>
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <SettingsOptionCards
+        label={t(($) => $.settings.appearance.app.bgPattern.label)}
+        description={t(($) => $.settings.appearance.app.bgPattern.description)}
+        value={bgPattern}
+        onChange={setBgPattern}
+        optionTestId={(id) => `settings-bg-pattern-${id}`}
+        options={[
+          {
+            id: "dots",
+            label: t(($) => $.settings.appearance.app.bgPattern.dots),
+            preview: (
+              <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
+                <DotPattern width={10} height={10} radius={0.75} />
+              </div>
+            ),
+          },
+          {
+            id: "grid",
+            label: t(($) => $.settings.appearance.app.bgPattern.grid),
+            preview: (
+              <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
+                <GridPattern width={16} height={16} className="home-grid-fade" />
+              </div>
+            ),
+          },
+          {
+            id: "none",
+            label: t(($) => $.common.state.none),
+            preview: <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]" />,
+          },
+        ]}
+      />
 
       <SettingsRow
         testId="settings-row-accent"
@@ -477,65 +469,6 @@ function EditorCursorColorRow() {
   );
 }
 
-function CustomNumberInput({
-  value,
-  onCommit,
-  range,
-  clamp,
-  ariaLabel,
-  testId,
-  disabled = false,
-}: Readonly<{
-  value: number;
-  onCommit: (value: number) => void;
-  range: Readonly<{ min: number; max: number; step: number }>;
-  clamp: (value: number) => number;
-  ariaLabel: string;
-  testId: string;
-  disabled?: boolean;
-}>) {
-  const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
-    setDraft((current) => (Number(current) === value ? current : String(value)));
-  }, [value]);
-
-  const commit = () => {
-    const typed = Number(draft);
-    const next = draft.trim() === "" || !Number.isFinite(typed) ? value : clamp(typed);
-    onCommit(next);
-    setDraft(String(next));
-  };
-
-  return (
-    <Input
-      type="number"
-      inputMode="decimal"
-      min={range.min}
-      max={range.max}
-      step={range.step}
-      aria-label={ariaLabel}
-      data-testid={testId}
-      disabled={disabled}
-      className="h-9 w-[76px]"
-      value={draft}
-      onChange={(event) => {
-        setDraft(event.target.value);
-        const typed = Number(event.target.value);
-        if (event.target.value.trim() !== "" && Number.isFinite(typed) && typed >= range.min && typed <= range.max) {
-          onCommit(typed);
-        }
-      }}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        commit();
-      }}
-    />
-  );
-}
-
 function DisabledHint({
   disabled,
   hint,
@@ -555,43 +488,19 @@ function EditorFontSizeControl({ disabled }: Readonly<{ disabled: boolean }>) {
   const { t } = useTranslation(["settings"]);
   const size = useSettingsStore((state) => state.editorFontSize);
   const setSize = useSettingsStore((state) => state.setEditorFontSize);
-  const [customChosen, setCustomChosen] = useState(false);
-  const choice = customChosen || !EDITOR_FONT_SIZES.includes(size) ? "custom" : String(size);
-
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <Select
-        disabled={disabled}
-        value={choice}
-        onValueChange={(value) => {
-          setCustomChosen(value === "custom");
-          if (value !== "custom") setSize(Number(value));
-        }}
-      >
-        <SelectTrigger className="w-[112px]" data-testid="settings-editor-font-size-trigger">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="z-[100]">
-          {EDITOR_FONT_SIZES.map((option) => (
-            <SelectItem key={option} value={String(option)}>
-              {t(($) => $.settings.appearance.fontSizeOption, { size: option })}
-            </SelectItem>
-          ))}
-          <SelectItem value="custom">{t(($) => $.settings.appearance.editor.fontSize.custom)}</SelectItem>
-        </SelectContent>
-      </Select>
-      {choice === "custom" ? (
-        <CustomNumberInput
-          value={size}
-          onCommit={setSize}
-          range={EDITOR_FONT_SIZE_RANGE}
-          clamp={clampEditorFontSize}
-          ariaLabel={t(($) => $.settings.appearance.editor.fontSize.customLabel)}
-          testId="settings-editor-font-size-custom"
-          disabled={disabled}
-        />
-      ) : null}
-    </div>
+    <FontSizeControl
+      value={size}
+      onChange={setSize}
+      presets={EDITOR_FONT_SIZES}
+      range={EDITOR_FONT_SIZE_RANGE}
+      clamp={clampEditorFontSize}
+      customOption={t(($) => $.settings.appearance.editor.fontSize.custom)}
+      customLabel={t(($) => $.settings.appearance.editor.fontSize.customLabel)}
+      triggerTestId="settings-editor-font-size-trigger"
+      customTestId="settings-editor-font-size-custom"
+      disabled={disabled}
+    />
   );
 }
 
@@ -1624,22 +1533,25 @@ function FileManagementTab() {
   );
 }
 
-function isAppearanceTab(value: unknown): value is AppearanceTabId {
-  return APPEARANCE_TABS.some((tab) => tab.id === value);
+function isAppearanceTab(value: unknown, notesEnabled: boolean): value is AppearanceTabId {
+  return APPEARANCE_TABS.some((tab) => tab.id === value && (tab.id !== "notes" || notesEnabled));
 }
 
 export function AppearanceSection() {
   const { t } = useTranslation(["common", "settings"]);
   const requestedTab = useSettingsStore((state) => state.settingsInitialAppearanceTab);
   const setRequestedTab = useSettingsStore((state) => state.setSettingsInitialAppearanceTab);
-  const [activeTab, setActiveTab] = useState<AppearanceTabId>(() =>
-    isAppearanceTab(requestedTab) ? requestedTab : "app",
+  const notesEnabled = useSettingsStore((state) => state.notes);
+  const [chosenTab, setActiveTab] = useState<AppearanceTabId>(() =>
+    isAppearanceTab(requestedTab, notesEnabled) ? requestedTab : "app",
   );
+  const activeTab = chosenTab === "notes" && !notesEnabled ? "app" : chosenTab;
+  const tabs = APPEARANCE_TABS.filter((tab) => tab.id !== "notes" || notesEnabled);
   useEffect(() => {
-    if (!isAppearanceTab(requestedTab)) return;
+    if (!isAppearanceTab(requestedTab, notesEnabled)) return;
     setActiveTab(requestedTab);
     setRequestedTab(null);
-  }, [requestedTab, setRequestedTab]);
+  }, [notesEnabled, requestedTab, setRequestedTab]);
   const resetAppearancePreferences = useSettingsStore(
     (state) => state.resetAppearancePreferences,
   );
@@ -1656,7 +1568,7 @@ export function AppearanceSection() {
         className="space-y-4"
       >
         <TabsList scrollable data-testid="appearance-tab-strip">
-          {APPEARANCE_TABS.map((tab) => (
+          {tabs.map((tab) => (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
@@ -1681,6 +1593,22 @@ export function AppearanceSection() {
         <TabsContent value="files">
           <FileManagementTab />
         </TabsContent>
+        {notesEnabled ? (
+          <TabsContent value="notes">
+            <Suspense
+              fallback={
+                <LoadingState
+                  size="compact"
+                  label={t(($) => $.common.state.loading)}
+                  testId="settings-appearance-notes-loading"
+                  className="h-40 justify-center"
+                />
+              }
+            >
+              <NotesAppearanceTab />
+            </Suspense>
+          </TabsContent>
+        ) : null}
       </Tabs>
       <ResetToDefaults
         sectionName={t(($) => $.settings.appearance.sectionName)}

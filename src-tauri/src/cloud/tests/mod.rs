@@ -5,5 +5,7 @@ pub(crate) mod fake_drive;
 mod fake_dropbox;
 pub(crate) mod fake_s3;
 pub(crate) mod memory;
+mod notes;
+mod notes_commands;
 mod s3_http;
 mod store_http;

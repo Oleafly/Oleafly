@@ -1,6 +1,10 @@
 import {
   AlignLeft,
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowLeftToLine,
   ArrowRightToLine,
+  ArrowUpToLine,
   Asterisk,
   Bold,
   CaseLower,
@@ -25,6 +29,7 @@ import {
   List,
   MessageSquareCode,
   Monitor,
+  NotebookPen,
   Moon,
   Package,
   Pencil,
@@ -135,11 +140,24 @@ import {
   openToolsGallery,
 } from "@/features/open-tool";
 import { openFolderWithPicker } from "@/features/open-folder";
+import { logError } from "@/lib/log";
 import { openTypstPackages } from "@/components/typst-packages/open";
 import { openLatexPackages } from "@/components/packages/open";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { toggleZenMode } from "@/lib/zen-mode";
 import { togglePreviewPane } from "@/lib/compile-preview";
+import {
+  PANES,
+  layoutKey,
+  movePane,
+  movePaneToEdge,
+  paneLayoutIsDefault,
+  resetPaneLayout,
+  swapEditorAndPreview,
+  usePaneLayoutStore,
+  type PaneId,
+  type Side,
+} from "@/store/pane-layout";
 import { zoomApp } from "@/lib/app-zoom";
 import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
 import { shortcut } from "@/lib/utils";
@@ -204,10 +222,25 @@ const ENGLISH_KEYWORDS = {
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
   togglePreview: "pdf preview show hide split editor only layout view",
+  resetPaneLayout: "reset pane layout order move panels sidebar assistant editor preview terminal default",
+  movePaneToEdge: "move pane edge dock side split stack layout",
+  swapEditorPreview: "swap editor preview pdf sides pane order layout",
   zoomIn: "zoom in bigger larger magnify scale interface window",
   zoomOut: "zoom out smaller shrink scale interface window",
   resetZoom: "reset zoom actual size 100 percent scale interface window",
 } as const;
+
+const PANE_EDGE_ICONS = [
+  ["left", ArrowLeftToLine],
+  ["right", ArrowRightToLine],
+  ["top", ArrowUpToLine],
+  ["bottom", ArrowDownToLine],
+] as const satisfies readonly (readonly [Side, unknown])[];
+
+function paneMovesToEdge(pane: PaneId, side: Side): boolean {
+  const { layout } = usePaneLayoutStore.getState();
+  return layoutKey(movePane(layout, pane, { kind: "edge", side })) !== layoutKey(layout);
+}
 
 const runLanguageServiceFormat = (scope: FormatScope) => {
   const view = getEditorView();
@@ -570,6 +603,39 @@ export function registerPaletteCommands() {
     order: 120,
     when: (ctx) => !!ctx.projectId && useFilesStore.getState().manifestHome === "device",
     run: () => void useFilesStore.getState().saveSettingsToFolder(),
+  });
+  const projectNotesShown = (ctx: AppContext) =>
+    !!ctx.projectId && ctx.projectKind !== "note" && useSettingsStore.getState().notes;
+  palette({
+    id: "palette.project-notes",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.projectNotes.open),
+    keywords: () => `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research linked related project`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 125,
+    when: projectNotesShown,
+    run: () => {
+      const settings = useSettingsStore.getState();
+      settings.setRailTab("notes");
+      settings.setShowTree(true);
+    },
+  });
+  palette({
+    id: "palette.new-project-note",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.projectNotes.new),
+    keywords: () => `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research new create project`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 126,
+    when: projectNotesShown,
+    run: (ctx) => {
+      const projectId = ctx.projectId;
+      if (!projectId) return;
+      void import("@/components/notes/project-notes").then(
+        (module) => module.startProjectNote(projectId),
+        (error: unknown) => logError("load project notes", error),
+      );
+    },
   });
 
   palette({
@@ -1042,6 +1108,46 @@ export function registerPaletteCommands() {
     run: () => {
       togglePreviewPane();
     },
+  });
+  for (const pane of PANES) {
+    for (const [side, Icon] of PANE_EDGE_ICONS) {
+      palette({
+        id: `palette.move-${pane}-to-${side}`,
+        group: () => i18n.t(($) => $.shell.commandGroups.settings),
+        label: () =>
+          i18n.t(($) => $.shell.commands.movePaneToEdge[side], {
+            pane: i18n.t(($) => $.shell.commands.paneNames[pane]),
+          }),
+        keywords: () =>
+          `${i18n.t(($) => $.shell.commands.movePaneToEdge.keywords)} ${ENGLISH_KEYWORDS.movePaneToEdge} ${pane}`,
+        icon: () => <Icon className="size-4" />,
+        order: 516,
+        when: (ctx) => !!ctx.projectId && paneMovesToEdge(pane, side),
+        run: () => movePaneToEdge(pane, side),
+      });
+    }
+  }
+  palette({
+    id: "palette.swap-editor-preview",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.swapEditorPreview.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.swapEditorPreview.keywords)} ${ENGLISH_KEYWORDS.swapEditorPreview}`,
+    icon: () => <ArrowLeftRight className="size-4" />,
+    order: 516,
+    when: (ctx) => !!ctx.projectId,
+    run: () => swapEditorAndPreview(),
+  });
+  palette({
+    id: "palette.reset-pane-layout",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.resetPaneLayout.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.resetPaneLayout.keywords)} ${ENGLISH_KEYWORDS.resetPaneLayout}`,
+    icon: () => <RotateCcw className="size-4" />,
+    order: 516,
+    when: (ctx) => !!ctx.projectId && !paneLayoutIsDefault(),
+    run: () => resetPaneLayout(),
   });
   for (const [id, direction, Icon, order] of [
     ["zoomIn", 1, ZoomIn, 517],

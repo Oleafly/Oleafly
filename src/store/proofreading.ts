@@ -31,6 +31,7 @@ export interface ProofreadingSurfaceState {
 interface ProofreadingState {
   source: ProofreadingSurfaceState;
   visual: ProofreadingSurfaceState;
+  notes: ProofreadingSurfaceState;
   begin: (identity: ProofreadingIdentity) => void;
   complete: (result: ProofreadingResult) => void;
   fail: (
@@ -56,6 +57,7 @@ const IDLE_STATE: ProofreadingSurfaceState = {
 export const useProofreadingStore = create<ProofreadingState>((set) => ({
   source: IDLE_STATE,
   visual: IDLE_STATE,
+  notes: IDLE_STATE,
   begin: (identity) =>
     set((state) => {
       const previous = state[identity.surface];

@@ -13,18 +13,21 @@ import type { NoteDocument as NoteDocumentComponent } from "./NoteDocument";
 import type { NotesHome as NotesHomeComponent } from "./NotesHome";
 import type { NotesLibrary as NotesLibraryComponent } from "./NotesLibrary";
 import type { ArtifactItem, NoteItem } from "./types";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const env = vi.hoisted(() => ({ mac: false, fullscreen: false }));
-const probe = vi.hoisted(() => ({ mounts: new Map<string, number>() }));
+const probe = vi.hoisted(() => ({ mounts: new Map<string, number>(), renders: new Map<string, number>(), titles: new Map<string, string>(), retry: vi.fn() }));
 const label = vi.hoisted(() => ({
   library: "Library",
   libraryHome: "Library home",
   libraryNewNote: "Library new note",
-  startNote: "Home start note",
+  homeNewNote: "Home new note",
   sendSelection: "Send selection",
   markSaving: "Mark saving",
   markFailed: "Mark failed",
   markSaved: "Mark saved",
+  openHeading: "Open heading",
+  openPlain: "Open plain",
 }));
 
 vi.mock("@/lib/utils", async (importOriginal) => {
@@ -46,23 +49,36 @@ vi.mock("./NoteDocument", async () => {
       insertRequest,
       onSendToPaper,
       onStatusChange,
+      onOpenNote,
+      openHeading,
     }: Parameters<typeof NoteDocumentComponent>[0]) {
+      probe.renders.set(note.id, (probe.renders.get(note.id) ?? 0) + 1);
+      probe.titles.set(note.id, note.title);
       useEffect(() => {
         probe.mounts.set(note.id, (probe.mounts.get(note.id) ?? 0) + 1);
       }, [note.id]);
       return (
         <div data-testid={`document-${note.id}`}>
           <output data-testid={`insert-${note.id}`}>{insertRequest ? `${insertRequest.snippet} #${insertRequest.id}` : "none"}</output>
-          <button type="button" onClick={() => onSendToPaper(`Selected in ${note.title}`)}>
-            {label.sendSelection}
+          <output data-testid={`heading-${note.id}`}>{openHeading ? `${openHeading.slug} #${openHeading.id}` : "none"}</output>
+          <button type="button" onClick={() => onOpenNote?.("n2", { newTab: false, heading: "method" })}>
+            {label.openHeading}
           </button>
-          <button type="button" onClick={() => onStatusChange?.("saving")}>
+          <button type="button" onClick={() => onOpenNote?.("n3", { newTab: false })}>
+            {label.openPlain}
+          </button>
+          {onSendToPaper && (
+            <button type="button" onClick={() => onSendToPaper(`Selected in ${note.title}`)}>
+              {label.sendSelection}
+            </button>
+          )}
+          <button type="button" onClick={() => onStatusChange?.("saving", null)}>
             {label.markSaving}
           </button>
-          <button type="button" onClick={() => onStatusChange?.("failed")}>
+          <button type="button" onClick={() => onStatusChange?.("failed", { error: new Error("The disk is full."), retry: probe.retry })}>
             {label.markFailed}
           </button>
-          <button type="button" onClick={() => onStatusChange?.("saved")}>
+          <button type="button" onClick={() => onStatusChange?.("saved", null)}>
             {label.markSaved}
           </button>
         </div>
@@ -119,7 +135,12 @@ vi.mock("./NotesLibrary", async () => {
 vi.mock("./NotesHome", async () => {
   const { useNotesData } = await import("./notes-data");
   return {
-    NotesHome: function NotesHomeStandIn({ iconFor, onOpenNote, onOpenArtifact, onStartNote }: Parameters<typeof NotesHomeComponent>[0]) {
+    NotesHome: function NotesHomeStandIn({
+      iconFor,
+      onOpenNote,
+      onOpenNoteInNewTab,
+      onNewNote,
+    }: Parameters<typeof NotesHomeComponent>[0]) {
       const data = useNotesData();
       return (
         <section data-testid="home">
@@ -128,16 +149,17 @@ vi.mock("./NotesHome", async () => {
               {`Home note ${note.id}`}
             </button>
           ))}
-          {data.artifacts.map((artifact) => (
-            <button key={artifact.id} type="button" onClick={() => onOpenArtifact(artifact)}>
-              {`Home artifact ${artifact.id}`}
-            </button>
-          ))}
-          {onStartNote && (
-            <button type="button" onClick={() => onStartNote("Write up run 42")}>
-              {label.startNote}
+          {onNewNote && (
+            <button type="button" onClick={onNewNote}>
+              {label.homeNewNote}
             </button>
           )}
+          {onOpenNoteInNewTab &&
+            data.notes.map((note) => (
+              <button key={note.id} type="button" onClick={() => onOpenNoteInNewTab(note.id)}>
+                {`Home new tab ${note.id}`}
+              </button>
+            ))}
         </section>
       );
     },
@@ -179,6 +201,7 @@ vi.mock("./ArtifactPanel", async () => {
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { defaultNotesLayout, NOTES_LAYOUT_KEY, noteView } from "./notes-layout";
 import { NotesWorkspace } from "./NotesWorkspace";
+import { useSettingsStore } from "@/store/settings";
 
 type WorkspaceProps = Parameters<typeof NotesWorkspace>[0];
 
@@ -255,11 +278,9 @@ function fakeData(overrides: Partial<NotesData> = {}): NotesData {
     notes,
     artifacts,
     experiments: [],
-    agents: [],
     citations: [],
     papers,
     copyArtifact: vi.fn((_noteId: string, item: ArtifactItem) => Promise.resolve(`files/${item.id}.png`)),
-    proposeEdits: vi.fn(),
     loadNote: vi.fn(),
     saveNote: vi.fn(),
     ...overrides,
@@ -382,6 +403,16 @@ describe("NotesWorkspace layout", () => {
     expect(savedLayout()).toEqual(defaultNotesLayout());
   });
 
+  it("styles its notes from the Notes appearance settings", () => {
+    const { container, unmount } = renderWorkspace();
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.getPropertyValue("--notes-text-size")).toBe("0.9375rem");
+    act(() => useSettingsStore.getState().setNotesAppearance("notesCalloutStyle", "outlined"));
+    expect(root).toHaveAttribute("data-notes-callout", "outlined");
+    unmount();
+    useSettingsStore.getState().resetNotesAppearance();
+  });
+
   it("hands the note icons to the library and Home", () => {
     renderWorkspace();
     expect(screen.getByRole("button", { name: "Library note n2" })).toHaveAttribute("data-icon", "🧠");
@@ -419,12 +450,26 @@ describe("NotesWorkspace layout", () => {
     expect(groupIdOf(tab("Masking ablation"))).toBe(groupIdOf(tab(copy.home)));
     const note = panel("Masking ablation");
     expect(within(note).getByText("Vision")).toBeInTheDocument();
-    expect(within(note).getByText(copy.saved)).toBeInTheDocument();
+    expect(within(note).getByText(enNotes.saveStatus.saved)).toBeInTheDocument();
     expect(within(note).getByTestId("document-n1")).toBeInTheDocument();
     expect(shownViews()).toEqual(["note:n1"]);
     expect(libraryState()).toBe("n1 none");
     expect(artifactsToggle(2)).toHaveTextContent("2");
     expect(savedGroups()).toEqual([["home", "note:n1"]]);
+  });
+
+  it("opens a note another screen asks for while it is already showing", () => {
+    const handled = vi.fn();
+    const view = renderWorkspace();
+    expect(tabNames()).toEqual([copy.home]);
+    view.rerenderWith({ requestedNoteId: "n2", onRequestHandled: handled });
+    expect(tab("Reading list")).toHaveAttribute("aria-selected", "true");
+    expect(handled).toHaveBeenCalledOnce();
+    view.rerenderWith({ requestedNoteId: null, onRequestHandled: handled });
+    view.rerenderWith({ requestedNoteId: "n1" });
+    expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
+    expect(tabNames()).toEqual([copy.home, "Reading list", "Masking ablation"]);
+    expect(handled).toHaveBeenCalledOnce();
   });
 
   it("counts no artifacts for a note without a project", () => {
@@ -478,17 +523,23 @@ describe("NotesWorkspace layout", () => {
     expect(Object.fromEntries(probe.mounts)).toEqual({ n1: 1, n2: 1 });
   });
 
-  it("shows whether the note is saving or failed to save", async () => {
+  it("shows whether the note is saving, and why a save failed with a way to retry", async () => {
     const user = userEvent.setup();
     renderWorkspace({ initialNoteId: "n1" });
     const note = panel("Masking ablation");
+    const status = enNotes.saveStatus;
     await user.click(within(note).getByRole("button", { name: "Mark saving" }));
-    expect(within(note).getByText(copy.saving)).toHaveClass("text-muted-foreground");
-    expect(within(note).queryByText(copy.saved)).not.toBeInTheDocument();
+    expect(within(note).getByText(status.saving)).toHaveClass("text-muted-foreground");
+    expect(within(note).queryByText(status.saved)).not.toBeInTheDocument();
+    expect(within(note).queryByRole("alert")).not.toBeInTheDocument();
     await user.click(within(note).getByRole("button", { name: "Mark failed" }));
-    expect(within(note).getByText(copy.saveFailed)).toHaveClass("text-destructive");
+    const alert = within(note).getByRole("alert");
+    expect(alert).toHaveClass("text-destructive");
+    expect(alert).toHaveTextContent(status.failedWithReason.replace("{{reason}}", "The disk is full."));
+    await user.click(within(alert).getByRole("button", { name: status.retry }));
+    expect(probe.retry).toHaveBeenCalledOnce();
     await user.click(within(note).getByRole("button", { name: "Mark saved" }));
-    expect(within(note).getByText(copy.saved)).not.toHaveClass("text-destructive");
+    expect(within(note).getByText(status.saved)).not.toHaveClass("text-destructive");
   });
 
   it("explains a note that is no longer in the library", () => {
@@ -617,12 +668,13 @@ describe("NotesWorkspace Home", () => {
     expect(shownViews()).toEqual(["home"]);
   });
 
-  it("offers the brand button while the library is hidden", async () => {
+  it("offers the brand button while the library is hidden, named for where it goes", async () => {
     const user = userEvent.setup();
     const onExit = vi.fn();
     renderWorkspace({ initialNoteId: "n2", onExit });
     await user.click(screen.getByRole("button", { name: copy.hideSidebar }));
-    const brand = screen.getByRole("button", { name: enShell.home.ariaLabel });
+    expect(screen.queryByRole("button", { name: enShell.home.ariaLabel })).not.toBeInTheDocument();
+    const brand = screen.getByRole("button", { name: copy.notesHome });
     expect(brand.closest("[data-group]")).toContainElement(screen.getByRole("tablist"));
     await user.click(brand);
     expect(tab(copy.home)).toHaveAttribute("aria-selected", "true");
@@ -714,16 +766,6 @@ describe("NotesWorkspace Home tabs", () => {
     await user.click(newTabIn("g1"));
     await user.click(screen.getByRole("button", { name: "Library note n1" }));
     expect(savedGroups()).toEqual([["home", "home:2", "note:n1"]]);
-  });
-
-  it("opens an artifact picked on a Home tab in place of that tab", async () => {
-    const user = userEvent.setup();
-    renderWorkspace();
-    await user.click(newTabIn("g1"));
-    await user.click(within(homeIn("home:2")).getByRole("button", { name: "Home artifact a2" }));
-    expect(savedGroups()).toEqual([["home", "note:n1"], ["artifacts"]]);
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n1 a2");
-    expect(libraryState()).toBe("n1 a2");
   });
 
   it("goes to the first Home tab from a note, then leaves Notes", async () => {
@@ -1001,14 +1043,6 @@ describe("NotesWorkspace artifacts", () => {
     expect(libraryState()).toBe("n1 none");
   });
 
-  it("opens an artifact picked on Home", async () => {
-    const user = userEvent.setup();
-    renderWorkspace();
-    await user.click(within(homePanel()).getByRole("button", { name: "Home artifact a1" }));
-    expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n1 a1");
-  });
-
   it("opens an artifact beside its note when another note's group comes first", async () => {
     const user = userEvent.setup();
     seedLayout(
@@ -1058,6 +1092,19 @@ describe("NotesWorkspace artifacts", () => {
     expect(screen.getByTestId("panel-state")).toHaveTextContent("n2 none");
     expect(screen.getByTestId("insert-n2")).toHaveTextContent("none");
     expect(screen.getByTestId("insert-n1")).toHaveTextContent("#2");
+  });
+
+  it("offers no insert while the note can't be edited", async () => {
+    const user = userEvent.setup();
+    useCollabEditorGate.setState({ projectId: "n1", locked: true });
+    try {
+      renderWorkspace({ initialNoteId: "n1" });
+      await user.click(artifactsToggle(2));
+      expect(screen.getByRole("button", { name: "Select a1" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Insert a1" })).not.toBeInTheDocument();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, locked: false });
+    }
   });
 
   it("offers no insert when artifacts cannot be copied into notes", async () => {
@@ -1206,6 +1253,8 @@ describe("NotesWorkspace persistence", () => {
     expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
     expect(shownViews()).toEqual(["artifacts", "note:n1"]);
     expect(artifactsToggle(2)).toHaveAttribute("aria-pressed", "true");
+    expect(Object.fromEntries(probe.mounts)).toEqual({ n1: 1 });
+    await user.click(tab("Reading list"));
     expect(Object.fromEntries(probe.mounts)).toEqual({ n1: 1, n2: 1 });
   });
 
@@ -1252,6 +1301,31 @@ describe("NotesWorkspace persistence", () => {
 });
 
 describe("NotesWorkspace notes", () => {
+  it("opens a note made from Home in place of that Home tab and only when one was made", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderWorkspace();
+    expect(within(homePanel()).queryByRole("button", { name: label.homeNewNote })).not.toBeInTheDocument();
+    unmount();
+    const onNewNote = vi.fn<() => Promise<string | null>>(() => Promise.resolve(null));
+    renderWorkspace({ onNewNote });
+    await user.click(within(homePanel()).getByRole("button", { name: label.homeNewNote }));
+    await act(async () => {});
+    expect(tabNames()).toEqual([copy.home]);
+    onNewNote.mockResolvedValueOnce("n2");
+    await user.click(within(homePanel()).getByRole("button", { name: label.homeNewNote }));
+    expect(await screen.findByRole("tab", { name: "Reading list" })).toHaveAttribute("aria-selected", "true");
+    expect(tabNames()).toEqual(["Reading list"]);
+  });
+
+  it("opens a note in a new tab from Home and stamps each note brought to the front", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+    await user.click(within(homePanel()).getByRole("button", { name: "Home new tab n2" }));
+    expect(tabNames()).toEqual([copy.home, "Reading list"]);
+    const opened = JSON.parse(localStorage.getItem("oleafly.notes.opened") ?? "{}") as Record<string, number>;
+    expect(Object.keys(opened)).toEqual(["n2"]);
+  });
+
   it("opens a new note once it has been created", async () => {
     const user = userEvent.setup();
     const onNewNote = vi.fn(() => Promise.resolve("n2"));
@@ -1280,17 +1354,6 @@ describe("NotesWorkspace notes", () => {
     renderWorkspace();
     expect(screen.getByRole("button", { name: "Library new note" })).toBeDisabled();
   });
-
-  it("starts a note from a Home prompt only when it can", async () => {
-    const user = userEvent.setup();
-    const onStartNote = vi.fn();
-    const { unmount } = renderWorkspace({ onStartNote });
-    await user.click(within(homePanel()).getByRole("button", { name: "Home start note" }));
-    expect(onStartNote).toHaveBeenCalledWith("Write up run 42");
-    unmount();
-    renderWorkspace();
-    expect(within(homePanel()).queryByRole("button", { name: "Home start note" })).not.toBeInTheDocument();
-  });
 });
 
 describe("NotesWorkspace new project", () => {
@@ -1302,82 +1365,56 @@ describe("NotesWorkspace new project", () => {
     expect(screen.queryByRole("button", { name: "Project from a1" })).not.toBeInTheDocument();
   });
 
-  it("creates a project from the open note", async () => {
+  it("starts the library's new project flow from the open note", async () => {
     const user = userEvent.setup();
     const onCreateProject = vi.fn();
     renderWorkspace({ initialNoteId: "n1", onCreateProject });
     await user.click(within(panel("Masking ablation")).getByRole("button", { name: copy.newProject }));
-    const dialog = screen.getByRole("dialog", { name: enNotes.newProject.title });
-    await user.click(within(dialog).getByRole("button", { name: enNotes.newProject.create }));
-    expect(onCreateProject).toHaveBeenCalledWith({
-      seed: { noteId: "n1", artifactId: null },
-      name: "Masking ablation",
-      format: "latex",
-      files: ["n1", "a1", "a2"],
-    });
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(onCreateProject).toHaveBeenCalledWith({ noteId: "n1", artifactId: null });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("creates a project from an artifact in the panel", async () => {
+  it("starts it from an artifact in the panel", async () => {
     const user = userEvent.setup();
     const onCreateProject = vi.fn();
     renderWorkspace({ initialNoteId: "n1", onCreateProject });
     await user.click(artifactsToggle(2));
     await user.click(screen.getByRole("button", { name: "Project from a2" }));
-    const dialog = screen.getByRole("dialog", { name: enNotes.newProject.title });
-    expect(within(dialog).getByRole("checkbox", { name: "Run table" })).toBeChecked();
-    expect(within(dialog).getByRole("checkbox", { name: "Loss curve" })).not.toBeChecked();
-    await user.click(within(dialog).getByRole("button", { name: enNotes.newProject.create }));
-    expect(onCreateProject).toHaveBeenCalledWith({
-      seed: { noteId: "n1", artifactId: "a2" },
-      name: "Masking ablation",
-      format: "latex",
-      files: ["a2"],
-    });
-  });
-
-  it("closes the project dialog from Cancel without creating", async () => {
-    const user = userEvent.setup();
-    const onCreateProject = vi.fn();
-    renderWorkspace({ initialNoteId: "n1", onCreateProject });
-    await user.click(within(panel("Masking ablation")).getByRole("button", { name: copy.newProject }));
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: enCommon.actions.cancel }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(onCreateProject).not.toHaveBeenCalled();
-  });
-
-  it("cannot create once the handler goes away", async () => {
-    const user = userEvent.setup();
-    const { rerenderWith } = renderWorkspace({ initialNoteId: "n1", onCreateProject: vi.fn() });
-    await user.click(within(panel("Masking ablation")).getByRole("button", { name: copy.newProject }));
-    rerenderWith({ initialNoteId: "n1" });
-    const dialog = screen.getByRole("dialog", { name: enNotes.newProject.title });
-    expect(within(dialog).getByRole("button", { name: enNotes.newProject.create })).toBeDisabled();
-    expect(screen.queryByRole("button", { name: copy.newProject })).not.toBeInTheDocument();
+    expect(onCreateProject).toHaveBeenCalledWith({ noteId: "n1", artifactId: "a2" });
   });
 });
 
 describe("NotesWorkspace send to paper", () => {
+  const body = "---\ntitle: Masking ablation\n---\n\nThe whole note body.\n";
+
   it("offers no Send to paper without a handler", async () => {
-    const user = userEvent.setup();
     renderWorkspace({ initialNoteId: "n1" });
+    await screen.findByTestId("document-n1");
     expect(screen.queryByRole("button", { name: copy.sendToPaper })).not.toBeInTheDocument();
-    await user.click(within(panel("Masking ablation")).getByRole("button", { name: "Send selection" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(within(panel("Masking ablation")).queryByRole("button", { name: "Send selection" })).not.toBeInTheDocument();
   });
 
-  it("sends the note summary to the chosen paper", async () => {
+  it("offers no Send to paper while no paper is open to receive it", async () => {
+    renderWorkspace({ initialNoteId: "n1", onSendToPaper: vi.fn() }, fakeData({ papers: [] }));
+    await screen.findByTestId("document-n1");
+    expect(screen.queryByRole("button", { name: copy.sendToPaper })).not.toBeInTheDocument();
+    expect(within(panel("Masking ablation")).queryByRole("button", { name: "Send selection" })).not.toBeInTheDocument();
+  });
+
+  it("sends the whole note body to the chosen paper", async () => {
     const user = userEvent.setup();
     const onSendToPaper = vi.fn();
-    renderWorkspace({ initialNoteId: "n1", onSendToPaper });
+    const loadNote = vi.fn(() => Promise.resolve({ text: body, version: "v1" }));
+    renderWorkspace({ initialNoteId: "n1", onSendToPaper }, fakeData({ loadNote }));
     await user.click(within(panel("Masking ablation")).getByRole("button", { name: copy.sendToPaper }));
-    const dialog = screen.getByRole("dialog", { name: enNotes.sendToPaper.title });
+    const dialog = await screen.findByRole("dialog", { name: enNotes.sendToPaper.title });
     expect(dialog).toHaveAccessibleDescription(enNotes.sendToPaper.description);
-    expect(dialog).toHaveTextContent(notes[0].summary);
+    expect(dialog).toHaveTextContent("The whole note body.");
+    expect(loadNote).toHaveBeenCalledWith("n1");
     expect(within(dialog).getByRole("radio", { name: "Masking paper" })).toBeChecked();
     await user.click(within(dialog).getByRole("radio", { name: "Survey draft" }));
     await user.click(within(dialog).getByRole("button", { name: enNotes.sendToPaper.send }));
-    expect(onSendToPaper).toHaveBeenCalledWith({ paperId: "paper-2", text: notes[0].summary });
+    expect(onSendToPaper).toHaveBeenCalledWith({ paperId: "paper-2", text: "The whole note body." });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
@@ -1396,7 +1433,7 @@ describe("NotesWorkspace send to paper", () => {
     const user = userEvent.setup();
     const onSendToPaper = vi.fn();
     renderWorkspace({ initialNoteId: "n1", onSendToPaper });
-    const send = within(panel("Masking ablation")).getByRole("button", { name: copy.sendToPaper });
+    const send = within(panel("Masking ablation")).getByRole("button", { name: "Send selection" });
     await user.click(send);
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: enCommon.actions.cancel }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -1407,21 +1444,62 @@ describe("NotesWorkspace send to paper", () => {
     expect(onSendToPaper).not.toHaveBeenCalled();
   });
 
-  it("cannot send when there is no paper to send to", async () => {
-    const user = userEvent.setup();
-    renderWorkspace({ initialNoteId: "n1", onSendToPaper: vi.fn() }, fakeData({ papers: [] }));
-    await user.click(within(panel("Masking ablation")).getByRole("button", { name: copy.sendToPaper }));
-    const dialog = screen.getByRole("dialog", { name: enNotes.sendToPaper.title });
-    expect(within(dialog).queryByRole("radio")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: enNotes.sendToPaper.send })).toBeDisabled();
-  });
-
   it("cannot send once the handler goes away", async () => {
     const user = userEvent.setup();
     const { rerenderWith } = renderWorkspace({ initialNoteId: "n1", onSendToPaper: vi.fn() });
-    await user.click(within(panel("Masking ablation")).getByRole("button", { name: copy.sendToPaper }));
+    await user.click(within(panel("Masking ablation")).getByRole("button", { name: "Send selection" }));
     rerenderWith({ initialNoteId: "n1" });
     const dialog = screen.getByRole("dialog", { name: enNotes.sendToPaper.title });
     expect(within(dialog).getByRole("button", { name: enNotes.sendToPaper.send })).toBeDisabled();
+  });
+});
+
+describe("NotesWorkspace note links", () => {
+  it("opens a linked note at a heading and a plain linked note", () => {
+    renderWorkspace({ initialNoteId: "n1" });
+    fireEvent.click(within(panel("Masking ablation")).getByRole("button", { name: label.openHeading }));
+    expect(screen.getByTestId("heading-n2")).toHaveTextContent("method #1");
+    expect(screen.getByTestId("heading-n1")).toHaveTextContent("none");
+    fireEvent.click(tab("Masking ablation"));
+    fireEvent.click(within(panel("Masking ablation")).getByRole("button", { name: label.openHeading }));
+    expect(screen.getByTestId("heading-n2")).toHaveTextContent("method #2");
+    fireEvent.click(tab("Masking ablation"));
+    fireEvent.click(within(panel("Masking ablation")).getByRole("button", { name: label.openPlain }));
+    expect(screen.getByTestId("heading-n3")).toHaveTextContent("none");
+  });
+});
+
+describe("NotesWorkspace render cost", () => {
+  it("leaves an open note alone when another note changes, and holds a hidden note until it shows", async () => {
+    const user = userEvent.setup();
+    probe.renders.clear();
+    const { rerender } = render(
+      <NotesDataProvider value={fakeData()}>
+        <NotesWorkspace />
+      </NotesDataProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Library note n2" }));
+    await user.click(screen.getByRole("button", { name: "Library note n1" }));
+    const shown = probe.renders.get("n1") ?? 0;
+    const hidden = probe.renders.get("n2") ?? 0;
+
+    const renamed = notes.map((note) => (note.id === "n3" ? { ...note, title: "Renamed elsewhere" } : note));
+    rerender(
+      <NotesDataProvider value={fakeData({ notes: renamed })}>
+        <NotesWorkspace />
+      </NotesDataProvider>,
+    );
+    expect(probe.renders.get("n1")).toBe(shown);
+    expect(probe.renders.get("n2")).toBe(hidden);
+
+    const hiddenRenamed = renamed.map((note) => (note.id === "n2" ? { ...note, title: "Reading list v2" } : note));
+    rerender(
+      <NotesDataProvider value={fakeData({ notes: hiddenRenamed })}>
+        <NotesWorkspace />
+      </NotesDataProvider>,
+    );
+    expect(probe.titles.get("n2")).toBe("Reading list");
+    await user.click(tab("Reading list v2"));
+    expect(probe.titles.get("n2")).toBe("Reading list v2");
   });
 });

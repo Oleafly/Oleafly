@@ -385,16 +385,11 @@ pub(crate) fn copy_artifact_to_note(
 ) -> Result<crate::project::NoteAssetCopy, String> {
     crate::paths::validate_project_id(note_id)?;
     let file = preview::artifact_file(store, task_id, path)?;
-    let project_name = crate::project::read_meta(&file.task.project_id)
-        .ok()
-        .map(|meta| meta.name);
     let origin = crate::project::NoteAssetOrigin {
         sha256: file.sha256,
         copied_at: now_ms(),
         project_id: file.task.project_id,
-        project_name,
         task_id: file.task.id,
-        task_title: file.task.title,
         source_path: file.artifact.path,
         runtime_id: file.task.runtime_id,
         agent_id: file.task.agent_id,

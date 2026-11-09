@@ -55,6 +55,7 @@ export function aiToolGroupLabel(group: AiToolGroup): string {
 
 const latexOnly = () => i18n.t(($) => $.ai.tools.notes.latexOnly);
 const latexAndTypstOnly = () => i18n.t(($) => $.ai.tools.notes.latexAndTypstOnly);
+const noteOnly = () => i18n.t(($) => $.ai.noteScope.notesOnly);
 
 export const AI_TOOLS: AiToolInfo[] = [
   { name: "read_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.readFile) },
@@ -90,6 +91,40 @@ export const AI_TOOLS: AiToolInfo[] = [
     name: "project_library_search",
     group: "Research",
     desc: () => i18n.t(($) => $.ai.tools.catalog.projectLibrarySearch),
+  },
+  { name: "read_note", group: "Research", desc: () => i18n.t(($) => $.ai.noteScope.tools.readNote), note: noteOnly },
+  {
+    name: "propose_note_edits",
+    group: "Research",
+    desc: () => i18n.t(($) => $.ai.noteScope.tools.proposeNoteEdits),
+    note: noteOnly,
+  },
+  { name: "search_notes", group: "Research", desc: () => i18n.t(($) => $.ai.noteScope.tools.searchNotes), note: noteOnly },
+  {
+    name: "list_knowledge_notes",
+    group: "Research",
+    desc: () => i18n.t(($) => $.ai.noteScope.tools.listKnowledgeNotes),
+    note: noteOnly,
+  },
+  { name: "read_note_by_id", group: "Research", desc: () => i18n.t(($) => $.ai.noteScope.tools.readNoteById), note: noteOnly },
+  { name: "create_note", group: "Research", desc: () => i18n.t(($) => $.ai.noteScope.tools.createNote), note: noteOnly },
+  {
+    name: "related_project_files",
+    group: "Research",
+    desc: () => i18n.t(($) => $.ai.noteScope.tools.relatedProjectFiles),
+    note: noteOnly,
+  },
+  {
+    name: "read_related_project_file",
+    group: "Research",
+    desc: () => i18n.t(($) => $.ai.noteScope.tools.readRelatedProjectFile),
+    note: noteOnly,
+  },
+  {
+    name: "search_related_project",
+    group: "Research",
+    desc: () => i18n.t(($) => $.ai.noteScope.tools.searchRelatedProject),
+    note: noteOnly,
   },
   {
     name: "preview_figure",

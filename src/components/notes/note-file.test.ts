@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { LINE_ICON_PREFIX, LINE_ICONS } from "./note-icons";
 import {
   isNoteColor,
@@ -9,6 +10,7 @@ import {
   noteSummary,
   readNoteFacts,
   starterIcon,
+  withNoteColor,
   withNoteIcon,
   withNoteIdentity,
   withNoteTitle,
@@ -44,7 +46,7 @@ describe("note files", () => {
       title: "Masking strategy",
       id: ID,
       icon: "🧪",
-      color: "teal",
+      color: "spring",
       agent: "Claude Code",
       summary: "The encoder trains on patches with a mask ratio of 0.75. Run 3 reached 64.1%.",
     });
@@ -55,7 +57,7 @@ describe("note files", () => {
       title: null,
       id: undefined,
       icon: undefined,
-      color: "blue",
+      color: "rose",
       agent: undefined,
       summary: "Just a line.",
     });
@@ -84,7 +86,7 @@ describe("note files", () => {
   it("reads an empty title as missing and keeps a note with no body as front matter only", () => {
     expect(readNoteFacts("---\ntitle: \"  \"\nicon: x\n---\n").title).toBeNull();
     expect(newNoteSource("Plain", "   ", undefined, ID)).toBe(
-      `---\ntitle: Plain\nicon: lucide:sun\ncolor: teal\nkind: note\nid: ${ID}\n---\n\n`,
+      `---\ntitle: Plain\nicon: lucide:sun\ncolor: spring\nkind: note\nid: ${ID}\n---\n\n`,
     );
   });
 
@@ -98,12 +100,20 @@ describe("note files", () => {
   it("drops the front matter from the body", () => {
     expect(noteBody(NOTE).startsWith("\n## Where things stand")).toBe(true);
     expect(noteBody("No front matter\n")).toBe("No front matter\n");
+    expect(noteBody("---\n---\nkind: note\n---\nBody")).toBe("kind: note\n---\nBody");
+  });
+
+  it("reads quoted keys and plain values with a colon the way the vault does", () => {
+    const facts = readNoteFacts("---\n\"title\": Paper: draft\nid : abc # old\ncolor: '#mint'\n---\n");
+    expect(facts.title).toBe("Paper: draft");
+    expect(facts.id).toBe("abc");
+    expect(facts.color).toBe(noteColorFor("abc"));
   });
 
   it("writes a new note with its title and keeps other keys when the icon changes", () => {
     const source = newNoteSource("Run 3: results", "Body text.\n", "Codex", ID);
     expect(source).toBe(
-      `---\ntitle: "Run 3: results"\nagent: Codex\nicon: lucide:sun\ncolor: teal\nkind: note\nid: ${ID}\n---\n\nBody text.\n`,
+      `---\ntitle: "Run 3: results"\nagent: Codex\nicon: lucide:sun\ncolor: spring\nkind: note\nid: ${ID}\n---\n\nBody text.\n`,
     );
     expect(readNoteFacts(source).title).toBe("Run 3: results");
     const withIcon = withNoteIcon(NOTE, "lucide:flask-conical");
@@ -113,11 +123,25 @@ describe("note files", () => {
     expect(readNoteFacts(withNoteTitle(NOTE, "Renamed")).title).toBe("Renamed");
     expect(noteBody(withNoteTitle(NOTE, "Renamed"))).toBe(noteBody(NOTE));
   });
+
+  it("writes a colour into the front matter, replaces one already there, and keeps the other keys", () => {
+    const added = withNoteColor(NOTE, "lilac");
+    expect(added).toBe(NOTE.replace("bibliography: refs.bib\n", "bibliography: refs.bib\ncolor: lilac\n"));
+    expect(readNoteFacts(added).color).toBe("lilac");
+    const replaced = withNoteColor(added, "peach");
+    expect(replaced).toBe(NOTE.replace("bibliography: refs.bib\n", "bibliography: refs.bib\ncolor: peach\n"));
+    expect(replaced.match(/^color:/gmu)).toHaveLength(1);
+    expect(readNoteFacts(replaced)).toMatchObject({ title: "Masking strategy", id: ID, icon: "🧪", agent: "Claude Code", color: "peach" });
+    expect(noteBody(replaced)).toBe(noteBody(NOTE));
+    const fresh = newNoteSource("Run 3", "", undefined, ID);
+    expect(withNoteColor(fresh, "cream")).toBe(fresh.replace("color: spring\n", "color: cream\n"));
+  });
 });
 
 describe("note colours and starting icons", () => {
-  it("offers ten tones", () => {
-    expect(NOTE_COLORS).toEqual(["violet", "blue", "sky", "teal", "emerald", "lime", "amber", "orange", "rose", "pink"]);
+  it("offers the 11 project cover colours in the library's order", () => {
+    expect(NOTE_COLORS).toEqual(["blue", "cream", "peach", "rose", "pink", "lilac", "sky", "aqua", "cyan", "mint", "spring"]);
+    expect(NOTE_COLORS).toEqual(BOOK_COLOR_OPTIONS.map(({ name }) => name.toLowerCase()));
   });
 
   it("knows a palette tone from anything else", () => {
@@ -126,8 +150,8 @@ describe("note colours and starting icons", () => {
     expect(isNoteColor(undefined)).toBe(false);
   });
 
-  it("derives the same tone from the same seed and spreads seeds over the whole palette", () => {
-    expect(noteColorFor(ID)).toBe("teal");
+  it("derives the same colour from the same seed and spreads seeds over the whole palette", () => {
+    expect(noteColorFor(ID)).toBe("spring");
     expect(noteColorFor(ID)).toBe(noteColorFor(ID));
     const tones = new Set(Array.from({ length: 200 }, (_, index) => noteColorFor(`seed-${index}`)));
     expect(tones.size).toBe(NOTE_COLORS.length);
@@ -147,19 +171,20 @@ describe("note colours and starting icons", () => {
   it("gives two new notes different looks", () => {
     const first = readNoteFacts(newNoteSource("A", "", undefined, ID));
     const second = readNoteFacts(newNoteSource("A", "", undefined, FRESH));
-    expect([first.icon, first.color]).toEqual(["lucide:sun", "teal"]);
-    expect([second.icon, second.color]).toEqual(["lucide:book", "amber"]);
+    expect([first.icon, first.color]).toEqual(["lucide:sun", "spring"]);
+    expect([second.icon, second.color]).toEqual(["lucide:book", "mint"]);
   });
 
-  it("reads the declared colour in any case and falls back when it is not a palette tone", () => {
+  it("reads the declared colour in any case and falls back when it is not a cover colour", () => {
     expect(readNoteFacts(`---\nid: ${ID}\ncolor: Rose\n---\n`).color).toBe("rose");
-    expect(readNoteFacts(`---\nid: ${ID}\ncolor: crimson\n---\n`).color).toBe("teal");
+    expect(readNoteFacts(`---\nid: ${ID}\ncolor: crimson\n---\n`).color).toBe("spring");
+    expect(readNoteFacts(`---\nid: ${ID}\ncolor: violet\n---\n`).color).toBe("spring");
   });
 
   it("derives a missing colour from the id, then the title, so it stays put", () => {
-    expect(readNoteFacts(`---\ntitle: Masking strategy\nid: ${ID}\n---\n`).color).toBe("teal");
-    expect(readNoteFacts("---\ntitle: Masking strategy\n---\n").color).toBe("violet");
-    expect(readNoteFacts("---\ntitle: Masking strategy\n---\n\nOther body").color).toBe("violet");
+    expect(readNoteFacts(`---\ntitle: Masking strategy\nid: ${ID}\n---\n`).color).toBe("spring");
+    expect(readNoteFacts("---\ntitle: Masking strategy\n---\n").color).toBe("lilac");
+    expect(readNoteFacts("---\ntitle: Masking strategy\n---\n\nOther body").color).toBe("lilac");
   });
 });
 
@@ -171,7 +196,7 @@ describe("note identity", () => {
   it("gives a new note a fresh id when none is passed", () => {
     const uuid = freshIds();
     expect(newNoteSource("Untitled")).toBe(
-      `---\ntitle: Untitled\nicon: lucide:book\ncolor: amber\nkind: note\nid: ${FRESH}\n---\n\n`,
+      `---\ntitle: Untitled\nicon: lucide:book\ncolor: mint\nkind: note\nid: ${FRESH}\n---\n\n`,
     );
     expect(uuid).toHaveBeenCalledOnce();
   });

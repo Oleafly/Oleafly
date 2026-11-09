@@ -103,6 +103,41 @@ describe("settings search index", () => {
     expect(matchSettingsSections(index, SECTIONS, "mcp servers tasks")).toContain("research");
   });
 
+  it("finds the Notes appearance rows only while Notes is on", () => {
+    const notes = buildSettingsIndex(lookup, "en", "linux", new Set(["notes"]));
+    expect(matchSettingsSections(index, SECTIONS, "callout style")).toEqual([]);
+    expect(rowLabels(index, "appearance")).not.toContain(enSettings.appearance.notes.callouts.label);
+    const [appearance] = searchSettings(notes, SECTIONS, "callout style");
+    expect(appearance).toMatchObject({
+      id: "appearance",
+      rows: [{ label: enSettings.appearance.notes.callouts.label, path: ["appearance", "notes", "callouts"] }],
+      match: "row",
+    });
+    for (const row of [
+      enSettings.appearance.notes.typeface.label,
+      enSettings.appearance.notes.font.label,
+      enSettings.appearance.notes.fontSize.label,
+      enSettings.appearance.notes.lineHeight.label,
+      enSettings.appearance.notes.paragraphSpacing.label,
+      enSettings.appearance.notes.headingFont.label,
+      enSettings.appearance.notes.titleSize.label,
+      enSettings.appearance.notes.width.label,
+      enSettings.appearance.notes.wordCount.label,
+      enSettings.appearance.notes.spellcheck.label,
+      enSettings.appearance.notes.codeFont.label,
+      enSettings.appearance.notes.codeTheme.label,
+      enSettings.appearance.notes.accent.label,
+      enSettings.appearance.notes.highlight.label,
+    ]) {
+      expect(rowLabels(notes, "appearance"), row).toContain(row);
+    }
+  });
+
+  it("keeps the sample note in the Notes preview out of search", () => {
+    const notes = buildSettingsIndex(lookup, "en", "linux", new Set(["notes"]));
+    expect(matchSettingsSections(notes, SECTIONS, enSettings.notesPreview.calloutBody)).toEqual([]);
+  });
+
   it("gives each matching row the catalog path it came from", () => {
     const [appearance] = searchSettings(index, SECTIONS, "editor font size");
     expect(appearance.id).toBe("appearance");

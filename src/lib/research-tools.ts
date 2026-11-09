@@ -25,8 +25,12 @@ export const TASKS_OFF =
   "Research tasks are turned off. They are experimental in this version; the user can turn them on under Settings, Research, at their own risk.";
 const MAX_DEFAULT_GOAL = 2_000;
 
-function openProject(): string {
-  const projectId = useFilesStore.getState().projectId;
+function workspaceProject(): string | null {
+  return useFilesStore.getState().projectId;
+}
+
+function openProject(target: () => string | null = workspaceProject): string {
+  const projectId = target();
   if (!projectId) throw new Error("Open a project first.");
   return projectId;
 }
@@ -70,14 +74,15 @@ function taskStatus(task: ResearchTask) {
   };
 }
 
-const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
+function researchHost(target?: () => string | null): ResearchToolsHost & ResearchTaskToolsHost {
+  return {
   searchLiterature: (query, { limit, sources }) =>
     invoke("literature_search_all", { query: { query, limit, sources: sources ?? [] } }),
   verifyCitation,
   retrieveProjectChunks,
   createResearchTask: async (input) => {
     if (!researchTasksEnabled()) throw new Error(TASKS_OFF);
-    const projectId = openProject();
+    const projectId = openProject(target);
     const config = await getConfig();
     const agent = await builtinTaskAgent(config);
     const brief = defaultBrief(input.brief.goal ?? defaultGoal(input.prompt));
@@ -102,19 +107,23 @@ const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
     return { id: task.id, title: task.title, status: task.status };
   },
   researchTaskStatus: async (id) => {
-    const tasks = await listResearchTasks(openProject());
+    const tasks = await listResearchTasks(openProject(target));
     if (id) {
       const task = tasks.find((candidate) => candidate.id === id);
       return task ? taskStatus(task) : { error: "No task with that id in this project." };
     }
     return { tasks: tasks.slice(0, 10).map(taskStatus) };
   },
-};
+  };
+}
+
+const HOST = researchHost();
 
 export function createResearchAiTools(opts?: { confirm?: ConfirmFn }) {
   return { ...createResearchTools(HOST, opts), ...createResearchTaskAiTools(opts) };
 }
 
-export function createResearchTaskAiTools(opts?: { confirm?: ConfirmFn }) {
-  return researchTasksEnabled() ? createResearchTaskTools(HOST, opts) : {};
+export function createResearchTaskAiTools(opts?: { confirm?: ConfirmFn; projectId?: () => string | null }) {
+  if (!researchTasksEnabled()) return {};
+  return createResearchTaskTools(opts?.projectId ? researchHost(opts.projectId) : HOST, { confirm: opts?.confirm });
 }

@@ -31,7 +31,7 @@ function listFor(selected: string | undefined): ListComponents {
         aria-pressed={emoji.emoji === selected}
         className={cn(
           "flex size-8 items-center justify-center rounded text-lg transition-colors data-[active]:bg-accent",
-          emoji.emoji === selected && "bg-primary/10 data-[active]:bg-primary/15",
+          emoji.emoji === selected && "note-chip",
         )}
       >
         {emoji.emoji}

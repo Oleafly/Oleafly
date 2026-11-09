@@ -1,29 +1,26 @@
-import {
-  readFrontMatterScalar,
-  readMarkdownDocumentSettings,
-  setFrontMatterScalar,
-} from "@/features/markdown-document-settings";
+import { readMarkdownDocumentSettings, setFrontMatterScalar } from "@/features/markdown-document-settings";
+import { frontMatterBody, frontMatterValue } from "@/lib/front-matter";
 import { LINE_ICON_PREFIX, LINE_ICONS } from "./note-icons";
 import type { NoteColor } from "./types";
 
 export const NOTE_KIND = "note";
 const BOM = "\uFEFF";
 const OPENING_FENCE = /^\uFEFF?---[ \t]*(?:\r?\n|$)/u;
-const FRONT_MATTER = /^﻿?---\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/u;
 const SUMMARY_LIMIT = 180;
 const NOT_PROSE = /^(?:#{1,6}\s|```|~~~|\||[-*+]\s|\d+[.)]\s|>|\$\$|<|!\[|---|\*\*\*|___)/u;
 
 export const NOTE_COLORS: readonly NoteColor[] = [
-  "violet",
   "blue",
-  "sky",
-  "teal",
-  "emerald",
-  "lime",
-  "amber",
-  "orange",
+  "cream",
+  "peach",
   "rose",
   "pink",
+  "lilac",
+  "sky",
+  "aqua",
+  "cyan",
+  "mint",
+  "spring",
 ];
 
 export interface NoteFacts {
@@ -58,7 +55,7 @@ export function starterIcon(seed: string): string {
 }
 
 export function noteBody(text: string): string {
-  return text.replace(FRONT_MATTER, "");
+  return frontMatterBody(text);
 }
 
 function plainInline(line: string): string {
@@ -98,8 +95,7 @@ export function noteSummary(body: string): string {
 }
 
 function scalar(text: string, key: string): string | undefined {
-  const value = readFrontMatterScalar(text, key)?.trim();
-  return value ? value : undefined;
+  return frontMatterValue(text, key) ?? undefined;
 }
 
 export function readNoteFacts(text: string): NoteFacts {
@@ -144,6 +140,10 @@ export function newNoteSource(title: string, body = "", agent?: string, id: stri
 
 export function withNoteIcon(text: string, icon: string | undefined): string {
   return setFrontMatterScalar(text, "icon", icon ?? null);
+}
+
+export function withNoteColor(text: string, color: NoteColor): string {
+  return setFrontMatterScalar(text, "color", color);
 }
 
 export function withNoteTitle(text: string, title: string): string {

@@ -256,7 +256,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
           >
             {t(($) => $.core.mermaid.renderFailed)}
           </output>
-          <pre data-select-all-scope className="select-text overflow-x-auto p-2.5 text-[0.85em] [scrollbar-width:thin]">
+          <pre data-select-all-scope className="select-text overflow-x-auto p-2.5 text-[0.85em]">
             <code className="font-mono language-mermaid">{source}</code>
           </pre>
         </div>

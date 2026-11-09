@@ -8,15 +8,17 @@ export function HomeBrandButton({
   onClick,
   className,
   compact = false,
+  label,
 }: Readonly<{
   onClick: () => void;
   className?: string;
   compact?: boolean;
+  label?: string;
 }>) {
   const { t } = useTranslation(["shell"]);
   return (
     <Tooltip
-      label={t(($) => $.shell.home.tooltip)}
+      label={label ?? t(($) => $.shell.home.tooltip)}
       side="bottom"
       className={className}
     >
@@ -24,8 +26,8 @@ export function HomeBrandButton({
         type="button"
         data-toolbar-part="home"
         onClick={onClick}
-        aria-label={t(($) => $.shell.home.ariaLabel)}
-        title={t(($) => $.shell.home.title)}
+        aria-label={label ?? t(($) => $.shell.home.ariaLabel)}
+        title={label ?? t(($) => $.shell.home.title)}
         className="group grid place-items-center rounded px-1.5 py-1 text-sm font-semibold tracking-tight hover:bg-accent"
       >
         <span data-toolbar-part="brand" className="col-start-1 row-start-1 flex items-center gap-1.5 group-hover:invisible">

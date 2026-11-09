@@ -1,16 +1,31 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const styles = readFileSync(new URL("./globals.css", import.meta.url), "utf8");
 
+function sourceFiles(root: URL): string[] {
+  return readdirSync(root, { recursive: true, encoding: "utf8" })
+    .filter((path) => /\.(css|tsx?)$/.test(path) && !path.includes("node_modules") && !/\.test\.tsx?$/.test(path))
+    .map((path) => new URL(path, root).pathname);
+}
+
 describe("desktop scrollbars", () => {
-  it("styles every application scroll surface", () => {
-    expect(styles).toContain(":where(body, body *)");
-    expect(styles).toContain("scrollbar-width: thin");
-    expect(styles).toContain(":where(body, body *)::-webkit-scrollbar");
-    expect(styles).toContain("width: 6px");
-    expect(styles).toContain("height: 6px");
-    expect(styles).toContain(":where(body, body *):hover::-webkit-scrollbar-thumb");
+  it("draws one thin, light thumb that shows only over its own scroller", () => {
+    expect(styles).toContain(":where(body, body *)::-webkit-scrollbar {\n  width: 8px;\n  height: 8px;");
+    expect(styles).toContain(":where(body, body *) {\n  --ofl-scroll-thumb: transparent;\n}");
+    expect(styles).toContain(":root {\n  --ofl-scroll-thumb-mix: 16%;\n  --ofl-scroll-thumb-active-mix: 30%;\n}");
+    expect(styles).toContain(
+      ":where(body, body *):hover {\n  --ofl-scroll-thumb: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-mix), transparent);",
+    );
+    expect(styles).toContain("background-color: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-active-mix), transparent);");    expect(styles).toContain("border: 2px solid transparent;\n  border-radius: 999px;\n  background: var(--ofl-scroll-thumb) padding-box;");
+    expect(styles).toContain(":where(body, body *)::-webkit-scrollbar-thumb:hover,");
+  });
+
+  it("never sets the standard scrollbar properties that switch WebKit back to the native scroller", () => {
+    const offenders = [new URL("../", import.meta.url), new URL("../../packages/", import.meta.url)]
+      .flatMap(sourceFiles)
+      .filter((path) => /scrollbar-width:\s*thin|scrollbar-color\s*:|scrollbarWidth:\s*"thin"|scrollbarColor\s*:/.test(readFileSync(path, "utf8")));
+    expect(offenders).toEqual([]);
   });
 });
 

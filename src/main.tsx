@@ -1,6 +1,7 @@
 import "@/lib/polyfills";
 import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
-import { lazy, StrictMode, Suspense } from "react";
+import { StrictMode, Suspense } from "react";
+import { lazy } from "@/lib/preloadable";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { Contained } from "@/components/Contained";
@@ -31,6 +32,7 @@ import { useZoteroDialogStore } from "@/store/zotero-dialogs";
 import { useTableImportStore } from "@/store/table-import";
 import { useFigureDialogStore } from "@/store/figure-dialog";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
+import { OpeningIndicator } from "@/components/ui/opening-indicator";
 import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
@@ -121,32 +123,30 @@ const PreviewWindow = lazy(() =>
 );
 const RenameDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
-  ),
+    import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })), { warm: true }),
   () => useRenameStore((state) => state.sym !== null),
   () => useRenameStore.getState().close(),
+  { loading: <OpeningIndicator /> },
 );
 const FileRenameDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })),
-  ),
+    import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })), { warm: true }),
   () => useFileRenameStore((state) => state.target !== null),
   () => useFileRenameStore.getState().close(),
+  { loading: <OpeningIndicator /> },
 );
 const FileReferencesDialog = lazy(() =>
-  import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })),
-);
+  import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })), { warm: true });
 const AddCitationDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
-  ),
+    import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })), { warm: true }),
   () => useCitationStore((state) => state.open),
   () => useCitationStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const ZoteroDialogs = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })),
-  ),
+    import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })), { warm: true }),
   () =>
     useZoteroDialogStore(
       (state) =>
@@ -162,20 +162,21 @@ const ZoteroDialogs = mountOnFirstOpen(
     zotero.handList?.resolve(false);
     zotero.closeBulk();
   },
+  { loading: <OpeningIndicator /> },
 );
 const TableImportDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
-  ),
+    import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })), { warm: true }),
   () => useTableImportStore((state) => state.open),
   () => useTableImportStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const FigureDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
-  ),
+    import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })), { warm: true }),
   () => useFigureDialogStore((state) => state.open),
   () => useFigureDialogStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const PresentationWindow = lazy(() =>
   import("@/components/presentation/PresentationWindow").then((module) => ({ default: module.PresentationWindow })),

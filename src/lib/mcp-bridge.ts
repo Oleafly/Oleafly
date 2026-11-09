@@ -29,6 +29,9 @@ import {
   mcpToolResult,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
+import { openNotes } from "@/features/open-tool";
+import { libraryProjects, opensInNotes } from "@/lib/library-projects";
 import { createResearchTaskAiTools } from "@/lib/research-tools";
 import { primeResearchTasksFlag, useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { useCompileStore } from "@/store/compile";
@@ -368,7 +371,7 @@ function createMcpOnlyTools(
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       execute: async () => {
         try {
-          return { projects: await listProjects() };
+          return { projects: libraryProjects(await listProjects(), useSettingsStore.getState().notes) };
         } catch (e) {
           return { error: String(e) };
         }
@@ -396,6 +399,15 @@ function createMcpOnlyTools(
           }
           if (!mutationAllowed()) {
             return { error: "MCP request was cancelled before opening the project." };
+          }
+          if (opensInNotes(known, id, useSettingsStore.getState().notes)) {
+            await openNotes(id);
+            return {
+              success: true,
+              project_id: id,
+              opened_in: "notes",
+              message: "This id is a note, so it opened in Notes. Project tools still act on the project that was already open.",
+            };
           }
           await useFilesStore.getState().openProject(id, mutationAllowed);
           const files = useFilesStore.getState();

@@ -1,15 +1,5 @@
-import {
-  lazy,
-  memo,
-  Suspense,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type FocusEvent,
-  type RefObject,
-} from "react";
+import { memo, Suspense, useCallback, useEffect, useId, useRef, useState, type FocusEvent, type RefObject } from "react";
+import { lazy } from "@/lib/preloadable";
 import {
   Bot,
   Brain,
@@ -567,6 +557,13 @@ const EXPLORATION_TOOLS: Record<string, "file" | "search" | "list"> = {
   project_library_search: "search",
   list_files: "list",
   project_map: "list",
+  read_note: "file",
+  read_note_by_id: "file",
+  read_related_project_file: "file",
+  search_notes: "search",
+  list_knowledge_notes: "list",
+  search_related_project: "search",
+  related_project_files: "list",
 };
 
 function exploredFiles(count: number): string | null {

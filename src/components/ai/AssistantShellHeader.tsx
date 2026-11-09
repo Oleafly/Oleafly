@@ -1,8 +1,10 @@
 import { createContext, useContext, useMemo, type HTMLAttributes, type ReactNode } from "react";
-import { PanelRightClose, PictureInPicture2 } from "lucide-react";
+import { PanelLeftClose, PanelRightClose, PictureInPicture2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
+import { PANE_BAR_CLASS, usePaneBar } from "@/components/layout/pane-reorder";
 import { useSettingsStore } from "@/store/settings";
+import { paneSide, usePaneLayoutStore } from "@/store/pane-layout";
 import { cn } from "@/lib/utils";
 
 interface AssistantShellValue {
@@ -38,9 +40,12 @@ export function AssistantShellHeader({
 }>) {
   const { t } = useTranslation(["shell"]);
   const assistantOpen = useSettingsStore((state) => state.assistantOpen);
+  const paneBar = usePaneBar();
+  const HideIcon = usePaneLayoutStore((state) => paneSide(state.layout, "assistant")) === "left" ? PanelLeftClose : PanelRightClose;
   return (
     <div
-      className={cn("flex h-9 shrink-0 items-center gap-1.5 border-b px-2", className)}
+      {...paneBar}
+      className={cn("flex h-9 shrink-0 items-center gap-1.5 border-b px-2", PANE_BAR_CLASS, className)}
       {...rest}
     >
       {leading}
@@ -51,7 +56,7 @@ export function AssistantShellHeader({
           <button type="button" data-testid="assistant-hide" aria-label={t(($) => $.shell.dock.assistant.hide)}
             onClick={() => useSettingsStore.getState().setAssistantOpen(false)}
             className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
-            <PanelRightClose className="size-3.5" />
+            <HideIcon className="size-3.5" />
           </button>
         </Tooltip>}
       </div>

@@ -1,17 +1,28 @@
 import { Extension } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
-import { DOMSerializer, Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { NoteChangeDraft } from "./note-diff";
+import { destroyRemoteImageNotices, remoteSafeSerializer } from "./note-remote-images";
 
 export type ChangeOrigin = "agent" | "disk";
 
 type NoteChange = NoteChangeDraft & { id: string; origin: ChangeOrigin };
 
-interface ReviewState {
+interface ReviewSnapshot {
   items: NoteChange[];
   activeId: string | null;
+}
+
+interface ReviewState extends ReviewSnapshot {
+  undo: ReviewSnapshot | null;
+  decorations: DecorationSet;
+}
+
+interface ReviewMeta extends ReviewSnapshot {
+  undo?: ReviewSnapshot | null;
+  navigate?: boolean;
 }
 
 export interface ReviewSummary {
@@ -21,11 +32,15 @@ export interface ReviewSummary {
 }
 
 const reviewKey = new PluginKey<ReviewState>("noteSuggestions");
-const EMPTY: ReviewState = { items: [], activeId: null };
+const EMPTY: ReviewState = { items: [], activeId: null, undo: null, decorations: DecorationSet.empty };
 let nextId = 0;
 
 function review(editor: Editor): ReviewState {
   return reviewKey.getState(editor.state) ?? EMPTY;
+}
+
+function dispatchReview(editor: Editor, tr: Transaction, meta: ReviewMeta): void {
+  editor.view.dispatch(tr.setMeta(reviewKey, meta));
 }
 
 export function reviewSummary(editor: Editor): ReviewSummary {
@@ -40,13 +55,26 @@ export function showSuggestions(editor: Editor, drafts: readonly NoteChangeDraft
     (left, right) => left.from - right.from || left.to - right.to,
   );
   const keep = items.some((item) => item.id === activeId) && origin === "disk";
-  editor.view.dispatch(
-    editor.state.tr.setMeta(reviewKey, { items, activeId: keep ? activeId : (fresh[0]?.id ?? items[0]?.id ?? null) }),
-  );
+  dispatchReview(editor, editor.state.tr, { items, activeId: keep ? activeId : (fresh[0]?.id ?? items[0]?.id ?? null), undo: null });
 }
 
 export function isReviewTransaction(tr: Transaction): boolean {
   return tr.getMeta(reviewKey) !== undefined;
+}
+
+export function isReviewNavigation(tr: Transaction): boolean {
+  return (tr.getMeta(reviewKey) as ReviewMeta | undefined)?.navigate === true;
+}
+
+export function canUndoReject(editor: Editor): boolean {
+  return review(editor).undo !== null;
+}
+
+export function undoReject(editor: Editor): boolean {
+  const { undo } = review(editor);
+  if (!undo) return false;
+  dispatchReview(editor, editor.state.tr, { ...undo, undo: null, navigate: true });
+  return true;
 }
 
 export function hasPending(editor: Editor, origin: ChangeOrigin): boolean {
@@ -61,11 +89,11 @@ export function docWithPending(editor: Editor, origin: ChangeOrigin): ProseMirro
 }
 
 export function moveReview(editor: Editor, step: number): void {
-  const { items, activeId } = review(editor);
+  const { items, activeId, undo } = review(editor);
   if (items.length === 0) return;
   const index = items.findIndex((item) => item.id === activeId);
   const target = items[(index + step + items.length) % items.length];
-  editor.view.dispatch(editor.state.tr.setMeta(reviewKey, { items, activeId: target.id }));
+  dispatchReview(editor, editor.state.tr, { items, activeId: target.id, undo, navigate: true });
 }
 
 function apply(tr: Transaction, item: NoteChange): void {
@@ -87,7 +115,7 @@ function settle(editor: Editor, ids: ReadonlySet<string>, accept: boolean): void
     .map((item) => ({ ...item, to: Math.max(item.from, item.to) }));
   const removedIndex = items.findIndex((item) => item.id === activeId);
   const next = (left[Math.min(removedIndex, left.length - 1)] ?? left[0])?.id ?? null;
-  editor.view.dispatch(tr.setMeta(reviewKey, { items: left, activeId: next }));
+  dispatchReview(editor, tr, { items: left, activeId: next, undo: accept ? null : { items, activeId }, navigate: true });
 }
 
 export function acceptActive(editor: Editor): void {
@@ -123,7 +151,7 @@ function touches(tr: Transaction, from: number, to: number): boolean {
   return hit;
 }
 
-function mapItems(tr: Transaction, state: ReviewState): ReviewState {
+function mapItems(tr: Transaction, state: ReviewSnapshot): ReviewSnapshot {
   const items = state.items
     .filter((item) => item.from === item.to || !touches(tr, item.from, item.to))
     .map((item) => {
@@ -145,8 +173,12 @@ function insertedBlocks(state: EditorState, nodes: readonly ProseMirrorNode[], a
   const element = document.createElement("div");
   element.className = active ? "note-diff-block note-diff-active" : "note-diff-block";
   element.contentEditable = "false";
-  element.append(DOMSerializer.fromSchema(state.schema).serializeFragment(Fragment.from(nodes)));
+  element.append(remoteSafeSerializer(state.schema).serializeFragment(Fragment.from(nodes)));
   return element;
+}
+
+function insideButton(event: Event): boolean {
+  return event.target instanceof Element && event.target.closest("button") !== null;
 }
 
 function decorationsFor(state: EditorState, item: NoteChange, active: boolean): Decoration[] {
@@ -170,14 +202,55 @@ function decorationsFor(state: EditorState, item: NoteChange, active: boolean): 
       Decoration.widget(item.to, () => insertedBlocks(state, item.nodes, active), {
         key: `${item.id}-${active}`,
         side: -1,
+        stopEvent: insideButton,
+        destroy: destroyRemoteImageNotices,
       }),
     );
   }
   return out;
 }
 
+function buildDecorations(state: EditorState, items: readonly NoteChange[], activeId: string | null): DecorationSet {
+  if (items.length === 0) return DecorationSet.empty;
+  return DecorationSet.create(
+    state.doc,
+    items.flatMap((item) => decorationsFor(state, item, item.id === activeId)),
+  );
+}
+
+function nextReview(tr: Transaction, state: ReviewState, next: EditorState): ReviewState {
+  const meta = tr.getMeta(reviewKey) as ReviewMeta | undefined;
+  if (meta) {
+    return { items: meta.items, activeId: meta.activeId, undo: meta.undo ?? null, decorations: buildDecorations(next, meta.items, meta.activeId) };
+  }
+  if (!tr.docChanged) return state;
+  if (state.items.length === 0) return state.undo ? { ...state, undo: null } : state;
+  const mapped = mapItems(tr, state);
+  const kept = mapped.activeId === state.activeId && mapped.items.length === state.items.length;
+  return {
+    ...mapped,
+    undo: null,
+    decorations: kept ? state.decorations.map(tr.mapping, tr.doc) : buildDecorations(next, mapped.items, mapped.activeId),
+  };
+}
+
+const NoteSuggestionUndo = Extension.create({
+  name: "noteSuggestionUndo",
+  priority: 1000,
+
+  addKeyboardShortcuts() {
+    return {
+      "Mod-z": () => undoReject(this.editor),
+    };
+  },
+});
+
 export const NoteSuggestions = Extension.create({
   name: "noteSuggestions",
+
+  addExtensions() {
+    return [NoteSuggestionUndo];
+  },
 
   addKeyboardShortcuts() {
     const settleActive = (accept: boolean) => {
@@ -198,22 +271,10 @@ export const NoteSuggestions = Extension.create({
         key: reviewKey,
         state: {
           init: () => EMPTY,
-          apply(tr, state) {
-            const next = tr.getMeta(reviewKey) as ReviewState | undefined;
-            if (next) return next;
-            if (!tr.docChanged || state.items.length === 0) return state;
-            return mapItems(tr, state);
-          },
+          apply: (tr, state, _old, next) => nextReview(tr, state, next),
         },
         props: {
-          decorations(state) {
-            const { items, activeId } = reviewKey.getState(state) ?? EMPTY;
-            if (items.length === 0) return DecorationSet.empty;
-            return DecorationSet.create(
-              state.doc,
-              items.flatMap((item) => decorationsFor(state, item, item.id === activeId)),
-            );
-          },
+          decorations: (state) => reviewKey.getState(state)?.decorations ?? DecorationSet.empty,
         },
       }),
     ];

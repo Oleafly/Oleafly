@@ -133,10 +133,10 @@ describe("EmojiGrid", () => {
     const { rerender } = render(<EmojiGrid selected="🚀" onSelect={vi.fn()} />);
     const rocket = screen.getByRole("button", { name: "🚀" });
     expect(rocket).toHaveAttribute("aria-pressed", "true");
-    expect(rocket).toHaveClass("bg-primary/10");
+    expect(rocket).toHaveClass("note-chip");
     const grinning = screen.getByRole("button", { name: "😀" });
     expect(grinning).toHaveAttribute("aria-pressed", "false");
-    expect(grinning).not.toHaveClass("bg-primary/10");
+    expect(grinning).not.toHaveClass("note-chip");
     rerender(<EmojiGrid onSelect={vi.fn()} />);
     expect(screen.getByRole("button", { name: "🚀" })).toHaveAttribute("aria-pressed", "false");
   });

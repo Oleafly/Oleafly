@@ -4,6 +4,25 @@ import type { ProjectAvailability, ProjectInfo } from "@/lib/tauri";
 export type LibraryScope = "all" | "library" | "external";
 
 type Located = Pick<ProjectInfo, "location">;
+type Kinded = Pick<ProjectInfo, "kind">;
+
+const NOTE_PROJECT_KIND = "note";
+
+export function isNoteProject(project: Kinded | null | undefined): boolean {
+  return project?.kind === NOTE_PROJECT_KIND;
+}
+
+export function libraryProjects<T extends Kinded>(projects: readonly T[], notesOn: boolean): readonly T[] {
+  return notesOn ? projects.filter((project) => !isNoteProject(project)) : projects;
+}
+
+export function opensInNotes(
+  projects: readonly Pick<ProjectInfo, "id" | "kind">[],
+  id: string,
+  notesOn: boolean,
+): boolean {
+  return notesOn && isNoteProject(projects.find((project) => project.id === id));
+}
 
 export function isFolderProject(project: Located): boolean {
   return projectLocation(project).kind === "linked";

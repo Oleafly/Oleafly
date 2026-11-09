@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearMarkdownDocumentCache,
@@ -58,6 +58,32 @@ describe("markdown documents", () => {
 
     expect(screen.getByRole("link", { name: "docs" }).className).toContain("text-white");
     expect(screen.getByText("code").className).toContain("text-white");
+  });
+
+  it("holds back an image from another site until it is asked for", () => {
+    const { container } = renderDocument("Look: ![pixel](https://tracker.example.com/p.gif?note=secret) done");
+
+    expect(container.querySelector("img")).toBeNull();
+    const placeholder = container.querySelector("[data-remote-image]");
+    expect(placeholder?.getAttribute("data-remote-image")).toBe("tracker.example.com");
+    expect(placeholder?.textContent).toContain("Image from tracker.example.com");
+    expect(placeholder?.querySelector("[title]")).toBeNull();
+    expect(placeholder?.hasAttribute("title")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Load image" }));
+    const image = container.querySelector("img");
+    expect(image?.getAttribute("src")).toBe("https://tracker.example.com/p.gif?note=secret");
+    expect(image?.getAttribute("alt")).toBe("pixel");
+    expect(container.querySelector("[data-remote-image]")).toBeNull();
+  });
+
+  it("shows images from the app itself straight away", () => {
+    const { container } = renderDocument(`![plot](assets/plot.png) ![icon](${window.location.origin}/icon.png)`);
+
+    expect(Array.from(container.querySelectorAll("img"), (image) => image.getAttribute("src"))).toEqual([
+      "assets/plot.png",
+      `${window.location.origin}/icon.png`,
+    ]);
+    expect(container.querySelector("[data-remote-image]")).toBeNull();
   });
 
   it("caches plain and inverted renders separately", () => {

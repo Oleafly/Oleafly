@@ -393,5 +393,40 @@ describe("terminals store", () => {
     expect(useTerminalsStore.getState().tabs).toBe(renamed);
     expect(JSON.parse(localStorage.getItem(terminalTitlesKey("project-1")) ?? "{}")).toEqual({ 1: "Build" });
   });
-});
 
+  it("reorders the tabs, keeps titles and the active tab, and steps through them in the new order", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const first = useTerminalsStore.getState().tabs[0];
+    const second = store.addTerminal();
+    const third = store.addTerminal();
+    if (!second || !third) throw new Error("expected three terminals");
+    store.renameTerminal(first.id, "Build");
+
+    store.reorderTerminals([third.id, first.id, second.id]);
+
+    const state = useTerminalsStore.getState();
+    expect(state.tabs.map((tab) => tab.id)).toEqual([third.id, first.id, second.id]);
+    expect(state.tabs[1]).toMatchObject({ index: 1, title: "Build" });
+    expect(state.activeId).toBe(third.id);
+    store.activateRelativeTerminal(1);
+    expect(useTerminalsStore.getState().activeId).toBe(first.id);
+  });
+
+  it("ignores a reorder that is not a permutation of the open tabs", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const first = useTerminalsStore.getState().tabs[0];
+    const second = store.addTerminal();
+    if (!second) throw new Error("expected two terminals");
+    const before = useTerminalsStore.getState().tabs;
+
+    store.reorderTerminals([second.id]);
+    store.reorderTerminals([second.id, second.id]);
+    store.reorderTerminals([second.id, "terminal-missing"]);
+    store.reorderTerminals([first.id, second.id, "terminal-missing"]);
+    store.reorderTerminals([first.id, second.id]);
+
+    expect(useTerminalsStore.getState().tabs).toBe(before);
+  });
+});

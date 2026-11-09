@@ -70,19 +70,63 @@ function writeStoredTodos(chatId: string, todos: readonly AgentTodo[]): void {
   else writeJson(storageKey(chatId), todos);
 }
 
-interface AgentTodoState {
+export const WORKSPACE_TODO_SCOPE = "workspace";
+
+export interface AgentTodoView {
   projectId: string | null;
   activeChatId: string | null;
   viewChatId: string | null;
   todos: AgentTodo[];
+}
+
+const EMPTY_VIEW: AgentTodoView = { projectId: null, activeChatId: null, viewChatId: null, todos: [] };
+
+interface AgentTodoState extends AgentTodoView {
   todosByChat: Record<string, AgentTodo[]>;
-  bindProject: (projectId: string | null) => void;
-  beginTurn: (chatId: string, options?: { keep?: boolean }) => void;
-  finishTurn: (chatId: string, outcome?: AgentTurnOutcome) => void;
-  selectChat: (chatId: string | null) => void;
+  scopes: Readonly<Record<string, AgentTodoView>>;
+  bindProject: (projectId: string | null, scope?: string) => void;
+  beginTurn: (chatId: string, options?: { keep?: boolean; scope?: string }) => void;
+  finishTurn: (chatId: string, outcome?: AgentTurnOutcome, scope?: string) => void;
+  selectChat: (chatId: string | null, scope?: string) => void;
   todosForChat: (chatId: string) => AgentTodo[];
-  setTodos: (todos: AgentTodo[]) => void;
-  clear: () => void;
+  setTodos: (todos: AgentTodo[], scope?: string) => void;
+  clear: (scope?: string) => void;
+  forgetScope: (scope: string) => void;
+}
+
+type ViewState = Pick<
+  AgentTodoState,
+  "projectId" | "activeChatId" | "viewChatId" | "todos" | "scopes"
+>;
+
+export function agentTodoView(state: ViewState, scope: string = WORKSPACE_TODO_SCOPE): AgentTodoView {
+  if (scope === WORKSPACE_TODO_SCOPE) {
+    return {
+      projectId: state.projectId,
+      activeChatId: state.activeChatId,
+      viewChatId: state.viewChatId,
+      todos: state.todos,
+    };
+  }
+  return state.scopes[scope] ?? EMPTY_VIEW;
+}
+
+function withView(state: ViewState, scope: string, patch: Partial<AgentTodoView>): Partial<ViewState> {
+  if (scope === WORKSPACE_TODO_SCOPE) return patch;
+  return { scopes: { ...state.scopes, [scope]: { ...(state.scopes[scope] ?? EMPTY_VIEW), ...patch } } };
+}
+
+function otherScopeChats(state: ViewState, scope: string): Set<string> {
+  const chats = new Set<string>();
+  const views = [
+    ...(scope === WORKSPACE_TODO_SCOPE ? [] : [agentTodoView(state)]),
+    ...Object.entries(state.scopes).filter(([key]) => key !== scope).map(([, view]) => view),
+  ];
+  for (const view of views) {
+    if (view.activeChatId) chats.add(view.activeChatId);
+    if (view.viewChatId) chats.add(view.viewChatId);
+  }
+  return chats;
 }
 
 export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
@@ -91,54 +135,82 @@ export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
   viewChatId: null,
   todos: [],
   todosByChat: {},
-  bindProject: (projectId) =>
-    set((state) =>
-      state.projectId === projectId
-        ? state
-        : { projectId, viewChatId: null, todos: [], todosByChat: {} },
-    ),
+  scopes: {},
+  bindProject: (projectId, scope = WORKSPACE_TODO_SCOPE) =>
+    set((state) => {
+      if (agentTodoView(state, scope).projectId === projectId) return state;
+      const keep = otherScopeChats(state, scope);
+      return {
+        ...withView(state, scope, { projectId, viewChatId: null, todos: [] }),
+        todosByChat: Object.fromEntries(
+          Object.entries(state.todosByChat).filter(([chatId]) => keep.has(chatId)),
+        ),
+      };
+    }),
   beginTurn: (chatId, options) =>
     set((state) => {
       const todos = options?.keep ? get().todosForChat(chatId) : [];
       if (!options?.keep) writeStoredTodos(chatId, []);
       return {
-        activeChatId: chatId,
-        viewChatId: chatId,
-        todos,
+        ...withView(state, options?.scope ?? WORKSPACE_TODO_SCOPE, {
+          activeChatId: chatId,
+          viewChatId: chatId,
+          todos,
+        }),
         todosByChat: { ...state.todosByChat, [chatId]: todos },
       };
     }),
-  finishTurn: (chatId, outcome = "completed") =>
+  finishTurn: (chatId, outcome = "completed", scope = WORKSPACE_TODO_SCOPE) =>
     set((state) => {
-      if (state.activeChatId !== chatId) return state;
+      const view = agentTodoView(state, scope);
+      if (view.activeChatId !== chatId) return state;
       const settled = settleAgentTodos(get().todosForChat(chatId), outcome);
       writeStoredTodos(chatId, settled);
       return {
-        activeChatId: null,
-        todos: state.viewChatId === chatId ? settled : state.todos,
+        ...withView(state, scope, {
+          activeChatId: null,
+          todos: view.viewChatId === chatId ? settled : view.todos,
+        }),
         todosByChat: { ...state.todosByChat, [chatId]: settled },
       };
     }),
-  selectChat: (chatId) =>
-    set(() => ({
-      viewChatId: chatId,
-      todos: chatId ? [...get().todosForChat(chatId)] : [],
-    })),
+  selectChat: (chatId, scope = WORKSPACE_TODO_SCOPE) =>
+    set((state) =>
+      withView(state, scope, {
+        viewChatId: chatId,
+        todos: chatId ? [...get().todosForChat(chatId)] : [],
+      }),
+    ),
   todosForChat: (chatId) => get().todosByChat[chatId] ?? readStoredTodos(chatId),
-  setTodos: (todos) =>
+  setTodos: (todos, scope = WORKSPACE_TODO_SCOPE) =>
     set((state) => {
-      const chatId = state.activeChatId ?? state.viewChatId;
+      const view = agentTodoView(state, scope);
+      const chatId = view.activeChatId ?? view.viewChatId;
       if (!chatId) return state;
       writeStoredTodos(chatId, todos);
       return {
-        todos: state.viewChatId === chatId ? todos : state.todos,
+        ...withView(state, scope, { todos: view.viewChatId === chatId ? todos : view.todos }),
         todosByChat: { ...state.todosByChat, [chatId]: todos },
       };
     }),
-  clear: () =>
+  clear: (scope = WORKSPACE_TODO_SCOPE) =>
     set((state) => {
-      for (const chatId of Object.keys(state.todosByChat)) writeStoredTodos(chatId, []);
-      return { activeChatId: null, todos: [], todosByChat: {} };
+      const keep = otherScopeChats(state, scope);
+      const kept: Record<string, AgentTodo[]> = {};
+      for (const [chatId, todos] of Object.entries(state.todosByChat)) {
+        if (keep.has(chatId)) kept[chatId] = todos;
+        else writeStoredTodos(chatId, []);
+      }
+      return {
+        ...withView(state, scope, { activeChatId: null, todos: [] }),
+        todosByChat: kept,
+      };
+    }),
+  forgetScope: (scope) =>
+    set((state) => {
+      if (scope === WORKSPACE_TODO_SCOPE || !(scope in state.scopes)) return state;
+      const { [scope]: _gone, ...scopes } = state.scopes;
+      return { scopes };
     }),
 }));
 

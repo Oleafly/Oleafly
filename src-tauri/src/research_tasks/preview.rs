@@ -566,7 +566,8 @@ mod tests {
         .unwrap();
         assert_eq!(origin["asset"], expected.as_str());
         assert_eq!(origin["taskId"], task.id.as_str());
-        assert_eq!(origin["taskTitle"], "Ablation");
+        assert!(origin.get("taskTitle").is_none());
+        assert!(origin.get("projectName").is_none());
         assert_eq!(origin["sourcePath"], "figures/loss curve.png");
         assert_eq!(origin["agentId"], "claude");
         assert_eq!(origin["sha256"], after_hash.as_str());

@@ -170,8 +170,9 @@ export function registerAttachmentHolder(holder: () => Iterable<string>): () => 
 export function draftAttachmentRefs(projectId: string): string[] {
   const refs = new Set<string>();
   const prefix = `${projectId}:`;
+  const slotPrefix = `${projectId}#`;
   for (const [composerId, draft] of Object.entries(useComposerDrafts.getState().drafts)) {
-    if (composerId.startsWith(prefix)) addRefs(refs, draft.attachments);
+    if (composerId.startsWith(prefix) || composerId.startsWith(slotPrefix)) addRefs(refs, draft.attachments);
   }
   for (const items of heldAttachments) addRefs(refs, items);
   for (const holder of attachmentHolders) for (const ref of holder()) refs.add(ref);

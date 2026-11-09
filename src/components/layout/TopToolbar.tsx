@@ -1,6 +1,7 @@
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { reattachPreviewWindow } from "@/lib/preview-window";
-import { type ComponentType, lazy, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
+import { type ComponentType, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
@@ -15,6 +16,7 @@ import {
   History,
   Presentation,
   LayoutGrid,
+  RotateCcw,
   LayoutTemplate,
   ImageDown,
   SquarePen,
@@ -55,6 +57,7 @@ import { useProjectColorsStore } from "@/store/project-colors";
 import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
+import { isDefaultPaneLayout, resetPaneLayout, usePaneLayoutStore } from "@/store/pane-layout";
 import { shortcutLabel, shortcutParts, useShortcutStore } from "@/store/shortcuts";
 import { enterZenMode } from "@/lib/zen-mode";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
@@ -302,6 +305,7 @@ export function TopToolbar() {
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
+  const paneLayoutMoved = usePaneLayoutStore((s) => !isDefaultPaneLayout(s.layout));
   const fullscreen = useFullscreen();
 
   const toolbarRef = useRef<HTMLElement>(null);
@@ -424,6 +428,12 @@ export function TopToolbar() {
       ))}
       <DropdownMenuSeparator />
       <ZenModeMenuItem />
+      {paneLayoutMoved && (
+        <DropdownMenuItem data-testid="layout-reset-pane-layout" onSelect={() => resetPaneLayout()}>
+          <RotateCcw className="size-4 text-muted-foreground" />
+          <span className="flex-1">{t(($) => $.shell.toolbar.resetPaneLayout)}</span>
+        </DropdownMenuItem>
+      )}
     </>
   );
 

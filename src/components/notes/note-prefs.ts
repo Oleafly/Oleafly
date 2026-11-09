@@ -1,63 +1,45 @@
-import { useSyncExternalStore } from "react";
+import { useEffect } from "react";
+import { NOTE_WIDTH_KEY, NOTE_WIDTHS, normalizeNotesSetting, type NoteWidth } from "@/lib/notes-appearance";
+import { useSettingsStore } from "@/store/settings";
+import { storedValue } from "./note-storage";
 
-export type NoteWidth = "standard" | "wide" | "full";
-
-export const NOTE_WIDTHS: readonly NoteWidth[] = ["standard", "wide", "full"];
-export const NOTE_WIDTH_KEY = "oleafly.notes.width";
+export { NOTE_WIDTH_KEY, NOTE_WIDTHS, type NoteWidth };
 export const PROMPT_COLLAPSED_KEY = "oleafly.notes.promptCollapsed";
 
-const memory = new Map<string, string>();
-const widthListeners = new Set<() => void>();
-
-function read(key: string): string | null {
-  const kept = memory.get(key);
-  if (kept !== undefined) return kept;
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value);
-    memory.delete(key);
-  } catch {
-    memory.set(key, value);
-  }
-}
+const promptCollapsed = storedValue(PROMPT_COLLAPSED_KEY, (raw) => raw === "true", String);
 
 export function readNoteWidth(): NoteWidth {
-  const saved = read(NOTE_WIDTH_KEY);
-  return NOTE_WIDTHS.find((width) => width === saved) ?? "standard";
+  return useSettingsStore.getState().notesWidth;
 }
 
 export function saveNoteWidth(width: NoteWidth): void {
-  write(NOTE_WIDTH_KEY, width);
-  for (const listener of widthListeners) listener();
+  useSettingsStore.getState().setNotesAppearance("notesWidth", width);
 }
 
-function subscribeWidth(listener: () => void): () => void {
-  widthListeners.add(listener);
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === null || event.key === NOTE_WIDTH_KEY) listener();
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    widthListeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-  };
+function followStoredWidth(event: StorageEvent): void {
+  if (event.key !== null && event.key !== NOTE_WIDTH_KEY) return;
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(NOTE_WIDTH_KEY);
+  } catch {
+    return;
+  }
+  const width = normalizeNotesSetting("notesWidth", stored);
+  if (useSettingsStore.getState().notesWidth !== width) useSettingsStore.setState({ notesWidth: width });
 }
 
 export function useNoteWidth(): NoteWidth {
-  return useSyncExternalStore(subscribeWidth, readNoteWidth, readNoteWidth);
+  useEffect(() => {
+    window.addEventListener("storage", followStoredWidth);
+    return () => window.removeEventListener("storage", followStoredWidth);
+  }, []);
+  return useSettingsStore((state) => state.notesWidth);
 }
 
 export function readPromptCollapsed(): boolean {
-  return read(PROMPT_COLLAPSED_KEY) === "true";
+  return promptCollapsed.read();
 }
 
 export function savePromptCollapsed(collapsed: boolean): void {
-  write(PROMPT_COLLAPSED_KEY, String(collapsed));
+  promptCollapsed.write(collapsed);
 }

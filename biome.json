@@ -101,6 +101,12 @@
           "level": "error",
           "options": {
             "paths": {
+              "react": {
+                "importNames": [
+                  "lazy"
+                ],
+                "message": "Use lazy from @/lib/preloadable so a view renders at once when its code is already loaded, and pass { warm: true } for views people open by hand."
+              },
               "@/lib/tauri": {
                 "importNames": [
                   "writeFileContent"
@@ -128,7 +134,8 @@
       "includes": [
         "src/store/files.ts",
         "src/lib/ai-tools.ts",
-        "src/components/diagram/DiagramComposer.tsx"
+        "src/components/diagram/DiagramComposer.tsx",
+        "src/lib/preloadable.tsx"
       ],
       "linter": {
         "rules": {

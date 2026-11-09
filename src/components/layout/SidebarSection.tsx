@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useSectionReorder } from "./section-reorder";
 
 export const SIDEBAR_TITLE_CLASS =
   "text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75";
@@ -88,6 +89,7 @@ export function SidebarSection({
   contentClassName?: string;
 }>) {
   const contentId = `${id}-content`;
+  const reorder = useSectionReorder();
   return (
     <section
       data-testid={id}
@@ -99,9 +101,11 @@ export function SidebarSection({
       )}
     >
       <div
+        data-section-header={id}
         className={cn(
           "flex h-8 shrink-0 items-center pr-2 transition-colors hover:bg-sidebar-accent focus-within:bg-sidebar-accent",
           open && "border-b border-sidebar-border/65",
+          reorder?.dragging === id && "bg-sidebar-accent",
         )}
       >
         <button
@@ -109,7 +113,21 @@ export function SidebarSection({
           aria-label={title}
           aria-expanded={open}
           aria-controls={contentId}
-          onClick={() => onOpenChange(!open)}
+          aria-keyshortcuts={reorder ? "Alt+ArrowUp Alt+ArrowDown" : undefined}
+          onClick={(event) => {
+            if (reorder) event.currentTarget.focus({ preventScroll: true });
+            onOpenChange(!open);
+          }}
+          onPointerDown={reorder ? (event) => reorder.begin(id, event) : undefined}
+          onKeyDown={
+            reorder
+              ? (event) => {
+                  if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+                  event.preventDefault();
+                  reorder.step(id, event.key === "ArrowUp" ? -1 : 1, event.currentTarget);
+                }
+              : undefined
+          }
           className={cn(
             "flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left [&_svg]:shrink-0",
             SIDEBAR_TITLE_CLASS,

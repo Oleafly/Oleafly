@@ -15,6 +15,8 @@ type WorkspaceProps = Parameters<typeof NotesWorkspace>[0];
 
 const mocks = vi.hoisted(() => ({
   noteHeads: vi.fn(),
+  noteLinks: vi.fn(),
+  setNoteRelatedProject: vi.fn(),
   createNoteProject: vi.fn(),
   readFileContent: vi.fn(),
   getConfig: vi.fn(),
@@ -25,6 +27,9 @@ const mocks = vi.hoisted(() => ({
   onTask: null as null | ((task: ResearchTask) => void),
   canCreate: true,
 }));
+const paper = vi.hoisted(() => ({ pandocConvert: vi.fn(), insertAtCursor: vi.fn() }));
+vi.mock("@/features/tools-ai/pandoc-text", () => ({ pandocConvert: paper.pandocConvert }));
+vi.mock("@/components/editor/cm/controller", () => ({ insertAtCursor: paper.insertAtCursor }));
 const captured = vi.hoisted(() => ({
   props: null as WorkspaceProps | null,
   data: null as NotesData | null,
@@ -33,6 +38,8 @@ const captured = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   noteHeads: mocks.noteHeads,
+  noteLinks: mocks.noteLinks,
+  setNoteRelatedProject: mocks.setNoteRelatedProject,
   createNoteProject: mocks.createNoteProject,
   readFileContent: mocks.readFileContent,
   getConfig: mocks.getConfig,
@@ -72,12 +79,15 @@ vi.mock("./NotesWorkspace", async () => {
   };
 });
 
+import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNotesViewStore } from "@/store/notes-view";
+import { primeResearchTasksFlag, resetResearchTasksFlagForTests } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 import { newNoteSource, readNoteFacts } from "./note-file";
-import { NotesHost } from "./NotesHost";
+import { noteVersion } from "./notes-service";
+import { NotesHost, paperFormat, sendTextToPaper } from "./NotesHost";
 
 function project(overrides: Partial<ProjectInfo> & Pick<ProjectInfo, "id" | "name" | "kind">): ProjectInfo {
   return {
@@ -108,6 +118,7 @@ const saved = {
 };
 
 let refreshProjects = vi.fn();
+const toastError = vi.spyOn(toast, "error").mockImplementation(() => 0);
 
 function props(): WorkspaceProps {
   if (!captured.props) throw new Error("the workspace was not rendered");
@@ -130,6 +141,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetResearchTasksFlagForTests();
+  primeResearchTasksFlag({ research_tasks_enabled: true });
   mocks.canCreate = true;
   captured.props = null;
   captured.data = null;
@@ -137,6 +150,8 @@ beforeEach(() => {
   useFilesStore.setState({ projects, refreshProjects });
   useNotesViewStore.setState({ requestedNoteId: null });
   mocks.noteHeads.mockResolvedValue([{ id: "note-1", head: HEAD }]);
+  mocks.noteLinks.mockResolvedValue([]);
+  mocks.setNoteRelatedProject.mockResolvedValue(undefined);
   mocks.getConfig.mockResolvedValue({
     ai_provider: "anthropic",
     ai_model: "claude-sonnet",
@@ -220,57 +235,59 @@ const TASKS = [
 ];
 
 describe("NotesHost agents", () => {
-  it("offers the configured models and defaults to the app's own model", async () => {
+  it("reads neither the AI settings nor the CLI agent list when there are no research runs", async () => {
     openNotes();
     render(<NotesHost />);
-    await waitFor(() => expect(data().agents.length).toBeGreaterThan(0));
-    expect(data().agents.some((group) => group.id === "anthropic")).toBe(true);
-    expect(data().preferredAgent).toEqual({ providerId: "anthropic", modelId: "claude-sonnet" });
+    await screen.findByTestId("workspace");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.getConfig).not.toHaveBeenCalled();
+    expect(mocks.acpCatalog).not.toHaveBeenCalled();
+    expect(data()).not.toHaveProperty("agents");
+    expect(data()).not.toHaveProperty("preferredAgent");
+    expect(data()).not.toHaveProperty("openAgentSettings");
   });
 
-  it("keeps working when the CLI agent list can't be read", async () => {
+  it("names run agents by model or id when the CLI agent list can't be read", async () => {
     mocks.acpCatalog.mockRejectedValue(new Error("no catalog"));
+    mocks.listResearchTasks.mockResolvedValue(TASKS);
     openNotes();
     render(<NotesHost />);
-    await waitFor(() => expect(data().agents.length).toBeGreaterThan(0));
-  });
-
-  it("logs and offers no agents when the settings can't be read", async () => {
-    mocks.getConfig.mockRejectedValue(new Error("no config"));
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("load note agents", expect.any(Error)));
-    expect(data().agents).toEqual([]);
-    expect(data().preferredAgent).toBeNull();
-  });
-
-  it("ignores agents that load after Notes has closed", async () => {
-    let resolve: (value: unknown) => void = () => {};
-    mocks.getConfig.mockReturnValue(new Promise((done) => (resolve = done)));
-    openNotes();
-    const view = render(<NotesHost />);
-    view.unmount();
-    await act(async () => resolve({ ai_provider: "", ai_model: "", ai_keys: {}, ai_custom_providers: [], ai_provider_models: {} }));
+    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalledOnce());
+    expect(data().artifacts.map((artifact) => artifact.agent)).toEqual(["sonnet", "gpt-5", "codex", undefined]);
     expect(mocks.logError).not.toHaveBeenCalled();
   });
 
-  it("opens the AI settings from Notes", async () => {
+  it("ignores a CLI agent list that arrives after Notes has closed", async () => {
+    let resolve: (value: AcpAgentStatus[]) => void = () => {};
+    mocks.acpCatalog.mockReturnValue(new Promise((done) => (resolve = done)));
+    mocks.listResearchTasks.mockResolvedValue(TASKS);
     openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(captured.data).not.toBeNull());
-    act(() => data().openAgentSettings?.());
-    expect(useSettingsStore.getState().settingsOpen).toBe(true);
-    expect(useSettingsStore.getState().settingsInitialSection).toBe("ai");
+    const view = render(<NotesHost />);
+    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalledOnce());
+    view.unmount();
+    await act(async () => resolve([catalogAgent("claude", "Claude Code")]));
+    expect(mocks.logError).not.toHaveBeenCalled();
   });
 
-  it("opens the app settings where they were last left", async () => {
-    useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "appearance" });
+  it("offers the related project's references and no fixed citation list", async () => {
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    expect(data().citations).toBeUndefined();
+    expect(data().projectCitations).toBeTypeOf("function");
+  });
+
+  it("opens Settings at the Notes tab of Appearance", async () => {
+    useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "shortcuts" });
     openNotes();
     render(<NotesHost />);
     await waitFor(() => expect(captured.data).not.toBeNull());
     act(() => data().openSettings?.());
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
     expect(useSettingsStore.getState().settingsInitialSection).toBe("appearance");
+    expect(useSettingsStore.getState().settingsInitialAppearanceTab).toBe("notes");
   });
 
   it("hands the workspace a way to move notes to the Recycle Bin", async () => {
@@ -326,6 +343,11 @@ describe("NotesHost", () => {
         icon: "lucide:atom",
         color: readNoteFacts(HEAD).color,
         summary: "Sweep over masking ratios.",
+        createdAt: 1_700_000_000_000,
+        preview: "Sweep over masking ratios.",
+        aliases: [],
+        tags: [],
+        properties: {},
       },
       {
         id: "note-2",
@@ -337,11 +359,16 @@ describe("NotesHost", () => {
         icon: undefined,
         color: readNoteFacts("").color,
         summary: "",
+        createdAt: 1_700_000_000_000,
+        preview: "",
+        aliases: [],
+        tags: [],
+        properties: {},
       },
     ]);
     expect(data().artifacts).toEqual([]);
     expect(data().experiments).toEqual([]);
-    expect(data().citations).toEqual([]);
+    expect(data().citations).toBeUndefined();
     expect(data().papers).toEqual([]);
     expect(screen.getByTestId("workspace")).toHaveTextContent("Masking ablation, Reading list");
   });
@@ -376,6 +403,18 @@ describe("NotesHost", () => {
     expect(useNotesViewStore.getState().requestedNoteId).toBeNull();
   });
 
+  it("hands later note requests to the open workspace and clears each once handled", async () => {
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    expect(props().requestedNoteId).toBeNull();
+    act(() => useNotesViewStore.getState().request("note-1"));
+    expect(props().requestedNoteId).toBe("note-1");
+    act(() => props().onRequestHandled?.());
+    expect(useNotesViewStore.getState().requestedNoteId).toBeNull();
+    expect(props().requestedNoteId).toBeNull();
+  });
+
   it("starts on Home when no note was asked for", async () => {
     openNotes();
     render(<NotesHost />);
@@ -408,7 +447,7 @@ describe("NotesHost", () => {
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
     expect([name, source]).toEqual([untitled, newNoteSource(untitled, "", undefined, id)]);
     expect(refreshProjects).toHaveBeenCalledTimes(2);
-    expect(mocks.noteHeads).toHaveBeenCalledTimes(2);
+    expect(mocks.noteHeads).toHaveBeenCalledTimes(1);
   });
 
   it("logs a failed note creation and hands back no id", async () => {
@@ -423,6 +462,7 @@ describe("NotesHost", () => {
     });
     expect(created).toBeNull();
     expect(mocks.logError).toHaveBeenCalledWith("create note", failure);
+    expect(toastError).toHaveBeenCalledWith(enNotes.failures.createNote);
   });
 
   it("hands back no id when notes cannot be created here", async () => {
@@ -567,5 +607,200 @@ describe("NotesHost research tasks", () => {
     act(() => mocks.onTask?.(TASKS[0]));
     expect(data().artifacts.map((artifact) => artifact.taskId)).toEqual(["by-claude", "by-model"]);
     expect(data().latestRun?.("note-1")).toContain("Task: Loss sweep");
+  });
+});
+
+describe("note heads after edits", () => {
+  const FRESH = "---\ntitle: Reading list\nicon: lucide:book\n---\n\nPapers to read this week.\n";
+
+  it("updates only the saved note's head and moves the revision when its text changed", async () => {
+    const writeProjectFile = vi.fn(() => Promise.resolve());
+    useFilesStore.setState({ writeProjectFile } as never);
+    mocks.readFileContent.mockResolvedValue("Old text.\n");
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
+    const before = data().revision ?? 0;
+    const untouched = data().notes.find((note) => note.id === "note-1");
+    await act(async () => {
+      await data().saveNote?.("note-2", FRESH, noteVersion("Old text.\n"));
+    });
+    expect(writeProjectFile).toHaveBeenCalled();
+    expect(mocks.noteHeads).toHaveBeenCalledTimes(1);
+    expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book");
+    expect(data().notes.find((note) => note.id === "note-1")).toBe(untouched);
+    expect(data().revision).toBeGreaterThan(before);
+    const after = data().revision;
+    mocks.readFileContent.mockResolvedValue(FRESH);
+    const notes = data().notes;
+    await act(async () => {
+      await data().saveNote?.("note-2", FRESH, noteVersion(FRESH));
+    });
+    expect(data().revision).toBe(after);
+    expect(data().notes).toBe(notes);
+  });
+
+  it("moves the revision when the notes are read again but not on the first read", async () => {
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
+    const first = data().revision;
+    expect(first).toBe(0);
+    await act(async () => {
+      await data().refreshNotes?.();
+    });
+    await waitFor(() => expect(data().revision).toBe(1));
+  });
+
+  it("takes a live note's text as its head without reading the vault again", async () => {
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
+    const before = data().revision;
+    act(() => data().noteTextChanged?.("note-2", FRESH));
+    expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book");
+    expect(data().revision).toBe(before);
+    expect(mocks.noteHeads).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("NotesHost research tasks switch", () => {
+  it("shows no artifacts and reads no tasks while Research tasks is off", async () => {
+    resetResearchTasksFlagForTests();
+    primeResearchTasksFlag({ research_tasks_enabled: false });
+    mocks.listResearchTasks.mockResolvedValue(TASKS);
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await act(async () => {});
+    expect(mocks.listResearchTasks).not.toHaveBeenCalled();
+    expect(data().researchTasks).toBe(false);
+    expect(data().artifacts).toEqual([]);
+    expect(data().experiments).toEqual([]);
+  });
+});
+
+describe("NotesHost live heads", () => {
+  const LIVE = "---\ntitle: Reading list\nicon: lucide:book\n---\n\nLive text.\n";
+
+  it("applies the first live change at once and folds a burst into one later update", async () => {
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
+    vi.useFakeTimers();
+    try {
+      act(() => data().noteTextChanged?.("note-2", LIVE));
+      expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book");
+      const afterFirst = data();
+      act(() => {
+        data().noteTextChanged?.("note-2", LIVE.replace("lucide:book", "lucide:atom"));
+        data().noteTextChanged?.("note-2", LIVE.replace("lucide:book", "lucide:flask-conical"));
+      });
+      expect(data()).toBe(afterFirst);
+      act(() => vi.advanceTimersByTime(1_000));
+      expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:flask-conical");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("NotesHost revision after saves", () => {
+  it("moves the revision only when links, tags or titles change", async () => {
+    const writeProjectFile = vi.fn(() => Promise.resolve());
+    useFilesStore.setState({ writeProjectFile } as never);
+    const first = "---\ntitle: Reading list\n---\n\nSee [Alpha](oleafly://note/abc).\n";
+    mocks.readFileContent.mockResolvedValue("Old.\n");
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await act(async () => {
+      await data().saveNote?.("note-2", first, noteVersion("Old.\n"));
+    });
+    const linked = data().revision;
+    mocks.readFileContent.mockResolvedValue(first);
+    const prose = `${first}\nMore words with no links.\n`;
+    await act(async () => {
+      await data().saveNote?.("note-2", prose, noteVersion(first));
+    });
+    expect(data().revision).toBe(linked);
+    mocks.readFileContent.mockResolvedValue(prose);
+    await act(async () => {
+      await data().saveNote?.("note-2", `${prose}\nAnd #vision.\n`, noteVersion(prose));
+    });
+    expect(data().revision).toBeGreaterThan(linked ?? 0);
+  });
+});
+
+describe("NotesHost papers and projects", () => {
+  it("offers the open paper as the place to send a note", async () => {
+    useFilesStore.setState({ projectId: "paper-1", activePath: "main.tex" });
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    expect(data().papers).toEqual([{ id: "paper-1", label: "Masking paper" }]);
+    act(() => useFilesStore.setState({ activePath: "refs.bib" }));
+    expect(data().papers).toEqual([]);
+    expect(props().onSendToPaper).toEqual(expect.any(Function));
+  });
+
+  it("starts the library's new project flow and links the note to the project it makes", async () => {
+    useSettingsStore.setState({ newProjectOpen: false });
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    act(() => props().onCreateProject?.({ noteId: "note-2", artifactId: null }));
+    expect(useSettingsStore.getState().newProjectOpen).toBe(true);
+    act(() =>
+      useFilesStore.setState({
+        projects: [...projects, project({ id: "paper-9", name: "New paper", kind: "latex", main_doc: "main.tex" })],
+        projectId: "paper-9",
+      }),
+    );
+    await waitFor(() => expect(mocks.setNoteRelatedProject).toHaveBeenCalledWith("note-2", "paper-9"));
+    expect(useHomeViewStore.getState().page).toBe("library");
+  });
+
+  it("forgets the note when the new project flow closes without a project", async () => {
+    useSettingsStore.setState({ newProjectOpen: false });
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    act(() => props().onCreateProject?.({ noteId: "note-2", artifactId: null }));
+    act(() => useSettingsStore.setState({ newProjectOpen: false }));
+    act(() =>
+      useFilesStore.setState({
+        projects: [...projects, project({ id: "paper-8", name: "Opened later", kind: "latex", main_doc: "main.tex" })],
+        projectId: "paper-8",
+      }),
+    );
+    await act(async () => {});
+    expect(mocks.setNoteRelatedProject).not.toHaveBeenCalled();
+  });
+});
+
+describe("sending a note to the open paper", () => {
+  it("converts Markdown for a LaTeX or Typst file and inserts it at the cursor", async () => {
+    paper.pandocConvert.mockResolvedValue({ text: "\\section{Plan}" });
+    useFilesStore.setState({ projectId: "paper-1", activePath: "main.tex" });
+    useHomeViewStore.setState({ page: "notes" });
+    await expect(sendTextToPaper("paper-1", "# Plan")).resolves.toBe(true);
+    expect(paper.pandocConvert).toHaveBeenCalledWith({ source: "markdown", target: "latex", text: "# Plan" });
+    expect(paper.insertAtCursor).toHaveBeenCalledWith("\\section{Plan}");
+    expect(useHomeViewStore.getState().page).toBe("library");
+  });
+
+  it("inserts Markdown as it is and refuses a paper that is not open", async () => {
+    useFilesStore.setState({ projectId: "paper-1", activePath: "notes/plan.md" });
+    await expect(sendTextToPaper("paper-1", "# Plan")).resolves.toBe(true);
+    expect(paper.pandocConvert).not.toHaveBeenCalled();
+    expect(paper.insertAtCursor).toHaveBeenCalledWith("# Plan");
+    await expect(sendTextToPaper("paper-2", "# Plan")).resolves.toBe(false);
+    expect(paperFormat("main.typ")).toBe("typst");
+    expect(paperFormat("refs.bib")).toBeNull();
   });
 });

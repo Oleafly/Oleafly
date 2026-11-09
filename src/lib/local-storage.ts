@@ -14,11 +14,13 @@ export function readString(key: string): string | null {
   }
 }
 
-export function writeString(key: string, value: string): void {
+export function writeString(key: string, value: string): boolean {
   try {
-    storage()?.setItem(key, value);
+    const store = storage();
+    store?.setItem(key, value);
+    return store !== null;
   } catch {
-    return;
+    return false;
   }
 }
 
@@ -45,10 +47,10 @@ export function readJson<T>(
   }
 }
 
-export function writeJson(key: string, value: unknown): void {
+export function writeJson(key: string, value: unknown): boolean {
   try {
-    writeString(key, JSON.stringify(value));
+    return writeString(key, JSON.stringify(value));
   } catch {
-    return;
+    return false;
   }
 }

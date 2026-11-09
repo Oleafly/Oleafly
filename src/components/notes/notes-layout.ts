@@ -12,17 +12,34 @@ import {
   type ViewState,
   type WorkspaceLayout,
 } from "@oleafly/workspace";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 export const NOTES_LAYOUT_KEY = "oleafly.notes.layout";
 export const HOME_VIEW = "home";
 export const ARTIFACTS_VIEW = "artifacts";
 export const ARTIFACTS_SHARE = 0.32;
+export const GRAPH_VIEW = "graph";
+export const LOCAL_GRAPH_VIEW = "local-graph";
+export const OUTLINE_VIEW = "outline";
+export const SIDE_SHARE = 0.3;
+const SIDE_VIEWS: readonly string[] = [ARTIFACTS_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW];
 const NOTE_PREFIX = "note:";
 const HOME_PREFIX = "home:";
 const EXTRA_HOME = /^home:([1-9]\d*)$/u;
 
 export function isHomeView(viewId: string): boolean {
   return viewId === HOME_VIEW || EXTRA_HOME.test(viewId);
+}
+
+export function isSideView(viewId: string | null | undefined): boolean {
+  return viewId !== null && viewId !== undefined && SIDE_VIEWS.includes(viewId);
+}
+
+export function sideView(viewId: string): ViewState | null {
+  if (viewId === ARTIFACTS_VIEW) return { type: "artifacts" };
+  if (viewId === LOCAL_GRAPH_VIEW) return { type: "graph", params: { local: true } };
+  if (viewId === OUTLINE_VIEW) return { type: "outline" };
+  return null;
 }
 
 export function homeViews(layout: WorkspaceLayout): string[] {
@@ -54,6 +71,9 @@ export function defaultNotesLayout(): WorkspaceLayout {
 function knownView(id: string, view: ViewState): boolean {
   if (isHomeView(id)) return view.type === "home";
   if (id === ARTIFACTS_VIEW) return view.type === "artifacts";
+  if (id === GRAPH_VIEW) return view.type === "graph" && view.params?.local !== true;
+  if (id === LOCAL_GRAPH_VIEW) return view.type === "graph" && view.params?.local === true;
+  if (id === OUTLINE_VIEW) return view.type === "outline";
   const noteId = noteIdOf(id);
   return noteId !== null && noteId !== "" && view.type === "note" && view.params?.noteId === noteId;
 }
@@ -64,22 +84,17 @@ export function cleanNotesLayout(layout: WorkspaceLayout): WorkspaceLayout {
   return Object.keys(cleaned.views).length === 0 ? defaultNotesLayout() : cleaned;
 }
 
+function storedLayout(value: unknown): WorkspaceLayout | null {
+  const parsed = parseLayout(value);
+  return parsed ? cleanNotesLayout(parsed) : null;
+}
+
 export function readNotesLayout(): WorkspaceLayout {
-  try {
-    const raw = localStorage.getItem(NOTES_LAYOUT_KEY);
-    const parsed = raw ? parseLayout(JSON.parse(raw)) : null;
-    return parsed ? cleanNotesLayout(parsed) : defaultNotesLayout();
-  } catch {
-    return defaultNotesLayout();
-  }
+  return readJson(NOTES_LAYOUT_KEY, null, storedLayout) ?? defaultNotesLayout();
 }
 
 export function saveNotesLayout(layout: WorkspaceLayout): void {
-  try {
-    localStorage.setItem(NOTES_LAYOUT_KEY, JSON.stringify(layout));
-  } catch {
-    return;
-  }
+  writeJson(NOTES_LAYOUT_KEY, layout);
 }
 
 export function holdsNotes(candidate: GroupNode): boolean {
@@ -88,13 +103,13 @@ export function holdsNotes(candidate: GroupNode): boolean {
 
 export function stageGroup(layout: WorkspaceLayout, focused: string | null): GroupNode {
   const groups = groupsOf(layout.root);
-  const owner = focused && focused !== ARTIFACTS_VIEW ? groupOfView(layout, focused) : null;
+  const owner = focused && !isSideView(focused) ? groupOfView(layout, focused) : null;
   if (owner) return owner;
   const stage = groups.find((candidate) => candidate.id === layout.stage);
   if (stage) return stage;
   return (
     groups.find(holdsNotes) ??
-    groups.find((candidate) => !candidate.views.every((view) => view === ARTIFACTS_VIEW)) ??
+    groups.find((candidate) => !candidate.views.every(isSideView)) ??
     groups[0]
   );
 }
@@ -119,4 +134,30 @@ export function openNoteInPlace(layout: WorkspaceLayout, placeId: string, noteId
 
 export function openNoteViews(layout: WorkspaceLayout): string[] {
   return groupsOf(layout.root).flatMap((candidate) => candidate.views.filter((view) => noteIdOf(view) !== null));
+}
+
+export function toggleSideView(layout: WorkspaceLayout, viewId: string, focused: string | null): WorkspaceLayout {
+  if (viewId in layout.views) return closeView(layout, viewId);
+  const view = sideView(viewId);
+  if (!view) return layout;
+  const companion = groupsOf(layout.root).find(
+    (candidate) => candidate.views.length > 0 && candidate.views.every(isSideView),
+  );
+  if (companion) return openView(layout, viewId, view, { groupId: companion.id, zone: "center" });
+  const stage = stageGroup(layout, focused);
+  return openView(layout, viewId, view, { groupId: stage.id, zone: "right" }, SIDE_SHARE);
+}
+
+export function openGraphIn(layout: WorkspaceLayout, focused: string | null): WorkspaceLayout {
+  const stage = stageGroup(layout, focused);
+  return openView(layout, GRAPH_VIEW, { type: "graph" }, { groupId: stage.id, zone: "center" });
+}
+
+export function openNoteFrom(layout: WorkspaceLayout, noteId: string, focused: string | null): WorkspaceLayout {
+  const stage = stageGroup(layout, focused);
+  const current = noteIdOf(stage.active);
+  if (stage.active && current !== null && current !== noteId && !groupOfView(layout, noteViewId(noteId))) {
+    return openNoteInPlace(layout, stage.active, noteId);
+  }
+  return openNoteIn(layout, noteId, stage.id);
 }

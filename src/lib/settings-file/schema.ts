@@ -6,6 +6,22 @@ import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { canStoreWord, normalizeDictionaryWord } from "@/lib/dictionary";
 import type { EditorColorSettings, EditorThemeId } from "@/lib/editor-themes";
 import { PERSONA_COLORS } from "@/lib/persona-colors";
+import {
+  NOTE_WIDTHS,
+  NOTES_CALLOUT_STYLES,
+  NOTES_CODE_THEMES,
+  NOTES_CUSTOM_LINE_HEIGHT,
+  NOTES_FONT_SIZE_RANGE,
+  NOTES_HEADING_SIZES,
+  NOTES_HEADING_TYPEFACES,
+  NOTES_HIGHLIGHT_COLORS,
+  NOTES_LINE_HEIGHT_OPTIONS,
+  NOTES_PARAGRAPH_SPACING_OPTIONS,
+  NOTES_TITLE_SIZES,
+  NOTES_TYPEFACES,
+  clampNotesFontSize,
+  clampNotesLineHeight,
+} from "@/lib/notes-appearance";
 import { isLintRuleName } from "@/lib/proofreading/lint-profile";
 import type { ThemePreference } from "@/lib/theme";
 import { parseThemeCustomizationImport, type ThemeCustomization } from "@/lib/theme-customization";
@@ -494,6 +510,33 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.files.hiddenFiles", "hiddenFilePatterns", hiddenFiles),
   pref("appearance.files.zenMode.fullScreen", "zenFullScreen", bool),
   pref("appearance.files.zenMode.showPdfOnCompile", "zenShowPdfOnCompile", bool),
+
+  pref("appearance.notes.typeface", "notesTypeface", oneOf(NOTES_TYPEFACES)),
+  pref("appearance.notes.fontFamily", "notesFontFamily", fontFamily),
+  pref(
+    "appearance.notes.fontSize",
+    "notesFontSize",
+    decimal(NOTES_FONT_SIZE_RANGE.min, NOTES_FONT_SIZE_RANGE.max, clampNotesFontSize),
+  ),
+  pref("appearance.notes.lineHeight", "notesLineHeight", oneOf(NOTES_LINE_HEIGHT_OPTIONS)),
+  pref(
+    "appearance.notes.customLineHeight",
+    "notesCustomLineHeight",
+    decimal(NOTES_CUSTOM_LINE_HEIGHT.min, NOTES_CUSTOM_LINE_HEIGHT.max, clampNotesLineHeight),
+  ),
+  pref("appearance.notes.paragraphSpacing", "notesParagraphSpacing", oneOf(NOTES_PARAGRAPH_SPACING_OPTIONS)),
+  pref("appearance.notes.headingTypeface", "notesHeadingTypeface", oneOf(NOTES_HEADING_TYPEFACES)),
+  pref("appearance.notes.headingFontFamily", "notesHeadingFontFamily", fontFamily),
+  pref("appearance.notes.headingSize", "notesHeadingSize", oneOf(NOTES_HEADING_SIZES)),
+  pref("appearance.notes.titleSize", "notesTitleSize", numberOf(NOTES_TITLE_SIZES)),
+  pref("appearance.notes.width", "notesWidth", oneOf(NOTE_WIDTHS)),
+  pref("appearance.notes.wordCount", "notesShowWordCount", bool),
+  pref("appearance.notes.spellcheck", "notesSpellcheck", bool),
+  pref("appearance.notes.codeFontFamily", "notesCodeFontFamily", fontFamily),
+  pref("appearance.notes.codeTheme", "notesCodeTheme", oneOf(NOTES_CODE_THEMES)),
+  pref("appearance.notes.accentColor", "notesAccentColor", hexColorOrEmpty),
+  pref("appearance.notes.highlightColor", "notesHighlightColor", oneOf(NOTES_HIGHLIGHT_COLORS)),
+  pref("appearance.notes.calloutStyle", "notesCalloutStyle", oneOf(NOTES_CALLOUT_STYLES)),
 
   field("dictionary.words", words, (snapshot) => [...snapshot.words], (value, plan) => {
     plan.words = value;

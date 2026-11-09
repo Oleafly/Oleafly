@@ -736,7 +736,7 @@ export function LiteratureSearchPanel() {
     <>
       <form
         onSubmit={submit}
-        className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm transition-colors focus-within:border-ring"
+        className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm transition-colors"
       >
         <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
         <Input

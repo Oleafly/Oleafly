@@ -11,6 +11,7 @@ mod ai_model_registry;
 mod app_error;
 mod app_icon;
 mod approvals;
+mod artifact_frame;
 mod arxiv_import;
 mod assets;
 mod attachments;
@@ -71,7 +72,12 @@ mod mathpix;
 mod mcp;
 mod menu;
 mod native_drop;
+mod note_index;
+mod note_links;
+mod note_search;
+mod note_vault;
 mod notebook_toolchain;
+mod notes_typst;
 mod ollama;
 mod open_folder;
 mod open_request;
@@ -518,11 +524,19 @@ pub fn run() {
         .manage(zotero::commands::ZoteroState::default())
         .manage(collab::state::CollabState::for_app())
         .manage(deep_link::LinkInbox::default())
+        .register_asynchronous_uri_scheme_protocol(
+            artifact_frame::SCHEME,
+            |_context, request, responder| responder.respond(artifact_frame::respond(&request)),
+        )
         .on_window_event(on_window_event)
         .setup(setup_app)
         .invoke_handler(traced_commands(tauri::generate_handler![
             ad_hoc_conversion::convert_ad_hoc,
             typst_render::render_typst_snippet,
+            notes_typst::notes_render_typst,
+            artifact_frame::artifact_frame_open,
+            artifact_frame::artifact_frame_close,
+            artifact_frame::artifact_frame_put_runtime,
             typst_query::typst_document_insights,
             typst_slide_notes::typst_slide_notes,
             arxiv_import::extract_arxiv_source,
@@ -1031,6 +1045,13 @@ pub fn run() {
             project::create_diagram_project,
             project::create_note_project,
             project::note_heads,
+            project::note_import_file,
+            note_links::note_links,
+            note_search::note_search,
+            note_search::note_tags,
+            note_vault::notes_import_folder,
+            note_vault::notes_import_cancel,
+            note_vault::notes_export_folder,
             project::set_note_related_project,
             project::get_or_create_scratch_project,
             project::save_figure_to_cache,

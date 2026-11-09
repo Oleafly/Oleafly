@@ -222,7 +222,12 @@
     "closeAll": "Close all",
     "closeAssistantTabs": "Close files the assistant opened",
     "closeAssistantTabsCount_one": "Close the file the assistant opened",
-    "closeAssistantTabsCount_other": "Close the {{count}} files the assistant opened"
+    "closeAssistantTabsCount_other": "Close the {{count}} files the assistant opened",
+    "editAsMarkdown": "Edit as Markdown",
+    "editAsNote": "Edit as note",
+    "openInNotes": "Open in Notes",
+    "moveIntoProject": "Move into project",
+    "copyToMyNotes": "Copy to my notes"
   },
   "projectInfo": {
     "trigger": "Project info",

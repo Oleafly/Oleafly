@@ -1,11 +1,12 @@
-import { lazy } from "react";
-import { FlaskConical, Folder, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
+import { lazy } from "@/lib/preloadable";
+import { FlaskConical, Folder, GitBranch, NotebookPen, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
 import { registerRailTab } from "@oleafly/registry";
-import { i18n } from "@/i18n";
+import { i18n, loadNamespace } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { useResearchAttentionBadge } from "@/store/research-attention";
 import { researchTasksEnabled } from "@/store/research-tasks-flag";
+import { useSettingsStore } from "@/store/settings";
 import {
   ChatPanel,
   ChatRailIcon,
@@ -28,12 +29,16 @@ import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";
 const ReferencesPanel = lazy(() =>
   import("@/components/layout/ReferencesPanel").then((module) => ({
     default: module.ReferencesPanel,
-  })),
-);
+  })), { warm: true });
 
 const ResearchWorkspacePanel = lazy(() =>
-  import("@/components/research/ResearchWorkspacePanel").then((module) => ({ default: module.ResearchWorkspacePanel })),
-);
+  import("@/components/research/ResearchWorkspacePanel").then((module) => ({ default: module.ResearchWorkspacePanel })), { warm: true });
+
+const ProjectNotesPanel = lazy(() =>
+  import("@/components/notes/ProjectNotesPanel").then(async (module) => {
+    await loadNamespace("notes");
+    return { default: module.ProjectNotesPanel };
+  }), { warm: () => useSettingsStore.getState().notes });
 
 export function registerRailTabs() {
   registerRailTab({
@@ -80,6 +85,15 @@ export function registerRailTabs() {
     section: "explore",
     order: 10,
     panel: FilesPanel,
+  });
+  registerRailTab({
+    id: "notes",
+    label: () => i18n.t(($) => $.shell.rail.notes),
+    icon: NotebookPen,
+    section: "explore",
+    order: 15,
+    when: (ctx) => useSettingsStore.getState().notes && ctx.projectKind !== "note",
+    panel: ProjectNotesPanel,
   });
   registerRailTab({
     id: "search",

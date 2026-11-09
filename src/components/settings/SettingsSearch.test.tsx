@@ -148,6 +148,18 @@ describe("openSettingsTabFor", () => {
     }
   });
 
+  it("opens the Notes tab for every Notes appearance row", () => {
+    const values = ["app", "editor", "terminal", "pdf", "files", "notes"];
+    const index = buildSettingsIndex(lookup, "en", "macos", new Set(["notes"]));
+    const rows = (index.get("appearance")?.rows ?? []).filter((row) => row.path[1] === "notes");
+    expect(rows.length).toBeGreaterThan(10);
+    for (const row of rows) {
+      const strip = radixStrip(values, "app");
+      expect(pressed(strip, row.path), row.path.join(".")).toBe("notes");
+      strip.remove();
+    }
+  });
+
   it("never presses a tab that was open while the row was looked for", () => {
     const appearance = tabStrip(
       ["appearance-tab-app", "appearance-tab-editor", "appearance-tab-pdf"],

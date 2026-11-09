@@ -86,6 +86,7 @@ export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
   ["shell", "settings", "sectionsNav"],
   ["shell", "settings", "title"],
   ["shell", "settings", "search"],
+  ["settings", "notesPreview"],
 ];
 
 export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
@@ -119,6 +120,13 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
 };
 
 export type SettingsSearchPlatform = "macos" | "windows" | "linux";
+
+export type SettingsSearchFeature = "notes";
+
+const FEATURE_ROWS: Readonly<Record<string, SettingsSearchFeature>> = {
+  "appearance.notes": "notes",
+  "appearance.tabs.notes": "notes",
+};
 
 const PLATFORM_ROWS: Readonly<Record<string, SettingsSearchPlatform>> = {
   "systemIntegration.quickAction": "macos",
@@ -229,6 +237,11 @@ function onOtherPlatform(path: readonly string[], platform: SettingsSearchPlatfo
   return only !== undefined && only !== platform;
 }
 
+function featureOff(path: readonly string[], features: ReadonlySet<SettingsSearchFeature>): boolean {
+  const feature = FEATURE_ROWS[path.join(".")];
+  return feature !== undefined && !features.has(feature);
+}
+
 function rowLabel(node: Record<string, unknown>): string | null {
   for (const key of ROW_LABEL_KEYS) {
     const value = node[key];
@@ -243,15 +256,20 @@ function rowLabel(node: Record<string, unknown>): string | null {
 interface IndexContext {
   locale: string;
   platform: SettingsSearchPlatform;
+  features: ReadonlySet<SettingsSearchFeature>;
+}
+
+function unavailable(path: readonly string[], context: Omit<IndexContext, "locale">): boolean {
+  return onOtherPlatform(path, context.platform) || featureOff(path, context.features);
 }
 
 function collectText(
   node: unknown,
   path: readonly string[],
   out: string[],
-  platform: SettingsSearchPlatform,
+  context: Omit<IndexContext, "locale">,
 ): void {
-  if (isSkipped(path) || onOtherPlatform(path, platform)) return;
+  if (isSkipped(path) || unavailable(path, context)) return;
   if (typeof node === "string") {
     const text = cleanCatalogText(node);
     if (text) out.push(text);
@@ -259,7 +277,7 @@ function collectText(
   }
   if (!isRecord(node)) return;
   for (const [childKey, child] of Object.entries(node)) {
-    collectText(child, [...path, childKey], out, platform);
+    collectText(child, [...path, childKey], out, context);
   }
 }
 
@@ -269,11 +287,11 @@ function collectRows(
   rows: SettingsSearchRow[],
   context: IndexContext,
 ): void {
-  const { locale, platform } = context;
+  const { locale } = context;
   if (
     !isRecord(node) ||
     isSkipped(path) ||
-    onOtherPlatform(path, platform) ||
+    unavailable(path, context) ||
     isTransient(node, path)
   ) {
     return;
@@ -281,7 +299,7 @@ function collectRows(
   const label = rowLabel(node);
   if (label) {
     const parts: string[] = [];
-    collectText(node, path, parts, platform);
+    collectText(node, path, parts, context);
     rows.push({
       label,
       path,
@@ -298,15 +316,17 @@ export function buildSettingsIndex(
   lookup: CatalogLookup,
   locale: string,
   platform: SettingsSearchPlatform,
+  features: ReadonlySet<SettingsSearchFeature> = new Set(),
 ): SettingsSearchIndex {
   const index = new Map<SettingsSearchSection, SettingsSearchEntry>();
+  const context = { locale, platform, features };
   for (const section of SETTINGS_SEARCH_SECTIONS) {
     const parts: string[] = [];
     const rows: SettingsSearchRow[] = [];
     for (const path of SETTINGS_SEARCH_SOURCES[section]) {
       const node = lookup(path);
-      collectText(node, path.slice(1), parts, platform);
-      collectRows(node, path.slice(1), rows, { locale, platform });
+      collectText(node, path.slice(1), parts, context);
+      collectRows(node, path.slice(1), rows, context);
     }
     const sectionKeywords = lookup(keywords(section));
     index.set(section, {

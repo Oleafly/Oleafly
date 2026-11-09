@@ -52,6 +52,7 @@ const metrics = artifact({ id: "a2", title: "Metrics", kind: "data", path: "outp
 const findings = artifact({ id: "a3", title: "Findings", kind: "report", path: "outputs/findings.md", agent: undefined, summary: "" });
 const attention = artifact({ id: "a4", title: "Attention map", kind: "html", path: "outputs/attention.html" });
 const elsewhere = artifact({ id: "a5", title: "Other project's figure", kind: "figure", projectId: "p2" });
+const analysis = artifact({ id: "a6", title: "Analysis notebook", kind: "notebook", path: "outputs/analysis.ipynb" });
 const ALL = [lossCurve, metrics, findings, attention, elsewhere];
 
 const IMAGE_SRC = "data:image/png;base64,AAAA";
@@ -116,11 +117,9 @@ function renderPanel({ note = related, selectedId = null, artifacts = ALL, previ
     notes: [note],
     artifacts,
     experiments: [],
-    agents: [],
     citations: [],
     papers: [],
     ...(previewArtifact ? { previewArtifact } : {}),
-    proposeEdits: vi.fn(),
     loadNote: vi.fn(),
     saveNote: vi.fn(),
   };
@@ -244,6 +243,13 @@ describe("ArtifactPanel", () => {
       expect(details()).toHaveTextContent(`${copy.kind.html} Codex · `);
       await screen.findByText(copy.htmlPreview);
     });
+
+    it("labels notebooks by kind with their own tint", async () => {
+      renderPanel({ artifacts: [analysis], selectedId: "a6", previewArtifact: previewing({ type: "none", reason: "large" }) });
+      expect(details()).toHaveTextContent(`${copy.kind.notebook} Codex · `);
+      expect(document.querySelector('li [data-kind="notebook"]')).toHaveClass("bg-amber-500/10");
+      await screen.findByText(copy.notebookTooLarge);
+    });
   });
 
   describe("preview", () => {
@@ -284,10 +290,23 @@ describe("ArtifactPanel", () => {
       expect(screen.getByText(copy.truncated)).toBeInTheDocument();
     });
 
+    it("draws a notebook from its text", async () => {
+      const notebook = JSON.stringify({
+        nbformat: 4,
+        metadata: { language_info: { name: "python" } },
+        cells: [{ cell_type: "code", source: "print(64.1)", execution_count: 7, outputs: [] }],
+      });
+      renderPanel({ selectedId: "a3", previewArtifact: previewing({ type: "notebook", text: notebook }) });
+      expect(await within(details()).findByText("[7]", {}, { timeout: 10_000 })).toBeInTheDocument();
+      expect(within(details()).getByText("print(64.1)")).toBeInTheDocument();
+      expect(details().querySelector("[data-artifact-notebook]")).not.toBeNull();
+    });
+
     it.each([
       ["html", copy.htmlPreview],
       ["missing", copy.missing],
       ["binary", copy.binary],
+      ["large", copy.notebookTooLarge],
     ] as const)("explains why a %s file has no preview", async (reason, message) => {
       renderPanel({ selectedId: "a4", previewArtifact: previewing({ type: "none", reason }) });
       expect(await within(details()).findByText(message)).toBeInTheDocument();

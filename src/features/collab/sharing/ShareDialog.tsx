@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber } from "@/lib/intl";
-import { isFolderProject } from "@/lib/library-projects";
+import { isFolderProject, isNoteProject } from "@/lib/library-projects";
 import type {
   CollabServer,
   CollabShareCheck,
@@ -32,6 +32,7 @@ import { useCollabStore } from "../store";
 import { syncShareChange } from "./after-change";
 import { copyThenShare } from "./copy-then-share";
 import { ManageSharing } from "./ManageSharing";
+import { ProjectNotesShareLine } from "./ProjectNotesShareLine";
 
 type CheckState =
   | { kind: "checking" }
@@ -84,7 +85,7 @@ function NoServers({ onAddOleafly }: Readonly<{ onAddOleafly: (() => void) | nul
   );
 }
 
-function CheckSummary({ check, server }: Readonly<{ check: CollabShareCheck; server: string }>) {
+function CheckSummary({ check, server, note }: Readonly<{ check: CollabShareCheck; server: string; note: boolean }>) {
   const { t } = useTranslation(["collab"]);
   return (
     <div className="space-y-3">
@@ -115,7 +116,9 @@ function CheckSummary({ check, server }: Readonly<{ check: CollabShareCheck; ser
       ) : null}
       {check.excluded.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-xs text-muted-foreground">{t(($) => $.collab.share.excluded)}</p>
+          <p className="text-xs text-muted-foreground">
+            {note ? t(($) => $.collab.share.noteExcluded) : t(($) => $.collab.share.excluded)}
+          </p>
           <PathList paths={check.excluded} />
         </div>
       ) : null}
@@ -178,6 +181,7 @@ function ShareStep({
   const [serverId, setServerId] = useState<string | null>(null);
   const server = servers.find((entry) => entry.server_id === serverId) ?? servers[0];
   const [check, setCheck] = useState<CheckState>({ kind: "checking" });
+  const note = useFilesStore((state) => isNoteProject(state.projects.find((entry) => entry.id === projectId)));
   const [checkRequest, setCheckRequest] = useState(0);
   const [upload, setUpload] = useState<UploadState>({ kind: "idle" });
   const chosenId = server.server_id;
@@ -259,7 +263,7 @@ function ShareStep({
         </div>
       );
     }
-    return <CheckSummary check={check.check} server={server.name} />;
+    return <CheckSummary check={check.check} server={server.name} note={note} />;
   };
 
   const renderUpload = () => {
@@ -435,7 +439,10 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
             <h2 id={titleId} className="truncate text-base font-semibold">
               {t(($) => $.collab.share.title, { name })}
             </h2>
-            <p className="text-xs text-muted-foreground">{t(($) => $.collab.share.description)}</p>
+            <p className="text-xs text-muted-foreground">
+              {isNoteProject(project) ? t(($) => $.collab.share.noteDescription) : t(($) => $.collab.share.description)}
+            </p>
+            <ProjectNotesShareLine projectId={projectId} />
           </div>
           <Button
             type="button"

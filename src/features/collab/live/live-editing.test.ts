@@ -8,6 +8,7 @@ import {
   collabProjectReadOnly,
   collabSettingsLocked,
   collabVisualReadOnly,
+  holdNoteLivePath,
 } from "@/lib/collab-live-bridge";
 
 const mocks = vi.hoisted(() => ({
@@ -329,6 +330,22 @@ describe("live editing", () => {
     await settle();
     expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "figure.png", null, null);
     expect(mocks.setCollabEditorExtension).toHaveBeenCalledOnce();
+  });
+
+  it("lets a note editor share the caret for a project note it has open, then takes over again", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    const release = holdNoteLivePath(PROJECT, "notes/Plan.md");
+    start();
+    await settle();
+    mocks.collabPresenceSet.mockClear();
+    useFilesStore.setState({ activePath: "notes/Plan.md" });
+    vi.advanceTimersByTime(150);
+    await settle();
+    expect(mocks.collabPresenceSet).not.toHaveBeenCalled();
+    release();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "notes/Plan.md", null, null);
   });
 
   it("closes everything and returns the editor to local files when it stops", async () => {

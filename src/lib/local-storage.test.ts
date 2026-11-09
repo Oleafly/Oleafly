@@ -62,6 +62,18 @@ describe("string helpers", () => {
     });
   });
 
+  it("says whether a write was stored", () => {
+    expect(writeString(KEY, "kept")).toBe(true);
+    expect(writeJson(KEY, ["kept"])).toBe(true);
+    withLocalStorage({ value: throwingStorage(), writable: true }, () => {
+      expect(writeString(KEY, "x")).toBe(false);
+      expect(writeJson(KEY, ["x"])).toBe(false);
+    });
+    withLocalStorage({ value: undefined, writable: true }, () => {
+      expect(writeString(KEY, "x")).toBe(false);
+    });
+  });
+
   it("survives a localStorage getter that throws", () => {
     const get = () => {
       throw new Error("SecurityError");
@@ -108,7 +120,7 @@ describe("writeJson", () => {
   it("skips values that cannot be serialized", () => {
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
-    expect(() => writeJson(KEY, cyclic)).not.toThrow();
+    expect(writeJson(KEY, cyclic)).toBe(false);
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 });

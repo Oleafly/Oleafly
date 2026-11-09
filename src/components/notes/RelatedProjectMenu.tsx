@@ -7,7 +7,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { logError } from "@/lib/log";
+import { notifyError } from "@/lib/toast";
 import { useNotesData } from "./notes-data";
 import { ProjectDot, useProjectColor } from "./project-color";
 import type { NoteItem } from "./types";
@@ -44,9 +44,9 @@ export function RelatedProjectMenu({ note }: Readonly<{ note: NoteItem }>) {
           value={note.relatedProjectId ?? ""}
           onValueChange={(value) => {
             if (value === (note.relatedProjectId ?? "")) return;
-            void setRelatedProject(note.id, value === "" ? null : value).catch((error: unknown) => {
-              void logError("set the note's project", error);
-            });
+            void setRelatedProject(note.id, value === "" ? null : value).catch((error: unknown) =>
+              notifyError("set the note's project", error, t(($) => $.notes.failures.moveNote, { name: note.title })),
+            );
           }}
         >
           <DropdownMenuRadioItem value="">

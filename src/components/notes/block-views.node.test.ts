@@ -4,12 +4,24 @@ import { createWysiwygExtensions } from "@oleafly/wysiwyg";
 import { DecorationSet } from "@tiptap/pm/view";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { withBlockViews, withImageView } from "./block-views";
+import { BLOCK_REPAINT_MS, withBlockViews, withImageView } from "./block-views";
+import { allowRemoteImage, forgetRemoteImages } from "./note-remote-images";
+import { NotebookTooLargeError } from "./notebook-block";
 
 const mocks = vi.hoisted(() => ({ renderDiagram: vi.fn() }));
 
 vi.mock("@/components/ui/mermaid-diagram", () => ({ renderDiagram: mocks.renderDiagram }));
+
+const notebooks = vi.hoisted(() => ({ render: vi.fn(), unmount: vi.fn(), hosts: [] as HTMLElement[] }));
+
+vi.mock("./NotebookView", () => ({
+  mountNotebook: (host: HTMLElement) => {
+    notebooks.hosts.push(host);
+    return { render: notebooks.render, unmount: notebooks.unmount };
+  },
+}));
 
 const CHART = JSON.stringify({ title: "Validation", categories: ["Run 1", "Run 2"], series: [{ name: "A", values: [61, 64] }] });
 
@@ -68,6 +80,9 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  notebooks.render.mockReset();
+  notebooks.unmount.mockReset();
+  notebooks.hosts = [];
   mocks.renderDiagram.mockReset();
   mocks.renderDiagram.mockImplementation(async () => svg());
 });
@@ -79,6 +94,7 @@ afterEach(() => {
   }
   editors = [];
   document.documentElement.classList.remove("dark");
+  forgetRemoteImages();
 });
 
 describe("drawn block views", () => {
@@ -90,14 +106,27 @@ describe("drawn block views", () => {
   });
 
   it.each([
-    ["python", "print(1)"],
+    ["klingon", "qaplah"],
     [null, "plain"],
-  ])("shows a %s fence as plain code", (language, text) => {
+  ])("shows a %s fence as plain code that can still be copied", (language, text) => {
     const editor = build(codeBlock(language, text));
     const dom = drawn(editor);
     expect(dom).not.toHaveClass("note-drawn");
-    expect(dom.querySelector("button")).toBeNull();
+    expect(dom).not.toHaveClass("note-code-lang");
+    const copy = dom.querySelector("button") as HTMLButtonElement;
+    expect(copy.getAttribute("aria-label")).toBe(enNotes.blocks.code.copyLabel);
+    expect(copy.tabIndex).toBe(0);
     expect(dom.querySelector("pre > code")?.textContent).toBe(text);
+  });
+
+  it("keeps a python fence editable code with a copy button", () => {
+    const editor = build(codeBlock("python", "print(1)"));
+    const dom = drawn(editor);
+    expect(dom).not.toHaveClass("note-drawn");
+    expect(dom).toHaveClass("note-code-lang");
+    expect(dom.dataset.language).toBe("python");
+    expect(dom.querySelector("pre > code")?.textContent).toBe("print(1)");
+    expect(dom.querySelector("button")?.getAttribute("aria-label")).toBe(enNotes.blocks.code.copyLabel);
   });
 
   it("draws a Mermaid diagram from its source with the light theme", async () => {
@@ -150,12 +179,12 @@ describe("drawn block views", () => {
     expect(preview?.textContent).toBe(enNotes.blocks.noPreview);
   });
 
-  it("explains that Typst has no preview yet", () => {
+  it("says Typst previews need the desktop app outside it", () => {
     const editor = build(codeBlock("{=typst}", "$ E = m c^2 $"));
     const dom = drawn(editor);
     expect(dom.dataset.block).toBe("typst");
     expect(dom.querySelector(".note-drawn-label")?.textContent).toBe("Typst");
-    expect(dom.querySelector(".note-drawn-preview")?.textContent).toBe(enNotes.blocks.noPreview);
+    expect(dom.querySelector(".note-drawn-preview")?.textContent).toBe(enNotes.blocks.typst.desktopOnly);
   });
 
   it("switches between the preview and the source with a pressed toggle", () => {
@@ -182,22 +211,37 @@ describe("drawn block views", () => {
     expect(toggle).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("repaints only when the block's text changes", () => {
-    const editor = build(codeBlock("mermaid", "flowchart LR\n  A --> B"), { type: "paragraph", content: [{ type: "text", text: "After" }] });
-    const dom = drawn(editor);
-    expect(mocks.renderDiagram).toHaveBeenCalledTimes(1);
+  it("repaints only when the block's text changes, once typing pauses", async () => {
+    vi.useFakeTimers();
+    try {
+      const editor = build(codeBlock("mermaid", "flowchart LR\n  A --> B"), { type: "paragraph", content: [{ type: "text", text: "After" }] });
+      const dom = drawn(editor);
+      expect(mocks.renderDiagram).toHaveBeenCalledTimes(1);
 
-    editor.view.dispatch(editor.state.tr.insertText("!", editor.state.doc.content.size - 1));
-    expect(drawn(editor)).toBe(dom);
-    expect(mocks.renderDiagram).toHaveBeenCalledTimes(1);
+      editor.view.dispatch(editor.state.tr.insertText("!", editor.state.doc.content.size - 1));
+      expect(drawn(editor)).toBe(dom);
+      await vi.advanceTimersByTimeAsync(BLOCK_REPAINT_MS);
+      expect(mocks.renderDiagram).toHaveBeenCalledTimes(1);
 
-    editor.view.dispatch(editor.state.tr.setNodeMarkup(codeBlockPosition(editor), undefined, { language: "mermaid" }));
-    expect(mocks.renderDiagram).toHaveBeenCalledTimes(1);
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(codeBlockPosition(editor), undefined, { language: "mermaid" }));
+      await vi.advanceTimersByTimeAsync(BLOCK_REPAINT_MS);
+      expect(mocks.renderDiagram).toHaveBeenCalledTimes(1);
 
-    replaceCode(editor, "flowchart LR\n  A --> C");
-    expect(drawn(editor)).toBe(dom);
-    expect(mocks.renderDiagram).toHaveBeenCalledTimes(2);
-    expect(mocks.renderDiagram).toHaveBeenLastCalledWith("flowchart LR\n  A --> C", "light");
+      replaceCode(editor, "flowchart LR\n  A --> C");
+      replaceCode(editor, "flowchart LR\n  A --> D");
+      expect(drawn(editor)).toBe(dom);
+      expect(mocks.renderDiagram).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(BLOCK_REPAINT_MS);
+      expect(mocks.renderDiagram).toHaveBeenCalledTimes(2);
+      expect(mocks.renderDiagram).toHaveBeenLastCalledWith("flowchart LR\n  A --> D", "light");
+
+      replaceCode(editor, "flowchart LR\n  A --> E");
+      replaceCode(editor, "flowchart LR\n  A --> D");
+      await vi.advanceTimersByTimeAsync(BLOCK_REPAINT_MS);
+      expect(mocks.renderDiagram).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("redraws the block from scratch when its language changes", () => {
@@ -294,6 +338,10 @@ async function settle() {
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
+async function repainted() {
+  await new Promise<void>((resolve) => setTimeout(resolve, BLOCK_REPAINT_MS + 10));
+}
+
 function missingText(path: string): string {
   return enNotes.blocks.imageMissing.replace("{{path}}", path);
 }
@@ -307,16 +355,30 @@ describe("image views", () => {
     expect(codeBlock && withImageView(codeBlock, resolve)).toBe(codeBlock);
   });
 
-  it("shows a web image at once without looking for a file", () => {
+  it("holds a web image back until the person loads it, without looking for a file", async () => {
     const resolve = vi.fn<Resolve>();
-    const editor = buildImages(resolve, image("https://example.org/loss.png", "Loss curve"));
+    const editor = buildImages(resolve, image("https://example.org/loss.png", "Loss curve"), image("https://example.org/loss.png"));
     const { dom, img, missing } = figure(editor);
     expect(dom.tagName).toBe("FIGURE");
+    expect(img.hasAttribute("src")).toBe(false);
+    expect(img.hidden).toBe(true);
+    expect(missing.hidden).toBe(true);
+    const held = await vi.waitFor(() => {
+      const found = dom.querySelector<HTMLElement>("[data-remote-image]");
+      if (!found) throw new Error("not drawn yet");
+      return found;
+    });
+    expect(held.dataset.remoteImage).toBe("example.org");
+    expect(held.textContent).toContain(enCommon.remoteImage.blocked.replace("{{host}}", "example.org"));
+    const load = held.querySelector("button") as HTMLButtonElement;
+    expect(load.textContent).toBe(enCommon.remoteImage.load);
+    load.click();
     expect(img.getAttribute("src")).toBe("https://example.org/loss.png");
     expect(img.alt).toBe("Loss curve");
     expect(img.draggable).toBe(false);
     expect(img.hidden).toBe(false);
-    expect(missing.hidden).toBe(true);
+    expect(dom.querySelector(".note-remote-image")).toBeNull();
+    expect(figure(editor, 1).img.getAttribute("src")).toBe("https://example.org/loss.png");
     expect(missing.contentEditable).toBe("false");
     expect(resolve).not.toHaveBeenCalled();
   });
@@ -416,7 +478,8 @@ describe("image views", () => {
     expect(missing.hidden).toBe(true);
   });
 
-  it("switches from a missing file to a web image", async () => {
+  it("switches from a missing file to a web image the person already loaded", async () => {
+    allowRemoteImage("https://example.org/found.png");
     const resolve = vi.fn<Resolve>(async () => null);
     const editor = buildImages(resolve, image("figures/gone.png"));
     await settle();
@@ -487,5 +550,138 @@ describe("image views", () => {
     const nodeView = create(editor.state.doc.child(0), editor.view, () => 0, [], DecorationSet.empty);
     expect(nodeView.update?.(editor.schema.nodes.paragraph.create(), [], DecorationSet.empty)).toBe(false);
     expect(nodeView.update?.(editor.state.doc.child(0), [], DecorationSet.empty)).toBe(true);
+  });
+});
+
+const NOTEBOOK = '{"nbformat": 4, "cells": []}';
+const NOTEBOOK_URL = `data:application/x-ipynb+json;base64,${btoa(NOTEBOOK)}`;
+
+function notebookCopy(key: keyof typeof enNotes.notebook, path = ""): string {
+  return enNotes.notebook[key].replace("{{path}}", path);
+}
+
+function notebookPreview(editor: Editor): HTMLElement {
+  return drawn(editor).querySelector(".note-drawn-preview") as HTMLElement;
+}
+
+describe("notebook views", () => {
+  it("reads the notebook next to the note and draws it with the block's options", async () => {
+    const resolve = vi.fn<Resolve>(async () => NOTEBOOK_URL);
+    const editor = buildImages(resolve, codeBlock("notebook", "./assets/run.ipynb\ncells: 2-3\ncode: hide"));
+    const dom = drawn(editor);
+    expect(dom.dataset.block).toBe("notebook");
+    expect(dom.querySelector(".note-drawn-label")?.textContent).toBe(enNotes.notebook.label);
+    expect(notebookPreview(editor).textContent).toBe(enNotes.notebook.loading);
+    expect(resolve).toHaveBeenCalledWith("assets/run.ipynb");
+    await vi.waitFor(() => expect(notebooks.render).toHaveBeenCalled());
+    expect(notebooks.render).toHaveBeenCalledWith({ text: NOTEBOOK, cells: { from: 2, to: 3 }, hideCode: true });
+    expect(notebooks.hosts[0]).toHaveClass("note-notebook");
+    expect(notebookPreview(editor).firstElementChild).toBe(notebooks.hosts[0]);
+    expect(editor.getJSON().content?.[0]).toEqual(codeBlock("notebook", "./assets/run.ipynb\ncells: 2-3\ncode: hide"));
+  });
+
+  it("says the notebook is missing when the file is not found", async () => {
+    const editor = buildImages(vi.fn<Resolve>(async () => null), codeBlock("notebook", "assets/gone.ipynb"));
+    await vi.waitFor(() => expect(notebookPreview(editor).textContent).toBe(notebookCopy("missing", "assets/gone.ipynb")));
+    expect(notebooks.render).not.toHaveBeenCalled();
+  });
+
+  it("says the notebook is missing when the editor cannot read note files", () => {
+    const editor = build(codeBlock("notebook", "assets/run.ipynb"));
+    expect(notebookPreview(editor).textContent).toBe(notebookCopy("missing", "assets/run.ipynb"));
+  });
+
+  it.each([
+    ["../outside.ipynb", "badPath"],
+    ["/Users/me/run.ipynb", "badPath"],
+    ["assets/run.ipynb\ncells: 9-2", "badCells"],
+  ] as const)("explains what is wrong with %j without reading anything", (source, key) => {
+    const resolve = vi.fn<Resolve>();
+    const editor = buildImages(resolve, codeBlock("notebook", source));
+    expect(notebookPreview(editor).textContent).toBe(enNotes.notebook[key]);
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("says a notebook over 64 MiB is too large to show", async () => {
+    const editor = buildImages(vi.fn<Resolve>(async () => Promise.reject(new NotebookTooLargeError())), codeBlock("notebook", "big.ipynb"));
+    await vi.waitFor(() => expect(notebookPreview(editor).textContent).toBe(enNotes.notebook.tooLarge));
+  });
+
+  it.each([
+    ["the read fails", () => Promise.reject(new Error("denied"))],
+    ["the file comes back as a web address", async () => "blob:notebook"],
+  ])("says the notebook could not be read when %s", async (_case, read) => {
+    const editor = buildImages(vi.fn<Resolve>(read), codeBlock("notebook", "assets/run.ipynb"));
+    await vi.waitFor(() => expect(notebookPreview(editor).textContent).toBe(notebookCopy("unreadable", "assets/run.ipynb")));
+  });
+
+  it("reads again when the block changes and drops the read it replaced", async () => {
+    const first = deferred<string | null>();
+    const resolve = vi.fn<Resolve>().mockReturnValueOnce(first.promise).mockResolvedValue(NOTEBOOK_URL);
+    const editor = buildImages(resolve, codeBlock("notebook", "one.ipynb"));
+    replaceCode(editor, "two.ipynb");
+    await repainted();
+    expect(resolve).toHaveBeenLastCalledWith("two.ipynb");
+    await vi.waitFor(() => expect(notebooks.render).toHaveBeenCalledTimes(1));
+    first.resolve(NOTEBOOK_URL);
+    await settle();
+    expect(notebooks.render).toHaveBeenCalledTimes(1);
+    replaceCode(editor, "two.ipynb\ncode: hide");
+    await repainted();
+    expect(notebooks.unmount).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(notebooks.render).toHaveBeenLastCalledWith({ text: NOTEBOOK, cells: null, hideCode: true }));
+  });
+
+  it("ignores a missing file or failed read that finishes after the block changed", async () => {
+    const gone = deferred<string | null>();
+    const failed = deferred<string | null>();
+    const resolve = vi
+      .fn<Resolve>()
+      .mockReturnValueOnce(gone.promise)
+      .mockReturnValueOnce(failed.promise)
+      .mockResolvedValue(NOTEBOOK_URL);
+    const editor = buildImages(resolve, codeBlock("notebook", "one.ipynb"));
+    replaceCode(editor, "two.ipynb");
+    await repainted();
+    replaceCode(editor, "three.ipynb");
+    await repainted();
+    await vi.waitFor(() => expect(notebooks.render).toHaveBeenCalledTimes(1));
+    gone.resolve(null);
+    failed.reject(new Error("late"));
+    await settle();
+    expect(notebookPreview(editor).firstElementChild).toBe(notebooks.hosts[0]);
+  });
+
+  it("skips the sources typed between two pauses", async () => {
+    const resolve = vi.fn<Resolve>(async () => NOTEBOOK_URL);
+    const editor = buildImages(resolve, codeBlock("notebook", "one.ipynb"));
+    replaceCode(editor, "two.ipynb");
+    replaceCode(editor, "three.ipynb");
+    await repainted();
+    expect(resolve.mock.calls.map(([path]) => path)).toEqual(["one.ipynb", "three.ipynb"]);
+  });
+
+  it("unmounts the notebook when the block is removed", async () => {
+    const editor = buildImages(vi.fn<Resolve>(async () => NOTEBOOK_URL), codeBlock("notebook", "run.ipynb"));
+    await vi.waitFor(() => expect(notebooks.render).toHaveBeenCalled());
+    editor.commands.setContent({ type: "doc", content: [{ type: "paragraph" }] });
+    expect(notebooks.unmount).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps clicks and keys inside the drawn notebook away from the editor", () => {
+    const editor = buildImages(vi.fn<Resolve>(async () => null), codeBlock("notebook", "run.ipynb"));
+    const view = codeBlockView(editor);
+    const inside = document.createElement("button");
+    (view.dom as HTMLElement).querySelector(".note-drawn-preview")?.append(inside);
+    expect(view.stopEvent?.({ target: inside } as unknown as Event)).toBe(true);
+    const toggle = (view.dom as HTMLElement).querySelector(".note-drawn-toggle");
+    expect(view.stopEvent?.({ target: toggle } as unknown as Event)).toBe(false);
+    view.destroy?.();
+  });
+
+  it("lets the editor handle events in other drawn blocks", () => {
+    mocks.renderDiagram.mockReturnValue(new Promise(() => {}));
+    const editor = build(codeBlock("mermaid", "flowchart LR\n  A --> B"));
+    expect(codeBlockView(editor).stopEvent).toBeUndefined();
   });
 });

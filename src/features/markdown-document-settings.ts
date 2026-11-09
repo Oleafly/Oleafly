@@ -1,3 +1,4 @@
+import { quotedScalar as readQuotedScalar } from "@/lib/front-matter";
 import {
   applySettingEdits,
   composeSettingSteps,
@@ -114,34 +115,11 @@ function splitLines(text: string, start: number): Line[] {
   return lines;
 }
 
-function doubleQuotedScalar(source: string, offset: number): { item: ScalarItem; end: number } | null {
-  let index = 1;
-  while (index < source.length && source[index] !== '"') index += source[index] === "\\" ? 2 : 1;
-  if (index >= source.length) return null;
-  try {
-    const value = JSON.parse(source.slice(0, index + 1)) as string;
-    return { item: { from: offset, to: offset + index + 1, value, quote: '"' }, end: index + 1 };
-  } catch {
-    return null;
-  }
-}
-
-function singleQuotedScalar(source: string, offset: number): { item: ScalarItem; end: number } | null {
-  let index = 1;
-  while (index < source.length) {
-    if (source[index] === "'" && source[index + 1] === "'") index += 2;
-    else if (source[index] === "'") break;
-    else index += 1;
-  }
-  if (index >= source.length) return null;
-  const value = source.slice(1, index).replaceAll("''", "'");
-  return { item: { from: offset, to: offset + index + 1, value, quote: "'" }, end: index + 1 };
-}
-
 function quotedScalar(source: string, offset: number): { item: ScalarItem; end: number } | null {
-  if (source.startsWith('"')) return doubleQuotedScalar(source, offset);
-  if (source.startsWith("'")) return singleQuotedScalar(source, offset);
-  return null;
+  const quoted = readQuotedScalar(source);
+  if (!quoted) return null;
+  const quote = source.startsWith('"') ? '"' : "'";
+  return { item: { from: offset, to: offset + quoted.end, value: quoted.value, quote }, end: quoted.end };
 }
 
 function plainValue(source: string, offset: number): ScalarItem | null {

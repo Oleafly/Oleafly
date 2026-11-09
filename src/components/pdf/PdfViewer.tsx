@@ -1,4 +1,5 @@
-import { forwardRef, lazy, Suspense, useMemo } from "react";
+import { forwardRef, Suspense, useMemo } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import type { PdfViewerHandle, PdfViewerProps } from "@oleafly/preview";

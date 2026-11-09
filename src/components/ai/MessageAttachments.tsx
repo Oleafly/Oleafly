@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from "react";
+import { Suspense, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { FileCode2, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { StoredAttachmentRef } from "@/components/ai/composer/types";
@@ -17,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type { AttachmentMeta } from "@/store/chats";
 import { useFilesStore } from "@/store/files";
 
-const AttachmentPreviewDialog = lazy(() => import("@/components/ai/composer/AttachmentPreviewDialog"));
+const AttachmentPreviewDialog = lazy(() => import("@/components/ai/composer/AttachmentPreviewDialog"), { warm: true });
 
 function kindOf(meta: AttachmentMeta) {
   if (meta.kind) return meta.kind;

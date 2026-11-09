@@ -1,0 +1,582 @@
+import { MoreHorizontal, NotebookPen, Plus, Search, X } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { Tooltip } from "@/components/ui/tooltip";
+import { isImeEnter } from "@/components/ai/composer/ime";
+import { openNotes } from "@/features/open-tool";
+import { useCollabProjectShared } from "@/lib/collab-live-bridge";
+import { formatRelativeTimeFrom } from "@/lib/intl";
+import { logError } from "@/lib/log";
+import { deleteProjectEntry, projectDeleteQuestion } from "@/lib/project-file-delete";
+import { noteHeads } from "@/lib/tauri";
+import { i18n } from "@/i18n";
+import { confirmAction } from "@/store/confirm-dialog";
+import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
+import { useNoteActions } from "./note-actions";
+import { NoteChip } from "./note-icons";
+import { useNoteActionsData } from "./note-tab-data";
+import { NotesDataProvider } from "./notes-data";
+import {
+  copyProjectNoteToMine,
+  createProjectNoteFile,
+  moveNoteIntoProject,
+  openPersonalNoteTab,
+  renameProjectNote,
+} from "./project-note-actions";
+import {
+  matchesProjectNote,
+  projectNoteProjects,
+  projectNotes,
+  startProjectNote,
+  type ProjectNote,
+} from "./project-notes";
+import type { NoteItem } from "./types";
+import { type ProjectNoteFile, useProjectNoteFiles } from "./use-project-note-files";
+import "./notes.css";
+
+export const PROJECT_NOTES_SEARCH_MIN = 8;
+
+const ICON_BUTTON =
+  "flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground disabled:opacity-40";
+const ROW_BUTTON =
+  "flex min-w-0 flex-1 items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent focus-visible:bg-accent motion-reduce:transition-none";
+
+interface RowAction {
+  id: string;
+  label: string;
+  run: () => void;
+}
+
+function NoteRow({
+  testId,
+  title,
+  meta,
+  summary,
+  icon,
+  color,
+  actions,
+  onOpen,
+}: Readonly<{
+  testId: string;
+  title: string;
+  meta?: string;
+  summary: string;
+  icon?: string;
+  color?: string;
+  actions: readonly RowAction[];
+  onOpen: () => void;
+}>) {
+  const { t } = useTranslation(["notes"]);
+  const id = useId();
+  const menuLabel = t(($) => $.notes.projectNotes.noteActions, { title });
+  return (
+    <li className="group/row flex items-start gap-0.5">
+      <button
+        type="button"
+        data-testid={testId}
+        aria-labelledby={`${id}-title`}
+        aria-describedby={[meta ? `${id}-meta` : "", summary ? `${id}-summary` : ""].filter(Boolean).join(" ") || undefined}
+        onClick={onOpen}
+        className={ROW_BUTTON}
+      >
+        <NoteChip icon={icon} color={color} className="mt-0.5" />
+        <span className="min-w-0 flex-1">
+          <span id={`${id}-title`} className="block truncate text-sm font-medium text-foreground">
+            {title}
+          </span>
+          {meta ? (
+            <span id={`${id}-meta`} className="block truncate text-[0.6875rem] text-muted-foreground">
+              {meta}
+            </span>
+          ) : null}
+          {summary ? (
+            <span id={`${id}-summary`} className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              {summary}
+            </span>
+          ) : null}
+        </span>
+      </button>
+      <DropdownMenu>
+        <Tooltip label={menuLabel} side="bottom">
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={menuLabel}
+              data-testid={`${testId}-menu`}
+              className={`${ICON_BUTTON} mt-1.5 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100`}
+            >
+              <MoreHorizontal aria-hidden className="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+        </Tooltip>
+        <DropdownMenuContent align="end" className="w-48">
+          {actions.map((action) => (
+            <DropdownMenuItem key={action.id} data-testid={`${testId}-${action.id}`} onSelect={action.run}>
+              {action.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
+  );
+}
+
+function NoteGroup({
+  title,
+  newLabel,
+  busy,
+  disabled,
+  onNew,
+  testId,
+  children,
+}: Readonly<{
+  title: string;
+  newLabel: string;
+  busy: boolean;
+  disabled: boolean;
+  onNew: () => void;
+  testId: string;
+  children: ReactNode;
+}>) {
+  const headingId = useId();
+  return (
+    <section aria-labelledby={headingId} data-testid={testId} className="flex flex-col gap-0.5">
+      <div className="flex h-7 items-center gap-1 pl-2 pr-0.5">
+        <h3 id={headingId} className="min-w-0 flex-1 truncate text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+        </h3>
+        <Tooltip label={newLabel} side="bottom">
+          <button
+            type="button"
+            aria-label={newLabel}
+            data-testid={`${testId}-new`}
+            disabled={disabled || busy}
+            onClick={onNew}
+            className={ICON_BUTTON}
+          >
+            {busy ? <Spinner size="sm" /> : <Plus aria-hidden className="size-3.5" />}
+          </button>
+        </Tooltip>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function NoteTitleField({
+  initial,
+  label,
+  testId,
+  onCommit,
+  onCancel,
+}: Readonly<{
+  initial: string;
+  label: string;
+  testId: string;
+  onCommit: (title: string) => Promise<void>;
+  onCancel: () => void;
+}>) {
+  const { t } = useTranslation(["notes"]);
+  const [title, setTitle] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const submit = () => {
+    if (busy) return;
+    if (title.trim() === "" || title === initial) {
+      onCancel();
+      return;
+    }
+    setBusy(true);
+    void onCommit(title).finally(() => setBusy(false));
+  };
+  return (
+    <div className="px-1.5 pb-1">
+      <Input
+        autoFocus
+        value={title}
+        disabled={busy}
+        data-testid={testId}
+        aria-label={label}
+        placeholder={t(($) => $.notes.projectNotes.titlePlaceholder)}
+        onFocus={(event) => event.currentTarget.select()}
+        onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !isImeEnter(event)) {
+            event.preventDefault();
+            submit();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancel();
+          }
+        }}
+        onBlur={() => {
+          if (!busy) submit();
+        }}
+        className="h-8 text-xs"
+      />
+    </div>
+  );
+}
+
+function personalNoteItem(note: ProjectNote, projectId: string): NoteItem {
+  return {
+    id: note.id,
+    title: note.title,
+    project: "",
+    relatedProjectId: projectId,
+    updatedAt: note.updatedAt,
+    author: "you",
+    color: note.color,
+    summary: note.summary,
+  };
+}
+
+async function deleteProjectNote(path: string, title: string): Promise<void> {
+  const openedInPlace = useFilesStore.getState().manifestHome !== "library";
+  const confirmed = await confirmAction({
+    message: projectDeleteQuestion(title, openedInPlace),
+    confirmLabel: i18n.t(($) => $.common.actions.delete),
+    destructive: true,
+  });
+  if (confirmed) await deleteProjectEntry(path);
+}
+
+function useNoteHeads(keys: string, notesOpen: boolean): ReadonlyMap<string, string> {
+  const [heads, setHeads] = useState<ReadonlyMap<string, string>>(new Map());
+  const refreshProjects = useFilesStore((state) => state.refreshProjects);
+  const seen = useRef(notesOpen);
+
+  useEffect(() => {
+    const closed = seen.current && !notesOpen;
+    seen.current = notesOpen;
+    if (!closed) return;
+    refreshProjects().catch((error: unknown) => logError("refresh projects after closing notes", error));
+  }, [notesOpen, refreshProjects]);
+
+  useEffect(() => {
+    if (notesOpen || !keys) return;
+    let live = true;
+    noteHeads().then(
+      (list) => {
+        if (live) setHeads(new Map(list.map((head) => [head.id, head.head])));
+      },
+      (error: unknown) => void logError("read project note heads", error),
+    );
+    return () => {
+      live = false;
+    };
+  }, [keys, notesOpen]);
+
+  return heads;
+}
+
+function matchesFile(note: ProjectNoteFile, query: string): boolean {
+  const needle = query.trim().toLocaleLowerCase();
+  return !needle || `${note.title}\n${note.summary}`.toLocaleLowerCase().includes(needle);
+}
+
+export function ProjectNotesPanel() {
+  const data = useNoteActionsData();
+  return (
+    <NotesDataProvider value={data}>
+      <ProjectNotesList />
+    </NotesDataProvider>
+  );
+}
+
+function ProjectNotesList() {
+  const { t } = useTranslation(["notes", "shell", "common"]);
+  const projectId = useFilesStore((state) => state.projectId);
+  const projects = useFilesStore((state) => state.projects);
+  const listedShared = useFilesStore((state) =>
+    Boolean(state.projects.find((project) => project.id === state.projectId)?.shared),
+  );
+  const liveShared = useCollabProjectShared(projectId);
+  const notesOpen = useHomeViewStore((state) => state.page === "notes");
+  const [query, setQuery] = useState("");
+  const [creatingFile, setCreatingFile] = useState(false);
+  const [renaming, setRenaming] = useState<{ kind: "file" | "mine"; key: string } | null>(null);
+  const [creatingMine, setCreatingMine] = useState(false);
+  const noteActions = useNoteActions();
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const linked = useMemo(() => projectNoteProjects(projects, projectId), [projectId, projects]);
+  const keys = linked.map((project) => `${project.id}:${project.updated_at}`).join("|");
+  const heads = useNoteHeads(keys, notesOpen);
+  const mine = useMemo(() => projectNotes(projects, projectId, heads), [heads, projectId, projects]);
+  const files = useProjectNoteFiles(projectId);
+  const searchable = mine.length + files.notes.length > PROJECT_NOTES_SEARCH_MIN;
+  const shownMine = searchable ? mine.filter((note) => matchesProjectNote(note, query)) : mine;
+  const shownFiles = searchable ? files.notes.filter((note) => matchesFile(note, query)) : files.notes;
+  const shared = listedShared || liveShared;
+
+  const createFile = () => {
+    if (!projectId || creatingFile) return;
+    setCreatingFile(true);
+    void createProjectNoteFile(projectId, "")
+      .then((path) => {
+        if (path !== null) setRenaming({ kind: "file", key: path });
+      })
+      .finally(() => setCreatingFile(false));
+  };
+
+  const renameFile = async (path: string, title: string) => {
+    if (!projectId) return;
+    if ((await renameProjectNote(projectId, path, title)) !== null) setRenaming(null);
+  };
+
+  const createMine = () => {
+    if (!projectId || creatingMine) return;
+    setCreatingMine(true);
+    void startProjectNote(projectId).finally(() => setCreatingMine(false));
+  };
+
+  const fileActions = (note: ProjectNoteFile): RowAction[] =>
+    projectId
+      ? [
+          {
+            id: "copy",
+            label: t(($) => $.notes.noteTab.copyToMine),
+            run: () => void copyProjectNoteToMine(projectId, note.path),
+          },
+          {
+            id: "rename",
+            label: t(($) => $.notes.library.menu.rename),
+            run: () => setRenaming({ kind: "file", key: note.path }),
+          },
+          {
+            id: "delete",
+            label: t(($) => $.notes.library.menu.delete),
+            run: () => void deleteProjectNote(note.path, note.title),
+          },
+        ]
+      : [];
+
+  const mineActions = (note: ProjectNote): RowAction[] => {
+    if (!projectId) return [];
+    const actions = noteActions.actionsFor(personalNoteItem(note, projectId));
+    const rows: RowAction[] = [
+      {
+        id: "move",
+        label: t(($) => $.notes.noteTab.moveIntoProject),
+        run: () => void moveNoteIntoProject(note.id, projectId),
+      },
+      { id: "open", label: t(($) => $.notes.noteTab.openInNotes), run: () => void openNotes(note.id) },
+    ];
+    if (actions.rename) {
+      rows.push({
+        id: "rename",
+        label: t(($) => $.notes.library.menu.rename),
+        run: () => setRenaming({ kind: "mine", key: note.id }),
+      });
+    }
+    const move = actions.move;
+    if (move) rows.push({ id: "unlink", label: t(($) => $.notes.projectNotes.unlink), run: () => move.to(null) });
+    const remove = actions.remove;
+    if (remove) rows.push({ id: "delete", label: t(($) => $.notes.library.menu.delete), run: remove });
+    return rows;
+  };
+
+  const renameMine = async (note: ProjectNote, title: string) => {
+    if (!projectId) return;
+    noteActions.actionsFor(personalNoteItem(note, projectId)).rename?.(title.trim());
+    setRenaming(null);
+  };
+
+  const empty = (text: string, testId: string) => (
+    <p data-testid={testId} className="px-2 pb-2 text-xs text-muted-foreground">
+      {text}
+    </p>
+  );
+
+  const noMatches =
+    searchable && query.trim() !== "" && shownMine.length === 0 && shownFiles.length === 0 ? (
+      <p role="status" className="px-3 py-6 text-center text-xs text-muted-foreground">
+        {t(($) => $.notes.projectNotes.noMatches)}
+      </p>
+    ) : null;
+
+  const fileList = () => {
+    if (!files.loaded) {
+      return (
+        <div className="flex justify-center py-2">
+          <Spinner size="sm" />
+        </div>
+      );
+    }
+    const pending =
+      renaming?.kind === "file" && !files.notes.some((note) => note.path === renaming.key) ? renaming.key : null;
+    const more =
+      files.more > 0 ? (
+        <p data-testid="project-files-more" className="px-2 pb-1 text-xs text-muted-foreground">
+          {t(($) => $.notes.projectNotes.moreFiles, { count: files.more })}
+        </p>
+      ) : null;
+    if (files.notes.length === 0 && pending === null) {
+      return (
+        <>
+          {empty(t(($) => $.notes.projectNotes.projectEmpty), "project-files-empty")}
+          {more}
+        </>
+      );
+    }
+    return (
+      <>
+        {pending !== null ? (
+          <NoteTitleField
+            initial={t(($) => $.notes.document.untitled)}
+            label={t(($) => $.notes.projectNotes.titleLabel)}
+            testId="project-note-title"
+            onCommit={(title) => renameFile(pending, title)}
+            onCancel={() => setRenaming(null)}
+          />
+        ) : null}
+        <ul aria-label={t(($) => $.notes.projectNotes.projectGroup)} className="flex flex-col gap-0.5">
+          {shownFiles.map((note) =>
+            renaming?.kind === "file" && renaming.key === note.path ? (
+              <li key={note.path}>
+                <NoteTitleField
+                  initial={note.title}
+                  label={t(($) => $.notes.projectNotes.titleLabel)}
+                  testId="project-note-title"
+                  onCommit={(title) => renameFile(note.path, title)}
+                  onCancel={() => setRenaming(null)}
+                />
+              </li>
+            ) : (
+              <NoteRow
+                key={note.path}
+                testId="project-note-file"
+                title={note.title}
+                summary={note.summary}
+                icon={note.icon}
+                color={note.color}
+                actions={fileActions(note)}
+                onOpen={() => void useFilesStore.getState().openFile(note.path)}
+              />
+            ),
+          )}
+        </ul>
+        {more}
+      </>
+    );
+  };
+
+  const mineList = () => {
+    const now = Date.now();
+    if (mine.length === 0) return empty(t(($) => $.notes.projectNotes.mineEmpty), "project-notes-empty");
+    return (
+      <ul aria-label={t(($) => $.notes.projectNotes.mineGroup)} className="flex flex-col gap-0.5">
+        {shownMine.map((note) =>
+          renaming?.kind === "mine" && renaming.key === note.id ? (
+            <li key={note.id}>
+              <NoteTitleField
+                initial={note.title}
+                label={t(($) => $.notes.library.menu.renameLabel)}
+                testId="project-note-rename"
+                onCommit={(title) => renameMine(note, title)}
+                onCancel={() => setRenaming(null)}
+              />
+            </li>
+          ) : (
+            <NoteRow
+              key={note.id}
+              testId="project-note"
+              title={note.title}
+              meta={t(($) => $.notes.projectNotes.edited, {
+                when: formatRelativeTimeFrom(note.updatedAt, now, { dateAfterDays: 7 }),
+              })}
+              summary={note.summary}
+              icon={note.icon}
+              color={note.color}
+              actions={mineActions(note)}
+              onOpen={() => {
+                if (projectId) openPersonalNoteTab(projectId, note.id, { icon: note.icon, color: note.color });
+              }}
+            />
+          ),
+        )}
+      </ul>
+    );
+  };
+
+  return (
+    <div className="flex h-full flex-col" data-testid="project-notes-panel">
+      <SidebarPanelHeader icon={NotebookPen} title={t(($) => $.shell.rail.notes)} />
+      {searchable ? (
+        <div className="relative mx-1.5 mt-1.5 shrink-0">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            aria-label={t(($) => $.notes.projectNotes.searchLabel)}
+            placeholder={t(($) => $.notes.projectNotes.searchPlaceholder)}
+            className="h-8 pl-7 pr-8 text-xs"
+          />
+          {query ? (
+            <button
+              type="button"
+              aria-label={t(($) => $.notes.projectNotes.clearSearch)}
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
+              className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+            >
+              <X aria-hidden className="size-3" />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1.5">
+        {shared ? (
+          <p data-testid="project-notes-shared" className="rounded-md bg-primary/5 px-2 py-1.5 text-xs text-muted-foreground">
+            {t(($) => $.notes.projectNotes.sharedLine)}
+          </p>
+        ) : null}
+        {noMatches}
+        <NoteGroup
+          testId="project-notes-files"
+          title={t(($) => $.notes.projectNotes.projectGroup)}
+          newLabel={t(($) => $.notes.projectNotes.newProjectNote)}
+          busy={creatingFile}
+          disabled={!projectId}
+          onNew={createFile}
+        >
+          {fileList()}
+        </NoteGroup>
+        <NoteGroup
+          testId="project-notes-mine"
+          title={t(($) => $.notes.projectNotes.mineGroup)}
+          newLabel={t(($) => $.notes.projectNotes.newPersonalNote)}
+          busy={creatingMine}
+          disabled={!projectId}
+          onNew={createMine}
+        >
+          {mineList()}
+          {mine.length > 0 ? (
+            <p data-testid="project-notes-device" className="px-2 pb-1 text-xs text-muted-foreground">
+              {t(($) => $.notes.projectNotes.mineDeviceOnly)}
+            </p>
+          ) : null}
+        </NoteGroup>
+      </div>
+      {noteActions.dialog}
+    </div>
+  );
+}

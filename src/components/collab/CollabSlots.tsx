@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy } from "@/lib/preloadable";
 import { Files, MessageSquare, MessagesSquare, RadioTower } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AnalyzedQuery, FacetState } from "@oleafly/search-query";
@@ -9,6 +10,8 @@ import type { ProjectInfo } from "@/lib/tauri";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
+import { useSettingsStore } from "@/store/settings";
 import { useChatRail } from "./chat-rail";
 import { useCollabReady } from "./collab-ready";
 import { useCollabRail } from "./collab-rail";
@@ -71,6 +74,9 @@ const CollabBanners = lazy(() =>
 const RemovedFileBanner = lazy(() =>
   import("@/features/collab/live/RemovedFileBanner").then((module) => ({ default: module.RemovedFileBanner })),
 );
+const NoteLivePanel = lazy(() =>
+  import("@/features/collab/notes/NoteLivePanel").then((module) => ({ default: module.NoteLivePanel })),
+);
 const AdminConsoleWindow = lazy(() =>
   import("@/features/collab/console/AdminConsoleWindow").then((module) => ({ default: module.AdminConsoleWindow })),
 );
@@ -121,11 +127,22 @@ export function CollabShareSlot() {
   );
 }
 
-export function ShareDialogHost() {
+export function ShareDialogHost({ overNotes = false }: Readonly<{ overNotes?: boolean }>) {
   const projectId = useShareDialog((state) => state.projectId);
+  const notesPage = useHomeViewStore((state) => state.page === "notes");
+  const notesOn = useSettingsStore((state) => state.notes);
+  const notesShown = notesPage && notesOn;
   return (
-    <Gate when={projectId !== null}>
+    <Gate when={projectId !== null && notesShown === overNotes}>
       <ShareDialog key={projectId} projectId={projectId ?? ""} />
+    </Gate>
+  );
+}
+
+export function NoteLiveSlot({ noteId, live }: Readonly<{ noteId: string; live: boolean }>) {
+  return (
+    <Gate>
+      <NoteLivePanel noteId={noteId} live={live} />
     </Gate>
   );
 }

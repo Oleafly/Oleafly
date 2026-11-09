@@ -1,15 +1,14 @@
-import type { NoteEdit } from "/src/components/notes/note-edits";
 import { newNoteSource, readNoteFacts } from "/src/components/notes/note-file";
+import { notePreviewSource } from "/src/components/notes/note-preview-source";
+import { linkTargets } from "/src/components/notes/note-link-format";
 import type { NotesData } from "/src/components/notes/notes-data";
 import {
   NoteConflictError,
   type ArtifactItem,
   type ArtifactPreview,
-  type EditRequest,
   type ExperimentItem,
   type NoteItem,
   type NoteSource,
-  type ResearchActionId,
 } from "/src/components/notes/types";
 
 const HOUR = 3_600_000;
@@ -111,8 +110,73 @@ function lossCurveSvg(): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+const ESC = String.fromCharCode(27);
+const SWEEP_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAABgAAAAQCAIAAACDRijCAAAANUlEQVR42mNQTX4NQbdf/YMg8kQYqGIKkM1AFVNABlHFFIRBlIcUA1VMQQT2aKyNxtowizUAJdworl0zDhQAAAAASUVORK5CYII=";
+
+export const SWEEP_NOTEBOOK = JSON.stringify({
+  nbformat: 4,
+  nbformat_minor: 5,
+  metadata: { kernelspec: { name: "python3", language: "python" }, language_info: { name: "python" } },
+  cells: [
+    { cell_type: "markdown", metadata: {}, source: ["# Mask ratio sweep\n", "\n", "Validation rises as the ratio drops to $0.60$."] },
+    {
+      cell_type: "code",
+      execution_count: 1,
+      metadata: {},
+      source: ["ratios = [0.75, 0.60]\n", "plot(ratios)"],
+      outputs: [{ output_type: "display_data", metadata: {}, data: { "image/png": SWEEP_PNG, "text/plain": "<Figure size 640x480>" } }],
+    },
+    {
+      cell_type: "code",
+      execution_count: 2,
+      metadata: {},
+      source: "print('best ratio:', best)",
+      outputs: [{ output_type: "stream", name: "stdout", text: ["best ratio: 0.60\n"] }],
+    },
+    {
+      cell_type: "code",
+      execution_count: 3,
+      metadata: {},
+      source: "table",
+      outputs: [
+        {
+          output_type: "execute_result",
+          execution_count: 3,
+          metadata: {},
+          data: {
+            "text/html": "<table><tr><th>ratio</th><th>validation</th></tr><tr><td>0.60</td><td>64.1</td></tr></table><script>parent.document.title = 'ran'</script>",
+            "text/plain": "ratio validation",
+          },
+        },
+      ],
+    },
+    {
+      cell_type: "code",
+      execution_count: 4,
+      metadata: {},
+      source: "1 / 0",
+      outputs: [
+        {
+          output_type: "error",
+          ename: "ZeroDivisionError",
+          evalue: "division by zero",
+          traceback: [`${ESC}[0;31m---------------------------------------------------------------------------${ESC}[0m`, `${ESC}[0;31mZeroDivisionError${ESC}[0m: division by zero`],
+        },
+      ],
+    },
+  ],
+});
+
+function notebookUrl(text: string): string {
+  return `data:application/x-ipynb+json;base64,${btoa(String.fromCharCode(...new TextEncoder().encode(text)))}`;
+}
+
+export const IMPORTED_NOTEBOOK = "assets/sweep-1a2b3c4d.ipynb";
+
 const PREVIEWS: Readonly<Record<string, ArtifactPreview>> = {
   "figures/loss-curve.svg": { type: "image", src: lossCurveSvg() },
+  "notebooks/mask-sweep.ipynb": { type: "notebook", text: SWEEP_NOTEBOOK },
   "runs/run-3/metrics.csv": {
     type: "table",
     rows: [
@@ -153,9 +217,16 @@ const PROJECTS = [
   { id: "thesis", name: "Thesis" },
 ];
 
-function stored(id: string, title: string, projectId: string, updatedAt: number, text: string): [string, StoredNote] {
+function stored(
+  id: string,
+  title: string,
+  projectId: string,
+  updatedAt: number,
+  text: string,
+  createdAt = updatedAt,
+): [string, StoredNote] {
   const project = PROJECTS.find((candidate) => candidate.id === projectId)?.name ?? "Notes";
-  return [id, { meta: { id, title, project, relatedProjectId: projectId, updatedAt }, text, version: 1 }];
+  return [id, { meta: { id, title, project, relatedProjectId: projectId, updatedAt, createdAt }, text, version: 1 }];
 }
 
 const NOTE_IDS = {
@@ -167,7 +238,7 @@ const NOTE_IDS = {
 
 export const LATEST_RUN = "Task: Review run 3\nSummary:\nRun 3 used a mask ratio of 0.60 and reached 64.1% on validation.";
 
-export function createNotesFixture(now = Date.now(), delay = EDIT_DELAY_MS): NotesFixture {
+export function createNotesFixture(now = Date.now()): NotesFixture {
   const notes = new Map<string, StoredNote>([
     stored(
       "masking",
@@ -175,27 +246,31 @@ export function createNotesFixture(now = Date.now(), delay = EDIT_DELAY_MS): Not
       "ssl",
       now - 2 * HOUR,
       `---\ntitle: Masking strategy report\nicon: 🧪\nagent: Claude Code\nkind: note\nid: ${NOTE_IDS.masking}\n---\n\n${MASKING_BODY}`,
+      now - 6 * DAY,
     ),
     stored(
       "abstract",
       "Abstract draft",
       "ssl",
       now - DAY,
-      `---\ntitle: Abstract draft\nkind: note\nid: ${NOTE_IDS.abstract}\n---\n\nWe study how the mask ratio changes what a self-supervised encoder learns on small datasets. Lower ratios help up to a point.\n`,
+      `---\ntitle: Abstract draft\nkind: note\nid: ${NOTE_IDS.abstract}\n---\n\nWe study how the mask ratio changes what a self-supervised encoder learns on small datasets. Lower ratios help up to a point.\n\n## Contributions\n\n- A sweep of mask ratios from 0.4 to 0.9 on three small datasets.\n- A schedule that lowers the ratio as training goes on.\n`,
+      now - 3 * DAY,
     ),
     stored(
       "reading",
       "Reading notes: masked autoencoders",
       "literature",
       now - 10 * DAY,
-      `---\ntitle: "Reading notes: masked autoencoders"\nicon: lucide:book-open\nkind: note\nid: ${NOTE_IDS.reading}\n---\n\n## Key claims\n\n- High mask ratios force the encoder to learn structure.\n- Asymmetric decoders keep training cheap.\n`,
+      `---\ntitle: "Reading notes: masked autoencoders"\nicon: lucide:book-open\nkind: note\nid: ${NOTE_IDS.reading}\n---\n\n## Key claims\n\n- High mask ratios force the encoder to learn structure.\n- Asymmetric decoders keep training cheap.\n- Our ratio runs are in the [Masking strategy report](oleafly://note/${NOTE_IDS.masking}) for the [SSL masking](oleafly://project/ssl) project.\n\n## Papers\n\n| Paper | Year | Mask ratio |\n| --- | --- | --- |\n| MAE | 2022 | 0.75 |\n| SimMIM | 2022 | 0.60 |\n| BEiT | 2021 | 0.40 |\n`,
+      now - 30 * DAY,
     ),
     stored(
       "dataloader",
       "Dataloader rewrite: what changed",
       "pipeline",
       now - 12 * DAY,
-      `---\ntitle: "Dataloader rewrite: what changed"\nagent: Codex\nkind: note\nid: ${NOTE_IDS.dataloader}\n---\n\n## What changed\n\nThe loader now streams shards and shuffles inside a window of 4,096 samples.\n`,
+      `---\ntitle: "Dataloader rewrite: what changed"\nagent: Codex\nkind: note\nid: ${NOTE_IDS.dataloader}\n---\n\n## What changed\n\nThe loader now streams shards and shuffles inside a window of 4,096 samples.\n\nThe [SSL masking](oleafly://project/ssl) runs use it, and the [Masking strategy report](oleafly://note/${NOTE_IDS.masking}) has their numbers.\n\n![Throughput before and after the rewrite](assets/throughput.svg)\n\n- Shards are read four at a time.\n- Workers no longer copy samples between processes.\n`,
+      now - 20 * DAY,
     ),
   ]);
   const listeners = new Set<() => void>();
@@ -203,7 +278,7 @@ export function createNotesFixture(now = Date.now(), delay = EDIT_DELAY_MS): Not
   let created = 0;
   let settingsOpened = 0;
   let current: NotesData | null = null;
-  const copies: { noteId: string; path: string }[] = [];
+  const copies: { noteId: string; path: string }[] = [{ noteId: "dataloader", path: "assets/throughput.svg" }];
 
   const changed = () => {
     current = null;
@@ -225,11 +300,11 @@ export function createNotesFixture(now = Date.now(), delay = EDIT_DELAY_MS): Not
         icon: facts.icon,
         color: facts.color,
         summary: facts.summary,
+        preview: notePreviewSource(note.text, note.meta.title),
       };
     });
 
   const service = {
-    proposeEdits: (request: EditRequest, signal: AbortSignal) => cannedEdits(request, signal, delay),
     loadNote: (id: string) => Promise.resolve(sourceOf(noteOf(id))),
     saveNote: (id: string, text: string, version: string) => {
       const note = noteOf(id);
@@ -278,28 +353,38 @@ export function createNotesFixture(now = Date.now(), delay = EDIT_DELAY_MS): Not
       if (!copies.some((copy) => copy.noteId === noteId && copy.path === path)) copies.push({ noteId, path });
       return Promise.resolve(path);
     },
-    resolveAsset: (noteId: string, path: string) =>
-      Promise.resolve(
-        copies.some((copy) => copy.noteId === noteId && copy.path === path) && path.endsWith(".svg") ? lossCurveSvg() : null,
-      ),
+    resolveAsset: (noteId: string, path: string) => {
+      const copied = copies.some((copy) => copy.noteId === noteId && copy.path === path);
+      if (copied && path.endsWith(".ipynb")) return Promise.resolve(notebookUrl(SWEEP_NOTEBOOK));
+      return Promise.resolve(copied && path.endsWith(".svg") ? lossCurveSvg() : null);
+    },
+    importNotebook: (noteId: string) => {
+      if (!copies.some((copy) => copy.noteId === noteId && copy.path === IMPORTED_NOTEBOOK)) {
+        copies.push({ noteId, path: IMPORTED_NOTEBOOK });
+      }
+      return Promise.resolve(IMPORTED_NOTEBOOK);
+    },
     watchNote: (id: string, onChange: () => void) => {
       const set = watchers.get(id) ?? new Set();
       set.add(onChange);
       watchers.set(id, set);
       return () => set.delete(onChange);
     },
+    noteLinks: () =>
+      Promise.resolve(
+        [...notes.values()].map((note) => ({
+          projectId: note.meta.id,
+          noteId: readNoteFacts(note.text).id ?? null,
+          title: note.meta.title,
+          links: linkTargets(note.text),
+        })),
+      ),
   } satisfies Partial<NotesData>;
 
   const build = (): NotesData => ({
     notes: items(),
     artifacts,
     experiments,
-    agents: [
-      { id: "acp:claude", name: "Claude Code", models: [{ id: "default", name: "Default model" }] },
-      { id: "acp:codex", name: "Codex", models: [{ id: "default", name: "Default model" }] },
-      { id: "openai", name: "OpenAI", models: [{ id: "gpt-5", name: "GPT-5" }] },
-    ],
-    preferredAgent: { providerId: "acp:claude", modelId: "default" },
     projects: PROJECTS,
     citations: [
       { key: "he2022mae", label: "He et al. 2022, Masked autoencoders" },
@@ -377,6 +462,20 @@ export function createNotesFixture(now = Date.now(), delay = EDIT_DELAY_MS): Not
       "Write the weekly report",
       "Three runs finished, one regression fixed, two questions open.",
     ),
+    {
+      ...artifact(
+        "task-sweep",
+        "notebooks/mask-sweep.ipynb",
+        "Mask ratio sweep",
+        "notebook",
+        now - 13 * DAY,
+        "Codex",
+        "Sweep the mask ratio",
+        "Notebook with the sweep, its plot and one failed cell.",
+      ),
+      projectId: "pipeline",
+      project: "Training pipeline",
+    },
   ];
 
   const experiments: ExperimentItem[] = [
@@ -412,42 +511,4 @@ export function createNotesFixture(now = Date.now(), delay = EDIT_DELAY_MS): Not
     has: (id) => notes.has(id),
     settingsOpened: () => settingsOpened,
   };
-}
-
-const RATIO: NoteEdit = { find: "mask ratio of 0.75. The first run", replace: "mask ratio of 0.60. The first run" };
-const RUN: NoteEdit = { find: "and run 3 reached 64.1%.", replace: "and run 3 reached 64.1% after the ratio dropped to 0.60." };
-const PATCH: NoteEdit = { find: "Masks are sampled per pixel.", replace: "Masks are sampled per patch, not per pixel." };
-const CITE: NoteEdit = { find: "and run 3 reached 64.1%.", replace: "and run 3 reached 64.1% [@he2022mae]." };
-const PARAGRAPH: NoteEdit = {
-  find: "The decoder sees mask tokens at the same ratio.",
-  replace:
-    "The decoder sees mask tokens at the same ratio.\n\nRun 3 is the first run with the lower ratio, so the encoder sees more patches. Nothing else changed from run 2, which makes the 1.1 point gain easy to attribute.",
-};
-
-const ACTION_EDITS: Record<ResearchActionId, readonly NoteEdit[]> = {
-  latestRun: [RATIO, RUN],
-  claims: [PATCH],
-  citations: [CITE],
-  proofread: [PATCH],
-  rewrite: [RATIO, RUN],
-  shorter: [PATCH],
-  paragraph: [PARAGRAPH],
-  table: [PARAGRAPH],
-  figure: [PARAGRAPH],
-  abstract: [PARAGRAPH],
-};
-
-export const EDIT_DELAY_MS = 400;
-
-function cannedEdits(request: EditRequest, signal: AbortSignal, delay: number): Promise<readonly NoteEdit[]> {
-  const ready = request.actionId !== "latestRun" || request.latestRun === LATEST_RUN;
-  const edits =
-    request.noteId === "masking" && ready ? (request.actionId ? ACTION_EDITS[request.actionId] : [RATIO, PATCH]) : [];
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => resolve(edits), delay);
-    signal.addEventListener("abort", () => {
-      window.clearTimeout(timer);
-      reject(signal.reason);
-    });
-  });
 }

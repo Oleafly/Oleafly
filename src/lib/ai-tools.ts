@@ -37,7 +37,7 @@ import { compileIsBusy, failureOutsideSource, useCompileStore } from "@/store/co
 import { agentCompileAllowed } from "@/lib/open-compile";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
-import { useAgentTodoStore } from "@/store/agent-todos";
+import { agentTodoView, useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { usePdfViewStore } from "@/store/pdf-view";
 import {
@@ -356,6 +356,16 @@ const revealLocationHost = async (target: {
   };
 };
 
+const TODO_STATUSES: ReadonlySet<string> = new Set(["pending", "in_progress", "completed", "cancelled"]);
+
+function normalizedTodos(todos: { id: string; content: string; status: string }[]): AgentTodo[] {
+  return todos.map((t) => ({
+    id: t.id,
+    content: t.content,
+    status: (TODO_STATUSES.has(t.status) ? t.status : "pending") as AgentTodo["status"],
+  }));
+}
+
 const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
   readFileContent: readToolFile,
@@ -493,16 +503,7 @@ const HOST: AiToolsHost = {
   replaceRange: replaceRangeHost,
   insertTargetPath: insertTargetPathHost,
   getAgentTodos: () => useAgentTodoStore.getState().todos,
-  setAgentTodos: (todos) =>
-    useAgentTodoStore.getState().setTodos(
-      todos.map((t) => ({
-        id: t.id,
-        content: t.content,
-        status: (["pending", "in_progress", "completed", "cancelled"].includes(t.status)
-          ? t.status
-          : "pending") as "pending" | "in_progress" | "completed" | "cancelled",
-      })),
-    ),
+  setAgentTodos: (todos) => useAgentTodoStore.getState().setTodos(normalizedTodos(todos)),
   getAiPdfCaptureEnabled: () => {
     try {
       const v = localStorage.getItem("oleafly:ai_pdf_capture");
@@ -539,13 +540,63 @@ export function initAiPdfCaptureFlag(): void {
     .catch(() => {});
 }
 
+export interface ProjectToolsHostOptions {
+  projectId: () => string | null;
+  scope: string;
+  unavailable: string;
+}
+
+export function createProjectToolsHost(options: ProjectToolsHostOptions): AiToolsHost {
+  const refuse = () => Promise.reject(new Error(options.unavailable));
+  return {
+    ...HOST,
+    getProjectId: options.projectId,
+    setMainDoc: refuse,
+    prepareExternalMutation: async (projectId) => {
+      forgetToolReads(projectId);
+      return projectMutationGeneration(projectId);
+    },
+    applyExternalWrite: () => true,
+    applyExternalRename: () => true,
+    applyExternalDelete: () => true,
+    refreshTree: async () => {},
+    refreshOpenFiles: () => {},
+    recompile: refuse,
+    getLastCompileFailure: () => null,
+    getCompileLog: () => null,
+    getPdfBytes: () => null,
+    getPdfCursorPage: () => null,
+    getProjectIndex: async () => null,
+    insertAtCursor: () => false,
+    replaceRange: () => false,
+    insertTargetPath: () => null,
+    revealLocation: undefined,
+    getAgentTodos: () => agentTodoView(useAgentTodoStore.getState(), options.scope).todos,
+    setAgentTodos: (todos) => useAgentTodoStore.getState().setTodos(normalizedTodos(todos), options.scope),
+    rememberNote: (content) => {
+      const note = useAgentMemoryStore.getState().add(content, options.scope);
+      return note ? { id: note.id, content: note.content } : { error: "No project open or empty note" };
+    },
+    forgetNote: (id) => {
+      useAgentMemoryStore.getState().remove(id, options.scope);
+      return { success: true };
+    },
+    listNotes: () =>
+      useAgentMemoryStore
+        .getState()
+        .view(options.scope)
+        .notes.map((n) => ({ id: n.id, content: n.content })),
+  };
+}
+
 export function createOleaflyTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;
   mutationAllowed?: () => boolean;
   runId?: () => string | null;
+  host?: AiToolsHost;
 }) {
-  return createOleaflyToolsCore(HOST, {
+  return createOleaflyToolsCore(opts?.host ?? HOST, {
     ...opts,
     resolveExecCwd: agentExecCwd,
     authorizeExec: async (projectId, command, runIdOverride) => {
@@ -565,6 +616,7 @@ export function createFigureTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;
   mutationAllowed?: () => boolean;
+  host?: AiToolsHost;
 }) {
-  return createFigureToolsCore(HOST, opts);
+  return createFigureToolsCore(opts?.host ?? HOST, opts);
 }

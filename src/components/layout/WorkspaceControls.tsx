@@ -4,14 +4,17 @@ import {
   GitFork,
   PanelLeft,
   PanelLeftClose,
+  PanelRight,
+  PanelRightClose,
   Settings as SettingsIcon,
   Sparkles,
   SquareTerminal,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { railSections, railTabLabel, type AppContext, type RailTabContribution } from "@oleafly/registry";
+import { railSections, railTabIds, railTabLabel, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { paneSide, usePaneLayoutStore } from "@/store/pane-layout";
 import { useTerminalsStore } from "@/store/terminals";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
@@ -26,6 +29,8 @@ import { ThemeMenu, THEME_PREFERENCES, themePreferenceLabel, themeMenuLabel } fr
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
 import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 import { TOOLBAR_OVERFLOW } from "@/lib/use-toolbar-layout";
+import { applyRailOrder, useRailOrder } from "@/components/layout/rail-order";
+import { useStripReorder, type StripItemProps } from "@/components/layout/strip-reorder";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup,
   DropdownMenuRadioItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -54,11 +59,15 @@ function ViewButton({
   tab,
   ctx,
   active,
+  dragging,
+  drag,
   onSelect,
 }: Readonly<{
   tab: RailTabContribution;
   ctx: AppContext;
   active: boolean;
+  dragging: string | null;
+  drag: StripItemProps;
   onSelect: () => void;
 }>) {
   const { t } = useTranslation(["shell"]);
@@ -68,14 +77,15 @@ function ViewButton({
   const label = railTabLabel(tab, ctx);
   const name = hotkey ? t(($) => $.shell.rail.withShortcut, { label, shortcut: hotkey }) : label;
   return (
-    <Tooltip label={name} side="bottom">
+    <Tooltip label={name} side="bottom" suppressed={dragging !== null}>
       <button
         type="button"
+        {...drag}
         data-tour={`rail-${tab.id}`}
         aria-label={name}
         aria-current={active ? "page" : undefined}
         onClick={onSelect}
-        className={cn("relative", ctrlBtn(active))}
+        className={cn("relative", ctrlBtn(active || dragging === tab.id))}
       >
         <Icon className="size-4" aria-hidden />
         {badge > 0 && (
@@ -127,16 +137,23 @@ export function SidebarViews() {
     if (!chatShown && railTab === "chat") setRailTab("files");
   }, [chatShown, railTab, setRailTab]);
 
+  const notesShown = useSettingsStore((s) => s.notes) && projectKind !== "note";
+  useEffect(() => {
+    if (!notesShown && railTab === "notes") setRailTab("files");
+  }, [notesShown, railTab, setRailTab]);
+
   const select = (tab: RailTab) => {
     setRailTab(tab);
     if (!showTree) toggleTree();
   };
 
   const ctx: AppContext = { projectId, projectKind, theme, mcpEnabled };
-  const tabs = railSections(ctx).flat();
+  const [order, setOrder] = useRailOrder(railTabIds());
+  const tabs = applyRailOrder(railSections(ctx).flat(), order);
+  const reorder = useStripReorder(order, setOrder);
 
   return (
-    <div data-tour="project-sidebar" className="flex items-center gap-0.5">
+    <div {...reorder.strip} data-tour="project-sidebar" className="relative flex items-center gap-0.5">
       {tabs.map((tab, i) => (
         <Fragment key={tab.id}>
           {i > 0 && <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />}
@@ -144,18 +161,27 @@ export function SidebarViews() {
             tab={tab}
             ctx={ctx}
             active={railTab === tab.id}
+            dragging={reorder.dragging}
+            drag={reorder.item(tab.id)}
             onSelect={() => select(tab.id as RailTab)}
           />
         </Fragment>
       ))}
+      {reorder.indicator}
     </div>
   );
+}
+
+function sidebarIcon(shown: boolean, side: "left" | "right") {
+  if (side === "right") return shown ? <PanelRightClose className="size-4" /> : <PanelRight className="size-4" />;
+  return shown ? <PanelLeftClose className="size-4" /> : <PanelLeft className="size-4" />;
 }
 
 export function SidebarCollapseToggle() {
   const { t } = useTranslation(["shell"]);
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
+  const sidebarSide = usePaneLayoutStore((s) => paneSide(s.layout, "sidebar"));
   const shortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleSidebar));
   const label = showTree
     ? t(($) => $.shell.dock.sidebar.hide, { shortcut })
@@ -168,7 +194,7 @@ export function SidebarCollapseToggle() {
         onClick={toggleTree}
         className={ctrlBtn(false)}
       >
-        {showTree ? <PanelLeftClose className="size-4" /> : <PanelLeft className="size-4" />}
+        {sidebarIcon(showTree, sidebarSide)}
       </button>
     </Tooltip>
   );

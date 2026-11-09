@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { act, render, screen } from "@testing-library/react";
-import { lazy, useEffect } from "react";
+import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { create } from "zustand";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { mountOnFirstOpen } from "./mount-on-first-open";
+import { lazy } from "./preloadable";
 
 const toastError = vi.fn();
 const appendAppLog = vi.fn(async (_detail: string) => {});

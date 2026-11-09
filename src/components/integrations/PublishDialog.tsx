@@ -402,7 +402,7 @@ export function PublishDialog({
             value={repoName}
             onChange={(e) => setRepoName(e.target.value)}
             aria-label={t(($) => $.library.github.repositoryName)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:border-ring"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs"
           />
         </label>
         <label htmlFor="publish-private-repository" className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">

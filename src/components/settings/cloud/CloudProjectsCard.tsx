@@ -1,5 +1,6 @@
 import { CloudNotice } from "@/components/settings/cloud/CloudNotice";
 import { SettingsSwitchIndicator } from "@/components/settings/SettingsToggleRow";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -16,8 +17,11 @@ import { describeError } from "@/lib/app-error";
 import type { CloudProgress, CloudProject, CloudState } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
+import { isNoteProject } from "@/lib/library-projects";
 import { cn } from "@/lib/utils";
 import { cloudErrorCode, remoteBusyKey, useCloudProviderName, useCloudStore } from "@/store/cloud";
+import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import {
   ChevronRight,
   CloudOff,
@@ -482,6 +486,18 @@ function isRemovable(project: CloudProject, local: boolean, connected: boolean):
   return (project.mode === "sync" || project.mode === "pause") && project.lastSyncedMs > 0;
 }
 
+function NoteTag({ localId }: Readonly<{ localId: string }>) {
+  const { t } = useTranslation(["library"]);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const note = useFilesStore((s) => notesOn && isNoteProject(s.projects.find((entry) => entry.id === localId)));
+  if (!note) return null;
+  return (
+    <Badge variant="muted" size="sm" data-testid="cloud-project-note-tag">
+      {t(($) => $.library.home.filters.kindNote)}
+    </Badge>
+  );
+}
+
 function ProjectRow({
   project,
   now,
@@ -501,11 +517,14 @@ function ProjectRow({
     <li data-testid="cloud-project-row" className="px-3 py-2.5">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">
-            <Tooltip label={project.name} className="inline">
-              {project.name}
-            </Tooltip>
-          </p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="min-w-0 truncate text-sm font-medium text-foreground">
+              <Tooltip label={project.name} className="inline">
+                {project.name}
+              </Tooltip>
+            </p>
+            {local ? <NoteTag localId={project.localId as string} /> : null}
+          </div>
           {transferring ? (
             <TransferLine progress={progress} />
           ) : (

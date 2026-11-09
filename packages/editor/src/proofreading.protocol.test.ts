@@ -75,6 +75,7 @@ describe("isProofreadingWorkerResponse", () => {
   it("accepts well-formed results and errors", () => {
     expect(isProofreadingWorkerResponse(result())).toBe(true);
     expect(isProofreadingWorkerResponse(result({ identity: { ...IDENTITY, projectId: null } }))).toBe(true);
+    expect(isProofreadingWorkerResponse(result({ identity: { ...IDENTITY, surface: "notes" } }))).toBe(true);
     expect(
       isProofreadingWorkerResponse(
         result({ message: "ok", activeDictionaryLocale: "en_GB", truncated: false, status: "partial" }),

@@ -1,4 +1,5 @@
 import type { ResearchTask, TaskArtifact, TaskPreviewContent } from "@/lib/research-tasks";
+import { isNotebookPath, notebookFence } from "./notebook-block";
 import type { ArtifactItem, ArtifactKind, ArtifactPreview, ExperimentItem, NoteItem } from "./types";
 
 const FIGURE = /\.(png|jpe?g|gif|webp|svg|pdf)$/iu;
@@ -12,6 +13,7 @@ const RUN_SUMMARY_CHARS = 6000;
 
 export function artifactKind(artifact: Pick<TaskArtifact, "path" | "mediaType">): ArtifactKind {
   const { path, mediaType } = artifact;
+  if (isNotebookPath(path) || mediaType === "application/x-ipynb+json") return "notebook";
   if (HTML.test(path) || mediaType === "text/html") return "html";
   if (FIGURE.test(path) || mediaType?.startsWith("image/")) return "figure";
   if (DATA.test(path) || mediaType === "text/csv" || mediaType === "application/json") return "data";
@@ -143,6 +145,9 @@ export function csvRows(text: string, separator: string): { rows: string[][]; tr
 export function artifactPreview(artifact: Pick<ArtifactItem, "kind" | "path">, content: TaskPreviewContent): ArtifactPreview {
   if (!content.exists) return { type: "none", reason: "missing" };
   if (artifact.kind === "html") return { type: "none", reason: "html" };
+  if (artifact.kind === "notebook") {
+    return content.text === null ? { type: "none", reason: "large" } : { type: "notebook", text: content.text };
+  }
   if (content.base64 && content.mediaType?.startsWith("image/")) {
     return { type: "image", src: `data:${content.mediaType};base64,${content.base64}` };
   }
@@ -172,6 +177,7 @@ function markdownDestination(path: string): string {
 }
 
 export function artifactSnippet(artifact: Pick<ArtifactItem, "kind" | "title">, path: string): string {
+  if (artifact.kind === "notebook") return notebookFence(path);
   const link = `[${markdownLabel(artifact.title)}](${markdownDestination(path)})`;
   return artifact.kind === "figure" && !/\.pdf$/iu.test(path) ? `!${link}` : link;
 }

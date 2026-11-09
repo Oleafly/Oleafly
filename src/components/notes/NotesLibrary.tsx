@@ -1,58 +1,67 @@
-import { FolderInput, MoreHorizontal, PanelsTopLeft, Pencil, Plus, Search, Settings, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { MoreHorizontal, Plus, Settings } from "lucide-react";
+import { memo, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
+import { analyze, clearQualifiers, readFacet, writeFacet, type Facet, type FacetState } from "@oleafly/search-query";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { SIDEBAR_TITLE_CLASS, SidebarSection } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";
-import { CheckBadge } from "@/components/ui/check-badge";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { QuerySearch } from "@/components/ui/query-search";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useInitialFocus } from "@/components/ui/use-initial-focus";
+import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { formatRelativeTimeFrom } from "@/lib/intl";
-import { logError } from "@/lib/log";
-import { shortProjectName } from "@/lib/project-format";
-import { notifyError, toast } from "@/lib/toast";
+import { readString, writeString } from "@/lib/local-storage";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
+import { isSelectionModifier } from "@/store/library-selection";
+import {
+  CONTEXT_MENU_KIT,
+  DROPDOWN_MENU_KIT,
+  hasNoteMenu,
+  type MenuKit,
+  type NoteActions,
+  NoteMenuItems,
+  NoteRenameInput,
+  useNoteActions,
+} from "./note-actions";
 import { Byline, KIND_TONES, KindChip, NoteChip } from "./note-icons";
+import {
+  activeFilterCount,
+  selectedTag,
+  useVaultQuery,
+  VAULT_AUTHORS,
+  VAULT_FACETS,
+  VAULT_KINDS,
+  type VaultKind,
+  writeTagFilter,
+} from "./note-query";
+import { tagTree, useNoteTagCounts, useVaultSearch } from "./note-search";
+import { SharedMark } from "./NoteShareButton";
 import { useNotesData } from "./notes-data";
+import { SidebarGraphActions } from "./NoteImportDialog";
 import { ProjectDot, useProjectColor } from "./project-color";
-import type { ArtifactItem, ArtifactKind, Author, NoteItem } from "./types";
+import { TemplatePicker } from "./TemplatePicker";
+import type { ArtifactItem, Author, NoteItem } from "./types";
+import { setQuickSwitcherOpen, useVaultStore } from "./vault-store";
+import { optionId, SearchResultList, type SearchRow, TagChip, TagPane, TemplateButton, VaultHeaderActions } from "./vault-sidebar";
 
-type KindFilter = "all" | "note" | Exclude<ArtifactKind, "html" | "file">;
+type KindFilter = "all" | VaultKind;
 type AuthorFilter = "all" | Author;
 
-const KIND_FILTERS: readonly KindFilter[] = ["all", "note", "figure", "report", "data"];
-const AUTHOR_FILTERS: readonly AuthorFilter[] = ["all", "agent", "you"];
+const KIND_FILTERS: readonly KindFilter[] = ["all", ...VAULT_KINDS];
+const AUTHOR_FILTERS: readonly AuthorFilter[] = ["all", ...VAULT_AUTHORS];
+const ALL_FILTER = "all";
+const CUSTOM_FILTER = "custom";
 
 const NOTES_FILTERS_OPEN_KEY = "oleafly.notes.filtersOpen";
+const MINUTE_MS = 60_000;
 
 const CHIP_LIST = "flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0";
 const CHIP =
   "rounded-full border border-sidebar-border bg-background px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent data-[state=active]:border-primary/30 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none";
-const MENU_ITEM = "gap-2 [&>svg]:size-4 [&>svg]:shrink-0";
 
 interface ProjectGroup {
   projectId?: string;
@@ -64,63 +73,33 @@ interface NotesLibraryProps {
   iconFor: (note: NoteItem) => string | undefined;
   activeNoteId: string | null;
   activeArtifactId: string | null;
+  homeLabel?: string;
   onHome: () => void;
   onNewNote?: () => void;
   onOpenNote: (id: string) => void;
   onOpenNoteInNewTab?: (id: string) => void;
   onOpenArtifact: (artifact: ArtifactItem) => void;
+  onToday?: () => void;
+  onOpenGraph?: () => void;
+  onImportFolder?: () => void;
+  onExportFolder?: () => void;
 }
-
-interface NoteActions {
-  openInNewTab?: () => void;
-  rename?: (title: string) => void;
-  move?: { projects: readonly { id: string; name: string }[]; to: (projectId: string | null) => void };
-  remove?: () => void;
-}
-
-interface PendingDelete {
-  title: string;
-  remove: () => Promise<void>;
-}
-
-type MenuKit = Readonly<{
-  Item: typeof ContextMenuItem;
-  Separator: typeof ContextMenuSeparator;
-  Sub: typeof ContextMenuSub;
-  SubTrigger: typeof ContextMenuSubTrigger;
-  SubContent: typeof ContextMenuSubContent;
-}>;
-
-const CONTEXT_MENU_KIT: MenuKit = {
-  Item: ContextMenuItem,
-  Separator: ContextMenuSeparator,
-  Sub: ContextMenuSub,
-  SubTrigger: ContextMenuSubTrigger,
-  SubContent: ContextMenuSubContent,
-};
-
-const DROPDOWN_MENU_KIT: MenuKit = {
-  Item: DropdownMenuItem,
-  Separator: DropdownMenuSeparator,
-  Sub: DropdownMenuSub,
-  SubTrigger: DropdownMenuSubTrigger,
-  SubContent: DropdownMenuSubContent,
-};
 
 function readFiltersOpen(): boolean {
-  try {
-    return localStorage.getItem(NOTES_FILTERS_OPEN_KEY) === "true";
-  } catch {
-    return false;
-  }
+  return readString(NOTES_FILTERS_OPEN_KEY) === "true";
 }
 
 function saveFiltersOpen(open: boolean): void {
-  try {
-    localStorage.setItem(NOTES_FILTERS_OPEN_KEY, String(open));
-  } catch {
-    return;
-  }
+  writeString(NOTES_FILTERS_OPEN_KEY, String(open));
+}
+
+function useMinuteClock(): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), MINUTE_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
 }
 
 function Row({
@@ -129,6 +108,7 @@ function Row({
   title,
   meta,
   className,
+  badge,
   onClick,
 }: Readonly<{
   active: boolean;
@@ -136,6 +116,7 @@ function Row({
   title: string;
   meta: ReactNode;
   className?: string;
+  badge?: ReactNode;
   onClick: () => void;
 }>) {
   return (
@@ -151,123 +132,57 @@ function Row({
     >
       {icon}
       <span className="min-w-0 flex-1">
-        <span className={cn("block truncate text-sm", active && "font-medium")}>{title}</span>
+        <span className="flex min-w-0 items-center gap-1">
+          <span className={cn("block truncate text-sm", active && "font-medium")}>{title}</span>
+          {badge}
+        </span>
         <span className="mt-0.5 block text-[0.6875rem] text-muted-foreground">{meta}</span>
       </span>
     </button>
   );
 }
 
-function RenameField({ icon, title, onDone }: Readonly<{ icon: ReactNode; title: string; onDone: (title: string | null) => void }>) {
-  const { t } = useTranslation(["notes"]);
-  const [value, setValue] = useState(title);
-  const inputRef = useInitialFocus<HTMLInputElement>();
-  const finished = useRef(false);
-  const finish = (next: string | null) => {
-    if (finished.current) return;
-    finished.current = true;
-    onDone(next);
-  };
+function bylineFor(item: { author: Author; agent?: string; updatedAt: number; shared?: boolean }, now: number) {
   return (
-    <div className="flex items-center gap-2.5 rounded-md bg-sidebar-accent px-2 py-1">
-      {icon}
-      <Input
-        ref={inputRef}
-        aria-label={t(($) => $.notes.library.menu.renameLabel)}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onFocus={(event) => event.currentTarget.select()}
-        onBlur={() => finish(value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") finish(value);
-          else if (event.key === "Escape") {
-            event.stopPropagation();
-            finish(null);
-          }
-        }}
-        className="h-7 min-w-0 flex-1 px-2 py-0 text-sm focus-visible:border-primary/50"
-      />
-    </div>
+    <Byline
+      author={item.author}
+      agent={item.agent}
+      shared={item.shared}
+      when={formatRelativeTimeFrom(item.updatedAt, now, { dateAfterDays: 7 })}
+    />
   );
 }
 
-function NoteMenuItems({
-  note,
-  kit,
-  actions,
-  onRename,
-  onDelete,
-}: Readonly<{ note: NoteItem; kit: MenuKit; actions: NoteActions; onRename: () => void; onDelete: () => void }>) {
-  const { t } = useTranslation(["notes"]);
-  const colorOf = useProjectColor();
-  const { Item, Separator, Sub, SubTrigger, SubContent } = kit;
-  const { openInNewTab, rename, move, remove } = actions;
-  const current = note.relatedProjectId ?? null;
-  const choose = (projectId: string | null) => {
-    if (move && projectId !== current) move.to(projectId);
-  };
-  return (
-    <>
-      {openInNewTab && (
-        <Item className={MENU_ITEM} onSelect={openInNewTab}>
-          <PanelsTopLeft aria-hidden />
-          {t(($) => $.notes.library.menu.openInNewTab)}
-        </Item>
-      )}
-      {rename && (
-        <Item className={MENU_ITEM} onSelect={onRename}>
-          <Pencil aria-hidden />
-          {t(($) => $.notes.library.menu.rename)}
-        </Item>
-      )}
-      {move && (
-        <Sub>
-          <SubTrigger className={MENU_ITEM}>
-            <FolderInput aria-hidden />
-            {t(($) => $.notes.workspace.project)}
-          </SubTrigger>
-          <SubContent className="max-h-80 w-56 overflow-y-auto">
-            <Item className="gap-2" onSelect={() => choose(null)}>
-              <ProjectDot color={null} />
-              <span className="min-w-0 flex-1 truncate">{t(($) => $.notes.workspace.noProject)}</span>
-              {current === null && <CheckBadge />}
-            </Item>
-            {move.projects.map((project) => (
-              <Item key={project.id} className="gap-2" onSelect={() => choose(project.id)}>
-                <ProjectDot color={colorOf(project.id)} />
-                <span className="min-w-0 flex-1 truncate">{project.name}</span>
-                {current === project.id && <CheckBadge />}
-              </Item>
-            ))}
-          </SubContent>
-        </Sub>
-      )}
-      {remove && (
-        <>
-          {(openInNewTab || rename || move) && <Separator />}
-          <Item className={cn(MENU_ITEM, "text-destructive focus:text-destructive")} onSelect={onDelete}>
-            <Trash2 aria-hidden />
-            {t(($) => $.notes.library.menu.delete)}
-          </Item>
-        </>
-      )}
-    </>
-  );
-}
-
-function NoteRow({
+const NoteRow = memo(function NoteRow({
   note,
   active,
-  icon,
-  meta,
-  actions,
-  onOpen,
-}: Readonly<{ note: NoteItem; active: boolean; icon: ReactNode; meta: ReactNode; actions: NoteActions; onOpen: () => void }>) {
+  now,
+  iconFor,
+  actionsFor,
+  onOpenNote,
+}: Readonly<{
+  note: NoteItem;
+  active: boolean;
+  now: number;
+  iconFor: (note: NoteItem) => string | undefined;
+  actionsFor: (note: NoteItem) => NoteActions;
+  onOpenNote: (id: string) => void;
+}>) {
   const { t } = useTranslation(["notes"]);
   const [renaming, setRenaming] = useState(false);
   const pending = useRef<(() => void) | null>(null);
-  const hasMenu = Boolean(actions.openInNewTab || actions.rename || actions.move || actions.remove);
-  if (!hasMenu) return <Row active={active} icon={icon} title={note.title} meta={meta} onClick={onOpen} />;
+  const actions = actionsFor(note);
+  const icon = <NoteChip icon={iconFor(note)} color={note.color} />;
+  const meta = bylineFor(note, now);
+  const badge = note.shared ? <SharedMark /> : null;
+  const open = () => onOpenNote(note.id);
+  if (!hasNoteMenu(actions)) {
+    return (
+      <div {...{ [ROW_WINDOW_ITEM]: "" }} data-note-row={note.id}>
+        <Row active={active} icon={icon} title={note.title} meta={meta} badge={badge} onClick={open} />
+      </div>
+    );
+  }
 
   const afterClose = (action: () => void) => () => {
     pending.current = action;
@@ -295,12 +210,15 @@ function NoteRow({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild disabled={renaming}>
-        <div data-note-row={note.id} className="group/row relative">
+        <div {...{ [ROW_WINDOW_ITEM]: "" }} data-note-row={note.id} className="group/row relative">
           {renaming ? (
-            <RenameField icon={icon} title={note.title} onDone={finishRename} />
+            <div className="flex items-center gap-2.5 rounded-md bg-sidebar-accent px-2 py-1">
+              {icon}
+              <NoteRenameInput title={note.title} className="h-7 px-2 py-0 text-sm" onDone={finishRename} />
+            </div>
           ) : (
             <>
-              <Row active={active} icon={icon} title={note.title} meta={meta} className="pr-9" onClick={onOpen} />
+              <Row active={active} icon={icon} title={note.title} meta={meta} badge={badge} className="pr-9" onClick={open} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -324,40 +242,165 @@ function NoteRow({
       </ContextMenuContent>
     </ContextMenu>
   );
+});
+
+const ArtifactRow = memo(function ArtifactRow({
+  artifact,
+  active,
+  now,
+  onOpenArtifact,
+}: Readonly<{ artifact: ArtifactItem; active: boolean; now: number; onOpenArtifact: (artifact: ArtifactItem) => void }>) {
+  return (
+    <div {...{ [ROW_WINDOW_ITEM]: "" }}>
+      <Row
+        active={active}
+        icon={<KindChip kind={artifact.kind} />}
+        title={artifact.title}
+        meta={bylineFor({ author: "agent", agent: artifact.agent, updatedAt: artifact.updatedAt }, now)}
+        onClick={() => onOpenArtifact(artifact)}
+      />
+    </div>
+  );
+});
+
+type GroupEntry = { kind: "note"; note: NoteItem } | { kind: "artifact"; artifact: ArtifactItem };
+
+function LibraryGroup({
+  project,
+  group,
+  scrollRef,
+  activeNoteId,
+  activeArtifactId,
+  now,
+  iconFor,
+  actionsFor,
+  onOpenNote,
+  onOpenArtifact,
+}: Readonly<{
+  project: string;
+  group: ProjectGroup;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  activeNoteId: string | null;
+  activeArtifactId: string | null;
+  now: number;
+  iconFor: (note: NoteItem) => string | undefined;
+  actionsFor: (note: NoteItem) => NoteActions;
+  onOpenNote: (id: string) => void;
+  onOpenArtifact: (artifact: ArtifactItem) => void;
+}>) {
+  const colorOf = useProjectColor();
+  const listRef = useRef<HTMLDivElement>(null);
+  const entries = useMemo<GroupEntry[]>(
+    () => [
+      ...group.notes.map((note) => ({ kind: "note" as const, note })),
+      ...group.artifacts.map((artifact) => ({ kind: "artifact" as const, artifact })),
+    ],
+    [group],
+  );
+  const rows = useRowWindow({ count: entries.length, scrollRef, listRef });
+  return (
+    <section>
+      <div className="flex items-center gap-2 px-2 pb-1">
+        <h2 className={cn("flex min-w-0 items-center gap-1.5", SIDEBAR_TITLE_CLASS)}>
+          <ProjectDot color={colorOf(group.projectId)} />
+          <span className="truncate">{project}</span>
+        </h2>
+        <span className="ml-auto text-[0.6875rem] tabular-nums text-muted-foreground">{entries.length}</span>
+      </div>
+      <div ref={listRef} style={{ paddingTop: rows.paddingTop, paddingBottom: rows.paddingBottom }}>
+        {entries.slice(rows.start, rows.end).map((entry) =>
+          entry.kind === "note" ? (
+            <NoteRow
+              key={entry.note.id}
+              note={entry.note}
+              active={activeNoteId === entry.note.id && activeArtifactId === null}
+              now={now}
+              iconFor={iconFor}
+              actionsFor={actionsFor}
+              onOpenNote={onOpenNote}
+            />
+          ) : (
+            <ArtifactRow
+              key={entry.artifact.id}
+              artifact={entry.artifact}
+              active={activeArtifactId === entry.artifact.id}
+              now={now}
+              onOpenArtifact={onOpenArtifact}
+            />
+          ),
+        )}
+      </div>
+    </section>
+  );
 }
 
-function matchesKind(kind: KindFilter, artifact: ArtifactItem): boolean {
-  if (kind === "all") return true;
-  if (kind === "figure") return artifact.kind === "figure" || artifact.kind === "html";
-  return artifact.kind === kind;
+function facetValue(state: FacetState): string {
+  if (state.kind === "option") return state.id;
+  return state.kind === "custom" ? CUSTOM_FILTER : ALL_FILTER;
 }
 
 export function NotesLibrary({
   iconFor,
   activeNoteId,
   activeArtifactId,
+  homeLabel,
   onHome,
   onNewNote,
   onOpenNote,
   onOpenNoteInNewTab,
   onOpenArtifact,
+  onToday,
+  onOpenGraph,
+  onImportFolder,
+  onExportFolder,
 }: Readonly<NotesLibraryProps>) {
   const { t } = useTranslation(["notes"]);
-  const { notes, artifacts, projects, setRelatedProject, renameNote, deleteNote, openSettings } = useNotesData();
-  const [kind, setKind] = useState<KindFilter>("all");
-  const [author, setAuthor] = useState<AuthorFilter>("all");
+  const { notes, artifacts, openSettings, searchNotes, createNoteFrom, researchTasks } = useNotesData();
+  const research = researchTasks !== false;
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(readFiltersOpen);
-  const [deleting, setDeleting] = useState<PendingDelete | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [activeHit, setActiveHit] = useState(0);
   const fullscreen = useFullscreen();
+  const listId = useId();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const tagRequest = useVaultStore((state) => state.tagRequest);
+  const tagCounts = useNoteTagCounts();
+  const vault = useVaultQuery(query, tagCounts);
+  const { schema, plan } = vault;
+  const { actionsFor, dialog } = useNoteActions(onOpenNoteInNewTab);
+
+  useEffect(() => {
+    const requested = useVaultStore.getState().tag;
+    if (tagRequest === 0 || requested === null) return;
+    useVaultStore.setState({ tag: null });
+    setQuery((current) => writeTagFilter(current, analyze(current, schema, { now: Date.now() }), requested));
+    setFiltersOpen(true);
+    saveFiltersOpen(true);
+  }, [schema, tagRequest]);
+
+  const searching = searchNotes !== undefined && plan.fullText;
+  const search = useVaultSearch(plan, searching);
+  const tree = useMemo(() => (tagCounts ? tagTree(tagCounts) : null), [tagCounts]);
+  const tag = selectedTag(vault.query);
+  const kindFacet = readFacet(vault.query, VAULT_FACETS.kind);
+  const authorFacet = readFacet(vault.query, VAULT_FACETS.author);
+  const kind = kindFacet.kind === "option" ? (kindFacet.id as VaultKind) : null;
+
+  const hitRows = useMemo<SearchRow[]>(() => {
+    if (!searching || !search.hits) return [];
+    const byId = new Map(notes.map((note) => [note.id, note]));
+    return search.hits.flatMap((hit) => {
+      const note = byId.get(hit.id);
+      return note ? [{ hit, note }] : [];
+    });
+  }, [notes, search.hits, searching]);
+
+  const activeRow = Math.max(0, Math.min(activeHit, hitRows.length - 1));
 
   const groups = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    const matches = (item: { title: string; author: Author }) =>
-      (author === "all" || item.author === author) && (needle === "" || item.title.toLocaleLowerCase().includes(needle));
-    const shownNotes = kind === "all" || kind === "note" ? notes.filter(matches) : [];
-    const shownArtifacts =
-      kind === "note" ? [] : artifacts.filter((item) => matchesKind(kind, item) && matches({ title: item.title, author: "agent" }));
+    const shownNotes = searching ? [] : notes.filter(plan.test);
+    const shownArtifacts = research ? artifacts.filter(plan.test) : [];
     const projects = new Map<string, ProjectGroup>();
     const groupFor = (project: string, projectId: string | undefined) => {
       const group = projects.get(project) ?? { notes: [], artifacts: [] };
@@ -368,50 +411,45 @@ export function NotesLibrary({
     for (const note of shownNotes) groupFor(note.project, note.relatedProjectId).notes.push(note);
     for (const artifact of shownArtifacts) groupFor(artifact.project, artifact.projectId).artifacts.push(artifact);
     return [...projects.entries()];
-  }, [artifacts, author, kind, notes, query]);
+  }, [artifacts, notes, plan.test, research, searching]);
 
-  const colorOf = useProjectColor();
-  const now = Date.now();
-  const meta = (item: { author: Author; agent?: string; updatedAt: number }) => (
-    <Byline author={item.author} agent={item.agent} when={formatRelativeTimeFrom(item.updatedAt, now, { dateAfterDays: 7 })} />
-  );
-  const activeFilters = (kind === "all" ? 0 : 1) + (author === "all" ? 0 : 1);
+  const now = useMinuteClock();
+  const activeFilters = activeFilterCount(vault.query);
+  const clearFilters = () => setQuery(clearQualifiers(query, vault.query));
+  const chooseTag = (next: string | null) => setQuery(writeTagFilter(query, vault.query, next));
+  const chooseFacet = (facet: Facet, value: string) => {
+    if (value === CUSTOM_FILTER) return;
+    setQuery(writeFacet(query, vault.query, facet, value === ALL_FILTER ? null : value));
+  };
+  const openHit = (id: string, newTab: boolean) => {
+    if (newTab && onOpenNoteInNewTab) onOpenNoteInNewTab(id);
+    else onOpenNote(id);
+  };
+  const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape" && query !== "") {
+      event.stopPropagation();
+      setQuery("");
+      return;
+    }
+    if (hitRows.length === 0) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActiveHit((activeRow + step + hitRows.length) % hitRows.length);
+    } else if (event.key === "Enter" && !isImeEnter(event)) {
+      event.preventDefault();
+      const row = hitRows[activeRow];
+      openHit(row.note.id, isSelectionModifier(event));
+    }
+  };
   const toggleFilters = (open: boolean) => {
     setFiltersOpen(open);
     saveFiltersOpen(open);
   };
-
-  const actionsFor = (note: NoteItem): NoteActions => ({
-    openInNewTab: onOpenNoteInNewTab ? () => onOpenNoteInNewTab(note.id) : undefined,
-    rename: renameNote
-      ? (title) =>
-          void renameNote(note.id, title).catch((error: unknown) =>
-            notifyError("rename note", error, t(($) => $.notes.library.menu.renameFailed, { name: note.title })),
-          )
-      : undefined,
-    move:
-      projects && setRelatedProject
-        ? {
-            projects,
-            to: (projectId) =>
-              void setRelatedProject(note.id, projectId).catch((error: unknown) => {
-                void logError("set the note's project", error);
-              }),
-          }
-        : undefined,
-    remove: deleteNote ? () => setDeleting({ title: note.title, remove: () => deleteNote(note.id) }) : undefined,
-  });
-
-  const confirmDelete = async (target: PendingDelete) => {
-    setDeleting(null);
-    try {
-      await target.remove();
-    } catch (error) {
-      notifyError("delete note", error, t(($) => $.notes.library.menu.deleteFailed, { name: target.title }));
-      return;
-    }
-    toast.success(t(($) => $.notes.library.menu.deleted, { name: target.title }));
-  };
+  const emptyText = kind === null ? t(($) => $.notes.library.empty) : t(($) => $.notes.library.emptyKind[kind]);
+  const hasHits = hitRows.length > 0;
+  const activeId = hasHits ? optionId(listId, activeRow) : undefined;
+  const results = searching ? { listId, open: hasHits, activeId } : undefined;
 
   return (
     <aside className="flex h-full w-76 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -419,34 +457,40 @@ export function NotesLibrary({
         data-tauri-drag-region
         className={cn("flex min-h-12 shrink-0 items-center justify-between px-2", isMac && !fullscreen && "pl-[78px]")}
       >
-        <HomeBrandButton onClick={onHome} />
-        <Tooltip label={t(($) => $.notes.library.settings)} side="bottom">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={t(($) => $.notes.library.settings)}
-            className="size-7"
-            disabled={!openSettings}
-            onClick={openSettings}
-          >
-            <Settings aria-hidden />
-          </Button>
-        </Tooltip>
+        <HomeBrandButton label={homeLabel} onClick={onHome} />
+        <div data-notes-header-actions className="flex items-center gap-0.5">
+          <VaultHeaderActions onToday={onToday} onSwitcher={() => setQuickSwitcherOpen(true)} />
+          <SidebarGraphActions onOpenGraph={onOpenGraph} onImportFolder={onImportFolder} onExportFolder={onExportFolder} />
+          <Tooltip label={t(($) => $.notes.library.settings)} side="bottom">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t(($) => $.notes.library.settings)}
+              className="size-7"
+              disabled={!openSettings}
+              onClick={openSettings}
+            >
+              <Settings aria-hidden />
+            </Button>
+          </Tooltip>
+        </div>
       </div>
       <div className="flex items-center gap-1 border-b border-sidebar-border p-2">
-        <div className="relative min-w-0 flex-1">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            aria-label={t(($) => $.notes.library.search)}
-            placeholder={t(($) => $.notes.library.search)}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="pl-7 focus-visible:border-input focus-visible:bg-accent/40"
-          />
-        </div>
+        <QuerySearch
+          value={query}
+          onChange={(next) => {
+            setQuery(next);
+            setActiveHit(0);
+          }}
+          query={vault.query}
+          schema={schema}
+          ariaLabel={t(($) => $.notes.library.search)}
+          placeholder={t(($) => $.notes.library.search)}
+          clearLabel={t(($) => $.notes.vault.search.clear)}
+          results={results}
+          onKeyDown={onSearchKey}
+          className="h-9 flex-1 rounded-xl bg-background has-[input:focus-visible]:bg-accent/40"
+        />
         <Tooltip label={t(($) => $.notes.library.newNote)} side="bottom">
           <Button
             variant="ghost"
@@ -459,48 +503,58 @@ export function NotesLibrary({
             <Plus aria-hidden />
           </Button>
         </Tooltip>
+        <TemplateButton onClick={createNoteFrom ? () => setPicking(true) : undefined} />
       </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-1.5">
-        {groups.length === 0 && (
-          <p className="px-2 py-3 text-xs text-muted-foreground">
-            {notes.length + artifacts.length === 0
-              ? t(($) => $.notes.library.noNotes)
-              : t(($) => $.notes.library.empty)}
+      {tag && (
+        <div className="flex border-b border-sidebar-border px-2 py-1.5">
+          <TagChip tag={tag} onClear={() => chooseTag(null)} />
+        </div>
+      )}
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-1.5">
+        {searching && hitRows.length > 0 && (
+          <SearchResultList
+            listId={listId}
+            label={t(($) => $.notes.vault.search.results)}
+            rows={hitRows}
+            active={activeRow}
+            activeNoteId={activeArtifactId === null ? activeNoteId : null}
+            onActiveChange={setActiveHit}
+            onOpen={openHit}
+          />
+        )}
+        {searching && hitRows.length === 0 && groups.length === 0 && (
+          <p aria-live="polite" className="px-2 py-3 text-xs text-muted-foreground">
+            {search.pending || search.hits === null
+              ? t(($) => $.notes.vault.search.searching)
+              : t(($) => $.notes.vault.search.noResults, { query: query.trim() })}
           </p>
         )}
+        {!searching && groups.length === 0 && (
+          <div className="flex flex-col items-start gap-2 px-2 py-3">
+            <p className="text-xs text-muted-foreground">
+              {notes.length + artifacts.length === 0 ? t(($) => $.notes.library.noNotes) : emptyText}
+            </p>
+            {activeFilters > 0 && !filtersOpen && (
+              <Button variant="outline" size="xs" onClick={clearFilters}>
+                {t(($) => $.notes.library.filters.clear)}
+              </Button>
+            )}
+          </div>
+        )}
         {groups.map(([project, group]) => (
-          <section key={project}>
-            <div className="flex items-center gap-2 px-2 pb-1">
-              <h2 className={cn("flex min-w-0 items-center gap-1.5", SIDEBAR_TITLE_CLASS)}>
-                <ProjectDot color={colorOf(group.projectId)} />
-                <span className="truncate">{project}</span>
-              </h2>
-              <span className="ml-auto text-[0.6875rem] tabular-nums text-muted-foreground">
-                {group.notes.length + group.artifacts.length}
-              </span>
-            </div>
-            {group.notes.map((note) => (
-              <NoteRow
-                key={note.id}
-                note={note}
-                active={activeNoteId === note.id && activeArtifactId === null}
-                icon={<NoteChip icon={iconFor(note)} color={note.color} />}
-                meta={meta(note)}
-                actions={actionsFor(note)}
-                onOpen={() => onOpenNote(note.id)}
-              />
-            ))}
-            {group.artifacts.map((artifact) => (
-              <Row
-                key={artifact.id}
-                active={activeArtifactId === artifact.id}
-                icon={<KindChip kind={artifact.kind} />}
-                title={artifact.title}
-                meta={meta({ author: "agent", agent: artifact.agent, updatedAt: artifact.updatedAt })}
-                onClick={() => onOpenArtifact(artifact)}
-              />
-            ))}
-          </section>
+          <LibraryGroup
+            key={project}
+            project={project}
+            group={group}
+            scrollRef={scrollRef}
+            activeNoteId={activeNoteId}
+            activeArtifactId={activeArtifactId}
+            now={now}
+            iconFor={iconFor}
+            actionsFor={actionsFor}
+            onOpenNote={onOpenNote}
+            onOpenArtifact={onOpenArtifact}
+          />
         ))}
       </div>
       <SidebarSection
@@ -513,19 +567,22 @@ export function NotesLibrary({
         className="shrink-0 border-t border-b-0"
         contentClassName="space-y-2 p-2"
       >
-        <Tabs value={kind} onValueChange={(value) => setKind(value as KindFilter)}>
-          <TabsList size="sm" className={CHIP_LIST}>
-            {KIND_FILTERS.map((value) => (
-              <TabsTrigger key={value} value={value} className={CHIP}>
-                {value !== "all" && (
-                  <span aria-hidden data-kind-dot={value} className={cn("size-1.5 shrink-0 rounded-full", KIND_TONES[value].dot)} />
-                )}
-                {t(($) => $.notes.library.kind[value])}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-        <Tabs value={author} onValueChange={(value) => setAuthor(value as AuthorFilter)}>
+        <TagPane tree={tree} selected={tag} onSelect={chooseTag} />
+        {research && (
+          <Tabs value={facetValue(kindFacet)} onValueChange={(value) => chooseFacet(VAULT_FACETS.kind, value)}>
+            <TabsList size="sm" className={CHIP_LIST}>
+              {KIND_FILTERS.map((value) => (
+                <TabsTrigger key={value} value={value} className={CHIP}>
+                  {value !== "all" && (
+                    <span aria-hidden data-kind-dot={value} className={cn("size-1.5 shrink-0 rounded-full", KIND_TONES[value].dot)} />
+                  )}
+                  {t(($) => $.notes.library.kind[value])}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
+        <Tabs value={facetValue(authorFacet)} onValueChange={(value) => chooseFacet(VAULT_FACETS.author, value)}>
           <TabsList size="sm" className={CHIP_LIST}>
             {AUTHOR_FILTERS.map((value) => (
               <TabsTrigger key={value} value={value} className={CHIP}>
@@ -534,18 +591,14 @@ export function NotesLibrary({
             ))}
           </TabsList>
         </Tabs>
+        {activeFilters > 0 && (
+          <Button variant="ghost" size="xs" onClick={clearFilters}>
+            {t(($) => $.notes.library.filters.clear)}
+          </Button>
+        )}
       </SidebarSection>
-      {deleting && (
-        <ConfirmationDialog
-          open
-          title={t(($) => $.notes.library.menu.deleteTitle, { name: shortProjectName(deleting.title) })}
-          description={t(($) => $.notes.library.menu.deleteDescription)}
-          confirmLabel={t(($) => $.notes.library.menu.deleteConfirm)}
-          destructive
-          onCancel={() => setDeleting(null)}
-          onConfirm={() => void confirmDelete(deleting)}
-        />
-      )}
+      <TemplatePicker open={picking} onOpenChange={setPicking} onCreated={onOpenNote} />
+      {dialog}
     </aside>
   );
 }

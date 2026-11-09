@@ -32,6 +32,7 @@ import {
   type PanelLimits,
 } from "@/lib/panel-layout";
 import { cn } from "@/lib/utils";
+import { SectionReorderArea } from "./section-reorder";
 
 export interface StackSection {
   readonly id: string;
@@ -347,6 +348,7 @@ export function SidebarSectionStack({
   sections,
   resizeLabel,
   testId,
+  onReorder,
 }: Readonly<{
   groupId: string;
   persist?: boolean;
@@ -355,13 +357,16 @@ export function SidebarSectionStack({
   sections: readonly StackSection[];
   resizeLabel: (first: string, second: string) => string;
   testId: string;
+  onReorder?: (ids: string[]) => void;
 }>) {
   const [collapsedSize, setCollapsedSize] = useState(6);
   const onCollapsedSize = useCallback((next: number) => {
     setCollapsedSize((current) => (Math.abs(current - next) < 0.05 ? current : next));
   }, []);
+  const ids = useMemo(() => sections.map((section) => section.id), [sections]);
   return (
-    <SectionGroup
+    <SectionReorderArea ids={ids} onReorder={onReorder}>
+      <SectionGroup
       key={sections.map((section) => section.id).join("|")}
       groupId={groupId}
       persist={persist}
@@ -372,6 +377,7 @@ export function SidebarSectionStack({
       resizeLabel={resizeLabel}
       onCollapsedSize={onCollapsedSize}
       testId={testId}
-    />
+      />
+    </SectionReorderArea>
   );
 }

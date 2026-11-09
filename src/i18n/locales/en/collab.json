@@ -509,6 +509,7 @@
     "copyAndShare": "Copy into Oleafly and share",
     "title": "Share {{name}}",
     "description": "Work on this project with other people through a collaboration server.",
+    "noteDescription": "Write this note with other people through a collaboration server.",
     "loading": "Loading…",
     "linked": "This project is a folder outside Oleafly. Oleafly copies it into your library and shares that copy. The original folder isn't touched.",
     "editCopy": "This is the shared copy. Edit this one from now on, not the original folder.",
@@ -526,12 +527,15 @@
     "tooLarge": "These files are over the server's limit of {{size}} MB. Make them smaller or remove them before you share.",
     "renamed": "Some names don't work on every computer. Other people get these files under a slightly different name.",
     "excluded": "Not shared: other build files, Oleafly settings and Git history. The latest compiled PDF is shared, so co-authors can read it in a browser.",
+    "noteExcluded": "Not shared: Oleafly settings and Git history.",
     "start": "Share",
     "preparing": "Getting the project ready…",
     "uploading": "Uploading figures and other files: {{done}} of {{total}}",
     "saving": "Saving the project on the server…",
     "failed": "Sharing didn't finish, so nothing was shared.",
-    "trustAgain": "Anyone you add to this project can change its files, so Oleafly asks you to trust it again on this computer before it runs agents, terminal commands or shell escape for it."
+    "trustAgain": "Anyone you add to this project can change its files, so Oleafly asks you to trust it again on this computer before it runs agents, terminal commands or shell escape for it.",
+    "projectNotesShared": "The project's notes are shared with everyone in it. Personal notes stay private.",
+    "personalNotesPrivate": "Personal notes stay private. Only notes in the project's notes folder are shared."
   },
   "manage": {
     "sharedOn": "Shared on {{server}}",

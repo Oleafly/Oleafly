@@ -787,7 +787,7 @@ export function IntelligenceFilter({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder ?? t(($) => $.workspace.tree.filterPlaceholder)}
-        className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 focus-visible:border-ring"
+        className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75"
       />
       {value ? (
         <button

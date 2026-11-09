@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { REPLIES, type RecordedRun } from "../notes-agent-mock";
 
 const BASE_URL = process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420";
 const ABSTRACT_ID = "2c4e6a80-1b3d-4f5a-8c7e-9d0b1a2c3e02";
@@ -25,16 +26,24 @@ function noteText(page: Page, id: string): Promise<string> {
 }
 
 function prompt(page: Page) {
-  return page.getByRole("combobox", { name: "Ask the agent" });
+  return page.getByRole("combobox", { name: "Assistant", exact: true });
+}
+
+function conversation(page: Page) {
+  return page.getByRole("region", { name: "Conversation with the assistant" });
+}
+
+function agentRuns(page: Page): Promise<RecordedRun[]> {
+  return page.evaluate(() => (window as unknown as { __agent: { runs: RecordedRun[] } }).__agent.runs);
 }
 
 function firstParagraph(page: Page) {
   return page.locator(".ProseMirror:visible > p").first();
 }
 
-async function runAction(page: Page, filter: string): Promise<void> {
+async function runAction(page: Page, filter: string, label: string): Promise<void> {
   await prompt(page).fill(`/${filter}`);
-  await expect(page.getByRole("option").first()).toBeVisible();
+  await expect(page.getByRole("option", { name: label })).toBeVisible();
   await prompt(page).press("Enter");
 }
 
@@ -58,14 +67,15 @@ function shownView(page: Page) {
 }
 
 test.describe("Notes", () => {
-  test("lists notes, artifacts and experiments on Home", async ({ page }) => {
+  test("lists notes as cards on Home and artifacts in the sidebar", async ({ page }) => {
     const errors = await open(page);
-    await expect(page.getByRole("heading", { name: "Your research notes" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
     const sidebar = page.locator("aside");
     await expect(sidebar.getByRole("heading", { name: "SSL masking" })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: /Masking strategy report/ })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: /Run 3, mask ratio 0.60/ })).toBeVisible();
-    await expect(page.locator("main").getByText("3 tasks · 2 figures · 2 reports", { exact: false })).toBeVisible();
+    await expect(shownView(page).locator("[data-note-card]")).toHaveCount(4);
+    await expect(shownView(page).getByText("Run 3, mask ratio 0.60")).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
@@ -81,19 +91,20 @@ test.describe("Notes", () => {
     await expect(sidebar.getByRole("button", { name: /Abstract draft/ })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: /Masking strategy report/ })).toHaveCount(0);
     await sidebar.getByRole("tab", { name: "Anyone" }).click();
-    await sidebar.getByRole("textbox", { name: "Search notes and artifacts" }).fill("zzz");
+    await sidebar.getByRole("combobox", { name: "Search notes and artifacts" }).fill("zzz");
     await expect(sidebar.getByText("Nothing matches these filters.")).toBeVisible();
   });
 
   test("draws Mermaid, chart and math blocks and shows their source on request", async ({ page }) => {
     const errors = await open(page);
     await openNote(page, "Masking strategy report");
-    await expect(page.locator('.note-drawn[data-block="mermaid"] .note-drawn-preview svg')).toBeVisible();
-    await expect(page.locator('.note-drawn[data-block="chart"] .note-drawn-preview svg')).toBeVisible();
-    await expect(page.locator('.note-drawn[data-block="latex"] .note-drawn-preview .katex')).toBeVisible();
-    await expect(page.locator('.note-drawn[data-block="typst"] .note-drawn-preview')).toContainText("No preview");
+    const note = page.locator(".ProseMirror:visible");
+    await expect(note.locator('.note-drawn[data-block="mermaid"] .note-drawn-preview svg')).toBeVisible();
+    await expect(note.locator('.note-drawn[data-block="chart"] .note-drawn-preview svg')).toBeVisible();
+    await expect(note.locator('.note-drawn[data-block="latex"] .note-drawn-preview .katex')).toBeVisible();
+    await expect(note.locator('.note-drawn[data-block="typst"] .note-drawn-preview')).toContainText("Typst previews need the desktop app.");
 
-    const chart = page.locator('.note-drawn[data-block="chart"]');
+    const chart = note.locator('.note-drawn[data-block="chart"]');
     await expect(chart.locator("pre")).toBeHidden();
     await chart.getByRole("button", { name: "Source" }).click();
     await expect(chart.locator("pre")).toBeVisible();
@@ -101,105 +112,171 @@ test.describe("Notes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("reviews an agent's changes one at a time before they reach the note", async ({ page }) => {
-    await open(page);
+  test("reviews the assistant's changes one at a time before they reach the note", async ({ page }) => {
+    const errors = await open(page);
     await openNote(page, "Masking strategy report");
-    await runAction(page, "rewr");
+    const before = await noteText(page, "masking");
+    await runAction(page, "rewr", "Rewrite selection");
 
-    const bar = page.getByRole("button", { name: "Reject all" });
-    await expect(bar).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reject all" })).toBeVisible();
     await expect(page.getByText("Change 1 of 2")).toBeAttached();
     await expect(firstParagraph(page)).toContainText("mask ratio of 0.75");
     await expect(page.locator(".note-diff-delete").first()).toContainText("0.75");
+    await expect(conversation(page)).toContainText(REPLIES.rewrite);
+    expect(await noteText(page, "masking")).toBe(before);
 
     await page.getByRole("button", { name: "Accept", exact: true }).click();
     await expect(page.locator(".note-diff-delete")).toHaveText(["64.1%."]);
     await expect(firstParagraph(page)).toContainText("mask ratio of 0.60");
 
     await page.getByRole("button", { name: "Reject", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Accept", exact: true })).toHaveCount(0);
     await expect(prompt(page)).toBeVisible();
     await expect(firstParagraph(page)).not.toContainText("after the ratio dropped");
+    await expect.poll(() => noteText(page, "masking")).toContain("mask ratio of 0.60. The first run");
+    expect(await noteText(page, "masking")).toContain("and run 3 reached 64.1%.\n");
+    const [run] = await agentRuns(page);
+    expect(run.calls).toEqual(["read_note", "propose_note_edits"]);
+    expect(run.status).toBe("done");
+    expect(errors).toEqual([]);
   });
 
   test("accepts every change at once, including a new paragraph", async ({ page }) => {
     await open(page);
     await openNote(page, "Masking strategy report");
-    await runAction(page, "paragraph");
-    await expect(page.locator(".note-diff-block")).toContainText("Run 3 is the first run");
+    await runAction(page, "paragraph", "Write a new paragraph");
+    await expect(page.locator(".ProseMirror:visible > p > .note-diff-insert")).toContainText("Run 3 is the first run");
     await expect(page.getByRole("button", { name: "Reject all" })).toHaveCount(0);
     await page.getByRole("button", { name: "Accept", exact: true }).click();
     await expect(page.locator(".ProseMirror:visible > p", { hasText: "Run 3 is the first run" })).toBeVisible();
     await expect.poll(() => noteText(page, "masking")).toContain("\n\nRun 3 is the first run with the lower ratio");
+    await expect(conversation(page)).toContainText(REPLIES.paragraph);
 
-    await runAction(page, "rewr");
+    await runAction(page, "rewr", "Rewrite selection");
     await page.getByRole("button", { name: "Accept all" }).click();
     await expect(firstParagraph(page)).toContainText("0.60. The first run");
     await expect(firstParagraph(page)).toContainText("after the ratio dropped to 0.60");
+    await expect.poll(() => noteText(page, "masking")).toContain("and run 3 reached 64.1% after the ratio dropped to 0.60.");
+    expect(await noteText(page, "masking")).toContain("mask ratio of 0.60. The first run");
   });
 
-  test("offers the latest run only when the note's project has one, and never the code check", async ({ page }) => {
+  test("offers the latest run only when the note's project has a finished task, and the code check only with a project", async ({
+    page,
+  }) => {
     await open(page);
     await openNote(page, "Masking strategy report");
     await prompt(page).fill("/");
     await expect(page.getByRole("option", { name: "Proofread selection" })).toBeVisible();
     await expect(page.getByRole("option", { name: "Update from the latest run" })).toBeVisible();
-    await expect(page.getByRole("option", { name: "Check claims against the code" })).toHaveCount(0);
+    await expect(page.getByRole("option", { name: "Check claims against the code" })).toBeVisible();
     await prompt(page).fill("");
+
     await openNote(page, "Reading notes: masked autoencoders");
     await prompt(page).fill("/");
     await expect(page.getByRole("option", { name: "Proofread selection" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Update from the latest run" })).toHaveCount(0);
+    await expect(page.getByRole("option", { name: "Check claims against the code" })).toBeVisible();
+    await prompt(page).fill("");
+
+    await page.getByRole("button", { name: "Project: Literature" }).click();
+    await page.getByRole("menuitemradio", { name: "No project" }).click();
+    await expect(page.getByRole("button", { name: "Project: Choose project" })).toBeVisible();
+    await prompt(page).fill("/");
+    await expect(page.getByRole("option", { name: "Proofread selection" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Check claims against the code" })).toHaveCount(0);
     await expect(page.getByRole("option", { name: "Update from the latest run" })).toHaveCount(0);
   });
 
   test("updates the note from the latest research task", async ({ page }) => {
     await open(page);
     await openNote(page, "Masking strategy report");
-    await runAction(page, "latest");
-    await expect(page.locator(".note-diff-insert, .note-diff-delete").first()).toBeVisible();
+    await runAction(page, "latest", "Update from the latest run");
+    await expect(page.locator(".note-diff-insert").first()).toContainText("0.60");
+    await expect(page.locator(".note-diff-delete").first()).toContainText("0.75");
+    await expect(page.getByRole("button", { name: "Reject all" })).toHaveCount(0);
+    await expect(conversation(page)).toContainText(REPLIES.latestRun);
+    const [run] = await agentRuns(page);
+    expect(run.prompt).toContain("<run>\nTask: Review run 3");
+    expect(run.calls).toEqual(["read_note", "propose_note_edits"]);
   });
 
-  test("sends to the agent picked in the model menu and remembers it", async ({ page }) => {
-    await open(page);
+  test("sends the turn to the model picked for that note and remembers the pick per note across a reload", async ({
+    page,
+  }) => {
+    const errors = await open(page);
     await openNote(page, "Abstract draft");
     const picker = page.getByRole("combobox", { name: "AI model" });
-    await expect(picker).toContainText("Default model");
+    await expect(picker).toContainText("GPT-5 mini");
     await picker.click();
     await page.getByTestId("ai-model-option-openai-gpt-5").click();
     await expect(picker).toContainText("GPT-5");
-    await runAction(page, "proof");
-    await expect(page.getByText("GPT-5 has no changes for this note.")).toBeVisible();
+    await expect(picker).not.toContainText("mini");
+    await runAction(page, "proof", "Proofread selection");
+    await expect(conversation(page)).toContainText(REPLIES.proofread);
+    const [run] = await agentRuns(page);
+    expect([run.provider, run.model]).toEqual(["openai", "gpt-5"]);
+
+    await openNote(page, "Masking strategy report");
+    await expect(picker).toContainText("GPT-5");
+    await expect(picker).not.toContainText("mini");
+    await picker.click();
+    await page.getByTestId("ai-model-option-openai-gpt-5-mini").click();
+    await expect(picker).toContainText("GPT-5 mini");
+    await openNote(page, "Abstract draft");
+    await expect(picker).not.toContainText("mini");
+    await expect(conversation(page)).toContainText(REPLIES.proofread);
+
     await page.reload();
-    await page.waitForFunction(() => document.body.dataset.fixtureState === "mounted");
+    await page.waitForFunction(() => document.body.dataset.fixtureState === "mounted", null, { timeout: 60_000 });
     await openNote(page, "Abstract draft");
-    await expect(page.getByRole("combobox", { name: "AI model" })).toContainText("GPT-5");
+    await expect(picker).toContainText("GPT-5");
+    await expect(picker).not.toContainText("mini");
+    await openNote(page, "Masking strategy report");
+    await expect(picker).toContainText("GPT-5 mini");
+    expect(errors).toEqual([]);
   });
 
-  test("says when an agent has nothing to change", async ({ page }) => {
-    await open(page);
+  test("shows an answer with no edits as a normal reply", async ({ page }) => {
+    const errors = await open(page);
     await openNote(page, "Abstract draft");
-    await runAction(page, "proof");
-    await expect(page.getByText("Claude Code has no changes for this note.")).toBeVisible();
+    const before = await noteText(page, "abstract");
+    await runAction(page, "proof", "Proofread selection");
+    await expect(conversation(page)).toContainText(REPLIES.proofread);
+    await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
+    await expect(page.locator(".note-diff-insert, .note-diff-delete, .note-diff-block")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Accept", exact: true })).toHaveCount(0);
+    expect(await noteText(page, "abstract")).toBe(before);
+    const [run] = await agentRuns(page);
+    expect(run.calls).toEqual(["read_note"]);
+    expect(errors).toEqual([]);
   });
 
-  test("stops a running request", async ({ page }) => {
-    await open(page, "?delay=10000");
+  test("stops a running turn before it suggests anything", async ({ page }) => {
+    const errors = await open(page, "?delay=10000");
     await openNote(page, "Masking strategy report");
     await prompt(page).fill("Tighten the second paragraph");
     await prompt(page).press("Enter");
-    const stop = page.getByRole("button", { name: /Stop/ });
+    const stop = page.getByRole("button", { name: "Stop", exact: true });
     await expect(stop).toBeVisible();
+    await expect(conversation(page)).toContainText("Reading the note first.");
     await stop.click();
     await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
-    await expect(page.locator(".note-diff-insert, .note-diff-block")).toHaveCount(0);
+    await expect.poll(async () => (await agentRuns(page))[0]?.status).toBe("cancelled");
+    expect((await agentRuns(page))[0].calls).toEqual([]);
+    await expect(page.locator(".note-diff-insert, .note-diff-delete, .note-diff-block")).toHaveCount(0);
+    await expect(prompt(page)).toBeEnabled();
+    expect(errors).toEqual([]);
   });
 
-  test("sends a selection to the prompt", async ({ page }) => {
+  test("quotes a selection in the composer and focuses it", async ({ page }) => {
     await open(page);
     await openNote(page, "Masking strategy report");
     await firstParagraph(page).dblclick({ position: { x: 20, y: 12 } });
+    const selected = await page.evaluate(() => window.getSelection()?.toString().trim() ?? "");
+    expect(selected).not.toBe("");
     await page.getByRole("button", { name: "Ask agent" }).click();
-    await expect(page.getByRole("button", { name: "Remove selection" })).toBeVisible();
     await expect(prompt(page)).toBeFocused();
+    await expect(prompt(page)).toHaveValue(`> ${selected}\n\n`);
   });
 
   test("sets an emoji and a line icon on a note", async ({ page }) => {
@@ -314,7 +391,7 @@ test.describe("Notes", () => {
 
   test("starts a new note", async ({ page }) => {
     await open(page);
-    await page.getByRole("button", { name: "New note" }).click();
+    await page.locator("aside").getByRole("button", { name: "New note" }).click();
     await expect(page.getByRole("textbox", { name: "Note title" })).toHaveValue("Untitled");
     await expect(page.locator("aside").getByRole("button", { name: /Untitled/ })).toBeVisible();
   });
@@ -410,7 +487,7 @@ test.describe("Notes", () => {
     const toggle = sidebar.getByRole("button", { name: "Filters" });
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await expect(sidebar.getByRole("tab")).toHaveCount(0);
-    const search = await sidebar.getByRole("textbox", { name: "Search notes and artifacts" }).boundingBox();
+    const search = await sidebar.getByRole("combobox", { name: "Search notes and artifacts" }).boundingBox();
     const fold = await toggle.boundingBox();
     const aside = await sidebar.boundingBox();
     if (!search || !fold || !aside) throw new Error("no geometry");
@@ -444,7 +521,7 @@ test.describe("Notes", () => {
     await expect
       .poll(() => page.evaluate(() => (window as unknown as { __notes: { settingsOpened(): number } }).__notes.settingsOpened()))
       .toBe(1);
-    const search = await sidebar.getByRole("textbox", { name: "Search notes and artifacts" }).boundingBox();
+    const search = await sidebar.getByRole("combobox", { name: "Search notes and artifacts" }).boundingBox();
     const add = await sidebar.getByRole("button", { name: "New note" }).boundingBox();
     if (!search || !add) throw new Error("no geometry");
     expect(add.x).toBeGreaterThan(search.x + search.width - 1);
@@ -542,13 +619,13 @@ test.describe("Notes", () => {
     await expect(view.getByText("This note is no longer in your library.")).toBeVisible();
     await view.getByRole("button", { name: "Close tab" }).click();
     await expect(page.locator("main").getByRole("tab")).toHaveText(["Home"]);
-    await expect(page.getByRole("heading", { name: "Your research notes" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
   });
 
   test("renders in dark mode without errors", async ({ page }) => {
     const errors = await open(page, "?theme=dark");
     await openNote(page, "Masking strategy report");
-    await expect(page.locator('.note-drawn[data-block="chart"] svg')).toBeVisible();
+    await expect(page.locator('.ProseMirror:visible .note-drawn[data-block="chart"] svg')).toBeVisible();
     expect(errors).toEqual([]);
   });
   test("moves toolbar groups that do not fit a docked panel into More and back", async ({ page }) => {
@@ -611,14 +688,14 @@ test.describe("Notes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("collapses the agent prompt to a pill without moving the note and brings it back with Mod+J", async ({ page }) => {
+  test("folds the assistant to a pill without moving the note and brings it back with Mod+J", async ({ page }) => {
     const errors = await open(page);
     await openNote(page, "Masking strategy report");
     const view = shownView(page);
     const title = view.getByRole("textbox", { name: "Note title" });
     const before = await title.boundingBox();
     await view.getByRole("button", { name: "Hide prompt" }).click();
-    const pill = view.getByRole("button", { name: /^Ask the agent / });
+    const pill = view.getByRole("button", { name: /^Assistant / });
     await expect(pill).toBeVisible();
     await expect(prompt(page)).toHaveCount(0);
     expect(await title.boundingBox()).toEqual(before);
@@ -644,8 +721,8 @@ test.describe("Notes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("keeps Stop in the collapsed prompt while a request runs", async ({ page }) => {
-    await open(page, "?delay=10000");
+  test("keeps Stop in the folded pill while a turn runs", async ({ page }) => {
+    const errors = await open(page, "?delay=10000");
     await openNote(page, "Masking strategy report");
     await prompt(page).fill("Tighten the second paragraph");
     await prompt(page).press("Enter");
@@ -654,8 +731,11 @@ test.describe("Notes", () => {
     await expect(stop).toBeVisible();
     await stop.click();
     await expect(stop).toHaveCount(0);
-    await shownView(page).getByRole("button", { name: /^Ask the agent / }).click();
+    await expect.poll(async () => (await agentRuns(page))[0]?.status).toBe("cancelled");
+    await shownView(page).getByRole("button", { name: /^Assistant / }).click();
     await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
+    await expect(page.locator(".note-diff-insert, .note-diff-delete, .note-diff-block")).toHaveCount(0);
+    expect(errors).toEqual([]);
   });
 
   test("snaps the prompt open and shut when motion is reduced", async ({ page }) => {
@@ -671,6 +751,6 @@ test.describe("Notes", () => {
           .filter((animation) => animation.constructor === Animation).length,
     );
     expect(scripted).toBe(0);
-    await expect(shownView(page).getByRole("button", { name: /^Ask the agent / })).toBeVisible();
+    await expect(shownView(page).getByRole("button", { name: /^Assistant / })).toBeVisible();
   });
 });

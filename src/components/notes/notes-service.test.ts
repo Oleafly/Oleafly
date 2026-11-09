@@ -1,11 +1,17 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadNamespace } from "@/i18n";
 import { diskHash } from "@/lib/disk-hash";
 import { newNoteSource, readNoteFacts } from "./note-file";
+import { NotebookTooLargeError } from "./notebook-block";
 import { NoteConflictError } from "./types";
 
 const tauri = vi.hoisted(() => ({
+  listFiles: vi.fn(),
   createNoteProject: vi.fn(),
+  noteImportFile: vi.fn(),
+  projectFileSizes: vi.fn(),
+  readFileBase64: vi.fn(),
   readFileContent: vi.fn(),
   recycleProject: vi.fn(),
   renameProjectCmd: vi.fn(),
@@ -25,10 +31,10 @@ const events = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/tauri", () => tauri);
+const dialog = vi.hoisted(() => ({ pickOpenPath: vi.fn() }));
+vi.mock("@/lib/native-file-dialog", () => dialog);
 vi.mock("@/lib/research-tasks", () => research);
 vi.mock("@/components/editor/cm/hover-asset", () => assets);
-const agent = vi.hoisted(() => ({ runNoteAgent: vi.fn() }));
-vi.mock("./note-agent", () => agent);
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => files } }));
 const log = vi.hoisted(() => ({ logError: vi.fn() }));
 vi.mock("@/lib/log", () => log);
@@ -74,6 +80,10 @@ function service(projects = PROJECTS) {
   return { deps, notes: createNotesService(deps) };
 }
 
+beforeAll(async () => {
+  await loadNamespace("notes");
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   events.handler = null;
@@ -96,6 +106,11 @@ describe("notes from the library", () => {
         icon: "🧪",
         color: readNoteFacts(heads.get("note-1") ?? "").color,
         summary: "Run 3 reached 64.1%.",
+        createdAt: 1000,
+        preview: "Run 3 reached 64.1%.",
+        aliases: [],
+        tags: [],
+        properties: {},
       },
       {
         id: "plain",
@@ -107,6 +122,11 @@ describe("notes from the library", () => {
         icon: undefined,
         color: readNoteFacts("").color,
         summary: "",
+        createdAt: 1000,
+        preview: "",
+        aliases: [],
+        tags: [],
+        properties: {},
       },
     ]);
   });
@@ -138,7 +158,7 @@ describe("notes from the library", () => {
       text: "new\n",
       version: diskHash("new\n"),
     });
-    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "new\n");
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "new\n", { closedProject: true, crlf: false });
     expect(deps.refreshHeads).toHaveBeenCalled();
   });
 
@@ -161,17 +181,32 @@ describe("notes from the library", () => {
     expect(ids[0]).not.toBe(ids[1]);
   });
 
-  it("ignores line endings when it checks the version and writes LF", async () => {
+  it("ignores line endings when it checks the version and keeps the file's CRLF", async () => {
     tauri.readFileContent.mockResolvedValue("a\r\nb\r\n");
     files.writeProjectFile.mockResolvedValue(undefined);
     const { notes } = service();
     const loaded = await notes.loadNote("note-1");
     expect(loaded.version).toBe(diskHash("a\nb\n"));
     await expect(notes.saveNote("note-1", "a\r\nc\n", loaded.version)).resolves.toEqual({
-      text: "a\nc\n",
+      text: "a\r\nc\r\n",
       version: diskHash("a\nc\n"),
     });
-    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "a\nc\n");
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "a\nc\n", { closedProject: true, crlf: true });
+  });
+
+  it("writes LF to a file that uses LF", async () => {
+    tauri.readFileContent.mockResolvedValue("a\nb\r\n");
+    files.writeProjectFile.mockResolvedValue(undefined);
+    const { notes } = service();
+    await expect(notes.saveNote("note-1", "a\r\nc\r\n", diskHash("a\nb\n"))).resolves.toMatchObject({ text: "a\nc\n" });
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "a\nc\n", { closedProject: true, crlf: false });
+  });
+
+  it("reads a project's references from its BibTeX files", async () => {
+    tauri.listFiles.mockResolvedValue([{ path: "refs.bib", is_dir: false }]);
+    tauri.readFileContent.mockResolvedValue("@misc{he2022, title = {MAE}}");
+    const { notes } = service();
+    await expect(notes.projectCitations?.("paper")).resolves.toEqual([{ key: "he2022", label: "MAE" }]);
   });
 
   it("passes other save failures through", async () => {
@@ -264,16 +299,6 @@ describe("notes from the library", () => {
     stop?.();
     await vi.waitFor(() => expect(log.logError).toHaveBeenCalledWith("stop watching note folder", failure));
   });
-
-  it("asks the chosen agent for edits and passes the stop signal along", async () => {
-    agent.runNoteAgent.mockResolvedValue([{ find: "a", replace: "b" }]);
-    const { notes } = service();
-    const choice = { providerId: "acp:claude", modelId: "default", label: "Claude Code" };
-    const request = { noteId: "note-1", agent: choice, actionId: null, prompt: "Tighten", quote: null, source: "a" };
-    const signal = new AbortController().signal;
-    await expect(notes.proposeEdits(request, signal)).resolves.toEqual([{ find: "a", replace: "b" }]);
-    expect(agent.runNoteAgent).toHaveBeenCalledWith(choice, request, signal);
-  });
 });
 
 describe("note artifacts and related projects", () => {
@@ -345,6 +370,46 @@ describe("note artifacts and related projects", () => {
     const { notes } = service();
     await expect(notes.resolveAsset?.("note-1", "assets/loss.png")).resolves.toBe("data:image/png;base64,AAAA");
     expect(assets.loadAssetThumbnail).toHaveBeenCalledWith("note-1", "assets/loss.png");
+  });
+
+  it("reads a notebook in the note's folder whole, as a data address", async () => {
+    tauri.projectFileSizes.mockResolvedValue({ "assets/run.ipynb": 12 });
+    tauri.readFileBase64.mockResolvedValue("e30=");
+    const { notes } = service();
+    await expect(notes.resolveAsset?.("note-1", "assets/run.ipynb")).resolves.toBe(
+      "data:application/x-ipynb+json;base64,e30=",
+    );
+    expect(tauri.projectFileSizes).toHaveBeenCalledWith("note-1", ["assets/run.ipynb"]);
+    expect(tauri.readFileBase64).toHaveBeenCalledWith("note-1", "assets/run.ipynb");
+    expect(assets.loadAssetThumbnail).not.toHaveBeenCalled();
+  });
+
+  it("finds no notebook that is missing and refuses one over 64 MiB without reading it", async () => {
+    const { notes } = service();
+    tauri.projectFileSizes.mockResolvedValueOnce({});
+    await expect(notes.resolveAsset?.("note-1", "assets/gone.ipynb")).resolves.toBeNull();
+    tauri.projectFileSizes.mockResolvedValueOnce({ "assets/big.IPYNB": 64 * 1024 * 1024 + 1 });
+    await expect(notes.resolveAsset?.("note-1", "assets/big.IPYNB")).rejects.toThrow(NotebookTooLargeError);
+    expect(tauri.readFileBase64).not.toHaveBeenCalled();
+  });
+
+  it("copies a notebook picked in the file dialog into the note", async () => {
+    dialog.pickOpenPath.mockResolvedValue("/Users/me/analysis.ipynb");
+    tauri.noteImportFile.mockResolvedValue({ path: "assets/analysis-1a2b3c4d.ipynb", reused: false });
+    const { notes } = service();
+    await expect(notes.importNotebook?.("note-1")).resolves.toBe("assets/analysis-1a2b3c4d.ipynb");
+    expect(dialog.pickOpenPath).toHaveBeenCalledWith({
+      title: "Insert a notebook",
+      filters: [{ name: "Jupyter notebooks", extensions: ["ipynb"] }],
+    });
+    expect(tauri.noteImportFile).toHaveBeenCalledWith("note-1", "/Users/me/analysis.ipynb");
+  });
+
+  it("copies nothing when the file dialog is closed", async () => {
+    dialog.pickOpenPath.mockResolvedValue(null);
+    const { notes } = service();
+    await expect(notes.importNotebook?.("note-1")).resolves.toBeNull();
+    expect(tauri.noteImportFile).not.toHaveBeenCalled();
   });
 
   it("offers the projects a note can relate to, newest first", () => {

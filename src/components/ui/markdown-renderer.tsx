@@ -1,12 +1,14 @@
-import { Children, isValidElement, memo, type ReactNode, useRef } from "react";
+import { Children, isValidElement, memo, type ReactNode, useRef, useState } from "react";
 import rehypeKatex from "rehype-katex";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { remoteImageHost } from "@/lib/remote-image";
 import { cn } from "@/lib/utils";
 import { HighlightedCode } from "./code-highlighter";
 import { CopyableBlock } from "./copyable-block";
 import { MermaidDiagram } from "./mermaid-diagram";
+import { RemoteImageNotice } from "./remote-image-notice";
 import { RenderCache } from "./render-cache";
 import {
   type StreamingMarkdownState,
@@ -14,7 +16,7 @@ import {
 } from "./streaming-markdown";
 
 const codeBlockClassName =
-  "overflow-x-auto rounded-md bg-background/70 p-2.5 text-[0.85em] [scrollbar-width:thin]";
+  "overflow-x-auto rounded-md bg-background/70 p-2.5 text-[0.85em]";
 
 const MAX_CACHED_DOCUMENTS = 200;
 const MAX_CACHED_DOCUMENT_CHARS = 1_000_000;
@@ -29,6 +31,13 @@ function codeText(children: ReactNode) {
 
 function codeLanguage(className?: string) {
   return className?.match(/(?:^|\s)language-([^\s]+)/)?.[1]?.toLowerCase();
+}
+
+function MarkdownImage({ src, alt, title }: Readonly<{ src?: string; alt?: string; title?: string }>) {
+  const [allowed, setAllowed] = useState(false);
+  const host = src ? remoteImageHost(src) : null;
+  if (!host || allowed) return <img src={src} alt={alt ?? ""} title={title} className="max-w-full" />;
+  return <RemoteImageNotice host={host} alt={alt} onLoad={() => setAllowed(true)} />;
 }
 
 function createMarkdownComponents(inverted: boolean): Components {
@@ -113,6 +122,9 @@ function createMarkdownComponents(inverted: boolean): Components {
   ),
   th: ({ children }) => <th className="border border-border px-2 py-1 text-left font-semibold">{children}</th>,
   td: ({ children }) => <td className="border border-border px-2 py-1 align-top">{children}</td>,
+  img: ({ src, alt, title }) => (
+    <MarkdownImage src={typeof src === "string" ? src : undefined} alt={alt} title={title} />
+  ),
   };
 }
 

@@ -660,6 +660,14 @@ export type TypstSnippetRender =
 export const renderTypstSnippet = (request: TypstSnippetRequest) =>
   invoke<TypstSnippetRender>("render_typst_snippet", { request });
 
+export const notesRenderTypst = (source: string) => invoke<string>("notes_render_typst", { source });
+
+export const artifactFrameOpen = (html: string) => invoke<string>("artifact_frame_open", { html });
+
+export const artifactFrameClose = (token: string) => invoke<boolean>("artifact_frame_close", { token });
+
+export const artifactFramePutRuntime = (text: string) => invoke<string>("artifact_frame_put_runtime", { text });
+
 export interface ArxivSourceRequest {
   arxivId?: string;
   dataBase64?: string;
@@ -865,8 +873,109 @@ export interface NoteHead {
 
 export const noteHeads = () => invoke<NoteHead[]>("note_heads");
 
+export interface NoteLinkRecord {
+  projectId: string;
+  noteId: string | null;
+  title: string;
+  links: { kind: "note" | "project"; id: string; snippet: string }[];
+}
+
+export const noteLinks = () => invoke<NoteLinkRecord[]>("note_links");
+
+export interface NoteSearchSnippet {
+  text: string;
+  ranges: [number, number][];
+}
+
+export interface NoteSearchHit {
+  id: string;
+  noteId: string | null;
+  title: string;
+  titleRanges: [number, number][];
+  score: number;
+  snippets: NoteSearchSnippet[];
+  tags: string[];
+  aliases: string[];
+  relatedProject: string | null;
+  updatedAt: number;
+}
+
+export const noteSearch = (query: string, limit?: number | null) =>
+  invoke<NoteSearchHit[]>("note_search", { query, limit: limit ?? null });
+
+export interface NoteTagCount {
+  tag: string;
+  label: string;
+  count: number;
+  notes: string[];
+}
+
+export const listNoteTags = () => invoke<NoteTagCount[]>("note_tags");
+
 export const setNoteRelatedProject = (noteId: string, relatedProject: string | null) =>
   invoke<void>("set_note_related_project", { noteId, relatedProject });
+
+export interface NoteFileCopy {
+  path: string;
+  reused: boolean;
+}
+
+export const noteImportFile = (projectId: string, sourcePath: string) =>
+  invoke<NoteFileCopy>("note_import_file", { projectId, sourcePath });
+
+export interface NotesImportProgress {
+  phase: "read" | "write";
+  done: number;
+  total: number;
+  file: string;
+}
+
+export interface NotesImportSummary {
+  notes: number;
+  attachments: number;
+  unresolved: number;
+  skipped: number;
+  cancelled: boolean;
+  notCopied: string[];
+}
+
+export type NotesImportOutcome =
+  | { kind: "dismissed" }
+  | { kind: "seen"; importedAt: number; notes: number }
+  | ({ kind: "done" } & NotesImportSummary);
+
+export interface NotesImportRequest {
+  runId: string;
+  folderTags: boolean;
+  again: boolean;
+  files?: boolean;
+  title: string;
+}
+
+export async function notesImportFolder(
+  request: NotesImportRequest,
+  onProgress: (progress: NotesImportProgress) => void,
+): Promise<NotesImportOutcome> {
+  const channel = new Channel<NotesImportProgress>();
+  channel.onmessage = onProgress;
+  try {
+    return await invoke<NotesImportOutcome>("notes_import_folder", { request, onProgress: channel });
+  } finally {
+    channel.onmessage = () => {};
+  }
+}
+
+export const notesImportCancel = (runId: string) => invoke<boolean>("notes_import_cancel", { runId });
+
+export interface NotesExportSummary {
+  folder: string;
+  notes: number;
+  attachments: number;
+  skipped: number;
+}
+
+export const notesExportFolder = (request: { noteId: string | null; folderName: string; title: string }) =>
+  invoke<NotesExportSummary | null>("notes_export_folder", { request });
 
 export const getOrCreateScratchProject = () =>
   invoke<string>("get_or_create_scratch_project");
